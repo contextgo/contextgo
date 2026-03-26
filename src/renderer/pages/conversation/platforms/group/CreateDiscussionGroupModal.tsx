@@ -20,7 +20,7 @@ import {
   type DiscussionGroupParticipantInput,
 } from '@/renderer/pages/conversation/utils/createConversationParams';
 import { Button, Checkbox, Input, Message, Modal, Radio, Typography } from '@arco-design/web-react';
-import { Robot } from '@icon-park/react';
+import { FolderOpen, Robot } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -77,7 +77,7 @@ const ParticipantAvatar: React.FC<{ participant: ParticipantOption }> = ({ parti
   );
 };
 
-const DEFAULT_MODE: DiscussionGroupMode = 'debate';
+const DEFAULT_MODE: DiscussionGroupMode = 'broadcast';
 
 const CreateDiscussionGroupModal: React.FC<{
   visible: boolean;
@@ -90,6 +90,7 @@ const CreateDiscussionGroupModal: React.FC<{
   const { t, i18n } = useTranslation();
   const { assistants, localeKey } = useAssistantList();
   const [groupName, setGroupName] = useState('');
+  const [selectedWorkspace, setSelectedWorkspace] = useState('');
   const [mode, setMode] = useState<DiscussionGroupMode>(DEFAULT_MODE);
   const [selectedParticipantKeys, setSelectedParticipantKeys] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -154,9 +155,27 @@ const CreateDiscussionGroupModal: React.FC<{
     }
 
     setGroupName(t('conversation.group.defaultName'));
+    setSelectedWorkspace(workspace || '');
     setMode(DEFAULT_MODE);
     setSelectedParticipantKeys(availableParticipants.slice(0, 3).map((participant) => participant.selectionKey));
-  }, [availableParticipants, t, visible]);
+  }, [availableParticipants, t, visible, workspace]);
+
+  const handleSelectWorkspace = async () => {
+    try {
+      const files = await ipcBridge.dialog.showOpen.invoke({
+        defaultPath: selectedWorkspace || workspace || undefined,
+        properties: ['openDirectory'],
+      });
+      const workspacePath = files?.[0];
+      if (!workspacePath) {
+        return;
+      }
+      setSelectedWorkspace(workspacePath);
+    } catch (error) {
+      console.error('Failed to select discussion group workspace:', error);
+      Message.error(t('conversation.group.selectWorkspaceFailed'));
+    }
+  };
 
   const handleSubmit = async () => {
     if (selectedParticipantKeys.length < 2) {
@@ -176,7 +195,7 @@ const CreateDiscussionGroupModal: React.FC<{
     try {
       const params = await buildDiscussionGroupParams({
         name: groupName.trim() || t('conversation.group.defaultName'),
-        workspace,
+        workspace: selectedWorkspace.trim() || undefined,
         language: i18n.language,
         mode,
         participants: selectedParticipants,
@@ -213,10 +232,30 @@ const CreateDiscussionGroupModal: React.FC<{
         </div>
 
         <div className='flex flex-col gap-6px'>
+          <Typography.Text>{t('conversation.group.workspaceLabel')}</Typography.Text>
+          <div className='flex items-center gap-8px'>
+            <Input
+              value={selectedWorkspace}
+              onChange={setSelectedWorkspace}
+              placeholder={t('conversation.group.workspacePlaceholder')}
+              allowClear
+            />
+            <Button type='secondary' onClick={() => void handleSelectWorkspace()}>
+              <span className='flex items-center gap-6px'>
+                <FolderOpen theme='outline' size='16' />
+                <span>{t('conversation.group.selectWorkspace')}</span>
+              </span>
+            </Button>
+          </div>
+          <Typography.Text type='secondary'>{t('conversation.group.workspaceHint')}</Typography.Text>
+        </div>
+
+        <div className='flex flex-col gap-6px'>
           <Typography.Text>{t('conversation.group.modeLabel')}</Typography.Text>
           <Radio.Group value={mode} onChange={(value) => setMode(value as DiscussionGroupMode)} type='button'>
-            <Radio value='debate'>{t('conversation.group.modeDebate')}</Radio>
             <Radio value='broadcast'>{t('conversation.group.modeBroadcast')}</Radio>
+            <Radio value='relay'>{t('conversation.group.modeRelay')}</Radio>
+            <Radio value='debate'>{t('conversation.group.modeDebate')}</Radio>
           </Radio.Group>
           <Typography.Text type='secondary'>{t(`conversation.group.modeHint.${mode}`)}</Typography.Text>
         </div>

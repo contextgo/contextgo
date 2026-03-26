@@ -14,11 +14,14 @@ export type AvailableAgent = {
   name: string;
   cliPath?: string;
   customAgentId?: string;
+  openclawAgentId?: string;
   isPreset?: boolean;
   context?: string;
   avatar?: string;
+  workspace?: string;
   // Allow extension-contributed adapter IDs (e.g. 'ext-buddy') in addition to built-in PresetAgentType values
   presetAgentType?: PresetAgentType | string;
+  supportedTransports?: string[];
   isExtension?: boolean;
   extensionName?: string;
 };

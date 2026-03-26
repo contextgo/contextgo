@@ -21,8 +21,12 @@ export const ConversationHistoryProvider: React.FC<React.PropsWithChildren> = ({
   const conversationListSync = useConversationListSync();
 
   const groupedHistory = useMemo(() => {
-    return buildGroupedHistory(conversationListSync.conversations, t);
-  }, [conversationListSync.conversations, t]);
+    return buildGroupedHistory(
+      conversationListSync.conversations,
+      conversationListSync.discussionChildConversationsByParentId,
+      t
+    );
+  }, [conversationListSync.conversations, conversationListSync.discussionChildConversationsByParentId, t]);
 
   const value = useMemo<ConversationHistoryContextValue>(() => {
     return {

@@ -23,6 +23,10 @@ interface EventTypes {
   'codex.selected.file.append': [Array<string | FileOrFolderItem>];
   'codex.selected.file.clear': void;
   'codex.workspace.refresh': void;
+  'group.selected.file': [Array<string | FileOrFolderItem>];
+  'group.selected.file.append': [Array<string | FileOrFolderItem>];
+  'group.selected.file.clear': void;
+  'group.workspace.refresh': void;
   'openclaw-gateway.selected.file': [Array<string | FileOrFolderItem>];
   'openclaw-gateway.selected.file.append': [Array<string | FileOrFolderItem>];
   'openclaw-gateway.selected.file.clear': void;

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useCallback } from 'react';
 import { useSWRConfig } from 'swr';
 import type { TChatConversation } from '@/common/config/storage';
+import { syncDiscussionFamilyWorkspace } from '@/renderer/pages/conversation/utils/discussionGroupWorkspace';
 
 export type WorkspaceEventPrefix = 'gemini' | 'acp' | 'codex';
 
@@ -40,16 +41,18 @@ export const useWorkspaceSelector = (conversationId: string, eventPrefix: Worksp
         return;
       }
 
-      // 更新会话 extra 中的 workspace 字段 / Update conversation.extra.workspace
-      const nextExtra = { ...conversation.extra, workspace: workspacePath };
-      const success = await ipcBridge.conversation.update.invoke({ id: conversationId, updates: { extra: nextExtra } });
-      if (!success) {
-        Message.error(t('common.saveFailed'));
-        return;
-      }
+      const updatedConversations = await syncDiscussionFamilyWorkspace(conversation, workspacePath);
+      const currentConversation = updatedConversations.find((item) => item.id === conversationId) ?? {
+        ...conversation,
+        extra: {
+          ...conversation.extra,
+          workspace: workspacePath,
+          customWorkspace: true,
+        },
+      };
 
       // 手动刷新 SWR 缓存以及广播给工作区和会话列表 / Refresh SWR cache and notify workspace/history
-      await mutate(`conversation/${conversationId}`, { ...conversation, extra: nextExtra }, false);
+      await mutate(`conversation/${conversationId}`, currentConversation, false);
       emitter.emit(`${eventPrefix}.workspace.refresh`);
       emitter.emit('chat.history.refresh');
       Message.success(t('common.saveSuccess'));

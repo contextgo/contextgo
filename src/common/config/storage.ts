@@ -163,7 +163,7 @@ export interface IEnvStorageRefer {
  */
 export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
 
-export type DiscussionGroupMode = 'broadcast' | 'debate';
+export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 
 export type DiscussionGroupParticipantType = 'preset-assistant' | 'cli-agent';
 

@@ -97,12 +97,19 @@
     "defaultName": "Discussion Group",
     "nameLabel": "Group Name",
     "namePlaceholder": "Enter a discussion group name",
+    "workspaceLabel": "Workspace",
+    "workspacePlaceholder": "Optional. Leave empty to create a default workspace automatically",
+    "workspaceHint": "The discussion group and all participant sessions will share this workspace. If left empty, a default temporary workspace will be created automatically.",
+    "selectWorkspace": "Choose Folder",
+    "selectWorkspaceFailed": "Failed to select workspace",
     "modeLabel": "Discussion Mode",
     "modeDebate": "Debate",
     "modeBroadcast": "Broadcast",
+    "modeRelay": "Relay",
     "modeHint": {
       "debate": "Round 1 stays independent, round 2 lets assistants respond after seeing the others.",
-      "broadcast": "Each assistant answers independently and the group returns the final set of opinions."
+      "broadcast": "Each assistant answers independently and the group returns the final set of opinions.",
+      "relay": "Assistants answer in sequence. Later assistants see earlier responses and continue by extending or challenging them."
     },
     "participantsLabel": "Participants",
     "minimumParticipants": "Select at least two participants",
@@ -132,6 +139,16 @@
     "addFile": "Add File",
     "refresh": "Refresh",
     "temporarySpace": "Temporary Space",
+    "groupMembers": {
+      "title": "Group Members",
+      "count": "{{count}} members",
+      "open": "Members {{count}}",
+      "close": "Hide Members",
+      "participantType": {
+        "cliAgent": "CLI Agent",
+        "presetAssistant": "Preset Assistant"
+      }
+    },
     "changeWorkspace": "Change Workspace",
     "migration": {
       "title": "Change Workspace",

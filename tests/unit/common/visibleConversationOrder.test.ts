@@ -63,7 +63,9 @@ describe('buildVisibleConversationIds', () => {
     const visibleConversationIds = buildVisibleConversationIds({
       pinnedConversations: [createConversation('pinned-1'), createConversation('pinned-2')],
       timelineSections,
+      discussionChildConversationsByParentId: {},
       expandedWorkspaces: ['/workspace/project-a'],
+      expandedDiscussionGroups: [],
       siderCollapsed: false,
     });
 
@@ -85,7 +87,9 @@ describe('buildVisibleConversationIds', () => {
           ],
         },
       ],
+      discussionChildConversationsByParentId: {},
       expandedWorkspaces: [],
+      expandedDiscussionGroups: [],
       siderCollapsed: false,
     });
 
@@ -107,10 +111,143 @@ describe('buildVisibleConversationIds', () => {
           ],
         },
       ],
+      discussionChildConversationsByParentId: {},
       expandedWorkspaces: [],
+      expandedDiscussionGroups: [],
       siderCollapsed: true,
     });
 
     expect(visibleConversationIds).toEqual(['ws-1', 'ws-2']);
+  });
+
+  it('renders discussion group child sessions immediately after their parent conversation', () => {
+    const groupConversation = {
+      ...createConversation('group-1'),
+      type: 'group' as const,
+      extra: {
+        workspace: '/workspace/group',
+        customWorkspace: true,
+        participants: [],
+        orchestration: {
+          mode: 'broadcast' as const,
+          rounds: 1 as const,
+        },
+      },
+    };
+
+    const visibleConversationIds = buildVisibleConversationIds({
+      pinnedConversations: [],
+      timelineSections: [
+        {
+          timeline: 'Today',
+          items: [
+            {
+              type: 'conversation',
+              time: 2,
+              conversation: groupConversation,
+            },
+            {
+              type: 'conversation',
+              time: 1,
+              conversation: createConversation('direct-1'),
+            },
+          ],
+        },
+      ],
+      discussionChildConversationsByParentId: {
+        'group-1': [createConversation('child-1'), createConversation('child-2')],
+      },
+      expandedWorkspaces: [],
+      expandedDiscussionGroups: ['group-1'],
+      siderCollapsed: false,
+    });
+
+    expect(visibleConversationIds).toEqual(['group-1', 'child-1', 'child-2', 'direct-1']);
+  });
+
+  it('hides discussion child sessions until their parent group is expanded', () => {
+    const groupConversation = {
+      ...createConversation('group-1'),
+      type: 'group' as const,
+      extra: {
+        workspace: '/workspace/group',
+        customWorkspace: true,
+        participants: [],
+        orchestration: {
+          mode: 'broadcast' as const,
+          rounds: 1 as const,
+        },
+      },
+    };
+
+    const visibleConversationIds = buildVisibleConversationIds({
+      pinnedConversations: [],
+      timelineSections: [
+        {
+          timeline: 'Today',
+          items: [
+            {
+              type: 'conversation',
+              time: 2,
+              conversation: groupConversation,
+            },
+          ],
+        },
+      ],
+      discussionChildConversationsByParentId: {
+        'group-1': [createConversation('child-1'), createConversation('child-2')],
+      },
+      expandedWorkspaces: [],
+      expandedDiscussionGroups: [],
+      siderCollapsed: false,
+    });
+
+    expect(visibleConversationIds).toEqual(['group-1']);
+  });
+
+  it('keeps discussion group children nested under their parent inside a workspace section', () => {
+    const groupConversation = {
+      ...createConversation('group-1'),
+      type: 'group' as const,
+      extra: {
+        workspace: '/workspace/project-a',
+        customWorkspace: true,
+        participants: [],
+        orchestration: {
+          mode: 'broadcast' as const,
+          rounds: 1 as const,
+        },
+      },
+    };
+
+    const workspaceGroup: WorkspaceGroup = {
+      workspace: '/workspace/project-a',
+      displayName: 'project-a',
+      conversations: [groupConversation, createConversation('direct-1')],
+    };
+
+    const visibleConversationIds = buildVisibleConversationIds({
+      pinnedConversations: [],
+      timelineSections: [
+        {
+          timeline: 'Today',
+          items: [
+            {
+              type: 'workspace',
+              time: 1,
+              workspaceGroup,
+            },
+          ],
+        },
+      ],
+      discussionChildConversationsByParentId: {
+        'group-1': [createConversation('child-1'), createConversation('child-2')],
+      },
+      expandedWorkspaces: ['/workspace/project-a'],
+      expandedDiscussionGroups: ['group-1'],
+      siderCollapsed: false,
+    });
+
+    expect(visibleConversationIds).toEqual(['group-1', 'child-1', 'child-2', 'direct-1']);
   });
 });

@@ -6,6 +6,8 @@
 
 import type { TChatConversation } from '@/common/config/storage';
 
+export type DiscussionChildConversationMap = Record<string, TChatConversation[]>;
+
 export type WorkspaceGroup = {
   workspace: string;
   displayName: string;
@@ -27,6 +29,7 @@ export type TimelineSection = {
 export type GroupedHistoryResult = {
   pinnedConversations: TChatConversation[];
   timelineSections: TimelineSection[];
+  discussionChildConversationsByParentId: DiscussionChildConversationMap;
 };
 
 export type ExportZipFile = {
@@ -44,6 +47,8 @@ export type ConversationRowProps = {
   conversation: TChatConversation;
   isGenerating: boolean;
   hasCompletionUnread: boolean;
+  allowActions?: boolean;
+  allowBatchSelection?: boolean;
   collapsed: boolean;
   tooltipEnabled: boolean;
   batchMode: boolean;
