@@ -15,11 +15,11 @@ export type AvailableAgent = {
   cliPath?: string;
   customAgentId?: string;
   openclawAgentId?: string;
+  isDefault?: boolean;
   isPreset?: boolean;
   context?: string;
   avatar?: string;
   workspace?: string;
-  isDefault?: boolean;
   // Allow extension-contributed adapter IDs (e.g. 'ext-buddy') in addition to built-in PresetAgentType values
   presetAgentType?: PresetAgentType | string;
   supportedTransports?: string[];
@@ -33,12 +33,12 @@ export type AvailableAgent = {
 export type MentionOption = {
   key: string;
   label: string;
-  tokens: Set<string>;
   description?: string;
+  isDefault?: boolean;
+  tokens: Set<string>;
   avatar: string | undefined;
   avatarImage: string | undefined;
   logo: string | undefined;
-  isDefault?: boolean;
   isExtension?: boolean;
 };
 

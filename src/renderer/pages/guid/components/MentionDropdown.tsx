@@ -36,32 +36,36 @@ const MentionDropdown: React.FC<MentionDropdownProps> = ({ menuRef, options, sel
           options.map((option, index) => (
             <Menu.Item key={option.key} data-mention-index={index}>
               <div className='flex items-start gap-8px py-2px'>
-                {option.avatarImage ? (
-                  <img
-                    src={resolveExtensionAssetUrl(option.avatarImage)}
-                    alt=''
-                    width={16}
-                    height={16}
-                    style={{ objectFit: 'contain' }}
-                  />
-                ) : option.avatar ? (
-                  <span style={{ fontSize: 14, lineHeight: '16px' }}>{option.avatar}</span>
-                ) : option.logo ? (
-                  <img src={option.logo} alt={option.label} width={16} height={16} style={{ objectFit: 'contain' }} />
-                ) : (
-                  <Robot theme='outline' size={16} />
-                )}
-                <div className='min-w-0 flex-1'>
-                  <div className='flex items-center gap-6px'>
+                <div className='pt-2px'>
+                  {option.avatarImage ? (
+                    <img
+                      src={resolveExtensionAssetUrl(option.avatarImage)}
+                      alt=''
+                      width={16}
+                      height={16}
+                      style={{ objectFit: 'contain' }}
+                    />
+                  ) : option.avatar ? (
+                    <span style={{ fontSize: 14, lineHeight: '16px' }}>{option.avatar}</span>
+                  ) : option.logo ? (
+                    <img src={option.logo} alt={option.label} width={16} height={16} style={{ objectFit: 'contain' }} />
+                  ) : (
+                    <Robot theme='outline' size={16} />
+                  )}
+                </div>
+                <div className='min-w-0 flex-1 flex flex-col gap-2px'>
+                  <div className='flex items-center gap-6px min-w-0'>
                     <span className='truncate'>{option.label}</span>
                     {option.isDefault ? (
-                      <span className='shrink-0 text-11px lh-16px px-6px rd-10px bg-fill-2 text-t-secondary'>
+                      <span className='shrink-0 text-11px lh-16px px-6px rd-999px bg-fill-2 text-t-secondary'>
                         {t('guid.openclaw.defaultAgent')}
                       </span>
                     ) : null}
                   </div>
                   {option.description ? (
-                    <div className='mt-2px text-12px lh-16px text-t-secondary truncate'>{option.description}</div>
+                    <span className='text-12px text-t-secondary truncate' title={option.description}>
+                      {option.description}
+                    </span>
                   ) : null}
                 </div>
               </div>
@@ -102,13 +106,15 @@ export const MentionSelectorBadge: React.FC<MentionSelectorBadgeProps> = ({
   onResetQuery,
 }) => {
   const { t } = useTranslation();
-
   if (!visible) return null;
 
-  const helperParts = [isDefault ? t('guid.openclaw.defaultAgent') : null, agentDescription].filter(Boolean);
+  const helperParts = [
+    isDefault ? t('guid.openclaw.defaultAgent') : null,
+    agentDescription || null,
+  ].filter((part): part is string => Boolean(part));
 
   return (
-    <div className='flex flex-col items-start gap-4px mb-8px'>
+    <div className='flex flex-col gap-4px mb-8px'>
       <Dropdown
         trigger='click'
         popupVisible={open}
@@ -126,7 +132,9 @@ export const MentionSelectorBadge: React.FC<MentionSelectorBadgeProps> = ({
         </div>
       </Dropdown>
       {helperParts.length > 0 ? (
-        <span className='max-w-full text-12px lh-16px text-t-secondary truncate'>{helperParts.join(' · ')}</span>
+        <div className='text-12px text-t-secondary truncate px-4px' title={helperParts.join(' · ')}>
+          {helperParts.join(' · ')}
+        </div>
       ) : null}
     </div>
   );
