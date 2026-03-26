@@ -345,6 +345,8 @@ const GuidPage: React.FC = () => {
                 open={mention.mentionSelectorOpen}
                 onOpenChange={mention.setMentionSelectorOpen}
                 agentLabel={mention.selectedAgentLabel}
+                agentDescription={mention.selectedAgentDescription}
+                isDefault={mention.selectedAgentIsDefault}
                 mentionMenu={mentionDropdownNode}
                 onResetQuery={() => mention.setMentionQuery(null)}
               />

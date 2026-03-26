@@ -27,6 +27,8 @@ export type GuidMentionResult = {
   mentionMenuRef: React.RefObject<HTMLDivElement>;
   mentionMatchRegex: RegExp;
   selectedAgentLabel: string;
+  selectedAgentDescription: string | null;
+  selectedAgentIsDefault: boolean;
   mentionMenuSelectedKey: string;
 };
 
@@ -88,6 +90,8 @@ export const useGuidMention = ({
         avatar,
         avatarImage,
         logo: getAgentLogo(agent.backend) || undefined,
+        description: agent.workspace,
+        isDefault: agent.isDefault,
         isExtension: agent.isExtension,
       };
     });
@@ -121,6 +125,8 @@ export const useGuidMention = ({
   );
 
   const selectedAgentLabel = selectedAgentInfo?.name || selectedAgentKey;
+  const selectedAgentDescription = selectedAgentInfo?.workspace || null;
+  const selectedAgentIsDefault = selectedAgentInfo?.isDefault || false;
   const mentionMenuActiveOption = filteredMentionOptions[mentionActiveIndex] || filteredMentionOptions[0];
   const mentionMenuSelectedKey =
     mentionOpen || mentionSelectorOpen ? mentionMenuActiveOption?.key || selectedAgentKey : selectedAgentKey;
@@ -164,6 +170,8 @@ export const useGuidMention = ({
     mentionMenuRef,
     mentionMatchRegex,
     selectedAgentLabel,
+    selectedAgentDescription,
+    selectedAgentIsDefault,
     mentionMenuSelectedKey,
   };
 };
