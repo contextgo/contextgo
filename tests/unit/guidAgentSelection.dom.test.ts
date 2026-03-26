@@ -106,6 +106,21 @@ const AVAILABLE_AGENTS: AvailableAgent[] = [
   { backend: 'custom', name: 'Cowork Assistant', customAgentId: PRESET_AGENT_ID, isPreset: true },
 ];
 
+const OPENCLAW_AGENTS: AvailableAgent[] = [
+  {
+    backend: 'openclaw-gateway',
+    name: 'OpenClaw',
+    openclawAgentId: 'main',
+    workspace: '/Users/test/.openclaw/workspace',
+  },
+  {
+    backend: 'openclaw-gateway',
+    name: 'Reviewer (reviewer)',
+    openclawAgentId: 'reviewer',
+    workspace: '/Users/test/.openclaw/workspace-reviewer',
+  },
+];
+
 const CUSTOM_AGENTS: AcpBackendConfig[] = [
   {
     id: PRESET_AGENT_ID,
@@ -143,15 +158,19 @@ const MODEL_LIST: IProvider[] = [
 // ---------------------------------------------------------------------------
 
 function setupMocks(overrides?: {
+  availableAgents?: AvailableAgent[];
   cachedModels?: Record<string, AcpModelInfo>;
   acpConfig?: Record<string, unknown>;
   geminiConfig?: Record<string, unknown>;
+  lastSelectedAgent?: string | null;
 }) {
+  const availableAgents = overrides?.availableAgents ?? AVAILABLE_AGENTS;
   const cachedModels = overrides?.cachedModels ?? { claude: CLAUDE_CACHED_MODEL };
   const acpConfig = overrides?.acpConfig ?? { claude: { preferredMode: 'bypassPermissions' } };
   const geminiConfig = overrides?.geminiConfig ?? {};
+  const lastSelectedAgent = overrides?.lastSelectedAgent ?? null;
 
-  ipcMock.getAvailableAgents.mockResolvedValue({ success: true, data: AVAILABLE_AGENTS });
+  ipcMock.getAvailableAgents.mockResolvedValue({ success: true, data: availableAgents });
   ipcMock.probeModelInfo.mockResolvedValue({ success: false });
   ipcMock.getAssistants.mockResolvedValue([]);
 
@@ -162,7 +181,7 @@ function setupMocks(overrides?: {
       case 'acp.customAgents':
         return CUSTOM_AGENTS;
       case 'guid.lastSelectedAgent':
-        return null;
+        return lastSelectedAgent;
       case 'acp.config':
         return acpConfig;
       case 'gemini.config':
@@ -337,6 +356,30 @@ describe('useGuidAgentSelection – preset agent config resolution', () => {
       const savedConfig = acpConfigCall?.[1] as Record<string, unknown>;
       expect(savedConfig).toHaveProperty('claude');
       expect((savedConfig.claude as Record<string, unknown>).preferredMode).toBe('bypassPermissions');
+    });
+  });
+
+  it('restores OpenClaw native agent selection from the persisted compound agent key', async () => {
+    setupMocks({
+      availableAgents: [...AVAILABLE_AGENTS, ...OPENCLAW_AGENTS],
+      lastSelectedAgent: 'openclaw-gateway:reviewer',
+    });
+
+    const { result } = renderHook(() => useGuidAgentSelection(hookOptions));
+
+    await waitFor(() => {
+      expect(result.current.selectedAgentKey).toBe('openclaw-gateway:reviewer');
+    });
+
+    expect(result.current.selectedAgent).toBe('openclaw-gateway');
+    expect(result.current.selectedAgentInfo).toMatchObject({
+      backend: 'openclaw-gateway',
+      openclawAgentId: 'reviewer',
+      workspace: '/Users/test/.openclaw/workspace-reviewer',
+    });
+    expect(result.current.findAgentByKey('openclaw-gateway:main')).toMatchObject({
+      name: 'OpenClaw',
+      workspace: '/Users/test/.openclaw/workspace',
     });
   });
 });

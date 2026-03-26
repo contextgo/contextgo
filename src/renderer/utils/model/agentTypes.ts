@@ -14,9 +14,11 @@ export type AvailableAgent = {
   name: string;
   cliPath?: string;
   customAgentId?: string;
+  openclawAgentId?: string;
   isPreset?: boolean;
   context?: string;
   avatar?: string;
+  workspace?: string;
   presetAgentType?: PresetAgentType | string;
   supportedTransports?: string[];
   isExtension?: boolean;

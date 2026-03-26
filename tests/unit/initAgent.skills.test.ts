@@ -65,6 +65,7 @@ describe('initAgent — skill support', () => {
     workspace: string,
     options: { agentType?: string; backend?: string; enabledSkills?: string[] }
   ) => Promise<void>;
+  let createOpenClawAgent: (options: unknown) => Promise<{ extra: Record<string, unknown> }>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -73,6 +74,7 @@ describe('initAgent — skill support', () => {
     const mod = await import('@process/utils/initAgent');
     hasNativeSkillSupport = mod.hasNativeSkillSupport;
     setupAssistantWorkspace = mod.setupAssistantWorkspace;
+    createOpenClawAgent = mod.createOpenClawAgent;
   });
 
   describe('hasNativeSkillSupport', () => {
@@ -289,6 +291,38 @@ describe('initAgent — skill support', () => {
       });
 
       expect(symlinkCalls).toHaveLength(3);
+    });
+  });
+
+  describe('createOpenClawAgent', () => {
+    it('preserves native OpenClaw agent metadata on the conversation extra', async () => {
+      const conversation = await createOpenClawAgent({
+        extra: {
+          backend: 'openclaw-gateway',
+          agentName: 'Reviewer (reviewer)',
+          openclawAgentId: 'reviewer',
+          workspace: '/Users/test/.openclaw/workspace-reviewer',
+          customWorkspace: true,
+          cliPath: '/usr/local/bin/openclaw',
+        },
+      });
+
+      expect(conversation.extra).toMatchObject({
+        workspace: '/Users/test/.openclaw/workspace-reviewer',
+        customWorkspace: true,
+        agentName: 'Reviewer (reviewer)',
+        openclawAgentId: 'reviewer',
+        gateway: {
+          cliPath: '/usr/local/bin/openclaw',
+        },
+        runtimeValidation: {
+          expectedWorkspace: '/Users/test/.openclaw/workspace-reviewer',
+          expectedAgentName: 'Reviewer (reviewer)',
+          expectedOpenClawAgentId: 'reviewer',
+          expectedCliPath: '/usr/local/bin/openclaw',
+          expectedIdentityHash: 'mock-hash',
+        },
+      });
     });
   });
 });

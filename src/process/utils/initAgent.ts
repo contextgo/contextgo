@@ -395,6 +395,7 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
       workspace: workspace,
       backend: extra.backend,
       agentName: extra.agentName,
+      openclawAgentId: extra.openclawAgentId,
       customWorkspace,
       gateway: {
         cliPath: extra.cliPath,
@@ -403,6 +404,7 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
         expectedWorkspace: workspace,
         expectedBackend: extra.backend,
         expectedAgentName: extra.agentName,
+        expectedOpenClawAgentId: extra.openclawAgentId,
         expectedCliPath: extra.cliPath,
         // Note: model is not used by openclaw-gateway, so skip expectedModel to avoid
         // validation mismatch (conversation object doesn't store model for this type)
