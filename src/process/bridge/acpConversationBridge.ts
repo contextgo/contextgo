@@ -8,6 +8,7 @@ import { acpDetector } from '@process/agent/acp/AcpDetector';
 import { AcpConnection } from '@process/agent/acp/AcpConnection';
 import { buildAcpModelInfo, summarizeAcpModelInfo } from '@process/agent/acp/modelInfo';
 import { CodexConnection } from '@process/agent/codex/connection/CodexConnection';
+import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
 import { refreshTrayMenu } from '@process/utils/tray';
 import type { IConversationService } from '@process/services/IConversationService';
 import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
@@ -67,11 +68,31 @@ export function initAcpConversationBridge(
   // Enrich with MCP transport support info so the frontend can show accurate counts
   ipcBridge.acpConversation.getAvailableAgents.provider(() => {
     try {
-      const agents = acpDetector.getDetectedAgents();
-      const enriched = agents.map((agent) => ({
-        ...agent,
-        supportedTransports: mcpService.getSupportedTransportsForAgent(agent),
-      }));
+      const agents = acpDetector.getDetectedAgents().flatMap((agent) => {
+        if (agent.backend !== 'openclaw-gateway') {
+          return [agent];
+        }
+
+        const openclawAgents = listConfiguredOpenClawAgents();
+        if (openclawAgents.length === 0) {
+          return [agent];
+        }
+
+        return openclawAgents.map((openclawAgent) =>
+          Object.assign({}, agent, {
+            name: openclawAgent.name,
+            avatar: openclawAgent.avatar,
+            openclawAgentId: openclawAgent.agentId,
+            workspace: openclawAgent.workspace,
+          })
+        );
+      });
+
+      const enriched = agents.map((agent) =>
+        Object.assign({}, agent, {
+          supportedTransports: mcpService.getSupportedTransportsForAgent(agent),
+        })
+      );
       return Promise.resolve({ success: true, data: enriched });
     } catch (error) {
       return Promise.resolve({

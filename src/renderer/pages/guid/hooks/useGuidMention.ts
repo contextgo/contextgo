@@ -7,6 +7,7 @@
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '../constants';
 import type { AvailableAgent, MentionOption } from '../types';
+import { getAgentKey } from './agentSelectionUtils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export type GuidMentionResult = {
@@ -60,7 +61,7 @@ export const useGuidMention = ({
   const mentionOptions = useMemo(() => {
     const agents = availableAgents || [];
     return agents.map((agent) => {
-      const key = agent.backend === 'custom' && agent.customAgentId ? `custom:${agent.customAgentId}` : agent.backend;
+      const key = getAgentKey(agent);
       const label = agent.name || agent.backend;
       const avatarValue =
         agent.backend === 'custom' ? agent.avatar || customAgentAvatarMap.get(agent.customAgentId || '') : undefined;
@@ -73,6 +74,9 @@ export const useGuidMention = ({
       tokens.add(agent.backend.toLowerCase());
       if (agent.customAgentId) {
         tokens.add(agent.customAgentId.toLowerCase());
+      }
+      if (agent.openclawAgentId) {
+        tokens.add(agent.openclawAgentId.toLowerCase());
       }
       const mappedAvatarImage = avatar ? CUSTOM_AVATAR_IMAGE_MAP[avatar] : undefined;
       const avatarImage =

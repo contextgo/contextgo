@@ -30,7 +30,7 @@ vi.mock('@/renderer/utils/model/presetAssistantResources', () => ({
   loadPresetAssistantResources,
 }));
 
-const { buildDiscussionGroupParams, buildPresetAssistantParams } =
+const { buildCliAgentParams, buildDiscussionGroupParams, buildPresetAssistantParams } =
   await import('../../src/renderer/pages/conversation/utils/createConversationParams');
 
 describe('createConversationParams', () => {
@@ -171,6 +171,31 @@ describe('createConversationParams', () => {
       extra: {
         backend: 'codex',
         cliPath: '/usr/local/bin/codex',
+      },
+    });
+  });
+
+  it('uses OpenClaw native agent workspace and agent id for CLI conversations', async () => {
+    const params = await buildCliAgentParams(
+      {
+        backend: 'openclaw-gateway',
+        name: 'Reviewer (reviewer)',
+        cliPath: '/usr/local/bin/openclaw',
+        openclawAgentId: 'reviewer',
+        workspace: '/Users/test/.openclaw/workspace-reviewer',
+      },
+      '/tmp/ignored-workspace'
+    );
+
+    expect(params).toMatchObject({
+      type: 'openclaw-gateway',
+      name: 'Reviewer (reviewer)',
+      extra: {
+        backend: 'openclaw-gateway',
+        cliPath: '/usr/local/bin/openclaw',
+        openclawAgentId: 'reviewer',
+        workspace: '/Users/test/.openclaw/workspace-reviewer',
+        customWorkspace: true,
       },
     });
   });

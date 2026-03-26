@@ -51,6 +51,12 @@ vi.mock('../../src/process/agent/acp/AcpDetector', () => ({
   acpDetector: { getDetectedAgents: vi.fn(() => []), refreshCustomAgents: vi.fn(async () => {}) },
 }));
 
+const listConfiguredOpenClawAgentsMock = vi.fn(() => []);
+
+vi.mock('../../src/process/agent/openclaw/openclawConfig', () => ({
+  listConfiguredOpenClawAgents: (...args: unknown[]) => listConfiguredOpenClawAgentsMock(...args),
+}));
+
 vi.mock('../../src/process/agent/acp/AcpConnection', () => ({
   AcpConnection: vi.fn(() => ({
     connect: vi.fn(async () => {}),
@@ -117,6 +123,7 @@ vi.mock('../../src/process/bridge/services/ExternalSessionDiscoveryService', () 
 import { initAcpConversationBridge } from '../../src/process/bridge/acpConversationBridge';
 import type { IConversationService } from '../../src/process/services/IConversationService';
 import type { IWorkerTaskManager } from '../../src/process/task/IWorkerTaskManager';
+import { acpDetector } from '../../src/process/agent/acp/AcpDetector';
 
 function makeTaskManager(overrides?: Partial<IWorkerTaskManager>): IWorkerTaskManager {
   return {
@@ -138,6 +145,7 @@ describe('acpConversationBridge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    listConfiguredOpenClawAgentsMock.mockReturnValue([]);
     taskManager = makeTaskManager();
     conversationService = {
       createConversation: vi.fn(),
@@ -206,6 +214,58 @@ describe('acpConversationBridge', () => {
       conversationId: 'imported-conversation',
       action: 'created',
       source: 'aionui',
+    });
+  });
+
+  it('expands OpenClaw into native agent entries when config defines multiple agents', async () => {
+    vi.mocked(acpDetector.getDetectedAgents).mockReturnValue([
+      { backend: 'gemini', name: 'Gemini' },
+      { backend: 'openclaw-gateway', name: 'OpenClaw', cliPath: 'openclaw' },
+    ] as any);
+    listConfiguredOpenClawAgentsMock.mockReturnValue([
+      {
+        agentId: 'main',
+        name: 'OpenClaw',
+        workspace: '/Users/test/.openclaw/workspace',
+        isDefault: true,
+      },
+      {
+        agentId: 'reviewer',
+        name: 'Reviewer (reviewer)',
+        workspace: '/Users/test/.openclaw/workspace-reviewer',
+        avatar: '🦞',
+        isDefault: false,
+      },
+    ]);
+
+    const result = await handlers['getAvailableAgents']();
+
+    expect(result).toEqual({
+      success: true,
+      data: [
+        {
+          backend: 'gemini',
+          name: 'Gemini',
+          supportedTransports: [],
+        },
+        {
+          backend: 'openclaw-gateway',
+          name: 'OpenClaw',
+          cliPath: 'openclaw',
+          openclawAgentId: 'main',
+          workspace: '/Users/test/.openclaw/workspace',
+          supportedTransports: [],
+        },
+        {
+          backend: 'openclaw-gateway',
+          name: 'Reviewer (reviewer)',
+          cliPath: 'openclaw',
+          openclawAgentId: 'reviewer',
+          workspace: '/Users/test/.openclaw/workspace-reviewer',
+          avatar: '🦞',
+          supportedTransports: [],
+        },
+      ],
     });
   });
 });
