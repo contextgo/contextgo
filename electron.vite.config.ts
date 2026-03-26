@@ -105,6 +105,7 @@ export default defineConfig(({ mode }) => {
             // Built-in MCP server entry points
             'builtin-mcp-image-gen': resolve('src/process/resources/builtinMcp/imageGenServer.ts'),
           },
+          external: ['iohook-macos'],
           onwarn(warning, warn) {
             if (warning.code === 'EVAL') return;
             warn(warning);
