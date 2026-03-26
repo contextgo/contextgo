@@ -151,6 +151,100 @@ describe('databaseBridge', () => {
 
       expect(result).toEqual([]);
     });
+
+    it('keeps discussion child conversations available for renderer nesting', async () => {
+      const groupChildConversation: Partial<TChatConversation> = {
+        id: 'child-1',
+        modifyTime: 2000,
+        extra: {
+          groupMeta: {
+            parentGroupId: 'group-1',
+            hiddenFromHistory: true,
+          },
+        },
+      };
+
+      vi.mocked(repo.getUserConversations).mockReturnValue({
+        data: [groupChildConversation as TChatConversation],
+        total: 1,
+        hasMore: false,
+      });
+
+      const result = await handlers['getUserConversations']({});
+
+      expect(result).toContainEqual(groupChildConversation);
+    });
+
+    it('repairs mismatched discussion child parent ids and workspace metadata', async () => {
+      const parentConversation: Partial<TChatConversation> = {
+        id: 'group-1',
+        type: 'group',
+        modifyTime: 3000,
+        extra: {
+          workspace: '/Users/bytedance/project/skills',
+          customWorkspace: true,
+          participants: [
+            {
+              id: 'participant-1',
+              name: 'Codex',
+              childConversationId: 'child-1',
+            },
+          ],
+        },
+      };
+      const groupChildConversation: Partial<TChatConversation> = {
+        id: 'child-1',
+        type: 'acp',
+        modifyTime: 2000,
+        extra: {
+          workspace: '/tmp/old-group',
+          customWorkspace: false,
+          groupMeta: {
+            parentGroupId: 'group-old',
+            participantId: 'participant-old',
+            participantName: 'Old Name',
+            hiddenFromHistory: true,
+          },
+        },
+      };
+
+      vi.mocked(repo.getUserConversations).mockReturnValue({
+        data: [parentConversation as TChatConversation, groupChildConversation as TChatConversation],
+        total: 2,
+        hasMore: false,
+      });
+
+      const result = await handlers['getUserConversations']({});
+
+      expect(repo.updateConversation).toHaveBeenCalledWith('child-1', {
+        extra: {
+          workspace: '/Users/bytedance/project/skills',
+          customWorkspace: true,
+          groupMeta: {
+            parentGroupId: 'group-1',
+            participantId: 'participant-1',
+            participantName: 'Codex',
+            participantAvatar: undefined,
+            hiddenFromHistory: true,
+          },
+        },
+      });
+      expect(result).toContainEqual(
+        expect.objectContaining({
+          id: 'child-1',
+          extra: expect.objectContaining({
+            workspace: '/Users/bytedance/project/skills',
+            customWorkspace: true,
+            groupMeta: expect.objectContaining({
+              parentGroupId: 'group-1',
+              participantId: 'participant-1',
+              participantName: 'Codex',
+              hiddenFromHistory: true,
+            }),
+          }),
+        })
+      );
+    });
   });
 
   // --- searchConversationMessages ---

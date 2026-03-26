@@ -11,7 +11,7 @@ import { CronJobIndicator, useCronJobsMap } from '@/renderer/pages/cron';
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Button, Empty, Input, Modal } from '@arco-design/web-react';
-import { FolderOpen } from '@icon-park/react';
+import { Down, FolderOpen } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,9 +52,13 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     isConversationGenerating,
     hasCompletionUnread,
     expandedWorkspaces,
+    expandedDiscussionGroups,
     pinnedConversations,
     timelineSections,
+    discussionChildConversationsByParentId,
     handleToggleWorkspace,
+    handleToggleDiscussionGroup,
+    ensureDiscussionGroupExpanded,
   } = useConversations();
 
   const {
@@ -160,9 +164,87 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     ]
   );
 
-  const renderConversation = (conversation: TChatConversation) => {
-    const rowProps = getConversationRowProps(conversation);
+  const renderConversation = (
+    conversation: TChatConversation,
+    overrides: Partial<ConversationRowProps> = {}
+  ) => {
+    const rowProps = {
+      ...getConversationRowProps(conversation),
+      ...overrides,
+    };
     return <ConversationRow key={conversation.id} {...rowProps} />;
+  };
+
+  const renderDiscussionChildConversations = (conversation: TChatConversation) => {
+    const childConversations = discussionChildConversationsByParentId[conversation.id] ?? [];
+    if (childConversations.length === 0) {
+      return null;
+    }
+
+    return (
+      <div
+        className={classNames('min-w-0', {
+          'ml-22px mt-2px': !collapsed,
+          'mt-2px': collapsed,
+        })}
+      >
+        {childConversations.map((childConversation) =>
+          renderConversation(childConversation, {
+            allowActions: false,
+            allowBatchSelection: false,
+          })
+        )}
+      </div>
+    );
+  };
+
+  const renderConversationBlock = (conversation: TChatConversation) => {
+    const childConversations = discussionChildConversationsByParentId[conversation.id] ?? [];
+    const hasDiscussionChildren = childConversations.length > 0;
+    const isDiscussionGroupExpanded = collapsed || expandedDiscussionGroups.includes(conversation.id);
+
+    if (hasDiscussionChildren) {
+      return (
+        <div key={conversation.id} className='min-w-0'>
+          <div className='flex items-start gap-2px min-w-0'>
+            {!collapsed && (
+              <button
+                type='button'
+                className='mt-8px ml-2px h-24px w-20px flex items-center justify-center cursor-pointer rounded-6px border-none bg-transparent p-0 text-[var(--color-text-3)] hover:bg-fill-2'
+                aria-label='Toggle discussion group'
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleToggleDiscussionGroup(conversation.id);
+                }}
+              >
+                <Down
+                  size={14}
+                  className={classNames('transition-transform duration-200', {
+                    'rotate-0': isDiscussionGroupExpanded,
+                    '-rotate-90': !isDiscussionGroupExpanded,
+                  })}
+                />
+              </button>
+            )}
+            <div className='min-w-0 flex-1'>
+              {renderConversation(conversation, {
+                onConversationClick: (targetConversation) => {
+                  ensureDiscussionGroupExpanded(targetConversation.id);
+                  handleConversationClick(targetConversation);
+                },
+              })}
+            </div>
+          </div>
+          {isDiscussionGroupExpanded ? renderDiscussionChildConversations(conversation) : null}
+        </div>
+      );
+    }
+
+    return (
+      <div key={conversation.id} className='min-w-0'>
+        {renderConversation(conversation)}
+      </div>
+    );
   };
 
   // Collect all sortable IDs for the pinned section
@@ -357,10 +439,11 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                 <div className='min-w-0'>
                   {pinnedConversations.map((conversation) => {
                     const props = getConversationRowProps(conversation);
-                    return isDragEnabled ? (
-                      <SortableConversationRow key={conversation.id} {...props} />
-                    ) : (
-                      <ConversationRow key={conversation.id} {...props} />
+                    return (
+                      <div key={conversation.id} className='min-w-0'>
+                        {isDragEnabled ? <SortableConversationRow {...props} /> : <ConversationRow {...props} />}
+                        {renderDiscussionChildConversations(conversation)}
+                      </div>
                     );
                   })}
                 </div>
@@ -399,7 +482,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                       }
                     >
                       <div className={classNames('flex flex-col gap-2px min-w-0', { 'mt-4px': !collapsed })}>
-                        {group.conversations.map((conversation) => renderConversation(conversation))}
+                        {group.conversations.map((conversation) => renderConversationBlock(conversation))}
                       </div>
                     </WorkspaceCollapse>
                   </div>
@@ -407,7 +490,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
               }
 
               if (item.type === 'conversation' && item.conversation) {
-                return renderConversation(item.conversation);
+                return renderConversationBlock(item.conversation);
               }
 
               return null;

@@ -9,7 +9,7 @@ import { getActivityTime, getTimelineLabel } from '@/renderer/utils/chat/timelin
 import { getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
 import { getWorkspaceUpdateTime } from '@/renderer/utils/workspace/workspaceHistory';
 
-import type { GroupedHistoryResult, TimelineItem, TimelineSection, WorkspaceGroup } from '../types';
+import type { DiscussionChildConversationMap, GroupedHistoryResult, TimelineItem, TimelineSection, WorkspaceGroup } from '../types';
 import { getConversationSortOrder } from './sortOrderHelpers';
 
 export const getConversationTimelineLabel = (conversation: TChatConversation, t: (key: string) => string): string => {
@@ -20,6 +20,16 @@ export const getConversationTimelineLabel = (conversation: TChatConversation, t:
 export const isConversationPinned = (conversation: TChatConversation): boolean => {
   const extra = conversation.extra as { pinned?: boolean } | undefined;
   return Boolean(extra?.pinned);
+};
+
+const getDiscussionParentGroupId = (conversation: TChatConversation): string | undefined => {
+  const extra = conversation.extra as
+    | {
+        groupMeta?: { parentGroupId?: string };
+      }
+    | undefined;
+  const parentGroupId = extra?.groupMeta?.parentGroupId;
+  return typeof parentGroupId === 'string' && parentGroupId.length > 0 ? parentGroupId : undefined;
 };
 
 export const getConversationPinnedAt = (conversation: TChatConversation): number => {
@@ -125,11 +135,49 @@ export const groupConversationsByTimelineAndWorkspace = (
   return sections;
 };
 
+const buildDiscussionChildConversationMap = (
+  conversations: TChatConversation[],
+  discussionChildConversationsByParentId: DiscussionChildConversationMap
+): DiscussionChildConversationMap => {
+  const result: DiscussionChildConversationMap = {};
+
+  conversations.forEach((conversation) => {
+    const childConversations = discussionChildConversationsByParentId[conversation.id];
+    if (!childConversations || childConversations.length === 0 || conversation.type !== 'group') {
+      return;
+    }
+
+    const childConversationById = new Map(childConversations.map((childConversation) => [childConversation.id, childConversation]));
+    const orderedChildConversations: TChatConversation[] = [];
+
+    conversation.extra.participants.forEach((participant) => {
+      const childConversation = childConversationById.get(participant.childConversationId);
+      if (!childConversation) {
+        return;
+      }
+
+      orderedChildConversations.push(childConversation);
+      childConversationById.delete(participant.childConversationId);
+    });
+
+    const remainingChildConversations = [...childConversationById.values()].toSorted(
+      (a, b) => getActivityTime(b) - getActivityTime(a)
+    );
+
+    result[conversation.id] = [...orderedChildConversations, ...remainingChildConversations];
+  });
+
+  return result;
+};
+
 export const buildGroupedHistory = (
   conversations: TChatConversation[],
+  discussionChildConversationsByParentId: DiscussionChildConversationMap,
   t: (key: string) => string
 ): GroupedHistoryResult => {
-  const pinnedConversations = conversations
+  const topLevelConversations = conversations.filter((conversation) => !getDiscussionParentGroupId(conversation));
+
+  const pinnedConversations = topLevelConversations
     .filter((conversation) => isConversationPinned(conversation))
     .toSorted((a, b) => {
       const orderA = getConversationSortOrder(a);
@@ -140,10 +188,12 @@ export const buildGroupedHistory = (
       return getConversationPinnedAt(b) - getConversationPinnedAt(a);
     });
 
-  const normalConversations = conversations.filter((conversation) => !isConversationPinned(conversation));
+  const normalConversations = topLevelConversations.filter((conversation) => !isConversationPinned(conversation));
+  const orderedDiscussionChildConversationsByParentId = buildDiscussionChildConversationMap(topLevelConversations, discussionChildConversationsByParentId);
 
   return {
     pinnedConversations,
     timelineSections: groupConversationsByTimelineAndWorkspace(normalConversations, t),
+    discussionChildConversationsByParentId: orderedDiscussionChildConversationsByParentId,
   };
 };

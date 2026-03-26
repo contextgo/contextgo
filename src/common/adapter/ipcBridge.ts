@@ -411,9 +411,11 @@ export const acpConversation = {
         name: string;
         cliPath?: string;
         customAgentId?: string;
+        openclawAgentId?: string;
         isPreset?: boolean;
         context?: string;
         avatar?: string;
+        workspace?: string;
         // Allow extension-contributed adapter IDs in addition to built-in PresetAgentType values
         presetAgentType?: PresetAgentType | string;
         supportedTransports?: string[];
@@ -532,6 +534,7 @@ export const openclawConversation = {
         workspace?: string;
         backend?: string;
         agentName?: string;
+        openclawAgentId?: string;
         cliPath?: string;
         model?: string;
         sessionKey?: string | null;
@@ -543,6 +546,7 @@ export const openclawConversation = {
         expectedWorkspace?: string;
         expectedBackend?: string;
         expectedAgentName?: string;
+        expectedOpenClawAgentId?: string;
         expectedCliPath?: string;
         expectedModel?: string;
         expectedIdentityHash?: string | null;
@@ -820,6 +824,7 @@ export interface ICreateConversationExtra {
   webSearchEngine?: 'google' | 'default';
   agentName?: string;
   customAgentId?: string;
+  openclawAgentId?: string;
   context?: string;
   contextFileName?: string; // For gemini preset agents
   // System rules for smart assistants
@@ -858,6 +863,7 @@ export interface ICreateConversationExtra {
     expectedWorkspace?: string;
     expectedBackend?: string;
     expectedAgentName?: string;
+    expectedOpenClawAgentId?: string;
     expectedCliPath?: string;
     expectedModel?: string;
     expectedIdentityHash?: string | null;

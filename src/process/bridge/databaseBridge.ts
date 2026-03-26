@@ -10,11 +10,126 @@ import type { TChatConversation } from '@/common/config/storage';
 import { migrateConversationToDatabase } from './migrationUtils';
 import type { IConversationRepository } from '@process/services/database/IConversationRepository';
 
+type DiscussionGroupParticipantLike = {
+  id: string;
+  name: string;
+  avatar?: string;
+  childConversationId: string;
+};
+
 const isVisibleConversation = (conversation: TChatConversation): boolean => {
-  return (conversation.extra as { isHealthCheck?: boolean; groupMeta?: { hiddenFromHistory?: boolean } } | undefined)
-    ?.groupMeta?.hiddenFromHistory
-    ? false
-    : (conversation.extra as { isHealthCheck?: boolean } | undefined)?.isHealthCheck !== true;
+  const extra = conversation.extra as
+    | {
+        isHealthCheck?: boolean;
+        groupMeta?: { hiddenFromHistory?: boolean; parentGroupId?: string };
+      }
+    | undefined;
+
+  if (extra?.isHealthCheck === true) {
+    return false;
+  }
+
+  // Discussion children are hidden from top-level history rendering, but still need
+  // to reach the renderer so the sidebar can nest them under the parent discussion group.
+  if (extra?.groupMeta?.hiddenFromHistory === true && !extra.groupMeta.parentGroupId) {
+    return false;
+  }
+
+  return true;
+};
+
+const normalizeDiscussionFamilyConversations = async (
+  conversations: TChatConversation[],
+  repo: IConversationRepository
+): Promise<TChatConversation[]> => {
+  const conversationById = new Map(conversations.map((conversation) => [conversation.id, conversation] as const));
+  const repairedConversationById = new Map<string, TChatConversation>();
+  const repairTasks: Array<Promise<void>> = [];
+
+  conversations.forEach((conversation) => {
+    if (conversation.type !== 'group') {
+      return;
+    }
+
+    const participants = ((conversation.extra as { participants?: DiscussionGroupParticipantLike[] } | undefined)?.participants ?? []).filter(
+      (participant): participant is DiscussionGroupParticipantLike => Boolean(participant?.childConversationId)
+    );
+
+    participants.forEach((participant) => {
+      const childConversation = conversationById.get(participant.childConversationId);
+      if (!childConversation) {
+        return;
+      }
+
+      const childExtra = childConversation.extra as
+        | {
+            workspace?: string;
+            customWorkspace?: boolean;
+            groupMeta?: {
+              parentGroupId?: string;
+              participantId?: string;
+              participantName?: string;
+              participantAvatar?: string;
+              hiddenFromHistory?: boolean;
+            };
+          }
+        | undefined;
+
+      const expectedWorkspace = conversation.extra.workspace;
+      const expectedCustomWorkspace = conversation.extra.customWorkspace;
+      const expectedParentGroupId = conversation.id;
+      const expectedParticipantId = participant.id;
+      const expectedParticipantName = participant.name;
+      const expectedParticipantAvatar = participant.avatar;
+
+      const needsRepair =
+        childExtra?.workspace !== expectedWorkspace ||
+        childExtra?.customWorkspace !== expectedCustomWorkspace ||
+        childExtra?.groupMeta?.parentGroupId !== expectedParentGroupId ||
+        childExtra?.groupMeta?.participantId !== expectedParticipantId ||
+        childExtra?.groupMeta?.participantName !== expectedParticipantName ||
+        childExtra?.groupMeta?.participantAvatar !== expectedParticipantAvatar ||
+        childExtra?.groupMeta?.hiddenFromHistory !== true;
+
+      if (!needsRepair) {
+        return;
+      }
+
+      const repairedConversation = {
+        ...childConversation,
+        extra: {
+          ...childConversation.extra,
+          workspace: expectedWorkspace,
+          customWorkspace: expectedCustomWorkspace,
+          groupMeta: {
+            ...childExtra?.groupMeta,
+            parentGroupId: expectedParentGroupId,
+            participantId: expectedParticipantId,
+            participantName: expectedParticipantName,
+            participantAvatar: expectedParticipantAvatar,
+            hiddenFromHistory: true,
+          },
+        },
+      } as TChatConversation;
+
+      repairedConversationById.set(repairedConversation.id, repairedConversation);
+      repairTasks.push(
+        repo.updateConversation(repairedConversation.id, {
+          extra: repairedConversation.extra,
+        })
+      );
+    });
+  });
+
+  if (repairTasks.length > 0) {
+    await Promise.allSettled(repairTasks);
+  }
+
+  if (repairedConversationById.size === 0) {
+    return conversations;
+  }
+
+  return conversations.map((conversation) => repairedConversationById.get(conversation.id) ?? conversation);
 };
 
 export function initDatabaseBridge(repo: IConversationRepository): void {
@@ -60,7 +175,9 @@ export function initDatabaseBridge(repo: IConversationRepository): void {
 
       // Combine database conversations (source of truth) with any remaining file-only conversations
       // 返回数据库结果 + 未迁移会话，这样"今天"与"更早"记录都能稳定展示
-      const allConversations = [...dbConversations, ...fileOnlyConversations].filter(isVisibleConversation);
+      const mergedConversations = [...dbConversations, ...fileOnlyConversations];
+      const normalizedConversations = await normalizeDiscussionFamilyConversations(mergedConversations, repo);
+      const allConversations = normalizedConversations.filter(isVisibleConversation);
       // Re-sort by modifyTime (or createTime as fallback) to maintain correct order
       allConversations.sort((a, b) => (b.modifyTime || b.createTime || 0) - (a.modifyTime || a.createTime || 0));
       return allConversations;

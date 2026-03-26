@@ -23,6 +23,7 @@ export interface OpenClawAgentManagerData {
   workspace?: string;
   backend?: AcpBackendAll;
   agentName?: string;
+  openclawAgentId?: string;
   /** Gateway configuration */
   gateway?: {
     host?: string;
@@ -67,6 +68,7 @@ class OpenClawAgentManager extends BaseAgentManager<OpenClawAgentManagerData> {
       extra: {
         workspace: data.workspace,
         sessionKey: data.sessionKey,
+        openclawAgentId: data.openclawAgentId,
         yoloMode: data.yoloMode,
       },
       onStreamEvent: (message) => this.handleStreamEvent(message),
@@ -281,6 +283,7 @@ class OpenClawAgentManager extends BaseAgentManager<OpenClawAgentManagerData> {
       workspace: this.workspace,
       backend: this.options.backend,
       agentName: this.options.agentName,
+      openclawAgentId: this.options.openclawAgentId,
       cliPath: this.options.gateway?.cliPath ?? null,
       gatewayHost: this.options.gateway?.host ?? null,
       gatewayPort: this.options.gateway?.port ?? 18789,

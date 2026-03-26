@@ -31,8 +31,39 @@ interface OpenClawGatewayConfig {
   auth?: OpenClawGatewayAuth;
 }
 
+interface OpenClawAgentIdentity {
+  name?: string;
+  emoji?: string;
+}
+
+interface OpenClawAgentDefaults {
+  workspace?: string;
+}
+
+interface OpenClawAgentEntry {
+  id?: string;
+  name?: string;
+  default?: boolean;
+  workspace?: string;
+  identity?: OpenClawAgentIdentity;
+}
+
+interface OpenClawAgentsConfig {
+  defaults?: OpenClawAgentDefaults;
+  list?: OpenClawAgentEntry[];
+}
+
 interface OpenClawConfig {
   gateway?: OpenClawGatewayConfig;
+  agents?: OpenClawAgentsConfig;
+}
+
+export interface OpenClawNativeAgentSummary {
+  agentId: string;
+  name: string;
+  workspace: string;
+  avatar?: string;
+  isDefault: boolean;
 }
 
 /**
@@ -127,6 +158,104 @@ export function readOpenClawConfig(): OpenClawConfig | null {
     console.warn('[OpenClawConfig] Failed to read config:', error);
     return null;
   }
+}
+
+function normalizeAgentId(input?: string): string {
+  return input?.trim().toLowerCase() || 'main';
+}
+
+function getConfiguredAgentEntries(config: OpenClawConfig): OpenClawAgentEntry[] {
+  return Array.isArray(config.agents?.list)
+    ? config.agents.list.filter(
+        (entry): entry is OpenClawAgentEntry => !!entry && typeof entry === 'object' && typeof entry.id === 'string'
+      )
+    : [];
+}
+
+function resolveDefaultAgentId(config: OpenClawConfig): string {
+  const entries = getConfiguredAgentEntries(config);
+  if (entries.length === 0) {
+    return 'main';
+  }
+
+  const explicitDefault = entries.find((entry) => entry.default === true);
+  return normalizeAgentId(explicitDefault?.id ?? entries[0]?.id);
+}
+
+function resolveDefaultWorkspaceDir(): string {
+  return path.join(resolveStateDir(), 'workspace');
+}
+
+function resolveAgentWorkspace(config: OpenClawConfig, agentId: string): string {
+  const normalizedAgentId = normalizeAgentId(agentId);
+  const entry = getConfiguredAgentEntries(config).find(
+    (candidate) => normalizeAgentId(candidate.id) === normalizedAgentId
+  );
+  const explicitWorkspace = entry?.workspace?.trim();
+  if (explicitWorkspace) {
+    return resolveUserPath(explicitWorkspace);
+  }
+
+  if (normalizedAgentId === resolveDefaultAgentId(config)) {
+    const defaultWorkspace = config.agents?.defaults?.workspace?.trim();
+    return defaultWorkspace ? resolveUserPath(defaultWorkspace) : resolveDefaultWorkspaceDir();
+  }
+
+  return path.join(resolveStateDir(), `workspace-${normalizedAgentId}`);
+}
+
+function buildAgentDisplayName(entry: OpenClawAgentEntry | undefined, agentId: string, isDefault: boolean): string {
+  const identityName = entry?.identity?.name?.trim();
+  const configuredName = entry?.name?.trim();
+  const baseName = identityName || configuredName || (isDefault ? 'OpenClaw' : agentId);
+
+  if (isDefault || baseName.toLowerCase() === agentId.toLowerCase()) {
+    return baseName;
+  }
+
+  return `${baseName} (${agentId})`;
+}
+
+export function listConfiguredOpenClawAgents(): OpenClawNativeAgentSummary[] {
+  const config = readOpenClawConfig();
+  if (!config) {
+    return [];
+  }
+
+  const entries = getConfiguredAgentEntries(config);
+  const defaultAgentId = resolveDefaultAgentId(config);
+
+  if (entries.length === 0) {
+    return [
+      {
+        agentId: defaultAgentId,
+        name: 'OpenClaw',
+        workspace: resolveAgentWorkspace(config, defaultAgentId),
+        isDefault: true,
+      },
+    ];
+  }
+
+  const seen = new Set<string>();
+  const summaries: OpenClawNativeAgentSummary[] = [];
+
+  for (const entry of entries) {
+    const agentId = normalizeAgentId(entry.id);
+    if (seen.has(agentId)) {
+      continue;
+    }
+    seen.add(agentId);
+
+    summaries.push({
+      agentId,
+      name: buildAgentDisplayName(entry, agentId, agentId === defaultAgentId),
+      workspace: resolveAgentWorkspace(config, agentId),
+      avatar: entry.identity?.emoji?.trim() || undefined,
+      isDefault: agentId === defaultAgentId,
+    });
+  }
+
+  return summaries;
 }
 
 /**

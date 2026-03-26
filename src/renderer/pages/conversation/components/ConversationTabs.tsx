@@ -22,7 +22,6 @@ import { applyDefaultConversationName } from '../utils/newConversationName';
 import { buildCliAgentParams, buildPresetAssistantParams } from '../utils/createConversationParams';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { iconColors } from '@/renderer/styles/colors';
-import CreateDiscussionGroupModal from '../platforms/group/CreateDiscussionGroupModal';
 
 const TAB_OVERFLOW_THRESHOLD = 10;
 
@@ -142,8 +141,6 @@ const ConversationTabs: React.FC = () => {
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [tabFadeState, setTabFadeState] = useState<TabFadeState>({ left: false, right: false });
   const [externalSessionsVisible, setExternalSessionsVisible] = useState(false);
-  const [groupModalVisible, setGroupModalVisible] = useState(false);
-
   const { cliAgents, presetAssistants, isLoading } = useConversationAgents();
   const defaultConversationName = t('conversation.welcome.newConversation');
   const currentWorkspaceTab = openTabs.find((tab) => tab.id === activeTabId);
@@ -427,15 +424,6 @@ const ConversationTabs: React.FC = () => {
           }}
         />
 
-        <IconActionTrigger
-          disabled={isDropdownDisabled}
-          title={t('conversation.group.createEntry')}
-          icon={<Robot theme='outline' size='16' fill={iconColors.primary} strokeWidth={3} />}
-          onClick={() => {
-            setGroupModalVisible(true);
-          }}
-        />
-
         {/* 新建会话按钮 - 点击显示 Agent 下拉选择 */}
         <CreateConversationTrigger
           disabled={isDropdownDisabled}
@@ -450,7 +438,7 @@ const ConversationTabs: React.FC = () => {
 
         {/* 右侧渐变指示器 */}
         {showRightFade && (
-          <div className='pointer-events-none absolute right-120px top-0 bottom-0 w-32px [background:linear-gradient(270deg,var(--bg-2)_0%,transparent_100%)]' />
+          <div className='pointer-events-none absolute right-80px top-0 bottom-0 w-32px [background:linear-gradient(270deg,var(--bg-2)_0%,transparent_100%)]' />
         )}
       </div>
       <ExternalSessionsModal
@@ -459,22 +447,6 @@ const ConversationTabs: React.FC = () => {
           setExternalSessionsVisible(false);
         }}
       />
-      {currentWorkspaceTab?.workspace ? (
-        <CreateDiscussionGroupModal
-          visible={groupModalVisible}
-          workspace={currentWorkspaceTab.workspace}
-          cliAgents={cliAgents}
-          presetAssistants={presetAssistants}
-          onCancel={() => setGroupModalVisible(false)}
-          onCreated={(conversation) => {
-            setGroupModalVisible(false);
-            closeAllTabs();
-            openTab(conversation);
-            void navigate(`/conversation/${conversation.id}`);
-            emitter.emit('chat.history.refresh');
-          }}
-        />
-      ) : null}
     </div>
   );
 };

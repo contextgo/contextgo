@@ -102,6 +102,16 @@
     "addFile": "Dosya Ekle",
     "refresh": "Yenile",
     "temporarySpace": "Geçici Alan",
+    "groupMembers": {
+      "title": "Grup Uyeleri",
+      "count": "{{count}} uye",
+      "open": "Members {{count}}",
+      "close": "Hide Members",
+      "participantType": {
+        "cliAgent": "CLI Agent",
+        "presetAssistant": "Hazir Asistan"
+      }
+    },
     "changeWorkspace": "Çalışma Alanını Değiştir",
     "migration": {
       "title": "Çalışma Alanını Değiştir",
@@ -228,12 +238,19 @@
     "defaultName": "Tartışma Grubu",
     "nameLabel": "Grup Adı",
     "namePlaceholder": "Bir tartışma grubu adı girin",
+    "workspaceLabel": "Çalışma Alanı",
+    "workspacePlaceholder": "İsteğe bağlı. Boş bırakırsanız varsayılan çalışma alanı otomatik oluşturulur",
+    "workspaceHint": "Tartışma grubu ve tüm katılımcı oturumları bu çalışma alanını paylaşır. Boş bırakılırsa varsayılan geçici bir çalışma alanı otomatik oluşturulur.",
+    "selectWorkspace": "Klasör Seç",
+    "selectWorkspaceFailed": "Çalışma alanı seçilemedi",
     "modeLabel": "Tartışma Modu",
     "modeDebate": "Münazara",
     "modeBroadcast": "Yayın",
+    "modeRelay": "Sıralı",
     "modeHint": {
       "debate": "1. tur bağımsız kalır, 2. turda diğer yardımcıların cevapları görüldükten sonra yanıt güncellenir.",
-      "broadcast": "Her yardımcı bağımsız yanıt verir ve grup son görüş setini birlikte döndürür."
+      "broadcast": "Her yardımcı bağımsız yanıt verir ve grup son görüş setini birlikte döndürür.",
+      "relay": "Yardımcılar sırayla yanıt verir. Sonraki yardımcılar önceki cevapları görerek tartışmayı genişletir, sürdürür veya itiraz eder."
     },
     "participantsLabel": "Katılımcılar",
     "minimumParticipants": "En az iki katılımcı seçin",

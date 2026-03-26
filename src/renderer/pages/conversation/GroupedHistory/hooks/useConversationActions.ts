@@ -92,13 +92,21 @@ export const useConversationActions = ({
 
   const removeConversation = useCallback(
     async (conversationId: string) => {
+      const conversation = await ipcBridge.conversation.get.invoke({ id: conversationId });
+      const deletedConversationIds =
+        conversation?.type === 'group'
+          ? [conversation.id, ...conversation.extra.participants.map((participant) => participant.childConversationId)]
+          : [conversationId];
+
       const success = await ipcBridge.conversation.remove.invoke({ id: conversationId });
       if (!success) {
         return false;
       }
 
-      emitter.emit('conversation.deleted', conversationId);
-      if (id === conversationId) {
+      deletedConversationIds.forEach((deletedId) => {
+        emitter.emit('conversation.deleted', deletedId);
+      });
+      if (id && deletedConversationIds.includes(id)) {
         void navigate('/');
       }
       return true;

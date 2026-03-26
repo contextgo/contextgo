@@ -91,12 +91,19 @@
     "defaultName": "討論群組",
     "nameLabel": "群組名稱",
     "namePlaceholder": "請輸入討論群組名稱",
+    "workspaceLabel": "工作目錄",
+    "workspacePlaceholder": "可選，不填則自動建立預設工作目錄",
+    "workspaceHint": "討論群組和所有參與者 session 將共享這個工作目錄；留空時會自動建立預設臨時目錄。",
+    "selectWorkspace": "選擇目錄",
+    "selectWorkspaceFailed": "選擇工作目錄失敗",
     "modeLabel": "討論模式",
     "modeDebate": "辯論式",
     "modeBroadcast": "廣播式",
+    "modeRelay": "接力式",
     "modeHint": {
       "debate": "第一輪保持獨立回答，第二輪在看到其他助手觀點後再給出更新結論。",
-      "broadcast": "每位助手獨立作答，討論群組最後回傳一組並列觀點。"
+      "broadcast": "每位助手獨立作答，討論群組最後回傳一組並列觀點。",
+      "relay": "參與者依序發言，後面的助手會看到前面助手的觀點，並繼續補充、反駁或推進討論。"
     },
     "participantsLabel": "參與者",
     "minimumParticipants": "請至少選擇兩位參與者",
@@ -132,6 +139,16 @@
     "addFile": "新增檔案",
     "refresh": "重新整理",
     "temporarySpace": "臨時空間",
+    "groupMembers": {
+      "title": "組內成員",
+      "count": "{{count}} 位成員",
+      "open": "成員 {{count}}",
+      "close": "收起成員",
+      "participantType": {
+        "cliAgent": "CLI Agent",
+        "presetAssistant": "預設助手"
+      }
+    },
     "changeWorkspace": "更換工作空間",
     "migration": {
       "title": "更換工作空間",

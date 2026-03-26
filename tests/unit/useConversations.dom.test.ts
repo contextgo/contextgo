@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
 import type { TimelineSection } from '../../src/renderer/pages/conversation/GroupedHistory/types';
+import type { TChatConversation } from '../../src/common/config/storage';
 
 // ── localStorage mock ────────────────────────────────────────────────────────
 
@@ -31,7 +32,10 @@ vi.mock('react-router-dom', () => ({
 }));
 
 // Shared ref so the hoisted mock factory can read the latest value
-const testState = { sections: [] as TimelineSection[] };
+const testState = {
+  sections: [] as TimelineSection[],
+  discussionGroups: {} as Record<string, TChatConversation[]>,
+};
 
 const mockSetActiveConversation = vi.fn();
 
@@ -45,6 +49,7 @@ vi.mock('../../src/renderer/hooks/context/ConversationHistoryContext', () => ({
     groupedHistory: {
       pinnedConversations: [],
       timelineSections: testState.sections,
+      discussionChildConversationsByParentId: testState.discussionGroups,
     },
   }),
 }));
@@ -67,6 +72,7 @@ vi.mock('../../src/renderer/pages/conversation/GroupedHistory/utils/groupingHelp
   buildGroupedHistory: () => ({
     pinnedConversations: [],
     timelineSections: testState.sections,
+    discussionChildConversationsByParentId: testState.discussionGroups,
   }),
 }));
 
@@ -98,6 +104,7 @@ describe('useConversations - workspace expansion', () => {
   beforeEach(() => {
     storageMap.clear();
     testState.sections = [];
+    testState.discussionGroups = {};
     mockSetActiveConversation.mockReset();
   });
 
@@ -183,5 +190,48 @@ describe('useConversations - workspace expansion', () => {
 
     // Should stay collapsed, not re-expand
     expect(result.current.expandedWorkspaces).toEqual([]);
+  });
+
+  it('should auto-expand discussion groups on first load when localStorage is empty', async () => {
+    testState.discussionGroups = {
+      'group-1': [
+        {
+          id: 'child-1',
+          name: 'Child Session',
+          type: 'acp',
+          createTime: 1,
+          modifyTime: 1,
+          extra: {
+            workspace: '/ws/a',
+            customWorkspace: false,
+            backend: 'codex',
+          },
+          model: {
+            id: 'model-1',
+            name: 'GPT-5.4',
+            useModel: 'gpt-5.4',
+            platform: 'openai',
+            baseUrl: '',
+            apiKey: '',
+          },
+        } as TChatConversation,
+      ],
+    };
+
+    const { result } = renderHook(() => useConversations());
+    await act(async () => {});
+
+    expect(result.current.expandedDiscussionGroups).toEqual(['group-1']);
+  });
+
+  it('should expand a discussion group when ensureDiscussionGroupExpanded is called', async () => {
+    const { result } = renderHook(() => useConversations());
+    await act(async () => {});
+
+    act(() => {
+      result.current.ensureDiscussionGroupExpanded('group-2');
+    });
+
+    expect(result.current.expandedDiscussionGroups).toContain('group-2');
   });
 });

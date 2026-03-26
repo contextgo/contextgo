@@ -9,6 +9,8 @@ import type { TChatConversation } from '@/common/config/storage';
 import { addEventListener } from '@/renderer/utils/emitter';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
+import type { DiscussionChildConversationMap } from '../types';
+
 const shouldIgnoreStreamMessage = (type: string): boolean => {
   return type === 'user_content' || type === 'request_trace' || type === 'finished';
 };
@@ -36,20 +38,57 @@ const isTerminalTurnState = (state: string): boolean => {
 
 type ConversationListSyncSnapshot = {
   conversations: TChatConversation[];
+  discussionChildConversationsByParentId: DiscussionChildConversationMap;
   generatingConversationIds: Set<string>;
   completionUnreadConversationIds: Set<string>;
+};
+
+const getDiscussionParentGroupId = (conversation: TChatConversation): string | undefined => {
+  const extra = conversation.extra as
+    | {
+        groupMeta?: { parentGroupId?: string };
+      }
+    | undefined;
+
+  const parentGroupId = extra?.groupMeta?.parentGroupId;
+  return typeof parentGroupId === 'string' && parentGroupId.length > 0 ? parentGroupId : undefined;
+};
+
+export const splitDiscussionChildConversations = (conversations: TChatConversation[]) => {
+  const nextTopLevelConversations: TChatConversation[] = [];
+  const nextDiscussionChildConversations = new Map<string, TChatConversation[]>();
+
+  conversations.forEach((conversation) => {
+    const parentGroupId = getDiscussionParentGroupId(conversation);
+
+    if (parentGroupId) {
+      const childConversations = nextDiscussionChildConversations.get(parentGroupId) ?? [];
+      childConversations.push(conversation);
+      nextDiscussionChildConversations.set(parentGroupId, childConversations);
+      return;
+    }
+
+    nextTopLevelConversations.push(conversation);
+  });
+
+  return {
+    topLevelConversations: nextTopLevelConversations,
+    discussionChildConversationsByParentId: Object.fromEntries(nextDiscussionChildConversations) as DiscussionChildConversationMap,
+  };
 };
 
 const listeners = new Set<() => void>();
 
 let isStoreInitialized = false;
 let conversationsState: TChatConversation[] = [];
+let discussionChildConversationsByParentIdState: DiscussionChildConversationMap = {};
 let generatingConversationIdsState = new Set<string>();
 let completionUnreadConversationIdsState = new Set<string>();
 let conversationIdsState = new Set<string>();
 let activeConversationIdState: string | null = null;
 let snapshotState: ConversationListSyncSnapshot = {
   conversations: conversationsState,
+  discussionChildConversationsByParentId: discussionChildConversationsByParentIdState,
   generatingConversationIds: generatingConversationIdsState,
   completionUnreadConversationIds: completionUnreadConversationIdsState,
 };
@@ -57,6 +96,7 @@ let snapshotState: ConversationListSyncSnapshot = {
 const emitStoreChange = () => {
   snapshotState = {
     conversations: conversationsState,
+    discussionChildConversationsByParentId: discussionChildConversationsByParentIdState,
     generatingConversationIds: generatingConversationIdsState,
     completionUnreadConversationIds: completionUnreadConversationIdsState,
   };
@@ -81,24 +121,33 @@ const refreshConversations = () => {
           const extra = conv.extra as
             | {
                 isHealthCheck?: boolean;
-                groupMeta?: { hiddenFromHistory?: boolean };
+                groupMeta?: { hiddenFromHistory?: boolean; parentGroupId?: string };
               }
             | undefined;
-          return extra?.isHealthCheck !== true && extra?.groupMeta?.hiddenFromHistory !== true;
+          return extra?.isHealthCheck !== true;
         });
-        conversationsState = filteredData;
+
+        const {
+          topLevelConversations: nextTopLevelConversations,
+          discussionChildConversationsByParentId: nextDiscussionChildConversations,
+        } = splitDiscussionChildConversations(filteredData);
+
+        conversationsState = nextTopLevelConversations;
+        discussionChildConversationsByParentIdState = nextDiscussionChildConversations;
         conversationIdsState = new Set(filteredData.map((conversation) => conversation.id));
         emitStoreChange();
         return;
       }
 
       conversationsState = [];
+      discussionChildConversationsByParentIdState = {};
       conversationIdsState = new Set();
       emitStoreChange();
     })
     .catch((error) => {
       console.error('[WorkspaceGroupedHistory] Failed to load conversations:', error);
       conversationsState = [];
+      discussionChildConversationsByParentIdState = {};
       conversationIdsState = new Set();
       emitStoreChange();
     });
@@ -203,11 +252,8 @@ export const useConversationListSync = () => {
     initializeConversationListSyncStore();
   }, []);
 
-  const { conversations, generatingConversationIds, completionUnreadConversationIds } = useSyncExternalStore(
-    subscribeConversationListSync,
-    getConversationListSyncSnapshot,
-    getConversationListSyncSnapshot
-  );
+  const { conversations, discussionChildConversationsByParentId, generatingConversationIds, completionUnreadConversationIds } =
+    useSyncExternalStore(subscribeConversationListSync, getConversationListSyncSnapshot, getConversationListSyncSnapshot);
 
   const clearCompletionUnread = useCallback((conversationId: string) => {
     clearCompletionUnreadState(conversationId);
@@ -233,6 +279,7 @@ export const useConversationListSync = () => {
 
   return {
     conversations,
+    discussionChildConversationsByParentId,
     isConversationGenerating,
     hasCompletionUnread,
     clearCompletionUnread,

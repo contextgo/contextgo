@@ -97,12 +97,19 @@
     "defaultName": "讨论组",
     "nameLabel": "讨论组名称",
     "namePlaceholder": "请输入讨论组名称",
+    "workspaceLabel": "工作目录",
+    "workspacePlaceholder": "可选，不填则自动创建默认工作目录",
+    "workspaceHint": "讨论组和所有参与者 session 将共享这个工作目录；留空时会自动创建默认临时目录。",
+    "selectWorkspace": "选择目录",
+    "selectWorkspaceFailed": "选择工作目录失败",
     "modeLabel": "讨论模式",
     "modeDebate": "辩论式",
     "modeBroadcast": "广播式",
+    "modeRelay": "接力式",
     "modeHint": {
       "debate": "第一轮保持独立回答，第二轮在看到其他助手观点后再给出更新结论。",
-      "broadcast": "每个助手独立作答，讨论组最终返回一组并列观点。"
+      "broadcast": "每个助手独立作答，讨论组最终返回一组并列观点。",
+      "relay": "参与者按顺序发言，后面的助手会看到前面助手的观点，并继续补充、反驳或推进讨论。"
     },
     "participantsLabel": "参与者",
     "minimumParticipants": "请至少选择两个参与者",
@@ -132,6 +139,16 @@
     "addFile": "添加文件",
     "refresh": "刷新",
     "temporarySpace": "临时空间",
+    "groupMembers": {
+      "title": "组内成员",
+      "count": "{{count}} 位成员",
+      "open": "成员 {{count}}",
+      "close": "收起成员",
+      "participantType": {
+        "cliAgent": "CLI Agent",
+        "presetAssistant": "预设助手"
+      }
+    },
     "changeWorkspace": "更换工作空间",
     "migration": {
       "title": "更换工作空间",

@@ -12,8 +12,10 @@ import { useCronJobs } from '@/renderer/pages/cron/useCronJobs';
 import type { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSWRConfig } from 'swr';
 import type { MessageApi } from '../types';
 import { collectFilePaths } from '../utils/treeHelpers';
+import { isDiscussionFamilyConversation, syncDiscussionFamilyWorkspace } from '../../utils/discussionGroupWorkspace';
 
 type UseWorkspaceMigrationParams = {
   conversation_id: string;
@@ -35,6 +37,7 @@ export function useWorkspaceMigration({
   isTemporaryWorkspace,
 }: UseWorkspaceMigrationParams) {
   const navigate = useNavigate();
+  const { mutate } = useSWRConfig();
 
   // Migration modal state
   const [showMigrationModal, setShowMigrationModal] = useState(false);
@@ -121,6 +124,28 @@ export function useWorkspaceMigration({
           }
         }
 
+        if (isDiscussionFamilyConversation(currentConversation)) {
+          const updatedConversations = await syncDiscussionFamilyWorkspace(currentConversation, targetWorkspace);
+          const updatedCurrentConversation = updatedConversations.find((conversation) => conversation.id === conversation_id) ?? {
+            ...currentConversation,
+            extra: {
+              ...currentConversation.extra,
+              workspace: targetWorkspace,
+              customWorkspace: true,
+            },
+          };
+
+          setShowMigrationModal(false);
+          setShowCronMigrationPrompt(false);
+          setSelectedTargetPath('');
+          setMigrationLoading(false);
+
+          await mutate(`conversation/${conversation_id}`, updatedCurrentConversation, false);
+          emitter.emit('chat.history.refresh');
+          messageApi.success(t('conversation.workspace.migration.success'));
+          return;
+        }
+
         // Create new conversation with the new workspace
         const newId = uuid();
         const newConversation = {
@@ -158,7 +183,7 @@ export function useWorkspaceMigration({
         setMigrationLoading(false);
       }
     },
-    [selectedTargetPath, conversation_id, workspace, t, messageApi, navigate]
+    [selectedTargetPath, conversation_id, workspace, t, messageApi, navigate, mutate]
   );
 
   const handleMigrationConfirm = useCallback(async () => {
