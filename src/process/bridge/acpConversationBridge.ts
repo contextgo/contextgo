@@ -83,8 +83,8 @@ export function initAcpConversationBridge(
             name: openclawAgent.name,
             avatar: openclawAgent.avatar,
             openclawAgentId: openclawAgent.agentId,
-            workspace: openclawAgent.workspace,
             isDefault: openclawAgent.isDefault,
+            workspace: openclawAgent.workspace,
           })
         );
       });
