@@ -19,6 +19,7 @@
     "importFailed": "선택한 외부 Session 이어받기에 실패했습니다.",
     "providers": {
       "codex": "Codex",
+      "gemini": "Gemini",
       "openclaw-gateway": "OpenClaw"
     }
   },

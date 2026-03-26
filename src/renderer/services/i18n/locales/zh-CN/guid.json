@@ -19,6 +19,7 @@
     "importFailed": "接管所选外部 Session 失败。",
     "providers": {
       "codex": "Codex",
+      "gemini": "Gemini",
       "openclaw-gateway": "OpenClaw"
     }
   },
