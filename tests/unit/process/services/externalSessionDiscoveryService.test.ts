@@ -114,6 +114,26 @@ describe('ExternalSessionDiscoveryService', () => {
     return dbPath;
   };
 
+  const seedClaudeSessionFile = async (sessionId = 'claude-session-1') => {
+    const projectDir = path.join(tempDir, 'projects', '-Users-test-project-alpha');
+    const sessionPath = path.join(projectDir, `${sessionId}.jsonl`);
+    await fs.mkdir(projectDir, { recursive: true });
+    await fs.writeFile(
+      sessionPath,
+      [
+        '{"type":"queue-operation","operation":"enqueue","timestamp":"2026-03-26T10:00:01.000Z","sessionId":"claude-session-1"}',
+        '{"type":"user","isMeta":true,"cwd":"/tmp/claude-project","sessionId":"claude-session-1","message":{"role":"user","content":"<local-command-caveat>ignore</local-command-caveat>"},"timestamp":"2026-03-26T10:00:00.000Z"}',
+        '{"type":"user","cwd":"/tmp/claude-project","sessionId":"claude-session-1","message":{"role":"user","content":"<command-name>/model</command-name>"},"timestamp":"2026-03-26T10:00:01.000Z"}',
+        '{"type":"user","cwd":"/tmp/claude-project","sessionId":"claude-session-1","message":{"role":"user","content":[{"type":"text","text":"First Claude question"}]},"timestamp":"2026-03-26T10:00:02.000Z"}',
+        '{"type":"assistant","cwd":"/tmp/claude-project","sessionId":"claude-session-1","message":{"model":"claude-sonnet-4-6","type":"message","role":"assistant","content":[{"type":"thinking","thinking":"ignore me"}]},"timestamp":"2026-03-26T10:00:03.000Z"}',
+        '{"type":"assistant","cwd":"/tmp/claude-project","sessionId":"claude-session-1","message":{"model":"claude-sonnet-4-6","type":"message","role":"assistant","content":[{"type":"text","text":"First Claude reply"}]},"timestamp":"2026-03-26T10:00:04.000Z"}',
+        '{"type":"last-prompt","lastPrompt":"Claude latest prompt","sessionId":"claude-session-1","timestamp":"2026-03-26T10:00:05.000Z"}',
+      ].join('\n')
+    );
+
+    return sessionPath;
+  };
+
   it('lists unmanaged Codex sessions from the latest local state database', async () => {
     await seedCodexStateDb();
     const service = new ExternalSessionDiscoveryService(createConversationService([]), {
@@ -134,6 +154,29 @@ describe('ExternalSessionDiscoveryService', () => {
         modelProvider: 'infermesh',
         model: 'gpt-5.4',
         reasoningEffort: 'high',
+      },
+    ]);
+  });
+
+  it('lists unmanaged Claude sessions from the local Claude projects directory', async () => {
+    await seedClaudeSessionFile();
+    const service = new ExternalSessionDiscoveryService(createConversationService([]), {
+      claudeHomeDir: tempDir,
+      availableBackends: new Set<AcpBackendAll>(['claude']),
+    });
+
+    const sessions = await service.listSessions();
+
+    expect(sessions).toEqual([
+      {
+        provider: 'claude',
+        sessionId: 'claude-session-1',
+        title: 'Claude latest prompt',
+        workspace: '/tmp/claude-project',
+        updatedAt: Date.parse('2026-03-26T10:00:05.000Z'),
+        origin: 'cli',
+        modelProvider: 'anthropic',
+        model: 'claude-sonnet-4-6',
       },
     ]);
   });
@@ -160,6 +203,36 @@ describe('ExternalSessionDiscoveryService', () => {
       {
         codexHomeDir: tempDir,
         availableBackends: new Set<AcpBackendAll>(['codex']),
+      }
+    );
+
+    const sessions = await service.listSessions();
+
+    expect(sessions).toEqual([]);
+  });
+
+  it('filters out Claude sessions that have already been taken over by AionUi', async () => {
+    await seedClaudeSessionFile();
+    const service = new ExternalSessionDiscoveryService(
+      createConversationService([
+        {
+          id: 'conversation-1',
+          type: 'acp',
+          name: 'Imported Claude session',
+          source: 'aionui',
+          extra: {
+            backend: 'claude',
+            workspace: '/tmp/claude-project',
+            customWorkspace: true,
+            acpSessionId: 'claude-session-1',
+          },
+          createTime: Date.now(),
+          modifyTime: Date.now(),
+        } as TChatConversation,
+      ]),
+      {
+        claudeHomeDir: tempDir,
+        availableBackends: new Set<AcpBackendAll>(['claude']),
       }
     );
 
@@ -214,6 +287,28 @@ describe('ExternalSessionDiscoveryService', () => {
       backend: 'codex',
       workspace: '/tmp/project-alpha',
       acpSessionId: 'session-1',
+      externalSessionImported: true,
+      deferInitialWorkspaceLoad: true,
+    });
+  });
+
+  it('marks imported Claude sessions to defer the initial workspace hydration', async () => {
+    await seedClaudeSessionFile();
+    const service = new ExternalSessionDiscoveryService(createConversationService([]), {
+      claudeHomeDir: tempDir,
+      availableBackends: new Set<AcpBackendAll>(['claude']),
+    });
+
+    const conversation = await service.importSession({
+      provider: 'claude',
+      sessionId: 'claude-session-1',
+    });
+
+    expect(conversation.extra).toMatchObject({
+      backend: 'claude',
+      workspace: '/tmp/claude-project',
+      acpSessionId: 'claude-session-1',
+      currentModelId: 'claude-sonnet-4-6',
       externalSessionImported: true,
       deferInitialWorkspaceLoad: true,
     });
@@ -282,6 +377,51 @@ describe('ExternalSessionDiscoveryService', () => {
         createdAt: Date.parse('2026-03-26T10:00:04.000Z'),
         content: {
           content: 'Second assistant reply',
+        },
+      },
+    ]);
+  });
+
+  it('imports visible Claude history when taking over an unmanaged session', async () => {
+    await seedClaudeSessionFile();
+
+    const insertMessage = vi.fn(() => ({
+      success: true,
+    }));
+    vi.spyOn(databaseModule, 'getDatabase').mockResolvedValue({
+      insertMessage,
+    } as unknown as Awaited<ReturnType<typeof databaseModule.getDatabase>>);
+
+    const service = new ExternalSessionDiscoveryService(createConversationService([]), {
+      claudeHomeDir: tempDir,
+      availableBackends: new Set<AcpBackendAll>(['claude']),
+    });
+
+    await service.importSession({
+      provider: 'claude',
+      sessionId: 'claude-session-1',
+    });
+
+    expect(insertMessage).toHaveBeenCalledTimes(2);
+    expect(insertMessage.mock.calls.map(([message]) => message)).toMatchObject([
+      {
+        conversation_id: 'imported-conversation',
+        type: 'text',
+        position: 'right',
+        status: 'finish',
+        createdAt: Date.parse('2026-03-26T10:00:02.000Z'),
+        content: {
+          content: 'First Claude question',
+        },
+      },
+      {
+        conversation_id: 'imported-conversation',
+        type: 'text',
+        position: 'left',
+        status: 'finish',
+        createdAt: Date.parse('2026-03-26T10:00:04.000Z'),
+        content: {
+          content: 'First Claude reply',
         },
       },
     ]);

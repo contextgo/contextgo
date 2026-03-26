@@ -18,6 +18,7 @@
     "loadFailed": "외부 Session 스캔에 실패했습니다.",
     "importFailed": "선택한 외부 Session 이어받기에 실패했습니다.",
     "providers": {
+      "claude": "Claude",
       "codex": "Codex",
       "openclaw-gateway": "OpenClaw"
     }

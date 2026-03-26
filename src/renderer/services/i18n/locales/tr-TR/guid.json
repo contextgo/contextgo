@@ -18,6 +18,7 @@
     "loadFailed": "Harici Session'lar taranamadı.",
     "importFailed": "Seçilen harici Session devralınamadı.",
     "providers": {
+      "claude": "Claude",
       "codex": "Codex",
       "openclaw-gateway": "OpenClaw"
     }

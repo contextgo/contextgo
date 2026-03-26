@@ -54,8 +54,29 @@ type CodexRolloutEntry = {
   };
 };
 
+type ClaudeJsonlEntry = {
+  type?: string;
+  timestamp?: string;
+  sessionId?: string;
+  cwd?: string;
+  isMeta?: boolean;
+  message?: {
+    model?: string;
+    role?: string;
+    content?:
+      | string
+      | Array<{
+          type?: string;
+          text?: string;
+          thinking?: string;
+        }>;
+  };
+  lastPrompt?: string;
+};
+
 type ExternalSessionDiscoveryOptions = {
   codexHomeDir?: string;
+  claudeHomeDir?: string;
   availableBackends?: Set<AcpBackendAll>;
 };
 
@@ -71,10 +92,19 @@ type CodexSessionCacheEntry = {
 };
 
 const CODEX_STATE_FILE_PATTERN = /^state_\d+\.sqlite$/;
-const IMPORT_PLACEHOLDER_PROVIDER: TProviderWithModel = {
+const CLAUDE_SESSION_FILE_PATTERN = /\.jsonl$/i;
+const CODEX_IMPORT_PLACEHOLDER_PROVIDER: TProviderWithModel = {
   id: 'external-session-import',
   platform: 'codex',
   name: 'Codex',
+  baseUrl: '',
+  apiKey: '',
+  useModel: 'default',
+};
+const CLAUDE_IMPORT_PLACEHOLDER_PROVIDER: TProviderWithModel = {
+  id: 'external-session-import',
+  platform: 'anthropic',
+  name: 'Claude Code',
   baseUrl: '',
   apiKey: '',
   useModel: 'default',
@@ -89,7 +119,8 @@ export class ExternalSessionDiscoveryService {
   ) {}
 
   async listSessions(): Promise<ExternalSessionSummary[]> {
-    const sessions = await this.listCodexSessions();
+    const [codexSessions, claudeSessions] = await Promise.all([this.listCodexSessions(), this.listClaudeSessions()]);
+    const sessions = [...codexSessions, ...claudeSessions];
 
     if (sessions.length === 0) {
       return [];
@@ -112,11 +143,46 @@ export class ExternalSessionDiscoveryService {
     }
 
     switch (provider) {
+      case 'claude':
+        return this.importClaudeSession(sessionId);
       case 'codex':
         return this.importCodexSession(sessionId);
       default:
         throw new Error(`External session provider is not supported yet: ${provider}`);
     }
+  }
+
+  private async importClaudeSession(sessionId: string): Promise<TChatConversation> {
+    const session = (await this.listClaudeSessions()).find((item) => item.sessionId === sessionId);
+    if (!session) {
+      throw new Error('External Claude session not found');
+    }
+
+    const conversation = await this.conversationService.createConversation({
+      type: 'acp',
+      name: session.title || path.basename(session.workspace) || session.sessionId,
+      model: {
+        ...CLAUDE_IMPORT_PLACEHOLDER_PROVIDER,
+        useModel: session.model || CLAUDE_IMPORT_PLACEHOLDER_PROVIDER.useModel,
+      },
+      source: 'aionui',
+      extra: {
+        workspace: session.workspace,
+        customWorkspace: true,
+        backend: 'claude',
+        cliPath: 'claude',
+        agentName: 'Claude Code',
+        acpSessionId: session.sessionId,
+        acpSessionUpdatedAt: session.updatedAt,
+        currentModelId: session.model || undefined,
+        externalSessionImported: true,
+        deferInitialWorkspaceLoad: true,
+      },
+    });
+
+    await this.importClaudeHistory(conversation.id, sessionId);
+
+    return conversation;
   }
 
   private async importCodexSession(sessionId: string): Promise<TChatConversation> {
@@ -129,8 +195,8 @@ export class ExternalSessionDiscoveryService {
       type: 'acp',
       name: session.title || path.basename(session.workspace) || session.sessionId,
       model: {
-        ...IMPORT_PLACEHOLDER_PROVIDER,
-        useModel: session.model || IMPORT_PLACEHOLDER_PROVIDER.useModel,
+        ...CODEX_IMPORT_PLACEHOLDER_PROVIDER,
+        useModel: session.model || CODEX_IMPORT_PLACEHOLDER_PROVIDER.useModel,
       },
       source: 'aionui',
       extra: {
@@ -214,6 +280,38 @@ export class ExternalSessionDiscoveryService {
     }
   }
 
+  private async listClaudeSessions(): Promise<ExternalSessionSummary[]> {
+    if (!this.isBackendAvailable('claude')) {
+      return [];
+    }
+
+    const claudeHomeDir = this.options.claudeHomeDir || path.join(os.homedir(), '.claude');
+    const projectsDir = path.join(claudeHomeDir, 'projects');
+
+    try {
+      const projectEntries = await fs.readdir(projectsDir, { withFileTypes: true });
+      const sessionFiles = await Promise.all(
+        projectEntries
+          .filter((entry) => entry.isDirectory())
+          .map(async (entry) => {
+            const projectDir = path.join(projectsDir, entry.name);
+            const children = await fs.readdir(projectDir, { withFileTypes: true });
+            return children
+              .filter((child) => child.isFile() && CLAUDE_SESSION_FILE_PATTERN.test(child.name))
+              .map((child) => path.join(projectDir, child.name));
+          })
+      );
+
+      const sessions = await Promise.all(
+        sessionFiles.flat().map((filePath) => this.readClaudeSessionSummary(filePath))
+      );
+      return sessions.filter((session): session is ExternalSessionSummary => session !== null);
+    } catch (error) {
+      console.warn('[ExternalSessionDiscoveryService] Failed to list Claude sessions:', error);
+      return [];
+    }
+  }
+
   private async resolveLatestCodexStateDb(): Promise<CodexStateDbInfo | null> {
     const codexHomeDir = this.options.codexHomeDir || path.join(os.homedir(), '.codex');
 
@@ -287,6 +385,43 @@ export class ExternalSessionDiscoveryService {
     }
   }
 
+  private async importClaudeHistory(conversationId: string, sessionId: string): Promise<void> {
+    try {
+      const sessionFilePath = await this.resolveClaudeSessionFilePath(sessionId);
+      if (!sessionFilePath) {
+        return;
+      }
+
+      const importedMessages = await this.readClaudeSessionMessages(sessionFilePath);
+      if (importedMessages.length === 0) {
+        return;
+      }
+
+      const db = await getDatabase();
+      for (const importedMessage of importedMessages) {
+        const message: TMessage = {
+          id: uuid(36),
+          msg_id: uuid(36),
+          conversation_id: conversationId,
+          type: 'text',
+          position: importedMessage.position,
+          status: 'finish',
+          createdAt: importedMessage.createdAt,
+          content: {
+            content: importedMessage.content,
+          },
+        };
+
+        const result = db.insertMessage(message);
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to insert imported Claude history message');
+        }
+      }
+    } catch (error) {
+      console.warn('[ExternalSessionDiscoveryService] Failed to import Claude history:', error);
+    }
+  }
+
   private async getCodexThread(sessionId: string): Promise<CodexThreadRow | null> {
     const stateDb = await this.resolveLatestCodexStateDb();
     if (!stateDb) {
@@ -318,6 +453,33 @@ export class ExternalSessionDiscoveryService {
     }
   }
 
+  private async resolveClaudeSessionFilePath(sessionId: string): Promise<string | null> {
+    const claudeHomeDir = this.options.claudeHomeDir || path.join(os.homedir(), '.claude');
+    const projectsDir = path.join(claudeHomeDir, 'projects');
+
+    try {
+      const projectEntries = await fs.readdir(projectsDir, { withFileTypes: true });
+
+      for (const entry of projectEntries) {
+        if (!entry.isDirectory()) {
+          continue;
+        }
+
+        const candidate = path.join(projectsDir, entry.name, `${sessionId}.jsonl`);
+        try {
+          await fs.access(candidate);
+          return candidate;
+        } catch {
+          continue;
+        }
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  }
+
   private async readCodexRolloutMessages(rolloutPath: string): Promise<ImportedConversationMessage[]> {
     const importedMessages: ImportedConversationMessage[] = [];
     const stream = createReadStream(rolloutPath, { encoding: 'utf8' });
@@ -336,6 +498,109 @@ export class ExternalSessionDiscoveryService {
         try {
           const entry = JSON.parse(trimmedLine) as CodexRolloutEntry;
           const importedMessage = this.parseCodexRolloutEntry(entry);
+          if (importedMessage) {
+            importedMessages.push(importedMessage);
+          }
+        } catch {
+          continue;
+        }
+      }
+    } finally {
+      lineReader.close();
+      stream.destroy();
+    }
+
+    return importedMessages.toSorted((left, right) => left.createdAt - right.createdAt);
+  }
+
+  private async readClaudeSessionSummary(sessionFilePath: string): Promise<ExternalSessionSummary | null> {
+    const importedUserMessages = await this.readClaudeSessionMessages(sessionFilePath, true);
+    const stat = await fs.stat(sessionFilePath);
+    let workspace = '';
+    let title = '';
+    let model: string | undefined;
+    let updatedAt = stat.mtimeMs;
+
+    const stream = createReadStream(sessionFilePath, { encoding: 'utf8' });
+    const lineReader = createInterface({
+      input: stream,
+      crlfDelay: Infinity,
+    });
+
+    try {
+      for await (const line of lineReader) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) {
+          continue;
+        }
+
+        try {
+          const entry = JSON.parse(trimmedLine) as ClaudeJsonlEntry;
+          if (!workspace && typeof entry.cwd === 'string' && entry.cwd.trim()) {
+            workspace = entry.cwd.trim();
+          }
+
+          if (entry.type === 'last-prompt' && typeof entry.lastPrompt === 'string' && entry.lastPrompt.trim()) {
+            title = entry.lastPrompt.trim();
+          }
+
+          if (!model && typeof entry.message?.model === 'string' && entry.message.model.trim()) {
+            model = entry.message.model.trim();
+          }
+
+          const parsedTimestamp = this.parseRolloutTimestamp(entry.timestamp);
+          if (parsedTimestamp > updatedAt) {
+            updatedAt = parsedTimestamp;
+          }
+        } catch {
+          continue;
+        }
+      }
+    } finally {
+      lineReader.close();
+      stream.destroy();
+    }
+
+    if (!workspace) {
+      return null;
+    }
+
+    const sessionId = path.basename(sessionFilePath, '.jsonl');
+    const fallbackTitle = importedUserMessages.at(-1)?.content || path.basename(workspace) || sessionId;
+
+    return {
+      provider: 'claude',
+      sessionId,
+      title: (title || fallbackTitle).trim(),
+      workspace,
+      updatedAt,
+      origin: 'cli',
+      modelProvider: 'anthropic',
+      model,
+    };
+  }
+
+  private async readClaudeSessionMessages(
+    sessionFilePath: string,
+    onlyUserMessages: boolean = false
+  ): Promise<ImportedConversationMessage[]> {
+    const importedMessages: ImportedConversationMessage[] = [];
+    const stream = createReadStream(sessionFilePath, { encoding: 'utf8' });
+    const lineReader = createInterface({
+      input: stream,
+      crlfDelay: Infinity,
+    });
+
+    try {
+      for await (const line of lineReader) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) {
+          continue;
+        }
+
+        try {
+          const entry = JSON.parse(trimmedLine) as ClaudeJsonlEntry;
+          const importedMessage = this.parseClaudeSessionEntry(entry, onlyUserMessages);
           if (importedMessage) {
             importedMessages.push(importedMessage);
           }
@@ -390,10 +655,82 @@ export class ExternalSessionDiscoveryService {
     return null;
   }
 
+  private parseClaudeSessionEntry(
+    entry: ClaudeJsonlEntry,
+    onlyUserMessages: boolean
+  ): ImportedConversationMessage | null {
+    const createdAt = this.parseRolloutTimestamp(entry.timestamp);
+
+    if (entry.type === 'user' && !entry.isMeta) {
+      const content = this.extractClaudeMessageText(entry.message?.content);
+      if (!content || this.isClaudeControlMessage(content)) {
+        return null;
+      }
+
+      return {
+        content,
+        createdAt,
+        position: 'right',
+      };
+    }
+
+    if (onlyUserMessages) {
+      return null;
+    }
+
+    if (entry.type === 'assistant' && entry.message?.role === 'assistant') {
+      const content = this.extractClaudeMessageText(entry.message?.content, ['text']);
+      if (!content) {
+        return null;
+      }
+
+      return {
+        content,
+        createdAt,
+        position: 'left',
+      };
+    }
+
+    return null;
+  }
+
+  private extractClaudeMessageText(
+    content: ClaudeJsonlEntry['message'] extends { content?: infer T } ? T : never,
+    allowedTypes: string[] = ['text']
+  ): string {
+    if (typeof content === 'string') {
+      return content.trim();
+    }
+
+    if (!Array.isArray(content)) {
+      return '';
+    }
+
+    return content
+      .filter((item) => allowedTypes.includes(item.type || '') && typeof item.text === 'string')
+      .map((item) => item.text?.trim() || '')
+      .filter(Boolean)
+      .join('\n\n');
+  }
+
+  private isClaudeControlMessage(content: string): boolean {
+    const trimmedContent = content.trim();
+    return (
+      trimmedContent.startsWith('<local-command-') ||
+      trimmedContent.startsWith('<command-name>') ||
+      trimmedContent.startsWith('<command-message>') ||
+      trimmedContent.startsWith('<command-args>')
+    );
+  }
+
   private collectManagedSessions(conversations: TChatConversation[]): Set<string> {
     const managed = new Set<string>();
 
     for (const conversation of conversations) {
+      if (conversation.type === 'acp' && conversation.extra?.backend === 'claude' && conversation.extra.acpSessionId) {
+        managed.add(this.buildManagedKey('claude', conversation.extra.acpSessionId));
+      }
+
       if (conversation.type === 'acp' && conversation.extra?.backend === 'codex' && conversation.extra.acpSessionId) {
         managed.add(this.buildManagedKey('codex', conversation.extra.acpSessionId));
       }
@@ -416,6 +753,14 @@ export class ExternalSessionDiscoveryService {
     sessionId: string
   ): TChatConversation | undefined {
     return conversations.find((conversation) => {
+      if (provider === 'claude') {
+        return (
+          conversation.type === 'acp' &&
+          conversation.extra?.backend === 'claude' &&
+          conversation.extra.acpSessionId === sessionId
+        );
+      }
+
       if (provider === 'codex') {
         return (
           conversation.type === 'acp' &&
