@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockReadFile = vi.fn();
 const mockAccess = vi.fn();
+const normalizePath = (filePath: string) => filePath.replace(/\\/g, '/');
 
 vi.mock('fs/promises', () => ({
   default: {
@@ -23,19 +24,20 @@ describe('AssistantHookRuntime', () => {
 
   it('applies enabled before_user_prompt prompt-transform hooks in order', async () => {
     mockAccess.mockImplementation(async (filePath: string) => {
-      if (filePath === '/mock/hooks/quality-gate') return;
+      if (normalizePath(filePath) === '/mock/hooks/quality-gate') return;
       throw new Error(`ENOENT ${filePath}`);
     });
 
     mockReadFile.mockImplementation(async (filePath: string) => {
-      if (filePath === '/mock/hooks/quality-gate/manifest.json') {
+      const normalizedPath = normalizePath(filePath);
+      if (normalizedPath === '/mock/hooks/quality-gate/manifest.json') {
         return JSON.stringify({
           name: 'quality-gate',
           executionType: 'prompt-transform',
           events: ['before_user_prompt'],
         });
       }
-      if (filePath === '/mock/hooks/quality-gate/before_user_prompt.md') {
+      if (normalizedPath === '/mock/hooks/quality-gate/before_user_prompt.md') {
         return 'Checklist\n\n[User Request]\n{{userPrompt}}';
       }
       throw new Error(`ENOENT ${filePath}`);
@@ -68,12 +70,13 @@ describe('AssistantHookRuntime', () => {
 
   it('falls back to builtin hooks when the user hooks directory does not contain the hook', async () => {
     mockAccess.mockImplementation(async (filePath: string) => {
-      if (filePath === '/mock/builtin-hooks/plan-before-coding') return;
+      if (normalizePath(filePath) === '/mock/builtin-hooks/plan-before-coding') return;
       throw new Error(`ENOENT ${filePath}`);
     });
 
     mockReadFile.mockImplementation(async (filePath: string) => {
-      if (filePath === '/mock/builtin-hooks/plan-before-coding/manifest.json') {
+      const normalizedPath = normalizePath(filePath);
+      if (normalizedPath === '/mock/builtin-hooks/plan-before-coding/manifest.json') {
         return JSON.stringify({
           name: 'plan-before-coding',
           executionType: 'prompt-transform',
@@ -81,7 +84,7 @@ describe('AssistantHookRuntime', () => {
           supportedBackends: ['gemini'],
         });
       }
-      if (filePath === '/mock/builtin-hooks/plan-before-coding/before_user_prompt.md') {
+      if (normalizedPath === '/mock/builtin-hooks/plan-before-coding/before_user_prompt.md') {
         return 'Plan first for {{backend}}\n\n{{userPrompt}}';
       }
       throw new Error(`ENOENT ${filePath}`);
