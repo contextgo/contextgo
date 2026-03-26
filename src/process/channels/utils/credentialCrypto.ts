@@ -79,18 +79,20 @@ export function decryptString(encoded: string): string {
 
 /**
  * Encode credentials object
- * Only encodes sensitive fields (token)
+ * Encodes all string credential fields so platform-specific secrets
+ * such as botToken / appSecret are not left in plain text storage.
  */
 export function encryptCredentials(
   credentials: Record<string, string | number | boolean | undefined> | undefined
 ): Record<string, string | number | boolean | undefined> | undefined {
   if (!credentials) return undefined;
 
-  const token = credentials.token;
-  return {
-    ...credentials,
-    token: typeof token === 'string' && token ? encryptString(token) : token,
-  };
+  return Object.fromEntries(
+    Object.entries(credentials).map(([key, value]) => [
+      key,
+      typeof value === 'string' && value ? encryptString(value) : value,
+    ])
+  );
 }
 
 /**
@@ -101,9 +103,10 @@ export function decryptCredentials(
 ): Record<string, string | number | boolean | undefined> | undefined {
   if (!credentials) return undefined;
 
-  const token = credentials.token;
-  return {
-    ...credentials,
-    token: typeof token === 'string' && token ? decryptString(token) : token,
-  };
+  return Object.fromEntries(
+    Object.entries(credentials).map(([key, value]) => [
+      key,
+      typeof value === 'string' && value ? decryptString(value) : value,
+    ])
+  );
 }

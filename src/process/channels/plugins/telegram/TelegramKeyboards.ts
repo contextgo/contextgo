@@ -5,8 +5,70 @@
  */
 
 import { InlineKeyboard, Keyboard } from 'grammy';
+import crypto from 'crypto';
 
 import type { ChannelAgentType } from '../../types';
+
+type TelegramToolConfirmPayload = {
+  callId: string;
+  value: string;
+  chatId?: string;
+  conversationId?: string;
+  createdAt: number;
+};
+
+const TOOL_CONFIRM_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_TOOL_CONFIRM_PAYLOADS = 2048;
+const toolConfirmPayloads = new Map<string, TelegramToolConfirmPayload>();
+
+function cleanupToolConfirmPayloads(): void {
+  const now = Date.now();
+
+  for (const [token, payload] of toolConfirmPayloads.entries()) {
+    if (now - payload.createdAt > TOOL_CONFIRM_TTL_MS) {
+      toolConfirmPayloads.delete(token);
+    }
+  }
+
+  while (toolConfirmPayloads.size > MAX_TOOL_CONFIRM_PAYLOADS) {
+    const oldestToken = toolConfirmPayloads.keys().next().value;
+    if (!oldestToken) {
+      break;
+    }
+    toolConfirmPayloads.delete(oldestToken);
+  }
+}
+
+function createToolConfirmToken(payload: Omit<TelegramToolConfirmPayload, 'createdAt'>): string {
+  cleanupToolConfirmPayloads();
+
+  const token = crypto.randomBytes(6).toString('hex');
+  toolConfirmPayloads.set(token, {
+    ...payload,
+    createdAt: Date.now(),
+  });
+
+  return token;
+}
+
+export function resolveToolConfirmToken(token: string): Omit<TelegramToolConfirmPayload, 'createdAt'> | null {
+  const payload = toolConfirmPayloads.get(token);
+  if (!payload) {
+    return null;
+  }
+
+  if (Date.now() - payload.createdAt > TOOL_CONFIRM_TTL_MS) {
+    toolConfirmPayloads.delete(token);
+    return null;
+  }
+
+  return {
+    callId: payload.callId,
+    value: payload.value,
+    chatId: payload.chatId,
+    conversationId: payload.conversationId,
+  };
+}
 
 /**
  * Telegram Keyboards for Personal Assistant
@@ -143,16 +205,30 @@ export function createErrorRecoveryKeyboard(): InlineKeyboard {
  */
 export function createToolConfirmationKeyboard(
   callId: string,
-  options: Array<{ label: string; value: string }>
+  options: Array<{ label: string; value: string }>,
+  chatId?: string,
+  conversationId?: string
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
   // 每行最多显示 2 个按钮
   // Show at most 2 buttons per row
   for (let i = 0; i < options.length; i += 2) {
     if (i > 0) keyboard.row();
-    keyboard.text(options[i].label, `confirm:${callId}:${options[i].value}`);
+    const leftToken = createToolConfirmToken({
+      callId,
+      value: options[i].value,
+      chatId,
+      conversationId,
+    });
+    keyboard.text(options[i].label, `confirm:${leftToken}`);
     if (i + 1 < options.length) {
-      keyboard.text(options[i + 1].label, `confirm:${callId}:${options[i + 1].value}`);
+      const rightToken = createToolConfirmToken({
+        callId,
+        value: options[i + 1].value,
+        chatId,
+        conversationId,
+      });
+      keyboard.text(options[i + 1].label, `confirm:${rightToken}`);
     }
   }
   return keyboard;

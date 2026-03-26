@@ -5,12 +5,12 @@
  */
 
 import { acpDetector } from '@process/agent/acp/AcpDetector';
-import type { TChatConversation, TProviderWithModel } from '@/common/config/storage';
+import type { TProviderWithModel } from '@/common/config/storage';
 import { ProcessConfig } from '@process/utils/initStorage';
-import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
 import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
 import { getChannelManager } from '../core/ChannelManager';
+import { getChannelRouteResolver } from '../core/ChannelRouteResolver';
 import type { AgentDisplayInfo } from '../plugins/telegram/TelegramKeyboards';
 import {
   createAgentSelectionKeyboard,
@@ -18,7 +18,6 @@ import {
   createMainMenuKeyboard,
   createSessionControlKeyboard,
 } from '../plugins/telegram/TelegramKeyboards';
-import { getChannelConversationName, resolveChannelConvType } from '../types';
 import {
   createAgentSelectionCard,
   createFeaturesCard,
@@ -43,7 +42,6 @@ import type { ChannelAgentType, PluginType } from '../types';
 import type { ActionHandler, IRegisteredAction } from './types';
 import { SystemActionNames, createErrorResponse, createSuccessResponse } from './types';
 import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
-import type { AcpBackend } from '@/common/types/acpTypes';
 
 /**
  * Get the default model for Channel assistant (Telegram/Lark)
@@ -171,100 +169,28 @@ export const handleSessionNew: ActionHandler = async (context) => {
     }
   }
   await sessionManager.clearSession(context.channelUser.id, context.chatId);
-
-  const platform = context.platform;
-  const source =
-    platform === 'lark' ? 'lark' : platform === 'dingtalk' ? 'dingtalk' : platform === 'weixin' ? 'weixin' : 'telegram';
-
-  // Selected agent (defaults to Gemini)
-  let savedAgent: unknown = undefined;
+  let conversationId = existingSession?.conversationId;
   try {
-    savedAgent = await (platform === 'lark'
-      ? ProcessConfig.get('assistant.lark.agent')
-      : platform === 'dingtalk'
-        ? ProcessConfig.get('assistant.dingtalk.agent')
-        : platform === 'weixin'
-          ? ProcessConfig.get('assistant.weixin.agent')
-          : ProcessConfig.get('assistant.telegram.agent'));
-  } catch {
-    // ignore
-  }
-  const backend = (
-    savedAgent && typeof savedAgent === 'object' && typeof (savedAgent as any).backend === 'string'
-      ? (savedAgent as any).backend
-      : 'gemini'
-  ) as string;
-  const customAgentId =
-    savedAgent && typeof savedAgent === 'object'
-      ? ((savedAgent as any).customAgentId as string | undefined)
-      : undefined;
-  const agentName =
-    savedAgent && typeof savedAgent === 'object' ? ((savedAgent as any).name as string | undefined) : undefined;
-
-  // Provider model is required by typing; ACP/Codex will ignore it.
-  const model = await getChannelDefaultModel(platform);
-
-  // Always create a NEW conversation for "session.new" (scoped by chatId)
-  const channelChatId = context.chatId;
-  const { convType, convBackend } = resolveChannelConvType(backend);
-  const name = getChannelConversationName(platform, convType, convBackend, channelChatId);
-
-  let newConversation: TChatConversation;
-  try {
-    if (backend === 'gemini') {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'gemini',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {},
-      });
-    } else if (backend === 'codex') {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'codex',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {},
-      });
-    } else if (backend === 'openclaw-gateway') {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'openclaw-gateway',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {},
-      });
-    } else {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'acp',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {
-          backend: backend as AcpBackend,
-          customAgentId,
-          agentName,
-        },
-      });
-    }
+    const route = await getChannelRouteResolver().resolveAuthorizedRoute({
+      platform: context.platform,
+      pluginId: context.pluginId,
+      platformUserId: context.userId,
+      chatId: context.chatId,
+      displayName: context.displayName,
+      forceNewConversation: true,
+    });
+    await sessionManager.storeSession(route.session);
+    conversationId = route.conversation.id;
+    context.connector = route.connector;
+    context.remoteIdentity = route.remoteIdentity;
+    context.channelBinding = route.binding;
+    context.agentProfile = route.agentProfile;
+    context.externalSession = route.externalSession;
+    context.sessionId = route.session.id;
+    context.conversationId = route.conversation.id;
   } catch (error) {
     return createErrorResponse(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  // Create session with the new conversation ID (scoped by chatId)
-  const agentType = convType as ChannelAgentType;
-  const session = await sessionManager.createSessionWithConversation(
-    context.channelUser,
-    newConversation.id,
-    agentType,
-    undefined,
-    channelChatId
-  );
 
   const markup =
     context.platform === 'lark'
@@ -274,7 +200,7 @@ export const handleSessionNew: ActionHandler = async (context) => {
         : createMainMenuKeyboard();
   return createSuccessResponse({
     type: 'text',
-    text: `🆕 <b>New Session Created</b>\n\nSession ID: <code>${session.id.slice(-8)}</code>\n\nYou can start a new conversation now!`,
+    text: `🆕 <b>New Conversation Started</b>\n\nConversation ID: <code>${conversationId?.slice(-8) ?? 'unknown'}</code>\n\nThis chat keeps the same channel binding, but future messages will use a fresh conversation context.`,
     parseMode: 'HTML',
     replyMarkup: markup,
   });
@@ -655,8 +581,27 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
   }
   await sessionManager.clearSession(context.channelUser.id, context.chatId);
 
-  // Create new session with the selected agent type (scoped by chatId)
-  const session = await sessionManager.createSession(context.channelUser, newAgentType, undefined, context.chatId);
+  try {
+    const route = await getChannelRouteResolver().resolveAuthorizedRoute({
+      platform: context.platform,
+      pluginId: context.pluginId,
+      platformUserId: context.userId,
+      chatId: context.chatId,
+      displayName: context.displayName,
+      forceNewConversation: true,
+      overrideAgentType: newAgentType,
+    });
+    await sessionManager.storeSession(route.session);
+    context.connector = route.connector;
+    context.remoteIdentity = route.remoteIdentity;
+    context.channelBinding = route.binding;
+    context.agentProfile = route.agentProfile;
+    context.externalSession = route.externalSession;
+    context.sessionId = route.session.id;
+    context.conversationId = route.conversation.id;
+  } catch (error) {
+    return createErrorResponse(`Failed to switch agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 
   const markup =
     context.platform === 'lark'
