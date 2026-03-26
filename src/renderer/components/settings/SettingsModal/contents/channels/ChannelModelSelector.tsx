@@ -43,13 +43,10 @@ const ChannelModelSelector: React.FC<{
     handleSelectModel,
     formatModelLabel,
   } = selection;
-  const safeGetAvailableModels =
-    getAvailableModels ?? ((_: IProvider): string[] => []);
-  const safeHandleSelectModel =
-    handleSelectModel ?? (async (): Promise<boolean> => false);
+  const safeGetAvailableModels = getAvailableModels ?? ((_: IProvider): string[] => []);
+  const safeHandleSelectModel = handleSelectModel ?? (async (): Promise<boolean> => false);
   const safeFormatModelLabel =
-    formatModelLabel ??
-    ((provider: IProvider, modelName: string): string => provider.name || modelName);
+    formatModelLabel ?? ((provider: IProvider, modelName: string): string => provider.name || modelName);
   const rawLabel = currentModel ? safeFormatModelLabel(currentModel, currentModel.useModel) : '';
   const label =
     customLabel ||
