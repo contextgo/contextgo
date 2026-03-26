@@ -18,6 +18,7 @@
     "loadFailed": "外部 Session のスキャンに失敗しました。",
     "importFailed": "選択した外部 Session の引き継ぎに失敗しました。",
     "providers": {
+      "claude": "Claude",
       "codex": "Codex",
       "openclaw-gateway": "OpenClaw"
     }

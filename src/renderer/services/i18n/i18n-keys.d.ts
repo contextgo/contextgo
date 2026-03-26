@@ -516,6 +516,7 @@ export type I18nKey =
   | 'guid.externalSessions.importFailed'
   | 'guid.externalSessions.loadFailed'
   | 'guid.externalSessions.loading'
+  | 'guid.externalSessions.providers.claude'
   | 'guid.externalSessions.providers.codex'
   | 'guid.externalSessions.providers.openclaw-gateway'
   | 'guid.externalSessions.refresh'
