@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type ExternalSessionProvider = 'codex' | 'openclaw-gateway';
+export type ExternalSessionProvider = 'claude' | 'codex' | 'openclaw-gateway';
 
 export type ExternalSessionSummary = {
   provider: ExternalSessionProvider;

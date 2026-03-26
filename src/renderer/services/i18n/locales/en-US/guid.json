@@ -18,6 +18,7 @@
     "loadFailed": "Failed to scan external sessions.",
     "importFailed": "Failed to take over the selected external session.",
     "providers": {
+      "claude": "Claude",
       "codex": "Codex",
       "openclaw-gateway": "OpenClaw"
     }
