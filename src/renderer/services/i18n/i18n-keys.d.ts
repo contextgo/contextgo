@@ -533,6 +533,7 @@ export type I18nKey =
   | 'guid.externalSessions.providers.codex'
   | 'guid.externalSessions.providers.gemini'
   | 'guid.externalSessions.providers.openclaw-gateway'
+  | 'guid.externalSessions.providers.opencode'
   | 'guid.externalSessions.refresh'
   | 'guid.externalSessions.title'
   | 'guid.externalSessions.updatedAt'
