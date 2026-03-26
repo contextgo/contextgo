@@ -74,9 +74,33 @@ type ClaudeJsonlEntry = {
   lastPrompt?: string;
 };
 
+type GeminiChatMessage = {
+  timestamp?: string;
+  type?: string;
+  content?: unknown;
+  model?: string;
+};
+
+type GeminiChatFile = {
+  sessionId?: string;
+  startTime?: string;
+  lastUpdated?: string;
+  messages?: GeminiChatMessage[];
+};
+
+type GeminiSessionSource = {
+  chatPath: string;
+  sessionId: string;
+  workspace: string;
+  title: string;
+  updatedAt: number;
+  model?: string;
+};
+
 type ExternalSessionDiscoveryOptions = {
   codexHomeDir?: string;
   claudeHomeDir?: string;
+  geminiHomeDir?: string;
   availableBackends?: Set<AcpBackendAll>;
 };
 
@@ -109,6 +133,14 @@ const CLAUDE_IMPORT_PLACEHOLDER_PROVIDER: TProviderWithModel = {
   apiKey: '',
   useModel: 'default',
 };
+const GEMINI_IMPORT_PLACEHOLDER_PROVIDER: TProviderWithModel = {
+  id: 'external-session-import',
+  platform: 'gemini',
+  name: 'Gemini',
+  baseUrl: '',
+  apiKey: '',
+  useModel: 'default',
+};
 
 let codexSessionCache: CodexSessionCacheEntry | null = null;
 
@@ -119,8 +151,12 @@ export class ExternalSessionDiscoveryService {
   ) {}
 
   async listSessions(): Promise<ExternalSessionSummary[]> {
-    const [codexSessions, claudeSessions] = await Promise.all([this.listCodexSessions(), this.listClaudeSessions()]);
-    const sessions = [...codexSessions, ...claudeSessions];
+    const [codexSessions, claudeSessions, geminiSessions] = await Promise.all([
+      this.listCodexSessions(),
+      this.listClaudeSessions(),
+      this.listGeminiSessions(),
+    ]);
+    const sessions = [...codexSessions, ...claudeSessions, ...geminiSessions];
 
     if (sessions.length === 0) {
       return [];
@@ -147,6 +183,8 @@ export class ExternalSessionDiscoveryService {
         return this.importClaudeSession(sessionId);
       case 'codex':
         return this.importCodexSession(sessionId);
+      case 'gemini':
+        return this.importGeminiSession(sessionId);
       default:
         throw new Error(`External session provider is not supported yet: ${provider}`);
     }
@@ -214,6 +252,39 @@ export class ExternalSessionDiscoveryService {
     });
 
     await this.importCodexHistory(conversation.id, sessionId);
+
+    return conversation;
+  }
+
+  private async importGeminiSession(sessionId: string): Promise<TChatConversation> {
+    const session = (await this.listGeminiSessions()).find((item) => item.sessionId === sessionId);
+    if (!session) {
+      throw new Error('External Gemini session not found');
+    }
+
+    const conversation = await this.conversationService.createConversation({
+      type: 'acp',
+      name: session.title || path.basename(session.workspace) || session.sessionId,
+      model: {
+        ...GEMINI_IMPORT_PLACEHOLDER_PROVIDER,
+        useModel: session.model || GEMINI_IMPORT_PLACEHOLDER_PROVIDER.useModel,
+      },
+      source: 'aionui',
+      extra: {
+        workspace: session.workspace,
+        customWorkspace: true,
+        backend: 'gemini',
+        cliPath: 'gemini',
+        agentName: 'Gemini CLI',
+        acpSessionId: session.sessionId,
+        acpSessionUpdatedAt: session.updatedAt,
+        currentModelId: session.model || undefined,
+        externalSessionImported: true,
+        deferInitialWorkspaceLoad: true,
+      },
+    });
+
+    await this.importGeminiHistory(conversation.id, sessionId);
 
     return conversation;
   }
@@ -312,6 +383,38 @@ export class ExternalSessionDiscoveryService {
     }
   }
 
+  private async listGeminiSessions(): Promise<ExternalSessionSummary[]> {
+    if (!this.isBackendAvailable('gemini')) {
+      return [];
+    }
+
+    const geminiTmpDir = path.join(this.options.geminiHomeDir || path.join(os.homedir(), '.gemini'), 'tmp');
+
+    try {
+      const entries = await fs.readdir(geminiTmpDir, { withFileTypes: true });
+      const sessionGroups = await Promise.all(
+        entries
+          .filter((entry) => entry.isDirectory())
+          .map(async (entry) => this.listGeminiSessionsInProject(path.join(geminiTmpDir, entry.name)))
+      );
+
+      const dedupedSessions = new Map<string, ExternalSessionSummary>();
+      for (const group of sessionGroups) {
+        for (const session of group) {
+          const existing = dedupedSessions.get(session.sessionId);
+          if (!existing || existing.updatedAt < session.updatedAt) {
+            dedupedSessions.set(session.sessionId, session);
+          }
+        }
+      }
+
+      return Array.from(dedupedSessions.values());
+    } catch (error) {
+      console.warn('[ExternalSessionDiscoveryService] Failed to list Gemini sessions:', error);
+      return [];
+    }
+  }
+
   private async resolveLatestCodexStateDb(): Promise<CodexStateDbInfo | null> {
     const codexHomeDir = this.options.codexHomeDir || path.join(os.homedir(), '.codex');
 
@@ -356,32 +459,23 @@ export class ExternalSessionDiscoveryService {
       }
 
       const importedMessages = await this.readCodexRolloutMessages(thread.rollout_path);
-      if (importedMessages.length === 0) {
+      await this.insertImportedMessages(conversationId, importedMessages, 'Codex');
+    } catch (error) {
+      console.warn('[ExternalSessionDiscoveryService] Failed to import Codex history:', error);
+    }
+  }
+
+  private async importGeminiHistory(conversationId: string, sessionId: string): Promise<void> {
+    try {
+      const session = await this.getGeminiSessionSource(sessionId);
+      if (!session) {
         return;
       }
 
-      const db = await getDatabase();
-      for (const importedMessage of importedMessages) {
-        const message: TMessage = {
-          id: uuid(36),
-          msg_id: uuid(36),
-          conversation_id: conversationId,
-          type: 'text',
-          position: importedMessage.position,
-          status: 'finish',
-          createdAt: importedMessage.createdAt,
-          content: {
-            content: importedMessage.content,
-          },
-        };
-
-        const result = db.insertMessage(message);
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to insert imported Codex history message');
-        }
-      }
+      const importedMessages = await this.readGeminiChatMessages(session.chatPath);
+      await this.insertImportedMessages(conversationId, importedMessages, 'Gemini');
     } catch (error) {
-      console.warn('[ExternalSessionDiscoveryService] Failed to import Codex history:', error);
+      console.warn('[ExternalSessionDiscoveryService] Failed to import Gemini history:', error);
     }
   }
 
@@ -393,30 +487,7 @@ export class ExternalSessionDiscoveryService {
       }
 
       const importedMessages = await this.readClaudeSessionMessages(sessionFilePath);
-      if (importedMessages.length === 0) {
-        return;
-      }
-
-      const db = await getDatabase();
-      for (const importedMessage of importedMessages) {
-        const message: TMessage = {
-          id: uuid(36),
-          msg_id: uuid(36),
-          conversation_id: conversationId,
-          type: 'text',
-          position: importedMessage.position,
-          status: 'finish',
-          createdAt: importedMessage.createdAt,
-          content: {
-            content: importedMessage.content,
-          },
-        };
-
-        const result = db.insertMessage(message);
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to insert imported Claude history message');
-        }
-      }
+      await this.insertImportedMessages(conversationId, importedMessages, 'Claude');
     } catch (error) {
       console.warn('[ExternalSessionDiscoveryService] Failed to import Claude history:', error);
     }
@@ -723,6 +794,207 @@ export class ExternalSessionDiscoveryService {
     );
   }
 
+  private async listGeminiSessionsInProject(projectDir: string): Promise<ExternalSessionSummary[]> {
+    const sessionSources = await this.listGeminiSessionSourcesInProject(projectDir);
+    return sessionSources.map((session) => ({
+      provider: 'gemini',
+      sessionId: session.sessionId,
+      title: session.title,
+      workspace: session.workspace,
+      updatedAt: session.updatedAt,
+      origin: 'cli',
+      model: session.model,
+    }));
+  }
+
+  private async readGeminiProjectRoot(projectDir: string): Promise<string | null> {
+    try {
+      const projectRoot = (await fs.readFile(path.join(projectDir, '.project_root'), 'utf8')).trim();
+      return projectRoot || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async getGeminiSessionSource(sessionId: string): Promise<GeminiSessionSource | null> {
+    const geminiTmpDir = path.join(this.options.geminiHomeDir || path.join(os.homedir(), '.gemini'), 'tmp');
+
+    try {
+      const entries = await fs.readdir(geminiTmpDir, { withFileTypes: true });
+      const sessionGroups = await Promise.all(
+        entries
+          .filter((entry) => entry.isDirectory())
+          .map(async (entry) => this.listGeminiSessionSourcesInProject(path.join(geminiTmpDir, entry.name)))
+      );
+
+      return sessionGroups.flat().find((session) => session.sessionId === sessionId) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async listGeminiSessionSourcesInProject(projectDir: string): Promise<GeminiSessionSource[]> {
+    const workspace = await this.readGeminiProjectRoot(projectDir);
+    if (!workspace) {
+      return [];
+    }
+
+    const chatsDir = path.join(projectDir, 'chats');
+    try {
+      const chatEntries = await fs.readdir(chatsDir, { withFileTypes: true });
+      const sessions = await Promise.all(
+        chatEntries
+          .filter((entry) => entry.isFile() && entry.name.startsWith('session-') && entry.name.endsWith('.json'))
+          .map(async (entry) => this.readGeminiSessionSource(workspace, path.join(chatsDir, entry.name)))
+      );
+
+      return sessions.filter((session): session is GeminiSessionSource => session !== null);
+    } catch {
+      return [];
+    }
+  }
+
+  private async readGeminiSessionSource(workspace: string, chatPath: string): Promise<GeminiSessionSource | null> {
+    try {
+      const rawContent = await fs.readFile(chatPath, 'utf8');
+      const chat = JSON.parse(rawContent) as GeminiChatFile;
+      if (typeof chat.sessionId !== 'string' || !chat.sessionId.trim()) {
+        return null;
+      }
+
+      return {
+        chatPath,
+        sessionId: chat.sessionId,
+        workspace,
+        title: this.resolveGeminiSessionTitle(chat.messages, workspace, chat.sessionId),
+        updatedAt: this.parseRolloutTimestamp(chat.lastUpdated || chat.startTime),
+        model: this.resolveGeminiSessionModel(chat.messages),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async readGeminiChatMessages(chatPath: string): Promise<ImportedConversationMessage[]> {
+    const rawContent = await fs.readFile(chatPath, 'utf8');
+    const chat = JSON.parse(rawContent) as GeminiChatFile;
+    const messages = Array.isArray(chat.messages) ? chat.messages : [];
+
+    return messages
+      .map((message) => this.parseGeminiChatMessage(message))
+      .filter((message): message is ImportedConversationMessage => message !== null)
+      .toSorted((left, right) => left.createdAt - right.createdAt);
+  }
+
+  private parseGeminiChatMessage(message: GeminiChatMessage): ImportedConversationMessage | null {
+    if (message.type !== 'user' && message.type !== 'gemini') {
+      return null;
+    }
+
+    const content = this.extractGeminiMessageText(message.content);
+    if (!content) {
+      return null;
+    }
+
+    return {
+      content,
+      createdAt: this.parseRolloutTimestamp(message.timestamp),
+      position: message.type === 'user' ? 'right' : 'left',
+    };
+  }
+
+  private extractGeminiMessageText(content: unknown): string {
+    if (typeof content === 'string') {
+      return content.trim();
+    }
+
+    if (Array.isArray(content)) {
+      return content
+        .map((item) => {
+          if (typeof item === 'string') {
+            return item.trim();
+          }
+
+          if (
+            typeof item === 'object' &&
+            item !== null &&
+            'text' in item &&
+            typeof (item as { text?: unknown }).text === 'string'
+          ) {
+            return (item as { text: string }).text.trim();
+          }
+
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n\n');
+    }
+
+    return '';
+  }
+
+  private resolveGeminiSessionTitle(
+    messages: GeminiChatMessage[] | undefined,
+    workspace: string,
+    sessionId: string
+  ): string {
+    const titleSource =
+      messages
+        ?.map((message) => {
+          if (message.type !== 'user') {
+            return '';
+          }
+
+          return this.extractGeminiMessageText(message.content);
+        })
+        .find(Boolean) || '';
+
+    const normalizedTitle = titleSource.replace(/\s+/g, ' ').trim();
+    if (normalizedTitle) {
+      return normalizedTitle.slice(0, 80);
+    }
+
+    return path.basename(workspace) || sessionId;
+  }
+
+  private resolveGeminiSessionModel(messages: GeminiChatMessage[] | undefined): string | undefined {
+    return messages
+      ?.toReversed()
+      .find((message) => typeof message.model === 'string' && message.model.trim())
+      ?.model?.trim();
+  }
+
+  private async insertImportedMessages(
+    conversationId: string,
+    importedMessages: ImportedConversationMessage[],
+    providerName: string
+  ): Promise<void> {
+    if (importedMessages.length === 0) {
+      return;
+    }
+
+    const db = await getDatabase();
+    for (const importedMessage of importedMessages) {
+      const message: TMessage = {
+        id: uuid(36),
+        msg_id: uuid(36),
+        conversation_id: conversationId,
+        type: 'text',
+        position: importedMessage.position,
+        status: 'finish',
+        createdAt: importedMessage.createdAt,
+        content: {
+          content: importedMessage.content,
+        },
+      };
+
+      const result = db.insertMessage(message);
+      if (!result.success) {
+        throw new Error(result.error || `Failed to insert imported ${providerName} history message`);
+      }
+    }
+  }
+
   private collectManagedSessions(conversations: TChatConversation[]): Set<string> {
     const managed = new Set<string>();
 
@@ -731,8 +1003,12 @@ export class ExternalSessionDiscoveryService {
         managed.add(this.buildManagedKey('claude', conversation.extra.acpSessionId));
       }
 
-      if (conversation.type === 'acp' && conversation.extra?.backend === 'codex' && conversation.extra.acpSessionId) {
-        managed.add(this.buildManagedKey('codex', conversation.extra.acpSessionId));
+      if (
+        conversation.type === 'acp' &&
+        (conversation.extra?.backend === 'codex' || conversation.extra?.backend === 'gemini') &&
+        conversation.extra.acpSessionId
+      ) {
+        managed.add(this.buildManagedKey(conversation.extra.backend, conversation.extra.acpSessionId));
       }
 
       if (
@@ -765,6 +1041,14 @@ export class ExternalSessionDiscoveryService {
         return (
           conversation.type === 'acp' &&
           conversation.extra?.backend === 'codex' &&
+          conversation.extra.acpSessionId === sessionId
+        );
+      }
+
+      if (provider === 'gemini') {
+        return (
+          conversation.type === 'acp' &&
+          conversation.extra?.backend === 'gemini' &&
           conversation.extra.acpSessionId === sessionId
         );
       }

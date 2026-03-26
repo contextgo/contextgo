@@ -134,6 +134,61 @@ describe('ExternalSessionDiscoveryService', () => {
     return sessionPath;
   };
 
+  const seedGeminiSession = async (options?: {
+    projectDirName?: string;
+    workspace?: string;
+    sessionId?: string;
+    fileName?: string;
+    startTime?: string;
+    lastUpdated?: string;
+    messages?: Array<{
+      timestamp?: string;
+      type?: string;
+      content?: unknown;
+      model?: string;
+    }>;
+  }) => {
+    const projectDirName = options?.projectDirName || 'project-alpha';
+    const workspace = options?.workspace || '/tmp/project-gemini-alpha';
+    const sessionId = options?.sessionId || 'gemini-session-1';
+    const fileName = options?.fileName || 'session-2026-03-26T10-00-gemini-session-1.json';
+    const startTime = options?.startTime || '2026-03-26T10:00:00.000Z';
+    const lastUpdated = options?.lastUpdated || '2026-03-26T10:05:00.000Z';
+    const messages = options?.messages || [
+      {
+        timestamp: '2026-03-26T10:00:01.000Z',
+        type: 'user',
+        content: [{ text: 'Investigate flaky tests' }],
+      },
+      {
+        timestamp: '2026-03-26T10:00:05.000Z',
+        type: 'gemini',
+        content: 'I will inspect the test suite.',
+        model: 'gemini-2.5-pro',
+      },
+    ];
+
+    const projectDir = path.join(tempDir, 'tmp', projectDirName);
+    const chatsDir = path.join(projectDir, 'chats');
+    await fs.mkdir(chatsDir, { recursive: true });
+    await fs.writeFile(path.join(projectDir, '.project_root'), workspace);
+    await fs.writeFile(
+      path.join(chatsDir, fileName),
+      JSON.stringify({
+        sessionId,
+        startTime,
+        lastUpdated,
+        messages,
+      })
+    );
+
+    return {
+      chatPath: path.join(chatsDir, fileName),
+      sessionId,
+      workspace,
+    };
+  };
+
   it('lists unmanaged Codex sessions from the latest local state database', async () => {
     await seedCodexStateDb();
     const service = new ExternalSessionDiscoveryService(createConversationService([]), {
@@ -177,6 +232,28 @@ describe('ExternalSessionDiscoveryService', () => {
         origin: 'cli',
         modelProvider: 'anthropic',
         model: 'claude-sonnet-4-6',
+      },
+    ]);
+  });
+
+  it('lists unmanaged Gemini sessions from local Gemini CLI chat files', async () => {
+    await seedGeminiSession();
+    const service = new ExternalSessionDiscoveryService(createConversationService([]), {
+      geminiHomeDir: tempDir,
+      availableBackends: new Set<AcpBackendAll>(['gemini']),
+    });
+
+    const sessions = await service.listSessions();
+
+    expect(sessions).toEqual([
+      {
+        provider: 'gemini',
+        sessionId: 'gemini-session-1',
+        title: 'Investigate flaky tests',
+        workspace: '/tmp/project-gemini-alpha',
+        updatedAt: Date.parse('2026-03-26T10:05:00.000Z'),
+        origin: 'cli',
+        model: 'gemini-2.5-pro',
       },
     ]);
   });
@@ -233,6 +310,36 @@ describe('ExternalSessionDiscoveryService', () => {
       {
         claudeHomeDir: tempDir,
         availableBackends: new Set<AcpBackendAll>(['claude']),
+      }
+    );
+
+    const sessions = await service.listSessions();
+
+    expect(sessions).toEqual([]);
+  });
+
+  it('filters out Gemini sessions that have already been taken over by AionUi', async () => {
+    await seedGeminiSession();
+    const service = new ExternalSessionDiscoveryService(
+      createConversationService([
+        {
+          id: 'conversation-gemini-1',
+          type: 'acp',
+          name: 'Imported Gemini session',
+          source: 'aionui',
+          extra: {
+            backend: 'gemini',
+            workspace: '/tmp/project-gemini-alpha',
+            customWorkspace: true,
+            acpSessionId: 'gemini-session-1',
+          },
+          createTime: Date.now(),
+          modifyTime: Date.now(),
+        } as TChatConversation,
+      ]),
+      {
+        geminiHomeDir: tempDir,
+        availableBackends: new Set<AcpBackendAll>(['gemini']),
       }
     );
 
@@ -311,6 +418,35 @@ describe('ExternalSessionDiscoveryService', () => {
       currentModelId: 'claude-sonnet-4-6',
       externalSessionImported: true,
       deferInitialWorkspaceLoad: true,
+    });
+  });
+
+  it('creates ACP Gemini conversations when taking over an external Gemini session', async () => {
+    await seedGeminiSession();
+    const service = new ExternalSessionDiscoveryService(createConversationService([]), {
+      geminiHomeDir: tempDir,
+      availableBackends: new Set<AcpBackendAll>(['gemini']),
+    });
+
+    const conversation = await service.importSession({
+      provider: 'gemini',
+      sessionId: 'gemini-session-1',
+    });
+
+    expect(conversation).toMatchObject({
+      type: 'acp',
+      name: 'Investigate flaky tests',
+      source: 'aionui',
+      extra: {
+        backend: 'gemini',
+        workspace: '/tmp/project-gemini-alpha',
+        cliPath: 'gemini',
+        agentName: 'Gemini CLI',
+        acpSessionId: 'gemini-session-1',
+        currentModelId: 'gemini-2.5-pro',
+        externalSessionImported: true,
+        deferInitialWorkspaceLoad: true,
+      },
     });
   });
 
@@ -422,6 +558,85 @@ describe('ExternalSessionDiscoveryService', () => {
         createdAt: Date.parse('2026-03-26T10:00:04.000Z'),
         content: {
           content: 'First Claude reply',
+        },
+      },
+    ]);
+  });
+
+  it('imports visible Gemini chat history when taking over an unmanaged session', async () => {
+    await seedGeminiSession({
+      messages: [
+        {
+          timestamp: '2026-03-26T10:00:00.000Z',
+          type: 'user',
+          content: [{ text: 'Hello Gemini' }],
+        },
+        {
+          timestamp: '2026-03-26T10:00:02.000Z',
+          type: 'gemini',
+          content: 'Hello from Gemini.',
+          model: 'gemini-2.5-pro',
+        },
+        {
+          timestamp: '2026-03-26T10:00:03.000Z',
+          type: 'error',
+          content: 'ignore me',
+        },
+        {
+          timestamp: '2026-03-26T10:00:04.000Z',
+          type: 'user',
+          content: [{ text: 'Summarize the plan' }],
+        },
+      ],
+    });
+
+    const insertMessage = vi.fn(() => ({
+      success: true,
+    }));
+    vi.spyOn(databaseModule, 'getDatabase').mockResolvedValue({
+      insertMessage,
+    } as unknown as Awaited<ReturnType<typeof databaseModule.getDatabase>>);
+
+    const service = new ExternalSessionDiscoveryService(createConversationService([]), {
+      geminiHomeDir: tempDir,
+      availableBackends: new Set<AcpBackendAll>(['gemini']),
+    });
+
+    await service.importSession({
+      provider: 'gemini',
+      sessionId: 'gemini-session-1',
+    });
+
+    expect(insertMessage).toHaveBeenCalledTimes(3);
+    expect(insertMessage.mock.calls.map(([message]) => message)).toMatchObject([
+      {
+        conversation_id: 'imported-conversation',
+        type: 'text',
+        position: 'right',
+        status: 'finish',
+        createdAt: Date.parse('2026-03-26T10:00:00.000Z'),
+        content: {
+          content: 'Hello Gemini',
+        },
+      },
+      {
+        conversation_id: 'imported-conversation',
+        type: 'text',
+        position: 'left',
+        status: 'finish',
+        createdAt: Date.parse('2026-03-26T10:00:02.000Z'),
+        content: {
+          content: 'Hello from Gemini.',
+        },
+      },
+      {
+        conversation_id: 'imported-conversation',
+        type: 'text',
+        position: 'right',
+        status: 'finish',
+        createdAt: Date.parse('2026-03-26T10:00:04.000Z'),
+        content: {
+          content: 'Summarize the plan',
         },
       },
     ]);
