@@ -416,6 +416,7 @@ export const acpConversation = {
         context?: string;
         avatar?: string;
         workspace?: string;
+        isDefault?: boolean;
         // Allow extension-contributed adapter IDs in addition to built-in PresetAgentType values
         presetAgentType?: PresetAgentType | string;
         supportedTransports?: string[];

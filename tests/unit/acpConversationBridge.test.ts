@@ -254,6 +254,7 @@ describe('acpConversationBridge', () => {
           cliPath: 'openclaw',
           openclawAgentId: 'main',
           workspace: '/Users/test/.openclaw/workspace',
+          isDefault: true,
           supportedTransports: [],
         },
         {
@@ -263,6 +264,7 @@ describe('acpConversationBridge', () => {
           openclawAgentId: 'reviewer',
           workspace: '/Users/test/.openclaw/workspace-reviewer',
           avatar: '🦞',
+          isDefault: false,
           supportedTransports: [],
         },
       ],

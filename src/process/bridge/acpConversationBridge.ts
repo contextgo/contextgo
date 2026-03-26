@@ -84,6 +84,7 @@ export function initAcpConversationBridge(
             avatar: openclawAgent.avatar,
             openclawAgentId: openclawAgent.agentId,
             workspace: openclawAgent.workspace,
+            isDefault: openclawAgent.isDefault,
           })
         );
       });
