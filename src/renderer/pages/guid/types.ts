@@ -19,6 +19,7 @@ export type AvailableAgent = {
   context?: string;
   avatar?: string;
   workspace?: string;
+  isDefault?: boolean;
   // Allow extension-contributed adapter IDs (e.g. 'ext-buddy') in addition to built-in PresetAgentType values
   presetAgentType?: PresetAgentType | string;
   supportedTransports?: string[];
@@ -33,9 +34,11 @@ export type MentionOption = {
   key: string;
   label: string;
   tokens: Set<string>;
+  description?: string;
   avatar: string | undefined;
   avatarImage: string | undefined;
   logo: string | undefined;
+  isDefault?: boolean;
   isExtension?: boolean;
 };
 

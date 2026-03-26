@@ -19,6 +19,7 @@ export type AvailableAgent = {
   context?: string;
   avatar?: string;
   workspace?: string;
+  isDefault?: boolean;
   presetAgentType?: PresetAgentType | string;
   supportedTransports?: string[];
   isExtension?: boolean;

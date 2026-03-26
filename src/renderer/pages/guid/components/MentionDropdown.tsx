@@ -35,7 +35,7 @@ const MentionDropdown: React.FC<MentionDropdownProps> = ({ menuRef, options, sel
         {options.length > 0 ? (
           options.map((option, index) => (
             <Menu.Item key={option.key} data-mention-index={index}>
-              <div className='flex items-center gap-8px'>
+              <div className='flex items-start gap-8px py-2px'>
                 {option.avatarImage ? (
                   <img
                     src={resolveExtensionAssetUrl(option.avatarImage)}
@@ -51,7 +51,19 @@ const MentionDropdown: React.FC<MentionDropdownProps> = ({ menuRef, options, sel
                 ) : (
                   <Robot theme='outline' size={16} />
                 )}
-                <span>{option.label}</span>
+                <div className='min-w-0 flex-1'>
+                  <div className='flex items-center gap-6px'>
+                    <span className='truncate'>{option.label}</span>
+                    {option.isDefault ? (
+                      <span className='shrink-0 text-11px lh-16px px-6px rd-10px bg-fill-2 text-t-secondary'>
+                        {t('guid.openclaw.defaultAgent')}
+                      </span>
+                    ) : null}
+                  </div>
+                  {option.description ? (
+                    <div className='mt-2px text-12px lh-16px text-t-secondary truncate'>{option.description}</div>
+                  ) : null}
+                </div>
               </div>
             </Menu.Item>
           ))
@@ -73,6 +85,8 @@ type MentionSelectorBadgeProps = {
   open: boolean;
   onOpenChange: (visible: boolean) => void;
   agentLabel: string;
+  agentDescription?: string | null;
+  isDefault?: boolean;
   mentionMenu: React.ReactNode;
   onResetQuery: () => void;
 };
@@ -82,13 +96,19 @@ export const MentionSelectorBadge: React.FC<MentionSelectorBadgeProps> = ({
   open,
   onOpenChange,
   agentLabel,
+  agentDescription,
+  isDefault,
   mentionMenu,
   onResetQuery,
 }) => {
+  const { t } = useTranslation();
+
   if (!visible) return null;
 
+  const helperParts = [isDefault ? t('guid.openclaw.defaultAgent') : null, agentDescription].filter(Boolean);
+
   return (
-    <div className='flex items-center gap-8px mb-8px'>
+    <div className='flex flex-col items-start gap-4px mb-8px'>
       <Dropdown
         trigger='click'
         popupVisible={open}
@@ -105,6 +125,9 @@ export const MentionSelectorBadge: React.FC<MentionSelectorBadgeProps> = ({
           <Down theme='outline' size={12} />
         </div>
       </Dropdown>
+      {helperParts.length > 0 ? (
+        <span className='max-w-full text-12px lh-16px text-t-secondary truncate'>{helperParts.join(' · ')}</span>
+      ) : null}
     </div>
   );
 };

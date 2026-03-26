@@ -335,6 +335,7 @@ export type TChatConversation =
           workspace?: string;
           backend?: AcpBackendAll;
           agentName?: string;
+          openclawAgentId?: string;
           customWorkspace?: boolean;
           /** Gateway configuration */
           gateway?: {
@@ -352,6 +353,7 @@ export type TChatConversation =
             expectedWorkspace?: string;
             expectedBackend?: string;
             expectedAgentName?: string;
+            expectedOpenClawAgentId?: string;
             expectedCliPath?: string;
             expectedModel?: string;
             expectedIdentityHash?: string | null;

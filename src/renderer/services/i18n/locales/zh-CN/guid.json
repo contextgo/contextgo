@@ -25,6 +25,9 @@
       "openclaw-gateway": "OpenClaw"
     }
   },
+  "openclaw": {
+    "defaultAgent": "默认"
+  },
   "scanning": {
     "initialMessage": "当前Agent不可用, 正在检测其他可用agent...",
     "scanningMessage": "正在扫描本地可用agent...",

@@ -539,6 +539,7 @@ export type I18nKey =
   | 'guid.externalSessions.updatedAt'
   | 'guid.noAgentAvailable'
   | 'guid.noAgentAvailableShort'
+  | 'guid.openclaw.defaultAgent'
   | 'guid.scanning.connectingMessage'
   | 'guid.scanning.establishingConnection'
   | 'guid.scanning.initialMessage'
