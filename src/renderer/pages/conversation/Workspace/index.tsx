@@ -15,10 +15,13 @@ import {
   getWorkspaceDisplayName as getDisplayName,
 } from '@/renderer/utils/workspace/workspace';
 import { Button, Empty, Message, Tree, Typography } from '@arco-design/web-react';
+import { Robot } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import MigrationModal from './components/MigrationModal';
 import PasteConfirmModal from './components/PasteConfirmModal';
+import DiscussionParticipantsPanel from './components/DiscussionParticipantsPanel';
 import SessionHooksDrawer from './components/SessionHooksDrawer';
 import WorkspaceContextMenu from './components/WorkspaceContextMenu';
 import WorkspaceDialogs from './components/WorkspaceDialogs';
@@ -64,10 +67,15 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
   const messageApi = externalMessageApi ?? internalMessageApi;
   const shouldRenderLocalMessageContext = !externalMessageApi;
   const [workspaceLoadDeferred, setWorkspaceLoadDeferred] = useState(initialWorkspaceLoadDeferred);
+  const [isParticipantsPanelOpen, setIsParticipantsPanelOpen] = useState(false);
 
   useEffect(() => {
     setWorkspaceLoadDeferred(initialWorkspaceLoadDeferred);
   }, [conversation_id, initialWorkspaceLoadDeferred]);
+
+  useEffect(() => {
+    setIsParticipantsPanelOpen(false);
+  }, [conversation_id]);
 
   // Initialize all hooks
   const { isWorkspaceCollapsed, setIsWorkspaceCollapsed } = useWorkspaceCollapse();
@@ -180,6 +188,8 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
 
   // Check if this is a temporary workspace (check both path and root folder name)
   const isTemporaryWorkspace = checkIsTemporaryWorkspace(workspace) || checkIsTemporaryWorkspace(rootName);
+  const discussionParticipants = conversation.type === 'group' ? (conversation.extra.participants ?? []) : [];
+  const shouldShowParticipantsToggle = discussionParticipants.length > 0;
 
   // Get workspace display name using shared utility
   const workspaceDisplayName = useMemo(() => {
@@ -223,6 +233,38 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
     treeHook.files,
     workspace
   );
+
+  const participantsOverlay =
+    shouldShowParticipantsToggle && typeof document !== 'undefined'
+      ? createPortal(
+          <div className='pointer-events-none fixed bottom-20px right-20px z-60 flex flex-col items-end gap-10px'>
+            {isParticipantsPanelOpen ? (
+              <div
+                className='pointer-events-auto max-w-full'
+                style={{ width: isMobile ? 'min(320px, calc(100vw - 32px))' : '340px' }}
+              >
+                <DiscussionParticipantsPanel participants={discussionParticipants} />
+              </div>
+            ) : null}
+
+            <Button
+              type={isParticipantsPanelOpen ? 'primary' : 'secondary'}
+              shape='round'
+              size='small'
+              className='pointer-events-auto !h-36px !rounded-full !px-12px shadow-[0_12px_28px_rgba(15,23,42,0.18)]'
+              icon={<Robot size={16} />}
+              onClick={() => setIsParticipantsPanelOpen((current) => !current)}
+            >
+              {isParticipantsPanelOpen
+                ? t('conversation.workspace.groupMembers.close')
+                : t('conversation.workspace.groupMembers.open', {
+                    count: discussionParticipants.length,
+                  })}
+            </Button>
+          </div>,
+          document.body
+        )
+      : null;
 
   return (
     <>
@@ -354,7 +396,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
 
         {/* Main content area */}
         {!isWorkspaceCollapsed && (
-          <FlexFullContainer containerClassName='overflow-y-auto'>
+          <FlexFullContainer containerClassName='min-h-0'>
             {/* Context Menu */}
             <WorkspaceContextMenu
               visible={modalsHook.contextMenu.visible}
@@ -371,201 +413,206 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
               closeContextMenu={modalsHook.closeContextMenu}
             />
 
-            {/* Empty state or Tree */}
-            {!hasOriginalFiles ? (
-              <div className=' flex-1 size-full flex items-center justify-center px-12px box-border'>
-                {workspaceLoadDeferred && !searchHook.searchText ? (
-                  <div className='w-full max-w-420px rounded-16px border border-border-2 bg-bg-1 p-20px text-center'>
-                    <Typography.Title heading={6} className='!mb-8px'>
-                      {t('conversation.workspace.externalSessionDeferredTitle', {
-                        defaultValue: 'Workspace loading is paused',
-                      })}
-                    </Typography.Title>
-                    <Typography.Paragraph className='!mb-16px text-t-secondary'>
-                      {t('conversation.workspace.externalSessionDeferredDescription', {
-                        defaultValue:
-                          'This session was taken over from an external CLI. Load the workspace files only when you need them to avoid scanning a large project on open.',
-                      })}
-                    </Typography.Paragraph>
-                    <Button type='primary' onClick={() => void handleLoadDeferredWorkspace()}>
-                      {t('conversation.workspace.externalSessionDeferredAction', {
-                        defaultValue: 'Load Workspace Files',
-                      })}
-                    </Button>
+            <div className='flex min-h-0 flex-1 flex-col'>
+              <div className='min-h-0 flex-1 overflow-y-auto'>
+                {/* Empty state or Tree */}
+                {!hasOriginalFiles ? (
+                  <div className='flex size-full flex-1 items-center justify-center px-12px box-border'>
+                    {workspaceLoadDeferred && !searchHook.searchText ? (
+                      <div className='w-full max-w-420px rounded-16px border border-border-2 bg-bg-1 p-20px text-center'>
+                        <Typography.Title heading={6} className='!mb-8px'>
+                          {t('conversation.workspace.externalSessionDeferredTitle', {
+                            defaultValue: 'Workspace loading is paused',
+                          })}
+                        </Typography.Title>
+                        <Typography.Paragraph className='!mb-16px text-t-secondary'>
+                          {t('conversation.workspace.externalSessionDeferredDescription', {
+                            defaultValue:
+                              'This session was taken over from an external CLI. Load the workspace files only when you need them to avoid scanning a large project on open.',
+                          })}
+                        </Typography.Paragraph>
+                        <Button type='primary' onClick={() => void handleLoadDeferredWorkspace()}>
+                          {t('conversation.workspace.externalSessionDeferredAction', {
+                            defaultValue: 'Load Workspace Files',
+                          })}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Empty
+                        description={
+                          <div>
+                            <span className='text-t-secondary font-bold text-14px'>
+                              {searchHook.searchText
+                                ? t('conversation.workspace.search.empty')
+                                : t('conversation.workspace.empty')}
+                            </span>
+                            <div className='text-t-secondary'>
+                              {searchHook.searchText ? '' : t('conversation.workspace.emptyDescription')}
+                            </div>
+                          </div>
+                        }
+                      />
+                    )}
                   </div>
                 ) : (
-                  <Empty
-                    description={
-                      <div>
-                        <span className='text-t-secondary font-bold text-14px'>
-                          {searchHook.searchText
-                            ? t('conversation.workspace.search.empty')
-                            : t('conversation.workspace.empty')}
-                        </span>
-                        <div className='text-t-secondary'>
-                          {searchHook.searchText ? '' : t('conversation.workspace.emptyDescription')}
-                        </div>
-                      </div>
-                    }
-                  />
-                )}
-              </div>
-            ) : (
-              <Tree
-                className={`${isMobile ? '!pl-20px !pr-10px chat-workspace-tree--mobile' : '!pl-32px !pr-16px'} workspace-tree`}
-                showLine
-                key={treeHook.treeKey}
-                selectedKeys={treeHook.selected}
-                expandedKeys={treeHook.expandedKeys}
-                treeData={treeData}
-                fieldNames={{
-                  children: 'children',
-                  title: 'name',
-                  key: 'relativePath',
-                  isLeaf: 'isFile',
-                }}
-                multiple
-                renderTitle={(node) => {
-                  const relativePath = node.dataRef.relativePath;
-                  const isFile = node.dataRef.isFile;
-                  const isPasteTarget = !isFile && pasteHook.pasteTargetFolder === relativePath;
-                  const nodeData = node.dataRef as IDirOrFile;
+                  <Tree
+                    className={`${isMobile ? '!pl-20px !pr-10px chat-workspace-tree--mobile' : '!pl-32px !pr-16px'} workspace-tree`}
+                    showLine
+                    key={treeHook.treeKey}
+                    selectedKeys={treeHook.selected}
+                    expandedKeys={treeHook.expandedKeys}
+                    treeData={treeData}
+                    fieldNames={{
+                      children: 'children',
+                      title: 'name',
+                      key: 'relativePath',
+                      isLeaf: 'isFile',
+                    }}
+                    multiple
+                    renderTitle={(node) => {
+                      const relativePath = node.dataRef.relativePath;
+                      const isFile = node.dataRef.isFile;
+                      const isPasteTarget = !isFile && pasteHook.pasteTargetFolder === relativePath;
+                      const nodeData = node.dataRef as IDirOrFile;
 
-                  return (
-                    <div
-                      className='flex items-center justify-between gap-6px min-w-0'
-                      style={{ color: 'inherit' }}
-                      onDoubleClick={() => {
-                        if (isFile) {
-                          fileOpsHook.handleAddToChat(nodeData);
-                        }
-                      }}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        openNodeContextMenu(nodeData, event.clientX, event.clientY);
-                      }}
-                    >
-                      <span className='flex items-center gap-4px min-w-0'>
-                        <span className='overflow-hidden text-ellipsis whitespace-nowrap'>{node.title}</span>
-                        {isPasteTarget && (
-                          <span className='ml-1 text-xs text-blue-700 font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded'>
-                            PASTE
-                          </span>
-                        )}
-                      </span>
-                      {isMobile && (
-                        <button
-                          type='button'
-                          className='workspace-header__toggle workspace-node-more-btn h-28px w-28px rd-8px flex items-center justify-center text-t-secondary hover:text-t-primary active:text-t-primary flex-shrink-0'
-                          aria-label={t('common.more')}
-                          onMouseDown={(event) => {
-                            event.stopPropagation();
+                      return (
+                        <div
+                          className='flex items-center justify-between gap-6px min-w-0'
+                          style={{ color: 'inherit' }}
+                          onDoubleClick={() => {
+                            if (isFile) {
+                              fileOpsHook.handleAddToChat(nodeData);
+                            }
                           }}
-                          onClick={(event) => {
+                          onContextMenu={(event) => {
+                            event.preventDefault();
                             event.stopPropagation();
-                            const rect = (event.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                            const menuWidth = 220;
-                            const menuHeight = 220;
-                            const maxX =
-                              typeof window !== 'undefined'
-                                ? Math.max(8, window.innerWidth - menuWidth - 8)
-                                : rect.left;
-                            const maxY =
-                              typeof window !== 'undefined'
-                                ? Math.max(8, window.innerHeight - menuHeight - 8)
-                                : rect.bottom;
-                            const menuX = Math.min(Math.max(8, rect.left - menuWidth + rect.width), maxX);
-                            const menuY = Math.min(Math.max(8, rect.bottom + 4), maxY);
-                            openNodeContextMenu(nodeData, menuX, menuY);
+                            openNodeContextMenu(nodeData, event.clientX, event.clientY);
                           }}
                         >
-                          <div
-                            className='flex flex-col gap-2px items-center justify-center'
-                            style={{ width: '12px', height: '12px' }}
-                          >
-                            <div className='w-2px h-2px rounded-full bg-current'></div>
-                            <div className='w-2px h-2px rounded-full bg-current'></div>
-                            <div className='w-2px h-2px rounded-full bg-current'></div>
-                          </div>
-                        </button>
-                      )}
-                    </div>
-                  );
-                }}
-                onSelect={(keys, extra) => {
-                  const clickedKey = extractNodeKey(extra?.node);
-                  const nodeData = extra && extra.node ? extractNodeData(extra.node) : null;
-                  const isFileNode = Boolean(nodeData?.isFile);
-                  const wasSelected = clickedKey ? treeHook.selectedKeysRef.current.includes(clickedKey) : false;
+                          <span className='flex items-center gap-4px min-w-0'>
+                            <span className='overflow-hidden text-ellipsis whitespace-nowrap'>{node.title}</span>
+                            {isPasteTarget && (
+                              <span className='ml-1 text-xs text-blue-700 font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded'>
+                                PASTE
+                              </span>
+                            )}
+                          </span>
+                          {isMobile && (
+                            <button
+                              type='button'
+                              className='workspace-header__toggle workspace-node-more-btn h-28px w-28px rd-8px flex items-center justify-center text-t-secondary hover:text-t-primary active:text-t-primary flex-shrink-0'
+                              aria-label={t('common.more')}
+                              onMouseDown={(event) => {
+                                event.stopPropagation();
+                              }}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                const rect = (event.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                const menuWidth = 220;
+                                const menuHeight = 220;
+                                const maxX =
+                                  typeof window !== 'undefined'
+                                    ? Math.max(8, window.innerWidth - menuWidth - 8)
+                                    : rect.left;
+                                const maxY =
+                                  typeof window !== 'undefined'
+                                    ? Math.max(8, window.innerHeight - menuHeight - 8)
+                                    : rect.bottom;
+                                const menuX = Math.min(Math.max(8, rect.left - menuWidth + rect.width), maxX);
+                                const menuY = Math.min(Math.max(8, rect.bottom + 4), maxY);
+                                openNodeContextMenu(nodeData, menuX, menuY);
+                              }}
+                            >
+                              <div
+                                className='flex flex-col gap-2px items-center justify-center'
+                                style={{ width: '12px', height: '12px' }}
+                              >
+                                <div className='w-2px h-2px rounded-full bg-current'></div>
+                                <div className='w-2px h-2px rounded-full bg-current'></div>
+                                <div className='w-2px h-2px rounded-full bg-current'></div>
+                              </div>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }}
+                    onSelect={(keys, extra) => {
+                      const clickedKey = extractNodeKey(extra?.node);
+                      const nodeData = extra && extra.node ? extractNodeData(extra.node) : null;
+                      const isFileNode = Boolean(nodeData?.isFile);
+                      const wasSelected = clickedKey ? treeHook.selectedKeysRef.current.includes(clickedKey) : false;
 
-                  if (isFileNode) {
-                    // Single-click file only opens preview without changing selection state
-                    if (clickedKey) {
-                      const filteredKeys = treeHook.selectedKeysRef.current.filter((key) => key !== clickedKey);
-                      treeHook.selectedKeysRef.current = filteredKeys;
-                      treeHook.setSelected(filteredKeys);
-                    }
-                    treeHook.selectedNodeRef.current = null;
-                    if (nodeData && clickedKey && !wasSelected) {
-                      void fileOpsHook.handlePreviewFile(nodeData);
-                    }
-                    return;
-                  }
+                      if (isFileNode) {
+                        // Single-click file only opens preview without changing selection state
+                        if (clickedKey) {
+                          const filteredKeys = treeHook.selectedKeysRef.current.filter((key) => key !== clickedKey);
+                          treeHook.selectedKeysRef.current = filteredKeys;
+                          treeHook.setSelected(filteredKeys);
+                        }
+                        treeHook.selectedNodeRef.current = null;
+                        if (nodeData && clickedKey && !wasSelected) {
+                          void fileOpsHook.handlePreviewFile(nodeData);
+                        }
+                        return;
+                      }
 
-                  // Keep existing selection logic for folders
-                  let newKeys: string[];
+                      // Keep existing selection logic for folders
+                      let newKeys: string[];
 
-                  if (clickedKey && wasSelected) {
-                    newKeys = treeHook.selectedKeysRef.current.filter((key) => key !== clickedKey);
-                  } else if (clickedKey) {
-                    newKeys = [...treeHook.selectedKeysRef.current, clickedKey];
-                  } else {
-                    newKeys = keys.filter((key) => key !== workspace);
-                  }
+                      if (clickedKey && wasSelected) {
+                        newKeys = treeHook.selectedKeysRef.current.filter((key) => key !== clickedKey);
+                      } else if (clickedKey) {
+                        newKeys = [...treeHook.selectedKeysRef.current, clickedKey];
+                      } else {
+                        newKeys = keys.filter((key) => key !== workspace);
+                      }
 
-                  treeHook.setSelected(newKeys);
-                  treeHook.selectedKeysRef.current = newKeys;
+                      treeHook.setSelected(newKeys);
+                      treeHook.selectedKeysRef.current = newKeys;
 
-                  if (extra && extra.node && nodeData && nodeData.fullPath && nodeData.relativePath != null) {
-                    treeHook.selectedNodeRef.current = {
-                      relativePath: nodeData.relativePath,
-                      fullPath: nodeData.fullPath,
-                    };
-                  } else {
-                    treeHook.selectedNodeRef.current = null;
-                  }
+                      if (extra && extra.node && nodeData && nodeData.fullPath && nodeData.relativePath != null) {
+                        treeHook.selectedNodeRef.current = {
+                          relativePath: nodeData.relativePath,
+                          fullPath: nodeData.fullPath,
+                        };
+                      } else {
+                        treeHook.selectedNodeRef.current = null;
+                      }
 
-                  const items: Array<{ path: string; name: string; isFile: boolean }> = [];
-                  for (const k of newKeys) {
-                    const node = findNodeByKey(treeHook.files, k);
-                    if (node && node.fullPath) {
-                      items.push({
-                        path: node.fullPath,
-                        name: node.name,
-                        isFile: node.isFile,
-                      });
-                    }
-                  }
-                  emitter.emit(`${eventPrefix}.selected.file`, items);
-                }}
-                onExpand={(keys) => {
-                  treeHook.setExpandedKeys(keys);
-                }}
-                loadMore={(treeNode) => {
-                  const path = treeNode.props.dataRef.fullPath;
-                  return ipcBridge.conversation.getWorkspace
-                    .invoke({ conversation_id, workspace, path })
-                    .then((res) => {
-                      treeNode.props.dataRef.children = res[0].children;
-                      treeHook.setFiles([...treeHook.files]);
-                    });
-                }}
-              ></Tree>
-            )}
+                      const items: Array<{ path: string; name: string; isFile: boolean }> = [];
+                      for (const k of newKeys) {
+                        const node = findNodeByKey(treeHook.files, k);
+                        if (node && node.fullPath) {
+                          items.push({
+                            path: node.fullPath,
+                            name: node.name,
+                            isFile: node.isFile,
+                          });
+                        }
+                      }
+                      emitter.emit(`${eventPrefix}.selected.file`, items);
+                    }}
+                    onExpand={(keys) => {
+                      treeHook.setExpandedKeys(keys);
+                    }}
+                    loadMore={(treeNode) => {
+                      const path = treeNode.props.dataRef.fullPath;
+                      return ipcBridge.conversation.getWorkspace
+                        .invoke({ conversation_id, workspace, path })
+                        .then((res) => {
+                          treeNode.props.dataRef.children = res[0].children;
+                          treeHook.setFiles([...treeHook.files]);
+                        });
+                    }}
+                  ></Tree>
+                )}
+              </div>
+            </div>
           </FlexFullContainer>
         )}
       </div>
+      {participantsOverlay}
     </>
   );
 };

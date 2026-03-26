@@ -18,6 +18,13 @@ describe('normalizeDiscussionOrchestration', () => {
       rounds: 1,
     });
   });
+
+  it('forces relay mode back to a single round when rounds are missing', () => {
+    expect(normalizeDiscussionOrchestration({ mode: 'relay' })).toEqual({
+      mode: 'relay',
+      rounds: 1,
+    });
+  });
 });
 
 describe('buildDiscussionRoundPrompt', () => {
@@ -52,6 +59,27 @@ describe('buildDiscussionRoundPrompt', () => {
     expect(prompt).toContain('Critic');
     expect(prompt).toContain('Prefer staged rollout with observability gates.');
     expect(prompt).toContain('final recommendation');
+  });
+
+  it('uses earlier assistant responses for relay mode', () => {
+    const prompt = buildDiscussionRoundPrompt({
+      mode: 'relay',
+      round: 1,
+      userInput: 'Brainstorm a launch plan.',
+      participantName: 'Operator',
+      peerSummaries: [
+        {
+          participantId: 'a',
+          participantName: 'Strategist',
+          content: 'Start with a small beta cohort and instrument key metrics.',
+        },
+      ],
+    });
+
+    expect(prompt).toContain('Brainstorm a launch plan.');
+    expect(prompt).toContain('Strategist');
+    expect(prompt).toContain('Earlier Assistants');
+    expect(prompt).toContain('continue the discussion');
   });
 
   it('falls back to an independent prompt when round two has no peer summaries', () => {

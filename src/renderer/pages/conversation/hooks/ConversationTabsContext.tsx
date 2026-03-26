@@ -19,6 +19,8 @@ export interface ConversationTab {
   workspace: string;
   /** 会话类型 / Conversation type */
   type: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'group';
+  /** Discussion group family id when this tab belongs to a discussion group */
+  discussionGroupId?: string;
   /** 是否有未保存的修改 / Whether there are unsaved changes */
   isDirty?: boolean;
 }
@@ -34,6 +36,8 @@ export interface ConversationTabsContextValue {
 
   // 打开一个会话 tab / Open a conversation tab
   openTab: (conversation: TChatConversation) => void;
+  // 批量打开会话 tabs，并指定当前激活项 / Open multiple conversation tabs with an active target
+  openTabsForConversations: (conversations: TChatConversation[], activeConversationId?: string) => void;
   // 关闭一个 tab / Close a tab
   closeTab: (conversationId: string) => void;
   // 切换到指定 tab / Switch to a tab
@@ -51,6 +55,29 @@ export interface ConversationTabsContextValue {
 }
 
 const ConversationTabsContext = createContext<ConversationTabsContextValue | null>(null);
+
+const getDiscussionGroupId = (conversation: TChatConversation): string | undefined => {
+  if (conversation.type === 'group') {
+    return conversation.id;
+  }
+
+  const extra = conversation.extra as { groupMeta?: { parentGroupId?: string } } | undefined;
+  return typeof extra?.groupMeta?.parentGroupId === 'string' && extra.groupMeta.parentGroupId.length > 0
+    ? extra.groupMeta.parentGroupId
+    : undefined;
+};
+
+const toConversationTab = (conversation: TChatConversation): ConversationTab => ({
+  id: conversation.id,
+  name: conversation.name,
+  workspace: conversation.extra?.workspace || '',
+  type: conversation.type,
+  discussionGroupId: getDiscussionGroupId(conversation),
+});
+
+const isDiscussionFamilyConversation = (conversation: TChatConversation): boolean => {
+  return Boolean(getDiscussionGroupId(conversation));
+};
 
 // 从 localStorage 恢复状态 / Restore state from localStorage
 const loadPersistedState = (): { openTabs: ConversationTab[]; activeTabId: string | null } => {
@@ -96,49 +123,59 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
   // 获取当前激活的 tab / Get active tab
   const activeTab = openTabs.find((tab) => tab.id === activeTabId) || null;
 
-  const openTab = useCallback((conversation: TChatConversation) => {
-    // 只有用户指定的工作空间才显示在 tabs 中，临时工作空间不显示
-    // Only show tabs for user-specified workspaces, not temporary workspaces
-    const customWorkspace = conversation.extra?.customWorkspace;
+  const openTabsForConversations = useCallback((conversations: TChatConversation[], activeConversationId?: string) => {
+    if (conversations.length === 0) {
+      return;
+    }
 
-    if (!customWorkspace) {
-      // 临时工作空间的会话不添加到 tabs
-      // Don't add temporary workspace conversations to tabs
-      // 离开分组后关闭所有 tabs / Close all tabs when leaving the group
+    const shouldKeepDiscussionFamily = conversations.some(isDiscussionFamilyConversation);
+    const visibleTabConversations = shouldKeepDiscussionFamily
+      ? conversations
+      : conversations.filter((conversation) => conversation.extra?.customWorkspace);
+    const targetConversationId = activeConversationId || conversations[conversations.length - 1]?.id || null;
+
+    if (visibleTabConversations.length === 0) {
       setOpenTabs([]);
-      // 但需要更新 activeTabId 以保持同步 / But need to update activeTabId to keep in sync
-      setActiveTabId(conversation.id);
+      setActiveTabId(targetConversationId);
       return;
     }
 
     setOpenTabs((prev) => {
-      const exists = prev.find((tab) => tab.id === conversation.id);
-      if (exists) {
-        // 已存在，不重复添加 / Already exists, don't add duplicate
-        return prev;
-      }
-      // 添加新 tab / Add new tab
-      return [
-        ...prev,
-        {
-          id: conversation.id,
-          name: conversation.name,
-          workspace: conversation.extra?.workspace || '',
-          type: conversation.type,
-        },
-      ];
+      const batchConversationIds = new Set(visibleTabConversations.map((conversation) => conversation.id));
+      const preservedTabs = prev.filter((tab) => !batchConversationIds.has(tab.id));
+      const batchTabs = visibleTabConversations.map(toConversationTab);
+      return [...preservedTabs, ...batchTabs];
     });
-    // 切换到该 tab / Switch to this tab
-    setActiveTabId(conversation.id);
+    setActiveTabId(targetConversationId);
   }, []);
+
+  const openTab = useCallback(
+    (conversation: TChatConversation) => {
+      openTabsForConversations([conversation], conversation.id);
+    },
+    [openTabsForConversations]
+  );
 
   const closeTab = useCallback(
     (conversationId: string) => {
       setOpenTabs((prev) => {
-        const filtered = prev.filter((tab) => tab.id !== conversationId);
+        const targetTab = prev.find((tab) => tab.id === conversationId);
+        if (!targetTab) {
+          return prev;
+        }
+
+        const shouldCloseDiscussionFamily = targetTab.type === 'group' && Boolean(targetTab.discussionGroupId);
+        const closedIds = new Set(
+          shouldCloseDiscussionFamily
+            ? prev
+                .filter((tab) => tab.discussionGroupId === targetTab.discussionGroupId)
+                .map((tab) => tab.id)
+            : [conversationId]
+        );
+        const filtered = prev.filter((tab) => !closedIds.has(tab.id));
 
         // 如果关闭的是当前活动的 tab / If closing the active tab
-        if (conversationId === activeTabId) {
+        if (activeTabId && closedIds.has(activeTabId)) {
           if (filtered.length > 0) {
             // 切换到最后一个 tab / Switch to the last tab
             setActiveTabId(filtered[filtered.length - 1].id);
@@ -241,6 +278,7 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
         activeTabId,
         activeTab,
         openTab,
+        openTabsForConversations,
         closeTab,
         switchTab,
         closeAllTabs,

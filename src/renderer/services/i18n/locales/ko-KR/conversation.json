@@ -91,12 +91,19 @@
     "defaultName": "토론 그룹",
     "nameLabel": "그룹 이름",
     "namePlaceholder": "토론 그룹 이름을 입력하세요",
+    "workspaceLabel": "워크스페이스",
+    "workspacePlaceholder": "선택 사항입니다. 비워두면 기본 워크스페이스가 자동 생성됩니다",
+    "workspaceHint": "토론 그룹과 모든 참여 세션은 이 워크스페이스를 공유합니다. 비워두면 기본 임시 워크스페이스가 자동으로 생성됩니다.",
+    "selectWorkspace": "폴더 선택",
+    "selectWorkspaceFailed": "워크스페이스 선택에 실패했습니다",
     "modeLabel": "토론 모드",
     "modeDebate": "토론",
     "modeBroadcast": "브로드캐스트",
+    "modeRelay": "릴레이",
     "modeHint": {
       "debate": "1라운드는 독립적으로 답하고, 2라운드는 다른 어시스턴트의 의견을 본 뒤 답을 갱신합니다.",
-      "broadcast": "각 어시스턴트가 독립적으로 답하고, 그룹이 최종 의견 묶음을 반환합니다."
+      "broadcast": "각 어시스턴트가 독립적으로 답하고, 그룹이 최종 의견 묶음을 반환합니다.",
+      "relay": "어시스턴트가 순서대로 답변하며, 뒤에 오는 어시스턴트는 앞선 의견을 보고 이어서 보완하거나 반박합니다."
     },
     "participantsLabel": "참여자",
     "minimumParticipants": "최소 두 명의 참여자를 선택하세요",
@@ -132,6 +139,16 @@
     "addFile": "파일 추가",
     "refresh": "새로고침",
     "temporarySpace": "임시 공간",
+    "groupMembers": {
+      "title": "그룹 멤버",
+      "count": "멤버 {{count}}명",
+      "open": "Members {{count}}",
+      "close": "Hide Members",
+      "participantType": {
+        "cliAgent": "CLI Agent",
+        "presetAssistant": "프리셋 어시스턴트"
+      }
+    },
     "changeWorkspace": "워크스페이스 변경",
     "migration": {
       "title": "워크스페이스 변경",

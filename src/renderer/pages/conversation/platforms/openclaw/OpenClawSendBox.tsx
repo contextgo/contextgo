@@ -43,6 +43,10 @@ const useOpenClawSendBoxDraft = getSendBoxDraftHook('openclaw-gateway', {
   uploadFile: [],
 });
 
+const normalizeRuntimeValue = (value?: string | null) => (value || '').trim();
+const isSameRuntimePath = (left?: string | null, right?: string | null) =>
+  normalizeRuntimeValue(left).replace(/[\\/]+$/, '') === normalizeRuntimeValue(right).replace(/[\\/]+$/, '');
+
 /**
  * Validate that the OpenClaw runtime matches the expected configuration.
  * Returns true if validation passes, false otherwise (with user-facing error).
@@ -58,26 +62,45 @@ const validateRuntimeMismatch = async (conversationId: string): Promise<boolean>
   const expected = runtimeResult.data.expected || {};
   const mismatches: string[] = [];
 
-  const norm = (v?: string | null) => (v || '').trim();
-  const eqPath = (a?: string | null, b?: string | null) =>
-    norm(a).replace(/[\\/]+$/, '') === norm(b).replace(/[\\/]+$/, '');
-
-  if (expected.expectedWorkspace && !eqPath(expected.expectedWorkspace, runtime.workspace)) {
+  if (expected.expectedWorkspace && !isSameRuntimePath(expected.expectedWorkspace, runtime.workspace)) {
     mismatches.push(`workspace: expected=${expected.expectedWorkspace || '-'} actual=${runtime.workspace || '-'}`);
   }
-  if (expected.expectedBackend && norm(expected.expectedBackend) !== norm(runtime.backend)) {
+  if (
+    expected.expectedBackend &&
+    normalizeRuntimeValue(expected.expectedBackend) !== normalizeRuntimeValue(runtime.backend)
+  ) {
     mismatches.push(`backend: expected=${expected.expectedBackend || '-'} actual=${runtime.backend || '-'}`);
   }
-  if (expected.expectedAgentName && norm(expected.expectedAgentName) !== norm(runtime.agentName)) {
+  if (
+    expected.expectedAgentName &&
+    normalizeRuntimeValue(expected.expectedAgentName) !== normalizeRuntimeValue(runtime.agentName)
+  ) {
     mismatches.push(`agent: expected=${expected.expectedAgentName || '-'} actual=${runtime.agentName || '-'}`);
   }
-  if (expected.expectedCliPath && norm(expected.expectedCliPath) !== norm(runtime.cliPath)) {
+  if (
+    expected.expectedOpenClawAgentId &&
+    normalizeRuntimeValue(expected.expectedOpenClawAgentId) !== normalizeRuntimeValue(runtime.openclawAgentId)
+  ) {
+    mismatches.push(
+      `agentId: expected=${expected.expectedOpenClawAgentId || '-'} actual=${runtime.openclawAgentId || '-'}`
+    );
+  }
+  if (
+    expected.expectedCliPath &&
+    normalizeRuntimeValue(expected.expectedCliPath) !== normalizeRuntimeValue(runtime.cliPath)
+  ) {
     mismatches.push(`cliPath: expected=${expected.expectedCliPath || '-'} actual=${runtime.cliPath || '-'}`);
   }
-  if (expected.expectedModel && norm(expected.expectedModel) !== norm(runtime.model)) {
+  if (
+    expected.expectedModel &&
+    normalizeRuntimeValue(expected.expectedModel) !== normalizeRuntimeValue(runtime.model)
+  ) {
     mismatches.push(`model: expected=${expected.expectedModel || '-'} actual=${runtime.model || '-'}`);
   }
-  if (expected.expectedIdentityHash && norm(expected.expectedIdentityHash) !== norm(runtime.identityHash)) {
+  if (
+    expected.expectedIdentityHash &&
+    normalizeRuntimeValue(expected.expectedIdentityHash) !== normalizeRuntimeValue(runtime.identityHash)
+  ) {
     mismatches.push(`identity: expected=${expected.expectedIdentityHash || '-'} actual=${runtime.identityHash || '-'}`);
   }
 
@@ -500,7 +523,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         void checkAndUpdateTitle(conversation_id, input);
         emitter.emit('chat.history.refresh');
         sessionStorage.removeItem(storageKey);
-      } catch (err) {
+      } catch {
         sessionStorage.removeItem(processedKey);
         // Only reset aiProcessing on error, normal flow is reset by 'finish' event
         setAiProcessing(false);

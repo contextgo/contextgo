@@ -12,7 +12,7 @@ import type { ContextMenuState } from '../types';
 
 interface UseWorkspaceEventsOptions {
   conversation_id: string;
-  eventPrefix: 'gemini' | 'acp' | 'codex';
+  eventPrefix: 'gemini' | 'acp' | 'codex' | 'group';
   autoLoadOnMount?: boolean;
 
   // Dependencies from useWorkspaceTree

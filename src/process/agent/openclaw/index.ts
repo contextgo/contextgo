@@ -45,6 +45,8 @@ export interface OpenClawAgentConfig {
     workspace?: string;
     /** Session key for resume */
     sessionKey?: string;
+    /** Native OpenClaw agent identifier */
+    openclawAgentId?: string;
     /** YOLO mode (auto-approve all permissions) */
     yoloMode?: boolean;
   };
@@ -288,11 +290,12 @@ export class OpenClawAgent {
     }
 
     const resumeKey = this.config.extra?.sessionKey;
+    const openclawAgentId = this.config.extra?.openclawAgentId;
 
     // If we have a resume key, try to resolve it first
     if (resumeKey) {
       try {
-        const result = await this.connection.sessionsResolve({ key: resumeKey });
+        const result = await this.connection.sessionsResolve({ key: resumeKey, agentId: openclawAgentId });
         this.connection.sessionKey = result.key;
         return;
       } catch (err) {
@@ -300,20 +303,21 @@ export class OpenClawAgent {
       }
     }
 
-    // For new conversations: reset creates/clears the session and returns the canonical key.
-    // sessions.reset is sufficient — no need for a subsequent sessions.resolve call.
     const defaultKey = this.id; // use conversation_id for per-conversation session isolation
     try {
-      const resetResult = await this.connection.sessionsReset({ key: defaultKey, reason: 'new' });
-      this.connection.sessionKey = resetResult.key;
+      const result = await this.connection.sessionsResolve({ key: defaultKey, agentId: openclawAgentId });
+      this.connection.sessionKey = result.key;
     } catch (err) {
-      // Fallback: try plain resolve (handles race conditions where session already exists)
-      console.warn('[OpenClawAgent] Failed to reset session, trying plain resolve:', err);
+      if (openclawAgentId) {
+        throw new Error(`Failed to resolve OpenClaw session for agent "${openclawAgentId}"`, { cause: err });
+      }
+
+      console.warn('[OpenClawAgent] Failed to resolve session, trying reset:', err);
       try {
-        const result = await this.connection.sessionsResolve({ key: defaultKey });
-        this.connection.sessionKey = result.key;
-      } catch (resolveErr) {
-        console.warn('[OpenClawAgent] Failed to resolve default session, falling back:', resolveErr);
+        const resetResult = await this.connection.sessionsReset({ key: defaultKey, reason: 'new' });
+        this.connection.sessionKey = resetResult.key;
+      } catch (resetErr) {
+        console.warn('[OpenClawAgent] Failed to reset default session, falling back:', resetErr);
         this.connection.sessionKey = defaultKey;
       }
     }

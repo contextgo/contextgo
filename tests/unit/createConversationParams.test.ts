@@ -30,7 +30,7 @@ vi.mock('@/renderer/utils/model/presetAssistantResources', () => ({
   loadPresetAssistantResources,
 }));
 
-const { buildDiscussionGroupParams, buildPresetAssistantParams } =
+const { buildCliAgentParams, buildDiscussionGroupParams, buildPresetAssistantParams } =
   await import('../../src/renderer/pages/conversation/utils/createConversationParams');
 
 describe('createConversationParams', () => {
@@ -107,6 +107,45 @@ describe('createConversationParams', () => {
     expect(params.extra.enabledHooks).toEqual(['plan-before-coding']);
   });
 
+  it('falls back to the saved gemini.defaultModel when provider config is empty', async () => {
+    loadPresetAssistantResources.mockResolvedValue({
+      rules: 'gemini preset rules',
+      skills: '',
+      enabledSkills: ['quality-gate'],
+      enabledHooks: ['plan-before-coding'],
+    });
+    configGet.mockImplementation(async (key: string) => {
+      if (key === 'model.config') {
+        return [];
+      }
+      if (key === 'gemini.defaultModel') {
+        return {
+          id: 'google-auth-gemini',
+          useModel: 'auto',
+        };
+      }
+      return undefined;
+    });
+
+    const params = await buildPresetAssistantParams(
+      {
+        backend: 'custom',
+        name: 'Preset Assistant',
+        customAgentId: 'builtin-cowork',
+        isPreset: true,
+        presetAgentType: 'gemini',
+      },
+      '/tmp/workspace',
+      'zh'
+    );
+
+    expect(params.model).toMatchObject({
+      id: 'google-auth-gemini',
+      useModel: 'auto',
+      platform: 'gemini-with-google-auth',
+    });
+  });
+
   it('builds mixed discussion group participants for preset assistants and cli agents', async () => {
     loadPresetAssistantResources.mockResolvedValue({
       rules: 'preset rules',
@@ -172,6 +211,69 @@ describe('createConversationParams', () => {
         backend: 'codex',
         cliPath: '/usr/local/bin/codex',
       },
+    });
+  });
+
+  it('uses OpenClaw native agent workspace and agent id for CLI conversations', async () => {
+    const params = await buildCliAgentParams(
+      {
+        backend: 'openclaw-gateway',
+        name: 'Reviewer (reviewer)',
+        cliPath: '/usr/local/bin/openclaw',
+        openclawAgentId: 'reviewer',
+        workspace: '/Users/test/.openclaw/workspace-reviewer',
+      },
+      '/tmp/ignored-workspace'
+    );
+
+    expect(params).toMatchObject({
+      type: 'openclaw-gateway',
+      name: 'Reviewer (reviewer)',
+      extra: {
+        backend: 'openclaw-gateway',
+        cliPath: '/usr/local/bin/openclaw',
+        openclawAgentId: 'reviewer',
+        workspace: '/Users/test/.openclaw/workspace-reviewer',
+        customWorkspace: true,
+      },
+    });
+  });
+
+  it('keeps relay groups on a single orchestration round', async () => {
+    const params = await buildDiscussionGroupParams({
+      name: 'Relay Group',
+      workspace: '/tmp/workspace',
+      language: 'en-US',
+      mode: 'relay',
+      participants: [
+        {
+          type: 'cli-agent',
+          participantKey: 'codex:/usr/local/bin/codex:Codex CLI',
+          name: 'Codex CLI',
+          description: 'codex · /usr/local/bin/codex',
+          agent: {
+            backend: 'codex',
+            name: 'Codex CLI',
+            cliPath: '/usr/local/bin/codex',
+          },
+        },
+        {
+          type: 'cli-agent',
+          participantKey: 'qwen:/usr/local/bin/qwen:Qwen CLI',
+          name: 'Qwen CLI',
+          description: 'qwen · /usr/local/bin/qwen',
+          agent: {
+            backend: 'qwen',
+            name: 'Qwen CLI',
+            cliPath: '/usr/local/bin/qwen',
+          },
+        },
+      ],
+    });
+
+    expect(params.extra.orchestration).toEqual({
+      mode: 'relay',
+      rounds: 1,
     });
   });
 });

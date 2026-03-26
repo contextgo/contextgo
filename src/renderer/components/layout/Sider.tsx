@@ -1,17 +1,21 @@
-import { ArrowCircleLeft, ListCheckbox, Plus, SettingTwo } from '@icon-park/react';
+import { ArrowCircleLeft, ListCheckbox, Plus, Robot, SettingTwo } from '@icon-park/react';
 import { IconMoonFill, IconSunFill } from '@arco-design/web-react/icon';
 import classNames from 'classnames';
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
-import { Tooltip } from '@arco-design/web-react';
+import { Dropdown, Menu, Tooltip } from '@arco-design/web-react';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips, getSiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
 import { useThemeContext } from '@renderer/hooks/context/ThemeContext';
 import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
+import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
+import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
+import CreateDiscussionGroupModal from '@renderer/pages/conversation/platforms/group/CreateDiscussionGroupModal';
+import { emitter } from '@renderer/utils/emitter';
 
 const WorkspaceGroupedHistory = React.lazy(() => import('@renderer/pages/conversation/GroupedHistory'));
 const SettingsSider = React.lazy(() => import('@renderer/pages/settings/components/SettingsSider'));
@@ -32,8 +36,11 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { closePreview } = usePreviewContext();
   const { theme, setTheme } = useThemeContext();
   const [isBatchMode, setIsBatchMode] = useState(false);
+  const [groupModalVisible, setGroupModalVisible] = useState(false);
   const isSettings = pathname.startsWith('/settings');
   const lastNonSettingsPathRef = useRef('/guid');
+  const { cliAgents, presetAssistants } = useConversationAgents();
+  const { activeTab, closeAllTabs, openTab } = useConversationTabs();
 
   useEffect(() => {
     if (!pathname.startsWith('/settings')) {
@@ -68,6 +75,25 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     closePreview();
     setIsBatchMode(false);
   };
+  const handleCreateConversation = () => {
+    cleanupSiderTooltips();
+    blurActiveElement();
+    closePreview();
+    setIsBatchMode(false);
+    Promise.resolve(navigate('/guid')).catch((error) => {
+      console.error('Navigation failed:', error);
+    });
+    if (onSessionClick) {
+      onSessionClick();
+    }
+  };
+  const handleCreateDiscussionGroup = () => {
+    cleanupSiderTooltips();
+    blurActiveElement();
+    closePreview();
+    setIsBatchMode(false);
+    setGroupModalVisible(true);
+  };
   const handleQuickThemeToggle = () => {
     void setTheme(theme === 'dark' ? 'light' : 'dark');
   };
@@ -80,6 +106,33 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   };
   const tooltipEnabled = collapsed && !isMobile;
   const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
+  const activeWorkspace = activeTab?.workspace || '';
+  const createMenu = (
+    <Menu
+      onClickMenuItem={(key) => {
+        if (key === 'conversation') {
+          handleCreateConversation();
+          return;
+        }
+        if (key === 'discussion-group') {
+          handleCreateDiscussionGroup();
+        }
+      }}
+    >
+      <Menu.Item key='conversation'>
+        <div className='flex items-center gap-8px'>
+          <Plus theme='outline' size='16' fill={iconColors.primary} />
+          <span>{t('conversation.welcome.newConversation')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='discussion-group'>
+        <div className='flex items-center gap-8px'>
+          <Robot theme='outline' size='16' fill={iconColors.primary} />
+          <span>{t('conversation.group.createEntry')}</span>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
 
   return (
     <div className='size-full flex flex-col'>
@@ -92,37 +145,28 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         ) : (
           <div className='size-full flex flex-col'>
             <div className='mb-8px shrink-0 flex items-center gap-8px'>
-              <Tooltip {...siderTooltipProps} content={t('conversation.welcome.newConversation')} position='right'>
-                <div
-                  className={classNames(
-                    'h-40px flex-1 flex items-center justify-start gap-10px px-12px hover:bg-hover rd-0.5rem cursor-pointer group',
-                    isMobile && 'sider-action-btn-mobile'
-                  )}
-                  onClick={() => {
-                    cleanupSiderTooltips();
-                    blurActiveElement();
-                    closePreview();
-                    setIsBatchMode(false);
-                    Promise.resolve(navigate('/guid')).catch((error) => {
-                      console.error('Navigation failed:', error);
-                    });
-                    // 点击new chat后自动隐藏sidebar / Hide sidebar after starting new chat on mobile
-                    if (onSessionClick) {
-                      onSessionClick();
-                    }
-                  }}
-                >
-                  <Plus
-                    theme='outline'
-                    size='24'
-                    fill={iconColors.primary}
-                    className='block leading-none shrink-0'
-                    style={{ lineHeight: 0 }}
-                  />
-                  <span className='collapsed-hidden font-bold text-t-primary leading-24px'>
-                    {t('conversation.welcome.newConversation')}
-                  </span>
-                </div>
+              <Tooltip {...siderTooltipProps} content={t('common.create')} position='right'>
+                <Dropdown droplist={createMenu} trigger='click' position='bl'>
+                  <div
+                    className={classNames(
+                      collapsed
+                        ? 'h-40px w-40px rd-0.5rem flex items-center justify-center cursor-pointer shrink-0 transition-all border border-solid border-transparent hover:bg-fill-2 hover:border-[var(--color-border-2)]'
+                        : 'h-40px flex-1 flex items-center justify-start gap-10px px-12px hover:bg-hover rd-0.5rem cursor-pointer group',
+                      isMobile && (collapsed ? 'sider-action-icon-btn-mobile' : 'sider-action-btn-mobile')
+                    )}
+                  >
+                    <Plus
+                      theme='outline'
+                      size={collapsed ? '20' : '24'}
+                      fill={iconColors.primary}
+                      className='block leading-none shrink-0'
+                      style={{ lineHeight: 0 }}
+                    />
+                    {!collapsed && (
+                      <span className='collapsed-hidden font-bold text-t-primary leading-24px'>{t('common.create')}</span>
+                    )}
+                  </div>
+                </Dropdown>
               </Tooltip>
               <Tooltip {...siderTooltipProps} content={t('conversation.historySearch.tooltip')} position='right'>
                 <div>
@@ -161,6 +205,23 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
             <Suspense fallback={<div className='flex-1 min-h-0' />}>
               <WorkspaceGroupedHistory {...workspaceHistoryProps}></WorkspaceGroupedHistory>
             </Suspense>
+            <CreateDiscussionGroupModal
+              visible={groupModalVisible}
+              workspace={activeWorkspace}
+              cliAgents={cliAgents}
+              presetAssistants={presetAssistants}
+              onCancel={() => setGroupModalVisible(false)}
+              onCreated={(conversation) => {
+                setGroupModalVisible(false);
+                closeAllTabs();
+                openTab(conversation);
+                void navigate(`/conversation/${conversation.id}`);
+                emitter.emit('chat.history.refresh');
+                if (onSessionClick) {
+                  onSessionClick();
+                }
+              }}
+            />
           </div>
         )}
       </div>

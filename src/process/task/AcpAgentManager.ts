@@ -668,6 +668,11 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         // Note: cronBusyGuard.setProcessing(false) is not called here
         // because the response streaming is still in progress.
         // It will be cleared when the conversation ends or on error.
+        // Exception: if the agent returns a failure (e.g. timeout), clean up
+        // immediately so the conversation isn't stuck in a busy/running state.
+        if (!result.success) {
+          this.clearBusyState();
+        }
         return result;
       }
       const agentSendStart = Date.now();
@@ -679,11 +684,13 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         console.log(
           `[ACP-PERF] manager: agent.sendMessage completed ${Date.now() - agentSendStart}ms (total manager.sendMessage: ${Date.now() - managerSendStart}ms)`
         );
+      if (!result.success) {
+        this.clearBusyState();
+      }
       return result;
     } catch (e) {
       this.flushBufferedStreamTextMessages();
-      cronBusyGuard.setProcessing(this.conversation_id, false);
-      this.status = 'finished';
+      this.clearBusyState();
       const message: IResponseMessage = {
         type: 'error',
         conversation_id: this.conversation_id,
@@ -1035,6 +1042,11 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
    * Save context usage to database for restore on page switch.
    * 保存上下文使用量到数据库，以便在页面切换时恢复。
    */
+  private clearBusyState(): void {
+    cronBusyGuard.setProcessing(this.conversation_id, false);
+    this.status = 'finished';
+  }
+
   private async saveContextUsage(usage: { used: number; size: number }): Promise<void> {
     try {
       const db = await getDatabase();
