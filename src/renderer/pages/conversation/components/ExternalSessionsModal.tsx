@@ -21,7 +21,7 @@ type ExternalSessionsModalProps = {
 
 type ExternalSessionFilter = 'all' | ExternalSessionProvider;
 
-const FILTER_ORDER: ExternalSessionFilter[] = ['all', 'codex', 'openclaw-gateway'];
+const FILTER_ORDER: ExternalSessionFilter[] = ['all', 'codex', 'opencode', 'openclaw-gateway'];
 
 const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, onClose }) => {
   const { t } = useTranslation();

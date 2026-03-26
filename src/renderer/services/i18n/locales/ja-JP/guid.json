@@ -19,6 +19,7 @@
     "importFailed": "選択した外部 Session の引き継ぎに失敗しました。",
     "providers": {
       "codex": "Codex",
+      "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
     }
   },
