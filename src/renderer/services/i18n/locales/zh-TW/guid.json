@@ -19,6 +19,7 @@
     "importFailed": "接管所選外部 Session 失敗。",
     "providers": {
       "codex": "Codex",
+      "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
     }
   },

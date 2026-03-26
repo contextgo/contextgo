@@ -7,6 +7,40 @@ const importExternalSessionMock = vi.fn();
 const openTabMock = vi.fn();
 const navigateMock = vi.fn();
 
+const normalizeTabKey = (value: string | null) => (value ? value.replace(/^\.\$/, '') : '');
+
+type MockTabsProps = {
+  activeTab?: string;
+  onChange?: (key: string) => void;
+  children?: React.ReactNode;
+};
+
+type MockTabPaneProps = {
+  children?: React.ReactNode;
+  title?: React.ReactNode;
+};
+
+type MockButtonProps = React.PropsWithChildren<
+  React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    loading?: boolean;
+    icon?: React.ReactNode;
+  }
+>;
+
+type MockModalProps = {
+  visible?: boolean;
+  children?: React.ReactNode;
+  title?: React.ReactNode;
+};
+
+type MockChildrenProps = {
+  children?: React.ReactNode;
+};
+
+type MockEmptyProps = {
+  description?: React.ReactNode;
+};
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
@@ -20,6 +54,7 @@ vi.mock('react-i18next', () => ({
           'guid.externalSessions.loadFailed': 'Failed to scan external sessions.',
           'guid.externalSessions.importFailed': 'Failed to take over the selected external session.',
           'guid.externalSessions.providers.codex': 'Codex',
+          'guid.externalSessions.providers.opencode': 'OpenCode',
           'guid.externalSessions.providers.openclaw-gateway': 'OpenClaw',
           'guid.externalSessions.filters.all': 'All',
         }) as Record<string, string>
@@ -32,33 +67,37 @@ vi.mock('@icon-park/react', () => ({
 }));
 
 vi.mock('@arco-design/web-react', () => {
-  const Tabs = ({ activeTab, onChange, children }: any) => {
+  const Tabs = ({ activeTab, onChange, children }: MockTabsProps) => {
     const panes = React.Children.toArray(children) as React.ReactElement[];
-    const normalizeKey = (value: string | null) => (value ? value.replace(/^\.\$/, '') : '');
     return (
       <div>
         <div>
           {panes.map((pane) => (
-            <button key={String(pane.key)} type='button' onClick={() => onChange?.(normalizeKey(String(pane.key)))}>
-              {pane.props.title}
+            <button key={String(pane.key)} type='button' onClick={() => onChange?.(normalizeTabKey(String(pane.key)))}>
+              {(pane.props as MockTabPaneProps).title}
             </button>
           ))}
         </div>
-        <div>{panes.find((pane) => normalizeKey(String(pane.key)) === String(activeTab))?.props.children}</div>
+        <div>
+          {
+            (panes.find((pane) => normalizeTabKey(String(pane.key)) === String(activeTab))?.props as MockTabPaneProps)
+              ?.children
+          }
+        </div>
       </div>
     );
   };
 
-  Tabs.TabPane = ({ children }: any) => <>{children}</>;
+  Tabs.TabPane = ({ children }: MockChildrenProps) => <>{children}</>;
 
   return {
-    Button: ({ children, onClick, disabled, loading, icon, ...rest }: any) => (
+    Button: ({ children, onClick, disabled, loading, icon, ...rest }: MockButtonProps) => (
       <button type='button' onClick={onClick} disabled={disabled || loading} {...rest}>
         {icon}
         {children}
       </button>
     ),
-    Empty: ({ description }: any) => <div>{description}</div>,
+    Empty: ({ description }: MockEmptyProps) => <div>{description}</div>,
     Message: {
       useMessage: () => [
         {
@@ -68,7 +107,7 @@ vi.mock('@arco-design/web-react', () => {
         <div key='message-context' />,
       ],
     },
-    Modal: ({ visible, children, title }: any) =>
+    Modal: ({ visible, children, title }: MockModalProps) =>
       visible ? (
         <div>
           <div>{title}</div>
@@ -76,9 +115,9 @@ vi.mock('@arco-design/web-react', () => {
         </div>
       ) : null,
     Tabs,
-    Tag: ({ children }: any) => <span>{children}</span>,
+    Tag: ({ children }: MockChildrenProps) => <span>{children}</span>,
     Typography: {
-      Paragraph: ({ children }: any) => <p>{children}</p>,
+      Paragraph: ({ children }: MockChildrenProps) => <p>{children}</p>,
     },
   };
 });
@@ -87,10 +126,10 @@ vi.mock('@/common', () => ({
   ipcBridge: {
     acpConversation: {
       listExternalSessions: {
-        invoke: (...args: any[]) => listExternalSessionsMock(...args),
+        invoke: (...args: unknown[]) => listExternalSessionsMock(...args),
       },
       importExternalSession: {
-        invoke: (...args: any[]) => importExternalSessionMock(...args),
+        invoke: (...args: unknown[]) => importExternalSessionMock(...args),
       },
     },
   },
@@ -135,6 +174,13 @@ describe('ExternalSessionsModal', () => {
             workspace: '/tmp/openclaw',
             updatedAt: 1_710_000_100_000,
           },
+          {
+            provider: 'opencode',
+            sessionId: 'opencode-1',
+            title: 'OpenCode Session',
+            workspace: '/tmp/opencode',
+            updatedAt: 1_710_000_200_000,
+          },
         ],
       },
     });
@@ -147,6 +193,7 @@ describe('ExternalSessionsModal', () => {
     await waitFor(() => {
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenCode Session')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'OpenClaw' }));
@@ -154,6 +201,15 @@ describe('ExternalSessionsModal', () => {
     await waitFor(() => {
       expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
       expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
+      expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'OpenCode' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
+      expect(screen.getByText('OpenCode Session')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Codex' }));
@@ -161,6 +217,7 @@ describe('ExternalSessionsModal', () => {
     await waitFor(() => {
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'All' }));
@@ -168,6 +225,7 @@ describe('ExternalSessionsModal', () => {
     await waitFor(() => {
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenCode Session')).toBeInTheDocument();
     });
   });
 });

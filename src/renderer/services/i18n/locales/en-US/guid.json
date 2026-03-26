@@ -19,6 +19,7 @@
     "importFailed": "Failed to take over the selected external session.",
     "providers": {
       "codex": "Codex",
+      "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
     }
   },

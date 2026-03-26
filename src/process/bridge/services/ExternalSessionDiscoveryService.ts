@@ -34,6 +34,27 @@ type CodexThreadRow = {
   rollout_path?: string | null;
 };
 
+type OpencodeSessionRow = {
+  id: string;
+  title: string;
+  directory: string;
+  time_updated: number;
+  latest_message_data: string | null;
+};
+
+type OpencodeMessageRow = {
+  id: string;
+  time_created: number;
+  data: string;
+};
+
+type OpencodePartRow = {
+  id: string;
+  message_id: string;
+  time_created: number;
+  data: string;
+};
+
 type ImportedConversationMessage = {
   content: string;
   createdAt: number;
@@ -54,33 +75,62 @@ type CodexRolloutEntry = {
   };
 };
 
+type OpencodeMessageData = {
+  role?: string;
+  time?: {
+    created?: number;
+    completed?: number;
+  };
+  model?: {
+    providerID?: string;
+    modelID?: string;
+  };
+  providerID?: string;
+  modelID?: string;
+  variant?: string;
+};
+
+type OpencodePartData = {
+  type?: string;
+  text?: string;
+};
+
 type ExternalSessionDiscoveryOptions = {
   codexHomeDir?: string;
+  opencodeDbPath?: string;
   availableBackends?: Set<AcpBackendAll>;
 };
 
 type CodexStateDbInfo = {
   path: string;
   mtimeMs: number;
+  walMtimeMs: number;
 };
 
 type CodexSessionCacheEntry = {
   dbPath: string;
   dbMtimeMs: number;
+  dbWalMtimeMs: number;
   sessions: ExternalSessionSummary[];
 };
 
 const CODEX_STATE_FILE_PATTERN = /^state_\d+\.sqlite$/;
-const IMPORT_PLACEHOLDER_PROVIDER: TProviderWithModel = {
-  id: 'external-session-import',
-  platform: 'codex',
-  name: 'Codex',
-  baseUrl: '',
-  apiKey: '',
-  useModel: 'default',
-};
 
 let codexSessionCache: CodexSessionCacheEntry | null = null;
+let opencodeSessionCache: CodexSessionCacheEntry | null = null;
+
+const createImportPlaceholderProvider = (
+  platform: string,
+  name: string,
+  model: string | undefined
+): TProviderWithModel => ({
+  id: `external-session-import-${platform}`,
+  platform,
+  name,
+  baseUrl: '',
+  apiKey: '',
+  useModel: model || 'default',
+});
 
 export class ExternalSessionDiscoveryService {
   constructor(
@@ -89,7 +139,7 @@ export class ExternalSessionDiscoveryService {
   ) {}
 
   async listSessions(): Promise<ExternalSessionSummary[]> {
-    const sessions = await this.listCodexSessions();
+    const sessions = [...(await this.listCodexSessions()), ...(await this.listOpencodeSessions())];
 
     if (sessions.length === 0) {
       return [];
@@ -114,6 +164,8 @@ export class ExternalSessionDiscoveryService {
     switch (provider) {
       case 'codex':
         return this.importCodexSession(sessionId);
+      case 'opencode':
+        return this.importOpencodeSession(sessionId);
       default:
         throw new Error(`External session provider is not supported yet: ${provider}`);
     }
@@ -128,10 +180,7 @@ export class ExternalSessionDiscoveryService {
     const conversation = await this.conversationService.createConversation({
       type: 'acp',
       name: session.title || path.basename(session.workspace) || session.sessionId,
-      model: {
-        ...IMPORT_PLACEHOLDER_PROVIDER,
-        useModel: session.model || IMPORT_PLACEHOLDER_PROVIDER.useModel,
-      },
+      model: createImportPlaceholderProvider('codex', 'Codex', session.model),
       source: 'aionui',
       extra: {
         workspace: session.workspace,
@@ -152,6 +201,36 @@ export class ExternalSessionDiscoveryService {
     return conversation;
   }
 
+  private async importOpencodeSession(sessionId: string): Promise<TChatConversation> {
+    const session = (await this.listOpencodeSessions()).find((item) => item.sessionId === sessionId);
+    if (!session) {
+      throw new Error('External OpenCode session not found');
+    }
+
+    const conversation = await this.conversationService.createConversation({
+      type: 'acp',
+      name: session.title || path.basename(session.workspace) || session.sessionId,
+      model: createImportPlaceholderProvider('opencode', 'OpenCode', session.model),
+      source: 'aionui',
+      extra: {
+        workspace: session.workspace,
+        customWorkspace: true,
+        backend: 'opencode',
+        cliPath: 'opencode',
+        agentName: 'OpenCode CLI',
+        acpSessionId: session.sessionId,
+        acpSessionUpdatedAt: session.updatedAt,
+        currentModelId: session.model || undefined,
+        externalSessionImported: true,
+        deferInitialWorkspaceLoad: true,
+      },
+    });
+
+    await this.importOpencodeHistory(conversation.id, sessionId);
+
+    return conversation;
+  }
+
   private async listCodexSessions(): Promise<ExternalSessionSummary[]> {
     if (!this.isBackendAvailable('codex')) {
       return [];
@@ -165,7 +244,8 @@ export class ExternalSessionDiscoveryService {
     if (
       codexSessionCache &&
       codexSessionCache.dbPath === stateDb.path &&
-      codexSessionCache.dbMtimeMs === stateDb.mtimeMs
+      codexSessionCache.dbMtimeMs === stateDb.mtimeMs &&
+      codexSessionCache.dbWalMtimeMs === stateDb.walMtimeMs
     ) {
       return codexSessionCache.sessions;
     }
@@ -202,12 +282,91 @@ export class ExternalSessionDiscoveryService {
       codexSessionCache = {
         dbPath: stateDb.path,
         dbMtimeMs: stateDb.mtimeMs,
+        dbWalMtimeMs: stateDb.walMtimeMs,
         sessions,
       };
 
       return sessions;
     } catch (error) {
       console.warn('[ExternalSessionDiscoveryService] Failed to list Codex sessions:', error);
+      return [];
+    } finally {
+      database?.close();
+    }
+  }
+
+  private async listOpencodeSessions(): Promise<ExternalSessionSummary[]> {
+    if (!this.isBackendAvailable('opencode')) {
+      return [];
+    }
+
+    const stateDb = await this.resolveOpencodeStateDb();
+    if (!stateDb) {
+      return [];
+    }
+
+    if (
+      opencodeSessionCache &&
+      opencodeSessionCache.dbPath === stateDb.path &&
+      opencodeSessionCache.dbMtimeMs === stateDb.mtimeMs &&
+      opencodeSessionCache.dbWalMtimeMs === stateDb.walMtimeMs
+    ) {
+      return opencodeSessionCache.sessions;
+    }
+
+    let database: DatabaseSync | null = null;
+    try {
+      database = new DatabaseSync(stateDb.path, {
+        open: true,
+        readOnly: true,
+      });
+      const rows = database
+        .prepare(`
+          SELECT
+            s.id,
+            s.title,
+            s.directory,
+            s.time_updated,
+            (
+              SELECT m.data
+              FROM message m
+              WHERE m.session_id = s.id
+              ORDER BY m.time_created DESC, m.id DESC
+              LIMIT 1
+            ) AS latest_message_data
+          FROM session s
+          WHERE s.time_archived IS NULL
+          ORDER BY s.time_updated DESC
+        `)
+        .all() as OpencodeSessionRow[];
+
+      const sessions = rows
+        .filter((row) => typeof row.id === 'string' && typeof row.directory === 'string' && row.directory.trim())
+        .map((row) => {
+          const latestMessage = this.parseOpencodeMessageData(row.latest_message_data);
+
+          return {
+            provider: 'opencode' as const,
+            sessionId: row.id,
+            title: row.title || row.id,
+            workspace: row.directory,
+            updatedAt: this.normalizeTimestamp(row.time_updated),
+            modelProvider: latestMessage?.providerID || latestMessage?.model?.providerID || undefined,
+            model: latestMessage?.modelID || latestMessage?.model?.modelID || undefined,
+            reasoningEffort: latestMessage?.variant || undefined,
+          };
+        });
+
+      opencodeSessionCache = {
+        dbPath: stateDb.path,
+        dbMtimeMs: stateDb.mtimeMs,
+        dbWalMtimeMs: stateDb.walMtimeMs,
+        sessions,
+      };
+
+      return sessions;
+    } catch (error) {
+      console.warn('[ExternalSessionDiscoveryService] Failed to list OpenCode sessions:', error);
       return [];
     } finally {
       database?.close();
@@ -244,6 +403,64 @@ export class ExternalSessionDiscoveryService {
       return {
         path: latest.path,
         mtimeMs: latest.stat.mtimeMs,
+        walMtimeMs: 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async resolveOpencodeStateDb(): Promise<CodexStateDbInfo | null> {
+    const configuredPath = this.options.opencodeDbPath;
+    if (configuredPath) {
+      return this.buildStateDbInfo(configuredPath);
+    }
+
+    const homeDir = os.homedir();
+    const xdgDataHome = process.env.XDG_DATA_HOME;
+    const appData = process.env.APPDATA;
+    const localAppData = process.env.LOCALAPPDATA;
+    const candidatePaths =
+      process.platform === 'win32'
+        ? [
+            path.join(localAppData || path.join(homeDir, 'AppData', 'Local'), 'opencode', 'opencode.db'),
+            path.join(appData || path.join(homeDir, 'AppData', 'Roaming'), 'opencode', 'opencode.db'),
+            path.join(homeDir, '.opencode', 'opencode.db'),
+          ]
+        : [
+            path.join(xdgDataHome || path.join(homeDir, '.local', 'share'), 'opencode', 'opencode.db'),
+            path.join(homeDir, 'Library', 'Application Support', 'opencode', 'opencode.db'),
+            path.join(homeDir, '.opencode', 'opencode.db'),
+          ];
+
+    const dbInfos = await Promise.all(candidatePaths.map((candidatePath) => this.buildStateDbInfo(candidatePath)));
+    const existingDbs = dbInfos.filter((dbInfo): dbInfo is CodexStateDbInfo => dbInfo !== null);
+    if (existingDbs.length === 0) {
+      return null;
+    }
+
+    existingDbs.sort((left, right) => {
+      const leftMtime = Math.max(left.mtimeMs, left.walMtimeMs);
+      const rightMtime = Math.max(right.mtimeMs, right.walMtimeMs);
+      return rightMtime - leftMtime;
+    });
+
+    return existingDbs[0] || null;
+  }
+
+  private async buildStateDbInfo(dbPath: string): Promise<CodexStateDbInfo | null> {
+    try {
+      const stat = await fs.stat(dbPath);
+      const walPath = `${dbPath}-wal`;
+      const walMtimeMs = await fs
+        .stat(walPath)
+        .then((walStat) => walStat.mtimeMs)
+        .catch(() => 0);
+
+      return {
+        path: dbPath,
+        mtimeMs: stat.mtimeMs,
+        walMtimeMs,
       };
     } catch {
       return null;
@@ -284,6 +501,81 @@ export class ExternalSessionDiscoveryService {
       }
     } catch (error) {
       console.warn('[ExternalSessionDiscoveryService] Failed to import Codex history:', error);
+    }
+  }
+
+  private async importOpencodeHistory(conversationId: string, sessionId: string): Promise<void> {
+    const stateDb = await this.resolveOpencodeStateDb();
+    if (!stateDb) {
+      return;
+    }
+
+    let database: DatabaseSync | null = null;
+    try {
+      database = new DatabaseSync(stateDb.path, {
+        open: true,
+        readOnly: true,
+      });
+
+      const messageRows = database
+        .prepare(`
+          SELECT id, time_created, data
+          FROM message
+          WHERE session_id = ?
+          ORDER BY time_created ASC, id ASC
+        `)
+        .all(sessionId) as OpencodeMessageRow[];
+      if (messageRows.length === 0) {
+        return;
+      }
+
+      const partRows = database
+        .prepare(`
+          SELECT id, message_id, time_created, data
+          FROM part
+          WHERE session_id = ?
+          ORDER BY time_created ASC, id ASC
+        `)
+        .all(sessionId) as OpencodePartRow[];
+
+      const partsByMessageId = new Map<string, OpencodePartRow[]>();
+      for (const partRow of partRows) {
+        const messageParts = partsByMessageId.get(partRow.message_id) || [];
+        messageParts.push(partRow);
+        partsByMessageId.set(partRow.message_id, messageParts);
+      }
+
+      const importedMessages = messageRows
+        .map((messageRow) => this.parseOpencodeImportedMessage(messageRow, partsByMessageId.get(messageRow.id) || []))
+        .filter((message): message is ImportedConversationMessage => message !== null);
+      if (importedMessages.length === 0) {
+        return;
+      }
+
+      const db = await getDatabase();
+      for (const importedMessage of importedMessages) {
+        const message: TMessage = {
+          id: uuid(36),
+          msg_id: uuid(36),
+          conversation_id: conversationId,
+          type: 'text',
+          position: importedMessage.position,
+          status: 'finish',
+          createdAt: importedMessage.createdAt,
+          content: {
+            content: importedMessage.content,
+          },
+        };
+
+        const result = db.insertMessage(message);
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to insert imported OpenCode history message');
+        }
+      }
+    } catch (error) {
+      console.warn('[ExternalSessionDiscoveryService] Failed to import OpenCode history:', error);
+    } finally {
+      database?.close();
     }
   }
 
@@ -390,12 +682,67 @@ export class ExternalSessionDiscoveryService {
     return null;
   }
 
+  private parseOpencodeImportedMessage(
+    messageRow: OpencodeMessageRow,
+    partRows: OpencodePartRow[]
+  ): ImportedConversationMessage | null {
+    const messageData = this.parseOpencodeMessageData(messageRow.data);
+    const role = messageData?.role;
+    if (role !== 'user' && role !== 'assistant') {
+      return null;
+    }
+
+    const content = partRows
+      .map((partRow) => this.parseOpencodePartData(partRow.data))
+      .filter((partData) => partData?.type === 'text' && typeof partData.text === 'string')
+      .map((partData) => partData?.text?.trim() || '')
+      .filter(Boolean)
+      .join('\n\n');
+    if (!content) {
+      return null;
+    }
+
+    return {
+      content,
+      createdAt: this.normalizeTimestamp(messageData?.time?.created || messageRow.time_created),
+      position: role === 'user' ? 'right' : 'left',
+    };
+  }
+
+  private parseOpencodeMessageData(rawData: string | null | undefined): OpencodeMessageData | null {
+    if (!rawData) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(rawData) as OpencodeMessageData;
+    } catch {
+      return null;
+    }
+  }
+
+  private parseOpencodePartData(rawData: string): OpencodePartData | null {
+    try {
+      return JSON.parse(rawData) as OpencodePartData;
+    } catch {
+      return null;
+    }
+  }
+
   private collectManagedSessions(conversations: TChatConversation[]): Set<string> {
     const managed = new Set<string>();
 
     for (const conversation of conversations) {
       if (conversation.type === 'acp' && conversation.extra?.backend === 'codex' && conversation.extra.acpSessionId) {
         managed.add(this.buildManagedKey('codex', conversation.extra.acpSessionId));
+      }
+
+      if (
+        conversation.type === 'acp' &&
+        conversation.extra?.backend === 'opencode' &&
+        conversation.extra.acpSessionId
+      ) {
+        managed.add(this.buildManagedKey('opencode', conversation.extra.acpSessionId));
       }
 
       if (
@@ -420,6 +767,14 @@ export class ExternalSessionDiscoveryService {
         return (
           conversation.type === 'acp' &&
           conversation.extra?.backend === 'codex' &&
+          conversation.extra.acpSessionId === sessionId
+        );
+      }
+
+      if (provider === 'opencode') {
+        return (
+          conversation.type === 'acp' &&
+          conversation.extra?.backend === 'opencode' &&
           conversation.extra.acpSessionId === sessionId
         );
       }

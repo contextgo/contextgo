@@ -19,6 +19,7 @@
     "importFailed": "Seçilen harici Session devralınamadı.",
     "providers": {
       "codex": "Codex",
+      "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
     }
   },
