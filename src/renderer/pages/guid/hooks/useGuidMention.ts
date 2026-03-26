@@ -86,12 +86,12 @@ export const useGuidMention = ({
       return {
         key,
         label,
+        description: agent.workspace,
+        isDefault: agent.isDefault,
         tokens,
         avatar,
         avatarImage,
         logo: getAgentLogo(agent.backend) || undefined,
-        description: agent.workspace,
-        isDefault: agent.isDefault,
         isExtension: agent.isExtension,
       };
     });
@@ -126,7 +126,7 @@ export const useGuidMention = ({
 
   const selectedAgentLabel = selectedAgentInfo?.name || selectedAgentKey;
   const selectedAgentDescription = selectedAgentInfo?.workspace || null;
-  const selectedAgentIsDefault = selectedAgentInfo?.isDefault || false;
+  const selectedAgentIsDefault = selectedAgentInfo?.isDefault === true;
   const mentionMenuActiveOption = filteredMentionOptions[mentionActiveIndex] || filteredMentionOptions[0];
   const mentionMenuSelectedKey =
     mentionOpen || mentionSelectorOpen ? mentionMenuActiveOption?.key || selectedAgentKey : selectedAgentKey;
