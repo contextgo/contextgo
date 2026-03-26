@@ -19,6 +19,7 @@ vi.mock('react-i18next', () => ({
           'guid.externalSessions.import': 'Take over',
           'guid.externalSessions.loadFailed': 'Failed to scan external sessions.',
           'guid.externalSessions.importFailed': 'Failed to take over the selected external session.',
+          'guid.externalSessions.providers.claude': 'Claude',
           'guid.externalSessions.providers.codex': 'Codex',
           'guid.externalSessions.providers.openclaw-gateway': 'OpenClaw',
           'guid.externalSessions.filters.all': 'All',
@@ -122,6 +123,13 @@ describe('ExternalSessionsModal', () => {
       data: {
         sessions: [
           {
+            provider: 'claude',
+            sessionId: 'claude-1',
+            title: 'Claude Session',
+            workspace: '/tmp/claude',
+            updatedAt: 1_710_000_050_000,
+          },
+          {
             provider: 'codex',
             sessionId: 'codex-1',
             title: 'Codex Session',
@@ -145,13 +153,23 @@ describe('ExternalSessionsModal', () => {
     render(<ExternalSessionsModal visible onClose={vi.fn()} />);
 
     await waitFor(() => {
+      expect(screen.getByText('Claude Session')).toBeInTheDocument();
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Claude' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Claude Session')).toBeInTheDocument();
+      expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'OpenClaw' }));
 
     await waitFor(() => {
+      expect(screen.queryByText('Claude Session')).not.toBeInTheDocument();
       expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
       expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
     });
@@ -159,6 +177,7 @@ describe('ExternalSessionsModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Codex' }));
 
     await waitFor(() => {
+      expect(screen.queryByText('Claude Session')).not.toBeInTheDocument();
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
     });
@@ -166,6 +185,7 @@ describe('ExternalSessionsModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'All' }));
 
     await waitFor(() => {
+      expect(screen.getByText('Claude Session')).toBeInTheDocument();
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
     });

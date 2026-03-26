@@ -18,6 +18,7 @@
     "loadFailed": "掃描外部 Session 失敗。",
     "importFailed": "接管所選外部 Session 失敗。",
     "providers": {
+      "claude": "Claude",
       "codex": "Codex",
       "openclaw-gateway": "OpenClaw"
     }
