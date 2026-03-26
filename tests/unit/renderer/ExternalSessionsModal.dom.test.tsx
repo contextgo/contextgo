@@ -22,6 +22,7 @@ vi.mock('react-i18next', () => ({
           'guid.externalSessions.providers.claude': 'Claude',
           'guid.externalSessions.providers.codex': 'Codex',
           'guid.externalSessions.providers.gemini': 'Gemini',
+          'guid.externalSessions.providers.opencode': 'OpenCode',
           'guid.externalSessions.providers.openclaw-gateway': 'OpenClaw',
           'guid.externalSessions.filters.all': 'All',
         }) as Record<string, string>
@@ -145,6 +146,13 @@ describe('ExternalSessionsModal', () => {
             updatedAt: 1_710_000_025_000,
           },
           {
+            provider: 'opencode',
+            sessionId: 'opencode-1',
+            title: 'OpenCode Session',
+            workspace: '/tmp/opencode',
+            updatedAt: 1_710_000_200_000,
+          },
+          {
             provider: 'openclaw-gateway',
             sessionId: 'openclaw-1',
             title: 'OpenClaw Session',
@@ -164,6 +172,7 @@ describe('ExternalSessionsModal', () => {
       expect(screen.getByText('Claude Session')).toBeInTheDocument();
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.getByText('Gemini Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenCode Session')).toBeInTheDocument();
       expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
     });
 
@@ -173,6 +182,7 @@ describe('ExternalSessionsModal', () => {
       expect(screen.getByText('Claude Session')).toBeInTheDocument();
       expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
       expect(screen.queryByText('Gemini Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
       expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
     });
 
@@ -182,6 +192,17 @@ describe('ExternalSessionsModal', () => {
       expect(screen.queryByText('Claude Session')).not.toBeInTheDocument();
       expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
       expect(screen.getByText('Gemini Session')).toBeInTheDocument();
+      expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'OpenCode' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Claude Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('Gemini Session')).not.toBeInTheDocument();
+      expect(screen.getByText('OpenCode Session')).toBeInTheDocument();
       expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
     });
 
@@ -191,6 +212,7 @@ describe('ExternalSessionsModal', () => {
       expect(screen.queryByText('Claude Session')).not.toBeInTheDocument();
       expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
       expect(screen.queryByText('Gemini Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
       expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
     });
 
@@ -200,6 +222,7 @@ describe('ExternalSessionsModal', () => {
       expect(screen.queryByText('Claude Session')).not.toBeInTheDocument();
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.queryByText('Gemini Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
       expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
     });
 
@@ -209,6 +232,7 @@ describe('ExternalSessionsModal', () => {
       expect(screen.getByText('Claude Session')).toBeInTheDocument();
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.getByText('Gemini Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenCode Session')).toBeInTheDocument();
       expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
     });
   });

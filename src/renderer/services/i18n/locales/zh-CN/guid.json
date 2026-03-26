@@ -21,6 +21,7 @@
       "claude": "Claude",
       "codex": "Codex",
       "gemini": "Gemini",
+      "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
     }
   },
