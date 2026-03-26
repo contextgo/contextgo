@@ -63,6 +63,7 @@ const AgentPillBar: React.FC<AgentPillBarProps> = ({
                   data-agent-key={getAgentKey(agent)}
                   data-agent-backend={agent.backend}
                   data-agent-selected={isSelected ? 'true' : 'false'}
+                  title={agent.workspace || agent.name}
                   className={`group relative flex items-center cursor-pointer whitespace-nowrap overflow-hidden ${isSelected ? `opacity-100 px-12px py-8px rd-20px mx-2px ${styles.agentItemSelected}` : isMobile ? 'opacity-70 p-4px' : 'opacity-60 p-4px hover:opacity-100'}`}
                   style={
                     isSelected
