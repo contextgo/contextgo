@@ -870,7 +870,7 @@ export class ExternalSessionDiscoveryService {
     let workspace = '';
     let title = '';
     let model: string | undefined;
-    let updatedAt = stat.mtimeMs;
+    let updatedAt = 0;
 
     const stream = createReadStream(sessionFilePath, { encoding: 'utf8' });
     const lineReader = createInterface({
@@ -924,7 +924,7 @@ export class ExternalSessionDiscoveryService {
       sessionId,
       title: (title || fallbackTitle).trim(),
       workspace,
-      updatedAt,
+      updatedAt: updatedAt || stat.mtimeMs,
       origin: 'cli',
       modelProvider: 'anthropic',
       model,
