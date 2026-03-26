@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
 import { ConfigStorage } from '@/common/config/storage';
 import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
 import type { IAssistantConversationCreateParams } from '@/common/adapter/ipcBridge';
@@ -35,6 +36,17 @@ export type DiscussionGroupCliParticipantInput = {
 
 export type DiscussionGroupParticipantInput = DiscussionGroupAssistantInput | DiscussionGroupCliParticipantInput;
 
+const buildGoogleAuthGeminiModel = (useModel: string, id = GOOGLE_AUTH_PROVIDER_ID): TProviderWithModel => {
+  return {
+    id,
+    name: 'Gemini',
+    useModel,
+    platform: 'gemini-with-google-auth' as TProviderWithModel['platform'],
+    baseUrl: '',
+    apiKey: '',
+  };
+};
+
 /**
  * Get the default Gemini model configuration from user settings.
  * Throws if no enabled provider or model is configured.
@@ -43,32 +55,44 @@ export type DiscussionGroupParticipantInput = DiscussionGroupAssistantInput | Di
 export async function getDefaultGeminiModel(): Promise<TProviderWithModel> {
   const providers = await ConfigStorage.get('model.config');
 
-  if (!providers || providers.length === 0) {
-    throw new Error('No model provider configured');
+  if (providers && providers.length > 0) {
+    const enabledProvider = providers.find((p) => p.enabled !== false);
+    const enabledModel = enabledProvider?.model.find((m) => enabledProvider.modelEnabled?.[m] !== false);
+
+    if (enabledProvider && (enabledModel || enabledProvider.model[0])) {
+      return {
+        id: enabledProvider.id,
+        platform: enabledProvider.platform,
+        name: enabledProvider.name,
+        baseUrl: enabledProvider.baseUrl,
+        apiKey: enabledProvider.apiKey,
+        useModel: enabledModel || enabledProvider.model[0],
+        capabilities: enabledProvider.capabilities,
+        contextLimit: enabledProvider.contextLimit,
+        modelProtocols: enabledProvider.modelProtocols,
+        bedrockConfig: enabledProvider.bedrockConfig,
+        enabled: enabledProvider.enabled,
+        modelEnabled: enabledProvider.modelEnabled,
+        modelHealth: enabledProvider.modelHealth,
+      };
+    }
   }
 
-  const enabledProvider = providers.find((p) => p.enabled !== false);
-  if (!enabledProvider) {
-    throw new Error('No enabled model provider');
+  const savedDefaultModel = await ConfigStorage.get('gemini.defaultModel');
+  if (typeof savedDefaultModel === 'string' && savedDefaultModel) {
+    return buildGoogleAuthGeminiModel(savedDefaultModel);
+  }
+  if (
+    savedDefaultModel &&
+    typeof savedDefaultModel === 'object' &&
+    'useModel' in savedDefaultModel &&
+    typeof savedDefaultModel.useModel === 'string' &&
+    savedDefaultModel.useModel
+  ) {
+    return buildGoogleAuthGeminiModel(savedDefaultModel.useModel, savedDefaultModel.id || GOOGLE_AUTH_PROVIDER_ID);
   }
 
-  const enabledModel = enabledProvider.model.find((m) => enabledProvider.modelEnabled?.[m] !== false);
-
-  return {
-    id: enabledProvider.id,
-    platform: enabledProvider.platform,
-    name: enabledProvider.name,
-    baseUrl: enabledProvider.baseUrl,
-    apiKey: enabledProvider.apiKey,
-    useModel: enabledModel || enabledProvider.model[0],
-    capabilities: enabledProvider.capabilities,
-    contextLimit: enabledProvider.contextLimit,
-    modelProtocols: enabledProvider.modelProtocols,
-    bedrockConfig: enabledProvider.bedrockConfig,
-    enabled: enabledProvider.enabled,
-    modelEnabled: enabledProvider.modelEnabled,
-    modelHealth: enabledProvider.modelHealth,
-  };
+  throw new Error('No Gemini model configured');
 }
 
 /**
@@ -109,11 +133,12 @@ export async function buildCliAgentParams(
   workspace: string
 ): Promise<ICreateConversationParams> {
   const { backend, name: agentName, cliPath } = agent;
+  const resolvedWorkspace = backend === 'openclaw-gateway' ? agent.workspace || workspace : workspace;
 
   const type = getConversationTypeForBackend(backend);
 
   const extra: ICreateConversationParams['extra'] = {
-    workspace,
+    workspace: resolvedWorkspace,
     customWorkspace: true,
   };
 
@@ -121,6 +146,9 @@ export async function buildCliAgentParams(
     extra.backend = backend as AcpBackendAll;
     extra.agentName = agentName;
     if (cliPath) extra.cliPath = cliPath;
+    if (backend === 'openclaw-gateway') {
+      extra.openclawAgentId = agent.openclawAgentId;
+    }
   }
 
   // Gemini type uses a placeholder model (matching Guid page behavior in useGuidSend).
@@ -205,11 +233,14 @@ export const createDiscussionGroupPlaceholderModel = (): TProviderWithModel => {
 
 export async function buildDiscussionGroupParams(options: {
   name: string;
-  workspace: string;
+  workspace?: string;
   language: string;
   mode: DiscussionGroupMode;
   participants: DiscussionGroupParticipantInput[];
 }): Promise<ICreateConversationParams> {
+  const customWorkspace = Boolean(options.workspace?.trim());
+  const normalizedWorkspace = options.workspace?.trim() || undefined;
+
   const participants = await Promise.all(
     options.participants.map(async (participant) => {
       const conversation =
@@ -240,8 +271,8 @@ export async function buildDiscussionGroupParams(options: {
           name: participant.name,
           extra: {
             ...conversation.extra,
-            workspace: options.workspace,
-            customWorkspace: true,
+            workspace: normalizedWorkspace,
+            customWorkspace,
           },
         },
       };
@@ -253,8 +284,8 @@ export async function buildDiscussionGroupParams(options: {
     model: createDiscussionGroupPlaceholderModel(),
     name: options.name,
     extra: {
-      workspace: options.workspace,
-      customWorkspace: true,
+      workspace: normalizedWorkspace,
+      customWorkspace,
       participants,
       orchestration: {
         mode: options.mode,

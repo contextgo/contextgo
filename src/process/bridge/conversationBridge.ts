@@ -71,9 +71,19 @@ export function initConversationBridge(
       const conversationModel = (conversation as { model?: { useModel?: string } }).model;
       const extra = conversation.extra as
         | {
+            openclawAgentId?: string;
             cliPath?: string;
             gateway?: { cliPath?: string };
-            runtimeValidation?: unknown;
+            runtimeValidation?: {
+              expectedWorkspace?: string;
+              expectedBackend?: string;
+              expectedAgentName?: string;
+              expectedOpenClawAgentId?: string;
+              expectedCliPath?: string;
+              expectedModel?: string;
+              expectedIdentityHash?: string | null;
+              switchedAt?: number;
+            };
           }
         | undefined;
       const gatewayCliPath = extra?.gateway?.cliPath;
@@ -86,6 +96,7 @@ export function initConversationBridge(
             workspace: diagnostics.workspace || conversation.extra?.workspace,
             backend: diagnostics.backend || conversation.extra?.backend,
             agentName: diagnostics.agentName || conversation.extra?.agentName,
+            openclawAgentId: diagnostics.openclawAgentId || extra?.openclawAgentId,
             cliPath: diagnostics.cliPath || extra?.cliPath || gatewayCliPath,
             model: conversationModel?.useModel,
             sessionKey: diagnostics.sessionKey,

@@ -91,12 +91,19 @@
     "defaultName": "ディスカッショングループ",
     "nameLabel": "グループ名",
     "namePlaceholder": "ディスカッショングループ名を入力",
+    "workspaceLabel": "ワークスペース",
+    "workspacePlaceholder": "任意。空欄の場合は既定のワークスペースを自動作成します",
+    "workspaceHint": "ディスカッショングループとすべての参加セッションはこのワークスペースを共有します。空欄の場合は既定の一時ワークスペースを自動作成します。",
+    "selectWorkspace": "フォルダを選択",
+    "selectWorkspaceFailed": "ワークスペースの選択に失敗しました",
     "modeLabel": "ディスカッションモード",
     "modeDebate": "ディベート",
     "modeBroadcast": "ブロードキャスト",
+    "modeRelay": "リレー",
     "modeHint": {
       "debate": "1 ラウンド目は独立回答、2 ラウンド目は他の助手の意見を見てから更新回答します。",
-      "broadcast": "各助手が独立に回答し、最後に複数の意見をまとめて返します。"
+      "broadcast": "各助手が独立に回答し、最後に複数の意見をまとめて返します。",
+      "relay": "アシスタントが順番に回答し、後のアシスタントは先に出た意見を見ながら議論を引き継ぎます。"
     },
     "participantsLabel": "参加者",
     "minimumParticipants": "少なくとも 2 人の参加者を選択してください",
@@ -132,6 +139,16 @@
     "addFile": "ファイルを追加",
     "refresh": "更新",
     "temporarySpace": "一時スペース",
+    "groupMembers": {
+      "title": "グループメンバー",
+      "count": "{{count}} 人のメンバー",
+      "open": "Members {{count}}",
+      "close": "Hide Members",
+      "participantType": {
+        "cliAgent": "CLI Agent",
+        "presetAssistant": "プリセットアシスタント"
+      }
+    },
     "changeWorkspace": "ワークスペースを変更",
     "migration": {
       "title": "ワークスペースを変更",

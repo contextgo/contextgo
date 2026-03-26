@@ -149,6 +149,20 @@ const buildWorkspaceWidthFiles = async (
   return { workspace: resolvedWorkspace, customWorkspace };
 };
 
+const mergeResolvedConversationExtra = <TExtra extends Record<string, unknown>>(
+  extra: TExtra,
+  resolvedWorkspace: string,
+  resolvedCustomWorkspace: boolean,
+  overrides: Partial<TExtra> = {}
+): TExtra => {
+  return {
+    ...extra,
+    ...overrides,
+    workspace: resolvedWorkspace,
+    customWorkspace: resolvedCustomWorkspace,
+  };
+};
+
 export const createGeminiAgent = async (
   model: TProviderWithModel,
   workspace?: string,
@@ -182,27 +196,29 @@ export const createGeminiAgent = async (
   return {
     type: 'gemini',
     model,
-    extra: {
-      workspace: newWorkspace,
-      customWorkspace: finalCustomWorkspace,
-      webSearchEngine,
-      contextFileName,
-      // 系统规则 / System rules
-      presetRules,
-      // 向后兼容：contextContent 保存 rules / Backward compatible: contextContent stores rules
-      contextContent: presetRules,
-      // 启用的 skills 列表（通过 SkillManager 加载）/ Enabled skills list (loaded via SkillManager)
-      enabledSkills,
-      // 启用的 hooks 列表（由后续 HookRuntime 或原生 projection 消费）
-      enabledHooks,
-      // 预设助手 ID，用于在会话面板显示助手名称和头像
-      // Preset assistant ID for displaying name and avatar in conversation panel
-      presetAssistantId,
-      // Initial session mode from Guid page mode selector
-      sessionMode,
-      // Explicit marker for temporary health-check conversations
-      isHealthCheck,
-    },
+    extra: mergeResolvedConversationExtra(
+      {
+        webSearchEngine,
+        contextFileName,
+        // 系统规则 / System rules
+        presetRules,
+        // 向后兼容：contextContent 保存 rules / Backward compatible: contextContent stores rules
+        contextContent: presetRules,
+        // 启用的 skills 列表（通过 SkillManager 加载）/ Enabled skills list (loaded via SkillManager)
+        enabledSkills,
+        // 启用的 hooks 列表（由后续 HookRuntime 或原生 projection 消费）
+        enabledHooks,
+        // 预设助手 ID，用于在会话面板显示助手名称和头像
+        // Preset assistant ID for displaying name and avatar in conversation panel
+        presetAssistantId,
+        // Initial session mode from Guid page mode selector
+        sessionMode,
+        // Explicit marker for temporary health-check conversations
+        isHealthCheck,
+      },
+      newWorkspace,
+      finalCustomWorkspace
+    ) as Extract<TChatConversation, { type: 'gemini' }>['extra'],
     desc: finalCustomWorkspace ? newWorkspace : '',
     createTime: Date.now(),
     modifyTime: Date.now(),
@@ -220,16 +236,23 @@ export const createGroupConversation = async (options: {
   participants: DiscussionGroupParticipant[];
   orchestration: DiscussionGroupOrchestration;
 }): Promise<TChatConversation> => {
+  const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
+    `discussion-group-temp-${Date.now()}`,
+    options.workspace,
+    undefined,
+    options.customWorkspace
+  );
+
   return {
     type: 'group',
     model: options.model,
     extra: {
-      workspace: options.workspace,
-      customWorkspace: options.customWorkspace,
+      workspace,
+      customWorkspace,
       participants: options.participants,
       orchestration: options.orchestration,
     },
-    desc: options.workspace || '',
+    desc: customWorkspace ? workspace : '',
     createTime: Date.now(),
     modifyTime: Date.now(),
     name: options.name || 'Discussion Group',
@@ -259,9 +282,7 @@ export const createAcpAgent = async (options: ICreateConversationParams): Promis
 
   return {
     type: 'acp',
-    extra: {
-      workspace: workspace,
-      customWorkspace,
+    extra: mergeResolvedConversationExtra(extra as Record<string, unknown>, workspace, customWorkspace, {
       backend: extra.backend,
       cliPath: extra.cliPath,
       agentName: extra.agentName,
@@ -285,7 +306,7 @@ export const createAcpAgent = async (options: ICreateConversationParams): Promis
       deferInitialWorkspaceLoad: extra.deferInitialWorkspaceLoad === true,
       // Explicit marker for temporary health-check conversations
       isHealthCheck: extra.isHealthCheck,
-    },
+    }) as Extract<TChatConversation, { type: 'acp' }>['extra'],
     createTime: Date.now(),
     modifyTime: Date.now(),
     name: workspace,
@@ -313,9 +334,7 @@ export const createCodexAgent = async (options: ICreateConversationParams): Prom
 
   return {
     type: 'codex',
-    extra: {
-      workspace: workspace,
-      customWorkspace,
+    extra: mergeResolvedConversationExtra(extra as Record<string, unknown>, workspace, customWorkspace, {
       cliPath: extra.cliPath,
       sandboxMode: 'workspace-write', // 默认为读写权限 / Default to read-write permission
       presetContext: extra.presetContext, // 智能助手的预设规则/提示词
@@ -331,7 +350,7 @@ export const createCodexAgent = async (options: ICreateConversationParams): Prom
       codexModel: extra.codexModel,
       // Explicit marker for temporary health-check conversations
       isHealthCheck: extra.isHealthCheck,
-    },
+    }) as Extract<TChatConversation, { type: 'codex' }>['extra'],
     createTime: Date.now(),
     modifyTime: Date.now(),
     name: workspace,
@@ -358,13 +377,11 @@ export const createNanobotAgent = async (options: ICreateConversationParams): Pr
 
   return {
     type: 'nanobot',
-    extra: {
-      workspace: workspace,
-      customWorkspace,
+    extra: mergeResolvedConversationExtra(extra as Record<string, unknown>, workspace, customWorkspace, {
       enabledSkills: extra.enabledSkills,
       enabledHooks: extra.enabledHooks,
       presetAssistantId: extra.presetAssistantId,
-    },
+    }) as Extract<TChatConversation, { type: 'nanobot' }>['extra'],
     createTime: Date.now(),
     modifyTime: Date.now(),
     name: workspace,
@@ -391,11 +408,10 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
   const expectedIdentityHash = await computeOpenClawIdentityHash(workspace);
   return {
     type: 'openclaw-gateway',
-    extra: {
-      workspace: workspace,
+    extra: mergeResolvedConversationExtra(extra as Record<string, unknown>, workspace, customWorkspace, {
       backend: extra.backend,
       agentName: extra.agentName,
-      customWorkspace,
+      openclawAgentId: extra.openclawAgentId,
       gateway: {
         cliPath: extra.cliPath,
       },
@@ -403,6 +419,7 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
         expectedWorkspace: workspace,
         expectedBackend: extra.backend,
         expectedAgentName: extra.agentName,
+        expectedOpenClawAgentId: extra.openclawAgentId,
         expectedCliPath: extra.cliPath,
         // Note: model is not used by openclaw-gateway, so skip expectedModel to avoid
         // validation mismatch (conversation object doesn't store model for this type)
@@ -416,7 +433,7 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
       enabledHooks: extra.enabledHooks,
       // Preset assistant ID for displaying name and avatar in conversation panel
       presetAssistantId: extra.presetAssistantId,
-    },
+    }) as Extract<TChatConversation, { type: 'openclaw-gateway' }>['extra'],
     createTime: Date.now(),
     modifyTime: Date.now(),
     name: workspace,

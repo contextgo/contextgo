@@ -26,6 +26,8 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     conversation,
     isGenerating,
     hasCompletionUnread,
+    allowActions = true,
+    allowBatchSelection = true,
     collapsed,
     tooltipEnabled,
     batchMode,
@@ -33,6 +35,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     selected,
     menuVisible,
   } = props;
+  const rowBatchMode = batchMode && allowBatchSelection;
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const {
@@ -81,7 +84,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
 
   const handleRowClick = () => {
     cleanupSiderTooltips();
-    if (batchMode) {
+    if (rowBatchMode) {
       onToggleChecked(conversation);
       return;
     }
@@ -89,7 +92,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
   };
 
   const renderCompletionUnreadDot = () => {
-    if (batchMode || !hasCompletionUnread || isGenerating) {
+    if (rowBatchMode || !hasCompletionUnread || isGenerating) {
       return null;
     }
 
@@ -112,14 +115,14 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
         className={classNames(
           'chat-history__item px-12px py-8px rd-8px flex justify-start items-center group cursor-pointer relative overflow-hidden shrink-0 conversation-item [&.conversation-item+&.conversation-item]:mt-2px min-w-0 transition-colors',
           {
-            'hover:bg-[rgba(var(--primary-6),0.14)]': !batchMode,
+            'hover:bg-[rgba(var(--primary-6),0.14)]': !rowBatchMode,
             '!bg-active': selected,
-            'bg-[rgba(var(--primary-6),0.08)]': batchMode && checked,
+            'bg-[rgba(var(--primary-6),0.08)]': rowBatchMode && checked,
           }
         )}
         onClick={handleRowClick}
       >
-        {batchMode && (
+        {rowBatchMode && (
           <span
             className='mr-8px flex-center'
             onClick={(event) => {
@@ -144,7 +147,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
             <div
               className={classNames(
                 'chat-history__item-name overflow-hidden text-ellipsis block w-full text-14px lh-24px whitespace-nowrap min-w-0 group-hover:text-1',
-                selected && !batchMode ? 'text-1 font-medium' : 'text-2'
+                selected && !rowBatchMode ? 'text-1 font-medium' : 'text-2'
               )}
             >
               <span className='block overflow-hidden text-ellipsis whitespace-nowrap'>{conversation.name}</span>
@@ -153,7 +156,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
         </FlexFullContainer>
 
         {renderCompletionUnreadDot()}
-        {!batchMode && (
+        {!rowBatchMode && allowActions && (
           <div
             className={classNames(
               'absolute right-0px top-0px h-full items-center justify-end !collapsed-hidden pr-8px',

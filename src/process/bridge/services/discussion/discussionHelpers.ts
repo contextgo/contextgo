@@ -36,6 +36,30 @@ export const buildDiscussionRoundPrompt = (options: {
     return userInput;
   }
 
+  if (mode === 'relay') {
+    if (peerSummaries.length === 0) {
+      return `${userInput}
+
+[Discussion Protocol]
+You are ${participantName}. Start the relay discussion with an independent answer.`;
+    }
+
+    const peerContext = peerSummaries.map((summary) => `- ${summary.participantName}: ${summary.content.trim()}`).join('\n');
+
+    return `${userInput}
+
+[Relay Discussion Context]
+You are ${participantName}. Review the earlier assistants' responses and continue the discussion.
+
+[Earlier Assistants]
+${peerContext}
+
+[Response Requirements]
+- Build on useful points, challenge weak assumptions, and add at least one new angle.
+- Keep your answer concise and action-oriented.
+- End with your recommendation or next step for the user.`;
+  }
+
   if (round <= 1 || peerSummaries.length === 0) {
     return `${userInput}
 

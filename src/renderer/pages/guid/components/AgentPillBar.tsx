@@ -15,7 +15,7 @@ import styles from '../index.module.css';
 type AgentPillBarProps = {
   availableAgents: AvailableAgent[];
   selectedAgentKey: string;
-  getAgentKey: (agent: { backend: AcpBackend; customAgentId?: string }) => string;
+  getAgentKey: (agent: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string }) => string;
   onSelectAgent: (key: string) => void;
 };
 

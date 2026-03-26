@@ -71,40 +71,6 @@ export class DiscussionGroupService {
   ): Promise<GroupConversation> {
     const parentId = params.id || uuid();
     const orchestration = normalizeDiscussionOrchestration(params.extra.orchestration);
-    const participants: DiscussionGroupParticipant[] = [];
-
-    for (const participant of params.extra.participants) {
-      const childConversation = await this.conversationService.createConversation({
-        ...participant.conversation,
-        name: participant.name,
-        source: params.source,
-        channelChatId: params.channelChatId,
-        extra: {
-          ...participant.conversation.extra,
-          workspace: participant.conversation.extra.workspace || params.extra.workspace,
-          customWorkspace: participant.conversation.extra.customWorkspace ?? params.extra.customWorkspace,
-          groupMeta: {
-            parentGroupId: parentId,
-            participantId: participant.id,
-            participantName: participant.name,
-            participantAvatar: participant.avatar,
-            hiddenFromHistory: true,
-          },
-        },
-      });
-
-      participants.push({
-        id: participant.id,
-        participantType: participant.participantType,
-        participantKey: participant.participantKey,
-        assistantId: participant.assistantId,
-        name: participant.name,
-        avatar: participant.avatar,
-        description: participant.description,
-        childConversationId: childConversation.id,
-      });
-    }
-
     const parentConversation = await this.conversationService.createConversation({
       type: 'group',
       id: parentId,
@@ -115,12 +81,67 @@ export class DiscussionGroupService {
       extra: {
         workspace: params.extra.workspace,
         customWorkspace: params.extra.customWorkspace,
-        participants,
+        participants: [],
         orchestration,
       },
     });
 
-    return parentConversation as GroupConversation;
+    const participants: DiscussionGroupParticipant[] = [];
+
+    try {
+      for (const participant of params.extra.participants) {
+        const childConversation = await this.conversationService.createConversation({
+          ...participant.conversation,
+          name: participant.name,
+          source: params.source,
+          channelChatId: params.channelChatId,
+          extra: {
+            ...participant.conversation.extra,
+            workspace: parentConversation.extra.workspace,
+            customWorkspace: parentConversation.extra.customWorkspace,
+            groupMeta: {
+              parentGroupId: parentId,
+              participantId: participant.id,
+              participantName: participant.name,
+              participantAvatar: participant.avatar,
+              hiddenFromHistory: true,
+            },
+          },
+        });
+
+        participants.push({
+          id: participant.id,
+          participantType: participant.participantType,
+          participantKey: participant.participantKey,
+          assistantId: participant.assistantId,
+          name: participant.name,
+          avatar: participant.avatar,
+          description: participant.description,
+          childConversationId: childConversation.id,
+        });
+      }
+    } catch (error) {
+      await Promise.all(
+        participants.map((participant) => this.conversationService.deleteConversation(participant.childConversationId))
+      );
+      await this.conversationService.deleteConversation(parentConversation.id);
+      throw error;
+    }
+
+    const updatedExtra: GroupConversation['extra'] = {
+      ...parentConversation.extra,
+      participants,
+      orchestration,
+    };
+
+    await this.conversationService.updateConversation(parentConversation.id, {
+      extra: updatedExtra,
+    });
+
+    return {
+      ...parentConversation,
+      extra: updatedExtra,
+    } as GroupConversation;
   }
 
   async deleteConversation(conversation: GroupConversation): Promise<void> {
@@ -149,8 +170,17 @@ export class DiscussionGroupService {
 
     this.cancelledGroupIds.delete(conversation.id);
     const orchestration = normalizeDiscussionOrchestration(conversation.extra.orchestration);
-    const roundSummariesByParticipant = new Map<string, DiscussionRoundSummary>();
-
+    await this.persistUserMessage(conversation, {
+      id: options.msgId,
+      type: 'text',
+      msg_id: options.msgId,
+      conversation_id: conversation.id,
+      position: 'right',
+      content: {
+        content: options.input,
+      },
+      createdAt: Date.now(),
+    });
     ipcBridge.conversation.responseStream.emit({
       type: 'start',
       data: null,
@@ -162,19 +192,27 @@ export class DiscussionGroupService {
     this.emitTurnState(conversation, 'running', 'ai_generating', 'Discussion group is responding');
 
     try {
+      let previousRoundSummariesByParticipant = new Map<string, DiscussionRoundSummary>();
+
       for (let round = 1; round <= orchestration.rounds; round += 1) {
         this.throwIfCancelled(conversation.id);
+        const currentRoundSummariesByParticipant = new Map<string, DiscussionRoundSummary>();
 
-        for (const participant of conversation.extra.participants) {
+        for (const [participantIndex, participant] of conversation.extra.participants.entries()) {
           this.throwIfCancelled(conversation.id);
 
           const peerSummaries =
-            round <= 1
-              ? []
-              : conversation.extra.participants
-                  .filter((item) => item.id !== participant.id)
-                  .map((item) => roundSummariesByParticipant.get(item.id))
-                  .filter((item): item is DiscussionRoundSummary => Boolean(item));
+            orchestration.mode === 'relay'
+              ? conversation.extra.participants
+                  .slice(0, participantIndex)
+                  .map((item) => currentRoundSummariesByParticipant.get(item.id))
+                  .filter((item): item is DiscussionRoundSummary => Boolean(item))
+              : round <= 1
+                ? []
+                : conversation.extra.participants
+                    .filter((item) => item.id !== participant.id)
+                    .map((item) => previousRoundSummariesByParticipant.get(item.id))
+                    .filter((item): item is DiscussionRoundSummary => Boolean(item));
 
           const prompt = buildDiscussionRoundPrompt({
             mode: orchestration.mode,
@@ -193,13 +231,15 @@ export class DiscussionGroupService {
             .join('\n\n');
 
           if (summaryText) {
-            roundSummariesByParticipant.set(participant.id, {
+            currentRoundSummariesByParticipant.set(participant.id, {
               participantId: participant.id,
               participantName: participant.name,
               content: summaryText,
             });
           }
         }
+
+        previousRoundSummariesByParticipant = currentRoundSummariesByParticipant;
       }
 
       await this.conversationService.updateConversation(conversation.id, { status: 'finished' });
@@ -327,6 +367,12 @@ export class DiscussionGroupService {
     if (this.cancelledGroupIds.has(conversationId)) {
       throw new DiscussionGroupCancelledError(conversationId);
     }
+  }
+
+  private async persistUserMessage(conversation: GroupConversation, message: IMessageText): Promise<void> {
+    const db = await getDatabase();
+    db.insertMessage(message);
+    await this.conversationService.updateConversation(conversation.id, {});
   }
 
   private async persistProjectedMessage(

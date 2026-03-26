@@ -65,6 +65,8 @@ describe('initAgent — skill support', () => {
     workspace: string,
     options: { agentType?: string; backend?: string; enabledSkills?: string[] }
   ) => Promise<void>;
+  let createAcpAgent: (options: unknown) => Promise<{ extra: { workspace: string; customWorkspace?: boolean } }>;
+  let createOpenClawAgent: (options: unknown) => Promise<{ extra: Record<string, unknown> }>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -73,6 +75,8 @@ describe('initAgent — skill support', () => {
     const mod = await import('@process/utils/initAgent');
     hasNativeSkillSupport = mod.hasNativeSkillSupport;
     setupAssistantWorkspace = mod.setupAssistantWorkspace;
+    createAcpAgent = mod.createAcpAgent;
+    createOpenClawAgent = mod.createOpenClawAgent;
   });
 
   describe('hasNativeSkillSupport', () => {
@@ -289,6 +293,65 @@ describe('initAgent — skill support', () => {
       });
 
       expect(symlinkCalls).toHaveLength(3);
+    });
+  });
+
+  describe('createAcpAgent', () => {
+    it('preserves discussion-group metadata on child conversations', async () => {
+      const conversation = await createAcpAgent({
+        extra: {
+          backend: 'codex',
+          workspace: '/tmp/shared-workspace',
+          customWorkspace: false,
+          groupMeta: {
+            parentGroupId: 'group-1',
+            participantId: 'participant-1',
+            participantName: 'Codex',
+            hiddenFromHistory: true,
+          },
+        },
+      });
+
+      expect(conversation.extra.workspace).toBe('/tmp/shared-workspace');
+      expect(conversation.extra.customWorkspace).toBe(false);
+      expect(conversation.extra.groupMeta).toEqual({
+        parentGroupId: 'group-1',
+        participantId: 'participant-1',
+        participantName: 'Codex',
+        hiddenFromHistory: true,
+      });
+    });
+  });
+
+  describe('createOpenClawAgent', () => {
+    it('preserves native OpenClaw agent metadata on the conversation extra', async () => {
+      const conversation = await createOpenClawAgent({
+        extra: {
+          backend: 'openclaw-gateway',
+          agentName: 'Reviewer (reviewer)',
+          openclawAgentId: 'reviewer',
+          workspace: '/Users/test/.openclaw/workspace-reviewer',
+          customWorkspace: true,
+          cliPath: '/usr/local/bin/openclaw',
+        },
+      });
+
+      expect(conversation.extra).toMatchObject({
+        workspace: '/Users/test/.openclaw/workspace-reviewer',
+        customWorkspace: true,
+        agentName: 'Reviewer (reviewer)',
+        openclawAgentId: 'reviewer',
+        gateway: {
+          cliPath: '/usr/local/bin/openclaw',
+        },
+        runtimeValidation: {
+          expectedWorkspace: '/Users/test/.openclaw/workspace-reviewer',
+          expectedAgentName: 'Reviewer (reviewer)',
+          expectedOpenClawAgentId: 'reviewer',
+          expectedCliPath: '/usr/local/bin/openclaw',
+          expectedIdentityHash: 'mock-hash',
+        },
+      });
     });
   });
 });

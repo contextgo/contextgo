@@ -6,6 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import type { TProviderWithModel } from '@/common/config/storage';
+import type { TChatConversation } from '@/common/config/storage';
 import { emitter } from '@/renderer/utils/emitter';
 import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
 import { updateWorkspaceTime } from '@/renderer/utils/workspace/workspaceHistory';
@@ -37,14 +38,18 @@ export type GuidSendDeps = {
 
   // Agent helpers
   findAgentByKey: (key: string) => AvailableAgent | undefined;
-  getEffectiveAgentType: (agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined) => EffectiveAgentInfo;
+  getEffectiveAgentType: (
+    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string } | undefined
+  ) => EffectiveAgentInfo;
   resolvePresetRulesAndSkills: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; context?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string; context?: string } | undefined
   ) => Promise<{ rules?: string; skills?: string }>;
   resolveEnabledSkills: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string } | undefined
   ) => string[] | undefined;
-  resolveEnabledHooks: (agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined) => string[] | undefined;
+  resolveEnabledHooks: (
+    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string } | undefined
+  ) => string[] | undefined;
   isMainAgentAvailable: (agentType: string) => boolean;
   getAvailableFallbackAgent: () => string | null;
   currentEffectiveAgentInfo: EffectiveAgentInfo;
@@ -59,7 +64,7 @@ export type GuidSendDeps = {
   // Navigation & tabs
   navigate: NavigateFunction;
   closeAllTabs: () => void;
-  openTab: (conversation: any) => void;
+  openTab: (conversation: TChatConversation) => void;
   t: TFunction;
 };
 
@@ -202,6 +207,8 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     // OpenClaw Gateway path
     if (selectedAgent === 'openclaw-gateway') {
       const openclawAgentInfo = agentInfo || findAgentByKey(selectedAgentKey);
+      const openclawWorkspace = openclawAgentInfo?.workspace || finalWorkspace;
+      const openclawUsesFixedWorkspace = Boolean(openclawAgentInfo?.workspace);
 
       try {
         const conversation = await ipcBridge.conversation.create.invoke({
@@ -210,15 +217,17 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           model: currentModel!,
           extra: {
             defaultFiles: files,
-            workspace: finalWorkspace,
-            customWorkspace: isCustomWorkspace,
+            workspace: openclawWorkspace,
+            customWorkspace: isCustomWorkspace || openclawUsesFixedWorkspace,
             backend: openclawAgentInfo?.backend,
             cliPath: openclawAgentInfo?.cliPath,
             agentName: openclawAgentInfo?.name,
+            openclawAgentId: openclawAgentInfo?.openclawAgentId,
             runtimeValidation: {
-              expectedWorkspace: finalWorkspace,
+              expectedWorkspace: openclawWorkspace,
               expectedBackend: openclawAgentInfo?.backend,
               expectedAgentName: openclawAgentInfo?.name,
+              expectedOpenClawAgentId: openclawAgentInfo?.openclawAgentId,
               expectedCliPath: openclawAgentInfo?.cliPath,
               expectedModel: currentModel?.useModel,
               switchedAt: Date.now(),
