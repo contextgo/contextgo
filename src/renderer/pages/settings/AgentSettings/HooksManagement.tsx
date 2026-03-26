@@ -8,17 +8,14 @@ import { ipcBridge } from '@/common';
 import SettingsPageWrapper from '@/renderer/pages/settings/components/SettingsPageWrapper';
 import type { HookInfo } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import { Button, Collapse, Empty, Input, Message, Modal, Tag, Typography } from '@arco-design/web-react';
-import { Delete, FolderOpen, Plus, Refresh, Search } from '@icon-park/react';
+import { Delete, FolderOpen, Plus, Search } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { filterHooksByQuery, summarizeHookLibrary } from './hookLibraryUtils';
 
 const HooksManagement: React.FC = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [messageApi, messageContext] = Message.useMessage();
-  const [loading, setLoading] = useState(false);
   const [availableHooks, setAvailableHooks] = useState<HookInfo[]>([]);
   const [hooksDir, setHooksDir] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,7 +23,6 @@ const HooksManagement: React.FC = () => {
   const [installingHookName, setInstallingHookName] = useState<string | null>(null);
 
   const loadHooks = useCallback(async () => {
-    setLoading(true);
     try {
       const [hooks, paths] = await Promise.all([
         ipcBridge.fs.listAvailableHooks.invoke(),
@@ -40,8 +36,6 @@ const HooksManagement: React.FC = () => {
       messageApi.error(t('conversation.workspace.sessionHooksLoadFailed', { defaultValue: 'Failed to load hooks' }));
       setAvailableHooks([]);
       return [];
-    } finally {
-      setLoading(false);
     }
   }, [messageApi, t]);
 
@@ -247,16 +241,6 @@ const HooksManagement: React.FC = () => {
                 </Typography.Paragraph>
               </div>
               <div className='flex flex-wrap items-center gap-8px'>
-                <Button type='outline' onClick={() => void navigate('/settings/agent', { replace: true })}>
-                  {t('settings.hooksPageManageAssistants', { defaultValue: 'Manage Assistants' })}
-                </Button>
-                <Button
-                  type='outline'
-                  icon={<Refresh size={14} className={loading ? 'animate-spin' : ''} />}
-                  onClick={() => void loadHooks()}
-                >
-                  {t('common.refresh', { defaultValue: 'Refresh' })}
-                </Button>
                 <Button type='outline' icon={<Plus size={14} />} onClick={() => void handleImportHook()}>
                   {t('settings.importHook', { defaultValue: 'Import Hook' })}
                 </Button>
