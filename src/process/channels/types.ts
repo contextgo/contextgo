@@ -140,6 +140,129 @@ export interface IChannelPluginStatus {
   };
 }
 
+// ==================== Resource Model Types ====================
+
+/**
+ * First-class connector instance used for ingress/egress routing.
+ * This is the target semantic replacement for plugin-centric channel routing.
+ */
+export interface IConnectorInstance {
+  id: string;
+  platform: PluginType;
+  name: string;
+  enabled: boolean;
+  status: PluginStatus;
+  credentials?: IPluginCredentials;
+  runtimeConfig?: IPluginConfigOptions;
+  capabilities?: Record<string, unknown>;
+  legacyPluginId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Remote identity authorized through a specific connector instance.
+ */
+export interface IRemoteIdentity {
+  id: string;
+  connectorId: string;
+  remoteUserId?: string;
+  remoteChatId: string;
+  remoteChatType?: string;
+  displayName?: string;
+  authorizedAt: number;
+  lastActive?: number;
+  metadata?: Record<string, unknown>;
+  legacyUserId?: string;
+}
+
+/**
+ * Published reusable agent capability.
+ */
+export interface IAgentProfile {
+  id: string;
+  name: string;
+  backend: string;
+  modelRef?: {
+    id: string;
+    useModel: string;
+  };
+  workspaceRef?: string;
+  promptProfile?: Record<string, unknown>;
+  toolPolicy?: Record<string, unknown>;
+  memoryPolicy?: Record<string, unknown>;
+  delegationPolicy?: Record<string, unknown>;
+  publishedFromConversationId?: string;
+  version: number;
+  archived: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Binding scope kinds for routing ingress traffic to agent profiles.
+ */
+export type ChannelBindingScopeType = 'connector_default' | 'remote_user' | 'remote_chat' | 'temporary_override';
+
+/**
+ * Explicit routing rule from connector scope to agent profile.
+ */
+export interface IChannelBinding {
+  id: string;
+  connectorId: string;
+  scopeType: ChannelBindingScopeType;
+  scopeKey?: string;
+  agentProfileId: string;
+  priority: number;
+  enabled: boolean;
+  temporary: boolean;
+  fallbackAgentProfileId?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Long-lived external chat relationship.
+ * The active conversation may rotate on `/new`, but the external session remains stable.
+ */
+export interface IExternalSession {
+  id: string;
+  connectorId: string;
+  remoteIdentityId: string;
+  bindingId?: string;
+  agentProfileId: string;
+  activeConversationId?: string;
+  state: 'active' | 'paused' | 'archived';
+  createdAt: number;
+  lastActivity: number;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Execution run status.
+ */
+export type ChannelRunStatus = 'pending' | 'running' | 'finished' | 'error' | 'cancelled' | 'terminated';
+
+/**
+ * Root or child execution run.
+ */
+export interface IChannelRun {
+  id: string;
+  externalSessionId?: string;
+  parentRunId?: string;
+  rootRunId: string;
+  agentProfileId: string;
+  backend: string;
+  conversationId?: string;
+  workspaceRef?: string;
+  status: ChannelRunStatus;
+  inputMessageId?: string;
+  metadata?: Record<string, unknown>;
+  startedAt: number;
+  endedAt?: number;
+}
+
 // ==================== User Types ====================
 
 /**
@@ -217,10 +340,13 @@ export interface IChannelPairingRequest {
   code: string;
   platformUserId: string;
   platformType: PluginType;
+  connectorId?: string;
+  remoteChatId?: string;
   displayName?: string;
   requestedAt: number;
   expiresAt: number;
   status: PairingStatus;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -303,6 +429,7 @@ export interface IMessageAction {
 export interface IUnifiedIncomingMessage {
   id: string;
   platform: PluginType;
+  pluginId?: string;
   chatId: string;
   user: IUnifiedUser;
   content: IUnifiedMessageContent;

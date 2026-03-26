@@ -17,6 +17,7 @@ import { TelegramPlugin } from '../plugins/telegram/TelegramPlugin';
 import { WeixinPlugin } from '../plugins/weixin/WeixinPlugin';
 import { isBuiltinChannelPlatform, resolveChannelConvType } from '../types';
 import type { ChannelPlatform, IChannelPluginConfig, PluginType } from '../types';
+import { getChannelRouteResolver } from './ChannelRouteResolver';
 import { SessionManager } from './SessionManager';
 
 /**
@@ -90,32 +91,36 @@ export class ChannelManager {
 
       // Set confirm handler for tool confirmations
       // 设置工具确认处理器
-      this.pluginManager.setConfirmHandler(async (userId: string, platform: string, callId: string, value: string) => {
-        // 查找用户
-        // Find user
-        const db = await getDatabase();
-        const userResult = db.getChannelUserByPlatform(userId, platform as PluginType);
-        if (!userResult.data) {
-          console.error(`[ChannelManager] User not found: ${userId}@${platform}`);
-          return;
-        }
+      this.pluginManager.setConfirmHandler(
+        async ({ userId, platform, pluginId, chatId, conversationId, callId, value }) => {
+          if (conversationId) {
+            try {
+              await getChannelMessageService().confirm(conversationId, callId, value);
+            } catch (error) {
+              console.error('[ChannelManager] Tool confirmation failed:', error);
+            }
+            return;
+          }
 
-        // 查找 session 获取 conversationId
-        // Find session to get conversationId
-        const session = this.sessionManager?.getSession(userResult.data.id);
-        if (!session?.conversationId) {
-          console.error(`[ChannelManager] Session not found for user: ${userResult.data.id}`);
-          return;
-        }
+          if (!chatId) {
+            console.error(`[ChannelManager] Missing chatId for tool confirmation: ${userId}@${platform}`);
+            return;
+          }
 
-        // 调用 confirm
-        // Call confirm
-        try {
-          await getChannelMessageService().confirm(session.conversationId, callId, value);
-        } catch (error) {
-          console.error(`[ChannelManager] Tool confirmation failed:`, error);
+          try {
+            const route = await getChannelRouteResolver().resolveAuthorizedRoute({
+              platform: platform as PluginType,
+              pluginId,
+              platformUserId: userId,
+              chatId,
+            });
+            await this.sessionManager?.storeSession(route.session);
+            await getChannelMessageService().confirm(route.conversation.id, callId, value);
+          } catch (error) {
+            console.error('[ChannelManager] Tool confirmation failed:', error);
+          }
         }
-      });
+      );
 
       // Load and start enabled plugins from database
       await this.loadEnabledPlugins();

@@ -5,19 +5,15 @@
  */
 
 import type { TMessage } from '@/common/chat/chatLib';
-import type { TChatConversation } from '@/common/config/storage';
-import { getDatabase } from '@process/services/database';
-import { ProcessConfig } from '@process/utils/initStorage';
-import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
 import { buildChatErrorResponse, chatActions } from '../actions/ChatActions';
 import { handlePairingShow, platformActions } from '../actions/PlatformActions';
-import { getChannelDefaultModel, systemActions } from '../actions/SystemActions';
+import { systemActions } from '../actions/SystemActions';
 import type { IActionContext, IRegisteredAction } from '../actions/types';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
+import { getChannelRouteResolver } from '../core/ChannelRouteResolver';
 import type { SessionManager } from '../core/SessionManager';
 import type { PairingService } from '../pairing/PairingService';
 import type { PluginMessageHandler } from '../plugins/BasePlugin';
-import { getChannelConversationName, resolveChannelConvType } from '../types';
 import { createMainMenuCard, createErrorRecoveryCard, createToolConfirmationCard } from '../plugins/lark/LarkCards';
 import { convertHtmlToLarkMarkdown } from '../plugins/lark/LarkAdapter';
 import {
@@ -30,9 +26,8 @@ import { convertHtmlToDingTalkMarkdown } from '../plugins/dingtalk/DingTalkAdapt
 import { createMainMenuKeyboard, createToolConfirmationKeyboard } from '../plugins/telegram/TelegramKeyboards';
 import { escapeHtml } from '../plugins/telegram/TelegramAdapter';
 import { stripHtml } from '../plugins/weixin/WeixinAdapter';
-import type { ChannelAgentType, IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType } from '../types';
+import type { IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType } from '../types';
 import type { PluginManager } from './PluginManager';
-import type { AcpBackend } from '@/common/types/acpTypes';
 
 // ==================== Platform-specific Helpers ====================
 
@@ -67,21 +62,32 @@ function getToolConfirmationMarkup(
   platform: PluginType,
   callId: string,
   options: Array<{ label: string; value: string }>,
+  chatId?: string,
+  conversationId?: string,
   title?: string,
   description?: string
 ) {
   if (platform === 'lark') {
-    return createToolConfirmationCard(callId, title || 'Confirmation', description || 'Please confirm', options);
+    return createToolConfirmationCard(
+      callId,
+      title || 'Confirmation',
+      description || 'Please confirm',
+      options,
+      chatId,
+      conversationId
+    );
   }
   if (platform === 'dingtalk') {
     return createDingTalkToolConfirmationCard(
       callId,
       title || 'Confirmation',
       description || 'Please confirm',
-      options
+      options,
+      chatId,
+      conversationId
     );
   }
-  return createToolConfirmationKeyboard(callId, options);
+  return createToolConfirmationKeyboard(callId, options, chatId, conversationId);
 }
 
 /**
@@ -146,24 +152,28 @@ function getConfirmationOptions(type: string): Array<{ label: string; value: str
   }
 }
 
+function getDetailText(value: unknown, fallback: string): string {
+  return typeof value === 'string' && value ? value : fallback;
+}
+
 /**
  * 获取确认提示文本
  * Get confirmation prompt text
  * 注意：所有用户输入的内容都需要转义 HTML 特殊字符
  * Note: All user input content needs HTML special characters escaped
  */
-function getConfirmationPrompt(details: { type: string; title?: string; [key: string]: any }): string {
+function getConfirmationPrompt(details: { type: string; title?: string; [key: string]: unknown }): string {
   if (!details) return 'Please confirm the operation';
 
   switch (details.type) {
     case 'edit':
-      return `📝 <b>Edit File Confirmation</b>\nFile: <code>${escapeHtml(details.fileName || 'Unknown file')}</code>\n\nAllow editing this file?`;
+      return `📝 <b>Edit File Confirmation</b>\nFile: <code>${escapeHtml(getDetailText(details.fileName, 'Unknown file'))}</code>\n\nAllow editing this file?`;
     case 'exec':
-      return `⚡ <b>Execute Command Confirmation</b>\nCommand: <code>${escapeHtml(details.command || 'Unknown command')}</code>\n\nAllow executing this command?`;
+      return `⚡ <b>Execute Command Confirmation</b>\nCommand: <code>${escapeHtml(getDetailText(details.command, 'Unknown command'))}</code>\n\nAllow executing this command?`;
     case 'mcp':
-      return `🔧 <b>MCP Tool Confirmation</b>\nTool: <code>${escapeHtml(details.toolDisplayName || details.toolName || 'Unknown tool')}</code>\nServer: <code>${escapeHtml(details.serverName || 'Unknown server')}</code>\n\nAllow calling this tool?`;
+      return `🔧 <b>MCP Tool Confirmation</b>\nTool: <code>${escapeHtml(getDetailText(details.toolDisplayName, getDetailText(details.toolName, 'Unknown tool')))}</code>\nServer: <code>${escapeHtml(getDetailText(details.serverName, 'Unknown server'))}</code>\n\nAllow calling this tool?`;
     case 'info':
-      return `ℹ️ <b>Information Confirmation</b>\n${escapeHtml(details.prompt || '')}\n\nContinue?`;
+      return `ℹ️ <b>Information Confirmation</b>\n${escapeHtml(getDetailText(details.prompt, ''))}\n\nContinue?`;
     default:
       return 'Please confirm the operation';
   }
@@ -176,6 +186,8 @@ function getConfirmationPrompt(details: { type: string; title?: string; [key: st
 function convertTMessageToOutgoing(
   message: TMessage,
   platform: PluginType,
+  chatId?: string,
+  conversationId?: string,
   isComplete = false
 ): IUnifiedOutgoingMessage {
   switch (message.type) {
@@ -237,6 +249,8 @@ function convertTMessageToOutgoing(
             platform,
             confirmingTool.callId,
             options,
+            chatId,
+            conversationId,
             'Tool Confirmation',
             confirmText
           ),
@@ -331,7 +345,7 @@ export class ActionExecutor {
     // Build action context
     const context: IActionContext = {
       platform,
-      pluginId: `${platform}_default`, // TODO: Get actual plugin ID
+      pluginId: message.pluginId ?? `${platform}_default`,
       userId: user.id,
       chatId,
       displayName: user.displayName,
@@ -343,7 +357,7 @@ export class ActionExecutor {
 
     try {
       // Check if user is authorized
-      const isAuthorized = await this.pairingService.isUserAuthorized(user.id, platform);
+      const isAuthorized = await this.pairingService.isUserAuthorized(user.id, platform, chatId, context.pluginId);
 
       // Handle /start command - always show pairing
       if (content.type === 'command' && content.text === '/start') {
@@ -363,130 +377,23 @@ export class ActionExecutor {
         return;
       }
 
-      // User is authorized - look up the assistant user
-      const db = await getDatabase();
-      const userResult = db.getChannelUserByPlatform(user.id, platform);
-      const channelUser = userResult.data;
+      const route = await getChannelRouteResolver().resolveAuthorizedRoute({
+        platform,
+        pluginId: context.pluginId,
+        platformUserId: user.id,
+        chatId,
+        displayName: user.displayName,
+      });
+      await this.sessionManager.storeSession(route.session);
 
-      if (!channelUser) {
-        console.error(`[ActionExecutor] Authorized user not found in database: ${user.id}`);
-        await context.sendMessage({
-          type: 'text',
-          text: '❌ User data error. Please re-pair your account.',
-          parseMode: 'HTML',
-        });
-        return;
-      }
-
-      // Set the assistant user in context
-      context.channelUser = channelUser;
-
-      // Get or create session (scoped by chatId for per-chat isolation)
-      let session = this.sessionManager.getSession(channelUser.id, chatId);
-      if (!session || !session.conversationId) {
-        const source = platform;
-
-        // Read selected agent for this platform (defaults to Gemini)
-        let savedAgent: unknown = undefined;
-        try {
-          savedAgent = await ProcessConfig.get(
-            `assistant.${platform}.agent` as Parameters<typeof ProcessConfig.get>[0]
-          );
-        } catch {
-          // ignore
-        }
-        const backend = (
-          savedAgent && typeof savedAgent === 'object' && typeof (savedAgent as any).backend === 'string'
-            ? (savedAgent as any).backend
-            : 'gemini'
-        ) as string;
-        const customAgentId =
-          savedAgent && typeof savedAgent === 'object'
-            ? ((savedAgent as any).customAgentId as string | undefined)
-            : undefined;
-        const agentName =
-          savedAgent && typeof savedAgent === 'object' ? ((savedAgent as any).name as string | undefined) : undefined;
-
-        // Always resolve a provider model (required by ICreateConversationParams typing; ignored by ACP/Codex)
-        const model = await getChannelDefaultModel(platform);
-
-        // Map backend to conversation type for lookup
-        const { convType, convBackend } = resolveChannelConvType(backend);
-        const conversationName = getChannelConversationName(platform, convType, convBackend, chatId);
-
-        // Lookup existing conversation by source + chatId + type + backend (per-chat isolation)
-        const db2 = await getDatabase();
-        const latest = db2.findChannelConversation(source, chatId, convType, convBackend);
-        const existing = latest.success ? latest.data : null;
-
-        let sessionConversation: TChatConversation | null = existing ?? null;
-        if (!sessionConversation) {
-          try {
-            if (backend === 'gemini') {
-              sessionConversation = await conversationServiceSingleton.createConversation({
-                type: 'gemini',
-                model,
-                name: conversationName,
-                source,
-                channelChatId: chatId,
-                extra: {},
-              });
-            } else if (backend === 'codex') {
-              sessionConversation = await conversationServiceSingleton.createConversation({
-                type: 'codex',
-                model,
-                name: conversationName,
-                source,
-                channelChatId: chatId,
-                extra: {},
-              });
-            } else if (backend === 'openclaw-gateway') {
-              sessionConversation = await conversationServiceSingleton.createConversation({
-                type: 'openclaw-gateway',
-                model,
-                name: conversationName,
-                source,
-                channelChatId: chatId,
-                extra: {},
-              });
-            } else {
-              sessionConversation = await conversationServiceSingleton.createConversation({
-                type: 'acp',
-                model,
-                name: conversationName,
-                source,
-                channelChatId: chatId,
-                extra: {
-                  backend: backend as AcpBackend,
-                  customAgentId,
-                  agentName,
-                },
-              });
-            }
-          } catch (error) {
-            console.error(`[ActionExecutor] Failed to create conversation:`, error);
-            await context.sendMessage({
-              type: 'text',
-              text: `❌ Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              parseMode: 'HTML',
-            });
-            return;
-          }
-        }
-
-        if (sessionConversation) {
-          const { convType: agentType } = resolveChannelConvType(backend);
-          session = await this.sessionManager.createSessionWithConversation(
-            channelUser,
-            sessionConversation.id,
-            agentType as ChannelAgentType,
-            undefined,
-            chatId
-          );
-        }
-      }
-      context.sessionId = session.id;
-      context.conversationId = session.conversationId;
+      context.channelUser = route.channelUser;
+      context.connector = route.connector;
+      context.remoteIdentity = route.remoteIdentity;
+      context.channelBinding = route.binding;
+      context.agentProfile = route.agentProfile;
+      context.externalSession = route.externalSession;
+      context.sessionId = route.session.id;
+      context.conversationId = route.conversation.id;
 
       // Route based on action or content
       if (action) {
@@ -507,13 +414,14 @@ export class ActionExecutor {
           replyMarkup: getMainMenuMarkup(platform as PluginType),
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[ActionExecutor] Error handling message:`, error);
       await context.sendMessage({
         type: 'text',
-        text: `❌ Error processing message: ${error.message}`,
+        text: `❌ Error processing message: ${errorMessage}`,
         parseMode: 'HTML',
-        replyMarkup: getErrorRecoveryMarkup(platform as PluginType, error.message),
+        replyMarkup: getErrorRecoveryMarkup(platform as PluginType, errorMessage),
       });
     }
   }
@@ -544,11 +452,12 @@ export class ActionExecutor {
       if (result.message) {
         await context.sendMessage(result.message);
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[ActionExecutor] Action ${actionName} failed:`, error);
       await context.sendMessage({
         type: 'text',
-        text: `❌ Action failed: ${error.message}`,
+        text: `❌ Action failed: ${errorMessage}`,
         parseMode: 'HTML',
       });
     }
@@ -558,8 +467,10 @@ export class ActionExecutor {
    * Handle chat message - send to AI and stream response
    */
   private async handleChatMessage(context: IActionContext, text: string): Promise<void> {
-    // Update session activity (scoped by chatId)
-    if (context.channelUser) {
+    // Update session activity using the stable external-session-backed ID.
+    if (context.sessionId) {
+      this.sessionManager.updateSessionActivityById(context.sessionId, context.conversationId);
+    } else if (context.channelUser) {
       this.sessionManager.updateSessionActivity(context.channelUser.id, context.chatId);
     }
 
@@ -618,7 +529,13 @@ export class ActionExecutor {
 
           // 转换消息格式（根据平台）
           // Convert message format (based on platform)
-          const outgoingMessage = convertTMessageToOutgoing(message, context.platform as PluginType, false);
+          const outgoingMessage = convertTMessageToOutgoing(
+            message,
+            context.platform as PluginType,
+            context.chatId,
+            context.conversationId,
+            false
+          );
 
           // Strip replyMarkup during streaming to prevent premature card finalization.
           // Tool confirmation cards set replyMarkup (e.g., for Confirming status),
@@ -740,11 +657,12 @@ export class ActionExecutor {
         // 忽略最终编辑错误
         // Ignore final edit error
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[ActionExecutor] Chat processing failed:`, error);
 
       // Update message with error
-      const errorResponse = buildChatErrorResponse(error.message);
+      const errorResponse = buildChatErrorResponse(errorMessage);
       await context.editMessage(thinkingMsgId, {
         type: 'text',
         text: errorResponse.text,
@@ -758,6 +676,13 @@ export class ActionExecutor {
    * Get plugin instance for a message
    */
   private getPluginForMessage(message: IUnifiedIncomingMessage) {
+    if (message.pluginId) {
+      const exactPlugin = this.pluginManager.getPlugin(message.pluginId);
+      if (exactPlugin) {
+        return exactPlugin;
+      }
+    }
+
     // For now, get the first plugin of the matching type
     const plugins = this.pluginManager.getAllPlugins();
     return plugins.find((p) => p.type === message.platform);
