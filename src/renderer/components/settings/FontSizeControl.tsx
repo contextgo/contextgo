@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Slider } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '@renderer/hooks/context/ThemeContext';
@@ -30,9 +30,14 @@ const clamp = (value: number) => Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MI
 const FontSizeControl: React.FC = () => {
   const { t } = useTranslation();
   const { fontScale, setFontScale, theme } = useThemeContext();
+  const [sliderValue, setSliderValue] = useState(fontScale);
+
+  useEffect(() => {
+    setSliderValue(fontScale);
+  }, [fontScale]);
 
   // 格式化显示值为百分比 / Format display value as percentage
-  const formattedValue = useMemo(() => `${Math.round(fontScale * 100)}%`, [fontScale]);
+  const formattedValue = useMemo(() => `${Math.round(sliderValue * 100)}%`, [sliderValue]);
 
   // 默认标记（100%位置）/ Default mark (100% position)
   const defaultMarks = useMemo(
@@ -48,7 +53,19 @@ const FontSizeControl: React.FC = () => {
    */
   const handleSliderChange = (value: number | number[]) => {
     if (typeof value === 'number') {
-      void setFontScale(clamp(Number(value.toFixed(2))));
+      setSliderValue(clamp(Number(value.toFixed(2))));
+    }
+  };
+
+  /**
+   * 处理滑块拖拽结束 / Commit zoom after the drag interaction completes
+   * @param value - 最终缩放值 / Final scale value
+   */
+  const handleSliderAfterChange = (value: number | number[]) => {
+    if (typeof value === 'number') {
+      const nextValue = clamp(Number(value.toFixed(2)));
+      setSliderValue(nextValue);
+      void setFontScale(nextValue);
     }
   };
 
@@ -57,7 +74,8 @@ const FontSizeControl: React.FC = () => {
    * @param delta - 步进增量（正数增大，负数减小）/ Step delta (positive to increase, negative to decrease)
    */
   const handleStep = (delta: number) => {
-    const next = clamp(Number((fontScale + delta).toFixed(2)));
+    const next = clamp(Number((sliderValue + delta).toFixed(2)));
+    setSliderValue(next);
     void setFontScale(next);
   };
 
@@ -65,9 +83,10 @@ const FontSizeControl: React.FC = () => {
    * 重置到默认值 / Reset to default value
    */
   const handleReset = () => {
+    setSliderValue(FONT_SCALE_DEFAULT);
     void setFontScale(FONT_SCALE_DEFAULT);
   };
-  const isResetDisabled = Math.abs(fontScale - FONT_SCALE_DEFAULT) < RESET_THRESHOLD;
+  const isResetDisabled = Math.abs(sliderValue - FONT_SCALE_DEFAULT) < RESET_THRESHOLD;
 
   return (
     <div className='flex flex-col gap-2 w-full md:max-w-620px'>
@@ -79,7 +98,7 @@ const FontSizeControl: React.FC = () => {
             shape='circle'
             className='w-28px h-28px !min-w-28px flex items-center justify-center p-0'
             onClick={() => handleStep(-FONT_SCALE_STEP)}
-            disabled={fontScale <= FONT_SCALE_MIN + EPSILON}
+            disabled={sliderValue <= FONT_SCALE_MIN + EPSILON}
           >
             -
           </Button>
@@ -90,8 +109,9 @@ const FontSizeControl: React.FC = () => {
             min={FONT_SCALE_MIN}
             max={FONT_SCALE_MAX}
             step={FONT_SCALE_STEP}
-            value={fontScale}
+            value={sliderValue}
             onChange={handleSliderChange}
+            onAfterChange={handleSliderAfterChange}
             marks={defaultMarks}
           />
           <Button
@@ -100,7 +120,7 @@ const FontSizeControl: React.FC = () => {
             shape='circle'
             className='w-28px h-28px !min-w-28px flex items-center justify-center p-0'
             onClick={() => handleStep(FONT_SCALE_STEP)}
-            disabled={fontScale >= FONT_SCALE_MAX - EPSILON}
+            disabled={sliderValue >= FONT_SCALE_MAX - EPSILON}
           >
             +
           </Button>
