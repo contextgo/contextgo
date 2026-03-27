@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -319,7 +319,7 @@ export const fs = {
     'add-custom-external-path'
   ),
   removeCustomExternalPath: bridge.buildProvider<IBridgeResponse, { path: string }>('remove-custom-external-path'),
-  // Skills Market: inject/remove the aionui-skills builtin skill
+  // Skills Market: inject/remove the bundled builtin skill
   enableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('enable-skills-market'),
   disableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('disable-skills-market'),
 };
