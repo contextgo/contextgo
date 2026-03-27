@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -181,6 +181,8 @@ export interface IConfigStorageRefer {
     name?: string;
   };
   'command.library'?: ManagedSlashCommandRecord[];
+  // Skills Market: whether the bundled builtin skill is enabled
+  'skillsMarket.enabled'?: boolean;
 }
 
 export interface IEnvStorageRefer {
@@ -705,7 +707,7 @@ export interface IMcpServer {
   createdAt: number;
   updatedAt: number;
   originalJson: string; // 存储原始JSON配置，用于编辑时的准确显示
-  /** Built-in MCP server managed by AionUi (hide edit/delete in UI) */
+  /** Built-in MCP server managed by ContextGo (hide edit/delete in UI) */
   builtin?: boolean;
 }
 
