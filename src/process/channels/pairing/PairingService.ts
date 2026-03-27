@@ -56,6 +56,7 @@ export class PairingService {
     if (existingResult.success && existingResult.data) {
       const existing = existingResult.data.find(
         (r) =>
+          r.connectorId === connector.id &&
           r.platformUserId === platformUserId &&
           r.platformType === platformType &&
           r.status === 'pending' &&
@@ -118,8 +119,10 @@ export class PairingService {
     // Expire any existing pending codes
     const existingResult = db.getPendingPairingRequests();
     if (existingResult.success && existingResult.data) {
+      const connector = await getChannelRouteResolver().resolveConnectorInstance(platformType, pluginId);
       for (const request of existingResult.data) {
         if (
+          request.connectorId === connector.id &&
           request.platformUserId === platformUserId &&
           request.platformType === platformType &&
           request.remoteChatId === (chatId ?? platformUserId) &&
@@ -146,37 +149,14 @@ export class PairingService {
     const db = await getDatabase();
 
     if (chatId) {
-      const allowLegacyDirectChat = chatId === platformUserId;
       try {
         const connector = await getChannelRouteResolver().resolveConnectorInstance(platformType, pluginId);
         const identityResult = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
-        if (identityResult.success && identityResult.data) {
-          return true;
-        }
-
-        // Legacy compatibility: only auto-upgrade direct chats.
-        // Group chats must already have an explicit remote identity approval.
-        if (allowLegacyDirectChat) {
-          const legacyUserResult = db.getChannelUserByPlatform(platformUserId, platformType);
-          return Boolean(
-            legacyUserResult.success &&
-            legacyUserResult.data &&
-            !legacyUserResult.data.id.startsWith('remote_identity_')
-          );
-        }
-
-        return false;
+        return Boolean(identityResult.success && identityResult.data);
       } catch (error) {
         console.warn('[PairingService] Failed to resolve connector for authorization check:', error);
-        if (!allowLegacyDirectChat) {
-          return false;
-        }
+        return false;
       }
-
-      const legacyUserResult = db.getChannelUserByPlatform(platformUserId, platformType);
-      return Boolean(
-        legacyUserResult.success && legacyUserResult.data && !legacyUserResult.data.id.startsWith('remote_identity_')
-      );
     }
 
     const usersResult = db.getChannelUsers();
@@ -204,7 +184,8 @@ export class PairingService {
   async getPendingRequestForUser(
     platformUserId: string,
     platformType: PluginType,
-    chatId?: string
+    chatId?: string,
+    pluginId?: string
   ): Promise<IChannelPairingRequest | null> {
     const db = await getDatabase();
     const result = db.getPendingPairingRequests();
@@ -213,9 +194,21 @@ export class PairingService {
       return null;
     }
 
+    let connectorId: string | undefined;
+    if (pluginId) {
+      try {
+        const connector = await getChannelRouteResolver().resolveConnectorInstance(platformType, pluginId);
+        connectorId = connector.id;
+      } catch (error) {
+        console.warn('[PairingService] Failed to resolve connector for pending pairing lookup:', error);
+        return null;
+      }
+    }
+
     return (
       result.data.find(
         (r) =>
+          (!connectorId || r.connectorId === connectorId) &&
           r.platformUserId === platformUserId &&
           r.platformType === platformType &&
           (chatId ? r.remoteChatId === chatId : true) &&
@@ -290,7 +283,15 @@ export class PairingService {
       if (!mirrorUserResult.success || !mirrorUserResult.data) {
         return { success: false, error: mirrorUserResult.error || 'Failed to ensure channel user mirror' };
       }
-      channelUser = mirrorUserResult.data;
+      channelUser = {
+        id: remoteIdentity.id,
+        platformUserId: remoteIdentity.remoteUserId ?? remoteIdentity.remoteChatId,
+        platformType: request.platformType,
+        displayName: request.displayName ?? remoteIdentity.displayName,
+        authorizedAt: remoteIdentity.authorizedAt,
+        lastActive: remoteIdentity.lastActive,
+        sessionId: mirrorUserResult.data.sessionId,
+      };
     } catch (error) {
       return {
         success: false,

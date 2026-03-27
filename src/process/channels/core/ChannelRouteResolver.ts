@@ -31,6 +31,26 @@ type SavedAgentConfig = {
   name?: string;
 };
 
+function toProjectedChannelUser(params: {
+  remoteIdentityId: string;
+  platformUserId: string;
+  platformType: PluginType;
+  displayName?: string;
+  authorizedAt: number;
+  lastActive?: number;
+  sessionId?: string;
+}): IChannelUser {
+  return {
+    id: params.remoteIdentityId,
+    platformUserId: params.platformUserId,
+    platformType: params.platformType,
+    displayName: params.displayName,
+    authorizedAt: params.authorizedAt,
+    lastActive: params.lastActive,
+    sessionId: params.sessionId,
+  };
+}
+
 export type ResolvedChannelRoute = {
   connector: IConnectorInstance;
   remoteIdentity: IRemoteIdentity;
@@ -338,13 +358,6 @@ export class ChannelRouteResolver {
     const db = await getDatabase();
     const existingIdentity = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
     if (existingIdentity.success && existingIdentity.data) {
-      if (existingIdentity.data.legacyUserId) {
-        const legacyUser = db.getChannelUsers().data?.find((user) => user.id === existingIdentity.data?.legacyUserId);
-        if (legacyUser) {
-          return legacyUser;
-        }
-      }
-
       const mirrorUserResult = db.ensureChannelUserMirror({
         remoteIdentityId: existingIdentity.data.id,
         platformUserId,
@@ -356,21 +369,15 @@ export class ChannelRouteResolver {
       if (!mirrorUserResult.success || !mirrorUserResult.data) {
         throw new Error(mirrorUserResult.error || 'Failed to create channel user mirror');
       }
-      return mirrorUserResult.data;
-    }
-
-    const isDirectChat = chatId === platformUserId;
-    if (!isDirectChat) {
-      throw new Error('User not authorized');
-    }
-
-    const existingUser = db.getChannelUserByPlatform(platformUserId, platform);
-    if (existingUser.success && existingUser.data) {
-      if (existingUser.data.id.startsWith('remote_identity_')) {
-        throw new Error('User not authorized');
-      }
-
-      return existingUser.data;
+      return toProjectedChannelUser({
+        remoteIdentityId: existingIdentity.data.id,
+        platformUserId: existingIdentity.data.remoteUserId ?? platformUserId,
+        platformType: platform,
+        displayName: displayName ?? existingIdentity.data.displayName ?? mirrorUserResult.data.displayName,
+        authorizedAt: existingIdentity.data.authorizedAt,
+        lastActive: existingIdentity.data.lastActive ?? mirrorUserResult.data.lastActive,
+        sessionId: mirrorUserResult.data.sessionId,
+      });
     }
 
     throw new Error('User not authorized');
