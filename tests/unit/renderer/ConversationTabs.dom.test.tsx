@@ -323,8 +323,11 @@ describe('ConversationTabs', () => {
     const inner = root?.firstElementChild;
 
     expect(root?.className).toContain('h-full');
+    expect(root?.className).toContain('w-full');
+    expect(root?.className).toContain('max-w-full');
     expect(root?.className).toContain('items-center');
     expect(inner?.className).toContain('h-full');
+    expect(inner?.className).toContain('max-w-full');
     expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
   });
 
@@ -349,7 +352,7 @@ describe('ConversationTabs', () => {
     ).toBe('icon');
   });
 
-  it('keeps desktop density stable when the chat slot width changes without header actions', () => {
+  it('shrinks desktop density with the chat slot width even without header actions', () => {
     expect(
       resolveConversationTabDensity({
         isMobile: false,
@@ -357,7 +360,7 @@ describe('ConversationTabs', () => {
         containerWidth: 220,
         showHeaderActions: false,
       })
-    ).toBe('compact');
+    ).toBe('icon');
     expect(
       resolveConversationTabDensity({
         isMobile: false,
@@ -365,29 +368,29 @@ describe('ConversationTabs', () => {
         containerWidth: 920,
         showHeaderActions: false,
       })
-    ).toBe('compact');
+    ).toBe('full');
   });
 
-  it('keeps desktop tab width stable when the chat slot width changes without header actions', () => {
+  it('shrinks desktop tab width with the available chat slot width', () => {
     expect(
       resolveConversationTabWidth({
         density: 'full',
-        openTabsCount: 3,
-        containerWidth: 260,
+        openTabsCount: 5,
+        containerWidth: 620,
         showHeaderActions: false,
       })
-    ).toBe(164);
+    ).toBe(120);
     expect(
       resolveConversationTabWidth({
         density: 'full',
-        openTabsCount: 3,
-        containerWidth: 960,
+        openTabsCount: 5,
+        containerWidth: 1020,
         showHeaderActions: false,
       })
-    ).toBe(164);
+    ).toBe(184);
   });
 
-  it('renders icon-only tabs when there are many desktop tabs', () => {
+  it('renders icon-only tabs when there are many desktop tabs and uses close icon for the active tab', () => {
     useLayoutContextMock.mockReturnValue({ isMobile: false });
     useConversationTabsMock.mockReturnValue({
       openTabs: Array.from({ length: 12 }, (_, index) => ({
@@ -408,9 +411,12 @@ describe('ConversationTabs', () => {
 
     const { container } = render(<ConversationTabs showHeaderActions={false} />);
     const tabs = container.querySelectorAll('[data-density="icon"]');
+    const activeTab = container.querySelector('[data-density="icon"][aria-label="Session 1"]');
 
     expect(tabs.length).toBe(12);
     expect(screen.queryByText('Session 1')).not.toBeInTheDocument();
+    expect(activeTab).toHaveTextContent('close');
+    expect(activeTab).not.toHaveTextContent('message');
   });
 
   it('closes stale tabs and redirects when the active conversation no longer exists', async () => {
