@@ -211,13 +211,20 @@
     "description": "グローバル macOS 音声入力、Provider 資格情報、利用サマリーを設定します。",
     "platformNotSupported": "音声入力は現在 macOS デスクトップ版でのみ利用できます。",
     "provider": "Provider",
+    "providers": {
+      "dashscope": "DashScope",
+      "volcengine": "VolcEngine"
+    },
     "triggerMode": "起動方法",
     "triggerModes": {
       "fn_hold": "Fn を長押し",
       "right_command_hold": "右 Command を長押し",
       "right_option_hold": "右 Option を長押し"
     },
-    "apiKey": "DashScope API キー",
+    "dashscopeApiKey": "DashScope API キー",
+    "appKey": "VolcEngine App Key",
+    "accessKey": "VolcEngine Access Key",
+    "resourceId": "リソース ID",
     "model": "ASR モデル",
     "region": "リージョン",
     "regions": {
@@ -228,6 +235,16 @@
     "languageHints": "言語ヒント",
     "hotwords": "ホットワード",
     "hotwordsPlaceholder": "1 行に 1 つ、またはカンマ区切りで入力",
+    "placeholders": {
+      "dashscopeApiKey": "sk-...",
+      "dashscopeModel": "fun-asr-realtime",
+      "vocabularyId": "custom-vocab-id",
+      "languageHints": "zh, en",
+      "volcengineAppKey": "123456789",
+      "volcengineAccessKey": "your-access-key",
+      "resourceId": "volc.bigasr.auc_turbo",
+      "volcengineModel": "bigmodel"
+    },
     "autoInsert": "フォーカス中のアプリへ自動挿入",
     "requestPermissions": "権限をリクエスト",
     "startTest": "テスト開始",

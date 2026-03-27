@@ -85,6 +85,7 @@ const mockOpenFile = vi.fn();
 const mockShowOpen = vi.fn();
 const mockUpdateSystemInfo = vi.fn();
 const mockVoiceInputGetConfig = vi.fn();
+const mockVoiceInputSetConfig = vi.fn();
 const mockVoiceInputGetState = vi.fn();
 const mockVoiceInputGetStats = vi.fn();
 const mockVoiceInputRequestPermissions = vi.fn();
@@ -121,6 +122,7 @@ vi.mock('@/common', () => ({
     },
     voiceInput: {
       getConfig: { invoke: (...args: any[]) => mockVoiceInputGetConfig(...args) },
+      setConfig: { invoke: (...args: any[]) => mockVoiceInputSetConfig(...args) },
       getState: { invoke: (...args: any[]) => mockVoiceInputGetState(...args) },
       getStats: { invoke: (...args: any[]) => mockVoiceInputGetStats(...args) },
       requestPermissions: { invoke: (...args: any[]) => mockVoiceInputRequestPermissions(...args) },
@@ -218,8 +220,15 @@ describe('SystemModalContent', () => {
           vocabularyId: '',
           hotwords: [],
         },
+        volcengine: {
+          appKey: '',
+          accessKey: '',
+          resourceId: 'volc.bigasr.auc_turbo',
+          model: 'bigmodel',
+        },
       },
     });
+    mockVoiceInputSetConfig.mockImplementation(async ({ config }) => config);
     mockVoiceInputGetState.mockResolvedValue({
       supported: true,
       enabled: true,
@@ -283,6 +292,41 @@ describe('SystemModalContent', () => {
     expect(screen.getByText('345')).toBeInTheDocument();
     expect(screen.queryByText('settings.voiceInput.records')).not.toBeInTheDocument();
     expect(screen.queryByText('settings.voiceInput.noRecords')).not.toBeInTheDocument();
+  });
+
+  it('should render volcengine-specific voice input fields when the provider is selected', async () => {
+    mockVoiceInputGetConfig.mockResolvedValue({
+      enabled: true,
+      providerId: 'volcengine',
+      triggerMode: 'right_command_hold',
+      autoInsert: true,
+      providers: {
+        dashscope: {
+          apiKey: '',
+          region: 'beijing',
+          model: 'fun-asr-realtime',
+          languageHints: ['zh'],
+          vocabularyId: '',
+          hotwords: [],
+        },
+        volcengine: {
+          appKey: '123456789',
+          accessKey: 'access-token',
+          resourceId: 'volc.bigasr.auc_turbo',
+          model: 'bigmodel',
+        },
+      },
+    });
+    render(<SystemModalContent />);
+
+    await waitFor(() => {
+      expect(screen.getByText('settings.voiceInput.appKey')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('settings.voiceInput.accessKey')).toBeInTheDocument();
+    expect(screen.getByText('settings.voiceInput.resourceId')).toBeInTheDocument();
+    expect(screen.queryByText('settings.voiceInput.dashscopeApiKey')).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.voiceInput.region')).not.toBeInTheDocument();
   });
 
   it('should toggle DevTools when button is clicked', async () => {
