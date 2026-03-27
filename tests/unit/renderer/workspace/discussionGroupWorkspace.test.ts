@@ -119,7 +119,10 @@ describe('discussionGroupWorkspace', () => {
       return null;
     });
 
-    const updatedConversations = await syncDiscussionFamilyWorkspace(groupConversation, '/Users/bytedance/project/demo');
+    const updatedConversations = await syncDiscussionFamilyWorkspace(
+      groupConversation,
+      '/Users/bytedance/project/demo'
+    );
 
     expect(updatedConversations.map((conversation) => conversation.id)).toEqual(['group-1', 'child-1', 'child-2']);
     expect(updateInvoke).toHaveBeenCalledTimes(3);
@@ -167,7 +170,10 @@ describe('discussionGroupWorkspace', () => {
       return null;
     });
 
-    const updatedConversations = await syncDiscussionFamilyWorkspace(childConversation1, '/Users/bytedance/project/demo');
+    const updatedConversations = await syncDiscussionFamilyWorkspace(
+      childConversation1,
+      '/Users/bytedance/project/demo'
+    );
 
     expect(getInvoke).toHaveBeenCalledWith({ id: 'group-1' });
     expect(updatedConversations.map((conversation) => conversation.id)).toEqual(['group-1', 'child-1', 'child-2']);

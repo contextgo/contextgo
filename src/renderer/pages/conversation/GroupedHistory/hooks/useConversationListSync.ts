@@ -73,7 +73,9 @@ export const splitDiscussionChildConversations = (conversations: TChatConversati
 
   return {
     topLevelConversations: nextTopLevelConversations,
-    discussionChildConversationsByParentId: Object.fromEntries(nextDiscussionChildConversations) as DiscussionChildConversationMap,
+    discussionChildConversationsByParentId: Object.fromEntries(
+      nextDiscussionChildConversations
+    ) as DiscussionChildConversationMap,
   };
 };
 
@@ -252,8 +254,16 @@ export const useConversationListSync = () => {
     initializeConversationListSyncStore();
   }, []);
 
-  const { conversations, discussionChildConversationsByParentId, generatingConversationIds, completionUnreadConversationIds } =
-    useSyncExternalStore(subscribeConversationListSync, getConversationListSyncSnapshot, getConversationListSyncSnapshot);
+  const {
+    conversations,
+    discussionChildConversationsByParentId,
+    generatingConversationIds,
+    completionUnreadConversationIds,
+  } = useSyncExternalStore(
+    subscribeConversationListSync,
+    getConversationListSyncSnapshot,
+    getConversationListSyncSnapshot
+  );
 
   const clearCompletionUnread = useCallback((conversationId: string) => {
     clearCompletionUnreadState(conversationId);

@@ -51,9 +51,9 @@ const normalizeDiscussionFamilyConversations = async (
       return;
     }
 
-    const participants = ((conversation.extra as { participants?: DiscussionGroupParticipantLike[] } | undefined)?.participants ?? []).filter(
-      (participant): participant is DiscussionGroupParticipantLike => Boolean(participant?.childConversationId)
-    );
+    const participants = (
+      (conversation.extra as { participants?: DiscussionGroupParticipantLike[] } | undefined)?.participants ?? []
+    ).filter((participant): participant is DiscussionGroupParticipantLike => Boolean(participant?.childConversationId));
 
     participants.forEach((participant) => {
       const childConversation = conversationById.get(participant.childConversationId);

@@ -108,10 +108,9 @@ export const MentionSelectorBadge: React.FC<MentionSelectorBadgeProps> = ({
   const { t } = useTranslation();
   if (!visible) return null;
 
-  const helperParts = [
-    isDefault ? t('guid.openclaw.defaultAgent') : null,
-    agentDescription || null,
-  ].filter((part): part is string => Boolean(part));
+  const helperParts = [isDefault ? t('guid.openclaw.defaultAgent') : null, agentDescription || null].filter(
+    (part): part is string => Boolean(part)
+  );
 
   return (
     <div className='flex flex-col gap-4px mb-8px'>

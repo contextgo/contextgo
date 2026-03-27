@@ -164,10 +164,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     ]
   );
 
-  const renderConversation = (
-    conversation: TChatConversation,
-    overrides: Partial<ConversationRowProps> = {}
-  ) => {
+  const renderConversation = (conversation: TChatConversation, overrides: Partial<ConversationRowProps> = {}) => {
     const rowProps = {
       ...getConversationRowProps(conversation),
       ...overrides,

@@ -9,10 +9,7 @@ import type { TChatConversation } from '../../../src/common/config/storage';
 import { splitDiscussionChildConversations } from '../../../src/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
 import { buildGroupedHistory } from '../../../src/renderer/pages/conversation/GroupedHistory/utils/groupingHelpers';
 
-const createConversation = (
-  id: string,
-  overrides: Partial<TChatConversation> = {}
-): TChatConversation => ({
+const createConversation = (id: string, overrides: Partial<TChatConversation> = {}): TChatConversation => ({
   createTime: 1,
   modifyTime: 1,
   name: `Conversation ${id}`,
@@ -107,8 +104,8 @@ describe('discussion conversation grouping', () => {
         : [];
 
     expect(workspaceConversations).toEqual(['group-1']);
-    expect(groupedHistory.discussionChildConversationsByParentId['group-1']?.map((conversation) => conversation.id)).toEqual([
-      'child-1',
-    ]);
+    expect(
+      groupedHistory.discussionChildConversationsByParentId['group-1']?.map((conversation) => conversation.id)
+    ).toEqual(['child-1']);
   });
 });

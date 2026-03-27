@@ -163,7 +163,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                       style={{ lineHeight: 0 }}
                     />
                     {!collapsed && (
-                      <span className='collapsed-hidden font-bold text-t-primary leading-24px'>{t('common.create')}</span>
+                      <span className='collapsed-hidden font-bold text-t-primary leading-24px'>
+                        {t('common.create')}
+                      </span>
                     )}
                   </div>
                 </Dropdown>

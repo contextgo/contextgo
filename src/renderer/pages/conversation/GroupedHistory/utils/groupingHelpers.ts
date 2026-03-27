@@ -9,7 +9,13 @@ import { getActivityTime, getTimelineLabel } from '@/renderer/utils/chat/timelin
 import { getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
 import { getWorkspaceUpdateTime } from '@/renderer/utils/workspace/workspaceHistory';
 
-import type { DiscussionChildConversationMap, GroupedHistoryResult, TimelineItem, TimelineSection, WorkspaceGroup } from '../types';
+import type {
+  DiscussionChildConversationMap,
+  GroupedHistoryResult,
+  TimelineItem,
+  TimelineSection,
+  WorkspaceGroup,
+} from '../types';
 import { getConversationSortOrder } from './sortOrderHelpers';
 
 export const getConversationTimelineLabel = (conversation: TChatConversation, t: (key: string) => string): string => {
@@ -147,7 +153,9 @@ const buildDiscussionChildConversationMap = (
       return;
     }
 
-    const childConversationById = new Map(childConversations.map((childConversation) => [childConversation.id, childConversation]));
+    const childConversationById = new Map(
+      childConversations.map((childConversation) => [childConversation.id, childConversation])
+    );
     const orderedChildConversations: TChatConversation[] = [];
 
     conversation.extra.participants.forEach((participant) => {
@@ -189,7 +197,10 @@ export const buildGroupedHistory = (
     });
 
   const normalConversations = topLevelConversations.filter((conversation) => !isConversationPinned(conversation));
-  const orderedDiscussionChildConversationsByParentId = buildDiscussionChildConversationMap(topLevelConversations, discussionChildConversationsByParentId);
+  const orderedDiscussionChildConversationsByParentId = buildDiscussionChildConversationMap(
+    topLevelConversations,
+    discussionChildConversationsByParentId
+  );
 
   return {
     pinnedConversations,

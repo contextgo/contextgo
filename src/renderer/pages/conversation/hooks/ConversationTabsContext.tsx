@@ -167,9 +167,7 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
         const shouldCloseDiscussionFamily = targetTab.type === 'group' && Boolean(targetTab.discussionGroupId);
         const closedIds = new Set(
           shouldCloseDiscussionFamily
-            ? prev
-                .filter((tab) => tab.discussionGroupId === targetTab.discussionGroupId)
-                .map((tab) => tab.id)
+            ? prev.filter((tab) => tab.discussionGroupId === targetTab.discussionGroupId).map((tab) => tab.id)
             : [conversationId]
         );
         const filtered = prev.filter((tab) => !closedIds.has(tab.id));
