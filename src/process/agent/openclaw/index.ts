@@ -16,7 +16,7 @@ import net from 'node:net';
 import { OpenClawGatewayConnection } from './OpenClawGatewayConnection';
 import { OpenClawGatewayManager } from './OpenClawGatewayManager';
 import { getGatewayAuthPassword, getGatewayAuthToken, getGatewayPort } from './openclawConfig';
-import type { ChatEvent, EventFrame, HelloOk, OpenClawGatewayConfig } from './types';
+import type { ChatEvent, EventFrame, HelloOk, OpenClawGatewayConfig, OpenClawSessionSummary } from './types';
 
 async function isTcpPortOpen(host: string, port: number, timeoutMs = 300): Promise<boolean> {
   return await new Promise<boolean>((resolve) => {
@@ -850,6 +850,57 @@ export class OpenClawAgent {
 
   get currentSessionKey(): string | null {
     return this.connection?.sessionKey ?? null;
+  }
+
+  get isModelSwitchSupported(): boolean {
+    const supportedMethods = this.connection?.helloOk?.features?.methods;
+    if (!Array.isArray(supportedMethods) || supportedMethods.length === 0) {
+      return true;
+    }
+
+    return supportedMethods.includes('sessions.patch');
+  }
+
+  async getCurrentSessionSummary(): Promise<OpenClawSessionSummary | null> {
+    if (!this.connection?.isConnected || !this.connection?.sessionKey) {
+      return null;
+    }
+
+    const response = await this.connection.sessionsList({
+      agentId: this.config.extra?.openclawAgentId,
+      includeDerivedTitles: true,
+      includeLastMessage: false,
+      includeUnknown: true,
+      includeGlobal: true,
+      limit: 200,
+    });
+    const sessions = Array.isArray(response.sessions) ? response.sessions : [];
+    const sessionKey = this.connection.sessionKey;
+
+    return sessions.find((session) => session.key?.trim() === sessionKey) ?? null;
+  }
+
+  async getChatHistory(limit = 200): Promise<unknown> {
+    if (!this.connection?.isConnected || !this.connection?.sessionKey) {
+      return { messages: [] };
+    }
+
+    return await this.connection.chatHistory(this.connection.sessionKey, limit);
+  }
+
+  async setModel(modelId: string): Promise<void> {
+    if (!this.connection?.isConnected || !this.connection?.sessionKey) {
+      throw new Error('OpenClaw session is not connected');
+    }
+
+    if (!this.isModelSwitchSupported) {
+      throw new Error('Current OpenClaw Gateway does not support model switching');
+    }
+
+    await this.connection.sessionsPatch({
+      key: this.connection.sessionKey,
+      model: modelId,
+    });
   }
 }
 

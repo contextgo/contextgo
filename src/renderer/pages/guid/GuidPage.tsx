@@ -7,7 +7,6 @@
 import { resolveLocaleKey } from '@/common/utils';
 import ExternalSessionsModal from '@/renderer/pages/conversation/components/ExternalSessionsModal';
 import { useInputFocusRing } from '@/renderer/hooks/chat/useInputFocusRing';
-import { openExternalUrl } from '@/renderer/utils/platform';
 import { useConversationTabs } from '@/renderer/pages/conversation/hooks/ConversationTabsContext';
 import AgentPillBar from './components/AgentPillBar';
 import AssistantSelectionArea from './components/AssistantSelectionArea';
@@ -39,15 +38,6 @@ const GuidPage: React.FC = () => {
   const [externalSessionsVisible, setExternalSessionsVisible] = useState(false);
   const { activeBorderColor, inactiveBorderColor, activeShadow } = useInputFocusRing();
   const localeKey = resolveLocaleKey(i18n.language);
-
-  // Open external link
-  const openLink = useCallback(async (url: string) => {
-    try {
-      await openExternalUrl(url);
-    } catch (error) {
-      console.error('Failed to open external link:', error);
-    }
-  }, []);
 
   // --- Hooks ---
   const modelSelection = useGuidModelSelection();
@@ -376,7 +366,6 @@ const GuidPage: React.FC = () => {
         </div>
 
         <QuickActionButtons
-          onOpenLink={openLink}
           onOpenExternalSessions={() => {
             setExternalSessionsVisible(true);
           }}

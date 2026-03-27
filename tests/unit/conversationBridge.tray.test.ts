@@ -53,6 +53,8 @@ const registerMocks = () => {
     ipcBridge: {
       openclawConversation: {
         getRuntime: createCommand('openclawConversation.getRuntime'),
+        getModelInfo: createCommand('openclawConversation.getModelInfo'),
+        setModel: createCommand('openclawConversation.setModel'),
       },
       conversation: {
         create: createCommand('conversation.create'),
@@ -83,6 +85,9 @@ const registerMocks = () => {
   }));
 
   vi.doMock('@process/utils/initStorage', () => ({
+    ProcessConfig: { get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) },
+    getBuiltinSkillsCopyDir: vi.fn(() => '/mock/builtin-skills'),
+    getSystemDir: vi.fn(() => ({ cacheDir: '/mock/cache' })),
     getSkillsDir: vi.fn(() => '/mock/skills'),
     ProcessChat: { get: vi.fn(async () => []) },
   }));

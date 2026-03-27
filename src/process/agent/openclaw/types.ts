@@ -214,6 +214,27 @@ export interface SessionsPatchParams {
   // ... other optional fields
 }
 
+export interface OpenClawSessionSummary {
+  key?: string;
+  sessionId?: string;
+  agentId?: string;
+  displayName?: string;
+  derivedTitle?: string;
+  lastMessagePreview?: string;
+  updatedAt?: number;
+  modelProvider?: string;
+  model?: string | null;
+  origin?: {
+    provider?: string;
+    surface?: string;
+    label?: string;
+  };
+}
+
+export interface OpenClawSessionsListResponse {
+  sessions?: OpenClawSessionSummary[];
+}
+
 // ========== Tick Event ==========
 
 export interface TickEvent {

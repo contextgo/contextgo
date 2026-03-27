@@ -4,7 +4,7 @@ import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { SettingsViewModeProvider } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
-import { AlarmClock, Communication, Computer, Earth, Info, Puzzle, Robot, System, Toolkit } from '@icon-park/react';
+import { AlarmClock, Communication, Computer, Earth, Info, Puzzle, System, Toolkit } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
@@ -39,12 +39,6 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
 
   const menuItems = React.useMemo(() => {
     const builtins: NavItem[] = [
-      {
-        id: 'agent',
-        label: t('settings.assistants', { defaultValue: 'Assistants' }),
-        icon: <Robot theme='outline' size='16' />,
-        path: 'agent',
-      },
       {
         id: 'hooks',
         label: t('settings.hooksPage', { defaultValue: 'Hooks' }),

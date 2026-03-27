@@ -60,6 +60,9 @@
     "exportSuccess": "Export succeeded",
     "exportCanceled": "Export canceled",
     "exportFailed": "Export failed",
+    "archive": "Arsivle",
+    "archiveSuccess": "Arsivlendi",
+    "archiveFailed": "Arsivleme basarisiz",
     "pin": "Pin",
     "unpin": "Unpin",
     "pinned": "Pinned",
@@ -75,8 +78,12 @@
     "placeholder": "Mesaj içeriğini ara...",
     "idle": "Mesajları aramak için anahtar kelime girin",
     "empty": "Eşleşen mesaj bulunamadı",
+    "clear": "Aramayı temizle",
     "loadingMore": "Daha fazla yükleniyor...",
     "untitled": "Adsız sohbet"
+  },
+  "entry": {
+    "create": "Yeni"
   },
   "tabs": {
     "closeAll": "Tümünü Kapat",
@@ -198,7 +205,9 @@
     "confirmationLoadError": "Onay penceresi yüklenemedi",
     "tryAnotherAgent": "Try another agent:",
     "switchedToAgent": "Switched to {{agent}}",
-    "switchAgentFailed": "Failed to switch agent"
+    "switchAgentFailed": "Failed to switch agent",
+    "modelSwitchFailed": "Failed to switch model",
+    "modelSwitchNotSupported": "Mevcut OpenClaw Gateway model değiştirmeyi desteklemiyor"
   },
   "contextUsage": {
     "contextUsed": "bağlam kullanıldı"

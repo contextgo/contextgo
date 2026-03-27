@@ -7,12 +7,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const searchConversationMessagesInvoke = vi.fn();
 const navigateMock = vi.fn();
 const markAsReadMock = vi.fn();
-const closeAllTabsMock = vi.fn();
 const openTabMock = vi.fn();
 const blockMobileInputFocusMock = vi.fn();
 const blurActiveElementMock = vi.fn();
@@ -27,18 +27,12 @@ vi.mock('../../src/common', () => ({
   },
 }));
 
-vi.mock('../../src/renderer/components/base/AionModal', () => ({
-  default: ({ visible, children }: { visible?: boolean; children?: ReactNode }) =>
-    visible ? <div data-testid='conversation-search-modal'>{children}</div> : null,
-}));
-
 vi.mock('../../src/renderer/hooks/usePresetAssistantInfo', () => ({
   usePresetAssistantInfo: () => ({ info: null }),
 }));
 
 vi.mock('../../src/renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
   useOptionalConversationTabs: () => ({
-    closeAllTabs: closeAllTabsMock,
     openTab: openTabMock,
     activeTab: null,
   }),
@@ -50,7 +44,7 @@ vi.mock('../../src/renderer/pages/cron', () => ({
   }),
 }));
 
-vi.mock('../../src/renderer/utils/agentLogo', () => ({
+vi.mock('../../src/renderer/utils/model/agentLogo', () => ({
   getAgentLogo: () => null,
 }));
 
@@ -74,7 +68,10 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-import ConversationSearchPopover from '../../src/renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
+import ConversationSearchPopover, {
+  CONVERSATION_SEARCH_ROUTE,
+  ConversationSearchPage,
+} from '../../src/renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
 
 const setElectronAPI = (value?: object) => {
   Object.defineProperty(window, 'electronAPI', {
@@ -88,7 +85,6 @@ describe('ConversationSearchPopover', () => {
     searchConversationMessagesInvoke.mockReset();
     navigateMock.mockReset();
     markAsReadMock.mockReset();
-    closeAllTabsMock.mockReset();
     openTabMock.mockReset();
     blockMobileInputFocusMock.mockReset();
     blurActiveElementMock.mockReset();
@@ -100,7 +96,24 @@ describe('ConversationSearchPopover', () => {
     vi.clearAllMocks();
   });
 
-  it('navigates to the selected conversation and clears the search state after picking a result', async () => {
+  it('opens the standalone search page when the entry is clicked', () => {
+    const onSessionClick = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <ConversationSearchPopover onSessionClick={onSessionClick} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.historySearch.tooltip' }));
+
+    expect(navigateMock).toHaveBeenCalledWith(CONVERSATION_SEARCH_ROUTE);
+    expect(onSessionClick).toHaveBeenCalledTimes(1);
+    expect(blockMobileInputFocusMock).toHaveBeenCalledTimes(1);
+    expect(blurActiveElementMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('navigates to the selected conversation from the standalone search page', async () => {
     searchConversationMessagesInvoke.mockResolvedValue({
       items: [
         {
@@ -135,12 +148,12 @@ describe('ConversationSearchPopover', () => {
       hasMore: false,
     });
 
-    const onConversationSelect = vi.fn();
-    const onSessionClick = vi.fn();
+    render(
+      <MemoryRouter>
+        <ConversationSearchPage />
+      </MemoryRouter>
+    );
 
-    render(<ConversationSearchPopover onConversationSelect={onConversationSelect} onSessionClick={onSessionClick} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'conversation.historySearch.tooltip' }));
     const input = screen.getByPlaceholderText('conversation.historySearch.placeholder');
 
     fireEvent.change(input, { target: { value: 'target keyword' } });
@@ -172,47 +185,50 @@ describe('ConversationSearchPopover', () => {
     });
 
     expect(markAsReadMock).toHaveBeenCalledWith('conv-1');
-    expect(closeAllTabsMock).toHaveBeenCalledTimes(1);
     expect(openTabMock).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'conv-1',
         name: 'Topic A',
       })
     );
-    expect(onConversationSelect).toHaveBeenCalledTimes(1);
-    expect(onSessionClick).toHaveBeenCalledTimes(1);
     expect(blockMobileInputFocusMock).toHaveBeenCalledTimes(1);
     expect(blurActiveElementMock).toHaveBeenCalledTimes(1);
-
-    expect(screen.queryByTestId('conversation-search-modal')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'conversation.historySearch.tooltip' }));
-
-    expect(screen.getByPlaceholderText('conversation.historySearch.placeholder')).toHaveValue('');
   });
 
-  it('opens the modal on Cmd/Ctrl+Shift+F in desktop runtime', () => {
+  it('navigates to the standalone search page on Cmd/Ctrl+Shift+F in desktop runtime', () => {
     setElectronAPI({});
 
-    render(<ConversationSearchPopover />);
+    render(
+      <MemoryRouter>
+        <ConversationSearchPopover />
+      </MemoryRouter>
+    );
 
     fireEvent.keyDown(document, { key: 'F', ctrlKey: true, shiftKey: true });
 
-    expect(screen.getByTestId('conversation-search-modal')).toBeInTheDocument();
+    expect(navigateMock).toHaveBeenCalledWith(CONVERSATION_SEARCH_ROUTE);
   });
 
   it('ignores the shortcut outside desktop runtime', () => {
-    render(<ConversationSearchPopover />);
+    render(
+      <MemoryRouter>
+        <ConversationSearchPopover />
+      </MemoryRouter>
+    );
 
     fireEvent.keyDown(document, { key: 'F', ctrlKey: true, shiftKey: true });
 
-    expect(screen.queryByTestId('conversation-search-modal')).not.toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('ignores composing and already-handled shortcuts', () => {
     setElectronAPI({});
 
-    render(<ConversationSearchPopover />);
+    render(
+      <MemoryRouter>
+        <ConversationSearchPopover />
+      </MemoryRouter>
+    );
 
     const composingEvent = new KeyboardEvent('keydown', {
       bubbles: true,
@@ -237,6 +253,6 @@ describe('ConversationSearchPopover', () => {
     handledEvent.preventDefault();
     document.dispatchEvent(handledEvent);
 
-    expect(screen.queryByTestId('conversation-search-modal')).not.toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });

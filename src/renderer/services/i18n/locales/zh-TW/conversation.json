@@ -60,6 +60,9 @@
     "exportSuccess": "Export succeeded",
     "exportCanceled": "Export canceled",
     "exportFailed": "Export failed",
+    "archive": "歸檔",
+    "archiveSuccess": "歸檔成功",
+    "archiveFailed": "歸檔失敗",
     "pin": "Pin",
     "unpin": "Unpin",
     "pinned": "Pinned",
@@ -75,8 +78,12 @@
     "placeholder": "搜尋訊息內容...",
     "idle": "輸入關鍵字搜尋訊息",
     "empty": "沒有找到匹配的訊息",
+    "clear": "清除搜尋",
     "loadingMore": "載入更多...",
     "untitled": "未命名對話"
+  },
+  "entry": {
+    "create": "新建"
   },
   "dropdown": {
     "cliAgents": "CLI Agents",
@@ -233,7 +240,9 @@
     "confirmationLoadError": "確認對話框載入失敗",
     "tryAnotherAgent": "嘗試其他 Agent：",
     "switchedToAgent": "已切換到 {{agent}}",
-    "switchAgentFailed": "切換 Agent 失敗"
+    "switchAgentFailed": "切換 Agent 失敗",
+    "modelSwitchFailed": "切換模型失敗",
+    "modelSwitchNotSupported": "目前的 OpenClaw Gateway 不支援切換模型"
   },
   "contextUsage": {
     "contextUsed": "上下文已使用"

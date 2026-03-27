@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,7 +12,12 @@ const closePreviewMock = vi.fn();
 const getModelInfoInvokeMock = vi.fn();
 const setModelInvokeMock = vi.fn();
 const responseStreamOnMock = vi.fn(() => vi.fn());
+const openclawGetModelInfoInvokeMock = vi.fn();
+const openclawSetModelInvokeMock = vi.fn();
+const openclawResponseStreamOnMock = vi.fn(() => vi.fn());
+const openclawGetRuntimeInvokeMock = vi.fn();
 const getModelConfigInvokeMock = vi.fn();
+const messageErrorMock = vi.fn();
 const chatConversationMock = vi.fn(({ conversation }: { conversation: { name: string } }) => (
   <div data-testid='chat-conversation'>{conversation.name}</div>
 ));
@@ -26,6 +31,12 @@ vi.mock('@/common', () => ({
       getModelInfo: { invoke: (...args: unknown[]) => getModelInfoInvokeMock(...args) },
       setModel: { invoke: (...args: unknown[]) => setModelInvokeMock(...args) },
       responseStream: { on: (...args: unknown[]) => responseStreamOnMock(...args) },
+    },
+    openclawConversation: {
+      getModelInfo: { invoke: (...args: unknown[]) => openclawGetModelInfoInvokeMock(...args) },
+      setModel: { invoke: (...args: unknown[]) => openclawSetModelInvokeMock(...args) },
+      responseStream: { on: (...args: unknown[]) => openclawResponseStreamOnMock(...args) },
+      getRuntime: { invoke: (...args: unknown[]) => openclawGetRuntimeInvokeMock(...args) },
     },
     mode: {
       getModelConfig: { invoke: (...args: unknown[]) => getModelConfigInvokeMock(...args) },
@@ -117,25 +128,46 @@ vi.mock('@arco-design/web-react', () => ({
     title,
     className,
     style,
+    disabled,
+    onClick,
   }: {
     children: React.ReactNode;
     title?: string;
     className?: string;
     style?: React.CSSProperties;
+    disabled?: boolean;
+    onClick?: () => void;
   }) => (
-    <button title={title} className={className} style={style}>
+    <button title={title} className={className} style={style} disabled={disabled} onClick={onClick}>
       {children}
     </button>
   ),
-  Dropdown: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Dropdown: ({ children, droplist }: { children: React.ReactNode; droplist?: React.ReactNode }) => (
+    <>
+      {children}
+      {droplist}
+    </>
+  ),
   Popover: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   Menu: Object.assign(({ children }: { children: React.ReactNode }) => <div>{children}</div>, {
-    Item: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    Item: ({
+      children,
+      onClick,
+      className,
+    }: {
+      children: React.ReactNode;
+      onClick?: () => void;
+      className?: string;
+    }) => (
+      <button type='button' className={className} onClick={onClick}>
+        {children}
+      </button>
+    ),
     ItemGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   }),
   Message: {
-    error: vi.fn(),
+    error: (...args: unknown[]) => messageErrorMock(...args),
   },
   Spin: ({ loading }: { loading?: boolean }) => (loading ? <div>loading</div> : null),
 }));
@@ -183,6 +215,7 @@ describe('ConversationTabs', () => {
               id: 'provider-1',
               name: 'Claude',
               platform: 'claude',
+              model: ['claude-3.7-sonnet', 'claude-3.5-haiku'],
               modelHealth: {
                 'claude-3.7-sonnet': {
                   status: 'healthy',
@@ -218,6 +251,31 @@ describe('ConversationTabs', () => {
         },
       },
     });
+    openclawGetModelInfoInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'claude-3.7-sonnet',
+          currentModelLabel: 'claude-3.7-sonnet',
+          canSwitch: false,
+          switchSupported: true,
+          availableModels: [{ id: 'claude-3.7-sonnet', label: 'claude-3.7-sonnet' }],
+        },
+      },
+    });
+    openclawSetModelInvokeMock.mockResolvedValue({ success: true, data: { modelInfo: null } });
+    openclawResponseStreamOnMock.mockReturnValue(vi.fn());
+    openclawGetRuntimeInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        conversationId: 'conv-openclaw',
+        runtime: {
+          modelProvider: 'claude',
+          model: 'claude-3.7-sonnet',
+        },
+      },
+    });
     setModelInvokeMock.mockResolvedValue({ success: true, data: { modelInfo: null } });
     responseStreamOnMock.mockReturnValue(vi.fn());
     getModelConfigInvokeMock.mockResolvedValue([
@@ -225,6 +283,7 @@ describe('ConversationTabs', () => {
         id: 'provider-1',
         name: 'Claude',
         platform: 'claude',
+        model: ['claude-3.7-sonnet', 'claude-3.5-haiku'],
         modelHealth: {
           'claude-3.7-sonnet': {
             status: 'healthy',
@@ -392,6 +451,76 @@ describe('ConversationTabs', () => {
       const button = container.querySelector('button[title="claude-3.7-sonnet"]');
       expect(button).toBeTruthy();
     });
+  });
+
+  it('keeps OpenClaw model selector clickable when backend returns only the current model', async () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+
+    const { container } = render(
+      <AcpModelSelector conversationId='conv-openclaw' backend='openclaw-gateway' initialModelId='claude-3.7-sonnet' />
+    );
+
+    await waitFor(() => {
+      const button = container.querySelector('button[title="claude-3.7-sonnet"]');
+      expect(button).toBeTruthy();
+      expect(button?.hasAttribute('disabled')).toBe(false);
+    });
+
+    expect(openclawResponseStreamOnMock).toHaveBeenCalledTimes(1);
+    expect(openclawGetModelInfoInvokeMock).toHaveBeenCalledWith({ conversation_id: 'conv-openclaw' });
+  });
+
+  it('keeps OpenClaw model selector read-only when gateway does not support switching', async () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+    openclawGetModelInfoInvokeMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'claude-3.7-sonnet',
+          currentModelLabel: 'claude-3.7-sonnet',
+          canSwitch: false,
+          switchSupported: false,
+          availableModels: [{ id: 'claude-3.7-sonnet', label: 'claude-3.7-sonnet' }],
+        },
+      },
+    });
+
+    const { container } = render(
+      <AcpModelSelector conversationId='conv-openclaw' backend='openclaw-gateway' initialModelId='claude-3.7-sonnet' />
+    );
+
+    await waitFor(() => {
+      const wrapper = container.querySelector('span[title="conversation.chat.modelSwitchNotSupported"]');
+      const button = wrapper?.querySelector('button');
+      expect(button).toBeTruthy();
+      expect(button?.hasAttribute('disabled')).toBe(true);
+    });
+
+    expect(screen.queryByText('claude-3.5-haiku')).not.toBeInTheDocument();
+  });
+
+  it('shows an error when OpenClaw model switching fails', async () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+    openclawSetModelInvokeMock.mockResolvedValueOnce({
+      success: false,
+      msg: 'Current OpenClaw Gateway does not support model switching',
+    });
+
+    render(
+      <AcpModelSelector conversationId='conv-openclaw' backend='openclaw-gateway' initialModelId='claude-3.7-sonnet' />
+    );
+
+    const alternativeModel = await screen.findByText('claude-3.5-haiku');
+    fireEvent.click(alternativeModel);
+
+    await waitFor(() => {
+      expect(openclawSetModelInvokeMock).toHaveBeenCalledWith({
+        conversation_id: 'conv-openclaw',
+        modelId: 'claude-3.5-haiku',
+      });
+    });
+    expect(messageErrorMock).toHaveBeenCalledWith('Current OpenClaw Gateway does not support model switching');
   });
 
   it('keeps a native title on the Gemini model button for hover text', () => {

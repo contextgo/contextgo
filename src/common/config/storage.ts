@@ -244,6 +244,10 @@ export type TChatConversation =
         pinned?: boolean;
         /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
         pinnedAt?: number;
+        /** 是否已归档会话 / Whether this conversation is archived */
+        archived?: boolean;
+        /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+        archivedAt?: number;
         /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
         sessionMode?: string;
         /** Explicit marker for temporary health-check conversations */
@@ -273,6 +277,10 @@ export type TChatConversation =
           pinned?: boolean;
           /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
           pinnedAt?: number;
+          /** 是否已归档会话 / Whether this conversation is archived */
+          archived?: boolean;
+          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+          archivedAt?: number;
           /** ACP 后端的 session UUID，用于会话恢复 / ACP backend session UUID for session resume */
           acpSessionId?: string;
           /** ACP session 最后更新时间 / Last update time of ACP session */
@@ -316,6 +324,10 @@ export type TChatConversation =
           pinned?: boolean;
           /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
           pinnedAt?: number;
+          /** 是否已归档会话 / Whether this conversation is archived */
+          archived?: boolean;
+          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+          archivedAt?: number;
           /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
           sessionMode?: string;
           /** User-selected Codex model from Guid page / 用户在引导页选择的 Codex 模型 */
@@ -348,6 +360,18 @@ export type TChatConversation =
           };
           /** Session key for resume */
           sessionKey?: string;
+          /** Whether this conversation was imported from an external OpenClaw session */
+          externalSessionImported?: boolean;
+          /** Whether workspace hydration should be deferred on first open */
+          deferInitialWorkspaceLoad?: boolean;
+          /** Best-effort history reconcile metadata for imported OpenClaw sessions */
+          externalHistorySync?: {
+            provider?: 'openclaw-gateway';
+            lastSyncedAt?: number;
+            lastHistoryMessageAt?: number;
+            lastSessionKey?: string;
+            lastInsertedCount?: number;
+          };
           /** Runtime validation snapshot used for post-switch strong checks */
           runtimeValidation?: {
             expectedWorkspace?: string;
@@ -369,6 +393,10 @@ export type TChatConversation =
           pinned?: boolean;
           /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
           pinnedAt?: number;
+          /** 是否已归档会话 / Whether this conversation is archived */
+          archived?: boolean;
+          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+          archivedAt?: number;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
           /** Discussion group child conversation metadata */
@@ -393,6 +421,10 @@ export type TChatConversation =
           pinned?: boolean;
           /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
           pinnedAt?: number;
+          /** 是否已归档会话 / Whether this conversation is archived */
+          archived?: boolean;
+          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+          archivedAt?: number;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
           /** Discussion group child conversation metadata */
@@ -412,6 +444,10 @@ export type TChatConversation =
         pinned?: boolean;
         /** Pin timestamp in milliseconds */
         pinnedAt?: number;
+        /** Whether this conversation is archived */
+        archived?: boolean;
+        /** Archive timestamp in milliseconds */
+        archivedAt?: number;
       }
     >;
 

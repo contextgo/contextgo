@@ -421,8 +421,7 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
         expectedAgentName: extra.agentName,
         expectedOpenClawAgentId: extra.openclawAgentId,
         expectedCliPath: extra.cliPath,
-        // Note: model is not used by openclaw-gateway, so skip expectedModel to avoid
-        // validation mismatch (conversation object doesn't store model for this type)
+        expectedModel: extra.runtimeValidation?.expectedModel,
         expectedIdentityHash,
         switchedAt: extra.runtimeValidation?.switchedAt ?? Date.now(),
       },

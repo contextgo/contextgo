@@ -5,7 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
-import { transformMessage } from '@/common/chat/chatLib';
+import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { TokenUsageData } from '@/common/config/storage';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
@@ -109,6 +109,7 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
       }
 
       const transformedMessage = transformMessage(message);
+      const shouldSuppressLifecycleMessage = shouldSuppressAgentLifecycleStreamMessage(message);
       switch (message.type) {
         case 'thought':
           // Auto-recover running state if thought arrives after finish
@@ -154,7 +155,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
           }
           // Clear thought when final answer arrives
           setThought({ subject: '', description: '' });
-          addOrUpdateMessage(transformedMessage);
+          if (!shouldSuppressLifecycleMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
           break;
         }
         case 'agent_status': {
@@ -183,7 +186,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
               aiProcessingRef.current = false;
             }
           }
-          addOrUpdateMessage(transformedMessage);
+          if (!shouldSuppressLifecycleMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
           break;
         }
         case 'user_content':
@@ -233,7 +238,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
           runningRef.current = false;
           setAiProcessing(false);
           aiProcessingRef.current = false;
-          addOrUpdateMessage(transformedMessage);
+          if (!shouldSuppressLifecycleMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
           // Log request error
           if (requestTraceRef.current) {
             const duration = Date.now() - requestTraceRef.current.startTime;
@@ -252,7 +259,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
             setRunning(true);
             runningRef.current = true;
           }
-          addOrUpdateMessage(transformedMessage);
+          if (!shouldSuppressLifecycleMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
           break;
       }
     },

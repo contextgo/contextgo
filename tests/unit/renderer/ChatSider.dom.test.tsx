@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type WorkspaceMockProps = {
   conversation_id: string;
@@ -27,6 +27,10 @@ vi.mock('../../../src/renderer/pages/conversation/Workspace', () => ({
 import ChatSider from '../../../src/renderer/pages/conversation/components/ChatSider';
 
 describe('ChatSider', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('renders the workspace panel for discussion groups', () => {
     render(
       <ChatSider
@@ -60,6 +64,41 @@ describe('ChatSider', () => {
         conversation_id: 'group-1',
         workspace: '/tmp/discussion-workspace',
         eventPrefix: 'group',
+      })
+    );
+  });
+
+  it('renders the workspace panel for OpenClaw conversations', () => {
+    render(
+      <ChatSider
+        conversation={{
+          id: 'openclaw-1',
+          type: 'openclaw-gateway',
+          name: 'OpenClaw Session',
+          model: {
+            platform: 'openai',
+            name: 'Test Model',
+            useModel: 'gpt-5',
+          },
+          createTime: 1,
+          modifyTime: 1,
+          extra: {
+            workspace: '/tmp/openclaw-workspace',
+            customWorkspace: false,
+            backend: 'openclaw-gateway',
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('chat-workspace')).toHaveTextContent(
+      'openclaw-1:/tmp/openclaw-workspace:openclaw-gateway'
+    );
+    expect(chatWorkspaceMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        conversation_id: 'openclaw-1',
+        workspace: '/tmp/openclaw-workspace',
+        eventPrefix: 'openclaw-gateway',
       })
     );
   });

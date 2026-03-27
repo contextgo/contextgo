@@ -7,6 +7,13 @@
   border-right: 1px solid var(--border-base);
 }
 
+.layout-sider > .arco-layout-sider-children {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
 .layout-sider.collapsed .arco-layout-sider-children,
 .layout-sider.arco-layout-sider-collapsed .arco-layout-sider-children {
   overflow-x: hidden;
@@ -15,6 +22,179 @@
 /* Disable transition during drag for smooth dragging */
 .layout-sider--dragging {
   transition: none !important;
+}
+
+.layout-function-rail {
+  min-width: 56px;
+}
+
+.layout-sider-brand-header {
+  flex-shrink: 0;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border-base);
+  background: var(--bg-2);
+}
+
+.layout-sider-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.sider-entry-row {
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sider-entry-row:hover {
+  background: var(--bg-hover);
+}
+
+.sider-entry-row:active {
+  background: var(--bg-active);
+}
+
+.sider-entry-row--active {
+  background: var(--aou-2);
+  border-color: var(--color-primary-light-3);
+}
+
+.sider-user-trigger {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.sider-user-trigger--active {
+  background: var(--bg-hover);
+  border-color: var(--border-base);
+}
+
+.sider-user-trigger:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-base);
+}
+
+.sider-user-trigger:active {
+  background: var(--bg-active);
+}
+
+.sider-user-trigger__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--fill-2) 76%, var(--bg-1) 24%);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sider-user-trigger__chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.sider-user-trigger__chevron--open {
+  transform: rotate(180deg);
+}
+
+.sider-user-card-wrap {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.sider-user-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid var(--border-base);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-1) 94%, var(--fill-2) 6%);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 5;
+}
+
+.sider-user-panel__action,
+.sider-user-panel__language-option {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.sider-user-panel__action:hover,
+.sider-user-panel__language-option:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-base);
+}
+
+.sider-user-panel__action:active,
+.sider-user-panel__language-option:active {
+  background: var(--bg-active);
+}
+
+.sider-user-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sider-user-panel__section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sider-user-panel__language-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sider-user-panel__language-option--active {
+  background: color-mix(in srgb, var(--fill-2) 68%, var(--bg-1) 32%);
+  border-color: var(--border-base);
 }
 
 /* Sidebar item transitions (shared by chat-history and settings-sider) */
@@ -103,7 +283,7 @@
 .arco-message-wrapper {
   left: 0 !important;
   width: 100% !important;
-  padding-left: 266px;
+  padding-left: var(--app-left-offset, 266px);
   box-sizing: border-box;
 }
 

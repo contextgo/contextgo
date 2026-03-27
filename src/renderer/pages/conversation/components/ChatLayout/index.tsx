@@ -1,5 +1,3 @@
-import { ConfigStorage } from '@/common/config/storage';
-import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useResizableSplit } from '@/renderer/hooks/ui/useResizableSplit';
@@ -15,7 +13,6 @@ import { useTitleRename } from '@/renderer/pages/conversation/hooks/useTitleRena
 import { useWorkspaceCollapse } from '@/renderer/pages/conversation/hooks/useWorkspaceCollapse';
 import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { dispatchWorkspaceToggleEvent } from '@/renderer/utils/workspace/workspaceEvents';
-import { ACP_BACKENDS_ALL } from '@/common/types/acpTypes';
 import classNames from 'classnames';
 import { isMacEnvironment, isWindowsEnvironment } from '@/renderer/pages/conversation/utils/detectPlatform';
 import {
@@ -25,8 +22,8 @@ import {
 } from '@/renderer/pages/conversation/utils/layoutCalc';
 import { Layout as ArcoLayout } from '@arco-design/web-react';
 import { ExpandLeft, ExpandRight } from '@icon-park/react';
-import React from 'react';
-import useSWR from 'swr';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './chat-layout.css';
 
 // headerExtra allows injecting custom actions (e.g., model picker) into the header's right area
@@ -49,12 +46,27 @@ const ChatLayout: React.FC<{
   conversationId?: string;
 }> = (props) => {
   const { conversationId } = props;
-  const { backend, agentName, agentLogo, agentLogoIsEmoji, workspaceEnabled = true } = props;
+  const { workspaceEnabled = true } = props;
   const layout = useLayoutContext();
   const isMacRuntime = isMacEnvironment();
   const isWindowsRuntime = isWindowsEnvironment();
   const isDesktop = !layout?.isMobile;
   const isMobile = Boolean(layout?.isMobile);
+  const showWorkspaceHeader = Boolean(props.siderTitle) || (!isMacRuntime && !isWindowsRuntime);
+  const workspaceHeaderHeight = showWorkspaceHeader ? WORKSPACE_HEADER_HEIGHT : 0;
+  const [desktopHeaderTarget, setDesktopHeaderTarget] = useState<HTMLElement | null>(null);
+  const [desktopToolbarTarget, setDesktopToolbarTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (isMobile || typeof document === 'undefined') {
+      setDesktopHeaderTarget(null);
+      setDesktopToolbarTarget(null);
+      return;
+    }
+
+    setDesktopHeaderTarget(document.getElementById('app-titlebar-chat-slot'));
+    setDesktopToolbarTarget(document.getElementById('app-titlebar-toolbar-slot'));
+  }, [isMobile]);
 
   // Preview panel state
   const { isOpen: isPreviewOpen } = usePreviewContext();
@@ -79,18 +91,6 @@ const ChatLayout: React.FC<{
       conversationId,
       updateTabName,
     });
-
-  // Fetch custom agents config as fallback when agentName is not provided
-  const { data: customAgents } = useSWR(backend === 'custom' && !agentName ? 'acp.customAgents' : null, () =>
-    ConfigStorage.get('acp.customAgents')
-  );
-
-  // Compute display name with fallback chain (use first custom agent as fallback for backward compatibility)
-  const displayName =
-    agentName ||
-    (backend === 'custom' && customAgents?.[0]?.name) ||
-    ACP_BACKENDS_ALL[backend as keyof typeof ACP_BACKENDS_ALL]?.name ||
-    backend;
 
   const {
     splitRatio: workspaceSplitRatio,
@@ -139,6 +139,58 @@ const ChatLayout: React.FC<{
       isMobile,
     });
 
+  const desktopHeaderContent = useMemo(
+    () => (
+      <div className={classNames('flex h-full min-w-0 items-stretch overflow-hidden', !hasTabs && 'bg-1')}>
+        {hasTabs ? (
+          <div className='flex h-full w-52px shrink-0 items-center justify-center border-r border-[var(--border-base)] px-4px'>
+            {props.headerLeft}
+          </div>
+        ) : props.headerLeft ? (
+          <div className='flex shrink-0 items-center justify-center border-r border-[var(--border-base)] px-4px'>
+            {props.headerLeft}
+          </div>
+        ) : null}
+        <div className={classNames('min-w-0 flex-1', !hasTabs && 'bg-1')}>
+          {hasTabs ? (
+            <ConversationTabs showHeaderActions={false} />
+          ) : (
+            <div className='flex h-40px items-center bg-1 px-16px'>
+              <ChatTitleEditor
+                editingTitle={editingTitle}
+                titleDraft={titleDraft}
+                setTitleDraft={setTitleDraft}
+                setEditingTitle={setEditingTitle}
+                renameLoading={renameLoading}
+                canRenameTitle={canRenameTitle}
+                submitTitleRename={submitTitleRename}
+                titleAreaMaxWidth={titleAreaMaxWidth}
+                title={props.title}
+                conversationId={conversationId}
+                workspacePath={props.workspacePath}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    ),
+    [
+      canRenameTitle,
+      conversationId,
+      editingTitle,
+      hasTabs,
+      props.headerLeft,
+      props.title,
+      props.workspacePath,
+      renameLoading,
+      setEditingTitle,
+      setTitleDraft,
+      submitTitleRename,
+      titleAreaMaxWidth,
+      titleDraft,
+    ]
+  );
+
   // --- Hook D: preview auto-collapse ---
   usePreviewAutoCollapse({
     isPreviewOpen,
@@ -166,9 +218,9 @@ const ChatLayout: React.FC<{
     dynamicChatMaxRatio,
   });
 
-  const headerBlock = (
+  const mobileHeaderBlock = (
     <>
-      <ConversationTabs />
+      {layout?.isMobile && <ConversationTabs />}
       <ArcoLayout.Header
         className={classNames(
           'min-h-44px flex items-center justify-between px-16px pt-8px pb-10px gap-16px !bg-1 chat-layout-header chat-layout-header--glass overflow-hidden',
@@ -176,36 +228,12 @@ const ChatLayout: React.FC<{
         )}
       >
         <div className='shrink-0'>{props.headerLeft}</div>
-        <FlexFullContainer className='h-full min-w-0' containerClassName='flex items-center gap-16px'>
-          {!layout?.isMobile && !hasTabs && (
-            <ChatTitleEditor
-              editingTitle={editingTitle}
-              titleDraft={titleDraft}
-              setTitleDraft={setTitleDraft}
-              setEditingTitle={setEditingTitle}
-              renameLoading={renameLoading}
-              canRenameTitle={canRenameTitle}
-              submitTitleRename={submitTitleRename}
-              titleAreaMaxWidth={titleAreaMaxWidth}
-              title={props.title}
-              conversationId={conversationId}
-              workspacePath={props.workspacePath}
-            />
-          )}
-        </FlexFullContainer>
+        <FlexFullContainer
+          className='h-full min-w-0'
+          containerClassName='flex items-center gap-16px'
+        ></FlexFullContainer>
         <div className='flex items-center gap-12px shrink-0'>
           {props.headerExtra}
-          {(backend || agentLogo) && (
-            <AgentModeSelector
-              backend={backend}
-              agentName={displayName}
-              agentLogo={agentLogo}
-              agentLogoIsEmoji={agentLogoIsEmoji}
-              compact={Boolean(layout?.isMobile)}
-              showLogoInCompact={Boolean(layout?.isMobile)}
-              compactLabelType={layout?.isMobile ? 'agent' : 'mode'}
-            />
-          )}
           {isWindowsRuntime && workspaceEnabled && (
             <button
               type='button'
@@ -228,6 +256,13 @@ const ChatLayout: React.FC<{
         // fontFamily: `cursive,"anthropicSans","anthropicSans Fallback",system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif`,
       }}
     >
+      {isDesktop && desktopHeaderTarget ? createPortal(desktopHeaderContent, desktopHeaderTarget) : null}
+      {isDesktop && desktopToolbarTarget && props.headerExtra
+        ? createPortal(
+            <div className='flex h-full min-w-80px items-center justify-end'>{props.headerExtra}</div>,
+            desktopToolbarTarget
+          )
+        : null}
       <div ref={containerRef} className='flex flex-1 relative w-full overflow-hidden'>
         <div
           className='flex flex-col relative'
@@ -245,7 +280,7 @@ const ChatLayout: React.FC<{
               if (window.innerWidth < 768 && !rightSiderCollapsed) setRightSiderCollapsed(true);
             }}
           >
-            {headerBlock}
+            {layout?.isMobile ? mobileHeaderBlock : null}
             <ArcoLayout.Content className='flex flex-col flex-1 bg-1 overflow-hidden'>
               {props.children}
             </ArcoLayout.Content>
@@ -297,15 +332,17 @@ const ChatLayout: React.FC<{
             {isDesktop &&
               !rightSiderCollapsed &&
               createWorkspaceDragHandle({ className: 'absolute left-0 top-0 bottom-0', style: {}, reverse: true })}
-            <WorkspacePanelHeader
-              showToggle={!isMacRuntime && !isWindowsRuntime}
-              collapsed={rightSiderCollapsed}
-              onToggle={() => dispatchWorkspaceToggleEvent()}
-              togglePlacement={layout?.isMobile ? 'left' : 'right'}
-            >
-              {props.siderTitle}
-            </WorkspacePanelHeader>
-            <ArcoLayout.Content style={{ height: `calc(100% - ${WORKSPACE_HEADER_HEIGHT}px)` }}>
+            {showWorkspaceHeader ? (
+              <WorkspacePanelHeader
+                showToggle={!isMacRuntime && !isWindowsRuntime}
+                collapsed={rightSiderCollapsed}
+                onToggle={() => dispatchWorkspaceToggleEvent()}
+                togglePlacement={layout?.isMobile ? 'left' : 'right'}
+              >
+                {props.siderTitle}
+              </WorkspacePanelHeader>
+            ) : null}
+            <ArcoLayout.Content style={{ height: `calc(100% - ${workspaceHeaderHeight}px)` }}>
               {props.sider}
             </ArcoLayout.Content>
           </div>

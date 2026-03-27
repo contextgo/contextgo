@@ -1,16 +1,17 @@
-import { ArrowCircleLeft, ListCheckbox, Plus, Robot, SettingTwo } from '@icon-park/react';
-import { IconMoonFill, IconSunFill } from '@arco-design/web-react/icon';
+import { ipcBridge } from '@/common';
+import { changeLanguage } from '@/renderer/services/i18n';
+import { Brain, Down, Earth, Lightning, Plus, Robot, SettingTwo } from '@icon-park/react';
+import { Dropdown, Menu } from '@arco-design/web-react';
 import classNames from 'classnames';
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
-import { Dropdown, Menu, Tooltip } from '@arco-design/web-react';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
-import { cleanupSiderTooltips, getSiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
+import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
-import { useThemeContext } from '@renderer/hooks/context/ThemeContext';
+import { useAuth } from '@renderer/hooks/context/AuthContext';
 import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
@@ -25,50 +26,47 @@ interface SiderProps {
   collapsed?: boolean;
 }
 
+const LANGUAGE_OPTIONS = [
+  { value: 'zh-CN', label: '简体中文' },
+  { value: 'zh-TW', label: '繁體中文' },
+  { value: 'ja-JP', label: '日本語' },
+  { value: 'ko-KR', label: '한국어' },
+  { value: 'tr-TR', label: 'Türkçe' },
+  { value: 'en-US', label: 'English' },
+] as const;
+
 const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const location = useLocation();
-  const { pathname, search, hash } = location;
+  const { pathname } = location;
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { closePreview } = usePreviewContext();
-  const { theme, setTheme } = useThemeContext();
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
+  const [desktopUsername, setDesktopUsername] = useState('');
+  const [userPanelVisible, setUserPanelVisible] = useState(false);
   const isSettings = pathname.startsWith('/settings');
-  const lastNonSettingsPathRef = useRef('/guid');
   const { cliAgents, presetAssistants } = useConversationAgents();
-  const { activeTab, closeAllTabs, openTab } = useConversationTabs();
+  const { activeTab, openTab } = useConversationTabs();
+  const { user } = useAuth();
+  const userCardRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!pathname.startsWith('/settings')) {
-      lastNonSettingsPathRef.current = `${pathname}${search}${hash}`;
-    }
-  }, [pathname, search, hash]);
-
-  const handleSettingsClick = () => {
+  const handleNavigate = (target: string) => {
     cleanupSiderTooltips();
     blurActiveElement();
-    if (isSettings) {
-      const target = lastNonSettingsPathRef.current || '/guid';
-      Promise.resolve(navigate(target)).catch((error) => {
-        console.error('Navigation failed:', error);
-      });
-    } else {
-      Promise.resolve(navigate('/settings/agent')).catch((error) => {
-        console.error('Navigation failed:', error);
-      });
-    }
+    closePreview();
+    setIsBatchMode(false);
+    Promise.resolve(navigate(target)).catch((error) => {
+      console.error('Navigation failed:', error);
+    });
     if (onSessionClick) {
       onSessionClick();
     }
   };
 
-  const handleToggleBatchMode = () => {
-    setIsBatchMode((prev) => !prev);
-  };
   const handleConversationSelect = () => {
     cleanupSiderTooltips();
     blurActiveElement();
@@ -94,9 +92,89 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     setIsBatchMode(false);
     setGroupModalVisible(true);
   };
-  const handleQuickThemeToggle = () => {
-    void setTheme(theme === 'dark' ? 'light' : 'dark');
+
+  const handleToggleUserPanel = () => {
+    setUserPanelVisible((visible) => !visible);
   };
+
+  const handleOpenSettings = () => {
+    setUserPanelVisible(false);
+    handleNavigate('/settings/system');
+  };
+
+  const handleChangeLanguage = (language: (typeof LANGUAGE_OPTIONS)[number]['value']) => {
+    changeLanguage(language).catch((error: Error) => {
+      console.error('Failed to change language:', error);
+    });
+    setUserPanelVisible(false);
+  };
+
+  useEffect(() => {
+    if (user?.username) {
+      setDesktopUsername(user.username);
+      return;
+    }
+    if (typeof window === 'undefined' || !window.electronAPI) {
+      setDesktopUsername('');
+      return;
+    }
+
+    let cancelled = false;
+    ipcBridge.application.getPath
+      .invoke({ name: 'home' })
+      .then((homePath) => {
+        if (cancelled) {
+          return;
+        }
+        setDesktopUsername(homePath.split(/[\\/]/).filter(Boolean).pop() || '');
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDesktopUsername('');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.username]);
+
+  useEffect(() => {
+    if (!userPanelVisible) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!userCardRef.current) {
+        return;
+      }
+
+      if (event.target instanceof Node && userCardRef.current.contains(event.target)) {
+        return;
+      }
+
+      setUserPanelVisible(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setUserPanelVisible(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown, true);
+    document.addEventListener('keydown', handleEscape, true);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleEscape, true);
+    };
+  }, [userPanelVisible]);
+
+  useEffect(() => {
+    setUserPanelVisible(false);
+  }, [pathname]);
+
   const workspaceHistoryProps = {
     collapsed,
     tooltipEnabled: collapsed && !isMobile,
@@ -105,16 +183,27 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     onBatchModeChange: setIsBatchMode,
   };
   const tooltipEnabled = collapsed && !isMobile;
-  const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
   const activeWorkspace = activeTab?.workspace || '';
-  const createMenu = (
+  const actionRowClassName = classNames(
+    'sider-entry-row flex w-full min-w-0 items-center gap-10px rounded-10px px-12px py-9px text-left transition-colors',
+    isMobile && 'sider-action-btn-mobile'
+  );
+  const actionRowActiveClassName = 'sider-entry-row--active';
+  const userDisplayName = desktopUsername || user?.username || t('common.localUser');
+  const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
+  const currentLanguageLabel =
+    LANGUAGE_OPTIONS.find((option) => option.value === i18n.language)?.label ||
+    LANGUAGE_OPTIONS.find((option) => option.value === 'en-US')?.label ||
+    'English';
+  const createEntryMenu = (
     <Menu
       onClickMenuItem={(key) => {
         if (key === 'conversation') {
           handleCreateConversation();
           return;
         }
-        if (key === 'discussion-group') {
+
+        if (key === 'group') {
           handleCreateDiscussionGroup();
         }
       }}
@@ -125,7 +214,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           <span>{t('conversation.welcome.newConversation')}</span>
         </div>
       </Menu.Item>
-      <Menu.Item key='discussion-group'>
+      <Menu.Item key='group'>
         <div className='flex items-center gap-8px'>
           <Robot theme='outline' size='16' fill={iconColors.primary} />
           <span>{t('conversation.group.createEntry')}</span>
@@ -135,72 +224,54 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   );
 
   return (
-    <div className='size-full flex flex-col'>
+    <div className='size-full w-full min-w-0 flex flex-col'>
       {/* Main content area */}
-      <div className='flex-1 min-h-0 overflow-hidden'>
+      <div className='flex-1 min-h-0 w-full min-w-0 overflow-hidden'>
         {isSettings ? (
           <Suspense fallback={<div className='size-full' />}>
             <SettingsSider collapsed={collapsed} tooltipEnabled={tooltipEnabled}></SettingsSider>
           </Suspense>
         ) : (
-          <div className='size-full flex flex-col'>
-            <div className='mb-8px shrink-0 flex items-center gap-8px'>
-              <Tooltip {...siderTooltipProps} content={t('common.create')} position='right'>
-                <Dropdown droplist={createMenu} trigger='click' position='bl'>
-                  <div
-                    className={classNames(
-                      collapsed
-                        ? 'h-40px w-40px rd-0.5rem flex items-center justify-center cursor-pointer shrink-0 transition-all border border-solid border-transparent hover:bg-fill-2 hover:border-[var(--color-border-2)]'
-                        : 'h-40px flex-1 flex items-center justify-start gap-10px px-12px hover:bg-hover rd-0.5rem cursor-pointer group',
-                      isMobile && (collapsed ? 'sider-action-icon-btn-mobile' : 'sider-action-btn-mobile')
-                    )}
-                  >
-                    <Plus
-                      theme='outline'
-                      size={collapsed ? '20' : '24'}
-                      fill={iconColors.primary}
-                      className='block leading-none shrink-0'
-                      style={{ lineHeight: 0 }}
-                    />
-                    {!collapsed && (
-                      <span className='collapsed-hidden font-bold text-t-primary leading-24px'>{t('common.create')}</span>
-                    )}
-                  </div>
-                </Dropdown>
-              </Tooltip>
-              <Tooltip {...siderTooltipProps} content={t('conversation.historySearch.tooltip')} position='right'>
-                <div>
-                  <ConversationSearchPopover
-                    onSessionClick={onSessionClick}
-                    onConversationSelect={handleConversationSelect}
-                    buttonClassName={classNames(isMobile && 'sider-action-icon-btn-mobile')}
-                  />
-                </div>
-              </Tooltip>
-              <Tooltip
-                {...siderTooltipProps}
-                content={isBatchMode ? t('conversation.history.batchModeExit') : t('conversation.history.batchManage')}
-                position='right'
+          <div className='size-full w-full min-w-0 flex flex-col'>
+            <div className='mb-10px flex shrink-0 w-full min-w-0 flex-col gap-6px'>
+              <Dropdown droplist={createEntryMenu} trigger='click' position='bl'>
+                <button type='button' className={actionRowClassName}>
+                  <Plus theme='outline' size='20' fill={iconColors.primary} className='block shrink-0 leading-none' />
+                  <span className='min-w-0 flex-1 truncate text-14px font-600 text-t-primary'>
+                    {t('conversation.entry.create')}
+                  </span>
+                  <Down theme='outline' size='14' fill={iconColors.secondary} className='block shrink-0 leading-none' />
+                </button>
+              </Dropdown>
+              <ConversationSearchPopover
+                onSessionClick={onSessionClick}
+                onConversationSelect={handleConversationSelect}
+                buttonLabel={t('conversation.historySearch.tooltip')}
+                buttonClassName={classNames(actionRowClassName, '!justify-start !border-none')}
+              />
+              <button
+                type='button'
+                className={classNames(actionRowClassName, pathname === '/skills-hub' && actionRowActiveClassName)}
+                onClick={() => handleNavigate('/skills-hub')}
               >
-                <div
-                  className={classNames(
-                    'h-40px w-40px rd-0.5rem flex items-center justify-center cursor-pointer shrink-0 transition-all border border-solid border-transparent',
-                    isMobile && 'sider-action-icon-btn-mobile',
-                    {
-                      'hover:bg-fill-2 hover:border-[var(--color-border-2)]': !isBatchMode,
-                      'bg-[rgba(var(--primary-6),0.12)] border-[rgba(var(--primary-6),0.24)] text-primary': isBatchMode,
-                    }
-                  )}
-                  onClick={handleToggleBatchMode}
-                >
-                  <ListCheckbox
-                    theme='outline'
-                    size='20'
-                    className='block leading-none shrink-0'
-                    style={{ lineHeight: 0 }}
-                  />
-                </div>
-              </Tooltip>
+                <Lightning
+                  theme='outline'
+                  size='20'
+                  fill={iconColors.primary}
+                  className='block shrink-0 leading-none'
+                />
+                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
+                  {t('settings.skillsHub.title')}
+                </span>
+              </button>
+              <button
+                type='button'
+                className={classNames(actionRowClassName, pathname === '/agents' && actionRowActiveClassName)}
+                onClick={() => handleNavigate('/agents')}
+              >
+                <Brain theme='outline' size='20' fill={iconColors.primary} className='block shrink-0 leading-none' />
+                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>{t('settings.assistants')}</span>
+              </button>
             </div>
             <Suspense fallback={<div className='flex-1 min-h-0' />}>
               <WorkspaceGroupedHistory {...workspaceHistoryProps}></WorkspaceGroupedHistory>
@@ -213,7 +284,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               onCancel={() => setGroupModalVisible(false)}
               onCreated={(conversation) => {
                 setGroupModalVisible(false);
-                closeAllTabs();
                 openTab(conversation);
                 void navigate(`/conversation/${conversation.id}`);
                 emitter.emit('chat.history.refresh');
@@ -225,60 +295,61 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           </div>
         )}
       </div>
-      {/* Footer - settings button */}
-      <div className='shrink-0 sider-footer mt-auto pt-8px'>
-        <div className='flex flex-col gap-8px'>
-          {isSettings && (
-            <Tooltip
-              {...siderTooltipProps}
-              content={theme === 'dark' ? t('settings.lightMode') : t('settings.darkMode')}
-              position='right'
-            >
-              <div
-                onClick={handleQuickThemeToggle}
-                className={classNames(
-                  'flex items-center justify-start gap-10px px-12px py-8px rd-0.5rem cursor-pointer transition-colors hover:bg-hover active:bg-fill-2',
-                  isMobile && 'sider-footer-btn-mobile'
-                )}
-                aria-label={theme === 'dark' ? t('settings.lightMode') : t('settings.darkMode')}
-              >
-                {theme === 'dark' ? (
-                  <IconSunFill style={{ fontSize: 18, color: 'rgb(var(--primary-6))' }} />
-                ) : (
-                  <IconMoonFill style={{ fontSize: 18, color: 'rgb(var(--primary-6))' }} />
-                )}
-                <span className='collapsed-hidden text-t-primary'>
-                  {t('settings.theme')} · {theme === 'dark' ? t('settings.darkMode') : t('settings.lightMode')}
-                </span>
+      <div className='sider-footer mt-auto shrink-0 pt-10px'>
+        <div ref={userCardRef} className='sider-user-card-wrap'>
+          {userPanelVisible ? (
+            <div className='sider-user-panel'>
+              <button type='button' className='sider-user-panel__action' onClick={handleOpenSettings}>
+                <SettingTwo theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />
+                <span className='min-w-0 flex-1 truncate'>{t('common.settings')}</span>
+              </button>
+              <div className='sider-user-panel__section'>
+                <div className='sider-user-panel__section-title'>
+                  <Earth theme='outline' size='15' fill={iconColors.primary} className='shrink-0' />
+                  <span>{t('settings.language')}</span>
+                </div>
+                <div className='sider-user-panel__language-list'>
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type='button'
+                      className={classNames('sider-user-panel__language-option', {
+                        'sider-user-panel__language-option--active': option.value === i18n.language,
+                      })}
+                      onClick={() => handleChangeLanguage(option.value)}
+                    >
+                      <span className='min-w-0 flex-1 truncate'>{option.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </Tooltip>
-          )}
-          <Tooltip
-            {...siderTooltipProps}
-            content={isSettings ? t('common.back') : t('common.settings')}
-            position='right'
-          >
-            <div
-              onClick={handleSettingsClick}
-              className={classNames(
-                'flex items-center justify-start gap-10px px-12px py-8px rd-0.5rem cursor-pointer transition-colors',
-                isMobile && 'sider-footer-btn-mobile',
-                {
-                  'bg-[rgba(var(--primary-6),0.12)] text-primary': isSettings,
-                  'hover:bg-hover hover:shadow-sm active:bg-fill-2': !isSettings,
-                }
-              )}
-            >
-              {isSettings ? (
-                <ArrowCircleLeft className='flex' theme='outline' size='24' fill={iconColors.primary} />
-              ) : (
-                <SettingTwo className='flex' theme='outline' size='24' fill={iconColors.primary} />
-              )}
-              <span className='collapsed-hidden text-t-primary'>
-                {isSettings ? t('common.back') : t('common.settings')}
-              </span>
             </div>
-          </Tooltip>
+          ) : null}
+          <button
+            type='button'
+            className={classNames(
+              'sider-user-trigger',
+              userPanelVisible && 'sider-user-trigger--active',
+              isMobile && 'sider-footer-btn-mobile'
+            )}
+            onClick={handleToggleUserPanel}
+            aria-expanded={userPanelVisible}
+          >
+            <span className='sider-user-trigger__avatar'>{userInitial}</span>
+            <span className='min-w-0 flex-1 text-left'>
+              <span className='block truncate text-14px font-600 text-t-primary'>{userDisplayName}</span>
+              <span className='block truncate text-12px text-t-secondary'>{currentLanguageLabel}</span>
+            </span>
+            <Down
+              theme='outline'
+              size='16'
+              fill={iconColors.secondary}
+              className={classNames(
+                'sider-user-trigger__chevron',
+                userPanelVisible && 'sider-user-trigger__chevron--open'
+              )}
+            />
+          </button>
         </div>
       </div>
     </div>

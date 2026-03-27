@@ -5,6 +5,7 @@
  */
 
 import { acpDetector } from '@process/agent/acp/AcpDetector';
+import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
 import type { TChatConversation, TProviderWithModel } from '@/common/config/storage';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
@@ -44,6 +45,34 @@ import type { ActionHandler, IRegisteredAction } from './types';
 import { SystemActionNames, createErrorResponse, createSuccessResponse } from './types';
 import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
 import type { AcpBackend } from '@/common/types/acpTypes';
+
+type SavedChannelAgent = {
+  backend?: string;
+  customAgentId?: string;
+  name?: string;
+  openclawAgentId?: string;
+  workspace?: string;
+  cliPath?: string;
+};
+
+const normalizeOpenClawAgentId = (agentId?: string): string => agentId?.trim().toLowerCase() || 'main';
+
+const resolveSavedOpenClawAgent = (savedAgent: unknown) => {
+  const selection = (savedAgent && typeof savedAgent === 'object' ? savedAgent : {}) as SavedChannelAgent;
+  const configuredAgents = listConfiguredOpenClawAgents();
+  const selectedAgentId = normalizeOpenClawAgentId(selection.openclawAgentId);
+  const configuredAgent =
+    configuredAgents.find((agent) => normalizeOpenClawAgentId(agent.agentId) === selectedAgentId) ||
+    configuredAgents[0];
+
+  return {
+    backend: 'openclaw-gateway' as const,
+    agentName: selection.name?.trim() || configuredAgent?.name || 'OpenClaw',
+    openclawAgentId: selectedAgentId || configuredAgent?.agentId || 'main',
+    workspace: selection.workspace?.trim() || configuredAgent?.workspace,
+    cliPath: selection.cliPath?.trim() || 'openclaw',
+  };
+};
 
 /**
  * Get the default model for Channel assistant (Telegram/Lark)
@@ -200,6 +229,7 @@ export const handleSessionNew: ActionHandler = async (context) => {
       : undefined;
   const agentName =
     savedAgent && typeof savedAgent === 'object' ? ((savedAgent as any).name as string | undefined) : undefined;
+  const openclawSelection = backend === 'openclaw-gateway' ? resolveSavedOpenClawAgent(savedAgent) : null;
 
   // Provider model is required by typing; ACP/Codex will ignore it.
   const model = await getChannelDefaultModel(platform);
@@ -236,7 +266,22 @@ export const handleSessionNew: ActionHandler = async (context) => {
         source,
         name,
         channelChatId,
-        extra: {},
+        extra: {
+          backend: openclawSelection?.backend,
+          cliPath: openclawSelection?.cliPath,
+          agentName: openclawSelection?.agentName,
+          openclawAgentId: openclawSelection?.openclawAgentId,
+          workspace: openclawSelection?.workspace,
+          customWorkspace: Boolean(openclawSelection?.workspace),
+          runtimeValidation: {
+            expectedWorkspace: openclawSelection?.workspace,
+            expectedBackend: openclawSelection?.backend,
+            expectedAgentName: openclawSelection?.agentName,
+            expectedOpenClawAgentId: openclawSelection?.openclawAgentId,
+            expectedCliPath: openclawSelection?.cliPath,
+            switchedAt: Date.now(),
+          },
+        },
       });
     } else {
       newConversation = await conversationServiceSingleton.createConversation({

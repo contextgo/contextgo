@@ -1,5 +1,9 @@
 # Architecture
 
+相关设计文档：
+
+- `docs/tech/space-model.md`：定义目标中的 Space、Replica、Mount 模型，以及 AFFiNE 吸收方式
+
 ## Multi-Process Model
 
 AionUi is an Electron app with three types of processes:
