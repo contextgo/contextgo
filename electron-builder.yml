@@ -176,8 +176,8 @@ linux:
   icon: resources/app.png
   artifactName: ${productName}-${version}-${os}-${arch}.${ext}
   category: Utility
-  maintainer: aionui
-  vendor: aionui
+  maintainer: contextgo
+  vendor: contextgo
   synopsis: ${description}
   description: ${description}
   desktop:
