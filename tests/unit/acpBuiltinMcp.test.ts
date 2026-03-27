@@ -16,7 +16,7 @@ describe('ACP built-in MCP session config', () => {
     const servers: IMcpServer[] = [
       {
         id: 'builtin-image-gen',
-        name: 'aionui-image-generation',
+        name: 'contextgo-image-generation',
         enabled: true,
         builtin: true,
         status: 'connected',
@@ -96,7 +96,7 @@ describe('ACP built-in MCP session config', () => {
     expect(result).toEqual([
       {
         type: 'stdio',
-        name: 'aionui-image-generation',
+        name: 'contextgo-image-generation',
         command: 'node',
         args: ['/abs/builtin-mcp-image-gen.js'],
         env: [
@@ -193,8 +193,8 @@ describe('McpService Gemini detection', () => {
     vi.doMock('../../src/process/services/mcpServices/agents/GeminiMcpAgent', () => ({
       GeminiMcpAgent: makeAgentClass(nativeDetect),
     }));
-    vi.doMock('../../src/process/services/mcpServices/agents/AionuiMcpAgent', () => ({
-      AionuiMcpAgent: makeAgentClass(builtinDetect),
+    vi.doMock('../../src/process/services/mcpServices/agents/ContextgoMcpAgent', () => ({
+      ContextgoMcpAgent: makeAgentClass(builtinDetect),
     }));
     vi.doMock('../../src/process/services/mcpServices/agents/CodexMcpAgent', () => ({
       CodexMcpAgent: makeAgentClass(emptyDetect),
@@ -239,8 +239,8 @@ describe('McpService Gemini detection', () => {
     vi.doMock('../../src/process/services/mcpServices/agents/GeminiMcpAgent', () => ({
       GeminiMcpAgent: makeAgentClass(nativeDetect),
     }));
-    vi.doMock('../../src/process/services/mcpServices/agents/AionuiMcpAgent', () => ({
-      AionuiMcpAgent: makeAgentClass(builtinDetect),
+    vi.doMock('../../src/process/services/mcpServices/agents/ContextgoMcpAgent', () => ({
+      ContextgoMcpAgent: makeAgentClass(builtinDetect),
     }));
     vi.doMock('../../src/process/services/mcpServices/agents/CodexMcpAgent', () => ({
       CodexMcpAgent: makeAgentClass(emptyDetect),
@@ -287,8 +287,8 @@ describe('McpService Gemini detection', () => {
     vi.doMock('../../src/process/services/mcpServices/agents/GeminiMcpAgent', () => ({
       GeminiMcpAgent: makeAgentClass(emptyDetect),
     }));
-    vi.doMock('../../src/process/services/mcpServices/agents/AionuiMcpAgent', () => ({
-      AionuiMcpAgent: makeAgentClass(builtinDetect),
+    vi.doMock('../../src/process/services/mcpServices/agents/ContextgoMcpAgent', () => ({
+      ContextgoMcpAgent: makeAgentClass(builtinDetect),
     }));
     vi.doMock('../../src/process/services/mcpServices/agents/CodexMcpAgent', () => ({
       CodexMcpAgent: makeAgentClass(emptyDetect),

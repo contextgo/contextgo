@@ -15,7 +15,7 @@ describe('CodexMcpAgent helpers', () => {
   it('builds stdio add args with env flags before -- separator', () => {
     const server: IMcpServer = {
       id: 'builtin-image-gen',
-      name: 'aionui-image-generation',
+      name: 'contextgo-image-generation',
       enabled: true,
       builtin: true,
       transport: {
@@ -35,7 +35,7 @@ describe('CodexMcpAgent helpers', () => {
     expect(buildCodexAddArgs(server)).toEqual([
       'mcp',
       'add',
-      'aionui-image-generation',
+      'contextgo-image-generation',
       '--env',
       'CONTEXTGO_IMG_PLATFORM=openai',
       '--env',
@@ -68,7 +68,7 @@ describe('CodexMcpAgent helpers', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
-      name: 'aionui-image-generation',
+      name: 'contextgo-image-generation',
       enabled: true,
       status: 'connected',
       transport: {

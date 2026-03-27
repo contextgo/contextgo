@@ -12,7 +12,7 @@ import { CodebuddyMcpAgent } from './agents/CodebuddyMcpAgent';
 import { QwenMcpAgent } from './agents/QwenMcpAgent';
 import { IflowMcpAgent } from './agents/IflowMcpAgent';
 import { GeminiMcpAgent } from './agents/GeminiMcpAgent';
-import { AionuiMcpAgent } from './agents/AionuiMcpAgent';
+import { ContextgoMcpAgent } from './agents/ContextgoMcpAgent';
 import { CodexMcpAgent } from './agents/CodexMcpAgent';
 import type { IMcpProtocol, DetectedMcpServer, McpConnectionTestResult, McpSyncResult, McpSource } from './McpProtocol';
 
@@ -22,7 +22,7 @@ import type { IMcpProtocol, DetectedMcpServer, McpConnectionTestResult, McpSyncR
  *
  * Agent 类型说明：
  * - AcpBackend ('claude', 'qwen', 'iflow', 'gemini', 'codex'等): 支持的 ACP 后端
- * - 'aionui': @office-ai/aioncli-core (AionUi 本地管理的 Gemini 实现)
+ * - 'contextgo': @office-ai/aioncli-core (ContextGo 内置 Gemini 运行时)
  */
 export class McpService {
   private agents: Map<McpSource, IMcpProtocol>;
@@ -87,7 +87,7 @@ export class McpService {
       ['qwen', new QwenMcpAgent()],
       ['iflow', new IflowMcpAgent()],
       ['gemini', new GeminiMcpAgent()],
-      ['aionui', new AionuiMcpAgent()], // AionUi 本地 @office-ai/aioncli-core
+      ['contextgo', new ContextgoMcpAgent()], // ContextGo 内置 @office-ai/aioncli-core
       ['codex', new CodexMcpAgent()],
     ]);
   }
@@ -101,18 +101,18 @@ export class McpService {
 
   /**
    * 根据 agent 配置获取正确的 MCP agent 实例
-   * Fork Gemini (cliPath=undefined) 使用 AionuiMcpAgent
+   * Fork Gemini (cliPath=undefined) 使用 ContextgoMcpAgent
    * Native Gemini (cliPath='gemini') 使用 GeminiMcpAgent
    *
    * Get the correct MCP agent instance based on agent config.
-   * Fork Gemini (cliPath=undefined) uses AionuiMcpAgent.
+   * Fork Gemini (cliPath=undefined) uses ContextgoMcpAgent.
    * Native Gemini (cliPath='gemini') uses GeminiMcpAgent.
    */
   private getAgentForConfig(agent: { backend: AcpBackend; cliPath?: string }): IMcpProtocol | undefined {
-    // Fork Gemini 使用 AionuiMcpAgent 管理 MCP 配置
-    // Fork Gemini uses AionuiMcpAgent to manage MCP config
+    // Fork Gemini 使用 ContextgoMcpAgent 管理 MCP 配置
+    // Fork Gemini uses ContextgoMcpAgent to manage MCP config
     if (agent.backend === 'gemini' && !agent.cliPath) {
-      return this.agents.get('aionui');
+      return this.agents.get('contextgo');
     }
     return this.agents.get(agent.backend);
   }
@@ -238,7 +238,7 @@ export class McpService {
 
   /**
    * Get supported transport types for a given agent config.
-   * Fork Gemini (backend='gemini', no cliPath) uses AionuiMcpAgent.
+   * Fork Gemini (backend='gemini', no cliPath) uses ContextgoMcpAgent.
    */
   getSupportedTransportsForAgent(agent: { backend: string; cliPath?: string }): string[] {
     const agentInstance = this.getAgentForConfig(agent as { backend: AcpBackend; cliPath?: string });

@@ -42,7 +42,7 @@ const testState = vi.hoisted(() => ({
   BUILTIN_IMAGE_GEN_ID: 'builtin-image-gen',
   initialBuiltinServer: (): MockServer => ({
     id: 'builtin-image-gen',
-    name: 'aionui-image-generation',
+    name: 'contextgo-image-generation',
     builtin: true,
     enabled: false,
     updatedAt: 1,
@@ -329,6 +329,6 @@ describe('ToolsModalContent image generation status refresh', () => {
     await waitFor(() => {
       expect(testState.mockCheckSingleServerInstallStatus).toHaveBeenCalledOnce();
     });
-    expect(testState.mockCheckSingleServerInstallStatus).toHaveBeenCalledWith('aionui-image-generation');
+    expect(testState.mockCheckSingleServerInstallStatus).toHaveBeenCalledWith('contextgo-image-generation');
   });
 });
