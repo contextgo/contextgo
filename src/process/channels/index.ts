@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /**
  * Channel Module
  *
- * Provides remote interaction with AionUi through messaging platforms.
+ * Provides remote interaction with ContextGo through messaging platforms.
  * MVP: Telegram integration with Gemini Agent.
  */
 
