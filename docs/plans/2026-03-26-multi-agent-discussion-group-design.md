@@ -5,7 +5,7 @@
 
 ## Background
 
-AionUi already has strong building blocks for heterogeneous agent access:
+ContextGo already has strong building blocks for heterogeneous agent access:
 
 - `src/process/agent/*` and `src/process/task/*` support multiple runtime backends.
 - `src/process/agent/acp/AcpDetector.ts` discovers built-in CLIs, custom agents, preset assistants, and extension-contributed adapters.
@@ -17,7 +17,7 @@ However, the current product model is still:
 
 `one conversation -> one runtime task -> one agent reply stream`
 
-That means AionUi supports "many agents to choose from", but not "many agents collaborating inside one session".
+That means ContextGo supports "many agents to choose from", but not "many agents collaborating inside one session".
 
 This gap shows up most clearly in discussion-style use cases:
 
@@ -139,7 +139,7 @@ That means:
 This matters because a bare CLI only gives transport/runtime identity. It does not give the richer
 product-level semantics that make a participant feel like a real role in a discussion.
 
-In AionUi today, those richer semantics already live in assistant definitions and assistant-related
+In ContextGo today, those richer semantics already live in assistant definitions and assistant-related
 resources, so the group feature should build on that layer.
 
 ## Recommended Interaction Modes
@@ -538,7 +538,7 @@ This distinction should remain explicit.
 ### 4. Make raw CLIs the main participant type
 
 Rejected for the main product flow because it throws away the most valuable semantics already
-present in AionUi assistants:
+present in ContextGo assistants:
 
 - role/prompt packaging
 - skill combinations
