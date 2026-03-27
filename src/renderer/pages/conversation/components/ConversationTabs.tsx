@@ -369,7 +369,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
           title={
             <div className='flex items-center gap-8px'>
               <Plus theme='outline' size='16' fill={iconColors.primary} />
-              <span>{t('conversation.welcome.newConversation')}</span>
+              <span>{t('conversation.entry.conversation')}</span>
             </div>
           }
         >
@@ -422,7 +422,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
         <Menu.Item key='group'>
           <div className='flex items-center gap-8px'>
             <Robot size='16' fill={iconColors.primary} />
-            <span>{t('conversation.group.createEntry')}</span>
+            <span>{t('conversation.entry.group')}</span>
           </div>
         </Menu.Item>
       </Menu>

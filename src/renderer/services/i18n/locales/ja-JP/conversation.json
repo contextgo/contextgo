@@ -72,7 +72,7 @@
     "deleteFailed": "削除に失敗しました"
   },
   "historySearch": {
-    "tooltip": "メッセージを検索",
+    "tooltip": "検索",
     "title": "会話内容を検索",
     "description": "キーワードで履歴メッセージを検索し、スクロールでさらに読み込み、クリックで該当メッセージにジャンプします。",
     "placeholder": "メッセージ内容を検索...",
@@ -83,7 +83,9 @@
     "untitled": "無題の会話"
   },
   "entry": {
-    "create": "新規作成"
+    "create": "新規作成",
+    "conversation": "会話",
+    "group": "ディスカッショングループ"
   },
   "dropdown": {
     "cliAgents": "CLI Agents",

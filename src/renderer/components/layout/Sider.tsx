@@ -1,9 +1,23 @@
 import { ipcBridge } from '@/common';
+import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { changeLanguage } from '@/renderer/services/i18n';
-import { Brain, Down, Earth, Lightning, Plus, Robot, SettingTwo } from '@icon-park/react';
+import type { Theme } from '@/renderer/hooks/system/useTheme';
+import {
+  ConnectionPoint,
+  Down,
+  Earth,
+  Lightning,
+  Moon,
+  Plus,
+  Robot,
+  RobotOne,
+  SettingTwo,
+  Sun,
+  Theme as ThemeIcon,
+} from '@icon-park/react';
 import { Dropdown, Menu } from '@arco-design/web-react';
 import classNames from 'classnames';
-import React, { Suspense, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
@@ -42,17 +56,17 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { pathname } = location;
 
   const { t, i18n } = useTranslation();
+  const { theme, setTheme } = useThemeContext();
   const navigate = useNavigate();
   const { closePreview } = usePreviewContext();
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
   const [desktopUsername, setDesktopUsername] = useState('');
-  const [userPanelVisible, setUserPanelVisible] = useState(false);
+  const [userMenuVisible, setUserMenuVisible] = useState(false);
   const isSettings = pathname.startsWith('/settings');
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab } = useConversationTabs();
   const { user } = useAuth();
-  const userCardRef = useRef<HTMLDivElement | null>(null);
 
   const handleNavigate = (target: string) => {
     cleanupSiderTooltips();
@@ -93,12 +107,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     setGroupModalVisible(true);
   };
 
-  const handleToggleUserPanel = () => {
-    setUserPanelVisible((visible) => !visible);
-  };
-
   const handleOpenSettings = () => {
-    setUserPanelVisible(false);
+    setUserMenuVisible(false);
     handleNavigate('/settings/system');
   };
 
@@ -106,7 +116,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     changeLanguage(language).catch((error: Error) => {
       console.error('Failed to change language:', error);
     });
-    setUserPanelVisible(false);
+    setUserMenuVisible(false);
   };
 
   useEffect(() => {
@@ -140,39 +150,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   }, [user?.username]);
 
   useEffect(() => {
-    if (!userPanelVisible) {
-      return undefined;
-    }
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!userCardRef.current) {
-        return;
-      }
-
-      if (event.target instanceof Node && userCardRef.current.contains(event.target)) {
-        return;
-      }
-
-      setUserPanelVisible(false);
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setUserPanelVisible(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown, true);
-    document.addEventListener('keydown', handleEscape, true);
-
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown, true);
-      document.removeEventListener('keydown', handleEscape, true);
-    };
-  }, [userPanelVisible]);
-
-  useEffect(() => {
-    setUserPanelVisible(false);
+    setUserMenuVisible(false);
   }, [pathname]);
 
   const workspaceHistoryProps = {
@@ -195,6 +173,11 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     LANGUAGE_OPTIONS.find((option) => option.value === i18n.language)?.label ||
     LANGUAGE_OPTIONS.find((option) => option.value === 'en-US')?.label ||
     'English';
+  const themeOptions: Array<{ value: Theme; label: string }> = [
+    { value: 'light', label: t('settings.lightMode') },
+    { value: 'dark', label: t('settings.darkMode') },
+  ];
+  const currentThemeLabel = themeOptions.find((option) => option.value === theme)?.label || t('settings.theme');
   const createEntryMenu = (
     <Menu
       onClickMenuItem={(key) => {
@@ -211,15 +194,106 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       <Menu.Item key='conversation'>
         <div className='flex items-center gap-8px'>
           <Plus theme='outline' size='16' fill={iconColors.primary} />
-          <span>{t('conversation.welcome.newConversation')}</span>
+          <span>{t('conversation.entry.conversation')}</span>
         </div>
       </Menu.Item>
       <Menu.Item key='group'>
         <div className='flex items-center gap-8px'>
           <Robot theme='outline' size='16' fill={iconColors.primary} />
-          <span>{t('conversation.group.createEntry')}</span>
+          <span>{t('conversation.entry.group')}</span>
         </div>
       </Menu.Item>
+    </Menu>
+  );
+  const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: string) => (
+    <div className='sider-user-menu__row'>
+      {icon}
+      <span className='sider-user-menu__row-text'>{label}</span>
+      {value ? <span className='sider-user-menu__row-value'>{value}</span> : null}
+    </div>
+  );
+  const userMenu = (
+    <Menu
+      className='sider-user-menu'
+      onClickMenuItem={(key) => {
+        if (key === 'settings') {
+          handleOpenSettings();
+          return;
+        }
+
+        if (typeof key !== 'string') {
+          return;
+        }
+
+        if (key.startsWith('language:')) {
+          handleChangeLanguage(key.slice('language:'.length) as (typeof LANGUAGE_OPTIONS)[number]['value']);
+          return;
+        }
+
+        if (key.startsWith('theme:')) {
+          const nextTheme = key.slice('theme:'.length) as Theme;
+          setTheme(nextTheme).catch((error: Error) => {
+            console.error('Failed to change theme:', error);
+          });
+          setUserMenuVisible(false);
+        }
+      }}
+    >
+      <Menu.Item key='settings'>
+        {renderUserMenuLabel(
+          <SettingTwo theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />,
+          t('common.settings')
+        )}
+      </Menu.Item>
+      <Menu.SubMenu
+        key='language'
+        title={renderUserMenuLabel(
+          <Earth theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />,
+          t('settings.language'),
+          currentLanguageLabel
+        )}
+      >
+        {LANGUAGE_OPTIONS.map((option) => (
+          <Menu.Item
+            key={`language:${option.value}`}
+            className={classNames(option.value === i18n.language && 'sider-user-menu__item--active')}
+          >
+            {renderUserMenuLabel(
+              <Earth
+                theme='outline'
+                size='14'
+                fill={option.value === i18n.language ? iconColors.primary : iconColors.secondary}
+                className='shrink-0'
+              />,
+              option.label
+            )}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
+      <Menu.SubMenu
+        key='theme'
+        title={renderUserMenuLabel(
+          <ThemeIcon theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />,
+          t('settings.theme'),
+          currentThemeLabel
+        )}
+      >
+        {themeOptions.map((option) => (
+          <Menu.Item
+            key={`theme:${option.value}`}
+            className={classNames(option.value === theme && 'sider-user-menu__item--active')}
+          >
+            {renderUserMenuLabel(
+              option.value === 'light' ? (
+                <Sun theme='outline' size='14' fill={iconColors.primary} className='shrink-0' />
+              ) : (
+                <Moon theme='outline' size='14' fill={iconColors.primary} className='shrink-0' />
+              ),
+              option.label
+            )}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
     </Menu>
   );
 
@@ -251,6 +325,24 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               />
               <button
                 type='button'
+                className={classNames(
+                  actionRowClassName,
+                  pathname.startsWith('/connectors') && actionRowActiveClassName
+                )}
+                onClick={() => handleNavigate('/connectors')}
+              >
+                <ConnectionPoint
+                  theme='outline'
+                  size='20'
+                  fill={iconColors.primary}
+                  className='block shrink-0 leading-none'
+                />
+                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
+                  {t('settings.connectors.title')}
+                </span>
+              </button>
+              <button
+                type='button'
                 className={classNames(actionRowClassName, pathname === '/skills-hub' && actionRowActiveClassName)}
                 onClick={() => handleNavigate('/skills-hub')}
               >
@@ -269,7 +361,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 className={classNames(actionRowClassName, pathname === '/agents' && actionRowActiveClassName)}
                 onClick={() => handleNavigate('/agents')}
               >
-                <Brain theme='outline' size='20' fill={iconColors.primary} className='block shrink-0 leading-none' />
+                <RobotOne theme='outline' size='20' fill={iconColors.primary} className='block shrink-0 leading-none' />
                 <span className='min-w-0 truncate text-14px font-600 text-t-primary'>{t('settings.assistants')}</span>
               </button>
             </div>
@@ -296,60 +388,41 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         )}
       </div>
       <div className='sider-footer mt-auto shrink-0 pt-10px'>
-        <div ref={userCardRef} className='sider-user-card-wrap'>
-          {userPanelVisible ? (
-            <div className='sider-user-panel'>
-              <button type='button' className='sider-user-panel__action' onClick={handleOpenSettings}>
-                <SettingTwo theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />
-                <span className='min-w-0 flex-1 truncate'>{t('common.settings')}</span>
-              </button>
-              <div className='sider-user-panel__section'>
-                <div className='sider-user-panel__section-title'>
-                  <Earth theme='outline' size='15' fill={iconColors.primary} className='shrink-0' />
-                  <span>{t('settings.language')}</span>
-                </div>
-                <div className='sider-user-panel__language-list'>
-                  {LANGUAGE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type='button'
-                      className={classNames('sider-user-panel__language-option', {
-                        'sider-user-panel__language-option--active': option.value === i18n.language,
-                      })}
-                      onClick={() => handleChangeLanguage(option.value)}
-                    >
-                      <span className='min-w-0 flex-1 truncate'>{option.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-          <button
-            type='button'
-            className={classNames(
-              'sider-user-trigger',
-              userPanelVisible && 'sider-user-trigger--active',
-              isMobile && 'sider-footer-btn-mobile'
-            )}
-            onClick={handleToggleUserPanel}
-            aria-expanded={userPanelVisible}
+        <div className='sider-user-card-wrap'>
+          <Dropdown
+            droplist={userMenu}
+            trigger='click'
+            position='tl'
+            popupVisible={userMenuVisible}
+            onVisibleChange={setUserMenuVisible}
           >
-            <span className='sider-user-trigger__avatar'>{userInitial}</span>
-            <span className='min-w-0 flex-1 text-left'>
-              <span className='block truncate text-14px font-600 text-t-primary'>{userDisplayName}</span>
-              <span className='block truncate text-12px text-t-secondary'>{currentLanguageLabel}</span>
-            </span>
-            <Down
-              theme='outline'
-              size='16'
-              fill={iconColors.secondary}
+            <button
+              type='button'
               className={classNames(
-                'sider-user-trigger__chevron',
-                userPanelVisible && 'sider-user-trigger__chevron--open'
+                'sider-user-trigger',
+                userMenuVisible && 'sider-user-trigger--active',
+                isMobile && 'sider-footer-btn-mobile'
               )}
-            />
-          </button>
+              aria-expanded={userMenuVisible}
+            >
+              <span className='sider-user-trigger__avatar'>{userInitial}</span>
+              <span className='min-w-0 flex-1 text-left'>
+                <span className='block truncate text-14px font-600 text-t-primary'>{userDisplayName}</span>
+                <span className='block truncate text-12px text-t-secondary'>
+                  {currentLanguageLabel} · {currentThemeLabel}
+                </span>
+              </span>
+              <Down
+                theme='outline'
+                size='16'
+                fill={iconColors.secondary}
+                className={classNames(
+                  'sider-user-trigger__chevron',
+                  userMenuVisible && 'sider-user-trigger__chevron--open'
+                )}
+              />
+            </button>
+          </Dropdown>
         </div>
       </div>
     </div>

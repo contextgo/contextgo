@@ -72,7 +72,7 @@
     "deleteFailed": "刪除失敗"
   },
   "historySearch": {
-    "tooltip": "搜尋訊息",
+    "tooltip": "搜尋",
     "title": "搜尋對話內容",
     "description": "透過關鍵字搜尋歷史訊息，滾動載入更多，點擊跳轉到匹配的訊息。",
     "placeholder": "搜尋訊息內容...",
@@ -83,7 +83,9 @@
     "untitled": "未命名對話"
   },
   "entry": {
-    "create": "新建"
+    "create": "新建",
+    "conversation": "會話",
+    "group": "討論組"
   },
   "dropdown": {
     "cliAgents": "CLI Agents",

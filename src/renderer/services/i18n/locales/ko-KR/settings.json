@@ -804,5 +804,54 @@
     "agent": "에이전트",
     "agentDesc": "DingTalk 대화에 사용"
   },
+  "connectors": {
+    "title": "Connector",
+    "description": "지식, 협업, 비즈니스 시스템을 AI의 컨텍스트 소스로 연결합니다.",
+    "count": "이 카탈로그에는 {{count}}개의 connector가 미리 준비되어 있습니다.",
+    "kind": "Context Connector",
+    "officialSite": "공식 사이트",
+    "resources": "지원 리소스",
+    "auth": "인증 방식",
+    "openWebsite": "공식 사이트 열기",
+    "note": "이 페이지는 connector 카탈로그와 상세 UI를 먼저 제공합니다. 인증, 동기화, 권한 범위는 connector별로 순차적으로 구현됩니다.",
+    "summaryTemplate": "{{name}}는 {{category}}에 속하며, 이후 AI 워크플로의 컨텍스트 데이터로 연결될 수 있습니다.",
+    "stagePriority": "우선",
+    "stagePlanned": "예정",
+    "categories": {
+      "googleWorkspace": "Google Workspace",
+      "collaboration": "협업",
+      "development": "개발",
+      "knowledge": "지식",
+      "design": "디자인",
+      "storage": "스토리지",
+      "business": "비즈니스",
+      "data": "데이터"
+    },
+    "resourceTypes": {
+      "chat": "채팅",
+      "docs": "문서",
+      "wiki": "위키",
+      "files": "파일",
+      "repositories": "저장소",
+      "issues": "이슈",
+      "tasks": "작업",
+      "calendar": "캘린더",
+      "email": "이메일",
+      "sheets": "시트",
+      "designs": "디자인",
+      "crm": "CRM",
+      "commerce": "커머스",
+      "analytics": "분석",
+      "databases": "데이터베이스",
+      "incidents": "인시던트"
+    },
+    "authTypes": {
+      "oauth": "OAuth",
+      "bot": "Bot Token",
+      "apiKey": "API Key",
+      "pat": "Personal Access Token",
+      "serviceAccount": "Service Account"
+    }
+  },
   "extensionAssistantReadonly": "확장 어시스턴트는 읽기 전용입니다. 복제하여 편집할 수 있습니다."
 }

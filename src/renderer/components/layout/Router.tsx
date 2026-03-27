@@ -8,6 +8,7 @@ import {
 } from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
 const Conversation = React.lazy(() => import('@renderer/pages/conversation'));
+const ConnectorsPage = React.lazy(() => import('@renderer/pages/connectors'));
 const Guid = React.lazy(() => import('@renderer/pages/guid'));
 const GlobalCronSettings = React.lazy(() => import('@renderer/pages/cron/GlobalCronSettings'));
 const AgentSettings = React.lazy(() => import('@renderer/pages/settings/AgentSettings'));
@@ -67,6 +68,8 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
         <Route element={<ProtectedLayout layout={layout} />}>
           <Route index element={<StartupConversationRedirect />} />
           <Route path='/guid' element={withRouteFallback(Guid)} />
+          <Route path='/connectors' element={withRouteFallback(ConnectorsPage)} />
+          <Route path='/connectors/:connectorId' element={withRouteFallback(ConnectorsPage)} />
           <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
           <Route path='/conversation/:id' element={withRouteFallback(Conversation)} />
           <Route path='/agents' element={withRouteFallback(AgentSettings)} />

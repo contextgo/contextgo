@@ -121,6 +121,36 @@
   min-width: 0;
 }
 
+.sider-user-menu__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.sider-user-menu__row-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sider-user-menu__row-value {
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.sider-user-menu__item--active .sider-user-menu__row-text,
+.sider-user-menu__item--active .sider-user-menu__row-value {
+  color: rgb(var(--primary-6));
+}
+
 .sider-user-panel {
   position: absolute;
   left: 0;

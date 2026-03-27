@@ -72,7 +72,7 @@
     "deleteFailed": "삭제에 실패했습니다"
   },
   "historySearch": {
-    "tooltip": "메시지 검색",
+    "tooltip": "검색",
     "title": "대화 내용 검색",
     "description": "키워드로 기록 메시지를 검색하고, 스크롤하여 더 불러오고, 클릭하여 해당 메시지로 이동합니다.",
     "placeholder": "메시지 내용 검색...",
@@ -83,7 +83,9 @@
     "untitled": "제목 없는 대화"
   },
   "entry": {
-    "create": "새로 만들기"
+    "create": "새로 만들기",
+    "conversation": "대화",
+    "group": "토론 그룹"
   },
   "dropdown": {
     "cliAgents": "CLI Agents",

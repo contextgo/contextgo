@@ -351,13 +351,13 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       <Menu.Item key='conversation'>
         <div className='flex items-center gap-8px'>
           <Plus theme='outline' size={16} fill={iconColors.primary} />
-          <span>{t('conversation.welcome.newConversation')}</span>
+          <span>{t('conversation.entry.conversation')}</span>
         </div>
       </Menu.Item>
       <Menu.Item key='group'>
         <div className='flex items-center gap-8px'>
           <Robot theme='outline' size={16} fill={iconColors.primary} />
-          <span>{t('conversation.group.createEntry')}</span>
+          <span>{t('conversation.entry.group')}</span>
         </div>
       </Menu.Item>
     </Menu>

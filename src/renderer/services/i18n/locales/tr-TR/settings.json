@@ -802,5 +802,54 @@
     "agent": "Ajan",
     "agentDesc": "DingTalk sohbetleri icin kullanilir"
   },
+  "connectors": {
+    "title": "Connector",
+    "description": "Bilgi, is birligi ve is sistemlerini AI icin baglamsal kaynaklar olarak baglayin.",
+    "count": "Bu katalogda {{count}} connector hazir durumda.",
+    "kind": "Context Connector",
+    "officialSite": "Resmi Site",
+    "resources": "Desteklenen Kaynaklar",
+    "auth": "Kimlik Dogrulama",
+    "openWebsite": "Siteyi Ac",
+    "note": "Bu sayfa su an connector katalogu ve detay kabugunu sunuyor. Kimlik dogrulama, senkronizasyon ve izin kapsamları her connector icin ayri ayri eklenecek.",
+    "summaryTemplate": "{{name}}, {{category}} grubuna aittir ve daha sonra AI is akislari icin baglamsal veri kaynagi olarak baglanabilir.",
+    "stagePriority": "Oncelikli",
+    "stagePlanned": "Planlandi",
+    "categories": {
+      "googleWorkspace": "Google Workspace",
+      "collaboration": "Is Birligi",
+      "development": "Gelistirme",
+      "knowledge": "Bilgi",
+      "design": "Tasarim",
+      "storage": "Depolama",
+      "business": "Is",
+      "data": "Veri"
+    },
+    "resourceTypes": {
+      "chat": "Sohbet",
+      "docs": "Dokumanlar",
+      "wiki": "Wiki",
+      "files": "Dosyalar",
+      "repositories": "Depolar",
+      "issues": "Kayitlar",
+      "tasks": "Gorevler",
+      "calendar": "Takvim",
+      "email": "E-posta",
+      "sheets": "Tablolar",
+      "designs": "Tasarımlar",
+      "crm": "CRM",
+      "commerce": "Ticaret",
+      "analytics": "Analitik",
+      "databases": "Veritabanlari",
+      "incidents": "Olaylar"
+    },
+    "authTypes": {
+      "oauth": "OAuth",
+      "bot": "Bot Token",
+      "apiKey": "API Key",
+      "pat": "Personal Access Token",
+      "serviceAccount": "Service Account"
+    }
+  },
   "extensionAssistantReadonly": "Uzantı asistanları salt okunurdur. Kopyalayıp düzenleyebilirsiniz."
 }
