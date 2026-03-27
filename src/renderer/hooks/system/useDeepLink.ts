@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -37,7 +37,7 @@ export const consumePendingDeepLink = (): DeepLinkAddProviderDetail | null => {
 };
 
 /**
- * Hook to listen for aionui:// deep link events from main process.
+ * Hook to listen for cgo:// deep link events from main process.
  * Routes 'add-provider' action to the model settings page.
  * The pre-fill data is stored in a module-level variable and consumed
  * by ModelModalContent on mount via consumePendingDeepLink().
