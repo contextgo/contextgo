@@ -431,4 +431,160 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': ['开始一个勇敢战士的史诗奇幻冒险', '创建一个有背景故事和个性的详细角色', '在科幻设定中开始一个互动故事'],
     },
   },
+  {
+    id: 'discussion-devil-advocate',
+    avatar: '😈',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/planning-with-files/discussion-roles/devil-advocate',
+    ruleFiles: {
+      'en-US': 'devil-advocate.md',
+      'zh-CN': 'devil-advocate.zh-CN.md',
+    },
+    nameI18n: {
+      'en-US': 'Devil Advocate',
+      'zh-CN': '魔鬼代言人',
+    },
+    descriptionI18n: {
+      'en-US': 'Stress-test ideas by finding hidden assumptions, contradictions, and failure modes.',
+      'zh-CN': '专门用来给方案找漏洞，识别隐含假设、矛盾和失败路径。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Act as devil advocate and stress-test this product idea',
+        'Find the top 5 critical risks in this plan',
+        'Challenge my assumptions and show failure scenarios',
+      ],
+      'zh-CN': ['请用魔鬼代言人视角挑战这个方案', '找出这个计划的 5 个致命风险', '反驳我的关键假设并给出失败场景'],
+    },
+  },
+  {
+    id: 'discussion-first-principles',
+    avatar: '🔵',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/planning-with-files/discussion-roles/first-principles',
+    ruleFiles: {
+      'en-US': 'first-principles.md',
+      'zh-CN': 'first-principles.zh-CN.md',
+    },
+    nameI18n: {
+      'en-US': 'First Principles Analyst',
+      'zh-CN': '第一原理分析者',
+    },
+    descriptionI18n: {
+      'en-US': 'Decompose problems to fundamentals and rebuild solutions from constraints and invariants.',
+      'zh-CN': '把问题拆到最底层约束与不变量，再从底层重构方案。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Analyze this idea from first principles',
+        'What core assumptions must be true for this to work?',
+        'Rebuild the strategy from constraints and fundamentals',
+      ],
+      'zh-CN': ['请用第一原理拆解这个想法', '这个方案成立必须满足哪些底层条件？', '从约束和本质重新构建策略'],
+    },
+  },
+  {
+    id: 'discussion-market-user',
+    avatar: '🟡',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/planning-with-files/discussion-roles/market-user',
+    ruleFiles: {
+      'en-US': 'market-user.md',
+      'zh-CN': 'market-user.zh-CN.md',
+    },
+    nameI18n: {
+      'en-US': 'Market User Lens',
+      'zh-CN': '市场/用户视角',
+    },
+    descriptionI18n: {
+      'en-US': 'Focus on user value, demand validation, positioning, and willingness to pay.',
+      'zh-CN': '关注用户价值、需求验证、市场定位和付费意愿。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Evaluate if users will actually buy this',
+        'Identify the ICP, pain points, and value proposition',
+        'What evidence would validate real demand fastest?',
+      ],
+      'zh-CN': ['评估这个产品用户是否真的会买单', '识别目标用户、痛点和价值主张', '最快验证真实需求的证据是什么？'],
+    },
+  },
+  {
+    id: 'discussion-executor',
+    avatar: '🟢',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/planning-with-files/discussion-roles/executor',
+    ruleFiles: {
+      'en-US': 'executor.md',
+      'zh-CN': 'executor.zh-CN.md',
+    },
+    nameI18n: {
+      'en-US': 'Execution Driver',
+      'zh-CN': '执行者',
+    },
+    descriptionI18n: {
+      'en-US': 'Turn strategy into smallest shippable steps, milestones, owners, and measurable outcomes.',
+      'zh-CN': '把策略转成最小可落地步骤、里程碑、责任和可量化结果。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Give me the minimum viable execution plan',
+        'Break this into week-by-week deliverables',
+        'Define owners, dependencies, and success metrics',
+      ],
+      'zh-CN': ['给出最小可执行落地路径', '按周拆解交付里程碑', '明确责任人、依赖和成功指标'],
+    },
+  },
+  {
+    id: 'discussion-historical-analogist',
+    avatar: '🟣',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/planning-with-files/discussion-roles/historical-analogist',
+    ruleFiles: {
+      'en-US': 'historical-analogist.md',
+      'zh-CN': 'historical-analogist.zh-CN.md',
+    },
+    nameI18n: {
+      'en-US': 'Historical Analogist',
+      'zh-CN': '历史类比者',
+    },
+    descriptionI18n: {
+      'en-US': 'Use precedent patterns and analog cases to estimate likely trajectories and pitfalls.',
+      'zh-CN': '通过历史案例和类比模式，推演更可能的走向与风险。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Find similar historical/product cases and outcomes',
+        'What happened to projects like this before?',
+        'Use analogies to forecast likely endings',
+      ],
+      'zh-CN': ['找相似历史/产品案例及其结局', '类似项目过去是怎么成败的？', '用类比预测这个项目更可能的走向'],
+    },
+  },
+  {
+    id: 'discussion-synthesizer',
+    avatar: '⚪',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/planning-with-files/discussion-roles/synthesizer',
+    ruleFiles: {
+      'en-US': 'synthesizer.md',
+      'zh-CN': 'synthesizer.zh-CN.md',
+    },
+    nameI18n: {
+      'en-US': 'Synthesis Closer',
+      'zh-CN': '综合总结者',
+    },
+    descriptionI18n: {
+      'en-US': 'Integrate multi-role viewpoints into a coherent decision with tradeoffs and next actions.',
+      'zh-CN': '整合多角色观点，收敛成有取舍、有行动项的结论。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Synthesize all viewpoints into one decision memo',
+        'Summarize disagreements and propose the final call',
+        'Turn this debate into a concrete action plan',
+      ],
+      'zh-CN': ['整合所有观点，给出统一决策建议', '总结分歧并给出最终建议', '把讨论收敛成可执行行动计划'],
+    },
+  },
 ];

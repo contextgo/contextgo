@@ -662,7 +662,13 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
       preset.id === 'star-office-helper' ||
       preset.id === 'story-roleplay' ||
       preset.id === 'moltbook' ||
-      preset.id === 'beautiful-mermaid';
+      preset.id === 'beautiful-mermaid' ||
+      preset.id === 'discussion-devil-advocate' ||
+      preset.id === 'discussion-first-principles' ||
+      preset.id === 'discussion-market-user' ||
+      preset.id === 'discussion-executor' ||
+      preset.id === 'discussion-historical-analogist' ||
+      preset.id === 'discussion-synthesizer';
 
     assistants.push({
       id: `builtin-${preset.id}`,
