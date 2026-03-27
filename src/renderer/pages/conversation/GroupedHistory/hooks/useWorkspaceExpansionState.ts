@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
-export const WORKSPACE_EXPANSION_STORAGE_KEY = 'aionui_workspace_expansion';
-export const WORKSPACE_EXPANSION_EVENT = 'aionui:workspace-expansion-changed';
-export const DISCUSSION_GROUP_EXPANSION_STORAGE_KEY = 'aionui_discussion_group_expansion';
-export const DISCUSSION_GROUP_EXPANSION_EVENT = 'aionui:discussion-group-expansion-changed';
+export const WORKSPACE_EXPANSION_STORAGE_KEY = 'contextgo_workspace_expansion';
+export const WORKSPACE_EXPANSION_EVENT = 'contextgo:workspace-expansion-changed';
+export const DISCUSSION_GROUP_EXPANSION_STORAGE_KEY = 'contextgo_discussion_group_expansion';
+export const DISCUSSION_GROUP_EXPANSION_EVENT = 'contextgo:discussion-group-expansion-changed';
 
 type WorkspaceExpansionChangeDetail = {
   expandedWorkspaces: string[];

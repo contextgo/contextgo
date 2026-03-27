@@ -72,9 +72,8 @@ export interface PreviewContextValue {
 const PreviewContext = createContext<PreviewContextValue | null>(null);
 
 // 持久化 key / Persistence keys
-const PREVIEW_TABS_KEY = 'aionui_preview_tabs';
-const PREVIEW_ACTIVE_TAB_ID_KEY = 'aionui_preview_active_tab_id';
-const LEGACY_PREVIEW_STATE_KEY = 'aionui_preview_state';
+const PREVIEW_TABS_KEY = 'contextgo_preview_tabs';
+const PREVIEW_ACTIVE_TAB_ID_KEY = 'contextgo_preview_active_tab_id';
 
 // 仅持久化小体积文本预览，避免大文本导致 localStorage 写入卡顿
 // Persist only lightweight text previews to avoid localStorage jank on large files
@@ -120,18 +119,8 @@ const parsePersistedTabs = (value: unknown): PreviewTab[] => {
 // Note: isOpen is not restored from localStorage, preview panel is closed by default for new sessions
 const loadPersistedState = (): { isOpen: boolean; tabs: PreviewTab[]; activeTabId: string | null } => {
   try {
-    let tabs = parsePersistedTabs(JSON.parse(localStorage.getItem(PREVIEW_TABS_KEY) || '[]'));
+    const tabs = parsePersistedTabs(JSON.parse(localStorage.getItem(PREVIEW_TABS_KEY) || '[]'));
     let activeTabId = localStorage.getItem(PREVIEW_ACTIVE_TAB_ID_KEY);
-
-    // 兼容旧版单 key 存储 / Backward compatibility for legacy single-key storage
-    if (tabs.length === 0) {
-      const legacyStored = localStorage.getItem(LEGACY_PREVIEW_STATE_KEY);
-      if (legacyStored) {
-        const parsed = JSON.parse(legacyStored) as { tabs?: unknown; activeTabId?: unknown };
-        tabs = parsePersistedTabs(parsed.tabs);
-        activeTabId = typeof parsed.activeTabId === 'string' ? parsed.activeTabId : activeTabId;
-      }
-    }
 
     if (activeTabId && !tabs.some((tab) => tab.id === activeTabId)) {
       activeTabId = tabs[0]?.id || null;
@@ -164,9 +153,6 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const timer = setTimeout(() => {
       try {
         localStorage.setItem(PREVIEW_TABS_KEY, JSON.stringify(sanitizeTabsForPersistence(tabs)));
-        // 迁移后清理旧 key，减少重复解析
-        // Remove legacy key after migration to avoid duplicate parsing
-        localStorage.removeItem(LEGACY_PREVIEW_STATE_KEY);
       } catch {
         // 忽略存储错误（如存储空间不足）/ Ignore storage errors (e.g., quota exceeded)
       }

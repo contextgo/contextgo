@@ -532,7 +532,7 @@ class OpenClawAgentManager extends BaseAgentManager<OpenClawAgentManagerData> {
     ipcBridge.conversation.listChanged.emit({
       conversationId: this.conversation_id,
       action: 'updated',
-      source: 'aionui',
+      source: 'contextgo',
     });
 
     return insertedMessages.length;

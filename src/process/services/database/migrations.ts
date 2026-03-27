@@ -842,6 +842,19 @@ const migration_v17: IMigration = {
   },
 };
 
+const migration_v18: IMigration = {
+  version: 18,
+  name: 'Rename internal conversation source to contextgo',
+  up: (db) => {
+    db.exec(`UPDATE conversations SET source = 'contextgo' WHERE source = 'aionui'`);
+    console.log('[Migration v18] Renamed internal conversation source from aionui to contextgo');
+  },
+  down: (db) => {
+    db.exec(`UPDATE conversations SET source = 'aionui' WHERE source = 'contextgo'`);
+    console.log('[Migration v18] Rolled back internal conversation source rename');
+  },
+};
+
 /**
  * All migrations in order
  */
@@ -849,7 +862,7 @@ const migration_v17: IMigration = {
 export const ALL_MIGRATIONS: IMigration[] = [
   migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6,
   migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12,
-  migration_v13, migration_v14, migration_v15, migration_v16, migration_v17,
+  migration_v13, migration_v14, migration_v15, migration_v16, migration_v17, migration_v18,
 ];
 
 /**

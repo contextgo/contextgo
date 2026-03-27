@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 export type Theme = 'light' | 'dark';
 
 const DEFAULT_THEME: Theme = 'light';
-const THEME_CACHE_KEY = '__aionui_theme';
+const THEME_CACHE_KEY = '__contextgo_theme';
 
 // Initialize theme immediately when module loads
 const initTheme = async () => {

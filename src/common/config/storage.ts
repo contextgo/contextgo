@@ -161,7 +161,7 @@ export interface IEnvStorageRefer {
  * Conversation source type - identifies where the conversation was created
  * 会话来源类型 - 标识会话创建的来源
  */
-export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
+export type ConversationSource = 'contextgo' | 'telegram' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
 
 export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 
@@ -211,7 +211,7 @@ interface IChatConversation<T, Extra> {
   extra: Extra;
   model: TProviderWithModel;
   status?: 'pending' | 'running' | 'finished' | undefined;
-  /** 会话来源，默认为 aionui / Conversation source, defaults to aionui */
+  /** 会话来源，默认为 contextgo / Conversation source, defaults to contextgo */
   source?: ConversationSource;
   /** Channel chat isolation ID (e.g. user:xxx, group:xxx) */
   channelChatId?: string;

@@ -45,7 +45,7 @@ export function initConversationBridge(
     ipcBridge.conversation.listChanged.emit({
       conversationId: conversation.id,
       action,
-      source: conversation.source || 'aionui',
+      source: conversation.source || 'contextgo',
     });
   };
 
@@ -195,11 +195,11 @@ export function initConversationBridge(
       params.type === 'group'
         ? await discussionGroupService.createConversation({
             ...(params as IDiscussionGroupCreateParams),
-            source: 'aionui',
+            source: 'contextgo',
           })
         : await conversationService.createConversation({
             ...params,
-            source: 'aionui', // Mark conversations created by AionUI as aionui
+            source: 'contextgo', // Mark conversations created by ContextGo as contextgo
           });
     emitConversationListChanged(conversation, 'created');
     await refreshTrayMenuSafely();
@@ -301,9 +301,9 @@ export function initConversationBridge(
       // Kill the running task if exists
       workerTaskManager.kill(id);
 
-      // If source is not 'aionui' (e.g., telegram), cleanup channel resources
-      // 如果来源不是 aionui（如 telegram），需要清理 channel 相关资源
-      if (source && source !== 'aionui') {
+      // If source is not 'contextgo' (e.g., telegram), cleanup channel resources
+      // 如果来源不是 contextgo（如 telegram），需要清理 channel 相关资源
+      if (source && source !== 'contextgo') {
         try {
           // Dynamic import to avoid circular dependency
           const { getChannelManager } = await import('@process/channels/core/ChannelManager');

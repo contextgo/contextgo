@@ -78,7 +78,7 @@ vi.mock('../../src/renderer/pages/conversation/GroupedHistory/utils/groupingHelp
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'aionui_workspace_expansion';
+const STORAGE_KEY = 'contextgo_workspace_expansion';
 
 const makeWorkspaceSection = (workspaces: string[]): TimelineSection[] => [
   {
