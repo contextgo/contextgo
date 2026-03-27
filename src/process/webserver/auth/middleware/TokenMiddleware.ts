@@ -31,11 +31,11 @@ class TokenExtractor {
   /**
    * 从请求中提取 token，支持以下来源：
    * 1. Authorization header (Bearer token)
-   * 2. Cookie (aionui-session)
+   * 2. Cookie (contextgo-session)
    *
    * Extract token from request, supporting these sources:
    * 1. Authorization header (Bearer token)
-   * 2. Cookie (aionui-session)
+   * 2. Cookie (contextgo-session)
    *
    * @param req - Express 请求对象 / Express request object
    * @returns Token 字符串或 null / Token string or null
