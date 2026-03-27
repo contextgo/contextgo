@@ -24,7 +24,7 @@ const AboutModalContent: React.FC = () => {
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
   const isElectron = isElectronDesktop();
-  const githubRepoUrl = 'https://github.com/iOfficeAI/AionUi';
+  const githubRepoUrl = 'https://github.com/contextgo/contextgo';
 
   const [includePrerelease, setIncludePrerelease] = useState(false);
 
@@ -49,7 +49,7 @@ const AboutModalContent: React.FC = () => {
   const linkItems = [
     {
       title: t('settings.helpDocumentation'),
-      url: `${githubRepoUrl}/wiki`,
+      url: `${githubRepoUrl}/tree/main/docs`,
       icon: <Right theme='outline' size='16' />,
     },
     {
@@ -69,7 +69,7 @@ const AboutModalContent: React.FC = () => {
     },
     {
       title: t('settings.officialWebsite'),
-      url: 'https://www.aionui.com',
+      url: 'https://contextgo.io',
       icon: <Right theme='outline' size='16' />,
     },
   ];

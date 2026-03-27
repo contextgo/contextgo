@@ -283,8 +283,8 @@ export function initFsBridge(): void {
           targetUrl,
           {
             headers: {
-              'User-Agent': 'AionUI-Preview',
-              Referer: 'https://github.com/iOfficeAI/AionUi',
+              'User-Agent': 'ContextGo-Preview',
+              Referer: 'https://github.com/contextgo/contextgo',
             },
           },
           (response) => {
