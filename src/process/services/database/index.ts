@@ -1976,13 +1976,6 @@ export class AionUIDatabase {
    */
   getChannelUserByPlatform(platformUserId: string, platformType: PluginType): IQueryResult<IChannelUser | null> {
     try {
-      const legacyRow = this.db
-        .prepare('SELECT * FROM assistant_users WHERE platform_user_id = ? AND platform_type = ?')
-        .get(platformUserId, platformType) as IChannelUserRow | undefined;
-      if (legacyRow) {
-        return { success: true, data: rowToChannelUser(legacyRow) };
-      }
-
       const projectedRow = this.db
         .prepare(
           `
@@ -2018,13 +2011,16 @@ export class AionUIDatabase {
         | undefined;
 
       if (!projectedRow) {
-        return { success: true, data: null };
+        const legacyRow = this.db
+          .prepare('SELECT * FROM assistant_users WHERE platform_user_id = ? AND platform_type = ?')
+          .get(platformUserId, platformType) as IChannelUserRow | undefined;
+        return { success: true, data: legacyRow ? rowToChannelUser(legacyRow) : null };
       }
 
       return {
         success: true,
         data: {
-          id: projectedRow.assistant_user_id ?? projectedRow.remote_identity_id,
+          id: projectedRow.remote_identity_id,
           platformUserId: projectedRow.platform_user_id,
           platformType: projectedRow.platform_type as PluginType,
           displayName: projectedRow.display_name ?? undefined,
@@ -2377,7 +2373,7 @@ export class AionUIDatabase {
           `
             SELECT
               es.id,
-              COALESCE(ri.legacy_user_id, ri.id) AS user_id,
+              ri.id AS user_id,
               ap.backend,
               es.active_conversation_id AS conversation_id,
               ap.workspace_ref AS workspace,
@@ -2444,7 +2440,7 @@ export class AionUIDatabase {
           `
             SELECT
               es.id,
-              COALESCE(ri.legacy_user_id, ri.id) AS user_id,
+              ri.id AS user_id,
               ap.backend,
               es.active_conversation_id AS conversation_id,
               ap.workspace_ref AS workspace,

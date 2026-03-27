@@ -220,7 +220,12 @@ export const handlePairingCheck: ActionHandler = async (context) => {
   }
 
   // Check for pending request
-  const pendingRequest = await pairingService.getPendingRequestForUser(context.userId, platform, context.chatId);
+  const pendingRequest = await pairingService.getPendingRequestForUser(
+    context.userId,
+    platform,
+    context.chatId,
+    context.pluginId
+  );
 
   if (pendingRequest) {
     const expiresInMinutes = Math.ceil((pendingRequest.expiresAt - Date.now()) / 1000 / 60);
