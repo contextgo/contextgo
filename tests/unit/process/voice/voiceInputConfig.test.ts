@@ -68,7 +68,7 @@ describe('normalizeVoiceInputConfig', () => {
     });
 
     expect(config.providerId).toBe('volcengine');
-    expect(config.providers.volcengine.resourceId).toBe('volc.bigasr.auc_turbo');
+    expect(config.providers.volcengine.resourceId).toBe('volc.bigasr.sauc.duration');
     expect(config.providers.volcengine.model).toBe('custom-model');
     expect(isVoiceInputConfigured(config)).toBe(true);
   });
