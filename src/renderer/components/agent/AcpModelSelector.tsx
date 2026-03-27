@@ -11,8 +11,9 @@ import type { IProvider } from '@/common/config/storage';
 import type { AcpModelInfo } from '@/common/types/acpTypes';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
-import { getModelDisplayLabel } from '@/renderer/utils/model/agentLogo';
-import { Button, Dropdown, Menu, Tooltip } from '@arco-design/web-react';
+import { getModelDisplayLabel, getModelLogo } from '@/renderer/utils/model/agentLogo';
+import { Button, Dropdown, Menu } from '@arco-design/web-react';
+import { Brain } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -175,6 +176,11 @@ const AcpModelSelector: React.FC<{
   });
   const compact = isPreviewOpen || layout?.isMobile;
   const isMobileCompact = Boolean(layout?.isMobile);
+  const headerButtonClassName = classNames(
+    'sendbox-model-btn header-model-btn !px-0 !w-44px !min-w-44px justify-center',
+    compact && '!w-40px !min-w-40px',
+    isMobileCompact && '!w-44px !min-w-44px'
+  );
 
   // 获取模型配置数据（包含健康状态）
   const { data: modelConfig } = useSWR<IProvider[]>('model.config', () => ipcBridge.mode.getModelConfig.invoke());
@@ -188,51 +194,60 @@ const AcpModelSelector: React.FC<{
       healthStatus === 'healthy' ? 'bg-green-500' : healthStatus === 'unhealthy' ? 'bg-red-500' : 'bg-gray-400';
     return { status: healthStatus, color: healthColor };
   }, [modelInfo?.currentModelId, modelConfig, backend]);
+  const currentModelLogo = React.useMemo(
+    () =>
+      getModelLogo({
+        modelId: modelInfo?.currentModelId,
+        providerName: modelInfo?.currentModelLabel,
+        backend,
+      }),
+    [backend, modelInfo?.currentModelId, modelInfo?.currentModelLabel]
+  );
+  const renderHeaderIcon = (logo: string | null, health: { status: string; color: string }) => (
+    <span className='relative flex items-center justify-center w-full'>
+      {logo ? (
+        <img src={logo} alt='' className='h-16px w-16px shrink-0 rounded-6px object-contain' />
+      ) : (
+        <Brain theme='outline' size='16' className='text-t-secondary' />
+      )}
+      {health.status !== 'unknown' && (
+        <span
+          className={classNames(
+            'absolute bottom-0 right-1px h-7px w-7px rounded-full border border-[var(--bg-1)]',
+            health.color
+          )}
+        />
+      )}
+    </span>
+  );
 
   // State 1: No model info — show disabled "Use CLI model" button
   if (!modelInfo) {
     return (
-      <Tooltip content={t('conversation.welcome.modelSwitchNotSupported')} position='top'>
-        <Button
-          className={classNames(
-            'sendbox-model-btn header-model-btn',
-            compact && '!max-w-[120px]',
-            isMobileCompact && '!max-w-[160px]'
-          )}
-          shape='round'
-          size='small'
-          style={{ cursor: 'default' }}
-        >
-          <span className='flex items-center gap-6px min-w-0'>
-            <span className={compact ? 'block truncate' : undefined}>{t('conversation.welcome.useCliModel')}</span>
-          </span>
-        </Button>
-      </Tooltip>
+      <Button
+        className={headerButtonClassName}
+        shape='round'
+        size='small'
+        style={{ cursor: 'default' }}
+        title={t('conversation.welcome.useCliModel')}
+      >
+        {renderHeaderIcon(null, { status: 'unknown', color: 'bg-gray-400' })}
+      </Button>
     );
   }
 
   // State 2: Has model info but cannot switch — read-only display
   if (!modelInfo.canSwitch) {
     return (
-      <Tooltip content={displayLabel} position='top'>
-        <Button
-          className={classNames(
-            'sendbox-model-btn header-model-btn',
-            compact && '!max-w-[120px]',
-            isMobileCompact && '!max-w-[160px]'
-          )}
-          shape='round'
-          size='small'
-          style={{ cursor: 'default' }}
-        >
-          <span className='flex items-center gap-6px min-w-0'>
-            {currentModelHealth.status !== 'unknown' && (
-              <div className={`w-6px h-6px rounded-full shrink-0 ${currentModelHealth.color}`} />
-            )}
-            <span className={compact ? 'block truncate' : undefined}>{displayLabel}</span>
-          </span>
-        </Button>
-      </Tooltip>
+      <Button
+        className={headerButtonClassName}
+        shape='round'
+        size='small'
+        style={{ cursor: 'default' }}
+        title={displayLabel}
+      >
+        {renderHeaderIcon(currentModelLogo, currentModelHealth)}
+      </Button>
     );
   }
 
@@ -243,7 +258,6 @@ const AcpModelSelector: React.FC<{
       droplist={
         <Menu>
           {modelInfo.availableModels.map((model) => {
-            // 获取模型健康状态
             const providerConfig = modelConfig?.find((p) => p.platform?.includes(backend || ''));
             const healthStatus = providerConfig?.modelHealth?.[model.id]?.status || 'unknown';
             const healthColor =
@@ -265,21 +279,8 @@ const AcpModelSelector: React.FC<{
         </Menu>
       }
     >
-      <Button
-        className={classNames(
-          'sendbox-model-btn header-model-btn',
-          compact && '!max-w-[120px]',
-          isMobileCompact && '!max-w-[160px]'
-        )}
-        shape='round'
-        size='small'
-      >
-        <span className='flex items-center gap-6px min-w-0'>
-          {currentModelHealth.status !== 'unknown' && (
-            <div className={`w-6px h-6px rounded-full shrink-0 ${currentModelHealth.color}`} />
-          )}
-          <span className={compact ? 'block truncate' : undefined}>{displayLabel}</span>
-        </span>
+      <Button className={headerButtonClassName} shape='round' size='small' title={displayLabel}>
+        {renderHeaderIcon(currentModelLogo, currentModelHealth)}
       </Button>
     </Dropdown>
   );
