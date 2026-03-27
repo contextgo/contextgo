@@ -198,7 +198,17 @@ describe('AionUIDatabase channel binding validation', () => {
 
     expect(directUserResult.success).toBe(true);
     expect(remoteChatResult.success).toBe(true);
-    expect(database.getChannelBinding(directUserBinding.id).data).toEqual(expect.objectContaining(directUserBinding));
-    expect(database.getChannelBinding(remoteChatBinding.id).data).toEqual(expect.objectContaining(remoteChatBinding));
+    expect(database.getChannelBinding(directUserBinding.id).data).toEqual(
+      expect.objectContaining({
+        ...directUserBinding,
+        updatedAt: expect.any(Number),
+      })
+    );
+    expect(database.getChannelBinding(remoteChatBinding.id).data).toEqual(
+      expect.objectContaining({
+        ...remoteChatBinding,
+        updatedAt: expect.any(Number),
+      })
+    );
   });
 });
