@@ -33,7 +33,7 @@ cask "aionui" do
 
   zap trash: [
     "~/Library/Application Support/ContextGo",
-    "~/Library/Preferences/com.aionui.app.plist",
-    "~/Library/Saved Application State/com.aionui.app.savedState",
+    "~/Library/Preferences/io.contextgo.desktop.plist",
+    "~/Library/Saved Application State/io.contextgo.desktop.savedState",
   ]
 end
