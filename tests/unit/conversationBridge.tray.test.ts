@@ -21,11 +21,11 @@ const createCommand = (key: string) => ({
 });
 
 const mockConversationService = {
-  createConversation: vi.fn(async () => ({ id: 'conv-created', name: 'Created Conversation', source: 'aionui' })),
+  createConversation: vi.fn(async () => ({ id: 'conv-created', name: 'Created Conversation', source: 'contextgo' })),
   deleteConversation: vi.fn(async () => {}),
   updateConversation: vi.fn(async () => {}),
-  getConversation: vi.fn(async () => ({ id: 'conv-1', source: 'aionui', name: 'Original Name', type: 'gemini' })),
-  createWithMigration: vi.fn(async () => ({ id: 'conv-migrated', source: 'aionui' })),
+  getConversation: vi.fn(async () => ({ id: 'conv-1', source: 'contextgo', name: 'Original Name', type: 'gemini' })),
+  createWithMigration: vi.fn(async () => ({ id: 'conv-migrated', source: 'contextgo' })),
 };
 
 const mockWorkerTaskManager = {
@@ -154,7 +154,7 @@ describe('conversationBridge tray sync', () => {
 
     const result = await createProvider({ type: 'gemini' });
 
-    expect(result).toEqual({ id: 'conv-created', name: 'Created Conversation', source: 'aionui' });
+    expect(result).toEqual({ id: 'conv-created', name: 'Created Conversation', source: 'contextgo' });
     expect(mockConversationService.createConversation).toHaveBeenCalledOnce();
     expect(mockRefreshTrayMenu).toHaveBeenCalledOnce();
   });
