@@ -3,6 +3,7 @@ import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { changeLanguage } from '@/renderer/services/i18n';
 import type { Theme } from '@/renderer/hooks/system/useTheme';
 import {
+  Computer,
   ConnectionPoint,
   Down,
   Earth,
@@ -63,6 +64,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const [groupModalVisible, setGroupModalVisible] = useState(false);
   const [desktopUsername, setDesktopUsername] = useState('');
   const [userMenuVisible, setUserMenuVisible] = useState(false);
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const isSettings = pathname.startsWith('/settings');
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab } = useConversationTabs();
@@ -112,6 +114,18 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     handleNavigate('/settings/system');
   };
 
+  const handleToggleDevTools = () => {
+    ipcBridge.application.openDevTools
+      .invoke()
+      .then((isOpen) => {
+        setIsDevToolsOpen(Boolean(isOpen));
+        setUserMenuVisible(false);
+      })
+      .catch((error: Error) => {
+        console.error('Failed to toggle dev tools:', error);
+      });
+  };
+
   const handleChangeLanguage = (language: (typeof LANGUAGE_OPTIONS)[number]['value']) => {
     changeLanguage(language).catch((error: Error) => {
       console.error('Failed to change language:', error);
@@ -150,6 +164,23 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   }, [user?.username]);
 
   useEffect(() => {
+    ipcBridge.application.isDevToolsOpened
+      .invoke()
+      .then((isOpen) => setIsDevToolsOpen(Boolean(isOpen)))
+      .catch((error: Error) => {
+        console.error('Failed to get dev tools state:', error);
+      });
+
+    const unsubscribe = ipcBridge.application.devToolsStateChanged.on((event) => {
+      setIsDevToolsOpen(event.isOpen);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
     setUserMenuVisible(false);
   }, [pathname]);
 
@@ -178,8 +209,30 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     { value: 'dark', label: t('settings.darkMode') },
   ];
   const currentThemeLabel = themeOptions.find((option) => option.value === theme)?.label || t('settings.theme');
+  const createEntryDropdownTriggerProps = {
+    autoAlignPopupWidth: true,
+    autoFitPosition: true,
+    className: 'sider-create-menu-popup',
+  };
+  const userMenuDropdownTriggerProps = {
+    autoAlignPopupWidth: true,
+    autoFitPosition: true,
+    className: 'sider-user-menu-popup',
+    popupStyle: {
+      maxHeight: 'calc(100vh - 24px)',
+    },
+  };
+  const userSubMenuTriggerProps = {
+    autoFitPosition: true,
+    className: 'sider-user-submenu-popup',
+    popupStyle: {
+      maxHeight: 'min(320px, calc(100vh - 24px))',
+      overflowY: 'auto' as const,
+    },
+  };
   const createEntryMenu = (
     <Menu
+      className='sider-create-menu'
       onClickMenuItem={(key) => {
         if (key === 'conversation') {
           handleCreateConversation();
@@ -207,7 +260,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   );
   const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: string) => (
     <div className='sider-user-menu__row'>
-      {icon}
+      <span className='sider-user-menu__icon'>{icon}</span>
       <span className='sider-user-menu__row-text'>{label}</span>
       {value ? <span className='sider-user-menu__row-value'>{value}</span> : null}
     </div>
@@ -215,9 +268,15 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const userMenu = (
     <Menu
       className='sider-user-menu'
+      triggerProps={userSubMenuTriggerProps}
       onClickMenuItem={(key) => {
         if (key === 'settings') {
           handleOpenSettings();
+          return;
+        }
+
+        if (key === 'devtools') {
+          handleToggleDevTools();
           return;
         }
 
@@ -239,6 +298,13 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         }
       }}
     >
+      <Menu.Item key='devtools'>
+        {renderUserMenuLabel(
+          <Computer theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />,
+          t('settings.devTools'),
+          isDevToolsOpen ? t('settings.closeDevTools') : t('settings.openDevTools')
+        )}
+      </Menu.Item>
       <Menu.Item key='settings'>
         {renderUserMenuLabel(
           <SettingTwo theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />,
@@ -308,7 +374,12 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         ) : (
           <div className='size-full w-full min-w-0 flex flex-col'>
             <div className='mb-10px flex shrink-0 w-full min-w-0 flex-col gap-6px'>
-              <Dropdown droplist={createEntryMenu} trigger='click' position='bl'>
+              <Dropdown
+                droplist={createEntryMenu}
+                trigger='click'
+                position='bl'
+                triggerProps={createEntryDropdownTriggerProps}
+              >
                 <button type='button' className={actionRowClassName}>
                   <Plus theme='outline' size='20' fill={iconColors.primary} className='block shrink-0 leading-none' />
                   <span className='min-w-0 flex-1 truncate text-14px font-600 text-t-primary'>
@@ -395,6 +466,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
             position='tl'
             popupVisible={userMenuVisible}
             onVisibleChange={setUserMenuVisible}
+            triggerProps={userMenuDropdownTriggerProps}
           >
             <button
               type='button'
