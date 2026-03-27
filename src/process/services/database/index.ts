@@ -66,6 +66,7 @@ import type {
 } from '@process/channels/types';
 import type { ConversationSource, TProviderWithModel } from '@/common/config/storage';
 import {
+  getChannelBindingTarget,
   resolveChannelConvType,
   rowToChannelUser,
   rowToChannelSession,
@@ -117,7 +118,12 @@ const mapBackendToChannelAgentType = (backend: string): IChannelSession['agentTy
 const hasScopeKey = (scopeKey?: string): boolean => typeof scopeKey === 'string' && scopeKey.trim().length > 0;
 
 const validateChannelBinding = (binding: IChannelBinding): string | null => {
+  const target = getChannelBindingTarget(binding);
+
   if (binding.scopeType === 'connector_default') {
+    if (target.type === 'external_session') {
+      return 'external_session targets require remote_chat scope';
+    }
     return hasScopeKey(binding.scopeKey) ? 'connector_default bindings cannot define scopeKey' : null;
   }
 
@@ -127,6 +133,10 @@ const validateChannelBinding = (binding: IChannelBinding): string | null => {
 
   if (binding.scopeType === 'remote_user' && binding.scopeKey.startsWith('group:')) {
     return 'remote_user bindings cannot target group-scoped keys; use remote_chat instead';
+  }
+
+  if (target.type === 'external_session' && binding.scopeType !== 'remote_chat') {
+    return 'external_session targets require remote_chat scope';
   }
 
   return null;
@@ -322,6 +332,19 @@ export class AionUIDatabase {
    */
   close(): void {
     this.db.close();
+  }
+
+  /**
+   * Execute multiple database operations atomically.
+   */
+  runInTransaction<T>(fn: () => T): IQueryResult<T> {
+    try {
+      const transaction = this.db.transaction(fn);
+      const data = transaction();
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   }
 
   /**
