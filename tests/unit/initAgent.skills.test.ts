@@ -174,14 +174,14 @@ describe('initAgent — skill support', () => {
     });
 
     it('should create symlink in .codebuddy/skills for codebuddy', async () => {
-      statResults['/mock/user/skills/morph-ppt'] = true;
+      statResults['/mock/user/skills/pdf'] = true;
 
       await setupAssistantWorkspace('/tmp/workspace', {
         agentType: 'codebuddy',
-        enabledSkills: ['morph-ppt'],
+        enabledSkills: ['pdf'],
       });
 
-      expect(symlinkCalls[0].target).toBe('/tmp/workspace/.codebuddy/skills/morph-ppt');
+      expect(symlinkCalls[0].target).toBe('/tmp/workspace/.codebuddy/skills/pdf');
     });
 
     it('should create symlink in .factory/skills for droid backend', async () => {
