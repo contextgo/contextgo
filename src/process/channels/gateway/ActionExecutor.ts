@@ -156,6 +156,42 @@ function getDetailText(value: unknown, fallback: string): string {
   return typeof value === 'string' && value ? value : fallback;
 }
 
+function extractRemoteChatType(message: IUnifiedIncomingMessage): string | undefined {
+  const raw = message.raw;
+  if (!raw || typeof raw !== 'object') {
+    return undefined;
+  }
+
+  if (message.platform === 'telegram') {
+    const telegramChat =
+      'message' in raw && raw.message && typeof raw.message === 'object' && 'chat' in raw.message
+        ? raw.message.chat
+        : 'chat' in raw
+          ? raw.chat
+          : undefined;
+    if (telegramChat && typeof telegramChat === 'object' && 'type' in telegramChat) {
+      return typeof telegramChat.type === 'string' ? telegramChat.type : undefined;
+    }
+    return undefined;
+  }
+
+  if (message.platform === 'lark') {
+    const event = 'event' in raw && raw.event && typeof raw.event === 'object' ? raw.event : undefined;
+    const larkMessage =
+      event && 'message' in event && event.message && typeof event.message === 'object' ? event.message : undefined;
+    if (larkMessage && 'chat_type' in larkMessage) {
+      return typeof larkMessage.chat_type === 'string' ? larkMessage.chat_type : undefined;
+    }
+    return undefined;
+  }
+
+  if (message.platform === 'dingtalk' && 'conversationType' in raw) {
+    return typeof raw.conversationType === 'string' ? raw.conversationType : undefined;
+  }
+
+  return undefined;
+}
+
 /**
  * 获取确认提示文本
  * Get confirmation prompt text
@@ -382,6 +418,7 @@ export class ActionExecutor {
         pluginId: context.pluginId,
         platformUserId: user.id,
         chatId,
+        remoteChatType: extractRemoteChatType(message),
         displayName: user.displayName,
       });
       await this.sessionManager.storeSession(route.session);

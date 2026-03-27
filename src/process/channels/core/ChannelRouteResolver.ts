@@ -31,6 +31,67 @@ type SavedAgentConfig = {
   name?: string;
 };
 
+type RemoteChatType = 'direct' | 'group';
+
+const DIRECT_CHAT_TYPES = new Set(['direct', 'dm', 'private', 'p2p', 'user', '1']);
+const GROUP_CHAT_TYPES = new Set(['group', 'supergroup', 'channel', 'thread', 'topic', '2']);
+
+function normalizeRemoteChatType(remoteChatType?: string): RemoteChatType | undefined {
+  if (!remoteChatType) {
+    return undefined;
+  }
+
+  const normalized = remoteChatType.toLowerCase();
+  if (DIRECT_CHAT_TYPES.has(normalized)) {
+    return 'direct';
+  }
+  if (GROUP_CHAT_TYPES.has(normalized)) {
+    return 'group';
+  }
+  return undefined;
+}
+
+export function inferRemoteChatType(params: {
+  chatId: string;
+  platformUserId: string;
+  remoteChatType?: string;
+}): RemoteChatType | undefined {
+  const explicitType = normalizeRemoteChatType(params.remoteChatType);
+  if (explicitType) {
+    return explicitType;
+  }
+
+  if (params.chatId.startsWith('user:')) {
+    return 'direct';
+  }
+
+  if (params.chatId.startsWith('group:')) {
+    return 'group';
+  }
+
+  if (params.chatId === params.platformUserId) {
+    return 'direct';
+  }
+
+  return undefined;
+}
+
+function shouldUseRemoteUserBinding(
+  remoteIdentity: Pick<IRemoteIdentity, 'remoteChatId' | 'remoteUserId' | 'remoteChatType'>
+): boolean {
+  if (!remoteIdentity.remoteUserId) {
+    return false;
+  }
+
+  return (
+    inferRemoteChatType({
+      chatId: remoteIdentity.remoteChatId,
+      platformUserId: remoteIdentity.remoteUserId,
+      remoteChatType: remoteIdentity.remoteChatType,
+    }) !== 'group'
+  );
+}
+
 function toProjectedChannelUser(params: {
   remoteIdentityId: string;
   platformUserId: string;
@@ -67,6 +128,7 @@ type ResolveRouteParams = {
   pluginId?: string;
   platformUserId: string;
   chatId: string;
+  remoteChatType?: string;
   displayName?: string;
   forceNewConversation?: boolean;
   overrideAgentType?: ChannelAgentType;
@@ -299,6 +361,7 @@ export class ChannelRouteResolver {
       channelUser,
       params.platformUserId,
       params.chatId,
+      params.remoteChatType,
       params.displayName
     );
 
@@ -388,6 +451,7 @@ export class ChannelRouteResolver {
     channelUser: IChannelUser,
     platformUserId: string,
     chatId: string,
+    remoteChatType?: string,
     displayName?: string
   ): Promise<IRemoteIdentity> {
     const db = await getDatabase();
@@ -395,9 +459,16 @@ export class ChannelRouteResolver {
 
     const byChat = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
     if (byChat.success && byChat.data) {
+      const resolvedChatType =
+        inferRemoteChatType({
+          chatId,
+          platformUserId,
+          remoteChatType: remoteChatType ?? byChat.data.remoteChatType,
+        }) ?? byChat.data.remoteChatType;
       const nextIdentity: IRemoteIdentity = {
         ...byChat.data,
-        remoteUserId: platformUserId,
+        remoteUserId: resolvedChatType === 'group' ? (byChat.data.remoteUserId ?? platformUserId) : platformUserId,
+        remoteChatType: resolvedChatType,
         displayName: displayName ?? byChat.data.displayName,
         lastActive: now,
         legacyUserId: channelUser.id,
@@ -406,11 +477,13 @@ export class ChannelRouteResolver {
       return nextIdentity;
     }
 
+    const resolvedChatType = inferRemoteChatType({ chatId, platformUserId, remoteChatType });
     const remoteIdentity: IRemoteIdentity = {
       id: `remote_identity_${uuid()}`,
       connectorId: connector.id,
       remoteUserId: platformUserId,
       remoteChatId: chatId,
+      remoteChatType: resolvedChatType,
       displayName,
       authorizedAt: channelUser.authorizedAt,
       lastActive: now,
@@ -472,7 +545,7 @@ export class ChannelRouteResolver {
       return sortBindings(remoteChatBindings.data)[0];
     }
 
-    if (params.remoteIdentity.remoteUserId) {
+    if (shouldUseRemoteUserBinding(params.remoteIdentity)) {
       const remoteUserBindings = db.getChannelBindingsForScope(
         params.connector.id,
         'remote_user',
