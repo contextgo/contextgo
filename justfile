@@ -1,4 +1,4 @@
-# AionUI Development Justfile
+# ContextGo Development Justfile
 # Usage: just <recipe>
 
 # Use PowerShell on all platforms for consistency
@@ -43,7 +43,7 @@ preflight:
     $ErrorActionPreference = 'Continue'; \
     $failed = $false; \
     Write-Host "=========================================="; \
-    Write-Host "  AionUI Build Preflight Check"; \
+    Write-Host "  ContextGo Build Preflight Check"; \
     Write-Host "=========================================="; \
     Write-Host ""; \
     Write-Host "[1/6] Node.js..."; \
@@ -89,7 +89,7 @@ preflight:
 
 # Show current build environment info
 info:
-    Write-Host "AionUI Build Environment"; \
+    Write-Host "ContextGo Build Environment"; \
     Write-Host "========================"; \
     Write-Host "Node:     $((node --version 2>&1).Trim())"; \
     Write-Host "bun:      $((bun --version 2>&1).Trim())"; \
@@ -222,7 +222,7 @@ build-win-arm64: preflight
 # Build for Windows (auto-detect arch)
 build-win: preflight
     Write-Host "Cleaning output directory..."; \
-    Get-Process -Name "AionUI","electron" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; \
+    Get-Process -Name "ContextGo","electron" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; \
     if (Test-Path "out") { Remove-Item -Recurse -Force "out" -ErrorAction SilentlyContinue }; \
     npm install; \
     npm run postinstall; if ($LASTEXITCODE -ne 0) { Write-Host "postinstall failed (continuing)"; $LASTEXITCODE = 0 }; \

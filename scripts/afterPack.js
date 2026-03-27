@@ -55,11 +55,11 @@ module.exports = async function afterPack(context) {
     require('../package.json').devDependencies?.electron?.replace(/^\D*/, '');
 
   // Determine resources directory based on platform
-  // macOS: appOutDir/AionUi.app/Contents/Resources
+  // macOS: appOutDir/ContextGo.app/Contents/Resources
   // Windows/Linux: appOutDir/resources
   let resourcesDir;
   if (electronPlatformName === 'darwin') {
-    const appName = packager?.appInfo?.productFilename || 'AionUi';
+    const appName = packager?.appInfo?.productFilename || 'ContextGo';
     resourcesDir = path.join(appOutDir, `${appName}.app`, 'Contents', 'Resources');
   } else {
     resourcesDir = path.join(appOutDir, 'resources');
