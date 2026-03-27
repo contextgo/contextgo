@@ -23,6 +23,7 @@ import { Button, Checkbox, Input, Message, Modal, Radio, Typography } from '@arc
 import { FolderOpen, Robot } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import styles from './CreateDiscussionGroupModal.module.css';
 
 const resolveAssistantDisplayName = (assistant: AssistantListItem, localeKey: string): string => {
   return assistant.nameI18n?.[localeKey] || assistant.name;
@@ -215,6 +216,11 @@ const CreateDiscussionGroupModal: React.FC<{
     <Modal
       title={t('conversation.group.createTitle')}
       visible={visible}
+      className={styles.appleGroupModal}
+      style={{
+        width: 'min(760px, calc(100vw - 36px))',
+        maxHeight: 'calc(100vh - 56px)',
+      }}
       onCancel={onCancel}
       footer={
         <div className='flex justify-end gap-8px'>
@@ -225,7 +231,7 @@ const CreateDiscussionGroupModal: React.FC<{
         </div>
       }
     >
-      <div className='flex flex-col gap-16px'>
+      <div className='flex flex-col gap-16px overflow-y-auto pr-2px' style={{ maxHeight: 'calc(100vh - 250px)' }}>
         <div className='flex flex-col gap-6px'>
           <Typography.Text>{t('conversation.group.nameLabel')}</Typography.Text>
           <Input value={groupName} onChange={setGroupName} placeholder={t('conversation.group.namePlaceholder')} />
@@ -262,7 +268,7 @@ const CreateDiscussionGroupModal: React.FC<{
 
         <div className='flex flex-col gap-8px'>
           <Typography.Text>{t('conversation.group.participantsLabel')}</Typography.Text>
-          <div className='max-h-320px overflow-y-auto flex flex-col gap-8px pr-4px'>
+          <div className='overflow-y-auto flex flex-col gap-8px pr-4px' style={{ maxHeight: 'min(36vh, 320px)' }}>
             {sections.map((section) => (
               <div key={section.key} className='flex flex-col gap-8px'>
                 <Typography.Text type='secondary' className='text-12px uppercase tracking-0.08em'>

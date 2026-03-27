@@ -1,0 +1,20 @@
+.appleGroupModal {
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+  box-shadow: 0 18px 48px rgb(15 23 42 / 14%);
+}
+
+.appleGroupModal :global(.arco-modal-header) {
+  padding: 18px 22px 12px;
+  border-bottom: none;
+}
+
+.appleGroupModal :global(.arco-modal-body) {
+  padding: 8px 22px 14px;
+}
+
+.appleGroupModal :global(.arco-modal-footer) {
+  padding: 10px 22px 18px;
+  border-top: none;
+}
