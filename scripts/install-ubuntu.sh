@@ -86,7 +86,7 @@ detect_arch() {
 
 # ─── 取得版本號 ──────────────────────────────────────────────────────────────
 resolve_version() {
-    local requested_version="${CONTEXTGO_VERSION:-${AIONUI_VERSION:-}}"
+    local requested_version="${CONTEXTGO_VERSION:-}"
     if [[ -n "$requested_version" ]]; then
         VERSION="$requested_version"
         info "使用指定版本: ${BOLD}v$VERSION${NC}"
@@ -193,7 +193,7 @@ create_service_script() {
 
 PIDFILE="/var/run/contextgo.pid"
 LOGFILE="/var/log/contextgo.log"
-WORKDIR="${CONTEXTGO_WORKDIR:-${AIONUI_WORKDIR:-$HOME}}"
+WORKDIR="${CONTEXTGO_WORKDIR:-$HOME}"
 
 start() {
     if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
@@ -274,7 +274,6 @@ case "${1:-}" in
         echo ""
         echo "環境變數:"
         echo "  CONTEXTGO_WORKDIR - ContextGo 工作目錄 (預設: \$HOME)"
-        echo "  AIONUI_WORKDIR    - 舊版相容別名"
         ;;
     *)
         echo "用法: $0 {start|stop|restart|status|logs}"
@@ -412,7 +411,7 @@ main() {
     banner
 
     # 安裝模式：headless (預設) 或 desktop
-    MODE="${CONTEXTGO_MODE:-${AIONUI_MODE:-headless}}"
+    MODE="${CONTEXTGO_MODE:-headless}"
     info "安裝模式: ${BOLD}$MODE${NC}"
 
     # Step 1: 前置檢查

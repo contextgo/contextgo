@@ -170,7 +170,7 @@ export const pickRecommendedAsset = (
 };
 
 const resolveRepo = (requestRepo?: string): string => {
-  const envRepo = process.env.CONTEXTGO_GITHUB_REPO?.trim() || process.env.AIONUI_GITHUB_REPO?.trim();
+  const envRepo = process.env.CONTEXTGO_GITHUB_REPO?.trim();
   const repo = (requestRepo || envRepo || DEFAULT_REPO).trim();
   return repo || DEFAULT_REPO;
 };

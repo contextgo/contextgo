@@ -414,24 +414,24 @@ const ToolsModalContent: React.FC = () => {
 
       const env: Record<string, string> = { ...builtinServer.transport.env };
       if (model.platform) {
-        env.AIONUI_IMG_PLATFORM = model.platform;
+        env.CONTEXTGO_IMG_PLATFORM = model.platform;
       } else {
-        delete env.AIONUI_IMG_PLATFORM;
+        delete env.CONTEXTGO_IMG_PLATFORM;
       }
       if (model.baseUrl) {
-        env.AIONUI_IMG_BASE_URL = model.baseUrl;
+        env.CONTEXTGO_IMG_BASE_URL = model.baseUrl;
       } else {
-        delete env.AIONUI_IMG_BASE_URL;
+        delete env.CONTEXTGO_IMG_BASE_URL;
       }
       if (model.apiKey) {
-        env.AIONUI_IMG_API_KEY = model.apiKey;
+        env.CONTEXTGO_IMG_API_KEY = model.apiKey;
       } else {
-        delete env.AIONUI_IMG_API_KEY;
+        delete env.CONTEXTGO_IMG_API_KEY;
       }
       if (model.useModel) {
-        env.AIONUI_IMG_MODEL = model.useModel;
+        env.CONTEXTGO_IMG_MODEL = model.useModel;
       } else {
-        delete env.AIONUI_IMG_MODEL;
+        delete env.CONTEXTGO_IMG_MODEL;
       }
 
       const updatedServer: IMcpServer = {

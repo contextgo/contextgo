@@ -10,7 +10,7 @@ import type { ExtensionState } from '../types';
 import { extensionEventBus, ExtensionSystemEvents } from './ExtensionEventBus';
 import { getDataPath } from '@process/utils';
 
-const EXTENSION_STATES_FILE_ENV = 'AIONUI_EXTENSION_STATES_FILE';
+const EXTENSION_STATES_FILE_ENV = 'CONTEXTGO_EXTENSION_STATES_FILE';
 const DEFAULT_STATES_FILE = 'extension-states.json';
 
 function resolveStatesFile(): string {
@@ -25,7 +25,7 @@ function resolveStatesFile(): string {
  * Persisted state format on disk.
  * Stored under getDataPath(): ~/.contextgo/extension-states.json (Electron release),
  * ~/.contextgo-dev/extension-states.json (Electron macOS dev), or the platform-standard
- * app data dir on Windows/Linux. Can be overridden via AIONUI_EXTENSION_STATES_FILE.
+ * app data dir on Windows/Linux. Can be overridden via CONTEXTGO_EXTENSION_STATES_FILE.
  */
 interface PersistedStates {
   /** Schema version for future migrations */

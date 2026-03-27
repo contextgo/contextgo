@@ -78,12 +78,12 @@ async function main() {
 
   const env = {
     ...process.env,
-    AIONUI_EXTENSIONS_PATH: path.join(projectRoot, 'examples'),
+    CONTEXTGO_EXTENSIONS_PATH: path.join(projectRoot, 'examples'),
   };
 
   console.log(`[packaged-launch] executable: ${packaged.executablePath}`);
   console.log(`[packaged-launch] cwd: ${packaged.cwd}`);
-  console.log(`[packaged-launch] AIONUI_EXTENSIONS_PATH: ${env.AIONUI_EXTENSIONS_PATH}`);
+  console.log(`[packaged-launch] CONTEXTGO_EXTENSIONS_PATH: ${env.CONTEXTGO_EXTENSIONS_PATH}`);
 
   if (dryRun) return;
 

@@ -51,9 +51,9 @@ async function loadConfigureChromium(options: SetupOptions = {}) {
   }
 
   process.env = { ...originalEnv };
-  delete process.env.AIONUI_CDP_PORT;
+  delete process.env.CONTEXTGO_CDP_PORT;
   if (options.envPort !== undefined) {
-    process.env.AIONUI_CDP_PORT = options.envPort;
+    process.env.CONTEXTGO_CDP_PORT = options.envPort;
   }
 
   const appendSwitch = vi.fn();
