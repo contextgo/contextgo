@@ -114,6 +114,24 @@ const mapBackendToChannelAgentType = (backend: string): IChannelSession['agentTy
   return convType as IChannelSession['agentType'];
 };
 
+const hasScopeKey = (scopeKey?: string): boolean => typeof scopeKey === 'string' && scopeKey.trim().length > 0;
+
+const validateChannelBinding = (binding: IChannelBinding): string | null => {
+  if (binding.scopeType === 'connector_default') {
+    return hasScopeKey(binding.scopeKey) ? 'connector_default bindings cannot define scopeKey' : null;
+  }
+
+  if (!hasScopeKey(binding.scopeKey)) {
+    return `${binding.scopeType} bindings require scopeKey`;
+  }
+
+  if (binding.scopeType === 'remote_user' && binding.scopeKey.startsWith('group:')) {
+    return 'remote_user bindings cannot target group-scoped keys; use remote_chat instead';
+  }
+
+  return null;
+};
+
 const extractSearchPreviewText = (rawContent: string): string => {
   const collectStrings = (value: unknown, bucket: string[]): void => {
     if (typeof value === 'string') {
@@ -1621,6 +1639,11 @@ export class AionUIDatabase {
 
   upsertChannelBinding(binding: IChannelBinding): IQueryResult<boolean> {
     try {
+      const validationError = validateChannelBinding(binding);
+      if (validationError) {
+        return { success: false, error: validationError };
+      }
+
       const now = Date.now();
       const row = channelBindingToRow({
         ...binding,
