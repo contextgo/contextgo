@@ -12,7 +12,7 @@ describe('ClaudeMcpAgent helpers', () => {
   it('builds stdio MCP JSON config including env vars', () => {
     const server: IMcpServer = {
       id: 'builtin-image-gen',
-      name: 'aionui-image-generation',
+      name: 'contextgo-image-generation',
       enabled: true,
       transport: {
         type: 'stdio',
