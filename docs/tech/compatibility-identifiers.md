@@ -23,13 +23,13 @@ and local state loss is acceptable.
 | Extension engine key           | `engine.aionui`                            | `engine.contextgo`                               | Migrate now | The bundled extension schema should track the renamed product identity instead of preserving a legacy compatibility key.        |
 | File/message marker constants  | `AIONUI_*` marker constants                | `CONTEXTGO_*` marker constants                   | Migrate now | These are internal runtime markers and file helpers; safe to rename while local compatibility requirements remain low.          |
 | CSS utility class prefix       | `.aionui-*`                                | `.contextgo-*`                                   | Migrate now | Internal renderer styling hooks should not keep the old namespace once the desktop app identity is fully renamed.               |
+| Conversation source value      | `aionui`                                   | `contextgo`                                      | Migrate now | Internal conversation ownership/source tagging should match the renamed desktop product and avoid mixed runtime semantics.      |
+| Event and storage namespaces   | `aionui:*`, `aionui-...`, `aionui_...`     | `contextgo:*`, `contextgo-...`, `contextgo_...`  | Migrate now | Internal browser-side event buses and persisted UI state do not need compatibility shims at the current project stage.          |
 
 ## Explicitly Deferred
 
 The following legacy namespaces are intentionally **not** changed in this PR:
 
-- conversation source value `aionui`
-- internal event / storage namespaces such as `aionui:*`, `aionui-...`, and `aionui....`
 - auth token and cookie names such as `aionui-session`, `aionui-csrf-token`, issuer/audience values
 - built-in MCP / skill identifiers such as `aionui-image-generation` and `aionui-webui-setup`
 - legacy executable, icon, temp, and cache names that still appear in scripts, tests, or docs

@@ -842,6 +842,19 @@ const migration_v17: IMigration = {
   },
 };
 
+const migration_v18: IMigration = {
+  version: 18,
+  name: 'Rename internal conversation source to contextgo',
+  up: (db) => {
+    db.exec(`UPDATE conversations SET source = 'contextgo' WHERE source = 'aionui'`);
+    console.log('[Migration v18] Renamed internal conversation source from aionui to contextgo');
+  },
+  down: (db) => {
+    db.exec(`UPDATE conversations SET source = 'aionui' WHERE source = 'contextgo'`);
+    console.log('[Migration v18] Rolled back internal conversation source rename');
+  },
+};
+
 /**
  * Migration v17 -> v18: Add channel binding resource model tables
  */
