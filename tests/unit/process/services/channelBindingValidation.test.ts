@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { IChannelBinding } from '../../../../src/process/channels/types';
 import { AionUIDatabase } from '../../../../src/process/services/database';
 import type { IStatement, ISqliteDriver } from '../../../../src/process/services/database/drivers/ISqliteDriver';
+import { withChannelBindingTarget } from '../../../../src/process/channels/types';
 
 type StoredBindingRow = {
   id: string;
@@ -137,6 +138,32 @@ describe('AionUIDatabase channel binding validation', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('remote_user bindings cannot target group-scoped keys');
+  });
+
+  it('rejects external_session targets outside remote_chat scope', () => {
+    const invalidBinding = withChannelBindingTarget(
+      {
+        id: 'binding-invalid-target-scope',
+        connectorId: 'connector-test',
+        scopeType: 'connector_default',
+        agentProfileId: 'agent-profile-test',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+      {
+        type: 'external_session',
+        id: 'external-session-1',
+        mode: 'resume',
+      }
+    );
+
+    const result = database.upsertChannelBinding(invalidBinding);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('external_session targets require remote_chat scope');
   });
 
   it('accepts direct-user bindings and chat bindings with valid scope keys', () => {

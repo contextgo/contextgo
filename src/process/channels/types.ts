@@ -203,6 +203,9 @@ export interface IAgentProfile {
  * Binding scope kinds for routing ingress traffic to agent profiles.
  */
 export type ChannelBindingScopeType = 'connector_default' | 'remote_user' | 'remote_chat' | 'temporary_override';
+export type ChannelBindingTargetType = 'agent_profile' | 'external_session';
+export type ChannelHandoffMode = 'resume' | 'new_thread';
+export type ChannelHandoffConflictPolicy = 'reject' | 'interrupt';
 
 /**
  * Explicit routing rule from connector scope to agent profile.
@@ -222,6 +225,35 @@ export interface IChannelBinding {
   updatedAt: number;
 }
 
+export type IChannelBindingTarget = {
+  type: ChannelBindingTargetType;
+  id: string;
+  mode?: ChannelHandoffMode;
+};
+
+export type IChannelHandoffRequest = {
+  sourceConversationId?: string;
+  sourceExternalSessionId?: string;
+  targetConnectorId: string;
+  targetChatId: string;
+  targetPlatformUserId?: string;
+  targetDisplayName?: string;
+  targetChatType?: string;
+  mode?: ChannelHandoffMode;
+  conflictPolicy?: ChannelHandoffConflictPolicy;
+  temporary?: boolean;
+  priority?: number;
+};
+
+export type IChannelHandoffResult = {
+  bindingId: string;
+  targetExternalSessionId: string;
+  sourceExternalSessionId?: string;
+  conversationId?: string;
+  agentProfileId: string;
+  mode: ChannelHandoffMode;
+};
+
 /**
  * Long-lived external chat relationship.
  * The active conversation may rotate on `/new`, but the external session remains stable.
@@ -237,6 +269,70 @@ export interface IExternalSession {
   createdAt: number;
   lastActivity: number;
   metadata?: Record<string, unknown>;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+/**
+ * Resolve binding routing target from metadata.
+ * Falls back to `agent_profile` target semantics for existing rows.
+ */
+export function getChannelBindingTarget(binding: IChannelBinding): IChannelBindingTarget {
+  const metadata = toRecord(binding.metadata);
+  const routeTarget = toRecord(metadata?.routeTarget);
+  const rawType = routeTarget?.type;
+  const rawId = routeTarget?.id;
+  const rawMode = routeTarget?.mode;
+
+  if (
+    rawType === 'external_session' &&
+    typeof rawId === 'string' &&
+    rawId.trim() &&
+    (rawMode === undefined || rawMode === 'resume' || rawMode === 'new_thread')
+  ) {
+    return {
+      type: 'external_session',
+      id: rawId,
+      mode: rawMode === 'new_thread' ? 'new_thread' : rawMode === 'resume' ? 'resume' : undefined,
+    };
+  }
+
+  return {
+    type: 'agent_profile',
+    id: binding.agentProfileId,
+  };
+}
+
+/**
+ * Persist an explicit binding target inside metadata.
+ */
+export function withChannelBindingTarget(
+  binding: IChannelBinding,
+  target: IChannelBindingTarget,
+  metadataPatch?: Record<string, unknown>
+): IChannelBinding {
+  const currentMetadata = toRecord(binding.metadata) ?? {};
+  const routeTarget: Record<string, unknown> = {
+    type: target.type,
+    id: target.id,
+  };
+  if (target.type === 'external_session' && target.mode) {
+    routeTarget.mode = target.mode;
+  }
+
+  return {
+    ...binding,
+    metadata: {
+      ...currentMetadata,
+      ...metadataPatch,
+      routeTarget,
+    },
+  };
 }
 
 /**

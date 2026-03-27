@@ -35,6 +35,7 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     getBindings: makeChannel('getBindings'),
     upsertBinding: makeChannel('upsertBinding'),
     deleteBinding: makeChannel('deleteBinding'),
+    handoffSession: makeChannel('handoffSession'),
     syncChannelSettings: makeChannel('syncChannelSettings'),
   },
 }));
@@ -52,6 +53,20 @@ vi.mock('@process/channels/pairing/PairingService', () => ({
   getPairingService: vi.fn(() => ({
     approvePairing: vi.fn(async () => ({ success: true })),
     rejectPairing: vi.fn(async () => ({ success: true })),
+  })),
+}));
+
+const mockHandoffSession = vi.fn(async () => ({
+  bindingId: 'binding-handoff-1',
+  targetExternalSessionId: 'external-session-target-1',
+  sourceExternalSessionId: 'external-session-source-1',
+  conversationId: 'conversation-1',
+  agentProfileId: 'agent-profile-1',
+  mode: 'resume',
+}));
+vi.mock('@process/channels/core/ChannelHandoffService', () => ({
+  getChannelHandoffService: vi.fn(() => ({
+    handoffSession: mockHandoffSession,
   })),
 }));
 
@@ -369,6 +384,40 @@ describe('channelBridge', () => {
 
       expect(result.success).toBe(false);
       expect(result.msg).toBe('delete failed');
+    });
+  });
+
+  describe('handoffSession', () => {
+    it('returns handoff result data from service', async () => {
+      const payload = {
+        sourceConversationId: 'conversation-source',
+        targetConnectorId: 'connector-1',
+        targetChatId: 'group:ops',
+      };
+
+      const result = await handlers['handoffSession'](payload);
+
+      expect(mockHandoffSession).toHaveBeenCalledWith(payload);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(
+        expect.objectContaining({
+          bindingId: 'binding-handoff-1',
+          targetExternalSessionId: 'external-session-target-1',
+        })
+      );
+    });
+
+    it('returns error when handoff service throws', async () => {
+      mockHandoffSession.mockRejectedValueOnce(new Error('handoff failed'));
+
+      const result = await handlers['handoffSession']({
+        sourceConversationId: 'conversation-source',
+        targetConnectorId: 'connector-1',
+        targetChatId: 'group:ops',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.msg).toBe('handoff failed');
     });
   });
 });

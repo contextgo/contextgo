@@ -6,6 +6,7 @@
 
 import { channel } from '@/common/adapter/ipcBridge';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
+import { getChannelHandoffService } from '@process/channels/core/ChannelHandoffService';
 import { getPairingService } from '@process/channels/pairing/PairingService';
 import { ExtensionRegistry } from '@process/extensions';
 import { toAssetUrl } from '@process/extensions/protocol/assetProtocol';
@@ -352,6 +353,20 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return { success: true };
     } catch (error: any) {
       console.error('[ChannelBridge] deleteBinding error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
+
+  /**
+   * Handoff a source session/conversation to a target channel chat.
+   */
+  channel.handoffSession.provider(async (params) => {
+    try {
+      const handoffService = getChannelHandoffService();
+      const data = await handoffService.handoffSession(params);
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('[ChannelBridge] handoffSession error:', error);
       return { success: false, msg: error.message };
     }
   });

@@ -23,7 +23,7 @@ import type {
   IRemoteIdentity,
   PluginType,
 } from '../types';
-import { getChannelConversationName, resolveChannelConvType } from '../types';
+import { getChannelBindingTarget, getChannelConversationName, resolveChannelConvType } from '../types';
 
 type SavedAgentConfig = {
   backend: string;
@@ -90,6 +90,30 @@ function shouldUseRemoteUserBinding(
       remoteChatType: remoteIdentity.remoteChatType,
     }) !== 'group'
   );
+}
+
+function readBindingHandoffConfig(binding: IChannelBinding): {
+  mode?: 'resume' | 'new_thread';
+  resumeConversationId?: string;
+} {
+  const metadata = binding.metadata;
+  if (!metadata || typeof metadata !== 'object') {
+    return {};
+  }
+
+  const handoff = (metadata as Record<string, unknown>).handoff;
+  if (!handoff || typeof handoff !== 'object') {
+    return {};
+  }
+
+  const handoffRecord = handoff as Record<string, unknown>;
+  return {
+    mode: handoffRecord.mode === 'new_thread' ? 'new_thread' : handoffRecord.mode === 'resume' ? 'resume' : undefined,
+    resumeConversationId:
+      typeof handoffRecord.resumeConversationId === 'string' && handoffRecord.resumeConversationId
+        ? handoffRecord.resumeConversationId
+        : undefined,
+  };
 }
 
 function toProjectedChannelUser(params: {
@@ -371,19 +395,52 @@ export class ChannelRouteResolver {
       platform: params.platform,
       overrideAgentType: params.overrideAgentType,
     });
-    const agentProfileResult = db.getAgentProfile(binding.agentProfileId);
+    const bindingTarget = getChannelBindingTarget(binding);
+    const bindingHandoffConfig = readBindingHandoffConfig(binding);
+
+    let sourceExternalSession: IExternalSession | null = null;
+    let agentProfileId = binding.agentProfileId;
+    if (bindingTarget.type === 'external_session') {
+      const sourceSessionResult = db.getExternalSession(bindingTarget.id);
+      if (!sourceSessionResult.success || !sourceSessionResult.data) {
+        throw new Error(`External session target ${bindingTarget.id} not found`);
+      }
+      sourceExternalSession = sourceSessionResult.data;
+      agentProfileId = sourceExternalSession.agentProfileId;
+    } else {
+      agentProfileId = bindingTarget.id;
+    }
+
+    const agentProfileResult = db.getAgentProfile(agentProfileId);
     if (!agentProfileResult.success || !agentProfileResult.data) {
-      throw new Error(`Agent profile ${binding.agentProfileId} not found`);
+      throw new Error(`Agent profile ${agentProfileId} not found`);
     }
     const agentProfile = agentProfileResult.data;
 
-    const externalSession = await this.ensureExternalSession(connector, remoteIdentity, binding, agentProfile);
+    let externalSession = await this.ensureExternalSession(connector, remoteIdentity, binding, agentProfile);
+    const externalSessionTargetMode =
+      bindingTarget.type === 'external_session' ? (bindingTarget.mode ?? 'resume') : bindingHandoffConfig.mode;
+    const shouldForceNewConversation = params.forceNewConversation || externalSessionTargetMode === 'new_thread';
+
+    const resumeConversationId =
+      externalSessionTargetMode === 'resume'
+        ? (sourceExternalSession?.activeConversationId ?? bindingHandoffConfig.resumeConversationId)
+        : undefined;
+    if (resumeConversationId) {
+      externalSession = await this.attachConversationToExternalSession(
+        externalSession,
+        resumeConversationId,
+        binding.id,
+        sourceExternalSession?.id
+      );
+    }
+
     const conversation = await this.ensureConversation({
       platform: params.platform,
       chatId: params.chatId,
       externalSession,
       agentProfile,
-      forceNewConversation: params.forceNewConversation,
+      forceNewConversation: shouldForceNewConversation,
     });
 
     const session: IChannelSession = {
@@ -665,6 +722,37 @@ export class ChannelRouteResolver {
     };
     db.upsertExternalSession(session);
     return session;
+  }
+
+  private async attachConversationToExternalSession(
+    externalSession: IExternalSession,
+    conversationId: string,
+    bindingId: string,
+    sourceExternalSessionId?: string
+  ): Promise<IExternalSession> {
+    const db = await getDatabase();
+    const conversation = db.getConversation(conversationId);
+    if (!conversation.success || !conversation.data) {
+      return externalSession;
+    }
+
+    const now = Date.now();
+    const updated: IExternalSession = {
+      ...externalSession,
+      bindingId,
+      activeConversationId: conversationId,
+      lastActivity: now,
+      metadata: {
+        ...externalSession.metadata,
+        handoff: {
+          resumeConversationId: conversationId,
+          sourceExternalSessionId,
+          updatedAt: now,
+        },
+      },
+    };
+    db.upsertExternalSession(updated);
+    return updated;
   }
 
   private async ensureConversation(params: {

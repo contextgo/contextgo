@@ -16,6 +16,7 @@ export * from './types';
 
 // Core exports
 export { ChannelManager, getChannelManager } from './core/ChannelManager';
+export { ChannelHandoffService, getChannelHandoffService } from './core/ChannelHandoffService';
 export { SessionManager } from './core/SessionManager';
 
 // Gateway exports

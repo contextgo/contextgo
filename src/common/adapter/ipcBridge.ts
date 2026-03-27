@@ -1118,6 +1118,8 @@ export const extensions = {
 
 import type {
   IChannelBinding,
+  IChannelHandoffRequest,
+  IChannelHandoffResult,
   IChannelPairingRequest,
   IChannelPluginStatus,
   IChannelSession,
@@ -1156,6 +1158,9 @@ export const channel = {
   ),
   upsertBinding: bridge.buildProvider<IBridgeResponse, { binding: IChannelBinding }>('channel.upsert-binding'),
   deleteBinding: bridge.buildProvider<IBridgeResponse, { bindingId: string }>('channel.delete-binding'),
+  handoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffResult>, IChannelHandoffRequest>(
+    'channel.handoff-session'
+  ),
 
   // Settings Sync
   syncChannelSettings: bridge.buildProvider<
