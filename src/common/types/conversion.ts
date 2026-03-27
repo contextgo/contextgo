@@ -42,6 +42,10 @@ export interface PPTJsonData {
   raw?: any; // 原始 PPTX JSON（可选，通常不需要传递给前端）/ Raw PPTX JSON (optional, usually not needed in frontend)
 }
 
+export interface PPTPdfData {
+  pdfPath: string; // 生成的 PDF 绝对路径 / Absolute path to generated PDF
+}
+
 export interface ConversionServiceApi {
   // Word
   wordToMarkdown: (filePath: string) => Promise<ConversionResult<string>>;
@@ -53,6 +57,7 @@ export interface ConversionServiceApi {
 
   // PowerPoint
   pptToJson: (filePath: string) => Promise<ConversionResult<PPTJsonData>>;
+  pptToPdf: (filePath: string) => Promise<ConversionResult<PPTPdfData>>;
 
   // PDF
   markdownToPdf: (markdown: string, targetPath: string) => Promise<ConversionResult<void>>;
@@ -60,7 +65,7 @@ export interface ConversionServiceApi {
 }
 
 // 文档转换目标格式 / Supported document conversion targets
-export type DocumentConversionTarget = 'markdown' | 'excel-json' | 'ppt-json';
+export type DocumentConversionTarget = 'markdown' | 'excel-json' | 'ppt-json' | 'ppt-pdf';
 
 // 统一的文档转换请求参数 / Unified document conversion request payload
 export interface DocumentConversionRequest {
@@ -72,4 +77,5 @@ export interface DocumentConversionRequest {
 export type DocumentConversionResponse =
   | { to: 'markdown'; result: ConversionResult<string> }
   | { to: 'excel-json'; result: ConversionResult<ExcelWorkbookData> }
-  | { to: 'ppt-json'; result: ConversionResult<PPTJsonData> };
+  | { to: 'ppt-json'; result: ConversionResult<PPTJsonData> }
+  | { to: 'ppt-pdf'; result: ConversionResult<PPTPdfData> };

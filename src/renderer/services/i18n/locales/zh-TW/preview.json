@@ -102,9 +102,9 @@
     "inspectElementDisable": "停用元素檢查"
   },
   "ppt": {
-    "loading": "正在啟動 PPT 預覽...",
-    "installing": "正在安裝預覽元件...",
-    "startFailed": "啟動 PPT 預覽失敗",
-    "installHint": "請確認已安裝 officecli：npm run postinstall"
+    "loading": "正在轉換簡報預覽...",
+    "installing": "正在準備簡報預覽...",
+    "startFailed": "產生 PPT 預覽失敗",
+    "installHint": "請安裝 LibreOffice，並確認 `soffice` 已加入 PATH。"
   }
 }

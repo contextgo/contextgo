@@ -647,6 +647,49 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 };
 
 /**
+ * 获取内置助手配置（不包含 context，context 从文件读取）
+ * Get built-in assistant configurations (without context, context is read from files)
+ */
+const getBuiltinAssistants = (): AcpBackendConfig[] => {
+  const assistants: AcpBackendConfig[] = [];
+
+  for (const preset of ASSISTANT_PRESETS) {
+    // 从预设配置中读取默认启用的技能列表（不包含 cron，因为它是内置 skill，自动注入）
+    // Read default enabled skills from preset config (excluding cron, which is builtin and auto-injected)
+    const defaultEnabledSkills = preset.defaultEnabledSkills;
+    const enabledByDefault =
+      preset.id === 'cowork' ||
+      preset.id === 'openclaw-setup' ||
+      preset.id === 'star-office-helper' ||
+      preset.id === 'story-roleplay' ||
+      preset.id === 'moltbook' ||
+      preset.id === 'beautiful-mermaid';
+
+    assistants.push({
+      id: `builtin-${preset.id}`,
+      name: preset.nameI18n['en-US'],
+      nameI18n: preset.nameI18n,
+      description: preset.descriptionI18n['en-US'],
+      descriptionI18n: preset.descriptionI18n,
+      avatar: preset.avatar,
+      // context 不再存储在配置中，而是从文件读取
+      // context is no longer stored in config, read from files instead
+      // Cowork 默认启用 / Cowork enabled by default
+      enabled: enabledByDefault,
+      isPreset: true,
+      isBuiltin: true,
+      presetAgentType: preset.presetAgentType || 'gemini',
+      // Cowork 默认启用所有内置技能 / Cowork enables all builtin skills by default
+      enabledSkills: defaultEnabledSkills,
+      // 复制快捷提示词 / Copy quick prompts
+      promptsI18n: preset.promptsI18n,
+    });
+  }
+
+  return assistants;
+};
+
+/**
  * 创建默认的 MCP 服务器配置
  */
 const getDefaultMcpServers = (): IMcpServer[] => {
