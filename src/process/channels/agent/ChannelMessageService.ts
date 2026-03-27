@@ -154,13 +154,15 @@ export class ChannelMessageService {
    * @param conversationId - Conversation ID for context
    * @param message - User message text
    * @param onStream - Callback for streaming updates
+   * @param files - Optional local file paths to forward to CLI agents
    * @returns Promise that resolves when streaming is complete
    */
   async sendMessage(
     _sessionId: string,
     conversationId: string,
     message: string,
-    onStream: StreamCallback
+    onStream: StreamCallback,
+    files?: string[]
   ): Promise<string> {
     // 确保服务已初始化
     // Ensure service is initialized
@@ -212,14 +214,19 @@ export class ChannelMessageService {
           finishCount: 0,
         });
 
-        // Build payload based on agent type.
-        // Gemini expects { input }, ACP/Codex expect { content }.
-        const payload:
-          | { input: string; agentInput?: string; msg_id: string }
-          | { content: string; agentContent?: string; msg_id: string } =
-          task.type === 'gemini'
-            ? { input: message, agentInput: transformedMessage, msg_id: msgId }
-            : { content: message, agentContent: transformedMessage, msg_id: msgId };
+        // Build a backend-agnostic payload:
+        // - Gemini-style agents read { input, agentInput }
+        // - ACP/Codex/OpenClaw-style agents read { content, agentContent }
+        // Keeping both fields avoids channel-side type branching for future CLI agents.
+        const filePayload = files && files.length > 0 ? { files } : {};
+        const payload = {
+          input: message,
+          content: message,
+          agentInput: transformedMessage,
+          agentContent: transformedMessage,
+          ...filePayload,
+          msg_id: msgId,
+        };
 
         task.sendMessage(payload).catch((error: Error) => {
           const errorMessage = `Error: ${error.message || 'Failed to send message'}`;

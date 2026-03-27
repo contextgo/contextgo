@@ -43,7 +43,8 @@ import type { ChannelAgentType, PluginType } from '../types';
 import type { ActionHandler, IRegisteredAction } from './types';
 import { SystemActionNames, createErrorResponse, createSuccessResponse } from './types';
 import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
-import type { AcpBackend } from '@/common/types/acpTypes';
+import { ACP_BACKENDS_ALL } from '@/common/types/acpTypes';
+import type { AcpBackend, AcpBackendAll } from '@/common/types/acpTypes';
 
 /**
  * Get the default model for Channel assistant (Telegram/Lark)
@@ -173,90 +174,19 @@ export const handleSessionNew: ActionHandler = async (context) => {
   await sessionManager.clearSession(context.channelUser.id, context.chatId);
 
   const platform = context.platform;
-  const source =
-    platform === 'lark' ? 'lark' : platform === 'dingtalk' ? 'dingtalk' : platform === 'weixin' ? 'weixin' : 'telegram';
-
-  // Selected agent (defaults to Gemini)
-  let savedAgent: unknown = undefined;
-  try {
-    savedAgent = await (platform === 'lark'
-      ? ProcessConfig.get('assistant.lark.agent')
-      : platform === 'dingtalk'
-        ? ProcessConfig.get('assistant.dingtalk.agent')
-        : platform === 'weixin'
-          ? ProcessConfig.get('assistant.weixin.agent')
-          : ProcessConfig.get('assistant.telegram.agent'));
-  } catch {
-    // ignore
-  }
-  const backend = (
-    savedAgent && typeof savedAgent === 'object' && typeof (savedAgent as any).backend === 'string'
-      ? (savedAgent as any).backend
-      : 'gemini'
-  ) as string;
-  const customAgentId =
-    savedAgent && typeof savedAgent === 'object'
-      ? ((savedAgent as any).customAgentId as string | undefined)
-      : undefined;
-  const agentName =
-    savedAgent && typeof savedAgent === 'object' ? ((savedAgent as any).name as string | undefined) : undefined;
-
-  // Provider model is required by typing; ACP/Codex will ignore it.
-  const model = await getChannelDefaultModel(platform);
+  const selectedAgent = await getSavedChannelAgentConfig(platform);
 
   // Always create a NEW conversation for "session.new" (scoped by chatId)
   const channelChatId = context.chatId;
-  const { convType, convBackend } = resolveChannelConvType(backend);
-  const name = getChannelConversationName(platform, convType, convBackend, channelChatId);
-
   let newConversation: TChatConversation;
   try {
-    if (backend === 'gemini') {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'gemini',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {},
-      });
-    } else if (backend === 'codex') {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'codex',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {},
-      });
-    } else if (backend === 'openclaw-gateway') {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'openclaw-gateway',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {},
-      });
-    } else {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'acp',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {
-          backend: backend as AcpBackend,
-          customAgentId,
-          agentName,
-        },
-      });
-    }
+    newConversation = await createChannelConversation(platform, channelChatId, selectedAgent);
   } catch (error) {
     return createErrorResponse(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
   // Create session with the new conversation ID (scoped by chatId)
+  const { convType } = resolveChannelConvType(selectedAgent.backend);
   const agentType = convType as ChannelAgentType;
   const session = await sessionManager.createSessionWithConversation(
     context.channelUser,
@@ -547,31 +477,29 @@ export const handleSettingsShow: ActionHandler = async (context) => {
  * Handle agent.show - Show agent selection keyboard/card
  */
 export const handleAgentShow: ActionHandler = async (context) => {
-  const manager = getChannelManager();
-  const sessionManager = manager.getSessionManager();
-
-  if (!sessionManager) {
-    return createErrorResponse('Session manager not available');
-  }
-
-  // Get current agent type from session (scoped by chatId)
-  const userId = context.channelUser?.id;
-  const session = userId ? sessionManager.getSession(userId, context.chatId) : null;
-  const currentAgent = session?.agentType || 'gemini';
-
   // Get available agents dynamically
   const availableAgents = getAvailableChannelAgents();
-
   if (availableAgents.length === 0) {
     return createErrorResponse('No agents available');
   }
+
+  const currentAgentConfig = await getSavedChannelAgentConfig(context.platform);
+  const currentAgentKey = buildAgentKey(
+    currentAgentConfig.backend,
+    currentAgentConfig.customAgentId,
+    currentAgentConfig.name
+  );
+  const currentAgent = availableAgents.find((agent) => agent.key === currentAgentKey);
+  const currentAgentDisplayName = currentAgent
+    ? getDisplayNameForAgent(currentAgent.backend, currentAgent.name)
+    : getDisplayNameForAgent(currentAgentConfig.backend, currentAgentConfig.name);
 
   // Use platform-specific markup
   if (context.platform === 'lark') {
     return createSuccessResponse({
       type: 'text',
       text: '', // Lark card includes the text
-      replyMarkup: createAgentSelectionCard(availableAgents, currentAgent),
+      replyMarkup: createAgentSelectionCard(availableAgents, currentAgentKey),
     });
   }
 
@@ -579,7 +507,7 @@ export const handleAgentShow: ActionHandler = async (context) => {
     return createSuccessResponse({
       type: 'text',
       text: '',
-      replyMarkup: createDingTalkAgentSelectionCard(availableAgents, currentAgent),
+      replyMarkup: createDingTalkAgentSelectionCard(availableAgents, currentAgentKey),
     });
   }
 
@@ -590,10 +518,10 @@ export const handleAgentShow: ActionHandler = async (context) => {
       '',
       'Select an AI agent for your conversations:',
       '',
-      `Current: <b>${getAgentDisplayName(currentAgent)}</b>`,
+      `Current: <b>${currentAgentDisplayName}</b>`,
     ].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: createAgentSelectionKeyboard(availableAgents, currentAgent),
+    replyMarkup: createAgentSelectionKeyboard(availableAgents, currentAgentKey),
   });
 };
 
@@ -612,20 +540,33 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
     return createErrorResponse('User not authorized');
   }
 
-  const newAgentType = params?.agentType as ChannelAgentType;
+  const newAgentKey = params?.agentKey;
 
-  // Validate agent type is available
+  // Validate selected agent key
   const availableAgents = getAvailableChannelAgents();
-  const isValidAgent = availableAgents.some((agent) => agent.type === newAgentType);
-  if (!newAgentType || !isValidAgent) {
-    return createErrorResponse('Invalid or unavailable agent type');
+  const selectedAgent = availableAgents.find((agent) => agent.key === newAgentKey);
+  if (!newAgentKey || !selectedAgent) {
+    return createErrorResponse('Invalid or unavailable agent');
   }
 
-  // Get current session (scoped by chatId)
-  const existingSession = sessionManager.getSession(context.channelUser.id, context.chatId);
+  const selectedAgentName = getDisplayNameForAgent(selectedAgent.backend, selectedAgent.name);
+  const selectedAgentConfig: SavedChannelAgentConfig = {
+    backend:
+      selectedAgent.backend in ACP_BACKENDS_ALL
+        ? (selectedAgent.backend as AcpBackendAll)
+        : ('gemini' as AcpBackendAll),
+    customAgentId: selectedAgent.customAgentId,
+    name: selectedAgent.name,
+  };
+  const currentAgentConfig = await getSavedChannelAgentConfig(context.platform);
+  const currentAgentKey = buildAgentKey(
+    currentAgentConfig.backend,
+    currentAgentConfig.customAgentId,
+    currentAgentConfig.name
+  );
 
-  // If same agent, no need to switch
-  if (existingSession?.agentType === newAgentType) {
+  // If same selected agent, no need to switch
+  if (currentAgentKey === selectedAgent.key) {
     const markup =
       context.platform === 'lark'
         ? createMainMenuCard()
@@ -634,11 +575,23 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
           : createMainMenuKeyboard();
     return createSuccessResponse({
       type: 'text',
-      text: `✓ Already using <b>${getAgentDisplayName(newAgentType)}</b>`,
+      text: `✓ Already using <b>${selectedAgentName}</b>`,
       parseMode: 'HTML',
       replyMarkup: markup,
     });
   }
+
+  // Persist selected agent backend for this platform
+  try {
+    await ProcessConfig.set(getChannelAgentConfigPath(context.platform), selectedAgentConfig);
+  } catch (error) {
+    return createErrorResponse(
+      `Failed to save selected agent: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+
+  // Get current session (scoped by chatId)
+  const existingSession = sessionManager.getSession(context.channelUser.id, context.chatId);
 
   // Clear existing session and agent (scoped by chatId)
   if (existingSession) {
@@ -655,8 +608,22 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
   }
   await sessionManager.clearSession(context.channelUser.id, context.chatId);
 
-  // Create new session with the selected agent type (scoped by chatId)
-  const session = await sessionManager.createSession(context.channelUser, newAgentType, undefined, context.chatId);
+  // Create new conversation + session with selected backend (scoped by chatId)
+  let newConversation: TChatConversation;
+  try {
+    newConversation = await createChannelConversation(context.platform, context.chatId, selectedAgentConfig);
+  } catch (error) {
+    return createErrorResponse(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  const { convType } = resolveChannelConvType(selectedAgentConfig.backend);
+  await sessionManager.createSessionWithConversation(
+    context.channelUser,
+    newConversation.id,
+    convType as ChannelAgentType,
+    undefined,
+    context.chatId
+  );
 
   const markup =
     context.platform === 'lark'
@@ -667,7 +634,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
   return createSuccessResponse({
     type: 'text',
     text: [
-      `✓ <b>Switched to ${getAgentDisplayName(newAgentType)}</b>`,
+      `✓ <b>Switched to ${selectedAgentName}</b>`,
       '',
       'A new conversation has been started.',
       '',
@@ -678,31 +645,144 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
   });
 };
 
-/**
- * Get display name for agent type
- */
-function getAgentDisplayName(agentType: ChannelAgentType): string {
-  const names: Record<ChannelAgentType, string> = {
-    gemini: '🤖 Gemini',
-    acp: '🧠 Claude',
-    codex: '⚡ Codex',
-    'openclaw-gateway': '🦞 OpenClaw',
-  };
-  return names[agentType] || agentType;
+type SavedChannelAgentConfig = {
+  backend: AcpBackendAll;
+  customAgentId?: string;
+  name?: string;
+};
+
+function getChannelAgentConfigPath(
+  platform: PluginType
+): 'assistant.lark.agent' | 'assistant.dingtalk.agent' | 'assistant.weixin.agent' | 'assistant.telegram.agent' {
+  return platform === 'lark'
+    ? 'assistant.lark.agent'
+    : platform === 'dingtalk'
+      ? 'assistant.dingtalk.agent'
+      : platform === 'weixin'
+        ? 'assistant.weixin.agent'
+        : 'assistant.telegram.agent';
 }
 
-/**
- * Map backend type to ChannelAgentType
- * Only returns types that are supported by channels
- */
-function backendToChannelAgentType(backend: string): ChannelAgentType | null {
-  const mapping: Record<string, ChannelAgentType> = {
-    gemini: 'gemini',
-    claude: 'acp',
-    codex: 'codex',
-    'openclaw-gateway': 'openclaw-gateway',
+function normalizeChannelAgentConfig(value: unknown): SavedChannelAgentConfig {
+  if (!value || typeof value !== 'object') {
+    return { backend: 'gemini' };
+  }
+
+  const record = value as Record<string, unknown>;
+  const backend =
+    typeof record.backend === 'string' && record.backend in ACP_BACKENDS_ALL
+      ? (record.backend as AcpBackendAll)
+      : 'gemini';
+  const customAgentId =
+    typeof record.customAgentId === 'string' && record.customAgentId.length > 0 ? record.customAgentId : undefined;
+  const name = typeof record.name === 'string' && record.name.length > 0 ? record.name : undefined;
+
+  return { backend, customAgentId, name };
+}
+
+async function getSavedChannelAgentConfig(platform: PluginType): Promise<SavedChannelAgentConfig> {
+  try {
+    const savedAgent = await ProcessConfig.get(getChannelAgentConfigPath(platform));
+    return normalizeChannelAgentConfig(savedAgent);
+  } catch {
+    return { backend: 'gemini' };
+  }
+}
+
+function getConversationSource(platform: PluginType): 'telegram' | 'lark' | 'dingtalk' | 'weixin' {
+  return platform === 'lark'
+    ? 'lark'
+    : platform === 'dingtalk'
+      ? 'dingtalk'
+      : platform === 'weixin'
+        ? 'weixin'
+        : 'telegram';
+}
+
+async function createChannelConversation(
+  platform: PluginType,
+  channelChatId: string,
+  agent: SavedChannelAgentConfig
+): Promise<TChatConversation> {
+  const source = getConversationSource(platform);
+  const model = await getChannelDefaultModel(platform);
+  const { convType, convBackend } = resolveChannelConvType(agent.backend);
+  const name = getChannelConversationName(platform, convType, convBackend, channelChatId);
+
+  if (agent.backend === 'gemini') {
+    return await conversationServiceSingleton.createConversation({
+      type: 'gemini',
+      model,
+      source,
+      name,
+      channelChatId,
+      extra: {},
+    });
+  }
+
+  if (agent.backend === 'codex') {
+    return await conversationServiceSingleton.createConversation({
+      type: 'codex',
+      model,
+      source,
+      name,
+      channelChatId,
+      extra: {},
+    });
+  }
+
+  if (agent.backend === 'openclaw-gateway') {
+    return await conversationServiceSingleton.createConversation({
+      type: 'openclaw-gateway',
+      model,
+      source,
+      name,
+      channelChatId,
+      extra: {},
+    });
+  }
+
+  return await conversationServiceSingleton.createConversation({
+    type: 'acp',
+    model,
+    source,
+    name,
+    channelChatId,
+    extra: {
+      backend: agent.backend as AcpBackend,
+      customAgentId: agent.customAgentId,
+      agentName: agent.name,
+    },
+  });
+}
+
+function buildAgentKey(backend: string, customAgentId?: string, name?: string): string {
+  if (customAgentId) {
+    return `${backend}:${customAgentId}`;
+  }
+  if (backend === 'custom' && name) {
+    return `${backend}:${name}`;
+  }
+  return backend;
+}
+
+function getDisplayNameForAgent(backend: string, name?: string): string {
+  if (name && name.length > 0) {
+    return `${getAgentEmoji(backend)} ${name}`;
+  }
+  const fallbackNames: Record<string, string> = {
+    gemini: 'Gemini',
+    claude: 'Claude',
+    codex: 'Codex',
+    qwen: 'Qwen',
+    codebuddy: 'CodeBuddy',
+    opencode: 'OpenCode',
+    kimi: 'Kimi',
+    copilot: 'Copilot',
+    'openclaw-gateway': 'OpenClaw',
+    custom: 'Custom Agent',
   };
-  return mapping[backend] || null;
+  return `${getAgentEmoji(backend)} ${fallbackNames[backend] || backend}`;
 }
 
 /**
@@ -713,6 +793,20 @@ function getAgentEmoji(backend: string): string {
     gemini: '🤖',
     claude: '🧠',
     codex: '⚡',
+    qwen: '🌊',
+    codebuddy: '🧩',
+    opencode: '🛠️',
+    kimi: '🌙',
+    copilot: '🚁',
+    cursor: '🎯',
+    goose: '🪿',
+    droid: '🤖',
+    iflow: '🌊',
+    qoder: '🧠',
+    vibe: '🎵',
+    nanobot: '🧬',
+    auggie: '🧪',
+    custom: '🧩',
     'openclaw-gateway': '🦞',
   };
   return emojis[backend] || '🤖';
@@ -725,23 +819,35 @@ function getAgentEmoji(backend: string): string {
 function getAvailableChannelAgents(): AgentDisplayInfo[] {
   const detectedAgents = acpDetector.getDetectedAgents();
   const availableAgents: AgentDisplayInfo[] = [];
-  const seenTypes = new Set<ChannelAgentType>();
+  const seenKeys = new Set<string>();
 
-  // Always include Gemini as it's built-in
-  availableAgents.push({ type: 'gemini', emoji: '🤖', name: 'Gemini' });
-  seenTypes.add('gemini');
+  const addAgent = (backend: string, name: string, customAgentId?: string) => {
+    const key = buildAgentKey(backend, customAgentId, name);
+    if (seenKeys.has(key)) return;
+    seenKeys.add(key);
+    availableAgents.push({
+      key,
+      backend,
+      emoji: getAgentEmoji(backend),
+      name,
+      customAgentId,
+    });
+  };
 
-  // Add detected ACP agents (claude, codex, etc.)
+  // Always include Gemini as built-in fallback.
+  addAgent('gemini', 'Gemini');
+
   for (const agent of detectedAgents) {
-    const channelType = backendToChannelAgentType(agent.backend);
-    if (channelType && !seenTypes.has(channelType)) {
-      availableAgents.push({
-        type: channelType,
-        emoji: getAgentEmoji(agent.backend),
-        name: agent.name,
-      });
-      seenTypes.add(channelType);
+    if (agent.isPreset) {
+      continue;
     }
+
+    const backend = agent.backend;
+    if (!backend) {
+      continue;
+    }
+
+    addAgent(backend, agent.name || backend, agent.customAgentId);
   }
 
   return availableAgents;

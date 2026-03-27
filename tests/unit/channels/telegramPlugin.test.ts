@@ -152,3 +152,12 @@ describe('TelegramPlugin polling lifecycle', () => {
     expect((plugin as any).pollingPromise).toBeNull();
   });
 });
+
+describe('Telegram callback utilities', () => {
+  it('extractAction should keep the full payload after first colon', async () => {
+    const { extractAction } = await import('@process/channels/plugins/telegram/TelegramKeyboards');
+
+    expect(extractAction('agent:custom:ext:demo:assistant-1')).toBe('custom:ext:demo:assistant-1');
+    expect(extractAction('action:copy')).toBe('copy');
+  });
+});

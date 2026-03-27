@@ -169,6 +169,31 @@ function getConfirmationPrompt(details: { type: string; title?: string; [key: st
   }
 }
 
+function buildWeixinAttachmentPrompt(content: IUnifiedIncomingMessage['content']): string {
+  const lines: string[] = ['[WeChat media message]'];
+
+  const userText = content.text?.trim();
+  if (userText) {
+    lines.push(`User text: ${userText}`);
+  }
+
+  for (const [index, attachment] of (content.attachments || []).entries()) {
+    lines.push(
+      `Attachment ${index + 1}: type=${attachment.type}, path=${attachment.fileId}, name=${attachment.fileName || '-'}, mime=${attachment.mimeType || '-'}, size=${attachment.size ?? '-'}, duration=${attachment.duration ?? '-'}`
+    );
+  }
+
+  lines.push('Use the local attachment path(s) above if you need to inspect the media/file content.');
+  return lines.join('\n');
+}
+
+function extractAttachmentPaths(content: IUnifiedIncomingMessage['content']): string[] {
+  const fileIds = (content.attachments || [])
+    .map((attachment) => attachment.fileId)
+    .filter((fileId): fileId is string => Boolean(fileId));
+  return Array.from(new Set(fileIds));
+}
+
 /**
  * 将 TMessage 转换为 IUnifiedOutgoingMessage
  * Convert TMessage to IUnifiedOutgoingMessage for platform
@@ -498,6 +523,9 @@ export class ActionExecutor {
       } else if (content.type === 'text' && content.text) {
         // Regular text message - send to AI
         await this.handleChatMessage(context, content.text);
+      } else if (platform === 'weixin' && content.attachments && content.attachments.length > 0) {
+        // Weixin media message: convert attachments to a text prompt so the AI pipeline can process it.
+        await this.handleChatMessage(context, buildWeixinAttachmentPrompt(content), extractAttachmentPaths(content));
       } else {
         // Unsupported content type
         await context.sendMessage({
@@ -557,7 +585,7 @@ export class ActionExecutor {
   /**
    * Handle chat message - send to AI and stream response
    */
-  private async handleChatMessage(context: IActionContext, text: string): Promise<void> {
+  private async handleChatMessage(context: IActionContext, text: string, files?: string[]): Promise<void> {
     // Update session activity (scoped by chatId)
     if (context.channelUser) {
       this.sessionManager.updateSessionActivity(context.channelUser.id, context.chatId);
@@ -700,7 +728,8 @@ export class ActionExecutor {
               }, delay);
             }
           }
-        }
+        },
+        files
       );
 
       // 清除待处理的定时器，确保最后一条消息被处理
