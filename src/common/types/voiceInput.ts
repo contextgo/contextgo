@@ -115,7 +115,7 @@ export const DEFAULT_VOICE_INPUT_CONFIG: VoiceInputConfig = {
     volcengine: {
       appKey: '',
       accessKey: '',
-      resourceId: 'volc.bigasr.auc_turbo',
+      resourceId: 'volc.bigasr.sauc.duration',
       model: 'bigmodel',
     },
   },

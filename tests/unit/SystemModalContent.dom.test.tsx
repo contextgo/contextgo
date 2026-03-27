@@ -223,7 +223,7 @@ describe('SystemModalContent', () => {
         volcengine: {
           appKey: '',
           accessKey: '',
-          resourceId: 'volc.bigasr.auc_turbo',
+          resourceId: 'volc.bigasr.sauc.duration',
           model: 'bigmodel',
         },
       },
@@ -312,7 +312,7 @@ describe('SystemModalContent', () => {
         volcengine: {
           appKey: '123456789',
           accessKey: 'access-token',
-          resourceId: 'volc.bigasr.auc_turbo',
+          resourceId: 'volc.bigasr.sauc.duration',
           model: 'bigmodel',
         },
       },
