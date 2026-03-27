@@ -242,7 +242,7 @@
       "languageHints": "zh, en",
       "volcengineAppKey": "123456789",
       "volcengineAccessKey": "your-access-key",
-      "resourceId": "volc.bigasr.auc_turbo",
+      "resourceId": "volc.bigasr.sauc.duration",
       "volcengineModel": "bigmodel"
     },
     "autoInsert": "Auto insert into the focused app",

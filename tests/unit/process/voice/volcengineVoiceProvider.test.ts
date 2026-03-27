@@ -1,111 +1,188 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Buffer } from 'node:buffer';
+import { gzipSync } from 'node:zlib';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+type WebSocketOptions = {
+  headers?: Record<string, string>;
+};
+
+const wsMock = vi.hoisted(() => {
+  class MockWebSocket {
+    static instances: MockWebSocket[] = [];
+
+    readonly sentFrames: Buffer[] = [];
+    readonly handlers = new Map<string, Array<(...args: unknown[]) => void>>();
+
+    constructor(
+      readonly url: string,
+      readonly options?: WebSocketOptions
+    ) {
+      MockWebSocket.instances.push(this);
+    }
+
+    on(event: string, handler: (...args: unknown[]) => void): this {
+      const handlers = this.handlers.get(event) ?? [];
+      handlers.push(handler);
+      this.handlers.set(event, handlers);
+      return this;
+    }
+
+    send(data: Buffer): void {
+      this.sentFrames.push(Buffer.from(data));
+    }
+
+    close(): void {
+      // no-op for tests
+    }
+
+    emitOpen(logId = 'test-logid'): void {
+      this.emitEvent('upgrade', { headers: { 'x-tt-logid': logId } });
+      this.emitEvent('open');
+    }
+
+    emitMessage(frame: Buffer): void {
+      this.emitEvent('message', frame, true);
+    }
+
+    emitClose(code = 1000, reason = ''): void {
+      this.emitEvent('close', code, Buffer.from(reason, 'utf8'));
+    }
+
+    private emitEvent(event: string, ...args: unknown[]): void {
+      for (const handler of this.handlers.get(event) ?? []) {
+        handler(...args);
+      }
+    }
+  }
+
+  return { MockWebSocket };
+});
+
+vi.mock('ws', () => ({ default: wsMock.MockWebSocket }));
+
 import { VolcengineVoiceProvider } from '@/process/bridge/services/voice/VolcengineVoiceProvider';
 
+const createServerResponseFrame = ({
+  text,
+  isLast,
+  sequence = 1,
+}: {
+  text: string;
+  isLast: boolean;
+  sequence?: number;
+}): Buffer => {
+  const payload = gzipSync(
+    Buffer.from(
+      JSON.stringify({
+        result: {
+          text,
+        },
+      }),
+      'utf8'
+    )
+  );
+  const header = Buffer.from([0x11, isLast ? 0x93 : 0x91, 0x11, 0x00]);
+  const sequenceBuffer = Buffer.alloc(4);
+  const payloadSizeBuffer = Buffer.alloc(4);
+  sequenceBuffer.writeInt32BE(sequence, 0);
+  payloadSizeBuffer.writeUInt32BE(payload.length, 0);
+  return Buffer.concat([header, sequenceBuffer, payloadSizeBuffer, payload]);
+};
+
+const createErrorFrame = (code: number, message: string): Buffer => {
+  const payload = Buffer.from(JSON.stringify({ message }), 'utf8');
+  const header = Buffer.from([0x11, 0xf0, 0x10, 0x00]);
+  const codeBuffer = Buffer.alloc(4);
+  const payloadSizeBuffer = Buffer.alloc(4);
+  codeBuffer.writeUInt32BE(code, 0);
+  payloadSizeBuffer.writeUInt32BE(payload.length, 0);
+  return Buffer.concat([header, codeBuffer, payloadSizeBuffer, payload]);
+};
+
+const getLastWebSocketInstance = (): MockWebSocket => {
+  const instance = wsMock.MockWebSocket.instances.at(-1);
+
+  if (!instance) {
+    throw new Error('Expected a mock websocket instance');
+  }
+
+  return instance;
+};
+
 describe('VolcengineVoiceProvider', () => {
-  const fetchMock = vi.fn();
-
-  beforeEach(() => {
-    vi.stubGlobal('fetch', fetchMock);
-  });
-
   afterEach(() => {
-    vi.unstubAllGlobals();
+    wsMock.MockWebSocket.instances.length = 0;
     vi.clearAllMocks();
   });
 
-  it('should submit wav audio and return the recognized text', async () => {
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          result: {
-            text: '关闭透传。',
-          },
-        }),
-        {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Status-Code': '20000000',
-            'X-Api-Message': 'OK',
-            'X-Tt-Logid': 'test-logid',
-          },
-        }
-      )
-    );
-
+  it('should return the final transcript from websocket responses', async () => {
     const provider = new VolcengineVoiceProvider({
       appKey: 'app-id',
       accessKey: 'access-token',
-      resourceId: 'volc.bigasr.auc_turbo',
+      resourceId: 'volc.bigasr.sauc.duration',
       model: 'bigmodel',
     });
 
-    const transcript = await provider.transcribe(Buffer.from([0x00, 0x00, 0xff, 0x7f]));
+    const transcription = provider.transcribe(Buffer.alloc(7_000, 0x01));
+    const socket = getLastWebSocketInstance();
+    socket.emitOpen();
+    socket.emitMessage(createServerResponseFrame({ text: '关闭透传。', isLast: true }));
 
-    expect(transcript).toBe('关闭透传。');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash');
-    expect(options.method).toBe('POST');
-    expect(options.headers).toMatchObject({
-      'Content-Type': 'application/json',
-      'X-Api-App-Key': 'app-id',
-      'X-Api-Access-Key': 'access-token',
-      'X-Api-Resource-Id': 'volc.bigasr.auc_turbo',
-      'X-Api-Sequence': '-1',
-    });
-
-    const body = JSON.parse(String(options.body)) as {
-      user: { uid: string };
-      audio: { data: string };
-      request: { model_name: string };
-    };
-    const wavBuffer = Buffer.from(body.audio.data, 'base64');
-    expect(body.user.uid).toBe('app-id');
-    expect(body.request.model_name).toBe('bigmodel');
-    expect(wavBuffer.subarray(0, 4).toString('ascii')).toBe('RIFF');
-    expect(wavBuffer.subarray(8, 12).toString('ascii')).toBe('WAVE');
+    await expect(transcription).resolves.toBe('关闭透传。');
   });
 
-  it('should surface provider errors from response headers', async () => {
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          error: 'busy',
-        }),
-        {
-          status: 503,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Status-Code': '55000031',
-            'X-Api-Message': 'Server Busy',
-            'X-Tt-Logid': 'busy-logid',
-          },
-        }
-      )
-    );
-
+  it('should send sauc websocket frames with the required auth headers', async () => {
     const provider = new VolcengineVoiceProvider({
       appKey: 'app-id',
       accessKey: 'access-token',
-      resourceId: 'volc.bigasr.auc_turbo',
+      resourceId: 'volc.bigasr.sauc.duration',
       model: 'bigmodel',
     });
 
-    await expect(provider.transcribe(Buffer.from([0x00, 0x00]))).rejects.toThrow(
-      '55000031: Server Busy (logid: busy-logid)'
-    );
+    const transcription = provider.transcribe(Buffer.alloc(7_000, 0x01));
+    const socket = getLastWebSocketInstance();
+    socket.emitOpen();
+    socket.emitMessage(createServerResponseFrame({ text: 'done', isLast: true }));
+    await transcription;
+
+    expect(socket.url).toBe('wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_nostream');
+    expect(socket.options?.headers).toMatchObject({
+      'X-Api-App-Key': 'app-id',
+      'X-Api-Access-Key': 'access-token',
+      'X-Api-Resource-Id': 'volc.bigasr.sauc.duration',
+    });
+    expect(socket.options?.headers?.['X-Api-Connect-Id']).toBeTypeOf('string');
+    expect(socket.sentFrames).toHaveLength(3);
+    expect(socket.sentFrames[0]?.subarray(0, 4)).toEqual(Buffer.from([0x11, 0x10, 0x11, 0x00]));
+    expect(socket.sentFrames[1]?.subarray(0, 4)).toEqual(Buffer.from([0x11, 0x20, 0x01, 0x00]));
+    expect(socket.sentFrames[2]?.subarray(0, 4)).toEqual(Buffer.from([0x11, 0x22, 0x01, 0x00]));
+  });
+
+  it('should surface server protocol errors with logid context', async () => {
+    const provider = new VolcengineVoiceProvider({
+      appKey: 'app-id',
+      accessKey: 'access-token',
+      resourceId: 'volc.bigasr.sauc.duration',
+      model: 'bigmodel',
+    });
+
+    const transcription = provider.transcribe(Buffer.alloc(1_024, 0x01));
+    const socket = getLastWebSocketInstance();
+    socket.emitOpen('busy-logid');
+    socket.emitMessage(createErrorFrame(55_000_031, 'Server Busy'));
+
+    await expect(transcription).rejects.toThrow('55000031: Server Busy (logid: busy-logid)');
   });
 
   it('should reject when required credentials are missing', async () => {
     const provider = new VolcengineVoiceProvider({
       appKey: '',
       accessKey: 'access-token',
-      resourceId: 'volc.bigasr.auc_turbo',
+      resourceId: 'volc.bigasr.sauc.duration',
       model: 'bigmodel',
     });
 
-    await expect(provider.transcribe(Buffer.from([0x00, 0x00]))).rejects.toThrow('VolcEngine app key is required');
-    expect(fetchMock).not.toHaveBeenCalled();
+    await expect(provider.transcribe(Buffer.alloc(2))).rejects.toThrow('VolcEngine app key is required');
+    expect(wsMock.MockWebSocket.instances).toHaveLength(0);
   });
 });
