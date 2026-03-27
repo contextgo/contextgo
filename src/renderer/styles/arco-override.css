@@ -165,6 +165,212 @@ body[arco-theme='dark'] .arco-message-error {
   background: linear-gradient(90deg, rgba(255, 221, 219, 0.3) 0%, rgba(255, 243, 240, 0.3) 100%) !important;
 }
 
+/* Popup surfaces: rounded corners, soft shadow, hidden inner scrollbars */
+.arco-dropdown-menu,
+.arco-select-popup,
+.arco-trigger-popup .arco-menu,
+.arco-picker-container {
+  background: var(--app-popup-surface) !important;
+  border: var(--app-popup-border) !important;
+  border-radius: var(--app-popup-radius-lg) !important;
+  box-shadow: var(--app-popup-shadow) !important;
+}
+
+.arco-dropdown-menu {
+  max-height: min(420px, calc(100vh - 24px));
+  padding: var(--app-popup-padding) !important;
+  overflow: auto !important;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.arco-trigger-popup .arco-menu {
+  max-height: min(420px, calc(100vh - 24px));
+  padding: var(--app-popup-padding) !important;
+  overflow: hidden !important;
+}
+
+.arco-select-popup .arco-select-popup-inner,
+.arco-picker-container .arco-picker-dropdown-list {
+  padding: var(--app-popup-padding) 6px;
+}
+
+@supports ((-webkit-backdrop-filter: blur(0)) or (backdrop-filter: blur(0))) {
+  .arco-dropdown-menu,
+  .arco-select-popup,
+  .arco-trigger-popup .arco-menu,
+  .arco-picker-container {
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+}
+
+.arco-dropdown-menu-inner,
+.arco-trigger-popup .arco-menu .arco-menu-inner,
+.arco-select-popup .arco-select-popup-inner,
+.arco-select-popup .arco-select-option-list,
+.arco-select-popup .arco-virtual-list,
+.arco-picker-container .arco-picker-dropdown-list {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.arco-trigger-popup .arco-menu .arco-menu-inner {
+  max-height: min(400px, calc(100vh - 40px));
+  overflow: auto;
+}
+
+.arco-dropdown-menu::-webkit-scrollbar,
+.arco-dropdown-menu-inner::-webkit-scrollbar,
+.arco-trigger-popup .arco-menu .arco-menu-inner::-webkit-scrollbar,
+.arco-select-popup .arco-select-popup-inner::-webkit-scrollbar,
+.arco-select-popup .arco-select-option-list::-webkit-scrollbar,
+.arco-select-popup .arco-virtual-list::-webkit-scrollbar,
+.arco-picker-container .arco-picker-dropdown-list::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.arco-dropdown-menu-item,
+.arco-dropdown-menu-pop-header,
+.arco-trigger-popup .arco-menu .arco-menu-item,
+.arco-trigger-popup .arco-menu .arco-menu-inline-header,
+.arco-trigger-popup .arco-menu .arco-menu-pop-header,
+.arco-select-popup .arco-select-option {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--app-popup-radius-md) !important;
+  min-height: var(--app-popup-item-height);
+  height: auto;
+  margin: 2px 0;
+  padding: 0 12px;
+  color: var(--text-primary) !important;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease !important;
+}
+
+.arco-dropdown-menu-item,
+.arco-dropdown-menu-pop-header,
+.arco-select-popup .arco-select-option {
+  display: flex;
+  align-items: center;
+  line-height: calc(var(--app-popup-item-height) - 2px);
+}
+
+.arco-trigger-popup .arco-menu .arco-menu-item,
+.arco-trigger-popup .arco-menu .arco-menu-inline-header,
+.arco-trigger-popup .arco-menu .arco-menu-pop-header {
+  display: flex;
+  align-items: center;
+}
+
+.arco-trigger-popup .arco-menu .arco-menu-item-inner {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.arco-dropdown-menu-item > *,
+.arco-dropdown-menu-pop-header > *,
+.arco-select-popup .arco-select-option > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.arco-dropdown-menu-item > * {
+  width: 100%;
+}
+
+.arco-select-popup .arco-select-popup-inner,
+.arco-select-popup .arco-select-option-list,
+.arco-select-popup .arco-virtual-list {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.arco-select-popup .arco-select-option-wrapper {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.arco-select-popup .arco-select-option-wrapper .arco-select-option {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: 0;
+}
+
+.arco-dropdown-menu-group-title,
+.arco-trigger-popup .arco-menu .arco-menu-group-title,
+.arco-select-group-title {
+  padding: 8px 10px 6px !important;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--app-popup-title-color) !important;
+}
+
+.arco-dropdown-menu-group:first-child .arco-dropdown-menu-group-title,
+.arco-select-group-title:first-child {
+  margin-top: 0;
+  padding-top: 4px !important;
+}
+
+.arco-dropdown-menu-item:hover,
+.arco-dropdown-menu-pop-header:hover,
+.arco-dropdown-menu-item.arco-dropdown-menu-active,
+.arco-dropdown-menu-pop-header.arco-dropdown-menu-active,
+.arco-trigger-popup .arco-menu .arco-menu-item:hover,
+.arco-trigger-popup .arco-menu .arco-menu-inline-header:hover,
+.arco-trigger-popup .arco-menu .arco-menu-pop-header:hover,
+.arco-select-popup .arco-select-option-hover {
+  background: var(--app-popup-hover-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+.arco-dropdown-menu-item.arco-dropdown-menu-selected,
+.arco-dropdown-menu-pop-header.arco-dropdown-menu-selected,
+.arco-trigger-popup .arco-menu .arco-menu-item.arco-menu-selected,
+.arco-trigger-popup .arco-menu .arco-menu-inline-header.arco-menu-selected,
+.arco-trigger-popup .arco-menu .arco-menu-pop-header.arco-menu-selected,
+.arco-select-popup .arco-select-option-selected {
+  background: var(--app-popup-selected-bg) !important;
+  box-shadow: var(--app-popup-selected-shadow) !important;
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+.arco-dropdown-menu-item:focus-visible,
+.arco-dropdown-menu-pop-header:focus-visible,
+.arco-trigger-popup .arco-menu .arco-menu-item:focus-visible,
+.arco-trigger-popup .arco-menu .arco-menu-inline-header:focus-visible,
+.arco-trigger-popup .arco-menu .arco-menu-pop-header:focus-visible,
+.arco-select-popup .arco-select-option:focus-visible {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent) inset,
+    0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent) !important;
+}
+
+.arco-dropdown-menu-pop-header .arco-dropdown-menu-icon-suffix,
+.arco-trigger-popup .arco-menu .arco-menu-icon-suffix {
+  color: var(--text-secondary);
+  opacity: 0.78;
+}
+
 /* Workspace tree selection styles - use text color instead of background */
 .workspace-tree .arco-tree-node-selected .arco-tree-node-title {
   background-color: transparent !important;

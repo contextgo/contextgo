@@ -38,6 +38,8 @@ interface OpenClawAgentIdentity {
 
 interface OpenClawAgentDefaults {
   workspace?: string;
+  model?: string | { primary?: string };
+  models?: Record<string, { alias?: string; label?: string; name?: string }>;
 }
 
 interface OpenClawAgentEntry {
@@ -46,6 +48,8 @@ interface OpenClawAgentEntry {
   default?: boolean;
   workspace?: string;
   identity?: OpenClawAgentIdentity;
+  model?: string | { primary?: string };
+  models?: Record<string, { alias?: string; label?: string; name?: string }>;
 }
 
 interface OpenClawAgentsConfig {
@@ -53,9 +57,23 @@ interface OpenClawAgentsConfig {
   list?: OpenClawAgentEntry[];
 }
 
+interface OpenClawProviderModelEntry {
+  id?: string;
+  name?: string;
+}
+
+interface OpenClawModelsProviderEntry {
+  models?: OpenClawProviderModelEntry[];
+}
+
+interface OpenClawModelsConfig {
+  providers?: Record<string, OpenClawModelsProviderEntry>;
+}
+
 interface OpenClawConfig {
   gateway?: OpenClawGatewayConfig;
   agents?: OpenClawAgentsConfig;
+  models?: OpenClawModelsConfig;
 }
 
 export interface OpenClawNativeAgentSummary {
@@ -64,6 +82,13 @@ export interface OpenClawNativeAgentSummary {
   workspace: string;
   avatar?: string;
   isDefault: boolean;
+}
+
+export interface OpenClawConfiguredModelSummary {
+  id: string;
+  label: string;
+  providerId?: string;
+  alias?: string;
 }
 
 /**
@@ -204,6 +229,67 @@ function resolveAgentWorkspace(config: OpenClawConfig, agentId: string): string 
   return path.join(resolveStateDir(), `workspace-${normalizedAgentId}`);
 }
 
+function getConfiguredAgentEntry(config: OpenClawConfig, agentId: string): OpenClawAgentEntry | undefined {
+  const normalizedAgentId = normalizeAgentId(agentId);
+  return getConfiguredAgentEntries(config).find((candidate) => normalizeAgentId(candidate.id) === normalizedAgentId);
+}
+
+function normalizeModelId(input: unknown): string | null {
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    return trimmed || null;
+  }
+
+  if (input && typeof input === 'object') {
+    const primary = (input as { primary?: unknown }).primary;
+    if (typeof primary === 'string') {
+      const trimmed = primary.trim();
+      return trimmed || null;
+    }
+  }
+
+  return null;
+}
+
+function getConfiguredModelAliases(
+  config: OpenClawConfig,
+  agentId: string
+): Record<string, { alias?: string; label?: string; name?: string }> {
+  const agentEntry = getConfiguredAgentEntry(config, agentId);
+  return {
+    ...config.agents?.defaults?.models,
+    ...agentEntry?.models,
+  };
+}
+
+function resolveConfiguredModelLabel(
+  modelId: string,
+  modelName: string | undefined,
+  aliasConfig: { alias?: string; label?: string; name?: string } | undefined
+): string {
+  const explicitLabel = aliasConfig?.label?.trim();
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  const alias = aliasConfig?.alias?.trim();
+  if (alias) {
+    return alias;
+  }
+
+  const configuredName = aliasConfig?.name?.trim();
+  if (configuredName) {
+    return configuredName;
+  }
+
+  const resolvedName = modelName?.trim();
+  if (resolvedName) {
+    return resolvedName;
+  }
+
+  return modelId;
+}
+
 function buildAgentDisplayName(entry: OpenClawAgentEntry | undefined, agentId: string, isDefault: boolean): string {
   const identityName = entry?.identity?.name?.trim();
   const configuredName = entry?.name?.trim();
@@ -256,6 +342,82 @@ export function listConfiguredOpenClawAgents(): OpenClawNativeAgentSummary[] {
   }
 
   return summaries;
+}
+
+export function listConfiguredOpenClawModels(agentId?: string): OpenClawConfiguredModelSummary[] {
+  const config = readOpenClawConfig();
+  if (!config) {
+    return [];
+  }
+
+  const resolvedAgentId = normalizeAgentId(agentId || resolveDefaultAgentId(config));
+  const configuredAliases = getConfiguredModelAliases(config, resolvedAgentId);
+  const agentEntry = getConfiguredAgentEntry(config, resolvedAgentId);
+  const configuredPrimaryModel =
+    normalizeModelId(agentEntry?.model) || normalizeModelId(config.agents?.defaults?.model) || null;
+
+  const dedupedModels = new Map<string, OpenClawConfiguredModelSummary>();
+  const setModel = (modelId: string, label: string, providerId?: string, alias?: string) => {
+    const trimmedId = modelId.trim();
+    if (!trimmedId) {
+      return;
+    }
+
+    const current = dedupedModels.get(trimmedId);
+    if (!current || current.label === current.id) {
+      dedupedModels.set(trimmedId, {
+        id: trimmedId,
+        label: label || trimmedId,
+        providerId,
+        alias,
+      });
+    }
+  };
+
+  Object.entries(config.models?.providers || {}).forEach(([providerId, providerConfig]) => {
+    const normalizedProviderId = providerId.trim();
+    (providerConfig.models || []).forEach((model) => {
+      const rawModelId = model.id?.trim();
+      if (!rawModelId) {
+        return;
+      }
+
+      const fullModelId = rawModelId.includes('/') ? rawModelId : `${normalizedProviderId}/${rawModelId}`;
+      const aliasConfig = configuredAliases[fullModelId];
+      setModel(
+        fullModelId,
+        resolveConfiguredModelLabel(fullModelId, model.name, aliasConfig),
+        normalizedProviderId,
+        aliasConfig?.alias?.trim() || undefined
+      );
+    });
+  });
+
+  Object.entries(configuredAliases).forEach(([modelId, aliasConfig]) => {
+    const trimmedModelId = modelId.trim();
+    if (!trimmedModelId) {
+      return;
+    }
+
+    setModel(
+      trimmedModelId,
+      resolveConfiguredModelLabel(trimmedModelId, undefined, aliasConfig),
+      trimmedModelId.includes('/') ? trimmedModelId.split('/')[0] : undefined,
+      aliasConfig.alias?.trim() || undefined
+    );
+  });
+
+  if (configuredPrimaryModel) {
+    const aliasConfig = configuredAliases[configuredPrimaryModel];
+    setModel(
+      configuredPrimaryModel,
+      resolveConfiguredModelLabel(configuredPrimaryModel, undefined, aliasConfig),
+      configuredPrimaryModel.includes('/') ? configuredPrimaryModel.split('/')[0] : undefined,
+      aliasConfig?.alias?.trim() || undefined
+    );
+  }
+
+  return Array.from(dedupedModels.values());
 }
 
 /**

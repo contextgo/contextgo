@@ -197,79 +197,33 @@ const AcpModelSelector: React.FC<{
   // 获取模型配置数据（包含健康状态）
   const { data: modelConfig } = useSWR<IProvider[]>('model.config', () => ipcBridge.mode.getModelConfig.invoke());
   const normalizeLookupValue = React.useCallback((value?: string | null) => value?.trim().toLowerCase() || '', []);
-  const getEnabledProviderModels = React.useCallback(
-    (provider: IProvider) =>
-      (Array.isArray(provider.model) ? provider.model : []).filter((model) => provider.modelEnabled?.[model] !== false),
-    []
-  );
-  const providerMatchesLookup = React.useCallback(
-    (provider: IProvider, lookup?: string | null) => {
-      const normalizedLookup = normalizeLookupValue(lookup);
-      if (!normalizedLookup) {
-        return false;
-      }
-
-      return [provider.id, provider.name, provider.platform]
-        .map((value) => normalizeLookupValue(value))
-        .filter(Boolean)
-        .some(
-          (value) => value === normalizedLookup || value.includes(normalizedLookup) || normalizedLookup.includes(value)
-        );
-    },
-    [normalizeLookupValue]
-  );
   const openclawFallbackModelInfo = React.useMemo(() => {
-    if (!isOpenClaw || !modelConfig) {
+    if (!isOpenClaw) {
       return null;
     }
 
-    const enabledProviders = modelConfig.filter((provider) => provider.enabled !== false);
     const runtime = openclawRuntime?.success ? openclawRuntime.data : undefined;
     const currentModelId =
       modelInfo?.currentModelId || runtime?.runtime.model || runtime?.expected?.expectedModel || initialModelId || null;
-    const providerHint = runtime?.runtime.modelProvider || null;
-    const normalizedCurrentModelId = normalizeLookupValue(currentModelId);
-    const resolvedProviderName = providerHint
-      ? enabledProviders.find((provider) => providerMatchesLookup(provider, providerHint))?.name || null
-      : null;
-
-    const dedupedModels = new Map<string, { id: string; label: string }>();
-    enabledProviders.forEach((provider) => {
-      getEnabledProviderModels(provider).forEach((modelId) => {
-        const key = normalizeLookupValue(modelId);
-        if (!key || dedupedModels.has(key)) {
-          return;
-        }
-        dedupedModels.set(key, { id: modelId, label: modelId });
-      });
-    });
-
-    if (currentModelId && !dedupedModels.has(normalizedCurrentModelId)) {
-      dedupedModels.set(normalizedCurrentModelId, { id: currentModelId, label: currentModelId });
-    }
-
-    const availableModels = Array.from(dedupedModels.values());
-    if (!currentModelId && availableModels.length === 0) {
+    if (!currentModelId) {
       return null;
     }
 
     return {
       source: 'models' as const,
       currentModelId,
-      currentModelLabel: currentModelId || resolvedProviderName,
-      availableModels,
-      switchSupported: true,
-      canSwitch: availableModels.some((model) => normalizeLookupValue(model.id) !== normalizedCurrentModelId),
+      currentModelLabel: currentModelId,
+      availableModels: [{ id: currentModelId, label: currentModelId }],
+      switchSupported: modelInfo?.switchSupported ?? false,
+      canSwitch: false,
     };
   }, [
-    getEnabledProviderModels,
     initialModelId,
     isOpenClaw,
-    modelConfig,
     modelInfo?.currentModelId,
+    modelInfo?.switchSupported,
     normalizeLookupValue,
     openclawRuntime,
-    providerMatchesLookup,
   ]);
   const mergeAvailableModels = React.useCallback(
     (

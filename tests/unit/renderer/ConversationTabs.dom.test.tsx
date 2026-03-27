@@ -258,9 +258,12 @@ describe('ConversationTabs', () => {
           source: 'models',
           currentModelId: 'claude-3.7-sonnet',
           currentModelLabel: 'claude-3.7-sonnet',
-          canSwitch: false,
+          canSwitch: true,
           switchSupported: true,
-          availableModels: [{ id: 'claude-3.7-sonnet', label: 'claude-3.7-sonnet' }],
+          availableModels: [
+            { id: 'claude-3.7-sonnet', label: 'claude-3.7-sonnet' },
+            { id: 'claude-3.5-haiku', label: 'claude-3.5-haiku' },
+          ],
         },
       },
     });
@@ -453,7 +456,7 @@ describe('ConversationTabs', () => {
     });
   });
 
-  it('keeps OpenClaw model selector clickable when backend returns only the current model', async () => {
+  it('keeps OpenClaw model selector clickable when backend returns configured models', async () => {
     useLayoutContextMock.mockReturnValue({ isMobile: false });
 
     const { container } = render(
