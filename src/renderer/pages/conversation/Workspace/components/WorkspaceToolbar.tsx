@@ -106,10 +106,10 @@ const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
   );
 
   return (
-    <div className='px-12px'>
+    <div className='px-12px pt-8px workspace-toolbar-shell'>
       {/* Search Input */}
       {(showSearch || searchText) && (
-        <div className='pb-8px workspace-toolbar-search'>
+        <div className='pb-10px workspace-toolbar-search'>
           <Input
             className='w-full workspace-search-input'
             ref={searchInputRef}

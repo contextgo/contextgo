@@ -5,13 +5,13 @@
  */
 
 import { OpenClawAgent, type OpenClawAgentConfig } from '@process/agent/openclaw';
+import { listConfiguredOpenClawModels } from '@process/agent/openclaw/openclawConfig';
 import type { OpenClawSessionSummary } from '@process/agent/openclaw/types';
 import { channelEventBus } from '@process/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
 import type { IConfirmation, TMessage } from '@/common/chat/chatLib';
 import { transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
-import type { IProvider } from '@/common/config/storage';
 import type { AcpModelInfo } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
 import type { AcpBackendAll } from '@/common/types/acpTypes';
@@ -19,7 +19,6 @@ import { createHash } from 'node:crypto';
 import { getDatabase } from '@process/services/database';
 import { addMessage, addOrUpdateMessage } from '@process/utils/message';
 import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
-import { ProcessConfig } from '@process/utils/initStorage';
 import BaseAgentManager from '@process/task/BaseAgentManager';
 import { IpcAgentEventEmitter } from '@process/task/IpcAgentEventEmitter';
 
@@ -97,68 +96,48 @@ const shouldPersistOpenClawStreamMessage = (message: IResponseMessage): boolean 
   return !OPENCLAW_CONNECTION_ERROR_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 };
 
-const getEnabledProviderModels = (provider: IProvider): string[] => {
-  const models = Array.isArray(provider.model) ? provider.model : [];
-  return models.filter((modelId) => provider.modelEnabled?.[modelId] !== false);
-};
-
-const providerMatchesLookup = (provider: IProvider, lookup: string): boolean => {
-  if (!lookup) {
-    return false;
-  }
-
-  const fields = [provider.id, provider.name, provider.platform]
-    .map((value) => normalizeLookupValue(value))
-    .filter(Boolean);
-  return fields.some((field) => field === lookup || field.includes(lookup) || lookup.includes(field));
-};
-
 const buildOpenClawModelInfo = ({
-  providers,
+  availableModels,
   currentModel,
   providerHint,
   switchSupported,
 }: {
-  providers: IProvider[];
+  availableModels: Array<{ id: string; label: string }>;
   currentModel: string | null;
   providerHint: string | null;
   switchSupported: boolean;
 }): AcpModelInfo | null => {
-  const enabledProviders = providers.filter((provider) => provider.enabled !== false);
   const normalizedCurrentModel = normalizeLookupValue(currentModel);
-  const normalizedProviderHint = normalizeLookupValue(providerHint);
-
+  const normalizedProviderHint = normalizeLookupValue(providerHint) || null;
   const dedupedModels = new Map<string, { id: string; label: string }>();
-  enabledProviders.forEach((provider) => {
-    getEnabledProviderModels(provider).forEach((modelId) => {
-      const key = normalizeLookupValue(modelId);
-      if (!key || dedupedModels.has(key)) {
-        return;
-      }
-      dedupedModels.set(key, { id: modelId, label: modelId });
-    });
+
+  availableModels.forEach((model) => {
+    const key = normalizeLookupValue(model.id);
+    if (!key || dedupedModels.has(key)) {
+      return;
+    }
+    dedupedModels.set(key, model);
   });
 
   if (currentModel && !dedupedModels.has(normalizedCurrentModel)) {
     dedupedModels.set(normalizedCurrentModel, { id: currentModel, label: currentModel });
   }
 
-  const availableModels = Array.from(dedupedModels.values());
-  if (!currentModel && availableModels.length === 0) {
+  const resolvedModels = Array.from(dedupedModels.values());
+  if (!currentModel && resolvedModels.length === 0) {
     return null;
   }
+
+  const resolvedCurrentModel =
+    resolvedModels.find((model) => normalizeLookupValue(model.id) === normalizedCurrentModel) || null;
 
   return {
     source: 'models',
     currentModelId: currentModel,
-    currentModelLabel:
-      currentModel ||
-      (normalizedProviderHint
-        ? enabledProviders.find((provider) => providerMatchesLookup(provider, normalizedProviderHint))?.name || null
-        : null),
-    availableModels,
+    currentModelLabel: resolvedCurrentModel?.label || currentModel || normalizedProviderHint,
+    availableModels: resolvedModels,
     canSwitch:
-      switchSupported && availableModels.some((model) => normalizeLookupValue(model.id) !== normalizedCurrentModel),
+      switchSupported && resolvedModels.some((model) => normalizeLookupValue(model.id) !== normalizedCurrentModel),
     switchSupported,
   };
 };
@@ -728,14 +707,13 @@ class OpenClawAgentManager extends BaseAgentManager<OpenClawAgentManagerData> {
     const sessionSummaryPromise: Promise<OpenClawSessionSummary | null> =
       this.agent?.getCurrentSessionSummary?.().catch((): OpenClawSessionSummary | null => null) ??
       Promise.resolve(null);
-
-    const [providers, sessionSummary] = await Promise.all([
-      ProcessConfig.get('model.config').catch((): IProvider[] => []),
+    const [configuredModels, sessionSummary] = await Promise.all([
+      Promise.resolve(listConfiguredOpenClawModels(this.options.openclawAgentId)),
       sessionSummaryPromise,
     ]);
 
     return buildOpenClawModelInfo({
-      providers: Array.isArray(providers) ? providers : [],
+      availableModels: configuredModels,
       currentModel: sessionSummary?.model ?? preferredModelId ?? null,
       providerHint: sessionSummary?.modelProvider ?? null,
       switchSupported: this.agent?.isModelSwitchSupported ?? true,
