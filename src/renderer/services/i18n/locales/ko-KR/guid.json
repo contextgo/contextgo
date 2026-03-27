@@ -11,6 +11,9 @@
     "filters": {
       "all": "전체"
     },
+    "openclawAgents": {
+      "all": "모든 Agent"
+    },
     "refresh": "새로고침",
     "loading": "외부 Session 을 스캔하는 중...",
     "updatedAt": "{{time}}에 업데이트됨",

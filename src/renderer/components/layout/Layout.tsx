@@ -6,11 +6,9 @@
 
 import { ipcBridge } from '@/common';
 import { ConfigStorage, type ICssTheme } from '@/common/config/storage';
-import appLogo from '@renderer/assets/logos/brand/app.png';
 import PwaPullToRefresh from '@/renderer/components/layout/PwaPullToRefresh';
 import Titlebar from '@/renderer/components/layout/Titlebar';
 import { Layout as ArcoLayout } from '@arco-design/web-react';
-import { MenuFold, MenuUnfold } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -25,36 +23,6 @@ import { useConversationShortcuts } from '@renderer/hooks/ui/useConversationShor
 import { isElectronDesktop } from '@renderer/utils/platform';
 import { computeCssSyncDecision, resolveCssByActiveTheme } from '@renderer/utils/theme/themeCssSync';
 import '@renderer/styles/layout.css';
-
-const useDebug = () => {
-  const [count, setCount] = useState(0);
-  const timer = useRef<any>(null);
-  const onClick = () => {
-    const open = () => {
-      ipcBridge.application.openDevTools.invoke().catch((error) => {
-        console.error('Failed to open dev tools:', error);
-      });
-      setCount(0);
-    };
-    if (count >= 3) {
-      return open();
-    }
-    setCount((prev) => {
-      if (prev >= 2) {
-        open();
-        return 0;
-      }
-      return prev + 1;
-    });
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      clearTimeout(timer.current);
-      setCount(0);
-    }, 1000);
-  };
-
-  return { onClick };
-};
 
 const UpdateModal = React.lazy(() => import('@/renderer/components/settings/UpdateModal'));
 
@@ -89,7 +57,6 @@ const Layout: React.FC<{
   );
   const [customCss, setCustomCss] = useState<string>('');
   const [shouldMountUpdateModal, setShouldMountUpdateModal] = useState(false);
-  const { onClick } = useDebug();
   const { contextHolder: multiAgentContextHolder } = useMultiAgentDetection();
   const { contextHolder: directorySelectionContextHolder } = useDirectorySelection();
   useDeepLink();
@@ -97,7 +64,9 @@ const Layout: React.FC<{
   const navigate = useNavigate();
   useConversationShortcuts({ navigate });
   const location = useLocation();
-  const workspaceAvailable = location.pathname.startsWith('/conversation/');
+  const isSettingsRoute = location.pathname.startsWith('/settings');
+  const isConversationDetailRoute = location.pathname.startsWith('/conversation/');
+  const workspaceAvailable = isConversationDetailRoute;
   const collapsedRef = useRef(collapsed);
   const lastCssRef = useRef('');
   const lastUiCssUpdateAtRef = useRef(0);
@@ -257,6 +226,14 @@ const Layout: React.FC<{
     setCollapsed(true);
   }, [isMobile]);
 
+  useEffect(() => {
+    if (isMobile || !isSettingsRoute || !collapsedRef.current) {
+      return;
+    }
+
+    setCollapsed(false);
+  }, [isMobile, isSettingsRoute]);
+
   // 清理侧栏 Tooltip 残留节点，避免移动端路由切换后浮层卡在左上角
   useEffect(() => {
     cleanupSiderTooltips();
@@ -341,13 +318,28 @@ const Layout: React.FC<{
         Math.min(MOBILE_SIDER_MAX_WIDTH, Math.round(viewportWidth * MOBILE_SIDER_WIDTH_RATIO))
       )
     : DEFAULT_SIDER_WIDTH;
+  const desktopExpandedSiderWidth = siderWidth;
+  const desktopCollapsedSiderWidth = 0;
+  const leftOffset = isMobile ? 0 : (collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth) + 16;
+  const appShellStyle = {
+    '--app-left-offset': `${leftOffset}px`,
+  } as React.CSSProperties;
   useEffect(() => {
     collapsedRef.current = collapsed;
   }, [collapsed]);
   return (
-    <LayoutContext.Provider value={{ isMobile, siderCollapsed: collapsed, setSiderCollapsed: setCollapsed }}>
-      <div className='app-shell flex flex-col size-full min-h-0'>
-        <Titlebar workspaceAvailable={workspaceAvailable} />
+    <LayoutContext.Provider
+      value={{
+        isMobile,
+        siderCollapsed: collapsed,
+        setSiderCollapsed: setCollapsed,
+      }}
+    >
+      <div className='app-shell flex flex-col size-full min-h-0' style={appShellStyle}>
+        <Titlebar
+          workspaceAvailable={workspaceAvailable}
+          leftPaneWidth={collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth}
+        />
         {/* 移动端左侧边栏蒙板 / Mobile left sider backdrop */}
         {isMobile && !collapsed && (
           <div className='fixed inset-0 bg-black/30 z-90' onClick={() => setCollapsed(true)} aria-hidden='true' />
@@ -355,9 +347,9 @@ const Layout: React.FC<{
 
         <ArcoLayout className={'size-full layout flex-1 min-h-0'}>
           <ArcoLayout.Sider
-            collapsedWidth={isMobile ? 0 : 64}
+            collapsedWidth={isMobile ? 0 : desktopCollapsedSiderWidth}
             collapsed={collapsed}
-            width={siderWidth}
+            width={desktopExpandedSiderWidth}
             className={classNames('!bg-2 layout-sider', {
               collapsed: collapsed,
             })}
@@ -374,71 +366,20 @@ const Layout: React.FC<{
                 : undefined
             }
           >
-            <ArcoLayout.Header
-              className={classNames(
-                'flex items-center justify-start py-10px px-16px pl-20px gap-12px layout-sider-header',
-                isMobile && 'layout-sider-header--mobile',
-                {
-                  'cursor-pointer group ': collapsed,
-                }
-              )}
-            >
-              <div
-                className={classNames(
-                  'shrink-0 size-40px relative rd-12px overflow-hidden bg-fill-2 flex items-center justify-center border border-solid border-[var(--color-border-2)] p-4px',
-                  {
-                    '!size-24px !rd-8px !p-2px': collapsed,
-                  }
-                )}
-                role='button'
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onClick();
-                  }
-                }}
-                aria-label='Open developer tools'
-                onClick={onClick}
-              >
-                <img
-                  src={appLogo}
-                  alt='ContextGo'
-                  className={classNames('size-full object-cover rd-8px select-none pointer-events-none', {
-                    '!rd-6px': collapsed,
-                  })}
-                  draggable={false}
-                />
+            <ArcoLayout.Content className='layout-sider-content !flex !flex-1 !min-h-0 p-8px'>
+              <div className='flex h-full min-h-0 min-w-0 w-full flex-1'>
+                <div className='min-h-0 min-w-0 flex-1 w-full'>
+                  {React.isValidElement(sider)
+                    ? React.cloneElement(sider, {
+                        onSessionClick: () => {
+                          cleanupSiderTooltips();
+                          if (isMobile) setCollapsed(true);
+                        },
+                        collapsed,
+                      } as any)
+                    : sider}
+                </div>
               </div>
-              <div className='flex-1 text-20px text-1 collapsed-hidden font-bold'>ContextGo</div>
-              {isMobile && !collapsed && (
-                <button
-                  type='button'
-                  className='app-titlebar__button'
-                  onClick={() => setCollapsed(true)}
-                  aria-label='Collapse sidebar'
-                >
-                  {collapsed ? (
-                    <MenuUnfold theme='outline' size='18' fill='currentColor' />
-                  ) : (
-                    <MenuFold theme='outline' size='18' fill='currentColor' />
-                  )}
-                </button>
-              )}
-              {/* 侧栏折叠改由标题栏统一控制 / Sidebar folding handled by Titlebar toggle */}
-            </ArcoLayout.Header>
-            <ArcoLayout.Content
-              className={classNames('p-8px layout-sider-content', !isMobile && 'h-[calc(100%-72px-16px)]')}
-            >
-              {React.isValidElement(sider)
-                ? React.cloneElement(sider, {
-                    onSessionClick: () => {
-                      cleanupSiderTooltips();
-                      if (isMobile) setCollapsed(true);
-                    },
-                    collapsed,
-                  } as any)
-                : sider}
             </ArcoLayout.Content>
           </ArcoLayout.Sider>
 

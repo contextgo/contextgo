@@ -528,6 +528,13 @@ export const codexConversation = {
 export const openclawConversation = {
   sendMessage: conversation.sendMessage,
   responseStream: bridge.buildEmitter<IResponseMessage>('openclaw.response.stream'),
+  getModelInfo: bridge.buildProvider<IBridgeResponse<{ modelInfo: AcpModelInfo | null }>, { conversation_id: string }>(
+    'openclaw.get-model-info'
+  ),
+  setModel: bridge.buildProvider<
+    IBridgeResponse<{ modelInfo: AcpModelInfo | null }>,
+    { conversation_id: string; modelId: string }
+  >('openclaw.set-model'),
   getRuntime: bridge.buildProvider<
     IBridgeResponse<{
       conversationId: string;
@@ -537,6 +544,7 @@ export const openclawConversation = {
         agentName?: string;
         openclawAgentId?: string;
         cliPath?: string;
+        modelProvider?: string | null;
         model?: string;
         sessionKey?: string | null;
         isConnected?: boolean;
@@ -630,7 +638,9 @@ export const windowControls = {
   unmaximize: bridge.buildProvider<void, void>('window-controls:unmaximize'),
   close: bridge.buildProvider<void, void>('window-controls:close'),
   isMaximized: bridge.buildProvider<boolean, void>('window-controls:is-maximized'),
+  isFullScreen: bridge.buildProvider<boolean, void>('window-controls:is-full-screen'),
   maximizedChanged: bridge.buildEmitter<{ isMaximized: boolean }>('window-controls:maximized-changed'),
+  fullScreenChanged: bridge.buildEmitter<{ isFullScreen: boolean }>('window-controls:full-screen-changed'),
 };
 
 // 系统设置接口 / System settings API

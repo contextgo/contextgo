@@ -13,7 +13,7 @@ import type { ICodexMessageEmitter } from '@process/agent/codex/messaging/CodexM
 import { channelEventBus } from '@process/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
 import type { CronMessageMeta, IConfirmation, TMessage } from '@/common/chat/chatLib';
-import { transformMessage } from '@/common/chat/chatLib';
+import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import type { CodexAgentManagerData } from '@/common/types/codex/types';
 import { DEFAULT_CODEX_MODELS, DEFAULT_CODEX_MODEL_ID } from '@/common/types/codex/codexModels';
 import type { AcpModelInfo } from '@/common/types/acpTypes';
@@ -632,7 +632,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     // Backend handles persistence if needed
     if (persist) {
       const tMessage = transformMessage(message);
-      if (tMessage) {
+      if (tMessage && !shouldSuppressAgentLifecycleStreamMessage(message)) {
         // These message types go through composeMessage/addOrUpdateMessage for merging:
         // - agent_status: uses fixed globalStatusMessageId (from CodexSessionManager) to merge with last status
         // - codex_tool_call: has dedicated merge logic that searches by toolCallId

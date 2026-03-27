@@ -1,4 +1,5 @@
-.conversation-search-modal {
+.conversation-search-modal,
+.conversation-search-page {
   --conversation-search-mask-bg: rgba(15, 23, 42, 0.1);
   --conversation-search-panel-bg: rgba(255, 255, 255, 0.72);
   --conversation-search-panel-inner-bg: rgba(255, 255, 255, 0.82);
@@ -15,7 +16,9 @@
 }
 
 [data-theme='dark'] .conversation-search-modal,
-body[arco-theme='dark'] .conversation-search-modal {
+[data-theme='dark'] .conversation-search-page,
+body[arco-theme='dark'] .conversation-search-modal,
+body[arco-theme='dark'] .conversation-search-page {
   --conversation-search-mask-bg: color-mix(in srgb, var(--color-bg-5) 58%, transparent);
   --conversation-search-panel-bg: color-mix(in srgb, var(--color-bg-2) 76%, transparent);
   --conversation-search-panel-inner-bg: color-mix(in srgb, var(--color-bg-3) 82%, transparent);
@@ -61,6 +64,17 @@ body[arco-theme='dark'] .conversation-search-modal {
   overflow: hidden !important;
 }
 
+.conversation-search-page__shell {
+  height: 100%;
+  border: 1px solid color-mix(in srgb, var(--conversation-search-panel-border) 84%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--color-bg-1) 94%, transparent);
+  box-shadow: none;
+  outline: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .conversation-search-modal .aionui-modal-body-content {
   padding: 0 !important;
 }
@@ -72,6 +86,14 @@ body[arco-theme='dark'] .conversation-search-modal {
   border: none;
   box-shadow: none;
   padding: 24px 24px 22px;
+}
+
+.conversation-search-page .conversation-search-modal__panel {
+  height: 100%;
+  background: transparent !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 20px 20px 18px;
 }
 
 .conversation-search-modal__header {

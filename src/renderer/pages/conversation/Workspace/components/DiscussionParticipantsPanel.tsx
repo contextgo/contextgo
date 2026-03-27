@@ -47,7 +47,8 @@ const resolveAvatarImageSrc = (avatar: string | undefined): string | null => {
 
   const resolvedAvatar = resolveExtensionAssetUrl(value) || value;
   const isImageLike =
-    /\.(svg|png|jpe?g|webp|gif)$/i.test(resolvedAvatar) || /^(https?:|aion-asset:\/\/|file:\/\/|data:)/i.test(resolvedAvatar);
+    /\.(svg|png|jpe?g|webp|gif)$/i.test(resolvedAvatar) ||
+    /^(https?:|aion-asset:\/\/|file:\/\/|data:)/i.test(resolvedAvatar);
   return isImageLike ? resolvedAvatar : null;
 };
 
@@ -59,7 +60,9 @@ const getParticipantFallbackText = (participant: DiscussionGroupParticipant): st
   return participant.name.slice(0, 1).toUpperCase();
 };
 
-const resolveParticipantVisual = (participant: DiscussionGroupParticipant): { imageSrc: string | null; fallbackText: string } => {
+const resolveParticipantVisual = (
+  participant: DiscussionGroupParticipant
+): { imageSrc: string | null; fallbackText: string } => {
   const avatarImageSrc = resolveAvatarImageSrc(participant.avatar);
   if (avatarImageSrc) {
     return {
@@ -68,7 +71,8 @@ const resolveParticipantVisual = (participant: DiscussionGroupParticipant): { im
     };
   }
 
-  const cliAgentBackend = participant.participantType === 'cli-agent' ? getCliAgentBackend(participant.participantKey) : null;
+  const cliAgentBackend =
+    participant.participantType === 'cli-agent' ? getCliAgentBackend(participant.participantKey) : null;
   const agentLogo = cliAgentBackend ? getAgentLogo(cliAgentBackend) : null;
   if (agentLogo) {
     return {
@@ -83,10 +87,7 @@ const resolveParticipantVisual = (participant: DiscussionGroupParticipant): { im
   };
 };
 
-const getParticipantMetaLabel = (
-  participant: DiscussionGroupParticipant,
-  participantTypeLabel: string
-): string => {
+const getParticipantMetaLabel = (participant: DiscussionGroupParticipant, participantTypeLabel: string): string => {
   if (participant.participantType === 'cli-agent') {
     return getCliAgentBackend(participant.participantKey)?.toUpperCase() || participant.participantKey;
   }
@@ -126,9 +127,7 @@ const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = 
               key={participant.id}
               className='flex items-center gap-12px rounded-16px border border-border-2 bg-[var(--color-fill-1)] px-12px py-12px'
             >
-              <div
-                className='flex h-38px w-38px shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-2 bg-[linear-gradient(180deg,var(--color-bg-2),var(--color-fill-2))]'
-              >
+              <div className='flex h-38px w-38px shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-2 bg-[linear-gradient(180deg,var(--color-bg-2),var(--color-fill-2))]'>
                 {imageSrc ? (
                   <img src={imageSrc} alt={participant.name} className='block h-24px w-24px object-contain' />
                 ) : (

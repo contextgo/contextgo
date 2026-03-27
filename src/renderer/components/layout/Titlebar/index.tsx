@@ -1,6 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { ArrowCircleLeft, ExpandLeft, ExpandRight, MenuFold, MenuUnfold, Plus } from '@icon-park/react';
+import {
+  ArrowCircleLeft,
+  ExpandLeft,
+  ExpandRight,
+  Left,
+  MenuFold,
+  MenuUnfold,
+  Plus,
+  Right,
+  Robot,
+} from '@icon-park/react';
+import { Dropdown, Menu } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -10,29 +21,25 @@ import { WORKSPACE_STATE_EVENT, dispatchWorkspaceToggleEvent } from '@renderer/u
 import type { WorkspaceStateDetail } from '@renderer/utils/workspace/workspaceEvents';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { isElectronDesktop, isMacOS } from '@/renderer/utils/platform';
+import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
+import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
+import CreateDiscussionGroupModal from '@renderer/pages/conversation/platforms/group/CreateDiscussionGroupModal';
+import { emitter } from '@renderer/utils/emitter';
+import { iconColors } from '@renderer/styles/colors';
 import './titlebar.css';
 
 interface TitlebarProps {
   workspaceAvailable: boolean;
+  leftPaneWidth: number;
 }
 
-const AionLogoMark: React.FC = () => (
-  <svg className='app-titlebar__brand-logo' viewBox='0 0 80 80' fill='none' aria-hidden='true' focusable='false'>
-    <path
-      d='M40 20 Q38 22 25 40 Q23 42 26 42 L30 42 Q32 40 40 30 Q48 40 50 42 L54 42 Q57 42 55 40 Q42 22 40 20'
-      fill='currentColor'
-    ></path>
-    <circle cx='40' cy='46' r='3' fill='currentColor'></circle>
-    <path d='M18 50 Q40 70 62 50' stroke='currentColor' strokeWidth='3.5' fill='none' strokeLinecap='round'></path>
-  </svg>
-);
-
-const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
+const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }) => {
   const { t } = useTranslation();
-  const appTitle = useMemo(() => 'ContextGo', []);
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
-  const [mobileCenterTitle, setMobileCenterTitle] = useState(appTitle);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [mobileCenterTitle, setMobileCenterTitle] = useState('');
   const [mobileCenterOffset, setMobileCenterOffset] = useState(0);
+  const [groupModalVisible, setGroupModalVisible] = useState(false);
   const layout = useLayoutContext();
   const location = useLocation();
   const navigate = useNavigate();
@@ -40,6 +47,10 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const lastNonSettingsPathRef = useRef('/guid');
+  const isDesktopRuntime = isElectronDesktop();
+  const isMacRuntime = isDesktopRuntime && isMacOS();
+  const { cliAgents, presetAssistants } = useConversationAgents();
+  const { activeTab, openTab } = useConversationTabs();
 
   // 监听工作空间折叠状态，保持按钮图标一致 / Sync workspace collapsed state for toggle button
   useEffect(() => {
@@ -58,8 +69,39 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
     };
   }, []);
 
-  const isDesktopRuntime = isElectronDesktop();
-  const isMacRuntime = isDesktopRuntime && isMacOS();
+  useEffect(() => {
+    if (!isDesktopRuntime) {
+      setIsFullScreen(false);
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    ipcBridge.windowControls.isFullScreen
+      .invoke()
+      .then((state) => {
+        if (isMounted) {
+          setIsFullScreen(state);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIsFullScreen(false);
+        }
+      });
+
+    const unsubscribe = ipcBridge.windowControls.fullScreenChanged.on(({ isFullScreen }) => {
+      if (isMounted) {
+        setIsFullScreen(isFullScreen);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [isDesktopRuntime]);
+
   // Windows/Linux 显示自定义窗口按钮；macOS 在标题栏给工作区一个切换入口
   const showWindowControls = isDesktopRuntime && !isMacRuntime;
   // WebUI 和 macOS 桌面都需要在标题栏放工作区开关
@@ -68,7 +110,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const workspaceTooltip = workspaceCollapsed
     ? t('common.expandMore', { defaultValue: 'Expand workspace' })
     : t('common.collapse', { defaultValue: 'Collapse workspace' });
-  const newConversationTooltip = t('conversation.workspace.createNewConversation');
+  const newEntryTooltip = t('conversation.entry.create');
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const iconSize = layout?.isMobile ? 24 : 18;
@@ -92,8 +134,20 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
     dispatchWorkspaceToggleEvent();
   };
 
+  const handleNavigateBack = () => {
+    void navigate(-1);
+  };
+
+  const handleNavigateForward = () => {
+    void navigate(1);
+  };
+
   const handleCreateConversation = () => {
     void navigate('/guid');
+  };
+
+  const handleCreateDiscussionGroup = () => {
+    setGroupModalVisible(true);
   };
 
   const handleBackToChat = () => {
@@ -128,14 +182,14 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
 
   useEffect(() => {
     if (!layout?.isMobile) {
-      setMobileCenterTitle(appTitle);
+      setMobileCenterTitle('');
       return;
     }
 
     const match = location.pathname.match(/^\/conversation\/([^/]+)/);
     const conversationId = match?.[1];
     if (!conversationId) {
-      setMobileCenterTitle(appTitle);
+      setMobileCenterTitle('');
       return;
     }
 
@@ -144,17 +198,17 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
       .invoke({ id: conversationId })
       .then((conversation) => {
         if (cancelled) return;
-        setMobileCenterTitle(conversation?.name || appTitle);
+        setMobileCenterTitle(conversation?.name || '');
       })
       .catch(() => {
         if (cancelled) return;
-        setMobileCenterTitle(appTitle);
+        setMobileCenterTitle('');
       });
 
     return () => {
       cancelled = true;
     };
-  }, [appTitle, layout?.isMobile, location.pathname]);
+  }, [layout?.isMobile, location.pathname]);
 
   useEffect(() => {
     if (!layout?.isMobile) {
@@ -189,95 +243,212 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
       } as React.CSSProperties)
     : undefined;
 
-  const menuStyle: React.CSSProperties = useMemo(() => {
-    if (!isMacRuntime || !showSiderToggle) return {};
+  const desktopLeftSectionStyle: React.CSSProperties = useMemo(() => {
+    if (layout?.isMobile) {
+      return {};
+    }
 
-    const marginLeft = layout?.isMobile ? '0px' : layout?.siderCollapsed ? '60px' : '210px';
+    const reserveMacTrafficLights = isMacRuntime && !isFullScreen;
+    const minimumWidth = reserveMacTrafficLights ? 120 : 56;
+    const effectiveWidth = Math.max(leftPaneWidth, minimumWidth);
+
     return {
-      marginLeft,
-      transition: 'margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+      width: `${effectiveWidth}px`,
+      minWidth: `${effectiveWidth}px`,
+      paddingLeft: reserveMacTrafficLights ? '72px' : '8px',
+      paddingRight: '8px',
     };
-  }, [isMacRuntime, showSiderToggle, layout?.isMobile, layout?.siderCollapsed]);
+  }, [isFullScreen, isMacRuntime, layout?.isMobile, leftPaneWidth]);
+
+  if (!layout?.isMobile) {
+    return (
+      <div
+        className={classNames('app-titlebar bg-2 border-b border-[var(--border-base)]', {
+          'app-titlebar--desktop': isDesktopRuntime,
+          'app-titlebar--mac': isMacRuntime,
+        })}
+      >
+        <div className='app-titlebar__desktop-left' style={desktopLeftSectionStyle}>
+          {showSiderToggle && (
+            <button
+              type='button'
+              className='app-titlebar__button'
+              onClick={handleSiderToggle}
+              aria-label={siderTooltip}
+            >
+              {layout.siderCollapsed ? (
+                <MenuUnfold theme='outline' size={iconSize} fill='currentColor' />
+              ) : (
+                <MenuFold theme='outline' size={iconSize} fill='currentColor' />
+              )}
+            </button>
+          )}
+          <button
+            type='button'
+            className='app-titlebar__button'
+            onClick={handleNavigateBack}
+            aria-label={t('common.goBack')}
+          >
+            <Left theme='outline' size={iconSize} fill='currentColor' />
+          </button>
+          <button
+            type='button'
+            className='app-titlebar__button'
+            onClick={handleNavigateForward}
+            aria-label={t('common.forward')}
+          >
+            <Right theme='outline' size={iconSize} fill='currentColor' />
+          </button>
+        </div>
+        <div className='app-titlebar__desktop-right'>
+          <div
+            className={classNames(
+              'app-titlebar__desktop-content',
+              workspaceAvailable && 'app-titlebar__desktop-content--conversation'
+            )}
+          >
+            <div id='app-titlebar-chat-slot' className='h-full min-w-0' />
+          </div>
+          {(showWorkspaceButton || showWindowControls) && (
+            <div ref={toolbarRef} className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
+              <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />
+              {showWorkspaceButton && (
+                <button
+                  type='button'
+                  className='app-titlebar__button'
+                  onClick={handleWorkspaceToggle}
+                  aria-label={workspaceTooltip}
+                >
+                  {workspaceCollapsed ? (
+                    <ExpandRight theme='outline' size={iconSize} fill='currentColor' />
+                  ) : (
+                    <ExpandLeft theme='outline' size={iconSize} fill='currentColor' />
+                  )}
+                </button>
+              )}
+              {showWindowControls && <WindowControls />}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const activeWorkspace = activeTab?.workspace || '';
+  const createEntryMenu = (
+    <Menu
+      onClickMenuItem={(key) => {
+        if (key === 'conversation') {
+          handleCreateConversation();
+          return;
+        }
+
+        if (key === 'group') {
+          handleCreateDiscussionGroup();
+        }
+      }}
+    >
+      <Menu.Item key='conversation'>
+        <div className='flex items-center gap-8px'>
+          <Plus theme='outline' size={16} fill={iconColors.primary} />
+          <span>{t('conversation.welcome.newConversation')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='group'>
+        <div className='flex items-center gap-8px'>
+          <Robot theme='outline' size={16} fill={iconColors.primary} />
+          <span>{t('conversation.group.createEntry')}</span>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
 
   return (
-    <div
-      ref={containerRef}
-      style={mobileCenterStyle}
-      className={classNames('flex items-center gap-8px app-titlebar bg-2 border-b border-[var(--border-base)]', {
-        'app-titlebar--mobile': layout?.isMobile,
-        'app-titlebar--mobile-conversation': layout?.isMobile && workspaceAvailable,
-        'app-titlebar--desktop': isDesktopRuntime,
-        'app-titlebar--mac': isMacRuntime,
-      })}
-    >
-      <div ref={menuRef} className='app-titlebar__menu' style={menuStyle}>
-        {showBackToChatButton && (
-          <button
-            type='button'
-            className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-            onClick={handleBackToChat}
-            aria-label={backToChatTooltip}
-          >
-            <ArrowCircleLeft theme='outline' size={iconSize} fill='currentColor' />
-          </button>
-        )}
-        {showSiderToggle && (
-          <button
-            type='button'
-            className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-            onClick={handleSiderToggle}
-            aria-label={siderTooltip}
-          >
-            {layout?.siderCollapsed ? (
-              <MenuUnfold theme='outline' size={iconSize} fill='currentColor' />
-            ) : (
-              <MenuFold theme='outline' size={iconSize} fill='currentColor' />
-            )}
-          </button>
-        )}
-      </div>
+    <>
       <div
-        className='app-titlebar__brand'
-        aria-label={layout?.isMobile ? mobileCenterTitle : appTitle}
-        title={layout?.isMobile ? mobileCenterTitle : appTitle}
+        ref={containerRef}
+        style={mobileCenterStyle}
+        className={classNames('flex items-center gap-8px app-titlebar bg-2 border-b border-[var(--border-base)]', {
+          'app-titlebar--mobile': layout?.isMobile,
+          'app-titlebar--mobile-conversation': layout?.isMobile && workspaceAvailable,
+          'app-titlebar--desktop': isDesktopRuntime,
+          'app-titlebar--mac': isMacRuntime,
+        })}
       >
-        {layout?.isMobile ? (
-          <span className='app-titlebar__brand-mobile'>
-            <AionLogoMark />
+        <div ref={menuRef} className='app-titlebar__menu'>
+          {showBackToChatButton && (
+            <button
+              type='button'
+              className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+              onClick={handleBackToChat}
+              aria-label={backToChatTooltip}
+            >
+              <ArrowCircleLeft theme='outline' size={iconSize} fill='currentColor' />
+            </button>
+          )}
+          {showSiderToggle && (
+            <button
+              type='button'
+              className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+              onClick={handleSiderToggle}
+              aria-label={siderTooltip}
+            >
+              {layout?.siderCollapsed ? (
+                <MenuUnfold theme='outline' size={iconSize} fill='currentColor' />
+              ) : (
+                <MenuFold theme='outline' size={iconSize} fill='currentColor' />
+              )}
+            </button>
+          )}
+        </div>
+        <div className='app-titlebar__brand' aria-label={mobileCenterTitle} title={mobileCenterTitle}>
+          {layout?.isMobile && mobileCenterTitle ? (
             <span className='app-titlebar__brand-text'>{mobileCenterTitle}</span>
-          </span>
-        ) : (
-          appTitle
-        )}
+          ) : null}
+        </div>
+        <div ref={toolbarRef} className='app-titlebar__toolbar'>
+          {showNewConversationButton && (
+            <Dropdown droplist={createEntryMenu} trigger='click' position='bl'>
+              <button
+                type='button'
+                className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+                aria-label={newEntryTooltip}
+              >
+                <Plus theme='outline' size={iconSize} fill='currentColor' />
+              </button>
+            </Dropdown>
+          )}
+          {showWorkspaceButton && (
+            <button
+              type='button'
+              className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+              onClick={handleWorkspaceToggle}
+              aria-label={workspaceTooltip}
+            >
+              {workspaceCollapsed ? (
+                <ExpandRight theme='outline' size={iconSize} fill='currentColor' />
+              ) : (
+                <ExpandLeft theme='outline' size={iconSize} fill='currentColor' />
+              )}
+            </button>
+          )}
+          {showWindowControls && <WindowControls />}
+        </div>
       </div>
-      <div ref={toolbarRef} className='app-titlebar__toolbar'>
-        {showNewConversationButton && (
-          <button
-            type='button'
-            className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-            onClick={handleCreateConversation}
-            aria-label={newConversationTooltip}
-          >
-            <Plus theme='outline' size={iconSize} fill='currentColor' />
-          </button>
-        )}
-        {showWorkspaceButton && (
-          <button
-            type='button'
-            className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-            onClick={handleWorkspaceToggle}
-            aria-label={workspaceTooltip}
-          >
-            {workspaceCollapsed ? (
-              <ExpandRight theme='outline' size={iconSize} fill='currentColor' />
-            ) : (
-              <ExpandLeft theme='outline' size={iconSize} fill='currentColor' />
-            )}
-          </button>
-        )}
-        {showWindowControls && <WindowControls />}
-      </div>
-    </div>
+      <CreateDiscussionGroupModal
+        visible={groupModalVisible}
+        workspace={activeWorkspace}
+        cliAgents={cliAgents}
+        presetAssistants={presetAssistants}
+        onCancel={() => setGroupModalVisible(false)}
+        onCreated={(conversation) => {
+          setGroupModalVisible(false);
+          openTab(conversation);
+          void navigate(`/conversation/${conversation.id}`);
+          emitter.emit('chat.history.refresh');
+        }}
+      />
+    </>
   );
 };
 

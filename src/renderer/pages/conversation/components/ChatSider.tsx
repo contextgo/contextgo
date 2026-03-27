@@ -54,6 +54,16 @@ const ChatSider: React.FC<{
         messageApi={messageApi}
       ></ChatWorkspace>
     );
+  } else if (conversation?.type === 'openclaw-gateway' && conversation.extra?.workspace) {
+    workspaceNode = (
+      <ChatWorkspace
+        conversation_id={conversation.id}
+        workspace={conversation.extra.workspace}
+        conversation={conversation}
+        eventPrefix='openclaw-gateway'
+        messageApi={messageApi}
+      ></ChatWorkspace>
+    );
   }
 
   if (!workspaceNode) {

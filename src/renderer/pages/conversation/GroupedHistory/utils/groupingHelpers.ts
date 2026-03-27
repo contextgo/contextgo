@@ -9,7 +9,13 @@ import { getActivityTime, getTimelineLabel } from '@/renderer/utils/chat/timelin
 import { getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
 import { getWorkspaceUpdateTime } from '@/renderer/utils/workspace/workspaceHistory';
 
-import type { DiscussionChildConversationMap, GroupedHistoryResult, TimelineItem, TimelineSection, WorkspaceGroup } from '../types';
+import type {
+  DiscussionChildConversationMap,
+  GroupedHistoryResult,
+  TimelineItem,
+  TimelineSection,
+  WorkspaceGroup,
+} from '../types';
 import { getConversationSortOrder } from './sortOrderHelpers';
 
 export const getConversationTimelineLabel = (conversation: TChatConversation, t: (key: string) => string): string => {
@@ -63,6 +69,20 @@ export const groupConversationsByTimelineAndWorkspace = (
 
   const workspaceGroupsByTimeline = new Map<string, WorkspaceGroup[]>();
 
+  const getWorkspaceGroupDisplayName = (workspace: string, convList: TChatConversation[]) => {
+    const openclawConversation = convList.find((conversation) => conversation.type === 'openclaw-gateway');
+    const openclawAgentName =
+      openclawConversation && typeof openclawConversation.extra?.agentName === 'string'
+        ? openclawConversation.extra.agentName.trim()
+        : '';
+
+    if (openclawAgentName) {
+      return openclawAgentName;
+    }
+
+    return getWorkspaceDisplayName(workspace);
+  };
+
   allWorkspaceGroups.forEach((convList, workspace) => {
     const sortedConvs = [...convList].toSorted((a, b) => getActivityTime(b) - getActivityTime(a));
     const latestConv = sortedConvs[0];
@@ -74,7 +94,7 @@ export const groupConversationsByTimelineAndWorkspace = (
 
     workspaceGroupsByTimeline.get(timeline)!.push({
       workspace,
-      displayName: getWorkspaceDisplayName(workspace),
+      displayName: getWorkspaceGroupDisplayName(workspace, sortedConvs),
       conversations: sortedConvs,
     });
   });
@@ -147,7 +167,9 @@ const buildDiscussionChildConversationMap = (
       return;
     }
 
-    const childConversationById = new Map(childConversations.map((childConversation) => [childConversation.id, childConversation]));
+    const childConversationById = new Map(
+      childConversations.map((childConversation) => [childConversation.id, childConversation])
+    );
     const orderedChildConversations: TChatConversation[] = [];
 
     conversation.extra.participants.forEach((participant) => {
@@ -189,7 +211,10 @@ export const buildGroupedHistory = (
     });
 
   const normalConversations = topLevelConversations.filter((conversation) => !isConversationPinned(conversation));
-  const orderedDiscussionChildConversationsByParentId = buildDiscussionChildConversationMap(topLevelConversations, discussionChildConversationsByParentId);
+  const orderedDiscussionChildConversationsByParentId = buildDiscussionChildConversationMap(
+    topLevelConversations,
+    discussionChildConversationsByParentId
+  );
 
   return {
     pinnedConversations,

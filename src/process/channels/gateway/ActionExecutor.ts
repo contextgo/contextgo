@@ -6,6 +6,7 @@
 
 import type { TMessage } from '@/common/chat/chatLib';
 import type { TChatConversation } from '@/common/config/storage';
+import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
 import { getDatabase } from '@process/services/database';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
@@ -33,6 +34,34 @@ import { stripHtml } from '../plugins/weixin/WeixinAdapter';
 import type { ChannelAgentType, IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType } from '../types';
 import type { PluginManager } from './PluginManager';
 import type { AcpBackend } from '@/common/types/acpTypes';
+
+type SavedChannelAgent = {
+  backend?: string;
+  customAgentId?: string;
+  name?: string;
+  openclawAgentId?: string;
+  workspace?: string;
+  cliPath?: string;
+};
+
+const normalizeOpenClawAgentId = (agentId?: string): string => agentId?.trim().toLowerCase() || 'main';
+
+const resolveSavedOpenClawAgent = (savedAgent: unknown) => {
+  const selection = (savedAgent && typeof savedAgent === 'object' ? savedAgent : {}) as SavedChannelAgent;
+  const configuredAgents = listConfiguredOpenClawAgents();
+  const selectedAgentId = normalizeOpenClawAgentId(selection.openclawAgentId);
+  const configuredAgent =
+    configuredAgents.find((agent) => normalizeOpenClawAgentId(agent.agentId) === selectedAgentId) ||
+    configuredAgents[0];
+
+  return {
+    backend: 'openclaw-gateway' as const,
+    agentName: selection.name?.trim() || configuredAgent?.name || 'OpenClaw',
+    openclawAgentId: selectedAgentId || configuredAgent?.agentId || 'main',
+    workspace: selection.workspace?.trim() || configuredAgent?.workspace,
+    cliPath: selection.cliPath?.trim() || 'openclaw',
+  };
+};
 
 // ==================== Platform-specific Helpers ====================
 
@@ -406,6 +435,7 @@ export class ActionExecutor {
             : undefined;
         const agentName =
           savedAgent && typeof savedAgent === 'object' ? ((savedAgent as any).name as string | undefined) : undefined;
+        const openclawSelection = backend === 'openclaw-gateway' ? resolveSavedOpenClawAgent(savedAgent) : null;
 
         // Always resolve a provider model (required by ICreateConversationParams typing; ignored by ACP/Codex)
         const model = await getChannelDefaultModel(platform);
@@ -420,6 +450,63 @@ export class ActionExecutor {
         const existing = latest.success ? latest.data : null;
 
         let sessionConversation: TChatConversation | null = existing ?? null;
+        if (sessionConversation?.type === 'openclaw-gateway' && openclawSelection) {
+          const currentExtra = (sessionConversation.extra || {}) as Record<string, unknown>;
+          const currentWorkspace = typeof currentExtra.workspace === 'string' ? currentExtra.workspace : undefined;
+          const currentCustomWorkspace =
+            typeof currentExtra.customWorkspace === 'boolean' ? currentExtra.customWorkspace : undefined;
+          const currentRuntimeValidation =
+            typeof currentExtra.runtimeValidation === 'object' && currentExtra.runtimeValidation
+              ? (currentExtra.runtimeValidation as Record<string, unknown>)
+              : {};
+          const expectedWorkspace = openclawSelection.workspace;
+          const nextExtra = {
+            ...currentExtra,
+            backend: openclawSelection.backend,
+            cliPath:
+              typeof currentExtra.cliPath === 'string' && currentExtra.cliPath.trim()
+                ? currentExtra.cliPath
+                : openclawSelection.cliPath,
+            agentName:
+              typeof currentExtra.agentName === 'string' && currentExtra.agentName.trim()
+                ? currentExtra.agentName
+                : openclawSelection.agentName,
+            openclawAgentId:
+              typeof currentExtra.openclawAgentId === 'string' && currentExtra.openclawAgentId.trim()
+                ? currentExtra.openclawAgentId
+                : openclawSelection.openclawAgentId,
+            workspace: expectedWorkspace || currentWorkspace,
+            customWorkspace: expectedWorkspace ? true : currentCustomWorkspace,
+            runtimeValidation: {
+              ...currentRuntimeValidation,
+              expectedWorkspace: expectedWorkspace || currentWorkspace,
+              expectedBackend: openclawSelection.backend,
+              expectedAgentName:
+                (typeof currentExtra.agentName === 'string' && currentExtra.agentName.trim()) ||
+                openclawSelection.agentName,
+              expectedOpenClawAgentId:
+                (typeof currentExtra.openclawAgentId === 'string' && currentExtra.openclawAgentId.trim()) ||
+                openclawSelection.openclawAgentId,
+              expectedCliPath:
+                (typeof currentExtra.cliPath === 'string' && currentExtra.cliPath.trim()) || openclawSelection.cliPath,
+              switchedAt:
+                typeof currentRuntimeValidation.switchedAt === 'number'
+                  ? currentRuntimeValidation.switchedAt
+                  : Date.now(),
+            },
+          };
+
+          if (JSON.stringify(nextExtra) !== JSON.stringify(currentExtra)) {
+            db2.updateConversation(sessionConversation.id, {
+              extra: nextExtra,
+            } as Partial<TChatConversation>);
+            sessionConversation = {
+              ...sessionConversation,
+              extra: nextExtra,
+            };
+          }
+        }
+
         if (!sessionConversation) {
           try {
             if (backend === 'gemini') {
@@ -447,7 +534,22 @@ export class ActionExecutor {
                 name: conversationName,
                 source,
                 channelChatId: chatId,
-                extra: {},
+                extra: {
+                  backend: openclawSelection?.backend,
+                  cliPath: openclawSelection?.cliPath,
+                  agentName: openclawSelection?.agentName,
+                  openclawAgentId: openclawSelection?.openclawAgentId,
+                  workspace: openclawSelection?.workspace,
+                  customWorkspace: Boolean(openclawSelection?.workspace),
+                  runtimeValidation: {
+                    expectedWorkspace: openclawSelection?.workspace,
+                    expectedBackend: openclawSelection?.backend,
+                    expectedAgentName: openclawSelection?.agentName,
+                    expectedOpenClawAgentId: openclawSelection?.openclawAgentId,
+                    expectedCliPath: openclawSelection?.cliPath,
+                    switchedAt: Date.now(),
+                  },
+                },
               });
             } else {
               sessionConversation = await conversationServiceSingleton.createConversation({

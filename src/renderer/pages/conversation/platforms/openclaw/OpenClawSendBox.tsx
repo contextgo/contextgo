@@ -28,6 +28,12 @@ import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import FileAttachButton from '@/renderer/components/media/FileAttachButton';
 import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
 import { useSlashCommands } from '@/renderer/hooks/chat/useSlashCommands';
+import {
+  isOpenClawConnectionErrorMessage,
+  type OpenClawGatewayStatus,
+  resolveOpenClawRuntimeStatus,
+  shouldSuppressOpenClawStreamMessage,
+} from './messageStream';
 
 interface OpenClawDraftData {
   _type: 'openclaw-gateway';
@@ -113,6 +119,22 @@ const validateRuntimeMismatch = async (conversationId: string): Promise<boolean>
 
 const EMPTY_AT_PATH: Array<string | FileOrFolderItem> = [];
 const EMPTY_UPLOAD_FILES: string[] = [];
+
+const getOpenClawStatusTone = (status: OpenClawGatewayStatus | null): 'arcoblue' | 'green' | 'gray' | 'orangered' => {
+  switch (status) {
+    case 'connected':
+    case 'session_active':
+      return 'green';
+    case 'disconnected':
+      return 'gray';
+    case 'error':
+      return 'orangered';
+    case 'connecting':
+    default:
+      return 'arcoblue';
+  }
+};
+
 const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
   const [workspacePath, setWorkspacePath] = useState('');
   const { t } = useTranslation();
@@ -122,7 +144,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
   const { setSendBoxHandler } = usePreviewContext();
 
   const [aiProcessing, setAiProcessing] = useState(false);
-  const [openclawStatus, setOpenClawStatus] = useState<string | null>(null);
+  const [openclawStatus, setOpenClawStatus] = useState<OpenClawGatewayStatus | null>(null);
   const [thought, setThought] = useState<ThoughtData>({
     description: '',
     subject: '',
@@ -237,8 +259,8 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
     void ipcBridge.openclawConversation.getRuntime
       .invoke({ conversation_id })
       .then((res) => {
-        if (res?.success && res.data?.runtime?.hasActiveSession) {
-          setOpenClawStatus('session_active');
+        if (res?.success) {
+          setOpenClawStatus(resolveOpenClawRuntimeStatus(res.data?.runtime));
         }
       })
       .catch(() => {
@@ -310,15 +332,30 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
           break;
         }
         case 'agent_status': {
-          const statusData = message.data as { status: string; message: string };
+          const statusData = message.data as { status: OpenClawGatewayStatus; message: string };
           setOpenClawStatus(statusData.status);
-          const transformedMessage = transformMessage(message);
-          if (transformedMessage) {
-            addOrUpdateMessage(transformedMessage);
+          if (statusData.status === 'disconnected' || statusData.status === 'error') {
+            setAiProcessing(false);
+            aiProcessingRef.current = false;
+            setThought({ subject: '', description: '' });
+            hasContentInTurnRef.current = false;
           }
           break;
         }
         default: {
+          if (isOpenClawConnectionErrorMessage(message)) {
+            const errorText = String(message.data || '');
+            setOpenClawStatus(errorText.startsWith('Connection error:') ? 'error' : 'disconnected');
+            setAiProcessing(false);
+            aiProcessingRef.current = false;
+            setThought({ subject: '', description: '' });
+            hasContentInTurnRef.current = false;
+          }
+
+          if (shouldSuppressOpenClawStreamMessage(message)) {
+            break;
+          }
+
           setThought({ subject: '', description: '' });
           const transformedMessage = transformMessage(message);
           if (transformedMessage) {
@@ -474,6 +511,23 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
   const { openFileSelector, onSlashBuiltinCommand } = useOpenFileSelector({
     onFilesSelected: appendSelectedFiles,
   });
+  const openClawDisplayName = t('guid.externalSessions.providers.openclaw-gateway');
+  const openClawStatusLabel = useMemo(() => {
+    switch (openclawStatus) {
+      case 'connecting':
+        return t('acp.status.connecting', { agent: openClawDisplayName });
+      case 'connected':
+        return t('acp.status.connected', { agent: openClawDisplayName });
+      case 'session_active':
+        return t('acp.status.session_active', { agent: openClawDisplayName });
+      case 'disconnected':
+        return t('acp.status.disconnected', { agent: openClawDisplayName });
+      case 'error':
+        return t('acp.status.error');
+      default:
+        return null;
+    }
+  }, [openClawDisplayName, openclawStatus, t]);
 
   // Handle initial message from guid page
   useEffect(() => {
@@ -556,6 +610,11 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
       <ThoughtDisplay thought={thought} running={aiProcessing} onStop={handleStop} />
+      {openClawStatusLabel ? (
+        <div className='mb-8px flex items-center justify-end'>
+          <Tag color={getOpenClawStatusTone(openclawStatus)}>{openClawStatusLabel}</Tag>
+        </div>
+      ) : null}
 
       <SendBox
         value={content}
@@ -567,8 +626,8 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
           aiProcessing
             ? t('conversation.chat.processing')
             : t('acp.sendbox.placeholder', {
-                backend: 'OpenClaw',
-                defaultValue: `Send message to OpenClaw...`,
+                backend: openClawDisplayName,
+                defaultValue: `Send message to ${openClawDisplayName}...`,
               })
         }
         onStop={handleStop}

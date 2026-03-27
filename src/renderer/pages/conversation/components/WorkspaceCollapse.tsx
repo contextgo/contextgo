@@ -38,11 +38,11 @@ const WorkspaceCollapse: React.FC<WorkspaceCollapseProps> = ({
   const showContent = siderCollapsed || expanded;
 
   return (
-    <div className={classNames('workspace-collapse min-w-0', className)}>
+    <div className={classNames('workspace-collapse w-full min-w-0', className)}>
       {/* 折叠头部 - 侧栏折叠时隐藏 */}
       {!siderCollapsed && (
         <div
-          className='flex items-center ml-2px gap-8px h-32px p-4px cursor-pointer hover:bg-hover rd-4px transition-colors min-w-0'
+          className='flex w-full min-w-0 items-center gap-8px h-32px cursor-pointer hover:bg-hover rd-4px transition-colors px-8px py-4px'
           onClick={onToggle}
         >
           {/* 展开/收起箭头 */}
@@ -55,16 +55,12 @@ const WorkspaceCollapse: React.FC<WorkspaceCollapseProps> = ({
           />
 
           {/* 标题内容 */}
-          <div className='flex-1 ml-6px min-w-0 overflow-hidden'>{header}</div>
+          <div className='ml-6px flex-1 min-w-0 overflow-hidden'>{header}</div>
         </div>
       )}
 
       {/* 折叠内容 - 侧栏折叠时移除左边距 */}
-      {showContent && (
-        <div className={classNames('workspace-collapse-content min-w-0', { 'ml-8px': !siderCollapsed })}>
-          {children}
-        </div>
-      )}
+      {showContent && <div className='workspace-collapse-content w-full min-w-0'>{children}</div>}
     </div>
   );
 };

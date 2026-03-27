@@ -328,6 +328,52 @@ export type TMessage =
   | IMessagePlan
   | IMessageAvailableCommands;
 
+const AGENT_CONNECTION_ERROR_PATTERNS = [
+  /^Gateway disconnected:/i,
+  /^Connection error:/i,
+  /process disconnected unexpectedly .*Please try sending a new message to reconnect\./i,
+] as const;
+
+export const isAgentConnectionErrorText = (value: unknown): value is string => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const normalized = value.trim();
+  return AGENT_CONNECTION_ERROR_PATTERNS.some((pattern) => pattern.test(normalized));
+};
+
+export const shouldSuppressAgentLifecycleStreamMessage = (
+  message: Pick<IResponseMessage, 'type' | 'data'>
+): boolean => {
+  if (message.type === 'agent_status') {
+    return true;
+  }
+
+  if (message.type === 'error') {
+    return isAgentConnectionErrorText(message.data);
+  }
+
+  return false;
+};
+
+export const shouldSuppressAgentLifecyclePersistedMessage = (message: Pick<TMessage, 'type' | 'content'>): boolean => {
+  if (message.type === 'agent_status') {
+    return true;
+  }
+
+  if (message.type !== 'tips') {
+    return false;
+  }
+
+  const tipContent = message.content as IMessageTips['content'];
+  if (tipContent?.type !== 'error') {
+    return false;
+  }
+
+  return isAgentConnectionErrorText(tipContent.content);
+};
+
 // 统一所有需要用户交互的用户类型
 export interface IConfirmation<Option extends any = any> {
   title?: string;

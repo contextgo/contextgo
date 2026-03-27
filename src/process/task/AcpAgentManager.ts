@@ -3,7 +3,7 @@ import { channelEventBus } from '@process/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
 import type { CronMessageMeta, TMessage } from '@/common/chat/chatLib';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
-import { transformMessage } from '@/common/chat/chatLib';
+import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import { AIONUI_FILES_MARKER } from '@/common/config/constants';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { parseError, uuid } from '@/common/utils';
@@ -375,7 +375,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
             const tMessage = transformMessage(message as IResponseMessage);
             const transformDuration = Date.now() - transformStart;
 
-            if (tMessage) {
+            if (tMessage && !shouldSuppressAgentLifecycleStreamMessage(message as IResponseMessage)) {
               const dbStart = Date.now();
               const isStreamTextChunk = tMessage.type === 'text' && message.type === 'content';
               if (isStreamTextChunk) {

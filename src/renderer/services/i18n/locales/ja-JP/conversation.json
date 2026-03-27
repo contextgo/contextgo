@@ -60,6 +60,9 @@
     "exportSuccess": "Export succeeded",
     "exportCanceled": "Export canceled",
     "exportFailed": "Export failed",
+    "archive": "アーカイブ",
+    "archiveSuccess": "アーカイブしました",
+    "archiveFailed": "アーカイブに失敗しました",
     "pin": "Pin",
     "unpin": "Unpin",
     "pinned": "Pinned",
@@ -75,8 +78,12 @@
     "placeholder": "メッセージ内容を検索...",
     "idle": "キーワードを入力してメッセージを検索",
     "empty": "一致するメッセージが見つかりません",
+    "clear": "検索をクリア",
     "loadingMore": "さらに読み込み中...",
     "untitled": "無題の会話"
+  },
+  "entry": {
+    "create": "新規作成"
   },
   "dropdown": {
     "cliAgents": "CLI Agents",
@@ -233,7 +240,9 @@
     "confirmationLoadError": "確認ダイアログの読み込みに失敗しました",
     "tryAnotherAgent": "別のエージェントを試す：",
     "switchedToAgent": "{{agent}}に切り替えました",
-    "switchAgentFailed": "エージェントの切り替えに失敗しました"
+    "switchAgentFailed": "エージェントの切り替えに失敗しました",
+    "modelSwitchFailed": "モデルの切り替えに失敗しました",
+    "modelSwitchNotSupported": "現在の OpenClaw Gateway はモデル切り替えに対応していません"
   },
   "contextUsage": {
     "contextUsed": "コンテキスト使用量"
