@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="./resources/aionui-banner-1.png" alt="AionUi - Cowork with AI Agents" width="100%">
+  <img src="./resources/aionui-banner-1.png" alt="ContextGo - Cowork with AI Agents" width="100%">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/AionUi?style=flat-square&color=32CD32" alt="Version">
+  <img src="https://img.shields.io/github/v/release/contextgo/contextgo?style=flat-square&color=32CD32" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="License">
   &nbsp;
@@ -24,17 +24,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/AionUi/releases">
+  <a href="https://github.com/contextgo/contextgo/releases">
     <img src="https://img.shields.io/badge/⬇️%20Descargar%20ahora-Última%20versión-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Descargar última versión" height="50">
   </a>
 </p>
 
 <p align="center">
-  <a href="../../readme.md">English</a> | <a href="./readme_ch.md">简体中文</a> | <a href="./readme_tw.md">繁體中文</a> | <a href="./readme_jp.md">日本語</a> | <a href="./readme_ko.md">한국어</a> | <strong>Español</strong> | <a href="./readme_pt.md">Português</a> | <a href="./readme_tr.md">Türkçe</a> | <a href="https://www.aionui.com" target="_blank">Sitio oficial</a>
+  <a href="../../readme.md">English</a> | <a href="./readme_ch.md">简体中文</a> | <a href="./readme_tw.md">繁體中文</a> | <a href="./readme_jp.md">日本語</a> | <a href="./readme_ko.md">한국어</a> | <strong>Español</strong> | <a href="./readme_pt.md">Português</a> | <a href="./readme_tr.md">Türkçe</a> | <a href="https://contextgo.io" target="_blank">Sitio oficial</a>
 </p>
 
 <p align="center">
-  <strong>💬 Comunidad:</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="./resources/wx-4.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/AionUI" target="_blank">Twitter</a>
+  <strong>💬 Comunidad:</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="./resources/wx-4.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/ContextGo" target="_blank">Twitter</a>
 </p>
 
 ---
@@ -44,7 +44,7 @@
 <p align="center">
 
 [✨ Cowork en acción](#-cowork-en-acción) ·
-[🤔 ¿Por qué elegir AionUi?](#-por-qué-elegir-aionui-sobre-claude-cowork) ·
+[🤔 ¿Por qué elegir ContextGo?](#-por-qué-elegir-contextgo-sobre-claude-cowork) ·
 [🚀 Inicio rápido](#-inicio-rápido) ·
 [💬 Comunidad](#-comunidad-y-soporte)
 
@@ -54,9 +54,9 @@
 
 ## Cowork — AI Agents que trabajan contigo
 
-**AionUi es más que un cliente de chat.** Es una plataforma Cowork donde los AI Agents trabajan contigo en tu computadora — leyendo archivos, escribiendo código, navegando por la web y automatizando tareas. Puedes ver todo lo que hace el Agent y siempre tienes el control.
+**ContextGo es más que un cliente de chat.** Es una plataforma Cowork donde los AI Agents trabajan contigo en tu computadora — leyendo archivos, escribiendo código, navegando por la web y automatizando tareas. Puedes ver todo lo que hace el Agent y siempre tienes el control.
 
-|                                             | Clientes de chat AI tradicionales | **AionUi (Cowork)**                                                                                    |
+|                                             | Clientes de chat AI tradicionales | **ContextGo (Cowork)**                                                                                 |
 | :------------------------------------------ | :-------------------------------- | :----------------------------------------------------------------------------------------------------- |
 | AI puede operar en tus archivos             | Limitado o No                     | **Sí — Agent integrado con acceso completo a archivos**                                                |
 | AI puede ejecutar tareas de múltiples pasos | Limitado                          | **Sí — autónomo con tu aprobación**                                                                    |
@@ -66,14 +66,14 @@
 | Precio                                      | Gratis / Pago                     | **Gratis y de código abierto**                                                                         |
 
 <p align="center">
-  <img src="./resources/offica-ai BANNER-function.png" alt="AionUi Cowork Platform" width="800">
+  <img src="./resources/offica-ai BANNER-function.png" alt="ContextGo Cowork Platform" width="800">
 </p>
 
 ---
 
 ## Agent integrado — Instalar y usar, configuración cero
 
-AionUi viene con un motor de Agent AI completo. A diferencia de las herramientas que requieren instalar CLI Agents por separado, **AionUi funciona en el momento en que lo instalas**.
+ContextGo viene con un motor de Agent AI completo. A diferencia de las herramientas que requieren instalar CLI Agents por separado, **ContextGo funciona en el momento en que lo instalas**.
 
 - **No hay herramientas CLI que instalar** — el motor Agent está integrado
 - **Sin configuración compleja** — inicia sesión con Google o pega cualquier clave API
@@ -88,7 +88,7 @@ AionUi viene con un motor de Agent AI completo. A diferencia de las herramientas
 
 ## Modo Multi-Agent — ¿Ya tienes CLI Agents? Tráelos
 
-Si ya usas Claude Code, Codex o Qwen Code, AionUi los detecta automáticamente y te permite hacer Cowork con todos ellos — junto con el Agent integrado.
+Si ya usas Claude Code, Codex o Qwen Code, ContextGo los detecta automáticamente y te permite hacer Cowork con todos ellos — junto con el Agent integrado.
 
 **Agents compatibles:** Agent integrado (configuración cero) • Claude Code • Codex • Qwen Code • Goose AI • OpenClaw • Augment Code • iFlow CLI • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder CLI • Mistral Vibe • Nanobot y más
 
@@ -105,7 +105,7 @@ Si ya usas Claude Code, Codex o Qwen Code, AionUi los detecta automáticamente y
 
 ## Cualquier clave API, poder completo del Cowork Agent
 
-Otras apps de AI te dan una caja de chat con tu clave API. **AionUi te da un Cowork Agent completo.**
+Otras apps de AI te dan una caja de chat con tu clave API. **ContextGo te da un Cowork Agent completo.**
 
 | Tu clave API                                              | Lo que obtienes                   |
 | :-------------------------------------------------------- | :-------------------------------- |
@@ -115,7 +115,7 @@ Otras apps de AI te dan una caja de chat con tu clave API. **AionUi te da un Cow
 | Ollama / LM Studio (local)                                | Cowork Agent de modelo local      |
 | NewAPI Gateway                                            | Acceso unificado a 20+ modelos    |
 
-Las mismas capacidades del Agent — lectura/escritura de archivos, búsqueda web, generación de imágenes, uso de herramientas — independientemente del modelo que lo impulse. AionUi admite **20+ plataformas AI** incluyendo servicios en la nube y despliegues locales.
+Las mismas capacidades del Agent — lectura/escritura de archivos, búsqueda web, generación de imágenes, uso de herramientas — independientemente del modelo que lo impulse. ContextGo admite **20+ plataformas AI** incluyendo servicios en la nube y despliegues locales.
 
 <p align="center">
   <img src="./resources/llm_newapi.png" alt="Multi-Model Support" width="800">
@@ -134,7 +134,7 @@ Las mismas capacidades del Agent — lectura/escritura de archivos, búsqueda we
 - **Plataformas internacionales** — DeepSeek, MiniMax, OpenRouter, SiliconFlow, xAI, Ark (Volcengine), Poe
 - **Modelos locales** — Ollama, LM Studio (a través de plataforma personalizada con endpoint API local)
 
-AionUi también admite el servicio de puerta de enlace [NewAPI](https://github.com/QuantumNous/new-api) — un centro unificado de modelos AI que agrega y distribuye varios LLMs. Cambia flexiblemente entre diferentes modelos en la misma interfaz para satisfacer diversos requisitos de tareas.
+ContextGo también admite el servicio de puerta de enlace [NewAPI](https://github.com/QuantumNous/new-api) — un centro unificado de modelos AI que agrega y distribuye varios LLMs. Cambia flexiblemente entre diferentes modelos en la misma interfaz para satisfacer diversos requisitos de tareas.
 
 </details>
 
@@ -156,7 +156,7 @@ _Sistema de asistentes extensible con 12 asistentes profesionales integrados y s
 
 <br>
 
-AionUi incluye **12 asistentes profesionales** con capacidades predefinidas, extensibles a través de habilidades personalizadas:
+ContextGo incluye **12 asistentes profesionales** con capacidades predefinidas, extensibles a través de habilidades personalizadas:
 
 - **🤝 Cowork** — Ejecución autónoma de tareas (operaciones de archivos, procesamiento de documentos, planificación de flujos de trabajo)
 - **📊 Generador PPTX** — Genera presentaciones PPTX
@@ -181,7 +181,7 @@ AionUi incluye **12 asistentes profesionales** con capacidades predefinidas, ext
 
 ## Cowork desde cualquier lugar
 
-_Tu asistente AI 24/7 — accede a AionUi desde cualquier dispositivo, en cualquier lugar._
+_Tu asistente AI 24/7 — accede a ContextGo desde cualquier dispositivo, en cualquier lugar._
 
 - **Modo WebUI** — accede a través del navegador desde teléfono, tableta o cualquier computadora. Admite LAN, red cruzada y despliegue en servidor. Inicio de sesión con código QR o contraseña.
 
@@ -191,7 +191,7 @@ _Tu asistente AI 24/7 — accede a AionUi desde cualquier dispositivo, en cualqu
   - **DingTalk** — Streaming de AI Card con fallback automático
   - **Slack** y más plataformas próximamente
 
-> **Configuración:** AionUi Settings → WebUI Settings → Channel, configura el Bot Token.
+> **Configuración:** ContextGo Settings → WebUI Settings → Channel, configura el Bot Token.
 
 <p align="center">
   <img src="./resources/webui-remote.gif" alt="WebUI remote access demo" width="800">
@@ -199,7 +199,7 @@ _Tu asistente AI 24/7 — accede a AionUi desde cualquier dispositivo, en cualqu
 
 <p align="center"><em>Controla y supervisa tu agente en remoto — Claude, Gemini, Codex. Desde el navegador o el móvil, como Claude Code remote.</em></p>
 
-> [Tutorial de acceso remoto a Internet](https://github.com/iOfficeAI/AionUi/wiki/Remote-Internet-Access-Guide-Chinese)
+> [Tutorial de acceso remoto a Internet](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md#remote-access)
 
 ## ✨ Cowork en acción
 
@@ -343,7 +343,7 @@ _Generación, edición y reconocimiento inteligente de imágenes, impulsado por 
 
 </details>
 
-> [Guía de configuración del modelo de generación de imágenes](https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide)
+> [Guía de configuración del modelo de generación de imágenes](https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing)
 
 ---
 
@@ -400,16 +400,16 @@ _Abre múltiples conversaciones, las tareas no se mezclan, memoria independiente
 
 ---
 
-## 🤔 ¿Por qué elegir AionUi sobre Claude Cowork?
+## 🤔 ¿Por qué elegir ContextGo sobre Claude Cowork?
 
 <details>
 <summary><strong>Haz clic para ver la comparación detallada</strong></summary>
 
 <br>
 
-AionUi es un **Escritorio Multi-AI Agent gratuito y de código abierto**. En comparación con Claude Cowork que solo se ejecuta en macOS y está bloqueado a Claude, AionUi es su versión mejorada de modelo completo y multiplataforma.
+ContextGo es un **Escritorio Multi-AI Agent gratuito y de código abierto**. En comparación con Claude Cowork que solo se ejecuta en macOS y está bloqueado a Claude, ContextGo es su versión mejorada de modelo completo y multiplataforma.
 
-| Dimensión          | Claude Cowork     | AionUi                                                 |
+| Dimensión          | Claude Cowork     | ContextGo                                              |
 | :----------------- | :---------------- | :----------------------------------------------------- |
 | SO                 | Solo macOS        | macOS / Windows / Linux                                |
 | Soporte de modelos | Solo Claude       | Gemini, Claude, DeepSeek, OpenAI, Ollama, ...          |
@@ -432,17 +432,17 @@ Soporte de escenarios de oficina AI profundos:
 
 <details>
 <summary><strong>P: ¿Necesito instalar primero Gemini CLI o Claude Code?</strong></summary>
-R: <strong>No.</strong> AionUi tiene un AI Agent integrado que funciona inmediatamente después de la instalación. Solo inicia sesión con Google o ingresa cualquier clave API. Si también tienes herramientas CLI como Claude Code o Gemini CLI instaladas, AionUi las detectará e integrará automáticamente para aún más capacidades.
+R: <strong>No.</strong> ContextGo tiene un AI Agent integrado que funciona inmediatamente después de la instalación. Solo inicia sesión con Google o ingresa cualquier clave API. Si también tienes herramientas CLI como Claude Code o Gemini CLI instaladas, ContextGo las detectará e integrará automáticamente para aún más capacidades.
 </details>
 
 <details>
-<summary><strong>P: ¿Qué puedo hacer con AionUi?</strong></summary>
-R: AionUi es tu <strong>espacio de trabajo Cowork privado</strong>. El Agent integrado puede organizar carpetas por lotes, procesar datos de Excel, generar documentos, buscar en la web y generar imágenes. Con el Modo Multi-Agent, también puedes aprovechar Claude Code, Codex y otros Agents CLI poderosos a través de la misma interfaz.
+<summary><strong>P: ¿Qué puedo hacer con ContextGo?</strong></summary>
+R: ContextGo es tu <strong>espacio de trabajo Cowork privado</strong>. El Agent integrado puede organizar carpetas por lotes, procesar datos de Excel, generar documentos, buscar en la web y generar imágenes. Con el Modo Multi-Agent, también puedes aprovechar Claude Code, Codex y otros Agents CLI poderosos a través de la misma interfaz.
 </details>
 
 <details>
 <summary><strong>P: ¿Es gratis?</strong></summary>
-R: AionUi es completamente gratuito y de código abierto. Puedes iniciar sesión con Google para usar Gemini gratis, o usar claves API de cualquier proveedor que prefieras.
+R: ContextGo es completamente gratuito y de código abierto. Puedes iniciar sesión con Google para usar Gemini gratis, o usar claves API de cualquier proveedor que prefieras.
 </details>
 
 <details>
@@ -452,7 +452,7 @@ R: Todos los datos se almacenan localmente en una base de datos SQLite. No se su
 
 ---
 
-## Ver cómo la gente usa AionUi
+## Ver cómo la gente usa ContextGo
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=yUU5E-U5B3M" target="_blank">
@@ -473,7 +473,7 @@ R: Todos los datos se almacenan localmente en una base de datos SQLite. No se su
 - [Hacer que la gente común use Claude Code como una APP](https://mp.weixin.qq.com/s/TsMojSbkUUFvsd-HQCazZg) — Gato perezoso ama pescar
 - [5500 Stars: Cómo el código abierto rompe el foso de herramientas AI de Anthropic](https://mp.weixin.qq.com/s/saEk49cYV6MqBgw19Lw6Gw) — Momento de silicio AI
 
-> **¿Hiciste un video sobre AionUi?** [Avísanos en X](https://x.com/AionUi) y lo destacaremos aquí!
+> **¿Hiciste un video sobre ContextGo?** [Avísanos en X](https://x.com/ContextGo) y lo destacaremos aquí!
 
 ---
 
@@ -490,19 +490,19 @@ R: Todos los datos se almacenan localmente en una base de datos SQLite. No se su
 ### Instalar
 
 <p>
-  <a href="https://github.com/iOfficeAI/AionUi/releases">
+  <a href="https://github.com/contextgo/contextgo/releases">
     <img src="https://img.shields.io/badge/Descargar-Última%20versión-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Descargar última versión" height="50">
   </a>
 </p>
 
 ```bash
 # macOS via Homebrew
-brew install aionui
+# Descarga el instalador más reciente desde la página de Releases de arriba.
 ```
 
 ### Comenzar en 3 pasos
 
-1. **Instalar** AionUi
+1. **Instalar** ContextGo
 2. **Iniciar sesión** con cuenta de Google o ingresar cualquier clave API
 3. **Comenzar a hacer Cowork** — el AI Agent integrado está listo para usar
 
@@ -515,23 +515,23 @@ brew install aionui
 
 **🚀 Inicio rápido**
 
-- [📖 Guía de instalación completa](https://github.com/iOfficeAI/AionUi/wiki/Getting-Started) — Pasos detallados desde la descarga hasta la configuración
-- [⚙️ Guía de configuración LLM](https://github.com/iOfficeAI/AionUi/wiki/LLM-Configuration) — Configuración de modelos AI multiplataforma
-- [🤖 Configuración del modo Multi-Agent](https://github.com/iOfficeAI/AionUi/wiki/ACP-Setup) — Integrar Agents AI de terminal
-- [🔌 Configuración de herramientas MCP](https://github.com/iOfficeAI/AionUi/wiki/MCP-Configuration-Guide) — Configuración del servidor Model Context Protocol
-- [🌐 Guía de configuración WebUI](https://github.com/iOfficeAI/AionUi/wiki/WebUI-Configuration-Guide) — Tutorial completo de configuración y configuración de WebUI
+- [📖 Guía de instalación completa](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-start) — Pasos detallados desde la descarga hasta la configuración
+- [⚙️ Guía de configuración LLM](https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power) — Configuración de modelos AI multiplataforma
+- [🤖 Configuración del modo Multi-Agent](https://github.com/contextgo/contextgo/blob/main/readme.md#multi-agent-mode--already-have-cli-agents-bring-them-in) — Integrar Agents AI de terminal
+- [🔌 Configuración de herramientas MCP](https://github.com/contextgo/contextgo/tree/main/docs) — Configuración del servidor Model Context Protocol
+- [🌐 Guía de configuración WebUI](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md) — Tutorial completo de configuración y configuración de WebUI
 
 **🎯 Casos de uso**
 
-- [📁 Gestión de archivos](https://github.com/iOfficeAI/AionUi/wiki/file-management) — Organización inteligente de archivos
-- [📊 Procesamiento de Excel](https://github.com/iOfficeAI/AionUi/wiki/excel-processing) — Procesamiento de datos impulsado por AI
-- [🎨 Generación de imágenes](https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide) — Creación de imágenes AI
-- [📚 Más casos de uso](https://github.com/iOfficeAI/AionUi/wiki/Use-Cases-Overview)
+- [📁 Gestión de archivos](https://github.com/contextgo/contextgo/blob/main/readme.md#smart-file-management--automated-file-operations) — Organización inteligente de archivos
+- [📊 Procesamiento de Excel](https://github.com/contextgo/contextgo/blob/main/readme.md#excel-data-processing--ai-powered-analysis) — Procesamiento de datos impulsado por AI
+- [🎨 Generación de imágenes](https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing) — Creación de imágenes AI
+- [📚 Más casos de uso](https://github.com/contextgo/contextgo/blob/main/readme.md#cowork-in-action)
 
 **❓ Soporte y ayuda**
 
-- [❓ FAQ](https://github.com/iOfficeAI/AionUi/wiki/FAQ) — Preguntas y solución de problemas
-- [🔧 Tutoriales de configuración y uso](https://github.com/iOfficeAI/AionUi/wiki/Configuration-Guides) — Documentación de configuración completa
+- [❓ FAQ](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-qa) — Preguntas y solución de problemas
+- [🔧 Tutoriales de configuración y uso](https://github.com/contextgo/contextgo/tree/main/docs) — Documentación de configuración completa
 
 </details>
 
@@ -542,14 +542,14 @@ brew install aionui
 **¡Tus ideas importan!** Valoramos cada sugerencia y comentario.
 
 <p align="center">
-  <a href="https://x.com/AionUi" target="_blank">
+  <a href="https://x.com/ContextGo" target="_blank">
     <img src="./resources/contactus-x.png" alt="Contact Us on X" width="600">
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/AionUi/discussions) — comparte ideas e intercambia consejos
-- [Reportar problemas](https://github.com/iOfficeAI/AionUi/issues) — errores y solicitudes de funciones
-- [Actualizaciones de lanzamiento](https://github.com/iOfficeAI/AionUi/releases) — obtén la última versión
+- [GitHub Discussions](https://github.com/contextgo/contextgo/discussions) — comparte ideas e intercambia consejos
+- [Reportar problemas](https://github.com/contextgo/contextgo/issues) — errores y solicitudes de funciones
+- [Actualizaciones de lanzamiento](https://github.com/contextgo/contextgo/releases) — obtén la última versión
 - [Comunidad Discord](https://discord.gg/2QAwJn7Egx) — comunidad en inglés
 - [Grupo WeChat](./resources/wx-4.png) — comunidad china
 
@@ -572,16 +572,16 @@ Este proyecto está licenciado bajo [Apache-2.0](LICENSE).
 ## Contribuidores
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/AionUi/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/AionUi&max=50" alt="Contributors" />
+  <a href="https://github.com/contextgo/contextgo/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=contextgo/contextgo&max=50" alt="Contributors" />
   </a>
 </p>
 
 ## Historial de estrellas
 
 <p align="center">
-  <a href="https://www.star-history.com/#iOfficeAI/aionui&Date" target="_blank">
-    <img src="https://api.star-history.com/svg?repos=iOfficeAI/aionui&type=Date" alt="Star History" width="600">
+  <a href="https://www.star-history.com/#contextgo/contextgo&Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=contextgo/contextgo&type=Date" alt="Star History" width="600">
   </a>
 </p>
 
@@ -589,6 +589,6 @@ Este proyecto está licenciado bajo [Apache-2.0](LICENSE).
 
 **Si te gusta, danos una estrella**
 
-[Reportar error](https://github.com/iOfficeAI/AionUi/issues) · [Solicitar función](https://github.com/iOfficeAI/AionUi/issues)
+[Reportar error](https://github.com/contextgo/contextgo/issues) · [Solicitar función](https://github.com/contextgo/contextgo/issues)
 
 </div>
