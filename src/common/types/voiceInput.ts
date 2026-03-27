@@ -1,4 +1,4 @@
-export const VOICE_INPUT_PROVIDER_IDS = ['dashscope'] as const;
+export const VOICE_INPUT_PROVIDER_IDS = ['dashscope', 'volcengine'] as const;
 
 export type VoiceInputProviderId = (typeof VOICE_INPUT_PROVIDER_IDS)[number];
 
@@ -19,6 +19,13 @@ export type VoiceInputDashScopeConfig = {
   hotwords: string[];
 };
 
+export type VoiceInputVolcengineConfig = {
+  appKey: string;
+  accessKey: string;
+  resourceId: string;
+  model: string;
+};
+
 export type VoiceInputConfig = {
   enabled: boolean;
   providerId: VoiceInputProviderId;
@@ -26,6 +33,7 @@ export type VoiceInputConfig = {
   autoInsert: boolean;
   providers: {
     dashscope: VoiceInputDashScopeConfig;
+    volcengine: VoiceInputVolcengineConfig;
   };
 };
 
@@ -103,6 +111,12 @@ export const DEFAULT_VOICE_INPUT_CONFIG: VoiceInputConfig = {
       languageHints: ['zh'],
       vocabularyId: '',
       hotwords: [],
+    },
+    volcengine: {
+      appKey: '',
+      accessKey: '',
+      resourceId: 'volc.bigasr.auc_turbo',
+      model: 'bigmodel',
     },
   },
 };

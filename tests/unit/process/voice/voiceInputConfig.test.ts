@@ -23,6 +23,12 @@ describe('normalizeVoiceInputConfig', () => {
           vocabularyId: ' vocab-1 ',
           hotwords: ['aionui', 'aionui', 'voice'],
         },
+        volcengine: {
+          appKey: '  app-1  ',
+          accessKey: '  access-1  ',
+          resourceId: '  volc.custom.resource  ',
+          model: '  ',
+        },
       },
     });
 
@@ -35,6 +41,10 @@ describe('normalizeVoiceInputConfig', () => {
     expect(config.providers.dashscope.languageHints).toEqual(['zh', 'en']);
     expect(config.providers.dashscope.vocabularyId).toBe('vocab-1');
     expect(config.providers.dashscope.hotwords).toEqual(['aionui', 'voice']);
+    expect(config.providers.volcengine.appKey).toBe('app-1');
+    expect(config.providers.volcengine.accessKey).toBe('access-1');
+    expect(config.providers.volcengine.resourceId).toBe('volc.custom.resource');
+    expect(config.providers.volcengine.model).toBe('bigmodel');
   });
 
   it('should mark a config as unusable when the provider api key is missing', () => {
@@ -42,6 +52,25 @@ describe('normalizeVoiceInputConfig', () => {
 
     expect(isVoiceInputConfigured(config)).toBe(false);
     expect(createVoiceInputState({}, config).status).toBe('idle');
+  });
+
+  it('should treat volcengine as configured when required credentials are present', () => {
+    const config = normalizeVoiceInputConfig({
+      providerId: 'volcengine',
+      providers: {
+        volcengine: {
+          appKey: 'app-key',
+          accessKey: 'access-key',
+          resourceId: '',
+          model: 'custom-model',
+        },
+      },
+    });
+
+    expect(config.providerId).toBe('volcengine');
+    expect(config.providers.volcengine.resourceId).toBe('volc.bigasr.auc_turbo');
+    expect(config.providers.volcengine.model).toBe('custom-model');
+    expect(isVoiceInputConfigured(config)).toBe(true);
   });
 });
 
