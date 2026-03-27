@@ -19,17 +19,14 @@ const COLORS = {
 };
 
 // Font Paths - Try multiple locations with fallback
-// Priority: 1) CONTEXTGO_FONTS_DIR env var, 2) legacy AIONUI_FONTS_DIR env var,
-// 3) skills/canvas-design relative path, 4) app config font directories
+// Priority: 1) CONTEXTGO_FONTS_DIR env var, 2) skills/canvas-design relative path,
+// 3) app config font directories
 function getFontDir() {
   const candidates = [
     process.env.CONTEXTGO_FONTS_DIR,
-    process.env.AIONUI_FONTS_DIR,
     path.join(__dirname, '../../canvas-design/canvas-fonts'),
     path.join(process.env.HOME || '', 'Library/Application Support/ContextGo/config/skills/canvas-design/canvas-fonts'),
-    path.join(process.env.HOME || '', 'Library/Application Support/AionUi/config/skills/canvas-design/canvas-fonts'),
     path.join(process.env.APPDATA || '', 'ContextGo/config/skills/canvas-design/canvas-fonts'),
-    path.join(process.env.APPDATA || '', 'AionUi/config/skills/canvas-design/canvas-fonts'),
   ].filter(Boolean);
 
   for (const dir of candidates) {

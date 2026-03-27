@@ -19,10 +19,10 @@ import type { TProviderWithModel } from '@/common/config/storage';
 
 // Read provider config from environment variables
 function getProviderFromEnv(): TProviderWithModel | null {
-  const platform = process.env.AIONUI_IMG_PLATFORM;
-  const baseUrl = process.env.AIONUI_IMG_BASE_URL;
-  const apiKey = process.env.AIONUI_IMG_API_KEY;
-  const model = process.env.AIONUI_IMG_MODEL;
+  const platform = process.env.CONTEXTGO_IMG_PLATFORM;
+  const baseUrl = process.env.CONTEXTGO_IMG_BASE_URL;
+  const apiKey = process.env.CONTEXTGO_IMG_API_KEY;
+  const model = process.env.CONTEXTGO_IMG_MODEL;
 
   if (!platform || !model) {
     return null;
@@ -108,7 +108,7 @@ IMPORTANT: When user provides multiple images, ALWAYS pass ALL images to the ima
         };
       }
 
-      const proxy = process.env.AIONUI_IMG_PROXY || undefined;
+      const proxy = process.env.CONTEXTGO_IMG_PROXY || undefined;
       const workspaceDir = workspace_dir || process.cwd();
 
       const result = await executeImageGeneration({ prompt, image_uris }, provider, workspaceDir, proxy);

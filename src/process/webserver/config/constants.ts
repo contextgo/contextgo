@@ -140,8 +140,8 @@ export const SERVER_CONFIG = {
  *
  * 注意：远程模式下如果使用 HTTP，cookie 仍然可以工作（secure=false）
  * Note: In remote mode with HTTP, cookies still work (secure=false)
- * 建议生产环境配置 HTTPS 并设置 AIONUI_HTTPS=true
- * Recommend configuring HTTPS in production and setting AIONUI_HTTPS=true
+ * 建议生产环境配置 HTTPS 并设置 CONTEXTGO_HTTPS=true
+ * Recommend configuring HTTPS in production and setting CONTEXTGO_HTTPS=true
  */
 export function getCookieOptions(): {
   httpOnly: boolean;
@@ -152,7 +152,7 @@ export function getCookieOptions(): {
   // 只有当明确配置 HTTPS 时才启用 secure 标志
   // Only enable secure flag when HTTPS is explicitly configured
   const isHttps =
-    process.env.AIONUI_HTTPS === 'true' || (process.env.NODE_ENV === 'production' && process.env.HTTPS === 'true');
+    process.env.CONTEXTGO_HTTPS === 'true' || (process.env.NODE_ENV === 'production' && process.env.HTTPS === 'true');
 
   return {
     httpOnly: AUTH_CONFIG.COOKIE.OPTIONS.httpOnly,

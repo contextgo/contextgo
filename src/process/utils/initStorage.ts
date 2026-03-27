@@ -770,10 +770,10 @@ const ensureBuiltinMcpServers = async (): Promise<void> => {
     const buildEnvFromConfig = (cfg: typeof oldConfig): Record<string, string> => {
       if (!cfg) return {};
       const env: Record<string, string> = {};
-      if (cfg.platform) env.AIONUI_IMG_PLATFORM = cfg.platform;
-      if (cfg.baseUrl) env.AIONUI_IMG_BASE_URL = cfg.baseUrl;
-      if (cfg.apiKey) env.AIONUI_IMG_API_KEY = cfg.apiKey;
-      if (cfg.useModel) env.AIONUI_IMG_MODEL = cfg.useModel;
+      if (cfg.platform) env.CONTEXTGO_IMG_PLATFORM = cfg.platform;
+      if (cfg.baseUrl) env.CONTEXTGO_IMG_BASE_URL = cfg.baseUrl;
+      if (cfg.apiKey) env.CONTEXTGO_IMG_API_KEY = cfg.apiKey;
+      if (cfg.useModel) env.CONTEXTGO_IMG_MODEL = cfg.useModel;
       return env;
     };
 
