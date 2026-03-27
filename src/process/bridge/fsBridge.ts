@@ -23,6 +23,9 @@ import {
 } from '@process/utils/initStorage';
 import { readDirectoryRecursive } from '@process/utils';
 
+const SKILLS_MARKET_SKILL_DIR = 'contextgo-skills';
+const LEGACY_SKILLS_MARKET_SKILL_DIR = 'aionui-skills';
+
 // ============================================================================
 // Helper functions for builtin resource directory resolution
 // 内置资源目录解析辅助函数
@@ -1682,11 +1685,18 @@ export function initFsBridge(): void {
     }
   });
 
-  // Skills Market: inject the aionui-skills builtin skill
+  // Skills Market: inject the bundled builtin skill
   ipcBridge.fs.enableSkillsMarket.provider(async () => {
     try {
       const { getAutoSkillsDir } = await import('@process/utils/initStorage');
-      const skillDir = path.join(getAutoSkillsDir(), 'aionui-skills');
+      const builtinSkillsDir = getAutoSkillsDir();
+      const skillDir = path.join(builtinSkillsDir, SKILLS_MARKET_SKILL_DIR);
+      const legacySkillDir = path.join(builtinSkillsDir, LEGACY_SKILLS_MARKET_SKILL_DIR);
+
+      if (!(await pathExists(skillDir)) && (await pathExists(legacySkillDir))) {
+        await fs.rename(legacySkillDir, skillDir);
+      }
+
       await fs.mkdir(skillDir, { recursive: true });
 
       // Copy the bundled SKILL.md (concise entry-point version)
@@ -1708,12 +1718,15 @@ export function initFsBridge(): void {
     }
   });
 
-  // Skills Market: remove the aionui-skills builtin skill
+  // Skills Market: remove the bundled builtin skill
   ipcBridge.fs.disableSkillsMarket.provider(async () => {
     try {
       const { getAutoSkillsDir } = await import('@process/utils/initStorage');
-      const skillDir = path.join(getAutoSkillsDir(), 'aionui-skills');
+      const builtinSkillsDir = getAutoSkillsDir();
+      const skillDir = path.join(builtinSkillsDir, SKILLS_MARKET_SKILL_DIR);
+      const legacySkillDir = path.join(builtinSkillsDir, LEGACY_SKILLS_MARKET_SKILL_DIR);
       await fs.rm(skillDir, { recursive: true, force: true });
+      await fs.rm(legacySkillDir, { recursive: true, force: true });
 
       // Reset AcpSkillManager singleton so it re-discovers builtin skills
       const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
@@ -1731,7 +1744,7 @@ export function initFsBridge(): void {
 }
 
 /**
- * Read the bundled SKILL.md for aionui-skills from app resources.
+ * Read the bundled SKILL.md for the Skills Market builtin skill.
  *
  * This is a concise entry-point version (~30 lines) that tells agents
  * to fetch the full API documentation via curl at runtime.
@@ -1740,10 +1753,30 @@ export function initFsBridge(): void {
  */
 async function readBundledSkillsMarketMd(): Promise<string> {
   try {
-    const fallbackPath = path.join(getBuiltinSkillsCopyDir(), 'aionui-skills', 'SKILL.md');
-    return await fs.readFile(fallbackPath, 'utf-8');
+    const builtinDir = getBuiltinSkillsCopyDir();
+    const fallbackPaths = [
+      path.join(builtinDir, SKILLS_MARKET_SKILL_DIR, 'SKILL.md'),
+      path.join(builtinDir, LEGACY_SKILLS_MARKET_SKILL_DIR, 'SKILL.md'),
+    ];
+
+    for (const fallbackPath of fallbackPaths) {
+      if (await pathExists(fallbackPath)) {
+        return await fs.readFile(fallbackPath, 'utf-8');
+      }
+    }
+
+    throw new Error('Bundled Skills Market SKILL.md not found');
   } catch (error) {
-    console.warn('[fsBridge] Failed to read bundled aionui-skills SKILL.md:', error);
-    return `---\nname: aionui-skills\ndescription: "Access the AionUI Skills registry — discover and download AI agent skills."\n---\n\n# AionUI Skills Registry\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/aionui-skills\ncurl -s https://skills.aionui.com/SKILL.md > ~/.config/aionui-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
+    console.warn('[fsBridge] Failed to read bundled Skills Market SKILL.md:', error);
+    return `---\nname: contextgo-skills\ndescription: "Access the ContextGo Skills Market — discover and download AI agent skills."\n---\n\n# ContextGo Skills Market\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/contextgo-skills\ncurl -s https://www.skillmarket.com.cn/SKILL.md > ~/.config/contextgo-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
+  }
+}
+
+async function pathExists(targetPath: string): Promise<boolean> {
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch {
+    return false;
   }
 }
