@@ -26,18 +26,22 @@ and local state loss is acceptable.
 | Conversation source value      | `aionui`                                                               | `contextgo`                                                                        | Migrate now | Internal conversation ownership/source tagging should match the renamed desktop product and avoid mixed runtime semantics.                            |
 | Event and storage namespaces   | `aionui:*`, `aionui-...`, `aionui_...`                                 | `contextgo:*`, `contextgo-...`, `contextgo_...`                                    | Migrate now | Internal browser-side event buses and persisted UI state do not need compatibility shims at the current project stage.                                |
 | Auth cookie/token namespaces   | `aionui-session`, `aionui-csrf-token`, `aionui-webui`, issuer `aionui` | `contextgo-session`, `contextgo-csrf-token`, `contextgo-webui`, issuer `contextgo` | Migrate now | Login/session identifiers are internal WebUI runtime state; invalidating old sessions is acceptable under the current clean-break migration strategy. |
+| Built-in MCP server name       | `aionui-image-generation`                                              | `contextgo-image-generation`                                                       | Migrate now | Built-in MCP names are internal app-managed identifiers; the current branch keeps a legacy alias so stored configs can still normalize cleanly.       |
+| Built-in MCP tool IDs          | `aionui_image_generation`, `aionui_web_fetch`                          | `contextgo_image_generation`, `contextgo_web_fetch`                                | Migrate now | Tool identifiers are bundled runtime surfaces, not public compatibility contracts at the current release stage.                                       |
+| Built-in skill bundle id       | `aionui-builtin-skills`                                                | `contextgo-builtin-skills`                                                         | Migrate now | The internal Gemini extension bundle should follow the same product namespace as the rest of the built-in skill runtime.                              |
+| Built-in WebUI skill id        | `aionui-webui-setup`                                                   | `contextgo-webui-setup`                                                            | Migrate now | Assistant preset skill wiring should point at the renamed ContextGo setup skill instead of preserving the legacy bundle identifier.                   |
+| Built-in WebUI skill reference | `references/aionui-webui.md`                                           | `references/contextgo-webui.md`                                                    | Migrate now | The bundled skill documentation path should stay aligned with the skill identifier it ships with.                                                     |
 
 ## Explicitly Deferred
 
-The following legacy namespaces are intentionally **not** changed in this PR:
+The following legacy namespaces are intentionally **not** changed in this PR series:
 
-- built-in MCP / skill identifiers such as `aionui-image-generation` and `aionui-webui-setup`
 - legacy executable, icon, temp, and cache names that still appear in scripts, tests, or docs
 - historical docs, examples, readmes, and copyright headers that still mention `AionUi`
 
-These are broader protocol or plugin-ecosystem surfaces. Changing them in the same
-PR would expand the review scope well beyond app identity, protocol registration,
-and local persistence naming.
+These are broader packaging, runtime-artifact, or documentation surfaces. Changing
+them in the same stacked cleanup would expand the review scope beyond app identity,
+local persistence, auth/session namespaces, and built-in MCP/skill identifiers.
 
 ## Consequences
 
@@ -45,4 +49,5 @@ and local persistence naming.
 - Existing `aionui://` links stop working after this change.
 - Existing installs using the old Electron app id do not in-place upgrade to the new app id.
 - Existing WebUI login sessions and CSRF cookies using the old `aionui` auth namespace are invalidated and require re-login.
+- Existing stored MCP configs using `aionui-image-generation` continue to resolve via the built-in legacy alias.
 - The migration is intentionally clean-break oriented and matches the current project stage.

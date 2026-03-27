@@ -1,5 +1,5 @@
 ---
-name: aionui-webui-setup
+name: contextgo-webui-setup
 description: 'ContextGo WebUI configuration expert: Helps users configure ContextGo WebUI mode for remote access through the settings interface. Supports LAN connection, Tailscale VPN, and server deployment. Use when users need to set up ContextGo WebUI, configure remote access, troubleshoot WebUI issues, or deploy ContextGo on servers.'
 ---
 
