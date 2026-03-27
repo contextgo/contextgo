@@ -72,7 +72,7 @@
     "deleteFailed": "Delete failed"
   },
   "historySearch": {
-    "tooltip": "Search messages",
+    "tooltip": "Search",
     "title": "Search conversation content",
     "description": "Search historical messages by keyword, load more on scroll, and jump to the matched message.",
     "placeholder": "Search message content...",
@@ -83,7 +83,9 @@
     "untitled": "Untitled conversation"
   },
   "entry": {
-    "create": "Create"
+    "create": "Create",
+    "conversation": "Conversation",
+    "group": "Discussion Group"
   },
   "tabs": {
     "closeAll": "Close All",

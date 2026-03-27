@@ -802,6 +802,55 @@
     "agent": "对话Agent",
     "agentDesc": "用于与Channel进行对话"
   },
+  "connectors": {
+    "title": "Connector",
+    "description": "连接知识库、协作工具和业务系统，作为 AI 的上下文链接器。",
+    "count": "当前目录已预置 {{count}} 个 connector。",
+    "kind": "上下文连接器",
+    "officialSite": "官网",
+    "resources": "可连接资源",
+    "auth": "认证方式",
+    "openWebsite": "打开官网",
+    "note": "当前页面先提供 connector 目录与详情框架，后续会按 connector 逐步补齐授权、同步与权限控制。",
+    "summaryTemplate": "{{name}} 属于「{{category}}」，后续可作为 AI 工作流的上下文数据入口。",
+    "stagePriority": "优先接入",
+    "stagePlanned": "规划中",
+    "categories": {
+      "googleWorkspace": "Google Workspace",
+      "collaboration": "协作沟通",
+      "development": "研发开发",
+      "knowledge": "知识文档",
+      "design": "设计创作",
+      "storage": "存储文件",
+      "business": "业务系统",
+      "data": "数据分析"
+    },
+    "resourceTypes": {
+      "chat": "聊天消息",
+      "docs": "文档",
+      "wiki": "知识库",
+      "files": "文件",
+      "repositories": "代码仓库",
+      "issues": "问题单",
+      "tasks": "任务",
+      "calendar": "日历",
+      "email": "邮件",
+      "sheets": "表格",
+      "designs": "设计稿",
+      "crm": "客户管理",
+      "commerce": "商业数据",
+      "analytics": "分析报表",
+      "databases": "数据库",
+      "incidents": "告警事件"
+    },
+    "authTypes": {
+      "oauth": "OAuth",
+      "bot": "Bot Token",
+      "apiKey": "API Key",
+      "pat": "个人访问令牌",
+      "serviceAccount": "服务账号"
+    }
+  },
   "addAssistant": "添加助手",
   "extensionAssistantReadonly": "扩展助手为只读，你可以复制它并编辑副本。"
 }

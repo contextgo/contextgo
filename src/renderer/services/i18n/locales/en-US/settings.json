@@ -802,5 +802,54 @@
     "agent": "Agent",
     "agentDesc": "Used for DingTalk conversations"
   },
+  "connectors": {
+    "title": "Connector",
+    "description": "Connect knowledge, collaboration, and business systems as context sources for AI.",
+    "count": "{{count}} connectors are preloaded in this catalog.",
+    "kind": "Context Connector",
+    "officialSite": "Official Site",
+    "resources": "Supported Resources",
+    "auth": "Authentication",
+    "openWebsite": "Open Website",
+    "note": "This page currently provides the connector catalog and detail shell. Auth flows, sync, and permission scopes will be implemented connector by connector.",
+    "summaryTemplate": "{{name}} belongs to {{category}} and can later be linked as contextual data for AI workflows.",
+    "stagePriority": "Priority",
+    "stagePlanned": "Planned",
+    "categories": {
+      "googleWorkspace": "Google Workspace",
+      "collaboration": "Collaboration",
+      "development": "Development",
+      "knowledge": "Knowledge",
+      "design": "Design",
+      "storage": "Storage",
+      "business": "Business",
+      "data": "Data"
+    },
+    "resourceTypes": {
+      "chat": "Chat",
+      "docs": "Docs",
+      "wiki": "Wiki",
+      "files": "Files",
+      "repositories": "Repositories",
+      "issues": "Issues",
+      "tasks": "Tasks",
+      "calendar": "Calendar",
+      "email": "Email",
+      "sheets": "Sheets",
+      "designs": "Designs",
+      "crm": "CRM",
+      "commerce": "Commerce",
+      "analytics": "Analytics",
+      "databases": "Databases",
+      "incidents": "Incidents"
+    },
+    "authTypes": {
+      "oauth": "OAuth",
+      "bot": "Bot Token",
+      "apiKey": "API Key",
+      "pat": "Personal Access Token",
+      "serviceAccount": "Service Account"
+    }
+  },
   "extensionAssistantReadonly": "Extension assistants are read-only. You can duplicate it and edit the copy."
 }

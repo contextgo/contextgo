@@ -804,5 +804,54 @@
     "agent": "對話Agent",
     "agentDesc": "用於與Channel進行對話"
   },
+  "connectors": {
+    "title": "Connector",
+    "description": "連接知識庫、協作工具與業務系統，作為 AI 的上下文連接器。",
+    "count": "目前目錄已預置 {{count}} 個 connector。",
+    "kind": "上下文連接器",
+    "officialSite": "官網",
+    "resources": "可連接資源",
+    "auth": "驗證方式",
+    "openWebsite": "打開官網",
+    "note": "目前頁面先提供 connector 目錄與詳情框架，後續會按 connector 逐步補齊授權、同步與權限控制。",
+    "summaryTemplate": "{{name}} 屬於「{{category}}」，後續可作為 AI 工作流的上下文資料入口。",
+    "stagePriority": "優先接入",
+    "stagePlanned": "規劃中",
+    "categories": {
+      "googleWorkspace": "Google Workspace",
+      "collaboration": "協作溝通",
+      "development": "研發開發",
+      "knowledge": "知識文件",
+      "design": "設計創作",
+      "storage": "儲存檔案",
+      "business": "業務系統",
+      "data": "資料分析"
+    },
+    "resourceTypes": {
+      "chat": "聊天訊息",
+      "docs": "文件",
+      "wiki": "知識庫",
+      "files": "檔案",
+      "repositories": "程式碼倉庫",
+      "issues": "問題單",
+      "tasks": "任務",
+      "calendar": "日曆",
+      "email": "郵件",
+      "sheets": "試算表",
+      "designs": "設計稿",
+      "crm": "客戶管理",
+      "commerce": "商業資料",
+      "analytics": "分析報表",
+      "databases": "資料庫",
+      "incidents": "告警事件"
+    },
+    "authTypes": {
+      "oauth": "OAuth",
+      "bot": "Bot Token",
+      "apiKey": "API Key",
+      "pat": "個人存取權杖",
+      "serviceAccount": "服務帳號"
+    }
+  },
   "extensionAssistantReadonly": "擴展助手為唯讀，你可以複製它並編輯副本。"
 }
