@@ -14,7 +14,7 @@ import { getPptPreviewCacheDir } from '@process/services/conversionService';
 import { getSystemDir } from '@process/utils/initStorage';
 import { TokenMiddleware } from '@process/webserver/auth/middleware/TokenMiddleware';
 import { ExtensionRegistry } from '@process/extensions';
-import { AIONUI_TIMESTAMP_SEPARATOR } from '@/common/config/constants';
+import { CONTEXTGO_TIMESTAMP_SEPARATOR } from '@/common/config/constants';
 import directoryApi from '../directoryApi';
 import { apiRateLimiter } from '../middleware/security';
 
@@ -343,7 +343,7 @@ export function registerApiRoutes(app: Express): void {
           // File exists, append timestamp
           const ext = path.extname(safeFileName);
           const name = path.basename(safeFileName, ext);
-          targetPath = path.join(uploadDir, `${name}${AIONUI_TIMESTAMP_SEPARATOR}${Date.now()}${ext}`);
+          targetPath = path.join(uploadDir, `${name}${CONTEXTGO_TIMESTAMP_SEPARATOR}${Date.now()}${ext}`);
         } catch {
           // File doesn't exist, proceed with original name
         }

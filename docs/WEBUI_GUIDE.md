@@ -552,13 +552,13 @@ You can customize WebUI behavior with environment variables:
 
 ```bash
 # Override the listening port
-export AIONUI_PORT=8080
+export CONTEXTGO_PORT=8080
 
 # Allow remote access without passing --remote
-export AIONUI_ALLOW_REMOTE=true
+export CONTEXTGO_ALLOW_REMOTE=true
 
-# Optional host hint (0.0.0.0 behaves the same as AIONUI_ALLOW_REMOTE=true)
-export AIONUI_HOST=0.0.0.0
+# Optional host hint (0.0.0.0 behaves the same as CONTEXTGO_ALLOW_REMOTE=true)
+export CONTEXTGO_HOST=0.0.0.0
 
 # Then start the application
 contextgo --webui

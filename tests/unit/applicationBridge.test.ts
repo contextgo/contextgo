@@ -143,7 +143,7 @@ describe('CDP configuration functions', () => {
     vi.resetModules();
     vi.clearAllMocks();
     process.env = { ...originalEnv };
-    delete process.env.AIONUI_CDP_PORT;
+    delete process.env.CONTEXTGO_CDP_PORT;
   });
 
   afterEach(() => {

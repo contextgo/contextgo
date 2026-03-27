@@ -59,7 +59,7 @@ export class ExtensionLoader {
     const sources: Array<{ dir: string; source: ExtensionSource }> = [];
     const seen = new Set<string>();
     const envDirs = getEnvExtensionsDirs();
-    const isE2ETest = process.env.AIONUI_E2E_TEST === '1';
+    const isE2ETest = process.env.CONTEXTGO_E2E_TEST === '1';
 
     const pushSource = (dir: string, source: ExtensionSource) => {
       const normalized = path.resolve(dir);

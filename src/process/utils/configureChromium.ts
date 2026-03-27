@@ -53,7 +53,7 @@ if (isWebUI || isResetPassword) {
 // so chrome-devtools-mcp and other CDP clients can connect to this Electron app.
 //
 // Default port: 9230 (avoids conflict with common CDP ports).
-// Override via AIONUI_CDP_PORT env variable. Set to "0" to disable.
+// Override via CONTEXTGO_CDP_PORT env variable. Set to "0" to disable.
 //
 // Configuration file: userData/cdp.config.json
 // - enabled: boolean - whether CDP is enabled (default: true in dev mode, false in production)
@@ -238,7 +238,7 @@ export function saveCdpConfig(config: CdpConfig): void {
  * Returns null if explicitly disabled via env.
  */
 function resolveCdpPortFromEnv(): number | null | undefined {
-  const envVal = process.env.AIONUI_CDP_PORT;
+  const envVal = process.env.CONTEXTGO_CDP_PORT;
   if (envVal === '0' || envVal === 'false') return null;
   if (envVal) {
     const parsed = Number(envVal);
@@ -252,7 +252,7 @@ function resolveCdpPortFromEnv(): number | null | undefined {
  * Priority: env variable > config file > default (dev mode: true, production: false)
  */
 function shouldEnableCdp(config: CdpConfig): boolean {
-  const envVal = process.env.AIONUI_CDP_PORT;
+  const envVal = process.env.CONTEXTGO_CDP_PORT;
   if (envVal === '0' || envVal === 'false') return false;
   if (envVal) return true;
 

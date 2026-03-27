@@ -25,8 +25,8 @@ describe('ACP built-in MCP session config', () => {
           command: 'node',
           args: ['/abs/builtin-mcp-image-gen.js'],
           env: {
-            AIONUI_IMG_PLATFORM: 'openai',
-            AIONUI_IMG_MODEL: 'gpt-image-1',
+            CONTEXTGO_IMG_PLATFORM: 'openai',
+            CONTEXTGO_IMG_MODEL: 'gpt-image-1',
           },
         },
         createdAt: 1,
@@ -100,8 +100,8 @@ describe('ACP built-in MCP session config', () => {
         command: 'node',
         args: ['/abs/builtin-mcp-image-gen.js'],
         env: [
-          { name: 'AIONUI_IMG_PLATFORM', value: 'openai' },
-          { name: 'AIONUI_IMG_MODEL', value: 'gpt-image-1' },
+          { name: 'CONTEXTGO_IMG_PLATFORM', value: 'openai' },
+          { name: 'CONTEXTGO_IMG_MODEL', value: 'gpt-image-1' },
         ],
       },
       {
