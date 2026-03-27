@@ -14,6 +14,7 @@ import { BrowserWindow, screen, systemPreferences } from 'electron';
 import { Buffer } from 'node:buffer';
 import { DashScopeVoiceProvider } from './DashScopeVoiceProvider';
 import { MacNativeVoiceRecorder } from './MacNativeVoiceRecorder';
+import { VolcengineVoiceProvider } from './VolcengineVoiceProvider';
 import { getFrontmostAppInfo, pasteTextToActiveApp } from './macosVoiceActions';
 import {
   createVoiceInputPermissions,
@@ -30,6 +31,10 @@ type RecordingPayload = {
   bytes: number;
   pcmBase64: string;
   durationMs: number;
+};
+
+type VoiceInputTranscriptionProvider = {
+  transcribe: (pcmBuffer: Buffer) => Promise<string>;
 };
 
 const VOICE_OVERLAY_HTML = `<!DOCTYPE html>
@@ -570,7 +575,7 @@ export class VoiceInputRuntime {
     }
 
     if (!isVoiceInputConfigured(this.config)) {
-      this.updateState({ status: 'error', lastError: 'DashScope API key is not configured.' });
+      this.updateState({ status: 'error', lastError: 'Voice input provider credentials are not configured.' });
       return;
     }
 
@@ -636,6 +641,7 @@ export class VoiceInputRuntime {
     }
 
     if (!payload.pcmBase64 || payload.bytes === 0) {
+      const providerMetadata = this.getActiveProviderRecordMetadata();
       const message = 'No audio was captured. Check microphone permission and the selected input device.';
       await this.persistRecord({
         id: crypto.randomUUID(),
@@ -645,10 +651,7 @@ export class VoiceInputRuntime {
         transcript: '',
         transcriptLength: 0,
         sourceAppName: this.state.sourceAppName,
-        model: this.config.providers.dashscope.model,
-        languageHints: this.config.providers.dashscope.languageHints,
-        vocabularyId: this.config.providers.dashscope.vocabularyId,
-        hotwords: this.config.providers.dashscope.hotwords,
+        ...providerMetadata,
         durationMs: payload.durationMs,
         errorMessage: message,
         createdAt: Date.now(),
@@ -659,7 +662,8 @@ export class VoiceInputRuntime {
     }
 
     try {
-      const provider = new DashScopeVoiceProvider(this.config.providers.dashscope);
+      const providerMetadata = this.getActiveProviderRecordMetadata();
+      const provider = this.createTranscriptionProvider();
       const transcript = (await provider.transcribe(Buffer.from(payload.pcmBase64, 'base64'))).trim();
 
       if (!transcript) {
@@ -677,10 +681,7 @@ export class VoiceInputRuntime {
         transcriptLength: transcript.length,
         sourceAppName: this.state.sourceAppName ?? appInfo.appName,
         sourceBundleId: appInfo.bundleId,
-        model: this.config.providers.dashscope.model,
-        languageHints: this.config.providers.dashscope.languageHints,
-        vocabularyId: this.config.providers.dashscope.vocabularyId,
-        hotwords: this.config.providers.dashscope.hotwords,
+        ...providerMetadata,
         durationMs: payload.durationMs,
         createdAt: Date.now(),
       };
@@ -695,6 +696,7 @@ export class VoiceInputRuntime {
       await this.flashOverlayState('success');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const providerMetadata = this.getActiveProviderRecordMetadata();
       await this.persistRecord({
         id: crypto.randomUUID(),
         providerId: this.config.providerId,
@@ -703,10 +705,7 @@ export class VoiceInputRuntime {
         transcript: '',
         transcriptLength: 0,
         sourceAppName: this.state.sourceAppName,
-        model: this.config.providers.dashscope.model,
-        languageHints: this.config.providers.dashscope.languageHints,
-        vocabularyId: this.config.providers.dashscope.vocabularyId,
-        hotwords: this.config.providers.dashscope.hotwords,
+        ...providerMetadata,
         durationMs: payload.durationMs,
         errorMessage: message,
         createdAt: Date.now(),
@@ -722,6 +721,39 @@ export class VoiceInputRuntime {
     const result = db.insertVoiceInputRecord(record);
     if (!result.success) {
       mainWarn('[VoiceInput]', 'Failed to persist voice input record', result.error);
+    }
+  }
+
+  private createTranscriptionProvider(): VoiceInputTranscriptionProvider {
+    switch (this.config.providerId) {
+      case 'volcengine':
+        return new VolcengineVoiceProvider(this.config.providers.volcengine);
+      case 'dashscope':
+      default:
+        return new DashScopeVoiceProvider(this.config.providers.dashscope);
+    }
+  }
+
+  private getActiveProviderRecordMetadata(): Pick<
+    VoiceInputRecord,
+    'model' | 'languageHints' | 'vocabularyId' | 'hotwords'
+  > {
+    switch (this.config.providerId) {
+      case 'volcengine':
+        return {
+          model: this.config.providers.volcengine.model,
+          languageHints: [],
+          vocabularyId: undefined,
+          hotwords: [],
+        };
+      case 'dashscope':
+      default:
+        return {
+          model: this.config.providers.dashscope.model,
+          languageHints: this.config.providers.dashscope.languageHints,
+          vocabularyId: this.config.providers.dashscope.vocabularyId,
+          hotwords: this.config.providers.dashscope.hotwords,
+        };
     }
   }
 

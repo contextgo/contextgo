@@ -210,13 +210,20 @@
     "description": "Genel macOS sesli girişi, sağlayıcı kimlik bilgilerini ve kullanım özetini yapılandırın.",
     "platformNotSupported": "Sesli giriş şu anda yalnızca macOS masaüstünde kullanılabilir.",
     "provider": "Sağlayıcı",
+    "providers": {
+      "dashscope": "DashScope",
+      "volcengine": "VolcEngine"
+    },
     "triggerMode": "Tetikleme Modu",
     "triggerModes": {
       "fn_hold": "Fn Basılı Tut",
       "right_command_hold": "Sağ Command Basılı Tut",
       "right_option_hold": "Sağ Option Basılı Tut"
     },
-    "apiKey": "DashScope API Anahtarı",
+    "dashscopeApiKey": "DashScope API Anahtarı",
+    "appKey": "VolcEngine App Key",
+    "accessKey": "VolcEngine Access Key",
+    "resourceId": "Kaynak Kimliği",
     "model": "ASR Modeli",
     "region": "Bölge",
     "regions": {
@@ -227,6 +234,16 @@
     "languageHints": "Dil İpuçları",
     "hotwords": "Sıcak Kelimeler",
     "hotwordsPlaceholder": "Her satıra bir sıcak kelime girin veya virgülle ayırın",
+    "placeholders": {
+      "dashscopeApiKey": "sk-...",
+      "dashscopeModel": "fun-asr-realtime",
+      "vocabularyId": "custom-vocab-id",
+      "languageHints": "zh, en",
+      "volcengineAppKey": "123456789",
+      "volcengineAccessKey": "your-access-key",
+      "resourceId": "volc.bigasr.auc_turbo",
+      "volcengineModel": "bigmodel"
+    },
     "autoInsert": "Odaktaki uygulamaya otomatik ekle",
     "requestPermissions": "İzinleri İste",
     "startTest": "Testi Başlat",

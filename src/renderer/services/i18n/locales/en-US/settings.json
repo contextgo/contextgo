@@ -210,13 +210,20 @@
     "description": "Configure global macOS voice input, provider credentials, and usage summary.",
     "platformNotSupported": "Voice input is currently available on macOS desktop only.",
     "provider": "Provider",
+    "providers": {
+      "dashscope": "DashScope",
+      "volcengine": "VolcEngine"
+    },
     "triggerMode": "Trigger Mode",
     "triggerModes": {
       "fn_hold": "Hold Fn",
       "right_command_hold": "Hold Right Command",
       "right_option_hold": "Hold Right Option"
     },
-    "apiKey": "DashScope API Key",
+    "dashscopeApiKey": "DashScope API Key",
+    "appKey": "VolcEngine App Key",
+    "accessKey": "VolcEngine Access Key",
+    "resourceId": "Resource ID",
     "model": "ASR Model",
     "region": "Region",
     "regions": {
@@ -227,6 +234,16 @@
     "languageHints": "Language Hints",
     "hotwords": "Hotwords",
     "hotwordsPlaceholder": "One hotword per line, or separate by comma",
+    "placeholders": {
+      "dashscopeApiKey": "sk-...",
+      "dashscopeModel": "fun-asr-realtime",
+      "vocabularyId": "custom-vocab-id",
+      "languageHints": "zh, en",
+      "volcengineAppKey": "123456789",
+      "volcengineAccessKey": "your-access-key",
+      "resourceId": "volc.bigasr.auc_turbo",
+      "volcengineModel": "bigmodel"
+    },
     "autoInsert": "Auto insert into the focused app",
     "requestPermissions": "Request Permissions",
     "startTest": "Start Test",
