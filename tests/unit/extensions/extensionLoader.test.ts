@@ -67,7 +67,7 @@ describe('extensions/ExtensionLoader', () => {
     process.chdir(projectRoot);
     process.env.AIONUI_EXTENSIONS_PATH = envDir;
 
-    createExtension(path.join(homeDir, '.aionui-dev', 'extensions'), 'ext-shadow', 'ext-shadow', '1.0.0');
+    createExtension(path.join(homeDir, '.contextgo-dev', 'extensions'), 'ext-shadow', 'ext-shadow', '1.0.0');
     createExtension(envDir, 'ext-shadow', 'ext-shadow', '2.0.0');
     createExtension(path.join(projectRoot, 'examples'), 'dev-example', 'dev-example', '1.0.0');
 
@@ -84,7 +84,7 @@ describe('extensions/ExtensionLoader', () => {
     const homeDir = path.join(sandbox, 'home');
     const envDir = path.join(sandbox, 'env-extensions');
     const projectRoot = path.join(sandbox, 'project');
-    const appDataExtensionsDir = path.join(homeDir, 'AppData', 'Roaming', 'AionUI', 'extensions');
+    const appDataExtensionsDir = path.join(homeDir, 'AppData', 'Roaming', 'ContextGo', 'extensions');
 
     fs.mkdirSync(projectRoot, { recursive: true });
     fs.mkdirSync(envDir, { recursive: true });
@@ -93,7 +93,7 @@ describe('extensions/ExtensionLoader', () => {
     process.env.AIONUI_EXTENSIONS_PATH = envDir;
     process.env.AIONUI_E2E_TEST = '1';
 
-    createExtension(path.join(homeDir, '.aionui-dev', 'extensions'), 'user-only', 'user-only');
+    createExtension(path.join(homeDir, '.contextgo-dev', 'extensions'), 'user-only', 'user-only');
     createExtension(appDataExtensionsDir, 'appdata-only', 'appdata-only');
     createExtension(path.join(projectRoot, 'examples'), 'dev-example', 'dev-example');
     createExtension(envDir, 'env-only', 'env-only');
