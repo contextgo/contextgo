@@ -31,6 +31,8 @@ and local state loss is acceptable.
 | Built-in skill bundle id       | `aionui-builtin-skills`                                                | `contextgo-builtin-skills`                                                         | Migrate now | The internal Gemini extension bundle should follow the same product namespace as the rest of the built-in skill runtime.                              |
 | Built-in WebUI skill id        | `aionui-webui-setup`                                                   | `contextgo-webui-setup`                                                            | Migrate now | Assistant preset skill wiring should point at the renamed ContextGo setup skill instead of preserving the legacy bundle identifier.                   |
 | Built-in WebUI skill reference | `references/aionui-webui.md`                                           | `references/contextgo-webui.md`                                                    | Migrate now | The bundled skill documentation path should stay aligned with the skill identifier it ships with.                                                     |
+| Skills Market skill dir        | `aionui-skills`                                                        | `contextgo-skills`                                                                 | Migrate now | The bundled Skills Market entry point is local app-managed state; the clean-break migration no longer needs to auto-discover the legacy directory.    |
+| Mobile runtime identifiers     | `aionui-mobile`, `ai.resopod.aionui`                                   | `contextgo-mobile`, `io.contextgo.mobile`                                          | Migrate now | The mobile package name, deep-link scheme, and bundle identifiers should align with the same ContextGo product namespace as the desktop app.          |
 
 ## Explicitly Deferred
 
@@ -50,4 +52,6 @@ local persistence, auth/session namespaces, and built-in MCP/skill identifiers.
 - Existing installs using the old Electron app id do not in-place upgrade to the new app id.
 - Existing WebUI login sessions and CSRF cookies using the old `aionui` auth namespace are invalidated and require re-login.
 - Existing stored MCP configs using `aionui-image-generation` continue to resolve via the built-in legacy alias.
+- Existing local Skills Market state stored only under `aionui-skills` is no longer auto-discovered.
+- Existing mobile installs using the old `aionui-mobile` / `ai.resopod.aionui` identifiers do not in-place upgrade to the renamed identifiers.
 - The migration is intentionally clean-break oriented and matches the current project stage.

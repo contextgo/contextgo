@@ -24,7 +24,6 @@ import {
 import { readDirectoryRecursive } from '@process/utils';
 
 const SKILLS_MARKET_SKILL_DIR = 'contextgo-skills';
-const LEGACY_SKILLS_MARKET_SKILL_DIR = 'aionui-skills';
 
 // ============================================================================
 // Helper functions for builtin resource directory resolution
@@ -1691,11 +1690,6 @@ export function initFsBridge(): void {
       const { getAutoSkillsDir } = await import('@process/utils/initStorage');
       const builtinSkillsDir = getAutoSkillsDir();
       const skillDir = path.join(builtinSkillsDir, SKILLS_MARKET_SKILL_DIR);
-      const legacySkillDir = path.join(builtinSkillsDir, LEGACY_SKILLS_MARKET_SKILL_DIR);
-
-      if (!(await pathExists(skillDir)) && (await pathExists(legacySkillDir))) {
-        await fs.rename(legacySkillDir, skillDir);
-      }
 
       await fs.mkdir(skillDir, { recursive: true });
 
@@ -1724,9 +1718,7 @@ export function initFsBridge(): void {
       const { getAutoSkillsDir } = await import('@process/utils/initStorage');
       const builtinSkillsDir = getAutoSkillsDir();
       const skillDir = path.join(builtinSkillsDir, SKILLS_MARKET_SKILL_DIR);
-      const legacySkillDir = path.join(builtinSkillsDir, LEGACY_SKILLS_MARKET_SKILL_DIR);
       await fs.rm(skillDir, { recursive: true, force: true });
-      await fs.rm(legacySkillDir, { recursive: true, force: true });
 
       // Reset AcpSkillManager singleton so it re-discovers builtin skills
       const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
@@ -1754,10 +1746,7 @@ export function initFsBridge(): void {
 async function readBundledSkillsMarketMd(): Promise<string> {
   try {
     const builtinDir = getBuiltinSkillsCopyDir();
-    const fallbackPaths = [
-      path.join(builtinDir, SKILLS_MARKET_SKILL_DIR, 'SKILL.md'),
-      path.join(builtinDir, LEGACY_SKILLS_MARKET_SKILL_DIR, 'SKILL.md'),
-    ];
+    const fallbackPaths = [path.join(builtinDir, SKILLS_MARKET_SKILL_DIR, 'SKILL.md')];
 
     for (const fallbackPath of fallbackPaths) {
       if (await pathExists(fallbackPath)) {
