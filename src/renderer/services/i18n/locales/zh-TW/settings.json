@@ -210,13 +210,20 @@
     "description": "設定全域 macOS 語音輸入、Provider 憑證與使用摘要。",
     "platformNotSupported": "目前語音輸入僅支援 macOS 桌面端。",
     "provider": "Provider",
+    "providers": {
+      "dashscope": "DashScope",
+      "volcengine": "火山引擎"
+    },
     "triggerMode": "觸發方式",
     "triggerModes": {
       "fn_hold": "按住 Fn",
       "right_command_hold": "按住右 Command",
       "right_option_hold": "按住右 Option"
     },
-    "apiKey": "DashScope API Key",
+    "dashscopeApiKey": "DashScope API Key",
+    "appKey": "火山引擎 App Key",
+    "accessKey": "火山引擎 Access Key",
+    "resourceId": "資源 ID",
     "model": "ASR 模型",
     "region": "區域",
     "regions": {
@@ -227,6 +234,16 @@
     "languageHints": "語言提示",
     "hotwords": "熱詞",
     "hotwordsPlaceholder": "每行一個熱詞，或使用逗號分隔",
+    "placeholders": {
+      "dashscopeApiKey": "sk-...",
+      "dashscopeModel": "fun-asr-realtime",
+      "vocabularyId": "custom-vocab-id",
+      "languageHints": "zh, en",
+      "volcengineAppKey": "123456789",
+      "volcengineAccessKey": "your-access-key",
+      "resourceId": "volc.bigasr.auc_turbo",
+      "volcengineModel": "bigmodel"
+    },
     "autoInsert": "自動插入到目前焦點應用",
     "requestPermissions": "申請權限",
     "startTest": "開始測試",

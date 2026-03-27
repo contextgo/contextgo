@@ -210,13 +210,20 @@
     "description": "配置全局 macOS 语音输入、Provider 凭证与使用汇总。",
     "platformNotSupported": "当前语音输入仅支持 macOS 桌面端。",
     "provider": "Provider",
+    "providers": {
+      "dashscope": "DashScope",
+      "volcengine": "火山引擎"
+    },
     "triggerMode": "触发方式",
     "triggerModes": {
       "fn_hold": "按住 Fn",
       "right_command_hold": "按住右 Command",
       "right_option_hold": "按住右 Option"
     },
-    "apiKey": "DashScope API Key",
+    "dashscopeApiKey": "DashScope API Key",
+    "appKey": "火山引擎 App Key",
+    "accessKey": "火山引擎 Access Key",
+    "resourceId": "资源 ID",
     "model": "ASR 模型",
     "region": "地域",
     "regions": {
@@ -227,6 +234,16 @@
     "languageHints": "语言提示",
     "hotwords": "热词",
     "hotwordsPlaceholder": "每行一个热词，或使用逗号分隔",
+    "placeholders": {
+      "dashscopeApiKey": "sk-...",
+      "dashscopeModel": "fun-asr-realtime",
+      "vocabularyId": "custom-vocab-id",
+      "languageHints": "zh, en",
+      "volcengineAppKey": "123456789",
+      "volcengineAccessKey": "your-access-key",
+      "resourceId": "volc.bigasr.auc_turbo",
+      "volcengineModel": "bigmodel"
+    },
     "autoInsert": "自动插入到当前焦点应用",
     "requestPermissions": "申请权限",
     "startTest": "开始测试",

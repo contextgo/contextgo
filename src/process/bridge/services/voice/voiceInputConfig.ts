@@ -2,6 +2,7 @@ import {
   DEFAULT_VOICE_INPUT_CONFIG,
   type VoiceInputConfig,
   type VoiceInputDashScopeConfig,
+  type VoiceInputVolcengineConfig,
   type VoiceInputPermissionState,
   type VoiceInputPermissions,
   type VoiceInputState,
@@ -50,16 +51,31 @@ const normalizeDashScopeConfig = (value: unknown): VoiceInputDashScopeConfig => 
   };
 };
 
+const normalizeVolcengineConfig = (value: unknown): VoiceInputVolcengineConfig => {
+  const raw = value && typeof value === 'object' ? (value as Partial<VoiceInputVolcengineConfig>) : {};
+
+  return {
+    appKey: normalizeString(raw.appKey),
+    accessKey: normalizeString(raw.accessKey),
+    resourceId: normalizeString(raw.resourceId) || DEFAULT_VOICE_INPUT_CONFIG.providers.volcengine.resourceId,
+    model: normalizeString(raw.model) || DEFAULT_VOICE_INPUT_CONFIG.providers.volcengine.model,
+  };
+};
+
 export const normalizeVoiceInputConfig = (value: unknown): VoiceInputConfig => {
   const raw = value && typeof value === 'object' ? (value as Partial<VoiceInputConfig>) : {};
 
   return {
     enabled: raw.enabled === true,
-    providerId: raw.providerId === 'dashscope' ? 'dashscope' : DEFAULT_VOICE_INPUT_CONFIG.providerId,
+    providerId:
+      raw.providerId === 'dashscope' || raw.providerId === 'volcengine'
+        ? raw.providerId
+        : DEFAULT_VOICE_INPUT_CONFIG.providerId,
     triggerMode: isVoiceInputTriggerMode(raw.triggerMode) ? raw.triggerMode : DEFAULT_VOICE_INPUT_CONFIG.triggerMode,
     autoInsert: raw.autoInsert !== false,
     providers: {
       dashscope: normalizeDashScopeConfig(raw.providers?.dashscope),
+      volcengine: normalizeVolcengineConfig(raw.providers?.volcengine),
     },
   };
 };
@@ -69,11 +85,15 @@ export const isVoiceInputTriggerMode = (value: unknown): value is VoiceInputTrig
 };
 
 export const isVoiceInputConfigured = (config: VoiceInputConfig): boolean => {
-  if (config.providerId !== 'dashscope') {
-    return false;
+  if (config.providerId === 'dashscope') {
+    return config.providers.dashscope.apiKey.length > 0;
   }
 
-  return config.providers.dashscope.apiKey.length > 0;
+  return (
+    config.providers.volcengine.appKey.length > 0 &&
+    config.providers.volcengine.accessKey.length > 0 &&
+    config.providers.volcengine.resourceId.length > 0
+  );
 };
 
 export const getDashScopeWebSocketUrl = (region: VoiceInputDashScopeConfig['region']): string => {

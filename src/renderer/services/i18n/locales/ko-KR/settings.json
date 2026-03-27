@@ -210,13 +210,20 @@
     "description": "전역 macOS 음성 입력, Provider 자격 증명 및 사용 요약을 설정합니다.",
     "platformNotSupported": "음성 입력은 현재 macOS 데스크톱에서만 사용할 수 있습니다.",
     "provider": "Provider",
+    "providers": {
+      "dashscope": "DashScope",
+      "volcengine": "VolcEngine"
+    },
     "triggerMode": "트리거 방식",
     "triggerModes": {
       "fn_hold": "Fn 길게 누르기",
       "right_command_hold": "오른쪽 Command 길게 누르기",
       "right_option_hold": "오른쪽 Option 길게 누르기"
     },
-    "apiKey": "DashScope API 키",
+    "dashscopeApiKey": "DashScope API 키",
+    "appKey": "VolcEngine App Key",
+    "accessKey": "VolcEngine Access Key",
+    "resourceId": "리소스 ID",
     "model": "ASR 모델",
     "region": "리전",
     "regions": {
@@ -227,6 +234,16 @@
     "languageHints": "언어 힌트",
     "hotwords": "핫워드",
     "hotwordsPlaceholder": "한 줄에 하나씩 또는 쉼표로 구분해 입력",
+    "placeholders": {
+      "dashscopeApiKey": "sk-...",
+      "dashscopeModel": "fun-asr-realtime",
+      "vocabularyId": "custom-vocab-id",
+      "languageHints": "zh, en",
+      "volcengineAppKey": "123456789",
+      "volcengineAccessKey": "your-access-key",
+      "resourceId": "volc.bigasr.auc_turbo",
+      "volcengineModel": "bigmodel"
+    },
     "autoInsert": "포커스된 앱에 자동 삽입",
     "requestPermissions": "권한 요청",
     "startTest": "테스트 시작",

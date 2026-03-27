@@ -69,8 +69,17 @@ const VoiceInputSection: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<'permissions' | 'start' | 'stop' | null>(null);
 
-  const languageHintsText = useMemo(() => draft.providers.dashscope.languageHints.join(', '), [draft]);
-  const hotwordsText = useMemo(() => draft.providers.dashscope.hotwords.join('\n'), [draft]);
+  const dashScopeConfig = draft.providers.dashscope;
+  const volcengineConfig = draft.providers.volcengine;
+  const languageHintsText = useMemo(() => dashScopeConfig.languageHints.join(', '), [dashScopeConfig.languageHints]);
+  const hotwordsText = useMemo(() => dashScopeConfig.hotwords.join('\n'), [dashScopeConfig.hotwords]);
+  const providerOptions = useMemo(
+    () => [
+      { label: t('settings.voiceInput.providers.dashscope'), value: 'dashscope' },
+      { label: t('settings.voiceInput.providers.volcengine'), value: 'volcengine' },
+    ],
+    [t]
+  );
   const statItems = useMemo(
     () => [
       {
@@ -250,7 +259,7 @@ const VoiceInputSection: React.FC = () => {
             <Form.Item label={t('settings.voiceInput.provider')}>
               <Select
                 value={draft.providerId}
-                options={[{ label: 'DashScope', value: 'dashscope' }]}
+                options={providerOptions}
                 onChange={(value) =>
                   updateDraft((current) => ({
                     ...current,
@@ -279,123 +288,209 @@ const VoiceInputSection: React.FC = () => {
             </Form.Item>
           </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
-            <Form.Item label={t('settings.voiceInput.apiKey')}>
-              <Input.Password
-                value={draft.providers.dashscope.apiKey}
-                placeholder='sk-...'
-                onChange={(value) =>
-                  updateDraft((current) => ({
-                    ...current,
-                    providers: {
-                      ...current.providers,
-                      dashscope: {
-                        ...current.providers.dashscope,
-                        apiKey: value,
-                      },
-                    },
-                  }))
-                }
-              />
-            </Form.Item>
-            <Form.Item label={t('settings.voiceInput.model')}>
-              <Input
-                value={draft.providers.dashscope.model}
-                onChange={(value) =>
-                  updateDraft((current) => ({
-                    ...current,
-                    providers: {
-                      ...current.providers,
-                      dashscope: {
-                        ...current.providers.dashscope,
-                        model: value,
-                      },
-                    },
-                  }))
-                }
-              />
-            </Form.Item>
-          </div>
+          {draft.providerId === 'dashscope' ? (
+            <>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
+                <Form.Item label={t('settings.voiceInput.dashscopeApiKey')}>
+                  <Input.Password
+                    value={dashScopeConfig.apiKey}
+                    placeholder={t('settings.voiceInput.placeholders.dashscopeApiKey')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          dashscope: {
+                            ...current.providers.dashscope,
+                            apiKey: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label={t('settings.voiceInput.model')}>
+                  <Input
+                    value={dashScopeConfig.model}
+                    placeholder={t('settings.voiceInput.placeholders.dashscopeModel')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          dashscope: {
+                            ...current.providers.dashscope,
+                            model: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+              </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
-            <Form.Item label={t('settings.voiceInput.region')}>
-              <Select
-                value={draft.providers.dashscope.region}
-                options={[
-                  { label: t('settings.voiceInput.regions.beijing'), value: 'beijing' },
-                  { label: t('settings.voiceInput.regions.singapore'), value: 'singapore' },
-                ]}
-                onChange={(value) =>
-                  updateDraft((current) => ({
-                    ...current,
-                    providers: {
-                      ...current.providers,
-                      dashscope: {
-                        ...current.providers.dashscope,
-                        region: value as VoiceInputConfig['providers']['dashscope']['region'],
-                      },
-                    },
-                  }))
-                }
-              />
-            </Form.Item>
-            <Form.Item label={t('settings.voiceInput.vocabularyId')}>
-              <Input
-                value={draft.providers.dashscope.vocabularyId}
-                onChange={(value) =>
-                  updateDraft((current) => ({
-                    ...current,
-                    providers: {
-                      ...current.providers,
-                      dashscope: {
-                        ...current.providers.dashscope,
-                        vocabularyId: value,
-                      },
-                    },
-                  }))
-                }
-              />
-            </Form.Item>
-          </div>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
+                <Form.Item label={t('settings.voiceInput.region')}>
+                  <Select
+                    value={dashScopeConfig.region}
+                    options={[
+                      { label: t('settings.voiceInput.regions.beijing'), value: 'beijing' },
+                      { label: t('settings.voiceInput.regions.singapore'), value: 'singapore' },
+                    ]}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          dashscope: {
+                            ...current.providers.dashscope,
+                            region: value as VoiceInputConfig['providers']['dashscope']['region'],
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label={t('settings.voiceInput.vocabularyId')}>
+                  <Input
+                    value={dashScopeConfig.vocabularyId}
+                    placeholder={t('settings.voiceInput.placeholders.vocabularyId')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          dashscope: {
+                            ...current.providers.dashscope,
+                            vocabularyId: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+              </div>
 
-          <Form.Item label={t('settings.voiceInput.languageHints')}>
-            <Input
-              value={languageHintsText}
-              placeholder='zh, en'
-              onChange={(value) =>
-                updateDraft((current) => ({
-                  ...current,
-                  providers: {
-                    ...current.providers,
-                    dashscope: {
-                      ...current.providers.dashscope,
-                      languageHints: splitListInput(value),
-                    },
-                  },
-                }))
-              }
-            />
-          </Form.Item>
+              <Form.Item label={t('settings.voiceInput.languageHints')}>
+                <Input
+                  value={languageHintsText}
+                  placeholder={t('settings.voiceInput.placeholders.languageHints')}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      providers: {
+                        ...current.providers,
+                        dashscope: {
+                          ...current.providers.dashscope,
+                          languageHints: splitListInput(value),
+                        },
+                      },
+                    }))
+                  }
+                />
+              </Form.Item>
 
-          <Form.Item label={t('settings.voiceInput.hotwords')}>
-            <Input.TextArea
-              autoSize={{ minRows: 3, maxRows: 6 }}
-              value={hotwordsText}
-              placeholder={t('settings.voiceInput.hotwordsPlaceholder')}
-              onChange={(value) =>
-                updateDraft((current) => ({
-                  ...current,
-                  providers: {
-                    ...current.providers,
-                    dashscope: {
-                      ...current.providers.dashscope,
-                      hotwords: splitListInput(value),
-                    },
-                  },
-                }))
-              }
-            />
-          </Form.Item>
+              <Form.Item label={t('settings.voiceInput.hotwords')}>
+                <Input.TextArea
+                  autoSize={{ minRows: 3, maxRows: 6 }}
+                  value={hotwordsText}
+                  placeholder={t('settings.voiceInput.hotwordsPlaceholder')}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      providers: {
+                        ...current.providers,
+                        dashscope: {
+                          ...current.providers.dashscope,
+                          hotwords: splitListInput(value),
+                        },
+                      },
+                    }))
+                  }
+                />
+              </Form.Item>
+            </>
+          ) : (
+            <>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
+                <Form.Item label={t('settings.voiceInput.appKey')}>
+                  <Input
+                    value={volcengineConfig.appKey}
+                    placeholder={t('settings.voiceInput.placeholders.volcengineAppKey')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          volcengine: {
+                            ...current.providers.volcengine,
+                            appKey: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label={t('settings.voiceInput.accessKey')}>
+                  <Input.Password
+                    value={volcengineConfig.accessKey}
+                    placeholder={t('settings.voiceInput.placeholders.volcengineAccessKey')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          volcengine: {
+                            ...current.providers.volcengine,
+                            accessKey: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+              </div>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
+                <Form.Item label={t('settings.voiceInput.resourceId')}>
+                  <Input
+                    value={volcengineConfig.resourceId}
+                    placeholder={t('settings.voiceInput.placeholders.resourceId')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          volcengine: {
+                            ...current.providers.volcengine,
+                            resourceId: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label={t('settings.voiceInput.model')}>
+                  <Input
+                    value={volcengineConfig.model}
+                    placeholder={t('settings.voiceInput.placeholders.volcengineModel')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          volcengine: {
+                            ...current.providers.volcengine,
+                            model: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+              </div>
+            </>
+          )}
 
           <div className='flex items-center justify-between gap-12px flex-wrap'>
             <div className='flex items-center gap-8px'>
