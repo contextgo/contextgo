@@ -235,6 +235,21 @@
     "switchedToAgent": "{{agent}}に切り替えました",
     "switchAgentFailed": "エージェントの切り替えに失敗しました"
   },
+  "pendingMessages": {
+    "title": "保留中 {{count}} 件",
+    "shortcuts": "Tab でキュー · Cmd/Ctrl+Enter で誘導 · Option/Alt+↑ で最新を編集",
+    "attachments": "{{count}} 個のファイル",
+    "dispatching": "送信中...",
+    "edit": "再編集",
+    "mode": {
+      "queue": "キュー",
+      "steer": "誘導"
+    },
+    "actions": {
+      "queue": "キューに戻す",
+      "steer": "次を誘導"
+    }
+  },
   "contextUsage": {
     "contextUsed": "コンテキスト使用量"
   },

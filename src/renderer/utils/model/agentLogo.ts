@@ -56,6 +56,9 @@ const AGENT_LOGO_MAP = {
   qoder: QoderLogo,
   cursor: CursorLogo,
 } as const satisfies Record<string, string>;
+const AGENT_LOGO_KEYS = Object.keys(AGENT_LOGO_MAP).sort((a, b) => b.length - a.length) as Array<
+  keyof typeof AGENT_LOGO_MAP
+>;
 
 function isDarkTheme(): boolean {
   if (typeof document === 'undefined') return false;
@@ -93,6 +96,45 @@ export function getAgentLogo(agent: string | undefined | null): string | null {
  */
 export function hasAgentLogo(agent: string | undefined | null): boolean {
   return getAgentLogo(agent) !== null;
+}
+
+type GetModelLogoOptions = {
+  modelId?: string | null;
+  providerId?: string | null;
+  providerName?: string | null;
+  providerPlatform?: string | null;
+  backend?: string | null;
+};
+
+const normalizeAgentKey = (value: string): string | null => {
+  const lower = value.trim().toLowerCase();
+  if (!lower) return null;
+  if (lower in AGENT_LOGO_MAP) {
+    return lower;
+  }
+  return AGENT_LOGO_KEYS.find((key) => lower.includes(key)) ?? null;
+};
+
+/**
+ * Try to infer a stable logo from model/provider metadata.
+ * 在模型或供应商元信息中推断最合适的 logo。
+ */
+export function getModelLogo(options: GetModelLogoOptions): string | null {
+  const candidates = [
+    options.backend,
+    options.providerPlatform,
+    options.providerId,
+    options.providerName,
+    options.modelId,
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const agentKey = normalizeAgentKey(candidate);
+    if (!agentKey) continue;
+    const logo = getAgentLogo(agentKey);
+    if (logo) return logo;
+  }
+  return null;
 }
 
 /**

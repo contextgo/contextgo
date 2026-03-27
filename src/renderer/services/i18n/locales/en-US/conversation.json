@@ -235,6 +235,21 @@
     "switchedToAgent": "Switched to {{agent}}",
     "switchAgentFailed": "Failed to switch agent"
   },
+  "pendingMessages": {
+    "title": "{{count}} pending",
+    "shortcuts": "Tab queue · Cmd/Ctrl+Enter steer · Option/Alt+↑ edit latest",
+    "attachments": "{{count}} files",
+    "dispatching": "Sending...",
+    "edit": "Edit",
+    "mode": {
+      "queue": "Queue",
+      "steer": "Steer"
+    },
+    "actions": {
+      "queue": "Move to queue",
+      "steer": "Guide next"
+    }
+  },
   "contextUsage": {
     "contextUsed": "context used"
   },

@@ -18,6 +18,7 @@ type UseAcpMessageReturn = {
   running: boolean;
   acpStatus: 'connecting' | 'connected' | 'authenticated' | 'session_active' | 'disconnected' | 'error' | null;
   aiProcessing: boolean;
+  canSteerPendingMessage: boolean;
   setAiProcessing: React.Dispatch<React.SetStateAction<boolean>>;
   resetState: () => void;
   tokenUsage: TokenUsageData | null;
@@ -35,12 +36,15 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
     'connecting' | 'connected' | 'authenticated' | 'session_active' | 'disconnected' | 'error' | null
   >(null);
   const [aiProcessing, setAiProcessing] = useState(false); // New loading state for AI response
+  const [hasActiveToolCalls, setHasActiveToolCalls] = useState(false);
+  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(false);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageData | null>(null);
   const [contextLimit, setContextLimit] = useState<number>(0);
 
   // Use refs to sync state for immediate access in event handlers
   const runningRef = useRef(running);
   const aiProcessingRef = useRef(aiProcessing);
+  const activeToolCallIdsRef = useRef<Set<string>>(new Set());
 
   // Track whether current turn has content output
   // Only reset aiProcessing when finish arrives after content (not after tool calls)
@@ -130,6 +134,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
             runningRef.current = false;
             setAiProcessing(false);
             aiProcessingRef.current = false;
+            activeToolCallIdsRef.current = new Set();
+            setHasActiveToolCalls(false);
+            setSawToolActivityInTurn(false);
             setThought({ subject: '', description: '' });
             hasContentInTurnRef.current = false;
             // Log request completion
@@ -181,6 +188,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
               runningRef.current = false;
               setAiProcessing(false);
               aiProcessingRef.current = false;
+              activeToolCallIdsRef.current = new Set();
+              setHasActiveToolCalls(false);
+              setSawToolActivityInTurn(false);
             }
           }
           addOrUpdateMessage(transformedMessage);
@@ -189,6 +199,28 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
         case 'user_content':
           addOrUpdateMessage(transformedMessage);
           break;
+        case 'acp_tool_call': {
+          const update = (message.data as { update?: { toolCallId?: string; status?: string } })?.update;
+          const toolCallId = update?.toolCallId;
+          const status = update?.status;
+
+          if (toolCallId) {
+            const nextActiveToolCallIds = new Set(activeToolCallIdsRef.current);
+            setSawToolActivityInTurn(true);
+
+            if (status === 'pending' || status === 'in_progress') {
+              nextActiveToolCallIds.add(toolCallId);
+            } else {
+              nextActiveToolCallIds.delete(toolCallId);
+            }
+
+            activeToolCallIdsRef.current = nextActiveToolCallIds;
+            setHasActiveToolCalls(nextActiveToolCallIds.size > 0);
+          }
+
+          addOrUpdateMessage(transformedMessage);
+          break;
+        }
         case 'acp_permission':
           // Auto-recover running state if permission request arrives after finish
           if (!runningRef.current) {
@@ -233,6 +265,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
           runningRef.current = false;
           setAiProcessing(false);
           aiProcessingRef.current = false;
+          activeToolCallIdsRef.current = new Set();
+          setHasActiveToolCalls(false);
+          setSawToolActivityInTurn(false);
           addOrUpdateMessage(transformedMessage);
           // Log request error
           if (requestTraceRef.current) {
@@ -279,6 +314,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
         runningRef.current = false;
         setAiProcessing(false);
         aiProcessingRef.current = false;
+        activeToolCallIdsRef.current = new Set();
+        setHasActiveToolCalls(false);
+        setSawToolActivityInTurn(false);
         return;
       }
       const isRunning = res.status === 'running';
@@ -286,6 +324,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
       runningRef.current = isRunning;
       setAiProcessing(isRunning);
       aiProcessingRef.current = isRunning;
+      activeToolCallIdsRef.current = new Set();
+      setHasActiveToolCalls(false);
+      setSawToolActivityInTurn(false);
 
       // Restore persisted context usage data
       if (res.type === 'acp' && res.extra?.lastTokenUsage) {
@@ -305,6 +346,9 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
     runningRef.current = false;
     setAiProcessing(false);
     aiProcessingRef.current = false;
+    activeToolCallIdsRef.current = new Set();
+    setHasActiveToolCalls(false);
+    setSawToolActivityInTurn(false);
     setThought({ subject: '', description: '' });
     hasContentInTurnRef.current = false;
   }, []);
@@ -315,6 +359,7 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
     running,
     acpStatus,
     aiProcessing,
+    canSteerPendingMessage: (running || aiProcessing) && sawToolActivityInTurn && !hasActiveToolCalls,
     setAiProcessing,
     resetState,
     tokenUsage,
