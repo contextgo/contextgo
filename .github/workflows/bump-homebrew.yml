@@ -1,8 +1,8 @@
 name: Verify Homebrew Cask
 
-# The aionui cask is on Homebrew's autobump list — BrewTestBot automatically
-# creates version-bump PRs every ~3 hours. This workflow only *verifies* that
-# the cask has been updated, it no longer submits bump PRs itself.
+# The legacy Homebrew cask identifier is still `aionui` while the upstream
+# rename is pending in Homebrew/homebrew-cask. This workflow only verifies
+# that the cask has been bumped to the latest ContextGo release.
 
 on:
   # Daily check at 08:00 UTC
@@ -79,7 +79,7 @@ jobs:
         run: |
           EXPECTED="${{ steps.release.outputs.version }}"
 
-          # Search for open PRs updating aionui in homebrew-cask
+          # Search for open PRs updating the legacy aionui cask in homebrew-cask
           PR_LIST=$(gh pr list --repo Homebrew/homebrew-cask \
             --search "aionui $EXPECTED in:title" --state open \
             --json number,title,url --limit 5 2>/dev/null || echo "[]")
@@ -110,7 +110,7 @@ jobs:
           if [ "$STATUS" = "match" ]; then
             echo "Homebrew cask is up to date!"
             echo "  Version: $CASK_VERSION"
-            echo "  Install: brew install --cask aionui"
+            echo "  Legacy cask identifier remains: brew install --cask aionui"
           elif [ "$STATUS" = "mismatch" ] && [ "$PR_STATUS" = "pr_pending" ]; then
             echo "Homebrew bump PR is pending review."
             echo "  Current cask: $CASK_VERSION"

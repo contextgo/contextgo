@@ -5,8 +5,8 @@
 # The actual cask is maintained in the official Homebrew repository:
 #   https://github.com/Homebrew/homebrew-cask/blob/master/Casks/a/aionui.rb
 #
-# Updates are automated via .github/workflows/bump-homebrew.yml which
-# creates PRs to the official repository when a new release is published.
+# Legacy cask identifier note: upstream still uses `aionui` while the rename
+# to ContextGo is pending. This template tracks ContextGo release artifacts.
 # =============================================================================
 
 cask "aionui" do
@@ -16,10 +16,10 @@ cask "aionui" do
   sha256 arm:   "ec758b0f4727eea1fb13a7ca4176dbf75baab2f3dc135eacbaa8ce091d27d219",
          intel: "bdb9be0d79f6c7c6c7457f2668dd23ccd0c00a9c7b5a4129960c5d7650190a3a"
 
-  url "https://github.com/iOfficeAI/AionUi/releases/download/v#{version}/AionUi-#{version}-mac-#{arch}.dmg"
-  name "AionUi"
+  url "https://github.com/contextgo/contextgo/releases/download/v#{version}/ContextGo-#{version}-mac-#{arch}.dmg"
+  name "ContextGo"
   desc "Unified GUI for command-line AI agents"
-  homepage "https://github.com/iOfficeAI/AionUi"
+  homepage "https://github.com/contextgo/contextgo"
 
   livecheck do
     url :url
@@ -29,10 +29,10 @@ cask "aionui" do
   auto_updates true
   depends_on macos: ">= :big_sur"
 
-  app "AionUi.app"
+  app "ContextGo.app"
 
   zap trash: [
-    "~/Library/Application Support/AionUi",
+    "~/Library/Application Support/ContextGo",
     "~/Library/Preferences/com.aionui.app.plist",
     "~/Library/Saved Application State/com.aionui.app.savedState",
   ]
