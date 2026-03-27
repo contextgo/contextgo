@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -24,7 +24,7 @@ const PAIRING_CONFIG = {
  * Flow:
  * 1. User sends /start to bot
  * 2. Bot generates 6-digit pairing code
- * 3. User enters code in AionUi Settings (or code is auto-displayed)
+ * 3. User enters code in ContextGo Settings (or code is auto-displayed)
  * 4. Local user approves/rejects the pairing
  * 5. Bot notifies remote user of result
  */
