@@ -32,6 +32,9 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     getAuthorizedUsers: makeChannel('getAuthorizedUsers'),
     revokeUser: makeChannel('revokeUser'),
     getActiveSessions: makeChannel('getActiveSessions'),
+    getBindings: makeChannel('getBindings'),
+    upsertBinding: makeChannel('upsertBinding'),
+    deleteBinding: makeChannel('deleteBinding'),
     syncChannelSettings: makeChannel('syncChannelSettings'),
   },
 }));
@@ -70,6 +73,7 @@ vi.mock('@/extensions/assetProtocol', () => ({ toAssetUrl: vi.fn((p: string) => 
 import { initChannelBridge } from '../../src/process/bridge/channelBridge';
 import type { IChannelRepository } from '../../src/process/services/database/IChannelRepository';
 import type {
+  IChannelBinding,
   IChannelPluginConfig,
   IChannelUser,
   IChannelPairingRequest,
@@ -83,6 +87,9 @@ function makeRepo(overrides?: Partial<IChannelRepository>): IChannelRepository {
     getChannelUsers: vi.fn(() => []),
     deleteChannelUser: vi.fn(),
     getChannelSessions: vi.fn(() => []),
+    getChannelBindings: vi.fn(() => []),
+    upsertChannelBinding: vi.fn(),
+    deleteChannelBinding: vi.fn(),
     ...overrides,
   };
 }
@@ -261,6 +268,107 @@ describe('channelBridge', () => {
 
       expect(result.success).toBe(false);
       expect(result.msg).toBe('sessions unavailable');
+    });
+  });
+
+  // --- binding management ---
+
+  describe('getBindings', () => {
+    it('returns bindings from repo', async () => {
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+
+      const result = await handlers['getBindings']({ connectorId: 'connector-1' });
+
+      expect(repo.getChannelBindings).toHaveBeenCalledWith('connector-1');
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([binding]);
+    });
+
+    it('returns error when repo throws', async () => {
+      vi.mocked(repo.getChannelBindings).mockImplementation(() => {
+        throw new Error('bindings unavailable');
+      });
+
+      const result = await handlers['getBindings']({ connectorId: 'connector-1' });
+
+      expect(result.success).toBe(false);
+      expect(result.msg).toBe('bindings unavailable');
+    });
+  });
+
+  describe('upsertBinding', () => {
+    it('upserts binding through repo', async () => {
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_user',
+        scopeKey: 'user-1',
+        agentProfileId: 'agent-1',
+        priority: 1,
+        enabled: true,
+        temporary: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const result = await handlers['upsertBinding']({ binding });
+
+      expect(repo.upsertChannelBinding).toHaveBeenCalledWith(binding);
+      expect(result.success).toBe(true);
+    });
+
+    it('returns error when repo throws', async () => {
+      const binding: IChannelBinding = {
+        id: 'binding-invalid',
+        connectorId: 'connector-1',
+        scopeType: 'connector_default',
+        agentProfileId: 'agent-1',
+        priority: 0,
+        enabled: true,
+        temporary: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      vi.mocked(repo.upsertChannelBinding).mockImplementation(() => {
+        throw new Error('invalid binding scope');
+      });
+
+      const result = await handlers['upsertBinding']({ binding });
+
+      expect(result.success).toBe(false);
+      expect(result.msg).toBe('invalid binding scope');
+    });
+  });
+
+  describe('deleteBinding', () => {
+    it('deletes binding through repo', async () => {
+      const result = await handlers['deleteBinding']({ bindingId: 'binding-1' });
+
+      expect(repo.deleteChannelBinding).toHaveBeenCalledWith('binding-1');
+      expect(result.success).toBe(true);
+    });
+
+    it('returns error when repo throws', async () => {
+      vi.mocked(repo.deleteChannelBinding).mockImplementation(() => {
+        throw new Error('delete failed');
+      });
+
+      const result = await handlers['deleteBinding']({ bindingId: 'binding-1' });
+
+      expect(result.success).toBe(false);
+      expect(result.msg).toBe('delete failed');
     });
   });
 });

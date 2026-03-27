@@ -1117,6 +1117,7 @@ export const extensions = {
 // ==================== Channel API ====================
 
 import type {
+  IChannelBinding,
   IChannelPairingRequest,
   IChannelPluginStatus,
   IChannelSession,
@@ -1148,6 +1149,13 @@ export const channel = {
 
   // Session Management (MVP: read-only view)
   getActiveSessions: bridge.buildProvider<IBridgeResponse<IChannelSession[]>, void>('channel.get-active-sessions'),
+
+  // Binding Management
+  getBindings: bridge.buildProvider<IBridgeResponse<IChannelBinding[]>, { connectorId?: string } | void>(
+    'channel.get-bindings'
+  ),
+  upsertBinding: bridge.buildProvider<IBridgeResponse, { binding: IChannelBinding }>('channel.upsert-binding'),
+  deleteBinding: bridge.buildProvider<IBridgeResponse, { bindingId: string }>('channel.delete-binding'),
 
   // Settings Sync
   syncChannelSettings: bridge.buildProvider<
