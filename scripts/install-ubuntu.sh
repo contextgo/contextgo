@@ -350,7 +350,7 @@ Icon=aionui
 Terminal=false
 Type=Application
 Categories=Office;Utility;Development;
-MimeType=x-scheme-handler/aionui;
+MimeType=x-scheme-handler/cgo;
 StartupWMClass=ContextGo
 DESKTOP_EOF
 

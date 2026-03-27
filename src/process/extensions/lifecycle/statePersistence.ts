@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -23,8 +23,8 @@ function resolveStatesFile(): string {
 
 /**
  * Persisted state format on disk.
- * Stored under getDataPath(): ~/.aionui/extension-states.json (Electron release),
- * ~/.aionui-dev/extension-states.json (Electron macOS dev), or the platform-standard
+ * Stored under getDataPath(): ~/.contextgo/extension-states.json (Electron release),
+ * ~/.contextgo-dev/extension-states.json (Electron macOS dev), or the platform-standard
  * app data dir on Windows/Linux. Can be overridden via AIONUI_EXTENSION_STATES_FILE.
  */
 interface PersistedStates {

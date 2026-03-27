@@ -151,7 +151,7 @@ export interface IConfigStorageRefer {
 }
 
 export interface IEnvStorageRefer {
-  'aionui.dir': {
+  'contextgo.dir': {
     workDir: string;
     cacheDir: string;
   };

@@ -1,4 +1,4 @@
-appId: com.aionui.app
+appId: io.contextgo.app
 productName: ContextGo
 executableName: ContextGo
 copyright: Copyright © 2024 ContextGo
@@ -6,7 +6,7 @@ copyright: Copyright © 2024 ContextGo
 protocols:
   - name: ContextGo Protocol
     schemes:
-      - aionui
+      - cgo
 
 asar:
   smartUnpack: true
@@ -186,7 +186,7 @@ linux:
       Comment: ${description}
       Icon: aionui
       Categories: Office;Utility;
-      MimeType: x-scheme-handler/aionui;
+      MimeType: x-scheme-handler/cgo;
 
 npmRebuild: false
 buildDependenciesFromSource: false

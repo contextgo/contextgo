@@ -1540,7 +1540,7 @@ let dbInstancePromise: Promise<AionUIDatabase> | null = null;
 let dbResolved: AionUIDatabase | null = null;
 
 function resolveDbPath(): string {
-  return path.join(getDataPath(), 'aionui.db');
+  return path.join(getDataPath(), 'contextgo.db');
 }
 
 export function getDatabase(): Promise<AionUIDatabase> {
