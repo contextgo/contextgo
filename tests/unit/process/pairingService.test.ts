@@ -6,21 +6,23 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { pairingRequestedEmit, userAuthorizedEmit, mockResolveConnectorInstance, mockDb } = vi.hoisted(() => ({
-  pairingRequestedEmit: vi.fn(),
-  userAuthorizedEmit: vi.fn(),
-  mockResolveConnectorInstance: vi.fn(),
-  mockDb: {
-    getPendingPairingRequests: vi.fn(),
-    createPairingRequest: vi.fn(),
-    getPairingRequestByCode: vi.fn(),
-    updatePairingRequestStatus: vi.fn(),
-    getRemoteIdentityByConnectorChat: vi.fn(),
-    getChannelUsers: vi.fn(),
-    upsertRemoteIdentity: vi.fn(),
-    ensureChannelUserMirror: vi.fn(),
-  },
-}));
+const { pairingRequestedEmit, userAuthorizedEmit, mockResolveConnectorInstance, mockInferRemoteChatType, mockDb } =
+  vi.hoisted(() => ({
+    pairingRequestedEmit: vi.fn(),
+    userAuthorizedEmit: vi.fn(),
+    mockResolveConnectorInstance: vi.fn(),
+    mockInferRemoteChatType: vi.fn(),
+    mockDb: {
+      getPendingPairingRequests: vi.fn(),
+      createPairingRequest: vi.fn(),
+      getPairingRequestByCode: vi.fn(),
+      updatePairingRequestStatus: vi.fn(),
+      getRemoteIdentityByConnectorChat: vi.fn(),
+      getChannelUsers: vi.fn(),
+      upsertRemoteIdentity: vi.fn(),
+      ensureChannelUserMirror: vi.fn(),
+    },
+  }));
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   channel: {
@@ -33,6 +35,7 @@ vi.mock('@process/channels/core/ChannelRouteResolver', () => ({
   getChannelRouteResolver: vi.fn(() => ({
     resolveConnectorInstance: mockResolveConnectorInstance,
   })),
+  inferRemoteChatType: mockInferRemoteChatType,
 }));
 
 vi.mock('@process/services/database', () => ({
@@ -51,6 +54,14 @@ describe('PairingService', () => {
     vi.clearAllMocks();
 
     mockResolveConnectorInstance.mockResolvedValue({ id: 'connector-b' });
+    mockInferRemoteChatType.mockImplementation(
+      ({ chatId, platformUserId }: { chatId: string; platformUserId: string }) =>
+        chatId === platformUserId || chatId.startsWith('user:')
+          ? 'direct'
+          : chatId.startsWith('group:')
+            ? 'group'
+            : undefined
+    );
 
     mockDb.getPendingPairingRequests.mockReturnValue({ success: true, data: [] });
     mockDb.createPairingRequest.mockReturnValue({ success: true });

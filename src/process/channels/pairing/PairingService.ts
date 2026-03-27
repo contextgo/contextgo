@@ -7,7 +7,7 @@
 import { channel as channelBridge } from '@/common/adapter/ipcBridge';
 import { getDatabase } from '@process/services/database';
 import * as crypto from 'crypto';
-import { getChannelRouteResolver } from '../core/ChannelRouteResolver';
+import { getChannelRouteResolver, inferRemoteChatType } from '../core/ChannelRouteResolver';
 import type { IRemoteIdentity } from '../types';
 import type { IChannelPairingRequest, IChannelUser, PluginType } from '../types';
 
@@ -251,12 +251,20 @@ export class PairingService {
         request.connectorId
       );
       const remoteChatId = request.remoteChatId ?? request.platformUserId;
+      const remoteChatType = inferRemoteChatType({
+        chatId: remoteChatId,
+        platformUserId: request.platformUserId,
+      });
       const existingIdentity = db.getRemoteIdentityByConnectorChat(connector.id, remoteChatId);
       const remoteIdentity: IRemoteIdentity =
         existingIdentity.success && existingIdentity.data
           ? {
               ...existingIdentity.data,
-              remoteUserId: request.platformUserId,
+              remoteUserId:
+                remoteChatType === 'group'
+                  ? (existingIdentity.data.remoteUserId ?? request.platformUserId)
+                  : request.platformUserId,
+              remoteChatType: remoteChatType ?? existingIdentity.data.remoteChatType,
               displayName: request.displayName ?? existingIdentity.data.displayName,
               lastActive: Date.now(),
             }
@@ -265,6 +273,7 @@ export class PairingService {
               connectorId: connector.id,
               remoteUserId: request.platformUserId,
               remoteChatId,
+              remoteChatType,
               displayName: request.displayName,
               authorizedAt: Date.now(),
               lastActive: Date.now(),
