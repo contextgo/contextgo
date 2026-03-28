@@ -162,6 +162,12 @@ describe('fsBridge skills functionality', () => {
       ProcessEnv: { set: vi.fn() },
     }));
 
+    vi.doMock('@process/task/AcpSkillManager', () => ({
+      AcpSkillManager: {
+        resetInstance: vi.fn(),
+      },
+    }));
+
     // Start with empty IPC handlers map
     const handlers: Record<string, Function> = {};
 
@@ -223,8 +229,8 @@ describe('fsBridge skills functionality', () => {
             getCustomExternalPaths: createCommandMock('get-custom-external-paths'),
             addCustomExternalPath: createCommandMock('add-custom-external-path'),
             removeCustomExternalPath: createCommandMock('remove-custom-external-path'),
-            enableSkillsMarket: createCommandMock('enable-skills-market'),
-            disableSkillsMarket: createCommandMock('disable-skills-market'),
+            searchSkillMarket: createCommandMock('search-skill-market'),
+            installSkillMarketSkill: createCommandMock('install-skill-market-skill'),
           },
           fileStream: {
             contentUpdate: { emit: vi.fn() },

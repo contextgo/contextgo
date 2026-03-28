@@ -22,6 +22,7 @@ import https from 'node:https';
 import http from 'node:http';
 import JSZip from 'jszip';
 import { ipcBridge } from '@/common';
+import { skillMarketService } from '@process/bridge/services/skillmarket/SkillMarketService';
 import {
   getSystemDir,
   getAssistantsDir,
@@ -84,6 +85,11 @@ async function copyDirectory(src: string, dest: string) {
       await fs.copyFile(srcPath, destPath);
     }
   }
+}
+
+async function resetAcpSkillManagerDiscovery() {
+  const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
+  AcpSkillManager.resetInstance();
 }
 
 /**
@@ -1361,6 +1367,7 @@ export function initFsBridge(): void {
 
       // 复制整个目录 / Copy entire directory
       await copyDirectory(skillPath, targetDir);
+      await resetAcpSkillManagerDiscovery();
 
       console.log(`[fsBridge] Successfully imported skill "${skillName}" to ${targetDir}`);
 
@@ -1733,6 +1740,7 @@ export function initFsBridge(): void {
       }
 
       await fs.symlink(skillPath, targetDir, 'junction');
+      await resetAcpSkillManagerDiscovery();
       console.log(`[fsBridge] Created symlink for skill "${skillName}" at ${targetDir}`);
       return {
         success: true,
@@ -1777,6 +1785,7 @@ export function initFsBridge(): void {
         await fs.rm(resolvedSkillDir, { recursive: true, force: true });
       }
 
+      await resetAcpSkillManagerDiscovery();
       console.log(`[fsBridge] Deleted skill "${skillName}" from ${resolvedSkillDir}`);
       return { success: true, msg: `Skill "${skillName}" deleted` };
     } catch (error) {
@@ -1793,6 +1802,51 @@ export function initFsBridge(): void {
     userSkillsDir: getSkillsDir(),
     builtinSkillsDir: getBuiltinSkillsCopyDir(),
   }));
+
+  ipcBridge.fs.searchSkillMarket.provider(async ({ query, limit, offset, forceRefresh } = {}) => {
+    try {
+      const data = await skillMarketService.searchSkills({
+        query,
+        limit,
+        offset,
+        forceRefresh,
+      });
+
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to search Skill Market:', error);
+      return {
+        success: false,
+        msg: `Failed to search Skill Market: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
+  ipcBridge.fs.installSkillMarketSkill.provider(async ({ skillId, archive }) => {
+    try {
+      const data = await skillMarketService.installSkill({
+        skillId,
+        archive,
+      });
+
+      await resetAcpSkillManagerDiscovery();
+
+      return {
+        success: true,
+        data,
+        msg: `Skill "${data.skillName}" installed successfully`,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to install Skill Market skill:', error);
+      return {
+        success: false,
+        msg: `Failed to install Skill Market skill: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
 
   // 将 skill 同步导出到外部目录 / Export skill to external directory via symlink
   ipcBridge.fs.exportSkillWithSymlink.provider(async ({ skillPath, targetDir }) => {
@@ -1827,69 +1881,4 @@ export function initFsBridge(): void {
       };
     }
   });
-
-  // Skills Market: inject the aionui-skills builtin skill
-  ipcBridge.fs.enableSkillsMarket.provider(async () => {
-    try {
-      const { getAutoSkillsDir } = await import('@process/utils/initStorage');
-      const skillDir = path.join(getAutoSkillsDir(), 'aionui-skills');
-      await fs.mkdir(skillDir, { recursive: true });
-
-      // Copy the bundled SKILL.md (concise entry-point version)
-      // The full 600+ line API doc is fetched by agents at runtime via curl
-      const content = await readBundledSkillsMarketMd();
-      await fs.writeFile(path.join(skillDir, 'SKILL.md'), content, 'utf-8');
-
-      // Reset AcpSkillManager singleton so it re-discovers builtin skills
-      const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
-      AcpSkillManager.resetInstance();
-
-      return { success: true, msg: 'Skills Market skill enabled' };
-    } catch (error) {
-      console.error('[fsBridge] Failed to enable Skills Market:', error);
-      return {
-        success: false,
-        msg: `Failed to enable Skills Market: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-  });
-
-  // Skills Market: remove the aionui-skills builtin skill
-  ipcBridge.fs.disableSkillsMarket.provider(async () => {
-    try {
-      const { getAutoSkillsDir } = await import('@process/utils/initStorage');
-      const skillDir = path.join(getAutoSkillsDir(), 'aionui-skills');
-      await fs.rm(skillDir, { recursive: true, force: true });
-
-      // Reset AcpSkillManager singleton so it re-discovers builtin skills
-      const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
-      AcpSkillManager.resetInstance();
-
-      return { success: true, msg: 'Skills Market skill disabled' };
-    } catch (error) {
-      console.error('[fsBridge] Failed to disable Skills Market:', error);
-      return {
-        success: false,
-        msg: `Failed to disable Skills Market: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-  });
-}
-
-/**
- * Read the bundled SKILL.md for aionui-skills from app resources.
- *
- * This is a concise entry-point version (~30 lines) that tells agents
- * to fetch the full API documentation via curl at runtime.
- * The full 600+ line SKILL.md should NOT be injected via [LOAD_SKILL]
- * as it would overwhelm the conversation context.
- */
-async function readBundledSkillsMarketMd(): Promise<string> {
-  try {
-    const fallbackPath = path.join(getBuiltinSkillsCopyDir(), 'aionui-skills', 'SKILL.md');
-    return await fs.readFile(fallbackPath, 'utf-8');
-  } catch (error) {
-    console.warn('[fsBridge] Failed to read bundled aionui-skills SKILL.md:', error);
-    return `---\nname: aionui-skills\ndescription: "Access the AionUI Skills registry — discover and download AI agent skills."\n---\n\n# AionUI Skills Registry\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/aionui-skills\ncurl -s https://skills.aionui.com/SKILL.md > ~/.config/aionui-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
-  }
 }
