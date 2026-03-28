@@ -5,9 +5,10 @@
  */
 
 import { ipcBridge } from '@/common';
+import { isElectronDesktop } from '@/renderer/utils/platform';
 import { usePreviewToolbarExtras } from '../../context/PreviewToolbarExtrasContext';
 import { Button, Message } from '@arco-design/web-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface PDFPreviewProps {
@@ -30,6 +31,7 @@ interface ElectronWebView extends HTMLElement {
 }
 
 const PDFPreview: React.FC<PDFPreviewProps> = ({ filePath, content, hideToolbar = false }) => {
+  const isElectron = isElectronDesktop();
   const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,21 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ filePath, content, hideToolbar 
   const [messageApi, messageContextHolder] = Message.useMessage();
   const toolbarExtrasContext = usePreviewToolbarExtras();
   const usePortalToolbar = Boolean(toolbarExtrasContext) && !hideToolbar;
+  const pdfSrc = useMemo(() => {
+    if (content) {
+      return content;
+    }
+
+    if (filePath && isElectron) {
+      return `file://${filePath}`;
+    }
+
+    if (filePath && /^(https?:|blob:|data:)/i.test(filePath)) {
+      return filePath;
+    }
+
+    return '';
+  }, [content, filePath, isElectron]);
 
   const handleOpenInSystem = useCallback(async () => {
     if (!filePath) {
@@ -47,10 +64,20 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ filePath, content, hideToolbar 
     try {
       await ipcBridge.shell.openFile.invoke(filePath);
       messageApi.success(t('preview.openInSystemSuccess'));
-    } catch (err) {
+    } catch {
       messageApi.error(t('preview.openInSystemFailed'));
     }
   }, [filePath, messageApi, t]);
+
+  const handleBrowserLoad = useCallback(() => {
+    setError(null);
+    setLoading(false);
+  }, []);
+
+  const handleBrowserError = useCallback(() => {
+    setError(t('preview.pdf.loadFailed'));
+    setLoading(false);
+  }, [t]);
 
   useEffect(() => {
     try {
@@ -59,6 +86,17 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ filePath, content, hideToolbar 
 
       if (!filePath && !content) {
         setError(t('preview.pdf.pathMissing'));
+        setLoading(false);
+        return;
+      }
+
+      if (!pdfSrc) {
+        setError(t('preview.pdf.unableDisplay'));
+        setLoading(false);
+        return;
+      }
+
+      if (!isElectron) {
         setLoading(false);
         return;
       }
@@ -89,7 +127,7 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ filePath, content, hideToolbar 
       setError(`${t('preview.pdf.loadFailed')}: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
     }
-  }, [filePath, content, t]);
+  }, [filePath, content, t, isElectron, pdfSrc]);
 
   // 设置工具栏扩展（必须在所有条件返回之前调用）
   // Set toolbar extras (must be called before any conditional returns)
@@ -107,10 +145,6 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ filePath, content, hideToolbar 
     return () => toolbarExtrasContext.setExtras(null);
   }, [usePortalToolbar, toolbarExtrasContext, t, loading, error]);
 
-  // 使用 Electron webview 加载本地 PDF 文件
-  // Use Electron webview to load local PDF files
-  const pdfSrc = filePath ? `file://${filePath}` : content || '';
-
   if (error) {
     return (
       <div className='flex items-center justify-center h-full'>
@@ -119,15 +153,6 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ filePath, content, hideToolbar 
           <div className='text-16px text-t-error mb-8px'>❌ {error}</div>
           <div className='text-12px text-t-secondary'>{t('preview.pdf.unableDisplay')}</div>
         </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className='flex items-center justify-center h-full'>
-        {messageContextHolder}
-        <div className='text-14px text-t-secondary'>{t('preview.loading')}</div>
       </div>
     );
   }
@@ -141,7 +166,7 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ filePath, content, hideToolbar 
             <span className='text-13px text-t-secondary'>📄 {t('preview.pdf.title')}</span>
             <span className='text-11px text-t-tertiary'>{t('preview.readOnlyLabel')}</span>
           </div>
-          {filePath && (
+          {isElectron && filePath && (
             <Button size='mini' type='text' onClick={handleOpenInSystem} title={t('preview.openInSystemApp')}>
               <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
                 <path d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' />
@@ -154,15 +179,31 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ filePath, content, hideToolbar 
         </div>
       )}
       {/* PDF 内容区域 / PDF content area */}
-      <div className='flex-1 overflow-hidden bg-bg-1'>
-        {/* key 确保文件路径改变时 webview 重新挂载 / key ensures webview remounts when file path changes */}
-        <webview
-          key={pdfSrc}
-          ref={webviewRef}
-          src={pdfSrc}
-          className='w-full h-full'
-          style={{ display: 'inline-flex' }}
-        />
+      <div className='relative flex-1 overflow-hidden bg-bg-1'>
+        {pdfSrc &&
+          (isElectron ? (
+            <webview
+              key={pdfSrc}
+              ref={webviewRef}
+              src={pdfSrc}
+              className='w-full h-full'
+              style={{ display: 'inline-flex' }}
+            />
+          ) : (
+            <iframe
+              key={pdfSrc}
+              src={pdfSrc}
+              title={t('preview.pdf.title')}
+              className='w-full h-full border-0 bg-bg-1'
+              onLoad={handleBrowserLoad}
+              onError={handleBrowserError}
+            />
+          ))}
+        {loading && pdfSrc && (
+          <div className='absolute inset-0 flex items-center justify-center bg-bg-1/80 text-14px text-t-secondary'>
+            {t('preview.loading')}
+          </div>
+        )}
       </div>
     </div>
   );
