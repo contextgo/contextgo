@@ -9,16 +9,45 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { TypingManager } from './WeixinTyping';
+import {
+  DEFAULT_WEIXIN_CDN_BASE_URL,
+  downloadInboundAttachment,
+  downloadRemoteMediaToTemp,
+  extractInboundText,
+  uploadFileToWeixinCdn,
+  uploadImageToWeixinCdn,
+  uploadVideoToWeixinCdn,
+} from './media/mediaIO';
+import { getMimeFromFilename } from './media/mime';
+import type {
+  GetUploadUrlReq,
+  GetUploadUrlResp,
+  MessageItem,
+  WeixinInboundAttachment,
+  WeixinRawMessage,
+} from './media/weixinApiTypes';
+import { MessageItemType, MessageState, MessageType } from './media/weixinApiTypes';
 
 // ==================== Public types ====================
 
 export type WeixinChatRequest = {
   conversationId: string;
   text?: string;
+  contextToken?: string;
+  attachments?: WeixinInboundAttachment[];
 };
 
 export type WeixinChatResponse = {
   text?: string;
+  media?: {
+    /**
+     * Absolute/relative local path, file:// URL, or remote HTTP(S) URL.
+     * Remote URLs are downloaded to a temp file before upload.
+     */
+    filePath: string;
+    fileName?: string;
+    mimeType?: string;
+  };
 };
 
 export type WeixinAgent = {
@@ -27,6 +56,7 @@ export type WeixinAgent = {
 
 export type MonitorOptions = {
   baseUrl: string;
+  cdnBaseUrl?: string;
   token: string;
   accountId: string;
   /** Directory used to persist get_updates_buf. Pass getPlatformServices().paths.getDataDir(). */
@@ -53,9 +83,6 @@ const API_TIMEOUT_MS = 15_000;
 const RETRY_DELAY_MS = 2_000;
 const BACKOFF_DELAY_MS = 30_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
-const TEXT_ITEM_TYPE = 1;
-
-// ==================== Internal API types ====================
 
 type GetUpdatesResp = {
   ret?: number;
@@ -66,10 +93,15 @@ type GetUpdatesResp = {
   longpolling_timeout_ms?: number;
 };
 
-type WeixinRawMessage = {
-  from_user_id?: string;
-  context_token?: string;
-  item_list?: Array<{ type?: number; text_item?: { text?: string } }>;
+type SendMessageBody = {
+  msg: {
+    to_user_id: string;
+    client_id: string;
+    message_type: number;
+    message_state: number;
+    item_list: MessageItem[];
+    context_token?: string;
+  };
 };
 
 // ==================== HTTP ====================
@@ -138,29 +170,35 @@ async function callSendMessage(
   baseUrl: string,
   token: string,
   wechatUin: string,
-  toUserId: string,
-  text: string,
-  contextToken?: string
+  body: SendMessageBody
 ): Promise<void> {
-  const clientId = crypto.randomUUID();
   await apiPost(
     baseUrl,
     'ilink/bot/sendmessage',
+    { ...body, base_info: {} },
+    token,
+    wechatUin,
+    API_TIMEOUT_MS
+    // No abort signal — send should complete even if the monitor is stopping
+  );
+}
+
+async function callGetUploadUrl(
+  baseUrl: string,
+  token: string,
+  wechatUin: string,
+  req: GetUploadUrlReq
+): Promise<GetUploadUrlResp> {
+  return apiPost<GetUploadUrlResp>(
+    baseUrl,
+    'ilink/bot/getuploadurl',
     {
-      msg: {
-        to_user_id: toUserId,
-        client_id: clientId,
-        message_type: 2,
-        message_state: 2,
-        item_list: [{ type: TEXT_ITEM_TYPE, text_item: { text } }],
-        context_token: contextToken,
-      },
+      ...req,
       base_info: {},
     },
     token,
     wechatUin,
     API_TIMEOUT_MS
-    // No abort signal — send should complete even if the monitor is stopping
   );
 }
 
@@ -199,6 +237,7 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 
 async function runMonitor(
   baseUrl: string,
+  cdnBaseUrl: string,
   token: string,
   accountId: string,
   dataDir: string,
@@ -244,18 +283,36 @@ async function runMonitor(
       }
 
       for (const msg of resp.msgs ?? []) {
-        const textItem = msg.item_list?.find((i) => i.type === TEXT_ITEM_TYPE);
-        if (!textItem) continue;
-
         const conversationId = msg.from_user_id ?? '';
-        const text = textItem.text_item?.text ?? '';
+        if (!conversationId) continue;
+
+        const text = extractInboundText(msg);
+        let attachment: WeixinInboundAttachment | null = null;
+        try {
+          // oxlint-disable-next-line eslint/no-await-in-loop
+          attachment = await downloadInboundAttachment({
+            message: msg,
+            dataDir,
+            accountId,
+            cdnBaseUrl,
+          });
+        } catch (attachmentErr) {
+          log(`[weixin] attachment parse failed for ${conversationId}: ${formatError(attachmentErr)}`);
+        }
+
+        if (!text && !attachment) continue;
 
         // oxlint-disable-next-line eslint/no-await-in-loop
         const stopTyping = await typingMgr.startTyping(conversationId, msg.context_token);
         let response: WeixinChatResponse | undefined;
         try {
           // oxlint-disable-next-line eslint/no-await-in-loop
-          response = await agent.chat({ conversationId, text });
+          response = await agent.chat({
+            conversationId,
+            text,
+            contextToken: msg.context_token,
+            attachments: attachment ? [attachment] : undefined,
+          });
         } catch (agentErr) {
           // oxlint-disable-next-line eslint/no-await-in-loop
           await stopTyping();
@@ -264,12 +321,182 @@ async function runMonitor(
         }
         // oxlint-disable-next-line eslint/no-await-in-loop
         await stopTyping();
+        if (!response) continue;
+
+        if (response.media?.filePath) {
+          try {
+            let localPath = response.media.filePath;
+            if (localPath.startsWith('file://')) {
+              localPath = new URL(localPath).pathname;
+            } else if (localPath.startsWith('http://') || localPath.startsWith('https://')) {
+              // oxlint-disable-next-line eslint/no-await-in-loop
+              localPath = await downloadRemoteMediaToTemp(localPath, dataDir, accountId);
+            } else if (!path.isAbsolute(localPath)) {
+              localPath = path.resolve(localPath);
+            }
+
+            const mimeType = response.media.mimeType || getMimeFromFilename(response.media.fileName || localPath);
+            const uploadGetUploadUrl = (req: GetUploadUrlReq) => callGetUploadUrl(baseUrl, token, wechatUin, req);
+
+            if (mimeType.startsWith('video/')) {
+              // oxlint-disable-next-line eslint/no-await-in-loop
+              const uploaded = await uploadVideoToWeixinCdn({
+                filePath: localPath,
+                toUserId: conversationId,
+                cdnBaseUrl,
+                getUploadUrl: uploadGetUploadUrl,
+              });
+
+              if (response.text?.trim()) {
+                // oxlint-disable-next-line eslint/no-await-in-loop
+                await callSendMessage(baseUrl, token, wechatUin, {
+                  msg: {
+                    to_user_id: conversationId,
+                    client_id: crypto.randomUUID(),
+                    message_type: MessageType.BOT,
+                    message_state: MessageState.FINISH,
+                    item_list: [{ type: MessageItemType.TEXT, text_item: { text: response.text } }],
+                    context_token: msg.context_token,
+                  },
+                });
+              }
+              // oxlint-disable-next-line eslint/no-await-in-loop
+              await callSendMessage(baseUrl, token, wechatUin, {
+                msg: {
+                  to_user_id: conversationId,
+                  client_id: crypto.randomUUID(),
+                  message_type: MessageType.BOT,
+                  message_state: MessageState.FINISH,
+                  item_list: [
+                    {
+                      type: MessageItemType.VIDEO,
+                      video_item: {
+                        media: {
+                          encrypt_query_param: uploaded.downloadEncryptedQueryParam,
+                          aes_key: Buffer.from(uploaded.aesKeyHex).toString('base64'),
+                          encrypt_type: 1,
+                        },
+                        video_size: uploaded.fileSizeCiphertext,
+                      },
+                    },
+                  ],
+                  context_token: msg.context_token,
+                },
+              });
+            } else if (mimeType.startsWith('image/')) {
+              // oxlint-disable-next-line eslint/no-await-in-loop
+              const uploaded = await uploadImageToWeixinCdn({
+                filePath: localPath,
+                toUserId: conversationId,
+                cdnBaseUrl,
+                getUploadUrl: uploadGetUploadUrl,
+              });
+
+              if (response.text?.trim()) {
+                // oxlint-disable-next-line eslint/no-await-in-loop
+                await callSendMessage(baseUrl, token, wechatUin, {
+                  msg: {
+                    to_user_id: conversationId,
+                    client_id: crypto.randomUUID(),
+                    message_type: MessageType.BOT,
+                    message_state: MessageState.FINISH,
+                    item_list: [{ type: MessageItemType.TEXT, text_item: { text: response.text } }],
+                    context_token: msg.context_token,
+                  },
+                });
+              }
+              // oxlint-disable-next-line eslint/no-await-in-loop
+              await callSendMessage(baseUrl, token, wechatUin, {
+                msg: {
+                  to_user_id: conversationId,
+                  client_id: crypto.randomUUID(),
+                  message_type: MessageType.BOT,
+                  message_state: MessageState.FINISH,
+                  item_list: [
+                    {
+                      type: MessageItemType.IMAGE,
+                      image_item: {
+                        media: {
+                          encrypt_query_param: uploaded.downloadEncryptedQueryParam,
+                          aes_key: Buffer.from(uploaded.aesKeyHex).toString('base64'),
+                          encrypt_type: 1,
+                        },
+                        mid_size: uploaded.fileSizeCiphertext,
+                      },
+                    },
+                  ],
+                  context_token: msg.context_token,
+                },
+              });
+            } else {
+              // oxlint-disable-next-line eslint/no-await-in-loop
+              const uploaded = await uploadFileToWeixinCdn({
+                filePath: localPath,
+                toUserId: conversationId,
+                cdnBaseUrl,
+                getUploadUrl: uploadGetUploadUrl,
+              });
+              const fileName = response.media.fileName || path.basename(localPath);
+
+              if (response.text?.trim()) {
+                // oxlint-disable-next-line eslint/no-await-in-loop
+                await callSendMessage(baseUrl, token, wechatUin, {
+                  msg: {
+                    to_user_id: conversationId,
+                    client_id: crypto.randomUUID(),
+                    message_type: MessageType.BOT,
+                    message_state: MessageState.FINISH,
+                    item_list: [{ type: MessageItemType.TEXT, text_item: { text: response.text } }],
+                    context_token: msg.context_token,
+                  },
+                });
+              }
+              // oxlint-disable-next-line eslint/no-await-in-loop
+              await callSendMessage(baseUrl, token, wechatUin, {
+                msg: {
+                  to_user_id: conversationId,
+                  client_id: crypto.randomUUID(),
+                  message_type: MessageType.BOT,
+                  message_state: MessageState.FINISH,
+                  item_list: [
+                    {
+                      type: MessageItemType.FILE,
+                      file_item: {
+                        media: {
+                          encrypt_query_param: uploaded.downloadEncryptedQueryParam,
+                          aes_key: Buffer.from(uploaded.aesKeyHex).toString('base64'),
+                          encrypt_type: 1,
+                        },
+                        file_name: fileName,
+                        len: String(uploaded.fileSize),
+                      },
+                    },
+                  ],
+                  context_token: msg.context_token,
+                },
+              });
+            }
+          } catch (sendErr) {
+            log(`[weixin] send media error for ${conversationId}: ${formatError(sendErr)}`);
+          }
+          continue;
+        }
+
         if (response.text) {
           try {
             // oxlint-disable-next-line eslint/no-await-in-loop
-            await callSendMessage(baseUrl, token, wechatUin, conversationId, response.text, msg.context_token);
+            await callSendMessage(baseUrl, token, wechatUin, {
+              msg: {
+                to_user_id: conversationId,
+                client_id: crypto.randomUUID(),
+                message_type: MessageType.BOT,
+                message_state: MessageState.FINISH,
+                item_list: [{ type: MessageItemType.TEXT, text_item: { text: response.text } }],
+                context_token: msg.context_token,
+              },
+            });
           } catch (sendErr) {
-            log(`[weixin] send error for ${conversationId}: ${formatError(sendErr)}`);
+            log(`[weixin] send text error for ${conversationId}: ${formatError(sendErr)}`);
           }
         }
       }
@@ -294,13 +521,16 @@ async function runMonitor(
  * Errors are logged via opts.log. Loop stops when abortSignal fires.
  */
 export function startMonitor(opts: MonitorOptions): void {
-  const { baseUrl, token, accountId, dataDir, agent, abortSignal, log } = opts;
+  const { baseUrl, cdnBaseUrl, token, accountId, dataDir, agent, abortSignal, log } = opts;
   const logFn = log ?? ((_msg: string) => {});
   const wechatUin = crypto.randomBytes(4).toString('base64');
+  const resolvedCdnBaseUrl = cdnBaseUrl || DEFAULT_WEIXIN_CDN_BASE_URL;
 
-  void runMonitor(baseUrl, token, accountId, dataDir, agent, wechatUin, abortSignal, logFn).catch((err: unknown) => {
-    if (!abortSignal?.aborted) {
-      logFn(`[weixin] monitor terminated unexpectedly: ${String(err)}`);
+  void runMonitor(baseUrl, resolvedCdnBaseUrl, token, accountId, dataDir, agent, wechatUin, abortSignal, logFn).catch(
+    (err: unknown) => {
+      if (!abortSignal?.aborted) {
+        logFn(`[weixin] monitor terminated unexpectedly: ${String(err)}`);
+      }
     }
-  });
+  );
 }
