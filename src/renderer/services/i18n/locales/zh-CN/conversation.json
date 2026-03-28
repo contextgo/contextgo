@@ -80,6 +80,7 @@
     "empty": "没有找到匹配的消息",
     "clear": "清空搜索",
     "loadingMore": "正在加载更多...",
+    "recentConversations": "最近会话",
     "untitled": "未命名会话"
   },
   "entry": {

@@ -129,6 +129,8 @@ When the task involves the packaged macOS app, do not assume "build log succeede
 - Rebuild the desktop app, replace `/Applications/ContextGo.app`, relaunch it, and verify the running process path.
 - If the user reports a "white screen" but the window shows raw JS/CSS/JSON text, do **not** assume the top-level renderer entry failed. First inspect nested preview / `webview` navigation and persisted preview state.
 - After fixing a packaged-app bug, verify both source-level checks and runtime behavior: `bunx tsc --noEmit`, relevant tests, full desktop build, install, relaunch, and an actual UI check.
+- When investigating macOS `Security` / keychain permission popups, do **not** start with `security dump-keychain` or other bulk login-keychain enumeration commands. They can themselves trigger repeated permission dialogs across unrelated secrets and contaminate the incident.
+- For keychain-popup triage, prefer process inspection, unified logs, app logs, shell history, and targeted config checks first. Only run direct `security` queries with the narrowest possible scope after warning the user that prompts may appear.
 
 ## Git Conventions
 

@@ -96,14 +96,17 @@
   align-items: center;
   min-height: var(--titlebar-height);
   box-sizing: border-box;
+  background: transparent;
+}
+
+.app-titlebar__desktop-left--docked {
   border-right: 1px solid var(--border-base);
 }
 
 .app-titlebar--desktop-chrome-only .app-titlebar__desktop-left {
-  border-right: 1px solid var(--border-base);
-  border-bottom: 1px solid var(--border-base);
-  border-bottom-right-radius: 0;
-  background: var(--bg-1);
+  border: none;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
 }
 

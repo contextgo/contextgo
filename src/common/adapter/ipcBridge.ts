@@ -24,6 +24,7 @@ import type {
   DiscussionGroupParticipantType,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
+import type { CloudAuthProviderId, CloudStatus, CloudSyncSummary } from '../types/cloud';
 import type {
   UpdateCheckRequest,
   UpdateCheckResult,
@@ -163,6 +164,16 @@ export const application = {
   ),
   // DevTools state change notification
   devToolsStateChanged: bridge.buildEmitter<{ isOpen: boolean }>('app.devtools-state-changed'),
+};
+
+export const cloud = {
+  getStatus: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.get-status'),
+  startLogin: bridge.buildProvider<IBridgeResponse<CloudStatus>, { provider: CloudAuthProviderId }>(
+    'cloud.start-login'
+  ),
+  logout: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.logout'),
+  syncNow: bridge.buildProvider<IBridgeResponse<CloudSyncSummary>, void>('cloud.sync-now'),
+  statusChanged: bridge.buildEmitter<CloudStatus>('cloud.status-changed'),
 };
 
 // Manual (opt-in) updates via GitHub Releases
@@ -672,6 +683,9 @@ export const voiceInput = {
   >('voice-input:set-config'),
   getState: bridge.buildProvider<import('../types/voiceInput').VoiceInputState, void>('voice-input:get-state'),
   getStats: bridge.buildProvider<import('../types/voiceInput').VoiceInputStats, void>('voice-input:get-stats'),
+  getExternalOptions: bridge.buildProvider<import('../types/voiceInput').VoiceInputExternalOption[], void>(
+    'voice-input:get-external-options'
+  ),
   requestPermissions: bridge.buildProvider<import('../types/voiceInput').VoiceInputPermissions, void>(
     'voice-input:request-permissions'
   ),

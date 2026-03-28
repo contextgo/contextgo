@@ -10,7 +10,7 @@ import { Tooltip } from '@arco-design/web-react';
 import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
-const BUILTIN_TAB_IDS = ['hooks', 'cron', 'tools', 'display', 'webui', 'system', 'about'] as const;
+const BUILTIN_TAB_IDS = ['cron', 'tools', 'display', 'webui', 'system', 'about'] as const;
 
 type SiderItem = {
   id: string;
@@ -91,12 +91,6 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const menus: SiderItem[] = useMemo(() => {
     // Build builtin items
     const builtinMap: Record<string, SiderItem> = {
-      hooks: {
-        id: 'hooks',
-        label: t('settings.hooksPage', { defaultValue: 'Hooks' }),
-        icon: <Puzzle />,
-        path: 'hooks',
-      },
       cron: {
         id: 'cron',
         label: t('cron.scheduledTasks'),

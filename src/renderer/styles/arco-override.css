@@ -178,8 +178,18 @@ body[arco-theme='dark'] .arco-message-error {
 
 /*
  * Keep popup surfaces fully opaque during enter/appear states.
- * Arco's default fadeIn starts at opacity: 0, which creates a visible
- * transparent intermediate frame for dropdown/select/picker menus.
+ * Arco's dropdown/submenu trigger animations (fadeIn, slideDynamicOrigin,
+ * zoomIn*) start from opacity: 0 by default. Because this app gives many
+ * popup surfaces a translucent background plus backdrop blur, that produces
+ * an undesirable intermediate frame where background text shows through.
+ *
+ * In Electron/macOS, transformed popup layers that also use translucent
+ * surfaces + backdrop blur can still expose background content during the
+ * first composited frames, even after opacity fade is removed.
+ *
+ * For popup-like surfaces we therefore disable enter-time transform motion
+ * as well, so menus appear solid from frame one instead of "materializing"
+ * through the content behind them.
  */
 .arco-trigger-popup.fadeIn-appear,
 .arco-trigger-popup.fadeIn-enter,
@@ -194,6 +204,43 @@ body[arco-theme='dark'] .arco-message-error {
 .arco-picker-container.fadeIn-appear-active,
 .arco-picker-container.fadeIn-enter-active {
   opacity: 1 !important;
+  transition: none !important;
+}
+
+.arco-trigger-popup.slideDynamicOrigin-appear,
+.arco-trigger-popup.slideDynamicOrigin-enter,
+.arco-trigger-popup.slideDynamicOrigin-appear-active,
+.arco-trigger-popup.slideDynamicOrigin-enter-active,
+.arco-trigger-popup.zoomIn-appear,
+.arco-trigger-popup.zoomIn-enter,
+.arco-trigger-popup.zoomIn-appear-active,
+.arco-trigger-popup.zoomIn-enter-active,
+.arco-trigger-popup.zoomInTop-appear,
+.arco-trigger-popup.zoomInTop-enter,
+.arco-trigger-popup.zoomInTop-appear-active,
+.arco-trigger-popup.zoomInTop-enter-active,
+.arco-trigger-popup.zoomInBottom-appear,
+.arco-trigger-popup.zoomInBottom-enter,
+.arco-trigger-popup.zoomInBottom-appear-active,
+.arco-trigger-popup.zoomInBottom-enter-active,
+.arco-trigger-popup.zoomInFadeOut-appear,
+.arco-trigger-popup.zoomInFadeOut-enter,
+.arco-trigger-popup.zoomInFadeOut-appear-active,
+.arco-trigger-popup.zoomInFadeOut-enter-active {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.arco-trigger-popup.slideDynamicOrigin-appear-active,
+.arco-trigger-popup.slideDynamicOrigin-enter-active,
+.arco-trigger-popup.zoomIn-appear-active,
+.arco-trigger-popup.zoomIn-enter-active,
+.arco-trigger-popup.zoomInTop-appear-active,
+.arco-trigger-popup.zoomInTop-enter-active,
+.arco-trigger-popup.zoomInBottom-appear-active,
+.arco-trigger-popup.zoomInBottom-enter-active,
+.arco-trigger-popup.zoomInFadeOut-appear-active,
+.arco-trigger-popup.zoomInFadeOut-enter-active {
   transition: none !important;
 }
 

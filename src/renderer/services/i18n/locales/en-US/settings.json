@@ -266,6 +266,21 @@
     "installRuntime": "Install whisper.cpp",
     "installSelectedModel": "Install Selected Model",
     "brewRequired": "Automatic runtime installation requires Homebrew. Install whisper.cpp manually or provide a custom CLI path.",
+    "externalOptions": {
+      "title": "Free Alternative",
+      "optionalDescription": "If WeChat Input Method is already available on this Mac, you can use its built-in free voice dictation instead. This is optional, and ContextGo voice input remains available.",
+      "installedPath": "Installed Path",
+      "showInstalledApp": "Show in Finder",
+      "statuses": {
+        "detected": "Detected",
+        "available": "Available"
+      },
+      "wechatInputMethod": {
+        "label": "WeChat Input Method",
+        "detectedDescription": "WeChat Input Method is already installed on this Mac and includes free voice dictation. If you do not want to configure a provider yet, you can use it directly.",
+        "availableDescription": "WeChat Input Method includes free voice dictation. If you prefer not to configure a provider yet, you can download and try it first."
+      }
+    },
     "providerHints": {
       "dashscope": "DashScope uses provider-managed vocabulary and phrase tables. Configure vocabulary and phrase IDs together with language hints for better accuracy.",
       "volcengine": "VolcEngine supports boosting and correction tables, plus inline hotword lists. Use table IDs for managed glossaries and hotwords for temporary phrase hints.",
@@ -928,6 +943,31 @@
       "extension": "Extension Pairing",
       "none": "No Auth"
     }
+  },
+  "cloud": {
+    "title": "ContextGo Account",
+    "description": "Sign in with your cloud account, bind this desktop device, and sync your language preference across devices.",
+    "loading": "Checking cloud account status...",
+    "loginWithGithub": "Continue with GitHub",
+    "loginWithGoogle": "Continue with Google",
+    "loginSuccess": "Cloud account connected",
+    "logoutSuccess": "Cloud account disconnected",
+    "syncSuccess": "Cloud data synced",
+    "actionFailed": "The cloud action could not be completed",
+    "notConnected": "This desktop app is not connected to a ContextGo account yet.",
+    "notConnectedDesc": "Use GitHub or Google sign-in to create a browser session, then ContextGo will register this device automatically.",
+    "sessionActive": "Browser session active",
+    "sessionExpired": "Browser session expired",
+    "sessionExpiredDesc": "This device is still linked, but browser session management has expired. Sign in again to manage devices.",
+    "deviceLinked": "Device linked",
+    "deviceMissing": "Device not linked",
+    "pendingSync": "Pending sync",
+    "syncNow": "Sync now",
+    "signOut": "Sign out",
+    "deviceName": "Device",
+    "lastSync": "Last sync",
+    "notSyncedYet": "Not synced yet",
+    "notAvailable": "Not available"
   },
   "extensionAssistantReadonly": "Extension assistants are read-only. You can duplicate it and edit the copy."
 }

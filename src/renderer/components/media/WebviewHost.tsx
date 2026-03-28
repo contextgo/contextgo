@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import {
+  getSafeEmbeddedDocumentUrl,
+  isSuspiciousDocumentNavigation,
+} from '@/renderer/utils/ui/documentNavigationGuard';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Left, Right, Refresh, Loading } from '@icon-park/react';
 
@@ -24,6 +28,8 @@ export interface WebviewHostProps {
   onDidFinishLoad?: () => void;
   /** Called when the page fails to load */
   onDidFailLoad?: (errorCode: number, errorDescription: string) => void;
+  /** Block raw asset document navigations for embedded app/document surfaces */
+  blockSuspiciousDocumentNavigation?: boolean;
 }
 
 const MIN_ZOOM_FACTOR = 0.75;
@@ -48,6 +54,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   style,
   onDidFinishLoad,
   onDidFailLoad,
+  blockSuspiciousDocumentNavigation = false,
 }) => {
   const isElectron = typeof window !== 'undefined' && Boolean((window as { electronAPI?: unknown }).electronAPI);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -55,10 +62,12 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   const webviewRef = useRef<Electron.WebviewTag | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const autoFitPendingRef = useRef(false);
+  const guardedUrl = getSafeEmbeddedDocumentUrl(url, blockSuspiciousDocumentNavigation);
+  const lastStableUrlRef = useRef(guardedUrl);
 
   // Navigation state
-  const [currentUrl, setCurrentUrl] = useState(url);
-  const [inputUrl, setInputUrl] = useState(url);
+  const [currentUrl, setCurrentUrl] = useState(guardedUrl);
+  const [inputUrl, setInputUrl] = useState(guardedUrl);
   const [isLoading, setIsLoading] = useState(true);
   const [zoomFactor, setZoomFactor] = useState(1);
   const [webviewReady, setWebviewReady] = useState(false);
@@ -85,17 +94,22 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
 
   // Reset when props.url changes
   useEffect(() => {
+    if (guardedUrl !== url) {
+      console.warn('[WebviewHost] Blocked suspicious initial webview document URL:', url);
+    }
+
     historyBackRef.current = [];
     historyForwardRef.current = [];
     setCanGoBack(false);
     setCanGoForward(false);
-    setCurrentUrl(url);
-    setInputUrl(url);
+    setCurrentUrl(guardedUrl);
+    setInputUrl(guardedUrl);
     setIsLoading(true);
     setZoomFactor(1);
     setWebviewReady(false);
-    autoFitPendingRef.current = isStarOfficeUrl(url);
-  }, [url]);
+    autoFitPendingRef.current = isStarOfficeUrl(guardedUrl);
+    lastStableUrlRef.current = guardedUrl;
+  }, [guardedUrl, isStarOfficeUrl, url]);
 
   useEffect(() => {
     const webviewEl = webviewRef.current;
@@ -144,6 +158,26 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
 
     const webviewEl = webviewRef.current;
     if (!webviewEl) return;
+
+    const restoreStableDocument = (targetUrl?: string) => {
+      if (!blockSuspiciousDocumentNavigation || !targetUrl || !isSuspiciousDocumentNavigation(targetUrl)) {
+        return false;
+      }
+
+      console.warn('[WebviewHost] Blocked suspicious webview document navigation:', targetUrl);
+
+      const fallbackUrl = lastStableUrlRef.current || currentUrl;
+      if (!fallbackUrl) {
+        return true;
+      }
+
+      if (webviewEl.src !== fallbackUrl) {
+        webviewEl.src = fallbackUrl;
+      }
+      setCurrentUrl(fallbackUrl);
+      setInputUrl(fallbackUrl);
+      return true;
+    };
 
     const handleStartLoading = () => setIsLoading(true);
     const handleStopLoading = () => {
@@ -230,10 +264,28 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
 
     const handleDidNavigate = (event: Event & { url?: string }) => {
       const newUrl = event.url;
+      if (restoreStableDocument(newUrl)) {
+        return;
+      }
       if (newUrl && newUrl !== currentUrl) {
+        lastStableUrlRef.current = newUrl;
         setCurrentUrl(newUrl);
         setInputUrl(newUrl);
       }
+    };
+
+    const handleWillNavigate = (event: Event) => {
+      if (!blockSuspiciousDocumentNavigation) {
+        return;
+      }
+
+      const navigationEvent = event as Event & { url?: string; preventDefault?: () => void };
+      if (!navigationEvent.url || !isSuspiciousDocumentNavigation(navigationEvent.url)) {
+        return;
+      }
+
+      navigationEvent.preventDefault?.();
+      restoreStableDocument(navigationEvent.url);
     };
 
     const handleDomReady = () => {
@@ -345,6 +397,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
     webviewEl.addEventListener('did-start-loading', handleStartLoading);
     webviewEl.addEventListener('did-stop-loading', handleStopLoading);
     webviewEl.addEventListener('dom-ready', handleDomReady);
+    webviewEl.addEventListener('will-navigate', handleWillNavigate as EventListener);
     webviewEl.addEventListener('did-navigate', handleDidNavigate as EventListener);
     webviewEl.addEventListener('did-navigate-in-page', handleDidNavigate as EventListener);
     webviewEl.addEventListener('console-message', handleConsoleMessage as EventListener);
@@ -355,13 +408,22 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
       webviewEl.removeEventListener('did-start-loading', handleStartLoading);
       webviewEl.removeEventListener('did-stop-loading', handleStopLoading);
       webviewEl.removeEventListener('dom-ready', handleDomReady);
+      webviewEl.removeEventListener('will-navigate', handleWillNavigate as EventListener);
       webviewEl.removeEventListener('did-navigate', handleDidNavigate as EventListener);
       webviewEl.removeEventListener('did-navigate-in-page', handleDidNavigate as EventListener);
       webviewEl.removeEventListener('console-message', handleConsoleMessage as EventListener);
       webviewEl.removeEventListener('did-finish-load', handleDidFinishLoad);
       webviewEl.removeEventListener('did-fail-load', handleDidFailLoad as EventListener);
     };
-  }, [navigateToWithHistory, currentUrl, onDidFinishLoad, onDidFailLoad, isStarOfficeUrl, isElectron]);
+  }, [
+    blockSuspiciousDocumentNavigation,
+    navigateToWithHistory,
+    currentUrl,
+    onDidFinishLoad,
+    onDidFailLoad,
+    isStarOfficeUrl,
+    isElectron,
+  ]);
 
   // Resize observer for content area
   useEffect(() => {

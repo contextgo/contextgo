@@ -78,7 +78,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           <Route path='/settings/gemini' element={withRouteFallback(GeminiSettings)} />
           <Route path='/settings/model' element={withRouteFallback(ModeSettings)} />
           <Route path='/settings/agent' element={withRouteFallback(AgentSettings)} />
-          <Route path='/settings/hooks' element={withRouteFallback(HooksManagement)} />
+          <Route path='/settings/hooks' element={<Navigate to='/hooks' replace />} />
           <Route path='/settings/cron' element={withRouteFallback(GlobalCronSettings)} />
           <Route path='/settings/skills-hub' element={withRouteFallback(SkillsHubSettings)} />
           <Route path='/settings/display' element={withRouteFallback(DisplaySettings)} />

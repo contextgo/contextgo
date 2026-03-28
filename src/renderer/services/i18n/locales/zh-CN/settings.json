@@ -266,6 +266,21 @@
     "installRuntime": "安装 whisper.cpp",
     "installSelectedModel": "安装当前模型",
     "brewRequired": "自动安装运行时依赖 Homebrew。你也可以手动安装 whisper.cpp，或填写自定义 CLI 路径。",
+    "externalOptions": {
+      "title": "免费语音输入备选方案",
+      "optionalDescription": "如果这台 Mac 已经装了微信输入法，你也可以直接使用它内置的免费语音输入。这只是可选建议，不会替代 ContextGo 自带的语音输入能力。",
+      "installedPath": "安装路径",
+      "showInstalledApp": "在访达中显示",
+      "statuses": {
+        "detected": "已检测到",
+        "available": "可使用"
+      },
+      "wechatInputMethod": {
+        "label": "微信输入法",
+        "detectedDescription": "检测到这台 Mac 已安装微信输入法，并且它自带免费语音输入。如果你暂时不想配置 provider，可以直接使用它。",
+        "availableDescription": "微信输入法自带免费语音输入。如果你暂时不想配置 provider，可以先下载并试用它。"
+      }
+    },
     "providerHints": {
       "dashscope": "DashScope 适合使用平台侧管理的词表与短语表。建议结合 vocabulary_id、phrase_id 与 language hints 提升识别准确率。",
       "volcengine": "火山引擎支持增强词表、纠错词表，以及临时热词列表。固定术语建议走词表，临时会话词条可直接填热词。",
@@ -928,6 +943,31 @@
       "extension": "扩展配对",
       "none": "无需授权"
     }
+  },
+  "cloud": {
+    "title": "ContextGo 云账号",
+    "description": "登录云端账号，绑定当前桌面设备，并在多端之间同步语言偏好。",
+    "loading": "正在检查云端账号状态...",
+    "loginWithGithub": "使用 GitHub 继续",
+    "loginWithGoogle": "使用 Google 继续",
+    "loginSuccess": "云端账号已连接",
+    "logoutSuccess": "云端账号已断开",
+    "syncSuccess": "云端数据已同步",
+    "actionFailed": "云端操作未能完成",
+    "notConnected": "当前桌面应用还没有连接到 ContextGo 云账号。",
+    "notConnectedDesc": "先通过 GitHub 或 Google 登录建立浏览器会话，ContextGo 会自动为这台设备完成注册。",
+    "sessionActive": "浏览器会话有效",
+    "sessionExpired": "浏览器会话已过期",
+    "sessionExpiredDesc": "当前设备仍然已绑定，但浏览器会话管理已过期。如需管理设备，请重新登录。",
+    "deviceLinked": "设备已绑定",
+    "deviceMissing": "设备未绑定",
+    "pendingSync": "等待同步",
+    "syncNow": "立即同步",
+    "signOut": "退出登录",
+    "deviceName": "设备",
+    "lastSync": "上次同步",
+    "notSyncedYet": "尚未同步",
+    "notAvailable": "暂无"
   },
   "addAssistant": "添加助手",
   "extensionAssistantReadonly": "扩展助手为只读，你可以复制它并编辑副本。"

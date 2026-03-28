@@ -266,6 +266,21 @@
     "installRuntime": "whisper.cpp Kur",
     "installSelectedModel": "Seçili Modeli Kur",
     "brewRequired": "Otomatik çalışma zamanı kurulumu Homebrew gerektirir. whisper.cpp'yi manuel kurabilir veya özel bir CLI yolu verebilirsiniz.",
+    "externalOptions": {
+      "title": "Ücretsiz alternatif",
+      "optionalDescription": "Bu Mac'te WeChat Input Method zaten kuruluysa yerleşik ücretsiz sesli diktesini kullanabilirsiniz. Bu yalnızca isteğe bağlı bir öneridir; ContextGo ses girişi kullanılmaya devam eder.",
+      "installedPath": "Kurulum Yolu",
+      "showInstalledApp": "Finder'da Göster",
+      "statuses": {
+        "detected": "Algılandı",
+        "available": "Kullanılabilir"
+      },
+      "wechatInputMethod": {
+        "label": "WeChat Input Method",
+        "detectedDescription": "Bu Mac'te WeChat Input Method zaten kurulu ve ücretsiz sesli dikte özelliği içeriyor. Henüz bir sağlayıcı yapılandırmak istemiyorsanız doğrudan bunu kullanabilirsiniz.",
+        "availableDescription": "WeChat Input Method ücretsiz sesli dikte içerir. Henüz bir sağlayıcı yapılandırmak istemiyorsanız önce indirip deneyebilirsiniz."
+      }
+    },
     "providerHints": {
       "dashscope": "DashScope, sağlayıcı tarafından yönetilen sözlük ve ifade tablolarını kullanır. Daha yüksek doğruluk için vocabulary ID, phrase ID ve dil ipuçlarını yapılandırın.",
       "volcengine": "VolcEngine, boosting tablolarını, correction tablolarını ve satır içi hotword listelerini destekler. Yönetilen sözlükler için tablo ID'lerini, geçici ipuçları için hotword alanını kullanın.",
@@ -928,6 +943,31 @@
       "extension": "Uzanti Eslestirmesi",
       "none": "Kimlik Dogrulamasi Yok"
     }
+  },
+  "cloud": {
+    "title": "ContextGo Bulut Hesabi",
+    "description": "Bulut hesabi ile giris yapin, bu masaustu cihazi baglayin ve dil tercihini cihazlar arasinda senkronize edin.",
+    "loading": "Bulut hesap durumu kontrol ediliyor...",
+    "loginWithGithub": "GitHub ile devam et",
+    "loginWithGoogle": "Google ile devam et",
+    "loginSuccess": "Bulut hesabi baglandi",
+    "logoutSuccess": "Bulut hesabi baglantisi kesildi",
+    "syncSuccess": "Bulut verileri senkronize edildi",
+    "actionFailed": "Bulut islemi tamamlanamadi",
+    "notConnected": "Bu masaustu uygulamasi henuz bir ContextGo bulut hesabina bagli degil.",
+    "notConnectedDesc": "Once GitHub veya Google ile giris yapip tarayici oturumu olusturun, sonra ContextGo bu cihazi otomatik olarak kaydeder.",
+    "sessionActive": "Tarayici oturumu aktif",
+    "sessionExpired": "Tarayici oturumu suresi doldu",
+    "sessionExpiredDesc": "Bu cihaz hala bagli, ancak tarayici oturumu yonetimi suresi doldu. Cihazlari yonetmek icin yeniden giris yapin.",
+    "deviceLinked": "Cihaz baglandi",
+    "deviceMissing": "Cihaz bagli degil",
+    "pendingSync": "Bekleyen senkronizasyon",
+    "syncNow": "Simdi senkronize et",
+    "signOut": "Cikis yap",
+    "deviceName": "Cihaz",
+    "lastSync": "Son senkronizasyon",
+    "notSyncedYet": "Henuz senkronize edilmedi",
+    "notAvailable": "Mevcut degil"
   },
   "extensionAssistantReadonly": "Uzantı asistanları salt okunurdur. Kopyalayıp düzenleyebilirsiniz."
 }

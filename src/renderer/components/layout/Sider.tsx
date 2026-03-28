@@ -78,8 +78,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const isSettings = pathname.startsWith('/settings');
   const isConversationRoute = pathname.startsWith('/conversation/');
   const isDesktopRuntime = isElectronDesktop();
-  const showDesktopChromeOverlayInset =
-    !isMobile && !isSettings && !isConversationRoute && (!isDesktopRuntime || isMacOS());
+  const showDesktopChromeOverlayInset = !isMobile && !isConversationRoute && (!isDesktopRuntime || isMacOS());
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab } = useConversationTabs();
   const { user } = useAuth();
@@ -383,7 +382,14 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       <div className='flex-1 min-h-0 w-full min-w-0 overflow-hidden'>
         {isSettings ? (
           <Suspense fallback={<div className='size-full' />}>
-            <SettingsSider collapsed={collapsed} tooltipEnabled={tooltipEnabled}></SettingsSider>
+            <div
+              className={classNames(
+                'size-full w-full min-w-0 flex flex-col sider-main-section',
+                showDesktopChromeOverlayInset && 'sider-main-section--desktop-chrome-offset'
+              )}
+            >
+              <SettingsSider collapsed={collapsed} tooltipEnabled={tooltipEnabled}></SettingsSider>
+            </div>
           </Suspense>
         ) : (
           <div

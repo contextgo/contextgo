@@ -21,6 +21,7 @@ import {
   summarizeHookLibrary,
   type HookOutputRoutingDraft,
 } from './hookLibraryUtils';
+import styles from './AgentSettingsPage.module.css';
 
 const HOOK_CATEGORY_COLORS: Record<string, 'arcoblue' | 'green' | 'red' | 'purple' | 'gray'> = {
   clarity: 'arcoblue',
@@ -217,11 +218,8 @@ const HooksManagement: React.FC = () => {
   }, [builtinHooks.length, customHooks.length]);
 
   const renderHookCard = (hook: HookInfo, canDelete: boolean) => (
-    <div
-      key={hook.name}
-      className='flex items-start gap-8px rounded-12px border border-border-2 p-12px hover:bg-fill-1'
-    >
-      <div className='flex-1 min-w-0'>
+    <div key={hook.name} className={styles.libraryCard}>
+      <div className={styles.libraryCardMain}>
         <div className='flex items-center gap-6px flex-wrap'>
           <div className='text-13px font-medium text-t-primary'>{hook.name}</div>
           {hook.isCustom && (
@@ -310,9 +308,14 @@ const HooksManagement: React.FC = () => {
           </div>
         )}
       </div>
-      <div className='flex items-center gap-4px'>
+      <div className={styles.libraryActions}>
         {canConfigureHookOutputRouting(hook) && (
-          <Button type='outline' size='mini' onClick={() => handleOpenHookRouting(hook)}>
+          <Button
+            type='outline'
+            size='mini'
+            className={styles.hookActionButton}
+            onClick={() => handleOpenHookRouting(hook)}
+          >
             {t('settings.hookConfigure', { defaultValue: 'Configure' })}
           </Button>
         )}
@@ -320,6 +323,7 @@ const HooksManagement: React.FC = () => {
           <Button
             type='outline'
             size='mini'
+            className={styles.hookActionButton}
             loading={installingHookName === hook.name}
             onClick={() => void handleInstallBuiltinHook(hook.name)}
           >
@@ -330,6 +334,7 @@ const HooksManagement: React.FC = () => {
           <Button
             type='text'
             size='mini'
+            className={styles.ghostIconButton}
             icon={<Delete size={16} fill='var(--color-text-3)' />}
             onClick={() => setDeleteHookName(hook.name)}
           />
@@ -342,59 +347,64 @@ const HooksManagement: React.FC = () => {
     <>
       {messageContext}
       <SettingsPageWrapper contentClassName='max-w-1200px'>
-        <div className='flex flex-col gap-16px'>
-          <div className='rounded-16px border border-border-2 bg-bg-1 p-20px md:p-24px'>
-            <div className='flex flex-col gap-16px md:flex-row md:items-start md:justify-between'>
-              <div className='min-w-0'>
-                <Typography.Title heading={5} className='!mb-8px'>
-                  {t('settings.hooksPage', { defaultValue: 'Hooks' })}
-                </Typography.Title>
-                <Typography.Paragraph className='!mb-0 text-t-secondary'>
+        <div className={styles.pageStack}>
+          <div className={styles.heroSurface}>
+            <div className={styles.heroRow}>
+              <div className={styles.heroMeta}>
+                <div className={styles.titleRow}>
+                  <h1 className={styles.pageTitle}>{t('settings.hooksPage', { defaultValue: 'Hooks' })}</h1>
+                  <span className={styles.countBadge}>{stats.total}</span>
+                </div>
+                <p className={styles.pageDescription}>
                   {t('settings.hooksPageDescription', {
                     defaultValue:
-                      'Manage system-provided and imported hooks here. The builtin library organizes reusable patterns for prompt clarity, safety, quality gates, session continuity, and operator-friendly delivery.',
+                      'Manage system-provided and imported hooks here. The builtin library organizes reusable patterns for prompt clarity, safety, quality gates, session continuity, and operator-friendly delivery. Hooks currently run through prompt transformation before the user prompt is sent.',
                   })}
-                </Typography.Paragraph>
+                </p>
               </div>
-              <div className='flex flex-wrap items-center gap-8px'>
-                <Button type='outline' icon={<Plus size={14} />} onClick={() => void handleImportHook()}>
+              <div className={styles.actions}>
+                <Button
+                  type='outline'
+                  className={styles.secondaryPillButton}
+                  icon={<Plus size={14} />}
+                  onClick={() => void handleImportHook()}
+                >
                   {t('settings.importHook', { defaultValue: 'Import Hook' })}
                 </Button>
-                <Button type='outline' icon={<FolderOpen size={14} />} onClick={() => void handleOpenHooksDir()}>
+                <Button
+                  type='outline'
+                  className={styles.secondaryPillButton}
+                  icon={<FolderOpen size={14} />}
+                  onClick={() => void handleOpenHooksDir()}
+                >
                   {t('settings.openHookFolder', { defaultValue: 'Open Folder' })}
                 </Button>
               </div>
             </div>
           </div>
 
-          <div className='grid gap-12px md:grid-cols-4'>
-            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
-              <Typography.Text type='secondary' className='text-12px'>
-                {t('settings.hooksPageTotal', { defaultValue: 'Total Hooks' })}
-              </Typography.Text>
-              <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.total}</div>
+          <div className={styles.statsGrid}>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>{t('settings.hooksPageTotal', { defaultValue: 'Total Hooks' })}</div>
+              <div className={styles.statValue}>{stats.total}</div>
             </div>
-            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
-              <Typography.Text type='secondary' className='text-12px'>
-                {t('settings.hooksPageReadyNow', { defaultValue: 'Ready Now' })}
-              </Typography.Text>
-              <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.readyNow}</div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>{t('settings.hooksPageReadyNow', { defaultValue: 'Ready Now' })}</div>
+              <div className={styles.statValue}>{stats.readyNow}</div>
             </div>
-            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
-              <Typography.Text type='secondary' className='text-12px'>
-                {t('settings.hooksPageCustom', { defaultValue: 'Custom Hooks' })}
-              </Typography.Text>
-              <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.custom}</div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>{t('settings.hooksPageCustom', { defaultValue: 'Custom Hooks' })}</div>
+              <div className={styles.statValue}>{stats.custom}</div>
             </div>
-            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
-              <Typography.Text type='secondary' className='text-12px'>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>
                 {t('settings.hooksPageBuiltin', { defaultValue: 'Builtin Hooks' })}
-              </Typography.Text>
-              <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.builtin}</div>
+              </div>
+              <div className={styles.statValue}>{stats.builtin}</div>
             </div>
           </div>
 
-          <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
+          <div className={styles.surface}>
             <Input
               value={searchQuery}
               allowClear
@@ -403,18 +413,19 @@ const HooksManagement: React.FC = () => {
                 defaultValue: 'Search hooks by name, description, location, or tag',
               })}
               onChange={setSearchQuery}
+              className={styles.searchInput}
             />
-            <div className='mt-12px rounded-12px bg-fill-1 p-12px'>
-              <Typography.Text type='secondary' className='text-12px'>
+            <div className={styles.softNote + ' mt-12px'}>
+              <div className={styles.softNoteLabel}>
                 {t('settings.hookStoragePath', { defaultValue: 'Hook storage path' })}
-              </Typography.Text>
-              <div className='mt-4px break-all text-12px text-t-primary'>{hooksDir || '-'}</div>
+              </div>
+              <div className={styles.softNoteValue}>{hooksDir || '-'}</div>
             </div>
           </div>
 
-          <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
+          <div className={styles.surface}>
             {filteredHooks.length > 0 ? (
-              <Collapse defaultActiveKey={defaultActiveKeys}>
+              <Collapse defaultActiveKey={defaultActiveKeys} className={styles.libraryCollapse}>
                 {customHooks.length > 0 && (
                   <Collapse.Item
                     header={
@@ -425,7 +436,7 @@ const HooksManagement: React.FC = () => {
                     name={builtinHooks.length > 0 ? 'custom-hooks' : 'all-hooks'}
                     extra={<span className='text-12px text-t-secondary'>{customHooks.length}</span>}
                   >
-                    <div className='space-y-4px'>{customHooks.map((hook) => renderHookCard(hook, true))}</div>
+                    <div className={styles.libraryList}>{customHooks.map((hook) => renderHookCard(hook, true))}</div>
                   </Collapse.Item>
                 )}
                 {builtinHooks.length > 0 && (
@@ -438,19 +449,21 @@ const HooksManagement: React.FC = () => {
                     name='builtin-hooks'
                     extra={<span className='text-12px text-t-secondary'>{builtinHooks.length}</span>}
                   >
-                    <div className='space-y-4px'>{builtinHooks.map((hook) => renderHookCard(hook, false))}</div>
+                    <div className={styles.libraryList}>{builtinHooks.map((hook) => renderHookCard(hook, false))}</div>
                   </Collapse.Item>
                 )}
               </Collapse>
             ) : (
-              <Empty
-                className='py-24px'
-                description={
-                  searchQuery
-                    ? t('settings.hooksPageEmptySearch', { defaultValue: 'No hooks match the current search.' })
-                    : t('settings.noAvailableHooks', { defaultValue: 'No hooks found in the hook directory' })
-                }
-              />
+              <div className={styles.emptyState}>
+                <Empty
+                  className='py-24px'
+                  description={
+                    searchQuery
+                      ? t('settings.hooksPageEmptySearch', { defaultValue: 'No hooks match the current search.' })
+                      : t('settings.noAvailableHooks', { defaultValue: 'No hooks found in the hook directory' })
+                  }
+                />
+              </div>
             )}
           </div>
         </div>

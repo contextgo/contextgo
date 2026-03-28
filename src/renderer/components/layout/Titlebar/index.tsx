@@ -33,8 +33,6 @@ interface TitlebarProps {
   leftPaneWidth: number;
 }
 
-const DESKTOP_LEFT_SECTION_WIDTH = 250;
-
 const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }) => {
   const { t } = useTranslation();
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
@@ -245,6 +243,10 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
         '--app-titlebar-mobile-center-offset': `${workspaceAvailable ? mobileCenterOffset : 0}px`,
       } as React.CSSProperties)
     : undefined;
+  const showDesktopToolbar = showWorkspaceButton || showWindowControls;
+  const showDesktopRightSection = showDesktopConversationTabs || showDesktopToolbar;
+  const showDesktopChromeOnlyLayout = !layout?.isMobile && !showDesktopConversationTabs && !showDesktopToolbar;
+  const shouldDockDesktopLeftToPane = !layout?.isMobile && leftPaneWidth > 0;
 
   const desktopLeftSectionStyle: React.CSSProperties = useMemo(() => {
     if (layout?.isMobile) {
@@ -253,8 +255,14 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
 
     const reserveMacTrafficLights = isMacRuntime && !isFullScreen;
     const minimumWidth = reserveMacTrafficLights ? 120 : 56;
-    const baseWidth = isSettingsRoute ? DESKTOP_LEFT_SECTION_WIDTH : leftPaneWidth;
-    const effectiveWidth = Math.max(baseWidth, DESKTOP_LEFT_SECTION_WIDTH, minimumWidth);
+    if (!shouldDockDesktopLeftToPane) {
+      return {
+        paddingLeft: reserveMacTrafficLights ? '72px' : '8px',
+        paddingRight: '8px',
+      };
+    }
+
+    const effectiveWidth = Math.max(leftPaneWidth, minimumWidth);
 
     return {
       width: `${effectiveWidth}px`,
@@ -262,10 +270,16 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       paddingLeft: reserveMacTrafficLights ? '72px' : '8px',
       paddingRight: '8px',
     };
-  }, [isFullScreen, isMacRuntime, isSettingsRoute, layout?.isMobile, leftPaneWidth]);
+  }, [isFullScreen, isMacRuntime, layout?.isMobile, leftPaneWidth, shouldDockDesktopLeftToPane]);
 
   const desktopLeftControls = (
-    <div className='app-titlebar__desktop-left' style={desktopLeftSectionStyle}>
+    <div
+      className={classNames(
+        'app-titlebar__desktop-left',
+        shouldDockDesktopLeftToPane && 'app-titlebar__desktop-left--docked'
+      )}
+      style={desktopLeftSectionStyle}
+    >
       {showSiderToggle && (
         <button type='button' className='app-titlebar__button' onClick={handleSiderToggle} aria-label={siderTooltip}>
           {layout.siderCollapsed ? (
@@ -294,10 +308,6 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     </div>
   );
 
-  const showDesktopToolbar = showWorkspaceButton || showWindowControls;
-  const showDesktopRightSection = showDesktopConversationTabs || showDesktopToolbar;
-  const showDesktopChromeOnlyLayout = !layout?.isMobile && !showDesktopConversationTabs && !showDesktopToolbar;
-
   if (!layout?.isMobile) {
     if (showDesktopChromeOnlyLayout) {
       return (
@@ -314,10 +324,14 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
 
     return (
       <div
-        className={classNames('app-titlebar bg-2 border-b border-[var(--border-base)]', {
-          'app-titlebar--desktop': isDesktopRuntime,
-          'app-titlebar--mac': isMacRuntime,
-        })}
+        className={classNames(
+          'app-titlebar border-b border-[var(--border-base)]',
+          shouldDockDesktopLeftToPane ? 'bg-2' : 'bg-1',
+          {
+            'app-titlebar--desktop': isDesktopRuntime,
+            'app-titlebar--mac': isMacRuntime,
+          }
+        )}
       >
         {desktopLeftControls}
         {showDesktopRightSection && (

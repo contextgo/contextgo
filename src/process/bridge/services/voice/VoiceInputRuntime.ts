@@ -1,6 +1,7 @@
 import { ipcBridge } from '@/common';
 import type {
   VoiceInputConfig,
+  VoiceInputExternalOption,
   VoiceInputOpenWhisperState,
   VoiceInputPermissions,
   VoiceInputRecord,
@@ -14,7 +15,7 @@ import { mainError, mainLog, mainWarn } from '@process/utils/mainLogger';
 import { BrowserWindow, screen, systemPreferences } from 'electron';
 import { Buffer } from 'node:buffer';
 import { MacNativeVoiceRecorder } from './MacNativeVoiceRecorder';
-import { getFrontmostAppInfo, pasteTextToActiveApp } from './macosVoiceActions';
+import { detectExternalVoiceInputOptions, getFrontmostAppInfo, pasteTextToActiveApp } from './macosVoiceActions';
 import { DashScopeVoiceProvider } from './providers/DashScopeVoiceProvider';
 import {
   getOpenWhisperState,
@@ -506,6 +507,10 @@ export class VoiceInputRuntime {
     const db = await getDatabase();
     const result = db.getVoiceInputStats();
     return result.data ?? EMPTY_VOICE_INPUT_STATS;
+  }
+
+  async getExternalOptions(): Promise<VoiceInputExternalOption[]> {
+    return detectExternalVoiceInputOptions();
   }
 
   private async getIoHookModule(): Promise<IoHookModule> {

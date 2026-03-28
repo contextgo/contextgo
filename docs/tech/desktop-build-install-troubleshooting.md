@@ -131,9 +131,42 @@ This was specifically mitigated by excluding `html` preview tabs from persistenc
 
 - [`src/renderer/pages/conversation/Preview/context/PreviewContext.tsx`](/Users/bytedance/project/AionUi/src/renderer/pages/conversation/Preview/context/PreviewContext.tsx)
 
-and by guarding suspicious `webview` document navigations in:
+and by guarding suspicious embedded document navigations in:
 
 - [`src/renderer/pages/conversation/Preview/components/renderers/HTMLRenderer.tsx`](/Users/bytedance/project/AionUi/src/renderer/pages/conversation/Preview/components/renderers/HTMLRenderer.tsx)
+- [`src/renderer/components/media/WebviewHost.tsx`](/Users/bytedance/project/AionUi/src/renderer/components/media/WebviewHost.tsx)
+- [`src/renderer/components/settings/SettingsModal/contents/ExtensionSettingsTabContent.tsx`](/Users/bytedance/project/AionUi/src/renderer/components/settings/SettingsModal/contents/ExtensionSettingsTabContent.tsx)
+- [`src/renderer/pages/settings/ExtensionSettingsPage.tsx`](/Users/bytedance/project/AionUi/src/renderer/pages/settings/ExtensionSettingsPage.tsx)
+
+The shared URL/path guard lives in:
+
+- [`src/renderer/utils/ui/documentNavigationGuard.ts`](/Users/bytedance/project/AionUi/src/renderer/utils/ui/documentNavigationGuard.ts)
+
+### 8. Bulk `security` keychain inspection can create the very popup storm being investigated
+
+Another confirmed failure mode came from macOS keychain triage itself.
+
+Commands such as:
+
+```bash
+security dump-keychain -d login.keychain-db
+```
+
+can enumerate ACL-protected entries in the login keychain and cause `SecurityAgent` to display repeated permission dialogs for unrelated items such as:
+
+- Docker credential entries
+- Git credential helper entries
+- other previously authorized CLI tools
+
+This can make the machine look like it is under active credential probing even when the immediate trigger is the investigator's own command.
+
+Practical rule:
+
+- do not use `security dump-keychain` as a first-pass debugging command on a user machine
+- do not run broad `security` enumeration just to "see what is in the keychain"
+- if a keychain popup starts during investigation, first check whether the current shell / agent already launched `/usr/bin/security`
+
+During a confirmed incident on 2026-03-28, the popup source was traced to Codex-triggered `security dump-keychain` commands rather than `ContextGo.app` itself.
 
 ## What Was Actually Happening In Previous Failed Attempts
 
@@ -204,6 +237,43 @@ Interpretation:
 - if `Renderer did-finish-load` and `Window ready-to-show` are present, the top-level window likely loaded
 - if the user still sees raw asset text, debug preview / `webview` routing before touching the install workflow again
 
+## Keychain Popup Triage
+
+If the user reports repeated macOS `Security` dialogs asking to access many keychain items, use this order:
+
+```bash
+# 1. Capture current candidate processes
+ps -axo pid,ppid,pgid,etime,stat,command | egrep '/usr/bin/security|SecurityAgent|securityd|git-credential-osxkeychain|docker-credential-osxkeychain|codesign|notarytool|ContextGo|node|bun|zsh|bash'
+
+# 2. Check for live security-related processes
+pgrep -af 'security dump-keychain|^security |SecurityAgent|git-credential-osxkeychain|docker-credential-osxkeychain'
+
+# 3. Read recent unified logs instead of querying the keychain directly
+/usr/bin/log show --style compact --last 10m --predicate '(process == "SecurityAgent") || (process == "securityd") || (process == "security") || (eventMessage CONTAINS[c] "keychain") || (eventMessage CONTAINS[c] "ACL") || (eventMessage CONTAINS[c] "allow") || (eventMessage CONTAINS[c] "deny")'
+
+# 4. Inspect app logs
+tail -n 200 ~/Library/Logs/ContextGo/$(date +%F).log
+
+# 5. Inspect likely credential-helper configuration without touching the keychain payload
+git config --global --get-all credential.helper
+git config --system --get-all credential.helper
+cat ~/.docker/config.json
+```
+
+Interpretation:
+
+- if unified logs say `user did not approve 'allow' for /usr/bin/security(...)`, the immediate popup source is a `security` CLI invocation, not automatically the desktop app
+- if ACL text references `docker-credential-osxkeychain` or `git-credential-osxkeychain`, the prompts are often for existing Docker / Git secrets, not proof of a new secret being created
+- if a `security dump-keychain` process is live, stop that process before drawing further conclusions
+
+Avoid this during first-pass triage:
+
+```bash
+security dump-keychain -d login.keychain-db
+```
+
+Use direct `security` queries only as a last resort, after warning the user that macOS may display more prompts.
+
 ## Rules Going Forward
 
 - Do not use `--pack-only` when the goal is to test a fresh desktop `.app`.
@@ -214,6 +284,8 @@ Interpretation:
 - If the visible window contains raw bundled asset text, treat it as a preview / nested-document triage case first, not automatically as a top-level renderer failure.
 - If the issue survives relaunch, inspect persisted renderer state and preview-tab restoration before assuming the packaging step failed again.
 - If UI still looks wrong after timestamps match, debug it as a source/style/runtime issue, not as an install issue.
+- If the user reports keychain popup storms, do not run bulk login-keychain enumeration during initial triage.
+- Treat `/usr/bin/security` plus unified-log ACL evidence as a concrete lead; do not assume the foreground Electron app is the requester without checking.
 
 ## Agent Triage Checklist
 
@@ -225,6 +297,14 @@ When a future agent is told "the app is still blank", "the build did not take ef
 4. Read the app log and determine whether the top-level renderer finished loading.
 5. If the window shows raw asset text, inspect preview persistence and nested `webview` navigation.
 6. Add or update a regression test before closing the issue if the failure came from persisted state or route restoration.
+
+When a future agent is told "macOS keeps asking for many keychain passwords" or "SecurityAgent keeps popping up", use this order:
+
+1. Check whether a live `/usr/bin/security` process or `security dump-keychain` command is already running.
+2. Read unified logs for `securityd` / `SecurityAgent` to identify the requesting binary and ACL description.
+3. Confirm whether the affected items match normal helpers such as Docker or Git credential helpers.
+4. Stop the triggering process before continuing triage.
+5. Only consider direct keychain inspection after warning the user that further prompts may appear.
 
 ## Important Current Conclusion
 
