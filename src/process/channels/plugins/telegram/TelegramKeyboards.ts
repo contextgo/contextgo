@@ -7,6 +7,7 @@
 import { InlineKeyboard, Keyboard } from 'grammy';
 
 import type { ChannelAgentType } from '../../types';
+import { buildAgentSelectionCallbackToken, type ChannelSelectableAgent } from '../../utils/agentSelection';
 
 /**
  * Telegram Keyboards for Personal Assistant
@@ -43,32 +44,23 @@ export function createPairingKeyboard(): Keyboard {
 // ==================== Inline Keyboards ====================
 
 /**
- * Agent info for keyboard display
- */
-export interface AgentDisplayInfo {
-  type: ChannelAgentType;
-  emoji: string;
-  name: string;
-}
-
-/**
  * Agent selection keyboard
  * Shows available agents with current selection marked
  * @param availableAgents - List of available agents to display
  * @param currentAgent - Currently selected agent type
  */
 export function createAgentSelectionKeyboard(
-  availableAgents: AgentDisplayInfo[],
-  currentAgent?: ChannelAgentType
+  availableAgents: ChannelSelectableAgent[],
+  currentAgentKey?: string
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
 
   // Add agents in rows of 2
   for (let i = 0; i < availableAgents.length; i++) {
     const agent = availableAgents[i];
-    const label = currentAgent === agent.type ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
+    const label = currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
 
-    keyboard.text(label, `agent:${agent.type}`);
+    keyboard.text(label, `agent:${buildAgentSelectionCallbackToken(agent)}`);
 
     // Start new row after every 2 buttons, except for the last one
     if ((i + 1) % 2 === 0 && i < availableAgents.length - 1) {

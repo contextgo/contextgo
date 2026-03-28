@@ -18,5 +18,8 @@ export { DingTalkPlugin } from './dingtalk/DingTalkPlugin';
 // Slack plugin
 export { SlackPlugin } from './slack/SlackPlugin';
 
+// Discord plugin
+export { DiscordPlugin } from './discord/DiscordPlugin';
+
 // WeChat plugin
 export { WeixinPlugin } from './weixin/WeixinPlugin';

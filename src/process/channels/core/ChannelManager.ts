@@ -12,6 +12,7 @@ import { ActionExecutor } from '../gateway/ActionExecutor';
 import { PluginManager, registerPlugin } from '../gateway/PluginManager';
 import { PairingService } from '../pairing/PairingService';
 import { DingTalkPlugin } from '../plugins/dingtalk/DingTalkPlugin';
+import { DiscordPlugin } from '../plugins/discord/DiscordPlugin';
 import { LarkPlugin } from '../plugins/lark/LarkPlugin';
 import { SlackPlugin } from '../plugins/slack/SlackPlugin';
 import { TelegramPlugin } from '../plugins/telegram/TelegramPlugin';
@@ -51,6 +52,7 @@ export class ChannelManager {
     // Register built-in plugins
     registerPlugin('telegram', TelegramPlugin);
     registerPlugin('slack', SlackPlugin);
+    registerPlugin('discord', DiscordPlugin);
     registerPlugin('lark', LarkPlugin);
     registerPlugin('dingtalk', DingTalkPlugin);
     registerPlugin('weixin', WeixinPlugin);
@@ -184,7 +186,7 @@ export class ChannelManager {
     }
 
     const enabledPlugins = result.data.filter((p) => p.enabled);
-    const builtinStartableTypes = new Set<PluginType>(['telegram', 'slack', 'lark', 'dingtalk', 'weixin']);
+    const builtinStartableTypes = new Set<PluginType>(['telegram', 'slack', 'discord', 'lark', 'dingtalk', 'weixin']);
     const extensionRegistry = ExtensionRegistry.getInstance();
 
     for (const plugin of enabledPlugins) {
@@ -255,6 +257,15 @@ export class ChannelManager {
       const token = config.token as string | undefined;
       if (token) {
         credentials = { token };
+      }
+    } else if (pluginType === 'discord') {
+      const token = config.token as string | undefined;
+      if (token) {
+        credentials = { token };
+      }
+      const requireMention = config.requireMention;
+      if (typeof requireMention === 'boolean') {
+        pluginRuntimeConfig.requireMention = requireMention;
       }
     } else if (pluginType === 'slack') {
       const botToken = config.botToken as string | undefined;
@@ -425,6 +436,15 @@ export class ChannelManager {
       };
     }
 
+    if (pluginType === 'discord') {
+      const result = await DiscordPlugin.testConnection(token);
+      return {
+        success: result.success,
+        botUsername: result.botInfo?.username,
+        error: result.error,
+      };
+    }
+
     if (pluginType === 'lark') {
       const appId = typeof extraConfig?.appId === 'string' ? extraConfig.appId : undefined;
       const appSecret = typeof extraConfig?.appSecret === 'string' ? extraConfig.appSecret : undefined;
@@ -545,7 +565,7 @@ export class ChannelManager {
       // For gemini + model info: update existing conversations' model field
       if (newType === 'gemini' && model?.id && model?.useModel) {
         if (isBuiltinChannelPlatform(platform)) {
-          const builtinPlatform: 'telegram' | 'slack' | 'lark' | 'dingtalk' | 'weixin' = platform;
+          const builtinPlatform: 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' = platform;
           const fullModel = await getChannelDefaultModel(builtinPlatform);
           const db = await getDatabase();
           const result = db.updateChannelConversationModel(builtinPlatform, 'gemini', fullModel);

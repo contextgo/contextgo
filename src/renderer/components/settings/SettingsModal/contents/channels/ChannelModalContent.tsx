@@ -20,6 +20,7 @@ import { useSettingsViewMode } from '../../settingsViewContext';
 import ChannelItem from './ChannelItem';
 import type { ChannelConfig } from './types';
 import {
+  DiscordConfigForm,
   DingTalkConfigForm,
   LarkConfigForm,
   SlackConfigForm,
@@ -30,6 +31,7 @@ import {
 type ChannelModelConfigKey =
   | 'assistant.telegram.defaultModel'
   | 'assistant.slack.defaultModel'
+  | 'assistant.discord.defaultModel'
   | 'assistant.lark.defaultModel'
   | 'assistant.dingtalk.defaultModel'
   | 'assistant.weixin.defaultModel';
@@ -118,6 +120,7 @@ const useChannelModelSelection = (configKey: ChannelModelConfigKey): GeminiModel
         const platform = configKey.replace('assistant.', '').replace('.defaultModel', '') as
           | 'telegram'
           | 'slack'
+          | 'discord'
           | 'lark'
           | 'dingtalk'
           | 'weixin';
@@ -165,11 +168,13 @@ const ChannelModalContent: React.FC = () => {
   // Plugin state
   const [pluginStatus, setPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [slackPluginStatus, setSlackPluginStatus] = useState<IChannelPluginStatus | null>(null);
+  const [discordPluginStatus, setDiscordPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [larkPluginStatus, setLarkPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [dingtalkPluginStatus, setDingtalkPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [weixinPluginStatus, setWeixinPluginStatus] = useState<IChannelPluginStatus | null>(null);
   const [enableLoading, setEnableLoading] = useState(false);
   const [slackEnableLoading, setSlackEnableLoading] = useState(false);
+  const [discordEnableLoading, setDiscordEnableLoading] = useState(false);
   const [larkEnableLoading, setLarkEnableLoading] = useState(false);
   const [dingtalkEnableLoading, setDingtalkEnableLoading] = useState(false);
   const [weixinEnableLoading, setWeixinEnableLoading] = useState(false);
@@ -183,6 +188,10 @@ const ChannelModalContent: React.FC = () => {
   const slackConfigRef = React.useRef<{ botToken: string; appToken: string; requireMention: boolean }>({
     botToken: '',
     appToken: '',
+    requireMention: true,
+  });
+  const discordConfigRef = React.useRef<{ token: string; requireMention: boolean }>({
+    token: '',
     requireMention: true,
   });
 
@@ -199,6 +208,7 @@ const ChannelModalContent: React.FC = () => {
   // Model selection state — uses unified hook with ConfigStorage persistence
   const telegramModelSelection = useChannelModelSelection('assistant.telegram.defaultModel');
   const slackModelSelection = useChannelModelSelection('assistant.slack.defaultModel');
+  const discordModelSelection = useChannelModelSelection('assistant.discord.defaultModel');
   const larkModelSelection = useChannelModelSelection('assistant.lark.defaultModel');
   const dingtalkModelSelection = useChannelModelSelection('assistant.dingtalk.defaultModel');
   const weixinModelSelection = useChannelModelSelection('assistant.weixin.defaultModel');
@@ -210,6 +220,7 @@ const ChannelModalContent: React.FC = () => {
       if (result.success && result.data) {
         const telegramPlugin = result.data.find((p) => p.type === 'telegram');
         const slackPlugin = result.data.find((p) => p.type === 'slack');
+        const discordPlugin = result.data.find((p) => p.type === 'discord');
         const larkPlugin = result.data.find((p) => p.type === 'lark');
         const dingtalkPlugin = result.data.find((p) => p.type === 'dingtalk');
         const weixinPlugin = result.data.find((p) => p.type === 'weixin');
@@ -217,6 +228,7 @@ const ChannelModalContent: React.FC = () => {
 
         setPluginStatus(telegramPlugin || null);
         setSlackPluginStatus(slackPlugin || null);
+        setDiscordPluginStatus(discordPlugin || null);
         setLarkPluginStatus(larkPlugin || null);
         setDingtalkPluginStatus(dingtalkPlugin || null);
         setWeixinPluginStatus(weixinPlugin || null);
@@ -278,6 +290,8 @@ const ChannelModalContent: React.FC = () => {
         setPluginStatus(status);
       } else if (status.type === 'slack') {
         setSlackPluginStatus(status);
+      } else if (status.type === 'discord') {
+        setDiscordPluginStatus(status);
       } else if (status.type === 'lark') {
         setLarkPluginStatus(status);
       } else if (status.type === 'dingtalk') {
@@ -396,6 +410,53 @@ const ChannelModalContent: React.FC = () => {
       Message.error(error.message);
     } finally {
       setSlackEnableLoading(false);
+    }
+  };
+
+  const handleToggleDiscordPlugin = async (enabled: boolean) => {
+    setDiscordEnableLoading(true);
+    try {
+      if (enabled) {
+        const pendingToken = discordConfigRef.current.token.trim();
+
+        if (!discordPluginStatus?.hasToken && !pendingToken) {
+          Message.warning(t('settings.discord.tokenRequired', 'Please enter a Discord bot token'));
+          setDiscordEnableLoading(false);
+          return;
+        }
+
+        const result = await channel.enablePlugin.invoke({
+          pluginId: 'discord_default',
+          config: pendingToken
+            ? {
+                token: pendingToken,
+                requireMention: discordConfigRef.current.requireMention,
+              }
+            : {},
+        });
+
+        if (result.success) {
+          Message.success(t('settings.discord.pluginEnabled', 'Discord bot enabled'));
+          await loadPluginStatus();
+        } else {
+          Message.error(result.msg || t('settings.discord.enableFailed', 'Failed to enable Discord plugin'));
+        }
+      } else {
+        const result = await channel.disablePlugin.invoke({
+          pluginId: 'discord_default',
+        });
+
+        if (result.success) {
+          Message.success(t('settings.discord.pluginDisabled', 'Discord bot disabled'));
+          await loadPluginStatus();
+        } else {
+          Message.error(result.msg || t('settings.discord.disableFailed', 'Failed to disable Discord plugin'));
+        }
+      }
+    } catch (error: any) {
+      Message.error(error.message);
+    } finally {
+      setDiscordEnableLoading(false);
     }
   };
 
@@ -780,6 +841,28 @@ const ChannelModalContent: React.FC = () => {
       ),
     };
 
+    const discordChannel: ChannelConfig = {
+      id: 'discord',
+      title: t('settings.channels.discordTitle', 'Discord'),
+      description: t('settings.channels.discordDesc', 'Chat with ContextGo assistant via Discord'),
+      status: 'active',
+      enabled: discordPluginStatus?.enabled || false,
+      disabled: discordEnableLoading,
+      isConnected: discordPluginStatus?.connected || false,
+      botUsername: discordPluginStatus?.botUsername,
+      defaultModel: discordModelSelection.currentModel?.useModel,
+      content: (
+        <DiscordConfigForm
+          pluginStatus={discordPluginStatus}
+          modelSelection={discordModelSelection}
+          onStatusChange={setDiscordPluginStatus}
+          onConfigChange={(config) => {
+            discordConfigRef.current = config;
+          }}
+        />
+      ),
+    };
+
     const dingtalkChannel: ChannelConfig = {
       id: 'dingtalk',
       title: t('settings.channels.dingtalkTitle', 'DingTalk'),
@@ -836,46 +919,32 @@ const ChannelModalContent: React.FC = () => {
       }));
 
     const extensionTypeSet = new Set(extensionChannels.map((channel) => String(channel.id).toLowerCase()));
-    const comingSoonChannels: ChannelConfig[] = [
-      {
-        id: 'discord',
-        title: t('settings.channels.discordTitle', 'Discord'),
-        description: t('settings.channels.discordDesc', 'Chat with ContextGo assistant via Discord'),
-        status: 'coming_soon' as const,
-        enabled: false,
-        disabled: true,
-        content: (
-          <div className='text-14px text-t-secondary py-12px'>
-            {t('settings.channels.comingSoonDesc', 'Support for {{channel}} is coming soon', {
-              channel: t('settings.channels.discordTitle', 'Discord'),
-            })}
-          </div>
-        ),
-      },
-    ].filter((channel) => !extensionTypeSet.has(String(channel.id).toLowerCase()));
 
     return [
       telegramChannel,
       slackChannel,
+      ...(extensionTypeSet.has('discord') ? [] : [discordChannel]),
       larkChannel,
       dingtalkChannel,
       weixinChannel,
       ...extensionChannels,
-      ...comingSoonChannels,
     ];
   }, [
     pluginStatus,
     slackPluginStatus,
+    discordPluginStatus,
     larkPluginStatus,
     dingtalkPluginStatus,
     extensionStatuses,
     extensionLoadingMap,
     telegramModelSelection,
     slackModelSelection,
+    discordModelSelection,
     larkModelSelection,
     dingtalkModelSelection,
     enableLoading,
     slackEnableLoading,
+    discordEnableLoading,
     larkEnableLoading,
     dingtalkEnableLoading,
     weixinPluginStatus,
@@ -889,6 +958,7 @@ const ChannelModalContent: React.FC = () => {
   const getToggleHandler = (channelId: string) => {
     if (channelId === 'telegram') return handleTogglePlugin;
     if (channelId === 'slack') return handleToggleSlackPlugin;
+    if (channelId === 'discord') return handleToggleDiscordPlugin;
     if (channelId === 'lark') return handleToggleLarkPlugin;
     if (channelId === 'dingtalk') return handleToggleDingtalkPlugin;
     if (channelId === 'weixin') return handleToggleWeixinPlugin;
@@ -900,7 +970,8 @@ const ChannelModalContent: React.FC = () => {
     return undefined;
   };
   const channelGuideText = t('settings.webui.featureChannelsDesc', {
-    defaultValue: 'Connect Telegram, Slack, Lark, DingTalk, and WeChat to interact with ContextGo from IM apps.',
+    defaultValue:
+      'Connect Telegram, Slack, Discord, Lark, DingTalk, and WeChat to interact with ContextGo from IM apps.',
   });
   const channelSetupSteps = [
     t('settings.channels.selectFirst', {
