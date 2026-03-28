@@ -168,6 +168,10 @@ Stable rules:
 - future mobile-shell release jobs should be added as additional jobs or reusable workflows in the same release system
 - release workflows should upload distributable artifacts with stable, human-readable names
 - direct-download artifacts should be publishable without requiring store submission
+- release workflows must support both GitHub-hosted and self-hosted runners without maintaining two disconnected workflow trees
+- runner selection should be driven by GitHub Actions variables or manual workflow inputs, not by ad hoc YAML edits on every release
+- control-plane jobs such as matrix generation, tagging, release creation, and build summaries should run on a POSIX-capable runner with `bash`, `git`, and network access
+- if the self-hosted runner fleet only covers part of the target matrix, constrain the release matrix through configuration before editing workflow source
 
 Recommended release artifact targets:
 
@@ -272,6 +276,29 @@ Recommended future secret inventory for platform expansion:
 Stable rule:
 
 - do not reuse one platform's signing secret format as the naming standard for another platform unless the workflow actually consumes that shape
+
+## Recommended GitHub Actions Variables
+
+The release pipeline now supports self-hosted execution through repository variables.
+
+Recommended baseline variables:
+
+- `BUILD_RUNNER_MODE`
+- `RELEASE_BUILD_PLATFORMS`
+- `SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON`
+- `SELF_HOSTED_MACOS_RUNNER_LABELS_JSON`
+- `SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON`
+- `SELF_HOSTED_LINUX_RUNNER_LABELS_JSON`
+
+Variable expectations:
+
+- `BUILD_RUNNER_MODE` should be `hosted` or `self-hosted`
+- `RELEASE_BUILD_PLATFORMS` should be `all` or a comma-separated subset such as `macos-arm64,linux`
+- `*_LABELS_JSON` values should be JSON arrays of runner labels, for example `["self-hosted","macOS","arm64","aionui-macos"]`
+
+Stable rule:
+
+- treat runner-label variables as infrastructure configuration, not as per-branch application logic
 
 ## Agent Guardrails
 
