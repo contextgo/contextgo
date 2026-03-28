@@ -1,5 +1,6 @@
 import type { Message } from '@arco-design/web-react';
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
+import type { HookInfo as SharedHookInfo } from '@/common/types/hookTypes';
 
 // Skill info type
 export type SkillInfo = {
@@ -9,17 +10,7 @@ export type SkillInfo = {
   isCustom: boolean;
 };
 
-export type HookInfo = {
-  name: string;
-  description?: string;
-  location: string;
-  isCustom: boolean;
-  isBuiltinInstalled?: boolean;
-  version?: string;
-  executionType?: string;
-  events?: string[];
-  supportedBackends?: string[];
-};
+export type HookInfo = SharedHookInfo;
 
 // External source type
 export type ExternalSource = {

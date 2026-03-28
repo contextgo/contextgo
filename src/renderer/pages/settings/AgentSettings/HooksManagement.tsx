@@ -11,7 +11,24 @@ import { Button, Collapse, Empty, Input, Message, Modal, Tag, Typography } from 
 import { Delete, FolderOpen, Plus, Search } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { filterHooksByQuery, summarizeHookLibrary } from './hookLibraryUtils';
+import HookRoutingConfigModal from './HookRoutingConfigModal';
+import {
+  HOOK_OUTPUT_TARGET_PRESENTATION,
+  buildHookOutputRoutingConfig,
+  canConfigureHookOutputRouting,
+  createHookOutputRoutingDraft,
+  filterHooksByQuery,
+  summarizeHookLibrary,
+  type HookOutputRoutingDraft,
+} from './hookLibraryUtils';
+
+const HOOK_CATEGORY_COLORS: Record<string, 'arcoblue' | 'green' | 'red' | 'purple' | 'gray'> = {
+  clarity: 'arcoblue',
+  quality: 'green',
+  safety: 'red',
+  continuity: 'purple',
+  operations: 'gray',
+};
 
 const HooksManagement: React.FC = () => {
   const { t } = useTranslation();
@@ -21,6 +38,9 @@ const HooksManagement: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteHookName, setDeleteHookName] = useState<string | null>(null);
   const [installingHookName, setInstallingHookName] = useState<string | null>(null);
+  const [configuringHook, setConfiguringHook] = useState<HookInfo | null>(null);
+  const [routingDraft, setRoutingDraft] = useState<HookOutputRoutingDraft | null>(null);
+  const [savingHookRouting, setSavingHookRouting] = useState(false);
 
   const loadHooks = useCallback(async () => {
     try {
@@ -133,6 +153,58 @@ const HooksManagement: React.FC = () => {
     }
   }, [deleteHookName, loadHooks, messageApi, t]);
 
+  const handleOpenHookRouting = useCallback((hook: HookInfo) => {
+    setConfiguringHook(hook);
+    setRoutingDraft(createHookOutputRoutingDraft(hook));
+  }, []);
+
+  const handleCloseHookRouting = useCallback(() => {
+    if (savingHookRouting) {
+      return;
+    }
+
+    setConfiguringHook(null);
+    setRoutingDraft(null);
+  }, [savingHookRouting]);
+
+  const handleSaveHookRouting = useCallback(async () => {
+    if (!configuringHook || !routingDraft) {
+      return;
+    }
+
+    if (routingDraft.outputTargets.length === 0) {
+      messageApi.error(
+        t('settings.hookRoutingTargetsRequired', { defaultValue: 'Select at least one output target.' })
+      );
+      return;
+    }
+
+    setSavingHookRouting(true);
+    try {
+      const result = await ipcBridge.fs.updateHookManifest.invoke({
+        hookName: configuringHook.name,
+        config: buildHookOutputRoutingConfig(routingDraft),
+      });
+
+      if (!result.success) {
+        messageApi.error(
+          result.msg || t('settings.hookRoutingSaveFailed', { defaultValue: 'Failed to save hook routing.' })
+        );
+        return;
+      }
+
+      messageApi.success(result.msg || t('settings.hookRoutingSaved', { defaultValue: 'Hook routing saved.' }));
+      setConfiguringHook(null);
+      setRoutingDraft(null);
+      await loadHooks();
+    } catch (error) {
+      console.error('Failed to update hook routing:', error);
+      messageApi.error(t('settings.hookRoutingSaveFailed', { defaultValue: 'Failed to save hook routing.' }));
+    } finally {
+      setSavingHookRouting(false);
+    }
+  }, [configuringHook, loadHooks, messageApi, routingDraft, t]);
+
   const filteredHooks = useMemo(() => filterHooksByQuery(availableHooks, searchQuery), [availableHooks, searchQuery]);
   const stats = useMemo(() => summarizeHookLibrary(availableHooks), [availableHooks]);
   const customHooks = useMemo(() => filteredHooks.filter((hook) => hook.isCustom), [filteredHooks]);
@@ -167,6 +239,20 @@ const HooksManagement: React.FC = () => {
               {hook.executionType}
             </Tag>
           )}
+          {hook.category && (
+            <Tag size='small' color={HOOK_CATEGORY_COLORS[hook.category] || 'gray'}>
+              {t(`settings.hookCategories.${hook.category}`, { defaultValue: hook.category })}
+            </Tag>
+          )}
+          {(hook.runnableEvents || []).length > 0 ? (
+            <Tag size='small' color='green'>
+              {t('settings.hookReadyNow', { defaultValue: 'Ready Now' })}
+            </Tag>
+          ) : (
+            <Tag size='small' color='gray'>
+              {t('settings.hookStoredOnly', { defaultValue: 'Stored Only' })}
+            </Tag>
+          )}
           {hook.version && (
             <Tag size='small' color='gray'>
               v{hook.version}
@@ -177,6 +263,16 @@ const HooksManagement: React.FC = () => {
         <div className='mt-6px text-11px text-t-tertiary break-all'>
           {t('settings.hookLocation', { defaultValue: 'Location' })}: {hook.location}
         </div>
+        {hook.tags && hook.tags.length > 0 && (
+          <div className='mt-6px flex flex-wrap gap-4px'>
+            <span className='text-11px text-t-tertiary'>{t('settings.hookTags', { defaultValue: 'Tags' })}:</span>
+            {hook.tags.map((tag) => (
+              <Tag key={`${hook.name}-tag-${tag}`} size='small' color='gray'>
+                {tag}
+              </Tag>
+            ))}
+          </div>
+        )}
         {hook.supportedBackends && hook.supportedBackends.length > 0 && (
           <div className='mt-6px flex flex-wrap gap-4px'>
             <span className='text-11px text-t-tertiary'>
@@ -187,6 +283,21 @@ const HooksManagement: React.FC = () => {
                 {backend}
               </Tag>
             ))}
+          </div>
+        )}
+        {hook.outputTargets && hook.outputTargets.length > 0 && (
+          <div className='mt-6px flex flex-wrap gap-4px'>
+            <span className='text-11px text-t-tertiary'>
+              {t('settings.hookRoutesTo', { defaultValue: 'Routes To' })}:
+            </span>
+            {hook.outputTargets.map((target) => {
+              const presentation = HOOK_OUTPUT_TARGET_PRESENTATION[target];
+              return (
+                <Tag key={`${hook.name}-output-${target}`} size='small' color={presentation.color}>
+                  {t(presentation.i18nKey, { defaultValue: presentation.defaultLabel })}
+                </Tag>
+              );
+            })}
           </div>
         )}
         {hook.events && hook.events.length > 0 && (
@@ -200,6 +311,11 @@ const HooksManagement: React.FC = () => {
         )}
       </div>
       <div className='flex items-center gap-4px'>
+        {canConfigureHookOutputRouting(hook) && (
+          <Button type='outline' size='mini' onClick={() => handleOpenHookRouting(hook)}>
+            {t('settings.hookConfigure', { defaultValue: 'Configure' })}
+          </Button>
+        )}
         {!hook.isCustom && (
           <Button
             type='outline'
@@ -236,7 +352,7 @@ const HooksManagement: React.FC = () => {
                 <Typography.Paragraph className='!mb-0 text-t-secondary'>
                   {t('settings.hooksPageDescription', {
                     defaultValue:
-                      'Manage imported hooks here. Assistant defaults are configured in Assistants, and session overrides are available from the conversation header.',
+                      'Manage system-provided and imported hooks here. The builtin library organizes reusable patterns for prompt clarity, safety, quality gates, session continuity, and operator-friendly delivery.',
                   })}
                 </Typography.Paragraph>
               </div>
@@ -251,12 +367,18 @@ const HooksManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className='grid gap-12px md:grid-cols-3'>
+          <div className='grid gap-12px md:grid-cols-4'>
             <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
               <Typography.Text type='secondary' className='text-12px'>
                 {t('settings.hooksPageTotal', { defaultValue: 'Total Hooks' })}
               </Typography.Text>
               <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.total}</div>
+            </div>
+            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
+              <Typography.Text type='secondary' className='text-12px'>
+                {t('settings.hooksPageReadyNow', { defaultValue: 'Ready Now' })}
+              </Typography.Text>
+              <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.readyNow}</div>
             </div>
             <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
               <Typography.Text type='secondary' className='text-12px'>
@@ -278,7 +400,7 @@ const HooksManagement: React.FC = () => {
               allowClear
               prefix={<Search theme='outline' size={14} />}
               placeholder={t('settings.hooksPageSearchPlaceholder', {
-                defaultValue: 'Search hooks by name, description, or location',
+                defaultValue: 'Search hooks by name, description, location, or tag',
               })}
               onChange={setSearchQuery}
             />
@@ -347,6 +469,16 @@ const HooksManagement: React.FC = () => {
           })}
         </Typography.Text>
       </Modal>
+
+      <HookRoutingConfigModal
+        visible={configuringHook !== null && routingDraft !== null}
+        hook={configuringHook}
+        draft={routingDraft}
+        saving={savingHookRouting}
+        onCancel={handleCloseHookRouting}
+        onSave={() => void handleSaveHookRouting()}
+        onDraftChange={setRoutingDraft}
+      />
     </>
   );
 };

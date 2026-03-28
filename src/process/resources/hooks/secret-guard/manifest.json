@@ -1,0 +1,9 @@
+{
+  "name": "secret-guard",
+  "description": "Reduce accidental exposure of secrets, credentials, env files, and personal data during agent work.",
+  "version": "1.0.0",
+  "executionType": "prompt-transform",
+  "events": ["before_user_prompt"],
+  "category": "safety",
+  "tags": ["secrets", "privacy", "pii", "env-files", "pre-tool-use"]
+}

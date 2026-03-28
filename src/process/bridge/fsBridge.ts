@@ -5,7 +5,16 @@
  */
 
 import { AIONUI_TIMESTAMP_SEPARATOR } from '@/common/config/constants';
-import type { HookInfo, HookManifest } from '@/common/types/hookTypes';
+import {
+  getHookOutputTargets,
+  getRunnableHookEvents,
+  isHookOutputBaseDir,
+  isHookOutputTarget,
+  supportsHookOutputRouting,
+  type HookInfo,
+  type HookManifest,
+  type HookOutputRoutingConfig,
+} from '@/common/types/hookTypes';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -177,6 +186,49 @@ async function deleteAssistantResource(resourceType: ResourceType, filePattern: 
 const ruleFilePattern = (id: string, loc: string) => `${id}.${loc}.md`;
 const skillFilePattern = (id: string, loc: string) => `${id}-skills.${loc}.md`;
 
+const trimOptionalString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
+
+const sanitizeHookDirName = (hookName: string): string => {
+  return path.basename(hookName.trim());
+};
+
+const isSafeHookDirName = (hookName: string): boolean => {
+  const safeHookDirName = sanitizeHookDirName(hookName);
+
+  return (
+    Boolean(safeHookDirName) &&
+    safeHookDirName === hookName.trim() &&
+    !safeHookDirName.includes(path.sep) &&
+    safeHookDirName !== '.' &&
+    safeHookDirName !== '..'
+  );
+};
+
+const normalizeHookOutputRoutingConfig = (config: HookOutputRoutingConfig): HookOutputRoutingConfig => {
+  const outputTargets = Array.isArray(config.outputTargets)
+    ? config.outputTargets.map((value) => `${value}`.trim()).filter(isHookOutputTarget)
+    : undefined;
+
+  const title = trimOptionalString(config.notification?.title);
+  const body = trimOptionalString(config.notification?.body);
+  const baseDir = isHookOutputBaseDir(`${config.outputFile?.baseDir || ''}`) ? config.outputFile?.baseDir : undefined;
+  const relativeDir = trimOptionalString(config.outputFile?.relativeDir);
+  const fileBaseName = trimOptionalString(config.outputFile?.fileBaseName);
+
+  return {
+    outputTargets: outputTargets && outputTargets.length > 0 ? [...new Set(outputTargets)] : undefined,
+    notification: title || body ? { title, body } : undefined,
+    outputFile: baseDir || relativeDir || fileBaseName ? { baseDir, relativeDir, fileBaseName } : undefined,
+  };
+};
+
 async function readHookManifest(hookDir: string): Promise<HookManifest | null> {
   try {
     const manifestPath = path.join(hookDir, 'manifest.json');
@@ -199,16 +251,45 @@ async function tryReadHookManifest(hookDir: string, isCustom: boolean): Promise<
       return null;
     }
 
+    const tags = Array.isArray(parsed.tags)
+      ? parsed.tags
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : undefined;
+    const outputTargets = getHookOutputTargets(parsed);
+
     return {
       name,
       description: typeof parsed.description === 'string' ? parsed.description.trim() : undefined,
       version: typeof parsed.version === 'string' ? parsed.version.trim() : undefined,
       executionType: parsed.executionType,
       events: Array.isArray(parsed.events) ? parsed.events : undefined,
+      category: parsed.category,
+      tags: tags && tags.length > 0 ? [...new Set(tags)] : undefined,
       supportedBackends: Array.isArray(parsed.supportedBackends) ? parsed.supportedBackends : undefined,
+      outputTargets: outputTargets.length > 0 ? outputTargets : undefined,
+      notification:
+        parsed.notification && typeof parsed.notification === 'object'
+          ? {
+              title: typeof parsed.notification.title === 'string' ? parsed.notification.title.trim() : undefined,
+              body: typeof parsed.notification.body === 'string' ? parsed.notification.body.trim() : undefined,
+            }
+          : undefined,
+      outputFile:
+        parsed.outputFile && typeof parsed.outputFile === 'object'
+          ? {
+              baseDir: parsed.outputFile.baseDir,
+              relativeDir:
+                typeof parsed.outputFile.relativeDir === 'string' ? parsed.outputFile.relativeDir.trim() : undefined,
+              fileBaseName:
+                typeof parsed.outputFile.fileBaseName === 'string' ? parsed.outputFile.fileBaseName.trim() : undefined,
+            }
+          : undefined,
       location: hookDir,
       isCustom,
       isBuiltinInstalled: false,
+      runnableEvents: getRunnableHookEvents(parsed),
     };
   } catch {
     return null;
@@ -1099,6 +1180,95 @@ export function initFsBridge(): void {
       return {
         success: false,
         msg: `Failed to delete hook: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
+  ipcBridge.fs.updateHookManifest.provider(async ({ hookName, config }) => {
+    try {
+      if (!isSafeHookDirName(hookName)) {
+        return {
+          success: false,
+          msg: 'Hook name is invalid',
+        };
+      }
+
+      const safeHookDirName = sanitizeHookDirName(hookName);
+      const userHooksDir = getHooksDir();
+      const hookDir = path.join(userHooksDir, safeHookDirName);
+      const resolvedHookDir = path.resolve(hookDir);
+      const resolvedHooksDir = path.resolve(userHooksDir);
+
+      if (!resolvedHookDir.startsWith(resolvedHooksDir + path.sep)) {
+        return {
+          success: false,
+          msg: 'Invalid hook path (security check failed)',
+        };
+      }
+
+      try {
+        await fs.access(resolvedHookDir);
+      } catch {
+        return {
+          success: false,
+          msg: `Hook "${safeHookDirName}" not found`,
+        };
+      }
+
+      const manifest = await readHookManifest(resolvedHookDir);
+      if (!manifest) {
+        return {
+          success: false,
+          msg: `Hook "${safeHookDirName}" manifest is missing or invalid`,
+        };
+      }
+
+      if (!supportsHookOutputRouting(manifest)) {
+        return {
+          success: false,
+          msg: `Hook "${safeHookDirName}" does not support output routing settings`,
+        };
+      }
+
+      const normalizedConfig = normalizeHookOutputRoutingConfig(config || {});
+      if (!normalizedConfig.outputTargets || normalizedConfig.outputTargets.length === 0) {
+        return {
+          success: false,
+          msg: 'At least one output target is required',
+        };
+      }
+
+      const nextManifest: HookManifest = {
+        ...manifest,
+        outputTargets: normalizedConfig.outputTargets,
+        notification: normalizedConfig.notification,
+        outputFile: normalizedConfig.outputFile,
+      };
+
+      if (!nextManifest.notification) {
+        delete nextManifest.notification;
+      }
+
+      if (!nextManifest.outputFile) {
+        delete nextManifest.outputFile;
+      }
+
+      await fs.writeFile(
+        path.join(resolvedHookDir, 'manifest.json'),
+        `${JSON.stringify(nextManifest, null, 2)}\n`,
+        'utf-8'
+      );
+
+      return {
+        success: true,
+        data: { hookName: safeHookDirName },
+        msg: `Hook "${safeHookDirName}" routing updated successfully`,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to update hook manifest:', error);
+      return {
+        success: false,
+        msg: `Failed to update hook manifest: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   });

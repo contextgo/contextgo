@@ -16,8 +16,9 @@ import type { AcpModelInfo } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
 import type { AcpBackendAll } from '@/common/types/acpTypes';
 import { createHash } from 'node:crypto';
+import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { getDatabase } from '@process/services/database';
-import { addMessage, addOrUpdateMessage } from '@process/utils/message';
+import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
 import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
 import BaseAgentManager from '@process/task/BaseAgentManager';
 import { IpcAgentEventEmitter } from '@process/task/IpcAgentEventEmitter';
@@ -225,6 +226,7 @@ class OpenClawAgentManager extends BaseAgentManager<OpenClawAgentManagerData> {
   private options: OpenClawAgentManagerData;
   private lastExternalHistorySyncAt = 0;
   private externalHistorySyncPromise: Promise<number> | null = null;
+  private readonly hookRuntime = new AssistantHookRuntime();
 
   constructor(data: OpenClawAgentManagerData) {
     super('openclaw-gateway', data, new IpcAgentEventEmitter());
@@ -344,6 +346,24 @@ class OpenClawAgentManager extends BaseAgentManager<OpenClawAgentManagerData> {
 
     // Forward signals to Channel global event bus
     channelEventBus.emitAgentMessage(this.conversation_id, msg);
+
+    if (msg.type === 'finish') {
+      this.scheduleAfterResponseHooks();
+    }
+  }
+
+  private scheduleAfterResponseHooks(): void {
+    nextTickToLocalFinish(() => {
+      void this.hookRuntime
+        .emitAfterResponse(this.conversation_id, (message) => {
+          ipcBridge.openclawConversation.responseStream.emit(message);
+          ipcBridge.conversation.responseStream.emit(message);
+          channelEventBus.emitAgentMessage(this.conversation_id, message);
+        })
+        .catch((error) => {
+          console.warn('[OpenClawAgentManager] Failed to emit after_response hooks:', error);
+        });
+    });
   }
 
   private handleSessionKeyUpdate(sessionKey: string): void {

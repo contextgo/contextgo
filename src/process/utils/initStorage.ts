@@ -11,6 +11,7 @@ import { getPlatformServices } from '@/common/platform';
 import { application } from '@/common/adapter/ipcBridge';
 import type { TMessage } from '@/common/chat/chatLib';
 import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
+import { buildBuiltinAssistants } from '@/common/config/presets/builtinAssistantDefaults';
 import type {
   IChatConversationRefer,
   IConfigStorageRefer,
@@ -645,50 +646,6 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 };
 
 /**
- * 获取内置助手配置（不包含 context，context 从文件读取）
- * Get built-in assistant configurations (without context, context is read from files)
- */
-const getBuiltinAssistants = (): AcpBackendConfig[] => {
-  const assistants: AcpBackendConfig[] = [];
-
-  for (const preset of ASSISTANT_PRESETS) {
-    // 从预设配置中读取默认启用的技能列表（不包含 cron，因为它是内置 skill，自动注入）
-    // Read default enabled skills from preset config (excluding cron, which is builtin and auto-injected)
-    const defaultEnabledSkills = preset.defaultEnabledSkills;
-    const enabledByDefault =
-      preset.id === 'morph-ppt' ||
-      preset.id === 'cowork' ||
-      preset.id === 'openclaw-setup' ||
-      preset.id === 'star-office-helper' ||
-      preset.id === 'story-roleplay' ||
-      preset.id === 'moltbook' ||
-      preset.id === 'beautiful-mermaid';
-
-    assistants.push({
-      id: `builtin-${preset.id}`,
-      name: preset.nameI18n['en-US'],
-      nameI18n: preset.nameI18n,
-      description: preset.descriptionI18n['en-US'],
-      descriptionI18n: preset.descriptionI18n,
-      avatar: preset.avatar,
-      // context 不再存储在配置中，而是从文件读取
-      // context is no longer stored in config, read from files instead
-      // Cowork 默认启用 / Cowork enabled by default
-      enabled: enabledByDefault,
-      isPreset: true,
-      isBuiltin: true,
-      presetAgentType: preset.presetAgentType || 'gemini',
-      // Cowork 默认启用所有内置技能 / Cowork enables all builtin skills by default
-      enabledSkills: defaultEnabledSkills,
-      // 复制快捷提示词 / Copy quick prompts
-      promptsI18n: preset.promptsI18n,
-    });
-  }
-
-  return assistants;
-};
-
-/**
  * 创建默认的 MCP 服务器配置
  */
 const getDefaultMcpServers = (): IMcpServer[] => {
@@ -978,7 +935,7 @@ const initStorage = async () => {
     // 5.2 初始化助手配置（只包含元数据，不包含 context）
     // Initialize assistant config (metadata only, no context)
     const existingAgents = (await configFile.get('acp.customAgents').catch((): undefined => undefined)) || [];
-    const builtinAssistants = getBuiltinAssistants();
+    const builtinAssistants = buildBuiltinAssistants();
 
     // 5.2.1 检查是否需要迁移：修复老版本中所有助手都默认启用的问题
     // Check if migration needed: fix old version where all assistants were enabled by default
@@ -992,7 +949,13 @@ const initStorage = async () => {
     const builtinSkillsMigrationDone = await configFile.get(BUILTIN_SKILLS_MIGRATION_KEY).catch(() => false);
     const needsBuiltinSkillsMigration = !builtinSkillsMigrationDone;
 
-    // 5.2.3 检查是否需要迁移：为内置助手添加 promptsI18n
+    // 5.2.3 检查是否需要迁移：为内置助手添加默认启用的 hooks
+    // Check if migration needed: add default enabled hooks for builtin assistants
+    const BUILTIN_HOOKS_MIGRATION_KEY = 'migration.builtinDefaultHooksAdded_v1';
+    const builtinHooksMigrationDone = await configFile.get(BUILTIN_HOOKS_MIGRATION_KEY).catch(() => false);
+    const needsBuiltinHooksMigration = !builtinHooksMigrationDone;
+
+    // 5.2.4 检查是否需要迁移：为内置助手添加 promptsI18n
     // Check if migration needed: add promptsI18n for builtin assistants
     const PROMPTS_I18N_MIGRATION_KEY = 'migration.promptsI18nAdded';
     const promptsI18nMigrationDone = await configFile.get(PROMPTS_I18N_MIGRATION_KEY).catch(() => false);
@@ -1028,8 +991,8 @@ const initStorage = async () => {
           existing.isPreset !== builtin.isPreset ||
           existing.isBuiltin !== builtin.isBuiltin ||
           needsPromptsI18nUpdate;
-        // 当 enabled 是 undefined 或需要迁移时，设置默认值（Cowork 启用，其他禁用）
-        // When enabled is undefined or migration needed, set default value (Cowork enabled, others disabled)
+        // 当 enabled 是 undefined 或需要迁移时，恢复为内置 preset 的默认启用状态
+        // When enabled is undefined or migration needed, restore the builtin preset default enabled state
         const needsEnabledFix = existing.enabled === undefined || needsMigration;
         // 迁移时强制使用默认值，否则保留用户设置
         // Force default value during migration, otherwise preserve user setting
@@ -1042,17 +1005,25 @@ const initStorage = async () => {
         // Add default enabled skills for builtin assistants with defaultEnabledSkills (only during migration and if user hasn't set enabledSkills)
         let resolvedEnabledSkills = existing.enabledSkills;
         const needsSkillsMigration =
-          needsBuiltinSkillsMigration &&
-          builtin.enabledSkills &&
-          (!existing.enabledSkills || existing.enabledSkills.length === 0);
+          needsBuiltinSkillsMigration && builtin.enabledSkills && existing.enabledSkills === undefined;
         if (needsSkillsMigration) {
           resolvedEnabledSkills = builtin.enabledSkills;
+        }
+
+        // 为有 defaultEnabledHooks 配置的内置助手添加默认 hooks（仅在迁移时且用户未设置 enabledHooks 时）
+        // Add default enabled hooks for builtin assistants with defaultEnabledHooks (only during migration and if user hasn't set enabledHooks)
+        let resolvedEnabledHooks = existing.enabledHooks;
+        const needsHooksMigration =
+          needsBuiltinHooksMigration && builtin.enabledHooks && existing.enabledHooks === undefined;
+        if (needsHooksMigration) {
+          resolvedEnabledHooks = builtin.enabledHooks;
         }
 
         if (
           shouldUpdate ||
           needsEnabledFix ||
           (needsSkillsMigration && resolvedEnabledSkills !== existing.enabledSkills) ||
+          (needsHooksMigration && resolvedEnabledHooks !== existing.enabledHooks) ||
           needsPromptsI18nUpdate
         ) {
           // 保留用户已设置的 enabled 和 presetAgentType / Preserve user-set enabled and presetAgentType
@@ -1062,6 +1033,7 @@ const initStorage = async () => {
             enabled: resolvedEnabled,
             presetAgentType: resolvedPresetAgentType,
             enabledSkills: resolvedEnabledSkills,
+            enabledHooks: resolvedEnabledHooks,
             // 确保 promptsI18n 被更新 / Ensure promptsI18n is updated
             promptsI18n: builtin.promptsI18n,
           };
@@ -1085,6 +1057,9 @@ const initStorage = async () => {
     }
     if (needsBuiltinSkillsMigration) {
       await configFile.set(BUILTIN_SKILLS_MIGRATION_KEY, true);
+    }
+    if (needsBuiltinHooksMigration) {
+      await configFile.set(BUILTIN_HOOKS_MIGRATION_KEY, true);
     }
     if (needsPromptsI18nMigration) {
       await configFile.set(PROMPTS_I18N_MIGRATION_KEY, true);

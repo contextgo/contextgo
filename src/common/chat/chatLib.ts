@@ -129,7 +129,20 @@ export type IMessageText = IMessage<
   }
 >;
 
-export type IMessageTips = IMessage<'tips', { content: string; type: 'error' | 'success' | 'warning' }>;
+export type IMessageTipsAction = {
+  label: string;
+  action: 'open-file' | 'show-item-in-folder';
+  path: string;
+};
+
+export type IMessageTips = IMessage<
+  'tips',
+  {
+    content: string;
+    type: 'error' | 'success' | 'warning';
+    actions?: IMessageTipsAction[];
+  }
+>;
 
 export type IMessageToolCall = IMessage<
   'tool_call',
@@ -408,6 +421,37 @@ export const transformMessage = (message: IResponseMessage): TMessage => {
         content: {
           content: message.data as string,
           type: 'error',
+        },
+      };
+    }
+    case 'tips': {
+      const data =
+        typeof message.data === 'object' && message.data !== null
+          ? (message.data as { content?: unknown; type?: unknown; actions?: unknown })
+          : { content: message.data, type: 'warning' };
+      const actions = Array.isArray(data.actions)
+        ? data.actions.filter(
+            (action): action is IMessageTipsAction =>
+              typeof action === 'object' &&
+              action !== null &&
+              typeof (action as IMessageTipsAction).label === 'string' &&
+              ((action as IMessageTipsAction).action === 'open-file' ||
+                (action as IMessageTipsAction).action === 'show-item-in-folder') &&
+              typeof (action as IMessageTipsAction).path === 'string'
+          )
+        : undefined;
+      const tipType =
+        data.type === 'success' || data.type === 'warning' || data.type === 'error' ? data.type : 'warning';
+      return {
+        id: uuid(),
+        type: 'tips',
+        msg_id: message.msg_id,
+        position: 'center',
+        conversation_id: message.conversation_id,
+        content: {
+          content: typeof data.content === 'string' ? data.content : String(data.content || ''),
+          type: tipType,
+          ...(actions && actions.length > 0 ? { actions } : {}),
         },
       };
     }

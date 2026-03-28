@@ -17,10 +17,27 @@ export type AssistantPreset = {
    * 此助手默认启用的技能列表（来自 skills/ 目录的技能名称）
    */
   defaultEnabledSkills?: string[];
+  /**
+   * Default enabled hooks for this assistant (hook names from hooks/ directory).
+   * 此助手默认启用的 hooks 列表（来自 hooks/ 目录的 hook 名称）
+   */
+  defaultEnabledHooks?: string[];
   nameI18n: Record<string, string>;
   descriptionI18n: Record<string, string>;
   promptsI18n?: Record<string, string[]>;
 };
+
+const WORKFLOW_DEFAULT_HOOKS = [
+  'repo-context-bootstrap',
+  'plan-before-coding',
+  'secret-guard',
+  'tool-safety-guard',
+  'quality-gate',
+] as const;
+
+const WORKFLOW_WITH_HANDOFF_DEFAULT_HOOKS = [...WORKFLOW_DEFAULT_HOOKS, 'continuity-handoff'] as const;
+
+const CONTENT_CREATION_DEFAULT_HOOKS = ['prompt-clarifier', 'secret-guard'] as const;
 
 export const ASSISTANT_PRESETS: AssistantPreset[] = [
   {
@@ -33,6 +50,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'morph-ppt.zh-CN.md',
     },
     defaultEnabledSkills: ['morph-ppt'],
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Morph PPT',
       'zh-CN': 'Morph PPT',
@@ -65,6 +83,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'star-office-helper.zh-CN.md',
     },
     defaultEnabledSkills: ['star-office-helper'],
+    defaultEnabledHooks: [...WORKFLOW_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Star Office Helper',
       'zh-CN': 'Star Office 助手',
@@ -92,6 +111,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'openclaw-setup.zh-CN.md',
     },
     defaultEnabledSkills: ['openclaw-setup', 'aionui-webui-setup'],
+    defaultEnabledHooks: [...WORKFLOW_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'OpenClaw Setup Expert',
       'zh-CN': 'OpenClaw 部署专家',
@@ -124,6 +144,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'cowork-skills.zh-CN.md',
     },
     defaultEnabledSkills: ['skill-creator', 'pptx', 'docx', 'pdf', 'xlsx'],
+    defaultEnabledHooks: [...WORKFLOW_WITH_HANDOFF_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Cowork',
       'zh-CN': 'Cowork',
@@ -150,6 +171,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'pptx-generator.md',
       'zh-CN': 'pptx-generator.zh-CN.md',
     },
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'PPTX Generator',
       'zh-CN': 'PPTX 生成器',
@@ -176,6 +198,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'pdf-to-ppt.md',
       'zh-CN': 'pdf-to-ppt.zh-CN.md',
     },
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'PDF to PPT',
       'zh-CN': 'PDF 转 PPT',
@@ -232,6 +255,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'ui-ux-pro-max.md',
       'zh-CN': 'ui-ux-pro-max.zh-CN.md',
     },
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'UI/UX Pro Max',
       'zh-CN': 'UI/UX 专业设计师',
@@ -259,6 +283,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'planning-with-files.md',
       'zh-CN': 'planning-with-files.zh-CN.md',
     },
+    defaultEnabledHooks: [...WORKFLOW_WITH_HANDOFF_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Planning with Files',
       'zh-CN': '文件规划助手',
@@ -322,6 +347,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'social-job-publisher-skills.zh-CN.md',
     },
     defaultEnabledSkills: ['xiaohongshu-recruiter', 'x-recruiter'],
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Social Job Publisher',
       'zh-CN': '社交招聘发布助手',
@@ -384,6 +410,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'beautiful-mermaid.zh-CN.md',
     },
     defaultEnabledSkills: ['mermaid'],
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Beautiful Mermaid',
       'zh-CN': 'Beautiful Mermaid',
