@@ -141,6 +141,8 @@
   "hookSaveIncompatible": "Remove hooks not supported by the selected agent before saving: {{hooks}}",
   "hookReadyNow": "Ready Now",
   "hookStoredOnly": "Stored Only",
+  "hooksPageCategoryAll": "All",
+  "hooksPageBuiltinEmpty": "No builtin hooks match the active category.",
   "hookCategories": {
     "clarity": "Clarity",
     "quality": "Quality",
@@ -1011,6 +1013,67 @@
     "lastSync": "Last sync",
     "notSyncedYet": "Not synced yet",
     "notAvailable": "Not available"
+  },
+  "commands": {
+    "title": "Commands",
+    "description": "Manage reusable slash commands as cross-agent prompt templates. These commands expand directly into the input box, so they work consistently across different agents.",
+    "usageHint": "Type / in any chat input to open the command menu and quickly apply a configured template.",
+    "add": "Add Command",
+    "restoreDefaults": "Restore Defaults",
+    "restoreSuccess": "Default commands restored",
+    "restoreFailed": "Failed to restore default commands",
+    "recommendedTitle": "Recommended Workflow Commands",
+    "recommendedDescription": "Builtin engineering shortcuts inspired by plan, TDD, review, security, verification, and orchestration loops.",
+    "customTitle": "Custom Commands",
+    "customDescription": "Add your own reusable workflow prompts for any assistant.",
+    "emptyCustom": "No custom commands yet.",
+    "builtinTag": "Built-in",
+    "customTag": "Custom",
+    "templateLabel": "Template",
+    "editTitle": "Edit Command {{name}}",
+    "createTitle": "Create Command",
+    "nameLabel": "Command Name",
+    "namePlaceholder": "Use letters, numbers, hyphen, or underscore",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Explain when this command should be used",
+    "templatePlaceholder": "Enter the prompt template that should be inserted into the chat input",
+    "builtinOverrideHint": "{{name}} is a built-in command. Saving here stores your local override while keeping the default preset available.",
+    "loadFailed": "Failed to load command library",
+    "saveFailed": "Failed to save command",
+    "deleteFailed": "Failed to delete command",
+    "deleteConfirm": "Are you sure you want to delete this custom command?",
+    "validation": {
+      "invalidName": "Command name must use letters, numbers, hyphen, or underscore",
+      "duplicateName": "Command name /{{name}} already exists",
+      "descriptionRequired": "Description is required",
+      "templateRequired": "Template is required"
+    },
+    "presets": {
+      "plan": {
+        "description": "Restate the task, identify risks, and produce a step-by-step plan before coding.",
+        "template": "Restate the task, identify the main constraints and risks, then propose a clear step-by-step implementation plan. Do not modify files yet. Wait for confirmation before executing."
+      },
+      "tdd": {
+        "description": "Drive the task with failing tests first, then make the minimum code changes to pass.",
+        "template": "Implement this task with test-driven development. Start by listing the risky behaviors, write or update failing tests first, then make the minimum code changes to pass. Finish by summarizing coverage and remaining risks."
+      },
+      "codeReview": {
+        "description": "Review the current changes for bugs, regressions, risky assumptions, and missing tests.",
+        "template": "Review the current changes like a strict code reviewer. Prioritize bugs, regressions, missing tests, and risky assumptions. Cite concrete files and line-level evidence when possible."
+      },
+      "security": {
+        "description": "Audit auth, permissions, secrets, injection risks, and unsafe data or shell handling.",
+        "template": "Perform a security review for this task or patch. Look for auth, permission, secret handling, injection, data exposure, and unsafe shell or file operations. Report concrete risks and mitigations first."
+      },
+      "verify": {
+        "description": "Verify behavior, edge cases, typing, linting, tests, and release readiness end to end.",
+        "template": "Verify the current implementation end to end. Check behavior, edge cases, typing, linting, tests, and release risks. Summarize what passed, what failed, and what remains unverified."
+      },
+      "orchestrate": {
+        "description": "Break the task into coordinated workstreams, roles, dependencies, and checkpoints.",
+        "template": "Break this task into coordinated workstreams. Propose the best roles or agents for each stream, dependencies between them, and the integration order. Then execute in a controlled sequence with checkpoints."
+      }
+    }
   },
   "extensionAssistantReadonly": "Extension assistants are read-only. You can duplicate it and edit the copy."
 }

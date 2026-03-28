@@ -30,6 +30,7 @@ import {
   hasElectronAppPath,
   verifyDirectoryFiles,
 } from './utils';
+import { resolveSkillDirectory } from './skillDiscovery';
 import { getDatabase } from '../services/database/export';
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import { migrateFromElectronConfig, importConfigFromFile } from './configMigration';
@@ -1151,30 +1152,32 @@ export const loadSkillsContent = async (enabledSkills: string[]): Promise<string
 
   const skillsDir = getSkillsDir();
   const builtinSkillsDir = getAutoSkillsDir();
+  const bundledSkillsDir = getBuiltinSkillsCopyDir();
   const skillContents: string[] = [];
 
   for (const skillName of enabledSkills) {
-    // 1. Auto-enabled builtin: builtin-skills/_builtin/{skillName}/SKILL.md
-    const builtinSkillFile = path.join(builtinSkillsDir, skillName, 'SKILL.md');
-    // 2. Bundled skill: builtin-skills/{skillName}/SKILL.md
-    const bundledSkillFile = path.join(getBuiltinSkillsCopyDir(), skillName, 'SKILL.md');
-    // 3. User custom: skills/{skillName}/SKILL.md
-    const skillDirFile = path.join(skillsDir, skillName, 'SKILL.md');
-    // 向后兼容：扁平结构 {skillName}.md
-    // Backward compatible: flat structure {skillName}.md
-    const skillFlatFile = path.join(skillsDir, `${skillName}.md`);
-
     try {
       let content: string | null = null;
 
-      if (existsSync(builtinSkillFile)) {
-        content = await fs.readFile(builtinSkillFile, 'utf-8');
-      } else if (existsSync(bundledSkillFile)) {
-        content = await fs.readFile(bundledSkillFile, 'utf-8');
-      } else if (existsSync(skillDirFile)) {
-        content = await fs.readFile(skillDirFile, 'utf-8');
-      } else if (existsSync(skillFlatFile)) {
-        content = await fs.readFile(skillFlatFile, 'utf-8');
+      const builtinSkill = await resolveSkillDirectory(builtinSkillsDir, skillName);
+      const bundledSkill = await resolveSkillDirectory(bundledSkillsDir, skillName, {
+        excludeTopLevelNames: ['_builtin'],
+      });
+      const userSkill = await resolveSkillDirectory(skillsDir, skillName);
+
+      if (builtinSkill) {
+        content = await fs.readFile(path.join(builtinSkill.dirPath, 'SKILL.md'), 'utf-8');
+      } else if (bundledSkill) {
+        content = await fs.readFile(path.join(bundledSkill.dirPath, 'SKILL.md'), 'utf-8');
+      } else if (userSkill) {
+        content = await fs.readFile(path.join(userSkill.dirPath, 'SKILL.md'), 'utf-8');
+      } else {
+        // 向后兼容：扁平结构 {skillName}.md
+        // Backward compatible: flat structure {skillName}.md
+        const skillFlatFile = path.join(skillsDir, `${skillName}.md`);
+        if (existsSync(skillFlatFile)) {
+          content = await fs.readFile(skillFlatFile, 'utf-8');
+        }
       }
 
       if (content && content.trim()) {

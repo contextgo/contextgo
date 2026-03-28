@@ -5,7 +5,6 @@
  */
 
 import type { ChannelAgentType } from '../../types';
-import { buildAgentSelectionCallbackToken, type ChannelSelectableAgent } from '../../utils/agentSelection';
 
 /**
  * DingTalk Message Cards for Personal Assistant
@@ -48,6 +47,14 @@ export interface DingTalkCard {
 /**
  * Agent info for card display
  */
+export interface AgentDisplayInfo {
+  key: string;
+  backend: string;
+  emoji: string;
+  name: string;
+  customAgentId?: string;
+}
+
 // ==================== Helpers ====================
 
 /**
@@ -167,17 +174,14 @@ export function createPairingHelpCard(): DingTalkCard {
 /**
  * Create agent selection card
  */
-export function createAgentSelectionCard(
-  availableAgents: ChannelSelectableAgent[],
-  currentAgentKey?: string
-): DingTalkCard {
+export function createAgentSelectionCard(availableAgents: AgentDisplayInfo[], currentAgentKey?: string): DingTalkCard {
   const currentAgentInfo = availableAgents.find((a) => a.key === currentAgentKey);
   const currentAgentName = currentAgentInfo ? `${currentAgentInfo.emoji} ${currentAgentInfo.name}` : 'None';
 
   const agentButtons: DingTalkButton[] = availableAgents.map((agent) => {
     const label =
       currentAgentKey === agent.key ? `[Current] ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
-    return btn(label, 'agent.select', { agentKey: buildAgentSelectionCallbackToken(agent) });
+    return btn(label, 'agent.select', { agentKey: agent.key });
   });
 
   return {

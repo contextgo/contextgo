@@ -5,9 +5,7 @@
  */
 
 import { InlineKeyboard, Keyboard } from 'grammy';
-
-import type { ChannelAgentType } from '../../types';
-import { buildAgentSelectionCallbackToken, type ChannelSelectableAgent } from '../../utils/agentSelection';
+import { buildAgentSelectionCallbackToken } from '../../utils/agentSelection';
 
 /**
  * Telegram Keyboards for Personal Assistant
@@ -44,13 +42,24 @@ export function createPairingKeyboard(): Keyboard {
 // ==================== Inline Keyboards ====================
 
 /**
+ * Agent info for keyboard display
+ */
+export interface AgentDisplayInfo {
+  key: string;
+  backend: string;
+  emoji: string;
+  name: string;
+  customAgentId?: string;
+}
+
+/**
  * Agent selection keyboard
  * Shows available agents with current selection marked
  * @param availableAgents - List of available agents to display
  * @param currentAgent - Currently selected agent type
  */
 export function createAgentSelectionKeyboard(
-  availableAgents: ChannelSelectableAgent[],
+  availableAgents: AgentDisplayInfo[],
   currentAgentKey?: string
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
@@ -59,8 +68,9 @@ export function createAgentSelectionKeyboard(
   for (let i = 0; i < availableAgents.length; i++) {
     const agent = availableAgents[i];
     const label = currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
+    const callbackToken = buildAgentSelectionCallbackToken(agent);
 
-    keyboard.text(label, `agent:${buildAgentSelectionCallbackToken(agent)}`);
+    keyboard.text(label, `agent:${callbackToken}`);
 
     // Start new row after every 2 buttons, except for the last one
     if ((i + 1) % 2 === 0 && i < availableAgents.length - 1) {
@@ -173,7 +183,7 @@ export function matchAction(callbackData: string, actionPrefix: string): boolean
  */
 export function extractAction(callbackData: string): string {
   const parts = callbackData.split(':');
-  return parts.length > 1 ? parts[1] : callbackData;
+  return parts.length > 1 ? parts.slice(1).join(':') : callbackData;
 }
 
 /**

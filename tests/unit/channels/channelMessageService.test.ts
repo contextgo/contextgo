@@ -86,6 +86,7 @@ describe('ChannelMessageService', () => {
 
   it('applies hooks and keeps raw content for ACP channel messages', async () => {
     const sendMessage = vi.fn(async () => undefined);
+    const files = ['/tmp/weixin-media/image.png'];
     const service = new ChannelMessageService({
       taskManager: {
         getTask: vi.fn(() => undefined),
@@ -114,12 +115,13 @@ describe('ChannelMessageService', () => {
       },
     });
 
-    const promise = service.sendMessage('session-1', 'conv-1', 'raw content', vi.fn());
+    const promise = service.sendMessage('session-1', 'conv-1', 'raw content', vi.fn(), files);
     await vi.waitFor(() => {
       expect(sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           content: 'raw content',
           agentContent: 'hooked content',
+          files,
         })
       );
     });
@@ -130,6 +132,7 @@ describe('ChannelMessageService', () => {
 
   it('applies hooks and keeps raw content for Gemini channel messages', async () => {
     const sendMessage = vi.fn(async () => undefined);
+    const files = ['/tmp/weixin-media/document.pdf'];
     const service = new ChannelMessageService({
       taskManager: {
         getTask: vi.fn(() => undefined),
@@ -158,12 +161,13 @@ describe('ChannelMessageService', () => {
       },
     });
 
-    const promise = service.sendMessage('session-1', 'conv-2', 'raw input', vi.fn());
+    const promise = service.sendMessage('session-1', 'conv-2', 'raw input', vi.fn(), files);
     await vi.waitFor(() => {
       expect(sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           input: 'raw input',
           agentInput: 'hooked input',
+          files,
         })
       );
     });
