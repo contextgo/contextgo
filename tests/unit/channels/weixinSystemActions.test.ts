@@ -5,6 +5,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildAgentSelectionCallbackToken } from '@process/channels/utils/agentSelection';
 
 // Mock electron before any imports
 vi.mock('electron', () => ({
@@ -262,6 +263,37 @@ describe('SystemActions agent selection', () => {
       'acp',
       undefined,
       'chat-wx-1'
+    );
+  });
+
+  it('accepts a shortened callback token for long dynamic agent keys', async () => {
+    const { handleAgentSelect } = await import('@process/channels/actions/SystemActions');
+    const context = createActionContext();
+    const longCustomAgentId = 'ext:demo:assistant-with-a-very-long-identifier-1234567890abcdef1234567890abcdef';
+
+    mockGetDetectedAgents.mockReturnValue([
+      {
+        backend: 'custom',
+        name: 'Extended Assistant',
+        customAgentId: longCustomAgentId,
+      },
+    ]);
+
+    const callbackToken = buildAgentSelectionCallbackToken({
+      key: `custom:${longCustomAgentId}`,
+      backend: 'custom',
+    });
+
+    const result = await handleAgentSelect(context, { agentKey: callbackToken });
+
+    expect(result.success).toBe(true);
+    expect(mockSet).toHaveBeenCalledWith(
+      'assistant.weixin.agent',
+      expect.objectContaining({
+        backend: 'custom',
+        customAgentId: longCustomAgentId,
+        name: 'Extended Assistant',
+      })
     );
   });
 

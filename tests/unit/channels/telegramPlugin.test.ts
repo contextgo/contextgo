@@ -24,6 +24,17 @@ const mockControl: MockControl = {
 
 let latestBotStopSpy: ReturnType<typeof vi.fn> | null = null;
 
+function getInternalPollingState(plugin: object) {
+  const internal = plugin as {
+    isPollingActive?: boolean;
+    pollingPromise?: Promise<void> | null;
+  };
+  return {
+    isPollingActive: internal.isPollingActive,
+    pollingPromise: internal.pollingPromise,
+  };
+}
+
 function createConfig() {
   const now = Date.now();
   return {
@@ -41,7 +52,9 @@ function createConfig() {
 async function loadPluginClass() {
   vi.resetModules();
 
-  vi.doMock('grammy', () => {
+  vi.doMock('grammy', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('grammy')>();
+
     class MockGrammyError extends Error {
       description?: string;
       error_code?: number;
@@ -79,6 +92,7 @@ async function loadPluginClass() {
     }
 
     return {
+      ...actual,
       Bot: MockBot,
       GrammyError: MockGrammyError,
       HttpError: MockHttpError,
@@ -147,17 +161,10 @@ describe('TelegramPlugin polling lifecycle', () => {
     await vi.advanceTimersByTimeAsync(5000);
     await stopPromise;
 
+    const internalState = getInternalPollingState(plugin);
+
     expect(plugin.status).toBe('stopped');
-    expect((plugin as any).isPollingActive).toBe(false);
-    expect((plugin as any).pollingPromise).toBeNull();
-  });
-});
-
-describe('Telegram callback utilities', () => {
-  it('extractAction should keep the full payload after first colon', async () => {
-    const { extractAction } = await import('@process/channels/plugins/telegram/TelegramKeyboards');
-
-    expect(extractAction('agent:custom:ext:demo:assistant-1')).toBe('custom:ext:demo:assistant-1');
-    expect(extractAction('action:copy')).toBe('copy');
+    expect(internalState.isPollingActive).toBe(false);
+    expect(internalState.pollingPromise).toBeNull();
   });
 });

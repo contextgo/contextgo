@@ -5,6 +5,7 @@
  */
 
 import { InlineKeyboard, Keyboard } from 'grammy';
+import { buildAgentSelectionCallbackToken } from '../../utils/agentSelection';
 
 /**
  * Telegram Keyboards for Personal Assistant
@@ -67,8 +68,9 @@ export function createAgentSelectionKeyboard(
   for (let i = 0; i < availableAgents.length; i++) {
     const agent = availableAgents[i];
     const label = currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
+    const callbackToken = buildAgentSelectionCallbackToken(agent);
 
-    keyboard.text(label, `agent:${agent.key}`);
+    keyboard.text(label, `agent:${callbackToken}`);
 
     // Start new row after every 2 buttons, except for the last one
     if ((i + 1) % 2 === 0 && i < availableAgents.length - 1) {

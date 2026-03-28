@@ -19,6 +19,7 @@ import {
   createSessionControlKeyboard,
 } from '../plugins/telegram/TelegramKeyboards';
 import { getChannelConversationName, resolveChannelConvType } from '../types';
+import { matchesAgentSelectionCallbackToken } from '../utils/agentSelection';
 import {
   createAgentSelectionCard,
   createFeaturesCard,
@@ -544,7 +545,9 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
 
   // Validate selected agent key
   const availableAgents = getAvailableChannelAgents();
-  const selectedAgent = availableAgents.find((agent) => agent.key === newAgentKey);
+  const selectedAgent = availableAgents.find((agent) =>
+    newAgentKey ? matchesAgentSelectionCallbackToken(agent, newAgentKey) : false
+  );
   if (!newAgentKey || !selectedAgent) {
     return createErrorResponse('Invalid or unavailable agent');
   }
