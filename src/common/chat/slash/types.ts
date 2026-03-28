@@ -16,7 +16,7 @@ export type SlashCommandKind = 'template' | 'builtin';
  * - `acp`: Provided by the ACP agent (e.g., Claude)
  * - `builtin`: Built into the application
  */
-export type SlashCommandSource = 'acp' | 'builtin';
+export type SlashCommandSource = 'acp' | 'builtin' | 'custom';
 
 /**
  * Represents a single slash command item in the autocomplete list.
@@ -32,4 +32,6 @@ export interface SlashCommandItem {
   source: SlashCommandSource;
   /** Optional keyboard hint (e.g., "⌘O") */
   hint?: string;
+  /** Template body to insert directly when selecting a managed command */
+  template?: string;
 }

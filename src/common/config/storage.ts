@@ -7,6 +7,7 @@
 import type { AcpBackend, AcpBackendAll, AcpBackendConfig } from '@/common/types/acpTypes';
 import type { CloudDevice, CloudStoredSyncState, CloudUser } from '@/common/types/cloud';
 import type { VoiceInputConfig } from '@/common/types/voiceInput';
+import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import { storage } from '@office-ai/platform';
 
 /**
@@ -159,6 +160,7 @@ export interface IConfigStorageRefer {
   };
   // Skills Market: whether the aionui-skills builtin skill is enabled
   'skillsMarket.enabled'?: boolean;
+  'command.library'?: ManagedSlashCommandRecord[];
 }
 
 export interface IEnvStorageRefer {

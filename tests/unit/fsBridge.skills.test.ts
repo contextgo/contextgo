@@ -348,6 +348,49 @@ describe('fsBridge skills functionality', () => {
       expect(custom).toBeDefined();
       expect(custom.isCustom).toBe(true);
     });
+
+    it('discovers nested skill packs for builtin and user skills', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+      const userBase = path.resolve('/mock/userData/config/skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'engineering-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'engineering-planning')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'engineering-planning', 'SKILL.md')] = {
+        content: `---\nname: engineering-planning\ndescription: "Nested builtin skill"\n---\n`,
+        isDirectory: false,
+      };
+
+      mockFsStore[userBase] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'custom-pack')] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'custom-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'custom-pack', 'skills', 'project-playbook')] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'custom-pack', 'skills', 'project-playbook', 'SKILL.md')] = {
+        content: `---\nname: project-playbook\ndescription: "Nested user skill"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler();
+
+      expect(result).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'engineering-planning',
+            description: 'Nested builtin skill',
+            isCustom: false,
+          }),
+          expect.objectContaining({
+            name: 'project-playbook',
+            description: 'Nested user skill',
+            isCustom: true,
+          }),
+        ])
+      );
+    });
   });
 
   describe('hook management', () => {

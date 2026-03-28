@@ -36,6 +36,15 @@ describe('builtinAssistantDefaults', () => {
       'prompt-clarifier',
       'secret-guard',
     ]);
+    expect(assistants.find((assistant) => assistant.id === 'builtin-engineering-workbench')?.enabledHooks).toEqual([
+      'repo-context-bootstrap',
+      'plan-before-coding',
+      'secret-guard',
+      'tool-safety-guard',
+      'quality-gate',
+      'tdd-guard',
+      'continuity-handoff',
+    ]);
     expect(assistants.find((assistant) => assistant.id === 'builtin-moltbook')?.enabledHooks).toBeUndefined();
   });
 
@@ -59,6 +68,12 @@ describe('builtinAssistantDefaults', () => {
       'docx',
       'pdf',
       'xlsx',
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-engineering-reviewer', undefined)).toEqual([
+      'code-review-workflow',
+      'security-review',
+      'verification-loop',
+      'tooling-mcp-playbook',
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-cowork', [])).toEqual([]);
     expect(resolveBuiltinAssistantEnabledSkills('custom-agent', undefined)).toBeUndefined();
