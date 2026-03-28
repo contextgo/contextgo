@@ -79,6 +79,7 @@ When changing tags, GitHub Actions release workflows, signing, store assumptions
 
 Read these before changing release behavior:
 
+- [docs/tech/checklist.md](docs/tech/checklist.md)
 - [docs/tech/release-distribution-standards.md](docs/tech/release-distribution-standards.md)
 - [docs/tech/mobile-remote-control.md](docs/tech/mobile-remote-control.md)
 - [docs/tech/mobile-shell-readiness.md](docs/tech/mobile-shell-readiness.md)
