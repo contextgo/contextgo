@@ -212,106 +212,19 @@ export const handleSessionNew: ActionHandler = async (context) => {
   await sessionManager.clearSession(context.channelUser.id, context.chatId);
 
   const platform = context.platform;
-  const source =
-    platform === 'lark' ? 'lark' : platform === 'dingtalk' ? 'dingtalk' : platform === 'weixin' ? 'weixin' : 'telegram';
-
-  // Selected agent (defaults to Gemini)
-  let savedAgent: unknown = undefined;
-  try {
-    savedAgent = await (platform === 'lark'
-      ? ProcessConfig.get('assistant.lark.agent')
-      : platform === 'dingtalk'
-        ? ProcessConfig.get('assistant.dingtalk.agent')
-        : platform === 'weixin'
-          ? ProcessConfig.get('assistant.weixin.agent')
-          : ProcessConfig.get('assistant.telegram.agent'));
-  } catch {
-    // ignore
-  }
-  const backend = (
-    savedAgent && typeof savedAgent === 'object' && typeof (savedAgent as any).backend === 'string'
-      ? (savedAgent as any).backend
-      : 'gemini'
-  ) as string;
-  const customAgentId =
-    savedAgent && typeof savedAgent === 'object'
-      ? ((savedAgent as any).customAgentId as string | undefined)
-      : undefined;
-  const agentName =
-    savedAgent && typeof savedAgent === 'object' ? ((savedAgent as any).name as string | undefined) : undefined;
-  const openclawSelection = backend === 'openclaw-gateway' ? resolveSavedOpenClawAgent(savedAgent) : null;
-
-  // Provider model is required by typing; ACP/Codex will ignore it.
-  const model = await getChannelDefaultModel(platform);
+  const selectedAgent = await getSavedChannelAgentConfig(platform);
 
   // Always create a NEW conversation for "session.new" (scoped by chatId)
   const channelChatId = context.chatId;
-  const { convType, convBackend } = resolveChannelConvType(backend);
-  const name = getChannelConversationName(platform, convType, convBackend, channelChatId);
-
   let newConversation: TChatConversation;
   try {
-    if (backend === 'gemini') {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'gemini',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {},
-      });
-    } else if (backend === 'codex') {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'codex',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {},
-      });
-    } else if (backend === 'openclaw-gateway') {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'openclaw-gateway',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {
-          backend: openclawSelection?.backend,
-          cliPath: openclawSelection?.cliPath,
-          agentName: openclawSelection?.agentName,
-          openclawAgentId: openclawSelection?.openclawAgentId,
-          workspace: openclawSelection?.workspace,
-          customWorkspace: Boolean(openclawSelection?.workspace),
-          runtimeValidation: {
-            expectedWorkspace: openclawSelection?.workspace,
-            expectedBackend: openclawSelection?.backend,
-            expectedAgentName: openclawSelection?.agentName,
-            expectedOpenClawAgentId: openclawSelection?.openclawAgentId,
-            expectedCliPath: openclawSelection?.cliPath,
-            switchedAt: Date.now(),
-          },
-        },
-      });
-    } else {
-      newConversation = await conversationServiceSingleton.createConversation({
-        type: 'acp',
-        model,
-        source,
-        name,
-        channelChatId,
-        extra: {
-          backend: backend as AcpBackend,
-          customAgentId,
-          agentName,
-        },
-      });
-    }
+    newConversation = await createChannelConversation(platform, channelChatId, selectedAgent);
   } catch (error) {
     return createErrorResponse(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
   // Create session with the new conversation ID (scoped by chatId)
+  const { convType } = resolveChannelConvType(selectedAgent.backend);
   const agentType = convType as ChannelAgentType;
   const session = await sessionManager.createSessionWithConversation(
     context.channelUser,
@@ -788,16 +701,16 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
     currentAgentConfig.name
   );
 
-  // If same agent, no need to switch
+  // If same selected agent, no need to switch
   if (currentAgentKey === selectedAgent.key) {
     const markup =
       context.platform === 'lark'
         ? createMainMenuCard()
         : context.platform === 'slack'
           ? undefined
-          : context.platform === 'dingtalk'
-            ? createDingTalkMainMenuCard()
-            : createMainMenuKeyboard();
+        : context.platform === 'dingtalk'
+          ? createDingTalkMainMenuCard()
+          : createMainMenuKeyboard();
     return createSuccessResponse({
       type: 'text',
       text: `✓ Already using <b>${selectedAgentName}</b>`,
@@ -818,7 +731,6 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
 
   // Get current session (scoped by chatId)
   const existingSession = sessionManager.getSession(context.channelUser.id, context.chatId);
-
   // Clear existing session and agent (scoped by chatId)
   if (existingSession) {
     const messageService = getChannelMessageService();
@@ -873,6 +785,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
     ...(context.platform === 'slack' ? { buttons: buildMainMenuActionButtons() } : {}),
   });
 };
+
 type SavedChannelAgentConfig = {
   backend: AcpBackendAll;
   customAgentId?: string;
@@ -884,9 +797,16 @@ type SavedChannelAgentConfig = {
 
 function getChannelAgentConfigPath(
   platform: PluginType
-): 'assistant.lark.agent' | 'assistant.dingtalk.agent' | 'assistant.weixin.agent' | 'assistant.telegram.agent' {
+):
+  | 'assistant.lark.agent'
+  | 'assistant.slack.agent'
+  | 'assistant.dingtalk.agent'
+  | 'assistant.weixin.agent'
+  | 'assistant.telegram.agent' {
   return platform === 'lark'
     ? 'assistant.lark.agent'
+    : platform === 'slack'
+      ? 'assistant.slack.agent'
     : platform === 'dingtalk'
       ? 'assistant.dingtalk.agent'
       : platform === 'weixin'
