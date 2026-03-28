@@ -33,11 +33,17 @@ As of 2026-03-28, the following foundations already exist in `main`:
 - `mobile-shell/` exists for Android, iOS, and HarmonyOS
 - mobile shell architecture and command docs are already merged
 - the repository has existing GitHub Actions for desktop build and release
+- the desktop build workflows now support switching between GitHub-hosted and self-hosted runners
+- the repository can target the `contextgo` organization runner `tencent-sh-1-org-runner`
 - current desktop release workflow still only covers desktop artifacts
 - mobile-shell release automation is not yet wired into GitHub release workflows
 
 Important current blockers:
 
+- `contextgo/contextgo` has no repo-local self-hosted runner, but the org-level default runner group exposes one Linux runner:
+  - runner: `tencent-sh-1-org-runner`
+  - labels: `self-hosted`, `Linux`, `X64`, `contextgo-org`, `tencent-sh-1`, `cn-shanghai`, `docker-builder`
+- the current org runner fleet does not include macOS or Windows runners
 - no repository-level GitHub Actions secrets or variables are currently visible through GitHub CLI
 - no GitHub Actions environments are currently configured
 - Android, iOS, and HarmonyOS release signing materials are not yet configured in CI
@@ -56,6 +62,7 @@ These items are already completed in the repository:
 - [x] `AGENTS.md` updated so future agents load the release context before changing tags, signing, or publishing assumptions
 - [x] Release checklist added as a canonical execution document
 - [x] Release workflows updated to fall back to the built-in `github.token` instead of requiring a custom `GH_TOKEN` secret for GitHub-side operations
+- [x] Desktop build workflows updated to support self-hosted runner mode through GitHub Actions variables and manual workflow input
 
 These items are still pending because they require external accounts, certificates, or final product decisions:
 
@@ -115,6 +122,20 @@ Do not defer this. Identifier churn later causes avoidable migration problems.
 - [ ] Confirm GitHub Releases stays the initial artifact source of truth
 - [ ] Confirm the future download page will consume release assets from GitHub Releases or a manifest generated from them
 - [ ] Decide whether the official website will live in `site/` or `apps/site/`
+
+### GitHub Actions execution path
+
+- [ ] Register at least one self-hosted control runner with `bash`, `git`, and outbound network access
+- [ ] Register the self-hosted platform runners required for the release targets you actually want to ship now
+- [ ] Set `BUILD_RUNNER_MODE=self-hosted`
+- [ ] Set `PR_CHECKS_PLATFORM_SCOPE=linux-only` until macOS and Windows runners exist
+- [ ] Set `RELEASE_BUILD_PLATFORMS` to the supported subset until the full runner fleet exists
+- [ ] Set `SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON`
+- [ ] Set `SELF_HOSTED_MACOS_RUNNER_LABELS_JSON`
+- [ ] Set `SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON`
+- [ ] Set `SELF_HOSTED_LINUX_RUNNER_LABELS_JSON`
+
+Do not leave `RELEASE_BUILD_PLATFORMS=all` unless corresponding runners actually exist. Otherwise tag-triggered release workflows will queue on unavailable labels.
 
 ## Can Wait Until Store Submission
 
@@ -193,6 +214,13 @@ The repository should gradually converge on the following GitHub Actions secrets
 
 Prefer GitHub Actions variables for stable non-secret configuration.
 
+- [ ] `BUILD_RUNNER_MODE`
+- [ ] `PR_CHECKS_PLATFORM_SCOPE`
+- [ ] `RELEASE_BUILD_PLATFORMS`
+- [ ] `SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON`
+- [ ] `SELF_HOSTED_MACOS_RUNNER_LABELS_JSON`
+- [ ] `SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON`
+- [ ] `SELF_HOSTED_LINUX_RUNNER_LABELS_JSON`
 - [ ] `SUPPORT_EMAIL`
 - [ ] `PRIVACY_POLICY_URL`
 - [ ] `TERMS_OF_SERVICE_URL`
@@ -234,6 +262,9 @@ These are the practical actions that can be finished without waiting for externa
 
 - [ ] add GitHub Actions variables once final product URLs and IDs are confirmed
 - [ ] add GitHub Actions secrets once signing materials are generated
+- [ ] register and label self-hosted runners
+- [ ] switch `BUILD_RUNNER_MODE` to `self-hosted`
+- [ ] constrain PR checks and release platforms to Linux-only until more org runners exist
 - [x] manually trigger at least one desktop build workflow from `main`
 - [ ] restore GitHub Actions billing so hosted jobs can actually start
 
@@ -254,11 +285,12 @@ Follow this order to minimize rework.
 3. Enroll the Apple developer account and collect Team ID details.
 4. Generate and back up the Android release keystore.
 5. Register and verify the HUAWEI Developer account.
-6. Add GitHub Actions secrets and variables.
-7. Wire Android and HarmonyOS signing into CI.
-8. Add iOS TestFlight automation.
-9. Add website deployment automation.
-10. Only then decide whether store submission should become part of the standard release path.
+6. Register and label the self-hosted runner fleet, then switch `BUILD_RUNNER_MODE` to `self-hosted`.
+7. Add GitHub Actions secrets and variables.
+8. Wire Android and HarmonyOS signing into CI.
+9. Add iOS TestFlight automation.
+10. Add website deployment automation.
+11. Only then decide whether store submission should become part of the standard release path.
 
 ## Agent Notes
 
