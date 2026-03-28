@@ -141,6 +141,8 @@
   "hookSaveIncompatible": "저장하기 전에 선택한 Agent 에서 지원하지 않는 Hook 을 제거하세요: {{hooks}}",
   "hookReadyNow": "즉시 실행 가능",
   "hookStoredOnly": "저장만 됨",
+  "hooksPageCategoryAll": "전체",
+  "hooksPageBuiltinEmpty": "현재 카테고리에 맞는 기본 Hook이 없습니다.",
   "hookCategories": {
     "clarity": "명확화",
     "quality": "품질",
@@ -1013,6 +1015,67 @@
     "lastSync": "마지막 동기화",
     "notSyncedYet": "아직 동기화되지 않음",
     "notAvailable": "없음"
+  },
+  "commands": {
+    "title": "Commands",
+    "description": "재사용 가능한 slash 명령 템플릿을 한곳에서 관리합니다. 선택하면 입력창에 바로 펼쳐지므로 서로 다른 에이전트에서도 일관되게 사용할 수 있습니다.",
+    "usageHint": "아무 채팅 입력창에서 / 를 입력하면 명령 메뉴가 열리고, 설정된 템플릿을 빠르게 적용할 수 있습니다.",
+    "add": "명령 추가",
+    "restoreDefaults": "기본 명령 복원",
+    "restoreSuccess": "기본 명령을 복원했습니다",
+    "restoreFailed": "기본 명령 복원에 실패했습니다",
+    "recommendedTitle": "추천 워크플로 명령",
+    "recommendedDescription": "계획, TDD, 리뷰, 보안, 검증, 오케스트레이션을 위한 자주 쓰는 엔지니어링 명령입니다.",
+    "customTitle": "사용자 정의 명령",
+    "customDescription": "어떤 어시스턴트에도 재사용할 수 있는 워크플로 프롬프트를 추가합니다.",
+    "emptyCustom": "아직 사용자 정의 명령이 없습니다.",
+    "builtinTag": "기본 제공",
+    "customTag": "사용자 정의",
+    "templateLabel": "템플릿",
+    "editTitle": "명령 {{name}} 편집",
+    "createTitle": "명령 만들기",
+    "nameLabel": "명령 이름",
+    "namePlaceholder": "영문, 숫자, 하이픈, 밑줄만 사용할 수 있습니다",
+    "descriptionLabel": "설명",
+    "descriptionPlaceholder": "이 명령을 언제 사용해야 하는지 설명하세요",
+    "templatePlaceholder": "선택 시 채팅 입력창에 삽입할 프롬프트 템플릿을 입력하세요",
+    "builtinOverrideHint": "{{name}} 는 기본 제공 명령입니다. 여기서 저장하면 기본 프리셋을 유지한 채 로컬 재정의로 저장됩니다.",
+    "loadFailed": "명령 라이브러리를 불러오지 못했습니다",
+    "saveFailed": "명령을 저장하지 못했습니다",
+    "deleteFailed": "명령을 삭제하지 못했습니다",
+    "deleteConfirm": "이 사용자 정의 명령을 삭제하시겠습니까?",
+    "validation": {
+      "invalidName": "명령 이름은 영문, 숫자, 하이픈, 밑줄만 사용할 수 있습니다",
+      "duplicateName": "명령 이름 /{{name}} 이 이미 존재합니다",
+      "descriptionRequired": "설명이 필요합니다",
+      "templateRequired": "템플릿이 필요합니다"
+    },
+    "presets": {
+      "plan": {
+        "description": "구현 전에 작업을 재정리하고 위험을 식별한 뒤 단계별 계획을 만듭니다.",
+        "template": "먼저 작업을 다시 정리하고 주요 제약과 위험을 식별한 뒤, 명확한 단계별 구현 계획을 제안해 주세요. 아직 파일은 수정하지 말고, 실행 전에 확인을 기다려 주세요."
+      },
+      "tdd": {
+        "description": "실패하는 테스트부터 시작해 최소 변경으로 통과시키고, 마지막에 커버리지와 남은 위험을 정리합니다.",
+        "template": "이 작업을 테스트 주도 개발 방식으로 진행해 주세요. 먼저 위험한 동작을 정리하고, 실패하는 테스트를 먼저 작성하거나 갱신한 뒤, 최소한의 코드 변경으로 통과시키세요. 마지막으로 커버리지와 남은 위험을 요약해 주세요."
+      },
+      "codeReview": {
+        "description": "버그, 회귀, 위험한 가정, 빠진 테스트를 엄격하게 검토합니다.",
+        "template": "엄격한 코드 리뷰어처럼 현재 변경 사항을 검토해 주세요. 버그, 회귀, 위험한 가정, 누락된 테스트를 우선순위로 보고, 가능하면 구체적인 파일과 줄 단위 근거를 제시해 주세요."
+      },
+      "security": {
+        "description": "인증, 권한, 비밀정보, 주입, 데이터 노출, 위험한 shell 작업을 점검합니다.",
+        "template": "이 작업 또는 패치에 대해 보안 리뷰를 수행해 주세요. 인증, 권한, 비밀정보 처리, 주입, 데이터 노출, 위험한 shell 또는 파일 작업을 확인하고, 먼저 구체적인 위험을, 그다음 완화 방안을 제시해 주세요."
+      },
+      "verify": {
+        "description": "동작, 경계 조건, 타입, lint, 테스트, 릴리스 위험을 end-to-end로 검증합니다.",
+        "template": "현재 구현을 end-to-end로 검증해 주세요. 동작, 경계 조건, 타입, lint, 테스트, 릴리스 위험을 확인하고, 통과한 항목, 실패한 항목, 아직 검증되지 않은 항목을 정리해 주세요."
+      },
+      "orchestrate": {
+        "description": "작업을 협업 가능한 스트림, 역할, 의존성, 체크포인트로 분해합니다.",
+        "template": "이 작업을 조율 가능한 작업 흐름으로 분해해 주세요. 각 흐름에 가장 적합한 역할 또는 에이전트, 의존 관계, 통합 순서를 제안하고, 그다음 체크포인트를 두고 통제된 순서로 진행해 주세요."
+      }
+    }
   },
   "extensionAssistantReadonly": "확장 어시스턴트는 읽기 전용입니다. 복제하여 편집할 수 있습니다."
 }

@@ -84,7 +84,12 @@ describe('WeixinMonitor — text message delivery', () => {
     await new Promise((r) => setTimeout(r, 60));
 
     expect(agentChat).toHaveBeenCalledOnce();
-    expect(agentChat).toHaveBeenCalledWith({ conversationId: 'user_123', text: 'Hi there' });
+    expect(agentChat).toHaveBeenCalledWith({
+      conversationId: 'user_123',
+      text: 'Hi there',
+      contextToken: 'ctx_abc',
+      attachments: undefined,
+    });
 
     expect(sentBody).toBeDefined();
     const body = sentBody as {
@@ -94,7 +99,7 @@ describe('WeixinMonitor — text message delivery', () => {
     expect(body.msg.item_list[0].text_item.text).toBe('Hello back!');
   });
 
-  it('does not call agent.chat for non-text items (image type=2)', async () => {
+  it('skips unsupported media payloads without downloadable fields', async () => {
     const agentChat = vi.fn();
     const controller = mockFetchOnce({
       ret: 0,
@@ -106,6 +111,128 @@ describe('WeixinMonitor — text message delivery', () => {
     await new Promise((r) => setTimeout(r, 60));
 
     expect(agentChat).not.toHaveBeenCalled();
+  });
+
+  it('downloads inbound image and forwards attachment path to agent.chat', async () => {
+    const agentChat = vi.fn().mockResolvedValue({ text: 'received' });
+    const controller = new AbortController();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string, _init: { body?: string }) => {
+        if ((url as string).includes('getupdates')) {
+          controller.abort();
+          return {
+            ok: true,
+            json: async () => ({
+              ret: 0,
+              msgs: [
+                {
+                  from_user_id: 'user_img',
+                  context_token: 'ctx_img',
+                  item_list: [{ type: 2, image_item: { media: { encrypt_query_param: 'enc_1' } } }],
+                },
+              ],
+              get_updates_buf: '',
+            }),
+          } as Response;
+        }
+        if ((url as string).includes('/download?')) {
+          return {
+            ok: true,
+            arrayBuffer: async () => new Uint8Array([1, 2, 3, 4]).buffer,
+          } as Response;
+        }
+        if ((url as string).includes('sendmessage')) {
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+        return { ok: true, text: async () => '{}' } as Response;
+      })
+    );
+
+    startMonitor(makeOpts({ agent: { chat: agentChat }, abortSignal: controller.signal }));
+    await new Promise((r) => setTimeout(r, 80));
+
+    expect(agentChat).toHaveBeenCalledOnce();
+    const callArg = agentChat.mock.calls[0]?.[0] as {
+      attachments?: Array<{ kind: string; filePath: string; mimeType: string }>;
+      text?: string;
+    };
+    expect(callArg.text).toBe('');
+    expect(callArg.attachments?.[0]?.kind).toBe('image');
+    expect(callArg.attachments?.[0]?.mimeType).toBe('image/jpeg');
+    expect(typeof callArg.attachments?.[0]?.filePath).toBe('string');
+    expect(fs.existsSync(callArg.attachments?.[0]?.filePath || '')).toBe(true);
+  });
+});
+
+describe('WeixinMonitor — outbound media delivery', () => {
+  it('uploads image media and sends caption+image items', async () => {
+    const agentChat = vi.fn().mockResolvedValue({
+      text: 'caption',
+      media: {
+        filePath: path.join(TEST_DIR, 'outbound-image.jpg'),
+        fileName: 'outbound-image.jpg',
+        mimeType: 'image/jpeg',
+      },
+    });
+    fs.writeFileSync(path.join(TEST_DIR, 'outbound-image.jpg'), Buffer.from([1, 2, 3, 4]));
+
+    const controller = new AbortController();
+    const sentBodies: Array<Record<string, unknown>> = [];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string, init: { body?: string }) => {
+        if ((url as string).includes('getupdates')) {
+          controller.abort();
+          return {
+            ok: true,
+            json: async () => ({
+              ret: 0,
+              msgs: [
+                {
+                  from_user_id: 'user_send_media',
+                  context_token: 'ctx_send_media',
+                  item_list: [{ type: 1, text_item: { text: 'send image' } }],
+                },
+              ],
+              get_updates_buf: '',
+            }),
+          } as Response;
+        }
+        if ((url as string).includes('getuploadurl')) {
+          return {
+            ok: true,
+            json: async () => ({ upload_param: 'upload_param_1' }),
+          } as Response;
+        }
+        if ((url as string).includes('/upload?')) {
+          return {
+            ok: true,
+            status: 200,
+            headers: {
+              get: (name: string) => (name.toLowerCase() === 'x-encrypted-param' ? 'download_param_1' : null),
+            },
+            text: async () => '',
+          } as unknown as Response;
+        }
+        if ((url as string).includes('sendmessage')) {
+          if (init?.body) sentBodies.push(JSON.parse(init.body));
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+        return { ok: true, text: async () => '{}' } as Response;
+      })
+    );
+
+    startMonitor(makeOpts({ agent: { chat: agentChat }, abortSignal: controller.signal }));
+    await new Promise((r) => setTimeout(r, 120));
+
+    expect(sentBodies.length).toBe(2);
+    const first = sentBodies[0] as { msg?: { item_list?: Array<{ type?: number }> } };
+    const second = sentBodies[1] as { msg?: { item_list?: Array<{ type?: number }> } };
+    expect(first.msg?.item_list?.[0]?.type).toBe(1); // text caption
+    expect(second.msg?.item_list?.[0]?.type).toBe(2); // image item
   });
 });
 

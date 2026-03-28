@@ -5,7 +5,6 @@
  */
 
 import type { ChannelAgentType } from '../../types';
-import { buildAgentSelectionCallbackToken, type ChannelSelectableAgent } from '../../utils/agentSelection';
 
 /**
  * Lark Message Cards for Personal Assistant
@@ -89,6 +88,17 @@ export interface LarkNoteElement {
 }
 
 // ==================== Card Builders ====================
+
+/**
+ * Agent info for card display
+ */
+export interface AgentDisplayInfo {
+  key: string;
+  backend: string;
+  emoji: string;
+  name: string;
+  customAgentId?: string;
+}
 
 /**
  * Create main menu card
@@ -288,10 +298,7 @@ export function createPairingHelpCard(): LarkCard {
  * Create agent selection card
  * Shows available agents with current selection marked
  */
-export function createAgentSelectionCard(
-  availableAgents: ChannelSelectableAgent[],
-  currentAgentKey?: string
-): LarkCard {
+export function createAgentSelectionCard(availableAgents: AgentDisplayInfo[], currentAgentKey?: string): LarkCard {
   const agentButtons: LarkButtonElement[] = availableAgents.map((agent) => ({
     tag: 'button',
     text: {
@@ -299,7 +306,7 @@ export function createAgentSelectionCard(
       content: currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`,
     },
     type: currentAgentKey === agent.key ? 'primary' : 'default',
-    value: { action: 'agent.select', agentKey: buildAgentSelectionCallbackToken(agent) },
+    value: { action: 'agent.select', agentKey: agent.key },
   }));
 
   // Split buttons into rows of 2

@@ -5,6 +5,7 @@
  */
 
 import type { Block, KnownBlock } from '@slack/web-api';
+import type { Button } from '@slack/types';
 import type {
   IActionButton,
   IMessageAction,
@@ -205,22 +206,24 @@ export function toSlackBlocks(message: IUnifiedOutgoingMessage): (Block | KnownB
   const buttonRows = message.buttons || message.keyboard;
   if (buttonRows?.length) {
     for (const row of buttonRows) {
+      const elements: Button[] = row.map((button, index) => {
+        const style = resolveButtonStyle(button);
+        return {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: button.label,
+            emoji: true,
+          },
+          action_id: `${SLACK_ACTION_ID_PREFIX}:${index}:${button.action}`,
+          value: serializeActionValue(button.action, button.params),
+          ...(style ? { style } : {}),
+        };
+      });
+
       blocks.push({
         type: 'actions',
-        elements: row.map((button, index) => {
-          const style = resolveButtonStyle(button);
-          return {
-            type: 'button' as const,
-            text: {
-              type: 'plain_text' as const,
-              text: button.label,
-              emoji: true,
-            },
-            action_id: `${SLACK_ACTION_ID_PREFIX}:${index}:${button.action}`,
-            value: serializeActionValue(button.action, button.params),
-            ...(style ? { style } : {}),
-          };
-        }),
+        elements,
       });
     }
   }
@@ -237,10 +240,7 @@ export function toSlackSendParams(message: IUnifiedOutgoingMessage): {
   const blocks = toSlackBlocks(message);
   const fallbackText =
     text ||
-    (message.buttons || message.keyboard)
-      ?.flat()
-      .map((button) => button.label)
-      .join(' · ') ||
+    (message.buttons || message.keyboard)?.flat().map((button) => button.label).join(' · ') ||
     'ContextGo response';
 
   return {
@@ -264,8 +264,7 @@ export function splitSlackMessage(text: string, maxLength: number = SLACK_TEXT_L
 
     const newlineIndex = remaining.lastIndexOf('\n', maxLength);
     const spaceIndex = remaining.lastIndexOf(' ', maxLength);
-    const splitIndex =
-      newlineIndex > maxLength * 0.7 ? newlineIndex + 1 : spaceIndex > maxLength * 0.7 ? spaceIndex + 1 : maxLength;
+    const splitIndex = newlineIndex > maxLength * 0.7 ? newlineIndex + 1 : spaceIndex > maxLength * 0.7 ? spaceIndex + 1 : maxLength;
     chunks.push(remaining.slice(0, splitIndex).trim());
     remaining = remaining.slice(splitIndex).trim();
   }

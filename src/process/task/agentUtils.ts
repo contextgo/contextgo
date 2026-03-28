@@ -119,7 +119,9 @@ export async function prepareFirstMessageWithSkillsIndex(content: string, config
 Skills are stored in three locations:
 - Builtin skills (auto-enabled): ${builtinSkillsDir}/{skill-name}/SKILL.md
 - Bundled skills: ${builtinSkillsCopyDir}/{skill-name}/SKILL.md
+- Bundled skill packs: ${builtinSkillsCopyDir}/{pack-name}/skills/{skill-name}/SKILL.md
 - User custom skills: ${skillsDir}/{skill-name}/SKILL.md
+- User skill packs: ${skillsDir}/{pack-name}/skills/{skill-name}/SKILL.md
 
 Each skill has a SKILL.md file containing detailed instructions.
 To use a skill, read its SKILL.md file when needed.

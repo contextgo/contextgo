@@ -141,6 +141,8 @@
   "hookSaveIncompatible": "保存前请先移除当前 Agent 不支持的 Hook：{{hooks}}",
   "hookReadyNow": "当前可运行",
   "hookStoredOnly": "仅存储",
+  "hooksPageCategoryAll": "全部",
+  "hooksPageBuiltinEmpty": "当前分类下没有匹配的内置 Hook。",
   "hookCategories": {
     "clarity": "任务澄清",
     "quality": "质量门禁",
@@ -1011,6 +1013,67 @@
     "lastSync": "上次同步",
     "notSyncedYet": "尚未同步",
     "notAvailable": "暂无"
+  },
+  "commands": {
+    "title": "Commands",
+    "description": "集中管理可复用的 slash 命令模板。它们会直接展开到输入框里，因此可以跨不同 Agent 稳定复用。",
+    "usageHint": "在任意聊天输入框中输入 /，就可以打开命令菜单并快速套用一条已配置的模板。",
+    "add": "添加命令",
+    "restoreDefaults": "恢复默认命令",
+    "restoreSuccess": "默认命令已恢复",
+    "restoreFailed": "恢复默认命令失败",
+    "recommendedTitle": "推荐工作流命令",
+    "recommendedDescription": "内置了规划、TDD、评审、安全、验证、编排这六类高频工程命令。",
+    "customTitle": "自定义命令",
+    "customDescription": "为任意助手添加你自己的可复用工作流提示模板。",
+    "emptyCustom": "还没有自定义命令。",
+    "builtinTag": "内置",
+    "customTag": "自定义",
+    "templateLabel": "模板内容",
+    "editTitle": "编辑命令 {{name}}",
+    "createTitle": "创建命令",
+    "nameLabel": "命令名",
+    "namePlaceholder": "仅支持字母、数字、连字符和下划线",
+    "descriptionLabel": "描述",
+    "descriptionPlaceholder": "说明这个命令适合在什么场景下使用",
+    "templatePlaceholder": "输入选中该命令后要插入到聊天输入框中的提示模板",
+    "builtinOverrideHint": "{{name}} 是内置命令。保存后会记录你的本地覆盖配置，同时保留默认预设。",
+    "loadFailed": "加载命令库失败",
+    "saveFailed": "保存命令失败",
+    "deleteFailed": "删除命令失败",
+    "deleteConfirm": "确定要删除这条自定义命令吗？",
+    "validation": {
+      "invalidName": "命令名只能使用字母、数字、连字符和下划线",
+      "duplicateName": "命令名 /{{name}} 已存在",
+      "descriptionRequired": "描述不能为空",
+      "templateRequired": "模板不能为空"
+    },
+    "presets": {
+      "plan": {
+        "description": "先重述任务、识别风险，再给出逐步执行计划，不直接开始改代码。",
+        "template": "请先重述任务，识别主要约束和风险，然后给出清晰的分步实现计划。此时不要修改文件，先等待我确认后再执行。"
+      },
+      "tdd": {
+        "description": "先写失败测试，再做最小实现，通过测试后补充覆盖与风险总结。",
+        "template": "请用测试驱动开发方式实现这个任务。先列出高风险行为，先写或更新会失败的测试，再做最小代码修改让测试通过。最后总结覆盖情况和剩余风险。"
+      },
+      "codeReview": {
+        "description": "像严格 code reviewer 一样检查当前改动中的 bug、回归和缺失测试。",
+        "template": "请像严格的代码审查者一样审查当前改动。优先指出 bug、行为回归、风险假设和缺失测试，并尽量给出具体文件和行级证据。"
+      },
+      "security": {
+        "description": "重点审查认证、权限、密钥、注入风险以及不安全的数据或 shell 操作。",
+        "template": "请对这个任务或补丁做一次安全审查。重点检查认证、权限、密钥处理、注入、数据暴露，以及不安全的 shell 或文件操作。先输出具体风险，再给出缓解建议。"
+      },
+      "verify": {
+        "description": "端到端核对行为、边界条件、类型、lint、测试和发布风险。",
+        "template": "请对当前实现做一次端到端验证。检查行为、边界条件、类型、lint、测试和发布风险，并总结哪些已通过、哪些失败、哪些还未验证。"
+      },
+      "orchestrate": {
+        "description": "把任务拆成可协调的工作流、角色分工、依赖关系和集成检查点。",
+        "template": "请把这个任务拆成可协调的工作流。给出每个工作流最适合的角色或 Agent、它们之间的依赖关系，以及最后的集成顺序。然后按有检查点的受控节奏推进。"
+      }
+    }
   },
   "addAssistant": "添加助手",
   "extensionAssistantReadonly": "扩展助手为只读，你可以复制它并编辑副本。"

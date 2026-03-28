@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IChannelPluginConfig, IUnifiedOutgoingMessage } from '@process/channels/types';
+import type { IChannelPluginConfig } from '@process/channels/types';
 import type { MonitorOptions } from '@process/channels/plugins/weixin/WeixinMonitor';
 import os from 'os';
 import path from 'path';
@@ -114,6 +114,56 @@ describe('WeixinPlugin — Promise bridge', () => {
     const { agent } = mockStartFn.mock.calls[0][0] as MonitorOptions;
     const response = await agent.chat({ conversationId: 'user_abc', text: 'hi' });
     expect(response.text).toBe('final complete text');
+  });
+
+  it('captures image payload from send/edit message bridge', async () => {
+    const WeixinPlugin = await loadPluginClass();
+    const plugin = new WeixinPlugin();
+    await plugin.initialize(createConfig());
+
+    plugin.onMessage(async (msg) => {
+      const msgId = await plugin.sendMessage(msg.chatId, { type: 'image', imageUrl: '/tmp/test-image.jpg' });
+      await plugin.editMessage(msg.chatId, msgId, {
+        type: 'image',
+        imageUrl: '/tmp/test-image.jpg',
+        replyMarkup: {},
+      });
+    });
+
+    await plugin.start();
+    const { agent } = mockStartFn.mock.calls[0][0] as MonitorOptions;
+    const response = await agent.chat({ conversationId: 'user_abc', text: 'media' });
+
+    expect(response.media?.filePath).toBe('/tmp/test-image.jpg');
+    expect(response.media?.mimeType).toBe('image/jpeg');
+  });
+
+  it('captures file payload with file name from send/edit message bridge', async () => {
+    const WeixinPlugin = await loadPluginClass();
+    const plugin = new WeixinPlugin();
+    await plugin.initialize(createConfig());
+
+    plugin.onMessage(async (msg) => {
+      const msgId = await plugin.sendMessage(msg.chatId, {
+        type: 'file',
+        fileUrl: '/tmp/report.pdf',
+        fileName: 'report.pdf',
+      });
+      await plugin.editMessage(msg.chatId, msgId, {
+        type: 'file',
+        fileUrl: '/tmp/report.pdf',
+        fileName: 'report.pdf',
+        replyMarkup: {},
+      });
+    });
+
+    await plugin.start();
+    const { agent } = mockStartFn.mock.calls[0][0] as MonitorOptions;
+    const response = await agent.chat({ conversationId: 'user_abc', text: 'file' });
+
+    expect(response.media?.filePath).toBe('/tmp/report.pdf');
+    expect(response.media?.fileName).toBe('report.pdf');
+    expect(response.media?.mimeType).toBe('application/pdf');
   });
 
   it('rejects superseded Promise when second chat arrives before first resolves', async () => {
