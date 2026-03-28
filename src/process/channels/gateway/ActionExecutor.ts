@@ -21,6 +21,7 @@ import type { PluginMessageHandler } from '../plugins/BasePlugin';
 import { getChannelConversationName, resolveChannelConvType } from '../types';
 import { createMainMenuCard, createErrorRecoveryCard, createToolConfirmationCard } from '../plugins/lark/LarkCards';
 import { convertHtmlToLarkMarkdown } from '../plugins/lark/LarkAdapter';
+import { convertHtmlToDiscordMarkdown } from '../plugins/discord/DiscordAdapter';
 import { convertHtmlToSlackMrkdwn } from '../plugins/slack/SlackAdapter';
 import {
   createMainMenuCard as createDingTalkMainMenuCard,
@@ -41,6 +42,10 @@ import { stripHtml } from '../plugins/weixin/WeixinAdapter';
 import type { ChannelAgentType, IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType } from '../types';
 import type { PluginManager } from './PluginManager';
 import type { AcpBackend } from '@/common/types/acpTypes';
+
+function usesActionButtons(platform: PluginType): boolean {
+  return platform === 'slack' || platform === 'discord';
+}
 
 type SavedChannelAgent = {
   backend?: string;
@@ -76,7 +81,7 @@ const resolveSavedOpenClawAgent = (savedAgent: unknown) => {
  * Get main menu reply markup based on platform
  */
 function getMainMenuExtras(platform: PluginType): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
-  if (platform === 'slack') {
+  if (usesActionButtons(platform)) {
     return {
       buttons: buildMainMenuActionButtons(),
     };
@@ -103,7 +108,7 @@ function getResponseActionExtras(
   platform: PluginType,
   text?: string
 ): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
-  if (platform === 'slack') {
+  if (usesActionButtons(platform)) {
     return {
       buttons: buildResponseActionButtons(),
     };
@@ -127,7 +132,7 @@ function getToolConfirmationExtras(
   title?: string,
   description?: string
 ): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
-  if (platform === 'slack') {
+  if (usesActionButtons(platform)) {
     return {
       buttons: buildToolConfirmationActionButtons(callId, options),
     };
@@ -164,7 +169,7 @@ function getErrorRecoveryExtras(
   platform: PluginType,
   errorMessage?: string
 ): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
-  if (platform === 'slack') {
+  if (usesActionButtons(platform)) {
     return {
       buttons: buildErrorRecoveryActionButtons(),
     };
@@ -193,6 +198,9 @@ function formatTextForPlatform(text: string, platform: PluginType): string {
   }
   if (platform === 'slack') {
     return convertHtmlToSlackMrkdwn(text);
+  }
+  if (platform === 'discord') {
+    return convertHtmlToDiscordMarkdown(text);
   }
   if (platform === 'dingtalk') {
     return convertHtmlToDingTalkMarkdown(text);

@@ -27,6 +27,7 @@ export { BasePlugin } from './plugins/BasePlugin';
 export type { PluginMessageHandler } from './plugins/BasePlugin';
 export { TelegramPlugin } from './plugins/telegram/TelegramPlugin';
 export { SlackPlugin } from './plugins/slack/SlackPlugin';
+export { DiscordPlugin } from './plugins/discord/DiscordPlugin';
 export { DingTalkPlugin } from './plugins/dingtalk/DingTalkPlugin';
 export { WeixinPlugin } from './plugins/weixin/WeixinPlugin';
 

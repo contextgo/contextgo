@@ -30,6 +30,10 @@ import {
   buildPairingStatusActionButtons,
 } from '../utils/actionButtons';
 
+function usesActionButtons(platform: string): boolean {
+  return platform === 'slack' || platform === 'discord';
+}
+
 /**
  * PlatformActions - Handlers for platform-specific actions
  *
@@ -49,7 +53,7 @@ function getMainMenuMarkup(platform: string) {
   if (platform === 'dingtalk') {
     return { replyMarkup: createDingTalkMainMenuCard() };
   }
-  if (platform === 'slack') {
+  if (usesActionButtons(platform)) {
     return { buttons: buildMainMenuActionButtons() };
   }
   return { replyMarkup: createMainMenuKeyboard() };
@@ -65,7 +69,7 @@ function getPairingCodeMarkup(platform: string, code: string) {
   if (platform === 'dingtalk') {
     return { replyMarkup: createDingTalkPairingCard(code) };
   }
-  if (platform === 'slack') {
+  if (usesActionButtons(platform)) {
     return { buttons: buildPairingCodeActionButtons() };
   }
   return { replyMarkup: createPairingCodeKeyboard() };
@@ -81,7 +85,7 @@ function getPairingStatusMarkup(platform: string, code: string) {
   if (platform === 'dingtalk') {
     return { replyMarkup: createDingTalkPairingStatusCard(code) };
   }
-  if (platform === 'slack') {
+  if (usesActionButtons(platform)) {
     return { buttons: buildPairingStatusActionButtons() };
   }
   return { replyMarkup: createPairingStatusKeyboard() };
@@ -97,7 +101,7 @@ function getPairingHelpMarkup(platform: string) {
   if (platform === 'dingtalk') {
     return { replyMarkup: createDingTalkPairingHelpCard() };
   }
-  if (platform === 'slack') {
+  if (usesActionButtons(platform)) {
     return { buttons: buildPairingCodeActionButtons() };
   }
   return { replyMarkup: createPairingCodeKeyboard() };
@@ -259,7 +263,9 @@ export const handlePairingHelp: ActionHandler = async (context) => {
         ? 'DingTalk'
         : platform === 'slack'
           ? 'Slack'
-          : 'Telegram';
+          : platform === 'discord'
+            ? 'Discord'
+            : 'Telegram';
 
   return createSuccessResponse({
     type: 'text',
