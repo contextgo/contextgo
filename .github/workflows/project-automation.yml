@@ -27,7 +27,15 @@ jobs:
 
   add-issue-to-project:
     name: Add Issue to Project
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     if: github.event_name == 'issues' && github.event.action == 'opened'
     permissions:
       contents: 'read'
@@ -50,7 +58,15 @@ jobs:
 
   set-issue-initial-status:
     name: Set Issue Initial Status
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     needs: add-issue-to-project
     if: github.event_name == 'issues' && github.event.action == 'opened' && needs.add-issue-to-project.outputs.item_id
     permissions:
@@ -92,7 +108,15 @@ jobs:
 
   update-issue-on-close:
     name: Update Issue on Close
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     if: github.event_name == 'issues' && github.event.action == 'closed'
     permissions:
       contents: 'read'
@@ -159,7 +183,15 @@ jobs:
 
   update-issue-on-reopen:
     name: Update Issue on Reopen
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     if: github.event_name == 'issues' && github.event.action == 'reopened'
     permissions:
       contents: 'read'
@@ -229,7 +261,15 @@ jobs:
 
   pr-update-linked-issue:
     name: Update Linked Issue Status
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     if: github.event_name == 'pull_request'
     permissions:
       contents: 'read'

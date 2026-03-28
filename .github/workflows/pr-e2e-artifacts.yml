@@ -16,9 +16,16 @@ env:
 jobs:
   e2e-artifacts:
     name: E2E Artifacts (Linux)
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     timeout-minutes: 25
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
