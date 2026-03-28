@@ -4,8 +4,11 @@
  */
 import type { AssistantListItem, HookInfo, SkillInfo } from './types';
 import { getIncompatibleHookNames, hasBuiltinSkills, isHookSupportedByBackend } from './assistantUtils';
+import { HOOK_OUTPUT_TARGET_PRESENTATION } from '../hookLibraryUtils';
+import HookRoutingConfigModal from '../HookRoutingConfigModal';
 import EmojiPicker from '@/renderer/components/chat/EmojiPicker';
 import MarkdownView from '@/renderer/components/Markdown';
+import { ipcBridge } from '@/common';
 import {
   Avatar,
   Button,
@@ -21,6 +24,12 @@ import {
 import { Close, Delete, FolderOpen, Plus, Refresh, Robot } from '@icon-park/react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  buildHookOutputRoutingConfig,
+  canConfigureHookOutputRouting,
+  createHookOutputRoutingDraft,
+  type HookOutputRoutingDraft,
+} from '../hookLibraryUtils';
 
 type AssistantEditDrawerProps = {
   // Drawer visibility
@@ -81,6 +90,14 @@ type AssistantEditDrawerProps = {
   handleDeleteClick: () => void;
 };
 
+const HOOK_CATEGORY_COLORS: Record<string, 'arcoblue' | 'green' | 'red' | 'purple' | 'gray'> = {
+  clarity: 'arcoblue',
+  quality: 'green',
+  safety: 'red',
+  continuity: 'purple',
+  operations: 'gray',
+};
+
 const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
   editVisible,
   setEditVisible,
@@ -129,6 +146,9 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
   const { t } = useTranslation();
   const textareaWrapperRef = useRef<HTMLDivElement>(null);
   const [drawerWidth, setDrawerWidth] = useState(500);
+  const [configuringHook, setConfiguringHook] = useState<HookInfo | null>(null);
+  const [routingDraft, setRoutingDraft] = useState<HookOutputRoutingDraft | null>(null);
+  const [savingHookRouting, setSavingHookRouting] = useState(false);
 
   // Auto focus textarea when drawer opens in edit mode
   useEffect(() => {
@@ -160,6 +180,59 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
     (activeAssistantId !== null && hasBuiltinSkills(activeAssistantId)) ||
     (activeAssistant !== null && !activeAssistant.isBuiltin && !isExtensionAssistant(activeAssistant));
   const incompatibleHookNameSet = new Set(getIncompatibleHookNames(availableHooks, selectedHooks, editAgent));
+
+  const handleOpenHookRouting = (hook: HookInfo) => {
+    setConfiguringHook(hook);
+    setRoutingDraft(createHookOutputRoutingDraft(hook));
+  };
+
+  const handleCloseHookRouting = () => {
+    if (savingHookRouting) {
+      return;
+    }
+
+    setConfiguringHook(null);
+    setRoutingDraft(null);
+  };
+
+  const handleSaveHookRouting = async () => {
+    if (!configuringHook || !routingDraft) {
+      return;
+    }
+
+    if (routingDraft.outputTargets.length === 0) {
+      Modal.error({
+        title: t('settings.hookRoutingTargetsRequired', { defaultValue: 'Select at least one output target.' }),
+      });
+      return;
+    }
+
+    setSavingHookRouting(true);
+    try {
+      const result = await ipcBridge.fs.updateHookManifest.invoke({
+        hookName: configuringHook.name,
+        config: buildHookOutputRoutingConfig(routingDraft),
+      });
+
+      if (!result.success) {
+        Modal.error({
+          title: result.msg || t('settings.hookRoutingSaveFailed', { defaultValue: 'Failed to save hook routing.' }),
+        });
+        return;
+      }
+
+      await handleRefreshHooks();
+      setConfiguringHook(null);
+      setRoutingDraft(null);
+    } catch (error) {
+      console.error('Failed to update hook routing:', error);
+      Modal.error({
+        title: t('settings.hookRoutingSaveFailed', { defaultValue: 'Failed to save hook routing.' }),
+      });
+    } finally {
+      setSavingHookRouting(false);
+    }
+  };
 
   return (
     <Drawer
@@ -587,7 +660,7 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
             <Typography.Text type='secondary' className='block text-12px'>
               {t('settings.assistantHooksHint', {
                 defaultValue:
-                  'Prompt-transform hooks for before_user_prompt run now. Other hook types are stored only.',
+                  'AionUi currently runs prompt-transform hooks on before_user_prompt. Builtin hooks also package reusable patterns for planning, safety, quality, continuity, and operator handoff.',
               })}
             </Typography.Text>
             <div className='mt-8px rounded-8px bg-bg-1 p-10px'>
@@ -641,6 +714,22 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
                                   {hook.executionType}
                                 </Tag>
                               )}
+                              {hook.category && (
+                                <Tag size='small' color={HOOK_CATEGORY_COLORS[hook.category] || 'gray'}>
+                                  {t(`settings.hookCategories.${hook.category}`, {
+                                    defaultValue: hook.category,
+                                  })}
+                                </Tag>
+                              )}
+                              {(hook.runnableEvents || []).length > 0 ? (
+                                <Tag size='small' color='green'>
+                                  {t('settings.hookReadyNow', { defaultValue: 'Ready Now' })}
+                                </Tag>
+                              ) : (
+                                <Tag size='small' color='gray'>
+                                  {t('settings.hookStoredOnly', { defaultValue: 'Stored Only' })}
+                                </Tag>
+                              )}
                               {hook.version && (
                                 <Tag size='small' color='gray'>
                                   v{hook.version}
@@ -670,6 +759,18 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
                             <div className='mt-6px text-11px text-t-tertiary break-all'>
                               {t('settings.hookLocation', { defaultValue: 'Location' })}: {hook.location}
                             </div>
+                            {hook.tags && hook.tags.length > 0 && (
+                              <div className='mt-6px flex flex-wrap gap-4px'>
+                                <span className='text-11px text-t-tertiary'>
+                                  {t('settings.hookTags', { defaultValue: 'Tags' })}:
+                                </span>
+                                {hook.tags.map((tag) => (
+                                  <Tag key={`${hook.name}-tag-${tag}`} size='small' color='gray'>
+                                    {tag}
+                                  </Tag>
+                                ))}
+                              </div>
+                            )}
                             {hook.supportedBackends && hook.supportedBackends.length > 0 && (
                               <div className='mt-6px flex flex-wrap gap-4px'>
                                 <span className='text-11px text-t-tertiary'>
@@ -685,6 +786,21 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
                                 ))}
                               </div>
                             )}
+                            {hook.outputTargets && hook.outputTargets.length > 0 && (
+                              <div className='mt-6px flex flex-wrap gap-4px'>
+                                <span className='text-11px text-t-tertiary'>
+                                  {t('settings.hookRoutesTo', { defaultValue: 'Routes To' })}:
+                                </span>
+                                {hook.outputTargets.map((target) => {
+                                  const presentation = HOOK_OUTPUT_TARGET_PRESENTATION[target];
+                                  return (
+                                    <Tag key={`${hook.name}-output-${target}`} size='small' color={presentation.color}>
+                                      {t(presentation.i18nKey, { defaultValue: presentation.defaultLabel })}
+                                    </Tag>
+                                  );
+                                })}
+                              </div>
+                            )}
                             {hook.events && hook.events.length > 0 && (
                               <div className='mt-6px flex flex-wrap gap-4px'>
                                 {hook.events.map((eventName) => (
@@ -696,15 +812,29 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
                             )}
                           </div>
                           {hook.isCustom && (
-                            <Button
-                              type='text'
-                              size='mini'
-                              icon={<Delete size={16} fill='var(--color-text-3)' />}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteHookName(hook.name);
-                              }}
-                            />
+                            <div className='flex items-center gap-4px'>
+                              {canConfigureHookOutputRouting(hook) && (
+                                <Button
+                                  type='outline'
+                                  size='mini'
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenHookRouting(hook);
+                                  }}
+                                >
+                                  {t('settings.hookConfigure', { defaultValue: 'Configure' })}
+                                </Button>
+                              )}
+                              <Button
+                                type='text'
+                                size='mini'
+                                icon={<Delete size={16} fill='var(--color-text-3)' />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteHookName(hook.name);
+                                }}
+                              />
+                            </div>
                           )}
                         </div>
                       );
@@ -733,6 +863,15 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
           })}
         </Typography.Text>
       </Modal>
+      <HookRoutingConfigModal
+        visible={configuringHook !== null && routingDraft !== null}
+        hook={configuringHook}
+        draft={routingDraft}
+        saving={savingHookRouting}
+        onCancel={handleCloseHookRouting}
+        onSave={() => void handleSaveHookRouting()}
+        onDraftChange={setRoutingDraft}
+      />
     </Drawer>
   );
 };

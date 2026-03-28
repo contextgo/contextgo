@@ -5,7 +5,11 @@
  */
 
 import { ipcBridge } from '@/common';
-import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
+import {
+  findBuiltinAssistantPreset,
+  resolveBuiltinAssistantEnabledHooks,
+  resolveBuiltinAssistantEnabledSkills,
+} from '@/common/config/presets/builtinAssistantDefaults';
 import type { AcpBackend, AcpBackendConfig } from '../types';
 import { useCallback } from 'react';
 
@@ -70,29 +74,26 @@ export const usePresetAssistantResolver = ({
       }
 
       // Fallback for builtin assistants
-      if (customAgentId.startsWith('builtin-')) {
-        const presetId = customAgentId.replace('builtin-', '');
-        const preset = ASSISTANT_PRESETS.find((p) => p.id === presetId);
-        if (preset) {
-          if (!rules && preset.ruleFiles) {
-            try {
-              const ruleFile = preset.ruleFiles[localeKey] || preset.ruleFiles['en-US'];
-              if (ruleFile) {
-                rules = await ipcBridge.fs.readBuiltinRule.invoke({ fileName: ruleFile });
-              }
-            } catch (e) {
-              console.warn(`Failed to load builtin rules for ${customAgentId}:`, e);
+      const preset = findBuiltinAssistantPreset(customAgentId);
+      if (preset) {
+        if (!rules && preset.ruleFiles) {
+          try {
+            const ruleFile = preset.ruleFiles[localeKey] || preset.ruleFiles['en-US'];
+            if (ruleFile) {
+              rules = await ipcBridge.fs.readBuiltinRule.invoke({ fileName: ruleFile });
             }
+          } catch (e) {
+            console.warn(`Failed to load builtin rules for ${customAgentId}:`, e);
           }
-          if (!skills && preset.skillFiles) {
-            try {
-              const skillFile = preset.skillFiles[localeKey] || preset.skillFiles['en-US'];
-              if (skillFile) {
-                skills = await ipcBridge.fs.readBuiltinSkill.invoke({ fileName: skillFile });
-              }
-            } catch {
-              // skills fallback failure is ok
+        }
+        if (!skills && preset.skillFiles) {
+          try {
+            const skillFile = preset.skillFiles[localeKey] || preset.skillFiles['en-US'];
+            if (skillFile) {
+              skills = await ipcBridge.fs.readBuiltinSkill.invoke({ fileName: skillFile });
             }
+          } catch {
+            // skills fallback failure is ok
           }
         }
       }
@@ -127,7 +128,7 @@ export const usePresetAssistantResolver = ({
       if (!agentInfo) return undefined;
       if (agentInfo.backend !== 'custom') return undefined;
       const customAgent = customAgents.find((agent) => agent.id === agentInfo.customAgentId);
-      return customAgent?.enabledSkills;
+      return resolveBuiltinAssistantEnabledSkills(agentInfo.customAgentId || '', customAgent?.enabledSkills);
     },
     [customAgents]
   );
@@ -137,7 +138,7 @@ export const usePresetAssistantResolver = ({
       if (!agentInfo) return undefined;
       if (agentInfo.backend !== 'custom') return undefined;
       const customAgent = customAgents.find((agent) => agent.id === agentInfo.customAgentId);
-      return customAgent?.enabledHooks;
+      return resolveBuiltinAssistantEnabledHooks(agentInfo.customAgentId || '', customAgent?.enabledHooks);
     },
     [customAgents]
   );

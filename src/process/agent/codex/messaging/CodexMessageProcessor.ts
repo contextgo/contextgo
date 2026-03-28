@@ -136,9 +136,15 @@ export class CodexMessageProcessor {
         if (collectedResponses.length > 0 && this.messageEmitter.sendMessageToAgent) {
           const feedbackMessage = `[System Response]\n${collectedResponses.join('\n')}`;
           void this.messageEmitter.sendMessageToAgent(feedbackMessage);
+          return;
         }
+
+        this.messageEmitter.scheduleAfterResponseHooks?.();
       });
+      return;
     }
+
+    this.messageEmitter.scheduleAfterResponseHooks?.();
   }
 
   processStreamError(message: string) {
