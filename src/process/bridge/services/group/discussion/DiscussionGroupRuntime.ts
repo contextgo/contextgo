@@ -5,27 +5,24 @@
  */
 
 import { ipcBridge } from '@/common';
-import type { IDiscussionGroupCreateParams } from '@/common/adapter/ipcBridge';
 import type { IConversationTurnCompletedEvent } from '@/common/adapter/ipcBridge';
 import type { IMessageText } from '@/common/chat/chatLib';
-import type {
-  DiscussionGroupParticipant,
-  DiscussionGroupOrchestration,
-  MessageGroupMeta,
-  TChatConversation,
-} from '@/common/config/storage';
+import type { DiscussionGroupParticipant, DiscussionGroupOrchestration, MessageGroupMeta } from '@/common/config/storage';
 import { uuid } from '@/common/utils';
 import { getChannelMessageService } from '@process/channels/agent/ChannelMessageService';
 import type { IConversationService } from '@process/services/IConversationService';
-import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
-import { getDatabase } from '@process/services/database';
+import {
+  collectTextMessageContent,
+  emitGroupTurnState,
+  persistGroupProjectedMessage,
+  persistGroupUserMessage,
+  type GroupConversation,
+} from '../shared';
+import { normalizeStoredDiscussionOrchestration } from '../orchestration';
 import {
   buildDiscussionRoundPrompt,
-  normalizeDiscussionOrchestration,
   type DiscussionRoundSummary,
 } from './discussionHelpers';
-
-type GroupConversation = Extract<TChatConversation, { type: 'group' }>;
 
 class DiscussionGroupCancelledError extends Error {
   constructor(conversationId: string) {
@@ -34,10 +31,6 @@ class DiscussionGroupCancelledError extends Error {
   }
 }
 
-const isGroupConversation = (conversation: TChatConversation | undefined): conversation is GroupConversation => {
-  return conversation?.type === 'group';
-};
-
 const buildProjectedMessageMeta = (
   participant: DiscussionGroupParticipant,
   childConversationId: string,
@@ -45,112 +38,22 @@ const buildProjectedMessageMeta = (
   round: number
 ): MessageGroupMeta => {
   return {
+    kind: 'discussion',
     participantId: participant.id,
     participantName: participant.name,
     participantAvatar: participant.avatar,
     childConversationId,
+    participantRole: participant.role,
     mode: orchestration.mode,
     round,
   };
 };
 
-export class DiscussionGroupService {
+export class DiscussionGroupRuntime {
   private readonly activeChildConversationIdByGroup = new Map<string, string>();
   private readonly cancelledGroupIds = new Set<string>();
 
-  constructor(
-    private readonly conversationService: IConversationService,
-    private readonly workerTaskManager: IWorkerTaskManager
-  ) {}
-
-  async createConversation(
-    params: IDiscussionGroupCreateParams & {
-      source?: TChatConversation['source'];
-      channelChatId?: string;
-    }
-  ): Promise<GroupConversation> {
-    const parentId = params.id || uuid();
-    const orchestration = normalizeDiscussionOrchestration(params.extra.orchestration);
-    const parentConversation = await this.conversationService.createConversation({
-      type: 'group',
-      id: parentId,
-      name: params.name,
-      model: params.model,
-      source: params.source,
-      channelChatId: params.channelChatId,
-      extra: {
-        workspace: params.extra.workspace,
-        customWorkspace: params.extra.customWorkspace,
-        participants: [],
-        orchestration,
-      },
-    });
-
-    const participants: DiscussionGroupParticipant[] = [];
-
-    try {
-      for (const participant of params.extra.participants) {
-        const childConversation = await this.conversationService.createConversation({
-          ...participant.conversation,
-          name: participant.name,
-          source: params.source,
-          channelChatId: params.channelChatId,
-          extra: {
-            ...participant.conversation.extra,
-            workspace: parentConversation.extra.workspace,
-            customWorkspace: parentConversation.extra.customWorkspace,
-            groupMeta: {
-              parentGroupId: parentId,
-              participantId: participant.id,
-              participantName: participant.name,
-              participantAvatar: participant.avatar,
-              hiddenFromHistory: true,
-            },
-          },
-        });
-
-        participants.push({
-          id: participant.id,
-          participantType: participant.participantType,
-          participantKey: participant.participantKey,
-          assistantId: participant.assistantId,
-          name: participant.name,
-          avatar: participant.avatar,
-          description: participant.description,
-          childConversationId: childConversation.id,
-        });
-      }
-    } catch (error) {
-      await Promise.all(
-        participants.map((participant) => this.conversationService.deleteConversation(participant.childConversationId))
-      );
-      await this.conversationService.deleteConversation(parentConversation.id);
-      throw error;
-    }
-
-    const updatedExtra: GroupConversation['extra'] = {
-      ...parentConversation.extra,
-      participants,
-      orchestration,
-    };
-
-    await this.conversationService.updateConversation(parentConversation.id, {
-      extra: updatedExtra,
-    });
-
-    return {
-      ...parentConversation,
-      extra: updatedExtra,
-    } as GroupConversation;
-  }
-
-  async deleteConversation(conversation: GroupConversation): Promise<void> {
-    for (const participant of conversation.extra.participants) {
-      this.workerTaskManager.kill(participant.childConversationId);
-      await this.conversationService.deleteConversation(participant.childConversationId);
-    }
-    await this.conversationService.deleteConversation(conversation.id);
-  }
+  constructor(private readonly conversationService: IConversationService) {}
 
   async stopConversation(conversationId: string): Promise<void> {
     this.cancelledGroupIds.add(conversationId);
@@ -162,15 +65,13 @@ export class DiscussionGroupService {
     await getChannelMessageService().stopStreaming(activeChildConversationId);
   }
 
-  async sendMessage(options: { conversationId: string; input: string; msgId: string }): Promise<void> {
-    const conversation = await this.conversationService.getConversation(options.conversationId);
-    if (!isGroupConversation(conversation)) {
-      throw new Error(`Group conversation not found: ${options.conversationId}`);
-    }
-
+  async sendMessage(
+    conversation: GroupConversation,
+    options: { conversationId: string; input: string; msgId: string }
+  ): Promise<void> {
     this.cancelledGroupIds.delete(conversation.id);
-    const orchestration = normalizeDiscussionOrchestration(conversation.extra.orchestration);
-    await this.persistUserMessage(conversation, {
+    const orchestration = normalizeStoredDiscussionOrchestration(conversation.extra.orchestration);
+    await persistGroupUserMessage(this.conversationService, conversation, {
       id: options.msgId,
       type: 'text',
       msg_id: options.msgId,
@@ -224,11 +125,7 @@ export class DiscussionGroupService {
 
           const latestMessages = await this.collectParticipantRoundMessages(conversation, participant, prompt, round);
           this.throwIfCancelled(conversation.id);
-          const summaryText = latestMessages
-            .filter((message) => message.position === 'left')
-            .map((message) => message.content.content.trim())
-            .filter(Boolean)
-            .join('\n\n');
+          const summaryText = collectTextMessageContent(latestMessages);
 
           if (summaryText) {
             currentRoundSummariesByParticipant.set(participant.id, {
@@ -265,7 +162,8 @@ export class DiscussionGroupService {
 
       await this.conversationService.updateConversation(conversation.id, { status: 'finished' });
       const message = error instanceof Error ? error.message : String(error);
-      await this.persistProjectedMessage(
+      await persistGroupProjectedMessage(
+        this.conversationService,
         conversation,
         {
           id: uuid(),
@@ -276,8 +174,9 @@ export class DiscussionGroupService {
           content: {
             content: message,
             groupMeta: {
+              kind: 'discussion',
               participantId: 'group-error',
-              participantName: 'Discussion Group',
+              participantName: conversation.name || 'Group',
               mode: orchestration.mode,
               round: 0,
             },
@@ -310,7 +209,7 @@ export class DiscussionGroupService {
     const latestTextByMessageId = new Map<string, IMessageText>();
     const orderedMessageIds: string[] = [];
     const fallbackTexts: string[] = [];
-    const orchestration = normalizeDiscussionOrchestration(groupConversation.extra.orchestration);
+    const orchestration = normalizeStoredDiscussionOrchestration(groupConversation.extra.orchestration);
 
     this.activeChildConversationIdByGroup.set(groupConversation.id, participant.childConversationId);
 
@@ -357,7 +256,7 @@ export class DiscussionGroupService {
     }
 
     for (const message of projectedMessages) {
-      await this.persistProjectedMessage(groupConversation, message, false);
+      await persistGroupProjectedMessage(this.conversationService, groupConversation, message, false);
     }
 
     return projectedMessages;
@@ -369,63 +268,12 @@ export class DiscussionGroupService {
     }
   }
 
-  private async persistUserMessage(conversation: GroupConversation, message: IMessageText): Promise<void> {
-    const db = await getDatabase();
-    db.insertMessage(message);
-    await this.conversationService.updateConversation(conversation.id, {});
-  }
-
-  private async persistProjectedMessage(
-    conversation: GroupConversation,
-    message: IMessageText,
-    skipCompletionRefresh: boolean
-  ): Promise<void> {
-    const db = await getDatabase();
-    db.insertMessage(message);
-    if (!skipCompletionRefresh) {
-      await this.conversationService.updateConversation(conversation.id, {
-        status: 'running',
-      });
-    }
-
-    ipcBridge.conversation.responseStream.emit({
-      type: 'content',
-      conversation_id: conversation.id,
-      msg_id: message.msg_id || message.id,
-      data: message.content,
-    });
-  }
-
   private emitTurnState(
     conversation: GroupConversation,
     status: IConversationTurnCompletedEvent['status'],
     state: IConversationTurnCompletedEvent['state'],
     detail: string
   ): void {
-    const event: IConversationTurnCompletedEvent = {
-      sessionId: conversation.id,
-      status,
-      state,
-      detail,
-      canSendMessage: state !== 'ai_generating',
-      runtime: {
-        hasTask: false,
-        isProcessing: state === 'ai_generating',
-        pendingConfirmations: 0,
-        dbStatus: status,
-      },
-      workspace: conversation.extra.workspace || '',
-      model: {
-        platform: conversation.model.platform,
-        name: conversation.model.name,
-        useModel: conversation.model.useModel,
-      },
-      lastMessage: {
-        content: detail,
-        createdAt: Date.now(),
-      },
-    };
-
-    ipcBridge.conversation.turnCompleted.emit(event);
+    emitGroupTurnState(conversation, status, state, detail);
   }
 }
