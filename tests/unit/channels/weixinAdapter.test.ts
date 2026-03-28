@@ -37,6 +37,50 @@ describe('toUnifiedIncomingMessage', () => {
     expect(msg.content.text).toBe('Hello world');
   });
 
+  it('maps image attachments to photo content with attachment metadata', () => {
+    const msg = toUnifiedIncomingMessage({
+      conversationId: 'user_media',
+      text: 'check this',
+      attachments: [
+        {
+          kind: 'image',
+          filePath: '/tmp/img.jpg',
+          fileName: 'img.jpg',
+          mimeType: 'image/jpeg',
+          size: 1234,
+        },
+      ],
+    });
+
+    expect(msg.content.type).toBe('photo');
+    expect(msg.content.attachments?.[0]).toEqual({
+      type: 'photo',
+      fileId: '/tmp/img.jpg',
+      fileName: 'img.jpg',
+      mimeType: 'image/jpeg',
+      size: 1234,
+      duration: undefined,
+    });
+  });
+
+  it('maps file attachments to document content', () => {
+    const msg = toUnifiedIncomingMessage({
+      conversationId: 'user_file',
+      attachments: [
+        {
+          kind: 'file',
+          filePath: '/tmp/doc.pdf',
+          fileName: 'doc.pdf',
+          mimeType: 'application/pdf',
+        },
+      ],
+    });
+
+    expect(msg.content.type).toBe('document');
+    expect(msg.content.attachments?.[0]?.type).toBe('document');
+    expect(msg.content.attachments?.[0]?.fileId).toBe('/tmp/doc.pdf');
+  });
+
   it('provides a numeric timestamp', () => {
     const before = Date.now();
     const msg = toUnifiedIncomingMessage(baseRequest);

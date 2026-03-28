@@ -5,6 +5,7 @@
  */
 
 import type { Block, KnownBlock } from '@slack/web-api';
+import type { Button } from '@slack/types';
 import type {
   IActionButton,
   IMessageAction,
@@ -205,9 +206,24 @@ export function toSlackBlocks(message: IUnifiedOutgoingMessage): (Block | KnownB
   const buttonRows = message.buttons || message.keyboard;
   if (buttonRows?.length) {
     for (const row of buttonRows) {
+      const elements: Button[] = row.map((button, index) => {
+        const style = resolveButtonStyle(button);
+        return {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: button.label,
+            emoji: true,
+          },
+          action_id: `${SLACK_ACTION_ID_PREFIX}:${index}:${button.action}`,
+          value: serializeActionValue(button.action, button.params),
+          ...(style ? { style } : {}),
+        };
+      });
+
       blocks.push({
         type: 'actions',
-        elements: row.map((button, index) => (Object.assign({type:`button`,text:{type:`plain_text`,text:button.label,emoji:true},action_id:`${SLACK_ACTION_ID_PREFIX}:${index}:${button.action}`,value:serializeActionValue(button.action,button.params)}, resolveButtonStyle(button)?{style:resolveButtonStyle(button)}:{}))),
+        elements,
       });
     }
   }
