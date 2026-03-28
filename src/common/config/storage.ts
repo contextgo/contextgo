@@ -124,6 +124,17 @@ export interface IConfigStorageRefer {
     customAgentId?: string;
     name?: string;
   };
+  // Slack assistant default model / Slack 助手默认模型
+  'assistant.slack.defaultModel'?: {
+    id: string;
+    useModel: string;
+  };
+  // Slack assistant agent selection / Slack 助手所使用的 Agent
+  'assistant.slack.agent'?: {
+    backend: AcpBackendAll;
+    customAgentId?: string;
+    name?: string;
+  };
   // Lark assistant default model / Lark 助手默认模型
   'assistant.lark.defaultModel'?: {
     id: string;
@@ -172,7 +183,7 @@ export interface IEnvStorageRefer {
  * Conversation source type - identifies where the conversation was created
  * 会话来源类型 - 标识会话创建的来源
  */
-export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
+export type ConversationSource = 'aionui' | 'telegram' | 'slack' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
 
 export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 

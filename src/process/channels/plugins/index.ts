@@ -15,5 +15,8 @@ export * from './telegram/TelegramKeyboards';
 // DingTalk plugin
 export { DingTalkPlugin } from './dingtalk/DingTalkPlugin';
 
+// Slack plugin
+export { SlackPlugin } from './slack/SlackPlugin';
+
 // WeChat plugin
 export { WeixinPlugin } from './weixin/WeixinPlugin';
