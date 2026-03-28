@@ -22,6 +22,10 @@ Canonical command map:
 
 - `docs/tech/mobile-shell-cmd.md`
 
+Canonical release and distribution policy:
+
+- `docs/tech/release-distribution-standards.md`
+
 They do not try to run the Electron main process on mobile. Instead, they:
 
 1. connect to a reachable AionUi WebUI/server instance

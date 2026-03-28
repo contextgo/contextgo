@@ -11,6 +11,7 @@ Use this as the canonical reference when changing:
 
 For current feasibility and validation status, see `docs/tech/mobile-shell-readiness.md`.
 For command entry points and platform build commands, see `docs/tech/mobile-shell-cmd.md`.
+For release policy, signing expectations, and platform distribution standards, see `docs/tech/release-distribution-standards.md`.
 
 ## Core Product Model
 
