@@ -52,6 +52,7 @@ vi.mock('@icon-park/react', () => ({
   FolderOpen: () => <span data-testid='icon-folder-open' />,
   FolderSearch: () => <span data-testid='icon-folder-search' />,
   Link: () => <span data-testid='icon-link' />,
+  LinkCloud: () => <span data-testid='icon-link-cloud' />,
 }));
 
 vi.mock('@/renderer/components/settings/LanguageSwitcher', () => ({
@@ -85,11 +86,15 @@ const mockOpenFile = vi.fn();
 const mockShowOpen = vi.fn();
 const mockUpdateSystemInfo = vi.fn();
 const mockVoiceInputGetConfig = vi.fn();
+const mockVoiceInputSetConfig = vi.fn();
 const mockVoiceInputGetState = vi.fn();
 const mockVoiceInputGetStats = vi.fn();
 const mockVoiceInputRequestPermissions = vi.fn();
 const mockVoiceInputStartManualCapture = vi.fn();
 const mockVoiceInputStopManualCapture = vi.fn();
+const mockVoiceInputGetOpenWhisperState = vi.fn();
+const mockVoiceInputInstallOpenWhisperRuntime = vi.fn();
+const mockVoiceInputInstallOpenWhisperModel = vi.fn();
 const mockVoiceInputStateChangedOn = vi.fn(() => vi.fn());
 
 vi.mock('@/common', () => ({
@@ -121,11 +126,15 @@ vi.mock('@/common', () => ({
     },
     voiceInput: {
       getConfig: { invoke: (...args: any[]) => mockVoiceInputGetConfig(...args) },
+      setConfig: { invoke: (...args: any[]) => mockVoiceInputSetConfig(...args) },
       getState: { invoke: (...args: any[]) => mockVoiceInputGetState(...args) },
       getStats: { invoke: (...args: any[]) => mockVoiceInputGetStats(...args) },
       requestPermissions: { invoke: (...args: any[]) => mockVoiceInputRequestPermissions(...args) },
       startManualCapture: { invoke: (...args: any[]) => mockVoiceInputStartManualCapture(...args) },
       stopManualCapture: { invoke: (...args: any[]) => mockVoiceInputStopManualCapture(...args) },
+      getOpenWhisperState: { invoke: (...args: any[]) => mockVoiceInputGetOpenWhisperState(...args) },
+      installOpenWhisperRuntime: { invoke: (...args: any[]) => mockVoiceInputInstallOpenWhisperRuntime(...args) },
+      installOpenWhisperModel: { invoke: (...args: any[]) => mockVoiceInputInstallOpenWhisperModel(...args) },
       stateChanged: { on: (...args: any[]) => mockVoiceInputStateChangedOn(...args) },
     },
   },
@@ -218,8 +227,24 @@ describe('SystemModalContent', () => {
           vocabularyId: '',
           hotwords: [],
         },
+        volcengine: {
+          appKey: '',
+          accessKey: '',
+          resourceId: 'volc.bigasr.sauc.duration',
+          model: 'bigmodel',
+          boostingTableId: '',
+          correctTableId: '',
+          hotwords: [],
+        },
+        openWhisper: {
+          cliPath: '',
+          modelId: 'base',
+          languageHints: ['zh'],
+          hotwords: [],
+        },
       },
     });
+    mockVoiceInputSetConfig.mockImplementation(async ({ config }) => config);
     mockVoiceInputGetState.mockResolvedValue({
       supported: true,
       enabled: true,
@@ -243,6 +268,19 @@ describe('SystemModalContent', () => {
     });
     mockVoiceInputStartManualCapture.mockResolvedValue(undefined);
     mockVoiceInputStopManualCapture.mockResolvedValue(undefined);
+    mockVoiceInputGetOpenWhisperState.mockResolvedValue({
+      supported: true,
+      brewAvailable: true,
+      runtimeInstalled: false,
+      cliPath: '',
+      brewPath: '/opt/homebrew/bin/brew',
+      modelDirectory: '/tmp/open-whisper',
+      selectedModelId: 'base',
+      selectedModelInstalled: false,
+      models: [],
+    });
+    mockVoiceInputInstallOpenWhisperRuntime.mockImplementation(() => mockVoiceInputGetOpenWhisperState());
+    mockVoiceInputInstallOpenWhisperModel.mockImplementation(() => mockVoiceInputGetOpenWhisperState());
     mockVoiceInputStateChangedOn.mockReturnValue(vi.fn());
   });
 
@@ -283,6 +321,50 @@ describe('SystemModalContent', () => {
     expect(screen.getByText('345')).toBeInTheDocument();
     expect(screen.queryByText('settings.voiceInput.records')).not.toBeInTheDocument();
     expect(screen.queryByText('settings.voiceInput.noRecords')).not.toBeInTheDocument();
+  });
+
+  it('should render volcengine-specific voice input fields when the provider is selected', async () => {
+    mockVoiceInputGetConfig.mockResolvedValue({
+      enabled: true,
+      providerId: 'volcengine',
+      triggerMode: 'right_command_hold',
+      autoInsert: true,
+      providers: {
+        dashscope: {
+          apiKey: '',
+          region: 'beijing',
+          model: 'fun-asr-realtime',
+          languageHints: ['zh'],
+          vocabularyId: '',
+          hotwords: [],
+        },
+        volcengine: {
+          appKey: '123456789',
+          accessKey: 'access-token',
+          resourceId: 'volc.bigasr.sauc.duration',
+          model: 'bigmodel',
+          boostingTableId: '',
+          correctTableId: '',
+          hotwords: [],
+        },
+        openWhisper: {
+          cliPath: '',
+          modelId: 'base',
+          languageHints: ['zh'],
+          hotwords: [],
+        },
+      },
+    });
+    render(<SystemModalContent />);
+
+    await waitFor(() => {
+      expect(screen.getByText('settings.voiceInput.appKey')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('settings.voiceInput.accessKey')).toBeInTheDocument();
+    expect(screen.getByText('settings.voiceInput.resourceId')).toBeInTheDocument();
+    expect(screen.queryByText('settings.voiceInput.dashscopeApiKey')).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.voiceInput.region')).not.toBeInTheDocument();
   });
 
   it('should toggle DevTools when button is clicked', async () => {

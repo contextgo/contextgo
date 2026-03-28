@@ -10,7 +10,7 @@ import SettingsPageWrapper from '../components/SettingsPageWrapper';
 
 const AgentSettings: React.FC = () => {
   return (
-    <SettingsPageWrapper>
+    <SettingsPageWrapper contentClassName='max-w-1200px'>
       <AgentModalContent />
     </SettingsPageWrapper>
   );

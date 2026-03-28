@@ -5,29 +5,34 @@
  */
 
 import { ipcBridge } from '@/common';
+import type { TChatConversation } from '@/common/config/storage';
 import type { IMessageSearchItem } from '@/common/types/database';
-import AionModal from '@/renderer/components/base/AionModal';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
+import { useConversationHistoryContext } from '@/renderer/hooks/context/ConversationHistoryContext';
 import { useOptionalConversationTabs } from '@/renderer/pages/conversation/hooks/ConversationTabsContext';
 import { useCronJobsMap } from '@/renderer/pages/cron';
+import { getActivityTime } from '@/renderer/utils/chat/timeline';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { blockMobileInputFocus, blurActiveElement } from '@/renderer/utils/ui/focus';
-import { Empty, Spin, Typography } from '@arco-design/web-react';
-import { Close, CloseSmall, MessageOne, Search } from '@icon-park/react';
+import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
+import { Empty, Spin } from '@arco-design/web-react';
+import { CloseSmall, MessageOne, Search } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getBackendKeyFromConversation } from './utils/exportHelpers';
 import './ConversationSearchPopover.css';
 
 const PAGE_SIZE = 20;
 const MAX_RECENT_SEARCHES = 8;
+const MAX_RECENT_CONVERSATIONS = 8;
 const RECENT_SEARCH_STORAGE_KEY = 'conversation.historySearch.recentKeywords';
 const SNIPPET_MAX_LENGTH = 110;
 const SNIPPET_PREFIX_CONTEXT_LENGTH = 34;
 const SNIPPET_SUFFIX_CONTEXT_LENGTH = 58;
+
+export const CONVERSATION_SEARCH_ROUTE = '/search/conversations';
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -95,9 +100,16 @@ interface ConversationSearchPopoverProps {
   onConversationSelect?: () => void;
   disabled?: boolean;
   buttonClassName?: string;
+  buttonLabel?: string;
 }
 
-const ConversationAgentMark: React.FC<{ conversation: IMessageSearchItem['conversation'] }> = ({ conversation }) => {
+type ConversationSearchPanelProps = {
+  onSessionClick?: () => void;
+  onConversationSelect?: () => void;
+  inputAutoFocus?: boolean;
+};
+
+const ConversationAgentMark: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
   const { info: assistantInfo } = usePresetAssistantInfo(conversation);
 
   if (assistantInfo) {
@@ -135,17 +147,16 @@ const ConversationAgentMark: React.FC<{ conversation: IMessageSearchItem['conver
   return <MessageOne theme='outline' size='18' className='line-height-0 flex-shrink-0 text-t-secondary' />;
 };
 
-const ConversationSearchPopover: React.FC<ConversationSearchPopoverProps> = ({
+const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
   onSessionClick,
   onConversationSelect,
-  disabled = false,
-  buttonClassName,
+  inputAutoFocus = false,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const conversationTabs = useOptionalConversationTabs();
+  const { conversations } = useConversationHistoryContext();
   const { markAsRead } = useCronJobsMap();
-  const [visible, setVisible] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [items, setItems] = useState<IMessageSearchItem[]>([]);
@@ -203,7 +214,7 @@ const ConversationSearchPopover: React.FC<ConversationSearchPopoverProps> = ({
         setPage(result.page);
         setHasMore(result.hasMore);
       } catch (error) {
-        console.error('[ConversationSearchPopover] Search failed:', error);
+        console.error('[ConversationSearchPage] Search failed:', error);
         if (!append) {
           setItems([]);
           setPage(0);
@@ -220,6 +231,10 @@ const ConversationSearchPopover: React.FC<ConversationSearchPopoverProps> = ({
   useEffect(() => {
     void runSearch(0, false);
   }, [runSearch]);
+
+  const recentConversations = useMemo(() => {
+    return conversations.toSorted((a, b) => getActivityTime(b) - getActivityTime(a)).slice(0, MAX_RECENT_CONVERSATIONS);
+  }, [conversations]);
 
   useEffect(() => {
     if (!debouncedKeyword) return;
@@ -244,70 +259,51 @@ const ConversationSearchPopover: React.FC<ConversationSearchPopoverProps> = ({
     });
   }, [debouncedKeyword]);
 
-  const resetSearchState = useCallback(() => {
-    setVisible(false);
-    setKeyword('');
-    setDebouncedKeyword('');
-    setItems([]);
-    setPage(0);
-    setHasMore(false);
-    setLoading(false);
-    setLoadingMore(false);
-  }, []);
-
   const handleLoadMore = useCallback(() => {
-    if (!visible || !debouncedKeyword || loading || loadingMore || !hasMore) {
+    if (!debouncedKeyword || loading || loadingMore || !hasMore) {
       return;
     }
 
     void runSearch(page + 1, true);
-  }, [debouncedKeyword, hasMore, loading, loadingMore, page, runSearch, visible]);
+  }, [debouncedKeyword, hasMore, loading, loadingMore, page, runSearch]);
 
-  const handleResultClick = useCallback(
-    async (item: IMessageSearchItem) => {
+  const handleConversationOpen = useCallback(
+    async (conversation: TChatConversation, targetMessageId?: string) => {
       blockMobileInputFocus();
       blurActiveElement();
 
-      flushSync(() => {
-        resetSearchState();
-      });
-
       onConversationSelect?.();
-
-      const customWorkspace = item.conversation.extra?.customWorkspace;
-      const newWorkspace = item.conversation.extra?.workspace;
-
-      markAsRead(item.conversation.id);
+      markAsRead(conversation.id);
 
       if (conversationTabs) {
-        const { closeAllTabs, openTab, activeTab } = conversationTabs;
-        if (!customWorkspace) {
-          closeAllTabs();
-        } else {
-          const currentWorkspace = activeTab?.workspace;
-          if (!currentWorkspace || currentWorkspace !== newWorkspace) {
-            closeAllTabs();
-          }
-          openTab(item.conversation);
-        }
+        const { openTab } = conversationTabs;
+        openTab(conversation);
       }
 
-      await Promise.resolve(
-        navigate(`/conversation/${item.conversation.id}`, {
-          state: {
-            targetMessageId: item.messageId,
-            fromConversationSearch: true,
-          },
-        })
-      );
+      if (targetMessageId) {
+        await Promise.resolve(
+          navigate(`/conversation/${conversation.id}`, {
+            state: {
+              targetMessageId,
+              fromConversationSearch: true,
+            },
+          })
+        );
+      } else {
+        await Promise.resolve(navigate(`/conversation/${conversation.id}`));
+      }
+
       onSessionClick?.();
     },
-    [conversationTabs, markAsRead, navigate, onConversationSelect, onSessionClick, resetSearchState]
+    [conversationTabs, markAsRead, navigate, onConversationSelect, onSessionClick]
   );
 
-  const handleClose = useCallback(() => {
-    resetSearchState();
-  }, [resetSearchState]);
+  const handleResultClick = useCallback(
+    async (item: IMessageSearchItem) => {
+      await handleConversationOpen(item.conversation, item.messageId);
+    },
+    [handleConversationOpen]
+  );
 
   const handleClearKeyword = useCallback(() => {
     setKeyword('');
@@ -319,52 +315,79 @@ const ConversationSearchPopover: React.FC<ConversationSearchPopoverProps> = ({
     setLoadingMore(false);
   }, []);
 
-  const handleOpen = useCallback(() => {
-    if (!disabled) {
-      setVisible(true);
-    }
-  }, [disabled]);
-
-  useEffect(() => {
-    const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
-      if (event.defaultPrevented) return;
-      if ((event as unknown as { isComposing?: boolean }).isComposing) return;
-      const key = event.key.toLowerCase();
-      const isCmdOrCtrl = event.metaKey || event.ctrlKey;
-      if (!isCmdOrCtrl || !event.shiftKey || key !== 'f' || event.altKey) return;
-      // Preserve browser behavior in WebUI; only intercept in the desktop runtime.
-      if (typeof window !== 'undefined' && !window.electronAPI) return;
-      event.preventDefault();
-      handleOpen();
-    };
-
-    document.addEventListener('keydown', handleGlobalSearchShortcut, true);
-    return () => {
-      document.removeEventListener('keydown', handleGlobalSearchShortcut, true);
-    };
-  }, [handleOpen]);
-
-  const triggerAriaLabel = t('conversation.historySearch.tooltip');
-
   const resultContent = useMemo(() => {
     if (!debouncedKeyword) {
       return (
-        <div className='conversation-search-modal__state'>
-          <div className='conversation-search-modal__state-content'>
-            <span className='text-13px'>{t('conversation.historySearch.idle')}</span>
-            {recentKeywords.length > 0 ? (
-              <div className='conversation-search-modal__recent-wrap'>
-                {recentKeywords.map((item) => (
-                  <button
-                    key={item}
-                    type='button'
-                    className='conversation-search-modal__recent-chip'
-                    onClick={() => setKeyword(item)}
-                  >
-                    {item}
-                  </button>
-                ))}
+        <div className='h-full min-h-0 overflow-y-auto overflow-x-hidden pr-4px'>
+          <div className='conversation-search-modal__idle-layout'>
+            <div className='conversation-search-modal__state'>
+              <div className='conversation-search-modal__state-content'>
+                <span className='text-13px'>{t('conversation.historySearch.idle')}</span>
+                {recentKeywords.length > 0 ? (
+                  <div className='conversation-search-modal__recent-wrap'>
+                    {recentKeywords.map((item) => (
+                      <button
+                        key={item}
+                        type='button'
+                        className='conversation-search-modal__recent-chip'
+                        onClick={() => setKeyword(item)}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
+            </div>
+
+            {recentConversations.length > 0 ? (
+              <section className='conversation-search-modal__section'>
+                <div className='conversation-search-modal__section-header'>
+                  <div className='conversation-search-modal__section-title'>
+                    {t('conversation.historySearch.recentConversations')}
+                  </div>
+                </div>
+                <div className='conversation-search-modal__results flex flex-col'>
+                  {recentConversations.map((conversation) => {
+                    const subtitle =
+                      getConversationWorkspacePath(conversation) ||
+                      (conversation.type === 'group'
+                        ? t('conversation.entry.group')
+                        : t('conversation.entry.conversation'));
+
+                    return (
+                      <button
+                        key={conversation.id}
+                        type='button'
+                        className={classNames(
+                          'conversation-search-modal__result w-full text-left cursor-pointer transition-all duration-150',
+                          'focus:outline-none'
+                        )}
+                        onClick={() => {
+                          void handleConversationOpen(conversation);
+                        }}
+                      >
+                        <div className='flex items-start justify-between gap-8px mb-6px'>
+                          <div className='min-w-0 flex-1'>
+                            <div className='conversation-search-modal__result-title-row'>
+                              <ConversationAgentMark conversation={conversation} />
+                              <div className='conversation-search-modal__result-title text-15px font-600 text-t-primary truncate'>
+                                {conversation.name || t('conversation.historySearch.untitled')}
+                              </div>
+                            </div>
+                          </div>
+                          <span className='shrink-0 text-11px text-t-secondary'>
+                            {formatTime(getActivityTime(conversation))}
+                          </span>
+                        </div>
+                        <div className='conversation-search-modal__secondary-line text-12px leading-20px text-t-secondary truncate'>
+                          {subtitle}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
             ) : null}
           </div>
         </div>
@@ -439,108 +462,131 @@ const ConversationSearchPopover: React.FC<ConversationSearchPopoverProps> = ({
         </div>
       </div>
     );
-  }, [debouncedKeyword, handleLoadMore, handleResultClick, items, loading, loadingMore, recentKeywords, t]);
-
-  const hasSearchResults = items.length > 0;
-  const useCompactHeight = !debouncedKeyword || (!loading && !hasSearchResults);
+  }, [
+    conversations,
+    debouncedKeyword,
+    handleConversationOpen,
+    handleLoadMore,
+    handleResultClick,
+    items,
+    loading,
+    loadingMore,
+    recentConversations,
+    recentKeywords,
+    t,
+  ]);
 
   return (
-    <>
-      <button
-        type='button'
-        aria-label={triggerAriaLabel}
-        className={classNames(
-          'h-40px w-40px p-0 bg-transparent rd-0.5rem flex items-center justify-center cursor-pointer shrink-0 transition-all border border-solid border-transparent',
-          {
-            'hover:bg-fill-2 hover:border-[color:var(--color-border-2)]': !disabled,
-            'opacity-50 cursor-not-allowed': disabled,
-            'bg-aou-2 text-primary border-[color:var(--color-primary-light-3)]': visible && !disabled,
-          },
-          buttonClassName
-        )}
-        onClick={handleOpen}
-        disabled={disabled}
-      >
-        <Search theme='outline' size='20' className='block leading-none shrink-0' style={{ lineHeight: 0 }} />
-      </button>
+    <div className='conversation-search-modal__panel flex h-full min-h-0 flex-col'>
+      <div className='conversation-search-modal__header'>
+        <div className='conversation-search-modal__header-main'>
+          <div className='conversation-search-modal__title'>{t('conversation.historySearch.title')}</div>
+          <p className='conversation-search-modal__description mb-0 text-13px text-t-secondary'>
+            {t('conversation.historySearch.description')}
+          </p>
+        </div>
+      </div>
 
-      <AionModal
-        visible={visible}
-        onCancel={handleClose}
-        footer={null}
-        showCustomClose={false}
-        unmountOnExit
-        className='conversation-search-modal'
-        maskStyle={{
-          background: 'var(--conversation-search-mask-bg)',
-          backdropFilter: 'blur(1px)',
-          WebkitBackdropFilter: 'blur(1px)',
-        }}
-        style={{
-          width: 'min(700px, calc(100vw - 56px))',
-          borderRadius: '24px',
-          background: 'transparent',
-          boxShadow: 'none',
-        }}
-        contentStyle={{
-          background: 'transparent',
-          borderRadius: '24px',
-          padding: '0',
-          overflow: 'hidden',
-          height: useCompactHeight ? 'auto' : 'min(70vh, 720px)',
-          minHeight: useCompactHeight ? '300px' : undefined,
-          maxHeight: 'min(70vh, 720px)',
-        }}
-      >
-        <div
-          className={classNames('conversation-search-modal__panel flex flex-col', {
-            'h-full min-h-0': !useCompactHeight,
-          })}
-        >
-          <div className='conversation-search-modal__header'>
-            <div className='conversation-search-modal__header-main'>
-              <div className='conversation-search-modal__title'>{t('conversation.historySearch.title')}</div>
-              <Typography.Paragraph className='conversation-search-modal__description !mb-0 text-13px text-t-secondary'>
-                {t('conversation.historySearch.description')}
-              </Typography.Paragraph>
-            </div>
+      <div className='mb-14px conversation-search-modal__input-wrap'>
+        <div className='conversation-search-modal__searchbar'>
+          <Search theme='outline' size='16' className='conversation-search-modal__search-icon' />
+          <input
+            autoFocus={inputAutoFocus}
+            value={keyword}
+            placeholder={t('conversation.historySearch.placeholder')}
+            onChange={(event) => setKeyword(event.target.value)}
+            className='conversation-search-modal__search-input'
+          />
+          {keyword ? (
             <button
               type='button'
-              className='conversation-search-modal__close-btn'
-              onClick={handleClose}
-              aria-label='Close'
+              className='conversation-search-modal__clear-btn'
+              onClick={handleClearKeyword}
+              aria-label={t('conversation.historySearch.clear')}
             >
-              <Close size={16} />
+              <CloseSmall theme='outline' size='14' />
             </button>
-          </div>
-
-          <div className='mb-14px conversation-search-modal__input-wrap'>
-            <div className='conversation-search-modal__searchbar'>
-              <Search theme='outline' size='16' className='conversation-search-modal__search-icon' />
-              <input
-                autoFocus={visible}
-                value={keyword}
-                placeholder={t('conversation.historySearch.placeholder')}
-                onChange={(event) => setKeyword(event.target.value)}
-                className='conversation-search-modal__search-input'
-              />
-              {keyword ? (
-                <button
-                  type='button'
-                  className='conversation-search-modal__clear-btn'
-                  onClick={handleClearKeyword}
-                  aria-label='Clear search'
-                >
-                  <CloseSmall theme='outline' size='14' />
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <div className='flex-1 min-h-0'>{resultContent}</div>
+          ) : null}
         </div>
-      </AionModal>
-    </>
+      </div>
+
+      <div className='flex-1 min-h-0'>{resultContent}</div>
+    </div>
+  );
+};
+
+export const ConversationSearchPage: React.FC = () => (
+  <div className='conversation-search-page size-full min-h-0 overflow-hidden p-16px'>
+    <div className='conversation-search-page__shell mx-auto flex min-h-0 w-full max-w-960px overflow-hidden'>
+      <ConversationSearchPanel inputAutoFocus />
+    </div>
+  </div>
+);
+
+const ConversationSearchPopover: React.FC<ConversationSearchPopoverProps> = ({
+  onSessionClick,
+  disabled = false,
+  buttonClassName,
+  buttonLabel,
+}) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isActive = location.pathname === CONVERSATION_SEARCH_ROUTE;
+
+  const handleOpen = useCallback(() => {
+    if (disabled) {
+      return;
+    }
+
+    blockMobileInputFocus();
+    blurActiveElement();
+    void navigate(CONVERSATION_SEARCH_ROUTE);
+    onSessionClick?.();
+  }, [disabled, navigate, onSessionClick]);
+
+  useEffect(() => {
+    const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if ((event as unknown as { isComposing?: boolean }).isComposing) return;
+      const key = event.key.toLowerCase();
+      const isCmdOrCtrl = event.metaKey || event.ctrlKey;
+      if (!isCmdOrCtrl || !event.shiftKey || key !== 'f' || event.altKey) return;
+      if (typeof window !== 'undefined' && !window.electronAPI) return;
+      event.preventDefault();
+      handleOpen();
+    };
+
+    document.addEventListener('keydown', handleGlobalSearchShortcut, true);
+    return () => {
+      document.removeEventListener('keydown', handleGlobalSearchShortcut, true);
+    };
+  }, [handleOpen]);
+
+  const triggerAriaLabel = buttonLabel || t('conversation.historySearch.tooltip');
+
+  return (
+    <button
+      type='button'
+      aria-label={triggerAriaLabel}
+      aria-current={isActive ? 'page' : undefined}
+      className={classNames(
+        buttonLabel
+          ? 'flex w-full min-w-0 items-center gap-10px rounded-10px border border-solid border-transparent bg-transparent px-12px py-9px text-left transition-all'
+          : 'h-40px w-40px p-0 bg-transparent rd-0.5rem flex items-center justify-center cursor-pointer shrink-0 transition-all border border-solid border-transparent',
+        {
+          'hover:bg-fill-2 hover:border-[color:var(--color-border-2)]': !disabled,
+          'opacity-50 cursor-not-allowed': disabled,
+          'bg-aou-2 text-primary border-[color:var(--color-primary-light-3)]': isActive && !disabled,
+        },
+        buttonClassName
+      )}
+      onClick={handleOpen}
+      disabled={disabled}
+    >
+      <Search theme='outline' size='20' className='app-icon block leading-none shrink-0' />
+      {buttonLabel ? <span className='min-w-0 truncate text-14px font-600 text-t-primary'>{buttonLabel}</span> : null}
+    </button>
   );
 };
 

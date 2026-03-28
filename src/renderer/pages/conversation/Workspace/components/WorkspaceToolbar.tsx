@@ -106,10 +106,10 @@ const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
   );
 
   return (
-    <div className='px-12px'>
+    <div className='px-12px pt-8px workspace-toolbar-shell'>
       {/* Search Input */}
       {(showSearch || searchText) && (
-        <div className='pb-8px workspace-toolbar-search'>
+        <div className='pb-10px workspace-toolbar-search'>
           <Input
             className='w-full workspace-search-input'
             ref={searchInputRef}
@@ -129,22 +129,22 @@ const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
       {!isWorkspaceCollapsed && (showSearch || searchText) && <div className='border-b border-b-base' />}
 
       {/* Directory name with collapse and action icons */}
-      <div className='workspace-toolbar-row flex items-center justify-between gap-8px'>
+      <div className='workspace-toolbar-row flex min-h-32px items-center justify-between gap-8px'>
         <div
-          className='flex items-center gap-8px cursor-pointer flex-1 min-w-0'
+          className='flex min-w-0 flex-1 items-center gap-8px cursor-pointer'
           onClick={() => setIsWorkspaceCollapsed(!isWorkspaceCollapsed)}
         >
           <Down
             size={16}
             fill={iconColors.primary}
-            className={`line-height-0 transition-transform duration-200 flex-shrink-0 ${isWorkspaceCollapsed ? '-rotate-90' : 'rotate-0'}`}
+            className={`line-height-0 block shrink-0 transition-transform duration-200 ${isWorkspaceCollapsed ? '-rotate-90' : 'rotate-0'}`}
           />
           {isTemporaryWorkspace ? (
             <Tooltip content={workspacePath}>
               <span
                 role='button'
                 tabIndex={0}
-                className='workspace-title-label font-bold text-14px text-t-primary overflow-hidden text-ellipsis whitespace-nowrap transition-colors hover:text-[rgb(var(--primary-6))] hover:underline underline-offset-3'
+                className='workspace-title-label overflow-hidden text-ellipsis whitespace-nowrap font-bold leading-20px text-14px text-t-primary transition-colors hover:text-[rgb(var(--primary-6))] hover:underline underline-offset-3'
                 onClick={(event) => {
                   event.stopPropagation();
                   void handleOpenWorkspaceRoot();
@@ -162,13 +162,13 @@ const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
             </Tooltip>
           ) : (
             <Tooltip content={workspacePath}>
-              <span className='workspace-title-label font-bold text-14px text-t-primary overflow-hidden text-ellipsis whitespace-nowrap'>
+              <span className='workspace-title-label overflow-hidden text-ellipsis whitespace-nowrap font-bold leading-20px text-14px text-t-primary'>
                 {workspaceDisplayName}
               </span>
             </Tooltip>
           )}
         </div>
-        <div className='workspace-toolbar-actions flex items-center gap-8px flex-shrink-0'>
+        <div className='workspace-toolbar-actions flex shrink-0 items-center gap-8px'>
           {!isElectronDesktop() && (
             <Dropdown droplist={workspaceUploadMenu} trigger='click' position='bl'>
               <span>

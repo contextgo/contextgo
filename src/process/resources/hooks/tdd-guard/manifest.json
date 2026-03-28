@@ -1,0 +1,9 @@
+{
+  "name": "tdd-guard",
+  "description": "Anchor feature and bug-fix work in a failing repro, test update, or explicit verification contract.",
+  "version": "1.0.0",
+  "executionType": "prompt-transform",
+  "events": ["before_user_prompt"],
+  "category": "quality",
+  "tags": ["tdd", "regression", "repro", "post-tool-use", "stop"]
+}

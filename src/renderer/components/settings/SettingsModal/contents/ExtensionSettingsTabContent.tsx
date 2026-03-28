@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { extensions as extensionsIpc } from '@/common/adapter/ipcBridge';
 import WebviewHost from '@/renderer/components/media/WebviewHost';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
+import { isSuspiciousDocumentNavigation } from '@/renderer/utils/ui/documentNavigationGuard';
 
 const isExternalSettingsUrl = (url?: string): boolean => /^https?:\/\//i.test(url || '');
 
@@ -33,13 +34,28 @@ const ExtensionSettingsTabContent: React.FC<ExtensionSettingsTabContentProps> = 
 }) => {
   const { i18n } = useTranslation();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const blockedFrameUrlRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const resolvedEntryUrl = resolveExtensionAssetUrl(entryUrl) || entryUrl;
   const isExternalTab = isExternalSettingsUrl(resolvedEntryUrl);
+  const blockedEntryUrl = isSuspiciousDocumentNavigation(resolvedEntryUrl);
+  const entryError = error || (blockedEntryUrl ? 'Failed to load extension settings' : null);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
   }, [resolvedEntryUrl]);
+
+  useEffect(() => {
+    if (!blockedEntryUrl) {
+      return;
+    }
+
+    console.warn('[ExtensionSettingsTabContent] Blocked suspicious extension settings entry URL:', resolvedEntryUrl);
+    setError('Failed to load extension settings');
+    setLoading(false);
+  }, [blockedEntryUrl, resolvedEntryUrl]);
 
   const postLocaleInit = useCallback(async () => {
     if (isExternalTab) return;
@@ -109,14 +125,49 @@ const ExtensionSettingsTabContent: React.FC<ExtensionSettingsTabContentProps> = 
     }
   }, [loading, postLocaleInit]);
 
+  const handleLocalFrameLoad = useCallback(() => {
+    try {
+      const currentUrl = iframeRef.current?.contentWindow?.location.href;
+
+      if (currentUrl && isSuspiciousDocumentNavigation(currentUrl)) {
+        console.warn('[ExtensionSettingsTabContent] Blocked suspicious iframe document navigation:', currentUrl);
+
+        if (blockedFrameUrlRef.current === currentUrl) {
+          setError('Failed to load extension settings');
+          setLoading(false);
+          return;
+        }
+
+        blockedFrameUrlRef.current = currentUrl;
+
+        if (!blockedEntryUrl) {
+          iframeRef.current!.src = resolvedEntryUrl;
+          return;
+        }
+
+        setError('Failed to load extension settings');
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('[ExtensionSettingsTabContent] Failed to inspect iframe navigation:', err);
+    }
+
+    blockedFrameUrlRef.current = null;
+    setLoading(false);
+  }, [blockedEntryUrl, resolvedEntryUrl]);
+
   return (
     <div className='relative w-full h-full min-h-200px'>
-      {isExternalTab ? (
+      {entryError ? (
+        <div className='flex items-center justify-center h-full text-t-secondary text-14px'>{entryError}</div>
+      ) : isExternalTab ? (
         <WebviewHost
           key={tabId}
           url={resolvedEntryUrl}
           id={tabId}
           partition={`persist:ext-settings-${tabId}`}
+          blockSuspiciousDocumentNavigation
           style={{ minHeight: '200px' }}
         />
       ) : (
@@ -130,7 +181,7 @@ const ExtensionSettingsTabContent: React.FC<ExtensionSettingsTabContentProps> = 
             ref={iframeRef}
             key={tabId}
             src={resolvedEntryUrl}
-            onLoad={() => setLoading(false)}
+            onLoad={handleLocalFrameLoad}
             sandbox='allow-scripts allow-same-origin'
             className='w-full h-full border-none'
             style={{

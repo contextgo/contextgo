@@ -15,13 +15,32 @@ const shouldIgnoreStreamMessage = (type: string): boolean => {
   return type === 'user_content' || type === 'request_trace' || type === 'finished';
 };
 
-const isTerminalAgentStatus = (data: unknown): boolean => {
+const getAgentStatusData = (data: unknown): { backend?: string; status?: string } | null => {
   if (!data || typeof data !== 'object') {
-    return false;
+    return null;
   }
 
-  const { status } = data as { status?: string };
-  return status === 'error' || status === 'disconnected';
+  return data as { backend?: string; status?: string };
+};
+
+const isOpenClawBootstrapAgentStatus = (data: unknown): boolean => {
+  const agentStatus = getAgentStatusData(data);
+  return (
+    agentStatus?.backend === 'openclaw-gateway' &&
+    (agentStatus.status === 'connecting' ||
+      agentStatus.status === 'connected' ||
+      agentStatus.status === 'session_active')
+  );
+};
+
+const shouldClearGeneratingForAgentStatus = (data: unknown): boolean => {
+  const agentStatus = getAgentStatusData(data);
+  return agentStatus?.backend === 'openclaw-gateway' && agentStatus.status === 'session_active';
+};
+
+const isTerminalAgentStatus = (data: unknown): boolean => {
+  const agentStatus = getAgentStatusData(data);
+  return agentStatus?.status === 'error' || agentStatus?.status === 'disconnected';
 };
 
 const isTerminalStreamMessage = (message: { type: string; data: unknown }): boolean => {
@@ -57,9 +76,21 @@ const getDiscussionParentGroupId = (conversation: TChatConversation): string | u
 export const splitDiscussionChildConversations = (conversations: TChatConversation[]) => {
   const nextTopLevelConversations: TChatConversation[] = [];
   const nextDiscussionChildConversations = new Map<string, TChatConversation[]>();
+  const participantParentGroupByConversationId = new Map<string, string>();
 
   conversations.forEach((conversation) => {
-    const parentGroupId = getDiscussionParentGroupId(conversation);
+    if (conversation.type !== 'group') {
+      return;
+    }
+
+    conversation.extra.participants.forEach((participant) => {
+      participantParentGroupByConversationId.set(participant.childConversationId, conversation.id);
+    });
+  });
+
+  conversations.forEach((conversation) => {
+    const parentGroupId =
+      getDiscussionParentGroupId(conversation) || participantParentGroupByConversationId.get(conversation.id);
 
     if (parentGroupId) {
       const childConversations = nextDiscussionChildConversations.get(parentGroupId) ?? [];
@@ -123,10 +154,11 @@ const refreshConversations = () => {
           const extra = conv.extra as
             | {
                 isHealthCheck?: boolean;
+                archived?: boolean;
                 groupMeta?: { hiddenFromHistory?: boolean; parentGroupId?: string };
               }
             | undefined;
-          return extra?.isHealthCheck !== true;
+          return extra?.isHealthCheck !== true && extra?.archived !== true;
         });
 
         const {
@@ -234,7 +266,16 @@ const initializeConversationListSyncStore = () => {
       return;
     }
 
+    if (message.type === 'agent_status' && shouldClearGeneratingForAgentStatus(message.data)) {
+      clearGenerating(conversationId);
+      return;
+    }
+
     if (shouldIgnoreStreamMessage(message.type)) {
+      return;
+    }
+
+    if (message.type === 'agent_status' && isOpenClawBootstrapAgentStatus(message.data)) {
       return;
     }
 

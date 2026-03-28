@@ -105,17 +105,17 @@ const FilePreview: React.FC<FilePreviewProps> = ({ path, onRemove, readonly = fa
   }
 
   return (
-    <div className='relative inline-block mb-10px'>
+    <div className='relative inline-flex max-w-full align-top mb-10px'>
       <div
-        className='h-60px flex items-center gap-12px px-12px rd-8px bg-bg-2 border border-solid'
+        className='flex h-60px max-w-full items-center gap-12px rounded-8px border border-solid bg-bg-2 px-12px'
         style={{ borderColor: 'var(--border-base)', boxShadow: '0 0 0 1px rgba(0,0,0,0.02)' }}
       >
-        <div className='w-40px h-40px rd-8px flex items-center justify-center flex-shrink-0'>
-          <img className='w-full h-full object-contain' src={fileIcon} alt='File Icon' />
+        <div className='inline-flex h-40px w-40px shrink-0 items-center justify-center leading-none'>
+          <img className='block h-40px w-40px object-contain' src={fileIcon} alt='File Icon' />
         </div>
-        <div className='flex flex-col gap-2px min-w-0'>
-          <span className='text-14px text-t-primary max-w-150px truncate'>{fileName}</span>
-          <span className='text-12px text-t-secondary'>
+        <div className='flex min-w-0 flex-col justify-center gap-2px'>
+          <span className='max-w-180px truncate text-14px leading-20px text-t-primary'>{fileName}</span>
+          <span className='text-12px leading-16px text-t-secondary'>
             {fileExt}: {fileSize || '...'}
           </span>
         </div>

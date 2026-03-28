@@ -21,11 +21,16 @@ const isVisibleConversation = (conversation: TChatConversation): boolean => {
   const extra = conversation.extra as
     | {
         isHealthCheck?: boolean;
+        archived?: boolean;
         groupMeta?: { hiddenFromHistory?: boolean; parentGroupId?: string };
       }
     | undefined;
 
   if (extra?.isHealthCheck === true) {
+    return false;
+  }
+
+  if (extra?.archived === true) {
     return false;
   }
 

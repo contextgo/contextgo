@@ -83,6 +83,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     handleRenameConfirm,
     handleRenameCancel,
     handleTogglePin,
+    handleArchiveConversation,
     handleMenuVisibleChange,
     handleOpenMenu,
   } = useConversationActions({
@@ -141,6 +142,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       onDelete: handleDeleteClick,
       onExport: handleExportConversation,
       onTogglePin: handleTogglePin,
+      onArchive: handleArchiveConversation,
       getJobStatus,
     }),
     [
@@ -160,6 +162,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       handleDeleteClick,
       handleExportConversation,
       handleTogglePin,
+      handleArchiveConversation,
       getJobStatus,
     ]
   );
@@ -169,77 +172,103 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       ...getConversationRowProps(conversation),
       ...overrides,
     };
-    return <ConversationRow key={conversation.id} {...rowProps} />;
+    return (
+      <div key={conversation.id} className='w-full min-w-0'>
+        <ConversationRow {...rowProps} />
+      </div>
+    );
   };
 
-  const renderDiscussionChildConversations = (conversation: TChatConversation) => {
+  const composeLeadingSlot = (...slots: Array<React.ReactNode | undefined>) => {
+    const visibleSlots = slots.filter(Boolean);
+    if (visibleSlots.length === 0) {
+      return undefined;
+    }
+
+    return <span className='flex items-center gap-4px'>{visibleSlots}</span>;
+  };
+
+  const renderWorkspaceMarker = () => <span className='flex h-20px w-12px shrink-0' aria-hidden='true' />;
+
+  const renderDiscussionChildMarker = () => (
+    <span className='relative flex h-20px w-14px shrink-0 items-center' aria-hidden='true'>
+      <span className='absolute left-4px top-1/2 h-2px w-10px -translate-y-1/2 rounded-full bg-[var(--color-text-4)]/45' />
+    </span>
+  );
+
+  const renderDiscussionChildConversations = (
+    conversation: TChatConversation,
+    inheritedLeadingSlot?: React.ReactNode
+  ) => {
     const childConversations = discussionChildConversationsByParentId[conversation.id] ?? [];
     if (childConversations.length === 0) {
       return null;
     }
 
     return (
-      <div
-        className={classNames('min-w-0', {
-          'ml-22px mt-2px': !collapsed,
-          'mt-2px': collapsed,
-        })}
-      >
+      <div className='mt-2px min-w-0 w-full'>
         {childConversations.map((childConversation) =>
           renderConversation(childConversation, {
             allowActions: false,
             allowBatchSelection: false,
+            leadingSlot:
+              collapsed || !conversation.id
+                ? undefined
+                : composeLeadingSlot(inheritedLeadingSlot, renderDiscussionChildMarker()),
           })
         )}
       </div>
     );
   };
 
-  const renderConversationBlock = (conversation: TChatConversation) => {
+  const renderConversationBlock = (conversation: TChatConversation, inheritedLeadingSlot?: React.ReactNode) => {
     const childConversations = discussionChildConversationsByParentId[conversation.id] ?? [];
     const hasDiscussionChildren = childConversations.length > 0;
     const isDiscussionGroupExpanded = collapsed || expandedDiscussionGroups.includes(conversation.id);
 
     if (hasDiscussionChildren) {
       return (
-        <div key={conversation.id} className='min-w-0'>
-          <div className='flex items-start gap-2px min-w-0'>
-            {!collapsed && (
-              <button
-                type='button'
-                className='mt-8px ml-2px h-24px w-20px flex items-center justify-center cursor-pointer rounded-6px border-none bg-transparent p-0 text-[var(--color-text-3)] hover:bg-fill-2'
-                aria-label='Toggle discussion group'
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleToggleDiscussionGroup(conversation.id);
-                }}
-              >
-                <Down
-                  size={14}
-                  className={classNames('transition-transform duration-200', {
-                    'rotate-0': isDiscussionGroupExpanded,
-                    '-rotate-90': !isDiscussionGroupExpanded,
-                  })}
-                />
-              </button>
-            )}
-            <div className='min-w-0 flex-1'>
-              {renderConversation(conversation, {
-                onConversationClick: (targetConversation) => {
-                  ensureDiscussionGroupExpanded(targetConversation.id);
-                  handleConversationClick(targetConversation);
-                },
-              })}
-            </div>
-          </div>
-          {isDiscussionGroupExpanded ? renderDiscussionChildConversations(conversation) : null}
+        <div key={conversation.id} className='min-w-0 w-full'>
+          {renderConversation(conversation, {
+            leadingSlot: collapsed
+              ? undefined
+              : composeLeadingSlot(
+                  inheritedLeadingSlot,
+                  <button
+                    type='button'
+                    className={classNames(
+                      'h-20px w-18px shrink-0 flex items-center justify-center cursor-pointer rounded-6px border-none bg-transparent p-0 text-[var(--color-text-3)] hover:bg-fill-2'
+                    )}
+                    aria-label='Toggle discussion group'
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleToggleDiscussionGroup(conversation.id);
+                    }}
+                  >
+                    <Down
+                      size={14}
+                      className={classNames('transition-transform duration-200', {
+                        'rotate-0': isDiscussionGroupExpanded,
+                        '-rotate-90': !isDiscussionGroupExpanded,
+                      })}
+                    />
+                  </button>
+                ),
+            onConversationClick: (targetConversation) => {
+              ensureDiscussionGroupExpanded(targetConversation.id);
+              handleConversationClick(targetConversation);
+            },
+          })}
+          {isDiscussionGroupExpanded ? renderDiscussionChildConversations(conversation, inheritedLeadingSlot) : null}
         </div>
       );
     }
 
     return (
       <div key={conversation.id} className='min-w-0'>
-        {renderConversation(conversation)}
+        {renderConversation(conversation, {
+          leadingSlot: inheritedLeadingSlot,
+        })}
       </div>
     );
   };
@@ -417,7 +446,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
         </div>
       )}
 
-      <div className='size-full overflow-y-auto overflow-x-hidden'>
+      <div className='size-full w-full overflow-y-auto overflow-x-hidden'>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -428,16 +457,16 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
           {pinnedConversations.length > 0 && (
             <div className='mb-8px min-w-0'>
               {!collapsed && (
-                <div className='chat-history__section px-12px py-8px text-13px text-t-secondary font-bold'>
+                <div className='chat-history__section py-8px px-12px text-13px text-t-secondary font-bold'>
                   {t('conversation.history.pinnedSection')}
                 </div>
               )}
               <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
-                <div className='min-w-0'>
+                <div className='w-full min-w-0'>
                   {pinnedConversations.map((conversation) => {
                     const props = getConversationRowProps(conversation);
                     return (
-                      <div key={conversation.id} className='min-w-0'>
+                      <div key={conversation.id} className='w-full min-w-0'>
                         {isDragEnabled ? <SortableConversationRow {...props} /> : <ConversationRow {...props} />}
                         {renderDiscussionChildConversations(conversation)}
                       </div>
@@ -456,7 +485,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
         {timelineSections.map((section) => (
           <div key={section.timeline} className='mb-8px min-w-0'>
             {!collapsed && (
-              <div className='chat-history__section px-12px py-8px text-13px text-t-secondary font-bold'>
+              <div className={classNames('chat-history__section py-8px px-12px text-13px text-t-secondary font-bold')}>
                 {section.timeline}
               </div>
             )}
@@ -465,7 +494,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
               if (item.type === 'workspace' && item.workspaceGroup) {
                 const group = item.workspaceGroup;
                 return (
-                  <div key={group.workspace} className={classNames('min-w-0', { 'px-8px': !collapsed })}>
+                  <div key={group.workspace} className='min-w-0'>
                     <WorkspaceCollapse
                       expanded={expandedWorkspaces.includes(group.workspace)}
                       onToggle={() => handleToggleWorkspace(group.workspace)}
@@ -479,7 +508,9 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                       }
                     >
                       <div className={classNames('flex flex-col gap-2px min-w-0', { 'mt-4px': !collapsed })}>
-                        {group.conversations.map((conversation) => renderConversationBlock(conversation))}
+                        {group.conversations.map((conversation) =>
+                          renderConversationBlock(conversation, collapsed ? undefined : renderWorkspaceMarker())
+                        )}
                       </div>
                     </WorkspaceCollapse>
                   </div>

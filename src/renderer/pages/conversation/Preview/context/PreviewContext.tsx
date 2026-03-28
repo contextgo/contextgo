@@ -79,7 +79,7 @@ const LEGACY_PREVIEW_STATE_KEY = 'aionui_preview_state';
 // 仅持久化小体积文本预览，避免大文本导致 localStorage 写入卡顿
 // Persist only lightweight text previews to avoid localStorage jank on large files
 const MAX_PERSISTED_TAB_CONTENT_LENGTH = 80_000;
-const PERSISTABLE_CONTENT_TYPES = new Set<PreviewContentType>(['markdown', 'html', 'code', 'diff']);
+const PERSISTABLE_CONTENT_TYPES = new Set<PreviewContentType>(['markdown', 'code', 'diff']);
 
 const sanitizeTabsForPersistence = (input: PreviewTab[]): PreviewTab[] => {
   return input

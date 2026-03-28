@@ -1,19 +1,7 @@
-import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
-import {
-  AlarmClock,
-  Communication,
-  Computer,
-  Earth,
-  Info,
-  Lightning,
-  Puzzle,
-  Robot,
-  System,
-  Toolkit,
-} from '@icon-park/react';
+import { AlarmClock, Communication, Computer, Earth, Info, Puzzle, System, Toolkit } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,17 +10,7 @@ import { Tooltip } from '@arco-design/web-react';
 import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
-const BUILTIN_TAB_IDS = [
-  'agent',
-  'hooks',
-  'cron',
-  'skills-hub',
-  'tools',
-  'display',
-  'webui',
-  'system',
-  'about',
-] as const;
+const BUILTIN_TAB_IDS = ['cron', 'tools', 'display', 'webui', 'system', 'about'] as const;
 
 type SiderItem = {
   id: string;
@@ -113,29 +91,11 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const menus: SiderItem[] = useMemo(() => {
     // Build builtin items
     const builtinMap: Record<string, SiderItem> = {
-      agent: {
-        id: 'agent',
-        label: t('settings.assistants', { defaultValue: 'Assistants' }),
-        icon: <Robot />,
-        path: 'agent',
-      },
-      hooks: {
-        id: 'hooks',
-        label: t('settings.hooksPage', { defaultValue: 'Hooks' }),
-        icon: <Puzzle />,
-        path: 'hooks',
-      },
       cron: {
         id: 'cron',
         label: t('cron.scheduledTasks'),
         icon: <AlarmClock />,
         path: 'cron',
-      },
-      'skills-hub': {
-        id: 'skills-hub',
-        label: t('settings.skillsHub.title', { defaultValue: 'Skills Hub' }),
-        icon: <Lightning />,
-        path: 'skills-hub',
       },
       tools: { id: 'tools', label: t('settings.tools'), icon: <Toolkit />, path: 'tools' },
       display: { id: 'display', label: t('settings.display'), icon: <Computer />, path: 'display' },
@@ -210,35 +170,43 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
   return (
     <div
-      className={classNames('flex-1 min-h-0 settings-sider flex flex-col gap-2px overflow-y-auto overflow-x-hidden', {
-        'settings-sider--collapsed': collapsed,
-      })}
+      className={classNames(
+        'flex-1 min-h-0 w-full min-w-0 box-border settings-sider flex flex-col items-stretch gap-2px overflow-y-auto overflow-x-hidden',
+        {
+          'settings-sider--collapsed': collapsed,
+        }
+      )}
     >
       {menus.map((item) => {
         const isSelected = pathname.includes(item.path);
-        return (
-          <Tooltip key={item.id} {...siderTooltipProps} content={item.label} position='right'>
-            <div
-              data-settings-id={item.id}
-              data-settings-path={item.path}
-              className={classNames(
-                'settings-sider__item hover:bg-aou-1 px-12px py-8px rd-8px flex justify-start items-center group cursor-pointer relative overflow-hidden group shrink-0 conversation-item [&.conversation-item+&.conversation-item]:mt-2px',
-                {
-                  '!bg-aou-2 ': isSelected,
-                }
-              )}
-              onClick={() => {
-                Promise.resolve(navigate(`/settings/${item.path}`, { replace: true })).catch((error) => {
-                  console.error('Navigation failed:', error);
-                });
-              }}
-            >
-              {item.isImageIcon ? (
-                <div className='mt-2px ml-2px mr-8px w-20px h-20px flex shrink-0 items-center justify-center'>
-                  {item.icon}
-                </div>
-              ) : (
-                React.cloneElement(
+        const itemNode = (
+          <div
+            data-settings-id={item.id}
+            data-settings-path={item.path}
+            className={classNames(
+              'settings-sider__item w-full min-w-0 self-stretch box-border hover:bg-aou-1 px-12px py-8px rd-8px flex justify-start items-center gap-10px group cursor-pointer relative overflow-hidden group shrink-0 conversation-item [&.conversation-item+&.conversation-item]:mt-2px',
+              {
+                '!bg-aou-2 ': isSelected,
+                '!px-0 !gap-0 justify-center': collapsed,
+              }
+            )}
+            onClick={() => {
+              Promise.resolve(navigate(`/settings/${item.path}`, { replace: true })).catch((error) => {
+                console.error('Navigation failed:', error);
+              });
+            }}
+          >
+            {item.isImageIcon ? (
+              <div
+                className={classNames('inline-flex h-20px w-20px shrink-0 items-center justify-center leading-none', {
+                  '!m-0': collapsed,
+                })}
+              >
+                {item.icon}
+              </div>
+            ) : (
+              <span className='inline-flex h-20px w-20px shrink-0 items-center justify-center leading-none'>
+                {React.cloneElement(
                   item.icon as React.ReactElement<{
                     theme?: string;
                     size?: string | number;
@@ -249,16 +217,26 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
                     theme: 'outline',
                     size: '20',
                     strokeWidth: 3,
-                    className: 'mt-2px ml-2px mr-8px flex text-t-secondary',
+                    className: 'block text-t-secondary leading-none',
                   }
-                )
-              )}
-              <FlexFullContainer className='h-24px'>
-                <div className='settings-sider__item-label text-nowrap overflow-hidden inline-block w-full text-14px lh-24px whitespace-nowrap text-t-primary'>
-                  {item.label}
-                </div>
-              </FlexFullContainer>
+                )}
+              </span>
+            )}
+            <div className='flex h-24px min-w-0 flex-1 items-center'>
+              <div className='settings-sider__item-label inline-block w-full overflow-hidden text-nowrap whitespace-nowrap text-14px lh-24px text-t-primary'>
+                {item.label}
+              </div>
             </div>
+          </div>
+        );
+
+        if (!tooltipEnabled) {
+          return <React.Fragment key={item.id}>{itemNode}</React.Fragment>;
+        }
+
+        return (
+          <Tooltip key={item.id} {...siderTooltipProps} content={item.label} position='right'>
+            {itemNode}
           </Tooltip>
         );
       })}

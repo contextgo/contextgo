@@ -5,6 +5,7 @@
  */
 
 import { acpDetector } from '@process/agent/acp/AcpDetector';
+import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
 import type { TChatConversation, TProviderWithModel } from '@/common/config/storage';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
@@ -46,6 +47,34 @@ import { SystemActionNames, createErrorResponse, createSuccessResponse } from '.
 import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
 import { ACP_BACKENDS_ALL } from '@/common/types/acpTypes';
 import type { AcpBackend, AcpBackendAll } from '@/common/types/acpTypes';
+
+type SavedChannelAgent = {
+  backend?: string;
+  customAgentId?: string;
+  name?: string;
+  openclawAgentId?: string;
+  workspace?: string;
+  cliPath?: string;
+};
+
+const normalizeOpenClawAgentId = (agentId?: string): string => agentId?.trim().toLowerCase() || 'main';
+
+const resolveSavedOpenClawAgent = (savedAgent: unknown) => {
+  const selection = (savedAgent && typeof savedAgent === 'object' ? savedAgent : {}) as SavedChannelAgent;
+  const configuredAgents = listConfiguredOpenClawAgents();
+  const selectedAgentId = normalizeOpenClawAgentId(selection.openclawAgentId);
+  const configuredAgent =
+    configuredAgents.find((agent) => normalizeOpenClawAgentId(agent.agentId) === selectedAgentId) ||
+    configuredAgents[0];
+
+  return {
+    backend: 'openclaw-gateway' as const,
+    agentName: selection.name?.trim() || configuredAgent?.name || 'OpenClaw',
+    openclawAgentId: selectedAgentId || configuredAgent?.agentId || 'main',
+    workspace: selection.workspace?.trim() || configuredAgent?.workspace,
+    cliPath: selection.cliPath?.trim() || 'openclaw',
+  };
+};
 
 /**
  * Get the default model for Channel assistant (Telegram/Lark)
@@ -652,6 +681,9 @@ type SavedChannelAgentConfig = {
   backend: AcpBackendAll;
   customAgentId?: string;
   name?: string;
+  openclawAgentId?: string;
+  workspace?: string;
+  cliPath?: string;
 };
 
 function getChannelAgentConfigPath(
@@ -679,8 +711,14 @@ function normalizeChannelAgentConfig(value: unknown): SavedChannelAgentConfig {
   const customAgentId =
     typeof record.customAgentId === 'string' && record.customAgentId.length > 0 ? record.customAgentId : undefined;
   const name = typeof record.name === 'string' && record.name.length > 0 ? record.name : undefined;
+  const openclawAgentId =
+    typeof record.openclawAgentId === 'string' && record.openclawAgentId.length > 0
+      ? record.openclawAgentId
+      : undefined;
+  const workspace = typeof record.workspace === 'string' && record.workspace.length > 0 ? record.workspace : undefined;
+  const cliPath = typeof record.cliPath === 'string' && record.cliPath.length > 0 ? record.cliPath : undefined;
 
-  return { backend, customAgentId, name };
+  return { backend, customAgentId, name, openclawAgentId, workspace, cliPath };
 }
 
 async function getSavedChannelAgentConfig(platform: PluginType): Promise<SavedChannelAgentConfig> {
@@ -735,13 +773,29 @@ async function createChannelConversation(
   }
 
   if (agent.backend === 'openclaw-gateway') {
+    const openclawSelection = resolveSavedOpenClawAgent(agent);
     return await conversationServiceSingleton.createConversation({
       type: 'openclaw-gateway',
       model,
       source,
       name,
       channelChatId,
-      extra: {},
+      extra: {
+        backend: openclawSelection.backend,
+        cliPath: openclawSelection.cliPath,
+        agentName: openclawSelection.agentName,
+        openclawAgentId: openclawSelection.openclawAgentId,
+        workspace: openclawSelection.workspace,
+        customWorkspace: Boolean(openclawSelection.workspace),
+        runtimeValidation: {
+          expectedWorkspace: openclawSelection.workspace,
+          expectedBackend: openclawSelection.backend,
+          expectedAgentName: openclawSelection.agentName,
+          expectedOpenClawAgentId: openclawSelection.openclawAgentId,
+          expectedCliPath: openclawSelection.cliPath,
+          switchedAt: Date.now(),
+        },
+      },
     });
   }
 

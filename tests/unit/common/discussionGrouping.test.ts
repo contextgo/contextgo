@@ -108,4 +108,24 @@ describe('discussion conversation grouping', () => {
       groupedHistory.discussionChildConversationsByParentId['group-1']?.map((conversation) => conversation.id)
     ).toEqual(['child-1']);
   });
+
+  it('uses the OpenClaw agent name as the workspace group label', () => {
+    const openclawConversation = createConversation('openclaw-1', {
+      type: 'openclaw-gateway',
+      extra: {
+        workspace: '/Users/bytedance/.openclaw/workspace-main',
+        customWorkspace: true,
+        agentName: 'OpenClaw Main',
+        openclawAgentId: 'main',
+      },
+      model: {} as TChatConversation['model'],
+    } as Partial<TChatConversation>);
+
+    const groupedHistory = buildGroupedHistory([openclawConversation], {}, (key) => key);
+    const workspaceItem = groupedHistory.timelineSections[0]?.items[0];
+
+    expect(workspaceItem?.type).toBe('workspace');
+    expect(workspaceItem?.workspaceGroup?.displayName).toBe('OpenClaw Main');
+    expect(workspaceItem?.workspaceGroup?.workspace).toBe('/Users/bytedance/.openclaw/workspace-main');
+  });
 });

@@ -9,7 +9,7 @@ import { bridge } from '@office-ai/platform';
 import type { OpenDialogOptions } from 'electron';
 import type { McpSource } from '../../process/services/mcpServices/McpProtocol';
 import type { AcpBackend, AcpBackendAll, AcpModelInfo, PresetAgentType } from '../types/acpTypes';
-import type { HookInfo } from '../types/hookTypes';
+import type { HookInfo, HookOutputRoutingConfig } from '../types/hookTypes';
 import type { ExternalSessionSummary, ImportExternalSessionParams } from '../types/externalSessions';
 import type { SlashCommandItem } from '../chat/slash/types';
 import type {
@@ -24,6 +24,7 @@ import type {
   DiscussionGroupParticipantType,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
+import type { CloudAuthProviderId, CloudStatus, CloudSyncSummary } from '../types/cloud';
 import type {
   UpdateCheckRequest,
   UpdateCheckResult,
@@ -139,10 +140,11 @@ export const application = {
   reportRendererError: bridge.buildProvider<
     void,
     {
-      type: 'error' | 'unhandledrejection';
+      type: 'error' | 'unhandledrejection' | 'react-error-boundary';
       message: string;
       stack?: string;
       href?: string;
+      timestamp?: string;
     }
   >('app.report-renderer-error'), // 上报 renderer 未捕获异常到主进程日志
   systemInfo: bridge.buildProvider<
@@ -162,6 +164,16 @@ export const application = {
   ),
   // DevTools state change notification
   devToolsStateChanged: bridge.buildEmitter<{ isOpen: boolean }>('app.devtools-state-changed'),
+};
+
+export const cloud = {
+  getStatus: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.get-status'),
+  startLogin: bridge.buildProvider<IBridgeResponse<CloudStatus>, { provider: CloudAuthProviderId }>(
+    'cloud.start-login'
+  ),
+  logout: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.logout'),
+  syncNow: bridge.buildProvider<IBridgeResponse<CloudSyncSummary>, void>('cloud.sync-now'),
+  statusChanged: bridge.buildEmitter<CloudStatus>('cloud.status-changed'),
 };
 
 // Manual (opt-in) updates via GitHub Releases
@@ -272,6 +284,11 @@ export const fs = {
   deleteHook: bridge.buildProvider<IBridgeResponse, { hookName: string }>('delete-hook'),
   // 获取 hook 存储路径 / Get hook storage paths
   getHookPaths: bridge.buildProvider<{ userHooksDir: string }, void>('get-hook-paths'),
+  // 更新 hook 输出路由配置 / Update hook output routing settings
+  updateHookManifest: bridge.buildProvider<
+    IBridgeResponse<{ hookName: string }>,
+    { hookName: string; config: HookOutputRoutingConfig }
+  >('update-hook-manifest'),
   // 读取 skill 信息（不导入）/ Read skill info without importing
   readSkillInfo: bridge.buildProvider<IBridgeResponse<{ name: string; description: string }>, { skillPath: string }>(
     'read-skill-info'
@@ -528,6 +545,13 @@ export const codexConversation = {
 export const openclawConversation = {
   sendMessage: conversation.sendMessage,
   responseStream: bridge.buildEmitter<IResponseMessage>('openclaw.response.stream'),
+  getModelInfo: bridge.buildProvider<IBridgeResponse<{ modelInfo: AcpModelInfo | null }>, { conversation_id: string }>(
+    'openclaw.get-model-info'
+  ),
+  setModel: bridge.buildProvider<
+    IBridgeResponse<{ modelInfo: AcpModelInfo | null }>,
+    { conversation_id: string; modelId: string }
+  >('openclaw.set-model'),
   getRuntime: bridge.buildProvider<
     IBridgeResponse<{
       conversationId: string;
@@ -537,6 +561,7 @@ export const openclawConversation = {
         agentName?: string;
         openclawAgentId?: string;
         cliPath?: string;
+        modelProvider?: string | null;
         model?: string;
         sessionKey?: string | null;
         isConnected?: boolean;
@@ -630,7 +655,9 @@ export const windowControls = {
   unmaximize: bridge.buildProvider<void, void>('window-controls:unmaximize'),
   close: bridge.buildProvider<void, void>('window-controls:close'),
   isMaximized: bridge.buildProvider<boolean, void>('window-controls:is-maximized'),
+  isFullScreen: bridge.buildProvider<boolean, void>('window-controls:is-full-screen'),
   maximizedChanged: bridge.buildEmitter<{ isMaximized: boolean }>('window-controls:maximized-changed'),
+  fullScreenChanged: bridge.buildEmitter<{ isFullScreen: boolean }>('window-controls:full-screen-changed'),
 };
 
 // 系统设置接口 / System settings API
@@ -656,11 +683,24 @@ export const voiceInput = {
   >('voice-input:set-config'),
   getState: bridge.buildProvider<import('../types/voiceInput').VoiceInputState, void>('voice-input:get-state'),
   getStats: bridge.buildProvider<import('../types/voiceInput').VoiceInputStats, void>('voice-input:get-stats'),
+  getExternalOptions: bridge.buildProvider<import('../types/voiceInput').VoiceInputExternalOption[], void>(
+    'voice-input:get-external-options'
+  ),
   requestPermissions: bridge.buildProvider<import('../types/voiceInput').VoiceInputPermissions, void>(
     'voice-input:request-permissions'
   ),
   startManualCapture: bridge.buildProvider<void, void>('voice-input:start-manual-capture'),
   stopManualCapture: bridge.buildProvider<void, void>('voice-input:stop-manual-capture'),
+  getOpenWhisperState: bridge.buildProvider<import('../types/voiceInput').VoiceInputOpenWhisperState, void>(
+    'voice-input:get-open-whisper-state'
+  ),
+  installOpenWhisperRuntime: bridge.buildProvider<import('../types/voiceInput').VoiceInputOpenWhisperState, void>(
+    'voice-input:install-open-whisper-runtime'
+  ),
+  installOpenWhisperModel: bridge.buildProvider<
+    import('../types/voiceInput').VoiceInputOpenWhisperState,
+    { modelId?: import('../types/voiceInput').VoiceInputOpenWhisperModelId }
+  >('voice-input:install-open-whisper-model'),
   listRecords: bridge.buildProvider<import('../types/voiceInput').VoiceInputRecord[], { limit?: number }>(
     'voice-input:list-records'
   ),

@@ -2,7 +2,13 @@ import React, { Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
+import {
+  CONVERSATION_SEARCH_ROUTE,
+  ConversationSearchPage,
+} from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
+import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
 const Conversation = React.lazy(() => import('@renderer/pages/conversation'));
+const ConnectorsPage = React.lazy(() => import('@renderer/pages/connectors'));
 const Guid = React.lazy(() => import('@renderer/pages/guid'));
 const GlobalCronSettings = React.lazy(() => import('@renderer/pages/cron/GlobalCronSettings'));
 const AgentSettings = React.lazy(() => import('@renderer/pages/settings/AgentSettings'));
@@ -38,6 +44,17 @@ const ProtectedLayout: React.FC<{ layout: React.ReactElement }> = ({ layout }) =
   return React.cloneElement(layout);
 };
 
+const StartupConversationRedirect: React.FC = () => {
+  const { openTabs, activeTabId } = useConversationTabs();
+  const hasPersistedActiveTab = Boolean(activeTabId && openTabs.some((tab) => tab.id === activeTabId));
+
+  if (hasPersistedActiveTab && activeTabId) {
+    return <Navigate to={`/conversation/${activeTabId}`} replace />;
+  }
+
+  return <Navigate to='/guid' replace />;
+};
+
 const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
   const { status } = useAuth();
 
@@ -46,16 +63,22 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
       <Routes>
         <Route
           path='/login'
-          element={status === 'authenticated' ? <Navigate to='/guid' replace /> : withRouteFallback(LoginPage)}
+          element={status === 'authenticated' ? <StartupConversationRedirect /> : withRouteFallback(LoginPage)}
         />
         <Route element={<ProtectedLayout layout={layout} />}>
-          <Route index element={<Navigate to='/guid' replace />} />
+          <Route index element={<StartupConversationRedirect />} />
           <Route path='/guid' element={withRouteFallback(Guid)} />
+          <Route path='/hooks' element={withRouteFallback(HooksManagement)} />
+          <Route path='/connectors' element={withRouteFallback(ConnectorsPage)} />
+          <Route path='/connectors/:connectorId' element={withRouteFallback(ConnectorsPage)} />
+          <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
           <Route path='/conversation/:id' element={withRouteFallback(Conversation)} />
+          <Route path='/agents' element={withRouteFallback(AgentSettings)} />
+          <Route path='/skills-hub' element={withRouteFallback(SkillsHubSettings)} />
           <Route path='/settings/gemini' element={withRouteFallback(GeminiSettings)} />
           <Route path='/settings/model' element={withRouteFallback(ModeSettings)} />
           <Route path='/settings/agent' element={withRouteFallback(AgentSettings)} />
-          <Route path='/settings/hooks' element={withRouteFallback(HooksManagement)} />
+          <Route path='/settings/hooks' element={<Navigate to='/hooks' replace />} />
           <Route path='/settings/cron' element={withRouteFallback(GlobalCronSettings)} />
           <Route path='/settings/skills-hub' element={withRouteFallback(SkillsHubSettings)} />
           <Route path='/settings/display' element={withRouteFallback(DisplaySettings)} />
@@ -64,10 +87,13 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           <Route path='/settings/about' element={withRouteFallback(SystemSettings)} />
           <Route path='/settings/tools' element={withRouteFallback(ToolsSettings)} />
           <Route path='/settings/ext/:tabId' element={withRouteFallback(ExtensionSettingsPage)} />
-          <Route path='/settings' element={<Navigate to='/settings/agent' replace />} />
+          <Route path='/settings' element={<Navigate to='/settings/system' replace />} />
           <Route path='/test/components' element={withRouteFallback(ComponentsShowcase)} />
         </Route>
-        <Route path='*' element={<Navigate to={status === 'authenticated' ? '/guid' : '/login'} replace />} />
+        <Route
+          path='*'
+          element={status === 'authenticated' ? <StartupConversationRedirect /> : <Navigate to='/login' replace />}
+        />
       </Routes>
     </HashRouter>
   );

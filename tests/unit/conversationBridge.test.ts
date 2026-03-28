@@ -48,6 +48,8 @@ vi.mock('@/common', () => ({
     },
     openclawConversation: {
       getRuntime: makeChannel('openclawConversation.getRuntime'),
+      getModelInfo: makeChannel('openclawConversation.getModelInfo'),
+      setModel: makeChannel('openclawConversation.setModel'),
     },
   },
 }));

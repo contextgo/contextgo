@@ -1,21 +1,39 @@
-import { ArrowCircleLeft, ListCheckbox, Plus, Robot, SettingTwo } from '@icon-park/react';
-import { IconMoonFill, IconSunFill } from '@arco-design/web-react/icon';
+import { ipcBridge } from '@/common';
+import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
+import { changeLanguage } from '@/renderer/services/i18n';
+import type { Theme } from '@/renderer/hooks/system/useTheme';
+import {
+  Computer,
+  ConnectionPoint,
+  Down,
+  Earth,
+  Lightning,
+  Moon,
+  Plus,
+  Puzzle,
+  Robot,
+  RobotOne,
+  SettingTwo,
+  Sun,
+  Theme as ThemeIcon,
+} from '@icon-park/react';
+import { Dropdown, Menu } from '@arco-design/web-react';
 import classNames from 'classnames';
-import React, { Suspense, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
-import { Dropdown, Menu, Tooltip } from '@arco-design/web-react';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
-import { cleanupSiderTooltips, getSiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
+import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
-import { useThemeContext } from '@renderer/hooks/context/ThemeContext';
+import { useAuth } from '@renderer/hooks/context/AuthContext';
 import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
 import CreateDiscussionGroupModal from '@renderer/pages/conversation/platforms/group/CreateDiscussionGroupModal';
 import { emitter } from '@renderer/utils/emitter';
+import { isElectronDesktop, isMacOS } from '@renderer/utils/platform';
 
 const WorkspaceGroupedHistory = React.lazy(() => import('@renderer/pages/conversation/GroupedHistory'));
 const SettingsSider = React.lazy(() => import('@renderer/pages/settings/components/SettingsSider'));
@@ -25,50 +43,59 @@ interface SiderProps {
   collapsed?: boolean;
 }
 
+const LANGUAGE_OPTIONS = [
+  { value: 'zh-CN', label: '简体中文' },
+  { value: 'zh-TW', label: '繁體中文' },
+  { value: 'ja-JP', label: '日本語' },
+  { value: 'ko-KR', label: '한국어' },
+  { value: 'tr-TR', label: 'Türkçe' },
+  { value: 'en-US', label: 'English' },
+] as const;
+
+const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: string) => (
+  <div className='sider-user-menu__row'>
+    <span className='sider-user-menu__icon'>{icon}</span>
+    <span className='sider-user-menu__row-text'>{label}</span>
+    {value ? <span className='sider-user-menu__row-value'>{value}</span> : null}
+  </div>
+);
+
 const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const location = useLocation();
-  const { pathname, search, hash } = location;
+  const { pathname } = location;
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { theme, setTheme } = useThemeContext();
   const navigate = useNavigate();
   const { closePreview } = usePreviewContext();
-  const { theme, setTheme } = useThemeContext();
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
+  const [desktopUsername, setDesktopUsername] = useState('');
+  const [userMenuVisible, setUserMenuVisible] = useState(false);
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const isSettings = pathname.startsWith('/settings');
-  const lastNonSettingsPathRef = useRef('/guid');
+  const isConversationRoute = pathname.startsWith('/conversation/');
+  const isDesktopRuntime = isElectronDesktop();
+  const showDesktopChromeOverlayInset = !isMobile && !isConversationRoute && (!isDesktopRuntime || isMacOS());
   const { cliAgents, presetAssistants } = useConversationAgents();
-  const { activeTab, closeAllTabs, openTab } = useConversationTabs();
+  const { activeTab, openTab } = useConversationTabs();
+  const { user } = useAuth();
 
-  useEffect(() => {
-    if (!pathname.startsWith('/settings')) {
-      lastNonSettingsPathRef.current = `${pathname}${search}${hash}`;
-    }
-  }, [pathname, search, hash]);
-
-  const handleSettingsClick = () => {
+  const handleNavigate = (target: string) => {
     cleanupSiderTooltips();
     blurActiveElement();
-    if (isSettings) {
-      const target = lastNonSettingsPathRef.current || '/guid';
-      Promise.resolve(navigate(target)).catch((error) => {
-        console.error('Navigation failed:', error);
-      });
-    } else {
-      Promise.resolve(navigate('/settings/agent')).catch((error) => {
-        console.error('Navigation failed:', error);
-      });
-    }
+    closePreview();
+    setIsBatchMode(false);
+    Promise.resolve(navigate(target)).catch((error) => {
+      console.error('Navigation failed:', error);
+    });
     if (onSessionClick) {
       onSessionClick();
     }
   };
 
-  const handleToggleBatchMode = () => {
-    setIsBatchMode((prev) => !prev);
-  };
   const handleConversationSelect = () => {
     cleanupSiderTooltips();
     blurActiveElement();
@@ -94,9 +121,82 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     setIsBatchMode(false);
     setGroupModalVisible(true);
   };
-  const handleQuickThemeToggle = () => {
-    void setTheme(theme === 'dark' ? 'light' : 'dark');
+
+  const handleOpenSettings = () => {
+    setUserMenuVisible(false);
+    handleNavigate('/settings/system');
   };
+
+  const handleToggleDevTools = () => {
+    ipcBridge.application.openDevTools
+      .invoke()
+      .then((isOpen) => {
+        setIsDevToolsOpen(Boolean(isOpen));
+        setUserMenuVisible(false);
+      })
+      .catch((error: Error) => {
+        console.error('Failed to toggle dev tools:', error);
+      });
+  };
+
+  const handleChangeLanguage = (language: (typeof LANGUAGE_OPTIONS)[number]['value']) => {
+    changeLanguage(language).catch((error: Error) => {
+      console.error('Failed to change language:', error);
+    });
+    setUserMenuVisible(false);
+  };
+
+  useEffect(() => {
+    if (user?.username) {
+      setDesktopUsername(user.username);
+      return;
+    }
+    if (typeof window === 'undefined' || !window.electronAPI) {
+      setDesktopUsername('');
+      return;
+    }
+
+    let cancelled = false;
+    ipcBridge.application.getPath
+      .invoke({ name: 'home' })
+      .then((homePath) => {
+        if (cancelled) {
+          return;
+        }
+        setDesktopUsername(homePath.split(/[\\/]/).findLast((segment) => segment.length > 0) ?? '');
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDesktopUsername('');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.username]);
+
+  useEffect(() => {
+    ipcBridge.application.isDevToolsOpened
+      .invoke()
+      .then((isOpen) => setIsDevToolsOpen(Boolean(isOpen)))
+      .catch((error: Error) => {
+        console.error('Failed to get dev tools state:', error);
+      });
+
+    const unsubscribe = ipcBridge.application.devToolsStateChanged.on((event) => {
+      setIsDevToolsOpen(event.isOpen);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    setUserMenuVisible(false);
+  }, [pathname]);
+
   const workspaceHistoryProps = {
     collapsed,
     tooltipEnabled: collapsed && !isMobile,
@@ -105,104 +205,291 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     onBatchModeChange: setIsBatchMode,
   };
   const tooltipEnabled = collapsed && !isMobile;
-  const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
   const activeWorkspace = activeTab?.workspace || '';
-  const createMenu = (
+  const actionRowClassName = classNames(
+    'sider-entry-row flex w-full min-w-0 items-center gap-10px rounded-10px px-12px py-9px text-left transition-colors',
+    isMobile && 'sider-action-btn-mobile'
+  );
+  const actionRowActiveClassName = 'sider-entry-row--active';
+  const userDisplayName = desktopUsername || user?.username || t('common.localUser');
+  const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
+  const currentLanguageLabel =
+    LANGUAGE_OPTIONS.find((option) => option.value === i18n.language)?.label ||
+    LANGUAGE_OPTIONS.find((option) => option.value === 'en-US')?.label ||
+    'English';
+  const themeOptions: Array<{ value: Theme; label: string }> = [
+    { value: 'light', label: t('settings.lightMode') },
+    { value: 'dark', label: t('settings.darkMode') },
+  ];
+  const currentThemeLabel = themeOptions.find((option) => option.value === theme)?.label || t('settings.theme');
+  const createEntryDropdownTriggerProps = {
+    autoAlignPopupWidth: true,
+    autoFitPosition: true,
+    className: 'sider-create-menu-popup',
+    duration: 0,
+  };
+  const userMenuDropdownTriggerProps = {
+    autoAlignPopupWidth: true,
+    autoFitPosition: true,
+    className: 'sider-user-menu-popup',
+    duration: 0,
+    popupStyle: {
+      maxHeight: 'calc(100vh - 24px)',
+    },
+  };
+  const userSubMenuTriggerProps = {
+    autoFitPosition: true,
+    className: 'sider-user-submenu-popup',
+    duration: 0,
+    popupStyle: {
+      maxHeight: 'min(320px, calc(100vh - 24px))',
+      overflowY: 'auto' as const,
+    },
+  };
+  const createEntryMenu = (
     <Menu
+      className='sider-create-menu'
       onClickMenuItem={(key) => {
         if (key === 'conversation') {
           handleCreateConversation();
           return;
         }
-        if (key === 'discussion-group') {
+
+        if (key === 'group') {
           handleCreateDiscussionGroup();
         }
       }}
     >
       <Menu.Item key='conversation'>
-        <div className='flex items-center gap-8px'>
-          <Plus theme='outline' size='16' fill={iconColors.primary} />
-          <span>{t('conversation.welcome.newConversation')}</span>
+        <div className='app-icon-row'>
+          <span className='app-icon-slot'>
+            <Plus theme='outline' size='16' fill={iconColors.primary} className='app-icon' />
+          </span>
+          <span className='min-w-0 truncate'>{t('conversation.entry.conversation')}</span>
         </div>
       </Menu.Item>
-      <Menu.Item key='discussion-group'>
-        <div className='flex items-center gap-8px'>
-          <Robot theme='outline' size='16' fill={iconColors.primary} />
-          <span>{t('conversation.group.createEntry')}</span>
+      <Menu.Item key='group'>
+        <div className='app-icon-row'>
+          <span className='app-icon-slot'>
+            <Robot theme='outline' size='16' fill={iconColors.primary} className='app-icon' />
+          </span>
+          <span className='min-w-0 truncate'>{t('conversation.entry.group')}</span>
         </div>
       </Menu.Item>
     </Menu>
   );
+  const userMenu = (
+    <Menu
+      className='sider-user-menu'
+      triggerProps={userSubMenuTriggerProps}
+      onClickMenuItem={(key) => {
+        if (key === 'settings') {
+          handleOpenSettings();
+          return;
+        }
+
+        if (key === 'devtools') {
+          handleToggleDevTools();
+          return;
+        }
+
+        if (typeof key !== 'string') {
+          return;
+        }
+
+        if (key.startsWith('language:')) {
+          handleChangeLanguage(key.slice('language:'.length) as (typeof LANGUAGE_OPTIONS)[number]['value']);
+          return;
+        }
+
+        if (key.startsWith('theme:')) {
+          const nextTheme = key.slice('theme:'.length) as Theme;
+          setTheme(nextTheme).catch((error: Error) => {
+            console.error('Failed to change theme:', error);
+          });
+          setUserMenuVisible(false);
+        }
+      }}
+    >
+      <Menu.Item key='devtools'>
+        {renderUserMenuLabel(
+          <Computer theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
+          t('settings.devTools'),
+          isDevToolsOpen ? t('settings.closeDevTools') : t('settings.openDevTools')
+        )}
+      </Menu.Item>
+      <Menu.Item key='settings'>
+        {renderUserMenuLabel(
+          <SettingTwo theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
+          t('common.settings')
+        )}
+      </Menu.Item>
+      <Menu.SubMenu
+        key='language'
+        title={renderUserMenuLabel(
+          <Earth theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
+          t('settings.language'),
+          currentLanguageLabel
+        )}
+      >
+        {LANGUAGE_OPTIONS.map((option) => (
+          <Menu.Item
+            key={`language:${option.value}`}
+            className={classNames(option.value === i18n.language && 'sider-user-menu__item--active')}
+          >
+            {renderUserMenuLabel(
+              <Earth
+                theme='outline'
+                size='14'
+                fill={option.value === i18n.language ? iconColors.primary : iconColors.secondary}
+                className='app-icon shrink-0'
+              />,
+              option.label
+            )}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
+      <Menu.SubMenu
+        key='theme'
+        title={renderUserMenuLabel(
+          <ThemeIcon theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
+          t('settings.theme'),
+          currentThemeLabel
+        )}
+      >
+        {themeOptions.map((option) => (
+          <Menu.Item
+            key={`theme:${option.value}`}
+            className={classNames(option.value === theme && 'sider-user-menu__item--active')}
+          >
+            {renderUserMenuLabel(
+              option.value === 'light' ? (
+                <Sun theme='outline' size='14' fill={iconColors.primary} className='app-icon shrink-0' />
+              ) : (
+                <Moon theme='outline' size='14' fill={iconColors.primary} className='app-icon shrink-0' />
+              ),
+              option.label
+            )}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
+    </Menu>
+  );
 
   return (
-    <div className='size-full flex flex-col'>
+    <div className='size-full w-full min-w-0 flex flex-col'>
       {/* Main content area */}
-      <div className='flex-1 min-h-0 overflow-hidden'>
+      <div className='flex-1 min-h-0 w-full min-w-0 overflow-hidden'>
         {isSettings ? (
           <Suspense fallback={<div className='size-full' />}>
-            <SettingsSider collapsed={collapsed} tooltipEnabled={tooltipEnabled}></SettingsSider>
+            <div
+              className={classNames(
+                'size-full w-full min-w-0 flex flex-col sider-main-section',
+                showDesktopChromeOverlayInset && 'sider-main-section--desktop-chrome-offset'
+              )}
+            >
+              <SettingsSider collapsed={collapsed} tooltipEnabled={tooltipEnabled}></SettingsSider>
+            </div>
           </Suspense>
         ) : (
-          <div className='size-full flex flex-col'>
-            <div className='mb-8px shrink-0 flex items-center gap-8px'>
-              <Tooltip {...siderTooltipProps} content={t('common.create')} position='right'>
-                <Dropdown droplist={createMenu} trigger='click' position='bl'>
-                  <div
-                    className={classNames(
-                      collapsed
-                        ? 'h-40px w-40px rd-0.5rem flex items-center justify-center cursor-pointer shrink-0 transition-all border border-solid border-transparent hover:bg-fill-2 hover:border-[var(--color-border-2)]'
-                        : 'h-40px flex-1 flex items-center justify-start gap-10px px-12px hover:bg-hover rd-0.5rem cursor-pointer group',
-                      isMobile && (collapsed ? 'sider-action-icon-btn-mobile' : 'sider-action-btn-mobile')
-                    )}
-                  >
-                    <Plus
-                      theme='outline'
-                      size={collapsed ? '20' : '24'}
-                      fill={iconColors.primary}
-                      className='block leading-none shrink-0'
-                      style={{ lineHeight: 0 }}
-                    />
-                    {!collapsed && (
-                      <span className='collapsed-hidden font-bold text-t-primary leading-24px'>
-                        {t('common.create')}
-                      </span>
-                    )}
-                  </div>
-                </Dropdown>
-              </Tooltip>
-              <Tooltip {...siderTooltipProps} content={t('conversation.historySearch.tooltip')} position='right'>
-                <div>
-                  <ConversationSearchPopover
-                    onSessionClick={onSessionClick}
-                    onConversationSelect={handleConversationSelect}
-                    buttonClassName={classNames(isMobile && 'sider-action-icon-btn-mobile')}
-                  />
-                </div>
-              </Tooltip>
-              <Tooltip
-                {...siderTooltipProps}
-                content={isBatchMode ? t('conversation.history.batchModeExit') : t('conversation.history.batchManage')}
-                position='right'
+          <div
+            className={classNames(
+              'size-full w-full min-w-0 flex flex-col sider-main-section',
+              showDesktopChromeOverlayInset && 'sider-main-section--desktop-chrome-offset'
+            )}
+          >
+            <div className='mb-10px flex shrink-0 w-full min-w-0 flex-col gap-6px'>
+              <Dropdown
+                droplist={createEntryMenu}
+                trigger='click'
+                position='bl'
+                triggerProps={createEntryDropdownTriggerProps}
               >
-                <div
-                  className={classNames(
-                    'h-40px w-40px rd-0.5rem flex items-center justify-center cursor-pointer shrink-0 transition-all border border-solid border-transparent',
-                    isMobile && 'sider-action-icon-btn-mobile',
-                    {
-                      'hover:bg-fill-2 hover:border-[var(--color-border-2)]': !isBatchMode,
-                      'bg-[rgba(var(--primary-6),0.12)] border-[rgba(var(--primary-6),0.24)] text-primary': isBatchMode,
-                    }
-                  )}
-                  onClick={handleToggleBatchMode}
-                >
-                  <ListCheckbox
+                <button type='button' className={actionRowClassName}>
+                  <Plus
                     theme='outline'
                     size='20'
-                    className='block leading-none shrink-0'
-                    style={{ lineHeight: 0 }}
+                    fill={iconColors.primary}
+                    className='app-icon block shrink-0 leading-none'
                   />
-                </div>
-              </Tooltip>
+                  <span className='min-w-0 flex-1 truncate text-14px font-600 text-t-primary'>
+                    {t('conversation.entry.create')}
+                  </span>
+                  <Down
+                    theme='outline'
+                    size='14'
+                    fill={iconColors.secondary}
+                    className='app-icon block shrink-0 leading-none'
+                  />
+                </button>
+              </Dropdown>
+              <ConversationSearchPopover
+                onSessionClick={onSessionClick}
+                onConversationSelect={handleConversationSelect}
+                buttonLabel={t('conversation.historySearch.tooltip')}
+                buttonClassName={classNames(actionRowClassName, '!justify-start !border-none')}
+              />
+              <button
+                type='button'
+                className={classNames(actionRowClassName, pathname === '/hooks' && actionRowActiveClassName)}
+                onClick={() => handleNavigate('/hooks')}
+              >
+                <Puzzle
+                  theme='outline'
+                  size='20'
+                  fill={iconColors.primary}
+                  className='app-icon block shrink-0 leading-none'
+                />
+                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
+                  {t('settings.hooksPage', { defaultValue: 'Hooks' })}
+                </span>
+              </button>
+              <button
+                type='button'
+                className={classNames(
+                  actionRowClassName,
+                  pathname.startsWith('/connectors') && actionRowActiveClassName
+                )}
+                onClick={() => handleNavigate('/connectors')}
+              >
+                <ConnectionPoint
+                  theme='outline'
+                  size='20'
+                  fill={iconColors.primary}
+                  className='app-icon block shrink-0 leading-none'
+                />
+                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
+                  {t('settings.connectors.title')}
+                </span>
+              </button>
+              <button
+                type='button'
+                className={classNames(actionRowClassName, pathname === '/skills-hub' && actionRowActiveClassName)}
+                onClick={() => handleNavigate('/skills-hub')}
+              >
+                <Lightning
+                  theme='outline'
+                  size='20'
+                  fill={iconColors.primary}
+                  className='app-icon block shrink-0 leading-none'
+                />
+                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
+                  {t('settings.skillsHub.title')}
+                </span>
+              </button>
+              <button
+                type='button'
+                className={classNames(actionRowClassName, pathname === '/agents' && actionRowActiveClassName)}
+                onClick={() => handleNavigate('/agents')}
+              >
+                <RobotOne
+                  theme='outline'
+                  size='20'
+                  fill={iconColors.primary}
+                  className='app-icon block shrink-0 leading-none'
+                />
+                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>{t('settings.assistants')}</span>
+              </button>
             </div>
             <Suspense fallback={<div className='flex-1 min-h-0' />}>
               <WorkspaceGroupedHistory {...workspaceHistoryProps}></WorkspaceGroupedHistory>
@@ -215,7 +502,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               onCancel={() => setGroupModalVisible(false)}
               onCreated={(conversation) => {
                 setGroupModalVisible(false);
-                closeAllTabs();
                 openTab(conversation);
                 void navigate(`/conversation/${conversation.id}`);
                 emitter.emit('chat.history.refresh');
@@ -227,60 +513,43 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           </div>
         )}
       </div>
-      {/* Footer - settings button */}
-      <div className='shrink-0 sider-footer mt-auto pt-8px'>
-        <div className='flex flex-col gap-8px'>
-          {isSettings && (
-            <Tooltip
-              {...siderTooltipProps}
-              content={theme === 'dark' ? t('settings.lightMode') : t('settings.darkMode')}
-              position='right'
-            >
-              <div
-                onClick={handleQuickThemeToggle}
-                className={classNames(
-                  'flex items-center justify-start gap-10px px-12px py-8px rd-0.5rem cursor-pointer transition-colors hover:bg-hover active:bg-fill-2',
-                  isMobile && 'sider-footer-btn-mobile'
-                )}
-                aria-label={theme === 'dark' ? t('settings.lightMode') : t('settings.darkMode')}
-              >
-                {theme === 'dark' ? (
-                  <IconSunFill style={{ fontSize: 18, color: 'rgb(var(--primary-6))' }} />
-                ) : (
-                  <IconMoonFill style={{ fontSize: 18, color: 'rgb(var(--primary-6))' }} />
-                )}
-                <span className='collapsed-hidden text-t-primary'>
-                  {t('settings.theme')} · {theme === 'dark' ? t('settings.darkMode') : t('settings.lightMode')}
-                </span>
-              </div>
-            </Tooltip>
-          )}
-          <Tooltip
-            {...siderTooltipProps}
-            content={isSettings ? t('common.back') : t('common.settings')}
-            position='right'
+      <div className='sider-footer mt-auto shrink-0 pt-10px'>
+        <div className='sider-user-card-wrap'>
+          <Dropdown
+            droplist={userMenu}
+            trigger='click'
+            position='tl'
+            popupVisible={userMenuVisible}
+            onVisibleChange={setUserMenuVisible}
+            triggerProps={userMenuDropdownTriggerProps}
           >
-            <div
-              onClick={handleSettingsClick}
+            <button
+              type='button'
               className={classNames(
-                'flex items-center justify-start gap-10px px-12px py-8px rd-0.5rem cursor-pointer transition-colors',
-                isMobile && 'sider-footer-btn-mobile',
-                {
-                  'bg-[rgba(var(--primary-6),0.12)] text-primary': isSettings,
-                  'hover:bg-hover hover:shadow-sm active:bg-fill-2': !isSettings,
-                }
+                'sider-user-trigger',
+                userMenuVisible && 'sider-user-trigger--active',
+                isMobile && 'sider-footer-btn-mobile'
               )}
+              aria-expanded={userMenuVisible}
             >
-              {isSettings ? (
-                <ArrowCircleLeft className='flex' theme='outline' size='24' fill={iconColors.primary} />
-              ) : (
-                <SettingTwo className='flex' theme='outline' size='24' fill={iconColors.primary} />
-              )}
-              <span className='collapsed-hidden text-t-primary'>
-                {isSettings ? t('common.back') : t('common.settings')}
+              <span className='sider-user-trigger__avatar'>{userInitial}</span>
+              <span className='min-w-0 flex-1 text-left'>
+                <span className='block truncate text-14px font-600 text-t-primary'>{userDisplayName}</span>
+                <span className='block truncate text-12px text-t-secondary'>
+                  {currentLanguageLabel} · {currentThemeLabel}
+                </span>
               </span>
-            </div>
-          </Tooltip>
+              <Down
+                theme='outline'
+                size='16'
+                fill={iconColors.secondary}
+                className={classNames(
+                  'sider-user-trigger__chevron',
+                  userMenuVisible && 'sider-user-trigger__chevron--open'
+                )}
+              />
+            </button>
+          </Dropdown>
         </div>
       </div>
     </div>

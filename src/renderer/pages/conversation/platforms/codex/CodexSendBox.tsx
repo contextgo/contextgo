@@ -1,6 +1,6 @@
 import { ipcBridge } from '@/common';
 import type { TMessage } from '@/common/chat/chatLib';
-import { transformMessage } from '@/common/chat/chatLib';
+import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import { uuid } from '@/common/utils';
 import SendBox from '@/renderer/components/chat/sendbox';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
@@ -185,6 +185,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
       if (conversation_id !== message.conversation_id) {
         return;
       }
+      const shouldSuppressLifecycleMessage = shouldSuppressAgentLifecycleStreamMessage(message);
       // All messages from Backend are already persisted via emitAndPersistMessage
       // Frontend only needs to update UI
 
@@ -223,7 +224,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
           const statusData = message.data as { status: string; message: string };
           setCodexStatus(statusData.status);
           const transformedMessage = transformMessage(message);
-          if (transformedMessage) {
+          if (transformedMessage && !shouldSuppressLifecycleMessage) {
             addOrUpdateMessage(transformedMessage);
           }
           break;
@@ -233,7 +234,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
           hasContentInTurnRef.current = true;
           setThought({ subject: '', description: '' });
           const transformedMessage = transformMessage(message);
-          if (transformedMessage) {
+          if (transformedMessage && !shouldSuppressLifecycleMessage) {
             addOrUpdateMessage(transformedMessage);
           }
         }

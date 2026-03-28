@@ -1,5 +1,12 @@
 # Architecture
 
+相关设计文档：
+
+- `docs/tech/space-model.md`：定义目标中的 Space、Replica、Mount 模型，以及 AFFiNE 吸收方式
+- `docs/tech/mobile-remote-control.md`：定义桌面宿主 + 手机远程控制端的长期产品模型
+- `docs/tech/mobile-shell-readiness.md`：记录移动壳当前适配性和验证状态
+- `docs/tech/mobile-shell-cmd.md`：记录移动壳命令入口与构建命令路径
+
 ## Multi-Process Model
 
 AionUi is an Electron app with three types of processes:
@@ -23,6 +30,16 @@ Located in `src/process/webserver/`.
 - Express + WebSocket for real-time communication
 - JWT authentication for remote access
 - Enables network clients to access the agent UI remotely (not just local Electron window)
+
+## Remote Mobile Clients
+
+AionUi supports a remote mobile-client model through the WebUI / server runtime.
+
+- The desktop app remains the execution host when used in remote-control scenarios.
+- Android / iOS / HarmonyOS shells are native WebView containers for the existing WebUI.
+- Mobile-local file selection should upload into the desktop host through the existing HTTP upload flow, then continue processing on the host side.
+
+See `docs/tech/mobile-remote-control.md` for the long-lived product constraints behind this model.
 
 ## Run Modes
 
