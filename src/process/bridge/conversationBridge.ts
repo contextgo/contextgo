@@ -22,7 +22,7 @@ import { copyFilesToDirectory, readDirectoryRecursive } from '@process/utils';
 import { computeOpenClawIdentityHash } from '@process/utils/openclawUtils';
 import { migrateConversationToDatabase } from './migrationUtils';
 import { AssistantHookRuntime } from './services/AssistantHookRuntime';
-import { DiscussionGroupService } from './services/discussion/DiscussionGroupService';
+import { GroupConversationService } from './services/group/GroupConversationService';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
@@ -37,7 +37,7 @@ export function initConversationBridge(
   workerTaskManager: IWorkerTaskManager
 ): void {
   const assistantHookRuntime = new AssistantHookRuntime();
-  const discussionGroupService = new DiscussionGroupService(conversationService, workerTaskManager);
+  const groupConversationService = new GroupConversationService(conversationService, workerTaskManager);
   const emitConversationListChanged = (
     conversation: Pick<TChatConversation, 'id' | 'source'>,
     action: 'created' | 'updated' | 'deleted'
@@ -193,7 +193,7 @@ export function initConversationBridge(
   ipcBridge.conversation.create.provider(async (params: ICreateConversationParams): Promise<TChatConversation> => {
     const conversation =
       params.type === 'group'
-        ? await discussionGroupService.createConversation({
+        ? await groupConversationService.createConversation({
             ...(params as IDiscussionGroupCreateParams),
             source: 'aionui',
           })
@@ -318,7 +318,7 @@ export function initConversationBridge(
       }
 
       if (conversation?.type === 'group') {
-        await discussionGroupService.deleteConversation(conversation);
+        await groupConversationService.deleteConversation(conversation);
       } else {
         await conversationService.deleteConversation(id);
       }
@@ -462,7 +462,7 @@ export function initConversationBridge(
   ipcBridge.conversation.stop.provider(async ({ conversation_id }) => {
     const conversation = await conversationService.getConversation(conversation_id);
     if (conversation?.type === 'group') {
-      await discussionGroupService.stopConversation(conversation_id);
+      await groupConversationService.stopConversation(conversation_id);
       return { success: true };
     }
 
@@ -509,7 +509,7 @@ export function initConversationBridge(
 
     if (conversation?.type === 'group') {
       try {
-        await discussionGroupService.sendMessage({
+        await groupConversationService.sendMessage({
           conversationId: conversation_id,
           input: other.input,
           msgId: other.msg_id,

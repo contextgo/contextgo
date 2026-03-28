@@ -6,10 +6,11 @@
 
 import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
 import type {
-  DiscussionGroupParticipant,
-  DiscussionGroupOrchestration,
+  GroupParticipant,
+  GroupOrchestration,
   TChatConversation,
   TProviderWithModel,
+  WorkflowGroupRunState,
 } from '@/common/config/storage';
 import type { PresetAgentType } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
@@ -233,11 +234,12 @@ export const createGroupConversation = async (options: {
   model: TProviderWithModel;
   workspace?: string;
   customWorkspace?: boolean;
-  participants: DiscussionGroupParticipant[];
-  orchestration: DiscussionGroupOrchestration;
+  participants: GroupParticipant[];
+  orchestration: GroupOrchestration;
+  runState?: WorkflowGroupRunState;
 }): Promise<TChatConversation> => {
   const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
-    `discussion-group-temp-${Date.now()}`,
+    `group-temp-${Date.now()}`,
     options.workspace,
     undefined,
     options.customWorkspace
@@ -251,11 +253,12 @@ export const createGroupConversation = async (options: {
       customWorkspace,
       participants: options.participants,
       orchestration: options.orchestration,
+      runState: options.runState,
     },
     desc: customWorkspace ? workspace : '',
     createTime: Date.now(),
     modifyTime: Date.now(),
-    name: options.name || 'Discussion Group',
+    name: options.name || 'Group',
     id: options.id || uuid(),
   };
 };

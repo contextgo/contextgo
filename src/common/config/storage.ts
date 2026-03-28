@@ -165,9 +165,19 @@ export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | '
 
 export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 
+export type GroupOrchestrationKind = 'discussion' | 'workflow';
+
+export type GroupParticipantRole = 'planner' | 'writer' | 'evaluator' | 'custom';
+
+export type WorkflowGroupTemplate = 'planner-writer-evaluator';
+
+export type WorkflowGroupStage = 'planning' | 'writing' | 'evaluating' | 'completed' | 'failed';
+
+export type WorkflowGroupDecision = 'continue' | 'accept' | 'stop';
+
 export type DiscussionGroupParticipantType = 'preset-assistant' | 'cli-agent';
 
-export type DiscussionGroupParticipant = {
+export type GroupParticipant = {
   id: string;
   participantType: DiscussionGroupParticipantType;
   participantKey: string;
@@ -177,11 +187,36 @@ export type DiscussionGroupParticipant = {
   avatar?: string;
   description?: string;
   childConversationId: string;
+  role?: GroupParticipantRole;
 };
 
+export type DiscussionGroupParticipant = GroupParticipant;
+
 export type DiscussionGroupOrchestration = {
+  kind: 'discussion';
   mode: DiscussionGroupMode;
   rounds: 1 | 2;
+};
+
+export type WorkflowGroupOrchestration = {
+  kind: 'workflow';
+  template: WorkflowGroupTemplate;
+  maxIterations: number;
+  scoreTarget?: number;
+  artifactPath?: string;
+};
+
+export type GroupOrchestration = DiscussionGroupOrchestration | WorkflowGroupOrchestration;
+
+export type WorkflowGroupRunState = {
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
+  stage: WorkflowGroupStage;
+  iteration: number;
+  latestScore?: number;
+  latestDecision?: WorkflowGroupDecision;
+  artifactPath?: string;
+  activeParticipantId?: string;
+  updatedAt: number;
 };
 
 export type ConversationGroupMeta = {
@@ -189,17 +224,32 @@ export type ConversationGroupMeta = {
   participantId: string;
   participantName: string;
   participantAvatar?: string;
+  participantRole?: GroupParticipantRole;
   hiddenFromHistory?: boolean;
 };
 
-export type MessageGroupMeta = {
+type BaseMessageGroupMeta = {
   participantId: string;
   participantName: string;
   participantAvatar?: string;
   childConversationId?: string;
+  participantRole?: GroupParticipantRole;
+};
+
+export type DiscussionMessageGroupMeta = BaseMessageGroupMeta & {
+  kind?: 'discussion';
   mode: DiscussionGroupMode;
   round: number;
 };
+
+export type WorkflowMessageGroupMeta = BaseMessageGroupMeta & {
+  kind: 'workflow';
+  template: WorkflowGroupTemplate;
+  stage: WorkflowGroupStage;
+  iteration: number;
+};
+
+export type MessageGroupMeta = DiscussionMessageGroupMeta | WorkflowMessageGroupMeta;
 
 interface IChatConversation<T, Extra> {
   createTime: number;
@@ -252,7 +302,7 @@ export type TChatConversation =
         sessionMode?: string;
         /** Explicit marker for temporary health-check conversations */
         isHealthCheck?: boolean;
-        /** Discussion group child conversation metadata */
+        /** Group child conversation metadata */
         groupMeta?: ConversationGroupMeta;
       }
     >
@@ -299,7 +349,7 @@ export type TChatConversation =
           deferInitialWorkspaceLoad?: boolean;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
+          /** Group child conversation metadata */
           groupMeta?: ConversationGroupMeta;
         }
       >,
@@ -334,7 +384,7 @@ export type TChatConversation =
           codexModel?: string;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
+          /** Group child conversation metadata */
           groupMeta?: ConversationGroupMeta;
         }
       >,
@@ -399,7 +449,7 @@ export type TChatConversation =
           archivedAt?: number;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
+          /** Group child conversation metadata */
           groupMeta?: ConversationGroupMeta;
         }
       >,
@@ -427,7 +477,7 @@ export type TChatConversation =
           archivedAt?: number;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
+          /** Group child conversation metadata */
           groupMeta?: ConversationGroupMeta;
         }
       >,
@@ -438,8 +488,9 @@ export type TChatConversation =
       {
         workspace?: string;
         customWorkspace?: boolean;
-        participants: DiscussionGroupParticipant[];
-        orchestration: DiscussionGroupOrchestration;
+        participants: GroupParticipant[];
+        orchestration: GroupOrchestration;
+        runState?: WorkflowGroupRunState;
         /** Whether this conversation is pinned */
         pinned?: boolean;
         /** Pin timestamp in milliseconds */

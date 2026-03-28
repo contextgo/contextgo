@@ -19,9 +19,11 @@ import type {
   TProviderWithModel,
   ICssTheme,
   ConversationGroupMeta,
-  DiscussionGroupMode,
   DiscussionGroupParticipant,
   DiscussionGroupParticipantType,
+  GroupOrchestration,
+  GroupParticipantRole,
+  WorkflowGroupRunState,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
 import type {
@@ -882,15 +884,14 @@ export interface ICreateConversationExtra {
   };
   /** Explicit marker for temporary health-check conversations */
   isHealthCheck?: boolean;
-  /** Discussion group child conversation metadata */
+  /** Group child conversation metadata */
   groupMeta?: ConversationGroupMeta;
-  /** Discussion group participants */
-  participants?: Array<IDiscussionGroupParticipantCreateParams | DiscussionGroupParticipant>;
-  /** Discussion orchestration */
-  orchestration?: {
-    mode: DiscussionGroupMode;
-    rounds?: 1 | 2;
-  };
+  /** Group participants */
+  participants?: Array<IGroupParticipantCreateParams | DiscussionGroupParticipant>;
+  /** Group orchestration */
+  orchestration?: GroupOrchestration;
+  /** Workflow runtime state for long-running group runs */
+  runState?: WorkflowGroupRunState;
 }
 
 export interface ICreateConversationParams {
@@ -905,7 +906,7 @@ export type IAssistantConversationCreateParams = ICreateConversationParams & {
   type: NonGroupConversationType;
 };
 
-export interface IDiscussionGroupParticipantCreateParams {
+export interface IGroupParticipantCreateParams {
   id: string;
   participantType: DiscussionGroupParticipantType;
   participantKey: string;
@@ -914,15 +915,20 @@ export interface IDiscussionGroupParticipantCreateParams {
   name: string;
   avatar?: string;
   description?: string;
+  role?: GroupParticipantRole;
   conversation: IAssistantConversationCreateParams;
 }
 
-export type IDiscussionGroupCreateParams = ICreateConversationParams & {
+export type IDiscussionGroupParticipantCreateParams = IGroupParticipantCreateParams;
+
+export type IGroupConversationCreateParams = ICreateConversationParams & {
   type: 'group';
   extra: ICreateConversationExtra & {
-    participants: IDiscussionGroupParticipantCreateParams[];
+    participants: IGroupParticipantCreateParams[];
   };
 };
+
+export type IDiscussionGroupCreateParams = IGroupConversationCreateParams;
 interface IResetConversationParams {
   id?: string;
   gemini?: {
