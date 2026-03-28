@@ -24,6 +24,8 @@
   "copySuccess": "コピーしました",
   "copyFailed": "コピーに失敗しました",
   "download": "ダウンロード",
+  "import": "インポート",
+  "install": "インストール",
   "close": "閉じる",
   "retry": "再試行",
   "reload": "再読み込み",
@@ -57,6 +59,9 @@
   "localUser": "ローカルユーザー",
   "more": "その他",
   "refresh": "更新",
+  "refreshSuccess": "更新しました",
+  "processing": "処理中...",
+  "name": "名前",
   "rendererCrash": {
     "title": "このページは描画の完了前にクラッシュしました",
     "description": "レンダラーエラーにより現在の画面が中断されました。ページを再読み込みするか、診断情報をコピーして調査に利用できます。",

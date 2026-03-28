@@ -16,10 +16,7 @@
     "none": "Hiçbiri",
     "quickActionsTitle": "ContextGo neler yapabilir?",
     "quickActionFeedback": "Geri bildirim veya öneriniz mi var?",
-    "quickActionStar": "Bizi beğendiniz mi? Yıldız verin!",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "Topluluk Skills'lerini ihtiyaç duyduğunuzda arayın ve etkinleştirin. Bir kez yapılandırın, tüm Agent'larda kullanılabilir.",
-    "skillsMarketDetails": "Ayrıntılar >>"
+    "quickActionStar": "Bizi beğendiniz mi? Yıldız verin!"
   },
   "history": {
     "today": "Bugün",

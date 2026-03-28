@@ -16,10 +16,7 @@
     "none": "无",
     "quickActionsTitle": "ContextGo 能做什么？",
     "quickActionFeedback": "想吐槽或提建议?",
-    "quickActionStar": "喜欢我们？点个星吧",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "按需搜索并调用社区 Skills，一次配置，所有Agent通用。",
-    "skillsMarketDetails": "详情 >>"
+    "quickActionStar": "喜欢我们？点个星吧"
   },
   "history": {
     "today": "今天",

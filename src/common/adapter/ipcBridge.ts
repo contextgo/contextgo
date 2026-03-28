@@ -336,9 +336,39 @@ export const fs = {
     'add-custom-external-path'
   ),
   removeCustomExternalPath: bridge.buildProvider<IBridgeResponse, { path: string }>('remove-custom-external-path'),
-  // Skills Market: inject/remove the aionui-skills builtin skill
-  enableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('enable-skills-market'),
-  disableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('disable-skills-market'),
+  // Skill Market: remote catalog search and package install
+  searchSkillMarket: bridge.buildProvider<
+    IBridgeResponse<{
+      items: Array<{
+        id: string;
+        name: string;
+        displayName: string;
+        version: string;
+        author: string;
+        description: string;
+        categories: string[];
+        tags: string[];
+        homepage?: string;
+        readmeUrl?: string;
+        archives: Array<{ source: string; relativePath: string; label?: string }>;
+        popularity: number;
+        installs: number;
+        stars: number;
+      }>;
+      total: number;
+      totalAvailable: number;
+      siteUrl: string;
+      pageSize: number;
+      featuredCount: number;
+      categories: string[];
+      sources: Record<string, number>;
+    }>,
+    { query?: string; limit?: number; offset?: number; forceRefresh?: boolean }
+  >('search-skill-market'),
+  installSkillMarketSkill: bridge.buildProvider<
+    IBridgeResponse<{ skillName: string; installedPath: string; archiveUrl: string }>,
+    { skillId: string; archive?: { source: string; relativePath: string; label?: string } }
+  >('install-skill-market-skill'),
 };
 
 export const fileWatch = {

@@ -16,10 +16,7 @@
     "none": "없음",
     "quickActionsTitle": "ContextGo로 무엇을 할 수 있나요?",
     "quickActionFeedback": "피드백이나 제안이 있으신가요?",
-    "quickActionStar": "마음에 드시나요? 별을 주세요!",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "커뮤니티 Skills를 필요에 따라 검색하고 활성화. 한 번 설정하면 모든 Agent에서 사용 가능.",
-    "skillsMarketDetails": "자세히 >>"
+    "quickActionStar": "마음에 드시나요? 별을 주세요!"
   },
   "history": {
     "today": "오늘",
