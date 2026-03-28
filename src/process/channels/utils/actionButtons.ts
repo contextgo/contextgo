@@ -5,15 +5,9 @@
  */
 
 import type { IActionButton } from '../types';
-import { buildAgentSelectionCallbackToken } from './agentSelection';
+import { buildAgentSelectionCallbackToken, type ChannelSelectableAgent } from './agentSelection';
 
-export type GenericAgentButtonInfo = {
-  key: string;
-  backend: string;
-  emoji: string;
-  name: string;
-  customAgentId?: string;
-};
+export type GenericAgentButtonInfo = ChannelSelectableAgent;
 
 function row(...buttons: IActionButton[]): IActionButton[][] {
   return [buttons];
@@ -33,7 +27,10 @@ export function buildMainMenuActionButtons(): IActionButton[][] {
 }
 
 export function buildPairingCodeActionButtons(): IActionButton[][] {
-  return [[{ label: '🔄 Refresh Code', action: 'pairing.refresh' }], [{ label: '❓ Pairing Help', action: 'pairing.help' }]];
+  return [
+    [{ label: '🔄 Refresh Code', action: 'pairing.refresh' }],
+    [{ label: '❓ Pairing Help', action: 'pairing.help' }],
+  ];
 }
 
 export function buildPairingStatusActionButtons(): IActionButton[][] {
@@ -73,10 +70,7 @@ export function buildResponseActionButtons(): IActionButton[][] {
 }
 
 export function buildErrorRecoveryActionButtons(): IActionButton[][] {
-  return row(
-    { label: '🔄 Retry', action: 'chat.regenerate' },
-    { label: '🆕 New Session', action: 'session.new' }
-  );
+  return row({ label: '🔄 Retry', action: 'chat.regenerate' }, { label: '🆕 New Session', action: 'session.new' });
 }
 
 export function buildToolConfirmationActionButtons(

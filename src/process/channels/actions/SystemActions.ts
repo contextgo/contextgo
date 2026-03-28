@@ -12,7 +12,6 @@ import { conversationServiceSingleton } from '@/process/services/conversationSer
 import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
 import { getChannelManager } from '../core/ChannelManager';
-import type { AgentDisplayInfo } from '../plugins/telegram/TelegramKeyboards';
 import {
   createAgentSelectionKeyboard,
   createHelpKeyboard,
@@ -26,6 +25,7 @@ import {
   buildHelpActionButtons,
   buildMainMenuActionButtons,
   buildSessionControlActionButtons,
+  type GenericAgentButtonInfo,
 } from '../utils/actionButtons';
 import {
   createAgentSelectionCard,
@@ -82,6 +82,24 @@ const resolveSavedOpenClawAgent = (savedAgent: unknown) => {
   };
 };
 
+function usesActionButtons(platform: PluginType): boolean {
+  return platform === 'slack' || platform === 'discord';
+}
+
+function getPlatformDisplayName(platform: PluginType): string {
+  return platform === 'slack'
+    ? 'Slack'
+    : platform === 'discord'
+      ? 'Discord'
+      : platform === 'lark'
+        ? 'Lark/Feishu'
+        : platform === 'dingtalk'
+          ? 'DingTalk'
+          : platform === 'weixin'
+            ? 'WeChat'
+            : 'Telegram';
+}
+
 /**
  * Get the default model for Channel assistant (Telegram/Lark)
  * Reads from saved config or falls back to default Gemini model
@@ -105,13 +123,15 @@ export async function getChannelDefaultModel(platform: PluginType): Promise<TPro
     const savedModel =
       platform === 'lark'
         ? await ProcessConfig.get('assistant.lark.defaultModel')
-        : platform === 'slack'
-          ? await ProcessConfig.get('assistant.slack.defaultModel')
-          : platform === 'dingtalk'
-            ? await ProcessConfig.get('assistant.dingtalk.defaultModel')
-            : platform === 'weixin'
-              ? await ProcessConfig.get('assistant.weixin.defaultModel')
-              : await ProcessConfig.get('assistant.telegram.defaultModel');
+        : platform === 'discord'
+          ? await ProcessConfig.get('assistant.discord.defaultModel')
+          : platform === 'slack'
+            ? await ProcessConfig.get('assistant.slack.defaultModel')
+            : platform === 'dingtalk'
+              ? await ProcessConfig.get('assistant.dingtalk.defaultModel')
+              : platform === 'weixin'
+                ? await ProcessConfig.get('assistant.weixin.defaultModel')
+                : await ProcessConfig.get('assistant.telegram.defaultModel');
     if (savedModel?.id && savedModel?.useModel) {
       // Google Auth is frontend-only (OAuth browser flow), not usable in channels.
       // Fall through to find a provider with a valid API key instead.
@@ -213,18 +233,32 @@ export const handleSessionNew: ActionHandler = async (context) => {
 
   const platform = context.platform;
   const source =
-    platform === 'lark' ? 'lark' : platform === 'dingtalk' ? 'dingtalk' : platform === 'weixin' ? 'weixin' : 'telegram';
+    platform === 'lark'
+      ? 'lark'
+      : platform === 'slack'
+        ? 'slack'
+        : platform === 'discord'
+          ? 'discord'
+          : platform === 'dingtalk'
+            ? 'dingtalk'
+            : platform === 'weixin'
+              ? 'weixin'
+              : 'telegram';
 
   // Selected agent (defaults to Gemini)
   let savedAgent: unknown = undefined;
   try {
     savedAgent = await (platform === 'lark'
       ? ProcessConfig.get('assistant.lark.agent')
-      : platform === 'dingtalk'
-        ? ProcessConfig.get('assistant.dingtalk.agent')
-        : platform === 'weixin'
-          ? ProcessConfig.get('assistant.weixin.agent')
-          : ProcessConfig.get('assistant.telegram.agent'));
+      : platform === 'slack'
+        ? ProcessConfig.get('assistant.slack.agent')
+        : platform === 'discord'
+          ? ProcessConfig.get('assistant.discord.agent')
+          : platform === 'dingtalk'
+            ? ProcessConfig.get('assistant.dingtalk.agent')
+            : platform === 'weixin'
+              ? ProcessConfig.get('assistant.weixin.agent')
+              : ProcessConfig.get('assistant.telegram.agent'));
   } catch {
     // ignore
   }
@@ -324,7 +358,7 @@ export const handleSessionNew: ActionHandler = async (context) => {
   const markup =
     context.platform === 'lark'
       ? createMainMenuCard()
-      : context.platform === 'slack'
+      : usesActionButtons(context.platform)
         ? undefined
         : context.platform === 'dingtalk'
           ? createDingTalkMainMenuCard()
@@ -334,7 +368,7 @@ export const handleSessionNew: ActionHandler = async (context) => {
     text: `🆕 <b>New Session Created</b>\n\nSession ID: <code>${session.id.slice(-8)}</code>\n\nYou can start a new conversation now!`,
     parseMode: 'HTML',
     ...(markup ? { replyMarkup: markup } : {}),
-    ...(context.platform === 'slack' ? { buttons: buildMainMenuActionButtons() } : {}),
+    ...(usesActionButtons(context.platform) ? { buttons: buildMainMenuActionButtons() } : {}),
   });
 };
 
@@ -385,7 +419,7 @@ export const handleSessionStatus: ActionHandler = async (context) => {
     });
   }
 
-  if (context.platform === 'slack') {
+  if (usesActionButtons(context.platform)) {
     if (!session) {
       return createSuccessResponse({
         type: 'text',
@@ -444,10 +478,11 @@ export const handleSessionStatus: ActionHandler = async (context) => {
  * Handle help.show - Show help menu
  */
 export const handleHelpShow: ActionHandler = async (context) => {
+  const platformName = getPlatformDisplayName(context.platform);
   const helpText = [
     '❓ <b>ContextGo Assistant</b>',
     '',
-    'A remote assistant to interact with ContextGo via Slack.',
+    `A remote assistant to interact with ContextGo via ${platformName}.`,
     '',
     '<b>Common Actions:</b>',
     '• 🆕 New Chat - Start a new session',
@@ -471,7 +506,7 @@ export const handleHelpShow: ActionHandler = async (context) => {
       replyMarkup: createDingTalkHelpCard(),
     });
   }
-  if (context.platform === 'slack') {
+  if (usesActionButtons(context.platform)) {
     return createSuccessResponse({
       type: 'text',
       text: helpText,
@@ -524,7 +559,7 @@ export const handleHelpFeatures: ActionHandler = async (context) => {
       replyMarkup: createDingTalkFeaturesCard(),
     });
   }
-  if (context.platform === 'slack') {
+  if (usesActionButtons(context.platform)) {
     return createSuccessResponse({
       type: 'text',
       text: featuresText,
@@ -544,6 +579,7 @@ export const handleHelpFeatures: ActionHandler = async (context) => {
  * Handle help.pairing - Show pairing guide
  */
 export const handleHelpPairing: ActionHandler = async (context) => {
+  const platformName = getPlatformDisplayName(context.platform);
   const pairingGuideText = [
     '🔗 <b>Pairing Guide</b>',
     '',
@@ -556,7 +592,7 @@ export const handleHelpPairing: ActionHandler = async (context) => {
     '<b>Notes:</b>',
     '• Pairing code valid for 10 minutes',
     '• ContextGo app must be running',
-    '• One Slack account can only pair once',
+    `• One ${platformName} account can only pair once`,
   ].join('\n');
 
   if (context.platform === 'lark') {
@@ -573,7 +609,7 @@ export const handleHelpPairing: ActionHandler = async (context) => {
       replyMarkup: createDingTalkPairingGuideCard(),
     });
   }
-  if (context.platform === 'slack') {
+  if (usesActionButtons(context.platform)) {
     return createSuccessResponse({
       type: 'text',
       text: pairingGuideText,
@@ -621,7 +657,7 @@ export const handleHelpTips: ActionHandler = async (context) => {
       replyMarkup: createDingTalkTipsCard(),
     });
   }
-  if (context.platform === 'slack') {
+  if (usesActionButtons(context.platform)) {
     return createSuccessResponse({
       type: 'text',
       text: tipsText,
@@ -663,7 +699,7 @@ export const handleSettingsShow: ActionHandler = async (context) => {
       replyMarkup: createDingTalkSettingsCard(),
     });
   }
-  if (context.platform === 'slack') {
+  if (usesActionButtons(context.platform)) {
     return createSuccessResponse({
       type: 'text',
       text: settingsText,
@@ -717,7 +753,7 @@ export const handleAgentShow: ActionHandler = async (context) => {
     });
   }
 
-  if (context.platform === 'slack') {
+  if (usesActionButtons(context.platform)) {
     return createSuccessResponse({
       type: 'text',
       text: [
@@ -793,7 +829,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
     const markup =
       context.platform === 'lark'
         ? createMainMenuCard()
-        : context.platform === 'slack'
+        : usesActionButtons(context.platform)
           ? undefined
           : context.platform === 'dingtalk'
             ? createDingTalkMainMenuCard()
@@ -803,7 +839,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
       text: `✓ Already using <b>${selectedAgentName}</b>`,
       parseMode: 'HTML',
       ...(markup ? { replyMarkup: markup } : {}),
-      ...(context.platform === 'slack' ? { buttons: buildMainMenuActionButtons() } : {}),
+      ...(usesActionButtons(context.platform) ? { buttons: buildMainMenuActionButtons() } : {}),
     });
   }
 
@@ -854,7 +890,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
   const markup =
     context.platform === 'lark'
       ? createMainMenuCard()
-      : context.platform === 'slack'
+      : usesActionButtons(context.platform)
         ? undefined
         : context.platform === 'dingtalk'
           ? createDingTalkMainMenuCard()
@@ -870,7 +906,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
     ].join('\n'),
     parseMode: 'HTML',
     ...(markup ? { replyMarkup: markup } : {}),
-    ...(context.platform === 'slack' ? { buttons: buildMainMenuActionButtons() } : {}),
+    ...(usesActionButtons(context.platform) ? { buttons: buildMainMenuActionButtons() } : {}),
   });
 };
 type SavedChannelAgentConfig = {
@@ -884,14 +920,21 @@ type SavedChannelAgentConfig = {
 
 function getChannelAgentConfigPath(
   platform: PluginType
-): 'assistant.lark.agent' | 'assistant.dingtalk.agent' | 'assistant.weixin.agent' | 'assistant.telegram.agent' {
+):
+  | 'assistant.lark.agent'
+  | 'assistant.discord.agent'
+  | 'assistant.dingtalk.agent'
+  | 'assistant.weixin.agent'
+  | 'assistant.telegram.agent' {
   return platform === 'lark'
     ? 'assistant.lark.agent'
-    : platform === 'dingtalk'
-      ? 'assistant.dingtalk.agent'
-      : platform === 'weixin'
-        ? 'assistant.weixin.agent'
-        : 'assistant.telegram.agent';
+    : platform === 'discord'
+      ? 'assistant.discord.agent'
+      : platform === 'dingtalk'
+        ? 'assistant.dingtalk.agent'
+        : platform === 'weixin'
+          ? 'assistant.weixin.agent'
+          : 'assistant.telegram.agent';
 }
 
 function normalizeChannelAgentConfig(value: unknown): SavedChannelAgentConfig {
@@ -926,16 +969,20 @@ async function getSavedChannelAgentConfig(platform: PluginType): Promise<SavedCh
   }
 }
 
-function getConversationSource(platform: PluginType): 'telegram' | 'slack' | 'lark' | 'dingtalk' | 'weixin' {
+function getConversationSource(
+  platform: PluginType
+): 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' {
   return platform === 'lark'
     ? 'lark'
-    : platform === 'slack'
-      ? 'slack'
-    : platform === 'dingtalk'
-      ? 'dingtalk'
-      : platform === 'weixin'
-        ? 'weixin'
-        : 'telegram';
+    : platform === 'discord'
+      ? 'discord'
+      : platform === 'slack'
+        ? 'slack'
+        : platform === 'dingtalk'
+          ? 'dingtalk'
+          : platform === 'weixin'
+            ? 'weixin'
+            : 'telegram';
 }
 
 async function createChannelConversation(
@@ -1071,9 +1118,9 @@ function getAgentEmoji(backend: string): string {
  * Get available agents for channel selection
  * Filters detected agents to only those supported by channels
  */
-function getAvailableChannelAgents(): AgentDisplayInfo[] {
+function getAvailableChannelAgents(): GenericAgentButtonInfo[] {
   const detectedAgents = acpDetector.getDetectedAgents();
-  const availableAgents: AgentDisplayInfo[] = [];
+  const availableAgents: GenericAgentButtonInfo[] = [];
   const seenKeys = new Set<string>();
 
   const addAgent = (backend: string, name: string, customAgentId?: string) => {
