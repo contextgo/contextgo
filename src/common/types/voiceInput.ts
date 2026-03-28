@@ -2,6 +2,10 @@ export const VOICE_INPUT_PROVIDER_IDS = ['dashscope', 'volcengine', 'openWhisper
 
 export type VoiceInputProviderId = (typeof VOICE_INPUT_PROVIDER_IDS)[number];
 
+export const VOICE_INPUT_EXTERNAL_OPTION_IDS = ['wechat-input-method'] as const;
+
+export type VoiceInputExternalOptionId = (typeof VOICE_INPUT_EXTERNAL_OPTION_IDS)[number];
+
 export const VOICE_INPUT_OPEN_WHISPER_MODEL_IDS = ['tiny', 'base', 'small', 'medium', 'large-v3-turbo'] as const;
 
 export type VoiceInputOpenWhisperModelId = (typeof VOICE_INPUT_OPEN_WHISPER_MODEL_IDS)[number];
@@ -13,6 +17,14 @@ export type VoiceInputTriggerMode = (typeof VOICE_INPUT_TRIGGER_MODES)[number];
 export const VOICE_INPUT_REGIONS = ['beijing', 'singapore'] as const;
 
 export type VoiceInputRegion = (typeof VOICE_INPUT_REGIONS)[number];
+
+export type VoiceInputExternalOption = {
+  id: VoiceInputExternalOptionId;
+  detected: boolean;
+  installedPath?: string;
+  bundleId?: string;
+  downloadUrl?: string;
+};
 
 export type VoiceInputDashScopeConfig = {
   apiKey: string;

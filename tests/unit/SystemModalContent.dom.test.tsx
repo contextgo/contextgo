@@ -52,6 +52,7 @@ vi.mock('@icon-park/react', () => ({
   FolderOpen: () => <span data-testid='icon-folder-open' />,
   FolderSearch: () => <span data-testid='icon-folder-search' />,
   Link: () => <span data-testid='icon-link' />,
+  LinkCloud: () => <span data-testid='icon-link-cloud' />,
 }));
 
 vi.mock('@/renderer/components/settings/LanguageSwitcher', () => ({

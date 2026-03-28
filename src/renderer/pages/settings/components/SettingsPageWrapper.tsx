@@ -40,12 +40,6 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
   const menuItems = React.useMemo(() => {
     const builtins: NavItem[] = [
       {
-        id: 'hooks',
-        label: t('settings.hooksPage', { defaultValue: 'Hooks' }),
-        icon: <Puzzle theme='outline' size='16' className='app-icon' />,
-        path: 'hooks',
-      },
-      {
         id: 'cron',
         label: t('cron.scheduledTasks'),
         icon: <AlarmClock theme='outline' size='16' className='app-icon' />,

@@ -13,6 +13,16 @@ vi.mock('../../src/process/webserver/auth/repository/UserRepository', () => ({
   UserRepository: { findById: vi.fn() },
 }));
 
+vi.mock('../../src/process/webserver/auth/service/CloudSessionService', () => ({
+  CloudSessionService: {
+    authenticateRequest: vi.fn(),
+    authenticateSessionToken: vi.fn(),
+    isCloudRequest: vi.fn(
+      (req: { headers: Record<string, string | undefined> }) => req.headers.host === 'remote.contextgo.io'
+    ),
+  },
+}));
+
 describe('extractWebSocketToken – cookie parsing with special characters', () => {
   let TokenMiddleware: typeof import('../../src/process/webserver/auth/middleware/TokenMiddleware').TokenMiddleware;
 
@@ -67,5 +77,23 @@ describe('extractWebSocketToken – cookie parsing with special characters', () 
       cookie: 'aionui-session=cookietoken',
     });
     expect(TokenMiddleware.extractWebSocketToken(req)).toBe('headertoken');
+  });
+
+  it('prefers the cloud session cookie for remote contextgo hosts', () => {
+    const req = fakeReq({
+      host: 'remote.contextgo.io',
+      cookie: 'aionui-session=localtoken; contextgo_session=cloudtoken',
+    });
+
+    expect(TokenMiddleware.extractWebSocketToken(req)).toBe('cloudtoken');
+  });
+
+  it('keeps preferring the local session cookie on localhost', () => {
+    const req = fakeReq({
+      host: '127.0.0.1:25808',
+      cookie: 'aionui-session=localtoken; contextgo_session=cloudtoken',
+    });
+
+    expect(TokenMiddleware.extractWebSocketToken(req)).toBe('localtoken');
   });
 });

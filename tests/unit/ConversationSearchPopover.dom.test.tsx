@@ -30,6 +30,14 @@ vi.mock('../../src/renderer/hooks/usePresetAssistantInfo', () => ({
   usePresetAssistantInfo: () => ({ info: null }),
 }));
 
+vi.mock('../../src/renderer/hooks/context/ConversationHistoryContext', () => ({
+  useConversationHistoryContext: () => ({
+    conversations: [],
+    discussionChildConversationsByParentId: new Map(),
+    groupedHistory: [],
+  }),
+}));
+
 vi.mock('../../src/renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
   useOptionalConversationTabs: () => ({
     openTab: openTabMock,

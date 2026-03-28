@@ -5,12 +5,16 @@
  */
 
 import { ipcBridge } from '@/common';
+import type { TChatConversation } from '@/common/config/storage';
 import type { IMessageSearchItem } from '@/common/types/database';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
+import { useConversationHistoryContext } from '@/renderer/hooks/context/ConversationHistoryContext';
 import { useOptionalConversationTabs } from '@/renderer/pages/conversation/hooks/ConversationTabsContext';
 import { useCronJobsMap } from '@/renderer/pages/cron';
+import { getActivityTime } from '@/renderer/utils/chat/timeline';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { blockMobileInputFocus, blurActiveElement } from '@/renderer/utils/ui/focus';
+import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
 import { Empty, Spin } from '@arco-design/web-react';
 import { CloseSmall, MessageOne, Search } from '@icon-park/react';
 import classNames from 'classnames';
@@ -22,6 +26,7 @@ import './ConversationSearchPopover.css';
 
 const PAGE_SIZE = 20;
 const MAX_RECENT_SEARCHES = 8;
+const MAX_RECENT_CONVERSATIONS = 8;
 const RECENT_SEARCH_STORAGE_KEY = 'conversation.historySearch.recentKeywords';
 const SNIPPET_MAX_LENGTH = 110;
 const SNIPPET_PREFIX_CONTEXT_LENGTH = 34;
@@ -104,7 +109,7 @@ type ConversationSearchPanelProps = {
   inputAutoFocus?: boolean;
 };
 
-const ConversationAgentMark: React.FC<{ conversation: IMessageSearchItem['conversation'] }> = ({ conversation }) => {
+const ConversationAgentMark: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
   const { info: assistantInfo } = usePresetAssistantInfo(conversation);
 
   if (assistantInfo) {
@@ -150,6 +155,7 @@ const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const conversationTabs = useOptionalConversationTabs();
+  const { conversations } = useConversationHistoryContext();
   const { markAsRead } = useCronJobsMap();
   const [keyword, setKeyword] = useState('');
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
@@ -226,6 +232,10 @@ const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
     void runSearch(0, false);
   }, [runSearch]);
 
+  const recentConversations = useMemo(() => {
+    return conversations.toSorted((a, b) => getActivityTime(b) - getActivityTime(a)).slice(0, MAX_RECENT_CONVERSATIONS);
+  }, [conversations]);
+
   useEffect(() => {
     if (!debouncedKeyword) return;
     const normalized = debouncedKeyword.trim();
@@ -257,31 +267,42 @@ const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
     void runSearch(page + 1, true);
   }, [debouncedKeyword, hasMore, loading, loadingMore, page, runSearch]);
 
-  const handleResultClick = useCallback(
-    async (item: IMessageSearchItem) => {
+  const handleConversationOpen = useCallback(
+    async (conversation: TChatConversation, targetMessageId?: string) => {
       blockMobileInputFocus();
       blurActiveElement();
 
       onConversationSelect?.();
-      markAsRead(item.conversation.id);
+      markAsRead(conversation.id);
 
       if (conversationTabs) {
         const { openTab } = conversationTabs;
-        openTab(item.conversation);
+        openTab(conversation);
       }
 
-      await Promise.resolve(
-        navigate(`/conversation/${item.conversation.id}`, {
-          state: {
-            targetMessageId: item.messageId,
-            fromConversationSearch: true,
-          },
-        })
-      );
+      if (targetMessageId) {
+        await Promise.resolve(
+          navigate(`/conversation/${conversation.id}`, {
+            state: {
+              targetMessageId,
+              fromConversationSearch: true,
+            },
+          })
+        );
+      } else {
+        await Promise.resolve(navigate(`/conversation/${conversation.id}`));
+      }
 
       onSessionClick?.();
     },
     [conversationTabs, markAsRead, navigate, onConversationSelect, onSessionClick]
+  );
+
+  const handleResultClick = useCallback(
+    async (item: IMessageSearchItem) => {
+      await handleConversationOpen(item.conversation, item.messageId);
+    },
+    [handleConversationOpen]
   );
 
   const handleClearKeyword = useCallback(() => {
@@ -297,22 +318,76 @@ const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
   const resultContent = useMemo(() => {
     if (!debouncedKeyword) {
       return (
-        <div className='conversation-search-modal__state'>
-          <div className='conversation-search-modal__state-content'>
-            <span className='text-13px'>{t('conversation.historySearch.idle')}</span>
-            {recentKeywords.length > 0 ? (
-              <div className='conversation-search-modal__recent-wrap'>
-                {recentKeywords.map((item) => (
-                  <button
-                    key={item}
-                    type='button'
-                    className='conversation-search-modal__recent-chip'
-                    onClick={() => setKeyword(item)}
-                  >
-                    {item}
-                  </button>
-                ))}
+        <div className='h-full min-h-0 overflow-y-auto overflow-x-hidden pr-4px'>
+          <div className='conversation-search-modal__idle-layout'>
+            <div className='conversation-search-modal__state'>
+              <div className='conversation-search-modal__state-content'>
+                <span className='text-13px'>{t('conversation.historySearch.idle')}</span>
+                {recentKeywords.length > 0 ? (
+                  <div className='conversation-search-modal__recent-wrap'>
+                    {recentKeywords.map((item) => (
+                      <button
+                        key={item}
+                        type='button'
+                        className='conversation-search-modal__recent-chip'
+                        onClick={() => setKeyword(item)}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
+            </div>
+
+            {recentConversations.length > 0 ? (
+              <section className='conversation-search-modal__section'>
+                <div className='conversation-search-modal__section-header'>
+                  <div className='conversation-search-modal__section-title'>
+                    {t('conversation.historySearch.recentConversations')}
+                  </div>
+                </div>
+                <div className='conversation-search-modal__results flex flex-col'>
+                  {recentConversations.map((conversation) => {
+                    const subtitle =
+                      getConversationWorkspacePath(conversation) ||
+                      (conversation.type === 'group'
+                        ? t('conversation.entry.group')
+                        : t('conversation.entry.conversation'));
+
+                    return (
+                      <button
+                        key={conversation.id}
+                        type='button'
+                        className={classNames(
+                          'conversation-search-modal__result w-full text-left cursor-pointer transition-all duration-150',
+                          'focus:outline-none'
+                        )}
+                        onClick={() => {
+                          void handleConversationOpen(conversation);
+                        }}
+                      >
+                        <div className='flex items-start justify-between gap-8px mb-6px'>
+                          <div className='min-w-0 flex-1'>
+                            <div className='conversation-search-modal__result-title-row'>
+                              <ConversationAgentMark conversation={conversation} />
+                              <div className='conversation-search-modal__result-title text-15px font-600 text-t-primary truncate'>
+                                {conversation.name || t('conversation.historySearch.untitled')}
+                              </div>
+                            </div>
+                          </div>
+                          <span className='shrink-0 text-11px text-t-secondary'>
+                            {formatTime(getActivityTime(conversation))}
+                          </span>
+                        </div>
+                        <div className='conversation-search-modal__secondary-line text-12px leading-20px text-t-secondary truncate'>
+                          {subtitle}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
             ) : null}
           </div>
         </div>
@@ -387,7 +462,19 @@ const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
         </div>
       </div>
     );
-  }, [debouncedKeyword, handleLoadMore, handleResultClick, items, loading, loadingMore, recentKeywords, t]);
+  }, [
+    conversations,
+    debouncedKeyword,
+    handleConversationOpen,
+    handleLoadMore,
+    handleResultClick,
+    items,
+    loading,
+    loadingMore,
+    recentConversations,
+    recentKeywords,
+    t,
+  ]);
 
   return (
     <div className='conversation-search-modal__panel flex h-full min-h-0 flex-col'>
@@ -430,7 +517,7 @@ const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
 
 export const ConversationSearchPage: React.FC = () => (
   <div className='conversation-search-page size-full min-h-0 overflow-hidden p-16px'>
-    <div className='conversation-search-page__shell mx-auto h-full w-full max-w-960px overflow-hidden'>
+    <div className='conversation-search-page__shell mx-auto flex min-h-0 w-full max-w-960px overflow-hidden'>
       <ConversationSearchPanel inputAutoFocus />
     </div>
   </div>

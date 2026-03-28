@@ -266,6 +266,21 @@
     "installRuntime": "Install whisper.cpp",
     "installSelectedModel": "Install Selected Model",
     "brewRequired": "Automatic runtime installation requires Homebrew. Install whisper.cpp manually or provide a custom CLI path.",
+    "externalOptions": {
+      "title": "無料の代替手段",
+      "optionalDescription": "この Mac に WeChat Input Method が入っている場合は、内蔵の無料音声入力も使えます。これは任意の案内であり、ContextGo の音声入力機能はそのまま使えます。",
+      "installedPath": "インストール先",
+      "showInstalledApp": "Finder で表示",
+      "statuses": {
+        "detected": "検出済み",
+        "available": "利用可能"
+      },
+      "wechatInputMethod": {
+        "label": "WeChat Input Method",
+        "detectedDescription": "この Mac には WeChat Input Method がすでにインストールされており、無料の音声入力が内蔵されています。まだ provider を設定したくない場合は、そのまま使えます。",
+        "availableDescription": "WeChat Input Method には無料の音声入力が含まれています。まだ provider を設定したくない場合は、先にダウンロードして試せます。"
+      }
+    },
     "providerHints": {
       "dashscope": "DashScope uses provider-managed vocabulary and phrase tables. Configure vocabulary IDs, phrase IDs, and language hints for higher accuracy.",
       "volcengine": "VolcEngine supports boosting tables, correction tables, and inline hotwords. Use table IDs for managed glossaries and hotwords for temporary hints.",
@@ -930,6 +945,31 @@
       "extension": "拡張機能ペアリング",
       "none": "認証不要"
     }
+  },
+  "cloud": {
+    "title": "ContextGo クラウドアカウント",
+    "description": "クラウドアカウントでサインインし、このデスクトップ端末を紐付け、言語設定を端末間で同期します。",
+    "loading": "クラウドアカウントの状態を確認しています...",
+    "loginWithGithub": "GitHub で続行",
+    "loginWithGoogle": "Google で続行",
+    "loginSuccess": "クラウドアカウントに接続しました",
+    "logoutSuccess": "クラウドアカウントの接続を解除しました",
+    "syncSuccess": "クラウドデータを同期しました",
+    "actionFailed": "クラウド操作を完了できませんでした",
+    "notConnected": "このデスクトップアプリはまだ ContextGo クラウドアカウントに接続されていません。",
+    "notConnectedDesc": "まず GitHub または Google でサインインしてブラウザセッションを作成すると、ContextGo がこの端末を自動登録します。",
+    "sessionActive": "ブラウザセッション有効",
+    "sessionExpired": "ブラウザセッション期限切れ",
+    "sessionExpiredDesc": "この端末の紐付けは残っていますが、ブラウザセッション管理は期限切れです。端末管理には再ログインしてください。",
+    "deviceLinked": "端末連携済み",
+    "deviceMissing": "端末未連携",
+    "pendingSync": "同期待ち",
+    "syncNow": "今すぐ同期",
+    "signOut": "サインアウト",
+    "deviceName": "端末",
+    "lastSync": "最終同期",
+    "notSyncedYet": "まだ同期していません",
+    "notAvailable": "未設定"
   },
   "extensionAssistantReadonly": "拡張アシスタントは読み取り専用です。複製して編集することができます。"
 }

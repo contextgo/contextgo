@@ -96,6 +96,7 @@ const AssistantManagement: React.FC<AssistantManagementProps> = ({ message }) =>
     <div>
       <AssistantListPanel
         assistants={assistants}
+        activeAssistantId={activeAssistantId}
         localeKey={localeKey}
         avatarImageMap={avatarImageMap}
         isExtensionAssistant={isExtensionAssistant}

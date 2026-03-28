@@ -6,6 +6,10 @@
 
 import { ipcBridge } from '@/common';
 import { useTypingAnimation } from '@/renderer/hooks/chat/useTypingAnimation';
+import {
+  isSuspiciousDocumentNavigation,
+  shouldLoadHtmlDocumentFromFile,
+} from '@/renderer/utils/ui/documentNavigationGuard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useScrollSyncTarget } from '../../hooks/useScrollSyncHelpers';
 import { generateInspectScript } from './htmlInspectScript';
@@ -34,21 +38,6 @@ interface ElectronWebView extends HTMLElement {
   src: string;
   executeJavaScript: (code: string) => Promise<void>;
   stop?: () => void;
-}
-
-const SUSPICIOUS_DOCUMENT_RESOURCE_PATTERN = /\.(?:[cm]?js|css|json|map|txt|xml|wasm)(?:$|[?#])/i;
-
-function isSuspiciousDocumentNavigation(targetUrl: string): boolean {
-  try {
-    const parsed = new URL(targetUrl);
-    if (parsed.protocol === 'about:' || parsed.protocol === 'data:') {
-      return false;
-    }
-
-    return SUSPICIOUS_DOCUMENT_RESOURCE_PATTERN.test(parsed.pathname);
-  } catch {
-    return SUSPICIOUS_DOCUMENT_RESOURCE_PATTERN.test(targetUrl);
-  }
 }
 
 /**
@@ -238,16 +227,6 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
 
   // 判断是否应该直接从文件加载（支持相对资源）- 仅 Electron 环境
   // Determine if should load directly from file (supports relative resources) - Electron only
-  const shouldLoadFromFile = useMemo(() => {
-    if (!isElectron || !filePath) return false;
-    // 检查 HTML 是否引用了相对资源 / Check if HTML references relative resources
-    const hasRelativeResources =
-      /<link[^>]+href=["'](?!https?:\/\/|data:|\/\/)[^"']+["']/i.test(content) ||
-      /<script[^>]+src=["'](?!https?:\/\/|data:|\/\/)[^"']+["']/i.test(content) ||
-      /<img[^>]+src=["'](?!https?:\/\/|data:|\/\/)[^"']+["']/i.test(content);
-    return hasRelativeResources;
-  }, [content, filePath, isElectron]);
-
   // 检查是否有相对资源（用于 browser inline 处理）
   // Check if has relative resources (for browser inline processing)
   const hasRelativeResources = useMemo(() => {
@@ -257,6 +236,26 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
       /<img[^>]+src=["'](?!https?:\/\/|data:|\/\/)[^"']+["']/i.test(content)
     );
   }, [content]);
+
+  // 判断是否应该直接从文件加载（支持相对资源）- 仅 Electron 环境
+  // Determine if should load directly from file (supports relative resources) - Electron only
+  const shouldLoadFromFile = useMemo(() => {
+    if (!isElectron) {
+      return false;
+    }
+
+    return shouldLoadHtmlDocumentFromFile(filePath, hasRelativeResources);
+  }, [filePath, hasRelativeResources, isElectron]);
+
+  useEffect(() => {
+    if (!isElectron || !filePath || !hasRelativeResources || shouldLoadFromFile) {
+      return;
+    }
+
+    if (isSuspiciousDocumentNavigation(filePath)) {
+      console.warn('[HTMLRenderer] Prevented direct file loading for suspicious document path:', filePath);
+    }
+  }, [filePath, hasRelativeResources, isElectron, shouldLoadFromFile]);
 
   // 流式打字动画：HTML 预览在使用 data URL 渲染时也能获得流式体验
   // Typing animation: provide streaming experience when rendering via data URL

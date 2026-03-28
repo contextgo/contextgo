@@ -5,6 +5,7 @@
  */
 
 import type { AcpBackend, AcpBackendAll, AcpBackendConfig } from '@/common/types/acpTypes';
+import type { CloudDevice, CloudStoredSyncState, CloudUser } from '@/common/types/cloud';
 import type { VoiceInputConfig } from '@/common/types/voiceInput';
 import { storage } from '@office-ai/platform';
 
@@ -104,6 +105,14 @@ export interface IConfigStorageRefer {
   'system.cronNotificationEnabled'?: boolean;
   // Global voice input configuration / 全局语音输入配置
   'voiceInput.config'?: VoiceInputConfig;
+  // ContextGo cloud account cached user profile / ContextGo 云端账号缓存用户信息
+  'cloud.user'?: CloudUser;
+  // ContextGo cloud current device binding / ContextGo 云端当前设备绑定信息
+  'cloud.device'?: CloudDevice;
+  // ContextGo cloud device token (ctxdev_...) / ContextGo 云端设备令牌
+  'cloud.deviceToken'?: string;
+  // ContextGo cloud sync cursor + per-item timestamps / ContextGo 云端同步游标与时间戳
+  'cloud.sync.state'?: CloudStoredSyncState;
   // Telegram assistant default model / Telegram 助手默认模型
   'assistant.telegram.defaultModel'?: {
     id: string;

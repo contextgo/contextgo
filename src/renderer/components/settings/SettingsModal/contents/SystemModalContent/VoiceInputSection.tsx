@@ -1,6 +1,7 @@
 import { ipcBridge } from '@/common';
 import type {
   VoiceInputConfig,
+  VoiceInputExternalOption,
   VoiceInputOpenWhisperModelId,
   VoiceInputOpenWhisperState,
   VoiceInputState,
@@ -91,6 +92,7 @@ const VoiceInputSection: React.FC = () => {
   const [draft, setDraft] = useState<VoiceInputConfig>(DEFAULT_VOICE_INPUT_CONFIG);
   const [state, setState] = useState<VoiceInputState | null>(null);
   const [stats, setStats] = useState<VoiceInputStats>(EMPTY_VOICE_INPUT_STATS);
+  const [externalOptions, setExternalOptions] = useState<VoiceInputExternalOption[]>([]);
   const [openWhisperState, setOpenWhisperState] = useState<VoiceInputOpenWhisperState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -117,6 +119,9 @@ const VoiceInputSection: React.FC = () => {
   const openWhisperSelectedModelDefinition = useMemo(() => {
     return OPEN_WHISPER_MODELS.find((item) => item.id === openWhisperConfig.modelId) ?? null;
   }, [openWhisperConfig.modelId]);
+  const wechatInputMethodOption = useMemo(() => {
+    return externalOptions.find((item) => item.id === 'wechat-input-method') ?? null;
+  }, [externalOptions]);
   const providerOptions = useMemo(
     () => [
       { label: t('settings.voiceInput.providers.dashscope'), value: 'dashscope' },
@@ -187,16 +192,26 @@ const VoiceInputSection: React.FC = () => {
     setOpenWhisperState(nextState);
   };
 
+  const refreshExternalOptions = async (): Promise<void> => {
+    if (!voiceInputApi) {
+      setExternalOptions([]);
+      return;
+    }
+
+    const nextOptions = await voiceInputApi.getExternalOptions.invoke();
+    setExternalOptions(nextOptions);
+  };
+
   const refresh = async (): Promise<void> => {
     if (!voiceInputApi) {
       setDraft(DEFAULT_VOICE_INPUT_CONFIG);
-      await Promise.all([refreshRuntimeData(), refreshOpenWhisper()]);
+      await Promise.all([refreshRuntimeData(), refreshOpenWhisper(), refreshExternalOptions()]);
       return;
     }
 
     const config = await voiceInputApi.getConfig.invoke();
     setDraft(config);
-    await Promise.all([refreshRuntimeData(), refreshOpenWhisper()]);
+    await Promise.all([refreshRuntimeData(), refreshOpenWhisper(), refreshExternalOptions()]);
   };
 
   const persistDraft = async (): Promise<VoiceInputConfig | null> => {
@@ -320,6 +335,30 @@ const VoiceInputSection: React.FC = () => {
     }
   };
 
+  const handleOpenExternalOptionUrl = async (url: string | undefined): Promise<void> => {
+    if (!url) {
+      return;
+    }
+
+    try {
+      await ipcBridge.shell.openExternal.invoke(url);
+    } catch (error) {
+      console.error('[VoiceInputSection] Failed to open external voice input URL:', error);
+    }
+  };
+
+  const handleRevealInstalledApp = async (path: string | undefined): Promise<void> => {
+    if (!path) {
+      return;
+    }
+
+    try {
+      await ipcBridge.shell.showItemInFolder.invoke(path);
+    } catch (error) {
+      console.error('[VoiceInputSection] Failed to reveal installed app:', error);
+    }
+  };
+
   const renderPermissionTag = (label: string, value: string | undefined) => (
     <div className='flex items-center justify-between gap-12px'>
       <span className='text-13px text-t-secondary'>{label}</span>
@@ -348,6 +387,79 @@ const VoiceInputSection: React.FC = () => {
       </div>
 
       {state?.supported === false && <Alert type='warning' content={t('settings.voiceInput.platformNotSupported')} />}
+
+      {wechatInputMethodOption ? (
+        <div className='rd-12px bg-fill-2 p-12px space-y-8px'>
+          <div className='flex items-center justify-between gap-12px flex-wrap'>
+            <div className='space-y-4px'>
+              <div className='text-14px text-t-primary font-600'>{t('settings.voiceInput.externalOptions.title')}</div>
+              <Typography.Paragraph className='!mb-0 text-13px text-t-secondary whitespace-pre-wrap'>
+                {t('settings.voiceInput.externalOptions.optionalDescription')}
+              </Typography.Paragraph>
+            </div>
+            <Tag color={wechatInputMethodOption.detected ? 'green' : 'arcoblue'}>
+              {t(
+                wechatInputMethodOption.detected
+                  ? 'settings.voiceInput.externalOptions.statuses.detected'
+                  : 'settings.voiceInput.externalOptions.statuses.available'
+              )}
+            </Tag>
+          </div>
+
+          <div className='space-y-4px'>
+            <div className='text-13px text-t-primary font-600'>
+              {t('settings.voiceInput.externalOptions.wechatInputMethod.label')}
+            </div>
+            <Typography.Paragraph className='!mb-0 text-13px text-t-secondary whitespace-pre-wrap'>
+              {t(
+                wechatInputMethodOption.detected
+                  ? 'settings.voiceInput.externalOptions.wechatInputMethod.detectedDescription'
+                  : 'settings.voiceInput.externalOptions.wechatInputMethod.availableDescription'
+              )}
+            </Typography.Paragraph>
+          </div>
+
+          {wechatInputMethodOption.installedPath ? (
+            <div className='flex items-center justify-between gap-12px'>
+              <span className='text-13px text-t-secondary'>
+                {t('settings.voiceInput.externalOptions.installedPath')}
+              </span>
+              <span className='text-13px text-t-primary text-right break-all'>
+                {wechatInputMethodOption.installedPath}
+              </span>
+            </div>
+          ) : null}
+
+          <Space wrap>
+            {wechatInputMethodOption.installedPath ? (
+              <>
+                <Button
+                  size='small'
+                  onClick={() => void handleRevealInstalledApp(wechatInputMethodOption.installedPath)}
+                >
+                  {t('settings.voiceInput.externalOptions.showInstalledApp')}
+                </Button>
+                {wechatInputMethodOption.downloadUrl ? (
+                  <Button
+                    size='small'
+                    onClick={() => void handleOpenExternalOptionUrl(wechatInputMethodOption.downloadUrl)}
+                  >
+                    {t('common.website')}
+                  </Button>
+                ) : null}
+              </>
+            ) : (
+              <Button
+                size='small'
+                type='primary'
+                onClick={() => void handleOpenExternalOptionUrl(wechatInputMethodOption.downloadUrl)}
+              >
+                {t('common.download')}
+              </Button>
+            )}
+          </Space>
+        </div>
+      ) : null}
 
       {loading ? null : (
         <Form layout='vertical' className='space-y-12px'>
