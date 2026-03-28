@@ -66,6 +66,23 @@ Read these before changing the model:
 - [docs/tech/mobile-shell-readiness.md](docs/tech/mobile-shell-readiness.md)
 - [docs/tech/mobile-shell-cmd.md](docs/tech/mobile-shell-cmd.md)
 
+### Release / Distribution Model
+
+When changing tags, GitHub Actions release workflows, signing, store assumptions, or future website download-page logic, treat the following as the default release model:
+
+- one repository remains the source of truth for desktop, WebUI, `mobile-shell/`, and future website code
+- Git tags plus GitHub Releases remain the canonical product-release source of truth
+- macOS direct-download release is first-class and does not depend on Mac App Store submission
+- Android and HarmonyOS may use direct-download distribution before store publication
+- iOS should default to TestFlight or App Store workflows, not public direct IPA download
+- future website deployment should stay separate from product tag creation
+
+Read these before changing release behavior:
+
+- [docs/tech/release-distribution-standards.md](docs/tech/release-distribution-standards.md)
+- [docs/tech/mobile-remote-control.md](docs/tech/mobile-remote-control.md)
+- [docs/tech/mobile-shell-readiness.md](docs/tech/mobile-shell-readiness.md)
+
 ## Testing
 
 **Framework**: Vitest 4 (`vitest.config.ts`). Run `bun run test` before every commit. Coverage target ≥ 80%.
