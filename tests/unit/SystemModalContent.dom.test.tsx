@@ -91,6 +91,9 @@ const mockVoiceInputGetStats = vi.fn();
 const mockVoiceInputRequestPermissions = vi.fn();
 const mockVoiceInputStartManualCapture = vi.fn();
 const mockVoiceInputStopManualCapture = vi.fn();
+const mockVoiceInputGetOpenWhisperState = vi.fn();
+const mockVoiceInputInstallOpenWhisperRuntime = vi.fn();
+const mockVoiceInputInstallOpenWhisperModel = vi.fn();
 const mockVoiceInputStateChangedOn = vi.fn(() => vi.fn());
 
 vi.mock('@/common', () => ({
@@ -128,6 +131,9 @@ vi.mock('@/common', () => ({
       requestPermissions: { invoke: (...args: any[]) => mockVoiceInputRequestPermissions(...args) },
       startManualCapture: { invoke: (...args: any[]) => mockVoiceInputStartManualCapture(...args) },
       stopManualCapture: { invoke: (...args: any[]) => mockVoiceInputStopManualCapture(...args) },
+      getOpenWhisperState: { invoke: (...args: any[]) => mockVoiceInputGetOpenWhisperState(...args) },
+      installOpenWhisperRuntime: { invoke: (...args: any[]) => mockVoiceInputInstallOpenWhisperRuntime(...args) },
+      installOpenWhisperModel: { invoke: (...args: any[]) => mockVoiceInputInstallOpenWhisperModel(...args) },
       stateChanged: { on: (...args: any[]) => mockVoiceInputStateChangedOn(...args) },
     },
   },
@@ -225,6 +231,15 @@ describe('SystemModalContent', () => {
           accessKey: '',
           resourceId: 'volc.bigasr.sauc.duration',
           model: 'bigmodel',
+          boostingTableId: '',
+          correctTableId: '',
+          hotwords: [],
+        },
+        openWhisper: {
+          cliPath: '',
+          modelId: 'base',
+          languageHints: ['zh'],
+          hotwords: [],
         },
       },
     });
@@ -252,6 +267,19 @@ describe('SystemModalContent', () => {
     });
     mockVoiceInputStartManualCapture.mockResolvedValue(undefined);
     mockVoiceInputStopManualCapture.mockResolvedValue(undefined);
+    mockVoiceInputGetOpenWhisperState.mockResolvedValue({
+      supported: true,
+      brewAvailable: true,
+      runtimeInstalled: false,
+      cliPath: '',
+      brewPath: '/opt/homebrew/bin/brew',
+      modelDirectory: '/tmp/open-whisper',
+      selectedModelId: 'base',
+      selectedModelInstalled: false,
+      models: [],
+    });
+    mockVoiceInputInstallOpenWhisperRuntime.mockImplementation(() => mockVoiceInputGetOpenWhisperState());
+    mockVoiceInputInstallOpenWhisperModel.mockImplementation(() => mockVoiceInputGetOpenWhisperState());
     mockVoiceInputStateChangedOn.mockReturnValue(vi.fn());
   });
 
@@ -314,6 +342,15 @@ describe('SystemModalContent', () => {
           accessKey: 'access-token',
           resourceId: 'volc.bigasr.sauc.duration',
           model: 'bigmodel',
+          boostingTableId: '',
+          correctTableId: '',
+          hotwords: [],
+        },
+        openWhisper: {
+          cliPath: '',
+          modelId: 'base',
+          languageHints: ['zh'],
+          hotwords: [],
         },
       },
     });

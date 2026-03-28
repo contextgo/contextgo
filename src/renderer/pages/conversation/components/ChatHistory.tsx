@@ -223,7 +223,9 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
             ) : (
               <div className='flex min-w-0 items-center gap-4px w-full overflow-hidden'>
                 <div className='chat-history__item-name text-nowrap overflow-hidden text-ellipsis inline-block flex-1 text-14px lh-24px whitespace-nowrap min-w-0 max-w-full'>
-                  <span className='block w-full overflow-hidden text-ellipsis whitespace-nowrap'>{conversation.name}</span>
+                  <span className='block w-full overflow-hidden text-ellipsis whitespace-nowrap'>
+                    {conversation.name}
+                  </span>
                 </div>
                 <span className='flex-shrink-0'>
                   <CronJobIndicator status={cronStatus} size={14} />
