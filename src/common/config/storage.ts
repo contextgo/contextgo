@@ -169,8 +169,6 @@ export interface IConfigStorageRefer {
     customAgentId?: string;
     name?: string;
   };
-  // Skills Market: whether the aionui-skills builtin skill is enabled
-  'skillsMarket.enabled'?: boolean;
   'command.library'?: ManagedSlashCommandRecord[];
 }
 
