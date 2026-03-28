@@ -69,7 +69,8 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "刪除成功",
-    "deleteFailed": "刪除失敗"
+    "deleteFailed": "刪除失敗",
+    "toggleGroupConversation": "展開或收起協作組子會話"
   },
   "historySearch": {
     "tooltip": "搜尋",
@@ -85,26 +86,33 @@
   "entry": {
     "create": "新建",
     "conversation": "會話",
-    "group": "討論組"
+    "group": "協作群組"
   },
   "dropdown": {
     "cliAgents": "CLI Agents",
     "presetAssistants": "預設助手"
   },
   "group": {
-    "header": "討論群組",
-    "createEntry": "建立討論群組",
-    "createTitle": "建立討論群組",
+    "header": "協作群組",
+    "createEntry": "建立協作群組",
+    "createTitle": "建立協作群組",
     "createAction": "建立群組",
-    "createFailed": "建立討論群組失敗",
-    "defaultName": "討論群組",
+    "createFailed": "建立協作群組失敗",
+    "defaultName": "協作群組",
     "nameLabel": "群組名稱",
-    "namePlaceholder": "請輸入討論群組名稱",
+    "namePlaceholder": "請輸入協作群組名稱",
     "workspaceLabel": "工作目錄",
     "workspacePlaceholder": "可選，不填則自動建立預設工作目錄",
-    "workspaceHint": "討論群組和所有參與者 session 將共享這個工作目錄；留空時會自動建立預設臨時目錄。",
+    "workspaceHint": "協作群組和所有參與者 session 將共享這個工作目錄；留空時會自動建立預設臨時目錄。",
     "selectWorkspace": "選擇目錄",
     "selectWorkspaceFailed": "選擇工作目錄失敗",
+    "kindLabel": "協作方式",
+    "kindWorkflow": "Workflow",
+    "kindDiscussion": "Discussion",
+    "kindHint": {
+      "workflow": "預設模式。planner、writer、evaluator 會在共享工作區中多輪協作完成任務。",
+      "discussion": "保留原有討論模式，適合比較觀點、接力分析與辯論。"
+    },
     "modeLabel": "討論模式",
     "modeDebate": "辯論式",
     "modeBroadcast": "廣播式",
@@ -118,8 +126,54 @@
     "minimumParticipants": "請至少選擇兩位參與者",
     "minimumParticipantsHint": "至少選擇 2 位參與者後才能建立討論群組。",
     "noDescription": "暫無描述",
-    "sendPlaceholder": "向討論群組提出問題...",
-    "roundLabel": "第 {{round}} 輪"
+    "sendPlaceholder": "指派協作群組任務...",
+    "roundLabel": "第 {{round}} 輪",
+    "role": {
+      "planner": "規劃者",
+      "writer": "撰寫者",
+      "evaluator": "評估者",
+      "custom": "自訂"
+    },
+    "workflow": {
+      "templateLabel": "Workflow 範本",
+      "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
+      "templateHint": "planner 定義目標與驗收標準，writer 在共享工作區中產出或修改成果，evaluator 負責評分並提出可執行回饋。",
+      "exactParticipants": "此 workflow 範本需要剛好 3 位參與者",
+      "exactParticipantsHint": "Planner / Writer / Evaluator 範本需要剛好 3 位參與者，且角色必須各不相同。",
+      "assignRoles": "請為 3 位參與者分別指派 planner、writer、evaluator 角色",
+      "roleLabel": "角色",
+      "iterationLabel": "第 {{iteration}} 次迭代",
+      "stage": {
+        "planning": "規劃",
+        "writing": "撰寫",
+        "evaluating": "評估",
+        "completed": "完成",
+        "failed": "失敗"
+      },
+      "maxIterationsLabel": "最大迭代次數",
+      "maxIterationsHint": "允許範圍：{{min}}-{{max}}",
+      "scoreTargetLabel": "目標分數",
+      "scoreTargetHint": "評估通過門檻：{{min}}-{{max}}",
+      "artifactPathLabel": "產物路徑",
+      "artifactPathHint": "請填寫共享工作區內的相對路徑；不允許絕對路徑或上層目錄跳轉。",
+      "stageLabel": "階段",
+      "iterationBudgetLabel": "迭代預算",
+      "iterationBudgetValue": "{{current}} / {{total}}",
+      "latestScoreLabel": "最新分數",
+      "latestDecisionLabel": "最新結論",
+      "decision": {
+        "continue": "繼續迭代",
+        "accept": "通過",
+        "stop": "停止"
+      },
+      "status": {
+        "idle": "閒置",
+        "running": "執行中",
+        "completed": "已完成",
+        "failed": "已失敗",
+        "stopped": "已停止"
+      }
+    }
   },
   "noAgentsAvailable": "沒有可用的 Agent",
   "noModelConfigured": "未設定模型，請前往設定頁面設定。",

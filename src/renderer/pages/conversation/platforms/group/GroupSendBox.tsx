@@ -7,6 +7,7 @@
 import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
 import type { TMessage } from '@/common/chat/chatLib';
+import type { FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import SendBox from '@/renderer/components/chat/sendbox';
 import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
 import { getSendBoxDraftHook } from '@/renderer/hooks/chat/useSendBoxDraft';
@@ -86,7 +87,7 @@ const GroupSendBox: React.FC<{ conversationId: string }> = ({ conversationId }) 
         onChange={setContent}
         onSend={handleSend}
         loading={running}
-        disabled={false}
+        disabled={running}
         defaultMultiLine={true}
         lockMultiLine={true}
         placeholder={t('conversation.group.sendPlaceholder')}
@@ -96,4 +97,3 @@ const GroupSendBox: React.FC<{ conversationId: string }> = ({ conversationId }) 
 };
 
 export default GroupSendBox;
-import type { FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';

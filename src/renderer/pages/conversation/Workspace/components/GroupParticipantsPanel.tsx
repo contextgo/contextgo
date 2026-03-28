@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { DiscussionGroupParticipant } from '@/common/config/storage';
+import type { GroupParticipant } from '@/common/config/storage';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
@@ -13,11 +13,11 @@ import { Robot } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-type DiscussionParticipantsPanelProps = {
-  participants: DiscussionGroupParticipant[];
+type GroupParticipantsPanelProps = {
+  participants: GroupParticipant[];
 };
 
-const resolveParticipantTypeLabelKey = (participantType: DiscussionGroupParticipant['participantType']) => {
+const resolveParticipantTypeLabelKey = (participantType: GroupParticipant['participantType']) => {
   return participantType === 'preset-assistant'
     ? 'conversation.workspace.groupMembers.participantType.presetAssistant'
     : 'conversation.workspace.groupMembers.participantType.cliAgent';
@@ -52,7 +52,7 @@ const resolveAvatarImageSrc = (avatar: string | undefined): string | null => {
   return isImageLike ? resolvedAvatar : null;
 };
 
-const getParticipantFallbackText = (participant: DiscussionGroupParticipant): string => {
+const getParticipantFallbackText = (participant: GroupParticipant): string => {
   const avatarValue = participant.avatar?.trim();
   if (avatarValue && isEmojiAvatar(avatarValue)) {
     return avatarValue;
@@ -61,7 +61,7 @@ const getParticipantFallbackText = (participant: DiscussionGroupParticipant): st
 };
 
 const resolveParticipantVisual = (
-  participant: DiscussionGroupParticipant
+  participant: GroupParticipant
 ): { imageSrc: string | null; fallbackText: string } => {
   const avatarImageSrc = resolveAvatarImageSrc(participant.avatar);
   if (avatarImageSrc) {
@@ -87,7 +87,7 @@ const resolveParticipantVisual = (
   };
 };
 
-const getParticipantMetaLabel = (participant: DiscussionGroupParticipant, participantTypeLabel: string): string => {
+const getParticipantMetaLabel = (participant: GroupParticipant, participantTypeLabel: string): string => {
   if (participant.participantType === 'cli-agent') {
     return getCliAgentBackend(participant.participantKey)?.toUpperCase() || participant.participantKey;
   }
@@ -95,7 +95,11 @@ const getParticipantMetaLabel = (participant: DiscussionGroupParticipant, partic
   return participantTypeLabel;
 };
 
-const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = ({ participants }) => {
+const getParticipantRoleLabel = (participant: GroupParticipant, t: (key: string) => string): string | null => {
+  return participant.role ? t(`conversation.group.role.${participant.role}`) : null;
+};
+
+const GroupParticipantsPanel: React.FC<GroupParticipantsPanelProps> = ({ participants }) => {
   const { t } = useTranslation();
 
   if (participants.length === 0) {
@@ -121,6 +125,7 @@ const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = 
           const { imageSrc, fallbackText } = resolveParticipantVisual(participant);
           const participantTypeLabel = t(resolveParticipantTypeLabelKey(participant.participantType));
           const metaLabel = getParticipantMetaLabel(participant, participantTypeLabel);
+          const roleLabel = getParticipantRoleLabel(participant, t);
 
           return (
             <div
@@ -142,6 +147,8 @@ const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = 
                       {participant.name}
                     </Typography.Text>
                     <div className='mt-3px flex items-center gap-6px text-11px text-t-secondary'>
+                      {roleLabel ? <span className='truncate'>{roleLabel}</span> : null}
+                      {roleLabel ? <span className='h-3px w-3px shrink-0 rounded-full bg-[var(--color-fill-4)]'></span> : null}
                       <span className='truncate'>{participantTypeLabel}</span>
                       <span className='h-3px w-3px shrink-0 rounded-full bg-[var(--color-fill-4)]'></span>
                       <span className='truncate'>{metaLabel}</span>
@@ -161,4 +168,4 @@ const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = 
   );
 };
 
-export default DiscussionParticipantsPanel;
+export default GroupParticipantsPanel;

@@ -7,7 +7,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { DiscussionGroupParticipant } from '@/common/config/storage';
+import type { GroupParticipant } from '@/common/config/storage';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -44,9 +44,9 @@ vi.mock('@/renderer/utils/model/agentLogo', () => ({
   getAgentLogo: (agent: string | undefined | null) => (agent === 'codex' ? '/mock-codex-logo.svg' : null),
 }));
 
-import DiscussionParticipantsPanel from '@/renderer/pages/conversation/Workspace/components/DiscussionParticipantsPanel';
+import GroupParticipantsPanel from '@/renderer/pages/conversation/Workspace/components/GroupParticipantsPanel';
 
-const participants: DiscussionGroupParticipant[] = [
+const participants: GroupParticipant[] = [
   {
     id: 'participant-1',
     participantType: 'cli-agent',
@@ -65,9 +65,9 @@ const participants: DiscussionGroupParticipant[] = [
   },
 ];
 
-describe('DiscussionParticipantsPanel', () => {
+describe('GroupParticipantsPanel', () => {
   it('renders participant summary cards', () => {
-    render(<DiscussionParticipantsPanel participants={participants} />);
+    render(<GroupParticipantsPanel participants={participants} />);
 
     expect(screen.getByText('Group Members')).toBeInTheDocument();
     expect(screen.getByText('2 members')).toBeInTheDocument();
