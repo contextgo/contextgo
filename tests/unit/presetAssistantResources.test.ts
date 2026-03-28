@@ -101,4 +101,36 @@ describe('loadPresetAssistantResources', () => {
     expect(deps.readBuiltinSkill).toHaveBeenCalledOnce();
     expect(deps.warn).toHaveBeenCalledTimes(2);
   });
+
+  it('falls back to builtin default skills and hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBuiltinRule: vi.fn(async () => 'builtin rules'),
+      readBuiltinSkill: vi.fn(async () => 'builtin skills'),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-cowork',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: 'builtin skills',
+      enabledSkills: ['skill-creator', 'pptx', 'docx', 'pdf', 'xlsx'],
+      enabledHooks: [
+        'repo-context-bootstrap',
+        'plan-before-coding',
+        'secret-guard',
+        'tool-safety-guard',
+        'quality-gate',
+        'continuity-handoff',
+      ],
+    });
+  });
 });

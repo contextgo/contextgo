@@ -62,6 +62,7 @@ vi.mock('@/common', () => ({
       importHookWithSymlink: { provider: vi.fn() },
       deleteHook: { provider: vi.fn() },
       getHookPaths: { provider: vi.fn() },
+      updateHookManifest: { provider: vi.fn() },
       readSkillInfo: { provider: vi.fn() },
       importSkill: { provider: vi.fn() },
       scanForSkills: { provider: vi.fn() },

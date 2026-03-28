@@ -26,5 +26,13 @@
     "noAlternatives": "사용 가능한 에이전트가 없습니다",
     "configureFirst": "먼저 설정에서 에이전트를 구성하세요.",
     "switching": "에이전트 전환 중..."
+  },
+  "hooks": {
+    "sidecarExported": "{{hookName}}용 sidecar 파일을 내보냈습니다.",
+    "markdownPath": "Markdown",
+    "metadataPath": "메타데이터",
+    "openMarkdown": "Markdown 열기",
+    "showInFolder": "폴더에서 보기",
+    "sidecarActionFailed": "내보낸 sidecar 출력을 열지 못했습니다."
   }
 }

@@ -90,6 +90,8 @@ export interface IConfigStorageRefer {
   'migration.coworkDefaultSkillsAdded'?: boolean;
   // 迁移标记：为所有内置助手添加默认启用的 skills / Migration flag: add default enabled skills for all builtin assistants
   'migration.builtinDefaultSkillsAdded_v2'?: boolean;
+  // 迁移标记：为所有内置助手添加默认启用的 hooks / Migration flag: add default enabled hooks for all builtin assistants
+  'migration.builtinDefaultHooksAdded_v1'?: boolean;
   // 迁移标记：为所有内置助手添加 promptsI18n / Migration flag: add promptsI18n for all builtin assistants
   'migration.promptsI18nAdded'?: boolean;
   /** Migration flag: Electron desktop config has been imported to server config */

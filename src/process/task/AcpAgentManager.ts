@@ -22,6 +22,7 @@ import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/
 import { handlePreviewOpenEvent } from '@process/utils/previewUtils';
 import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
 import { mainLog, mainWarn, mainError } from '@process/utils/mainLogger';
+import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 /** Enable ACP performance diagnostics via ACP_PERF=1 */
 const ACP_PERF_LOG = process.env.ACP_PERF === '1';
 
@@ -81,6 +82,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
   private readonly streamDbFlushIntervalMs = 120;
   private readonly bufferedStreamTextMessages = new Map<string, BufferedStreamTextMessage>();
   private existingMessageStatePromise: Promise<void> | null = null;
+  private readonly hookRuntime = new AssistantHookRuntime();
 
   constructor(data: AcpAgentManagerData) {
     super('acp', data, new IpcAgentEventEmitter());
@@ -146,6 +148,19 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
     for (const key of keys) {
       this.flushBufferedStreamTextMessage(key);
     }
+  }
+
+  private scheduleAfterResponseHooks(): void {
+    nextTickToLocalFinish(() => {
+      void this.hookRuntime
+        .emitAfterResponse(this.conversation_id, (message) => {
+          ipcBridge.acpConversation.responseStream.emit(message);
+          channelEventBus.emitAgentMessage(this.conversation_id, message);
+        })
+        .catch((error) => {
+          mainWarn('[AcpAgentManager]', 'Failed to emit after_response hooks', error);
+        });
+    });
   }
 
   private async ensureFirstMessageState(): Promise<void> {
@@ -437,6 +452,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         onSignalEvent: async (v) => {
           // Flush buffered text chunks before handling turn-level signals
           this.flushBufferedStreamTextMessages();
+          let shouldContinueAfterFinish = false;
 
           // 仅发送信号到前端，不更新消息列表
           if (v.type === 'acp_permission') {
@@ -497,6 +513,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
             });
             // Send collected responses back to AI agent so it can continue
             if (collectedResponses.length > 0 && this.agent) {
+              shouldContinueAfterFinish = true;
               const feedbackMessage = `[System Response]\n${collectedResponses.join('\n')}`;
               await this.agent.sendMessage({ content: feedbackMessage });
             }
@@ -512,6 +529,10 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
             ...(v as any),
             conversation_id: this.conversation_id,
           });
+
+          if (v.type === 'finish' && !shouldContinueAfterFinish) {
+            this.scheduleAfterResponseHooks();
+          }
         },
       });
       return this.agent.start().then(async () => {

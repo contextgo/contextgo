@@ -9,7 +9,7 @@ import { bridge } from '@office-ai/platform';
 import type { OpenDialogOptions } from 'electron';
 import type { McpSource } from '../../process/services/mcpServices/McpProtocol';
 import type { AcpBackend, AcpBackendAll, AcpModelInfo, PresetAgentType } from '../types/acpTypes';
-import type { HookInfo } from '../types/hookTypes';
+import type { HookInfo, HookOutputRoutingConfig } from '../types/hookTypes';
 import type { ExternalSessionSummary, ImportExternalSessionParams } from '../types/externalSessions';
 import type { SlashCommandItem } from '../chat/slash/types';
 import type {
@@ -273,6 +273,11 @@ export const fs = {
   deleteHook: bridge.buildProvider<IBridgeResponse, { hookName: string }>('delete-hook'),
   // 获取 hook 存储路径 / Get hook storage paths
   getHookPaths: bridge.buildProvider<{ userHooksDir: string }, void>('get-hook-paths'),
+  // 更新 hook 输出路由配置 / Update hook output routing settings
+  updateHookManifest: bridge.buildProvider<
+    IBridgeResponse<{ hookName: string }>,
+    { hookName: string; config: HookOutputRoutingConfig }
+  >('update-hook-manifest'),
   // 读取 skill 信息（不导入）/ Read skill info without importing
   readSkillInfo: bridge.buildProvider<IBridgeResponse<{ name: string; description: string }>, { skillPath: string }>(
     'read-skill-info'

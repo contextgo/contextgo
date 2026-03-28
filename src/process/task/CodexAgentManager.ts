@@ -22,8 +22,9 @@ import { mapPermissionDecision } from '@/common/types/codex/utils';
 import { AIONUI_FILES_MARKER } from '@/common/config/constants';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
-import { addMessage, addOrUpdateMessage } from '@process/utils/message';
+import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
 import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
+import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { getDatabase } from '@process/services/database';
 import { ProcessConfig } from '@process/utils/initStorage';
 import BaseAgentManager from '@process/task/BaseAgentManager';
@@ -62,6 +63,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
 
   /** User-selected model before session creation */
   private selectedModel: string | null = null;
+  private readonly hookRuntime = new AssistantHookRuntime();
 
   constructor(data: CodexAgentManagerData) {
     // Do not fork a worker for Codex; we run the agent in-process now
@@ -692,6 +694,19 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     // Direct persistence to database without emitting to frontend
     // Used for final messages where frontend has already displayed content via deltas
     addMessage(this.conversation_id, message);
+  }
+
+  scheduleAfterResponseHooks(): void {
+    nextTickToLocalFinish(() => {
+      void this.hookRuntime
+        .emitAfterResponse(this.conversation_id, (message) => {
+          ipcBridge.codexConversation.responseStream.emit(message);
+          channelEventBus.emitAgentMessage(this.conversation_id, message);
+        })
+        .catch((error) => {
+          console.warn('[CodexAgentManager] Failed to emit after_response hooks:', error);
+        });
+    });
   }
 
   /**
