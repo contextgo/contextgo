@@ -15,6 +15,10 @@ on:
         description: 'Skip code quality checks (faster builds for debugging)'
         type: boolean
         default: false
+      control_runner:
+        description: 'Runner labels as a JSON array for control-plane jobs such as code quality and summaries'
+        type: string
+        default: '["ubuntu-latest"]'
       append_commit_hash:
         description: 'Append short commit hash to artifact names'
         type: boolean
@@ -30,7 +34,7 @@ env:
 jobs:
   code-quality:
     name: Code Quality
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.control_runner) }}
     if: ${{ !inputs.skip_code_quality }}
 
     steps:
@@ -69,7 +73,7 @@ jobs:
 
   build:
     name: Build ${{ matrix.platform }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJSON(matrix.runner) }}
     needs: code-quality
     if: ${{ always() && (inputs.skip_code_quality || needs.code-quality.result == 'success') }}
 
@@ -86,18 +90,19 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Get commit hash
-        id: commit
-        shell: bash
-        run: |
-          SHORT=$(git rev-parse --short HEAD)
-          echo "short=$SHORT" >> $GITHUB_OUTPUT
-          echo "Commit: $SHORT"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Get commit hash
+        id: commit
+        run: >-
+          node -e 'const { execSync } = require("node:child_process"); const
+          { appendFileSync } = require("node:fs"); const short =
+          execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+          appendFileSync(process.env.GITHUB_OUTPUT, `short=${short}\n`);
+          console.log(`Commit: ${short}`);'
 
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
@@ -178,7 +183,6 @@ jobs:
           ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/.cache/electron-builder
 
       - name: Print build configuration
-        shell: bash
         run: |
           echo "=========================================="
           echo "BUILD CONFIGURATION"
@@ -518,8 +522,8 @@ jobs:
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-      - name: List build artifacts
-        if: success() || failure()
+      - name: List build artifacts (non-Windows)
+        if: (success() || failure()) && !startsWith(matrix.platform, 'windows')
         shell: bash
         run: |
           echo "=========================================="
@@ -534,6 +538,24 @@ jobs:
             echo "No out directory found!"
           fi
 
+      - name: List build artifacts (Windows)
+        if: (success() || failure()) && startsWith(matrix.platform, 'windows')
+        shell: pwsh
+        run: |
+          Write-Host "=========================================="
+          Write-Host "BUILD ARTIFACTS"
+          Write-Host "=========================================="
+          if (Test-Path 'out') {
+            Get-ChildItem -Path out | Format-Table Name, Length, LastWriteTime -AutoSize
+            Write-Host "=========================================="
+            Write-Host "Total artifacts:"
+            Get-ChildItem -Path out -File | Where-Object {
+              $_.Extension -in '.exe', '.msi', '.dmg', '.deb', '.zip', '.yml'
+            } | Select-Object -ExpandProperty Name
+          } else {
+            Write-Host 'No out directory found!'
+          }
+
       # Upload artifacts when:
       # - Build succeeded (all platforms)
       # - macOS: notarization timeout but artifacts exist (handled in build step)
@@ -542,16 +564,30 @@ jobs:
       # - 构建成功（所有平台）
       # - macOS: 公证超时但有产物（已在构建步骤中处理）
       # - Windows: 仅当 windows-build 步骤成功
-      - name: Clean up non-installer artifacts
-        if: >-
-          inputs.upload_installers_only && success() &&
-          (!startsWith(matrix.platform, 'windows') || steps.windows-build.outputs.result == 'success')
+      - name: Clean up non-installer artifacts (non-Windows)
+        if: inputs.upload_installers_only && success() && !startsWith(matrix.platform, 'windows')
         shell: bash
         run: |
           echo "Removing non-installer files from out/ ..."
           rm -f out/*.blockmap out/*.zip out/*.yml out/builder-debug.yml 2>/dev/null || true
           echo "Remaining artifacts:"
           ls -lh out/ || true
+
+      - name: Clean up non-installer artifacts (Windows)
+        if: >-
+          inputs.upload_installers_only && success() &&
+          startsWith(matrix.platform, 'windows') &&
+          steps.windows-build.outputs.result == 'success'
+        shell: pwsh
+        run: |
+          Write-Host 'Removing non-installer files from out\ ...'
+          $patterns = @('*.blockmap', '*.zip', '*.yml', 'builder-debug.yml')
+          foreach ($pattern in $patterns) {
+            Get-ChildItem -Path out -Filter $pattern -ErrorAction SilentlyContinue |
+              Remove-Item -Force -ErrorAction SilentlyContinue
+          }
+          Write-Host 'Remaining artifacts:'
+          Get-ChildItem -Path out -ErrorAction SilentlyContinue
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
@@ -573,23 +609,31 @@ jobs:
 
   build-summary:
     name: Build Summary
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.control_runner) }}
     needs: [code-quality, build]
     if: always()
 
     steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Write build summary
         env:
           MATRIX: ${{ inputs.matrix }}
-        run: |
-          PLATFORMS=$(echo "$MATRIX" | jq -r '[.include[].platform] | join(", ")')
-
-          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Key | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Ref | \`${{ inputs.ref || '(default)' }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Commit | \`${{ needs.build.outputs.commit-short }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Platforms | $PLATFORMS |" >> $GITHUB_STEP_SUMMARY
-          echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          REF_NAME: ${{ inputs.ref || '(default)' }}
+          COMMIT_SHORT: ${{ needs.build.outputs.commit-short }}
+          CODE_QUALITY_RESULT: ${{ needs.code-quality.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: >-
+          node -e 'const { appendFileSync } = require("node:fs"); const matrix
+          = JSON.parse(process.env.MATRIX); const platforms = (matrix.include ??
+          []).map((entry) => entry.platform).join(", "); const lines = ["##
+          Build Summary", "", "| Key | Value |", "|-----|-------|", `| Ref |
+          \`${process.env.REF_NAME}\` |`, `| Commit |
+          \`${process.env.COMMIT_SHORT}\` |`, `| Platforms | ${platforms} |`,
+          `| Code Quality | ${process.env.CODE_QUALITY_RESULT} |`, `| Build |
+          ${process.env.BUILD_RESULT} |`];
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+          `${lines.join("\n")}\n`);'
