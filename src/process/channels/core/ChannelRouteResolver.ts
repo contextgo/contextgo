@@ -24,6 +24,14 @@ import type {
   PluginType,
 } from '../types';
 import { getChannelBindingTarget, getChannelConversationName, resolveChannelConvType } from '../types';
+import {
+  conversationMatchesChannelContextBinding,
+  extractAgentProfileContextBinding,
+  extractConversationContextBinding,
+  extractExternalSessionContextBinding,
+  mergeChannelContextBindings,
+  type ChannelContextBinding,
+} from './contextBinding';
 
 type SavedAgentConfig = {
   backend: string;
@@ -288,9 +296,17 @@ async function resolveProviderModel(
   };
 }
 
-function conversationMatchesProfile(conversation: TChatConversation, profile: IAgentProfile): boolean {
+function conversationMatchesProfile(
+  conversation: TChatConversation,
+  profile: IAgentProfile,
+  contextBinding: ChannelContextBinding
+): boolean {
   const { convType, convBackend } = resolveChannelConvType(profile.backend);
   if (conversation.type !== convType) {
+    return false;
+  }
+
+  if (!conversationMatchesChannelContextBinding(conversation, contextBinding)) {
     return false;
   }
 
@@ -417,7 +433,16 @@ export class ChannelRouteResolver {
     }
     const agentProfile = agentProfileResult.data;
 
-    let externalSession = await this.ensureExternalSession(connector, remoteIdentity, binding, agentProfile);
+    const bindingContext = mergeChannelContextBindings(
+      extractExternalSessionContextBinding(sourceExternalSession ?? undefined)
+    );
+    let externalSession = await this.ensureExternalSession(
+      connector,
+      remoteIdentity,
+      binding,
+      agentProfile,
+      bindingContext
+    );
     const externalSessionTargetMode =
       bindingTarget.type === 'external_session' ? (bindingTarget.mode ?? 'resume') : bindingHandoffConfig.mode;
     const shouldForceNewConversation = params.forceNewConversation || externalSessionTargetMode === 'new_thread';
@@ -435,13 +460,20 @@ export class ChannelRouteResolver {
       );
     }
 
-    const conversation = await this.ensureConversation({
+    const { conversation, externalSession: resolvedExternalSession } = await this.ensureConversation({
       platform: params.platform,
       chatId: params.chatId,
       externalSession,
       agentProfile,
       forceNewConversation: shouldForceNewConversation,
     });
+    externalSession = resolvedExternalSession;
+
+    const sessionContext = mergeChannelContextBindings(
+      extractExternalSessionContextBinding(externalSession),
+      extractConversationContextBinding(conversation),
+      extractAgentProfileContextBinding(agentProfile)
+    );
 
     const session: IChannelSession = {
       id: externalSession.id,
@@ -449,7 +481,7 @@ export class ChannelRouteResolver {
       agentType: backendToAgentType(agentProfile.backend),
       conversationId: conversation.id,
       chatId: params.chatId,
-      workspace: agentProfile.workspaceRef,
+      workspace: sessionContext.workspaceRef,
       createdAt: externalSession.createdAt,
       lastActivity: Date.now(),
     };
@@ -670,6 +702,9 @@ export class ChannelRouteResolver {
       name,
       backend: savedAgent.backend,
       modelRef,
+      spaceId: existing.data?.spaceId,
+      mountId: existing.data?.mountId,
+      workspaceRef: existing.data?.workspaceRef,
       promptProfile: {
         customAgentId: savedAgent.customAgentId,
         agentName: savedAgent.name,
@@ -692,27 +727,42 @@ export class ChannelRouteResolver {
     connector: IConnectorInstance,
     remoteIdentity: IRemoteIdentity,
     binding: IChannelBinding,
-    agentProfile: IAgentProfile
+    agentProfile: IAgentProfile,
+    bindingContext: ChannelContextBinding
   ): Promise<IExternalSession> {
     const db = await getDatabase();
     const existing = db.getExternalSessionByConnectorRemote(connector.id, remoteIdentity.id);
+    const profileContext = extractAgentProfileContextBinding(agentProfile);
+
     if (existing.success && existing.data) {
+      const resolvedContext = mergeChannelContextBindings(
+        bindingContext,
+        extractExternalSessionContextBinding(existing.data),
+        profileContext
+      );
       const nextSession: IExternalSession = {
         ...existing.data,
         bindingId: binding.id,
         agentProfileId: agentProfile.id,
+        spaceId: resolvedContext.spaceId,
+        mountId: resolvedContext.mountId,
+        workspaceRef: resolvedContext.workspaceRef,
         lastActivity: Date.now(),
       };
       db.upsertExternalSession(nextSession);
       return nextSession;
     }
 
+    const resolvedContext = mergeChannelContextBindings(bindingContext, profileContext);
     const session: IExternalSession = {
       id: `external_session_${uuid()}`,
       connectorId: connector.id,
       remoteIdentityId: remoteIdentity.id,
       bindingId: binding.id,
       agentProfileId: agentProfile.id,
+      spaceId: resolvedContext.spaceId,
+      mountId: resolvedContext.mountId,
+      workspaceRef: resolvedContext.workspaceRef,
       state: 'active',
       createdAt: Date.now(),
       lastActivity: Date.now(),
@@ -737,10 +787,14 @@ export class ChannelRouteResolver {
     }
 
     const now = Date.now();
+    const conversationContext = extractConversationContextBinding(conversation.data);
     const updated: IExternalSession = {
       ...externalSession,
       bindingId,
       activeConversationId: conversationId,
+      spaceId: conversationContext.spaceId ?? externalSession.spaceId,
+      mountId: conversationContext.mountId ?? externalSession.mountId,
+      workspaceRef: conversationContext.workspaceRef ?? externalSession.workspaceRef,
       lastActivity: now,
       metadata: {
         ...externalSession.metadata,
@@ -761,65 +815,132 @@ export class ChannelRouteResolver {
     externalSession: IExternalSession;
     agentProfile: IAgentProfile;
     forceNewConversation?: boolean;
-  }): Promise<TChatConversation> {
+  }): Promise<{ conversation: TChatConversation; externalSession: IExternalSession }> {
     const db = await getDatabase();
+    let externalSession = params.externalSession;
     const activeConversation =
-      params.externalSession.activeConversationId &&
-      db.getConversation(params.externalSession.activeConversationId).success
-        ? db.getConversation(params.externalSession.activeConversationId).data
+      externalSession.activeConversationId && db.getConversation(externalSession.activeConversationId).success
+        ? db.getConversation(externalSession.activeConversationId).data
         : undefined;
+    const routeContext = mergeChannelContextBindings(
+      extractExternalSessionContextBinding(externalSession),
+      extractConversationContextBinding(activeConversation),
+      extractAgentProfileContextBinding(params.agentProfile)
+    );
+
+    if (
+      routeContext.spaceId !== externalSession.spaceId ||
+      routeContext.mountId !== externalSession.mountId ||
+      routeContext.workspaceRef !== externalSession.workspaceRef
+    ) {
+      externalSession = {
+        ...externalSession,
+        spaceId: routeContext.spaceId ?? externalSession.spaceId,
+        mountId: routeContext.mountId ?? externalSession.mountId,
+        workspaceRef: routeContext.workspaceRef ?? externalSession.workspaceRef,
+      };
+      db.upsertExternalSession(externalSession);
+    }
 
     const shouldRotate =
       params.forceNewConversation ||
       !activeConversation ||
-      !conversationMatchesProfile(activeConversation, params.agentProfile);
+      !conversationMatchesProfile(activeConversation, params.agentProfile, routeContext);
 
     if (!shouldRotate && activeConversation) {
       if (!activeConversation.externalSessionId || !activeConversation.rootRunId) {
         const rootRunId = activeConversation.rootRunId ?? `run_${uuid()}`;
-        await this.ensureRootRun(params.externalSession.id, params.agentProfile, activeConversation.id, rootRunId);
+        const activeConversationContext = mergeChannelContextBindings(
+          extractConversationContextBinding(activeConversation),
+          routeContext
+        );
+        await this.ensureRootRun(
+          externalSession.id,
+          params.agentProfile,
+          activeConversation.id,
+          rootRunId,
+          activeConversationContext
+        );
         db.updateConversation(activeConversation.id, {
-          externalSessionId: params.externalSession.id,
+          externalSessionId: externalSession.id,
           rootRunId,
         });
         return {
-          ...activeConversation,
-          externalSessionId: params.externalSession.id,
-          rootRunId,
+          conversation: {
+            ...activeConversation,
+            externalSessionId: externalSession.id,
+            rootRunId,
+          },
+          externalSession,
         };
       }
 
-      db.updateExternalSessionActivity(params.externalSession.id, {
+      db.updateExternalSessionActivity(externalSession.id, {
         lastActivity: Date.now(),
         activeConversationId: activeConversation.id,
-        bindingId: params.externalSession.bindingId,
+        bindingId: externalSession.bindingId,
+        spaceId: routeContext.spaceId,
+        mountId: routeContext.mountId,
+        workspaceRef: routeContext.workspaceRef,
       });
-      return activeConversation;
+      return {
+        conversation: activeConversation,
+        externalSession: {
+          ...externalSession,
+          activeConversationId: activeConversation.id,
+          lastActivity: Date.now(),
+          spaceId: routeContext.spaceId ?? externalSession.spaceId,
+          mountId: routeContext.mountId ?? externalSession.mountId,
+          workspaceRef: routeContext.workspaceRef ?? externalSession.workspaceRef,
+        },
+      };
     }
 
     if (activeConversation?.rootRunId) {
       await this.terminateRunTree(activeConversation.rootRunId);
     }
 
-    const conversation = await this.createConversation(params.platform, params.chatId, params.agentProfile);
+    const conversation = await this.createConversation(
+      params.platform,
+      params.chatId,
+      params.agentProfile,
+      routeContext
+    );
+    const resolvedConversationContext = mergeChannelContextBindings(
+      extractConversationContextBinding(conversation),
+      routeContext
+    );
     const rootRunId = `run_${uuid()}`;
-    await this.ensureRootRun(params.externalSession.id, params.agentProfile, conversation.id, rootRunId);
+    await this.ensureRootRun(
+      externalSession.id,
+      params.agentProfile,
+      conversation.id,
+      rootRunId,
+      resolvedConversationContext
+    );
 
     db.updateConversation(conversation.id, {
-      externalSessionId: params.externalSession.id,
+      externalSessionId: externalSession.id,
       rootRunId,
     });
-    db.upsertExternalSession({
-      ...params.externalSession,
+    const updatedExternalSession: IExternalSession = {
+      ...externalSession,
       activeConversationId: conversation.id,
       agentProfileId: params.agentProfile.id,
+      spaceId: resolvedConversationContext.spaceId ?? externalSession.spaceId,
+      mountId: resolvedConversationContext.mountId ?? externalSession.mountId,
+      workspaceRef: resolvedConversationContext.workspaceRef ?? externalSession.workspaceRef,
       lastActivity: Date.now(),
-    });
+    };
+    db.upsertExternalSession(updatedExternalSession);
 
     return {
-      ...conversation,
-      externalSessionId: params.externalSession.id,
-      rootRunId,
+      conversation: {
+        ...conversation,
+        externalSessionId: externalSession.id,
+        rootRunId,
+      },
+      externalSession: updatedExternalSession,
     };
   }
 
@@ -827,7 +948,8 @@ export class ChannelRouteResolver {
     externalSessionId: string,
     agentProfile: IAgentProfile,
     conversationId: string,
-    rootRunId: string
+    rootRunId: string,
+    contextBinding: ChannelContextBinding
   ): Promise<void> {
     const db = await getDatabase();
     const run: IChannelRun = {
@@ -837,7 +959,9 @@ export class ChannelRouteResolver {
       agentProfileId: agentProfile.id,
       backend: agentProfile.backend,
       conversationId,
-      workspaceRef: agentProfile.workspaceRef,
+      spaceId: contextBinding.spaceId,
+      mountId: contextBinding.mountId,
+      workspaceRef: contextBinding.workspaceRef,
       status: 'running',
       startedAt: Date.now(),
       metadata: {
@@ -871,7 +995,8 @@ export class ChannelRouteResolver {
   private async createConversation(
     platform: PluginType,
     chatId: string,
-    agentProfile: IAgentProfile
+    agentProfile: IAgentProfile,
+    contextBinding: ChannelContextBinding
   ): Promise<TChatConversation> {
     const model = await resolveProviderModel(platform, agentProfile.modelRef);
     const { convType, convBackend } = resolveChannelConvType(agentProfile.backend);
@@ -889,7 +1014,10 @@ export class ChannelRouteResolver {
         name,
         channelChatId: chatId,
         extra: {
-          workspace: agentProfile.workspaceRef,
+          spaceId: contextBinding.spaceId,
+          mountId: contextBinding.mountId,
+          workingDirectory: contextBinding.workspaceRef,
+          workspace: contextBinding.workspaceRef,
         },
       });
     }
@@ -902,7 +1030,10 @@ export class ChannelRouteResolver {
         name,
         channelChatId: chatId,
         extra: {
-          workspace: agentProfile.workspaceRef,
+          spaceId: contextBinding.spaceId,
+          mountId: contextBinding.mountId,
+          workingDirectory: contextBinding.workspaceRef,
+          workspace: contextBinding.workspaceRef,
         },
       });
     }
@@ -915,7 +1046,10 @@ export class ChannelRouteResolver {
         name,
         channelChatId: chatId,
         extra: {
-          workspace: agentProfile.workspaceRef,
+          spaceId: contextBinding.spaceId,
+          mountId: contextBinding.mountId,
+          workingDirectory: contextBinding.workspaceRef,
+          workspace: contextBinding.workspaceRef,
         },
       });
     }
@@ -927,7 +1061,10 @@ export class ChannelRouteResolver {
       name,
       channelChatId: chatId,
       extra: {
-        workspace: agentProfile.workspaceRef,
+        spaceId: contextBinding.spaceId,
+        mountId: contextBinding.mountId,
+        workingDirectory: contextBinding.workspaceRef,
+        workspace: contextBinding.workspaceRef,
         backend: agentProfile.backend as AcpBackendAll,
         customAgentId: promptProfile.customAgentId,
         agentName: promptProfile.agentName,

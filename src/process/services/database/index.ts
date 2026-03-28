@@ -1724,15 +1724,17 @@ export class AionUIDatabase {
       this.db
         .prepare(`
           INSERT INTO agent_profiles (
-            id, name, backend, model_ref, workspace_ref, prompt_profile, tool_policy,
+            id, name, backend, model_ref, space_id, mount_id, workspace_ref, prompt_profile, tool_policy,
             memory_policy, delegation_policy, published_from_conversation_id,
             version, archived, created_at, updated_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             backend = excluded.backend,
             model_ref = excluded.model_ref,
+            space_id = excluded.space_id,
+            mount_id = excluded.mount_id,
             workspace_ref = excluded.workspace_ref,
             prompt_profile = excluded.prompt_profile,
             tool_policy = excluded.tool_policy,
@@ -1748,6 +1750,8 @@ export class AionUIDatabase {
           row.name,
           row.backend,
           row.model_ref,
+          row.space_id,
+          row.mount_id,
           row.workspace_ref,
           row.prompt_profile,
           row.tool_policy,
@@ -1949,15 +1953,19 @@ export class AionUIDatabase {
         .prepare(`
           INSERT INTO external_sessions (
             id, connector_id, remote_identity_id, binding_id, agent_profile_id,
-            active_conversation_id, state, created_at, last_activity, metadata
+            active_conversation_id, space_id, mount_id, workspace_ref,
+            state, created_at, last_activity, metadata
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             connector_id = excluded.connector_id,
             remote_identity_id = excluded.remote_identity_id,
             binding_id = excluded.binding_id,
             agent_profile_id = excluded.agent_profile_id,
             active_conversation_id = excluded.active_conversation_id,
+            space_id = excluded.space_id,
+            mount_id = excluded.mount_id,
+            workspace_ref = excluded.workspace_ref,
             state = excluded.state,
             last_activity = excluded.last_activity,
             metadata = excluded.metadata
@@ -1969,6 +1977,9 @@ export class AionUIDatabase {
           row.binding_id,
           row.agent_profile_id,
           row.active_conversation_id,
+          row.space_id,
+          row.mount_id,
+          row.workspace_ref,
           row.state,
           row.created_at,
           row.last_activity,
@@ -1987,6 +1998,9 @@ export class AionUIDatabase {
       lastActivity?: number;
       activeConversationId?: string;
       bindingId?: string;
+      spaceId?: string;
+      mountId?: string;
+      workspaceRef?: string;
     }
   ): IQueryResult<boolean> {
     try {
@@ -1995,13 +2009,19 @@ export class AionUIDatabase {
           UPDATE external_sessions
           SET last_activity = ?,
               active_conversation_id = COALESCE(?, active_conversation_id),
-              binding_id = COALESCE(?, binding_id)
+              binding_id = COALESCE(?, binding_id),
+              space_id = COALESCE(?, space_id),
+              mount_id = COALESCE(?, mount_id),
+              workspace_ref = COALESCE(?, workspace_ref)
           WHERE id = ?
         `)
         .run(
           updates.lastActivity ?? Date.now(),
           updates.activeConversationId ?? null,
           updates.bindingId ?? null,
+          updates.spaceId ?? null,
+          updates.mountId ?? null,
+          updates.workspaceRef ?? null,
           sessionId
         );
       return { success: true, data: result.changes > 0 };
@@ -2063,10 +2083,10 @@ export class AionUIDatabase {
         .prepare(`
           INSERT INTO runs (
             id, external_session_id, parent_run_id, root_run_id, agent_profile_id,
-            backend, conversation_id, workspace_ref, status, input_message_id,
+            backend, conversation_id, space_id, mount_id, workspace_ref, status, input_message_id,
             metadata, started_at, ended_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             external_session_id = excluded.external_session_id,
             parent_run_id = excluded.parent_run_id,
@@ -2074,6 +2094,8 @@ export class AionUIDatabase {
             agent_profile_id = excluded.agent_profile_id,
             backend = excluded.backend,
             conversation_id = excluded.conversation_id,
+            space_id = excluded.space_id,
+            mount_id = excluded.mount_id,
             workspace_ref = excluded.workspace_ref,
             status = excluded.status,
             input_message_id = excluded.input_message_id,
@@ -2089,6 +2111,8 @@ export class AionUIDatabase {
           row.agent_profile_id,
           row.backend,
           row.conversation_id,
+          row.space_id,
+          row.mount_id,
           row.workspace_ref,
           row.status,
           row.input_message_id,

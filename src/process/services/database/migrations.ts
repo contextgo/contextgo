@@ -1164,6 +1164,136 @@ const migration_v20: IMigration = {
 };
 
 /**
+ * Migration v20 -> v21: Add space context columns to channel resources
+ */
+const migration_v21: IMigration = {
+  version: 21,
+  name: 'Add space context columns to channel resources',
+  up: (db) => {
+    db.exec('ALTER TABLE agent_profiles ADD COLUMN space_id TEXT');
+    db.exec('ALTER TABLE agent_profiles ADD COLUMN mount_id TEXT');
+
+    db.exec('ALTER TABLE external_sessions ADD COLUMN space_id TEXT');
+    db.exec('ALTER TABLE external_sessions ADD COLUMN mount_id TEXT');
+    db.exec('ALTER TABLE external_sessions ADD COLUMN workspace_ref TEXT');
+
+    db.exec('ALTER TABLE runs ADD COLUMN space_id TEXT');
+    db.exec('ALTER TABLE runs ADD COLUMN mount_id TEXT');
+
+    console.log('[Migration v21] Added channel space context columns');
+  },
+  down: (db) => {
+    db.exec(`CREATE TABLE IF NOT EXISTS agent_profiles_rollback (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        backend TEXT NOT NULL,
+        model_ref TEXT,
+        workspace_ref TEXT,
+        prompt_profile TEXT NOT NULL DEFAULT '{}',
+        tool_policy TEXT NOT NULL DEFAULT '{}',
+        memory_policy TEXT NOT NULL DEFAULT '{}',
+        delegation_policy TEXT NOT NULL DEFAULT '{}',
+        published_from_conversation_id TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (published_from_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
+      )`);
+    db.exec(`
+      INSERT INTO agent_profiles_rollback (
+        id, name, backend, model_ref, workspace_ref, prompt_profile, tool_policy,
+        memory_policy, delegation_policy, published_from_conversation_id,
+        version, archived, created_at, updated_at
+      )
+      SELECT
+        id, name, backend, model_ref, workspace_ref, prompt_profile, tool_policy,
+        memory_policy, delegation_policy, published_from_conversation_id,
+        version, archived, created_at, updated_at
+      FROM agent_profiles
+    `);
+    db.exec('DROP TABLE agent_profiles');
+    db.exec('ALTER TABLE agent_profiles_rollback RENAME TO agent_profiles');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_agent_profiles_backend ON agent_profiles(backend)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_agent_profiles_archived ON agent_profiles(archived)');
+
+    db.exec(`CREATE TABLE IF NOT EXISTS external_sessions_rollback (
+        id TEXT PRIMARY KEY,
+        connector_id TEXT NOT NULL,
+        remote_identity_id TEXT NOT NULL,
+        binding_id TEXT,
+        agent_profile_id TEXT NOT NULL,
+        active_conversation_id TEXT,
+        state TEXT NOT NULL DEFAULT 'active',
+        created_at INTEGER NOT NULL,
+        last_activity INTEGER NOT NULL,
+        metadata TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE,
+        FOREIGN KEY (remote_identity_id) REFERENCES remote_identities(id) ON DELETE CASCADE,
+        FOREIGN KEY (binding_id) REFERENCES channel_bindings(id) ON DELETE SET NULL,
+        FOREIGN KEY (agent_profile_id) REFERENCES agent_profiles(id) ON DELETE CASCADE,
+        FOREIGN KEY (active_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL,
+        UNIQUE (connector_id, remote_identity_id)
+      )`);
+    db.exec(`
+      INSERT INTO external_sessions_rollback (
+        id, connector_id, remote_identity_id, binding_id, agent_profile_id,
+        active_conversation_id, state, created_at, last_activity, metadata
+      )
+      SELECT
+        id, connector_id, remote_identity_id, binding_id, agent_profile_id,
+        active_conversation_id, state, created_at, last_activity, metadata
+      FROM external_sessions
+    `);
+    db.exec('DROP TABLE external_sessions');
+    db.exec('ALTER TABLE external_sessions_rollback RENAME TO external_sessions');
+    db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_external_sessions_conversation ON external_sessions(active_conversation_id)'
+    );
+    db.exec('CREATE INDEX IF NOT EXISTS idx_external_sessions_last_activity ON external_sessions(last_activity DESC)');
+
+    db.exec(`CREATE TABLE IF NOT EXISTS runs_rollback (
+        id TEXT PRIMARY KEY,
+        external_session_id TEXT,
+        parent_run_id TEXT,
+        root_run_id TEXT NOT NULL,
+        agent_profile_id TEXT NOT NULL,
+        backend TEXT NOT NULL,
+        conversation_id TEXT,
+        workspace_ref TEXT,
+        status TEXT NOT NULL,
+        input_message_id TEXT,
+        metadata TEXT NOT NULL DEFAULT '{}',
+        started_at INTEGER NOT NULL,
+        ended_at INTEGER,
+        FOREIGN KEY (external_session_id) REFERENCES external_sessions(id) ON DELETE SET NULL,
+        FOREIGN KEY (parent_run_id) REFERENCES runs(id) ON DELETE SET NULL,
+        FOREIGN KEY (agent_profile_id) REFERENCES agent_profiles(id) ON DELETE CASCADE,
+        FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
+      )`);
+    db.exec(`
+      INSERT INTO runs_rollback (
+        id, external_session_id, parent_run_id, root_run_id, agent_profile_id,
+        backend, conversation_id, workspace_ref, status, input_message_id,
+        metadata, started_at, ended_at
+      )
+      SELECT
+        id, external_session_id, parent_run_id, root_run_id, agent_profile_id,
+        backend, conversation_id, workspace_ref, status, input_message_id,
+        metadata, started_at, ended_at
+      FROM runs
+    `);
+    db.exec('DROP TABLE runs');
+    db.exec('ALTER TABLE runs_rollback RENAME TO runs');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_runs_external_session ON runs(external_session_id, started_at DESC)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_runs_root_run ON runs(root_run_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_runs_parent_run ON runs(parent_run_id)');
+
+    console.log('[Migration v21] Rolled back channel space context columns');
+  },
+};
+
+/**
  * All migrations in order
  */
 // prettier-ignore
@@ -1171,7 +1301,7 @@ export const ALL_MIGRATIONS: IMigration[] = [
   migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6,
   migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12,
   migration_v13, migration_v14, migration_v15, migration_v16, migration_v17, migration_v18,
-  migration_v19, migration_v20,
+  migration_v19, migration_v20, migration_v21,
 ];
 
 /**

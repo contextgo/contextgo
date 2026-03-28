@@ -34,6 +34,9 @@ const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert } = vi.
       bindingId: 'binding-source',
       agentProfileId: 'agent_profile_source',
       activeConversationId: 'conversation_source',
+      spaceId: 'space-source',
+      mountId: 'mount-source',
+      workspaceRef: '/workspace/source',
       state: 'active',
       createdAt: 100,
       lastActivity: 200,
@@ -47,6 +50,8 @@ const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert } = vi.
         id: 'model-provider-1',
         useModel: 'gpt-4.1',
       },
+      spaceId: 'space-source',
+      mountId: 'mount-source',
       workspaceRef: '/workspace/source',
       toolPolicy: {},
       memoryPolicy: {},
@@ -63,6 +68,8 @@ const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert } = vi.
       name: 'Source Conversation',
       type: 'openclaw-gateway',
       extra: {
+        spaceId: 'space-source',
+        mountId: 'mount-source',
         workspace: '/workspace/source',
       },
       model: {
@@ -216,6 +223,9 @@ describe('ChannelHandoffService', () => {
         remoteIdentityId: 'remote_identity_target',
         activeConversationId: 'conversation_source',
         bindingId: result.bindingId,
+        spaceId: 'space-source',
+        mountId: 'mount-source',
+        workspaceRef: '/workspace/source',
       })
     );
   });
@@ -280,6 +290,13 @@ describe('ChannelHandoffService', () => {
         handoff: expect.objectContaining({
           resumeConversationId: 'conversation_source',
         }),
+      })
+    );
+    expect(db.upsertAgentProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spaceId: 'space-source',
+        mountId: 'mount-source',
+        workspaceRef: '/workspace/source',
       })
     );
   });

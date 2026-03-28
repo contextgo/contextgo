@@ -13,6 +13,11 @@ import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
 import crypto from 'crypto';
 import { inferRemoteChatType } from './ChannelRouteResolver';
 import {
+  extractConversationContextBinding,
+  extractExternalSessionContextBinding,
+  mergeChannelContextBindings,
+} from './contextBinding';
+import {
   resolveChannelConvType,
   withChannelBindingTarget,
   type ChannelHandoffMode,
@@ -35,6 +40,9 @@ type SourceContext = {
   sourceExternalSession?: IExternalSession;
   sourceConversationId?: string;
   sourceAgentProfile: IAgentProfile;
+  spaceId?: string;
+  mountId?: string;
+  workspaceRef?: string;
 };
 
 type QueryResult<T> = {
@@ -130,6 +138,14 @@ export class ChannelHandoffService {
     const now = Date.now();
     const transaction = db.runInTransaction(() => {
       const sourceAgentProfile = this.ensureSourceAgentProfile(db, source);
+      const effectiveSourceContext = mergeChannelContextBindings(
+        extractExternalSessionContextBinding(source.sourceExternalSession),
+        {
+          spaceId: source.spaceId,
+          mountId: source.mountId,
+          workspaceRef: source.workspaceRef,
+        }
+      );
 
       const resolvedChatType = inferRemoteChatType({
         chatId: targetIdentity.remoteChatId,
@@ -203,6 +219,9 @@ export class ChannelHandoffService {
                 : mode === 'new_thread'
                   ? undefined
                   : existingTargetSession.activeConversationId,
+            spaceId: effectiveSourceContext.spaceId,
+            mountId: effectiveSourceContext.mountId,
+            workspaceRef: effectiveSourceContext.workspaceRef,
             lastActivity: now,
             metadata: {
               ...existingTargetSession.metadata,
@@ -222,6 +241,9 @@ export class ChannelHandoffService {
             bindingId: handoffBinding.id,
             agentProfileId: sourceAgentProfile.id,
             activeConversationId: mode === 'resume' ? source.sourceConversationId : undefined,
+            spaceId: effectiveSourceContext.spaceId,
+            mountId: effectiveSourceContext.mountId,
+            workspaceRef: effectiveSourceContext.workspaceRef,
             state: 'active',
             createdAt: now,
             lastActivity: now,
@@ -243,7 +265,7 @@ export class ChannelHandoffService {
         userId: updatedIdentity.id,
         agentType: toChannelAgentType(sourceAgentProfile.backend),
         conversationId: nextTargetSession.activeConversationId,
-        workspace: sourceAgentProfile.workspaceRef,
+        workspace: effectiveSourceContext.workspaceRef,
         chatId: updatedIdentity.remoteChatId,
         createdAt: nextTargetSession.createdAt,
         lastActivity: now,
@@ -307,6 +329,9 @@ export class ChannelHandoffService {
         sourceExternalSession,
         sourceConversationId,
         sourceAgentProfile,
+        spaceId: sourceExternalSession.spaceId ?? sourceAgentProfile.spaceId,
+        mountId: sourceExternalSession.mountId ?? sourceAgentProfile.mountId,
+        workspaceRef: sourceExternalSession.workspaceRef ?? sourceAgentProfile.workspaceRef,
       };
     }
 
@@ -321,6 +346,7 @@ export class ChannelHandoffService {
     return {
       sourceConversationId,
       sourceAgentProfile: this.buildAgentProfileFromConversation(db, conversation),
+      ...extractConversationContextBinding(conversation),
     };
   }
 
@@ -339,7 +365,8 @@ export class ChannelHandoffService {
   private buildAgentProfileFromConversation(db: AionUIDatabase, conversation: TChatConversation): IAgentProfile {
     const backend = mapConversationBackend(conversation);
     const modelRef = extractConversationModelRef(conversation);
-    const workspaceRef = extractConversationWorkspace(conversation);
+    const conversationContext = extractConversationContextBinding(conversation);
+    const workspaceRef = conversationContext.workspaceRef ?? extractConversationWorkspace(conversation);
 
     const profileHash = crypto.createHash('sha256').update(conversation.id).digest('hex').slice(0, 16);
     const profileId = `agent_profile_handoff_${profileHash}`;
@@ -352,6 +379,8 @@ export class ChannelHandoffService {
       name: `Handoff ${conversation.name}`,
       backend,
       modelRef,
+      spaceId: conversationContext.spaceId,
+      mountId: conversationContext.mountId,
       workspaceRef,
       promptProfile: {
         sourceConversationId: conversation.id,

@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { ConversationSpaceBinding } from '@/common/config/storage';
+
 // ==================== Plugin Types ====================
 
 /**
@@ -187,6 +189,10 @@ export interface IAgentProfile {
     id: string;
     useModel: string;
   };
+  /** Logical Space binding for remote channel routing continuity. */
+  spaceId?: ConversationSpaceBinding['spaceId'];
+  /** Device-local mount binding for remote channel routing continuity. */
+  mountId?: ConversationSpaceBinding['mountId'];
   workspaceRef?: string;
   promptProfile?: Record<string, unknown>;
   toolPolicy?: Record<string, unknown>;
@@ -265,6 +271,9 @@ export interface IExternalSession {
   bindingId?: string;
   agentProfileId: string;
   activeConversationId?: string;
+  spaceId?: ConversationSpaceBinding['spaceId'];
+  mountId?: ConversationSpaceBinding['mountId'];
+  workspaceRef?: string;
   state: 'active' | 'paused' | 'archived';
   createdAt: number;
   lastActivity: number;
@@ -351,6 +360,8 @@ export interface IChannelRun {
   agentProfileId: string;
   backend: string;
   conversationId?: string;
+  spaceId?: ConversationSpaceBinding['spaceId'];
+  mountId?: ConversationSpaceBinding['mountId'];
   workspaceRef?: string;
   status: ChannelRunStatus;
   inputMessageId?: string;

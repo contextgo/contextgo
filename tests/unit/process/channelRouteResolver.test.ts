@@ -14,6 +14,8 @@ const { mockDb, mockProcessConfigGet, mockCreateConversation } = vi.hoisted(() =
     upsertChannelBinding: vi.fn(),
     getAgentProfile: vi.fn(),
     upsertAgentProfile: vi.fn(),
+    getExternalSessionByConnectorRemote: vi.fn(),
+    upsertExternalSession: vi.fn(),
   },
   mockProcessConfigGet: vi.fn(),
   mockCreateConversation: vi.fn(),
@@ -65,6 +67,8 @@ describe('ChannelRouteResolver', () => {
     mockDb.upsertChannelBinding.mockReturnValue({ success: true, data: true });
     mockDb.getAgentProfile.mockReturnValue({ success: true, data: null });
     mockDb.upsertAgentProfile.mockReturnValue({ success: true, data: true });
+    mockDb.getExternalSessionByConnectorRemote.mockReturnValue({ success: true, data: null });
+    mockDb.upsertExternalSession.mockReturnValue({ success: true, data: true });
 
     mockProcessConfigGet.mockResolvedValue(undefined);
     mockCreateConversation.mockResolvedValue({
@@ -268,5 +272,116 @@ describe('ChannelRouteResolver', () => {
 
     expect(result.id).toBe('binding-remote-user');
     expect(mockDb.getChannelBindingsForScope).toHaveBeenCalledWith(connector.id, 'remote_user', 'user-2');
+  });
+
+  it('passes resolved space binding when creating a routed conversation', async () => {
+    const resolver = new ChannelRouteResolver();
+
+    await (
+      resolver as unknown as {
+        createConversation: (
+          platform: 'telegram',
+          chatId: string,
+          profile: {
+            backend: string;
+            modelRef?: { id: string; useModel: string };
+          },
+          contextBinding: {
+            spaceId?: string;
+            mountId?: string;
+            workspaceRef?: string;
+          }
+        ) => Promise<void>;
+      }
+    ).createConversation(
+      'telegram',
+      'group:alpha',
+      {
+        backend: 'codex',
+        modelRef: {
+          id: 'model-1',
+          useModel: 'gpt-5-codex',
+        },
+      },
+      {
+        spaceId: 'space-alpha',
+        mountId: 'mount-alpha',
+        workspaceRef: '/workspace/alpha',
+      }
+    );
+
+    expect(mockCreateConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'codex',
+        channelChatId: 'group:alpha',
+        extra: expect.objectContaining({
+          spaceId: 'space-alpha',
+          mountId: 'mount-alpha',
+          workingDirectory: '/workspace/alpha',
+          workspace: '/workspace/alpha',
+        }),
+      })
+    );
+  });
+
+  it('carries external-session context into newly created target sessions', async () => {
+    const resolver = new ChannelRouteResolver();
+    const binding: IChannelBinding = {
+      id: 'binding-1',
+      connectorId: connector.id,
+      scopeType: 'remote_chat',
+      scopeKey: 'group:alpha',
+      agentProfileId: 'agent-1',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
+    await (
+      resolver as unknown as {
+        ensureExternalSession: (
+          connector: IConnectorInstance,
+          remoteIdentity: IRemoteIdentity,
+          binding: IChannelBinding,
+          agentProfile: {
+            id: string;
+            backend: string;
+          },
+          bindingContext: {
+            spaceId?: string;
+            mountId?: string;
+            workspaceRef?: string;
+          }
+        ) => Promise<void>;
+      }
+    ).ensureExternalSession(
+      connector,
+      {
+        id: 'remote-1',
+        connectorId: connector.id,
+        remoteChatId: 'group:alpha',
+        authorizedAt: 100,
+      },
+      binding,
+      {
+        id: 'agent-1',
+        backend: 'gemini',
+      },
+      {
+        spaceId: 'space-source',
+        mountId: 'mount-source',
+        workspaceRef: '/workspace/source',
+      }
+    );
+
+    expect(mockDb.upsertExternalSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spaceId: 'space-source',
+        mountId: 'mount-source',
+        workspaceRef: '/workspace/source',
+      })
+    );
   });
 });

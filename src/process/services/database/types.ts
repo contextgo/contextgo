@@ -136,6 +136,8 @@ export interface IAgentProfileRow {
   name: string;
   backend: string;
   model_ref: string | null;
+  space_id: string | null;
+  mount_id: string | null;
   workspace_ref: string | null;
   prompt_profile: string;
   tool_policy: string;
@@ -176,6 +178,9 @@ export interface IExternalSessionRow {
   binding_id: string | null;
   agent_profile_id: string;
   active_conversation_id: string | null;
+  space_id: string | null;
+  mount_id: string | null;
+  workspace_ref: string | null;
   state: string;
   created_at: number;
   last_activity: number;
@@ -193,6 +198,8 @@ export interface IChannelRunRow {
   agent_profile_id: string;
   backend: string;
   conversation_id: string | null;
+  space_id: string | null;
+  mount_id: string | null;
   workspace_ref: string | null;
   status: string;
   input_message_id: string | null;
@@ -485,6 +492,8 @@ export function rowToAgentProfile(row: IAgentProfileRow): IAgentProfile {
     name: row.name,
     backend: row.backend,
     modelRef: parseJson<IAgentProfile['modelRef']>(row.model_ref, undefined),
+    spaceId: row.space_id ?? undefined,
+    mountId: row.mount_id ?? undefined,
     workspaceRef: row.workspace_ref ?? undefined,
     promptProfile: parseJson(row.prompt_profile, {}),
     toolPolicy: parseJson(row.tool_policy, {}),
@@ -504,6 +513,8 @@ export function agentProfileToRow(profile: IAgentProfile): IAgentProfileRow {
     name: profile.name,
     backend: profile.backend,
     model_ref: profile.modelRef ? JSON.stringify(profile.modelRef) : null,
+    space_id: profile.spaceId ?? null,
+    mount_id: profile.mountId ?? null,
     workspace_ref: profile.workspaceRef ?? null,
     prompt_profile: JSON.stringify(profile.promptProfile ?? {}),
     tool_policy: JSON.stringify(profile.toolPolicy ?? {}),
@@ -559,6 +570,9 @@ export function rowToExternalSession(row: IExternalSessionRow): IExternalSession
     bindingId: row.binding_id ?? undefined,
     agentProfileId: row.agent_profile_id,
     activeConversationId: row.active_conversation_id ?? undefined,
+    spaceId: row.space_id ?? undefined,
+    mountId: row.mount_id ?? undefined,
+    workspaceRef: row.workspace_ref ?? undefined,
     state: row.state as IExternalSession['state'],
     createdAt: row.created_at,
     lastActivity: row.last_activity,
@@ -574,6 +588,9 @@ export function externalSessionToRow(session: IExternalSession): IExternalSessio
     binding_id: session.bindingId ?? null,
     agent_profile_id: session.agentProfileId,
     active_conversation_id: session.activeConversationId ?? null,
+    space_id: session.spaceId ?? null,
+    mount_id: session.mountId ?? null,
+    workspace_ref: session.workspaceRef ?? null,
     state: session.state,
     created_at: session.createdAt,
     last_activity: session.lastActivity,
@@ -590,6 +607,8 @@ export function rowToChannelRun(row: IChannelRunRow): IChannelRun {
     agentProfileId: row.agent_profile_id,
     backend: row.backend,
     conversationId: row.conversation_id ?? undefined,
+    spaceId: row.space_id ?? undefined,
+    mountId: row.mount_id ?? undefined,
     workspaceRef: row.workspace_ref ?? undefined,
     status: row.status as ChannelRunStatus,
     inputMessageId: row.input_message_id ?? undefined,
@@ -608,6 +627,8 @@ export function channelRunToRow(run: IChannelRun): IChannelRunRow {
     agent_profile_id: run.agentProfileId,
     backend: run.backend,
     conversation_id: run.conversationId ?? null,
+    space_id: run.spaceId ?? null,
+    mount_id: run.mountId ?? null,
     workspace_ref: run.workspaceRef ?? null,
     status: run.status,
     input_message_id: run.inputMessageId ?? null,
