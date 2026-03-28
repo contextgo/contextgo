@@ -51,6 +51,21 @@ Three process types — never mix their APIs:
 Cross-process communication must go through the IPC bridge (`src/preload.ts`).
 See [docs/tech/architecture.md](docs/tech/architecture.md) for details.
 
+### Mobile / Remote Access Product Model
+
+When changing mobile access, WebUI/browser runtime behavior, remote login, upload flows, or shell packaging, treat the following as the default product model:
+
+- desktop remains the real execution host
+- mobile acts as a remote use-side / control-side client
+- mobile shells should reuse the existing WebUI / server runtime instead of replacing the desktop host
+- mobile-local file selection should upload into the desktop host through the WebUI upload flow, then continue processing on the host side
+
+Read these before changing the model:
+
+- [docs/tech/mobile-remote-control.md](docs/tech/mobile-remote-control.md)
+- [docs/tech/mobile-shell-readiness.md](docs/tech/mobile-shell-readiness.md)
+- [docs/tech/mobile-shell-cmd.md](docs/tech/mobile-shell-cmd.md)
+
 ## Testing
 
 **Framework**: Vitest 4 (`vitest.config.ts`). Run `bun run test` before every commit. Coverage target ≥ 80%.
