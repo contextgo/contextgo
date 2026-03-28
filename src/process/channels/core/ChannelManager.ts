@@ -13,6 +13,7 @@ import { PluginManager, registerPlugin } from '../gateway/PluginManager';
 import { PairingService } from '../pairing/PairingService';
 import { DingTalkPlugin } from '../plugins/dingtalk/DingTalkPlugin';
 import { LarkPlugin } from '../plugins/lark/LarkPlugin';
+import { SlackPlugin } from '../plugins/slack/SlackPlugin';
 import { TelegramPlugin } from '../plugins/telegram/TelegramPlugin';
 import { WeixinPlugin } from '../plugins/weixin/WeixinPlugin';
 import { isBuiltinChannelPlatform, resolveChannelConvType } from '../types';
@@ -49,6 +50,7 @@ export class ChannelManager {
     // Private constructor for singleton pattern
     // Register built-in plugins
     registerPlugin('telegram', TelegramPlugin);
+    registerPlugin('slack', SlackPlugin);
     registerPlugin('lark', LarkPlugin);
     registerPlugin('dingtalk', DingTalkPlugin);
     registerPlugin('weixin', WeixinPlugin);
@@ -182,7 +184,7 @@ export class ChannelManager {
     }
 
     const enabledPlugins = result.data.filter((p) => p.enabled);
-    const builtinStartableTypes = new Set<PluginType>(['telegram', 'lark', 'dingtalk', 'weixin']);
+    const builtinStartableTypes = new Set<PluginType>(['telegram', 'slack', 'lark', 'dingtalk', 'weixin']);
     const extensionRegistry = ExtensionRegistry.getInstance();
 
     for (const plugin of enabledPlugins) {
@@ -253,6 +255,16 @@ export class ChannelManager {
       const token = config.token as string | undefined;
       if (token) {
         credentials = { token };
+      }
+    } else if (pluginType === 'slack') {
+      const botToken = config.botToken as string | undefined;
+      const appToken = config.appToken as string | undefined;
+      if (botToken && appToken) {
+        credentials = { botToken, appToken };
+      }
+      const requireMention = config.requireMention;
+      if (typeof requireMention === 'boolean') {
+        pluginRuntimeConfig.requireMention = requireMention;
       }
     } else if (pluginType === 'lark') {
       const appId = config.appId as string | undefined;
@@ -390,7 +402,7 @@ export class ChannelManager {
   async testPlugin(
     pluginId: string,
     token: string,
-    extraConfig?: { appId?: string; appSecret?: string }
+    extraConfig?: Record<string, string | boolean | undefined>
   ): Promise<{ success: boolean; botUsername?: string; error?: string }> {
     const pluginType = this.getPluginTypeFromId(pluginId);
 
@@ -403,9 +415,19 @@ export class ChannelManager {
       };
     }
 
+    if (pluginType === 'slack') {
+      const appToken = typeof extraConfig?.appToken === 'string' ? extraConfig.appToken : undefined;
+      const result = await SlackPlugin.testConnection(token, appToken);
+      return {
+        success: result.success,
+        botUsername: result.botInfo?.username,
+        error: result.error,
+      };
+    }
+
     if (pluginType === 'lark') {
-      const appId = extraConfig?.appId;
-      const appSecret = extraConfig?.appSecret;
+      const appId = typeof extraConfig?.appId === 'string' ? extraConfig.appId : undefined;
+      const appSecret = typeof extraConfig?.appSecret === 'string' ? extraConfig.appSecret : undefined;
       if (!appId || !appSecret) {
         return {
           success: false,
@@ -421,8 +443,8 @@ export class ChannelManager {
     }
 
     if (pluginType === 'dingtalk') {
-      const clientId = extraConfig?.appId; // Reuse appId field for clientId
-      const clientSecret = extraConfig?.appSecret; // Reuse appSecret field for clientSecret
+      const clientId = typeof extraConfig?.appId === 'string' ? extraConfig.appId : undefined; // Reuse appId field for clientId
+      const clientSecret = typeof extraConfig?.appSecret === 'string' ? extraConfig.appSecret : undefined; // Reuse appSecret field for clientSecret
       if (!clientId || !clientSecret) {
         return {
           success: false,
@@ -523,7 +545,7 @@ export class ChannelManager {
       // For gemini + model info: update existing conversations' model field
       if (newType === 'gemini' && model?.id && model?.useModel) {
         if (isBuiltinChannelPlatform(platform)) {
-          const builtinPlatform: 'telegram' | 'lark' | 'dingtalk' | 'weixin' = platform;
+          const builtinPlatform: 'telegram' | 'slack' | 'lark' | 'dingtalk' | 'weixin' = platform;
           const fullModel = await getChannelDefaultModel(builtinPlatform);
           const db = await getDatabase();
           const result = db.updateChannelConversationModel(builtinPlatform, 'gemini', fullModel);
