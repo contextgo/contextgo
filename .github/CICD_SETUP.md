@@ -37,19 +37,31 @@
 
 ```text
 BUILD_RUNNER_MODE=self-hosted
-RELEASE_BUILD_PLATFORMS=macos-arm64
-SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON=["self-hosted","macOS","arm64","aionui-control"]
+RELEASE_BUILD_PLATFORMS=linux
+PR_CHECKS_PLATFORM_SCOPE=linux-only
+SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON=["self-hosted","Linux","X64","contextgo-org","tencent-sh-1"]
 SELF_HOSTED_MACOS_RUNNER_LABELS_JSON=["self-hosted","macOS","arm64","aionui-macos"]
 SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON=["self-hosted","Windows","x64","aionui-windows"]
-SELF_HOSTED_LINUX_RUNNER_LABELS_JSON=["self-hosted","Linux","x64","aionui-linux"]
+SELF_HOSTED_LINUX_RUNNER_LABELS_JSON=["self-hosted","Linux","X64","contextgo-org","tencent-sh-1"]
 ```
 
 说明：
 
 - `BUILD_RUNNER_MODE` 可选 `hosted` 或 `self-hosted`
 - `RELEASE_BUILD_PLATFORMS` 可填 `all`，或逗号分隔的平台子集，例如 `macos-arm64,linux`
+- `PR_CHECKS_PLATFORM_SCOPE` 当前支持 `linux-only` 或 `all`
 - `*_LABELS_JSON` 必须是 JSON 数组字符串
 - 如果 self-hosted runner 还没有覆盖所有平台，不要把 `RELEASE_BUILD_PLATFORMS` 设成 `all`
+
+当前已确认的组织级 runner：
+
+- `tencent-sh-1-org-runner`
+- labels: `self-hosted`, `Linux`, `X64`, `contextgo-org`, `tencent-sh-1`, `cn-shanghai`, `docker-builder`
+
+这意味着：
+
+- 现在可以把 Linux 类 CI/CD job 切到该机器
+- 现在不能把 macOS / Windows 构建也切成 self-hosted，否则会一直排队
 
 ## 必需的 GitHub Secrets 配置
 

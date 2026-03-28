@@ -34,12 +34,16 @@ As of 2026-03-28, the following foundations already exist in `main`:
 - mobile shell architecture and command docs are already merged
 - the repository has existing GitHub Actions for desktop build and release
 - the desktop build workflows now support switching between GitHub-hosted and self-hosted runners
+- the repository can target the `contextgo` organization runner `tencent-sh-1-org-runner`
 - current desktop release workflow still only covers desktop artifacts
 - mobile-shell release automation is not yet wired into GitHub release workflows
 
 Important current blockers:
 
-- no self-hosted runners are currently registered for `contextgo/contextgo`
+- `contextgo/contextgo` has no repo-local self-hosted runner, but the org-level default runner group exposes one Linux runner:
+  - runner: `tencent-sh-1-org-runner`
+  - labels: `self-hosted`, `Linux`, `X64`, `contextgo-org`, `tencent-sh-1`, `cn-shanghai`, `docker-builder`
+- the current org runner fleet does not include macOS or Windows runners
 - no repository-level GitHub Actions secrets or variables are currently visible through GitHub CLI
 - no GitHub Actions environments are currently configured
 - Android, iOS, and HarmonyOS release signing materials are not yet configured in CI
@@ -124,6 +128,7 @@ Do not defer this. Identifier churn later causes avoidable migration problems.
 - [ ] Register at least one self-hosted control runner with `bash`, `git`, and outbound network access
 - [ ] Register the self-hosted platform runners required for the release targets you actually want to ship now
 - [ ] Set `BUILD_RUNNER_MODE=self-hosted`
+- [ ] Set `PR_CHECKS_PLATFORM_SCOPE=linux-only` until macOS and Windows runners exist
 - [ ] Set `RELEASE_BUILD_PLATFORMS` to the supported subset until the full runner fleet exists
 - [ ] Set `SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON`
 - [ ] Set `SELF_HOSTED_MACOS_RUNNER_LABELS_JSON`
@@ -210,6 +215,7 @@ The repository should gradually converge on the following GitHub Actions secrets
 Prefer GitHub Actions variables for stable non-secret configuration.
 
 - [ ] `BUILD_RUNNER_MODE`
+- [ ] `PR_CHECKS_PLATFORM_SCOPE`
 - [ ] `RELEASE_BUILD_PLATFORMS`
 - [ ] `SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON`
 - [ ] `SELF_HOSTED_MACOS_RUNNER_LABELS_JSON`
@@ -258,6 +264,7 @@ These are the practical actions that can be finished without waiting for externa
 - [ ] add GitHub Actions secrets once signing materials are generated
 - [ ] register and label self-hosted runners
 - [ ] switch `BUILD_RUNNER_MODE` to `self-hosted`
+- [ ] constrain PR checks and release platforms to Linux-only until more org runners exist
 - [x] manually trigger at least one desktop build workflow from `main`
 - [ ] restore GitHub Actions billing so hosted jobs can actually start
 
