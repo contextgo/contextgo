@@ -42,6 +42,9 @@ Important current blockers:
 - no GitHub Actions environments are currently configured
 - Android, iOS, and HarmonyOS release signing materials are not yet configured in CI
 - iOS and HarmonyOS still depend on account and signing setup outside the repository
+- GitHub Actions billing is currently blocking hosted workflow execution:
+  - the manual build run `23683160605` failed before job startup on 2026-03-28
+  - GitHub reported: recent account payments have failed or the spending limit needs to be increased
 
 ## What Was Completed Today
 
@@ -231,7 +234,8 @@ These are the practical actions that can be finished without waiting for externa
 
 - [ ] add GitHub Actions variables once final product URLs and IDs are confirmed
 - [ ] add GitHub Actions secrets once signing materials are generated
-- [ ] manually trigger at least one desktop build workflow from `main`
+- [x] manually trigger at least one desktop build workflow from `main`
+- [ ] restore GitHub Actions billing so hosted jobs can actually start
 
 ### Actions that cannot be honestly completed today without your inputs
 
@@ -239,6 +243,7 @@ These are the practical actions that can be finished without waiting for externa
 - [ ] Android release keystore creation if you want the final production keystore to be created under your own security process
 - [ ] HUAWEI Developer verification
 - [ ] official website deployment credential setup
+- [ ] GitHub billing or spending-limit correction if you are the account owner or billing admin
 
 ## Recommended Order For You
 
