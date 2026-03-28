@@ -91,6 +91,8 @@
     "@office-ai/aioncli-core": "^0.30.1",
     "@office-ai/platform": "^0.3.16",
     "@sentry/electron": "^7.10.0",
+    "@slack/bolt": "^4.6.0",
+    "@slack/web-api": "^7.15.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@uiw/codemirror-extensions-langs": "^4.25.1",

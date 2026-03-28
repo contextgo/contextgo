@@ -13,7 +13,7 @@ import { Button, Dropdown, Empty, Menu, Message, Spin, Tooltip } from '@arco-des
 import { CheckOne, CloseOne, Copy, Delete, Down, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ChannelModelSelector from './ChannelModelSelector';
+import ChannelModelSelector from '../ChannelModelSelector';
 
 type LoginState = 'idle' | 'loading_qr' | 'showing_qr' | 'scanned' | 'connected';
 

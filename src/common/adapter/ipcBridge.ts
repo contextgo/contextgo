@@ -1172,7 +1172,7 @@ export const channel = {
   disablePlugin: bridge.buildProvider<IBridgeResponse, { pluginId: string }>('channel.disable-plugin'),
   testPlugin: bridge.buildProvider<
     IBridgeResponse<{ success: boolean; botUsername?: string; error?: string }>,
-    { pluginId: string; token: string; extraConfig?: { appId?: string; appSecret?: string } }
+    { pluginId: string; token: string; extraConfig?: Record<string, string | boolean | undefined> }
   >('channel.test-plugin'),
 
   // Pairing Management

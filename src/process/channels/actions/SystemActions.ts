@@ -22,6 +22,12 @@ import {
 import { getChannelConversationName, resolveChannelConvType } from '../types';
 import { matchesAgentSelectionCallbackToken } from '../utils/agentSelection';
 import {
+  buildAgentSelectionActionButtons,
+  buildHelpActionButtons,
+  buildMainMenuActionButtons,
+  buildSessionControlActionButtons,
+} from '../utils/actionButtons';
+import {
   createAgentSelectionCard,
   createFeaturesCard,
   createHelpCard,
@@ -99,11 +105,13 @@ export async function getChannelDefaultModel(platform: PluginType): Promise<TPro
     const savedModel =
       platform === 'lark'
         ? await ProcessConfig.get('assistant.lark.defaultModel')
-        : platform === 'dingtalk'
-          ? await ProcessConfig.get('assistant.dingtalk.defaultModel')
-          : platform === 'weixin'
-            ? await ProcessConfig.get('assistant.weixin.defaultModel')
-            : await ProcessConfig.get('assistant.telegram.defaultModel');
+        : platform === 'slack'
+          ? await ProcessConfig.get('assistant.slack.defaultModel')
+          : platform === 'dingtalk'
+            ? await ProcessConfig.get('assistant.dingtalk.defaultModel')
+            : platform === 'weixin'
+              ? await ProcessConfig.get('assistant.weixin.defaultModel')
+              : await ProcessConfig.get('assistant.telegram.defaultModel');
     if (savedModel?.id && savedModel?.useModel) {
       // Google Auth is frontend-only (OAuth browser flow), not usable in channels.
       // Fall through to find a provider with a valid API key instead.
@@ -229,14 +237,17 @@ export const handleSessionNew: ActionHandler = async (context) => {
   const markup =
     context.platform === 'lark'
       ? createMainMenuCard()
-      : context.platform === 'dingtalk'
-        ? createDingTalkMainMenuCard()
-        : createMainMenuKeyboard();
+      : context.platform === 'slack'
+        ? undefined
+        : context.platform === 'dingtalk'
+          ? createDingTalkMainMenuCard()
+          : createMainMenuKeyboard();
   return createSuccessResponse({
     type: 'text',
     text: `🆕 <b>New Session Created</b>\n\nSession ID: <code>${session.id.slice(-8)}</code>\n\nYou can start a new conversation now!`,
     parseMode: 'HTML',
-    replyMarkup: markup,
+    ...(markup ? { replyMarkup: markup } : {}),
+    ...(context.platform === 'slack' ? { buttons: buildMainMenuActionButtons() } : {}),
   });
 };
 
@@ -287,6 +298,34 @@ export const handleSessionStatus: ActionHandler = async (context) => {
     });
   }
 
+  if (context.platform === 'slack') {
+    if (!session) {
+      return createSuccessResponse({
+        type: 'text',
+        text: '📊 <b>Session Status</b>\n\nNo active session.\n\nSend a message to start a new conversation, or tap the "New Chat" button.',
+        parseMode: 'HTML',
+        buttons: buildSessionControlActionButtons(),
+      });
+    }
+
+    const duration = Math.floor((Date.now() - session.createdAt) / 1000 / 60);
+    const lastActivity = Math.floor((Date.now() - session.lastActivity) / 1000);
+
+    return createSuccessResponse({
+      type: 'text',
+      text: [
+        '📊 <b>Session Status</b>',
+        '',
+        `🤖 Agent: <code>${session.agentType}</code>`,
+        `⏱ Duration: ${duration} min`,
+        `📝 Last activity: ${lastActivity} sec ago`,
+        `🔖 Session ID: <code>${session.id.slice(-8)}</code>`,
+      ].join('\n'),
+      parseMode: 'HTML',
+      buttons: buildSessionControlActionButtons(),
+    });
+  }
+
   if (!session) {
     return createSuccessResponse({
       type: 'text',
@@ -318,6 +357,19 @@ export const handleSessionStatus: ActionHandler = async (context) => {
  * Handle help.show - Show help menu
  */
 export const handleHelpShow: ActionHandler = async (context) => {
+  const helpText = [
+    '❓ <b>ContextGo Assistant</b>',
+    '',
+    'A remote assistant to interact with ContextGo via Slack.',
+    '',
+    '<b>Common Actions:</b>',
+    '• 🆕 New Chat - Start a new session',
+    '• 📊 Status - View current session status',
+    '• ❓ Help - Show this help message',
+    '',
+    'Send a message to chat with the AI assistant.',
+  ].join('\n');
+
   if (context.platform === 'lark') {
     return createSuccessResponse({
       type: 'text',
@@ -332,20 +384,17 @@ export const handleHelpShow: ActionHandler = async (context) => {
       replyMarkup: createDingTalkHelpCard(),
     });
   }
+  if (context.platform === 'slack') {
+    return createSuccessResponse({
+      type: 'text',
+      text: helpText,
+      parseMode: 'HTML',
+      buttons: buildHelpActionButtons(),
+    });
+  }
   return createSuccessResponse({
     type: 'text',
-    text: [
-      '❓ <b>ContextGo Assistant</b>',
-      '',
-      'A remote assistant to interact with ContextGo via Telegram.',
-      '',
-      '<b>Common Actions:</b>',
-      '• 🆕 New Chat - Start a new session',
-      '• 📊 Status - View current session status',
-      '• ❓ Help - Show this help message',
-      '',
-      'Send a message to chat with the AI assistant.',
-    ].join('\n'),
+    text: helpText,
     parseMode: 'HTML',
     replyMarkup: createHelpKeyboard(),
   });
@@ -355,6 +404,25 @@ export const handleHelpShow: ActionHandler = async (context) => {
  * Handle help.features - Show feature introduction
  */
 export const handleHelpFeatures: ActionHandler = async (context) => {
+  const featuresText = [
+    '🤖 <b>Features</b>',
+    '',
+    '<b>AI Chat</b>',
+    '• Natural language conversation',
+    '• Streaming output, real-time display',
+    '• Context memory support',
+    '',
+    '<b>Session Management</b>',
+    '• Single session mode',
+    '• Clear context anytime',
+    '• View session status',
+    '',
+    '<b>Message Actions</b>',
+    '• Copy reply content',
+    '• Regenerate reply',
+    '• Continue conversation',
+  ].join('\n');
+
   if (context.platform === 'lark') {
     return createSuccessResponse({
       type: 'text',
@@ -369,26 +437,17 @@ export const handleHelpFeatures: ActionHandler = async (context) => {
       replyMarkup: createDingTalkFeaturesCard(),
     });
   }
+  if (context.platform === 'slack') {
+    return createSuccessResponse({
+      type: 'text',
+      text: featuresText,
+      parseMode: 'HTML',
+      buttons: buildHelpActionButtons(),
+    });
+  }
   return createSuccessResponse({
     type: 'text',
-    text: [
-      '🤖 <b>Features</b>',
-      '',
-      '<b>AI Chat</b>',
-      '• Natural language conversation',
-      '• Streaming output, real-time display',
-      '• Context memory support',
-      '',
-      '<b>Session Management</b>',
-      '• Single session mode',
-      '• Clear context anytime',
-      '• View session status',
-      '',
-      '<b>Message Actions</b>',
-      '• Copy reply content',
-      '• Regenerate reply',
-      '• Continue conversation',
-    ].join('\n'),
+    text: featuresText,
     parseMode: 'HTML',
     replyMarkup: createHelpKeyboard(),
   });
@@ -398,6 +457,21 @@ export const handleHelpFeatures: ActionHandler = async (context) => {
  * Handle help.pairing - Show pairing guide
  */
 export const handleHelpPairing: ActionHandler = async (context) => {
+  const pairingGuideText = [
+    '🔗 <b>Pairing Guide</b>',
+    '',
+    '<b>First-time Setup:</b>',
+    '1. Send any message to the bot',
+    '2. Bot displays pairing code',
+    '3. Approve pairing in ContextGo settings',
+    '4. Ready to use after pairing',
+    '',
+    '<b>Notes:</b>',
+    '• Pairing code valid for 10 minutes',
+    '• ContextGo app must be running',
+    '• One Slack account can only pair once',
+  ].join('\n');
+
   if (context.platform === 'lark') {
     return createSuccessResponse({
       type: 'text',
@@ -412,22 +486,17 @@ export const handleHelpPairing: ActionHandler = async (context) => {
       replyMarkup: createDingTalkPairingGuideCard(),
     });
   }
+  if (context.platform === 'slack') {
+    return createSuccessResponse({
+      type: 'text',
+      text: pairingGuideText,
+      parseMode: 'HTML',
+      buttons: buildHelpActionButtons(),
+    });
+  }
   return createSuccessResponse({
     type: 'text',
-    text: [
-      '🔗 <b>Pairing Guide</b>',
-      '',
-      '<b>First-time Setup:</b>',
-      '1. Send any message to the bot',
-      '2. Bot displays pairing code',
-      '3. Approve pairing in ContextGo settings',
-      '4. Ready to use after pairing',
-      '',
-      '<b>Notes:</b>',
-      '• Pairing code valid for 10 minutes',
-      '• ContextGo app must be running',
-      '• One Telegram account can only pair once',
-    ].join('\n'),
+    text: pairingGuideText,
     parseMode: 'HTML',
     replyMarkup: createHelpKeyboard(),
   });
@@ -437,6 +506,20 @@ export const handleHelpPairing: ActionHandler = async (context) => {
  * Handle help.tips - Show usage tips
  */
 export const handleHelpTips: ActionHandler = async (context) => {
+  const tipsText = [
+    '💬 <b>Tips</b>',
+    '',
+    '<b>Effective Conversations:</b>',
+    '• Be clear and specific',
+    '• Feel free to ask follow-ups',
+    '• Regenerate if not satisfied',
+    '',
+    '<b>Quick Actions:</b>',
+    '• Use bottom buttons for quick access',
+    '• Tap message buttons for actions',
+    '• New chat clears history context',
+  ].join('\n');
+
   if (context.platform === 'lark') {
     return createSuccessResponse({
       type: 'text',
@@ -451,21 +534,17 @@ export const handleHelpTips: ActionHandler = async (context) => {
       replyMarkup: createDingTalkTipsCard(),
     });
   }
+  if (context.platform === 'slack') {
+    return createSuccessResponse({
+      type: 'text',
+      text: tipsText,
+      parseMode: 'HTML',
+      buttons: buildHelpActionButtons(),
+    });
+  }
   return createSuccessResponse({
     type: 'text',
-    text: [
-      '💬 <b>Tips</b>',
-      '',
-      '<b>Effective Conversations:</b>',
-      '• Be clear and specific',
-      '• Feel free to ask follow-ups',
-      '• Regenerate if not satisfied',
-      '',
-      '<b>Quick Actions:</b>',
-      '• Use bottom buttons for quick access',
-      '• Tap message buttons for actions',
-      '• New chat clears history context',
-    ].join('\n'),
+    text: tipsText,
     parseMode: 'HTML',
     replyMarkup: createHelpKeyboard(),
   });
@@ -475,6 +554,14 @@ export const handleHelpTips: ActionHandler = async (context) => {
  * Handle settings.show - Show settings info
  */
 export const handleSettingsShow: ActionHandler = async (context) => {
+  const settingsText = [
+    '⚙️ <b>Settings</b>',
+    '',
+    'Channel settings need to be configured in the ContextGo app.',
+    '',
+    'Open ContextGo → WebUI → Channels',
+  ].join('\n');
+
   if (context.platform === 'lark') {
     return createSuccessResponse({
       type: 'text',
@@ -489,15 +576,17 @@ export const handleSettingsShow: ActionHandler = async (context) => {
       replyMarkup: createDingTalkSettingsCard(),
     });
   }
+  if (context.platform === 'slack') {
+    return createSuccessResponse({
+      type: 'text',
+      text: settingsText,
+      parseMode: 'HTML',
+      buttons: buildMainMenuActionButtons(),
+    });
+  }
   return createSuccessResponse({
     type: 'text',
-    text: [
-      '⚙️ <b>Settings</b>',
-      '',
-      'Channel settings need to be configured in the ContextGo app.',
-      '',
-      'Open ContextGo → WebUI → Channels',
-    ].join('\n'),
+    text: settingsText,
     parseMode: 'HTML',
     replyMarkup: createMainMenuKeyboard(),
   });
@@ -538,6 +627,21 @@ export const handleAgentShow: ActionHandler = async (context) => {
       type: 'text',
       text: '',
       replyMarkup: createDingTalkAgentSelectionCard(availableAgents, currentAgentKey),
+    });
+  }
+
+  if (context.platform === 'slack') {
+    return createSuccessResponse({
+      type: 'text',
+      text: [
+        '🔄 <b>Switch Agent</b>',
+        '',
+        'Select an AI agent for your conversations:',
+        '',
+        `Current: <b>${currentAgentDisplayName}</b>`,
+      ].join('\n'),
+      parseMode: 'HTML',
+      buttons: buildAgentSelectionActionButtons(availableAgents, currentAgentKey),
     });
   }
 
@@ -602,6 +706,8 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
     const markup =
       context.platform === 'lark'
         ? createMainMenuCard()
+        : context.platform === 'slack'
+          ? undefined
         : context.platform === 'dingtalk'
           ? createDingTalkMainMenuCard()
           : createMainMenuKeyboard();
@@ -609,7 +715,8 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
       type: 'text',
       text: `✓ Already using <b>${selectedAgentName}</b>`,
       parseMode: 'HTML',
-      replyMarkup: markup,
+      ...(markup ? { replyMarkup: markup } : {}),
+      ...(context.platform === 'slack' ? { buttons: buildMainMenuActionButtons() } : {}),
     });
   }
 
@@ -624,7 +731,6 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
 
   // Get current session (scoped by chatId)
   const existingSession = sessionManager.getSession(context.channelUser.id, context.chatId);
-
   // Clear existing session and agent (scoped by chatId)
   if (existingSession) {
     const messageService = getChannelMessageService();
@@ -660,9 +766,11 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
   const markup =
     context.platform === 'lark'
       ? createMainMenuCard()
-      : context.platform === 'dingtalk'
-        ? createDingTalkMainMenuCard()
-        : createMainMenuKeyboard();
+      : context.platform === 'slack'
+        ? undefined
+        : context.platform === 'dingtalk'
+          ? createDingTalkMainMenuCard()
+          : createMainMenuKeyboard();
   return createSuccessResponse({
     type: 'text',
     text: [
@@ -673,7 +781,8 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
       'Send a message to begin!',
     ].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: markup,
+    ...(markup ? { replyMarkup: markup } : {}),
+    ...(context.platform === 'slack' ? { buttons: buildMainMenuActionButtons() } : {}),
   });
 };
 
@@ -688,9 +797,16 @@ type SavedChannelAgentConfig = {
 
 function getChannelAgentConfigPath(
   platform: PluginType
-): 'assistant.lark.agent' | 'assistant.dingtalk.agent' | 'assistant.weixin.agent' | 'assistant.telegram.agent' {
+):
+  | 'assistant.lark.agent'
+  | 'assistant.slack.agent'
+  | 'assistant.dingtalk.agent'
+  | 'assistant.weixin.agent'
+  | 'assistant.telegram.agent' {
   return platform === 'lark'
     ? 'assistant.lark.agent'
+    : platform === 'slack'
+      ? 'assistant.slack.agent'
     : platform === 'dingtalk'
       ? 'assistant.dingtalk.agent'
       : platform === 'weixin'
@@ -730,9 +846,11 @@ async function getSavedChannelAgentConfig(platform: PluginType): Promise<SavedCh
   }
 }
 
-function getConversationSource(platform: PluginType): 'telegram' | 'lark' | 'dingtalk' | 'weixin' {
+function getConversationSource(platform: PluginType): 'telegram' | 'slack' | 'lark' | 'dingtalk' | 'weixin' {
   return platform === 'lark'
     ? 'lark'
+    : platform === 'slack'
+      ? 'slack'
     : platform === 'dingtalk'
       ? 'dingtalk'
       : platform === 'weixin'

@@ -4,5 +4,5 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export * from './credentialCrypto';
-export * from './actionButtons';
+export { SlackPlugin } from './SlackPlugin';
+export * from './SlackAdapter';

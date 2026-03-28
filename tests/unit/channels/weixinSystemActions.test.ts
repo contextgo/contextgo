@@ -85,6 +85,14 @@ const BASE_CHANNEL_USER = {
   authorizedAt: 1000,
 };
 
+const BASE_SLACK_USER = {
+  id: 'channel-user-2',
+  platformUserId: 'slack-user-1',
+  platformType: 'slack' as const,
+  displayName: 'Bob',
+  authorizedAt: 2000,
+};
+
 function createActionContext() {
   return {
     platform: 'weixin' as const,
@@ -102,6 +110,35 @@ function createActionContext() {
       user: {
         id: 'wx-user-1',
         displayName: 'Alice',
+      },
+      content: {
+        type: 'action' as const,
+        text: 'agent.select',
+      },
+      timestamp: Date.now(),
+    },
+    sendMessage: vi.fn(async () => 'sent-message-id'),
+    editMessage: vi.fn(async () => {}),
+  };
+}
+
+function createSlackActionContext() {
+  return {
+    platform: 'slack' as const,
+    pluginId: 'slack_default',
+    userId: 'slack-user-1',
+    chatId: 'chat-slack-1',
+    displayName: 'Bob',
+    channelUser: BASE_SLACK_USER,
+    sessionId: 'session-2',
+    conversationId: 'conv-2',
+    originalMessage: {
+      id: 'msg-2',
+      platform: 'slack' as const,
+      chatId: 'chat-slack-1',
+      user: {
+        id: 'slack-user-1',
+        displayName: 'Bob',
       },
       content: {
         type: 'action' as const,
@@ -171,6 +208,20 @@ describe('SystemActions weixin platform handling', () => {
     await getChannelDefaultModel('telegram');
     expect(mockGet).toHaveBeenCalledWith('assistant.telegram.defaultModel');
     expect(mockGet).not.toHaveBeenCalledWith('assistant.weixin.defaultModel');
+  });
+
+  it('getChannelDefaultModel reads assistant.slack.defaultModel for slack platform', async () => {
+    const { getChannelDefaultModel } = await import('@process/channels/actions/SystemActions');
+
+    mockGet.mockImplementation((key: string) => {
+      if (key === 'model.config') return Promise.resolve([GEMINI_PROVIDER]);
+      if (key === 'assistant.slack.defaultModel') return Promise.resolve({ id: 'p1', useModel: 'gemini-2.0-flash' });
+      return Promise.resolve(undefined);
+    });
+
+    await getChannelDefaultModel('slack');
+    expect(mockGet).toHaveBeenCalledWith('assistant.slack.defaultModel');
+    expect(mockGet).not.toHaveBeenCalledWith('assistant.telegram.defaultModel');
   });
 
   it('getChannelDefaultModel falls back when model config read fails', async () => {
@@ -308,6 +359,39 @@ describe('SystemActions agent selection', () => {
     expect(mockSet).not.toHaveBeenCalled();
     expect(mockCreateConversation).not.toHaveBeenCalled();
     expect(mockSessionManager.clearSession).not.toHaveBeenCalled();
+  });
+
+  it('stores selected agent under the slack config path for slack platform', async () => {
+    const { handleAgentSelect } = await import('@process/channels/actions/SystemActions');
+    const context = createSlackActionContext();
+
+    mockGet.mockImplementation(async (key: string) => {
+      if (key === 'model.config') return [GEMINI_PROVIDER];
+      if (key === 'assistant.slack.agent') return { backend: 'gemini', name: 'Gemini' };
+      return undefined;
+    });
+
+    mockSessionManager.getSession.mockReturnValue({
+      id: 'session-slack-old',
+      userId: BASE_SLACK_USER.id,
+      agentType: 'gemini',
+      conversationId: 'conv-slack-old',
+      chatId: 'chat-slack-1',
+      createdAt: 1000,
+      lastActivity: 1000,
+    });
+
+    const result = await handleAgentSelect(context, { agentKey: 'claude:claude-custom-1' });
+
+    expect(result.success).toBe(true);
+    expect(mockSet).toHaveBeenCalledWith(
+      'assistant.slack.agent',
+      expect.objectContaining({
+        backend: 'claude',
+        customAgentId: 'claude-custom-1',
+        name: 'Claude Code',
+      })
+    );
   });
 });
 
