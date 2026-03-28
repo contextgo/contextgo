@@ -57,6 +57,13 @@
   "localUser": "ローカルユーザー",
   "more": "その他",
   "refresh": "更新",
+  "rendererCrash": {
+    "title": "このページは描画の完了前にクラッシュしました",
+    "description": "レンダラーエラーにより現在の画面が中断されました。ページを再読み込みするか、診断情報をコピーして調査に利用できます。",
+    "type": "エラー種別",
+    "route": "ルート",
+    "time": "発生時刻"
+  },
   "tray.showWindow": "ContextGo を表示",
   "tray.newChat": "新しいチャット",
   "tray.closeToTray": "トレイに隠す",

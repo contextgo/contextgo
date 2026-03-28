@@ -91,11 +91,10 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   const copyButton = (
     <Tooltip content={t('common.copy', { defaultValue: 'Copy' })}>
       <div
-        className='p-4px rd-4px cursor-pointer hover:bg-3 transition-colors opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto'
+        className='app-icon-button p-4px rd-4px cursor-pointer hover:bg-3 transition-colors opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto'
         onClick={handleCopy}
-        style={{ lineHeight: 0 }}
       >
-        <Copy theme='outline' size='16' fill={iconColors.secondary} />
+        <Copy theme='outline' size='16' fill={iconColors.secondary} className='app-icon' />
       </div>
     </Tooltip>
   );

@@ -22,6 +22,7 @@ See [docs/conventions/file-structure.md](docs/conventions/file-structure.md) for
 
 - **Components**: `@arco-design/web-react` — no raw interactive HTML (`<button>`, `<input>`, `<select>`, etc.)
 - **Icons**: `@icon-park/react`
+- **Icon alignment**: renderer entry must keep `@icon-park/react/styles/index.css` imported globally; for icon+text rows, menu items, and icon buttons, use the shared classes in `src/renderer/styles/icon.css` (`app-icon`, `app-icon-slot`, `app-icon-row`, `app-icon-button`) instead of per-component `marginTop` / inline `lineHeight` fixes
 
 ### CSS
 
@@ -84,6 +85,17 @@ Common Oxfmt rules (Prettier-compatible, avoid a fix pass):
 - Single-element arrays that fit on one line → inline: `[{ id: 'a', value: 'b' }]`
 - Trailing commas required in multi-line arrays/objects
 - Single quotes for strings
+
+## Desktop Verification
+
+When the task involves the packaged macOS app, do not assume "build log succeeded" means the user is running the new UI.
+
+- For local desktop verification, follow `docs/tech/desktop-build-install-troubleshooting.md`.
+- Treat "Finder opened" or "the app launched" as insufficient evidence that `/Applications/ContextGo.app` was updated.
+- Verify the source context first: branch, worktree status, and expected remote.
+- Rebuild the desktop app, replace `/Applications/ContextGo.app`, relaunch it, and verify the running process path.
+- If the user reports a "white screen" but the window shows raw JS/CSS/JSON text, do **not** assume the top-level renderer entry failed. First inspect nested preview / `webview` navigation and persisted preview state.
+- After fixing a packaged-app bug, verify both source-level checks and runtime behavior: `bunx tsc --noEmit`, relevant tests, full desktop build, install, relaunch, and an actual UI check.
 
 ## Git Conventions
 

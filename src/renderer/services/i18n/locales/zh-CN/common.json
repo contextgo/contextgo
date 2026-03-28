@@ -57,6 +57,13 @@
   "localUser": "本机用户",
   "more": "更多",
   "refresh": "刷新",
+  "rendererCrash": {
+    "title": "当前页面在完成渲染前发生了崩溃",
+    "description": "渲染层异常中断了当前视图。你可以重新加载页面，或复制诊断信息用于排查。",
+    "type": "错误类型",
+    "route": "页面路由",
+    "time": "发生时间"
+  },
   "tray.showWindow": "显示 ContextGo",
   "tray.newChat": "新建对话",
   "tray.closeToTray": "隐藏到托盘",

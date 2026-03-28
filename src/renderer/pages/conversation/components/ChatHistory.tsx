@@ -198,7 +198,7 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
         <div
           id={'c-' + conversation.id}
           className={classNames(
-            'chat-history__item hover:bg-hover px-12px py-8px rd-8px flex justify-start items-center group cursor-pointer relative overflow-hidden group shrink-0 conversation-item [&.conversation-item+&.conversation-item]:mt-2px',
+            'chat-history__item hover:bg-hover w-full box-border px-12px py-8px rd-8px flex justify-start items-center group cursor-pointer relative overflow-hidden group shrink-0 conversation-item [&.conversation-item+&.conversation-item]:mt-2px min-w-0 max-w-full',
             {
               '!bg-active ': isSelected,
             }
@@ -206,7 +206,10 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
           onClick={handleSelect.bind(null, conversation)}
         >
           <MessageOne theme='outline' size='20' className='mt-2px flex' />
-          <FlexFullContainer className='h-24px collapsed-hidden ml-10px min-w-0'>
+          <FlexFullContainer
+            className='h-24px collapsed-hidden ml-10px min-w-0 overflow-hidden'
+            containerClassName='overflow-hidden'
+          >
             {isEditing ? (
               <Input
                 className='chat-history__item-editor text-14px lh-24px h-24px w-full'
@@ -218,11 +221,13 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
                 size='small'
               />
             ) : (
-              <div className='flex items-center gap-4px w-full'>
-                <div className='chat-history__item-name text-nowrap overflow-hidden text-ellipsis inline-block flex-1 text-14px lh-24px whitespace-nowrap min-w-0'>
-                  {conversation.name}
+              <div className='flex min-w-0 items-center gap-4px w-full overflow-hidden'>
+                <div className='chat-history__item-name text-nowrap overflow-hidden text-ellipsis inline-block flex-1 text-14px lh-24px whitespace-nowrap min-w-0 max-w-full'>
+                  <span className='block w-full overflow-hidden text-ellipsis whitespace-nowrap'>{conversation.name}</span>
                 </div>
-                <CronJobIndicator status={cronStatus} size={14} />
+                <span className='flex-shrink-0'>
+                  <CronJobIndicator status={cronStatus} size={14} />
+                </span>
               </div>
             )}
           </FlexFullContainer>

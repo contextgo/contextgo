@@ -57,6 +57,13 @@
   "localUser": "로컬 사용자",
   "more": "더보기",
   "refresh": "새로고침",
+  "rendererCrash": {
+    "title": "이 페이지가 렌더링을 완료하기 전에 중단되었습니다",
+    "description": "렌더러 오류로 현재 화면이 중단되었습니다. 페이지를 다시 로드하거나 진단 정보를 복사해 확인할 수 있습니다.",
+    "type": "오류 유형",
+    "route": "경로",
+    "time": "발생 시각"
+  },
   "tray.showWindow": "ContextGo 표시",
   "tray.newChat": "새 채팅",
   "tray.closeToTray": "트레이에 숨기기",

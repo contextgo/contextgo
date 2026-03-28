@@ -139,10 +139,11 @@ export const application = {
   reportRendererError: bridge.buildProvider<
     void,
     {
-      type: 'error' | 'unhandledrejection';
+      type: 'error' | 'unhandledrejection' | 'react-error-boundary';
       message: string;
       stack?: string;
       href?: string;
+      timestamp?: string;
     }
   >('app.report-renderer-error'), // 上报 renderer 未捕获异常到主进程日志
   systemInfo: bridge.buildProvider<
@@ -671,6 +672,16 @@ export const voiceInput = {
   ),
   startManualCapture: bridge.buildProvider<void, void>('voice-input:start-manual-capture'),
   stopManualCapture: bridge.buildProvider<void, void>('voice-input:stop-manual-capture'),
+  getOpenWhisperState: bridge.buildProvider<import('../types/voiceInput').VoiceInputOpenWhisperState, void>(
+    'voice-input:get-open-whisper-state'
+  ),
+  installOpenWhisperRuntime: bridge.buildProvider<import('../types/voiceInput').VoiceInputOpenWhisperState, void>(
+    'voice-input:install-open-whisper-runtime'
+  ),
+  installOpenWhisperModel: bridge.buildProvider<
+    import('../types/voiceInput').VoiceInputOpenWhisperState,
+    { modelId?: import('../types/voiceInput').VoiceInputOpenWhisperModelId }
+  >('voice-input:install-open-whisper-model'),
   listRecords: bridge.buildProvider<import('../types/voiceInput').VoiceInputRecord[], { limit?: number }>(
     'voice-input:list-records'
   ),

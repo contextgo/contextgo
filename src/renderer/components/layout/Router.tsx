@@ -68,6 +68,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
         <Route element={<ProtectedLayout layout={layout} />}>
           <Route index element={<StartupConversationRedirect />} />
           <Route path='/guid' element={withRouteFallback(Guid)} />
+          <Route path='/hooks' element={withRouteFallback(HooksManagement)} />
           <Route path='/connectors' element={withRouteFallback(ConnectorsPage)} />
           <Route path='/connectors/:connectorId' element={withRouteFallback(ConnectorsPage)} />
           <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />

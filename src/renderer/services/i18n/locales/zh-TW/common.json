@@ -57,6 +57,13 @@
   "localUser": "本機使用者",
   "more": "更多",
   "refresh": "重新整理",
+  "rendererCrash": {
+    "title": "當前頁面在完成渲染前發生了崩潰",
+    "description": "渲染層異常中斷了目前視圖。你可以重新載入頁面，或複製診斷資訊用於排查。",
+    "type": "錯誤類型",
+    "route": "頁面路由",
+    "time": "發生時間"
+  },
   "tray.showWindow": "顯示 ContextGo",
   "tray.newChat": "新建對話",
   "tray.closeToTray": "隱藏到托盤",

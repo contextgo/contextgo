@@ -1,8 +1,12 @@
 .page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   width: 100%;
-  min-height: 100%;
+  min-height: 0;
   box-sizing: border-box;
   padding: 24px;
+  overflow: hidden;
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--bg-2) 86%, var(--fill-2) 14%),
@@ -12,8 +16,11 @@
 
 .shell {
   display: grid;
+  flex: 1;
   grid-template-columns: minmax(280px, 332px) minmax(0, 1fr);
-  min-height: calc(100vh - 110px);
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
   border: 1px solid var(--border-base);
   border-radius: 20px;
   overflow: hidden;
@@ -24,7 +31,9 @@
 .sidebar {
   display: flex;
   flex-direction: column;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
   border-right: 1px solid var(--border-base);
   background: linear-gradient(
     180deg,
@@ -38,17 +47,27 @@
   border-bottom: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
 }
 
+.sidebarTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .eyebrow {
-  margin-bottom: 6px;
+  margin: 4px 0 0;
+  flex-shrink: 0;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  text-align: right;
 }
 
 .sidebarTitle {
   margin: 0;
+  min-width: 0;
   color: var(--text-primary);
   font-size: 24px;
   font-weight: 700;
@@ -66,14 +85,37 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px 8px 12px 10px;
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: none;
 }
 
 .categorySection + .categorySection {
   margin-top: 14px;
 }
 
+.categoryToggle {
+  width: 100%;
+  height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  color: inherit;
+}
+
+.categoryToggle :global(.arco-btn-content) {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+}
+
 .categoryTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
   padding: 6px 10px 8px;
   color: var(--text-tertiary);
   font-size: 12px;
@@ -82,7 +124,53 @@
   letter-spacing: 0.04em;
 }
 
+.categoryTitleMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.categoryTitleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categoryChevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.categoryChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.categoryCount {
+  flex-shrink: 0;
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-2) 72%, var(--bg-1) 28%);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.categoryItems {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.categoryItems[hidden] {
+  display: none;
+}
+
 .connectorItem {
+  display: block;
   width: 100%;
   height: auto;
   margin: 0;
@@ -90,22 +178,31 @@
   border: none;
   border-radius: 14px;
   background: transparent;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .connectorItem :global(.arco-btn-content) {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  box-sizing: border-box;
 }
 
 .connectorItemInner {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
-  padding: 12px 10px;
+  padding: 11px 10px;
   border: 1px solid transparent;
   border-radius: 14px;
+  box-sizing: border-box;
   text-align: left;
+  overflow: hidden;
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease,
@@ -125,17 +222,25 @@
 .connectorMeta {
   min-width: 0;
   flex: 1;
+  overflow: hidden;
 }
 
 .connectorNameRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .connectorName {
+  flex: 1;
+  display: block;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
@@ -144,14 +249,25 @@
 
 .connectorDomain {
   margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.4;
 }
 
+.connectorNameRow :global(.arco-tag) {
+  flex-shrink: 0;
+}
+
 .detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   min-width: 0;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 24px;
 }
 
@@ -240,6 +356,28 @@
   line-height: 1.7;
 }
 
+@media (max-width: 1100px) {
+  .page {
+    overflow-y: auto;
+  }
+
+  .shell {
+    height: auto;
+    min-height: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border-base);
+  }
+
+  .listWrap,
+  .detail {
+    overflow: visible;
+  }
+}
+
 .logoBase {
   display: inline-flex;
   align-items: center;
@@ -251,9 +389,9 @@
 }
 
 .logoSmall {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
 }
 
 .logoLarge {
@@ -265,8 +403,13 @@
 .logoImage {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  background: var(--bg-1);
+  object-fit: contain;
+  background: transparent;
+}
+
+.logoSmall .logoImage {
+  width: 74%;
+  height: 74%;
 }
 
 .logoFallbackText {
@@ -281,6 +424,7 @@
 }
 
 .logoFallback,
+.logoContextgo,
 .logoGoogleWorkspace,
 .logoCollaboration,
 .logoDevelopment,
@@ -290,6 +434,15 @@
 .logoBusiness,
 .logoData {
   color: var(--text-primary);
+}
+
+.logoContextgo {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, rgb(var(--primary-6)) 22%, var(--bg-1) 78%),
+    color-mix(in srgb, var(--fill-2) 72%, var(--bg-1) 28%)
+  );
+  color: rgb(var(--primary-6));
 }
 
 .logoGoogleWorkspace {

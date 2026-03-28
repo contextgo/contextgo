@@ -42,6 +42,15 @@
   box-sizing: border-box;
 }
 
+.sider-main-section {
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.sider-main-section--desktop-chrome-offset {
+  padding-top: 45px;
+}
+
 .sider-entry-row {
   border: 1px solid transparent;
   background: transparent;
@@ -138,7 +147,7 @@
   padding: 8px;
   border: none;
   border-radius: 16px;
-  background: transparent;
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%);
   box-shadow: none;
 }
 
@@ -331,6 +340,9 @@
 /* Sidebar item transitions (shared by chat-history and settings-sider) */
 .chat-history__item,
 .settings-sider__item {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   transition:
     padding 0.2s ease,
     margin 0.2s ease,

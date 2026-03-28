@@ -57,6 +57,13 @@
   "localUser": "Yerel Kullanıcı",
   "more": "Daha Fazla",
   "refresh": "Yenile",
+  "rendererCrash": {
+    "title": "Bu sayfa oluşturma tamamlanmadan çöktü",
+    "description": "Bir renderer hatası mevcut görünümü durdurdu. Sayfayı yeniden yükleyebilir veya tanılama bilgilerini kopyalayarak inceleyebilirsiniz.",
+    "type": "Hata Türü",
+    "route": "Rota",
+    "time": "Oluşma Zamanı"
+  },
   "tray.showWindow": "ContextGo'yu Göster",
   "tray.newChat": "Yeni Sohbet",
   "tray.closeToTray": "Tepsiye Gizle",

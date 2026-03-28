@@ -81,9 +81,9 @@
   "assistantSkillsHint": "List preferred tools/skills for the assistant.",
   "assistantSkillsPlaceholder": "Enter skills in Markdown format...",
   "assistantHooks": "Hooks",
-  "assistantHooksHint": "Prompt-transform hooks for before_user_prompt run now. Other hook types are stored only.",
+  "assistantHooksHint": "Prompt-transform hooks for before_user_prompt run now. Other hook metadata is stored for future expansion.",
   "hooksPage": "Hooks",
-  "hooksPageDescription": "Manage imported hooks here. Assistant defaults are configured in Assistants, and session overrides are available from the conversation header.",
+  "hooksPageDescription": "Manage system-provided and imported hooks here. These hooks currently run through prompt transformation before the user prompt is sent.",
   "hooksPageManageAssistants": "Manage Assistants",
   "hooksPageSearchPlaceholder": "Search hooks by name, description, or location",
   "hooksPageTotal": "Total Hooks",
@@ -122,36 +122,10 @@
   "builtinSkills": "Builtin Skills",
   "noCustomSkills": "No custom skills added",
   "noBuiltinSkills": "No builtin skills available",
-  "hooksPage": "Hooks",
-  "hooksPageDescription": "Manage system-provided and imported hooks here. These hooks currently run through prompt transformation before the user prompt is sent.",
-  "hooksPageManageAssistants": "Manage Assistants",
-  "hooksPageTotal": "Total Hooks",
-  "hooksPageCustom": "Custom Hooks",
-  "hooksPageBuiltin": "Builtin Hooks",
-  "hooksPageSearchPlaceholder": "Search hooks by name, description, or location",
-  "hooksPageEmptySearch": "No hooks match the current search.",
-  "assistantHooks": "Hooks",
-  "assistantHooksHint": "Prompt-transform hooks for before_user_prompt run now. Other hook metadata is stored for future expansion.",
-  "availableHooks": "Available Hooks",
-  "noAvailableHooks": "No hooks found in the hook directory",
-  "importHook": "Import Hook",
-  "openHookFolder": "Open Folder",
-  "hookStoragePath": "Hook storage path",
-  "hookLocation": "Location",
-  "hookSupportedBackends": "Supported backends",
-  "hookUnsupportedTag": "Unsupported",
   "hookNeedsAttention": "Needs Attention",
-  "hookImportFailed": "Failed to import hook",
-  "hookImported": "Hook imported successfully",
   "installHook": "Install",
   "hookInstallFailed": "Failed to install hook",
-  "hookDeleteFailed": "Failed to delete hook",
-  "hookDeleted": "Hook deleted successfully",
-  "hookOpenFolderFailed": "Failed to open hook folder",
   "hookLoadFailed": "Failed to load hooks",
-  "hookSaveIncompatible": "Remove hooks not supported by the selected agent before saving: {{hooks}}",
-  "deleteHookTitle": "Delete Hook",
-  "deleteHookConfirm": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
   "skillFolderPath": "Skill Folder Path",
   "skillPathPlaceholder": "Enter or browse skill folder path(s), separated by comma",
   "pleaseSelectSkillPath": "Please select a skill folder path",
@@ -208,12 +182,13 @@
   "promptTimeout": "LLM Prompt Timeout (s)",
   "voiceInput": {
     "title": "Voice Input",
-    "description": "Configure global macOS voice input, provider credentials, and usage summary.",
+    "description": "Configure global macOS voice input, cloud ASR credentials, local Whisper runtime, and usage summary.",
     "platformNotSupported": "Voice input is currently available on macOS desktop only.",
     "provider": "Provider",
     "providers": {
       "dashscope": "DashScope",
-      "volcengine": "VolcEngine"
+      "volcengine": "VolcEngine",
+      "openWhisper": "Open Whisper (Local)"
     },
     "triggerMode": "Trigger Mode",
     "triggerModes": {
@@ -232,18 +207,67 @@
       "singapore": "Singapore"
     },
     "vocabularyId": "Vocabulary ID",
+    "phraseId": "Phrase ID",
+    "boostingTableId": "Boosting Table ID",
+    "correctTableId": "Correction Table ID",
     "languageHints": "Language Hints",
-    "hotwords": "Hotwords",
-    "hotwordsPlaceholder": "One hotword per line, or separate by comma",
+    "hotwords": "Terminology / Hotwords",
+    "hotwordsPlaceholder": "One term per line, or separate by comma",
+    "cliPath": "Whisper CLI Path",
+    "localRuntime": "Local Runtime",
+    "runtimeReady": "Ready",
+    "runtimeMissing": "Not Installed",
+    "runtimePath": "Runtime Path",
+    "modelDirectory": "Model Directory",
+    "selectedModelStatus": "Selected Model",
+    "modelInstalled": "Installed",
+    "modelNotInstalled": "Not Installed",
+    "modelSummary": "Model Summary",
+    "installRuntime": "Install whisper.cpp",
+    "installSelectedModel": "Install Selected Model",
+    "brewRequired": "Automatic runtime installation requires Homebrew. Install whisper.cpp manually or provide a custom CLI path.",
+    "providerHints": {
+      "dashscope": "DashScope uses provider-managed vocabulary and phrase tables. Configure vocabulary and phrase IDs together with language hints for better accuracy.",
+      "volcengine": "VolcEngine supports boosting and correction tables, plus inline hotword lists. Use table IDs for managed glossaries and hotwords for temporary phrase hints.",
+      "openWhisper": "Open Whisper runs locally through whisper.cpp. Install the runtime and a GGML model, then add terminology so it is injected into the prompt."
+    },
+    "openWhisper": {
+      "models": {
+        "tiny": {
+          "label": "Tiny",
+          "description": "Fastest and smallest option. Best for quick local testing, with lower accuracy on mixed-domain speech."
+        },
+        "base": {
+          "label": "Base",
+          "description": "Balanced default. Good starting point for daily local dictation and mixed Chinese / English speech."
+        },
+        "small": {
+          "label": "Small",
+          "description": "Higher accuracy with moderate local resource usage. Suitable for longer notes and meetings."
+        },
+        "medium": {
+          "label": "Medium",
+          "description": "High-accuracy local model for heavier terminology and multi-speaker scenarios, but it needs much more disk and compute."
+        },
+        "large-v3-turbo": {
+          "label": "Large v3 Turbo",
+          "description": "Highest local accuracy in this preset list. Best for demanding recognition quality if your device can handle it."
+        }
+      }
+    },
     "placeholders": {
       "dashscopeApiKey": "sk-...",
       "dashscopeModel": "fun-asr-realtime",
       "vocabularyId": "custom-vocab-id",
+      "phraseId": "custom-phrase-id",
       "languageHints": "zh, en",
       "volcengineAppKey": "123456789",
       "volcengineAccessKey": "your-access-key",
       "resourceId": "volc.bigasr.sauc.duration",
-      "volcengineModel": "bigmodel"
+      "volcengineModel": "bigmodel",
+      "boostingTableId": "boosting-table-id",
+      "correctTableId": "correction-table-id",
+      "openWhisperCliPath": "/opt/homebrew/bin/whisper-cli"
     },
     "autoInsert": "Auto insert into the focused app",
     "requestPermissions": "Request Permissions",
@@ -286,7 +310,14 @@
       "copied": "Copied",
       "recorded": "Recorded",
       "failed": "Failed"
-    }
+    },
+    "hardwareRequirements": "Hardware Requirements",
+    "localProcessingNotice": "Open Whisper runs entirely on this device and consumes local CPU, memory, and disk during recognition.",
+    "estimatedStorage": "Download Size",
+    "recommendedMemory": "Recommended Memory",
+    "cpuLoadNotice": "Larger models are slower on CPU-only devices and may increase fan noise, heat, and battery drain during long recordings.",
+    "installOnDemandHint": "Only install the model you actually need. Start with Base, then move up only if your terminology and meeting scenarios require it.",
+    "enableRequiresInstall": "To enable local voice recognition, install the whisper.cpp runtime and the selected model first."
   },
   "gemini": "Gemini",
   "model": "Model",
@@ -816,6 +847,7 @@
     "stagePriority": "Priority",
     "stagePlanned": "Planned",
     "categories": {
+      "contextgo": "ContextGo Family",
       "googleWorkspace": "Google Workspace",
       "collaboration": "Collaboration",
       "development": "Development",
@@ -826,6 +858,9 @@
       "data": "Data"
     },
     "resourceTypes": {
+      "clipboard": "Clipboard",
+      "browserHistory": "Browser History",
+      "webPages": "Web Pages",
       "chat": "Chat",
       "docs": "Docs",
       "wiki": "Wiki",
@@ -848,7 +883,10 @@
       "bot": "Bot Token",
       "apiKey": "API Key",
       "pat": "Personal Access Token",
-      "serviceAccount": "Service Account"
+      "serviceAccount": "Service Account",
+      "native": "Local Permission",
+      "extension": "Extension Pairing",
+      "none": "No Auth"
     }
   },
   "extensionAssistantReadonly": "Extension assistants are read-only. You can duplicate it and edit the copy."

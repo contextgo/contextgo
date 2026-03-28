@@ -121,6 +121,18 @@ export function initSystemSettingsBridge(): void {
     await voiceInputRuntime.stopManualCapture();
   });
 
+  ipcBridge.voiceInput.getOpenWhisperState.provider(async () => {
+    return voiceInputRuntime.getOpenWhisperState();
+  });
+
+  ipcBridge.voiceInput.installOpenWhisperRuntime.provider(async () => {
+    return voiceInputRuntime.installOpenWhisperRuntime();
+  });
+
+  ipcBridge.voiceInput.installOpenWhisperModel.provider(async ({ modelId }) => {
+    return voiceInputRuntime.installOpenWhisperModel(modelId);
+  });
+
   ipcBridge.voiceInput.listRecords.provider(async ({ limit }) => {
     return voiceInputRuntime.listRecords(limit);
   });

@@ -57,6 +57,13 @@
   "localUser": "Local User",
   "more": "More",
   "refresh": "Refresh",
+  "rendererCrash": {
+    "title": "This page crashed before it finished rendering.",
+    "description": "A renderer error interrupted the current view. Reload the page, or copy the diagnostics for troubleshooting.",
+    "type": "Error Type",
+    "route": "Route",
+    "time": "Occurred At"
+  },
   "tray.showWindow": "Show ContextGo",
   "tray.newChat": "New Chat",
   "tray.closeToTray": "Hide to Tray",

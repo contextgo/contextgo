@@ -33,6 +33,22 @@ interface HTMLRendererProps {
 interface ElectronWebView extends HTMLElement {
   src: string;
   executeJavaScript: (code: string) => Promise<void>;
+  stop?: () => void;
+}
+
+const SUSPICIOUS_DOCUMENT_RESOURCE_PATTERN = /\.(?:[cm]?js|css|json|map|txt|xml|wasm)(?:$|[?#])/i;
+
+function isSuspiciousDocumentNavigation(targetUrl: string): boolean {
+  try {
+    const parsed = new URL(targetUrl);
+    if (parsed.protocol === 'about:' || parsed.protocol === 'data:') {
+      return false;
+    }
+
+    return SUSPICIOUS_DOCUMENT_RESOURCE_PATTERN.test(parsed.pathname);
+  } catch {
+    return SUSPICIOUS_DOCUMENT_RESOURCE_PATTERN.test(targetUrl);
+  }
 }
 
 /**
@@ -193,6 +209,7 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
   const webviewRef = useRef<ElectronWebView | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const webviewLoadedRef = useRef(false); // 跟踪 webview 是否已加载 / Track if webview is loaded
+  const lastStableWebviewUrlRef = useRef(''); // 记录可恢复的安全文档 URL / Track recoverable safe document URL
   const isSyncingScrollRef = useRef(false); // 防止滚动同步循环 / Prevent scroll sync loops
   const [webviewContentHeight, setWebviewContentHeight] = useState(0); // webview 内容高度 / webview content height
   const [inlinedHtmlContent, setInlinedHtmlContent] = useState<string>(''); // 内联化后的 HTML（用于 browser iframe）/ Inlined HTML (for browser iframe)
@@ -337,7 +354,72 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
   // 当 webviewSrc 改变时重置加载状态 / Reset loading state when webviewSrc changes
   useEffect(() => {
     webviewLoadedRef.current = false;
+    lastStableWebviewUrlRef.current = webviewSrc;
   }, [webviewSrc]);
+
+  useEffect(() => {
+    if (!isElectron) {
+      return;
+    }
+
+    const webview = webviewRef.current;
+    if (!webview) {
+      return;
+    }
+
+    const restoreStableDocument = (targetUrl?: string) => {
+      if (!targetUrl || !isSuspiciousDocumentNavigation(targetUrl)) {
+        return;
+      }
+
+      console.warn('[HTMLRenderer] Blocked suspicious webview document navigation:', targetUrl);
+
+      try {
+        webview.stop?.();
+      } catch {
+        // Ignore stop failures and continue with src restore.
+      }
+
+      const fallbackUrl = lastStableWebviewUrlRef.current || webviewSrc;
+      if (fallbackUrl && webview.src !== fallbackUrl) {
+        webview.src = fallbackUrl;
+      }
+    };
+
+    const handleWillNavigate = (event: Event) => {
+      const navigationEvent = event as Event & { url?: string; preventDefault?: () => void };
+      if (!navigationEvent.url || !isSuspiciousDocumentNavigation(navigationEvent.url)) {
+        return;
+      }
+
+      navigationEvent.preventDefault?.();
+      restoreStableDocument(navigationEvent.url);
+    };
+
+    const handleDidNavigate = (event: Event) => {
+      const navigationEvent = event as Event & { url?: string };
+      if (!navigationEvent.url) {
+        return;
+      }
+
+      if (isSuspiciousDocumentNavigation(navigationEvent.url)) {
+        restoreStableDocument(navigationEvent.url);
+        return;
+      }
+
+      lastStableWebviewUrlRef.current = navigationEvent.url;
+    };
+
+    webview.addEventListener('will-navigate', handleWillNavigate as EventListener);
+    webview.addEventListener('did-navigate', handleDidNavigate as EventListener);
+    webview.addEventListener('did-navigate-in-page', handleDidNavigate as EventListener);
+
+    return () => {
+      webview.removeEventListener('will-navigate', handleWillNavigate as EventListener);
+      webview.removeEventListener('did-navigate', handleDidNavigate as EventListener);
+      webview.removeEventListener('did-navigate-in-page', handleDidNavigate as EventListener);
+    };
+  }, [isElectron, webviewSrc]);
 
   // 监听 webview 加载完成
   // 依赖 webviewSrc 确保 webview 重新挂载时重新添加监听器
