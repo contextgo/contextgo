@@ -12,6 +12,9 @@ const BUILTIN_ASSISTANT_PREFIX = 'builtin-';
 const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
   'morph-ppt',
   'cowork',
+  'engineering-workbench',
+  'engineering-planner',
+  'engineering-reviewer',
   'openclaw-setup',
   'star-office-helper',
   'story-roleplay',
