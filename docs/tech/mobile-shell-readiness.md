@@ -12,6 +12,10 @@ Canonical command entry points:
 
 - `docs/tech/mobile-shell-cmd.md`
 
+Canonical release and distribution policy:
+
+- `docs/tech/release-distribution-standards.md`
+
 Recommended packaging strategy:
 
 - Treat mobile as a **native shell + remote WebUI** product.
