@@ -9,7 +9,7 @@ import type { TChatConversation } from '@/common/config/storage';
 
 type GroupConversation = Extract<TChatConversation, { type: 'group' }>;
 
-const getDiscussionParentGroupId = (conversation: TChatConversation): string | undefined => {
+const getGroupParentConversationId = (conversation: TChatConversation): string | undefined => {
   const extra = conversation.extra as
     | {
         groupMeta?: { parentGroupId?: string };
@@ -20,8 +20,8 @@ const getDiscussionParentGroupId = (conversation: TChatConversation): string | u
   return typeof parentGroupId === 'string' && parentGroupId.length > 0 ? parentGroupId : undefined;
 };
 
-export const isDiscussionFamilyConversation = (conversation: TChatConversation): boolean => {
-  return conversation.type === 'group' || Boolean(getDiscussionParentGroupId(conversation));
+export const isGroupFamilyConversation = (conversation: TChatConversation): boolean => {
+  return conversation.type === 'group' || Boolean(getGroupParentConversationId(conversation));
 };
 
 const buildWorkspaceUpdatedConversation = (conversation: TChatConversation, workspace: string): TChatConversation => {
@@ -57,12 +57,12 @@ const updateConversationWorkspace = async (
   return buildWorkspaceUpdatedConversation(conversation, workspace);
 };
 
-const loadDiscussionGroupConversation = async (conversation: TChatConversation): Promise<GroupConversation | null> => {
+const loadGroupConversation = async (conversation: TChatConversation): Promise<GroupConversation | null> => {
   if (conversation.type === 'group') {
     return conversation;
   }
 
-  const parentGroupId = getDiscussionParentGroupId(conversation);
+  const parentGroupId = getGroupParentConversationId(conversation);
   if (!parentGroupId) {
     return null;
   }
@@ -71,8 +71,8 @@ const loadDiscussionGroupConversation = async (conversation: TChatConversation):
   return parentConversation?.type === 'group' ? parentConversation : null;
 };
 
-const loadDiscussionFamilyConversations = async (conversation: TChatConversation): Promise<TChatConversation[]> => {
-  const groupConversation = await loadDiscussionGroupConversation(conversation);
+const loadGroupFamilyConversations = async (conversation: TChatConversation): Promise<TChatConversation[]> => {
+  const groupConversation = await loadGroupConversation(conversation);
   if (!groupConversation) {
     return [conversation];
   }
@@ -90,10 +90,10 @@ const loadDiscussionFamilyConversations = async (conversation: TChatConversation
   return [groupConversation, ...childConversations.filter((item): item is TChatConversation => item !== null)];
 };
 
-export const syncDiscussionFamilyWorkspace = async (
+export const syncGroupFamilyWorkspace = async (
   conversation: TChatConversation,
   workspace: string
 ): Promise<TChatConversation[]> => {
-  const familyConversations = await loadDiscussionFamilyConversations(conversation);
+  const familyConversations = await loadGroupFamilyConversations(conversation);
   return Promise.all(familyConversations.map((item) => updateConversationWorkspace(item, workspace)));
 };

@@ -63,9 +63,9 @@ describe('buildVisibleConversationIds', () => {
     const visibleConversationIds = buildVisibleConversationIds({
       pinnedConversations: [createConversation('pinned-1'), createConversation('pinned-2')],
       timelineSections,
-      discussionChildConversationsByParentId: {},
+      groupChildConversationsByParentId: {},
       expandedWorkspaces: ['/workspace/project-a'],
-      expandedDiscussionGroups: [],
+      expandedGroupConversations: [],
       siderCollapsed: false,
     });
 
@@ -87,9 +87,9 @@ describe('buildVisibleConversationIds', () => {
           ],
         },
       ],
-      discussionChildConversationsByParentId: {},
+      groupChildConversationsByParentId: {},
       expandedWorkspaces: [],
-      expandedDiscussionGroups: [],
+      expandedGroupConversations: [],
       siderCollapsed: false,
     });
 
@@ -111,16 +111,16 @@ describe('buildVisibleConversationIds', () => {
           ],
         },
       ],
-      discussionChildConversationsByParentId: {},
+      groupChildConversationsByParentId: {},
       expandedWorkspaces: [],
-      expandedDiscussionGroups: [],
+      expandedGroupConversations: [],
       siderCollapsed: true,
     });
 
     expect(visibleConversationIds).toEqual(['ws-1', 'ws-2']);
   });
 
-  it('renders discussion group child sessions immediately after their parent conversation', () => {
+  it('renders group child sessions immediately after their parent conversation', () => {
     const groupConversation = {
       ...createConversation('group-1'),
       type: 'group' as const,
@@ -129,6 +129,7 @@ describe('buildVisibleConversationIds', () => {
         customWorkspace: true,
         participants: [],
         orchestration: {
+          kind: 'discussion',
           mode: 'broadcast' as const,
           rounds: 1 as const,
         },
@@ -154,18 +155,18 @@ describe('buildVisibleConversationIds', () => {
           ],
         },
       ],
-      discussionChildConversationsByParentId: {
+      groupChildConversationsByParentId: {
         'group-1': [createConversation('child-1'), createConversation('child-2')],
       },
       expandedWorkspaces: [],
-      expandedDiscussionGroups: ['group-1'],
+      expandedGroupConversations: ['group-1'],
       siderCollapsed: false,
     });
 
     expect(visibleConversationIds).toEqual(['group-1', 'child-1', 'child-2', 'direct-1']);
   });
 
-  it('hides discussion child sessions until their parent group is expanded', () => {
+  it('hides group child sessions until their parent group is expanded', () => {
     const groupConversation = {
       ...createConversation('group-1'),
       type: 'group' as const,
@@ -174,6 +175,7 @@ describe('buildVisibleConversationIds', () => {
         customWorkspace: true,
         participants: [],
         orchestration: {
+          kind: 'discussion',
           mode: 'broadcast' as const,
           rounds: 1 as const,
         },
@@ -194,18 +196,18 @@ describe('buildVisibleConversationIds', () => {
           ],
         },
       ],
-      discussionChildConversationsByParentId: {
+      groupChildConversationsByParentId: {
         'group-1': [createConversation('child-1'), createConversation('child-2')],
       },
       expandedWorkspaces: [],
-      expandedDiscussionGroups: [],
+      expandedGroupConversations: [],
       siderCollapsed: false,
     });
 
     expect(visibleConversationIds).toEqual(['group-1']);
   });
 
-  it('keeps discussion group children nested under their parent inside a workspace section', () => {
+  it('keeps group children nested under their parent inside a workspace section', () => {
     const groupConversation = {
       ...createConversation('group-1'),
       type: 'group' as const,
@@ -214,6 +216,7 @@ describe('buildVisibleConversationIds', () => {
         customWorkspace: true,
         participants: [],
         orchestration: {
+          kind: 'discussion',
           mode: 'broadcast' as const,
           rounds: 1 as const,
         },
@@ -240,11 +243,11 @@ describe('buildVisibleConversationIds', () => {
           ],
         },
       ],
-      discussionChildConversationsByParentId: {
+      groupChildConversationsByParentId: {
         'group-1': [createConversation('child-1'), createConversation('child-2')],
       },
       expandedWorkspaces: ['/workspace/project-a'],
-      expandedDiscussionGroups: ['group-1'],
+      expandedGroupConversations: ['group-1'],
       siderCollapsed: false,
     });
 

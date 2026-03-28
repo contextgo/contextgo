@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { TChatConversation } from '../../../src/common/config/storage';
-import { splitDiscussionChildConversations } from '../../../src/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
+import { splitGroupChildConversations } from '../../../src/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
 import { buildGroupedHistory } from '../../../src/renderer/pages/conversation/GroupedHistory/utils/groupingHelpers';
 
 const createConversation = (id: string, overrides: Partial<TChatConversation> = {}): TChatConversation => ({
@@ -30,8 +30,8 @@ const createConversation = (id: string, overrides: Partial<TChatConversation> = 
   ...overrides,
 });
 
-describe('discussion conversation grouping', () => {
-  it('treats any conversation with parentGroupId as a discussion child', () => {
+describe('group conversation grouping', () => {
+  it('treats any conversation with parentGroupId as a group child', () => {
     const parentConversation = createConversation('group-1', {
       type: 'group',
       extra: {
@@ -39,6 +39,7 @@ describe('discussion conversation grouping', () => {
         customWorkspace: true,
         participants: [],
         orchestration: {
+          kind: 'discussion',
           mode: 'broadcast',
           rounds: 1,
         },
@@ -56,15 +57,15 @@ describe('discussion conversation grouping', () => {
       },
     } as Partial<TChatConversation>);
 
-    const result = splitDiscussionChildConversations([parentConversation, childConversation]);
+    const result = splitGroupChildConversations([parentConversation, childConversation]);
 
     expect(result.topLevelConversations.map((conversation) => conversation.id)).toEqual(['group-1']);
-    expect(result.discussionChildConversationsByParentId['group-1']?.map((conversation) => conversation.id)).toEqual([
+    expect(result.groupChildConversationsByParentId['group-1']?.map((conversation) => conversation.id)).toEqual([
       'child-1',
     ]);
   });
 
-  it('does not render discussion children as top-level history items even if they slip into the conversation list', () => {
+  it('does not render group children as top-level history items even if they slip into the conversation list', () => {
     const parentConversation = createConversation('group-1', {
       type: 'group',
       extra: {
@@ -72,6 +73,7 @@ describe('discussion conversation grouping', () => {
         customWorkspace: true,
         participants: [],
         orchestration: {
+          kind: 'discussion',
           mode: 'broadcast',
           rounds: 1,
         },
@@ -105,7 +107,7 @@ describe('discussion conversation grouping', () => {
 
     expect(workspaceConversations).toEqual(['group-1']);
     expect(
-      groupedHistory.discussionChildConversationsByParentId['group-1']?.map((conversation) => conversation.id)
+      groupedHistory.groupChildConversationsByParentId['group-1']?.map((conversation) => conversation.id)
     ).toEqual(['child-1']);
   });
 

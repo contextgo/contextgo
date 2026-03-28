@@ -105,6 +105,18 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   const groupAvatarImage = groupMeta?.participantAvatar
     ? CUSTOM_AVATAR_IMAGE_MAP[groupMeta.participantAvatar]
     : undefined;
+  const groupMetaLabels = groupMeta
+    ? groupMeta.kind === 'workflow'
+      ? [
+          groupMeta.participantRole ? t(`conversation.group.role.${groupMeta.participantRole}`) : null,
+          t(`conversation.group.workflow.stage.${groupMeta.stage}`),
+          groupMeta.iteration > 0 ? t('conversation.group.workflow.iterationLabel', { iteration: groupMeta.iteration }) : null,
+        ].filter(Boolean)
+      : [
+          groupMeta.participantRole ? t(`conversation.group.role.${groupMeta.participantRole}`) : null,
+          groupMeta.round > 0 ? t('conversation.group.roundLabel', { round: groupMeta.round }) : null,
+        ].filter(Boolean)
+    : [];
 
   return (
     <>
@@ -122,7 +134,9 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
               <span className='text-14px leading-18px'>{groupMeta.participantAvatar}</span>
             ) : null}
             <span className='font-medium text-[var(--color-text-2)]'>{groupMeta.participantName}</span>
-            {groupMeta.round > 0 ? <span>{t('conversation.group.roundLabel', { round: groupMeta.round })}</span> : null}
+            {groupMetaLabels.map((label) => (
+              <span key={String(label)}>{label}</span>
+            ))}
           </div>
         )}
         {files.length > 0 && (
