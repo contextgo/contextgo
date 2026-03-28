@@ -346,3 +346,70 @@ describe('PreviewContext — closeTab clears fileMtimeRef', () => {
     expect(mockReadFile).not.toHaveBeenCalled();
   });
 });
+
+describe('PreviewContext — persisted preview tabs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    localStorage.clear();
+  });
+
+  it('ignores persisted html tabs during restore', () => {
+    localStorage.setItem(
+      'aionui_preview_tabs',
+      JSON.stringify([
+        {
+          id: 'html-tab',
+          title: 'HTML Preview',
+          content: '<html><body>preview</body></html>',
+          contentType: 'html',
+        },
+        {
+          id: 'code-tab',
+          title: 'index.ts',
+          content: 'export const ready = true;',
+          contentType: 'code',
+        },
+      ])
+    );
+    localStorage.setItem('aionui_preview_active_tab_id', 'html-tab');
+
+    const { result } = renderHook(() => usePreviewContext(), { wrapper });
+
+    expect(result.current.tabs).toHaveLength(1);
+    expect(result.current.tabs[0]?.id).toBe('code-tab');
+    expect(result.current.tabs[0]?.contentType).toBe('code');
+    expect(result.current.activeTabId).toBe('code-tab');
+  });
+
+  it('does not persist html preview tabs back to localStorage', async () => {
+    const { result } = renderHook(() => usePreviewContext(), { wrapper });
+
+    act(() => {
+      result.current.openPreview('<html><body>preview</body></html>', 'html', {
+        title: 'HTML Preview',
+      });
+      result.current.openPreview('export const ready = true;', 'code', {
+        title: 'index.ts',
+        language: 'typescript',
+      });
+    });
+
+    await act(async () => {
+      await tickPoll(200);
+    });
+
+    const persistedTabs = JSON.parse(localStorage.getItem('aionui_preview_tabs') || '[]') as Array<{
+      id: string;
+      contentType: string;
+    }>;
+
+    expect(persistedTabs).toHaveLength(1);
+    expect(persistedTabs[0]?.contentType).toBe('code');
+  });
+});

@@ -6,7 +6,6 @@
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -99,7 +98,7 @@ describe('ConversationSearchPopover', () => {
   it('opens the standalone search page when the entry is clicked', () => {
     const onSessionClick = vi.fn();
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <ConversationSearchPopover onSessionClick={onSessionClick} />
       </MemoryRouter>
@@ -111,6 +110,7 @@ describe('ConversationSearchPopover', () => {
     expect(onSessionClick).toHaveBeenCalledTimes(1);
     expect(blockMobileInputFocusMock).toHaveBeenCalledTimes(1);
     expect(blurActiveElementMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.app-icon')).not.toBeNull();
   });
 
   it('navigates to the selected conversation from the standalone search page', async () => {

@@ -7,7 +7,7 @@ import {
   encodeVolcengineFullClientRequest,
   extractVolcengineTranscript,
   type VolcengineRecognitionPayload,
-} from './volcengineSocketProtocol';
+} from '../volcengineSocketProtocol';
 
 const RECOGNIZE_URL = 'wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_nostream';
 const AUDIO_CHUNK_SIZE = 6_400;
@@ -46,6 +46,22 @@ export class VolcengineVoiceProvider {
     }
 
     const connectId = crypto.randomUUID();
+    const hotwords = this.config.hotwords.filter((item) => item.trim().length > 0);
+    const boostingTableId = this.config.boostingTableId?.trim() || '';
+    const correctTableId = this.config.correctTableId?.trim() || '';
+    const corpus =
+      boostingTableId.length > 0 || correctTableId.length > 0
+        ? {
+            ...(boostingTableId.length > 0 ? { boosting_table_id: boostingTableId } : {}),
+            ...(correctTableId.length > 0 ? { correct_table_id: correctTableId } : {}),
+          }
+        : undefined;
+    const context =
+      hotwords.length > 0
+        ? JSON.stringify({
+            hot_words_list: hotwords,
+          })
+        : undefined;
     const requestPayload = {
       user: {
         uid: this.config.appKey,
@@ -62,6 +78,8 @@ export class VolcengineVoiceProvider {
         enable_itn: true,
         enable_punc: true,
         result_type: 'full',
+        ...(corpus ? { corpus } : {}),
+        ...(context ? { context } : {}),
       },
     } satisfies Record<string, unknown>;
 

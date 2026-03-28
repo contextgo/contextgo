@@ -13,6 +13,17 @@
   z-index: 10;
 }
 
+.app-titlebar--desktop-chrome-only {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  width: auto;
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+}
+
 .app-titlebar--desktop {
   -webkit-app-region: drag;
   gap: 0;
@@ -86,6 +97,14 @@
   min-height: var(--titlebar-height);
   box-sizing: border-box;
   border-right: 1px solid var(--border-base);
+}
+
+.app-titlebar--desktop-chrome-only .app-titlebar__desktop-left {
+  border-right: 1px solid var(--border-base);
+  border-bottom: 1px solid var(--border-base);
+  border-bottom-right-radius: 0;
+  background: var(--bg-1);
+  box-shadow: none;
 }
 
 .app-titlebar__desktop-right {

@@ -39,9 +39,10 @@ export function initApplicationBridge(workerTaskManager: IWorkerTaskManager): vo
     return Promise.resolve(false);
   });
 
-  ipcBridge.application.reportRendererError.provider(({ type, message, stack, href }) => {
+  ipcBridge.application.reportRendererError.provider(({ type, message, stack, href, timestamp }) => {
     mainError('[RendererCrash]', `${type}: ${message}`, {
       href,
+      timestamp,
       stack,
     });
     return Promise.resolve();

@@ -1,6 +1,6 @@
 import type { VoiceInputConfig } from '@/common/types/voiceInput';
 import WebSocket from 'ws';
-import { getDashScopeWebSocketUrl } from './voiceInputConfig';
+import { getDashScopeWebSocketUrl } from '../voiceInputConfig';
 
 type RunTaskCommand = {
   header: {
@@ -17,6 +17,7 @@ type RunTaskCommand = {
       format: 'pcm';
       sample_rate: 16000;
       vocabulary_id?: string;
+      phrase_id?: string;
       language_hints?: string[];
     };
     input: Record<string, never>;
@@ -204,6 +205,7 @@ export class DashScopeVoiceProvider {
   private createRunTaskCommand(taskId: string): RunTaskCommand {
     const languageHints = this.config.languageHints.length > 0 ? this.config.languageHints : undefined;
     const vocabularyId = this.config.vocabularyId?.trim() || undefined;
+    const phraseId = this.config.phraseId?.trim() || undefined;
 
     return {
       header: {
@@ -220,6 +222,7 @@ export class DashScopeVoiceProvider {
           format: 'pcm',
           sample_rate: 16000,
           vocabulary_id: vocabularyId,
+          phrase_id: phraseId,
           language_hints: languageHints,
         },
         input: {},

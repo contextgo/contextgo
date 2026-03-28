@@ -176,6 +176,27 @@ body[arco-theme='dark'] .arco-message-error {
   box-shadow: var(--app-popup-shadow) !important;
 }
 
+/*
+ * Keep popup surfaces fully opaque during enter/appear states.
+ * Arco's default fadeIn starts at opacity: 0, which creates a visible
+ * transparent intermediate frame for dropdown/select/picker menus.
+ */
+.arco-trigger-popup.fadeIn-appear,
+.arco-trigger-popup.fadeIn-enter,
+.arco-trigger-popup.fadeIn-appear-active,
+.arco-trigger-popup.fadeIn-enter-active,
+.arco-select-popup.fadeIn-appear,
+.arco-select-popup.fadeIn-enter,
+.arco-select-popup.fadeIn-appear-active,
+.arco-select-popup.fadeIn-enter-active,
+.arco-picker-container.fadeIn-appear,
+.arco-picker-container.fadeIn-enter,
+.arco-picker-container.fadeIn-appear-active,
+.arco-picker-container.fadeIn-enter-active {
+  opacity: 1 !important;
+  transition: none !important;
+}
+
 .arco-dropdown-menu {
   max-height: min(420px, calc(100vh - 24px));
   padding: var(--app-popup-padding) !important;

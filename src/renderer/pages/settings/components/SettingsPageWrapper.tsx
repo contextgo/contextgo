@@ -42,25 +42,49 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
       {
         id: 'hooks',
         label: t('settings.hooksPage', { defaultValue: 'Hooks' }),
-        icon: <Puzzle theme='outline' size='16' />,
+        icon: <Puzzle theme='outline' size='16' className='app-icon' />,
         path: 'hooks',
       },
       {
         id: 'cron',
         label: t('cron.scheduledTasks'),
-        icon: <AlarmClock theme='outline' size='16' />,
+        icon: <AlarmClock theme='outline' size='16' className='app-icon' />,
         path: 'cron',
       },
-      { id: 'tools', label: t('settings.tools'), icon: <Toolkit theme='outline' size='16' />, path: 'tools' },
-      { id: 'display', label: t('settings.display'), icon: <Computer theme='outline' size='16' />, path: 'display' },
+      {
+        id: 'tools',
+        label: t('settings.tools'),
+        icon: <Toolkit theme='outline' size='16' className='app-icon' />,
+        path: 'tools',
+      },
+      {
+        id: 'display',
+        label: t('settings.display'),
+        icon: <Computer theme='outline' size='16' className='app-icon' />,
+        path: 'display',
+      },
       {
         id: 'webui',
         label: t('settings.webui'),
-        icon: isDesktop ? <Earth theme='outline' size='16' /> : <Communication theme='outline' size='16' />,
+        icon: isDesktop ? (
+          <Earth theme='outline' size='16' className='app-icon' />
+        ) : (
+          <Communication theme='outline' size='16' className='app-icon' />
+        ),
         path: 'webui',
       },
-      { id: 'system', label: t('settings.system'), icon: <System theme='outline' size='16' />, path: 'system' },
-      { id: 'about', label: t('settings.about'), icon: <Info theme='outline' size='16' />, path: 'about' },
+      {
+        id: 'system',
+        label: t('settings.system'),
+        icon: <System theme='outline' size='16' className='app-icon' />,
+        path: 'system',
+      },
+      {
+        id: 'about',
+        label: t('settings.about'),
+        icon: <Info theme='outline' size='16' className='app-icon' />,
+        path: 'about',
+      },
     ];
 
     // Insert extension tabs before system (unanchored default) or at anchor position
@@ -89,9 +113,9 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
         id: tab.id,
         label: resolveExtTabName(tab),
         icon: resolvedIcon ? (
-          <img src={resolvedIcon} alt='' className='w-16px h-16px object-contain' />
+          <img src={resolvedIcon} alt='' className='h-16px w-16px object-contain' />
         ) : (
-          <Puzzle theme='outline' size='16' />
+          <Puzzle theme='outline' size='16' className='app-icon' />
         ),
         path: `ext/${tab.id}`,
       };
@@ -140,7 +164,7 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
                     void navigate(`/settings/${item.path}`, { replace: true });
                   }}
                 >
-                  <span className='settings-mobile-top-nav__icon'>{item.icon}</span>
+                  <span className='settings-mobile-top-nav__icon app-icon-slot'>{item.icon}</span>
                   <span className='settings-mobile-top-nav__label'>{item.label}</span>
                 </button>
               );

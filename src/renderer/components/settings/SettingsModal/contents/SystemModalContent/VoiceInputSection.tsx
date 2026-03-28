@@ -1,9 +1,27 @@
 import { ipcBridge } from '@/common';
-import type { VoiceInputConfig, VoiceInputState, VoiceInputStats } from '@/common/types/voiceInput';
+import type {
+  VoiceInputConfig,
+  VoiceInputOpenWhisperModelId,
+  VoiceInputOpenWhisperState,
+  VoiceInputState,
+  VoiceInputStats,
+} from '@/common/types/voiceInput';
 import { DEFAULT_VOICE_INPUT_CONFIG, EMPTY_VOICE_INPUT_STATS } from '@/common/types/voiceInput';
 import { Alert, Button, Form, Input, Select, Space, Switch, Tag, Typography } from '@arco-design/web-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+const OPEN_WHISPER_MODELS: Array<{
+  id: VoiceInputOpenWhisperModelId;
+  sizeBytes: number;
+  recommendedMemoryGb: number;
+}> = [
+  { id: 'tiny', sizeBytes: 77_691_713, recommendedMemoryGb: 4 },
+  { id: 'base', sizeBytes: 147_951_465, recommendedMemoryGb: 8 },
+  { id: 'small', sizeBytes: 487_601_967, recommendedMemoryGb: 8 },
+  { id: 'medium', sizeBytes: 1_533_763_059, recommendedMemoryGb: 16 },
+  { id: 'large-v3-turbo', sizeBytes: 1_624_555_275, recommendedMemoryGb: 16 },
+];
 
 const splitListInput = (value: string): string[] => {
   return value
@@ -42,6 +60,14 @@ const formatDuration = (translate: (key: string) => string, durationMs: number):
   return parts.join(' ');
 };
 
+const formatFileSize = (value: number): string => {
+  if (value >= 1024 * 1024 * 1024) {
+    return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+
+  return `${Math.round(value / (1024 * 1024))} MB`;
+};
+
 const statusColorMap: Record<string, string> = {
   idle: 'gray',
   recording: 'red',
@@ -65,19 +91,46 @@ const VoiceInputSection: React.FC = () => {
   const [draft, setDraft] = useState<VoiceInputConfig>(DEFAULT_VOICE_INPUT_CONFIG);
   const [state, setState] = useState<VoiceInputState | null>(null);
   const [stats, setStats] = useState<VoiceInputStats>(EMPTY_VOICE_INPUT_STATS);
+  const [openWhisperState, setOpenWhisperState] = useState<VoiceInputOpenWhisperState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [actionLoading, setActionLoading] = useState<'permissions' | 'start' | 'stop' | null>(null);
+  const [actionLoading, setActionLoading] = useState<
+    'permissions' | 'start' | 'stop' | 'install-runtime' | 'install-model' | null
+  >(null);
 
   const dashScopeConfig = draft.providers.dashscope;
   const volcengineConfig = draft.providers.volcengine;
-  const languageHintsText = useMemo(() => dashScopeConfig.languageHints.join(', '), [dashScopeConfig.languageHints]);
-  const hotwordsText = useMemo(() => dashScopeConfig.hotwords.join('\n'), [dashScopeConfig.hotwords]);
+  const openWhisperConfig = draft.providers.openWhisper;
+  const dashScopeLanguageHintsText = useMemo(
+    () => dashScopeConfig.languageHints.join(', '),
+    [dashScopeConfig.languageHints]
+  );
+  const volcengineHotwordsText = useMemo(() => volcengineConfig.hotwords.join('\n'), [volcengineConfig.hotwords]);
+  const openWhisperLanguageHintsText = useMemo(
+    () => openWhisperConfig.languageHints.join(', '),
+    [openWhisperConfig.languageHints]
+  );
+  const openWhisperHotwordsText = useMemo(() => openWhisperConfig.hotwords.join('\n'), [openWhisperConfig.hotwords]);
+  const openWhisperSelectedModelStatus = useMemo(() => {
+    return openWhisperState?.models.find((item) => item.id === openWhisperConfig.modelId) ?? null;
+  }, [openWhisperConfig.modelId, openWhisperState]);
+  const openWhisperSelectedModelDefinition = useMemo(() => {
+    return OPEN_WHISPER_MODELS.find((item) => item.id === openWhisperConfig.modelId) ?? null;
+  }, [openWhisperConfig.modelId]);
   const providerOptions = useMemo(
     () => [
       { label: t('settings.voiceInput.providers.dashscope'), value: 'dashscope' },
       { label: t('settings.voiceInput.providers.volcengine'), value: 'volcengine' },
+      { label: t('settings.voiceInput.providers.openWhisper'), value: 'openWhisper' },
     ],
+    [t]
+  );
+  const openWhisperModelOptions = useMemo(
+    () =>
+      OPEN_WHISPER_MODELS.map((item) => ({
+        label: `${t(`settings.voiceInput.openWhisper.models.${item.id}.label`)} · ${formatFileSize(item.sizeBytes)}`,
+        value: item.id,
+      })),
     [t]
   );
   const statItems = useMemo(
@@ -124,16 +177,26 @@ const VoiceInputSection: React.FC = () => {
     setStats(nextStats);
   };
 
+  const refreshOpenWhisper = async (): Promise<void> => {
+    if (!voiceInputApi) {
+      setOpenWhisperState(null);
+      return;
+    }
+
+    const nextState = await voiceInputApi.getOpenWhisperState.invoke();
+    setOpenWhisperState(nextState);
+  };
+
   const refresh = async (): Promise<void> => {
     if (!voiceInputApi) {
       setDraft(DEFAULT_VOICE_INPUT_CONFIG);
-      await refreshRuntimeData();
+      await Promise.all([refreshRuntimeData(), refreshOpenWhisper()]);
       return;
     }
 
     const config = await voiceInputApi.getConfig.invoke();
     setDraft(config);
-    await refreshRuntimeData();
+    await Promise.all([refreshRuntimeData(), refreshOpenWhisper()]);
   };
 
   const persistDraft = async (): Promise<VoiceInputConfig | null> => {
@@ -143,6 +206,7 @@ const VoiceInputSection: React.FC = () => {
 
     const saved = await voiceInputApi.setConfig.invoke({ config: draft });
     setDraft(saved);
+    await refreshOpenWhisper();
     return saved;
   };
 
@@ -187,7 +251,7 @@ const VoiceInputSection: React.FC = () => {
     setSaving(true);
     try {
       await persistDraft();
-      await refreshRuntimeData();
+      await Promise.all([refreshRuntimeData(), refreshOpenWhisper()]);
     } finally {
       setSaving(false);
     }
@@ -219,6 +283,38 @@ const VoiceInputSection: React.FC = () => {
     try {
       await voiceInputApi?.stopManualCapture.invoke();
       await refreshRuntimeData();
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleInstallOpenWhisperRuntime = async (): Promise<void> => {
+    if (!voiceInputApi) {
+      return;
+    }
+
+    setActionLoading('install-runtime');
+    try {
+      await persistDraft();
+      const nextState = await voiceInputApi.installOpenWhisperRuntime.invoke();
+      setOpenWhisperState(nextState);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleInstallOpenWhisperModel = async (): Promise<void> => {
+    if (!voiceInputApi) {
+      return;
+    }
+
+    setActionLoading('install-model');
+    try {
+      await persistDraft();
+      const nextState = await voiceInputApi.installOpenWhisperModel.invoke({
+        modelId: openWhisperConfig.modelId,
+      });
+      setOpenWhisperState(nextState);
     } finally {
       setActionLoading(null);
     }
@@ -290,6 +386,7 @@ const VoiceInputSection: React.FC = () => {
 
           {draft.providerId === 'dashscope' ? (
             <>
+              <Alert type='info' content={t('settings.voiceInput.providerHints.dashscope')} />
               <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
                 <Form.Item label={t('settings.voiceInput.dashscopeApiKey')}>
                   <Input.Password
@@ -371,47 +468,50 @@ const VoiceInputSection: React.FC = () => {
                 </Form.Item>
               </div>
 
-              <Form.Item label={t('settings.voiceInput.languageHints')}>
-                <Input
-                  value={languageHintsText}
-                  placeholder={t('settings.voiceInput.placeholders.languageHints')}
-                  onChange={(value) =>
-                    updateDraft((current) => ({
-                      ...current,
-                      providers: {
-                        ...current.providers,
-                        dashscope: {
-                          ...current.providers.dashscope,
-                          languageHints: splitListInput(value),
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
+                <Form.Item label={t('settings.voiceInput.phraseId')}>
+                  <Input
+                    value={dashScopeConfig.phraseId}
+                    placeholder={t('settings.voiceInput.placeholders.phraseId')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          dashscope: {
+                            ...current.providers.dashscope,
+                            phraseId: value,
+                          },
                         },
-                      },
-                    }))
-                  }
-                />
-              </Form.Item>
-
-              <Form.Item label={t('settings.voiceInput.hotwords')}>
-                <Input.TextArea
-                  autoSize={{ minRows: 3, maxRows: 6 }}
-                  value={hotwordsText}
-                  placeholder={t('settings.voiceInput.hotwordsPlaceholder')}
-                  onChange={(value) =>
-                    updateDraft((current) => ({
-                      ...current,
-                      providers: {
-                        ...current.providers,
-                        dashscope: {
-                          ...current.providers.dashscope,
-                          hotwords: splitListInput(value),
+                      }))
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label={t('settings.voiceInput.languageHints')}>
+                  <Input
+                    value={dashScopeLanguageHintsText}
+                    placeholder={t('settings.voiceInput.placeholders.languageHints')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          dashscope: {
+                            ...current.providers.dashscope,
+                            languageHints: splitListInput(value),
+                          },
                         },
-                      },
-                    }))
-                  }
-                />
-              </Form.Item>
+                      }))
+                    }
+                  />
+                </Form.Item>
+              </div>
             </>
-          ) : (
+          ) : null}
+
+          {draft.providerId === 'volcengine' ? (
             <>
+              <Alert type='info' content={t('settings.voiceInput.providerHints.volcengine')} />
               <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
                 <Form.Item label={t('settings.voiceInput.appKey')}>
                   <Input
@@ -489,8 +589,261 @@ const VoiceInputSection: React.FC = () => {
                   />
                 </Form.Item>
               </div>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
+                <Form.Item label={t('settings.voiceInput.boostingTableId')}>
+                  <Input
+                    value={volcengineConfig.boostingTableId}
+                    placeholder={t('settings.voiceInput.placeholders.boostingTableId')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          volcengine: {
+                            ...current.providers.volcengine,
+                            boostingTableId: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label={t('settings.voiceInput.correctTableId')}>
+                  <Input
+                    value={volcengineConfig.correctTableId}
+                    placeholder={t('settings.voiceInput.placeholders.correctTableId')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          volcengine: {
+                            ...current.providers.volcengine,
+                            correctTableId: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+              </div>
+
+              <Form.Item label={t('settings.voiceInput.hotwords')}>
+                <Input.TextArea
+                  autoSize={{ minRows: 3, maxRows: 6 }}
+                  value={volcengineHotwordsText}
+                  placeholder={t('settings.voiceInput.hotwordsPlaceholder')}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      providers: {
+                        ...current.providers,
+                        volcengine: {
+                          ...current.providers.volcengine,
+                          hotwords: splitListInput(value),
+                        },
+                      },
+                    }))
+                  }
+                />
+              </Form.Item>
             </>
-          )}
+          ) : null}
+
+          {draft.providerId === 'openWhisper' ? (
+            <>
+              <Alert type='info' content={t('settings.voiceInput.providerHints.openWhisper')} />
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-12px'>
+                <Form.Item label={t('settings.voiceInput.cliPath')}>
+                  <Input
+                    value={openWhisperConfig.cliPath}
+                    placeholder={t('settings.voiceInput.placeholders.openWhisperCliPath')}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          openWhisper: {
+                            ...current.providers.openWhisper,
+                            cliPath: value,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label={t('settings.voiceInput.model')}>
+                  <Select
+                    value={openWhisperConfig.modelId}
+                    options={openWhisperModelOptions}
+                    onChange={(value) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        providers: {
+                          ...current.providers,
+                          openWhisper: {
+                            ...current.providers.openWhisper,
+                            modelId: value as VoiceInputOpenWhisperModelId,
+                          },
+                        },
+                      }))
+                    }
+                  />
+                </Form.Item>
+              </div>
+
+              <Form.Item label={t('settings.voiceInput.languageHints')}>
+                <Input
+                  value={openWhisperLanguageHintsText}
+                  placeholder={t('settings.voiceInput.placeholders.languageHints')}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      providers: {
+                        ...current.providers,
+                        openWhisper: {
+                          ...current.providers.openWhisper,
+                          languageHints: splitListInput(value),
+                        },
+                      },
+                    }))
+                  }
+                />
+              </Form.Item>
+
+              <Form.Item label={t('settings.voiceInput.hotwords')}>
+                <Input.TextArea
+                  autoSize={{ minRows: 3, maxRows: 6 }}
+                  value={openWhisperHotwordsText}
+                  placeholder={t('settings.voiceInput.hotwordsPlaceholder')}
+                  onChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      providers: {
+                        ...current.providers,
+                        openWhisper: {
+                          ...current.providers.openWhisper,
+                          hotwords: splitListInput(value),
+                        },
+                      },
+                    }))
+                  }
+                />
+              </Form.Item>
+
+              <div className='rd-12px bg-fill-2 p-12px space-y-8px'>
+                <div className='flex items-center justify-between gap-12px flex-wrap'>
+                  <div className='text-14px text-t-primary font-600'>{t('settings.voiceInput.localRuntime')}</div>
+                  <Tag
+                    color={
+                      openWhisperState?.runtimeInstalled && openWhisperSelectedModelStatus?.installed
+                        ? 'green'
+                        : 'orange'
+                    }
+                  >
+                    {openWhisperState?.runtimeInstalled
+                      ? t('settings.voiceInput.runtimeReady')
+                      : t('settings.voiceInput.runtimeMissing')}
+                  </Tag>
+                </div>
+
+                {draft.enabled &&
+                (!openWhisperState?.runtimeInstalled || openWhisperSelectedModelStatus?.installed !== true) ? (
+                  <Alert type='warning' content={t('settings.voiceInput.enableRequiresInstall')} />
+                ) : null}
+
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-8px'>
+                  <div className='flex items-center justify-between gap-12px'>
+                    <span className='text-13px text-t-secondary'>{t('settings.voiceInput.runtimePath')}</span>
+                    <span className='text-13px text-t-primary text-right break-all'>
+                      {openWhisperState?.cliPath || '-'}
+                    </span>
+                  </div>
+                  <div className='flex items-center justify-between gap-12px'>
+                    <span className='text-13px text-t-secondary'>{t('settings.voiceInput.modelDirectory')}</span>
+                    <span className='text-13px text-t-primary text-right break-all'>
+                      {openWhisperState?.modelDirectory || '-'}
+                    </span>
+                  </div>
+                  <div className='flex items-center justify-between gap-12px'>
+                    <span className='text-13px text-t-secondary'>{t('settings.voiceInput.selectedModelStatus')}</span>
+                    <Tag color={openWhisperSelectedModelStatus?.installed ? 'green' : 'orange'}>
+                      {openWhisperSelectedModelStatus?.installed
+                        ? t('settings.voiceInput.modelInstalled')
+                        : t('settings.voiceInput.modelNotInstalled')}
+                    </Tag>
+                  </div>
+                  <div className='flex items-center justify-between gap-12px'>
+                    <span className='text-13px text-t-secondary'>{t('settings.voiceInput.modelSummary')}</span>
+                    <span className='text-13px text-t-primary text-right break-all'>
+                      {t(`settings.voiceInput.openWhisper.models.${openWhisperConfig.modelId}.label`)}
+                    </span>
+                  </div>
+                </div>
+
+                <Typography.Paragraph className='!mb-0 text-12px text-t-secondary whitespace-pre-wrap'>
+                  {t(`settings.voiceInput.openWhisper.models.${openWhisperConfig.modelId}.description`)}
+                </Typography.Paragraph>
+
+                <div className='rd-12px bg-[var(--color-fill-1)] p-12px space-y-8px'>
+                  <div className='text-13px text-t-primary font-600'>
+                    {t('settings.voiceInput.hardwareRequirements')}
+                  </div>
+                  <Typography.Paragraph className='!mb-0 text-12px text-t-secondary whitespace-pre-wrap'>
+                    {t('settings.voiceInput.localProcessingNotice')}
+                  </Typography.Paragraph>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-8px'>
+                    <div className='flex items-center justify-between gap-12px'>
+                      <span className='text-12px text-t-secondary'>{t('settings.voiceInput.estimatedStorage')}</span>
+                      <span className='text-12px text-t-primary'>
+                        {openWhisperSelectedModelDefinition
+                          ? formatFileSize(openWhisperSelectedModelDefinition.sizeBytes)
+                          : '-'}
+                      </span>
+                    </div>
+                    <div className='flex items-center justify-between gap-12px'>
+                      <span className='text-12px text-t-secondary'>{t('settings.voiceInput.recommendedMemory')}</span>
+                      <span className='text-12px text-t-primary'>
+                        {openWhisperSelectedModelDefinition
+                          ? `${openWhisperSelectedModelDefinition.recommendedMemoryGb} GB+`
+                          : '-'}
+                      </span>
+                    </div>
+                  </div>
+                  <Typography.Paragraph className='!mb-0 text-12px text-t-secondary whitespace-pre-wrap'>
+                    {t('settings.voiceInput.cpuLoadNotice')}
+                  </Typography.Paragraph>
+                  <Typography.Paragraph className='!mb-0 text-12px text-t-secondary whitespace-pre-wrap'>
+                    {t('settings.voiceInput.installOnDemandHint')}
+                  </Typography.Paragraph>
+                </div>
+
+                {!openWhisperState?.brewAvailable && !openWhisperState?.runtimeInstalled ? (
+                  <Alert type='warning' content={t('settings.voiceInput.brewRequired')} />
+                ) : null}
+
+                {openWhisperState?.lastError ? <Alert type='error' content={openWhisperState.lastError} /> : null}
+
+                <Space wrap>
+                  <Button
+                    loading={actionLoading === 'install-runtime'}
+                    disabled={openWhisperState?.runtimeInstalled === true}
+                    onClick={() => void handleInstallOpenWhisperRuntime()}
+                  >
+                    {t('settings.voiceInput.installRuntime')}
+                  </Button>
+                  <Button
+                    loading={actionLoading === 'install-model'}
+                    disabled={openWhisperSelectedModelStatus?.installed === true}
+                    onClick={() => void handleInstallOpenWhisperModel()}
+                  >
+                    {t('settings.voiceInput.installSelectedModel')}
+                  </Button>
+                </Space>
+              </div>
+            </>
+          ) : null}
 
           <div className='flex items-center justify-between gap-12px flex-wrap'>
             <div className='flex items-center gap-8px'>

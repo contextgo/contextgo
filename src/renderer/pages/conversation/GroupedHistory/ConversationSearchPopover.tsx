@@ -11,7 +11,7 @@ import { useOptionalConversationTabs } from '@/renderer/pages/conversation/hooks
 import { useCronJobsMap } from '@/renderer/pages/cron';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { blockMobileInputFocus, blurActiveElement } from '@/renderer/utils/ui/focus';
-import { Empty, Spin, Typography } from '@arco-design/web-react';
+import { Empty, Spin } from '@arco-design/web-react';
 import { CloseSmall, MessageOne, Search } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -394,9 +394,9 @@ const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
       <div className='conversation-search-modal__header'>
         <div className='conversation-search-modal__header-main'>
           <div className='conversation-search-modal__title'>{t('conversation.historySearch.title')}</div>
-          <Typography.Paragraph className='conversation-search-modal__description !mb-0 text-13px text-t-secondary'>
+          <p className='conversation-search-modal__description mb-0 text-13px text-t-secondary'>
             {t('conversation.historySearch.description')}
-          </Typography.Paragraph>
+          </p>
         </div>
       </div>
 
@@ -497,7 +497,7 @@ const ConversationSearchPopover: React.FC<ConversationSearchPopoverProps> = ({
       onClick={handleOpen}
       disabled={disabled}
     >
-      <Search theme='outline' size='20' className='block leading-none shrink-0' style={{ lineHeight: 0 }} />
+      <Search theme='outline' size='20' className='app-icon block leading-none shrink-0' />
       {buttonLabel ? <span className='min-w-0 truncate text-14px font-600 text-t-primary'>{buttonLabel}</span> : null}
     </button>
   );

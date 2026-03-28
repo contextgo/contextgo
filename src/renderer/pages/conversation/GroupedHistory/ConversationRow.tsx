@@ -8,10 +8,10 @@ import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { CronJobIndicator } from '@/renderer/pages/cron';
-import { cleanupSiderTooltips, getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
+import { cleanupSiderTooltips } from '@/renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
-import { Checkbox, Dropdown, Menu, Spin, Tooltip } from '@arco-design/web-react';
+import { Checkbox, Dropdown, Menu, Spin } from '@arco-design/web-react';
 import { DeleteOne, EditOne, Export, InboxIn, MessageOne, Pushpin } from '@icon-park/react';
 import classNames from 'classnames';
 import React from 'react';
@@ -30,7 +30,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     allowBatchSelection = true,
     leadingSlot,
     collapsed,
-    tooltipEnabled,
+    tooltipEnabled: _tooltipEnabled,
     batchMode,
     checked,
     selected,
@@ -55,9 +55,8 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
   const { info: assistantInfo } = usePresetAssistantInfo(conversation);
   const isPinned = isConversationPinned(conversation);
   const cronStatus = getJobStatus(conversation.id);
-  const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
   const workspacePath = getConversationWorkspacePath(conversation);
-  const inlineNameTooltipEnabled = !collapsed && !isMobile && !!workspacePath;
+  const rowTitle = workspacePath || conversation.name || t('conversation.welcome.newConversation');
 
   const renderLeadingIcon = () => {
     if (cronStatus !== 'none') {
@@ -186,13 +185,14 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     <div
       id={'c-' + conversation.id}
       className={classNames(
-        'chat-history__item w-full px-12px py-8px rd-8px flex justify-start items-center group cursor-pointer relative overflow-hidden shrink-0 conversation-item [&.conversation-item+&.conversation-item]:mt-2px min-w-0 transition-colors',
+        'chat-history__item w-full box-border px-12px py-8px rd-8px flex justify-start items-center group cursor-pointer relative overflow-hidden shrink-0 conversation-item [&.conversation-item+&.conversation-item]:mt-2px min-w-0 max-w-full transition-colors',
         {
           'hover:bg-[rgba(var(--primary-6),0.14)]': !rowBatchMode,
           '!bg-active': selected,
           'bg-[rgba(var(--primary-6),0.08)]': rowBatchMode && checked,
         }
       )}
+      title={collapsed || !workspacePath ? rowTitle : undefined}
       onClick={handleRowClick}
     >
       {rowBatchMode && (
@@ -210,25 +210,19 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
         <span className='mr-6px flex-shrink-0 flex items-center justify-center'>{leadingSlot}</span>
       ) : null}
       {isGenerating && !batchMode ? <Spin size={16} className='flex-shrink-0' /> : renderLeadingIcon()}
-      <FlexFullContainer className='h-24px min-w-0 flex-1 collapsed-hidden ml-10px pr-18px'>
-        <Tooltip
-          content={workspacePath}
-          disabled={!inlineNameTooltipEnabled}
-          trigger='hover'
-          popupVisible={inlineNameTooltipEnabled ? undefined : false}
-          unmountOnExit
-          popupHoverStay={false}
-          position='top'
+      <FlexFullContainer
+        className='h-24px min-w-0 flex-1 collapsed-hidden ml-10px pr-18px overflow-hidden'
+        containerClassName='overflow-hidden'
+      >
+        <div
+          className={classNames(
+            'chat-history__item-name overflow-hidden text-ellipsis block w-full max-w-full text-14px lh-24px whitespace-nowrap min-w-0 group-hover:text-1',
+            selected && !rowBatchMode ? 'text-1 font-medium' : 'text-2'
+          )}
+          title={workspacePath || undefined}
         >
-          <div
-            className={classNames(
-              'chat-history__item-name overflow-hidden text-ellipsis block w-full text-14px lh-24px whitespace-nowrap min-w-0 group-hover:text-1',
-              selected && !rowBatchMode ? 'text-1 font-medium' : 'text-2'
-            )}
-          >
-            <span className='block overflow-hidden text-ellipsis whitespace-nowrap'>{conversation.name}</span>
-          </div>
-        </Tooltip>
+          <span className='block w-full overflow-hidden text-ellipsis whitespace-nowrap'>{conversation.name}</span>
+        </div>
       </FlexFullContainer>
 
       {renderCompletionUnreadDot()}
@@ -289,25 +283,10 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     </div>
   );
 
-  if (!tooltipEnabled) {
-    return (
-      <Dropdown droplist={actionMenu} trigger='contextMenu' position='bl' getPopupContainer={() => document.body}>
-        {rowNode}
-      </Dropdown>
-    );
-  }
-
   return (
-    <Tooltip
-      key={conversation.id}
-      {...siderTooltipProps}
-      content={workspacePath || conversation.name || t('conversation.welcome.newConversation')}
-      position='right'
-    >
-      <Dropdown droplist={actionMenu} trigger='contextMenu' position='bl' getPopupContainer={() => document.body}>
-        {rowNode}
-      </Dropdown>
-    </Tooltip>
+    <Dropdown droplist={actionMenu} trigger='contextMenu' position='bl' getPopupContainer={() => document.body}>
+      {rowNode}
+    </Dropdown>
   );
 };
 
