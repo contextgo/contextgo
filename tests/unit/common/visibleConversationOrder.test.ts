@@ -30,7 +30,8 @@ const createConversation = (id: string): TChatConversation => ({
 });
 
 const createWorkspaceGroup = (workspace: string, conversationIds: string[]): WorkspaceGroup => ({
-  workspace,
+  id: `working-directory:${workspace}`,
+  workingDirectory: workspace,
   displayName: workspace,
   conversations: conversationIds.map((conversationId) => createConversation(conversationId)),
 });
@@ -64,7 +65,7 @@ describe('buildVisibleConversationIds', () => {
       pinnedConversations: [createConversation('pinned-1'), createConversation('pinned-2')],
       timelineSections,
       discussionChildConversationsByParentId: {},
-      expandedWorkspaces: ['/workspace/project-a'],
+      expandedWorkspaces: ['working-directory:/workspace/project-a'],
       expandedDiscussionGroups: [],
       siderCollapsed: false,
     });
@@ -221,7 +222,8 @@ describe('buildVisibleConversationIds', () => {
     };
 
     const workspaceGroup: WorkspaceGroup = {
-      workspace: '/workspace/project-a',
+      id: 'working-directory:/workspace/project-a',
+      workingDirectory: '/workspace/project-a',
       displayName: 'project-a',
       conversations: [groupConversation, createConversation('direct-1')],
     };
@@ -243,11 +245,51 @@ describe('buildVisibleConversationIds', () => {
       discussionChildConversationsByParentId: {
         'group-1': [createConversation('child-1'), createConversation('child-2')],
       },
-      expandedWorkspaces: ['/workspace/project-a'],
+      expandedWorkspaces: ['working-directory:/workspace/project-a'],
       expandedDiscussionGroups: ['group-1'],
       siderCollapsed: false,
     });
 
     expect(visibleConversationIds).toEqual(['group-1', 'child-1', 'child-2', 'direct-1']);
+  });
+
+  it('uses space-based group ids for expansion when conversations share a spaceId', () => {
+    const spaceConversation = {
+      ...createConversation('space-1'),
+      extra: {
+        spaceId: 'space-alpha',
+        workingDirectory: '/workspace/project-a',
+        workspace: '/workspace/project-a',
+        customWorkspace: true,
+      },
+    };
+
+    const visibleConversationIds = buildVisibleConversationIds({
+      pinnedConversations: [],
+      timelineSections: [
+        {
+          timeline: 'Today',
+          items: [
+            {
+              type: 'workspace',
+              time: 1,
+              workspaceGroup: {
+                id: 'space:space-alpha',
+                spaceId: 'space-alpha',
+                workingDirectory: '/workspace/project-a',
+                displayName: 'project-a',
+                conversations: [spaceConversation],
+              },
+            },
+          ],
+        },
+      ],
+      discussionChildConversationsByParentId: {},
+      expandedWorkspaces: ['space:space-alpha'],
+      expandedDiscussionGroups: [],
+      siderCollapsed: false,
+    });
+
+    expect(visibleConversationIds).toEqual(['space-1']);
   });
 });

@@ -31,6 +31,7 @@ const migration_v1: IMigration = {
     // Drop all tables (only core tables now)
     db.exec('DROP TABLE IF EXISTS messages');
     db.exec('DROP TABLE IF EXISTS conversations');
+    db.exec('DROP TABLE IF EXISTS spaces');
     db.exec('DROP TABLE IF EXISTS users');
     console.log('[Migration v1] Rolled back: All tables dropped');
   },
@@ -1128,6 +1129,41 @@ const migration_v19: IMigration = {
 };
 
 /**
+ * Migration v19 -> v20: Add spaces table
+ */
+const migration_v20: IMigration = {
+  version: 20,
+  name: 'Add spaces table',
+  up: (db) => {
+    db.exec(`CREATE TABLE IF NOT EXISTS spaces (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        engine TEXT NOT NULL,
+        description TEXT,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        archived_at INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_id ON spaces(user_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_updated ON spaces(user_id, updated_at DESC)');
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_spaces_default_per_user ON spaces(user_id) WHERE is_default = 1');
+
+    console.log('[Migration v20] Added spaces table');
+  },
+  down: (db) => {
+    db.exec('DROP INDEX IF EXISTS idx_spaces_default_per_user');
+    db.exec('DROP INDEX IF EXISTS idx_spaces_user_updated');
+    db.exec('DROP INDEX IF EXISTS idx_spaces_user_id');
+    db.exec('DROP TABLE IF EXISTS spaces');
+
+    console.log('[Migration v20] Rolled back: Removed spaces table');
+  },
+};
+
+/**
  * All migrations in order
  */
 // prettier-ignore
@@ -1135,7 +1171,7 @@ export const ALL_MIGRATIONS: IMigration[] = [
   migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6,
   migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12,
   migration_v13, migration_v14, migration_v15, migration_v16, migration_v17, migration_v18,
-  migration_v19,
+  migration_v19, migration_v20,
 ];
 
 /**

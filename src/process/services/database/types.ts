@@ -5,7 +5,7 @@
  */
 
 // 复用现有的业务类型定义
-import type { ConversationSource, TChatConversation, IConfigStorageRefer } from '@/common/config/storage';
+import type { ConversationSource, TChatConversation, IConfigStorageRefer, TSpace } from '@/common/config/storage';
 import type { TMessage } from '@/common/chat/chatLib';
 import type {
   ChannelBindingScopeType,
@@ -224,6 +224,18 @@ export interface IConfigRow {
   updated_at: number;
 }
 
+export interface ISpaceRow {
+  id: string;
+  user_id: string;
+  name: string;
+  engine: TSpace['engine'];
+  description?: string | null;
+  is_default: number;
+  archived_at?: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
 /**
  * ======================
  * 类型转换函数
@@ -334,6 +346,33 @@ export function rowToConversation(row: IConversationRow): TChatConversation {
 
   // Unknown type - should never happen with valid data
   throw new Error(`Unknown conversation type: ${row.type}`);
+}
+
+export function spaceToRow(space: TSpace, userId: string): ISpaceRow {
+  return {
+    id: space.id,
+    user_id: userId,
+    name: space.name,
+    engine: space.engine,
+    description: space.description ?? null,
+    is_default: space.isDefault ? 1 : 0,
+    archived_at: space.archivedAt ?? null,
+    created_at: space.createTime,
+    updated_at: space.modifyTime,
+  };
+}
+
+export function rowToSpace(row: ISpaceRow): TSpace {
+  return {
+    id: row.id,
+    name: row.name,
+    engine: row.engine,
+    description: row.description ?? undefined,
+    isDefault: row.is_default === 1,
+    archivedAt: row.archived_at ?? undefined,
+    createTime: row.created_at,
+    modifyTime: row.updated_at,
+  };
 }
 
 /**
@@ -589,4 +628,5 @@ export type {
   TChatConversation,
   TMessage,
   IConfigStorageRefer,
+  TSpace,
 };

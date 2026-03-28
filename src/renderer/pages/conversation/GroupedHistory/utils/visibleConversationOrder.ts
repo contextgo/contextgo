@@ -42,7 +42,7 @@ export const buildVisibleConversationIds = ({
       }
 
       if (item.type === 'workspace' && item.workspaceGroup) {
-        if (!siderCollapsed && !expandedWorkspaceSet.has(item.workspaceGroup.workspace)) {
+        if (!siderCollapsed && !expandedWorkspaceSet.has(item.workspaceGroup.id)) {
           return;
         }
 

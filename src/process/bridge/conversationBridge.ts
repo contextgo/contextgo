@@ -32,6 +32,30 @@ const refreshTrayMenuSafely = async (): Promise<void> => {
   }
 };
 
+const getConversationWorkingDirectory = (conversation: TChatConversation | undefined): string | undefined =>
+  conversation?.extra?.workingDirectory || conversation?.extra?.workspace;
+
+const hasLogicalAssociationHint = (conversation: TChatConversation | undefined): boolean =>
+  !!conversation && (!!conversation.extra?.spaceId || !!getConversationWorkingDirectory(conversation));
+
+const belongsToSameLogicalSpace = (current: TChatConversation, candidate: TChatConversation): boolean => {
+  const currentSpaceId = current.extra?.spaceId;
+  const candidateSpaceId = candidate.extra?.spaceId;
+
+  if (currentSpaceId && candidateSpaceId) {
+    return currentSpaceId === candidateSpaceId;
+  }
+
+  const currentWorkingDirectory = getConversationWorkingDirectory(current);
+  const candidateWorkingDirectory = getConversationWorkingDirectory(candidate);
+
+  if (!currentWorkingDirectory || !candidateWorkingDirectory) {
+    return false;
+  }
+
+  return currentWorkingDirectory === candidateWorkingDirectory;
+};
+
 export function initConversationBridge(
   conversationService: IConversationService,
   workerTaskManager: IWorkerTaskManager
@@ -67,14 +91,21 @@ export function initConversationBridge(
       await task.bootstrap.catch(() => {});
 
       const diagnostics = task.getDiagnostics();
-      const identityHash = await computeOpenClawIdentityHash(diagnostics.workspace || conversation.extra?.workspace);
+      const workingDirectory = diagnostics.workspace || getConversationWorkingDirectory(conversation);
+      const identityHash = await computeOpenClawIdentityHash(workingDirectory);
       const conversationModel = (conversation as { model?: { useModel?: string } }).model;
       const extra = conversation.extra as
         | {
+            spaceId?: string;
+            mountId?: string;
+            workingDirectory?: string;
             openclawAgentId?: string;
             cliPath?: string;
             gateway?: { cliPath?: string };
             runtimeValidation?: {
+              expectedSpaceId?: string;
+              expectedMountId?: string;
+              expectedWorkingDirectory?: string;
               expectedWorkspace?: string;
               expectedBackend?: string;
               expectedAgentName?: string;
@@ -93,7 +124,10 @@ export function initConversationBridge(
         data: {
           conversationId: conversation_id,
           runtime: {
-            workspace: diagnostics.workspace || conversation.extra?.workspace,
+            spaceId: conversation.extra?.spaceId,
+            mountId: conversation.extra?.mountId,
+            workingDirectory,
+            workspace: workingDirectory,
             backend: diagnostics.backend || conversation.extra?.backend,
             agentName: diagnostics.agentName || conversation.extra?.agentName,
             openclawAgentId: diagnostics.openclawAgentId || extra?.openclawAgentId,
@@ -169,7 +203,7 @@ export function initConversationBridge(
         }
       }
 
-      if (!currentConversation || !currentConversation.extra?.workspace) {
+      if (!hasLogicalAssociationHint(currentConversation)) {
         return [];
       }
 
@@ -185,8 +219,7 @@ export function initConversationBridge(
         void Promise.all(allConversations.map((conv) => migrateConversationToDatabase(conv)));
       }
 
-      // Filter by workspace
-      return allConversations.filter((item) => item.extra?.workspace === currentConversation.extra.workspace);
+      return allConversations.filter((item) => belongsToSameLogicalSpace(currentConversation, item));
     } catch (error) {
       console.error('[conversationBridge] Failed to get associate conversations:', error);
       return [];
@@ -358,11 +391,12 @@ export function initConversationBridge(
     };
   })();
 
-  ipcBridge.conversation.getWorkspace.provider(async ({ workspace, search, path }) => {
-    const fileService = GeminiAgent.buildFileServer(workspace);
+  ipcBridge.conversation.getWorkspace.provider(async ({ workspace, workingDirectory, search, path }) => {
+    const resolvedWorkingDirectory = workingDirectory || workspace;
+    const fileService = GeminiAgent.buildFileServer(resolvedWorkingDirectory);
     try {
       return await readDirectoryRecursive(path, {
-        root: workspace,
+        root: resolvedWorkingDirectory,
         fileService,
         abortController: buildLastAbortController(),
         maxDepth: 10, // 支持更深的目录结构 / Support deeper directory structures

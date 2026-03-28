@@ -18,6 +18,8 @@ import type {
   TChatConversation,
   TProviderWithModel,
   ICssTheme,
+  ConversationSpaceBinding,
+  ConversationWorkspaceCompat,
   ConversationGroupMeta,
   DiscussionGroupMode,
   DiscussionGroupParticipant,
@@ -69,7 +71,14 @@ export const conversation = {
   listChanged: bridge.buildEmitter<IConversationListChangedEvent>('conversation.list-changed'),
   getWorkspace: bridge.buildProvider<
     IDirOrFile[],
-    { conversation_id: string; workspace: string; path: string; search?: string }
+    {
+      conversation_id: string;
+      /** @deprecated Use workingDirectory. The bridge channel name is kept for compatibility. */
+      workspace: string;
+      workingDirectory?: string;
+      path: string;
+      search?: string;
+    }
   >('conversation.get-workspace'),
   responseSearchWorkSpace: bridge.buildProvider<void, { file: number; dir: number; match?: IDirOrFile }>(
     'conversation.response.search.workspace'
@@ -532,6 +541,10 @@ export const openclawConversation = {
     IBridgeResponse<{
       conversationId: string;
       runtime: {
+        spaceId?: string;
+        mountId?: string;
+        workingDirectory?: string;
+        /** @deprecated Use workingDirectory instead. */
         workspace?: string;
         backend?: string;
         agentName?: string;
@@ -544,6 +557,10 @@ export const openclawConversation = {
         identityHash?: string | null;
       };
       expected?: {
+        expectedSpaceId?: string;
+        expectedMountId?: string;
+        expectedWorkingDirectory?: string;
+        /** @deprecated Use expectedWorkingDirectory instead. */
         expectedWorkspace?: string;
         expectedBackend?: string;
         expectedAgentName?: string;
@@ -817,8 +834,16 @@ export type NonGroupConversationType = 'gemini' | 'acp' | 'codex' | 'openclaw-ga
 export type ConversationType = NonGroupConversationType | 'group';
 
 export interface ICreateConversationExtra {
-  workspace?: string;
-  customWorkspace?: boolean;
+  /** Logical Space identifier for long-lived ownership / 长期上下文归属的逻辑 Space ID */
+  spaceId?: ConversationSpaceBinding['spaceId'];
+  /** Selected mount identifier on the current device/runtime / 当前设备或运行时选中的挂载点 ID */
+  mountId?: ConversationSpaceBinding['mountId'];
+  /** Physical working directory used by the agent runtime / Agent 运行时使用的物理工作目录 */
+  workingDirectory?: ConversationSpaceBinding['workingDirectory'];
+  /** @deprecated Use workingDirectory instead. Kept for compatibility during workspace terminology migration. */
+  workspace?: ConversationWorkspaceCompat['workspace'];
+  /** @deprecated Prefer mountId or workingDirectory. Kept for compatibility with existing runtime flows. */
+  customWorkspace?: ConversationWorkspaceCompat['customWorkspace'];
   defaultFiles?: string[];
   backend?: AcpBackendAll;
   cliPath?: string;
@@ -861,6 +886,13 @@ export interface ICreateConversationExtra {
   deferInitialWorkspaceLoad?: boolean;
   /** Runtime validation snapshot used for post-switch strong checks (OpenClaw) */
   runtimeValidation?: {
+    /** Logical Space expected by the runtime binding */
+    expectedSpaceId?: string;
+    /** Device-local Mount expected by the runtime binding */
+    expectedMountId?: string;
+    /** Physical working directory expected by the runtime */
+    expectedWorkingDirectory?: string;
+    /** @deprecated Use expectedWorkingDirectory instead. */
     expectedWorkspace?: string;
     expectedBackend?: string;
     expectedAgentName?: string;

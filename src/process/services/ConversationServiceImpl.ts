@@ -8,6 +8,9 @@ import type { IConversationService, CreateConversationParams, MigrateConversatio
 import type { IConversationRepository } from '@process/services/database/IConversationRepository';
 import type { TChatConversation } from '@/common/config/storage';
 import type { DiscussionGroupParticipant } from '@/common/config/storage';
+import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSpaceRepository';
+import type { ISpaceService } from '@process/services/space/ISpaceService';
+import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
 import { uuid } from '@/common/utils';
 import { cronService } from './cron/cronServiceSingleton';
 import {
@@ -19,19 +22,78 @@ import {
   createGroupConversation,
 } from '@process/utils/initAgent';
 
+// Keep legacy workspace fields synchronized with the new Space/Mount/workingDirectory model
+// so mixed old/new records can still round-trip safely through update flows.
+const normalizeConversationExtraCompatibility = <TExtra extends Record<string, unknown>>(extra: TExtra): TExtra => {
+  const normalizedExtra = { ...extra } as TExtra & {
+    workspace?: string;
+    workingDirectory?: string;
+    runtimeValidation?: {
+      expectedWorkspace?: string;
+      expectedWorkingDirectory?: string;
+    };
+  };
+
+  if (typeof normalizedExtra.workingDirectory === 'string' && !normalizedExtra.workspace) {
+    normalizedExtra.workspace = normalizedExtra.workingDirectory;
+  } else if (typeof normalizedExtra.workspace === 'string' && !normalizedExtra.workingDirectory) {
+    normalizedExtra.workingDirectory = normalizedExtra.workspace;
+  }
+
+  if (normalizedExtra.runtimeValidation) {
+    const runtimeValidation = { ...normalizedExtra.runtimeValidation };
+    if (typeof runtimeValidation.expectedWorkingDirectory === 'string' && !runtimeValidation.expectedWorkspace) {
+      runtimeValidation.expectedWorkspace = runtimeValidation.expectedWorkingDirectory;
+    } else if (typeof runtimeValidation.expectedWorkspace === 'string' && !runtimeValidation.expectedWorkingDirectory) {
+      runtimeValidation.expectedWorkingDirectory = runtimeValidation.expectedWorkspace;
+    }
+    normalizedExtra.runtimeValidation = runtimeValidation;
+  }
+
+  return normalizedExtra;
+};
+
 /**
  * Concrete implementation of IConversationService.
  * Delegates persistence to an injected IConversationRepository.
  */
 export class ConversationServiceImpl implements IConversationService {
-  constructor(private readonly repo: IConversationRepository) {}
+  constructor(
+    private readonly repo: IConversationRepository,
+    private readonly spaceService: ISpaceService = new SpaceServiceImpl(new SqliteSpaceRepository())
+  ) {}
+
+  private async attachDefaultSpaceIfMissing(
+    conversation: TChatConversation | undefined
+  ): Promise<TChatConversation | undefined> {
+    if (!conversation || !conversation.extra || conversation.extra.spaceId) {
+      return conversation;
+    }
+
+    const defaultSpace = await this.spaceService.ensureDefaultSpace();
+    return {
+      ...conversation,
+      extra: normalizeConversationExtraCompatibility({
+        ...conversation.extra,
+        spaceId: defaultSpace.id,
+      }),
+    } as TChatConversation;
+  }
 
   async getConversation(id: string): Promise<TChatConversation | undefined> {
-    return this.repo.getConversation(id);
+    return this.attachDefaultSpaceIfMissing(await this.repo.getConversation(id));
   }
 
   async listAllConversations(): Promise<TChatConversation[]> {
-    return this.repo.listAllConversations();
+    const conversations = await this.repo.listAllConversations();
+    const normalizedConversations: TChatConversation[] = [];
+    for (const conversation of conversations) {
+      const normalizedConversation = await this.attachDefaultSpaceIfMissing(conversation);
+      if (normalizedConversation) {
+        normalizedConversations.push(normalizedConversation);
+      }
+    }
+    return normalizedConversations;
   }
 
   async deleteConversation(id: string): Promise<void> {
@@ -53,9 +115,14 @@ export class ConversationServiceImpl implements IConversationService {
       if (existing) {
         finalUpdates = {
           ...updates,
-          extra: { ...existing.extra, ...updates.extra },
+          extra: normalizeConversationExtraCompatibility({ ...existing.extra, ...updates.extra }),
         } as Partial<TChatConversation>;
       }
+    } else if (updates.extra) {
+      finalUpdates = {
+        ...updates,
+        extra: normalizeConversationExtraCompatibility(updates.extra),
+      } as Partial<TChatConversation>;
     }
     await this.repo.updateConversation(id, finalUpdates);
   }
@@ -127,54 +194,69 @@ export class ConversationServiceImpl implements IConversationService {
   }
 
   async createConversation(params: CreateConversationParams): Promise<TChatConversation> {
+    const resolvedSpaceId = params.extra.spaceId ?? (await this.spaceService.ensureDefaultSpace()).id;
+    const normalizedParams: CreateConversationParams = {
+      ...params,
+      extra: normalizeConversationExtraCompatibility({
+        ...params.extra,
+        spaceId: resolvedSpaceId,
+      }) as CreateConversationParams['extra'],
+    };
     let conversation: TChatConversation;
+    const requestedWorkingDirectory = normalizedParams.extra.workingDirectory || normalizedParams.extra.workspace;
 
-    switch (params.type) {
+    switch (normalizedParams.type) {
       case 'gemini': {
         conversation = await createGeminiAgent(
-          params.model,
-          params.extra.workspace,
-          params.extra.defaultFiles as string[] | undefined,
-          params.extra.webSearchEngine,
-          params.extra.customWorkspace,
-          params.extra.contextFileName,
-          params.extra.presetRules,
-          params.extra.enabledSkills as string[] | undefined,
-          params.extra.enabledHooks as string[] | undefined,
-          params.extra.presetAssistantId,
-          params.extra.sessionMode,
-          params.extra.isHealthCheck
+          normalizedParams.model,
+          normalizedParams.extra.workspace,
+          normalizedParams.extra.defaultFiles as string[] | undefined,
+          normalizedParams.extra.webSearchEngine,
+          normalizedParams.extra.customWorkspace,
+          normalizedParams.extra.contextFileName,
+          normalizedParams.extra.presetRules,
+          normalizedParams.extra.enabledSkills as string[] | undefined,
+          normalizedParams.extra.enabledHooks as string[] | undefined,
+          normalizedParams.extra.presetAssistantId,
+          normalizedParams.extra.sessionMode,
+          normalizedParams.extra.isHealthCheck,
+          normalizedParams.extra.spaceId,
+          normalizedParams.extra.mountId,
+          requestedWorkingDirectory
         );
         break;
       }
       case 'acp': {
-        conversation = await createAcpAgent(params as any);
+        conversation = await createAcpAgent(normalizedParams as any);
         break;
       }
       case 'codex': {
-        conversation = await createCodexAgent(params as any);
+        conversation = await createCodexAgent(normalizedParams as any);
         break;
       }
       case 'openclaw-gateway': {
-        conversation = await createOpenClawAgent(params as any);
+        conversation = await createOpenClawAgent(normalizedParams as any);
         break;
       }
       case 'nanobot': {
-        conversation = await createNanobotAgent(params as any);
+        conversation = await createNanobotAgent(normalizedParams as any);
         break;
       }
       case 'group': {
-        const orchestration = params.extra.orchestration || {
+        const orchestration = normalizedParams.extra.orchestration || {
           mode: 'debate',
           rounds: 2 as const,
         };
         conversation = await createGroupConversation({
-          id: params.id,
-          name: params.name,
-          model: params.model,
-          workspace: params.extra.workspace,
-          customWorkspace: params.extra.customWorkspace,
-          participants: (params.extra.participants || []) as DiscussionGroupParticipant[],
+          id: normalizedParams.id,
+          name: normalizedParams.name,
+          model: normalizedParams.model,
+          spaceId: normalizedParams.extra.spaceId,
+          mountId: normalizedParams.extra.mountId,
+          workingDirectory: requestedWorkingDirectory,
+          workspace: normalizedParams.extra.workspace,
+          customWorkspace: normalizedParams.extra.customWorkspace,
+          participants: (normalizedParams.extra.participants || []) as DiscussionGroupParticipant[],
           orchestration: {
             mode: orchestration.mode,
             rounds: orchestration.rounds || (orchestration.mode === 'debate' ? 2 : 1),
@@ -189,14 +271,18 @@ export class ConversationServiceImpl implements IConversationService {
 
     // Apply optional overrides without mutating the object returned by agent factories
     const overrides: Partial<TChatConversation> = {};
-    if (params.id) overrides.id = params.id;
-    if (params.name) overrides.name = params.name;
-    if (params.source) overrides.source = params.source;
-    if (params.channelChatId) overrides.channelChatId = params.channelChatId;
+    if (normalizedParams.id) overrides.id = normalizedParams.id;
+    if (normalizedParams.name) overrides.name = normalizedParams.name;
+    if (normalizedParams.source) overrides.source = normalizedParams.source;
+    if (normalizedParams.channelChatId) overrides.channelChatId = normalizedParams.channelChatId;
     // The spread preserves the discriminant field (type) from `conversation`;
     // the assertion is safe because `overrides` only contains non-discriminant fields.
     const finalConversation = {
       ...conversation,
+      extra: normalizeConversationExtraCompatibility({
+        ...normalizedParams.extra,
+        ...conversation.extra,
+      }),
       ...overrides,
     } as TChatConversation;
 

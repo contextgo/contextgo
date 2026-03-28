@@ -125,8 +125,33 @@ function makeTaskManager(overrides?: Partial<IWorkerTaskManager>): IWorkerTaskMa
   };
 }
 
-function makeConversation(id: string, workspace = '/ws'): TChatConversation {
-  return { id, type: 'gemini', name: 'test', extra: { workspace } } as unknown as TChatConversation;
+function makeConversation(
+  id: string,
+  options:
+    | string
+    | {
+        workspace?: string;
+        workingDirectory?: string;
+        spaceId?: string;
+      } = {}
+): TChatConversation {
+  const normalizedOptions =
+    typeof options === 'string'
+      ? {
+          workspace: options,
+        }
+      : options;
+  const workspace = 'workspace' in normalizedOptions ? normalizedOptions.workspace : '/ws';
+  return {
+    id,
+    type: 'gemini',
+    name: 'test',
+    extra: {
+      workspace,
+      workingDirectory: normalizedOptions.workingDirectory,
+      spaceId: normalizedOptions.spaceId,
+    },
+  } as unknown as TChatConversation;
 }
 
 describe('conversationBridge', () => {
@@ -148,9 +173,9 @@ describe('conversationBridge', () => {
 
   describe('getAssociateConversation — listAllConversations path', () => {
     it('returns data from injected service without calling getDatabase()', async () => {
-      const current = makeConversation('c1', '/ws/project');
-      const sibling = makeConversation('c2', '/ws/project');
-      const other = makeConversation('c3', '/other');
+      const current = makeConversation('c1', { workspace: '/ws/project' });
+      const sibling = makeConversation('c2', { workspace: '/ws/project' });
+      const other = makeConversation('c3', { workspace: '/other' });
 
       vi.mocked(service.getConversation).mockResolvedValue(current);
       vi.mocked(service.listAllConversations).mockResolvedValue([current, sibling, other]);
@@ -159,13 +184,13 @@ describe('conversationBridge', () => {
       const result = await handler({ conversation_id: 'c1' });
 
       expect(service.listAllConversations).toHaveBeenCalled();
-      // Only conversations with matching workspace should be returned
+      // Legacy fallback groups conversations by execution directory when no spaceId exists.
       expect(result).toHaveLength(2);
       expect(result.map((c: TChatConversation) => c.id)).toEqual(expect.arrayContaining(['c1', 'c2']));
     });
 
     it('returns empty array when repo returns empty list', async () => {
-      const current = makeConversation('c1', '/ws/project');
+      const current = makeConversation('c1', { workspace: '/ws/project' });
       vi.mocked(service.getConversation).mockResolvedValue(current);
       vi.mocked(service.listAllConversations).mockResolvedValue([]);
 
@@ -175,7 +200,7 @@ describe('conversationBridge', () => {
       expect(result).toEqual([]);
     });
 
-    it('returns empty array when current conversation has no workspace', async () => {
+    it('returns empty array when current conversation has neither spaceId nor execution directory', async () => {
       const noWorkspace = { id: 'c1', type: 'gemini', name: 'test', extra: {} } as unknown as TChatConversation;
       vi.mocked(service.getConversation).mockResolvedValue(noWorkspace);
 
@@ -183,7 +208,6 @@ describe('conversationBridge', () => {
       const result = await handler({ conversation_id: 'c1' });
 
       expect(result).toEqual([]);
-      // Should not call listAllConversations when conversation has no workspace
       expect(service.listAllConversations).not.toHaveBeenCalled();
     });
 
@@ -194,6 +218,34 @@ describe('conversationBridge', () => {
       const result = await handler({ conversation_id: 'missing' });
 
       expect(result).toEqual([]);
+    });
+
+    it('prefers spaceId over workspace when grouping associated conversations', async () => {
+      const current = makeConversation('c1', { spaceId: 'space-1', workspace: '/ws/project-a' });
+      const sibling = makeConversation('c2', { spaceId: 'space-1', workspace: '/ws/project-b' });
+      const sameWorkspaceDifferentSpace = makeConversation('c3', { spaceId: 'space-2', workspace: '/ws/project-a' });
+
+      vi.mocked(service.getConversation).mockResolvedValue(current);
+      vi.mocked(service.listAllConversations).mockResolvedValue([current, sibling, sameWorkspaceDifferentSpace]);
+
+      const handler = handlers['getAssociateConversation'];
+      const result = await handler({ conversation_id: 'c1' });
+
+      expect(result.map((c: TChatConversation) => c.id)).toEqual(['c1', 'c2']);
+    });
+
+    it('falls back to workingDirectory when legacy workspace is absent', async () => {
+      const current = makeConversation('c1', { workspace: undefined, workingDirectory: '/wd/project' });
+      const sibling = makeConversation('c2', { workspace: undefined, workingDirectory: '/wd/project' });
+      const other = makeConversation('c3', { workspace: undefined, workingDirectory: '/wd/other' });
+
+      vi.mocked(service.getConversation).mockResolvedValue(current);
+      vi.mocked(service.listAllConversations).mockResolvedValue([current, sibling, other]);
+
+      const handler = handlers['getAssociateConversation'];
+      const result = await handler({ conversation_id: 'c1' });
+
+      expect(result.map((c: TChatConversation) => c.id)).toEqual(['c1', 'c2']);
     });
   });
 

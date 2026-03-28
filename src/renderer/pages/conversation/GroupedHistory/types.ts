@@ -9,7 +9,9 @@ import type { TChatConversation } from '@/common/config/storage';
 export type DiscussionChildConversationMap = Record<string, TChatConversation[]>;
 
 export type WorkspaceGroup = {
-  workspace: string;
+  id: string;
+  spaceId?: string;
+  workingDirectory?: string;
   displayName: string;
   conversations: TChatConversation[];
 };
@@ -82,5 +84,4 @@ export type DragItem = {
   conversation?: TChatConversation;
   workspaceGroup?: WorkspaceGroup;
   sourceSection: 'pinned' | string;
-  sourceWorkspace?: string;
 };

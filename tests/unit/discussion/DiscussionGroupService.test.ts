@@ -58,7 +58,7 @@ describe('DiscussionGroupService', () => {
     vi.clearAllMocks();
   });
 
-  it('creates child conversations under the parent group workspace', async () => {
+  it('creates child conversations under the parent group space binding', async () => {
     const createConversation = vi.fn(async (params: MockCreateConversationParams) => {
       if (params.type === 'group') {
         return {
@@ -69,6 +69,9 @@ describe('DiscussionGroupService', () => {
           createTime: 1,
           modifyTime: 1,
           extra: {
+            spaceId: 'space-1',
+            mountId: 'mount-1',
+            workingDirectory: '/tmp/shared-group-working-directory',
             workspace: '/tmp/shared-group-workspace',
             customWorkspace: false,
             participants: [],
@@ -159,6 +162,9 @@ describe('DiscussionGroupService', () => {
       expect.objectContaining({
         name: 'Codex',
         extra: expect.objectContaining({
+          spaceId: 'space-1',
+          mountId: 'mount-1',
+          workingDirectory: '/tmp/shared-group-working-directory',
           workspace: '/tmp/shared-group-workspace',
           customWorkspace: false,
           groupMeta: expect.objectContaining({
@@ -174,6 +180,9 @@ describe('DiscussionGroupService', () => {
       expect.objectContaining({
         name: 'Claude',
         extra: expect.objectContaining({
+          spaceId: 'space-1',
+          mountId: 'mount-1',
+          workingDirectory: '/tmp/shared-group-working-directory',
           workspace: '/tmp/shared-group-workspace',
           customWorkspace: false,
           groupMeta: expect.objectContaining({
@@ -199,6 +208,9 @@ describe('DiscussionGroupService', () => {
         }),
       })
     );
+    expect(result.extra.spaceId).toBe('space-1');
+    expect(result.extra.mountId).toBe('mount-1');
+    expect(result.extra.workingDirectory).toBe('/tmp/shared-group-working-directory');
     expect(result.extra.workspace).toBe('/tmp/shared-group-workspace');
     expect(result.extra.participants).toHaveLength(2);
   });

@@ -175,12 +175,15 @@ describe('databaseBridge', () => {
       expect(result).toContainEqual(groupChildConversation);
     });
 
-    it('repairs mismatched discussion child parent ids and workspace metadata', async () => {
+    it('repairs mismatched discussion child parent ids and execution binding metadata', async () => {
       const parentConversation: Partial<TChatConversation> = {
         id: 'group-1',
         type: 'group',
         modifyTime: 3000,
         extra: {
+          spaceId: 'space-1',
+          mountId: 'mount-1',
+          workingDirectory: '/Users/bytedance/project/skills',
           workspace: '/Users/bytedance/project/skills',
           customWorkspace: true,
           participants: [
@@ -197,6 +200,9 @@ describe('databaseBridge', () => {
         type: 'acp',
         modifyTime: 2000,
         extra: {
+          spaceId: 'space-old',
+          mountId: 'mount-old',
+          workingDirectory: '/tmp/old-group',
           workspace: '/tmp/old-group',
           customWorkspace: false,
           groupMeta: {
@@ -218,6 +224,9 @@ describe('databaseBridge', () => {
 
       expect(repo.updateConversation).toHaveBeenCalledWith('child-1', {
         extra: {
+          spaceId: 'space-1',
+          mountId: 'mount-1',
+          workingDirectory: '/Users/bytedance/project/skills',
           workspace: '/Users/bytedance/project/skills',
           customWorkspace: true,
           groupMeta: {
@@ -233,6 +242,9 @@ describe('databaseBridge', () => {
         expect.objectContaining({
           id: 'child-1',
           extra: expect.objectContaining({
+            spaceId: 'space-1',
+            mountId: 'mount-1',
+            workingDirectory: '/Users/bytedance/project/skills',
             workspace: '/Users/bytedance/project/skills',
             customWorkspace: true,
             groupMeta: expect.objectContaining({

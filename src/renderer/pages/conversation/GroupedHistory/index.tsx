@@ -164,10 +164,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     ]
   );
 
-  const renderConversation = (
-    conversation: TChatConversation,
-    overrides: Partial<ConversationRowProps> = {}
-  ) => {
+  const renderConversation = (conversation: TChatConversation, overrides: Partial<ConversationRowProps> = {}) => {
     const rowProps = {
       ...getConversationRowProps(conversation),
       ...overrides,
@@ -468,10 +465,10 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
               if (item.type === 'workspace' && item.workspaceGroup) {
                 const group = item.workspaceGroup;
                 return (
-                  <div key={group.workspace} className={classNames('min-w-0', { 'px-8px': !collapsed })}>
+                  <div key={group.id} className={classNames('min-w-0', { 'px-8px': !collapsed })}>
                     <WorkspaceCollapse
-                      expanded={expandedWorkspaces.includes(group.workspace)}
-                      onToggle={() => handleToggleWorkspace(group.workspace)}
+                      expanded={expandedWorkspaces.includes(group.id)}
+                      onToggle={() => handleToggleWorkspace(group.id)}
                       siderCollapsed={collapsed}
                       header={
                         <div className='flex items-center gap-8px text-14px min-w-0'>

@@ -18,7 +18,9 @@ import {
 
 export const useConversations = () => {
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<string[]>(() => readExpandedWorkspaces());
-  const [expandedDiscussionGroups, setExpandedDiscussionGroups] = useState<string[]>(() => readExpandedDiscussionGroups());
+  const [expandedDiscussionGroups, setExpandedDiscussionGroups] = useState<string[]>(() =>
+    readExpandedDiscussionGroups()
+  );
   const { id } = useParams();
   const {
     conversations,
@@ -86,7 +88,7 @@ export const useConversations = () => {
     timelineSections.forEach((section) => {
       section.items.forEach((item) => {
         if (item.type === 'workspace' && item.workspaceGroup) {
-          allWorkspaces.push(item.workspaceGroup.workspace);
+          allWorkspaces.push(item.workspaceGroup.id);
         }
       });
     });
@@ -102,7 +104,7 @@ export const useConversations = () => {
     timelineSections.forEach((section) => {
       section.items.forEach((item) => {
         if (item.type === 'workspace' && item.workspaceGroup) {
-          currentWorkspaces.add(item.workspaceGroup.workspace);
+          currentWorkspaces.add(item.workspaceGroup.id);
         }
       });
     });

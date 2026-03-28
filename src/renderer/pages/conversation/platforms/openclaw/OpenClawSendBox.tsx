@@ -62,6 +62,26 @@ const validateRuntimeMismatch = async (conversationId: string): Promise<boolean>
   const expected = runtimeResult.data.expected || {};
   const mismatches: string[] = [];
 
+  if (
+    expected.expectedSpaceId &&
+    normalizeRuntimeValue(expected.expectedSpaceId) !== normalizeRuntimeValue(runtime.spaceId)
+  ) {
+    mismatches.push(`spaceId: expected=${expected.expectedSpaceId || '-'} actual=${runtime.spaceId || '-'}`);
+  }
+  if (
+    expected.expectedMountId &&
+    normalizeRuntimeValue(expected.expectedMountId) !== normalizeRuntimeValue(runtime.mountId)
+  ) {
+    mismatches.push(`mountId: expected=${expected.expectedMountId || '-'} actual=${runtime.mountId || '-'}`);
+  }
+  if (
+    expected.expectedWorkingDirectory &&
+    !isSameRuntimePath(expected.expectedWorkingDirectory, runtime.workingDirectory || runtime.workspace)
+  ) {
+    mismatches.push(
+      `workingDirectory: expected=${expected.expectedWorkingDirectory || '-'} actual=${runtime.workingDirectory || runtime.workspace || '-'}`
+    );
+  }
   if (expected.expectedWorkspace && !isSameRuntimePath(expected.expectedWorkspace, runtime.workspace)) {
     mismatches.push(`workspace: expected=${expected.expectedWorkspace || '-'} actual=${runtime.workspace || '-'}`);
   }

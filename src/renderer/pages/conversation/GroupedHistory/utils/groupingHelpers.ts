@@ -9,7 +9,13 @@ import { getActivityTime, getTimelineLabel } from '@/renderer/utils/chat/timelin
 import { getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
 import { getWorkspaceUpdateTime } from '@/renderer/utils/workspace/workspaceHistory';
 
-import type { DiscussionChildConversationMap, GroupedHistoryResult, TimelineItem, TimelineSection, WorkspaceGroup } from '../types';
+import type {
+  DiscussionChildConversationMap,
+  GroupedHistoryResult,
+  TimelineItem,
+  TimelineSection,
+  WorkspaceGroup,
+} from '../types';
 import { getConversationSortOrder } from './sortOrderHelpers';
 
 export const getConversationTimelineLabel = (conversation: TChatConversation, t: (key: string) => string): string => {
@@ -40,6 +46,45 @@ export const getConversationPinnedAt = (conversation: TChatConversation): number
   return 0;
 };
 
+type WorkspaceGroupIdentity = {
+  id: string;
+  spaceId?: string;
+  workingDirectory?: string;
+};
+
+const getConversationWorkingDirectory = (conversation: TChatConversation): string | undefined =>
+  conversation.extra?.workingDirectory || conversation.extra?.workspace;
+
+const getConversationWorkspaceGroupIdentity = (conversation: TChatConversation): WorkspaceGroupIdentity | null => {
+  const spaceId = conversation.extra?.spaceId;
+  const workingDirectory = getConversationWorkingDirectory(conversation);
+
+  if (typeof spaceId === 'string' && spaceId.length > 0) {
+    return {
+      id: `space:${spaceId}`,
+      spaceId,
+      workingDirectory,
+    };
+  }
+
+  if (conversation.extra?.customWorkspace && workingDirectory) {
+    return {
+      id: `working-directory:${workingDirectory}`,
+      workingDirectory,
+    };
+  }
+
+  return null;
+};
+
+const getWorkspaceGroupDisplayName = (identity: WorkspaceGroupIdentity): string => {
+  if (identity.workingDirectory) {
+    return getWorkspaceDisplayName(identity.workingDirectory);
+  }
+
+  return identity.spaceId || '';
+};
+
 export const groupConversationsByTimelineAndWorkspace = (
   conversations: TChatConversation[],
   t: (key: string) => string
@@ -48,14 +93,13 @@ export const groupConversationsByTimelineAndWorkspace = (
   const withoutWorkspaceConvs: TChatConversation[] = [];
 
   conversations.forEach((conv) => {
-    const workspace = conv.extra?.workspace;
-    const customWorkspace = conv.extra?.customWorkspace;
+    const groupIdentity = getConversationWorkspaceGroupIdentity(conv);
 
-    if (customWorkspace && workspace) {
-      if (!allWorkspaceGroups.has(workspace)) {
-        allWorkspaceGroups.set(workspace, []);
+    if (groupIdentity) {
+      if (!allWorkspaceGroups.has(groupIdentity.id)) {
+        allWorkspaceGroups.set(groupIdentity.id, []);
       }
-      allWorkspaceGroups.get(workspace)!.push(conv);
+      allWorkspaceGroups.get(groupIdentity.id)!.push(conv);
     } else {
       withoutWorkspaceConvs.push(conv);
     }
@@ -63,9 +107,13 @@ export const groupConversationsByTimelineAndWorkspace = (
 
   const workspaceGroupsByTimeline = new Map<string, WorkspaceGroup[]>();
 
-  allWorkspaceGroups.forEach((convList, workspace) => {
+  allWorkspaceGroups.forEach((convList, groupId) => {
     const sortedConvs = [...convList].toSorted((a, b) => getActivityTime(b) - getActivityTime(a));
     const latestConv = sortedConvs[0];
+    const latestGroupIdentity = getConversationWorkspaceGroupIdentity(latestConv);
+    if (!latestGroupIdentity) {
+      return;
+    }
     const timeline = getConversationTimelineLabel(latestConv, t);
 
     if (!workspaceGroupsByTimeline.has(timeline)) {
@@ -73,8 +121,10 @@ export const groupConversationsByTimelineAndWorkspace = (
     }
 
     workspaceGroupsByTimeline.get(timeline)!.push({
-      workspace,
-      displayName: getWorkspaceDisplayName(workspace),
+      id: groupId,
+      spaceId: latestGroupIdentity.spaceId,
+      workingDirectory: latestGroupIdentity.workingDirectory,
+      displayName: getWorkspaceGroupDisplayName(latestGroupIdentity),
       conversations: sortedConvs,
     });
   });
@@ -107,7 +157,7 @@ export const groupConversationsByTimelineAndWorkspace = (
     const items: TimelineItem[] = [];
 
     withWorkspace.forEach((group) => {
-      const updateTime = getWorkspaceUpdateTime(group.workspace);
+      const updateTime = group.workingDirectory ? getWorkspaceUpdateTime(group.workingDirectory) : 0;
       const time = updateTime > 0 ? updateTime : getActivityTime(group.conversations[0]);
       items.push({
         type: 'workspace',
@@ -147,7 +197,9 @@ const buildDiscussionChildConversationMap = (
       return;
     }
 
-    const childConversationById = new Map(childConversations.map((childConversation) => [childConversation.id, childConversation]));
+    const childConversationById = new Map(
+      childConversations.map((childConversation) => [childConversation.id, childConversation])
+    );
     const orderedChildConversations: TChatConversation[] = [];
 
     conversation.extra.participants.forEach((participant) => {
@@ -189,7 +241,10 @@ export const buildGroupedHistory = (
     });
 
   const normalConversations = topLevelConversations.filter((conversation) => !isConversationPinned(conversation));
-  const orderedDiscussionChildConversationsByParentId = buildDiscussionChildConversationMap(topLevelConversations, discussionChildConversationsByParentId);
+  const orderedDiscussionChildConversationsByParentId = buildDiscussionChildConversationMap(
+    topLevelConversations,
+    discussionChildConversationsByParentId
+  );
 
   return {
     pinnedConversations,

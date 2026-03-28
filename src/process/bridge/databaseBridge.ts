@@ -17,6 +17,9 @@ type DiscussionGroupParticipantLike = {
   childConversationId: string;
 };
 
+const getConversationWorkingDirectory = (conversation: TChatConversation): string | undefined =>
+  conversation.extra?.workingDirectory || conversation.extra?.workspace;
+
 const isVisibleConversation = (conversation: TChatConversation): boolean => {
   const extra = conversation.extra as
     | {
@@ -51,9 +54,9 @@ const normalizeDiscussionFamilyConversations = async (
       return;
     }
 
-    const participants = ((conversation.extra as { participants?: DiscussionGroupParticipantLike[] } | undefined)?.participants ?? []).filter(
-      (participant): participant is DiscussionGroupParticipantLike => Boolean(participant?.childConversationId)
-    );
+    const participants = (
+      (conversation.extra as { participants?: DiscussionGroupParticipantLike[] } | undefined)?.participants ?? []
+    ).filter((participant): participant is DiscussionGroupParticipantLike => Boolean(participant?.childConversationId));
 
     participants.forEach((participant) => {
       const childConversation = conversationById.get(participant.childConversationId);
@@ -63,6 +66,9 @@ const normalizeDiscussionFamilyConversations = async (
 
       const childExtra = childConversation.extra as
         | {
+            spaceId?: string;
+            mountId?: string;
+            workingDirectory?: string;
             workspace?: string;
             customWorkspace?: boolean;
             groupMeta?: {
@@ -75,6 +81,9 @@ const normalizeDiscussionFamilyConversations = async (
           }
         | undefined;
 
+      const expectedSpaceId = conversation.extra.spaceId;
+      const expectedMountId = conversation.extra.mountId;
+      const expectedWorkingDirectory = getConversationWorkingDirectory(conversation);
       const expectedWorkspace = conversation.extra.workspace;
       const expectedCustomWorkspace = conversation.extra.customWorkspace;
       const expectedParentGroupId = conversation.id;
@@ -83,6 +92,9 @@ const normalizeDiscussionFamilyConversations = async (
       const expectedParticipantAvatar = participant.avatar;
 
       const needsRepair =
+        childExtra?.spaceId !== expectedSpaceId ||
+        childExtra?.mountId !== expectedMountId ||
+        childExtra?.workingDirectory !== expectedWorkingDirectory ||
         childExtra?.workspace !== expectedWorkspace ||
         childExtra?.customWorkspace !== expectedCustomWorkspace ||
         childExtra?.groupMeta?.parentGroupId !== expectedParentGroupId ||
@@ -99,6 +111,9 @@ const normalizeDiscussionFamilyConversations = async (
         ...childConversation,
         extra: {
           ...childConversation.extra,
+          spaceId: expectedSpaceId,
+          mountId: expectedMountId,
+          workingDirectory: expectedWorkingDirectory,
           workspace: expectedWorkspace,
           customWorkspace: expectedCustomWorkspace,
           groupMeta: {

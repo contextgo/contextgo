@@ -54,6 +54,9 @@ const buildProjectedMessageMeta = (
   };
 };
 
+const getConversationWorkingDirectory = (conversation: Pick<TChatConversation, 'extra'>): string | undefined =>
+  conversation.extra?.workingDirectory || conversation.extra?.workspace;
+
 export class DiscussionGroupService {
   private readonly activeChildConversationIdByGroup = new Map<string, string>();
   private readonly cancelledGroupIds = new Set<string>();
@@ -79,6 +82,9 @@ export class DiscussionGroupService {
       source: params.source,
       channelChatId: params.channelChatId,
       extra: {
+        spaceId: params.extra.spaceId,
+        mountId: params.extra.mountId,
+        workingDirectory: params.extra.workingDirectory || params.extra.workspace,
         workspace: params.extra.workspace,
         customWorkspace: params.extra.customWorkspace,
         participants: [],
@@ -97,6 +103,9 @@ export class DiscussionGroupService {
           channelChatId: params.channelChatId,
           extra: {
             ...participant.conversation.extra,
+            spaceId: parentConversation.extra.spaceId,
+            mountId: parentConversation.extra.mountId,
+            workingDirectory: getConversationWorkingDirectory(parentConversation),
             workspace: parentConversation.extra.workspace,
             customWorkspace: parentConversation.extra.customWorkspace,
             groupMeta: {
@@ -414,7 +423,7 @@ export class DiscussionGroupService {
         pendingConfirmations: 0,
         dbStatus: status,
       },
-      workspace: conversation.extra.workspace || '',
+      workspace: getConversationWorkingDirectory(conversation) || '',
       model: {
         platform: conversation.model.platform,
         name: conversation.model.name,

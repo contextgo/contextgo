@@ -87,7 +87,8 @@ const makeWorkspaceSection = (workspaces: string[]): TimelineSection[] => [
       type: 'workspace' as const,
       time: Date.now(),
       workspaceGroup: {
-        workspace: ws,
+        id: `working-directory:${ws}`,
+        workingDirectory: ws,
         displayName: ws.split('/').pop()!,
         conversations: [],
       },
@@ -114,19 +115,21 @@ describe('useConversations - workspace expansion', () => {
     const { result } = renderHook(() => useConversations());
     await act(async () => {});
 
-    expect(result.current.expandedWorkspaces).toEqual(expect.arrayContaining(['/ws/a', '/ws/b']));
+    expect(result.current.expandedWorkspaces).toEqual(
+      expect.arrayContaining(['working-directory:/ws/a', 'working-directory:/ws/b'])
+    );
     expect(result.current.expandedWorkspaces).toHaveLength(2);
   });
 
   it('should restore expansion state from localStorage', async () => {
-    storageMap.set(STORAGE_KEY, JSON.stringify(['/ws/a']));
+    storageMap.set(STORAGE_KEY, JSON.stringify(['working-directory:/ws/a']));
     testState.sections = makeWorkspaceSection(['/ws/a', '/ws/b']);
 
     const { result } = renderHook(() => useConversations());
     await act(async () => {});
 
     // Should keep only the stored value, not auto-expand all
-    expect(result.current.expandedWorkspaces).toEqual(['/ws/a']);
+    expect(result.current.expandedWorkspaces).toEqual(['working-directory:/ws/a']);
   });
 
   it('should toggle workspace expansion on handleToggleWorkspace', async () => {
@@ -134,20 +137,20 @@ describe('useConversations - workspace expansion', () => {
 
     const { result } = renderHook(() => useConversations());
     await act(async () => {});
-    expect(result.current.expandedWorkspaces).toContain('/ws/a');
+    expect(result.current.expandedWorkspaces).toContain('working-directory:/ws/a');
 
     // Collapse /ws/a
     act(() => {
-      result.current.handleToggleWorkspace('/ws/a');
+      result.current.handleToggleWorkspace('working-directory:/ws/a');
     });
-    expect(result.current.expandedWorkspaces).not.toContain('/ws/a');
-    expect(result.current.expandedWorkspaces).toContain('/ws/b');
+    expect(result.current.expandedWorkspaces).not.toContain('working-directory:/ws/a');
+    expect(result.current.expandedWorkspaces).toContain('working-directory:/ws/b');
 
     // Expand /ws/a again
     act(() => {
-      result.current.handleToggleWorkspace('/ws/a');
+      result.current.handleToggleWorkspace('working-directory:/ws/a');
     });
-    expect(result.current.expandedWorkspaces).toContain('/ws/a');
+    expect(result.current.expandedWorkspaces).toContain('working-directory:/ws/a');
   });
 
   it('should persist expansion state to localStorage', async () => {
@@ -157,23 +160,23 @@ describe('useConversations - workspace expansion', () => {
     await act(async () => {});
 
     act(() => {
-      result.current.handleToggleWorkspace('/ws/a');
+      result.current.handleToggleWorkspace('working-directory:/ws/a');
     });
 
     const stored = JSON.parse(storageMap.get(STORAGE_KEY)!);
-    expect(stored).toEqual(['/ws/b']);
+    expect(stored).toEqual(['working-directory:/ws/b']);
   });
 
   it('should remove stale workspace entries from expandedWorkspaces', async () => {
     // localStorage has a workspace that no longer exists in data
-    storageMap.set(STORAGE_KEY, JSON.stringify(['/ws/a', '/ws/stale']));
+    storageMap.set(STORAGE_KEY, JSON.stringify(['working-directory:/ws/a', 'working-directory:/ws/stale']));
     testState.sections = makeWorkspaceSection(['/ws/a', '/ws/b']);
 
     const { result } = renderHook(() => useConversations());
     await act(async () => {});
 
-    expect(result.current.expandedWorkspaces).not.toContain('/ws/stale');
-    expect(result.current.expandedWorkspaces).toContain('/ws/a');
+    expect(result.current.expandedWorkspaces).not.toContain('working-directory:/ws/stale');
+    expect(result.current.expandedWorkspaces).toContain('working-directory:/ws/a');
   });
 
   it('should not re-expand workspaces after user manually collapses all (#1156)', async () => {
@@ -181,11 +184,11 @@ describe('useConversations - workspace expansion', () => {
 
     const { result } = renderHook(() => useConversations());
     await act(async () => {});
-    expect(result.current.expandedWorkspaces).toEqual(['/ws/a']);
+    expect(result.current.expandedWorkspaces).toEqual(['working-directory:/ws/a']);
 
     // User collapses the only workspace
     act(() => {
-      result.current.handleToggleWorkspace('/ws/a');
+      result.current.handleToggleWorkspace('working-directory:/ws/a');
     });
 
     // Should stay collapsed, not re-expand
