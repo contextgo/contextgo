@@ -12,6 +12,7 @@ Use this before changing:
 
 Related references:
 
+- `docs/tech/checklist.md`
 - `docs/tech/mobile-remote-control.md`
 - `docs/tech/mobile-shell-readiness.md`
 - `docs/tech/mobile-shell-cmd.md`
