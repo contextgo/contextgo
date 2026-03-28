@@ -637,7 +637,7 @@ export class AionUIDatabase {
    * Used when channel settings change to propagate new model to existing conversations.
    */
   updateChannelConversationModel(
-    source: 'telegram' | 'slack' | 'lark' | 'dingtalk' | 'weixin',
+    source: 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin',
     type: string,
     model: TProviderWithModel,
     userId?: string

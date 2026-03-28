@@ -11,10 +11,15 @@ const MAX_TELEGRAM_CALLBACK_DATA_LENGTH = 64;
 const MAX_AGENT_CALLBACK_TOKEN_LENGTH = MAX_TELEGRAM_CALLBACK_DATA_LENGTH - TELEGRAM_AGENT_CALLBACK_PREFIX.length;
 const AGENT_CALLBACK_HASH_LENGTH = 24;
 
-type AgentSelectionInfo = {
+export type ChannelSelectableAgent = {
   key: string;
   backend: string;
+  emoji: string;
+  name: string;
+  customAgentId?: string;
 };
+
+type AgentSelectionInfo = Pick<ChannelSelectableAgent, 'key' | 'backend'>;
 
 /**
  * Build a Telegram-safe callback token for an agent selection button.

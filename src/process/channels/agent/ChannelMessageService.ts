@@ -190,6 +190,7 @@ export class ChannelMessageService {
         (dbResult.data?.source === 'lark' ||
           dbResult.data?.source === 'telegram' ||
           dbResult.data?.source === 'slack' ||
+          dbResult.data?.source === 'discord' ||
           dbResult.data?.source === 'dingtalk' ||
           dbResult.data?.source === 'weixin');
 

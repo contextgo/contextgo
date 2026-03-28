@@ -61,6 +61,7 @@ export interface IPluginCredentials {
 export function hasPluginCredentials(type: PluginType, credentials?: IPluginCredentials): boolean {
   if (!credentials) return false;
   if (type === 'slack') return !!(credentials.botToken && credentials.appToken);
+  if (type === 'discord') return !!credentials.token;
   if (type === 'lark') return !!(credentials.appId && credentials.appSecret);
   if (type === 'dingtalk') return !!(credentials.clientId && credentials.clientSecret);
   if (type === 'telegram') return !!credentials.token;
@@ -523,14 +524,23 @@ export function pairingRequestToRow(request: IChannelPairingRequest): IChannelPa
  * Channel platform type for model configuration.
  * Includes built-in platforms and extension-contributed platforms (string).
  */
-export type ChannelPlatform = 'telegram' | 'slack' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
+export type ChannelPlatform = 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
 
 /**
  * Type guard to check if a string is a known built-in ChannelPlatform.
  * Extension platform types are valid but not matched here.
  */
-export function isBuiltinChannelPlatform(value: string): value is 'telegram' | 'slack' | 'lark' | 'dingtalk' | 'weixin' {
-  return value === 'telegram' || value === 'slack' || value === 'lark' || value === 'dingtalk' || value === 'weixin';
+export function isBuiltinChannelPlatform(
+  value: string
+): value is 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' {
+  return (
+    value === 'telegram' ||
+    value === 'slack' ||
+    value === 'discord' ||
+    value === 'lark' ||
+    value === 'dingtalk' ||
+    value === 'weixin'
+  );
 }
 
 /**
@@ -572,6 +582,7 @@ export function getChannelConversationName(
   const shortPlatform: Record<string, string> = {
     telegram: 'tg',
     slack: 'slack',
+    discord: 'discord',
     dingtalk: 'ding',
     weixin: 'wx',
   };
