@@ -102,7 +102,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ secrets.GH_TOKEN || github.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -160,7 +160,7 @@ jobs:
                 # 提交版本更新
                 git add package.json bun.lock
                 git commit -m "chore: bump version to $NEW_VERSION"
-                git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+                git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN || github.token }}@github.com/${{ github.repository }}.git
                 git push origin $BRANCH_NAME
 
                 # 获取新的 commit ID
@@ -188,11 +188,11 @@ jobs:
           # 创建并推送tag
           echo "Creating tag: $TAG_NAME"
           git tag $TAG_NAME
-          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN || github.token }}@github.com/${{ github.repository }}.git
           git push origin $TAG_NAME
           echo "✅ Successfully created and pushed tag: $TAG_NAME"
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
 
   # 发布到 GitHub Releases
   release:
@@ -252,4 +252,4 @@ jobs:
           draft: true
           prerelease: ${{ steps.version.outputs.is_dev == 'true' || contains(steps.version.outputs.tag_name, 'beta') || contains(steps.version.outputs.tag_name, 'alpha') || contains(steps.version.outputs.tag_name, 'rc') }}
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
