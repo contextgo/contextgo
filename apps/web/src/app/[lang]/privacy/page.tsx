@@ -21,17 +21,17 @@ export default async function PrivacyPage({ params }: { params: Promise<{ lang: 
   const privacy = dict.legal.privacy;
 
   return (
-    <section className="bg-white py-20">
-      <div className="container-custom">
-        <div className="mx-auto max-w-3xl">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{privacy.title}</h1>
-          <p className="mt-3 text-sm text-gray-500">{privacy.lastUpdated}</p>
+    <section className='theme-page py-20'>
+      <div className='container-custom'>
+        <div className='mx-auto max-w-3xl'>
+          <h1 className='theme-text-primary text-3xl font-bold tracking-tight md:text-4xl'>{privacy.title}</h1>
+          <p className='theme-text-tertiary mt-3 text-sm'>{privacy.lastUpdated}</p>
 
-          <div className="mt-10 space-y-8">
+          <div className='mt-10 space-y-8'>
             {privacy.sections.map((section) => (
               <section key={section.heading}>
-                <h2 className="text-xl font-semibold text-gray-900">{section.heading}</h2>
-                <div className="mt-3 space-y-3 text-gray-700 leading-7">
+                <h2 className='theme-text-primary text-xl font-semibold'>{section.heading}</h2>
+                <div className='theme-text-secondary mt-3 space-y-3 leading-7'>
                   {section.content.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}

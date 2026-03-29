@@ -47,24 +47,24 @@ const marqueeDirections = ['left', 'right', 'left'] as const;
 
 export default function ConnectClient({ dict }: { dict: Dictionary }) {
   return (
-    <div className='min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#f6f7fb_0%,#eef1f4_38%,#ffffff_100%)] px-4 py-20'>
+    <div className='theme-connect-gradient min-h-screen overflow-hidden px-4 py-20'>
       <div className='container-custom'>
-        <section className='relative overflow-hidden rounded-[36px] border border-gray-200 bg-white/88 px-6 py-10 shadow-[0_28px_100px_rgba(15,23,42,0.08)] backdrop-blur md:px-10 md:py-14'>
-          <div className='absolute inset-x-12 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(17,24,39,0.18),transparent)]' />
-          <div className='grid gap-10 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:items-stretch'>
+        <section className='theme-surface-primary theme-shadow-soft theme-border relative overflow-hidden rounded-[36px] border px-6 py-10 backdrop-blur md:px-10 md:py-14'>
+          <div className='theme-divider-gradient absolute inset-x-12 top-0 h-px' />
+          <div className='grid gap-10 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:items-start'>
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <div className='inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-gray-500'>
-                <span className='h-2 w-2 rounded-full bg-black' />
+              <div className='theme-button-secondary theme-text-tertiary inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em]'>
+                <span className='h-2 w-2 rounded-full bg-[var(--surface-accent)]' />
                 {dict.connect.badge}
               </div>
-              <h1 className='mt-6 max-w-4xl text-4xl font-semibold tracking-[-0.04em] text-black md:text-6xl'>
+              <h1 className='theme-text-primary mt-6 max-w-4xl text-4xl font-semibold tracking-[-0.04em] md:text-6xl'>
                 {dict.connect.title}
               </h1>
-              <p className='mt-5 max-w-2xl text-base leading-8 text-gray-600 md:text-lg'>
+              <p className='theme-text-secondary mt-5 max-w-2xl text-base leading-8 md:text-lg'>
                 {dict.connect.description}
               </p>
 
@@ -72,7 +72,7 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
                 {dict.connect.highlights.map((item) => (
                   <div
                     key={item}
-                    className='rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm'
+                    className='theme-surface-secondary theme-shadow-card theme-border theme-text-secondary rounded-full border px-4 py-2 text-sm font-medium'
                   >
                     {item}
                   </div>
@@ -85,13 +85,13 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
                   return (
                     <div
                       key={feature.title}
-                      className='rounded-[24px] border border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f7f8fa_100%)] p-5'
+                      className='theme-card-gradient theme-border rounded-[24px] border p-5'
                     >
-                      <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-black text-white'>
+                      <div className='theme-surface-accent flex h-11 w-11 items-center justify-center rounded-2xl'>
                         <Icon size={18} />
                       </div>
-                      <div className='mt-4 text-lg font-semibold tracking-tight text-black'>{feature.title}</div>
-                      <p className='mt-2 text-sm leading-6 text-gray-600'>{feature.desc}</p>
+                      <div className='theme-text-primary mt-4 text-lg font-semibold tracking-tight'>{feature.title}</div>
+                      <p className='theme-text-secondary mt-2 text-sm leading-6'>{feature.desc}</p>
                     </div>
                   );
                 })}
@@ -102,12 +102,12 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.55, delay: 0.08 }}
-              className='relative h-full'
+              className='relative h-full self-stretch xl:pt-[3.9rem]'
             >
-              <div className='absolute -inset-4 rounded-[32px] bg-[radial-gradient(circle_at_center,rgba(17,24,39,0.07),transparent_64%)] blur-2xl' />
-              <div className='relative flex h-full flex-col overflow-hidden rounded-[32px] border border-gray-200 bg-[#f5f7fa] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'>
-                <div className='flex items-center justify-between gap-3 rounded-[22px] border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm'>
-                  <span className='font-medium text-black'>{dict.connect.marquee_label}</span>
+              <div className='absolute -inset-4 rounded-[32px] bg-[radial-gradient(circle_at_center,color-mix(in_srgb,var(--surface-accent)_8%,transparent),transparent_64%)] blur-2xl' />
+              <div className='theme-panel-gradient theme-border relative flex h-full flex-col overflow-hidden rounded-[32px] border p-5 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-inverse)_12%,transparent)]'>
+                <div className='theme-surface-secondary theme-shadow-card theme-border theme-text-secondary flex items-center justify-between gap-3 rounded-[22px] border px-4 py-3 text-sm'>
+                  <span className='theme-text-primary font-medium'>{dict.connect.marquee_label}</span>
                   <span>{dict.connect.marquee_hint}</span>
                 </div>
 
@@ -123,14 +123,14 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
                     ))}
                   </div>
 
-                  <div className='rounded-[24px] border border-gray-200 bg-white px-5 py-5 shadow-sm'>
-                    <div className='text-xs font-semibold uppercase tracking-[0.24em] text-gray-400'>
+                  <div className='theme-surface-secondary theme-shadow-card theme-border rounded-[24px] border px-5 py-5'>
+                    <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.24em]'>
                       {dict.connect.connector_story_label}
                     </div>
-                    <div className='mt-3 text-2xl font-semibold tracking-tight text-black'>
+                    <div className='theme-text-primary mt-3 text-2xl font-semibold tracking-tight'>
                       {dict.connect.connector_story_title}
                     </div>
-                    <p className='mt-3 text-sm leading-7 text-gray-600'>{dict.connect.connector_story_body}</p>
+                    <p className='theme-text-secondary mt-3 text-sm leading-7'>{dict.connect.connector_story_body}</p>
                   </div>
                 </div>
               </div>
@@ -143,26 +143,26 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.12 }}
-            className='rounded-[30px] border border-gray-200 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2f6_100%)] p-8 text-black shadow-[0_28px_80px_rgba(15,23,42,0.08)]'
+            className='theme-panel-gradient theme-shadow-soft theme-border rounded-[30px] border p-8'
           >
-            <div className='inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs uppercase tracking-[0.24em] text-gray-500 shadow-sm'>
+            <div className='theme-surface-secondary theme-shadow-card theme-border theme-text-tertiary inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs uppercase tracking-[0.24em]'>
               {dict.connect.panel_label}
             </div>
-            <h2 className='mt-5 text-3xl font-semibold tracking-tight'>{dict.connect.panel_title}</h2>
-            <p className='mt-4 max-w-xl text-sm leading-7 text-gray-600'>{dict.connect.panel_body}</p>
+            <h2 className='theme-text-primary mt-5 text-3xl font-semibold tracking-tight'>{dict.connect.panel_title}</h2>
+            <p className='theme-text-secondary mt-4 max-w-xl text-sm leading-7'>{dict.connect.panel_body}</p>
 
             <div className='mt-8 space-y-4'>
               {dict.connect.workflow.map((item, index) => (
                 <div
                   key={item.title}
-                  className='flex items-start gap-4 rounded-[22px] border border-gray-200 bg-white px-4 py-4 shadow-sm'
+                  className='theme-surface-secondary theme-shadow-card theme-border flex items-start gap-4 rounded-[22px] border px-4 py-4'
                 >
-                  <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-sm font-semibold text-white'>
+                  <div className='theme-surface-accent flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold'>
                     {index + 1}
                   </div>
                   <div>
-                    <div className='text-base font-semibold text-black'>{item.title}</div>
-                    <p className='mt-1 text-sm leading-6 text-gray-600'>{item.desc}</p>
+                    <div className='theme-text-primary text-base font-semibold'>{item.title}</div>
+                    <p className='theme-text-secondary mt-1 text-sm leading-6'>{item.desc}</p>
                   </div>
                 </div>
               ))}
@@ -178,20 +178,20 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
             {dict.connect.use_cases.map((item) => (
               <div
                 key={item.title}
-                className='group rounded-[28px] border border-gray-200 bg-white px-6 py-6 shadow-[0_18px_48px_rgba(15,23,42,0.06)] transition-transform duration-200 hover:-translate-y-1'
+                className='theme-surface-secondary theme-shadow-card theme-border group rounded-[28px] border px-6 py-6 transition-transform duration-200 hover:-translate-y-1'
               >
                 <div className='flex items-start justify-between gap-4'>
                   <div>
-                    <div className='text-sm font-semibold uppercase tracking-[0.22em] text-gray-400'>
+                    <div className='theme-text-tertiary text-sm font-semibold uppercase tracking-[0.22em]'>
                       {dict.connect.use_case_label}
                     </div>
-                    <h3 className='mt-3 text-2xl font-semibold tracking-tight text-black'>{item.title}</h3>
+                    <h3 className='theme-text-primary mt-3 text-2xl font-semibold tracking-tight'>{item.title}</h3>
                   </div>
-                  <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100 text-black transition-colors duration-200 group-hover:bg-black group-hover:text-white'>
+                  <div className='theme-surface-tertiary theme-text-primary flex h-11 w-11 items-center justify-center rounded-2xl transition-colors duration-200 group-hover:bg-[var(--surface-accent)] group-hover:text-[var(--text-inverse)]'>
                     <ArrowRight size={18} />
                   </div>
                 </div>
-                <p className='mt-4 text-sm leading-7 text-gray-600'>{item.desc}</p>
+                <p className='theme-text-secondary mt-4 text-sm leading-7'>{item.desc}</p>
               </div>
             ))}
           </motion.div>
@@ -215,7 +215,7 @@ function ConnectorMarquee({
   const animateX = direction === 'left' ? '-50%' : '0%';
 
   return (
-    <div className='overflow-hidden rounded-[24px] border border-gray-200 bg-white py-3 shadow-sm'>
+    <div className='theme-surface-secondary theme-shadow-card theme-border overflow-hidden rounded-[24px] border py-3'>
       <motion.div
         className='flex w-max gap-3 px-3'
         initial={{ x: initialX }}
@@ -225,14 +225,14 @@ function ConnectorMarquee({
         {repeated.map((item, index) => (
           <div
             key={`${item.name}-${index}`}
-            className='flex shrink-0 items-center justify-center gap-3 rounded-[18px] border border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f4f5f7_100%)] px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.05)]'
+            className='theme-card-gradient theme-border theme-shadow-card inline-flex shrink-0 items-center gap-2.5 rounded-[18px] border px-3.5 py-2.5'
           >
-            <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'>
+            <div className='theme-surface-secondary theme-border flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-inverse)_18%,transparent)]'>
               <Image src={item.logo} alt='' width={24} height={24} className='h-6 w-6 object-contain' />
             </div>
-            <div className='flex items-center'>
-              <span className='block text-center text-sm font-medium tracking-tight text-gray-700'>{item.name}</span>
-            </div>
+            <span className='theme-text-primary block whitespace-nowrap text-center text-sm font-medium tracking-tight'>
+              {item.name}
+            </span>
           </div>
         ))}
       </motion.div>

@@ -3,6 +3,12 @@ export const en = {
     product: 'Introduction',
     connect: 'Connect',
     download: 'Download',
+    theme: {
+      toggle: 'Theme',
+      light: 'Light',
+      dark: 'Dark',
+      system: 'System',
+    },
   },
   hero: {
     title_start: 'Master Your Context,',
