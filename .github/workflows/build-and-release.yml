@@ -373,6 +373,10 @@ jobs:
         shell: bash
         run: bash scripts/prepare-release-assets.sh build-artifacts release-assets
 
+      - name: Verify release assets
+        shell: bash
+        run: bash scripts/verify-release-assets.sh release-assets
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -383,7 +387,12 @@ jobs:
             release-assets/**/*.msi
             release-assets/**/*.dmg
             release-assets/**/*.deb
+            release-assets/**/*.apk
+            release-assets/**/*.aab
+            release-assets/**/*.hap
+            release-assets/**/*.app
             release-assets/**/*.zip
+            release-assets/**/*.json
             release-assets/**/*.yml
           generate_release_notes: true
           draft: true
