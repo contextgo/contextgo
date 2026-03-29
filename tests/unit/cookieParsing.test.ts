@@ -82,7 +82,7 @@ describe('extractWebSocketToken – cookie parsing with special characters', () 
   it('prefers the cloud session cookie for remote contextgo hosts', () => {
     const req = fakeReq({
       host: 'remote.contextgo.io',
-      cookie: 'aionui-session=localtoken; contextgo_session=cloudtoken',
+      cookie: 'contextgo-session=localtoken; contextgo_session=cloudtoken',
     });
 
     expect(TokenMiddleware.extractWebSocketToken(req)).toBe('cloudtoken');
@@ -91,7 +91,7 @@ describe('extractWebSocketToken – cookie parsing with special characters', () 
   it('keeps preferring the local session cookie on localhost', () => {
     const req = fakeReq({
       host: '127.0.0.1:25808',
-      cookie: 'aionui-session=localtoken; contextgo_session=cloudtoken',
+      cookie: 'contextgo-session=localtoken; contextgo_session=cloudtoken',
     });
 
     expect(TokenMiddleware.extractWebSocketToken(req)).toBe('localtoken');
