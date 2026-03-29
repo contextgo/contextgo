@@ -10,7 +10,7 @@ import { ASSISTANT_PRESETS } from './assistantPresets';
 const BUILTIN_ASSISTANT_PREFIX = 'builtin-';
 
 const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
-  'morph-ppt',
+  'pptx-generator',
   'cowork',
   'engineering-workbench',
   'engineering-planner',

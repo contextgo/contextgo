@@ -40,7 +40,7 @@ PROCESSING (1) → INPUTING (2) → FINISHED (3)
 
 4. PUT /v1.0/card/streaming            # Stream content (repeat)
    - key: 'msgContent'                 # Not 'content'
-   - isFull: true                      # Full replacement (AionUI sends complete content each time)
+   - isFull: true                      # Full replacement (ContextGo sends complete content each time)
    - isFinalize: false                 # Not 'isFinish'
    - isError: false
 
@@ -61,7 +61,7 @@ PROCESSING (1) → INPUTING (2) → FINISHED (3)
 - **`isFinalize`** is the correct field name (not `'isFinish'`)
 - **INPUTING state** must be set via `PUT /v1.0/card/instances` before the first streaming write
 - **FINISHED state** must be set after streaming ends, or the "..." animation keeps spinning
-- **`isFull: true`** is always used because AionUI sends the complete message content on each edit (not incremental deltas)
+- **`isFull: true`** is always used because ContextGo sends the complete message content on each edit (not incremental deltas)
 
 ## Message Flow
 

@@ -147,12 +147,12 @@ export async function loadCliConfig({
   // 创建虚拟 extension 来承载内置 skills
   // Create a virtual extension to hold builtin skills
   const builtinSkillsExtension: GeminiCLIExtension = {
-    name: 'aionui-builtin-skills',
+    name: 'contextgo-builtin-skills',
     version: '1.0.0',
     isActive: true,
     path: skillsDir || '',
     contextFiles: [],
-    id: 'aionui-builtin-skills',
+    id: 'contextgo-builtin-skills',
     skills: builtinSkills,
   };
 

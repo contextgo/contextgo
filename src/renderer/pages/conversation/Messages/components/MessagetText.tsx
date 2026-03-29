@@ -5,12 +5,13 @@
  */
 
 import type { IMessageText } from '@/common/chat/chatLib';
-import { AIONUI_FILES_MARKER } from '@/common/config/constants';
+import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import { formatWorkflowRoleLabel, isBuiltInWorkflowRole } from '@/common/config/group';
 import { iconColors } from '@/renderer/styles/colors';
 import { Alert, Message, Tooltip } from '@arco-design/web-react';
 import { Copy } from '@icon-park/react';
 import classNames from 'classnames';
+import type { TFunction } from 'i18next';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copyText } from '@/renderer/utils/ui/clipboard';
@@ -24,7 +25,7 @@ import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 
 const resolveGroupParticipantRoleLabel = (
   role: string | undefined,
-  t: (key: string, options?: unknown) => string
+  t: TFunction<'translation', undefined>
 ): string | null => {
   if (!role) {
     return null;
@@ -34,12 +35,12 @@ const resolveGroupParticipantRoleLabel = (
 };
 
 const parseFileMarker = (content: string) => {
-  const markerIndex = content.indexOf(AIONUI_FILES_MARKER);
+  const markerIndex = content.indexOf(CONTEXTGO_FILES_MARKER);
   if (markerIndex === -1) {
     return { text: content, files: [] as string[] };
   }
   const text = content.slice(0, markerIndex).trimEnd();
-  const afterMarker = content.slice(markerIndex + AIONUI_FILES_MARKER.length).trim();
+  const afterMarker = content.slice(markerIndex + CONTEXTGO_FILES_MARKER.length).trim();
   const files = afterMarker
     ? afterMarker
         .split('\n')

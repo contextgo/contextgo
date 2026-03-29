@@ -36,13 +36,6 @@ vi.mock('@process/agent/acp/AcpDetector', () => ({
   },
 }));
 
-const mockCreateConversation = vi.fn();
-vi.mock('@/process/services/conversationServiceSingleton', () => ({
-  conversationServiceSingleton: {
-    createConversation: mockCreateConversation,
-  },
-}));
-
 const mockClearContext = vi.fn();
 vi.mock('@process/channels/agent/ChannelMessageService', () => ({
   getChannelMessageService: vi.fn(() => ({
@@ -57,13 +50,6 @@ vi.mock('@process/task/workerTaskManagerSingleton', () => ({
   },
 }));
 
-const mockResolveAuthorizedRoute = vi.fn();
-vi.mock('@process/channels/core/ChannelRouteResolver', () => ({
-  getChannelRouteResolver: vi.fn(() => ({
-    resolveAuthorizedRoute: mockResolveAuthorizedRoute,
-  })),
-}));
-
 const mockSessionManager = {
   getSession: vi.fn(),
   clearSession: vi.fn(),
@@ -72,6 +58,13 @@ const mockSessionManager = {
 vi.mock('@process/channels/core/ChannelManager', () => ({
   getChannelManager: vi.fn(() => ({
     getSessionManager: () => mockSessionManager,
+  })),
+}));
+
+const mockResolveAuthorizedRoute = vi.fn();
+vi.mock('@process/channels/core/ChannelRouteResolver', () => ({
+  getChannelRouteResolver: vi.fn(() => ({
+    resolveAuthorizedRoute: mockResolveAuthorizedRoute,
   })),
 }));
 
@@ -99,78 +92,6 @@ const BASE_SLACK_USER = {
   displayName: 'Bob',
   authorizedAt: 2000,
 };
-
-function createResolvedRoute(params: { platform: string; pluginId?: string; chatId: string; userId: string; displayName: string }) {
-  return {
-    session: {
-      id: `session-${params.platform}-new`,
-      userId: params.userId,
-      agentType: 'acp',
-      conversationId: `conv-${params.platform}-new`,
-      chatId: params.chatId,
-      createdAt: 1000,
-      lastActivity: 1000,
-    },
-    conversation: {
-      id: `conv-${params.platform}-new`,
-    },
-    channelUser: {
-      id: `channel-user-${params.platform}`,
-      platformUserId: params.userId,
-      platformType: params.platform,
-      displayName: params.displayName,
-      authorizedAt: 1000,
-    },
-    connector: {
-      id: params.pluginId || `${params.platform}_default`,
-      platform: params.platform,
-      name: params.platform,
-      enabled: true,
-      status: 'running',
-      createdAt: 1,
-      updatedAt: 1,
-    },
-    remoteIdentity: {
-      id: `remote-${params.platform}`,
-      connectorId: params.pluginId || `${params.platform}_default`,
-      remoteUserId: params.userId,
-      remoteChatId: params.chatId,
-      remoteChatType: 'direct',
-      authorizedAt: 1000,
-      lastActive: 1000,
-    },
-    binding: {
-      id: `binding-${params.platform}`,
-      connectorId: params.pluginId || `${params.platform}_default`,
-      scopeType: 'connector_default',
-      agentProfileId: `agent-profile-${params.platform}`,
-      priority: 0,
-      enabled: true,
-      temporary: false,
-      createdAt: 1,
-      updatedAt: 1,
-    },
-    agentProfile: {
-      id: `agent-profile-${params.platform}`,
-      name: 'Claude Code',
-      backend: 'claude',
-      version: 1,
-      archived: false,
-      createdAt: 1,
-      updatedAt: 1,
-    },
-    externalSession: {
-      id: `external-session-${params.platform}`,
-      connectorId: params.pluginId || `${params.platform}_default`,
-      remoteIdentityId: `remote-${params.platform}`,
-      bindingId: `binding-${params.platform}`,
-      agentProfileId: `agent-profile-${params.platform}`,
-      lastActivity: 1000,
-      createdAt: 1000,
-      updatedAt: 1000,
-    },
-  };
-}
 
 function createActionContext() {
   return {
@@ -230,6 +151,44 @@ function createSlackActionContext() {
   };
 }
 
+function createResolvedRoute(options: {
+  platform: 'weixin' | 'slack' | 'discord';
+  platformUserId: string;
+  chatId: string;
+  displayName: string;
+  channelUserId: string;
+  conversationId: string;
+  sessionId: string;
+  agentType: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway';
+}) {
+  return {
+    session: {
+      id: options.sessionId,
+      userId: options.channelUserId,
+      agentType: options.agentType,
+      conversationId: options.conversationId,
+      chatId: options.chatId,
+      createdAt: 1000,
+      lastActivity: 1000,
+    },
+    conversation: {
+      id: options.conversationId,
+    },
+    channelUser: {
+      id: options.channelUserId,
+      platformUserId: options.platformUserId,
+      platformType: options.platform,
+      displayName: options.displayName,
+      authorizedAt: 1000,
+    },
+    connector: undefined,
+    remoteIdentity: undefined,
+    binding: undefined,
+    agentProfile: undefined,
+    externalSession: undefined,
+  };
+}
+
 describe('SystemActions weixin platform handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -242,18 +201,8 @@ describe('SystemActions weixin platform handling', () => {
     mockSet.mockResolvedValue(undefined);
 
     mockGetDetectedAgents.mockReturnValue([]);
-    mockCreateConversation.mockResolvedValue({ id: 'conv-new-1' });
     mockClearContext.mockResolvedValue(undefined);
     mockKill.mockReturnValue(undefined);
-    mockResolveAuthorizedRoute.mockImplementation(async (params) =>
-      createResolvedRoute({
-        platform: params.platform,
-        pluginId: params.pluginId,
-        chatId: params.chatId,
-        userId: params.platformUserId,
-        displayName: params.displayName ?? 'User',
-      })
-    );
 
     mockSessionManager.getSession.mockReturnValue({
       id: 'session-old',
@@ -347,15 +296,6 @@ describe('SystemActions agent selection', () => {
         customAgentId: 'claude-custom-1',
       },
     ]);
-    mockResolveAuthorizedRoute.mockImplementation(async (params) =>
-      createResolvedRoute({
-        platform: params.platform,
-        pluginId: params.pluginId,
-        chatId: params.chatId,
-        userId: params.platformUserId,
-        displayName: params.displayName ?? 'User',
-      })
-    );
 
     mockSessionManager.getSession.mockReturnValue({
       id: 'session-old',
@@ -368,10 +308,55 @@ describe('SystemActions agent selection', () => {
     });
     mockSessionManager.clearSession.mockResolvedValue(true);
     mockSessionManager.storeSession.mockResolvedValue(undefined);
+    mockResolveAuthorizedRoute.mockImplementation(
+      async (options: {
+        platform: string;
+        platformUserId: string;
+        chatId: string;
+        displayName: string;
+        overrideAgentType?: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway';
+      }) => {
+        if (options.platform === 'slack') {
+          return createResolvedRoute({
+            platform: 'slack',
+            platformUserId: options.platformUserId,
+            chatId: options.chatId,
+            displayName: options.displayName,
+            channelUserId: BASE_SLACK_USER.id,
+            conversationId: 'conv-slack-new',
+            sessionId: 'session-slack-new',
+            agentType: options.overrideAgentType || 'gemini',
+          });
+        }
+
+        if (options.platform === 'discord') {
+          return createResolvedRoute({
+            platform: 'discord',
+            platformUserId: options.platformUserId,
+            chatId: options.chatId,
+            displayName: options.displayName,
+            channelUserId: 'channel-user-3',
+            conversationId: 'conv-discord-new',
+            sessionId: 'session-discord-new',
+            agentType: options.overrideAgentType || 'gemini',
+          });
+        }
+
+        return createResolvedRoute({
+          platform: 'weixin',
+          platformUserId: options.platformUserId,
+          chatId: options.chatId,
+          displayName: options.displayName,
+          channelUserId: BASE_CHANNEL_USER.id,
+          conversationId: 'conv-new-1',
+          sessionId: 'session-new',
+          agentType: options.overrideAgentType || 'gemini',
+        });
+      }
+    );
 
     mockClearContext.mockResolvedValue(undefined);
     mockKill.mockReturnValue(undefined);
-    mockCreateConversation.mockResolvedValue({ id: 'conv-new-1' });
   });
 
   it('switches to selected backend agent and recreates conversation/session', async () => {
@@ -397,16 +382,22 @@ describe('SystemActions agent selection', () => {
         pluginId: 'weixin_default',
         platformUserId: 'wx-user-1',
         chatId: 'chat-wx-1',
+        displayName: 'Alice',
+        forceNewConversation: true,
         overrideAgentType: 'acp',
       })
     );
     expect(mockSessionManager.storeSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'session-weixin-new',
-        conversationId: 'conv-weixin-new',
+        id: 'session-new',
+        userId: BASE_CHANNEL_USER.id,
+        conversationId: 'conv-new-1',
         chatId: 'chat-wx-1',
+        agentType: 'acp',
       })
     );
+    expect(context.conversationId).toBe('conv-new-1');
+    expect(context.sessionId).toBe('session-new');
   });
 
   it('accepts a shortened callback token for long dynamic agent keys', async () => {
@@ -484,6 +475,17 @@ describe('SystemActions agent selection', () => {
         name: 'Claude Code',
       })
     );
+    expect(mockResolveAuthorizedRoute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        platform: 'slack',
+        pluginId: 'slack_default',
+        platformUserId: 'slack-user-1',
+        chatId: 'chat-slack-1',
+        displayName: 'Bob',
+        forceNewConversation: true,
+        overrideAgentType: 'acp',
+      })
+    );
   });
 
   it('stores selected agent under the discord config path for discord platform', async () => {
@@ -536,6 +538,17 @@ describe('SystemActions agent selection', () => {
         backend: 'claude',
         customAgentId: 'claude-custom-1',
         name: 'Claude Code',
+      })
+    );
+    expect(mockResolveAuthorizedRoute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        platform: 'discord',
+        pluginId: 'discord_default',
+        platformUserId: 'discord-user-1',
+        chatId: 'chat-discord-1',
+        displayName: 'Bob',
+        forceNewConversation: true,
+        overrideAgentType: 'acp',
       })
     );
   });

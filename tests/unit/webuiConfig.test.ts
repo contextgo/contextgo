@@ -142,7 +142,7 @@ describe('webuiConfig module', () => {
     });
 
     it('should fallback to env variable', async () => {
-      process.env.AIONUI_PORT = '7070';
+      process.env.CONTEXTGO_PORT = '7070';
       const { resolveWebUIPort } = await import('@process/utils/webuiConfig');
 
       expect(resolveWebUIPort({}, () => undefined)).toBe(7070);
@@ -169,14 +169,14 @@ describe('webuiConfig module', () => {
     });
 
     it('should return true when env says allow remote', async () => {
-      process.env.AIONUI_ALLOW_REMOTE = '1';
+      process.env.CONTEXTGO_ALLOW_REMOTE = '1';
       const { resolveRemoteAccess } = await import('@process/utils/webuiConfig');
 
       expect(resolveRemoteAccess({}, false)).toBe(true);
     });
 
     it('should return true when host is 0.0.0.0', async () => {
-      process.env.AIONUI_HOST = '0.0.0.0';
+      process.env.CONTEXTGO_HOST = '0.0.0.0';
       const { resolveRemoteAccess } = await import('@process/utils/webuiConfig');
 
       expect(resolveRemoteAccess({}, false)).toBe(true);

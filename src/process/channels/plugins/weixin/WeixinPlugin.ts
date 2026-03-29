@@ -145,7 +145,7 @@ export class WeixinPlugin extends BasePlugin {
   }
 
   getBotInfo(): { username?: string; displayName?: string } | null {
-    return { displayName: 'Aion Assistant' };
+    return { displayName: 'ContextGo Assistant' };
   }
 
   // ==================== Promise bridge ====================

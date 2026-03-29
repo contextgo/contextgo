@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Provider = (payload?: unknown) => Promise<unknown>;
 
@@ -21,11 +21,11 @@ const createCommand = (key: string) => ({
 });
 
 const mockConversationService = {
-  createConversation: vi.fn(async () => ({ id: 'conv-created', name: 'Created Conversation', source: 'aionui' })),
+  createConversation: vi.fn(async () => ({ id: 'conv-created', name: 'Created Conversation', source: 'contextgo' })),
   deleteConversation: vi.fn(async () => {}),
   updateConversation: vi.fn(async () => {}),
-  getConversation: vi.fn(async () => ({ id: 'conv-1', source: 'aionui', name: 'Original Name', type: 'gemini' })),
-  createWithMigration: vi.fn(async () => ({ id: 'conv-migrated', source: 'aionui' })),
+  getConversation: vi.fn(async () => ({ id: 'conv-1', source: 'contextgo', name: 'Original Name', type: 'gemini' })),
+  createWithMigration: vi.fn(async () => ({ id: 'conv-migrated', source: 'contextgo' })),
 };
 
 const mockWorkerTaskManager = {
@@ -114,9 +114,10 @@ const registerMocks = () => {
   }));
 };
 
+let initConversationBridge: typeof import('@process/bridge/conversationBridge').initConversationBridge;
+
 const getProvider = async (key: string): Promise<Provider> => {
-  const mod = await import('@process/bridge/conversationBridge');
-  mod.initConversationBridge(mockConversationService as any, mockWorkerTaskManager as any);
+  initConversationBridge(mockConversationService as any, mockWorkerTaskManager as any);
 
   const provider = handlers[key];
   if (!provider) {
@@ -127,11 +128,15 @@ const getProvider = async (key: string): Promise<Provider> => {
 };
 
 describe('conversationBridge tray sync', () => {
-  beforeEach(() => {
+  beforeAll(async () => {
     vi.resetModules();
+    registerMocks();
+    ({ initConversationBridge } = await import('@process/bridge/conversationBridge'));
+  });
+
+  beforeEach(() => {
     vi.clearAllMocks();
     handlers = {};
-    registerMocks();
   });
 
   afterEach(() => {
@@ -154,7 +159,7 @@ describe('conversationBridge tray sync', () => {
 
     const result = await createProvider({ type: 'gemini' });
 
-    expect(result).toEqual({ id: 'conv-created', name: 'Created Conversation', source: 'aionui' });
+    expect(result).toEqual({ id: 'conv-created', name: 'Created Conversation', source: 'contextgo' });
     expect(mockConversationService.createConversation).toHaveBeenCalledOnce();
     expect(mockRefreshTrayMenu).toHaveBeenCalledOnce();
   });
