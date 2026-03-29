@@ -13,6 +13,31 @@ AionUi is not "a mobile shell for one agent". It is:
 
 **a platform that publishes many agents into IM surfaces and routes different audiences to different runtime sessions**
 
+## What `Channel` Means In Product Terms
+
+In the current product, `Channel` should be read as:
+
+**the channel-side publication and operations surface**
+
+It is not only:
+
+- connector settings
+- bot credentials
+- a per-platform default agent selector
+
+It should gradually cover:
+
+- connector account management
+- audience discovery
+- publication binding management
+- durable vs temporary routing operations
+- later audit, permissions, and service health
+
+Short version:
+
+- `Channel` is the product surface operators use
+- `ConnectorAccount + Audience + PublicationBinding` are the actual domain pieces underneath
+
 ## Current Code Snapshot
 
 As of this worktree iteration, the following are already true in code:
@@ -142,6 +167,26 @@ This answers:
 Objects:
 
 - `ConnectorAccount`
+
+## Channel-Layer Rule
+
+Do not design `Channel` as if it were only a transport plugin boundary.
+
+The channel layer should eventually let operators answer:
+
+- which connector accounts do we run?
+- which audiences have we observed?
+- which published agent serves each audience?
+- is this route durable or temporary?
+- what is the current service status for that audience?
+
+If a proposal only adds:
+
+- webhook setup
+- bot login status
+- default model
+
+then it is still incomplete from the product point of view.
 
 ## Behavior Rules
 
