@@ -1,6 +1,6 @@
 import 'server-only';
 
-const DEFAULT_REPOSITORY = 'contextgo/contextgo';
+const DEFAULT_REPOSITORY = 'contextgo/contextgo-releases';
 const GITHUB_API_BASE = 'https://api.github.com';
 const RELEASE_MANIFEST_NAME = 'release-manifest.json';
 
