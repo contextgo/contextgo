@@ -10,9 +10,12 @@
  */
 
 import { SqliteConversationRepository } from '@process/services/database/SqliteConversationRepository';
+import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSpaceRepository';
 import { ConversationServiceImpl } from './ConversationServiceImpl';
 import type { IConversationService } from './IConversationService';
+import { SpaceServiceImpl } from './space/SpaceServiceImpl';
 
 export const conversationServiceSingleton: IConversationService = new ConversationServiceImpl(
-  new SqliteConversationRepository()
+  new SqliteConversationRepository(),
+  new SpaceServiceImpl(new SqliteSpaceRepository())
 );
