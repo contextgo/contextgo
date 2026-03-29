@@ -6,6 +6,11 @@
 
 import { acpDetector } from '@process/agent/acp/AcpDetector';
 import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
+import {
+  BUILTIN_CHANNELS,
+  getBuiltinChannel,
+  type BuiltinChannelAgentConfigKey,
+} from '@/common/config/builtinChannels';
 import type { TChatConversation, TProviderWithModel } from '@/common/config/storage';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
@@ -83,21 +88,15 @@ const resolveSavedOpenClawAgent = (savedAgent: unknown) => {
 };
 
 function usesActionButtons(platform: PluginType): boolean {
-  return platform === 'slack' || platform === 'discord';
+  return getBuiltinChannel(platform)?.usesActionButtons ?? false;
 }
 
 function getPlatformDisplayName(platform: PluginType): string {
-  return platform === 'slack'
-    ? 'Slack'
-    : platform === 'discord'
-      ? 'Discord'
-      : platform === 'lark'
-        ? 'Lark/Feishu'
-        : platform === 'dingtalk'
-          ? 'DingTalk'
-          : platform === 'weixin'
-            ? 'WeChat'
-            : 'Telegram';
+  const builtinChannel = getBuiltinChannel(platform);
+  if (!builtinChannel) {
+    return platform;
+  }
+  return platform === 'lark' ? 'Lark/Feishu' : builtinChannel.displayName;
 }
 
 /**
@@ -120,18 +119,9 @@ export async function getChannelDefaultModel(platform: PluginType): Promise<TPro
     };
 
     // Try to get saved model selection
-    const savedModel =
-      platform === 'lark'
-        ? await ProcessConfig.get('assistant.lark.defaultModel')
-        : platform === 'discord'
-          ? await ProcessConfig.get('assistant.discord.defaultModel')
-          : platform === 'slack'
-            ? await ProcessConfig.get('assistant.slack.defaultModel')
-            : platform === 'dingtalk'
-              ? await ProcessConfig.get('assistant.dingtalk.defaultModel')
-              : platform === 'weixin'
-                ? await ProcessConfig.get('assistant.weixin.defaultModel')
-                : await ProcessConfig.get('assistant.telegram.defaultModel');
+    const savedModel = await ProcessConfig.get(
+      getBuiltinChannel(platform)?.defaultModelConfigKey ?? BUILTIN_CHANNELS.telegram.defaultModelConfigKey
+    );
     if (savedModel?.id && savedModel?.useModel) {
       // Google Auth is frontend-only (OAuth browser flow), not usable in channels.
       // Fall through to find a provider with a valid API key instead.
@@ -730,9 +720,9 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
         ? createMainMenuCard()
         : usesActionButtons(context.platform)
           ? undefined
-        : context.platform === 'dingtalk'
-          ? createDingTalkMainMenuCard()
-          : createMainMenuKeyboard();
+          : context.platform === 'dingtalk'
+            ? createDingTalkMainMenuCard()
+            : createMainMenuKeyboard();
     return createSuccessResponse({
       type: 'text',
       text: `✓ Already using <b>${selectedAgentName}</b>`,
@@ -817,26 +807,8 @@ type SavedChannelAgentConfig = {
   cliPath?: string;
 };
 
-function getChannelAgentConfigPath(
-  platform: PluginType
-):
-  | 'assistant.lark.agent'
-  | 'assistant.discord.agent'
-  | 'assistant.slack.agent'
-  | 'assistant.dingtalk.agent'
-  | 'assistant.weixin.agent'
-  | 'assistant.telegram.agent' {
-  return platform === 'lark'
-    ? 'assistant.lark.agent'
-    : platform === 'slack'
-      ? 'assistant.slack.agent'
-    : platform === 'discord'
-      ? 'assistant.discord.agent'
-    : platform === 'dingtalk'
-      ? 'assistant.dingtalk.agent'
-      : platform === 'weixin'
-        ? 'assistant.weixin.agent'
-        : 'assistant.telegram.agent';
+function getChannelAgentConfigPath(platform: PluginType): BuiltinChannelAgentConfigKey {
+  return getBuiltinChannel(platform)?.agentConfigKey ?? BUILTIN_CHANNELS.telegram.agentConfigKey;
 }
 
 function normalizeChannelAgentConfig(value: unknown): SavedChannelAgentConfig {
@@ -874,17 +846,7 @@ async function getSavedChannelAgentConfig(platform: PluginType): Promise<SavedCh
 function getConversationSource(
   platform: PluginType
 ): 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' {
-  return platform === 'lark'
-    ? 'lark'
-    : platform === 'discord'
-      ? 'discord'
-      : platform === 'slack'
-        ? 'slack'
-        : platform === 'dingtalk'
-          ? 'dingtalk'
-          : platform === 'weixin'
-            ? 'weixin'
-            : 'telegram';
+  return getBuiltinChannel(platform)?.conversationSource ?? 'telegram';
 }
 
 async function createChannelConversation(
