@@ -34,7 +34,7 @@ vi.mock('react-router-dom', () => ({
 // Shared ref so the hoisted mock factory can read the latest value
 const testState = {
   sections: [] as TimelineSection[],
-  discussionGroups: {} as Record<string, TChatConversation[]>,
+  groupChildConversations: {} as Record<string, TChatConversation[]>,
 };
 
 const mockSetActiveConversation = vi.fn();
@@ -49,7 +49,7 @@ vi.mock('../../src/renderer/hooks/context/ConversationHistoryContext', () => ({
     groupedHistory: {
       pinnedConversations: [],
       timelineSections: testState.sections,
-      discussionChildConversationsByParentId: testState.discussionGroups,
+      groupChildConversationsByParentId: testState.groupChildConversations,
     },
   }),
 }));
@@ -72,7 +72,7 @@ vi.mock('../../src/renderer/pages/conversation/GroupedHistory/utils/groupingHelp
   buildGroupedHistory: () => ({
     pinnedConversations: [],
     timelineSections: testState.sections,
-    discussionChildConversationsByParentId: testState.discussionGroups,
+    groupChildConversationsByParentId: testState.groupChildConversations,
   }),
 }));
 
@@ -104,7 +104,7 @@ describe('useConversations - workspace expansion', () => {
   beforeEach(() => {
     storageMap.clear();
     testState.sections = [];
-    testState.discussionGroups = {};
+    testState.groupChildConversations = {};
     mockSetActiveConversation.mockReset();
   });
 
@@ -192,8 +192,8 @@ describe('useConversations - workspace expansion', () => {
     expect(result.current.expandedWorkspaces).toEqual([]);
   });
 
-  it('should auto-expand discussion groups on first load when localStorage is empty', async () => {
-    testState.discussionGroups = {
+  it('should auto-expand group conversations on first load when localStorage is empty', async () => {
+    testState.groupChildConversations = {
       'group-1': [
         {
           id: 'child-1',
@@ -221,17 +221,17 @@ describe('useConversations - workspace expansion', () => {
     const { result } = renderHook(() => useConversations());
     await act(async () => {});
 
-    expect(result.current.expandedDiscussionGroups).toEqual(['group-1']);
+    expect(result.current.expandedGroupConversations).toEqual(['group-1']);
   });
 
-  it('should expand a discussion group when ensureDiscussionGroupExpanded is called', async () => {
+  it('should expand a group conversation when ensureGroupConversationExpanded is called', async () => {
     const { result } = renderHook(() => useConversations());
     await act(async () => {});
 
     act(() => {
-      result.current.ensureDiscussionGroupExpanded('group-2');
+      result.current.ensureGroupConversationExpanded('group-2');
     });
 
-    expect(result.current.expandedDiscussionGroups).toContain('group-2');
+    expect(result.current.expandedGroupConversations).toContain('group-2');
   });
 });

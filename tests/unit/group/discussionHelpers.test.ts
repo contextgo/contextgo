@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDiscussionRoundPrompt,
   normalizeDiscussionOrchestration,
-} from '@/process/bridge/services/discussion/discussionHelpers';
+} from '@/process/bridge/services/group/discussion/discussionHelpers';
 
 describe('normalizeDiscussionOrchestration', () => {
   it('defaults to a two-round debate flow', () => {
     expect(normalizeDiscussionOrchestration()).toEqual({
+      kind: 'discussion',
       mode: 'debate',
       rounds: 2,
     });
@@ -14,6 +15,7 @@ describe('normalizeDiscussionOrchestration', () => {
 
   it('forces broadcast mode back to a single round when rounds are missing', () => {
     expect(normalizeDiscussionOrchestration({ mode: 'broadcast' })).toEqual({
+      kind: 'discussion',
       mode: 'broadcast',
       rounds: 1,
     });
@@ -21,8 +23,17 @@ describe('normalizeDiscussionOrchestration', () => {
 
   it('forces relay mode back to a single round when rounds are missing', () => {
     expect(normalizeDiscussionOrchestration({ mode: 'relay' })).toEqual({
+      kind: 'discussion',
       mode: 'relay',
       rounds: 1,
+    });
+  });
+
+  it('backfills the discussion kind for older group data', () => {
+    expect(normalizeDiscussionOrchestration({ mode: 'debate', rounds: 2 })).toEqual({
+      kind: 'discussion',
+      mode: 'debate',
+      rounds: 2,
     });
   });
 });

@@ -18,6 +18,7 @@ export const normalizeDiscussionOrchestration = (
   const mode = orchestration?.mode || 'debate';
   const rounds = orchestration?.rounds || (mode === 'debate' ? 2 : 1);
   return {
+    kind: 'discussion',
     mode,
     rounds: rounds === 2 ? 2 : 1,
   };

@@ -2,27 +2,27 @@ import type { GroupedHistoryResult } from '../types';
 
 type VisibleConversationOrderInput = GroupedHistoryResult & {
   expandedWorkspaces: string[];
-  expandedDiscussionGroups: string[];
+  expandedGroupConversations: string[];
   siderCollapsed: boolean;
 };
 
 export const buildVisibleConversationIds = ({
   pinnedConversations,
   timelineSections,
-  discussionChildConversationsByParentId,
+  groupChildConversationsByParentId,
   expandedWorkspaces,
-  expandedDiscussionGroups,
+  expandedGroupConversations,
   siderCollapsed,
 }: VisibleConversationOrderInput): string[] => {
   const expandedWorkspaceSet = new Set(expandedWorkspaces);
-  const expandedDiscussionGroupSet = new Set(expandedDiscussionGroups);
+  const expandedGroupConversationSet = new Set(expandedGroupConversations);
   const visibleConversationIds: string[] = [];
-  const appendDiscussionChildren = (conversationId: string) => {
-    if (!siderCollapsed && !expandedDiscussionGroupSet.has(conversationId)) {
+  const appendGroupChildren = (conversationId: string) => {
+    if (!siderCollapsed && !expandedGroupConversationSet.has(conversationId)) {
       return;
     }
 
-    const childConversations = discussionChildConversationsByParentId[conversationId] ?? [];
+    const childConversations = groupChildConversationsByParentId[conversationId] ?? [];
     childConversations.forEach((conversation) => {
       visibleConversationIds.push(conversation.id);
     });
@@ -30,14 +30,14 @@ export const buildVisibleConversationIds = ({
 
   pinnedConversations.forEach((conversation) => {
     visibleConversationIds.push(conversation.id);
-    appendDiscussionChildren(conversation.id);
+    appendGroupChildren(conversation.id);
   });
 
   timelineSections.forEach((section) => {
     section.items.forEach((item) => {
       if (item.type === 'conversation' && item.conversation) {
         visibleConversationIds.push(item.conversation.id);
-        appendDiscussionChildren(item.conversation.id);
+        appendGroupChildren(item.conversation.id);
         return;
       }
 
@@ -48,7 +48,7 @@ export const buildVisibleConversationIds = ({
 
         item.workspaceGroup.conversations.forEach((conversation) => {
           visibleConversationIds.push(conversation.id);
-          appendDiscussionChildren(conversation.id);
+          appendGroupChildren(conversation.id);
         });
       }
     });

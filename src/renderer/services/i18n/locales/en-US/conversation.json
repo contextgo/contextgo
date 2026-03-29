@@ -66,7 +66,8 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "Deleted successfully",
-    "deleteFailed": "Delete failed"
+    "deleteFailed": "Delete failed",
+    "toggleGroupConversation": "Toggle group sessions"
   },
   "historySearch": {
     "tooltip": "Search",
@@ -83,7 +84,7 @@
   "entry": {
     "create": "Create",
     "conversation": "Conversation",
-    "group": "Discussion Group"
+    "group": "Group"
   },
   "tabs": {
     "closeAll": "Close All",
@@ -96,19 +97,26 @@
     "presetAssistants": "Preset Assistants"
   },
   "group": {
-    "header": "Discussion Group",
-    "createEntry": "Create Discussion Group",
-    "createTitle": "Create Discussion Group",
+    "header": "Group",
+    "createEntry": "Create Group",
+    "createTitle": "Create Group",
     "createAction": "Create Group",
-    "createFailed": "Failed to create discussion group",
-    "defaultName": "Discussion Group",
+    "createFailed": "Failed to create group",
+    "defaultName": "Agent Group",
     "nameLabel": "Group Name",
-    "namePlaceholder": "Enter a discussion group name",
+    "namePlaceholder": "Enter a group name",
     "workspaceLabel": "Workspace",
     "workspacePlaceholder": "Optional. Leave empty to create a default workspace automatically",
-    "workspaceHint": "The discussion group and all participant sessions will share this workspace. If left empty, a default temporary workspace will be created automatically.",
+    "workspaceHint": "The group and all participant sessions will share this workspace. If left empty, a default temporary workspace will be created automatically.",
     "selectWorkspace": "Choose Folder",
     "selectWorkspaceFailed": "Failed to select workspace",
+    "kindLabel": "Collaboration Type",
+    "kindWorkflow": "Workflow",
+    "kindDiscussion": "Discussion",
+    "kindHint": {
+      "workflow": "Default mode. Planner, writer, and evaluator collaborate in a shared workspace over multiple iterations.",
+      "discussion": "Classic discussion mode for comparing opinions, relays, and debates."
+    },
     "modeLabel": "Discussion Mode",
     "modeDebate": "Debate",
     "modeBroadcast": "Broadcast",
@@ -122,8 +130,63 @@
     "minimumParticipants": "Select at least two participants",
     "minimumParticipantsHint": "Pick 2 or more participants to start a discussion group.",
     "noDescription": "No description",
-    "sendPlaceholder": "Ask the discussion group...",
-    "roundLabel": "Round {{round}}"
+    "sendPlaceholder": "Give the group a task...",
+    "roundLabel": "Round {{round}}",
+    "role": {
+      "planner": "Planner",
+      "writer": "Writer",
+      "evaluator": "Evaluator",
+      "custom": "Custom"
+    },
+    "workflow": {
+      "templateLabel": "Workflow Template",
+      "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
+      "templateHint": "Planner defines the brief and acceptance criteria, writer iterates on the artifact in the shared workspace, and evaluator scores it with actionable feedback.",
+      "templatePlannerWriterEvaluatorHint": "Iterative harness: planner sets the brief, writer revises the shared artifact over multiple rounds, evaluator critiques each round.",
+      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
+      "templatePlanBuildEvaluateHint": "Single-pass harness: planner frames the build, builder makes one cohesive pass, evaluator performs the tail review.",
+      "exactParticipants": "This workflow template requires exactly 3 participants",
+      "exactParticipantsHint": "Planner / Writer / Evaluator needs exactly 3 participants with distinct roles.",
+      "assignRoles": "Assign planner, writer, and evaluator roles before creating the workflow group",
+      "roleLabel": "Role",
+      "iterationLabel": "Iteration {{iteration}}",
+      "stage": {
+        "planning": "Planning",
+        "writing": "Writing",
+        "evaluating": "Evaluating",
+        "completed": "Completed",
+        "failed": "Failed"
+      },
+      "maxIterationsLabel": "Max Iterations",
+      "maxIterationsHint": "Allowed range: {{min}}-{{max}}",
+      "scoreTargetLabel": "Score Target",
+      "scoreTargetHint": "Evaluator acceptance threshold: {{min}}-{{max}}",
+      "artifactPathLabel": "Artifact Path",
+      "artifactPathHint": "Relative path inside the shared workspace. Absolute paths and parent traversal are rejected.",
+      "reviewModeLabel": "Review Mode",
+      "reviewModeHint": "Choose whether the evaluator reviews every round or only the final artifact handoff.",
+      "reviewMode": {
+        "perIteration": "Review Every Iteration",
+        "finalOnly": "Tail Review Only"
+      },
+      "stageLabel": "Stage",
+      "iterationBudgetLabel": "Iteration Budget",
+      "iterationBudgetValue": "{{current}} / {{total}}",
+      "latestScoreLabel": "Latest Score",
+      "latestDecisionLabel": "Latest Decision",
+      "decision": {
+        "continue": "Continue",
+        "accept": "Accept",
+        "stop": "Stop"
+      },
+      "status": {
+        "idle": "Idle",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed",
+        "stopped": "Stopped"
+      }
+    }
   },
   "noAgentsAvailable": "No agents available",
   "noModelConfigured": "No model configured. Please configure in settings.",

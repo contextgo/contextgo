@@ -10,7 +10,7 @@ import { getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
 import { getWorkspaceUpdateTime } from '@/renderer/utils/workspace/workspaceHistory';
 
 import type {
-  DiscussionChildConversationMap,
+  GroupChildConversationMap,
   GroupedHistoryResult,
   TimelineItem,
   TimelineSection,
@@ -28,7 +28,7 @@ export const isConversationPinned = (conversation: TChatConversation): boolean =
   return Boolean(extra?.pinned);
 };
 
-const getDiscussionParentGroupId = (conversation: TChatConversation): string | undefined => {
+const getGroupParentConversationId = (conversation: TChatConversation): string | undefined => {
   const extra = conversation.extra as
     | {
         groupMeta?: { parentGroupId?: string };
@@ -155,14 +155,14 @@ export const groupConversationsByTimelineAndWorkspace = (
   return sections;
 };
 
-const buildDiscussionChildConversationMap = (
+const buildGroupChildConversationMap = (
   conversations: TChatConversation[],
-  discussionChildConversationsByParentId: DiscussionChildConversationMap
-): DiscussionChildConversationMap => {
-  const result: DiscussionChildConversationMap = {};
+  groupChildConversationsByParentId: GroupChildConversationMap
+): GroupChildConversationMap => {
+  const result: GroupChildConversationMap = {};
 
   conversations.forEach((conversation) => {
-    const childConversations = discussionChildConversationsByParentId[conversation.id];
+    const childConversations = groupChildConversationsByParentId[conversation.id];
     if (!childConversations || childConversations.length === 0 || conversation.type !== 'group') {
       return;
     }
@@ -194,10 +194,10 @@ const buildDiscussionChildConversationMap = (
 
 export const buildGroupedHistory = (
   conversations: TChatConversation[],
-  discussionChildConversationsByParentId: DiscussionChildConversationMap,
+  groupChildConversationsByParentId: GroupChildConversationMap,
   t: (key: string) => string
 ): GroupedHistoryResult => {
-  const topLevelConversations = conversations.filter((conversation) => !getDiscussionParentGroupId(conversation));
+  const topLevelConversations = conversations.filter((conversation) => !getGroupParentConversationId(conversation));
 
   const pinnedConversations = topLevelConversations
     .filter((conversation) => isConversationPinned(conversation))
@@ -211,14 +211,14 @@ export const buildGroupedHistory = (
     });
 
   const normalConversations = topLevelConversations.filter((conversation) => !isConversationPinned(conversation));
-  const orderedDiscussionChildConversationsByParentId = buildDiscussionChildConversationMap(
+  const orderedGroupChildConversationsByParentId = buildGroupChildConversationMap(
     topLevelConversations,
-    discussionChildConversationsByParentId
+    groupChildConversationsByParentId
   );
 
   return {
     pinnedConversations,
     timelineSections: groupConversationsByTimelineAndWorkspace(normalConversations, t),
-    discussionChildConversationsByParentId: orderedDiscussionChildConversationsByParentId,
+    groupChildConversationsByParentId: orderedGroupChildConversationsByParentId,
   };
 };

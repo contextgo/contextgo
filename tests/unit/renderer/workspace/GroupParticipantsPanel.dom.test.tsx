@@ -7,7 +7,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { DiscussionGroupParticipant } from '@/common/config/storage';
+import type { GroupParticipant } from '@/common/config/storage';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -27,6 +27,9 @@ vi.mock('react-i18next', () => ({
       if (key === 'conversation.group.noDescription') {
         return 'No description';
       }
+      if (key === 'conversation.group.role.planner') {
+        return 'Planner';
+      }
       return key;
     },
   }),
@@ -44,9 +47,9 @@ vi.mock('@/renderer/utils/model/agentLogo', () => ({
   getAgentLogo: (agent: string | undefined | null) => (agent === 'codex' ? '/mock-codex-logo.svg' : null),
 }));
 
-import DiscussionParticipantsPanel from '@/renderer/pages/conversation/Workspace/components/DiscussionParticipantsPanel';
+import GroupParticipantsPanel from '@/renderer/pages/conversation/Workspace/components/GroupParticipantsPanel';
 
-const participants: DiscussionGroupParticipant[] = [
+const participants: GroupParticipant[] = [
   {
     id: 'participant-1',
     participantType: 'cli-agent',
@@ -54,6 +57,7 @@ const participants: DiscussionGroupParticipant[] = [
     name: 'Codex',
     description: 'codex · gpt-5',
     childConversationId: 'child-1',
+    role: 'planner',
   },
   {
     id: 'participant-2',
@@ -62,12 +66,13 @@ const participants: DiscussionGroupParticipant[] = [
     name: 'Architect',
     avatar: 'cowork.svg',
     childConversationId: 'child-2',
+    role: 'research-lead',
   },
 ];
 
-describe('DiscussionParticipantsPanel', () => {
+describe('GroupParticipantsPanel', () => {
   it('renders participant summary cards', () => {
-    render(<DiscussionParticipantsPanel participants={participants} />);
+    render(<GroupParticipantsPanel participants={participants} />);
 
     expect(screen.getByText('Group Members')).toBeInTheDocument();
     expect(screen.getByText('2 members')).toBeInTheDocument();
@@ -75,8 +80,10 @@ describe('DiscussionParticipantsPanel', () => {
     expect(screen.getByAltText('Codex')).toHaveAttribute('src', '/mock-codex-logo.svg');
     expect(screen.getAllByText('CODEX').length).toBeGreaterThan(0);
     expect(screen.getAllByText('CLI Agent').length).toBeGreaterThan(0);
+    expect(screen.getByText('Planner')).toBeInTheDocument();
     expect(screen.getByText('Architect')).toBeInTheDocument();
     expect(screen.getAllByText('Preset Assistant').length).toBeGreaterThan(0);
+    expect(screen.getByText('Research Lead')).toBeInTheDocument();
     expect(screen.getByAltText('Architect')).toHaveAttribute('src', 'file:///mock/cowork.svg');
   });
 });

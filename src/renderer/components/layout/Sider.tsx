@@ -31,7 +31,7 @@ import { useAuth } from '@renderer/hooks/context/AuthContext';
 import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
-import CreateDiscussionGroupModal from '@renderer/pages/conversation/platforms/group/CreateDiscussionGroupModal';
+import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import { isElectronDesktop, isMacOS } from '@renderer/utils/platform';
 
@@ -114,7 +114,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       onSessionClick();
     }
   };
-  const handleCreateDiscussionGroup = () => {
+  const handleCreateGroup = () => {
     cleanupSiderTooltips();
     blurActiveElement();
     closePreview();
@@ -256,7 +256,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         }
 
         if (key === 'group') {
-          handleCreateDiscussionGroup();
+          handleCreateGroup();
         }
       }}
     >
@@ -494,7 +494,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
             <Suspense fallback={<div className='flex-1 min-h-0' />}>
               <WorkspaceGroupedHistory {...workspaceHistoryProps}></WorkspaceGroupedHistory>
             </Suspense>
-            <CreateDiscussionGroupModal
+            <CreateGroupModal
               visible={groupModalVisible}
               workspace={activeWorkspace}
               cliAgents={cliAgents}
