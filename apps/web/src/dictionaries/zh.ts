@@ -25,9 +25,64 @@ export const zh = {
     },
   },
   connect: {
-    title: '连接你的 AI',
-    description: 'ContextGo 架起了本地知识与 AI 智能体之间的桥梁。无缝连接你喜爱的工具，用你的私有上下文为它们赋能。',
-    card_desc: 'Skills 集成的目标目录。',
+    badge: 'Connector Layer',
+    title: '先连接你的上下文，再把它路由到任何地方。',
+    description:
+      'ContextGo 不只是把 AI 工具接起来。它为文档、笔记、云盘、聊天记录、数据库和工作区提供 connector layer，让你的上下文从分散碎片变成可复用的系统。',
+    highlights: ['同时接入本地来源与云端应用', '为所有工作流提供统一上下文界面', '为 agent、检索与发布场景做好 connector 准备'],
+    marquee_label: 'Connector 覆盖面',
+    marquee_hint: '文件、知识库、聊天、文档与数据系统',
+    connector_story_label: '为什么是 connector',
+    connector_story_title: '你的上下文应该像基础设施一样流动，而不是藏在一堆标签页里。',
+    connector_story_body:
+      'Connector 让每个来源都能被 ContextGo 理解。接入之后，同一份上下文就可以被整理、重组、检索、发布，并交付给下一个需要它的 agent 或工作流。',
+    features: [
+      {
+        title: '以 connector 为入口',
+        desc: '从文件夹、知识工具、沟通系统和结构化数据里接入上下文，而不是逼用户迁移到单一存储模型。',
+      },
+      {
+        title: '统一成可路由的一层',
+        desc: '把分散来源归一到共享的上下文层，供 agent、自动化流程和人工审阅共同消费。',
+      },
+      {
+        title: '下游能力可重复复用',
+        desc: '同一份已连接的上下文可以服务聊天、检索、发布、同步和未来团队工作流，不再每次手工重建。',
+      },
+    ],
+    panel_label: '上下文管线',
+    panel_title: 'Connector 是 ContextGo 的入口引擎。',
+    panel_body:
+      '先把来源接进来，整理成一层一致的上下文，再向外路由给 AI 产品、检索流程、远端客户端，以及后续的发布渠道。',
+    workflow: [
+      {
+        title: '从重要来源统一接入',
+        desc: '桌面文件夹、笔记、云文档、聊天系统和结构化存储都通过 connector 进入，而不是依赖复制粘贴。',
+      },
+      {
+        title: '归一成一个上下文图层',
+        desc: 'ContextGo 会把参差不齐的来源整理成更适合搜索、审阅、排序和服务的一致上下文界面。',
+      },
+      {
+        title: '再路由给 agent 与输出',
+        desc: '连接完成后，同一份上下文可以继续流向 AI 会话、远端客户端、connector 驱动的流程以及发布场景。',
+      },
+    ],
+    use_case_label: '使用场景',
+    use_cases: [
+      {
+        title: '连接产品知识',
+        desc: '把 PRD、文档、更新记录、工单和内部说明接到同一个界面里，让产品上下文不再散落在十几个标签页之间。',
+      },
+      {
+        title: '连接团队记忆',
+        desc: '通过 connector 把埋在聊天工具、会议记录、知识库和共享云盘里的决策重新捞出来，不让它们沉进历史。',
+      },
+      {
+        title: '连接运营数据',
+        desc: '把表格、看板、导出结果和结构化记录变成可复用的上下文，而不是每个流程都手工贴一次截图或摘要。',
+      },
+    ],
   },
   download: {
     center_badge: '多平台下载中心',
