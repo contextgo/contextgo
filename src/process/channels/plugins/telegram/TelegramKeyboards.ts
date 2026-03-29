@@ -111,6 +111,15 @@ export interface AgentDisplayInfo {
   type: ChannelAgentType;
   emoji: string;
   name: string;
+  agentProfileId?: string;
+}
+
+function buildAgentSelectionCallback(agent: AgentDisplayInfo): string {
+  if (!agent.agentProfileId) {
+    return `agent:${agent.type}`;
+  }
+
+  return `agent:${agent.type}:${agent.agentProfileId}`;
 }
 
 /**
@@ -121,16 +130,20 @@ export interface AgentDisplayInfo {
  */
 export function createAgentSelectionKeyboard(
   availableAgents: AgentDisplayInfo[],
-  currentAgent?: ChannelAgentType
+  currentAgent?: ChannelAgentType,
+  currentAgentProfileId?: string
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
 
   // Add agents in rows of 2
   for (let i = 0; i < availableAgents.length; i++) {
     const agent = availableAgents[i];
-    const label = currentAgent === agent.type ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
+    const isCurrent = agent.agentProfileId
+      ? agent.agentProfileId === currentAgentProfileId
+      : currentAgent === agent.type;
+    const label = isCurrent ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
 
-    keyboard.text(label, `agent:${agent.type}`);
+    keyboard.text(label, buildAgentSelectionCallback(agent));
 
     // Start new row after every 2 buttons, except for the last one
     if ((i + 1) % 2 === 0 && i < availableAgents.length - 1) {

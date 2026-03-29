@@ -156,6 +156,7 @@ type ResolveRouteParams = {
   displayName?: string;
   forceNewConversation?: boolean;
   overrideAgentType?: ChannelAgentType;
+  overrideAgentProfileId?: string;
 };
 
 const DIRECT_BACKENDS = new Set(['gemini', 'codex', 'openclaw-gateway']);
@@ -171,6 +172,14 @@ function buildStableId(prefix: string, ...parts: Array<string | undefined>): str
 
 function sortBindings(bindings: IChannelBinding[]): IChannelBinding[] {
   return bindings.toSorted((left, right) => right.priority - left.priority || left.createdAt - right.createdAt);
+}
+
+function getPreferredBinding(bindings?: IChannelBinding[]): IChannelBinding | undefined {
+  if (!bindings?.length) {
+    return undefined;
+  }
+
+  return sortBindings(bindings.filter((binding) => binding.enabled))[0];
 }
 
 function backendToAgentType(backend: string): ChannelAgentType {
@@ -394,6 +403,7 @@ export class ChannelRouteResolver {
       remoteIdentity,
       platform: params.platform,
       overrideAgentType: params.overrideAgentType,
+      overrideAgentProfileId: params.overrideAgentProfileId,
     });
     const bindingTarget = getChannelBindingTarget(binding);
     const bindingHandoffConfig = readBindingHandoffConfig(binding);
@@ -558,26 +568,27 @@ export class ChannelRouteResolver {
     remoteIdentity: IRemoteIdentity;
     platform: PluginType;
     overrideAgentType?: ChannelAgentType;
+    overrideAgentProfileId?: string;
   }): Promise<IChannelBinding> {
     const db = await getDatabase();
 
-    if (params.overrideAgentType) {
-      const profile = await this.ensureAgentProfile(
-        params.connector,
-        params.platform,
-        params.overrideAgentType,
-        'chat-override'
-      );
+    if (params.overrideAgentProfileId || params.overrideAgentType) {
+      const profile = params.overrideAgentProfileId
+        ? this.assertExistingAgentProfile(
+            db.getAgentProfile(params.overrideAgentProfileId),
+            params.overrideAgentProfileId
+          )
+        : await this.ensureAgentProfile(params.connector, params.platform, params.overrideAgentType, 'chat-override');
       const overrideBinding: IChannelBinding = {
         id: buildStableId(
           'binding',
           params.connector.id,
-          'remote_chat',
+          'temporary_override',
           params.remoteIdentity.remoteChatId,
-          'override'
+          profile.id
         ),
         connectorId: params.connector.id,
-        scopeType: 'remote_chat',
+        scopeType: 'temporary_override',
         scopeKey: params.remoteIdentity.remoteChatId,
         agentProfileId: profile.id,
         priority: 100,
@@ -585,6 +596,7 @@ export class ChannelRouteResolver {
         temporary: true,
         metadata: {
           source: 'agent-select',
+          overrideMode: params.overrideAgentProfileId ? 'agent-profile' : 'agent-type',
         },
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -593,13 +605,28 @@ export class ChannelRouteResolver {
       return overrideBinding;
     }
 
+    const temporaryOverrides = db.getChannelBindingsForScope(
+      params.connector.id,
+      'temporary_override',
+      params.remoteIdentity.remoteChatId
+    );
+    const activeTemporaryOverride = temporaryOverrides.success
+      ? getPreferredBinding(temporaryOverrides.data)
+      : undefined;
+    if (activeTemporaryOverride) {
+      return activeTemporaryOverride;
+    }
+
     const remoteChatBindings = db.getChannelBindingsForScope(
       params.connector.id,
       'remote_chat',
       params.remoteIdentity.remoteChatId
     );
-    if (remoteChatBindings.success && remoteChatBindings.data?.length) {
-      return sortBindings(remoteChatBindings.data)[0];
+    const preferredRemoteChatBinding = remoteChatBindings.success
+      ? getPreferredBinding(remoteChatBindings.data)
+      : undefined;
+    if (preferredRemoteChatBinding) {
+      return preferredRemoteChatBinding;
     }
 
     if (shouldUseRemoteUserBinding(params.remoteIdentity)) {
@@ -608,13 +635,16 @@ export class ChannelRouteResolver {
         'remote_user',
         params.remoteIdentity.remoteUserId
       );
-      if (remoteUserBindings.success && remoteUserBindings.data?.length) {
-        return sortBindings(remoteUserBindings.data)[0];
+      const preferredRemoteUserBinding = remoteUserBindings.success
+        ? getPreferredBinding(remoteUserBindings.data)
+        : undefined;
+      if (preferredRemoteUserBinding) {
+        return preferredRemoteUserBinding;
       }
     }
 
     const defaultBindings = db.getChannelBindingsForScope(params.connector.id, 'connector_default');
-    const existingDefault = defaultBindings.success ? sortBindings(defaultBindings.data ?? [])[0] : undefined;
+    const existingDefault = defaultBindings.success ? getPreferredBinding(defaultBindings.data) : undefined;
     if (existingDefault) {
       return existingDefault;
     }
@@ -636,6 +666,34 @@ export class ChannelRouteResolver {
     };
     db.upsertChannelBinding(defaultBinding);
     return defaultBinding;
+  }
+
+  async resolveAgentProfileForSelection(params: {
+    platform: PluginType;
+    pluginId?: string;
+    agentType: ChannelAgentType;
+  }): Promise<IAgentProfile> {
+    const connector = await this.resolveConnectorInstance(params.platform, params.pluginId);
+    return this.ensureAgentProfile(connector, params.platform, params.agentType, 'chat-override');
+  }
+
+  async resolveAgentProfileById(profileId: string): Promise<IAgentProfile> {
+    const db = await getDatabase();
+    return this.assertExistingAgentProfile(db.getAgentProfile(profileId), profileId);
+  }
+
+  private assertExistingAgentProfile(
+    result: { success: boolean; data?: IAgentProfile | null; error?: string },
+    profileId: string
+  ): IAgentProfile {
+    if (!result.success) {
+      throw new Error(result.error || `Failed to load agent profile ${profileId}`);
+    }
+    if (!result.data) {
+      throw new Error(`Agent profile ${profileId} not found`);
+    }
+
+    return result.data;
   }
 
   private async ensureAgentProfile(

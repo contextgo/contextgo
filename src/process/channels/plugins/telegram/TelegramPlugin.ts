@@ -7,7 +7,7 @@
 import type { Context } from 'grammy';
 import { Bot, GrammyError, HttpError } from 'grammy';
 
-import type { UserFromGetMe } from 'grammy/types';
+import type { InlineKeyboardMarkup, UserFromGetMe } from 'grammy/types';
 import type { BotInfo, IChannelPluginConfig, IUnifiedOutgoingMessage, PluginType } from '../../types';
 import { BasePlugin } from '../BasePlugin';
 import {
@@ -17,6 +17,19 @@ import {
   toUnifiedIncomingMessage,
 } from './TelegramAdapter';
 import { extractAction, extractCategory, resolveToolConfirmToken } from './TelegramKeyboards';
+
+function toInlineReplyMarkup(replyMarkup: unknown): InlineKeyboardMarkup | undefined {
+  if (
+    replyMarkup &&
+    typeof replyMarkup === 'object' &&
+    'inline_keyboard' in replyMarkup &&
+    Array.isArray(replyMarkup.inline_keyboard)
+  ) {
+    return replyMarkup as InlineKeyboardMarkup;
+  }
+
+  return undefined;
+}
 
 /**
  * TelegramPlugin - Telegram Bot integration for Personal Assistant
@@ -173,7 +186,7 @@ export class TelegramPlugin extends BasePlugin {
     try {
       await this.bot.api.editMessageText(chatId, parseInt(messageId, 10), truncatedText, {
         parse_mode: options.parse_mode,
-        reply_markup: options.reply_markup,
+        reply_markup: toInlineReplyMarkup(options.reply_markup),
       });
     } catch (error: any) {
       // Ignore "message is not modified" errors
@@ -416,7 +429,8 @@ export class TelegramPlugin extends BasePlugin {
     // 处理 agent 选择回调，格式: agent:{agentType}
     // Handle agent selection callback, format: agent:{agentType}
     if (category === 'agent') {
-      const agentType = extractAction(data); // gemini, acp, codex
+      const [, agentType, ...agentProfileIdParts] = data.split(':');
+      const agentProfileId = agentProfileIdParts.join(':') || undefined;
       const unifiedMessage = toUnifiedIncomingMessage(ctx);
       if (unifiedMessage && this.messageHandler) {
         unifiedMessage.content.type = 'action';
@@ -424,7 +438,10 @@ export class TelegramPlugin extends BasePlugin {
         unifiedMessage.action = {
           type: 'system',
           name: 'agent.select',
-          params: { agentType },
+          params: {
+            ...(agentType ? { agentType } : {}),
+            ...(agentProfileId ? { agentProfileId } : {}),
+          },
         };
         // Don't await - process in background
         void this.messageHandler(unifiedMessage)

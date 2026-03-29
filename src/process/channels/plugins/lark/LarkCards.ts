@@ -96,6 +96,7 @@ export interface AgentDisplayInfo {
   type: ChannelAgentType;
   emoji: string;
   name: string;
+  agentProfileId?: string;
 }
 
 /**
@@ -298,17 +299,28 @@ export function createPairingHelpCard(): LarkCard {
  */
 export function createAgentSelectionCard(
   availableAgents: AgentDisplayInfo[],
-  currentAgent?: ChannelAgentType
+  currentAgent?: ChannelAgentType,
+  currentAgentProfileId?: string
 ): LarkCard {
-  const agentButtons: LarkButtonElement[] = availableAgents.map((agent) => ({
-    tag: 'button',
-    text: {
-      tag: 'plain_text',
-      content: currentAgent === agent.type ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`,
-    },
-    type: currentAgent === agent.type ? 'primary' : 'default',
-    value: { action: 'agent.select', agentType: agent.type },
-  }));
+  const agentButtons: LarkButtonElement[] = availableAgents.map((agent) => {
+    const isCurrent = agent.agentProfileId
+      ? agent.agentProfileId === currentAgentProfileId
+      : currentAgent === agent.type;
+
+    return {
+      tag: 'button',
+      text: {
+        tag: 'plain_text',
+        content: isCurrent ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`,
+      },
+      type: isCurrent ? 'primary' : 'default',
+      value: {
+        action: 'agent.select',
+        agentType: agent.type,
+        ...(agent.agentProfileId ? { agentProfileId: agent.agentProfileId } : {}),
+      },
+    };
+  });
 
   // Split buttons into rows of 2
   const actionRows: LarkActionElement[] = [];

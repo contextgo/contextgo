@@ -225,6 +225,31 @@ export interface IChannelBinding {
   updatedAt: number;
 }
 
+export type ChannelAudienceScope = 'remote_user' | 'remote_chat';
+
+export interface IChannelAudienceEntry {
+  key: string;
+  connectorId: string;
+  scopeType: ChannelAudienceScope;
+  remoteIdentityId?: string;
+  remoteUserId?: string;
+  remoteChatId?: string;
+  remoteChatType?: string;
+  parentChatId?: string;
+  threadId?: string;
+  displayName?: string;
+  title: string;
+  subtitle?: string;
+  lastActive?: number;
+}
+
+export type IChannelBindingCatalog = {
+  connectors: IConnectorInstance[];
+  agentProfiles: IAgentProfile[];
+  bindings: IChannelBinding[];
+  audiences: IChannelAudienceEntry[];
+};
+
 export type IChannelBindingTarget = {
   type: ChannelBindingTargetType;
   id: string;
@@ -526,13 +551,29 @@ export interface IUnifiedIncomingMessage {
   id: string;
   platform: PluginType;
   pluginId?: string;
+  /** Platform transport target (used for replying back through the IM connector). */
   chatId: string;
+  /** Stable audience/session identity used for routing; may differ from transport chat in topics/threads. */
+  peer?: IUnifiedPeer;
   user: IUnifiedUser;
   content: IUnifiedMessageContent;
   timestamp: number;
   replyToMessageId?: string;
   action?: IMessageAction;
   raw?: unknown;
+}
+
+export type UnifiedPeerScope = 'chat' | 'thread';
+
+export interface IUnifiedPeer {
+  /** Stable routing key for audience/session resolution. */
+  key: string;
+  /** Raw platform chat target used for send/edit operations. */
+  platformChatId: string;
+  scope: UnifiedPeerScope;
+  parentChatId?: string;
+  threadId?: string;
+  chatType?: string;
 }
 
 /**

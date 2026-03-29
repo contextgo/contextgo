@@ -263,6 +263,14 @@ export class SessionManager {
     }
 
     const db = await getDatabase();
+    const externalSession = db.getExternalSession(session.id);
+    if (externalSession.success && externalSession.data?.bindingId) {
+      const bindingResult = db.getChannelBinding(externalSession.data.bindingId);
+      if (bindingResult.success && bindingResult.data?.temporary) {
+        db.deleteChannelBinding(bindingResult.data.id);
+      }
+    }
+
     db.deleteChannelSession(session.id);
     this.activeSessions.delete(key);
 
