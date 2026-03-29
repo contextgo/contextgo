@@ -370,10 +370,17 @@ export function createToolConfirmationCard(
   callId: string,
   title: string,
   description: string,
-  options: Array<{ label: string; value: string }>
+  options: Array<{ label: string; value: string }>,
+  chatId?: string,
+  conversationId?: string
 ): DingTalkCard {
   const buttons: DingTalkButton[] = options.map((opt) =>
-    btn(opt.label, 'system.confirm', { callId, value: opt.value })
+    btn(opt.label, 'system.confirm', {
+      callId,
+      value: opt.value,
+      ...(chatId ? { chatId } : {}),
+      ...(conversationId ? { conversationId } : {}),
+    })
   );
 
   return {

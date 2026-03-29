@@ -7,16 +7,12 @@
 import { channel } from '@/common/adapter/ipcBridge';
 import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '@/common/config/builtinChannels';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
+import { getChannelHandoffService } from '@process/channels/core/ChannelHandoffService';
 import { getPairingService } from '@process/channels/pairing/PairingService';
 import { ExtensionRegistry } from '@process/extensions';
 import { toAssetUrl } from '@process/extensions/protocol/assetProtocol';
 import * as path from 'path';
-import type {
-  IChannelPluginStatus,
-  IChannelUser,
-  IChannelPairingRequest,
-  IChannelSession,
-} from '@process/channels/types';
+import type { IChannelPluginStatus } from '@process/channels/types';
 import { hasPluginCredentials } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
 
@@ -310,6 +306,59 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return { success: true, data };
     } catch (error: any) {
       console.error('[ChannelBridge] getActiveSessions error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
+
+  /**
+   * Get channel bindings
+   */
+  channel.getBindings.provider(async (params?: { connectorId?: string }) => {
+    try {
+      const data = await channelRepo.getChannelBindings(params?.connectorId);
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('[ChannelBridge] getBindings error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
+
+  /**
+   * Upsert channel binding
+   */
+  channel.upsertBinding.provider(async ({ binding }) => {
+    try {
+      await channelRepo.upsertChannelBinding(binding);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[ChannelBridge] upsertBinding error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
+
+  /**
+   * Delete channel binding
+   */
+  channel.deleteBinding.provider(async ({ bindingId }) => {
+    try {
+      await channelRepo.deleteChannelBinding(bindingId);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[ChannelBridge] deleteBinding error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
+
+  /**
+   * Handoff a source session/conversation to a target channel chat.
+   */
+  channel.handoffSession.provider(async (params) => {
+    try {
+      const handoffService = getChannelHandoffService();
+      const data = await handoffService.handoffSession(params);
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('[ChannelBridge] handoffSession error:', error);
       return { success: false, msg: error.message };
     }
   });

@@ -99,7 +99,7 @@ def publish(title, content, images):
 
     # Determine profile directory - use a unique directory to avoid conflicts with user's Chrome
     env_profile = os.environ.get("XHS_PROFILE_DIR")
-    default_xhs_profile = os.path.join(os.path.expanduser("~"), ".aionui", "xiaohongshu-chrome-profile")
+    default_xhs_profile = os.path.join(os.path.expanduser("~"), ".contextgo", "xiaohongshu-chrome-profile")
     profile_dir = env_profile or default_xhs_profile
     os.makedirs(profile_dir, exist_ok=True)
     log(f"ℹ️ 使用浏览器 profile: {profile_dir}")

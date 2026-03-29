@@ -1,4 +1,4 @@
-import { AIONUI_FILES_MARKER, AIONUI_TIMESTAMP_REGEX } from '@/common/config/constants';
+import { CONTEXTGO_FILES_MARKER, CONTEXTGO_TIMESTAMP_REGEX } from '@/common/config/constants';
 import type { FileOrFolderItem } from '@/renderer/utils/file/fileTypes';
 
 export const collectSelectedFiles = (uploadFile: string[], atPath: Array<string | FileOrFolderItem>): string[] => {
@@ -17,15 +17,15 @@ export const buildDisplayMessage = (input: string, files: string[], workspacePat
       const normalizedWorkspace = workspacePath.replace(/[\\/]+$/, '').replace(/\\/g, '/');
       if (normalizedFile.startsWith(normalizedWorkspace + '/')) {
         const relativePath = normalizedFile.slice(normalizedWorkspace.length + 1);
-        return `${workspacePath}/${relativePath.replace(AIONUI_TIMESTAMP_REGEX, '$1')}`;
+        return `${workspacePath}/${relativePath.replace(CONTEXTGO_TIMESTAMP_REGEX, '$1')}`;
       }
       // External file outside workspace: use basename only
       const parts = filePath.split(/[\\/]/);
       let fileName = parts[parts.length - 1] || filePath;
-      fileName = fileName.replace(AIONUI_TIMESTAMP_REGEX, '$1');
+      fileName = fileName.replace(CONTEXTGO_TIMESTAMP_REGEX, '$1');
       return `${workspacePath}/${fileName}`;
     }
     return `${workspacePath}/${filePath}`;
   });
-  return `${input}\n\n${AIONUI_FILES_MARKER}\n${displayPaths.join('\n')}`;
+  return `${input}\n\n${CONTEXTGO_FILES_MARKER}\n${displayPaths.join('\n')}`;
 };

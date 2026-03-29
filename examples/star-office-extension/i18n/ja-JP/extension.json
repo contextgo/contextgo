@@ -3,7 +3,7 @@
   "description": "すべてのエージェントのアクティビティを可視化するStar Officeスタイルのタブ。",
   "settingsTabs": {
     "star-office": { "name": "Star Office" },
-    "aionui-home": { "name": "AionUI ホーム" },
-    "aionui-issues": { "name": "AionUI 課題" }
+    "contextgo-home": { "name": "ContextGo ホーム" },
+    "contextgo-issues": { "name": "ContextGo 課題" }
   }
 }

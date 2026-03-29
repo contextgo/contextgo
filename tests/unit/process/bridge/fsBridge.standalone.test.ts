@@ -21,6 +21,7 @@ vi.mock('@process/utils/initStorage', () => ({
   getBuiltinSkillsDir: () => '/mock/skills/_builtin',
   getBuiltinSkillsCopyDir: () => '/mock/builtin-skills',
   getBuiltinHooksCopyDir: () => '/mock/builtin-hooks',
+  getAutoSkillsDir: () => '/mock/builtin-skills/auto',
   getSystemDir: () => ({
     workDir: '/mock/work',
     cacheDir: '/mock/cache',
@@ -77,6 +78,8 @@ vi.mock('@/common', () => ({
       removeCustomExternalPath: { provider: vi.fn() },
       searchSkillMarket: { provider: vi.fn() },
       installSkillMarketSkill: { provider: vi.fn() },
+      enableSkillsMarket: { provider: vi.fn() },
+      disableSkillsMarket: { provider: vi.fn() },
     },
     fileStream: { contentUpdate: { emit: vi.fn() } },
   },

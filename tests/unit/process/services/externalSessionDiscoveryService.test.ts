@@ -829,7 +829,7 @@ describe('ExternalSessionDiscoveryService', () => {
           id: 'conversation-1',
           type: 'acp',
           name: 'Imported session',
-          source: 'aionui',
+          source: 'contextgo',
           extra: {
             backend: 'codex',
             workspace: '/tmp/project-alpha',
@@ -859,7 +859,7 @@ describe('ExternalSessionDiscoveryService', () => {
           id: 'conversation-1',
           type: 'acp',
           name: 'Imported Claude session',
-          source: 'aionui',
+          source: 'contextgo',
           extra: {
             backend: 'claude',
             workspace: '/tmp/claude-project',
@@ -889,7 +889,7 @@ describe('ExternalSessionDiscoveryService', () => {
           id: 'conversation-gemini-1',
           type: 'acp',
           name: 'Imported Gemini session',
-          source: 'aionui',
+          source: 'contextgo',
           extra: {
             backend: 'gemini',
             workspace: '/tmp/project-gemini-alpha',
@@ -919,7 +919,7 @@ describe('ExternalSessionDiscoveryService', () => {
           id: 'conversation-opencode',
           type: 'acp',
           name: 'Imported OpenCode session',
-          source: 'aionui',
+          source: 'contextgo',
           extra: {
             backend: 'opencode',
             workspace: '/tmp/project-opencode',
@@ -948,7 +948,7 @@ describe('ExternalSessionDiscoveryService', () => {
           id: 'conversation-openclaw',
           type: 'openclaw-gateway',
           name: 'Imported OpenClaw session',
-          source: 'aionui',
+          source: 'contextgo',
           extra: {
             backend: 'openclaw-gateway',
             workspace: '/tmp/openclaw-main',
@@ -1002,7 +1002,7 @@ describe('ExternalSessionDiscoveryService', () => {
       id: 'conversation-1',
       type: 'acp',
       name: 'Imported session',
-      source: 'aionui',
+      source: 'contextgo',
       extra: {
         backend: 'codex',
         workspace: '/tmp/project-alpha',
@@ -1084,7 +1084,7 @@ describe('ExternalSessionDiscoveryService', () => {
     expect(conversation).toMatchObject({
       type: 'acp',
       name: 'Investigate flaky tests',
-      source: 'aionui',
+      source: 'contextgo',
       extra: {
         backend: 'gemini',
         workspace: '/tmp/project-gemini-alpha',
@@ -1113,7 +1113,7 @@ describe('ExternalSessionDiscoveryService', () => {
     expect(conversation).toMatchObject({
       type: 'acp',
       name: 'OpenCode Session',
-      source: 'aionui',
+      source: 'contextgo',
       extra: {
         backend: 'opencode',
         workspace: '/tmp/project-opencode',
@@ -1171,7 +1171,7 @@ describe('ExternalSessionDiscoveryService', () => {
     expect(conversation).toMatchObject({
       type: 'openclaw-gateway',
       name: 'Investigate import flow',
-      source: 'aionui',
+      source: 'contextgo',
       extra: {
         backend: 'openclaw-gateway',
         workspace: '/tmp/openclaw-main',

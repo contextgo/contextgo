@@ -74,7 +74,7 @@ export async function resetPasswordCLI(username: string): Promise<void> {
     log.info(`Target user: ${username}`);
 
     // Get database path using the same logic as the main app
-    const dbPath = path.join(getDataPath(), 'aionui.db');
+    const dbPath = path.join(getDataPath(), 'contextgo.db');
     log.info(`Database path: ${dbPath}`);
 
     // Ensure directory exists
@@ -93,10 +93,10 @@ export async function resetPasswordCLI(username: string): Promise<void> {
       log.error('Database is not initialized yet');
       log.info('');
       log.info('Please run ContextGo at least once to initialize the database:');
-      log.info('  aionui --webui');
+      log.info('  contextgo --webui');
       log.info('');
       log.info('Then you can reset the password using:');
-      log.info('  aionui --resetpass <username>');
+      log.info('  contextgo --resetpass <username>');
       process.exit(1);
     }
 

@@ -8,17 +8,17 @@
     "order": 70
   },
   {
-    "id": "aionui-home",
-    "name": "AionUI Home",
-    "entryPoint": "https://aionui.com/",
+    "id": "contextgo-home",
+    "name": "ContextGo Home",
+    "entryPoint": "https://contextgo.io/",
     "icon": "assets/star-office-icon.svg",
     "position": { "anchor": "display", "placement": "after" },
     "order": 80
   },
   {
-    "id": "aionui-issues",
-    "name": "AionUI Issues",
-    "entryPoint": "https://github.com/AionUi/AionUi/issues",
+    "id": "contextgo-issues",
+    "name": "ContextGo Issues",
+    "entryPoint": "https://github.com/contextgo/contextgo/issues",
     "icon": "assets/star-office-icon.svg",
     "position": { "anchor": "display", "placement": "after" },
     "order": 81
