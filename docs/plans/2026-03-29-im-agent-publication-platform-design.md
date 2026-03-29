@@ -75,6 +75,67 @@ That means the platform should naturally support:
 - a user publishing different agents into different topics
 - an organization publishing agents into enterprise connectors and group spaces
 
+## Product Positioning Of `Channel`
+
+Inside the current product, `Channel` should no longer be treated as a thin plugin settings page.
+
+Its correct product positioning is:
+
+**the channel-side publication and operations layer that manages connector access, audience discovery, and agent distribution**
+
+That means `Channel` is responsible for more than "connect Telegram" or "pick a default agent".
+It should gradually become the place where operators can:
+
+- configure and observe connector accounts
+- discover which audiences exist under a connector
+- publish one agent to one or many audiences
+- distinguish durable publication from temporary takeover
+- inspect how an audience is currently routed
+- later manage permissions, audit, ownership, and service health
+
+This is important because the product is not evolving toward:
+
+- one IM connector = one bot = one default agent
+
+It is evolving toward:
+
+- one platform hosts many agents
+- many connectors expose those agents
+- many audiences exist under each connector
+- each audience may bind to a different published capability
+
+So the product meaning of `Channel` should be read as:
+
+- connector access boundary
+- audience routing boundary
+- publication operations boundary
+
+not merely:
+
+- plugin configuration
+- webhook credential storage
+- per-platform default model selection
+
+## `Channel` Versus The Underlying Domain Objects
+
+`Channel` is still a useful product term, but it should be understood as a UI and operations surface, not the only domain model.
+
+The underlying model should continue to separate:
+
+- `ConnectorAccount`: the real IM ingress endpoint
+- `Audience`: the real service target inside that connector
+- `PublicationBinding`: the routing contract from audience to published capability
+- `PublishedAgent`: the reusable capability being exposed
+- `RuntimeSession`: the active execution state after routing has already resolved
+
+In other words:
+
+- `Channel` is what operators manage in the product
+- `ConnectorAccount`, `Audience`, and `PublicationBinding` are what make that management model coherent
+
+This distinction matters because future UI can still keep a familiar `Channels` entry in settings,
+while the actual product model underneath becomes publication-first instead of connector-first.
+
 ## Problem
 
 Today several concerns are still too tightly coupled:
