@@ -11,6 +11,7 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
   const [streamRunning, setStreamRunning] = useState(false); // API 流是否在运行
   const [hasActiveTools, setHasActiveTools] = useState(false); // 是否有工具在执行或等待确认
   const [waitingResponse, setWaitingResponse] = useState(false); // 等待后端响应（发送消息后到收到 start 之前）
+  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(false);
   const [thought, setThought] = useState<ThoughtData>({
     description: '',
     subject: '',
@@ -27,6 +28,7 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
   // Track whether current turn has content output
   // Only reset waitingResponse when finish arrives after content (not after tool calls)
   const hasContentInTurnRef = useRef(false);
+  const sawToolActivityInTurnRef = useRef(false);
 
   // Track request trace state for displaying complete request lifecycle
   const requestTraceRef = useRef<{
@@ -135,6 +137,8 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
             waitingResponseRef.current = false;
             setThought({ subject: '', description: '' });
             hasContentInTurnRef.current = false;
+            setSawToolActivityInTurn(false);
+            sawToolActivityInTurnRef.current = false;
             // Log request completion
             if (requestTraceRef.current) {
               const duration = Date.now() - requestTraceRef.current.startTime;
@@ -151,6 +155,8 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
           {
             // Mark that current turn has content output
             hasContentInTurnRef.current = true;
+            setSawToolActivityInTurn(true);
+            sawToolActivityInTurnRef.current = true;
 
             // Auto-recover streamRunning if tool_group arrives after finish
             if (!streamRunningRef.current) {
@@ -302,6 +308,8 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
         hasActiveToolsRef.current = false;
         setWaitingResponse(false);
         waitingResponseRef.current = false;
+        setSawToolActivityInTurn(false);
+        sawToolActivityInTurnRef.current = false;
         return;
       }
       const isRunning = res.status === 'running';
@@ -312,6 +320,8 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
       hasActiveToolsRef.current = false;
       setWaitingResponse(isRunning);
       waitingResponseRef.current = isRunning;
+      setSawToolActivityInTurn(false);
+      sawToolActivityInTurnRef.current = false;
       // Load persisted token usage stats
       if (res.type === 'gemini' && res.extra?.lastTokenUsage) {
         const { lastTokenUsage } = res.extra;
@@ -331,6 +341,8 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
     hasActiveToolsRef.current = false;
     setThought({ subject: '', description: '' });
     hasContentInTurnRef.current = false;
+    setSawToolActivityInTurn(false);
+    sawToolActivityInTurnRef.current = false;
     // Clear active message ID to prevent filtering events from new messages after stop
     activeMsgIdRef.current = null;
   }, []);
@@ -339,6 +351,7 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
     thought,
     setThought,
     running,
+    canSteerPendingMessage: waitingResponse && !hasActiveTools && sawToolActivityInTurn,
     tokenUsage,
     setActiveMsgId,
     setWaitingResponse,

@@ -244,6 +244,21 @@
     "modelSwitchFailed": "모델 전환에 실패했습니다",
     "modelSwitchNotSupported": "현재 OpenClaw Gateway는 모델 전환을 지원하지 않습니다"
   },
+  "pendingMessages": {
+    "title": "대기 중 {{count}}개",
+    "shortcuts": "Tab 큐 적재 · Cmd/Ctrl+Enter 유도 · Option/Alt+↑ 최근 항목 편집",
+    "attachments": "파일 {{count}}개",
+    "dispatching": "전송 중...",
+    "edit": "다시 편집",
+    "mode": {
+      "queue": "큐",
+      "steer": "유도"
+    },
+    "actions": {
+      "queue": "큐로 변경",
+      "steer": "유도로 변경"
+    }
+  },
   "contextUsage": {
     "contextUsed": "사용된 컨텍스트"
   },
