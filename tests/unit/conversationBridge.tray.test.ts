@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Provider = (payload?: unknown) => Promise<unknown>;
 
@@ -114,9 +114,10 @@ const registerMocks = () => {
   }));
 };
 
+let initConversationBridge: typeof import('@process/bridge/conversationBridge').initConversationBridge;
+
 const getProvider = async (key: string): Promise<Provider> => {
-  const mod = await import('@process/bridge/conversationBridge');
-  mod.initConversationBridge(mockConversationService as any, mockWorkerTaskManager as any);
+  initConversationBridge(mockConversationService as any, mockWorkerTaskManager as any);
 
   const provider = handlers[key];
   if (!provider) {
@@ -127,11 +128,15 @@ const getProvider = async (key: string): Promise<Provider> => {
 };
 
 describe('conversationBridge tray sync', () => {
-  beforeEach(() => {
+  beforeAll(async () => {
     vi.resetModules();
+    registerMocks();
+    ({ initConversationBridge } = await import('@process/bridge/conversationBridge'));
+  });
+
+  beforeEach(() => {
     vi.clearAllMocks();
     handlers = {};
-    registerMocks();
   });
 
   afterEach(() => {
