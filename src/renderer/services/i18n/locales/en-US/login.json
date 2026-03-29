@@ -22,5 +22,22 @@
     "networkError": "Connection failed, please try again",
     "serverError": "Server error, please try again later",
     "unknown": "Sign-in failed, please try again"
+  },
+  "oauth": {
+    "title": "Or continue with",
+    "loading": "Checking sign-in options...",
+    "providers": {
+      "github": "Continue with GitHub",
+      "google": "Continue with Google"
+    },
+    "errors": {
+      "accessDenied": "Third-party sign-in was cancelled or denied",
+      "callbackFailed": "Third-party sign-in failed. Please try again.",
+      "emailNotAllowed": "This account is not allowed to sign in.",
+      "emailRequired": "A verified email address is required to sign in.",
+      "providerUnavailable": "This sign-in method is not configured.",
+      "sessionExpired": "The sign-in session expired. Please try again.",
+      "unknown": "Third-party sign-in failed. Please try again."
+    }
   }
 }

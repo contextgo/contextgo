@@ -13,7 +13,7 @@ import type { IUser, IQueryResult } from '@process/services/database/types';
  */
 export type AuthUser = Pick<
   IUser,
-  'id' | 'username' | 'password_hash' | 'jwt_secret' | 'created_at' | 'updated_at' | 'last_login'
+  'id' | 'username' | 'email' | 'password_hash' | 'jwt_secret' | 'created_at' | 'updated_at' | 'last_login'
 >;
 
 /**
@@ -40,6 +40,7 @@ function mapUser(row: IUser): AuthUser {
   return {
     id: row.id,
     username: row.username,
+    email: row.email,
     password_hash: row.password_hash,
     jwt_secret: row.jwt_secret ?? null,
     created_at: row.created_at,
@@ -90,9 +91,9 @@ export const UserRepository = {
    * @param passwordHash - 密码哈希 / Password hash
    * @returns 创建的用户 / Created user
    */
-  async createUser(username: string, passwordHash: string): Promise<AuthUser> {
+  async createUser(username: string, passwordHash: string, email?: string): Promise<AuthUser> {
     const db = await getDatabase();
-    const result = db.createUser(username, undefined, passwordHash);
+    const result = db.createUser(username, email, passwordHash);
     const user = unwrap(result, 'Failed to create user');
     return mapUser(user);
   },
@@ -106,6 +107,21 @@ export const UserRepository = {
   async findByUsername(username: string): Promise<AuthUser | null> {
     const db = await getDatabase();
     const result = db.getUserByUsername(username);
+    if (!result.success || !result.data) {
+      return null;
+    }
+    return mapUser(result.data);
+  },
+
+  /**
+   * 根据邮箱查找用户
+   * Find user by email address
+   * @param email - 用户邮箱 / User email
+   * @returns 用户对象或 null / User object or null
+   */
+  async findByEmail(email: string): Promise<AuthUser | null> {
+    const db = await getDatabase();
+    const result = db.getUserByEmail(email);
     if (!result.success || !result.data) {
       return null;
     }
