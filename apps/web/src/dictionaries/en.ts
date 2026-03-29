@@ -27,10 +27,64 @@ export const en = {
     },
   },
   connect: {
-    title: 'Connect Your AI',
+    badge: 'Connector Layer',
+    title: 'Connect Your Context, Then Route It Anywhere.',
     description:
-      'ContextGo bridges the gap between your local knowledge and AI agents. Connect seamlessly to your favorite tools and empower them with your private context.',
-    card_desc: 'Target directory for skills integration.',
+      'ContextGo is not just about wiring AI tools together. It gives your documents, notes, drives, chats, databases, and workspaces a connector layer, so your context becomes a reusable system instead of scattered fragments.',
+    highlights: ['Local sources and cloud apps', 'One context surface for every workflow', 'Connector-ready for agents, search, and publishing'],
+    marquee_label: 'Connector surfaces',
+    marquee_hint: 'Files, hubs, chats, docs, and data systems',
+    connector_story_label: 'Why connectors matter',
+    connector_story_title: 'Your context should flow like infrastructure, not hide inside tabs.',
+    connector_story_body:
+      'Connectors make every source legible to ContextGo. Once connected, the same context can be organized, remixed, searched, published, and delivered to whichever agent or workflow needs it next.',
+    features: [
+      {
+        title: 'Connector-first intake',
+        desc: 'Pull context in from folders, knowledge tools, communication systems, and structured data without forcing users into one storage model.',
+      },
+      {
+        title: 'One routable layer',
+        desc: 'Normalize scattered sources into a shared context surface that can feed agents, automations, and human review loops.',
+      },
+      {
+        title: 'Reusable downstream outputs',
+        desc: 'Use the same connected context for chat, retrieval, publication, sync, and future team workflows instead of rebuilding by hand.',
+      },
+    ],
+    panel_label: 'Context pipeline',
+    panel_title: 'Connectors give ContextGo its intake engine.',
+    panel_body:
+      'Bring sources in once, shape them into a coherent context layer, then route them outward to AI products, search flows, remote clients, and future publishing channels.',
+    workflow: [
+      {
+        title: 'Ingest from every source that matters',
+        desc: 'Desktop folders, notes, cloud docs, chat systems, and structured stores all enter through connectors instead of copy-paste.',
+      },
+      {
+        title: 'Normalize into one context graph',
+        desc: 'ContextGo turns uneven source formats into a consistent surface that is easier to search, review, rank, and serve.',
+      },
+      {
+        title: 'Route to agents and outputs',
+        desc: 'Once connected, the same context can feed AI sessions, remote clients, connector-driven workflows, and publication experiences.',
+      },
+    ],
+    use_case_label: 'Use case',
+    use_cases: [
+      {
+        title: 'Connect product knowledge',
+        desc: 'Bring PRDs, docs, changelogs, tickets, and internal notes into one place so shipping context stops living across ten browser tabs.',
+      },
+      {
+        title: 'Connect team memory',
+        desc: 'Use connectors to recover decisions buried in chat tools, meetings, wikis, and shared drives before they disappear into history.',
+      },
+      {
+        title: 'Connect operational data',
+        desc: 'Expose tables, dashboards, exports, and structured records as reusable context instead of manually pasting snapshots into every workflow.',
+      },
+    ],
   },
   download: {
     center_badge: 'Multi-Platform Download Center',
