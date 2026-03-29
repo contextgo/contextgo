@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
 
     val storedTarget = preferences.getString(TARGET_URL_KEY, null)
     if (storedTarget.isNullOrBlank()) {
-      showConnectUi()
+      openOfficialRemote(persist = false)
     } else {
       openTarget(storedTarget)
     }
@@ -70,6 +70,10 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun bindEvents() {
+    binding.officialRemoteButton.setOnClickListener {
+      openOfficialRemote()
+    }
+
     binding.connectButton.setOnClickListener {
       connectUsingInput()
     }
@@ -85,7 +89,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     binding.reconnectButton.setOnClickListener {
-      resetConnection()
+      showConnectionSettings()
     }
   }
 
@@ -105,7 +109,7 @@ class MainActivity : AppCompatActivity() {
       mediaPlaybackRequiresUserGesture = false
       builtInZoomControls = false
       displayZoomControls = false
-      userAgentString = userAgentString + " AionUiMobileShell/1.0"
+      userAgentString = userAgentString + " ContextGoMobileShell/1.0"
     }
 
     binding.webView.webViewClient = object : WebViewClient() {
@@ -171,8 +175,15 @@ class MainActivity : AppCompatActivity() {
     openTarget(resolvedTarget)
   }
 
-  private fun openTarget(targetUrl: String) {
-    preferences.edit().putString(TARGET_URL_KEY, targetUrl).apply()
+  private fun openOfficialRemote(persist: Boolean = true) {
+    val resolvedTarget = ShellTargetResolver.resolve(OFFICIAL_REMOTE_URL) ?: return
+    openTarget(resolvedTarget, persist)
+  }
+
+  private fun openTarget(targetUrl: String, persist: Boolean = true) {
+    if (persist) {
+      preferences.edit().putString(TARGET_URL_KEY, targetUrl).apply()
+    }
     binding.urlInput.setText(targetUrl)
     binding.errorText.isVisible = false
     binding.errorText.text = ""
@@ -180,11 +191,10 @@ class MainActivity : AppCompatActivity() {
     binding.webView.loadUrl(targetUrl)
   }
 
-  private fun resetConnection() {
-    preferences.edit().remove(TARGET_URL_KEY).apply()
-    binding.webView.stopLoading()
-    binding.webView.loadUrl("about:blank")
-    binding.urlInput.text?.clear()
+  private fun showConnectionSettings() {
+    binding.urlInput.setText(preferences.getString(TARGET_URL_KEY, null).orEmpty())
+    binding.errorText.isVisible = false
+    binding.errorText.text = ""
     showConnectUi()
   }
 
@@ -204,6 +214,7 @@ class MainActivity : AppCompatActivity() {
   }
 
   private companion object {
+    const val OFFICIAL_REMOTE_URL = "https://remote.contextgo.io/"
     const val PREFERENCES_NAME = "aionui_mobile_shell"
     const val TARGET_URL_KEY = "target_url"
   }

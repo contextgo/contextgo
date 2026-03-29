@@ -4,6 +4,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
+if [[ -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
+  cd "${ROOT_DIR}/android"
+  exec ./gradlew "$@"
+fi
+
 JAVA_CANDIDATES=(
   "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
   "/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home"

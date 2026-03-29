@@ -2,15 +2,15 @@
   "string": [
     {
       "name": "app_name",
-      "value": "AionUi Shell"
+      "value": "ContextGo"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "AionUi HarmonyOS shell"
+      "value": "ContextGo HarmonyOS shell"
     },
     {
       "name": "module_desc",
-      "value": "AionUi HarmonyOS shell entry module"
+      "value": "ContextGo HarmonyOS shell entry module"
     }
   ]
 }

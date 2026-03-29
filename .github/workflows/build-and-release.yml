@@ -164,6 +164,341 @@ jobs:
       control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
     secrets: inherit
 
+  build-android-shell:
+    name: Build Android Shell
+    needs: prepare-matrix
+    if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref, '-dev-')
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_ANDROID_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_ANDROID_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+            '["self-hosted","Linux"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Resolve mobile release version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Android shell release version: $VERSION"
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare Android signing material
+        id: signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            KEYSTORE_PATH="$RUNNER_TEMP/contextgo-android-release.keystore"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+            echo "has_signing=true" >> "$GITHUB_OUTPUT"
+            echo "keystore_path=$KEYSTORE_PATH" >> "$GITHUB_OUTPUT"
+            echo "Android release signing is configured."
+          else
+            echo "has_signing=false" >> "$GITHUB_OUTPUT"
+            echo "Android release signing is not configured."
+          fi
+
+      - name: Build signed Android shell artifacts
+        if: steps.signing.outputs.has_signing == 'true'
+        shell: bash
+        env:
+          CONTEXTGO_RELEASE_VERSION_CODE: ${{ github.run_number }}
+          ANDROID_KEYSTORE_PATH: ${{ steps.signing.outputs.keystore_path }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          bash mobile-shell/scripts/build-android-release.sh \
+            "${{ steps.version.outputs.version }}" \
+            "$RUNNER_TEMP/android-shell-release"
+
+      - name: Upload Android shell artifacts
+        if: steps.signing.outputs.has_signing == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-shell-build
+          path: ${{ runner.temp }}/android-shell-release/*
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Summarize Android release skip
+        if: steps.signing.outputs.has_signing != 'true'
+        shell: bash
+        run: |
+          echo "::warning title=Android Shell Release Skipped::ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD are required for signed APK publishing."
+          {
+            echo "## Android Shell Release"
+            echo ""
+            echo "Skipped signed Android shell packaging because release signing secrets are not configured."
+            echo ""
+            echo "Required secrets:"
+            echo "- ANDROID_KEYSTORE_BASE64"
+            echo "- ANDROID_KEYSTORE_PASSWORD"
+            echo "- ANDROID_KEY_ALIAS"
+            echo "- ANDROID_KEY_PASSWORD"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build-harmony-shell:
+    name: Build Harmony Shell
+    needs: prepare-matrix
+    if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref, '-dev-') && vars.ENABLE_HARMONY_SHELL_RELEASES == 'true'
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_HARMONY_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_HARMONY_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        )
+      }}
+    env:
+      DEVECO_SDK_HOME: ${{ vars.DEVECO_SDK_HOME != '' && vars.DEVECO_SDK_HOME || '/Users/runner/Library/Huawei/command-line-tools/sdk' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Resolve mobile release version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Harmony shell release version: $VERSION"
+
+      - name: Prepare Harmony toolchain
+        shell: bash
+        run: |
+          export PATH="$HOME/Library/Huawei/command-line-tools/bin:$HOME/Library/Huawei/command-line-tools/ohpm/bin:$PATH"
+          if ! command -v hvigorw >/dev/null 2>&1; then
+            echo "hvigorw is not available on this runner." >&2
+            exit 1
+          fi
+          if ! command -v ohpm >/dev/null 2>&1; then
+            echo "ohpm is not available on this runner." >&2
+            exit 1
+          fi
+          echo "Harmony CLI toolchain is available."
+
+      - name: Build Harmony shell artifacts
+        shell: bash
+        run: |
+          export PATH="$HOME/Library/Huawei/command-line-tools/bin:$HOME/Library/Huawei/command-line-tools/ohpm/bin:$PATH"
+          cd mobile-shell/harmony
+          ohpm install
+          hvigorw assembleApp --debug --stacktrace
+
+      - name: Collect signed Harmony artifacts
+        id: collect
+        shell: bash
+        run: |
+          OUTPUT_DIR="$RUNNER_TEMP/harmony-shell-release"
+          mkdir -p "$OUTPUT_DIR"
+
+          APP_SOURCE="$(find mobile-shell/harmony/build/outputs -type f -name '*.app' ! -name '*unsigned*' | sort | head -n 1 || true)"
+          HAP_SOURCE="$(find mobile-shell/harmony/entry/build -type f -name '*.hap' ! -name '*unsigned*' | sort | head -n 1 || true)"
+
+          if [ -n "$APP_SOURCE" ]; then
+            cp -f "$APP_SOURCE" "$OUTPUT_DIR/ContextGo-${{ steps.version.outputs.version }}-harmony-universal.app"
+          fi
+
+          if [ -n "$HAP_SOURCE" ]; then
+            cp -f "$HAP_SOURCE" "$OUTPUT_DIR/ContextGo-${{ steps.version.outputs.version }}-harmony-universal.hap"
+          fi
+
+          if find "$OUTPUT_DIR" -maxdepth 1 -type f | grep -q .; then
+            echo "has_release_artifacts=true" >> "$GITHUB_OUTPUT"
+            find "$OUTPUT_DIR" -maxdepth 1 -type f | sort
+          else
+            echo "has_release_artifacts=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Harmony shell artifacts
+        if: steps.collect.outputs.has_release_artifacts == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: harmony-shell-build
+          path: ${{ runner.temp }}/harmony-shell-release/*
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Summarize Harmony release skip
+        if: steps.collect.outputs.has_release_artifacts != 'true'
+        shell: bash
+        run: |
+          echo "::warning title=Harmony Shell Release Skipped::No signed .app / .hap outputs were found. Configure DevEco signing material on the Harmony runner before publishing stable tags."
+          {
+            echo "## Harmony Shell Release"
+            echo ""
+            echo "Harmony shell packaging ran, but no signed release outputs were found."
+            echo ""
+            echo "The runner must provide:"
+            echo "- DevEco CLI with hvigorw and ohpm"
+            echo "- DEVECO_SDK_HOME"
+            echo "- project signing material capable of producing non-unsigned .app / .hap outputs"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build-ios-shell:
+    name: Build iOS Shell
+    needs: prepare-matrix
+    if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref, '-dev-') && vars.ENABLE_IOS_SHELL_RELEASES == 'true'
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        )
+      }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Resolve mobile release version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "iOS shell release version: $VERSION"
+
+      - name: Prepare iOS signing material
+        id: signing
+        shell: bash
+        env:
+          IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
+          IOS_EXPORT_OPTIONS_PLIST_BASE64: ${{ secrets.IOS_EXPORT_OPTIONS_PLIST_BASE64 }}
+          IOS_DEVELOPMENT_TEAM: ${{ secrets.IOS_DEVELOPMENT_TEAM }}
+          IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD || 'temp-keychain-password' }}
+        run: |
+          if [ -n "$IOS_BUILD_CERTIFICATE_BASE64" ] && [ -n "$IOS_P12_PASSWORD" ] && [ -n "$IOS_BUILD_PROVISION_PROFILE_BASE64" ] && [ -n "$IOS_DEVELOPMENT_TEAM" ]; then
+            CERT_PATH="$RUNNER_TEMP/contextgo-ios-build.p12"
+            KEYCHAIN_PATH="$RUNNER_TEMP/contextgo-ios-build.keychain-db"
+            PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+            PROFILE_PATH="$PROFILE_DIR/contextgo.mobileprovision"
+
+            mkdir -p "$PROFILE_DIR"
+            printf '%s' "$IOS_BUILD_CERTIFICATE_BASE64" | base64 --decode > "$CERT_PATH"
+            printf '%s' "$IOS_BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+
+            security create-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+            security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+            security unlock-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+            security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$IOS_P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+            security list-keychains -d user -s "$KEYCHAIN_PATH"
+            security default-keychain -s "$KEYCHAIN_PATH"
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+            if [ -n "$IOS_EXPORT_OPTIONS_PLIST_BASE64" ]; then
+              EXPORT_OPTIONS_PLIST="$RUNNER_TEMP/ContextGoExportOptions.plist"
+              printf '%s' "$IOS_EXPORT_OPTIONS_PLIST_BASE64" | base64 --decode > "$EXPORT_OPTIONS_PLIST"
+              echo "export_options_plist=$EXPORT_OPTIONS_PLIST" >> "$GITHUB_OUTPUT"
+            fi
+
+            echo "has_signing=true" >> "$GITHUB_OUTPUT"
+            echo "keychain_path=$KEYCHAIN_PATH" >> "$GITHUB_OUTPUT"
+            echo "iOS signing material is configured."
+          else
+            echo "has_signing=false" >> "$GITHUB_OUTPUT"
+            echo "iOS signing material is not configured."
+          fi
+
+      - name: Build signed iOS shell archive
+        if: steps.signing.outputs.has_signing == 'true'
+        shell: bash
+        env:
+          CONTEXTGO_RELEASE_BUILD_NUMBER: ${{ github.run_number }}
+          IOS_DEVELOPMENT_TEAM: ${{ secrets.IOS_DEVELOPMENT_TEAM }}
+          CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST: ${{ steps.signing.outputs.export_options_plist }}
+        run: |
+          if [ -n "$CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST" ]; then
+            export CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST
+          fi
+
+          bash mobile-shell/scripts/build-ios-release.sh \
+            "${{ steps.version.outputs.version }}" \
+            "$RUNNER_TEMP/ios-shell-release"
+
+      - name: Upload iOS shell artifacts
+        if: steps.signing.outputs.has_signing == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-shell-build
+          path: |
+            ${{ runner.temp }}/ios-shell-release/ContextGo.xcarchive
+            ${{ runner.temp }}/ios-shell-release/*.ipa
+            ${{ runner.temp }}/ios-shell-release/export/*
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Summarize iOS release skip
+        if: steps.signing.outputs.has_signing != 'true'
+        shell: bash
+        run: |
+          echo "::warning title=iOS Shell Release Skipped::IOS_BUILD_CERTIFICATE_BASE64 / IOS_P12_PASSWORD / IOS_BUILD_PROVISION_PROFILE_BASE64 / IOS_DEVELOPMENT_TEAM are required for signed iOS archive packaging."
+          {
+            echo "## iOS Shell Release"
+            echo ""
+            echo "Skipped signed iOS shell packaging because release signing material is not configured."
+            echo ""
+            echo "Required secrets:"
+            echo "- IOS_BUILD_CERTIFICATE_BASE64"
+            echo "- IOS_P12_PASSWORD"
+            echo "- IOS_BUILD_PROVISION_PROFILE_BASE64"
+            echo "- IOS_DEVELOPMENT_TEAM"
+            echo ""
+            echo "Optional secret:"
+            echo "- IOS_EXPORT_OPTIONS_PLIST_BASE64"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up iOS signing keychain
+        if: steps.signing.outputs.has_signing == 'true' && always()
+        shell: bash
+        run: |
+          if [ -n "${{ steps.signing.outputs.keychain_path }}" ] && [ -f "${{ steps.signing.outputs.keychain_path }}" ]; then
+            security delete-keychain "${{ steps.signing.outputs.keychain_path }}"
+          fi
+
   # 自动重试 workflow（当构建失败时）
   auto-retry-workflow:
     name: Auto Retry on Build Failure
@@ -334,9 +669,15 @@ jobs:
   release:
     name: Create Release
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
-    needs: [prepare-matrix, build-pipeline, create-tag]
+    needs: [prepare-matrix, build-pipeline, build-android-shell, build-harmony-shell, build-ios-shell, create-tag]
     # Tag 推送时 create-tag 会被跳过，所以需要检查两种情况（排除 -dev- tag 避免重复）
-    if: always() && needs.build-pipeline.result == 'success' && (needs.create-tag.result == 'success' || (startsWith(github.ref, 'refs/tags/') && !contains(github.ref, '-dev-')))
+    if: >-
+      always() &&
+      needs.build-pipeline.result == 'success' &&
+      (needs.build-android-shell.result == 'success' || needs.build-android-shell.result == 'skipped') &&
+      (needs.build-harmony-shell.result == 'success' || needs.build-harmony-shell.result == 'skipped') &&
+      (needs.build-ios-shell.result == 'success' || needs.build-ios-shell.result == 'skipped') &&
+      (needs.create-tag.result == 'success' || (startsWith(github.ref, 'refs/tags/') && !contains(github.ref, '-dev-')))
     # dev 分支使用 dev-release 环境，正式 tag 使用 release 环境
     environment: ${{ needs.create-tag.outputs.is_dev == 'true' && 'dev-release' || 'release' }}
 
@@ -373,6 +714,10 @@ jobs:
         shell: bash
         run: bash scripts/prepare-release-assets.sh build-artifacts release-assets
 
+      - name: Verify release assets
+        shell: bash
+        run: bash scripts/verify-release-assets.sh release-assets
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -383,7 +728,12 @@ jobs:
             release-assets/**/*.msi
             release-assets/**/*.dmg
             release-assets/**/*.deb
+            release-assets/**/*.apk
+            release-assets/**/*.aab
+            release-assets/**/*.hap
+            release-assets/**/*.app
             release-assets/**/*.zip
+            release-assets/**/*.json
             release-assets/**/*.yml
           generate_release_notes: true
           draft: true

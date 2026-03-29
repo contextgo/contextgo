@@ -16,7 +16,7 @@ Use this when you need to:
 - Bootstrap script: `mobile-shell/scripts/bootstrap.sh`
 - Android Gradle wrapper helper: `mobile-shell/scripts/android-gradlew.sh`
 - Android project root: `mobile-shell/android/`
-- iOS project file: `mobile-shell/ios/AionUiShell.xcodeproj`
+- iOS project file: `mobile-shell/ios/ContextGo.xcodeproj`
 - iOS project definition source: `mobile-shell/ios/project.yml`
 - HarmonyOS project root: `mobile-shell/harmony/`
 
@@ -79,7 +79,7 @@ bun run mobile-shell:ios:list
 Equivalent direct path:
 
 ```bash
-xcodebuild -list -project mobile-shell/ios/AionUiShell.xcodeproj
+xcodebuild -list -project mobile-shell/ios/ContextGo.xcodeproj
 ```
 
 ## IDE Entry Points
@@ -98,7 +98,7 @@ Or run CLI tasks through:
 
 Open:
 
-- `mobile-shell/ios/AionUiShell.xcodeproj`
+- `mobile-shell/ios/ContextGo.xcodeproj`
 
 If the project layout changes, `mobile-shell/ios/project.yml` remains the source of truth and should be regenerated through `bun run mobile-shell:bootstrap`.
 
@@ -153,7 +153,7 @@ Current signing state:
 
 ## Host Runtime Commands
 
-The mobile shells are not standalone product runtimes. They load a reachable AionUi host.
+The mobile shells are not standalone product runtimes. They load a reachable ContextGo host.
 
 Recommended host commands:
 
@@ -177,5 +177,5 @@ Unless there is an explicit product or tooling decision to change them, treat th
 - repository-root `mobile-shell:*` scripts are the primary CLI entry points
 - `mobile-shell/scripts/bootstrap.sh` is the canonical regeneration path
 - Android CLI flows go through `mobile-shell/scripts/android-gradlew.sh`
-- iOS Xcode import goes through `mobile-shell/ios/AionUiShell.xcodeproj`
+- iOS Xcode import goes through `mobile-shell/ios/ContextGo.xcodeproj`
 - HarmonyOS import goes through `mobile-shell/harmony/`

@@ -14,5 +14,5 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "AionUiMobileShell"
+rootProject.name = "ContextGoMobileShell"
 include(":app")

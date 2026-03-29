@@ -6,7 +6,7 @@ copyright: Copyright © 2024 ContextGo
 protocols:
   - name: ContextGo Protocol
     schemes:
-      - aionui
+      - contextgo
 
 asar:
   smartUnpack: true

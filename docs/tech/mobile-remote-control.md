@@ -15,12 +15,12 @@ For release policy, signing expectations, and platform distribution standards, s
 
 ## Core Product Model
 
-AionUi uses a **desktop-host + remote-client** architecture for mobile access.
+ContextGo uses a **desktop-host + remote-client** architecture for mobile access.
 
 - The **desktop app** remains the real execution host.
 - The **mobile app** acts as a remote user client / control client.
 - The mobile shell does **not** try to run the Electron main process locally.
-- Mobile clients should connect to the existing AionUi WebUI / server runtime.
+- Mobile clients should connect to the existing ContextGo WebUI / server runtime.
 
 In practical terms:
 
@@ -34,7 +34,7 @@ The following assumptions should be treated as stable unless there is an explici
 
 ### 1. Desktop is the authority for execution
 
-When a user connects remotely from mobile, the desktop-side AionUi instance remains responsible for:
+When a user connects remotely from mobile, the desktop-side ContextGo instance remains responsible for:
 
 - model calls
 - agent execution
@@ -59,7 +59,7 @@ Mobile should not assume it can fully replace desktop-local capabilities.
 
 ### 3. Mobile shells must connect to the real WebUI origin
 
-The mobile shell should load the actual AionUi WebUI / server origin.
+The mobile shell should load the actual ContextGo WebUI / server origin.
 
 Reasons:
 
@@ -72,13 +72,13 @@ This means mobile should reuse the existing WebUI runtime instead of maintaining
 
 ### 4. FRP or reverse tunneling is a transport choice, not the product runtime
 
-FRP is a valid way to expose a reachable desktop-hosted AionUi instance to external clients.
+FRP is a valid way to expose a reachable desktop-hosted ContextGo instance to external clients.
 
 But the product logic still remains:
 
-- AionUi desktop / WebUI provides the real application runtime
+- ContextGo desktop / WebUI provides the real application runtime
 - FRP only exposes connectivity
-- user identity, session, and authorization must still be handled by AionUi itself
+- user identity, session, and authorization must still be handled by ContextGo itself
 
 Future networking changes should preserve this boundary.
 
