@@ -15,16 +15,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy contextgo.io
-    runs-on: >-
-      ${{
-        fromJSON(
-          vars.SITE_DEPLOY_RUNNER_LABELS_JSON != '' &&
-          vars.SITE_DEPLOY_RUNNER_LABELS_JSON ||
-          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
-          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
-          '["ubuntu-latest"]'
-        )
-      }}
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
