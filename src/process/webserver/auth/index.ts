@@ -26,3 +26,4 @@ export type { AuthUser } from './repository/UserRepository';
 
 // 服务层 / Service
 export { AuthService } from './service/AuthService';
+export { OAuthService } from './service/OAuthService';
