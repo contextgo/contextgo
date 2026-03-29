@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isOpenClawActivityMessageType,
   isOpenClawConnectionErrorMessage,
   isOpenClawLifecycleStatusMessage,
   resolveOpenClawRuntimeStatus,
@@ -66,6 +67,14 @@ describe('openclaw message stream filtering', () => {
         data: 'hello',
       })
     ).toBe(false);
+  });
+
+  it('treats thought and streamed reply updates as activity that should keep the footer stable', () => {
+    expect(isOpenClawActivityMessageType({ type: 'thought' } as never)).toBe(true);
+    expect(isOpenClawActivityMessageType({ type: 'content' } as never)).toBe(true);
+    expect(isOpenClawActivityMessageType({ type: 'acp_permission' } as never)).toBe(true);
+    expect(isOpenClawActivityMessageType({ type: 'finish' } as never)).toBe(false);
+    expect(isOpenClawActivityMessageType({ type: 'agent_status' } as never)).toBe(false);
   });
 
   it('derives the initial runtime status from connection state instead of session existence alone', () => {

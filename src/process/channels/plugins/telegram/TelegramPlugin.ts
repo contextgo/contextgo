@@ -16,7 +16,7 @@ import {
   toTelegramSendParams,
   toUnifiedIncomingMessage,
 } from './TelegramAdapter';
-import { extractAction, extractCategory } from './TelegramKeyboards';
+import { extractAction, extractCategory, resolveToolConfirmToken } from './TelegramKeyboards';
 
 /**
  * TelegramPlugin - Telegram Bot integration for Personal Assistant
@@ -379,12 +379,22 @@ export class TelegramPlugin extends BasePlugin {
     // Handle tool confirmation callback, format: confirm:{callId}:{value}
     if (category === 'confirm') {
       const parts = data.split(':');
-      if (parts.length >= 3 && this.confirmHandler) {
-        const callId = parts[1];
-        const value = parts.slice(2).join(':'); // value 可能包含冒号
+      if (parts.length >= 2 && this.confirmHandler) {
+        const tokenPayload = resolveToolConfirmToken(parts[1]);
+        const chatId = tokenPayload?.chatId ?? ctx.callbackQuery?.message?.chat?.id?.toString() ?? userId;
+        const callId = tokenPayload?.callId ?? parts[1];
+        const value = tokenPayload?.value ?? parts.slice(2).join(':'); // backward compatibility for old callback data
         // 直接调用 confirmHandler，不通过 messageHandler
         // Call confirmHandler directly, not through messageHandler
-        void this.confirmHandler(userId, 'telegram', callId, value)
+        void this.confirmHandler({
+          userId,
+          platform: 'telegram',
+          pluginId: this.config?.id,
+          chatId,
+          conversationId: tokenPayload?.conversationId,
+          callId,
+          value,
+        })
           .then(async () => {
             // 确认成功后移除按钮
             // Remove buttons after confirmation success
@@ -403,10 +413,10 @@ export class TelegramPlugin extends BasePlugin {
       return;
     }
 
-    // 处理 agent 选择回调，格式: agent:{agentType}
-    // Handle agent selection callback, format: agent:{agentType}
+    // 处理 agent 选择回调，格式: agent:{agentKey}
+    // Handle agent selection callback, format: agent:{agentKey}
     if (category === 'agent') {
-      const agentType = extractAction(data); // gemini, acp, codex
+      const agentKey = extractAction(data);
       const unifiedMessage = toUnifiedIncomingMessage(ctx);
       if (unifiedMessage && this.messageHandler) {
         unifiedMessage.content.type = 'action';
@@ -414,7 +424,7 @@ export class TelegramPlugin extends BasePlugin {
         unifiedMessage.action = {
           type: 'system',
           name: 'agent.select',
-          params: { agentType },
+          params: { agentKey },
         };
         // Don't await - process in background
         void this.messageHandler(unifiedMessage)

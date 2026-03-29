@@ -19,6 +19,7 @@ const GeminiSettings = React.lazy(() => import('@renderer/pages/settings/GeminiS
 const ModeSettings = React.lazy(() => import('@renderer/pages/settings/ModeSettings'));
 const SystemSettings = React.lazy(() => import('@renderer/pages/settings/SystemSettings'));
 const ToolsSettings = React.lazy(() => import('@renderer/pages/settings/ToolsSettings'));
+const CommandSettings = React.lazy(() => import('@renderer/pages/settings/ToolsSettings/CommandSettings'));
 const WebuiSettings = React.lazy(() => import('@renderer/pages/settings/WebuiSettings'));
 const ExtensionSettingsPage = React.lazy(() => import('@renderer/pages/settings/ExtensionSettingsPage'));
 const LoginPage = React.lazy(() => import('@renderer/pages/login'));
@@ -68,6 +69,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
         <Route element={<ProtectedLayout layout={layout} />}>
           <Route index element={<StartupConversationRedirect />} />
           <Route path='/guid' element={withRouteFallback(Guid)} />
+          <Route path='/hooks' element={withRouteFallback(HooksManagement)} />
           <Route path='/connectors' element={withRouteFallback(ConnectorsPage)} />
           <Route path='/connectors/:connectorId' element={withRouteFallback(ConnectorsPage)} />
           <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
@@ -77,7 +79,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           <Route path='/settings/gemini' element={withRouteFallback(GeminiSettings)} />
           <Route path='/settings/model' element={withRouteFallback(ModeSettings)} />
           <Route path='/settings/agent' element={withRouteFallback(AgentSettings)} />
-          <Route path='/settings/hooks' element={withRouteFallback(HooksManagement)} />
+          <Route path='/settings/hooks' element={<Navigate to='/hooks' replace />} />
           <Route path='/settings/cron' element={withRouteFallback(GlobalCronSettings)} />
           <Route path='/settings/skills-hub' element={withRouteFallback(SkillsHubSettings)} />
           <Route path='/settings/display' element={withRouteFallback(DisplaySettings)} />
@@ -85,6 +87,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           <Route path='/settings/system' element={withRouteFallback(SystemSettings)} />
           <Route path='/settings/about' element={withRouteFallback(SystemSettings)} />
           <Route path='/settings/tools' element={withRouteFallback(ToolsSettings)} />
+          <Route path='/settings/commands' element={withRouteFallback(CommandSettings)} />
           <Route path='/settings/ext/:tabId' element={withRouteFallback(ExtensionSettingsPage)} />
           <Route path='/settings' element={<Navigate to='/settings/system' replace />} />
           <Route path='/test/components' element={withRouteFallback(ComponentsShowcase)} />

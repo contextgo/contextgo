@@ -6,18 +6,19 @@
 
 import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
 import type {
-  DiscussionGroupParticipant,
-  DiscussionGroupOrchestration,
+  GroupParticipant,
+  GroupOrchestration,
   TChatConversation,
   TProviderWithModel,
+  WorkflowGroupRunState,
 } from '@/common/config/storage';
 import type { PresetAgentType } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
-import { existsSync } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import { getSkillsDir, getBuiltinSkillsCopyDir, getSystemDir } from './initStorage';
 import { computeOpenClawIdentityHash } from './openclawUtils';
+import { resolveSkillDirectory } from './skillDiscovery';
 
 /**
  * Agent 类型/backend 到原生 skills 目录的映射
@@ -95,10 +96,12 @@ export async function setupAssistantWorkspace(
       // Skip builtin skills (auto-injected via SkillManager / virtual extension)
       if (skillName === 'cron') continue;
 
-      // Try builtin-skills/ first, then user skills/
-      const builtinCandidate = path.join(getBuiltinSkillsCopyDir(), skillName);
-      const userCandidate = path.join(userSkillsDir, skillName);
-      const sourceSkillDir = existsSync(builtinCandidate) ? builtinCandidate : userCandidate;
+      // Try bundled skills first, then user skills. Both roots support nested skill packs.
+      const builtinCandidate = await resolveSkillDirectory(getBuiltinSkillsCopyDir(), skillName, {
+        excludeTopLevelNames: ['_builtin'],
+      });
+      const userCandidate = await resolveSkillDirectory(userSkillsDir, skillName);
+      const sourceSkillDir = builtinCandidate?.dirPath || userCandidate?.dirPath || path.join(userSkillsDir, skillName);
       const targetSkillDir = path.join(targetSkillsDir, skillName);
 
       try {
@@ -233,11 +236,12 @@ export const createGroupConversation = async (options: {
   model: TProviderWithModel;
   workspace?: string;
   customWorkspace?: boolean;
-  participants: DiscussionGroupParticipant[];
-  orchestration: DiscussionGroupOrchestration;
+  participants: GroupParticipant[];
+  orchestration: GroupOrchestration;
+  runState?: WorkflowGroupRunState;
 }): Promise<TChatConversation> => {
   const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
-    `discussion-group-temp-${Date.now()}`,
+    `group-temp-${Date.now()}`,
     options.workspace,
     undefined,
     options.customWorkspace
@@ -251,11 +255,12 @@ export const createGroupConversation = async (options: {
       customWorkspace,
       participants: options.participants,
       orchestration: options.orchestration,
+      runState: options.runState,
     },
     desc: customWorkspace ? workspace : '',
     createTime: Date.now(),
     modifyTime: Date.now(),
-    name: options.name || 'Discussion Group',
+    name: options.name || 'Group',
     id: options.id || uuid(),
   };
 };

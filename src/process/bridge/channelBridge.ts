@@ -5,17 +5,14 @@
  */
 
 import { channel } from '@/common/adapter/ipcBridge';
+import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '@/common/config/builtinChannels';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
+import { getChannelHandoffService } from '@process/channels/core/ChannelHandoffService';
 import { getPairingService } from '@process/channels/pairing/PairingService';
 import { ExtensionRegistry } from '@process/extensions';
 import { toAssetUrl } from '@process/extensions/protocol/assetProtocol';
 import * as path from 'path';
-import type {
-  IChannelPluginStatus,
-  IChannelUser,
-  IChannelPairingRequest,
-  IChannelSession,
-} from '@process/channels/types';
+import type { IChannelPluginStatus } from '@process/channels/types';
 import { hasPluginCredentials } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
 
@@ -33,8 +30,6 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
    */
   channel.getPluginStatus.provider(async () => {
     try {
-      const BUILTIN_TYPES = new Set(['telegram', 'lark', 'dingtalk', 'slack', 'discord', 'weixin']);
-
       let dbPlugins: import('@process/channels/types').IChannelPluginConfig[] = [];
       try {
         dbPlugins = await channelRepo.getChannelPlugins();
@@ -94,7 +89,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       const statusMap = new Map<string, IChannelPluginStatus>();
 
       for (const plugin of dbPlugins) {
-        const isExtension = !BUILTIN_TYPES.has(plugin.type);
+        const isExtension = !isBuiltinChannelType(plugin.type);
 
         // Skip extension channels whose parent extension is not loaded/enabled
         if (isExtension && !enabledExtChannelTypes.has(plugin.type)) {
@@ -138,20 +133,13 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
 
       // Ensure builtin channel types are always visible in settings
       // even before user configures them (i.e. not yet persisted in DB).
-      const BUILTIN_NAMES: Record<string, string> = {
-        telegram: 'Telegram',
-        lark: 'Lark',
-        dingtalk: 'DingTalk',
-        slack: 'Slack',
-        discord: 'Discord',
-        weixin: 'WeChat',
-      };
-      for (const builtinType of BUILTIN_TYPES) {
+      for (const builtinType of BUILTIN_CHANNEL_TYPES) {
         if (statusMap.has(builtinType)) continue;
+        const builtinChannel = getBuiltinChannel(builtinType);
         statusMap.set(builtinType, {
           id: builtinType,
           type: builtinType,
-          name: BUILTIN_NAMES[builtinType] || builtinType,
+          name: builtinChannel?.displayName || builtinType,
           enabled: false,
           connected: false,
           status: 'stopped',
@@ -318,6 +306,59 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return { success: true, data };
     } catch (error: any) {
       console.error('[ChannelBridge] getActiveSessions error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
+
+  /**
+   * Get channel bindings
+   */
+  channel.getBindings.provider(async (params?: { connectorId?: string }) => {
+    try {
+      const data = await channelRepo.getChannelBindings(params?.connectorId);
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('[ChannelBridge] getBindings error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
+
+  /**
+   * Upsert channel binding
+   */
+  channel.upsertBinding.provider(async ({ binding }) => {
+    try {
+      await channelRepo.upsertChannelBinding(binding);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[ChannelBridge] upsertBinding error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
+
+  /**
+   * Delete channel binding
+   */
+  channel.deleteBinding.provider(async ({ bindingId }) => {
+    try {
+      await channelRepo.deleteChannelBinding(bindingId);
+      return { success: true };
+    } catch (error: any) {
+      console.error('[ChannelBridge] deleteBinding error:', error);
+      return { success: false, msg: error.message };
+    }
+  });
+
+  /**
+   * Handoff a source session/conversation to a target channel chat.
+   */
+  channel.handoffSession.provider(async (params) => {
+    try {
+      const handoffService = getChannelHandoffService();
+      const data = await handoffService.handoffSession(params);
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('[ChannelBridge] handoffSession error:', error);
       return { success: false, msg: error.message };
     }
   });

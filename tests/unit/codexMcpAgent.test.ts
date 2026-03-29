@@ -15,7 +15,7 @@ describe('CodexMcpAgent helpers', () => {
   it('builds stdio add args with env flags before -- separator', () => {
     const server: IMcpServer = {
       id: 'builtin-image-gen',
-      name: 'aionui-image-generation',
+      name: 'contextgo-image-generation',
       enabled: true,
       builtin: true,
       transport: {
@@ -23,8 +23,8 @@ describe('CodexMcpAgent helpers', () => {
         command: 'node',
         args: ['/abs/builtin-mcp-image-gen.js'],
         env: {
-          AIONUI_IMG_PLATFORM: 'openai',
-          AIONUI_IMG_MODEL: 'gpt-image-1',
+          CONTEXTGO_IMG_PLATFORM: 'openai',
+          CONTEXTGO_IMG_MODEL: 'gpt-image-1',
         },
       },
       createdAt: 1,
@@ -35,11 +35,11 @@ describe('CodexMcpAgent helpers', () => {
     expect(buildCodexAddArgs(server)).toEqual([
       'mcp',
       'add',
-      'aionui-image-generation',
+      'contextgo-image-generation',
       '--env',
-      'AIONUI_IMG_PLATFORM=openai',
+      'CONTEXTGO_IMG_PLATFORM=openai',
       '--env',
-      'AIONUI_IMG_MODEL=gpt-image-1',
+      'CONTEXTGO_IMG_MODEL=gpt-image-1',
       '--',
       'node',
       '/abs/builtin-mcp-image-gen.js',
@@ -58,8 +58,8 @@ describe('CodexMcpAgent helpers', () => {
             args: ['/abs/builtin-mcp-image-gen.js'],
             env: null,
             env_vars: [
-              { name: 'AIONUI_IMG_PLATFORM', value: 'openai' },
-              { name: 'AIONUI_IMG_MODEL', value: 'gpt-image-1' },
+              { name: 'CONTEXTGO_IMG_PLATFORM', value: 'openai' },
+              { name: 'CONTEXTGO_IMG_MODEL', value: 'gpt-image-1' },
             ],
           },
         },
@@ -68,7 +68,7 @@ describe('CodexMcpAgent helpers', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
-      name: 'aionui-image-generation',
+      name: 'contextgo-image-generation',
       enabled: true,
       status: 'connected',
       transport: {
@@ -76,8 +76,8 @@ describe('CodexMcpAgent helpers', () => {
         command: 'node',
         args: ['/abs/builtin-mcp-image-gen.js'],
         env: {
-          AIONUI_IMG_PLATFORM: 'openai',
-          AIONUI_IMG_MODEL: 'gpt-image-1',
+          CONTEXTGO_IMG_PLATFORM: 'openai',
+          CONTEXTGO_IMG_MODEL: 'gpt-image-1',
         },
       },
     });

@@ -9,8 +9,8 @@
       // Synchronously restore theme from localStorage to prevent theme flash
       (function () {
         try {
-          var theme = localStorage.getItem('__aionui_theme');
-          var colorScheme = localStorage.getItem('__aionui_colorScheme');
+          var theme = localStorage.getItem('__contextgo_theme');
+          var colorScheme = localStorage.getItem('__contextgo_colorScheme');
           if (theme) {
             document.documentElement.setAttribute('data-theme', theme);
           }
@@ -36,7 +36,7 @@
     <script>
       // Set arco-theme on body synchronously
       try {
-        var t = localStorage.getItem('__aionui_theme');
+        var t = localStorage.getItem('__contextgo_theme');
         if (t) document.body.setAttribute('arco-theme', t);
       } catch (e) {}
     </script>

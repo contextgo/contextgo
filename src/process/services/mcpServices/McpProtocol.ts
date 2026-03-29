@@ -17,9 +17,9 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { getEnhancedEnv, getNpxCacheDir, resolveNpxPath } from '@/process/utils/shellEnv';
 
 /**
- * MCP源类型 - 包括所有ACP后端和AionUi内置
+ * MCP源类型 - 包括所有 ACP 后端和 ContextGo 内置 MCP
  */
-export type McpSource = AcpBackendAll | 'aionui';
+export type McpSource = AcpBackendAll | 'contextgo';
 
 /**
  * MCP操作结果接口

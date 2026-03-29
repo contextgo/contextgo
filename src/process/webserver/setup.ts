@@ -137,7 +137,7 @@ function getConfiguredOrigins(port: number, allowRemote: boolean): Set<string> {
     }
   }
 
-  const extraOrigins = (process.env.AIONUI_ALLOWED_ORIGINS || '')
+  const extraOrigins = (process.env.CONTEXTGO_ALLOWED_ORIGINS || '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean)

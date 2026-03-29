@@ -271,7 +271,13 @@ export const useAssistantEditor = ({
           const importResults = await Promise.all(
             skillsToImport.map(async (pendingSkill) => {
               try {
-                const response = await ipcBridge.fs.importSkillWithSymlink.invoke({ skillPath: pendingSkill.path });
+                const response =
+                  pendingSkill.source === 'skill-market'
+                    ? await ipcBridge.fs.installSkillMarketSkill.invoke({
+                        skillId: pendingSkill.marketSkillId,
+                        archive: pendingSkill.archive,
+                      })
+                    : await ipcBridge.fs.importSkillWithSymlink.invoke({ skillPath: pendingSkill.path });
                 return { pendingSkill, response };
               } catch (error) {
                 return { pendingSkill, error };
@@ -282,12 +288,31 @@ export const useAssistantEditor = ({
           for (const result of importResults) {
             if ('error' in result) {
               console.error(`Failed to import skill "${result.pendingSkill.name}":`, result.error);
-              message.error(`Failed to import skill "${result.pendingSkill.name}"`);
+              message.error(
+                result.pendingSkill.source === 'skill-market'
+                  ? t('settings.skillsHub.marketInstallFailed', {
+                      name: result.pendingSkill.name,
+                      defaultValue: `Failed to install "${result.pendingSkill.name}" from Skill Market`,
+                    })
+                  : t('settings.skillsHub.importFailed', {
+                      defaultValue: 'Failed to import skill',
+                    })
+              );
               return;
             }
 
             if (!result.response.success) {
-              message.error(`Failed to import skill "${result.pendingSkill.name}": ${result.response.msg}`);
+              message.error(
+                result.response.msg ||
+                  (result.pendingSkill.source === 'skill-market'
+                    ? t('settings.skillsHub.marketInstallFailed', {
+                        name: result.pendingSkill.name,
+                        defaultValue: `Failed to install "${result.pendingSkill.name}" from Skill Market`,
+                      })
+                    : t('settings.skillsHub.importFailed', {
+                        defaultValue: 'Failed to import skill',
+                      }))
+              );
               return;
             }
           }

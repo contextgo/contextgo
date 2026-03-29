@@ -79,8 +79,8 @@ export class PluginManager {
     this.messageHandler = handler;
 
     // Update handler on all active plugins
-    for (const plugin of this.plugins.values()) {
-      plugin.onMessage(handler);
+    for (const [pluginId, plugin] of this.plugins.entries()) {
+      plugin.onMessage((message) => this.handleIncomingMessage(pluginId, message));
     }
   }
 
@@ -159,7 +159,7 @@ export class PluginManager {
 
     // Set message handler
     if (this.messageHandler) {
-      plugin.onMessage(this.messageHandler);
+      plugin.onMessage((message) => this.handleIncomingMessage(id, message));
     } else {
       console.warn(
         `[PluginManager] WARNING: No message handler set when starting plugin ${id}! Messages will not be processed.`
@@ -314,13 +314,13 @@ export class PluginManager {
    * Handle incoming message from a plugin
    * Routes to the appropriate action handler
    */
-  private async handleIncomingMessage(message: IUnifiedIncomingMessage): Promise<void> {
-    // Update user activity
-    this.sessionManager.updateSessionActivity(message.user.id);
-
+  private async handleIncomingMessage(pluginId: string, message: IUnifiedIncomingMessage): Promise<void> {
     // Forward to message handler (ActionRouter)
     if (this.messageHandler) {
-      await this.messageHandler(message);
+      await this.messageHandler({
+        ...message,
+        pluginId,
+      });
     }
   }
 

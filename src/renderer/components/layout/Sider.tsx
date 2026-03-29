@@ -10,6 +10,7 @@ import {
   Lightning,
   Moon,
   Plus,
+  Puzzle,
   Robot,
   RobotOne,
   SettingTwo,
@@ -30,8 +31,9 @@ import { useAuth } from '@renderer/hooks/context/AuthContext';
 import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
-import CreateDiscussionGroupModal from '@renderer/pages/conversation/platforms/group/CreateDiscussionGroupModal';
+import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
+import { isElectronDesktop, isMacOS } from '@renderer/utils/platform';
 
 const WorkspaceGroupedHistory = React.lazy(() => import('@renderer/pages/conversation/GroupedHistory'));
 const SettingsSider = React.lazy(() => import('@renderer/pages/settings/components/SettingsSider'));
@@ -50,6 +52,14 @@ const LANGUAGE_OPTIONS = [
   { value: 'en-US', label: 'English' },
 ] as const;
 
+const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: string) => (
+  <div className='sider-user-menu__row'>
+    <span className='sider-user-menu__icon'>{icon}</span>
+    <span className='sider-user-menu__row-text'>{label}</span>
+    {value ? <span className='sider-user-menu__row-value'>{value}</span> : null}
+  </div>
+);
+
 const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
@@ -66,6 +76,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const [userMenuVisible, setUserMenuVisible] = useState(false);
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const isSettings = pathname.startsWith('/settings');
+  const isConversationRoute = pathname.startsWith('/conversation/');
+  const isDesktopRuntime = isElectronDesktop();
+  const showDesktopChromeOverlayInset = !isMobile && !isConversationRoute && (!isDesktopRuntime || isMacOS());
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab } = useConversationTabs();
   const { user } = useAuth();
@@ -101,7 +114,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       onSessionClick();
     }
   };
-  const handleCreateDiscussionGroup = () => {
+  const handleCreateGroup = () => {
     cleanupSiderTooltips();
     blurActiveElement();
     closePreview();
@@ -150,7 +163,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         if (cancelled) {
           return;
         }
-        setDesktopUsername(homePath.split(/[\\/]/).filter(Boolean).pop() || '');
+        setDesktopUsername(homePath.split(/[\\/]/).findLast((segment) => segment.length > 0) ?? '');
       })
       .catch(() => {
         if (!cancelled) {
@@ -213,11 +226,13 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     autoAlignPopupWidth: true,
     autoFitPosition: true,
     className: 'sider-create-menu-popup',
+    duration: 0,
   };
   const userMenuDropdownTriggerProps = {
     autoAlignPopupWidth: true,
     autoFitPosition: true,
     className: 'sider-user-menu-popup',
+    duration: 0,
     popupStyle: {
       maxHeight: 'calc(100vh - 24px)',
     },
@@ -225,6 +240,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const userSubMenuTriggerProps = {
     autoFitPosition: true,
     className: 'sider-user-submenu-popup',
+    duration: 0,
     popupStyle: {
       maxHeight: 'min(320px, calc(100vh - 24px))',
       overflowY: 'auto' as const,
@@ -240,30 +256,27 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         }
 
         if (key === 'group') {
-          handleCreateDiscussionGroup();
+          handleCreateGroup();
         }
       }}
     >
       <Menu.Item key='conversation'>
-        <div className='flex items-center gap-8px'>
-          <Plus theme='outline' size='16' fill={iconColors.primary} />
-          <span>{t('conversation.entry.conversation')}</span>
+        <div className='app-icon-row'>
+          <span className='app-icon-slot'>
+            <Plus theme='outline' size='16' fill={iconColors.primary} className='app-icon' />
+          </span>
+          <span className='min-w-0 truncate'>{t('conversation.entry.conversation')}</span>
         </div>
       </Menu.Item>
       <Menu.Item key='group'>
-        <div className='flex items-center gap-8px'>
-          <Robot theme='outline' size='16' fill={iconColors.primary} />
-          <span>{t('conversation.entry.group')}</span>
+        <div className='app-icon-row'>
+          <span className='app-icon-slot'>
+            <Robot theme='outline' size='16' fill={iconColors.primary} className='app-icon' />
+          </span>
+          <span className='min-w-0 truncate'>{t('conversation.entry.group')}</span>
         </div>
       </Menu.Item>
     </Menu>
-  );
-  const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: string) => (
-    <div className='sider-user-menu__row'>
-      <span className='sider-user-menu__icon'>{icon}</span>
-      <span className='sider-user-menu__row-text'>{label}</span>
-      {value ? <span className='sider-user-menu__row-value'>{value}</span> : null}
-    </div>
   );
   const userMenu = (
     <Menu
@@ -300,21 +313,21 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     >
       <Menu.Item key='devtools'>
         {renderUserMenuLabel(
-          <Computer theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />,
+          <Computer theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
           t('settings.devTools'),
           isDevToolsOpen ? t('settings.closeDevTools') : t('settings.openDevTools')
         )}
       </Menu.Item>
       <Menu.Item key='settings'>
         {renderUserMenuLabel(
-          <SettingTwo theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />,
+          <SettingTwo theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
           t('common.settings')
         )}
       </Menu.Item>
       <Menu.SubMenu
         key='language'
         title={renderUserMenuLabel(
-          <Earth theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />,
+          <Earth theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
           t('settings.language'),
           currentLanguageLabel
         )}
@@ -329,7 +342,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 theme='outline'
                 size='14'
                 fill={option.value === i18n.language ? iconColors.primary : iconColors.secondary}
-                className='shrink-0'
+                className='app-icon shrink-0'
               />,
               option.label
             )}
@@ -339,7 +352,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       <Menu.SubMenu
         key='theme'
         title={renderUserMenuLabel(
-          <ThemeIcon theme='outline' size='16' fill={iconColors.primary} className='shrink-0' />,
+          <ThemeIcon theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
           t('settings.theme'),
           currentThemeLabel
         )}
@@ -351,9 +364,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           >
             {renderUserMenuLabel(
               option.value === 'light' ? (
-                <Sun theme='outline' size='14' fill={iconColors.primary} className='shrink-0' />
+                <Sun theme='outline' size='14' fill={iconColors.primary} className='app-icon shrink-0' />
               ) : (
-                <Moon theme='outline' size='14' fill={iconColors.primary} className='shrink-0' />
+                <Moon theme='outline' size='14' fill={iconColors.primary} className='app-icon shrink-0' />
               ),
               option.label
             )}
@@ -369,10 +382,22 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       <div className='flex-1 min-h-0 w-full min-w-0 overflow-hidden'>
         {isSettings ? (
           <Suspense fallback={<div className='size-full' />}>
-            <SettingsSider collapsed={collapsed} tooltipEnabled={tooltipEnabled}></SettingsSider>
+            <div
+              className={classNames(
+                'size-full w-full min-w-0 flex flex-col sider-main-section',
+                showDesktopChromeOverlayInset && 'sider-main-section--desktop-chrome-offset'
+              )}
+            >
+              <SettingsSider collapsed={collapsed} tooltipEnabled={tooltipEnabled}></SettingsSider>
+            </div>
           </Suspense>
         ) : (
-          <div className='size-full w-full min-w-0 flex flex-col'>
+          <div
+            className={classNames(
+              'size-full w-full min-w-0 flex flex-col sider-main-section',
+              showDesktopChromeOverlayInset && 'sider-main-section--desktop-chrome-offset'
+            )}
+          >
             <div className='mb-10px flex shrink-0 w-full min-w-0 flex-col gap-6px'>
               <Dropdown
                 droplist={createEntryMenu}
@@ -381,11 +406,21 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 triggerProps={createEntryDropdownTriggerProps}
               >
                 <button type='button' className={actionRowClassName}>
-                  <Plus theme='outline' size='20' fill={iconColors.primary} className='block shrink-0 leading-none' />
+                  <Plus
+                    theme='outline'
+                    size='20'
+                    fill={iconColors.primary}
+                    className='app-icon block shrink-0 leading-none'
+                  />
                   <span className='min-w-0 flex-1 truncate text-14px font-600 text-t-primary'>
                     {t('conversation.entry.create')}
                   </span>
-                  <Down theme='outline' size='14' fill={iconColors.secondary} className='block shrink-0 leading-none' />
+                  <Down
+                    theme='outline'
+                    size='14'
+                    fill={iconColors.secondary}
+                    className='app-icon block shrink-0 leading-none'
+                  />
                 </button>
               </Dropdown>
               <ConversationSearchPopover
@@ -394,6 +429,21 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 buttonLabel={t('conversation.historySearch.tooltip')}
                 buttonClassName={classNames(actionRowClassName, '!justify-start !border-none')}
               />
+              <button
+                type='button'
+                className={classNames(actionRowClassName, pathname === '/hooks' && actionRowActiveClassName)}
+                onClick={() => handleNavigate('/hooks')}
+              >
+                <Puzzle
+                  theme='outline'
+                  size='20'
+                  fill={iconColors.primary}
+                  className='app-icon block shrink-0 leading-none'
+                />
+                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
+                  {t('settings.hooksPage', { defaultValue: 'Hooks' })}
+                </span>
+              </button>
               <button
                 type='button'
                 className={classNames(
@@ -406,7 +456,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                   theme='outline'
                   size='20'
                   fill={iconColors.primary}
-                  className='block shrink-0 leading-none'
+                  className='app-icon block shrink-0 leading-none'
                 />
                 <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
                   {t('settings.connectors.title')}
@@ -421,7 +471,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                   theme='outline'
                   size='20'
                   fill={iconColors.primary}
-                  className='block shrink-0 leading-none'
+                  className='app-icon block shrink-0 leading-none'
                 />
                 <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
                   {t('settings.skillsHub.title')}
@@ -432,14 +482,19 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 className={classNames(actionRowClassName, pathname === '/agents' && actionRowActiveClassName)}
                 onClick={() => handleNavigate('/agents')}
               >
-                <RobotOne theme='outline' size='20' fill={iconColors.primary} className='block shrink-0 leading-none' />
+                <RobotOne
+                  theme='outline'
+                  size='20'
+                  fill={iconColors.primary}
+                  className='app-icon block shrink-0 leading-none'
+                />
                 <span className='min-w-0 truncate text-14px font-600 text-t-primary'>{t('settings.assistants')}</span>
               </button>
             </div>
             <Suspense fallback={<div className='flex-1 min-h-0' />}>
               <WorkspaceGroupedHistory {...workspaceHistoryProps}></WorkspaceGroupedHistory>
             </Suspense>
-            <CreateDiscussionGroupModal
+            <CreateGroupModal
               visible={groupModalVisible}
               workspace={activeWorkspace}
               cliAgents={cliAgents}

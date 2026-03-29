@@ -2,24 +2,66 @@
 
 ## 概述
 
-这个项目配置了完整的 GitHub Actions CI/CD 流水线，支持自动构建、测试和发布到多个平台。
+这个项目配置了 GitHub Actions CI/CD 流水线，支持自动构建、测试和发布到多个平台，并且支持在 GitHub-hosted runner 与 self-hosted runner 之间切换。
 
 ## 工作流说明
 
 ### 1. `build-and-release.yml` - 主构建和发布流
 
-- **触发时机**: 仅推送到 `main` 分支
+- **触发时机**: 推送到 `dev` 分支，或推送任意 tag（会排除 `-dev-` tag 的重复发布路径）
 - **功能**:
   - 代码质量检查 (ESLint, Prettier, TypeScript)
   - 多平台构建 (macOS Intel/Apple Silicon, Windows, Linux)
   - 自动创建版本标签
   - 创建 Draft Release (需要手动审批和发布)
+  - 支持通过仓库变量切换到 self-hosted runner
 - **流程**:
-  1. 代码质量检查
-  2. 三平台并行构建
-  3. 自动创建基于 package.json 版本的标签
-  4. 等待环境审批
-  5. 创建 Draft Release (需要手动编辑和发布)
+  1. 根据仓库变量生成构建矩阵和 runner 配置
+  2. 代码质量检查
+  3. 多平台并行构建
+  4. 自动创建基于 package.json 版本的标签
+  5. 等待环境审批
+  6. 创建 Draft Release (需要手动编辑和发布)
+
+### 2. `build-manual.yml` - 手动构建流
+
+- **触发时机**: 手动 `workflow_dispatch`
+- **功能**:
+  - 按平台单独构建，适合调试单个平台构建问题
+  - 支持通过 `runner_mode` 输入切换 `self-hosted` 或 `hosted`
+  - 在 self-hosted 模式下读取仓库变量中的 runner labels
+
+## 推荐的 GitHub Actions Variables 配置
+
+在仓库的 Settings → Secrets and variables → Actions → Variables 中配置：
+
+```text
+BUILD_RUNNER_MODE=self-hosted
+RELEASE_BUILD_PLATFORMS=linux
+PR_CHECKS_PLATFORM_SCOPE=linux-only
+SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON=["self-hosted","Linux","X64","contextgo-org","tencent-sh-1"]
+SELF_HOSTED_MACOS_RUNNER_LABELS_JSON=["self-hosted","macOS","arm64","aionui-macos"]
+SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON=["self-hosted","Windows","x64","aionui-windows"]
+SELF_HOSTED_LINUX_RUNNER_LABELS_JSON=["self-hosted","Linux","X64","contextgo-org","tencent-sh-1"]
+```
+
+说明：
+
+- `BUILD_RUNNER_MODE` 可选 `hosted` 或 `self-hosted`
+- `RELEASE_BUILD_PLATFORMS` 可填 `all`，或逗号分隔的平台子集，例如 `macos-arm64,linux`
+- `PR_CHECKS_PLATFORM_SCOPE` 当前支持 `linux-only` 或 `all`
+- `*_LABELS_JSON` 必须是 JSON 数组字符串
+- 如果 self-hosted runner 还没有覆盖所有平台，不要把 `RELEASE_BUILD_PLATFORMS` 设成 `all`
+
+当前已确认的组织级 runner：
+
+- `tencent-sh-1-org-runner`
+- labels: `self-hosted`, `Linux`, `X64`, `contextgo-org`, `tencent-sh-1`, `cn-shanghai`, `docker-builder`
+
+这意味着：
+
+- 现在可以把 Linux 类 CI/CD job 切到该机器
+- 现在不能把 macOS / Windows 构建也切成 self-hosted，否则会一直排队
 
 ## 必需的 GitHub Secrets 配置
 
@@ -40,7 +82,11 @@ IDENTITY=签名证书名称
 GH_TOKEN=你的Personal Access Token (github_pat_开头)
 ```
 
-**注意**: 需要手动配置，因为需要 `contents: write` 权限来创建 releases。
+**注意**:
+
+- 现在工作流已经支持优先使用内建的 `github.token`
+- `GH_TOKEN` 不再是 GitHub 侧操作的硬性前提
+- 如果后续有跨仓库发布、特殊权限要求或你希望固定使用 PAT，再配置 `GH_TOKEN`
 
 ### Environment Secrets
 
@@ -49,6 +95,8 @@ GH_TOKEN=你的Personal Access Token (github_pat_开头)
 ```
 GH_TOKEN=相同的Personal Access Token
 ```
+
+如果当前发布流程只操作本仓库资源，这一项可以暂时留空，先依赖 `github.token`。
 
 ## 如何获取 Apple 签名配置
 
@@ -98,16 +146,23 @@ GH_TOKEN=相同的Personal Access Token
    - 运行代码质量检查
    - 升级版本号
    - 创建 git tag
-   - 推送到 main 分支
+   - 推送到对应发布分支
 4. GitHub Actions 自动触发构建
 5. 在 Deployments 页面审批发布
 6. 编辑 Draft Release 内容
 7. 手动发布给用户
 
+### 手动构建
+
+1. 打开 GitHub Actions 中的 `🔨 Manual Build`
+2. 选择分支和平台
+3. 如果已经切到 self-hosted，保持 `runner_mode=self-hosted`
+4. 如果只是临时验证公开仓库 / hosted runner 行为，再切成 `hosted`
+
 ### 直接推送发布
 
 1. 手动修改 `package.json` 中的版本号
-2. 提交并推送到 `main` 分支
+2. 提交并推送到触发发布的分支或对应 tag
 3. GitHub Actions 将自动构建并创建 Draft Release
 
 ### 版本管理规范
@@ -141,20 +196,25 @@ GH_TOKEN=相同的Personal Access Token
 ### 常见问题
 
 1. **Release创建失败 (403错误)**
-   - 检查 GH_TOKEN 是否正确配置
-   - 确认 token 格式为 `github_pat_` 开头
-   - 验证 repository 和 environment 中都有 GH_TOKEN
+   - 先检查是否真的需要自定义 `GH_TOKEN`
+   - 如果 workflow 只是在当前仓库创建 release，优先确认 `github.token` 权限是否足够
+   - 如果必须使用 PAT，再检查 `GH_TOKEN` 是否正确配置
 
 2. **macOS 签名失败**
    - 检查 Apple ID 和密码是否正确
    - 确认 Team ID 和证书名称准确
    - 验证苹果开发者账号状态
 
-3. **构建超时 (Windows)**
+3. **self-hosted workflow 一直排队**
+   - 检查仓库是否已经注册 self-hosted runner
+   - 检查 runner labels 是否和 `*_LABELS_JSON` 完全匹配
+   - 检查 `RELEASE_BUILD_PLATFORMS` 是否包含了当前没有 runner 的平台
+
+4. **构建超时 (Windows)**
    - Windows 构建通常最慢 (可能40分钟+)
    - 考虑禁用 MSI target 加速构建
 
-4. **重复tag错误**
+5. **重复tag错误**
    - CI/CD 会检查并跳过已存在的 tag
    - 如果手动创建了 tag，CI/CD 不会重复创建
 

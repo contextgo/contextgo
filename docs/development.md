@@ -12,8 +12,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/iOfficeAI/AionUi.git
-cd AionUi
+git clone https://github.com/contextgo/contextgo.git
+cd ContextGo
 
 # Install dependencies
 just install
@@ -42,7 +42,7 @@ prek run --from-ref origin/main --to-ref HEAD
 
 ## Build System
 
-AionUi uses **electron-vite** for fast bundling:
+ContextGo uses **electron-vite** for fast bundling:
 
 - **Main process**: bundled with Vite (ESM)
 - **Renderer process**: bundled with Vite (React + TypeScript)
@@ -54,6 +54,10 @@ The build output goes to `out/` directory:
 - `out/renderer/` - Renderer process code
 - `out/preload/` - Preload scripts
 
+For desktop packaging and the common "build succeeded but app UI did not update" failure mode, see:
+
+- [`docs/tech/desktop-build-install-troubleshooting.md`](/Users/bytedance/project/AionUi/docs/tech/desktop-build-install-troubleshooting.md)
+
 ## Tech Stack
 
 - **Electron** - Cross-platform desktop framework
@@ -63,3 +67,15 @@ The build output goes to `out/` directory:
 - **UnoCSS** - Atomic CSS engine
 - **better-sqlite3** - Local database
 - **vitest** - Testing framework
+
+## UI Icon Alignment
+
+This repository uses `@icon-park/react` for most renderer icons.
+
+- Keep `@icon-park/react/styles/index.css` imported in `src/renderer/main.tsx`.
+- Prefer the shared classes in `src/renderer/styles/icon.css` for icon layout:
+  - `app-icon` for the icon node itself
+  - `app-icon-slot` for fixed-size icon containers beside text
+  - `app-icon-row` for horizontal icon + label rows
+  - `app-icon-button` for clickable icon-only surfaces
+- Do not add one-off alignment patches such as inline `lineHeight: 0` or `marginTop: '2px'` unless there is a demonstrated exception that the shared primitives cannot cover.

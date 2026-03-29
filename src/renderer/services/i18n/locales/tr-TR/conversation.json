@@ -16,10 +16,7 @@
     "none": "Hiçbiri",
     "quickActionsTitle": "ContextGo neler yapabilir?",
     "quickActionFeedback": "Geri bildirim veya öneriniz mi var?",
-    "quickActionStar": "Bizi beğendiniz mi? Yıldız verin!",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "Topluluk Skills'lerini ihtiyaç duyduğunuzda arayın ve etkinleştirin. Bir kez yapılandırın, tüm Agent'larda kullanılabilir.",
-    "skillsMarketDetails": "Ayrıntılar >>"
+    "quickActionStar": "Bizi beğendiniz mi? Yıldız verin!"
   },
   "history": {
     "today": "Bugün",
@@ -69,7 +66,8 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "Başarıyla silindi",
-    "deleteFailed": "Silme başarısız oldu"
+    "deleteFailed": "Silme başarısız oldu",
+    "toggleGroupConversation": "Grup oturumlarını aç/kapat"
   },
   "historySearch": {
     "tooltip": "Ara",
@@ -80,12 +78,13 @@
     "empty": "Eşleşen mesaj bulunamadı",
     "clear": "Aramayı temizle",
     "loadingMore": "Daha fazla yükleniyor...",
+    "recentConversations": "Son sohbetler",
     "untitled": "Adsız sohbet"
   },
   "entry": {
     "create": "Yeni",
     "conversation": "Sohbet",
-    "group": "Tartışma Grubu"
+    "group": "Grup"
   },
   "tabs": {
     "closeAll": "Tümünü Kapat",
@@ -241,19 +240,26 @@
     "presetAssistants": "Preset Assistants"
   },
   "group": {
-    "header": "Tartışma Grubu",
-    "createEntry": "Tartışma Grubu Oluştur",
-    "createTitle": "Tartışma Grubu Oluştur",
+    "header": "Grup",
+    "createEntry": "Grup Oluştur",
+    "createTitle": "Grup Oluştur",
     "createAction": "Grup Oluştur",
-    "createFailed": "Tartışma grubu oluşturulamadı",
-    "defaultName": "Tartışma Grubu",
+    "createFailed": "Grup oluşturulamadı",
+    "defaultName": "Ajan Grubu",
     "nameLabel": "Grup Adı",
-    "namePlaceholder": "Bir tartışma grubu adı girin",
+    "namePlaceholder": "Bir grup adı girin",
     "workspaceLabel": "Çalışma Alanı",
     "workspacePlaceholder": "İsteğe bağlı. Boş bırakırsanız varsayılan çalışma alanı otomatik oluşturulur",
-    "workspaceHint": "Tartışma grubu ve tüm katılımcı oturumları bu çalışma alanını paylaşır. Boş bırakılırsa varsayılan geçici bir çalışma alanı otomatik oluşturulur.",
+    "workspaceHint": "Grup ve tüm katılımcı oturumları bu çalışma alanını paylaşır. Boş bırakılırsa varsayılan geçici bir çalışma alanı otomatik oluşturulur.",
     "selectWorkspace": "Klasör Seç",
     "selectWorkspaceFailed": "Çalışma alanı seçilemedi",
+    "kindLabel": "İşbirliği Türü",
+    "kindWorkflow": "İş Akışı",
+    "kindDiscussion": "Tartışma",
+    "kindHint": {
+      "workflow": "Varsayılan moddur. Planner, writer ve evaluator ortak çalışma alanında çoklu iterasyonlarla birlikte çalışır.",
+      "discussion": "Görüş karşılaştırma, sıralı yanıt ve tartışmalar için klasik tartışma modu."
+    },
     "modeLabel": "Tartışma Modu",
     "modeDebate": "Münazara",
     "modeBroadcast": "Yayın",
@@ -267,8 +273,78 @@
     "minimumParticipants": "En az iki katılımcı seçin",
     "minimumParticipantsHint": "Bir tartışma grubu başlatmak için 2 veya daha fazla katılımcı seçin.",
     "noDescription": "Açıklama yok",
-    "sendPlaceholder": "Tartışma grubuna bir soru sor...",
-    "roundLabel": "{{round}}. Tur"
+    "sendPlaceholder": "Gruba bir görev ver...",
+    "roundLabel": "{{round}}. Tur",
+    "role": {
+      "planner": "Planner",
+      "writer": "Writer",
+      "evaluator": "Evaluator",
+      "custom": "Custom"
+    },
+    "workflow": {
+      "templateLabel": "İş Akışı Şablonu",
+      "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
+      "templateHint": "Planner hedefi ve kabul kriterlerini tanımlar, writer ortak çalışma alanındaki çıktıyı günceller, evaluator ise puan ve uygulanabilir geri bildirim verir.",
+      "templatePlannerWriterEvaluatorHint": "Yinelemeli harness: planner çerçeveyi kurar, writer çıktıyı birkaç tur boyunca geliştirir, evaluator her turu eleştirel biçimde inceler.",
+      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
+      "templatePlanBuildEvaluateHint": "Tek geçişli harness: planner kapsamı çizer, builder tek bir bütünlüklü geçiş yapar, evaluator ise sonda değerlendirme yapar.",
+      "exactParticipants": "Bu iş akışı şablonu tam olarak 3 katılımcı gerektirir",
+      "exactParticipantsHint": "Planner / Writer / Evaluator şablonu, farklı rollere sahip tam 3 katılımcı ister.",
+      "assignRoles": "İş akışı grubunu oluşturmadan önce planner, writer ve evaluator rollerini atayın",
+      "roleLabel": "Rol",
+      "iterationLabel": "{{iteration}}. İterasyon",
+      "stage": {
+        "planning": "Planlama",
+        "writing": "Yazma",
+        "evaluating": "Değerlendirme",
+        "completed": "Tamamlandı",
+        "failed": "Başarısız"
+      },
+      "maxIterationsLabel": "Maksimum Iterasyon",
+      "maxIterationsHint": "İzin verilen aralık: {{min}}-{{max}}",
+      "scoreTargetLabel": "Hedef Puan",
+      "scoreTargetHint": "Değerlendirici kabul eşiği: {{min}}-{{max}}",
+      "artifactPathLabel": "Çıktı Yolu",
+      "artifactPathHint": "Paylaşılan çalışma alanı içinde göreli bir yol girin. Mutlak yollar ve üst dizin geçişleri reddedilir.",
+      "reviewModeLabel": "İnceleme Modu",
+      "reviewModeHint": "Evaluator her turu mu inceleyecek, yoksa yalnızca son çıktıyı mı değerlendirecek seçin.",
+      "reviewMode": {
+        "perIteration": "Her Turda İncele",
+        "finalOnly": "Sadece Final İncelemesi"
+      },
+      "stageLabel": "Aşama",
+      "iterationBudgetLabel": "İterasyon Bütçesi",
+      "iterationBudgetValue": "{{current}} / {{total}}",
+      "latestScoreLabel": "Son Puan",
+      "latestDecisionLabel": "Son Karar",
+      "decision": {
+        "continue": "Devam Et",
+        "accept": "Kabul Et",
+        "stop": "Durdur"
+      },
+      "status": {
+        "idle": "Boşta",
+        "running": "Çalışıyor",
+        "completed": "Tamamlandı",
+        "failed": "Başarısız",
+        "stopped": "Durduruldu"
+      }
+    }
+  },
+  "pendingMessages": {
+    "title": "{{count}} bekleyen mesaj",
+    "shortcuts": "Tab kuyruğa al · Cmd/Ctrl+Enter yönlendir · Option/Alt+↑ sonuncuyu düzenle",
+    "attachments": "{{count}} dosya",
+    "dispatching": "Gönderiliyor...",
+    "edit": "Yeniden düzenle",
+    "mode": {
+      "queue": "Kuyruk",
+      "steer": "Yönlendir"
+    },
+    "actions": {
+      "queue": "Kuyruğa taşı",
+      "steer": "Sonraki adıma yönlendir"
+    }
   },
   "noAgentsAvailable": "No agents available",
   "noModelConfigured": "No model configured. Please configure in settings.",

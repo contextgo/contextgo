@@ -122,11 +122,11 @@ export function getFileExtension(fileName: string): string {
   return lastDotIndex > -1 ? fileName.substring(lastDotIndex).toLowerCase() : '';
 }
 
-import { AIONUI_TIMESTAMP_REGEX } from '@/common/config/constants';
+import { CONTEXTGO_TIMESTAMP_REGEX } from '@/common/config/constants';
 
 // 清理AionUI时间戳后缀，返回原始文件名
 export function cleanAionUITimestamp(fileName: string): string {
-  return fileName.replace(AIONUI_TIMESTAMP_REGEX, '$1');
+  return fileName.replace(CONTEXTGO_TIMESTAMP_REGEX, '$1');
 }
 
 // 从文件路径获取清理后的文件名（用于UI显示）

@@ -6,7 +6,12 @@
 
 import type {
   ActionCategory,
+  IAgentProfile,
+  IChannelBinding,
   IChannelUser,
+  IConnectorInstance,
+  IExternalSession,
+  IRemoteIdentity,
   IUnifiedIncomingMessage,
   IUnifiedOutgoingMessage,
   PluginType,
@@ -27,6 +32,11 @@ export interface IActionContext {
 
   // Authorized assistant user (set if user is authorized)
   channelUser?: IChannelUser;
+  connector?: IConnectorInstance;
+  remoteIdentity?: IRemoteIdentity;
+  channelBinding?: IChannelBinding;
+  agentProfile?: IAgentProfile;
+  externalSession?: IExternalSession;
 
   // Session information
   sessionId?: string;

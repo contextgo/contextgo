@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSWRConfig } from 'swr';
 import type { MessageApi } from '../types';
 import { collectFilePaths } from '../utils/treeHelpers';
-import { isDiscussionFamilyConversation, syncDiscussionFamilyWorkspace } from '../../utils/discussionGroupWorkspace';
+import { isGroupFamilyConversation, syncGroupFamilyWorkspace } from '../../utils/groupWorkspace';
 
 type UseWorkspaceMigrationParams = {
   conversation_id: string;
@@ -124,8 +124,8 @@ export function useWorkspaceMigration({
           }
         }
 
-        if (isDiscussionFamilyConversation(currentConversation)) {
-          const updatedConversations = await syncDiscussionFamilyWorkspace(currentConversation, targetWorkspace);
+        if (isGroupFamilyConversation(currentConversation)) {
+          const updatedConversations = await syncGroupFamilyWorkspace(currentConversation, targetWorkspace);
           const updatedCurrentConversation = updatedConversations.find(
             (conversation) => conversation.id === conversation_id
           ) ?? {

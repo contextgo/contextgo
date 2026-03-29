@@ -2,21 +2,21 @@ import { useMemo } from 'react';
 import { useConversationHistoryContext } from '@/renderer/hooks/context/ConversationHistoryContext';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { buildVisibleConversationIds } from '../utils/visibleConversationOrder';
-import { useDiscussionGroupExpansionState, useWorkspaceExpansionState } from './useWorkspaceExpansionState';
+import { useGroupConversationExpansionState, useWorkspaceExpansionState } from './useWorkspaceExpansionState';
 
 export const useVisibleConversationIds = (): string[] => {
   const layout = useLayoutContext();
   const siderCollapsed = layout?.siderCollapsed ?? false;
   const { groupedHistory } = useConversationHistoryContext();
   const expandedWorkspaces = useWorkspaceExpansionState();
-  const expandedDiscussionGroups = useDiscussionGroupExpansionState();
+  const expandedGroupConversations = useGroupConversationExpansionState();
 
   return useMemo(() => {
     return buildVisibleConversationIds({
       ...groupedHistory,
       expandedWorkspaces,
-      expandedDiscussionGroups,
+      expandedGroupConversations,
       siderCollapsed,
     });
-  }, [groupedHistory, expandedDiscussionGroups, expandedWorkspaces, siderCollapsed]);
+  }, [groupedHistory, expandedGroupConversations, expandedWorkspaces, siderCollapsed]);
 };

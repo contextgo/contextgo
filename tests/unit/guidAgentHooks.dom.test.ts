@@ -41,6 +41,8 @@ vi.mock('../../src/common/config/presets/assistantPresets', () => ({
       presetAgentType: 'gemini',
       ruleFiles: { 'en-US': 'test-preset.md' },
       skillFiles: { 'en-US': 'test-preset-skill.md' },
+      defaultEnabledSkills: ['preset-skill'],
+      defaultEnabledHooks: ['prompt-clarifier'],
       nameI18n: { 'en-US': 'Test Preset' },
       descriptionI18n: { 'en-US': 'A test preset' },
     },
@@ -51,6 +53,9 @@ import { useAgentAvailability } from '../../src/renderer/pages/guid/hooks/useAge
 import { usePresetAssistantResolver } from '../../src/renderer/pages/guid/hooks/usePresetAssistantResolver';
 import type { AcpBackendConfig, AvailableAgent } from '../../src/renderer/pages/guid/types';
 import type { IProvider } from '../../src/common/config/storage';
+
+const stubResolvePresetAgentType = (info: { backend: string; customAgentId?: string } | undefined) =>
+  info?.backend === 'custom' ? 'gemini' : (info?.backend ?? 'gemini');
 
 // ---------------------------------------------------------------------------
 // useAgentAvailability
@@ -65,9 +70,6 @@ describe('useAgentAvailability', () => {
   const defaultModelList: IProvider[] = [
     { id: '1', platform: 'openai', name: 'gpt-4', baseUrl: '', apiKey: 'k' } as IProvider,
   ];
-
-  const stubResolvePresetAgentType = (info: { backend: string; customAgentId?: string } | undefined) =>
-    info?.backend === 'custom' ? 'gemini' : (info?.backend ?? 'gemini');
 
   // -- isMainAgentAvailable ---------------------------------------------------
 
@@ -236,6 +238,14 @@ describe('usePresetAssistantResolver', () => {
       enabled: true,
       presetAgentType: 'qwen',
     } as AcpBackendConfig,
+    {
+      id: 'builtin-test-preset',
+      name: 'Builtin Test Preset',
+      isPreset: true,
+      isBuiltin: true,
+      enabled: true,
+      presetAgentType: 'gemini',
+    } as AcpBackendConfig,
   ];
 
   beforeEach(() => {
@@ -302,6 +312,22 @@ describe('usePresetAssistantResolver', () => {
 
     // agent-beta has no enabledSkills defined
     expect(result.current.resolveEnabledSkills({ backend: 'custom', customAgentId: 'agent-beta' })).toBeUndefined();
+  });
+
+  it('resolveEnabledSkills falls back to builtin preset defaults when config is missing', () => {
+    const { result } = renderHook(() => usePresetAssistantResolver({ customAgents, localeKey: 'en-US' }));
+
+    expect(result.current.resolveEnabledSkills({ backend: 'custom', customAgentId: 'builtin-test-preset' })).toEqual([
+      'preset-skill',
+    ]);
+  });
+
+  it('resolveEnabledHooks falls back to builtin preset defaults when config is missing', () => {
+    const { result } = renderHook(() => usePresetAssistantResolver({ customAgents, localeKey: 'en-US' }));
+
+    expect(result.current.resolveEnabledHooks({ backend: 'custom', customAgentId: 'builtin-test-preset' })).toEqual([
+      'prompt-clarifier',
+    ]);
   });
 
   // -- resolvePresetRulesAndSkills --------------------------------------------

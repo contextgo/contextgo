@@ -19,11 +19,12 @@ import { DEFAULT_CODEX_MODELS, DEFAULT_CODEX_MODEL_ID } from '@/common/types/cod
 import type { AcpModelInfo } from '@/common/types/acpTypes';
 import { PERMISSION_DECISION_MAP } from '@/common/types/codex/types/permissionTypes';
 import { mapPermissionDecision } from '@/common/types/codex/utils';
-import { AIONUI_FILES_MARKER } from '@/common/config/constants';
+import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
-import { addMessage, addOrUpdateMessage } from '@process/utils/message';
+import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
 import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
+import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { getDatabase } from '@process/services/database';
 import { ProcessConfig } from '@process/utils/initStorage';
 import BaseAgentManager from '@process/task/BaseAgentManager';
@@ -62,6 +63,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
 
   /** User-selected model before session creation */
   private selectedModel: string | null = null;
+  private readonly hookRuntime = new AssistantHookRuntime();
 
   constructor(data: CodexAgentManagerData) {
     // Do not fork a worker for Codex; we run the agent in-process now
@@ -244,8 +246,8 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     try {
       await this.bootstrap;
       const rawContentToSend = data.agentContent || data.content;
-      const contentToSend = rawContentToSend?.includes(AIONUI_FILES_MARKER)
-        ? rawContentToSend.split(AIONUI_FILES_MARKER)[0].trimEnd()
+      const contentToSend = rawContentToSend?.includes(CONTEXTGO_FILES_MARKER)
+        ? rawContentToSend.split(CONTEXTGO_FILES_MARKER)[0].trimEnd()
         : rawContentToSend;
 
       // Save user message to chat history only (renderer already inserts right-hand bubble)
@@ -692,6 +694,19 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     // Direct persistence to database without emitting to frontend
     // Used for final messages where frontend has already displayed content via deltas
     addMessage(this.conversation_id, message);
+  }
+
+  scheduleAfterResponseHooks(): void {
+    nextTickToLocalFinish(() => {
+      void this.hookRuntime
+        .emitAfterResponse(this.conversation_id, (message) => {
+          ipcBridge.codexConversation.responseStream.emit(message);
+          channelEventBus.emitAgentMessage(this.conversation_id, message);
+        })
+        .catch((error) => {
+          console.warn('[CodexAgentManager] Failed to emit after_response hooks:', error);
+        });
+    });
   }
 
   /**

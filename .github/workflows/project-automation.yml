@@ -9,7 +9,8 @@ permissions:
 
 env:
   PROJECT_NUMBER: 5
-  ORG_NAME: iOfficeAI
+  ORG_NAME: contextgo
+  # Update PROJECT_ID / field option IDs before enabling this workflow in the new org.
   PROJECT_ID: PVT_kwDOCKhK-M4BN1Ah
   STATUS_FIELD_ID: PVTSSF_lADOCKhK-M4BN1Ahzg8tcak
   # Status option IDs
@@ -27,7 +28,15 @@ jobs:
 
   add-issue-to-project:
     name: Add Issue to Project
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     if: github.event_name == 'issues' && github.event.action == 'opened'
     permissions:
       contents: 'read'
@@ -45,12 +54,20 @@ jobs:
         id: add
         uses: actions/add-to-project@v1.0.2
         with:
-          project-url: https://github.com/orgs/iOfficeAI/projects/5
+          project-url: https://github.com/orgs/${{ env.ORG_NAME }}/projects/${{ env.PROJECT_NUMBER }}
           github-token: ${{ steps.mint_token.outputs.token }}
 
   set-issue-initial-status:
     name: Set Issue Initial Status
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     needs: add-issue-to-project
     if: github.event_name == 'issues' && github.event.action == 'opened' && needs.add-issue-to-project.outputs.item_id
     permissions:
@@ -92,7 +109,15 @@ jobs:
 
   update-issue-on-close:
     name: Update Issue on Close
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     if: github.event_name == 'issues' && github.event.action == 'closed'
     permissions:
       contents: 'read'
@@ -127,7 +152,10 @@ jobs:
               }
             `;
 
-            const result = await github.graphql(query, { org: 'iOfficeAI', number: 5 });
+            const result = await github.graphql(query, {
+              org: process.env.ORG_NAME,
+              number: Number(process.env.PROJECT_NUMBER),
+            });
             const item = result.organization.projectV2.items.nodes.find(i => i.content?.id === contentId);
 
             if (!item) {
@@ -159,7 +187,15 @@ jobs:
 
   update-issue-on-reopen:
     name: Update Issue on Reopen
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     if: github.event_name == 'issues' && github.event.action == 'reopened'
     permissions:
       contents: 'read'
@@ -193,7 +229,10 @@ jobs:
               }
             `;
 
-            const result = await github.graphql(query, { org: 'iOfficeAI', number: 5 });
+            const result = await github.graphql(query, {
+              org: process.env.ORG_NAME,
+              number: Number(process.env.PROJECT_NUMBER),
+            });
             const item = result.organization.projectV2.items.nodes.find(i => i.content?.id === contentId);
 
             if (!item) {
@@ -229,7 +268,15 @@ jobs:
 
   pr-update-linked-issue:
     name: Update Linked Issue Status
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     if: github.event_name == 'pull_request'
     permissions:
       contents: 'read'
@@ -319,7 +366,10 @@ jobs:
               }
             `;
 
-            const result = await github.graphql(query, { org: 'iOfficeAI', number: 5 });
+            const result = await github.graphql(query, {
+              org: process.env.ORG_NAME,
+              number: Number(process.env.PROJECT_NUMBER),
+            });
             const projectItems = result.organization.projectV2.items.nodes;
 
             const mutation = `

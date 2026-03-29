@@ -16,10 +16,7 @@
     "none": "None",
     "quickActionsTitle": "ContextGo で何ができる？",
     "quickActionFeedback": "フィードバックや提案は？",
-    "quickActionStar": "気に入った？スターをください！",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "コミュニティ Skills をオンデマンドで検索・有効化。一度設定すれば、すべてのAgentで利用可能。",
-    "skillsMarketDetails": "詳細 >>"
+    "quickActionStar": "気に入った？スターをください！"
   },
   "history": {
     "today": "今日",
@@ -69,7 +66,8 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "削除しました",
-    "deleteFailed": "削除に失敗しました"
+    "deleteFailed": "削除に失敗しました",
+    "toggleGroupConversation": "グループセッションを切り替え"
   },
   "historySearch": {
     "tooltip": "検索",
@@ -80,31 +78,39 @@
     "empty": "一致するメッセージが見つかりません",
     "clear": "検索をクリア",
     "loadingMore": "さらに読み込み中...",
+    "recentConversations": "最近の会話",
     "untitled": "無題の会話"
   },
   "entry": {
     "create": "新規作成",
     "conversation": "会話",
-    "group": "ディスカッショングループ"
+    "group": "グループ"
   },
   "dropdown": {
     "cliAgents": "CLI Agents",
     "presetAssistants": "プリセットアシスタント"
   },
   "group": {
-    "header": "ディスカッショングループ",
-    "createEntry": "ディスカッショングループを作成",
-    "createTitle": "ディスカッショングループを作成",
+    "header": "グループ",
+    "createEntry": "グループを作成",
+    "createTitle": "グループを作成",
     "createAction": "グループを作成",
-    "createFailed": "ディスカッショングループの作成に失敗しました",
-    "defaultName": "ディスカッショングループ",
+    "createFailed": "グループの作成に失敗しました",
+    "defaultName": "エージェントグループ",
     "nameLabel": "グループ名",
-    "namePlaceholder": "ディスカッショングループ名を入力",
+    "namePlaceholder": "グループ名を入力",
     "workspaceLabel": "ワークスペース",
     "workspacePlaceholder": "任意。空欄の場合は既定のワークスペースを自動作成します",
-    "workspaceHint": "ディスカッショングループとすべての参加セッションはこのワークスペースを共有します。空欄の場合は既定の一時ワークスペースを自動作成します。",
+    "workspaceHint": "グループとすべての参加セッションはこのワークスペースを共有します。空欄の場合は既定の一時ワークスペースを自動作成します。",
     "selectWorkspace": "フォルダを選択",
     "selectWorkspaceFailed": "ワークスペースの選択に失敗しました",
+    "kindLabel": "協業タイプ",
+    "kindWorkflow": "ワークフロー",
+    "kindDiscussion": "ディスカッション",
+    "kindHint": {
+      "workflow": "デフォルトです。planner / writer / evaluator が共有ワークスペースで反復実行します。",
+      "discussion": "従来の議論モードです。意見比較、リレー分析、ディベートに向いています。"
+    },
     "modeLabel": "ディスカッションモード",
     "modeDebate": "ディベート",
     "modeBroadcast": "ブロードキャスト",
@@ -118,8 +124,63 @@
     "minimumParticipants": "少なくとも 2 人の参加者を選択してください",
     "minimumParticipantsHint": "ディスカッショングループを作成するには 2 人以上の参加者を選択してください。",
     "noDescription": "説明なし",
-    "sendPlaceholder": "ディスカッショングループに質問する...",
-    "roundLabel": "ラウンド {{round}}"
+    "sendPlaceholder": "グループにタスクを渡す...",
+    "roundLabel": "ラウンド {{round}}",
+    "role": {
+      "planner": "Planner",
+      "writer": "Writer",
+      "evaluator": "Evaluator",
+      "custom": "Custom"
+    },
+    "workflow": {
+      "templateLabel": "ワークフローテンプレート",
+      "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
+      "templateHint": "planner が目標と受け入れ条件を定義し、writer が共有ワークスペースの成果物を更新し、evaluator が採点と改善指示を返します。",
+      "templatePlannerWriterEvaluatorHint": "反復型 harness: planner が方針を定義し、writer が成果物を段階的に磨き、evaluator が各ラウンドを批評します。",
+      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
+      "templatePlanBuildEvaluateHint": "単発ビルド型 harness: planner が範囲を定め、builder が一気に組み上げ、evaluator が最後にレビューします。",
+      "exactParticipants": "このワークフローテンプレートには 3 人ちょうどの参加者が必要です",
+      "exactParticipantsHint": "Planner / Writer / Evaluator テンプレートでは、3 人の参加者にそれぞれ異なる役割が必要です。",
+      "assignRoles": "3 人に planner / writer / evaluator の役割を割り当ててください",
+      "roleLabel": "役割",
+      "iterationLabel": "{{iteration}} 回目",
+      "stage": {
+        "planning": "計画",
+        "writing": "執筆",
+        "evaluating": "評価",
+        "completed": "完了",
+        "failed": "失敗"
+      },
+      "maxIterationsLabel": "最大反復回数",
+      "maxIterationsHint": "許容範囲: {{min}}〜{{max}}",
+      "scoreTargetLabel": "目標スコア",
+      "scoreTargetHint": "Evaluator の合格しきい値: {{min}}〜{{max}}",
+      "artifactPathLabel": "成果物パス",
+      "artifactPathHint": "共有ワークスペース内の相対パス。絶対パスや親ディレクトリ参照は使用できません。",
+      "reviewModeLabel": "レビュー方式",
+      "reviewModeHint": "evaluator が毎ラウンド確認するか、最後だけ確認するかを選びます。",
+      "reviewMode": {
+        "perIteration": "毎ラウンドレビュー",
+        "finalOnly": "最終レビューのみ"
+      },
+      "stageLabel": "段階",
+      "iterationBudgetLabel": "反復予算",
+      "iterationBudgetValue": "{{current}} / {{total}}",
+      "latestScoreLabel": "最新スコア",
+      "latestDecisionLabel": "最新判断",
+      "decision": {
+        "continue": "継続",
+        "accept": "採用",
+        "stop": "停止"
+      },
+      "status": {
+        "idle": "待機中",
+        "running": "実行中",
+        "completed": "完了",
+        "failed": "失敗",
+        "stopped": "停止済み"
+      }
+    }
   },
   "noAgentsAvailable": "利用可能なエージェントはありません",
   "noModelConfigured": "モデルが設定されていません。設定ページで設定してください。",
@@ -245,6 +306,21 @@
     "switchAgentFailed": "エージェントの切り替えに失敗しました",
     "modelSwitchFailed": "モデルの切り替えに失敗しました",
     "modelSwitchNotSupported": "現在の OpenClaw Gateway はモデル切り替えに対応していません"
+  },
+  "pendingMessages": {
+    "title": "保留中 {{count}} 件",
+    "shortcuts": "Tab でキュー · Cmd/Ctrl+Enter で誘導 · Option/Alt+↑ で最新を編集",
+    "attachments": "{{count}} 個のファイル",
+    "dispatching": "送信中...",
+    "edit": "再編集",
+    "mode": {
+      "queue": "キュー",
+      "steer": "誘導"
+    },
+    "actions": {
+      "queue": "キューに戻す",
+      "steer": "次を誘導"
+    }
   },
   "contextUsage": {
     "contextUsed": "コンテキスト使用量"

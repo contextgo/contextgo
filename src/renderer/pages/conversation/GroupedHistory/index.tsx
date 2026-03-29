@@ -5,12 +5,12 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
+import { Button, Empty, Input, Modal } from '@arco-design/web-react';
 import DirectorySelectionModal from '@/renderer/components/settings/DirectorySelectionModal';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
-import { CronJobIndicator, useCronJobsMap } from '@/renderer/pages/cron';
+import { useCronJobsMap } from '@/renderer/pages/cron';
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Button, Empty, Input, Modal } from '@arco-design/web-react';
 import { Down, FolderOpen } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -52,13 +52,13 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     isConversationGenerating,
     hasCompletionUnread,
     expandedWorkspaces,
-    expandedDiscussionGroups,
+    expandedGroupConversations,
     pinnedConversations,
     timelineSections,
-    discussionChildConversationsByParentId,
+    groupChildConversationsByParentId,
     handleToggleWorkspace,
-    handleToggleDiscussionGroup,
-    ensureDiscussionGroupExpanded,
+    handleToggleGroupConversation,
+    ensureGroupConversationExpanded,
   } = useConversations();
 
   const {
@@ -190,17 +190,14 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
 
   const renderWorkspaceMarker = () => <span className='flex h-20px w-12px shrink-0' aria-hidden='true' />;
 
-  const renderDiscussionChildMarker = () => (
+  const renderGroupChildMarker = () => (
     <span className='relative flex h-20px w-14px shrink-0 items-center' aria-hidden='true'>
       <span className='absolute left-4px top-1/2 h-2px w-10px -translate-y-1/2 rounded-full bg-[var(--color-text-4)]/45' />
     </span>
   );
 
-  const renderDiscussionChildConversations = (
-    conversation: TChatConversation,
-    inheritedLeadingSlot?: React.ReactNode
-  ) => {
-    const childConversations = discussionChildConversationsByParentId[conversation.id] ?? [];
+  const renderGroupChildConversations = (conversation: TChatConversation, inheritedLeadingSlot?: React.ReactNode) => {
+    const childConversations = groupChildConversationsByParentId[conversation.id] ?? [];
     if (childConversations.length === 0) {
       return null;
     }
@@ -214,7 +211,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
             leadingSlot:
               collapsed || !conversation.id
                 ? undefined
-                : composeLeadingSlot(inheritedLeadingSlot, renderDiscussionChildMarker()),
+                : composeLeadingSlot(inheritedLeadingSlot, renderGroupChildMarker()),
           })
         )}
       </div>
@@ -222,11 +219,11 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   };
 
   const renderConversationBlock = (conversation: TChatConversation, inheritedLeadingSlot?: React.ReactNode) => {
-    const childConversations = discussionChildConversationsByParentId[conversation.id] ?? [];
-    const hasDiscussionChildren = childConversations.length > 0;
-    const isDiscussionGroupExpanded = collapsed || expandedDiscussionGroups.includes(conversation.id);
+    const childConversations = groupChildConversationsByParentId[conversation.id] ?? [];
+    const hasGroupChildren = childConversations.length > 0;
+    const isGroupConversationExpanded = collapsed || expandedGroupConversations.includes(conversation.id);
 
-    if (hasDiscussionChildren) {
+    if (hasGroupChildren) {
       return (
         <div key={conversation.id} className='min-w-0 w-full'>
           {renderConversation(conversation, {
@@ -234,32 +231,32 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
               ? undefined
               : composeLeadingSlot(
                   inheritedLeadingSlot,
-                  <button
-                    type='button'
-                    className={classNames(
-                      'h-20px w-18px shrink-0 flex items-center justify-center cursor-pointer rounded-6px border-none bg-transparent p-0 text-[var(--color-text-3)] hover:bg-fill-2'
-                    )}
-                    aria-label='Toggle discussion group'
+                  <Button
+                    size='mini'
+                    type='text'
+                    className='!h-20px !w-18px !shrink-0 !rounded-6px !p-0 !text-[var(--color-text-3)] hover:!bg-fill-2'
+                    icon={
+                      <Down
+                        size={14}
+                        className={classNames('transition-transform duration-200', {
+                          'rotate-0': isGroupConversationExpanded,
+                          '-rotate-90': !isGroupConversationExpanded,
+                        })}
+                      />
+                    }
+                    aria-label={t('conversation.history.toggleGroupConversation')}
                     onClick={(event) => {
                       event.stopPropagation();
-                      handleToggleDiscussionGroup(conversation.id);
+                      handleToggleGroupConversation(conversation.id);
                     }}
-                  >
-                    <Down
-                      size={14}
-                      className={classNames('transition-transform duration-200', {
-                        'rotate-0': isDiscussionGroupExpanded,
-                        '-rotate-90': !isDiscussionGroupExpanded,
-                      })}
-                    />
-                  </button>
+                  />
                 ),
             onConversationClick: (targetConversation) => {
-              ensureDiscussionGroupExpanded(targetConversation.id);
+              ensureGroupConversationExpanded(targetConversation.id);
               handleConversationClick(targetConversation);
             },
           })}
-          {isDiscussionGroupExpanded ? renderDiscussionChildConversations(conversation, inheritedLeadingSlot) : null}
+          {isGroupConversationExpanded ? renderGroupChildConversations(conversation, inheritedLeadingSlot) : null}
         </div>
       );
     }
@@ -468,7 +465,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                     return (
                       <div key={conversation.id} className='w-full min-w-0'>
                         {isDragEnabled ? <SortableConversationRow {...props} /> : <ConversationRow {...props} />}
-                        {renderDiscussionChildConversations(conversation)}
+                        {renderGroupChildConversations(conversation)}
                       </div>
                     );
                   })}

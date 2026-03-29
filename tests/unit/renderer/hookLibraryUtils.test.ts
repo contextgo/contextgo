@@ -9,14 +9,20 @@ const HOOKS: HookInfo[] = [
   {
     name: 'prompt-guard',
     description: 'Protects prompts before send',
+    category: 'safety',
+    tags: ['security', 'pre-tool-use'],
     location: '/hooks/prompt-guard',
     isCustom: true,
+    runnableEvents: ['before_user_prompt'],
   },
   {
     name: 'builtin-audit',
     description: 'Builtin audit trail',
+    category: 'operations',
+    tags: ['handoff'],
     location: '/builtin/hooks/audit',
     isCustom: false,
+    outputTargets: ['system-notification'],
   },
 ];
 
@@ -31,17 +37,25 @@ describe('filterHooksByQuery', () => {
     expect(filterHooksByQuery(HOOKS, '/hooks/prompt')).toEqual([HOOKS[0]]);
   });
 
+  it('matches hook category, tags, output targets, and runnable events', () => {
+    expect(filterHooksByQuery(HOOKS, 'security')).toEqual([HOOKS[0]]);
+    expect(filterHooksByQuery(HOOKS, 'operations')).toEqual([HOOKS[1]]);
+    expect(filterHooksByQuery(HOOKS, 'notification')).toEqual([HOOKS[1]]);
+    expect(filterHooksByQuery(HOOKS, 'before_user_prompt')).toEqual([HOOKS[0]]);
+  });
+
   it('returns an empty list when nothing matches', () => {
     expect(filterHooksByQuery(HOOKS, 'missing')).toEqual([]);
   });
 });
 
 describe('summarizeHookLibrary', () => {
-  it('counts total, custom, and builtin hooks', () => {
+  it('counts total, custom, builtin, and ready-now hooks', () => {
     expect(summarizeHookLibrary(HOOKS)).toEqual({
       total: 2,
       custom: 1,
       builtin: 1,
+      readyNow: 1,
     });
   });
 
@@ -50,6 +64,7 @@ describe('summarizeHookLibrary', () => {
       total: 0,
       custom: 0,
       builtin: 0,
+      readyNow: 0,
     });
   });
 });

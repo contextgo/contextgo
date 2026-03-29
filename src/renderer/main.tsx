@@ -34,6 +34,7 @@ import { ConfigProvider } from '@arco-design/web-react';
 // Configure Arco Design to use React 18's createRoot, fixing Message component's CopyReactDOM.render error
 import '@arco-design/web-react/es/_util/react-19-adapter';
 import '@arco-design/web-react/dist/css/arco.css';
+import '@icon-park/react/styles/index.css';
 import enUS from '@arco-design/web-react/es/locale/en-US';
 import jaJP from '@arco-design/web-react/es/locale/ja-JP';
 import zhCN from '@arco-design/web-react/es/locale/zh-CN';
@@ -44,6 +45,8 @@ import { useTranslation } from 'react-i18next';
 // Styles
 import 'uno.css';
 import './styles/arco-override.css';
+import './styles/icon.css';
+import './styles/renderer-crash-overlay.css';
 import './styles/themes/index.css';
 
 // i18n
@@ -51,12 +54,13 @@ import './services/i18n';
 
 // Components and utilities
 import Layout from './components/layout/Layout';
+import RendererCrashBoundary from './components/layout/RendererCrashBoundary';
+import { mountRendererCrashOverlay } from './components/layout/RendererCrashOverlay';
 import Router from './components/layout/Router';
 import Sider from './components/layout/Sider';
 import { useAuth } from './hooks/context/AuthContext';
 import { ConversationHistoryProvider } from './hooks/context/ConversationHistoryContext';
-import HOC from './utils/ui/HOC';
-import { ipcBridge } from '@/common';
+import { registerRendererCrashReporting } from './utils/ui/rendererCrashReporting';
 
 // Patch Korean locale with missing properties from English locale
 const koKRComplete = {
@@ -124,61 +128,15 @@ const Main = () => {
   );
 };
 
-const App = HOC.Wrapper(Config)(Main);
+const App: React.FC = () => (
+  <Config>
+    <RendererCrashBoundary>
+      <Main />
+    </RendererCrashBoundary>
+  </Config>
+);
 
-const registerRendererCrashReporting = () => {
-  const report = (payload: { type: 'error' | 'unhandledrejection'; message: string; stack?: string }) => {
-    ipcBridge.application.reportRendererError
-      .invoke({
-        ...payload,
-        href: window.location.href,
-      })
-      .catch(() => {
-        // Ignore reporting failures to avoid cascading runtime errors in the renderer.
-      });
-  };
-
-  window.addEventListener(
-    'error',
-    (event) => {
-      const error = event.error instanceof Error ? event.error : undefined;
-      report({
-        type: 'error',
-        message: error?.message || event.message || 'Unknown renderer error',
-        stack: error?.stack,
-      });
-    },
-    true
-  );
-
-  window.addEventListener(
-    'unhandledrejection',
-    (event) => {
-      const reason = event.reason;
-      const error = reason instanceof Error ? reason : undefined;
-      const message =
-        error?.message ||
-        (typeof reason === 'string'
-          ? reason
-          : (() => {
-              try {
-                return JSON.stringify(reason);
-              } catch {
-                return String(reason);
-              }
-            })()) ||
-        'Unhandled renderer rejection';
-
-      report({
-        type: 'unhandledrejection',
-        message,
-        stack: error?.stack,
-      });
-    },
-    true
-  );
-};
-
+mountRendererCrashOverlay();
 registerRendererCrashReporting();
 
 const root = createRoot(document.getElementById('root')!);

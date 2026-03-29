@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,7 +8,7 @@
  * OpenClaw Conflict Detector
  *
  * Detects if OpenClaw has Lark/Telegram channels enabled with the same credentials
- * as AionUi Channels, and warns the user about the conflict.
+ * as ContextGo Channels, and warns the user about the conflict.
  */
 
 import fs from 'node:fs';
@@ -96,7 +96,7 @@ function readOpenClawConfig(): OpenClawConfig | null {
 }
 
 /**
- * Check if OpenClaw Lark channel conflicts with AionUi credentials
+ * Check if OpenClaw Lark channel conflicts with ContextGo credentials
  */
 export function detectLarkConflict(aionuiAppId: string): ConflictInfo | null {
   const config = readOpenClawConfig();
@@ -128,7 +128,7 @@ export function detectLarkConflict(aionuiAppId: string): ConflictInfo | null {
 }
 
 /**
- * Check if OpenClaw Telegram channel conflicts with AionUi credentials
+ * Check if OpenClaw Telegram channel conflicts with ContextGo credentials
  */
 export function detectTelegramConflict(aionuiBotToken: string): ConflictInfo | null {
   const config = readOpenClawConfig();

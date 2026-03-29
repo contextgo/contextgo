@@ -56,21 +56,21 @@ import { pickRecommendedAsset } from '@process/bridge/updateBridge';
 
 const asset = (name: string) => ({
   name,
-  url: `https://github.com/iOfficeAI/AionUi/releases/download/v1.0.0/${name}`,
+  url: `https://github.com/contextgo/contextgo/releases/download/v1.0.0/${name}`,
   size: 1,
 });
 
 describe('pickRecommendedAsset', () => {
   it('should prefer ia32 package on win32 ia32 runtime', () => {
-    const assets = [asset('AionUi-1.0.0-win-x64.exe'), asset('AionUi-1.0.0-win-ia32.exe')];
+    const assets = [asset('ContextGo-1.0.0-win-x64.exe'), asset('ContextGo-1.0.0-win-ia32.exe')];
 
     const result = pickRecommendedAsset(assets, { platform: 'win32', arch: 'ia32' });
 
-    expect(result?.name).toBe('AionUi-1.0.0-win-ia32.exe');
+    expect(result?.name).toBe('ContextGo-1.0.0-win-ia32.exe');
   });
 
   it('should return undefined when no compatible arch package exists', () => {
-    const assets = [asset('AionUi-1.0.0-win-x64.exe'), asset('AionUi-1.0.0-win-x64.zip')];
+    const assets = [asset('ContextGo-1.0.0-win-x64.exe'), asset('ContextGo-1.0.0-win-x64.zip')];
 
     const result = pickRecommendedAsset(assets, { platform: 'win32', arch: 'ia32' });
 
@@ -78,10 +78,10 @@ describe('pickRecommendedAsset', () => {
   });
 
   it('should allow generic package without explicit arch token', () => {
-    const assets = [asset('AionUi-1.0.0-win.exe')];
+    const assets = [asset('ContextGo-1.0.0-win.exe')];
 
     const result = pickRecommendedAsset(assets, { platform: 'win32', arch: 'ia32' });
 
-    expect(result?.name).toBe('AionUi-1.0.0-win.exe');
+    expect(result?.name).toBe('ContextGo-1.0.0-win.exe');
   });
 });
