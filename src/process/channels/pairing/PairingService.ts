@@ -152,7 +152,32 @@ export class PairingService {
       try {
         const connector = await getChannelRouteResolver().resolveConnectorInstance(platformType, pluginId);
         const identityResult = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
-        return Boolean(identityResult.success && identityResult.data);
+        if (identityResult.success && identityResult.data) {
+          return true;
+        }
+
+        const inferredChatType = inferRemoteChatType({
+          chatId,
+          platformUserId,
+        });
+        if (inferredChatType === 'group') {
+          return false;
+        }
+
+        const connectorsResult = db.getConnectorInstances();
+        if (!connectorsResult.success || !connectorsResult.data) {
+          return false;
+        }
+
+        const samePlatformConnectorCount = connectorsResult.data.filter(
+          (existingConnector) => existingConnector.platform === platformType
+        ).length;
+        if (samePlatformConnectorCount > 1) {
+          return false;
+        }
+
+        const legacyUserResult = db.getLegacyChannelUserByPlatform(platformUserId, platformType);
+        return Boolean(legacyUserResult.success && legacyUserResult.data);
       } catch (error) {
         console.warn('[PairingService] Failed to resolve connector for authorization check:', error);
         return false;

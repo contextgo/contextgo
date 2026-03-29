@@ -1757,7 +1757,7 @@ export class AionUIDatabase {
   getExternalSessionByActiveConversation(conversationId: string): IQueryResult<IExternalSession | null> {
     try {
       const row = this.db
-        .prepare('SELECT * FROM external_sessions WHERE active_conversation_id = ?')
+        .prepare('SELECT * FROM external_sessions WHERE active_conversation_id = ? ORDER BY last_activity DESC LIMIT 1')
         .get(conversationId) as IExternalSessionRow | undefined;
       return { success: true, data: row ? rowToExternalSession(row) : null };
     } catch (error: any) {
@@ -2075,6 +2075,19 @@ export class AionUIDatabase {
           sessionId: projectedRow.session_id ?? undefined,
         },
       };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  getLegacyChannelUserByPlatform(platformUserId: string, platformType: PluginType): IQueryResult<IChannelUser | null> {
+    try {
+      const row = this.db
+        .prepare(
+          'SELECT * FROM assistant_users WHERE platform_user_id = ? AND platform_type = ? ORDER BY authorized_at DESC LIMIT 1'
+        )
+        .get(platformUserId, platformType) as IChannelUserRow | undefined;
+      return { success: true, data: row ? rowToChannelUser(row) : null };
     } catch (error: any) {
       return { success: false, error: error.message };
     }

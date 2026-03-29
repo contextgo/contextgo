@@ -238,6 +238,28 @@ export class ChannelHandoffService {
           };
       assertQuerySuccess(db.upsertExternalSession(nextTargetSession), 'Failed to upsert target external session');
 
+      if (
+        mode === 'resume' &&
+        source.sourceExternalSession &&
+        source.sourceConversationId &&
+        source.sourceExternalSession.id !== nextTargetSession.id
+      ) {
+        const releasedSourceSession: IExternalSession = {
+          ...source.sourceExternalSession,
+          activeConversationId: undefined,
+          lastActivity: now,
+          metadata: {
+            ...source.sourceExternalSession.metadata,
+            handoff: {
+              transferredConversationId: source.sourceConversationId,
+              targetExternalSessionId: nextTargetSession.id,
+              updatedAt: now,
+            },
+          },
+        };
+        assertQuerySuccess(db.upsertExternalSession(releasedSourceSession), 'Failed to detach source external session');
+      }
+
       const mirroredSession: IChannelSession = {
         id: nextTargetSession.id,
         userId: updatedIdentity.id,

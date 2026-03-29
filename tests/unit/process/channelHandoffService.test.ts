@@ -218,6 +218,18 @@ describe('ChannelHandoffService', () => {
         bindingId: result.bindingId,
       })
     );
+
+    expect(dbState.externalSessions.get('external_session_source')).toEqual(
+      expect.objectContaining({
+        activeConversationId: undefined,
+        metadata: expect.objectContaining({
+          handoff: expect.objectContaining({
+            transferredConversationId: 'conversation_source',
+            targetExternalSessionId: result.targetExternalSessionId,
+          }),
+        }),
+      })
+    );
   });
 
   it('rejects handoff when source conversation has running task and policy is reject', async () => {
