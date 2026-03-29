@@ -34,6 +34,9 @@ const SendBox: React.FC<{
   value?: string;
   onChange?: (value: string) => void;
   onSend: (message: string) => Promise<void>;
+  onQueue?: (message: string) => Promise<void> | void;
+  onSteer?: (message: string) => Promise<void> | void;
+  onEditLatestPending?: () => void;
   onStop?: () => Promise<void>;
   disabled?: boolean;
   loading?: boolean;
@@ -50,6 +53,9 @@ const SendBox: React.FC<{
   onSlashBuiltinCommand?: (name: string) => void;
 }> = ({
   onSend,
+  onQueue,
+  onSteer,
+  onEditLatestPending,
   onStop,
   prefix,
   className,
@@ -261,7 +267,7 @@ const SendBox: React.FC<{
   );
 
   // 使用共享的输入法合成处理
-  const { compositionHandlers, createKeyDownHandler } = useCompositionInput();
+  const { isComposing, compositionHandlers, createKeyDownHandler } = useCompositionInput();
 
   // 使用共享的PasteService集成
   const { onPaste, onFocus: handlePasteFocus } = usePasteService({
@@ -325,17 +331,9 @@ const SendBox: React.FC<{
     setIsInputFocused(false);
   }, []);
 
-  const sendMessageHandler = () => {
-    if (loading || isLoading) {
-      message.warning(t('messages.conversationInProgress'));
-      return;
-    }
-    if (!input.trim() && domSnippets.length === 0) {
-      return;
-    }
-    setIsLoading(true);
+  const hasMessageContent = Boolean(input.trim() || domSnippets.length > 0);
 
-    // 构建消息内容：如果有 DOM 片段，附加完整 HTML / Build message: if has DOM snippets, append full HTML
+  const buildFinalMessage = useCallback(() => {
     let finalMessage = input;
     if (domSnippets.length > 0) {
       const snippetsHtml = domSnippets
@@ -344,10 +342,39 @@ const SendBox: React.FC<{
       finalMessage = input + snippetsHtml;
     }
 
-    // 立即清空输入框，避免异步 onSend 完成后覆盖用户新输入
-    // Clear input immediately to prevent async onSend completion from overwriting new user input
+    return finalMessage;
+  }, [domSnippets, input]);
+
+  const consumeInputMessage = useCallback(() => {
+    const finalMessage = buildFinalMessage();
     setInput('');
     clearDomSnippets();
+    return finalMessage;
+  }, [buildFinalMessage, clearDomSnippets, setInput]);
+
+  const sendDeferredMessage = useCallback(
+    (handler?: (message: string) => Promise<void> | void) => {
+      if (!handler || !hasMessageContent) {
+        return false;
+      }
+
+      const finalMessage = consumeInputMessage();
+      void Promise.resolve(handler(finalMessage));
+      return true;
+    },
+    [consumeInputMessage, hasMessageContent]
+  );
+
+  const sendMessageHandler = () => {
+    if (loading || isLoading) {
+      message.warning(t('messages.conversationInProgress'));
+      return;
+    }
+    if (!hasMessageContent) {
+      return;
+    }
+    setIsLoading(true);
+    const finalMessage = consumeInputMessage();
 
     onSend(finalMessage)
       .catch(() => {})
@@ -366,7 +393,7 @@ const SendBox: React.FC<{
   };
 
   // Calculate button disabled state and style
-  const isButtonDisabled = disabled || (!input.trim() && domSnippets.length === 0);
+  const isButtonDisabled = disabled || !hasMessageContent;
   const buttonStyle = {
     backgroundColor: isButtonDisabled ? undefined : '#000000',
     borderColor: isButtonDisabled ? undefined : '#000000',
@@ -385,6 +412,49 @@ const SendBox: React.FC<{
         sendMessageHandler();
       }}
     />
+  );
+
+  const baseKeyDownHandler = createKeyDownHandler(sendMessageHandler, slashController.onKeyDown);
+
+  const handleInputKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (isComposing.current) {
+        return;
+      }
+
+      if (!slashController.isOpen && !disabled) {
+        if (event.key === 'Tab' && !event.shiftKey && onQueue && hasMessageContent) {
+          event.preventDefault();
+          sendDeferredMessage(onQueue);
+          return;
+        }
+
+        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && onSteer && hasMessageContent) {
+          event.preventDefault();
+          sendDeferredMessage(onSteer);
+          return;
+        }
+
+        if (event.altKey && event.key === 'ArrowUp' && onEditLatestPending) {
+          event.preventDefault();
+          onEditLatestPending();
+          return;
+        }
+      }
+
+      baseKeyDownHandler(event);
+    },
+    [
+      baseKeyDownHandler,
+      disabled,
+      hasMessageContent,
+      isComposing,
+      onEditLatestPending,
+      onQueue,
+      onSteer,
+      sendDeferredMessage,
+      slashController.isOpen,
+    ]
   );
 
   return (
@@ -488,7 +558,7 @@ const SendBox: React.FC<{
             onBlur={handleInputBlur}
             {...compositionHandlers}
             autoSize={isSingleLine ? false : { minRows: 1, maxRows: 10 }}
-            onKeyDown={createKeyDownHandler(sendMessageHandler, slashController.onKeyDown)}
+            onKeyDown={handleInputKeyDown}
           ></Input.TextArea>
           {isSingleLine && (
             <div className='flex items-center gap-2'>

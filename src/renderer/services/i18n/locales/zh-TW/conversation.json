@@ -244,6 +244,21 @@
     "modelSwitchFailed": "切換模型失敗",
     "modelSwitchNotSupported": "目前的 OpenClaw Gateway 不支援切換模型"
   },
+  "pendingMessages": {
+    "title": "待發送 {{count}} 條",
+    "shortcuts": "Tab 進佇列 · Cmd/Ctrl+Enter 引導 · Option/Alt+↑ 編輯最近一條",
+    "attachments": "{{count}} 個檔案",
+    "dispatching": "發送中...",
+    "edit": "重新編輯",
+    "mode": {
+      "queue": "佇列",
+      "steer": "引導"
+    },
+    "actions": {
+      "queue": "改為佇列",
+      "steer": "改為引導"
+    }
+  },
   "contextUsage": {
     "contextUsed": "上下文已使用"
   },
