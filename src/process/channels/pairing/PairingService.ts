@@ -1,12 +1,14 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import { channel as channelBridge } from '@/common/adapter/ipcBridge';
 import { getDatabase } from '@process/services/database';
 import * as crypto from 'crypto';
+import { getChannelRouteResolver, inferRemoteChatType } from '../core/ChannelRouteResolver';
+import type { IRemoteIdentity } from '../types';
 import type { IChannelPairingRequest, IChannelUser, PluginType } from '../types';
 
 /**
@@ -24,7 +26,7 @@ const PAIRING_CONFIG = {
  * Flow:
  * 1. User sends /start to bot
  * 2. Bot generates 6-digit pairing code
- * 3. User enters code in AionUi Settings (or code is auto-displayed)
+ * 3. User enters code in ContextGo Settings (or code is auto-displayed)
  * 4. Local user approves/rejects the pairing
  * 5. Bot notifies remote user of result
  */
@@ -42,15 +44,23 @@ export class PairingService {
   async generatePairingCode(
     platformUserId: string,
     platformType: PluginType,
-    displayName?: string
+    displayName?: string,
+    chatId?: string,
+    pluginId?: string
   ): Promise<{ code: string; expiresAt: number }> {
     const db = await getDatabase();
+    const connector = await getChannelRouteResolver().resolveConnectorInstance(platformType, pluginId);
 
     // Check for existing pending request
     const existingResult = db.getPendingPairingRequests();
     if (existingResult.success && existingResult.data) {
       const existing = existingResult.data.find(
-        (r) => r.platformUserId === platformUserId && r.platformType === platformType && r.status === 'pending'
+        (r) =>
+          r.connectorId === connector.id &&
+          r.platformUserId === platformUserId &&
+          r.platformType === platformType &&
+          r.status === 'pending' &&
+          (chatId ? r.remoteChatId === chatId : true)
       );
 
       // Return existing code if not expired
@@ -72,10 +82,15 @@ export class PairingService {
       code,
       platformUserId,
       platformType,
+      connectorId: connector.id,
+      remoteChatId: chatId ?? platformUserId,
       displayName,
       requestedAt: now,
       expiresAt,
       status: 'pending',
+      metadata: {
+        source: 'channel-pairing',
+      },
     };
 
     const createResult = db.createPairingRequest(request);
@@ -95,17 +110,22 @@ export class PairingService {
   async refreshPairingCode(
     platformUserId: string,
     platformType: PluginType,
-    displayName?: string
+    displayName?: string,
+    chatId?: string,
+    pluginId?: string
   ): Promise<{ code: string; expiresAt: number }> {
     const db = await getDatabase();
 
     // Expire any existing pending codes
     const existingResult = db.getPendingPairingRequests();
     if (existingResult.success && existingResult.data) {
+      const connector = await getChannelRouteResolver().resolveConnectorInstance(platformType, pluginId);
       for (const request of existingResult.data) {
         if (
+          request.connectorId === connector.id &&
           request.platformUserId === platformUserId &&
           request.platformType === platformType &&
+          request.remoteChatId === (chatId ?? platformUserId) &&
           request.status === 'pending'
         ) {
           db.updatePairingRequestStatus(request.code, 'expired');
@@ -114,16 +134,64 @@ export class PairingService {
     }
 
     // Generate new code
-    return this.generatePairingCode(platformUserId, platformType, displayName);
+    return this.generatePairingCode(platformUserId, platformType, displayName, chatId, pluginId);
   }
 
   /**
    * Check if a user is already authorized
    */
-  async isUserAuthorized(platformUserId: string, platformType: PluginType): Promise<boolean> {
+  async isUserAuthorized(
+    platformUserId: string,
+    platformType: PluginType,
+    chatId?: string,
+    pluginId?: string
+  ): Promise<boolean> {
     const db = await getDatabase();
-    const result = db.getChannelUserByPlatform(platformUserId, platformType);
-    return result.success && result.data !== null;
+
+    if (chatId) {
+      try {
+        const connector = await getChannelRouteResolver().resolveConnectorInstance(platformType, pluginId);
+        const identityResult = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
+        if (identityResult.success && identityResult.data) {
+          return true;
+        }
+
+        const inferredChatType = inferRemoteChatType({
+          chatId,
+          platformUserId,
+        });
+        if (inferredChatType === 'group') {
+          return false;
+        }
+
+        const connectorsResult = db.getConnectorInstances();
+        if (!connectorsResult.success || !connectorsResult.data) {
+          return false;
+        }
+
+        const samePlatformConnectorCount = connectorsResult.data.filter(
+          (existingConnector) => existingConnector.platform === platformType
+        ).length;
+        if (samePlatformConnectorCount > 1) {
+          return false;
+        }
+
+        const legacyUserResult = db.getLegacyChannelUserByPlatform(platformUserId, platformType);
+        return Boolean(legacyUserResult.success && legacyUserResult.data);
+      } catch (error) {
+        console.warn('[PairingService] Failed to resolve connector for authorization check:', error);
+        return false;
+      }
+    }
+
+    const usersResult = db.getChannelUsers();
+    if (!usersResult.success || !usersResult.data) {
+      return false;
+    }
+
+    return usersResult.data.some(
+      (user) => user.platformUserId === platformUserId && user.platformType === platformType
+    );
   }
 
   /**
@@ -140,7 +208,9 @@ export class PairingService {
    */
   async getPendingRequestForUser(
     platformUserId: string,
-    platformType: PluginType
+    platformType: PluginType,
+    chatId?: string,
+    pluginId?: string
   ): Promise<IChannelPairingRequest | null> {
     const db = await getDatabase();
     const result = db.getPendingPairingRequests();
@@ -149,11 +219,24 @@ export class PairingService {
       return null;
     }
 
+    let connectorId: string | undefined;
+    if (pluginId) {
+      try {
+        const connector = await getChannelRouteResolver().resolveConnectorInstance(platformType, pluginId);
+        connectorId = connector.id;
+      } catch (error) {
+        console.warn('[PairingService] Failed to resolve connector for pending pairing lookup:', error);
+        return null;
+      }
+    }
+
     return (
       result.data.find(
         (r) =>
+          (!connectorId || r.connectorId === connectorId) &&
           r.platformUserId === platformUserId &&
           r.platformType === platformType &&
+          (chatId ? r.remoteChatId === chatId : true) &&
           r.status === 'pending' &&
           r.expiresAt > Date.now()
       ) ?? null
@@ -186,35 +269,81 @@ export class PairingService {
       };
     }
 
-    // Check if user already exists
-    const existingUser = db.getChannelUserByPlatform(request.platformUserId, request.platformType);
-    if (existingUser.success && existingUser.data) {
-      db.updatePairingRequestStatus(code, 'approved');
-      return { success: true, user: existingUser.data };
+    let channelUser: IChannelUser | null = null;
+    try {
+      const connector = await getChannelRouteResolver().resolveConnectorInstance(
+        request.platformType,
+        request.connectorId
+      );
+      const remoteChatId = request.remoteChatId ?? request.platformUserId;
+      const remoteChatType = inferRemoteChatType({
+        chatId: remoteChatId,
+        platformUserId: request.platformUserId,
+      });
+      const existingIdentity = db.getRemoteIdentityByConnectorChat(connector.id, remoteChatId);
+      const remoteIdentity: IRemoteIdentity =
+        existingIdentity.success && existingIdentity.data
+          ? {
+              ...existingIdentity.data,
+              remoteUserId:
+                remoteChatType === 'group'
+                  ? (existingIdentity.data.remoteUserId ?? request.platformUserId)
+                  : request.platformUserId,
+              remoteChatType: remoteChatType ?? existingIdentity.data.remoteChatType,
+              displayName: request.displayName ?? existingIdentity.data.displayName,
+              lastActive: Date.now(),
+            }
+          : {
+              id: `remote_identity_${Date.now()}_${crypto.randomBytes(4).toString('hex').slice(0, 6)}`,
+              connectorId: connector.id,
+              remoteUserId: request.platformUserId,
+              remoteChatId,
+              remoteChatType,
+              displayName: request.displayName,
+              authorizedAt: Date.now(),
+              lastActive: Date.now(),
+              metadata: request.metadata,
+            };
+      db.upsertRemoteIdentity(remoteIdentity);
+
+      const mirrorUserResult = db.ensureChannelUserMirror({
+        remoteIdentityId: remoteIdentity.id,
+        platformUserId: request.platformUserId,
+        platformType: request.platformType,
+        displayName: request.displayName ?? remoteIdentity.displayName,
+        authorizedAt: remoteIdentity.authorizedAt,
+        lastActive: remoteIdentity.lastActive,
+      });
+      if (!mirrorUserResult.success || !mirrorUserResult.data) {
+        return { success: false, error: mirrorUserResult.error || 'Failed to ensure channel user mirror' };
+      }
+      channelUser = {
+        id: remoteIdentity.id,
+        platformUserId: remoteIdentity.remoteUserId ?? remoteIdentity.remoteChatId,
+        platformType: request.platformType,
+        displayName: request.displayName ?? remoteIdentity.displayName,
+        authorizedAt: remoteIdentity.authorizedAt,
+        lastActive: remoteIdentity.lastActive,
+        sessionId: mirrorUserResult.data.sessionId,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to resolve connector for pairing',
+      };
     }
 
-    // Create authorized user
-    const userId = `assistant_user_${Date.now()}_${crypto.randomBytes(4).toString('hex').slice(0, 6)}`;
-    const user: IChannelUser = {
-      id: userId,
-      platformUserId: request.platformUserId,
-      platformType: request.platformType,
-      displayName: request.displayName,
-      authorizedAt: Date.now(),
-    };
-
-    const createResult = db.createChannelUser(user);
-    if (!createResult.success) {
-      return { success: false, error: createResult.error };
+    if (!channelUser) {
+      return { success: false, error: 'Failed to create channel user mirror' };
     }
 
     // Update pairing request status
     db.updatePairingRequestStatus(code, 'approved');
 
     // Emit user authorized event
-    channelBridge.userAuthorized.emit(user);
+    channelBridge.userAuthorized.emit(channelUser);
 
-    return { success: true, user };
+    return { success: true, user: channelUser };
   }
 
   /**

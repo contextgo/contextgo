@@ -8,7 +8,7 @@
 export { GeminiApprovalStore } from './GeminiApprovalStore';
 
 // src/core/ConfigManager.ts
-import { AIONUI_FILES_MARKER } from '@/common/config/constants';
+import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import { NavigationInterceptor } from '@/common/chat/navigation';
 import type { TProviderWithModel } from '@/common/config/storage';
 import { uuid } from '@/common/utils';
@@ -772,7 +772,7 @@ export class GeminiAgent {
     const abortController = this.createAbortController();
 
     const stripFilesMarker = (text: string): string => {
-      const markerIndex = text.indexOf(AIONUI_FILES_MARKER);
+      const markerIndex = text.indexOf(CONTEXTGO_FILES_MARKER);
       if (markerIndex === -1) return text;
       return text.slice(0, markerIndex).trimEnd();
     };

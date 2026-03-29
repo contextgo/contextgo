@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -181,10 +181,12 @@ export interface IConfigStorageRefer {
     name?: string;
   };
   'command.library'?: ManagedSlashCommandRecord[];
+  // Skills Market: whether the bundled builtin skill is enabled
+  'skillsMarket.enabled'?: boolean;
 }
 
 export interface IEnvStorageRefer {
-  'aionui.dir': {
+  'contextgo.dir': {
     workDir: string;
     cacheDir: string;
   };
@@ -195,7 +197,7 @@ export interface IEnvStorageRefer {
  * 会话来源类型 - 标识会话创建的来源
  */
 export type ConversationSource =
-  | 'aionui'
+  | 'contextgo'
   | 'telegram'
   | 'slack'
   | 'discord'
@@ -326,10 +328,14 @@ interface IChatConversation<T, Extra> {
   extra: Extra;
   model: TProviderWithModel;
   status?: 'pending' | 'running' | 'finished' | undefined;
-  /** 会话来源，默认为 aionui / Conversation source, defaults to aionui */
+  /** 会话来源，默认为 contextgo / Conversation source, defaults to contextgo */
   source?: ConversationSource;
   /** Channel chat isolation ID (e.g. user:xxx, group:xxx) */
   channelChatId?: string;
+  /** Durable external session this conversation belongs to, if any */
+  externalSessionId?: string;
+  /** Root execution run for this conversation, if any */
+  rootRunId?: string;
 }
 
 export type ConversationSpaceBinding = {
@@ -734,7 +740,7 @@ export interface IMcpServer {
   createdAt: number;
   updatedAt: number;
   originalJson: string; // 存储原始JSON配置，用于编辑时的准确显示
-  /** Built-in MCP server managed by AionUi (hide edit/delete in UI) */
+  /** Built-in MCP server managed by ContextGo (hide edit/delete in UI) */
   builtin?: boolean;
 }
 

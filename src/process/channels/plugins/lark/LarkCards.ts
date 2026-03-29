@@ -683,13 +683,21 @@ export function createToolConfirmationCard(
   callId: string,
   title: string,
   description: string,
-  options: Array<{ label: string; value: string }>
+  options: Array<{ label: string; value: string }>,
+  chatId?: string,
+  conversationId?: string
 ): LarkCard {
   const buttons: LarkButtonElement[] = options.map((opt) => ({
     tag: 'button',
     text: { tag: 'plain_text', content: opt.label },
     type: 'default',
-    value: { action: 'system.confirm', callId: callId, value: opt.value },
+    value: {
+      action: 'system.confirm',
+      callId,
+      value: opt.value,
+      ...(chatId ? { chatId } : {}),
+      ...(conversationId ? { conversationId } : {}),
+    },
   }));
 
   // Split buttons into rows of 2

@@ -30,21 +30,21 @@ export function getElectronConfigCandidatePaths(): string[] {
   const home = os.homedir();
   if (process.platform === 'darwin') {
     return [
-      path.join(home, '.aionui-config', 'aionui-config.txt'),
-      path.join(home, '.aionui-config-dev', 'aionui-config.txt'),
+      path.join(home, '.contextgo-config', 'contextgo-config.txt'),
+      path.join(home, '.contextgo-config-dev', 'contextgo-config.txt'),
     ];
   }
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming');
     return [
-      path.join(appData, 'ContextGo', 'config', 'aionui-config.txt'),
-      path.join(appData, 'ContextGo-Dev', 'config', 'aionui-config.txt'),
+      path.join(appData, 'ContextGo', 'config', 'contextgo-config.txt'),
+      path.join(appData, 'ContextGo-Dev', 'config', 'contextgo-config.txt'),
     ];
   }
   // Linux and other platforms
   return [
-    path.join(home, '.config', 'ContextGo', 'config', 'aionui-config.txt'),
-    path.join(home, '.config', 'ContextGo-Dev', 'config', 'aionui-config.txt'),
+    path.join(home, '.config', 'ContextGo', 'config', 'contextgo-config.txt'),
+    path.join(home, '.config', 'ContextGo-Dev', 'config', 'contextgo-config.txt'),
   ];
 }
 
@@ -91,7 +91,7 @@ export async function migrateFromElectronConfig(configStore: ConfigStore): Promi
     // Decode — if result is empty, the file is missing/corrupted; do NOT set flag
     const sourceData = decodeConfigFile(sourcePath);
     if (Object.keys(sourceData).length === 0) {
-      console.warn('[AionUi] Config migration: source file appears empty or corrupted, will retry next startup');
+      console.warn('[ContextGo] Config migration: source file appears empty or corrupted, will retry next startup');
       return;
     }
 
@@ -116,16 +116,16 @@ export async function migrateFromElectronConfig(configStore: ConfigStore): Promi
     }
 
     await configStore.set('migration.electronConfigImported', true);
-    console.log('[AionUi] Config migrated from Electron desktop config:', sourcePath);
+    console.log('[ContextGo] Config migrated from Electron desktop config:', sourcePath);
   } catch (error) {
-    console.warn('[AionUi] Config migration from Electron failed:', error);
+    console.warn('[ContextGo] Config migration from Electron failed:', error);
   }
 }
 
 /**
  * Manual import: copy whitelisted keys from a specified config file into the
  * server config store. Runs on every startup when IMPORT_CONFIG_FROM is set.
- * @param sourcePath - absolute path to an aionui-config.txt file
+ * @param sourcePath - absolute path to a contextgo-config.txt file
  * @param overwrite  - if true, overwrite existing keys; if false, skip them
  * @param configStore - injected config store (uses ProcessConfig in production)
  */
@@ -138,13 +138,13 @@ export async function importConfigFromFile(
     // Warn on relative paths and resolve them
     if (!path.isAbsolute(sourcePath)) {
       const resolved = path.resolve(process.cwd(), sourcePath);
-      console.warn('[AionUi] IMPORT_CONFIG_FROM: relative path provided, resolving to:', resolved);
+      console.warn('[ContextGo] IMPORT_CONFIG_FROM: relative path provided, resolving to:', resolved);
       sourcePath = resolved;
     }
 
     const sourceData = decodeConfigFile(sourcePath);
     if (Object.keys(sourceData).length === 0) {
-      console.warn('[AionUi] IMPORT_CONFIG_FROM: file is missing, empty, or corrupted:', sourcePath);
+      console.warn('[ContextGo] IMPORT_CONFIG_FROM: file is missing, empty, or corrupted:', sourcePath);
       return;
     }
 
@@ -169,8 +169,8 @@ export async function importConfigFromFile(
       await configStore.set(key, sourceValue as IConfigStorageRefer[typeof key]);
     }
 
-    console.log('[AionUi] Config imported from:', sourcePath, '(overwrite:', overwrite, ')');
+    console.log('[ContextGo] Config imported from:', sourcePath, '(overwrite:', overwrite, ')');
   } catch (error) {
-    console.warn('[AionUi] IMPORT_CONFIG_FROM failed:', error);
+    console.warn('[ContextGo] IMPORT_CONFIG_FROM failed:', error);
   }
 }

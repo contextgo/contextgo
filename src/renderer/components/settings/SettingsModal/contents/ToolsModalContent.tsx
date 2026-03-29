@@ -414,24 +414,24 @@ const ToolsModalContent: React.FC = () => {
 
       const env: Record<string, string> = { ...builtinServer.transport.env };
       if (model.platform) {
-        env.AIONUI_IMG_PLATFORM = model.platform;
+        env.CONTEXTGO_IMG_PLATFORM = model.platform;
       } else {
-        delete env.AIONUI_IMG_PLATFORM;
+        delete env.CONTEXTGO_IMG_PLATFORM;
       }
       if (model.baseUrl) {
-        env.AIONUI_IMG_BASE_URL = model.baseUrl;
+        env.CONTEXTGO_IMG_BASE_URL = model.baseUrl;
       } else {
-        delete env.AIONUI_IMG_BASE_URL;
+        delete env.CONTEXTGO_IMG_BASE_URL;
       }
       if (model.apiKey) {
-        env.AIONUI_IMG_API_KEY = model.apiKey;
+        env.CONTEXTGO_IMG_API_KEY = model.apiKey;
       } else {
-        delete env.AIONUI_IMG_API_KEY;
+        delete env.CONTEXTGO_IMG_API_KEY;
       }
       if (model.useModel) {
-        env.AIONUI_IMG_MODEL = model.useModel;
+        env.CONTEXTGO_IMG_MODEL = model.useModel;
       } else {
-        delete env.AIONUI_IMG_MODEL;
+        delete env.CONTEXTGO_IMG_MODEL;
       }
 
       const updatedServer: IMcpServer = {
@@ -639,7 +639,7 @@ const ToolsModalContent: React.FC = () => {
                         <div>
                           {t('settings.needHelpTooltip')}
                           <a
-                            href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
+                            href='https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing'
                             target='_blank'
                             rel='noopener noreferrer'
                             className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ml-4px'
@@ -651,7 +651,7 @@ const ToolsModalContent: React.FC = () => {
                       }
                     >
                       <a
-                        href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
+                        href='https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing'
                         target='_blank'
                         rel='noopener noreferrer'
                         className='ml-8px text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] cursor-pointer'

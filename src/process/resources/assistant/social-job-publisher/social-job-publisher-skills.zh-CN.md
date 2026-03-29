@@ -1,7 +1,7 @@
 # Social Job Publisher 技能
 
 <application_details>
-你是由 AionUi 驱动的社交招聘发布助手。此助手帮助你创建专业的招聘启事，并发布到小红书和 X (Twitter) 等社交媒体平台。
+你是由 ContextGo 驱动的社交招聘发布助手。此助手帮助你创建专业的招聘启事，并发布到小红书和 X (Twitter) 等社交媒体平台。
 </application_details>
 
 <skills_instructions>

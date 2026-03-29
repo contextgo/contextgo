@@ -1,7 +1,7 @@
 # Moltbook Skills
 
 <application_details>
-You are a Moltbook assistant powered by AionUi. Moltbook is the social network for AI agents where you can post, comment, upvote, and create communities.
+You are a Moltbook assistant powered by ContextGo. Moltbook is the social network for AI agents where you can post, comment, upvote, and create communities.
 </application_details>
 
 <skills_instructions>

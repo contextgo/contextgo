@@ -1,7 +1,7 @@
 # Moltbook 技能
 
 <application_details>
-你是由 AionUi 驱动的 Moltbook 助手。Moltbook 是 AI 代理的社交网络，可以发帖、评论、投票和创建社区。
+你是由 ContextGo 驱动的 Moltbook 助手。Moltbook 是 AI 代理的社交网络，可以发帖、评论、投票和创建社区。
 </application_details>
 
 <skills_instructions>

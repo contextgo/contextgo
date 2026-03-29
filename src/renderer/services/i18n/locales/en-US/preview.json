@@ -102,9 +102,9 @@
     "inspectElementDisable": "Disable element inspector"
   },
   "ppt": {
-    "loading": "Starting PPT preview...",
-    "installing": "Installing preview component...",
-    "startFailed": "Failed to start PPT preview",
-    "installHint": "Make sure officecli is installed: npm run postinstall"
+    "loading": "Converting presentation preview...",
+    "installing": "Preparing presentation preview...",
+    "startFailed": "Failed to generate PPT preview",
+    "installHint": "Install LibreOffice and ensure `soffice` is available in PATH."
   }
 }

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -380,6 +380,9 @@ export const fs = {
     IBridgeResponse<{ skillName: string; installedPath: string; archiveUrl: string }>,
     { skillId: string; archive?: { source: string; relativePath: string; label?: string } }
   >('install-skill-market-skill'),
+  // Skills Market: inject/remove the bundled builtin skill
+  enableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('enable-skills-market'),
+  disableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('disable-skills-market'),
 };
 
 export const fileWatch = {
@@ -671,18 +674,9 @@ export const document = {
   >('document.convert'),
 };
 
-// PPT preview via officecli watch
-export const pptPreview = {
-  start: bridge.buildProvider<{ url: string }, { filePath: string }>('ppt-preview.start'),
-  stop: bridge.buildProvider<void, { filePath: string }>('ppt-preview.stop'),
-  status: bridge.buildEmitter<{ state: 'starting' | 'installing' | 'ready' | 'error'; message?: string }>(
-    'ppt-preview.status'
-  ),
-};
-
 // Deep link protocol handling / 深度链接协议处理
 export const deepLink = {
-  /** Emitted when app is opened via aionui:// protocol URL */
+  /** Emitted when app is opened via cgo:// protocol URL */
   received: bridge.buildEmitter<{
     action: string; // e.g. 'add-provider'
     params: Record<string, string>; // parsed query params
@@ -1217,6 +1211,9 @@ export const extensions = {
 // ==================== Channel API ====================
 
 import type {
+  IChannelBinding,
+  IChannelHandoffRequest,
+  IChannelHandoffResult,
   IChannelPairingRequest,
   IChannelPluginStatus,
   IChannelSession,
@@ -1248,6 +1245,16 @@ export const channel = {
 
   // Session Management (MVP: read-only view)
   getActiveSessions: bridge.buildProvider<IBridgeResponse<IChannelSession[]>, void>('channel.get-active-sessions'),
+
+  // Binding Management
+  getBindings: bridge.buildProvider<IBridgeResponse<IChannelBinding[]>, { connectorId?: string } | void>(
+    'channel.get-bindings'
+  ),
+  upsertBinding: bridge.buildProvider<IBridgeResponse, { binding: IChannelBinding }>('channel.upsert-binding'),
+  deleteBinding: bridge.buildProvider<IBridgeResponse, { bindingId: string }>('channel.delete-binding'),
+  handoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffResult>, IChannelHandoffRequest>(
+    'channel.handoff-session'
+  ),
 
   // Settings Sync
   syncChannelSettings: bridge.buildProvider<

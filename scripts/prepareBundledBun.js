@@ -39,12 +39,12 @@ function getRequiredRuntimeFiles(platform) {
 }
 
 function getRuntimeVersion() {
-  const configured = process.env.AIONUI_BUN_VERSION;
+  const configured = process.env.CONTEXTGO_BUN_VERSION;
   return configured && configured.trim() ? configured.trim() : 'latest';
 }
 
 function getCacheRootDir() {
-  const custom = process.env.AIONUI_BUN_CACHE_DIR;
+  const custom = process.env.CONTEXTGO_BUN_CACHE_DIR;
   if (custom && custom.trim()) {
     return path.resolve(custom.trim());
   }

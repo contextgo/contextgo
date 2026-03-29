@@ -159,6 +159,7 @@ describe('fsBridge skills functionality', () => {
       getHooksDir: vi.fn(() => path.resolve('/mock/userData/config/hooks')),
       getBuiltinSkillsCopyDir: vi.fn(() => path.resolve('/mock/userData/builtin-skills')),
       getBuiltinHooksCopyDir: vi.fn(() => path.resolve('/mock/userData/builtin-hooks')),
+      getAutoSkillsDir: vi.fn(() => path.resolve('/mock/userData/builtin-skills/auto')),
       ProcessEnv: { set: vi.fn() },
     }));
 
@@ -231,6 +232,8 @@ describe('fsBridge skills functionality', () => {
             removeCustomExternalPath: createCommandMock('remove-custom-external-path'),
             searchSkillMarket: createCommandMock('search-skill-market'),
             installSkillMarketSkill: createCommandMock('install-skill-market-skill'),
+            enableSkillsMarket: createCommandMock('enable-skills-market'),
+            disableSkillsMarket: createCommandMock('disable-skills-market'),
           },
           fileStream: {
             contentUpdate: { emit: vi.fn() },

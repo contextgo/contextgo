@@ -102,9 +102,9 @@
     "inspectElementDisable": "关闭审核元素"
   },
   "ppt": {
-    "loading": "正在启动 PPT 预览...",
-    "installing": "正在安装预览组件...",
-    "startFailed": "启动 PPT 预览失败",
-    "installHint": "请确保已安装 officecli：npm run postinstall"
+    "loading": "正在转换演示文稿预览...",
+    "installing": "正在准备演示文稿预览...",
+    "startFailed": "生成 PPT 预览失败",
+    "installHint": "请安装 LibreOffice，并确保 `soffice` 已加入 PATH。"
   }
 }

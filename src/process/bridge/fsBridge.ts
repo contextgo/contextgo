@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AIONUI_TIMESTAMP_SEPARATOR } from '@/common/config/constants';
+import { CONTEXTGO_TIMESTAMP_SEPARATOR } from '@/common/config/constants';
 import {
   getHookOutputTargets,
   getRunnableHookEvents,
@@ -33,6 +33,9 @@ import {
 } from '@process/utils/initStorage';
 import { readDirectoryRecursive } from '@process/utils';
 import { discoverSkillDirectories, resolveSkillDirectory } from '@process/utils/skillDiscovery';
+
+const SKILLS_MARKET_SKILL_DIR = 'contextgo-skills';
+const LEGACY_SKILLS_MARKET_SKILL_DIR = 'aionui-skills';
 
 // ============================================================================
 // Helper functions for builtin resource directory resolution
@@ -368,8 +371,8 @@ export function initFsBridge(): void {
           targetUrl,
           {
             headers: {
-              'User-Agent': 'AionUI-Preview',
-              Referer: 'https://github.com/iOfficeAI/AionUi',
+              'User-Agent': 'ContextGo-Preview',
+              Referer: 'https://github.com/contextgo/contextgo',
             },
           },
           (response) => {
@@ -457,7 +460,7 @@ export function initFsBridge(): void {
         const timestamp = Date.now();
         const ext = path.extname(safeFileName);
         const name = path.basename(safeFileName, ext);
-        const tempFileName = `${name}${AIONUI_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
+        const tempFileName = `${name}${CONTEXTGO_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
         tempFilePath = path.join(tempDir, tempFileName);
       }
 
@@ -756,7 +759,7 @@ export function initFsBridge(): void {
             const name = path.basename(targetPath, ext);
             // Construct new path in the same directory / 在同一目录下构建新路径
             const dir = path.dirname(targetPath);
-            const newFileName = `${name}${AIONUI_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
+            const newFileName = `${name}${CONTEXTGO_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
             finalTargetPath = path.join(dir, newFileName);
           }
 
@@ -1881,4 +1884,98 @@ export function initFsBridge(): void {
       };
     }
   });
+  // Skills Market: inject the bundled builtin skill
+  ipcBridge.fs.enableSkillsMarket.provider(async () => {
+    try {
+      const { getAutoSkillsDir } = await import('@process/utils/initStorage');
+      const builtinSkillsDir = getAutoSkillsDir();
+      const skillDir = path.join(builtinSkillsDir, SKILLS_MARKET_SKILL_DIR);
+      const legacySkillDir = path.join(builtinSkillsDir, LEGACY_SKILLS_MARKET_SKILL_DIR);
+
+      if (!(await pathExists(skillDir)) && (await pathExists(legacySkillDir))) {
+        await fs.rename(legacySkillDir, skillDir);
+      }
+
+      await fs.mkdir(skillDir, { recursive: true });
+
+      // Copy the bundled SKILL.md (concise entry-point version)
+      // The full 600+ line API doc is fetched by agents at runtime via curl
+      const content = await readBundledSkillsMarketMd();
+      await fs.writeFile(path.join(skillDir, 'SKILL.md'), content, 'utf-8');
+
+      // Reset AcpSkillManager singleton so it re-discovers builtin skills
+      const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
+      AcpSkillManager.resetInstance();
+
+      return { success: true, msg: 'Skills Market skill enabled' };
+    } catch (error) {
+      console.error('[fsBridge] Failed to enable Skills Market:', error);
+      return {
+        success: false,
+        msg: `Failed to enable Skills Market: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
+  // Skills Market: remove the bundled builtin skill
+  ipcBridge.fs.disableSkillsMarket.provider(async () => {
+    try {
+      const { getAutoSkillsDir } = await import('@process/utils/initStorage');
+      const builtinSkillsDir = getAutoSkillsDir();
+      const skillDir = path.join(builtinSkillsDir, SKILLS_MARKET_SKILL_DIR);
+      const legacySkillDir = path.join(builtinSkillsDir, LEGACY_SKILLS_MARKET_SKILL_DIR);
+      await fs.rm(skillDir, { recursive: true, force: true });
+      await fs.rm(legacySkillDir, { recursive: true, force: true });
+
+      // Reset AcpSkillManager singleton so it re-discovers builtin skills
+      const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
+      AcpSkillManager.resetInstance();
+
+      return { success: true, msg: 'Skills Market skill disabled' };
+    } catch (error) {
+      console.error('[fsBridge] Failed to disable Skills Market:', error);
+      return {
+        success: false,
+        msg: `Failed to disable Skills Market: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+}
+
+/**
+ * Read the bundled SKILL.md for the Skills Market builtin skill.
+ *
+ * This is a concise entry-point version (~30 lines) that tells agents
+ * to fetch the full API documentation via curl at runtime.
+ * The full 600+ line SKILL.md should NOT be injected via [LOAD_SKILL]
+ * as it would overwhelm the conversation context.
+ */
+async function readBundledSkillsMarketMd(): Promise<string> {
+  try {
+    const builtinDir = getBuiltinSkillsCopyDir();
+    const fallbackPaths = [
+      path.join(builtinDir, SKILLS_MARKET_SKILL_DIR, 'SKILL.md'),
+      path.join(builtinDir, LEGACY_SKILLS_MARKET_SKILL_DIR, 'SKILL.md'),
+    ];
+
+    for (const fallbackPath of fallbackPaths) {
+      if (await pathExists(fallbackPath)) {
+        return await fs.readFile(fallbackPath, 'utf-8');
+      }
+    }
+
+    throw new Error('Bundled Skills Market SKILL.md not found');
+  } catch (error) {
+    console.warn('[fsBridge] Failed to read bundled Skills Market SKILL.md:', error);
+    return `---\nname: contextgo-skills\ndescription: "Access the ContextGo Skills Market — discover and download AI agent skills."\n---\n\n# ContextGo Skills Market\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/contextgo-skills\ncurl -s https://www.skillmarket.com.cn/SKILL.md > ~/.config/contextgo-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
+  }
+}
+
+async function pathExists(targetPath: string): Promise<boolean> {
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
 }

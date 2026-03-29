@@ -2,7 +2,7 @@
 
 ## Background
 
-AionUi already supports assistant-level rules and skills, but it does not yet provide a productized runtime hook system. Today the relevant pieces are split:
+ContextGo already supports assistant-level rules and skills, but it does not yet provide a productized runtime hook system. Today the relevant pieces are split:
 
 - Assistant rules are stored as assistant-scoped markdown resources and injected into the session prompt.
 - Skills are either injected into the prompt or materialized into the workspace for native CLI discovery.

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IActionContext, IActionResult, IRegisteredAction, ActionHandler } from './types';
+import type { IRegisteredAction, ActionHandler } from './types';
 import { PlatformActionNames, createSuccessResponse, createErrorResponse } from './types';
 import { getPairingService } from '../pairing/PairingService';
 import {
@@ -116,7 +116,7 @@ export const handlePairingShow: ActionHandler = async (context) => {
   const platform = context.platform;
 
   // Check if user is already authorized
-  if (await pairingService.isUserAuthorized(context.userId, platform)) {
+  if (await pairingService.isUserAuthorized(context.userId, platform, context.chatId, context.pluginId)) {
     return createSuccessResponse({
       type: 'text',
       text: [
@@ -133,7 +133,13 @@ export const handlePairingShow: ActionHandler = async (context) => {
 
   // Generate pairing code
   try {
-    const { code, expiresAt } = await pairingService.generatePairingCode(context.userId, platform, context.displayName);
+    const { code, expiresAt } = await pairingService.generatePairingCode(
+      context.userId,
+      platform,
+      context.displayName,
+      context.chatId,
+      context.pluginId
+    );
 
     const expiresInMinutes = Math.ceil((expiresAt - Date.now()) / 1000 / 60);
 
@@ -156,8 +162,9 @@ export const handlePairingShow: ActionHandler = async (context) => {
       parseMode: 'HTML',
       ...getPairingCodeMarkup(platform, code),
     });
-  } catch (error: any) {
-    return createErrorResponse(`Failed to generate pairing code: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return createErrorResponse(`Failed to generate pairing code: ${message}`);
   }
 };
 
@@ -169,7 +176,7 @@ export const handlePairingRefresh: ActionHandler = async (context) => {
   const platform = context.platform;
 
   // Check if user is already authorized
-  if (await pairingService.isUserAuthorized(context.userId, platform)) {
+  if (await pairingService.isUserAuthorized(context.userId, platform, context.chatId, context.pluginId)) {
     return createSuccessResponse({
       type: 'text',
       text: '✅ You are already paired. No need to refresh the pairing code.',
@@ -180,7 +187,13 @@ export const handlePairingRefresh: ActionHandler = async (context) => {
 
   // Generate new pairing code
   try {
-    const { code, expiresAt } = await pairingService.refreshPairingCode(context.userId, platform, context.displayName);
+    const { code, expiresAt } = await pairingService.refreshPairingCode(
+      context.userId,
+      platform,
+      context.displayName,
+      context.chatId,
+      context.pluginId
+    );
 
     const expiresInMinutes = Math.ceil((expiresAt - Date.now()) / 1000 / 60);
 
@@ -198,8 +211,9 @@ export const handlePairingRefresh: ActionHandler = async (context) => {
       parseMode: 'HTML',
       ...getPairingCodeMarkup(platform, code),
     });
-  } catch (error: any) {
-    return createErrorResponse(`Failed to refresh pairing code: ${error.message}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return createErrorResponse(`Failed to refresh pairing code: ${message}`);
   }
 };
 
@@ -211,7 +225,7 @@ export const handlePairingCheck: ActionHandler = async (context) => {
   const platform = context.platform;
 
   // Check if user is already authorized
-  if (await pairingService.isUserAuthorized(context.userId, platform)) {
+  if (await pairingService.isUserAuthorized(context.userId, platform, context.chatId, context.pluginId)) {
     return createSuccessResponse({
       type: 'text',
       text: [
@@ -227,7 +241,12 @@ export const handlePairingCheck: ActionHandler = async (context) => {
   }
 
   // Check for pending request
-  const pendingRequest = await pairingService.getPendingRequestForUser(context.userId, platform);
+  const pendingRequest = await pairingService.getPendingRequestForUser(
+    context.userId,
+    platform,
+    context.chatId,
+    context.pluginId
+  );
 
   if (pendingRequest) {
     const expiresInMinutes = Math.ceil((pendingRequest.expiresAt - Date.now()) / 1000 / 60);
