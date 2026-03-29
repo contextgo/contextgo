@@ -12,9 +12,12 @@ import type {
   ConnectParams,
   EventFrame,
   HelloOk,
+  OpenClawSessionsListResponse,
   OpenClawGatewayClientOptions,
   RequestFrame,
   ResponseFrame,
+  SessionsListParams,
+  SessionsPatchParams,
   SessionsResetParams,
   SessionsResolveParams,
 } from './types';
@@ -228,8 +231,15 @@ export class OpenClawGatewayConnection {
   /**
    * List sessions
    */
-  async sessionsList(params?: { limit?: number; activeMinutes?: number }): Promise<unknown> {
+  async sessionsList(params?: SessionsListParams): Promise<OpenClawSessionsListResponse> {
     return this.request('sessions.list', params);
+  }
+
+  /**
+   * Patch session metadata such as label or model
+   */
+  async sessionsPatch(params: SessionsPatchParams): Promise<unknown> {
+    return this.request('sessions.patch', params);
   }
 
   // ========== Private Methods ==========

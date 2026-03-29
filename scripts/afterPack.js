@@ -1,4 +1,5 @@
 const { Arch } = require('builder-util');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -14,6 +15,41 @@ const {
  * Rebuilds native modules for cross-architecture builds
  */
 
+function patchDarwinHelperBundleMetadata(context) {
+  const { electronPlatformName, appOutDir, packager } = context;
+  if (electronPlatformName !== 'darwin') {
+    return;
+  }
+
+  const appName = packager?.appInfo?.productFilename || 'ContextGo';
+  const frameworksDir = path.join(appOutDir, `${appName}.app`, 'Contents', 'Frameworks');
+
+  if (!fs.existsSync(frameworksDir)) {
+    return;
+  }
+
+  const helperApps = fs
+    .readdirSync(frameworksDir)
+    .filter((name) => name.startsWith(`${appName} Helper`) && name.endsWith('.app'));
+
+  for (const helperApp of helperApps) {
+    const helperName = helperApp.replace(/\.app$/u, '');
+    const plistPath = path.join(frameworksDir, helperApp, 'Contents', 'Info.plist');
+
+    if (!fs.existsSync(plistPath)) {
+      continue;
+    }
+
+    try {
+      execFileSync('plutil', ['-replace', 'CFBundleName', '-string', helperName, plistPath]);
+      execFileSync('plutil', ['-replace', 'CFBundleDisplayName', '-string', helperName, plistPath]);
+      console.log(`   ✓ Patched helper bundle metadata: ${helperName}`);
+    } catch (error) {
+      console.warn(`   ⚠️  Failed to patch helper bundle metadata for ${helperName}:`, error);
+    }
+  }
+}
+
 module.exports = async function afterPack(context) {
   const { arch, electronPlatformName, appOutDir, packager } = context;
   const targetArch = normalizeArch(typeof arch === 'string' ? arch : Arch[arch] || process.arch);
@@ -21,6 +57,8 @@ module.exports = async function afterPack(context) {
 
   console.log(`\n🔧 afterPack hook started`);
   console.log(`   Platform: ${electronPlatformName}, Build arch: ${buildArch}, Target arch: ${targetArch}`);
+
+  patchDarwinHelperBundleMetadata(context);
 
   const isCrossCompile = buildArch !== targetArch;
   const forceRebuild = process.env.FORCE_NATIVE_REBUILD === 'true';

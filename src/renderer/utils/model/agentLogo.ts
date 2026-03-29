@@ -11,23 +11,36 @@
  */
 
 import AuggieLogo from '@/renderer/assets/logos/brand/auggie.svg';
+import AnthropicLogo from '@/renderer/assets/logos/ai-major/anthropic.svg';
+import BaiduLogo from '@/renderer/assets/logos/ai-china/baidu.svg';
 import ClaudeLogo from '@/renderer/assets/logos/ai-major/claude.svg';
 import CursorLogo from '@/renderer/assets/logos/tools/coding/cursor.png';
 import CodeBuddyLogo from '@/renderer/assets/logos/tools/coding/codebuddy.svg';
 import CodexLogo from '@/renderer/assets/logos/tools/coding/codex.svg';
+import DeepSeekLogo from '@/renderer/assets/logos/ai-major/deepseek.svg';
 import DroidLogo from '@/renderer/assets/logos/brand/droid.svg';
 import GeminiLogo from '@/renderer/assets/logos/ai-major/gemini.svg';
 import GitHubLogo from '@/renderer/assets/logos/tools/github.svg';
 import GooseLogo from '@/renderer/assets/logos/tools/goose.svg';
 import IflowLogo from '@/renderer/assets/logos/tools/iflow.svg';
 import KimiLogo from '@/renderer/assets/logos/ai-china/kimi.svg';
+import LingyiLogo from '@/renderer/assets/logos/ai-china/lingyiwanwu.svg';
 import MistralLogo from '@/renderer/assets/logos/ai-major/mistral.svg';
+import MiniMaxLogo from '@/renderer/assets/logos/ai-china/minimax.png';
 import NanobotLogo from '@/renderer/assets/logos/tools/nanobot.svg';
 import OpenClawLogo from '@/renderer/assets/logos/tools/openclaw.svg';
+import OpenAILogo from '@/renderer/assets/logos/ai-major/openai.svg';
+import OpenRouterLogo from '@/renderer/assets/logos/ai-cloud/openrouter.svg';
 import OpenCodeLogoDark from '@/renderer/assets/logos/tools/coding/opencode-dark.svg';
 import OpenCodeLogoLight from '@/renderer/assets/logos/tools/coding/opencode-light.svg';
 import QoderLogo from '@/renderer/assets/logos/tools/coding/qoder.png';
 import QwenLogo from '@/renderer/assets/logos/ai-china/qwen.svg';
+import SiliconFlowLogo from '@/renderer/assets/logos/ai-cloud/siliconflow.png';
+import StepFunLogo from '@/renderer/assets/logos/ai-china/stepfun.svg';
+import TencentLogo from '@/renderer/assets/logos/ai-china/tencent.svg';
+import VolcengineLogo from '@/renderer/assets/logos/ai-china/volcengine.svg';
+import XAilogo from '@/renderer/assets/logos/ai-major/xai.svg';
+import ZhipuLogo from '@/renderer/assets/logos/ai-china/zhipu.svg';
 
 /**
  * Agent Logo 映射表
@@ -38,8 +51,21 @@ import QwenLogo from '@/renderer/assets/logos/ai-china/qwen.svg';
  */
 const AGENT_LOGO_MAP = {
   claude: ClaudeLogo,
+  anthropic: AnthropicLogo,
+  openai: OpenAILogo,
   gemini: GeminiLogo,
+  deepseek: DeepSeekLogo,
+  xai: XAilogo,
   qwen: QwenLogo,
+  zhipu: ZhipuLogo,
+  minimax: MiniMaxLogo,
+  openrouter: OpenRouterLogo,
+  siliconflow: SiliconFlowLogo,
+  baidu: BaiduLogo,
+  tencent: TencentLogo,
+  volcengine: VolcengineLogo,
+  stepfun: StepFunLogo,
+  lingyiwanwu: LingyiLogo,
   iflow: IflowLogo,
   codex: CodexLogo,
   codebuddy: CodeBuddyLogo,
@@ -131,4 +157,79 @@ export const getModelDisplayLabel = ({
 }): string => {
   if (!selectedLabel) return fallbackLabel;
   return isDefaultModel(selectedValue, selectedLabel) ? defaultModelLabel : selectedLabel;
+};
+
+const normalizeModelLookupText = (...parts: Array<string | null | undefined>): string =>
+  parts
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' ')
+    .trim()
+    .toLowerCase();
+
+const matchModelLogoKey = (lookup: string): string | null => {
+  if (!lookup) return null;
+  if (lookup.includes('claude') || lookup.includes('anthropic')) return 'claude';
+  if (
+    lookup.includes('openai') ||
+    lookup.includes('chatgpt') ||
+    lookup.includes('gpt-') ||
+    /\bo[134]\b/.test(lookup) ||
+    lookup.includes(' codex')
+  ) {
+    return 'openai';
+  }
+  if (lookup.includes('gemini') || lookup.includes('google')) return 'gemini';
+  if (lookup.includes('deepseek')) return 'deepseek';
+  if (
+    lookup.includes('qwen') ||
+    lookup.includes('qwq') ||
+    lookup.includes('qvq') ||
+    lookup.includes('tongyi') ||
+    lookup.includes('dashscope') ||
+    lookup.includes('alibaba')
+  ) {
+    return 'qwen';
+  }
+  if (lookup.includes('kimi') || lookup.includes('moonshot')) return 'kimi';
+  if (lookup.includes('glm') || lookup.includes('zhipu')) return 'zhipu';
+  if (lookup.includes('minimax') || lookup.includes('abab')) return 'minimax';
+  if (lookup.includes('grok') || lookup.includes('xai')) return 'xai';
+  if (
+    lookup.includes('mistral') ||
+    lookup.includes('ministral') ||
+    lookup.includes('codestral') ||
+    lookup.includes('pixtral')
+  ) {
+    return 'mistral';
+  }
+  if (lookup.includes('openrouter')) return 'openrouter';
+  if (lookup.includes('siliconflow')) return 'siliconflow';
+  if (lookup.includes('ernie') || lookup.includes('wenxin') || lookup.includes('baidu')) return 'baidu';
+  if (lookup.includes('hunyuan') || lookup.includes('tencent')) return 'tencent';
+  if (lookup.includes('doubao') || lookup.includes('volcengine') || lookup.includes('ark')) return 'volcengine';
+  if (lookup.includes('step') || lookup.includes('stepfun')) return 'stepfun';
+  if (lookup.includes('yi-') || lookup.includes('lingyi')) return 'lingyiwanwu';
+  return null;
+};
+
+export const getModelLogo = ({
+  modelId,
+  providerId,
+  providerName,
+  providerPlatform,
+  backend,
+}: {
+  modelId?: string | null;
+  providerId?: string | null;
+  providerName?: string | null;
+  providerPlatform?: string | null;
+  backend?: string | null;
+}): string | null => {
+  const lookup = normalizeModelLookupText(modelId, providerId, providerName, providerPlatform, backend);
+  const matchedKey = matchModelLogoKey(lookup);
+  if (matchedKey) {
+    return getAgentLogo(matchedKey);
+  }
+
+  return getAgentLogo(providerPlatform || providerName || backend || providerId || modelId || null);
 };

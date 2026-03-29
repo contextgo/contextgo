@@ -93,10 +93,11 @@ export interface LarkNoteElement {
  * Agent info for card display
  */
 export interface AgentDisplayInfo {
-  type: ChannelAgentType;
+  key: string;
+  backend: string;
   emoji: string;
   name: string;
-  agentProfileId?: string;
+  customAgentId?: string;
 }
 
 /**
@@ -297,30 +298,16 @@ export function createPairingHelpCard(): LarkCard {
  * Create agent selection card
  * Shows available agents with current selection marked
  */
-export function createAgentSelectionCard(
-  availableAgents: AgentDisplayInfo[],
-  currentAgent?: ChannelAgentType,
-  currentAgentProfileId?: string
-): LarkCard {
-  const agentButtons: LarkButtonElement[] = availableAgents.map((agent) => {
-    const isCurrent = agent.agentProfileId
-      ? agent.agentProfileId === currentAgentProfileId
-      : currentAgent === agent.type;
-
-    return {
-      tag: 'button',
-      text: {
-        tag: 'plain_text',
-        content: isCurrent ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`,
-      },
-      type: isCurrent ? 'primary' : 'default',
-      value: {
-        action: 'agent.select',
-        agentType: agent.type,
-        ...(agent.agentProfileId ? { agentProfileId: agent.agentProfileId } : {}),
-      },
-    };
-  });
+export function createAgentSelectionCard(availableAgents: AgentDisplayInfo[], currentAgentKey?: string): LarkCard {
+  const agentButtons: LarkButtonElement[] = availableAgents.map((agent) => ({
+    tag: 'button',
+    text: {
+      tag: 'plain_text',
+      content: currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`,
+    },
+    type: currentAgentKey === agent.key ? 'primary' : 'default',
+    value: { action: 'agent.select', agentKey: agent.key },
+  }));
 
   // Split buttons into rows of 2
   const actionRows: LarkActionElement[] = [];
@@ -331,7 +318,7 @@ export function createAgentSelectionCard(
     });
   }
 
-  const currentAgentInfo = availableAgents.find((a) => a.type === currentAgent);
+  const currentAgentInfo = availableAgents.find((a) => a.key === currentAgentKey);
   const currentAgentName = currentAgentInfo ? `${currentAgentInfo.emoji} ${currentAgentInfo.name}` : 'None';
 
   return {

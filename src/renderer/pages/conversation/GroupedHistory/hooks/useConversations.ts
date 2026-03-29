@@ -8,17 +8,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useConversationHistoryContext } from '@/renderer/hooks/context/ConversationHistoryContext';
 import {
-  DISCUSSION_GROUP_EXPANSION_STORAGE_KEY,
-  dispatchDiscussionGroupExpansionChange,
+  GROUP_CONVERSATION_EXPANSION_STORAGE_KEY,
+  dispatchGroupConversationExpansionChange,
   dispatchWorkspaceExpansionChange,
-  readExpandedDiscussionGroups,
+  readExpandedGroupConversations,
   readExpandedWorkspaces,
   WORKSPACE_EXPANSION_STORAGE_KEY,
 } from './useWorkspaceExpansionState';
 
 export const useConversations = () => {
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<string[]>(() => readExpandedWorkspaces());
-  const [expandedDiscussionGroups, setExpandedDiscussionGroups] = useState<string[]>(() => readExpandedDiscussionGroups());
+  const [expandedGroupConversations, setExpandedGroupConversations] = useState<string[]>(() =>
+    readExpandedGroupConversations()
+  );
   const { id } = useParams();
   const {
     conversations,
@@ -32,7 +34,7 @@ export const useConversations = () => {
   // Track whether auto-expand has already been performed to avoid
   // re-expanding workspaces after a user manually collapses them (#1156)
   const hasAutoExpandedRef = useRef(false);
-  const hasAutoExpandedDiscussionGroupsRef = useRef(false);
+  const hasAutoExpandedGroupConversationsRef = useRef(false);
 
   // Scroll active conversation into view
   useEffect(() => {
@@ -65,15 +67,15 @@ export const useConversations = () => {
 
   useEffect(() => {
     try {
-      localStorage.setItem(DISCUSSION_GROUP_EXPANSION_STORAGE_KEY, JSON.stringify(expandedDiscussionGroups));
+      localStorage.setItem(GROUP_CONVERSATION_EXPANSION_STORAGE_KEY, JSON.stringify(expandedGroupConversations));
     } catch {
       // ignore
     }
 
-    dispatchDiscussionGroupExpansionChange(expandedDiscussionGroups);
-  }, [expandedDiscussionGroups]);
+    dispatchGroupConversationExpansionChange(expandedGroupConversations);
+  }, [expandedGroupConversations]);
 
-  const { pinnedConversations, timelineSections, discussionChildConversationsByParentId } = groupedHistory;
+  const { pinnedConversations, timelineSections, groupChildConversationsByParentId } = groupedHistory;
 
   // Auto-expand all workspaces on first load only (#1156)
   useEffect(() => {
@@ -114,36 +116,36 @@ export const useConversations = () => {
   }, [timelineSections]);
 
   useEffect(() => {
-    const currentDiscussionGroupIds = new Set(Object.keys(discussionChildConversationsByParentId));
-    setExpandedDiscussionGroups((prev) => {
-      const filtered = prev.filter((groupId) => currentDiscussionGroupIds.has(groupId));
+    const currentGroupConversationIds = new Set(Object.keys(groupChildConversationsByParentId));
+    setExpandedGroupConversations((prev) => {
+      const filtered = prev.filter((groupId) => currentGroupConversationIds.has(groupId));
       return filtered.length === prev.length ? prev : filtered;
     });
-  }, [discussionChildConversationsByParentId]);
+  }, [groupChildConversationsByParentId]);
 
   useEffect(() => {
-    if (hasAutoExpandedDiscussionGroupsRef.current) return;
-    if (expandedDiscussionGroups.length > 0) {
-      hasAutoExpandedDiscussionGroupsRef.current = true;
+    if (hasAutoExpandedGroupConversationsRef.current) return;
+    if (expandedGroupConversations.length > 0) {
+      hasAutoExpandedGroupConversationsRef.current = true;
       return;
     }
 
-    const allDiscussionGroupIds = Object.keys(discussionChildConversationsByParentId).filter(
-      (groupId) => (discussionChildConversationsByParentId[groupId] ?? []).length > 0
+    const allGroupConversationIds = Object.keys(groupChildConversationsByParentId).filter(
+      (groupId) => (groupChildConversationsByParentId[groupId] ?? []).length > 0
     );
 
-    if (allDiscussionGroupIds.length > 0) {
-      setExpandedDiscussionGroups(allDiscussionGroupIds);
-      hasAutoExpandedDiscussionGroupsRef.current = true;
+    if (allGroupConversationIds.length > 0) {
+      setExpandedGroupConversations(allGroupConversationIds);
+      hasAutoExpandedGroupConversationsRef.current = true;
     }
-  }, [discussionChildConversationsByParentId, expandedDiscussionGroups]);
+  }, [groupChildConversationsByParentId, expandedGroupConversations]);
 
   useEffect(() => {
     if (!id) {
       return;
     }
 
-    const parentGroupId = Object.entries(discussionChildConversationsByParentId).find(([, childConversations]) =>
+    const parentGroupId = Object.entries(groupChildConversationsByParentId).find(([, childConversations]) =>
       childConversations.some((conversation) => conversation.id === id)
     )?.[0];
 
@@ -151,13 +153,13 @@ export const useConversations = () => {
       return;
     }
 
-    setExpandedDiscussionGroups((prev) => {
+    setExpandedGroupConversations((prev) => {
       if (prev.includes(parentGroupId)) {
         return prev;
       }
       return [...prev, parentGroupId];
     });
-  }, [discussionChildConversationsByParentId, id]);
+  }, [groupChildConversationsByParentId, id]);
 
   const handleToggleWorkspace = useCallback((workspace: string) => {
     setExpandedWorkspaces((prev) => {
@@ -168,8 +170,8 @@ export const useConversations = () => {
     });
   }, []);
 
-  const handleToggleDiscussionGroup = useCallback((groupId: string) => {
-    setExpandedDiscussionGroups((prev) => {
+  const handleToggleGroupConversation = useCallback((groupId: string) => {
+    setExpandedGroupConversations((prev) => {
       if (prev.includes(groupId)) {
         return prev.filter((item) => item !== groupId);
       }
@@ -177,8 +179,8 @@ export const useConversations = () => {
     });
   }, []);
 
-  const ensureDiscussionGroupExpanded = useCallback((groupId: string) => {
-    setExpandedDiscussionGroups((prev) => {
+  const ensureGroupConversationExpanded = useCallback((groupId: string) => {
+    setExpandedGroupConversations((prev) => {
       if (prev.includes(groupId)) {
         return prev;
       }
@@ -191,12 +193,12 @@ export const useConversations = () => {
     isConversationGenerating,
     hasCompletionUnread,
     expandedWorkspaces,
-    expandedDiscussionGroups,
+    expandedGroupConversations,
     pinnedConversations,
     timelineSections,
-    discussionChildConversationsByParentId,
+    groupChildConversationsByParentId,
     handleToggleWorkspace,
-    handleToggleDiscussionGroup,
-    ensureDiscussionGroupExpanded,
+    handleToggleGroupConversation,
+    ensureGroupConversationExpanded,
   };
 };

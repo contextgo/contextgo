@@ -37,6 +37,46 @@ describe('transformMessage', () => {
     expect(result!.position).toBe('right');
   });
 
+  it('transforms tips messages into centered tips', () => {
+    const result = transformMessage(
+      makeMessage('tips', {
+        content: 'Sidecar files exported',
+        type: 'success',
+        actions: [
+          {
+            label: 'Open Markdown',
+            action: 'open-file',
+            path: '/tmp/export/latest.md',
+          },
+          {
+            label: 'Show In Folder',
+            action: 'show-item-in-folder',
+            path: '/tmp/export/latest.md',
+          },
+        ],
+      })
+    );
+    expect(result).toBeDefined();
+    expect(result!.type).toBe('tips');
+    expect(result!.position).toBe('center');
+    expect(result!.content).toEqual({
+      content: 'Sidecar files exported',
+      type: 'success',
+      actions: [
+        {
+          label: 'Open Markdown',
+          action: 'open-file',
+          path: '/tmp/export/latest.md',
+        },
+        {
+          label: 'Show In Folder',
+          action: 'show-item-in-folder',
+          path: '/tmp/export/latest.md',
+        },
+      ],
+    });
+  });
+
   it('returns undefined for transient message types', () => {
     for (const type of ['start', 'finish', 'thought', 'system', 'acp_model_info', 'request_trace']) {
       expect(transformMessage(makeMessage(type))).toBeUndefined();

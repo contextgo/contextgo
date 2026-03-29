@@ -11,10 +11,22 @@ import type { IUnifiedIncomingMessage } from '../../types';
 
 /**
  * Convert a WeixinChatRequest to the unified incoming message format.
- * Text-only: media attachments are not supported in this iteration.
+ * Supports text and media attachments (image/video/file/voice).
  */
 export function toUnifiedIncomingMessage(request: WeixinChatRequest): IUnifiedIncomingMessage {
-  const { conversationId, text } = request;
+  const { conversationId, text, attachments } = request;
+  const first = attachments?.[0];
+  const contentType =
+    first?.kind === 'image'
+      ? 'photo'
+      : first?.kind === 'video'
+        ? 'video'
+        : first?.kind === 'file'
+          ? 'document'
+          : first?.kind === 'voice'
+            ? 'voice'
+            : 'text';
+
   return {
     id: conversationId,
     platform: 'weixin',
@@ -24,8 +36,23 @@ export function toUnifiedIncomingMessage(request: WeixinChatRequest): IUnifiedIn
       displayName: conversationId.slice(-6),
     },
     content: {
-      type: 'text',
+      type: contentType,
       text: text ?? '',
+      attachments: attachments?.map((item) => ({
+        type:
+          item.kind === 'image'
+            ? 'photo'
+            : item.kind === 'video'
+              ? 'video'
+              : item.kind === 'file'
+                ? 'document'
+                : 'voice',
+        fileId: item.filePath,
+        fileName: item.fileName,
+        mimeType: item.mimeType,
+        size: item.size,
+        duration: item.duration,
+      })),
     },
     timestamp: Date.now(),
   };

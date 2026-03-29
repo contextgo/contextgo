@@ -1,4 +1,5 @@
-.conversation-search-modal {
+.conversation-search-modal,
+.conversation-search-page {
   --conversation-search-mask-bg: rgba(15, 23, 42, 0.1);
   --conversation-search-panel-bg: rgba(255, 255, 255, 0.72);
   --conversation-search-panel-inner-bg: rgba(255, 255, 255, 0.82);
@@ -15,7 +16,9 @@
 }
 
 [data-theme='dark'] .conversation-search-modal,
-body[arco-theme='dark'] .conversation-search-modal {
+[data-theme='dark'] .conversation-search-page,
+body[arco-theme='dark'] .conversation-search-modal,
+body[arco-theme='dark'] .conversation-search-page {
   --conversation-search-mask-bg: color-mix(in srgb, var(--color-bg-5) 58%, transparent);
   --conversation-search-panel-bg: color-mix(in srgb, var(--color-bg-2) 76%, transparent);
   --conversation-search-panel-inner-bg: color-mix(in srgb, var(--color-bg-3) 82%, transparent);
@@ -61,17 +64,46 @@ body[arco-theme='dark'] .conversation-search-modal {
   overflow: hidden !important;
 }
 
+.conversation-search-page {
+  box-sizing: border-box;
+  display: flex;
+}
+
+.conversation-search-page__shell {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--conversation-search-panel-border) 84%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--color-bg-1) 94%, transparent);
+  box-shadow: none;
+  outline: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .conversation-search-modal .aionui-modal-body-content {
   padding: 0 !important;
 }
 
 .conversation-search-modal__panel {
+  box-sizing: border-box;
   background: var(--conversation-search-panel-inner-bg) !important;
   backdrop-filter: blur(2px) saturate(106%);
   -webkit-backdrop-filter: blur(2px) saturate(106%);
   border: none;
   box-shadow: none;
   padding: 24px 24px 22px;
+}
+
+.conversation-search-page .conversation-search-modal__panel {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  background: transparent !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 20px 20px 18px;
 }
 
 .conversation-search-modal__header {
@@ -220,6 +252,12 @@ body[arco-theme='dark'] .conversation-search-modal {
   box-shadow: none;
 }
 
+.conversation-search-modal__idle-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .conversation-search-modal__state {
   min-height: 168px;
   border: 1px dashed var(--conversation-search-divider);
@@ -294,11 +332,39 @@ body[arco-theme='dark'] .conversation-search-modal {
     0 1px 3px rgba(15, 23, 42, 0.1);
 }
 
+.conversation-search-modal__section {
+  border: 1px solid color-mix(in srgb, var(--conversation-search-panel-border) 84%, transparent);
+  border-radius: 18px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--conversation-search-surface-bg) 88%, transparent);
+}
+
+.conversation-search-modal__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--conversation-search-divider);
+}
+
+.conversation-search-modal__section-title {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 .conversation-search-modal__result {
   padding: 16px 18px;
   background: transparent;
   border: none;
   border-bottom: 1px solid var(--conversation-search-divider);
+}
+
+.conversation-search-modal__secondary-line {
+  display: block;
 }
 
 .conversation-search-modal__snippet {

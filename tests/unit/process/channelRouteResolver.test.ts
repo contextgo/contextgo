@@ -8,12 +8,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockDb, mockProcessConfigGet, mockCreateConversation } = vi.hoisted(() => ({
   mockDb: {
+    getConnectorInstances: vi.fn(),
     getRemoteIdentityByConnectorChat: vi.fn(),
+    getConversation: vi.fn(),
+    getLegacyChannelUserByPlatform: vi.fn(),
+    ensureChannelUserMirror: vi.fn(),
     upsertRemoteIdentity: vi.fn(),
     getChannelBindingsForScope: vi.fn(),
     upsertChannelBinding: vi.fn(),
     getAgentProfile: vi.fn(),
     upsertAgentProfile: vi.fn(),
+    updateConversation: vi.fn(),
+    updateExternalSessionActivity: vi.fn(),
   },
   mockProcessConfigGet: vi.fn(),
   mockCreateConversation: vi.fn(),
@@ -59,12 +65,35 @@ describe('ChannelRouteResolver', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    mockDb.getConnectorInstances.mockReturnValue({ success: true, data: [connector] });
     mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: null });
+    mockDb.getConversation.mockReturnValue({
+      success: true,
+      data: {
+        id: 'conv-1',
+        type: 'gemini',
+        extra: {},
+        externalSessionId: 'external_session_source',
+        rootRunId: 'run-root-1',
+      },
+    });
+    mockDb.getLegacyChannelUserByPlatform.mockReturnValue({ success: true, data: null });
+    mockDb.ensureChannelUserMirror.mockReturnValue({
+      success: true,
+      data: {
+        id: 'assistant_user_legacy',
+        platformUserId: 'user-1',
+        platformType: 'telegram',
+        authorizedAt: 100,
+      },
+    });
     mockDb.upsertRemoteIdentity.mockReturnValue({ success: true, data: true });
     mockDb.getChannelBindingsForScope.mockReturnValue({ success: true, data: [] });
     mockDb.upsertChannelBinding.mockReturnValue({ success: true, data: true });
     mockDb.getAgentProfile.mockReturnValue({ success: true, data: null });
     mockDb.upsertAgentProfile.mockReturnValue({ success: true, data: true });
+    mockDb.updateConversation.mockReturnValue({ success: true, data: true });
+    mockDb.updateExternalSessionActivity.mockReturnValue({ success: true, data: true });
 
     mockProcessConfigGet.mockResolvedValue(undefined);
     mockCreateConversation.mockResolvedValue({
@@ -90,7 +119,7 @@ describe('ChannelRouteResolver', () => {
       remoteChatType: 'group',
       authorizedAt: 100,
       lastActive: 200,
-      legacyUserId: channelUser.id,
+      legacyUserId: 'assistant_user_legacy',
     };
     mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: existingIdentity });
 
@@ -113,6 +142,7 @@ describe('ChannelRouteResolver', () => {
       expect.objectContaining({
         remoteUserId: 'user-1',
         remoteChatType: 'group',
+        legacyUserId: 'assistant_user_legacy',
       })
     );
   });
@@ -127,7 +157,7 @@ describe('ChannelRouteResolver', () => {
       remoteChatType: 'direct',
       authorizedAt: 100,
       lastActive: 200,
-      legacyUserId: channelUser.id,
+      legacyUserId: 'assistant_user_legacy',
     };
     mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: existingIdentity });
 
@@ -150,8 +180,92 @@ describe('ChannelRouteResolver', () => {
       expect.objectContaining({
         remoteUserId: 'user-2',
         remoteChatType: 'direct',
+        legacyUserId: 'assistant_user_legacy',
       })
     );
+  });
+
+  it('bootstraps legacy direct-chat authorization when only one connector exists', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockDb.getLegacyChannelUserByPlatform.mockReturnValue({
+      success: true,
+      data: {
+        id: 'assistant_user_legacy',
+        platformUserId: 'user-1',
+        platformType: 'telegram',
+        displayName: 'Legacy User',
+        authorizedAt: 88,
+        sessionId: 'legacy-session-1',
+      },
+    });
+
+    const result = await (
+      resolver as unknown as {
+        ensureChannelUserProjection: (
+          connector: IConnectorInstance,
+          platformUserId: string,
+          platform: 'telegram',
+          chatId: string,
+          displayName?: string,
+          remoteChatType?: string
+        ) => Promise<IChannelUser>;
+      }
+    ).ensureChannelUserProjection(connector, 'user-1', 'telegram', 'user-1', 'Legacy User', 'direct');
+
+    expect(result.id.startsWith('remote_identity_')).toBe(true);
+    expect(mockDb.upsertRemoteIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectorId: connector.id,
+        remoteChatId: 'user-1',
+        remoteChatType: 'direct',
+        legacyUserId: 'assistant_user_legacy',
+      })
+    );
+    expect(mockDb.ensureChannelUserMirror).toHaveBeenCalledWith(
+      expect.objectContaining({
+        remoteIdentityId: expect.stringMatching(/^remote_identity_/),
+        platformUserId: 'user-1',
+        sessionId: 'legacy-session-1',
+      })
+    );
+  });
+
+  it('does not bootstrap legacy direct-chat authorization when multiple connectors share the platform', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockDb.getConnectorInstances.mockReturnValue({
+      success: true,
+      data: [
+        connector,
+        {
+          ...connector,
+          id: 'connector-2',
+        },
+      ],
+    });
+    mockDb.getLegacyChannelUserByPlatform.mockReturnValue({
+      success: true,
+      data: {
+        id: 'assistant_user_legacy',
+        platformUserId: 'user-1',
+        platformType: 'telegram',
+        authorizedAt: 88,
+      },
+    });
+
+    await expect(
+      (
+        resolver as unknown as {
+          ensureChannelUserProjection: (
+            connector: IConnectorInstance,
+            platformUserId: string,
+            platform: 'telegram',
+            chatId: string,
+            displayName?: string,
+            remoteChatType?: string
+          ) => Promise<IChannelUser>;
+        }
+      ).ensureChannelUserProjection(connector, 'user-1', 'telegram', 'user-1', 'Legacy User', 'direct')
+    ).rejects.toThrow('User not authorized');
   });
 
   it('skips remote_user bindings for group chats', async () => {
@@ -333,7 +447,6 @@ describe('ChannelRouteResolver', () => {
     expect(result.id).toBe('binding-temporary-override');
     expect(mockDb.getChannelBindingsForScope).toHaveBeenCalledWith(connector.id, 'temporary_override', 'group:alpha');
   });
-
   it('creates a temporary override binding directly from agentProfileId', async () => {
     const resolver = new ChannelRouteResolver();
     mockDb.getAgentProfile.mockReturnValue({
@@ -447,5 +560,52 @@ describe('ChannelRouteResolver', () => {
     });
 
     expect(result.id).toBe('binding-default');
+  });
+
+  it('transfers conversation ownership when reusing an existing conversation', async () => {
+    const resolver = new ChannelRouteResolver();
+
+    const result = await (
+      resolver as unknown as {
+        ensureConversation: (params: {
+          platform: 'telegram';
+          chatId: string;
+          externalSession: {
+            id: string;
+            bindingId: string;
+            activeConversationId: string;
+          };
+          agentProfile: {
+            id: string;
+            backend: string;
+          };
+          forceNewConversation?: boolean;
+        }) => Promise<{
+          id: string;
+          type: string;
+          extra: Record<string, never>;
+          externalSessionId?: string;
+          rootRunId?: string;
+        }>;
+      }
+    ).ensureConversation({
+      platform: 'telegram',
+      chatId: 'group:alpha',
+      externalSession: {
+        id: 'external_session_target',
+        bindingId: 'binding-target',
+        activeConversationId: 'conv-1',
+      },
+      agentProfile: {
+        id: 'agent-1',
+        backend: 'gemini',
+      },
+    });
+
+    expect(result.externalSessionId).toBe('external_session_target');
+    expect(mockDb.updateConversation).toHaveBeenCalledWith('conv-1', {
+      externalSessionId: 'external_session_target',
+      rootRunId: 'run-root-1',
+    });
   });
 });

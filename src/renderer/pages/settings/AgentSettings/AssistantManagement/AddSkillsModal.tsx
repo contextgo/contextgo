@@ -1,9 +1,6 @@
-/**
- * AddSkillsModal — Modal for browsing and adding skills from external sources.
- * Includes tabs for sources, search, and skill cards.
- */
-import type { ExternalSource } from './types';
-import { Button, Input, Modal } from '@arco-design/web-react';
+import { ipcBridge } from '@/common';
+import type { AddableSkill, ExternalSource, SkillMarketItem } from './types';
+import { Button, Input, Modal, Typography } from '@arco-design/web-react';
 import { Plus, Refresh, Search } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,36 +8,48 @@ import { useTranslation } from 'react-i18next';
 type AddSkillsModalProps = {
   visible: boolean;
   onCancel: () => void;
+  browseMode: 'skill-market' | 'external';
+  setBrowseMode: (mode: 'skill-market' | 'external') => void;
 
   // External sources
   externalSources: ExternalSource[];
   activeSourceTab: string;
-  setActiveSourceTab: (v: string) => void;
+  setActiveSourceTab: (value: string) => void;
   activeSource: ExternalSource | undefined;
-  filteredExternalSkills: Array<{ name: string; description: string; path: string }>;
+  filteredExternalSkills: ExternalSource['skills'];
   externalSkillsLoading: boolean;
-
-  // Search
   searchExternalQuery: string;
-  setSearchExternalQuery: (v: string) => void;
-
-  // Refresh
+  setSearchExternalQuery: (value: string) => void;
   refreshing: boolean;
   handleRefreshExternal: () => Promise<void>;
+  setShowAddPathModal: (value: boolean) => void;
 
-  // Add path
-  setShowAddPathModal: (v: boolean) => void;
+  // Skill Market
+  marketSkills: SkillMarketItem[];
+  marketQuery: string;
+  setMarketQuery: (value: string) => void;
+  marketLoading: boolean;
+  marketLoadingMore: boolean;
+  marketRefreshing: boolean;
+  marketTotal: number;
+  marketTotalAvailable: number;
+  marketSiteUrl: string;
+  hasMoreMarketSkills: boolean;
+  handleRefreshSkillMarket: () => Promise<void>;
+  handleLoadMoreSkillMarket: () => Promise<void>;
 
   // Already added skills
   customSkills: string[];
 
   // Add handler
-  handleAddFoundSkills: (skills: Array<{ name: string; description: string; path: string }>) => void;
+  handleAddFoundSkills: (skills: AddableSkill[]) => void;
 };
 
 const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
   visible,
   onCancel,
+  browseMode,
+  setBrowseMode,
   externalSources,
   activeSourceTab,
   setActiveSourceTab,
@@ -52,10 +61,23 @@ const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
   refreshing,
   handleRefreshExternal,
   setShowAddPathModal,
+  marketSkills,
+  marketQuery,
+  setMarketQuery,
+  marketLoading,
+  marketLoadingMore,
+  marketRefreshing,
+  marketTotal,
+  marketTotalAvailable,
+  marketSiteUrl,
+  hasMoreMarketSkills,
+  handleRefreshSkillMarket,
+  handleLoadMoreSkillMarket,
   customSkills,
   handleAddFoundSkills,
 }) => {
   const { t } = useTranslation();
+  const showMarket = browseMode === 'skill-market';
 
   return (
     <Modal
@@ -63,111 +85,268 @@ const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
       onCancel={onCancel}
       footer={null}
       title={t('settings.addSkillsTitle', { defaultValue: 'Add Skills' })}
-      className='w-[90vw] md:w-[600px]'
+      className='w-[90vw] md:w-[680px]'
       wrapStyle={{ zIndex: 2500 }}
       maskStyle={{ zIndex: 2490 }}
       autoFocus={false}
     >
-      <div className='flex flex-col h-[500px]'>
-        {/* Source tabs + actions */}
-        <div className='flex items-center justify-between mb-16px shrink-0 gap-16px'>
-          <div className='flex-1 overflow-x-auto custom-scrollbar pb-4px'>
-            <div className='flex items-center gap-8px min-w-max'>
-              {externalSources.map((source) => {
-                const isActive = activeSourceTab === source.source;
-                return (
-                  <button
-                    key={source.source}
-                    type='button'
-                    className={`outline-none cursor-pointer px-12px py-6px text-12px rd-[100px] transition-all duration-300 flex items-center gap-6px border ${isActive ? 'bg-primary-6 border-primary-6 text-white shadow-sm font-medium' : 'bg-fill-2 border-transparent text-t-secondary hover:bg-fill-3 hover:text-t-primary'}`}
-                    onClick={() => setActiveSourceTab(source.source)}
-                  >
-                    {source.name}
-                    <span
-                      className={`px-6px py-1px rd-[100px] text-10px flex items-center justify-center transition-colors ${isActive ? 'bg-white/20 text-white' : 'bg-fill-3 text-t-tertiary border border-border-1'}`}
-                    >
-                      {source.skills.length}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+      <div className='flex h-[560px] flex-col gap-12px'>
+        <div className='flex items-center justify-between gap-12px'>
+          <div className='flex items-center gap-8px'>
+            <Button
+              size='small'
+              type={showMarket ? 'primary' : 'secondary'}
+              className='rounded-[100px]'
+              onClick={() => setBrowseMode('skill-market')}
+            >
+              {t('settings.skillsHub.marketTitle', { defaultValue: 'Skill Market' })}
+            </Button>
+            <Button
+              size='small'
+              type={showMarket ? 'secondary' : 'primary'}
+              className='rounded-[100px]'
+              onClick={() => setBrowseMode('external')}
+            >
+              {t('settings.skillsHub.discoveredTitle', { defaultValue: 'Discovered External Skills' })}
+            </Button>
           </div>
-          <div className='flex items-center gap-4px shrink-0 ml-4px'>
-            <button
-              type='button'
-              className='outline-none border-none bg-transparent cursor-pointer p-6px text-t-tertiary hover:text-primary-6 transition-colors rd-full hover:bg-fill-2'
-              onClick={() => void handleRefreshExternal()}
-              title={t('common.refresh', { defaultValue: 'Refresh' })}
-            >
-              <Refresh theme='outline' size={16} className={refreshing ? 'animate-spin' : ''} />
-            </button>
-            <button
-              type='button'
-              className='outline-none border border-dashed border-border-1 hover:border-primary-4 cursor-pointer w-28px h-28px text-t-tertiary hover:text-primary-6 hover:bg-primary-1 rd-full transition-all duration-300 flex items-center justify-center bg-transparent shrink-0'
-              onClick={() => setShowAddPathModal(true)}
-              title={t('common.add', { defaultValue: 'Add Custom Path' })}
-            >
-              <Plus size={16} />
-            </button>
+          <div className='flex items-center gap-8px'>
+            <Button
+              size='mini'
+              type='text'
+              icon={
+                <Refresh
+                  theme='outline'
+                  size={16}
+                  className={showMarket ? (marketRefreshing ? 'animate-spin' : '') : refreshing ? 'animate-spin' : ''}
+                />
+              }
+              onClick={() => {
+                if (showMarket) {
+                  void handleRefreshSkillMarket();
+                } else {
+                  void handleRefreshExternal();
+                }
+              }}
+            />
+            {!showMarket && (
+              <Button
+                size='mini'
+                type='outline'
+                icon={<Plus size={14} />}
+                className='rounded-[100px]'
+                onClick={() => setShowAddPathModal(true)}
+              >
+                {t('settings.skillsHub.addCustomPath', { defaultValue: 'Add Custom Skill Path' })}
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Search */}
+        {showMarket ? (
+          <div className='rounded-12px border border-border-1 bg-fill-1 p-12px'>
+            <div className='flex items-start justify-between gap-12px'>
+              <div>
+                <Typography.Text className='text-13px font-medium text-t-primary'>
+                  {t('settings.skillsHub.marketDescription', {
+                    defaultValue: 'Search the remote skill catalog and add packages to this assistant.',
+                  })}
+                </Typography.Text>
+                <Typography.Paragraph className='mb-0 mt-6px text-12px text-t-secondary'>
+                  {`${marketTotal} / ${marketTotalAvailable}`}
+                </Typography.Paragraph>
+              </div>
+              <Button
+                size='small'
+                type='text'
+                className='rounded-[100px]'
+                onClick={() => void ipcBridge.shell.openExternal.invoke(marketSiteUrl)}
+              >
+                {t('common.website', { defaultValue: 'Website' })}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {!showMarket && externalSources.length > 0 ? (
+          <div className='flex gap-8px overflow-x-auto custom-scrollbar pb-4px'>
+            {externalSources.map((source) => (
+              <Button
+                key={source.source}
+                size='small'
+                type={activeSourceTab === source.source ? 'primary' : 'secondary'}
+                className='rounded-[100px]'
+                onClick={() => setActiveSourceTab(source.source)}
+              >
+                {`${source.name} (${source.skills.length})`}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+
         <Input
           prefix={<Search />}
-          placeholder={t('settings.skillsHub.searchPlaceholder', { defaultValue: 'Search skills...' })}
-          value={searchExternalQuery}
-          onChange={(val) => setSearchExternalQuery(val)}
-          className='mb-12px shrink-0 rounded-[8px] bg-fill-2'
+          placeholder={
+            showMarket
+              ? t('settings.skillsHub.marketSearchPlaceholder', {
+                  defaultValue: 'Search Skill Market...',
+                })
+              : t('settings.skillsHub.searchPlaceholder', {
+                  defaultValue: 'Search skills...',
+                })
+          }
+          value={showMarket ? marketQuery : searchExternalQuery}
+          onChange={(value) => {
+            if (showMarket) {
+              setMarketQuery(value);
+            } else {
+              setSearchExternalQuery(value);
+            }
+          }}
+          className='shrink-0 rounded-[8px] bg-fill-2'
         />
 
-        {/* Skill list */}
-        <div className='flex-1 overflow-y-auto custom-scrollbar bg-fill-1 rounded-8px p-12px'>
-          {externalSkillsLoading ? (
-            <div className='h-full flex items-center justify-center text-t-tertiary'>
-              {t('common.loading', { defaultValue: 'Loading...' })}
+        <div className='flex-1 overflow-y-auto rounded-8px bg-fill-1 p-12px'>
+          {showMarket ? (
+            marketLoading ? (
+              <div className='flex h-full items-center justify-center text-t-tertiary'>
+                {t('common.loading', { defaultValue: 'Please wait...' })}
+              </div>
+            ) : marketSkills.length > 0 ? (
+              <div className='flex flex-col gap-8px'>
+                {marketSkills.map((skill) => {
+                  const isAdded = customSkills.includes(skill.name);
+                  const canAdd = skill.archives.length > 0;
+
+                  return (
+                    <div
+                      key={skill.id}
+                      className='flex items-start gap-12px rounded-8px border border-transparent bg-base p-12px shadow-sm transition-colors hover:border-border-2'
+                    >
+                      <div className='mt-2px flex h-32px w-32px shrink-0 items-center justify-center rounded-8px border border-border-1 bg-fill-2 text-14px font-bold text-t-secondary uppercase'>
+                        {skill.displayName.charAt(0)}
+                      </div>
+                      <div className='min-w-0 flex-1'>
+                        <div className='flex items-center gap-8px'>
+                          <div className='truncate text-14px font-medium text-t-primary'>{skill.displayName}</div>
+                          {skill.version ? (
+                            <span className='rounded-[100px] bg-fill-2 px-6px py-1px text-10px text-t-secondary'>
+                              {`v${skill.version}`}
+                            </span>
+                          ) : null}
+                        </div>
+                        {skill.description ? (
+                          <div className='mt-4px line-clamp-2 text-12px text-t-secondary' title={skill.description}>
+                            {skill.description}
+                          </div>
+                        ) : null}
+                        <div className='mt-6px text-11px text-t-tertiary'>
+                          {[skill.author, skill.categories[0]].filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                      <div className='shrink-0 self-center'>
+                        {isAdded ? (
+                          <Button
+                            size='small'
+                            disabled
+                            className='rounded-[100px] border-none bg-fill-2 text-t-tertiary'
+                          >
+                            {t('settings.installed', { defaultValue: 'Installed' })}
+                          </Button>
+                        ) : (
+                          <Button
+                            size='small'
+                            type='primary'
+                            disabled={!canAdd}
+                            className='rounded-[100px]'
+                            onClick={() =>
+                              handleAddFoundSkills([
+                                {
+                                  ...skill,
+                                  source: 'skill-market',
+                                },
+                              ])
+                            }
+                          >
+                            {canAdd
+                              ? t('common.add', { defaultValue: 'Add' })
+                              : t('settings.skillsHub.marketArchiveUnavailableShort', {
+                                  defaultValue: 'Unavailable',
+                                })}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {hasMoreMarketSkills ? (
+                  <Button
+                    long
+                    type='secondary'
+                    loading={marketLoadingMore}
+                    className='mt-4px rounded-8px'
+                    onClick={() => void handleLoadMoreSkillMarket()}
+                  >
+                    {t('settings.skillsHub.loadMore', { defaultValue: 'Load More' })}
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <div className='flex h-full items-center justify-center text-t-tertiary'>
+                {t('settings.skillsHub.marketEmpty', {
+                  defaultValue: 'No matching skills found in Skill Market',
+                })}
+              </div>
+            )
+          ) : externalSkillsLoading ? (
+            <div className='flex h-full items-center justify-center text-t-tertiary'>
+              {t('common.loading', { defaultValue: 'Please wait...' })}
             </div>
           ) : activeSource ? (
             filteredExternalSkills.length > 0 ? (
               <div className='flex flex-col gap-8px'>
                 {filteredExternalSkills.map((skill) => {
                   const isAdded = customSkills.includes(skill.name);
+
                   return (
                     <div
                       key={skill.path}
-                      className='flex items-start gap-12px p-12px bg-base border border-transparent hover:border-border-2 rounded-8px transition-colors shadow-sm'
+                      className='flex items-start gap-12px rounded-8px border border-transparent bg-base p-12px shadow-sm transition-colors hover:border-border-2'
                     >
-                      <div className='w-32px h-32px rounded-8px bg-fill-2 border border-border-1 flex items-center justify-center font-bold text-14px text-t-secondary uppercase shrink-0 mt-2px'>
+                      <div className='mt-2px flex h-32px w-32px shrink-0 items-center justify-center rounded-8px border border-border-1 bg-fill-2 text-14px font-bold text-t-secondary uppercase'>
                         {skill.name.charAt(0)}
                       </div>
-                      <div className='flex-1 min-w-0'>
-                        <div className='text-14px font-medium text-t-primary truncate'>{skill.name}</div>
-                        {skill.description && (
-                          <div className='text-12px text-t-secondary line-clamp-2 mt-4px' title={skill.description}>
+                      <div className='min-w-0 flex-1'>
+                        <div className='truncate text-14px font-medium text-t-primary'>{skill.name}</div>
+                        {skill.description ? (
+                          <div className='mt-4px line-clamp-2 text-12px text-t-secondary' title={skill.description}>
                             {skill.description}
                           </div>
-                        )}
+                        ) : null}
                       </div>
-                      <div className='shrink-0 flex items-center h-full self-center'>
+                      <div className='shrink-0 self-center'>
                         {isAdded ? (
                           <Button
                             size='small'
                             disabled
-                            className='rounded-[100px] bg-fill-2 text-t-tertiary border-none'
+                            className='rounded-[100px] border-none bg-fill-2 text-t-tertiary'
                           >
-                            {t('common.added', { defaultValue: 'Added' })}
+                            {t('settings.installed', { defaultValue: 'Installed' })}
                           </Button>
                         ) : (
                           <Button
                             size='small'
                             type='primary'
                             className='rounded-[100px]'
-                            onClick={() => {
-                              handleAddFoundSkills([skill]);
-                            }}
+                            onClick={() =>
+                              handleAddFoundSkills([
+                                {
+                                  ...skill,
+                                  source: 'external',
+                                },
+                              ])
+                            }
                           >
-                            <Plus size={14} className='mr-4px' />
                             {t('common.add', { defaultValue: 'Add' })}
                           </Button>
                         )}
@@ -177,13 +356,15 @@ const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
                 })}
               </div>
             ) : (
-              <div className='h-full flex items-center justify-center text-t-tertiary'>
+              <div className='flex h-full items-center justify-center text-t-tertiary'>
                 {t('settings.skillsHub.noSearchResults', { defaultValue: 'No skills found' })}
               </div>
             )
           ) : (
-            <div className='h-full flex items-center justify-center text-t-tertiary'>
-              {t('settings.noExternalSources', { defaultValue: 'No external skill sources discovered' })}
+            <div className='flex h-full items-center justify-center text-t-tertiary'>
+              {t('settings.skillsHub.noExternalSources', {
+                defaultValue: 'No external skill sources discovered',
+              })}
             </div>
           )}
         </div>

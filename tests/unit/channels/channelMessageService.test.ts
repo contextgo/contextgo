@@ -86,6 +86,7 @@ describe('ChannelMessageService', () => {
 
   it('applies hooks and keeps raw content for ACP channel messages', async () => {
     const sendMessage = vi.fn(async () => undefined);
+    const files = ['/tmp/weixin-media/image.png'];
     const service = new ChannelMessageService({
       taskManager: {
         getTask: vi.fn(() => undefined),
@@ -114,12 +115,13 @@ describe('ChannelMessageService', () => {
       },
     });
 
-    const promise = service.sendMessage('session-1', 'conv-1', 'raw content', vi.fn());
+    const promise = service.sendMessage('session-1', 'conv-1', 'raw content', vi.fn(), files);
     await vi.waitFor(() => {
       expect(sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           content: 'raw content',
           agentContent: 'hooked content',
+          files,
         })
       );
     });
@@ -130,6 +132,7 @@ describe('ChannelMessageService', () => {
 
   it('applies hooks and keeps raw content for Gemini channel messages', async () => {
     const sendMessage = vi.fn(async () => undefined);
+    const files = ['/tmp/weixin-media/document.pdf'];
     const service = new ChannelMessageService({
       taskManager: {
         getTask: vi.fn(() => undefined),
@@ -158,17 +161,60 @@ describe('ChannelMessageService', () => {
       },
     });
 
-    const promise = service.sendMessage('session-1', 'conv-2', 'raw input', vi.fn());
+    const promise = service.sendMessage('session-1', 'conv-2', 'raw input', vi.fn(), files);
     await vi.waitFor(() => {
       expect(sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           input: 'raw input',
           agentInput: 'hooked input',
+          files,
         })
       );
     });
 
     agentMessageListener?.({ type: 'finish', conversation_id: 'conv-2', data: null });
+    await expect(promise).resolves.toMatch(/^channel_msg_/);
+  });
+
+  it('enables yolo mode for Discord channel conversations', async () => {
+    const sendMessage = vi.fn(async () => undefined);
+    const getOrBuildTask = vi.fn(async (_conversationId: string, _options: { yoloMode: boolean }) => ({
+      type: 'gemini',
+      sendMessage,
+    }));
+    const service = new ChannelMessageService({
+      taskManager: {
+        getTask: vi.fn(() => undefined),
+        getOrBuildTask,
+      },
+      getDatabase: async () =>
+        ({
+          getConversation: vi.fn(() => ({
+            success: true,
+            data: {
+              id: 'conv-3',
+              type: 'gemini',
+              source: 'discord',
+              extra: {},
+            },
+          })),
+        }) as unknown as Awaited<ReturnType<typeof import('../../../src/process/services/database').getDatabase>>,
+      hookRuntime: {
+        applyBeforeUserPrompt: vi.fn(async () => ({
+          content: 'discord prompt',
+          appliedHooks: [],
+        })),
+      },
+    });
+
+    const promise = service.sendMessage('session-1', 'conv-3', 'discord prompt', vi.fn());
+    await vi.waitFor(() => {
+      expect(getOrBuildTask).toHaveBeenCalledWith('conv-3', {
+        yoloMode: true,
+      });
+    });
+
+    agentMessageListener?.({ type: 'finish', conversation_id: 'conv-3', data: null });
     await expect(promise).resolves.toMatch(/^channel_msg_/);
   });
 });

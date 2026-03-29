@@ -8,6 +8,7 @@ import type { TChatConversation, TProviderWithModel } from '@/common/config/stor
 import type { AcpBackendAll } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
 import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
+import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
 import { getDatabase } from '@process/services/database';
 import { ProcessConfig } from '@process/utils/initStorage';
 import crypto from 'crypto';
@@ -29,6 +30,9 @@ type SavedAgentConfig = {
   backend: string;
   customAgentId?: string;
   name?: string;
+  openclawAgentId?: string;
+  workspace?: string;
+  cliPath?: string;
 };
 
 type RemoteChatType = 'direct' | 'group';
@@ -161,6 +165,26 @@ type ResolveRouteParams = {
 
 const DIRECT_BACKENDS = new Set(['gemini', 'codex', 'openclaw-gateway']);
 
+function normalizeOpenClawAgentId(agentId?: string): string {
+  return agentId?.trim().toLowerCase() || 'main';
+}
+
+function resolveSavedOpenClawAgent(savedAgent: SavedAgentConfig): SavedAgentConfig {
+  const configuredAgents = listConfiguredOpenClawAgents();
+  const selectedAgentId = normalizeOpenClawAgentId(savedAgent.openclawAgentId);
+  const configuredAgent =
+    configuredAgents.find((agent) => normalizeOpenClawAgentId(agent.agentId) === selectedAgentId) ||
+    configuredAgents[0];
+
+  return {
+    backend: 'openclaw-gateway',
+    name: savedAgent.name?.trim() || configuredAgent?.name || 'OpenClaw',
+    openclawAgentId: selectedAgentId || configuredAgent?.agentId || 'main',
+    workspace: savedAgent.workspace?.trim() || configuredAgent?.workspace,
+    cliPath: savedAgent.cliPath?.trim() || 'openclaw',
+  };
+}
+
 function buildStableId(prefix: string, ...parts: Array<string | undefined>): string {
   const hash = crypto
     .createHash('sha256')
@@ -199,10 +223,14 @@ async function getSavedAgentConfig(platform: PluginType): Promise<SavedAgentConf
 
   const saved = await ProcessConfig.get(key);
   if (saved && typeof saved === 'object' && typeof saved.backend === 'string') {
+    const record = saved as Record<string, unknown>;
     return {
       backend: saved.backend,
-      customAgentId: typeof saved.customAgentId === 'string' ? saved.customAgentId : undefined,
-      name: typeof saved.name === 'string' ? saved.name : undefined,
+      customAgentId: typeof record.customAgentId === 'string' ? record.customAgentId : undefined,
+      name: typeof record.name === 'string' ? record.name : undefined,
+      openclawAgentId: typeof record.openclawAgentId === 'string' ? record.openclawAgentId : undefined,
+      workspace: typeof record.workspace === 'string' ? record.workspace : undefined,
+      cliPath: typeof record.cliPath === 'string' ? record.cliPath : undefined,
     };
   }
 
@@ -313,10 +341,16 @@ function conversationMatchesProfile(conversation: TChatConversation, profile: IA
 
 function mapAgentTypeToBackend(savedAgent: SavedAgentConfig, agentType?: ChannelAgentType): SavedAgentConfig {
   if (!agentType) {
-    return savedAgent;
+    return savedAgent.backend === 'openclaw-gateway' ? resolveSavedOpenClawAgent(savedAgent) : savedAgent;
   }
 
-  if (agentType === 'gemini' || agentType === 'codex' || agentType === 'openclaw-gateway') {
+  if (agentType === 'openclaw-gateway') {
+    return savedAgent.backend === 'openclaw-gateway'
+      ? resolveSavedOpenClawAgent(savedAgent)
+      : { backend: 'openclaw-gateway' };
+  }
+
+  if (agentType === 'gemini' || agentType === 'codex') {
     return { backend: agentType };
   }
 
@@ -387,7 +421,8 @@ export class ChannelRouteResolver {
       params.platformUserId,
       params.platform,
       params.chatId,
-      params.displayName
+      params.displayName,
+      params.remoteChatType
     );
     const remoteIdentity = await this.ensureRemoteIdentity(
       connector,
@@ -483,7 +518,8 @@ export class ChannelRouteResolver {
     platformUserId: string,
     platform: PluginType,
     chatId: string,
-    displayName?: string
+    displayName?: string,
+    remoteChatType?: string
   ): Promise<IChannelUser> {
     const db = await getDatabase();
     const existingIdentity = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
@@ -510,7 +546,98 @@ export class ChannelRouteResolver {
       });
     }
 
+    const legacyBootstrapUser = await this.bootstrapLegacyDirectAuthorization({
+      connector,
+      platformUserId,
+      platform,
+      chatId,
+      remoteChatType,
+      displayName,
+    });
+    if (legacyBootstrapUser) {
+      return legacyBootstrapUser;
+    }
+
     throw new Error('User not authorized');
+  }
+
+  private async bootstrapLegacyDirectAuthorization(params: {
+    connector: IConnectorInstance;
+    platformUserId: string;
+    platform: PluginType;
+    chatId: string;
+    remoteChatType?: string;
+    displayName?: string;
+  }): Promise<IChannelUser | null> {
+    const db = await getDatabase();
+    const resolvedChatType = inferRemoteChatType({
+      chatId: params.chatId,
+      platformUserId: params.platformUserId,
+      remoteChatType: params.remoteChatType,
+    });
+    if (resolvedChatType === 'group') {
+      return null;
+    }
+
+    const connectors = db.getConnectorInstances();
+    if (!connectors.success || !connectors.data) {
+      return null;
+    }
+
+    const samePlatformConnectorCount = connectors.data.filter(
+      (connector) => connector.platform === params.platform
+    ).length;
+    if (samePlatformConnectorCount > 1) {
+      return null;
+    }
+
+    const legacyUserResult = db.getLegacyChannelUserByPlatform(params.platformUserId, params.platform);
+    if (!legacyUserResult.success || !legacyUserResult.data) {
+      return null;
+    }
+
+    const now = Date.now();
+    const remoteIdentity: IRemoteIdentity = {
+      id: `remote_identity_${uuid()}`,
+      connectorId: params.connector.id,
+      remoteUserId: params.platformUserId,
+      remoteChatId: params.chatId,
+      remoteChatType: resolvedChatType ?? 'direct',
+      displayName: params.displayName ?? legacyUserResult.data.displayName,
+      authorizedAt: legacyUserResult.data.authorizedAt,
+      lastActive: now,
+      legacyUserId: legacyUserResult.data.id,
+      metadata: {
+        source: 'legacy-direct-chat-bootstrap',
+      },
+    };
+    const upsertIdentityResult = db.upsertRemoteIdentity(remoteIdentity);
+    if (!upsertIdentityResult.success) {
+      throw new Error(upsertIdentityResult.error || 'Failed to bootstrap legacy authorization');
+    }
+
+    const mirrorUserResult = db.ensureChannelUserMirror({
+      remoteIdentityId: remoteIdentity.id,
+      platformUserId: params.platformUserId,
+      platformType: params.platform,
+      displayName: remoteIdentity.displayName,
+      authorizedAt: remoteIdentity.authorizedAt,
+      lastActive: remoteIdentity.lastActive,
+      sessionId: legacyUserResult.data.sessionId,
+    });
+    if (!mirrorUserResult.success || !mirrorUserResult.data) {
+      throw new Error(mirrorUserResult.error || 'Failed to create channel user mirror');
+    }
+
+    return toProjectedChannelUser({
+      remoteIdentityId: remoteIdentity.id,
+      platformUserId: remoteIdentity.remoteUserId ?? params.platformUserId,
+      platformType: params.platform,
+      displayName: remoteIdentity.displayName,
+      authorizedAt: remoteIdentity.authorizedAt,
+      lastActive: remoteIdentity.lastActive,
+      sessionId: mirrorUserResult.data.sessionId,
+    });
   }
 
   private async ensureRemoteIdentity(
@@ -538,7 +665,7 @@ export class ChannelRouteResolver {
         remoteChatType: resolvedChatType,
         displayName: displayName ?? byChat.data.displayName,
         lastActive: now,
-        legacyUserId: channelUser.id,
+        legacyUserId: byChat.data.legacyUserId,
       };
       db.upsertRemoteIdentity(nextIdentity);
       return nextIdentity;
@@ -554,7 +681,7 @@ export class ChannelRouteResolver {
       displayName,
       authorizedAt: channelUser.authorizedAt,
       lastActive: now,
-      legacyUserId: channelUser.id,
+      legacyUserId: channelUser.id.startsWith('assistant_user_') ? channelUser.id : undefined,
       metadata: {
         source: 'channel-runtime',
       },
@@ -728,9 +855,12 @@ export class ChannelRouteResolver {
       name,
       backend: savedAgent.backend,
       modelRef,
+      workspaceRef: savedAgent.workspace,
       promptProfile: {
         customAgentId: savedAgent.customAgentId,
         agentName: savedAgent.name,
+        openclawAgentId: savedAgent.openclawAgentId,
+        cliPath: savedAgent.cliPath,
         platform,
         scope,
       },
@@ -833,25 +963,30 @@ export class ChannelRouteResolver {
       !conversationMatchesProfile(activeConversation, params.agentProfile);
 
     if (!shouldRotate && activeConversation) {
-      if (!activeConversation.externalSessionId || !activeConversation.rootRunId) {
-        const rootRunId = activeConversation.rootRunId ?? `run_${uuid()}`;
+      const needsRootRun = !activeConversation.rootRunId;
+      const rootRunId = activeConversation.rootRunId ?? `run_${uuid()}`;
+      const needsOwnershipTransfer = activeConversation.externalSessionId !== params.externalSession.id;
+      if (needsRootRun) {
         await this.ensureRootRun(params.externalSession.id, params.agentProfile, activeConversation.id, rootRunId);
+      }
+      if (needsRootRun || needsOwnershipTransfer) {
         db.updateConversation(activeConversation.id, {
           externalSessionId: params.externalSession.id,
           rootRunId,
         });
+      }
+      db.updateExternalSessionActivity(params.externalSession.id, {
+        lastActivity: Date.now(),
+        activeConversationId: activeConversation.id,
+        bindingId: params.externalSession.bindingId,
+      });
+      if (needsRootRun || needsOwnershipTransfer) {
         return {
           ...activeConversation,
           externalSessionId: params.externalSession.id,
           rootRunId,
         };
       }
-
-      db.updateExternalSessionActivity(params.externalSession.id, {
-        lastActivity: Date.now(),
-        activeConversationId: activeConversation.id,
-        bindingId: params.externalSession.bindingId,
-      });
       return activeConversation;
     }
 
@@ -937,6 +1072,8 @@ export class ChannelRouteResolver {
     const promptProfile = (agentProfile.promptProfile ?? {}) as {
       customAgentId?: string;
       agentName?: string;
+      openclawAgentId?: string;
+      cliPath?: string;
     };
 
     if (agentProfile.backend === 'gemini') {
@@ -973,7 +1110,20 @@ export class ChannelRouteResolver {
         name,
         channelChatId: chatId,
         extra: {
+          backend: 'openclaw-gateway',
           workspace: agentProfile.workspaceRef,
+          customWorkspace: Boolean(agentProfile.workspaceRef),
+          cliPath: promptProfile.cliPath,
+          agentName: promptProfile.agentName,
+          openclawAgentId: promptProfile.openclawAgentId,
+          runtimeValidation: {
+            expectedWorkspace: agentProfile.workspaceRef,
+            expectedBackend: 'openclaw-gateway',
+            expectedAgentName: promptProfile.agentName,
+            expectedOpenClawAgentId: promptProfile.openclawAgentId,
+            expectedCliPath: promptProfile.cliPath,
+            switchedAt: Date.now(),
+          },
         },
       });
     }

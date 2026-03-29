@@ -1,6 +1,9 @@
 /**
  * DOM tests for WeixinConfigForm login state machine.
  */
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
@@ -52,7 +55,7 @@ vi.mock('@/renderer/components/settings/SettingsModal/contents/channels/ChannelM
   default: () => <div data-testid='model-selector' />,
 }));
 
-import WeixinConfigForm from '@/renderer/components/settings/SettingsModal/contents/channels/WeixinConfigForm';
+import WeixinConfigForm from '@/renderer/components/settings/SettingsModal/contents/channels/configForms/WeixinConfigForm';
 
 const noopModelSelection = {
   currentModel: undefined,

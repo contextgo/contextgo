@@ -162,6 +162,12 @@ describe('fsBridge skills functionality', () => {
       ProcessEnv: { set: vi.fn() },
     }));
 
+    vi.doMock('@process/task/AcpSkillManager', () => ({
+      AcpSkillManager: {
+        resetInstance: vi.fn(),
+      },
+    }));
+
     // Start with empty IPC handlers map
     const handlers: Record<string, Function> = {};
 
@@ -210,6 +216,7 @@ describe('fsBridge skills functionality', () => {
             importHookWithSymlink: createCommandMock('import-hook-with-symlink'),
             deleteHook: createCommandMock('delete-hook'),
             getHookPaths: createCommandMock('get-hook-paths'),
+            updateHookManifest: createCommandMock('update-hook-manifest'),
             readSkillInfo: createCommandMock('read-skill-info'),
             importSkill: createCommandMock('import-skill'),
             scanForSkills: createCommandMock('scan-for-skills'),
@@ -222,8 +229,8 @@ describe('fsBridge skills functionality', () => {
             getCustomExternalPaths: createCommandMock('get-custom-external-paths'),
             addCustomExternalPath: createCommandMock('add-custom-external-path'),
             removeCustomExternalPath: createCommandMock('remove-custom-external-path'),
-            enableSkillsMarket: createCommandMock('enable-skills-market'),
-            disableSkillsMarket: createCommandMock('disable-skills-market'),
+            searchSkillMarket: createCommandMock('search-skill-market'),
+            installSkillMarketSkill: createCommandMock('install-skill-market-skill'),
           },
           fileStream: {
             contentUpdate: { emit: vi.fn() },
@@ -347,6 +354,49 @@ describe('fsBridge skills functionality', () => {
       expect(custom).toBeDefined();
       expect(custom.isCustom).toBe(true);
     });
+
+    it('discovers nested skill packs for builtin and user skills', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+      const userBase = path.resolve('/mock/userData/config/skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'engineering-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'engineering-planning')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'engineering-planning', 'SKILL.md')] = {
+        content: `---\nname: engineering-planning\ndescription: "Nested builtin skill"\n---\n`,
+        isDirectory: false,
+      };
+
+      mockFsStore[userBase] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'custom-pack')] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'custom-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'custom-pack', 'skills', 'project-playbook')] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'custom-pack', 'skills', 'project-playbook', 'SKILL.md')] = {
+        content: `---\nname: project-playbook\ndescription: "Nested user skill"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler();
+
+      expect(result).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'engineering-planning',
+            description: 'Nested builtin skill',
+            isCustom: false,
+          }),
+          expect.objectContaining({
+            name: 'project-playbook',
+            description: 'Nested user skill',
+            isCustom: true,
+          }),
+        ])
+      );
+    });
   });
 
   describe('hook management', () => {
@@ -360,6 +410,10 @@ describe('fsBridge skills functionality', () => {
         content: JSON.stringify({
           name: 'quality-gate',
           description: 'Builtin quality gate',
+          category: 'quality',
+          tags: ['tests', 'lint'],
+          executionType: 'prompt-transform',
+          events: ['before_user_prompt'],
         }),
         isDirectory: false,
       };
@@ -370,6 +424,10 @@ describe('fsBridge skills functionality', () => {
         content: JSON.stringify({
           name: 'quality-gate',
           description: 'Installed builtin copy',
+          category: 'quality',
+          tags: ['tests', 'lint'],
+          executionType: 'prompt-transform',
+          events: ['before_user_prompt'],
         }),
         isDirectory: false,
       };
@@ -383,6 +441,34 @@ describe('fsBridge skills functionality', () => {
         isCustom: true,
         isBuiltinInstalled: true,
         description: 'Installed builtin copy',
+        runnableEvents: ['before_user_prompt'],
+      });
+    });
+
+    it('returns effective output targets for native-projection hooks', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-hooks');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'result-summary')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'result-summary', 'manifest.json')] = {
+        content: JSON.stringify({
+          name: 'result-summary',
+          description: 'Summarize the final result',
+          category: 'operations',
+          executionType: 'native-projection',
+          events: ['after_response'],
+        }),
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableHooks');
+      const result = await handler();
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        name: 'result-summary',
+        outputTargets: ['chat-message'],
+        runnableEvents: ['after_response'],
       });
     });
 
@@ -396,6 +482,10 @@ describe('fsBridge skills functionality', () => {
         content: JSON.stringify({
           name: 'quality-gate',
           description: 'Builtin quality gate',
+          category: 'quality',
+          tags: ['tests', 'lint'],
+          executionType: 'prompt-transform',
+          events: ['before_user_prompt'],
         }),
         isDirectory: false,
       };
@@ -414,10 +504,94 @@ describe('fsBridge skills functionality', () => {
         content: JSON.stringify({
           name: 'quality-gate',
           description: 'Builtin quality gate',
+          category: 'quality',
+          tags: ['tests', 'lint'],
+          executionType: 'prompt-transform',
+          events: ['before_user_prompt'],
         }),
       });
       expect(mockFsStore[path.join(userBase, 'quality-gate', 'before_user_prompt.md')]).toMatchObject({
         content: '# quality gate',
+      });
+    });
+
+    it('updates output routing settings for a user hook manifest', async () => {
+      const userBase = path.resolve('/mock/userData/config/hooks');
+
+      mockFsStore[userBase] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'result-summary')] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'result-summary', 'manifest.json')] = {
+        content: JSON.stringify({
+          name: 'result-summary',
+          description: 'Summarize final output',
+          executionType: 'native-projection',
+          events: ['after_response'],
+          outputTargets: ['chat-message'],
+        }),
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('updateHookManifest');
+      const result = await handler({
+        hookName: 'result-summary',
+        config: {
+          outputTargets: ['system-notification', 'sidecar-file'],
+          notification: {
+            title: '{{conversationName}} complete',
+            body: '{{finalResponseExcerpt}}',
+          },
+          outputFile: {
+            baseDir: 'conversation-workspace',
+            relativeDir: 'handoff/{{conversationId}}',
+            fileBaseName: 'final-output',
+          },
+        },
+      });
+
+      expect(result.success).toBe(true);
+      expect(JSON.parse(mockFsStore[path.join(userBase, 'result-summary', 'manifest.json')].content)).toMatchObject({
+        name: 'result-summary',
+        executionType: 'native-projection',
+        events: ['after_response'],
+        outputTargets: ['system-notification', 'sidecar-file'],
+        notification: {
+          title: '{{conversationName}} complete',
+          body: '{{finalResponseExcerpt}}',
+        },
+        outputFile: {
+          baseDir: 'conversation-workspace',
+          relativeDir: 'handoff/{{conversationId}}',
+          fileBaseName: 'final-output',
+        },
+      });
+    });
+
+    it('rejects output routing updates for hooks without output-routing support', async () => {
+      const userBase = path.resolve('/mock/userData/config/hooks');
+
+      mockFsStore[userBase] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'quality-gate')] = { isDirectory: true };
+      mockFsStore[path.join(userBase, 'quality-gate', 'manifest.json')] = {
+        content: JSON.stringify({
+          name: 'quality-gate',
+          description: 'Builtin quality gate',
+          executionType: 'prompt-transform',
+          events: ['before_user_prompt'],
+        }),
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('updateHookManifest');
+      const result = await handler({
+        hookName: 'quality-gate',
+        config: {
+          outputTargets: ['system-notification'],
+        },
+      });
+
+      expect(result).toMatchObject({
+        success: false,
+        msg: 'Hook "quality-gate" does not support output routing settings',
       });
     });
   });

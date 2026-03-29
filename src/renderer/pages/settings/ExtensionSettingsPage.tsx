@@ -11,6 +11,7 @@ import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/commo
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import WebviewHost from '@/renderer/components/media/WebviewHost';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
+import { isSuspiciousDocumentNavigation } from '@/renderer/utils/ui/documentNavigationGuard';
 import SettingsPageWrapper from './components/SettingsPageWrapper';
 
 const isExternalSettingsUrl = (url?: string): boolean => /^https?:\/\//i.test(url || '');
@@ -27,6 +28,7 @@ const ExtensionSettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const blockedFrameUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -58,10 +60,22 @@ const ExtensionSettingsPage: React.FC = () => {
 
   const resolvedEntryUrl = resolveExtensionAssetUrl(tab?.entryUrl) || tab?.entryUrl;
   const isExternalTab = isExternalSettingsUrl(resolvedEntryUrl);
+  const blockedEntryUrl = Boolean(resolvedEntryUrl && isSuspiciousDocumentNavigation(resolvedEntryUrl));
+  const entryError = error || (blockedEntryUrl ? 'Failed to load extension settings' : null);
 
   useEffect(() => {
     setLoading(true);
   }, [tab?.id, resolvedEntryUrl]);
+
+  useEffect(() => {
+    if (!tab || !resolvedEntryUrl || !blockedEntryUrl) {
+      return;
+    }
+
+    console.warn('[ExtensionSettingsPage] Blocked suspicious extension settings entry URL:', resolvedEntryUrl);
+    setError('Failed to load extension settings');
+    setLoading(false);
+  }, [blockedEntryUrl, resolvedEntryUrl, tab]);
 
   const postLocaleInit = useCallback(async () => {
     if (!tab || isExternalTab) return;
@@ -130,6 +144,38 @@ const ExtensionSettingsPage: React.FC = () => {
     }
   }, [loading, postLocaleInit]);
 
+  const handleLocalFrameLoad = useCallback(() => {
+    try {
+      const currentUrl = iframeRef.current?.contentWindow?.location.href;
+
+      if (currentUrl && isSuspiciousDocumentNavigation(currentUrl)) {
+        console.warn('[ExtensionSettingsPage] Blocked suspicious iframe document navigation:', currentUrl);
+
+        if (blockedFrameUrlRef.current === currentUrl) {
+          setError('Failed to load extension settings');
+          setLoading(false);
+          return;
+        }
+
+        blockedFrameUrlRef.current = currentUrl;
+
+        if (resolvedEntryUrl && !isSuspiciousDocumentNavigation(resolvedEntryUrl)) {
+          iframeRef.current!.src = resolvedEntryUrl;
+          return;
+        }
+
+        setError('Failed to load extension settings');
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('[ExtensionSettingsPage] Failed to inspect iframe navigation:', err);
+    }
+
+    blockedFrameUrlRef.current = null;
+    setLoading(false);
+  }, [resolvedEntryUrl]);
+
   return (
     <SettingsPageWrapper>
       <div className='relative w-full h-full min-h-400px'>
@@ -138,14 +184,18 @@ const ExtensionSettingsPage: React.FC = () => {
             <span className='animate-pulse'>Loading…</span>
           </div>
         )}
-        {error && <div className='flex items-center justify-center h-full text-t-secondary text-14px'>{error}</div>}
+        {entryError && (
+          <div className='flex items-center justify-center h-full text-t-secondary text-14px'>{entryError}</div>
+        )}
         {tab &&
+          !entryError &&
           (isExternalTab ? (
             <WebviewHost
               key={tab.id}
               url={resolvedEntryUrl || ''}
               id={tab.id}
               partition={`persist:ext-settings-${tab.id}`}
+              blockSuspiciousDocumentNavigation
               style={{
                 minHeight: '400px',
                 height: 'calc(100vh - 200px)',
@@ -162,7 +212,7 @@ const ExtensionSettingsPage: React.FC = () => {
                 ref={iframeRef}
                 key={tab.id}
                 src={resolvedEntryUrl}
-                onLoad={() => setLoading(false)}
+                onLoad={handleLocalFrameLoad}
                 sandbox='allow-scripts allow-same-origin'
                 className='w-full border-none'
                 style={{

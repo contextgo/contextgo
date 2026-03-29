@@ -21,7 +21,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import MigrationModal from './components/MigrationModal';
 import PasteConfirmModal from './components/PasteConfirmModal';
-import DiscussionParticipantsPanel from './components/DiscussionParticipantsPanel';
+import GroupParticipantsPanel from './components/GroupParticipantsPanel';
 import SessionHooksDrawer from './components/SessionHooksDrawer';
 import WorkspaceContextMenu from './components/WorkspaceContextMenu';
 import WorkspaceDialogs from './components/WorkspaceDialogs';
@@ -58,7 +58,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const { openPreview } = usePreviewContext();
-  const initialWorkspaceLoadDeferred = Boolean(
+  const legacyWorkspaceLoadDeferred = Boolean(
     (conversation.extra as { deferInitialWorkspaceLoad?: boolean } | undefined)?.deferInitialWorkspaceLoad
   );
 
@@ -66,16 +66,32 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
   const [internalMessageApi, messageContext] = Message.useMessage();
   const messageApi = externalMessageApi ?? internalMessageApi;
   const shouldRenderLocalMessageContext = !externalMessageApi;
-  const [workspaceLoadDeferred, setWorkspaceLoadDeferred] = useState(initialWorkspaceLoadDeferred);
+  const [workspaceLoadDeferred, setWorkspaceLoadDeferred] = useState(false);
   const [isParticipantsPanelOpen, setIsParticipantsPanelOpen] = useState(false);
 
   useEffect(() => {
-    setWorkspaceLoadDeferred(initialWorkspaceLoadDeferred);
-  }, [conversation_id, initialWorkspaceLoadDeferred]);
+    setWorkspaceLoadDeferred(false);
+  }, [conversation_id]);
 
   useEffect(() => {
     setIsParticipantsPanelOpen(false);
   }, [conversation_id]);
+
+  useEffect(() => {
+    if (!legacyWorkspaceLoadDeferred || conversation.type !== 'acp') {
+      return;
+    }
+
+    void ipcBridge.conversation.update.invoke({
+      id: conversation_id,
+      updates: {
+        extra: {
+          ...conversation.extra,
+          deferInitialWorkspaceLoad: false,
+        },
+      },
+    });
+  }, [conversation.extra, conversation.type, conversation_id, legacyWorkspaceLoadDeferred]);
 
   // Initialize all hooks
   const { isWorkspaceCollapsed, setIsWorkspaceCollapsed } = useWorkspaceCollapse();
@@ -188,8 +204,8 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
 
   // Check if this is a temporary workspace (check both path and root folder name)
   const isTemporaryWorkspace = checkIsTemporaryWorkspace(workspace) || checkIsTemporaryWorkspace(rootName);
-  const discussionParticipants = conversation.type === 'group' ? (conversation.extra.participants ?? []) : [];
-  const shouldShowParticipantsToggle = discussionParticipants.length > 0;
+  const groupParticipants = conversation.type === 'group' ? (conversation.extra.participants ?? []) : [];
+  const shouldShowParticipantsToggle = groupParticipants.length > 0;
 
   // Get workspace display name using shared utility
   const workspaceDisplayName = useMemo(() => {
@@ -243,7 +259,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
                 className='pointer-events-auto max-w-full'
                 style={{ width: isMobile ? 'min(320px, calc(100vw - 32px))' : '340px' }}
               >
-                <DiscussionParticipantsPanel participants={discussionParticipants} />
+                <GroupParticipantsPanel participants={groupParticipants} />
               </div>
             ) : null}
 
@@ -258,7 +274,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
               {isParticipantsPanelOpen
                 ? t('conversation.workspace.groupMembers.close')
                 : t('conversation.workspace.groupMembers.open', {
-                    count: discussionParticipants.length,
+                    count: groupParticipants.length,
                   })}
             </Button>
           </div>,
