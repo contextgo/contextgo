@@ -89,7 +89,7 @@ jobs:
             git -C "${WORKSPACE}" sparse-checkout init --cone
             git -C "${WORKSPACE}" sparse-checkout set apps/web
 
-            if GIT_TERMINAL_PROMPT=0 git -C "${WORKSPACE}" \
+            if timeout 240s env GIT_TERMINAL_PROMPT=0 git -C "${WORKSPACE}" \
               -c protocol.version=2 \
               -c http.version=HTTP/1.1 \
               -c http.lowSpeedLimit=1024 \
