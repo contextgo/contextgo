@@ -5,11 +5,7 @@
  */
 
 import type { IGroupConversationCreateParams } from '@/common/adapter/ipcBridge';
-import type {
-  GroupParticipant,
-  TChatConversation,
-  WorkflowGroupOrchestration,
-} from '@/common/config/storage';
+import type { GroupParticipant, TChatConversation, WorkflowGroupRunState } from '@/common/config/storage';
 import { uuid } from '@/common/utils';
 import type { IConversationService } from '@process/services/IConversationService';
 import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
@@ -17,7 +13,8 @@ import { DiscussionGroupRuntime } from './discussion/DiscussionGroupRuntime';
 import { normalizeStoredGroupOrchestration } from './orchestration';
 import { isGroupConversation, type GroupConversation } from './shared';
 import { WorkflowGroupRuntime } from './workflow/WorkflowGroupRuntime';
-import { buildInitialWorkflowRunState, normalizeWorkflowParticipants } from './workflow/workflowHelpers';
+import { normalizeWorkflowParticipants } from './workflow/workflowHelpers';
+import { getWorkflowRuntimeTemplate } from './workflow/templates';
 
 export class GroupConversationService {
   private readonly discussionRuntime: DiscussionGroupRuntime;
@@ -29,6 +26,58 @@ export class GroupConversationService {
   ) {
     this.discussionRuntime = new DiscussionGroupRuntime(conversationService);
     this.workflowRuntime = new WorkflowGroupRuntime(conversationService);
+  }
+
+  private buildInitialWorkflowRunState(
+    conversation: Pick<GroupConversation, 'extra'>,
+    participants: GroupParticipant[]
+  ): WorkflowGroupRunState {
+    const orchestration = normalizeStoredGroupOrchestration(conversation.extra.orchestration);
+    if (orchestration.kind !== 'workflow') {
+      throw new Error('Workflow run state requested for a non-workflow group.');
+    }
+
+    return getWorkflowRuntimeTemplate(orchestration.template).buildInitialRunState(orchestration, participants);
+  }
+
+  async recoverAbandonedWorkflowRuns(): Promise<void> {
+    const conversations = await this.conversationService.listAllConversations();
+
+    await Promise.all(
+      conversations.filter(isGroupConversation).map(async (conversation) => {
+        const orchestration = normalizeStoredGroupOrchestration(conversation.extra.orchestration);
+        if (orchestration.kind !== 'workflow') {
+          return;
+        }
+
+        const runState = conversation.extra.runState;
+        if (conversation.status !== 'running' && runState?.status !== 'running') {
+          return;
+        }
+
+        const initialRunState = this.buildInitialWorkflowRunState(conversation, conversation.extra.participants);
+        const nextRunState: WorkflowGroupRunState = {
+          ...initialRunState,
+          ...runState,
+          status: 'failed',
+          stage: 'failed',
+          artifactPath: runState?.artifactPath || orchestration.artifactPath,
+          activeParticipantId: undefined,
+          updatedAt: Date.now(),
+        };
+
+        await this.conversationService.updateConversation(
+          conversation.id,
+          {
+            status: 'finished',
+            extra: {
+              runState: nextRunState,
+            },
+          } as Partial<TChatConversation>,
+          true
+        );
+      })
+    );
   }
 
   async createConversation(
@@ -45,7 +94,7 @@ export class GroupConversationService {
         : params.extra.participants;
     const initialRunState =
       orchestration.kind === 'workflow'
-        ? buildInitialWorkflowRunState(orchestration as WorkflowGroupOrchestration, participantsToCreate)
+        ? getWorkflowRuntimeTemplate(orchestration.template).buildInitialRunState(orchestration, participantsToCreate)
         : undefined;
 
     const parentConversation = await this.conversationService.createConversation({
@@ -67,6 +116,7 @@ export class GroupConversationService {
     const participants: GroupParticipant[] = [];
 
     try {
+      /* eslint-disable no-await-in-loop -- Child conversations inherit parent workspace and are created in participant order. */
       for (const participant of participantsToCreate) {
         const childConversation = await this.conversationService.createConversation({
           ...participant.conversation,
@@ -100,8 +150,11 @@ export class GroupConversationService {
           role: participant.role,
         });
       }
+      /* eslint-enable no-await-in-loop */
     } catch (error) {
-      await Promise.all(participants.map((participant) => this.conversationService.deleteConversation(participant.childConversationId)));
+      await Promise.all(
+        participants.map((participant) => this.conversationService.deleteConversation(participant.childConversationId))
+      );
       await this.conversationService.deleteConversation(parentConversation.id);
       throw error;
     }
@@ -111,7 +164,12 @@ export class GroupConversationService {
       participants,
       orchestration,
       ...(orchestration.kind === 'workflow'
-        ? { runState: buildInitialWorkflowRunState(orchestration as WorkflowGroupOrchestration, participants) }
+        ? {
+            runState: getWorkflowRuntimeTemplate(orchestration.template).buildInitialRunState(
+              orchestration,
+              participants
+            ),
+          }
         : {}),
     };
 
@@ -126,10 +184,12 @@ export class GroupConversationService {
   }
 
   async deleteConversation(conversation: GroupConversation): Promise<void> {
+    /* eslint-disable no-await-in-loop -- Child conversations should be cleaned up deterministically with worker shutdown. */
     for (const participant of conversation.extra.participants) {
       this.workerTaskManager.kill(participant.childConversationId);
       await this.conversationService.deleteConversation(participant.childConversationId);
     }
+    /* eslint-enable no-await-in-loop */
     await this.conversationService.deleteConversation(conversation.id);
   }
 

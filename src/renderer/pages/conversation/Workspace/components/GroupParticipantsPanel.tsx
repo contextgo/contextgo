@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { formatWorkflowRoleLabel, isBuiltInWorkflowRole } from '@/common/config/group';
 import type { GroupParticipant } from '@/common/config/storage';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
@@ -60,9 +61,7 @@ const getParticipantFallbackText = (participant: GroupParticipant): string => {
   return participant.name.slice(0, 1).toUpperCase();
 };
 
-const resolveParticipantVisual = (
-  participant: GroupParticipant
-): { imageSrc: string | null; fallbackText: string } => {
+const resolveParticipantVisual = (participant: GroupParticipant): { imageSrc: string | null; fallbackText: string } => {
   const avatarImageSrc = resolveAvatarImageSrc(participant.avatar);
   if (avatarImageSrc) {
     return {
@@ -96,7 +95,13 @@ const getParticipantMetaLabel = (participant: GroupParticipant, participantTypeL
 };
 
 const getParticipantRoleLabel = (participant: GroupParticipant, t: (key: string) => string): string | null => {
-  return participant.role ? t(`conversation.group.role.${participant.role}`) : null;
+  if (!participant.role) {
+    return null;
+  }
+
+  return isBuiltInWorkflowRole(participant.role)
+    ? t(`conversation.group.role.${participant.role}`)
+    : formatWorkflowRoleLabel(participant.role);
 };
 
 const GroupParticipantsPanel: React.FC<GroupParticipantsPanelProps> = ({ participants }) => {
@@ -148,7 +153,9 @@ const GroupParticipantsPanel: React.FC<GroupParticipantsPanelProps> = ({ partici
                     </Typography.Text>
                     <div className='mt-3px flex items-center gap-6px text-11px text-t-secondary'>
                       {roleLabel ? <span className='truncate'>{roleLabel}</span> : null}
-                      {roleLabel ? <span className='h-3px w-3px shrink-0 rounded-full bg-[var(--color-fill-4)]'></span> : null}
+                      {roleLabel ? (
+                        <span className='h-3px w-3px shrink-0 rounded-full bg-[var(--color-fill-4)]'></span>
+                      ) : null}
                       <span className='truncate'>{participantTypeLabel}</span>
                       <span className='h-3px w-3px shrink-0 rounded-full bg-[var(--color-fill-4)]'></span>
                       <span className='truncate'>{metaLabel}</span>

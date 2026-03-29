@@ -138,6 +138,9 @@
       "templateLabel": "Workflow 範本",
       "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
       "templateHint": "planner 定義目標與驗收標準，writer 在共享工作區中產出或修改成果，evaluator 負責評分並提出可執行回饋。",
+      "templatePlannerWriterEvaluatorHint": "迭代式 harness：planner 先定義目標與驗收標準，writer 多輪修改共享產物，evaluator 每輪提供獨立回饋。",
+      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
+      "templatePlanBuildEvaluateHint": "單次主建構 harness：planner 先定範圍，builder 做一次連貫建構，evaluator 在尾端統一評審。",
       "exactParticipants": "此 workflow 範本需要剛好 3 位參與者",
       "exactParticipantsHint": "Planner / Writer / Evaluator 範本需要剛好 3 位參與者，且角色必須各不相同。",
       "assignRoles": "請為 3 位參與者分別指派 planner、writer、evaluator 角色",
@@ -156,6 +159,12 @@
       "scoreTargetHint": "評估通過門檻：{{min}}-{{max}}",
       "artifactPathLabel": "產物路徑",
       "artifactPathHint": "請填寫共享工作區內的相對路徑；不允許絕對路徑或上層目錄跳轉。",
+      "reviewModeLabel": "評審模式",
+      "reviewModeHint": "決定 evaluator 是每輪介入，還是只在最終產物交付時做尾端評審。",
+      "reviewMode": {
+        "perIteration": "每輪評審",
+        "finalOnly": "僅尾端評審"
+      },
       "stageLabel": "階段",
       "iterationBudgetLabel": "迭代預算",
       "iterationBudgetValue": "{{current}} / {{total}}",

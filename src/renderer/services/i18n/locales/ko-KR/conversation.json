@@ -138,6 +138,9 @@
       "templateLabel": "워크플로 템플릿",
       "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
       "templateHint": "planner 가 목표와 승인 기준을 정의하고, writer 가 공유 워크스페이스의 산출물을 갱신하며, evaluator 가 점수와 수정 피드백을 제공합니다.",
+      "templatePlannerWriterEvaluatorHint": "반복형 harness: planner 가 기준을 정의하고, writer 가 산출물을 여러 라운드에 걸쳐 다듬고, evaluator 가 매 라운드를 비판적으로 검토합니다.",
+      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
+      "templatePlanBuildEvaluateHint": "단일 빌드형 harness: planner 가 범위를 정하고, builder 가 한 번에 구축한 뒤, evaluator 가 마지막에 검토합니다.",
       "exactParticipants": "이 워크플로 템플릿은 정확히 3명의 참여자가 필요합니다",
       "exactParticipantsHint": "Planner / Writer / Evaluator 템플릿은 역할이 서로 다른 정확히 3명의 참여자를 요구합니다.",
       "assignRoles": "workflow 그룹을 만들기 전에 planner, writer, evaluator 역할을 각각 지정하세요",
@@ -156,6 +159,12 @@
       "scoreTargetHint": "평가 통과 기준: {{min}}-{{max}}",
       "artifactPathLabel": "아티팩트 경로",
       "artifactPathHint": "공유 작업공간 내부 상대 경로만 허용됩니다. 절대 경로나 상위 디렉터리 참조는 허용되지 않습니다.",
+      "reviewModeLabel": "리뷰 방식",
+      "reviewModeHint": "evaluator 가 매 라운드마다 검토할지, 마지막 산출물만 검토할지 선택합니다.",
+      "reviewMode": {
+        "perIteration": "매 반복마다 리뷰",
+        "finalOnly": "최종 리뷰만"
+      },
       "stageLabel": "단계",
       "iterationBudgetLabel": "반복 예산",
       "iterationBudgetValue": "{{current}} / {{total}}",

@@ -167,11 +167,17 @@ export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 
 export type GroupOrchestrationKind = 'discussion' | 'workflow';
 
-export type GroupParticipantRole = 'planner' | 'writer' | 'evaluator' | 'custom';
+export type BuiltInGroupParticipantRole = 'planner' | 'writer' | 'evaluator';
 
-export type WorkflowGroupTemplate = 'planner-writer-evaluator';
+export type GroupParticipantRole = BuiltInGroupParticipantRole | 'custom' | (string & {});
+
+export type WorkflowGroupTemplate = 'planner-writer-evaluator' | 'plan-build-evaluate' | (string & {});
+
+export type WorkflowGroupReviewMode = 'per-iteration' | 'final-only';
 
 export type WorkflowGroupStage = 'planning' | 'writing' | 'evaluating' | 'completed' | 'failed';
+export type WorkflowGroupRunnableStage = Exclude<WorkflowGroupStage, 'completed' | 'failed'>;
+export type WorkflowGroupRunStatus = 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
 
 export type WorkflowGroupDecision = 'continue' | 'accept' | 'stop';
 
@@ -204,18 +210,36 @@ export type WorkflowGroupOrchestration = {
   maxIterations: number;
   scoreTarget?: number;
   artifactPath?: string;
+  reviewMode?: WorkflowGroupReviewMode;
 };
 
 export type GroupOrchestration = DiscussionGroupOrchestration | WorkflowGroupOrchestration;
 
+export type WorkflowGroupStageRecord = {
+  stageId: string;
+  stage: WorkflowGroupRunnableStage;
+  participantId?: string;
+  participantRole?: GroupParticipantRole;
+  iteration: number;
+  startedAt: number;
+  completedAt?: number;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+};
+
 export type WorkflowGroupRunState = {
-  status: 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
+  runId: string;
+  status: WorkflowGroupRunStatus;
   stage: WorkflowGroupStage;
+  activeStageId?: string;
   iteration: number;
   latestScore?: number;
   latestDecision?: WorkflowGroupDecision;
+  planningBrief?: string;
   artifactPath?: string;
   activeParticipantId?: string;
+  startedAt?: number;
+  completedAt?: number;
+  stageHistory: WorkflowGroupStageRecord[];
   updatedAt: number;
 };
 

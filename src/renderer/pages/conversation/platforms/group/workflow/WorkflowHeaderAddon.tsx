@@ -73,6 +73,14 @@ const WorkflowHeaderAddon: React.FC<{ conversation: WorkflowConversation }> = ({
           <Typography.Text>{orchestration.scoreTarget}</Typography.Text>
         </div>
         <div className={detailRowClassName}>
+          <Typography.Text type='secondary'>{t('conversation.group.workflow.reviewModeLabel')}</Typography.Text>
+          <Typography.Text>
+            {t(
+              `conversation.group.workflow.reviewMode.${orchestration.reviewMode === 'final-only' ? 'finalOnly' : 'perIteration'}`
+            )}
+          </Typography.Text>
+        </div>
+        <div className={detailRowClassName}>
           <Typography.Text type='secondary'>{t('conversation.group.workflow.artifactPathLabel')}</Typography.Text>
           <Typography.Text copyable={{ text: artifactPath }}>{artifactPath}</Typography.Text>
         </div>

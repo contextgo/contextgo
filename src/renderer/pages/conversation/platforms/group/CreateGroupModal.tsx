@@ -7,11 +7,18 @@
 import { ipcBridge } from '@/common';
 import {
   DEFAULT_WORKFLOW_GROUP_TEMPLATE,
+  formatWorkflowRoleLabel,
   getWorkflowGroupTemplateDefinition,
+  isBuiltInWorkflowRole,
   listWorkflowGroupTemplateDefinitions,
   type WorkflowTemplateRole,
 } from '@/common/config/group';
-import type { DiscussionGroupMode, TChatConversation, WorkflowGroupTemplate } from '@/common/config/storage';
+import type {
+  DiscussionGroupMode,
+  TChatConversation,
+  WorkflowGroupReviewMode,
+  WorkflowGroupTemplate,
+} from '@/common/config/storage';
 import { useAssistantList } from '@/renderer/hooks/assistant';
 import {
   buildDiscussionGroupParams,
@@ -19,6 +26,7 @@ import {
   type GroupParticipantInput,
   type WorkflowGroupParticipantInput,
 } from '@/renderer/pages/conversation/utils/createConversationParams';
+import { renderWorkflowTemplateConfigFields } from '@/renderer/pages/conversation/platforms/group/workflow/workflowUiRegistry';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import type { AssistantListItem } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import {
@@ -27,17 +35,7 @@ import {
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/assistantUtils';
 import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
-import {
-  Button,
-  Checkbox,
-  Input,
-  InputNumber,
-  Message,
-  Modal,
-  Radio,
-  Select,
-  Typography,
-} from '@arco-design/web-react';
+import { Button, Checkbox, Input, Message, Modal, Radio, Select, Typography } from '@arco-design/web-react';
 import { FolderOpen, Robot } from '@icon-park/react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -62,6 +60,12 @@ type ParticipantSection = {
 
 type GroupCreationKind = 'workflow' | 'discussion';
 type WorkflowRole = WorkflowTemplateRole;
+type WorkflowTemplateFieldValues = {
+  maxIterations: number;
+  scoreTarget: number;
+  artifactPath: string;
+  reviewMode: WorkflowGroupReviewMode;
+};
 
 const DEFAULT_MODE: DiscussionGroupMode = 'broadcast';
 const DEFAULT_GROUP_KIND: GroupCreationKind = 'workflow';
@@ -75,6 +79,20 @@ const buildCliParticipantDescription = (agent: AvailableAgent): string => {
     return `${agent.backend} · ${agent.cliPath}`;
   }
   return agent.backend;
+};
+
+const buildWorkflowTemplateFieldValues = (template: WorkflowGroupTemplate): WorkflowTemplateFieldValues => {
+  const definition = getWorkflowGroupTemplateDefinition(template);
+  return {
+    maxIterations: definition.defaults.maxIterations,
+    scoreTarget: definition.defaults.scoreTarget,
+    artifactPath: definition.defaults.artifactPath,
+    reviewMode: definition.defaults.reviewMode,
+  };
+};
+
+const resolveWorkflowRoleLabel = (role: WorkflowRole, t: ReturnType<typeof useTranslation>['t']): string => {
+  return isBuiltInWorkflowRole(role) ? t(`conversation.group.role.${role}`) : formatWorkflowRoleLabel(role);
 };
 
 const normalizeWorkflowRoles = (
@@ -154,9 +172,9 @@ const CreateGroupModal: React.FC<{
   const [workflowRolesByParticipantKey, setWorkflowRolesByParticipantKey] = useState<
     Partial<Record<string, WorkflowRole>>
   >({});
-  const [workflowMaxIterations, setWorkflowMaxIterations] = useState(0);
-  const [workflowScoreTarget, setWorkflowScoreTarget] = useState(0);
-  const [workflowArtifactPath, setWorkflowArtifactPath] = useState('');
+  const [workflowFieldValues, setWorkflowFieldValues] = useState<WorkflowTemplateFieldValues>(() =>
+    buildWorkflowTemplateFieldValues(DEFAULT_WORKFLOW_GROUP_TEMPLATE)
+  );
   const [submitting, setSubmitting] = useState(false);
   const hasInitializedForOpenRef = useRef(false);
 
@@ -240,9 +258,7 @@ const CreateGroupModal: React.FC<{
     setGroupKind(DEFAULT_GROUP_KIND);
     setMode(DEFAULT_MODE);
     setWorkflowTemplate(DEFAULT_WORKFLOW_GROUP_TEMPLATE);
-    setWorkflowMaxIterations(defaultTemplateDefinition.defaults.maxIterations);
-    setWorkflowScoreTarget(defaultTemplateDefinition.defaults.scoreTarget);
-    setWorkflowArtifactPath(defaultTemplateDefinition.defaults.artifactPath);
+    setWorkflowFieldValues(buildWorkflowTemplateFieldValues(DEFAULT_WORKFLOW_GROUP_TEMPLATE));
     setSelectedParticipantKeys(defaultSelectionKeys);
     setWorkflowRolesByParticipantKey(
       normalizeWorkflowRoles(defaultSelectionKeys, {}, defaultTemplateDefinition.roleOrder)
@@ -273,13 +289,18 @@ const CreateGroupModal: React.FC<{
     const trimmedSelectionKeys = selectedParticipantKeys.slice(0, nextTemplateDefinition.requiredParticipantCount);
 
     setWorkflowTemplate(value);
-    setWorkflowMaxIterations(nextTemplateDefinition.defaults.maxIterations);
-    setWorkflowScoreTarget(nextTemplateDefinition.defaults.scoreTarget);
-    setWorkflowArtifactPath(nextTemplateDefinition.defaults.artifactPath);
+    setWorkflowFieldValues(buildWorkflowTemplateFieldValues(value));
     setSelectedParticipantKeys(trimmedSelectionKeys);
     setWorkflowRolesByParticipantKey(
       normalizeWorkflowRoles(trimmedSelectionKeys, {}, nextTemplateDefinition.roleOrder)
     );
+  };
+
+  const handleWorkflowFieldValueChange = (key: keyof WorkflowTemplateFieldValues, value: string | number) => {
+    setWorkflowFieldValues((previousValues) => ({
+      ...previousValues,
+      [key]: value,
+    }));
   };
 
   const handleSelectWorkspace = async () => {
@@ -331,9 +352,10 @@ const CreateGroupModal: React.FC<{
           language: i18n.language,
           template: workflowTemplate,
           participants: workflowParticipants as WorkflowGroupParticipantInput[],
-          maxIterations: workflowMaxIterations,
-          scoreTarget: workflowScoreTarget,
-          artifactPath: workflowArtifactPath.trim() || undefined,
+          maxIterations: workflowFieldValues.maxIterations,
+          scoreTarget: workflowFieldValues.scoreTarget,
+          artifactPath: workflowFieldValues.artifactPath.trim() || undefined,
+          reviewMode: workflowFieldValues.reviewMode,
         });
 
         const conversation = await ipcBridge.conversation.create.invoke(params);
@@ -450,62 +472,13 @@ const CreateGroupModal: React.FC<{
               </Select>
               <Typography.Text type='secondary'>{t(workflowTemplateDefinition.hintKey)}</Typography.Text>
             </div>
-
-            <div className='grid grid-cols-1 gap-12px md:grid-cols-2'>
-              <div className='flex flex-col gap-6px'>
-                <Typography.Text>{t('conversation.group.workflow.maxIterationsLabel')}</Typography.Text>
-                <InputNumber
-                  value={workflowMaxIterations}
-                  min={workflowTemplateDefinition.constraints.maxIterations.min}
-                  max={workflowTemplateDefinition.constraints.maxIterations.max}
-                  step={workflowTemplateDefinition.constraints.maxIterations.step}
-                  precision={0}
-                  onChange={(value) => {
-                    setWorkflowMaxIterations(
-                      typeof value === 'number' ? value : workflowTemplateDefinition.defaults.maxIterations
-                    );
-                  }}
-                />
-                <Typography.Text type='secondary'>
-                  {t('conversation.group.workflow.maxIterationsHint', {
-                    min: workflowTemplateDefinition.constraints.maxIterations.min,
-                    max: workflowTemplateDefinition.constraints.maxIterations.max,
-                  })}
-                </Typography.Text>
-              </div>
-
-              <div className='flex flex-col gap-6px'>
-                <Typography.Text>{t('conversation.group.workflow.scoreTargetLabel')}</Typography.Text>
-                <InputNumber
-                  value={workflowScoreTarget}
-                  min={workflowTemplateDefinition.constraints.scoreTarget.min}
-                  max={workflowTemplateDefinition.constraints.scoreTarget.max}
-                  step={workflowTemplateDefinition.constraints.scoreTarget.step}
-                  precision={1}
-                  onChange={(value) => {
-                    setWorkflowScoreTarget(
-                      typeof value === 'number' ? value : workflowTemplateDefinition.defaults.scoreTarget
-                    );
-                  }}
-                />
-                <Typography.Text type='secondary'>
-                  {t('conversation.group.workflow.scoreTargetHint', {
-                    min: workflowTemplateDefinition.constraints.scoreTarget.min,
-                    max: workflowTemplateDefinition.constraints.scoreTarget.max,
-                  })}
-                </Typography.Text>
-              </div>
-            </div>
-
-            <div className='flex flex-col gap-6px'>
-              <Typography.Text>{t('conversation.group.workflow.artifactPathLabel')}</Typography.Text>
-              <Input
-                value={workflowArtifactPath}
-                onChange={setWorkflowArtifactPath}
-                placeholder={workflowTemplateDefinition.defaults.artifactPath}
-              />
-              <Typography.Text type='secondary'>{t('conversation.group.workflow.artifactPathHint')}</Typography.Text>
-            </div>
+            {renderWorkflowTemplateConfigFields({
+              template: workflowTemplate,
+              templateDefinition: workflowTemplateDefinition,
+              values: workflowFieldValues,
+              onChange: handleWorkflowFieldValueChange,
+              t,
+            })}
           </div>
         )}
 
@@ -590,7 +563,7 @@ const CreateGroupModal: React.FC<{
 
                                 return (
                                   <Select.Option key={role} value={role} disabled={isTakenByOtherParticipant}>
-                                    {t(`conversation.group.role.${role}`)}
+                                    {resolveWorkflowRoleLabel(role, t)}
                                   </Select.Option>
                                 );
                               })}

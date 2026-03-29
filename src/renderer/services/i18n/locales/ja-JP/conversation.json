@@ -138,6 +138,9 @@
       "templateLabel": "ワークフローテンプレート",
       "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
       "templateHint": "planner が目標と受け入れ条件を定義し、writer が共有ワークスペースの成果物を更新し、evaluator が採点と改善指示を返します。",
+      "templatePlannerWriterEvaluatorHint": "反復型 harness: planner が方針を定義し、writer が成果物を段階的に磨き、evaluator が各ラウンドを批評します。",
+      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
+      "templatePlanBuildEvaluateHint": "単発ビルド型 harness: planner が範囲を定め、builder が一気に組み上げ、evaluator が最後にレビューします。",
       "exactParticipants": "このワークフローテンプレートには 3 人ちょうどの参加者が必要です",
       "exactParticipantsHint": "Planner / Writer / Evaluator テンプレートでは、3 人の参加者にそれぞれ異なる役割が必要です。",
       "assignRoles": "3 人に planner / writer / evaluator の役割を割り当ててください",
@@ -156,6 +159,12 @@
       "scoreTargetHint": "Evaluator の合格しきい値: {{min}}〜{{max}}",
       "artifactPathLabel": "成果物パス",
       "artifactPathHint": "共有ワークスペース内の相対パス。絶対パスや親ディレクトリ参照は使用できません。",
+      "reviewModeLabel": "レビュー方式",
+      "reviewModeHint": "evaluator が毎ラウンド確認するか、最後だけ確認するかを選びます。",
+      "reviewMode": {
+        "perIteration": "毎ラウンドレビュー",
+        "finalOnly": "最終レビューのみ"
+      },
       "stageLabel": "段階",
       "iterationBudgetLabel": "反復予算",
       "iterationBudgetValue": "{{current}} / {{total}}",

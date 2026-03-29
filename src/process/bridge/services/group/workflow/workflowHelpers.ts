@@ -6,11 +6,15 @@
 
 import {
   DEFAULT_WORKFLOW_GROUP_TEMPLATE,
+  formatWorkflowRoleLabel,
   getWorkflowGroupTemplateDefinition,
   getWorkflowTemplateRoleOrder,
+  getWorkflowTemplateStageDefinitions,
   normalizeWorkflowGroupTemplate,
   normalizeWorkflowTemplateMaxIterations,
+  normalizeWorkflowTemplateReviewMode,
   normalizeWorkflowTemplateScoreTarget,
+  type WorkflowTemplateStageDefinition,
   type WorkflowTemplateRole,
 } from '@/common/config/group';
 import type {
@@ -19,7 +23,9 @@ import type {
   WorkflowGroupDecision,
   WorkflowGroupOrchestration,
   WorkflowGroupRunState,
+  WorkflowGroupStageRecord,
 } from '@/common/config/storage';
+import { uuid } from '@/common/utils';
 
 export type WorkflowEvaluation = {
   score?: number;
@@ -39,9 +45,9 @@ export type WorkflowArtifactUpdate = {
 };
 
 export type WorkflowRoleParticipants = {
-  planner: GroupParticipant;
-  writer: GroupParticipant;
-  evaluator: GroupParticipant;
+  planning: GroupParticipant;
+  writing: GroupParticipant;
+  evaluating: GroupParticipant;
 };
 
 const ARTIFACT_PATH_HEADER = '[Artifact Path]';
@@ -152,13 +158,13 @@ const deriveDecision = (
 };
 
 const summarizeRawEvaluation = (value: string): string => {
-  const normalized = value
+  const firstMeaningfulLine = value
     .replace(/```(?:json)?[\s\S]*?```/gi, '')
     .split('\n')
     .map((line) => line.trim())
-    .filter(Boolean);
+    .find(Boolean);
 
-  return normalized[0] || 'Evaluator review completed.';
+  return firstMeaningfulLine || 'Evaluation stage completed.';
 };
 
 const normalizeArtifactContent = (value: string | undefined): string | undefined => {
@@ -230,6 +236,7 @@ export const normalizeWorkflowOrchestration = (
       template
     ),
     artifactPath,
+    reviewMode: normalizeWorkflowTemplateReviewMode(orchestration?.reviewMode, template),
   };
 };
 
@@ -253,7 +260,10 @@ export const assignWorkflowParticipantRoles = <T extends { role?: GroupParticipa
   });
 };
 
-const hasExpectedWorkflowRoles = (assignedRoles: GroupParticipantRole[], roleOrder: WorkflowTemplateRole[]): boolean => {
+const hasExpectedWorkflowRoles = (
+  assignedRoles: GroupParticipantRole[],
+  roleOrder: WorkflowTemplateRole[]
+): boolean => {
   if (assignedRoles.length !== roleOrder.length) {
     return false;
   }
@@ -283,9 +293,7 @@ export const normalizeWorkflowParticipants = <T extends { role?: GroupParticipan
     assignedRoles.some((role): role is 'custom' => role === 'custom') ||
     !hasExpectedWorkflowRoles(assignedRoles, definition.roleOrder)
   ) {
-    throw new Error(
-      `Workflow template ${definition.id} requires unique ${definition.roleOrder.join(', ')} roles.`
-    );
+    throw new Error(`Workflow template ${definition.id} requires unique ${definition.roleOrder.join(', ')} roles.`);
   }
 
   return normalizedParticipants as Array<T & { role: WorkflowTemplateRole }>;
@@ -296,18 +304,27 @@ export const resolveWorkflowRoleParticipants = (
   template?: string
 ): WorkflowRoleParticipants => {
   const normalizedParticipants = normalizeWorkflowParticipants(participants, template);
-  const planner = normalizedParticipants.find((participant) => participant.role === 'planner');
-  const writer = normalizedParticipants.find((participant) => participant.role === 'writer');
-  const evaluator = normalizedParticipants.find((participant) => participant.role === 'evaluator');
+  const stageDefinitions = getWorkflowTemplateStageDefinitions(template);
+  const stageRoles = {
+    planning: stageDefinitions.find((stage) => stage.kind === 'planning')?.role,
+    writing: stageDefinitions.find((stage) => stage.kind === 'writing')?.role,
+    evaluating: stageDefinitions.find((stage) => stage.kind === 'evaluating')?.role,
+  };
+  const planning = normalizedParticipants.find((participant) => participant.role === stageRoles.planning);
+  const writing = normalizedParticipants.find((participant) => participant.role === stageRoles.writing);
+  const evaluating = normalizedParticipants.find((participant) => participant.role === stageRoles.evaluating);
 
-  if (!planner || !writer || !evaluator) {
-    throw new Error('Workflow group requires planner, writer, and evaluator participants.');
+  if (!planning || !writing || !evaluating) {
+    const definition = getWorkflowGroupTemplateDefinition(template);
+    throw new Error(
+      `Workflow template ${definition.id} requires stage participants for ${stageRoles.planning}, ${stageRoles.writing}, and ${stageRoles.evaluating}.`
+    );
   }
 
   return {
-    planner,
-    writer,
-    evaluator,
+    planning,
+    writing,
+    evaluating,
   };
 };
 
@@ -315,27 +332,166 @@ export const buildInitialWorkflowRunState = (
   orchestration: WorkflowGroupOrchestration,
   participants: Array<{ id: string; role?: GroupParticipantRole }> = []
 ): WorkflowGroupRunState => {
-  const plannerParticipant =
+  const stageDefinitions = getWorkflowTemplateStageDefinitions(orchestration.template);
+  const entryStage = stageDefinitions[0];
+  const planningRole = entryStage?.role;
+  const planningParticipant =
     participants.length > 0
       ? assignWorkflowParticipantRoles(participants, orchestration.template).find(
-          (participant) => participant.role === 'planner'
+          (participant) => participant.role === planningRole
         )
       : undefined;
+  const now = Date.now();
 
   return {
+    runId: uuid(),
     status: 'idle',
-    stage: 'planning',
+    stage: entryStage?.kind || 'planning',
+    activeStageId: entryStage?.id,
     iteration: 0,
     artifactPath: orchestration.artifactPath,
-    activeParticipantId: plannerParticipant?.id,
+    activeParticipantId: planningParticipant?.id,
+    stageHistory: [],
+    updatedAt: now,
+  };
+};
+
+export const getWorkflowStageDefinition = (
+  template: string | undefined,
+  stageId: string | undefined
+): WorkflowTemplateStageDefinition | undefined => {
+  if (!stageId) {
+    return undefined;
+  }
+
+  return getWorkflowTemplateStageDefinitions(template).find((stage) => stage.id === stageId);
+};
+
+export const resolveWorkflowParticipantForStage = (
+  participants: GroupParticipant[],
+  stage: Pick<WorkflowTemplateStageDefinition, 'role'>,
+  template?: string
+): GroupParticipant => {
+  const normalizedParticipants = normalizeWorkflowParticipants(participants, template);
+  const participant = normalizedParticipants.find((item) => item.role === stage.role);
+  if (!participant) {
+    throw new Error(
+      `Workflow template ${template || DEFAULT_WORKFLOW_GROUP_TEMPLATE} has no participant for role ${stage.role}.`
+    );
+  }
+
+  return participant;
+};
+
+export const beginWorkflowStageRecord = (options: {
+  runState: WorkflowGroupRunState;
+  stage: Pick<WorkflowTemplateStageDefinition, 'id' | 'kind' | 'role'>;
+  participant?: Pick<GroupParticipant, 'id' | 'role'>;
+  iteration: number;
+}): WorkflowGroupStageRecord[] => {
+  const now = Date.now();
+  return [
+    ...options.runState.stageHistory,
+    {
+      stageId: options.stage.id,
+      stage: options.stage.kind,
+      participantId: options.participant?.id,
+      participantRole: options.participant?.role,
+      iteration: options.iteration,
+      startedAt: now,
+      status: 'running',
+    },
+  ];
+};
+
+export const finalizeWorkflowStageHistory = (
+  stageHistory: WorkflowGroupStageRecord[],
+  stageId: string,
+  status: WorkflowGroupStageRecord['status']
+): WorkflowGroupStageRecord[] => {
+  const now = Date.now();
+  for (let index = stageHistory.length - 1; index >= 0; index -= 1) {
+    const entry = stageHistory[index];
+    if (entry.stageId === stageId && entry.status === 'running') {
+      const nextHistory = [...stageHistory];
+      nextHistory[index] = {
+        ...entry,
+        status,
+        completedAt: now,
+      };
+      return nextHistory;
+    }
+  }
+
+  return stageHistory;
+};
+
+export const buildWorkflowExecutionState = (options: {
+  runState: WorkflowGroupRunState;
+  stage: Pick<WorkflowTemplateStageDefinition, 'id' | 'kind' | 'role'>;
+  participant?: GroupParticipant;
+  iteration: number;
+  artifactPath: string;
+  status?: WorkflowGroupRunState['status'];
+  planningBrief?: string;
+  latestScore?: number;
+  latestDecision?: WorkflowGroupDecision;
+}): WorkflowGroupRunState => {
+  const nextStageHistory = beginWorkflowStageRecord({
+    runState: options.runState,
+    stage: options.stage,
+    participant: options.participant,
+    iteration: options.iteration,
+  });
+
+  return {
+    ...options.runState,
+    ...(options.status ? { status: options.status } : {}),
+    stage: options.stage.kind,
+    activeStageId: options.stage.id,
+    iteration: options.iteration,
+    artifactPath: options.artifactPath,
+    activeParticipantId: options.participant?.id,
+    planningBrief: options.planningBrief ?? options.runState.planningBrief,
+    latestScore: options.latestScore ?? options.runState.latestScore,
+    latestDecision: options.latestDecision ?? options.runState.latestDecision,
+    startedAt: options.runState.startedAt || Date.now(),
+    stageHistory: nextStageHistory,
     updatedAt: Date.now(),
   };
 };
 
+export const finalizeWorkflowRunState = (options: {
+  runState: WorkflowGroupRunState;
+  terminalStatus: Exclude<WorkflowGroupRunState['status'], 'idle' | 'running'>;
+  terminalStage: WorkflowGroupRunState['stage'];
+  iteration: number;
+  artifactPath: string;
+  latestScore?: number;
+  latestDecision?: WorkflowGroupDecision;
+}): WorkflowGroupRunState => {
+  return {
+    ...options.runState,
+    status: options.terminalStatus,
+    stage: options.terminalStage,
+    iteration: options.iteration,
+    artifactPath: options.artifactPath,
+    activeParticipantId: undefined,
+    activeStageId: undefined,
+    latestScore: options.latestScore ?? options.runState.latestScore,
+    latestDecision: options.latestDecision ?? options.runState.latestDecision,
+    completedAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+};
+
+const describeStageRole = (role: string, stageLabel: 'Planning' | 'Writing' | 'Evaluation'): string => {
+  return `${formatWorkflowRoleLabel(role)} (${stageLabel} Stage)`;
+};
+
 export const parseWorkflowEvaluation = (value: string, scoreTarget: number): WorkflowEvaluation => {
   const parsed = extractJsonObject(value);
-  const score =
-    parsed && isFiniteNumber(parsed.score) ? clampScore(parsed.score) : extractScoreFromText(value);
+  const score = parsed && isFiniteNumber(parsed.score) ? clampScore(parsed.score) : extractScoreFromText(value);
   const decision = deriveDecision(
     parsed && typeof parsed.decision === 'string' ? parsed.decision : undefined,
     score,
@@ -346,8 +502,7 @@ export const parseWorkflowEvaluation = (value: string, scoreTarget: number): Wor
   return {
     score,
     decision,
-    summary:
-      (parsed && typeof parsed.summary === 'string' && parsed.summary.trim()) || summarizeRawEvaluation(value),
+    summary: (parsed && typeof parsed.summary === 'string' && parsed.summary.trim()) || summarizeRawEvaluation(value),
     strengths: normalizeArrayField(parsed?.strengths),
     issues: normalizeArrayField(parsed?.issues),
     nextActions: normalizeArrayField(parsed?.nextActions),
@@ -355,9 +510,7 @@ export const parseWorkflowEvaluation = (value: string, scoreTarget: number): Wor
   };
 };
 
-export const extractWorkflowArtifactUpdate = (
-  value: string
-): WorkflowArtifactUpdate => {
+export const extractWorkflowArtifactUpdate = (value: string): WorkflowArtifactUpdate => {
   const declaredPathValue = extractHeaderValue(value, ARTIFACT_PATH_HEADER);
   const declaredPath = normalizeWorkflowArtifactPathValue(declaredPathValue);
   const statusValue = extractHeaderValue(value, ARTIFACT_STATUS_HEADER)?.toLowerCase();
@@ -373,7 +526,7 @@ export const extractWorkflowArtifactUpdate = (
 
 export const formatWorkflowEvaluationForWriter = (evaluation: WorkflowEvaluation): string => {
   const sections = [
-    `[Evaluator Summary]`,
+    `[Evaluation Summary]`,
     `Decision: ${evaluation.decision}`,
     evaluation.score !== undefined ? `Score: ${evaluation.score}/10` : undefined,
     `Summary: ${evaluation.summary}`,
@@ -392,22 +545,24 @@ export const buildPlannerPrompt = (options: {
   artifactPath: string;
   scoreTarget: number;
   maxIterations: number;
+  roleId?: string;
 }): string => {
-  const { userInput, participantName, artifactPath, scoreTarget, maxIterations } = options;
+  const { userInput, participantName, artifactPath, scoreTarget, maxIterations, roleId } = options;
+  const roleLabel = describeStageRole(roleId || 'planner', 'Planning');
 
   return `${userInput}
 
 [Workflow Role]
-You are ${participantName}, the Planner in a planner-writer-evaluator workflow.
+You are ${participantName}, acting as ${roleLabel} in a multi-agent workflow harness.
 
 [Shared Constraints]
 - Shared artifact path: ${artifactPath}
 - Target score: ${scoreTarget}/10
-- Maximum writer/evaluator iterations: ${maxIterations}
+- Maximum write/evaluate iterations: ${maxIterations}
 
-[Planner Responsibilities]
+[Planning Stage Responsibilities]
 - Convert the request into a clear objective.
-- Define concrete acceptance criteria for the writer and evaluator.
+- Define concrete acceptance criteria for the writing and evaluation stages.
 - Point out risks, assumptions, and the first iteration focus.
 
 [Output Format]
@@ -427,29 +582,39 @@ export const buildWriterPrompt = (options: {
   planningBrief: string;
   artifactContent?: string;
   evaluatorFeedback?: string;
+  roleId?: string;
 }): string => {
-  const { userInput, participantName, artifactPath, iteration, planningBrief, artifactContent, evaluatorFeedback } =
-    options;
+  const {
+    userInput,
+    participantName,
+    artifactPath,
+    iteration,
+    planningBrief,
+    artifactContent,
+    evaluatorFeedback,
+    roleId,
+  } = options;
+  const roleLabel = describeStageRole(roleId || 'writer', 'Writing');
 
   return `${userInput}
 
 [Workflow Role]
-You are ${participantName}, the Writer in a planner-writer-evaluator workflow.
+You are ${participantName}, acting as ${roleLabel} in a multi-agent workflow harness.
 
 [Iteration]
 Current iteration: ${iteration}
 Shared artifact path: ${artifactPath}
 
-[Planner Brief]
+[Planning Brief]
 ${planningBrief}
 
 [Current Artifact]
 ${artifactContent || '(No artifact file found yet. Create or revise the artifact in the shared workspace.)'}
 
-[Evaluator Feedback]
-${evaluatorFeedback || '(No evaluator feedback yet. Produce the strongest first draft possible.)'}
+[Evaluation Feedback]
+${evaluatorFeedback || '(No evaluation feedback yet. Produce the strongest first draft possible.)'}
 
-[Writer Responsibilities]
+[Writing Stage Responsibilities]
 - Update or create the artifact in the shared workspace when your tools allow it.
 - Keep the work grounded in the requested deliverable, not meta-discussion.
 - The artifact must stay at exactly: ${artifactPath}
@@ -472,7 +637,7 @@ ${ARTIFACT_CONTENT_HEADER}
 - Summarize what changed
 - Mention blockers if the artifact could not be written directly
 
-Do not omit ${ARTIFACT_CONTENT_HEADER}. The evaluator will review only the artifact content for ${artifactPath}.`;
+Do not omit ${ARTIFACT_CONTENT_HEADER}. The evaluation stage will review only the artifact content for ${artifactPath}.`;
 };
 
 export const buildEvaluatorPrompt = (options: {
@@ -483,27 +648,30 @@ export const buildEvaluatorPrompt = (options: {
   planningBrief: string;
   artifactContent: string;
   scoreTarget: number;
+  roleId?: string;
 }): string => {
-  const { userInput, participantName, artifactPath, iteration, planningBrief, artifactContent, scoreTarget } = options;
+  const { userInput, participantName, artifactPath, iteration, planningBrief, artifactContent, scoreTarget, roleId } =
+    options;
+  const roleLabel = describeStageRole(roleId || 'evaluator', 'Evaluation');
 
   return `${userInput}
 
 [Workflow Role]
-You are ${participantName}, the Evaluator in a planner-writer-evaluator workflow.
+You are ${participantName}, acting as ${roleLabel} in a multi-agent workflow harness.
 
 [Evaluation Context]
 - Iteration: ${iteration}
 - Shared artifact path: ${artifactPath}
 - Accept threshold: ${scoreTarget}/10
 
-[Planner Brief]
+[Planning Brief]
 ${planningBrief}
 
 [Artifact To Review]
 ${artifactContent}
 
-[Evaluator Responsibilities]
-- Judge the artifact against the planner brief with a skeptical, concrete standard.
+[Evaluation Stage Responsibilities]
+- Judge the artifact against the planning brief with a skeptical, concrete standard.
 - Penalize vague structure, missing requirements, shallow reasoning, or weak craft.
 - Prefer actionable criticism over praise.
 

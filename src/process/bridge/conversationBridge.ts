@@ -38,6 +38,9 @@ export function initConversationBridge(
 ): void {
   const assistantHookRuntime = new AssistantHookRuntime();
   const groupConversationService = new GroupConversationService(conversationService, workerTaskManager);
+  void groupConversationService.recoverAbandonedWorkflowRuns().catch((error) => {
+    console.error('[conversationBridge] Failed to recover abandoned workflow runs:', error);
+  });
   const emitConversationListChanged = (
     conversation: Pick<TChatConversation, 'id' | 'source'>,
     action: 'created' | 'updated' | 'deleted'
