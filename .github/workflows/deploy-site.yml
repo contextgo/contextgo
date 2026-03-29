@@ -6,6 +6,9 @@ permissions:
 on:
   push:
     branches: [main]
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
 
 concurrency:

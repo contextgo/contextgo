@@ -9,6 +9,9 @@ permissions:
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'apps/web/**'
+      - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
 
 env:
