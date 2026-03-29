@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import {
+  BUILTIN_CHANNEL_TYPE_SET,
+  BUILTIN_CHANNEL_TYPES,
+  type BuiltinChannelDefaultModelConfigKey,
+} from '@/common/config/builtinChannels';
 import type { IChannelPluginStatus } from '@process/channels/types';
 import type { IProvider, TProviderWithModel } from '@/common/config/storage';
 import { channel, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
@@ -28,14 +33,6 @@ import {
   WeixinConfigForm,
 } from './configForms';
 
-type ChannelModelConfigKey =
-  | 'assistant.telegram.defaultModel'
-  | 'assistant.slack.defaultModel'
-  | 'assistant.discord.defaultModel'
-  | 'assistant.lark.defaultModel'
-  | 'assistant.dingtalk.defaultModel'
-  | 'assistant.weixin.defaultModel';
-
 type ExtensionFieldType = 'text' | 'password' | 'select' | 'number' | 'boolean';
 
 type ExtensionFieldSchema = {
@@ -49,8 +46,6 @@ type ExtensionFieldSchema = {
 
 type ExtensionFieldValues = Record<string, Record<string, string | number | boolean>>;
 
-const BUILTIN_CHANNEL_TYPES = new Set(['telegram', 'lark', 'dingtalk', 'weixin', 'slack', 'discord']);
-
 /**
  * Internal hook: wraps useGeminiModelSelection with ConfigStorage persistence
  * for a specific channel config key (e.g. 'assistant.telegram.defaultModel').
@@ -59,7 +54,7 @@ const BUILTIN_CHANNEL_TYPES = new Set(['telegram', 'lark', 'dingtalk', 'weixin',
  * TProviderWithModel and passing it as `initialModel` — this avoids triggering
  * the onSelectModel callback (and its toast) on mount.
  */
-const useChannelModelSelection = (configKey: ChannelModelConfigKey): GeminiModelSelection => {
+const useChannelModelSelection = (configKey: BuiltinChannelDefaultModelConfigKey): GeminiModelSelection => {
   const { t } = useTranslation();
 
   // Resolve persisted model into a full TProviderWithModel for initialModel.
@@ -197,12 +192,7 @@ const ChannelModalContent: React.FC = () => {
 
   // Collapse state - true means collapsed (closed), false means expanded (open)
   const [collapseKeys, setCollapseKeys] = useState<Record<string, boolean>>({
-    telegram: true, // Default to collapsed
-    slack: true,
-    discord: true,
-    lark: true,
-    dingtalk: true,
-    weixin: true,
+    ...Object.fromEntries(BUILTIN_CHANNEL_TYPES.map((type) => [type, true])),
   });
 
   // Model selection state — uses unified hook with ConfigStorage persistence
@@ -224,7 +214,7 @@ const ChannelModalContent: React.FC = () => {
         const larkPlugin = result.data.find((p) => p.type === 'lark');
         const dingtalkPlugin = result.data.find((p) => p.type === 'dingtalk');
         const weixinPlugin = result.data.find((p) => p.type === 'weixin');
-        const extensionPlugins = result.data.filter((p) => !BUILTIN_CHANNEL_TYPES.has(p.type));
+        const extensionPlugins = result.data.filter((p) => !BUILTIN_CHANNEL_TYPE_SET.has(p.type));
 
         setPluginStatus(telegramPlugin || null);
         setSlackPluginStatus(slackPlugin || null);
@@ -298,7 +288,7 @@ const ChannelModalContent: React.FC = () => {
         setDingtalkPluginStatus(status);
       } else if (status.type === 'weixin') {
         setWeixinPluginStatus(status);
-      } else if (!BUILTIN_CHANNEL_TYPES.has(status.type)) {
+      } else if (!BUILTIN_CHANNEL_TYPE_SET.has(status.type)) {
         setExtensionStatuses((prev) => ({
           ...prev,
           [status.type]: {

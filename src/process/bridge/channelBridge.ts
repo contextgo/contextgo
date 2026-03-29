@@ -5,6 +5,7 @@
  */
 
 import { channel } from '@/common/adapter/ipcBridge';
+import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '@/common/config/builtinChannels';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
 import { getPairingService } from '@process/channels/pairing/PairingService';
 import { ExtensionRegistry } from '@process/extensions';
@@ -33,8 +34,6 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
    */
   channel.getPluginStatus.provider(async () => {
     try {
-      const BUILTIN_TYPES = new Set(['telegram', 'lark', 'dingtalk', 'slack', 'discord', 'weixin']);
-
       let dbPlugins: import('@process/channels/types').IChannelPluginConfig[] = [];
       try {
         dbPlugins = await channelRepo.getChannelPlugins();
@@ -94,7 +93,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       const statusMap = new Map<string, IChannelPluginStatus>();
 
       for (const plugin of dbPlugins) {
-        const isExtension = !BUILTIN_TYPES.has(plugin.type);
+        const isExtension = !isBuiltinChannelType(plugin.type);
 
         // Skip extension channels whose parent extension is not loaded/enabled
         if (isExtension && !enabledExtChannelTypes.has(plugin.type)) {
@@ -138,20 +137,13 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
 
       // Ensure builtin channel types are always visible in settings
       // even before user configures them (i.e. not yet persisted in DB).
-      const BUILTIN_NAMES: Record<string, string> = {
-        telegram: 'Telegram',
-        lark: 'Lark',
-        dingtalk: 'DingTalk',
-        slack: 'Slack',
-        discord: 'Discord',
-        weixin: 'WeChat',
-      };
-      for (const builtinType of BUILTIN_TYPES) {
+      for (const builtinType of BUILTIN_CHANNEL_TYPES) {
         if (statusMap.has(builtinType)) continue;
+        const builtinChannel = getBuiltinChannel(builtinType);
         statusMap.set(builtinType, {
           id: builtinType,
           type: builtinType,
-          name: BUILTIN_NAMES[builtinType] || builtinType,
+          name: builtinChannel?.displayName || builtinType,
           enabled: false,
           connected: false,
           status: 'stopped',
