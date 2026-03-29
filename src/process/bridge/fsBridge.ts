@@ -5,7 +5,16 @@
  */
 
 import { AIONUI_TIMESTAMP_SEPARATOR } from '@/common/config/constants';
-import type { HookInfo, HookManifest } from '@/common/types/hookTypes';
+import {
+  getHookOutputTargets,
+  getRunnableHookEvents,
+  isHookOutputBaseDir,
+  isHookOutputTarget,
+  supportsHookOutputRouting,
+  type HookInfo,
+  type HookManifest,
+  type HookOutputRoutingConfig,
+} from '@/common/types/hookTypes';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -13,6 +22,7 @@ import https from 'node:https';
 import http from 'node:http';
 import JSZip from 'jszip';
 import { ipcBridge } from '@/common';
+import { skillMarketService } from '@process/bridge/services/skillmarket/SkillMarketService';
 import {
   getSystemDir,
   getAssistantsDir,
@@ -22,6 +32,7 @@ import {
   getBuiltinHooksCopyDir,
 } from '@process/utils/initStorage';
 import { readDirectoryRecursive } from '@process/utils';
+import { discoverSkillDirectories, resolveSkillDirectory } from '@process/utils/skillDiscovery';
 
 // ============================================================================
 // Helper functions for builtin resource directory resolution
@@ -74,6 +85,11 @@ async function copyDirectory(src: string, dest: string) {
       await fs.copyFile(srcPath, destPath);
     }
   }
+}
+
+async function resetAcpSkillManagerDiscovery() {
+  const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
+  AcpSkillManager.resetInstance();
 }
 
 /**
@@ -177,6 +193,49 @@ async function deleteAssistantResource(resourceType: ResourceType, filePattern: 
 const ruleFilePattern = (id: string, loc: string) => `${id}.${loc}.md`;
 const skillFilePattern = (id: string, loc: string) => `${id}-skills.${loc}.md`;
 
+const trimOptionalString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
+
+const sanitizeHookDirName = (hookName: string): string => {
+  return path.basename(hookName.trim());
+};
+
+const isSafeHookDirName = (hookName: string): boolean => {
+  const safeHookDirName = sanitizeHookDirName(hookName);
+
+  return (
+    Boolean(safeHookDirName) &&
+    safeHookDirName === hookName.trim() &&
+    !safeHookDirName.includes(path.sep) &&
+    safeHookDirName !== '.' &&
+    safeHookDirName !== '..'
+  );
+};
+
+const normalizeHookOutputRoutingConfig = (config: HookOutputRoutingConfig): HookOutputRoutingConfig => {
+  const outputTargets = Array.isArray(config.outputTargets)
+    ? config.outputTargets.map((value) => `${value}`.trim()).filter(isHookOutputTarget)
+    : undefined;
+
+  const title = trimOptionalString(config.notification?.title);
+  const body = trimOptionalString(config.notification?.body);
+  const baseDir = isHookOutputBaseDir(`${config.outputFile?.baseDir || ''}`) ? config.outputFile?.baseDir : undefined;
+  const relativeDir = trimOptionalString(config.outputFile?.relativeDir);
+  const fileBaseName = trimOptionalString(config.outputFile?.fileBaseName);
+
+  return {
+    outputTargets: outputTargets && outputTargets.length > 0 ? [...new Set(outputTargets)] : undefined,
+    notification: title || body ? { title, body } : undefined,
+    outputFile: baseDir || relativeDir || fileBaseName ? { baseDir, relativeDir, fileBaseName } : undefined,
+  };
+};
+
 async function readHookManifest(hookDir: string): Promise<HookManifest | null> {
   try {
     const manifestPath = path.join(hookDir, 'manifest.json');
@@ -199,16 +258,45 @@ async function tryReadHookManifest(hookDir: string, isCustom: boolean): Promise<
       return null;
     }
 
+    const tags = Array.isArray(parsed.tags)
+      ? parsed.tags
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : undefined;
+    const outputTargets = getHookOutputTargets(parsed);
+
     return {
       name,
       description: typeof parsed.description === 'string' ? parsed.description.trim() : undefined,
       version: typeof parsed.version === 'string' ? parsed.version.trim() : undefined,
       executionType: parsed.executionType,
       events: Array.isArray(parsed.events) ? parsed.events : undefined,
+      category: parsed.category,
+      tags: tags && tags.length > 0 ? [...new Set(tags)] : undefined,
       supportedBackends: Array.isArray(parsed.supportedBackends) ? parsed.supportedBackends : undefined,
+      outputTargets: outputTargets.length > 0 ? outputTargets : undefined,
+      notification:
+        parsed.notification && typeof parsed.notification === 'object'
+          ? {
+              title: typeof parsed.notification.title === 'string' ? parsed.notification.title.trim() : undefined,
+              body: typeof parsed.notification.body === 'string' ? parsed.notification.body.trim() : undefined,
+            }
+          : undefined,
+      outputFile:
+        parsed.outputFile && typeof parsed.outputFile === 'object'
+          ? {
+              baseDir: parsed.outputFile.baseDir,
+              relativeDir:
+                typeof parsed.outputFile.relativeDir === 'string' ? parsed.outputFile.relativeDir.trim() : undefined,
+              fileBaseName:
+                typeof parsed.outputFile.fileBaseName === 'string' ? parsed.outputFile.fileBaseName.trim() : undefined,
+            }
+          : undefined,
       location: hookDir,
       isCustom,
       isBuiltinInstalled: false,
+      runnableEvents: getRunnableHookEvents(parsed),
     };
   } catch {
     return null;
@@ -841,42 +929,17 @@ export function initFsBridge(): void {
 
       // 辅助函数：从目录读取 skills
       const readSkillsFromDir = async (skillsDir: string, isCustomDir: boolean) => {
-        try {
-          await fs.access(skillsDir);
-          const entries = await fs.readdir(skillsDir, { withFileTypes: true });
+        const discoveredSkills = await discoverSkillDirectories(skillsDir, {
+          excludeTopLevelNames: isCustomDir ? [] : ['_builtin'],
+        });
 
-          for (const entry of entries) {
-            if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-
-            // 跳过内置 skills 目录（_builtin），这些 skills 自动注入，不需要用户选择
-            // Skip builtin skills directory (_builtin), these are auto-injected, no user selection needed
-            if (entry.name === '_builtin') continue;
-
-            const skillMdPath = path.join(skillsDir, entry.name, 'SKILL.md');
-
-            try {
-              const content = await fs.readFile(skillMdPath, 'utf-8');
-              // 解析 YAML front matter
-              const frontMatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-              if (frontMatterMatch) {
-                const yaml = frontMatterMatch[1];
-                const nameMatch = yaml.match(/^name:\s*(.+)$/m);
-                const descMatch = yaml.match(/^description:\s*['"]?(.+?)['"]?$/m);
-                if (nameMatch) {
-                  skills.push({
-                    name: nameMatch[1].trim(),
-                    description: descMatch ? descMatch[1].trim() : '',
-                    location: skillMdPath,
-                    isCustom: isCustomDir,
-                  });
-                }
-              }
-            } catch {
-              // Skill directory without SKILL.md, skip
-            }
-          }
-        } catch {
-          // Directory doesn't exist, skip
+        for (const skill of discoveredSkills) {
+          skills.push({
+            name: skill.name,
+            description: skill.description,
+            location: path.join(skill.dirPath, 'SKILL.md'),
+            isCustom: isCustomDir,
+          });
         }
       };
 
@@ -1103,6 +1166,95 @@ export function initFsBridge(): void {
     }
   });
 
+  ipcBridge.fs.updateHookManifest.provider(async ({ hookName, config }) => {
+    try {
+      if (!isSafeHookDirName(hookName)) {
+        return {
+          success: false,
+          msg: 'Hook name is invalid',
+        };
+      }
+
+      const safeHookDirName = sanitizeHookDirName(hookName);
+      const userHooksDir = getHooksDir();
+      const hookDir = path.join(userHooksDir, safeHookDirName);
+      const resolvedHookDir = path.resolve(hookDir);
+      const resolvedHooksDir = path.resolve(userHooksDir);
+
+      if (!resolvedHookDir.startsWith(resolvedHooksDir + path.sep)) {
+        return {
+          success: false,
+          msg: 'Invalid hook path (security check failed)',
+        };
+      }
+
+      try {
+        await fs.access(resolvedHookDir);
+      } catch {
+        return {
+          success: false,
+          msg: `Hook "${safeHookDirName}" not found`,
+        };
+      }
+
+      const manifest = await readHookManifest(resolvedHookDir);
+      if (!manifest) {
+        return {
+          success: false,
+          msg: `Hook "${safeHookDirName}" manifest is missing or invalid`,
+        };
+      }
+
+      if (!supportsHookOutputRouting(manifest)) {
+        return {
+          success: false,
+          msg: `Hook "${safeHookDirName}" does not support output routing settings`,
+        };
+      }
+
+      const normalizedConfig = normalizeHookOutputRoutingConfig(config || {});
+      if (!normalizedConfig.outputTargets || normalizedConfig.outputTargets.length === 0) {
+        return {
+          success: false,
+          msg: 'At least one output target is required',
+        };
+      }
+
+      const nextManifest: HookManifest = {
+        ...manifest,
+        outputTargets: normalizedConfig.outputTargets,
+        notification: normalizedConfig.notification,
+        outputFile: normalizedConfig.outputFile,
+      };
+
+      if (!nextManifest.notification) {
+        delete nextManifest.notification;
+      }
+
+      if (!nextManifest.outputFile) {
+        delete nextManifest.outputFile;
+      }
+
+      await fs.writeFile(
+        path.join(resolvedHookDir, 'manifest.json'),
+        `${JSON.stringify(nextManifest, null, 2)}\n`,
+        'utf-8'
+      );
+
+      return {
+        success: true,
+        data: { hookName: safeHookDirName },
+        msg: `Hook "${safeHookDirName}" routing updated successfully`,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to update hook manifest:', error);
+      return {
+        success: false,
+        msg: `Failed to update hook manifest: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
   ipcBridge.fs.getHookPaths.provider(async () => ({
     userHooksDir: getHooksDir(),
   }));
@@ -1188,7 +1340,9 @@ export function initFsBridge(): void {
       const targetDir = path.join(userSkillsDir, skillName);
 
       // Check if skill already exists in both builtin and user directories
-      const builtinTargetDir = path.join(getBuiltinSkillsCopyDir(), skillName);
+      const builtinTargetDir = await resolveSkillDirectory(getBuiltinSkillsCopyDir(), skillName, {
+        excludeTopLevelNames: ['_builtin'],
+      });
 
       try {
         await fs.access(targetDir);
@@ -1204,18 +1358,16 @@ export function initFsBridge(): void {
         // User skill doesn't exist
       }
 
-      try {
-        await fs.access(builtinTargetDir);
+      if (builtinTargetDir) {
         return {
           success: false,
           msg: `Skill "${skillName}" already exists in builtin skills`,
         };
-      } catch {
-        // Builtin skill doesn't exist, proceed with copy
       }
 
       // 复制整个目录 / Copy entire directory
       await copyDirectory(skillPath, targetDir);
+      await resetAcpSkillManagerDiscovery();
 
       console.log(`[fsBridge] Successfully imported skill "${skillName}" to ${targetDir}`);
 
@@ -1588,6 +1740,7 @@ export function initFsBridge(): void {
       }
 
       await fs.symlink(skillPath, targetDir, 'junction');
+      await resetAcpSkillManagerDiscovery();
       console.log(`[fsBridge] Created symlink for skill "${skillName}" at ${targetDir}`);
       return {
         success: true,
@@ -1607,7 +1760,8 @@ export function initFsBridge(): void {
   ipcBridge.fs.deleteSkill.provider(async ({ skillName }) => {
     try {
       const userSkillsDir = getSkillsDir();
-      const skillDir = path.join(userSkillsDir, skillName);
+      const resolvedUserSkill = await resolveSkillDirectory(userSkillsDir, skillName);
+      const skillDir = resolvedUserSkill?.dirPath || path.join(userSkillsDir, skillName);
 
       const resolvedSkillDir = path.resolve(skillDir);
       const resolvedSkillsDir = path.resolve(userSkillsDir);
@@ -1631,6 +1785,7 @@ export function initFsBridge(): void {
         await fs.rm(resolvedSkillDir, { recursive: true, force: true });
       }
 
+      await resetAcpSkillManagerDiscovery();
       console.log(`[fsBridge] Deleted skill "${skillName}" from ${resolvedSkillDir}`);
       return { success: true, msg: `Skill "${skillName}" deleted` };
     } catch (error) {
@@ -1647,6 +1802,51 @@ export function initFsBridge(): void {
     userSkillsDir: getSkillsDir(),
     builtinSkillsDir: getBuiltinSkillsCopyDir(),
   }));
+
+  ipcBridge.fs.searchSkillMarket.provider(async ({ query, limit, offset, forceRefresh } = {}) => {
+    try {
+      const data = await skillMarketService.searchSkills({
+        query,
+        limit,
+        offset,
+        forceRefresh,
+      });
+
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to search Skill Market:', error);
+      return {
+        success: false,
+        msg: `Failed to search Skill Market: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
+  ipcBridge.fs.installSkillMarketSkill.provider(async ({ skillId, archive }) => {
+    try {
+      const data = await skillMarketService.installSkill({
+        skillId,
+        archive,
+      });
+
+      await resetAcpSkillManagerDiscovery();
+
+      return {
+        success: true,
+        data,
+        msg: `Skill "${data.skillName}" installed successfully`,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to install Skill Market skill:', error);
+      return {
+        success: false,
+        msg: `Failed to install Skill Market skill: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
 
   // 将 skill 同步导出到外部目录 / Export skill to external directory via symlink
   ipcBridge.fs.exportSkillWithSymlink.provider(async ({ skillPath, targetDir }) => {
@@ -1681,69 +1881,4 @@ export function initFsBridge(): void {
       };
     }
   });
-
-  // Skills Market: inject the aionui-skills builtin skill
-  ipcBridge.fs.enableSkillsMarket.provider(async () => {
-    try {
-      const { getAutoSkillsDir } = await import('@process/utils/initStorage');
-      const skillDir = path.join(getAutoSkillsDir(), 'aionui-skills');
-      await fs.mkdir(skillDir, { recursive: true });
-
-      // Copy the bundled SKILL.md (concise entry-point version)
-      // The full 600+ line API doc is fetched by agents at runtime via curl
-      const content = await readBundledSkillsMarketMd();
-      await fs.writeFile(path.join(skillDir, 'SKILL.md'), content, 'utf-8');
-
-      // Reset AcpSkillManager singleton so it re-discovers builtin skills
-      const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
-      AcpSkillManager.resetInstance();
-
-      return { success: true, msg: 'Skills Market skill enabled' };
-    } catch (error) {
-      console.error('[fsBridge] Failed to enable Skills Market:', error);
-      return {
-        success: false,
-        msg: `Failed to enable Skills Market: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-  });
-
-  // Skills Market: remove the aionui-skills builtin skill
-  ipcBridge.fs.disableSkillsMarket.provider(async () => {
-    try {
-      const { getAutoSkillsDir } = await import('@process/utils/initStorage');
-      const skillDir = path.join(getAutoSkillsDir(), 'aionui-skills');
-      await fs.rm(skillDir, { recursive: true, force: true });
-
-      // Reset AcpSkillManager singleton so it re-discovers builtin skills
-      const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
-      AcpSkillManager.resetInstance();
-
-      return { success: true, msg: 'Skills Market skill disabled' };
-    } catch (error) {
-      console.error('[fsBridge] Failed to disable Skills Market:', error);
-      return {
-        success: false,
-        msg: `Failed to disable Skills Market: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-  });
-}
-
-/**
- * Read the bundled SKILL.md for aionui-skills from app resources.
- *
- * This is a concise entry-point version (~30 lines) that tells agents
- * to fetch the full API documentation via curl at runtime.
- * The full 600+ line SKILL.md should NOT be injected via [LOAD_SKILL]
- * as it would overwhelm the conversation context.
- */
-async function readBundledSkillsMarketMd(): Promise<string> {
-  try {
-    const fallbackPath = path.join(getBuiltinSkillsCopyDir(), 'aionui-skills', 'SKILL.md');
-    return await fs.readFile(fallbackPath, 'utf-8');
-  } catch (error) {
-    console.warn('[fsBridge] Failed to read bundled aionui-skills SKILL.md:', error);
-    return `---\nname: aionui-skills\ndescription: "Access the AionUI Skills registry — discover and download AI agent skills."\n---\n\n# AionUI Skills Registry\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/aionui-skills\ncurl -s https://skills.aionui.com/SKILL.md > ~/.config/aionui-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
-  }
 }

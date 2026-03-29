@@ -111,7 +111,10 @@ describe('ConversationTabsContext', () => {
     const childConversation2 = createDiscussionChildConversation('child-2', 'Claude Code');
 
     act(() => {
-      result.current.openTabsForConversations([groupConversation, childConversation1, childConversation2], childConversation2.id);
+      result.current.openTabsForConversations(
+        [groupConversation, childConversation1, childConversation2],
+        childConversation2.id
+      );
     });
 
     act(() => {

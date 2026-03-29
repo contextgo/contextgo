@@ -44,7 +44,9 @@ export const buildDiscussionRoundPrompt = (options: {
 You are ${participantName}. Start the relay discussion with an independent answer.`;
     }
 
-    const peerContext = peerSummaries.map((summary) => `- ${summary.participantName}: ${summary.content.trim()}`).join('\n');
+    const peerContext = peerSummaries
+      .map((summary) => `- ${summary.participantName}: ${summary.content.trim()}`)
+      .join('\n');
 
     return `${userInput}
 

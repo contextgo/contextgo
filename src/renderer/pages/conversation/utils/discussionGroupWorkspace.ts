@@ -35,7 +35,10 @@ const buildWorkspaceUpdatedConversation = (conversation: TChatConversation, work
   } as TChatConversation;
 };
 
-const updateConversationWorkspace = async (conversation: TChatConversation, workspace: string): Promise<TChatConversation> => {
+const updateConversationWorkspace = async (
+  conversation: TChatConversation,
+  workspace: string
+): Promise<TChatConversation> => {
   const success = await ipcBridge.conversation.update.invoke({
     id: conversation.id,
     updates: {

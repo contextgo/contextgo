@@ -3,6 +3,27 @@
 :root {
   --app-min-width: 360px;
   --titlebar-height: 36px;
+  --app-popup-radius-lg: 18px;
+  --app-popup-radius-md: 14px;
+  --app-popup-padding: 8px;
+  --app-popup-item-height: 40px;
+  --app-popup-surface: color-mix(in srgb, var(--bg-1) 94%, var(--fill-2) 6%);
+  --app-popup-border: 1px solid color-mix(in srgb, var(--border-base) 86%, transparent);
+  --app-popup-shadow: 0 20px 52px rgba(15, 23, 42, 0.14), 0 6px 18px rgba(15, 23, 42, 0.08);
+  --app-popup-hover-bg: color-mix(in srgb, var(--bg-hover) 82%, var(--bg-1) 18%);
+  --app-popup-selected-bg: color-mix(in srgb, var(--primary) 10%, var(--bg-2) 90%);
+  --app-popup-selected-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent) inset;
+  --app-popup-title-color: color-mix(in srgb, var(--text-secondary) 88%, var(--text-primary) 12%);
+}
+
+[data-theme='dark'] {
+  --app-popup-surface: color-mix(in srgb, var(--bg-1) 90%, var(--fill-2) 10%);
+  --app-popup-border: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
+  --app-popup-shadow: 0 22px 56px rgba(0, 0, 0, 0.38), 0 8px 20px rgba(0, 0, 0, 0.24);
+  --app-popup-hover-bg: color-mix(in srgb, var(--bg-active) 80%, var(--bg-1) 20%);
+  --app-popup-selected-bg: color-mix(in srgb, var(--primary) 18%, var(--bg-2) 82%);
+  --app-popup-selected-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent) inset;
+  --app-popup-title-color: color-mix(in srgb, var(--text-secondary) 92%, var(--text-primary) 8%);
 }
 
 .app-shell {

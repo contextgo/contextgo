@@ -13,8 +13,24 @@
   z-index: 10;
 }
 
+.app-titlebar--desktop-chrome-only {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  width: auto;
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+}
+
 .app-titlebar--desktop {
   -webkit-app-region: drag;
+  gap: 0;
+  padding: 0;
+  height: 40px;
+  min-height: 40px;
+  line-height: 40px;
 }
 
 .app-titlebar--mobile {
@@ -48,34 +64,11 @@
   pointer-events: none;
 }
 
-.app-titlebar__brand-logo {
-  width: 26px;
-  height: 26px;
-  display: block;
-  color: inherit;
-}
-
-.app-titlebar--mobile .app-titlebar__brand-logo {
-  width: 28px;
-  height: 28px;
-}
-
 .app-titlebar--mobile .app-titlebar__brand {
   position: absolute;
   left: 50%;
   transform: translateX(calc(-50% + var(--app-titlebar-mobile-center-offset, 0px)));
   max-width: calc(100% - 180px);
-}
-
-.app-titlebar__brand-mobile {
-  display: inline-flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: nowrap;
-  gap: 6px;
-  min-width: 0;
-  white-space: nowrap;
 }
 
 .app-titlebar__brand-text {
@@ -94,6 +87,57 @@
   -webkit-app-region: no-drag;
   display: flex;
   align-items: center;
+  gap: 4px;
+}
+
+.app-titlebar__desktop-left {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  min-height: var(--titlebar-height);
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.app-titlebar__desktop-left--docked {
+  border-right: 1px solid var(--border-base);
+}
+
+.app-titlebar--desktop-chrome-only .app-titlebar__desktop-left {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-titlebar__desktop-right {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  -webkit-app-region: no-drag;
+}
+
+.app-titlebar__desktop-content {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  background: transparent;
+  -webkit-app-region: no-drag;
+}
+
+.app-titlebar__desktop-content--conversation {
+  background: var(--bg-1);
+}
+
+#app-titlebar-chat-slot {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .app-titlebar__toolbar {
@@ -103,6 +147,20 @@
   -webkit-app-region: no-drag;
   margin-left: auto;
   min-height: var(--titlebar-height);
+}
+
+.app-titlebar__toolbar--desktop {
+  flex-shrink: 0;
+  border-left: 1px solid var(--border-base);
+}
+
+.app-titlebar__toolbar-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--titlebar-height);
+  min-width: 0;
+  padding-left: 8px;
 }
 
 .app-titlebar__button {
@@ -118,6 +176,11 @@
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.2s ease;
+}
+
+.app-titlebar--desktop .app-titlebar__button {
+  width: 40px;
+  height: 40px;
 }
 
 .app-titlebar__button:hover {
@@ -147,7 +210,7 @@
 
 .app-window-controls__button {
   width: 40px;
-  height: var(--titlebar-height);
+  height: 40px;
   border: none;
   background: transparent;
   color: var(--text-primary);

@@ -4,6 +4,7 @@ import AgentSetupCard from '@/renderer/components/agent/AgentSetupCard';
 import ContextUsageIndicator from '@/renderer/components/agent/ContextUsageIndicator';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
+import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import SendBox from '@/renderer/components/chat/sendbox';
 import { useAgentReadinessCheck } from '@/renderer/hooks/agent/useAgentReadinessCheck';
 import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
@@ -15,6 +16,11 @@ import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useS
 import { useSlashCommands } from '@/renderer/hooks/chat/useSlashCommands';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import {
+  usePendingConversationMessages,
+  type PendingConversationMessage,
+  type PendingConversationMessageMode,
+} from '@/renderer/pages/conversation/hooks/usePendingConversationMessages';
 import { allSupportedExts } from '@/renderer/services/FileService';
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
@@ -50,8 +56,8 @@ const useSendBoxDraft = (conversation_id: string) => {
   const content = data?.content ?? '';
 
   const setAtPath = useCallback(
-    (atPath: Array<string | FileOrFolderItem>) => {
-      mutate((prev) => ({ ...prev, atPath }));
+    (nextAtPath: Array<string | FileOrFolderItem>) => {
+      mutate((prev) => ({ ...prev, atPath: nextAtPath }));
     },
     [data, mutate]
   );
@@ -59,8 +65,8 @@ const useSendBoxDraft = (conversation_id: string) => {
   const setUploadFile = createSetUploadFile(mutate, data);
 
   const setContent = useCallback(
-    (content: string) => {
-      mutate((prev) => ({ ...prev, content }));
+    (nextContent: string) => {
+      mutate((prev) => ({ ...prev, content: nextContent }));
     },
     [data, mutate]
   );
@@ -117,10 +123,8 @@ const GeminiSendBox: React.FC<{
     handleSelectModel,
   });
 
-  const { thought, running, tokenUsage, setActiveMsgId, setWaitingResponse, resetState } = useGeminiMessage(
-    conversation_id,
-    handleGeminiError
-  );
+  const { thought, running, canSteerPendingMessage, tokenUsage, setActiveMsgId, setWaitingResponse, resetState } =
+    useGeminiMessage(conversation_id, handleGeminiError);
 
   const { atPath, uploadFile, setAtPath, setUploadFile, content, setContent } = useSendBoxDraft(conversation_id);
 
@@ -203,50 +207,116 @@ const GeminiSendBox: React.FC<{
     setUploadFile,
   });
 
+  const sendGeminiMessage = useCallback(
+    async (message: string, filesToSend: string[]) => {
+      if (!currentModel?.useModel) return;
+
+      const msg_id = uuid();
+      // Set current active message ID to filter out events from old requests
+      setActiveMsgId(msg_id);
+      setWaitingResponse(true);
+
+      const hasFiles = filesToSend.length > 0;
+      const displayMessage = buildDisplayMessage(message, filesToSend, workspacePath);
+      addOrUpdateMessage(
+        {
+          id: msg_id,
+          type: 'text',
+          position: 'right',
+          conversation_id,
+          content: {
+            content: displayMessage,
+          },
+          createdAt: Date.now(),
+        },
+        true
+      );
+
+      await ipcBridge.geminiConversation.sendMessage.invoke({
+        input: displayMessage,
+        msg_id,
+        conversation_id,
+        files: filesToSend,
+      });
+      void checkAndUpdateTitle(conversation_id, message);
+      emitter.emit('chat.history.refresh');
+      emitter.emit('gemini.selected.file.clear');
+      if (hasFiles) {
+        emitter.emit('gemini.workspace.refresh');
+      }
+    },
+    [
+      addOrUpdateMessage,
+      checkAndUpdateTitle,
+      conversation_id,
+      currentModel?.useModel,
+      setActiveMsgId,
+      setWaitingResponse,
+      workspacePath,
+    ]
+  );
+
+  const {
+    pendingMessages,
+    enqueuePendingMessage,
+    removePendingMessage,
+    restorePendingMessage,
+    restoreLatestPendingMessage,
+    setPendingMessageMode,
+  } = usePendingConversationMessages({
+    conversationId: conversation_id,
+    canSendNow: Boolean(currentModel?.useModel) && !running,
+    canSteerNow: canSteerPendingMessage,
+    onDispatch: async (pendingMessage: PendingConversationMessage) => {
+      await sendGeminiMessage(pendingMessage.content, pendingMessage.attachments);
+    },
+    onDispatchError: (error: unknown) => {
+      console.error('[GeminiSendBox] Failed to dispatch pending message:', error);
+    },
+  });
+
+  const stashPendingMessage = useCallback(
+    (mode: PendingConversationMessageMode, message: string) => {
+      const filesToSend = collectSelectedFiles(uploadFile, atPath);
+      clearFiles();
+      emitter.emit('gemini.selected.file.clear');
+      enqueuePendingMessage(mode, message, filesToSend);
+    },
+    [atPath, clearFiles, enqueuePendingMessage, uploadFile]
+  );
+
+  const restoreMessageToComposer = useCallback(
+    (messageId: string) => {
+      const pendingMessage = restorePendingMessage(messageId);
+      if (!pendingMessage) {
+        return;
+      }
+
+      setContent(pendingMessage.content);
+      setAtPath([]);
+      setUploadFile(pendingMessage.attachments);
+      emitter.emit('gemini.selected.file.clear');
+    },
+    [restorePendingMessage, setAtPath, setContent, setUploadFile]
+  );
+
+  const restoreLatestMessageToComposer = useCallback(() => {
+    const pendingMessage = restoreLatestPendingMessage();
+    if (!pendingMessage) {
+      return;
+    }
+
+    setContent(pendingMessage.content);
+    setAtPath([]);
+    setUploadFile(pendingMessage.attachments);
+    emitter.emit('gemini.selected.file.clear');
+  }, [restoreLatestPendingMessage, setAtPath, setContent, setUploadFile]);
+
   const onSendHandler = async (message: string) => {
     if (!currentModel?.useModel) return;
-
-    const msg_id = uuid();
-    // Set current active message ID to filter out events from old requests
-    setActiveMsgId(msg_id);
-    setWaitingResponse(true);
-
-    // Save file list before clearing
     const filesToSend = collectSelectedFiles(uploadFile, atPath);
-    const hasFiles = filesToSend.length > 0;
-
-    // Content is already cleared by the shared SendBox component (setInput(''))
-    // before calling onSend — no need to clear again here.
     clearFiles();
-
-    // User message: Display in UI immediately (Backend will persist when receiving from IPC)
-    const displayMessage = buildDisplayMessage(message, filesToSend, workspacePath);
-    addOrUpdateMessage(
-      {
-        id: msg_id,
-        type: 'text',
-        position: 'right',
-        conversation_id,
-        content: {
-          content: displayMessage,
-        },
-        createdAt: Date.now(),
-      },
-      true
-    );
-    // Files are passed via files param, no longer adding @ prefix in message
-    await ipcBridge.geminiConversation.sendMessage.invoke({
-      input: displayMessage,
-      msg_id,
-      conversation_id,
-      files: filesToSend,
-    });
-    void checkAndUpdateTitle(conversation_id, message);
-    emitter.emit('chat.history.refresh');
-    emitter.emit('gemini.selected.file.clear');
-    if (hasFiles) {
-      emitter.emit('gemini.workspace.refresh');
-    }
+    await sendGeminiMessage(message, filesToSend);
   };
 
   const appendSelectedFiles = useCallback(
@@ -337,6 +407,12 @@ const GeminiSendBox: React.FC<{
         }
         prefix={
           <>
+            <PendingMessageBar
+              messages={pendingMessages}
+              onRemove={removePendingMessage}
+              onEdit={restoreMessageToComposer}
+              onSetMode={setPendingMessageMode}
+            />
             {/* Files on top */}
             {(uploadFile.length > 0 || atPath.some((item) => (typeof item === 'string' ? true : item.isFile))) && (
               <HorizontalFileList>
@@ -397,6 +473,9 @@ const GeminiSendBox: React.FC<{
           </>
         }
         onSend={onSendHandler}
+        onQueue={(message) => stashPendingMessage('queue', message)}
+        onSteer={(message) => stashPendingMessage('steer', message)}
+        onEditLatestPending={restoreLatestMessageToComposer}
         slashCommands={slashCommands}
         onSlashBuiltinCommand={onSlashBuiltinCommand}
       ></SendBox>

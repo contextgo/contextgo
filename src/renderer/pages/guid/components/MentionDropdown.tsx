@@ -35,20 +35,28 @@ const MentionDropdown: React.FC<MentionDropdownProps> = ({ menuRef, options, sel
         {options.length > 0 ? (
           options.map((option, index) => (
             <Menu.Item key={option.key} data-mention-index={index}>
-              <div className='flex items-start gap-8px py-2px'>
-                <div className='pt-2px'>
+              <div className='flex items-center gap-8px py-2px min-w-0'>
+                <div className='inline-flex h-16px w-16px items-center justify-center shrink-0 leading-none'>
                   {option.avatarImage ? (
                     <img
                       src={resolveExtensionAssetUrl(option.avatarImage)}
                       alt=''
                       width={16}
                       height={16}
+                      className='block'
                       style={{ objectFit: 'contain' }}
                     />
                   ) : option.avatar ? (
                     <span style={{ fontSize: 14, lineHeight: '16px' }}>{option.avatar}</span>
                   ) : option.logo ? (
-                    <img src={option.logo} alt={option.label} width={16} height={16} style={{ objectFit: 'contain' }} />
+                    <img
+                      src={option.logo}
+                      alt={option.label}
+                      width={16}
+                      height={16}
+                      className='block'
+                      style={{ objectFit: 'contain' }}
+                    />
                   ) : (
                     <Robot theme='outline' size={16} />
                   )}
@@ -108,10 +116,9 @@ export const MentionSelectorBadge: React.FC<MentionSelectorBadgeProps> = ({
   const { t } = useTranslation();
   if (!visible) return null;
 
-  const helperParts = [
-    isDefault ? t('guid.openclaw.defaultAgent') : null,
-    agentDescription || null,
-  ].filter((part): part is string => Boolean(part));
+  const helperParts = [isDefault ? t('guid.openclaw.defaultAgent') : null, agentDescription || null].filter(
+    (part): part is string => Boolean(part)
+  );
 
   return (
     <div className='flex flex-col gap-4px mb-8px'>

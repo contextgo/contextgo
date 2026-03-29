@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "app_name",
+      "value": "AionUi Shell"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "AionUi HarmonyOS shell"
+    },
+    {
+      "name": "module_desc",
+      "value": "AionUi HarmonyOS shell entry module"
+    }
+  ]
+}

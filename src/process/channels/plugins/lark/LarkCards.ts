@@ -93,9 +93,11 @@ export interface LarkNoteElement {
  * Agent info for card display
  */
 export interface AgentDisplayInfo {
-  type: ChannelAgentType;
+  key: string;
+  backend: string;
   emoji: string;
   name: string;
+  customAgentId?: string;
 }
 
 /**
@@ -296,18 +298,15 @@ export function createPairingHelpCard(): LarkCard {
  * Create agent selection card
  * Shows available agents with current selection marked
  */
-export function createAgentSelectionCard(
-  availableAgents: AgentDisplayInfo[],
-  currentAgent?: ChannelAgentType
-): LarkCard {
+export function createAgentSelectionCard(availableAgents: AgentDisplayInfo[], currentAgentKey?: string): LarkCard {
   const agentButtons: LarkButtonElement[] = availableAgents.map((agent) => ({
     tag: 'button',
     text: {
       tag: 'plain_text',
-      content: currentAgent === agent.type ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`,
+      content: currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`,
     },
-    type: currentAgent === agent.type ? 'primary' : 'default',
-    value: { action: 'agent.select', agentType: agent.type },
+    type: currentAgentKey === agent.key ? 'primary' : 'default',
+    value: { action: 'agent.select', agentKey: agent.key },
   }));
 
   // Split buttons into rows of 2
@@ -319,7 +318,7 @@ export function createAgentSelectionCard(
     });
   }
 
-  const currentAgentInfo = availableAgents.find((a) => a.type === currentAgent);
+  const currentAgentInfo = availableAgents.find((a) => a.key === currentAgentKey);
   const currentAgentName = currentAgentInfo ? `${currentAgentInfo.emoji} ${currentAgentInfo.name}` : 'None';
 
   return {

@@ -1,6 +1,8 @@
 import { ipcBridge } from '@/common';
 import type {
   VoiceInputConfig,
+  VoiceInputExternalOption,
+  VoiceInputOpenWhisperState,
   VoiceInputPermissions,
   VoiceInputRecord,
   VoiceInputState,
@@ -12,9 +14,16 @@ import { ProcessConfig } from '@process/utils/initStorage';
 import { mainError, mainLog, mainWarn } from '@process/utils/mainLogger';
 import { BrowserWindow, screen, systemPreferences } from 'electron';
 import { Buffer } from 'node:buffer';
-import { DashScopeVoiceProvider } from './DashScopeVoiceProvider';
 import { MacNativeVoiceRecorder } from './MacNativeVoiceRecorder';
-import { getFrontmostAppInfo, pasteTextToActiveApp } from './macosVoiceActions';
+import { detectExternalVoiceInputOptions, getFrontmostAppInfo, pasteTextToActiveApp } from './macosVoiceActions';
+import { DashScopeVoiceProvider } from './providers/DashScopeVoiceProvider';
+import {
+  getOpenWhisperState,
+  installOpenWhisperModel,
+  installOpenWhisperRuntime,
+  OpenWhisperVoiceProvider,
+} from './providers/OpenWhisperVoiceProvider';
+import { VolcengineVoiceProvider } from './providers/VolcengineVoiceProvider';
 import {
   createVoiceInputPermissions,
   createVoiceInputState,
@@ -30,6 +39,10 @@ type RecordingPayload = {
   bytes: number;
   pcmBase64: string;
   durationMs: number;
+};
+
+type VoiceInputTranscriptionProvider = {
+  transcribe: (pcmBuffer: Buffer) => Promise<string>;
 };
 
 const VOICE_OVERLAY_HTML = `<!DOCTYPE html>
@@ -64,6 +77,15 @@ const VOICE_OVERLAY_HTML = `<!DOCTYPE html>
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
+      }
+      body[data-state='idle'] #capsule {
+        opacity: 0;
+      }
+      body[data-state='recording'] #capsule,
+      body[data-state='transcribing'] #capsule,
+      body[data-state='success'] #capsule,
+      body[data-state='error'] #capsule {
+        opacity: 1;
       }
       #dot {
         width: 7px;
@@ -181,7 +203,7 @@ const VOICE_OVERLAY_HTML = `<!DOCTYPE html>
       }
     </style>
   </head>
-  <body data-state="recording">
+  <body data-state="idle">
     <div id="capsule">
       <div id="dot"></div>
       <div id="indicator">
@@ -396,6 +418,7 @@ export class VoiceInputRuntime {
   private hookListenerRegistered = false;
   private triggerHeld = false;
   private captureActive = false;
+  private captureStartPromise: Promise<void> | null = null;
   private iohookModulePromise: Promise<IoHookModule> | null = null;
   private nativeRecorder = process.platform === 'darwin' ? new MacNativeVoiceRecorder() : null;
 
@@ -414,6 +437,10 @@ export class VoiceInputRuntime {
     return this.state;
   }
 
+  async getOpenWhisperState(): Promise<VoiceInputOpenWhisperState> {
+    return getOpenWhisperState(this.config.providers.openWhisper);
+  }
+
   async setConfig(config: VoiceInputConfig): Promise<VoiceInputConfig> {
     this.config = normalizeVoiceInputConfig(config);
     await ProcessConfig.set('voiceInput.config', this.config);
@@ -424,6 +451,16 @@ export class VoiceInputRuntime {
       triggerMode: this.config.triggerMode,
     });
     return this.config;
+  }
+
+  async installOpenWhisperRuntime(): Promise<VoiceInputOpenWhisperState> {
+    return installOpenWhisperRuntime(this.config.providers.openWhisper);
+  }
+
+  async installOpenWhisperModel(
+    modelId = this.config.providers.openWhisper.modelId
+  ): Promise<VoiceInputOpenWhisperState> {
+    return installOpenWhisperModel(modelId, this.config.providers.openWhisper);
   }
 
   async requestPermissions(): Promise<VoiceInputPermissions> {
@@ -470,6 +507,10 @@ export class VoiceInputRuntime {
     const db = await getDatabase();
     const result = db.getVoiceInputStats();
     return result.data ?? EMPTY_VOICE_INPUT_STATS;
+  }
+
+  async getExternalOptions(): Promise<VoiceInputExternalOption[]> {
+    return detectExternalVoiceInputOptions();
   }
 
   private async getIoHookModule(): Promise<IoHookModule> {
@@ -532,11 +573,16 @@ export class VoiceInputRuntime {
     if (shouldMonitor) {
       iohook.startMonitoring();
       mainLog('[VoiceInput]', 'Started global modifier monitoring');
+      void this.prewarmCaptureInfrastructure();
       return;
     }
 
     iohook.stopMonitoring();
     this.triggerHeld = false;
+    if (!this.captureActive) {
+      await this.hideOverlay();
+      void this.nativeRecorder?.shutdown();
+    }
   }
 
   private async handleHookEvent(event: {
@@ -559,6 +605,21 @@ export class VoiceInputRuntime {
     await this.finishCapture('shortcut');
   }
 
+  private async ensureActiveProviderReady(): Promise<void> {
+    if (this.config.providerId !== 'openWhisper') {
+      return;
+    }
+
+    const localState = await getOpenWhisperState(this.config.providers.openWhisper);
+    if (!localState.runtimeInstalled) {
+      throw new Error('Open Whisper runtime is not installed. Install whisper.cpp first.');
+    }
+
+    if (!localState.selectedModelInstalled) {
+      throw new Error('Selected Open Whisper model is not installed.');
+    }
+  }
+
   private async beginCapture(_reason: 'shortcut' | 'manual'): Promise<void> {
     if (this.captureActive) {
       return;
@@ -570,7 +631,17 @@ export class VoiceInputRuntime {
     }
 
     if (!isVoiceInputConfigured(this.config)) {
-      this.updateState({ status: 'error', lastError: 'DashScope API key is not configured.' });
+      this.updateState({ status: 'error', lastError: 'Voice input provider credentials are not configured.' });
+      return;
+    }
+
+    try {
+      await this.ensureActiveProviderReady();
+    } catch (error) {
+      this.updateState({
+        status: 'error',
+        lastError: error instanceof Error ? error.message : String(error),
+      });
       return;
     }
 
@@ -584,14 +655,19 @@ export class VoiceInputRuntime {
       return;
     }
 
-    const sourceApp = await getFrontmostAppInfo();
     this.captureActive = true;
-    await this.ensureOverlayWindow();
-    await this.overlayWindow?.showInactive();
+    const sourceAppPromise = getFrontmostAppInfo();
+    const captureStartTime = Date.now();
+    const recorderStartPromise = this.nativeRecorder ? this.nativeRecorder.start() : Promise.resolve();
+    this.captureStartPromise = recorderStartPromise;
+    void this.showRecordingOverlay();
 
     try {
-      await this.nativeRecorder?.start();
-      await this.setOverlayState('recording');
+      await recorderStartPromise;
+      mainLog('[VoiceInput]', 'Recorder started', {
+        latencyMs: Date.now() - captureStartTime,
+      });
+      const sourceApp = await sourceAppPromise;
       this.updateState({
         status: 'recording',
         lastError: undefined,
@@ -604,6 +680,10 @@ export class VoiceInputRuntime {
         lastError: error instanceof Error ? error.message : String(error),
       });
       await this.flashOverlayState('error');
+    } finally {
+      if (this.captureStartPromise === recorderStartPromise) {
+        this.captureStartPromise = null;
+      }
     }
   }
 
@@ -617,6 +697,9 @@ export class VoiceInputRuntime {
     let payload: RecordingPayload;
 
     try {
+      if (this.captureStartPromise) {
+        await this.captureStartPromise;
+      }
       await this.setOverlayState('transcribing');
       const result = await this.nativeRecorder?.stop();
       payload = {
@@ -636,6 +719,7 @@ export class VoiceInputRuntime {
     }
 
     if (!payload.pcmBase64 || payload.bytes === 0) {
+      const providerMetadata = this.getActiveProviderRecordMetadata();
       const message = 'No audio was captured. Check microphone permission and the selected input device.';
       await this.persistRecord({
         id: crypto.randomUUID(),
@@ -645,10 +729,7 @@ export class VoiceInputRuntime {
         transcript: '',
         transcriptLength: 0,
         sourceAppName: this.state.sourceAppName,
-        model: this.config.providers.dashscope.model,
-        languageHints: this.config.providers.dashscope.languageHints,
-        vocabularyId: this.config.providers.dashscope.vocabularyId,
-        hotwords: this.config.providers.dashscope.hotwords,
+        ...providerMetadata,
         durationMs: payload.durationMs,
         errorMessage: message,
         createdAt: Date.now(),
@@ -659,7 +740,8 @@ export class VoiceInputRuntime {
     }
 
     try {
-      const provider = new DashScopeVoiceProvider(this.config.providers.dashscope);
+      const providerMetadata = this.getActiveProviderRecordMetadata();
+      const provider = this.createTranscriptionProvider();
       const transcript = (await provider.transcribe(Buffer.from(payload.pcmBase64, 'base64'))).trim();
 
       if (!transcript) {
@@ -677,10 +759,7 @@ export class VoiceInputRuntime {
         transcriptLength: transcript.length,
         sourceAppName: this.state.sourceAppName ?? appInfo.appName,
         sourceBundleId: appInfo.bundleId,
-        model: this.config.providers.dashscope.model,
-        languageHints: this.config.providers.dashscope.languageHints,
-        vocabularyId: this.config.providers.dashscope.vocabularyId,
-        hotwords: this.config.providers.dashscope.hotwords,
+        ...providerMetadata,
         durationMs: payload.durationMs,
         createdAt: Date.now(),
       };
@@ -695,6 +774,7 @@ export class VoiceInputRuntime {
       await this.flashOverlayState('success');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const providerMetadata = this.getActiveProviderRecordMetadata();
       await this.persistRecord({
         id: crypto.randomUUID(),
         providerId: this.config.providerId,
@@ -703,10 +783,7 @@ export class VoiceInputRuntime {
         transcript: '',
         transcriptLength: 0,
         sourceAppName: this.state.sourceAppName,
-        model: this.config.providers.dashscope.model,
-        languageHints: this.config.providers.dashscope.languageHints,
-        vocabularyId: this.config.providers.dashscope.vocabularyId,
-        hotwords: this.config.providers.dashscope.hotwords,
+        ...providerMetadata,
         durationMs: payload.durationMs,
         errorMessage: message,
         createdAt: Date.now(),
@@ -722,6 +799,73 @@ export class VoiceInputRuntime {
     const result = db.insertVoiceInputRecord(record);
     if (!result.success) {
       mainWarn('[VoiceInput]', 'Failed to persist voice input record', result.error);
+    }
+  }
+
+  private createTranscriptionProvider(): VoiceInputTranscriptionProvider {
+    switch (this.config.providerId) {
+      case 'openWhisper':
+        return new OpenWhisperVoiceProvider(this.config.providers.openWhisper);
+      case 'volcengine':
+        return new VolcengineVoiceProvider(this.config.providers.volcengine);
+      case 'dashscope':
+      default:
+        return new DashScopeVoiceProvider(this.config.providers.dashscope);
+    }
+  }
+
+  private getActiveProviderRecordMetadata(): Pick<
+    VoiceInputRecord,
+    'model' | 'languageHints' | 'vocabularyId' | 'hotwords'
+  > {
+    switch (this.config.providerId) {
+      case 'openWhisper':
+        return {
+          model: this.config.providers.openWhisper.modelId,
+          languageHints: this.config.providers.openWhisper.languageHints,
+          vocabularyId: undefined,
+          hotwords: this.config.providers.openWhisper.hotwords,
+        };
+      case 'volcengine':
+        return {
+          model: this.config.providers.volcengine.model,
+          languageHints: [],
+          vocabularyId:
+            this.config.providers.volcengine.boostingTableId || this.config.providers.volcengine.correctTableId,
+          hotwords: this.config.providers.volcengine.hotwords,
+        };
+      case 'dashscope':
+      default:
+        return {
+          model: this.config.providers.dashscope.model,
+          languageHints: this.config.providers.dashscope.languageHints,
+          vocabularyId: this.config.providers.dashscope.vocabularyId || this.config.providers.dashscope.phraseId,
+          hotwords: this.config.providers.dashscope.hotwords,
+        };
+    }
+  }
+
+  private async prewarmCaptureInfrastructure(): Promise<void> {
+    try {
+      await this.nativeRecorder?.warmup();
+    } catch (error) {
+      mainWarn('[VoiceInput]', 'Failed to prewarm native-recorder', error);
+    }
+  }
+
+  private async showRecordingOverlay(): Promise<void> {
+    try {
+      await this.ensureOverlayWindow();
+      if (!this.captureActive) {
+        return;
+      }
+      await this.setOverlayState('recording');
+      if (!this.captureActive) {
+        return;
+      }
+      await this.overlayWindow?.showInactive();
+    } catch (error) {
+      mainWarn('[VoiceInput]', 'Failed to show recording overlay', error);
     }
   }
 
@@ -796,7 +940,7 @@ export class VoiceInputRuntime {
     return this.overlayWindow.webContents.executeJavaScript(script, true) as Promise<T>;
   }
 
-  private async setOverlayState(state: 'recording' | 'transcribing' | 'success' | 'error'): Promise<void> {
+  private async setOverlayState(state: 'idle' | 'recording' | 'transcribing' | 'success' | 'error'): Promise<void> {
     await this.executeOverlay(`window.voiceOverlaySetState(${JSON.stringify(state)})`);
   }
 
@@ -818,6 +962,7 @@ export class VoiceInputRuntime {
       return;
     }
 
+    await this.setOverlayState('idle').catch(() => {});
     this.overlayWindow.hide();
   }
 

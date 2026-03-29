@@ -1,9 +1,11 @@
 import { ipcBridge } from '@/common';
 import type { Message } from '@arco-design/web-react';
 import type {
+  AddableSkill,
   ExternalSource,
   PendingSkill,
   SkillInfo,
+  SkillMarketItem,
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,10 +39,19 @@ export const useAssistantSkills = ({
 }: UseAssistantSkillsParams) => {
   const { t } = useTranslation();
 
+  const [browseMode, setBrowseMode] = useState<'skill-market' | 'external'>('skill-market');
   const [externalSources, setExternalSources] = useState<ExternalSource[]>([]);
   const [activeSourceTab, setActiveSourceTab] = useState<string>('');
   const [searchExternalQuery, setSearchExternalQuery] = useState('');
   const [externalSkillsLoading, setExternalSkillsLoading] = useState(false);
+  const [marketSkills, setMarketSkills] = useState<SkillMarketItem[]>([]);
+  const [marketQuery, setMarketQuery] = useState('');
+  const [marketLoading, setMarketLoading] = useState(false);
+  const [marketLoadingMore, setMarketLoadingMore] = useState(false);
+  const [marketRefreshing, setMarketRefreshing] = useState(false);
+  const [marketTotal, setMarketTotal] = useState(0);
+  const [marketTotalAvailable, setMarketTotalAvailable] = useState(0);
+  const [marketSiteUrl, setMarketSiteUrl] = useState('https://www.skillmarket.com.cn');
   const [showAddPathModal, setShowAddPathModal] = useState(false);
   const [customPathName, setCustomPathName] = useState('');
   const [customPathValue, setCustomPathValue] = useState('');
@@ -68,13 +79,87 @@ export const useAssistantSkills = ({
     }
   }, [activeSourceTab]);
 
+  const loadSkillMarket = useCallback(
+    async ({
+      append = false,
+      forceRefresh = false,
+      nextQuery,
+    }: {
+      append?: boolean;
+      forceRefresh?: boolean;
+      nextQuery?: string;
+    } = {}) => {
+      const query = nextQuery ?? marketQuery;
+
+      if (append) {
+        setMarketLoadingMore(true);
+      } else if (forceRefresh) {
+        setMarketRefreshing(true);
+      } else {
+        setMarketLoading(true);
+      }
+
+      try {
+        const response = await ipcBridge.fs.searchSkillMarket.invoke({
+          query,
+          limit: 24,
+          offset: append ? marketSkills.length : 0,
+          forceRefresh,
+        });
+
+        if (!response.success || !response.data) {
+          message.error(
+            response.msg ||
+              t('settings.skillsHub.marketFetchFailed', {
+                defaultValue: 'Failed to load Skill Market',
+              })
+          );
+          return;
+        }
+
+        setMarketSkills((current) => (append ? [...current, ...response.data.items] : response.data.items));
+        setMarketTotal(response.data.total);
+        setMarketTotalAvailable(response.data.totalAvailable);
+        setMarketSiteUrl(response.data.siteUrl);
+      } catch (error) {
+        console.error('Failed to load Skill Market:', error);
+        message.error(
+          t('settings.skillsHub.marketFetchFailed', {
+            defaultValue: 'Failed to load Skill Market',
+          })
+        );
+      } finally {
+        setMarketLoading(false);
+        setMarketLoadingMore(false);
+        setMarketRefreshing(false);
+      }
+    },
+    [marketQuery, marketSkills.length, message, t]
+  );
+
   // Detect external skill paths when modal opens
   useEffect(() => {
     if (skillsModalVisible) {
+      setBrowseMode('skill-market');
       setSearchExternalQuery('');
+      setMarketQuery('');
       void handleRefreshExternal();
     }
-  }, [skillsModalVisible, handleRefreshExternal]);
+  }, [skillsModalVisible, handleRefreshExternal, loadSkillMarket]);
+
+  useEffect(() => {
+    if (!skillsModalVisible) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void loadSkillMarket({ nextQuery: marketQuery });
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [skillsModalVisible, marketQuery, loadSkillMarket]);
 
   const handleAddCustomPath = useCallback(async () => {
     if (!customPathName.trim() || !customPathValue.trim()) return;
@@ -90,14 +175,23 @@ export const useAssistantSkills = ({
         message.success(t('common.success', { defaultValue: 'Successfully added path' }));
         void handleRefreshExternal();
       } else {
-        message.error(result.msg || 'Failed to add path');
+        message.error(
+          result.msg ||
+            t('settings.skillsHub.addPathFailed', {
+              defaultValue: 'Failed to add path',
+            })
+        );
       }
-    } catch (_error) {
-      message.error('Failed to add custom path');
+    } catch {
+      message.error(
+        t('settings.skillsHub.addCustomPathFailed', {
+          defaultValue: 'Failed to add custom path',
+        })
+      );
     }
   }, [customPathName, customPathValue, handleRefreshExternal, message, t]);
 
-  const handleAddFoundSkills = (skillsToAdd: Array<{ name: string; description: string; path: string }>) => {
+  const handleAddFoundSkills = (skillsToAdd: AddableSkill[]) => {
     let addedCount = 0;
     let skippedCount = 0;
     const newPendingSkills: PendingSkill[] = [];
@@ -105,8 +199,7 @@ export const useAssistantSkills = ({
     const newSelectedSkills: string[] = [];
 
     for (const skill of skillsToAdd) {
-      const { name, description, path: sPath } = skill;
-
+      const { name, description } = skill;
       // Check if already in this assistant's list
       const alreadyInAssistant = customSkills.includes(name) || newCustomSkillNames.includes(name);
 
@@ -120,8 +213,29 @@ export const useAssistantSkills = ({
       const existsInPending = pendingSkills.some((s) => s.name === name);
 
       if (!existsInAvailable && !existsInPending) {
-        // Only add to pending if not in system
-        newPendingSkills.push({ path: sPath, name, description });
+        if (skill.source === 'external') {
+          newPendingSkills.push({ source: 'external', path: skill.path, name, description });
+        } else {
+          const preferredArchive = skill.archives[0];
+          if (!preferredArchive) {
+            skippedCount++;
+            message.warning(
+              t('settings.skillsHub.marketArchiveUnavailable', {
+                name,
+                defaultValue: 'No downloadable package is available for "{{name}}"',
+              })
+            );
+            continue;
+          }
+
+          newPendingSkills.push({
+            source: 'skill-market',
+            marketSkillId: skill.id,
+            name,
+            description,
+            archive: preferredArchive,
+          });
+        }
       }
 
       newCustomSkillNames.push(name);
@@ -161,7 +275,11 @@ export const useAssistantSkills = ({
     );
   }, [activeSource, searchExternalQuery]);
 
+  const hasMoreMarketSkills = marketSkills.length < marketTotal;
+
   return {
+    browseMode,
+    setBrowseMode,
     externalSources,
     activeSourceTab,
     setActiveSourceTab,
@@ -179,9 +297,21 @@ export const useAssistantSkills = ({
     setSkillPath,
     commonPaths,
     setCommonPaths,
+    marketSkills,
+    marketQuery,
+    setMarketQuery,
+    marketLoading,
+    marketLoadingMore,
+    marketRefreshing,
+    marketTotal,
+    marketTotalAvailable,
+    marketSiteUrl,
+    hasMoreMarketSkills,
     activeSource,
     filteredExternalSkills,
     handleRefreshExternal,
+    handleRefreshSkillMarket: () => loadSkillMarket({ forceRefresh: true }),
+    handleLoadMoreSkillMarket: () => loadSkillMarket({ append: true }),
     handleAddCustomPath,
     handleAddFoundSkills,
   };

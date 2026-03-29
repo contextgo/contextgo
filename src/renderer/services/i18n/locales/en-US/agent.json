@@ -26,5 +26,13 @@
     "noAlternatives": "No available agents found",
     "configureFirst": "Please configure an agent in Settings first.",
     "switching": "Switching agent..."
+  },
+  "hooks": {
+    "sidecarExported": "Sidecar files exported for {{hookName}}.",
+    "markdownPath": "Markdown",
+    "metadataPath": "Metadata",
+    "openMarkdown": "Open Markdown",
+    "showInFolder": "Show In Folder",
+    "sidecarActionFailed": "Failed to open exported sidecar output."
   }
 }

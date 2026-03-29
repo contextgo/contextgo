@@ -2,15 +2,19 @@
  * AssistantListPanel — Renders the collapsible list of assistants
  * with avatar, name, enabled switch, and edit/duplicate actions.
  */
+import classNames from 'classnames';
+import { useSettingsViewMode } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 import type { AssistantListItem } from './types';
 import AssistantAvatar from './AssistantAvatar';
 import { Button, Collapse, Switch } from '@arco-design/web-react';
 import { Plus, SettingOne } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import styles from '../AgentSettingsPage.module.css';
 
 type AssistantListPanelProps = {
   assistants: AssistantListItem[];
+  activeAssistantId: string | null;
   localeKey: string;
   avatarImageMap: Record<string, string>;
   isExtensionAssistant: (assistant: AssistantListItem | null | undefined) => boolean;
@@ -23,6 +27,7 @@ type AssistantListPanelProps = {
 
 const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
   assistants,
+  activeAssistantId,
   localeKey,
   avatarImageMap,
   isExtensionAssistant,
@@ -33,6 +38,116 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
   setActiveAssistantId,
 }) => {
   const { t } = useTranslation();
+  const viewMode = useSettingsViewMode();
+  const isPageMode = viewMode === 'page';
+
+  const listContent =
+    assistants.length > 0 ? (
+      <div className={styles.assistantList}>
+        {assistants.map((assistant) => {
+          const assistantIsExtension = isExtensionAssistant(assistant);
+          const isActive = activeAssistantId === assistant.id;
+          return (
+            <div
+              key={assistant.id}
+              className={classNames(styles.assistantCard, isActive && styles.assistantCardActive)}
+              onClick={() => {
+                setActiveAssistantId(assistant.id);
+                onEdit(assistant);
+              }}
+            >
+              <div className={styles.assistantCardMain}>
+                <AssistantAvatar assistant={assistant} size={isPageMode ? 34 : 28} avatarImageMap={avatarImageMap} />
+                <div className={styles.assistantMeta}>
+                  <span className={styles.assistantName}>{assistant.nameI18n?.[localeKey] || assistant.name}</span>
+                  {(assistant.descriptionI18n?.[localeKey] || assistant.description) && (
+                    <div className={styles.assistantDescription}>
+                      {assistant.descriptionI18n?.[localeKey] || assistant.description}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className={styles.assistantActions}>
+                <Button
+                  type='text'
+                  size='mini'
+                  className={styles.assistantDuplicateButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicate(assistant);
+                  }}
+                >
+                  {t('settings.duplicateAssistant', { defaultValue: 'Duplicate' })}
+                </Button>
+                <Switch
+                  size='small'
+                  checked={assistantIsExtension ? true : assistant.enabled !== false}
+                  disabled={assistantIsExtension}
+                  onChange={(checked) => {
+                    onToggleEnabled(assistant, checked);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <Button
+                  type='text'
+                  size='small'
+                  className={styles.assistantSettingsButton}
+                  icon={<SettingOne size={16} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(assistant);
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    ) : (
+      <div className={styles.emptyState}>
+        {t('settings.assistantsEmpty', { defaultValue: 'No assistants configured.' })}
+      </div>
+    );
+
+  if (isPageMode) {
+    return (
+      <div className={styles.pageStack}>
+        <div className={styles.heroSurface}>
+          <div className={styles.heroRow}>
+            <div className={styles.heroMeta}>
+              <div className={styles.titleRow}>
+                <h1 className={styles.pageTitle}>{t('settings.assistants', { defaultValue: 'Assistants' })}</h1>
+                <span className={styles.countBadge}>{assistants.length}</span>
+              </div>
+              <p className={styles.pageDescription}>
+                {t('settings.assistantsList', { defaultValue: 'Available assistants' })}
+              </p>
+            </div>
+            <div className={styles.actions}>
+              <Button
+                type='primary'
+                className={styles.primaryPillButton}
+                icon={<Plus size={14} />}
+                onClick={() => onCreate()}
+              >
+                {t('settings.createAssistant', { defaultValue: 'Create' })}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.surface}>
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionTitle}>
+              {t('settings.assistantsList', { defaultValue: 'Available assistants' })}
+            </div>
+            <span className={styles.sectionMeta}>{assistants.length}</span>
+          </div>
+          {listContent}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Collapse.Item
@@ -44,9 +159,9 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
       name='smart-assistants'
       extra={
         <Button
-          type='text'
+          type='outline'
           size='small'
-          style={{ color: 'var(--text-primary)' }}
+          className={styles.secondaryPillButton}
           icon={<Plus size={14} fill='currentColor' />}
           onClick={(e) => {
             e.stopPropagation();
@@ -58,72 +173,14 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
       }
     >
       <div className='py-2'>
-        <div className='bg-fill-2 rounded-2xl p-20px'>
-          <div className='text-14px text-t-secondary mb-12px'>
-            {t('settings.assistantsList', { defaultValue: 'Available assistants' })}
+        <div className={styles.surface}>
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionTitle}>
+              {t('settings.assistantsList', { defaultValue: 'Available assistants' })}
+            </div>
+            <span className={styles.sectionMeta}>{assistants.length}</span>
           </div>
-          {assistants.length > 0 ? (
-            <div className='space-y-12px'>
-              {assistants.map((assistant) => {
-                const assistantIsExtension = isExtensionAssistant(assistant);
-                return (
-                  <div
-                    key={assistant.id}
-                    className='group bg-fill-0 rounded-lg px-16px py-12px flex items-center justify-between cursor-pointer hover:bg-fill-1 transition-colors'
-                    onClick={() => {
-                      setActiveAssistantId(assistant.id);
-                      onEdit(assistant);
-                    }}
-                  >
-                    <div className='flex items-center gap-12px min-w-0'>
-                      <AssistantAvatar assistant={assistant} size={28} avatarImageMap={avatarImageMap} />
-                      <div className='min-w-0'>
-                        <div className='font-medium text-t-primary truncate flex items-center gap-6px'>
-                          <span className='truncate'>{assistant.nameI18n?.[localeKey] || assistant.name}</span>
-                        </div>
-                        <div className='text-12px text-t-secondary truncate'>
-                          {assistant.descriptionI18n?.[localeKey] || assistant.description || ''}
-                        </div>
-                      </div>
-                    </div>
-                    <div className='flex items-center gap-12px text-t-secondary'>
-                      <span
-                        className='invisible group-hover:visible text-12px text-primary cursor-pointer hover:underline transition-all'
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDuplicate(assistant);
-                        }}
-                      >
-                        {t('settings.duplicateAssistant', { defaultValue: 'Duplicate' })}
-                      </span>
-                      <Switch
-                        size='small'
-                        checked={assistantIsExtension ? true : assistant.enabled !== false}
-                        disabled={assistantIsExtension}
-                        onChange={(checked) => {
-                          onToggleEnabled(assistant, checked);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <Button
-                        type='text'
-                        size='small'
-                        icon={<SettingOne size={16} />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEdit(assistant);
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className='text-center text-t-secondary py-12px'>
-              {t('settings.assistantsEmpty', { defaultValue: 'No assistants configured.' })}
-            </div>
-          )}
+          {listContent}
         </div>
       </div>
     </Collapse.Item>

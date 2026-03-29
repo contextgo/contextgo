@@ -126,7 +126,9 @@ export function useWorkspaceMigration({
 
         if (isDiscussionFamilyConversation(currentConversation)) {
           const updatedConversations = await syncDiscussionFamilyWorkspace(currentConversation, targetWorkspace);
-          const updatedCurrentConversation = updatedConversations.find((conversation) => conversation.id === conversation_id) ?? {
+          const updatedCurrentConversation = updatedConversations.find(
+            (conversation) => conversation.id === conversation_id
+          ) ?? {
             ...currentConversation,
             extra: {
               ...currentConversation.extra,

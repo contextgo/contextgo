@@ -1,6 +1,14 @@
-export const VOICE_INPUT_PROVIDER_IDS = ['dashscope'] as const;
+export const VOICE_INPUT_PROVIDER_IDS = ['dashscope', 'volcengine', 'openWhisper'] as const;
 
 export type VoiceInputProviderId = (typeof VOICE_INPUT_PROVIDER_IDS)[number];
+
+export const VOICE_INPUT_EXTERNAL_OPTION_IDS = ['wechat-input-method'] as const;
+
+export type VoiceInputExternalOptionId = (typeof VOICE_INPUT_EXTERNAL_OPTION_IDS)[number];
+
+export const VOICE_INPUT_OPEN_WHISPER_MODEL_IDS = ['tiny', 'base', 'small', 'medium', 'large-v3-turbo'] as const;
+
+export type VoiceInputOpenWhisperModelId = (typeof VOICE_INPUT_OPEN_WHISPER_MODEL_IDS)[number];
 
 export const VOICE_INPUT_TRIGGER_MODES = ['fn_hold', 'right_command_hold'] as const;
 
@@ -10,12 +18,38 @@ export const VOICE_INPUT_REGIONS = ['beijing', 'singapore'] as const;
 
 export type VoiceInputRegion = (typeof VOICE_INPUT_REGIONS)[number];
 
+export type VoiceInputExternalOption = {
+  id: VoiceInputExternalOptionId;
+  detected: boolean;
+  installedPath?: string;
+  bundleId?: string;
+  downloadUrl?: string;
+};
+
 export type VoiceInputDashScopeConfig = {
   apiKey: string;
   region: VoiceInputRegion;
   model: string;
   languageHints: string[];
   vocabularyId?: string;
+  phraseId?: string;
+  hotwords: string[];
+};
+
+export type VoiceInputVolcengineConfig = {
+  appKey: string;
+  accessKey: string;
+  resourceId: string;
+  model: string;
+  boostingTableId?: string;
+  correctTableId?: string;
+  hotwords: string[];
+};
+
+export type VoiceInputOpenWhisperConfig = {
+  cliPath: string;
+  modelId: VoiceInputOpenWhisperModelId;
+  languageHints: string[];
   hotwords: string[];
 };
 
@@ -26,7 +60,29 @@ export type VoiceInputConfig = {
   autoInsert: boolean;
   providers: {
     dashscope: VoiceInputDashScopeConfig;
+    volcengine: VoiceInputVolcengineConfig;
+    openWhisper: VoiceInputOpenWhisperConfig;
   };
+};
+
+export type VoiceInputOpenWhisperModelStatus = {
+  id: VoiceInputOpenWhisperModelId;
+  sizeBytes: number;
+  installed: boolean;
+  filePath: string;
+};
+
+export type VoiceInputOpenWhisperState = {
+  supported: boolean;
+  brewAvailable: boolean;
+  runtimeInstalled: boolean;
+  cliPath?: string;
+  brewPath?: string;
+  modelDirectory: string;
+  selectedModelId: VoiceInputOpenWhisperModelId;
+  selectedModelInstalled: boolean;
+  models: VoiceInputOpenWhisperModelStatus[];
+  lastError?: string;
 };
 
 export type VoiceInputRuntimeStatus =
@@ -102,6 +158,22 @@ export const DEFAULT_VOICE_INPUT_CONFIG: VoiceInputConfig = {
       model: 'fun-asr-realtime',
       languageHints: ['zh'],
       vocabularyId: '',
+      phraseId: '',
+      hotwords: [],
+    },
+    volcengine: {
+      appKey: '',
+      accessKey: '',
+      resourceId: 'volc.bigasr.sauc.duration',
+      model: 'bigmodel',
+      boostingTableId: '',
+      correctTableId: '',
+      hotwords: [],
+    },
+    openWhisper: {
+      cliPath: '',
+      modelId: 'base',
+      languageHints: ['zh'],
       hotwords: [],
     },
   },

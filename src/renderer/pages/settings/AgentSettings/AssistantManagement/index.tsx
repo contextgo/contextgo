@@ -96,6 +96,7 @@ const AssistantManagement: React.FC<AssistantManagementProps> = ({ message }) =>
     <div>
       <AssistantListPanel
         assistants={assistants}
+        activeAssistantId={activeAssistantId}
         localeKey={localeKey}
         avatarImageMap={avatarImageMap}
         isExtensionAssistant={isExtensionAssistant}
@@ -165,17 +166,32 @@ const AssistantManagement: React.FC<AssistantManagementProps> = ({ message }) =>
         onCancel={() => {
           editor.setSkillsModalVisible(false);
           skills.setSearchExternalQuery('');
+          skills.setMarketQuery('');
         }}
+        browseMode={skills.browseMode}
+        setBrowseMode={skills.setBrowseMode}
         externalSources={skills.externalSources}
         activeSourceTab={skills.activeSourceTab}
         setActiveSourceTab={skills.setActiveSourceTab}
         activeSource={skills.activeSource}
         filteredExternalSkills={skills.filteredExternalSkills}
         externalSkillsLoading={skills.externalSkillsLoading}
+        marketSkills={skills.marketSkills}
+        marketQuery={skills.marketQuery}
+        setMarketQuery={skills.setMarketQuery}
+        marketLoading={skills.marketLoading}
+        marketLoadingMore={skills.marketLoadingMore}
+        marketRefreshing={skills.marketRefreshing}
+        marketTotal={skills.marketTotal}
+        marketTotalAvailable={skills.marketTotalAvailable}
+        marketSiteUrl={skills.marketSiteUrl}
+        hasMoreMarketSkills={skills.hasMoreMarketSkills}
         searchExternalQuery={skills.searchExternalQuery}
         setSearchExternalQuery={skills.setSearchExternalQuery}
         refreshing={skills.refreshing}
         handleRefreshExternal={skills.handleRefreshExternal}
+        handleRefreshSkillMarket={skills.handleRefreshSkillMarket}
+        handleLoadMoreSkillMarket={skills.handleLoadMoreSkillMarket}
         setShowAddPathModal={skills.setShowAddPathModal}
         customSkills={editor.customSkills}
         handleAddFoundSkills={skills.handleAddFoundSkills}

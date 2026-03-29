@@ -11,6 +11,9 @@
     "filters": {
       "all": "全部"
     },
+    "openclawAgents": {
+      "all": "全部 Agent"
+    },
     "refresh": "刷新",
     "loading": "正在扫描外部 Session...",
     "updatedAt": "最近更新于 {{time}}",

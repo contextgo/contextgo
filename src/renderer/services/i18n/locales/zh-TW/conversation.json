@@ -16,10 +16,7 @@
     "none": "None",
     "quickActionsTitle": "ContextGo 能做什麼？",
     "quickActionFeedback": "想吐槽或提建議?",
-    "quickActionStar": "喜歡我們？點個星吧",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "按需搜尋並啟用社區 Skills，一次設定，所有Agent通用。",
-    "skillsMarketDetails": "詳情 >>"
+    "quickActionStar": "喜歡我們？點個星吧"
   },
   "history": {
     "today": "今天",
@@ -60,6 +57,9 @@
     "exportSuccess": "Export succeeded",
     "exportCanceled": "Export canceled",
     "exportFailed": "Export failed",
+    "archive": "歸檔",
+    "archiveSuccess": "歸檔成功",
+    "archiveFailed": "歸檔失敗",
     "pin": "Pin",
     "unpin": "Unpin",
     "pinned": "Pinned",
@@ -69,14 +69,21 @@
     "deleteFailed": "刪除失敗"
   },
   "historySearch": {
-    "tooltip": "搜尋訊息",
+    "tooltip": "搜尋",
     "title": "搜尋對話內容",
     "description": "透過關鍵字搜尋歷史訊息，滾動載入更多，點擊跳轉到匹配的訊息。",
     "placeholder": "搜尋訊息內容...",
     "idle": "輸入關鍵字搜尋訊息",
     "empty": "沒有找到匹配的訊息",
+    "clear": "清除搜尋",
     "loadingMore": "載入更多...",
+    "recentConversations": "最近會話",
     "untitled": "未命名對話"
+  },
+  "entry": {
+    "create": "新建",
+    "conversation": "會話",
+    "group": "討論組"
   },
   "dropdown": {
     "cliAgents": "CLI Agents",
@@ -233,7 +240,24 @@
     "confirmationLoadError": "確認對話框載入失敗",
     "tryAnotherAgent": "嘗試其他 Agent：",
     "switchedToAgent": "已切換到 {{agent}}",
-    "switchAgentFailed": "切換 Agent 失敗"
+    "switchAgentFailed": "切換 Agent 失敗",
+    "modelSwitchFailed": "切換模型失敗",
+    "modelSwitchNotSupported": "目前的 OpenClaw Gateway 不支援切換模型"
+  },
+  "pendingMessages": {
+    "title": "待發送 {{count}} 條",
+    "shortcuts": "Tab 進佇列 · Cmd/Ctrl+Enter 引導 · Option/Alt+↑ 編輯最近一條",
+    "attachments": "{{count}} 個檔案",
+    "dispatching": "發送中...",
+    "edit": "重新編輯",
+    "mode": {
+      "queue": "佇列",
+      "steer": "引導"
+    },
+    "actions": {
+      "queue": "改為佇列",
+      "steer": "改為引導"
+    }
   },
   "contextUsage": {
     "contextUsed": "上下文已使用"

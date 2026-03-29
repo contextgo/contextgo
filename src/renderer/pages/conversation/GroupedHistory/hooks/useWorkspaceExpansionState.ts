@@ -101,7 +101,9 @@ export const useWorkspaceExpansionState = (): string[] => {
 };
 
 export const useDiscussionGroupExpansionState = (): string[] => {
-  const [expandedDiscussionGroups, setExpandedDiscussionGroups] = useState<string[]>(() => readExpandedDiscussionGroups());
+  const [expandedDiscussionGroups, setExpandedDiscussionGroups] = useState<string[]>(() =>
+    readExpandedDiscussionGroups()
+  );
 
   useEffect(() => {
     const handleDiscussionGroupExpansionChange = (event: Event) => {

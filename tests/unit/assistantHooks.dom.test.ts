@@ -474,14 +474,28 @@ describe('useAssistantSkills', () => {
 
     act(() => {
       result.current.handleAddFoundSkills([
-        { name: 'new-skill', description: 'A new skill', path: '/skills/new-skill' },
-        { name: 'existing-skill', description: 'Already there', path: '/skills/existing-skill' },
+        { source: 'external', name: 'new-skill', description: 'A new skill', path: '/skills/new-skill' },
+        {
+          source: 'skill-market',
+          id: 'existing-skill::1.0.0::tester',
+          name: 'existing-skill',
+          displayName: 'Existing Skill',
+          version: '1.0.0',
+          author: 'tester',
+          description: 'Already there',
+          categories: [],
+          tags: [],
+          archives: [{ source: 'skillhub', relativePath: 'existing-skill/1.0.0.zip' }],
+          popularity: 1,
+          installs: 1,
+          stars: 1,
+        },
       ]);
     });
 
     // Only the new skill should be added; existing-skill should be skipped
     expect(setPendingSkills).toHaveBeenCalledWith([
-      { name: 'new-skill', description: 'A new skill', path: '/skills/new-skill' },
+      { source: 'external', name: 'new-skill', description: 'A new skill', path: '/skills/new-skill' },
     ]);
     expect(setCustomSkills).toHaveBeenCalledWith(['existing-skill', 'new-skill']);
     expect(setSelectedSkills).toHaveBeenCalledWith(['existing-skill', 'new-skill']);
@@ -497,7 +511,7 @@ describe('useAssistantSkills', () => {
     );
 
     act(() => {
-      result.current.handleAddFoundSkills([{ name: 'skill-a', description: 'Dup', path: '/p' }]);
+      result.current.handleAddFoundSkills([{ source: 'external', name: 'skill-a', description: 'Dup', path: '/p' }]);
     });
 
     expect(mockMessage.warning).toHaveBeenCalled();

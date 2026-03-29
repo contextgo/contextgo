@@ -16,10 +16,7 @@
     "none": "Hiçbiri",
     "quickActionsTitle": "ContextGo neler yapabilir?",
     "quickActionFeedback": "Geri bildirim veya öneriniz mi var?",
-    "quickActionStar": "Bizi beğendiniz mi? Yıldız verin!",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "Topluluk Skills'lerini ihtiyaç duyduğunuzda arayın ve etkinleştirin. Bir kez yapılandırın, tüm Agent'larda kullanılabilir.",
-    "skillsMarketDetails": "Ayrıntılar >>"
+    "quickActionStar": "Bizi beğendiniz mi? Yıldız verin!"
   },
   "history": {
     "today": "Bugün",
@@ -60,6 +57,9 @@
     "exportSuccess": "Export succeeded",
     "exportCanceled": "Export canceled",
     "exportFailed": "Export failed",
+    "archive": "Arsivle",
+    "archiveSuccess": "Arsivlendi",
+    "archiveFailed": "Arsivleme basarisiz",
     "pin": "Pin",
     "unpin": "Unpin",
     "pinned": "Pinned",
@@ -69,14 +69,21 @@
     "deleteFailed": "Silme başarısız oldu"
   },
   "historySearch": {
-    "tooltip": "Mesajları ara",
+    "tooltip": "Ara",
     "title": "Sohbet içeriğini ara",
     "description": "Anahtar kelimeyle geçmiş mesajları arayın, kaydırarak daha fazla yükleyin ve eşleşen mesaja tıklayarak gidin.",
     "placeholder": "Mesaj içeriğini ara...",
     "idle": "Mesajları aramak için anahtar kelime girin",
     "empty": "Eşleşen mesaj bulunamadı",
+    "clear": "Aramayı temizle",
     "loadingMore": "Daha fazla yükleniyor...",
+    "recentConversations": "Son sohbetler",
     "untitled": "Adsız sohbet"
+  },
+  "entry": {
+    "create": "Yeni",
+    "conversation": "Sohbet",
+    "group": "Tartışma Grubu"
   },
   "tabs": {
     "closeAll": "Tümünü Kapat",
@@ -198,7 +205,9 @@
     "confirmationLoadError": "Onay penceresi yüklenemedi",
     "tryAnotherAgent": "Try another agent:",
     "switchedToAgent": "Switched to {{agent}}",
-    "switchAgentFailed": "Failed to switch agent"
+    "switchAgentFailed": "Failed to switch agent",
+    "modelSwitchFailed": "Failed to switch model",
+    "modelSwitchNotSupported": "Mevcut OpenClaw Gateway model değiştirmeyi desteklemiyor"
   },
   "contextUsage": {
     "contextUsed": "bağlam kullanıldı"
@@ -258,6 +267,21 @@
     "noDescription": "Açıklama yok",
     "sendPlaceholder": "Tartışma grubuna bir soru sor...",
     "roundLabel": "{{round}}. Tur"
+  },
+  "pendingMessages": {
+    "title": "{{count}} bekleyen mesaj",
+    "shortcuts": "Tab kuyruğa al · Cmd/Ctrl+Enter yönlendir · Option/Alt+↑ sonuncuyu düzenle",
+    "attachments": "{{count}} dosya",
+    "dispatching": "Gönderiliyor...",
+    "edit": "Yeniden düzenle",
+    "mode": {
+      "queue": "Kuyruk",
+      "steer": "Yönlendir"
+    },
+    "actions": {
+      "queue": "Kuyruğa taşı",
+      "steer": "Sonraki adıma yönlendir"
+    }
   },
   "noAgentsAvailable": "No agents available",
   "noModelConfigured": "No model configured. Please configure in settings.",

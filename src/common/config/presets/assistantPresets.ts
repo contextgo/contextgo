@@ -17,10 +17,77 @@ export type AssistantPreset = {
    * 此助手默认启用的技能列表（来自 skills/ 目录的技能名称）
    */
   defaultEnabledSkills?: string[];
+  /**
+   * Default enabled hooks for this assistant (hook names from hooks/ directory).
+   * 此助手默认启用的 hooks 列表（来自 hooks/ 目录的 hook 名称）
+   */
+  defaultEnabledHooks?: string[];
   nameI18n: Record<string, string>;
   descriptionI18n: Record<string, string>;
   promptsI18n?: Record<string, string[]>;
 };
+
+const WORKFLOW_DEFAULT_HOOKS = [
+  'repo-context-bootstrap',
+  'plan-before-coding',
+  'secret-guard',
+  'tool-safety-guard',
+  'quality-gate',
+] as const;
+
+const WORKFLOW_WITH_HANDOFF_DEFAULT_HOOKS = [...WORKFLOW_DEFAULT_HOOKS, 'continuity-handoff'] as const;
+
+const CONTENT_CREATION_DEFAULT_HOOKS = ['prompt-clarifier', 'secret-guard'] as const;
+
+const ENGINEERING_DEFAULT_HOOKS = [
+  'repo-context-bootstrap',
+  'plan-before-coding',
+  'secret-guard',
+  'tool-safety-guard',
+  'quality-gate',
+  'tdd-guard',
+  'continuity-handoff',
+] as const;
+
+const ENGINEERING_PLANNER_DEFAULT_HOOKS = [
+  'repo-context-bootstrap',
+  'plan-before-coding',
+  'secret-guard',
+  'tool-safety-guard',
+  'continuity-handoff',
+] as const;
+
+const ENGINEERING_REVIEW_DEFAULT_HOOKS = [
+  'repo-context-bootstrap',
+  'secret-guard',
+  'tool-safety-guard',
+  'quality-gate',
+  'continuity-handoff',
+] as const;
+
+const ENGINEERING_WORKBENCH_SKILLS = [
+  'agent-harness-engineering',
+  'engineering-planning',
+  'tdd-workflow',
+  'code-review-workflow',
+  'security-review',
+  'verification-loop',
+  'tooling-mcp-playbook',
+] as const;
+
+const ENGINEERING_PLANNER_SKILLS = [
+  'agent-harness-engineering',
+  'engineering-planning',
+  'verification-loop',
+  'tooling-mcp-playbook',
+] as const;
+
+const ENGINEERING_REVIEWER_SKILLS = [
+  'code-review-workflow',
+  'security-review',
+  'verification-loop',
+  'tooling-mcp-playbook',
+] as const;
 
 export const ASSISTANT_PRESETS: AssistantPreset[] = [
   {
@@ -33,6 +100,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'morph-ppt.zh-CN.md',
     },
     defaultEnabledSkills: ['morph-ppt'],
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Morph PPT',
       'zh-CN': 'Morph PPT',
@@ -65,6 +133,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'star-office-helper.zh-CN.md',
     },
     defaultEnabledSkills: ['star-office-helper'],
+    defaultEnabledHooks: [...WORKFLOW_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Star Office Helper',
       'zh-CN': 'Star Office 助手',
@@ -92,6 +161,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'openclaw-setup.zh-CN.md',
     },
     defaultEnabledSkills: ['openclaw-setup', 'aionui-webui-setup'],
+    defaultEnabledHooks: [...WORKFLOW_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'OpenClaw Setup Expert',
       'zh-CN': 'OpenClaw 部署专家',
@@ -124,6 +194,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'cowork-skills.zh-CN.md',
     },
     defaultEnabledSkills: ['skill-creator', 'pptx', 'docx', 'pdf', 'xlsx'],
+    defaultEnabledHooks: [...WORKFLOW_WITH_HANDOFF_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Cowork',
       'zh-CN': 'Cowork',
@@ -150,6 +221,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'pptx-generator.md',
       'zh-CN': 'pptx-generator.zh-CN.md',
     },
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'PPTX Generator',
       'zh-CN': 'PPTX 生成器',
@@ -176,6 +248,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'pdf-to-ppt.md',
       'zh-CN': 'pdf-to-ppt.zh-CN.md',
     },
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'PDF to PPT',
       'zh-CN': 'PDF 转 PPT',
@@ -232,6 +305,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'ui-ux-pro-max.md',
       'zh-CN': 'ui-ux-pro-max.zh-CN.md',
     },
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'UI/UX Pro Max',
       'zh-CN': 'UI/UX 专业设计师',
@@ -259,6 +333,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'planning-with-files.md',
       'zh-CN': 'planning-with-files.zh-CN.md',
     },
+    defaultEnabledHooks: [...WORKFLOW_WITH_HANDOFF_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Planning with Files',
       'zh-CN': '文件规划助手',
@@ -275,6 +350,105 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
         'Create a project plan for migrating to a new framework',
       ],
       'zh-CN': ['规划一个包含里程碑的全面重构任务', '将功能实现拆分为可执行的步骤', '创建迁移到新框架的项目计划'],
+    },
+  },
+  {
+    id: 'engineering-workbench',
+    avatar: '🛠️',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/engineering/engineering-workbench',
+    ruleFiles: {
+      'en-US': 'engineering-workbench.md',
+      'zh-CN': 'engineering-workbench.zh-CN.md',
+    },
+    defaultEnabledSkills: [...ENGINEERING_WORKBENCH_SKILLS],
+    defaultEnabledHooks: [...ENGINEERING_DEFAULT_HOOKS],
+    nameI18n: {
+      'en-US': 'Engineering Workbench',
+      'zh-CN': '工程化工作台',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Out-of-box software engineering assistant pack for planning, TDD, review, verification, and MCP/tooling decisions.',
+      'zh-CN': '开箱即用的软件工程助手包，覆盖规划、TDD、评审、验证以及 MCP/工具链决策。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Turn this repo into an agent-first engineering workflow product',
+        'Absorb an external AI coding workflow into built-in assistants, skills, hooks, and MCP defaults',
+        'Design an internal engineering capability pack for this project',
+      ],
+      'zh-CN': [
+        '把这个仓库升级成面向 AI 编码工作流的工程化产品',
+        '把外部 AI 编码工作流吸收成内建 assistants、skills、hooks 和 MCP 能力',
+        '为这个项目设计一套内建工程助手能力包',
+      ],
+    },
+  },
+  {
+    id: 'engineering-planner',
+    avatar: '🧩',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/engineering/engineering-planner',
+    ruleFiles: {
+      'en-US': 'engineering-planner.md',
+      'zh-CN': 'engineering-planner.zh-CN.md',
+    },
+    defaultEnabledSkills: [...ENGINEERING_PLANNER_SKILLS],
+    defaultEnabledHooks: [...ENGINEERING_PLANNER_DEFAULT_HOOKS],
+    nameI18n: {
+      'en-US': 'Engineering Planner',
+      'zh-CN': '工程规划助手',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Planning-focused specialist for repo changes, capability absorption, phased delivery, and implementation risk analysis.',
+      'zh-CN': '面向仓库改造、能力吸收、分阶段交付与实施风险分析的规划型助手。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Create a phased implementation plan before touching the code',
+        'Map this external workflow into our native product primitives',
+        'Plan the assistant, skill, hook, and MCP rollout for this repo',
+      ],
+      'zh-CN': [
+        '在改代码前先产出一份分阶段实施方案',
+        '把这套外部工作流映射到我们产品的原生能力模型',
+        '为这个仓库规划 assistant、skill、hook 和 MCP 的落地路径',
+      ],
+    },
+  },
+  {
+    id: 'engineering-reviewer',
+    avatar: '🔍',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/engineering/engineering-reviewer',
+    ruleFiles: {
+      'en-US': 'engineering-reviewer.md',
+      'zh-CN': 'engineering-reviewer.zh-CN.md',
+    },
+    defaultEnabledSkills: [...ENGINEERING_REVIEWER_SKILLS],
+    defaultEnabledHooks: [...ENGINEERING_REVIEW_DEFAULT_HOOKS],
+    nameI18n: {
+      'en-US': 'Engineering Reviewer',
+      'zh-CN': '工程评审助手',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Review-focused specialist for correctness, security, regressions, test gaps, and engineering workflow quality.',
+      'zh-CN': '面向正确性、安全性、回归风险、测试缺口与工程流程质量的评审型助手。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Review this change set and list concrete findings first',
+        'Audit the repository for security and workflow regressions',
+        'Check whether this assistant, hook, and skill integration is product-ready',
+      ],
+      'zh-CN': [
+        '审查这组改动，并优先列出明确问题',
+        '从安全和流程回归角度审计这个仓库',
+        '检查这套 assistant、hook、skill 集成是否达到产品可交付状态',
+      ],
     },
   },
   {
@@ -322,6 +496,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'social-job-publisher-skills.zh-CN.md',
     },
     defaultEnabledSkills: ['xiaohongshu-recruiter', 'x-recruiter'],
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Social Job Publisher',
       'zh-CN': '社交招聘发布助手',
@@ -384,6 +559,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'zh-CN': 'beautiful-mermaid.zh-CN.md',
     },
     defaultEnabledSkills: ['mermaid'],
+    defaultEnabledHooks: [...CONTENT_CREATION_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'Beautiful Mermaid',
       'zh-CN': 'Beautiful Mermaid',

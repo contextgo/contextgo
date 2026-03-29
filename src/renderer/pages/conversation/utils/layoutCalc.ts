@@ -2,7 +2,7 @@
 export const MIN_CHAT_RATIO = 25;
 export const MIN_WORKSPACE_RATIO = 12;
 export const MIN_PREVIEW_RATIO = 20;
-export const WORKSPACE_HEADER_HEIGHT = 32;
+export const WORKSPACE_HEADER_HEIGHT = 28;
 export const MIN_CHAT_PANEL_PX = 360;
 export const MIN_PREVIEW_PANEL_PX = 340;
 export const MIN_WORKSPACE_PANEL_PX = 220;
