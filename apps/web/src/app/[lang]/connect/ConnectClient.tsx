@@ -51,7 +51,7 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
       <div className='container-custom'>
         <section className='relative overflow-hidden rounded-[36px] border border-gray-200 bg-white/88 px-6 py-10 shadow-[0_28px_100px_rgba(15,23,42,0.08)] backdrop-blur md:px-10 md:py-14'>
           <div className='absolute inset-x-12 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(17,24,39,0.18),transparent)]' />
-          <div className='grid gap-10 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:items-center'>
+          <div className='grid gap-10 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:items-stretch'>
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -102,34 +102,36 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.55, delay: 0.08 }}
-              className='relative'
+              className='relative h-full'
             >
               <div className='absolute -inset-4 rounded-[32px] bg-[radial-gradient(circle_at_center,rgba(17,24,39,0.07),transparent_64%)] blur-2xl' />
-              <div className='relative overflow-hidden rounded-[32px] border border-gray-200 bg-[#f5f7fa] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'>
+              <div className='relative flex h-full flex-col overflow-hidden rounded-[32px] border border-gray-200 bg-[#f5f7fa] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'>
                 <div className='flex items-center justify-between gap-3 rounded-[22px] border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm'>
                   <span className='font-medium text-black'>{dict.connect.marquee_label}</span>
                   <span>{dict.connect.marquee_hint}</span>
                 </div>
 
-                <div className='mt-5 space-y-4'>
-                  {connectorRows.map((row, index) => (
-                    <ConnectorMarquee
-                      key={row.map((item) => item.name).join('-')}
-                      items={row}
-                      direction={marqueeDirections[index]}
-                      duration={20 + index * 3}
-                    />
-                  ))}
-                </div>
+                <div className='mt-5 flex flex-1 flex-col justify-between gap-4'>
+                  <div className='space-y-4'>
+                    {connectorRows.map((row, index) => (
+                      <ConnectorMarquee
+                        key={row.map((item) => item.name).join('-')}
+                        items={row}
+                        direction={marqueeDirections[index]}
+                        duration={20 + index * 3}
+                      />
+                    ))}
+                  </div>
 
-                <div className='mt-6 rounded-[24px] border border-gray-200 bg-white px-5 py-5 shadow-sm'>
-                  <div className='text-xs font-semibold uppercase tracking-[0.24em] text-gray-400'>
-                    {dict.connect.connector_story_label}
+                  <div className='rounded-[24px] border border-gray-200 bg-white px-5 py-5 shadow-sm'>
+                    <div className='text-xs font-semibold uppercase tracking-[0.24em] text-gray-400'>
+                      {dict.connect.connector_story_label}
+                    </div>
+                    <div className='mt-3 text-2xl font-semibold tracking-tight text-black'>
+                      {dict.connect.connector_story_title}
+                    </div>
+                    <p className='mt-3 text-sm leading-7 text-gray-600'>{dict.connect.connector_story_body}</p>
                   </div>
-                  <div className='mt-3 text-2xl font-semibold tracking-tight text-black'>
-                    {dict.connect.connector_story_title}
-                  </div>
-                  <p className='mt-3 text-sm leading-7 text-gray-600'>{dict.connect.connector_story_body}</p>
                 </div>
               </div>
             </motion.div>
