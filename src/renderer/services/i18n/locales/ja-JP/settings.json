@@ -141,6 +141,8 @@
   "hookSaveIncompatible": "保存前に、選択した Agent で未対応の Hook を外してください: {{hooks}}",
   "hookReadyNow": "今すぐ実行可能",
   "hookStoredOnly": "保存のみ",
+  "hooksPageCategoryAll": "すべて",
+  "hooksPageBuiltinEmpty": "選択中のカテゴリに一致するビルトイン Hook はありません。",
   "hookCategories": {
     "clarity": "明確化",
     "quality": "品質",
@@ -448,15 +450,15 @@
   "installed": "インストール済み",
   "builtin": "内蔵",
   "channels": "チャンネル",
-  "webui.description": "ContextGo を「24時間365日のリモートアシスタント」として使用 - いつでもどこでもリモートデバイスからタスクを手配できます。",
-  "webui.steps": "ステップ 1. WebUI をオンにする；ステップ 2. アクセス URL をコピー；ステップ 3. リモートブラウザで開く",
+  "webui.description": "このデバイスでは、ContextGo 公式 Remote とローカル / セルフホストのブラウザアクセスを使い分けられます。",
+  "webui.steps": "ステップ 1. 公式 Remote が必要なときはクラウドにサインイン；ステップ 2. ローカル WebUI を有効化；ステップ 3. ブラウザまたは自分のトンネル経由で開く",
   "webui.configuration": "WebUI 設定",
-  "webui.enable": "WebUI を有効にする",
-  "webui.enableDesc": "ブラウザからのアクセスを許可するWebサービスを開始",
+  "webui.enable": "ローカル WebUI を有効にする",
+  "webui.enableDesc": "このデバイスでブラウザアクセス用のローカル Web サービスを開始",
   "webui.port": "ポート",
   "webui.portDesc": "WebUI サービスのリスニングポート",
-  "webui.allowRemote": "リモートアクセスを許可",
-  "webui.allowRemoteDesc": "リモートソフト/サーバーで安全にリモートアクセス",
+  "webui.allowRemote": "LAN / セルフホストアクセスを許可",
+  "webui.allowRemoteDesc": "このデバイスを LAN、または自分のリバースプロキシ、FRP、Tailscale に公開します",
   "webui.viewGuide": "ガイドを見る",
   "webui.accessInfo": "アクセスURL",
   "webui.localUrl": "ローカルURL",
@@ -469,8 +471,8 @@
   "webui.copyQrLink": "リンクをコピー",
   "webui.qrGenerateFailed": "QRコードの生成に失敗しました",
   "webui.accountInfo": "アカウント情報",
-  "webui.username": "ユーザー名",
-  "webui.initialPassword": "初期パスワード",
+  "webui.username": "ローカルユーザー名",
+  "webui.initialPassword": "ローカルパスワード",
   "webui.initialPasswordDesc": "初回起動時に生成されたパスワード、変更してください",
   "webui.changePassword": "パスワードを変更",
   "webui.currentPassword": "現在のパスワード",
@@ -517,7 +519,7 @@
   "webui.running": "実行中",
   "webui.starting": "起動中…",
   "webui.accessUrl": "アクセス URL",
-  "webui.loginInfo": "ログイン情報",
+  "webui.loginInfo": "ローカルログイン情報",
   "webui.randomPassword": "[ランダムパスワード]",
   "webui.noPasswordToCopy": "コピーするパスワードがありません",
   "webui.passwordHint": "Password is shown in console on first startup. Use \"Change Password\" to reset",
@@ -527,7 +529,17 @@
   "webui.passwordHidden": "******",
   "webui.passwordOnlyFirstTime": "パスワードは初回起動時のみ表示され、その後は非表示になります",
   "webui.resetPasswordWarning": "リセット後のパスワードを大切に保管してください！",
-  "webui.featureRemoteDesc": "WebUI を有効にすると、スマホやリモートブラウザから ContextGo にアクセスできます。",
+  "webui.featureRemoteDesc": "ここではローカルブラウザ、LAN、セルフホストアクセスを管理します。上の公式 Remote はクラウドサインインが必要です。",
+  "webui.localAccessTitle": "ローカル / セルフホストアクセス",
+  "webui.officialRemoteTitle": "公式 Remote",
+  "webui.officialRemoteDesc": "自分のトンネルを直接公開する代わりに、ContextGo のホスト型ゲートウェイ経由でこのデスクトップにアクセスします。",
+  "webui.officialRemoteLoginRequired": "公式 Remote には ContextGo クラウドアカウントが必要です。ローカルアクセスとセルフホストアクセスはクラウドサインインなしで使えます。",
+  "webui.officialRemoteSignedIn": "{{name}} としてサインイン済み",
+  "webui.officialRemoteDeviceReady": "このデバイスはリンク済みで、公式 Remote を利用できます。",
+  "webui.officialRemoteDevicePending": "クラウドセッションは有効ですが、このデバイスのリンクがまだ完了していません。",
+  "webui.openOfficialRemote": "公式 Remote を開く",
+  "webui.officialRemoteSignedOut": "公式 Remote はまだ接続されていません。",
+  "webui.officialRemoteHint": "ここで一度サインインすると、このデバイスでホスト型リモートアクセスを有効にできます。",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "Telegram、Lark、DingTalk、WeChat を接続して、IM アプリから ContextGo とやり取りできます。",
   "webui.goToChannels": "Channels へ",
@@ -970,6 +982,67 @@
     "lastSync": "最終同期",
     "notSyncedYet": "まだ同期していません",
     "notAvailable": "未設定"
+  },
+  "commands": {
+    "title": "Commands",
+    "description": "再利用できる slash コマンドテンプレートを一元管理します。選択すると入力欄へ直接展開されるため、異なるエージェント間でも安定して使えます。",
+    "usageHint": "任意のチャット入力欄で / を入力すると、コマンドメニューを開いて設定済みテンプレートをすばやく適用できます。",
+    "add": "コマンドを追加",
+    "restoreDefaults": "デフォルトに戻す",
+    "restoreSuccess": "デフォルトコマンドを復元しました",
+    "restoreFailed": "デフォルトコマンドの復元に失敗しました",
+    "recommendedTitle": "推奨ワークフローコマンド",
+    "recommendedDescription": "計画、TDD、レビュー、セキュリティ、検証、オーケストレーションの高頻度エンジニアリングコマンドです。",
+    "customTitle": "カスタムコマンド",
+    "customDescription": "任意のアシスタント向けに再利用可能なワークフロープロンプトを追加します。",
+    "emptyCustom": "カスタムコマンドはまだありません。",
+    "builtinTag": "組み込み",
+    "customTag": "カスタム",
+    "templateLabel": "テンプレート",
+    "editTitle": "コマンド {{name}} を編集",
+    "createTitle": "コマンドを作成",
+    "nameLabel": "コマンド名",
+    "namePlaceholder": "英字、数字、ハイフン、アンダースコアのみ使用できます",
+    "descriptionLabel": "説明",
+    "descriptionPlaceholder": "このコマンドを使う場面を説明してください",
+    "templatePlaceholder": "選択時にチャット入力欄へ挿入するプロンプトテンプレートを入力してください",
+    "builtinOverrideHint": "{{name}} は組み込みコマンドです。ここで保存すると、既定プリセットを残したままローカル上書きとして保存されます。",
+    "loadFailed": "コマンドライブラリの読み込みに失敗しました",
+    "saveFailed": "コマンドの保存に失敗しました",
+    "deleteFailed": "コマンドの削除に失敗しました",
+    "deleteConfirm": "このカスタムコマンドを削除してもよろしいですか？",
+    "validation": {
+      "invalidName": "コマンド名には英字、数字、ハイフン、アンダースコアのみ使用できます",
+      "duplicateName": "コマンド名 /{{name}} は既に存在します",
+      "descriptionRequired": "説明は必須です",
+      "templateRequired": "テンプレートは必須です"
+    },
+    "presets": {
+      "plan": {
+        "description": "実装前にタスクを整理し、リスクを洗い出して段階的な計画を作成します。",
+        "template": "まずタスクを言い換え、主要な制約とリスクを整理したうえで、明確な段階的実装計画を提示してください。まだファイルは変更せず、実行前に確認を待ってください。"
+      },
+      "tdd": {
+        "description": "失敗するテストから始め、最小限の実装で通し、最後にカバレッジと残リスクを整理します。",
+        "template": "このタスクをテスト駆動開発で進めてください。まず高リスクな挙動を列挙し、先に失敗するテストを書き、最小限のコード変更で通してください。最後にカバレッジと残るリスクを要約してください。"
+      },
+      "codeReview": {
+        "description": "バグ、回帰、危険な前提、テスト不足を厳格にレビューします。",
+        "template": "厳格なコードレビュアーとして現在の変更をレビューしてください。バグ、回帰、危険な前提、テスト不足を優先し、可能なら具体的なファイルと行レベルの根拠を示してください。"
+      },
+      "security": {
+        "description": "認証、権限、シークレット、注入、データ露出、危険な shell 操作を点検します。",
+        "template": "この変更についてセキュリティレビューを行ってください。認証、権限、シークレット処理、注入、データ露出、危険な shell やファイル操作を確認し、まず具体的なリスク、その後に対策を示してください。"
+      },
+      "verify": {
+        "description": "挙動、境界条件、型、lint、テスト、リリースリスクを end-to-end で確認します。",
+        "template": "現在の実装を end-to-end で検証してください。挙動、境界条件、型、lint、テスト、リリースリスクを確認し、通ったもの、失敗したもの、未検証のものを整理してください。"
+      },
+      "orchestrate": {
+        "description": "タスクを連携可能な作業流、役割、依存関係、チェックポイントに分解します。",
+        "template": "このタスクを連携可能な作業流に分解してください。各作業流に最適な役割またはエージェント、依存関係、統合順序を示し、その後チェックポイント付きの制御された順序で進めてください。"
+      }
+    }
   },
   "extensionAssistantReadonly": "拡張アシスタントは読み取り専用です。複製して編集することができます。"
 }

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AuthUser } from '@/renderer/hooks/context/AuthContext';
 
 const setThemeMock = vi.fn().mockResolvedValue(undefined);
 const changeLanguageMock = vi.fn().mockResolvedValue(undefined);
@@ -10,6 +11,10 @@ const isDevToolsOpenedInvokeMock = vi.fn().mockResolvedValue(false);
 const getPathInvokeMock = vi.fn().mockResolvedValue('/Users/bytedance');
 const devToolsStateChangedOnMock = vi.fn(() => vi.fn());
 const openTabMock = vi.fn();
+let authUserMock: AuthUser | null = {
+  id: 'user-1',
+  username: 'bytedance',
+};
 
 vi.mock('@/common', () => ({
   ipcBridge: {
@@ -48,10 +53,7 @@ vi.mock('@renderer/pages/conversation/Preview/context/PreviewContext', () => ({
 
 vi.mock('@renderer/hooks/context/AuthContext', () => ({
   useAuth: () => ({
-    user: {
-      id: 'user-1',
-      username: 'bytedance',
-    },
+    user: authUserMock,
   }),
 }));
 
@@ -136,6 +138,10 @@ const renderSider = (
 describe('Sider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authUserMock = {
+      id: 'user-1',
+      username: 'bytedance',
+    };
   });
 
   it('adds desktop chrome inset on non-conversation routes so the create entry stays visible', async () => {
@@ -160,5 +166,22 @@ describe('Sider', () => {
     expect(hooksButton).toBeInTheDocument();
     expect(hooksButton.className).toContain('sider-entry-row--active');
     expect(container.querySelector('.sider-main-section--desktop-chrome-offset')).toBeTruthy();
+  });
+
+  it('shows cloud display name, email, and avatar when the real authenticated user is available', async () => {
+    authUserMock = {
+      id: 'cloud-user-1',
+      username: 'yeyitech',
+      displayName: 'Yeyi Tech',
+      email: 'yeyitech@gmail.com',
+      avatarUrl: 'https://avatars.githubusercontent.com/u/231244789?v=4',
+      authSource: 'cloud',
+    };
+
+    renderSider('/guid');
+
+    expect(await screen.findByText('Yeyi Tech')).toBeInTheDocument();
+    expect(screen.getByText('yeyitech@gmail.com')).toBeInTheDocument();
+    expect(screen.getByAltText('Yeyi Tech')).toBeInTheDocument();
   });
 });

@@ -141,6 +141,8 @@
   "hookSaveIncompatible": "保存前请先移除当前 Agent 不支持的 Hook：{{hooks}}",
   "hookReadyNow": "当前可运行",
   "hookStoredOnly": "仅存储",
+  "hooksPageCategoryAll": "全部",
+  "hooksPageBuiltinEmpty": "当前分类下没有匹配的内置 Hook。",
   "hookCategories": {
     "clarity": "任务澄清",
     "quality": "质量门禁",
@@ -448,15 +450,15 @@
   "installed": "已安装",
   "builtin": "内置",
   "channels": "频道",
-  "webui.description": "把 ContextGo 当作\"7*24小时的远程助手\"，随时随地用远程设备安排任务。",
-  "webui.steps": "步骤 1. 打开 WebUI 开关;  步骤 2. 复制访问地址;  步骤 3.远程浏览器打开",
+  "webui.description": "为当前设备选择 ContextGo 官方 Remote，或本地 / 自托管浏览器访问方式。",
+  "webui.steps": "步骤 1. 需要官方 Remote 时先登录云账户；步骤 2. 打开本地 WebUI；步骤 3. 用浏览器或你自己的隧道访问",
   "webui.configuration": "WebUI 配置",
-  "webui.enable": "启用 WebUI",
-  "webui.enableDesc": "启动 Web 服务，允许通过浏览器访问",
+  "webui.enable": "启用本地 WebUI",
+  "webui.enableDesc": "启动本地 Web 服务，允许当前设备通过浏览器访问",
   "webui.port": "端口",
   "webui.portDesc": "WebUI 服务监听端口",
-  "webui.allowRemote": "允许远程访问",
-  "webui.allowRemoteDesc": "使用远程软件/服务器可安全远程访问",
+  "webui.allowRemote": "允许局域网 / 自托管访问",
+  "webui.allowRemoteDesc": "将当前设备暴露给局域网，或接入你自己的反向代理、FRP、Tailscale 等方案",
   "webui.viewGuide": "查看方式",
   "webui.accessInfo": "访问地址",
   "webui.localUrl": "本地地址",
@@ -469,8 +471,8 @@
   "webui.copyQrLink": "复制链接",
   "webui.qrGenerateFailed": "生成二维码失败",
   "webui.accountInfo": "账户信息",
-  "webui.username": "用户名",
-  "webui.initialPassword": "初始密码",
+  "webui.username": "本地用户名",
+  "webui.initialPassword": "本地密码",
   "webui.initialPasswordDesc": "首次启动时生成的密码，建议修改",
   "webui.changePassword": "修改密码",
   "webui.currentPassword": "当前密码",
@@ -517,7 +519,7 @@
   "webui.running": "运行中",
   "webui.starting": "启动中…",
   "webui.accessUrl": "访问地址",
-  "webui.loginInfo": "登录信息",
+  "webui.loginInfo": "本地登录信息",
   "webui.randomPassword": "[随机密码]",
   "webui.noPasswordToCopy": "暂无密码可复制",
   "webui.passwordHint": "首次启动时密码会显示在控制台，如需重置请使用「修改密码」功能",
@@ -527,7 +529,17 @@
   "webui.passwordHidden": "******",
   "webui.passwordOnlyFirstTime": "密码仅在首次启动时显示，之后将被隐藏",
   "webui.resetPasswordWarning": "请保管好重置之后的密码！",
-  "webui.featureRemoteDesc": "启用 WebUI 后，你可以通过手机或远程浏览器访问 ContextGo。",
+  "webui.featureRemoteDesc": "这里控制的是本地浏览器、局域网和自托管访问。上方的官方 Remote 需要云账户登录。",
+  "webui.localAccessTitle": "本地 / 自托管访问",
+  "webui.officialRemoteTitle": "官方 Remote",
+  "webui.officialRemoteDesc": "通过 ContextGo 官方托管入口访问这台桌面设备，而不是直接暴露你自己的隧道地址。",
+  "webui.officialRemoteLoginRequired": "官方 Remote 需要 ContextGo 云账户。本地访问和自托管访问仍然不需要云登录。",
+  "webui.officialRemoteSignedIn": "当前已登录：{{name}}",
+  "webui.officialRemoteDeviceReady": "当前设备已绑定，可以使用官方 Remote。",
+  "webui.officialRemoteDevicePending": "云端会话已存在，但当前设备还没有完成可用绑定。",
+  "webui.openOfficialRemote": "打开官方 Remote",
+  "webui.officialRemoteSignedOut": "官方 Remote 尚未连接。",
+  "webui.officialRemoteHint": "在这里登录一次，即可为当前设备启用官方托管远程访问。",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "连接 Telegram、Lark、钉钉、微信，在即时通讯软件中与 ContextGo 交互。",
   "webui.goToChannels": "前往 Channels",
@@ -968,6 +980,67 @@
     "lastSync": "上次同步",
     "notSyncedYet": "尚未同步",
     "notAvailable": "暂无"
+  },
+  "commands": {
+    "title": "Commands",
+    "description": "集中管理可复用的 slash 命令模板。它们会直接展开到输入框里，因此可以跨不同 Agent 稳定复用。",
+    "usageHint": "在任意聊天输入框中输入 /，就可以打开命令菜单并快速套用一条已配置的模板。",
+    "add": "添加命令",
+    "restoreDefaults": "恢复默认命令",
+    "restoreSuccess": "默认命令已恢复",
+    "restoreFailed": "恢复默认命令失败",
+    "recommendedTitle": "推荐工作流命令",
+    "recommendedDescription": "内置了规划、TDD、评审、安全、验证、编排这六类高频工程命令。",
+    "customTitle": "自定义命令",
+    "customDescription": "为任意助手添加你自己的可复用工作流提示模板。",
+    "emptyCustom": "还没有自定义命令。",
+    "builtinTag": "内置",
+    "customTag": "自定义",
+    "templateLabel": "模板内容",
+    "editTitle": "编辑命令 {{name}}",
+    "createTitle": "创建命令",
+    "nameLabel": "命令名",
+    "namePlaceholder": "仅支持字母、数字、连字符和下划线",
+    "descriptionLabel": "描述",
+    "descriptionPlaceholder": "说明这个命令适合在什么场景下使用",
+    "templatePlaceholder": "输入选中该命令后要插入到聊天输入框中的提示模板",
+    "builtinOverrideHint": "{{name}} 是内置命令。保存后会记录你的本地覆盖配置，同时保留默认预设。",
+    "loadFailed": "加载命令库失败",
+    "saveFailed": "保存命令失败",
+    "deleteFailed": "删除命令失败",
+    "deleteConfirm": "确定要删除这条自定义命令吗？",
+    "validation": {
+      "invalidName": "命令名只能使用字母、数字、连字符和下划线",
+      "duplicateName": "命令名 /{{name}} 已存在",
+      "descriptionRequired": "描述不能为空",
+      "templateRequired": "模板不能为空"
+    },
+    "presets": {
+      "plan": {
+        "description": "先重述任务、识别风险，再给出逐步执行计划，不直接开始改代码。",
+        "template": "请先重述任务，识别主要约束和风险，然后给出清晰的分步实现计划。此时不要修改文件，先等待我确认后再执行。"
+      },
+      "tdd": {
+        "description": "先写失败测试，再做最小实现，通过测试后补充覆盖与风险总结。",
+        "template": "请用测试驱动开发方式实现这个任务。先列出高风险行为，先写或更新会失败的测试，再做最小代码修改让测试通过。最后总结覆盖情况和剩余风险。"
+      },
+      "codeReview": {
+        "description": "像严格 code reviewer 一样检查当前改动中的 bug、回归和缺失测试。",
+        "template": "请像严格的代码审查者一样审查当前改动。优先指出 bug、行为回归、风险假设和缺失测试，并尽量给出具体文件和行级证据。"
+      },
+      "security": {
+        "description": "重点审查认证、权限、密钥、注入风险以及不安全的数据或 shell 操作。",
+        "template": "请对这个任务或补丁做一次安全审查。重点检查认证、权限、密钥处理、注入、数据暴露，以及不安全的 shell 或文件操作。先输出具体风险，再给出缓解建议。"
+      },
+      "verify": {
+        "description": "端到端核对行为、边界条件、类型、lint、测试和发布风险。",
+        "template": "请对当前实现做一次端到端验证。检查行为、边界条件、类型、lint、测试和发布风险，并总结哪些已通过、哪些失败、哪些还未验证。"
+      },
+      "orchestrate": {
+        "description": "把任务拆成可协调的工作流、角色分工、依赖关系和集成检查点。",
+        "template": "请把这个任务拆成可协调的工作流。给出每个工作流最适合的角色或 Agent、它们之间的依赖关系，以及最后的集成顺序。然后按有检查点的受控节奏推进。"
+      }
+    }
   },
   "addAssistant": "添加助手",
   "extensionAssistantReadonly": "扩展助手为只读，你可以复制它并编辑副本。"

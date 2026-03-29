@@ -4,11 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { app, BrowserWindow, session } from 'electron';
+import { app, session, shell } from 'electron';
 import type { Session } from 'electron';
 import { hostname } from 'node:os';
 import { ipcBridge } from '@/common';
 import { normalizeLanguageCode } from '@/common/config/i18n';
+import { buildCloudDesktopOAuthStartUrl } from '@/common/utils/cloudAuth';
 import type {
   CloudAuthProviderId,
   CloudDevice,
@@ -20,6 +21,8 @@ import type {
 import { DEFAULT_LANGUAGE } from '@/common/config/i18n';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { changeLanguage } from '@process/services/i18n';
+import { onDeepLinkReceived } from '@process/utils/deepLink';
+import type { DeepLinkPayload } from '@process/utils/deepLink';
 import {
   applyPulledLanguage,
   ensureLanguageTimestamp,
@@ -39,6 +42,7 @@ import {
   CLOUD_SYNC_LANGUAGE_KEY,
   CLOUD_SYNC_NAMESPACE,
 } from './constants';
+import { getOfficialRemoteTunnelService } from './OfficialRemoteTunnelService';
 
 type SessionPayload = {
   authenticated?: boolean;
@@ -49,6 +53,11 @@ type DeviceRegisterPayload = {
   success?: boolean;
   device?: CloudDevice;
   token?: string;
+};
+
+type DesktopLoginConsumePayload = SessionPayload & {
+  success?: boolean;
+  provider?: CloudAuthProviderId;
 };
 
 type SyncEvent = {
@@ -91,9 +100,10 @@ const CLOUD_USER_KEY = 'cloud.user';
 const CLOUD_DEVICE_KEY = 'cloud.device';
 const CLOUD_DEVICE_TOKEN_KEY = 'cloud.deviceToken';
 const CLOUD_SYNC_STATE_KEY = 'cloud.sync.state';
+const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
+const CLOUD_LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 
 const isCloudRequestError = (error: unknown): error is CloudRequestError => error instanceof CloudRequestError;
-const CLOUD_AUTH_ORIGIN = new URL(CLOUD_AUTH_BASE_URL).origin;
 
 function sameUser(left?: CloudUser | null, right?: CloudUser | null): boolean {
   if (!left || !right) {
@@ -141,28 +151,11 @@ async function readErrorResponse(response: Response): Promise<CloudRequestError>
   );
 }
 
-function isSuccessfulLoginUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.origin === CLOUD_AUTH_ORIGIN && parsed.pathname === '/login' && parsed.searchParams.get('success') === '1'
-    );
-  } catch {
-    return false;
-  }
-}
+function noop(): void {}
 
-function getOAuthErrorCode(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    if (parsed.origin !== CLOUD_AUTH_ORIGIN || parsed.pathname !== '/login') {
-      return null;
-    }
-    return parsed.searchParams.get('oauthError');
-  } catch {
-    return null;
-  }
-}
+function resolveDeepLinkNoop(_payload: DeepLinkPayload): void {}
+
+function rejectErrorNoop(_error: Error): void {}
 
 export class CloudService {
   private static instance: CloudService | null = null;
@@ -176,8 +169,9 @@ export class CloudService {
   }
 
   private authSession: Session | null = null;
-  private authWindow: BrowserWindow | null = null;
+  private loginInProgress = false;
   private initialized = false;
+  private readonly officialRemoteTunnelService = getOfficialRemoteTunnelService();
 
   private constructor() {}
 
@@ -187,6 +181,11 @@ export class CloudService {
     }
 
     this.initialized = true;
+    this.officialRemoteTunnelService.initialize(() => {
+      void this.emitStatusChanged().catch((error: unknown) => {
+        console.warn('[Cloud] Failed to emit status after official remote change:', error);
+      });
+    });
     void this.initializeAfterReady();
   }
 
@@ -213,11 +212,9 @@ export class CloudService {
         deviceToken = undefined;
         syncState = normalizeStoredSyncState(undefined);
 
-        await Promise.all([
-          ProcessConfig.remove(CLOUD_DEVICE_KEY),
-          ProcessConfig.remove(CLOUD_DEVICE_TOKEN_KEY),
-          ProcessConfig.remove(CLOUD_SYNC_STATE_KEY),
-        ]);
+        await ProcessConfig.remove(CLOUD_DEVICE_KEY);
+        await ProcessConfig.remove(CLOUD_DEVICE_TOKEN_KEY);
+        await ProcessConfig.remove(CLOUD_SYNC_STATE_KEY);
       }
 
       effectiveUser = sessionUser;
@@ -240,106 +237,51 @@ export class CloudService {
   public async startLogin(provider: CloudAuthProviderId): Promise<CloudStatus> {
     await this.getAuthSession();
 
-    if (this.authWindow && !this.authWindow.isDestroyed()) {
+    if (this.loginInProgress) {
       throw new Error('Cloud login is already in progress');
     }
 
-    const parentWindow = BrowserWindow.getFocusedWindow() ?? undefined;
+    this.loginInProgress = true;
 
-    const authWindow = new BrowserWindow({
-      width: 520,
-      height: 760,
-      minWidth: 420,
-      minHeight: 640,
-      autoHideMenuBar: true,
-      show: false,
-      parent: parentWindow,
-      modal: Boolean(parentWindow),
-      webPreferences: {
-        partition: CLOUD_AUTH_SESSION_PARTITION,
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-    });
+    try {
+      const startUrl = buildCloudDesktopOAuthStartUrl(provider);
+      const waiter = this.createDesktopLoginResultWaiter(provider);
 
-    this.authWindow = authWindow;
+      try {
+        await shell.openExternal(startUrl);
+      } catch (error) {
+        waiter.cancel();
+        await waiter.promise.catch((): void => undefined);
+        throw error;
+      }
 
-    const startUrl = `${CLOUD_AUTH_BASE_URL}/api/auth/oauth/${provider}/start`;
-    await new Promise<void>((resolve, reject) => {
-      let settled = false;
-
-      const cleanup = (): void => {
-        authWindow.webContents.removeAllListeners('did-redirect-navigation');
-        authWindow.webContents.removeAllListeners('did-navigate');
-        authWindow.webContents.removeAllListeners('did-fail-load');
-        authWindow.removeAllListeners('closed');
-        if (this.authWindow === authWindow) {
-          this.authWindow = null;
-        }
-      };
-
-      const finish = (callback: () => void): void => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        cleanup();
-        callback();
-      };
-
-      const inspectUrl = (targetUrl: string): void => {
-        if (isSuccessfulLoginUrl(targetUrl)) {
-          finish(resolve);
-          if (!authWindow.isDestroyed()) {
-            authWindow.close();
-          }
-          return;
+      const payload = await waiter.promise;
+      const errorCode = payload.params.error?.trim();
+      if (errorCode) {
+        if (errorCode === 'cancelled') {
+          throw new Error('Cloud login was cancelled');
         }
 
-        const errorCode = getOAuthErrorCode(targetUrl);
-        if (errorCode) {
-          finish(() => reject(new Error(`Cloud login failed: ${errorCode}`)));
-          if (!authWindow.isDestroyed()) {
-            authWindow.close();
-          }
-        }
-      };
+        throw new Error(`Cloud login failed: ${errorCode}`);
+      }
 
-      authWindow.once('ready-to-show', () => {
-        authWindow.show();
-        authWindow.focus();
-      });
+      const code = payload.params.code?.trim();
+      if (!code) {
+        throw new Error('Cloud login did not return a desktop session code');
+      }
 
-      authWindow.webContents.on('did-redirect-navigation', (_event, targetUrl) => {
-        inspectUrl(targetUrl);
-      });
-
-      authWindow.webContents.on('did-navigate', (_event, targetUrl) => {
-        inspectUrl(targetUrl);
-      });
-
-      authWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-        if (errorCode === -3) {
-          return;
-        }
-
-        finish(() => reject(new Error(`Cloud login load failed: ${errorDescription}`)));
-      });
-
-      authWindow.on('closed', () => {
-        finish(() => reject(new Error('Cloud login was cancelled')));
-      });
-
-      void authWindow.loadURL(startUrl).catch((error: unknown) => {
-        finish(() => reject(error instanceof Error ? error : new Error(String(error))));
-      });
-    });
+      await this.completeDesktopLogin(code);
+    } finally {
+      this.loginInProgress = false;
+    }
 
     await this.ensureBrowserSessionUser();
     await this.ensureDeviceRegistration(true);
+    await this.enableDesktopWebUiForOfficialRemote();
     await this.syncNow().catch((error: unknown) => {
       console.warn('[Cloud] Post-login sync failed:', error);
     });
+    await this.officialRemoteTunnelService.reconcile('cloud-login');
 
     const status = await this.getStatus();
     await this.emitStatusChanged(status);
@@ -347,12 +289,7 @@ export class CloudService {
   }
 
   public async logout(): Promise<CloudStatus> {
-    const authSession = await this.getAuthSession();
-
-    if (this.authWindow && !this.authWindow.isDestroyed()) {
-      this.authWindow.close();
-      this.authWindow = null;
-    }
+    await this.getAuthSession();
 
     await this.authSession
       .fetch(`${CLOUD_AUTH_BASE_URL}/api/auth/logout`, {
@@ -368,9 +305,18 @@ export class CloudService {
     });
 
     await this.clearStoredState();
+    await this.officialRemoteTunnelService.reconcile('cloud-logout');
     const status = await this.getStatus();
     await this.emitStatusChanged(status);
     return status;
+  }
+
+  public handleSystemResume(): void {
+    void this.officialRemoteTunnelService.reconcile('system-resume');
+  }
+
+  public async shutdown(): Promise<void> {
+    await this.officialRemoteTunnelService.dispose();
   }
 
   public async handleLocalLanguageChange(language: string): Promise<void> {
@@ -478,7 +424,7 @@ export class CloudService {
   }
 
   public async ensureDeviceRegistration(force = false): Promise<void> {
-    const authSession = await this.getAuthSession();
+    await this.getAuthSession();
     const status = await this.getStatus();
     if (!status.authenticated) {
       throw new Error('Cloud browser session is not authenticated');
@@ -509,10 +455,8 @@ export class CloudService {
       throw new Error('Cloud device registration returned an invalid payload');
     }
 
-    await Promise.all([
-      ProcessConfig.set(CLOUD_DEVICE_KEY, payload.device),
-      ProcessConfig.set(CLOUD_DEVICE_TOKEN_KEY, payload.token),
-    ]);
+    await ProcessConfig.set(CLOUD_DEVICE_KEY, payload.device);
+    await ProcessConfig.set(CLOUD_DEVICE_TOKEN_KEY, payload.token);
   }
 
   private async withDeviceToken<T>(
@@ -595,6 +539,77 @@ export class CloudService {
     return sessionUser;
   }
 
+  private createDesktopLoginResultWaiter(provider: CloudAuthProviderId): {
+    promise: Promise<DeepLinkPayload>;
+    cancel: () => void;
+  } {
+    let settled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let unsubscribe: () => void = noop;
+    let resolvePromise: (payload: DeepLinkPayload) => void = resolveDeepLinkNoop;
+    let rejectPromise: (error: Error) => void = rejectErrorNoop;
+
+    const finalize = (callback: () => void): void => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      unsubscribe();
+      callback();
+    };
+
+    const promise = new Promise<DeepLinkPayload>((resolve, reject) => {
+      resolvePromise = resolve;
+      rejectPromise = (error): void => reject(error);
+      timeoutId = setTimeout(() => {
+        finalize(() => reject(new Error('Timed out waiting for cloud login to complete')));
+      }, CLOUD_LOGIN_TIMEOUT_MS);
+    });
+
+    unsubscribe = onDeepLinkReceived((payload) => {
+      if (payload.action !== 'cloud-login') {
+        return;
+      }
+
+      const returnedProvider = payload.params.provider;
+      if (returnedProvider && returnedProvider !== provider) {
+        return;
+      }
+
+      finalize(() => resolvePromise(payload));
+    });
+
+    return {
+      promise,
+      cancel: () => finalize(() => rejectPromise(new Error('Cloud login was interrupted'))),
+    };
+  }
+
+  private async completeDesktopLogin(code: string): Promise<void> {
+    const authSession = await this.getAuthSession();
+    const response = await authSession.fetch(`${CLOUD_AUTH_BASE_URL}/api/auth/desktop/consume`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    });
+
+    if (!response.ok) {
+      throw await readErrorResponse(response);
+    }
+
+    const payload = await parseJsonResponse<DesktopLoginConsumePayload>(response);
+    if (!payload?.success || !payload.authenticated || !payload.user) {
+      throw new Error('Desktop login exchange returned an invalid session payload');
+    }
+  }
+
   private async fetchSyncPull(deviceToken: string, cursor: number): Promise<SyncPullPayload> {
     const response = await fetch(`${CLOUD_API_BASE_URL}/api/sync/pull?cursor=${cursor}&limit=200`, {
       method: 'GET',
@@ -655,12 +670,19 @@ export class CloudService {
   }
 
   private async clearStoredState(): Promise<void> {
-    await Promise.all([
-      ProcessConfig.remove(CLOUD_USER_KEY),
-      ProcessConfig.remove(CLOUD_DEVICE_KEY),
-      ProcessConfig.remove(CLOUD_DEVICE_TOKEN_KEY),
-      ProcessConfig.remove(CLOUD_SYNC_STATE_KEY),
-    ]);
+    await ProcessConfig.remove(CLOUD_USER_KEY);
+    await ProcessConfig.remove(CLOUD_DEVICE_KEY);
+    await ProcessConfig.remove(CLOUD_DEVICE_TOKEN_KEY);
+    await ProcessConfig.remove(CLOUD_SYNC_STATE_KEY);
+  }
+
+  private async enableDesktopWebUiForOfficialRemote(): Promise<void> {
+    const currentValue = await ProcessConfig.get(DESKTOP_WEBUI_ENABLED_KEY);
+    if (currentValue === true) {
+      return;
+    }
+
+    await ProcessConfig.set(DESKTOP_WEBUI_ENABLED_KEY, true);
   }
 
   private async emitStatusChanged(status?: CloudStatus): Promise<void> {
@@ -671,6 +693,7 @@ export class CloudService {
   private async initializeAfterReady(): Promise<void> {
     await app.whenReady();
     await this.emitStatusChanged();
+    await this.officialRemoteTunnelService.reconcile('cloud-init');
 
     const deviceToken = await ProcessConfig.get(CLOUD_DEVICE_TOKEN_KEY);
     if (!deviceToken) {
@@ -680,6 +703,7 @@ export class CloudService {
     await this.syncNow().catch((error: unknown) => {
       console.warn('[Cloud] Initial sync skipped:', error);
     });
+    await this.officialRemoteTunnelService.reconcile('cloud-init-sync');
   }
 
   private async getAuthSession(): Promise<Session> {

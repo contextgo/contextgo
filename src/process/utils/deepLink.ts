@@ -7,15 +7,16 @@
 import type { BrowserWindow } from 'electron';
 import { ipcBridge } from '@/common';
 
-export const PROTOCOL_SCHEME = 'aionui';
+export const PROTOCOL_SCHEME = 'contextgo';
+export type DeepLinkPayload = { action: string; params: Record<string, string> };
 
 /**
- * Parse an aionui:// URL into action and params.
+ * Parse an contextgo:// URL into action and params.
  * Supports two formats:
- *   1. aionui://add-provider?baseUrl=xxx&apiKey=xxx
- *   2. aionui://provider/add?v=1&data=<base64 JSON>  (one-api / new-api style)
+ *   1. contextgo://add-provider?baseUrl=xxx&apiKey=xxx
+ *   2. contextgo://provider/add?v=1&data=<base64 JSON>  (one-api / new-api style)
  */
-export const parseDeepLinkUrl = (url: string): { action: string; params: Record<string, string> } | null => {
+export const parseDeepLinkUrl = (url: string): DeepLinkPayload | null => {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== `${PROTOCOL_SCHEME}:`) return null;
@@ -50,6 +51,7 @@ export const parseDeepLinkUrl = (url: string): { action: string; params: Record<
 
 let mainWindowRef: BrowserWindow | null = null;
 let pendingDeepLinkUrl: string | null = process.argv.find((arg) => arg.startsWith(`${PROTOCOL_SCHEME}://`)) || null;
+const mainProcessListeners = new Set<(payload: DeepLinkPayload) => void>();
 
 export const setDeepLinkMainWindow = (win: BrowserWindow): void => {
   mainWindowRef = win;
@@ -61,6 +63,13 @@ export const clearPendingDeepLinkUrl = (): void => {
   pendingDeepLinkUrl = null;
 };
 
+export const onDeepLinkReceived = (listener: (payload: DeepLinkPayload) => void): (() => void) => {
+  mainProcessListeners.add(listener);
+  return () => {
+    mainProcessListeners.delete(listener);
+  };
+};
+
 /**
  * Send the deep-link payload to the renderer via IPC bridge.
  * If the window isn't ready yet, queue it.
@@ -68,6 +77,10 @@ export const clearPendingDeepLinkUrl = (): void => {
 export const handleDeepLinkUrl = (url: string): void => {
   const parsed = parseDeepLinkUrl(url);
   if (!parsed) return;
+
+  for (const listener of mainProcessListeners) {
+    listener(parsed);
+  }
 
   if (!mainWindowRef || mainWindowRef.isDestroyed()) {
     pendingDeepLinkUrl = url;

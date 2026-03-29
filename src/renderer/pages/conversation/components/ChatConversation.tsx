@@ -284,6 +284,29 @@ const ChatConversation: React.FC<{
     return <GeminiModelSelector disabled={true} />;
   }, [conversation, isGeminiConversation, isGroupConversation]);
 
+  const headerExtraNode = useMemo(
+    () => (
+      <div className='flex items-center gap-8px'>
+        {conversation?.type === 'openclaw-gateway' && (
+          <div className='shrink-0'>
+            <StarOfficeMonitorCard
+              conversationId={conversation.id}
+              onOpenUrl={(url, metadata) => {
+                openPreview(url, 'url', metadata);
+              }}
+            />
+          </div>
+        )}
+        {conversation ? (
+          <div className='shrink-0'>
+            <CronJobManager conversationId={conversation.id} />
+          </div>
+        ) : null}
+      </div>
+    ),
+    [conversation, openPreview]
+  );
+
   if (conversation && conversation.type === 'gemini') {
     // Gemini 会话独立渲染，带右上角模型选择
     // Render Gemini layout with dedicated top-right model selector
@@ -317,29 +340,6 @@ const ChatConversation: React.FC<{
                       : undefined,
             agentName: (conversation?.extra as { agentName?: string })?.agentName,
           };
-
-  const headerExtraNode = useMemo(
-    () => (
-      <div className='flex items-center gap-8px'>
-        {conversation?.type === 'openclaw-gateway' && (
-          <div className='shrink-0'>
-            <StarOfficeMonitorCard
-              conversationId={conversation.id}
-              onOpenUrl={(url, metadata) => {
-                openPreview(url, 'url', metadata);
-              }}
-            />
-          </div>
-        )}
-        {conversation ? (
-          <div className='shrink-0'>
-            <CronJobManager conversationId={conversation.id} />
-          </div>
-        ) : null}
-      </div>
-    ),
-    [conversation, openPreview]
-  );
 
   return (
     <ChatLayout

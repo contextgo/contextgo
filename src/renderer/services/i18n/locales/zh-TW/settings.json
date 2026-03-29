@@ -141,6 +141,8 @@
   "hookSaveIncompatible": "儲存前請先移除所選 Agent 不支援的 Hook：{{hooks}}",
   "hookReadyNow": "目前可執行",
   "hookStoredOnly": "僅儲存",
+  "hooksPageCategoryAll": "全部",
+  "hooksPageBuiltinEmpty": "目前分類下沒有符合條件的內建 Hook。",
   "hookCategories": {
     "clarity": "任務澄清",
     "quality": "品質門禁",
@@ -448,15 +450,15 @@
   "installed": "已安裝",
   "builtin": "內建",
   "channels": "頻道",
-  "webui.description": "把 ContextGo 當作「7*24小時的遠程助手」，隨時隨地用遠程設備安排任務。",
-  "webui.steps": "步驟 1. 開啟 WebUI 開關；步驟 2. 複製存取網址；步驟 3. 遠程瀏覽器開啟",
+  "webui.description": "為目前這台裝置選擇 ContextGo 官方 Remote，或本機 / 自託管瀏覽器存取方式。",
+  "webui.steps": "步驟 1. 需要官方 Remote 時先登入雲端帳號；步驟 2. 開啟本機 WebUI；步驟 3. 用瀏覽器或你自己的隧道存取",
   "webui.configuration": "WebUI 配置",
-  "webui.enable": "啟用 WebUI",
-  "webui.enableDesc": "啟動 Web 服務，允許透過瀏覽器存取",
+  "webui.enable": "啟用本機 WebUI",
+  "webui.enableDesc": "啟動本機 Web 服務，允許目前裝置透過瀏覽器存取",
   "webui.port": "連接埠",
   "webui.portDesc": "WebUI 服務監聽連接埠",
-  "webui.allowRemote": "允許遠端存取",
-  "webui.allowRemoteDesc": "使用遠端軟體/伺服器可安全遠端存取",
+  "webui.allowRemote": "允許區域網路 / 自託管存取",
+  "webui.allowRemoteDesc": "將目前裝置暴露給區域網路，或接到你自己的反向代理、FRP、Tailscale 等方案",
   "webui.viewGuide": "查看方式",
   "webui.accessInfo": "存取網址",
   "webui.localUrl": "本機網址",
@@ -469,8 +471,8 @@
   "webui.copyQrLink": "複製連結",
   "webui.qrGenerateFailed": "產生 QR 碼失敗",
   "webui.accountInfo": "帳戶資訊",
-  "webui.username": "使用者名稱",
-  "webui.initialPassword": "初始密碼",
+  "webui.username": "本機使用者名稱",
+  "webui.initialPassword": "本機密碼",
   "webui.initialPasswordDesc": "首次啟動時產生的密碼，建議修改",
   "webui.changePassword": "修改密碼",
   "webui.currentPassword": "目前密碼",
@@ -517,7 +519,7 @@
   "webui.running": "運行中",
   "webui.starting": "啟動中…",
   "webui.accessUrl": "存取網址",
-  "webui.loginInfo": "登入資訊",
+  "webui.loginInfo": "本機登入資訊",
   "webui.randomPassword": "[隨機密碼]",
   "webui.noPasswordToCopy": "暫無密碼可複製",
   "webui.passwordHint": "Password is shown in console on first startup. Use \"Change Password\" to reset",
@@ -527,7 +529,17 @@
   "webui.passwordHidden": "******",
   "webui.passwordOnlyFirstTime": "密碼僅在首次啟動時顯示，之後將被隱藏",
   "webui.resetPasswordWarning": "請妥善保管重設後的密碼！",
-  "webui.featureRemoteDesc": "啟用 WebUI 後，你可以透過手機或遠端瀏覽器存取 ContextGo。",
+  "webui.featureRemoteDesc": "這裡控制的是本機瀏覽器、區域網路和自託管存取。上方的官方 Remote 需要雲端帳號登入。",
+  "webui.localAccessTitle": "本機 / 自託管存取",
+  "webui.officialRemoteTitle": "官方 Remote",
+  "webui.officialRemoteDesc": "透過 ContextGo 官方代管入口存取這台桌面裝置，而不是直接暴露你自己的隧道位址。",
+  "webui.officialRemoteLoginRequired": "官方 Remote 需要 ContextGo 雲端帳號。本機存取和自託管存取仍然不需要雲端登入。",
+  "webui.officialRemoteSignedIn": "目前已登入：{{name}}",
+  "webui.officialRemoteDeviceReady": "目前裝置已綁定，可以使用官方 Remote。",
+  "webui.officialRemoteDevicePending": "雲端工作階段已存在，但目前裝置尚未完成可用綁定。",
+  "webui.openOfficialRemote": "開啟官方 Remote",
+  "webui.officialRemoteSignedOut": "官方 Remote 尚未連線。",
+  "webui.officialRemoteHint": "在這裡登入一次，即可為目前裝置啟用官方代管遠端存取。",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "連接 Telegram、Lark、釘釘、微信，在即時通訊軟體中與 ContextGo 互動。",
   "webui.goToChannels": "前往 Channels",
@@ -970,6 +982,67 @@
     "lastSync": "上次同步",
     "notSyncedYet": "尚未同步",
     "notAvailable": "暫無"
+  },
+  "commands": {
+    "title": "Commands",
+    "description": "集中管理可重複使用的 slash 命令模板。選取後會直接展開到輸入框，因此能跨不同 Agent 穩定共用。",
+    "usageHint": "在任意聊天輸入框輸入 /，即可打開命令選單並快速套用已設定的模板。",
+    "add": "新增命令",
+    "restoreDefaults": "恢復預設命令",
+    "restoreSuccess": "已恢復預設命令",
+    "restoreFailed": "恢復預設命令失敗",
+    "recommendedTitle": "推薦工作流命令",
+    "recommendedDescription": "內建規劃、TDD、審查、安全、驗證與編排這六類高頻工程命令。",
+    "customTitle": "自訂命令",
+    "customDescription": "為任意助手新增你自己的可重複使用工作流提示模板。",
+    "emptyCustom": "尚無自訂命令。",
+    "builtinTag": "內建",
+    "customTag": "自訂",
+    "templateLabel": "模板內容",
+    "editTitle": "編輯命令 {{name}}",
+    "createTitle": "建立命令",
+    "nameLabel": "命令名稱",
+    "namePlaceholder": "僅支援字母、數字、連字號與底線",
+    "descriptionLabel": "描述",
+    "descriptionPlaceholder": "說明這個命令適合在哪些情境使用",
+    "templatePlaceholder": "輸入選取此命令後要插入聊天輸入框的提示模板",
+    "builtinOverrideHint": "{{name}} 是內建命令。儲存後會記錄你的本地覆寫設定，同時保留預設預設值。",
+    "loadFailed": "載入命令庫失敗",
+    "saveFailed": "儲存命令失敗",
+    "deleteFailed": "刪除命令失敗",
+    "deleteConfirm": "確定要刪除這條自訂命令嗎？",
+    "validation": {
+      "invalidName": "命令名稱只能使用字母、數字、連字號與底線",
+      "duplicateName": "命令名稱 /{{name}} 已存在",
+      "descriptionRequired": "描述不能為空",
+      "templateRequired": "模板不能為空"
+    },
+    "presets": {
+      "plan": {
+        "description": "先重述任務、辨識風險，再給出逐步執行計畫，不直接開始改程式。",
+        "template": "請先重述任務，辨識主要限制與風險，然後給出清楚的分步實作計畫。此時不要修改檔案，先等我確認後再執行。"
+      },
+      "tdd": {
+        "description": "先寫失敗測試，再做最小實作，最後補上覆蓋與風險總結。",
+        "template": "請以測試驅動開發方式完成這個任務。先列出高風險行為，先寫或更新會失敗的測試，再做最小程式修改讓測試通過。最後總結覆蓋情況與剩餘風險。"
+      },
+      "codeReview": {
+        "description": "像嚴格的 code reviewer 一樣檢查目前改動中的 bug、回歸與缺失測試。",
+        "template": "請像嚴格的程式碼審查者一樣審查目前改動。優先指出 bug、行為回歸、風險假設與缺失測試，並盡量給出具體檔案與行級證據。"
+      },
+      "security": {
+        "description": "重點檢查認證、權限、金鑰、注入風險，以及不安全的資料或 shell 操作。",
+        "template": "請對這個任務或補丁進行安全審查。重點檢查認證、權限、金鑰處理、注入、資料暴露，以及不安全的 shell 或檔案操作。先輸出具體風險，再給出緩解建議。"
+      },
+      "verify": {
+        "description": "端到端確認行為、邊界條件、型別、lint、測試與發布風險。",
+        "template": "請對目前實作做一次端到端驗證。檢查行為、邊界條件、型別、lint、測試與發布風險，並總結哪些已通過、哪些失敗、哪些仍未驗證。"
+      },
+      "orchestrate": {
+        "description": "把任務拆成可協作的工作流、角色分工、依賴關係與整合檢查點。",
+        "template": "請把這個任務拆成可協作的工作流。給出每個工作流最適合的角色或 Agent、彼此依賴關係，以及最後整合順序。然後以帶有檢查點的受控節奏推進。"
+      }
+    }
   },
   "extensionAssistantReadonly": "擴展助手為唯讀，你可以複製它並編輯副本。"
 }

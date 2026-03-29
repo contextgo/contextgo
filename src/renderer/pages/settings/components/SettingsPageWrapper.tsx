@@ -4,7 +4,7 @@ import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { SettingsViewModeProvider } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
-import { AlarmClock, Communication, Computer, Earth, Info, Puzzle, System, Toolkit } from '@icon-park/react';
+import { AlarmClock, Command, Communication, Computer, Earth, Info, Puzzle, System, Toolkit } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
@@ -50,6 +50,12 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
         label: t('settings.tools'),
         icon: <Toolkit theme='outline' size='16' className='app-icon' />,
         path: 'tools',
+      },
+      {
+        id: 'commands',
+        label: t('settings.commands.title'),
+        icon: <Command theme='outline' size='16' className='app-icon' />,
+        path: 'commands',
       },
       {
         id: 'display',

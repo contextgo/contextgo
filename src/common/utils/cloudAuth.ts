@@ -10,8 +10,14 @@ import type { CloudAuthProviderId } from '@/common/types/cloud';
 const CONTEXTGO_ROOT_HOST = 'contextgo.io';
 const CONTEXTGO_HOST_SUFFIX = `.${CONTEXTGO_ROOT_HOST}`;
 const LOOPBACK_HOSTNAMES = new Set(['127.0.0.1', '::1', 'localhost']);
+const CONTEXTGO_AUTH_ORIGIN = new URL(CONTEXTGO_AUTH_BASE_URL).origin;
+const CLOUD_DESKTOP_LOGIN_COMPLETE_PATH = '/desktop-login-complete';
 
 export const CONTEXTGO_SESSION_COOKIE_NAME = 'contextgo_session';
+export type CloudLoginNavigationResult =
+  | { type: 'success' }
+  | { type: 'cancelled' }
+  | { type: 'error'; errorCode: string };
 
 function normalizeHostname(hostname: string): string {
   return hostname
@@ -40,8 +46,50 @@ export function buildCloudOAuthStartUrl(provider: CloudAuthProviderId, nextUrl: 
   return url.toString();
 }
 
+function buildCloudDesktopLoginReturnUrl(provider: CloudAuthProviderId): string {
+  const url = new URL(CLOUD_DESKTOP_LOGIN_COMPLETE_PATH, CONTEXTGO_AUTH_BASE_URL);
+  url.searchParams.set('provider', provider);
+  return url.toString();
+}
+
+export function buildCloudDesktopOAuthStartUrl(provider: CloudAuthProviderId): string {
+  const url = new URL(`/api/auth/oauth/${provider}/start`, CONTEXTGO_AUTH_BASE_URL);
+  url.searchParams.set('next', buildCloudDesktopLoginReturnUrl(provider));
+  url.searchParams.set('desktop', '1');
+  return url.toString();
+}
+
 export function buildCloudLogoutUrl(nextUrl: string): string {
   const url = new URL('/api/auth/logout', CONTEXTGO_AUTH_BASE_URL);
   url.searchParams.set('next', nextUrl);
   return url.toString();
+}
+
+export function getCloudLoginNavigationResult(url: string): CloudLoginNavigationResult | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.origin !== CONTEXTGO_AUTH_ORIGIN || parsed.pathname !== '/login') {
+      return null;
+    }
+
+    if (parsed.searchParams.get('success') === '1') {
+      return { type: 'success' };
+    }
+
+    if (parsed.searchParams.get('cancel') === '1') {
+      return { type: 'cancelled' };
+    }
+
+    const errorCode = parsed.searchParams.get('oauthError');
+    if (errorCode) {
+      return {
+        type: 'error',
+        errorCode,
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
 }

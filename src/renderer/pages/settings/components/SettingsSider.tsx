@@ -1,7 +1,7 @@
 import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
-import { AlarmClock, Communication, Computer, Earth, Info, Puzzle, System, Toolkit } from '@icon-park/react';
+import { AlarmClock, Command, Communication, Computer, Earth, Info, Puzzle, System, Toolkit } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +10,7 @@ import { Tooltip } from '@arco-design/web-react';
 import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
-const BUILTIN_TAB_IDS = ['cron', 'tools', 'display', 'webui', 'system', 'about'] as const;
+const BUILTIN_TAB_IDS = ['cron', 'tools', 'commands', 'display', 'webui', 'system', 'about'] as const;
 
 type SiderItem = {
   id: string;
@@ -98,6 +98,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         path: 'cron',
       },
       tools: { id: 'tools', label: t('settings.tools'), icon: <Toolkit />, path: 'tools' },
+      commands: { id: 'commands', label: t('settings.commands.title'), icon: <Command />, path: 'commands' },
       display: { id: 'display', label: t('settings.display'), icon: <Computer />, path: 'display' },
       webui: {
         id: 'webui',
