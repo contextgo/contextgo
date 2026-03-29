@@ -142,6 +142,8 @@ export function registerAuthRoutes(app: Express): void {
         user: {
           id: user.id,
           username: user.username,
+          displayName: user.username,
+          authSource: 'local',
         },
         token,
       });
@@ -212,9 +214,27 @@ export function registerAuthRoutes(app: Express): void {
     AuthMiddleware.authenticateToken,
     authenticatedActionLimiter,
     (req: Request, res: Response) => {
+      const responseUser = req.cloudUser
+        ? {
+            id: req.cloudUser.id,
+            username: req.cloudUser.username,
+            displayName: req.cloudUser.displayName,
+            email: req.cloudUser.email,
+            avatarUrl: req.cloudUser.avatarUrl ?? null,
+            authSource: 'cloud' as const,
+          }
+        : req.user
+          ? {
+              id: req.user.id,
+              username: req.user.username,
+              displayName: req.user.username,
+              authSource: 'local' as const,
+            }
+          : null;
+
       res.json({
         success: true,
-        user: req.user,
+        user: responseUser,
       });
     }
   );

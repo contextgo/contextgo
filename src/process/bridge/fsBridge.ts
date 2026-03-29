@@ -31,6 +31,7 @@ import {
   getBuiltinHooksCopyDir,
 } from '@process/utils/initStorage';
 import { readDirectoryRecursive } from '@process/utils';
+import { discoverSkillDirectories, resolveSkillDirectory } from '@process/utils/skillDiscovery';
 
 // ============================================================================
 // Helper functions for builtin resource directory resolution
@@ -922,42 +923,17 @@ export function initFsBridge(): void {
 
       // 辅助函数：从目录读取 skills
       const readSkillsFromDir = async (skillsDir: string, isCustomDir: boolean) => {
-        try {
-          await fs.access(skillsDir);
-          const entries = await fs.readdir(skillsDir, { withFileTypes: true });
+        const discoveredSkills = await discoverSkillDirectories(skillsDir, {
+          excludeTopLevelNames: isCustomDir ? [] : ['_builtin'],
+        });
 
-          for (const entry of entries) {
-            if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-
-            // 跳过内置 skills 目录（_builtin），这些 skills 自动注入，不需要用户选择
-            // Skip builtin skills directory (_builtin), these are auto-injected, no user selection needed
-            if (entry.name === '_builtin') continue;
-
-            const skillMdPath = path.join(skillsDir, entry.name, 'SKILL.md');
-
-            try {
-              const content = await fs.readFile(skillMdPath, 'utf-8');
-              // 解析 YAML front matter
-              const frontMatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-              if (frontMatterMatch) {
-                const yaml = frontMatterMatch[1];
-                const nameMatch = yaml.match(/^name:\s*(.+)$/m);
-                const descMatch = yaml.match(/^description:\s*['"]?(.+?)['"]?$/m);
-                if (nameMatch) {
-                  skills.push({
-                    name: nameMatch[1].trim(),
-                    description: descMatch ? descMatch[1].trim() : '',
-                    location: skillMdPath,
-                    isCustom: isCustomDir,
-                  });
-                }
-              }
-            } catch {
-              // Skill directory without SKILL.md, skip
-            }
-          }
-        } catch {
-          // Directory doesn't exist, skip
+        for (const skill of discoveredSkills) {
+          skills.push({
+            name: skill.name,
+            description: skill.description,
+            location: path.join(skill.dirPath, 'SKILL.md'),
+            isCustom: isCustomDir,
+          });
         }
       };
 
@@ -1358,7 +1334,9 @@ export function initFsBridge(): void {
       const targetDir = path.join(userSkillsDir, skillName);
 
       // Check if skill already exists in both builtin and user directories
-      const builtinTargetDir = path.join(getBuiltinSkillsCopyDir(), skillName);
+      const builtinTargetDir = await resolveSkillDirectory(getBuiltinSkillsCopyDir(), skillName, {
+        excludeTopLevelNames: ['_builtin'],
+      });
 
       try {
         await fs.access(targetDir);
@@ -1374,14 +1352,11 @@ export function initFsBridge(): void {
         // User skill doesn't exist
       }
 
-      try {
-        await fs.access(builtinTargetDir);
+      if (builtinTargetDir) {
         return {
           success: false,
           msg: `Skill "${skillName}" already exists in builtin skills`,
         };
-      } catch {
-        // Builtin skill doesn't exist, proceed with copy
       }
 
       // 复制整个目录 / Copy entire directory
@@ -1777,7 +1752,8 @@ export function initFsBridge(): void {
   ipcBridge.fs.deleteSkill.provider(async ({ skillName }) => {
     try {
       const userSkillsDir = getSkillsDir();
-      const skillDir = path.join(userSkillsDir, skillName);
+      const resolvedUserSkill = await resolveSkillDirectory(userSkillsDir, skillName);
+      const skillDir = resolvedUserSkill?.dirPath || path.join(userSkillsDir, skillName);
 
       const resolvedSkillDir = path.resolve(skillDir);
       const resolvedSkillsDir = path.resolve(userSkillsDir);

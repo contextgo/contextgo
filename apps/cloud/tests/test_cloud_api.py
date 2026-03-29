@@ -221,6 +221,95 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 303)
         self.assertEqual(response.headers["location"], "https://remote.contextgo.io/login")
 
+    def test_desktop_login_page_offers_continue_and_cancel_actions(self) -> None:
+        response = self.client.get("/login?provider=github&desktop=1")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.text
+        self.assertIn("Continue with GitHub", body)
+        self.assertNotIn("Continue with Google", body)
+        self.assertIn(
+            'href="/api/auth/oauth/github/start?next=%2Fdesktop-login-complete%3Fprovider%3Dgithub&amp;desktop=1"',
+            body,
+        )
+        self.assertIn('href="/desktop-login-complete?provider=github&amp;error=cancelled"', body)
+        self.assertIn("Cancel and Close", body)
+
+    def test_login_page_shows_cancelled_message(self) -> None:
+        response = self.client.get("/login?cancel=1")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Login cancelled. You can close this window safely.", response.text)
+
+    def test_desktop_login_complete_creates_deep_link_for_authenticated_browser_session(self) -> None:
+        self._create_browser_session()
+
+        response = self.client.get("/desktop-login-complete?provider=github")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Browser sign-in succeeded. ContextGo should continue automatically.", response.text)
+        self.assertIn("contextgo://cloud-login?code=", response.text)
+        self.assertIn("provider=github", response.text)
+
+    def test_desktop_login_complete_preserves_error_in_deep_link(self) -> None:
+        response = self.client.get("/desktop-login-complete?provider=github&error=access_denied")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("contextgo://cloud-login?provider=github&amp;error=access_denied", response.text)
+        self.assertIn("ContextGo sign-in could not be completed: access_denied.", response.text)
+
+    def test_desktop_login_consume_creates_session_from_one_time_code(self) -> None:
+        user = self.db_module.create_user(
+            settings=self.settings,
+            email="yeyitech@gmail.com",
+            username="yeyitech",
+            display_name="Yeyi Tech",
+            avatar_url=None,
+        )
+        code = self.db_module.create_desktop_login_code(self.settings, user.id, "google")
+
+        consume_response = self.client.post("/api/auth/desktop/consume", json={"code": code})
+
+        self.assertEqual(consume_response.status_code, 200)
+        consume_payload = consume_response.json()
+        self.assertTrue(consume_payload["success"])
+        self.assertTrue(consume_payload["authenticated"])
+        self.assertEqual(consume_payload["provider"], "google")
+        self.assertEqual(consume_payload["user"]["email"], "yeyitech@gmail.com")
+
+        session_response = self.client.get("/api/auth/session")
+        self.assertEqual(session_response.status_code, 200)
+        self.assertTrue(session_response.json()["authenticated"])
+
+        second_consume = self.client.post("/api/auth/desktop/consume", json={"code": code})
+        self.assertEqual(second_consume.status_code, 401)
+        self.assertEqual(second_consume.json()["detail"], "Invalid or expired desktop login code")
+
+    def test_oauth_callback_error_preserves_desktop_provider_context(self) -> None:
+        start_response = self.client.get(
+            "/api/auth/oauth/github/start",
+            params={
+                "next": "/desktop-login-complete?provider=github",
+                "desktop": "1",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(start_response.status_code, 302)
+
+        redirect_url = start_response.headers["location"]
+        state = parse_qs(urlparse(redirect_url).query)["state"][0]
+
+        callback_response = self.client.get(
+            f"/api/auth/oauth/github/callback?state={state}&error=access_denied",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(callback_response.status_code, 303)
+        self.assertEqual(
+            callback_response.headers["location"],
+            "/desktop-login-complete?provider=github&error=access_denied",
+        )
+
     def test_sync_push_pull_and_reject_stale_change(self) -> None:
         registration = self._register_device()
         raw_token = registration["token"]

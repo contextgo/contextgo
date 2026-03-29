@@ -240,8 +240,12 @@ const SendBox: React.FC<{
       onSlashBuiltinCommand?.(name);
       setInput('');
     },
-    onSelectTemplate: (name) => {
-      setInput(`/${name} `);
+    onSelectTemplate: (command) => {
+      if (command.template) {
+        setInput(command.template);
+        return;
+      }
+      setInput(`/${command.name} `);
     },
   });
 

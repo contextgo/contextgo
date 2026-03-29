@@ -141,6 +141,8 @@
   "hookSaveIncompatible": "Kaydetmeden önce seçili agent tarafından desteklenmeyen hook'ları kaldırın: {{hooks}}",
   "hookReadyNow": "Hemen Çalışır",
   "hookStoredOnly": "Yalnızca Saklanır",
+  "hooksPageCategoryAll": "Tümü",
+  "hooksPageBuiltinEmpty": "Etkin kategoriyle eşleşen yerleşik Hook yok.",
   "hookCategories": {
     "clarity": "Netlik",
     "quality": "Kalite",
@@ -448,15 +450,15 @@
   "installed": "Yüklü",
   "builtin": "Yerleşik",
   "channels": "Kanallar",
-  "webui.description": "ContextGo'yu \"7/24 Uzaktan Asistan\" olarak kullanın - görevleri istediğiniz zaman, istediğiniz yerden herhangi bir uzak cihazdan düzenleyin.",
-  "webui.steps": "Adım 1. Web Arayüzünü açın; Adım 2. Erişim URL'sini kopyalayın; Adım 3. Uzak tarayıcıda açın",
+  "webui.description": "Bu cihaz için ContextGo Official Remote ile yerel veya self-hosted tarayıcı erişimi arasında seçim yapın.",
+  "webui.steps": "Adım 1. Official Remote gerekiyorsa buluta giriş yapın; Adım 2. Yerel WebUI'yi açın; Adım 3. Tarayıcıdan veya kendi tünelinizden bağlanın",
   "webui.configuration": "Web Arayüzü Yapılandırması",
-  "webui.enable": "Web Arayüzünü Etkinleştir",
-  "webui.enableDesc": "Tarayıcı erişimine izin vermek için web servisini başlat",
+  "webui.enable": "Yerel WebUI'yi Etkinleştir",
+  "webui.enableDesc": "Bu cihazda tarayıcı erişimi için yerel web servisini başlat",
   "webui.port": "Port",
   "webui.portDesc": "Web Arayüzü servis dinleme portu",
-  "webui.allowRemote": "Uzaktan Erişime İzin Ver",
-  "webui.allowRemoteDesc": "Güvenli uzaktan erişim için uzak yazılım/sunucu kullan",
+  "webui.allowRemote": "LAN / Self-Hosted Erişime İzin Ver",
+  "webui.allowRemoteDesc": "Bu cihazı LAN'a veya kendi reverse proxy, FRP ya da Tailscale kurulumunuza açın",
   "webui.viewGuide": "Rehberi Görüntüle",
   "webui.accessInfo": "Erişim URL'leri",
   "webui.localUrl": "Yerel URL",
@@ -469,8 +471,8 @@
   "webui.copyQrLink": "Bağlantıyı Kopyala",
   "webui.qrGenerateFailed": "QR kodu oluşturulamadı",
   "webui.accountInfo": "Hesap Bilgileri",
-  "webui.username": "Kullanıcı Adı",
-  "webui.initialPassword": "İlk Şifre",
+  "webui.username": "Yerel Kullanıcı Adı",
+  "webui.initialPassword": "Yerel Şifre",
   "webui.initialPasswordDesc": "İlk açılışta oluşturulan şifre, lütfen değiştirin",
   "webui.changePassword": "Şifreyi Değiştir",
   "webui.currentPassword": "Mevcut Şifre",
@@ -517,7 +519,7 @@
   "webui.running": "Çalışıyor",
   "webui.starting": "Başlatılıyor...",
   "webui.accessUrl": "Erişim URL'si",
-  "webui.loginInfo": "Giriş Bilgileri",
+  "webui.loginInfo": "Yerel Giriş Bilgileri",
   "webui.randomPassword": "[Rastgele Şifre]",
   "webui.noPasswordToCopy": "Kopyalanacak şifre yok",
   "webui.passwordHint": "Şifre ilk açılışta konsolda gösterilir. Sıfırlamak için \"Şifreyi Değiştir\"i kullanın",
@@ -527,7 +529,17 @@
   "webui.passwordHidden": "******",
   "webui.passwordOnlyFirstTime": "Şifre sadece ilk açılışta gösterilir ve sonrasında gizlenir",
   "webui.resetPasswordWarning": "Lütfen sıfırlanan şifreyi güvenli bir yerde saklayın!",
-  "webui.featureRemoteDesc": "WebUI'yi etkinleştirerek telefonunuzdan veya uzak tarayıcıdan ContextGo'ya erişebilirsiniz.",
+  "webui.featureRemoteDesc": "Bu bölüm yerel tarayıcı, LAN ve self-hosted erişimi yönetir. Yukarıdaki Official Remote için bulut girişi gerekir.",
+  "webui.localAccessTitle": "Yerel ve Self-Hosted Erişim",
+  "webui.officialRemoteTitle": "Official Remote",
+  "webui.officialRemoteDesc": "Kendi tünelinizi doğrudan açmak yerine bu masaüstüne ContextGo'nun barındırılan ağ geçidi üzerinden erişin.",
+  "webui.officialRemoteLoginRequired": "Official Remote bir ContextGo bulut hesabı gerektirir. Yerel ve self-hosted erişim bulut girişi olmadan çalışmaya devam eder.",
+  "webui.officialRemoteSignedIn": "{{name}} olarak giriş yapıldı",
+  "webui.officialRemoteDeviceReady": "Bu cihaz bağlandı ve Official Remote için hazır.",
+  "webui.officialRemoteDevicePending": "Bulut oturumu etkin, ancak bu cihaz henüz tam olarak bağlanmadı.",
+  "webui.openOfficialRemote": "Official Remote'u Aç",
+  "webui.officialRemoteSignedOut": "Official Remote henüz bağlı değil.",
+  "webui.officialRemoteHint": "Bu cihaz için barındırılan uzaktan erişimi açmak üzere burada bir kez giriş yapın.",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "Telegram, Lark, DingTalk ve WeChat'i bağlayarak IM uygulamalarından ContextGo ile etkileşime geçin.",
   "webui.goToChannels": "Channels'a Git",
@@ -968,6 +980,67 @@
     "lastSync": "Son senkronizasyon",
     "notSyncedYet": "Henuz senkronize edilmedi",
     "notAvailable": "Mevcut degil"
+  },
+  "commands": {
+    "title": "Commands",
+    "description": "Yeniden kullanilabilir slash komut sablonlarini merkezi olarak yonetin. Secildiginde dogrudan giris alanina acilir, bu nedenle farkli ajanlar arasinda tutarli calisir.",
+    "usageHint": "Herhangi bir sohbet girisinde / yazarak komut menusunu acin ve yapilandirilmis bir sablonu hizlica uygulayin.",
+    "add": "Komut Ekle",
+    "restoreDefaults": "Varsayilanlari Geri Yukle",
+    "restoreSuccess": "Varsayilan komutlar geri yuklendi",
+    "restoreFailed": "Varsayilan komutlar geri yuklenemedi",
+    "recommendedTitle": "Onerilen Is Akisi Komutlari",
+    "recommendedDescription": "Planlama, TDD, inceleme, guvenlik, dogrulama ve orkestrasyon icin yerlesik muhendislik kisayollari.",
+    "customTitle": "Ozel Komutlar",
+    "customDescription": "Herhangi bir asistan icin yeniden kullanilabilir is akisi istemleri ekleyin.",
+    "emptyCustom": "Henuz ozel komut yok.",
+    "builtinTag": "Yerlesik",
+    "customTag": "Ozel",
+    "templateLabel": "Sablon",
+    "editTitle": "{{name}} Komutunu Duzenle",
+    "createTitle": "Komut Olustur",
+    "nameLabel": "Komut Adi",
+    "namePlaceholder": "Yalnizca harf, rakam, tire ve alt cizgi kullanin",
+    "descriptionLabel": "Aciklama",
+    "descriptionPlaceholder": "Bu komutun ne zaman kullanilacagini aciklayin",
+    "templatePlaceholder": "Secildiginde sohbet girisine eklenecek istem sablonunu girin",
+    "builtinOverrideHint": "{{name}} yerlesik bir komuttur. Burada kaydetmek, varsayilan hazir ayari korurken yerel gecersiz kilmayi saklar.",
+    "loadFailed": "Komut kutuphanesi yuklenemedi",
+    "saveFailed": "Komut kaydedilemedi",
+    "deleteFailed": "Komut silinemedi",
+    "deleteConfirm": "Bu ozel komutu silmek istediginizden emin misiniz?",
+    "validation": {
+      "invalidName": "Komut adi yalnizca harf, rakam, tire ve alt cizgi kullanabilir",
+      "duplicateName": "/{{name}} komut adi zaten var",
+      "descriptionRequired": "Aciklama gereklidir",
+      "templateRequired": "Sablon gereklidir"
+    },
+    "presets": {
+      "plan": {
+        "description": "Kod yazmadan once gorevi yeniden tanimlar, riskleri belirler ve adim adim plan cikarir.",
+        "template": "Once gorevi yeniden ifade edin, ana kisitlari ve riskleri belirleyin, sonra net bir adim adim uygulama plani oneriniz. Henuz dosyalari degistirmeyin. Uygulamaya gecmeden once onay bekleyin."
+      },
+      "tdd": {
+        "description": "Basarisiz testlerle baslar, gecmesi icin minimum kodu yazar ve sonunda kapsam ile riskleri ozetler.",
+        "template": "Bu gorevi test gudumlu gelistirme ile uygulayin. Once riskli davranislari listeleyin, basarisiz testleri yazin veya guncelleyin, sonra gecmeleri icin minimum kod degisikligini yapin. Sonunda kapsam ve kalan riskleri ozetleyin."
+      },
+      "codeReview": {
+        "description": "Mevcut degisiklikleri hata, regresyon, riskli varsayim ve eksik test acisindan inceleyin.",
+        "template": "Mevcut degisiklikleri kati bir kod gozden geciricisi gibi inceleyin. Hatalari, regresyonlari, riskli varsayimlari ve eksik testleri onceliklendirin. Mumkunse somut dosya ve satir kaniti verin."
+      },
+      "security": {
+        "description": "Kimlik dogrulama, izinler, sirlar, enjeksiyon, veri sizintisi ve tehlikeli shell islemlerini denetleyin.",
+        "template": "Bu gorev veya yama icin guvenlik incelemesi yapin. Kimlik dogrulama, izinler, sir saklama, enjeksiyon, veri sizintisi ve guvensiz shell ya da dosya islemlerine bakin. Once somut riskleri, sonra azaltma onerilerini verin."
+      },
+      "verify": {
+        "description": "Davranis, sinir durumlari, tipler, lint, testler ve surum risklerini uctan uca dogrular.",
+        "template": "Mevcut uygulamayi uctan uca dogrulayin. Davranis, sinir durumlari, tipler, lint, testler ve surum risklerini kontrol edin. Nelerin gectigini, nelerin basarisiz oldugunu ve nelerin hala dogrulanmadigini ozetleyin."
+      },
+      "orchestrate": {
+        "description": "Gorevi koordine edilen is akislarina, rollere, bagimliliklara ve kontrol noktalarina boler.",
+        "template": "Bu gorevi koordine edilen is akislarina bolun. Her akis icin en uygun rol veya ajani, aralarindaki bagimliliklari ve entegrasyon sirasini oneriniz. Ardindan kontrol noktalarina sahip kontrollu bir sirayla ilerleyin."
+      }
+    }
   },
   "extensionAssistantReadonly": "Uzantı asistanları salt okunurdur. Kopyalayıp düzenleyebilirsiniz."
 }

@@ -267,6 +267,30 @@ describe('HooksManagement', () => {
           fileBaseName: 'latest',
         },
       },
+      {
+        name: 'secret-guard',
+        description: 'Builtin secret scan before send',
+        category: 'safety',
+        tags: ['builtin'],
+        location: '/builtin/hooks/secret-guard',
+        isCustom: false,
+        supportedBackends: ['codex'],
+        executionType: 'prompt-transform',
+        events: ['before_user_prompt'],
+        runnableEvents: ['before_user_prompt'],
+      },
+      {
+        name: 'continuity-handoff',
+        description: 'Builtin handoff continuity helper',
+        category: 'continuity',
+        tags: ['builtin'],
+        location: '/builtin/hooks/continuity-handoff',
+        isCustom: false,
+        supportedBackends: ['codex'],
+        executionType: 'native-projection',
+        events: ['after_response'],
+        runnableEvents: ['after_response'],
+      },
     ]);
     getHookPathsMock.mockResolvedValue({ userHooksDir: '/hooks' });
     importHookWithSymlinkMock.mockResolvedValue({ success: true });
@@ -331,7 +355,7 @@ describe('HooksManagement', () => {
       expect(screen.getByText('prompt-guard')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('safety')).toBeInTheDocument();
+    expect(screen.getAllByText('safety').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Ready Now').length).toBeGreaterThan(0);
     expect(screen.getByText('security')).toBeInTheDocument();
     expect(screen.getByText('pre-tool-use')).toBeInTheDocument();
@@ -368,6 +392,32 @@ describe('HooksManagement', () => {
           }),
         }),
       });
+    });
+  });
+
+  it('filters builtin hooks by category tag', async () => {
+    render(<HooksManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByText('secret-guard')).toBeInTheDocument();
+      expect(screen.getByText('continuity-handoff')).toBeInTheDocument();
+    });
+
+    const safetyFilterButton = screen
+      .getAllByText('safety')
+      .find((element) => element.tagName.toLowerCase() === 'button');
+    expect(safetyFilterButton).toBeDefined();
+    fireEvent.click(safetyFilterButton!);
+
+    await waitFor(() => {
+      expect(screen.getByText('secret-guard')).toBeInTheDocument();
+      expect(screen.queryByText('continuity-handoff')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('All'));
+
+    await waitFor(() => {
+      expect(screen.getByText('continuity-handoff')).toBeInTheDocument();
     });
   });
 });

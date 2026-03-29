@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
+import { normalizeHashRouteShellHref } from './routerLocation';
 import {
   CONVERSATION_SEARCH_ROUTE,
   ConversationSearchPage,
@@ -19,6 +20,7 @@ const GeminiSettings = React.lazy(() => import('@renderer/pages/settings/GeminiS
 const ModeSettings = React.lazy(() => import('@renderer/pages/settings/ModeSettings'));
 const SystemSettings = React.lazy(() => import('@renderer/pages/settings/SystemSettings'));
 const ToolsSettings = React.lazy(() => import('@renderer/pages/settings/ToolsSettings'));
+const CommandSettings = React.lazy(() => import('@renderer/pages/settings/ToolsSettings/CommandSettings'));
 const WebuiSettings = React.lazy(() => import('@renderer/pages/settings/WebuiSettings'));
 const ExtensionSettingsPage = React.lazy(() => import('@renderer/pages/settings/ExtensionSettingsPage'));
 const LoginPage = React.lazy(() => import('@renderer/pages/login'));
@@ -58,6 +60,19 @@ const StartupConversationRedirect: React.FC = () => {
 const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
   const { status } = useAuth();
 
+  React.useEffect(() => {
+    if (status !== 'authenticated' || typeof window === 'undefined') {
+      return;
+    }
+
+    const nextHref = normalizeHashRouteShellHref(window.location.href);
+    if (nextHref === window.location.href) {
+      return;
+    }
+
+    window.history.replaceState(window.history.state, '', nextHref);
+  }, [status]);
+
   return (
     <HashRouter>
       <Routes>
@@ -86,6 +101,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           <Route path='/settings/system' element={withRouteFallback(SystemSettings)} />
           <Route path='/settings/about' element={withRouteFallback(SystemSettings)} />
           <Route path='/settings/tools' element={withRouteFallback(ToolsSettings)} />
+          <Route path='/settings/commands' element={withRouteFallback(CommandSettings)} />
           <Route path='/settings/ext/:tabId' element={withRouteFallback(ExtensionSettingsPage)} />
           <Route path='/settings' element={<Navigate to='/settings/system' replace />} />
           <Route path='/test/components' element={withRouteFallback(ComponentsShowcase)} />

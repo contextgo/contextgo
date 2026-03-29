@@ -3,7 +3,9 @@ import {
   buildHookOutputRoutingConfig,
   canConfigureHookOutputRouting,
   createHookOutputRoutingDraft,
+  filterHooksByCategory,
   filterHooksByQuery,
+  getAvailableHookCategories,
   summarizeHookLibrary,
 } from '../../src/renderer/pages/settings/AgentSettings/hookLibraryUtils';
 
@@ -46,6 +48,12 @@ describe('hookLibraryUtils', () => {
       builtin: 1,
       readyNow: 1,
     });
+  });
+
+  it('returns ordered hook categories and filters by category', () => {
+    expect(getAvailableHookCategories(hooks)).toEqual(['quality', 'safety']);
+    expect(filterHooksByCategory(hooks, 'quality')).toEqual([hooks[0]]);
+    expect(filterHooksByCategory(hooks, 'all')).toEqual(hooks);
   });
 
   it('detects whether a hook supports editable output routing', () => {

@@ -28,6 +28,7 @@ import { loadShellEnvironmentAsync, logEnvironmentDiagnostics, mergePaths } from
 import { initializeAcpDetector, registerWindowMaximizeListeners } from '@process/bridge';
 import { onCloseToTrayChanged, onLanguageChanged } from './process/bridge/systemSettingsBridge';
 import { setInitialLanguage } from '@process/services/i18n';
+import { getCloudService } from '@process/services/cloud/CloudService';
 import { workerTaskManager } from './process/task/workerTaskManagerSingleton';
 import { setupApplicationMenu } from './process/utils/appMenu';
 import { startWebServer } from './process/webserver';
@@ -601,11 +602,13 @@ const handleAppReady = async (): Promise<void> => {
       .catch(() => {
         // Cron recovery is best-effort after system resume
       });
+
+    getCloudService().handleSystemResume();
   });
 };
 
 // ============ Protocol Registration ============
-// Register aionui:// as the default protocol client
+// Register contextgo:// as the default protocol client
 if (process.defaultApp) {
   // Dev mode: need to pass execPath explicitly
   app.setAsDefaultProtocolClient(PROTOCOL_SCHEME, process.execPath, [path.resolve(process.argv[1])]);
@@ -613,7 +616,7 @@ if (process.defaultApp) {
   app.setAsDefaultProtocolClient(PROTOCOL_SCHEME);
 }
 
-// macOS: handle aionui:// URLs via the open-url event
+// macOS: handle contextgo:// URLs via the open-url event
 app.on('open-url', (event, url) => {
   event.preventDefault();
   handleDeepLinkUrl(url);
@@ -677,6 +680,12 @@ app.on('before-quit', async () => {
     await getChannelManager().shutdown();
   } catch (error) {
     console.error('[App] Failed to shutdown ChannelManager:', error);
+  }
+
+  try {
+    await getCloudService().shutdown();
+  } catch (error) {
+    console.error('[App] Failed to shutdown cloud services:', error);
   }
 });
 

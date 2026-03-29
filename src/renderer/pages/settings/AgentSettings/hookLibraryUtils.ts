@@ -1,5 +1,7 @@
 import {
+  HOOK_CATEGORIES,
   supportsHookOutputRouting,
+  type HookCategory,
   type HookOutputBaseDir,
   type HookOutputRoutingConfig,
   type HookOutputTarget,
@@ -117,6 +119,24 @@ export const filterHooksByQuery = (hooks: HookInfo[], query: string): HookInfo[]
     ];
     return searchableParts.some((part) => part.toLowerCase().includes(normalizedQuery));
   });
+};
+
+export const getAvailableHookCategories = (hooks: HookInfo[]): HookCategory[] => {
+  const presentCategories = new Set(
+    hooks
+      .map((hook) => hook.category)
+      .filter((category): category is HookCategory => Boolean(category && HOOK_CATEGORIES.includes(category)))
+  );
+
+  return HOOK_CATEGORIES.filter((category) => presentCategories.has(category));
+};
+
+export const filterHooksByCategory = (hooks: HookInfo[], category: HookCategory | 'all'): HookInfo[] => {
+  if (category === 'all') {
+    return hooks;
+  }
+
+  return hooks.filter((hook) => hook.category === category);
 };
 
 export const summarizeHookLibrary = (hooks: HookInfo[]) => {
