@@ -13,8 +13,11 @@
 
 ## 当前内容
 
-- package 边界与 placeholder 入口
+- package 边界与入口
 - 面向 local-first 与协作演进的设计文档
+- `source / document / memory / profile / context pack` 的领域对象
+- `promotion / compaction / forgetting` 的一版策略契约与纯函数
+- `IContextService` 与底层存储、op-log 的接口草案
 
 ## 文档索引
 
