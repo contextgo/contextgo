@@ -7,8 +7,11 @@ import { usePathname } from 'next/navigation';
 import { Dictionary } from '@/app/types';
 import { Github } from 'lucide-react';
 
+const DEFAULT_GITHUB_URL = 'https://github.com/contextgo';
+
 export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lang: string }) {
   const pathname = usePathname();
+  const githubUrl = process.env.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || DEFAULT_GITHUB_URL;
 
   const switchLocale = (newLocale: string) => {
     if (!pathname) return `/${newLocale}`;
@@ -67,7 +70,7 @@ export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lan
           </div>
 
           <a
-            href='https://github.com/contextgo/contextgo'
+            href={githubUrl}
             target='_blank'
             rel='noopener noreferrer'
             className='text-gray-500 hover:text-black transition-colors'
