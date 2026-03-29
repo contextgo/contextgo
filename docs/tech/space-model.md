@@ -7,11 +7,11 @@
 
 ## 背景
 
-AionUi 当前对 workspace 的理解，更多还是执行侧概念：通常绑定某个会话或某个工作目录。这种模型足以支撑短生命周期的 agent 任务，但不足以承载长期上下文沉淀、多端同步以及未来的 connector 接入。
+ContextGo 当前对 workspace 的理解，更多还是执行侧概念：通常绑定某个会话或某个工作目录。这种模型足以支撑短生命周期的 agent 任务，但不足以承载长期上下文沉淀、多端同步以及未来的 connector 接入。
 
 产品目标已经更大：
 
-- AionUi 继续作为多 Agent 编排平台
+- ContextGo 继续作为多 Agent 编排平台
 - 上下文需要沉淀到一个持久、local-first 的空间中
 - 文档和白板需要成为一等上下文资产
 - 外部系统应该通过 connector 进入，而不是临时塞进聊天消息
@@ -23,14 +23,14 @@ AFFiNE 之所以适合作为第一个高能力 space engine，是因为它已经
 - 知识组织能力
 - 多端同步基础
 
-但与此同时，AionUi 不应该退化成 AFFiNE 的薄壳。AionUi 仍然必须保留自己的核心方向：
+但与此同时，ContextGo 不应该退化成 AFFiNE 的薄壳。ContextGo 仍然必须保留自己的核心方向：
 
 - agent orchestration
 - multi-agent session
 - remote channels
 - automation 和 task execution
 
-本文档定义的就是这样一种空间模型：既能让 AFFiNE 能力被吸收进来，又不改变 AionUi 的产品主轴。
+本文档定义的就是这样一种空间模型：既能让 AFFiNE 能力被吸收进来，又不改变 ContextGo 的产品主轴。
 
 ## 核心决策
 
@@ -115,7 +115,7 @@ Agent 应该能够：
 - 把执行结果写回空间
 - 基于空间对象组装 task-scoped context pack
 
-### 4. AionUi 负责编排，AFFiNE 负责第一个 Space Engine
+### 4. ContextGo 负责编排，AFFiNE 负责第一个 Space Engine
 
 AFFiNE 应该作为一个 space engine 被吸收，而不是直接成为新的顶层产品壳。
 
@@ -127,7 +127,7 @@ AFFiNE 贡献：
 - local-first 数据底座
 - 知识组织能力
 
-AionUi 继续负责：
+ContextGo 继续负责：
 
 - multi-agent orchestration
 - task execution
@@ -339,7 +339,7 @@ User
 
 ## AFFiNE 融合策略
 
-AFFiNE 应该作为第一个 `Space Engine` 被集成，而不是作为新的产品壳整体替换 AionUi。
+AFFiNE 应该作为第一个 `Space Engine` 被集成，而不是作为新的产品壳整体替换 ContextGo。
 
 优先吸收的能力：
 
@@ -349,7 +349,7 @@ AFFiNE 应该作为第一个 `Space Engine` 被集成，而不是作为新的产
 - workspace 组织能力
 - search 和 indexing 能力
 
-应继续保留在 AionUi 的能力：
+应继续保留在 ContextGo 的能力：
 
 - agent management
 - multi-agent sessions
@@ -365,7 +365,7 @@ AFFiNE Copilot 不在第一阶段集成范围内。
 
 ### Phase 1. 把 Space 引入为一等产品对象
 
-- 在 AionUi 领域模型中增加 `Space`
+- 在 ContextGo 领域模型中增加 `Space`
 - 让 conversation/thread 归属到 `spaceId`
 - 让 artifacts、cron tasks、connector state 归属到 `spaceId`
 - UI 可以暂时保持现状，但 conversation 不再是最高层容器
@@ -374,7 +374,7 @@ AFFiNE Copilot 不在第一阶段集成范围内。
 
 - 在 renderer shell 中接入 AFFiNE 的文档和白板能力
 - 不引入 AFFiNE 的 Electron shell
-- AionUi 继续作为 runtime shell 和 orchestration owner
+- ContextGo 继续作为 runtime shell 和 orchestration owner
 
 ### Phase 3. 把执行结果重新绑定回 Space
 
@@ -385,7 +385,7 @@ AFFiNE Copilot 不在第一阶段集成范围内。
 
 ### Phase 4. 引入统一 Context Service
 
-- 在 AionUi 内部定义 provider-agnostic 的 space 操作能力
+- 在 ContextGo 内部定义 provider-agnostic 的 space 操作能力
 - 先由 AFFiNE 实现第一个 provider
 - 在内部对象模型稳定前，不急着设计 CLI 表面
 
@@ -424,7 +424,7 @@ AFFiNE Copilot 不在第一阶段集成范围内。
 
 本文档不打算做这些事：
 
-- 用 AFFiNE 替换 AionUi
+- 用 AFFiNE 替换 ContextGo
 - 把一个 space 绑定成一个磁盘目录
 - 采用 AFFiNE Copilot 作为主 agent 层
 - 现在就设计完整 `cgo` 命令面
@@ -432,7 +432,7 @@ AFFiNE Copilot 不在第一阶段集成范围内。
 
 ## 总结
 
-AionUi 应该从 conversation-centered agent app 演进为
+ContextGo 应该从 conversation-centered agent app 演进为
 space-centered 的上下文与执行平台。
 
 在这个目标架构里：
@@ -443,4 +443,4 @@ space-centered 的上下文与执行平台。
 - `Thread` 是任务导向的执行视图
 - `Artifact` 是执行结果层
 
-AFFiNE 是首个预期接入的 space engine，而 AionUi 继续作为其上的编排与执行平台。
+AFFiNE 是首个预期接入的 space engine，而 ContextGo 继续作为其上的编排与执行平台。

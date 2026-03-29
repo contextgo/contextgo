@@ -4,12 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { isBuiltinChannelType, type BuiltinChannelType } from '@/common/config/builtinChannels';
+
 // ==================== Plugin Types ====================
 
 /**
  * Built-in platform types for channel plugins.
  */
-export type BuiltinPluginType = 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin';
+export type BuiltinPluginType = BuiltinChannelType;
 
 /**
  * Supported platform types for plugins.
@@ -38,6 +40,9 @@ export type PluginStatus =
 export interface IPluginCredentials {
   // Telegram
   token?: string;
+  // Slack
+  botToken?: string;
+  appToken?: string;
   // Lark/Feishu
   appId?: string;
   appSecret?: string;
@@ -57,6 +62,8 @@ export interface IPluginCredentials {
  */
 export function hasPluginCredentials(type: PluginType, credentials?: IPluginCredentials): boolean {
   if (!credentials) return false;
+  if (type === 'slack') return !!(credentials.botToken && credentials.appToken);
+  if (type === 'discord') return !!credentials.token;
   if (type === 'lark') return !!(credentials.appId && credentials.appSecret);
   if (type === 'dingtalk') return !!(credentials.clientId && credentials.clientSecret);
   if (type === 'telegram') return !!credentials.token;
@@ -140,6 +147,225 @@ export interface IChannelPluginStatus {
   };
 }
 
+// ==================== Resource Model Types ====================
+
+/**
+ * First-class connector instance used for ingress/egress routing.
+ * This is the target semantic replacement for plugin-centric channel routing.
+ */
+export interface IConnectorInstance {
+  id: string;
+  platform: PluginType;
+  name: string;
+  enabled: boolean;
+  status: PluginStatus;
+  credentials?: IPluginCredentials;
+  runtimeConfig?: IPluginConfigOptions;
+  capabilities?: Record<string, unknown>;
+  legacyPluginId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Remote identity authorized through a specific connector instance.
+ */
+export interface IRemoteIdentity {
+  id: string;
+  connectorId: string;
+  remoteUserId?: string;
+  remoteChatId: string;
+  remoteChatType?: string;
+  displayName?: string;
+  authorizedAt: number;
+  lastActive?: number;
+  metadata?: Record<string, unknown>;
+  legacyUserId?: string;
+}
+
+/**
+ * Published reusable agent capability.
+ */
+export interface IAgentProfile {
+  id: string;
+  name: string;
+  backend: string;
+  modelRef?: {
+    id: string;
+    useModel: string;
+  };
+  workspaceRef?: string;
+  promptProfile?: Record<string, unknown>;
+  toolPolicy?: Record<string, unknown>;
+  memoryPolicy?: Record<string, unknown>;
+  delegationPolicy?: Record<string, unknown>;
+  publishedFromConversationId?: string;
+  version: number;
+  archived: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Binding scope kinds for routing ingress traffic to agent profiles.
+ */
+export type ChannelBindingScopeType = 'connector_default' | 'remote_user' | 'remote_chat' | 'temporary_override';
+export type ChannelBindingTargetType = 'agent_profile' | 'external_session';
+export type ChannelHandoffMode = 'resume' | 'new_thread';
+export type ChannelHandoffConflictPolicy = 'reject' | 'interrupt';
+
+/**
+ * Explicit routing rule from connector scope to agent profile.
+ */
+export interface IChannelBinding {
+  id: string;
+  connectorId: string;
+  scopeType: ChannelBindingScopeType;
+  scopeKey?: string;
+  agentProfileId: string;
+  priority: number;
+  enabled: boolean;
+  temporary: boolean;
+  fallbackAgentProfileId?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type IChannelBindingTarget = {
+  type: ChannelBindingTargetType;
+  id: string;
+  mode?: ChannelHandoffMode;
+};
+
+export type IChannelHandoffRequest = {
+  sourceConversationId?: string;
+  sourceExternalSessionId?: string;
+  targetConnectorId: string;
+  targetChatId: string;
+  targetPlatformUserId?: string;
+  targetDisplayName?: string;
+  targetChatType?: string;
+  mode?: ChannelHandoffMode;
+  conflictPolicy?: ChannelHandoffConflictPolicy;
+  temporary?: boolean;
+  priority?: number;
+};
+
+export type IChannelHandoffResult = {
+  bindingId: string;
+  targetExternalSessionId: string;
+  sourceExternalSessionId?: string;
+  conversationId?: string;
+  agentProfileId: string;
+  mode: ChannelHandoffMode;
+};
+
+/**
+ * Long-lived external chat relationship.
+ * The active conversation may rotate on `/new`, but the external session remains stable.
+ */
+export interface IExternalSession {
+  id: string;
+  connectorId: string;
+  remoteIdentityId: string;
+  bindingId?: string;
+  agentProfileId: string;
+  activeConversationId?: string;
+  state: 'active' | 'paused' | 'archived';
+  createdAt: number;
+  lastActivity: number;
+  metadata?: Record<string, unknown>;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+/**
+ * Resolve binding routing target from metadata.
+ * Falls back to `agent_profile` target semantics for existing rows.
+ */
+export function getChannelBindingTarget(binding: IChannelBinding): IChannelBindingTarget {
+  const metadata = toRecord(binding.metadata);
+  const routeTarget = toRecord(metadata?.routeTarget);
+  const rawType = routeTarget?.type;
+  const rawId = routeTarget?.id;
+  const rawMode = routeTarget?.mode;
+
+  if (
+    rawType === 'external_session' &&
+    typeof rawId === 'string' &&
+    rawId.trim() &&
+    (rawMode === undefined || rawMode === 'resume' || rawMode === 'new_thread')
+  ) {
+    return {
+      type: 'external_session',
+      id: rawId,
+      mode: rawMode === 'new_thread' ? 'new_thread' : rawMode === 'resume' ? 'resume' : undefined,
+    };
+  }
+
+  return {
+    type: 'agent_profile',
+    id: binding.agentProfileId,
+  };
+}
+
+/**
+ * Persist an explicit binding target inside metadata.
+ */
+export function withChannelBindingTarget(
+  binding: IChannelBinding,
+  target: IChannelBindingTarget,
+  metadataPatch?: Record<string, unknown>
+): IChannelBinding {
+  const currentMetadata = toRecord(binding.metadata) ?? {};
+  const routeTarget: Record<string, unknown> = {
+    type: target.type,
+    id: target.id,
+  };
+  if (target.type === 'external_session' && target.mode) {
+    routeTarget.mode = target.mode;
+  }
+
+  return {
+    ...binding,
+    metadata: {
+      ...currentMetadata,
+      ...metadataPatch,
+      routeTarget,
+    },
+  };
+}
+
+/**
+ * Execution run status.
+ */
+export type ChannelRunStatus = 'pending' | 'running' | 'finished' | 'error' | 'cancelled' | 'terminated';
+
+/**
+ * Root or child execution run.
+ */
+export interface IChannelRun {
+  id: string;
+  externalSessionId?: string;
+  parentRunId?: string;
+  rootRunId: string;
+  agentProfileId: string;
+  backend: string;
+  conversationId?: string;
+  workspaceRef?: string;
+  status: ChannelRunStatus;
+  inputMessageId?: string;
+  metadata?: Record<string, unknown>;
+  startedAt: number;
+  endedAt?: number;
+}
+
 // ==================== User Types ====================
 
 /**
@@ -217,10 +443,13 @@ export interface IChannelPairingRequest {
   code: string;
   platformUserId: string;
   platformType: PluginType;
+  connectorId?: string;
+  remoteChatId?: string;
   displayName?: string;
   requestedAt: number;
   expiresAt: number;
   status: PairingStatus;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -303,6 +532,7 @@ export interface IMessageAction {
 export interface IUnifiedIncomingMessage {
   id: string;
   platform: PluginType;
+  pluginId?: string;
   chatId: string;
   user: IUnifiedUser;
   content: IUnifiedMessageContent;
@@ -519,14 +749,14 @@ export function pairingRequestToRow(request: IChannelPairingRequest): IChannelPa
  * Channel platform type for model configuration.
  * Includes built-in platforms and extension-contributed platforms (string).
  */
-export type ChannelPlatform = 'telegram' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
+export type ChannelPlatform = BuiltinChannelType | (string & {});
 
 /**
  * Type guard to check if a string is a known built-in ChannelPlatform.
  * Extension platform types are valid but not matched here.
  */
-export function isBuiltinChannelPlatform(value: string): value is 'telegram' | 'lark' | 'dingtalk' | 'weixin' {
-  return value === 'telegram' || value === 'lark' || value === 'dingtalk' || value === 'weixin';
+export function isBuiltinChannelPlatform(value: string): value is BuiltinChannelType {
+  return isBuiltinChannelType(value);
 }
 
 /**
@@ -567,6 +797,8 @@ export function getChannelConversationName(
 ): string {
   const shortPlatform: Record<string, string> = {
     telegram: 'tg',
+    slack: 'slack',
+    discord: 'discord',
     dingtalk: 'ding',
     weixin: 'wx',
   };

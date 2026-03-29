@@ -9,22 +9,7 @@ type ConnectorLogoProps = {
 };
 
 const buildLogoCandidates = (connector: ConnectorDefinition): string[] => {
-  const sources: string[] = [];
-
-  if (connector.localLogo) {
-    sources.push(connector.localLogo);
-  }
-
-  try {
-    const websiteOrigin = new URL(connector.websiteUrl).origin;
-    sources.push(`${websiteOrigin}/favicon.ico`);
-  } catch {
-    // Ignore invalid URLs and continue with fallback providers.
-  }
-
-  sources.push(`https://www.google.com/s2/favicons?sz=128&domain_url=${encodeURIComponent(connector.websiteUrl)}`);
-
-  return Array.from(new Set(sources));
+  return connector.localLogo ? [connector.localLogo] : [];
 };
 
 const getConnectorInitials = (name: string): string =>
@@ -37,6 +22,8 @@ const getConnectorInitials = (name: string): string =>
 
 const getCategoryClassName = (category: ConnectorCategory): string => {
   switch (category) {
+    case 'contextgo':
+      return styles.logoContextgo;
     case 'googleWorkspace':
       return styles.logoGoogleWorkspace;
     case 'collaboration':

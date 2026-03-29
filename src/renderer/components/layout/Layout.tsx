@@ -292,7 +292,7 @@ const Layout: React.FC<{
       void navigate('/settings/about');
       // Trigger update modal after a short delay to ensure page is loaded
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('aionui-open-update-modal', { detail: { source: 'tray' } }));
+        window.dispatchEvent(new CustomEvent('contextgo-open-update-modal', { detail: { source: 'tray' } }));
       }, 100);
     };
 
@@ -335,7 +335,7 @@ const Layout: React.FC<{
         setSiderCollapsed: setCollapsed,
       }}
     >
-      <div className='app-shell flex flex-col size-full min-h-0' style={appShellStyle}>
+      <div className='app-shell relative flex flex-col size-full min-h-0' style={appShellStyle}>
         <Titlebar
           workspaceAvailable={workspaceAvailable}
           leftPaneWidth={collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth}

@@ -22,7 +22,7 @@ interface ConversationToolConfigOptions {
  */
 export class ConversationToolConfig {
   private useGeminiWebSearch = false;
-  private useAionuiWebFetch = false;
+  private useContextgoWebFetch = false;
   private geminiModel: TProviderWithModel | null = null;
   private excludeTools: string[] = [];
   private dedicatedGeminiClient: GeminiClient | null = null; // 缓存专门的Gemini客户端
@@ -39,8 +39,8 @@ export class ConversationToolConfig {
    * @param authType 认证类型（平台类型）
    */
   async initializeForConversation(authType: AuthType): Promise<void> {
-    // 所有模型都使用 aionui_web_fetch 替换内置的 web_fetch
-    this.useAionuiWebFetch = true;
+    // 所有模型都使用 contextgo_web_fetch 替换内置的 web_fetch
+    this.useContextgoWebFetch = true;
     this.excludeTools.push('web_fetch');
 
     // 根据 webSearchEngine 配置决定启用哪个搜索工具
@@ -113,7 +113,7 @@ export class ConversationToolConfig {
   getConfig() {
     return {
       useGeminiWebSearch: this.useGeminiWebSearch,
-      useAionuiWebFetch: this.useAionuiWebFetch,
+      useContextgoWebFetch: this.useContextgoWebFetch,
       geminiModel: this.geminiModel,
       excludeTools: this.excludeTools,
     };
@@ -126,8 +126,8 @@ export class ConversationToolConfig {
   async registerCustomTools(config: Config, geminiClient: GeminiClient): Promise<void> {
     const toolRegistry = await config.getToolRegistry();
 
-    // 注册 aionui_web_fetch 工具（所有模型）
-    if (this.useAionuiWebFetch) {
+    // 注册 contextgo_web_fetch 工具（所有模型）
+    if (this.useContextgoWebFetch) {
       const customWebFetchTool = new WebFetchTool(geminiClient, config.getMessageBus());
       toolRegistry.registerTool(customWebFetchTool);
     }

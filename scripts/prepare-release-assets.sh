@@ -23,7 +23,14 @@ mkdir -p "$OUTPUT_DIR"
 # 1) Copy all distributables (unique file names)
 # ---------------------------------------------------------------------------
 echo "==> Copying distributables from $ARTIFACTS_DIR ..."
-mapfile -t DISTRIBUTABLES < <(find "$ARTIFACTS_DIR" -type f \( \
+DISTRIBUTABLES=()
+while IFS= read -r file; do
+  DISTRIBUTABLES+=("$file")
+done < <(find "$ARTIFACTS_DIR" -type f \( \
+  -name "*.aab" -o \
+  -name "*.apk" -o \
+  -name "*.app" -o \
+  -name "*.hap" -o \
   -name "*.exe" -o \
   -name "*.msi" -o \
   -name "*.dmg" -o \
@@ -92,6 +99,12 @@ done
 if [ "$MISSING" -ne 0 ]; then
   exit 1
 fi
+
+# ---------------------------------------------------------------------------
+# 6) Generate deterministic release manifest for the website download center
+# ---------------------------------------------------------------------------
+echo "==> Generating release manifest ..."
+node scripts/generate-release-manifest.mjs "$OUTPUT_DIR"
 
 echo ""
 echo "==> Prepared release assets:"

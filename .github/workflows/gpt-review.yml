@@ -24,7 +24,15 @@ defaults:
 
 jobs:
   review:
-    runs-on: 'ubuntu-latest'
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     timeout-minutes: 10
     permissions:
       contents: 'read'
@@ -93,7 +101,7 @@ jobs:
             }
 
             const systemPrompt = [
-              'You are a world-class code review expert for the AionUi project — a cross-platform Electron desktop application that provides a unified AI agent graphical interface.',
+              'You are a world-class code review expert for the ContextGo project — a cross-platform Electron desktop application that provides a unified AI agent graphical interface.',
               '',
               '## Tech Stack',
               '- Electron 37.x + React 19.x + TypeScript 5.8.x (strict mode)',

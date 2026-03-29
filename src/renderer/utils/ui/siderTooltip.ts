@@ -3,7 +3,7 @@ import type { TooltipProps } from '@arco-design/web-react';
 /**
  * 侧边栏内 Tooltip 的挂载容器：将 popup 挂到左侧边栏根节点，
  * 这样在收起/关闭侧边栏时 tooltip 会随侧边栏一起隐藏，避免残留在屏幕遮挡内容。
- * See: https://github.com/iOfficeAI/AionUi/issues/987
+ * See: https://github.com/contextgo/contextgo/issues/987
  */
 export const getSiderPopupContainer = (_node: HTMLElement): Element =>
   document.querySelector('.layout-sider') || document.body;
@@ -17,8 +17,10 @@ const SIDER_TOOLTIP_CLASS = 'sider-tooltip-popup';
 
 export const cleanupSiderTooltips = () => {
   if (typeof document === 'undefined') return;
-  // Arco Tooltip occasionally leaves detached popup nodes; remove both scoped and global tooltip popups.
-  document.querySelectorAll(`.${SIDER_TOOLTIP_CLASS}, .arco-tooltip-popup`).forEach((node) => node.remove());
+  // Only clean up tooltip popups that were explicitly mounted for the sider.
+  // Removing generic Arco popup nodes can race with Arco/React portal teardown
+  // and trigger DOM removeChild errors during route transitions.
+  document.querySelectorAll(`.${SIDER_TOOLTIP_CLASS}`).forEach((node) => node.remove());
 };
 
 type SiderTooltipProps = Pick<

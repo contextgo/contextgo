@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { gzipSync } from 'node:zlib';
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 type WebSocketOptions = {
@@ -60,7 +60,13 @@ const wsMock = vi.hoisted(() => {
 
 vi.mock('ws', () => ({ default: wsMock.MockWebSocket }));
 
-import { VolcengineVoiceProvider } from '@/process/bridge/services/voice/VolcengineVoiceProvider';
+import { VolcengineVoiceProvider } from '@/process/bridge/services/voice/providers/VolcengineVoiceProvider';
+
+const decodeClientRequestPayload = (frame: Buffer): Record<string, unknown> => {
+  const payloadSize = frame.readUInt32BE(4);
+  const payload = frame.subarray(8, 8 + payloadSize);
+  return JSON.parse(gunzipSync(payload).toString('utf8')) as Record<string, unknown>;
+};
 
 const createServerResponseFrame = ({
   text,
@@ -121,6 +127,7 @@ describe('VolcengineVoiceProvider', () => {
       accessKey: 'access-token',
       resourceId: 'volc.bigasr.sauc.duration',
       model: 'bigmodel',
+      hotwords: [],
     });
 
     const transcription = provider.transcribe(Buffer.alloc(7_000, 0x01));
@@ -137,6 +144,7 @@ describe('VolcengineVoiceProvider', () => {
       accessKey: 'access-token',
       resourceId: 'volc.bigasr.sauc.duration',
       model: 'bigmodel',
+      hotwords: [],
     });
 
     const transcription = provider.transcribe(Buffer.alloc(7_000, 0x01));
@@ -164,6 +172,7 @@ describe('VolcengineVoiceProvider', () => {
       accessKey: 'access-token',
       resourceId: 'volc.bigasr.sauc.duration',
       model: 'bigmodel',
+      hotwords: [],
     });
 
     const transcription = provider.transcribe(Buffer.alloc(1_024, 0x01));
@@ -180,9 +189,39 @@ describe('VolcengineVoiceProvider', () => {
       accessKey: 'access-token',
       resourceId: 'volc.bigasr.sauc.duration',
       model: 'bigmodel',
+      hotwords: [],
     });
 
     await expect(provider.transcribe(Buffer.alloc(2))).rejects.toThrow('VolcEngine app key is required');
     expect(wsMock.MockWebSocket.instances).toHaveLength(0);
+  });
+
+  it('should include hotword and corpus hints when they are configured', async () => {
+    const provider = new VolcengineVoiceProvider({
+      appKey: 'app-id',
+      accessKey: 'access-token',
+      resourceId: 'volc.bigasr.sauc.duration',
+      model: 'bigmodel',
+      boostingTableId: 'boosting-table',
+      correctTableId: 'correction-table',
+      hotwords: ['ContextGo', 'OpenClaw'],
+    });
+
+    const transcription = provider.transcribe(Buffer.alloc(2_048, 0x01));
+    const socket = getLastWebSocketInstance();
+    socket.emitOpen();
+    socket.emitMessage(createServerResponseFrame({ text: 'done', isLast: true }));
+    await transcription;
+
+    const requestPayload = decodeClientRequestPayload(socket.sentFrames[0]!);
+    expect(requestPayload.request).toMatchObject({
+      corpus: {
+        boosting_table_id: 'boosting-table',
+        correct_table_id: 'correction-table',
+      },
+      context: JSON.stringify({
+        hot_words_list: ['ContextGo', 'OpenClaw'],
+      }),
+    });
   });
 });

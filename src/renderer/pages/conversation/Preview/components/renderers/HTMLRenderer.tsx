@@ -6,6 +6,10 @@
 
 import { ipcBridge } from '@/common';
 import { useTypingAnimation } from '@/renderer/hooks/chat/useTypingAnimation';
+import {
+  isSuspiciousDocumentNavigation,
+  shouldLoadHtmlDocumentFromFile,
+} from '@/renderer/utils/ui/documentNavigationGuard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useScrollSyncTarget } from '../../hooks/useScrollSyncHelpers';
 import { generateInspectScript } from './htmlInspectScript';
@@ -33,6 +37,7 @@ interface HTMLRendererProps {
 interface ElectronWebView extends HTMLElement {
   src: string;
   executeJavaScript: (code: string) => Promise<void>;
+  stop?: () => void;
 }
 
 /**
@@ -193,6 +198,7 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
   const webviewRef = useRef<ElectronWebView | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const webviewLoadedRef = useRef(false); // 跟踪 webview 是否已加载 / Track if webview is loaded
+  const lastStableWebviewUrlRef = useRef(''); // 记录可恢复的安全文档 URL / Track recoverable safe document URL
   const isSyncingScrollRef = useRef(false); // 防止滚动同步循环 / Prevent scroll sync loops
   const [webviewContentHeight, setWebviewContentHeight] = useState(0); // webview 内容高度 / webview content height
   const [inlinedHtmlContent, setInlinedHtmlContent] = useState<string>(''); // 内联化后的 HTML（用于 browser iframe）/ Inlined HTML (for browser iframe)
@@ -221,16 +227,6 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
 
   // 判断是否应该直接从文件加载（支持相对资源）- 仅 Electron 环境
   // Determine if should load directly from file (supports relative resources) - Electron only
-  const shouldLoadFromFile = useMemo(() => {
-    if (!isElectron || !filePath) return false;
-    // 检查 HTML 是否引用了相对资源 / Check if HTML references relative resources
-    const hasRelativeResources =
-      /<link[^>]+href=["'](?!https?:\/\/|data:|\/\/)[^"']+["']/i.test(content) ||
-      /<script[^>]+src=["'](?!https?:\/\/|data:|\/\/)[^"']+["']/i.test(content) ||
-      /<img[^>]+src=["'](?!https?:\/\/|data:|\/\/)[^"']+["']/i.test(content);
-    return hasRelativeResources;
-  }, [content, filePath, isElectron]);
-
   // 检查是否有相对资源（用于 browser inline 处理）
   // Check if has relative resources (for browser inline processing)
   const hasRelativeResources = useMemo(() => {
@@ -240,6 +236,26 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
       /<img[^>]+src=["'](?!https?:\/\/|data:|\/\/)[^"']+["']/i.test(content)
     );
   }, [content]);
+
+  // 判断是否应该直接从文件加载（支持相对资源）- 仅 Electron 环境
+  // Determine if should load directly from file (supports relative resources) - Electron only
+  const shouldLoadFromFile = useMemo(() => {
+    if (!isElectron) {
+      return false;
+    }
+
+    return shouldLoadHtmlDocumentFromFile(filePath, hasRelativeResources);
+  }, [filePath, hasRelativeResources, isElectron]);
+
+  useEffect(() => {
+    if (!isElectron || !filePath || !hasRelativeResources || shouldLoadFromFile) {
+      return;
+    }
+
+    if (isSuspiciousDocumentNavigation(filePath)) {
+      console.warn('[HTMLRenderer] Prevented direct file loading for suspicious document path:', filePath);
+    }
+  }, [filePath, hasRelativeResources, isElectron, shouldLoadFromFile]);
 
   // 流式打字动画：HTML 预览在使用 data URL 渲染时也能获得流式体验
   // Typing animation: provide streaming experience when rendering via data URL
@@ -337,7 +353,72 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
   // 当 webviewSrc 改变时重置加载状态 / Reset loading state when webviewSrc changes
   useEffect(() => {
     webviewLoadedRef.current = false;
+    lastStableWebviewUrlRef.current = webviewSrc;
   }, [webviewSrc]);
+
+  useEffect(() => {
+    if (!isElectron) {
+      return;
+    }
+
+    const webview = webviewRef.current;
+    if (!webview) {
+      return;
+    }
+
+    const restoreStableDocument = (targetUrl?: string) => {
+      if (!targetUrl || !isSuspiciousDocumentNavigation(targetUrl)) {
+        return;
+      }
+
+      console.warn('[HTMLRenderer] Blocked suspicious webview document navigation:', targetUrl);
+
+      try {
+        webview.stop?.();
+      } catch {
+        // Ignore stop failures and continue with src restore.
+      }
+
+      const fallbackUrl = lastStableWebviewUrlRef.current || webviewSrc;
+      if (fallbackUrl && webview.src !== fallbackUrl) {
+        webview.src = fallbackUrl;
+      }
+    };
+
+    const handleWillNavigate = (event: Event) => {
+      const navigationEvent = event as Event & { url?: string; preventDefault?: () => void };
+      if (!navigationEvent.url || !isSuspiciousDocumentNavigation(navigationEvent.url)) {
+        return;
+      }
+
+      navigationEvent.preventDefault?.();
+      restoreStableDocument(navigationEvent.url);
+    };
+
+    const handleDidNavigate = (event: Event) => {
+      const navigationEvent = event as Event & { url?: string };
+      if (!navigationEvent.url) {
+        return;
+      }
+
+      if (isSuspiciousDocumentNavigation(navigationEvent.url)) {
+        restoreStableDocument(navigationEvent.url);
+        return;
+      }
+
+      lastStableWebviewUrlRef.current = navigationEvent.url;
+    };
+
+    webview.addEventListener('will-navigate', handleWillNavigate as EventListener);
+    webview.addEventListener('did-navigate', handleDidNavigate as EventListener);
+    webview.addEventListener('did-navigate-in-page', handleDidNavigate as EventListener);
+
+    return () => {
+      webview.removeEventListener('will-navigate', handleWillNavigate as EventListener);
+      webview.removeEventListener('did-navigate', handleDidNavigate as EventListener);
+      webview.removeEventListener('did-navigate-in-page', handleDidNavigate as EventListener);
+    };
+  }, [isElectron, webviewSrc]);
 
   // 监听 webview 加载完成
   // 依赖 webviewSrc 确保 webview 重新挂载时重新添加监听器

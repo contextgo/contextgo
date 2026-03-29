@@ -14,6 +14,7 @@ import { initApplicationBridge } from './applicationBridge';
 import { initAuthBridge } from './authBridge';
 import { initBedrockBridge } from './bedrockBridge';
 import { initChannelBridge } from './channelBridge';
+import { initCloudBridge } from './cloudBridge';
 import { initConversationBridge } from './conversationBridge';
 import { initCronBridge } from './cronBridge';
 import { initDatabaseBridge } from './databaseBridge';
@@ -34,7 +35,6 @@ import { initWebuiBridge } from './webuiBridge';
 import { initSystemSettingsBridge } from './systemSettingsBridge';
 import { initWindowControlsBridge } from './windowControlsBridge';
 import { initNotificationBridge } from './notificationBridge';
-import { initPptPreviewBridge } from './pptPreviewBridge';
 import { initExtensionsBridge } from './extensionsBridge';
 import { initWeixinLoginBridge } from './weixinLoginBridge';
 
@@ -55,6 +55,7 @@ export function initAllBridges(deps: BridgeDependencies): void {
   initFileWatchBridge();
   initConversationBridge(deps.conversationService, deps.workerTaskManager);
   initApplicationBridge(deps.workerTaskManager);
+  initCloudBridge();
   initGeminiConversationBridge(deps.workerTaskManager);
   // 额外的 Gemini 辅助桥（订阅检测等）需要在对话桥初始化后可用 / extra helpers after core bridges
   initGeminiBridge();
@@ -65,7 +66,6 @@ export function initAllBridges(deps: BridgeDependencies): void {
   initMcpBridge();
   initPreviewHistoryBridge();
   initDocumentBridge();
-  initPptPreviewBridge();
   initWindowControlsBridge();
   initUpdateBridge();
   initWebuiBridge();
@@ -99,6 +99,7 @@ export {
   initAuthBridge,
   initBedrockBridge,
   initChannelBridge,
+  initCloudBridge,
   initConversationBridge,
   initCronBridge,
   initDatabaseBridge,
@@ -111,7 +112,6 @@ export {
   initMcpBridge,
   initModelBridge,
   initNotificationBridge,
-  initPptPreviewBridge,
   initPreviewHistoryBridge,
   initShellBridge,
   initStarOfficeBridge,

@@ -21,7 +21,7 @@ import { getChannelMessageService } from '../agent/ChannelMessageService';
  * Note: The actual AI processing is handled by ActionExecutor
  * This handler just prepares the response format
  */
-export const handleChatSend: ActionHandler = async (context) => {
+export const handleChatSend: ActionHandler = async (_context) => {
   // This action is special - it triggers AI processing
   // The ActionExecutor will handle the actual AI call
   // This handler is a placeholder for the action registration
@@ -55,7 +55,7 @@ export const handleChatRegenerate: ActionHandler = async (context, params) => {
 /**
  * Handle chat.continue - Continue the AI response
  */
-export const handleChatContinue: ActionHandler = async (context, params) => {
+export const handleChatContinue: ActionHandler = async (_context, _params) => {
   // This will trigger a continuation
   // The ActionExecutor will handle the actual AI call
   return createSuccessResponse({
@@ -69,7 +69,7 @@ export const handleChatContinue: ActionHandler = async (context, params) => {
  * Handle action.copy - Copy response content
  * Note: Copy is handled client-side in Telegram
  */
-export const handleCopy: ActionHandler = async (context, params) => {
+export const handleCopy: ActionHandler = async (_context, _params) => {
   // Telegram doesn't support programmatic copy
   // We just show a toast message
   return {
@@ -89,7 +89,7 @@ export const handleCopy: ActionHandler = async (context, params) => {
 export const handleToolConfirm: ActionHandler = async (context, params) => {
   const callId = params?.callId;
   const value = params?.value;
-  const conversationId = context.conversationId;
+  const conversationId = typeof params?.conversationId === 'string' ? params.conversationId : context.conversationId;
 
   if (!callId || !value || !conversationId) {
     console.error(
@@ -106,9 +106,9 @@ export const handleToolConfirm: ActionHandler = async (context, params) => {
     // 返回成功但不带消息，agent 会继续执行并通过流回调更新消息
     // Return success without message, agent will continue and update via stream callback
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('[ChatActions] Tool confirmation failed:', error);
-    return createErrorResponse(`Confirmation failed: ${error.message}`);
+    return createErrorResponse(`Confirmation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

@@ -37,6 +37,11 @@ export interface ICodexMessageEmitter {
    */
   sendMessageToAgent?(content: string): Promise<void>;
 
+  /**
+   * Schedule after_response hook emission once the final assistant message has settled.
+   */
+  scheduleAfterResponseHooks?(): void;
+
   // ===== ApprovalStore integration =====
 
   /**

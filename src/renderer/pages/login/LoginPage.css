@@ -182,6 +182,12 @@ body.login-page-active {
   margin-bottom: 24px;
 }
 
+.login-page__cloud-actions {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
 .login-page__form-item {
   margin-bottom: 20px;
 }
@@ -290,9 +296,21 @@ body.login-page-active {
   gap: 8px;
 }
 
+.login-page__submit--cloud {
+  margin-top: 0;
+}
+
+.login-page__submit--cloud-secondary {
+  background: linear-gradient(135deg, #374151 0%, #111827 100%);
+}
+
 .login-page__submit:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+.login-page__submit--cloud-secondary:hover:not(:disabled) {
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.28);
 }
 
 .login-page__submit:active:not(:disabled) {

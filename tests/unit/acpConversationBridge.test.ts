@@ -104,7 +104,7 @@ const listSessionsMock = vi.fn(async () => []);
 const importSessionMock = vi.fn(async () => ({
   id: 'imported-conversation',
   type: 'acp',
-  source: 'aionui',
+  source: 'contextgo',
   name: 'Imported',
   extra: { backend: 'codex', workspace: '/tmp/project', customWorkspace: true, acpSessionId: 'session-1' },
   createTime: Date.now(),
@@ -213,7 +213,7 @@ describe('acpConversationBridge', () => {
     expect(hoisted.conversationListChangedEmit).toHaveBeenCalledWith({
       conversationId: 'imported-conversation',
       action: 'created',
-      source: 'aionui',
+      source: 'contextgo',
     });
   });
 

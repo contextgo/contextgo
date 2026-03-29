@@ -8,6 +8,7 @@ import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { TMessage } from '@/common/chat/chatLib';
 
 export type OpenClawGatewayStatus = 'connecting' | 'connected' | 'session_active' | 'disconnected' | 'error';
+export const OPENCLAW_FINISH_SETTLE_MS = 180;
 type OpenClawRuntimeStatus = {
   isConnected?: boolean | null;
   hasActiveSession?: boolean | null;
@@ -33,6 +34,10 @@ export const isOpenClawConnectionErrorMessage = (message: OpenClawMessageLike): 
 
 export const shouldSuppressOpenClawStreamMessage = (message: OpenClawMessageLike): boolean => {
   return isOpenClawLifecycleStatusMessage(message) || isOpenClawConnectionErrorMessage(message);
+};
+
+export const isOpenClawActivityMessageType = (message: Pick<IResponseMessage, 'type'>): boolean => {
+  return message.type === 'thought' || message.type === 'content' || message.type === 'acp_permission';
 };
 
 export const shouldSuppressOpenClawPersistedMessage = (message: TMessage): boolean => {

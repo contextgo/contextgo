@@ -24,6 +24,7 @@ import SystemModalContent from './contents/SystemModalContent';
 import ToolsModalContent from './contents/ToolsModalContent';
 import WebuiModalContent from './contents/WebuiModalContent';
 import { SettingsViewModeProvider } from './settingsViewContext';
+import '@/renderer/pages/settings/components/settings.css';
 
 // ==================== 常量定义 / Constants ====================
 

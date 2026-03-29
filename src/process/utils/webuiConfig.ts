@@ -68,7 +68,7 @@ export const resolveWebUIPort = (
   const cliPort = parsePortValue(getSwitchValue('port') ?? getSwitchValue('webui-port'));
   if (cliPort) return cliPort;
 
-  const envPort = parsePortValue(process.env.AIONUI_PORT ?? process.env.PORT);
+  const envPort = parsePortValue(process.env.CONTEXTGO_PORT ?? process.env.PORT);
   if (envPort) return envPort;
 
   const configPort = parsePortValue(config.port);
@@ -78,8 +78,8 @@ export const resolveWebUIPort = (
 };
 
 export const resolveRemoteAccess = (config: WebUIUserConfig, isRemoteMode: boolean): boolean => {
-  const envRemote = parseBooleanEnv(process.env.AIONUI_ALLOW_REMOTE || process.env.AIONUI_REMOTE);
-  const hostHint = process.env.AIONUI_HOST?.trim();
+  const envRemote = parseBooleanEnv(process.env.CONTEXTGO_ALLOW_REMOTE || process.env.CONTEXTGO_REMOTE);
+  const hostHint = process.env.CONTEXTGO_HOST?.trim();
   const hostRequestsRemote = hostHint ? ['0.0.0.0', '::', '::0'].includes(hostHint) : false;
   const configRemote = config.allowRemote === true;
 

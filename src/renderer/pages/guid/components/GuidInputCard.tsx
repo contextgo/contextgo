@@ -7,6 +7,7 @@
 import FilePreview from '@/renderer/components/media/FilePreview';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useCompositionInput } from '@/renderer/hooks/chat/useCompositionInput';
+import type { useDragUpload } from '@/renderer/hooks/file/useDragUpload';
 import { Input, Tooltip } from '@arco-design/web-react';
 import { IconClose } from '@arco-design/web-react/icon';
 import { FolderOpen } from '@icon-park/react';
@@ -31,7 +32,7 @@ type GuidInputCardProps = {
   activeBorderColor: string;
   inactiveBorderColor: string;
   activeShadow: string;
-  dragHandlers: Record<string, any>;
+  dragHandlers: ReturnType<typeof useDragUpload>['dragHandlers'];
 
   // Mention state
   mentionOpen: boolean;
@@ -140,11 +141,10 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
         >
           <div className='flex items-start min-w-0 flex-1 gap-8px'>
             <FolderOpen
-              className='mt-1px flex-shrink-0'
+              className='app-icon mt-1px flex-shrink-0'
               theme='outline'
               size='16'
               fill={iconColors.secondary}
-              style={{ lineHeight: 0 }}
             />
             <Tooltip content={dir} position='top' disabled={isMobile}>
               <span className='block min-w-0 whitespace-normal break-all leading-18px'>

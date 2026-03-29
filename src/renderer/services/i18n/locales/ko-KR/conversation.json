@@ -16,10 +16,7 @@
     "none": "없음",
     "quickActionsTitle": "ContextGo로 무엇을 할 수 있나요?",
     "quickActionFeedback": "피드백이나 제안이 있으신가요?",
-    "quickActionStar": "마음에 드시나요? 별을 주세요!",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "커뮤니티 Skills를 필요에 따라 검색하고 활성화. 한 번 설정하면 모든 Agent에서 사용 가능.",
-    "skillsMarketDetails": "자세히 >>"
+    "quickActionStar": "마음에 드시나요? 별을 주세요!"
   },
   "history": {
     "today": "오늘",
@@ -69,7 +66,8 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "삭제되었습니다",
-    "deleteFailed": "삭제에 실패했습니다"
+    "deleteFailed": "삭제에 실패했습니다",
+    "toggleGroupConversation": "그룹 세션 펼치기/접기"
   },
   "historySearch": {
     "tooltip": "검색",
@@ -80,31 +78,39 @@
     "empty": "일치하는 메시지를 찾을 수 없습니다",
     "clear": "검색 지우기",
     "loadingMore": "더 불러오는 중...",
+    "recentConversations": "최근 대화",
     "untitled": "제목 없는 대화"
   },
   "entry": {
     "create": "새로 만들기",
     "conversation": "대화",
-    "group": "토론 그룹"
+    "group": "그룹"
   },
   "dropdown": {
     "cliAgents": "CLI Agents",
     "presetAssistants": "프리셋 어시스턴트"
   },
   "group": {
-    "header": "토론 그룹",
-    "createEntry": "토론 그룹 만들기",
-    "createTitle": "토론 그룹 만들기",
+    "header": "그룹",
+    "createEntry": "그룹 만들기",
+    "createTitle": "그룹 만들기",
     "createAction": "그룹 만들기",
-    "createFailed": "토론 그룹 생성에 실패했습니다",
-    "defaultName": "토론 그룹",
+    "createFailed": "그룹 생성에 실패했습니다",
+    "defaultName": "에이전트 그룹",
     "nameLabel": "그룹 이름",
-    "namePlaceholder": "토론 그룹 이름을 입력하세요",
+    "namePlaceholder": "그룹 이름을 입력하세요",
     "workspaceLabel": "워크스페이스",
     "workspacePlaceholder": "선택 사항입니다. 비워두면 기본 워크스페이스가 자동 생성됩니다",
-    "workspaceHint": "토론 그룹과 모든 참여 세션은 이 워크스페이스를 공유합니다. 비워두면 기본 임시 워크스페이스가 자동으로 생성됩니다.",
+    "workspaceHint": "그룹과 모든 참여 세션은 이 워크스페이스를 공유합니다. 비워두면 기본 임시 워크스페이스가 자동으로 생성됩니다.",
     "selectWorkspace": "폴더 선택",
     "selectWorkspaceFailed": "워크스페이스 선택에 실패했습니다",
+    "kindLabel": "협업 유형",
+    "kindWorkflow": "워크플로",
+    "kindDiscussion": "토론",
+    "kindHint": {
+      "workflow": "기본 모드입니다. planner / writer / evaluator 가 공유 워크스페이스에서 여러 차례 협업합니다.",
+      "discussion": "의견 비교, 릴레이 분석, 토론에 적합한 기존 토론 모드입니다."
+    },
     "modeLabel": "토론 모드",
     "modeDebate": "토론",
     "modeBroadcast": "브로드캐스트",
@@ -118,8 +124,63 @@
     "minimumParticipants": "최소 두 명의 참여자를 선택하세요",
     "minimumParticipantsHint": "토론 그룹을 만들려면 2명 이상의 참여자를 선택해야 합니다.",
     "noDescription": "설명 없음",
-    "sendPlaceholder": "토론 그룹에 질문하기...",
-    "roundLabel": "{{round}} 라운드"
+    "sendPlaceholder": "그룹에 작업 맡기기...",
+    "roundLabel": "{{round}} 라운드",
+    "role": {
+      "planner": "Planner",
+      "writer": "Writer",
+      "evaluator": "Evaluator",
+      "custom": "Custom"
+    },
+    "workflow": {
+      "templateLabel": "워크플로 템플릿",
+      "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
+      "templateHint": "planner 가 목표와 승인 기준을 정의하고, writer 가 공유 워크스페이스의 산출물을 갱신하며, evaluator 가 점수와 수정 피드백을 제공합니다.",
+      "templatePlannerWriterEvaluatorHint": "반복형 harness: planner 가 기준을 정의하고, writer 가 산출물을 여러 라운드에 걸쳐 다듬고, evaluator 가 매 라운드를 비판적으로 검토합니다.",
+      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
+      "templatePlanBuildEvaluateHint": "단일 빌드형 harness: planner 가 범위를 정하고, builder 가 한 번에 구축한 뒤, evaluator 가 마지막에 검토합니다.",
+      "exactParticipants": "이 워크플로 템플릿은 정확히 3명의 참여자가 필요합니다",
+      "exactParticipantsHint": "Planner / Writer / Evaluator 템플릿은 역할이 서로 다른 정확히 3명의 참여자를 요구합니다.",
+      "assignRoles": "workflow 그룹을 만들기 전에 planner, writer, evaluator 역할을 각각 지정하세요",
+      "roleLabel": "역할",
+      "iterationLabel": "{{iteration}}번째 반복",
+      "stage": {
+        "planning": "계획",
+        "writing": "작성",
+        "evaluating": "평가",
+        "completed": "완료",
+        "failed": "실패"
+      },
+      "maxIterationsLabel": "최대 반복 횟수",
+      "maxIterationsHint": "허용 범위: {{min}}-{{max}}",
+      "scoreTargetLabel": "목표 점수",
+      "scoreTargetHint": "평가 통과 기준: {{min}}-{{max}}",
+      "artifactPathLabel": "아티팩트 경로",
+      "artifactPathHint": "공유 작업공간 내부 상대 경로만 허용됩니다. 절대 경로나 상위 디렉터리 참조는 허용되지 않습니다.",
+      "reviewModeLabel": "리뷰 방식",
+      "reviewModeHint": "evaluator 가 매 라운드마다 검토할지, 마지막 산출물만 검토할지 선택합니다.",
+      "reviewMode": {
+        "perIteration": "매 반복마다 리뷰",
+        "finalOnly": "최종 리뷰만"
+      },
+      "stageLabel": "단계",
+      "iterationBudgetLabel": "반복 예산",
+      "iterationBudgetValue": "{{current}} / {{total}}",
+      "latestScoreLabel": "최신 점수",
+      "latestDecisionLabel": "최신 결정",
+      "decision": {
+        "continue": "계속",
+        "accept": "승인",
+        "stop": "중단"
+      },
+      "status": {
+        "idle": "대기",
+        "running": "실행 중",
+        "completed": "완료",
+        "failed": "실패",
+        "stopped": "중단됨"
+      }
+    }
   },
   "noAgentsAvailable": "사용 가능한 에이전트가 없습니다",
   "noModelConfigured": "모델이 설정되지 않았습니다. 설정 페이지에서 설정하세요.",
@@ -245,6 +306,21 @@
     "switchAgentFailed": "에이전트 전환 실패",
     "modelSwitchFailed": "모델 전환에 실패했습니다",
     "modelSwitchNotSupported": "현재 OpenClaw Gateway는 모델 전환을 지원하지 않습니다"
+  },
+  "pendingMessages": {
+    "title": "대기 중 {{count}}개",
+    "shortcuts": "Tab 큐 적재 · Cmd/Ctrl+Enter 유도 · Option/Alt+↑ 최근 항목 편집",
+    "attachments": "파일 {{count}}개",
+    "dispatching": "전송 중...",
+    "edit": "다시 편집",
+    "mode": {
+      "queue": "큐",
+      "steer": "유도"
+    },
+    "actions": {
+      "queue": "큐로 변경",
+      "steer": "유도로 변경"
+    }
   },
   "contextUsage": {
     "contextUsed": "사용된 컨텍스트"

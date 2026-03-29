@@ -8,6 +8,7 @@ import { ipcBridge } from '@/common';
 import type { TMessage } from '@/common/chat/chatLib';
 import { transformMessage } from '@/common/chat/chatLib';
 import { uuid } from '@/common/utils';
+import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import SendBox from '@/renderer/components/chat/sendbox';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile } from '@/renderer/hooks/chat/useSendBoxFiles';
@@ -23,12 +24,19 @@ import ThoughtDisplay, { type ThoughtData } from '@/renderer/components/chat/Tho
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import {
+  usePendingConversationMessages,
+  type PendingConversationMessage,
+  type PendingConversationMessageMode,
+} from '@/renderer/pages/conversation/hooks/usePendingConversationMessages';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import FileAttachButton from '@/renderer/components/media/FileAttachButton';
 import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
 import { useSlashCommands } from '@/renderer/hooks/chat/useSlashCommands';
 import {
+  OPENCLAW_FINISH_SETTLE_MS,
+  isOpenClawActivityMessageType,
   isOpenClawConnectionErrorMessage,
   type OpenClawGatewayStatus,
   resolveOpenClawRuntimeStatus,
@@ -145,6 +153,8 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
 
   const [aiProcessing, setAiProcessing] = useState(false);
   const [openclawStatus, setOpenClawStatus] = useState<OpenClawGatewayStatus | null>(null);
+  const [hasActiveToolCalls, setHasActiveToolCalls] = useState(false);
+  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(false);
   const [thought, setThought] = useState<ThoughtData>({
     description: '',
     subject: '',
@@ -157,9 +167,11 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
   // Track whether current turn has content output
   // Only reset aiProcessing when finish arrives after content (not after tool calls)
   const hasContentInTurnRef = useRef(false);
+  const activeToolCallIdsRef = useRef<Set<string>>(new Set());
 
   // Track whether the current turn was triggered by a Star Office install request
   const starOfficeInstallInFlightRef = useRef(false);
+  const finishSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Throttle thought updates to reduce render frequency
   const thoughtThrottleRef = useRef<{
@@ -205,8 +217,48 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
       if (thoughtThrottleRef.current.timer) {
         clearTimeout(thoughtThrottleRef.current.timer);
       }
+      if (finishSettleTimerRef.current) {
+        clearTimeout(finishSettleTimerRef.current);
+      }
     };
   }, []);
+
+  const clearPendingFinishReset = useCallback(() => {
+    if (finishSettleTimerRef.current) {
+      clearTimeout(finishSettleTimerRef.current);
+      finishSettleTimerRef.current = null;
+    }
+  }, []);
+
+  const showProcessing = useCallback(() => {
+    clearPendingFinishReset();
+    if (!aiProcessingRef.current) {
+      setAiProcessing(true);
+      aiProcessingRef.current = true;
+    }
+  }, [clearPendingFinishReset]);
+
+  const resetProcessingState = useCallback(() => {
+    clearPendingFinishReset();
+    setAiProcessing(false);
+    aiProcessingRef.current = false;
+    activeToolCallIdsRef.current = new Set();
+    setHasActiveToolCalls(false);
+    setSawToolActivityInTurn(false);
+    setThought({ subject: '', description: '' });
+    hasContentInTurnRef.current = false;
+  }, [clearPendingFinishReset]);
+
+  const scheduleFinishReset = useCallback(() => {
+    clearPendingFinishReset();
+    finishSettleTimerRef.current = setTimeout(() => {
+      finishSettleTimerRef.current = null;
+      setAiProcessing(false);
+      aiProcessingRef.current = false;
+      setThought({ subject: '', description: '' });
+      hasContentInTurnRef.current = false;
+    }, OPENCLAW_FINISH_SETTLE_MS);
+  }, [clearPendingFinishReset]);
 
   const { data: draftData, mutate: mutateDraft } = useOpenClawSendBoxDraft(conversation_id);
   const atPath = draftData?.atPath ?? EMPTY_AT_PATH;
@@ -235,8 +287,12 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
   // Reset state when conversation changes and restore actual running status
   useEffect(() => {
     setOpenClawStatus(null);
+    clearPendingFinishReset();
     setThought({ subject: '', description: '' });
     hasContentInTurnRef.current = false;
+    activeToolCallIdsRef.current = new Set();
+    setHasActiveToolCalls(false);
+    setSawToolActivityInTurn(false);
 
     // Check actual conversation status from backend before resetting aiProcessing
     // to avoid flicker when switching to a running conversation
@@ -266,7 +322,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
       .catch(() => {
         // Agent not ready or conversation not found – ignore
       });
-  }, [conversation_id]);
+  }, [clearPendingFinishReset, conversation_id]);
 
   useEffect(() => {
     const handler = (text: string) => {
@@ -290,40 +346,65 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         return;
       }
 
+      if (isOpenClawActivityMessageType(message)) {
+        clearPendingFinishReset();
+      }
+
       switch (message.type) {
         case 'thought':
-          // Auto-recover aiProcessing state if thought arrives after finish
-          // 如果 thought 在 finish 后到达，自动恢复 aiProcessing 状态
-          if (!aiProcessingRef.current) {
-            setAiProcessing(true);
-            aiProcessingRef.current = true;
-          }
+          // Keep the auxiliary area stable when late thought chunks arrive after finish.
+          // 如果 finish 后还有 thought 到达，保持辅助区稳定显示，避免底部抖动。
+          showProcessing();
           throttledSetThought(message.data as ThoughtData);
           break;
         case 'finish':
           {
-            // Immediate state reset (notification is handled by centralized hook)
-            // 立即重置状态（通知由集中化 hook 处理）
-            setAiProcessing(false);
-            aiProcessingRef.current = false;
-            setThought({ subject: '', description: '' });
+            // Delay the visual reset slightly so out-of-order content/thought chunks
+            // don't make the bottom area disappear and reappear in the same turn.
+            // 轻微延迟视觉收尾，避免同一轮中 content/thought 乱序导致底部区域闪断。
+            activeToolCallIdsRef.current = new Set();
+            setHasActiveToolCalls(false);
+            setSawToolActivityInTurn(false);
+            scheduleFinishReset();
             // Notify StarOfficeMonitorCard to re-detect and auto-open panel
             if (starOfficeInstallInFlightRef.current) {
               starOfficeInstallInFlightRef.current = false;
               emitter.emit('staroffice.install.finished', { conversationId: conversation_id });
             }
-            hasContentInTurnRef.current = false;
           }
           break;
+        case 'acp_tool_call': {
+          hasContentInTurnRef.current = true;
+          const update = (message.data as { update?: { toolCallId?: string; status?: string } })?.update;
+          const toolCallId = update?.toolCallId;
+          const status = update?.status;
+
+          if (toolCallId) {
+            const nextActiveToolCallIds = new Set(activeToolCallIdsRef.current);
+            setSawToolActivityInTurn(true);
+
+            if (status === 'pending' || status === 'in_progress') {
+              nextActiveToolCallIds.add(toolCallId);
+            } else {
+              nextActiveToolCallIds.delete(toolCallId);
+            }
+
+            activeToolCallIdsRef.current = nextActiveToolCallIds;
+            setHasActiveToolCalls(nextActiveToolCallIds.size > 0);
+          }
+
+          setThought({ subject: '', description: '' });
+          const transformedMessage = transformMessage(message);
+          if (transformedMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
+          break;
+        }
         case 'content':
         case 'acp_permission': {
           // Mark that current turn has content output
           hasContentInTurnRef.current = true;
-          // Auto-recover aiProcessing state if content arrives after finish
-          if (!aiProcessingRef.current) {
-            setAiProcessing(true);
-            aiProcessingRef.current = true;
-          }
+          showProcessing();
           setThought({ subject: '', description: '' });
           const transformedMessage = transformMessage(message);
           if (transformedMessage) {
@@ -335,10 +416,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
           const statusData = message.data as { status: OpenClawGatewayStatus; message: string };
           setOpenClawStatus(statusData.status);
           if (statusData.status === 'disconnected' || statusData.status === 'error') {
-            setAiProcessing(false);
-            aiProcessingRef.current = false;
-            setThought({ subject: '', description: '' });
-            hasContentInTurnRef.current = false;
+            resetProcessingState();
           }
           break;
         }
@@ -346,10 +424,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
           if (isOpenClawConnectionErrorMessage(message)) {
             const errorText = String(message.data || '');
             setOpenClawStatus(errorText.startsWith('Connection error:') ? 'error' : 'disconnected');
-            setAiProcessing(false);
-            aiProcessingRef.current = false;
-            setThought({ subject: '', description: '' });
-            hasContentInTurnRef.current = false;
+            resetProcessingState();
           }
 
           if (shouldSuppressOpenClawStreamMessage(message)) {
@@ -364,7 +439,15 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         }
       }
     });
-  }, [conversation_id, addOrUpdateMessage]);
+  }, [
+    addOrUpdateMessage,
+    clearPendingFinishReset,
+    conversation_id,
+    resetProcessingState,
+    scheduleFinishReset,
+    showProcessing,
+    throttledSetThought,
+  ]);
 
   useEffect(() => {
     void ipcBridge.conversation.get.invoke({ id: conversation_id }).then((res) => {
@@ -389,8 +472,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         createdAt: Date.now(),
       };
       addOrUpdateMessage(userMessage, true);
-      setAiProcessing(true);
-      aiProcessingRef.current = true;
+      showProcessing();
       starOfficeInstallInFlightRef.current = true;
       ipcBridge.openclawConversation.sendMessage
         .invoke({ input: text, msg_id, conversation_id, injectSkills: ['star-office-helper'] })
@@ -399,12 +481,11 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
           emitter.emit('chat.history.refresh');
         })
         .catch(() => {
-          setAiProcessing(false);
-          aiProcessingRef.current = false;
+          resetProcessingState();
           starOfficeInstallInFlightRef.current = false;
         });
     },
-    [conversation_id, addOrUpdateMessage, checkAndUpdateTitle]
+    [addOrUpdateMessage, checkAndUpdateTitle, conversation_id, resetProcessingState, showProcessing]
   );
 
   const handleFilesAdded = useCallback(
@@ -431,22 +512,14 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
   });
 
   const sendOpenClawMessage = useCallback(
-    async (message: string) => {
+    async (message: string, selectedFiles?: string[]) => {
       const runtimeOk = await validateRuntimeMismatch(conversation_id);
       if (!runtimeOk) return;
 
       const msg_id = uuid();
-      // Content is already cleared by the shared SendBox component (setInput(''))
-      // before calling onSend — no need to clear again here.
-      emitter.emit('openclaw-gateway.selected.file.clear');
-      const currentAtPath = [...atPath];
-      const currentUploadFile = [...uploadFile];
-      setAtPath([]);
-      setUploadFile([]);
-
-      const filePaths = [
-        ...currentUploadFile,
-        ...currentAtPath.map((item) => (typeof item === 'string' ? item : item.path)),
+      const filePaths = selectedFiles || [
+        ...uploadFile,
+        ...atPath.map((item) => (typeof item === 'string' ? item : item.path)),
       ];
       const displayMessage = buildDisplayMessage(message, filePaths, workspacePath);
 
@@ -460,22 +533,19 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         createdAt: Date.now(),
       };
       addOrUpdateMessage(userMessage, true);
-      setAiProcessing(true);
-      aiProcessingRef.current = true;
+      showProcessing();
       try {
-        const atPathStrings = currentAtPath.map((item) => (typeof item === 'string' ? item : item.path));
         await ipcBridge.openclawConversation.sendMessage.invoke({
           input: displayMessage,
           msg_id,
           conversation_id,
-          files: [...currentUploadFile, ...atPathStrings],
+          files: filePaths,
         });
         void checkAndUpdateTitle(conversation_id, message);
         emitter.emit('chat.history.refresh');
       } catch (error) {
         // Only reset aiProcessing on error, normal flow is reset by 'finish' event
-        setAiProcessing(false);
-        aiProcessingRef.current = false;
+        resetProcessingState();
         throw error;
       }
     },
@@ -486,14 +556,90 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
       workspacePath,
       addOrUpdateMessage,
       checkAndUpdateTitle,
+      resetProcessingState,
       setAtPath,
       setUploadFile,
+      showProcessing,
     ]
   );
 
   const onSendHandler = async (message: string) => {
-    await sendOpenClawMessage(message);
+    emitter.emit('openclaw-gateway.selected.file.clear');
+    const currentAtPath = [...atPath];
+    const currentUploadFile = [...uploadFile];
+    setAtPath([]);
+    setUploadFile([]);
+
+    const filePaths = [
+      ...currentUploadFile,
+      ...currentAtPath.map((item) => (typeof item === 'string' ? item : item.path)),
+    ];
+
+    await sendOpenClawMessage(message, filePaths);
   };
+
+  const {
+    pendingMessages,
+    enqueuePendingMessage,
+    removePendingMessage,
+    restorePendingMessage,
+    restoreLatestPendingMessage,
+    setPendingMessageMode,
+  } = usePendingConversationMessages({
+    conversationId: conversation_id,
+    canSendNow: !aiProcessing,
+    canSteerNow: aiProcessing && sawToolActivityInTurn && !hasActiveToolCalls,
+    onDispatch: async (pendingMessage: PendingConversationMessage) => {
+      await sendOpenClawMessage(pendingMessage.content, pendingMessage.attachments);
+    },
+    onDispatchError: (error: unknown) => {
+      console.error('[OpenClawSendBox] Failed to dispatch pending message:', error);
+    },
+  });
+
+  const stashPendingMessage = useCallback(
+    (mode: PendingConversationMessageMode, message: string) => {
+      emitter.emit('openclaw-gateway.selected.file.clear');
+      const currentAtPath = [...atPath];
+      const currentUploadFile = [...uploadFile];
+      setAtPath([]);
+      setUploadFile([]);
+
+      const filePaths = [
+        ...currentUploadFile,
+        ...currentAtPath.map((item) => (typeof item === 'string' ? item : item.path)),
+      ];
+      enqueuePendingMessage(mode, message, filePaths);
+    },
+    [atPath, enqueuePendingMessage, uploadFile]
+  );
+
+  const restoreMessageToComposer = useCallback(
+    (messageId: string) => {
+      const pendingMessage = restorePendingMessage(messageId);
+      if (!pendingMessage) {
+        return;
+      }
+
+      setContent(pendingMessage.content);
+      setAtPath([]);
+      setUploadFile(pendingMessage.attachments);
+      emitter.emit('openclaw-gateway.selected.file.clear');
+    },
+    [restorePendingMessage, setAtPath, setContent, setUploadFile]
+  );
+
+  const restoreLatestMessageToComposer = useCallback(() => {
+    const pendingMessage = restoreLatestPendingMessage();
+    if (!pendingMessage) {
+      return;
+    }
+
+    setContent(pendingMessage.content);
+    setAtPath([]);
+    setUploadFile(pendingMessage.attachments);
+    emitter.emit('openclaw-gateway.selected.file.clear');
+  }, [restoreLatestPendingMessage, setAtPath, setContent, setUploadFile]);
 
   useEffect(() => {
     immediateSendRef.current = sendOpenClawMessage;
@@ -547,8 +693,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         if (!runtimeOk) return;
 
         sessionStorage.setItem(processedKey, 'true');
-        setAiProcessing(true);
-        aiProcessingRef.current = true;
+        showProcessing();
         const { input, files = [] } = JSON.parse(stored) as { input: string; files?: string[] };
         const msg_id = `initial_${conversation_id}_${Date.now()}`;
         const loading_id = uuid();
@@ -580,8 +725,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
       } catch {
         sessionStorage.removeItem(processedKey);
         // Only reset aiProcessing on error, normal flow is reset by 'finish' event
-        setAiProcessing(false);
-        aiProcessingRef.current = false;
+        resetProcessingState();
       }
     };
 
@@ -594,22 +738,19 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
     return () => {
       clearTimeout(timer);
     };
-  }, [conversation_id, openclawStatus, addOrUpdateMessage]);
+  }, [addOrUpdateMessage, conversation_id, openclawStatus, resetProcessingState, showProcessing]);
 
   const handleStop = async (): Promise<void> => {
     try {
       await ipcBridge.conversation.stop.invoke({ conversation_id });
     } finally {
-      setAiProcessing(false);
-      aiProcessingRef.current = false;
-      setThought({ subject: '', description: '' });
-      hasContentInTurnRef.current = false;
+      resetProcessingState();
     }
   };
 
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
-      <ThoughtDisplay thought={thought} running={aiProcessing} onStop={handleStop} />
+      <ThoughtDisplay thought={thought} running={aiProcessing} onStop={handleStop} style='compact' />
       {openClawStatusLabel ? (
         <div className='mb-8px flex items-center justify-end'>
           <Tag color={getOpenClawStatusTone(openclawStatus)}>{openClawStatusLabel}</Tag>
@@ -638,6 +779,12 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         tools={<FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />}
         prefix={
           <>
+            <PendingMessageBar
+              messages={pendingMessages}
+              onRemove={removePendingMessage}
+              onEdit={restoreMessageToComposer}
+              onSetMode={setPendingMessageMode}
+            />
             {(uploadFile.length > 0 || atPath.some((item) => (typeof item === 'string' ? true : item.isFile))) && (
               <HorizontalFileList>
                 {uploadFile.map((path) => (
@@ -696,6 +843,9 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
           </>
         }
         onSend={onSendHandler}
+        onQueue={(message) => stashPendingMessage('queue', message)}
+        onSteer={(message) => stashPendingMessage('steer', message)}
+        onEditLatestPending={restoreLatestMessageToComposer}
         slashCommands={slashCommands}
         onSlashBuiltinCommand={onSlashBuiltinCommand}
       ></SendBox>

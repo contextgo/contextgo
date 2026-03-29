@@ -13,10 +13,17 @@ import { useSettingsViewMode } from '../settingsViewContext';
 import { isElectronDesktop, openExternalUrl } from '@/renderer/utils/platform';
 import packageJson from '../../../../../../package.json';
 
+const REPOSITORY_URL = 'https://github.com/contextgo/contextgo';
+const DOCUMENTATION_URL = `${REPOSITORY_URL}/tree/main/docs`;
+const RELEASE_NOTES_URL = `${REPOSITORY_URL}/releases`;
+const FEEDBACK_URL = `${REPOSITORY_URL}/issues/new/choose`;
+const CONTACT_URL = `${REPOSITORY_URL}/discussions`;
+const OFFICIAL_WEBSITE_URL = 'https://contextgo.io';
+
 const checkUpdate = () => {
   // 使用 window 自定义事件在渲染进程内部通信（buildEmitter 只支持主进程->渲染进程）
   // Use window custom event for renderer-side communication (buildEmitter only works main->renderer)
-  window.dispatchEvent(new CustomEvent('aionui-open-update-modal', { detail: { source: 'about' } }));
+  window.dispatchEvent(new CustomEvent('contextgo-open-update-modal', { detail: { source: 'about' } }));
 };
 
 const AboutModalContent: React.FC = () => {
@@ -24,7 +31,6 @@ const AboutModalContent: React.FC = () => {
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
   const isElectron = isElectronDesktop();
-  const githubRepoUrl = 'https://github.com/iOfficeAI/AionUi';
 
   const [includePrerelease, setIncludePrerelease] = useState(false);
 
@@ -49,28 +55,28 @@ const AboutModalContent: React.FC = () => {
   const linkItems = [
     {
       title: t('settings.helpDocumentation'),
-      url: `${githubRepoUrl}/wiki`,
-      icon: <Right theme='outline' size='16' />,
+      url: DOCUMENTATION_URL,
+      icon: <Right theme='outline' size='16' className='app-icon' />,
     },
     {
       title: t('settings.updateLog'),
-      url: `${githubRepoUrl}/releases`,
-      icon: <Right theme='outline' size='16' />,
+      url: RELEASE_NOTES_URL,
+      icon: <Right theme='outline' size='16' className='app-icon' />,
     },
     {
       title: t('settings.feedback'),
-      url: `${githubRepoUrl}/issues`,
-      icon: <Right theme='outline' size='16' />,
+      url: FEEDBACK_URL,
+      icon: <Right theme='outline' size='16' className='app-icon' />,
     },
     {
       title: t('settings.contactMe'),
-      url: 'https://x.com/WailiVery',
-      icon: <Right theme='outline' size='16' />,
+      url: CONTACT_URL,
+      icon: <Right theme='outline' size='16' className='app-icon' />,
     },
     {
       title: t('settings.officialWebsite'),
-      url: 'https://www.aionui.com',
-      icon: <Right theme='outline' size='16' />,
+      url: OFFICIAL_WEBSITE_URL,
+      icon: <Right theme='outline' size='16' className='app-icon' />,
     },
   ];
 
@@ -98,9 +104,9 @@ const AboutModalContent: React.FC = () => {
               </span>
               <div
                 className='text-t-primary cursor-pointer hover:text-t-secondary transition-colors p-4px'
-                onClick={() => openLink(githubRepoUrl).catch((error) => console.error('Failed to open link:', error))}
+                onClick={() => openLink(REPOSITORY_URL).catch((error) => console.error('Failed to open link:', error))}
               >
-                <Github theme='outline' size='20' />
+                <Github theme='outline' size='20' className='app-icon' />
               </div>
             </div>
 
@@ -136,7 +142,9 @@ const AboutModalContent: React.FC = () => {
                 }}
               >
                 <Typography.Text className='text-14px text-t-primary'>{item.title}</Typography.Text>
-                <div className='text-t-secondary group-hover:text-t-primary transition-colors'>{item.icon}</div>
+                <div className='app-icon-slot text-t-secondary transition-colors group-hover:text-t-primary'>
+                  {item.icon}
+                </div>
               </div>
             ))}
           </div>

@@ -22,10 +22,10 @@ afterEach(() => {
 });
 
 describe('extensions/statePersistence', () => {
-  it('reads and writes extension states from AIONUI_EXTENSION_STATES_FILE when provided', () => {
+  it('reads and writes extension states from CONTEXTGO_EXTENSION_STATES_FILE when provided', () => {
     const sandbox = createTempDir('aionui-state-');
     const statesFile = path.join(sandbox, 'isolated', 'extension-states.json');
-    process.env.AIONUI_EXTENSION_STATES_FILE = statesFile;
+    process.env.CONTEXTGO_EXTENSION_STATES_FILE = statesFile;
 
     const disabledAt = new Date('2026-03-08T00:00:00.000Z');
     const states = new Map<

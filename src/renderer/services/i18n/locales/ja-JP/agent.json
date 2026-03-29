@@ -26,5 +26,13 @@
     "noAlternatives": "利用可能なエージェントが見つかりません",
     "configureFirst": "まず設定でエージェントを設定してください。",
     "switching": "エージェントを切り替え中..."
+  },
+  "hooks": {
+    "sidecarExported": "{{hookName}} の sidecar ファイルを書き出しました。",
+    "markdownPath": "Markdown",
+    "metadataPath": "メタデータ",
+    "openMarkdown": "Markdown を開く",
+    "showInFolder": "フォルダで表示",
+    "sidecarActionFailed": "エクスポートされた sidecar 出力を開けませんでした。"
   }
 }

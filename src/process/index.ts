@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -25,7 +25,7 @@ import { voiceInputRuntime } from '@process/bridge/services/voice';
 
 export const initializeProcess = async () => {
   const t0 = performance.now();
-  const mark = (label: string) => console.log(`[AionUi:process] ${label} +${Math.round(performance.now() - t0)}ms`);
+  const mark = (label: string) => console.log(`[ContextGo:process] ${label} +${Math.round(performance.now() - t0)}ms`);
 
   await initStorage();
   mark('initStorage');

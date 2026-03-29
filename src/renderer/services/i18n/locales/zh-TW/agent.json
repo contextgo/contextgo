@@ -26,5 +26,13 @@
     "noAlternatives": "未找到可用的 Agent",
     "configureFirst": "請先在設定中配置一個 Agent。",
     "switching": "正在切換 Agent..."
+  },
+  "hooks": {
+    "sidecarExported": "已為 {{hookName}} 匯出 sidecar 檔案。",
+    "markdownPath": "Markdown",
+    "metadataPath": "中繼資料",
+    "openMarkdown": "開啟 Markdown",
+    "showInFolder": "顯示所在資料夾",
+    "sidecarActionFailed": "無法開啟匯出的 sidecar 輸出。"
   }
 }

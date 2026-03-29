@@ -24,8 +24,80 @@ const { mkdirCalls, symlinkCalls, statResults, lstatResults, existsSyncResults, 
 
 vi.mock('fs/promises', () => ({
   default: {
+    access: vi.fn(async (p: string) => {
+      const normalizedPath = norm(p);
+      if (normalizedPath.endsWith('/SKILL.md')) {
+        const skillDir = normalizedPath.slice(0, -'/SKILL.md'.length);
+        const nestedSkillsDir = `${skillDir}/skills`;
+        const hasSkillDir = existsSyncResults[skillDir] || statResults[skillDir] || lstatResults[skillDir];
+        const isSkillPack =
+          existsSyncResults[nestedSkillsDir] || statResults[nestedSkillsDir] || lstatResults[nestedSkillsDir];
+
+        if (
+          existsSyncResults[normalizedPath] ||
+          statResults[normalizedPath] ||
+          lstatResults[normalizedPath] ||
+          (hasSkillDir && !isSkillPack)
+        ) {
+          return;
+        }
+      }
+
+      if (existsSyncResults[normalizedPath] || statResults[normalizedPath] || lstatResults[normalizedPath]) return;
+      throw new Error(`ENOENT: ${p}`);
+    }),
     mkdir: vi.fn(async (dir: string) => {
       mkdirCalls.push(norm(dir));
+    }),
+    readdir: vi.fn(async (dir: string, _options?: { withFileTypes?: boolean }) => {
+      const normalizedDir = norm(dir);
+
+      if (!existsSyncResults[normalizedDir] && !statResults[normalizedDir] && !lstatResults[normalizedDir]) {
+        throw new Error(`ENOENT: ${dir}`);
+      }
+
+      const childNames = new Set<string>();
+      const knownPaths = new Set([
+        ...Object.keys(existsSyncResults),
+        ...Object.keys(statResults),
+        ...Object.keys(lstatResults),
+      ]);
+
+      for (const key of knownPaths) {
+        if (!key.startsWith(normalizedDir + '/')) continue;
+
+        const relative = key.slice(normalizedDir.length + 1);
+        if (!relative || relative.includes('/')) continue;
+        childNames.add(relative);
+      }
+
+      return Array.from(childNames).map((name) => ({
+        name,
+        isDirectory: () => true,
+        isFile: () => false,
+        isSymbolicLink: () => false,
+      }));
+    }),
+    readFile: vi.fn(async (p: string) => {
+      const normalizedPath = norm(p);
+      if (!normalizedPath.endsWith('/SKILL.md')) {
+        throw new Error(`ENOENT: ${p}`);
+      }
+
+      const skillDir = normalizedPath.slice(0, -'/SKILL.md'.length);
+      const nestedSkillsDir = `${skillDir}/skills`;
+      const hasSkillDir = existsSyncResults[skillDir] || statResults[skillDir] || lstatResults[skillDir];
+      const isSkillPack =
+        existsSyncResults[nestedSkillsDir] || statResults[nestedSkillsDir] || lstatResults[nestedSkillsDir];
+      const hasSkillFile =
+        existsSyncResults[normalizedPath] || statResults[normalizedPath] || lstatResults[normalizedPath];
+
+      if (!hasSkillFile && !(hasSkillDir && !isSkillPack)) {
+        throw new Error(`ENOENT: ${p}`);
+      }
+
+      const skillName = normalizedPath.split('/').slice(-2, -1)[0];
+      return `---\nname: ${skillName}\ndescription: mock skill\n---\n`;
     }),
     stat: vi.fn(async (p: string) => {
       if (statResults[norm(p)]) return {};
@@ -71,6 +143,8 @@ describe('initAgent — skill support', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     resetAll();
+    existsSyncResults['/mock/builtin-skills'] = true;
+    existsSyncResults['/mock/user/skills'] = true;
 
     const mod = await import('@process/utils/initAgent');
     hasNativeSkillSupport = mod.hasNativeSkillSupport;
@@ -174,14 +248,14 @@ describe('initAgent — skill support', () => {
     });
 
     it('should create symlink in .codebuddy/skills for codebuddy', async () => {
-      statResults['/mock/user/skills/morph-ppt'] = true;
+      statResults['/mock/user/skills/pdf'] = true;
 
       await setupAssistantWorkspace('/tmp/workspace', {
         agentType: 'codebuddy',
-        enabledSkills: ['morph-ppt'],
+        enabledSkills: ['pdf'],
       });
 
-      expect(symlinkCalls[0].target).toBe('/tmp/workspace/.codebuddy/skills/morph-ppt');
+      expect(symlinkCalls[0].target).toBe('/tmp/workspace/.codebuddy/skills/pdf');
     });
 
     it('should create symlink in .factory/skills for droid backend', async () => {
@@ -216,6 +290,23 @@ describe('initAgent — skill support', () => {
       });
 
       expect(symlinkCalls[0].source).toBe('/mock/builtin-skills/pptx');
+    });
+
+    it('should resolve bundled skills from nested skill packs', async () => {
+      existsSyncResults['/mock/builtin-skills/engineering-pack'] = true;
+      existsSyncResults['/mock/builtin-skills/engineering-pack/skills'] = true;
+      statResults['/mock/builtin-skills/engineering-pack/skills/engineering-planning'] = true;
+
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'claude',
+        enabledSkills: ['engineering-planning'],
+      });
+
+      expect(symlinkCalls[0]).toEqual({
+        source: '/mock/builtin-skills/engineering-pack/skills/engineering-planning',
+        target: '/tmp/workspace/.claude/skills/engineering-planning',
+        type: 'junction',
+      });
     });
 
     it('should fall back to user skills/ when not in builtin-skills/', async () => {

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -9,7 +9,10 @@ import type { IncomingMessage } from 'http';
 import * as cookie from 'cookie';
 import { AuthService } from '../service/AuthService';
 import { UserRepository } from '../repository/UserRepository';
+import { CloudSessionService } from '../service/CloudSessionService';
 import { AUTH_CONFIG } from '../../config/constants';
+import { CONTEXTGO_SESSION_COOKIE_NAME } from '@/common/utils';
+import type { CloudUser } from '@/common/types/cloud';
 
 /**
  * Token 负载接口
@@ -31,11 +34,11 @@ class TokenExtractor {
   /**
    * 从请求中提取 token，支持以下来源：
    * 1. Authorization header (Bearer token)
-   * 2. Cookie (aionui-session)
+   * 2. Cookie (contextgo-session)
    *
    * Extract token from request, supporting these sources:
    * 1. Authorization header (Bearer token)
-   * 2. Cookie (aionui-session)
+   * 2. Cookie (contextgo-session)
    *
    * @param req - Express 请求对象 / Express request object
    * @returns Token 字符串或 null / Token string or null
@@ -70,6 +73,60 @@ interface ValidationStrategy {
   handleUnauthorized(res: Response): void;
 }
 
+type ResolvedRequestAuth = {
+  source: 'local' | 'cloud';
+  user: TokenPayload;
+  cloudUser?: CloudUser;
+};
+
+async function resolveLocalRequestAuth(token: string): Promise<ResolvedRequestAuth | null> {
+  const decoded = await AuthService.verifyToken(token);
+  if (!decoded) {
+    return null;
+  }
+
+  const user = await UserRepository.findById(decoded.userId);
+  if (!user) {
+    return null;
+  }
+
+  return {
+    source: 'local',
+    user: {
+      userId: user.id,
+      username: user.username,
+    },
+  };
+}
+
+async function resolveCloudRequestAuth(req: Request): Promise<ResolvedRequestAuth | null> {
+  const cloudUser = await CloudSessionService.authenticateRequest(req);
+  if (!cloudUser) {
+    return null;
+  }
+
+  return {
+    source: 'cloud',
+    user: {
+      userId: cloudUser.id,
+      username: cloudUser.username,
+    },
+    cloudUser,
+  };
+}
+
+async function resolveRequestAuth(req: Request): Promise<ResolvedRequestAuth | null> {
+  const token = TokenExtractor.extract(req);
+  if (token) {
+    const localAuth = await resolveLocalRequestAuth(token);
+    if (localAuth) {
+      return localAuth;
+    }
+  }
+
+  return resolveCloudRequestAuth(req);
+}
+
 /**
  * JSON 验证策略 - 返回 JSON 格式的错误响应
  * JSON Validation Strategy - Return JSON format error response
@@ -90,23 +147,12 @@ class HtmlValidationStrategy implements ValidationStrategy {
   }
 }
 
-/**
- * 验证器工厂 - 根据类型创建相应的验证策略
- * Validator Factory - Create validation strategy based on type
- */
-class ValidatorFactory {
-  /**
-   * 创建验证策略
-   * Create validation strategy
-   * @param type - 策略类型 (json 或 html) / Strategy type (json or html)
-   * @returns 验证策略实例 / Validation strategy instance
-   */
-  static create(type: 'json' | 'html'): ValidationStrategy {
-    if (type === 'html') {
-      return new HtmlValidationStrategy();
-    }
-    return new JsonValidationStrategy();
+function createValidationStrategy(type: 'json' | 'html'): ValidationStrategy {
+  if (type === 'html') {
+    return new HtmlValidationStrategy();
   }
+
+  return new JsonValidationStrategy();
 }
 
 /**
@@ -129,36 +175,22 @@ class ValidatorFactory {
  * @returns Express 中间件函数 / Express middleware function
  */
 export const createAuthMiddleware = (type: 'json' | 'html' = 'json') => {
-  const strategy = ValidatorFactory.create(type);
+  const strategy = createValidationStrategy(type);
 
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // 1. 提取 token / Extract token
-    const token = TokenExtractor.extract(req);
-
-    if (!token) {
-      strategy.handleUnauthorized(res);
-      return;
-    }
-
-    // 2. 验证 token / Verify token
-    const decoded = await AuthService.verifyToken(token);
-    if (!decoded) {
-      strategy.handleUnauthorized(res);
-      return;
-    }
-
-    // 3. 查找用户 / Find user
-    const user = await UserRepository.findById(decoded.userId);
-    if (!user) {
+    const resolvedAuth = await resolveRequestAuth(req);
+    if (!resolvedAuth) {
       strategy.handleUnauthorized(res);
       return;
     }
 
     // 4. 附加用户信息到请求对象 / Attach user info to request object
     req.user = {
-      id: user.id,
-      username: user.username,
+      id: resolvedAuth.user.userId,
+      username: resolvedAuth.user.username,
     };
+    req.authSource = resolvedAuth.source;
+    req.cloudUser = resolvedAuth.cloudUser;
 
     next();
   };
@@ -220,9 +252,20 @@ export const TokenMiddleware = {
     const cookieHeader = req.headers['cookie'];
     if (typeof cookieHeader === 'string') {
       const cookies = cookie.parse(cookieHeader);
-      const cookieToken = cookies[AUTH_CONFIG.COOKIE.NAME];
-      if (cookieToken) {
-        return cookieToken;
+      const preferCloudCookie = CloudSessionService.isCloudRequest({ headers: req.headers });
+      const cloudCookieToken = cookies[CONTEXTGO_SESSION_COOKIE_NAME];
+      const localCookieToken = cookies[AUTH_CONFIG.COOKIE.NAME];
+
+      if (preferCloudCookie && cloudCookieToken) {
+        return cloudCookieToken;
+      }
+
+      if (localCookieToken) {
+        return localCookieToken;
+      }
+
+      if (cloudCookieToken) {
+        return cloudCookieToken;
       }
     }
 
@@ -240,6 +283,14 @@ export const TokenMiddleware = {
 
   /** 校验 WebSocket token 是否有效 / Validate WebSocket token */
   async validateWebSocketToken(token: string | null): Promise<boolean> {
-    return Boolean(token && (await AuthService.verifyWebSocketToken(token)));
+    if (!token) {
+      return false;
+    }
+
+    if (await AuthService.verifyWebSocketToken(token)) {
+      return true;
+    }
+
+    return Boolean(await CloudSessionService.authenticateSessionToken(token));
   },
 };

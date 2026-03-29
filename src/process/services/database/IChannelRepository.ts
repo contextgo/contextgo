@@ -5,6 +5,7 @@
  */
 
 import type {
+  IChannelBinding,
   IChannelPluginConfig,
   IChannelPairingRequest,
   IChannelUser,
@@ -17,4 +18,7 @@ export interface IChannelRepository {
   getChannelUsers(): Promise<IChannelUser[]>;
   deleteChannelUser(userId: string): Promise<void>;
   getChannelSessions(): Promise<IChannelSession[]>;
+  getChannelBindings(connectorId?: string): Promise<IChannelBinding[]>;
+  upsertChannelBinding(binding: IChannelBinding): Promise<void>;
+  deleteChannelBinding(bindingId: string): Promise<void>;
 }

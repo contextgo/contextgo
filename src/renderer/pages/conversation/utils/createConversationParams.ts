@@ -5,18 +5,31 @@
  */
 
 import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
+import {
+  type WorkflowTemplateRole,
+  getWorkflowGroupTemplateDefinition,
+  normalizeWorkflowGroupTemplate,
+  normalizeWorkflowTemplateMaxIterations,
+  normalizeWorkflowTemplateReviewMode,
+  normalizeWorkflowTemplateScoreTarget,
+} from '@/common/config/group';
 import { ConfigStorage } from '@/common/config/storage';
 import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
 import type { IAssistantConversationCreateParams } from '@/common/adapter/ipcBridge';
 import type { TProviderWithModel } from '@/common/config/storage';
-import type { DiscussionGroupMode } from '@/common/config/storage';
+import type {
+  DiscussionGroupMode,
+  GroupParticipantRole,
+  WorkflowGroupReviewMode,
+  WorkflowGroupTemplate,
+} from '@/common/config/storage';
 import { resolveLocaleKey } from '@/common/utils';
 import { loadPresetAssistantResources } from '@/renderer/utils/model/presetAssistantResources';
 import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
 import type { AcpBackend, AcpBackendAll } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
 
-export type DiscussionGroupAssistantInput = {
+export type GroupAssistantInput = {
   type: 'preset-assistant';
   participantKey: string;
   name: string;
@@ -25,7 +38,7 @@ export type DiscussionGroupAssistantInput = {
   presetAgentType?: string;
 };
 
-export type DiscussionGroupCliParticipantInput = {
+export type GroupCliParticipantInput = {
   type: 'cli-agent';
   participantKey: string;
   name: string;
@@ -34,7 +47,17 @@ export type DiscussionGroupCliParticipantInput = {
   agent: AvailableAgent;
 };
 
-export type DiscussionGroupParticipantInput = DiscussionGroupAssistantInput | DiscussionGroupCliParticipantInput;
+type GroupParticipantInputBase = {
+  role?: GroupParticipantRole;
+};
+
+export type GroupParticipantInput =
+  | (GroupAssistantInput & GroupParticipantInputBase)
+  | (GroupCliParticipantInput & GroupParticipantInputBase);
+
+export type WorkflowGroupParticipantInput =
+  | (GroupAssistantInput & { role: WorkflowTemplateRole })
+  | (GroupCliParticipantInput & { role: WorkflowTemplateRole });
 
 const buildGoogleAuthGeminiModel = (useModel: string, id = GOOGLE_AUTH_PROVIDER_ID): TProviderWithModel => {
   return {
@@ -220,28 +243,26 @@ export async function buildPresetAssistantParams(
   return { type, model, name: agent.name, extra };
 }
 
-export const createDiscussionGroupPlaceholderModel = (): TProviderWithModel => {
+export const createGroupPlaceholderModel = (): TProviderWithModel => {
   return {
-    id: 'discussion-group-placeholder',
-    name: 'Discussion Group',
-    useModel: 'discussion-group',
-    platform: 'discussion-group',
+    id: 'group-placeholder',
+    name: 'Group',
+    useModel: 'group',
+    platform: 'group' as TProviderWithModel['platform'],
     baseUrl: '',
     apiKey: '',
   } as TProviderWithModel;
 };
 
-export async function buildDiscussionGroupParams(options: {
-  name: string;
+const buildGroupParticipants = async (options: {
   workspace?: string;
   language: string;
-  mode: DiscussionGroupMode;
-  participants: DiscussionGroupParticipantInput[];
-}): Promise<ICreateConversationParams> {
+  participants: GroupParticipantInput[];
+}) => {
   const customWorkspace = Boolean(options.workspace?.trim());
   const normalizedWorkspace = options.workspace?.trim() || undefined;
 
-  const participants = await Promise.all(
+  return Promise.all(
     options.participants.map(async (participant) => {
       const conversation =
         participant.type === 'preset-assistant'
@@ -253,10 +274,13 @@ export async function buildDiscussionGroupParams(options: {
                 isPreset: true,
                 presetAgentType: participant.presetAgentType,
               },
-              options.workspace,
+              normalizedWorkspace || '',
               options.language
             )) as IAssistantConversationCreateParams)
-          : ((await buildCliAgentParams(participant.agent, options.workspace)) as IAssistantConversationCreateParams);
+          : ((await buildCliAgentParams(
+              participant.agent,
+              normalizedWorkspace || ''
+            )) as IAssistantConversationCreateParams);
 
       return {
         id: uuid(),
@@ -266,6 +290,7 @@ export async function buildDiscussionGroupParams(options: {
         name: participant.name,
         avatar: participant.avatar,
         description: participant.description,
+        role: participant.role,
         conversation: {
           ...conversation,
           name: participant.name,
@@ -278,18 +303,76 @@ export async function buildDiscussionGroupParams(options: {
       };
     })
   );
+};
+
+export async function buildDiscussionGroupParams(options: {
+  name: string;
+  workspace?: string;
+  language: string;
+  mode: DiscussionGroupMode;
+  participants: GroupParticipantInput[];
+}): Promise<ICreateConversationParams> {
+  const customWorkspace = Boolean(options.workspace?.trim());
+  const normalizedWorkspace = options.workspace?.trim() || undefined;
+  const participants = await buildGroupParticipants({
+    workspace: options.workspace,
+    language: options.language,
+    participants: options.participants,
+  });
 
   return {
     type: 'group',
-    model: createDiscussionGroupPlaceholderModel(),
+    model: createGroupPlaceholderModel(),
     name: options.name,
     extra: {
       workspace: normalizedWorkspace,
       customWorkspace,
       participants,
       orchestration: {
+        kind: 'discussion',
         mode: options.mode,
         rounds: options.mode === 'debate' ? 2 : 1,
+      },
+    },
+  };
+}
+
+export async function buildWorkflowGroupParams(options: {
+  name: string;
+  workspace?: string;
+  language: string;
+  template?: WorkflowGroupTemplate;
+  participants: WorkflowGroupParticipantInput[];
+  maxIterations?: number;
+  scoreTarget?: number;
+  artifactPath?: string;
+  reviewMode?: WorkflowGroupReviewMode;
+}): Promise<ICreateConversationParams> {
+  const customWorkspace = Boolean(options.workspace?.trim());
+  const normalizedWorkspace = options.workspace?.trim() || undefined;
+  const template = normalizeWorkflowGroupTemplate(options.template);
+  const templateDefinition = getWorkflowGroupTemplateDefinition(template);
+  const participants = await buildGroupParticipants({
+    workspace: options.workspace,
+    language: options.language,
+    participants: options.participants,
+  });
+
+  return {
+    type: 'group',
+    model: createGroupPlaceholderModel(),
+    name: options.name,
+    extra: {
+      workspace: normalizedWorkspace,
+      customWorkspace,
+      participants,
+      orchestration: {
+        kind: 'workflow',
+        template,
+        maxIterations: normalizeWorkflowTemplateMaxIterations(options.maxIterations, template),
+        scoreTarget: normalizeWorkflowTemplateScoreTarget(options.scoreTarget, template),
+        artifactPath: options.artifactPath?.trim() || templateDefinition.defaults.artifactPath,
+        reviewMode: normalizeWorkflowTemplateReviewMode(options.reviewMode, template),
       },
     },
   };
