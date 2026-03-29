@@ -145,6 +145,7 @@ jobs:
           mkdir -p "${CACHE_ROOT}"
           echo "${NODE_BIN_DIR}" >> "${GITHUB_PATH}"
           echo "npm_config_cache=${CACHE_ROOT}" >> "${GITHUB_ENV}"
+          export PATH="${NODE_BIN_DIR}:${PATH}"
 
           "${NODE_BIN_DIR}/node" -v
           "${NODE_BIN_DIR}/npm" -v
