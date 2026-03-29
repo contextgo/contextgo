@@ -9,7 +9,7 @@ import { bridge } from '@office-ai/platform';
 import type { OpenDialogOptions } from 'electron';
 import type { McpSource } from '../../process/services/mcpServices/McpProtocol';
 import type { AcpBackend, AcpBackendAll, AcpModelInfo, PresetAgentType } from '../types/acpTypes';
-import type { HookInfo } from '../types/hookTypes';
+import type { HookInfo, HookOutputRoutingConfig } from '../types/hookTypes';
 import type { ExternalSessionSummary, ImportExternalSessionParams } from '../types/externalSessions';
 import type { SlashCommandItem } from '../chat/slash/types';
 import type {
@@ -26,6 +26,7 @@ import type {
   WorkflowGroupRunState,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
+import type { CloudAuthProviderId, CloudStatus, CloudSyncSummary } from '../types/cloud';
 import type {
   UpdateCheckRequest,
   UpdateCheckResult,
@@ -141,10 +142,11 @@ export const application = {
   reportRendererError: bridge.buildProvider<
     void,
     {
-      type: 'error' | 'unhandledrejection';
+      type: 'error' | 'unhandledrejection' | 'react-error-boundary';
       message: string;
       stack?: string;
       href?: string;
+      timestamp?: string;
     }
   >('app.report-renderer-error'), // 上报 renderer 未捕获异常到主进程日志
   systemInfo: bridge.buildProvider<
@@ -164,6 +166,16 @@ export const application = {
   ),
   // DevTools state change notification
   devToolsStateChanged: bridge.buildEmitter<{ isOpen: boolean }>('app.devtools-state-changed'),
+};
+
+export const cloud = {
+  getStatus: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.get-status'),
+  startLogin: bridge.buildProvider<IBridgeResponse<CloudStatus>, { provider: CloudAuthProviderId }>(
+    'cloud.start-login'
+  ),
+  logout: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.logout'),
+  syncNow: bridge.buildProvider<IBridgeResponse<CloudSyncSummary>, void>('cloud.sync-now'),
+  statusChanged: bridge.buildEmitter<CloudStatus>('cloud.status-changed'),
 };
 
 // Manual (opt-in) updates via GitHub Releases
@@ -274,6 +286,11 @@ export const fs = {
   deleteHook: bridge.buildProvider<IBridgeResponse, { hookName: string }>('delete-hook'),
   // 获取 hook 存储路径 / Get hook storage paths
   getHookPaths: bridge.buildProvider<{ userHooksDir: string }, void>('get-hook-paths'),
+  // 更新 hook 输出路由配置 / Update hook output routing settings
+  updateHookManifest: bridge.buildProvider<
+    IBridgeResponse<{ hookName: string }>,
+    { hookName: string; config: HookOutputRoutingConfig }
+  >('update-hook-manifest'),
   // 读取 skill 信息（不导入）/ Read skill info without importing
   readSkillInfo: bridge.buildProvider<IBridgeResponse<{ name: string; description: string }>, { skillPath: string }>(
     'read-skill-info'
@@ -321,9 +338,39 @@ export const fs = {
     'add-custom-external-path'
   ),
   removeCustomExternalPath: bridge.buildProvider<IBridgeResponse, { path: string }>('remove-custom-external-path'),
-  // Skills Market: inject/remove the aionui-skills builtin skill
-  enableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('enable-skills-market'),
-  disableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('disable-skills-market'),
+  // Skill Market: remote catalog search and package install
+  searchSkillMarket: bridge.buildProvider<
+    IBridgeResponse<{
+      items: Array<{
+        id: string;
+        name: string;
+        displayName: string;
+        version: string;
+        author: string;
+        description: string;
+        categories: string[];
+        tags: string[];
+        homepage?: string;
+        readmeUrl?: string;
+        archives: Array<{ source: string; relativePath: string; label?: string }>;
+        popularity: number;
+        installs: number;
+        stars: number;
+      }>;
+      total: number;
+      totalAvailable: number;
+      siteUrl: string;
+      pageSize: number;
+      featuredCount: number;
+      categories: string[];
+      sources: Record<string, number>;
+    }>,
+    { query?: string; limit?: number; offset?: number; forceRefresh?: boolean }
+  >('search-skill-market'),
+  installSkillMarketSkill: bridge.buildProvider<
+    IBridgeResponse<{ skillName: string; installedPath: string; archiveUrl: string }>,
+    { skillId: string; archive?: { source: string; relativePath: string; label?: string } }
+  >('install-skill-market-skill'),
 };
 
 export const fileWatch = {
@@ -668,11 +715,24 @@ export const voiceInput = {
   >('voice-input:set-config'),
   getState: bridge.buildProvider<import('../types/voiceInput').VoiceInputState, void>('voice-input:get-state'),
   getStats: bridge.buildProvider<import('../types/voiceInput').VoiceInputStats, void>('voice-input:get-stats'),
+  getExternalOptions: bridge.buildProvider<import('../types/voiceInput').VoiceInputExternalOption[], void>(
+    'voice-input:get-external-options'
+  ),
   requestPermissions: bridge.buildProvider<import('../types/voiceInput').VoiceInputPermissions, void>(
     'voice-input:request-permissions'
   ),
   startManualCapture: bridge.buildProvider<void, void>('voice-input:start-manual-capture'),
   stopManualCapture: bridge.buildProvider<void, void>('voice-input:stop-manual-capture'),
+  getOpenWhisperState: bridge.buildProvider<import('../types/voiceInput').VoiceInputOpenWhisperState, void>(
+    'voice-input:get-open-whisper-state'
+  ),
+  installOpenWhisperRuntime: bridge.buildProvider<import('../types/voiceInput').VoiceInputOpenWhisperState, void>(
+    'voice-input:install-open-whisper-runtime'
+  ),
+  installOpenWhisperModel: bridge.buildProvider<
+    import('../types/voiceInput').VoiceInputOpenWhisperState,
+    { modelId?: import('../types/voiceInput').VoiceInputOpenWhisperModelId }
+  >('voice-input:install-open-whisper-model'),
   listRecords: bridge.buildProvider<import('../types/voiceInput').VoiceInputRecord[], { limit?: number }>(
     'voice-input:list-records'
   ),
@@ -1148,7 +1208,7 @@ export const channel = {
   disablePlugin: bridge.buildProvider<IBridgeResponse, { pluginId: string }>('channel.disable-plugin'),
   testPlugin: bridge.buildProvider<
     IBridgeResponse<{ success: boolean; botUsername?: string; error?: string }>,
-    { pluginId: string; token: string; extraConfig?: { appId?: string; appSecret?: string } }
+    { pluginId: string; token: string; extraConfig?: Record<string, string | boolean | undefined> }
   >('channel.test-plugin'),
 
   // Pairing Management

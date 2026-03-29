@@ -2,6 +2,7 @@ import {
   DEFAULT_VOICE_INPUT_CONFIG,
   type VoiceInputConfig,
   type VoiceInputDashScopeConfig,
+  type VoiceInputOpenWhisperConfig,
   type VoiceInputVolcengineConfig,
   type VoiceInputPermissionState,
   type VoiceInputPermissions,
@@ -47,6 +48,7 @@ const normalizeDashScopeConfig = (value: unknown): VoiceInputDashScopeConfig => 
       ? normalizeList(raw.languageHints)
       : DEFAULT_VOICE_INPUT_CONFIG.providers.dashscope.languageHints,
     vocabularyId: normalizeString(raw.vocabularyId),
+    phraseId: normalizeString(raw.phraseId),
     hotwords: normalizeList(raw.hotwords),
   };
 };
@@ -59,6 +61,25 @@ const normalizeVolcengineConfig = (value: unknown): VoiceInputVolcengineConfig =
     accessKey: normalizeString(raw.accessKey),
     resourceId: normalizeString(raw.resourceId) || DEFAULT_VOICE_INPUT_CONFIG.providers.volcengine.resourceId,
     model: normalizeString(raw.model) || DEFAULT_VOICE_INPUT_CONFIG.providers.volcengine.model,
+    boostingTableId: normalizeString(raw.boostingTableId),
+    correctTableId: normalizeString(raw.correctTableId),
+    hotwords: normalizeList(raw.hotwords),
+  };
+};
+
+const normalizeOpenWhisperConfig = (value: unknown): VoiceInputOpenWhisperConfig => {
+  const raw = value && typeof value === 'object' ? (value as Partial<VoiceInputOpenWhisperConfig>) : {};
+
+  return {
+    cliPath: normalizeString(raw.cliPath),
+    modelId:
+      raw.modelId && ['tiny', 'base', 'small', 'medium', 'large-v3-turbo'].includes(raw.modelId as string)
+        ? raw.modelId
+        : DEFAULT_VOICE_INPUT_CONFIG.providers.openWhisper.modelId,
+    languageHints: normalizeList(raw.languageHints).length
+      ? normalizeList(raw.languageHints)
+      : DEFAULT_VOICE_INPUT_CONFIG.providers.openWhisper.languageHints,
+    hotwords: normalizeList(raw.hotwords),
   };
 };
 
@@ -68,7 +89,7 @@ export const normalizeVoiceInputConfig = (value: unknown): VoiceInputConfig => {
   return {
     enabled: raw.enabled === true,
     providerId:
-      raw.providerId === 'dashscope' || raw.providerId === 'volcengine'
+      raw.providerId === 'dashscope' || raw.providerId === 'volcengine' || raw.providerId === 'openWhisper'
         ? raw.providerId
         : DEFAULT_VOICE_INPUT_CONFIG.providerId,
     triggerMode: isVoiceInputTriggerMode(raw.triggerMode) ? raw.triggerMode : DEFAULT_VOICE_INPUT_CONFIG.triggerMode,
@@ -76,6 +97,7 @@ export const normalizeVoiceInputConfig = (value: unknown): VoiceInputConfig => {
     providers: {
       dashscope: normalizeDashScopeConfig(raw.providers?.dashscope),
       volcengine: normalizeVolcengineConfig(raw.providers?.volcengine),
+      openWhisper: normalizeOpenWhisperConfig(raw.providers?.openWhisper),
     },
   };
 };
@@ -87,6 +109,10 @@ export const isVoiceInputTriggerMode = (value: unknown): value is VoiceInputTrig
 export const isVoiceInputConfigured = (config: VoiceInputConfig): boolean => {
   if (config.providerId === 'dashscope') {
     return config.providers.dashscope.apiKey.length > 0;
+  }
+
+  if (config.providerId === 'openWhisper') {
+    return config.providers.openWhisper.modelId.length > 0;
   }
 
   return (

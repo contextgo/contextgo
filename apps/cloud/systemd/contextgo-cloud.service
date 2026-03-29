@@ -1,0 +1,16 @@
+[Unit]
+Description=ContextGo cloud auth service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=contextgo
+Group=contextgo
+WorkingDirectory=/opt/contextgo-cloud
+ExecStart=/bin/bash -lc 'set -a && source /etc/contextgo-cloud/contextgo-cloud.env && set +a && exec /opt/contextgo-cloud/.venv/bin/uvicorn contextgo_cloud.app:app --host 127.0.0.1 --port 3001'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

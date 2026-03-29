@@ -13,13 +13,22 @@ import { BasePlugin } from '../BasePlugin';
 import { toUnifiedIncomingMessage, stripHtml } from './WeixinAdapter';
 import { startMonitor } from './WeixinMonitor';
 import type { WeixinChatRequest, WeixinChatResponse } from './WeixinMonitor';
+import { DEFAULT_WEIXIN_CDN_BASE_URL } from './media/mediaIO';
+import { getMimeFromFilename } from './media/mime';
 
 const RESPONSE_TIMEOUT_MS = 5 * 60 * 1000;
+
+type PendingMediaResponse = {
+  filePath: string;
+  fileName?: string;
+  mimeType?: string;
+};
 
 interface PendingResponse {
   resolve: (response: WeixinChatResponse) => void;
   reject: (error: Error) => void;
   accumulatedText: string;
+  mediaResponse?: PendingMediaResponse;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -29,6 +38,7 @@ export class WeixinPlugin extends BasePlugin {
   private accountId = '';
   private botToken = '';
   private baseUrl = 'https://ilinkai.weixin.qq.com';
+  private cdnBaseUrl = DEFAULT_WEIXIN_CDN_BASE_URL;
   private abortController: AbortController | null = null;
   private _stopping = false;
   private pendingResponses = new Map<string, PendingResponse>();
@@ -37,13 +47,14 @@ export class WeixinPlugin extends BasePlugin {
   // ==================== Lifecycle ====================
 
   protected async onInitialize(config: IChannelPluginConfig): Promise<void> {
-    const { accountId, botToken, baseUrl } = config.credentials ?? {};
+    const { accountId, botToken, baseUrl, cdnBaseUrl } = config.credentials ?? {};
     if (!accountId || !botToken) {
       throw new Error('WeChat accountId and botToken are required');
     }
     this.accountId = accountId as string;
     this.botToken = botToken as string;
     this.baseUrl = (baseUrl as string | undefined) ?? 'https://ilinkai.weixin.qq.com';
+    this.cdnBaseUrl = (cdnBaseUrl as string | undefined) ?? DEFAULT_WEIXIN_CDN_BASE_URL;
   }
 
   protected async onStart(): Promise<void> {
@@ -51,6 +62,7 @@ export class WeixinPlugin extends BasePlugin {
     this.abortController = new AbortController();
     startMonitor({
       baseUrl: this.baseUrl,
+      cdnBaseUrl: this.cdnBaseUrl,
       token: this.botToken,
       accountId: this.accountId,
       dataDir: getPlatformServices().paths.getDataDir(),
@@ -78,8 +90,22 @@ export class WeixinPlugin extends BasePlugin {
 
   async sendMessage(chatId: string, message: IUnifiedOutgoingMessage): Promise<string> {
     const pending = this.pendingResponses.get(chatId);
-    if (pending && message.text) {
-      pending.accumulatedText = stripHtml(message.text);
+    if (pending) {
+      if (message.text) {
+        pending.accumulatedText = stripHtml(message.text);
+      }
+      if (message.type === 'image' && message.imageUrl) {
+        pending.mediaResponse = {
+          filePath: message.imageUrl,
+          mimeType: getMimeFromFilename(message.imageUrl),
+        };
+      } else if (message.type === 'file' && message.fileUrl) {
+        pending.mediaResponse = {
+          filePath: message.fileUrl,
+          fileName: message.fileName || path.basename(message.fileUrl),
+          mimeType: getMimeFromFilename(message.fileName || message.fileUrl),
+        };
+      }
     }
     return `weixin_pending_${chatId}`;
   }
@@ -91,11 +117,26 @@ export class WeixinPlugin extends BasePlugin {
     if (message.text) {
       pending.accumulatedText = message.text;
     }
+    if (message.type === 'image' && message.imageUrl) {
+      pending.mediaResponse = {
+        filePath: message.imageUrl,
+        mimeType: getMimeFromFilename(message.imageUrl),
+      };
+    } else if (message.type === 'file' && message.fileUrl) {
+      pending.mediaResponse = {
+        filePath: message.fileUrl,
+        fileName: message.fileName || path.basename(message.fileUrl),
+        mimeType: getMimeFromFilename(message.fileName || message.fileUrl),
+      };
+    }
 
     if (message.replyMarkup !== undefined) {
       clearTimeout(pending.timer);
       this.pendingResponses.delete(chatId);
-      pending.resolve({ text: pending.accumulatedText || undefined });
+      pending.resolve({
+        text: pending.accumulatedText || undefined,
+        media: pending.mediaResponse,
+      });
     }
   }
 
@@ -134,6 +175,7 @@ export class WeixinPlugin extends BasePlugin {
         resolve,
         reject,
         accumulatedText: '',
+        mediaResponse: undefined,
         timer,
       });
 
@@ -144,7 +186,10 @@ export class WeixinPlugin extends BasePlugin {
           if (pending) {
             clearTimeout(pending.timer);
             this.pendingResponses.delete(conversationId);
-            pending.resolve({ text: pending.accumulatedText || undefined });
+            pending.resolve({
+              text: pending.accumulatedText || undefined,
+              media: pending.mediaResponse,
+            });
           }
         })
         .catch((error: unknown) => {

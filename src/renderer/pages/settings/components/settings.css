@@ -1,3 +1,96 @@
+/* Settings shared control style */
+.settings-page-wrapper,
+.settings-modal,
+.settings-sub-modal {
+  --settings-control-radius: 12px;
+  --settings-control-radius-lg: 14px;
+  --settings-control-pill-radius: 999px;
+}
+
+.settings-page-wrapper :where(.arco-space-horizontal.arco-space-align-center.arco-space-wrap),
+.settings-modal :where(.arco-space-horizontal.arco-space-align-center.arco-space-wrap),
+.settings-sub-modal :where(.arco-space-horizontal.arco-space-align-center.arco-space-wrap) {
+  gap: 8px 10px !important;
+}
+
+.settings-page-wrapper :where(.arco-space-item > .arco-btn),
+.settings-modal :where(.arco-space-item > .arco-btn),
+.settings-sub-modal :where(.arco-space-item > .arco-btn) {
+  border-radius: var(--settings-control-radius) !important;
+}
+
+.settings-page-wrapper :where(.arco-btn),
+.settings-modal :where(.arco-btn),
+.settings-sub-modal :where(.arco-btn) {
+  border-radius: var(--settings-control-radius) !important;
+}
+
+.settings-page-wrapper :where(.arco-btn.arco-btn-shape-round),
+.settings-page-wrapper :where(.arco-btn.arco-btn-shape-circle),
+.settings-modal :where(.arco-btn.arco-btn-shape-round),
+.settings-modal :where(.arco-btn.arco-btn-shape-circle),
+.settings-sub-modal :where(.arco-btn.arco-btn-shape-round),
+.settings-sub-modal :where(.arco-btn.arco-btn-shape-circle) {
+  border-radius: var(--settings-control-pill-radius) !important;
+}
+
+.settings-page-wrapper :where(.arco-btn.arco-btn-size-mini),
+.settings-page-wrapper :where(.arco-btn.arco-btn-size-small),
+.settings-modal :where(.arco-btn.arco-btn-size-mini),
+.settings-modal :where(.arco-btn.arco-btn-size-small),
+.settings-sub-modal :where(.arco-btn.arco-btn-size-mini),
+.settings-sub-modal :where(.arco-btn.arco-btn-size-small) {
+  min-height: 30px;
+}
+
+.settings-page-wrapper :where(.arco-input-wrapper),
+.settings-page-wrapper :where(.arco-input),
+.settings-page-wrapper :where(.arco-textarea-wrapper),
+.settings-page-wrapper :where(.arco-textarea),
+.settings-page-wrapper :where(.arco-select-view),
+.settings-page-wrapper :where(.arco-input-number),
+.settings-page-wrapper :where(.arco-picker),
+.settings-page-wrapper :where(.arco-cascader-view),
+.settings-page-wrapper :where(.arco-tree-select-view),
+.settings-page-wrapper :where(.arco-auto-complete-view),
+.settings-page-wrapper :where(.arco-mentions-view),
+.settings-modal :where(.arco-input-wrapper),
+.settings-modal :where(.arco-input),
+.settings-modal :where(.arco-textarea-wrapper),
+.settings-modal :where(.arco-textarea),
+.settings-modal :where(.arco-select-view),
+.settings-modal :where(.arco-input-number),
+.settings-modal :where(.arco-picker),
+.settings-modal :where(.arco-cascader-view),
+.settings-modal :where(.arco-tree-select-view),
+.settings-modal :where(.arco-auto-complete-view),
+.settings-modal :where(.arco-mentions-view),
+.settings-sub-modal :where(.arco-input-wrapper),
+.settings-sub-modal :where(.arco-input),
+.settings-sub-modal :where(.arco-textarea-wrapper),
+.settings-sub-modal :where(.arco-textarea),
+.settings-sub-modal :where(.arco-select-view),
+.settings-sub-modal :where(.arco-input-number),
+.settings-sub-modal :where(.arco-picker),
+.settings-sub-modal :where(.arco-cascader-view),
+.settings-sub-modal :where(.arco-tree-select-view),
+.settings-sub-modal :where(.arco-auto-complete-view),
+.settings-sub-modal :where(.arco-mentions-view) {
+  border-radius: var(--settings-control-radius-lg) !important;
+}
+
+.settings-page-wrapper :where(.arco-input, .arco-textarea),
+.settings-modal :where(.arco-input, .arco-textarea),
+.settings-sub-modal :where(.arco-input, .arco-textarea) {
+  border-radius: inherit !important;
+}
+
+.settings-page-wrapper :where(.arco-input-number .arco-input),
+.settings-modal :where(.arco-input-number .arco-input),
+.settings-sub-modal :where(.arco-input-number .arco-input) {
+  border-radius: inherit !important;
+}
+
 /* Settings mobile top nav */
 @media (max-width: 767px) {
   .settings-mobile-top-nav {

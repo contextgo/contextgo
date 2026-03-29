@@ -50,7 +50,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const isDesktopRuntime = isElectronDesktop();
   const isMacRuntime = isDesktopRuntime && isMacOS();
   const { cliAgents, presetAssistants } = useConversationAgents();
-  const { activeTab, openTab } = useConversationTabs();
+  const { activeTab, openTab, openTabs } = useConversationTabs();
 
   // 监听工作空间折叠状态，保持按钮图标一致 / Sync workspace collapsed state for toggle button
   useEffect(() => {
@@ -113,6 +113,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const newEntryTooltip = t('conversation.entry.create');
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const isSettingsRoute = location.pathname.startsWith('/settings');
+  const showDesktopConversationTabs = !layout?.isMobile && workspaceAvailable && openTabs.length > 1;
   const iconSize = layout?.isMobile ? 24 : 18;
   // 统一在标题栏左侧展示主侧栏开关 / Always expose sidebar toggle on titlebar left side
   const showSiderToggle = Boolean(layout?.setSiderCollapsed) && !(layout?.isMobile && isSettingsRoute);
@@ -242,6 +243,10 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
         '--app-titlebar-mobile-center-offset': `${workspaceAvailable ? mobileCenterOffset : 0}px`,
       } as React.CSSProperties)
     : undefined;
+  const showDesktopToolbar = showWorkspaceButton || showWindowControls;
+  const showDesktopRightSection = showDesktopConversationTabs || showDesktopToolbar;
+  const showDesktopChromeOnlyLayout = !layout?.isMobile && !showDesktopConversationTabs && !showDesktopToolbar;
+  const shouldDockDesktopLeftToPane = !layout?.isMobile && leftPaneWidth > 0;
 
   const desktopLeftSectionStyle: React.CSSProperties = useMemo(() => {
     if (layout?.isMobile) {
@@ -250,6 +255,13 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
 
     const reserveMacTrafficLights = isMacRuntime && !isFullScreen;
     const minimumWidth = reserveMacTrafficLights ? 120 : 56;
+    if (!shouldDockDesktopLeftToPane) {
+      return {
+        paddingLeft: reserveMacTrafficLights ? '72px' : '8px',
+        paddingRight: '8px',
+      };
+    }
+
     const effectiveWidth = Math.max(leftPaneWidth, minimumWidth);
 
     return {
@@ -258,78 +270,99 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       paddingLeft: reserveMacTrafficLights ? '72px' : '8px',
       paddingRight: '8px',
     };
-  }, [isFullScreen, isMacRuntime, layout?.isMobile, leftPaneWidth]);
+  }, [isFullScreen, isMacRuntime, layout?.isMobile, leftPaneWidth, shouldDockDesktopLeftToPane]);
+
+  const desktopLeftControls = (
+    <div
+      className={classNames(
+        'app-titlebar__desktop-left',
+        shouldDockDesktopLeftToPane && 'app-titlebar__desktop-left--docked'
+      )}
+      style={desktopLeftSectionStyle}
+    >
+      {showSiderToggle && (
+        <button type='button' className='app-titlebar__button' onClick={handleSiderToggle} aria-label={siderTooltip}>
+          {layout.siderCollapsed ? (
+            <MenuUnfold theme='outline' size={iconSize} fill='currentColor' />
+          ) : (
+            <MenuFold theme='outline' size={iconSize} fill='currentColor' />
+          )}
+        </button>
+      )}
+      <button
+        type='button'
+        className='app-titlebar__button'
+        onClick={handleNavigateBack}
+        aria-label={t('common.goBack')}
+      >
+        <Left theme='outline' size={iconSize} fill='currentColor' />
+      </button>
+      <button
+        type='button'
+        className='app-titlebar__button'
+        onClick={handleNavigateForward}
+        aria-label={t('common.forward')}
+      >
+        <Right theme='outline' size={iconSize} fill='currentColor' />
+      </button>
+    </div>
+  );
 
   if (!layout?.isMobile) {
+    if (showDesktopChromeOnlyLayout) {
+      return (
+        <div
+          className={classNames('app-titlebar app-titlebar--desktop-chrome-only', {
+            'app-titlebar--desktop': isDesktopRuntime,
+            'app-titlebar--mac': isMacRuntime,
+          })}
+        >
+          {desktopLeftControls}
+        </div>
+      );
+    }
+
     return (
       <div
-        className={classNames('app-titlebar bg-2 border-b border-[var(--border-base)]', {
-          'app-titlebar--desktop': isDesktopRuntime,
-          'app-titlebar--mac': isMacRuntime,
-        })}
+        className={classNames(
+          'app-titlebar border-b border-[var(--border-base)]',
+          shouldDockDesktopLeftToPane ? 'bg-2' : 'bg-1',
+          {
+            'app-titlebar--desktop': isDesktopRuntime,
+            'app-titlebar--mac': isMacRuntime,
+          }
+        )}
       >
-        <div className='app-titlebar__desktop-left' style={desktopLeftSectionStyle}>
-          {showSiderToggle && (
-            <button
-              type='button'
-              className='app-titlebar__button'
-              onClick={handleSiderToggle}
-              aria-label={siderTooltip}
-            >
-              {layout.siderCollapsed ? (
-                <MenuUnfold theme='outline' size={iconSize} fill='currentColor' />
-              ) : (
-                <MenuFold theme='outline' size={iconSize} fill='currentColor' />
-              )}
-            </button>
-          )}
-          <button
-            type='button'
-            className='app-titlebar__button'
-            onClick={handleNavigateBack}
-            aria-label={t('common.goBack')}
-          >
-            <Left theme='outline' size={iconSize} fill='currentColor' />
-          </button>
-          <button
-            type='button'
-            className='app-titlebar__button'
-            onClick={handleNavigateForward}
-            aria-label={t('common.forward')}
-          >
-            <Right theme='outline' size={iconSize} fill='currentColor' />
-          </button>
-        </div>
-        <div className='app-titlebar__desktop-right'>
-          <div
-            className={classNames(
-              'app-titlebar__desktop-content',
-              workspaceAvailable && 'app-titlebar__desktop-content--conversation'
+        {desktopLeftControls}
+        {showDesktopRightSection && (
+          <div className='app-titlebar__desktop-right'>
+            {showDesktopConversationTabs ? (
+              <div className='app-titlebar__desktop-content app-titlebar__desktop-content--conversation'>
+                <div id='app-titlebar-chat-slot' className='h-full min-w-0' />
+              </div>
+            ) : null}
+            {showDesktopToolbar && (
+              <div ref={toolbarRef} className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
+                <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />
+                {showWorkspaceButton && (
+                  <button
+                    type='button'
+                    className='app-titlebar__button'
+                    onClick={handleWorkspaceToggle}
+                    aria-label={workspaceTooltip}
+                  >
+                    {workspaceCollapsed ? (
+                      <ExpandRight theme='outline' size={iconSize} fill='currentColor' />
+                    ) : (
+                      <ExpandLeft theme='outline' size={iconSize} fill='currentColor' />
+                    )}
+                  </button>
+                )}
+                {showWindowControls && <WindowControls />}
+              </div>
             )}
-          >
-            <div id='app-titlebar-chat-slot' className='h-full min-w-0' />
           </div>
-          {(showWorkspaceButton || showWindowControls) && (
-            <div ref={toolbarRef} className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
-              <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />
-              {showWorkspaceButton && (
-                <button
-                  type='button'
-                  className='app-titlebar__button'
-                  onClick={handleWorkspaceToggle}
-                  aria-label={workspaceTooltip}
-                >
-                  {workspaceCollapsed ? (
-                    <ExpandRight theme='outline' size={iconSize} fill='currentColor' />
-                  ) : (
-                    <ExpandLeft theme='outline' size={iconSize} fill='currentColor' />
-                  )}
-                </button>
-              )}
-              {showWindowControls && <WindowControls />}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     );
   }

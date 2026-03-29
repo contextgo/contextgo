@@ -16,10 +16,7 @@
     "none": "없음",
     "quickActionsTitle": "ContextGo로 무엇을 할 수 있나요?",
     "quickActionFeedback": "피드백이나 제안이 있으신가요?",
-    "quickActionStar": "마음에 드시나요? 별을 주세요!",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "커뮤니티 Skills를 필요에 따라 검색하고 활성화. 한 번 설정하면 모든 Agent에서 사용 가능.",
-    "skillsMarketDetails": "자세히 >>"
+    "quickActionStar": "마음에 드시나요? 별을 주세요!"
   },
   "history": {
     "today": "오늘",
@@ -81,6 +78,7 @@
     "empty": "일치하는 메시지를 찾을 수 없습니다",
     "clear": "검색 지우기",
     "loadingMore": "더 불러오는 중...",
+    "recentConversations": "최근 대화",
     "untitled": "제목 없는 대화"
   },
   "entry": {
@@ -308,6 +306,21 @@
     "switchAgentFailed": "에이전트 전환 실패",
     "modelSwitchFailed": "모델 전환에 실패했습니다",
     "modelSwitchNotSupported": "현재 OpenClaw Gateway는 모델 전환을 지원하지 않습니다"
+  },
+  "pendingMessages": {
+    "title": "대기 중 {{count}}개",
+    "shortcuts": "Tab 큐 적재 · Cmd/Ctrl+Enter 유도 · Option/Alt+↑ 최근 항목 편집",
+    "attachments": "파일 {{count}}개",
+    "dispatching": "전송 중...",
+    "edit": "다시 편집",
+    "mode": {
+      "queue": "큐",
+      "steer": "유도"
+    },
+    "actions": {
+      "queue": "큐로 변경",
+      "steer": "유도로 변경"
+    }
   },
   "contextUsage": {
     "contextUsed": "사용된 컨텍스트"

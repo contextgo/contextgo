@@ -16,10 +16,7 @@
     "none": "Hiçbiri",
     "quickActionsTitle": "ContextGo neler yapabilir?",
     "quickActionFeedback": "Geri bildirim veya öneriniz mi var?",
-    "quickActionStar": "Bizi beğendiniz mi? Yıldız verin!",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "Topluluk Skills'lerini ihtiyaç duyduğunuzda arayın ve etkinleştirin. Bir kez yapılandırın, tüm Agent'larda kullanılabilir.",
-    "skillsMarketDetails": "Ayrıntılar >>"
+    "quickActionStar": "Bizi beğendiniz mi? Yıldız verin!"
   },
   "history": {
     "today": "Bugün",
@@ -81,6 +78,7 @@
     "empty": "Eşleşen mesaj bulunamadı",
     "clear": "Aramayı temizle",
     "loadingMore": "Daha fazla yükleniyor...",
+    "recentConversations": "Son sohbetler",
     "untitled": "Adsız sohbet"
   },
   "entry": {
@@ -331,6 +329,21 @@
         "failed": "Başarısız",
         "stopped": "Durduruldu"
       }
+    }
+  },
+  "pendingMessages": {
+    "title": "{{count}} bekleyen mesaj",
+    "shortcuts": "Tab kuyruğa al · Cmd/Ctrl+Enter yönlendir · Option/Alt+↑ sonuncuyu düzenle",
+    "attachments": "{{count}} dosya",
+    "dispatching": "Gönderiliyor...",
+    "edit": "Yeniden düzenle",
+    "mode": {
+      "queue": "Kuyruk",
+      "steer": "Yönlendir"
+    },
+    "actions": {
+      "queue": "Kuyruğa taşı",
+      "steer": "Sonraki adıma yönlendir"
     }
   },
   "noAgentsAvailable": "No agents available",

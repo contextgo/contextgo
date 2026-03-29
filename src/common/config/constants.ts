@@ -54,6 +54,12 @@ export const DEFAULT_IMAGE_EXTENSION = '.png';
 /** WebUI default port: 25808 for production, 25809 for development (environment isolation) */
 export const WEBUI_DEFAULT_PORT = process.env.NODE_ENV === 'production' ? 25808 : 25809;
 
+/** Shared cloud auth base URL for ContextGo account sign-in. */
+export const CONTEXTGO_AUTH_BASE_URL = process.env.CONTEXTGO_AUTH_BASE_URL?.trim() || 'https://auth.contextgo.io';
+
+/** Shared cloud API base URL for device registration and sync APIs. */
+export const CONTEXTGO_API_BASE_URL = process.env.CONTEXTGO_API_BASE_URL?.trim() || 'https://api.contextgo.io';
+
 // ===== AI Provider 相关常量 =====
 
 // Stable ID for the Google Auth virtual provider.
