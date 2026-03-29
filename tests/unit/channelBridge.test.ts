@@ -33,6 +33,10 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     getAuthorizedUsers: makeChannel('getAuthorizedUsers'),
     revokeUser: makeChannel('revokeUser'),
     getActiveSessions: makeChannel('getActiveSessions'),
+    getBindings: makeChannel('getBindings'),
+    upsertBinding: makeChannel('upsertBinding'),
+    deleteBinding: makeChannel('deleteBinding'),
+    handoffSession: makeChannel('handoffSession'),
     syncChannelSettings: makeChannel('syncChannelSettings'),
   },
 }));
@@ -50,6 +54,20 @@ vi.mock('@process/channels/pairing/PairingService', () => ({
   getPairingService: vi.fn(() => ({
     approvePairing: vi.fn(async () => ({ success: true })),
     rejectPairing: vi.fn(async () => ({ success: true })),
+  })),
+}));
+
+const mockHandoffSession = vi.fn(async () => ({
+  bindingId: 'binding-handoff-1',
+  targetExternalSessionId: 'external-session-target-1',
+  sourceExternalSessionId: 'external-session-source-1',
+  conversationId: 'conversation-1',
+  agentProfileId: 'agent-profile-1',
+  mode: 'resume',
+}));
+vi.mock('@process/channels/core/ChannelHandoffService', () => ({
+  getChannelHandoffService: vi.fn(() => ({
+    handoffSession: mockHandoffSession,
   })),
 }));
 
@@ -71,6 +89,7 @@ vi.mock('@/extensions/assetProtocol', () => ({ toAssetUrl: vi.fn((p: string) => 
 import { initChannelBridge } from '../../src/process/bridge/channelBridge';
 import type { IChannelRepository } from '../../src/process/services/database/IChannelRepository';
 import type {
+  IChannelBinding,
   IChannelPluginConfig,
   IChannelUser,
   IChannelPairingRequest,
@@ -84,6 +103,9 @@ function makeRepo(overrides?: Partial<IChannelRepository>): IChannelRepository {
     getChannelUsers: vi.fn(() => []),
     deleteChannelUser: vi.fn(),
     getChannelSessions: vi.fn(() => []),
+    getChannelBindings: vi.fn(() => []),
+    upsertChannelBinding: vi.fn(),
+    deleteChannelBinding: vi.fn(),
     ...overrides,
   };
 }
@@ -268,6 +290,141 @@ describe('channelBridge', () => {
 
       expect(result.success).toBe(false);
       expect(result.msg).toBe('sessions unavailable');
+    });
+  });
+
+  // --- binding management ---
+
+  describe('getBindings', () => {
+    it('returns bindings from repo', async () => {
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+
+      const result = await handlers['getBindings']({ connectorId: 'connector-1' });
+
+      expect(repo.getChannelBindings).toHaveBeenCalledWith('connector-1');
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([binding]);
+    });
+
+    it('returns error when repo throws', async () => {
+      vi.mocked(repo.getChannelBindings).mockImplementation(() => {
+        throw new Error('bindings unavailable');
+      });
+
+      const result = await handlers['getBindings']({ connectorId: 'connector-1' });
+
+      expect(result.success).toBe(false);
+      expect(result.msg).toBe('bindings unavailable');
+    });
+  });
+
+  describe('upsertBinding', () => {
+    it('upserts binding through repo', async () => {
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_user',
+        scopeKey: 'user-1',
+        agentProfileId: 'agent-1',
+        priority: 1,
+        enabled: true,
+        temporary: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const result = await handlers['upsertBinding']({ binding });
+
+      expect(repo.upsertChannelBinding).toHaveBeenCalledWith(binding);
+      expect(result.success).toBe(true);
+    });
+
+    it('returns error when repo throws', async () => {
+      const binding: IChannelBinding = {
+        id: 'binding-invalid',
+        connectorId: 'connector-1',
+        scopeType: 'connector_default',
+        agentProfileId: 'agent-1',
+        priority: 0,
+        enabled: true,
+        temporary: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      vi.mocked(repo.upsertChannelBinding).mockImplementation(() => {
+        throw new Error('invalid binding scope');
+      });
+
+      const result = await handlers['upsertBinding']({ binding });
+
+      expect(result.success).toBe(false);
+      expect(result.msg).toBe('invalid binding scope');
+    });
+  });
+
+  describe('deleteBinding', () => {
+    it('deletes binding through repo', async () => {
+      const result = await handlers['deleteBinding']({ bindingId: 'binding-1' });
+
+      expect(repo.deleteChannelBinding).toHaveBeenCalledWith('binding-1');
+      expect(result.success).toBe(true);
+    });
+
+    it('returns error when repo throws', async () => {
+      vi.mocked(repo.deleteChannelBinding).mockImplementation(() => {
+        throw new Error('delete failed');
+      });
+
+      const result = await handlers['deleteBinding']({ bindingId: 'binding-1' });
+
+      expect(result.success).toBe(false);
+      expect(result.msg).toBe('delete failed');
+    });
+  });
+
+  describe('handoffSession', () => {
+    it('returns handoff result data from service', async () => {
+      const payload = {
+        sourceConversationId: 'conversation-source',
+        targetConnectorId: 'connector-1',
+        targetChatId: 'group:ops',
+      };
+
+      const result = await handlers['handoffSession'](payload);
+
+      expect(mockHandoffSession).toHaveBeenCalledWith(payload);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(
+        expect.objectContaining({
+          bindingId: 'binding-handoff-1',
+          targetExternalSessionId: 'external-session-target-1',
+        })
+      );
+    });
+
+    it('returns error when handoff service throws', async () => {
+      mockHandoffSession.mockRejectedValueOnce(new Error('handoff failed'));
+
+      const result = await handlers['handoffSession']({
+        sourceConversationId: 'conversation-source',
+        targetConnectorId: 'connector-1',
+        targetChatId: 'group:ops',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.msg).toBe('handoff failed');
     });
   });
 });

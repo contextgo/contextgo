@@ -330,6 +330,10 @@ interface IChatConversation<T, Extra> {
   source?: ConversationSource;
   /** Channel chat isolation ID (e.g. user:xxx, group:xxx) */
   channelChatId?: string;
+  /** Durable external session this conversation belongs to, if any */
+  externalSessionId?: string;
+  /** Root execution run for this conversation, if any */
+  rootRunId?: string;
 }
 
 // Token 使用统计数据类型
