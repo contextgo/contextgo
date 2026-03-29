@@ -1,6 +1,6 @@
 # Release And Distribution Standards
 
-This document defines the long-lived release and distribution model for AionUi.
+This document defines the long-lived release and distribution model for ContextGo.
 
 Use this before changing:
 

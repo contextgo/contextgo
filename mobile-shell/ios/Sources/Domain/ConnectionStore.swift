@@ -2,6 +2,8 @@ import Foundation
 
 @MainActor
 final class ConnectionStore: ObservableObject {
+  static let officialRemoteURL = "https://remote.contextgo.io/"
+
   @Published var inputText: String = ""
   @Published var targetURL: URL?
   @Published var validationMessage: String?
@@ -14,6 +16,7 @@ final class ConnectionStore: ObservableObject {
 
   func restore() {
     guard let storedValue = UserDefaults.standard.string(forKey: defaultsKey), let restoredURL = URL(string: storedValue) else {
+      connectToOfficialRemote(persist: false)
       return
     }
 
@@ -25,22 +28,34 @@ final class ConnectionStore: ObservableObject {
   @discardableResult
   func connect() -> Bool {
     guard let resolvedURL = ShellTargetResolver.resolve(rawInput: inputText) else {
-      validationMessage = "Enter a valid http(s) AionUi WebUI URL or a /qr-login link."
+      validationMessage = String(localized: "connection.validation.invalid")
       return false
     }
 
-    let resolvedText = resolvedURL.absoluteString
-    inputText = resolvedText
-    targetURL = resolvedURL
-    validationMessage = nil
-    UserDefaults.standard.set(resolvedText, forKey: defaultsKey)
+    applyTarget(resolvedURL)
     return true
   }
 
-  func reset() {
-    targetURL = nil
-    inputText = ""
+  func connectToOfficialRemote(persist: Bool = true) {
+    guard let resolvedURL = ShellTargetResolver.resolve(rawInput: Self.officialRemoteURL) else {
+      return
+    }
+
+    applyTarget(resolvedURL, persist: persist)
+  }
+
+  func prepareCustomHostInput() {
+    inputText = targetURL?.absoluteString ?? ""
     validationMessage = nil
-    UserDefaults.standard.removeObject(forKey: defaultsKey)
+  }
+
+  private func applyTarget(_ url: URL, persist: Bool = true) {
+    let resolvedText = url.absoluteString
+    inputText = resolvedText
+    targetURL = url
+    validationMessage = nil
+
+    guard persist else { return }
+    UserDefaults.standard.set(resolvedText, forKey: defaultsKey)
   }
 }

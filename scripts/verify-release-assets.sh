@@ -5,10 +5,20 @@ set -euo pipefail
 OUTPUT_DIR="${1:-release-assets}"
 ERRORS=0
 
-for f in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml; do
-  if [ ! -f "$OUTPUT_DIR/$f" ]; then
-    echo "FAIL: missing canonical metadata: $f"
-    ERRORS=$((ERRORS + 1))
+fail() {
+  echo "FAIL: $1"
+  ERRORS=$((ERRORS + 1))
+}
+
+pass() {
+  echo "PASS: $1"
+}
+
+for file in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml release-manifest.json; do
+  if [ ! -f "$OUTPUT_DIR/$file" ]; then
+    fail "missing required release file: $file"
+  else
+    pass "$file exists"
   fi
 done
 
@@ -27,52 +37,112 @@ assert_metadata_points_to_existing_file() {
   local expected_pattern="$2"
   local metadata_path="$OUTPUT_DIR/$metadata_name"
 
+  if [ ! -f "$metadata_path" ]; then
+    return
+  fi
+
   local ref_file
   ref_file=$(extract_ref_file "$metadata_path")
 
   if [ -z "$ref_file" ]; then
-    echo "FAIL: $metadata_name has no path/url entry"
-    ERRORS=$((ERRORS + 1))
+    fail "$metadata_name has no path/url entry"
     return
   fi
 
   if [[ ! "$ref_file" =~ $expected_pattern ]]; then
-    echo "FAIL: $metadata_name points to unexpected file: $ref_file"
-    ERRORS=$((ERRORS + 1))
+    fail "$metadata_name points to unexpected file: $ref_file"
     return
   fi
 
   if [ ! -f "$OUTPUT_DIR/$ref_file" ]; then
-    echo "FAIL: $metadata_name references missing file: $ref_file"
-    ERRORS=$((ERRORS + 1))
+    fail "$metadata_name references missing file: $ref_file"
     return
   fi
 
-  echo "PASS: $metadata_name -> $ref_file"
+  pass "$metadata_name -> $ref_file"
 }
 
-assert_metadata_points_to_existing_file "latest.yml" "(win-x64|win32-x64|x64)"
-assert_metadata_points_to_existing_file "latest-mac.yml" "(mac-x64|darwin-x64|x64)"
-assert_metadata_points_to_existing_file "latest-linux.yml" "(linux|AppImage|deb)"
-assert_metadata_points_to_existing_file "latest-linux-arm64.yml" "(arm64|aarch64)"
+assert_metadata_points_to_existing_file "latest.yml" '(win|windows).*(x64|amd64)|ContextGo-.*-(win|windows)-x64'
+assert_metadata_points_to_existing_file "latest-mac.yml" '(mac|macos).*(x64)|ContextGo-.*-(mac|macos)-x64'
+assert_metadata_points_to_existing_file "latest-linux.yml" '(linux).*(x64|amd64)|ContextGo-.*-linux-x64'
+assert_metadata_points_to_existing_file "latest-linux-arm64.yml" '(linux).*(arm64|aarch64)|ContextGo-.*-linux-arm64'
 
-for f in latest-win-arm64.yml latest-arm64-mac.yml; do
-  if [ ! -f "$OUTPUT_DIR/$f" ]; then
-    echo "FAIL: missing arch-specific updater metadata: $f"
-    ERRORS=$((ERRORS + 1))
+for file in latest-win-arm64.yml latest-arm64-mac.yml; do
+  if [ ! -f "$OUTPUT_DIR/$file" ]; then
+    fail "missing arch-specific updater metadata: $file"
   else
-    echo "PASS: $f exists"
+    pass "$file exists"
   fi
 done
 
-for f in AionUi-1.0.0-win-x64.exe AionUi-1.0.0-win-arm64.exe AionUi-1.0.0-mac-x64.dmg AionUi-1.0.0-mac-arm64.dmg AionUi-1.0.0.deb AionUi-1.0.0-arm64.deb; do
-  if [ ! -f "$OUTPUT_DIR/$f" ]; then
-    echo "FAIL: missing distributable: $f"
-    ERRORS=$((ERRORS + 1))
-  else
-    echo "PASS: $f exists"
-  fi
-done
+if ! node - "$OUTPUT_DIR" <<'EOF'; then
+const fs = require('node:fs');
+const path = require('node:path');
+
+const outputDir = process.argv[2];
+const manifestPath = path.join(outputDir, 'release-manifest.json');
+const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+const errors = [];
+
+if (manifest.schemaVersion !== 1) {
+  errors.push(`unexpected schemaVersion: ${manifest.schemaVersion}`);
+}
+
+if (manifest.checksumAlgorithm !== 'sha256') {
+  errors.push(`unexpected checksum algorithm: ${manifest.checksumAlgorithm}`);
+}
+
+if (!Array.isArray(manifest.assets) || manifest.assets.length === 0) {
+  errors.push('manifest assets missing or empty');
+}
+
+const assetPattern = /^ContextGo-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?-(mac|macos|win|windows|linux|android|harmony|harmonyos)-[A-Za-z0-9._-]+\.(aab|apk|app|deb|dmg|exe|hap|msi|zip)$/i;
+const requiredPairs = [
+  ['windows', 'x64'],
+  ['windows', 'arm64'],
+  ['macos', 'x64'],
+  ['macos', 'arm64'],
+  ['linux', 'x64'],
+  ['linux', 'arm64'],
+];
+
+for (const asset of manifest.assets || []) {
+  if (!assetPattern.test(asset.fileName)) {
+    errors.push(`manifest asset name does not match canonical pattern: ${asset.fileName}`);
+  }
+
+  if (!/^[a-f0-9]{64}$/i.test(asset.sha256 || '')) {
+    errors.push(`invalid sha256 for ${asset.fileName}`);
+  }
+
+  const assetPath = path.join(outputDir, asset.fileName);
+  if (!fs.existsSync(assetPath)) {
+    errors.push(`manifest references missing file: ${asset.fileName}`);
+    continue;
+  }
+
+  const size = fs.statSync(assetPath).size;
+  if (size !== asset.size) {
+    errors.push(`size mismatch for ${asset.fileName}: manifest=${asset.size} actual=${size}`);
+  }
+}
+
+for (const [platform, arch] of requiredPairs) {
+  const exists = manifest.assets.some((asset) => asset.platform === platform && asset.arch === arch);
+  if (!exists) {
+    errors.push(`missing required manifest asset for ${platform}/${arch}`);
+  }
+}
+
+if (errors.length > 0) {
+  console.error(errors.join('\n'));
+  process.exit(1);
+}
+EOF
+  fail "release manifest validation failed"
+else
+  pass "release manifest is valid"
+fi
 
 echo ""
 if [ "$ERRORS" -gt 0 ]; then

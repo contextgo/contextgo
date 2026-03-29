@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct AionUiShellApp: App {
+struct ContextGoApp: App {
   @StateObject private var connectionStore = ConnectionStore()
 
   var body: some Scene {

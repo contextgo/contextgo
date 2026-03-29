@@ -31,6 +31,35 @@
         android:text="@string/connect_description"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
+      <Button
+        android:id="@+id/officialRemoteButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="@string/official_remote_action" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/official_remote_detail"
+        android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/custom_host_title"
+        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        android:textStyle="bold" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/custom_host_description"
+        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
       <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -110,7 +139,7 @@
         android:id="@+id/reconnectButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/reconnect_action" />
+        android:text="@string/change_host_action" />
     </LinearLayout>
 
     <WebView
