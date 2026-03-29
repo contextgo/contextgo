@@ -1,8 +1,8 @@
 import { ipcBridge } from '@/common';
-import { Button, Tag, Typography } from '@arco-design/web-react';
+import { Button, Tag } from '@arco-design/web-react';
 import { ConnectionPoint, Right, Send } from '@icon-park/react';
 import classNames from 'classnames';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ConnectorLogo from './ConnectorLogo';
@@ -15,11 +15,18 @@ const getAuthKey = (authType: ConnectorAuthType): string => `settings.connectors
 const getCategoryKey = (category: ConnectorCategory): string => `settings.connectors.categories.${category}`;
 const getStageKey = (stage: ConnectorStage): string =>
   stage === 'priority' ? 'settings.connectors.stagePriority' : 'settings.connectors.stagePlanned';
+const createInitialCollapsedState = (): Record<ConnectorCategory, boolean> =>
+  Object.fromEntries(CONNECTOR_CATEGORY_ORDER.map((category) => [category, false])) as Record<
+    ConnectorCategory,
+    boolean
+  >;
 
 const ConnectorsPage: React.FC = () => {
   const { connectorId } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [collapsedCategories, setCollapsedCategories] =
+    useState<Record<ConnectorCategory, boolean>>(createInitialCollapsedState);
 
   const groupedConnectors = useMemo(
     () =>
@@ -46,6 +53,22 @@ const ConnectorsPage: React.FC = () => {
     void navigate(`/connectors/${fallbackConnector.id}`, { replace: true });
   }, [activeConnector, connectorId, fallbackConnector, navigate]);
 
+  useEffect(() => {
+    if (!resolvedConnector) {
+      return;
+    }
+
+    setCollapsedCategories((previous) => {
+      if (!previous[resolvedConnector.category]) {
+        return previous;
+      }
+      return {
+        ...previous,
+        [resolvedConnector.category]: false,
+      };
+    });
+  }, [resolvedConnector]);
+
   if (!resolvedConnector) {
     return null;
   }
@@ -55,8 +78,10 @@ const ConnectorsPage: React.FC = () => {
       <div className={styles.shell}>
         <aside className={styles.sidebar}>
           <div className={styles.sidebarHeader}>
-            <div className={styles.eyebrow}>{t('settings.connectors.kind')}</div>
-            <h1 className={styles.sidebarTitle}>{t('settings.connectors.title')}</h1>
+            <div className={styles.sidebarTitleRow}>
+              <h1 className={styles.sidebarTitle}>{t('settings.connectors.title')}</h1>
+              <div className={styles.eyebrow}>{t('settings.connectors.kind')}</div>
+            </div>
             <p className={styles.sidebarDescription}>
               {t('settings.connectors.description')} {t('settings.connectors.count', { count: CONNECTORS.length })}
             </p>
@@ -65,35 +90,61 @@ const ConnectorsPage: React.FC = () => {
           <div className={styles.listWrap}>
             {groupedConnectors.map((group) => (
               <section key={group.category} className={styles.categorySection}>
-                <div className={styles.categoryTitle}>{t(getCategoryKey(group.category))}</div>
-                {group.items.map((connector) => {
-                  const isActive = connector.id === resolvedConnector.id;
-                  return (
-                    <Button
-                      key={connector.id}
-                      type='text'
-                      className={classNames(styles.connectorItem, isActive && styles.connectorItemActive)}
-                      onClick={() => {
-                        void navigate(`/connectors/${connector.id}`);
-                      }}
-                    >
-                      <div className={styles.connectorItemInner}>
-                        <ConnectorLogo connector={connector} />
-                        <div className={styles.connectorMeta}>
-                          <div className={styles.connectorNameRow}>
-                            <Typography.Text ellipsis className={styles.connectorName}>
-                              {connector.name}
-                            </Typography.Text>
-                            <Tag size='small' color={connector.stage === 'priority' ? 'arcoblue' : 'gray'}>
-                              {t(getStageKey(connector.stage))}
-                            </Tag>
+                <Button
+                  type='text'
+                  className={styles.categoryToggle}
+                  aria-expanded={!collapsedCategories[group.category]}
+                  onClick={() => {
+                    setCollapsedCategories((previous) => ({
+                      ...previous,
+                      [group.category]: !previous[group.category],
+                    }));
+                  }}
+                >
+                  <span className={styles.categoryTitle}>
+                    <span className={styles.categoryTitleMeta}>
+                      <Right
+                        theme='outline'
+                        size='14'
+                        className={classNames(
+                          styles.categoryChevron,
+                          collapsedCategories[group.category] && styles.categoryChevronCollapsed
+                        )}
+                      />
+                      <span className={styles.categoryTitleText}>{t(getCategoryKey(group.category))}</span>
+                    </span>
+                    <span className={styles.categoryCount}>{group.items.length}</span>
+                  </span>
+                </Button>
+
+                <div className={styles.categoryItems} hidden={collapsedCategories[group.category]}>
+                  {group.items.map((connector) => {
+                    const isActive = connector.id === resolvedConnector.id;
+                    return (
+                      <Button
+                        key={connector.id}
+                        type='text'
+                        className={classNames(styles.connectorItem, isActive && styles.connectorItemActive)}
+                        onClick={() => {
+                          void navigate(`/connectors/${connector.id}`);
+                        }}
+                      >
+                        <div className={styles.connectorItemInner}>
+                          <ConnectorLogo connector={connector} />
+                          <div className={styles.connectorMeta}>
+                            <div className={styles.connectorNameRow}>
+                              <span className={styles.connectorName}>{connector.name}</span>
+                              <Tag size='small' color={connector.stage === 'priority' ? 'arcoblue' : 'gray'}>
+                                {t(getStageKey(connector.stage))}
+                              </Tag>
+                            </div>
+                            <div className={styles.connectorDomain}>{connector.domain}</div>
                           </div>
-                          <div className={styles.connectorDomain}>{connector.domain}</div>
                         </div>
-                      </div>
-                    </Button>
-                  );
-                })}
+                      </Button>
+                    );
+                  })}
+                </div>
               </section>
             ))}
           </div>
@@ -103,10 +154,6 @@ const ConnectorsPage: React.FC = () => {
           <div className={styles.detailHero}>
             <ConnectorLogo connector={resolvedConnector} size='large' />
             <div className={styles.detailHeroMeta}>
-              <div className={styles.eyebrow}>
-                {t('settings.connectors.kind')} <Right theme='outline' size='12' />{' '}
-                {t(getCategoryKey(resolvedConnector.category))}
-              </div>
               <h2 className={styles.detailTitle}>{resolvedConnector.name}</h2>
               <p className={styles.detailSubtitle}>
                 {t('settings.connectors.summaryTemplate', {

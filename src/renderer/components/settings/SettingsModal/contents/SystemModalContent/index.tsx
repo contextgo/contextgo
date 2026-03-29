@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import { useSettingsViewMode } from '../../settingsViewContext';
+import CloudSyncSection from './CloudSyncSection';
 import DevSettings from './DevSettings';
 import DirInputItem from './DirInputItem';
 import PreferenceRow from './PreferenceRow';
@@ -205,13 +206,13 @@ const SystemModalContent: React.FC = () => {
                   handleNotificationEnabledChange(false);
                 }
               }}
-              className='[&_.arco-collapse-item]:!border-none [&_.arco-collapse-item-header]:!px-0 [&_.arco-collapse-item-header-title]:!flex-1 [&_.arco-collapse-item-content-box]:!px-0 [&_.arco-collapse-item-content-box]:!pb-0'
+              className='[&_.arco-collapse-item]:!border-none [&_.arco-collapse-item-header]:!pl-0 [&_.arco-collapse-item-header]:!pr-12px [&_.arco-collapse-item-header-title]:!flex-1 [&_.arco-collapse-item-content-box]:!px-0 [&_.arco-collapse-item-content-box]:!pb-0'
             >
               <Collapse.Item
                 name='notification'
                 showExpandIcon={false}
                 header={
-                  <div className='flex flex-1 items-center justify-between w-full'>
+                  <div className='flex flex-1 items-center justify-between gap-24px w-full min-w-0'>
                     <span className='text-14px text-2 ml-12px'>{t('settings.notification')}</span>
                     <Switch
                       checked={notificationEnabled}
@@ -265,6 +266,8 @@ const SystemModalContent: React.FC = () => {
               )}
             </Form>
           </div>
+
+          <CloudSyncSection />
 
           <VoiceInputSection />
 

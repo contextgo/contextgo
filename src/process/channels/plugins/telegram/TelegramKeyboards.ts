@@ -5,8 +5,7 @@
  */
 
 import { InlineKeyboard, Keyboard } from 'grammy';
-
-import type { ChannelAgentType } from '../../types';
+import { buildAgentSelectionCallbackToken } from '../../utils/agentSelection';
 
 /**
  * Telegram Keyboards for Personal Assistant
@@ -46,9 +45,11 @@ export function createPairingKeyboard(): Keyboard {
  * Agent info for keyboard display
  */
 export interface AgentDisplayInfo {
-  type: ChannelAgentType;
+  key: string;
+  backend: string;
   emoji: string;
   name: string;
+  customAgentId?: string;
 }
 
 /**
@@ -59,16 +60,17 @@ export interface AgentDisplayInfo {
  */
 export function createAgentSelectionKeyboard(
   availableAgents: AgentDisplayInfo[],
-  currentAgent?: ChannelAgentType
+  currentAgentKey?: string
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
 
   // Add agents in rows of 2
   for (let i = 0; i < availableAgents.length; i++) {
     const agent = availableAgents[i];
-    const label = currentAgent === agent.type ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
+    const label = currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
+    const callbackToken = buildAgentSelectionCallbackToken(agent);
 
-    keyboard.text(label, `agent:${agent.type}`);
+    keyboard.text(label, `agent:${callbackToken}`);
 
     // Start new row after every 2 buttons, except for the last one
     if ((i + 1) % 2 === 0 && i < availableAgents.length - 1) {
@@ -181,7 +183,7 @@ export function matchAction(callbackData: string, actionPrefix: string): boolean
  */
 export function extractAction(callbackData: string): string {
   const parts = callbackData.split(':');
-  return parts.length > 1 ? parts[1] : callbackData;
+  return parts.length > 1 ? parts.slice(1).join(':') : callbackData;
 }
 
 /**

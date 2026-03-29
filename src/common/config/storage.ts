@@ -5,7 +5,9 @@
  */
 
 import type { AcpBackend, AcpBackendAll, AcpBackendConfig } from '@/common/types/acpTypes';
+import type { CloudDevice, CloudStoredSyncState, CloudUser } from '@/common/types/cloud';
 import type { VoiceInputConfig } from '@/common/types/voiceInput';
+import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import { storage } from '@office-ai/platform';
 
 /**
@@ -90,6 +92,8 @@ export interface IConfigStorageRefer {
   'migration.coworkDefaultSkillsAdded'?: boolean;
   // 迁移标记：为所有内置助手添加默认启用的 skills / Migration flag: add default enabled skills for all builtin assistants
   'migration.builtinDefaultSkillsAdded_v2'?: boolean;
+  // 迁移标记：为所有内置助手添加默认启用的 hooks / Migration flag: add default enabled hooks for all builtin assistants
+  'migration.builtinDefaultHooksAdded_v1'?: boolean;
   // 迁移标记：为所有内置助手添加 promptsI18n / Migration flag: add promptsI18n for all builtin assistants
   'migration.promptsI18nAdded'?: boolean;
   /** Migration flag: Electron desktop config has been imported to server config */
@@ -102,6 +106,14 @@ export interface IConfigStorageRefer {
   'system.cronNotificationEnabled'?: boolean;
   // Global voice input configuration / 全局语音输入配置
   'voiceInput.config'?: VoiceInputConfig;
+  // ContextGo cloud account cached user profile / ContextGo 云端账号缓存用户信息
+  'cloud.user'?: CloudUser;
+  // ContextGo cloud current device binding / ContextGo 云端当前设备绑定信息
+  'cloud.device'?: CloudDevice;
+  // ContextGo cloud device token (ctxdev_...) / ContextGo 云端设备令牌
+  'cloud.deviceToken'?: string;
+  // ContextGo cloud sync cursor + per-item timestamps / ContextGo 云端同步游标与时间戳
+  'cloud.sync.state'?: CloudStoredSyncState;
   // Telegram assistant default model / Telegram 助手默认模型
   'assistant.telegram.defaultModel'?: {
     id: string;
@@ -109,6 +121,28 @@ export interface IConfigStorageRefer {
   };
   // Telegram assistant agent selection / Telegram 助手所使用的 Agent
   'assistant.telegram.agent'?: {
+    backend: AcpBackendAll;
+    customAgentId?: string;
+    name?: string;
+  };
+  // Slack assistant default model / Slack 助手默认模型
+  'assistant.slack.defaultModel'?: {
+    id: string;
+    useModel: string;
+  };
+  // Slack assistant agent selection / Slack 助手所使用的 Agent
+  'assistant.slack.agent'?: {
+    backend: AcpBackendAll;
+    customAgentId?: string;
+    name?: string;
+  };
+  // Discord assistant default model / Discord 助手默认模型
+  'assistant.discord.defaultModel'?: {
+    id: string;
+    useModel: string;
+  };
+  // Discord assistant agent selection / Discord 助手所使用的 Agent
+  'assistant.discord.agent'?: {
     backend: AcpBackendAll;
     customAgentId?: string;
     name?: string;
@@ -146,8 +180,7 @@ export interface IConfigStorageRefer {
     customAgentId?: string;
     name?: string;
   };
-  // Skills Market: whether the aionui-skills builtin skill is enabled
-  'skillsMarket.enabled'?: boolean;
+  'command.library'?: ManagedSlashCommandRecord[];
 }
 
 export interface IEnvStorageRefer {
@@ -161,7 +194,15 @@ export interface IEnvStorageRefer {
  * Conversation source type - identifies where the conversation was created
  * 会话来源类型 - 标识会话创建的来源
  */
-export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
+export type ConversationSource =
+  | 'aionui'
+  | 'telegram'
+  | 'slack'
+  | 'discord'
+  | 'lark'
+  | 'dingtalk'
+  | 'weixin'
+  | (string & {});
 
 export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 

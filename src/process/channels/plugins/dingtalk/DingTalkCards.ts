@@ -48,9 +48,11 @@ export interface DingTalkCard {
  * Agent info for card display
  */
 export interface AgentDisplayInfo {
-  type: ChannelAgentType;
+  key: string;
+  backend: string;
   emoji: string;
   name: string;
+  customAgentId?: string;
 }
 
 // ==================== Helpers ====================
@@ -172,17 +174,14 @@ export function createPairingHelpCard(): DingTalkCard {
 /**
  * Create agent selection card
  */
-export function createAgentSelectionCard(
-  availableAgents: AgentDisplayInfo[],
-  currentAgent?: ChannelAgentType
-): DingTalkCard {
-  const currentAgentInfo = availableAgents.find((a) => a.type === currentAgent);
+export function createAgentSelectionCard(availableAgents: AgentDisplayInfo[], currentAgentKey?: string): DingTalkCard {
+  const currentAgentInfo = availableAgents.find((a) => a.key === currentAgentKey);
   const currentAgentName = currentAgentInfo ? `${currentAgentInfo.emoji} ${currentAgentInfo.name}` : 'None';
 
   const agentButtons: DingTalkButton[] = availableAgents.map((agent) => {
     const label =
-      currentAgent === agent.type ? `[Current] ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
-    return btn(label, 'agent.select', { agentType: agent.type });
+      currentAgentKey === agent.key ? `[Current] ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
+    return btn(label, 'agent.select', { agentKey: agent.key });
   });
 
   return {

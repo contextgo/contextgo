@@ -335,7 +335,7 @@ const Layout: React.FC<{
         setSiderCollapsed: setCollapsed,
       }}
     >
-      <div className='app-shell flex flex-col size-full min-h-0' style={appShellStyle}>
+      <div className='app-shell relative flex flex-col size-full min-h-0' style={appShellStyle}>
         <Titlebar
           workspaceAvailable={workspaceAvailable}
           leftPaneWidth={collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth}

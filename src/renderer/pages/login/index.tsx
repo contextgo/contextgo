@@ -1,6 +1,8 @@
 import loginLogo from '@renderer/assets/logos/brand/app.png';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { CloudAuthProviderId } from '@/common/types/cloud';
+import { buildCloudOAuthStartUrl, isContextGoHostname } from '@/common/utils';
 import { changeLanguage } from '@/renderer/services/i18n';
 import { useNavigate } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
@@ -15,6 +17,7 @@ type MessageState = {
 const REMEMBER_ME_KEY = 'rememberMe';
 const REMEMBERED_USERNAME_KEY = 'rememberedUsername';
 const REMEMBERED_PASSWORD_KEY = 'rememberedPassword';
+const isDesktopRuntime = typeof window !== 'undefined' && Boolean(window.electronAPI);
 
 // Simple obfuscation for stored credentials (not cryptographically secure, but prevents plain text storage)
 const obfuscate = (text: string): string => {
@@ -47,6 +50,14 @@ const LoginPage: React.FC = () => {
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const messageTimer = useRef<number | undefined>(undefined);
 
+  const isCloudRemoteLogin = useMemo(() => {
+    if (isDesktopRuntime || typeof window === 'undefined') {
+      return false;
+    }
+
+    return isContextGoHostname(window.location.hostname);
+  }, []);
+
   useEffect(() => {
     document.body.classList.add('login-page-active');
     return () => {
@@ -74,16 +85,18 @@ const LoginPage: React.FC = () => {
       if (storedPassword) setPassword(deobfuscate(storedPassword));
       setRememberMe(true);
     }
-    window.setTimeout(() => {
-      usernameRef.current?.focus();
-    }, 0);
+    if (!isCloudRemoteLogin) {
+      window.setTimeout(() => {
+        usernameRef.current?.focus();
+      }, 0);
+    }
 
     return () => {
       if (messageTimer.current) {
         window.clearTimeout(messageTimer.current);
       }
     };
-  }, []);
+  }, [isCloudRemoteLogin]);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -186,6 +199,14 @@ const LoginPage: React.FC = () => {
     [login, navigate, password, rememberMe, showMessage, t, username]
   );
 
+  const handleCloudLogin = useCallback((provider: CloudAuthProviderId) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.location.href = buildCloudOAuthStartUrl(provider, window.location.href);
+  }, []);
+
   if (status === 'checking') {
     return <AppLoader />;
   }
@@ -219,129 +240,150 @@ const LoginPage: React.FC = () => {
             <img src={loginLogo} alt={t('login.brand')} />
           </div>
           <h1 className='login-page__title'>{t('login.brand')}</h1>
-          <p className='login-page__subtitle'>{t('login.subtitle')}</p>
+          <p className='login-page__subtitle'>
+            {isCloudRemoteLogin ? t('settings.cloud.description') : t('login.subtitle')}
+          </p>
         </div>
 
-        <form className='login-page__form' onSubmit={handleSubmit}>
-          <div className='login-page__form-item'>
-            <label className='login-page__label' htmlFor='username'>
-              {t('login.username')}
-            </label>
-            <div className='login-page__input-wrapper'>
-              <svg
-                className='login-page__input-icon'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                aria-hidden='true'
-              >
-                <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2' />
-                <circle cx='12' cy='7' r='4' />
-              </svg>
-              <input
-                ref={usernameRef}
-                id='username'
-                name='username'
-                className='login-page__input'
-                placeholder={t('login.usernamePlaceholder')}
-                autoComplete='username'
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                aria-required='true'
-              />
-            </div>
+        {isCloudRemoteLogin ? (
+          <div className='login-page__cloud-actions'>
+            <button
+              type='button'
+              className='login-page__submit login-page__submit--cloud'
+              onClick={() => handleCloudLogin('github')}
+            >
+              <span>{t('settings.cloud.loginWithGithub')}</span>
+            </button>
+            <button
+              type='button'
+              className='login-page__submit login-page__submit--cloud login-page__submit--cloud-secondary'
+              onClick={() => handleCloudLogin('google')}
+            >
+              <span>{t('settings.cloud.loginWithGoogle')}</span>
+            </button>
           </div>
-
-          <div className='login-page__form-item'>
-            <label className='login-page__label' htmlFor='password'>
-              {t('login.password')}
-            </label>
-            <div className='login-page__input-wrapper'>
-              <svg
-                className='login-page__input-icon'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                aria-hidden='true'
-              >
-                <rect x='3' y='11' width='18' height='11' rx='2' ry='2' />
-                <path d='M7 11V7a5 5 0 0 1 10 0v4' />
-              </svg>
-              <input
-                ref={passwordRef}
-                id='password'
-                name='password'
-                type={passwordVisible ? 'text' : 'password'}
-                className='login-page__input'
-                placeholder={t('login.passwordPlaceholder')}
-                autoComplete='current-password'
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                aria-required='true'
-              />
-              <button
-                type='button'
-                className='login-page__toggle-password'
-                onClick={() => setPasswordVisible((prev) => !prev)}
-                aria-label={passwordVisible ? t('login.hidePassword') : t('login.showPassword')}
-              >
-                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
-                  {passwordVisible ? (
-                    <>
-                      <path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24' />
-                      <line x1='1' y1='1' x2='23' y2='23' />
-                    </>
-                  ) : (
-                    <>
-                      <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-                      <circle cx='12' cy='12' r='3' />
-                    </>
-                  )}
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div className='login-page__checkbox'>
-            <input
-              type='checkbox'
-              id='remember-me'
-              checked={rememberMe}
-              onChange={(event) => setRememberMe(event.target.checked)}
-            />
-            <label htmlFor='remember-me'>{t('login.rememberMe')}</label>
-          </div>
-
-          <button type='submit' className='login-page__submit' disabled={loading}>
-            {loading && (
-              <svg className='login-page__spinner' viewBox='0 0 24 24' width='18' height='18'>
-                <circle
-                  cx='12'
-                  cy='12'
-                  r='10'
-                  stroke='currentColor'
-                  strokeWidth='3'
+        ) : (
+          <form className='login-page__form' onSubmit={handleSubmit}>
+            <div className='login-page__form-item'>
+              <label className='login-page__label' htmlFor='username'>
+                {t('login.username')}
+              </label>
+              <div className='login-page__input-wrapper'>
+                <svg
+                  className='login-page__input-icon'
+                  viewBox='0 0 24 24'
                   fill='none'
-                  strokeDasharray='50'
-                  strokeDashoffset='25'
-                  strokeLinecap='round'
+                  stroke='currentColor'
+                  strokeWidth='2'
+                  aria-hidden='true'
+                >
+                  <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2' />
+                  <circle cx='12' cy='7' r='4' />
+                </svg>
+                <input
+                  ref={usernameRef}
+                  id='username'
+                  name='username'
+                  className='login-page__input'
+                  placeholder={t('login.usernamePlaceholder')}
+                  autoComplete='username'
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  aria-required='true'
                 />
-              </svg>
-            )}
-            <span>{loading ? t('login.submitting') : t('login.submit')}</span>
-          </button>
+              </div>
+            </div>
 
-          <div
-            role='alert'
-            aria-live='polite'
-            className={`login-page__message ${message ? 'login-page__message--visible' : ''} ${message ? (message.type === 'success' ? 'login-page__message--success' : 'login-page__message--error') : ''}`}
-            hidden={!message}
-          >
-            {message?.text}
-          </div>
-        </form>
+            <div className='login-page__form-item'>
+              <label className='login-page__label' htmlFor='password'>
+                {t('login.password')}
+              </label>
+              <div className='login-page__input-wrapper'>
+                <svg
+                  className='login-page__input-icon'
+                  viewBox='0 0 24 24'
+                  fill='none'
+                  stroke='currentColor'
+                  strokeWidth='2'
+                  aria-hidden='true'
+                >
+                  <rect x='3' y='11' width='18' height='11' rx='2' ry='2' />
+                  <path d='M7 11V7a5 5 0 0 1 10 0v4' />
+                </svg>
+                <input
+                  ref={passwordRef}
+                  id='password'
+                  name='password'
+                  type={passwordVisible ? 'text' : 'password'}
+                  className='login-page__input'
+                  placeholder={t('login.passwordPlaceholder')}
+                  autoComplete='current-password'
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  aria-required='true'
+                />
+                <button
+                  type='button'
+                  className='login-page__toggle-password'
+                  onClick={() => setPasswordVisible((prev) => !prev)}
+                  aria-label={passwordVisible ? t('login.hidePassword') : t('login.showPassword')}
+                >
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
+                    {passwordVisible ? (
+                      <>
+                        <path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24' />
+                        <line x1='1' y1='1' x2='23' y2='23' />
+                      </>
+                    ) : (
+                      <>
+                        <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
+                        <circle cx='12' cy='12' r='3' />
+                      </>
+                    )}
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className='login-page__checkbox'>
+              <input
+                type='checkbox'
+                id='remember-me'
+                checked={rememberMe}
+                onChange={(event) => setRememberMe(event.target.checked)}
+              />
+              <label htmlFor='remember-me'>{t('login.rememberMe')}</label>
+            </div>
+
+            <button type='submit' className='login-page__submit' disabled={loading}>
+              {loading && (
+                <svg className='login-page__spinner' viewBox='0 0 24 24' width='18' height='18'>
+                  <circle
+                    cx='12'
+                    cy='12'
+                    r='10'
+                    stroke='currentColor'
+                    strokeWidth='3'
+                    fill='none'
+                    strokeDasharray='50'
+                    strokeDashoffset='25'
+                    strokeLinecap='round'
+                  />
+                </svg>
+              )}
+              <span>{loading ? t('login.submitting') : t('login.submit')}</span>
+            </button>
+
+            <div
+              role='alert'
+              aria-live='polite'
+              className={`login-page__message ${message ? 'login-page__message--visible' : ''} ${message ? (message.type === 'success' ? 'login-page__message--success' : 'login-page__message--error') : ''}`}
+              hidden={!message}
+            >
+              {message?.text}
+            </div>
+          </form>
+        )}
 
         <div className='login-page__footer'>
           <div className='login-page__footer-content'>

@@ -58,7 +58,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const { openPreview } = usePreviewContext();
-  const initialWorkspaceLoadDeferred = Boolean(
+  const legacyWorkspaceLoadDeferred = Boolean(
     (conversation.extra as { deferInitialWorkspaceLoad?: boolean } | undefined)?.deferInitialWorkspaceLoad
   );
 
@@ -66,16 +66,32 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
   const [internalMessageApi, messageContext] = Message.useMessage();
   const messageApi = externalMessageApi ?? internalMessageApi;
   const shouldRenderLocalMessageContext = !externalMessageApi;
-  const [workspaceLoadDeferred, setWorkspaceLoadDeferred] = useState(initialWorkspaceLoadDeferred);
+  const [workspaceLoadDeferred, setWorkspaceLoadDeferred] = useState(false);
   const [isParticipantsPanelOpen, setIsParticipantsPanelOpen] = useState(false);
 
   useEffect(() => {
-    setWorkspaceLoadDeferred(initialWorkspaceLoadDeferred);
-  }, [conversation_id, initialWorkspaceLoadDeferred]);
+    setWorkspaceLoadDeferred(false);
+  }, [conversation_id]);
 
   useEffect(() => {
     setIsParticipantsPanelOpen(false);
   }, [conversation_id]);
+
+  useEffect(() => {
+    if (!legacyWorkspaceLoadDeferred || conversation.type !== 'acp') {
+      return;
+    }
+
+    void ipcBridge.conversation.update.invoke({
+      id: conversation_id,
+      updates: {
+        extra: {
+          ...conversation.extra,
+          deferInitialWorkspaceLoad: false,
+        },
+      },
+    });
+  }, [conversation.extra, conversation.type, conversation_id, legacyWorkspaceLoadDeferred]);
 
   // Initialize all hooks
   const { isWorkspaceCollapsed, setIsWorkspaceCollapsed } = useWorkspaceCollapse();

@@ -21,6 +21,8 @@ import type { PluginMessageHandler } from '../plugins/BasePlugin';
 import { getChannelConversationName, resolveChannelConvType } from '../types';
 import { createMainMenuCard, createErrorRecoveryCard, createToolConfirmationCard } from '../plugins/lark/LarkCards';
 import { convertHtmlToLarkMarkdown } from '../plugins/lark/LarkAdapter';
+import { convertHtmlToDiscordMarkdown } from '../plugins/discord/DiscordAdapter';
+import { convertHtmlToSlackMrkdwn } from '../plugins/slack/SlackAdapter';
 import {
   createMainMenuCard as createDingTalkMainMenuCard,
   createErrorRecoveryCard as createDingTalkErrorRecoveryCard,
@@ -30,10 +32,20 @@ import {
 import { convertHtmlToDingTalkMarkdown } from '../plugins/dingtalk/DingTalkAdapter';
 import { createMainMenuKeyboard, createToolConfirmationKeyboard } from '../plugins/telegram/TelegramKeyboards';
 import { escapeHtml } from '../plugins/telegram/TelegramAdapter';
+import {
+  buildErrorRecoveryActionButtons,
+  buildMainMenuActionButtons,
+  buildResponseActionButtons,
+  buildToolConfirmationActionButtons,
+} from '../utils/actionButtons';
 import { stripHtml } from '../plugins/weixin/WeixinAdapter';
 import type { ChannelAgentType, IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType } from '../types';
 import type { PluginManager } from './PluginManager';
 import type { AcpBackend } from '@/common/types/acpTypes';
+
+function usesActionButtons(platform: PluginType): boolean {
+  return platform === 'slack' || platform === 'discord';
+}
 
 type SavedChannelAgent = {
   backend?: string;
@@ -68,62 +80,113 @@ const resolveSavedOpenClawAgent = (savedAgent: unknown) => {
 /**
  * Get main menu reply markup based on platform
  */
-function getMainMenuMarkup(platform: PluginType) {
+function getMainMenuExtras(platform: PluginType): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
+  if (usesActionButtons(platform)) {
+    return {
+      buttons: buildMainMenuActionButtons(),
+    };
+  }
   if (platform === 'lark') {
-    return createMainMenuCard();
+    return {
+      replyMarkup: createMainMenuCard(),
+    };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkMainMenuCard();
+    return {
+      replyMarkup: createDingTalkMainMenuCard(),
+    };
   }
-  return createMainMenuKeyboard();
+  return {
+    replyMarkup: createMainMenuKeyboard(),
+  };
 }
 
 /**
  * Get response actions markup based on platform
  */
-function getResponseActionsMarkup(platform: PluginType, text?: string) {
+function getResponseActionExtras(
+  platform: PluginType,
+  text?: string
+): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
+  if (usesActionButtons(platform)) {
+    return {
+      buttons: buildResponseActionButtons(),
+    };
+  }
   if (platform === 'dingtalk') {
-    return createDingTalkResponseActionsCard(text || '');
+    return {
+      replyMarkup: createDingTalkResponseActionsCard(text || ''),
+    };
   }
   // Telegram and Lark: no response action buttons
-  return undefined;
+  return {};
 }
 
 /**
  * Get tool confirmation markup based on platform
  */
-function getToolConfirmationMarkup(
+function getToolConfirmationExtras(
   platform: PluginType,
   callId: string,
   options: Array<{ label: string; value: string }>,
   title?: string,
   description?: string
-) {
+): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
+  if (usesActionButtons(platform)) {
+    return {
+      buttons: buildToolConfirmationActionButtons(callId, options),
+    };
+  }
   if (platform === 'lark') {
-    return createToolConfirmationCard(callId, title || 'Confirmation', description || 'Please confirm', options);
+    return {
+      replyMarkup: createToolConfirmationCard(
+        callId,
+        title || 'Confirmation',
+        description || 'Please confirm',
+        options
+      ),
+    };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkToolConfirmationCard(
-      callId,
-      title || 'Confirmation',
-      description || 'Please confirm',
-      options
-    );
+    return {
+      replyMarkup: createDingTalkToolConfirmationCard(
+        callId,
+        title || 'Confirmation',
+        description || 'Please confirm',
+        options
+      ),
+    };
   }
-  return createToolConfirmationKeyboard(callId, options);
+  return {
+    replyMarkup: createToolConfirmationKeyboard(callId, options),
+  };
 }
 
 /**
  * Get error recovery markup based on platform
  */
-function getErrorRecoveryMarkup(platform: PluginType, errorMessage?: string) {
+function getErrorRecoveryExtras(
+  platform: PluginType,
+  errorMessage?: string
+): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
+  if (usesActionButtons(platform)) {
+    return {
+      buttons: buildErrorRecoveryActionButtons(),
+    };
+  }
   if (platform === 'lark') {
-    return createErrorRecoveryCard(errorMessage);
+    return {
+      replyMarkup: createErrorRecoveryCard(errorMessage),
+    };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkErrorRecoveryCard(errorMessage);
+    return {
+      replyMarkup: createDingTalkErrorRecoveryCard(errorMessage),
+    };
   }
-  return createMainMenuKeyboard(); // Telegram uses main menu for recovery
+  return {
+    replyMarkup: createMainMenuKeyboard(), // Telegram uses main menu for recovery
+  };
 }
 
 /**
@@ -132,6 +195,12 @@ function getErrorRecoveryMarkup(platform: PluginType, errorMessage?: string) {
 function formatTextForPlatform(text: string, platform: PluginType): string {
   if (platform === 'lark') {
     return convertHtmlToLarkMarkdown(text);
+  }
+  if (platform === 'slack') {
+    return convertHtmlToSlackMrkdwn(text);
+  }
+  if (platform === 'discord') {
+    return convertHtmlToDiscordMarkdown(text);
   }
   if (platform === 'dingtalk') {
     return convertHtmlToDingTalkMarkdown(text);
@@ -198,6 +267,31 @@ function getConfirmationPrompt(details: { type: string; title?: string; [key: st
   }
 }
 
+function buildWeixinAttachmentPrompt(content: IUnifiedIncomingMessage['content']): string {
+  const lines: string[] = ['[WeChat media message]'];
+
+  const userText = content.text?.trim();
+  if (userText) {
+    lines.push(`User text: ${userText}`);
+  }
+
+  for (const [index, attachment] of (content.attachments || []).entries()) {
+    lines.push(
+      `Attachment ${index + 1}: type=${attachment.type}, path=${attachment.fileId}, name=${attachment.fileName || '-'}, mime=${attachment.mimeType || '-'}, size=${attachment.size ?? '-'}, duration=${attachment.duration ?? '-'}`
+    );
+  }
+
+  lines.push('Use the local attachment path(s) above if you need to inspect the media/file content.');
+  return lines.join('\n');
+}
+
+function extractAttachmentPaths(content: IUnifiedIncomingMessage['content']): string[] {
+  const fileIds = (content.attachments || [])
+    .map((attachment) => attachment.fileId)
+    .filter((fileId): fileId is string => Boolean(fileId));
+  return Array.from(new Set(fileIds));
+}
+
 /**
  * 将 TMessage 转换为 IUnifiedOutgoingMessage
  * Convert TMessage to IUnifiedOutgoingMessage for platform
@@ -217,7 +311,7 @@ function convertTMessageToOutgoing(
         type: 'text',
         text,
         parseMode: 'HTML',
-        replyMarkup: isComplete ? getResponseActionsMarkup(platform, text) : undefined,
+        ...(isComplete ? getResponseActionExtras(platform, text) : {}),
       };
     }
 
@@ -262,13 +356,7 @@ function convertTMessageToOutgoing(
           type: 'text',
           text: confirmText,
           parseMode: 'HTML',
-          replyMarkup: getToolConfirmationMarkup(
-            platform,
-            confirmingTool.callId,
-            options,
-            'Tool Confirmation',
-            confirmText
-          ),
+          ...getToolConfirmationExtras(platform, confirmingTool.callId, options, 'Tool Confirmation', confirmText),
         };
       }
 
@@ -600,13 +688,16 @@ export class ActionExecutor {
       } else if (content.type === 'text' && content.text) {
         // Regular text message - send to AI
         await this.handleChatMessage(context, content.text);
+      } else if (platform === 'weixin' && content.attachments && content.attachments.length > 0) {
+        // Weixin media message: convert attachments to a text prompt so the AI pipeline can process it.
+        await this.handleChatMessage(context, buildWeixinAttachmentPrompt(content), extractAttachmentPaths(content));
       } else {
         // Unsupported content type
         await context.sendMessage({
           type: 'text',
           text: 'This message type is not supported. Please send a text message.',
           parseMode: 'HTML',
-          replyMarkup: getMainMenuMarkup(platform as PluginType),
+          ...getMainMenuExtras(platform as PluginType),
         });
       }
     } catch (error: any) {
@@ -615,7 +706,7 @@ export class ActionExecutor {
         type: 'text',
         text: `❌ Error processing message: ${error.message}`,
         parseMode: 'HTML',
-        replyMarkup: getErrorRecoveryMarkup(platform as PluginType, error.message),
+        ...getErrorRecoveryExtras(platform as PluginType, error.message),
       });
     }
   }
@@ -659,7 +750,7 @@ export class ActionExecutor {
   /**
    * Handle chat message - send to AI and stream response
    */
-  private async handleChatMessage(context: IActionContext, text: string): Promise<void> {
+  private async handleChatMessage(context: IActionContext, text: string, files?: string[]): Promise<void> {
     // Update session activity (scoped by chatId)
     if (context.channelUser) {
       this.sessionManager.updateSessionActivity(context.channelUser.id, context.chatId);
@@ -802,7 +893,8 @@ export class ActionExecutor {
               }, delay);
             }
           }
-        }
+        },
+        files
       );
 
       // 清除待处理的定时器，确保最后一条消息被处理
@@ -828,14 +920,14 @@ export class ActionExecutor {
       try {
         // 使用最后一条消息的实际内容，添加操作按钮（根据平台）
         // Use actual content of last message, add action buttons (based on platform)
-        const responseMarkup = getResponseActionsMarkup(context.platform as PluginType, lastMessageContent?.text);
+        const responseExtras = getResponseActionExtras(context.platform as PluginType, lastMessageContent?.text);
         const finalMessage: IUnifiedOutgoingMessage = lastMessageContent
-          ? { ...lastMessageContent, replyMarkup: responseMarkup }
+          ? { ...lastMessageContent, ...responseExtras }
           : {
               type: 'text',
               text: '✅ Done',
               parseMode: 'HTML',
-              replyMarkup: responseMarkup,
+              ...responseExtras,
             };
         await context.editMessage(lastMsgId, finalMessage);
       } catch {
@@ -847,11 +939,14 @@ export class ActionExecutor {
 
       // Update message with error
       const errorResponse = buildChatErrorResponse(error.message);
+      const errorExtras = getErrorRecoveryExtras(context.platform as PluginType, error.message);
       await context.editMessage(thinkingMsgId, {
         type: 'text',
         text: errorResponse.text,
         parseMode: errorResponse.parseMode,
-        replyMarkup: errorResponse.replyMarkup,
+        ...(errorResponse.replyMarkup ? { replyMarkup: errorResponse.replyMarkup } : {}),
+        ...(errorExtras.replyMarkup ? { replyMarkup: errorExtras.replyMarkup } : {}),
+        ...(errorExtras.buttons ? { buttons: errorExtras.buttons } : {}),
       });
     }
   }

@@ -16,10 +16,7 @@
     "none": "无",
     "quickActionsTitle": "ContextGo 能做什么？",
     "quickActionFeedback": "想吐槽或提建议?",
-    "quickActionStar": "喜欢我们？点个星吧",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "按需搜索并调用社区 Skills，一次配置，所有Agent通用。",
-    "skillsMarketDetails": "详情 >>"
+    "quickActionStar": "喜欢我们？点个星吧"
   },
   "history": {
     "today": "今天",
@@ -81,6 +78,7 @@
     "empty": "没有找到匹配的消息",
     "clear": "清空搜索",
     "loadingMore": "正在加载更多...",
+    "recentConversations": "最近会话",
     "untitled": "未命名会话"
   },
   "entry": {
@@ -308,6 +306,21 @@
     "switchAgentFailed": "切换 Agent 失败",
     "modelSwitchFailed": "切换模型失败",
     "modelSwitchNotSupported": "当前 OpenClaw Gateway 不支持切换模型"
+  },
+  "pendingMessages": {
+    "title": "待发送 {{count}} 条",
+    "shortcuts": "Tab 入队 · Cmd/Ctrl+Enter 引导 · Option/Alt+↑ 编辑最近一条",
+    "attachments": "{{count}} 个文件",
+    "dispatching": "发送中...",
+    "edit": "重新编辑",
+    "mode": {
+      "queue": "队列",
+      "steer": "引导"
+    },
+    "actions": {
+      "queue": "改为队列",
+      "steer": "改为引导"
+    }
   },
   "contextUsage": {
     "contextUsed": "上下文已使用"

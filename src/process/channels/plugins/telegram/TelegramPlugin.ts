@@ -403,10 +403,10 @@ export class TelegramPlugin extends BasePlugin {
       return;
     }
 
-    // 处理 agent 选择回调，格式: agent:{agentType}
-    // Handle agent selection callback, format: agent:{agentType}
+    // 处理 agent 选择回调，格式: agent:{agentKey}
+    // Handle agent selection callback, format: agent:{agentKey}
     if (category === 'agent') {
-      const agentType = extractAction(data); // gemini, acp, codex
+      const agentKey = extractAction(data);
       const unifiedMessage = toUnifiedIncomingMessage(ctx);
       if (unifiedMessage && this.messageHandler) {
         unifiedMessage.content.type = 'action';
@@ -414,7 +414,7 @@ export class TelegramPlugin extends BasePlugin {
         unifiedMessage.action = {
           type: 'system',
           name: 'agent.select',
-          params: { agentType },
+          params: { agentKey },
         };
         // Don't await - process in background
         void this.messageHandler(unifiedMessage)

@@ -13,6 +13,17 @@
   z-index: 10;
 }
 
+.app-titlebar--desktop-chrome-only {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  width: auto;
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+}
+
 .app-titlebar--desktop {
   -webkit-app-region: drag;
   gap: 0;
@@ -85,7 +96,18 @@
   align-items: center;
   min-height: var(--titlebar-height);
   box-sizing: border-box;
+  background: transparent;
+}
+
+.app-titlebar__desktop-left--docked {
   border-right: 1px solid var(--border-base);
+}
+
+.app-titlebar--desktop-chrome-only .app-titlebar__desktop-left {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-titlebar__desktop-right {

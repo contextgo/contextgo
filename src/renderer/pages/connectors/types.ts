@@ -1,4 +1,5 @@
 export type ConnectorCategory =
+  | 'contextgo'
   | 'googleWorkspace'
   | 'collaboration'
   | 'development'
@@ -9,6 +10,9 @@ export type ConnectorCategory =
   | 'data';
 
 export type ConnectorResource =
+  | 'clipboard'
+  | 'browserHistory'
+  | 'webPages'
   | 'chat'
   | 'docs'
   | 'wiki'
@@ -26,7 +30,7 @@ export type ConnectorResource =
   | 'databases'
   | 'incidents';
 
-export type ConnectorAuthType = 'oauth' | 'bot' | 'apiKey' | 'pat' | 'serviceAccount';
+export type ConnectorAuthType = 'oauth' | 'bot' | 'apiKey' | 'pat' | 'serviceAccount' | 'native' | 'extension' | 'none';
 
 export type ConnectorStage = 'priority' | 'planned';
 

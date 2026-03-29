@@ -1,0 +1,68 @@
+name: Deploy Website
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-website-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy contextgo.io
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.SITE_DEPLOY_RUNNER_LABELS_JSON != '' &&
+          vars.SITE_DEPLOY_RUNNER_LABELS_JSON ||
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: apps/web
+    env:
+      CONTEXTGO_RELEASE_REPO: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo' }}
+      CONTEXTGO_ANDROID_URL: ${{ vars.CONTEXTGO_ANDROID_URL }}
+      CONTEXTGO_IOS_URL: ${{ vars.CONTEXTGO_IOS_URL }}
+      CONTEXTGO_IOS_LABEL: ${{ vars.CONTEXTGO_IOS_LABEL }}
+      CONTEXTGO_HARMONY_URL: ${{ vars.CONTEXTGO_HARMONY_URL }}
+      CONTEXTGO_HARMONY_LABEL: ${{ vars.CONTEXTGO_HARMONY_LABEL }}
+      SITE_CLOUDFLARE_PROJECT_NAME: ${{ vars.SITE_CLOUDFLARE_PROJECT_NAME != '' && vars.SITE_CLOUDFLARE_PROJECT_NAME || 'contextgo-web' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install website dependencies
+        run: npm ci
+
+      - name: Lint website
+        run: npm run lint
+
+      - name: Build website
+        run: npm run build
+
+      - name: Build Cloudflare Pages output
+        run: npm run pages:build
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy .vercel/output/static --project-name "$SITE_CLOUDFLARE_PROJECT_NAME" --branch main

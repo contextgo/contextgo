@@ -2,6 +2,7 @@ import { ipcBridge } from '@/common';
 import type { TMessage } from '@/common/chat/chatLib';
 import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import { uuid } from '@/common/utils';
+import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import SendBox from '@/renderer/components/chat/sendbox';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile } from '@/renderer/hooks/chat/useSendBoxFiles';
@@ -19,6 +20,11 @@ import ThoughtDisplay, { type ThoughtData } from '@/renderer/components/chat/Tho
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import {
+  usePendingConversationMessages,
+  type PendingConversationMessage,
+  type PendingConversationMessageMode,
+} from '@/renderer/pages/conversation/hooks/usePendingConversationMessages';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import FileAttachButton from '@/renderer/components/media/FileAttachButton';
@@ -54,6 +60,8 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
   const [running, setRunning] = useState(false);
   const [aiProcessing, setAiProcessing] = useState(false); // New loading state for AI response
   const [codexStatus, setCodexStatus] = useState<string | null>(null);
+  const [hasActiveToolCalls, setHasActiveToolCalls] = useState(false);
+  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(false);
   const slashCommands = useSlashCommands(conversation_id, {
     conversationType: 'codex',
     codexStatus,
@@ -66,6 +74,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
   // Track whether current turn has content output
   // Only reset aiProcessing when finish arrives after content (not after tool calls)
   const hasContentInTurnRef = useRef(false);
+  const activeToolCallIdsRef = useRef<Set<string>>(new Set());
 
   // Think 消息节流：限制更新频率，减少渲染次数
   // Throttle thought updates to reduce render frequency
@@ -149,6 +158,9 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
     setCodexStatus(null);
     setThought({ subject: '', description: '' });
     hasContentInTurnRef.current = false;
+    activeToolCallIdsRef.current = new Set();
+    setHasActiveToolCalls(false);
+    setSawToolActivityInTurn(false);
 
     // Check actual conversation status from backend
     void ipcBridge.conversation.get.invoke({ id: conversation_id }).then((res) => {
@@ -208,6 +220,9 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
           }
           // Reset flag for next turn
           hasContentInTurnRef.current = false;
+          activeToolCallIdsRef.current = new Set();
+          setHasActiveToolCalls(false);
+          setSawToolActivityInTurn(false);
           break;
         case 'content':
         case 'codex_permission': {
@@ -216,6 +231,33 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
           setThought({ subject: '', description: '' });
           const transformedMessage = transformMessage(message);
           if (transformedMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
+          break;
+        }
+        case 'codex_tool_call': {
+          hasContentInTurnRef.current = true;
+          setThought({ subject: '', description: '' });
+
+          const update = message.data as { status?: string; toolCallId?: string };
+          if (update?.toolCallId) {
+            const nextActiveToolCallIds = new Set(activeToolCallIdsRef.current);
+            setSawToolActivityInTurn(true);
+
+            if (update.status === 'pending' || update.status === 'executing') {
+              nextActiveToolCallIds.add(update.toolCallId);
+            } else {
+              nextActiveToolCallIds.delete(update.toolCallId);
+            }
+
+            activeToolCallIdsRef.current = nextActiveToolCallIds;
+            setHasActiveToolCalls(nextActiveToolCallIds.size > 0);
+          }
+          const shouldSuppressToolCallLifecycleMessage =
+            update?.status === 'pending' || update?.status === 'executing';
+
+          const transformedMessage = transformMessage(message);
+          if (transformedMessage && !shouldSuppressToolCallLifecycleMessage) {
             addOrUpdateMessage(transformedMessage);
           }
           break;
@@ -276,8 +318,103 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
     }, 10);
   });
 
+  const sendCodexMessage = useCallback(
+    async (message: string, filePaths: string[]) => {
+      const msg_id = uuid();
+      const displayMessage = buildDisplayMessage(message, filePaths, workspacePath);
+
+      const userMessage: TMessage = {
+        id: msg_id,
+        msg_id,
+        conversation_id,
+        type: 'text',
+        position: 'right',
+        content: { content: displayMessage },
+        createdAt: Date.now(),
+      };
+      addOrUpdateMessage(userMessage, true);
+      setAiProcessing(true);
+      try {
+        await ipcBridge.codexConversation.sendMessage.invoke({
+          input: displayMessage,
+          msg_id,
+          conversation_id,
+          files: filePaths,
+        });
+        void checkAndUpdateTitle(conversation_id, message);
+        emitter.emit('chat.history.refresh');
+      } catch (error) {
+        setAiProcessing(false);
+        throw error;
+      }
+    },
+    [addOrUpdateMessage, checkAndUpdateTitle, conversation_id, workspacePath]
+  );
+
+  const {
+    pendingMessages,
+    enqueuePendingMessage,
+    removePendingMessage,
+    restorePendingMessage,
+    restoreLatestPendingMessage,
+    setPendingMessageMode,
+  } = usePendingConversationMessages({
+    conversationId: conversation_id,
+    canSendNow: !(running || aiProcessing),
+    canSteerNow: (running || aiProcessing) && sawToolActivityInTurn && !hasActiveToolCalls,
+    onDispatch: async (pendingMessage: PendingConversationMessage) => {
+      await sendCodexMessage(pendingMessage.content, pendingMessage.attachments);
+    },
+    onDispatchError: (error: unknown) => {
+      console.error('[CodexSendBox] Failed to dispatch pending message:', error);
+    },
+  });
+
+  const stashPendingMessage = useCallback(
+    (mode: PendingConversationMessageMode, message: string) => {
+      emitter.emit('codex.selected.file.clear');
+      const currentAtPath = [...atPath];
+      const currentUploadFile = [...uploadFile];
+      setAtPath([]);
+      setUploadFile([]);
+
+      const filePaths = [
+        ...currentUploadFile,
+        ...currentAtPath.map((item) => (typeof item === 'string' ? item : item.path)),
+      ];
+      enqueuePendingMessage(mode, message, filePaths);
+    },
+    [atPath, enqueuePendingMessage, uploadFile]
+  );
+
+  const restoreMessageToComposer = useCallback(
+    (messageId: string) => {
+      const pendingMessage = restorePendingMessage(messageId);
+      if (!pendingMessage) {
+        return;
+      }
+
+      setContent(pendingMessage.content);
+      setAtPath([]);
+      setUploadFile(pendingMessage.attachments);
+      emitter.emit('codex.selected.file.clear');
+    },
+    [restorePendingMessage, setAtPath, setContent, setUploadFile]
+  );
+
+  const restoreLatestMessageToComposer = useCallback(() => {
+    const pendingMessage = restoreLatestPendingMessage();
+    if (!pendingMessage) {
+      return;
+    }
+
+    setContent(pendingMessage.content);
+    setAtPath([]);
+    setUploadFile(pendingMessage.attachments);
+    emitter.emit('codex.selected.file.clear');
+  }, [restoreLatestPendingMessage, setAtPath, setContent, setUploadFile]);
+
   const onSendHandler = async (message: string) => {
-    const msg_id = uuid();
     // Content is already cleared by the shared SendBox component (setInput(''))
     // before calling onSend — no need to clear again here.
     emitter.emit('codex.selected.file.clear');
@@ -291,36 +428,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
       ...currentUploadFile,
       ...currentAtPath.map((item) => (typeof item === 'string' ? item : item.path)),
     ];
-    const displayMessage = buildDisplayMessage(message, filePaths, workspacePath);
-
-    // 前端先写入用户消息，避免导航/事件竞争导致看不到消息
-    const userMessage: TMessage = {
-      id: msg_id,
-      msg_id,
-      conversation_id,
-      type: 'text',
-      position: 'right',
-      content: { content: displayMessage },
-      createdAt: Date.now(),
-    };
-    addOrUpdateMessage(userMessage, true); // 立即保存到存储，避免刷新丢失
-    setAiProcessing(true);
-    try {
-      // 提取实际的文件路径发送给后端
-      const atPathStrings = currentAtPath.map((item) => (typeof item === 'string' ? item : item.path));
-      await ipcBridge.codexConversation.sendMessage.invoke({
-        input: displayMessage,
-        msg_id,
-        conversation_id,
-        files: [...currentUploadFile, ...atPathStrings], // 包含上传文件和选中的工作空间文件
-      });
-      void checkAndUpdateTitle(conversation_id, message);
-      emitter.emit('chat.history.refresh');
-    } catch (error) {
-      // Only reset aiProcessing on error, normal flow is reset by 'finish' event
-      setAiProcessing(false);
-      throw error;
-    }
+    await sendCodexMessage(message, filePaths);
   };
 
   const appendSelectedFiles = useCallback(
@@ -392,7 +500,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
 
         // 成功后移除初始消息存储
         sessionStorage.removeItem(storageKey);
-      } catch (err) {
+      } catch {
         // 发送失败时清理处理标记，允许重试
         sessionStorage.removeItem(processedKey);
         // Only reset aiProcessing on error, normal flow is reset by 'finish' event
@@ -465,6 +573,12 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
         }
         prefix={
           <>
+            <PendingMessageBar
+              messages={pendingMessages}
+              onRemove={removePendingMessage}
+              onEdit={restoreMessageToComposer}
+              onSetMode={setPendingMessageMode}
+            />
             {/* Files on top */}
             {(uploadFile.length > 0 || atPath.some((item) => (typeof item === 'string' ? true : item.isFile))) && (
               <HorizontalFileList>
@@ -525,6 +639,9 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
           </>
         }
         onSend={onSendHandler}
+        onQueue={(message) => stashPendingMessage('queue', message)}
+        onSteer={(message) => stashPendingMessage('steer', message)}
+        onEditLatestPending={restoreLatestMessageToComposer}
         slashCommands={slashCommands}
         onSlashBuiltinCommand={onSlashBuiltinCommand}
       ></SendBox>

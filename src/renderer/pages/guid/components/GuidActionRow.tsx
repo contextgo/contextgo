@@ -150,29 +150,37 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
       {isWebUI ? (
         <>
           <Menu.Item key='file'>
-            <div className='flex items-center gap-8px'>
-              <UploadOne theme='outline' size='16' fill={iconColors.secondary} style={{ lineHeight: 0 }} />
+            <div className='app-icon-row'>
+              <span className='app-icon-slot'>
+                <UploadOne theme='outline' size='16' fill={iconColors.secondary} className='app-icon' />
+              </span>
               <span>{t('common.fileAttach.hostFiles')}</span>
             </div>
           </Menu.Item>
           <Menu.Item key='device'>
-            <div className='flex items-center gap-8px'>
-              <UploadOne theme='outline' size='16' fill={iconColors.secondary} style={{ lineHeight: 0 }} />
+            <div className='app-icon-row'>
+              <span className='app-icon-slot'>
+                <UploadOne theme='outline' size='16' fill={iconColors.secondary} className='app-icon' />
+              </span>
               <span>{t('common.fileAttach.myDevice')}</span>
             </div>
           </Menu.Item>
         </>
       ) : (
         <Menu.Item key='file'>
-          <div className='flex items-center gap-8px'>
-            <UploadOne theme='outline' size='16' fill={iconColors.secondary} style={{ lineHeight: 0 }} />
+          <div className='app-icon-row'>
+            <span className='app-icon-slot'>
+              <UploadOne theme='outline' size='16' fill={iconColors.secondary} className='app-icon' />
+            </span>
             <span>{t('conversation.welcome.uploadFile')}</span>
           </div>
         </Menu.Item>
       )}
       <Menu.Item key='workspace'>
-        <div className='flex items-center gap-8px'>
-          <FolderOpen theme='outline' size='16' fill={iconColors.secondary} style={{ lineHeight: 0 }} />
+        <div className='app-icon-row'>
+          <span className='app-icon-slot'>
+            <FolderOpen theme='outline' size='16' fill={iconColors.secondary} className='app-icon' />
+          </span>
           <span>{t('conversation.welcome.specifyWorkspace')}</span>
         </div>
       </Menu.Item>
