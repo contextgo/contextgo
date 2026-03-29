@@ -3,6 +3,12 @@ export const zh = {
     product: '介绍',
     connect: '连接',
     download: '下载',
+    theme: {
+      toggle: '主题',
+      light: '浅色',
+      dark: '深色',
+      system: '跟随系统',
+    },
   },
   hero: {
     title_start: '掌控你的上下文，',
