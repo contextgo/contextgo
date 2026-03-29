@@ -61,8 +61,10 @@ export class GroupConversationService {
           ...runState,
           status: 'failed',
           stage: 'failed',
+          activeStageId: undefined,
           artifactPath: runState?.artifactPath || orchestration.artifactPath,
           activeParticipantId: undefined,
+          completedAt: Date.now(),
           updatedAt: Date.now(),
         };
 

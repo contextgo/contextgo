@@ -60,7 +60,8 @@ export const plannerWriterEvaluatorTemplate: WorkflowRuntimeTemplate = {
   buildPlannerPrompt,
   buildWriterPrompt,
   buildEvaluatorPrompt,
-  shouldRunEvaluation: () => true,
+  shouldRunEvaluation: ({ orchestration, iteration }) =>
+    orchestration.reviewMode !== 'final-only' || iteration >= orchestration.maxIterations,
   getFinalDecision: resolveFinalDecision,
 };
 

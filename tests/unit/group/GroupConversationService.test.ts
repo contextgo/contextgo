@@ -580,6 +580,7 @@ describe('GroupConversationService workflow mode', () => {
           runState: expect.objectContaining({
             status: 'failed',
             stage: 'failed',
+            activeStageId: undefined,
             iteration: 2,
             artifactPath: 'team-output.md',
             activeParticipantId: undefined,
