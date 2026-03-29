@@ -1,13 +1,44 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ArrowRight, Database, Network, Sparkles } from 'lucide-react';
 import type { Dictionary } from '@/app/types';
 
-const connectorRows = [
-  ['Google Drive', 'Notion', 'Slack', 'GitHub', 'Discord', 'Linear', 'Dropbox', 'Telegram'],
-  ['Postgres', 'S3', 'Confluence', 'Feishu', 'Jira', 'OneDrive', 'RSS', 'Webhook'],
-  ['Local Folder', 'Obsidian', 'Airtable', 'Sheets', 'Email', 'Docs', 'CRM', 'CMS'],
+type ConnectorBrand = {
+  name: string;
+  logo: string;
+};
+
+const connectorRows: ConnectorBrand[][] = [
+  [
+    { name: 'Notion', logo: '/connectors/knowledge/notion.svg' },
+    { name: 'Slack', logo: '/connectors/channels/slack.svg' },
+    { name: 'GitHub', logo: '/connectors/development/github.svg' },
+    { name: 'Linear', logo: '/connectors/development/linear.svg' },
+    { name: 'Figma', logo: '/connectors/design/figma.svg' },
+    { name: 'Google Drive', logo: '/connectors/google-workspace/google-drive.svg' },
+    { name: 'Dropbox', logo: '/connectors/storage/dropbox.svg' },
+  ],
+  [
+    { name: 'Confluence', logo: '/connectors/knowledge/confluence.svg' },
+    { name: 'Lark', logo: '/connectors/channels/lark.svg' },
+    { name: 'Jira', logo: '/connectors/development/jira.svg' },
+    { name: 'Zoom', logo: '/connectors/collaboration/zoom.svg' },
+    { name: 'Microsoft Teams', logo: '/connectors/collaboration/microsoft-teams.svg' },
+    { name: 'Miro', logo: '/connectors/design/miro.svg' },
+    { name: 'Obsidian', logo: '/connectors/knowledge/obsidian.svg' },
+  ],
+  [
+    { name: 'PostgreSQL', logo: '/connectors/data/postgresql.svg' },
+    { name: 'Supabase', logo: '/connectors/data/supabase.svg' },
+    { name: 'Airtable', logo: '/connectors/data/airtable.svg' },
+    { name: 'Shopify', logo: '/connectors/business/shopify.svg' },
+    { name: 'Zendesk', logo: '/connectors/business/zendesk.svg' },
+    { name: 'Gmail', logo: '/connectors/google-workspace/gmail.svg' },
+    { name: 'Google Docs', logo: '/connectors/google-workspace/google-docs.svg' },
+    { name: 'Google Sheets', logo: '/connectors/google-workspace/google-sheets.svg' },
+  ],
 ];
 
 const featureIcons = [Database, Network, Sparkles] as const;
@@ -83,7 +114,7 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
                 <div className='mt-5 space-y-4'>
                   {connectorRows.map((row, index) => (
                     <ConnectorMarquee
-                      key={row.join('-')}
+                      key={row.map((item) => item.name).join('-')}
                       items={row}
                       direction={marqueeDirections[index]}
                       duration={20 + index * 3}
@@ -173,7 +204,7 @@ function ConnectorMarquee({
   direction,
   duration,
 }: {
-  items: string[];
+  items: ConnectorBrand[];
   direction: 'left' | 'right';
   duration: number;
 }) {
@@ -191,11 +222,15 @@ function ConnectorMarquee({
       >
         {repeated.map((item, index) => (
           <div
-            key={`${item}-${index}`}
-            className='flex shrink-0 items-center gap-3 rounded-full border border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f4f5f7_100%)] px-4 py-2'
+            key={`${item.name}-${index}`}
+            className='flex min-w-[188px] shrink-0 items-center gap-3 rounded-[20px] border border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f4f5f7_100%)] px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.05)]'
           >
-            <div className='h-2.5 w-2.5 rounded-full bg-black' />
-            <span className='text-sm font-medium tracking-tight text-gray-700'>{item}</span>
+            <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'>
+              <Image src={item.logo} alt='' width={24} height={24} className='h-6 w-6 object-contain' />
+            </div>
+            <div className='min-w-0'>
+              <span className='block truncate text-sm font-medium tracking-tight text-gray-700'>{item.name}</span>
+            </div>
           </div>
         ))}
       </motion.div>
