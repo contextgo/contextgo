@@ -7,7 +7,7 @@
 import type { IConversationService, CreateConversationParams, MigrateConversationParams } from './IConversationService';
 import type { IConversationRepository } from '@process/services/database/IConversationRepository';
 import type { TChatConversation } from '@/common/config/storage';
-import type { DiscussionGroupParticipant } from '@/common/config/storage';
+import type { GroupParticipant, GroupOrchestration, WorkflowGroupRunState } from '@/common/config/storage';
 import { uuid } from '@/common/utils';
 import { cronService } from './cron/cronServiceSingleton';
 import {
@@ -164,21 +164,35 @@ export class ConversationServiceImpl implements IConversationService {
         break;
       }
       case 'group': {
-        const orchestration = params.extra.orchestration || {
+        const orchestration = (params.extra.orchestration || {
+          kind: 'discussion' as const,
           mode: 'debate',
           rounds: 2 as const,
-        };
+        }) as GroupOrchestration;
+        const normalizedOrchestration: GroupOrchestration =
+          orchestration.kind === 'workflow'
+            ? {
+                kind: 'workflow',
+                template: orchestration.template,
+                maxIterations: orchestration.maxIterations,
+                scoreTarget: orchestration.scoreTarget,
+                artifactPath: orchestration.artifactPath,
+                reviewMode: orchestration.reviewMode,
+              }
+            : {
+                kind: 'discussion',
+                mode: orchestration.mode,
+                rounds: orchestration.rounds || (orchestration.mode === 'debate' ? 2 : 1),
+              };
         conversation = await createGroupConversation({
           id: params.id,
           name: params.name,
           model: params.model,
           workspace: params.extra.workspace,
           customWorkspace: params.extra.customWorkspace,
-          participants: (params.extra.participants || []) as DiscussionGroupParticipant[],
-          orchestration: {
-            mode: orchestration.mode,
-            rounds: orchestration.rounds || (orchestration.mode === 'debate' ? 2 : 1),
-          },
+          participants: (params.extra.participants || []) as GroupParticipant[],
+          orchestration: normalizedOrchestration,
+          runState: params.extra.runState as WorkflowGroupRunState | undefined,
         });
         break;
       }

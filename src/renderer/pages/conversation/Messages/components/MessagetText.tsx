@@ -6,6 +6,7 @@
 
 import type { IMessageText } from '@/common/chat/chatLib';
 import { AIONUI_FILES_MARKER } from '@/common/config/constants';
+import { formatWorkflowRoleLabel, isBuiltInWorkflowRole } from '@/common/config/group';
 import { iconColors } from '@/renderer/styles/colors';
 import { Alert, Message, Tooltip } from '@arco-design/web-react';
 import { Copy } from '@icon-park/react';
@@ -20,6 +21,17 @@ import MarkdownView from '@renderer/components/Markdown';
 import { stripThinkTags, hasThinkTags } from '@renderer/utils/chat/thinkTagFilter';
 import MessageCronBadge from './MessageCronBadge';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
+
+const resolveGroupParticipantRoleLabel = (
+  role: string | undefined,
+  t: (key: string, options?: unknown) => string
+): string | null => {
+  if (!role) {
+    return null;
+  }
+
+  return isBuiltInWorkflowRole(role) ? t(`conversation.group.role.${role}`) : formatWorkflowRoleLabel(role);
+};
 
 const parseFileMarker = (content: string) => {
   const markerIndex = content.indexOf(AIONUI_FILES_MARKER);
@@ -104,6 +116,20 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   const groupAvatarImage = groupMeta?.participantAvatar
     ? CUSTOM_AVATAR_IMAGE_MAP[groupMeta.participantAvatar]
     : undefined;
+  const groupMetaLabels = groupMeta
+    ? groupMeta.kind === 'workflow'
+      ? [
+          resolveGroupParticipantRoleLabel(groupMeta.participantRole, t),
+          t(`conversation.group.workflow.stage.${groupMeta.stage}`),
+          groupMeta.iteration > 0
+            ? t('conversation.group.workflow.iterationLabel', { iteration: groupMeta.iteration })
+            : null,
+        ].filter(Boolean)
+      : [
+          resolveGroupParticipantRoleLabel(groupMeta.participantRole, t),
+          groupMeta.round > 0 ? t('conversation.group.roundLabel', { round: groupMeta.round }) : null,
+        ].filter(Boolean)
+    : [];
 
   return (
     <>
@@ -121,7 +147,9 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
               <span className='text-14px leading-18px'>{groupMeta.participantAvatar}</span>
             ) : null}
             <span className='font-medium text-[var(--color-text-2)]'>{groupMeta.participantName}</span>
-            {groupMeta.round > 0 ? <span>{t('conversation.group.roundLabel', { round: groupMeta.round })}</span> : null}
+            {groupMetaLabels.map((label) => (
+              <span key={String(label)}>{label}</span>
+            ))}
           </div>
         )}
         {files.length > 0 && (

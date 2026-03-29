@@ -9,7 +9,7 @@ import type { TChatConversation } from '@/common/config/storage';
 import { addEventListener } from '@/renderer/utils/emitter';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
-import type { DiscussionChildConversationMap } from '../types';
+import type { GroupChildConversationMap } from '../types';
 
 const shouldIgnoreStreamMessage = (type: string): boolean => {
   return type === 'user_content' || type === 'request_trace' || type === 'finished';
@@ -57,12 +57,12 @@ const isTerminalTurnState = (state: string): boolean => {
 
 type ConversationListSyncSnapshot = {
   conversations: TChatConversation[];
-  discussionChildConversationsByParentId: DiscussionChildConversationMap;
+  groupChildConversationsByParentId: GroupChildConversationMap;
   generatingConversationIds: Set<string>;
   completionUnreadConversationIds: Set<string>;
 };
 
-const getDiscussionParentGroupId = (conversation: TChatConversation): string | undefined => {
+const getGroupParentConversationId = (conversation: TChatConversation): string | undefined => {
   const extra = conversation.extra as
     | {
         groupMeta?: { parentGroupId?: string };
@@ -73,9 +73,9 @@ const getDiscussionParentGroupId = (conversation: TChatConversation): string | u
   return typeof parentGroupId === 'string' && parentGroupId.length > 0 ? parentGroupId : undefined;
 };
 
-export const splitDiscussionChildConversations = (conversations: TChatConversation[]) => {
+export const splitGroupChildConversations = (conversations: TChatConversation[]) => {
   const nextTopLevelConversations: TChatConversation[] = [];
-  const nextDiscussionChildConversations = new Map<string, TChatConversation[]>();
+  const nextGroupChildConversations = new Map<string, TChatConversation[]>();
   const participantParentGroupByConversationId = new Map<string, string>();
 
   conversations.forEach((conversation) => {
@@ -90,12 +90,12 @@ export const splitDiscussionChildConversations = (conversations: TChatConversati
 
   conversations.forEach((conversation) => {
     const parentGroupId =
-      getDiscussionParentGroupId(conversation) || participantParentGroupByConversationId.get(conversation.id);
+      getGroupParentConversationId(conversation) || participantParentGroupByConversationId.get(conversation.id);
 
     if (parentGroupId) {
-      const childConversations = nextDiscussionChildConversations.get(parentGroupId) ?? [];
+      const childConversations = nextGroupChildConversations.get(parentGroupId) ?? [];
       childConversations.push(conversation);
-      nextDiscussionChildConversations.set(parentGroupId, childConversations);
+      nextGroupChildConversations.set(parentGroupId, childConversations);
       return;
     }
 
@@ -104,9 +104,7 @@ export const splitDiscussionChildConversations = (conversations: TChatConversati
 
   return {
     topLevelConversations: nextTopLevelConversations,
-    discussionChildConversationsByParentId: Object.fromEntries(
-      nextDiscussionChildConversations
-    ) as DiscussionChildConversationMap,
+    groupChildConversationsByParentId: Object.fromEntries(nextGroupChildConversations) as GroupChildConversationMap,
   };
 };
 
@@ -114,14 +112,14 @@ const listeners = new Set<() => void>();
 
 let isStoreInitialized = false;
 let conversationsState: TChatConversation[] = [];
-let discussionChildConversationsByParentIdState: DiscussionChildConversationMap = {};
+let groupChildConversationsByParentIdState: GroupChildConversationMap = {};
 let generatingConversationIdsState = new Set<string>();
 let completionUnreadConversationIdsState = new Set<string>();
 let conversationIdsState = new Set<string>();
 let activeConversationIdState: string | null = null;
 let snapshotState: ConversationListSyncSnapshot = {
   conversations: conversationsState,
-  discussionChildConversationsByParentId: discussionChildConversationsByParentIdState,
+  groupChildConversationsByParentId: groupChildConversationsByParentIdState,
   generatingConversationIds: generatingConversationIdsState,
   completionUnreadConversationIds: completionUnreadConversationIdsState,
 };
@@ -129,7 +127,7 @@ let snapshotState: ConversationListSyncSnapshot = {
 const emitStoreChange = () => {
   snapshotState = {
     conversations: conversationsState,
-    discussionChildConversationsByParentId: discussionChildConversationsByParentIdState,
+    groupChildConversationsByParentId: groupChildConversationsByParentIdState,
     generatingConversationIds: generatingConversationIdsState,
     completionUnreadConversationIds: completionUnreadConversationIdsState,
   };
@@ -163,25 +161,25 @@ const refreshConversations = () => {
 
         const {
           topLevelConversations: nextTopLevelConversations,
-          discussionChildConversationsByParentId: nextDiscussionChildConversations,
-        } = splitDiscussionChildConversations(filteredData);
+          groupChildConversationsByParentId: nextGroupChildConversations,
+        } = splitGroupChildConversations(filteredData);
 
         conversationsState = nextTopLevelConversations;
-        discussionChildConversationsByParentIdState = nextDiscussionChildConversations;
+        groupChildConversationsByParentIdState = nextGroupChildConversations;
         conversationIdsState = new Set(filteredData.map((conversation) => conversation.id));
         emitStoreChange();
         return;
       }
 
       conversationsState = [];
-      discussionChildConversationsByParentIdState = {};
+      groupChildConversationsByParentIdState = {};
       conversationIdsState = new Set();
       emitStoreChange();
     })
     .catch((error) => {
       console.error('[WorkspaceGroupedHistory] Failed to load conversations:', error);
       conversationsState = [];
-      discussionChildConversationsByParentIdState = {};
+      groupChildConversationsByParentIdState = {};
       conversationIdsState = new Set();
       emitStoreChange();
     });
@@ -297,7 +295,7 @@ export const useConversationListSync = () => {
 
   const {
     conversations,
-    discussionChildConversationsByParentId,
+    groupChildConversationsByParentId,
     generatingConversationIds,
     completionUnreadConversationIds,
   } = useSyncExternalStore(
@@ -330,7 +328,7 @@ export const useConversationListSync = () => {
 
   return {
     conversations,
-    discussionChildConversationsByParentId,
+    groupChildConversationsByParentId,
     isConversationGenerating,
     hasCompletionUnread,
     clearCompletionUnread,

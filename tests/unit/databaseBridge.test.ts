@@ -152,7 +152,7 @@ describe('databaseBridge', () => {
       expect(result).toEqual([]);
     });
 
-    it('keeps discussion child conversations available for renderer nesting', async () => {
+    it('keeps group child conversations available for renderer nesting', async () => {
       const groupChildConversation: Partial<TChatConversation> = {
         id: 'child-1',
         modifyTime: 2000,
@@ -175,7 +175,7 @@ describe('databaseBridge', () => {
       expect(result).toContainEqual(groupChildConversation);
     });
 
-    it('repairs mismatched discussion child parent ids and workspace metadata', async () => {
+    it('repairs mismatched group child parent ids and workspace metadata', async () => {
       const parentConversation: Partial<TChatConversation> = {
         id: 'group-1',
         type: 'group',

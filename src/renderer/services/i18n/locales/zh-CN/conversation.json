@@ -66,7 +66,8 @@
     "pinFailed": "置顶操作失败",
     "pinnedSection": "置顶",
     "deleteSuccess": "删除成功",
-    "deleteFailed": "删除失败"
+    "deleteFailed": "删除失败",
+    "toggleGroupConversation": "展开或收起协作组子会话"
   },
   "historySearch": {
     "tooltip": "搜索",
@@ -83,7 +84,7 @@
   "entry": {
     "create": "新建",
     "conversation": "会话",
-    "group": "讨论组"
+    "group": "协作组"
   },
   "tabs": {
     "closeAll": "关闭全部",
@@ -96,19 +97,26 @@
     "presetAssistants": "预设助手"
   },
   "group": {
-    "header": "讨论组",
-    "createEntry": "创建讨论组",
-    "createTitle": "创建讨论组",
-    "createAction": "创建讨论组",
-    "createFailed": "创建讨论组失败",
-    "defaultName": "讨论组",
-    "nameLabel": "讨论组名称",
-    "namePlaceholder": "请输入讨论组名称",
+    "header": "协作组",
+    "createEntry": "创建协作组",
+    "createTitle": "创建协作组",
+    "createAction": "创建协作组",
+    "createFailed": "创建协作组失败",
+    "defaultName": "协作组",
+    "nameLabel": "协作组名称",
+    "namePlaceholder": "请输入协作组名称",
     "workspaceLabel": "工作目录",
     "workspacePlaceholder": "可选，不填则自动创建默认工作目录",
-    "workspaceHint": "讨论组和所有参与者 session 将共享这个工作目录；留空时会自动创建默认临时目录。",
+    "workspaceHint": "协作组和所有参与者 session 将共享这个工作目录；留空时会自动创建默认临时目录。",
     "selectWorkspace": "选择目录",
     "selectWorkspaceFailed": "选择工作目录失败",
+    "kindLabel": "协作方式",
+    "kindWorkflow": "Workflow",
+    "kindDiscussion": "Discussion",
+    "kindHint": {
+      "workflow": "默认模式。planner、writer、evaluator 会在共享工作区中多轮协作完成任务。",
+      "discussion": "保留原有讨论模式，适合对比观点、接力分析和辩论。"
+    },
     "modeLabel": "讨论模式",
     "modeDebate": "辩论式",
     "modeBroadcast": "广播式",
@@ -122,8 +130,63 @@
     "minimumParticipants": "请至少选择两个参与者",
     "minimumParticipantsHint": "至少选择 2 个参与者后才能创建讨论组。",
     "noDescription": "暂无描述",
-    "sendPlaceholder": "向讨论组发起问题...",
-    "roundLabel": "第 {{round}} 轮"
+    "sendPlaceholder": "给协作组分配任务...",
+    "roundLabel": "第 {{round}} 轮",
+    "role": {
+      "planner": "规划者",
+      "writer": "写作者",
+      "evaluator": "评估者",
+      "custom": "自定义"
+    },
+    "workflow": {
+      "templateLabel": "Workflow 模板",
+      "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
+      "templateHint": "planner 负责定义目标和验收标准，writer 在共享工作区里产出或修改结果，evaluator 负责打分并提出可执行反馈。",
+      "templatePlannerWriterEvaluatorHint": "迭代式 harness：planner 先定义目标与验收标准，writer 多轮修改共享产物，evaluator 每轮给出独立反馈。",
+      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
+      "templatePlanBuildEvaluateHint": "单次主构建 harness：planner 先定范围，builder 做一次连贯构建，evaluator 在尾部统一评审。",
+      "exactParticipants": "该 workflow 模板需要恰好 3 个参与者",
+      "exactParticipantsHint": "Planner / Writer / Evaluator 模板要求恰好 3 个参与者，并分别承担不同角色。",
+      "assignRoles": "请为 3 个参与者分别分配 planner、writer、evaluator 角色",
+      "roleLabel": "角色",
+      "iterationLabel": "第 {{iteration}} 次迭代",
+      "stage": {
+        "planning": "规划",
+        "writing": "写作",
+        "evaluating": "评估",
+        "completed": "完成",
+        "failed": "失败"
+      },
+      "maxIterationsLabel": "最大迭代次数",
+      "maxIterationsHint": "允许范围：{{min}}-{{max}}",
+      "scoreTargetLabel": "目标分数",
+      "scoreTargetHint": "评估通过阈值：{{min}}-{{max}}",
+      "artifactPathLabel": "产物路径",
+      "artifactPathHint": "填写共享工作区内的相对路径；不允许绝对路径或上级目录跳转。",
+      "reviewModeLabel": "评审模式",
+      "reviewModeHint": "决定 evaluator 是每轮介入，还是只在最终产物交付时做尾部评审。",
+      "reviewMode": {
+        "perIteration": "每轮评审",
+        "finalOnly": "仅尾部评审"
+      },
+      "stageLabel": "阶段",
+      "iterationBudgetLabel": "迭代预算",
+      "iterationBudgetValue": "{{current}} / {{total}}",
+      "latestScoreLabel": "最新得分",
+      "latestDecisionLabel": "最新结论",
+      "decision": {
+        "continue": "继续迭代",
+        "accept": "通过",
+        "stop": "停止"
+      },
+      "status": {
+        "idle": "空闲",
+        "running": "运行中",
+        "completed": "已完成",
+        "failed": "已失败",
+        "stopped": "已停止"
+      }
+    }
   },
   "noAgentsAvailable": "没有可用的 Agent",
   "noModelConfigured": "未配置模型，请前往设置页面配置。",

@@ -7,7 +7,7 @@
 import type { TChatConversation } from '@/common/config/storage';
 import type React from 'react';
 
-export type DiscussionChildConversationMap = Record<string, TChatConversation[]>;
+export type GroupChildConversationMap = Record<string, TChatConversation[]>;
 
 export type WorkspaceGroup = {
   workspace: string;
@@ -30,7 +30,7 @@ export type TimelineSection = {
 export type GroupedHistoryResult = {
   pinnedConversations: TChatConversation[];
   timelineSections: TimelineSection[];
-  discussionChildConversationsByParentId: DiscussionChildConversationMap;
+  groupChildConversationsByParentId: GroupChildConversationMap;
 };
 
 export type ExportZipFile = {

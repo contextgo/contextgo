@@ -28,9 +28,9 @@ vi.mock('@/common', () => ({
 }));
 
 import {
-  isDiscussionFamilyConversation,
-  syncDiscussionFamilyWorkspace,
-} from '@/renderer/pages/conversation/utils/discussionGroupWorkspace';
+  isGroupFamilyConversation,
+  syncGroupFamilyWorkspace,
+} from '@/renderer/pages/conversation/utils/groupWorkspace';
 
 const createGroupConversation = (): Extract<TChatConversation, { type: 'group' }> =>
   ({
@@ -60,6 +60,7 @@ const createGroupConversation = (): Extract<TChatConversation, { type: 'group' }
         },
       ],
       orchestration: {
+        kind: 'discussion',
         mode: 'debate',
         rounds: 2,
       },
@@ -86,13 +87,13 @@ const createChildConversation = (id: string): TChatConversation =>
     },
   }) as TChatConversation;
 
-describe('discussionGroupWorkspace', () => {
+describe('groupWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     updateInvoke.mockResolvedValue(true);
   });
 
-  it('detects both group parents and group children as discussion family conversations', () => {
+  it('detects both group parents and group children as group family conversations', () => {
     const groupConversation = createGroupConversation();
     const childConversation = createChildConversation('child-1');
     const normalConversation = {
@@ -103,9 +104,9 @@ describe('discussionGroupWorkspace', () => {
       },
     } as TChatConversation;
 
-    expect(isDiscussionFamilyConversation(groupConversation)).toBe(true);
-    expect(isDiscussionFamilyConversation(childConversation)).toBe(true);
-    expect(isDiscussionFamilyConversation(normalConversation)).toBe(false);
+    expect(isGroupFamilyConversation(groupConversation)).toBe(true);
+    expect(isGroupFamilyConversation(childConversation)).toBe(true);
+    expect(isGroupFamilyConversation(normalConversation)).toBe(false);
   });
 
   it('updates parent and child sessions in place when migrating a group conversation workspace', async () => {
@@ -119,7 +120,7 @@ describe('discussionGroupWorkspace', () => {
       return null;
     });
 
-    const updatedConversations = await syncDiscussionFamilyWorkspace(
+    const updatedConversations = await syncGroupFamilyWorkspace(
       groupConversation,
       '/Users/bytedance/project/demo'
     );
@@ -170,7 +171,7 @@ describe('discussionGroupWorkspace', () => {
       return null;
     });
 
-    const updatedConversations = await syncDiscussionFamilyWorkspace(
+    const updatedConversations = await syncGroupFamilyWorkspace(
       childConversation1,
       '/Users/bytedance/project/demo'
     );
