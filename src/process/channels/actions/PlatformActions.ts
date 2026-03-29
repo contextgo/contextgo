@@ -24,6 +24,15 @@ import {
   createPairingStatusCard as createDingTalkPairingStatusCard,
   createPairingHelpCard as createDingTalkPairingHelpCard,
 } from '../plugins/dingtalk/DingTalkCards';
+import {
+  buildMainMenuActionButtons,
+  buildPairingCodeActionButtons,
+  buildPairingStatusActionButtons,
+} from '../utils/actionButtons';
+
+function usesActionButtons(platform: string): boolean {
+  return platform === 'slack' || platform === 'discord';
+}
 
 /**
  * PlatformActions - Handlers for platform-specific actions
@@ -39,12 +48,15 @@ import {
  */
 function getMainMenuMarkup(platform: string) {
   if (platform === 'lark') {
-    return createMainMenuCard();
+    return { replyMarkup: createMainMenuCard() };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkMainMenuCard();
+    return { replyMarkup: createDingTalkMainMenuCard() };
   }
-  return createMainMenuKeyboard();
+  if (usesActionButtons(platform)) {
+    return { buttons: buildMainMenuActionButtons() };
+  }
+  return { replyMarkup: createMainMenuKeyboard() };
 }
 
 /**
@@ -52,12 +64,15 @@ function getMainMenuMarkup(platform: string) {
  */
 function getPairingCodeMarkup(platform: string, code: string) {
   if (platform === 'lark') {
-    return createPairingCard(code);
+    return { replyMarkup: createPairingCard(code) };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkPairingCard(code);
+    return { replyMarkup: createDingTalkPairingCard(code) };
   }
-  return createPairingCodeKeyboard();
+  if (usesActionButtons(platform)) {
+    return { buttons: buildPairingCodeActionButtons() };
+  }
+  return { replyMarkup: createPairingCodeKeyboard() };
 }
 
 /**
@@ -65,12 +80,15 @@ function getPairingCodeMarkup(platform: string, code: string) {
  */
 function getPairingStatusMarkup(platform: string, code: string) {
   if (platform === 'lark') {
-    return createPairingStatusCard(code);
+    return { replyMarkup: createPairingStatusCard(code) };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkPairingStatusCard(code);
+    return { replyMarkup: createDingTalkPairingStatusCard(code) };
   }
-  return createPairingStatusKeyboard();
+  if (usesActionButtons(platform)) {
+    return { buttons: buildPairingStatusActionButtons() };
+  }
+  return { replyMarkup: createPairingStatusKeyboard() };
 }
 
 /**
@@ -78,12 +96,15 @@ function getPairingStatusMarkup(platform: string, code: string) {
  */
 function getPairingHelpMarkup(platform: string) {
   if (platform === 'lark') {
-    return createPairingHelpCard();
+    return { replyMarkup: createPairingHelpCard() };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkPairingHelpCard();
+    return { replyMarkup: createDingTalkPairingHelpCard() };
   }
-  return createPairingCodeKeyboard();
+  if (usesActionButtons(platform)) {
+    return { buttons: buildPairingCodeActionButtons() };
+  }
+  return { replyMarkup: createPairingCodeKeyboard() };
 }
 
 /**
@@ -106,7 +127,7 @@ export const handlePairingShow: ActionHandler = async (context) => {
         'Send a message to start chatting, or use the buttons below.',
       ].join('\n'),
       parseMode: 'HTML',
-      replyMarkup: getMainMenuMarkup(platform),
+      ...getMainMenuMarkup(platform),
     });
   }
 
@@ -139,7 +160,7 @@ export const handlePairingShow: ActionHandler = async (context) => {
         '3. Click "Approve" in pending pairing requests',
       ].join('\n'),
       parseMode: 'HTML',
-      replyMarkup: getPairingCodeMarkup(platform, code),
+      ...getPairingCodeMarkup(platform, code),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -160,7 +181,7 @@ export const handlePairingRefresh: ActionHandler = async (context) => {
       type: 'text',
       text: '✅ You are already paired. No need to refresh the pairing code.',
       parseMode: 'HTML',
-      replyMarkup: getMainMenuMarkup(platform),
+      ...getMainMenuMarkup(platform),
     });
   }
 
@@ -188,7 +209,7 @@ export const handlePairingRefresh: ActionHandler = async (context) => {
         'Please approve this pairing request in ContextGo settings.',
       ].join('\n'),
       parseMode: 'HTML',
-      replyMarkup: getPairingCodeMarkup(platform, code),
+      ...getPairingCodeMarkup(platform, code),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -215,7 +236,7 @@ export const handlePairingCheck: ActionHandler = async (context) => {
         'Send a message to chat with the AI assistant.',
       ].join('\n'),
       parseMode: 'HTML',
-      replyMarkup: getMainMenuMarkup(platform),
+      ...getMainMenuMarkup(platform),
     });
   }
 
@@ -241,7 +262,7 @@ export const handlePairingCheck: ActionHandler = async (context) => {
         'Please approve the pairing request in ContextGo settings.',
       ].join('\n'),
       parseMode: 'HTML',
-      replyMarkup: getPairingStatusMarkup(platform, pendingRequest.code),
+      ...getPairingStatusMarkup(platform, pendingRequest.code),
     });
   }
 
@@ -254,7 +275,16 @@ export const handlePairingCheck: ActionHandler = async (context) => {
  */
 export const handlePairingHelp: ActionHandler = async (context) => {
   const platform = context.platform;
-  const platformName = platform === 'lark' ? 'Lark/Feishu' : platform === 'dingtalk' ? 'DingTalk' : 'Telegram';
+  const platformName =
+    platform === 'lark'
+      ? 'Lark/Feishu'
+      : platform === 'dingtalk'
+        ? 'DingTalk'
+        : platform === 'slack'
+          ? 'Slack'
+          : platform === 'discord'
+            ? 'Discord'
+            : 'Telegram';
 
   return createSuccessResponse({
     type: 'text',
@@ -277,7 +307,7 @@ export const handlePairingHelp: ActionHandler = async (context) => {
       '• Ensure network connection is stable',
     ].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: getPairingHelpMarkup(platform),
+    ...getPairingHelpMarkup(platform),
   });
 };
 

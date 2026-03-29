@@ -1,0 +1,164 @@
+import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const setThemeMock = vi.fn().mockResolvedValue(undefined);
+const changeLanguageMock = vi.fn().mockResolvedValue(undefined);
+const openDevToolsInvokeMock = vi.fn().mockResolvedValue(false);
+const isDevToolsOpenedInvokeMock = vi.fn().mockResolvedValue(false);
+const getPathInvokeMock = vi.fn().mockResolvedValue('/Users/bytedance');
+const devToolsStateChangedOnMock = vi.fn(() => vi.fn());
+const openTabMock = vi.fn();
+
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    application: {
+      openDevTools: { invoke: (...args: unknown[]) => openDevToolsInvokeMock(...args) },
+      isDevToolsOpened: { invoke: (...args: unknown[]) => isDevToolsOpenedInvokeMock(...args) },
+      getPath: { invoke: (...args: unknown[]) => getPathInvokeMock(...args) },
+      devToolsStateChanged: { on: (...args: unknown[]) => devToolsStateChangedOnMock(...args) },
+    },
+  },
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => options?.defaultValue || key,
+    i18n: { language: 'en-US' },
+  }),
+}));
+
+vi.mock('@/renderer/hooks/context/ThemeContext', () => ({
+  useThemeContext: () => ({
+    theme: 'light',
+    setTheme: setThemeMock,
+  }),
+}));
+
+vi.mock('@/renderer/services/i18n', () => ({
+  changeLanguage: (...args: unknown[]) => changeLanguageMock(...args),
+}));
+
+vi.mock('@renderer/pages/conversation/Preview/context/PreviewContext', () => ({
+  usePreviewContext: () => ({
+    closePreview: vi.fn(),
+  }),
+}));
+
+vi.mock('@renderer/hooks/context/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'user-1',
+      username: 'bytedance',
+    },
+  }),
+}));
+
+vi.mock('@renderer/pages/conversation/GroupedHistory', () => ({
+  default: () => <div data-testid='grouped-history' />,
+}));
+
+vi.mock('@renderer/pages/settings/components/SettingsSider', () => ({
+  default: () => <div data-testid='settings-sider' />,
+}));
+
+vi.mock('@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover', () => ({
+  default: ({ buttonLabel, buttonClassName }: { buttonLabel: string; buttonClassName?: string }) => (
+    <button type='button' className={buttonClassName}>
+      {buttonLabel}
+    </button>
+  ),
+}));
+
+vi.mock('@renderer/pages/conversation/hooks/useConversationAgents', () => ({
+  useConversationAgents: () => ({
+    cliAgents: [],
+    presetAssistants: [],
+  }),
+}));
+
+vi.mock('@renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
+  useConversationTabs: () => ({
+    activeTab: null,
+    openTab: openTabMock,
+  }),
+}));
+
+vi.mock('@renderer/pages/conversation/platforms/group/CreateDiscussionGroupModal', () => ({
+  default: () => null,
+}));
+
+vi.mock('@renderer/utils/emitter', () => ({
+  emitter: { emit: vi.fn() },
+}));
+
+vi.mock('@renderer/utils/ui/siderTooltip', () => ({
+  cleanupSiderTooltips: vi.fn(),
+}));
+
+vi.mock('@renderer/utils/ui/focus', () => ({
+  blurActiveElement: vi.fn(),
+}));
+
+vi.mock('@renderer/utils/platform', () => ({
+  isElectronDesktop: () => true,
+  isMacOS: () => true,
+}));
+
+import Sider from '@/renderer/components/layout/Sider';
+import { LayoutContext, type LayoutContextValue } from '@/renderer/hooks/context/LayoutContext';
+
+const renderSider = (
+  path: string,
+  {
+    layoutValue,
+  }: {
+    layoutValue?: Partial<LayoutContextValue>;
+  } = {}
+) => {
+  const value: LayoutContextValue = {
+    isMobile: false,
+    siderCollapsed: false,
+    setSiderCollapsed: vi.fn(),
+    ...layoutValue,
+  };
+
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <LayoutContext.Provider value={value}>
+        <Sider />
+      </LayoutContext.Provider>
+    </MemoryRouter>
+  );
+};
+
+describe('Sider', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('adds desktop chrome inset on non-conversation routes so the create entry stays visible', async () => {
+    const { container } = renderSider('/skills-hub');
+
+    expect(await screen.findByText('conversation.entry.create')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hooks' })).toBeInTheDocument();
+    expect(container.querySelector('.sider-main-section--desktop-chrome-offset')).toBeTruthy();
+  });
+
+  it('does not add desktop chrome inset on conversation routes', async () => {
+    const { container } = renderSider('/conversation/conv-1');
+
+    expect(await screen.findByText('conversation.entry.create')).toBeInTheDocument();
+    expect(container.querySelector('.sider-main-section--desktop-chrome-offset')).toBeNull();
+  });
+
+  it('marks hooks as a first-level active feature entry on the hooks route', async () => {
+    const { container } = renderSider('/hooks');
+    const hooksButton = await screen.findByRole('button', { name: 'Hooks' });
+
+    expect(hooksButton).toBeInTheDocument();
+    expect(hooksButton.className).toContain('sider-entry-row--active');
+    expect(container.querySelector('.sider-main-section--desktop-chrome-offset')).toBeTruthy();
+  });
+});

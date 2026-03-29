@@ -15,8 +15,17 @@ import type {
 import { uuid } from '@/common/utils';
 import type { IConversationService } from '@/process/services/IConversationService';
 import { getDatabase } from '@/process/services/database';
+import { OpenClawGatewayConnection } from '@process/agent/openclaw/OpenClawGatewayConnection';
+import {
+  getGatewayAuthPassword,
+  getGatewayAuthToken,
+  getGatewayPort,
+  listConfiguredOpenClawAgents,
+  type OpenClawNativeAgentSummary,
+} from '@process/agent/openclaw/openclawConfig';
 import { createReadStream } from 'fs';
 import fs from 'fs/promises';
+import { createHash } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import os from 'os';
@@ -56,6 +65,7 @@ type OpencodePartRow = {
 };
 
 type ImportedConversationMessage = {
+  msgId?: string;
   content: string;
   createdAt: number;
   position: 'left' | 'right';
@@ -138,6 +148,50 @@ type OpencodePartData = {
   text?: string;
 };
 
+type OpenClawGatewaySessionsResponse = {
+  sessions?: OpenClawGatewaySessionSummary[];
+};
+
+type OpenClawGatewaySessionSummary = {
+  key?: string;
+  sessionId?: string;
+  agentId?: string;
+  displayName?: string;
+  derivedTitle?: string;
+  lastMessagePreview?: string;
+  updatedAt?: number;
+  modelProvider?: string;
+  model?: string;
+  origin?: {
+    provider?: string;
+    surface?: string;
+    label?: string;
+  };
+};
+
+type OpenClawGatewayHistoryResponse = {
+  messages?: OpenClawGatewayHistoryMessage[];
+};
+
+type OpenClawGatewayHistoryMessage = {
+  role?: string;
+  content?:
+    | string
+    | Array<{
+        type?: string;
+        text?: string;
+        thinking?: string;
+      }>;
+  timestamp?: number;
+  senderLabel?: string;
+};
+
+type OpenClawImportedSessionSummary = ExternalSessionSummary & {
+  provider: 'openclaw-gateway';
+  openclawAgentId?: string;
+  agentName?: string;
+};
+
 type ExternalSessionDiscoveryOptions = {
   codexHomeDir?: string;
   claudeHomeDir?: string;
@@ -194,6 +248,29 @@ const OPENCODE_IMPORT_PLACEHOLDER_PROVIDER: TProviderWithModel = {
   useModel: 'default',
 };
 
+const normalizeImportedMessageText = (content: string): string => content.replace(/\r\n/g, '\n').trim();
+
+const buildExternalHistoryMessageId = (
+  provider: string,
+  sourceId: string,
+  position: ImportedConversationMessage['position'],
+  createdAt: number,
+  content: string
+): string => {
+  const digest = createHash('sha1')
+    .update(
+      JSON.stringify({
+        provider,
+        sourceId,
+        position,
+        createdAt,
+        content: normalizeImportedMessageText(content),
+      })
+    )
+    .digest('hex');
+  return `ext:${provider}:${digest}`;
+};
+
 let codexSessionCache: CodexSessionCacheEntry | null = null;
 let opencodeSessionCache: CodexSessionCacheEntry | null = null;
 
@@ -204,13 +281,14 @@ export class ExternalSessionDiscoveryService {
   ) {}
 
   async listSessions(): Promise<ExternalSessionSummary[]> {
-    const [codexSessions, claudeSessions, geminiSessions, opencodeSessions] = await Promise.all([
+    const [codexSessions, claudeSessions, geminiSessions, opencodeSessions, openclawSessions] = await Promise.all([
       this.listCodexSessions(),
       this.listClaudeSessions(),
       this.listGeminiSessions(),
       this.listOpencodeSessions(),
+      this.listOpenClawSessions(),
     ]);
-    const sessions = [...codexSessions, ...claudeSessions, ...geminiSessions, ...opencodeSessions];
+    const sessions = [...codexSessions, ...claudeSessions, ...geminiSessions, ...opencodeSessions, ...openclawSessions];
 
     if (sessions.length === 0) {
       return [];
@@ -241,6 +319,8 @@ export class ExternalSessionDiscoveryService {
         return this.importGeminiSession(sessionId);
       case 'opencode':
         return this.importOpencodeSession(sessionId);
+      case 'openclaw-gateway':
+        return this.importOpenClawSession(sessionId);
       default:
         throw new Error(`External session provider is not supported yet: ${provider}`);
     }
@@ -374,6 +454,43 @@ export class ExternalSessionDiscoveryService {
     });
 
     await this.importOpencodeHistory(conversation.id, sessionId);
+
+    return conversation;
+  }
+
+  private async importOpenClawSession(sessionKey: string): Promise<TChatConversation> {
+    const session = (await this.listOpenClawSessions()).find((item) => item.sessionId === sessionKey);
+    if (!session) {
+      throw new Error('External OpenClaw session not found');
+    }
+
+    const conversation = await this.conversationService.createConversation({
+      type: 'openclaw-gateway',
+      name: session.title || path.basename(session.workspace) || session.sessionId,
+      model: {} as TProviderWithModel,
+      source: 'aionui',
+      extra: {
+        workspace: session.workspace,
+        customWorkspace: true,
+        backend: 'openclaw-gateway',
+        cliPath: 'openclaw',
+        agentName: session.agentName || 'OpenClaw',
+        openclawAgentId: session.openclawAgentId,
+        sessionKey: session.sessionId,
+        runtimeValidation: {
+          expectedWorkspace: session.workspace,
+          expectedBackend: 'openclaw-gateway',
+          expectedAgentName: session.agentName || 'OpenClaw',
+          expectedOpenClawAgentId: session.openclawAgentId,
+          expectedCliPath: 'openclaw',
+          expectedModel: session.model,
+        },
+        externalSessionImported: true,
+        deferInitialWorkspaceLoad: true,
+      },
+    });
+
+    await this.importOpenClawHistory(conversation.id, session.sessionId);
 
     return conversation;
   }
@@ -584,6 +701,82 @@ export class ExternalSessionDiscoveryService {
     }
   }
 
+  private async listOpenClawSessions(): Promise<OpenClawImportedSessionSummary[]> {
+    if (!this.isBackendAvailable('openclaw-gateway')) {
+      return [];
+    }
+
+    const configuredAgents = this.listOpenClawAgents();
+    const configuredAgentMap = new Map(
+      configuredAgents.map((agent) => [this.normalizeOpenClawAgentId(agent.agentId), agent] as const)
+    );
+    if (configuredAgents.length === 0) {
+      return [];
+    }
+
+    try {
+      return await this.withOpenClawGatewayConnection(async (connection) => {
+        const sessionMap = new Map<string, OpenClawImportedSessionSummary>();
+
+        const agentResponses = await Promise.all(
+          configuredAgents.map(async (agent) => ({
+            agent,
+            response: (await connection.sessionsList({
+              agentId: agent.agentId,
+              includeDerivedTitles: true,
+              includeLastMessage: true,
+              includeUnknown: true,
+              includeGlobal: true,
+              limit: 200,
+            })) as OpenClawGatewaySessionsResponse,
+          }))
+        );
+
+        for (const { agent, response } of agentResponses) {
+          const sessions = Array.isArray(response.sessions) ? response.sessions : [];
+          for (const session of sessions) {
+            if (!(await this.isImportableOpenClawSession(connection, session))) {
+              continue;
+            }
+
+            const sessionKey = session.key?.trim();
+            if (!sessionKey) {
+              continue;
+            }
+
+            const title = this.resolveOpenClawSessionTitle(session);
+            const updatedAt = this.normalizeTimestamp(session.updatedAt || Date.now());
+            const existing = sessionMap.get(sessionKey);
+            if (existing && existing.updatedAt >= updatedAt) {
+              continue;
+            }
+
+            const sessionAgentId = this.normalizeOpenClawAgentId(session.agentId) || agent.agentId;
+            const sessionAgent = configuredAgentMap.get(sessionAgentId) || agent;
+
+            sessionMap.set(sessionKey, {
+              provider: 'openclaw-gateway',
+              sessionId: sessionKey,
+              title,
+              workspace: sessionAgent.workspace,
+              updatedAt,
+              origin: session.origin?.surface || session.origin?.provider || 'gateway',
+              modelProvider: session.modelProvider || undefined,
+              model: session.model || undefined,
+              openclawAgentId: sessionAgent.agentId,
+              agentName: sessionAgent.name,
+            });
+          }
+        }
+
+        return Array.from(sessionMap.values());
+      });
+    } catch (error) {
+      console.warn('[ExternalSessionDiscoveryService] Failed to list OpenClaw sessions:', error);
+      return [];
+    }
+  }
+
   private async resolveLatestCodexStateDb(): Promise<CodexStateDbInfo | null> {
     const codexHomeDir = this.options.codexHomeDir || path.join(os.homedir(), '.codex');
 
@@ -756,6 +949,23 @@ export class ExternalSessionDiscoveryService {
       console.warn('[ExternalSessionDiscoveryService] Failed to import OpenCode history:', error);
     } finally {
       database?.close();
+    }
+  }
+
+  private async importOpenClawHistory(conversationId: string, sessionKey: string): Promise<void> {
+    try {
+      const response = await this.withOpenClawGatewayConnection(async (connection) => {
+        return (await connection.chatHistory(sessionKey, 200)) as OpenClawGatewayHistoryResponse;
+      });
+      const historyMessages = Array.isArray(response.messages) ? response.messages : [];
+      const importedMessages = historyMessages
+        .map((message) => this.parseOpenClawHistoryMessage(sessionKey, message))
+        .filter((message): message is ImportedConversationMessage => message !== null)
+        .toSorted((left, right) => left.createdAt - right.createdAt);
+
+      await this.insertImportedMessages(conversationId, importedMessages, 'OpenClaw');
+    } catch (error) {
+      console.warn('[ExternalSessionDiscoveryService] Failed to import OpenClaw history:', error);
     }
   }
 
@@ -1072,6 +1282,38 @@ export class ExternalSessionDiscoveryService {
     return null;
   }
 
+  private parseOpenClawHistoryMessage(
+    sessionKey: string,
+    message: OpenClawGatewayHistoryMessage
+  ): ImportedConversationMessage | null {
+    if (message.role !== 'user' && message.role !== 'assistant') {
+      return null;
+    }
+
+    const content = this.extractOpenClawMessageText(message.content);
+    if (!content) {
+      return null;
+    }
+
+    if (message.role === 'user' && this.isOpenClawControlMessage(content)) {
+      return null;
+    }
+
+    const timestamp = typeof message.timestamp === 'number' ? this.normalizeTimestamp(message.timestamp) : Date.now();
+    return {
+      content,
+      createdAt: timestamp,
+      position: message.role === 'user' ? 'right' : 'left',
+      msgId: buildExternalHistoryMessageId(
+        'openclaw-gateway',
+        sessionKey,
+        message.role === 'user' ? 'right' : 'left',
+        timestamp,
+        content
+      ),
+    };
+  }
+
   private extractClaudeMessageText(
     content: ClaudeJsonlEntry['message'] extends { content?: infer T } ? T : never,
     allowedTypes: string[] = ['text']
@@ -1240,6 +1482,170 @@ export class ExternalSessionDiscoveryService {
     return '';
   }
 
+  private extractOpenClawMessageText(content: OpenClawGatewayHistoryMessage['content']): string {
+    if (typeof content === 'string') {
+      return content.trim();
+    }
+
+    if (!Array.isArray(content)) {
+      return '';
+    }
+
+    return content
+      .filter((item) => item.type === 'text' && typeof item.text === 'string')
+      .map((item) => item.text?.trim() || '')
+      .filter(Boolean)
+      .join('\n\n');
+  }
+
+  private isOpenClawControlMessage(content: string): boolean {
+    const normalized = content.replace(/\s+/g, ' ').trim();
+    return (
+      normalized.startsWith('A new session was started via /new or /reset.') ||
+      normalized.startsWith('Sender (untrusted metadata):')
+    );
+  }
+
+  private resolveOpenClawSessionTitle(session: OpenClawGatewaySessionSummary): string {
+    const candidates = [session.derivedTitle, session.lastMessagePreview, session.displayName, session.sessionId];
+
+    for (const candidate of candidates) {
+      const normalized = candidate?.replace(/\s+/g, ' ').trim();
+      if (!normalized || this.isOpenClawControlMessage(normalized)) {
+        continue;
+      }
+
+      return normalized.slice(0, 80);
+    }
+
+    return session.key?.trim() || 'OpenClaw session';
+  }
+
+  private async isImportableOpenClawSession(
+    connection: Pick<OpenClawGatewayConnection, 'chatHistory'>,
+    session: OpenClawGatewaySessionSummary
+  ): Promise<boolean> {
+    const sessionKey = session.key?.trim();
+    if (!sessionKey) {
+      return false;
+    }
+
+    const originProvider = session.origin?.provider?.trim().toLowerCase();
+    const originLabel = session.origin?.label?.trim().toLowerCase();
+    const displayName = session.displayName?.trim().toLowerCase();
+    if (originProvider !== 'heartbeat' && originLabel !== 'heartbeat' && displayName !== 'heartbeat') {
+      return true;
+    }
+
+    try {
+      const response = (await connection.chatHistory(sessionKey, 20)) as OpenClawGatewayHistoryResponse;
+      const historyMessages = Array.isArray(response.messages) ? response.messages : [];
+      return this.hasImportableOpenClawHistory(historyMessages);
+    } catch (error) {
+      console.warn('[ExternalSessionDiscoveryService] Failed to inspect OpenClaw session history:', error);
+      return false;
+    }
+  }
+
+  private hasImportableOpenClawHistory(messages: OpenClawGatewayHistoryMessage[]): boolean {
+    let hasVisibleUserMessage = false;
+    let hasVisibleAssistantMessage = false;
+
+    for (const message of messages) {
+      if (message.role !== 'user' && message.role !== 'assistant') {
+        continue;
+      }
+
+      const content = this.extractOpenClawMessageText(message.content);
+      if (!content || (message.role === 'user' && this.isOpenClawControlMessage(content))) {
+        continue;
+      }
+
+      if (message.role === 'user') {
+        if (message.senderLabel?.trim().toLowerCase() === 'openclaw-control-ui') {
+          return true;
+        }
+
+        hasVisibleUserMessage = true;
+        continue;
+      }
+
+      hasVisibleAssistantMessage = true;
+    }
+
+    return hasVisibleUserMessage && hasVisibleAssistantMessage;
+  }
+
+  private listOpenClawAgents(): OpenClawNativeAgentSummary[] {
+    return listConfiguredOpenClawAgents();
+  }
+
+  private async withOpenClawGatewayConnection<T>(
+    callback: (connection: OpenClawGatewayConnection) => Promise<T>
+  ): Promise<T> {
+    const port = getGatewayPort();
+    const token = getGatewayAuthToken() ?? undefined;
+    const password = getGatewayAuthPassword() ?? undefined;
+
+    const connection = new OpenClawGatewayConnection({
+      url: `ws://127.0.0.1:${port}`,
+      token,
+      password,
+    });
+
+    return await new Promise<T>((resolve, reject) => {
+      let settled = false;
+
+      const stopConnection = () => {
+        try {
+          connection.stop();
+        } catch {
+          // Ignore cleanup errors on best-effort shutdown.
+        }
+      };
+
+      const finish = (handler: () => void) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        handler();
+      };
+
+      connection['opts'].onHelloOk = () => {
+        void callback(connection)
+          .then((result) => {
+            finish(() => {
+              stopConnection();
+              resolve(result);
+            });
+          })
+          .catch((error) => {
+            finish(() => {
+              stopConnection();
+              reject(error);
+            });
+          });
+      };
+
+      connection['opts'].onConnectError = (error) => {
+        finish(() => {
+          stopConnection();
+          reject(error);
+        });
+      };
+
+      connection['opts'].onClose = (code, reason) => {
+        finish(() => {
+          stopConnection();
+          reject(new Error(`OpenClaw Gateway closed before responding: ${code} ${reason}`.trim()));
+        });
+      };
+
+      connection.start();
+    });
+  }
+
   private resolveGeminiSessionTitle(
     messages: GeminiChatMessage[] | undefined,
     workspace: string,
@@ -1302,16 +1708,27 @@ export class ExternalSessionDiscoveryService {
 
     const db = await getDatabase();
     for (const importedMessage of importedMessages) {
+      const normalizedContent = normalizeImportedMessageText(importedMessage.content);
+      if (!normalizedContent) {
+        continue;
+      }
+
+      const stableMsgId = importedMessage.msgId || uuid(36);
+      const existing = db.getMessageByMsgId(conversationId, stableMsgId, 'text');
+      if (existing.success && existing.data) {
+        continue;
+      }
+
       const message: TMessage = {
-        id: uuid(36),
-        msg_id: uuid(36),
+        id: stableMsgId,
+        msg_id: stableMsgId,
         conversation_id: conversationId,
         type: 'text',
         position: importedMessage.position,
         status: 'finish',
         createdAt: importedMessage.createdAt,
         content: {
-          content: importedMessage.content,
+          content: normalizedContent,
         },
       };
 
@@ -1406,6 +1823,10 @@ export class ExternalSessionDiscoveryService {
 
   private buildManagedKey(provider: ExternalSessionProvider, sessionId: string): string {
     return `${provider}:${sessionId}`;
+  }
+
+  private normalizeOpenClawAgentId(agentId?: string): string {
+    return agentId?.trim().toLowerCase() || 'main';
   }
 
   private isBackendAvailable(backend: AcpBackendAll): boolean {

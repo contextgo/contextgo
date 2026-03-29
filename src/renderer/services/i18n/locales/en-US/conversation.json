@@ -16,10 +16,7 @@
     "none": "None",
     "quickActionsTitle": "What can ContextGo do?",
     "quickActionFeedback": "Got feedback or suggestions?",
-    "quickActionStar": "Like us? Give us a star!",
-    "skillsMarket": "ContextGo Skills Market",
-    "skillsMarketDesc": "Search and activate community Skills on demand. Configure once, available for all agents.",
-    "skillsMarketDetails": "View More >>"
+    "quickActionStar": "Like us? Give us a star!"
   },
   "history": {
     "today": "Today",
@@ -60,6 +57,9 @@
     "exportSuccess": "Export succeeded",
     "exportCanceled": "Export canceled",
     "exportFailed": "Export failed",
+    "archive": "Archive",
+    "archiveSuccess": "Archived",
+    "archiveFailed": "Failed to archive",
     "pin": "Pin",
     "unpin": "Unpin",
     "pinned": "Pinned",
@@ -69,14 +69,21 @@
     "deleteFailed": "Delete failed"
   },
   "historySearch": {
-    "tooltip": "Search messages",
+    "tooltip": "Search",
     "title": "Search conversation content",
     "description": "Search historical messages by keyword, load more on scroll, and jump to the matched message.",
     "placeholder": "Search message content...",
     "idle": "Enter keywords to search messages",
     "empty": "No matching messages found",
+    "clear": "Clear search",
     "loadingMore": "Loading more...",
+    "recentConversations": "Recent conversations",
     "untitled": "Untitled conversation"
+  },
+  "entry": {
+    "create": "Create",
+    "conversation": "Conversation",
+    "group": "Discussion Group"
   },
   "tabs": {
     "closeAll": "Close All",
@@ -233,7 +240,24 @@
     "confirmationLoadError": "Failed to load confirmation dialog",
     "tryAnotherAgent": "Try another agent:",
     "switchedToAgent": "Switched to {{agent}}",
-    "switchAgentFailed": "Failed to switch agent"
+    "switchAgentFailed": "Failed to switch agent",
+    "modelSwitchFailed": "Failed to switch model",
+    "modelSwitchNotSupported": "The current OpenClaw Gateway does not support model switching"
+  },
+  "pendingMessages": {
+    "title": "{{count}} pending",
+    "shortcuts": "Tab queue · Cmd/Ctrl+Enter steer · Option/Alt+↑ edit latest",
+    "attachments": "{{count}} files",
+    "dispatching": "Sending...",
+    "edit": "Edit",
+    "mode": {
+      "queue": "Queue",
+      "steer": "Steer"
+    },
+    "actions": {
+      "queue": "Move to queue",
+      "steer": "Guide next"
+    }
   },
   "contextUsage": {
     "contextUsed": "context used"

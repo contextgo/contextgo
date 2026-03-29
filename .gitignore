@@ -39,6 +39,7 @@ jspm_packages/
 # Lock files for other package managers (project uses bun.lock)
 package-lock.json
 yarn.lock
+!apps/web/package-lock.json
 
 # TypeScript v1 declaration files
 typings/
@@ -70,6 +71,8 @@ typings/
 
 # next.js build output
 .next
+apps/web/.vercel/
+apps/web/.wrangler/
 
 # nuxt.js build output
 .nuxt
@@ -135,6 +138,11 @@ Thumbs.db
 dist/
 build/
 out/
+.hvigor/
+Pods/
+.gradle/
+apps/cloud/.venv/
+apps/cloud/data/
 
 # Keep extension example dist (pre-built distributable assets)
 !examples/**/dist/
@@ -142,6 +150,9 @@ out/
 
 # Debug and test files
 debug.log
+cloudflare_token.txt
+github_oauth.txt
+google_oauth.txt
 test-*.js
 !examples/**/test-*.js
 diagnose-*.js

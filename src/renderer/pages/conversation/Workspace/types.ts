@@ -19,7 +19,7 @@ export interface WorkspaceProps {
   workspace: string;
   conversation_id: string;
   conversation: TChatConversation;
-  eventPrefix?: 'gemini' | 'acp' | 'codex' | 'group';
+  eventPrefix?: 'gemini' | 'acp' | 'codex' | 'group' | 'openclaw-gateway';
   messageApi?: MessageApi;
 }
 

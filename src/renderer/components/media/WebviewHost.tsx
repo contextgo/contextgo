@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import {
+  getSafeEmbeddedDocumentUrl,
+  isSuspiciousDocumentNavigation,
+} from '@/renderer/utils/ui/documentNavigationGuard';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Left, Right, Refresh, Loading } from '@icon-park/react';
 
@@ -24,6 +28,8 @@ export interface WebviewHostProps {
   onDidFinishLoad?: () => void;
   /** Called when the page fails to load */
   onDidFailLoad?: (errorCode: number, errorDescription: string) => void;
+  /** Block raw asset document navigations for embedded app/document surfaces */
+  blockSuspiciousDocumentNavigation?: boolean;
 }
 
 const MIN_ZOOM_FACTOR = 0.75;
@@ -48,15 +54,20 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   style,
   onDidFinishLoad,
   onDidFailLoad,
+  blockSuspiciousDocumentNavigation = false,
 }) => {
+  const isElectron = typeof window !== 'undefined' && Boolean((window as { electronAPI?: unknown }).electronAPI);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const webviewRef = useRef<Electron.WebviewTag | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const autoFitPendingRef = useRef(false);
+  const guardedUrl = getSafeEmbeddedDocumentUrl(url, blockSuspiciousDocumentNavigation);
+  const lastStableUrlRef = useRef(guardedUrl);
 
   // Navigation state
-  const [currentUrl, setCurrentUrl] = useState(url);
-  const [inputUrl, setInputUrl] = useState(url);
+  const [currentUrl, setCurrentUrl] = useState(guardedUrl);
+  const [inputUrl, setInputUrl] = useState(guardedUrl);
   const [isLoading, setIsLoading] = useState(true);
   const [zoomFactor, setZoomFactor] = useState(1);
   const [webviewReady, setWebviewReady] = useState(false);
@@ -83,20 +94,25 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
 
   // Reset when props.url changes
   useEffect(() => {
+    if (guardedUrl !== url) {
+      console.warn('[WebviewHost] Blocked suspicious initial webview document URL:', url);
+    }
+
     historyBackRef.current = [];
     historyForwardRef.current = [];
     setCanGoBack(false);
     setCanGoForward(false);
-    setCurrentUrl(url);
-    setInputUrl(url);
+    setCurrentUrl(guardedUrl);
+    setInputUrl(guardedUrl);
     setIsLoading(true);
     setZoomFactor(1);
     setWebviewReady(false);
-    autoFitPendingRef.current = isStarOfficeUrl(url);
-  }, [url]);
+    autoFitPendingRef.current = isStarOfficeUrl(guardedUrl);
+    lastStableUrlRef.current = guardedUrl;
+  }, [guardedUrl, isStarOfficeUrl, url]);
 
   useEffect(() => {
-    const webviewEl = webviewRef.current as any;
+    const webviewEl = webviewRef.current;
     if (!webviewReady || !webviewEl?.setZoomFactor) return;
     try {
       webviewEl.setZoomFactor(isStarOffice ? zoomFactor : 1);
@@ -108,8 +124,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   // Navigate to new URL (add to history)
   const navigateToWithHistory = useCallback(
     (targetUrl: string) => {
-      const webviewEl = webviewRef.current;
-      if (!webviewEl || !targetUrl) return;
+      if (!targetUrl) return;
       if (targetUrl === currentUrl) return;
 
       if (currentUrl) {
@@ -121,16 +136,48 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
       setInputUrl(targetUrl);
       setCanGoBack(historyBackRef.current.length > 0);
       setCanGoForward(false);
+      setIsLoading(true);
 
-      webviewEl.src = targetUrl;
+      if (isElectron) {
+        webviewRef.current?.setAttribute('src', targetUrl);
+        return;
+      }
+
+      if (iframeRef.current) {
+        iframeRef.current.src = targetUrl;
+      }
     },
-    [currentUrl]
+    [currentUrl, isElectron]
   );
 
   // Webview event listeners
   useEffect(() => {
+    if (!isElectron) {
+      return;
+    }
+
     const webviewEl = webviewRef.current;
     if (!webviewEl) return;
+
+    const restoreStableDocument = (targetUrl?: string) => {
+      if (!blockSuspiciousDocumentNavigation || !targetUrl || !isSuspiciousDocumentNavigation(targetUrl)) {
+        return false;
+      }
+
+      console.warn('[WebviewHost] Blocked suspicious webview document navigation:', targetUrl);
+
+      const fallbackUrl = lastStableUrlRef.current || currentUrl;
+      if (!fallbackUrl) {
+        return true;
+      }
+
+      if (webviewEl.src !== fallbackUrl) {
+        webviewEl.src = fallbackUrl;
+      }
+      setCurrentUrl(fallbackUrl);
+      setInputUrl(fallbackUrl);
+      return true;
+    };
 
     const handleStartLoading = () => setIsLoading(true);
     const handleStopLoading = () => {
@@ -216,11 +263,29 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
     };
 
     const handleDidNavigate = (event: Event & { url?: string }) => {
-      const newUrl = (event as any).url;
+      const newUrl = event.url;
+      if (restoreStableDocument(newUrl)) {
+        return;
+      }
       if (newUrl && newUrl !== currentUrl) {
+        lastStableUrlRef.current = newUrl;
         setCurrentUrl(newUrl);
         setInputUrl(newUrl);
       }
+    };
+
+    const handleWillNavigate = (event: Event) => {
+      if (!blockSuspiciousDocumentNavigation) {
+        return;
+      }
+
+      const navigationEvent = event as Event & { url?: string; preventDefault?: () => void };
+      if (!navigationEvent.url || !isSuspiciousDocumentNavigation(navigationEvent.url)) {
+        return;
+      }
+
+      navigationEvent.preventDefault?.();
+      restoreStableDocument(navigationEvent.url);
     };
 
     const handleDomReady = () => {
@@ -307,7 +372,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
             })();
           `
             )
-            .then((result: any) => {
+            .then((result: { width?: number } | undefined) => {
               const stageWidth = Number(result?.width || 0);
               if (!stageWidth) return;
               const next = Number((currentContent.clientWidth / stageWidth).toFixed(2));
@@ -324,7 +389,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
       onDidFinishLoad?.();
     };
 
-    const handleDidFailLoad = (event: any) => {
+    const handleDidFailLoad = (event: { errorCode?: number; errorDescription?: string }) => {
       setIsLoading(false);
       onDidFailLoad?.(event.errorCode, event.errorDescription);
     };
@@ -332,6 +397,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
     webviewEl.addEventListener('did-start-loading', handleStartLoading);
     webviewEl.addEventListener('did-stop-loading', handleStopLoading);
     webviewEl.addEventListener('dom-ready', handleDomReady);
+    webviewEl.addEventListener('will-navigate', handleWillNavigate as EventListener);
     webviewEl.addEventListener('did-navigate', handleDidNavigate as EventListener);
     webviewEl.addEventListener('did-navigate-in-page', handleDidNavigate as EventListener);
     webviewEl.addEventListener('console-message', handleConsoleMessage as EventListener);
@@ -342,16 +408,29 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
       webviewEl.removeEventListener('did-start-loading', handleStartLoading);
       webviewEl.removeEventListener('did-stop-loading', handleStopLoading);
       webviewEl.removeEventListener('dom-ready', handleDomReady);
+      webviewEl.removeEventListener('will-navigate', handleWillNavigate as EventListener);
       webviewEl.removeEventListener('did-navigate', handleDidNavigate as EventListener);
       webviewEl.removeEventListener('did-navigate-in-page', handleDidNavigate as EventListener);
       webviewEl.removeEventListener('console-message', handleConsoleMessage as EventListener);
       webviewEl.removeEventListener('did-finish-load', handleDidFinishLoad);
       webviewEl.removeEventListener('did-fail-load', handleDidFailLoad as EventListener);
     };
-  }, [navigateToWithHistory, currentUrl, onDidFinishLoad, onDidFailLoad, isStarOfficeUrl]);
+  }, [
+    blockSuspiciousDocumentNavigation,
+    navigateToWithHistory,
+    currentUrl,
+    onDidFinishLoad,
+    onDidFailLoad,
+    isStarOfficeUrl,
+    isElectron,
+  ]);
 
   // Resize observer for content area
   useEffect(() => {
+    if (!isElectron) {
+      return;
+    }
+
     const contentEl = contentRef.current;
     const webviewEl = webviewRef.current;
     if (!contentEl || !webviewEl) return;
@@ -396,7 +475,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
       })();
     `
       )
-      .then((result: any) => {
+      .then((result: { width?: number } | undefined) => {
         const stageWidth = Number(result?.width || 0);
         if (!stageWidth) return;
         const next = Number((currentContent.clientWidth / stageWidth).toFixed(2));
@@ -428,8 +507,9 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
     setCanGoForward(true);
     setCurrentUrl(prevUrl);
     setInputUrl(prevUrl);
-    if (webviewRef.current) webviewRef.current.src = prevUrl;
-  }, [currentUrl]);
+    setIsLoading(true);
+    if (isElectron && webviewRef.current) webviewRef.current.src = prevUrl;
+  }, [currentUrl, isElectron]);
 
   // Forward
   const handleGoForward = useCallback(() => {
@@ -440,13 +520,21 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
     setCanGoForward(historyForwardRef.current.length > 0);
     setCurrentUrl(nextUrl);
     setInputUrl(nextUrl);
-    if (webviewRef.current) webviewRef.current.src = nextUrl;
-  }, [currentUrl]);
+    setIsLoading(true);
+    if (isElectron && webviewRef.current) webviewRef.current.src = nextUrl;
+  }, [currentUrl, isElectron]);
 
   // Refresh
   const handleRefresh = useCallback(() => {
-    webviewRef.current?.reload();
-  }, []);
+    setIsLoading(true);
+    if (isElectron) {
+      webviewRef.current?.reload();
+      return;
+    }
+    if (iframeRef.current) {
+      iframeRef.current.src = currentUrl;
+    }
+  }, [currentUrl, isElectron]);
 
   // URL bar submit
   const handleUrlSubmit = useCallback(
@@ -480,6 +568,20 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   if (partition) {
     webviewAttrs.partition = partition;
   }
+
+  const handleBrowserLoad = useCallback(() => {
+    setIsLoading(false);
+    try {
+      const frameUrl = iframeRef.current?.contentWindow?.location.href;
+      if (frameUrl && frameUrl !== 'about:blank' && frameUrl !== currentUrl) {
+        setCurrentUrl(frameUrl);
+        setInputUrl(frameUrl);
+      }
+    } catch {
+      // Cross-origin frames cannot expose location; keep current URL state.
+    }
+    onDidFinishLoad?.();
+  }, [currentUrl, onDidFinishLoad]);
 
   return (
     <div ref={containerRef} className={`h-full w-full flex flex-col ${className ?? ''}`} style={style}>
@@ -629,16 +731,30 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
         style={{ minHeight: 0 }}
         onWheel={handleOuterWheelZoom}
       >
-        <webview
-          ref={webviewRef as any}
-          src={currentUrl}
-          className='border-0 absolute left-0 top-0'
-          style={{
-            opacity: !showNavBar && isLoading ? 0 : 1,
-            transition: 'opacity 150ms ease-in',
-          }}
-          {...webviewAttrs}
-        />
+        {isElectron ? (
+          <webview
+            ref={webviewRef as React.Ref<Electron.WebviewTag>}
+            src={currentUrl}
+            className='border-0 absolute left-0 top-0'
+            style={{
+              opacity: !showNavBar && isLoading ? 0 : 1,
+              transition: 'opacity 150ms ease-in',
+            }}
+            {...webviewAttrs}
+          />
+        ) : (
+          <iframe
+            ref={iframeRef}
+            src={currentUrl}
+            title='Embedded Content'
+            className='border-0 absolute left-0 top-0 w-full h-full'
+            style={{
+              opacity: !showNavBar && isLoading ? 0 : 1,
+              transition: 'opacity 150ms ease-in',
+            }}
+            onLoad={handleBrowserLoad}
+          />
+        )}
       </div>
     </div>
   );

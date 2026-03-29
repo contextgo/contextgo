@@ -11,6 +11,7 @@ import { AlarmClock, ArrowRight, Edit, Pause, Play, Refresh, Search } from '@ico
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import styles from './GlobalCronSettings.module.css';
 import { formatNextRun } from './cronUtils';
 import CronJobDrawer from './components/CronJobDrawer';
 import { useAllCronJobs } from './useCronJobs';
@@ -91,78 +92,76 @@ const GlobalCronSettings: React.FC = () => {
     <>
       {messageContext}
       <SettingsPageWrapper contentClassName='max-w-1200px'>
-        <div className='flex flex-col gap-16px'>
-          <div className='rounded-16px border border-border-2 bg-bg-1 p-20px md:p-24px'>
-            <div className='flex flex-col gap-16px md:flex-row md:items-start md:justify-between'>
-              <div className='min-w-0'>
-                <Typography.Title heading={5} className='!mb-8px'>
-                  {t('cron.allScheduledTasks')}
-                </Typography.Title>
-                <Typography.Paragraph className='!mb-0 text-t-secondary'>
-                  {t('cron.overview.description')}
-                </Typography.Paragraph>
+        <div className={styles.pageStack}>
+          <div className={styles.heroSurface}>
+            <div className={styles.heroRow}>
+              <div className={styles.heroMeta}>
+                <div className={styles.titleRow}>
+                  <h1 className={styles.pageTitle}>{t('cron.allScheduledTasks')}</h1>
+                  <span className={styles.countBadge}>{stats.total}</span>
+                </div>
+                <p className={styles.pageDescription}>{t('cron.overview.description')}</p>
               </div>
-              <Button
-                type='outline'
-                icon={<Refresh size={14} className={loading ? 'animate-spin' : ''} />}
-                onClick={() => void handleRefresh()}
-              >
-                {t('common.refresh')}
-              </Button>
+              <div className={styles.actions}>
+                <Button
+                  type='outline'
+                  className={styles.secondaryPillButton}
+                  icon={<Refresh size={14} className={loading ? 'animate-spin' : ''} />}
+                  onClick={() => void handleRefresh()}
+                >
+                  {t('common.refresh')}
+                </Button>
+              </div>
             </div>
           </div>
 
-          <div className='grid gap-12px md:grid-cols-4'>
-            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
-              <Typography.Text type='secondary' className='text-12px'>
-                {t('cron.overview.stats.total')}
-              </Typography.Text>
-              <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.total}</div>
+          <div className={styles.statsGrid}>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>{t('cron.overview.stats.total')}</div>
+              <div className={styles.statValue}>{stats.total}</div>
             </div>
-            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
-              <Typography.Text type='secondary' className='text-12px'>
-                {t('cron.overview.stats.active')}
-              </Typography.Text>
-              <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.active}</div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>{t('cron.overview.stats.active')}</div>
+              <div className={styles.statValue}>{stats.active}</div>
             </div>
-            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
-              <Typography.Text type='secondary' className='text-12px'>
-                {t('cron.overview.stats.paused')}
-              </Typography.Text>
-              <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.paused}</div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>{t('cron.overview.stats.paused')}</div>
+              <div className={styles.statValue}>{stats.paused}</div>
             </div>
-            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
-              <Typography.Text type='secondary' className='text-12px'>
-                {t('cron.overview.stats.error')}
-              </Typography.Text>
-              <div className='mt-6px text-28px font-semibold text-t-primary'>{stats.error}</div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>{t('cron.overview.stats.error')}</div>
+              <div className={styles.statValue}>{stats.error}</div>
             </div>
           </div>
 
-          <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
-            <div className='flex flex-col gap-12px md:flex-row'>
+          <div className={styles.surface}>
+            <div className={styles.filterRow}>
               <Input
                 value={searchQuery}
                 allowClear
                 prefix={<Search theme='outline' size={14} />}
                 placeholder={t('cron.overview.filters.searchPlaceholder')}
                 onChange={setSearchQuery}
+                className={styles.searchInput}
               />
               <Select
                 value={statusFilter}
                 options={statusOptions}
-                className='md:max-w-220px'
+                className={styles.statusFilter}
                 onChange={(value) => setStatusFilter(value as GlobalCronJobStatus | 'all')}
               />
             </div>
           </div>
 
-          <div className='rounded-16px border border-border-2 bg-bg-1 p-16px md:p-20px'>
-            <div className='mb-16px flex items-center gap-8px'>
-              <AlarmClock theme='outline' size={18} />
-              <Typography.Text className='text-14px font-medium'>
-                {t('cron.taskCount', { count: filteredJobs.length })}
-              </Typography.Text>
+          <div className={styles.surface}>
+            <div className={styles.sectionHeader}>
+              <div className={styles.sectionTitleRow}>
+                <span className={styles.sectionIcon}>
+                  <AlarmClock theme='outline' size={18} />
+                </span>
+                <span className={styles.sectionTitle}>{t('cron.taskCount', { count: filteredJobs.length })}</span>
+              </div>
+              <span className={styles.sectionMeta}>{filteredJobs.length}</span>
             </div>
 
             <Spin loading={loading} className='w-full'>
@@ -172,69 +171,87 @@ const GlobalCronSettings: React.FC = () => {
                   className='py-24px'
                 />
               ) : (
-                <div className='flex flex-col gap-12px'>
+                <div className={styles.jobList}>
                   {filteredJobs.map((job) => {
                     const status = getGlobalCronJobStatus(job);
                     return (
-                      <div
-                        key={job.id}
-                        className='rounded-16px border border-border-2 p-16px transition-colors hover:bg-fill-1'
-                      >
-                        <div className='flex flex-col gap-12px md:flex-row md:items-start md:justify-between'>
-                          <div className='min-w-0 flex-1'>
-                            <div className='flex flex-wrap items-center gap-8px'>
-                              <Typography.Text className='text-15px font-semibold text-t-primary'>
-                                {job.name}
-                              </Typography.Text>
-                              <Tag color={statusColorMap[status]}>{t(`cron.status.${status}`)}</Tag>
-                              <Tag>{job.metadata.agentType}</Tag>
-                            </div>
+                      <div key={job.id} className={styles.jobCard}>
+                        <div className={styles.jobCardInner}>
+                          <div className='flex flex-col gap-14px md:flex-row md:items-start md:justify-between'>
+                            <div className={styles.jobMain}>
+                              <div className={styles.jobTitleRow}>
+                                <Typography.Text className={styles.jobTitle}>{job.name}</Typography.Text>
+                                <Tag color={statusColorMap[status]}>{t(`cron.status.${status}`)}</Tag>
+                                <Tag>{job.metadata.agentType}</Tag>
+                              </div>
 
-                            <div className='mt-8px flex flex-col gap-6px text-13px text-t-secondary'>
-                              <div className='flex flex-wrap items-center gap-6px'>
-                                <span className='font-medium text-t-primary'>
-                                  {job.metadata.conversationTitle || job.metadata.conversationId}
-                                </span>
-                                <span className='text-t-tertiary'>#{job.metadata.conversationId}</span>
-                              </div>
-                              <div>
-                                {t('cron.schedule')}: {job.schedule.description}
-                              </div>
-                              <div>
-                                {t('cron.nextRun')}: {formatNextRun(job.state.nextRunAtMs)}
-                              </div>
-                              <div>
-                                {t('cron.lastRun')}: {formatNextRun(job.state.lastRunAtMs)}
-                              </div>
-                              <div className='break-words'>
-                                {t('cron.message')}: {job.target.payload.text}
-                              </div>
-                              {job.state.lastError && (
-                                <div className='break-words text-[var(--color-danger-light-4)]'>
-                                  {t('cron.lastError')}: {job.state.lastError}
+                              <div className={styles.jobMetaBlock}>
+                                <div className={styles.jobConversationRow}>
+                                  <span className={styles.jobConversationTitle}>
+                                    {job.metadata.conversationTitle || job.metadata.conversationId}
+                                  </span>
+                                  <span className={styles.jobConversationId}>#{job.metadata.conversationId}</span>
                                 </div>
-                              )}
-                            </div>
-                          </div>
 
-                          <div className='flex shrink-0 flex-wrap items-center gap-8px'>
-                            <Button
-                              type='outline'
-                              icon={<ArrowRight size={14} />}
-                              onClick={() => void navigate(`/conversation/${job.metadata.conversationId}`)}
-                            >
-                              {t('cron.actions.goTo')}
-                            </Button>
-                            <Button type='outline' icon={<Edit size={14} />} onClick={() => setSelectedJobId(job.id)}>
-                              {t('common.edit')}
-                            </Button>
-                            <Button
-                              type='outline'
-                              icon={job.enabled ? <Pause size={14} /> : <Play size={14} />}
-                              onClick={() => void handleToggleJob(job)}
-                            >
-                              {job.enabled ? t('cron.actions.pause') : t('cron.actions.resume')}
-                            </Button>
+                                <div className={styles.jobDetailGrid}>
+                                  <div className={styles.jobDetailItem}>
+                                    <div className={styles.jobDetailLabel}>{t('cron.schedule')}</div>
+                                    <div className={styles.jobDetailValue}>{job.schedule.description}</div>
+                                  </div>
+                                  <div className={styles.jobDetailItem}>
+                                    <div className={styles.jobDetailLabel}>{t('cron.nextRun')}</div>
+                                    <div className={styles.jobDetailValue}>{formatNextRun(job.state.nextRunAtMs)}</div>
+                                  </div>
+                                  <div className={styles.jobDetailItem}>
+                                    <div className={styles.jobDetailLabel}>{t('cron.lastRun')}</div>
+                                    <div className={styles.jobDetailValue}>{formatNextRun(job.state.lastRunAtMs)}</div>
+                                  </div>
+                                  <div className={styles.jobDetailItem}>
+                                    <div className={styles.jobDetailLabel}>{t('settings.mcpStatus')}</div>
+                                    <div className={styles.jobDetailValue}>{t(`cron.status.${status}`)}</div>
+                                  </div>
+                                </div>
+
+                                <div className={styles.jobMessage}>
+                                  <div className={styles.jobDetailLabel}>{t('cron.message')}</div>
+                                  <div className={styles.jobDetailValue}>{job.target.payload.text}</div>
+                                </div>
+
+                                {job.state.lastError && (
+                                  <div className={styles.jobError}>
+                                    <div className={styles.jobDetailLabel}>{t('cron.lastError')}</div>
+                                    <div className={styles.jobDetailValue}>{job.state.lastError}</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className={styles.jobActions}>
+                              <Button
+                                type='outline'
+                                className={styles.secondaryPillButton}
+                                icon={<ArrowRight size={14} />}
+                                onClick={() => void navigate(`/conversation/${job.metadata.conversationId}`)}
+                              >
+                                {t('cron.actions.goTo')}
+                              </Button>
+                              <Button
+                                type='outline'
+                                className={styles.secondaryPillButton}
+                                icon={<Edit size={14} />}
+                                onClick={() => setSelectedJobId(job.id)}
+                              >
+                                {t('common.edit')}
+                              </Button>
+                              <Button
+                                type='outline'
+                                className={styles.secondaryPillButton}
+                                icon={job.enabled ? <Pause size={14} /> : <Play size={14} />}
+                                onClick={() => void handleToggleJob(job)}
+                              >
+                                {job.enabled ? t('cron.actions.pause') : t('cron.actions.resume')}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>

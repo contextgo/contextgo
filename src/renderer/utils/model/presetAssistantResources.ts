@@ -5,7 +5,11 @@
  */
 
 import { ipcBridge } from '@/common';
-import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
+import {
+  findBuiltinAssistantPreset,
+  resolveBuiltinAssistantEnabledHooks,
+  resolveBuiltinAssistantEnabledSkills,
+} from '@/common/config/presets/builtinAssistantDefaults';
 import { ConfigStorage } from '@/common/config/storage';
 
 export type PresetAssistantResourceDeps = {
@@ -89,39 +93,39 @@ export async function loadPresetAssistantResources(
     deps.warn(`[presetAssistantResources] Failed to load skills for ${customAgentId}`, error);
   }
 
-  if (customAgentId.startsWith('builtin-')) {
-    const presetId = customAgentId.replace('builtin-', '');
-    const preset = ASSISTANT_PRESETS.find((item) => item.id === presetId);
+  const preset = findBuiltinAssistantPreset(customAgentId);
 
-    if (preset) {
-      if (!rules && preset.ruleFiles) {
-        try {
-          const ruleFile = preset.ruleFiles[localeKey] || preset.ruleFiles['en-US'];
-          if (ruleFile) {
-            rules = (await deps.readBuiltinRule({ fileName: ruleFile })) || '';
-          }
-        } catch (error) {
-          deps.warn(`[presetAssistantResources] Failed to load builtin rules for ${customAgentId}`, error);
+  if (preset) {
+    if (!rules && preset.ruleFiles) {
+      try {
+        const ruleFile = preset.ruleFiles[localeKey] || preset.ruleFiles['en-US'];
+        if (ruleFile) {
+          rules = (await deps.readBuiltinRule({ fileName: ruleFile })) || '';
         }
+      } catch (error) {
+        deps.warn(`[presetAssistantResources] Failed to load builtin rules for ${customAgentId}`, error);
       }
+    }
 
-      if (!skills && preset.skillFiles) {
-        try {
-          const skillFile = preset.skillFiles[localeKey] || preset.skillFiles['en-US'];
-          if (skillFile) {
-            skills = (await deps.readBuiltinSkill({ fileName: skillFile })) || '';
-          }
-        } catch (error) {
-          deps.warn(`[presetAssistantResources] Failed to load builtin skills for ${customAgentId}`, error);
+    if (!skills && preset.skillFiles) {
+      try {
+        const skillFile = preset.skillFiles[localeKey] || preset.skillFiles['en-US'];
+        if (skillFile) {
+          skills = (await deps.readBuiltinSkill({ fileName: skillFile })) || '';
         }
+      } catch (error) {
+        deps.warn(`[presetAssistantResources] Failed to load builtin skills for ${customAgentId}`, error);
       }
     }
   }
 
+  const enabledSkills = resolveBuiltinAssistantEnabledSkills(customAgentId, await deps.getEnabledSkills(customAgentId));
+  const enabledHooks = resolveBuiltinAssistantEnabledHooks(customAgentId, await deps.getEnabledHooks(customAgentId));
+
   return {
     rules: rules || fallbackRules,
     skills,
-    enabledSkills: await deps.getEnabledSkills(customAgentId),
-    enabledHooks: await deps.getEnabledHooks(customAgentId),
+    enabledSkills,
+    enabledHooks,
   };
 }

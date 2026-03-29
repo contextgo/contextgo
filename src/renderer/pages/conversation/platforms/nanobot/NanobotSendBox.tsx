@@ -8,6 +8,7 @@ import { ipcBridge } from '@/common';
 import type { TMessage } from '@/common/chat/chatLib';
 import { transformMessage } from '@/common/chat/chatLib';
 import { uuid } from '@/common/utils';
+import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import SendBox from '@/renderer/components/chat/sendbox';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile } from '@/renderer/hooks/chat/useSendBoxFiles';
@@ -23,6 +24,11 @@ import ThoughtDisplay, { type ThoughtData } from '@/renderer/components/chat/Tho
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import {
+  usePendingConversationMessages,
+  type PendingConversationMessage,
+  type PendingConversationMessageMode,
+} from '@/renderer/pages/conversation/hooks/usePendingConversationMessages';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import FileAttachButton from '@/renderer/components/media/FileAttachButton';
@@ -207,8 +213,102 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
     }, 10);
   });
 
+  const sendNanobotMessage = useCallback(
+    async (message: string, filePaths: string[]) => {
+      const msg_id = uuid();
+      const displayMessage = buildDisplayMessage(message, filePaths, workspacePath);
+
+      const userMessage: TMessage = {
+        id: msg_id,
+        msg_id,
+        conversation_id,
+        type: 'text',
+        position: 'right',
+        content: { content: displayMessage },
+        createdAt: Date.now(),
+      };
+      addOrUpdateMessage(userMessage, true);
+      setAiProcessing(true);
+      try {
+        await ipcBridge.conversation.sendMessage.invoke({
+          input: displayMessage,
+          msg_id,
+          conversation_id,
+          files: filePaths,
+        });
+        void checkAndUpdateTitle(conversation_id, message);
+        emitter.emit('chat.history.refresh');
+      } catch {
+        setAiProcessing(false);
+      }
+    },
+    [addOrUpdateMessage, checkAndUpdateTitle, conversation_id, workspacePath]
+  );
+
+  const {
+    pendingMessages,
+    enqueuePendingMessage,
+    removePendingMessage,
+    restorePendingMessage,
+    restoreLatestPendingMessage,
+    setPendingMessageMode,
+  } = usePendingConversationMessages({
+    conversationId: conversation_id,
+    canSendNow: !aiProcessing,
+    canSteerNow: false,
+    onDispatch: async (pendingMessage: PendingConversationMessage) => {
+      await sendNanobotMessage(pendingMessage.content, pendingMessage.attachments);
+    },
+    onDispatchError: (error: unknown) => {
+      console.error('[NanobotSendBox] Failed to dispatch pending message:', error);
+    },
+  });
+
+  const stashPendingMessage = useCallback(
+    (mode: PendingConversationMessageMode, message: string) => {
+      emitter.emit('nanobot.selected.file.clear');
+      const currentAtPath = [...atPath];
+      const currentUploadFile = [...uploadFile];
+      setAtPath([]);
+      setUploadFile([]);
+
+      const filePaths = [
+        ...currentUploadFile,
+        ...currentAtPath.map((item) => (typeof item === 'string' ? item : item.path)),
+      ];
+      enqueuePendingMessage(mode, message, filePaths);
+    },
+    [atPath, enqueuePendingMessage, uploadFile]
+  );
+
+  const restoreMessageToComposer = useCallback(
+    (messageId: string) => {
+      const pendingMessage = restorePendingMessage(messageId);
+      if (!pendingMessage) {
+        return;
+      }
+
+      setContent(pendingMessage.content);
+      setAtPath([]);
+      setUploadFile(pendingMessage.attachments);
+      emitter.emit('nanobot.selected.file.clear');
+    },
+    [restorePendingMessage, setAtPath, setContent, setUploadFile]
+  );
+
+  const restoreLatestMessageToComposer = useCallback(() => {
+    const pendingMessage = restoreLatestPendingMessage();
+    if (!pendingMessage) {
+      return;
+    }
+
+    setContent(pendingMessage.content);
+    setAtPath([]);
+    setUploadFile(pendingMessage.attachments);
+    emitter.emit('nanobot.selected.file.clear');
+  }, [restoreLatestPendingMessage, setAtPath, setContent, setUploadFile]);
+
   const onSendHandler = async (message: string) => {
-    const msg_id = uuid();
     // Content is already cleared by the shared SendBox component (setInput(''))
     // before calling onSend — no need to clear again here.
     emitter.emit('nanobot.selected.file.clear');
@@ -221,36 +321,7 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
       ...currentUploadFile,
       ...currentAtPath.map((item) => (typeof item === 'string' ? item : item.path)),
     ];
-    const displayMessage = buildDisplayMessage(message, filePaths, workspacePath);
-
-    // Frontend adds user message directly — no reliance on backend user_content emission
-    const userMessage: TMessage = {
-      id: msg_id,
-      msg_id,
-      conversation_id,
-      type: 'text',
-      position: 'right',
-      content: { content: displayMessage },
-      createdAt: Date.now(),
-    };
-    // Reset AI reply for new turn
-    // 重置 AI 回复用于新一轮
-    addOrUpdateMessage(userMessage, true);
-    setAiProcessing(true);
-    try {
-      const atPathStrings = currentAtPath.map((item) => (typeof item === 'string' ? item : item.path));
-      await ipcBridge.conversation.sendMessage.invoke({
-        input: displayMessage,
-        msg_id,
-        conversation_id,
-        files: [...currentUploadFile, ...atPathStrings],
-      });
-      void checkAndUpdateTitle(conversation_id, message);
-      emitter.emit('chat.history.refresh');
-    } catch {
-      // Only reset on invoke failure; normal completion is handled by the 'finish' stream event
-      setAiProcessing(false);
-    }
+    await sendNanobotMessage(message, filePaths);
   };
 
   const appendSelectedFiles = useCallback(
@@ -307,7 +378,7 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
         void checkAndUpdateTitle(conversation_id, input);
         emitter.emit('chat.history.refresh');
         sessionStorage.removeItem(storageKey);
-      } catch (err) {
+      } catch {
         sessionStorage.removeItem(processedKey);
         setAiProcessing(false);
       }
@@ -348,6 +419,12 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
         tools={<FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />}
         prefix={
           <>
+            <PendingMessageBar
+              messages={pendingMessages}
+              onRemove={removePendingMessage}
+              onEdit={restoreMessageToComposer}
+              onSetMode={setPendingMessageMode}
+            />
             {(uploadFile.length > 0 || atPath.some((item) => (typeof item === 'string' ? true : item.isFile))) && (
               <HorizontalFileList>
                 {uploadFile.map((path) => (
@@ -406,6 +483,9 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
           </>
         }
         onSend={onSendHandler}
+        onQueue={(message) => stashPendingMessage('queue', message)}
+        onSteer={(message) => stashPendingMessage('steer', message)}
+        onEditLatestPending={restoreLatestMessageToComposer}
         slashCommands={slashCommands}
         onSlashBuiltinCommand={onSlashBuiltinCommand}
       ></SendBox>

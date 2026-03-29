@@ -8,6 +8,7 @@ import type { TChatConversation, TProviderWithModel } from '@/common/config/stor
 import type { AcpBackendAll } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
 import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
+import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
 import { getDatabase } from '@process/services/database';
 import { ProcessConfig } from '@process/utils/initStorage';
 import crypto from 'crypto';
@@ -29,6 +30,9 @@ type SavedAgentConfig = {
   backend: string;
   customAgentId?: string;
   name?: string;
+  openclawAgentId?: string;
+  workspace?: string;
+  cliPath?: string;
 };
 
 type RemoteChatType = 'direct' | 'group';
@@ -160,6 +164,26 @@ type ResolveRouteParams = {
 
 const DIRECT_BACKENDS = new Set(['gemini', 'codex', 'openclaw-gateway']);
 
+function normalizeOpenClawAgentId(agentId?: string): string {
+  return agentId?.trim().toLowerCase() || 'main';
+}
+
+function resolveSavedOpenClawAgent(savedAgent: SavedAgentConfig): SavedAgentConfig {
+  const configuredAgents = listConfiguredOpenClawAgents();
+  const selectedAgentId = normalizeOpenClawAgentId(savedAgent.openclawAgentId);
+  const configuredAgent =
+    configuredAgents.find((agent) => normalizeOpenClawAgentId(agent.agentId) === selectedAgentId) ||
+    configuredAgents[0];
+
+  return {
+    backend: 'openclaw-gateway',
+    name: savedAgent.name?.trim() || configuredAgent?.name || 'OpenClaw',
+    openclawAgentId: selectedAgentId || configuredAgent?.agentId || 'main',
+    workspace: savedAgent.workspace?.trim() || configuredAgent?.workspace,
+    cliPath: savedAgent.cliPath?.trim() || 'openclaw',
+  };
+}
+
 function buildStableId(prefix: string, ...parts: Array<string | undefined>): string {
   const hash = crypto
     .createHash('sha256')
@@ -190,10 +214,14 @@ async function getSavedAgentConfig(platform: PluginType): Promise<SavedAgentConf
 
   const saved = await ProcessConfig.get(key);
   if (saved && typeof saved === 'object' && typeof saved.backend === 'string') {
+    const record = saved as Record<string, unknown>;
     return {
       backend: saved.backend,
-      customAgentId: typeof saved.customAgentId === 'string' ? saved.customAgentId : undefined,
-      name: typeof saved.name === 'string' ? saved.name : undefined,
+      customAgentId: typeof record.customAgentId === 'string' ? record.customAgentId : undefined,
+      name: typeof record.name === 'string' ? record.name : undefined,
+      openclawAgentId: typeof record.openclawAgentId === 'string' ? record.openclawAgentId : undefined,
+      workspace: typeof record.workspace === 'string' ? record.workspace : undefined,
+      cliPath: typeof record.cliPath === 'string' ? record.cliPath : undefined,
     };
   }
 
@@ -304,10 +332,16 @@ function conversationMatchesProfile(conversation: TChatConversation, profile: IA
 
 function mapAgentTypeToBackend(savedAgent: SavedAgentConfig, agentType?: ChannelAgentType): SavedAgentConfig {
   if (!agentType) {
-    return savedAgent;
+    return savedAgent.backend === 'openclaw-gateway' ? resolveSavedOpenClawAgent(savedAgent) : savedAgent;
   }
 
-  if (agentType === 'gemini' || agentType === 'codex' || agentType === 'openclaw-gateway') {
+  if (agentType === 'openclaw-gateway') {
+    return savedAgent.backend === 'openclaw-gateway'
+      ? resolveSavedOpenClawAgent(savedAgent)
+      : { backend: 'openclaw-gateway' };
+  }
+
+  if (agentType === 'gemini' || agentType === 'codex') {
     return { backend: agentType };
   }
 
@@ -763,9 +797,12 @@ export class ChannelRouteResolver {
       name,
       backend: savedAgent.backend,
       modelRef,
+      workspaceRef: savedAgent.workspace,
       promptProfile: {
         customAgentId: savedAgent.customAgentId,
         agentName: savedAgent.name,
+        openclawAgentId: savedAgent.openclawAgentId,
+        cliPath: savedAgent.cliPath,
         platform,
         scope,
       },
@@ -977,6 +1014,8 @@ export class ChannelRouteResolver {
     const promptProfile = (agentProfile.promptProfile ?? {}) as {
       customAgentId?: string;
       agentName?: string;
+      openclawAgentId?: string;
+      cliPath?: string;
     };
 
     if (agentProfile.backend === 'gemini') {
@@ -1013,7 +1052,20 @@ export class ChannelRouteResolver {
         name,
         channelChatId: chatId,
         extra: {
+          backend: 'openclaw-gateway',
           workspace: agentProfile.workspaceRef,
+          customWorkspace: Boolean(agentProfile.workspaceRef),
+          cliPath: promptProfile.cliPath,
+          agentName: promptProfile.agentName,
+          openclawAgentId: promptProfile.openclawAgentId,
+          runtimeValidation: {
+            expectedWorkspace: agentProfile.workspaceRef,
+            expectedBackend: 'openclaw-gateway',
+            expectedAgentName: promptProfile.agentName,
+            expectedOpenClawAgentId: promptProfile.openclawAgentId,
+            expectedCliPath: promptProfile.cliPath,
+            switchedAt: Date.now(),
+          },
         },
       });
     }

@@ -27,6 +27,66 @@
   border: 1px solid var(--bg-3);
 }
 
+.chat-workspace .workspace-toolbar-shell {
+  padding-top: 10px;
+}
+
+.chat-workspace .workspace-toolbar-search {
+  padding-bottom: 10px;
+}
+
+.chat-workspace .workspace-search-input .arco-input-inner-wrapper {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 92%, transparent);
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--bg-1) 94%, var(--fill-2) 6%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 6px 18px rgba(15, 23, 42, 0.08);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.chat-workspace .workspace-search-input .arco-input {
+  background: transparent !important;
+}
+
+.chat-workspace .workspace-search-input .arco-input-inner-wrapper:hover {
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--border-base));
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%);
+}
+
+.chat-workspace .workspace-search-input .arco-input-inner-wrapper.arco-input-focus {
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border-base));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 0 4px color-mix(in srgb, var(--primary) 10%, transparent),
+    0 10px 24px rgba(15, 23, 42, 0.1);
+}
+
+[data-theme='dark'] .chat-workspace .workspace-search-input .arco-input-inner-wrapper {
+  border-color: color-mix(in srgb, var(--border-base) 82%, transparent);
+  background: color-mix(in srgb, var(--bg-1) 88%, var(--fill-2) 12%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme='dark'] .chat-workspace .workspace-search-input .arco-input-inner-wrapper:hover {
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--border-base));
+}
+
+[data-theme='dark'] .chat-workspace .workspace-search-input .arco-input-inner-wrapper.arco-input-focus {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border-base));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 4px color-mix(in srgb, var(--primary) 14%, transparent),
+    0 12px 28px rgba(0, 0, 0, 0.3);
+}
+
 /* Mobile: workspace panel adaptation */
 @media (max-width: 767px) {
   .chat-workspace .workspace-toolbar-search {

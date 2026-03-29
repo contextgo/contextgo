@@ -30,7 +30,7 @@ const SortableConversationRow: React.FC<ConversationRowProps> = (props) => {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} className='w-full min-w-0' {...attributes} {...listeners}>
       <ConversationRow {...props} />
     </div>
   );

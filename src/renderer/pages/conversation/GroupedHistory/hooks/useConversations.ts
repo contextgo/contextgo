@@ -18,7 +18,9 @@ import {
 
 export const useConversations = () => {
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<string[]>(() => readExpandedWorkspaces());
-  const [expandedDiscussionGroups, setExpandedDiscussionGroups] = useState<string[]>(() => readExpandedDiscussionGroups());
+  const [expandedDiscussionGroups, setExpandedDiscussionGroups] = useState<string[]>(() =>
+    readExpandedDiscussionGroups()
+  );
   const { id } = useParams();
   const {
     conversations,

@@ -1,0 +1,68 @@
+/* Shared icon alignment primitives */
+
+.i-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.i-icon > svg {
+  display: block;
+}
+
+.app-icon {
+  line-height: 0;
+}
+
+.app-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-icon-slot,
+.app-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.app-icon-slot {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+}
+
+.app-icon-slot--sm {
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
+  min-height: 14px;
+}
+
+.app-icon-slot--lg {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+}
+
+.app-icon-slot--xl {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+}
+
+.app-icon-slot > img,
+.app-icon-button > img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}

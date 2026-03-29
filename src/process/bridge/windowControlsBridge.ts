@@ -31,6 +31,15 @@ export function registerWindowMaximizeListeners(window: BrowserWindow): void {
   window.on('unmaximize', () => {
     ipcBridge.windowControls.maximizedChanged.emit({ isMaximized: false });
   });
+
+  // 当窗口进入/退出全屏时通知渲染进程 / Notify renderer when fullscreen state changes
+  window.on('enter-full-screen', () => {
+    ipcBridge.windowControls.fullScreenChanged.emit({ isFullScreen: true });
+  });
+
+  window.on('leave-full-screen', () => {
+    ipcBridge.windowControls.fullScreenChanged.emit({ isFullScreen: false });
+  });
 }
 
 /**
@@ -81,6 +90,12 @@ export function initWindowControlsBridge(): void {
   ipcBridge.windowControls.isMaximized.provider(() => {
     const window = BrowserWindow.getFocusedWindow();
     return Promise.resolve(window?.isMaximized() ?? false);
+  });
+
+  // 获取窗口是否处于全屏状态 / Get window full screen state
+  ipcBridge.windowControls.isFullScreen.provider(() => {
+    const window = BrowserWindow.getFocusedWindow();
+    return Promise.resolve(window?.isFullScreen() ?? false);
   });
 
   // 为所有已存在的窗口注册监听器 / Register listeners for all existing windows

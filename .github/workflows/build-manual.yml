@@ -24,6 +24,14 @@ on:
           - linux
           - all
         default: 'macos-arm64'
+      runner_mode:
+        description: 'Use self-hosted or GitHub-hosted runners'
+        required: true
+        type: choice
+        options:
+          - self-hosted
+          - hosted
+        default: 'self-hosted'
       skip_code_quality:
         description: 'Skip code quality checks (faster builds for debugging)'
         required: false
@@ -36,9 +44,63 @@ env:
 jobs:
   prepare-matrix:
     name: Prepare Build Matrix
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      control_runner: ${{ steps.set-matrix.outputs.control_runner }}
+    env:
+      RUNNER_MODE: ${{ inputs.runner_mode }}
+      CONTROL_RUNNER: >-
+        ${{
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        }}
+      MACOS_RUNNER: >-
+        ${{
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        }}
+      WINDOWS_RUNNER: >-
+        ${{
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON ||
+            '["self-hosted","Windows"]'
+          ) ||
+          '["windows-2022"]'
+        }}
+      LINUX_RUNNER: >-
+        ${{
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+            '["self-hosted","Linux"]'
+          ) ||
+          '["ubuntu-latest"]'
+        }}
 
     steps:
       - name: Generate build matrix
@@ -47,11 +109,35 @@ jobs:
         run: |
           PLATFORM="${{ inputs.platform }}"
 
-          MACOS_ARM64='{"platform":"macos-arm64","os":"macos-14","command":"node scripts/build-with-builder.js arm64 --mac --arm64","artifact-name":"macos-build-arm64","arch":"arm64"}'
-          MACOS_X64='{"platform":"macos-x64","os":"macos-14","command":"node scripts/build-with-builder.js x64 --mac --x64","artifact-name":"macos-build-x64","arch":"x64"}'
-          WINDOWS_X64='{"platform":"windows-x64","os":"windows-2022","command":"node scripts/build-with-builder.js x64 --win --x64","artifact-name":"windows-build-x64","arch":"x64"}'
-          WINDOWS_ARM64='{"platform":"windows-arm64","os":"windows-2022","command":"node scripts/build-with-builder.js arm64 --win --arm64","artifact-name":"windows-build-arm64","arch":"arm64"}'
-          LINUX='{"platform":"linux","os":"ubuntu-latest","command":"bun run dist:linux","artifact-name":"linux-build","arch":"x64-arm64"}'
+          escape_json() {
+            printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+          }
+
+          build_entry() {
+            local platform="$1"
+            local runner="$2"
+            local command="$3"
+            local artifact_name="$4"
+            local arch="$5"
+            local runner_escaped
+
+            runner_escaped=$(escape_json "$runner")
+
+            printf '{"platform":"%s","runner":"%s","command":"%s","artifact-name":"%s","arch":"%s"}' \
+              "$platform" \
+              "$runner_escaped" \
+              "$command" \
+              "$artifact_name" \
+              "$arch"
+          }
+
+          MACOS_ARM64=$(build_entry 'macos-arm64' "$MACOS_RUNNER" 'node scripts/build-with-builder.js arm64 --mac --arm64' 'macos-build-arm64' 'arm64')
+          MACOS_X64=$(build_entry 'macos-x64' "$MACOS_RUNNER" 'node scripts/build-with-builder.js x64 --mac --x64' 'macos-build-x64' 'x64')
+          WINDOWS_X64=$(build_entry 'windows-x64' "$WINDOWS_RUNNER" 'node scripts/build-with-builder.js x64 --win --x64' 'windows-build-x64' 'x64')
+          WINDOWS_ARM64=$(build_entry 'windows-arm64' "$WINDOWS_RUNNER" 'node scripts/build-with-builder.js arm64 --win --arm64' 'windows-build-arm64' 'arm64')
+          LINUX=$(build_entry 'linux' "$LINUX_RUNNER" 'bun run dist:linux' 'linux-build' 'x64-arm64')
+
+          echo "control_runner=$CONTROL_RUNNER" >> $GITHUB_OUTPUT
 
           if [ "$PLATFORM" = "all" ]; then
             MATRIX="{\"include\":[$MACOS_ARM64,$MACOS_X64,$WINDOWS_X64,$WINDOWS_ARM64,$LINUX]}"
@@ -69,7 +155,7 @@ jobs:
 
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           echo "Generated matrix for platform '$PLATFORM':"
-          echo "$MATRIX" | python3 -m json.tool
+          echo "$MATRIX"
 
   build-pipeline:
     needs: prepare-matrix
@@ -78,6 +164,7 @@ jobs:
       matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       ref: ${{ inputs.branch }}
       skip_code_quality: ${{ inputs.skip_code_quality }}
+      control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
       append_commit_hash: true
       upload_installers_only: true
     secrets: inherit

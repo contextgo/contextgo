@@ -3,14 +3,9 @@
  */
 
 import { ipcBridge } from '@/common';
-import { Message } from '@arco-design/web-react';
 import React, { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 
-export const useMultiAgentDetection = () => {
-  const { t } = useTranslation();
-  const [message, contextHolder] = Message.useMessage();
-
+export const useMultiAgentDetection = (): { contextHolder: React.ReactNode } => {
   useEffect(() => {
     const checkMultiAgentMode = async () => {
       try {
@@ -21,17 +16,7 @@ export const useMultiAgentDetection = () => {
             (agent: { backend: string; name: string; cliPath?: string }) => agent.backend !== 'gemini'
           );
           if (acpAgents.length > 1) {
-            // message.success({
-            //   content: (
-            //     <div style={{ lineHeight: '1.5' }}>
-            //       <div style={{ fontWeight: 'bold', marginTop: '4px' }}>{t('conversation.welcome.multiAgentModeEnabled')}</div>
-            //     </div>
-            //   ),
-            //   duration: 3000,
-            //   showIcon: false,
-            //   className: 'multi-agent-message',
-            // });
-            message.success(t('conversation.welcome.multiAgentModeEnabled'));
+            return;
           }
         }
       } catch (error) {
@@ -45,5 +30,5 @@ export const useMultiAgentDetection = () => {
     });
   }, []); // 空依赖数组确保只在组件初始化时执行一次
 
-  return { contextHolder };
+  return { contextHolder: null };
 };

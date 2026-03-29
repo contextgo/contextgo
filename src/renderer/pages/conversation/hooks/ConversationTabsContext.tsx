@@ -19,6 +19,8 @@ export interface ConversationTab {
   workspace: string;
   /** 会话类型 / Conversation type */
   type: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'group';
+  /** Persist minimal conversation extra for tab icon rendering */
+  extra?: TChatConversation['extra'];
   /** Discussion group family id when this tab belongs to a discussion group */
   discussionGroupId?: string;
   /** 是否有未保存的修改 / Whether there are unsaved changes */
@@ -72,12 +74,9 @@ const toConversationTab = (conversation: TChatConversation): ConversationTab => 
   name: conversation.name,
   workspace: conversation.extra?.workspace || '',
   type: conversation.type,
+  extra: conversation.extra,
   discussionGroupId: getDiscussionGroupId(conversation),
 });
-
-const isDiscussionFamilyConversation = (conversation: TChatConversation): boolean => {
-  return Boolean(getDiscussionGroupId(conversation));
-};
 
 // 从 localStorage 恢复状态 / Restore state from localStorage
 const loadPersistedState = (): { openTabs: ConversationTab[]; activeTabId: string | null } => {
@@ -128,23 +127,22 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
       return;
     }
 
-    const shouldKeepDiscussionFamily = conversations.some(isDiscussionFamilyConversation);
-    const visibleTabConversations = shouldKeepDiscussionFamily
-      ? conversations
-      : conversations.filter((conversation) => conversation.extra?.customWorkspace);
     const targetConversationId = activeConversationId || conversations[conversations.length - 1]?.id || null;
 
-    if (visibleTabConversations.length === 0) {
-      setOpenTabs([]);
-      setActiveTabId(targetConversationId);
-      return;
-    }
-
     setOpenTabs((prev) => {
-      const batchConversationIds = new Set(visibleTabConversations.map((conversation) => conversation.id));
-      const preservedTabs = prev.filter((tab) => !batchConversationIds.has(tab.id));
-      const batchTabs = visibleTabConversations.map(toConversationTab);
-      return [...preservedTabs, ...batchTabs];
+      const batchTabs = conversations.map(toConversationTab);
+      const batchTabById = new Map(batchTabs.map((tab) => [tab.id, tab]));
+      const existingTabIds = new Set(prev.map((tab) => tab.id));
+
+      const nextTabs = prev.map((tab) => batchTabById.get(tab.id) ?? tab);
+
+      batchTabs.forEach((tab) => {
+        if (!existingTabIds.has(tab.id)) {
+          nextTabs.push(tab);
+        }
+      });
+
+      return nextTabs;
     });
     setActiveTabId(targetConversationId);
   }, []);
@@ -167,9 +165,7 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
         const shouldCloseDiscussionFamily = targetTab.type === 'group' && Boolean(targetTab.discussionGroupId);
         const closedIds = new Set(
           shouldCloseDiscussionFamily
-            ? prev
-                .filter((tab) => tab.discussionGroupId === targetTab.discussionGroupId)
-                .map((tab) => tab.id)
+            ? prev.filter((tab) => tab.discussionGroupId === targetTab.discussionGroupId).map((tab) => tab.id)
             : [conversationId]
         );
         const filtered = prev.filter((tab) => !closedIds.has(tab.id));

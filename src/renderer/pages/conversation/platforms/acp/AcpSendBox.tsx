@@ -2,6 +2,7 @@ import { ipcBridge } from '@/common';
 import type { AcpBackend } from '@/common/types/acpTypes';
 import type { TMessage } from '@/common/chat/chatLib';
 import { uuid } from '@/common/utils';
+import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import SendBox from '@/renderer/components/chat/sendbox';
 import ThoughtDisplay from '@/renderer/components/chat/ThoughtDisplay';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
@@ -20,6 +21,11 @@ import { useTranslation } from 'react-i18next';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import {
+  usePendingConversationMessages,
+  type PendingConversationMessage,
+  type PendingConversationMessageMode,
+} from '@/renderer/pages/conversation/hooks/usePendingConversationMessages';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import ContextUsageIndicator from '@/renderer/components/agent/ContextUsageIndicator';
@@ -46,8 +52,8 @@ const useSendBoxDraft = (conversation_id: string) => {
   const content = data?.content ?? '';
 
   const setAtPath = useCallback(
-    (atPath: Array<string | FileOrFolderItem>) => {
-      mutate((prev) => ({ ...prev, atPath }));
+    (nextAtPath: Array<string | FileOrFolderItem>) => {
+      mutate((prev) => ({ ...prev, atPath: nextAtPath }));
     },
     [data, mutate]
   );
@@ -55,8 +61,8 @@ const useSendBoxDraft = (conversation_id: string) => {
   const setUploadFile = createSetUploadFile(mutate, data);
 
   const setContent = useCallback(
-    (content: string) => {
-      mutate((prev) => ({ ...prev, content }));
+    (nextContent: string) => {
+      mutate((prev) => ({ ...prev, content: nextContent }));
     },
     [data, mutate]
   );
@@ -77,8 +83,17 @@ const AcpSendBox: React.FC<{
   sessionMode?: string;
   agentName?: string;
 }> = ({ conversation_id, backend, sessionMode, agentName }) => {
-  const { thought, running, acpStatus, aiProcessing, setAiProcessing, resetState, tokenUsage, contextLimit } =
-    useAcpMessage(conversation_id);
+  const {
+    thought,
+    running,
+    acpStatus,
+    aiProcessing,
+    canSteerPendingMessage,
+    setAiProcessing,
+    resetState,
+    tokenUsage,
+    contextLimit,
+  } = useAcpMessage(conversation_id);
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
   const slashCommands = useSlashCommands(conversation_id, { agentStatus: acpStatus });
@@ -128,84 +143,132 @@ const AcpSendBox: React.FC<{
     addOrUpdateMessage: addOrUpdateMessageRef.current,
   });
 
-  const onSendHandler = async (message: string) => {
-    const msg_id = uuid();
+  const sendAcpMessage = useCallback(
+    async (message: string, files: string[]) => {
+      const msg_id = uuid();
 
-    // ACP: don't use buildDisplayMessage, pass raw message directly
-    // File references are added by the backend ACP agent (using actual copied paths)
-    // Avoid two inconsistent sets of file references causing Claude to read wrong files
-
-    // Merge uploadFile and atPath (workspace selected files)
-    const atPathFiles = atPath.map((item) => (typeof item === 'string' ? item : item.path));
-    const allFiles = [...uploadFile, ...atPathFiles];
-
-    // Content is already cleared by the shared SendBox component (setInput(''))
-    // before calling onSend — no need to clear again here.
-    clearFiles();
-
-    const userMessage: TMessage = {
-      id: msg_id,
-      msg_id,
-      conversation_id,
-      type: 'text',
-      position: 'right',
-      content: {
-        content: message,
-      },
-      createdAt: Date.now(),
-    };
-    addOrUpdateMessage(userMessage, true);
-
-    // Start AI processing loading state
-    setAiProcessing(true);
-
-    // Send message via ACP
-    try {
-      await ipcBridge.acpConversation.sendMessage.invoke({
-        input: message,
+      const userMessage: TMessage = {
+        id: msg_id,
         msg_id,
         conversation_id,
-        files: allFiles,
-      });
-      void checkAndUpdateTitle(conversation_id, message);
-      emitter.emit('chat.history.refresh');
-    } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      // Check if it's an ACP authentication error
-      const isAuthError =
-        errorMsg.includes('[ACP-AUTH-') || errorMsg.includes('authentication failed') || errorMsg.includes('认证失败');
+        type: 'text',
+        position: 'right',
+        content: {
+          content: message,
+        },
+        createdAt: Date.now(),
+      };
+      addOrUpdateMessage(userMessage, true);
+      setAiProcessing(true);
 
-      if (isAuthError) {
-        // Create error message in conversation instead of alert
-        const errorMessage = {
-          id: uuid(),
-          msg_id: uuid(),
+      try {
+        await ipcBridge.acpConversation.sendMessage.invoke({
+          input: message,
+          msg_id,
           conversation_id,
-          type: 'error',
-          data: t('acp.auth.failed', {
-            backend,
-            error: errorMsg,
-            defaultValue: `${backend} authentication failed:\n\n{{error}}\n\nPlease check your local CLI tool authentication status`,
-          }),
-        };
+          files,
+        });
+        void checkAndUpdateTitle(conversation_id, message);
+        emitter.emit('chat.history.refresh');
+      } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        const isAuthError =
+          errorMsg.includes('[ACP-AUTH-') ||
+          errorMsg.includes('authentication failed') ||
+          errorMsg.includes('认证失败');
 
-        // Add error message to conversation
-        ipcBridge.acpConversation.responseStream.emit(errorMessage);
+        if (isAuthError) {
+          const errorMessage = {
+            id: uuid(),
+            msg_id: uuid(),
+            conversation_id,
+            type: 'error',
+            data: t('acp.auth.failed', {
+              backend,
+              error: errorMsg,
+              defaultValue: `${backend} authentication failed:\n\n{{error}}\n\nPlease check your local CLI tool authentication status`,
+            }),
+          };
 
-        // Stop loading state since AI won't respond
+          ipcBridge.acpConversation.responseStream.emit(errorMessage);
+          setAiProcessing(false);
+          return;
+        }
+
         setAiProcessing(false);
-        return; // Don't re-throw error, just show the message
+        throw error;
       }
-      // Stop loading state for other errors too
-      setAiProcessing(false);
-      throw error;
+
+      emitter.emit('acp.selected.file.clear');
+      if (files.length > 0) {
+        emitter.emit('acp.workspace.refresh');
+      }
+    },
+    [addOrUpdateMessage, backend, checkAndUpdateTitle, conversation_id, setAiProcessing, t]
+  );
+
+  const {
+    pendingMessages,
+    enqueuePendingMessage,
+    removePendingMessage,
+    restorePendingMessage,
+    restoreLatestPendingMessage,
+    setPendingMessageMode,
+  } = usePendingConversationMessages({
+    conversationId: conversation_id,
+    canSendNow: !(running || aiProcessing),
+    canSteerNow: canSteerPendingMessage,
+    onDispatch: async (pendingMessage: PendingConversationMessage) => {
+      await sendAcpMessage(pendingMessage.content, pendingMessage.attachments);
+    },
+    onDispatchError: (error: unknown) => {
+      console.error('[AcpSendBox] Failed to dispatch pending message:', error);
+    },
+  });
+
+  const stashPendingMessage = useCallback(
+    (mode: PendingConversationMessageMode, message: string) => {
+      const atPathFiles = atPath.map((item) => (typeof item === 'string' ? item : item.path));
+      const allFiles = [...uploadFile, ...atPathFiles];
+      clearFiles();
+      emitter.emit('acp.selected.file.clear');
+      enqueuePendingMessage(mode, message, allFiles);
+    },
+    [atPath, clearFiles, enqueuePendingMessage, uploadFile]
+  );
+
+  const restoreMessageToComposer = useCallback(
+    (messageId: string) => {
+      const pendingMessage = restorePendingMessage(messageId);
+      if (!pendingMessage) {
+        return;
+      }
+
+      setContent(pendingMessage.content);
+      setAtPath([]);
+      setUploadFile(pendingMessage.attachments);
+      emitter.emit('acp.selected.file.clear');
+    },
+    [restorePendingMessage, setAtPath, setContent, setUploadFile]
+  );
+
+  const restoreLatestMessageToComposer = useCallback(() => {
+    const pendingMessage = restoreLatestPendingMessage();
+    if (!pendingMessage) {
+      return;
     }
 
-    // Clear selected files (similar to GeminiSendBox)
+    setContent(pendingMessage.content);
+    setAtPath([]);
+    setUploadFile(pendingMessage.attachments);
     emitter.emit('acp.selected.file.clear');
-    if (allFiles.length) {
-      emitter.emit('acp.workspace.refresh');
-    }
+  }, [restoreLatestPendingMessage, setAtPath, setContent, setUploadFile]);
+
+  const onSendHandler = async (message: string) => {
+    const atPathFiles = atPath.map((item) => (typeof item === 'string' ? item : item.path));
+    const allFiles = [...uploadFile, ...atPathFiles];
+    clearFiles();
+    await sendAcpMessage(message, allFiles);
   };
 
   const appendSelectedFiles = useCallback(
@@ -273,6 +336,12 @@ const AcpSendBox: React.FC<{
         }
         prefix={
           <>
+            <PendingMessageBar
+              messages={pendingMessages}
+              onRemove={removePendingMessage}
+              onEdit={restoreMessageToComposer}
+              onSetMode={setPendingMessageMode}
+            />
             {/* Files on top */}
             {(uploadFile.length > 0 || atPath.some((item) => (typeof item === 'string' ? true : item.isFile))) && (
               <HorizontalFileList>
@@ -333,6 +402,9 @@ const AcpSendBox: React.FC<{
           </>
         }
         onSend={onSendHandler}
+        onQueue={(message) => stashPendingMessage('queue', message)}
+        onSteer={(message) => stashPendingMessage('steer', message)}
+        onEditLatestPending={restoreLatestMessageToComposer}
         slashCommands={slashCommands}
         onSlashBuiltinCommand={onSlashBuiltinCommand}
         sendButtonPrefix={
