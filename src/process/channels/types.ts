@@ -4,12 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { isBuiltinChannelType, type BuiltinChannelType } from '@/common/config/builtinChannels';
+
 // ==================== Plugin Types ====================
 
 /**
  * Built-in platform types for channel plugins.
  */
-export type BuiltinPluginType = 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin';
+export type BuiltinPluginType = BuiltinChannelType;
 
 /**
  * Supported platform types for plugins.
@@ -524,23 +526,14 @@ export function pairingRequestToRow(request: IChannelPairingRequest): IChannelPa
  * Channel platform type for model configuration.
  * Includes built-in platforms and extension-contributed platforms (string).
  */
-export type ChannelPlatform = 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
+export type ChannelPlatform = BuiltinChannelType | (string & {});
 
 /**
  * Type guard to check if a string is a known built-in ChannelPlatform.
  * Extension platform types are valid but not matched here.
  */
-export function isBuiltinChannelPlatform(
-  value: string
-): value is 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' {
-  return (
-    value === 'telegram' ||
-    value === 'slack' ||
-    value === 'discord' ||
-    value === 'lark' ||
-    value === 'dingtalk' ||
-    value === 'weixin'
-  );
+export function isBuiltinChannelPlatform(value: string): value is BuiltinChannelType {
+  return isBuiltinChannelType(value);
 }
 
 /**

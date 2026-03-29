@@ -224,6 +224,20 @@ describe('SystemActions weixin platform handling', () => {
     expect(mockGet).not.toHaveBeenCalledWith('assistant.telegram.defaultModel');
   });
 
+  it('getChannelDefaultModel reads assistant.discord.defaultModel for discord platform', async () => {
+    const { getChannelDefaultModel } = await import('@process/channels/actions/SystemActions');
+
+    mockGet.mockImplementation((key: string) => {
+      if (key === 'model.config') return Promise.resolve([GEMINI_PROVIDER]);
+      if (key === 'assistant.discord.defaultModel') return Promise.resolve({ id: 'p1', useModel: 'gemini-2.0-flash' });
+      return Promise.resolve(undefined);
+    });
+
+    await getChannelDefaultModel('discord');
+    expect(mockGet).toHaveBeenCalledWith('assistant.discord.defaultModel');
+    expect(mockGet).not.toHaveBeenCalledWith('assistant.telegram.defaultModel');
+  });
+
   it('getChannelDefaultModel falls back when model config read fails', async () => {
     const { getChannelDefaultModel } = await import('@process/channels/actions/SystemActions');
 
@@ -386,6 +400,60 @@ describe('SystemActions agent selection', () => {
     expect(result.success).toBe(true);
     expect(mockSet).toHaveBeenCalledWith(
       'assistant.slack.agent',
+      expect.objectContaining({
+        backend: 'claude',
+        customAgentId: 'claude-custom-1',
+        name: 'Claude Code',
+      })
+    );
+  });
+
+  it('stores selected agent under the discord config path for discord platform', async () => {
+    const { handleAgentSelect } = await import('@process/channels/actions/SystemActions');
+    const context = {
+      ...createSlackActionContext(),
+      platform: 'discord' as const,
+      pluginId: 'discord_default',
+      chatId: 'chat-discord-1',
+      userId: 'discord-user-1',
+      channelUser: {
+        ...BASE_SLACK_USER,
+        id: 'channel-user-3',
+        platformUserId: 'discord-user-1',
+        platformType: 'discord' as const,
+      },
+      originalMessage: {
+        ...createSlackActionContext().originalMessage,
+        platform: 'discord' as const,
+        chatId: 'chat-discord-1',
+        user: {
+          id: 'discord-user-1',
+          displayName: 'Bob',
+        },
+      },
+    };
+
+    mockGet.mockImplementation(async (key: string) => {
+      if (key === 'model.config') return [GEMINI_PROVIDER];
+      if (key === 'assistant.discord.agent') return { backend: 'gemini', name: 'Gemini' };
+      return undefined;
+    });
+
+    mockSessionManager.getSession.mockReturnValue({
+      id: 'session-discord-old',
+      userId: context.channelUser.id,
+      agentType: 'gemini',
+      conversationId: 'conv-discord-old',
+      chatId: 'chat-discord-1',
+      createdAt: 1000,
+      lastActivity: 1000,
+    });
+
+    const result = await handleAgentSelect(context, { agentKey: 'claude:claude-custom-1' });
+
+    expect(result.success).toBe(true);
+    expect(mockSet).toHaveBeenCalledWith(
+      'assistant.discord.agent',
       expect.objectContaining({
         backend: 'claude',
         customAgentId: 'claude-custom-1',
