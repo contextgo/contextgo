@@ -43,7 +43,7 @@ export const useConversationActions = ({
   const { id } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { openTab, closeAllTabs, activeTab, updateTabName } = useConversationTabs();
+  const { openTab, updateTabName } = useConversationTabs();
 
   // Close dropdown when entering batch mode
   useEffect(() => {
@@ -62,24 +62,7 @@ export const useConversationActions = ({
       blockMobileInputFocus();
       blurActiveElement();
 
-      const customWorkspace = conversation.extra?.customWorkspace;
-      const newWorkspace = conversation.extra?.workspace;
-
       markAsRead(conversation.id);
-
-      if (!customWorkspace) {
-        closeAllTabs();
-        void navigate(`/conversation/${conversation.id}`);
-        if (onSessionClick) {
-          onSessionClick();
-        }
-        return;
-      }
-
-      const currentWorkspace = activeTab?.workspace;
-      if (!currentWorkspace || currentWorkspace !== newWorkspace) {
-        closeAllTabs();
-      }
 
       openTab(conversation);
       void navigate(`/conversation/${conversation.id}`);
@@ -87,7 +70,7 @@ export const useConversationActions = ({
         onSessionClick();
       }
     },
-    [batchMode, toggleSelectedConversation, markAsRead, closeAllTabs, navigate, onSessionClick, activeTab, openTab]
+    [batchMode, toggleSelectedConversation, markAsRead, navigate, onSessionClick, openTab]
   );
 
   const removeConversation = useCallback(
@@ -250,6 +233,34 @@ export const useConversationActions = ({
     [t]
   );
 
+  const handleArchiveConversation = useCallback(
+    async (conversation: TChatConversation) => {
+      try {
+        const success = await ipcBridge.conversation.update.invoke({
+          id: conversation.id,
+          updates: {
+            extra: {
+              archived: true,
+              archivedAt: Date.now(),
+            } as Partial<TChatConversation['extra']>,
+          } as Partial<TChatConversation>,
+          mergeExtra: true,
+        });
+
+        if (success) {
+          emitter.emit('chat.history.refresh');
+          Message.success(t('conversation.history.archiveSuccess'));
+        } else {
+          Message.error(t('conversation.history.archiveFailed'));
+        }
+      } catch (error) {
+        console.error('Failed to archive conversation:', error);
+        Message.error(t('conversation.history.archiveFailed'));
+      }
+    },
+    [t]
+  );
+
   const handleMenuVisibleChange = useCallback((conversationId: string, visible: boolean) => {
     setDropdownVisibleId(visible ? conversationId : null);
   }, []);
@@ -271,6 +282,7 @@ export const useConversationActions = ({
     handleRenameConfirm,
     handleRenameCancel,
     handleTogglePin,
+    handleArchiveConversation,
     handleMenuVisibleChange,
     handleOpenMenu,
   };

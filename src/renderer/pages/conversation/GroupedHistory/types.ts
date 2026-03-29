@@ -5,8 +5,9 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
+import type React from 'react';
 
-export type DiscussionChildConversationMap = Record<string, TChatConversation[]>;
+export type GroupChildConversationMap = Record<string, TChatConversation[]>;
 
 export type WorkspaceGroup = {
   workspace: string;
@@ -29,7 +30,7 @@ export type TimelineSection = {
 export type GroupedHistoryResult = {
   pinnedConversations: TChatConversation[];
   timelineSections: TimelineSection[];
-  discussionChildConversationsByParentId: DiscussionChildConversationMap;
+  groupChildConversationsByParentId: GroupChildConversationMap;
 };
 
 export type ExportZipFile = {
@@ -49,6 +50,7 @@ export type ConversationRowProps = {
   hasCompletionUnread: boolean;
   allowActions?: boolean;
   allowBatchSelection?: boolean;
+  leadingSlot?: React.ReactNode;
   collapsed: boolean;
   tooltipEnabled: boolean;
   batchMode: boolean;
@@ -63,6 +65,7 @@ export type ConversationRowProps = {
   onDelete: (conversationId: string) => void;
   onExport: (conversation: TChatConversation) => void;
   onTogglePin: (conversation: TChatConversation) => void;
+  onArchive: (conversation: TChatConversation) => void;
   getJobStatus: (conversationId: string) => 'none' | 'active' | 'paused' | 'error' | 'unread';
 };
 

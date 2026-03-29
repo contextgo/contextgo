@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import {
+  BUILTIN_CHANNEL_TYPES,
+  getBuiltinChannelBotName,
+  getBuiltinChannelByPluginId,
+} from '@/common/config/builtinChannels';
 import { getDatabase } from '@process/services/database';
 import { ExtensionRegistry } from '@process/extensions';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
@@ -11,13 +16,10 @@ import { getChannelDefaultModel } from '../actions/SystemActions';
 import { ActionExecutor } from '../gateway/ActionExecutor';
 import { PluginManager, registerPlugin } from '../gateway/PluginManager';
 import { PairingService } from '../pairing/PairingService';
-import { DingTalkPlugin } from '../plugins/dingtalk/DingTalkPlugin';
-import { LarkPlugin } from '../plugins/lark/LarkPlugin';
-import { TelegramPlugin } from '../plugins/telegram/TelegramPlugin';
-import { WeixinPlugin } from '../plugins/weixin/WeixinPlugin';
 import { isBuiltinChannelPlatform, resolveChannelConvType } from '../types';
 import type { ChannelPlatform, IChannelPluginConfig, PluginType } from '../types';
 import { getChannelRouteResolver } from './ChannelRouteResolver';
+import { BUILTIN_CHANNEL_RUNTIME } from './builtinChannelRuntime';
 import { SessionManager } from './SessionManager';
 
 /**
@@ -49,10 +51,9 @@ export class ChannelManager {
   private constructor() {
     // Private constructor for singleton pattern
     // Register built-in plugins
-    registerPlugin('telegram', TelegramPlugin);
-    registerPlugin('lark', LarkPlugin);
-    registerPlugin('dingtalk', DingTalkPlugin);
-    registerPlugin('weixin', WeixinPlugin);
+    for (const type of BUILTIN_CHANNEL_TYPES) {
+      registerPlugin(type, BUILTIN_CHANNEL_RUNTIME[type].pluginClass);
+    }
   }
 
   /**
@@ -187,7 +188,7 @@ export class ChannelManager {
     }
 
     const enabledPlugins = result.data.filter((p) => p.enabled);
-    const builtinStartableTypes = new Set<PluginType>(['telegram', 'lark', 'dingtalk', 'weixin']);
+    const builtinStartableTypes = new Set<PluginType>(BUILTIN_CHANNEL_TYPES);
     const extensionRegistry = ExtensionRegistry.getInstance();
 
     for (const plugin of enabledPlugins) {
@@ -249,36 +250,19 @@ export class ChannelManager {
 
     // Resolve plugin type — always derive from pluginId so stale DB records don't cause
     // "Unknown plugin type" errors after renaming or fixing the type mapping.
-    const pluginType = this.getPluginTypeFromId(pluginId) as PluginType;
+    const builtinChannel = getBuiltinChannelByPluginId(pluginId);
+    const pluginType = (builtinChannel?.type || this.getPluginTypeFromId(pluginId)) as PluginType;
     let credentials = existing?.credentials;
     let pluginRuntimeConfig = existing?.config ? { ...existing.config } : {};
 
-    // Extract credentials based on plugin type
-    if (pluginType === 'telegram') {
-      const token = config.token as string | undefined;
-      if (token) {
-        credentials = { token };
-      }
-    } else if (pluginType === 'lark') {
-      const appId = config.appId as string | undefined;
-      const appSecret = config.appSecret as string | undefined;
-      const encryptKey = config.encryptKey as string | undefined;
-      const verificationToken = config.verificationToken as string | undefined;
-      if (appId && appSecret) {
-        credentials = { appId, appSecret, encryptKey, verificationToken };
-      }
-    } else if (pluginType === 'dingtalk') {
-      const clientId = config.clientId as string | undefined;
-      const clientSecret = config.clientSecret as string | undefined;
-      if (clientId && clientSecret) {
-        credentials = { clientId, clientSecret };
-      }
-    } else if (pluginType === 'weixin') {
-      const accountId = config.accountId as string | undefined;
-      const botToken = config.botToken as string | undefined;
-      if (accountId && botToken) {
-        credentials = { accountId, botToken };
-      }
+    if (builtinChannel) {
+      const builtinResult = BUILTIN_CHANNEL_RUNTIME[builtinChannel.type].buildEnableResult(
+        config,
+        existing?.credentials,
+        existing?.config
+      );
+      credentials = builtinResult.credentials;
+      pluginRuntimeConfig = builtinResult.config;
     } else {
       // Extension or unknown plugin type:
       // - prefer manifest-declared credential/config fields
@@ -395,51 +379,14 @@ export class ChannelManager {
   async testPlugin(
     pluginId: string,
     token: string,
-    extraConfig?: { appId?: string; appSecret?: string }
+    extraConfig?: Record<string, string | boolean | undefined>
   ): Promise<{ success: boolean; botUsername?: string; error?: string }> {
-    const pluginType = this.getPluginTypeFromId(pluginId);
-
-    if (pluginType === 'telegram') {
-      const result = await TelegramPlugin.testConnection(token);
-      return {
-        success: result.success,
-        botUsername: result.botInfo?.username,
-        error: result.error,
-      };
-    }
-
-    if (pluginType === 'lark') {
-      const appId = extraConfig?.appId;
-      const appSecret = extraConfig?.appSecret;
-      if (!appId || !appSecret) {
-        return {
-          success: false,
-          error: 'App ID and App Secret are required for Lark',
-        };
+    const builtinChannel = getBuiltinChannelByPluginId(pluginId);
+    if (builtinChannel) {
+      const runtime = BUILTIN_CHANNEL_RUNTIME[builtinChannel.type];
+      if (runtime.testConnection) {
+        return await runtime.testConnection(token, extraConfig);
       }
-      const result = await LarkPlugin.testConnection(appId, appSecret);
-      return {
-        success: result.success,
-        botUsername: result.botInfo?.name,
-        error: result.error,
-      };
-    }
-
-    if (pluginType === 'dingtalk') {
-      const clientId = extraConfig?.appId; // Reuse appId field for clientId
-      const clientSecret = extraConfig?.appSecret; // Reuse appSecret field for clientSecret
-      if (!clientId || !clientSecret) {
-        return {
-          success: false,
-          error: 'Client ID and Client Secret are required for DingTalk',
-        };
-      }
-      const result = await DingTalkPlugin.testConnection(clientId, clientSecret);
-      return {
-        success: result.success,
-        botUsername: result.botInfo?.name,
-        error: result.error,
-      };
     }
 
     // Extension plugins: test connection not supported yet (will be handled by the plugin itself on start)
@@ -451,14 +398,7 @@ export class ChannelManager {
    * For built-in plugins, derives from ID prefix. For others, returns the ID as type.
    */
   private getPluginTypeFromId(pluginId: string): PluginType {
-    if (pluginId.startsWith('telegram')) return 'telegram';
-    if (pluginId.startsWith('slack')) return 'slack';
-    if (pluginId.startsWith('discord')) return 'discord';
-    if (pluginId.startsWith('lark')) return 'lark';
-    if (pluginId.startsWith('dingtalk')) return 'dingtalk';
-    if (pluginId.startsWith('weixin')) return 'weixin';
-    // Extension plugins: use pluginId as type (e.g., 'ext-feishu')
-    return pluginId;
+    return getBuiltinChannelByPluginId(pluginId)?.type || pluginId;
   }
 
   /**
@@ -466,6 +406,11 @@ export class ChannelManager {
    * For extension plugins, tries to look up display name from registry.
    */
   private getPluginNameFromId(pluginId: string): string {
+    const builtinChannel = getBuiltinChannelByPluginId(pluginId);
+    if (builtinChannel) {
+      return getBuiltinChannelBotName(builtinChannel.type);
+    }
+
     // Check extension registry for display name
     try {
       const registry = ExtensionRegistry.getInstance();
@@ -528,7 +473,7 @@ export class ChannelManager {
       // For gemini + model info: update existing conversations' model field
       if (newType === 'gemini' && model?.id && model?.useModel) {
         if (isBuiltinChannelPlatform(platform)) {
-          const builtinPlatform: 'telegram' | 'lark' | 'dingtalk' | 'weixin' = platform;
+          const builtinPlatform: 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' = platform;
           const fullModel = await getChannelDefaultModel(builtinPlatform);
           const db = await getDatabase();
           const result = db.updateChannelConversationModel(builtinPlatform, 'gemini', fullModel);

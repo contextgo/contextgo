@@ -3,6 +3,7 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const listExternalSessionsMock = vi.fn();
+const getAvailableAgentsMock = vi.fn();
 const importExternalSessionMock = vi.fn();
 const openTabMock = vi.fn();
 const navigateMock = vi.fn();
@@ -32,6 +33,8 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('@icon-park/react', () => ({
   Refresh: () => <span data-testid='refresh-icon' />,
+  Down: () => <span data-testid='group-expanded' />,
+  Right: () => <span data-testid='group-collapsed' />,
 }));
 
 vi.mock('@arco-design/web-react', () => {
@@ -91,6 +94,9 @@ vi.mock('@/common', () => ({
     acpConversation: {
       listExternalSessions: {
         invoke: (...args: any[]) => listExternalSessionsMock(...args),
+      },
+      getAvailableAgents: {
+        invoke: (...args: any[]) => getAvailableAgentsMock(...args),
       },
       importExternalSession: {
         invoke: (...args: any[]) => importExternalSessionMock(...args),
@@ -154,13 +160,47 @@ describe('ExternalSessionsModal', () => {
           },
           {
             provider: 'openclaw-gateway',
-            sessionId: 'openclaw-1',
-            title: 'OpenClaw Session',
-            workspace: '/tmp/openclaw',
+            sessionId: 'openclaw-main',
+            title: 'OpenClaw Main Session',
+            workspace: '/tmp/openclaw-main',
             updatedAt: 1_710_000_100_000,
+            openclawAgentId: 'main',
+            agentName: 'OpenClaw Main',
+          },
+          {
+            provider: 'openclaw-gateway',
+            sessionId: 'openclaw-dev',
+            title: 'OpenClaw Dev Session',
+            workspace: '/tmp/openclaw-dev',
+            updatedAt: 1_710_000_150_000,
+            openclawAgentId: 'dev',
+            agentName: 'OpenClaw Dev',
           },
         ],
       },
+    });
+    getAvailableAgentsMock.mockResolvedValue({
+      success: true,
+      data: [
+        {
+          backend: 'openclaw-gateway',
+          name: 'OpenClaw Main',
+          openclawAgentId: 'main',
+          workspace: '/agent/main',
+        },
+        {
+          backend: 'openclaw-gateway',
+          name: 'OpenClaw Dev (dev)',
+          openclawAgentId: 'dev',
+          workspace: '/agent/dev',
+        },
+        {
+          backend: 'openclaw-gateway',
+          name: 'OpenClaw Review (review)',
+          openclawAgentId: 'review',
+          workspace: '/agent/review',
+        },
+      ],
     });
     importExternalSessionMock.mockResolvedValue({ success: true });
   });
@@ -173,7 +213,8 @@ describe('ExternalSessionsModal', () => {
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.getByText('Gemini Session')).toBeInTheDocument();
       expect(screen.getByText('OpenCode Session')).toBeInTheDocument();
-      expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Main Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Dev Session')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Claude' }));
@@ -183,7 +224,8 @@ describe('ExternalSessionsModal', () => {
       expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
       expect(screen.queryByText('Gemini Session')).not.toBeInTheDocument();
       expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
-      expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Main Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Dev Session')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Gemini' }));
@@ -193,7 +235,8 @@ describe('ExternalSessionsModal', () => {
       expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
       expect(screen.getByText('Gemini Session')).toBeInTheDocument();
       expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
-      expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Main Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Dev Session')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'OpenCode' }));
@@ -203,7 +246,8 @@ describe('ExternalSessionsModal', () => {
       expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
       expect(screen.queryByText('Gemini Session')).not.toBeInTheDocument();
       expect(screen.getByText('OpenCode Session')).toBeInTheDocument();
-      expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Main Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Dev Session')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'OpenClaw' }));
@@ -213,7 +257,14 @@ describe('ExternalSessionsModal', () => {
       expect(screen.queryByText('Codex Session')).not.toBeInTheDocument();
       expect(screen.queryByText('Gemini Session')).not.toBeInTheDocument();
       expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
-      expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Main Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Dev Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Main')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Dev (dev)')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Review (review)')).toBeInTheDocument();
+      expect(screen.getByText('/agent/main')).toBeInTheDocument();
+      expect(screen.getByText('/agent/dev')).toBeInTheDocument();
+      expect(screen.queryByText('/agent/review')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Codex' }));
@@ -223,7 +274,8 @@ describe('ExternalSessionsModal', () => {
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.queryByText('Gemini Session')).not.toBeInTheDocument();
       expect(screen.queryByText('OpenCode Session')).not.toBeInTheDocument();
-      expect(screen.queryByText('OpenClaw Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Main Session')).not.toBeInTheDocument();
+      expect(screen.queryByText('OpenClaw Dev Session')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'All' }));
@@ -233,7 +285,74 @@ describe('ExternalSessionsModal', () => {
       expect(screen.getByText('Codex Session')).toBeInTheDocument();
       expect(screen.getByText('Gemini Session')).toBeInTheDocument();
       expect(screen.getByText('OpenCode Session')).toBeInTheDocument();
-      expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Main Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Dev Session')).toBeInTheDocument();
+    });
+  });
+
+  it('groups OpenClaw sessions by configured agent', async () => {
+    render(<ExternalSessionsModal visible onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'OpenClaw' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'OpenClaw' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('OpenClaw Main')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Dev (dev)')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Review (review)')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Main Session')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Dev Session')).toBeInTheDocument();
+      expect(screen.getByText('/agent/main')).toBeInTheDocument();
+      expect(screen.getByText('/agent/dev')).toBeInTheDocument();
+      expect(screen.queryByText('/agent/review')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('OpenClaw Review (review)'));
+
+    await waitFor(() => {
+      expect(screen.getByText('/agent/review')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('OpenClaw Main'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('OpenClaw Main Session')).not.toBeInTheDocument();
+    });
+  });
+
+  it('groups OpenClaw sessions with mixed-case agent ids under the configured agent', async () => {
+    listExternalSessionsMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        sessions: [
+          {
+            provider: 'openclaw-gateway',
+            sessionId: 'openclaw-dev-mixed',
+            title: 'OpenClaw Dev Session',
+            workspace: '/tmp/openclaw-dev',
+            updatedAt: 1_710_000_150_000,
+            openclawAgentId: 'DEV',
+            agentName: 'OpenClaw Dev',
+          },
+        ],
+      },
+    });
+
+    render(<ExternalSessionsModal visible onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'OpenClaw' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'OpenClaw' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('OpenClaw Dev (dev)')).toBeInTheDocument();
+      expect(screen.getByText('OpenClaw Dev Session')).toBeInTheDocument();
+      expect(screen.getByText('/agent/dev')).toBeInTheDocument();
     });
   });
 });

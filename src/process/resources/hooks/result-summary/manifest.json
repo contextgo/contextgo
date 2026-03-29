@@ -1,7 +1,10 @@
 {
   "name": "result-summary",
-  "description": "System hook that asks the agent to end with a crisp outcome summary and next risks. Implemented as a before_user_prompt prompt transform.",
+  "description": "System hook that emits a structured completion summary after the agent finishes a turn, including request, tool activity, and final result.",
   "version": "1.0.0",
-  "executionType": "prompt-transform",
-  "events": ["before_user_prompt"]
+  "executionType": "native-projection",
+  "events": ["after_response"],
+  "category": "operations",
+  "tags": ["summary", "delivery", "handoff", "after-response"],
+  "outputTargets": ["chat-message"]
 }

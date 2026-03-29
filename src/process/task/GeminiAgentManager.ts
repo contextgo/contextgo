@@ -22,6 +22,7 @@ import { ToolConfirmationOutcome } from '../agent/gemini/cli/tools/tools';
 import { getDatabase } from '@process/services/database';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
 import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
+import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { handlePreviewOpenEvent } from '@process/utils/previewUtils';
 import BaseAgentManager from './BaseAgentManager';
 import { IpcAgentEventEmitter } from './IpcAgentEventEmitter';
@@ -75,6 +76,7 @@ export class GeminiAgentManager extends BaseAgentManager<
 
   /** Session-level approval store for "always allow" memory */
   readonly approvalStore = new GeminiApprovalStore();
+  private readonly hookRuntime = new AssistantHookRuntime();
 
   private async injectHistoryFromDatabase(): Promise<void> {
     try {
@@ -91,6 +93,13 @@ export class GeminiAgentManager extends BaseAgentManager<
     } catch (e) {
       // ignore history injection errors
     }
+  }
+
+  private async emitAfterResponseHooks(): Promise<void> {
+    await this.hookRuntime.emitAfterResponse(this.conversation_id, (message) => {
+      ipcBridge.geminiConversation.responseStream.emit(message);
+      channelEventBus.emitAgentMessage(this.conversation_id, message);
+    });
   }
 
   /** Force yolo mode (for cron jobs) / 强制 yolo 模式（用于定时任务） */
@@ -770,6 +779,10 @@ export class GeminiAgentManager extends BaseAgentManager<
         await this.sendMessage({
           input: feedbackMessage,
           msg_id: uuid(),
+        });
+      } else {
+        await this.emitAfterResponseHooks().catch((error) => {
+          mainWarn('[GeminiAgentManager]', 'Failed to emit after_response hooks', error);
         });
       }
 

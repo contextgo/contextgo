@@ -813,6 +813,8 @@ export interface AcpModelInfo {
   availableModels: Array<{ id: string; label: string }>;
   /** Whether the user can switch models */
   canSwitch: boolean;
+  /** Whether the current runtime supports model switching */
+  switchSupported?: boolean;
   /** Source of the model info: 'configOption' (stable) or 'models' (unstable) */
   source: 'configOption' | 'models';
   /** Config option ID (only when source is 'configOption') */

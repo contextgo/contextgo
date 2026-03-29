@@ -16,6 +16,8 @@ export type ExternalSessionSummary = {
   modelProvider?: string;
   model?: string;
   reasoningEffort?: string;
+  openclawAgentId?: string;
+  agentName?: string;
 };
 
 export type ImportExternalSessionParams = {

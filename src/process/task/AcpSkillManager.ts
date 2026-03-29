@@ -17,6 +17,7 @@ import path from 'path';
 import { existsSync } from 'fs';
 import { getSkillsDir, getBuiltinSkillsCopyDir, getAutoSkillsDir } from '@process/utils/initStorage';
 import { ExtensionRegistry } from '@process/extensions';
+import { discoverSkillDirectories, resolveSkillDirectory } from '@process/utils/skillDiscovery';
 
 /**
  * Skill 定义（与 aioncli-core 兼容）
@@ -40,37 +41,6 @@ export interface SkillDefinition {
 export interface SkillIndex {
   name: string;
   description: string;
-}
-
-/**
- * 解析 SKILL.md 的 frontmatter
- * Parse frontmatter from SKILL.md
- */
-function parseFrontmatter(content: string): {
-  name?: string;
-  description?: string;
-} {
-  const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-  if (!frontmatterMatch) {
-    return {};
-  }
-
-  const frontmatter = frontmatterMatch[1];
-  const result: { name?: string; description?: string } = {};
-
-  // 解析 name
-  const nameMatch = frontmatter.match(/^name:\s*['"]?([^'"\n]+)['"]?\s*$/m);
-  if (nameMatch) {
-    result.name = nameMatch[1].trim();
-  }
-
-  // 解析 description（支持单引号、双引号、无引号）
-  const descMatch = frontmatter.match(/^description:\s*['"]?(.+?)['"]?\s*$/m);
-  if (descMatch) {
-    result.description = descMatch[1].trim();
-  }
-
-  return result;
 }
 
 /**
@@ -157,30 +127,16 @@ export class AcpSkillManager {
     }
 
     try {
-      const entries = await fs.readdir(builtinDir, { withFileTypes: true });
+      const discoveredSkills = await discoverSkillDirectories(builtinDir);
 
-      for (const entry of entries) {
-        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+      for (const skill of discoveredSkills) {
+        const skillDef: SkillDefinition = {
+          name: skill.name,
+          description: skill.description || `Builtin Skill: ${skill.dirName}`,
+          location: path.join(skill.dirPath, 'SKILL.md'),
+        };
 
-        const skillName = entry.name;
-        const skillFile = path.join(builtinDir, skillName, 'SKILL.md');
-        if (!existsSync(skillFile)) continue;
-
-        try {
-          const content = await fs.readFile(skillFile, 'utf-8');
-          const { name, description } = parseFrontmatter(content);
-
-          const skillDef: SkillDefinition = {
-            name: name || skillName,
-            description: description || `Builtin Skill: ${skillName}`,
-            location: skillFile,
-            // body 不在这里加载，按需获取
-          };
-
-          this.autoSkills.set(skillName, skillDef);
-        } catch (error) {
-          console.warn(`[AcpSkillManager] Failed to load builtin skill ${skillName}:`, error);
-        }
+        this.autoSkills.set(skill.name, skillDef);
       }
 
       console.log(`[AcpSkillManager] Discovered ${this.autoSkills.size} builtin skills`);
@@ -270,37 +226,21 @@ export class AcpSkillManager {
       if (!existsSync(dir)) continue;
 
       try {
-        const entries = await fs.readdir(dir, { withFileTypes: true });
+        const discoveredSkills = await discoverSkillDirectories(dir, {
+          excludeTopLevelNames: dir === getBuiltinSkillsCopyDir() ? ['_builtin'] : [],
+        });
 
-        for (const entry of entries) {
-          if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+        for (const skill of discoveredSkills) {
+          const isEnabled = enabledSkills.includes(skill.name) || enabledSkills.includes(skill.dirName);
+          if (!isEnabled) continue;
 
-          const skillName = entry.name;
+          if (this.skills.has(skill.name)) continue;
 
-          // Skip _builtin directory (handled by discoverAutoSkills)
-          if (skillName === '_builtin') continue;
-
-          // Only load enabled skills
-          if (!enabledSkills.includes(skillName)) continue;
-
-          // Skip if already discovered (builtin-skills/ takes precedence)
-          if (this.skills.has(skillName)) continue;
-
-          const skillFile = path.join(dir, skillName, 'SKILL.md');
-          if (!existsSync(skillFile)) continue;
-
-          try {
-            const content = await fs.readFile(skillFile, 'utf-8');
-            const { name, description } = parseFrontmatter(content);
-
-            this.skills.set(skillName, {
-              name: name || skillName,
-              description: description || `Skill: ${skillName}`,
-              location: skillFile,
-            });
-          } catch (error) {
-            console.warn(`[AcpSkillManager] Failed to load skill ${skillName}:`, error);
-          }
+          this.skills.set(skill.name, {
+            name: skill.name,
+            description: skill.description || `Skill: ${skill.dirName}`,
+            location: path.join(skill.dirPath, 'SKILL.md'),
+          });
         }
       } catch (error) {
         console.error(`[AcpSkillManager] Failed to discover skills in ${dir}:`, error);
@@ -393,7 +333,22 @@ export class AcpSkillManager {
     // 如果 body 还没加载，现在加载
     if (skill.body === undefined) {
       try {
-        const content = await fs.readFile(skill.location, 'utf-8');
+        let skillLocation = skill.location;
+
+        if (!existsSync(skillLocation)) {
+          const resolvedSkill =
+            (await resolveSkillDirectory(this.autoSkillsDir, name)) ||
+            (await resolveSkillDirectory(getBuiltinSkillsCopyDir(), name, {
+              excludeTopLevelNames: ['_builtin'],
+            })) ||
+            (await resolveSkillDirectory(this.skillsDir, name));
+
+          if (resolvedSkill) {
+            skillLocation = path.join(resolvedSkill.dirPath, 'SKILL.md');
+          }
+        }
+
+        const content = await fs.readFile(skillLocation, 'utf-8');
         skill.body = extractBody(content);
       } catch (error) {
         console.warn(`[AcpSkillManager] Failed to load skill body for ${name}:`, error);

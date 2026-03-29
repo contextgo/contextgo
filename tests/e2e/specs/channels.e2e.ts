@@ -5,13 +5,13 @@
  *  - Navigating to the channels settings (webui tab → channels sub-tab)
  *  - Channel list renders with known channels
  *  - Toggle switches are visible for active channels
- *  - "Coming soon" channels have disabled toggles
+ *  - Only not-yet-supported channels have disabled toggles
  */
 import { test, expect } from '../fixtures';
 import { goToChannelsTab, channelItemById, channelSwitchById, takeScreenshot, waitForClassChange } from '../helpers';
 
-const ACTIVE_CHANNEL_IDS = ['telegram', 'lark', 'dingtalk'] as const;
-const COMING_SOON_CHANNEL_IDS = ['slack', 'discord'] as const;
+const ACTIVE_CHANNEL_IDS = ['telegram', 'slack', 'discord', 'lark', 'dingtalk'] as const;
+const COMING_SOON_CHANNEL_IDS: readonly string[] = [];
 
 test.describe('Channels', () => {
   test('channels settings page renders', async ({ page }) => {

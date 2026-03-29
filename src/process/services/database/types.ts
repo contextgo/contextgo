@@ -318,14 +318,14 @@ export function rowToConversation(row: IConversationRow): TChatConversation {
     return {
       ...base,
       type: 'group' as const,
-      extra: JSON.parse(row.extra),
-      model: row.model
-        ? JSON.parse(row.model)
-        : {
-            id: 'discussion-group-placeholder',
-            name: 'Discussion Group',
-            useModel: 'discussion-group',
-            platform: 'discussion-group',
+        extra: JSON.parse(row.extra),
+        model: row.model
+          ? JSON.parse(row.model)
+          : {
+            id: 'group-placeholder',
+            name: 'Group',
+            useModel: 'group',
+            platform: 'group',
             baseUrl: '',
             apiKey: '',
           },

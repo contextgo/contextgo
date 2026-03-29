@@ -63,7 +63,7 @@ const resolveAgentIdentity = (conversation: TChatConversation): { backend: strin
     return { backend, agentName };
   }
   if (conversation.type === 'group') {
-    return { backend: 'group', agentName: 'Discussion Group' };
+    return { backend: 'group', agentName: 'Group' };
   }
   return { backend: 'nanobot', agentName: 'NanoBot' };
 };

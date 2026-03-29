@@ -196,18 +196,29 @@ private struct VoiceInputRecorderCLI {
         }
 
         do {
-            try recorder.start()
             try emit(.init(event: "ready"))
         } catch {
             try? emit(.init(event: "error", message: error.localizedDescription))
             Foundation.exit(1)
         }
 
+        var captureStartedAt: Date?
+
         while let line = readLine() {
             switch line.trimmingCharacters(in: .whitespacesAndNewlines) {
+            case "start":
+                do {
+                    try recorder.start()
+                    captureStartedAt = Date()
+                    try emit(.init(event: "started"))
+                } catch {
+                    try? emit(.init(event: "error", message: error.localizedDescription))
+                }
             case "stop":
                 let audioData = recorder.stop()
-                let durationMs = max(0, Int(Date().timeIntervalSince(startedAt) * 1000))
+                let startReference = captureStartedAt ?? startedAt
+                let durationMs = max(0, Int(Date().timeIntervalSince(startReference) * 1000))
+                captureStartedAt = nil
                 try? emit(
                     .init(
                         event: "result",
@@ -216,10 +227,12 @@ private struct VoiceInputRecorderCLI {
                         bytes: audioData.count
                     )
                 )
-                Foundation.exit(0)
             case "cancel":
                 recorder.cancel()
+                captureStartedAt = nil
                 try? emit(.init(event: "cancelled"))
+            case "shutdown":
+                recorder.cancel()
                 Foundation.exit(0)
             default:
                 continue

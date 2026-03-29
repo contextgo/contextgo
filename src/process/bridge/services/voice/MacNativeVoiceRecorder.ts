@@ -10,10 +10,12 @@ const HELPER_NAME = 'voice-input-recorder';
 const HELPER_RELATIVE_PATH = path.join('native', HELPER_NAME);
 const HELPER_SOURCE_RELATIVE_PATH = path.join('resources', 'native', 'voice-input', 'VoiceInputRecorder.swift');
 const READY_TIMEOUT_MS = 5_000;
+const START_TIMEOUT_MS = 5_000;
 const RESULT_TIMEOUT_MS = 15_000;
 
 type NativeRecorderMessage =
   | { event: 'ready' }
+  | { event: 'started' }
   | { event: 'result'; pcmBase64: string; durationMs: number; bytes: number }
   | { event: 'error'; message: string }
   | { event: 'cancelled' };
@@ -77,6 +79,10 @@ export const parseNativeRecorderMessage = (line: string): NativeRecorderMessage 
       return { event: 'ready' };
     }
 
+    if (value.event === 'started') {
+      return { event: 'started' };
+    }
+
     if (
       value.event === 'result' &&
       typeof value.pcmBase64 === 'string' &&
@@ -112,16 +118,102 @@ export class MacNativeVoiceRecorder {
   private static helperPathPromise: Promise<string> | null = null;
 
   private child: ChildProcessWithoutNullStreams | null = null;
+  private processReadyPromise: Promise<void> | null = null;
   private readyDeferred: Deferred<void> | null = null;
+  private startDeferred: Deferred<void> | null = null;
   private resultDeferred: Deferred<NativeRecorderResult> | null = null;
   private stderrBuffer = '';
   private stdoutBuffer = '';
 
+  async warmup(): Promise<void> {
+    await this.ensureProcessReady();
+  }
+
   async start(): Promise<void> {
-    if (this.child) {
+    await this.ensureProcessReady();
+
+    if (!this.child) {
+      throw new Error('Native recorder helper is not running.');
+    }
+
+    if (this.startDeferred || this.resultDeferred) {
       return;
     }
 
+    this.startDeferred = createDeferred<void>();
+    this.resultDeferred = createDeferred<NativeRecorderResult>();
+
+    try {
+      this.child.stdin.write('start\n');
+      await withTimeout(this.startDeferred.promise, START_TIMEOUT_MS, 'Native recorder did not start recording.');
+    } catch (error) {
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      this.rejectPendingCapture(normalizedError);
+      void this.shutdown();
+      throw normalizedError;
+    }
+  }
+
+  async stop(): Promise<NativeRecorderResult> {
+    if (!this.child || !this.resultDeferred) {
+      throw new Error('Native recorder is not running.');
+    }
+
+    try {
+      this.child.stdin.write('stop\n');
+      return await withTimeout(
+        this.resultDeferred.promise,
+        RESULT_TIMEOUT_MS,
+        'Native recorder did not return a result.'
+      );
+    } catch (error) {
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      this.rejectPendingCapture(normalizedError);
+      void this.shutdown();
+      throw normalizedError;
+    }
+  }
+
+  async cancel(): Promise<void> {
+    if (!this.child || (!this.startDeferred && !this.resultDeferred)) {
+      return;
+    }
+
+    try {
+      this.child.stdin.write('cancel\n');
+    } catch {
+      await this.shutdown();
+    }
+  }
+
+  async shutdown(): Promise<void> {
+    if (!this.child) {
+      return;
+    }
+
+    const child = this.child;
+    this.rejectPendingCapture(new Error('Native recorder was shut down.'));
+
+    try {
+      child.stdin.write('shutdown\n');
+      child.stdin.end();
+    } catch {
+      child.kill('SIGTERM');
+    }
+  }
+
+  private async ensureProcessReady(): Promise<void> {
+    if (!this.processReadyPromise) {
+      this.processReadyPromise = this.launchProcess().catch((error) => {
+        this.processReadyPromise = null;
+        throw error;
+      });
+    }
+
+    await this.processReadyPromise;
+  }
+
+  private async launchProcess(): Promise<void> {
     const helperPath = await MacNativeVoiceRecorder.ensureHelperExecutable();
     const child = spawn(helperPath, [], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -131,7 +223,6 @@ export class MacNativeVoiceRecorder {
     this.stderrBuffer = '';
     this.stdoutBuffer = '';
     this.readyDeferred = createDeferred<void>();
-    this.resultDeferred = createDeferred<NativeRecorderResult>();
 
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk: string) => {
@@ -173,7 +264,7 @@ export class MacNativeVoiceRecorder {
           : `Native recorder exited with code ${code ?? -1}.${suffix}`.trim()
       );
 
-      if (code !== 0 && code !== null) {
+      if (signal || code !== 0 || this.readyDeferred || this.startDeferred || this.resultDeferred) {
         this.rejectAll(exitError);
       }
 
@@ -187,33 +278,15 @@ export class MacNativeVoiceRecorder {
     await withTimeout(this.readyDeferred.promise, READY_TIMEOUT_MS, 'Native recorder did not become ready.');
   }
 
-  async stop(): Promise<NativeRecorderResult> {
-    if (!this.child || !this.resultDeferred) {
-      throw new Error('Native recorder is not running.');
-    }
-
-    this.child.stdin.write('stop\n');
-    return withTimeout(this.resultDeferred.promise, RESULT_TIMEOUT_MS, 'Native recorder did not return a result.');
-  }
-
-  async cancel(): Promise<void> {
-    if (!this.child) {
-      return;
-    }
-
-    try {
-      this.child.stdin.write('cancel\n');
-      this.child.stdin.end();
-    } catch {
-      this.child.kill('SIGTERM');
-    }
-  }
-
   private handleMessage(message: NativeRecorderMessage): void {
     switch (message.event) {
       case 'ready':
         this.readyDeferred?.resolve();
         this.readyDeferred = null;
+        return;
+      case 'started':
+        this.startDeferred?.resolve();
+        this.startDeferred = null;
         return;
       case 'result':
         this.resultDeferred?.resolve({
@@ -226,6 +299,7 @@ export class MacNativeVoiceRecorder {
       case 'error': {
         const error = new Error(message.message);
         this.rejectAll(error);
+        void this.shutdown();
         return;
       }
       case 'cancelled':
@@ -237,12 +311,22 @@ export class MacNativeVoiceRecorder {
   private rejectAll(error: Error): void {
     this.readyDeferred?.reject(error);
     this.readyDeferred = null;
+    this.rejectPendingCapture(error);
+  }
+
+  private rejectPendingCapture(error: Error): void {
+    this.startDeferred?.reject(error);
+    this.startDeferred = null;
     this.resultDeferred?.reject(error);
     this.resultDeferred = null;
   }
 
   private cleanup(): void {
     this.child = null;
+    this.processReadyPromise = null;
+    this.readyDeferred = null;
+    this.startDeferred = null;
+    this.resultDeferred = null;
     this.stdoutBuffer = '';
     this.stderrBuffer = '';
   }

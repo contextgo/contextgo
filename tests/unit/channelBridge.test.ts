@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { BUILTIN_CHANNEL_TYPES } from '../../src/common/config/builtinChannels';
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tmp') } }));
 
@@ -173,7 +174,13 @@ describe('channelBridge', () => {
 
       expect(result.success).toBe(true);
       const types = result.data.map((p: { type: string }) => p.type);
-      expect(types).toContain('telegram');
+      expect(types).toEqual(expect.arrayContaining(BUILTIN_CHANNEL_TYPES));
+      expect(result.data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: 'slack', name: 'Slack', enabled: false }),
+          expect.objectContaining({ type: 'discord', name: 'Discord', enabled: false }),
+        ])
+      );
     });
   });
 

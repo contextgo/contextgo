@@ -5,7 +5,9 @@
  */
 
 import type { AcpBackend, AcpBackendAll, AcpBackendConfig } from '@/common/types/acpTypes';
+import type { CloudDevice, CloudStoredSyncState, CloudUser } from '@/common/types/cloud';
 import type { VoiceInputConfig } from '@/common/types/voiceInput';
+import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import { storage } from '@office-ai/platform';
 
 /**
@@ -90,6 +92,8 @@ export interface IConfigStorageRefer {
   'migration.coworkDefaultSkillsAdded'?: boolean;
   // 迁移标记：为所有内置助手添加默认启用的 skills / Migration flag: add default enabled skills for all builtin assistants
   'migration.builtinDefaultSkillsAdded_v2'?: boolean;
+  // 迁移标记：为所有内置助手添加默认启用的 hooks / Migration flag: add default enabled hooks for all builtin assistants
+  'migration.builtinDefaultHooksAdded_v1'?: boolean;
   // 迁移标记：为所有内置助手添加 promptsI18n / Migration flag: add promptsI18n for all builtin assistants
   'migration.promptsI18nAdded'?: boolean;
   /** Migration flag: Electron desktop config has been imported to server config */
@@ -102,6 +106,14 @@ export interface IConfigStorageRefer {
   'system.cronNotificationEnabled'?: boolean;
   // Global voice input configuration / 全局语音输入配置
   'voiceInput.config'?: VoiceInputConfig;
+  // ContextGo cloud account cached user profile / ContextGo 云端账号缓存用户信息
+  'cloud.user'?: CloudUser;
+  // ContextGo cloud current device binding / ContextGo 云端当前设备绑定信息
+  'cloud.device'?: CloudDevice;
+  // ContextGo cloud device token (ctxdev_...) / ContextGo 云端设备令牌
+  'cloud.deviceToken'?: string;
+  // ContextGo cloud sync cursor + per-item timestamps / ContextGo 云端同步游标与时间戳
+  'cloud.sync.state'?: CloudStoredSyncState;
   // Telegram assistant default model / Telegram 助手默认模型
   'assistant.telegram.defaultModel'?: {
     id: string;
@@ -109,6 +121,28 @@ export interface IConfigStorageRefer {
   };
   // Telegram assistant agent selection / Telegram 助手所使用的 Agent
   'assistant.telegram.agent'?: {
+    backend: AcpBackendAll;
+    customAgentId?: string;
+    name?: string;
+  };
+  // Slack assistant default model / Slack 助手默认模型
+  'assistant.slack.defaultModel'?: {
+    id: string;
+    useModel: string;
+  };
+  // Slack assistant agent selection / Slack 助手所使用的 Agent
+  'assistant.slack.agent'?: {
+    backend: AcpBackendAll;
+    customAgentId?: string;
+    name?: string;
+  };
+  // Discord assistant default model / Discord 助手默认模型
+  'assistant.discord.defaultModel'?: {
+    id: string;
+    useModel: string;
+  };
+  // Discord assistant agent selection / Discord 助手所使用的 Agent
+  'assistant.discord.agent'?: {
     backend: AcpBackendAll;
     customAgentId?: string;
     name?: string;
@@ -146,8 +180,7 @@ export interface IConfigStorageRefer {
     customAgentId?: string;
     name?: string;
   };
-  // Skills Market: whether the aionui-skills builtin skill is enabled
-  'skillsMarket.enabled'?: boolean;
+  'command.library'?: ManagedSlashCommandRecord[];
 }
 
 export interface IEnvStorageRefer {
@@ -161,13 +194,37 @@ export interface IEnvStorageRefer {
  * Conversation source type - identifies where the conversation was created
  * 会话来源类型 - 标识会话创建的来源
  */
-export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
+export type ConversationSource =
+  | 'aionui'
+  | 'telegram'
+  | 'slack'
+  | 'discord'
+  | 'lark'
+  | 'dingtalk'
+  | 'weixin'
+  | (string & {});
 
 export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 
+export type GroupOrchestrationKind = 'discussion' | 'workflow';
+
+export type BuiltInGroupParticipantRole = 'planner' | 'writer' | 'evaluator';
+
+export type GroupParticipantRole = BuiltInGroupParticipantRole | 'custom' | (string & {});
+
+export type WorkflowGroupTemplate = 'planner-writer-evaluator' | 'plan-build-evaluate' | (string & {});
+
+export type WorkflowGroupReviewMode = 'per-iteration' | 'final-only';
+
+export type WorkflowGroupStage = 'planning' | 'writing' | 'evaluating' | 'completed' | 'failed';
+export type WorkflowGroupRunnableStage = Exclude<WorkflowGroupStage, 'completed' | 'failed'>;
+export type WorkflowGroupRunStatus = 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
+
+export type WorkflowGroupDecision = 'continue' | 'accept' | 'stop';
+
 export type DiscussionGroupParticipantType = 'preset-assistant' | 'cli-agent';
 
-export type DiscussionGroupParticipant = {
+export type GroupParticipant = {
   id: string;
   participantType: DiscussionGroupParticipantType;
   participantKey: string;
@@ -177,11 +234,54 @@ export type DiscussionGroupParticipant = {
   avatar?: string;
   description?: string;
   childConversationId: string;
+  role?: GroupParticipantRole;
 };
 
+export type DiscussionGroupParticipant = GroupParticipant;
+
 export type DiscussionGroupOrchestration = {
+  kind: 'discussion';
   mode: DiscussionGroupMode;
   rounds: 1 | 2;
+};
+
+export type WorkflowGroupOrchestration = {
+  kind: 'workflow';
+  template: WorkflowGroupTemplate;
+  maxIterations: number;
+  scoreTarget?: number;
+  artifactPath?: string;
+  reviewMode?: WorkflowGroupReviewMode;
+};
+
+export type GroupOrchestration = DiscussionGroupOrchestration | WorkflowGroupOrchestration;
+
+export type WorkflowGroupStageRecord = {
+  stageId: string;
+  stage: WorkflowGroupRunnableStage;
+  participantId?: string;
+  participantRole?: GroupParticipantRole;
+  iteration: number;
+  startedAt: number;
+  completedAt?: number;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+};
+
+export type WorkflowGroupRunState = {
+  runId: string;
+  status: WorkflowGroupRunStatus;
+  stage: WorkflowGroupStage;
+  activeStageId?: string;
+  iteration: number;
+  latestScore?: number;
+  latestDecision?: WorkflowGroupDecision;
+  planningBrief?: string;
+  artifactPath?: string;
+  activeParticipantId?: string;
+  startedAt?: number;
+  completedAt?: number;
+  stageHistory: WorkflowGroupStageRecord[];
+  updatedAt: number;
 };
 
 export type ConversationGroupMeta = {
@@ -189,17 +289,32 @@ export type ConversationGroupMeta = {
   participantId: string;
   participantName: string;
   participantAvatar?: string;
+  participantRole?: GroupParticipantRole;
   hiddenFromHistory?: boolean;
 };
 
-export type MessageGroupMeta = {
+type BaseMessageGroupMeta = {
   participantId: string;
   participantName: string;
   participantAvatar?: string;
   childConversationId?: string;
+  participantRole?: GroupParticipantRole;
+};
+
+export type DiscussionMessageGroupMeta = BaseMessageGroupMeta & {
+  kind?: 'discussion';
   mode: DiscussionGroupMode;
   round: number;
 };
+
+export type WorkflowMessageGroupMeta = BaseMessageGroupMeta & {
+  kind: 'workflow';
+  template: WorkflowGroupTemplate;
+  stage: WorkflowGroupStage;
+  iteration: number;
+};
+
+export type MessageGroupMeta = DiscussionMessageGroupMeta | WorkflowMessageGroupMeta;
 
 interface IChatConversation<T, Extra> {
   createTime: number;
@@ -248,11 +363,15 @@ export type TChatConversation =
         pinned?: boolean;
         /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
         pinnedAt?: number;
+        /** 是否已归档会话 / Whether this conversation is archived */
+        archived?: boolean;
+        /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+        archivedAt?: number;
         /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
         sessionMode?: string;
         /** Explicit marker for temporary health-check conversations */
         isHealthCheck?: boolean;
-        /** Discussion group child conversation metadata */
+        /** Group child conversation metadata */
         groupMeta?: ConversationGroupMeta;
       }
     >
@@ -277,6 +396,10 @@ export type TChatConversation =
           pinned?: boolean;
           /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
           pinnedAt?: number;
+          /** 是否已归档会话 / Whether this conversation is archived */
+          archived?: boolean;
+          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+          archivedAt?: number;
           /** ACP 后端的 session UUID，用于会话恢复 / ACP backend session UUID for session resume */
           acpSessionId?: string;
           /** ACP session 最后更新时间 / Last update time of ACP session */
@@ -295,7 +418,7 @@ export type TChatConversation =
           deferInitialWorkspaceLoad?: boolean;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
+          /** Group child conversation metadata */
           groupMeta?: ConversationGroupMeta;
         }
       >,
@@ -320,13 +443,17 @@ export type TChatConversation =
           pinned?: boolean;
           /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
           pinnedAt?: number;
+          /** 是否已归档会话 / Whether this conversation is archived */
+          archived?: boolean;
+          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+          archivedAt?: number;
           /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
           sessionMode?: string;
           /** User-selected Codex model from Guid page / 用户在引导页选择的 Codex 模型 */
           codexModel?: string;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
+          /** Group child conversation metadata */
           groupMeta?: ConversationGroupMeta;
         }
       >,
@@ -352,6 +479,18 @@ export type TChatConversation =
           };
           /** Session key for resume */
           sessionKey?: string;
+          /** Whether this conversation was imported from an external OpenClaw session */
+          externalSessionImported?: boolean;
+          /** Whether workspace hydration should be deferred on first open */
+          deferInitialWorkspaceLoad?: boolean;
+          /** Best-effort history reconcile metadata for imported OpenClaw sessions */
+          externalHistorySync?: {
+            provider?: 'openclaw-gateway';
+            lastSyncedAt?: number;
+            lastHistoryMessageAt?: number;
+            lastSessionKey?: string;
+            lastInsertedCount?: number;
+          };
           /** Runtime validation snapshot used for post-switch strong checks */
           runtimeValidation?: {
             expectedWorkspace?: string;
@@ -373,9 +512,13 @@ export type TChatConversation =
           pinned?: boolean;
           /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
           pinnedAt?: number;
+          /** 是否已归档会话 / Whether this conversation is archived */
+          archived?: boolean;
+          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+          archivedAt?: number;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
+          /** Group child conversation metadata */
           groupMeta?: ConversationGroupMeta;
         }
       >,
@@ -397,9 +540,13 @@ export type TChatConversation =
           pinned?: boolean;
           /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
           pinnedAt?: number;
+          /** 是否已归档会话 / Whether this conversation is archived */
+          archived?: boolean;
+          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+          archivedAt?: number;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
+          /** Group child conversation metadata */
           groupMeta?: ConversationGroupMeta;
         }
       >,
@@ -410,12 +557,17 @@ export type TChatConversation =
       {
         workspace?: string;
         customWorkspace?: boolean;
-        participants: DiscussionGroupParticipant[];
-        orchestration: DiscussionGroupOrchestration;
+        participants: GroupParticipant[];
+        orchestration: GroupOrchestration;
+        runState?: WorkflowGroupRunState;
         /** Whether this conversation is pinned */
         pinned?: boolean;
         /** Pin timestamp in milliseconds */
         pinnedAt?: number;
+        /** Whether this conversation is archived */
+        archived?: boolean;
+        /** Archive timestamp in milliseconds */
+        archivedAt?: number;
       }
     >;
 

@@ -22,6 +22,7 @@ See [docs/conventions/file-structure.md](docs/conventions/file-structure.md) for
 
 - **Components**: `@arco-design/web-react` — no raw interactive HTML (`<button>`, `<input>`, `<select>`, etc.)
 - **Icons**: `@icon-park/react`
+- **Icon alignment**: renderer entry must keep `@icon-park/react/styles/index.css` imported globally; for icon+text rows, menu items, and icon buttons, use the shared classes in `src/renderer/styles/icon.css` (`app-icon`, `app-icon-slot`, `app-icon-row`, `app-icon-button`) instead of per-component `marginTop` / inline `lineHeight` fixes
 
 ### CSS
 
@@ -49,6 +50,39 @@ Three process types — never mix their APIs:
 
 Cross-process communication must go through the IPC bridge (`src/preload.ts`).
 See [docs/tech/architecture.md](docs/tech/architecture.md) for details.
+
+### Mobile / Remote Access Product Model
+
+When changing mobile access, WebUI/browser runtime behavior, remote login, upload flows, or shell packaging, treat the following as the default product model:
+
+- desktop remains the real execution host
+- mobile acts as a remote use-side / control-side client
+- mobile shells should reuse the existing WebUI / server runtime instead of replacing the desktop host
+- mobile-local file selection should upload into the desktop host through the WebUI upload flow, then continue processing on the host side
+
+Read these before changing the model:
+
+- [docs/tech/mobile-remote-control.md](docs/tech/mobile-remote-control.md)
+- [docs/tech/mobile-shell-readiness.md](docs/tech/mobile-shell-readiness.md)
+- [docs/tech/mobile-shell-cmd.md](docs/tech/mobile-shell-cmd.md)
+
+### Release / Distribution Model
+
+When changing tags, GitHub Actions release workflows, signing, store assumptions, or future website download-page logic, treat the following as the default release model:
+
+- one repository remains the source of truth for desktop, WebUI, `mobile-shell/`, and future website code
+- Git tags plus GitHub Releases remain the canonical product-release source of truth
+- macOS direct-download release is first-class and does not depend on Mac App Store submission
+- Android and HarmonyOS may use direct-download distribution before store publication
+- iOS should default to TestFlight or App Store workflows, not public direct IPA download
+- future website deployment should stay separate from product tag creation
+
+Read these before changing release behavior:
+
+- [docs/tech/checklist.md](docs/tech/checklist.md)
+- [docs/tech/release-distribution-standards.md](docs/tech/release-distribution-standards.md)
+- [docs/tech/mobile-remote-control.md](docs/tech/mobile-remote-control.md)
+- [docs/tech/mobile-shell-readiness.md](docs/tech/mobile-shell-readiness.md)
 
 ## Testing
 
@@ -84,6 +118,19 @@ Common Oxfmt rules (Prettier-compatible, avoid a fix pass):
 - Single-element arrays that fit on one line → inline: `[{ id: 'a', value: 'b' }]`
 - Trailing commas required in multi-line arrays/objects
 - Single quotes for strings
+
+## Desktop Verification
+
+When the task involves the packaged macOS app, do not assume "build log succeeded" means the user is running the new UI.
+
+- For local desktop verification, follow `docs/tech/desktop-build-install-troubleshooting.md`.
+- Treat "Finder opened" or "the app launched" as insufficient evidence that `/Applications/ContextGo.app` was updated.
+- Verify the source context first: branch, worktree status, and expected remote.
+- Rebuild the desktop app, replace `/Applications/ContextGo.app`, relaunch it, and verify the running process path.
+- If the user reports a "white screen" but the window shows raw JS/CSS/JSON text, do **not** assume the top-level renderer entry failed. First inspect nested preview / `webview` navigation and persisted preview state.
+- After fixing a packaged-app bug, verify both source-level checks and runtime behavior: `bunx tsc --noEmit`, relevant tests, full desktop build, install, relaunch, and an actual UI check.
+- When investigating macOS `Security` / keychain permission popups, do **not** start with `security dump-keychain` or other bulk login-keychain enumeration commands. They can themselves trigger repeated permission dialogs across unrelated secrets and contaminate the incident.
+- For keychain-popup triage, prefer process inspection, unified logs, app logs, shell history, and targeted config checks first. Only run direct `security` queries with the narrowest possible scope after warning the user that prompts may appear.
 
 ## Git Conventions
 

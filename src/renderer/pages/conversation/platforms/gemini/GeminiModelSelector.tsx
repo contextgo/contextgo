@@ -1,9 +1,9 @@
 import type { GeminiModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview/context';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
-import { getModelDisplayLabel } from '@/renderer/utils/model/agentLogo';
+import { getModelDisplayLabel, getModelLogo } from '@/renderer/utils/model/agentLogo';
 import { Button, Dropdown, Menu, Tooltip } from '@arco-design/web-react';
-import { Down } from '@icon-park/react';
+import { Brain, Down } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
@@ -17,13 +17,24 @@ const GeminiModelSelector: React.FC<{
   disabled?: boolean;
   label?: string;
   variant?: 'header' | 'settings';
-}> = ({ selection, disabled = false, label: customLabel, variant = 'header' }) => {
+  readOnlyModel?: {
+    modelId?: string;
+    providerId?: string;
+    providerName?: string;
+    providerPlatform?: string;
+  };
+}> = ({ selection, disabled = false, label: customLabel, variant = 'header', readOnlyModel }) => {
   const { t } = useTranslation();
   const { isOpen: isPreviewOpen } = usePreviewContext();
   const layout = useLayoutContext();
   const compact = variant === 'header' && (isPreviewOpen || layout?.isMobile);
   const isMobileHeaderCompact = variant === 'header' && Boolean(layout?.isMobile);
   const defaultModelLabel = t('common.defaultModel');
+  const headerButtonClassName = classNames(
+    'sendbox-model-btn header-model-btn !flex !items-center !justify-center !px-0 !w-40px !min-w-40px !h-32px !min-h-32px',
+    compact && '!w-36px !min-w-36px !h-30px !min-h-30px',
+    isMobileHeaderCompact && '!w-40px !min-w-40px !h-32px !min-h-32px'
+  );
 
   // 获取模型配置数据（包含健康状态）
   const { data: modelConfig } = useSWR<IProvider[]>('model.config', () => ipcBridge.mode.getModelConfig.invoke());
@@ -38,32 +49,66 @@ const GeminiModelSelector: React.FC<{
       healthStatus === 'healthy' ? 'bg-green-500' : healthStatus === 'unhealthy' ? 'bg-red-500' : 'bg-gray-400';
     return { status: healthStatus, color: healthColor };
   }, [currentModel, modelConfig]);
+  const currentModelLogo = React.useMemo(
+    () =>
+      getModelLogo({
+        modelId: currentModel?.useModel,
+        providerId: currentModel?.id,
+        providerName: currentModel?.name,
+        providerPlatform: currentModel?.platform,
+      }),
+    [currentModel?.id, currentModel?.name, currentModel?.platform, currentModel?.useModel]
+  );
+  const renderHeaderIcon = (logo: string | null, health: { status: string; color: string }) => (
+    <span className='relative flex items-center justify-center w-full'>
+      {logo ? (
+        <img src={logo} alt='' className='h-14px w-14px shrink-0 rounded-5px object-contain' />
+      ) : (
+        <Brain theme='outline' size='14' className='text-t-secondary' />
+      )}
+      {health.status !== 'unknown' && (
+        <span
+          className={classNames(
+            'absolute bottom-0 right-2px h-6px w-6px rounded-full border border-[var(--bg-1)]',
+            health.color
+          )}
+        />
+      )}
+    </span>
+  );
 
   // Disabled state (non-Gemini Agent): render a simple Tooltip + Button, no Dropdown needed
   if (disabled || !selection) {
     const displayLabel = customLabel || t('conversation.welcome.useCliModel');
+    const readOnlyLogo = getModelLogo({
+      modelId: readOnlyModel?.modelId || displayLabel,
+      providerId: readOnlyModel?.providerId,
+      providerName: readOnlyModel?.providerName,
+      providerPlatform: readOnlyModel?.providerPlatform,
+    });
+    const hasReadOnlyModel = Boolean(
+      readOnlyModel?.modelId ||
+      readOnlyModel?.providerId ||
+      readOnlyModel?.providerName ||
+      readOnlyModel?.providerPlatform
+    );
 
     if (variant === 'settings') {
       return <div className='text-14px text-t-secondary min-w-160px'>{displayLabel}</div>;
     }
 
     return (
-      <Tooltip content={t('conversation.welcome.modelSwitchNotSupported')} position='top'>
+      <span title={displayLabel}>
         <Button
-          className={classNames(
-            'sendbox-model-btn header-model-btn',
-            compact && '!max-w-[120px]',
-            isMobileHeaderCompact && '!max-w-[160px]'
-          )}
+          className={headerButtonClassName}
           shape='round'
           size='small'
           style={{ cursor: 'default' }}
+          disabled={!hasReadOnlyModel}
         >
-          <span className='flex items-center gap-6px min-w-0'>
-            <span className={compact ? 'block truncate' : undefined}>{displayLabel}</span>
-          </span>
+          {renderHeaderIcon(readOnlyLogo, { status: 'unknown', color: 'bg-gray-400' })}
         </Button>
-      </Tooltip>
+      </span>
     );
   }
 
@@ -93,25 +138,12 @@ const GeminiModelSelector: React.FC<{
         <Down theme='outline' size={14} />
       </Button>
     ) : (
-      <Button
-        className={classNames(
-          'sendbox-model-btn header-model-btn',
-          compact && '!max-w-[120px]',
-          isMobileHeaderCompact && '!max-w-[160px]'
-        )}
-        shape='round'
-        size='small'
-      >
-        <span className='flex items-center gap-6px min-w-0'>
-          {currentModelHealth.status !== 'unknown' && (
-            <div className={`w-6px h-6px rounded-full shrink-0 ${currentModelHealth.color}`} />
-          )}
-          <span className={compact ? 'block truncate' : undefined}>{label}</span>
-        </span>
+      <Button className={headerButtonClassName} shape='round' size='small' title={currentModel?.useModel || label}>
+        {renderHeaderIcon(currentModelLogo, currentModelHealth)}
       </Button>
     );
 
-  return (
+  const dropdownNode = (
     <Dropdown
       trigger='click'
       position={variant === 'settings' ? 'br' : undefined}
@@ -160,7 +192,6 @@ const GeminiModelSelector: React.FC<{
                       onClick={() => void handleSelectModel(provider, modelName)}
                     >
                       {(() => {
-                        // 获取模型健康状态
                         const matchedProvider = modelConfig?.find((p) => p.id === provider.id);
                         const healthStatus = matchedProvider?.modelHealth?.[modelName]?.status || 'unknown';
                         const healthColor =
@@ -214,6 +245,12 @@ const GeminiModelSelector: React.FC<{
       {triggerButton}
     </Dropdown>
   );
+
+  if (variant === 'settings') {
+    return dropdownNode;
+  }
+
+  return dropdownNode;
 };
 
 export default GeminiModelSelector;

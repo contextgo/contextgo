@@ -25,7 +25,7 @@ const createGroupConversation = (): Extract<TChatConversation, { type: 'group' }
   ({
     id: 'group-1',
     type: 'group',
-    name: 'Discussion Group',
+    name: 'Group',
     createTime: 1,
     modifyTime: 1,
     model: { provider: 'openai', model: 'gpt-4.1' },
@@ -34,13 +34,14 @@ const createGroupConversation = (): Extract<TChatConversation, { type: 'group' }
       customWorkspace: true,
       participants: [],
       orchestration: {
+        kind: 'discussion',
         mode: 'debate',
         rounds: 2,
       },
     },
   }) as Extract<TChatConversation, { type: 'group' }>;
 
-const createDiscussionChildConversation = (id: string, name: string): TChatConversation =>
+const createGroupChildConversation = (id: string, name: string): TChatConversation =>
   ({
     id,
     type: 'acp',
@@ -80,11 +81,11 @@ describe('ConversationTabsContext', () => {
     vi.clearAllMocks();
   });
 
-  it('closes discussion child tabs together when closing a discussion group tab', () => {
+  it('closes group child tabs together when closing a group tab', () => {
     const { result } = renderHook(() => useConversationTabs(), { wrapper });
     const groupConversation = createGroupConversation();
-    const childConversation1 = createDiscussionChildConversation('child-1', 'Codex');
-    const childConversation2 = createDiscussionChildConversation('child-2', 'Claude Code');
+    const childConversation1 = createGroupChildConversation('child-1', 'Codex');
+    const childConversation2 = createGroupChildConversation('child-2', 'Claude Code');
     const normalConversation = createNormalConversation();
 
     act(() => {
@@ -104,14 +105,17 @@ describe('ConversationTabsContext', () => {
     expect(result.current.activeTabId).toBe('normal-1');
   });
 
-  it('keeps the discussion group tab when closing only a child session tab', () => {
+  it('keeps the group tab when closing only a child session tab', () => {
     const { result } = renderHook(() => useConversationTabs(), { wrapper });
     const groupConversation = createGroupConversation();
-    const childConversation1 = createDiscussionChildConversation('child-1', 'Codex');
-    const childConversation2 = createDiscussionChildConversation('child-2', 'Claude Code');
+    const childConversation1 = createGroupChildConversation('child-1', 'Codex');
+    const childConversation2 = createGroupChildConversation('child-2', 'Claude Code');
 
     act(() => {
-      result.current.openTabsForConversations([groupConversation, childConversation1, childConversation2], childConversation2.id);
+      result.current.openTabsForConversations(
+        [groupConversation, childConversation1, childConversation2],
+        childConversation2.id
+      );
     });
 
     act(() => {

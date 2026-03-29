@@ -55,7 +55,7 @@ const createConversation = (id: string): TChatConversation => ({
 const groupedHistory: GroupedHistoryResult = {
   pinnedConversations: [createConversation('pinned-1')],
   timelineSections: [],
-  discussionChildConversationsByParentId: {},
+  groupChildConversationsByParentId: {},
 };
 
 const createWrapper = (): React.FC<React.PropsWithChildren> => {
@@ -80,7 +80,7 @@ describe('ConversationHistoryProvider', () => {
     mockedBuildGroupedHistory.mockReturnValue(groupedHistory);
     mockedUseConversationListSync.mockReturnValue({
       conversations: [createConversation('visible-1')],
-      discussionChildConversationsByParentId: {},
+      groupChildConversationsByParentId: {},
       isConversationGenerating: () => false,
       hasCompletionUnread: () => false,
       clearCompletionUnread: () => {},

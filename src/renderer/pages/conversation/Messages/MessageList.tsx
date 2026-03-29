@@ -5,6 +5,7 @@
  */
 
 import type { CodexToolCallUpdate, IMessageAcpToolCall, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
+import { shouldSuppressAgentLifecyclePersistedMessage } from '@/common/chat/chatLib';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { iconColors } from '@/renderer/styles/colors';
 import { CHAT_MESSAGE_JUMP_EVENT, type ChatMessageJumpDetail } from '@/renderer/utils/chat/chatMinimapEvents';
@@ -33,6 +34,7 @@ import MessageToolGroupSummary from './components/MessageToolGroupSummary';
 import MessageText from './components/MessagetText';
 import type { WriteFileResult } from './types';
 import { useAutoScroll } from './useAutoScroll';
+import { shouldSuppressOpenClawPersistedMessage } from '../platforms/openclaw/messageStream';
 
 type TurnDiffContent = Extract<CodexToolCallUpdate, { subtype: 'turn_diff' }>;
 
@@ -171,6 +173,10 @@ const MessageList: React.FC<{ className?: string }> = () => {
   // Pre-process message list to group Codex turn_diff messages
   const processedList = useMemo(() => {
     const result: Array<IMessageVO> = [];
+    const shouldSuppressLifecycleMessages =
+      conversationContext?.type === 'acp' ||
+      conversationContext?.type === 'codex' ||
+      conversationContext?.type === 'openclaw-gateway';
     let diffsChanges: FileChangeInfo[] = [];
     let diffsSourceMessageIds: string[] = [];
     let toolList: Array<IMessageToolGroup | IMessageAcpToolCall> = [];
@@ -209,6 +215,12 @@ const MessageList: React.FC<{ className?: string }> = () => {
 
     for (let i = 0, len = list.length; i < len; i++) {
       const message = list[i];
+      if (
+        (shouldSuppressLifecycleMessages && shouldSuppressAgentLifecyclePersistedMessage(message)) ||
+        (conversationContext?.type === 'openclaw-gateway' && shouldSuppressOpenClawPersistedMessage(message))
+      ) {
+        continue;
+      }
       // Skip available_commands messages
       if (message.type === 'available_commands') continue;
       if (message.type === 'codex_tool_call' && message.content.subtype === 'turn_diff') {
@@ -245,7 +257,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
       result.push(message);
     }
     return result;
-  }, [list]);
+  }, [conversationContext?.type, list]);
 
   // Use auto-scroll hook
   const {
@@ -387,12 +399,11 @@ const MessageList: React.FC<{ className?: string }> = () => {
           {/* Scroll button */}
           <div className='absolute bottom-20px left-50% transform -translate-x-50% z-100'>
             <div
-              className='flex items-center justify-center w-40px h-40px rd-full bg-base shadow-lg cursor-pointer hover:bg-1 transition-all hover:scale-110 border-1 border-solid border-3'
+              className='app-icon-button flex items-center justify-center w-40px h-40px rd-full bg-base shadow-lg cursor-pointer hover:bg-1 transition-all hover:scale-110 border-1 border-solid border-3'
               onClick={handleScrollButtonClick}
               title={t('messages.scrollToBottom')}
-              style={{ lineHeight: 0 }}
             >
-              <Down theme='filled' size='20' fill={iconColors.secondary} style={{ display: 'block' }} />
+              <Down theme='filled' size='20' fill={iconColors.secondary} className='app-icon' />
             </div>
           </div>
         </>

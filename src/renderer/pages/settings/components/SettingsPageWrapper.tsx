@@ -4,7 +4,7 @@ import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { SettingsViewModeProvider } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
-import { AlarmClock, Communication, Computer, Earth, Info, Puzzle, Robot, System, Toolkit } from '@icon-park/react';
+import { AlarmClock, Command, Communication, Computer, Earth, Info, Puzzle, System, Toolkit } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
@@ -40,33 +40,51 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
   const menuItems = React.useMemo(() => {
     const builtins: NavItem[] = [
       {
-        id: 'agent',
-        label: t('settings.assistants', { defaultValue: 'Assistants' }),
-        icon: <Robot theme='outline' size='16' />,
-        path: 'agent',
-      },
-      {
-        id: 'hooks',
-        label: t('settings.hooksPage', { defaultValue: 'Hooks' }),
-        icon: <Puzzle theme='outline' size='16' />,
-        path: 'hooks',
-      },
-      {
         id: 'cron',
         label: t('cron.scheduledTasks'),
-        icon: <AlarmClock theme='outline' size='16' />,
+        icon: <AlarmClock theme='outline' size='16' className='app-icon' />,
         path: 'cron',
       },
-      { id: 'tools', label: t('settings.tools'), icon: <Toolkit theme='outline' size='16' />, path: 'tools' },
-      { id: 'display', label: t('settings.display'), icon: <Computer theme='outline' size='16' />, path: 'display' },
+      {
+        id: 'tools',
+        label: t('settings.tools'),
+        icon: <Toolkit theme='outline' size='16' className='app-icon' />,
+        path: 'tools',
+      },
+      {
+        id: 'commands',
+        label: t('settings.commands.title'),
+        icon: <Command theme='outline' size='16' className='app-icon' />,
+        path: 'commands',
+      },
+      {
+        id: 'display',
+        label: t('settings.display'),
+        icon: <Computer theme='outline' size='16' className='app-icon' />,
+        path: 'display',
+      },
       {
         id: 'webui',
         label: t('settings.webui'),
-        icon: isDesktop ? <Earth theme='outline' size='16' /> : <Communication theme='outline' size='16' />,
+        icon: isDesktop ? (
+          <Earth theme='outline' size='16' className='app-icon' />
+        ) : (
+          <Communication theme='outline' size='16' className='app-icon' />
+        ),
         path: 'webui',
       },
-      { id: 'system', label: t('settings.system'), icon: <System theme='outline' size='16' />, path: 'system' },
-      { id: 'about', label: t('settings.about'), icon: <Info theme='outline' size='16' />, path: 'about' },
+      {
+        id: 'system',
+        label: t('settings.system'),
+        icon: <System theme='outline' size='16' className='app-icon' />,
+        path: 'system',
+      },
+      {
+        id: 'about',
+        label: t('settings.about'),
+        icon: <Info theme='outline' size='16' className='app-icon' />,
+        path: 'about',
+      },
     ];
 
     // Insert extension tabs before system (unanchored default) or at anchor position
@@ -95,9 +113,9 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
         id: tab.id,
         label: resolveExtTabName(tab),
         icon: resolvedIcon ? (
-          <img src={resolvedIcon} alt='' className='w-16px h-16px object-contain' />
+          <img src={resolvedIcon} alt='' className='h-16px w-16px object-contain' />
         ) : (
-          <Puzzle theme='outline' size='16' />
+          <Puzzle theme='outline' size='16' className='app-icon' />
         ),
         path: `ext/${tab.id}`,
       };
@@ -146,7 +164,7 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
                     void navigate(`/settings/${item.path}`, { replace: true });
                   }}
                 >
-                  <span className='settings-mobile-top-nav__icon'>{item.icon}</span>
+                  <span className='settings-mobile-top-nav__icon app-icon-slot'>{item.icon}</span>
                   <span className='settings-mobile-top-nav__label'>{item.label}</span>
                 </button>
               );

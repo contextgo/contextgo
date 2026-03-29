@@ -11,6 +11,9 @@
     "filters": {
       "all": "Tümü"
     },
+    "openclawAgents": {
+      "all": "Tüm agent'lar"
+    },
     "refresh": "Yenile",
     "loading": "Harici Session'lar taranıyor...",
     "updatedAt": "Son güncelleme {{time}}",

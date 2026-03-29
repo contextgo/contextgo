@@ -5,3 +5,10 @@
  */
 
 export { uuid, parseError, resolveLocaleKey } from './utils';
+export {
+  buildCloudLogoutUrl,
+  buildCloudOAuthStartUrl,
+  CONTEXTGO_SESSION_COOKIE_NAME,
+  isContextGoHostname,
+  isLoopbackHostname,
+} from './cloudAuth';

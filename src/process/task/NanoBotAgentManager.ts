@@ -10,7 +10,8 @@ import type { TMessage } from '@/common/chat/chatLib';
 import { transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
-import { addMessage, addOrUpdateMessage } from '@process/utils/message';
+import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
+import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
 import BaseAgentManager from '@process/task/BaseAgentManager';
 import { IpcAgentEventEmitter } from '@process/task/IpcAgentEventEmitter';
@@ -27,6 +28,7 @@ export interface NanoBotAgentManagerData {
 class NanoBotAgentManager extends BaseAgentManager<NanoBotAgentManagerData> {
   agent!: NanobotAgent;
   bootstrap: Promise<NanobotAgent>;
+  private readonly hookRuntime = new AssistantHookRuntime();
 
   constructor(data: NanoBotAgentManagerData) {
     super('nanobot', data, new IpcAgentEventEmitter());
@@ -79,10 +81,23 @@ class NanoBotAgentManager extends BaseAgentManager<NanoBotAgentManagerData> {
     // Handle finish event
     if (msg.type === 'finish') {
       cronBusyGuard.setProcessing(this.conversation_id, false);
+      this.scheduleAfterResponseHooks();
     }
 
     // Emit signal events to frontend
     ipcBridge.conversation.responseStream.emit(msg);
+  }
+
+  private scheduleAfterResponseHooks(): void {
+    nextTickToLocalFinish(() => {
+      void this.hookRuntime
+        .emitAfterResponse(this.conversation_id, (message) => {
+          ipcBridge.conversation.responseStream.emit(message);
+        })
+        .catch((error) => {
+          console.warn('[NanoBotAgentManager] Failed to emit after_response hooks:', error);
+        });
+    });
   }
 
   async sendMessage(data: { content: string; agentContent?: string; files?: string[]; msg_id?: string }) {

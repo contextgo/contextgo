@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useCallback } from 'react';
 import { useSWRConfig } from 'swr';
 import type { TChatConversation } from '@/common/config/storage';
-import { syncDiscussionFamilyWorkspace } from '@/renderer/pages/conversation/utils/discussionGroupWorkspace';
+import { syncGroupFamilyWorkspace } from '@/renderer/pages/conversation/utils/groupWorkspace';
 
 export type WorkspaceEventPrefix = 'gemini' | 'acp' | 'codex';
 
@@ -41,7 +41,7 @@ export const useWorkspaceSelector = (conversationId: string, eventPrefix: Worksp
         return;
       }
 
-      const updatedConversations = await syncDiscussionFamilyWorkspace(conversation, workspacePath);
+      const updatedConversations = await syncGroupFamilyWorkspace(conversation, workspacePath);
       const currentConversation = updatedConversations.find((item) => item.id === conversationId) ?? {
         ...conversation,
         extra: {
