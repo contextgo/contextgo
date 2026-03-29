@@ -177,6 +177,7 @@ export class ConversationServiceImpl implements IConversationService {
                 maxIterations: orchestration.maxIterations,
                 scoreTarget: orchestration.scoreTarget,
                 artifactPath: orchestration.artifactPath,
+                reviewMode: orchestration.reviewMode,
               }
             : {
                 kind: 'discussion',

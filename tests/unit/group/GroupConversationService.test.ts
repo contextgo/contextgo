@@ -61,9 +61,12 @@ type MockCreateConversationParams = {
 };
 
 const createService = (conversationService: Partial<IConversationService>) => {
-  return new GroupConversationService(conversationService as IConversationService, {
-    kill: vi.fn(),
-  } as unknown as IWorkerTaskManager);
+  return new GroupConversationService(
+    conversationService as IConversationService,
+    {
+      kill: vi.fn(),
+    } as unknown as IWorkerTaskManager
+  );
 };
 
 const buildWorkflowConversation = (workspace: string) => ({
@@ -541,6 +544,52 @@ describe('GroupConversationService workflow mode', () => {
     ).rejects.toThrow('already running');
   });
 
+  it('recovers abandoned workflow runs back to a sendable finished state', async () => {
+    const updateConversation = vi.fn(async () => {});
+    const service = createService({
+      listAllConversations: vi.fn(async () => [
+        {
+          ...buildWorkflowConversation('/tmp/group-workflow'),
+          status: 'running' as const,
+          extra: {
+            ...buildWorkflowConversation('/tmp/group-workflow').extra,
+            runState: {
+              runId: 'run-1',
+              status: 'running' as const,
+              stage: 'writing' as const,
+              activeStageId: 'draft-artifact',
+              iteration: 2,
+              artifactPath: 'team-output.md',
+              activeParticipantId: 'participant-writer',
+              stageHistory: [],
+              updatedAt: 123,
+            },
+          },
+        },
+      ]),
+      updateConversation,
+    });
+
+    await service.recoverAbandonedWorkflowRuns();
+
+    expect(updateConversation).toHaveBeenCalledWith(
+      'group-1',
+      expect.objectContaining({
+        status: 'finished',
+        extra: expect.objectContaining({
+          runState: expect.objectContaining({
+            status: 'failed',
+            stage: 'failed',
+            iteration: 2,
+            artifactPath: 'team-output.md',
+            activeParticipantId: undefined,
+          }),
+        }),
+      }),
+      true
+    );
+  });
+
   it('runs the planner-writer-evaluator workflow, materializes the artifact, and persists projected stage messages', async () => {
     const workspace = await mkdtemp(path.join(tmpdir(), 'group-workflow-'));
     const updateConversation = vi.fn(async () => {});
@@ -692,10 +741,167 @@ proposed
         expect.objectContaining({
           extra: expect.objectContaining({
             runState: expect.objectContaining({
+              runId: expect.any(String),
               status: 'completed',
               stage: 'completed',
+              activeStageId: undefined,
               latestDecision: 'accept',
               latestScore: 8.5,
+              planningBrief: expect.stringContaining('## Objective'),
+              stageHistory: [
+                expect.objectContaining({
+                  stageId: 'plan-brief',
+                  stage: 'planning',
+                  status: 'completed',
+                }),
+                expect.objectContaining({
+                  stageId: 'draft-artifact',
+                  stage: 'writing',
+                  status: 'completed',
+                  iteration: 1,
+                }),
+                expect.objectContaining({
+                  stageId: 'review-artifact',
+                  stage: 'evaluating',
+                  status: 'completed',
+                  iteration: 1,
+                }),
+              ],
+            }),
+          }),
+        }),
+        true
+      );
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  it('loops writing stages before a tail evaluation when review mode is final-only', async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), 'group-workflow-'));
+    const updateConversation = vi.fn(async () => {});
+    let writerCallCount = 0;
+
+    try {
+      const service = createService({
+        getConversation: vi.fn(async () => ({
+          ...buildWorkflowConversation(workspace),
+          extra: {
+            ...buildWorkflowConversation(workspace).extra,
+            orchestration: {
+              kind: 'workflow' as const,
+              template: 'planner-writer-evaluator' as const,
+              maxIterations: 2,
+              scoreTarget: 8,
+              artifactPath: 'team-output.md',
+              reviewMode: 'final-only' as const,
+            },
+          },
+        })),
+        updateConversation,
+      });
+
+      sendMessageMock.mockImplementation(
+        async (
+          _groupId: string,
+          childId: string,
+          _prompt: string,
+          onChunk: (chunk: {
+            id: string;
+            msg_id: string;
+            type: 'text';
+            position: 'left';
+            conversation_id: string;
+            content: { content: string };
+            createdAt: number;
+          }) => void
+        ) => {
+          if (childId === 'planner-child') {
+            onChunk({
+              id: 'planner-msg',
+              msg_id: 'planner-msg',
+              type: 'text',
+              position: 'left',
+              conversation_id: 'planner-child',
+              content: {
+                content: '## Objective\nBuild in two passes.\n## Acceptance Criteria\n- Final artifact is coherent',
+              },
+              createdAt: 2,
+            });
+            return;
+          }
+
+          if (childId === 'writer-child') {
+            writerCallCount += 1;
+            onChunk({
+              id: `writer-msg-${writerCallCount}`,
+              msg_id: `writer-msg-${writerCallCount}`,
+              type: 'text',
+              position: 'left',
+              conversation_id: 'writer-child',
+              content: {
+                content: `[Artifact Path]
+team-output.md
+
+[Artifact Status]
+proposed
+
+[Artifact Content]
+\`\`\`md
+# Iteration ${writerCallCount}
+
+- Pass ${writerCallCount}
+\`\`\`
+
+[Change Summary]
+- Updated pass ${writerCallCount}`,
+              },
+              createdAt: 3 + writerCallCount,
+            });
+            return;
+          }
+
+          onChunk({
+            id: 'evaluator-msg',
+            msg_id: 'evaluator-msg',
+            type: 'text',
+            position: 'left',
+            conversation_id: 'evaluator-child',
+            content: {
+              content:
+                '```json\n{"score": 8.2, "decision": "accept", "summary": "Final review passed", "issues": [], "nextActions": []}\n```',
+            },
+            createdAt: 6,
+          });
+        }
+      );
+
+      await service.sendMessage({
+        conversationId: 'group-1',
+        input: 'Produce a draft release plan.',
+        msgId: 'user-msg-1',
+      });
+
+      expect(writerCallCount).toBe(2);
+      expect(sendMessageMock.mock.calls.map((call) => call[1])).toEqual([
+        'planner-child',
+        'writer-child',
+        'writer-child',
+        'evaluator-child',
+      ]);
+      expect(updateConversation).toHaveBeenCalledWith(
+        'group-1',
+        expect.objectContaining({
+          extra: expect.objectContaining({
+            runState: expect.objectContaining({
+              status: 'completed',
+              latestDecision: 'accept',
+              stageHistory: [
+                expect.objectContaining({ stageId: 'plan-brief', iteration: 0 }),
+                expect.objectContaining({ stageId: 'draft-artifact', iteration: 1 }),
+                expect.objectContaining({ stageId: 'draft-artifact', iteration: 2 }),
+                expect.objectContaining({ stageId: 'review-artifact', iteration: 2 }),
+              ],
             }),
           }),
         }),
@@ -778,7 +984,7 @@ proposed
           input: 'Produce a draft release plan.',
           msgId: 'user-msg-1',
         })
-      ).rejects.toThrow('Workflow writer must include [Artifact Content] with the full artifact body.');
+      ).rejects.toThrow('Workflow writing stage must include [Artifact Content] with the full artifact body.');
 
       expect(sendMessageMock.mock.calls.map((call) => call[1])).toEqual(['planner-child', 'writer-child']);
       expect(updateConversation).toHaveBeenCalledWith(
@@ -786,8 +992,10 @@ proposed
         expect.objectContaining({
           extra: expect.objectContaining({
             runState: expect.objectContaining({
+              runId: expect.any(String),
               status: 'failed',
               stage: 'failed',
+              activeStageId: undefined,
             }),
           }),
         }),

@@ -27,6 +27,9 @@ vi.mock('react-i18next', () => ({
       if (key === 'conversation.group.noDescription') {
         return 'No description';
       }
+      if (key === 'conversation.group.role.planner') {
+        return 'Planner';
+      }
       return key;
     },
   }),
@@ -54,6 +57,7 @@ const participants: GroupParticipant[] = [
     name: 'Codex',
     description: 'codex · gpt-5',
     childConversationId: 'child-1',
+    role: 'planner',
   },
   {
     id: 'participant-2',
@@ -62,6 +66,7 @@ const participants: GroupParticipant[] = [
     name: 'Architect',
     avatar: 'cowork.svg',
     childConversationId: 'child-2',
+    role: 'research-lead',
   },
 ];
 
@@ -75,8 +80,10 @@ describe('GroupParticipantsPanel', () => {
     expect(screen.getByAltText('Codex')).toHaveAttribute('src', '/mock-codex-logo.svg');
     expect(screen.getAllByText('CODEX').length).toBeGreaterThan(0);
     expect(screen.getAllByText('CLI Agent').length).toBeGreaterThan(0);
+    expect(screen.getByText('Planner')).toBeInTheDocument();
     expect(screen.getByText('Architect')).toBeInTheDocument();
     expect(screen.getAllByText('Preset Assistant').length).toBeGreaterThan(0);
+    expect(screen.getByText('Research Lead')).toBeInTheDocument();
     expect(screen.getByAltText('Architect')).toHaveAttribute('src', 'file:///mock/cowork.svg');
   });
 });

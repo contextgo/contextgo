@@ -4,7 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { DiscussionGroupOrchestration, GroupOrchestration, WorkflowGroupOrchestration } from '@/common/config/storage';
+import type {
+  DiscussionGroupOrchestration,
+  GroupOrchestration,
+  WorkflowGroupOrchestration,
+} from '@/common/config/storage';
 import { normalizeDiscussionOrchestration } from './discussion/discussionHelpers';
 import { normalizeWorkflowOrchestration } from './workflow/workflowHelpers';
 
@@ -16,7 +20,11 @@ type LegacyWorkflowOrchestration = Partial<WorkflowGroupOrchestration> & {
   kind?: 'workflow';
 };
 
-type GroupOrchestrationInput = GroupOrchestration | LegacyDiscussionOrchestration | LegacyWorkflowOrchestration | undefined;
+type GroupOrchestrationInput =
+  | GroupOrchestration
+  | LegacyDiscussionOrchestration
+  | LegacyWorkflowOrchestration
+  | undefined;
 
 const isWorkflowOrchestrationLike = (value: GroupOrchestrationInput): value is LegacyWorkflowOrchestration => {
   if (!value || typeof value !== 'object') {
@@ -28,7 +36,8 @@ const isWorkflowOrchestrationLike = (value: GroupOrchestrationInput): value is L
     typeof value.template === 'string' ||
     typeof value.maxIterations === 'number' ||
     typeof value.scoreTarget === 'number' ||
-    typeof value.artifactPath === 'string'
+    typeof value.artifactPath === 'string' ||
+    typeof value.reviewMode === 'string'
   );
 };
 

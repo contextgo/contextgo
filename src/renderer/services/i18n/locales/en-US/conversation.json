@@ -144,6 +144,9 @@
       "templateLabel": "Workflow Template",
       "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
       "templateHint": "Planner defines the brief and acceptance criteria, writer iterates on the artifact in the shared workspace, and evaluator scores it with actionable feedback.",
+      "templatePlannerWriterEvaluatorHint": "Iterative harness: planner sets the brief, writer revises the shared artifact over multiple rounds, evaluator critiques each round.",
+      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
+      "templatePlanBuildEvaluateHint": "Single-pass harness: planner frames the build, builder makes one cohesive pass, evaluator performs the tail review.",
       "exactParticipants": "This workflow template requires exactly 3 participants",
       "exactParticipantsHint": "Planner / Writer / Evaluator needs exactly 3 participants with distinct roles.",
       "assignRoles": "Assign planner, writer, and evaluator roles before creating the workflow group",
@@ -162,6 +165,12 @@
       "scoreTargetHint": "Evaluator acceptance threshold: {{min}}-{{max}}",
       "artifactPathLabel": "Artifact Path",
       "artifactPathHint": "Relative path inside the shared workspace. Absolute paths and parent traversal are rejected.",
+      "reviewModeLabel": "Review Mode",
+      "reviewModeHint": "Choose whether the evaluator reviews every round or only the final artifact handoff.",
+      "reviewMode": {
+        "perIteration": "Review Every Iteration",
+        "finalOnly": "Tail Review Only"
+      },
       "stageLabel": "Stage",
       "iterationBudgetLabel": "Iteration Budget",
       "iterationBudgetValue": "{{current}} / {{total}}",

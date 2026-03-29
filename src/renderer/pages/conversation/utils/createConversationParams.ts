@@ -6,16 +6,23 @@
 
 import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
 import {
+  type WorkflowTemplateRole,
   getWorkflowGroupTemplateDefinition,
   normalizeWorkflowGroupTemplate,
   normalizeWorkflowTemplateMaxIterations,
+  normalizeWorkflowTemplateReviewMode,
   normalizeWorkflowTemplateScoreTarget,
 } from '@/common/config/group';
 import { ConfigStorage } from '@/common/config/storage';
 import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
 import type { IAssistantConversationCreateParams } from '@/common/adapter/ipcBridge';
 import type { TProviderWithModel } from '@/common/config/storage';
-import type { DiscussionGroupMode, GroupParticipantRole, WorkflowGroupTemplate } from '@/common/config/storage';
+import type {
+  DiscussionGroupMode,
+  GroupParticipantRole,
+  WorkflowGroupReviewMode,
+  WorkflowGroupTemplate,
+} from '@/common/config/storage';
 import { resolveLocaleKey } from '@/common/utils';
 import { loadPresetAssistantResources } from '@/renderer/utils/model/presetAssistantResources';
 import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
@@ -49,8 +56,8 @@ export type GroupParticipantInput =
   | (GroupCliParticipantInput & GroupParticipantInputBase);
 
 export type WorkflowGroupParticipantInput =
-  | (GroupAssistantInput & { role: 'planner' | 'writer' | 'evaluator' })
-  | (GroupCliParticipantInput & { role: 'planner' | 'writer' | 'evaluator' });
+  | (GroupAssistantInput & { role: WorkflowTemplateRole })
+  | (GroupCliParticipantInput & { role: WorkflowTemplateRole });
 
 const buildGoogleAuthGeminiModel = (useModel: string, id = GOOGLE_AUTH_PROVIDER_ID): TProviderWithModel => {
   return {
@@ -339,6 +346,7 @@ export async function buildWorkflowGroupParams(options: {
   maxIterations?: number;
   scoreTarget?: number;
   artifactPath?: string;
+  reviewMode?: WorkflowGroupReviewMode;
 }): Promise<ICreateConversationParams> {
   const customWorkspace = Boolean(options.workspace?.trim());
   const normalizedWorkspace = options.workspace?.trim() || undefined;
@@ -364,6 +372,7 @@ export async function buildWorkflowGroupParams(options: {
         maxIterations: normalizeWorkflowTemplateMaxIterations(options.maxIterations, template),
         scoreTarget: normalizeWorkflowTemplateScoreTarget(options.scoreTarget, template),
         artifactPath: options.artifactPath?.trim() || templateDefinition.defaults.artifactPath,
+        reviewMode: normalizeWorkflowTemplateReviewMode(options.reviewMode, template),
       },
     },
   };

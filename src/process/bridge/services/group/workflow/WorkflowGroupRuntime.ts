@@ -6,6 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import type { IMessageText } from '@/common/chat/chatLib';
+import { getWorkflowTemplateStageDefinitions, type WorkflowTemplateStageDefinition } from '@/common/config/group';
 import type {
   GroupParticipant,
   MessageGroupMeta,
@@ -28,18 +29,19 @@ import {
 } from '../shared';
 import { normalizeStoredWorkflowOrchestration } from '../orchestration';
 import {
-  buildEvaluatorPrompt,
-  buildInitialWorkflowRunState,
-  buildPlannerPrompt,
-  buildWriterPrompt,
+  buildWorkflowExecutionState,
   extractWorkflowArtifactUpdate,
+  finalizeWorkflowRunState,
+  finalizeWorkflowStageHistory,
   formatWorkflowEvaluationForWriter,
+  getWorkflowStageDefinition,
   normalizeWorkflowArtifactPath,
   parseWorkflowEvaluation,
-  resolveWorkflowRoleParticipants,
+  resolveWorkflowParticipantForStage,
   type WorkflowArtifactUpdate,
   type WorkflowEvaluation,
 } from './workflowHelpers';
+import { getWorkflowRuntimeTemplate } from './templates';
 
 class WorkflowGroupCancelledError extends Error {
   constructor(conversationId: string) {
@@ -84,7 +86,7 @@ const buildCompletionDetail = (
   }
 
   if (decision === 'stop') {
-    return `Workflow group stopped after evaluator review on iteration ${iteration}.`;
+    return `Workflow group stopped after the evaluation stage on iteration ${iteration}.`;
   }
 
   if (iteration > 0) {
@@ -96,7 +98,7 @@ const buildCompletionDetail = (
 
 const buildMissingArtifactError = (artifactPath: string): Error => {
   return new Error(
-    `Workflow writer did not produce a materialized artifact at ${artifactPath}. Each writer turn must keep the exact [Artifact Path] and include a full [Artifact Content] block.`
+    `Workflow writing stage did not produce a materialized artifact at ${artifactPath}. Each writing turn must keep the exact [Artifact Path] and include a full [Artifact Content] block.`
   );
 };
 
@@ -121,8 +123,9 @@ export class WorkflowGroupRuntime {
     options: { conversationId: string; input: string; msgId: string }
   ): Promise<void> {
     const orchestration = normalizeStoredWorkflowOrchestration(conversation.extra.orchestration);
+    const runtimeTemplate = getWorkflowRuntimeTemplate(orchestration.template);
+    const stageDefinitions = getWorkflowTemplateStageDefinitions(orchestration.template);
     const artifactPath = normalizeWorkflowArtifactPath(orchestration.artifactPath);
-    const participants = resolveWorkflowRoleParticipants(conversation.extra.participants, orchestration.template);
 
     this.cancelledGroupIds.delete(conversation.id);
 
@@ -148,10 +151,9 @@ export class WorkflowGroupRuntime {
       this.conversationService,
       conversation,
       {
-        ...buildInitialWorkflowRunState(orchestration, conversation.extra.participants),
+        ...runtimeTemplate.buildInitialRunState(orchestration, conversation.extra.participants),
         status: 'running',
-        stage: 'planning',
-        activeParticipantId: participants.planner.id,
+        startedAt: Date.now(),
         updatedAt: Date.now(),
       },
       'running'
@@ -160,133 +162,164 @@ export class WorkflowGroupRuntime {
     emitGroupTurnState(currentConversation, 'running', 'ai_generating', 'Workflow group is running');
 
     let latestEvaluation: WorkflowEvaluation | null = null;
+    let latestArtifactForEvaluation: string | undefined;
+    let planningBrief = '';
     let completedIteration = 0;
+    let activeStageId = currentConversation.extra.runState?.activeStageId || stageDefinitions[0]?.id;
 
     try {
-      const plannerMessages = await this.collectParticipantStageMessages(
-        currentConversation,
-        participants.planner,
-        buildPlannerPrompt({
-          userInput: options.input,
-          participantName: participants.planner.name,
-          artifactPath,
-          scoreTarget: orchestration.scoreTarget || 8,
-          maxIterations: orchestration.maxIterations,
-        }),
-        'planning',
-        0
-      );
-      this.throwIfCancelled(conversation.id);
-
-      const planningBrief =
-        collectTextMessageContent(plannerMessages) ||
-        'Planner did not provide a structured brief. Use the original request as the working brief.';
-
-      for (let iteration = 1; iteration <= orchestration.maxIterations; iteration += 1) {
-        completedIteration = iteration;
-        currentConversation = await updateGroupRunState(
-          this.conversationService,
-          currentConversation,
-          {
-            ...(currentConversation.extra.runState || {}),
-            status: 'running',
-            stage: 'writing',
-            iteration,
-            artifactPath,
-            activeParticipantId: participants.writer.id,
-            updatedAt: Date.now(),
-          },
-          'running'
-        );
-
-        const artifactBeforeWriting = await this.readArtifactContent(
-          currentConversation.extra.workspace || '',
-          artifactPath
-        );
-
-        const writerMessages = await this.collectParticipantStageMessages(
-          currentConversation,
-          participants.writer,
-          buildWriterPrompt({
-            userInput: options.input,
-            participantName: participants.writer.name,
-            artifactPath,
-            iteration,
-            planningBrief,
-            artifactContent: artifactBeforeWriting,
-            evaluatorFeedback: latestEvaluation ? formatWorkflowEvaluationForWriter(latestEvaluation) : undefined,
-          }),
-          'writing',
-          iteration
-        );
-        this.throwIfCancelled(conversation.id);
-
-        const writerOutput = collectTextMessageContent(writerMessages);
-        const artifactForEvaluation = await this.materializeArtifactForEvaluation({
-          workspace: currentConversation.extra.workspace || '',
-          artifactPath,
-          artifactBeforeWriting,
-          writerOutput,
-        });
-
-        currentConversation = await updateGroupRunState(
-          this.conversationService,
-          currentConversation,
-          {
-            ...(currentConversation.extra.runState || {}),
-            status: 'running',
-            stage: 'evaluating',
-            iteration,
-            artifactPath,
-            activeParticipantId: participants.evaluator.id,
-            updatedAt: Date.now(),
-          },
-          'running'
-        );
-
-        const evaluatorMessages = await this.collectParticipantStageMessages(
-          currentConversation,
-          participants.evaluator,
-          buildEvaluatorPrompt({
-            userInput: options.input,
-            participantName: participants.evaluator.name,
-            artifactPath,
-            iteration,
-            planningBrief,
-            artifactContent: artifactForEvaluation,
-            scoreTarget: orchestration.scoreTarget || 8,
-          }),
-          'evaluating',
-          iteration
-        );
-        this.throwIfCancelled(conversation.id);
-
-        latestEvaluation = parseWorkflowEvaluation(
-          collectTextMessageContent(evaluatorMessages),
-          orchestration.scoreTarget || 8
-        );
-
-        if (latestEvaluation.decision !== 'continue') {
-          break;
+      /* eslint-disable no-await-in-loop -- Workflow stages must run sequentially across a single run graph. */
+      while (activeStageId) {
+        const activeStage = getWorkflowStageDefinition(orchestration.template, activeStageId);
+        if (!activeStage) {
+          throw new Error(`Workflow template ${orchestration.template} is missing stage ${activeStageId}.`);
         }
-      }
 
-      const finalDecision =
-        latestEvaluation?.decision || (completedIteration >= orchestration.maxIterations ? 'continue' : 'accept');
+        const participant = resolveWorkflowParticipantForStage(
+          currentConversation.extra.participants,
+          activeStage,
+          orchestration.template
+        );
+        const iteration = activeStage.kind === 'writing' ? completedIteration + 1 : completedIteration;
+        if (activeStage.kind === 'writing') {
+          completedIteration = iteration;
+        }
+
+        currentConversation = await updateGroupRunState(
+          this.conversationService,
+          currentConversation,
+          buildWorkflowExecutionState({
+            runState: currentConversation.extra.runState!,
+            stage: activeStage,
+            participant,
+            iteration,
+            artifactPath,
+            planningBrief,
+            latestScore: latestEvaluation?.score,
+            latestDecision: latestEvaluation?.decision,
+            status: 'running',
+          }),
+          'running'
+        );
+
+        if (activeStage.kind === 'planning') {
+          const plannerMessages = await this.collectParticipantStageMessages(
+            currentConversation,
+            participant,
+            runtimeTemplate.buildPlannerPrompt({
+              userInput: options.input,
+              participantName: participant.name,
+              roleId: participant.role,
+              artifactPath,
+              scoreTarget: orchestration.scoreTarget || 8,
+              maxIterations: orchestration.maxIterations,
+            }),
+            activeStage.kind,
+            iteration
+          );
+          this.throwIfCancelled(conversation.id);
+          planningBrief =
+            collectTextMessageContent(plannerMessages) ||
+            'Planning stage did not provide a structured brief. Use the original request as the working brief.';
+        } else if (activeStage.kind === 'writing') {
+          const artifactBeforeWriting = await this.readArtifactContent(
+            currentConversation.extra.workspace || '',
+            artifactPath
+          );
+          const writerMessages = await this.collectParticipantStageMessages(
+            currentConversation,
+            participant,
+            runtimeTemplate.buildWriterPrompt({
+              userInput: options.input,
+              participantName: participant.name,
+              roleId: participant.role,
+              artifactPath,
+              iteration,
+              planningBrief,
+              artifactContent: artifactBeforeWriting,
+              evaluatorFeedback: latestEvaluation ? formatWorkflowEvaluationForWriter(latestEvaluation) : undefined,
+            }),
+            activeStage.kind,
+            iteration
+          );
+          this.throwIfCancelled(conversation.id);
+
+          latestArtifactForEvaluation = await this.materializeArtifactForEvaluation({
+            workspace: currentConversation.extra.workspace || '',
+            artifactPath,
+            artifactBeforeWriting,
+            writerOutput: collectTextMessageContent(writerMessages),
+          });
+        } else {
+          const evaluatorMessages = await this.collectParticipantStageMessages(
+            currentConversation,
+            participant,
+            runtimeTemplate.buildEvaluatorPrompt({
+              userInput: options.input,
+              participantName: participant.name,
+              roleId: participant.role,
+              artifactPath,
+              iteration,
+              planningBrief,
+              artifactContent: latestArtifactForEvaluation || '',
+              scoreTarget: orchestration.scoreTarget || 8,
+            }),
+            activeStage.kind,
+            iteration
+          );
+          this.throwIfCancelled(conversation.id);
+          latestEvaluation = parseWorkflowEvaluation(
+            collectTextMessageContent(evaluatorMessages),
+            orchestration.scoreTarget || 8
+          );
+        }
+
+        currentConversation = await updateGroupRunState(
+          this.conversationService,
+          currentConversation,
+          {
+            ...currentConversation.extra.runState!,
+            planningBrief,
+            latestScore: latestEvaluation?.score,
+            latestDecision: latestEvaluation?.decision,
+            stageHistory: finalizeWorkflowStageHistory(
+              currentConversation.extra.runState!.stageHistory,
+              activeStage.id,
+              'completed'
+            ),
+            updatedAt: Date.now(),
+          },
+          'running'
+        );
+
+        activeStageId = this.resolveNextStageId({
+          activeStage,
+          stageDefinitions,
+          orchestration,
+          iteration: completedIteration,
+          latestEvaluation,
+          runtimeTemplate,
+        });
+      }
+      /* eslint-enable no-await-in-loop */
+
+      const finalDecision = runtimeTemplate.getFinalDecision({
+        latestEvaluation,
+        completedIteration,
+        orchestration,
+      });
       currentConversation = await updateGroupRunState(
         this.conversationService,
         currentConversation,
-        {
-          ...(currentConversation.extra.runState || {}),
-          status: 'completed',
-          stage: 'completed',
+        finalizeWorkflowRunState({
+          runState: currentConversation.extra.runState!,
+          terminalStatus: finalDecision === 'stop' ? 'stopped' : 'completed',
+          terminalStage: 'completed',
           iteration: completedIteration,
+          artifactPath,
           latestScore: latestEvaluation?.score,
           latestDecision: finalDecision,
-          artifactPath,
-          activeParticipantId: undefined,
-          updatedAt: Date.now(),
-        },
+        }),
         'finished'
       );
 
@@ -307,15 +340,22 @@ export class WorkflowGroupRuntime {
         currentConversation = await updateGroupRunState(
           this.conversationService,
           currentConversation,
-          {
-            ...(currentConversation.extra.runState || {}),
-            status: 'stopped',
-            stage: currentConversation.extra.runState?.stage || 'planning',
+          finalizeWorkflowRunState({
+            runState: {
+              ...currentConversation.extra.runState!,
+              stageHistory: currentConversation.extra.runState?.activeStageId
+                ? finalizeWorkflowStageHistory(
+                    currentConversation.extra.runState.stageHistory,
+                    currentConversation.extra.runState.activeStageId,
+                    'stopped'
+                  )
+                : currentConversation.extra.runState!.stageHistory,
+            },
+            terminalStatus: 'stopped',
+            terminalStage: currentConversation.extra.runState?.stage || 'planning',
             iteration: currentConversation.extra.runState?.iteration ?? completedIteration,
             artifactPath,
-            activeParticipantId: undefined,
-            updatedAt: Date.now(),
-          },
+          }),
           'finished'
         );
         emitGroupTurnState(currentConversation, 'finished', 'ai_waiting_input', 'Workflow group stopped');
@@ -332,15 +372,22 @@ export class WorkflowGroupRuntime {
       currentConversation = await updateGroupRunState(
         this.conversationService,
         currentConversation,
-        {
-          ...(currentConversation.extra.runState || {}),
-          status: 'failed',
-          stage: 'failed',
+        finalizeWorkflowRunState({
+          runState: {
+            ...currentConversation.extra.runState!,
+            stageHistory: currentConversation.extra.runState?.activeStageId
+              ? finalizeWorkflowStageHistory(
+                  currentConversation.extra.runState.stageHistory,
+                  currentConversation.extra.runState.activeStageId,
+                  'failed'
+                )
+              : currentConversation.extra.runState!.stageHistory,
+          },
+          terminalStatus: 'failed',
+          terminalStage: 'failed',
           iteration: currentConversation.extra.runState?.iteration ?? completedIteration,
           artifactPath,
-          activeParticipantId: undefined,
-          updatedAt: Date.now(),
-        },
+        }),
         'finished'
       );
       await persistGroupProjectedMessage(
@@ -450,9 +497,11 @@ export class WorkflowGroupRuntime {
       });
     }
 
+    /* eslint-disable no-await-in-loop -- Projected messages must preserve stage order in history. */
     for (const message of projectedMessages) {
       await persistGroupProjectedMessage(this.conversationService, groupConversation, message, false);
     }
+    /* eslint-enable no-await-in-loop */
 
     return projectedMessages;
   }
@@ -485,22 +534,22 @@ export class WorkflowGroupRuntime {
   } {
     if (!artifactUpdate.path) {
       throw new Error(
-        `Workflow writer must include [Artifact Path] with the exact shared artifact path (${artifactPath}).`
+        `Workflow writing stage must include [Artifact Path] with the exact shared artifact path (${artifactPath}).`
       );
     }
 
     if (artifactUpdate.path !== artifactPath) {
       throw new Error(
-        `Workflow writer returned artifact path ${artifactUpdate.path}, but the workflow contract requires ${artifactPath}.`
+        `Workflow writing stage returned artifact path ${artifactUpdate.path}, but the workflow contract requires ${artifactPath}.`
       );
     }
 
     if (!artifactUpdate.status) {
-      throw new Error('Workflow writer must include [Artifact Status] set to written or proposed.');
+      throw new Error('Workflow writing stage must include [Artifact Status] set to written or proposed.');
     }
 
     if (!artifactUpdate.content) {
-      throw new Error('Workflow writer must include [Artifact Content] with the full artifact body.');
+      throw new Error('Workflow writing stage must include [Artifact Content] with the full artifact body.');
     }
   }
 
@@ -532,5 +581,40 @@ export class WorkflowGroupRuntime {
     if (this.cancelledGroupIds.has(conversationId)) {
       throw new WorkflowGroupCancelledError(conversationId);
     }
+  }
+
+  private resolveNextStageId(options: {
+    activeStage: WorkflowTemplateStageDefinition;
+    stageDefinitions: WorkflowTemplateStageDefinition[];
+    orchestration: WorkflowGroupOrchestration;
+    iteration: number;
+    latestEvaluation: WorkflowEvaluation | null;
+    runtimeTemplate: ReturnType<typeof getWorkflowRuntimeTemplate>;
+  }): string | undefined {
+    const { activeStage, stageDefinitions, orchestration, iteration, latestEvaluation, runtimeTemplate } = options;
+    const firstWritingStage = stageDefinitions.find((stage) => stage.kind === 'writing');
+    const firstEvaluatingStage = stageDefinitions.find((stage) => stage.kind === 'evaluating');
+
+    if (activeStage.kind === 'planning') {
+      return activeStage.nextStageId || firstWritingStage?.id;
+    }
+
+    if (activeStage.kind === 'writing') {
+      if (runtimeTemplate.shouldRunEvaluation({ iteration, orchestration })) {
+        return activeStage.nextStageId || firstEvaluatingStage?.id;
+      }
+
+      if (iteration < orchestration.maxIterations) {
+        return firstWritingStage?.id;
+      }
+
+      return activeStage.nextStageId || firstEvaluatingStage?.id;
+    }
+
+    if (latestEvaluation?.decision === 'continue' && iteration < orchestration.maxIterations) {
+      return firstWritingStage?.id;
+    }
+
+    return undefined;
   }
 }
