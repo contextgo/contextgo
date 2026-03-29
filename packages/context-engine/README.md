@@ -18,6 +18,7 @@
 - `source / document / memory / profile / context pack` 的领域对象
 - `promotion / compaction / forgetting` 的一版策略契约与纯函数
 - `IContextService` 与底层存储、op-log 的接口草案
+- Supermemory 适配性评估与 `Space Foundation` 分阶段规划
 
 ## 文档索引
 
@@ -25,6 +26,8 @@
 - [docs/domain-model.md](./docs/domain-model.md)
 - [docs/local-first-sync.md](./docs/local-first-sync.md)
 - [docs/implementation-phases.md](./docs/implementation-phases.md)
+- [docs/phase-0-1-foundation.md](./docs/phase-0-1-foundation.md)
+- [docs/supermemory-context-os-fit.md](./docs/supermemory-context-os-fit.md)
 
 ## 设计原则
 
