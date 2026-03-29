@@ -42,6 +42,29 @@ jobs:
       SITE_CLOUDFLARE_PROJECT_NAME: ${{ vars.SITE_CLOUDFLARE_PROJECT_NAME != '' && vars.SITE_CLOUDFLARE_PROJECT_NAME || 'contextgo-web' }}
 
     steps:
+      - name: Verify Cloudflare deploy secrets
+        working-directory: ${{ github.workspace }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          missing_secrets=()
+
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            missing_secrets+=("CLOUDFLARE_API_TOKEN")
+          fi
+
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            missing_secrets+=("CLOUDFLARE_ACCOUNT_ID")
+          fi
+
+          if [ "${#missing_secrets[@]}" -gt 0 ]; then
+            echo "::error::Missing required GitHub Actions secrets: ${missing_secrets[*]}"
+            exit 1
+          fi
+
       - name: Checkout code
         working-directory: ${{ github.workspace }}
         env:
