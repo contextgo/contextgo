@@ -457,6 +457,30 @@ export class AionUIDatabase {
   }
 
   /**
+   * Get user by email address
+   * 通过邮箱地址获取用户信息
+   *
+   * @param email - Email to query
+   * @returns Query result with user data or null if not found
+   */
+  getUserByEmail(email: string): IQueryResult<IUser | null> {
+    try {
+      const user = this.db.prepare('SELECT * FROM users WHERE email = ?').get(email) as IUser | undefined;
+
+      return {
+        success: true,
+        data: user ?? null,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+        data: null,
+      };
+    }
+  }
+
+  /**
    * Get all users (excluding system default user)
    * 获取所有用户（排除系统默认用户）
    *

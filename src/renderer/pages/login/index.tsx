@@ -1,3 +1,4 @@
+import { Button, Divider } from '@arco-design/web-react';
 import loginLogo from '@renderer/assets/logos/brand/app.png';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,9 +15,12 @@ type MessageState = {
   text: string;
 };
 
+type OAuthProviderId = 'github' | 'google';
+
 const REMEMBER_ME_KEY = 'rememberMe';
 const REMEMBERED_USERNAME_KEY = 'rememberedUsername';
 const REMEMBERED_PASSWORD_KEY = 'rememberedPassword';
+const OAUTH_PROVIDERS_ENDPOINT = '/api/auth/oauth/providers';
 const isDesktopRuntime = typeof window !== 'undefined' && Boolean(window.electronAPI);
 
 // Simple obfuscation for stored credentials (not cryptographically secure, but prevents plain text storage)
@@ -34,6 +38,42 @@ const deobfuscate = (text: string): string => {
   }
 };
 
+const isOAuthProviderId = (value: unknown): value is OAuthProviderId => value === 'github' || value === 'google';
+
+const renderOAuthIcon = (providerId: OAuthProviderId): React.ReactNode => {
+  if (providerId === 'github') {
+    return (
+      <svg viewBox='0 0 24 24' aria-hidden='true'>
+        <path
+          fill='currentColor'
+          d='M12 2C6.48 2 2 6.58 2 12.24c0 4.52 2.87 8.36 6.84 9.72.5.09.68-.22.68-.49 0-.24-.01-1.03-.01-1.87-2.78.62-3.37-1.21-3.37-1.21-.46-1.19-1.11-1.51-1.11-1.51-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.35 1.12 2.92.85.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.72 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.9c.85 0 1.71.12 2.51.35 1.9-1.33 2.74-1.05 2.74-1.05.55 1.42.21 2.46.1 2.72.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.79-4.58 5.05.36.32.68.94.68 1.89 0 1.36-.01 2.46-.01 2.8 0 .27.18.59.69.49A10.1 10.1 0 0 0 22 12.24C22 6.58 17.52 2 12 2Z'
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox='0 0 24 24' aria-hidden='true'>
+      <path
+        fill='#EA4335'
+        d='M12.24 10.29v3.92h5.53c-.24 1.27-.96 2.34-2.03 3.06l3.28 2.54c1.92-1.77 3.02-4.38 3.02-7.49 0-.72-.06-1.4-.18-2.06h-9.62Z'
+      />
+      <path
+        fill='#34A853'
+        d='M12 22c2.75 0 5.05-.91 6.73-2.45l-3.28-2.54c-.91.61-2.08.97-3.45.97-2.65 0-4.89-1.79-5.69-4.19l-3.38 2.61A10.18 10.18 0 0 0 12 22Z'
+      />
+      <path
+        fill='#4A90E2'
+        d='M6.31 13.79A6.1 6.1 0 0 1 6 12c0-.62.11-1.21.31-1.79l-3.38-2.61A10.2 10.2 0 0 0 2 12c0 1.63.39 3.17 1.08 4.4l3.23-2.61Z'
+      />
+      <path
+        fill='#FBBC05'
+        d='M12 6.02c1.49 0 2.82.51 3.87 1.5l2.9-2.9C17.04 2.98 14.75 2 12 2a10.18 10.18 0 0 0-8.91 5.6l3.38 2.61C7.11 7.81 9.35 6.02 12 6.02Z'
+      />
+    </svg>
+  );
+};
+
 const LoginPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -45,6 +85,8 @@ const LoginPage: React.FC = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [message, setMessage] = useState<MessageState | null>(null);
   const [loading, setLoading] = useState(false);
+  const [oauthProviders, setOauthProviders] = useState<OAuthProviderId[]>([]);
+  const [oauthProvidersLoading, setOauthProvidersLoading] = useState(false);
 
   const usernameRef = useRef<HTMLInputElement | null>(null);
   const passwordRef = useRef<HTMLInputElement | null>(null);
@@ -104,6 +146,53 @@ const LoginPage: React.FC = () => {
     }
   }, [navigate, status]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const controller = new AbortController();
+    setOauthProvidersLoading(true);
+
+    fetch(OAUTH_PROVIDERS_ENDPOINT, {
+      method: 'GET',
+      credentials: 'include',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          setOauthProviders([]);
+          return;
+        }
+
+        const data = (await response.json()) as {
+          success: boolean;
+          providers?: unknown[];
+        };
+
+        if (!data.success || !Array.isArray(data.providers)) {
+          setOauthProviders([]);
+          return;
+        }
+
+        setOauthProviders(data.providers.filter(isOAuthProviderId));
+      })
+      .catch((error: Error) => {
+        if (error.name !== 'AbortError') {
+          console.error('Failed to load OAuth providers:', error);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setOauthProvidersLoading(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
   const clearMessageLater = useCallback(() => {
     if (messageTimer.current) {
       window.clearTimeout(messageTimer.current);
@@ -123,6 +212,51 @@ const LoginPage: React.FC = () => {
     [clearMessageLater]
   );
 
+  const getOAuthErrorMessage = useCallback(
+    (code: string): string => {
+      switch (code) {
+        case 'access_denied':
+          return t('login.oauth.errors.accessDenied');
+        case 'email_not_allowed':
+          return t('login.oauth.errors.emailNotAllowed');
+        case 'email_required':
+          return t('login.oauth.errors.emailRequired');
+        case 'invalid_state':
+          return t('login.oauth.errors.sessionExpired');
+        case 'provider_not_enabled':
+          return t('login.oauth.errors.providerUnavailable');
+        case 'missing_code':
+        case 'callback_failed':
+          return t('login.oauth.errors.callbackFailed');
+        default:
+          return t('login.oauth.errors.unknown');
+      }
+    },
+    [t]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const oauthError = searchParams.get('oauthError');
+    if (!oauthError) {
+      return;
+    }
+
+    showMessage({
+      type: 'error',
+      text: getOAuthErrorMessage(oauthError),
+    });
+
+    searchParams.delete('oauthError');
+    const nextSearch = searchParams.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, document.title, nextUrl);
+  }, [getOAuthErrorMessage, showMessage]);
+
   const supportedLanguages = useMemo<{ code: string; label: string }[]>(
     () => [
       { code: 'zh-CN', label: '简体中文' },
@@ -140,6 +274,10 @@ const LoginPage: React.FC = () => {
     changeLanguage(nextLanguage).catch((error: Error) => {
       console.error('Failed to change language:', error);
     });
+  }, []);
+
+  const handleOAuthLogin = useCallback((providerId: OAuthProviderId) => {
+    window.location.assign(`/api/auth/oauth/${providerId}/start`);
   }, []);
 
   const handleSubmit = useCallback(
@@ -373,6 +511,33 @@ const LoginPage: React.FC = () => {
               )}
               <span>{loading ? t('login.submitting') : t('login.submit')}</span>
             </button>
+
+            {(oauthProvidersLoading || oauthProviders.length > 0) && (
+              <div className='login-page__oauth-section'>
+                <Divider className='login-page__oauth-divider'>{t('login.oauth.title')}</Divider>
+
+                {oauthProvidersLoading ? (
+                  <div className='login-page__oauth-loading'>{t('login.oauth.loading')}</div>
+                ) : (
+                  <div className='login-page__oauth-actions'>
+                    {oauthProviders.map((providerId) => (
+                      <Button
+                        key={providerId}
+                        long
+                        type='secondary'
+                        className='login-page__oauth-button'
+                        icon={renderOAuthIcon(providerId)}
+                        onClick={() => handleOAuthLogin(providerId)}
+                      >
+                        {providerId === 'github'
+                          ? t('login.oauth.providers.github')
+                          : t('login.oauth.providers.google')}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div
               role='alert'
