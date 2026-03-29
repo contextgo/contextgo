@@ -427,8 +427,8 @@ const getPlatformRequirements = (locale: Locale): Record<PlatformId, string[]> =
     android: [
       localized(locale, { en: 'Android 8.0 or later', zh: 'Android 8.0 或更高版本' }),
       localized(locale, {
-        en: 'Allow browser / file-manager installs for APK sideloading',
-        zh: '如走 APK 侧载，需要允许浏览器或文件管理器安装应用',
+        en: 'If you install an APK manually, allow installation from your browser or file manager',
+        zh: '如果你手动安装 APK，需要允许浏览器或文件管理器安装应用',
       }),
     ],
     ios: [
@@ -441,8 +441,8 @@ const getPlatformRequirements = (locale: Locale): Record<PlatformId, string[]> =
     harmony: [
       localized(locale, { en: 'HarmonyOS 4 or later', zh: 'HarmonyOS 4 或更高版本' }),
       localized(locale, {
-        en: 'Prefer AppGallery or the configured official install path',
-        zh: '优先通过 AppGallery 或配置好的官方安装入口安装',
+        en: 'Install through AppGallery or the official path you provide',
+        zh: '通过 AppGallery 或你提供的官方安装入口安装',
       }),
     ],
   };
@@ -516,7 +516,7 @@ const getPlatformPermissions = (locale: Locale): Record<PlatformId, string[]> =>
 const createFallbackAction = (locale: Locale, releaseUrl: string): DownloadEntryAction => {
   return {
     href: releaseUrl,
-    label: localized(locale, { en: 'Track Release', zh: '关注发布' }),
+    label: localized(locale, { en: 'View Latest Updates', zh: '查看最新动态' }),
     emphasis: 'secondary',
     external: true,
   };
@@ -741,10 +741,10 @@ const getPlatformEntries = (
     {
       id: 'macos',
       title: 'macOS',
-      channel: localized(locale, { en: 'Direct Download', zh: '直链下载' }),
+      channel: localized(locale, { en: 'Desktop Download', zh: '桌面下载' }),
       summary: localized(locale, {
-        en: 'Universal, Apple Silicon, or Intel desktop builds from the latest GitHub Release.',
-        zh: '从最新 GitHub Release 直接提供通用版、Apple Silicon 和 Intel 桌面安装包。',
+        en: 'Desktop downloads for Mac, with Universal, Apple Silicon, and Intel builds when available.',
+        zh: '适用于 Mac 的桌面安装包，提供通用版、Apple Silicon 和 Intel 版本。',
       }),
       status: macAssetDetails.length > 0 ? 'direct' : 'pending',
       actions: macActions,
@@ -755,10 +755,10 @@ const getPlatformEntries = (
     {
       id: 'windows',
       title: 'Windows',
-      channel: localized(locale, { en: 'Direct Download', zh: '直链下载' }),
+      channel: localized(locale, { en: 'Desktop Download', zh: '桌面下载' }),
       summary: localized(locale, {
-        en: 'Direct installers from GitHub Release assets, aligned with the release naming convention.',
-        zh: '直接使用 GitHub Release 资产里的安装包，并与 release 资产命名规范保持一致。',
+        en: 'Desktop installers for Windows, with x64 and ARM64 options when available.',
+        zh: '适用于 Windows 的桌面安装包，提供 x64 和 ARM64 版本。',
       }),
       status: windowsAssetDetails.length > 0 ? 'direct' : 'pending',
       actions: windowsActions,
@@ -769,10 +769,10 @@ const getPlatformEntries = (
     {
       id: 'linux',
       title: 'Linux',
-      channel: localized(locale, { en: 'Direct Download', zh: '直链下载' }),
+      channel: localized(locale, { en: 'Desktop Download', zh: '桌面下载' }),
       summary: localized(locale, {
-        en: 'Debian-compatible desktop packages attached to the latest GitHub Release.',
-        zh: '最新 GitHub Release 附带 Debian 系桌面安装包。',
+        en: 'Debian-compatible desktop packages for Ubuntu, Debian, and similar Linux environments.',
+        zh: '适用于 Ubuntu、Debian 等 Linux 环境的桌面安装包。',
       }),
       status: linuxAssetDetails.length > 0 ? 'direct' : 'pending',
       actions: linuxActions,
@@ -784,12 +784,12 @@ const getPlatformEntries = (
       id: 'android',
       title: 'Android',
       channel: localized(locale, {
-        en: androidActions.length > 0 ? 'Direct Download' : 'Planned Direct Download',
-        zh: androidActions.length > 0 ? '直链下载' : '待接入直链下载',
+        en: androidActions.length > 0 ? 'Android Download' : 'Coming Soon',
+        zh: androidActions.length > 0 ? 'Android 下载' : '即将提供',
       }),
       summary: localized(locale, {
-        en: 'APK or AAB distribution for sideload installs, or a dedicated Android download endpoint.',
-        zh: '通过 APK / AAB 侧载分发，或接到独立的 Android 下载地址。',
+        en: 'Get ContextGo on Android through a direct package download or a dedicated mobile download page.',
+        zh: '通过直链安装包或独立的移动下载页，在 Android 上获取 ContextGo。',
       }),
       status: androidActions.length > 0 ? 'direct' : 'pending',
       actions: androidActions.length > 0 ? androidActions : [createFallbackAction(locale, releaseUrl)],
@@ -801,12 +801,12 @@ const getPlatformEntries = (
       id: 'ios',
       title: localized(locale, { en: 'iPhone / iPad', zh: 'iPhone / iPad' }),
       channel: localized(locale, {
-        en: iosActions.length > 0 ? 'Official Install Path' : 'Configure Official Path',
-        zh: iosActions.length > 0 ? '官方安装路径' : '待配置官方安装路径',
+        en: iosActions.length > 0 ? 'Official Install' : 'Coming Soon',
+        zh: iosActions.length > 0 ? '官方安装' : '即将提供',
       }),
       summary: localized(locale, {
-        en: 'Point users to App Store, TestFlight, or your configured web install path instead of public IPA hosting.',
-        zh: '将用户引导到 App Store、TestFlight 或你配置的网页安装入口，而不是公开托管 IPA。',
+        en: 'Open the best install path for your device, such as the App Store, TestFlight, or your web onboarding page.',
+        zh: '前往最适合你设备的安装入口，例如 App Store、TestFlight 或网页引导页。',
       }),
       status: iosActions.length > 0 ? 'official' : 'pending',
       actions: iosActions.length > 0 ? iosActions : [createFallbackAction(locale, releaseUrl)],
@@ -818,12 +818,12 @@ const getPlatformEntries = (
       id: 'harmony',
       title: 'HarmonyOS',
       channel: localized(locale, {
-        en: harmonyActions.length > 0 ? 'Official Or Direct Path' : 'Configure Official Path',
-        zh: harmonyActions.length > 0 ? '官方或直链入口' : '待配置官方安装路径',
+        en: harmonyActions.length > 0 || harmonyAssetDetails.length > 0 ? 'Install Options' : 'Coming Soon',
+        zh: harmonyActions.length > 0 || harmonyAssetDetails.length > 0 ? '安装方式' : '即将提供',
       }),
       summary: localized(locale, {
-        en: 'Prefer AppGallery / AppGallery Connect, while still allowing direct HAP or APP assets as fallback.',
-        zh: '优先走 AppGallery / AppGallery Connect，同时保留 HAP / APP 直链作为补充入口。',
+        en: 'Use the official HarmonyOS channel first, with direct packages available here later if you choose to provide them.',
+        zh: '优先通过 HarmonyOS 官方渠道安装，后续如果提供直链安装包，也会在这里显示。',
       }),
       status: harmonyActions.some((action) => action.emphasis === 'primary' && action.href === releaseConfig.harmonyUrl)
         ? 'official'
