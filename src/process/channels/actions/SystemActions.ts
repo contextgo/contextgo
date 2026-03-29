@@ -720,6 +720,24 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
 
   // Get current session (scoped by chatId)
   const existingSession = sessionManager.getSession(context.channelUser.id, context.chatId);
+  if (currentAgentKey === selectedAgent.key) {
+    const markup =
+      context.platform === 'lark'
+        ? createMainMenuCard()
+        : usesActionButtons(context.platform)
+          ? undefined
+          : context.platform === 'dingtalk'
+            ? createDingTalkMainMenuCard()
+            : createMainMenuKeyboard();
+    return createSuccessResponse({
+      type: 'text',
+      text: `✓ Already using <b>${selectedAgentName}</b>`,
+      parseMode: 'HTML',
+      ...(markup ? { replyMarkup: markup } : {}),
+      ...(usesActionButtons(context.platform) ? { buttons: buildMainMenuActionButtons() } : {}),
+    });
+  }
+
   // Clear existing session and agent (scoped by chatId)
   if (existingSession) {
     const messageService = getChannelMessageService();

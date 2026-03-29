@@ -10,10 +10,10 @@ import { BUILTIN_CHANNEL_TYPES } from '../../src/common/config/builtinChannels';
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tmp') } }));
 
 // Capture provider handlers so tests can invoke them directly
-const handlers: Record<string, (...args: any[]) => any> = {};
+const handlers: Record<string, (...args: unknown[]) => unknown> = {};
 function makeChannel(name: string) {
   return {
-    provider: vi.fn((fn: (...args: any[]) => any) => {
+    provider: vi.fn((fn: (...args: unknown[]) => unknown) => {
       handlers[name] = fn;
     }),
     emit: vi.fn(),
@@ -33,6 +33,7 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     getAuthorizedUsers: makeChannel('getAuthorizedUsers'),
     revokeUser: makeChannel('revokeUser'),
     getActiveSessions: makeChannel('getActiveSessions'),
+    getBindingCatalog: makeChannel('getBindingCatalog'),
     getBindings: makeChannel('getBindings'),
     upsertBinding: makeChannel('upsertBinding'),
     deleteBinding: makeChannel('deleteBinding'),
@@ -89,11 +90,14 @@ vi.mock('@/extensions/assetProtocol', () => ({ toAssetUrl: vi.fn((p: string) => 
 import { initChannelBridge } from '../../src/process/bridge/channelBridge';
 import type { IChannelRepository } from '../../src/process/services/database/IChannelRepository';
 import type {
+  IAgentProfile,
+  IRemoteIdentity,
   IChannelBinding,
   IChannelPluginConfig,
   IChannelUser,
   IChannelPairingRequest,
   IChannelSession,
+  IConnectorInstance,
 } from '../../src/process/channels/types';
 
 function makeRepo(overrides?: Partial<IChannelRepository>): IChannelRepository {
@@ -103,6 +107,9 @@ function makeRepo(overrides?: Partial<IChannelRepository>): IChannelRepository {
     getChannelUsers: vi.fn(() => []),
     deleteChannelUser: vi.fn(),
     getChannelSessions: vi.fn(() => []),
+    getConnectorInstances: vi.fn(() => []),
+    getAgentProfiles: vi.fn(() => []),
+    getRemoteIdentities: vi.fn(() => []),
     getChannelBindings: vi.fn(() => []),
     upsertChannelBinding: vi.fn(),
     deleteChannelBinding: vi.fn(),
@@ -294,6 +301,73 @@ describe('channelBridge', () => {
   });
 
   // --- binding management ---
+
+  describe('getBindingCatalog', () => {
+    it('returns connectors, profiles, and bindings in one response', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-1',
+        platform: 'telegram',
+        name: 'Telegram',
+        enabled: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const profile: IAgentProfile = {
+        id: 'agent-profile-1',
+        name: 'OpenClaw Publication',
+        backend: 'openclaw-gateway',
+        version: 1,
+        archived: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-1',
+        connectorId: 'connector-1',
+        remoteUserId: 'user-1',
+        remoteChatId: 'group:alpha:thread:9',
+        remoteChatType: 'thread',
+        displayName: 'Ops Topic',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual({
+        connectors: [connector],
+        agentProfiles: [profile],
+        bindings: [binding],
+        audiences: expect.arrayContaining([
+          expect.objectContaining({
+            key: 'group:alpha:thread:9',
+            scopeType: 'remote_chat',
+            title: 'Ops Topic',
+            threadId: '9',
+          }),
+        ]),
+      });
+    });
+  });
 
   describe('getBindings', () => {
     it('returns bindings from repo', async () => {

@@ -12,21 +12,6 @@ import fs from 'fs';
 import path from 'path';
 import { runMigrations as executeMigrations } from './migrations';
 import { CURRENT_DB_VERSION, getDatabaseVersion, initSchema, setDatabaseVersion } from './schema';
-import type {
-  IAgentProfileRow,
-  IChannelBindingRow,
-  IChannelRunRow,
-  IConnectorInstanceRow,
-  IConversationRow,
-  IExternalSessionRow,
-  IMessageRow,
-  IPaginatedResult,
-  IQueryResult,
-  IRemoteIdentityRow,
-  IUser,
-  TChatConversation,
-  TMessage,
-} from './types';
 import {
   agentProfileToRow,
   channelBindingToRow,
@@ -44,6 +29,24 @@ import {
   rowToExternalSession,
   rowToMessage,
   rowToRemoteIdentity,
+  rowToSpace,
+  spaceToRow,
+} from './types';
+import type {
+  IAgentProfileRow,
+  IChannelBindingRow,
+  IChannelRunRow,
+  IConnectorInstanceRow,
+  IConversationRow,
+  IExternalSessionRow,
+  IMessageRow,
+  IPaginatedResult,
+  IQueryResult,
+  IRemoteIdentityRow,
+  ISpaceRow,
+  IUser,
+  TChatConversation,
+  TMessage,
 } from './types';
 import type { IMessageSearchItem, IMessageSearchResponse } from '@/common/types/database';
 import type { VoiceInputRecord, VoiceInputStats } from '@/common/types/voiceInput';
@@ -64,7 +67,7 @@ import type {
   PluginType,
   PluginStatus,
 } from '@process/channels/types';
-import type { ConversationSource, TProviderWithModel } from '@/common/config/storage';
+import type { ConversationSource, TProviderWithModel, TSpace } from '@/common/config/storage';
 import {
   getChannelBindingTarget,
   resolveChannelConvType,
@@ -129,6 +132,10 @@ const validateChannelBinding = (binding: IChannelBinding): string | null => {
 
   if (!hasScopeKey(binding.scopeKey)) {
     return `${binding.scopeType} bindings require scopeKey`;
+  }
+
+  if (binding.scopeType === 'temporary_override' && !binding.temporary) {
+    return 'temporary_override bindings must set temporary = true';
   }
 
   if (binding.scopeType === 'remote_user' && binding.scopeKey.startsWith('group:')) {
@@ -609,6 +616,174 @@ export class AionUIDatabase {
       return {
         success: true,
         data: true,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+        data: false,
+      };
+    }
+  }
+
+  /**
+   * ==================
+   * Space operations
+   * ==================
+   */
+
+  createSpace(space: TSpace, userId?: string): IQueryResult<TSpace> {
+    try {
+      const row = spaceToRow(space, userId || this.defaultUserId);
+      const stmt = this.db.prepare(`
+        INSERT INTO spaces (id, user_id, name, engine, description, is_default, archived_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      stmt.run(
+        row.id,
+        row.user_id,
+        row.name,
+        row.engine,
+        row.description ?? null,
+        row.is_default,
+        row.archived_at ?? null,
+        row.created_at,
+        row.updated_at
+      );
+
+      return {
+        success: true,
+        data: space,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  getSpace(spaceId: string): IQueryResult<TSpace | null> {
+    try {
+      const row = this.db.prepare('SELECT * FROM spaces WHERE id = ?').get(spaceId) as ISpaceRow | undefined;
+      return {
+        success: true,
+        data: row ? rowToSpace(row) : null,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  getDefaultSpace(userId?: string): IQueryResult<TSpace | null> {
+    try {
+      const finalUserId = userId || this.defaultUserId;
+      const row = this.db
+        .prepare('SELECT * FROM spaces WHERE user_id = ? AND is_default = 1 AND archived_at IS NULL LIMIT 1')
+        .get(finalUserId) as ISpaceRow | undefined;
+      return {
+        success: true,
+        data: row ? rowToSpace(row) : null,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  listSpaces(userId?: string, includeArchived = false): IQueryResult<TSpace[]> {
+    try {
+      const finalUserId = userId || this.defaultUserId;
+      const rows = this.db
+        .prepare(
+          includeArchived
+            ? `SELECT * FROM spaces WHERE user_id = ? ORDER BY is_default DESC, updated_at DESC`
+            : `SELECT * FROM spaces WHERE user_id = ? AND archived_at IS NULL ORDER BY is_default DESC, updated_at DESC`
+        )
+        .all(finalUserId) as ISpaceRow[];
+
+      return {
+        success: true,
+        data: rows.map(rowToSpace),
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+        data: [],
+      };
+    }
+  }
+
+  updateSpace(
+    spaceId: string,
+    updates: Partial<Pick<TSpace, 'name' | 'engine' | 'description' | 'isDefault' | 'archivedAt'>>
+  ): IQueryResult<boolean> {
+    try {
+      const existing = this.getSpace(spaceId);
+      if (!existing.success || !existing.data) {
+        return {
+          success: false,
+          error: 'Space not found',
+        };
+      }
+
+      const updated: TSpace = {
+        ...existing.data,
+        ...updates,
+        modifyTime: Date.now(),
+      };
+      const row = spaceToRow(updated, this.defaultUserId);
+      const stmt = this.db.prepare(`
+        UPDATE spaces
+        SET name = ?,
+            engine = ?,
+            description = ?,
+            is_default = ?,
+            archived_at = ?,
+            updated_at = ?
+        WHERE id = ?
+      `);
+
+      stmt.run(
+        row.name,
+        row.engine,
+        row.description ?? null,
+        row.is_default,
+        row.archived_at ?? null,
+        row.updated_at,
+        spaceId
+      );
+
+      return {
+        success: true,
+        data: true,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+        data: false,
+      };
+    }
+  }
+
+  archiveSpace(spaceId: string): IQueryResult<boolean> {
+    try {
+      const now = Date.now();
+      const result = this.db
+        .prepare('UPDATE spaces SET archived_at = ?, is_default = 0, updated_at = ? WHERE id = ?')
+        .run(now, now, spaceId);
+
+      return {
+        success: true,
+        data: result.changes > 0,
       };
     } catch (error: any) {
       return {
@@ -1465,6 +1640,25 @@ export class AionUIDatabase {
     }
   }
 
+  getRemoteIdentities(connectorId?: string): IQueryResult<IRemoteIdentity[]> {
+    try {
+      const rows = connectorId
+        ? (this.db
+            .prepare(
+              'SELECT * FROM remote_identities WHERE connector_id = ? ORDER BY COALESCE(last_active, authorized_at) DESC, authorized_at DESC'
+            )
+            .all(connectorId) as IRemoteIdentityRow[])
+        : (this.db
+            .prepare(
+              'SELECT * FROM remote_identities ORDER BY COALESCE(last_active, authorized_at) DESC, authorized_at DESC'
+            )
+            .all() as IRemoteIdentityRow[]);
+      return { success: true, data: rows.map(rowToRemoteIdentity) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
   upsertRemoteIdentity(identity: IRemoteIdentity): IQueryResult<boolean> {
     try {
       const row = remoteIdentityToRow(identity);
@@ -1670,12 +1864,12 @@ export class AionUIDatabase {
         scopeKey === undefined
           ? (this.db
               .prepare(
-                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND scope_key IS NULL ORDER BY priority DESC, created_at ASC'
+                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND enabled = 1 AND scope_key IS NULL ORDER BY priority DESC, created_at ASC'
               )
               .all(connectorId, scopeType) as IChannelBindingRow[])
           : (this.db
               .prepare(
-                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND scope_key = ? ORDER BY priority DESC, created_at ASC'
+                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND enabled = 1 AND scope_key = ? ORDER BY priority DESC, created_at ASC'
               )
               .all(connectorId, scopeType, scopeKey) as IChannelBindingRow[]);
       return { success: true, data: rows.map(rowToChannelBinding) };

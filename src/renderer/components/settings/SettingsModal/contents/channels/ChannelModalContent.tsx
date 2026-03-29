@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useSettingsViewMode } from '../../settingsViewContext';
 import ChannelItem from './ChannelItem';
 import type { ChannelConfig } from './types';
+import PublicationBindingPanel from './publication/PublicationBindingPanel';
 import {
   DiscordConfigForm,
   DingTalkConfigForm,
@@ -45,6 +46,10 @@ type ExtensionFieldSchema = {
 };
 
 type ExtensionFieldValues = Record<string, Record<string, string | number | boolean>>;
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * Internal hook: wraps useGeminiModelSelection with ConfigStorage persistence
@@ -191,9 +196,9 @@ const ChannelModalContent: React.FC = () => {
   });
 
   // Collapse state - true means collapsed (closed), false means expanded (open)
-  const [collapseKeys, setCollapseKeys] = useState<Record<string, boolean>>({
-    ...Object.fromEntries(BUILTIN_CHANNEL_TYPES.map((type) => [type, true])),
-  });
+  const [collapseKeys, setCollapseKeys] = useState<Record<string, boolean>>(
+    Object.fromEntries(BUILTIN_CHANNEL_TYPES.map((type) => [type, true]))
+  );
 
   // Model selection state — uses unified hook with ConfigStorage persistence
   const telegramModelSelection = useChannelModelSelection('assistant.telegram.defaultModel');
@@ -346,8 +351,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.assistant.disableFailed', 'Failed to disable plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setEnableLoading(false);
     }
@@ -396,8 +401,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.slack.disableFailed', 'Failed to disable Slack plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setSlackEnableLoading(false);
     }
@@ -443,8 +448,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.discord.disableFailed', 'Failed to disable Discord plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setDiscordEnableLoading(false);
     }
@@ -485,8 +490,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.assistant.disableFailed', 'Failed to disable plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setLarkEnableLoading(false);
     }
@@ -526,8 +531,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.dingtalk.disableFailed', 'Failed to disable DingTalk plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setDingtalkEnableLoading(false);
     }
@@ -564,8 +569,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.weixin.disableFailed', 'Failed to disable WeChat plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setWeixinEnableLoading(false);
     }
@@ -648,8 +653,8 @@ const ChannelModalContent: React.FC = () => {
             );
           }
         }
-      } catch (error: any) {
-        Message.error(error.message || String(error));
+      } catch (error) {
+        Message.error(getErrorMessage(error));
       } finally {
         setExtensionLoadingMap((prev) => ({ ...prev, [pluginType]: false }));
       }
@@ -908,7 +913,7 @@ const ChannelModalContent: React.FC = () => {
         content: renderExtensionConfigForm(status),
       }));
 
-    const extensionTypeSet = new Set(extensionChannels.map((channel) => String(channel.id).toLowerCase()));
+    const extensionTypeSet = new Set(extensionChannels.map((channelConfig) => String(channelConfig.id).toLowerCase()));
 
     return [
       telegramChannel,
@@ -1002,6 +1007,8 @@ const ChannelModalContent: React.FC = () => {
             />
           ))}
         </div>
+
+        <PublicationBindingPanel />
       </div>
     </AionScrollArea>
   );
