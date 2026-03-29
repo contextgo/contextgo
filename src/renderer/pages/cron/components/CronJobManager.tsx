@@ -4,59 +4,125 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { ipcBridge } from '@/common';
+import type { TChatConversation } from '@/common/config/storage';
 import { iconColors } from '@/renderer/styles/colors';
 import { emitter } from '@/renderer/utils/emitter';
-import { Button, Popover, Tooltip } from '@arco-design/web-react';
+import { Button, Message, Popover, Tooltip } from '@arco-design/web-react';
 import { AlarmClock } from '@icon-park/react';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getCronDirectCreateContext, getCronPresets, type CronPresetId } from '../cronPresetUtils';
 import { useCronJobs } from '../useCronJobs';
 import { getJobStatusFlags } from '../cronUtils';
+import CronPresetLibrary from './CronPresetLibrary';
 import CronJobDrawer from './CronJobDrawer';
 
 interface CronJobManagerProps {
-  conversationId: string;
+  conversation: TChatConversation;
 }
 
 /**
  * Cron job manager component for ChatLayout headerExtra
  * Shows a single job per conversation with drawer for editing
  */
-const CronJobManager: React.FC<CronJobManagerProps> = ({ conversationId }) => {
+const CronJobManager: React.FC<CronJobManagerProps> = ({ conversation }) => {
   const { t } = useTranslation();
+  const [messageApi, messageContext] = Message.useMessage();
+  const conversationId = conversation.id;
   const { jobs, loading, hasJobs, deleteJob, updateJob } = useCronJobs(conversationId);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [presetPopoverVisible, setPresetPopoverVisible] = useState(false);
+  const [creatingPresetId, setCreatingPresetId] = useState<CronPresetId | null>(null);
+
+  const presets = useMemo(() => getCronPresets(t), [t]);
+  const directCreateContext = useMemo(() => getCronDirectCreateContext(conversation), [conversation]);
+
+  const handleCreateClick = () => {
+    emitter.emit('sendbox.fill', t('cron.status.defaultPrompt'));
+    setPresetPopoverVisible(false);
+  };
+
+  const handleFillPreset = (prompt: string) => {
+    emitter.emit('sendbox.fill', prompt);
+    setPresetPopoverVisible(false);
+  };
+
+  const handleCreatePreset = async (preset: ReturnType<typeof getCronPresets>[number]) => {
+    if (!directCreateContext) {
+      handleFillPreset(preset.prompt);
+      return;
+    }
+
+    setCreatingPresetId(preset.id);
+    try {
+      await ipcBridge.cron.addJob.invoke({
+        name: preset.name,
+        schedule: {
+          kind: 'cron',
+          expr: preset.schedule.expr,
+          description: preset.schedule.description,
+        },
+        message: preset.message,
+        conversationId: directCreateContext.conversationId,
+        conversationTitle: directCreateContext.conversationTitle,
+        agentType: directCreateContext.agentType,
+        createdBy: 'user',
+      });
+
+      messageApi.success(t('cron.presets.createSuccess', { name: preset.name }));
+      setPresetPopoverVisible(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        messageApi.error(error.message);
+      } else {
+        messageApi.error(t('common.unknownError'));
+      }
+    } finally {
+      setCreatingPresetId(null);
+    }
+  };
 
   // Handle unconfigured state (no jobs)
   if (!hasJobs && !loading) {
-    const handleCreateClick = () => {
-      emitter.emit('sendbox.fill', t('cron.status.defaultPrompt'));
-    };
-
     return (
-      <Popover
-        trigger='hover'
-        position='bottom'
-        content={
-          <div className='flex flex-col gap-8px p-4px max-w-240px'>
-            <div className='text-13px text-t-secondary'>{t('cron.status.unconfiguredHint')}</div>
-            <Button type='primary' size='mini' onClick={handleCreateClick}>
-              {t('cron.status.createNow')}
-            </Button>
-          </div>
-        }
-      >
-        <Button
-          type='text'
-          size='small'
-          className='cron-job-manager-button chat-header-cron-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
+      <>
+        {messageContext}
+        <Popover
+          trigger='click'
+          position='bottom'
+          popupVisible={presetPopoverVisible}
+          onVisibleChange={setPresetPopoverVisible}
+          content={
+            <div className='w-340px max-w-[calc(100vw-32px)] p-4px'>
+              <div className='max-h-[70vh] overflow-y-auto pr-4px'>
+                <CronPresetLibrary
+                  presets={presets}
+                  creatingPresetId={creatingPresetId}
+                  helperText={t(directCreateContext ? 'cron.presets.directCreateHint' : 'cron.presets.fillOnlyHint')}
+                  onCreatePreset={directCreateContext ? (preset) => void handleCreatePreset(preset) : undefined}
+                  onFillPreset={(preset) => handleFillPreset(preset.prompt)}
+                />
+              </div>
+
+              <Button className='mt-10px w-full' size='mini' onClick={handleCreateClick}>
+                {t('cron.presets.actions.customize')}
+              </Button>
+            </div>
+          }
         >
-          <span className='inline-flex items-center gap-2px rounded-full px-8px py-2px bg-2'>
-            <AlarmClock theme='outline' size={16} fill={iconColors.disabled} />
-            <span className='ml-4px w-8px h-8px rounded-full bg-[#86909c]' />
-          </span>
-        </Button>
-      </Popover>
+          <Button
+            type='text'
+            size='small'
+            className='cron-job-manager-button chat-header-cron-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
+          >
+            <span className='inline-flex items-center gap-2px rounded-full px-8px py-2px bg-2'>
+              <AlarmClock theme='outline' size={16} fill={iconColors.disabled} />
+              <span className='ml-4px h-8px w-8px rounded-full bg-[rgb(var(--gray-6))]' />
+            </span>
+          </Button>
+        </Popover>
+      </>
     );
   }
 
@@ -86,6 +152,7 @@ const CronJobManager: React.FC<CronJobManagerProps> = ({ conversationId }) => {
 
   return (
     <>
+      {messageContext}
       <Tooltip content={tooltipContent}>
         <Button
           type='text'
@@ -96,7 +163,7 @@ const CronJobManager: React.FC<CronJobManagerProps> = ({ conversationId }) => {
           <span className='inline-flex items-center gap-2px rounded-full px-8px py-2px bg-2'>
             <AlarmClock theme='outline' size={16} fill={iconColors.primary} />
             <span
-              className={`ml-4px w-8px h-8px rounded-full ${hasError ? 'bg-[#f53f3f]' : isPaused ? 'bg-[#ff7d00]' : 'bg-[#00b42a]'}`}
+              className={`ml-4px h-8px w-8px rounded-full ${hasError ? 'bg-[rgb(var(--danger-6))]' : isPaused ? 'bg-[rgb(var(--warning-6))]' : 'bg-[rgb(var(--success-6))]'}`}
             />
           </span>
         </Button>
