@@ -15,7 +15,9 @@ import { logger } from '@office-ai/platform';
 import { acpDetector } from '@process/agent/acp/AcpDetector';
 import { SqliteChannelRepository } from '@process/services/database/SqliteChannelRepository';
 import { SqliteConversationRepository } from '@process/services/database/SqliteConversationRepository';
+import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSpaceRepository';
 import { ConversationServiceImpl } from '@process/services/ConversationServiceImpl';
+import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
 import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
 import { initAcpConversationBridge } from '@process/bridge/acpConversationBridge';
 import { initAuthBridge } from '@process/bridge/authBridge';
@@ -44,7 +46,8 @@ logger.config({ print: true });
 
 export async function initBridgeStandalone(): Promise<void> {
   const repo = new SqliteConversationRepository();
-  const conversationService = new ConversationServiceImpl(repo);
+  const spaceService = new SpaceServiceImpl(new SqliteSpaceRepository());
+  const conversationService = new ConversationServiceImpl(repo, spaceService);
   const channelRepo = new SqliteChannelRepository();
 
   // Skipped (Electron-only): dialogBridge, applicationBridge (partial — see applicationBridgeCore),

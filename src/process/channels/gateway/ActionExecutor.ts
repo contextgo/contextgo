@@ -240,6 +240,10 @@ function getConfirmationPrompt(details: { type: string; title?: string; [key: st
 }
 
 function extractRemoteChatType(message: IUnifiedIncomingMessage): string | undefined {
+  if (message.peer?.chatType) {
+    return message.peer.chatType;
+  }
+
   const raw = message.raw;
   if (!raw || typeof raw !== 'object') {
     return undefined;
@@ -455,6 +459,8 @@ export class ActionExecutor {
    */
   private async handleIncomingMessage(message: IUnifiedIncomingMessage): Promise<void> {
     const { platform, chatId, user, content, action } = message;
+    const routingChatId = message.peer?.key ?? chatId;
+    const transportChatId = message.peer?.platformChatId ?? chatId;
 
     // Get plugin for sending responses
     const plugin = this.getPluginForMessage(message);
@@ -468,17 +474,22 @@ export class ActionExecutor {
       platform,
       pluginId: message.pluginId ?? `${platform}_default`,
       userId: user.id,
-      chatId,
+      chatId: routingChatId,
       displayName: user.displayName,
       originalMessage: message,
       originalMessageId: message.id,
-      sendMessage: async (msg) => plugin.sendMessage(chatId, msg),
-      editMessage: async (msgId, msg) => plugin.editMessage(chatId, msgId, msg),
+      sendMessage: async (msg) => plugin.sendMessage(transportChatId, msg),
+      editMessage: async (msgId, msg) => plugin.editMessage(transportChatId, msgId, msg),
     };
 
     try {
       // Check if user is authorized
-      const isAuthorized = await this.pairingService.isUserAuthorized(user.id, platform, chatId, context.pluginId);
+      const isAuthorized = await this.pairingService.isUserAuthorized(
+        user.id,
+        platform,
+        routingChatId,
+        context.pluginId
+      );
 
       // Handle /start command - always show pairing
       if (content.type === 'command' && content.text === '/start') {
@@ -502,7 +513,7 @@ export class ActionExecutor {
         platform,
         pluginId: context.pluginId,
         platformUserId: user.id,
-        chatId,
+        chatId: routingChatId,
         remoteChatType: extractRemoteChatType(message),
         displayName: user.displayName,
       });

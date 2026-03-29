@@ -27,11 +27,13 @@ export type {
   TChatConversation,
   TMessage,
   IConfigStorageRefer,
+  TSpace,
   // Database row types (for advanced usage)
   IConversationRow,
   IMessageRow,
   IConfigRow,
+  ISpaceRow,
 } from './types';
 
 // Re-export conversion functions
-export { conversationToRow, rowToConversation, messageToRow, rowToMessage } from './types';
+export { conversationToRow, rowToConversation, messageToRow, rowToMessage, rowToSpace, spaceToRow } from './types';

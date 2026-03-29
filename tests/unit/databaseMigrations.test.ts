@@ -96,4 +96,37 @@ describe('database migrations', () => {
       { id: 'conv-telegram', source: 'telegram' },
     ]);
   });
+
+  it('adds the spaces table in v21', () => {
+    driver = new NodeSqliteDriver();
+    driver.exec(`CREATE TABLE users (
+      id TEXT PRIMARY KEY
+    )`);
+
+    runMigrations(driver, 20, 21);
+
+    const columns = driver.pragma('table_info(spaces)') as Array<{ name: string }>;
+    expect(columns.map(({ name }) => name)).toEqual([
+      'id',
+      'user_id',
+      'name',
+      'engine',
+      'description',
+      'is_default',
+      'archived_at',
+      'created_at',
+      'updated_at',
+    ]);
+
+    const indexes = driver
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'spaces' ORDER BY name`)
+      .all() as Array<{ name: string }>;
+
+    expect(indexes.map(({ name }) => name)).toEqual([
+      'idx_spaces_default_per_user',
+      'idx_spaces_user_id',
+      'idx_spaces_user_updated',
+      'sqlite_autoindex_spaces_1',
+    ]);
+  });
 });

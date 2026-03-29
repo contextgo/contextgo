@@ -384,6 +384,184 @@ describe('ChannelRouteResolver', () => {
     expect(mockDb.getChannelBindingsForScope).toHaveBeenCalledWith(connector.id, 'remote_user', 'user-2');
   });
 
+  it('prefers temporary overrides over durable chat bindings', async () => {
+    const resolver = new ChannelRouteResolver();
+    const temporaryOverride: IChannelBinding = {
+      id: 'binding-temporary-override',
+      connectorId: connector.id,
+      scopeType: 'temporary_override',
+      scopeKey: 'group:alpha',
+      agentProfileId: 'agent-override',
+      priority: 100,
+      enabled: true,
+      temporary: true,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const remoteChatBinding: IChannelBinding = {
+      id: 'binding-remote-chat',
+      connectorId: connector.id,
+      scopeType: 'remote_chat',
+      scopeKey: 'group:alpha',
+      agentProfileId: 'agent-group-default',
+      priority: 20,
+      enabled: true,
+      temporary: false,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
+    mockDb.getChannelBindingsForScope.mockImplementation(
+      (_connectorId: string, scopeType: IChannelBinding['scopeType']) => {
+        if (scopeType === 'temporary_override') {
+          return { success: true, data: [temporaryOverride] };
+        }
+        if (scopeType === 'remote_chat') {
+          return { success: true, data: [remoteChatBinding] };
+        }
+        return { success: true, data: [] };
+      }
+    );
+
+    const result = await (
+      resolver as unknown as {
+        resolveBinding: (params: {
+          connector: IConnectorInstance;
+          remoteIdentity: IRemoteIdentity;
+          platform: 'telegram';
+        }) => Promise<IChannelBinding>;
+      }
+    ).resolveBinding({
+      connector,
+      remoteIdentity: {
+        id: 'remote_identity_group',
+        connectorId: connector.id,
+        remoteUserId: 'user-2',
+        remoteChatId: 'group:alpha',
+        remoteChatType: 'group',
+        authorizedAt: 100,
+      },
+      platform: 'telegram',
+    });
+
+    expect(result.id).toBe('binding-temporary-override');
+    expect(mockDb.getChannelBindingsForScope).toHaveBeenCalledWith(connector.id, 'temporary_override', 'group:alpha');
+  });
+  it('creates a temporary override binding directly from agentProfileId', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockDb.getAgentProfile.mockReturnValue({
+      success: true,
+      data: {
+        id: 'agent-profile-openclaw',
+        name: 'OpenClaw Publication',
+        backend: 'openclaw-gateway',
+        version: 1,
+        archived: false,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    });
+
+    const result = await (
+      resolver as unknown as {
+        resolveBinding: (params: {
+          connector: IConnectorInstance;
+          remoteIdentity: IRemoteIdentity;
+          platform: 'telegram';
+          overrideAgentProfileId: string;
+        }) => Promise<IChannelBinding>;
+      }
+    ).resolveBinding({
+      connector,
+      remoteIdentity: {
+        id: 'remote_identity_group',
+        connectorId: connector.id,
+        remoteUserId: 'user-2',
+        remoteChatId: 'group:alpha:thread:9',
+        remoteChatType: 'thread',
+        authorizedAt: 100,
+      },
+      platform: 'telegram',
+      overrideAgentProfileId: 'agent-profile-openclaw',
+    });
+
+    expect(result.scopeType).toBe('temporary_override');
+    expect(result.scopeKey).toBe('group:alpha:thread:9');
+    expect(result.agentProfileId).toBe('agent-profile-openclaw');
+    expect(result.temporary).toBe(true);
+    expect(result.metadata).toEqual(
+      expect.objectContaining({
+        source: 'agent-select',
+        overrideMode: 'agent-profile',
+      })
+    );
+    expect(mockDb.upsertChannelBinding).toHaveBeenCalledWith(
+      expect.objectContaining({ agentProfileId: 'agent-profile-openclaw' })
+    );
+  });
+
+  it('ignores disabled bindings even if the repository returns them', async () => {
+    const resolver = new ChannelRouteResolver();
+    const disabledRemoteChatBinding: IChannelBinding = {
+      id: 'binding-disabled-chat',
+      connectorId: connector.id,
+      scopeType: 'remote_chat',
+      scopeKey: 'group:alpha',
+      agentProfileId: 'agent-disabled',
+      priority: 100,
+      enabled: false,
+      temporary: false,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const enabledDefaultBinding: IChannelBinding = {
+      id: 'binding-default',
+      connectorId: connector.id,
+      scopeType: 'connector_default',
+      agentProfileId: 'agent-default',
+      priority: 0,
+      enabled: true,
+      temporary: false,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
+    mockDb.getChannelBindingsForScope.mockImplementation(
+      (_connectorId: string, scopeType: IChannelBinding['scopeType']) => {
+        if (scopeType === 'temporary_override') {
+          return { success: true, data: [] };
+        }
+        if (scopeType === 'remote_chat') {
+          return { success: true, data: [disabledRemoteChatBinding] };
+        }
+        return { success: true, data: [enabledDefaultBinding] };
+      }
+    );
+
+    const result = await (
+      resolver as unknown as {
+        resolveBinding: (params: {
+          connector: IConnectorInstance;
+          remoteIdentity: IRemoteIdentity;
+          platform: 'telegram';
+        }) => Promise<IChannelBinding>;
+      }
+    ).resolveBinding({
+      connector,
+      remoteIdentity: {
+        id: 'remote_identity_group',
+        connectorId: connector.id,
+        remoteUserId: 'user-2',
+        remoteChatId: 'group:alpha',
+        remoteChatType: 'group',
+        authorizedAt: 100,
+      },
+      platform: 'telegram',
+    });
+
+    expect(result.id).toBe('binding-default');
+  });
+
   it('transfers conversation ownership when reusing an existing conversation', async () => {
     const resolver = new ChannelRouteResolver();
 
