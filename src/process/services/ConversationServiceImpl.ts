@@ -243,7 +243,7 @@ export class ConversationServiceImpl implements IConversationService {
         break;
       }
       case 'group': {
-        const orchestration = normalizedParams.extra.orchestration || {
+        const orchestration = (normalizedParams.extra.orchestration || {
           kind: 'discussion' as const,
           mode: 'debate',
           rounds: 2 as const,
