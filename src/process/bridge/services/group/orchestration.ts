@@ -31,13 +31,15 @@ const isWorkflowOrchestrationLike = (value: GroupOrchestrationInput): value is L
     return false;
   }
 
+  const candidate = value as LegacyWorkflowOrchestration;
+
   return (
-    value.kind === 'workflow' ||
-    typeof value.template === 'string' ||
-    typeof value.maxIterations === 'number' ||
-    typeof value.scoreTarget === 'number' ||
-    typeof value.artifactPath === 'string' ||
-    typeof value.reviewMode === 'string'
+    candidate.kind === 'workflow' ||
+    typeof candidate.template === 'string' ||
+    typeof candidate.maxIterations === 'number' ||
+    typeof candidate.scoreTarget === 'number' ||
+    typeof candidate.artifactPath === 'string' ||
+    typeof candidate.reviewMode === 'string'
   );
 };
 
@@ -46,7 +48,9 @@ const isDiscussionOrchestrationLike = (value: GroupOrchestrationInput): value is
     return false;
   }
 
-  return value.kind === 'discussion' || typeof value.mode === 'string' || typeof value.rounds === 'number';
+  const candidate = value as LegacyDiscussionOrchestration;
+
+  return candidate.kind === 'discussion' || typeof candidate.mode === 'string' || typeof candidate.rounds === 'number';
 };
 
 export const normalizeStoredGroupOrchestration = (value?: GroupOrchestrationInput): GroupOrchestration => {
