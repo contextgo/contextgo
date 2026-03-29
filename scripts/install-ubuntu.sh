@@ -21,6 +21,8 @@
 
 set -euo pipefail
 
+RELEASE_REPOSITORY="${CONTEXTGO_RELEASE_REPO:-contextgo/contextgo-releases}"
+
 # ─── 顏色定義 ───────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -94,10 +96,10 @@ resolve_version() {
         info "正在查詢最新版本..."
         # 透過 GitHub API 取得 latest release tag
         if command -v curl &>/dev/null; then
-            VERSION=$(curl -fsSL "https://api.github.com/repos/contextgo/contextgo/releases/latest" \
+            VERSION=$(curl -fsSL "https://api.github.com/repos/${RELEASE_REPOSITORY}/releases/latest" \
                 | grep '"tag_name"' | head -1 | sed 's/.*"v\([^"]*\)".*/\1/')
         elif command -v wget &>/dev/null; then
-            VERSION=$(wget -qO- "https://api.github.com/repos/contextgo/contextgo/releases/latest" \
+            VERSION=$(wget -qO- "https://api.github.com/repos/${RELEASE_REPOSITORY}/releases/latest" \
                 | grep '"tag_name"' | head -1 | sed 's/.*"v\([^"]*\)".*/\1/')
         else
             die "需要 curl 或 wget 來下載，請先安裝: sudo apt-get install -y curl"
@@ -110,7 +112,7 @@ resolve_version() {
     fi
 
     DEB_FILENAME="ContextGo-${VERSION}-linux-${DEB_ARCH}.deb"
-    DOWNLOAD_URL="https://github.com/contextgo/contextgo/releases/download/v${VERSION}/${DEB_FILENAME}"
+    DOWNLOAD_URL="https://github.com/${RELEASE_REPOSITORY}/releases/download/v${VERSION}/${DEB_FILENAME}"
 }
 
 # ─── 下載 .deb 套件 ──────────────────────────────────────────────────────────

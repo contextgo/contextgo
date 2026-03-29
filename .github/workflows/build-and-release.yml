@@ -11,13 +11,16 @@ on:
     branches: [main]
     paths-ignore:
       - 'apps/web/**'
+      - 'docs/**'
       - '.github/workflows/deploy-site.yml'
       - '.github/workflows/build-and-release.yml'
       - '.github/workflows/_build-reusable.yml'
+      - 'scripts/install-ubuntu.sh'
   workflow_dispatch:
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
+  PUBLIC_RELEASE_REPOSITORY: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
 
 jobs:
   prepare-matrix:
@@ -391,6 +394,18 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "is_dev=$IS_DEV" >> $GITHUB_OUTPUT
 
+      - name: Validate release publishing token
+        shell: bash
+        env:
+          EFFECTIVE_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ "${PUBLIC_RELEASE_REPOSITORY}" != "${GITHUB_REPOSITORY}" ] && [ -z "${EFFECTIVE_TOKEN:-}" ]; then
+            echo "::error::GH_TOKEN is required to publish releases to ${PUBLIC_RELEASE_REPOSITORY} from ${GITHUB_REPOSITORY}."
+            exit 1
+          fi
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v7
         with:
@@ -404,11 +419,26 @@ jobs:
         shell: bash
         run: bash scripts/verify-release-assets.sh release-assets
 
+      - name: Generate public release notes
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag_name }}
+        run: |
+          cat > release-assets/release-notes.md <<EOF
+          Public distribution release for ContextGo ${RELEASE_TAG}.
+
+          This release is published automatically from the private source repository build pipeline.
+          The attached installers and manifests are the canonical public distribution artifacts for this version.
+          EOF
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          repository: ${{ env.PUBLIC_RELEASE_REPOSITORY }}
+          token: ${{ secrets.GH_TOKEN != '' && secrets.GH_TOKEN || github.token }}
           tag_name: ${{ steps.version.outputs.tag_name }}
           name: ${{ steps.version.outputs.tag_name }}
+          body_path: release-assets/release-notes.md
           files: |
             release-assets/**/*.exe
             release-assets/**/*.msi
@@ -421,8 +451,7 @@ jobs:
             release-assets/**/*.zip
             release-assets/**/*.json
             release-assets/**/*.yml
-          generate_release_notes: true
-          draft: true
+            release-assets/**/*.md
+          draft: false
+          make_latest: true
           prerelease: ${{ contains(steps.version.outputs.tag_name, 'beta') || contains(steps.version.outputs.tag_name, 'alpha') || contains(steps.version.outputs.tag_name, 'rc') }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
