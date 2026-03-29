@@ -11,6 +11,7 @@ import { iconColors } from '@/renderer/styles/colors';
 import { Alert, Message, Tooltip } from '@arco-design/web-react';
 import { Copy } from '@icon-park/react';
 import classNames from 'classnames';
+import type { TFunction } from 'i18next';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copyText } from '@/renderer/utils/ui/clipboard';
@@ -24,7 +25,7 @@ import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 
 const resolveGroupParticipantRoleLabel = (
   role: string | undefined,
-  t: (key: string, options?: unknown) => string
+  t: TFunction<'translation', undefined>
 ): string | null => {
   if (!role) {
     return null;
