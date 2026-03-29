@@ -155,7 +155,7 @@ const GeminiConversationPanel: React.FC<{ conversation: GeminiConversation; slid
     () => (
       <div className='flex items-center gap-8px'>
         <div className='shrink-0'>
-          <CronJobManager conversationId={conversation.id} />
+          <CronJobManager conversation={conversation} />
         </div>
       </div>
     ),
@@ -237,9 +237,7 @@ const ChatConversation: React.FC<{
           />
         );
       case 'group':
-        return (
-          <GroupChat key={conversation.id} conversationId={conversation.id} workspace={conversation.extra?.workspace} />
-        );
+        return <GroupChat key={conversation.id} conversation={conversation} />;
       default:
         return null;
     }
@@ -299,7 +297,7 @@ const ChatConversation: React.FC<{
         )}
         {conversation ? (
           <div className='shrink-0'>
-            <CronJobManager conversationId={conversation.id} />
+            <CronJobManager conversation={conversation} />
           </div>
         ) : null}
       </div>

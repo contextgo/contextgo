@@ -12,8 +12,10 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import styles from './GlobalCronSettings.module.css';
+import { getCronPresets } from './cronPresetUtils';
 import { formatNextRun } from './cronUtils';
 import CronJobDrawer from './components/CronJobDrawer';
+import CronPresetLibrary from './components/CronPresetLibrary';
 import { useAllCronJobs } from './useCronJobs';
 import {
   filterGlobalCronJobs,
@@ -38,6 +40,7 @@ const GlobalCronSettings: React.FC = () => {
 
   const { jobs, loading, refetch, pauseJob, resumeJob, deleteJob, updateJob } = useAllCronJobs();
 
+  const presets = useMemo(() => getCronPresets(t), [t]);
   const stats = useMemo(() => summarizeGlobalCronJobs(jobs), [jobs]);
   const filteredJobs = useMemo(
     () => filterGlobalCronJobs(jobs, searchQuery, statusFilter),
@@ -166,10 +169,14 @@ const GlobalCronSettings: React.FC = () => {
 
             <Spin loading={loading} className='w-full'>
               {filteredJobs.length === 0 ? (
-                <Empty
-                  description={jobs.length > 0 ? t('cron.overview.emptyFiltered') : t('cron.overview.emptyInitial')}
-                  className='py-24px'
-                />
+                jobs.length > 0 ? (
+                  <Empty description={t('cron.overview.emptyFiltered')} className='py-24px' />
+                ) : (
+                  <div className='flex flex-col gap-20px'>
+                    <Empty description={t('cron.overview.emptyInitial')} className='py-20px' />
+                    <CronPresetLibrary presets={presets} previewOnly={true} helperText={t('cron.presets.emptyHint')} />
+                  </div>
+                )
               ) : (
                 <div className={styles.jobList}>
                   {filteredJobs.map((job) => {

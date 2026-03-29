@@ -58,6 +58,183 @@
     "emptyInitial": "目前還沒有定時任務。先在某個對話中建立後，就會顯示在這裡。",
     "emptyFiltered": "目前篩選條件下沒有符合的定時任務。"
   },
+  "presets": {
+    "title": "開箱即用的預設定時器",
+    "description": "直接啟用這些高價值自動化場景，之後也可以繼續調整，或交給 Agent 進一步細化。",
+    "packPacksTitle": "依行業模板包挑選",
+    "rolePacksTitle": "依角色挑選",
+    "fillTemplate": "請為目前會話建立一個定時任務。\n名稱：{{name}}\n執行時間：{{scheduleDescription}}\n執行內容：{{message}}",
+    "createSuccess": "已建立預設定時任務：{{name}}",
+    "directCreateHint": "這些預設會直接綁定到目前會話。如果你想先調整時間或內容，也可以先填入輸入框，再讓 Agent 幫你修改。",
+    "fillOnlyHint": "目前會話類型暫不支援直接建立。你仍可先把預設填入輸入框，再讓 Agent 協助建立定時任務。",
+    "emptyHint": "預設定時器需要綁定到具體會話。先打開單一 Agent 會話，再點擊右上角時鐘按鈕即可一鍵啟用。",
+    "recommended": "預設推薦",
+    "roles": {
+      "all": "全部",
+      "product": "產品",
+      "content": "內容",
+      "operations": "營運",
+      "sales": "銷售",
+      "research": "投研"
+    },
+    "packs": {
+      "all": "全部",
+      "saasProduct": "SaaS 產品包",
+      "contentGrowth": "內容增長包",
+      "recruitingOps": "招聘營運包",
+      "salesFollowUp": "銷售跟進包",
+      "researchMonitoring": "投研監控包"
+    },
+    "actions": {
+      "useNow": "立即啟用",
+      "fillPrompt": "填入輸入框",
+      "customize": "自訂建立",
+      "browseAllPacks": "查看全部行業包",
+      "viewAllInPack": "查看全部 {{count}} 個預設",
+      "showLessInPack": "收合部分模板"
+    },
+    "categories": {
+      "research": "資訊追蹤",
+      "planning": "每日規劃",
+      "review": "收工復盤",
+      "reporting": "週報總結",
+      "operations": "業務營運"
+    },
+    "packDetails": {
+      "presetCount": "個預設",
+      "bestForLabel": "適合誰",
+      "outcomeLabel": "你會得到什麼",
+      "all": {
+        "title": "全部行業模板包",
+        "description": "查看涵蓋產品、增長、招聘、銷售與投研五類場景的完整預置庫。",
+        "bestFor": "還在探索定時自動化最適合落在哪些工作流上的團隊。",
+        "outcome": "先快速比較不同運營方式，再收斂到最適合自己團隊的行業包。"
+      },
+      "saasProduct": {
+        "description": "面向產品型 SaaS 團隊，重點覆蓋使用者行為、需求優先級、競品動態與每週執行節奏。",
+        "bestFor": "產品經理、產品營運，以及想先從一個強預設包起步的創業團隊。",
+        "outcome": "更早發現使用異動，持續校準優先級，並用更低成本維持穩定的決策節奏。"
+      },
+      "contentGrowth": {
+        "description": "面向內容與增長團隊，圍繞選題發現、排期巡檢、增長實驗與受眾訊號建立可重複使用的工作流。",
+        "bestFor": "內容負責人、增長營運，以及人手有限但要持續做自然增長的團隊。",
+        "outcome": "持續維持內容供給、減少選題斷檔，把零散的增長動作沉澱成穩定節奏。"
+      },
+      "recruitingOps": {
+        "description": "面向招聘營運場景，協助團隊每天掌握候選人流轉、面試回饋與各職位推進狀態。",
+        "bestFor": "招聘負責人、用人主管，以及同時推進多個職位與候選人的團隊。",
+        "outcome": "更快發現流程卡點，及時推進停滯候選人，並用更清楚的摘要支撐招聘決策。"
+      },
+      "salesFollowUp": {
+        "description": "面向銷售跟進場景，重點解決回覆節奏、商機老化預警與漏跟進問題。",
+        "bestFor": "銷售、創辦人親自跟單的團隊，以及不能承受跟進掉線的營收團隊。",
+        "outcome": "更早拉回停滯商機，維持穩定跟進節奏，在管道品質惡化前看見下一步動作。"
+      },
+      "researchMonitoring": {
+        "description": "面向投研與情報監控場景，涵蓋政策訊號、市場變化、競品追蹤與結構化週總結。",
+        "bestFor": "分析師、投資研究團隊、策略團隊，以及需要長期追蹤動態產業的人。",
+        "outcome": "降低資訊延遲，讓監控更持續穩定，並把分散更新收斂成更清楚的研究判斷。"
+      }
+    },
+    "items": {
+      "aiDigest": {
+        "name": "AI 情報晨報",
+        "description": "每個工作日自動追蹤最新 AI 模型、產品與產業動態，整理成可執行的簡報。",
+        "scheduleDescription": "每個工作日 09:00",
+        "message": "請追蹤過去 24 小時內最新的 AI 模型、產品、融資、政策或產業動態，輸出 5 條最重要的訊號，並分別說明影響、風險與可執行建議。"
+      },
+      "competitorWatch": {
+        "name": "競品動態追蹤",
+        "description": "每天下午回看競品產品、定價、功能發布或行銷動作，避免重要變化被漏掉。",
+        "scheduleDescription": "每個工作日 14:00",
+        "message": "請追蹤重點競品今天是否有新的產品發布、功能更新、價格調整、渠道動作或聲量變化，整理成一份包含影響判斷與應對建議的競品摘要。"
+      },
+      "morningFocus": {
+        "name": "開工聚焦清單",
+        "description": "每天上午自動盤點目前會話上下文，給出當天最值得先做的事情與推進順序。",
+        "scheduleDescription": "每個工作日 09:30",
+        "message": "請根據目前會話與既有上下文，整理今天最重要的 3 個優先事項、可能的阻塞、建議的推進順序，以及第一小時最值得立即執行的動作。"
+      },
+      "contentRadar": {
+        "name": "內容選題雷達",
+        "description": "每週固定兩次生成值得撰寫、發布或跟進的主題候選，適合內容與增長團隊。",
+        "scheduleDescription": "每週二、週四 11:00",
+        "message": "請結合目前會話方向，生成 5 個值得輸出的內容選題或傳播角度，並說明受眾、核心觀點、建議標題方向以及適合發布的渠道。"
+      },
+      "saasUsageReview": {
+        "name": "活躍使用者異動復盤",
+        "description": "每天上午自動檢查活躍使用者、使用頻率與關鍵行為訊號，適合產品與營運一起盯住異常變化。",
+        "scheduleDescription": "每個工作日 10:00",
+        "message": "請結合目前會話中的產品目標與使用者上下文，復盤最近的活躍使用者變化、使用頻率異常、功能使用偏移與潛在流失訊號，並說明最值得優先排查的原因與後續動作。"
+      },
+      "backlogPrioritization": {
+        "name": "需求池優先級巡檢",
+        "description": "每週固定兩次回看需求池，幫助產品團隊及時重新排序並辨識高風險需求。",
+        "scheduleDescription": "每週二、週四 15:30",
+        "message": "請根據目前會話中的需求、問題、目標與回饋上下文，重新審視需求池優先級，列出最應該提前處理的事項、可以延後的內容、存在風險的需求，以及建議排序的依據。"
+      },
+      "contentCalendar": {
+        "name": "內容排期巡檢",
+        "description": "每週多次檢查接下來幾天的內容排期、主題覆蓋與渠道節奏，適合內容增長團隊。",
+        "scheduleDescription": "每週一、週三、週五 10:00",
+        "message": "請檢查目前會話中的內容計畫與傳播目標，整理未來幾天的內容排期建議，指出主題空檔、渠道節奏問題、最需要補位的內容，以及最值得加推的題材。"
+      },
+      "growthExperimentReview": {
+        "name": "增長實驗復盤",
+        "description": "每週中固定回顧增長實驗表現，及時總結有效動作、異常波動與下一步驗證方向。",
+        "scheduleDescription": "每週三 17:00",
+        "message": "請復盤本週正在推進的增長實驗或傳播動作，總結表現最好的嘗試、異常波動、可能原因、仍值得驗證的假設，以及下一步最值得執行的實驗建議。"
+      },
+      "candidatePipelineReview": {
+        "name": "候選人推進看板",
+        "description": "招聘營運每天自動梳理候選人階段分布、卡點與需要優先推進的人選。",
+        "scheduleDescription": "每個工作日 10:00",
+        "message": "請根據目前會話中的職缺、候選人與流程上下文，整理候選人推進看板，列出各階段人數、卡點、最需要推進的人選，以及今天最值得優先執行的招聘動作。"
+      },
+      "interviewFeedbackDigest": {
+        "name": "面試回饋歸納",
+        "description": "每天傍晚統一整理面試回饋，提煉候選人亮點、風險與是否推進的建議。",
+        "scheduleDescription": "每個工作日 18:00",
+        "message": "請彙總今天的面試回饋，歸納候選人的優勢、風險點、待驗證項與是否建議推進，並輸出一份便於招聘團隊快速決策的回饋摘要。"
+      },
+      "staleDealAlert": {
+        "name": "老化商機預警",
+        "description": "每天下午自動發現長時間未推進的商機，幫助銷售及時拉回跟進節奏。",
+        "scheduleDescription": "每個工作日 14:30",
+        "message": "請識別目前會話中的老化商機或長時間未跟進的客戶，列出停滯原因、成交風險、建議喚醒方式，以及今天最應該發出的跟進動作。"
+      },
+      "policySignalWatch": {
+        "name": "政策訊號監控",
+        "description": "工作日早上自動追蹤與產業、市場或技術相關的政策與監管訊號。",
+        "scheduleDescription": "每個工作日 08:30",
+        "message": "請追蹤過去 24 小時內與目前研究主題相關的政策、監管、產業指引或官方表態，提煉最關鍵的訊號，並說明它們對判斷、風險與後續研究方向的影響。"
+      },
+      "endOfDayReview": {
+        "name": "收工復盤",
+        "description": "在工作日結束前自動總結當天進展、遺留問題與明天的銜接事項。",
+        "scheduleDescription": "每個工作日 18:30",
+        "message": "請對今天的推進情況做收工復盤：總結已完成事項、未完成事項、目前風險，以及明天需要繼續跟進的內容，最後給出一份清楚的明日交接清單。"
+      },
+      "userFeedbackDigest": {
+        "name": "使用者回饋歸納",
+        "description": "每天下午自動整理使用者聲音，提煉高頻問題、情緒趨勢與最需要處理的事項。",
+        "scheduleDescription": "每個工作日 16:00",
+        "message": "請歸納今天收集到的使用者回饋、需求、抱怨或疑問，提煉高頻主題、使用者情緒、潛在風險，並列出最值得優先處理的 3 個問題。"
+      },
+      "weeklyReview": {
+        "name": "週五週報",
+        "description": "每週五固定生成一份週總結，方便回顧成果、風險與下週計畫。",
+        "scheduleDescription": "每週五 17:30",
+        "message": "請整理本週總結：列出關鍵成果、未決事項、風險提醒、仍需決策的問題，以及下週最重要的 3 個優先方向，輸出成一份結構化週報。"
+      },
+      "leadFollowUp": {
+        "name": "商機跟進清單",
+        "description": "工作日上午自動整理待跟進客戶、商機狀態與最該推進的下一步動作。",
+        "scheduleDescription": "每個工作日 10:30",
+        "message": "請根據目前會話中的銷售線索、客戶溝通或合作上下文，整理今天需要優先跟進的商機，列出目前狀態、風險點、建議回覆方向與下一步推進動作。"
+      }
+    }
+  },
   "runNowSuccess": "任務已觸發執行",
   "notification": {
     "taskComplete": "任務完成",
