@@ -143,26 +143,26 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.12 }}
-            className='rounded-[30px] border border-gray-200 bg-[#111111] p-8 text-white shadow-[0_28px_80px_rgba(15,23,42,0.12)]'
+            className='rounded-[30px] border border-gray-200 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2f6_100%)] p-8 text-black shadow-[0_28px_80px_rgba(15,23,42,0.08)]'
           >
-            <div className='inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.24em] text-white/60'>
+            <div className='inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs uppercase tracking-[0.24em] text-gray-500 shadow-sm'>
               {dict.connect.panel_label}
             </div>
             <h2 className='mt-5 text-3xl font-semibold tracking-tight'>{dict.connect.panel_title}</h2>
-            <p className='mt-4 max-w-xl text-sm leading-7 text-white/72'>{dict.connect.panel_body}</p>
+            <p className='mt-4 max-w-xl text-sm leading-7 text-gray-600'>{dict.connect.panel_body}</p>
 
             <div className='mt-8 space-y-4'>
               {dict.connect.workflow.map((item, index) => (
                 <div
                   key={item.title}
-                  className='flex items-start gap-4 rounded-[22px] border border-white/10 bg-white/5 px-4 py-4'
+                  className='flex items-start gap-4 rounded-[22px] border border-gray-200 bg-white px-4 py-4 shadow-sm'
                 >
-                  <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-black'>
+                  <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-sm font-semibold text-white'>
                     {index + 1}
                   </div>
                   <div>
-                    <div className='text-base font-semibold text-white'>{item.title}</div>
-                    <p className='mt-1 text-sm leading-6 text-white/68'>{item.desc}</p>
+                    <div className='text-base font-semibold text-black'>{item.title}</div>
+                    <p className='mt-1 text-sm leading-6 text-gray-600'>{item.desc}</p>
                   </div>
                 </div>
               ))}
@@ -225,13 +225,13 @@ function ConnectorMarquee({
         {repeated.map((item, index) => (
           <div
             key={`${item.name}-${index}`}
-            className='flex min-w-[188px] shrink-0 items-center gap-3 rounded-[20px] border border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f4f5f7_100%)] px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.05)]'
+            className='flex shrink-0 items-center justify-center gap-3 rounded-[18px] border border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f4f5f7_100%)] px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.05)]'
           >
             <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'>
               <Image src={item.logo} alt='' width={24} height={24} className='h-6 w-6 object-contain' />
             </div>
-            <div className='min-w-0'>
-              <span className='block truncate text-sm font-medium tracking-tight text-gray-700'>{item.name}</span>
+            <div className='flex items-center'>
+              <span className='block text-center text-sm font-medium tracking-tight text-gray-700'>{item.name}</span>
             </div>
           </div>
         ))}
