@@ -15,7 +15,16 @@ concurrency:
 jobs:
   deploy:
     name: Deploy contextgo.io
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.SITE_DEPLOY_RUNNER_LABELS_JSON != '' &&
+          vars.SITE_DEPLOY_RUNNER_LABELS_JSON ||
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     defaults:
       run:
         shell: bash
@@ -31,7 +40,43 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          CHECKOUT_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+
+          REPO_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          WORKSPACE="${GITHUB_WORKSPACE}"
+
+          git config --global http.version HTTP/1.1
+          git config --global http.lowSpeedLimit 1000
+          git config --global http.lowSpeedTime 60
+          git config --global gc.auto 0
+          git config --global --add safe.directory "$WORKSPACE"
+
+          for attempt in 1 2 3 4 5; do
+            echo "Checkout attempt ${attempt}/5 for ${CHECKOUT_REF}"
+            rm -rf "${WORKSPACE}/.git"
+            find "$WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            git init "$WORKSPACE"
+            cd "$WORKSPACE"
+            git remote add origin "$REPO_URL"
+
+            if git fetch --no-tags --prune --depth=1 origin "$CHECKOUT_REF"; then
+              git checkout --detach FETCH_HEAD
+              git reset --hard FETCH_HEAD
+              break
+            fi
+
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::Failed to checkout ${CHECKOUT_REF} after 5 attempts"
+              exit 1
+            fi
+
+            sleep $((attempt * 15))
+          done
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
