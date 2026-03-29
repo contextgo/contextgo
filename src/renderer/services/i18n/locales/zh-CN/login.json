@@ -22,5 +22,22 @@
     "networkError": "连接失败，请稍后重试",
     "serverError": "服务器开小差了，请稍后重试",
     "unknown": "登录失败，请稍后再试"
+  },
+  "oauth": {
+    "title": "或使用以下方式继续",
+    "loading": "正在检查可用登录方式...",
+    "providers": {
+      "github": "使用 GitHub 登录",
+      "google": "使用 Google 登录"
+    },
+    "errors": {
+      "accessDenied": "第三方登录已取消或被拒绝",
+      "callbackFailed": "第三方登录失败，请重试。",
+      "emailNotAllowed": "当前账号未被允许登录。",
+      "emailRequired": "登录需要已验证的邮箱地址。",
+      "providerUnavailable": "当前登录方式尚未配置。",
+      "sessionExpired": "登录会话已过期，请重新尝试。",
+      "unknown": "第三方登录失败，请重试。"
+    }
   }
 }
