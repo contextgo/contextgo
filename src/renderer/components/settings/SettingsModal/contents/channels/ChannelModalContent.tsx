@@ -23,6 +23,7 @@ import DingTalkConfigForm from './DingTalkConfigForm';
 import LarkConfigForm from './LarkConfigForm';
 import TelegramConfigForm from './TelegramConfigForm';
 import WeixinConfigForm from './WeixinConfigForm';
+import PublicationBindingPanel from './publication/PublicationBindingPanel';
 
 type ChannelModelConfigKey =
   | 'assistant.telegram.defaultModel'
@@ -44,6 +45,10 @@ type ExtensionFieldSchema = {
 type ExtensionFieldValues = Record<string, Record<string, string | number | boolean>>;
 
 const BUILTIN_CHANNEL_TYPES = new Set(['telegram', 'lark', 'dingtalk', 'weixin', 'slack', 'discord']);
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * Internal hook: wraps useGeminiModelSelection with ConfigStorage persistence
@@ -325,8 +330,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.assistant.disableFailed', 'Failed to disable plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setEnableLoading(false);
     }
@@ -367,8 +372,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.assistant.disableFailed', 'Failed to disable plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setLarkEnableLoading(false);
     }
@@ -408,8 +413,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.dingtalk.disableFailed', 'Failed to disable DingTalk plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setDingtalkEnableLoading(false);
     }
@@ -446,8 +451,8 @@ const ChannelModalContent: React.FC = () => {
           Message.error(result.msg || t('settings.weixin.disableFailed', 'Failed to disable WeChat plugin'));
         }
       }
-    } catch (error: any) {
-      Message.error(error.message);
+    } catch (error) {
+      Message.error(getErrorMessage(error));
     } finally {
       setWeixinEnableLoading(false);
     }
@@ -530,8 +535,8 @@ const ChannelModalContent: React.FC = () => {
             );
           }
         }
-      } catch (error: any) {
-        Message.error(error.message || String(error));
+      } catch (error) {
+        Message.error(getErrorMessage(error));
       } finally {
         setExtensionLoadingMap((prev) => ({ ...prev, [pluginType]: false }));
       }
@@ -746,7 +751,7 @@ const ChannelModalContent: React.FC = () => {
         content: renderExtensionConfigForm(status),
       }));
 
-    const extensionTypeSet = new Set(extensionChannels.map((channel) => String(channel.id).toLowerCase()));
+    const extensionTypeSet = new Set(extensionChannels.map((channelConfig) => String(channelConfig.id).toLowerCase()));
     const comingSoonChannels: ChannelConfig[] = [
       {
         id: 'slack',
@@ -778,7 +783,7 @@ const ChannelModalContent: React.FC = () => {
           </div>
         ),
       },
-    ].filter((channel) => !extensionTypeSet.has(String(channel.id).toLowerCase()));
+    ].filter((channelConfig) => !extensionTypeSet.has(String(channelConfig.id).toLowerCase()));
 
     return [telegramChannel, larkChannel, dingtalkChannel, weixinChannel, ...extensionChannels, ...comingSoonChannels];
   }, [
@@ -855,6 +860,8 @@ const ChannelModalContent: React.FC = () => {
             />
           ))}
         </div>
+
+        <PublicationBindingPanel />
       </div>
     </AionScrollArea>
   );

@@ -131,6 +131,10 @@ const validateChannelBinding = (binding: IChannelBinding): string | null => {
     return `${binding.scopeType} bindings require scopeKey`;
   }
 
+  if (binding.scopeType === 'temporary_override' && !binding.temporary) {
+    return 'temporary_override bindings must set temporary = true';
+  }
+
   if (binding.scopeType === 'remote_user' && binding.scopeKey.startsWith('group:')) {
     return 'remote_user bindings cannot target group-scoped keys; use remote_chat instead';
   }
@@ -1441,6 +1445,25 @@ export class AionUIDatabase {
     }
   }
 
+  getRemoteIdentities(connectorId?: string): IQueryResult<IRemoteIdentity[]> {
+    try {
+      const rows = connectorId
+        ? (this.db
+            .prepare(
+              'SELECT * FROM remote_identities WHERE connector_id = ? ORDER BY COALESCE(last_active, authorized_at) DESC, authorized_at DESC'
+            )
+            .all(connectorId) as IRemoteIdentityRow[])
+        : (this.db
+            .prepare(
+              'SELECT * FROM remote_identities ORDER BY COALESCE(last_active, authorized_at) DESC, authorized_at DESC'
+            )
+            .all() as IRemoteIdentityRow[]);
+      return { success: true, data: rows.map(rowToRemoteIdentity) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
   upsertRemoteIdentity(identity: IRemoteIdentity): IQueryResult<boolean> {
     try {
       const row = remoteIdentityToRow(identity);
@@ -1646,12 +1669,12 @@ export class AionUIDatabase {
         scopeKey === undefined
           ? (this.db
               .prepare(
-                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND scope_key IS NULL ORDER BY priority DESC, created_at ASC'
+                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND enabled = 1 AND scope_key IS NULL ORDER BY priority DESC, created_at ASC'
               )
               .all(connectorId, scopeType) as IChannelBindingRow[])
           : (this.db
               .prepare(
-                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND scope_key = ? ORDER BY priority DESC, created_at ASC'
+                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND enabled = 1 AND scope_key = ? ORDER BY priority DESC, created_at ASC'
               )
               .all(connectorId, scopeType, scopeKey) as IChannelBindingRow[]);
       return { success: true, data: rows.map(rowToChannelBinding) };

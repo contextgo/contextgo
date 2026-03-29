@@ -11,9 +11,101 @@ import { getPairingService } from '@process/channels/pairing/PairingService';
 import { ExtensionRegistry } from '@process/extensions';
 import { toAssetUrl } from '@process/extensions/protocol/assetProtocol';
 import * as path from 'path';
-import type { IChannelPluginStatus } from '@process/channels/types';
+import type { IChannelAudienceEntry, IChannelPluginStatus, IRemoteIdentity } from '@process/channels/types';
 import { hasPluginCredentials } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function toThreadParts(remoteChatId: string): { parentChatId?: string; threadId?: string } {
+  const marker = ':thread:';
+  const markerIndex = remoteChatId.indexOf(marker);
+  if (markerIndex < 0) {
+    return {};
+  }
+
+  return {
+    parentChatId: remoteChatId.slice(0, markerIndex),
+    threadId: remoteChatId.slice(markerIndex + marker.length) || undefined,
+  };
+}
+
+function buildRemoteChatAudience(identity: IRemoteIdentity): IChannelAudienceEntry {
+  const { parentChatId, threadId } = toThreadParts(identity.remoteChatId);
+  const chatType = identity.remoteChatType ?? (threadId ? 'thread' : undefined);
+  const title = identity.displayName || identity.remoteChatId;
+  const subtitle =
+    chatType === 'thread'
+      ? parentChatId
+        ? `Topic in ${parentChatId}`
+        : 'Topic / thread audience'
+      : chatType === 'group' || chatType === 'supergroup' || chatType === 'channel'
+        ? 'Group / shared audience'
+        : 'Direct or exact audience binding';
+
+  return {
+    key: identity.remoteChatId,
+    connectorId: identity.connectorId,
+    scopeType: 'remote_chat',
+    remoteIdentityId: identity.id,
+    remoteUserId: identity.remoteUserId,
+    remoteChatId: identity.remoteChatId,
+    remoteChatType: chatType,
+    parentChatId,
+    threadId,
+    displayName: identity.displayName,
+    title,
+    subtitle,
+    lastActive: identity.lastActive,
+  };
+}
+
+function buildRemoteUserAudiences(identities: IRemoteIdentity[]): IChannelAudienceEntry[] {
+  const uniqueByUser = new Map<string, IRemoteIdentity>();
+
+  for (const identity of identities) {
+    if (!identity.remoteUserId) {
+      continue;
+    }
+    if (
+      identity.remoteChatType === 'group' ||
+      identity.remoteChatType === 'thread' ||
+      identity.remoteChatType === 'topic'
+    ) {
+      continue;
+    }
+
+    const current = uniqueByUser.get(identity.remoteUserId);
+    if (!current || (identity.lastActive ?? 0) > (current.lastActive ?? 0)) {
+      uniqueByUser.set(identity.remoteUserId, identity);
+    }
+  }
+
+  return Array.from(uniqueByUser.values()).map((identity) => ({
+    key: identity.remoteUserId!,
+    connectorId: identity.connectorId,
+    scopeType: 'remote_user',
+    remoteIdentityId: identity.id,
+    remoteUserId: identity.remoteUserId,
+    remoteChatId: identity.remoteChatId,
+    remoteChatType: identity.remoteChatType,
+    displayName: identity.displayName,
+    title: identity.displayName || identity.remoteUserId!,
+    subtitle: identity.remoteChatId ? `Direct audience via ${identity.remoteChatId}` : 'Direct audience',
+    lastActive: identity.lastActive,
+  }));
+}
+
+function buildAudienceEntries(remoteIdentities: IRemoteIdentity[]): IChannelAudienceEntry[] {
+  const remoteChatAudiences = remoteIdentities.map(buildRemoteChatAudience);
+  const remoteUserAudiences = buildRemoteUserAudiences(remoteIdentities);
+
+  return [...remoteUserAudiences, ...remoteChatAudiences].toSorted(
+    (left, right) => (right.lastActive ?? 0) - (left.lastActive ?? 0)
+  );
+}
 
 /**
  * Initialize Channel IPC Bridge
@@ -158,9 +250,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       }
 
       return { success: true, data: Array.from(statusMap.values()) };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] getPluginStatus error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -177,9 +269,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] enablePlugin error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -196,9 +288,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] disablePlugin error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -210,9 +302,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       const manager = getChannelManager();
       const result = await manager.testPlugin(pluginId, token, extraConfig);
       return { success: true, data: result };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] testPlugin error:', error);
-      return { success: false, data: { success: false, error: error.message } };
+      return { success: false, data: { success: false, error: getErrorMessage(error) } };
     }
   });
 
@@ -225,9 +317,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     try {
       const data = await channelRepo.getPendingPairingRequests();
       return { success: true, data };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] getPendingPairings error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -246,9 +338,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
 
       console.log(`[ChannelBridge] Approved pairing for code ${code}`);
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] approvePairing error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -267,9 +359,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
 
       console.log(`[ChannelBridge] Rejected pairing code ${code}`);
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] rejectPairing error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -282,9 +374,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     try {
       const data = await channelRepo.getChannelUsers();
       return { success: true, data };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] getAuthorizedUsers error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -297,9 +389,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       await channelRepo.deleteChannelUser(userId);
       console.log(`[ChannelBridge] Revoked user ${userId}`);
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] revokeUser error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -312,9 +404,35 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     try {
       const data = await channelRepo.getChannelSessions();
       return { success: true, data };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] getActiveSessions error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  /**
+   * Get binding catalog for publication management.
+   */
+  channel.getBindingCatalog.provider(async (params?: { connectorId?: string }) => {
+    try {
+      const [connectors, agentProfiles, bindings, remoteIdentities] = await Promise.all([
+        channelRepo.getConnectorInstances(),
+        channelRepo.getAgentProfiles(),
+        channelRepo.getChannelBindings(params?.connectorId),
+        channelRepo.getRemoteIdentities(params?.connectorId),
+      ]);
+      return {
+        success: true,
+        data: {
+          connectors,
+          agentProfiles,
+          bindings,
+          audiences: buildAudienceEntries(remoteIdentities),
+        },
+      };
+    } catch (error) {
+      console.error('[ChannelBridge] getBindingCatalog error:', error);
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -325,9 +443,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     try {
       const data = await channelRepo.getChannelBindings(params?.connectorId);
       return { success: true, data };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] getBindings error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -338,9 +456,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     try {
       await channelRepo.upsertChannelBinding(binding);
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] upsertBinding error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -351,9 +469,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     try {
       await channelRepo.deleteChannelBinding(bindingId);
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] deleteBinding error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -365,9 +483,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       const handoffService = getChannelHandoffService();
       const data = await handoffService.handoffSession(params);
       return { success: true, data };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] handoffSession error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 
@@ -384,9 +502,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         return { success: false, msg: result.error };
       }
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[ChannelBridge] syncChannelSettings error:', error);
-      return { success: false, msg: error.message };
+      return { success: false, msg: getErrorMessage(error) };
     }
   });
 

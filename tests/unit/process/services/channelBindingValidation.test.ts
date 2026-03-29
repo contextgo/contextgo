@@ -211,4 +211,47 @@ describe('AionUIDatabase channel binding validation', () => {
       })
     );
   });
+
+  it('requires temporary_override bindings to stay marked as temporary', () => {
+    const result = database.upsertChannelBinding({
+      id: 'binding-invalid-temporary-override',
+      connectorId: 'connector-test',
+      scopeType: 'temporary_override',
+      scopeKey: 'group:team-alpha',
+      agentProfileId: 'agent-profile-test',
+      priority: 50,
+      enabled: true,
+      temporary: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('temporary_override bindings must set temporary = true');
+  });
+
+  it('accepts temporary_override bindings with a valid scope key', () => {
+    const temporaryOverrideBinding: IChannelBinding = {
+      id: 'binding-temporary-override',
+      connectorId: 'connector-test',
+      scopeType: 'temporary_override',
+      scopeKey: 'group:team-alpha',
+      agentProfileId: 'agent-profile-test',
+      priority: 50,
+      enabled: true,
+      temporary: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const result = database.upsertChannelBinding(temporaryOverrideBinding);
+
+    expect(result.success).toBe(true);
+    expect(database.getChannelBinding(temporaryOverrideBinding.id).data).toEqual(
+      expect.objectContaining({
+        ...temporaryOverrideBinding,
+        updatedAt: expect.any(Number),
+      })
+    );
+  });
 });

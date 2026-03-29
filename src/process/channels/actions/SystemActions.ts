@@ -484,9 +484,10 @@ export const handleAgentShow: ActionHandler = async (context) => {
   const userId = context.channelUser?.id;
   const session = userId ? sessionManager.getSession(userId, context.chatId) : null;
   const currentAgent = session?.agentType || 'gemini';
+  const currentAgentProfileId = context.agentProfile?.id;
 
   // Get available agents dynamically
-  const availableAgents = getAvailableChannelAgents();
+  const availableAgents = await getAvailableChannelAgents(context.platform, context.pluginId);
 
   if (availableAgents.length === 0) {
     return createErrorResponse('No agents available');
@@ -497,7 +498,7 @@ export const handleAgentShow: ActionHandler = async (context) => {
     return createSuccessResponse({
       type: 'text',
       text: '', // Lark card includes the text
-      replyMarkup: createAgentSelectionCard(availableAgents, currentAgent),
+      replyMarkup: createAgentSelectionCard(availableAgents, currentAgent, currentAgentProfileId),
     });
   }
 
@@ -505,7 +506,7 @@ export const handleAgentShow: ActionHandler = async (context) => {
     return createSuccessResponse({
       type: 'text',
       text: '',
-      replyMarkup: createDingTalkAgentSelectionCard(availableAgents, currentAgent),
+      replyMarkup: createDingTalkAgentSelectionCard(availableAgents, currentAgent, currentAgentProfileId),
     });
   }
 
@@ -519,7 +520,7 @@ export const handleAgentShow: ActionHandler = async (context) => {
       `Current: <b>${getAgentDisplayName(currentAgent)}</b>`,
     ].join('\n'),
     parseMode: 'HTML',
-    replyMarkup: createAgentSelectionKeyboard(availableAgents, currentAgent),
+    replyMarkup: createAgentSelectionKeyboard(availableAgents, currentAgent, currentAgentProfileId),
   });
 };
 
@@ -538,20 +539,27 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
     return createErrorResponse('User not authorized');
   }
 
-  const newAgentType = params?.agentType as ChannelAgentType;
+  const overrideAgentProfileId = params?.agentProfileId;
+  const newAgentType = params?.agentType as ChannelAgentType | undefined;
+  const routeResolver = getChannelRouteResolver();
 
-  // Validate agent type is available
-  const availableAgents = getAvailableChannelAgents();
-  const isValidAgent = availableAgents.some((agent) => agent.type === newAgentType);
-  if (!newAgentType || !isValidAgent) {
-    return createErrorResponse('Invalid or unavailable agent type');
+  // Validate agent selection is available
+  const availableAgents = await getAvailableChannelAgents(context.platform, context.pluginId);
+  const selectedAgent = availableAgents.find((agent) =>
+    overrideAgentProfileId ? agent.agentProfileId === overrideAgentProfileId : agent.type === newAgentType
+  );
+  if ((!overrideAgentProfileId && !newAgentType) || !selectedAgent) {
+    return createErrorResponse('Invalid or unavailable agent selection');
   }
 
   // Get current session (scoped by chatId)
   const existingSession = sessionManager.getSession(context.channelUser.id, context.chatId);
 
   // If same agent, no need to switch
-  if (existingSession?.agentType === newAgentType) {
+  if (
+    (overrideAgentProfileId && context.agentProfile?.id === overrideAgentProfileId) ||
+    (!overrideAgentProfileId && newAgentType && existingSession?.agentType === newAgentType)
+  ) {
     const markup =
       context.platform === 'lark'
         ? createMainMenuCard()
@@ -560,7 +568,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
           : createMainMenuKeyboard();
     return createSuccessResponse({
       type: 'text',
-      text: `✓ Already using <b>${getAgentDisplayName(newAgentType)}</b>`,
+      text: `✓ Already using <b>${selectedAgent.emoji} ${selectedAgent.name}</b>`,
       parseMode: 'HTML',
       replyMarkup: markup,
     });
@@ -581,15 +589,17 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
   }
   await sessionManager.clearSession(context.channelUser.id, context.chatId);
 
+  let switchedAgentName = selectedAgent.name;
   try {
-    const route = await getChannelRouteResolver().resolveAuthorizedRoute({
+    const route = await routeResolver.resolveAuthorizedRoute({
       platform: context.platform,
       pluginId: context.pluginId,
       platformUserId: context.userId,
       chatId: context.chatId,
       displayName: context.displayName,
       forceNewConversation: true,
-      overrideAgentType: newAgentType,
+      overrideAgentType: overrideAgentProfileId ? undefined : newAgentType,
+      overrideAgentProfileId,
     });
     await sessionManager.storeSession(route.session);
     context.connector = route.connector;
@@ -599,6 +609,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
     context.externalSession = route.externalSession;
     context.sessionId = route.session.id;
     context.conversationId = route.conversation.id;
+    switchedAgentName = route.agentProfile.name;
   } catch (error) {
     return createErrorResponse(`Failed to switch agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -612,7 +623,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
   return createSuccessResponse({
     type: 'text',
     text: [
-      `✓ <b>Switched to ${getAgentDisplayName(newAgentType)}</b>`,
+      `✓ <b>Switched to ${switchedAgentName}</b>`,
       '',
       'A new conversation has been started.',
       '',
@@ -667,26 +678,64 @@ function getAgentEmoji(backend: string): string {
  * Get available agents for channel selection
  * Filters detected agents to only those supported by channels
  */
-function getAvailableChannelAgents(): AgentDisplayInfo[] {
+async function getAvailableChannelAgents(platform: PluginType, pluginId?: string): Promise<AgentDisplayInfo[]> {
   const detectedAgents = acpDetector.getDetectedAgents();
   const availableAgents: AgentDisplayInfo[] = [];
   const seenTypes = new Set<ChannelAgentType>();
+  const routeResolver = getChannelRouteResolver();
 
   // Always include Gemini as it's built-in
-  availableAgents.push({ type: 'gemini', emoji: '🤖', name: 'Gemini' });
+  const geminiProfile = await routeResolver.resolveAgentProfileForSelection({
+    platform,
+    pluginId,
+    agentType: 'gemini',
+  });
+  availableAgents.push({
+    type: 'gemini',
+    emoji: '🤖',
+    name: 'Gemini',
+    agentProfileId: geminiProfile.id,
+  });
   seenTypes.add('gemini');
 
   // Add detected ACP agents (claude, codex, etc.)
-  for (const agent of detectedAgents) {
+  const candidateAgents = detectedAgents.flatMap((agent) => {
     const channelType = backendToChannelAgentType(agent.backend);
-    if (channelType && !seenTypes.has(channelType)) {
-      availableAgents.push({
-        type: channelType,
-        emoji: getAgentEmoji(agent.backend),
-        name: agent.name,
-      });
-      seenTypes.add(channelType);
+    if (!channelType || seenTypes.has(channelType)) {
+      return [];
     }
+
+    return [
+      {
+        channelType,
+        backend: agent.backend,
+        name: agent.name,
+      },
+    ];
+  });
+
+  const resolvedCandidates = await Promise.all(
+    candidateAgents.map(async (agent) => ({
+      type: agent.channelType,
+      emoji: getAgentEmoji(agent.backend),
+      name: agent.name,
+      agentProfileId: (
+        await routeResolver.resolveAgentProfileForSelection({
+          platform,
+          pluginId,
+          agentType: agent.channelType,
+        })
+      ).id,
+    }))
+  );
+
+  for (const candidate of resolvedCandidates) {
+    if (seenTypes.has(candidate.type)) {
+      continue;
+    }
+
+    availableAgents.push(candidate);
+    seenTypes.add(candidate.type);
   }
 
   return availableAgents;

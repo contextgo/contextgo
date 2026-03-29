@@ -1117,6 +1117,7 @@ export const extensions = {
 // ==================== Channel API ====================
 
 import type {
+  IChannelBindingCatalog,
   IChannelBinding,
   IChannelHandoffRequest,
   IChannelHandoffResult,
@@ -1153,6 +1154,9 @@ export const channel = {
   getActiveSessions: bridge.buildProvider<IBridgeResponse<IChannelSession[]>, void>('channel.get-active-sessions'),
 
   // Binding Management
+  getBindingCatalog: bridge.buildProvider<IBridgeResponse<IChannelBindingCatalog>, { connectorId?: string }>(
+    'channel.get-binding-catalog'
+  ),
   getBindings: bridge.buildProvider<IBridgeResponse<IChannelBinding[]>, { connectorId?: string } | void>(
     'channel.get-bindings'
   ),
