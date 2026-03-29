@@ -73,6 +73,10 @@ export const emitGroupTurnState = (
       name: conversation.model.name,
       useModel: conversation.model.useModel,
     },
+    lastMessage: {
+      content: detail,
+      createdAt: Date.now(),
+    },
   };
 
   ipcBridge.conversation.turnCompleted.emit(event);

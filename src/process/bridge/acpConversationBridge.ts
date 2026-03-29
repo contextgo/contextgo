@@ -124,7 +124,7 @@ export function initAcpConversationBridge(
       ipcBridge.conversation.listChanged.emit({
         conversationId: conversation.id,
         action: 'created',
-        source: conversation.source || 'aionui',
+        source: conversation.source || 'contextgo',
       });
       await refreshTrayMenuSafely();
       return {

@@ -102,9 +102,9 @@
     "inspectElementDisable": "Öğe denetçisini devre dışı bırak"
   },
   "ppt": {
-    "loading": "PPT önizlemesi başlatılıyor...",
-    "installing": "Önizleme bileşeni yükleniyor...",
-    "startFailed": "PPT önizlemesi başlatılamadı",
-    "installHint": "officecli'nin yüklü olduğundan emin olun: npm run postinstall"
+    "loading": "Sunum önizlemesi dönüştürülüyor...",
+    "installing": "Sunum önizlemesi hazırlanıyor...",
+    "startFailed": "PPT önizlemesi oluşturulamadı",
+    "installHint": "LibreOffice kurun ve `soffice` komutunun PATH içinden çalıştığından emin olun."
   }
 }

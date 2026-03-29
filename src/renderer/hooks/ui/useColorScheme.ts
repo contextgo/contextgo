@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 export type ColorScheme = 'default';
 
 const DEFAULT_COLOR_SCHEME: ColorScheme = 'default';
-const COLOR_SCHEME_CACHE_KEY = '__aionui_colorScheme';
+const COLOR_SCHEME_CACHE_KEY = '__contextgo_colorScheme';
 
 /**
  * Initialize color scheme immediately when module loads

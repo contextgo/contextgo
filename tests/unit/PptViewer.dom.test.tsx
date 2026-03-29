@@ -4,31 +4,37 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { render, screen, act } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// --- Mocks ---
+const convertInvokeMock = vi.fn();
+const openFileInvokeMock = vi.fn();
+const showItemInFolderInvokeMock = vi.fn();
+const infoMessageMock = vi.fn();
+const errorMessageMock = vi.fn();
+const isElectronDesktopMock = vi.fn(() => true);
 
-const startInvokeMock = vi.fn();
-const stopInvokeMock = vi.fn();
-const statusOnMock = vi.fn();
-const statusUnsubMock = vi.fn();
-
-vi.mock('../../src/common', () => ({
+vi.mock('@/common', () => ({
   ipcBridge: {
-    pptPreview: {
-      start: {
-        invoke: (...args: any[]) => startInvokeMock(...args),
+    document: {
+      convert: {
+        invoke: (...args: any[]) => convertInvokeMock(...args),
       },
-      stop: {
-        invoke: (...args: any[]) => stopInvokeMock(...args),
+    },
+    shell: {
+      openFile: {
+        invoke: (...args: any[]) => openFileInvokeMock(...args),
       },
-      status: {
-        on: (...args: any[]) => statusOnMock(...args),
+      showItemInFolder: {
+        invoke: (...args: any[]) => showItemInFolderInvokeMock(...args),
       },
     },
   },
+}));
+
+vi.mock('@/renderer/utils/platform', () => ({
+  isElectronDesktop: () => isElectronDesktopMock(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -38,6 +44,20 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@arco-design/web-react', () => ({
+  Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
+    <button onClick={onClick} type='button'>
+      {children}
+    </button>
+  ),
+  Message: {
+    useMessage: () => [
+      {
+        info: infoMessageMock,
+        error: errorMessageMock,
+      },
+      <div data-testid='message-holder' key='message-holder' />,
+    ],
+  },
   Spin: ({ size }: { size?: number }) => (
     <div data-testid='spin' data-size={size}>
       loading...
@@ -45,9 +65,9 @@ vi.mock('@arco-design/web-react', () => ({
   ),
 }));
 
-vi.mock('../../src/renderer/components/media/WebviewHost', () => ({
-  default: ({ url, className }: { url: string; className?: string }) => (
-    <div data-testid='webview-host' data-url={url} className={className} />
+vi.mock('../../src/renderer/pages/conversation/Preview/components/viewers/PDFViewer', () => ({
+  default: ({ filePath, hideToolbar }: { filePath: string; hideToolbar?: boolean }) => (
+    <div data-testid='pdf-preview' data-file-path={filePath} data-hide-toolbar={String(Boolean(hideToolbar))} />
   ),
 }));
 
@@ -56,16 +76,13 @@ import PptViewer from '../../src/renderer/pages/conversation/Preview/components/
 describe('PptViewer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    statusOnMock.mockReturnValue(statusUnsubMock);
-    stopInvokeMock.mockResolvedValue(undefined);
+    isElectronDesktopMock.mockReturnValue(true);
+    openFileInvokeMock.mockResolvedValue(undefined);
+    showItemInFolderInvokeMock.mockResolvedValue(undefined);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('shows loading spinner initially', () => {
-    startInvokeMock.mockReturnValue(new Promise(() => {})); // never resolves
+  it('shows loading spinner while conversion is pending', () => {
+    convertInvokeMock.mockReturnValue(new Promise(() => {}));
 
     render(<PptViewer filePath='/test/file.pptx' />);
 
@@ -73,113 +90,89 @@ describe('PptViewer', () => {
     expect(screen.getByText('preview.ppt.loading')).toBeInTheDocument();
   });
 
-  it('shows error when filePath is not provided', () => {
+  it('shows error when file path is missing', () => {
     render(<PptViewer />);
 
     expect(screen.getByText('preview.errors.missingFilePath')).toBeInTheDocument();
-  });
-
-  it('renders webview after successful start', async () => {
-    startInvokeMock.mockResolvedValue({ url: 'http://localhost:12345' });
-
-    await act(async () => {
-      render(<PptViewer filePath='/test/file.pptx' />);
-    });
-
-    // Wait for the 300ms delay
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 350));
-    });
-
-    const webview = screen.getByTestId('webview-host');
-    expect(webview).toBeInTheDocument();
-    expect(webview.getAttribute('data-url')).toBe('http://localhost:12345');
-  });
-
-  it('shows error when start fails', async () => {
-    startInvokeMock.mockRejectedValue(new Error('spawn failed'));
-
-    await act(async () => {
-      render(<PptViewer filePath='/test/file.pptx' />);
-    });
-
-    expect(screen.getByText('spawn failed')).toBeInTheDocument();
     expect(screen.getByText('preview.ppt.installHint')).toBeInTheDocument();
   });
 
-  it('subscribes to status emitter and unsubscribes on unmount', async () => {
-    startInvokeMock.mockReturnValue(new Promise(() => {}));
-
-    const { unmount } = render(<PptViewer filePath='/test/file.pptx' />);
-
-    expect(statusOnMock).toHaveBeenCalledTimes(1);
-    expect(statusOnMock).toHaveBeenCalledWith(expect.any(Function));
-
-    unmount();
-
-    expect(statusUnsubMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('calls stop on unmount', async () => {
-    startInvokeMock.mockReturnValue(new Promise(() => {}));
-
-    const { unmount } = render(<PptViewer filePath='/test/file.pptx' />);
-
-    unmount();
-
-    expect(stopInvokeMock).toHaveBeenCalledWith({ filePath: '/test/file.pptx' });
-  });
-
-  it('shows installing text when status emitter fires installing', async () => {
-    startInvokeMock.mockReturnValue(new Promise(() => {}));
+  it('renders PDF preview after successful conversion in desktop mode', async () => {
+    convertInvokeMock.mockResolvedValue({
+      to: 'ppt-pdf',
+      result: {
+        success: true,
+        data: {
+          pdfPath: '/cache/preview.pdf',
+        },
+      },
+    });
 
     render(<PptViewer filePath='/test/file.pptx' />);
 
-    // Initially shows loading
-    expect(screen.getByText('preview.ppt.loading')).toBeInTheDocument();
-
-    // Get the status handler and fire installing event
-    const statusHandler = statusOnMock.mock.calls[0][0];
-
-    act(() => {
-      statusHandler({ state: 'installing' });
+    const preview = await screen.findByTestId('pdf-preview');
+    expect(preview).toHaveAttribute('data-file-path', '/cache/preview.pdf');
+    expect(preview).toHaveAttribute('data-hide-toolbar', 'true');
+    await waitFor(() => {
+      expect(convertInvokeMock).toHaveBeenCalledWith({
+        filePath: '/test/file.pptx',
+        to: 'ppt-pdf',
+      });
     });
-
-    expect(screen.getByText('preview.ppt.installing')).toBeInTheDocument();
   });
 
-  it('reverts to loading text when status emitter fires starting', async () => {
-    startInvokeMock.mockReturnValue(new Promise(() => {}));
+  it('renders iframe after successful conversion in web mode', async () => {
+    isElectronDesktopMock.mockReturnValue(false);
+    convertInvokeMock.mockResolvedValue({
+      to: 'ppt-pdf',
+      result: {
+        success: true,
+        data: {
+          pdfPath: '/cache/generated preview.pdf',
+        },
+      },
+    });
 
     render(<PptViewer filePath='/test/file.pptx' />);
 
-    const statusHandler = statusOnMock.mock.calls[0][0];
-
-    // Switch to installing
-    act(() => {
-      statusHandler({ state: 'installing' });
-    });
-    expect(screen.getByText('preview.ppt.installing')).toBeInTheDocument();
-
-    // Switch back to starting
-    act(() => {
-      statusHandler({ state: 'starting' });
-    });
-    expect(screen.getByText('preview.ppt.loading')).toBeInTheDocument();
+    const iframe = await screen.findByTitle('preview.pptTitle');
+    expect(iframe).toHaveAttribute('src', '/api/preview-file?path=%2Fcache%2Fgenerated%20preview.pdf');
   });
 
-  it('does not update status after unmount (cancelled)', async () => {
-    startInvokeMock.mockReturnValue(new Promise(() => {}));
+  it('shows conversion error and fallback actions when conversion fails', async () => {
+    convertInvokeMock.mockResolvedValue({
+      to: 'ppt-pdf',
+      result: {
+        success: false,
+        error: 'LibreOffice conversion failed',
+      },
+    });
 
-    const { unmount } = render(<PptViewer filePath='/test/file.pptx' />);
+    render(<PptViewer filePath='/test/file.pptx' />);
 
-    const statusHandler = statusOnMock.mock.calls[0][0];
+    expect(await screen.findByText('LibreOffice conversion failed')).toBeInTheDocument();
+    expect(screen.getByText('preview.ppt.installHint')).toBeInTheDocument();
+    expect(screen.getByText('preview.pptOpenFile')).toBeInTheDocument();
+    expect(screen.getByText('preview.pptShowLocation')).toBeInTheDocument();
+  });
 
-    unmount();
+  it('opens the original file and reveals it in folder from fallback actions', async () => {
+    convertInvokeMock.mockResolvedValue({
+      to: 'ppt-pdf',
+      result: {
+        success: false,
+        error: 'LibreOffice conversion failed',
+      },
+    });
 
-    // Should not throw or cause state update
-    expect(() => {
-      statusHandler({ state: 'installing' });
-    }).not.toThrow();
+    render(<PptViewer filePath='/test/file.pptx' />);
+
+    await screen.findByText('LibreOffice conversion failed');
+
+    fireEvent.click(screen.getByText('preview.pptOpenFile'));
+    fireEvent.click(screen.getByText('preview.pptShowLocation'));
+
+    expect(openFileInvokeMock).toHaveBeenCalledWith('/test/file.pptx');
+    expect(showItemInFolderInvokeMock).toHaveBeenCalledWith('/test/file.pptx');
   });
 });

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,9 +10,9 @@
  * daily log files on disk.
  *
  * Log file location (managed by electron-log):
- *   - macOS:   ~/Library/Logs/AionUi/YYYY-MM-DD.log
- *   - Windows: %USERPROFILE%\AppData\Roaming\AionUi\logs\YYYY-MM-DD.log
- *   - Linux:   ~/.config/AionUi/logs/YYYY-MM-DD.log
+ *   - macOS:   ~/Library/Logs/ContextGo/YYYY-MM-DD.log
+ *   - Windows: %USERPROFILE%\AppData\Roaming\ContextGo\logs\YYYY-MM-DD.log
+ *   - Linux:   ~/.config/ContextGo/logs/YYYY-MM-DD.log
  *
  * Users can share the relevant date's file for debugging (#1157).
  *

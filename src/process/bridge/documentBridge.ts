@@ -63,6 +63,7 @@ const ensureExtension = (filePath: string, allowed: Set<string>) => {
  * - Word → Markdown
  * - Excel → JSON
  * - PowerPoint → JSON
+ * - PowerPoint → PDF
  *
  * Register IPC handler to respond to document conversion requests from renderer process
  * Supports the following conversion types:
@@ -95,6 +96,14 @@ export function initDocumentBridge(): void {
           return unsupportedResult(to, 'Only PowerPoint files can be converted to JSON');
         }
         const result = await conversionService.pptToJson(filePath);
+        return { to, result };
+      }
+      case 'ppt-pdf': {
+        // PowerPoint 演示文稿转 PDF / PowerPoint presentation to PDF
+        if (!ensureExtension(filePath, PPT_EXTENSIONS)) {
+          return unsupportedResult(to, 'Only PowerPoint files can be converted to PDF');
+        }
+        const result = await conversionService.pptToPdf(filePath);
         return { to, result };
       }
       default:

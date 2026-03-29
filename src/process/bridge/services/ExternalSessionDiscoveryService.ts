@@ -339,7 +339,7 @@ export class ExternalSessionDiscoveryService {
         ...CLAUDE_IMPORT_PLACEHOLDER_PROVIDER,
         useModel: session.model || CLAUDE_IMPORT_PLACEHOLDER_PROVIDER.useModel,
       },
-      source: 'aionui',
+      source: 'contextgo',
       extra: {
         workspace: session.workspace,
         customWorkspace: true,
@@ -372,7 +372,7 @@ export class ExternalSessionDiscoveryService {
         ...CODEX_IMPORT_PLACEHOLDER_PROVIDER,
         useModel: session.model || CODEX_IMPORT_PLACEHOLDER_PROVIDER.useModel,
       },
-      source: 'aionui',
+      source: 'contextgo',
       extra: {
         workspace: session.workspace,
         customWorkspace: true,
@@ -405,7 +405,7 @@ export class ExternalSessionDiscoveryService {
         ...GEMINI_IMPORT_PLACEHOLDER_PROVIDER,
         useModel: session.model || GEMINI_IMPORT_PLACEHOLDER_PROVIDER.useModel,
       },
-      source: 'aionui',
+      source: 'contextgo',
       extra: {
         workspace: session.workspace,
         customWorkspace: true,
@@ -438,7 +438,7 @@ export class ExternalSessionDiscoveryService {
         ...OPENCODE_IMPORT_PLACEHOLDER_PROVIDER,
         useModel: session.model || OPENCODE_IMPORT_PLACEHOLDER_PROVIDER.useModel,
       },
-      source: 'aionui',
+      source: 'contextgo',
       extra: {
         workspace: session.workspace,
         customWorkspace: true,
@@ -468,7 +468,7 @@ export class ExternalSessionDiscoveryService {
       type: 'openclaw-gateway',
       name: session.title || path.basename(session.workspace) || session.sessionId,
       model: {} as TProviderWithModel,
-      source: 'aionui',
+      source: 'contextgo',
       extra: {
         workspace: session.workspace,
         customWorkspace: true,

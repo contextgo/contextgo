@@ -19,7 +19,7 @@ import { DEFAULT_CODEX_MODELS, DEFAULT_CODEX_MODEL_ID } from '@/common/types/cod
 import type { AcpModelInfo } from '@/common/types/acpTypes';
 import { PERMISSION_DECISION_MAP } from '@/common/types/codex/types/permissionTypes';
 import { mapPermissionDecision } from '@/common/types/codex/utils';
-import { AIONUI_FILES_MARKER } from '@/common/config/constants';
+import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
@@ -246,8 +246,8 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     try {
       await this.bootstrap;
       const rawContentToSend = data.agentContent || data.content;
-      const contentToSend = rawContentToSend?.includes(AIONUI_FILES_MARKER)
-        ? rawContentToSend.split(AIONUI_FILES_MARKER)[0].trimEnd()
+      const contentToSend = rawContentToSend?.includes(CONTEXTGO_FILES_MARKER)
+        ? rawContentToSend.split(CONTEXTGO_FILES_MARKER)[0].trimEnd()
         : rawContentToSend;
 
       // Save user message to chat history only (renderer already inserts right-hand bubble)

@@ -361,7 +361,7 @@ describe('PreviewContext — persisted preview tabs', () => {
 
   it('ignores persisted html tabs during restore', () => {
     localStorage.setItem(
-      'aionui_preview_tabs',
+      'contextgo_preview_tabs',
       JSON.stringify([
         {
           id: 'html-tab',
@@ -377,7 +377,7 @@ describe('PreviewContext — persisted preview tabs', () => {
         },
       ])
     );
-    localStorage.setItem('aionui_preview_active_tab_id', 'html-tab');
+    localStorage.setItem('contextgo_preview_active_tab_id', 'html-tab');
 
     const { result } = renderHook(() => usePreviewContext(), { wrapper });
 
@@ -404,7 +404,7 @@ describe('PreviewContext — persisted preview tabs', () => {
       await tickPoll(200);
     });
 
-    const persistedTabs = JSON.parse(localStorage.getItem('aionui_preview_tabs') || '[]') as Array<{
+    const persistedTabs = JSON.parse(localStorage.getItem('contextgo_preview_tabs') || '[]') as Array<{
       id: string;
       contentType: string;
     }>;

@@ -6,6 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { IConversationRepository } from '../../src/process/services/database/IConversationRepository';
+import type { ISpaceService } from '../../src/process/services/space/ISpaceService';
 
 vi.mock('electron', () => ({ app: { getPath: vi.fn(() => '/tmp'), isPackaged: false } }));
 vi.mock('../../src/process/utils/initStorage', () => ({ ProcessChat: { get: vi.fn(async () => []) } }));
@@ -16,7 +17,7 @@ vi.mock('../../src/process/services/cron/cronServiceSingleton', () => ({
     updateJob: vi.fn(async () => {}),
   },
 }));
-vi.mock('../../src/process/initAgent', () => ({
+vi.mock('@process/utils/initAgent', () => ({
   createGeminiAgent: vi.fn(async () => ({ id: 'gen-id', type: 'gemini', name: 'test', extra: {} })),
   createAcpAgent: vi.fn(async () => ({ id: 'acp-id', type: 'acp', name: 'test', extra: {} })),
   createCodexAgent: vi.fn(async () => ({ id: 'codex-id', type: 'codex', name: 'test', extra: {} })),
@@ -33,6 +34,27 @@ function makeRepo(overrides: Partial<IConversationRepository> = {}): IConversati
     getMessages: vi.fn(() => ({ data: [], total: 0, hasMore: false })),
     insertMessage: vi.fn(),
     getUserConversations: vi.fn(() => ({ data: [], total: 0, hasMore: false })),
+    listAllConversations: vi.fn(() => []),
+    searchMessages: vi.fn(() => ({ items: [], total: 0, page: 1, pageSize: 20, hasMore: false })),
+    ...overrides,
+  };
+}
+
+function makeSpaceService(overrides: Partial<ISpaceService> = {}): ISpaceService {
+  return {
+    getSpace: vi.fn(),
+    listSpaces: vi.fn(async () => []),
+    createSpace: vi.fn(),
+    renameSpace: vi.fn(),
+    archiveSpace: vi.fn(),
+    ensureDefaultSpace: vi.fn(async () => ({
+      id: 'space-default',
+      name: 'My Space',
+      engine: 'affine',
+      isDefault: true,
+      createTime: 1,
+      modifyTime: 1,
+    })),
     ...overrides,
   };
 }
@@ -81,6 +103,34 @@ describe('ConversationServiceImpl.updateConversation', () => {
       expect.objectContaining({ extra: expect.objectContaining({ existing: true, newField: 1 }) })
     );
   });
+
+  it('normalizes workingDirectory and legacy workspace during updates', async () => {
+    const repo = makeRepo();
+    const svc = new ConversationServiceImpl(repo);
+
+    await svc.updateConversation('c1', {
+      extra: {
+        workingDirectory: '/wd/project',
+        runtimeValidation: {
+          expectedWorkingDirectory: '/wd/project',
+        },
+      },
+    } as any);
+
+    expect(repo.updateConversation).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        extra: expect.objectContaining({
+          workingDirectory: '/wd/project',
+          workspace: '/wd/project',
+          runtimeValidation: expect.objectContaining({
+            expectedWorkingDirectory: '/wd/project',
+            expectedWorkspace: '/wd/project',
+          }),
+        }),
+      })
+    );
+  });
 });
 
 describe('ConversationServiceImpl.createWithMigration', () => {
@@ -115,31 +165,54 @@ describe('ConversationServiceImpl.createConversation', () => {
 
   it('creates and saves a gemini conversation', async () => {
     const repo = makeRepo();
-    const svc = new ConversationServiceImpl(repo);
+    const spaceService = makeSpaceService();
+    const svc = new ConversationServiceImpl(repo, spaceService);
     const result = await svc.createConversation({
       type: 'gemini',
       model: { provider: 'google', model: 'gemini-2.0-flash' } as any,
       extra: { workspace: '/ws' },
     });
     expect(result.type).toBe('gemini');
+    expect(result.extra.spaceId).toBe('space-default');
+    expect(spaceService.ensureDefaultSpace).toHaveBeenCalled();
     expect(repo.createConversation).toHaveBeenCalledWith(expect.objectContaining({ type: 'gemini' }));
   });
 
   it('creates and saves an acp conversation', async () => {
     const repo = makeRepo();
-    const svc = new ConversationServiceImpl(repo);
+    const spaceService = makeSpaceService();
+    const svc = new ConversationServiceImpl(repo, spaceService);
     const result = await svc.createConversation({
       type: 'acp',
       model: { provider: 'anthropic', model: 'claude-3-5-sonnet' } as any,
       extra: { workspace: '/ws', backend: 'claude' },
     });
     expect(result.type).toBe('acp');
+    expect(result.extra.spaceId).toBe('space-default');
     expect(repo.createConversation).toHaveBeenCalledWith(expect.objectContaining({ type: 'acp' }));
+  });
+
+  it('keeps an explicit spaceId without creating a default space', async () => {
+    const repo = makeRepo();
+    const spaceService = makeSpaceService();
+    const svc = new ConversationServiceImpl(repo, spaceService);
+
+    const result = await svc.createConversation({
+      type: 'codex',
+      model: { provider: 'openai', model: 'gpt-5-codex' } as any,
+      extra: {
+        workspace: '/ws',
+        spaceId: 'space-explicit',
+      },
+    });
+
+    expect(result.extra.spaceId).toBe('space-explicit');
+    expect(spaceService.ensureDefaultSpace).not.toHaveBeenCalled();
   });
 
   it('throws for unknown conversation type', async () => {
     const repo = makeRepo();
-    const svc = new ConversationServiceImpl(repo);
+    const svc = new ConversationServiceImpl(repo, makeSpaceService());
     await expect(svc.createConversation({ type: 'unknown' as any, model: {} as any, extra: {} })).rejects.toThrow();
   });
 });

@@ -35,7 +35,7 @@ export interface ImageGenerationToolParams {
 }
 
 export class ImageGenerationTool extends BaseDeclarativeTool<ImageGenerationToolParams, ToolResult> {
-  static readonly Name: string = 'aionui_image_generation';
+  static readonly Name: string = 'contextgo_image_generation';
 
   constructor(
     private readonly config: Config,
