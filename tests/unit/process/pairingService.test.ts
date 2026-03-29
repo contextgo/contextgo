@@ -13,11 +13,13 @@ const { pairingRequestedEmit, userAuthorizedEmit, mockResolveConnectorInstance, 
     mockResolveConnectorInstance: vi.fn(),
     mockInferRemoteChatType: vi.fn(),
     mockDb: {
+      getConnectorInstances: vi.fn(),
       getPendingPairingRequests: vi.fn(),
       createPairingRequest: vi.fn(),
       getPairingRequestByCode: vi.fn(),
       updatePairingRequestStatus: vi.fn(),
       getRemoteIdentityByConnectorChat: vi.fn(),
+      getLegacyChannelUserByPlatform: vi.fn(),
       getChannelUsers: vi.fn(),
       upsertRemoteIdentity: vi.fn(),
       ensureChannelUserMirror: vi.fn(),
@@ -63,11 +65,16 @@ describe('PairingService', () => {
             : undefined
     );
 
+    mockDb.getConnectorInstances.mockReturnValue({
+      success: true,
+      data: [{ id: 'connector-b', platform: 'telegram' }],
+    });
     mockDb.getPendingPairingRequests.mockReturnValue({ success: true, data: [] });
     mockDb.createPairingRequest.mockReturnValue({ success: true });
     mockDb.getPairingRequestByCode.mockReturnValue({ success: true, data: null });
     mockDb.updatePairingRequestStatus.mockReturnValue({ success: true, data: true });
     mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: null });
+    mockDb.getLegacyChannelUserByPlatform.mockReturnValue({ success: true, data: null });
     mockDb.getChannelUsers.mockReturnValue({ success: true, data: [] });
     mockDb.upsertRemoteIdentity.mockReturnValue({ success: true, data: true });
     mockDb.ensureChannelUserMirror.mockReturnValue({
@@ -174,6 +181,47 @@ describe('PairingService', () => {
           authorizedAt: Date.now(),
         },
       ],
+    });
+
+    const authorized = await service.isUserAuthorized('user-1', 'telegram', 'user-1', 'telegram_b');
+
+    expect(authorized).toBe(false);
+  });
+
+  it('accepts legacy direct-chat authorization when only one connector exists', async () => {
+    const service = createService();
+    mockDb.getLegacyChannelUserByPlatform.mockReturnValue({
+      success: true,
+      data: {
+        id: 'assistant_user_legacy',
+        platformUserId: 'user-1',
+        platformType: 'telegram',
+        authorizedAt: Date.now(),
+      },
+    });
+
+    const authorized = await service.isUserAuthorized('user-1', 'telegram', 'user-1', 'telegram_b');
+
+    expect(authorized).toBe(true);
+  });
+
+  it('does not accept legacy direct-chat authorization when multiple connectors share the platform', async () => {
+    const service = createService();
+    mockDb.getConnectorInstances.mockReturnValue({
+      success: true,
+      data: [
+        { id: 'connector-a', platform: 'telegram' },
+        { id: 'connector-b', platform: 'telegram' },
+      ],
+    });
+    mockDb.getLegacyChannelUserByPlatform.mockReturnValue({
+      success: true,
+      data: {
+        id: 'assistant_user_legacy',
+        platformUserId: 'user-1',
+        platformType: 'telegram',
+        authorizedAt: Date.now(),
+      },
     });
 
     const authorized = await service.isUserAuthorized('user-1', 'telegram', 'user-1', 'telegram_b');

@@ -378,7 +378,8 @@ export class ChannelRouteResolver {
       params.platformUserId,
       params.platform,
       params.chatId,
-      params.displayName
+      params.displayName,
+      params.remoteChatType
     );
     const remoteIdentity = await this.ensureRemoteIdentity(
       connector,
@@ -473,7 +474,8 @@ export class ChannelRouteResolver {
     platformUserId: string,
     platform: PluginType,
     chatId: string,
-    displayName?: string
+    displayName?: string,
+    remoteChatType?: string
   ): Promise<IChannelUser> {
     const db = await getDatabase();
     const existingIdentity = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
@@ -500,7 +502,98 @@ export class ChannelRouteResolver {
       });
     }
 
+    const legacyBootstrapUser = await this.bootstrapLegacyDirectAuthorization({
+      connector,
+      platformUserId,
+      platform,
+      chatId,
+      remoteChatType,
+      displayName,
+    });
+    if (legacyBootstrapUser) {
+      return legacyBootstrapUser;
+    }
+
     throw new Error('User not authorized');
+  }
+
+  private async bootstrapLegacyDirectAuthorization(params: {
+    connector: IConnectorInstance;
+    platformUserId: string;
+    platform: PluginType;
+    chatId: string;
+    remoteChatType?: string;
+    displayName?: string;
+  }): Promise<IChannelUser | null> {
+    const db = await getDatabase();
+    const resolvedChatType = inferRemoteChatType({
+      chatId: params.chatId,
+      platformUserId: params.platformUserId,
+      remoteChatType: params.remoteChatType,
+    });
+    if (resolvedChatType === 'group') {
+      return null;
+    }
+
+    const connectors = db.getConnectorInstances();
+    if (!connectors.success || !connectors.data) {
+      return null;
+    }
+
+    const samePlatformConnectorCount = connectors.data.filter(
+      (connector) => connector.platform === params.platform
+    ).length;
+    if (samePlatformConnectorCount > 1) {
+      return null;
+    }
+
+    const legacyUserResult = db.getLegacyChannelUserByPlatform(params.platformUserId, params.platform);
+    if (!legacyUserResult.success || !legacyUserResult.data) {
+      return null;
+    }
+
+    const now = Date.now();
+    const remoteIdentity: IRemoteIdentity = {
+      id: `remote_identity_${uuid()}`,
+      connectorId: params.connector.id,
+      remoteUserId: params.platformUserId,
+      remoteChatId: params.chatId,
+      remoteChatType: resolvedChatType ?? 'direct',
+      displayName: params.displayName ?? legacyUserResult.data.displayName,
+      authorizedAt: legacyUserResult.data.authorizedAt,
+      lastActive: now,
+      legacyUserId: legacyUserResult.data.id,
+      metadata: {
+        source: 'legacy-direct-chat-bootstrap',
+      },
+    };
+    const upsertIdentityResult = db.upsertRemoteIdentity(remoteIdentity);
+    if (!upsertIdentityResult.success) {
+      throw new Error(upsertIdentityResult.error || 'Failed to bootstrap legacy authorization');
+    }
+
+    const mirrorUserResult = db.ensureChannelUserMirror({
+      remoteIdentityId: remoteIdentity.id,
+      platformUserId: params.platformUserId,
+      platformType: params.platform,
+      displayName: remoteIdentity.displayName,
+      authorizedAt: remoteIdentity.authorizedAt,
+      lastActive: remoteIdentity.lastActive,
+      sessionId: legacyUserResult.data.sessionId,
+    });
+    if (!mirrorUserResult.success || !mirrorUserResult.data) {
+      throw new Error(mirrorUserResult.error || 'Failed to create channel user mirror');
+    }
+
+    return toProjectedChannelUser({
+      remoteIdentityId: remoteIdentity.id,
+      platformUserId: remoteIdentity.remoteUserId ?? params.platformUserId,
+      platformType: params.platform,
+      displayName: remoteIdentity.displayName,
+      authorizedAt: remoteIdentity.authorizedAt,
+      lastActive: remoteIdentity.lastActive,
+      sessionId: mirrorUserResult.data.sessionId,
+    });
   }
 
   private async ensureRemoteIdentity(
@@ -528,7 +621,7 @@ export class ChannelRouteResolver {
         remoteChatType: resolvedChatType,
         displayName: displayName ?? byChat.data.displayName,
         lastActive: now,
-        legacyUserId: channelUser.id,
+        legacyUserId: byChat.data.legacyUserId,
       };
       db.upsertRemoteIdentity(nextIdentity);
       return nextIdentity;
@@ -544,7 +637,7 @@ export class ChannelRouteResolver {
       displayName,
       authorizedAt: channelUser.authorizedAt,
       lastActive: now,
-      legacyUserId: channelUser.id,
+      legacyUserId: channelUser.id.startsWith('assistant_user_') ? channelUser.id : undefined,
       metadata: {
         source: 'channel-runtime',
       },
@@ -775,25 +868,30 @@ export class ChannelRouteResolver {
       !conversationMatchesProfile(activeConversation, params.agentProfile);
 
     if (!shouldRotate && activeConversation) {
-      if (!activeConversation.externalSessionId || !activeConversation.rootRunId) {
-        const rootRunId = activeConversation.rootRunId ?? `run_${uuid()}`;
+      const needsRootRun = !activeConversation.rootRunId;
+      const rootRunId = activeConversation.rootRunId ?? `run_${uuid()}`;
+      const needsOwnershipTransfer = activeConversation.externalSessionId !== params.externalSession.id;
+      if (needsRootRun) {
         await this.ensureRootRun(params.externalSession.id, params.agentProfile, activeConversation.id, rootRunId);
+      }
+      if (needsRootRun || needsOwnershipTransfer) {
         db.updateConversation(activeConversation.id, {
           externalSessionId: params.externalSession.id,
           rootRunId,
         });
+      }
+      db.updateExternalSessionActivity(params.externalSession.id, {
+        lastActivity: Date.now(),
+        activeConversationId: activeConversation.id,
+        bindingId: params.externalSession.bindingId,
+      });
+      if (needsRootRun || needsOwnershipTransfer) {
         return {
           ...activeConversation,
           externalSessionId: params.externalSession.id,
           rootRunId,
         };
       }
-
-      db.updateExternalSessionActivity(params.externalSession.id, {
-        lastActivity: Date.now(),
-        activeConversationId: activeConversation.id,
-        bindingId: params.externalSession.bindingId,
-      });
       return activeConversation;
     }
 
