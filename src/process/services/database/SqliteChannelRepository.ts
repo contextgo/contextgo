@@ -5,6 +5,7 @@
  */
 
 import type {
+  IChannelBinding,
   IChannelPluginConfig,
   IChannelPairingRequest,
   IChannelUser,
@@ -57,5 +58,30 @@ export class SqliteChannelRepository implements IChannelRepository {
       throw new Error(result.error ?? 'Failed to get channel sessions');
     }
     return result.data;
+  }
+
+  async getChannelBindings(connectorId?: string): Promise<IChannelBinding[]> {
+    const db = await getDatabase();
+    const result = db.getChannelBindings(connectorId);
+    if (!result.success || !result.data) {
+      throw new Error(result.error ?? 'Failed to get channel bindings');
+    }
+    return result.data;
+  }
+
+  async upsertChannelBinding(binding: IChannelBinding): Promise<void> {
+    const db = await getDatabase();
+    const result = db.upsertChannelBinding(binding);
+    if (!result.success) {
+      throw new Error(result.error ?? `Failed to upsert channel binding ${binding.id}`);
+    }
+  }
+
+  async deleteChannelBinding(bindingId: string): Promise<void> {
+    const db = await getDatabase();
+    const result = db.deleteChannelBinding(bindingId);
+    if (!result.success) {
+      throw new Error(result.error ?? `Failed to delete channel binding ${bindingId}`);
+    }
   }
 }

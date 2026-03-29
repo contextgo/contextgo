@@ -17,7 +17,6 @@ import {
   parseChatId,
   toDingTalkSendParams,
   toUnifiedIncomingMessage,
-  convertHtmlToDingTalkMarkdown,
 } from './DingTalkAdapter';
 import type { DingTalkStreamMessage } from './DingTalkAdapter';
 
@@ -398,11 +397,17 @@ export class DingTalkPlugin extends BasePlugin {
       // Handle tool confirmation specially
       if (actionInfo.name === 'system.confirm' && actionInfo.params?.callId && actionInfo.params?.value) {
         if (this.confirmHandler) {
-          void this.confirmHandler(userId, 'dingtalk', actionInfo.params.callId, actionInfo.params.value).catch(
-            (error) => {
-              console.error('[DingTalkPlugin] Confirm handler error:', error);
-            }
-          );
+          void this.confirmHandler({
+            userId,
+            platform: 'dingtalk',
+            pluginId: this.config?.id,
+            chatId: actionInfo.params.chatId,
+            conversationId: actionInfo.params.conversationId,
+            callId: actionInfo.params.callId,
+            value: actionInfo.params.value,
+          }).catch((error) => {
+            console.error('[DingTalkPlugin] Confirm handler error:', error);
+          });
         }
         return;
       }
