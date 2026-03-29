@@ -71,7 +71,7 @@ describe('database migrations', () => {
     driver = undefined;
   });
 
-  it('renames the internal conversation source from aionui to contextgo in v18', () => {
+  it('renames the internal conversation source from aionui to contextgo in v20', () => {
     driver = new NodeSqliteDriver();
     driver.exec(`CREATE TABLE conversations (
       id TEXT PRIMARY KEY,
@@ -83,7 +83,7 @@ describe('database migrations', () => {
       ('conv-null', NULL)
     `);
 
-    runMigrations(driver, 17, 18);
+    runMigrations(driver, 19, 20);
 
     const rows = driver.prepare('SELECT id, source FROM conversations ORDER BY id').all() as Array<{
       id: string;

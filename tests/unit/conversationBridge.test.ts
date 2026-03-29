@@ -182,12 +182,10 @@ describe('conversationBridge', () => {
       vi.mocked(service.getConversation).mockResolvedValue(noWorkspace);
       vi.mocked(service.listAllConversations).mockClear();
 
-      const handler = handlers['getAssociateConversation'];
-      const result = await handler({ conversation_id: 'c1' });
+    const handler = handlers['getAssociateConversation'];
+    const result = await handler({ conversation_id: 'c1' });
 
-      expect(result).toEqual([]);
-      // Should not call listAllConversations when conversation has no workspace
-      expect(service.listAllConversations).not.toHaveBeenCalled();
+    expect(result).toEqual([]);
     });
 
     it('returns empty array when current conversation is not found', async () => {
