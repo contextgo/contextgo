@@ -7,8 +7,11 @@ import { SkillMarketService } from '@process/bridge/services/skillmarket/SkillMa
 
 const CONFIG_URL = 'https://market.example/config.js';
 const SITE_URL = 'https://market.example';
-const MANIFEST_URL = `${SITE_URL}/data/skills.json`;
-const STATS_URL = `${SITE_URL}/data/stats.json`;
+const CURATED_MANIFEST_URL = `${SITE_URL}/data/curated_skills.json`;
+const FULL_MANIFEST_URL = `${SITE_URL}/data/skills.json`;
+const CURATED_STATS_URL = `${SITE_URL}/data/curated_stats.json`;
+const INDUSTRY_URL = `${SITE_URL}/data/industry_index.json`;
+const BUNDLE_URL = `${SITE_URL}/data/bundles.json`;
 const PACKAGE_URL = `${SITE_URL}/packages/skillhub/market-skill/1.0.0.zip`;
 const FALLBACK_PACKAGE_URL = `${SITE_URL}/packages/openclawmp/market-skill/1.0.0.zip`;
 
@@ -17,14 +20,19 @@ const createConfigResponse = () =>
     `window.SKILL_MARKET_CONFIG = ${JSON.stringify({
       brandName: 'ContextGo',
       siteUrl: SITE_URL,
-      manifestUrl: './data/skills.json',
-      statsUrl: './data/stats.json',
+      manifestUrl: './data/curated_skills.json',
+      statsUrl: './data/curated_stats.json',
+      fullManifestUrl: './data/skills.json',
+      fullStatsUrl: './data/stats.json',
+      industryUrl: './data/industry_index.json',
+      bundleUrl: './data/bundles.json',
       packageBaseUrls: {
         skillhub: './packages/skillhub/',
         openclawmp: './packages/openclawmp/',
       },
       featuredCount: 8,
       pageSize: 24,
+      defaultView: 'curated',
     })};`,
     {
       status: 200,
@@ -36,11 +44,16 @@ const createStatsResponse = () =>
   new Response(
     JSON.stringify({
       total: 3,
-      categories: ['developer-tools', 'automation'],
+      sourceTotal: 15,
+      reducedCount: 12,
+      reductionRatio: 0.8,
+      clusterCount: 5,
       sources: {
         skillhub: 2,
         openclawmp: 1,
       },
+      topIndustries: [{ id: 'engineering', label: 'Engineering', count: 2 }],
+      topCapabilities: [{ label: 'Engineering', count: 2 }],
     }),
     {
       status: 200,
@@ -61,6 +74,10 @@ const createManifestResponse = () =>
           description: 'Scans workspaces and reports findings.',
           categories: ['developer-tools'],
           tags: ['scanner', 'workspace'],
+          themes: ['code', 'cli'],
+          industries: ['engineering'],
+          primaryCapability: 'Engineering',
+          selectionReason: 'Top pick',
           archives: [
             {
               source: 'skillhub',
@@ -88,6 +105,9 @@ const createManifestResponse = () =>
           description: 'Builds analytics summaries.',
           categories: ['automation'],
           tags: ['analytics'],
+          themes: ['analytics'],
+          industries: ['research-analysis'],
+          primaryCapability: 'Analysis',
           archives: [
             {
               source: 'skillhub',
@@ -99,6 +119,60 @@ const createManifestResponse = () =>
             skillhub_installs: 12,
           },
           popularity: 1200,
+        },
+      ],
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+
+const createIndustryResponse = () =>
+  new Response(
+    JSON.stringify({
+      industries: [
+        {
+          id: 'engineering',
+          label: 'Engineering',
+          summary: 'Build and ship software faster.',
+          problems: ['Slow handoffs'],
+          useCases: ['Code reviews'],
+          outcomes: ['Higher throughput'],
+          workflow: ['Inspect repo', 'Implement change'],
+          count: 2,
+          topThemes: ['code'],
+          bundleIds: ['engineering-copilot'],
+          recommendedSkillIds: ['market-skill::1.0.0::tester'],
+        },
+      ],
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+
+const createBundleResponse = () =>
+  new Response(
+    JSON.stringify({
+      bundles: [
+        {
+          id: 'engineering-copilot',
+          title: 'Engineering Copilot',
+          summary: 'Review, test, and ship changes.',
+          industries: ['engineering'],
+          forTeams: 'Engineering teams',
+          deliverables: ['Code changes'],
+          valuePoints: ['Faster reviews'],
+          steps: [
+            {
+              label: 'Analyze',
+              themes: ['code'],
+              skillIds: ['market-skill::1.0.0::tester'],
+            },
+          ],
+          skillIds: ['market-skill::1.0.0::tester', 'analytics-skill::2.0.0::tester'],
         },
       ],
     }),
@@ -122,8 +196,10 @@ describe('SkillMarketService.searchSkills', () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
       if (url === CONFIG_URL) return createConfigResponse();
-      if (url === STATS_URL) return createStatsResponse();
-      if (url === MANIFEST_URL) return createManifestResponse();
+      if (url === CURATED_STATS_URL) return createStatsResponse();
+      if (url === CURATED_MANIFEST_URL) return createManifestResponse();
+      if (url === INDUSTRY_URL) return createIndustryResponse();
+      if (url === BUNDLE_URL) return createBundleResponse();
       throw new Error(`Unexpected URL: ${url}`);
     });
 
@@ -137,7 +213,10 @@ describe('SkillMarketService.searchSkills', () => {
 
     expect(result.total).toBe(1);
     expect(result.totalAvailable).toBe(3);
-    expect(result.categories).toEqual(['developer-tools', 'automation']);
+    expect(result.stats.clusterCount).toBe(5);
+    expect(result.industryIndex[0]?.recommendedSkills[0]?.id).toBe('market-skill::1.0.0::tester');
+    expect(result.bundles[0]?.skills).toHaveLength(2);
+    expect(result.categories).toEqual(['automation', 'developer-tools']);
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({
       id: 'market-skill::1.0.0::tester',
@@ -145,6 +224,7 @@ describe('SkillMarketService.searchSkills', () => {
       displayName: 'Market Skill',
       installs: 42,
       stars: 2,
+      primaryCapability: 'Engineering',
     });
   });
 
@@ -179,8 +259,7 @@ describe('SkillMarketService.installSkill', () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
       if (url === CONFIG_URL) return createConfigResponse();
-      if (url === STATS_URL) return createStatsResponse();
-      if (url === MANIFEST_URL) return createManifestResponse();
+      if (url === FULL_MANIFEST_URL) return createManifestResponse();
       if (url === PACKAGE_URL) return new Response('missing', { status: 404 });
       if (url === FALLBACK_PACKAGE_URL) {
         return new Response(archiveBuffer, {
@@ -217,14 +296,13 @@ describe('SkillMarketService.installSkill', () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
       if (url === CONFIG_URL) return createConfigResponse();
-      if (url === MANIFEST_URL) return createManifestResponse();
+      if (url === FULL_MANIFEST_URL) return createManifestResponse();
       if (url === PACKAGE_URL || url === FALLBACK_PACKAGE_URL) {
         return new Response(archiveBuffer, {
           status: 200,
           headers: { 'Content-Type': 'application/zip' },
         });
       }
-
       return createStatsResponse();
     });
 
