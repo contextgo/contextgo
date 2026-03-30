@@ -167,4 +167,5 @@ jobs:
       control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
       append_commit_hash: true
       upload_installers_only: true
+      release_repository: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
     secrets: inherit

@@ -27,6 +27,7 @@ const DMG_RETRY_DELAY_SEC = 30;
 const MAC_NATIVE_HELPER_NAME = 'voice-input-recorder';
 const MAC_NATIVE_HELPER_SOURCE = path.resolve(__dirname, '../resources/native/voice-input/VoiceInputRecorder.swift');
 const MAC_NATIVE_HELPER_OUTPUT = path.resolve(__dirname, `../resources/native/${MAC_NATIVE_HELPER_NAME}`);
+const DEFAULT_RELEASE_REPOSITORY = 'contextgo/contextgo-releases';
 
 // Incremental build: hash of source files to detect changes
 const INCREMENTAL_CACHE_FILE = 'out/.build-hash';
@@ -216,6 +217,24 @@ function killWindowsProcesses(imageNames) {
 
 function formatExecError(error) {
   return [error?.message, error?.stdout?.toString?.(), error?.stderr?.toString?.()].filter(Boolean).join('\n').trim();
+}
+
+function ensureReleaseRepositoryEnv() {
+  const explicitOwner = process.env.CONTEXTGO_RELEASE_OWNER?.trim();
+  const explicitName = process.env.CONTEXTGO_RELEASE_NAME?.trim();
+  const legacyRepo = process.env.CONTEXTGO_GITHUB_REPO?.trim();
+  const configuredRepo = process.env.CONTEXTGO_RELEASE_REPO?.trim();
+  const releaseRepo =
+    explicitOwner && explicitName ? `${explicitOwner}/${explicitName}` : configuredRepo || legacyRepo || DEFAULT_RELEASE_REPOSITORY;
+  const [owner, repo] = releaseRepo.split('/');
+
+  if (!owner || !repo) {
+    throw new Error(`Invalid release repository: ${releaseRepo}`);
+  }
+
+  process.env.CONTEXTGO_RELEASE_REPO = `${owner}/${repo}`;
+  process.env.CONTEXTGO_RELEASE_OWNER = owner;
+  process.env.CONTEXTGO_RELEASE_NAME = repo;
 }
 
 function compileMacVoiceInputHelper(targetArchs) {
@@ -434,6 +453,8 @@ const shouldBuildMacArtifacts =
     (!builderArgs.includes('--win') && !builderArgs.includes('--linux')));
 
 try {
+  ensureReleaseRepositoryEnv();
+
   // 1. Ensure package.json main entry is correct for electron-vite
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   if (packageJson.main !== './out/main/index.js') {

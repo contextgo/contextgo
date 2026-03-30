@@ -27,6 +27,10 @@ on:
         description: 'Only upload primary installers (exe/msi/dmg/deb), skip zip/yml/blockmap'
         type: boolean
         default: false
+      release_repository:
+        description: 'Public GitHub repository used as the distribution source of truth'
+        type: string
+        default: 'contextgo/contextgo-releases'
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
@@ -174,6 +178,25 @@ jobs:
           SHORT="${GITHUB_SHA::7}"
           echo "short=${SHORT}" >> "$GITHUB_OUTPUT"
           echo "Commit: ${SHORT}"
+
+      - name: Resolve release repository
+        shell: bash
+        env:
+          RELEASE_REPOSITORY: ${{ inputs.release_repository }}
+        run: |
+          set -euo pipefail
+
+          OWNER="${RELEASE_REPOSITORY%%/*}"
+          REPO="${RELEASE_REPOSITORY#*/}"
+
+          if [ -z "${OWNER}" ] || [ -z "${REPO}" ] || [ "${OWNER}" = "${REPO}" ]; then
+            echo "::error::Invalid release repository: ${RELEASE_REPOSITORY}"
+            exit 1
+          fi
+
+          echo "CONTEXTGO_RELEASE_REPO=${OWNER}/${REPO}" >> "${GITHUB_ENV}"
+          echo "CONTEXTGO_RELEASE_OWNER=${OWNER}" >> "${GITHUB_ENV}"
+          echo "CONTEXTGO_RELEASE_NAME=${REPO}" >> "${GITHUB_ENV}"
 
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
