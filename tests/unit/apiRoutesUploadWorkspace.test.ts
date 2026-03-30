@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -14,7 +14,7 @@ vi.mock('@process/services/database', () => ({
 
 vi.mock('@process/initStorage', () => ({
   getSystemDir: vi.fn(() => ({
-    cacheDir: '/tmp/aion-cache',
+    cacheDir: '/tmp/contextgo-cache',
   })),
 }));
 
@@ -33,14 +33,14 @@ describe('resolveUploadWorkspace', () => {
       success: true,
       data: {
         extra: {
-          workspace: '/tmp/aion/workspace-1',
+          workspace: '/tmp/contextgo/workspace-1',
         },
       },
     });
 
-    const resolved = await resolveUploadWorkspace('conv-1', '/tmp/aion/workspace-1');
+    const resolved = await resolveUploadWorkspace('conv-1', '/tmp/contextgo/workspace-1');
 
-    expect(resolved).toBe(path.resolve('/tmp/aion/workspace-1'));
+    expect(resolved).toBe(path.resolve('/tmp/contextgo/workspace-1'));
     expect(getConversation).toHaveBeenCalledWith('conv-1');
   });
 
@@ -49,12 +49,12 @@ describe('resolveUploadWorkspace', () => {
       success: true,
       data: {
         extra: {
-          workspace: '/tmp/aion/workspace-2',
+          workspace: '/tmp/contextgo/workspace-2',
         },
       },
     });
 
-    await expect(resolveUploadWorkspace('conv-2')).resolves.toBe(path.resolve('/tmp/aion/workspace-2'));
+    await expect(resolveUploadWorkspace('conv-2')).resolves.toBe(path.resolve('/tmp/contextgo/workspace-2'));
   });
 
   it('rejects uploads when the requested workspace does not match the conversation workspace', async () => {
@@ -62,12 +62,14 @@ describe('resolveUploadWorkspace', () => {
       success: true,
       data: {
         extra: {
-          workspace: '/tmp/aion/workspace-3',
+          workspace: '/tmp/contextgo/workspace-3',
         },
       },
     });
 
-    await expect(resolveUploadWorkspace('conv-3', '/tmp/aion/other-workspace')).rejects.toThrow('Workspace mismatch');
+    await expect(resolveUploadWorkspace('conv-3', '/tmp/contextgo/other-workspace')).rejects.toThrow(
+      'Workspace mismatch'
+    );
   });
 
   it('rejects uploads when the conversation has no workspace', async () => {

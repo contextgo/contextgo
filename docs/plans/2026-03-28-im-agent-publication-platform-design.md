@@ -5,7 +5,7 @@
 
 ## Background
 
-AionUi already has the technical foundations for:
+ContextGo already has the technical foundations for:
 
 - multiple runtime backends (`gemini`, ACP-backed assistants, `codex`, `openclaw-gateway`)
 - channel connectors for IM ingress
@@ -25,8 +25,8 @@ The stronger product opportunity is:
 - the published surface may serve the creator, a group, a topic thread, or an entire enterprise
 - IM is not only a remote control for the owner, but also a distribution surface for serving others
 
-This direction is inspired by OpenClaw's routing model, but AionUi should not become "an OpenClaw shell".
-Instead, AionUi should define a product model where OpenClaw is one runtime option inside a broader
+This direction is inspired by OpenClaw's routing model, but ContextGo should not become "an OpenClaw shell".
+Instead, ContextGo should define a product model where OpenClaw is one runtime option inside a broader
 agent publication platform.
 
 ## Problem
@@ -48,7 +48,7 @@ As a result, the system can support "I talk to an assistant from Telegram", but 
 
 ## Goal
 
-Define AionUi as an **IM-native agent publication platform** with a clear separation between:
+Define ContextGo as an **IM-native agent publication platform** with a clear separation between:
 
 - IM ingress session
 - agent runtime session
@@ -76,9 +76,9 @@ This document does not try to fully solve:
 
 ## Product Positioning
 
-### What AionUi should be
+### What ContextGo should be
 
-AionUi should be the layer that:
+ContextGo should be the layer that:
 
 - hosts many agent runtimes
 - packages them into reusable published capabilities
@@ -86,9 +86,9 @@ AionUi should be the layer that:
 - isolates runtime sessions per audience
 - lets users and organizations operate those publications safely
 
-### What AionUi should not be
+### What ContextGo should not be
 
-AionUi should not define itself as:
+ContextGo should not define itself as:
 
 - a mobile wrapper around one coding agent
 - a connector-specific bot management tool
@@ -871,7 +871,7 @@ The next implementation slice should focus on:
 
 ## Summary
 
-AionUi should evolve from "desktop agent with optional IM access" to:
+ContextGo should evolve from "desktop agent with optional IM access" to:
 
 **a multi-agent publication platform where IM is a native service surface**
 

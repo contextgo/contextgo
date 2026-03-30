@@ -9,7 +9,7 @@
 
 ## Goal
 
-Allow `bun run server` to use `bun:sqlite` (no native ABI dependency) while `bun run start` (Electron) continues using `better-sqlite3`. The change must be transparent to all business logic in `AionUIDatabase`.
+Allow `bun run server` to use `bun:sqlite` (no native ABI dependency) while `bun run start` (Electron) continues using `better-sqlite3`. The change must be transparent to all business logic in `ContextGoUIDatabase`.
 
 ## Solution: Thin Driver Adapter (Approach A)
 
@@ -24,7 +24,7 @@ src/process/services/database/
 │   ├── BetterSqlite3Driver.ts  # Wraps better-sqlite3 (Electron)
 │   ├── BunSqliteDriver.ts      # Wraps bun:sqlite (server mode)
 │   └── createDriver.ts         # Runtime-detection factory
-├── index.ts                    # AionUIDatabase — minimal changes
+├── index.ts                    # ContextGoUIDatabase — minimal changes
 ├── schema.ts                   # Update param type to ISqliteDriver
 ├── migrations.ts               # Update param type to ISqliteDriver
 └── ... (all other files unchanged)
@@ -118,17 +118,17 @@ export async function createDriver(dbPath: string): Promise<ISqliteDriver> {
 
 Using dynamic `import()` ensures esbuild does not statically bundle the unused driver into the server output, avoiding the ABI issue entirely.
 
-### `index.ts` (AionUIDatabase)
+### `index.ts` (ContextGoUIDatabase)
 
 `createDriver()` is async (uses dynamic `import()`), so initialization must move out of the constructor. Use a **static async factory**:
 
 ```typescript
-class AionUIDatabase {
+class ContextGoUIDatabase {
   private constructor(private db: ISqliteDriver) {}
 
-  static async create(dbPath: string): Promise<AionUIDatabase> {
+  static async create(dbPath: string): Promise<ContextGoUIDatabase> {
     const driver = await createDriver(dbPath);
-    const instance = new AionUIDatabase(driver);
+    const instance = new ContextGoUIDatabase(driver);
     instance.initialize(); // sync schema + migrations
     return instance;
   }
@@ -138,11 +138,11 @@ class AionUIDatabase {
 `getDatabase()` becomes async and lazily awaits the first initialization:
 
 ```typescript
-let dbInstancePromise: Promise<AionUIDatabase> | null = null;
+let dbInstancePromise: Promise<ContextGoUIDatabase> | null = null;
 
-export function getDatabase(): Promise<AionUIDatabase> {
+export function getDatabase(): Promise<ContextGoUIDatabase> {
   if (!dbInstancePromise) {
-    dbInstancePromise = AionUIDatabase.create(resolveDbPath());
+    dbInstancePromise = ContextGoUIDatabase.create(resolveDbPath());
   }
   return dbInstancePromise;
 }
@@ -180,7 +180,7 @@ Replace `node dist-server/server.mjs` with `bun dist-server/server.mjs` in all f
 
 - `BetterSqlite3Driver` unit tests: run under Vitest/Node.js using `:memory:` database
 - `BunSqliteDriver` unit tests: **must run under bun** (`bun test`) using `:memory:` database — Vitest/Node cannot load `bun:sqlite`. Name test files `*.bun.test.ts`. Add a `test:bun` script to `package.json`: `"test:bun": "bun test src/process/services/database/drivers/*.bun.test.ts"`. The existing CI step for Vitest will skip these files; a separate CI step must invoke `bun test`.
-- `AionUIDatabase` tests: inject either driver via constructor; existing test logic unchanged
+- `ContextGoUIDatabase` tests: inject either driver via constructor; existing test logic unchanged
 - Integration: `bun run server` smoke test confirms startup without ABI errors
 
 ## Future PG Migration Path
@@ -188,7 +188,7 @@ Replace `node dist-server/server.mjs` with `bun dist-server/server.mjs` in all f
 The `ISqliteDriver` interface is SQLite-specific (synchronous, pragma-based). A future PostgreSQL migration would require:
 
 1. A new `IDatabaseDriver` interface (async methods returning `Promise`)
-2. All `AionUIDatabase` methods become `async`
+2. All `ContextGoUIDatabase` methods become `async`
 3. `PostgresDriver` implementing `IDatabaseDriver`
 
-The abstraction layer established here provides the correct boundary for that migration — the business logic in `AionUIDatabase` stays unchanged, only the driver and method signatures evolve.
+The abstraction layer established here provides the correct boundary for that migration — the business logic in `ContextGoUIDatabase` stays unchanged, only the driver and method signatures evolve.

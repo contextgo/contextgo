@@ -6,15 +6,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: 'ContextGo Mobile',
-    slug: 'aionui-mobile',
+    slug: 'contextgo-mobile',
     version: VERSION.version,
     orientation: 'portrait',
     icon: './assets/images/icon.png',
-    scheme: 'aionui-mobile',
+    scheme: 'contextgo-mobile',
     userInterfaceStyle: 'automatic',
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'ai.resopod.aionui',
+      bundleIdentifier: 'io.contextgo.mobile',
       buildNumber: String(VERSION.buildNumber),
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -25,7 +25,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       adaptiveIcon: {
         backgroundColor: '#1a1a2e',
       },
-      package: 'ai.resopod.aionui',
+      package: 'io.contextgo.mobile',
       versionCode: VERSION.buildNumber,
     },
     web: {

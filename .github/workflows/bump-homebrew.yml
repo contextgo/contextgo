@@ -1,6 +1,6 @@
 name: Verify Homebrew Cask
 
-# The legacy Homebrew cask identifier is still `aionui` while the upstream
+# The legacy Homebrew cask identifier is still `contextgo` while the upstream
 # rename is pending in Homebrew/homebrew-cask. This workflow only verifies
 # that the cask has been bumped to the latest ContextGo release.
 
@@ -59,7 +59,7 @@ jobs:
           EXPECTED="${{ steps.release.outputs.version }}"
 
           # Fetch the cask file directly from the Homebrew repo
-          CASK_CONTENT=$(curl -fsSL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/HEAD/Casks/a/aionui.rb" 2>/dev/null || echo "")
+          CASK_CONTENT=$(curl -fsSL "https://raw.githubusercontent.com/Homebrew/homebrew-cask/HEAD/Casks/a/contextgo.rb" 2>/dev/null || echo "")
 
           if [ -z "$CASK_CONTENT" ]; then
             echo "::error::Failed to fetch cask file from Homebrew repo"
@@ -87,9 +87,9 @@ jobs:
         run: |
           EXPECTED="${{ steps.release.outputs.version }}"
 
-          # Search for open PRs updating the legacy aionui cask in homebrew-cask
+          # Search for open PRs updating the legacy contextgo cask in homebrew-cask
           PR_LIST=$(gh pr list --repo Homebrew/homebrew-cask \
-            --search "aionui $EXPECTED in:title" --state open \
+            --search "contextgo $EXPECTED in:title" --state open \
             --json number,title,url --limit 5 2>/dev/null || echo "[]")
           PR_COUNT=$(echo "$PR_LIST" | jq length)
 
@@ -118,7 +118,7 @@ jobs:
           if [ "$STATUS" = "match" ]; then
             echo "Homebrew cask is up to date!"
             echo "  Version: $CASK_VERSION"
-            echo "  Legacy cask identifier remains: brew install --cask aionui"
+            echo "  Legacy cask identifier remains: brew install --cask contextgo"
           elif [ "$STATUS" = "mismatch" ] && [ "$PR_STATUS" = "pr_pending" ]; then
             echo "Homebrew bump PR is pending review."
             echo "  Current cask: $CASK_VERSION"
@@ -131,7 +131,7 @@ jobs:
             echo ""
             echo "  If this persists, manually create a PR:"
             echo "  1. Fork https://github.com/Homebrew/homebrew-cask"
-            echo "  2. Update Casks/a/aionui.rb with new version and SHA256"
+            echo "  2. Update Casks/a/contextgo.rb with new version and SHA256"
             echo "  3. Submit PR to Homebrew/homebrew-cask"
             exit 1
           else

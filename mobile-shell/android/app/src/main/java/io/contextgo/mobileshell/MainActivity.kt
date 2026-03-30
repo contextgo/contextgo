@@ -1,4 +1,4 @@
-package com.aionui.mobileshell
+package io.contextgo.mobileshell
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
@@ -14,7 +14,7 @@ import android.webkit.WebViewClient
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
-import com.aionui.mobileshell.databinding.ActivityMainBinding
+import io.contextgo.mobileshell.databinding.ActivityMainBinding
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -215,7 +215,7 @@ class MainActivity : AppCompatActivity() {
 
   private companion object {
     const val OFFICIAL_REMOTE_URL = "https://remote.contextgo.io/"
-    const val PREFERENCES_NAME = "aionui_mobile_shell"
+    const val PREFERENCES_NAME = "contextgo_mobile_shell"
     const val TARGET_URL_KEY = "target_url"
   }
 }

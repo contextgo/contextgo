@@ -56,7 +56,7 @@ The build output goes to `out/` directory:
 
 For desktop packaging and the common "build succeeded but app UI did not update" failure mode, see:
 
-- [`docs/tech/desktop-build-install-troubleshooting.md`](/Users/bytedance/project/AionUi/docs/tech/desktop-build-install-troubleshooting.md)
+- [`docs/tech/desktop-build-install-troubleshooting.md`](/Users/bytedance/project/ContextGo/docs/tech/desktop-build-install-troubleshooting.md)
 
 ## Tech Stack
 

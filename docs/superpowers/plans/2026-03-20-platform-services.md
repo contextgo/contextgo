@@ -71,7 +71,7 @@ export interface IPlatformPaths {
   getHomeDir(): string;
   /**
    * Application log directory.
-   * In standalone mode respects LOGS_DIR env var, falls back to <tmpdir>/aionui-logs.
+   * In standalone mode respects LOGS_DIR env var, falls back to <tmpdir>/contextgo-logs.
    */
   getLogsDir(): string;
   /**
@@ -155,7 +155,7 @@ export interface IPlatformServices {
 - [ ] **Step 2: Verify TypeScript compiles with no errors**
 
 ```bash
-cd /Users/zhangyaxiong/Workspace/src/github/iOfficeAI/AionUi-Bak
+cd /Users/zhangyaxiong/Workspace/src/github/iOfficeAI/ContextGo-Bak
 bunx tsc --noEmit
 ```
 
@@ -303,9 +303,9 @@ describe('NodePlatformServices.paths', () => {
     expect(new NodePlatformServices().paths.getDataDir()).toBe('/custom/data');
   });
 
-  it('getDataDir falls back to tmpdir/aionui-user-data', async () => {
+  it('getDataDir falls back to tmpdir/contextgo-user-data', async () => {
     const { NodePlatformServices } = await import('../../../src/common/platform/NodePlatformServices');
-    expect(new NodePlatformServices().paths.getDataDir()).toBe(path.join(os.tmpdir(), 'aionui-user-data'));
+    expect(new NodePlatformServices().paths.getDataDir()).toBe(path.join(os.tmpdir(), 'contextgo-user-data'));
   });
 
   it('getLogsDir uses LOGS_DIR env var when set', async () => {
@@ -314,9 +314,9 @@ describe('NodePlatformServices.paths', () => {
     expect(new NodePlatformServices().paths.getLogsDir()).toBe('/custom/logs');
   });
 
-  it('getLogsDir falls back to tmpdir/aionui-logs', async () => {
+  it('getLogsDir falls back to tmpdir/contextgo-logs', async () => {
     const { NodePlatformServices } = await import('../../../src/common/platform/NodePlatformServices');
-    expect(new NodePlatformServices().paths.getLogsDir()).toBe(path.join(os.tmpdir(), 'aionui-logs'));
+    expect(new NodePlatformServices().paths.getLogsDir()).toBe(path.join(os.tmpdir(), 'contextgo-logs'));
   });
 
   it('getAppPath returns null', async () => {
@@ -442,20 +442,20 @@ const _pkg = (() => {
       version?: string;
     };
   } catch {
-    return { name: 'aionui', version: '0.0.0' };
+    return { name: 'contextgo', version: '0.0.0' };
   }
 })();
 
 export class NodePlatformServices implements IPlatformServices {
   paths = {
-    getDataDir: () => process.env.DATA_DIR ?? path.join(os.tmpdir(), 'aionui-user-data'),
+    getDataDir: () => process.env.DATA_DIR ?? path.join(os.tmpdir(), 'contextgo-user-data'),
     getTempDir: () => os.tmpdir(),
     getHomeDir: () => os.homedir(),
-    getLogsDir: () => process.env.LOGS_DIR ?? path.join(os.tmpdir(), 'aionui-logs'),
+    getLogsDir: () => process.env.LOGS_DIR ?? path.join(os.tmpdir(), 'contextgo-logs'),
     getAppPath: (): string | null => null,
     isPackaged: () => process.env.IS_PACKAGED === 'true',
     getSystemPath: (_name: 'desktop' | 'home' | 'downloads'): string | null => null,
-    getName: () => _pkg.name ?? 'aionui',
+    getName: () => _pkg.name ?? 'contextgo',
     getVersion: () => _pkg.version ?? '0.0.0',
   };
 
@@ -744,8 +744,8 @@ describe('common/appEnv', () => {
 
   it('appends -dev suffix in dev builds', async () => {
     const { getEnvAwareName } = await import('../../../src/common/config/appEnv');
-    expect(getEnvAwareName('.aionui')).toBe('.aionui-dev');
-    expect(getEnvAwareName('.aionui-config')).toBe('.aionui-config-dev');
+    expect(getEnvAwareName('.contextgo')).toBe('.contextgo-dev');
+    expect(getEnvAwareName('.contextgo-config')).toBe('.contextgo-config-dev');
   });
 
   it('returns baseName unchanged in release builds', async () => {
@@ -753,8 +753,8 @@ describe('common/appEnv', () => {
       getPlatformServices: () => ({ paths: { isPackaged: () => true } }),
     }));
     const { getEnvAwareName } = await import('../../../src/common/config/appEnv');
-    expect(getEnvAwareName('.aionui')).toBe('.aionui');
-    expect(getEnvAwareName('.aionui-config')).toBe('.aionui-config');
+    expect(getEnvAwareName('.contextgo')).toBe('.contextgo');
+    expect(getEnvAwareName('.contextgo-config')).toBe('.contextgo-config');
   });
 });
 ```
@@ -1101,7 +1101,7 @@ After all tasks are complete, verify the standalone server starts correctly:
 bun run build:server
 
 # Start the standalone server
-DATA_DIR=/tmp/aionui-test node dist-server/server.js
+DATA_DIR=/tmp/contextgo-test node dist-server/server.js
 ```
 
 Expected: `[server] WebUI running on http://localhost:3000` with no Electron-related errors.

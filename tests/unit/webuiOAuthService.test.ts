@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const originalEnv = { ...process.env };
 
 function clearOAuthEnv(): void {
-  delete process.env.AIONUI_AUTH_GITHUB_CLIENT_ID;
-  delete process.env.AIONUI_AUTH_GITHUB_CLIENT_SECRET;
-  delete process.env.AIONUI_AUTH_GOOGLE_CLIENT_ID;
-  delete process.env.AIONUI_AUTH_GOOGLE_CLIENT_SECRET;
-  delete process.env.AIONUI_AUTH_ALLOWED_EMAILS;
+  delete process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_ID;
+  delete process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_SECRET;
+  delete process.env.CONTEXTGO_AUTH_GOOGLE_CLIENT_ID;
+  delete process.env.CONTEXTGO_AUTH_GOOGLE_CLIENT_SECRET;
+  delete process.env.CONTEXTGO_AUTH_ALLOWED_EMAILS;
   delete process.env.SERVER_BASE_URL;
 }
 
@@ -38,8 +38,8 @@ describe('OAuthService', () => {
   });
 
   it('returns only configured OAuth providers', async () => {
-    process.env.AIONUI_AUTH_GITHUB_CLIENT_ID = 'github-client-id';
-    process.env.AIONUI_AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
+    process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_ID = 'github-client-id';
+    process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
 
     vi.doMock('@process/webserver/auth/repository/UserRepository', () => ({
       UserRepository: {},
@@ -53,8 +53,8 @@ describe('OAuthService', () => {
   });
 
   it('builds a GitHub authorization URL from forwarded public headers', async () => {
-    process.env.AIONUI_AUTH_GITHUB_CLIENT_ID = 'github-client-id';
-    process.env.AIONUI_AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
+    process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_ID = 'github-client-id';
+    process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
 
     vi.doMock('@process/webserver/auth/repository/UserRepository', () => ({
       UserRepository: {},
@@ -85,8 +85,8 @@ describe('OAuthService', () => {
   });
 
   it('creates a user from a verified GitHub email and returns a session token', async () => {
-    process.env.AIONUI_AUTH_GITHUB_CLIENT_ID = 'github-client-id';
-    process.env.AIONUI_AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
+    process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_ID = 'github-client-id';
+    process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
 
     const createUser = vi.fn().mockResolvedValue({
       id: 'user_1',
@@ -160,9 +160,9 @@ describe('OAuthService', () => {
   });
 
   it('rejects OAuth emails that are outside the allowlist', async () => {
-    process.env.AIONUI_AUTH_GOOGLE_CLIENT_ID = 'google-client-id';
-    process.env.AIONUI_AUTH_GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.AIONUI_AUTH_ALLOWED_EMAILS = 'allowed@example.com';
+    process.env.CONTEXTGO_AUTH_GOOGLE_CLIENT_ID = 'google-client-id';
+    process.env.CONTEXTGO_AUTH_GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.CONTEXTGO_AUTH_ALLOWED_EMAILS = 'allowed@example.com';
 
     vi.doMock('@process/webserver/auth/repository/UserRepository', () => ({
       UserRepository: {

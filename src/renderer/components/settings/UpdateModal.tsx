@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,7 +8,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Progress, Message } from '@arco-design/web-react';
 import { CheckOne, Download, FolderOpen, Refresh, CloseOne, Install } from '@icon-park/react';
 import { ipcBridge } from '@/common';
-import AionModal from '@/renderer/components/base/AionModal';
+import ContextGoModal from '@/renderer/components/base/ContextGoModal';
 import MarkdownView from '@/renderer/components/Markdown';
 import type { UpdateDownloadProgressEvent, UpdateReleaseInfo, AutoUpdateStatus } from '@/common/update/updateTypes';
 import { useTranslation } from 'react-i18next';
@@ -457,7 +457,7 @@ const UpdateModal: React.FC = () => {
   };
 
   return (
-    <AionModal
+    <ContextGoModal
       visible={visible}
       onCancel={handleClose}
       size={status === 'available' ? 'medium' : 'small'}
@@ -473,7 +473,7 @@ const UpdateModal: React.FC = () => {
       }}
     >
       <div className='flex flex-col h-full w-full'>{renderContent()}</div>
-    </AionModal>
+    </ContextGoModal>
   );
 };
 

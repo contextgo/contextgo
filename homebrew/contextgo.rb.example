@@ -3,13 +3,13 @@
 # =============================================================================
 # This file is a reference template for the Homebrew cask definition.
 # The actual cask is maintained in the official Homebrew repository:
-#   https://github.com/Homebrew/homebrew-cask/blob/master/Casks/a/aionui.rb
+#   https://github.com/Homebrew/homebrew-cask/blob/master/Casks/a/contextgo.rb
 #
-# Legacy cask identifier note: upstream still uses `aionui` while the rename
+# Legacy cask identifier note: upstream still uses `contextgo` while the rename
 # to ContextGo is pending. This template tracks ContextGo release artifacts.
 # =============================================================================
 
-cask "aionui" do
+cask "contextgo" do
   arch arm: "arm64", intel: "x64"
 
   version "1.7.1"

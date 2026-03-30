@@ -43,7 +43,7 @@ describe('AuthService token claims', () => {
     expect(decoded.aud).toBe('contextgo-webui');
   });
 
-  it('rejects tokens signed with the old aionui issuer when verifying', async () => {
+  it('rejects tokens signed with a non-ContextGo issuer when verifying', async () => {
     const { AuthService } = await import('../../src/process/webserver/auth/service/AuthService');
 
     const legacyToken = jwt.sign(
@@ -54,8 +54,8 @@ describe('AuthService token claims', () => {
       'contextgo-test-secret',
       {
         expiresIn: '24h',
-        issuer: 'aionui',
-        audience: 'aionui-webui',
+        issuer: 'legacy-contextgo',
+        audience: 'contextgo-webui',
       }
     );
 

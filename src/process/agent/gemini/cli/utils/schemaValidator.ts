@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Simple schema validator for AionUi - without external dependencies
+// Simple schema validator for ContextGo - without external dependencies
 export class SchemaValidator {
   /**
    * Returns null if the data conforms to the schema described by schema (or if schema

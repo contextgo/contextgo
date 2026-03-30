@@ -489,7 +489,7 @@ CREATE TABLE assistant_pairing_codes (
 );
 
 -- conversations 表扩展（Migration v12, v14）
--- source 列: 'aionui' | 'telegram' | 'lark' | 'dingtalk'
+-- source 列: 'contextgo' | 'telegram' | 'lark' | 'dingtalk'
 -- channel_chat_id 列: per-chat 隔离键
 ```
 

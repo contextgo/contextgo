@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -70,8 +70,8 @@ export interface ModalContentStyleConfig {
   maxHeight?: string | number;
 }
 
-/** AionModal 组件 Props */
-export interface AionModalProps extends Omit<ModalProps, 'title' | 'footer'> {
+/** ContextGoModal 组件 Props */
+export interface ContextGoModalProps extends Omit<ModalProps, 'title' | 'footer'> {
   children?: React.ReactNode;
 
   /** 预设尺寸，会被 style 中的 width/height 覆盖 */
@@ -117,17 +117,17 @@ const FOOTER_BASE_CLASS = 'flex-shrink-0 bg-transparent';
  * @example
  * ```tsx
  * // 基本用法 / Basic usage
- * <AionModal visible={true} onCancel={handleClose} header="标题">
+ * <ContextGoModal visible={true} onCancel={handleClose} header="标题">
  *   内容
- * </AionModal>
+ * </ContextGoModal>
  *
  * // 预设尺寸 / Preset size
- * <AionModal visible={true} size="large" header="大型弹窗">
+ * <ContextGoModal visible={true} size="large" header="大型弹窗">
  *   内容
- * </AionModal>
+ * </ContextGoModal>
  *
  * // 自定义 header / Custom header
- * <AionModal
+ * <ContextGoModal
  *   visible={true}
  *   header={{
  *     title: "自定义标题",
@@ -136,10 +136,10 @@ const FOOTER_BASE_CLASS = 'flex-shrink-0 bg-transparent';
  *   }}
  * >
  *   内容
- * </AionModal>
+ * </ContextGoModal>
  *
  * // 自定义 footer / Custom footer
- * <AionModal
+ * <ContextGoModal
  *   visible={true}
  *   header="标题"
  *   footer={
@@ -150,7 +150,7 @@ const FOOTER_BASE_CLASS = 'flex-shrink-0 bg-transparent';
  *   }
  * >
  *   内容
- * </AionModal>
+ * </ContextGoModal>
  * ```
  */
 const dimensionKeys = ['width', 'minWidth', 'maxWidth', 'height', 'minHeight', 'maxHeight'] as const;
@@ -161,7 +161,7 @@ const formatDimensionValue = (value?: string | number) => {
   return typeof value === 'number' ? `${value}px` : value;
 };
 
-const AionModal: React.FC<AionModalProps> = ({
+const ContextGoModal: React.FC<ContextGoModalProps> = ({
   children,
   size,
   header,
@@ -391,6 +391,6 @@ const AionModal: React.FC<AionModalProps> = ({
   );
 };
 
-AionModal.displayName = 'AionModal';
+ContextGoModal.displayName = 'ContextGoModal';
 
-export default AionModal;
+export default ContextGoModal;

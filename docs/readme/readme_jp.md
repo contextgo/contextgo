@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./resources/aionui-banner-1.png" alt="ContextGo - Cowork with AI Agents" width="100%">
+  <img src="./resources/contextgo-banner-1.png" alt="ContextGo - Cowork with AI Agents" width="100%">
 </p>
 
 <p align="center">

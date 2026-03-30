@@ -2,7 +2,7 @@
 
 ## 背景
 
-当前 AionUi 已经具备三类核心能力：
+当前 ContextGo 已经具备三类核心能力：
 
 - 多 Agent 接入与统一会话壳
 - 多端访问与远程 channel 能力
@@ -14,7 +14,7 @@
 
 但需要先把一个边界讲清楚：
 
-- AionUi 要解决的是 `Space` 级别的长期上下文管理
+- ContextGo 要解决的是 `Space` 级别的长期上下文管理
 - Supermemory 当前公开仓库更接近 `context/memory engine + 接入层`
 
 两者有关，但不是同一个层次的问题。
@@ -24,13 +24,13 @@
 结论先行：
 
 - 适合引入 Supermemory 的建模思想，也适合按需复用它的部分开源包。
-- 不适合把 Supermemory 直接当成 AionUi 的顶层 `Space` 引擎，也不适合把它的公开仓库直接作为 AionUi 新后端的起点。
-- AionUi 应先完成自己的 `Space` 领域模型，再在 `Space` 之下引入 Supermemory 风格的 `document -> chunk -> memory -> profile -> retrieval` 能力。
-- 如果未来需要兼容它的 SDK、tools、MCP 或图谱 UI，应该通过兼容层接入，而不是让 AionUi 的核心领域模型被它反向定义。
+- 不适合把 Supermemory 直接当成 ContextGo 的顶层 `Space` 引擎，也不适合把它的公开仓库直接作为 ContextGo 新后端的起点。
+- ContextGo 应先完成自己的 `Space` 领域模型，再在 `Space` 之下引入 Supermemory 风格的 `document -> chunk -> memory -> profile -> retrieval` 能力。
+- 如果未来需要兼容它的 SDK、tools、MCP 或图谱 UI，应该通过兼容层接入，而不是让 ContextGo 的核心领域模型被它反向定义。
 
 一句话判断：
 
-`Supermemory 更适合成为 AionUi 的 Context Service / Memory Engine 参考实现，而不是 Space 本体。`
+`Supermemory 更适合成为 ContextGo 的 Context Service / Memory Engine 参考实现，而不是 Space 本体。`
 
 ## 证据链
 
@@ -76,13 +76,13 @@
 
 而不是：
 
-- “如何把 Supermemory 现成接进 AionUi”
+- “如何把 Supermemory 现成接进 ContextGo”
 
-## 与 AionUi 当前方向的匹配度
+## 与 ContextGo 当前方向的匹配度
 
 ### 已有方向是相容的
 
-AionUi 自己已经有一份明确的空间模型文档：`docs/tech/space-model.md`。
+ContextGo 自己已经有一份明确的空间模型文档：`docs/tech/space-model.md`。
 
 其中已经定义了：
 
@@ -95,17 +95,17 @@ AionUi 自己已经有一份明确的空间模型文档：`docs/tech/space-model
 
 这与 Supermemory 最有价值的思想并不冲突，反而是天然互补：
 
-- AionUi 的 `Space` 模型解决“长期上下文归属和逻辑边界”
+- ContextGo 的 `Space` 模型解决“长期上下文归属和逻辑边界”
 - Supermemory 风格的引擎解决“空间内容如何沉淀、检索、压缩和组装”
 
 ### 最大错位点不是技术，而是名词
 
 最需要警惕的错位是：
 
-- AionUi 需要的是用户可感知、可切换、可归属任务和资产的 `Space`
+- ContextGo 需要的是用户可感知、可切换、可归属任务和资产的 `Space`
 - Context OS 设计稿里的主边界更多是 `scope`
 
-`scope` 更像内部检索/权限/分区维度，不能直接等同于 AionUi 的产品级 `Space`。
+`scope` 更像内部检索/权限/分区维度，不能直接等同于 ContextGo 的产品级 `Space`。
 
 如果直接把两者画等号，会得到一个问题很大的结果：
 
@@ -114,7 +114,7 @@ AionUi 自己已经有一份明确的空间模型文档：`docs/tech/space-model
 
 因此推荐做法是：
 
-- `Space` 继续作为 AionUi 顶层产品对象
+- `Space` 继续作为 ContextGo 顶层产品对象
 - `scope` 作为 Context Service 内部的检索/权限/隔离维度
 - `scope` 至少要能映射 `spaceId`
 - 但不应该取代 `Space`
@@ -138,11 +138,11 @@ AionUi 自己已经有一份明确的空间模型文档：`docs/tech/space-model
 低匹配度或不宜直接照搬的部分：
 
 - 直接依赖 `api.supermemory.ai`
-- 直接 fork 整个公开仓库作为 AionUi 核心后端
+- 直接 fork 整个公开仓库作为 ContextGo 核心后端
 - 以 cloud service / Postgres-first / microservice-first 的方式起步
 - 把 `space` 简化成记忆容器，忽略 `mount`、本地执行目录、多端副本和桌面 runtime
 
-## 当前 AionUi 代码状态
+## 当前 ContextGo 代码状态
 
 ### 主分支的状态
 
@@ -177,14 +177,14 @@ AionUi 自己已经有一份明确的空间模型文档：`docs/tech/space-model
 
 真正最强的 `Space` 信号来自本地 worktree：
 
-- `AionUi-space-working-directory-terminology`
+- `ContextGo-space-working-directory-terminology`
   - 当前只有一个已提交 commit：`feat(space): add sidebar context space switcher`
   - 但 worktree 内还有一大批未提交改动，已经开始落 `spaces` 表、`SpaceService`、`ConversationSpaceBinding`、`spaceId/mountId/workingDirectory`
   - 说明 `Space` 方向目前更像“本地正在成形的设计线”，而不是“远端已有成型 PR，等待合并”
 
 ### 进行中的 `space` 实现线
 
-本地 worktree `AionUi-space-working-directory-terminology` 里已经出现了一条未提交的实现线，核心动作包括：
+本地 worktree `ContextGo-space-working-directory-terminology` 里已经出现了一条未提交的实现线，核心动作包括：
 
 - 在 `src/common/config/storage.ts` 引入 `ConversationSpaceBinding`
 - 增加 `TSpace` 与 `SpaceEngine`
@@ -226,7 +226,7 @@ AionUi 自己已经有一份明确的空间模型文档：`docs/tech/space-model
 
 ### 当前这条本地 `space` 线到底是什么状态
 
-本地 worktree `AionUi-space-working-directory-terminology` 当前不是一个“小功能未提交”，而是一条已经深入基础层的未整理实现线。
+本地 worktree `ContextGo-space-working-directory-terminology` 当前不是一个“小功能未提交”，而是一条已经深入基础层的未整理实现线。
 
 相对其已提交的唯一 commit `feat(space): add sidebar context space switcher`，当前未提交部分大致规模是：
 
@@ -364,7 +364,7 @@ PR `#28` 在 `agent_profiles` 和 `runs` 中引入了 `workspace_ref`。
 
 #### Step 1：冻结当前 dirty `space` worktree
 
-不要继续把新需求直接堆进 `AionUi-space-working-directory-terminology`。
+不要继续把新需求直接堆进 `ContextGo-space-working-directory-terminology`。
 
 它当前更适合作为：
 
@@ -494,11 +494,11 @@ PR `#28` 在 `agent_profiles` 和 `runs` 中引入了 `workspace_ref`。
 
 ## 建议的总架构
 
-推荐把 AionUi 后续能力拆成三层，而不是试图用一个系统同时承担全部角色。
+推荐把 ContextGo 后续能力拆成三层，而不是试图用一个系统同时承担全部角色。
 
-### 第一层：AionUi Product Shell
+### 第一层：ContextGo Product Shell
 
-AionUi 继续负责：
+ContextGo 继续负责：
 
 - multi-agent orchestration
 - thread / session / discussion group
@@ -510,7 +510,7 @@ AionUi 继续负责：
 
 ### 第二层：Space Model
 
-`Space` 继续作为 AionUi 顶层逻辑对象，至少覆盖：
+`Space` 继续作为 ContextGo 顶层逻辑对象，至少覆盖：
 
 - `Space`
 - `Replica`
@@ -579,7 +579,7 @@ AionUi 继续负责：
 
 公开仓库并没有提供完整后端，所以直接接源码并不能省掉最难的那部分工作。
 
-### 原因 2：它不能替代 AionUi 的 `Space`
+### 原因 2：它不能替代 ContextGo 的 `Space`
 
 Supermemory 的强项是：
 
@@ -596,7 +596,7 @@ Supermemory 的强项是：
 - agent orchestration
 - 空间内的 docs/boards/thread/artifact 全栈归属模型
 
-### 原因 3：它的部署形态和 AionUi 当前节奏不一致
+### 原因 3：它的部署形态和 ContextGo 当前节奏不一致
 
 Context OS 设计稿默认：
 
@@ -606,12 +606,12 @@ Context OS 设计稿默认：
 - queue
 - background workers
 
-这套架构长期没问题，但对 AionUi 当前阶段来说太重。
+这套架构长期没问题，但对 ContextGo 当前阶段来说太重。
 
 更现实的落地方式应该是：
 
 - 先做 modular monolith
-- 先在 AionUi 主进程 + worker 里建立服务边界
+- 先在 ContextGo 主进程 + worker 里建立服务边界
 - 先让 `Space` / `Thread` / `Mount` / `Artifact` 模型稳定
 - 等 server mode 与云部署需求真正明确后，再决定是否拆成独立服务
 
@@ -666,11 +666,11 @@ Context OS 设计稿默认：
 - `Context Pack Assembler`
 - 从 `space` 中选取最小必要上下文，而不是把整个目录或整个会话历史塞给模型
 
-### Phase 3: 做 AionUi 自己的 Context Service MVP
+### Phase 3: 做 ContextGo 自己的 Context Service MVP
 
 目标：
 
-- 在 AionUi 内部跑通最小可用的上下文引擎
+- 在 ContextGo 内部跑通最小可用的上下文引擎
 
 建议实现落点：
 
@@ -722,11 +722,11 @@ Context OS 设计稿默认：
 
 ### Phase 5: 把 AFFiNE 与 Context Engine 组合起来
 
-如果 AionUi 继续沿 `docs/tech/space-model.md` 的方向演进，那么中长期最合理的组合不是二选一，而是分层组合：
+如果 ContextGo 继续沿 `docs/tech/space-model.md` 的方向演进，那么中长期最合理的组合不是二选一，而是分层组合：
 
 - AFFiNE 一类系统负责 docs / boards / local-first content surface
 - Supermemory 风格引擎负责 memory / profile / retrieval / compatibility
-- AionUi 负责 orchestration / runtime / channels / automation
+- ContextGo 负责 orchestration / runtime / channels / automation
 
 这三层是互补关系，不是替代关系。
 
@@ -737,7 +737,7 @@ Context OS 设计稿默认：
 - 不要把 `Space` 重新定义成某个磁盘目录
 - 不要把 `scope` 直接暴露成产品级 `Space`
 - 不要在 `Space` 基础模型未稳定前就急着接入 `@supermemory/tools`
-- 不要为了复用 `apps/mcp` 去反向污染 AionUi 的 auth contract
+- 不要为了复用 `apps/mcp` 去反向污染 ContextGo 的 auth contract
 - 不要把图谱 UI 当成上下文系统的核心
 - 不要在当前阶段上来就拆成多服务、队列、对象存储、独立检索服务
 
@@ -746,7 +746,7 @@ Context OS 设计稿默认：
 最终建议可以压缩成三句话：
 
 - `Space` 先行，Supermemory 思想后接。
-- AionUi 自己定义主模型，Supermemory 只做参考实现与兼容目标。
+- ContextGo 自己定义主模型，Supermemory 只做参考实现与兼容目标。
 - 短期做 Space Foundation，中期做 Context Service MVP，后期再做 Supermemory compatibility 和图谱/MCP 复用。
 
-按这个顺序推进，AionUi 才能在不丢掉现有多 Agent 与多端优势的前提下，把“上下文管理”真正补成一项系统能力。
+按这个顺序推进，ContextGo 才能在不丢掉现有多 Agent 与多端优势的前提下，把“上下文管理”真正补成一项系统能力。

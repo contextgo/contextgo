@@ -347,7 +347,7 @@ create_desktop_entry() {
 Name=ContextGo
 Comment=AI Agent Cowork Platform
 Exec=/usr/bin/ContextGo --no-sandbox %U
-Icon=aionui
+Icon=contextgo
 Terminal=false
 Type=Application
 Categories=Office;Utility;Development;

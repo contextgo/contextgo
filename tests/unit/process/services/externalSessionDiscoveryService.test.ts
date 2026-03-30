@@ -33,7 +33,7 @@ describe('ExternalSessionDiscoveryService', () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aionui-external-sessions-'));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-external-sessions-'));
   });
 
   afterEach(async () => {
@@ -821,7 +821,7 @@ describe('ExternalSessionDiscoveryService', () => {
     ]);
   });
 
-  it('filters out sessions that have already been taken over by AionUi', async () => {
+  it('filters out sessions that have already been taken over by ContextGo', async () => {
     await seedCodexStateDb();
     const service = new ExternalSessionDiscoveryService(
       createConversationService([
@@ -851,7 +851,7 @@ describe('ExternalSessionDiscoveryService', () => {
     expect(sessions).toEqual([]);
   });
 
-  it('filters out Claude sessions that have already been taken over by AionUi', async () => {
+  it('filters out Claude sessions that have already been taken over by ContextGo', async () => {
     await seedClaudeSessionFile();
     const service = new ExternalSessionDiscoveryService(
       createConversationService([
@@ -881,7 +881,7 @@ describe('ExternalSessionDiscoveryService', () => {
     expect(sessions).toEqual([]);
   });
 
-  it('filters out Gemini sessions that have already been taken over by AionUi', async () => {
+  it('filters out Gemini sessions that have already been taken over by ContextGo', async () => {
     await seedGeminiSession();
     const service = new ExternalSessionDiscoveryService(
       createConversationService([
@@ -911,7 +911,7 @@ describe('ExternalSessionDiscoveryService', () => {
     expect(sessions).toEqual([]);
   });
 
-  it('filters out OpenCode sessions that have already been taken over by AionUi', async () => {
+  it('filters out OpenCode sessions that have already been taken over by ContextGo', async () => {
     const opencodeDbPath = await seedOpencodeStateDb();
     const service = new ExternalSessionDiscoveryService(
       createConversationService([
@@ -941,7 +941,7 @@ describe('ExternalSessionDiscoveryService', () => {
     expect(sessions).toEqual([]);
   });
 
-  it('filters out OpenClaw sessions that have already been taken over by AionUi', async () => {
+  it('filters out OpenClaw sessions that have already been taken over by ContextGo', async () => {
     const service = new ExternalSessionDiscoveryService(
       createConversationService([
         {

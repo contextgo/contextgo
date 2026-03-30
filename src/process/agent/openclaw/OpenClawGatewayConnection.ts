@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -295,7 +295,7 @@ export class OpenClawGatewayConnection {
       maxProtocol: this.opts.maxProtocol ?? OPENCLAW_PROTOCOL_VERSION,
       client: {
         id: this.opts.clientName ?? GATEWAY_CLIENT_IDS.GATEWAY_CLIENT,
-        displayName: this.opts.clientDisplayName ?? 'AionUI',
+        displayName: this.opts.clientDisplayName ?? 'ContextGoUI',
         version: this.opts.clientVersion ?? '1.0.0',
         platform: this.opts.platform ?? process.platform,
         mode: this.opts.mode ?? GATEWAY_CLIENT_MODES.BACKEND,

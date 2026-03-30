@@ -37,7 +37,7 @@ Create `tests/unit/channels/weixinTyping.test.ts`:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -325,7 +325,7 @@ describe('TypingManager — sendTyping retry', () => {
 - [ ] **Step 1.2 — Run tests to verify they all FAIL (module not found)**
 
 ```bash
-cd /Users/zhangyaxiong/Workspace/src/github/iOfficeAI/AionUi
+cd /Users/zhangyaxiong/Workspace/src/github/iOfficeAI/ContextGo
 bun run test -- --reporter=verbose tests/unit/channels/weixinTyping.test.ts
 ```
 
@@ -338,7 +338,7 @@ Create `src/process/channels/plugins/weixin/WeixinTyping.ts`:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 

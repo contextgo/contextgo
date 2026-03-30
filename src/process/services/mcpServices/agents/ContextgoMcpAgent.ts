@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -21,9 +21,9 @@ import { ProcessConfig } from '@process/utils/initStorage';
  *
  * 与其他 ACP Backend MCP Agents 的区别：
  * - ACP Backend Agents: 管理真实的 CLI 工具的 MCP 配置 (如 claude mcp, qwen mcp 命令)
- * - ContextgoMcpAgent: 管理 ContextGo 内置 @office-ai/aioncli-core 的运行时 MCP 配置
+ * - ContextGoMcpAgent: 管理 ContextGo 内置 @office-ai/aioncli-core 的运行时 MCP 配置
  */
-export class ContextgoMcpAgent extends AbstractMcpAgent {
+export class ContextGoMcpAgent extends AbstractMcpAgent {
   constructor() {
     // 使用 'contextgo' 作为 backend type 来区分真实的 Gemini CLI
     // 虽然配置最终被 GeminiAgentManager 使用，但在 MCP 管理层面它是独立的 agent
@@ -54,7 +54,7 @@ export class ContextgoMcpAgent extends AbstractMcpAgent {
         return supportedTypes.includes(server.transport.type);
       });
     } catch (error) {
-      console.warn('[ContextgoMcpAgent] Failed to detect MCP servers:', error);
+      console.warn('[ContextGoMcpAgent] Failed to detect MCP servers:', error);
       return [];
     }
   }
@@ -87,7 +87,7 @@ export class ContextgoMcpAgent extends AbstractMcpAgent {
           });
         } else {
           console.warn(
-            `[ContextgoMcpAgent] Skipping ${server.name}: unsupported transport type ${server.transport.type}`
+            `[ContextGoMcpAgent] Skipping ${server.name}: unsupported transport type ${server.transport.type}`
           );
         }
       });
@@ -96,10 +96,10 @@ export class ContextgoMcpAgent extends AbstractMcpAgent {
       const mergedServers = Array.from(serverMap.values());
       await ProcessConfig.set('mcp.config', mergedServers);
 
-      console.log('[ContextgoMcpAgent] Installed MCP servers:', mcpServers.map((s) => s.name).join(', '));
+      console.log('[ContextGoMcpAgent] Installed MCP servers:', mcpServers.map((s) => s.name).join(', '));
       return { success: true };
     } catch (error) {
-      console.error('[ContextgoMcpAgent] Failed to install MCP servers:', error);
+      console.error('[ContextGoMcpAgent] Failed to install MCP servers:', error);
       return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
@@ -112,11 +112,11 @@ export class ContextgoMcpAgent extends AbstractMcpAgent {
    * 1. Toggle 关闭时：前端已经设置 enabled: false，不需要后端再次修改
    * 2. 删除服务器时：前端已经从配置中删除，不需要后端再次删除
    *
-   * ContextgoMcpAgent 只负责读取配置（detectMcpServers）和添加配置（installMcpServers），
+   * ContextGoMcpAgent 只负责读取配置（detectMcpServers）和添加配置（installMcpServers），
    * 不应该在 remove 流程中修改配置，避免与前端的配置管理产生冲突
    */
   removeMcpServer(mcpServerName: string): Promise<McpOperationResult> {
-    console.log(`[ContextgoMcpAgent] Skip removing '${mcpServerName}' - config managed by renderer`);
+    console.log(`[ContextGoMcpAgent] Skip removing '${mcpServerName}' - config managed by renderer`);
     return Promise.resolve({ success: true });
   }
 }

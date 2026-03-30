@@ -81,7 +81,9 @@ export default function DownloadCenter({
               <div className='theme-surface-secondary theme-border theme-text-tertiary mb-4 inline-flex rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.24em]'>
                 {dict.download.center_badge}
               </div>
-              <h1 className='theme-text-primary text-4xl font-bold tracking-tight md:text-5xl'>{dict.download.title}</h1>
+              <h1 className='theme-text-primary text-4xl font-bold tracking-tight md:text-5xl'>
+                {dict.download.title}
+              </h1>
               <p className='theme-text-secondary mt-4 max-w-2xl text-base leading-7'>{dict.download.description}</p>
             </div>
             <div className='theme-surface-secondary theme-shadow-card theme-border grid gap-3 rounded-[24px] border p-5 md:grid-cols-2 xl:min-w-[420px]'>

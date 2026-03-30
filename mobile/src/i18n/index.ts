@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import enUS from './locales/en-US.json';
 import zhCN from './locales/zh-CN.json';
 
-const LANGUAGE_KEY = 'aionui_language';
+const LANGUAGE_KEY = 'contextgo_language';
 
 const resources = {
   'en-US': { translation: enUS },

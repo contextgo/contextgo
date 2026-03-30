@@ -8,7 +8,7 @@
 
 ## Overview
 
-Integrate `weixin-agent-sdk` into the AionUi channel plugin system so that WeChat users can interact with an Aion AI assistant via the WeChat iLink Bot API.
+Integrate `weixin-agent-sdk` into the ContextGo channel plugin system so that WeChat users can interact with an Aion AI assistant via the WeChat iLink Bot API.
 
 The SDK provides: `login()` for QR-code-based authentication, and `start(agent)` for a long-poll message loop that calls `agent.chat(request)` with each incoming message and expects a `Promise<ChatResponse>` back.
 
@@ -147,12 +147,12 @@ Note: SDK automatically downloads, decrypts, and transcodes media (silk→wav fo
 
 **Media type support:**
 
-| AionUi unified type | WeChat SDK type | Direction                                           |
-| ------------------- | --------------- | --------------------------------------------------- |
-| `photo`             | `image`         | Receive + send                                      |
-| `audio`             | —               | Receive only (SDK transcodes silk→wav); cannot send |
-| `video`             | `video`         | Receive + send                                      |
-| `document`          | `file`          | Receive + send                                      |
+| ContextGo unified type | WeChat SDK type | Direction                                           |
+| ---------------------- | --------------- | --------------------------------------------------- |
+| `photo`                | `image`         | Receive + send                                      |
+| `audio`                | —               | Receive only (SDK transcodes silk→wav); cannot send |
+| `video`                | `video`         | Receive + send                                      |
+| `document`             | `file`          | Receive + send                                      |
 
 ### WeixinLogin
 

@@ -244,7 +244,7 @@ src/renderer/
 
 ```
 src/renderer/components/
-├── base/           # UI primitives — AionModal, AionSelect, FlexFullContainer, etc.
+├── base/           # UI primitives — ContextGoModal, ContextGoSelect, FlexFullContainer, etc.
 ├── chat/           # Conversation/message domain (example, not exhaustive)
 ├── agent/          # Agent selection/configuration domain
 ├── settings/       # Settings domain

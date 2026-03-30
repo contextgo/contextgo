@@ -114,7 +114,7 @@ export const getDataPath = (): string => {
   const dataPath = resolveBrandStoragePath({
     baseDir: rootPath,
     preferredName: 'contextgo',
-    legacyNames: ['aionui'],
+    legacyNames: [],
     kind: 'directory',
   });
   return ensureCliSafeSymlink(dataPath, getEnvAwareName('.contextgo'));

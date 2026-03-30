@@ -23,7 +23,7 @@ toward:
 
 ## Background
 
-AionUi already has several strong foundations:
+ContextGo already has several strong foundations:
 
 - multiple runtime backends (`gemini`, ACP-routed agents, `codex`, `openclaw-gateway`)
 - channel connectors for Telegram, Feishu/Lark, DingTalk, WeChat, and future platforms
@@ -54,13 +54,13 @@ As of **2026-03-29**, the official landscape has already moved:
 - Claude Code has terminal, IDE, desktop, browser, and iOS-linked web surfaces
 - Gemini has strong mobile app presence and developer-facing CLI/IDE surfaces
 
-That means AionUi should not define itself as:
+That means ContextGo should not define itself as:
 
 - a mobile shell for one coding agent
 - a connector-specific bot wrapper
 - a UI that only forwards commands from phone to desktop
 
-Instead, AionUi should define itself as:
+Instead, ContextGo should define itself as:
 
 **a multi-agent publication platform where IM is a native service surface**
 
@@ -159,7 +159,7 @@ but not yet cleanly support:
 
 ## Goal
 
-Define AionUi as an **IM-native agent publication platform** with a clear separation between:
+Define ContextGo as an **IM-native agent publication platform** with a clear separation between:
 
 - IM ingress session
 - agent runtime session
@@ -613,7 +613,7 @@ Responsibilities:
 
 ## Product Semantics
 
-### AionUi should be "agent publication first"
+### ContextGo should be "agent publication first"
 
 Users should mostly think in terms of:
 
@@ -1098,7 +1098,7 @@ The next implementation slices should focus on:
 
 ## Summary
 
-AionUi should evolve from "desktop agent with optional IM access" to:
+ContextGo should evolve from "desktop agent with optional IM access" to:
 
 **a multi-agent publication platform where IM is a native service surface**
 

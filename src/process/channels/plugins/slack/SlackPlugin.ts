@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -145,7 +145,8 @@ export class SlackPlugin extends BasePlugin {
     }
 
     const payload = toSlackSendParams(message);
-    const text = payload.text.length > SLACK_TEXT_LIMIT ? payload.text.slice(0, SLACK_TEXT_LIMIT - 3) + '...' : payload.text;
+    const text =
+      payload.text.length > SLACK_TEXT_LIMIT ? payload.text.slice(0, SLACK_TEXT_LIMIT - 3) + '...' : payload.text;
 
     await this.webClient.chat.update({
       channel: chatId,

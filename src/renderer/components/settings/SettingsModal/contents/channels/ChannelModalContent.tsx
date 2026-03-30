@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -13,7 +13,7 @@ import type { IChannelPluginStatus } from '@process/channels/types';
 import type { IProvider, TProviderWithModel } from '@/common/config/storage';
 import { channel, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import { ConfigStorage } from '@/common/config/storage';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { useModelProviderList } from '@/renderer/hooks/agent/useModelProviderList';
 import type { GeminiModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection';
 import { useGeminiModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection';
@@ -978,7 +978,7 @@ const ChannelModalContent: React.FC = () => {
   ];
 
   return (
-    <AionScrollArea className={isPageMode ? 'h-full' : ''}>
+    <ContextGoScrollArea className={isPageMode ? 'h-full' : ''}>
       <div className='px-[12px] md:px-[28px]'>
         <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.agentEntry')}</h2>
         <div className='space-y-8px mt-10px'>
@@ -1015,7 +1015,7 @@ const ChannelModalContent: React.FC = () => {
 
         <PublicationBindingPanel />
       </div>
-    </AionScrollArea>
+    </ContextGoScrollArea>
   );
 };
 

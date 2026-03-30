@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /**
- * Default Codex model list maintained by AionUi.
+ * Default Codex model list maintained by ContextGo.
  * These are known models that Codex CLI supports.
- * Validation is done by Codex CLI itself — AionUi only passes the model name.
+ * Validation is done by Codex CLI itself — ContextGo only passes the model name.
  *
  * The first entry is used as the default when the user hasn't made a selection.
  */

@@ -98,7 +98,7 @@ function readOpenClawConfig(): OpenClawConfig | null {
 /**
  * Check if OpenClaw Lark channel conflicts with ContextGo credentials
  */
-export function detectLarkConflict(aionuiAppId: string): ConflictInfo | null {
+export function detectLarkConflict(contextgoAppId: string): ConflictInfo | null {
   const config = readOpenClawConfig();
   if (!config?.channels?.feishu) {
     return null;
@@ -111,15 +111,15 @@ export function detectLarkConflict(aionuiAppId: string): ConflictInfo | null {
 
   // Check all accounts
   for (const [accountName, account] of Object.entries(feishu.accounts)) {
-    if (account.enabled && account.appId === aionuiAppId) {
+    if (account.enabled && account.appId === contextgoAppId) {
       console.warn(
-        `[OpenClawConflictDetector] Lark conflict detected: OpenClaw account "${accountName}" uses same appId: ${aionuiAppId}`
+        `[OpenClawConflictDetector] Lark conflict detected: OpenClaw account "${accountName}" uses same appId: ${contextgoAppId}`
       );
       return {
         platform: 'lark',
         openclawEnabled: true,
         credentialMatch: true,
-        openclawCredential: aionuiAppId,
+        openclawCredential: contextgoAppId,
       };
     }
   }
@@ -130,7 +130,7 @@ export function detectLarkConflict(aionuiAppId: string): ConflictInfo | null {
 /**
  * Check if OpenClaw Telegram channel conflicts with ContextGo credentials
  */
-export function detectTelegramConflict(aionuiBotToken: string): ConflictInfo | null {
+export function detectTelegramConflict(contextgoBotToken: string): ConflictInfo | null {
   const config = readOpenClawConfig();
   if (!config?.channels?.telegram) {
     return null;
@@ -141,13 +141,13 @@ export function detectTelegramConflict(aionuiBotToken: string): ConflictInfo | n
     return null;
   }
 
-  if (telegram.botToken === aionuiBotToken) {
+  if (telegram.botToken === contextgoBotToken) {
     console.warn(`[OpenClawConflictDetector] Telegram conflict detected: OpenClaw uses same bot token`);
     return {
       platform: 'telegram',
       openclawEnabled: true,
       credentialMatch: true,
-      openclawCredential: aionuiBotToken.substring(0, 20) + '...',
+      openclawCredential: contextgoBotToken.substring(0, 20) + '...',
     };
   }
 

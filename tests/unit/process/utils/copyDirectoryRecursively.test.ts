@@ -25,19 +25,17 @@ describe('copyDirectoryRecursively', () => {
     const destDir = path.join(sandbox, 'dest');
 
     fs.mkdirSync(path.join(srcDir, '_builtin', 'contextgo-skills'), { recursive: true });
-    fs.mkdirSync(path.join(destDir, '_builtin', 'aionui-skills'), { recursive: true });
-    fs.mkdirSync(path.join(destDir, '_builtin', 'contextgo-skills'), { recursive: true });
+    fs.mkdirSync(path.join(destDir, '_builtin', 'legacy-skills'), { recursive: true });
 
     fs.writeFileSync(path.join(srcDir, '_builtin', 'contextgo-skills', 'SKILL.md'), 'new-skill', 'utf8');
-    fs.writeFileSync(path.join(destDir, '_builtin', 'aionui-skills', 'SKILL.md'), 'legacy-skill', 'utf8');
-    fs.writeFileSync(path.join(destDir, '_builtin', 'contextgo-skills', 'SKILL.md'), 'old-copy', 'utf8');
+    fs.writeFileSync(path.join(destDir, '_builtin', 'legacy-skills', 'SKILL.md'), 'old-copy', 'utf8');
 
     await copyDirectoryRecursively(srcDir, destDir, {
       overwrite: true,
       removeStale: true,
     });
 
-    expect(fs.existsSync(path.join(destDir, '_builtin', 'aionui-skills'))).toBe(false);
+    expect(fs.existsSync(path.join(destDir, '_builtin', 'legacy-skills'))).toBe(false);
     expect(fs.readFileSync(path.join(destDir, '_builtin', 'contextgo-skills', 'SKILL.md'), 'utf8')).toBe('new-skill');
   });
 });

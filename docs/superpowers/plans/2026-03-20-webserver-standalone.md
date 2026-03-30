@@ -706,7 +706,7 @@ The existing `src/process/utils/utils.ts` already exports `hasElectronAppPath()`
 -  const logDir = path.join(app.getPath('logs'))
 +  const logDir = hasElectronAppPath()
 +    ? path.join(app.getPath('logs'))
-+    : path.join(os.tmpdir(), 'aionui-logs')
++    : path.join(os.tmpdir(), 'contextgo-logs')
    return {
      cacheDir,
      workDir: dirConfig?.workDir || getDataPath(),
@@ -726,14 +726,14 @@ The existing `src/process/utils/utils.ts` already exports `hasElectronAppPath()`
 +  }
 ```
 
-4. **`DATA_DIR` env var support** — the path functions `getConfigPath()` / `getDataPath()` in `utils.ts` already call `getElectronPathOrFallback('userData')` which falls back to `os.tmpdir()/aionui-user-data`. Add env var override at the top of `initStorage.ts`:
+4. **`DATA_DIR` env var support** — the path functions `getConfigPath()` / `getDataPath()` in `utils.ts` already call `getElectronPathOrFallback('userData')` which falls back to `os.tmpdir()/contextgo-user-data`. Add env var override at the top of `initStorage.ts`:
 
 Check if `utils.ts` already reads `process.env.DATA_DIR`. If not, add it:
 
 ```typescript
 // In utils.ts getElectronPathOrFallback, the 'userData' case becomes:
 case 'userData':
-  return process.env.DATA_DIR ?? path.join(os.tmpdir(), getEnvAwareName('aionui-user-data'))
+  return process.env.DATA_DIR ?? path.join(os.tmpdir(), getEnvAwareName('contextgo-user-data'))
 ```
 
 > **Note:** If `DATA_DIR` override is more cleanly added in `utils.ts` rather than `initStorage.ts`, do it there — the important thing is `getConfigPath()` respects `DATA_DIR`.
@@ -981,13 +981,13 @@ Expected: same or higher pass count as before this feature branch.
 - [x] **Step 13.1: Start server with custom data dir**
 
 ```bash
-DATA_DIR=/tmp/aionui-test PORT=3001 bun run server
+DATA_DIR=/tmp/contextgo-test PORT=3001 bun run server
 ```
 
 - [x] **Step 13.2: Verify data directory is used**
 
 ```bash
-ls /tmp/aionui-test/
+ls /tmp/contextgo-test/
 ```
 
 Expected: SQLite database file (`.db`) and config files present.
@@ -999,7 +999,7 @@ Expected: SQLite database file (`.db`) and config files present.
 - [x] **Step 14.1: Build Docker image**
 
 ```bash
-docker build -t aionui-server .
+docker build -t contextgo-server .
 ```
 
 Expected: build succeeds (no errors).
@@ -1007,7 +1007,7 @@ Expected: build succeeds (no errors).
 - [x] **Step 14.2: Run Docker container**
 
 ```bash
-docker run -p 3000:3000 -v $(pwd)/docker-data:/data -e DATA_DIR=/data aionui-server
+docker run -p 3000:3000 -v $(pwd)/docker-data:/data -e DATA_DIR=/data contextgo-server
 ```
 
 Expected: server starts, WebUI accessible at `http://localhost:3000`.

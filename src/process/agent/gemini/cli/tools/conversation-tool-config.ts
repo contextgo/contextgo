@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -22,7 +22,7 @@ interface ConversationToolConfigOptions {
  */
 export class ConversationToolConfig {
   private useGeminiWebSearch = false;
-  private useContextgoWebFetch = false;
+  private useContextGoWebFetch = false;
   private geminiModel: TProviderWithModel | null = null;
   private excludeTools: string[] = [];
   private dedicatedGeminiClient: GeminiClient | null = null; // 缓存专门的Gemini客户端
@@ -40,7 +40,7 @@ export class ConversationToolConfig {
    */
   async initializeForConversation(authType: AuthType): Promise<void> {
     // 所有模型都使用 contextgo_web_fetch 替换内置的 web_fetch
-    this.useContextgoWebFetch = true;
+    this.useContextGoWebFetch = true;
     this.excludeTools.push('web_fetch');
 
     // 根据 webSearchEngine 配置决定启用哪个搜索工具
@@ -113,7 +113,7 @@ export class ConversationToolConfig {
   getConfig() {
     return {
       useGeminiWebSearch: this.useGeminiWebSearch,
-      useContextgoWebFetch: this.useContextgoWebFetch,
+      useContextGoWebFetch: this.useContextGoWebFetch,
       geminiModel: this.geminiModel,
       excludeTools: this.excludeTools,
     };
@@ -127,7 +127,7 @@ export class ConversationToolConfig {
     const toolRegistry = await config.getToolRegistry();
 
     // 注册 contextgo_web_fetch 工具（所有模型）
-    if (this.useContextgoWebFetch) {
+    if (this.useContextGoWebFetch) {
       const customWebFetchTool = new WebFetchTool(geminiClient, config.getMessageBus());
       toolRegistry.registerTool(customWebFetchTool);
     }

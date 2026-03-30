@@ -117,7 +117,10 @@ export const useGroupConversationExpansionState = (): string[] => {
       }
     };
 
-    window.addEventListener(GROUP_CONVERSATION_EXPANSION_EVENT, handleGroupConversationExpansionChange as EventListener);
+    window.addEventListener(
+      GROUP_CONVERSATION_EXPANSION_EVENT,
+      handleGroupConversationExpansionChange as EventListener
+    );
     window.addEventListener('storage', handleStorage);
 
     return () => {

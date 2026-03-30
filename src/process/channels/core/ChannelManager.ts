@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -500,9 +500,9 @@ export class ChannelManager {
 
   /**
    * Cleanup resources when a conversation is deleted
-   * Called when a non-AionUI conversation (e.g., telegram) is deleted
+   * Called when a non-ContextGoUI conversation (e.g., telegram) is deleted
    *
-   * 当会话被删除时清理相关资源（用于 telegram 等非 AionUI 来源的会话）
+   * 当会话被删除时清理相关资源（用于 telegram 等非 ContextGoUI 来源的会话）
    *
    * @param conversationId - The ID of the conversation being deleted
    * @returns true if cleanup was performed, false if no resources to clean

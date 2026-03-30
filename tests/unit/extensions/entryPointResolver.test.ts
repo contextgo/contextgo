@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -14,7 +14,7 @@ describe('extensions/entryPointResolver', () => {
   let extensionDir = '';
 
   beforeEach(async () => {
-    extensionDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aionui-ext-entry-resolver-'));
+    extensionDir = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-ext-entry-resolver-'));
   });
 
   afterEach(async () => {

@@ -184,7 +184,7 @@ linux:
     entry:
       Name: ContextGo
       Comment: ${description}
-      Icon: aionui
+      Icon: contextgo
       Categories: Office;Utility;
       MimeType: x-scheme-handler/contextgo;
 

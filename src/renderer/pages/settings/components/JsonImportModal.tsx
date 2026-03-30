@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
-import AionModal from '@/renderer/components/base/AionModal';
+import ContextGoModal from '@/renderer/components/base/ContextGoModal';
 
 interface JsonImportModalProps {
   visible: boolean;
@@ -168,7 +168,7 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
   if (!visible) return null;
 
   return (
-    <AionModal
+    <ContextGoModal
       visible={visible}
       onCancel={onCancel}
       onOk={handleSubmit}
@@ -285,7 +285,7 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
           }
         />
       </div>
-    </AionModal>
+    </ContextGoModal>
   );
 };
 

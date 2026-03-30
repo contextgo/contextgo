@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -106,9 +106,9 @@ describe('group conversation grouping', () => {
         : [];
 
     expect(workspaceConversations).toEqual(['group-1']);
-    expect(
-      groupedHistory.groupChildConversationsByParentId['group-1']?.map((conversation) => conversation.id)
-    ).toEqual(['child-1']);
+    expect(groupedHistory.groupChildConversationsByParentId['group-1']?.map((conversation) => conversation.id)).toEqual(
+      ['child-1']
+    );
   });
 
   it('uses the OpenClaw agent name as the workspace group label', () => {

@@ -21,13 +21,13 @@ afterEach(() => {
 describe('resolveBrandStoragePath', () => {
   it('migrates a legacy file to the preferred brand name when the new file is missing', () => {
     const sandbox = createTempDir('contextgo-storage-file-');
-    const legacyPath = path.join(sandbox, 'aionui-config.txt');
+    const legacyPath = path.join(sandbox, 'legacy-config.txt');
     fs.writeFileSync(legacyPath, 'legacy-config', 'utf8');
 
     const resolved = resolveBrandStoragePath({
       baseDir: sandbox,
       preferredName: 'contextgo-config.txt',
-      legacyNames: ['aionui-config.txt'],
+      legacyNames: ['legacy-config.txt'],
       kind: 'file',
     });
 
@@ -39,7 +39,7 @@ describe('resolveBrandStoragePath', () => {
   it('replaces an empty preferred file with a meaningful legacy file', () => {
     const sandbox = createTempDir('contextgo-storage-replace-');
     const preferredPath = path.join(sandbox, 'contextgo-config.txt');
-    const legacyPath = path.join(sandbox, 'aionui-config.txt');
+    const legacyPath = path.join(sandbox, 'legacy-config.txt');
 
     fs.writeFileSync(preferredPath, '', 'utf8');
     fs.writeFileSync(legacyPath, 'legacy-config', 'utf8');
@@ -47,7 +47,7 @@ describe('resolveBrandStoragePath', () => {
     const resolved = resolveBrandStoragePath({
       baseDir: sandbox,
       preferredName: 'contextgo-config.txt',
-      legacyNames: ['aionui-config.txt'],
+      legacyNames: ['legacy-config.txt'],
       kind: 'file',
     });
 
@@ -59,7 +59,7 @@ describe('resolveBrandStoragePath', () => {
   it('backs up a conflicting legacy file when the preferred file already has data', () => {
     const sandbox = createTempDir('contextgo-storage-conflict-');
     const preferredPath = path.join(sandbox, 'contextgo-config.txt');
-    const legacyPath = path.join(sandbox, 'aionui-config.txt');
+    const legacyPath = path.join(sandbox, 'legacy-config.txt');
 
     fs.writeFileSync(preferredPath, 'preferred-config', 'utf8');
     fs.writeFileSync(legacyPath, 'legacy-config', 'utf8');
@@ -67,7 +67,7 @@ describe('resolveBrandStoragePath', () => {
     const resolved = resolveBrandStoragePath({
       baseDir: sandbox,
       preferredName: 'contextgo-config.txt',
-      legacyNames: ['aionui-config.txt'],
+      legacyNames: ['legacy-config.txt'],
       kind: 'file',
     });
 
@@ -76,13 +76,13 @@ describe('resolveBrandStoragePath', () => {
 
     const backupRoot = path.join(sandbox, 'migration-backups', 'storage-brand-rewrite');
     const backupEntries = fs.readdirSync(backupRoot);
-    const backupFile = path.join(backupRoot, backupEntries[0], 'aionui-config.txt');
+    const backupFile = path.join(backupRoot, backupEntries[0], 'legacy-config.txt');
     expect(fs.readFileSync(backupFile, 'utf8')).toBe('legacy-config');
   });
 
   it('migrates sqlite sidecar files together with the renamed database', () => {
     const sandbox = createTempDir('contextgo-storage-db-');
-    const legacyDb = path.join(sandbox, 'aionui.db');
+    const legacyDb = path.join(sandbox, 'legacy.db');
     fs.writeFileSync(legacyDb, 'db');
     fs.writeFileSync(`${legacyDb}-wal`, 'wal');
     fs.writeFileSync(`${legacyDb}-shm`, 'shm');
@@ -90,7 +90,7 @@ describe('resolveBrandStoragePath', () => {
     const resolved = resolveBrandStoragePath({
       baseDir: sandbox,
       preferredName: 'contextgo.db',
-      legacyNames: ['aionui.db'],
+      legacyNames: ['legacy.db'],
       kind: 'file',
       sidecarSuffixes: ['-wal', '-shm'],
     });
@@ -104,14 +104,14 @@ describe('resolveBrandStoragePath', () => {
 
   it('renames a legacy history directory to the preferred brand name', () => {
     const sandbox = createTempDir('contextgo-storage-dir-');
-    const legacyDir = path.join(sandbox, 'aionui-chat-history');
+    const legacyDir = path.join(sandbox, 'legacy-chat-history');
     fs.mkdirSync(legacyDir, { recursive: true });
     fs.writeFileSync(path.join(legacyDir, 'conversation.txt'), 'history', 'utf8');
 
     const resolved = resolveBrandStoragePath({
       baseDir: sandbox,
       preferredName: 'contextgo-chat-history',
-      legacyNames: ['aionui-chat-history'],
+      legacyNames: ['legacy-chat-history'],
       kind: 'directory',
     });
 
@@ -122,7 +122,7 @@ describe('resolveBrandStoragePath', () => {
 
   it('merges a legacy directory into an existing preferred directory without overwriting preferred files', () => {
     const sandbox = createTempDir('contextgo-storage-merge-');
-    const legacyDir = path.join(sandbox, 'aionui');
+    const legacyDir = path.join(sandbox, 'legacy-contextgo');
     const preferredDir = path.join(sandbox, 'contextgo');
 
     fs.mkdirSync(path.join(legacyDir, 'nested'), { recursive: true });
@@ -135,7 +135,7 @@ describe('resolveBrandStoragePath', () => {
     const resolved = resolveBrandStoragePath({
       baseDir: sandbox,
       preferredName: 'contextgo',
-      legacyNames: ['aionui'],
+      legacyNames: ['legacy-contextgo'],
       kind: 'directory',
     });
 

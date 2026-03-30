@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -14,7 +14,7 @@ import { isSuspiciousDocumentNavigation } from '@/renderer/utils/ui/documentNavi
 const isExternalSettingsUrl = (url?: string): boolean => /^https?:\/\//i.test(url || '');
 
 interface ExtensionSettingsTabContentProps {
-  /** aion-asset:// local page URL or external https:// URL */
+  /** contextgo-asset:// local page URL or external https:// URL */
   entryUrl: string;
   /** Tab ID for keying */
   tabId: string;
@@ -25,7 +25,7 @@ interface ExtensionSettingsTabContentProps {
 /**
  * Renders an extension-contributed settings tab page.
  * - External URLs (https://) → WebviewHost with link interception, navigation, partition cache.
- * - Local URLs (aion-asset://) → sandboxed iframe with postMessage bridge.
+ * - Local URLs (contextgo-asset://) → sandboxed iframe with postMessage bridge.
  */
 const ExtensionSettingsTabContent: React.FC<ExtensionSettingsTabContentProps> = ({
   entryUrl,
@@ -70,7 +70,7 @@ const ExtensionSettingsTabContent: React.FC<ExtensionSettingsTabContentProps> = 
 
       frameWindow.postMessage(
         {
-          type: 'aion:init',
+          type: 'contextgo:init',
           locale: i18n.language,
           extensionName,
           translations,
@@ -82,7 +82,7 @@ const ExtensionSettingsTabContent: React.FC<ExtensionSettingsTabContentProps> = 
     }
   }, [extensionName, i18n.language, isExternalTab]);
 
-  // postMessage bridge for local iframe tabs (aion-asset://)
+  // postMessage bridge for local iframe tabs (contextgo-asset://)
   useEffect(() => {
     if (isExternalTab) return;
 
@@ -93,7 +93,7 @@ const ExtensionSettingsTabContent: React.FC<ExtensionSettingsTabContentProps> = 
       const data = event.data as { type?: string; reqId?: string } | undefined;
       if (!data) return;
 
-      if (data.type === 'aion:get-locale') {
+      if (data.type === 'contextgo:get-locale') {
         void postLocaleInit();
         return;
       }
