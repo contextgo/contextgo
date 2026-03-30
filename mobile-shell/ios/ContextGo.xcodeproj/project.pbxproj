@@ -7,233 +7,149 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		718550762D2C06FA14867A3F /* AionUiShellApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA051990C6F56CBD38CD9080 /* AionUiShellApp.swift */; };
-		84E51E9209E1A499A0571227 /* ShellWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130B24591582FB044A53839F /* ShellWebView.swift */; };
-		A2A504F2600670ED99D16EDF /* ShellTargetResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD02763D910375C3EBF3808 /* ShellTargetResolver.swift */; };
-		B997B1E9AFB157A62E236033 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5DBF9E15F5B99DD5CE318 /* ContentView.swift */; };
-		D9FF55AAC313CD515E3AFA52 /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19CF0079CC394A81A116C748 /* ConnectionStore.swift */; };
-		DF2BAD2F870AA2991BA6269D /* WebViewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB9DF88FAB03CC88FEAD6455 /* WebViewStore.swift */; };
+		2B625E36AAECDDC700798C70 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDCE9B1F5F965232B19A210 /* ContentView.swift */; };
+		3DA99C29FE4772AF62CACFE0 /* ShellWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A483BE7C97AB0E9BE566A3 /* ShellWebView.swift */; };
+		54BDCDD142982D119C80409E /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0E078B495D3052B264AA47 /* ConnectionStore.swift */; };
+		AA3CBC9545005738C3B4B670 /* AionUiShellApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFF601C811105278B3F5270 /* AionUiShellApp.swift */; };
+		DA388B80959C49E9D5205541 /* WebViewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE439F83DBF0AB8B93722D1 /* WebViewStore.swift */; };
+		DC6270E2B5AC6912FF7BEC4A /* ShellTargetResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E377F895B701DA0FDBB718EF /* ShellTargetResolver.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		130B24591582FB044A53839F /* ShellWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellWebView.swift; sourceTree = "<group>"; };
-		19CF0079CC394A81A116C748 /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
-		BBD02763D910375C3EBF3808 /* ShellTargetResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellTargetResolver.swift; sourceTree = "<group>"; };
-		D4E5DBF9E15F5B99DD5CE318 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		E045E4FFCE2525A79BC7B9BA /* AionUiShell.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AionUiShell.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		EB9DF88FAB03CC88FEAD6455 /* WebViewStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewStore.swift; sourceTree = "<group>"; };
-		FA051990C6F56CBD38CD9080 /* AionUiShellApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AionUiShellApp.swift; sourceTree = "<group>"; };
+		1BE439F83DBF0AB8B93722D1 /* WebViewStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewStore.swift; sourceTree = "<group>"; };
+		1CFF601C811105278B3F5270 /* AionUiShellApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AionUiShellApp.swift; sourceTree = "<group>"; };
+		2EDCE9B1F5F965232B19A210 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5E0E078B495D3052B264AA47 /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
+		64A483BE7C97AB0E9BE566A3 /* ShellWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellWebView.swift; sourceTree = "<group>"; };
+		D8F5FF634415C8C66A282EE4 /* ContextGo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ContextGo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E377F895B701DA0FDBB718EF /* ShellTargetResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellTargetResolver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		557B27ADCF71FECA637BAACA /* Web */ = {
+		183CB43390F20549207B753B = {
 			isa = PBXGroup;
 			children = (
-				130B24591582FB044A53839F /* ShellWebView.swift */,
-				EB9DF88FAB03CC88FEAD6455 /* WebViewStore.swift */,
+				ADF02B5507888D7D9E87273E /* Sources */,
+				96BDC563CC01CC3873667523 /* Products */,
 			);
-			path = Web;
 			sourceTree = "<group>";
 		};
-		597B1E62110991A02A9874DA /* App */ = {
+		6B1DBF4F32C59A9554FCCF46 /* Domain */ = {
 			isa = PBXGroup;
 			children = (
-				FA051990C6F56CBD38CD9080 /* AionUiShellApp.swift */,
-				D4E5DBF9E15F5B99DD5CE318 /* ContentView.swift */,
-			);
-			path = App;
-			sourceTree = "<group>";
-		};
-		6AF15CD26899FE48EE8A094B /* Domain */ = {
-			isa = PBXGroup;
-			children = (
-				19CF0079CC394A81A116C748 /* ConnectionStore.swift */,
-				BBD02763D910375C3EBF3808 /* ShellTargetResolver.swift */,
+				5E0E078B495D3052B264AA47 /* ConnectionStore.swift */,
+				E377F895B701DA0FDBB718EF /* ShellTargetResolver.swift */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
 		};
-		B5A592D2F52053F32EE26F27 /* Products */ = {
+		96BDC563CC01CC3873667523 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				E045E4FFCE2525A79BC7B9BA /* AionUiShell.app */,
+				D8F5FF634415C8C66A282EE4 /* ContextGo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		DCAF718E727CFAE2A49852CD /* Sources */ = {
+		ADF02B5507888D7D9E87273E /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				597B1E62110991A02A9874DA /* App */,
-				6AF15CD26899FE48EE8A094B /* Domain */,
-				557B27ADCF71FECA637BAACA /* Web */,
+				F428CC8D39273EBBBAC070B7 /* App */,
+				6B1DBF4F32C59A9554FCCF46 /* Domain */,
+				B90360D44887DBB68AF46FB7 /* Web */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
 		};
-		EFF08506018515BBCED7C130 = {
+		B90360D44887DBB68AF46FB7 /* Web */ = {
 			isa = PBXGroup;
 			children = (
-				DCAF718E727CFAE2A49852CD /* Sources */,
-				B5A592D2F52053F32EE26F27 /* Products */,
+				64A483BE7C97AB0E9BE566A3 /* ShellWebView.swift */,
+				1BE439F83DBF0AB8B93722D1 /* WebViewStore.swift */,
 			);
+			path = Web;
+			sourceTree = "<group>";
+		};
+		F428CC8D39273EBBBAC070B7 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				1CFF601C811105278B3F5270 /* AionUiShellApp.swift */,
+				2EDCE9B1F5F965232B19A210 /* ContentView.swift */,
+			);
+			path = App;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7B2458CD32BA8E05778C1336 /* AionUiShell */ = {
+		E58CC56A98AC23826E4F1D1B /* ContextGo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 70986EADA3A08ECF323506D4 /* Build configuration list for PBXNativeTarget "AionUiShell" */;
+			buildConfigurationList = 81DFBBEF74AFC58648F7E323 /* Build configuration list for PBXNativeTarget "ContextGo" */;
 			buildPhases = (
-				57BA3E487061660A24374238 /* Sources */,
+				1FD5B8C8EE5C99D2E755EB0A /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = AionUiShell;
+			name = ContextGo;
 			packageProductDependencies = (
 			);
-			productName = AionUiShell;
-			productReference = E045E4FFCE2525A79BC7B9BA /* AionUiShell.app */;
+			productName = ContextGo;
+			productReference = D8F5FF634415C8C66A282EE4 /* ContextGo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		30CF646E52E366E24330FE7F /* Project object */ = {
+		3CAD26819CCE306033697AD5 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					7B2458CD32BA8E05778C1336 = {
+					E58CC56A98AC23826E4F1D1B = {
 						DevelopmentTeam = "";
 					};
 				};
 			};
-			buildConfigurationList = B9DEA13A4BC0CFE391BE5E6B /* Build configuration list for PBXProject "AionUiShell" */;
+			buildConfigurationList = 9738B07E718D895460805F80 /* Build configuration list for PBXProject "ContextGo" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
 				en,
 			);
-			mainGroup = EFF08506018515BBCED7C130;
+			mainGroup = 183CB43390F20549207B753B;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = B5A592D2F52053F32EE26F27 /* Products */;
+			productRefGroup = 96BDC563CC01CC3873667523 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7B2458CD32BA8E05778C1336 /* AionUiShell */,
+				E58CC56A98AC23826E4F1D1B /* ContextGo */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		57BA3E487061660A24374238 /* Sources */ = {
+		1FD5B8C8EE5C99D2E755EB0A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				718550762D2C06FA14867A3F /* AionUiShellApp.swift in Sources */,
-				D9FF55AAC313CD515E3AFA52 /* ConnectionStore.swift in Sources */,
-				B997B1E9AFB157A62E236033 /* ContentView.swift in Sources */,
-				A2A504F2600670ED99D16EDF /* ShellTargetResolver.swift in Sources */,
-				84E51E9209E1A499A0571227 /* ShellWebView.swift in Sources */,
-				DF2BAD2F870AA2991BA6269D /* WebViewStore.swift in Sources */,
+				AA3CBC9545005738C3B4B670 /* AionUiShellApp.swift in Sources */,
+				54BDCDD142982D119C80409E /* ConnectionStore.swift in Sources */,
+				2B625E36AAECDDC700798C70 /* ContentView.swift in Sources */,
+				DC6270E2B5AC6912FF7BEC4A /* ShellTargetResolver.swift in Sources */,
+				3DA99C29FE4772AF62CACFE0 /* ShellWebView.swift in Sources */,
+				DA388B80959C49E9D5205541 /* WebViewStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		363E548E00AE9FA591D5FC22 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "AionUi Shell";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoadsInWebContent = YES;
-				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UIRequiresFullScreen = NO;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.aionui.shell.ios;
-				PRODUCT_NAME = AionUiShell;
-				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		9BDCAC399099FEB256B0769B /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
-				CLANG_CXX_LIBRARY = "libc++";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu11;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.1;
-			};
-			name = Release;
-		};
-		BF101785A6134A60BFC87A6C /* Debug */ = {
+		428F787AF82799942616F303 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -296,14 +212,71 @@
 			};
 			name = Debug;
 		};
-		C1D93DB25A3146F8FEC4C42D /* Debug */ = {
+		53235351F9C5271F2FC6CB14 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.1;
+			};
+			name = Release;
+		};
+		6220458F5F3369451E5779D6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "AionUi Shell";
+				INFOPLIST_KEY_CFBundleDisplayName = ContextGo;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoadsInWebContent = YES;
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
@@ -317,8 +290,39 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.aionui.shell.ios;
-				PRODUCT_NAME = AionUiShell;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.contextgo.ios;
+				PRODUCT_NAME = ContextGo;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E033392DD833D4D54215DB3B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ContextGo;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoadsInWebContent = YES;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = NO;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.contextgo.ios;
+				PRODUCT_NAME = ContextGo;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -327,25 +331,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		70986EADA3A08ECF323506D4 /* Build configuration list for PBXNativeTarget "AionUiShell" */ = {
+		81DFBBEF74AFC58648F7E323 /* Build configuration list for PBXNativeTarget "ContextGo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				C1D93DB25A3146F8FEC4C42D /* Debug */,
-				363E548E00AE9FA591D5FC22 /* Release */,
+				E033392DD833D4D54215DB3B /* Debug */,
+				6220458F5F3369451E5779D6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		B9DEA13A4BC0CFE391BE5E6B /* Build configuration list for PBXProject "AionUiShell" */ = {
+		9738B07E718D895460805F80 /* Build configuration list for PBXProject "ContextGo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BF101785A6134A60BFC87A6C /* Debug */,
-				9BDCAC399099FEB256B0769B /* Release */,
+				428F787AF82799942616F303 /* Debug */,
+				53235351F9C5271F2FC6CB14 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 30CF646E52E366E24330FE7F /* Project object */;
+	rootObject = 3CAD26819CCE306033697AD5 /* Project object */;
 }

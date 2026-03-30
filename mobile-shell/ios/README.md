@@ -2,7 +2,7 @@
 
 ## Open
 
-- Open `AionUiShell.xcodeproj` in Xcode
+- Open `ContextGo.xcodeproj` in Xcode
 
 ## Requirements
 
@@ -13,9 +13,9 @@ If `xcodebuild` says the scheme has no valid destination, the usual reason is th
 
 Verified locally on 2026-03-28:
 
-- `xcodebuild -showdestinations -project mobile-shell/ios/AionUiShell.xcodeproj -scheme AionUiShell`
-- `xcodebuild -project mobile-shell/ios/AionUiShell.xcodeproj -scheme AionUiShell -destination 'id=88D8275A-21B1-4B7D-AF87-3871965664BC' CODE_SIGNING_ALLOWED=NO build`
-- `xcrun simctl launch 88D8275A-21B1-4B7D-AF87-3871965664BC com.aionui.shell.ios`
+- `xcodebuild -showdestinations -project mobile-shell/ios/ContextGo.xcodeproj -scheme ContextGo`
+- `xcodebuild -project mobile-shell/ios/ContextGo.xcodeproj -scheme ContextGo -destination 'id=88D8275A-21B1-4B7D-AF87-3871965664BC' CODE_SIGNING_ALLOWED=NO build`
+- `xcrun simctl launch 88D8275A-21B1-4B7D-AF87-3871965664BC io.contextgo.ios`
 
 ## Shell Behavior
 
