@@ -35,6 +35,22 @@ export function initSchema(db: ISqliteDriver): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
 
+  db.exec(`CREATE TABLE IF NOT EXISTS spaces (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    engine TEXT NOT NULL,
+    description TEXT,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    archived_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_id ON spaces(user_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_updated ON spaces(user_id, updated_at DESC)');
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_spaces_default_per_user ON spaces(user_id) WHERE is_default = 1');
+
   // Conversations table (会话表 - 存储TChatConversation)
   db.exec(`CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY,
@@ -119,4 +135,4 @@ export function setDatabaseVersion(db: ISqliteDriver, version: number): void {
  * Current database schema version
  * Update this when adding new migrations in migrations.ts
  */
-export const CURRENT_DB_VERSION = 17;
+export const CURRENT_DB_VERSION = 21;

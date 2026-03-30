@@ -322,6 +322,39 @@ body.login-page-active {
   cursor: not-allowed;
 }
 
+.login-page__oauth-section {
+  margin-top: 18px;
+}
+
+.login-page__oauth-divider {
+  margin: 18px 0 14px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.login-page__oauth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.login-page__oauth-button {
+  height: 44px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.login-page__oauth-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.login-page__oauth-loading {
+  font-size: 13px;
+  color: #64748b;
+  text-align: center;
+}
+
 .login-page__spinner {
   animation: login-spin 1s linear infinite;
 }

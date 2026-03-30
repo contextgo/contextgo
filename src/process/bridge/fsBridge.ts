@@ -24,6 +24,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import JSZip from 'jszip';
 import { ipcBridge } from '@/common';
+import { skillMarketService } from '@process/bridge/services/skillmarket/SkillMarketService';
 import {
   getSystemDir,
   getAssistantsDir,
@@ -36,6 +37,8 @@ import { readDirectoryRecursive } from '@process/utils';
 import { discoverSkillDirectories, resolveSkillDirectory } from '@process/utils/skillDiscovery';
 
 const execFileAsync = promisify(execFile);
+const SKILLS_MARKET_SKILL_DIR = 'contextgo-skills';
+const LEGACY_SKILLS_MARKET_SKILL_DIR = 'aionui-skills';
 
 // ============================================================================
 // Helper functions for builtin resource directory resolution
@@ -88,6 +91,11 @@ async function copyDirectory(src: string, dest: string) {
       await fs.copyFile(srcPath, destPath);
     }
   }
+}
+
+async function resetAcpSkillManagerDiscovery() {
+  const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
+  AcpSkillManager.resetInstance();
 }
 
 /**
@@ -1427,6 +1435,7 @@ export function initFsBridge(): void {
 
       // 复制整个目录 / Copy entire directory
       await copyDirectory(skillPath, targetDir);
+      await resetAcpSkillManagerDiscovery();
 
       console.log(`[fsBridge] Successfully imported skill "${skillName}" to ${targetDir}`);
 
@@ -1799,6 +1808,7 @@ export function initFsBridge(): void {
       }
 
       await fs.symlink(skillPath, targetDir, 'junction');
+      await resetAcpSkillManagerDiscovery();
       console.log(`[fsBridge] Created symlink for skill "${skillName}" at ${targetDir}`);
       return {
         success: true,
@@ -1843,6 +1853,7 @@ export function initFsBridge(): void {
         await fs.rm(resolvedSkillDir, { recursive: true, force: true });
       }
 
+      await resetAcpSkillManagerDiscovery();
       console.log(`[fsBridge] Deleted skill "${skillName}" from ${resolvedSkillDir}`);
       return { success: true, msg: `Skill "${skillName}" deleted` };
     } catch (error) {
@@ -1859,6 +1870,51 @@ export function initFsBridge(): void {
     userSkillsDir: getSkillsDir(),
     builtinSkillsDir: getBuiltinSkillsCopyDir(),
   }));
+
+  ipcBridge.fs.searchSkillMarket.provider(async ({ query, limit, offset, forceRefresh } = {}) => {
+    try {
+      const data = await skillMarketService.searchSkills({
+        query,
+        limit,
+        offset,
+        forceRefresh,
+      });
+
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to search Skill Market:', error);
+      return {
+        success: false,
+        msg: `Failed to search Skill Market: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
+  ipcBridge.fs.installSkillMarketSkill.provider(async ({ skillId, archive }) => {
+    try {
+      const data = await skillMarketService.installSkill({
+        skillId,
+        archive,
+      });
+
+      await resetAcpSkillManagerDiscovery();
+
+      return {
+        success: true,
+        data,
+        msg: `Skill "${data.skillName}" installed successfully`,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to install Skill Market skill:', error);
+      return {
+        success: false,
+        msg: `Failed to install Skill Market skill: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
 
   // 将 skill 同步导出到外部目录 / Export skill to external directory via symlink
   ipcBridge.fs.exportSkillWithSymlink.provider(async ({ skillPath, targetDir }) => {
@@ -1893,12 +1949,18 @@ export function initFsBridge(): void {
       };
     }
   });
-
-  // Skills Market: inject the aionui-skills builtin skill
+  // Skills Market: inject the bundled builtin skill
   ipcBridge.fs.enableSkillsMarket.provider(async () => {
     try {
       const { getAutoSkillsDir } = await import('@process/utils/initStorage');
-      const skillDir = path.join(getAutoSkillsDir(), 'aionui-skills');
+      const builtinSkillsDir = getAutoSkillsDir();
+      const skillDir = path.join(builtinSkillsDir, SKILLS_MARKET_SKILL_DIR);
+      const legacySkillDir = path.join(builtinSkillsDir, LEGACY_SKILLS_MARKET_SKILL_DIR);
+
+      if (!(await pathExists(skillDir)) && (await pathExists(legacySkillDir))) {
+        await fs.rename(legacySkillDir, skillDir);
+      }
+
       await fs.mkdir(skillDir, { recursive: true });
 
       // Copy the bundled SKILL.md (concise entry-point version)
@@ -1920,12 +1982,15 @@ export function initFsBridge(): void {
     }
   });
 
-  // Skills Market: remove the aionui-skills builtin skill
+  // Skills Market: remove the bundled builtin skill
   ipcBridge.fs.disableSkillsMarket.provider(async () => {
     try {
       const { getAutoSkillsDir } = await import('@process/utils/initStorage');
-      const skillDir = path.join(getAutoSkillsDir(), 'aionui-skills');
+      const builtinSkillsDir = getAutoSkillsDir();
+      const skillDir = path.join(builtinSkillsDir, SKILLS_MARKET_SKILL_DIR);
+      const legacySkillDir = path.join(builtinSkillsDir, LEGACY_SKILLS_MARKET_SKILL_DIR);
       await fs.rm(skillDir, { recursive: true, force: true });
+      await fs.rm(legacySkillDir, { recursive: true, force: true });
 
       // Reset AcpSkillManager singleton so it re-discovers builtin skills
       const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
@@ -1943,7 +2008,7 @@ export function initFsBridge(): void {
 }
 
 /**
- * Read the bundled SKILL.md for aionui-skills from app resources.
+ * Read the bundled SKILL.md for the Skills Market builtin skill.
  *
  * This is a concise entry-point version (~30 lines) that tells agents
  * to fetch the full API documentation via curl at runtime.
@@ -1952,10 +2017,30 @@ export function initFsBridge(): void {
  */
 async function readBundledSkillsMarketMd(): Promise<string> {
   try {
-    const fallbackPath = path.join(getBuiltinSkillsCopyDir(), 'aionui-skills', 'SKILL.md');
-    return await fs.readFile(fallbackPath, 'utf-8');
+    const builtinDir = getBuiltinSkillsCopyDir();
+    const fallbackPaths = [
+      path.join(builtinDir, SKILLS_MARKET_SKILL_DIR, 'SKILL.md'),
+      path.join(builtinDir, LEGACY_SKILLS_MARKET_SKILL_DIR, 'SKILL.md'),
+    ];
+
+    for (const fallbackPath of fallbackPaths) {
+      if (await pathExists(fallbackPath)) {
+        return await fs.readFile(fallbackPath, 'utf-8');
+      }
+    }
+
+    throw new Error('Bundled Skills Market SKILL.md not found');
   } catch (error) {
-    console.warn('[fsBridge] Failed to read bundled aionui-skills SKILL.md:', error);
-    return `---\nname: aionui-skills\ndescription: "Access the ContextGo Skills registry — discover and download AI agent skills."\n---\n\n# ContextGo Skills Registry\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/aionui-skills\ncurl -s https://skills.aionui.com/SKILL.md > ~/.config/aionui-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
+    console.warn('[fsBridge] Failed to read bundled Skills Market SKILL.md:', error);
+    return `---\nname: contextgo-skills\ndescription: "Access the ContextGo Skills Market — discover and download AI agent skills."\n---\n\n# ContextGo Skills Market\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/contextgo-skills\ncurl -s https://www.skillmarket.com.cn/SKILL.md > ~/.config/contextgo-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
+  }
+}
+
+async function pathExists(targetPath: string): Promise<boolean> {
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch {
+    return false;
   }
 }

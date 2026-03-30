@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -23,20 +23,46 @@ export interface TokenPayload {
   username: string;
 }
 
-function extractLocalToken(req: Request): string | null {
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.substring(7);
-  }
-
-  if (typeof req.cookies === 'object' && req.cookies) {
-    const cookieToken = req.cookies[AUTH_CONFIG.COOKIE.NAME];
-    if (typeof cookieToken === 'string' && cookieToken.trim() !== '') {
-      return cookieToken;
+/**
+ * Token 提取器 - 从请求中提取认证 token
+ * Token Extractor - Extract authentication token from request
+ *
+ * 安全说明：不再支持从 URL query 参数提取 token，避免 token 通过日志、Referrer 等泄露
+ * Security: URL query token is no longer supported to prevent token leakage via logs, Referrer, etc.
+ */
+class TokenExtractor {
+  /**
+   * 从请求中提取 token，支持以下来源：
+   * 1. Authorization header (Bearer token)
+   * 2. Cookie (contextgo-session)
+   *
+   * Extract token from request, supporting these sources:
+   * 1. Authorization header (Bearer token)
+   * 2. Cookie (contextgo-session)
+   *
+   * @param req - Express 请求对象 / Express request object
+   * @returns Token 字符串或 null / Token string or null
+   */
+  static extract(req: Request): string | null {
+    // 1. 尝试从 Authorization header 提取 / Try to extract from Authorization header
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      return authHeader.substring(7);
     }
-  }
 
-  return null;
+    // 2. 尝试从 Cookie 提取 / Try to extract from Cookie
+    if (typeof req.cookies === 'object' && req.cookies) {
+      const cookieToken = req.cookies[AUTH_CONFIG.COOKIE.NAME];
+      if (typeof cookieToken === 'string' && cookieToken.trim() !== '') {
+        return cookieToken;
+      }
+    }
+
+    // 不再支持从 URL query 参数提取 token（安全风险）
+    // URL query token is no longer supported (security risk)
+
+    return null;
+  }
 }
 
 /**
@@ -90,7 +116,7 @@ async function resolveCloudRequestAuth(req: Request): Promise<ResolvedRequestAut
 }
 
 async function resolveRequestAuth(req: Request): Promise<ResolvedRequestAuth | null> {
-  const token = extractLocalToken(req);
+  const token = TokenExtractor.extract(req);
   if (token) {
     const localAuth = await resolveLocalRequestAuth(token);
     if (localAuth) {
@@ -182,7 +208,7 @@ export const TokenUtils = {
    * @returns Token 字符串或 null / Token string or null
    */
   extractFromRequest(req: Request): string | null {
-    return extractLocalToken(req);
+    return TokenExtractor.extract(req);
   },
 };
 
@@ -193,7 +219,7 @@ export const TokenUtils = {
 export const TokenMiddleware = {
   /** 从请求中提取 token / Extract token from request */
   extractToken(req: Request): string | null {
-    return extractLocalToken(req);
+    return TokenExtractor.extract(req);
   },
 
   /** 校验 token 是否有效 / Verify token validity */

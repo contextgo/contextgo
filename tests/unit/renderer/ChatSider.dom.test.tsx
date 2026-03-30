@@ -31,13 +31,13 @@ describe('ChatSider', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the workspace panel for discussion groups', () => {
+  it('renders the workspace panel for group conversations', () => {
     render(
       <ChatSider
         conversation={{
           id: 'group-1',
           type: 'group',
-          name: 'Discussion Group',
+          name: 'Group',
           model: {
             platform: 'openai',
             name: 'Test Model',
@@ -46,10 +46,11 @@ describe('ChatSider', () => {
           createTime: 1,
           modifyTime: 1,
           extra: {
-            workspace: '/tmp/discussion-workspace',
+            workspace: '/tmp/group-workspace',
             customWorkspace: false,
             participants: [],
             orchestration: {
+              kind: 'discussion',
               mode: 'broadcast',
               rounds: 1,
             },
@@ -58,11 +59,11 @@ describe('ChatSider', () => {
       />
     );
 
-    expect(screen.getByTestId('chat-workspace')).toHaveTextContent('group-1:/tmp/discussion-workspace:group');
+    expect(screen.getByTestId('chat-workspace')).toHaveTextContent('group-1:/tmp/group-workspace:group');
     expect(chatWorkspaceMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         conversation_id: 'group-1',
-        workspace: '/tmp/discussion-workspace',
+        workspace: '/tmp/group-workspace',
         eventPrefix: 'group',
       })
     );

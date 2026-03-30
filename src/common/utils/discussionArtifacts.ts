@@ -8,6 +8,7 @@ import type {
   CollaborationExecutionBoundary,
   CollaborationParticipantRole,
   DiscussionGroupMode,
+  GroupParticipantRole,
 } from '@/common/config/storage';
 
 export const DISCUSSION_GROUP_ARTIFACT_ROOT = '.aionui/discussion-groups';
@@ -76,7 +77,9 @@ const formatIsoTimestamp = (timestamp: number): string => {
   return new Date(timestamp).toISOString();
 };
 
-export const isHarnessArtifactRole = (role?: CollaborationParticipantRole): role is HarnessArtifactRole => {
+export const isHarnessArtifactRole = (
+  role?: CollaborationParticipantRole | GroupParticipantRole
+): role is HarnessArtifactRole => {
   return role === 'planner' || role === 'generator' || role === 'evaluator';
 };
 

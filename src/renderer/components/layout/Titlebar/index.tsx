@@ -23,7 +23,7 @@ import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { isElectronDesktop, isMacOS } from '@/renderer/utils/platform';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
-import CreateDiscussionGroupModal from '@renderer/pages/conversation/platforms/group/CreateDiscussionGroupModal';
+import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import { iconColors } from '@renderer/styles/colors';
 import './titlebar.css';
@@ -90,9 +90,9 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
         }
       });
 
-    const unsubscribe = ipcBridge.windowControls.fullScreenChanged.on(({ isFullScreen: nextFullScreen }) => {
+    const unsubscribe = ipcBridge.windowControls.fullScreenChanged.on(({ isFullScreen: nextIsFullScreen }) => {
       if (isMounted) {
-        setIsFullScreen(nextFullScreen);
+        setIsFullScreen(nextIsFullScreen);
       }
     });
 
@@ -147,7 +147,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     void navigate('/guid');
   };
 
-  const handleCreateDiscussionGroup = () => {
+  const handleCreateGroup = () => {
     setGroupModalVisible(true);
   };
 
@@ -377,7 +377,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
         }
 
         if (key === 'group') {
-          handleCreateDiscussionGroup();
+          handleCreateGroup();
         }
       }}
     >
@@ -468,7 +468,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
           {showWindowControls && <WindowControls />}
         </div>
       </div>
-      <CreateDiscussionGroupModal
+      <CreateGroupModal
         visible={groupModalVisible}
         workspace={activeWorkspace}
         cliAgents={cliAgents}

@@ -4,7 +4,7 @@ import { ipcBridge } from '@/common';
 import type { CronMessageMeta, TMessage } from '@/common/chat/chatLib';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
-import { AIONUI_FILES_MARKER } from '@/common/config/constants';
+import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { parseError, uuid } from '@/common/utils';
 import type {
@@ -651,8 +651,8 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
 
       if (data.msg_id && data.content) {
         let contentToSend = data.agentContent || data.content;
-        if (contentToSend.includes(AIONUI_FILES_MARKER)) {
-          contentToSend = contentToSend.split(AIONUI_FILES_MARKER)[0].trimEnd();
+        if (contentToSend.includes(CONTEXTGO_FILES_MARKER)) {
+          contentToSend = contentToSend.split(CONTEXTGO_FILES_MARKER)[0].trimEnd();
         }
 
         // 首条消息时注入预设规则和 skills

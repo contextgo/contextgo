@@ -1,28 +1,41 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type {
+  IAssistantConversationCreateParams,
+  ICreateConversationParams,
+  IGitRepositoryInfo,
+} from '@/common/adapter/ipcBridge';
+import {
+  DEFAULT_WORKFLOW_GROUP_TEMPLATE,
+  getWorkflowGroupTemplateDefinition,
+  type WorkflowTemplateRole,
+  normalizeWorkflowGroupTemplate,
+  normalizeWorkflowTemplateMaxIterations,
+  normalizeWorkflowTemplateReviewMode,
+  normalizeWorkflowTemplateScoreTarget,
+} from '@/common/config/group';
 import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
 import { ConfigStorage } from '@/common/config/storage';
-import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
-import type { IAssistantConversationCreateParams } from '@/common/adapter/ipcBridge';
-import type { IGitRepositoryInfo } from '@/common/adapter/ipcBridge';
-import type { TProviderWithModel } from '@/common/config/storage';
 import type {
   CollaborationMode,
   CollaborationParticipantRole,
-  DiscussionGroupMode,
   GroupCollaborationConfig,
+  GroupParticipantRole,
+  TProviderWithModel,
+  WorkflowGroupReviewMode,
+  WorkflowGroupTemplate,
+  DiscussionGroupMode,
 } from '@/common/config/storage';
-import { resolveLocaleKey } from '@/common/utils';
-import { loadPresetAssistantResources } from '@/renderer/utils/model/presetAssistantResources';
-import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
 import type { AcpBackend, AcpBackendAll } from '@/common/types/acpTypes';
-import { uuid } from '@/common/utils';
+import { resolveLocaleKey, uuid } from '@/common/utils';
+import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
+import { loadPresetAssistantResources } from '@/renderer/utils/model/presetAssistantResources';
 
-export type DiscussionGroupAssistantInput = {
+export type GroupAssistantInput = {
   type: 'preset-assistant';
   participantKey: string;
   name: string;
@@ -31,7 +44,7 @@ export type DiscussionGroupAssistantInput = {
   presetAgentType?: string;
 };
 
-export type DiscussionGroupCliParticipantInput = {
+export type GroupCliParticipantInput = {
   type: 'cli-agent';
   participantKey: string;
   name: string;
@@ -40,7 +53,21 @@ export type DiscussionGroupCliParticipantInput = {
   agent: AvailableAgent;
 };
 
-export type DiscussionGroupParticipantInput = DiscussionGroupAssistantInput | DiscussionGroupCliParticipantInput;
+type GroupParticipantInputBase = {
+  role?: GroupParticipantRole;
+};
+
+export type GroupParticipantInput =
+  | (GroupAssistantInput & GroupParticipantInputBase)
+  | (GroupCliParticipantInput & GroupParticipantInputBase);
+
+export type DiscussionGroupAssistantInput = GroupAssistantInput;
+export type DiscussionGroupCliParticipantInput = GroupCliParticipantInput;
+export type DiscussionGroupParticipantInput = GroupParticipantInput;
+
+export type WorkflowGroupParticipantInput =
+  | (GroupAssistantInput & { role: WorkflowTemplateRole })
+  | (GroupCliParticipantInput & { role: WorkflowTemplateRole });
 
 const HARNESS_ROLE_ORDER: CollaborationParticipantRole[] = ['planner', 'generator', 'evaluator'];
 
@@ -71,13 +98,14 @@ const resolveGroupCollaboration = (options: {
 
 const resolveParticipantRole = (
   collaborationMode: CollaborationMode | undefined,
-  participantIndex: number
-): CollaborationParticipantRole => {
+  participantIndex: number,
+  participantRole?: GroupParticipantRole
+): GroupParticipantRole | undefined => {
   if (collaborationMode === 'planner-generator-evaluator') {
     return HARNESS_ROLE_ORDER[participantIndex] || 'participant';
   }
 
-  return 'participant';
+  return participantRole;
 };
 
 const buildGoogleAuthGeminiModel = (useModel: string, id = GOOGLE_AUTH_PROVIDER_ID): TProviderWithModel => {
@@ -94,7 +122,7 @@ const buildGoogleAuthGeminiModel = (useModel: string, id = GOOGLE_AUTH_PROVIDER_
 /**
  * Get the default Gemini model configuration from user settings.
  * Throws if no enabled provider or model is configured.
- * [BUG-3 fix]: callers must call this inside a try block
+ * [BUG-3 fix]: callers must call this inside a try block.
  */
 export async function getDefaultGeminiModel(): Promise<TProviderWithModel> {
   const providers = await ConfigStorage.get('model.config');
@@ -141,7 +169,7 @@ export async function getDefaultGeminiModel(): Promise<TProviderWithModel> {
 
 /**
  * Determine the conversation type from a CLI agent's backend.
- * codex uses ACP path (type: 'acp' + extra.backend = 'codex').
+ * Codex uses ACP path (type: 'acp' + extra.backend = 'codex').
  */
 export function getConversationTypeForBackend(backend: string): ICreateConversationParams['type'] {
   switch (backend) {
@@ -153,8 +181,6 @@ export function getConversationTypeForBackend(backend: string): ICreateConversat
     case 'nanobot':
       return 'nanobot';
     default:
-      // claude, qwen, codex, iflow, goose, auggie, kimi, opencode, copilot, qoder, codebuddy, droid, vibe, etc.
-      // Note: codex now uses ACP path; legacy 'codex' type is not used for new conversations.
       return 'acp';
   }
 }
@@ -169,8 +195,7 @@ export function getConversationTypeForPreset(presetAgentType: string): ICreateCo
 
 /**
  * Build ICreateConversationParams for a CLI agent.
- * The backend will automatically fill in derived fields (gateway.cliPath, runtimeValidation, etc.).
- * [BUG-3 fix]: callers must invoke this inside a try block because getDefaultGeminiModel may throw.
+ * The backend will automatically fill in derived fields.
  */
 export async function buildCliAgentParams(
   agent: AvailableAgent,
@@ -189,15 +214,14 @@ export async function buildCliAgentParams(
   if (type === 'acp' || type === 'openclaw-gateway') {
     extra.backend = backend as AcpBackendAll;
     extra.agentName = agentName;
-    if (cliPath) extra.cliPath = cliPath;
+    if (cliPath) {
+      extra.cliPath = cliPath;
+    }
     if (backend === 'openclaw-gateway') {
       extra.openclawAgentId = agent.openclawAgentId;
     }
   }
 
-  // Gemini type uses a placeholder model (matching Guid page behavior in useGuidSend).
-  // The Guid page uses currentModel || placeholderModel, so Gemini does NOT require
-  // a configured model provider - it works with Google auth instead.
   const model: TProviderWithModel =
     type === 'gemini'
       ? {
@@ -215,9 +239,6 @@ export async function buildCliAgentParams(
 
 /**
  * Build ICreateConversationParams for a preset assistant.
- * Applies 4-layer fallback for reading rules and skills (BUG-1 fix).
- * Uses resolveLocaleKey() to convert i18n.language to standard locale format (BUG-2 fix).
- * [BUG-3 fix]: callers must invoke this inside a try block because getDefaultGeminiModel may throw.
  */
 export async function buildPresetAssistantParams(
   agent: AvailableAgent,
@@ -225,8 +246,6 @@ export async function buildPresetAssistantParams(
   language: string
 ): Promise<ICreateConversationParams> {
   const { customAgentId, presetAgentType = 'gemini' } = agent;
-
-  // [BUG-2] Map raw i18n.language to standard locale key
   const localeKey = resolveLocaleKey(language);
 
   const {
@@ -249,10 +268,8 @@ export async function buildPresetAssistantParams(
   };
 
   if (type === 'gemini') {
-    // gemini uses presetRules field
     extra.presetRules = presetContext;
   } else {
-    // acp uses presetContext field
     extra.presetContext = presetContext;
     if (type === 'acp') {
       extra.backend = presetAgentType as AcpBackend;
@@ -260,40 +277,33 @@ export async function buildPresetAssistantParams(
   }
 
   const model = type === 'gemini' ? await getDefaultGeminiModel() : ({} as TProviderWithModel);
-
   return { type, model, name: agent.name, extra };
 }
 
-export const createDiscussionGroupPlaceholderModel = (): TProviderWithModel => {
+export const createGroupPlaceholderModel = (): TProviderWithModel => {
   return {
-    id: 'discussion-group-placeholder',
-    name: 'Discussion Group',
-    useModel: 'discussion-group',
-    platform: 'discussion-group',
+    id: 'group-placeholder',
+    name: 'Group',
+    useModel: 'group',
+    platform: 'group' as TProviderWithModel['platform'],
     baseUrl: '',
     apiKey: '',
   } as TProviderWithModel;
 };
 
-export async function buildDiscussionGroupParams(options: {
-  name: string;
+export const createDiscussionGroupPlaceholderModel = createGroupPlaceholderModel;
+
+const buildGroupParticipants = async (options: {
   workspace?: string;
   language: string;
-  mode: DiscussionGroupMode;
-  participants: DiscussionGroupParticipantInput[];
+  participants: GroupParticipantInput[];
   collaborationMode?: CollaborationMode;
-  gitRepository?: IGitRepositoryInfo;
-}): Promise<ICreateConversationParams> {
+}) => {
   const customWorkspace = Boolean(options.workspace?.trim());
   const normalizedWorkspace = options.workspace?.trim() || undefined;
-  const collaboration = resolveGroupCollaboration({
-    collaborationMode: options.collaborationMode,
-    gitRepository: options.gitRepository,
-  });
 
-  const participants = await Promise.all(
+  return Promise.all(
     options.participants.map(async (participant, participantIndex) => {
-      const participantWorkspace = normalizedWorkspace || '';
       const conversation =
         participant.type === 'preset-assistant'
           ? ((await buildPresetAssistantParams(
@@ -304,12 +314,12 @@ export async function buildDiscussionGroupParams(options: {
                 isPreset: true,
                 presetAgentType: participant.presetAgentType,
               },
-              participantWorkspace,
+              normalizedWorkspace || '',
               options.language
             )) as IAssistantConversationCreateParams)
           : ((await buildCliAgentParams(
               participant.agent,
-              participantWorkspace
+              normalizedWorkspace || ''
             )) as IAssistantConversationCreateParams);
 
       return {
@@ -320,7 +330,7 @@ export async function buildDiscussionGroupParams(options: {
         name: participant.name,
         avatar: participant.avatar,
         description: participant.description,
-        role: resolveParticipantRole(options.collaborationMode, participantIndex),
+        role: resolveParticipantRole(options.collaborationMode, participantIndex, participant.role),
         conversation: {
           ...conversation,
           name: participant.name,
@@ -333,20 +343,85 @@ export async function buildDiscussionGroupParams(options: {
       };
     })
   );
+};
+
+export async function buildDiscussionGroupParams(options: {
+  name: string;
+  workspace?: string;
+  language: string;
+  mode: DiscussionGroupMode;
+  participants: GroupParticipantInput[];
+  collaborationMode?: CollaborationMode;
+  gitRepository?: IGitRepositoryInfo;
+}): Promise<ICreateConversationParams> {
+  const customWorkspace = Boolean(options.workspace?.trim());
+  const normalizedWorkspace = options.workspace?.trim() || undefined;
+  const participants = await buildGroupParticipants({
+    workspace: options.workspace,
+    language: options.language,
+    participants: options.participants,
+    collaborationMode: options.collaborationMode,
+  });
+  const collaboration = resolveGroupCollaboration({
+    collaborationMode: options.collaborationMode,
+    gitRepository: options.gitRepository,
+  });
 
   return {
     type: 'group',
-    model: createDiscussionGroupPlaceholderModel(),
+    model: createGroupPlaceholderModel(),
     name: options.name,
     extra: {
       workspace: normalizedWorkspace,
       customWorkspace,
       participants,
       orchestration: {
+        kind: 'discussion',
         mode: options.mode,
         rounds: options.mode === 'debate' ? 2 : 1,
       },
       collaboration,
+    },
+  };
+}
+
+export async function buildWorkflowGroupParams(options: {
+  name: string;
+  workspace?: string;
+  language: string;
+  template?: WorkflowGroupTemplate;
+  participants: WorkflowGroupParticipantInput[];
+  maxIterations?: number;
+  scoreTarget?: number;
+  artifactPath?: string;
+  reviewMode?: WorkflowGroupReviewMode;
+}): Promise<ICreateConversationParams> {
+  const customWorkspace = Boolean(options.workspace?.trim());
+  const normalizedWorkspace = options.workspace?.trim() || undefined;
+  const template = normalizeWorkflowGroupTemplate(options.template || DEFAULT_WORKFLOW_GROUP_TEMPLATE);
+  const templateDefinition = getWorkflowGroupTemplateDefinition(template);
+  const participants = await buildGroupParticipants({
+    workspace: options.workspace,
+    language: options.language,
+    participants: options.participants,
+  });
+
+  return {
+    type: 'group',
+    model: createGroupPlaceholderModel(),
+    name: options.name,
+    extra: {
+      workspace: normalizedWorkspace,
+      customWorkspace,
+      participants,
+      orchestration: {
+        kind: 'workflow',
+        template,
+        maxIterations: normalizeWorkflowTemplateMaxIterations(options.maxIterations, template),
+        scoreTarget: normalizeWorkflowTemplateScoreTarget(options.scoreTarget, template),
+        artifactPath: options.artifactPath?.trim() || templateDefinition.defaults.artifactPath,
+        reviewMode: normalizeWorkflowTemplateReviewMode(options.reviewMode, template),
+      },
     },
   };
 }

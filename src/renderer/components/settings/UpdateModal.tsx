@@ -184,11 +184,11 @@ const UpdateModal: React.FC = () => {
 
   useEffect(() => {
     const removeOpenListener = ipcBridge.update.open.on(handleOpenUpdateModal);
-    window.addEventListener('aionui-open-update-modal', handleOpenUpdateModal);
+    window.addEventListener('contextgo-open-update-modal', handleOpenUpdateModal);
 
     return () => {
       removeOpenListener();
-      window.removeEventListener('aionui-open-update-modal', handleOpenUpdateModal);
+      window.removeEventListener('contextgo-open-update-modal', handleOpenUpdateModal);
     };
   }, []);
 

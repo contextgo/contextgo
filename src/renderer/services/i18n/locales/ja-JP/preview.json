@@ -102,9 +102,9 @@
     "inspectElementDisable": "要素インスペクターを無効化"
   },
   "ppt": {
-    "loading": "PPTプレビューを起動中...",
-    "installing": "プレビューコンポーネントをインストール中...",
-    "startFailed": "PPTプレビューの起動に失敗しました",
-    "installHint": "officecliがインストールされていることを確認してください: npm run postinstall"
+    "loading": "プレゼンテーションのプレビューを変換しています...",
+    "installing": "プレゼンテーションのプレビューを準備しています...",
+    "startFailed": "PPT プレビューの生成に失敗しました",
+    "installHint": "LibreOffice をインストールし、`soffice` を PATH から実行できるようにしてください。"
   }
 }

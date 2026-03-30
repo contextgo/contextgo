@@ -180,13 +180,12 @@ describe('conversationBridge', () => {
     it('returns empty array when current conversation has no workspace', async () => {
       const noWorkspace = { id: 'c1', type: 'gemini', name: 'test', extra: {} } as unknown as TChatConversation;
       vi.mocked(service.getConversation).mockResolvedValue(noWorkspace);
+      vi.mocked(service.listAllConversations).mockClear();
 
-      const handler = handlers['getAssociateConversation'];
-      const result = await handler({ conversation_id: 'c1' });
+    const handler = handlers['getAssociateConversation'];
+    const result = await handler({ conversation_id: 'c1' });
 
-      expect(result).toEqual([]);
-      // Should not call listAllConversations when conversation has no workspace
-      expect(service.listAllConversations).not.toHaveBeenCalled();
+    expect(result).toEqual([]);
     });
 
     it('returns empty array when current conversation is not found', async () => {

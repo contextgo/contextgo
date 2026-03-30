@@ -159,7 +159,14 @@ describe('fsBridge skills functionality', () => {
       getHooksDir: vi.fn(() => path.resolve('/mock/userData/config/hooks')),
       getBuiltinSkillsCopyDir: vi.fn(() => path.resolve('/mock/userData/builtin-skills')),
       getBuiltinHooksCopyDir: vi.fn(() => path.resolve('/mock/userData/builtin-hooks')),
+      getAutoSkillsDir: vi.fn(() => path.resolve('/mock/userData/builtin-skills/auto')),
       ProcessEnv: { set: vi.fn() },
+    }));
+
+    vi.doMock('@process/task/AcpSkillManager', () => ({
+      AcpSkillManager: {
+        resetInstance: vi.fn(),
+      },
     }));
 
     // Start with empty IPC handlers map
@@ -187,6 +194,7 @@ describe('fsBridge skills functionality', () => {
             fetchRemoteImage: createCommandMock('fetch-remote-image'),
             readFile: createCommandMock('read-file'),
             readFileBuffer: createCommandMock('read-file-buffer'),
+            getGitRepositoryInfo: createCommandMock('get-git-repository-info'),
             createTempFile: createCommandMock('create-temp-file'),
             writeFile: createCommandMock('write-file'),
             createZip: createCommandMock('create-zip-file'),
@@ -223,6 +231,8 @@ describe('fsBridge skills functionality', () => {
             getCustomExternalPaths: createCommandMock('get-custom-external-paths'),
             addCustomExternalPath: createCommandMock('add-custom-external-path'),
             removeCustomExternalPath: createCommandMock('remove-custom-external-path'),
+            searchSkillMarket: createCommandMock('search-skill-market'),
+            installSkillMarketSkill: createCommandMock('install-skill-market-skill'),
             enableSkillsMarket: createCommandMock('enable-skills-market'),
             disableSkillsMarket: createCommandMock('disable-skills-market'),
           },

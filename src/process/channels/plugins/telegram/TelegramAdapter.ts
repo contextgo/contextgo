@@ -5,11 +5,20 @@
  */
 
 import type { Context } from 'grammy';
-import type { Message, PhotoSize, User as TelegramUser } from 'grammy/types';
+import type {
+  ForceReply,
+  InlineKeyboardMarkup,
+  Message,
+  PhotoSize,
+  ReplyKeyboardMarkup,
+  ReplyKeyboardRemove,
+  User as TelegramUser,
+} from 'grammy/types';
 import type {
   IUnifiedIncomingMessage,
   IUnifiedMessageContent,
   IUnifiedOutgoingMessage,
+  IUnifiedPeer,
   IUnifiedUser,
 } from '../../types';
 
@@ -38,11 +47,21 @@ export function toUnifiedIncomingMessage(ctx: Context): IUnifiedIncomingMessage 
 
     // Get chat ID from the original message or from the callback query
     const chatId = callbackQuery.message?.chat?.id?.toString() || callbackQuery.from.id.toString();
+    const peer = buildTelegramPeer({
+      chatId,
+      chatType: callbackQuery.message?.chat?.type,
+      threadId:
+        'message_thread_id' in (callbackQuery.message ?? {}) &&
+        typeof callbackQuery.message?.message_thread_id === 'number'
+          ? callbackQuery.message.message_thread_id
+          : undefined,
+    });
 
     return {
       id: callbackQuery.id,
       platform: 'telegram',
       chatId,
+      peer,
       user,
       content: {
         type: 'action',
@@ -61,16 +80,48 @@ export function toUnifiedIncomingMessage(ctx: Context): IUnifiedIncomingMessage 
   if (!user) return null;
 
   const content = extractMessageContent(message);
+  const chatId = message.chat.id.toString();
+  const peer = buildTelegramPeer({
+    chatId,
+    chatType: message.chat.type,
+    threadId: 'message_thread_id' in message ? message.message_thread_id : undefined,
+  });
 
   return {
     id: message.message_id.toString(),
     platform: 'telegram',
-    chatId: message.chat.id.toString(),
+    chatId,
+    peer,
     user,
     content,
     timestamp: message.date * 1000, // Convert to milliseconds
     replyToMessageId: message.reply_to_message?.message_id.toString(),
     raw: message,
+  };
+}
+
+function buildTelegramPeer(params: {
+  chatId: string;
+  chatType?: Message['chat']['type'];
+  threadId?: number;
+}): IUnifiedPeer {
+  if (typeof params.threadId === 'number') {
+    const threadId = params.threadId.toString();
+    return {
+      key: `${params.chatId}:thread:${threadId}`,
+      platformChatId: params.chatId,
+      parentChatId: params.chatId,
+      threadId,
+      scope: 'thread',
+      chatType: 'thread',
+    };
+  }
+
+  return {
+    key: params.chatId,
+    platformChatId: params.chatId,
+    scope: 'chat',
+    chatType: params.chatType,
   };
 }
 
@@ -227,7 +278,7 @@ function getLargestPhoto(photos: PhotoSize[]): PhotoSize {
  */
 export interface TelegramSendOptions {
   parse_mode?: 'HTML' | 'MarkdownV2' | 'Markdown';
-  reply_markup?: any;
+  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
   reply_to_message_id?: number;
   disable_notification?: boolean;
   disable_web_page_preview?: boolean;
@@ -246,7 +297,7 @@ export function toTelegramSendParams(message: IUnifiedOutgoingMessage): {
   };
 
   if (message.replyMarkup) {
-    options.reply_markup = message.replyMarkup;
+    options.reply_markup = message.replyMarkup as TelegramSendOptions['reply_markup'];
   }
 
   if (message.replyToMessageId) {

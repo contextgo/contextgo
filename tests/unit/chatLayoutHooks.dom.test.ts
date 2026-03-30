@@ -43,9 +43,9 @@ vi.mock('@/renderer/utils/ui/focus', () => ({
 }));
 
 vi.mock('@/renderer/utils/workspace/workspaceEvents', () => ({
-  WORKSPACE_TOGGLE_EVENT: 'aionui-workspace-toggle',
-  WORKSPACE_STATE_EVENT: 'aionui-workspace-state',
-  WORKSPACE_HAS_FILES_EVENT: 'aionui-workspace-has-files',
+  WORKSPACE_TOGGLE_EVENT: 'contextgo-workspace-toggle',
+  WORKSPACE_STATE_EVENT: 'contextgo-workspace-state',
+  WORKSPACE_HAS_FILES_EVENT: 'contextgo-workspace-has-files',
   dispatchWorkspaceStateEvent: vi.fn(),
   dispatchWorkspaceToggleEvent: vi.fn(),
   dispatchWorkspaceHasFilesEvent: vi.fn(),
@@ -253,7 +253,7 @@ describe('useContainerWidth', () => {
 // ── useWorkspaceCollapse ───────────────────────────────────────────────────
 
 describe('useWorkspaceCollapse', () => {
-  const STORAGE_KEY = 'aionui_workspace_panel_collapsed';
+  const STORAGE_KEY = 'contextgo_workspace_panel_collapsed';
 
   function clearStorage() {
     globalThis.localStorage.removeItem(STORAGE_KEY);

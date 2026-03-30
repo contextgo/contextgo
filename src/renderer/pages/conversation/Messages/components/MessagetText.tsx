@@ -5,11 +5,13 @@
  */
 
 import type { IMessageText } from '@/common/chat/chatLib';
-import { findContextGoFileMarker } from '@/common/config/constants';
+import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
+import { formatWorkflowRoleLabel, isBuiltInWorkflowRole } from '@/common/config/group';
 import { iconColors } from '@/renderer/styles/colors';
 import { Alert, Message, Tooltip } from '@arco-design/web-react';
 import { Copy } from '@icon-park/react';
 import classNames from 'classnames';
+import type { TFunction } from 'i18next';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copyText } from '@/renderer/utils/ui/clipboard';
@@ -21,13 +23,24 @@ import { stripThinkTags, hasThinkTags } from '@renderer/utils/chat/thinkTagFilte
 import MessageCronBadge from './MessageCronBadge';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 
+const resolveGroupParticipantRoleLabel = (
+  role: string | undefined,
+  t: TFunction<'translation', undefined>
+): string | null => {
+  if (!role) {
+    return null;
+  }
+
+  return isBuiltInWorkflowRole(role) ? t(`conversation.group.role.${role}`) : formatWorkflowRoleLabel(role);
+};
+
 const parseFileMarker = (content: string) => {
-  const markerMatch = findContextGoFileMarker(content);
-  if (!markerMatch) {
+  const markerIndex = content.indexOf(CONTEXTGO_FILES_MARKER);
+  if (markerIndex === -1) {
     return { text: content, files: [] as string[] };
   }
-  const text = content.slice(0, markerMatch.index).trimEnd();
-  const afterMarker = content.slice(markerMatch.index + markerMatch.marker.length).trim();
+  const text = content.slice(0, markerIndex).trimEnd();
+  const afterMarker = content.slice(markerIndex + CONTEXTGO_FILES_MARKER.length).trim();
   const files = afterMarker
     ? afterMarker
         .split('\n')
@@ -104,6 +117,20 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   const groupAvatarImage = groupMeta?.participantAvatar
     ? CUSTOM_AVATAR_IMAGE_MAP[groupMeta.participantAvatar]
     : undefined;
+  const groupMetaLabels = groupMeta
+    ? groupMeta.kind === 'workflow'
+      ? [
+          resolveGroupParticipantRoleLabel(groupMeta.participantRole, t),
+          t(`conversation.group.workflow.stage.${groupMeta.stage}`),
+          groupMeta.iteration > 0
+            ? t('conversation.group.workflow.iterationLabel', { iteration: groupMeta.iteration })
+            : null,
+        ].filter(Boolean)
+      : [
+          resolveGroupParticipantRoleLabel(groupMeta.participantRole, t),
+          groupMeta.round > 0 ? t('conversation.group.roundLabel', { round: groupMeta.round }) : null,
+        ].filter(Boolean)
+    : [];
 
   return (
     <>
@@ -121,12 +148,9 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
               <span className='text-14px leading-18px'>{groupMeta.participantAvatar}</span>
             ) : null}
             <span className='font-medium text-[var(--color-text-2)]'>{groupMeta.participantName}</span>
-            {groupMeta.participantRole ? (
-              <span className='rounded-full bg-[var(--color-fill-2)] px-6px py-1px text-11px text-[var(--color-primary-6)]'>
-                {t(`conversation.group.role.${groupMeta.participantRole}`)}
-              </span>
-            ) : null}
-            {groupMeta.round > 0 ? <span>{t('conversation.group.roundLabel', { round: groupMeta.round })}</span> : null}
+            {groupMetaLabels.map((label) => (
+              <span key={String(label)}>{label}</span>
+            ))}
           </div>
         )}
         {files.length > 0 && (

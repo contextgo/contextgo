@@ -5,10 +5,14 @@
  */
 
 import type {
+  IAgentProfile,
+  IChannelBinding,
   IChannelPluginConfig,
   IChannelPairingRequest,
   IChannelUser,
   IChannelSession,
+  IConnectorInstance,
+  IRemoteIdentity,
 } from '@process/channels/types';
 import { getDatabase } from '@process/services/database';
 import type { IChannelRepository } from './IChannelRepository';
@@ -57,5 +61,57 @@ export class SqliteChannelRepository implements IChannelRepository {
       throw new Error(result.error ?? 'Failed to get channel sessions');
     }
     return result.data;
+  }
+
+  async getConnectorInstances(): Promise<IConnectorInstance[]> {
+    const db = await getDatabase();
+    const result = db.getConnectorInstances();
+    if (!result.success || !result.data) {
+      throw new Error(result.error ?? 'Failed to get connector instances');
+    }
+    return result.data;
+  }
+
+  async getAgentProfiles(): Promise<IAgentProfile[]> {
+    const db = await getDatabase();
+    const result = db.getAgentProfiles();
+    if (!result.success || !result.data) {
+      throw new Error(result.error ?? 'Failed to get agent profiles');
+    }
+    return result.data;
+  }
+
+  async getRemoteIdentities(connectorId?: string): Promise<IRemoteIdentity[]> {
+    const db = await getDatabase();
+    const result = db.getRemoteIdentities(connectorId);
+    if (!result.success || !result.data) {
+      throw new Error(result.error ?? 'Failed to get remote identities');
+    }
+    return result.data;
+  }
+
+  async getChannelBindings(connectorId?: string): Promise<IChannelBinding[]> {
+    const db = await getDatabase();
+    const result = db.getChannelBindings(connectorId);
+    if (!result.success || !result.data) {
+      throw new Error(result.error ?? 'Failed to get channel bindings');
+    }
+    return result.data;
+  }
+
+  async upsertChannelBinding(binding: IChannelBinding): Promise<void> {
+    const db = await getDatabase();
+    const result = db.upsertChannelBinding(binding);
+    if (!result.success) {
+      throw new Error(result.error ?? `Failed to upsert channel binding ${binding.id}`);
+    }
+  }
+
+  async deleteChannelBinding(bindingId: string): Promise<void> {
+    const db = await getDatabase();
+    const result = db.deleteChannelBinding(bindingId);
+    if (!result.success) {
+      throw new Error(result.error ?? `Failed to delete channel binding ${bindingId}`);
+    }
   }
 }

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -11,8 +11,8 @@ import { getPlatformServices } from '@/common/platform';
  * Used to isolate symlink and directory names between environments.
  *
  * @example
- * getEnvAwareName('.aionui')        // release → '.aionui',        dev → '.aionui-dev'
- * getEnvAwareName('.aionui-config') // release → '.aionui-config', dev → '.aionui-config-dev'
+ * getEnvAwareName('.contextgo')        // release → '.contextgo',        dev → '.contextgo-dev'
+ * getEnvAwareName('.contextgo-config') // release → '.contextgo-config', dev → '.contextgo-config-dev'
  */
 export function getEnvAwareName(baseName: string): string {
   return getPlatformServices().paths.isPackaged() === true ? baseName : `${baseName}-dev`;

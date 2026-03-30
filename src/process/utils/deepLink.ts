@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -11,7 +11,7 @@ export const PROTOCOL_SCHEME = 'contextgo';
 export type DeepLinkPayload = { action: string; params: Record<string, string> };
 
 /**
- * Parse an contextgo:// URL into action and params.
+ * Parse a contextgo:// URL into action and params.
  * Supports two formats:
  *   1. contextgo://add-provider?baseUrl=xxx&apiKey=xxx
  *   2. contextgo://provider/add?v=1&data=<base64 JSON>  (one-api / new-api style)

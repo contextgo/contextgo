@@ -237,8 +237,8 @@ export class AuthService {
 
     return jwt.sign(payload, await this.getJwtSecret(), {
       expiresIn: this.TOKEN_EXPIRY,
-      issuer: 'aionui',
-      audience: 'aionui-webui',
+      issuer: AUTH_CONFIG.TOKEN.ISSUER,
+      audience: AUTH_CONFIG.TOKEN.AUDIENCE,
     });
   }
 
@@ -267,8 +267,8 @@ export class AuthService {
       }
 
       const decoded = jwt.verify(token, await this.getJwtSecret(), {
-        issuer: 'aionui',
-        audience: 'aionui-webui',
+        issuer: AUTH_CONFIG.TOKEN.ISSUER,
+        audience: AUTH_CONFIG.TOKEN.AUDIENCE,
       }) as RawTokenPayload;
 
       return {
@@ -292,7 +292,7 @@ export class AuthService {
    * 验证 WebSocket Token
    * Verify WebSocket token
    *
-   * 复用 Web 登录 token (audience: aionui-webui)
+   * 复用 Web 登录 token (audience: contextgo-webui)
    *
    * @param token - JWT token string
    * @returns Token payload if valid, null otherwise
@@ -305,8 +305,8 @@ export class AuthService {
       }
 
       const decoded = jwt.verify(token, await this.getJwtSecret(), {
-        issuer: 'aionui',
-        audience: 'aionui-webui', // 使用与 Web 登录相同的 audience
+        issuer: AUTH_CONFIG.TOKEN.ISSUER,
+        audience: AUTH_CONFIG.TOKEN.AUDIENCE, // 使用与 Web 登录相同的 audience
       }) as RawTokenPayload;
 
       return {

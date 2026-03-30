@@ -30,7 +30,7 @@ vi.mock('@/renderer/utils/model/presetAssistantResources', () => ({
   loadPresetAssistantResources,
 }));
 
-const { buildCliAgentParams, buildDiscussionGroupParams, buildPresetAssistantParams } =
+const { buildCliAgentParams, buildDiscussionGroupParams, buildPresetAssistantParams, buildWorkflowGroupParams } =
   await import('../../src/renderer/pages/conversation/utils/createConversationParams');
 
 describe('createConversationParams', () => {
@@ -272,6 +272,7 @@ describe('createConversationParams', () => {
     });
 
     expect(params.extra.orchestration).toEqual({
+      kind: 'discussion',
       mode: 'relay',
       rounds: 1,
     });
@@ -343,5 +344,134 @@ describe('createConversationParams', () => {
       'generator',
       'evaluator',
     ]);
+  });
+
+  it('builds planner-writer-evaluator workflow groups with explicit roles', async () => {
+    loadPresetAssistantResources.mockResolvedValue({
+      rules: 'preset rules',
+      skills: '',
+      enabledSkills: ['quality-gate'],
+      enabledHooks: ['plan-before-coding'],
+    });
+
+    const params = await buildWorkflowGroupParams({
+      name: 'Workflow Group',
+      workspace: '/tmp/workspace',
+      language: 'en-US',
+      participants: [
+        {
+          type: 'preset-assistant',
+          participantKey: 'builtin-cowork',
+          name: 'Planner',
+          description: 'Preset planner',
+          presetAgentType: 'codebuddy',
+          role: 'planner',
+        },
+        {
+          type: 'cli-agent',
+          participantKey: 'codex:/usr/local/bin/codex:Writer CLI',
+          name: 'Writer CLI',
+          description: 'codex · /usr/local/bin/codex',
+          role: 'writer',
+          agent: {
+            backend: 'codex',
+            name: 'Writer CLI',
+            cliPath: '/usr/local/bin/codex',
+          },
+        },
+        {
+          type: 'cli-agent',
+          participantKey: 'qwen:/usr/local/bin/qwen:Evaluator CLI',
+          name: 'Evaluator CLI',
+          description: 'qwen · /usr/local/bin/qwen',
+          role: 'evaluator',
+          agent: {
+            backend: 'qwen',
+            name: 'Evaluator CLI',
+            cliPath: '/usr/local/bin/qwen',
+          },
+        },
+      ],
+    });
+
+    expect(params.type).toBe('group');
+    expect(params.extra.orchestration).toEqual({
+      kind: 'workflow',
+      template: 'planner-writer-evaluator',
+      maxIterations: 3,
+      scoreTarget: 8,
+      artifactPath: 'team-output.md',
+      reviewMode: 'per-iteration',
+    });
+    expect(params.extra.participants).toEqual([
+      expect.objectContaining({
+        role: 'planner',
+        participantType: 'preset-assistant',
+      }),
+      expect.objectContaining({
+        role: 'writer',
+        participantType: 'cli-agent',
+      }),
+      expect.objectContaining({
+        role: 'evaluator',
+        participantType: 'cli-agent',
+      }),
+    ]);
+  });
+
+  it('builds plan-build-evaluate workflow groups with single-pass review defaults', async () => {
+    const params = await buildWorkflowGroupParams({
+      name: 'Single Pass Workflow',
+      workspace: '/tmp/workspace',
+      language: 'en-US',
+      template: 'plan-build-evaluate',
+      participants: [
+        {
+          type: 'cli-agent',
+          participantKey: 'planner:/usr/local/bin/planner:Planner CLI',
+          name: 'Planner CLI',
+          description: 'planner · /usr/local/bin/planner',
+          role: 'planner',
+          agent: {
+            backend: 'codex',
+            name: 'Planner CLI',
+            cliPath: '/usr/local/bin/planner',
+          },
+        },
+        {
+          type: 'cli-agent',
+          participantKey: 'builder:/usr/local/bin/builder:Builder CLI',
+          name: 'Builder CLI',
+          description: 'builder · /usr/local/bin/builder',
+          role: 'writer',
+          agent: {
+            backend: 'qwen',
+            name: 'Builder CLI',
+            cliPath: '/usr/local/bin/builder',
+          },
+        },
+        {
+          type: 'cli-agent',
+          participantKey: 'evaluator:/usr/local/bin/evaluator:Evaluator CLI',
+          name: 'Evaluator CLI',
+          description: 'evaluator · /usr/local/bin/evaluator',
+          role: 'evaluator',
+          agent: {
+            backend: 'claude',
+            name: 'Evaluator CLI',
+            cliPath: '/usr/local/bin/evaluator',
+          },
+        },
+      ],
+    });
+
+    expect(params.extra.orchestration).toEqual({
+      kind: 'workflow',
+      template: 'plan-build-evaluate',
+      maxIterations: 1,
+      scoreTarget: 8,
+      artifactPath: 'team-output.md',
+      reviewMode: 'final-only',
+    });
   });
 });

@@ -21,8 +21,8 @@ export interface ConversationTab {
   type: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'group';
   /** Persist minimal conversation extra for tab icon rendering */
   extra?: TChatConversation['extra'];
-  /** Discussion group family id when this tab belongs to a discussion group */
-  discussionGroupId?: string;
+  /** Parent group conversation id when this tab belongs to a group family */
+  groupConversationId?: string;
   /** 是否有未保存的修改 / Whether there are unsaved changes */
   isDirty?: boolean;
 }
@@ -58,7 +58,7 @@ export interface ConversationTabsContextValue {
 
 const ConversationTabsContext = createContext<ConversationTabsContextValue | null>(null);
 
-const getDiscussionGroupId = (conversation: TChatConversation): string | undefined => {
+const getGroupConversationId = (conversation: TChatConversation): string | undefined => {
   if (conversation.type === 'group') {
     return conversation.id;
   }
@@ -75,7 +75,7 @@ const toConversationTab = (conversation: TChatConversation): ConversationTab => 
   workspace: conversation.extra?.workspace || '',
   type: conversation.type,
   extra: conversation.extra,
-  discussionGroupId: getDiscussionGroupId(conversation),
+  groupConversationId: getGroupConversationId(conversation),
 });
 
 // 从 localStorage 恢复状态 / Restore state from localStorage
@@ -162,10 +162,10 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
           return prev;
         }
 
-        const shouldCloseDiscussionFamily = targetTab.type === 'group' && Boolean(targetTab.discussionGroupId);
+        const shouldCloseGroupConversationFamily = targetTab.type === 'group' && Boolean(targetTab.groupConversationId);
         const closedIds = new Set(
-          shouldCloseDiscussionFamily
-            ? prev.filter((tab) => tab.discussionGroupId === targetTab.discussionGroupId).map((tab) => tab.id)
+          shouldCloseGroupConversationFamily
+            ? prev.filter((tab) => tab.groupConversationId === targetTab.groupConversationId).map((tab) => tab.id)
             : [conversationId]
         );
         const filtered = prev.filter((tab) => !closedIds.has(tab.id));

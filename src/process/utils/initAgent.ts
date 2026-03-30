@@ -6,10 +6,11 @@
 
 import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
 import type {
-  DiscussionGroupParticipant,
-  DiscussionGroupOrchestration,
+  GroupParticipant,
+  GroupOrchestration,
   TChatConversation,
   TProviderWithModel,
+  WorkflowGroupRunState,
 } from '@/common/config/storage';
 import type { PresetAgentType } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
@@ -160,10 +161,14 @@ const mergeResolvedConversationExtra = <TExtra extends Record<string, unknown>>(
   return {
     ...extra,
     ...overrides,
+    workingDirectory: resolvedWorkspace,
     workspace: resolvedWorkspace,
     customWorkspace: resolvedCustomWorkspace,
   };
 };
+
+const resolveRequestedWorkingDirectory = (workingDirectory?: string, workspace?: string): string | undefined =>
+  workingDirectory || workspace;
 
 export const createGeminiAgent = async (
   model: TProviderWithModel,
@@ -177,11 +182,14 @@ export const createGeminiAgent = async (
   enabledHooks?: string[],
   presetAssistantId?: string,
   sessionMode?: string,
-  isHealthCheck?: boolean
+  isHealthCheck?: boolean,
+  spaceId?: string,
+  mountId?: string,
+  workingDirectory?: string
 ): Promise<TChatConversation> => {
   const { workspace: newWorkspace, customWorkspace: finalCustomWorkspace } = await buildWorkspaceWidthFiles(
     `gemini-temp-${Date.now()}`,
-    workspace,
+    resolveRequestedWorkingDirectory(workingDirectory, workspace),
     defaultFiles,
     customWorkspace
   );
@@ -200,6 +208,9 @@ export const createGeminiAgent = async (
     model,
     extra: mergeResolvedConversationExtra(
       {
+        spaceId,
+        mountId,
+        workingDirectory,
         webSearchEngine,
         contextFileName,
         // 系统规则 / System rules
@@ -233,14 +244,18 @@ export const createGroupConversation = async (options: {
   id?: string;
   name?: string;
   model: TProviderWithModel;
+  spaceId?: string;
+  mountId?: string;
+  workingDirectory?: string;
   workspace?: string;
   customWorkspace?: boolean;
-  participants: DiscussionGroupParticipant[];
-  orchestration: DiscussionGroupOrchestration;
+  participants: GroupParticipant[];
+  orchestration: GroupOrchestration;
+  runState?: WorkflowGroupRunState;
 }): Promise<TChatConversation> => {
   const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
-    `discussion-group-temp-${Date.now()}`,
-    options.workspace,
+    `group-temp-${Date.now()}`,
+    resolveRequestedWorkingDirectory(options.workingDirectory, options.workspace),
     undefined,
     options.customWorkspace
   );
@@ -248,16 +263,22 @@ export const createGroupConversation = async (options: {
   return {
     type: 'group',
     model: options.model,
-    extra: {
+    extra: mergeResolvedConversationExtra(
+      {
+        spaceId: options.spaceId,
+        mountId: options.mountId,
+        workingDirectory: options.workingDirectory,
+        participants: options.participants,
+        orchestration: options.orchestration,
+        runState: options.runState,
+      },
       workspace,
-      customWorkspace,
-      participants: options.participants,
-      orchestration: options.orchestration,
-    },
+      customWorkspace
+    ) as Extract<TChatConversation, { type: 'group' }>['extra'],
     desc: customWorkspace ? workspace : '',
     createTime: Date.now(),
     modifyTime: Date.now(),
-    name: options.name || 'Discussion Group',
+    name: options.name || 'Group',
     id: options.id || uuid(),
   };
 };
@@ -269,7 +290,7 @@ export const createAcpAgent = async (options: ICreateConversationParams): Promis
   }
   const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
     `${extra.backend}-temp-${Date.now()}`,
-    extra.workspace,
+    resolveRequestedWorkingDirectory(extra.workingDirectory, extra.workspace),
     extra.defaultFiles,
     extra.customWorkspace
   );
@@ -321,7 +342,7 @@ export const createCodexAgent = async (options: ICreateConversationParams): Prom
   const { extra } = options;
   const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
     `codex-temp-${Date.now()}`,
-    extra.workspace,
+    resolveRequestedWorkingDirectory(extra.workingDirectory, extra.workspace),
     extra.defaultFiles,
     extra.customWorkspace
   );
@@ -364,7 +385,7 @@ export const createNanobotAgent = async (options: ICreateConversationParams): Pr
   const { extra } = options;
   const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
     `nanobot-temp-${Date.now()}`,
-    extra.workspace,
+    resolveRequestedWorkingDirectory(extra.workingDirectory, extra.workspace),
     extra.defaultFiles,
     extra.customWorkspace
   );
@@ -395,7 +416,7 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
   const { extra } = options;
   const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
     `openclaw-temp-${Date.now()}`,
-    extra.workspace,
+    resolveRequestedWorkingDirectory(extra.workingDirectory, extra.workspace),
     extra.defaultFiles,
     extra.customWorkspace
   );
@@ -418,6 +439,9 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
         cliPath: extra.cliPath,
       },
       runtimeValidation: {
+        expectedSpaceId: extra.runtimeValidation?.expectedSpaceId ?? extra.spaceId,
+        expectedMountId: extra.runtimeValidation?.expectedMountId ?? extra.mountId,
+        expectedWorkingDirectory: workspace,
         expectedWorkspace: workspace,
         expectedBackend: extra.backend,
         expectedAgentName: extra.agentName,

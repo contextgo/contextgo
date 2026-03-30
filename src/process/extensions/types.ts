@@ -46,14 +46,14 @@ export const ExtensionMetaSchema = z
       .record(z.string(), z.string().regex(/^\^?\d+\.\d+\.\d+(-[\w.]+)?$/, 'Dependency version must be semver format'))
       .optional()
       .describe('Extension dependencies: { extensionName: versionRange }'),
-    /** P2: AIONUI core version compatibility */
+    /** P2: ContextGo core version compatibility */
     engine: z
       .object({
-        aionui: z
+        contextgo: z
           .string()
           .regex(/^\^?\d+\.\d+\.\d+(-[\w.]+)?$/, 'Engine version must be semver format')
           .optional()
-          .describe('Compatible AionUI core version range'),
+          .describe('Compatible ContextGo core version range'),
       })
       .optional(),
     /**
@@ -95,7 +95,7 @@ export const ExtensionMetaSchema = z
      */
     permissions: z
       .object({
-        /** Read/write to AionUI persistent storage */
+        /** Read/write to ContextGo persistent storage */
         storage: z.boolean().default(false),
         /** Network access: false (none), true (all), or { allowedDomains: [...], reasoning?: string } */
         network: z

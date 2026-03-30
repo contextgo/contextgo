@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /**
  * Channel Module
  *
- * Provides remote interaction with AionUi through messaging platforms.
+ * Provides remote interaction with ContextGo through messaging platforms.
  * MVP: Telegram integration with Gemini Agent.
  */
 
@@ -16,6 +16,7 @@ export * from './types';
 
 // Core exports
 export { ChannelManager, getChannelManager } from './core/ChannelManager';
+export { ChannelHandoffService, getChannelHandoffService } from './core/ChannelHandoffService';
 export { SessionManager } from './core/SessionManager';
 
 // Gateway exports
@@ -26,6 +27,9 @@ export { PluginManager, registerPlugin } from './gateway/PluginManager';
 export { BasePlugin } from './plugins/BasePlugin';
 export type { PluginMessageHandler } from './plugins/BasePlugin';
 export { TelegramPlugin } from './plugins/telegram/TelegramPlugin';
+export { SlackPlugin } from './plugins/slack/SlackPlugin';
+export { DiscordPlugin } from './plugins/discord/DiscordPlugin';
+export { LarkPlugin } from './plugins/lark/LarkPlugin';
 export { DingTalkPlugin } from './plugins/dingtalk/DingTalkPlugin';
 export { WeixinPlugin } from './plugins/weixin/WeixinPlugin';
 
