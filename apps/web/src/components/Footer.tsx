@@ -13,6 +13,9 @@ export default function Footer({ dict, lang }: { dict: Dictionary['footer'], lan
           <div className='flex flex-wrap justify-center gap-6'>
             <Link href={`/${lang}`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.product}</Link>
             <Link href={`/${lang}/connect`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.connect}</Link>
+            <Link href={`/${lang}/docs`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.docs}</Link>
+            <Link href={`/${lang}/blog`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.blog}</Link>
+            <Link href={`/${lang}/changelog`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.changelog}</Link>
             <Link href={`/${lang}/download`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.download}</Link>
             <Link href={`/${lang}/privacy`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.privacy}</Link>
             <Link href={`/${lang}/terms`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.terms}</Link>
