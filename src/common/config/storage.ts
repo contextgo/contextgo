@@ -189,6 +189,8 @@ export interface IConfigStorageRefer {
   'command.library'?: ManagedSlashCommandRecord[];
   // Skills Market: whether the bundled builtin skill is enabled
   'skillsMarket.enabled'?: boolean;
+  // Space-scoped browser context assets used by agent-browser
+  'browser.context.assets'?: TBrowserContextAsset[];
 }
 
 export interface IEnvStorageRefer {
@@ -372,9 +374,42 @@ export type ConversationSpaceBinding = {
   mountId?: string;
   /** Physical working directory used by the agent runtime / Agent 运行时使用的物理工作目录 */
   workingDirectory?: string;
+  /** Browser context asset bound to this conversation / 绑定到该会话的浏览器上下文资产 ID */
+  browserContextAssetId?: string;
 };
 
 export type SpaceEngine = 'affine' | (string & {});
+
+export type BrowserContextAssetKind = 'managed' | 'imported-profile' | 'takeover-link';
+
+export type BrowserContextProvider = 'agent-browser';
+
+export type BrowserContextConsentStatus = 'pending' | 'granted' | 'denied' | 'revoked' | 'expired';
+
+export type BrowserContextStorageMode = 'local-encrypted' | 'extension-bridge' | 'session-only';
+
+export type BrowserContextMetadataValue = string | number | boolean | null;
+
+export type TBrowserContextAsset = {
+  id: string;
+  spaceId: string;
+  label: string;
+  kind: BrowserContextAssetKind;
+  provider: BrowserContextProvider;
+  consentStatus: BrowserContextConsentStatus;
+  storageMode: BrowserContextStorageMode;
+  domains?: string[];
+  fingerprintRef?: string;
+  profileRef?: string;
+  storageRef?: string;
+  grantedAt?: number;
+  expiresAt?: number;
+  revokedAt?: number;
+  lastUsedAt?: number;
+  metadata?: Record<string, BrowserContextMetadataValue>;
+  createTime: number;
+  modifyTime: number;
+};
 
 export type TSpace = {
   id: string;

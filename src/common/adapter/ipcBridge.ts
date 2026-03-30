@@ -13,9 +13,12 @@ import type { HookInfo, HookOutputRoutingConfig } from '../types/hookTypes';
 import type { ExternalSessionSummary, ImportExternalSessionParams } from '../types/externalSessions';
 import type { SlashCommandItem } from '../chat/slash/types';
 import type {
+  BrowserContextConsentStatus,
+  BrowserContextStorageMode,
   IMcpServer,
   IProvider,
   TChatConversation,
+  TBrowserContextAsset,
   TProviderWithModel,
   ICssTheme,
   ConversationSpaceBinding,
@@ -186,6 +189,46 @@ export const cloud = {
   logout: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.logout'),
   syncNow: bridge.buildProvider<IBridgeResponse<CloudSyncSummary>, void>('cloud.sync-now'),
   statusChanged: bridge.buildEmitter<CloudStatus>('cloud.status-changed'),
+};
+
+export interface ICreateBrowserContextAssetParams {
+  spaceId: string;
+  label: string;
+  kind: TBrowserContextAsset['kind'];
+  consentStatus?: BrowserContextConsentStatus;
+  storageMode?: BrowserContextStorageMode;
+  domains?: string[];
+  fingerprintRef?: string;
+  profileRef?: string;
+  storageRef?: string;
+  grantedAt?: number;
+  expiresAt?: number;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface IUpdateBrowserContextConsentParams {
+  id: string;
+  consentStatus: BrowserContextConsentStatus;
+  grantedAt?: number;
+  expiresAt?: number;
+}
+
+export const browserContext = {
+  listBySpace: bridge.buildProvider<
+    IBridgeResponse<TBrowserContextAsset[]>,
+    { spaceId: string; includeRevoked?: boolean }
+  >('browser-context.list-by-space'),
+  get: bridge.buildProvider<IBridgeResponse<TBrowserContextAsset>, { id: string }>('browser-context.get'),
+  create: bridge.buildProvider<IBridgeResponse<TBrowserContextAsset>, ICreateBrowserContextAssetParams>(
+    'browser-context.create'
+  ),
+  updateConsent: bridge.buildProvider<IBridgeResponse<TBrowserContextAsset>, IUpdateBrowserContextConsentParams>(
+    'browser-context.update-consent'
+  ),
+  revoke: bridge.buildProvider<IBridgeResponse<TBrowserContextAsset>, { id: string }>('browser-context.revoke'),
+  assertBindable: bridge.buildProvider<IBridgeResponse<TBrowserContextAsset>, { id: string; spaceId: string }>(
+    'browser-context.assert-bindable'
+  ),
 };
 
 // Manual (opt-in) updates via GitHub Releases
