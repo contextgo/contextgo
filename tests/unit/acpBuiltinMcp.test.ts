@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -193,8 +193,8 @@ describe('McpService Gemini detection', () => {
     vi.doMock('../../src/process/services/mcpServices/agents/GeminiMcpAgent', () => ({
       GeminiMcpAgent: makeAgentClass(nativeDetect),
     }));
-    vi.doMock('../../src/process/services/mcpServices/agents/ContextgoMcpAgent', () => ({
-      ContextgoMcpAgent: makeAgentClass(builtinDetect),
+    vi.doMock('../../src/process/services/mcpServices/agents/ContextGoMcpAgent', () => ({
+      ContextGoMcpAgent: makeAgentClass(builtinDetect),
     }));
     vi.doMock('../../src/process/services/mcpServices/agents/CodexMcpAgent', () => ({
       CodexMcpAgent: makeAgentClass(emptyDetect),
@@ -239,8 +239,8 @@ describe('McpService Gemini detection', () => {
     vi.doMock('../../src/process/services/mcpServices/agents/GeminiMcpAgent', () => ({
       GeminiMcpAgent: makeAgentClass(nativeDetect),
     }));
-    vi.doMock('../../src/process/services/mcpServices/agents/ContextgoMcpAgent', () => ({
-      ContextgoMcpAgent: makeAgentClass(builtinDetect),
+    vi.doMock('../../src/process/services/mcpServices/agents/ContextGoMcpAgent', () => ({
+      ContextGoMcpAgent: makeAgentClass(builtinDetect),
     }));
     vi.doMock('../../src/process/services/mcpServices/agents/CodexMcpAgent', () => ({
       CodexMcpAgent: makeAgentClass(emptyDetect),
@@ -287,8 +287,8 @@ describe('McpService Gemini detection', () => {
     vi.doMock('../../src/process/services/mcpServices/agents/GeminiMcpAgent', () => ({
       GeminiMcpAgent: makeAgentClass(emptyDetect),
     }));
-    vi.doMock('../../src/process/services/mcpServices/agents/ContextgoMcpAgent', () => ({
-      ContextgoMcpAgent: makeAgentClass(builtinDetect),
+    vi.doMock('../../src/process/services/mcpServices/agents/ContextGoMcpAgent', () => ({
+      ContextGoMcpAgent: makeAgentClass(builtinDetect),
     }));
     vi.doMock('../../src/process/services/mcpServices/agents/CodexMcpAgent', () => ({
       CodexMcpAgent: makeAgentClass(emptyDetect),

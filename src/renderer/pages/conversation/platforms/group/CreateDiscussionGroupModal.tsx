@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -19,7 +19,7 @@ import {
   buildDiscussionGroupParams,
   type DiscussionGroupParticipantInput,
 } from '@/renderer/pages/conversation/utils/createConversationParams';
-import { AionModal } from '@/renderer/components/base';
+import { ContextGoModal } from '@/renderer/components/base';
 import { Button, Checkbox, Input, Message, Radio, Typography } from '@arco-design/web-react';
 import { FolderOpen, Robot } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -315,7 +315,7 @@ const CreateDiscussionGroupModal: React.FC<{
   };
 
   return (
-    <AionModal
+    <ContextGoModal
       visible={visible}
       onCancel={onCancel}
       className='discussion-group-modal'
@@ -484,7 +484,7 @@ const CreateDiscussionGroupModal: React.FC<{
           </Typography.Text>
         </div>
       </div>
-    </AionModal>
+    </ContextGoModal>
   );
 };
 

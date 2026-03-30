@@ -23,7 +23,7 @@ const getConnectorInitials = (name: string): string =>
 const getCategoryClassName = (category: ConnectorCategory): string => {
   switch (category) {
     case 'contextgo':
-      return styles.logoContextgo;
+      return styles.logoContextGo;
     case 'googleWorkspace':
       return styles.logoGoogleWorkspace;
     case 'collaboration':

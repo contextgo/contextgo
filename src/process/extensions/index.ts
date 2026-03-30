@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,7 +8,7 @@ export { ExtensionLoader } from './ExtensionLoader';
 export { ExtensionRegistry } from './ExtensionRegistry';
 export { ExtensionWatcher } from './lifecycle/hotReload';
 
-export { AION_ASSET_PROTOCOL, AION_ASSET_HOST, toAssetUrl } from './protocol/assetProtocol';
+export { CONTEXTGO_ASSET_PROTOCOL, CONTEXTGO_ASSET_HOST, toAssetUrl } from './protocol/assetProtocol';
 
 export { resolveThemes } from './resolvers/ThemeResolver';
 

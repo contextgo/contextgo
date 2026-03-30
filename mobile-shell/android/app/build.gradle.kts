@@ -17,11 +17,11 @@ val hasReleaseSigning = listOf(
 ).all { !it.isNullOrBlank() }
 
 android {
-  namespace = "com.aionui.mobileshell"
+  namespace = "io.contextgo.mobileshell"
   compileSdk = 35
 
   defaultConfig {
-    applicationId = "com.aionui.mobileshell"
+    applicationId = "io.contextgo.mobileshell"
     minSdk = 26
     targetSdk = 35
     versionCode = releaseVersionCode

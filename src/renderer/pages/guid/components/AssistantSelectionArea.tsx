@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -148,7 +148,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
             const isImageAvatar = Boolean(
               avatarImage &&
               (/\.(svg|png|jpe?g|webp|gif)$/i.test(avatarImage) ||
-                /^(https?:|aion-asset:\/\/|file:\/\/|data:)/i.test(avatarImage))
+                /^(https?:|contextgo-asset:\/\/|file:\/\/|data:)/i.test(avatarImage))
             );
             return (
               <div

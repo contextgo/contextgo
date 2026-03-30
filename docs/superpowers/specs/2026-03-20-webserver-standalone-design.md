@@ -8,7 +8,7 @@
 
 ## Background
 
-AionUI is an Electron desktop app. The WebServer (`src/webserver/`) is currently started by the Electron main process via `webuiBridge` IPC. This means the WebUI (browser-based UI) can only be used when the Electron desktop app is running.
+ContextGoUI is an Electron desktop app. The WebServer (`src/webserver/`) is currently started by the Electron main process via `webuiBridge` IPC. This means the WebUI (browser-based UI) can only be used when the Electron desktop app is running.
 
 **Goal:** Allow the WebServer to run standalone — without Electron — so it can be:
 
@@ -216,7 +216,7 @@ EXPOSE 3000
 CMD ["node", "dist-server/server.js"]
 ```
 
-SQLite database path respects the existing `initStorage` logic (uses `DATA_DIR` env var or default `~/.aionui`). Mount `/data` and set `DATA_DIR=/data` for persistence.
+SQLite database path respects the existing `initStorage` logic (uses `DATA_DIR` env var or default `~/.contextgo`). Mount `/data` and set `DATA_DIR=/data` for persistence.
 
 ---
 
@@ -263,12 +263,12 @@ This adds 1 new file and changes 2 import lines.
 
 `initStorage.ts` has `import { app } from 'electron'` at the top level. In standalone mode, `app` is unavailable.
 
-**Fix:** Wrap the Electron `app.getPath()` call with the existing `getElectronPathOrFallback` utility already present in `src/process/utils.ts`. The fallback resolves to `os.tmpdir()/aionui-user-data`.
+**Fix:** Wrap the Electron `app.getPath()` call with the existing `getElectronPathOrFallback` utility already present in `src/process/utils.ts`. The fallback resolves to `os.tmpdir()/contextgo-user-data`.
 
 For Docker deployments where a persistent volume is needed, add `DATA_DIR` env var support to `initStorage.ts`:
 
 ```typescript
-const userDataPath = process.env.DATA_DIR ?? getElectronPathOrFallback('userData', 'aionui-user-data');
+const userDataPath = process.env.DATA_DIR ?? getElectronPathOrFallback('userData', 'contextgo-user-data');
 ```
 
 The Dockerfile mounts `/data` and sets `DATA_DIR=/data`.
@@ -304,8 +304,8 @@ PORT=3000 ALLOW_REMOTE=true bun run server
 **Docker:**
 
 ```bash
-docker build -t aionui-server .
-docker run -p 3000:3000 -v $(pwd)/data:/data -e DATA_DIR=/data aionui-server
+docker build -t contextgo-server .
+docker run -p 3000:3000 -v $(pwd)/data:/data -e DATA_DIR=/data contextgo-server
 ```
 
 ---

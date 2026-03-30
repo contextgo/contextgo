@@ -1,4 +1,4 @@
-# Pre-commit configuration for AionUi
+# Pre-commit configuration for ContextGo
 # Ensures local checks match CI checks (TypeScript, Oxlint, Oxfmt)
 #
 # Installation:

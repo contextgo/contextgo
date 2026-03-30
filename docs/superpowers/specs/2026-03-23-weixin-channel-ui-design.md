@@ -187,7 +187,7 @@ The weixin branch must come before the `!BUILTIN_CHANNEL_TYPES.has(...)` guard. 
 const weixinChannel: ChannelConfig = {
   id: 'weixin',
   title: t('settings.channels.weixinTitle', 'WeChat'),
-  description: t('settings.channels.weixinDesc', 'Chat with AionUi assistant via WeChat'),
+  description: t('settings.channels.weixinDesc', 'Chat with ContextGo assistant via WeChat'),
   status: 'active',
   enabled: weixinPluginStatus?.enabled || false,
   disabled: weixinEnableLoading,
@@ -360,25 +360,25 @@ savedAgent = await (platform === 'lark'
 
 All new keys follow existing `settings.channels.*` and `settings.weixin.*` namespaces. Default values are inline via `t('key', 'default')`.
 
-| Key                                | Default value                            |
-| ---------------------------------- | ---------------------------------------- |
-| `settings.channels.weixinTitle`    | `WeChat`                                 |
-| `settings.channels.weixinDesc`     | `Chat with AionUi assistant via WeChat`  |
-| `settings.weixin.loginButton`      | `扫码登录`                               |
-| `settings.weixin.scanPrompt`       | `请用微信扫描二维码`                     |
-| `settings.weixin.scanned`          | `已扫码，等待确认...`                    |
-| `settings.weixin.connected`        | `已连接`                                 |
-| `settings.weixin.accountId`        | `账号 ID`                                |
-| `settings.weixin.pluginEnabled`    | `WeChat channel enabled`                 |
-| `settings.weixin.pluginDisabled`   | `WeChat channel disabled`                |
-| `settings.weixin.disableFailed`    | `Failed to disable WeChat plugin`        |
-| `settings.weixin.enableFailed`     | `Failed to enable WeChat plugin`         |
-| `settings.weixin.loginRequired`    | `Please login with WeChat QR code first` |
-| `settings.weixin.loginError`       | `WeChat login failed`                    |
-| `settings.weixin.loginExpired`     | `QR code expired, please try again`      |
-| `settings.weixin.agent`            | `对话Agent`                              |
-| `settings.weixin.agentDesc`        | `Used for WeChat conversations`          |
-| `settings.weixin.defaultModelDesc` | `用于Agent对话时调用`                    |
+| Key                                | Default value                              |
+| ---------------------------------- | ------------------------------------------ |
+| `settings.channels.weixinTitle`    | `WeChat`                                   |
+| `settings.channels.weixinDesc`     | `Chat with ContextGo assistant via WeChat` |
+| `settings.weixin.loginButton`      | `扫码登录`                                 |
+| `settings.weixin.scanPrompt`       | `请用微信扫描二维码`                       |
+| `settings.weixin.scanned`          | `已扫码，等待确认...`                      |
+| `settings.weixin.connected`        | `已连接`                                   |
+| `settings.weixin.accountId`        | `账号 ID`                                  |
+| `settings.weixin.pluginEnabled`    | `WeChat channel enabled`                   |
+| `settings.weixin.pluginDisabled`   | `WeChat channel disabled`                  |
+| `settings.weixin.disableFailed`    | `Failed to disable WeChat plugin`          |
+| `settings.weixin.enableFailed`     | `Failed to enable WeChat plugin`           |
+| `settings.weixin.loginRequired`    | `Please login with WeChat QR code first`   |
+| `settings.weixin.loginError`       | `WeChat login failed`                      |
+| `settings.weixin.loginExpired`     | `QR code expired, please try again`        |
+| `settings.weixin.agent`            | `对话Agent`                                |
+| `settings.weixin.agentDesc`        | `Used for WeChat conversations`            |
+| `settings.weixin.defaultModelDesc` | `用于Agent对话时调用`                      |
 
 ---
 

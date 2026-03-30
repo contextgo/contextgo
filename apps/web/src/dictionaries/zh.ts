@@ -21,9 +21,13 @@ export const zh = {
   philosophy: {
     title: '上下文，先于 Agent。',
     description_start: '没有上下文，Agent 只能回答。',
-    description_end:
-      '接通之后，它才开始理解、协作、推进。',
-    points: ['先接上下文，再让 Agent 上场', '不改习惯，直接接入', '飞书 / Discord / Slack / Web 协作', '一个工作台，统一人与 AI'],
+    description_end: '接通之后，它才开始理解、协作、推进。',
+    points: [
+      '先接上下文，再让 Agent 上场',
+      '不改习惯，直接接入',
+      '飞书 / Discord / Slack / Web 协作',
+      '一个工作台，统一人与 AI',
+    ],
     features: {
       private: { title: '上下文桥梁', desc: '把知识、任务、讨论和历史状态接成一层，让 Agent 真正接得上。' },
       editor: { title: '不改习惯', desc: '不换工具，不改流程。直接接入现有协作环境。' },
@@ -34,9 +38,12 @@ export const zh = {
   connect: {
     badge: 'Connector Layer',
     title: '先接入上下文，再接入一切。',
-    description:
-      '给文档、笔记、云盘、聊天和数据库，一层统一 connector。来源先接入。上下文再流向 Agent 与工作流。',
-    highlights: ['本地与云端来源，一起接入', '一个上下文界面，服务所有工作流', '为 Agent、检索与发布准备好同一层上下文'],
+    description: '给文档、笔记、云盘、聊天和数据库，一层统一 connector。来源先接入。上下文再流向 Agent 与工作流。',
+    highlights: [
+      '本地与云端来源，一起接入',
+      '一个上下文界面，服务所有工作流',
+      '为 Agent、检索与发布准备好同一层上下文',
+    ],
     marquee_label: 'Connector 覆盖面',
     marquee_hint: '文件、知识库、聊天、文档与数据系统',
     connector_story_label: '为什么是 connector',
@@ -59,8 +66,7 @@ export const zh = {
     ],
     panel_label: '上下文管线',
     panel_title: 'Connector，让 ContextGo 先懂你的工作。',
-    panel_body:
-      '来源接进来，先整理成一致的上下文，再路由给 AI、检索、远端客户端和发布渠道。',
+    panel_body: '来源接进来，先整理成一致的上下文，再路由给 AI、检索、远端客户端和发布渠道。',
     workflow: [
       {
         title: '统一接入',
@@ -94,8 +100,7 @@ export const zh = {
   download: {
     center_badge: '选择你的设备',
     title: '获取 ContextGo',
-    description:
-      '桌面、移动与远程协作版 ContextGo。版本、校验与安装入口，都在这里。',
+    description: '桌面、移动与远程协作版 ContextGo。版本、校验与安装入口，都在这里。',
     mac_arch: '通用 (Apple Silicon & Intel)',
     win_arch: 'x64 / ARM64',
     download_action: '下载',

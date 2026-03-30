@@ -71,14 +71,14 @@ describe('database migrations', () => {
     driver = undefined;
   });
 
-  it('renames the internal conversation source from aionui to contextgo in v20', () => {
+  it('renames the internal conversation source from contextgo to contextgo in v20', () => {
     driver = new NodeSqliteDriver();
     driver.exec(`CREATE TABLE conversations (
       id TEXT PRIMARY KEY,
       source TEXT
     )`);
     driver.exec(`INSERT INTO conversations (id, source) VALUES
-      ('conv-contextgo', 'aionui'),
+      ('conv-contextgo', 'contextgo'),
       ('conv-telegram', 'telegram'),
       ('conv-null', NULL)
     `);

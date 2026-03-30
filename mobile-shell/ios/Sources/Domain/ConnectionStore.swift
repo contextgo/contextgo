@@ -8,7 +8,7 @@ final class ConnectionStore: ObservableObject {
   @Published var targetURL: URL?
   @Published var validationMessage: String?
 
-  private let defaultsKey = "aionui.shell.ios.targetURL"
+  private let defaultsKey = "contextgo.shell.ios.targetURL"
 
   init() {
     restore()

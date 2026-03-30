@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -232,7 +232,7 @@ const migration_v8: IMigration = {
   name: 'Add source column to conversations',
   up: (db) => {
     // Add source column to conversations table
-    db.exec(`ALTER TABLE conversations ADD COLUMN source TEXT CHECK(source IN ('aionui', 'telegram'))`);
+    db.exec(`ALTER TABLE conversations ADD COLUMN source TEXT CHECK(source IN ('contextgo', 'telegram'))`);
 
     // Create index for efficient source-based queries
     db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source)');
@@ -368,7 +368,9 @@ const migration_v11: IMigration = {
     // so DROP TABLE will NOT trigger ON DELETE CASCADE on the messages table.
 
     // Clean up any invalid source values before copying
-    db.exec(`UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('aionui', 'telegram')`);
+    db.exec(
+      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('contextgo', 'telegram')`
+    );
 
     db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
         id TEXT PRIMARY KEY,
@@ -378,7 +380,7 @@ const migration_v11: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram')),
+        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -408,7 +410,7 @@ const migration_v11: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram')),
+        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -442,7 +444,7 @@ const migration_v12: IMigration = {
 
     // Clean up any invalid source values before copying
     db.exec(
-      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('aionui', 'telegram', 'lark')`
+      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('contextgo', 'telegram', 'lark')`
     );
 
     db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
@@ -453,7 +455,7 @@ const migration_v12: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark')),
+        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -486,7 +488,7 @@ const migration_v12: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram')),
+        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -526,7 +528,7 @@ const migration_v13: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark')),
+        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -559,7 +561,7 @@ const migration_v13: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark')),
+        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -608,7 +610,7 @@ const migration_v14: IMigration = {
     // NOTE: The migration runner disables foreign_keys before the transaction,
     // so DROP TABLE will NOT trigger ON DELETE CASCADE on the messages table.
     db.exec(
-      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('aionui', 'telegram', 'lark', 'dingtalk')`
+      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('contextgo', 'telegram', 'lark', 'dingtalk')`
     );
 
     db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
@@ -619,7 +621,7 @@ const migration_v14: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark', 'dingtalk')),
+        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark', 'dingtalk')),
         channel_chat_id TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
@@ -679,7 +681,7 @@ const migration_v14: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark')),
+        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -847,11 +849,11 @@ const migration_v20: IMigration = {
   version: 20,
   name: 'Rename internal conversation source to contextgo',
   up: (db) => {
-    db.exec(`UPDATE conversations SET source = 'contextgo' WHERE source = 'aionui'`);
-    console.log('[Migration v20] Renamed internal conversation source from aionui to contextgo');
+    db.exec(`UPDATE conversations SET source = 'contextgo' WHERE source = 'contextgo'`);
+    console.log('[Migration v20] Renamed internal conversation source from contextgo to contextgo');
   },
   down: (db) => {
-    db.exec(`UPDATE conversations SET source = 'aionui' WHERE source = 'contextgo'`);
+    db.exec(`UPDATE conversations SET source = 'contextgo' WHERE source = 'contextgo'`);
     console.log('[Migration v20] Rolled back internal conversation source rename');
   },
 };

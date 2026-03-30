@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
-import AionModal from '@/renderer/components/base/AionModal';
+import ContextGoModal from '@/renderer/components/base/ContextGoModal';
 import { uuid } from '@/common/utils';
 import { acpConversation } from '@/common/adapter/ipcBridge';
 import { CheckSmall } from '@icon-park/react';
@@ -239,7 +239,7 @@ const CustomAcpAgentModal: React.FC<CustomAcpAgentModalProps> = ({ visible, agen
   if (!visible) return null;
 
   return (
-    <AionModal
+    <ContextGoModal
       visible={visible}
       onCancel={onCancel}
       onOk={handleSubmit}
@@ -374,7 +374,7 @@ const CustomAcpAgentModal: React.FC<CustomAcpAgentModalProps> = ({ visible, agen
           </Collapse>
         )}
       </div>
-    </AionModal>
+    </ContextGoModal>
   );
 };
 

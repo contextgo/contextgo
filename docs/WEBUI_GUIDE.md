@@ -148,7 +148,7 @@ Create `~/.local/share/applications/contextgo-webui.desktop`:
 Name=ContextGo WebUI
 Comment=Start ContextGo in WebUI mode
 Exec=/opt/ContextGo/contextgo --webui
-Icon=aionui
+Icon=contextgo
 Terminal=false
 Type=Application
 Categories=Utility;Office;
@@ -359,7 +359,7 @@ ContextGo --no-sandbox --webui --port 8080
 
 ```bash
 # Ensure the binary has execute permissions
-chmod +x /opt/ContextGo/aionui
+chmod +x /opt/ContextGo/contextgo
 ```
 
 #### Out of Memory
@@ -392,17 +392,17 @@ For convenience, create a script to launch ContextGo quickly:
 
 ```bash
 # Create script in Ubuntu (proot)
-cat > ~/start-aionui.sh << 'EOF'
+cat > ~/start-contextgo.sh << 'EOF'
 #!/bin/bash
 echo "Starting ContextGo WebUI..."
 ContextGo --no-sandbox --webui --remote
 EOF
 
 # Make executable
-chmod +x ~/start-aionui.sh
+chmod +x ~/start-contextgo.sh
 
 # Run anytime
-./start-aionui.sh
+./start-contextgo.sh
 ```
 
 ### Quick Start Command (One-liner)
@@ -525,9 +525,9 @@ mdfind -name "ContextGo.app"
 **Linux:**
 
 ```bash
-which aionui
+which contextgo
 # or
-find /opt -name "aionui" 2>/dev/null
+find /opt -name "contextgo" 2>/dev/null
 ```
 
 ### View Logs

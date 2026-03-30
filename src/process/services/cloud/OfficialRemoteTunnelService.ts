@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -41,8 +41,8 @@ type OfficialRemoteTunnelState = {
 };
 
 function getExecutableCandidates(): string[] {
-  const fromEnv = [process.env.CONTEXTGO_FRPC_PATH, process.env.FRPC_PATH].filter(
-    (value): value is string => Boolean(value?.trim())
+  const fromEnv = [process.env.CONTEXTGO_FRPC_PATH, process.env.FRPC_PATH].filter((value): value is string =>
+    Boolean(value?.trim())
   );
 
   const localCandidates = process.platform === 'win32' ? ['frpc.exe', 'frpc'] : ['frpc'];
@@ -292,7 +292,13 @@ export class OfficialRemoteTunnelService {
     }
 
     await this.stopTunnel();
-    this.startTunnel(binaryPath, managedConfigPath, sourceConfigPath, webuiInstance.port, parsedConfig.proxy.remotePort);
+    this.startTunnel(
+      binaryPath,
+      managedConfigPath,
+      sourceConfigPath,
+      webuiInstance.port,
+      parsedConfig.proxy.remotePort
+    );
   }
 
   private async ensureWebUiRunning(): Promise<WebServerInstance> {

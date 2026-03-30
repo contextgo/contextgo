@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -199,10 +199,10 @@ const rowToVoiceInputRecord = (row: VoiceInputRecordRow): VoiceInputRecord => ({
 });
 
 /**
- * Main database class for AionUi
+ * Main database class for ContextGo
  * Uses a pluggable ISqliteDriver for SQLite operations
  */
-export class AionUIDatabase {
+export class ContextGoUIDatabase {
   private db: ISqliteDriver;
   private readonly defaultUserId = 'system_default_user';
   private readonly systemPasswordPlaceholder = '';
@@ -212,17 +212,17 @@ export class AionUIDatabase {
   }
 
   /**
-   * Create a new AionUIDatabase instance with corruption recovery.
+   * Create a new ContextGoUIDatabase instance with corruption recovery.
    * This is the only way to obtain an instance — the constructor is private.
    */
-  static async create(dbPath: string): Promise<AionUIDatabase> {
+  static async create(dbPath: string): Promise<ContextGoUIDatabase> {
     const dir = path.dirname(dbPath);
     ensureDirectory(dir);
 
     // Attempt normal initialization
     try {
       const driver = await createDriver(dbPath);
-      const instance = new AionUIDatabase(driver);
+      const instance = new ContextGoUIDatabase(driver);
       instance.initialize();
       return instance;
     } catch (error) {
@@ -265,7 +265,7 @@ export class AionUIDatabase {
 
     // Retry with fresh file
     const driver = await createDriver(dbPath);
-    const instance = new AionUIDatabase(driver);
+    const instance = new ContextGoUIDatabase(driver);
     instance.initialize();
     return instance;
   }
@@ -3129,23 +3129,23 @@ export class AionUIDatabase {
 }
 
 // Async singleton with Promise cache
-let dbInstancePromise: Promise<AionUIDatabase> | null = null;
+let dbInstancePromise: Promise<ContextGoUIDatabase> | null = null;
 // Synchronous reference to the resolved instance — used for safe close on exit
-let dbResolved: AionUIDatabase | null = null;
+let dbResolved: ContextGoUIDatabase | null = null;
 
 export function getDatabasePath(): string {
   return resolveBrandStoragePath({
     baseDir: getDataPath(),
     preferredName: 'contextgo.db',
-    legacyNames: ['aionui.db'],
+    legacyNames: [],
     kind: 'file',
     sidecarSuffixes: ['-wal', '-shm'],
   });
 }
 
-export function getDatabase(): Promise<AionUIDatabase> {
+export function getDatabase(): Promise<ContextGoUIDatabase> {
   if (!dbInstancePromise) {
-    dbInstancePromise = AionUIDatabase.create(getDatabasePath()).then((db) => {
+    dbInstancePromise = ContextGoUIDatabase.create(getDatabasePath()).then((db) => {
       dbResolved = db;
       return db;
     });

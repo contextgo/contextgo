@@ -64,7 +64,7 @@ export interface IPlatformPaths {
   getHomeDir(): string;
   /**
    * Application log directory.
-   * In standalone mode respects LOGS_DIR env var, falls back to <tmpdir>/aionui-logs.
+   * In standalone mode respects LOGS_DIR env var, falls back to <tmpdir>/contextgo-logs.
    */
   getLogsDir(): string;
   /**
@@ -243,17 +243,17 @@ const _pkg = (() => {
   try {
     return JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
   } catch {
-    return { name: 'aionui', version: '0.0.0' };
+    return { name: 'contextgo', version: '0.0.0' };
   }
 })();
 
 export class NodePlatformServices implements IPlatformServices {
   paths = {
-    getDataDir: () => process.env.DATA_DIR ?? path.join(os.tmpdir(), 'aionui-user-data'),
+    getDataDir: () => process.env.DATA_DIR ?? path.join(os.tmpdir(), 'contextgo-user-data'),
     getTempDir: () => os.tmpdir(),
     getHomeDir: () => os.homedir(),
     // Supports LOGS_DIR env var for production Docker deployments.
-    getLogsDir: () => process.env.LOGS_DIR ?? path.join(os.tmpdir(), 'aionui-logs'),
+    getLogsDir: () => process.env.LOGS_DIR ?? path.join(os.tmpdir(), 'contextgo-logs'),
     getAppPath: () => null,
     // Controlled by IS_PACKAGED env var. False by default (standalone = dev/server mode).
     // Note: appEnv.ts uses isPackaged() to decide whether to append '-dev' suffix to
@@ -261,7 +261,7 @@ export class NodePlatformServices implements IPlatformServices {
     // when deploying a production Docker image.
     isPackaged: () => process.env.IS_PACKAGED === 'true',
     getSystemPath: (_name) => null,
-    getName: () => _pkg.name ?? 'aionui',
+    getName: () => _pkg.name ?? 'contextgo',
     getVersion: () => _pkg.version ?? '0.0.0',
   };
   worker = {

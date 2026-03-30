@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -240,7 +240,10 @@ export function toSlackSendParams(message: IUnifiedOutgoingMessage): {
   const blocks = toSlackBlocks(message);
   const fallbackText =
     text ||
-    (message.buttons || message.keyboard)?.flat().map((button) => button.label).join(' · ') ||
+    (message.buttons || message.keyboard)
+      ?.flat()
+      .map((button) => button.label)
+      .join(' · ') ||
     'ContextGo response';
 
   return {
@@ -264,7 +267,8 @@ export function splitSlackMessage(text: string, maxLength: number = SLACK_TEXT_L
 
     const newlineIndex = remaining.lastIndexOf('\n', maxLength);
     const spaceIndex = remaining.lastIndexOf(' ', maxLength);
-    const splitIndex = newlineIndex > maxLength * 0.7 ? newlineIndex + 1 : spaceIndex > maxLength * 0.7 ? spaceIndex + 1 : maxLength;
+    const splitIndex =
+      newlineIndex > maxLength * 0.7 ? newlineIndex + 1 : spaceIndex > maxLength * 0.7 ? spaceIndex + 1 : maxLength;
     chunks.push(remaining.slice(0, splitIndex).trim());
     remaining = remaining.slice(splitIndex).trim();
   }

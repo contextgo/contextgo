@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -15,7 +15,7 @@ describe('extensions/fileResolver', () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
-    extensionDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aionui-ext-file-resolver-'));
+    extensionDir = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-ext-file-resolver-'));
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 

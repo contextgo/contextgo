@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -82,7 +82,7 @@ export const useGuidMention = ({
       }
       const mappedAvatarImage = avatar ? CUSTOM_AVATAR_IMAGE_MAP[avatar] : undefined;
       const avatarImage =
-        mappedAvatarImage || (avatar && /^(https?:|file:|data:|aion-asset:|\/)/.test(avatar) ? avatar : undefined);
+        mappedAvatarImage || (avatar && /^(https?:|file:|data:|contextgo-asset:|\/)/.test(avatar) ? avatar : undefined);
       return {
         key,
         label,

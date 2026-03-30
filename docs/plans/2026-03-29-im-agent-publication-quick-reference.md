@@ -9,7 +9,7 @@ When you forget "what was the intended model here?", read this file first.
 
 ## One-Sentence Product Definition
 
-AionUi is not "a mobile shell for one agent". It is:
+ContextGo is not "a mobile shell for one agent". It is:
 
 **a platform that publishes many agents into IM surfaces and routes different audiences to different runtime sessions**
 

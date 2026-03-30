@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -9,14 +9,14 @@
  *
  * This script:
  * 1. Receives extension config via workerData
- * 2. Exposes a restricted `aion` API proxy to the extension
+ * 2. Exposes a restricted `contextgo` API proxy to the extension
  * 3. Loads and executes the extension entry point via native require
  * 4. Proxies communication via structured messages
  *
  * Current isolation model:
  * - Extension code runs with full Worker Thread privileges (Node.js built-ins accessible)
  * - Electron main-process APIs are not directly accessible (different process/thread)
- * - The `aion` proxy provides a structured communication channel to the main thread
+ * - The `contextgo` proxy provides a structured communication channel to the main thread
  * - Declared permissions in the manifest are NOT enforced at runtime — they are
  *   informational only and used for UI display purposes
  *
@@ -61,10 +61,10 @@ const sandboxConsole = {
 // ============ Extension API Proxy ============
 
 /**
- * The `aion` object available to sandboxed extensions.
+ * The `contextgo` object available to sandboxed extensions.
  * All method calls are proxied to the main thread.
  */
-const aionProxy = {
+const contextgoProxy = {
   extensionName: config.extensionName,
   extensionDir: config.extensionDir,
 
@@ -200,8 +200,8 @@ try {
 
   // Override console in the worker
   (globalThis as any).console = sandboxConsole;
-  // Expose aion proxy
-  (globalThis as any).aion = aionProxy;
+  // Expose contextgo proxy
+  (globalThis as any).contextgo = contextgoProxy;
 
   // eslint-disable-next-line no-eval
   const nativeRequire = eval('require');

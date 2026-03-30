@@ -424,7 +424,7 @@
 }
 
 .logoFallback,
-.logoContextgo,
+.logoContextGo,
 .logoGoogleWorkspace,
 .logoCollaboration,
 .logoDevelopment,
@@ -436,7 +436,7 @@
   color: var(--text-primary);
 }
 
-.logoContextgo {
+.logoContextGo {
   background: linear-gradient(
     135deg,
     color-mix(in srgb, rgb(var(--primary-6)) 22%, var(--bg-1) 78%),

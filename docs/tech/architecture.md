@@ -33,7 +33,7 @@ Located in `src/process/webserver/`.
 
 ## Remote Mobile Clients
 
-AionUi supports a remote mobile-client model through the WebUI / server runtime.
+ContextGo supports a remote mobile-client model through the WebUI / server runtime.
 
 - The desktop app remains the execution host when used in remote-control scenarios.
 - Android / iOS / HarmonyOS shells are native WebView containers for the existing WebUI.

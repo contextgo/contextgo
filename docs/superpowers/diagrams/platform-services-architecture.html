@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AionUI — Platform Services DI 架构图</title>
+    <title>ContextGoUI — Platform Services DI 架构图</title>
     <style>
       *,
       *::before,
@@ -433,7 +433,7 @@
     </style>
   </head>
   <body>
-    <h1>AionUI — Platform Services DI 层架构图</h1>
+    <h1>ContextGoUI — Platform Services DI 层架构图</h1>
     <p class="subtitle">
       基于 feat/webserver-standalone 分支最新代码 ·
       <strong style="color: #38bdf8">src/common/platform/</strong> 抽象层将 Electron API 与业务代码解耦，使 standalone
@@ -674,11 +674,11 @@
             </tr>
             <tr>
               <td>paths.getDataDir()</td>
-              <td class="n-impl">process.env.DATA_DIR ?? tmpdir/aionui-user-data</td>
+              <td class="n-impl">process.env.DATA_DIR ?? tmpdir/contextgo-user-data</td>
             </tr>
             <tr>
               <td>paths.getLogsDir()</td>
-              <td class="n-impl">process.env.LOGS_DIR ?? tmpdir/aionui-logs</td>
+              <td class="n-impl">process.env.LOGS_DIR ?? tmpdir/contextgo-logs</td>
             </tr>
             <tr>
               <td>paths.getAppPath()</td>

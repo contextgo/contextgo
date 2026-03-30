@@ -23,7 +23,7 @@ afterEach(() => {
 
 describe('extensions/statePersistence', () => {
   it('reads and writes extension states from CONTEXTGO_EXTENSION_STATES_FILE when provided', () => {
-    const sandbox = createTempDir('aionui-state-');
+    const sandbox = createTempDir('contextgo-state-');
     const statesFile = path.join(sandbox, 'isolated', 'extension-states.json');
     process.env.CONTEXTGO_EXTENSION_STATES_FILE = statesFile;
 

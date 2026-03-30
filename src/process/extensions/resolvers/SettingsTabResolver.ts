@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -20,9 +20,9 @@ export type ResolvedSettingsTab = {
   id: string;
   /** Display name */
   name: string;
-  /** Icon URL (aion-asset:// or undefined) */
+  /** Icon URL (contextgo-asset:// or undefined) */
   icon?: string;
-  /** Content URL (aion-asset:// local asset or external https:// URL) */
+  /** Content URL (contextgo-asset:// local asset or external https:// URL) */
   entryUrl: string;
   /** Position anchor relative to a built-in or other extension tab */
   position?: { anchor: string; placement: 'before' | 'after' };
@@ -34,7 +34,7 @@ export type ResolvedSettingsTab = {
 
 /**
  * Resolve `contributes.settingsTabs` from all enabled extensions.
- * - local entryPoint: validate path + convert to aion-asset:// URL
+ * - local entryPoint: validate path + convert to contextgo-asset:// URL
  * - external entryPoint (http/https): validate URL + pass through as-is
  */
 export function resolveSettingsTabs(extensions: LoadedExtension[]): ResolvedSettingsTab[] {

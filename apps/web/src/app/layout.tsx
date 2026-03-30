@@ -11,19 +11,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang='en' suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>
-      <body className='antialiased min-h-screen flex flex-col theme-page theme-text-primary'>
-        {children}
-      </body>
+      <body className='antialiased min-h-screen flex flex-col theme-page theme-text-primary'>{children}</body>
     </html>
   );
 }

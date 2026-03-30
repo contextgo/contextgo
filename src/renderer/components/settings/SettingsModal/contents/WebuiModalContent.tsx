@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,8 +8,8 @@ import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import { cloud, shell, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import { ConfigStorage } from '@/common/config/storage';
 import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
-import AionModal from '@/renderer/components/base/AionModal';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import ContextGoModal from '@/renderer/components/base/ContextGoModal';
+import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { Button, Form, Input, Message, Switch, Tooltip } from '@arco-design/web-react';
 import { CheckOne, Copy, Earth, EditTwo, LinkCloud, Refresh } from '@icon-park/react';
@@ -672,7 +672,7 @@ const WebuiModalContent: React.FC = () => {
   if (!isDesktop) {
     return (
       <div className='flex flex-col h-full w-full'>
-        <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
+        <ContextGoScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
           <div className='space-y-10px px-[12px] md:px-[28px]'>
             <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.webui')}</h2>
             <div className='rd-12px border border-line bg-2 px-14px py-14px space-y-6px'>
@@ -682,13 +682,13 @@ const WebuiModalContent: React.FC = () => {
               </div>
             </div>
           </div>
-        </AionScrollArea>
+        </ContextGoScrollArea>
       </div>
     );
   }
 
   const webuiPanel = (
-    <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
+    <ContextGoScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
       <div className='space-y-12px px-[12px] md:px-[28px]'>
         {/* 标题 / Title */}
         <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.webui')}</h2>
@@ -962,12 +962,12 @@ const WebuiModalContent: React.FC = () => {
           )}
         </div>
       </div>
-    </AionScrollArea>
+    </ContextGoScrollArea>
   );
 
   const settingsSubModals = (
     <>
-      <AionModal
+      <ContextGoModal
         visible={setUsernameModalVisible}
         onCancel={() => setSetUsernameModalVisible(false)}
         onOk={handleSetNewUsername}
@@ -1014,9 +1014,9 @@ const WebuiModalContent: React.FC = () => {
             <Input placeholder={t('settings.webui.newUsernamePlaceholder')} />
           </Form.Item>
         </Form>
-      </AionModal>
+      </ContextGoModal>
 
-      <AionModal
+      <ContextGoModal
         visible={setPasswordModalVisible}
         onCancel={() => setSetPasswordModalVisible(false)}
         onOk={() => void handleSetNewPassword()}
@@ -1059,7 +1059,7 @@ const WebuiModalContent: React.FC = () => {
             <Input.Password placeholder={t('settings.webui.confirmPasswordPlaceholder')} />
           </Form.Item>
         </Form>
-      </AionModal>
+      </ContextGoModal>
     </>
   );
 

@@ -444,7 +444,7 @@ export function initApplicationBridgeCore(): void {
       if (oldDir.cacheDir !== cacheDir) {
         await copyDirectoryRecursively(oldDir.cacheDir, cacheDir);
       }
-      await ProcessEnv.set('aionui.dir', { cacheDir, workDir });
+      await ProcessEnv.set('contextgo.dir', { cacheDir, workDir });
       return { success: true };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,11 +10,11 @@ import { AuthService } from './AuthService';
 import { UserRepository } from '../repository/UserRepository';
 import { SERVER_CONFIG } from '../../config/constants';
 
-const OAUTH_STATE_COOKIE_NAME = 'aionui-oauth-state';
+const OAUTH_STATE_COOKIE_NAME = 'contextgo-oauth-state';
 const OAUTH_STATE_COOKIE_PATH = '/api/auth/oauth';
 const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 const OAUTH_REQUEST_TIMEOUT_MS = 10 * 1000;
-const OAUTH_USER_AGENT = 'AionUi';
+const OAUTH_USER_AGENT = 'ContextGo';
 
 const OAUTH_PROVIDER_IDS = ['github', 'google'] as const;
 
@@ -305,11 +305,13 @@ export class OAuthService {
 
   private static getProviderCredentials(providerId: OAuthProviderId): OAuthProviderCredentials | null {
     const clientIdEnv =
-      providerId === 'github' ? process.env.AIONUI_AUTH_GITHUB_CLIENT_ID : process.env.AIONUI_AUTH_GOOGLE_CLIENT_ID;
+      providerId === 'github'
+        ? process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_ID
+        : process.env.CONTEXTGO_AUTH_GOOGLE_CLIENT_ID;
     const clientSecretEnv =
       providerId === 'github'
-        ? process.env.AIONUI_AUTH_GITHUB_CLIENT_SECRET
-        : process.env.AIONUI_AUTH_GOOGLE_CLIENT_SECRET;
+        ? process.env.CONTEXTGO_AUTH_GITHUB_CLIENT_SECRET
+        : process.env.CONTEXTGO_AUTH_GOOGLE_CLIENT_SECRET;
 
     const clientId = clientIdEnv?.trim();
     const clientSecret = clientSecretEnv?.trim();
@@ -325,7 +327,7 @@ export class OAuthService {
 
   private static getAllowedEmails(): Set<string> {
     return new Set(
-      (process.env.AIONUI_AUTH_ALLOWED_EMAILS || '')
+      (process.env.CONTEXTGO_AUTH_ALLOWED_EMAILS || '')
         .split(',')
         .map((entry) => normalizeEmail(entry))
         .filter(Boolean)

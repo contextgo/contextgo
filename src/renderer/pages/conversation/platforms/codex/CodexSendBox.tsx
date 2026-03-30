@@ -253,8 +253,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
             activeToolCallIdsRef.current = nextActiveToolCallIds;
             setHasActiveToolCalls(nextActiveToolCallIds.size > 0);
           }
-          const shouldSuppressToolCallLifecycleMessage =
-            update?.status === 'pending' || update?.status === 'executing';
+          const shouldSuppressToolCallLifecycleMessage = update?.status === 'pending' || update?.status === 'executing';
 
           const transformedMessage = transformMessage(message);
           if (transformedMessage && !shouldSuppressToolCallLifecycleMessage) {

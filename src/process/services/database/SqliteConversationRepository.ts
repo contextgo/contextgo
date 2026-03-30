@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -12,7 +12,7 @@ import type { IMessageSearchResponse } from '@/common/types/database';
 
 /**
  * SQLite-backed implementation of IConversationRepository.
- * Delegates to the AionUIDatabase singleton via getDatabase().
+ * Delegates to the ContextGoUIDatabase singleton via getDatabase().
  * Methods are async because getDatabase() returns a Promise.
  */
 export class SqliteConversationRepository implements IConversationRepository {

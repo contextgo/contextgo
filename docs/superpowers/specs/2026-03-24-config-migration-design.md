@@ -6,12 +6,12 @@
 
 ## Background
 
-AionUi runs in two environments:
+ContextGo runs in two environments:
 
-| Environment            | DataDir                                                             | Config file path (macOS)                       |
-| ---------------------- | ------------------------------------------------------------------- | ---------------------------------------------- |
-| Electron desktop       | `app.getPath("userData")` → `~/Library/Application Support/AionUi/` | `~/.aionui-config/aionui-config.txt` (symlink) |
-| Node standalone server | `~/.aionui-server/`                                                 | `~/.aionui-server/config/aionui-config.txt`    |
+| Environment            | DataDir                                                                | Config file path (macOS)                             |
+| ---------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------- |
+| Electron desktop       | `app.getPath("userData")` → `~/Library/Application Support/ContextGo/` | `~/.contextgo-config/contextgo-config.txt` (symlink) |
+| Node standalone server | `~/.contextgo-server/`                                                 | `~/.contextgo-server/config/contextgo-config.txt`    |
 
 The directories are intentionally isolated. However, users who already have a configured desktop app should not need to reconfigure the server from scratch. This feature enables migration of relevant config keys from the Electron data directory to the Node server data directory.
 
@@ -75,20 +75,20 @@ Keys intentionally excluded (desktop/UI-only or caches):
 
 The Node server cannot import Electron's `app` module. Paths are derived from OS conventions.
 
-**App name**: The Electron app name is `AionUi` in packaged builds and `AionUi-Dev` in development (set via `app.setName("AionUi-Dev")` in `configureChromium.ts` when `!app.isPackaged`).
+**App name**: The Electron app name is `ContextGo` in packaged builds and `ContextGo-Dev` in development (set via `app.setName("ContextGo-Dev")` in `configureChromium.ts` when `!app.isPackaged`).
 
 **Key asymmetry**: The server uses `IS_PACKAGED` env var to know its own packaged state, but that does not necessarily reflect which Electron build the user ran. On macOS, the symlink name encodes the Electron app's packaged state — not the server's. To avoid silent misses, the auto-migration resolver **tries both candidate paths** and uses the first one that exists.
 
 ```typescript
 // macOS: CLI-safe symlinks created by Electron (try both, use first that exists)
-//   ~/.aionui-config/aionui-config.txt          (packaged Electron)
-//   ~/.aionui-config-dev/aionui-config.txt      (dev Electron)
+//   ~/.contextgo-config/contextgo-config.txt          (packaged Electron)
+//   ~/.contextgo-config-dev/contextgo-config.txt      (dev Electron)
 
-// Windows: %APPDATA%\<appName>\config\aionui-config.txt
-//   appName = 'AionUi' | 'AionUi-Dev'  (same try-both strategy)
+// Windows: %APPDATA%\<appName>\config\contextgo-config.txt
+//   appName = 'ContextGo' | 'ContextGo-Dev'  (same try-both strategy)
 
-// Linux: ~/.config/<appName>/config/aionui-config.txt
-//   appName = 'AionUi' | 'AionUi-Dev'  (same try-both strategy)
+// Linux: ~/.config/<appName>/config/contextgo-config.txt
+//   appName = 'ContextGo' | 'ContextGo-Dev'  (same try-both strategy)
 ```
 
 When `IMPORT_CONFIG_FROM` is provided manually, path resolution is bypassed entirely — the user supplies the exact path.
@@ -119,7 +119,7 @@ Function: migrateFromElectronConfig()
 
 ```
 Environment variables:
-  IMPORT_CONFIG_FROM=/absolute/path/to/aionui-config.txt
+  IMPORT_CONFIG_FROM=/absolute/path/to/contextgo-config.txt
   IMPORT_CONFIG_OVERWRITE=true    # optional, default: false
 ```
 
@@ -180,7 +180,7 @@ const initStorage = async () => {
 All migration/import functions must:
 
 - Wrap the entire body in try/catch.
-- On error: `console.warn('[AionUi] Config migration failed:', error)` — never throw.
+- On error: `console.warn('[ContextGo] Config migration failed:', error)` — never throw.
 - Log success with key names at debug level for traceability.
 
 ---
@@ -202,7 +202,7 @@ Without this, `configFile.get('migration.electronConfigImported')` will be a Typ
 
 Unit tests in `tests/unit/process/utils/configMigration.test.ts`:
 
-- `getElectronConfigFilePath()` returns correct paths per platform × packaged combination (tries both `AionUi` and `AionUi-Dev` candidates).
+- `getElectronConfigFilePath()` returns correct paths per platform × packaged combination (tries both `ContextGo` and `ContextGo-Dev` candidates).
 - `migrateFromElectronConfig()`:
   - skips when migration flag already set.
   - skips when source file does not exist.

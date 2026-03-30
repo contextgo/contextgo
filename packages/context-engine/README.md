@@ -1,6 +1,6 @@
 # `@contextgo/context-engine`
 
-`@contextgo/context-engine` 是 AionUi / ContextGo 内部的独立上下文引擎模块骨架。
+`@contextgo/context-engine` 是 ContextGo / ContextGo 内部的独立上下文引擎模块骨架。
 
 当前阶段它还不是完整实现，而是一个为后续记忆引擎、local-first 存储、空间同步和多人协作预留的 monorepo package。
 

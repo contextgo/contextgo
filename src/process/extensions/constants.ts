@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,7 +10,7 @@ import { getDataPath } from '@process/utils';
 
 export const CONTEXTGO_EXTENSIONS_PATH_ENV = 'CONTEXTGO_EXTENSIONS_PATH';
 export const CONTEXTGO_STRICT_ENV_ENV = 'CONTEXTGO_STRICT_ENV';
-export const EXTENSION_MANIFEST_FILE = 'aion-extension.json';
+export const EXTENSION_MANIFEST_FILE = 'contextgo-extension.json';
 export const EXTENSIONS_DIR_NAME = 'extensions';
 export const PATH_SEPARATOR = process.platform === 'win32' ? ';' : ':';
 

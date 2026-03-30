@@ -201,7 +201,7 @@ await importDatabaseFromJSON(data);
 
 ## API 参考
 
-### AionUIDatabase 主要方法
+### ContextGoUIDatabase 主要方法
 
 #### 会话操作
 

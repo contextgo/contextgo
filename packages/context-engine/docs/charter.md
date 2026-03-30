@@ -8,7 +8,7 @@
 
 ## 模块目标
 
-这个模块负责承载 AionUi 的长期上下文引擎，而不是承载 UI、agent runtime 或 channel 本身。
+这个模块负责承载 ContextGo 的长期上下文引擎，而不是承载 UI、agent runtime 或 channel 本身。
 
 它要解决的问题是：
 

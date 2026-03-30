@@ -60,11 +60,11 @@ const STORAGE_PATH = {
 };
 
 const LEGACY_STORAGE_PATH = {
-  config: 'aionui-config.txt',
-  chatMessage: 'aionui-chat-message.txt',
-  chat: 'aionui-chat.txt',
-  env: '.aionui-env',
-  chatHistory: 'aionui-chat-history',
+  config: 'contextgo-config.txt',
+  chatMessage: 'contextgo-chat-message.txt',
+  chat: 'contextgo-chat.txt',
+  env: '.contextgo-env',
+  chatHistory: 'contextgo-chat-history',
 } as const;
 
 const getHomePage = getConfigPath;
@@ -290,11 +290,9 @@ const envFile = JsonFileBuilder<IEnvStorageRefer>(
   })
 );
 
-const rawDirConfig =
-  envFile.getSync('contextgo.dir') ??
-  envFile.getSync('aionui.dir' as keyof IEnvStorageRefer);
+const rawDirConfig = envFile.getSync('contextgo.dir') ?? envFile.getSync('contextgo.dir' as keyof IEnvStorageRefer);
 const platformDataRoot = getPlatformServices().paths.getDataDir();
-const legacyActualDataDir = path.join(platformDataRoot, 'aionui');
+const legacyActualDataDir = path.join(platformDataRoot, 'contextgo');
 const preferredActualDataDir = path.join(platformDataRoot, 'contextgo');
 
 const normalizeStoredWorkDir = (workDir?: string): string | undefined => {

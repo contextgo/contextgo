@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Allow the AionUi standalone Node server to automatically import AI provider and MCP config from the Electron desktop app on first startup, with optional manual import via environment variable.
+**Goal:** Allow the ContextGo standalone Node server to automatically import AI provider and MCP config from the Electron desktop app on first startup, with optional manual import via environment variable.
 
 **Architecture:** New module `configMigration.ts` encapsulates all path resolution and key-filtering logic. It receives the config store as an injected dependency (a minimal `ConfigStore` interface) so it can be unit-tested without touching the filesystem — this is an intentional improvement over the spec's signature which omits the parameter. `initStorage.ts` calls migration functions after `migrateLegacyData()` and `ConfigStorage.interceptor()` so storage is ready (authoritative order is the "Call Order" section of the spec; the spec's Design section header has a contradictory note that should be ignored). Both auto-migration (once, via flag) and manual import (every startup via `IMPORT_CONFIG_FROM` env var) share the same core import logic.
 
@@ -91,8 +91,8 @@ describe('getElectronConfigCandidatePaths', () => {
     const { getElectronConfigCandidatePaths } = await import('../../../../src/process/utils/configMigration');
     const home = os.homedir();
     const paths = getElectronConfigCandidatePaths();
-    expect(paths).toContain(path.join(home, '.aionui-config', 'aionui-config.txt'));
-    expect(paths).toContain(path.join(home, '.aionui-config-dev', 'aionui-config.txt'));
+    expect(paths).toContain(path.join(home, '.contextgo-config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(home, '.contextgo-config-dev', 'contextgo-config.txt'));
     expect(paths).toHaveLength(2);
   });
 
@@ -101,8 +101,8 @@ describe('getElectronConfigCandidatePaths', () => {
     process.env.APPDATA = 'C:\\Users\\test\\AppData\\Roaming';
     const { getElectronConfigCandidatePaths } = await import('../../../../src/process/utils/configMigration');
     const paths = getElectronConfigCandidatePaths();
-    expect(paths).toContain('C:\\Users\\test\\AppData\\Roaming\\AionUi\\config\\aionui-config.txt');
-    expect(paths).toContain('C:\\Users\\test\\AppData\\Roaming\\AionUi-Dev\\config\\aionui-config.txt');
+    expect(paths).toContain('C:\\Users\\test\\AppData\\Roaming\\ContextGo\\config\\contextgo-config.txt');
+    expect(paths).toContain('C:\\Users\\test\\AppData\\Roaming\\ContextGo-Dev\\config\\contextgo-config.txt');
     expect(paths).toHaveLength(2);
   });
 
@@ -111,8 +111,8 @@ describe('getElectronConfigCandidatePaths', () => {
     const { getElectronConfigCandidatePaths } = await import('../../../../src/process/utils/configMigration');
     const home = os.homedir();
     const paths = getElectronConfigCandidatePaths();
-    expect(paths).toContain(path.join(home, '.config', 'AionUi', 'config', 'aionui-config.txt'));
-    expect(paths).toContain(path.join(home, '.config', 'AionUi-Dev', 'config', 'aionui-config.txt'));
+    expect(paths).toContain(path.join(home, '.config', 'ContextGo', 'config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(home, '.config', 'ContextGo-Dev', 'config', 'contextgo-config.txt'));
     expect(paths).toHaveLength(2);
   });
 });
@@ -169,21 +169,21 @@ export function getElectronConfigCandidatePaths(): string[] {
   const home = os.homedir();
   if (process.platform === 'darwin') {
     return [
-      path.join(home, '.aionui-config', 'aionui-config.txt'),
-      path.join(home, '.aionui-config-dev', 'aionui-config.txt'),
+      path.join(home, '.contextgo-config', 'contextgo-config.txt'),
+      path.join(home, '.contextgo-config-dev', 'contextgo-config.txt'),
     ];
   }
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming');
     return [
-      path.join(appData, 'AionUi', 'config', 'aionui-config.txt'),
-      path.join(appData, 'AionUi-Dev', 'config', 'aionui-config.txt'),
+      path.join(appData, 'ContextGo', 'config', 'contextgo-config.txt'),
+      path.join(appData, 'ContextGo-Dev', 'config', 'contextgo-config.txt'),
     ];
   }
   // Linux and other platforms
   return [
-    path.join(home, '.config', 'AionUi', 'config', 'aionui-config.txt'),
-    path.join(home, '.config', 'AionUi-Dev', 'config', 'aionui-config.txt'),
+    path.join(home, '.config', 'ContextGo', 'config', 'contextgo-config.txt'),
+    path.join(home, '.config', 'ContextGo-Dev', 'config', 'contextgo-config.txt'),
   ];
 }
 
@@ -265,7 +265,7 @@ describe('migrateFromElectronConfig', () => {
       }),
     };
     // Explicitly mock existsSync to return false — do not rely on real filesystem
-    // (CI machines might have ~/.aionui-config from a previous run)
+    // (CI machines might have ~/.contextgo-config from a previous run)
     vi.doMock('fs', () => ({
       existsSync: vi.fn().mockReturnValue(false),
       readFileSync: vi.fn().mockReturnValue(''),
@@ -477,7 +477,7 @@ export async function migrateFromElectronConfig(configStore: ConfigStore): Promi
     // Decode — if result is empty, the file is missing/corrupted; do NOT set flag
     const sourceData = decodeConfigFile(sourcePath);
     if (Object.keys(sourceData).length === 0) {
-      console.warn('[AionUi] Config migration: source file appears empty or corrupted, will retry next startup');
+      console.warn('[ContextGo] Config migration: source file appears empty or corrupted, will retry next startup');
       return;
     }
 
@@ -502,9 +502,9 @@ export async function migrateFromElectronConfig(configStore: ConfigStore): Promi
     }
 
     await configStore.set('migration.electronConfigImported', true);
-    console.log('[AionUi] Config migrated from Electron desktop config:', sourcePath);
+    console.log('[ContextGo] Config migrated from Electron desktop config:', sourcePath);
   } catch (error) {
-    console.warn('[AionUi] Config migration from Electron failed:', error);
+    console.warn('[ContextGo] Config migration from Electron failed:', error);
   }
 }
 ```
@@ -567,7 +567,7 @@ describe('importConfigFromFile', () => {
       readFileSync: vi.fn().mockReturnValue(encodedSource),
     }));
     const { importConfigFromFile } = await import('../../../../src/process/utils/configMigration');
-    await importConfigFromFile('/path/aionui-config.txt', false, configStore as any);
+    await importConfigFromFile('/path/contextgo-config.txt', false, configStore as any);
     expect(configStore.set).not.toHaveBeenCalledWith('model.config', expect.anything());
     expect(configStore.set).toHaveBeenCalledWith('gemini.config', sourceData['gemini.config']);
   });
@@ -588,7 +588,7 @@ describe('importConfigFromFile', () => {
       readFileSync: vi.fn().mockReturnValue(encodedSource),
     }));
     const { importConfigFromFile } = await import('../../../../src/process/utils/configMigration');
-    await importConfigFromFile('/path/aionui-config.txt', true, configStore as any);
+    await importConfigFromFile('/path/contextgo-config.txt', true, configStore as any);
     expect(configStore.set).toHaveBeenCalledWith('model.config', sourceData['model.config']);
   });
 
@@ -629,7 +629,7 @@ describe('importConfigFromFile', () => {
       readFileSync: vi.fn().mockReturnValue(encodedSource),
     }));
     const { importConfigFromFile } = await import('../../../../src/process/utils/configMigration');
-    await importConfigFromFile('/path/aionui-config.txt', true, configStore as any);
+    await importConfigFromFile('/path/contextgo-config.txt', true, configStore as any);
     const written = (configStore.set as ReturnType<typeof vi.fn>).mock.calls.find(
       ([k]) => k === 'mcp.config'
     )?.[1] as unknown[];
@@ -688,7 +688,7 @@ git commit -m "test(config): add failing tests for importConfigFromFile"
 /**
  * Manual import: copy whitelisted keys from a specified config file into the
  * server config store. Runs on every startup when IMPORT_CONFIG_FROM is set.
- * @param sourcePath - absolute path to an aionui-config.txt file
+ * @param sourcePath - absolute path to an contextgo-config.txt file
  * @param overwrite  - if true, overwrite existing keys; if false, skip them
  * @param configStore - injected config store (uses ProcessConfig in production)
  */
@@ -701,13 +701,13 @@ export async function importConfigFromFile(
     // Warn on relative paths and resolve them
     if (!path.isAbsolute(sourcePath)) {
       const resolved = path.resolve(process.cwd(), sourcePath);
-      console.warn('[AionUi] IMPORT_CONFIG_FROM: relative path provided, resolving to:', resolved);
+      console.warn('[ContextGo] IMPORT_CONFIG_FROM: relative path provided, resolving to:', resolved);
       sourcePath = resolved;
     }
 
     const sourceData = decodeConfigFile(sourcePath);
     if (Object.keys(sourceData).length === 0) {
-      console.warn('[AionUi] IMPORT_CONFIG_FROM: file is missing, empty, or corrupted:', sourcePath);
+      console.warn('[ContextGo] IMPORT_CONFIG_FROM: file is missing, empty, or corrupted:', sourcePath);
       return;
     }
 
@@ -732,9 +732,9 @@ export async function importConfigFromFile(
       await configStore.set(key, sourceValue as IConfigStorageRefer[typeof key]);
     }
 
-    console.log('[AionUi] Config imported from:', sourcePath, '(overwrite:', overwrite, ')');
+    console.log('[ContextGo] Config imported from:', sourcePath, '(overwrite:', overwrite, ')');
   } catch (error) {
-    console.warn('[AionUi] IMPORT_CONFIG_FROM failed:', error);
+    console.warn('[ContextGo] IMPORT_CONFIG_FROM failed:', error);
   }
 }
 ```

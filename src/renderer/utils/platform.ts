@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -41,7 +41,7 @@ export const isLinux = (): boolean => {
   return typeof navigator !== 'undefined' && /linux/i.test(navigator.userAgent);
 };
 
-const ASSET_PROTOCOL_PREFIX = 'aion-asset://asset/';
+const ASSET_PROTOCOL_PREFIX = 'contextgo-asset://asset/';
 
 const shouldKeepAssetProtocolInElectron = (): boolean => {
   if (!isElectronDesktop() || typeof window === 'undefined') return false;
@@ -69,9 +69,9 @@ const toFileUrl = (absPath: string): string => {
 
 /**
  * Resolve an extension asset URL for the current environment.
- * - In Electron dev / any HTTP(S)-served renderer: keep `aion-asset://` because direct `file://` is blocked.
- * - In Electron packaged / local-protocol renderers: convert `aion-asset://asset/{path}` to `file://` for reliable image loading.
- * - In a regular browser (WebUI): convert `aion-asset://asset/{path}` to `/api/ext-asset?path={encodedPath}`.
+ * - In Electron dev / any HTTP(S)-served renderer: keep `contextgo-asset://` because direct `file://` is blocked.
+ * - In Electron packaged / local-protocol renderers: convert `contextgo-asset://asset/{path}` to `file://` for reliable image loading.
+ * - In a regular browser (WebUI): convert `contextgo-asset://asset/{path}` to `/api/ext-asset?path={encodedPath}`.
  *
  * 将扩展资源 URL 转换为当前环境可用的地址
  */

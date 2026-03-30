@@ -3,7 +3,7 @@ import ModalHOC from '@/renderer/utils/ui/ModalHOC';
 import { Form, Input, Message, Select } from '@arco-design/web-react';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import AionModal from '@/renderer/components/base/AionModal';
+import ContextGoModal from '@/renderer/components/base/ContextGoModal';
 import { LinkCloud } from '@icon-park/react';
 import { ipcBridge } from '@/common';
 import useModeModeList from '@renderer/hooks/agent/useModeModeList';
@@ -139,7 +139,7 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
     }, [data, form]);
 
     return (
-      <AionModal
+      <ContextGoModal
         visible={modalProps.visible}
         onCancel={modalCtrl.close}
         header={{ title: t('settings.editModel'), showClose: true }}
@@ -364,7 +364,7 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
             </Form.Item>
           </Form>
         </div>
-      </AionModal>
+      </ContextGoModal>
     );
   }
 );

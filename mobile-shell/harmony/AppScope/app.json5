@@ -1,6 +1,6 @@
 {
   app: {
-    bundleName: 'com.aionui.shell.harmony',
+    bundleName: 'io.contextgo.shell.harmony',
     vendor: 'ContextGo',
     versionCode: 1,
     versionName: '1.0.0',

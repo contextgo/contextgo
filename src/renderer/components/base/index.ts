@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /**
- * AionUi 基础组件库统一导出 / AionUi base components unified exports
+ * ContextGo 基础组件库统一导出 / ContextGo base components unified exports
  *
  * 提供所有基础组件和类型的统一导出入口
  * Provides unified export entry for all base components and types
@@ -13,29 +13,29 @@
 
 // ==================== 组件导出 / Component Exports ====================
 
-export { default as AionModal } from './AionModal';
-export { default as AionCollapse } from './AionCollapse';
-export { default as AionSelect } from './AionSelect';
-export { default as AionScrollArea } from './AionScrollArea';
-export { default as AionSteps } from './AionSteps';
+export { default as ContextGoModal } from './ContextGoModal';
+export { default as ContextGoCollapse } from './ContextGoCollapse';
+export { default as ContextGoSelect } from './ContextGoSelect';
+export { default as ContextGoScrollArea } from './ContextGoScrollArea';
+export { default as ContextGoSteps } from './ContextGoSteps';
 
 // ==================== 类型导出 / Type Exports ====================
 
-// AionModal 类型 / AionModal types
+// ContextGoModal 类型 / ContextGoModal types
 export type {
   ModalSize,
   ModalHeaderConfig,
   ModalFooterConfig,
   ModalContentStyleConfig,
-  AionModalProps,
-} from './AionModal';
-export { MODAL_SIZES } from './AionModal';
+  ContextGoModalProps,
+} from './ContextGoModal';
+export { MODAL_SIZES } from './ContextGoModal';
 
-// AionCollapse 类型 / AionCollapse types
-export type { AionCollapseProps, AionCollapseItemProps } from './AionCollapse';
+// ContextGoCollapse 类型 / ContextGoCollapse types
+export type { ContextGoCollapseProps, ContextGoCollapseItemProps } from './ContextGoCollapse';
 
-// AionSelect 类型 / AionSelect types
-export type { AionSelectProps } from './AionSelect';
+// ContextGoSelect 类型 / ContextGoSelect types
+export type { ContextGoSelectProps } from './ContextGoSelect';
 
-// AionSteps 类型 / AionSteps types
-export type { AionStepsProps } from './AionSteps';
+// ContextGoSteps 类型 / ContextGoSteps types
+export type { ContextGoStepsProps } from './ContextGoSteps';

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -11,7 +11,7 @@ import type {
   GroupParticipantRole,
 } from '@/common/config/storage';
 
-export const DISCUSSION_GROUP_ARTIFACT_ROOT = '.aionui/discussion-groups';
+export const DISCUSSION_GROUP_ARTIFACT_ROOT = '.contextgo/discussion-groups';
 
 export type HarnessArtifactRole = Extract<CollaborationParticipantRole, 'planner' | 'generator' | 'evaluator'>;
 

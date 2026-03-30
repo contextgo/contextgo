@@ -279,8 +279,8 @@ export async function loadCliConfig({
     userMemory: memoryContent,
     geminiMdFileCount: fileCount,
     approvalMode: argv.yolo || false ? ApprovalMode.YOLO : ApprovalMode.DEFAULT,
-    // AionUi 是桌面应用，支持用户交互确认，需要设置 interactive: true
-    // AionUi is a desktop app with user interaction support, needs interactive: true
+    // ContextGo 是桌面应用，支持用户交互确认，需要设置 interactive: true
+    // ContextGo is a desktop app with user interaction support, needs interactive: true
     interactive: true,
     showMemoryUsage: argv.showMemoryUsage || argv.show_memory_usage || settings.showMemoryUsage || false,
     accessibility: settings.accessibility,

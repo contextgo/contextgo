@@ -8,7 +8,7 @@ import { Database, Edit3, Share2, Shield, LucideIcon } from 'lucide-react';
 import ContextParticles from '@/components/ContextParticles';
 import { Dictionary } from '@/app/types';
 
-export default function HomeClient({ dict, lang }: { dict: Dictionary, lang: string }) {
+export default function HomeClient({ dict, lang }: { dict: Dictionary; lang: string }) {
   const demoRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: demoRef,
@@ -100,10 +100,26 @@ export default function HomeClient({ dict, lang }: { dict: Dictionary, lang: str
               </ul>
             </div>
             <div className='grid grid-cols-2 gap-4'>
-              <FeatureCard icon={Shield} title={dict.philosophy.features.private.title} desc={dict.philosophy.features.private.desc} />
-              <FeatureCard icon={Edit3} title={dict.philosophy.features.editor.title} desc={dict.philosophy.features.editor.desc} />
-              <FeatureCard icon={Share2} title={dict.philosophy.features.connect.title} desc={dict.philosophy.features.connect.desc} />
-              <FeatureCard icon={Database} title={dict.philosophy.features.manage.title} desc={dict.philosophy.features.manage.desc} />
+              <FeatureCard
+                icon={Shield}
+                title={dict.philosophy.features.private.title}
+                desc={dict.philosophy.features.private.desc}
+              />
+              <FeatureCard
+                icon={Edit3}
+                title={dict.philosophy.features.editor.title}
+                desc={dict.philosophy.features.editor.desc}
+              />
+              <FeatureCard
+                icon={Share2}
+                title={dict.philosophy.features.connect.title}
+                desc={dict.philosophy.features.connect.desc}
+              />
+              <FeatureCard
+                icon={Database}
+                title={dict.philosophy.features.manage.title}
+                desc={dict.philosophy.features.manage.desc}
+              />
             </div>
           </div>
         </div>
@@ -112,7 +128,7 @@ export default function HomeClient({ dict, lang }: { dict: Dictionary, lang: str
   );
 }
 
-function FeatureCard({ icon: Icon, title, desc }: { icon: LucideIcon, title: string, desc: string }) {
+function FeatureCard({ icon: Icon, title, desc }: { icon: LucideIcon; title: string; desc: string }) {
   return (
     <div className='theme-card-gradient theme-shadow-card theme-border rounded-2xl border p-6 transition-shadow'>
       <div className='theme-surface-tertiary mb-4 flex h-10 w-10 items-center justify-center rounded-lg'>

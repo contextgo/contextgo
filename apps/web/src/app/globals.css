@@ -1,10 +1,10 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --color-background: #FFFFFF;
+  --color-background: #ffffff;
   --color-foreground: #111111;
-  --color-brand-gray: #F2F2F7;
-  --color-brand-light: #F5F5F5;
+  --color-brand-gray: #f2f2f7;
+  --color-brand-light: #f5f5f5;
   --color-accent: #000000;
 }
 
@@ -168,7 +168,12 @@ body {
   }
 
   .theme-divider-gradient {
-    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--border-strong) 70%, transparent), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--border-strong) 70%, transparent),
+      transparent
+    );
   }
 
   .theme-button-primary {

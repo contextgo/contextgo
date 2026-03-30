@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -12,7 +12,7 @@ import { CodebuddyMcpAgent } from './agents/CodebuddyMcpAgent';
 import { QwenMcpAgent } from './agents/QwenMcpAgent';
 import { IflowMcpAgent } from './agents/IflowMcpAgent';
 import { GeminiMcpAgent } from './agents/GeminiMcpAgent';
-import { ContextgoMcpAgent } from './agents/ContextgoMcpAgent';
+import { ContextGoMcpAgent } from './agents/ContextGoMcpAgent';
 import { CodexMcpAgent } from './agents/CodexMcpAgent';
 import type { IMcpProtocol, DetectedMcpServer, McpConnectionTestResult, McpSyncResult, McpSource } from './McpProtocol';
 
@@ -87,7 +87,7 @@ export class McpService {
       ['qwen', new QwenMcpAgent()],
       ['iflow', new IflowMcpAgent()],
       ['gemini', new GeminiMcpAgent()],
-      ['contextgo', new ContextgoMcpAgent()], // ContextGo 内置 @office-ai/aioncli-core
+      ['contextgo', new ContextGoMcpAgent()], // ContextGo 内置 @office-ai/aioncli-core
       ['codex', new CodexMcpAgent()],
     ]);
   }
@@ -101,16 +101,16 @@ export class McpService {
 
   /**
    * 根据 agent 配置获取正确的 MCP agent 实例
-   * Fork Gemini (cliPath=undefined) 使用 ContextgoMcpAgent
+   * Fork Gemini (cliPath=undefined) 使用 ContextGoMcpAgent
    * Native Gemini (cliPath='gemini') 使用 GeminiMcpAgent
    *
    * Get the correct MCP agent instance based on agent config.
-   * Fork Gemini (cliPath=undefined) uses ContextgoMcpAgent.
+   * Fork Gemini (cliPath=undefined) uses ContextGoMcpAgent.
    * Native Gemini (cliPath='gemini') uses GeminiMcpAgent.
    */
   private getAgentForConfig(agent: { backend: AcpBackend; cliPath?: string }): IMcpProtocol | undefined {
-    // Fork Gemini 使用 ContextgoMcpAgent 管理 MCP 配置
-    // Fork Gemini uses ContextgoMcpAgent to manage MCP config
+    // Fork Gemini 使用 ContextGoMcpAgent 管理 MCP 配置
+    // Fork Gemini uses ContextGoMcpAgent to manage MCP config
     if (agent.backend === 'gemini' && !agent.cliPath) {
       return this.agents.get('contextgo');
     }
@@ -238,7 +238,7 @@ export class McpService {
 
   /**
    * Get supported transport types for a given agent config.
-   * Fork Gemini (backend='gemini', no cliPath) uses ContextgoMcpAgent.
+   * Fork Gemini (backend='gemini', no cliPath) uses ContextGoMcpAgent.
    */
   getSupportedTransportsForAgent(agent: { backend: string; cliPath?: string }): string[] {
     const agentInstance = this.getAgentForConfig(agent as { backend: AcpBackend; cliPath?: string });

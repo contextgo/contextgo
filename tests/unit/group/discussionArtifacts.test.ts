@@ -10,12 +10,12 @@ import {
 describe('discussionArtifacts', () => {
   it('builds stable harness artifact paths from the group conversation id', () => {
     expect(buildHarnessArtifactPaths('group/123')).toEqual({
-      rootDir: '.aionui/discussion-groups/group-123/latest',
-      requestFile: '.aionui/discussion-groups/group-123/latest/request.md',
-      plannerFile: '.aionui/discussion-groups/group-123/latest/planner.md',
-      generatorFile: '.aionui/discussion-groups/group-123/latest/generator.md',
-      evaluatorFile: '.aionui/discussion-groups/group-123/latest/evaluator.md',
-      manifestFile: '.aionui/discussion-groups/group-123/latest/manifest.json',
+      rootDir: '.contextgo/discussion-groups/group-123/latest',
+      requestFile: '.contextgo/discussion-groups/group-123/latest/request.md',
+      plannerFile: '.contextgo/discussion-groups/group-123/latest/planner.md',
+      generatorFile: '.contextgo/discussion-groups/group-123/latest/generator.md',
+      evaluatorFile: '.contextgo/discussion-groups/group-123/latest/evaluator.md',
+      manifestFile: '.contextgo/discussion-groups/group-123/latest/manifest.json',
     });
   });
 
@@ -71,7 +71,7 @@ describe('discussionArtifacts', () => {
     expect(plannerContent).toContain('## Round 2');
     expect(plannerContent).toContain('Refine the highest-risk checkpoint.');
     expect(manifestContent).toContain('"conversationId": "group-1"');
-    expect(manifestContent).toContain('"planner": ".aionui/discussion-groups/group-1/latest/planner.md"');
+    expect(manifestContent).toContain('"planner": ".contextgo/discussion-groups/group-1/latest/planner.md"');
     expect(manifestContent).toContain('"repositoryRoot": "/repo/app"');
   });
 

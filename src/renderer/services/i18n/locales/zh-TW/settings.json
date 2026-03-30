@@ -110,7 +110,7 @@
   "assistantSkillsHint": "List preferred tools/skills for the assistant.",
   "assistantSkillsPlaceholder": "請輸入 Markdown 格式的技能...",
   "assistantHooks": "Hooks",
-  "assistantHooksHint": "AionUi 目前會直接執行 before_user_prompt 上的 prompt-transform Hook，同時把規劃、安全、品質、連續性與交付摘要等內建模式整理成可直接啟用的 Hook 庫。",
+  "assistantHooksHint": "ContextGo 目前會直接執行 before_user_prompt 上的 prompt-transform Hook，同時把規劃、安全、品質、連續性與交付摘要等內建模式整理成可直接啟用的 Hook 庫。",
   "hooksPage": "Hooks",
   "hooksPageDescription": "在這裡管理系統提供與已匯入的 Hook。現在內建庫已依提示澄清、安全防護、品質門禁、工作連續性與 operator 交付等模式整理好，可直接開箱使用。",
   "hooksPageManageAssistants": "管理助手",
