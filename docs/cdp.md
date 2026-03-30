@@ -43,6 +43,18 @@ ContextGo can integrate with other MCP tools for enhanced development experience
 
 See [MCP Servers](https://github.com/modelcontextprotocol/servers) for more tools.
 
+## Agent Browser Direction
+
+For the product-level design of:
+
+- an in-app browser pane on the right side
+- managed browser sessions with persistent state
+- extension-assisted takeover of an existing user browser session
+
+see [2026-03-30-agent-browser-integration-design.md](./plans/2026-03-30-agent-browser-integration-design.md).
+
+This is intentionally broader than the CDP debug-port workflow documented on this page.
+
 ## Usage with MCP
 
 Once configured, you can use MCP tools to interact with ContextGo:
@@ -104,6 +116,18 @@ ContextGo 可以集成其他 MCP 工具来增强开发体验：
 | **Git MCP**        | Git 仓库操作                             | `@modelcontextprotocol/server-git`        |
 
 更多工具请查看 [MCP Servers](https://github.com/modelcontextprotocol/servers)。
+
+## Agent Browser 方案方向
+
+如果要做下面这些产品能力：
+
+- 端内右侧嵌入浏览器面板
+- 带持久状态的托管浏览器会话
+- 借助浏览器扩展接管用户现有浏览器会话
+
+请参考 [2026-03-30-agent-browser-integration-design.md](./plans/2026-03-30-agent-browser-integration-design.md)。
+
+该方案文档的范围刻意比本页的 CDP 调试端口用法更大。
 
 ## MCP 使用方式
 
