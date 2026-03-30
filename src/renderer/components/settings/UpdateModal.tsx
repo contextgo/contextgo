@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Progress, Message } from '@arco-design/web-react';
 import { CheckOne, Download, FolderOpen, Refresh, CloseOne, Install } from '@icon-park/react';
 import { ipcBridge } from '@/common';
@@ -31,6 +31,10 @@ const UpdateModal: React.FC = () => {
   // Whether electron-updater auto-update is available (determined automatically, not user-controllable)
   const [autoUpdateAvailable, setAutoUpdateAvailable] = useState(false);
   const [autoUpdateInfo, setAutoUpdateInfo] = useState<{ version: string; releaseNotes?: string } | null>(null);
+  const checkSequenceRef = useRef(0);
+  const activeCheckSequenceRef = useRef<number | null>(null);
+
+  const isForegroundCheckActive = (sequence: number) => activeCheckSequenceRef.current === sequence;
 
   const resetState = () => {
     setStatus('checking');
@@ -56,7 +60,13 @@ const UpdateModal: React.FC = () => {
   };
 
   const checkForUpdates = async () => {
+    const sequence = checkSequenceRef.current + 1;
+    checkSequenceRef.current = sequence;
+    activeCheckSequenceRef.current = sequence;
+
     setStatus('checking');
+    setErrorMsg('');
+
     try {
       // Try auto-update (electron-updater) first
       let autoUpdateOk = false;
@@ -81,6 +91,11 @@ const UpdateModal: React.FC = () => {
       if (!res?.success) {
         throw new Error(res?.msg || t('update.checkFailed'));
       }
+
+      if (!isForegroundCheckActive(sequence)) {
+        return;
+      }
+
       setCurrentVersion(res.data?.currentVersion || '');
 
       if (autoUpdateOk) {
@@ -108,10 +123,18 @@ const UpdateModal: React.FC = () => {
       setReleasePageUrl(res.data?.latest?.htmlUrl || '');
       setStatus('upToDate');
     } catch (err: unknown) {
+      if (!isForegroundCheckActive(sequence)) {
+        return;
+      }
+
       const msg = err instanceof Error ? err.message : String(err);
       console.error('Update check failed:', err);
       setErrorMsg(msg);
       setStatus('error');
+    } finally {
+      if (isForegroundCheckActive(sequence)) {
+        activeCheckSequenceRef.current = null;
+      }
     }
   };
 
@@ -197,8 +220,11 @@ const UpdateModal: React.FC = () => {
     const removeListener = ipcBridge.autoUpdate.status.on((evt: AutoUpdateStatus) => {
       if (!evt) return;
 
+      const hasForegroundCheck = activeCheckSequenceRef.current !== null;
+
       switch (evt.status) {
         case 'checking':
+          if (hasForegroundCheck) return;
           break;
         case 'available':
           setAutoUpdateAvailable(true);
@@ -210,6 +236,7 @@ const UpdateModal: React.FC = () => {
           setVisible(true);
           break;
         case 'not-available':
+          if (hasForegroundCheck) return;
           setStatus('upToDate');
           break;
         case 'downloading':
@@ -226,6 +253,7 @@ const UpdateModal: React.FC = () => {
           setStatus('downloaded');
           break;
         case 'error':
+          if (hasForegroundCheck) return;
           setStatus('error');
           setErrorMsg(evt.error || t('update.downloadFailed'));
           break;
