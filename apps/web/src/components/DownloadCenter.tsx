@@ -64,6 +64,9 @@ export default function DownloadCenter({
         ? dict.download.source_tag
         : dict.download.source_none;
   const checksumLabel = snapshot.checksumsAvailable ? dict.download.checksum_available : dict.download.checksum_missing;
+  const freshnessNote = snapshot.manifestGeneratedAt
+    ? dict.download.manifest_note.replace('{{date}}', manifestUpdatedAt)
+    : dict.download.manifest_pending;
 
   return (
     <div className='theme-page min-h-screen px-4 py-20'>
@@ -103,7 +106,7 @@ export default function DownloadCenter({
               {dict.download.release_source_note.replace('{{repo}}', snapshot.repository)}
             </div>
             <div className='theme-border theme-text-secondary rounded-full border px-4 py-3 text-sm'>
-              {dict.download.manifest_note.replace('{{date}}', manifestUpdatedAt)}
+              {freshnessNote}
             </div>
           </div>
         </motion.div>
