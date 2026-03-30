@@ -357,6 +357,9 @@ export const fs = {
   // Skill Market: remote catalog search and package install
   searchSkillMarket: bridge.buildProvider<
     IBridgeResponse<{
+      brandName: string;
+      view: 'curated' | 'full';
+      defaultView: 'curated' | 'full';
       items: Array<{
         id: string;
         name: string;
@@ -366,10 +369,15 @@ export const fs = {
         description: string;
         categories: string[];
         tags: string[];
+        themes: string[];
+        industries: string[];
+        primaryCapability?: string;
+        selectionReason?: string;
         homepage?: string;
         readmeUrl?: string;
         archives: Array<{ source: string; relativePath: string; label?: string }>;
         popularity: number;
+        qualityScore: number;
         installs: number;
         stars: number;
       }>;
@@ -380,8 +388,116 @@ export const fs = {
       featuredCount: number;
       categories: string[];
       sources: Record<string, number>;
+      stats: {
+        total: number;
+        categories: string[];
+        sources: Record<string, number>;
+        sourceTotal: number;
+        reducedCount: number;
+        reductionRatio: number;
+        clusterCount: number;
+        topIndustries: Array<{ id: string; label: string; count: number }>;
+        topCapabilities: Array<{ label: string; count: number }>;
+        generatedAt?: string;
+      };
+      industryIndex: Array<{
+        id: string;
+        label: string;
+        summary: string;
+        problems: string[];
+        useCases: string[];
+        outcomes: string[];
+        workflow: string[];
+        count: number;
+        topThemes: string[];
+        bundleIds: string[];
+        recommendedSkills: Array<{
+          id: string;
+          name: string;
+          displayName: string;
+          version: string;
+          author: string;
+          description: string;
+          categories: string[];
+          tags: string[];
+          themes: string[];
+          industries: string[];
+          primaryCapability?: string;
+          selectionReason?: string;
+          homepage?: string;
+          readmeUrl?: string;
+          archives: Array<{ source: string; relativePath: string; label?: string }>;
+          popularity: number;
+          qualityScore: number;
+          installs: number;
+          stars: number;
+        }>;
+      }>;
+      bundles: Array<{
+        id: string;
+        title: string;
+        summary: string;
+        industries: string[];
+        forTeams: string;
+        deliverables: string[];
+        valuePoints: string[];
+        steps: Array<{
+          label: string;
+          themes: string[];
+          skillIds: string[];
+          skills: Array<{
+            id: string;
+            name: string;
+            displayName: string;
+            version: string;
+            author: string;
+            description: string;
+            categories: string[];
+            tags: string[];
+            themes: string[];
+            industries: string[];
+            primaryCapability?: string;
+            selectionReason?: string;
+            homepage?: string;
+            readmeUrl?: string;
+            archives: Array<{ source: string; relativePath: string; label?: string }>;
+            popularity: number;
+            qualityScore: number;
+            installs: number;
+            stars: number;
+          }>;
+        }>;
+        skills: Array<{
+          id: string;
+          name: string;
+          displayName: string;
+          version: string;
+          author: string;
+          description: string;
+          categories: string[];
+          tags: string[];
+          themes: string[];
+          industries: string[];
+          primaryCapability?: string;
+          selectionReason?: string;
+          homepage?: string;
+          readmeUrl?: string;
+          archives: Array<{ source: string; relativePath: string; label?: string }>;
+          popularity: number;
+          qualityScore: number;
+          installs: number;
+          stars: number;
+        }>;
+      }>;
     }>,
-    { query?: string; limit?: number; offset?: number; forceRefresh?: boolean }
+    {
+      query?: string;
+      limit?: number;
+      offset?: number;
+      forceRefresh?: boolean;
+      view?: 'curated' | 'full';
+      industryId?: string;
+    }
   >('search-skill-market'),
   installSkillMarketSkill: bridge.buildProvider<
     IBridgeResponse<{ skillName: string; installedPath: string; archiveUrl: string }>,

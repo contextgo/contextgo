@@ -5,7 +5,11 @@ import type {
   ExternalSource,
   PendingSkill,
   SkillInfo,
+  SkillMarketBundle,
+  SkillMarketIndustry,
   SkillMarketItem,
+  SkillMarketStats,
+  SkillMarketView,
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,12 +50,18 @@ export const useAssistantSkills = ({
   const [externalSkillsLoading, setExternalSkillsLoading] = useState(false);
   const [marketSkills, setMarketSkills] = useState<SkillMarketItem[]>([]);
   const [marketQuery, setMarketQuery] = useState('');
+  const [marketView, setMarketView] = useState<SkillMarketView>('curated');
+  const [marketIndustryId, setMarketIndustryId] = useState('all');
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketLoadingMore, setMarketLoadingMore] = useState(false);
   const [marketRefreshing, setMarketRefreshing] = useState(false);
+  const [marketBrandName, setMarketBrandName] = useState('ContextGo');
   const [marketTotal, setMarketTotal] = useState(0);
   const [marketTotalAvailable, setMarketTotalAvailable] = useState(0);
   const [marketSiteUrl, setMarketSiteUrl] = useState('https://www.skillmarket.com.cn');
+  const [marketStats, setMarketStats] = useState<SkillMarketStats | null>(null);
+  const [marketIndustries, setMarketIndustries] = useState<SkillMarketIndustry[]>([]);
+  const [marketBundles, setMarketBundles] = useState<SkillMarketBundle[]>([]);
   const [showAddPathModal, setShowAddPathModal] = useState(false);
   const [customPathName, setCustomPathName] = useState('');
   const [customPathValue, setCustomPathValue] = useState('');
@@ -84,12 +94,18 @@ export const useAssistantSkills = ({
       append = false,
       forceRefresh = false,
       nextQuery,
+      nextView,
+      nextIndustryId,
     }: {
       append?: boolean;
       forceRefresh?: boolean;
       nextQuery?: string;
+      nextView?: SkillMarketView;
+      nextIndustryId?: string;
     } = {}) => {
       const query = nextQuery ?? marketQuery;
+      const view = nextView ?? marketView;
+      const industryId = nextIndustryId ?? marketIndustryId;
 
       if (append) {
         setMarketLoadingMore(true);
@@ -105,6 +121,8 @@ export const useAssistantSkills = ({
           limit: 24,
           offset: append ? marketSkills.length : 0,
           forceRefresh,
+          view,
+          industryId: industryId === 'all' ? undefined : industryId,
         });
 
         if (!response.success || !response.data) {
@@ -118,9 +136,13 @@ export const useAssistantSkills = ({
         }
 
         setMarketSkills((current) => (append ? [...current, ...response.data.items] : response.data.items));
+        setMarketBrandName(response.data.brandName);
         setMarketTotal(response.data.total);
         setMarketTotalAvailable(response.data.totalAvailable);
         setMarketSiteUrl(response.data.siteUrl);
+        setMarketStats(response.data.stats);
+        setMarketIndustries(response.data.industryIndex);
+        setMarketBundles(response.data.bundles);
       } catch (error) {
         console.error('Failed to load Skill Market:', error);
         message.error(
@@ -134,7 +156,7 @@ export const useAssistantSkills = ({
         setMarketRefreshing(false);
       }
     },
-    [marketQuery, marketSkills.length, message, t]
+    [marketIndustryId, marketQuery, marketSkills.length, marketView, message, t]
   );
 
   // Detect external skill paths when modal opens
@@ -143,9 +165,11 @@ export const useAssistantSkills = ({
       setBrowseMode('skill-market');
       setSearchExternalQuery('');
       setMarketQuery('');
+      setMarketView('curated');
+      setMarketIndustryId('all');
       void handleRefreshExternal();
     }
-  }, [skillsModalVisible, handleRefreshExternal, loadSkillMarket]);
+  }, [skillsModalVisible, handleRefreshExternal]);
 
   useEffect(() => {
     if (!skillsModalVisible) {
@@ -159,7 +183,7 @@ export const useAssistantSkills = ({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [skillsModalVisible, marketQuery, loadSkillMarket]);
+  }, [skillsModalVisible, marketIndustryId, marketQuery, marketView, loadSkillMarket]);
 
   const handleAddCustomPath = useCallback(async () => {
     if (!customPathName.trim() || !customPathValue.trim()) return;
@@ -263,6 +287,15 @@ export const useAssistantSkills = ({
     }
   };
 
+  const handleAddMarketBundle = (bundle: SkillMarketBundle) => {
+    handleAddFoundSkills(
+      bundle.skills.map((skill) => ({
+        ...skill,
+        source: 'skill-market' as const,
+      }))
+    );
+  };
+
   const activeSource = externalSources.find((s) => s.source === activeSourceTab);
 
   const filteredExternalSkills = React.useMemo(() => {
@@ -300,12 +333,20 @@ export const useAssistantSkills = ({
     marketSkills,
     marketQuery,
     setMarketQuery,
+    marketView,
+    setMarketView,
+    marketIndustryId,
+    setMarketIndustryId,
     marketLoading,
     marketLoadingMore,
     marketRefreshing,
+    marketBrandName,
     marketTotal,
     marketTotalAvailable,
     marketSiteUrl,
+    marketStats,
+    marketIndustries,
+    marketBundles,
     hasMoreMarketSkills,
     activeSource,
     filteredExternalSkills,
@@ -314,5 +355,6 @@ export const useAssistantSkills = ({
     handleLoadMoreSkillMarket: () => loadSkillMarket({ append: true }),
     handleAddCustomPath,
     handleAddFoundSkills,
+    handleAddMarketBundle,
   };
 };

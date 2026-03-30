@@ -1,5 +1,13 @@
 import { ipcBridge } from '@/common';
-import type { AddableSkill, ExternalSource, SkillMarketItem } from './types';
+import type {
+  AddableSkill,
+  ExternalSource,
+  SkillMarketBundle,
+  SkillMarketIndustry,
+  SkillMarketItem,
+  SkillMarketStats,
+  SkillMarketView,
+} from './types';
 import { Button, Input, Modal, Typography } from '@arco-design/web-react';
 import { Plus, Refresh, Search } from '@icon-park/react';
 import React from 'react';
@@ -28,12 +36,20 @@ type AddSkillsModalProps = {
   marketSkills: SkillMarketItem[];
   marketQuery: string;
   setMarketQuery: (value: string) => void;
+  marketView: SkillMarketView;
+  setMarketView: (value: SkillMarketView) => void;
+  marketIndustryId: string;
+  setMarketIndustryId: (value: string) => void;
   marketLoading: boolean;
   marketLoadingMore: boolean;
   marketRefreshing: boolean;
+  marketBrandName: string;
   marketTotal: number;
   marketTotalAvailable: number;
   marketSiteUrl: string;
+  marketStats: SkillMarketStats | null;
+  marketIndustries: SkillMarketIndustry[];
+  marketBundles: SkillMarketBundle[];
   hasMoreMarketSkills: boolean;
   handleRefreshSkillMarket: () => Promise<void>;
   handleLoadMoreSkillMarket: () => Promise<void>;
@@ -43,6 +59,7 @@ type AddSkillsModalProps = {
 
   // Add handler
   handleAddFoundSkills: (skills: AddableSkill[]) => void;
+  handleAddMarketBundle: (bundle: SkillMarketBundle) => void;
 };
 
 const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
@@ -64,17 +81,26 @@ const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
   marketSkills,
   marketQuery,
   setMarketQuery,
+  marketView,
+  setMarketView,
+  marketIndustryId,
+  setMarketIndustryId,
   marketLoading,
   marketLoadingMore,
   marketRefreshing,
+  marketBrandName,
   marketTotal,
   marketTotalAvailable,
   marketSiteUrl,
+  marketStats,
+  marketIndustries,
+  marketBundles,
   hasMoreMarketSkills,
   handleRefreshSkillMarket,
   handleLoadMoreSkillMarket,
   customSkills,
   handleAddFoundSkills,
+  handleAddMarketBundle,
 }) => {
   const { t } = useTranslation();
   const showMarket = browseMode === 'skill-market';
@@ -145,25 +171,155 @@ const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
 
         {showMarket ? (
           <div className='rounded-12px border border-border-1 bg-fill-1 p-12px'>
-            <div className='flex items-start justify-between gap-12px'>
-              <div>
-                <Typography.Text className='text-13px font-medium text-t-primary'>
-                  {t('settings.skillsHub.marketDescription', {
-                    defaultValue: 'Search the remote skill catalog and add packages to this assistant.',
-                  })}
-                </Typography.Text>
-                <Typography.Paragraph className='mb-0 mt-6px text-12px text-t-secondary'>
-                  {`${marketTotal} / ${marketTotalAvailable}`}
-                </Typography.Paragraph>
+            <div className='flex flex-col gap-12px'>
+              <div className='flex flex-col gap-12px md:flex-row md:items-start md:justify-between'>
+                <div className='min-w-0'>
+                  <div className='flex flex-wrap items-center gap-8px'>
+                    <Typography.Text className='text-13px font-medium text-t-primary'>
+                      {t('settings.skillsHub.marketCatalogTitle', {
+                        brand: marketBrandName,
+                        defaultValue: '{{brand}} curated catalog',
+                      })}
+                    </Typography.Text>
+                    <span className='rounded-[100px] bg-fill-2 px-6px py-1px text-11px text-t-secondary'>
+                      {marketView === 'curated'
+                        ? t('settings.skillsHub.marketCuratedView', { defaultValue: 'Curated' })
+                        : t('settings.skillsHub.marketFullView', { defaultValue: 'Full Library' })}
+                    </span>
+                  </div>
+                  <Typography.Paragraph className='mb-0 mt-6px text-12px text-t-secondary'>
+                    {t('settings.skillsHub.marketDescription', {
+                      defaultValue: 'Search the remote skill catalog and add packages to this assistant.',
+                    })}
+                  </Typography.Paragraph>
+                </div>
+                <div className='flex flex-wrap items-center gap-8px'>
+                  <Button
+                    size='small'
+                    type={marketView === 'curated' ? 'primary' : 'secondary'}
+                    className='rounded-[100px]'
+                    onClick={() => setMarketView('curated')}
+                  >
+                    {t('settings.skillsHub.marketCuratedView', { defaultValue: 'Curated' })}
+                  </Button>
+                  <Button
+                    size='small'
+                    type={marketView === 'full' ? 'primary' : 'secondary'}
+                    className='rounded-[100px]'
+                    onClick={() => setMarketView('full')}
+                  >
+                    {t('settings.skillsHub.marketFullView', { defaultValue: 'Full Library' })}
+                  </Button>
+                  <Button
+                    size='small'
+                    type='text'
+                    className='rounded-[100px]'
+                    onClick={() => void ipcBridge.shell.openExternal.invoke(marketSiteUrl)}
+                  >
+                    {t('common.website', { defaultValue: 'Website' })}
+                  </Button>
+                </div>
               </div>
-              <Button
-                size='small'
-                type='text'
-                className='rounded-[100px]'
-                onClick={() => void ipcBridge.shell.openExternal.invoke(marketSiteUrl)}
-              >
-                {t('common.website', { defaultValue: 'Website' })}
-              </Button>
+
+              <div className='grid grid-cols-2 gap-8px md:grid-cols-4'>
+                <div className='rounded-8px bg-base p-10px'>
+                  <div className='text-18px font-semibold text-t-primary'>
+                    {marketStats?.total ?? marketTotalAvailable}
+                  </div>
+                  <div className='mt-2px text-11px text-t-secondary'>
+                    {t('settings.skillsHub.marketCuratedCount', { defaultValue: 'Curated skills' })}
+                  </div>
+                </div>
+                <div className='rounded-8px bg-base p-10px'>
+                  <div className='text-18px font-semibold text-t-primary'>{marketIndustries.length}</div>
+                  <div className='mt-2px text-11px text-t-secondary'>
+                    {t('settings.skillsHub.marketIndustryCount', { defaultValue: 'Industry tracks' })}
+                  </div>
+                </div>
+                <div className='rounded-8px bg-base p-10px'>
+                  <div className='text-18px font-semibold text-t-primary'>{marketBundles.length}</div>
+                  <div className='mt-2px text-11px text-t-secondary'>
+                    {t('settings.skillsHub.marketBundleCount', { defaultValue: 'Solution bundles' })}
+                  </div>
+                </div>
+                <div className='rounded-8px bg-base p-10px'>
+                  <div className='text-18px font-semibold text-t-primary'>{marketStats?.clusterCount ?? 0}</div>
+                  <div className='mt-2px text-11px text-t-secondary'>
+                    {t('settings.skillsHub.marketCapabilityCount', { defaultValue: 'Capability clusters' })}
+                  </div>
+                </div>
+              </div>
+
+              {marketIndustries.length > 0 ? (
+                <div className='flex gap-8px overflow-x-auto custom-scrollbar pb-2px'>
+                  <Button
+                    size='small'
+                    type={marketIndustryId === 'all' ? 'primary' : 'secondary'}
+                    className='rounded-[100px]'
+                    onClick={() => setMarketIndustryId('all')}
+                  >
+                    {t('settings.skillsHub.marketIndustryAll', { defaultValue: 'All industries' })}
+                  </Button>
+                  {marketIndustries.map((industry) => (
+                    <Button
+                      key={industry.id}
+                      size='small'
+                      type={marketIndustryId === industry.id ? 'primary' : 'secondary'}
+                      className='rounded-[100px]'
+                      onClick={() => setMarketIndustryId(industry.id)}
+                    >
+                      {`${industry.label} (${industry.count})`}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+
+              {!marketQuery.trim() && marketBundles.length > 0 ? (
+                <div className='flex flex-col gap-8px'>
+                  <Typography.Text className='text-12px font-medium text-t-primary'>
+                    {t('settings.skillsHub.marketBundlesTitle', { defaultValue: 'Scenario bundles' })}
+                  </Typography.Text>
+                  <div className='flex flex-col gap-8px'>
+                    {marketBundles.slice(0, 3).map((bundle) => (
+                      <div key={bundle.id} className='rounded-8px bg-base p-12px'>
+                        <div className='flex items-start justify-between gap-12px'>
+                          <div className='min-w-0 flex-1'>
+                            <div className='flex flex-wrap items-center gap-8px'>
+                              <div className='text-13px font-medium text-t-primary'>{bundle.title}</div>
+                              {bundle.industries[0] ? (
+                                <span className='rounded-[100px] bg-fill-2 px-6px py-1px text-10px text-t-secondary'>
+                                  {bundle.industries[0]}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className='mt-4px text-12px text-t-secondary'>{bundle.summary}</div>
+                            <div className='mt-6px text-11px text-t-tertiary'>
+                              {bundle.forTeams ||
+                                t('settings.skillsHub.marketBundleSkillsCount', {
+                                  count: bundle.skills.length,
+                                  defaultValue: '{{count}} skills',
+                                })}
+                            </div>
+                          </div>
+                          <Button
+                            size='small'
+                            type='primary'
+                            className='rounded-[100px]'
+                            disabled={bundle.skills.length === 0}
+                            onClick={() => handleAddMarketBundle(bundle)}
+                          >
+                            {t('settings.skillsHub.marketBundleAdd', { defaultValue: 'Add bundle' })}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <Typography.Paragraph className='mb-0 text-12px text-t-tertiary'>
+                {`${marketTotal} / ${marketTotalAvailable} · ${marketSiteUrl}`}
+              </Typography.Paragraph>
             </div>
           </div>
         ) : null}
@@ -241,8 +397,15 @@ const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
                           </div>
                         ) : null}
                         <div className='mt-6px text-11px text-t-tertiary'>
-                          {[skill.author, skill.categories[0]].filter(Boolean).join(' · ')}
+                          {[skill.author, skill.primaryCapability || skill.industries[0] || skill.categories[0]]
+                            .filter(Boolean)
+                            .join(' · ')}
                         </div>
+                        {skill.selectionReason ? (
+                          <div className='mt-6px rounded-8px bg-fill-2 px-8px py-6px text-11px text-t-secondary'>
+                            {skill.selectionReason}
+                          </div>
+                        ) : null}
                       </div>
                       <div className='shrink-0 self-center'>
                         {isAdded ? (
