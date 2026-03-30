@@ -1,4 +1,3 @@
-const { Arch } = require('builder-util');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -14,6 +13,26 @@ const {
  * afterPack hook for electron-builder
  * Rebuilds native modules for cross-architecture builds
  */
+
+const ARCH_NAMES = {
+  0: 'ia32',
+  1: 'x64',
+  2: 'armv7l',
+  3: 'arm64',
+  4: 'universal',
+};
+
+function resolvePackArch(arch) {
+  if (typeof arch === 'string') {
+    return arch;
+  }
+
+  if (typeof arch === 'number' && ARCH_NAMES[arch]) {
+    return ARCH_NAMES[arch];
+  }
+
+  return process.arch;
+}
 
 function patchDarwinHelperBundleMetadata(context) {
   const { electronPlatformName, appOutDir, packager } = context;
@@ -52,7 +71,7 @@ function patchDarwinHelperBundleMetadata(context) {
 
 module.exports = async function afterPack(context) {
   const { arch, electronPlatformName, appOutDir, packager } = context;
-  const targetArch = normalizeArch(typeof arch === 'string' ? arch : Arch[arch] || process.arch);
+  const targetArch = normalizeArch(resolvePackArch(arch));
   const buildArch = normalizeArch(os.arch());
 
   console.log(`\n🔧 afterPack hook started`);
