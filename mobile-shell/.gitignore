@@ -13,6 +13,8 @@ ios/DerivedData/
 ios/*.xcworkspace
 ios/xcuserdata/
 ios/*.xcuserstate
+ios/**/*.xcworkspace/xcuserdata/
+ios/**/*.xcodeproj/xcuserdata/
 
 # HarmonyOS
 harmony/.hvigor/
