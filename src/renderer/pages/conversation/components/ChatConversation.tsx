@@ -6,14 +6,15 @@
 
 import { ipcBridge } from '@/common';
 import type { IProvider, TChatConversation, TProviderWithModel } from '@/common/config/storage';
+import { channel } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
 import addChatIcon from '@/renderer/assets/icons/add-chat.svg';
 import { CronJobManager } from '@/renderer/pages/cron';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { iconColors } from '@/renderer/styles/colors';
-import { Button, Dropdown, Menu, Tooltip, Typography } from '@arco-design/web-react';
-import { History } from '@icon-park/react';
-import React, { useCallback, useMemo } from 'react';
+import { Button, Dropdown, Menu, Message, Tooltip, Typography } from '@arco-design/web-react';
+import { ConnectionPoint, History } from '@icon-park/react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
@@ -32,6 +33,111 @@ import { useGeminiModelSelection } from '../platforms/gemini/useGeminiModelSelec
 import { usePreviewContext } from '../Preview';
 import { renderConversationHeaderAddons } from '../platforms/conversationHeaderAddons';
 // import SkillRuleGenerator from './components/SkillRuleGenerator'; // Temporarily hidden
+
+type PublicationIntent = {
+  agentProfileId?: string;
+  conversationId: string;
+  backend: string;
+  customAgentId?: string;
+  workspace?: string;
+  agentName?: string;
+};
+
+function buildPublicationIntent(conversation: TChatConversation): PublicationIntent | null {
+  if (conversation.type === 'group' || conversation.type === 'nanobot') {
+    return null;
+  }
+
+  if (conversation.type === 'gemini' || conversation.type === 'codex' || conversation.type === 'openclaw-gateway') {
+    return {
+      conversationId: conversation.id,
+      backend: conversation.type,
+      workspace: 'workspace' in conversation.extra ? conversation.extra.workspace : undefined,
+    };
+  }
+
+  if (conversation.type !== 'acp') {
+    return null;
+  }
+
+  const backend = conversation.extra?.backend;
+  if (!backend) {
+    return null;
+  }
+
+  return {
+    conversationId: conversation.id,
+    backend,
+    customAgentId: conversation.extra?.customAgentId,
+    workspace: conversation.extra?.workspace,
+    agentName: conversation.extra?.agentName,
+  };
+}
+
+const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const publicationIntent = useMemo(() => buildPublicationIntent(conversation), [conversation]);
+
+  const handlePublish = useCallback(async () => {
+    if (!publicationIntent) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await channel.prepareConversationAgentProfile.invoke({
+        conversationId: conversation.id,
+      });
+      if (!result.success || !result.data) {
+        throw new Error(result.msg || t('conversation.header.publishPrepareFailed'));
+      }
+
+      void navigate(
+        {
+          pathname: '/settings/agent-entry',
+        },
+        {
+          state: {
+            publicationIntent: {
+              ...publicationIntent,
+              agentProfileId: result.data.id,
+            },
+          },
+        }
+      );
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : t('conversation.header.publishPrepareFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [conversation.id, navigate, publicationIntent, t]);
+
+  if (!publicationIntent) {
+    return null;
+  }
+
+  return (
+    <Tooltip content={t('conversation.header.publishAgentEntryHint')}>
+      <Button
+        type='text'
+        size='small'
+        className='chat-header-publish-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
+        loading={loading}
+        aria-label={t('conversation.header.publishAgentEntry')}
+        onClick={() => void handlePublish()}
+      >
+        <span className='inline-flex items-center gap-6px rounded-full px-8px py-2px bg-2'>
+          <ConnectionPoint theme='outline' size={16} fill={iconColors.primary} />
+          <span className='hidden md:inline text-12px text-t-primary'>
+            {t('conversation.header.publishAgentEntry')}
+          </span>
+        </span>
+      </Button>
+    </Tooltip>
+  );
+};
 
 const _AssociatedConversation: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
   const { data } = useSWR(['getAssociateConversation', conversation_id], () =>
@@ -154,6 +260,9 @@ const GeminiConversationPanel: React.FC<{ conversation: GeminiConversation; slid
   const geminiHeaderExtra = useMemo(
     () => (
       <div className='flex items-center gap-8px'>
+        <div className='shrink-0'>
+          <PublishAgentEntryButton conversation={conversation} />
+        </div>
         <div className='shrink-0'>
           <CronJobManager conversation={conversation} />
         </div>
@@ -285,6 +394,11 @@ const ChatConversation: React.FC<{
   const headerExtraNode = useMemo(
     () => (
       <div className='flex items-center gap-8px'>
+        {conversation ? (
+          <div className='shrink-0'>
+            <PublishAgentEntryButton conversation={conversation} />
+          </div>
+        ) : null}
         {conversation
           ? renderConversationHeaderAddons({
               conversation,

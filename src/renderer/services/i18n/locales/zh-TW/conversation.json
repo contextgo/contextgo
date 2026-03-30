@@ -393,5 +393,10 @@
     "request_sent": "Request sent to agent",
     "failed": "Failed to generate",
     "preset_registered": "Agent preset registered successfully!"
+  },
+  "header": {
+    "publishAgentEntry": "發布",
+    "publishAgentEntryHint": "打開 Agent 入口，並管理目前會話可重用的渠道綁定。",
+    "publishPrepareFailed": "準備目前 Agent 入口失敗"
   }
 }

@@ -1344,6 +1344,7 @@ export const extensions = {
 // ==================== Channel API ====================
 
 import type {
+  IAgentProfile,
   IChannelBindingCatalog,
   IChannelBinding,
   IChannelHandoffRequest,
@@ -1389,6 +1390,9 @@ export const channel = {
   ),
   upsertBinding: bridge.buildProvider<IBridgeResponse, { binding: IChannelBinding }>('channel.upsert-binding'),
   deleteBinding: bridge.buildProvider<IBridgeResponse, { bindingId: string }>('channel.delete-binding'),
+  prepareConversationAgentProfile: bridge.buildProvider<IBridgeResponse<IAgentProfile>, { conversationId: string }>(
+    'channel.prepare-conversation-agent-profile'
+  ),
   handoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffResult>, IChannelHandoffRequest>(
     'channel.handoff-session'
   ),

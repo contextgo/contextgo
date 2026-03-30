@@ -474,6 +474,8 @@
   "lightMode": "ライト",
   "darkMode": "ダーク",
   "agent": "エージェント",
+  "agentEntry": "Agent Entry",
+  "agentEntryDesc": "再利用可能な Agent Entry、コネクタ、オーディエンスバインディングを、リモート接続とは分けて管理します。",
   "tools": "ツール",
   "webui": "リモート接続",
   "installed": "インストール済み",

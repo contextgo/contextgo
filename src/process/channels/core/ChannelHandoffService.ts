@@ -103,6 +103,19 @@ function toChannelAgentType(backend: string): IChannelSession['agentType'] {
 export class ChannelHandoffService {
   constructor(private readonly deps: HandoffDependencies = { getDatabase, taskManager: workerTaskManager }) {}
 
+  async prepareConversationAgentProfile(conversationId: string): Promise<IAgentProfile> {
+    const db = await this.deps.getDatabase();
+    const conversation = assertQuerySuccess(
+      db.getConversation(conversationId),
+      `Failed to load source conversation ${conversationId}`
+    );
+    const sourceAgentProfile = this.buildAgentProfileFromConversation(db, conversation);
+    return this.ensureSourceAgentProfile(db, {
+      sourceConversationId: conversationId,
+      sourceAgentProfile,
+    });
+  }
+
   async handoffSession(params: IChannelHandoffRequest): Promise<IChannelHandoffResult> {
     const mode = params.mode ?? DEFAULT_HANDOFF_MODE;
     const conflictPolicy = params.conflictPolicy ?? DEFAULT_CONFLICT_POLICY;
@@ -371,7 +384,7 @@ export class ChannelHandoffService {
 
     return {
       id: profileId,
-      name: `Handoff ${conversation.name}`,
+      name: conversation.name,
       backend,
       modelRef,
       workspaceRef,

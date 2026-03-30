@@ -74,6 +74,12 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
         path: 'webui',
       },
       {
+        id: 'agentEntry',
+        label: t('settings.agentEntry'),
+        icon: <Communication theme='outline' size='16' className='app-icon' />,
+        path: 'agent-entry',
+      },
+      {
         id: 'system',
         label: t('settings.system'),
         icon: <System theme='outline' size='16' className='app-icon' />,

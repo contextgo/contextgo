@@ -393,5 +393,10 @@
     "request_sent": "에이전트에게 요청이 전송되었습니다",
     "failed": "생성 실패",
     "preset_registered": "에이전트 프리셋이 성공적으로 등록되었습니다!"
+  },
+  "header": {
+    "publishAgentEntry": "배포",
+    "publishAgentEntryHint": "Agent Entry를 열고 현재 대화의 재사용 가능한 채널 바인딩을 관리합니다.",
+    "publishPrepareFailed": "이 Agent Entry를 준비하지 못했습니다"
   }
 }

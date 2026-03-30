@@ -474,6 +474,8 @@
   "lightMode": "Açık",
   "darkMode": "Koyu",
   "agent": "Ajan",
+  "agentEntry": "Agent Entry",
+  "agentEntryDesc": "Yeniden kullanılabilir Agent Entry, connector ve audience bağlarını uzak bağlantıdan ayrı yönetin.",
   "tools": "Araçlar",
   "webui": "Uzak Bağlantı",
   "installed": "Yüklü",
