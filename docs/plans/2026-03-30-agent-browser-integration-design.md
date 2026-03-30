@@ -21,6 +21,10 @@ ContextGo already has several relevant building blocks:
 
 However, these building blocks are not yet the same thing as a first-class agent browser product.
 
+This design now makes one product choice explicit:
+
+- `agent-browser` should be the default and primary browser runtime for ContextGo
+
 There are three materially different capabilities that must not be conflated:
 
 1. an embedded browser surface inside the app
@@ -57,10 +61,12 @@ boundaries.
 
 Add a desktop-hosted agent browser capability that:
 
+- standardizes on `agent-browser` as the managed browser runtime
 - renders browser activity inside the existing conversation shell
 - keeps browser operations visible to the user
 - supports persistent login state for repeated tasks
 - can later bridge into a user's existing browser session with explicit consent
+- treats browser identity and profile state as long-lived context owned by `Space`
 - fits the current desktop-host + remote-client product model
 
 ## Non-Goals
@@ -101,6 +107,24 @@ experiments, but it does not itself solve:
 - permission mediation
 - explicit takeover consent
 - active user-browser handoff UX
+
+### 5. The product is already moving toward `Space` as the top-level context object
+
+Per `docs/tech/space-model.md`, ContextGo is moving from:
+
+`Conversation -> working directory -> agent task`
+
+toward:
+
+`Space -> Thread -> Agent execution`
+
+The agent browser design should align with that direction.
+
+In particular:
+
+- browser context should not be modeled as a loose per-thread cache
+- browser identity should not be reduced to a working-directory implementation detail
+- imported browser profile state should become a governed context asset attached to a `Space`
 
 ## Capability Split
 
@@ -171,7 +195,8 @@ Weaknesses:
 
 Recommendation:
 
-- use as a candidate backend for **isolated agent browser sessions**
+- adopt this as the **default managed browser runtime**
+- define ContextGo's browser session lifecycle around it
 - do not define the overall product architecture around its CDP attach mode alone
 
 ### Option 2: raw CDP attach to local Chrome
@@ -252,18 +277,98 @@ Ship this in two distinct product modes under one browser capability umbrella:
 
 `takeover` is an explicitly elevated mode built on a browser extension bridge.
 
+Both modes should use `agent-browser` as the execution runtime that ContextGo standardizes on.
+
+## Browser Context As A Space Asset
+
+The browser product should align with the repository's `Space` direction.
+
+Recommended product model:
+
+- `Space` owns long-lived browser context assets
+- `Thread` consumes or temporarily mounts those assets for an execution
+- host-local runtime state remains device-specific and non-global
+
+Suggested conceptual objects:
+
+```ts
+type BrowserContextAsset = {
+  id: string;
+  spaceId: string;
+  label: string;
+  kind: 'managed' | 'imported-profile' | 'takeover-link';
+  provider: 'agent-browser';
+  status: 'active' | 'revoked' | 'expired' | 'pending-consent';
+  domains?: string[];
+  storageRef?: string;
+  fingerprintRef?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+```
+
+Implications:
+
+- browser identity becomes reusable context, not an ephemeral thread flag
+- one space may own multiple browser personas or site-specific profiles
+- a thread can request one browser context asset as part of its execution pack
+- revocation and rotation happen at the space asset layer
+
+## Compliant Authorization Model
+
+The product should explicitly support a compliant authorization flow for bringing a user's browser
+fingerprint, cookies, profile state, or active login context under management.
+
+This is not the same as "silently copy the browser profile".
+
+The required product rules are:
+
+- explicit consent before any profile import, attach, or takeover
+- explain what will be accessed:
+  - cookies/session state
+  - browser fingerprint-related state
+  - site storage/profile artifacts
+  - active tabs or selected sessions
+- explain where the state will live after authorization:
+  - app-managed encrypted local storage
+  - extension-mediated live bridge
+  - or non-persistent session passthrough
+- allow narrow scope:
+  - selected site
+  - selected tab
+  - selected browser profile
+  - selected space
+- support revoke, rotate, delete, and audit
+
+Recommended consent states:
+
+```ts
+type BrowserConsentStatus = 'pending' | 'granted' | 'denied' | 'revoked' | 'expired';
+```
+
+Recommended flow:
+
+1. user selects a target `Space`
+2. user chooses `managed session`, `import profile`, or `take over current browser`
+3. ContextGo explains scope, retention, and revoke behavior
+4. user grants consent in app and, when needed, in the browser extension
+5. ContextGo stores a `BrowserContextAsset` under the selected `Space`
+6. future threads can request that asset with per-run confirmation or pre-granted policy
+
+This is the correct place to manage browser fingerprint/profile context over time.
+
 ## Mode 1: Managed Browser Session
 
 Behavior:
 
-- ContextGo starts and owns an agent browser session
+- ContextGo starts and owns an `agent-browser` session
 - the session persists in an app-managed profile directory
 - the right-side browser pane shows the live session
 - the agent operates that session visibly
 
 Recommended stack:
 
-- desktop host service spawns `agent-browser` or a similar runtime
+- desktop host service spawns `agent-browser`
 - app-managed session/profile directory under ContextGo-owned storage
 - `WebContentsView` hosts the visible page surface
 - renderer panel shows navigation state, action log, permissions, and stop/resume controls
@@ -283,11 +388,14 @@ Behavior:
 - a browser extension explicitly grants access to that session
 - ContextGo receives a bridge connection and mirrors the activity inside the app
 - the agent can continue where the user already logged in
+- when consent allows it, ContextGo materializes the granted identity as a `Space`-scoped browser
+  context asset managed by `agent-browser`
 
 Recommended stack:
 
 - browser extension for tab/session discovery and opt-in grant
 - native messaging host in ContextGo desktop for trusted local communication
+- `agent-browser` consumes the granted bridge or imported profile as its execution context
 - browser bridge service in main process
 - renderer-side takeover indicator, active-domain badge, and hard stop control
 
@@ -304,12 +412,20 @@ This PR does not implement the feature yet, but the likely code placement should
 
 - `src/common/types/browserSession.ts`
   - shared session state, mode, permission, and event types
+- `src/common/types/browserContextAsset.ts`
+  - space-scoped browser context asset definitions and consent state
 - `src/process/services/browser/BrowserSessionService.ts`
-  - lifecycle for managed sessions
+  - lifecycle for `agent-browser` managed sessions
 - `src/process/services/browser/BrowserTakeoverService.ts`
   - extension/native-messaging bridge and elevated consent flow
+- `src/process/services/browser/BrowserContextAssetService.ts`
+  - persistence, encryption, revoke, import, and rotation of `Space` browser context assets
 - `src/process/bridge/browserSessionBridge.ts`
   - renderer IPC bridge
+- `src/process/bridge/browserContextAssetBridge.ts`
+  - renderer IPC bridge for consent, listing, binding, revoke, and import flows
+- `src/renderer/pages/space/BrowserContexts/`
+  - space-level browser context management UI
 - `src/renderer/pages/conversation/BrowserSession/`
   - right-side browser session panel and controls
 - `src/renderer/pages/conversation/Preview/`
@@ -336,6 +452,7 @@ Agent browser needs additional concepts:
 - permission prompts
 - takeover consent
 - persistent profile state
+- space binding and browser context asset selection
 - stop, pause, and detach actions
 
 So the right approach is:
@@ -347,6 +464,7 @@ So the right approach is:
 
 ### Baseline rules
 
+- `agent-browser` is the only first-party managed browser runtime
 - browser automation is desktop-hosted only
 - browser takeover is opt-in only
 - no silent background attach to the user's default browser profile
@@ -356,8 +474,9 @@ So the right approach is:
 ### Managed mode rules
 
 - use an app-managed non-default profile directory
-- isolate sessions by workspace, task, or explicit session ID
+- isolate sessions by space, task, or explicit session ID
 - support wipe/reset of persisted browser state
+- persist imported browser identity as a governed `Space` asset, not as an implicit global profile
 
 ### Takeover mode rules
 
@@ -366,6 +485,7 @@ So the right approach is:
 - require per-domain or per-session consent
 - surface a visible "agent connected" indicator
 - allow immediate revoke from either the app or extension side
+- support import-as-asset only after explicit disclosure and consent
 
 ## Remote / Mobile Behavior
 
@@ -381,17 +501,18 @@ This keeps the architecture aligned with `docs/tech/mobile-remote-control.md`.
 
 ### Phase 0: Research and contract definition
 
-- finalize session model
+- finalize `agent-browser` embedding and lifecycle contract
+- finalize `Space` browser context asset model
 - finalize event model
 - finalize security and consent model
-- decide whether `agent-browser` is the initial managed runtime
+- finalize compliant profile / fingerprint authorization flow
 
 ### Phase 1: Managed browser MVP
 
-- add desktop-hosted browser session service
+- add desktop-hosted `agent-browser` session service
 - add right-side browser session panel
 - support open, navigate, click, fill, snapshot, screenshot
-- support app-managed persistent browser profiles
+- support app-managed persistent browser profiles under `Space`
 - support remote observation from WebUI/mobile
 
 ### Phase 2: Takeover bridge MVP
@@ -413,6 +534,8 @@ This keeps the architecture aligned with `docs/tech/mobile-remote-control.md`.
 Adopt this as the product direction:
 
 - **first-class right-side browser pane on desktop**
+- **`agent-browser` as the first-party browser runtime**
+- **space-scoped browser context assets as the browser identity model**
 - **managed browser session as phase 1**
 - **extension-assisted browser takeover as phase 2**
 
