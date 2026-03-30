@@ -215,6 +215,22 @@
   },
   "noAgentsAvailable": "没有可用的 Agent",
   "noModelConfigured": "未配置模型，请前往设置页面配置。",
+  "browser": {
+    "open": "打开浏览器上下文",
+    "createTitle": "创建浏览器上下文",
+    "configureTitle": "配置浏览器上下文",
+    "startUrlLabel": "起始网址",
+    "startUrlPlaceholder": "输入要在右侧浏览器面板打开的网址",
+    "missingSpace": "当前会话还没有绑定 Space",
+    "invalidUrl": "请输入有效的 HTTP 或 HTTPS 网址",
+    "openFailed": "打开浏览器上下文失败",
+    "createFailed": "创建浏览器上下文失败",
+    "updateFailed": "更新浏览器上下文失败",
+    "bindFailed": "将浏览器上下文绑定到当前会话失败",
+    "missingHomeUrl": "当前浏览器上下文还没有配置起始网址",
+    "defaultLabel": "浏览器上下文",
+    "conversationLabel": "{{name}} 浏览器"
+  },
   "createFailed": "创建会话失败",
   "workspace": {
     "title": "工作空间",

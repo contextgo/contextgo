@@ -27,6 +27,7 @@ export interface PreviewMetadata {
   filePath?: string; // 工作空间文件的绝对路径 / Absolute file path in workspace
   workspace?: string; // 工作空间根目录 / Workspace root directory
   editable?: boolean; // 是否可编辑 / Whether editable
+  browserContextAssetId?: string;
 }
 
 export interface PreviewTab {
@@ -198,6 +199,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const normalizedFileName = normalize(meta?.fileName);
       const normalizedTitle = normalize(meta?.title);
       const normalizedFilePath = normalize(meta?.filePath);
+      const normalizedBrowserContextAssetId = normalize(meta?.browserContextAssetId);
 
       return (
         tabList.find((tab) => {
@@ -205,6 +207,16 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const tabFileName = normalize(tab.metadata?.fileName);
           const tabTitle = normalize(tab.metadata?.title);
           const tabFilePath = normalize(tab.metadata?.filePath);
+          const tabBrowserContextAssetId = normalize(tab.metadata?.browserContextAssetId);
+
+          // URL/browser preview tabs are scoped by browser context asset when available.
+          if (
+            normalizedBrowserContextAssetId &&
+            tabBrowserContextAssetId &&
+            normalizedBrowserContextAssetId === tabBrowserContextAssetId
+          ) {
+            return true;
+          }
 
           // 优先通过 filePath 匹配（最可靠）/ Prefer matching by filePath (most reliable)
           if (normalizedFilePath && tabFilePath && normalizedFilePath === tabFilePath) return true;

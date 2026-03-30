@@ -13,6 +13,7 @@ import { initAcpConversationBridge } from './acpConversationBridge';
 import { initApplicationBridge } from './applicationBridge';
 import { initAuthBridge } from './authBridge';
 import { initBedrockBridge } from './bedrockBridge';
+import { initBrowserContextBridge } from './browserContextBridge';
 import { initChannelBridge } from './channelBridge';
 import { initCloudBridge } from './cloudBridge';
 import { initConversationBridge } from './conversationBridge';
@@ -60,6 +61,7 @@ export function initAllBridges(deps: BridgeDependencies): void {
   // 额外的 Gemini 辅助桥（订阅检测等）需要在对话桥初始化后可用 / extra helpers after core bridges
   initGeminiBridge();
   initBedrockBridge();
+  initBrowserContextBridge();
   initAcpConversationBridge(deps.workerTaskManager, deps.conversationService);
   initAuthBridge();
   initModelBridge();
@@ -98,6 +100,7 @@ export {
   initApplicationBridge,
   initAuthBridge,
   initBedrockBridge,
+  initBrowserContextBridge,
   initChannelBridge,
   initCloudBridge,
   initConversationBridge,

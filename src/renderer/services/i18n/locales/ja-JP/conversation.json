@@ -209,6 +209,22 @@
   },
   "noAgentsAvailable": "利用可能なエージェントはありません",
   "noModelConfigured": "モデルが設定されていません。設定ページで設定してください。",
+  "browser": {
+    "open": "ブラウザーコンテキストを開く",
+    "createTitle": "ブラウザーコンテキストを作成",
+    "configureTitle": "ブラウザーコンテキストを設定",
+    "startUrlLabel": "開始 URL",
+    "startUrlPlaceholder": "右側のブラウザーペインで開く URL を入力してください",
+    "missingSpace": "この会話はまだ Space に紐付いていません",
+    "invalidUrl": "有効な HTTP または HTTPS の URL を入力してください",
+    "openFailed": "ブラウザーコンテキストを開けませんでした",
+    "createFailed": "ブラウザーコンテキストの作成に失敗しました",
+    "updateFailed": "ブラウザーコンテキストの更新に失敗しました",
+    "bindFailed": "ブラウザーコンテキストをこの会話に紐付けできませんでした",
+    "missingHomeUrl": "このブラウザーコンテキストには開始 URL がまだありません",
+    "defaultLabel": "ブラウザーコンテキスト",
+    "conversationLabel": "{{name}} ブラウザー"
+  },
   "createFailed": "会話の作成に失敗しました",
   "tabs": {
     "closeAll": "すべて閉じる",

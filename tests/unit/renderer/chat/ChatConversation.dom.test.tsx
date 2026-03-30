@@ -127,6 +127,11 @@ vi.mock('@/renderer/pages/conversation/platforms/openclaw/StarOfficeMonitorCard.
   default: () => <div data-testid='staroffice-monitor-card' />,
 }));
 
+vi.mock('@/renderer/pages/conversation/platforms/ConversationBrowserContextButton', () => ({
+  __esModule: true,
+  default: () => <div data-testid='browser-context-button' />,
+}));
+
 import ChatConversation from '@/renderer/pages/conversation/components/ChatConversation';
 
 const createConversation = (type: TChatConversation['type'], id: string): TChatConversation =>
