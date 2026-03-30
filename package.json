@@ -29,7 +29,7 @@
     "mobile-shell:bootstrap": "bash mobile-shell/scripts/bootstrap.sh",
     "mobile-shell:android:tasks": "bash mobile-shell/scripts/android-gradlew.sh tasks --all",
     "mobile-shell:android:assemble:debug": "bash mobile-shell/scripts/android-gradlew.sh assembleDebug",
-    "mobile-shell:ios:list": "xcodebuild -list -project mobile-shell/ios/AionUiShell.xcodeproj",
+    "mobile-shell:ios:list": "xcodebuild -list -project mobile-shell/ios/ContextGo.xcodeproj",
     "resetpass": "electron-vite dev -- --resetpass",
     "package": "electron-vite build",
     "make": "electron-vite build",
