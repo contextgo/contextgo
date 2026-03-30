@@ -25,6 +25,16 @@ class Settings:
     github_client_secret: Optional[str]
     google_client_id: Optional[str]
     google_client_secret: Optional[str]
+    infermesh_api_base_url: Optional[str]
+    infermesh_console_base_url: Optional[str]
+    infermesh_admin_base_url: Optional[str]
+    infermesh_admin_username: Optional[str]
+    infermesh_admin_password: Optional[str]
+    infermesh_admin_access_client_id: Optional[str]
+    infermesh_admin_access_client_secret: Optional[str]
+    infermesh_password_secret: Optional[str]
+    infermesh_username_prefix: str
+    infermesh_provider_name: str
     session_cookie_name: str = "contextgo_session"
     oauth_state_cookie_name: str = "contextgo_oauth_state"
     session_ttl_seconds: int = 60 * 60 * 24 * 30
@@ -56,4 +66,14 @@ def load_settings() -> Settings:
         github_client_secret=_read_env("CONTEXTGO_GITHUB_CLIENT_SECRET"),
         google_client_id=_read_env("CONTEXTGO_GOOGLE_CLIENT_ID"),
         google_client_secret=_read_env("CONTEXTGO_GOOGLE_CLIENT_SECRET"),
+        infermesh_api_base_url=_read_env("CONTEXTGO_INFERMESH_API_BASE_URL", "https://api.infermesh.org"),
+        infermesh_console_base_url=_read_env("CONTEXTGO_INFERMESH_CONSOLE_BASE_URL", "https://newapi.infermesh.org"),
+        infermesh_admin_base_url=_read_env("CONTEXTGO_INFERMESH_ADMIN_BASE_URL", "https://newapi-admin.infermesh.org"),
+        infermesh_admin_username=_read_env("CONTEXTGO_INFERMESH_ADMIN_USERNAME"),
+        infermesh_admin_password=_read_env("CONTEXTGO_INFERMESH_ADMIN_PASSWORD"),
+        infermesh_admin_access_client_id=_read_env("CONTEXTGO_INFERMESH_ADMIN_ACCESS_CLIENT_ID"),
+        infermesh_admin_access_client_secret=_read_env("CONTEXTGO_INFERMESH_ADMIN_ACCESS_CLIENT_SECRET"),
+        infermesh_password_secret=_read_env("CONTEXTGO_INFERMESH_PASSWORD_SECRET"),
+        infermesh_username_prefix=_read_env("CONTEXTGO_INFERMESH_USERNAME_PREFIX", "cg") or "cg",
+        infermesh_provider_name=_read_env("CONTEXTGO_INFERMESH_PROVIDER_NAME", "InferMesh Cloud") or "InferMesh Cloud",
     )
