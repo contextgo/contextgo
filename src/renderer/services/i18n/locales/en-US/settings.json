@@ -474,6 +474,8 @@
   "lightMode": "Light",
   "darkMode": "Dark",
   "agent": "Agent",
+  "agentEntry": "Agent Entry",
+  "agentEntryDesc": "Manage your reusable agent entry points, connectors, and audience bindings separately from remote access.",
   "tools": "Tools",
   "webui": "Remote",
   "installed": "Installed",

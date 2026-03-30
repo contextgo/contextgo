@@ -467,6 +467,17 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
+  channel.prepareConversationAgentProfile.provider(async ({ conversationId }) => {
+    try {
+      const handoffService = getChannelHandoffService();
+      const data = await handoffService.prepareConversationAgentProfile(conversationId);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] prepareConversationAgentProfile error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
   /**
    * Handoff a source session/conversation to a target channel chat.
    */

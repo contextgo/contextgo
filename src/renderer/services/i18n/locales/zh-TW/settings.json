@@ -474,6 +474,8 @@
   "lightMode": "淺色",
   "darkMode": "深色",
   "agent": "代理",
+  "agentEntry": "Agent 入口",
+  "agentEntryDesc": "將可重用的 Agent 入口、連接器與 audience 綁定獨立管理，不再與遠端連線混在一起。",
   "tools": "工具",
   "webui": "遠端連線",
   "installed": "已安裝",

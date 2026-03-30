@@ -393,6 +393,11 @@
       "steer": "Sonraki adıma yönlendir"
     }
   },
+  "header": {
+    "publishAgentEntry": "Yayınla",
+    "publishAgentEntryHint": "Agent Entry ekranını açın ve bu konuşmanın yeniden kullanılabilir kanal bağlarını yönetin.",
+    "publishPrepareFailed": "Bu agent giriş noktası hazırlanamadı"
+  },
   "noAgentsAvailable": "No agents available",
   "noModelConfigured": "No model configured. Please configure in settings.",
   "createFailed": "Failed to create conversation"

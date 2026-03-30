@@ -474,6 +474,8 @@
   "lightMode": "浅色",
   "darkMode": "深色",
   "agent": "对话Agent",
+  "agentEntry": "Agent 入口",
+  "agentEntryDesc": "把可复用的 Agent 入口、连接器和 audience 绑定独立管理，不再和远程连接混在一起。",
   "tools": "工具",
   "webui": "远程连接",
   "installed": "已安装",

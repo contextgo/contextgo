@@ -16,6 +16,7 @@ import { Button, Empty, Input, InputNumber, Message, Select, Spin, Tag } from '@
 import { Delete, Edit, Plus, Refresh, Undo } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import {
   buildBindingPayload,
   splitBindingsByLifetime,
@@ -43,6 +44,15 @@ type TemporaryEditorState = {
   manualScopeKey: string;
   agentProfileId: string;
   priority: number;
+};
+
+type PublicationIntent = {
+  agentProfileId?: string;
+  conversationId?: string;
+  backend?: string;
+  customAgentId?: string;
+  workspace?: string;
+  agentName?: string;
 };
 
 const EMPTY_CATALOG: IChannelBindingCatalog = {
@@ -85,8 +95,91 @@ function resolveScopeKey(selectedAudienceKey: string, manualScopeKey: string): s
   return manualScopeKey.trim() || selectedAudienceKey;
 }
 
+function getIntentField(searchParams: URLSearchParams, key: string): string | undefined {
+  const value = searchParams.get(key);
+  return value && value.trim() ? value : undefined;
+}
+
+function getPromptProfileField(profile: IAgentProfile, key: string): string | undefined {
+  const promptProfile = profile.promptProfile;
+  if (!promptProfile || typeof promptProfile !== 'object') {
+    return undefined;
+  }
+
+  const value = (promptProfile as Record<string, unknown>)[key];
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function resolvePublicationIntent(state: unknown, searchParams: URLSearchParams): PublicationIntent | null {
+  const fromState =
+    state && typeof state === 'object' && 'publicationIntent' in state
+      ? (state as { publicationIntent?: PublicationIntent }).publicationIntent
+      : undefined;
+
+  const publicationIntent: PublicationIntent = {
+    agentProfileId: fromState?.agentProfileId ?? getIntentField(searchParams, 'agentProfileId'),
+    conversationId: fromState?.conversationId ?? getIntentField(searchParams, 'conversationId'),
+    backend: fromState?.backend ?? getIntentField(searchParams, 'backend'),
+    customAgentId: fromState?.customAgentId ?? getIntentField(searchParams, 'customAgentId'),
+    workspace: fromState?.workspace ?? getIntentField(searchParams, 'workspace'),
+    agentName: fromState?.agentName ?? getIntentField(searchParams, 'agentName'),
+  };
+
+  return Object.values(publicationIntent).some(Boolean) ? publicationIntent : null;
+}
+
+function resolvePreferredProfileId(
+  agentProfiles: IAgentProfile[],
+  publicationIntent: PublicationIntent | null
+): string | null {
+  if (!publicationIntent) {
+    return null;
+  }
+
+  if (
+    publicationIntent.agentProfileId &&
+    agentProfiles.some((profile) => profile.id === publicationIntent.agentProfileId)
+  ) {
+    return publicationIntent.agentProfileId;
+  }
+
+  let bestProfileId: string | null = null;
+  let bestScore = 0;
+
+  for (const profile of agentProfiles) {
+    let score = 0;
+
+    if (publicationIntent.conversationId && profile.publishedFromConversationId === publicationIntent.conversationId) {
+      score += 1000;
+    }
+    if (publicationIntent.backend && profile.backend === publicationIntent.backend) {
+      score += 200;
+    }
+    if (
+      publicationIntent.customAgentId &&
+      getPromptProfileField(profile, 'customAgentId') === publicationIntent.customAgentId
+    ) {
+      score += 400;
+    }
+    if (publicationIntent.workspace && profile.workspaceRef === publicationIntent.workspace) {
+      score += 80;
+    }
+    if (publicationIntent.agentName && profile.name === publicationIntent.agentName) {
+      score += 40;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestProfileId = profile.id;
+    }
+  }
+
+  return bestProfileId;
+}
+
 const PublicationBindingPanel: React.FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const [catalog, setCatalog] = useState<IChannelBindingCatalog>(EMPTY_CATALOG);
   const [selectedConnectorId, setSelectedConnectorId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -94,6 +187,13 @@ const PublicationBindingPanel: React.FC = () => {
   const [deletingBindingId, setDeletingBindingId] = useState('');
   const [durableEditor, setDurableEditor] = useState<DurableEditorState>(createDurableEditorState());
   const [temporaryEditor, setTemporaryEditor] = useState<TemporaryEditorState>(createTemporaryEditorState());
+  const [appliedIntentKey, setAppliedIntentKey] = useState('');
+
+  const publicationIntent = useMemo(
+    () => resolvePublicationIntent(location.state, new URLSearchParams(location.search)),
+    [location.search, location.state]
+  );
+  const publicationIntentKey = useMemo(() => JSON.stringify(publicationIntent ?? null), [publicationIntent]);
 
   const loadCatalog = useCallback(async () => {
     setLoading(true);
@@ -155,6 +255,10 @@ const PublicationBindingPanel: React.FC = () => {
   const audienceMap = useMemo(
     () => new Map(catalog.audiences.map((audience) => [audience.key, audience])),
     [catalog.audiences]
+  );
+  const preferredProfileId = useMemo(
+    () => resolvePreferredProfileId(catalog.agentProfiles, publicationIntent),
+    [catalog.agentProfiles, publicationIntent]
   );
 
   const selectedConnector = useMemo<IConnectorInstance | undefined>(
@@ -253,6 +357,20 @@ const PublicationBindingPanel: React.FC = () => {
       };
     });
   }, [selectedAudiences, selectedConnectorId]);
+
+  useEffect(() => {
+    if (!preferredProfileId || appliedIntentKey === publicationIntentKey) {
+      return;
+    }
+
+    setDurableEditor((editor) =>
+      editor.editingBindingId ? editor : { ...editor, agentProfileId: preferredProfileId }
+    );
+    setTemporaryEditor((editor) =>
+      editor.editingBindingId ? editor : { ...editor, agentProfileId: preferredProfileId }
+    );
+    setAppliedIntentKey(publicationIntentKey);
+  }, [appliedIntentKey, preferredProfileId, publicationIntentKey]);
 
   const validateDraft = useCallback(
     (draft: BindingDraft) => {

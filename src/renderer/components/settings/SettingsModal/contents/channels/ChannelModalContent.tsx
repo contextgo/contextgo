@@ -980,9 +980,14 @@ const ChannelModalContent: React.FC = () => {
   return (
     <AionScrollArea className={isPageMode ? 'h-full' : ''}>
       <div className='px-[12px] md:px-[28px]'>
-        <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.channels.title', 'Channels')}</h2>
+        <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.agentEntry')}</h2>
         <div className='space-y-8px mt-10px'>
-          <div className='text-13px text-t-secondary leading-relaxed'>{channelGuideText}</div>
+          <div className='text-13px text-t-secondary leading-relaxed'>
+            {t('settings.agentEntryDesc', {
+              defaultValue:
+                'Manage your reusable agent entry points, connectors, and audience bindings separately from remote access.',
+            })}
+          </div>
           <div className='flex flex-wrap gap-x-12px gap-y-6px'>
             {channelSetupSteps.map((stepLabel, idx) => (
               <div key={stepLabel} className='inline-flex items-center gap-6px'>

@@ -10,15 +10,9 @@ import { ConfigStorage } from '@/common/config/storage';
 import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
 import AionModal from '@/renderer/components/base/AionModal';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
-import ChannelDingTalkLogo from '@/renderer/assets/channel-logos/dingtalk.svg';
-import ChannelDiscordLogo from '@/renderer/assets/channel-logos/discord.svg';
-import ChannelLarkLogo from '@/renderer/assets/channel-logos/lark.svg';
-import ChannelSlackLogo from '@/renderer/assets/channel-logos/slack.svg';
-import ChannelTelegramLogo from '@/renderer/assets/channel-logos/telegram.svg';
-import ChannelWeixinLogo from '@/renderer/assets/channel-logos/weixin.svg';
 import { isElectronDesktop } from '@/renderer/utils/platform';
-import { Button, Form, Input, Message, Switch, Tabs, Tooltip } from '@arco-design/web-react';
-import { CheckOne, Communication, Copy, Earth, EditTwo, LinkCloud, Refresh } from '@icon-park/react';
+import { Button, Form, Input, Message, Switch, Tooltip } from '@arco-design/web-react';
+import { CheckOne, Copy, Earth, EditTwo, LinkCloud, Refresh } from '@icon-park/react';
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsViewMode } from '../settingsViewContext';
@@ -45,16 +39,6 @@ const PreferenceRow: React.FC<{
   </div>
 );
 
-const CHANNEL_LOGOS = [
-  { src: ChannelTelegramLogo, alt: 'Telegram' },
-  { src: ChannelLarkLogo, alt: 'Lark' },
-  { src: ChannelDingTalkLogo, alt: 'DingTalk' },
-  { src: ChannelWeixinLogo, alt: 'WeChat' },
-  { src: ChannelSlackLogo, alt: 'Slack' },
-  { src: ChannelDiscordLogo, alt: 'Discord' },
-] as const;
-
-const ChannelModalContentLazy = React.lazy(() => import('./channels/ChannelModalContent'));
 const QRCodeSVGLazy = React.lazy(async () => {
   const mod = await import('qrcode.react');
   return { default: mod.QRCodeSVG };
@@ -73,7 +57,6 @@ const WebuiModalContent: React.FC = () => {
   const { t } = useTranslation();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
-  const [activeTab, setActiveTab] = useState<'webui' | 'channels'>('webui');
 
   // 检测是否在 Electron 桌面环境 / Check if running in Electron desktop environment
   const isDesktop = isElectronDesktop();
@@ -685,16 +668,19 @@ const WebuiModalContent: React.FC = () => {
     shell.openExternal.invoke(OFFICIAL_REMOTE_URL).catch(console.error);
   }, []);
 
-  // 浏览器端只显示 Channels 配置，不显示 WebUI 服务配置 / In browser mode, only show Channels config, not WebUI service config
+  // 浏览器端：Remote 页面只显示不支持提示
   if (!isDesktop) {
     return (
       <div className='flex flex-col h-full w-full'>
         <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
-          <div className='space-y-16px'>
-            <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.channels')}</h2>
-            <Suspense fallback={<div className='text-13px text-t-secondary'>{t('common.loading')}</div>}>
-              <ChannelModalContentLazy />
-            </Suspense>
+          <div className='space-y-10px px-[12px] md:px-[28px]'>
+            <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.webui')}</h2>
+            <div className='rd-12px border border-line bg-2 px-14px py-14px space-y-6px'>
+              <div className='text-14px font-500 text-t-primary'>{t('settings.webui.browserNotSupported')}</div>
+              <div className='text-13px text-t-secondary leading-relaxed'>
+                {t('settings.webui.browserNotSupportedDesc')}
+              </div>
+            </div>
           </div>
         </AionScrollArea>
       </div>
@@ -781,11 +767,7 @@ const WebuiModalContent: React.FC = () => {
                       disabled={Boolean(cloudAuthLoadingProvider)}
                       onClick={() => void handleCloudLogin(provider)}
                     >
-                      {t(
-                        provider === 'github'
-                          ? 'settings.cloud.loginWithGithub'
-                          : 'settings.cloud.loginWithGoogle'
-                      )}
+                      {t(provider === 'github' ? 'settings.cloud.loginWithGithub' : 'settings.cloud.loginWithGoogle')}
                     </Button>
                   ))}
                 </div>
@@ -793,21 +775,6 @@ const WebuiModalContent: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* Messaging 强引导入口 / Messaging primary entry — disabled, kept for future use
-        <div className='rd-12px border border-line bg-2 px-12px py-10px flex items-center justify-between gap-10px'>
-            <div className='min-w-0 flex items-center gap-8px'>
-              <Communication theme='outline' size='18' className='text-[rgb(var(--primary-6))] shrink-0' />
-              <div className='min-w-0'>
-                <div className='text-13px text-t-primary font-500'>{t('settings.webui.featureChannelsTitle')}</div>
-                <div className='text-12px text-t-secondary truncate'>{t('settings.webui.featureChannelsDesc')}</div>
-              </div>
-            </div>
-            <Button type='primary' size='small' className='rd-100px' onClick={() => setActiveTab('channels')}>
-              {t('settings.webui.goToChannels')}
-            </Button>
-          </div>
-        */}
 
         {/* WebUI 服务卡片 / WebUI Service Card */}
         <div className='px-[12px] md:px-[28px] py-14px bg-2 rd-16px'>
@@ -998,64 +965,8 @@ const WebuiModalContent: React.FC = () => {
     </AionScrollArea>
   );
 
-  return (
-    <div className='flex flex-col h-full w-full'>
-      <Tabs
-        activeTab={activeTab}
-        onChange={(key) => setActiveTab((key as 'webui' | 'channels') || 'webui')}
-        type='line'
-        className='mb-12px settings-remote-tabs'
-      >
-        <Tabs.TabPane
-          key='webui'
-          title={
-            <span
-              data-webui-tab='webui'
-              className={`inline-flex items-center gap-6px transition-colors ${activeTab === 'webui' ? 'text-t-primary font-600' : 'text-t-secondary'}`}
-            >
-              <Earth theme='outline' size='15' />
-              <span>{t('settings.webui')}</span>
-            </span>
-          }
-        />
-        <Tabs.TabPane
-          key='channels'
-          title={
-            <span
-              data-webui-tab='channels'
-              className={`inline-flex items-center gap-6px transition-colors ${activeTab === 'channels' ? 'text-t-primary font-600' : 'text-t-secondary'}`}
-            >
-              <Communication theme='outline' size='15' />
-              <span>{t('settings.channels')}</span>
-              <span className='inline-flex items-center gap-4px ml-2px'>
-                {CHANNEL_LOGOS.map((item) => (
-                  <span
-                    key={item.alt}
-                    className='inline-flex items-center justify-center w-16px h-16px rd-50% border border-line bg-fill-1'
-                    title={item.alt}
-                    aria-label={item.alt}
-                  >
-                    <img src={item.src} alt={item.alt} className='w-14px h-14px object-contain' />
-                  </span>
-                ))}
-              </span>
-            </span>
-          }
-        />
-      </Tabs>
-
-      {activeTab === 'webui' ? (
-        webuiPanel
-      ) : (
-        <div className='flex-1 min-h-0'>
-          <Suspense
-            fallback={<div className='px-[12px] md:px-[28px] text-13px text-t-secondary'>{t('common.loading')}</div>}
-          >
-            <ChannelModalContentLazy />
-          </Suspense>
-        </div>
-      )}
-
+  const settingsSubModals = (
+    <>
       <AionModal
         visible={setUsernameModalVisible}
         onCancel={() => setSetUsernameModalVisible(false)}
@@ -1082,17 +993,14 @@ const WebuiModalContent: React.FC = () => {
                     callback(t('settings.webui.usernameMinLength'));
                     return;
                   }
-
                   if (trimmed.length > 32) {
                     callback(t('settings.webui.usernameMaxLength'));
                     return;
                   }
-
-                  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+                  if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
                     callback(t('settings.webui.usernameFormatError'));
                     return;
                   }
-
                   if (/^[_-]|[_-]$/.test(trimmed)) {
                     callback(t('settings.webui.usernameEdgeError'));
                     return;
@@ -1108,11 +1016,10 @@ const WebuiModalContent: React.FC = () => {
         </Form>
       </AionModal>
 
-      {/* 设置新密码弹窗 / Set New Password Modal */}
       <AionModal
         visible={setPasswordModalVisible}
         onCancel={() => setSetPasswordModalVisible(false)}
-        onOk={handleSetNewPassword}
+        onOk={() => void handleSetNewPassword()}
         confirmLoading={passwordLoading}
         title={t('settings.webui.setNewPassword')}
         size='small'
@@ -1123,11 +1030,15 @@ const WebuiModalContent: React.FC = () => {
             field='newPassword'
             rules={[
               { required: true, message: t('settings.webui.newPasswordRequired') },
-              { minLength: 8, message: t('settings.webui.passwordMinLength') },
+              {
+                minLength: 8,
+                message: t('settings.webui.passwordMinLength'),
+              },
             ]}
           >
             <Input.Password placeholder={t('settings.webui.newPasswordPlaceholder')} />
           </Form.Item>
+
           <Form.Item
             label={t('settings.webui.confirmPassword')}
             field='confirmPassword'
@@ -1135,11 +1046,12 @@ const WebuiModalContent: React.FC = () => {
               { required: true, message: t('settings.webui.confirmPasswordRequired') },
               {
                 validator: (value, callback) => {
-                  if (value !== form.getFieldValue('newPassword')) {
+                  const nextPassword = form.getFieldValue('newPassword');
+                  if (value && nextPassword && value !== nextPassword) {
                     callback(t('settings.webui.passwordMismatch'));
-                  } else {
-                    callback();
+                    return;
                   }
+                  callback();
                 },
               },
             ]}
@@ -1148,6 +1060,13 @@ const WebuiModalContent: React.FC = () => {
           </Form.Item>
         </Form>
       </AionModal>
+    </>
+  );
+
+  return (
+    <div className='flex flex-col h-full w-full'>
+      {webuiPanel}
+      {settingsSubModals}
     </div>
   );
 };

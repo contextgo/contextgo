@@ -393,5 +393,10 @@
     "request_sent": "生成请求已发送",
     "failed": "生成失败",
     "preset_registered": "已保存为全局预设"
+  },
+  "header": {
+    "publishAgentEntry": "发布",
+    "publishAgentEntryHint": "打开 Agent 入口，并管理当前会话可复用的渠道绑定。",
+    "publishPrepareFailed": "准备当前 Agent 入口失败"
   }
 }
