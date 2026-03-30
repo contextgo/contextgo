@@ -3,9 +3,9 @@ import ThemeScript from '@/components/ThemeScript';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ContextGo - Connect The Context. Let Agents Work.',
+  title: 'ContextGo | Product, Docs, Blog, and Releases',
   description:
-    'ContextGo connects knowledge, tasks, conversations, and channels so agents can work inside real workflows.',
+    'ContextGo connects knowledge, tasks, conversations, and channels so agents can work inside real workflows. Explore product pages, docs, blog, and release downloads on contextgo.io.',
   icons: {
     icon: '/icon.png',
   },

@@ -18,9 +18,7 @@ export default async function LangLayout({
   return (
     <>
       <Navbar dict={dict.navbar} lang={validLang} />
-
       <main className='flex-grow pt-16'>{children}</main>
-
       <Footer dict={dict.footer} lang={validLang} />
     </>
   );
