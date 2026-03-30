@@ -1,14 +1,26 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import { ipcBridge } from '@/common';
 import type { IConversationTurnCompletedEvent } from '@/common/adapter/ipcBridge';
 import type { IMessageText } from '@/common/chat/chatLib';
-import type { DiscussionGroupParticipant, DiscussionGroupOrchestration, MessageGroupMeta } from '@/common/config/storage';
-import { uuid } from '@/common/utils';
+import type {
+  CollaborationParticipantRole,
+  DiscussionGroupMode,
+  DiscussionGroupParticipant,
+  DiscussionGroupOrchestration,
+  GroupCollaborationConfig,
+  MessageGroupMeta,
+} from '@/common/config/storage';
+import {
+  isHarnessArtifactRole,
+  uuid,
+  type HarnessArtifactEntry,
+  type HarnessArtifactStatus,
+} from '@/common/utils';
 import { getChannelMessageService } from '@process/channels/agent/ChannelMessageService';
 import type { IConversationService } from '@process/services/IConversationService';
 import {
@@ -21,8 +33,10 @@ import {
 import { normalizeStoredDiscussionOrchestration } from '../orchestration';
 import {
   buildDiscussionRoundPrompt,
+  normalizeGroupCollaboration,
   type DiscussionRoundSummary,
 } from './discussionHelpers';
+import { persistHarnessArtifacts } from './discussionArtifacts';
 
 class DiscussionGroupCancelledError extends Error {
   constructor(conversationId: string) {
@@ -42,8 +56,8 @@ const buildProjectedMessageMeta = (
     participantId: participant.id,
     participantName: participant.name,
     participantAvatar: participant.avatar,
-    childConversationId,
     participantRole: participant.role,
+    childConversationId,
     mode: orchestration.mode,
     round,
   };
@@ -71,6 +85,9 @@ export class DiscussionGroupRuntime {
   ): Promise<void> {
     this.cancelledGroupIds.delete(conversation.id);
     const orchestration = normalizeStoredDiscussionOrchestration(conversation.extra.orchestration);
+    const collaboration = normalizeGroupCollaboration(conversation.extra.collaboration);
+    this.validateCollaborationBoundary(collaboration);
+
     await persistGroupUserMessage(this.conversationService, conversation, {
       id: options.msgId,
       type: 'text',
@@ -82,6 +99,7 @@ export class DiscussionGroupRuntime {
       },
       createdAt: Date.now(),
     });
+
     ipcBridge.conversation.responseStream.emit({
       type: 'start',
       data: null,
@@ -92,7 +110,18 @@ export class DiscussionGroupRuntime {
     await this.conversationService.updateConversation(conversation.id, { status: 'running' });
     this.emitTurnState(conversation, 'running', 'ai_generating', 'Discussion group is responding');
 
+    const harnessEntries: HarnessArtifactEntry[] = [];
+
     try {
+      await this.persistHarnessArtifactsSafe({
+        conversation,
+        collaboration,
+        orchestrationMode: orchestration.mode,
+        request: options.input,
+        entries: harnessEntries,
+        status: 'running',
+      });
+
       let previousRoundSummariesByParticipant = new Map<string, DiscussionRoundSummary>();
 
       for (let round = 1; round <= orchestration.rounds; round += 1) {
@@ -115,17 +144,27 @@ export class DiscussionGroupRuntime {
                     .map((item) => previousRoundSummariesByParticipant.get(item.id))
                     .filter((item): item is DiscussionRoundSummary => Boolean(item));
 
+          const promptParticipantRole: CollaborationParticipantRole | undefined =
+            participant.role === 'participant'
+              ? 'participant'
+              : isHarnessArtifactRole(participant.role)
+                ? participant.role
+                : undefined;
+
           const prompt = buildDiscussionRoundPrompt({
+            collaboration,
             mode: orchestration.mode,
             round,
             userInput: options.input,
             participantName: participant.name,
+            participantRole: promptParticipantRole,
             peerSummaries,
           });
 
           const latestMessages = await this.collectParticipantRoundMessages(conversation, participant, prompt, round);
           this.throwIfCancelled(conversation.id);
           const summaryText = collectTextMessageContent(latestMessages);
+          const participantRole = participant.role;
 
           if (summaryText) {
             currentRoundSummariesByParticipant.set(participant.id, {
@@ -133,12 +172,39 @@ export class DiscussionGroupRuntime {
               participantName: participant.name,
               content: summaryText,
             });
+
+            if (isHarnessArtifactRole(participantRole)) {
+              this.upsertHarnessArtifactEntry(harnessEntries, {
+                round,
+                role: participantRole,
+                participantId: participant.id,
+                participantName: participant.name,
+                summary: summaryText,
+                updatedAt: Date.now(),
+              });
+              await this.persistHarnessArtifactsSafe({
+                conversation,
+                collaboration,
+                orchestrationMode: orchestration.mode,
+                request: options.input,
+                entries: harnessEntries,
+                status: 'running',
+              });
+            }
           }
         }
 
         previousRoundSummariesByParticipant = currentRoundSummariesByParticipant;
       }
 
+      await this.persistHarnessArtifactsSafe({
+        conversation,
+        collaboration,
+        orchestrationMode: orchestration.mode,
+        request: options.input,
+        entries: harnessEntries,
+        status: 'finished',
+      });
       await this.conversationService.updateConversation(conversation.id, { status: 'finished' });
       this.emitTurnState(conversation, 'finished', 'ai_waiting_input', 'Discussion group completed');
       ipcBridge.conversation.responseStream.emit({
@@ -149,6 +215,14 @@ export class DiscussionGroupRuntime {
       });
     } catch (error) {
       if (error instanceof DiscussionGroupCancelledError) {
+        await this.persistHarnessArtifactsSafe({
+          conversation,
+          collaboration,
+          orchestrationMode: orchestration.mode,
+          request: options.input,
+          entries: harnessEntries,
+          status: 'stopped',
+        });
         await this.conversationService.updateConversation(conversation.id, { status: 'finished' });
         this.emitTurnState(conversation, 'finished', 'ai_waiting_input', 'Discussion group stopped');
         ipcBridge.conversation.responseStream.emit({
@@ -160,8 +234,17 @@ export class DiscussionGroupRuntime {
         return;
       }
 
+      await this.persistHarnessArtifactsSafe({
+        conversation,
+        collaboration,
+        orchestrationMode: orchestration.mode,
+        request: options.input,
+        entries: harnessEntries,
+        status: 'error',
+      });
       await this.conversationService.updateConversation(conversation.id, { status: 'finished' });
       const message = error instanceof Error ? error.message : String(error);
+
       await persistGroupProjectedMessage(
         this.conversationService,
         conversation,
@@ -260,6 +343,59 @@ export class DiscussionGroupRuntime {
     }
 
     return projectedMessages;
+  }
+
+  private validateCollaborationBoundary(collaboration: GroupCollaborationConfig): void {
+    if (collaboration.mode !== 'planner-generator-evaluator') {
+      return;
+    }
+
+    if (
+      collaboration.executionBoundary.type !== 'git-repository' ||
+      !collaboration.executionBoundary.repositoryRoot.trim()
+    ) {
+      throw new Error('Planner/Generator/Evaluator mode requires a git repository boundary.');
+    }
+  }
+
+  private async persistHarnessArtifactsSafe(options: {
+    conversation: GroupConversation;
+    collaboration: GroupCollaborationConfig;
+    orchestrationMode: DiscussionGroupMode;
+    request: string;
+    entries: HarnessArtifactEntry[];
+    status: HarnessArtifactStatus;
+  }): Promise<void> {
+    if (options.collaboration.mode !== 'planner-generator-evaluator') {
+      return;
+    }
+
+    try {
+      await persistHarnessArtifacts({
+        workspace: options.conversation.extra.workspace,
+        conversationId: options.conversation.id,
+        request: options.request,
+        orchestrationMode: options.orchestrationMode,
+        executionBoundary: options.collaboration.executionBoundary,
+        status: options.status,
+        entries: options.entries,
+      });
+    } catch (error) {
+      console.error('[DiscussionGroupRuntime] Failed to persist harness artifacts:', error);
+    }
+  }
+
+  private upsertHarnessArtifactEntry(entries: HarnessArtifactEntry[], nextEntry: HarnessArtifactEntry): void {
+    const existingEntryIndex = entries.findIndex(
+      (entry) => entry.round === nextEntry.round && entry.role === nextEntry.role
+    );
+
+    if (existingEntryIndex >= 0) {
+      entries[existingEntryIndex] = nextEntry;
+      return;
+    }
+
+    entries.push(nextEntry);
   }
 
   private throwIfCancelled(conversationId: string): void {

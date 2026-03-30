@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildDiscussionRoundPrompt,
+  normalizeGroupCollaboration,
   normalizeDiscussionOrchestration,
 } from '@/process/bridge/services/group/discussion/discussionHelpers';
 
@@ -39,6 +40,15 @@ describe('normalizeDiscussionOrchestration', () => {
 });
 
 describe('buildDiscussionRoundPrompt', () => {
+  it('defaults missing collaboration config to discussion mode', () => {
+    expect(normalizeGroupCollaboration()).toEqual({
+      mode: 'discussion',
+      executionBoundary: {
+        type: 'workspace',
+      },
+    });
+  });
+
   it('returns the raw user input for broadcast mode', () => {
     expect(
       buildDiscussionRoundPrompt({
@@ -104,5 +114,76 @@ describe('buildDiscussionRoundPrompt', () => {
 
     expect(prompt).toContain('Respond independently as Reviewer');
     expect(prompt).not.toContain('[Other Assistants]');
+  });
+
+  it('builds a planner prompt for harness mode with git repository context', () => {
+    const prompt = buildDiscussionRoundPrompt({
+      collaboration: {
+        mode: 'planner-generator-evaluator',
+        executionBoundary: {
+          type: 'git-repository',
+          repositoryRoot: '/repo/app',
+          branch: 'main',
+          remoteUrl: 'git@github.com:example/repo.git',
+        },
+      },
+      mode: 'debate',
+      round: 1,
+      userInput: 'Implement the release dashboard.',
+      participantName: 'Planner Agent',
+      participantRole: 'planner',
+      peerSummaries: [],
+    });
+
+    expect(prompt).toContain('the Planner');
+    expect(prompt).toContain('concrete implementation plan');
+    expect(prompt).toContain('/repo/app');
+    expect(prompt).toContain('Current Branch: main');
+  });
+
+  it('builds a generator prompt for harness mode with implementation guidance', () => {
+    const prompt = buildDiscussionRoundPrompt({
+      collaboration: {
+        mode: 'planner-generator-evaluator',
+        executionBoundary: {
+          type: 'git-repository',
+          repositoryRoot: '/repo/app',
+        },
+      },
+      mode: 'debate',
+      round: 1,
+      userInput: 'Implement the release dashboard.',
+      participantName: 'Generator Agent',
+      participantRole: 'generator',
+      peerSummaries: [],
+    });
+
+    expect(prompt).toContain('the Generator');
+    expect(prompt).toContain('implementation work');
+    expect(prompt).toContain('code-change strategy');
+    expect(prompt).toContain('Evaluator');
+  });
+
+  it('builds an evaluator prompt for harness mode with PASS/FAIL gates', () => {
+    const prompt = buildDiscussionRoundPrompt({
+      collaboration: {
+        mode: 'planner-generator-evaluator',
+        executionBoundary: {
+          type: 'git-repository',
+          repositoryRoot: '/repo/app',
+        },
+      },
+      mode: 'debate',
+      round: 1,
+      userInput: 'Implement the release dashboard.',
+      participantName: 'Evaluator Agent',
+      participantRole: 'evaluator',
+      peerSummaries: [],
+    });
+
+    expect(prompt).toContain('the Evaluator');
+    expect(prompt).toContain('PASS/FAIL rubric');
+    expect(prompt).toContain('Stay read-only');
+    expect(prompt).toContain('failure conditions');
   });
 });

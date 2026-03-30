@@ -259,7 +259,14 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
                 className='pointer-events-auto max-w-full'
                 style={{ width: isMobile ? 'min(320px, calc(100vw - 32px))' : '340px' }}
               >
-                <GroupParticipantsPanel participants={groupParticipants} />
+                <GroupParticipantsPanel
+                  participants={groupParticipants}
+                  collaboration={conversation.type === 'group' ? conversation.extra.collaboration : undefined}
+                  orchestration={conversation.type === 'group' ? conversation.extra.orchestration : undefined}
+                  workspace={conversation.extra.workspace}
+                  conversationId={conversation.id}
+                  status={conversation.status}
+                />
               </div>
             ) : null}
 

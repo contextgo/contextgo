@@ -1,4 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { ipcBridge } from '@/common';
+import type { CloudStatus, CloudUser } from '@/common/types/cloud';
 import { withCsrfToken } from '@process/webserver/middleware/csrfClient';
 
 type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
@@ -6,6 +8,10 @@ type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
 export interface AuthUser {
   id: string;
   username: string;
+  displayName?: string;
+  email?: string;
+  avatarUrl?: string | null;
+  authSource?: 'local' | 'cloud';
 }
 
 interface LoginParams {
@@ -36,6 +42,27 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const AUTH_USER_ENDPOINT = '/api/auth/user';
 
 const isDesktopRuntime = typeof window !== 'undefined' && Boolean(window.electronAPI);
+type WindowWithWebSocketReconnect = Window & {
+  __websocketReconnect?: () => void;
+};
+
+function normalizeAuthUser(user: AuthUser): AuthUser {
+  return {
+    ...user,
+    displayName: user.displayName || user.username,
+  };
+}
+
+function normalizeCloudUser(user: CloudUser): AuthUser {
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    email: user.email,
+    avatarUrl: user.avatarUrl ?? null,
+    authSource: 'cloud',
+  };
+}
 
 async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> {
   try {
@@ -49,9 +76,9 @@ async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> 
       return null;
     }
 
-    const data = (await response.json()) as { success: boolean; user?: AuthUser };
+    const data = (await response.json()) as { success: boolean; user?: AuthUser | null };
     if (data.success && data.user) {
-      return data.user;
+      return normalizeAuthUser(data.user);
     }
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
@@ -63,6 +90,20 @@ async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> 
   return null;
 }
 
+async function fetchDesktopCloudUser(): Promise<AuthUser | null> {
+  try {
+    const result = await ipcBridge.cloud.getStatus.invoke();
+    if (!result.success || !result.data?.authenticated || !result.data.user) {
+      return null;
+    }
+
+    return normalizeCloudUser(result.data.user);
+  } catch (error) {
+    console.error('Failed to fetch desktop cloud user:', error);
+    return null;
+  }
+}
+
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('checking');
@@ -71,8 +112,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const refresh = useCallback(async () => {
     if (isDesktopRuntime) {
+      const currentUser = await fetchDesktopCloudUser();
       setStatus('authenticated');
-      setUser(null);
+      setUser(currentUser);
       setReady(true);
       return;
     }
@@ -91,6 +133,22 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setStatus('unauthenticated');
     }
     setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktopRuntime) {
+      return;
+    }
+
+    const unsubscribe = ipcBridge.cloud.statusChanged.on((nextStatus: CloudStatus) => {
+      setUser(nextStatus.user ? normalizeCloudUser(nextStatus.user) : null);
+      setStatus('authenticated');
+      setReady(true);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -140,13 +198,16 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         };
       }
 
-      setUser(data.user);
+      setUser(normalizeAuthUser(data.user));
       setStatus('authenticated');
       setReady(true);
 
       // Re-enable WebSocket reconnection after successful login (WebUI mode only)
-      if (typeof window !== 'undefined' && (window as any).__websocketReconnect) {
-        (window as any).__websocketReconnect();
+      if (typeof window !== 'undefined') {
+        const reconnect = (window as WindowWithWebSocketReconnect).__websocketReconnect;
+        if (typeof reconnect === 'function') {
+          reconnect();
+        }
       }
 
       return { success: true };

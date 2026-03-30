@@ -28,6 +28,7 @@ import {
   getDataPath,
   getTempPath,
   hasElectronAppPath,
+  resolveBrandStoragePath,
   verifyDirectoryFiles,
 } from './utils';
 import { resolveSkillDirectory } from './skillDiscovery';
@@ -50,12 +51,21 @@ const STORAGE_PATH = {
   chatMessage: 'contextgo-chat-message.txt',
   chat: 'contextgo-chat.txt',
   env: '.contextgo-env',
+  chatHistory: 'contextgo-chat-history',
   assistants: 'assistants',
   skills: 'skills',
   hooks: 'hooks',
   builtinSkills: 'builtin-skills',
   builtinHooks: 'builtin-hooks',
 };
+
+const LEGACY_STORAGE_PATH = {
+  config: 'aionui-config.txt',
+  chatMessage: 'aionui-chat-message.txt',
+  chat: 'aionui-chat.txt',
+  env: '.aionui-env',
+  chatHistory: 'aionui-chat-history',
+} as const;
 
 const getHomePage = getConfigPath;
 
@@ -271,17 +281,72 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(path: strin
   };
 };
 
-const envFile = JsonFileBuilder<IEnvStorageRefer>(path.join(getHomePage(), STORAGE_PATH.env));
+const envFile = JsonFileBuilder<IEnvStorageRefer>(
+  resolveBrandStoragePath({
+    baseDir: getHomePage(),
+    preferredName: STORAGE_PATH.env,
+    legacyNames: [LEGACY_STORAGE_PATH.env],
+    kind: 'file',
+  })
+);
 
-const dirConfig = envFile.getSync('contextgo.dir');
+const rawDirConfig =
+  envFile.getSync('contextgo.dir') ??
+  envFile.getSync('aionui.dir' as keyof IEnvStorageRefer);
+const platformDataRoot = getPlatformServices().paths.getDataDir();
+const legacyActualDataDir = path.join(platformDataRoot, 'aionui');
+const preferredActualDataDir = path.join(platformDataRoot, 'contextgo');
+
+const normalizeStoredWorkDir = (workDir?: string): string | undefined => {
+  if (!workDir) {
+    return workDir;
+  }
+
+  const resolvedWorkDir = path.resolve(workDir);
+  const resolvedLegacyDataDir = path.resolve(legacyActualDataDir);
+  if (resolvedWorkDir !== resolvedLegacyDataDir && !resolvedWorkDir.startsWith(resolvedLegacyDataDir + path.sep)) {
+    return workDir;
+  }
+
+  const relativeSuffix = path.relative(resolvedLegacyDataDir, resolvedWorkDir);
+  return relativeSuffix ? path.join(preferredActualDataDir, relativeSuffix) : preferredActualDataDir;
+};
+
+const dirConfig = rawDirConfig
+  ? {
+      ...rawDirConfig,
+      workDir: normalizeStoredWorkDir(rawDirConfig.workDir),
+    }
+  : rawDirConfig;
 
 const cacheDir = dirConfig?.cacheDir || getHomePage();
 
-const configFile = JsonFileBuilder<IConfigStorageRefer>(path.join(cacheDir, STORAGE_PATH.config));
+const configFile = JsonFileBuilder<IConfigStorageRefer>(
+  resolveBrandStoragePath({
+    baseDir: cacheDir,
+    preferredName: STORAGE_PATH.config,
+    legacyNames: [LEGACY_STORAGE_PATH.config],
+    kind: 'file',
+  })
+);
 type ConversationHistoryData = Record<string, TMessage[]>;
 
-const _chatMessageFile = JsonFileBuilder<ConversationHistoryData>(path.join(cacheDir, STORAGE_PATH.chatMessage));
-const _chatFile = JsonFileBuilder<IChatConversationRefer>(path.join(cacheDir, STORAGE_PATH.chat));
+const _chatMessageFile = JsonFileBuilder<ConversationHistoryData>(
+  resolveBrandStoragePath({
+    baseDir: cacheDir,
+    preferredName: STORAGE_PATH.chatMessage,
+    legacyNames: [LEGACY_STORAGE_PATH.chatMessage],
+    kind: 'file',
+  })
+);
+const _chatFile = JsonFileBuilder<IChatConversationRefer>(
+  resolveBrandStoragePath({
+    baseDir: cacheDir,
+    preferredName: STORAGE_PATH.chat,
+    legacyNames: [LEGACY_STORAGE_PATH.chat],
+    kind: 'file',
+  })
+);
 
 // 创建带字段迁移的聊天历史代理
 const isGeminiConversation = (
@@ -324,11 +389,17 @@ const chatFile = {
 };
 
 const buildMessageListStorage = (conversation_id: string, dir: string) => {
-  const fullName = path.join(dir, 'contextgo-chat-history', conversation_id + '.txt');
+  const historyDir = resolveBrandStoragePath({
+    baseDir: dir,
+    preferredName: STORAGE_PATH.chatHistory,
+    legacyNames: [LEGACY_STORAGE_PATH.chatHistory],
+    kind: 'directory',
+  });
+  const fullName = path.join(historyDir, `${conversation_id}.txt`);
   if (!existsSync(fullName)) {
-    mkdirSync(path.join(dir, 'contextgo-chat-history'));
+    mkdirSync(historyDir);
   }
-  return JsonFileBuilder<TMessage[]>(path.join(dir, 'contextgo-chat-history', conversation_id + '.txt'));
+  return JsonFileBuilder<TMessage[]>(fullName);
 };
 
 const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string) => {
@@ -348,9 +419,13 @@ const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string)
     },
     backup(conversation_id: string) {
       const storage = buildMessageListStorage(conversation_id, dir);
-      return storage.backup(
-        path.join(dir, 'contextgo-chat-history', 'backup', conversation_id + '_' + Date.now() + '.txt')
-      );
+      const historyDir = resolveBrandStoragePath({
+        baseDir: dir,
+        preferredName: STORAGE_PATH.chatHistory,
+        legacyNames: [LEGACY_STORAGE_PATH.chatHistory],
+        kind: 'directory',
+      });
+      return storage.backup(path.join(historyDir, 'backup', conversation_id + '_' + Date.now() + '.txt'));
     },
   };
 };
@@ -484,19 +559,8 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       }
       await copyDirectoryRecursively(builtinSkillsDir, builtinSkillsCopyDir, {
         overwrite: true,
+        removeStale: true,
       });
-      // Remove stale: entries in dest that no longer exist in source
-      const srcNames = new Set(
-        readdirSync(builtinSkillsDir, { withFileTypes: true })
-          .filter((e) => e.isDirectory())
-          .map((e) => e.name)
-      );
-      for (const entry of readdirSync(builtinSkillsCopyDir, { withFileTypes: true })) {
-        if (!entry.isDirectory()) continue;
-        if (!srcNames.has(entry.name)) {
-          await fs.rm(path.join(builtinSkillsCopyDir, entry.name), { recursive: true, force: true });
-        }
-      }
     } catch (error) {
       console.warn(`[ContextGo] Failed to sync builtin skills directory:`, error);
     }
@@ -511,18 +575,8 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       }
       await copyDirectoryRecursively(builtinHooksDir, builtinHooksCopyDir, {
         overwrite: true,
+        removeStale: true,
       });
-      const srcNames = new Set(
-        readdirSync(builtinHooksDir, { withFileTypes: true })
-          .filter((e) => e.isDirectory())
-          .map((e) => e.name)
-      );
-      for (const entry of readdirSync(builtinHooksCopyDir, { withFileTypes: true })) {
-        if (!entry.isDirectory()) continue;
-        if (!srcNames.has(entry.name)) {
-          await fs.rm(path.join(builtinHooksCopyDir, entry.name), { recursive: true, force: true });
-        }
-      }
     } catch (error) {
       console.warn('[ContextGo] Failed to sync builtin hooks directory:', error);
     }
@@ -933,6 +987,11 @@ const initStorage = async () => {
   ChatMessageStorage.interceptor(chatMessageFile);
   EnvStorage.interceptor(envFile);
   mark('3. storage interceptors');
+
+  if (rawDirConfig && dirConfig && rawDirConfig.workDir !== dirConfig.workDir) {
+    await envFile.set('contextgo.dir', dirConfig);
+    console.log('[ContextGo] Updated stored workDir to the renamed data directory:', dirConfig.workDir);
+  }
 
   // Config migration only makes sense in standalone server mode (not inside Electron itself)
   if (!hasElectronAppPath()) {

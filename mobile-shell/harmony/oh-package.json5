@@ -1,5 +1,5 @@
 {
   modelVersion: '5.0.0',
-  description: 'AionUi HarmonyOS shell workspace',
+  description: 'ContextGo HarmonyOS shell workspace',
   dependencies: {},
 }

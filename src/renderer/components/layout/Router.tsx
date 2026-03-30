@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
+import { normalizeHashRouteShellHref } from './routerLocation';
 import {
   CONVERSATION_SEARCH_ROUTE,
   ConversationSearchPage,
@@ -58,6 +59,19 @@ const StartupConversationRedirect: React.FC = () => {
 
 const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
   const { status } = useAuth();
+
+  React.useEffect(() => {
+    if (status !== 'authenticated' || typeof window === 'undefined') {
+      return;
+    }
+
+    const nextHref = normalizeHashRouteShellHref(window.location.href);
+    if (nextHref === window.location.href) {
+      return;
+    }
+
+    window.history.replaceState(window.history.state, '', nextHref);
+  }, [status]);
 
   return (
     <HashRouter>

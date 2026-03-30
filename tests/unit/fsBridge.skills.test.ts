@@ -194,6 +194,7 @@ describe('fsBridge skills functionality', () => {
             fetchRemoteImage: createCommandMock('fetch-remote-image'),
             readFile: createCommandMock('read-file'),
             readFileBuffer: createCommandMock('read-file-buffer'),
+            getGitRepositoryInfo: createCommandMock('get-git-repository-info'),
             createTempFile: createCommandMock('create-temp-file'),
             writeFile: createCommandMock('write-file'),
             createZip: createCommandMock('create-zip-file'),

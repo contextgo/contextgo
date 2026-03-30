@@ -26,18 +26,21 @@ const CloudSyncSection: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const refreshStatus = useCallback(async () => {
+  const refreshStatus = useCallback(async (): Promise<CloudStatus | null> => {
     setLoading(true);
     try {
       const result = await cloud.getStatus.invoke();
       if (result.success && result.data) {
         setStatus(result.data);
+        return result.data;
       }
     } catch (error) {
       console.error('[CloudSyncSection] Failed to load cloud status:', error);
     } finally {
       setLoading(false);
     }
+
+    return null;
   }, []);
 
   useEffect(() => {
@@ -64,15 +67,27 @@ const CloudSyncSection: React.FC = () => {
         }
 
         console.error('[CloudSyncSection] Cloud login failed:', result.msg);
-        Message.error(t('settings.cloud.actionFailed'));
+        const reconciledStatus = await refreshStatus();
+        if (reconciledStatus?.user) {
+          Message.success(t('settings.cloud.loginSuccess'));
+          return;
+        }
+
+        Message.error(result.msg || t('settings.cloud.actionFailed'));
       } catch (error) {
         console.error('[CloudSyncSection] Cloud login threw:', error);
-        Message.error(t('settings.cloud.actionFailed'));
+        const reconciledStatus = await refreshStatus();
+        if (reconciledStatus?.user) {
+          Message.success(t('settings.cloud.loginSuccess'));
+          return;
+        }
+
+        Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
       } finally {
         setAuthLoadingProvider(null);
       }
     },
-    [t]
+    [refreshStatus, t]
   );
 
   const handleSyncNow = useCallback(async () => {

@@ -7,6 +7,7 @@ import { buildCloudOAuthStartUrl, isContextGoHostname } from '@/common/utils';
 import { changeLanguage } from '@/renderer/services/i18n';
 import { useNavigate } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
+import { normalizeHashRouteShellHref } from '@renderer/components/layout/routerLocation';
 import { useAuth } from '../../hooks/context/AuthContext';
 import './LoginPage.css';
 
@@ -342,7 +343,7 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    window.location.href = buildCloudOAuthStartUrl(provider, window.location.href);
+    window.location.href = buildCloudOAuthStartUrl(provider, normalizeHashRouteShellHref(window.location.href));
   }, []);
 
   if (status === 'checking') {

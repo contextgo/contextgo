@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  filterHooksByCategory,
   filterHooksByQuery,
+  getAvailableHookCategories,
   summarizeHookLibrary,
 } from '../../../src/renderer/pages/settings/AgentSettings/hookLibraryUtils';
 import type { HookInfo } from '../../../src/renderer/pages/settings/AgentSettings/AssistantManagement/types';
@@ -46,6 +48,17 @@ describe('filterHooksByQuery', () => {
 
   it('returns an empty list when nothing matches', () => {
     expect(filterHooksByQuery(HOOKS, 'missing')).toEqual([]);
+  });
+});
+
+describe('hook category helpers', () => {
+  it('returns available categories in canonical order', () => {
+    expect(getAvailableHookCategories(HOOKS)).toEqual(['safety', 'operations']);
+  });
+
+  it('filters hooks by category and supports all', () => {
+    expect(filterHooksByCategory(HOOKS, 'all')).toEqual(HOOKS);
+    expect(filterHooksByCategory(HOOKS, 'operations')).toEqual([HOOKS[1]]);
   });
 });
 

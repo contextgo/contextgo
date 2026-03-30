@@ -179,6 +179,15 @@ def initialize_database(settings: Settings) -> None:
               expires_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS desktop_login_codes (
+              code TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              provider TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              expires_at TEXT NOT NULL,
+              FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS sync_items (
               user_id TEXT NOT NULL,
               namespace TEXT NOT NULL,
@@ -274,6 +283,12 @@ def find_user_by_username(settings: Settings, username: str) -> Optional[User]:
             "SELECT * FROM users WHERE username = ?",
             (username,),
         ).fetchone()
+        return _row_to_user(row)
+
+
+def find_user_by_id(settings: Settings, user_id: str) -> Optional[User]:
+    with get_connection(settings) as connection:
+        row = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         return _row_to_user(row)
 
 
@@ -448,6 +463,7 @@ def cleanup_expired_rows(settings: Settings) -> None:
     with get_connection(settings) as connection:
         connection.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
         connection.execute("DELETE FROM oauth_states WHERE expires_at <= ?", (now,))
+        connection.execute("DELETE FROM desktop_login_codes WHERE expires_at <= ?", (now,))
 
 
 def create_oauth_state(settings: Settings, provider: str, next_path: str) -> str:
@@ -465,6 +481,69 @@ def create_oauth_state(settings: Settings, provider: str, next_path: str) -> str
         )
 
     return state
+
+
+def create_desktop_login_code(settings: Settings, user_id: str, provider: str) -> str:
+    code = create_token()
+    now = utc_now()
+    expires_at = now + timedelta(seconds=settings.oauth_state_ttl_seconds)
+
+    with get_connection(settings) as connection:
+        connection.execute(
+            """
+            INSERT INTO desktop_login_codes (code, user_id, provider, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (code, user_id, provider, now.isoformat(), expires_at.isoformat()),
+        )
+
+    return code
+
+
+def consume_desktop_login_code(settings: Settings, code: str) -> Optional[tuple[User, str]]:
+    now = utc_now_iso()
+
+    with get_connection(settings) as connection:
+        row = connection.execute(
+            """
+            SELECT code, user_id, provider, expires_at
+            FROM desktop_login_codes
+            WHERE code = ?
+            """,
+            (code,),
+        ).fetchone()
+
+        connection.execute(
+            "DELETE FROM desktop_login_codes WHERE code = ?",
+            (code,),
+        )
+
+    if row is None or row["expires_at"] <= now:
+        return None
+
+    user = find_user_by_id(settings, row["user_id"])
+    if user is None:
+        return None
+
+    return user, row["provider"]
+
+
+def peek_oauth_state(settings: Settings, state: str, provider: str) -> Optional[str]:
+    now = utc_now_iso()
+
+    with get_connection(settings) as connection:
+        row = connection.execute(
+            """
+            SELECT next_path, expires_at FROM oauth_states
+            WHERE state = ? AND provider = ?
+            """,
+            (state, provider),
+        ).fetchone()
+
+    if row is None or row["expires_at"] <= now:
+        return None
+
+    return row["next_path"]
 
 
 def consume_oauth_state(settings: Settings, state: str, provider: str) -> Optional[str]:

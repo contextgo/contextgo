@@ -19,8 +19,7 @@ const COLORS = {
 };
 
 // Font Paths - Try multiple locations with fallback
-// Priority: 1) CONTEXTGO_FONTS_DIR env var, 2) skills/canvas-design relative path,
-// 3) app config font directories
+// Priority: 1) CONTEXTGO_FONTS_DIR env var, 2) skills/canvas-design relative path, 3) system fonts
 function getFontDir() {
   const candidates = [
     process.env.CONTEXTGO_FONTS_DIR,

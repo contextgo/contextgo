@@ -3,9 +3,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const storage = new Map<string, unknown>();
 const processConfigGet = vi.fn(async (key: string) => storage.get(key));
-const processConfigSet = vi.fn(async (key: string, value: unknown) => {
-  storage.set(key, value);
-  return value;
+const WRITE_DELAYS = new Map<string, number>([
+  ['cloud.user', 0],
+  ['cloud.device', 5],
+  ['cloud.deviceToken', 10],
+]);
+const processConfigSet = vi.fn((key: string, value: unknown) => {
+  const snapshot = new Map(storage);
+  const delay = WRITE_DELAYS.get(key) ?? 0;
+
+  return new Promise<unknown>((resolve) => {
+    setTimeout(() => {
+      snapshot.set(key, value);
+      storage.clear();
+      for (const [snapshotKey, snapshotValue] of snapshot.entries()) {
+        storage.set(snapshotKey, snapshotValue);
+      }
+      resolve(value);
+    }, delay);
+  });
 });
 
 vi.mock('../../../../src/process/utils/initStorage', () => ({
@@ -80,6 +96,18 @@ describe('CloudSessionService', () => {
       expect.objectContaining({
         id: 'cloud-user-1',
         username: 'yeyitech',
+      })
+    );
+    expect(storage.get('cloud.user')).toEqual(
+      expect.objectContaining({
+        id: 'cloud-user-1',
+        username: 'yeyitech',
+      })
+    );
+    expect(storage.get('cloud.device')).toEqual(
+      expect.objectContaining({
+        id: 'device-1',
+        userId: 'cloud-user-1',
       })
     );
     expect(processConfigSet).toHaveBeenCalledWith('cloud.deviceToken', 'ctxdev_test_token');

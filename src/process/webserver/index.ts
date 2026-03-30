@@ -257,6 +257,11 @@ export async function startWebServerWithInstance(port: number, allowRemote = fal
 
   // 创建 Express 应用和服务器 / Create Express app and server
   const app = express();
+  if (allowRemote) {
+    // Remote mode sits behind Cloudflare and the public Caddy ingress before
+    // the request reaches the local WebUI process through FRP.
+    app.set('trust proxy', 2);
+  }
   const server = createServer(app);
   const wss = new WebSocketServer({ server });
 

@@ -5,8 +5,9 @@
  */
 
 import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
-import { shell, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
+import { cloud, shell, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import { ConfigStorage } from '@/common/config/storage';
+import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
 import AionModal from '@/renderer/components/base/AionModal';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import ChannelDingTalkLogo from '@/renderer/assets/channel-logos/dingtalk.svg';
@@ -17,7 +18,7 @@ import ChannelTelegramLogo from '@/renderer/assets/channel-logos/telegram.svg';
 import ChannelWeixinLogo from '@/renderer/assets/channel-logos/weixin.svg';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { Button, Form, Input, Message, Switch, Tabs, Tooltip } from '@arco-design/web-react';
-import { CheckOne, Communication, Copy, Earth, EditTwo, Refresh } from '@icon-park/react';
+import { CheckOne, Communication, Copy, Earth, EditTwo, LinkCloud, Refresh } from '@icon-park/react';
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsViewMode } from '../settingsViewContext';
@@ -61,6 +62,8 @@ const QRCodeSVGLazy = React.lazy(async () => {
 
 const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
 const DESKTOP_WEBUI_ALLOW_REMOTE_KEY = 'webui.desktop.allowRemote';
+const OFFICIAL_REMOTE_URL = 'https://remote.contextgo.io/';
+const CLOUD_REMOTE_PROVIDERS: CloudAuthProviderId[] = ['github', 'google'];
 
 /**
  * WebUI 设置内容组件
@@ -99,6 +102,9 @@ const WebuiModalContent: React.FC = () => {
   const [qrExpiresAt, setQrExpiresAt] = useState<number | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const qrRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<CloudStatus | null>(null);
+  const [cloudLoading, setCloudLoading] = useState(true);
+  const [cloudAuthLoadingProvider, setCloudAuthLoadingProvider] = useState<CloudAuthProviderId | null>(null);
 
   // 加载状态 / Load status
   const loadStatus = useCallback(async () => {
@@ -161,6 +167,42 @@ const WebuiModalContent: React.FC = () => {
   useEffect(() => {
     void loadStatus();
   }, [loadStatus]);
+
+  const refreshCloudStatus = useCallback(async () => {
+    if (!isDesktop) {
+      setCloudLoading(false);
+      return;
+    }
+
+    setCloudLoading(true);
+    try {
+      const result = await cloud.getStatus.invoke();
+      if (result.success && result.data) {
+        setCloudStatus(result.data);
+      }
+    } catch (error) {
+      console.error('[WebuiModal] Failed to load cloud status:', error);
+    } finally {
+      setCloudLoading(false);
+    }
+  }, [isDesktop]);
+
+  useEffect(() => {
+    void refreshCloudStatus();
+
+    if (!isDesktop) {
+      return;
+    }
+
+    const unsubscribe = cloud.statusChanged.on((nextStatus) => {
+      setCloudStatus(nextStatus);
+      setCloudLoading(false);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isDesktop, refreshCloudStatus]);
 
   // 监听状态变更事件 / Listen to status change events
   useEffect(() => {
@@ -616,13 +658,40 @@ const WebuiModalContent: React.FC = () => {
   const displayPassword = getDisplayPassword();
   const displayUsername = status?.adminUsername || 'admin';
 
+  const handleCloudLogin = useCallback(
+    async (provider: CloudAuthProviderId) => {
+      setCloudAuthLoadingProvider(provider);
+      try {
+        const result = await cloud.startLogin.invoke({ provider });
+        if (result.success && result.data) {
+          setCloudStatus(result.data);
+          Message.success(t('settings.cloud.loginSuccess'));
+          return;
+        }
+
+        console.error('[WebuiModal] Cloud login failed:', result.msg);
+        Message.error(result.msg || t('settings.cloud.actionFailed'));
+      } catch (error) {
+        console.error('[WebuiModal] Cloud login threw:', error);
+        Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
+      } finally {
+        setCloudAuthLoadingProvider(null);
+      }
+    },
+    [t]
+  );
+
+  const handleOpenOfficialRemote = useCallback(() => {
+    shell.openExternal.invoke(OFFICIAL_REMOTE_URL).catch(console.error);
+  }, []);
+
   // 浏览器端只显示 Channels 配置，不显示 WebUI 服务配置 / In browser mode, only show Channels config, not WebUI service config
   if (!isDesktop) {
     return (
       <div className='flex flex-col h-full w-full'>
         <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
           <div className='space-y-16px'>
-            <h2 className='text-20px font-500 text-t-primary m-0'>Channels</h2>
+            <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.channels')}</h2>
             <Suspense fallback={<div className='text-13px text-t-secondary'>{t('common.loading')}</div>}>
               <ChannelModalContentLazy />
             </Suspense>
@@ -636,7 +705,7 @@ const WebuiModalContent: React.FC = () => {
     <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
       <div className='space-y-12px px-[12px] md:px-[28px]'>
         {/* 标题 / Title */}
-        <h2 className='text-20px font-500 text-t-primary m-0'>WebUI</h2>
+        <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.webui')}</h2>
 
         {/* 描述说明 / Description */}
         <div className='space-y-6px'>
@@ -658,6 +727,73 @@ const WebuiModalContent: React.FC = () => {
           </div>
         </div>
 
+        <div className='px-[12px] md:px-[28px] py-14px bg-2 rd-16px'>
+          <div className='flex items-start justify-between gap-12px'>
+            <div className='min-w-0'>
+              <div className='text-14px font-500 text-t-primary flex items-center gap-8px'>
+                <LinkCloud theme='outline' size='16' className='app-icon' />
+                <span>{t('settings.webui.officialRemoteTitle')}</span>
+              </div>
+              <div className='text-12px text-t-secondary mt-4px leading-relaxed'>
+                {t('settings.webui.officialRemoteDesc')}
+              </div>
+            </div>
+            <Button type='secondary' size='small' loading={cloudLoading} onClick={() => void refreshCloudStatus()}>
+              {t('common.refresh')}
+            </Button>
+          </div>
+
+          <div className='mt-12px rd-10px border border-line bg-fill-1 px-10px py-8px text-12px text-t-secondary leading-relaxed'>
+            {t('settings.webui.officialRemoteLoginRequired')}
+          </div>
+
+          <div className='mt-12px'>
+            {cloudLoading ? (
+              <div className='text-12px text-t-secondary'>{t('settings.cloud.loading')}</div>
+            ) : cloudStatus?.user ? (
+              <div className='space-y-10px'>
+                <div className='text-13px text-t-primary'>
+                  {t('settings.webui.officialRemoteSignedIn', {
+                    name: cloudStatus.user.displayName || cloudStatus.user.username,
+                  })}
+                </div>
+                <div className='text-12px text-t-secondary'>
+                  {cloudStatus.deviceTokenAvailable
+                    ? t('settings.webui.officialRemoteDeviceReady')
+                    : t('settings.webui.officialRemoteDevicePending')}
+                </div>
+                <div className='flex flex-wrap gap-8px'>
+                  <Button type='primary' onClick={handleOpenOfficialRemote}>
+                    {t('settings.webui.openOfficialRemote')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className='space-y-10px'>
+                <div className='text-13px text-t-primary'>{t('settings.webui.officialRemoteSignedOut')}</div>
+                <div className='text-12px text-t-secondary'>{t('settings.webui.officialRemoteHint')}</div>
+                <div className='flex flex-wrap gap-8px'>
+                  {CLOUD_REMOTE_PROVIDERS.map((provider) => (
+                    <Button
+                      key={provider}
+                      type={provider === 'github' ? 'primary' : 'secondary'}
+                      loading={cloudAuthLoadingProvider === provider}
+                      disabled={Boolean(cloudAuthLoadingProvider)}
+                      onClick={() => void handleCloudLogin(provider)}
+                    >
+                      {t(
+                        provider === 'github'
+                          ? 'settings.cloud.loginWithGithub'
+                          : 'settings.cloud.loginWithGoogle'
+                      )}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Messaging 强引导入口 / Messaging primary entry — disabled, kept for future use
         <div className='rd-12px border border-line bg-2 px-12px py-10px flex items-center justify-between gap-10px'>
             <div className='min-w-0 flex items-center gap-8px'>
@@ -675,6 +811,8 @@ const WebuiModalContent: React.FC = () => {
 
         {/* WebUI 服务卡片 / WebUI Service Card */}
         <div className='px-[12px] md:px-[28px] py-14px bg-2 rd-16px'>
+          <div className='text-14px font-500 mb-8px text-t-primary'>{t('settings.webui.localAccessTitle')}</div>
+
           {/* WebUI 引导提示 / WebUI hint */}
           <div className='mb-8px rd-10px border border-line bg-fill-1 px-10px py-8px flex items-start gap-6px'>
             <Earth theme='outline' size='16' className='mt-1px text-[rgb(var(--primary-6))]' />
@@ -876,7 +1014,7 @@ const WebuiModalContent: React.FC = () => {
               className={`inline-flex items-center gap-6px transition-colors ${activeTab === 'webui' ? 'text-t-primary font-600' : 'text-t-secondary'}`}
             >
               <Earth theme='outline' size='15' />
-              <span>WebUI</span>
+              <span>{t('settings.webui')}</span>
             </span>
           }
         />
@@ -888,7 +1026,7 @@ const WebuiModalContent: React.FC = () => {
               className={`inline-flex items-center gap-6px transition-colors ${activeTab === 'channels' ? 'text-t-primary font-600' : 'text-t-secondary'}`}
             >
               <Communication theme='outline' size='15' />
-              <span>Channels</span>
+              <span>{t('settings.channels')}</span>
               <span className='inline-flex items-center gap-4px ml-2px'>
                 {CHANNEL_LOGOS.map((item) => (
                   <span

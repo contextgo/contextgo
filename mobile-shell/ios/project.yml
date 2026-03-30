@@ -12,8 +12,8 @@ targets:
     deploymentTarget: '16.0'
     sources:
       - path: Sources
-    resources:
       - path: Resources
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.contextgo.ios

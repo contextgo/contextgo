@@ -435,8 +435,8 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /Applications/
 
 ## 相关资源
 
-- [ContextGo Documentation - Remote Internet Access Guide](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md#remote-access)
-- [ContextGo Documentation - WebUI Configuration Guide](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md)
+- [ContextGo Wiki - Remote Internet Access Guide](https://github.com/contextgo/contextgo/wiki/Remote-Internet-Access-Guide)
+- [ContextGo Wiki - WebUI Configuration Guide](https://github.com/contextgo/contextgo/wiki/WebUI-Configuration-Guide)
 - [Tailscale 官方文档](https://tailscale.com/kb/)
 
 ---

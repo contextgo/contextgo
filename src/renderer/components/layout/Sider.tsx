@@ -19,7 +19,7 @@ import {
 } from '@icon-park/react';
 import { Dropdown, Menu } from '@arco-design/web-react';
 import classNames from 'classnames';
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
@@ -211,8 +211,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     isMobile && 'sider-action-btn-mobile'
   );
   const actionRowActiveClassName = 'sider-entry-row--active';
-  const userDisplayName = desktopUsername || user?.username || t('common.localUser');
-  const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
   const currentLanguageLabel =
     LANGUAGE_OPTIONS.find((option) => option.value === i18n.language)?.label ||
     LANGUAGE_OPTIONS.find((option) => option.value === 'en-US')?.label ||
@@ -222,6 +220,19 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     { value: 'dark', label: t('settings.darkMode') },
   ];
   const currentThemeLabel = themeOptions.find((option) => option.value === theme)?.label || t('settings.theme');
+  const userDisplayName = user?.displayName || user?.username || desktopUsername || t('common.localUser');
+  const userSecondaryText = useMemo(() => {
+    if (user?.email) {
+      return user.email;
+    }
+
+    if (user?.username) {
+      return `@${user.username}`;
+    }
+
+    return `${currentLanguageLabel} · ${currentThemeLabel}`;
+  }, [currentLanguageLabel, currentThemeLabel, user?.email, user?.username]);
+  const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
   const createEntryDropdownTriggerProps = {
     autoAlignPopupWidth: true,
     autoFitPosition: true,
@@ -532,12 +543,16 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               )}
               aria-expanded={userMenuVisible}
             >
-              <span className='sider-user-trigger__avatar'>{userInitial}</span>
+              <span className='sider-user-trigger__avatar'>
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={userDisplayName} className='sider-user-trigger__avatar-image' />
+                ) : (
+                  userInitial
+                )}
+              </span>
               <span className='min-w-0 flex-1 text-left'>
                 <span className='block truncate text-14px font-600 text-t-primary'>{userDisplayName}</span>
-                <span className='block truncate text-12px text-t-secondary'>
-                  {currentLanguageLabel} · {currentThemeLabel}
-                </span>
+                <span className='block truncate text-12px text-t-secondary'>{userSecondaryText}</span>
               </span>
               <Down
                 theme='outline'

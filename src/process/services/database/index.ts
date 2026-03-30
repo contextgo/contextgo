@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ensureDirectory, getDataPath } from '@process/utils';
+import { ensureDirectory, getDataPath, resolveBrandStoragePath } from '@process/utils';
 import type { ISqliteDriver } from './drivers/ISqliteDriver';
 import { createDriver } from './drivers/createDriver';
 import { randomUUID } from 'crypto';
@@ -3133,13 +3133,19 @@ let dbInstancePromise: Promise<AionUIDatabase> | null = null;
 // Synchronous reference to the resolved instance — used for safe close on exit
 let dbResolved: AionUIDatabase | null = null;
 
-function resolveDbPath(): string {
-  return path.join(getDataPath(), 'contextgo.db');
+export function getDatabasePath(): string {
+  return resolveBrandStoragePath({
+    baseDir: getDataPath(),
+    preferredName: 'contextgo.db',
+    legacyNames: ['aionui.db'],
+    kind: 'file',
+    sidecarSuffixes: ['-wal', '-shm'],
+  });
 }
 
 export function getDatabase(): Promise<AionUIDatabase> {
   if (!dbInstancePromise) {
-    dbInstancePromise = AionUIDatabase.create(resolveDbPath()).then((db) => {
+    dbInstancePromise = AionUIDatabase.create(getDatabasePath()).then((db) => {
       dbResolved = db;
       return db;
     });

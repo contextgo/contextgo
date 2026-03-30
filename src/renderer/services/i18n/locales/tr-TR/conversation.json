@@ -115,6 +115,28 @@
       "count": "{{count}} uye",
       "open": "Members {{count}}",
       "close": "Hide Members",
+      "modeLabel": "Mod",
+      "statusLabel": "Durum",
+      "flowLabel": "Akış",
+      "boundaryLabel": "Sınır",
+      "artifactRootLabel": "Çıktı Dizini",
+      "artifactUnavailable": "Harness çıktıları henüz kullanılamıyor.",
+      "artifactOpenFailed": "Harness çıktıları açılamadı.",
+      "status": {
+        "pending": "Bekliyor",
+        "running": "Çalışıyor",
+        "finished": "Tamamlandı",
+        "stopped": "Durduruldu",
+        "error": "Hata"
+      },
+      "artifacts": {
+        "request": "İstek",
+        "planner": "Plan",
+        "generator": "Üretim",
+        "evaluator": "Değerlendirme",
+        "manifest": "Manifest",
+        "folder": "Klasörü Aç"
+      },
       "participantType": {
         "cliAgent": "CLI Agent",
         "presetAssistant": "Hazir Asistan"
@@ -253,6 +275,13 @@
     "workspaceHint": "Grup ve tüm katılımcı oturumları bu çalışma alanını paylaşır. Boş bırakılırsa varsayılan geçici bir çalışma alanı otomatik oluşturulur.",
     "selectWorkspace": "Klasör Seç",
     "selectWorkspaceFailed": "Çalışma alanı seçilemedi",
+    "collaborationLabel": "İşbirliği Modu",
+    "collaborationDiscussion": "Genel Tartışma",
+    "collaborationHarness": "Planlayıcı / Üretici / Değerlendirici",
+    "collaborationHint": {
+      "discussion": "Genel amaçlı çok ajanlı tartışma modu. Karşılaştırma, beyin fırtınası ve eleştirel inceleme için uygundur.",
+      "planner-generator-evaluator": "Kod odaklı harness modu. Tam olarak 3 katılımcı ve bir Git deposu sınırı gerektirir."
+    },
     "kindLabel": "İşbirliği Türü",
     "kindWorkflow": "İş Akışı",
     "kindDiscussion": "Tartışma",
@@ -272,15 +301,33 @@
     "participantsLabel": "Katılımcılar",
     "minimumParticipants": "En az iki katılımcı seçin",
     "minimumParticipantsHint": "Bir tartışma grubu başlatmak için 2 veya daha fazla katılımcı seçin.",
+    "harnessParticipantsHint": "Harness modu tam olarak 3 katılımcı gerektirir ve sıra Planlayıcı -> Üretici -> Değerlendirici şeklindedir.",
+    "harnessRoleHint": "Harness yuvası #{{roleIndex}}",
+    "harnessUsesDebate": "Harness modu her zaman iki turlu münazara akışını kullanır.",
+    "harnessRequiresWorkspace": "Harness modu bir çalışma alanı klasörü gerektirir.",
+    "harnessRequiresThreeParticipants": "Harness modu tam olarak üç katılımcı gerektirir.",
+    "harnessRequiresGitRepo": "Harness modu seçilen çalışma alanının bir Git deposu içinde olmasını gerektirir.",
+    "role": {
+      "participant": "Katılımcı",
+      "planner": "Planlayıcı",
+      "generator": "Üretici",
+      "writer": "Writer",
+      "evaluator": "Değerlendirici",
+      "custom": "Custom"
+    },
+    "summary": {
+      "title": "Son Harness Çalıştırması",
+      "empty": "Henüz Harness çıktısı yok.",
+      "loading": "Harness çıktıları üretiliyor...",
+      "updatedAt": "Güncellendi",
+      "completedSteps": "Tamamlanan Çıktılar",
+      "flow": "Akış",
+      "latestStep": "Son Adım",
+      "repository": "Depo"
+    },
     "noDescription": "Açıklama yok",
     "sendPlaceholder": "Gruba bir görev ver...",
     "roundLabel": "{{round}}. Tur",
-    "role": {
-      "planner": "Planner",
-      "writer": "Writer",
-      "evaluator": "Evaluator",
-      "custom": "Custom"
-    },
     "workflow": {
       "templateLabel": "İş Akışı Şablonu",
       "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",

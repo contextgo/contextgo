@@ -110,6 +110,13 @@
     "workspaceHint": "The group and all participant sessions will share this workspace. If left empty, a default temporary workspace will be created automatically.",
     "selectWorkspace": "Choose Folder",
     "selectWorkspaceFailed": "Failed to select workspace",
+    "collaborationLabel": "Collaboration Mode",
+    "collaborationDiscussion": "Discussion",
+    "collaborationHarness": "Planner / Generator / Evaluator",
+    "collaborationHint": {
+      "discussion": "General-purpose multi-agent discussion. Good for comparison, brainstorming, and critical review.",
+      "planner-generator-evaluator": "Code-oriented harness mode. Requires exactly 3 participants and a git repository boundary."
+    },
     "kindLabel": "Collaboration Type",
     "kindWorkflow": "Workflow",
     "kindDiscussion": "Discussion",
@@ -129,15 +136,33 @@
     "participantsLabel": "Participants",
     "minimumParticipants": "Select at least two participants",
     "minimumParticipantsHint": "Pick 2 or more participants to start a discussion group.",
-    "noDescription": "No description",
-    "sendPlaceholder": "Give the group a task...",
-    "roundLabel": "Round {{round}}",
+    "harnessParticipantsHint": "Harness mode requires exactly 3 participants, in Planner -> Generator -> Evaluator order.",
+    "harnessRoleHint": "Harness slot #{{roleIndex}}",
+    "harnessUsesDebate": "Harness mode always uses the two-round debate flow.",
+    "harnessRequiresWorkspace": "Harness mode requires a workspace folder.",
+    "harnessRequiresThreeParticipants": "Harness mode requires exactly three participants.",
+    "harnessRequiresGitRepo": "Harness mode requires the selected workspace to be inside a git repository.",
     "role": {
+      "participant": "Participant",
       "planner": "Planner",
+      "generator": "Generator",
       "writer": "Writer",
       "evaluator": "Evaluator",
       "custom": "Custom"
     },
+    "summary": {
+      "title": "Latest Harness Run",
+      "empty": "No harness artifacts yet.",
+      "loading": "Harness artifacts are being generated...",
+      "updatedAt": "Updated",
+      "completedSteps": "Completed Outputs",
+      "flow": "Flow",
+      "latestStep": "Latest Step",
+      "repository": "Repository"
+    },
+    "noDescription": "No description",
+    "sendPlaceholder": "Give the group a task...",
+    "roundLabel": "Round {{round}}",
     "workflow": {
       "templateLabel": "Workflow Template",
       "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
@@ -214,6 +239,28 @@
       "count": "{{count}} members",
       "open": "Members {{count}}",
       "close": "Hide Members",
+      "modeLabel": "Mode",
+      "statusLabel": "Status",
+      "flowLabel": "Flow",
+      "boundaryLabel": "Boundary",
+      "artifactRootLabel": "Artifacts",
+      "artifactUnavailable": "Harness artifacts are not available yet.",
+      "artifactOpenFailed": "Failed to open harness artifacts.",
+      "status": {
+        "pending": "Pending",
+        "running": "Running",
+        "finished": "Finished",
+        "stopped": "Stopped",
+        "error": "Error"
+      },
+      "artifacts": {
+        "request": "Request",
+        "planner": "Planner",
+        "generator": "Generator",
+        "evaluator": "Evaluator",
+        "manifest": "Manifest",
+        "folder": "Open Folder"
+      },
       "participantType": {
         "cliAgent": "CLI Agent",
         "presetAssistant": "Preset Assistant"
