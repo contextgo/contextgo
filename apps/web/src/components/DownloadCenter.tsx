@@ -222,9 +222,14 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div>
-      <div className='theme-text-tertiary text-xs uppercase tracking-[0.18em]'>{title}</div>
-      <div className='mt-3'>{children}</div>
+    <div className='theme-panel-gradient theme-border rounded-[24px] border px-5 py-5'>
+      <div className='flex items-center gap-3'>
+        <div className='theme-surface-secondary theme-border theme-text-tertiary inline-flex rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em]'>
+          {title}
+        </div>
+        <div className='theme-divider-gradient h-px flex-1' />
+      </div>
+      <div className='mt-4'>{children}</div>
     </div>
   );
 }
