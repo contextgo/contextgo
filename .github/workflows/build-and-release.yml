@@ -184,7 +184,7 @@ jobs:
     with:
       matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
-      release_repository: ${{ env.PUBLIC_RELEASE_REPOSITORY }}
+      release_repository: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
     secrets: inherit
 
   build-android-shell:
