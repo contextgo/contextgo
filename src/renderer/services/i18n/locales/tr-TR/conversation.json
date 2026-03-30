@@ -400,5 +400,21 @@
   },
   "noAgentsAvailable": "No agents available",
   "noModelConfigured": "No model configured. Please configure in settings.",
+  "browser": {
+    "open": "Tarayici baglamini ac",
+    "createTitle": "Tarayici baglami olustur",
+    "configureTitle": "Tarayici baglamini yapilandir",
+    "startUrlLabel": "Baslangic URL'si",
+    "startUrlPlaceholder": "Sagdaki tarayici panelinde acilacak URL'yi girin",
+    "missingSpace": "Bu konusma henuz bir Space'e bagli degil",
+    "invalidUrl": "Lutfen gecerli bir HTTP veya HTTPS URL'si girin",
+    "openFailed": "Tarayici baglami acilamadi",
+    "createFailed": "Tarayici baglami olusturulamadi",
+    "updateFailed": "Tarayici baglami guncellenemedi",
+    "bindFailed": "Tarayici baglami bu konusmaya baglanamadi",
+    "missingHomeUrl": "Bu tarayici baglami icin henuz bir baslangic URL'si yok",
+    "defaultLabel": "Tarayici Baglami",
+    "conversationLabel": "{{name}} Tarayici"
+  },
   "createFailed": "Failed to create conversation"
 }

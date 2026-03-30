@@ -209,6 +209,22 @@
   },
   "noAgentsAvailable": "沒有可用的 Agent",
   "noModelConfigured": "未設定模型，請前往設定頁面設定。",
+  "browser": {
+    "open": "開啟瀏覽器上下文",
+    "createTitle": "建立瀏覽器上下文",
+    "configureTitle": "設定瀏覽器上下文",
+    "startUrlLabel": "起始網址",
+    "startUrlPlaceholder": "輸入要在右側瀏覽器面板開啟的網址",
+    "missingSpace": "目前會話尚未綁定 Space",
+    "invalidUrl": "請輸入有效的 HTTP 或 HTTPS 網址",
+    "openFailed": "開啟瀏覽器上下文失敗",
+    "createFailed": "建立瀏覽器上下文失敗",
+    "updateFailed": "更新瀏覽器上下文失敗",
+    "bindFailed": "將瀏覽器上下文綁定到目前會話失敗",
+    "missingHomeUrl": "目前瀏覽器上下文尚未設定起始網址",
+    "defaultLabel": "瀏覽器上下文",
+    "conversationLabel": "{{name}} 瀏覽器"
+  },
   "createFailed": "建立對話失敗",
   "tabs": {
     "closeAll": "全部關閉",
