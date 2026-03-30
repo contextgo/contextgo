@@ -215,6 +215,21 @@ jobs:
           cat "${RUNNER_TEMP}/runner-health-check/smoke.txt"
           uname -a
 
+      - name: Probe GitHub API and git fetch path
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          timeout 30s curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}" >/dev/null
+
+          timeout 60s env GIT_TERMINAL_PROMPT=0 git ls-remote \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD
+
   runner-health-checkout:
     name: Runner Health / Checkout Smoke
     if: ${{ inputs.runner_health_check }}
