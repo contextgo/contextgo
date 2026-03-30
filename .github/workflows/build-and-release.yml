@@ -46,10 +46,10 @@ jobs:
         fromJSON(
           vars.BUILD_RUNNER_MODE == 'self-hosted' &&
           (
-            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
-            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
             vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
             vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
             '["self-hosted","macOS"]'
           ) ||
           '["ubuntu-latest"]'
@@ -65,10 +65,10 @@ jobs:
         ${{
           vars.BUILD_RUNNER_MODE == 'self-hosted' &&
           (
-            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
-            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
             vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
             vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
             '["self-hosted","macOS"]'
           ) ||
           '["ubuntu-latest"]'
