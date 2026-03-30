@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import type { HookCategory } from '@/common/types/hookTypes';
 import SettingsPageWrapper from '@/renderer/pages/settings/components/SettingsPageWrapper';
 import type { HookInfo } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import { Button, Collapse, Empty, Input, Message, Modal, Tag, Typography } from '@arco-design/web-react';
@@ -17,7 +18,9 @@ import {
   buildHookOutputRoutingConfig,
   canConfigureHookOutputRouting,
   createHookOutputRoutingDraft,
+  filterHooksByCategory,
   filterHooksByQuery,
+  getAvailableHookCategories,
   summarizeHookLibrary,
   type HookOutputRoutingDraft,
 } from './hookLibraryUtils';
@@ -42,6 +45,7 @@ const HooksManagement: React.FC = () => {
   const [configuringHook, setConfiguringHook] = useState<HookInfo | null>(null);
   const [routingDraft, setRoutingDraft] = useState<HookOutputRoutingDraft | null>(null);
   const [savingHookRouting, setSavingHookRouting] = useState(false);
+  const [activeBuiltinCategory, setActiveBuiltinCategory] = useState<HookCategory | 'all'>('all');
 
   const loadHooks = useCallback(async () => {
     try {
@@ -210,6 +214,22 @@ const HooksManagement: React.FC = () => {
   const stats = useMemo(() => summarizeHookLibrary(availableHooks), [availableHooks]);
   const customHooks = useMemo(() => filteredHooks.filter((hook) => hook.isCustom), [filteredHooks]);
   const builtinHooks = useMemo(() => filteredHooks.filter((hook) => !hook.isCustom), [filteredHooks]);
+  const builtinCategories = useMemo(() => getAvailableHookCategories(builtinHooks), [builtinHooks]);
+  const filteredBuiltinHooks = useMemo(
+    () => filterHooksByCategory(builtinHooks, activeBuiltinCategory),
+    [activeBuiltinCategory, builtinHooks]
+  );
+
+  useEffect(() => {
+    if (activeBuiltinCategory === 'all') {
+      return;
+    }
+
+    if (!builtinCategories.includes(activeBuiltinCategory)) {
+      setActiveBuiltinCategory('all');
+    }
+  }, [activeBuiltinCategory, builtinCategories]);
+
   const defaultActiveKeys = useMemo(() => {
     if (customHooks.length > 0 && builtinHooks.length > 0) {
       return ['custom-hooks', 'builtin-hooks'];
@@ -217,91 +237,109 @@ const HooksManagement: React.FC = () => {
     return ['all-hooks'];
   }, [builtinHooks.length, customHooks.length]);
 
+  const renderHookMetaRow = (label: string, content: React.ReactNode, contentClassName = styles.hookMetaValueGroup) => (
+    <div className={styles.hookMetaRow}>
+      <span className={styles.hookMetaLabel}>{label}:</span>
+      <div className={contentClassName}>{content}</div>
+    </div>
+  );
+
   const renderHookCard = (hook: HookInfo, canDelete: boolean) => (
     <div key={hook.name} className={styles.libraryCard}>
       <div className={styles.libraryCardMain}>
         <div className='flex items-center gap-6px flex-wrap'>
           <div className='text-13px font-medium text-t-primary'>{hook.name}</div>
           {hook.isCustom && (
-            <Tag size='small' color='orange'>
+            <Tag size='small' color='orange' className={styles.hookBadgeTag}>
               {t('settings.skillsHub.custom', { defaultValue: 'Custom' })}
             </Tag>
           )}
           {hook.isBuiltinInstalled && (
-            <Tag size='small' color='green'>
+            <Tag size='small' color='green' className={styles.hookBadgeTag}>
               {t('settings.installed', { defaultValue: 'Installed' })}
             </Tag>
           )}
           {hook.executionType && (
-            <Tag size='small' color='arcoblue'>
+            <Tag size='small' color='arcoblue' className={styles.hookBadgeTag}>
               {hook.executionType}
             </Tag>
           )}
           {hook.category && (
-            <Tag size='small' color={HOOK_CATEGORY_COLORS[hook.category] || 'gray'}>
+            <Tag size='small' color={HOOK_CATEGORY_COLORS[hook.category] || 'gray'} className={styles.hookBadgeTag}>
               {t(`settings.hookCategories.${hook.category}`, { defaultValue: hook.category })}
             </Tag>
           )}
           {(hook.runnableEvents || []).length > 0 ? (
-            <Tag size='small' color='green'>
+            <Tag size='small' color='green' className={styles.hookBadgeTag}>
               {t('settings.hookReadyNow', { defaultValue: 'Ready Now' })}
             </Tag>
           ) : (
-            <Tag size='small' color='gray'>
+            <Tag size='small' color='gray' className={styles.hookBadgeTag}>
               {t('settings.hookStoredOnly', { defaultValue: 'Stored Only' })}
             </Tag>
           )}
           {hook.version && (
-            <Tag size='small' color='gray'>
+            <Tag size='small' color='gray' className={styles.hookBadgeTag}>
               v{hook.version}
             </Tag>
           )}
         </div>
         {hook.description && <div className='mt-4px text-12px text-t-secondary'>{hook.description}</div>}
-        <div className='mt-6px text-11px text-t-tertiary break-all'>
-          {t('settings.hookLocation', { defaultValue: 'Location' })}: {hook.location}
+        <div className='mt-6px'>
+          {renderHookMetaRow(
+            t('settings.hookLocation', { defaultValue: 'Location' }),
+            hook.location,
+            styles.hookMetaValueText
+          )}
         </div>
         {hook.tags && hook.tags.length > 0 && (
-          <div className='mt-6px flex flex-wrap gap-4px'>
-            <span className='text-11px text-t-tertiary'>{t('settings.hookTags', { defaultValue: 'Tags' })}:</span>
-            {hook.tags.map((tag) => (
-              <Tag key={`${hook.name}-tag-${tag}`} size='small' color='gray'>
-                {tag}
-              </Tag>
-            ))}
+          <div className='mt-6px'>
+            {renderHookMetaRow(
+              t('settings.hookTags', { defaultValue: 'Tags' }),
+              hook.tags.map((tag) => (
+                <Tag key={`${hook.name}-tag-${tag}`} size='small' color='gray' className={styles.hookBadgeTag}>
+                  {tag}
+                </Tag>
+              ))
+            )}
           </div>
         )}
         {hook.supportedBackends && hook.supportedBackends.length > 0 && (
-          <div className='mt-6px flex flex-wrap gap-4px'>
-            <span className='text-11px text-t-tertiary'>
-              {t('settings.hookSupportedBackends', { defaultValue: 'Supported backends' })}:
-            </span>
-            {hook.supportedBackends.map((backend) => (
-              <Tag key={`${hook.name}-${backend}`} size='small' color='purple'>
-                {backend}
-              </Tag>
-            ))}
+          <div className='mt-6px'>
+            {renderHookMetaRow(
+              t('settings.hookSupportedBackends', { defaultValue: 'Supported backends' }),
+              hook.supportedBackends.map((backend) => (
+                <Tag key={`${hook.name}-${backend}`} size='small' color='purple' className={styles.hookBadgeTag}>
+                  {backend}
+                </Tag>
+              ))
+            )}
           </div>
         )}
         {hook.outputTargets && hook.outputTargets.length > 0 && (
-          <div className='mt-6px flex flex-wrap gap-4px'>
-            <span className='text-11px text-t-tertiary'>
-              {t('settings.hookRoutesTo', { defaultValue: 'Routes To' })}:
-            </span>
-            {hook.outputTargets.map((target) => {
-              const presentation = HOOK_OUTPUT_TARGET_PRESENTATION[target];
-              return (
-                <Tag key={`${hook.name}-output-${target}`} size='small' color={presentation.color}>
-                  {t(presentation.i18nKey, { defaultValue: presentation.defaultLabel })}
-                </Tag>
-              );
-            })}
+          <div className='mt-6px'>
+            {renderHookMetaRow(
+              t('settings.hookRoutesTo', { defaultValue: 'Routes To' }),
+              hook.outputTargets.map((target) => {
+                const presentation = HOOK_OUTPUT_TARGET_PRESENTATION[target];
+                return (
+                  <Tag
+                    key={`${hook.name}-output-${target}`}
+                    size='small'
+                    color={presentation.color}
+                    className={styles.hookBadgeTag}
+                  >
+                    {t(presentation.i18nKey, { defaultValue: presentation.defaultLabel })}
+                  </Tag>
+                );
+              })
+            )}
           </div>
         )}
         {hook.events && hook.events.length > 0 && (
           <div className='mt-6px flex flex-wrap gap-4px'>
             {hook.events.map((eventName) => (
-              <Tag key={`${hook.name}-${eventName}`} size='small' color='green'>
+              <Tag key={`${hook.name}-${eventName}`} size='small' color='green' className={styles.hookBadgeTag}>
                 {eventName}
               </Tag>
             ))}
@@ -447,9 +485,53 @@ const HooksManagement: React.FC = () => {
                       </span>
                     }
                     name='builtin-hooks'
-                    extra={<span className='text-12px text-t-secondary'>{builtinHooks.length}</span>}
+                    extra={<span className='text-12px text-t-secondary'>{filteredBuiltinHooks.length}</span>}
                   >
-                    <div className={styles.libraryList}>{builtinHooks.map((hook) => renderHookCard(hook, false))}</div>
+                    {builtinCategories.length > 1 && (
+                      <div className={styles.filterBar}>
+                        <Button
+                          type='outline'
+                          size='mini'
+                          className={
+                            activeBuiltinCategory === 'all'
+                              ? `${styles.filterPillButton} ${styles.filterPillButtonActive}`
+                              : styles.filterPillButton
+                          }
+                          onClick={() => setActiveBuiltinCategory('all')}
+                        >
+                          {t('settings.hooksPageCategoryAll', { defaultValue: 'All' })}
+                        </Button>
+                        {builtinCategories.map((category) => (
+                          <Button
+                            key={category}
+                            type='outline'
+                            size='mini'
+                            className={
+                              activeBuiltinCategory === category
+                                ? `${styles.filterPillButton} ${styles.filterPillButtonActive}`
+                                : styles.filterPillButton
+                            }
+                            onClick={() => setActiveBuiltinCategory(category)}
+                          >
+                            {t(`settings.hookCategories.${category}`, { defaultValue: category })}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                    {filteredBuiltinHooks.length > 0 ? (
+                      <div className={styles.libraryList}>
+                        {filteredBuiltinHooks.map((hook) => renderHookCard(hook, false))}
+                      </div>
+                    ) : (
+                      <div className={styles.emptyState}>
+                        <Empty
+                          className='py-24px'
+                          description={t('settings.hooksPageBuiltinEmpty', {
+                            defaultValue: 'No builtin hooks match the active category.',
+                          })}
+                        />
+                      </div>
+                    )}
                   </Collapse.Item>
                 )}
               </Collapse>

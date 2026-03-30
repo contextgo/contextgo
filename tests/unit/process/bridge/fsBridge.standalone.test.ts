@@ -41,6 +41,7 @@ vi.mock('@/common', () => ({
       fetchRemoteImage: { provider: vi.fn() },
       readFile: { provider: vi.fn() },
       readFileBuffer: { provider: vi.fn() },
+      getGitRepositoryInfo: { provider: vi.fn() },
       createTempFile: { provider: vi.fn() },
       writeFile: { provider: vi.fn() },
       createZip: { provider: vi.fn() },

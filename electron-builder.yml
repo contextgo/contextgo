@@ -6,7 +6,7 @@ copyright: Copyright © 2024 ContextGo
 protocols:
   - name: ContextGo Protocol
     schemes:
-      - cgo
+      - contextgo
 
 asar:
   smartUnpack: true
@@ -186,7 +186,7 @@ linux:
       Comment: ${description}
       Icon: aionui
       Categories: Office;Utility;
-      MimeType: x-scheme-handler/cgo;
+      MimeType: x-scheme-handler/contextgo;
 
 npmRebuild: false
 buildDependenciesFromSource: false

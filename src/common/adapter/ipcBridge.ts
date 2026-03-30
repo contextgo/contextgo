@@ -23,6 +23,7 @@ import type {
   ConversationGroupMeta,
   DiscussionGroupParticipant,
   DiscussionGroupParticipantType,
+  GroupCollaborationConfig,
   GroupOrchestration,
   GroupParticipantRole,
   WorkflowGroupRunState,
@@ -234,6 +235,12 @@ export const fs = {
   fetchRemoteImage: bridge.buildProvider<string, { url: string }>('fetch-remote-image'), // 远程图片转base64
   readFile: bridge.buildProvider<string, { path: string }>('read-file'), // 读取文件内容（UTF-8）
   readFileBuffer: bridge.buildProvider<ArrayBuffer, { path: string }>('read-file-buffer'), // 读取二进制文件为 ArrayBuffer
+  getGitRepositoryInfo: bridge.buildProvider<
+    IBridgeResponse<IGitRepositoryInfo>,
+    {
+      path: string;
+    }
+  >('get-git-repository-info'),
   createTempFile: bridge.buildProvider<string, { fileName: string }>('create-temp-file'), // 创建临时文件
   writeFile: bridge.buildProvider<boolean, { path: string; data: Uint8Array | string }>('write-file'), // 写入文件
   createZip: bridge.buildProvider<
@@ -676,7 +683,7 @@ export const document = {
 
 // Deep link protocol handling / 深度链接协议处理
 export const deepLink = {
-  /** Emitted when app is opened via cgo:// protocol URL */
+  /** Emitted when app is opened via contextgo:// protocol URL */
   received: bridge.buildEmitter<{
     action: string; // e.g. 'add-provider'
     params: Record<string, string>; // parsed query params
@@ -968,6 +975,8 @@ export interface ICreateConversationExtra {
   participants?: Array<IGroupParticipantCreateParams | DiscussionGroupParticipant>;
   /** Group orchestration */
   orchestration?: GroupOrchestration;
+  /** Group collaboration mode + execution boundary */
+  collaboration?: GroupCollaborationConfig;
   /** Workflow runtime state for long-running group runs */
   runState?: WorkflowGroupRunState;
 }
@@ -1022,6 +1031,14 @@ export interface IDirOrFile {
   isDir: boolean;
   isFile: boolean;
   children?: Array<IDirOrFile>;
+}
+
+export interface IGitRepositoryInfo {
+  isRepository: boolean;
+  repositoryRoot?: string;
+  branch?: string | null;
+  gitDir?: string | null;
+  remoteUrl?: string | null;
 }
 
 // 文件元数据接口

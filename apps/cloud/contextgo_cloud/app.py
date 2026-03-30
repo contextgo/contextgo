@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from html import escape
+import json
 from typing import Any, Dict, Literal, Optional, Union
-from urllib.parse import urlencode, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +18,9 @@ from .db import (
     apply_sync_changes,
     allocate_username,
     cleanup_expired_rows,
+    consume_desktop_login_code,
     create_device,
+    create_desktop_login_code,
     consume_oauth_state,
     create_oauth_state,
     create_session,
@@ -29,6 +32,7 @@ from .db import (
     get_user_by_session_token,
     initialize_database,
     list_devices_for_user,
+    peek_oauth_state,
     pull_sync_events,
     revoke_device,
     touch_device,
@@ -56,8 +60,14 @@ class SyncChangePayload(BaseModel):
 class SyncPushRequest(BaseModel):
     changes: list[SyncChangePayload]
 
+
+class DesktopLoginConsumeRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=256)
+
+
 settings: Settings = load_settings()
 api_host = urlparse(settings.api_base_url).hostname or ""
+DESKTOP_LOGIN_COMPLETE_PATH = "/desktop-login-complete"
 
 
 @asynccontextmanager
@@ -195,15 +205,113 @@ def build_logout_response(request: Request, next_value: Optional[str]) -> Redire
     return response
 
 
+def build_login_url(
+    *,
+    error_code: Optional[str] = None,
+    success: bool = False,
+    cancel: bool = False,
+    provider: Optional[str] = None,
+    desktop: bool = False,
+) -> str:
+    query: Dict[str, str] = {}
+    if error_code:
+        query["oauthError"] = error_code
+    if success:
+        query["success"] = "1"
+    if cancel:
+        query["cancel"] = "1"
+    if provider:
+        query["provider"] = provider
+    if desktop:
+        query["desktop"] = "1"
+
+    return f"/login?{urlencode(query)}" if query else "/login"
+
+
+def normalize_provider(value: Optional[str]) -> Optional[ProviderId]:
+    if value in ("github", "google"):
+        return value
+
+    return None
+
+
+def build_desktop_login_complete_url(provider: Optional[str] = None, error_code: Optional[str] = None) -> str:
+    query: Dict[str, str] = {}
+    if provider:
+        query["provider"] = provider
+    if error_code:
+        query["error"] = error_code
+
+    return f"{DESKTOP_LOGIN_COMPLETE_PATH}?{urlencode(query)}" if query else DESKTOP_LOGIN_COMPLETE_PATH
+
+
+def build_desktop_login_deep_link(
+    *,
+    code: Optional[str] = None,
+    provider: Optional[str] = None,
+    error_code: Optional[str] = None,
+) -> str:
+    query: Dict[str, str] = {}
+    if code:
+        query["code"] = code
+    if provider:
+        query["provider"] = provider
+    if error_code:
+        query["error"] = error_code
+
+    return f"contextgo://cloud-login?{urlencode(query)}" if query else "contextgo://cloud-login"
+
+
+def extract_login_context(next_path: Optional[str]) -> tuple[Optional[str], bool]:
+    if not next_path:
+        return None, False
+
+    parsed = urlparse(next_path)
+    if parsed.path == DESKTOP_LOGIN_COMPLETE_PATH:
+        query = parse_qs(parsed.query)
+        return normalize_provider(query.get("provider", [None])[0]), True
+
+    if parsed.path != "/login":
+        return None, False
+
+    query = parse_qs(parsed.query)
+    return normalize_provider(query.get("provider", [None])[0]), query.get("desktop", [None])[0] == "1"
+
+
+def peek_login_context(provider: str, state_value: Optional[str]) -> tuple[Optional[str], bool]:
+    next_path = peek_oauth_state(settings, state_value, provider) if state_value else None
+    next_provider, desktop_mode = extract_login_context(next_path)
+    if next_provider:
+        return next_provider, desktop_mode
+
+    fallback_provider = provider if provider in ("github", "google") else None
+    return fallback_provider, desktop_mode
+
+
 def render_login_page(request: Request, user: Optional[User]) -> str:
     oauth_error = request.query_params.get("oauthError")
     success = request.query_params.get("success")
+    cancel = request.query_params.get("cancel")
+    selected_provider = normalize_provider(request.query_params.get("provider"))
+    desktop_mode = request.query_params.get("desktop") == "1"
+
+    provider_ids = get_enabled_providers(settings)
+    if selected_provider in provider_ids:
+        provider_ids = [selected_provider]
 
     provider_buttons = []
-    for provider in get_enabled_providers(settings):
+    for provider in provider_ids:
         label = "Continue with GitHub" if provider == "github" else "Continue with Google"
+        href = f"/api/auth/oauth/{provider}/start"
+        if desktop_mode:
+            href = f'{href}?{urlencode({"next": build_desktop_login_complete_url(provider), "desktop": "1"})}'
         provider_buttons.append(
-            f'<a class="provider" href="/api/auth/oauth/{provider}/start">{escape(label)}</a>'
+            f'<a class="provider" href="{escape(href)}">{escape(label)}</a>'
+        )
+
+    if desktop_mode:
+        provider_buttons.append(
+            f'<a class="secondary" href="{escape(build_desktop_login_complete_url(selected_provider, "cancelled"))}">Cancel and Close</a>'
         )
 
     provider_markup = "\n".join(provider_buttons) or "<p>No OAuth providers are configured.</p>"
@@ -212,6 +320,16 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
         message = f'<p class="message error">Login failed: {escape(oauth_error)}</p>'
     elif success:
         message = '<p class="message success">Login succeeded.</p>'
+    elif cancel:
+        message = '<p class="message info">Login cancelled. You can close this window safely.</p>'
+
+    desktop_hint = ""
+    if desktop_mode:
+        desktop_hint = (
+            '<p class="caption intro">'
+            'Continue in your browser. ContextGo will reopen automatically after sign-in.'
+            '</p>'
+        )
 
     account_markup = ""
     if user:
@@ -312,6 +430,10 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
       background: #fef2f2;
       color: #991b1b;
     }}
+    .message.info {{
+      background: #eff6ff;
+      color: #1d4ed8;
+    }}
     .session {{
       margin-top: 20px;
     }}
@@ -336,6 +458,9 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
       font-size: 14px;
       color: #64748b;
     }}
+    .intro {{
+      margin-top: 16px;
+    }}
     code {{
       background: rgba(15, 23, 42, 0.06);
       padding: 2px 6px;
@@ -349,6 +474,7 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
       <h1>ContextGo account</h1>
       <p>Cloud-side OAuth and session service for ContextGo users.</p>
       {message}
+      {desktop_hint}
       <div class="stack">
         {provider_markup}
       </div>
@@ -360,15 +486,129 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
 </html>"""
 
 
-def redirect_to_login(error_code: Optional[str] = None, success: bool = False) -> RedirectResponse:
-    query: Dict[str, str] = {}
-    if error_code:
-        query["oauthError"] = error_code
-    if success:
-        query["success"] = "1"
+def render_desktop_login_complete_page(deep_link_url: str, is_error: bool, message: str) -> str:
+    escaped_deep_link_url = escape(deep_link_url)
+    escaped_message = escape(message)
+    status_class = "error" if is_error else "success"
+    action_label = "Return to ContextGo" if is_error else "Open ContextGo"
+    script_deep_link_url = json.dumps(deep_link_url)
 
-    target = f"/login?{urlencode(query)}" if query else "/login"
-    return RedirectResponse(url=target, status_code=303)
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ContextGo Desktop Login</title>
+  <style>
+    body {{
+      margin: 0;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+      color: #0f172a;
+    }}
+    .wrap {{
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }}
+    .card {{
+      width: min(520px, 100%);
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 24px;
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+      padding: 32px;
+    }}
+    h1 {{
+      margin: 0 0 8px;
+      font-size: 32px;
+    }}
+    p {{
+      margin: 0;
+      line-height: 1.6;
+      color: #475569;
+    }}
+    .message {{
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 16px;
+    }}
+    .message.success {{
+      background: #ecfdf5;
+      color: #166534;
+    }}
+    .message.error {{
+      background: #fef2f2;
+      color: #991b1b;
+    }}
+    .stack {{
+      display: grid;
+      gap: 12px;
+      margin-top: 24px;
+    }}
+    .primary {{
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 48px;
+      border-radius: 999px;
+      background: #111827;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 0 20px;
+    }}
+    .caption {{
+      margin-top: 18px;
+      font-size: 14px;
+      color: #64748b;
+    }}
+    code {{
+      background: rgba(15, 23, 42, 0.06);
+      padding: 2px 6px;
+      border-radius: 8px;
+      word-break: break-all;
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="card">
+      <h1>Return to ContextGo</h1>
+      <p class="message {status_class}">{escaped_message}</p>
+      <div class="stack">
+        <a class="primary" href="{escaped_deep_link_url}">{action_label}</a>
+      </div>
+      <p class="caption">If ContextGo does not open automatically, use the button above.</p>
+      <p class="caption">Deep link: <code>{escaped_deep_link_url}</code></p>
+    </main>
+  </div>
+  <script>
+    window.setTimeout(() => {{
+      window.location.href = {script_deep_link_url};
+    }}, 80);
+  </script>
+</body>
+</html>"""
+
+
+def redirect_to_login(
+    error_code: Optional[str] = None,
+    success: bool = False,
+    provider: Optional[str] = None,
+    desktop: bool = False,
+) -> RedirectResponse:
+    if desktop:
+        return RedirectResponse(
+            url=build_desktop_login_complete_url(provider=provider, error_code=error_code),
+            status_code=303,
+        )
+
+    return RedirectResponse(
+        url=build_login_url(error_code=error_code, success=success, provider=provider, desktop=desktop),
+        status_code=303,
+    )
 
 
 def build_session_payload(user: Optional[User]) -> dict[str, object]:
@@ -516,6 +756,53 @@ async def login_page(request: Request) -> HTMLResponse:
     return HTMLResponse(render_login_page(request, read_current_user(request)))
 
 
+@app.get(DESKTOP_LOGIN_COMPLETE_PATH, response_class=HTMLResponse)
+async def desktop_login_complete(request: Request) -> HTMLResponse:
+    provider = normalize_provider(request.query_params.get("provider"))
+    error_code = request.query_params.get("error")
+
+    if provider is None:
+        deep_link_url = build_desktop_login_deep_link(error_code="invalid_provider")
+        return HTMLResponse(
+            render_desktop_login_complete_page(
+                deep_link_url=deep_link_url,
+                is_error=True,
+                message="Desktop sign-in is missing a valid OAuth provider.",
+            )
+        )
+
+    if error_code:
+        deep_link_url = build_desktop_login_deep_link(provider=provider, error_code=error_code)
+        return HTMLResponse(
+            render_desktop_login_complete_page(
+                deep_link_url=deep_link_url,
+                is_error=True,
+                message=f"ContextGo sign-in could not be completed: {error_code}.",
+            )
+        )
+
+    user = read_current_user(request)
+    if user is None:
+        deep_link_url = build_desktop_login_deep_link(provider=provider, error_code="missing_session")
+        return HTMLResponse(
+            render_desktop_login_complete_page(
+                deep_link_url=deep_link_url,
+                is_error=True,
+                message="Browser sign-in finished, but no cloud session was found for this page.",
+            )
+        )
+
+    code = create_desktop_login_code(settings, user.id, provider)
+    deep_link_url = build_desktop_login_deep_link(code=code, provider=provider)
+    return HTMLResponse(
+        render_desktop_login_complete_page(
+            deep_link_url=deep_link_url,
+            is_error=False,
+            message="Browser sign-in succeeded. ContextGo should continue automatically.",
+        )
+    )
+
+
 @app.get("/api/auth/providers")
 async def auth_providers() -> JSONResponse:
     return JSONResponse({"success": True, "providers": get_enabled_providers(settings)})
@@ -536,10 +823,33 @@ async def auth_logout(request: Request, next: Optional[str] = Query(default=None
     return build_logout_response(request, next)
 
 
+@app.post("/api/auth/desktop/consume")
+async def auth_desktop_consume(request: Request, payload: DesktopLoginConsumeRequest) -> JSONResponse:
+    consumed = consume_desktop_login_code(settings, payload.code)
+    if consumed is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired desktop login code",
+        )
+
+    user, provider = consumed
+    session = create_session(
+        settings=settings,
+        user=user,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    response = JSONResponse({"success": True, "provider": provider, **build_session_payload(user)})
+    set_session_cookie(response, session.token)
+    return response
+
+
 @app.get("/api/auth/oauth/{provider}/start")
 async def auth_oauth_start(provider: str, request: Request) -> RedirectResponse:
+    desktop_mode = request.query_params.get("desktop") == "1"
     if not is_provider_enabled(settings, provider):
-        return redirect_to_login("provider_not_enabled")
+        return redirect_to_login("provider_not_enabled", provider=provider, desktop=desktop_mode)
 
     next_path = pick_next_path(request.query_params.get("next"))
     state = create_oauth_state(settings, provider, next_path)
@@ -552,48 +862,76 @@ async def auth_oauth_start(provider: str, request: Request) -> RedirectResponse:
 
 @app.get("/api/auth/oauth/{provider}/callback")
 async def auth_oauth_callback(provider: str, request: Request) -> RedirectResponse:
+    returned_state = request.query_params.get("state")
+    context_provider, desktop_mode = peek_login_context(provider, returned_state)
     if not is_provider_enabled(settings, provider):
-        return redirect_to_login("provider_not_enabled")
+        return redirect_to_login("provider_not_enabled", provider=context_provider or provider, desktop=desktop_mode)
 
     callback_error = request.query_params.get("error")
     if callback_error:
-        response = redirect_to_login("access_denied" if callback_error == "access_denied" else "callback_failed")
+        response = redirect_to_login(
+            "access_denied" if callback_error == "access_denied" else "callback_failed",
+            provider=context_provider,
+            desktop=desktop_mode,
+        )
         clear_oauth_state_cookie(response)
         return response
 
     expected_state = request.cookies.get(settings.oauth_state_cookie_name)
-    returned_state = request.query_params.get("state")
     code = request.query_params.get("code")
     if not expected_state or not returned_state or expected_state != returned_state:
-        response = redirect_to_login("invalid_state")
+        state_hint = expected_state or returned_state
+        context_provider, desktop_mode = peek_login_context(provider, state_hint)
+        response = redirect_to_login("invalid_state", provider=context_provider, desktop=desktop_mode)
         clear_oauth_state_cookie(response)
         return response
 
     if not code:
-        response = redirect_to_login("missing_code")
+        response = redirect_to_login("missing_code", provider=context_provider, desktop=desktop_mode)
         clear_oauth_state_cookie(response)
         return response
 
+    next_path_hint = peek_oauth_state(settings, returned_state, provider)
     next_path = consume_oauth_state(settings, returned_state, provider)
     if next_path is None:
-        response = redirect_to_login("invalid_state")
+        next_provider, next_desktop_mode = extract_login_context(next_path_hint)
+        response = redirect_to_login(
+            "invalid_state",
+            provider=next_provider or context_provider,
+            desktop=next_desktop_mode or desktop_mode,
+        )
         clear_oauth_state_cookie(response)
         return response
 
     try:
         profile = await exchange_code_for_profile(settings, provider, code)  # type: ignore[arg-type]
     except Exception:
-        response = redirect_to_login("callback_failed")
+        next_provider, next_desktop_mode = extract_login_context(next_path)
+        response = redirect_to_login(
+            "callback_failed",
+            provider=next_provider or context_provider,
+            desktop=next_desktop_mode or desktop_mode,
+        )
         clear_oauth_state_cookie(response)
         return response
 
     if not profile.email or not profile.email_verified:
-        response = redirect_to_login("email_required")
+        next_provider, next_desktop_mode = extract_login_context(next_path)
+        response = redirect_to_login(
+            "email_required",
+            provider=next_provider or context_provider,
+            desktop=next_desktop_mode or desktop_mode,
+        )
         clear_oauth_state_cookie(response)
         return response
 
     if not is_allowed_email(profile.email):
-        response = redirect_to_login("email_not_allowed")
+        next_provider, next_desktop_mode = extract_login_context(next_path)
+        response = redirect_to_login(
+            "email_not_allowed",
+            provider=next_provider or context_provider,
+            desktop=next_desktop_mode or desktop_mode,
+        )
         clear_oauth_state_cookie(response)
         return response
 
@@ -605,7 +943,7 @@ async def auth_oauth_callback(provider: str, request: Request) -> RedirectRespon
         user_agent=request.headers.get("user-agent"),
     )
 
-    response = RedirectResponse(url=next_path if next_path != "/" else "/login?success=1", status_code=303)
+    response = RedirectResponse(url=next_path if next_path != "/" else build_login_url(success=True), status_code=303)
     set_session_cookie(response, session.token)
     clear_oauth_state_cookie(response)
     return response

@@ -307,7 +307,7 @@ const AddPlatformModal = ModalHOC<{
       setLastDetectionInput(null); // 重置检测记录 / Reset detection record
       setModelProtocol('openai'); // 重置协议选择 / Reset protocol selection
 
-      // Pre-fill from deep link data (cgo:// protocol)
+      // Pre-fill from deep link data (contextgo:// protocol)
       if (deepLinkData?.baseUrl || deepLinkData?.apiKey) {
         // Default to new-api platform for deep links (typical one-api/new-api usage)
         form.setFieldValue('platform', deepLinkData.platform || 'new-api');

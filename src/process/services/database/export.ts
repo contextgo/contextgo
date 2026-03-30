@@ -9,7 +9,7 @@
  * Use this file to import database functionality throughout the app
  */
 
-export { AionUIDatabase, getDatabase, closeDatabase } from './index';
+export { AionUIDatabase, getDatabase, getDatabasePath, closeDatabase } from './index';
 export {
   runMigrations,
   rollbackMigrations,

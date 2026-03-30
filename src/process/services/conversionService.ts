@@ -6,7 +6,7 @@
 
 import { getPlatformServices } from '@/common/platform';
 import type { ConversionResult, ExcelWorkbookData, PPTJsonData, PPTPdfData } from '@/common/types/conversion';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, type Document as XmlDocument, type Element as XmlElement } from '@xmldom/xmldom';
 import { Document as DocxDocument, Packer, Paragraph, TextRun } from 'docx';
 import type { BrowserWindow } from 'electron';
 import { electronBrowserWindow as BrowserWindowCtor } from '@/common/electronSafe';
@@ -485,14 +485,14 @@ class ConversionService {
   /**
    * 解析 Drawing XML 中的图片锚点信息
    */
-  private parseDrawingAnchors(doc: Document): Array<{
+  private parseDrawingAnchors(doc: XmlDocument): Array<{
     row: number;
     col: number;
     embedId: string;
     width?: number;
     height?: number;
   }> {
-    const anchors: Element[] = [];
+    const anchors: XmlElement[] = [];
     const anchorTags = [
       'xdr:twoCellAnchor',
       'xdr:oneCellAnchor',
@@ -556,7 +556,7 @@ class ConversionService {
     return pixels > 0 ? pixels : undefined;
   }
 
-  private findFirstChild(root: Element | null, tagNames: string[]): Element | null {
+  private findFirstChild(root: XmlElement | null, tagNames: string[]): XmlElement | null {
     if (!root) return null;
     for (const tag of tagNames) {
       const nodes = root.getElementsByTagName(tag);
@@ -665,7 +665,7 @@ class ConversionService {
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(typeof xml === 'string' ? xml : xml.toString('utf8'), 'text/xml');
-    const nodes: Element[] = [];
+    const nodes: XmlElement[] = [];
     const byTag = doc.getElementsByTagName('Relationship');
     for (let i = 0; i < byTag.length; i++) {
       const node = byTag.item(i);

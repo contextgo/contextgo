@@ -7,31 +7,51 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1F46DAE0899F5896B4765840 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F6A51588669A84A87AF57024 /* Preview Assets.xcassets */; };
 		2B625E36AAECDDC700798C70 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDCE9B1F5F965232B19A210 /* ContentView.swift */; };
 		3DA99C29FE4772AF62CACFE0 /* ShellWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A483BE7C97AB0E9BE566A3 /* ShellWebView.swift */; };
+		47FC24780DE135C447C7BC2A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 84D876EBFB04DC117CE73AEF /* Localizable.strings */; };
 		54BDCDD142982D119C80409E /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0E078B495D3052B264AA47 /* ConnectionStore.swift */; };
-		AA3CBC9545005738C3B4B670 /* AionUiShellApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFF601C811105278B3F5270 /* AionUiShellApp.swift */; };
+		7E696B53F7DCB21744F6518F /* ContextGoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1363A6EABC9675947C3DCD59 /* ContextGoApp.swift */; };
 		DA388B80959C49E9D5205541 /* WebViewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE439F83DBF0AB8B93722D1 /* WebViewStore.swift */; };
 		DC6270E2B5AC6912FF7BEC4A /* ShellTargetResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E377F895B701DA0FDBB718EF /* ShellTargetResolver.swift */; };
+		F7037677D0F585177A222AD9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1C075BE29AC572371E3BFF67 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1363A6EABC9675947C3DCD59 /* ContextGoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextGoApp.swift; sourceTree = "<group>"; };
 		1BE439F83DBF0AB8B93722D1 /* WebViewStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewStore.swift; sourceTree = "<group>"; };
-		1CFF601C811105278B3F5270 /* AionUiShellApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AionUiShellApp.swift; sourceTree = "<group>"; };
+		1C075BE29AC572371E3BFF67 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2EDCE9B1F5F965232B19A210 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5E0E078B495D3052B264AA47 /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
 		64A483BE7C97AB0E9BE566A3 /* ShellWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellWebView.swift; sourceTree = "<group>"; };
+		7AC0F0041412EF844389E31C /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		7D71320C1B7FDE648EE5FBCE /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		AB57C24CD668707D4A050B46 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
+		AE3196B30FBF57B3B331382E /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		B270ED8ED74540537F645349 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D8F5FF634415C8C66A282EE4 /* ContextGo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ContextGo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DEF4CB44F49773CB2439548B /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		E377F895B701DA0FDBB718EF /* ShellTargetResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellTargetResolver.swift; sourceTree = "<group>"; };
+		F6A51588669A84A87AF57024 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		183CB43390F20549207B753B = {
 			isa = PBXGroup;
 			children = (
+				6D1C1CBDD0F08EB5D443F5EC /* Resources */,
 				ADF02B5507888D7D9E87273E /* Sources */,
 				96BDC563CC01CC3873667523 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		6A6A108F4D7880F9F6D28355 /* Localization */ = {
+			isa = PBXGroup;
+			children = (
+				84D876EBFB04DC117CE73AEF /* Localizable.strings */,
+			);
+			path = Localization;
 			sourceTree = "<group>";
 		};
 		6B1DBF4F32C59A9554FCCF46 /* Domain */ = {
@@ -41,6 +61,16 @@
 				E377F895B701DA0FDBB718EF /* ShellTargetResolver.swift */,
 			);
 			path = Domain;
+			sourceTree = "<group>";
+		};
+		6D1C1CBDD0F08EB5D443F5EC /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				1C075BE29AC572371E3BFF67 /* Assets.xcassets */,
+				6A6A108F4D7880F9F6D28355 /* Localization */,
+				CFFDC86FA6CDC8F934CF4A89 /* Preview Content */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		96BDC563CC01CC3873667523 /* Products */ = {
@@ -70,11 +100,19 @@
 			path = Web;
 			sourceTree = "<group>";
 		};
+		CFFDC86FA6CDC8F934CF4A89 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				F6A51588669A84A87AF57024 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
 		F428CC8D39273EBBBAC070B7 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				1CFF601C811105278B3F5270 /* AionUiShellApp.swift */,
 				2EDCE9B1F5F965232B19A210 /* ContentView.swift */,
+				1363A6EABC9675947C3DCD59 /* ContextGoApp.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -87,6 +125,7 @@
 			buildConfigurationList = 81DFBBEF74AFC58648F7E323 /* Build configuration list for PBXNativeTarget "ContextGo" */;
 			buildPhases = (
 				1FD5B8C8EE5C99D2E755EB0A /* Sources */,
+				65D8D7656F06E4B1F0F88B4B /* Resources */,
 			);
 			buildRules = (
 			);
@@ -119,6 +158,11 @@
 			knownRegions = (
 				Base,
 				en,
+				ja,
+				ko,
+				tr,
+				"zh-Hans",
+				"zh-Hant",
 			);
 			mainGroup = 183CB43390F20549207B753B;
 			minimizedProjectReferenceProxies = 1;
@@ -132,14 +176,27 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		65D8D7656F06E4B1F0F88B4B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F7037677D0F585177A222AD9 /* Assets.xcassets in Resources */,
+				47FC24780DE135C447C7BC2A /* Localizable.strings in Resources */,
+				1F46DAE0899F5896B4765840 /* Preview Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		1FD5B8C8EE5C99D2E755EB0A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA3CBC9545005738C3B4B670 /* AionUiShellApp.swift in Sources */,
 				54BDCDD142982D119C80409E /* ConnectionStore.swift in Sources */,
 				2B625E36AAECDDC700798C70 /* ContentView.swift in Sources */,
+				7E696B53F7DCB21744F6518F /* ContextGoApp.swift in Sources */,
 				DC6270E2B5AC6912FF7BEC4A /* ShellTargetResolver.swift in Sources */,
 				3DA99C29FE4772AF62CACFE0 /* ShellWebView.swift in Sources */,
 				DA388B80959C49E9D5205541 /* WebViewStore.swift in Sources */,
@@ -147,6 +204,22 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		84D876EBFB04DC117CE73AEF /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				7D71320C1B7FDE648EE5FBCE /* en */,
+				DEF4CB44F49773CB2439548B /* ja */,
+				AB57C24CD668707D4A050B46 /* ko */,
+				B270ED8ED74540537F645349 /* tr */,
+				7AC0F0041412EF844389E31C /* zh-Hans */,
+				AE3196B30FBF57B3B331382E /* zh-Hant */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		428F787AF82799942616F303 /* Debug */ = {

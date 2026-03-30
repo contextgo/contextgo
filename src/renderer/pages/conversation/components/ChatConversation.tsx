@@ -155,7 +155,7 @@ const GeminiConversationPanel: React.FC<{ conversation: GeminiConversation; slid
     () => (
       <div className='flex items-center gap-8px'>
         <div className='shrink-0'>
-          <CronJobManager conversationId={conversation.id} />
+          <CronJobManager conversation={conversation} />
         </div>
       </div>
     ),
@@ -237,9 +237,7 @@ const ChatConversation: React.FC<{
           />
         );
       case 'group':
-        return (
-          <GroupChat key={conversation.id} conversationId={conversation.id} workspace={conversation.extra?.workspace} />
-        );
+        return <GroupChat key={conversation.id} conversation={conversation} />;
       default:
         return null;
     }
@@ -284,6 +282,27 @@ const ChatConversation: React.FC<{
     return <GeminiModelSelector disabled={true} />;
   }, [conversation, isGeminiConversation, isGroupConversation]);
 
+  const headerExtraNode = useMemo(
+    () => (
+      <div className='flex items-center gap-8px'>
+        {conversation
+          ? renderConversationHeaderAddons({
+              conversation,
+              openUrlPreview: (url, metadata) => {
+                openPreview(url, 'url', metadata);
+              },
+            })
+          : null}
+        {conversation ? (
+          <div className='shrink-0'>
+            <CronJobManager conversation={conversation} />
+          </div>
+        ) : null}
+      </div>
+    ),
+    [conversation, openPreview]
+  );
+
   if (conversation && conversation.type === 'gemini') {
     // Gemini 会话独立渲染，带右上角模型选择
     // Render Gemini layout with dedicated top-right model selector
@@ -317,27 +336,6 @@ const ChatConversation: React.FC<{
                       : undefined,
             agentName: (conversation?.extra as { agentName?: string })?.agentName,
           };
-
-  const headerExtraNode = useMemo(
-    () => (
-      <div className='flex items-center gap-8px'>
-        {conversation
-          ? renderConversationHeaderAddons({
-              conversation,
-              openUrlPreview: (url, metadata) => {
-                openPreview(url, 'url', metadata);
-              },
-            })
-          : null}
-        {conversation ? (
-          <div className='shrink-0'>
-            <CronJobManager conversationId={conversation.id} />
-          </div>
-        ) : null}
-      </div>
-    ),
-    [conversation, openPreview]
-  );
 
   return (
     <ChatLayout

@@ -8,6 +8,8 @@ const startLoginInvoke = vi.fn();
 const logoutInvoke = vi.fn();
 const syncNowInvoke = vi.fn();
 const statusChangedOn = vi.fn();
+const messageSuccess = vi.fn();
+const messageError = vi.fn();
 
 const translations: Record<string, string> = {
   'common.refresh': 'Refresh',
@@ -107,8 +109,8 @@ vi.mock('@arco-design/web-react', async () => {
   return {
     ...actual,
     Message: {
-      success: vi.fn(),
-      error: vi.fn(),
+      success: messageSuccess,
+      error: messageError,
     },
   };
 });
@@ -126,6 +128,8 @@ describe('CloudSyncSection', () => {
     logoutInvoke.mockReset();
     syncNowInvoke.mockReset();
     statusChangedOn.mockReset();
+    messageSuccess.mockReset();
+    messageError.mockReset();
     statusChangedOn.mockImplementation(() => () => undefined);
   });
 
@@ -172,5 +176,58 @@ describe('CloudSyncSection', () => {
       expect(syncNowInvoke).toHaveBeenCalledTimes(1);
     });
     expect(screen.getByText('Device linked')).toBeInTheDocument();
+  });
+
+  it('shows the returned login error message when cloud login fails', async () => {
+    getStatusInvoke.mockResolvedValue({
+      success: true,
+      data: unauthenticatedStatus,
+    });
+    startLoginInvoke.mockResolvedValue({
+      success: false,
+      msg: 'Cloud login failed: access_denied',
+    });
+
+    const { default: CloudSyncSection } =
+      await import('@/renderer/components/settings/SettingsModal/contents/SystemModalContent/CloudSyncSection');
+
+    render(<CloudSyncSection />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue with GitHub' }));
+
+    await waitFor(() => {
+      expect(startLoginInvoke).toHaveBeenCalledWith({ provider: 'github' });
+    });
+    expect(messageError).toHaveBeenCalledWith('Cloud login failed: access_denied');
+  });
+
+  it('treats a refreshed authenticated status as a successful login after the login flow closes', async () => {
+    getStatusInvoke
+      .mockResolvedValueOnce({
+        success: true,
+        data: unauthenticatedStatus,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        data: authenticatedStatus,
+      });
+    startLoginInvoke.mockResolvedValue({
+      success: false,
+      msg: 'Cloud login failed: cancelled',
+    });
+
+    const { default: CloudSyncSection } =
+      await import('@/renderer/components/settings/SettingsModal/contents/SystemModalContent/CloudSyncSection');
+
+    render(<CloudSyncSection />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue with GitHub' }));
+
+    await waitFor(() => {
+      expect(startLoginInvoke).toHaveBeenCalledWith({ provider: 'github' });
+      expect(getStatusInvoke).toHaveBeenCalledTimes(2);
+    });
+    expect(messageSuccess).toHaveBeenCalledWith('Cloud account connected');
+    expect(messageError).not.toHaveBeenCalled();
   });
 });

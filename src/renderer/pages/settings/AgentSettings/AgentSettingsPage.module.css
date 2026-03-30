@@ -228,13 +228,33 @@
 }
 
 .libraryCollapse :global(.arco-collapse-item-content-box) {
-  padding: 12px 0 0 !important;
+  padding: 12px 12px 12px !important;
 }
 
 .libraryList {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filterPillButton {
+  min-height: 30px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-1) 4%) !important;
+}
+
+.filterPillButtonActive {
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 28%, var(--border-base) 72%) !important;
+  background: color-mix(in srgb, var(--color-primary-light-1) 76%, var(--bg-1) 24%) !important;
+  color: rgb(var(--primary-6)) !important;
 }
 
 .libraryCard {
@@ -267,6 +287,43 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.hookMetaRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hookMetaLabel {
+  flex: 0 0 88px;
+  padding-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.hookMetaValueGroup {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hookMetaValueText {
+  min-width: 0;
+  flex: 1;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.hookBadgeTag {
+  border-radius: 10px !important;
 }
 
 .assistantList {
@@ -410,6 +467,16 @@
 
   .assistantActions {
     justify-content: space-between;
+  }
+
+  .hookMetaRow {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .hookMetaLabel {
+    flex-basis: auto;
+    padding-top: 0;
   }
 
   .assistantDuplicateButton {

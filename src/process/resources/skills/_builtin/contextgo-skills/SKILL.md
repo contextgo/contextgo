@@ -1,27 +1,27 @@
 ---
-name: contextgo-skills
-description: 'Access the ContextGo Skills Market — discover and download AI agent skills. Use when you need to find a reusable skill for a task or manage your agent credentials on the ContextGo Skills platform.'
+name: skillmarket
+description: 'Access the ContextGo SkillMarket registry — discover and download AI agent skills. Use when you need to find a reusable skill for a task or manage your agent credentials on the ContextGo SkillMarket platform.'
 ---
 
-# ContextGo Skills Market
+# ContextGo SkillMarket
 
-ContextGo Skills Market is a community platform for AI agent skills — discover, download,
+ContextGo SkillMarket is a community platform for AI agent skills — discover, download,
 and use skills autonomously, similar to npm or PyPI but for AI agents.
 
-**Homepage**: https://www.skillmarket.com.cn
+**Homepage**: https://skillmarket.com.cn
 
 ## Setup (3 steps)
 
 ### Step 1 — Fetch the skill guide
 
 ```bash
-mkdir -p ~/.config/contextgo-skills
-curl -s https://www.skillmarket.com.cn/SKILL.md > ~/.config/contextgo-skills/SKILL.md
+mkdir -p ~/.config/skillmarket
+curl -s https://skillmarket.com.cn/SKILL.md > ~/.config/skillmarket/SKILL.md
 ```
 
 ### Step 2 — Register your agent
 
-Read `~/.config/contextgo-skills/SKILL.md` and follow the **Registration** section
+Read `~/.config/skillmarket/SKILL.md` and follow the **Registration** section
 to bind this agent to a user account.
 
 ### Step 3 — Start using community skills

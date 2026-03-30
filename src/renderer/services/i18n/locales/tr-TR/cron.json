@@ -58,6 +58,183 @@
     "emptyInitial": "Henüz zamanlanmış görev yok. Bir konuşmadan görev oluşturduğunuzda burada görünecek.",
     "emptyFiltered": "Geçerli filtrelerle eşleşen zamanlanmış görev yok."
   },
+  "presets": {
+    "title": "Starter Scheduled Tasks",
+    "description": "Turn on high-value automations out of the box. You can still refine them later or ask the Agent to customize them.",
+    "packPacksTitle": "Browse by Industry Pack",
+    "rolePacksTitle": "Browse by Role",
+    "fillTemplate": "Create a scheduled task for this conversation.\nName: {{name}}\nSchedule: {{scheduleDescription}}\nMessage: {{message}}",
+    "createSuccess": "Preset scheduled task created: {{name}}",
+    "directCreateHint": "These presets will be bound directly to the current conversation. If you want to tweak the timing or wording first, fill the prompt into chat and let the Agent adjust it.",
+    "fillOnlyHint": "This conversation type does not support direct preset creation yet. You can still fill a preset into the chat box and let the Agent create it for you.",
+    "emptyHint": "Preset timers must be attached to a specific conversation. Open a single-agent conversation, then click the clock button in the top-right corner to enable one.",
+    "recommended": "Varsayilan Oneri",
+    "roles": {
+      "all": "All",
+      "product": "Product",
+      "content": "Content",
+      "operations": "Operations",
+      "sales": "Sales",
+      "research": "Research"
+    },
+    "packs": {
+      "all": "All",
+      "saasProduct": "SaaS Product Pack",
+      "contentGrowth": "Content Growth Pack",
+      "recruitingOps": "Recruiting Ops Pack",
+      "salesFollowUp": "Sales Follow-Up Pack",
+      "researchMonitoring": "Research Monitoring Pack"
+    },
+    "actions": {
+      "useNow": "Use Now",
+      "fillPrompt": "Fill Prompt",
+      "customize": "Custom Setup",
+      "browseAllPacks": "Browse All Packs",
+      "viewAllInPack": "View all {{count}} presets",
+      "showLessInPack": "Show Fewer"
+    },
+    "categories": {
+      "research": "Research",
+      "planning": "Planning",
+      "review": "Review",
+      "reporting": "Reporting",
+      "operations": "Operations"
+    },
+    "packDetails": {
+      "presetCount": "preset",
+      "bestForLabel": "En Uygun",
+      "outcomeLabel": "Beklenen Sonuc",
+      "all": {
+        "title": "Tum Sektor Paketleri",
+        "description": "Urun, buyume, ise alim, satis ve arastirma akislari boyunca tum baslangic preset kutuphanesini gez.",
+        "bestFor": "Zamanlanmis otomasyonun en fazla etkiyi hangi akista yaratacagini hala kesfetmekte olan ekipler.",
+        "outcome": "Once farkli calisma tarzlarini karsilastirir, sonra ekibinize en uygun pakete daralirsiniz."
+      },
+      "saasProduct": {
+        "description": "Kullanici davranisi, backlog baskisi, rakip hareketleri ve haftalik uygulama ritmi icin duzenli gorunurluge ihtiyac duyan urun odakli SaaS ekipleri icin tasarlandi.",
+        "bestFor": "Urun yoneticileri, urun operasyonu ekipleri ve uzmanlasmadan once guclu bir varsayilan paket isteyen startup ekipleri.",
+        "outcome": "Kullanim kaymalarini daha erken yakalar, oncelikleri guncel tutar ve haftalik karar ritmini daha az eforla surdurursunuz."
+      },
+      "contentGrowth": {
+        "description": "Tekrarlanabilir konu kesfi, takvim kontrolu, deney incelemesi ve kitle sinyali takibi isteyen icerik ve buyume ekipleri icin tasarlandi.",
+        "bestFor": "Icerik liderleri, buyume pazarlamacilari ve sinirli kaynakla organik dagitim yurutmek zorunda olan ekipler.",
+        "outcome": "Icerik hattini sicak tutar, konu bosluklarini azaltir ve daginik buyume islerini tekrarlanabilir bir yayin ve gozden gecirme dongusune cevirirsiniz."
+      },
+      "recruitingOps": {
+        "description": "Gunluk aday hatti gorunurlugu, mulakat geri bildirim ozetleri ve acik roller boyunca operasyonel takip gerektiren ise alim akislari icin tasarlandi.",
+        "bestFor": "Recruiter'lar, ise alim yoneticileri ve birden fazla adayi paralel asamalarda yuruten ekipler.",
+        "outcome": "Tikandigi noktalarni daha hizli gorur, bekleyen adaylari ileri tasir ve daha temiz gunluk ozetlerle ise alim kararlari alirsiniz."
+      },
+      "salesFollowUp": {
+        "description": "Hizli yanit, bayat firsat tespiti ve huni boyunca tutarli anlasma incelemesi gerektiren satis takip akislari icin tasarlandi.",
+        "bestFor": "Satis temsilcileri, outbound yapan kurucular ve takip ritmi bozulursa zarar gorecek gelir ekipleri.",
+        "outcome": "Duran firsatlari daha erken canlandirir, takip ritmini korur ve pipeline kalitesi dusmeden once sonraki en iyi adimi gorursunuz."
+      },
+      "researchMonitoring": {
+        "description": "Politika sinyalleri, piyasa hareketleri, rakip takibi ve yapilandirilmis haftalik senteze dayanan arastirma agirlikli akislara yoneliktir.",
+        "bestFor": "Analistler, yatirim/arastirma ekipleri, strateji ekipleri ve hareketli piyasalar veya regule sektorleri izleyen operatorler.",
+        "outcome": "Sinyal gecikmesini azaltir, izlemeyi tutarli hale getirir ve parcalanmis guncellemeleri daha keskin bir arastirma karar dongusune donusturursunuz."
+      }
+    },
+    "items": {
+      "aiDigest": {
+        "name": "AI News Digest",
+        "description": "Track the latest AI models, products, and market signals every workday and turn them into an actionable brief.",
+        "scheduleDescription": "Every weekday at 09:00",
+        "message": "Track the most important AI model, product, funding, policy, or industry updates from the last 24 hours. Summarize the top 5 signals and explain the impact, risks, and recommended actions for each."
+      },
+      "competitorWatch": {
+        "name": "Competitor Watch",
+        "description": "Review product moves, pricing changes, launches, and messaging shifts from key competitors every afternoon.",
+        "scheduleDescription": "Every weekday at 14:00",
+        "message": "Track whether our key competitors made any notable product launches, feature updates, pricing changes, channel moves, or reputation shifts today. Summarize the implications and recommend what we should respond to."
+      },
+      "morningFocus": {
+        "name": "Morning Focus Plan",
+        "description": "Use the current conversation context to decide what matters most today and what should happen first.",
+        "scheduleDescription": "Every weekday at 09:30",
+        "message": "Based on this conversation and its existing context, identify today's top 3 priorities, likely blockers, the recommended execution order, and the most valuable first-hour action to start with."
+      },
+      "contentRadar": {
+        "name": "Content Idea Radar",
+        "description": "Generate timely topics worth writing, posting, or amplifying twice a week for content and growth work.",
+        "scheduleDescription": "Every Tuesday and Thursday at 11:00",
+        "message": "Using the direction of this conversation, generate 5 timely content ideas or distribution angles. For each one, explain the target audience, key point of view, suggested headline direction, and the best channels to publish in."
+      },
+      "saasUsageReview": {
+        "name": "Aktif Kullanici Degisim Incelemesi",
+        "description": "Her is gunu sabahi aktif kullanici hareketlerini, kullanim sikligini ve davranis sinyallerini inceleyerek urun ve operasyon ekiplerinin anormallikleri erken yakalamasini saglar.",
+        "scheduleDescription": "Her hafta ici 10:00'da",
+        "message": "Bu konusmadaki urun hedefleri ve kullanici baglamina gore son aktif kullanici degisimlerini, olagan disi kullanim sikligi kaymalarini, ozellik benimseme sapmalarini ve olasi churn sinyallerini incele. Once arastirilmasi gereken nedenleri ve sonraki aksiyonlari acikla."
+      },
+      "backlogPrioritization": {
+        "name": "Backlog Oncelik Incelemesi",
+        "description": "Urun ekibinin isleri yeniden siralamasini ve yuksek riskli talepleri zamaninda gormesini saglamak icin backlog'u haftada iki kez yeniden kontrol eder.",
+        "scheduleDescription": "Her Sali ve Persembe 15:30'da",
+        "message": "Bu konusmadaki talepler, sorunlar, hedefler ve geri bildirimlere gore backlog onceligini yeniden degerlendir. One alinmasi gerekenleri, bekleyebilecekleri, riskli kalemleri ve onerilen siralamanin gerekcesini listele."
+      },
+      "contentCalendar": {
+        "name": "Icerik Takvimi Incelemesi",
+        "description": "Yaklasan yayin planlarini haftada birkac kez gozden gecirerek konu kapsamini ve kanal zamanlamasini yolunda tutar.",
+        "scheduleDescription": "Her Pazartesi, Carsamba ve Cuma 10:00'da",
+        "message": "Bu konusmadaki icerik plani ve dagitim hedeflerini incele. Kisa vadeli bir yayin takvimi oner, konu bosluklarini, kanal zamanlama problemlerini, en acil doldurulmasi gereken alanlari ve daha fazla itilmesi gereken temalari vurgula."
+      },
+      "growthExperimentReview": {
+        "name": "Buyume Deneyi Incelemesi",
+        "description": "Hafta ortasinda buyume deneylerini gozden gecirerek neyin ise yaradigini, neyin bozuldugunu ve sirada neyin test edilmesi gerektigini ortaya cikarir.",
+        "scheduleDescription": "Her Carsamba 17:00'de",
+        "message": "Su anda devam eden buyume deneylerini veya dagitim aksiyonlarini incele. En iyi performans gosteren denemeleri, olagandisi degisimleri, muhtemel nedenleri, hala test etmeye deger hipotezleri ve en yuksek degerli bir sonraki deneyi ozetle."
+      },
+      "candidatePipelineReview": {
+        "name": "Aday Hatti Incelemesi",
+        "description": "Ise alim operasyonlari icin asama dagilimini, tikandigi yerleri ve oncelikli adaylari her is gunu gozden gecirir.",
+        "scheduleDescription": "Her hafta ici 10:00'da",
+        "message": "Bu konusmadaki pozisyonlar, adaylar ve surec baglamina gore bir aday hatti incelemesi hazirla. Asama sayilarini, tikandigi yerleri, hemen aksiyon gerektiren adaylari ve bugun en onemli ise alim hamlelerini listele."
+      },
+      "interviewFeedbackDigest": {
+        "name": "Mulakat Geri Bildirim Ozeti",
+        "description": "Ise alim ekiplerinin guclu yonleri, riskleri ve sonraki kararlarini hizlica gorebilmesi icin her aksam mulakat geri bildirimlerini ozetler.",
+        "scheduleDescription": "Her hafta ici 18:00'de",
+        "message": "Bugunun mulakat geri bildirimlerini ozetle. Aday guclerini, riskleri, acik sorulari ve her adayin ilerleyip ilerlememesi gerektigini cikart; ise alim ekibinin hizlica karar verebilecegi bir formatta sun."
+      },
+      "staleDealAlert": {
+        "name": "Bayat Firsat Uyarisi",
+        "description": "Her ogleden sonra duran firsatlari belirleyerek satis ekibinin firsatlar sogumadan takibi yeniden hizlandirmasina yardimci olur.",
+        "scheduleDescription": "Her hafta ici 14:30'da",
+        "message": "Bu konusmada cok uzun suredir ilerlemeyen firsatlari veya musterileri belirle. Neden durmus olabileceklerini, firsat riskini, en iyi yeniden canlandirma yaklasimini ve bugun gonderilmesi gereken takip aksiyonunu acikla."
+      },
+      "policySignalWatch": {
+        "name": "Politika Sinyali Takibi",
+        "description": "Arastirma agirlikli is akislari icin politika, regülasyon ve resmi sektor sinyallerini her is gunu sabah takip eder.",
+        "scheduleDescription": "Her hafta ici 08:30'da",
+        "message": "Bu konusmadaki arastirma temasiyla ilgili son 24 saatteki politika, regulasyon, sektor rehberi veya resmi aciklamalari takip et. En onemli sinyalleri cikar ve bunlarin degerlendirme, risk ve sonraki arastirma adimlari uzerindeki etkisini acikla."
+      },
+      "endOfDayReview": {
+        "name": "End-of-Day Review",
+        "description": "Wrap up each workday with a concise progress summary, carry-over items, and tomorrow's handoff list.",
+        "scheduleDescription": "Every weekday at 18:30",
+        "message": "Review today's progress: summarize what was completed, what is still pending, the main risks, and what should be carried into tomorrow. End with a clear handoff checklist for the next workday."
+      },
+      "userFeedbackDigest": {
+        "name": "User Feedback Digest",
+        "description": "Turn daily feedback into a clear digest of repeated issues, sentiment trends, and what needs attention first.",
+        "scheduleDescription": "Every weekday at 16:00",
+        "message": "Summarize today's user feedback, requests, complaints, or questions. Extract repeated themes, user sentiment, emerging risks, and the top 3 issues we should address first."
+      },
+      "weeklyReview": {
+        "name": "Friday Weekly Report",
+        "description": "Generate a structured weekly recap every Friday to review wins, risks, and the next week's priorities.",
+        "scheduleDescription": "Every Friday at 17:30",
+        "message": "Prepare a structured weekly report with key outcomes, unresolved items, risk alerts, decisions that still need to be made, and the top 3 priorities for next week."
+      },
+      "leadFollowUp": {
+        "name": "Lead Follow-Up Queue",
+        "description": "Turn sales and partnership context into a prioritized queue of who to follow up with and what to do next.",
+        "scheduleDescription": "Every weekday at 10:30",
+        "message": "Based on the sales leads, customer outreach, or partnership context in this conversation, list the opportunities that need follow-up today, their current status, the key risks, the suggested response angle, and the next action to move each one forward."
+      }
+    }
+  },
   "runNowSuccess": "Görev çalıştırma tetiklendi",
   "notification": {
     "taskComplete": "Görev Tamamlandı",

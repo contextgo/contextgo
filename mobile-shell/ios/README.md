@@ -19,7 +19,22 @@ Verified locally on 2026-03-28:
 
 ## Shell Behavior
 
-- Accepts a base WebUI URL such as `http://192.168.1.10:3000`
-- Accepts a QR-login URL such as `http://192.168.1.10:3000/qr-login?token=...`
+- First launch defaults to `https://remote.contextgo.io/login`
+- Custom host mode still accepts a base WebUI URL such as `http://192.168.1.10:3000`
+- Custom host mode still accepts a QR-login URL such as `http://192.168.1.10:3000/qr-login?token=...`
 - Persists the last successful endpoint in `UserDefaults`
 - Loads the target in `WKWebView`
+
+## Release Packaging
+
+Signed archive/export packaging for stable tag builds uses:
+
+```bash
+CONTEXTGO_RELEASE_BUILD_NUMBER=123 \
+IOS_DEVELOPMENT_TEAM=TEAMID1234 \
+IOS_BUILD_CERTIFICATE_BASE64=... \
+IOS_P12_PASSWORD=... \
+IOS_BUILD_PROVISION_PROFILE_BASE64=... \
+CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST=/path/to/ExportOptions.plist \
+bash ../scripts/build-ios-release.sh 1.0.2 /tmp/contextgo-ios-release
+```

@@ -29,22 +29,40 @@ export interface ConfigStore {
 export function getElectronConfigCandidatePaths(): string[] {
   const home = os.homedir();
   if (process.platform === 'darwin') {
+    const candidateDirs = [
+      path.join(home, '.contextgo-config'),
+      path.join(home, '.contextgo-config-dev'),
+      path.join(home, '.aionui-config'),
+      path.join(home, '.aionui-config-dev'),
+    ];
     return [
-      path.join(home, '.contextgo-config', 'contextgo-config.txt'),
-      path.join(home, '.contextgo-config-dev', 'contextgo-config.txt'),
+      ...candidateDirs.map((dir) => path.join(dir, 'contextgo-config.txt')),
+      ...candidateDirs.map((dir) => path.join(dir, 'aionui-config.txt')),
     ];
   }
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming');
+    const candidateDirs = [
+      path.join(appData, 'ContextGo', 'config'),
+      path.join(appData, 'ContextGo-Dev', 'config'),
+      path.join(appData, 'AionUi', 'config'),
+      path.join(appData, 'AionUi-Dev', 'config'),
+    ];
     return [
-      path.join(appData, 'ContextGo', 'config', 'contextgo-config.txt'),
-      path.join(appData, 'ContextGo-Dev', 'config', 'contextgo-config.txt'),
+      ...candidateDirs.map((dir) => path.join(dir, 'contextgo-config.txt')),
+      ...candidateDirs.map((dir) => path.join(dir, 'aionui-config.txt')),
     ];
   }
   // Linux and other platforms
+  const candidateDirs = [
+    path.join(home, '.config', 'ContextGo', 'config'),
+    path.join(home, '.config', 'ContextGo-Dev', 'config'),
+    path.join(home, '.config', 'AionUi', 'config'),
+    path.join(home, '.config', 'AionUi-Dev', 'config'),
+  ];
   return [
-    path.join(home, '.config', 'ContextGo', 'config', 'contextgo-config.txt'),
-    path.join(home, '.config', 'ContextGo-Dev', 'config', 'contextgo-config.txt'),
+    ...candidateDirs.map((dir) => path.join(dir, 'contextgo-config.txt')),
+    ...candidateDirs.map((dir) => path.join(dir, 'aionui-config.txt')),
   ];
 }
 
@@ -125,7 +143,7 @@ export async function migrateFromElectronConfig(configStore: ConfigStore): Promi
 /**
  * Manual import: copy whitelisted keys from a specified config file into the
  * server config store. Runs on every startup when IMPORT_CONFIG_FROM is set.
- * @param sourcePath - absolute path to a contextgo-config.txt file
+ * @param sourcePath - absolute path to a contextgo-config.txt / aionui-config.txt file
  * @param overwrite  - if true, overwrite existing keys; if false, skip them
  * @param configStore - injected config store (uses ProcessConfig in production)
  */

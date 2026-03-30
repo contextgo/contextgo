@@ -1,6 +1,6 @@
 # HarmonyOS Shell
 
-This is a HarmonyOS NEXT shell scaffold for loading AionUi WebUI in a native `Web` container.
+This is a HarmonyOS NEXT shell scaffold for loading ContextGo WebUI in a native `Web` container.
 
 Notes:
 
@@ -14,4 +14,4 @@ Notes:
   - `build/outputs/default/harmony-default-unsigned.app`
   - `entry/build/default/outputs/default/entry-default-unsigned.hap`
 - Open this folder in DevEco Studio to add signing material and produce store-ready signed packages.
-- Connection flow matches the Android and iOS shells: enter a base WebUI URL or a `/qr-login?token=...` URL.
+- Connection flow matches the Android and iOS shells: the app opens Official Remote by default and still allows a custom WebUI URL or `/qr-login?token=...` URL when needed.

@@ -225,9 +225,9 @@ async function registerDeviceBinding(sessionToken: string, sessionUser: CloudUse
     throw new Error('Cloud device auto-binding returned an invalid payload');
   }
 
-  await Promise.all([
-    ProcessConfig.set('cloud.user', sessionUser),
-    ProcessConfig.set('cloud.device', payload.device),
-    ProcessConfig.set('cloud.deviceToken', payload.token),
-  ]);
+  // ProcessConfig performs read-modify-write updates per key, so these writes
+  // must stay sequential to avoid losing earlier fields under concurrent access.
+  await ProcessConfig.set('cloud.user', sessionUser);
+  await ProcessConfig.set('cloud.device', payload.device);
+  await ProcessConfig.set('cloud.deviceToken', payload.token);
 }

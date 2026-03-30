@@ -144,4 +144,21 @@ describe('createAuthMiddleware cloud fallback', () => {
       error: 'Access denied. Please login first.',
     });
   });
+
+  it('accepts a cloud session token for websocket connections when local JWT validation fails', async () => {
+    verifyWebSocketToken.mockResolvedValue(null);
+    authenticateSessionToken.mockResolvedValue({
+      id: 'cloud-user-1',
+      email: 'yeyitech@gmail.com',
+      username: 'yeyitech',
+      displayName: 'yeyitech',
+      avatarUrl: null,
+    });
+
+    const { TokenMiddleware } = await import('../../../../src/process/webserver/auth/middleware/TokenMiddleware');
+
+    await expect(TokenMiddleware.validateWebSocketToken('cloud-session-token')).resolves.toBe(true);
+    expect(verifyWebSocketToken).toHaveBeenCalledWith('cloud-session-token');
+    expect(authenticateSessionToken).toHaveBeenCalledWith('cloud-session-token');
+  });
 });

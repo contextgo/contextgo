@@ -112,6 +112,12 @@ export interface IConfigStorageRefer {
   'cloud.device'?: CloudDevice;
   // ContextGo cloud device token (ctxdev_...) / ContextGo 云端设备令牌
   'cloud.deviceToken'?: string;
+  // ContextGo cloud WebUI cached user profile / ContextGo 云端 WebUI 缓存用户信息
+  'cloud.webui.user'?: CloudUser;
+  // ContextGo cloud WebUI device binding / ContextGo 云端 WebUI 设备绑定信息
+  'cloud.webui.device'?: CloudDevice;
+  // ContextGo cloud WebUI device token (ctxdev_...) / ContextGo 云端 WebUI 设备令牌
+  'cloud.webui.deviceToken'?: string;
   // ContextGo cloud sync cursor + per-item timestamps / ContextGo 云端同步游标与时间戳
   'cloud.sync.state'?: CloudStoredSyncState;
   // Telegram assistant default model / Telegram 助手默认模型
@@ -208,9 +214,30 @@ export type ConversationSource =
 
 export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 
+export type CollaborationMode = 'discussion' | 'planner-generator-evaluator';
+
+export type CollaborationParticipantRole = 'participant' | 'planner' | 'generator' | 'evaluator';
+
+export type CollaborationExecutionBoundary =
+  | {
+      type: 'workspace';
+    }
+  | {
+      type: 'git-repository';
+      repositoryRoot: string;
+      branch?: string | null;
+      gitDir?: string | null;
+      remoteUrl?: string | null;
+    };
+
+export type GroupCollaborationConfig = {
+  mode: CollaborationMode;
+  executionBoundary: CollaborationExecutionBoundary;
+};
+
 export type GroupOrchestrationKind = 'discussion' | 'workflow';
 
-export type BuiltInGroupParticipantRole = 'planner' | 'writer' | 'evaluator';
+export type BuiltInGroupParticipantRole = CollaborationParticipantRole | 'writer';
 
 export type GroupParticipantRole = BuiltInGroupParticipantRole | 'custom' | (string & {});
 
@@ -594,6 +621,7 @@ export type TChatConversation =
         ConversationWorkspaceCompat & {
           participants: GroupParticipant[];
           orchestration: GroupOrchestration;
+          collaboration?: GroupCollaborationConfig;
           runState?: WorkflowGroupRunState;
           /** Whether this conversation is pinned */
           pinned?: boolean;

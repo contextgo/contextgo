@@ -3,6 +3,19 @@ plugins {
   kotlin("android")
 }
 
+val releaseVersionName = providers.environmentVariable("CONTEXTGO_RELEASE_VERSION").orNull ?: "1.0.0"
+val releaseVersionCode = providers.environmentVariable("CONTEXTGO_RELEASE_VERSION_CODE").orNull?.toIntOrNull() ?: 1
+val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH").orNull
+val releaseKeystorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
+val hasReleaseSigning = listOf(
+  releaseKeystorePath,
+  releaseKeystorePassword,
+  releaseKeyAlias,
+  releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
   namespace = "com.aionui.mobileshell"
   compileSdk = 35
@@ -11,13 +24,25 @@ android {
     applicationId = "com.aionui.mobileshell"
     minSdk = 26
     targetSdk = 35
-    versionCode = 1
-    versionName = "1.0.0"
+    versionCode = releaseVersionCode
+    versionName = releaseVersionName
+  }
+
+  signingConfigs {
+    if (hasReleaseSigning) {
+      create("release") {
+        keyAlias = releaseKeyAlias
+        keyPassword = releaseKeyPassword
+        storeFile = file(releaseKeystorePath!!)
+        storePassword = releaseKeystorePassword
+      }
+    }
   }
 
   buildTypes {
     release {
       isMinifyEnabled = false
+      signingConfig = signingConfigs.findByName("release")
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro"

@@ -13,9 +13,9 @@ import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
 import { getSendBoxDraftHook } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
 import { Message } from '@arco-design/web-react';
+import type { Dispatch, SetStateAction } from 'react';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useGroupConversation } from './useGroupConversation';
 
 const useGroupSendBoxDraft = getSendBoxDraftHook('group', {
   _type: 'group',
@@ -31,11 +31,14 @@ const EMPTY_GROUP_DRAFT = {
   uploadFile: [] as string[],
 };
 
-const GroupSendBox: React.FC<{ conversationId: string }> = ({ conversationId }) => {
+const GroupSendBox: React.FC<{
+  conversationId: string;
+  running: boolean;
+  setRunning: Dispatch<SetStateAction<boolean>>;
+}> = ({ conversationId, running, setRunning }) => {
   const { t } = useTranslation();
   const addOrUpdateMessage = useAddOrUpdateMessage();
   const { checkAndUpdateTitle } = useAutoTitle();
-  const { running, setRunning } = useGroupConversation(conversationId);
   const { data, mutate } = useGroupSendBoxDraft(conversationId);
   const content = data?.content ?? '';
 

@@ -47,6 +47,12 @@ vi.mock('@/renderer/utils/model/agentLogo', () => ({
   getAgentLogo: (agent: string | undefined | null) => (agent === 'codex' ? '/mock-codex-logo.svg' : null),
 }));
 
+vi.mock('@/renderer/pages/conversation/Preview', () => ({
+  usePreviewContext: () => ({
+    openPreview: vi.fn(),
+  }),
+}));
+
 import GroupParticipantsPanel from '@/renderer/pages/conversation/Workspace/components/GroupParticipantsPanel';
 
 const participants: GroupParticipant[] = [
@@ -80,10 +86,10 @@ describe('GroupParticipantsPanel', () => {
     expect(screen.getByAltText('Codex')).toHaveAttribute('src', '/mock-codex-logo.svg');
     expect(screen.getAllByText('CODEX').length).toBeGreaterThan(0);
     expect(screen.getAllByText('CLI Agent').length).toBeGreaterThan(0);
-    expect(screen.getByText('Planner')).toBeInTheDocument();
+    expect(screen.getAllByText('Planner').length).toBeGreaterThan(0);
     expect(screen.getByText('Architect')).toBeInTheDocument();
     expect(screen.getAllByText('Preset Assistant').length).toBeGreaterThan(0);
-    expect(screen.getByText('Research Lead')).toBeInTheDocument();
+    expect(screen.getAllByText('Research Lead').length).toBeGreaterThan(0);
     expect(screen.getByAltText('Architect')).toHaveAttribute('src', 'file:///mock/cowork.svg');
   });
 });
