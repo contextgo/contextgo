@@ -79,6 +79,13 @@ export const MODEL_PLATFORMS: PlatformConfig[] = [
 
   // New API 多模型网关 / New API multi-model gateway
   { name: 'New API', value: 'new-api', logo: NewApiLogo, platform: 'new-api', i18nKey: 'settings.platformNewApi' },
+  {
+    name: 'InferMesh',
+    value: 'InferMesh',
+    logo: NewApiLogo,
+    platform: 'new-api',
+    baseUrl: 'https://api.infermesh.org',
+  },
 
   // 官方 Gemini 平台
   {

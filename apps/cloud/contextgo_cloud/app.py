@@ -39,6 +39,7 @@ from .db import (
     update_user_profile,
     upsert_oauth_account,
 )
+from .infermesh import InfermeshProvisionError, is_infermesh_configured, provision_infermesh_provider
 from .oauth import OAuthProfile, build_authorization_url, exchange_code_for_profile, get_enabled_providers, is_provider_enabled
 
 ProviderId = Literal["github", "google"]
@@ -690,6 +691,15 @@ def require_current_device(request: Request) -> tuple[User, Device]:
     return user, device
 
 
+def require_current_user_or_device(request: Request) -> User:
+    user = read_current_user(request)
+    if user is not None:
+        return user
+
+    device_user, _device = require_current_device(request)
+    return device_user
+
+
 def find_or_create_user(profile: OAuthProfile) -> User:
     user = find_user_by_oauth_account(settings, profile.provider, profile.provider_user_id)
     if user is None:
@@ -811,6 +821,26 @@ async def auth_providers() -> JSONResponse:
 @app.get("/api/auth/session")
 async def auth_session(request: Request) -> JSONResponse:
     return JSONResponse(build_session_payload(read_current_user(request)))
+
+
+@app.get("/api/integrations/infermesh/provider")
+async def infermesh_provider(request: Request) -> JSONResponse:
+    if not is_infermesh_configured(settings):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="InferMesh integration is not configured",
+        )
+
+    user = require_current_user_or_device(request)
+    try:
+        provider = await provision_infermesh_provider(settings, user)
+    except InfermeshProvisionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+    return JSONResponse({"success": True, "provider": provider})
 
 
 @app.get("/api/auth/logout")

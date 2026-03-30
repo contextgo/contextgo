@@ -24,6 +24,16 @@ This directory contains the lightweight cloud-side auth and API service for Cont
 - `CONTEXTGO_GITHUB_CLIENT_SECRET`
 - `CONTEXTGO_GOOGLE_CLIENT_ID`
 - `CONTEXTGO_GOOGLE_CLIENT_SECRET`
+- `CONTEXTGO_INFERMESH_API_BASE_URL`
+- `CONTEXTGO_INFERMESH_CONSOLE_BASE_URL`
+- `CONTEXTGO_INFERMESH_ADMIN_BASE_URL`
+- `CONTEXTGO_INFERMESH_ADMIN_USERNAME`
+- `CONTEXTGO_INFERMESH_ADMIN_PASSWORD`
+- `CONTEXTGO_INFERMESH_ADMIN_ACCESS_CLIENT_ID`
+- `CONTEXTGO_INFERMESH_ADMIN_ACCESS_CLIENT_SECRET`
+- `CONTEXTGO_INFERMESH_PASSWORD_SECRET`
+- `CONTEXTGO_INFERMESH_USERNAME_PREFIX`
+- `CONTEXTGO_INFERMESH_PROVIDER_NAME`
 
 ## Local Run
 
@@ -42,6 +52,16 @@ export CONTEXTGO_GITHUB_CLIENT_ID="..."
 export CONTEXTGO_GITHUB_CLIENT_SECRET="..."
 export CONTEXTGO_GOOGLE_CLIENT_ID="..."
 export CONTEXTGO_GOOGLE_CLIENT_SECRET="..."
+export CONTEXTGO_INFERMESH_API_BASE_URL="https://api.infermesh.org"
+export CONTEXTGO_INFERMESH_CONSOLE_BASE_URL="https://newapi.infermesh.org"
+export CONTEXTGO_INFERMESH_ADMIN_BASE_URL="https://newapi-admin.infermesh.org"
+export CONTEXTGO_INFERMESH_ADMIN_USERNAME="root"
+export CONTEXTGO_INFERMESH_ADMIN_PASSWORD="..."
+export CONTEXTGO_INFERMESH_ADMIN_ACCESS_CLIENT_ID="..."
+export CONTEXTGO_INFERMESH_ADMIN_ACCESS_CLIENT_SECRET="..."
+export CONTEXTGO_INFERMESH_PASSWORD_SECRET="..."
+export CONTEXTGO_INFERMESH_USERNAME_PREFIX="cg"
+export CONTEXTGO_INFERMESH_PROVIDER_NAME="InferMesh Cloud"
 
 uvicorn contextgo_cloud.app:app --host 127.0.0.1 --port 3001
 ```
@@ -72,5 +92,12 @@ python3 -m unittest discover -s tests
 - `POST /api/devices/register`
 - `GET /api/devices`
 - `POST /api/devices/{device_id}/revoke`
+- `GET /api/integrations/infermesh/provider`
 - `POST /api/sync/push`
 - `GET /api/sync/pull`
+
+## InferMesh Provisioning
+
+`GET /api/integrations/infermesh/provider` supports both browser session auth and device-token auth.
+
+It provisions or reuses a deterministic InferMesh account for the current ContextGo Cloud user, ensures a managed API token exists, fetches the current model list from InferMesh, and returns a ready-to-save `new-api` provider payload for the desktop app.

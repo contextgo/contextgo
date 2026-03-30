@@ -43,6 +43,7 @@ import {
   CLOUD_SYNC_NAMESPACE,
 } from './constants';
 import { getOfficialRemoteTunnelService } from './OfficialRemoteTunnelService';
+import { getInfermeshProviderSyncService } from './InfermeshProviderSyncService';
 
 type SessionPayload = {
   authenticated?: boolean;
@@ -172,6 +173,7 @@ export class CloudService {
   private loginInProgress = false;
   private initialized = false;
   private readonly officialRemoteTunnelService = getOfficialRemoteTunnelService();
+  private readonly infermeshProviderSyncService = getInfermeshProviderSyncService();
 
   private constructor() {}
 
@@ -277,6 +279,9 @@ export class CloudService {
 
     await this.ensureBrowserSessionUser();
     await this.ensureDeviceRegistration(true);
+    await this.syncManagedInfermeshProvider().catch((error: unknown) => {
+      console.warn('[Cloud] InferMesh provider sync failed after login:', error);
+    });
     await this.enableDesktopWebUiForOfficialRemote();
     await this.syncNow().catch((error: unknown) => {
       console.warn('[Cloud] Post-login sync failed:', error);
@@ -305,6 +310,9 @@ export class CloudService {
     });
 
     await this.clearStoredState();
+    await this.infermeshProviderSyncService.removeManagedProvider().catch((error: unknown) => {
+      console.warn('[Cloud] Failed to clear managed InferMesh provider during logout:', error);
+    });
     await this.officialRemoteTunnelService.reconcile('cloud-logout');
     const status = await this.getStatus();
     await this.emitStatusChanged(status);
@@ -700,10 +708,22 @@ export class CloudService {
       return;
     }
 
+    await this.syncManagedInfermeshProvider().catch((error: unknown) => {
+      console.warn('[Cloud] Initial InferMesh provider sync failed:', error);
+    });
     await this.syncNow().catch((error: unknown) => {
       console.warn('[Cloud] Initial sync skipped:', error);
     });
     await this.officialRemoteTunnelService.reconcile('cloud-init-sync');
+  }
+
+  private async syncManagedInfermeshProvider(): Promise<void> {
+    const deviceToken = await ProcessConfig.get(CLOUD_DEVICE_TOKEN_KEY);
+    if (typeof deviceToken !== 'string' || deviceToken.trim() === '') {
+      return;
+    }
+
+    await this.infermeshProviderSyncService.syncFromDeviceToken(deviceToken);
   }
 
   private async getAuthSession(): Promise<Session> {
