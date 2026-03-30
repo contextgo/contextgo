@@ -40,20 +40,25 @@ jobs:
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
             VERSION="${VERSION#v}"
+            echo "skip=false" >> $GITHUB_OUTPUT
           else
             # Fetch latest non-prerelease release tag
-            TAG=$(gh release view --repo "${{ github.repository }}" --json tagName --jq '.tagName' 2>/dev/null || echo "")
+            TAG=$(gh api "repos/${{ github.repository }}/releases" --jq 'map(select((.draft | not) and (.prerelease | not)))[0].tag_name // ""' 2>/dev/null || echo "")
             if [ -z "$TAG" ]; then
-              echo "::error::Could not determine latest release tag"
-              exit 1
+              echo "::notice::No stable GitHub release tag found; skipping Homebrew cask verification"
+              echo "version=" >> $GITHUB_OUTPUT
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
             fi
             VERSION="${TAG#v}"
+            echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Expected Homebrew cask version: $VERSION"
 
       - name: Verify cask version
+        if: steps.release.outputs.skip != 'true'
         id: verify
         run: |
           EXPECTED="${{ steps.release.outputs.version }}"
@@ -80,7 +85,7 @@ jobs:
           fi
 
       - name: Check for pending PR
-        if: steps.verify.outputs.status == 'mismatch'
+        if: steps.release.outputs.skip != 'true' && steps.verify.outputs.status == 'mismatch'
         id: check_pr
         env:
           GH_TOKEN: ${{ github.token }}
@@ -102,7 +107,7 @@ jobs:
           fi
 
       - name: Report result
-        if: always() && steps.release.outputs.version != ''
+        if: always() && steps.release.outputs.skip != 'true' && steps.release.outputs.version != ''
         run: |
           EXPECTED="${{ steps.release.outputs.version }}"
           STATUS="${{ steps.verify.outputs.status }}"
