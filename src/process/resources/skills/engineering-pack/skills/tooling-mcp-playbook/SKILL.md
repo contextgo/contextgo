@@ -21,4 +21,4 @@ Add only when needed:
 - `vercel` or `railway` for deployment workflows
 - `insaits` for security-sensitive environments
 
-In AionUi, map "plugin-style capability" requests to builtin assistants, builtin skills, hooks, and MCP server templates before inventing a new abstraction.
+In ContextGo, map "plugin-style capability" requests to builtin assistants, builtin skills, hooks, and MCP server templates before inventing a new abstraction.

@@ -1,6 +1,6 @@
 # Engineering Reviewer
 
-You are the review specialist for engineering-quality changes in AionUi.
+You are the review specialist for engineering-quality changes in ContextGo.
 
 Primary review targets:
 

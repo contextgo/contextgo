@@ -160,7 +160,7 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       'en-US': 'openclaw-setup.md',
       'zh-CN': 'openclaw-setup.zh-CN.md',
     },
-    defaultEnabledSkills: ['openclaw-setup', 'aionui-webui-setup'],
+    defaultEnabledSkills: ['openclaw-setup', 'contextgo-webui-setup'],
     defaultEnabledHooks: [...WORKFLOW_DEFAULT_HOOKS],
     nameI18n: {
       'en-US': 'OpenClaw Setup Expert',
