@@ -37,6 +37,11 @@ on:
         required: false
         type: boolean
         default: false
+      runner_health_check:
+        description: 'Run minimal self-hosted runner diagnostics instead of the build pipeline'
+        required: false
+        type: boolean
+        default: false
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
@@ -44,6 +49,7 @@ env:
 jobs:
   prepare-matrix:
     name: Prepare Build Matrix
+    if: ${{ !inputs.runner_health_check }}
     runs-on: >-
       ${{
         fromJSON(
@@ -159,6 +165,7 @@ jobs:
 
   build-pipeline:
     needs: prepare-matrix
+    if: ${{ !inputs.runner_health_check }}
     uses: ./.github/workflows/_build-reusable.yml
     with:
       matrix: ${{ needs.prepare-matrix.outputs.matrix }}
@@ -169,3 +176,75 @@ jobs:
       upload_installers_only: true
       release_repository: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
     secrets: inherit
+
+  runner-health-shell:
+    name: Runner Health / Shell Smoke
+    if: ${{ inputs.runner_health_check }}
+    runs-on: >-
+      ${{
+        fromJSON(
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+
+    steps:
+      - name: Print runner context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "runner_name=${RUNNER_NAME:-unknown}"
+          echo "runner_os=${RUNNER_OS:-unknown}"
+          echo "runner_arch=${RUNNER_ARCH:-unknown}"
+          echo "workspace=${GITHUB_WORKSPACE}"
+          echo "pwd=$(pwd)"
+          date -u
+
+      - name: Verify basic shell operations
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "${GITHUB_WORKSPACE}"
+          mkdir -p "${RUNNER_TEMP}/runner-health-check"
+          printf 'ok\n' > "${RUNNER_TEMP}/runner-health-check/smoke.txt"
+          cat "${RUNNER_TEMP}/runner-health-check/smoke.txt"
+          uname -a
+
+  runner-health-checkout:
+    name: Runner Health / Checkout Smoke
+    if: ${{ inputs.runner_health_check }}
+    needs: runner-health-shell
+    runs-on: >-
+      ${{
+        fromJSON(
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 1
+          clean: false
+          token: ${{ secrets.GH_TOKEN || github.token }}
+
+      - name: Verify checkout result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          test -f package.json
+          ls -la . | sed -n '1,40p'
