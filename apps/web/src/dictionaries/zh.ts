@@ -1,7 +1,9 @@
 export const zh = {
   navbar: {
-    product: '介绍',
+    product: '产品',
     connect: '连接',
+    docs: '文档',
+    blog: '博客',
     download: '下载',
     theme: {
       toggle: '主题',
@@ -140,6 +142,9 @@ export const zh = {
     rights: 'ContextGo. 保留所有权利。',
     product: '产品',
     connect: '连接',
+    docs: '文档',
+    blog: '博客',
+    changelog: '更新记录',
     download: '下载',
     privacy: '隐私政策',
     terms: '使用条款',

@@ -4,11 +4,25 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Database, Edit3, Share2, Shield, LucideIcon } from 'lucide-react';
+import { ArrowRight, Database, Edit3, Share2, Shield, LucideIcon } from 'lucide-react';
 import ContextParticles from '@/components/ContextParticles';
 import { Dictionary } from '@/app/types';
+import type { ContentCard } from '@/lib/site-content';
 
-export default function HomeClient({ dict, lang }: { dict: Dictionary, lang: string }) {
+export default function HomeClient({
+  dict,
+  lang,
+  resources,
+}: {
+  dict: Dictionary;
+  lang: string;
+  resources: {
+    badge: string;
+    title: string;
+    description: string;
+    cards: ContentCard[];
+  };
+}) {
   const demoRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: demoRef,
@@ -104,6 +118,38 @@ export default function HomeClient({ dict, lang }: { dict: Dictionary, lang: str
               <FeatureCard icon={Edit3} title={dict.philosophy.features.editor.title} desc={dict.philosophy.features.editor.desc} />
               <FeatureCard icon={Share2} title={dict.philosophy.features.connect.title} desc={dict.philosophy.features.connect.desc} />
               <FeatureCard icon={Database} title={dict.philosophy.features.manage.title} desc={dict.philosophy.features.manage.desc} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className='theme-page w-full px-4 py-24'>
+        <div className='container-custom'>
+          <div className='theme-panel-gradient theme-shadow-soft theme-border rounded-[32px] border px-8 py-10 md:px-10 md:py-12'>
+            <div className='theme-surface-secondary theme-border theme-text-tertiary inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em]'>
+              {resources.badge}
+            </div>
+            <h2 className='theme-text-primary mt-5 max-w-4xl text-3xl font-semibold tracking-tight md:text-5xl'>
+              {resources.title}
+            </h2>
+            <p className='theme-text-secondary mt-4 max-w-3xl text-base leading-8'>{resources.description}</p>
+
+            <div className='mt-10 grid gap-5 lg:grid-cols-3'>
+              {resources.cards.map((card) => (
+                <Link
+                  key={card.href}
+                  href={`/${lang}${card.href}`}
+                  className='theme-surface-secondary theme-shadow-card theme-border group rounded-[28px] border px-6 py-6 transition-transform duration-200 hover:-translate-y-1'
+                >
+                  <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>{card.eyebrow}</div>
+                  <h3 className='theme-text-primary mt-3 text-2xl font-semibold tracking-tight'>{card.title}</h3>
+                  <p className='theme-text-secondary mt-3 text-sm leading-7'>{card.summary}</p>
+                  <div className='theme-text-primary mt-5 inline-flex items-center gap-2 text-sm font-medium'>
+                    {card.cta}
+                    <ArrowRight size={16} />
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
         </div>

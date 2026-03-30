@@ -14,6 +14,17 @@ export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lan
   const pathname = usePathname();
   const githubUrl = process.env.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || DEFAULT_GITHUB_URL;
 
+  const linkClass = (href: string, emphasized = false) => {
+    if (emphasized) {
+      return 'theme-button-primary rounded-full px-4 py-2 text-sm font-medium transition-colors';
+    }
+
+    const isActive = pathname === href || pathname?.startsWith(`${href}/`);
+    return isActive
+      ? 'text-sm font-medium theme-text-primary transition-colors'
+      : 'text-sm font-medium theme-text-secondary hover:theme-text-primary transition-colors';
+  };
+
   const switchLocale = (newLocale: string) => {
     if (!pathname) return `/${newLocale}`;
     const segments = pathname.split('/');
@@ -43,22 +54,19 @@ export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lan
         </Link>
         <div className='ml-auto flex items-center gap-3'>
           <div className='hidden md:flex items-center gap-6'>
-            <Link
-              href={`/${lang}`}
-              className='text-sm font-medium theme-text-secondary hover:theme-text-primary transition-colors'
-            >
+            <Link href={`/${lang}`} className={linkClass(`/${lang}`)}>
               {dict.product}
             </Link>
-            <Link
-              href={`/${lang}/connect`}
-              className='text-sm font-medium theme-text-secondary hover:theme-text-primary transition-colors'
-            >
+            <Link href={`/${lang}/connect`} className={linkClass(`/${lang}/connect`)}>
               {dict.connect}
             </Link>
-            <Link
-              href={`/${lang}/download`}
-              className='theme-button-primary rounded-full px-4 py-2 text-sm font-medium transition-colors'
-            >
+            <Link href={`/${lang}/docs`} className={linkClass(`/${lang}/docs`)}>
+              {dict.docs}
+            </Link>
+            <Link href={`/${lang}/blog`} className={linkClass(`/${lang}/blog`)}>
+              {dict.blog}
+            </Link>
+            <Link href={`/${lang}/download`} className={linkClass(`/${lang}/download`, true)}>
               {dict.download}
             </Link>
 
