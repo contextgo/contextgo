@@ -7,7 +7,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../service/AuthService';
 import { createAuthMiddleware } from './TokenMiddleware';
-import { SECURITY_CONFIG } from '../../config/constants';
+import { SECURITY_CONFIG, SERVER_CONFIG } from '../../config/constants';
 
 // Express Request type extension is defined in src/types/express.d.ts
 // Express Request 类型扩展定义在 src/types/express.d.ts
@@ -18,6 +18,15 @@ import { SECURITY_CONFIG } from '../../config/constants';
  */
 export class AuthMiddleware {
   private static readonly jsonAuthMiddleware = createAuthMiddleware('json');
+  private static readonly sensitiveQueryKeys = new Set([
+    'access_token',
+    'code',
+    'password',
+    'qrToken',
+    'refresh_token',
+    'state',
+    'token',
+  ]);
 
   /**
    * JWT 认证中间件
@@ -82,17 +91,34 @@ export class AuthMiddleware {
   public static requestLoggingMiddleware(req: Request, res: Response, next: NextFunction): void {
     const start = Date.now();
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const loggedUrl = AuthMiddleware.sanitizeLoggedUrl(req.originalUrl || req.url);
 
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${ip}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${loggedUrl} - ${ip}`);
 
     // 记录响应时间
     // Log response time
     res.on('finish', () => {
       const duration = Date.now() - start;
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} - ${duration}ms`);
+      console.log(`[${new Date().toISOString()}] ${req.method} ${loggedUrl} - ${res.statusCode} - ${duration}ms`);
     });
 
     next();
+  }
+
+  private static sanitizeLoggedUrl(rawUrl: string): string {
+    try {
+      const parsedUrl = new URL(rawUrl, SERVER_CONFIG.BASE_URL);
+      for (const key of AuthMiddleware.sensitiveQueryKeys) {
+        if (parsedUrl.searchParams.has(key)) {
+          parsedUrl.searchParams.set(key, '[REDACTED]');
+        }
+      }
+
+      const search = parsedUrl.searchParams.toString();
+      return `${parsedUrl.pathname}${search ? `?${search}` : ''}`;
+    } catch {
+      return rawUrl.split('?')[0] || rawUrl;
+    }
   }
 
   /**

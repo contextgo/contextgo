@@ -8,7 +8,7 @@ import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 
 // CSRF token cookie/header identifiers (shared by server & WebUI)
 // CSRF Token 的 Cookie / Header 名称（服务端与 WebUI 共享）
-export const CSRF_COOKIE_NAME = 'aionui-csrf-token';
+export const CSRF_COOKIE_NAME = 'contextgo-csrf-token';
 export const CSRF_HEADER_NAME = 'x-csrf-token';
 /**
  * 集中配置管理
@@ -21,6 +21,10 @@ export const AUTH_CONFIG = {
   TOKEN: {
     // 会话 JWT 过期时间（Session JWT expiry duration）
     SESSION_EXPIRY: '24h' as const,
+    // JWT 签发者（JWT issuer）
+    ISSUER: 'contextgo' as const,
+    // JWT 受众（JWT audience）
+    AUDIENCE: 'contextgo-webui' as const,
     // WebSocket Token 过期时间 - 当前 WebSocket 复用 Web 登录 token，此配置保留用于未来可能的独立方案
     // WebSocket token expiry - Currently WebSocket reuses web login token, reserved for future independent token scheme
     WEBSOCKET_EXPIRY: '5m' as const,
@@ -50,7 +54,7 @@ export const AUTH_CONFIG = {
   // Cookie 配置（Cookie configuration）
   COOKIE: {
     // Cookie 名称（Cookie name）
-    NAME: 'aionui-session' as const,
+    NAME: 'contextgo-session' as const,
     OPTIONS: {
       // 仅允许 HTTP 访问 Cookie（httpOnly flag）
       httpOnly: true,
@@ -140,8 +144,8 @@ export const SERVER_CONFIG = {
  *
  * 注意：远程模式下如果使用 HTTP，cookie 仍然可以工作（secure=false）
  * Note: In remote mode with HTTP, cookies still work (secure=false)
- * 建议生产环境配置 HTTPS 并设置 AIONUI_HTTPS=true
- * Recommend configuring HTTPS in production and setting AIONUI_HTTPS=true
+ * 建议生产环境配置 HTTPS 并设置 CONTEXTGO_HTTPS=true
+ * Recommend configuring HTTPS in production and setting CONTEXTGO_HTTPS=true
  */
 export function getCookieOptions(): {
   httpOnly: boolean;
@@ -152,7 +156,7 @@ export function getCookieOptions(): {
   // 只有当明确配置 HTTPS 时才启用 secure 标志
   // Only enable secure flag when HTTPS is explicitly configured
   const isHttps =
-    process.env.AIONUI_HTTPS === 'true' || (process.env.NODE_ENV === 'production' && process.env.HTTPS === 'true');
+    process.env.CONTEXTGO_HTTPS === 'true' || (process.env.NODE_ENV === 'production' && process.env.HTTPS === 'true');
 
   return {
     httpOnly: AUTH_CONFIG.COOKIE.OPTIONS.httpOnly,

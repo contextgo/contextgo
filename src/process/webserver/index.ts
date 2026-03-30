@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,12 +10,13 @@ import { WebSocketServer } from 'ws';
 import { execSync } from 'child_process';
 import { networkInterfaces } from 'os';
 import { AuthService } from '@process/webserver/auth/service/AuthService';
-import { UserRepository } from '@process/webserver/auth/repository/UserRepository';
+import { UserRepository, type AuthUser } from '@process/webserver/auth/repository/UserRepository';
 import { AUTH_CONFIG, SERVER_CONFIG } from './config/constants';
 import { initWebAdapter } from './adapter';
 import { setupBasicMiddleware, setupCors, setupErrorHandler } from './setup';
 import { registerAuthRoutes } from './routes/authRoutes';
 import { registerApiRoutes } from './routes/apiRoutes';
+import { registerOAuthRoutes } from './routes/oauthRoutes';
 import { registerStaticRoutes } from './routes/staticRoutes';
 import { generateQRLoginUrlDirect } from '@process/bridge/webuiQR';
 
@@ -30,6 +31,10 @@ let initialAdminPassword: string | null = null;
 type QRCodeTerminal = {
   generate: (text: string, options?: { small?: boolean }, cb?: (qr: string) => void) => void;
 };
+
+function hasValidPassword(user: Pick<AuthUser, 'password_hash'> | null): boolean {
+  return !!user && typeof user.password_hash === 'string' && user.password_hash.trim().length > 0;
+}
 
 function loadQRCodeTerminal(): QRCodeTerminal | null {
   try {
@@ -144,11 +149,6 @@ async function initializeDefaultAdmin(): Promise<{
   const systemUser = await UserRepository.getSystemUser();
   const existingAdmin = await UserRepository.findByUsername(username);
 
-  // 已存在且密码有效则视为完成初始化
-  // Treat existing admin with valid password as already initialized
-  const hasValidPassword = (user: typeof existingAdmin): boolean =>
-    !!user && typeof user.password_hash === 'string' && user.password_hash.trim().length > 0;
-
   // 如果已经有有效的管理员用户，直接跳过初始化
   // Skip initialization if a valid admin already exists
   if (hasValidPassword(existingAdmin)) {
@@ -202,7 +202,7 @@ function displayInitialCredentials(
   const { qrUrl } = generateQRLoginUrlDirect(port, allowRemote);
 
   console.log('\n' + '='.repeat(70));
-  console.log('🎉 AionUI Web Server Started Successfully! / AionUI Web 服务器启动成功！');
+  console.log('🎉 ContextGo Web Server Started Successfully! / ContextGo Web 服务器启动成功！');
   console.log('='.repeat(70));
   console.log(`\n📍 Local URL / 本地地址:    ${localUrl}`);
 
@@ -274,6 +274,7 @@ export async function startWebServerWithInstance(port: number, allowRemote = fal
 
   // 注册路由 / Register routes
   registerAuthRoutes(app);
+  registerOAuthRoutes(app);
   registerApiRoutes(app);
   registerStaticRoutes(app);
 

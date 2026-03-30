@@ -6,7 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import { joinPath } from '@/common/chat/chatLib';
-import type { DiscussionGroupOrchestration, GroupCollaborationConfig } from '@/common/config/storage';
+import type { GroupCollaborationConfig, GroupOrchestration } from '@/common/config/storage';
 import { buildHarnessArtifactPaths, type HarnessArtifactManifest } from '@/common/utils';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { Button, Spin, Typography } from '@arco-design/web-react';
@@ -19,7 +19,7 @@ type HarnessRunSummaryCardProps = {
   workspace?: string;
   running: boolean;
   collaboration?: GroupCollaborationConfig;
-  orchestration?: DiscussionGroupOrchestration;
+  orchestration?: GroupOrchestration;
 };
 
 const formatUpdatedAt = (value: string): string => {
@@ -183,7 +183,7 @@ const HarnessRunSummaryCard = ({
               {t(
                 `conversation.group.mode${manifest.orchestrationMode.charAt(0).toUpperCase()}${manifest.orchestrationMode.slice(1)}`
               )}{' '}
-              · {orchestration?.rounds || 2}
+              · {orchestration?.kind === 'discussion' ? orchestration.rounds : 2}
             </span>
             {latestRound ? (
               <>

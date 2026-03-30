@@ -21,7 +21,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import MigrationModal from './components/MigrationModal';
 import PasteConfirmModal from './components/PasteConfirmModal';
-import DiscussionParticipantsPanel from './components/DiscussionParticipantsPanel';
+import GroupParticipantsPanel from './components/GroupParticipantsPanel';
 import SessionHooksDrawer from './components/SessionHooksDrawer';
 import WorkspaceContextMenu from './components/WorkspaceContextMenu';
 import WorkspaceDialogs from './components/WorkspaceDialogs';
@@ -204,8 +204,8 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
 
   // Check if this is a temporary workspace (check both path and root folder name)
   const isTemporaryWorkspace = checkIsTemporaryWorkspace(workspace) || checkIsTemporaryWorkspace(rootName);
-  const discussionParticipants = conversation.type === 'group' ? (conversation.extra.participants ?? []) : [];
-  const shouldShowParticipantsToggle = discussionParticipants.length > 0;
+  const groupParticipants = conversation.type === 'group' ? (conversation.extra.participants ?? []) : [];
+  const shouldShowParticipantsToggle = groupParticipants.length > 0;
 
   // Get workspace display name using shared utility
   const workspaceDisplayName = useMemo(() => {
@@ -259,8 +259,8 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
                 className='pointer-events-auto max-w-full'
                 style={{ width: isMobile ? 'min(320px, calc(100vw - 32px))' : '340px' }}
               >
-                <DiscussionParticipantsPanel
-                  participants={discussionParticipants}
+                <GroupParticipantsPanel
+                  participants={groupParticipants}
                   collaboration={conversation.type === 'group' ? conversation.extra.collaboration : undefined}
                   orchestration={conversation.type === 'group' ? conversation.extra.orchestration : undefined}
                   workspace={conversation.extra.workspace}
@@ -281,7 +281,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
               {isParticipantsPanelOpen
                 ? t('conversation.workspace.groupMembers.close')
                 : t('conversation.workspace.groupMembers.open', {
-                    count: discussionParticipants.length,
+                    count: groupParticipants.length,
                   })}
             </Button>
           </div>,

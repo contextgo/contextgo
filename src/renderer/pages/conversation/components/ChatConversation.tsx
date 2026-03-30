@@ -30,7 +30,7 @@ import AcpModelSelector from '@/renderer/components/agent/AcpModelSelector';
 import GeminiModelSelector from '../platforms/gemini/GeminiModelSelector';
 import { useGeminiModelSelection } from '../platforms/gemini/useGeminiModelSelection';
 import { usePreviewContext } from '../Preview';
-import StarOfficeMonitorCard from '../platforms/openclaw/StarOfficeMonitorCard.tsx';
+import { renderConversationHeaderAddons } from '../platforms/conversationHeaderAddons';
 // import SkillRuleGenerator from './components/SkillRuleGenerator'; // Temporarily hidden
 
 const _AssociatedConversation: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
@@ -285,16 +285,14 @@ const ChatConversation: React.FC<{
   const headerExtraNode = useMemo(
     () => (
       <div className='flex items-center gap-8px'>
-        {conversation?.type === 'openclaw-gateway' && (
-          <div className='shrink-0'>
-            <StarOfficeMonitorCard
-              conversationId={conversation.id}
-              onOpenUrl={(url, metadata) => {
+        {conversation
+          ? renderConversationHeaderAddons({
+              conversation,
+              openUrlPreview: (url, metadata) => {
                 openPreview(url, 'url', metadata);
-              }}
-            />
-          </div>
-        )}
+              },
+            })
+          : null}
         {conversation ? (
           <div className='shrink-0'>
             <CronJobManager conversation={conversation} />

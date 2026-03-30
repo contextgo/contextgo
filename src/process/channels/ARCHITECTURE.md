@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-Channels 是 AionUi 的多平台 AI 助手框架，将 AionUi 的 AI 能力（Gemini、Claude、Codex）通过即时通讯平台暴露给远程用户。目前支持三个平台：
+Channels 是 ContextGo 的多平台 AI 助手框架，将 ContextGo 的 AI 能力（Gemini、Claude、Codex）通过即时通讯平台暴露给远程用户。目前支持三个平台：
 
 | 平台                 | SDK                     | 连接方式              | 消息更新                        |
 | -------------------- | ----------------------- | --------------------- | ------------------------------- |
@@ -121,7 +121,7 @@ graph TB
         全局事件总线"]
     end
 
-    subgraph "AionUi Core"
+    subgraph "ContextGo Core"
         WM["WorkerManage
         Agent 进程管理"]
         AGT["Agent Task
@@ -380,10 +380,10 @@ Agent 请求确认 → Agent Task 广播 tool_group (status=Confirming)
 
 Agent Task（如 GeminiAgentManager）发送消息时同时通过两条路径：
 
-1. **ipcBridge** → Renderer 进程（更新 AionUi 桌面界面）
+1. **ipcBridge** → Renderer 进程（更新 ContextGo 桌面界面）
 2. **channelEventBus** → ChannelMessageService（更新 IM 平台消息）
 
-这两条路径互不干扰，实现了 AionUi 桌面端和 IM 端的同步显示。
+这两条路径互不干扰，实现了 ContextGo 桌面端和 IM 端的同步显示。
 
 ---
 
@@ -414,7 +414,7 @@ Plugin 配置存储在 `assistant_plugins` 表中，`config` 列以 JSON 格式�
 1. IM 用户首次发消息 → 生成 **6 位数字**配对码（有效期 **10 分钟**）
 2. 配对码存入 `assistant_pairing_codes` 表，状态为 `pending`
 3. 通过 `channelBridge.pairingRequested.emit()` 通知 Settings UI
-4. 本地用户在 AionUi Settings → Channels 中点击 "Approve"
+4. 本地用户在 ContextGo Settings → Channels 中点击 "Approve"
 5. `PairingService.approvePairing()` 创建 `assistant_users` 记录
 6. 通过 `channelBridge.userAuthorized.emit()` 通知 Settings UI
 7. 后台定时清理（每 60 秒），清除过期请求

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -18,10 +18,15 @@ import type {
   TChatConversation,
   TProviderWithModel,
   ICssTheme,
+  ConversationSpaceBinding,
+  ConversationWorkspaceCompat,
   ConversationGroupMeta,
-  DiscussionGroupMode,
   DiscussionGroupParticipant,
   DiscussionGroupParticipantType,
+  GroupCollaborationConfig,
+  GroupOrchestration,
+  GroupParticipantRole,
+  WorkflowGroupRunState,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
 import type { CloudAuthProviderId, CloudStatus, CloudSyncSummary } from '../types/cloud';
@@ -70,7 +75,14 @@ export const conversation = {
   listChanged: bridge.buildEmitter<IConversationListChangedEvent>('conversation.list-changed'),
   getWorkspace: bridge.buildProvider<
     IDirOrFile[],
-    { conversation_id: string; workspace: string; path: string; search?: string }
+    {
+      conversation_id: string;
+      /** @deprecated Use workingDirectory. The bridge channel name is kept for compatibility. */
+      workspace: string;
+      workingDirectory?: string;
+      path: string;
+      search?: string;
+    }
   >('conversation.get-workspace'),
   responseSearchWorkSpace: bridge.buildProvider<void, { file: number; dir: number; match?: IDirOrFile }>(
     'conversation.response.search.workspace'
@@ -223,6 +235,12 @@ export const fs = {
   fetchRemoteImage: bridge.buildProvider<string, { url: string }>('fetch-remote-image'), // 远程图片转base64
   readFile: bridge.buildProvider<string, { path: string }>('read-file'), // 读取文件内容（UTF-8）
   readFileBuffer: bridge.buildProvider<ArrayBuffer, { path: string }>('read-file-buffer'), // 读取二进制文件为 ArrayBuffer
+  getGitRepositoryInfo: bridge.buildProvider<
+    IBridgeResponse<IGitRepositoryInfo>,
+    {
+      path: string;
+    }
+  >('get-git-repository-info'),
   createTempFile: bridge.buildProvider<string, { fileName: string }>('create-temp-file'), // 创建临时文件
   writeFile: bridge.buildProvider<boolean, { path: string; data: Uint8Array | string }>('write-file'), // 写入文件
   createZip: bridge.buildProvider<
@@ -336,7 +354,40 @@ export const fs = {
     'add-custom-external-path'
   ),
   removeCustomExternalPath: bridge.buildProvider<IBridgeResponse, { path: string }>('remove-custom-external-path'),
-  // Skills Market: inject/remove the aionui-skills builtin skill
+  // Skill Market: remote catalog search and package install
+  searchSkillMarket: bridge.buildProvider<
+    IBridgeResponse<{
+      items: Array<{
+        id: string;
+        name: string;
+        displayName: string;
+        version: string;
+        author: string;
+        description: string;
+        categories: string[];
+        tags: string[];
+        homepage?: string;
+        readmeUrl?: string;
+        archives: Array<{ source: string; relativePath: string; label?: string }>;
+        popularity: number;
+        installs: number;
+        stars: number;
+      }>;
+      total: number;
+      totalAvailable: number;
+      siteUrl: string;
+      pageSize: number;
+      featuredCount: number;
+      categories: string[];
+      sources: Record<string, number>;
+    }>,
+    { query?: string; limit?: number; offset?: number; forceRefresh?: boolean }
+  >('search-skill-market'),
+  installSkillMarketSkill: bridge.buildProvider<
+    IBridgeResponse<{ skillName: string; installedPath: string; archiveUrl: string }>,
+    { skillId: string; archive?: { source: string; relativePath: string; label?: string } }
+  >('install-skill-market-skill'),
+  // Skills Market: inject/remove the bundled builtin skill
   enableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('enable-skills-market'),
   disableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('disable-skills-market'),
 };
@@ -630,15 +681,6 @@ export const document = {
   >('document.convert'),
 };
 
-// PPT preview via officecli watch
-export const pptPreview = {
-  start: bridge.buildProvider<{ url: string }, { filePath: string }>('ppt-preview.start'),
-  stop: bridge.buildProvider<void, { filePath: string }>('ppt-preview.stop'),
-  status: bridge.buildEmitter<{ state: 'starting' | 'installing' | 'ready' | 'error'; message?: string }>(
-    'ppt-preview.status'
-  ),
-};
-
 // Deep link protocol handling / 深度链接协议处理
 export const deepLink = {
   /** Emitted when app is opened via contextgo:// protocol URL */
@@ -857,8 +899,16 @@ export type NonGroupConversationType = 'gemini' | 'acp' | 'codex' | 'openclaw-ga
 export type ConversationType = NonGroupConversationType | 'group';
 
 export interface ICreateConversationExtra {
-  workspace?: string;
-  customWorkspace?: boolean;
+  /** Logical Space identifier for long-lived ownership / 长期上下文归属的逻辑 Space ID */
+  spaceId?: ConversationSpaceBinding['spaceId'];
+  /** Selected mount identifier on the current device/runtime / 当前设备或运行时选中的挂载点 ID */
+  mountId?: ConversationSpaceBinding['mountId'];
+  /** Physical working directory used by the agent runtime / Agent 运行时使用的物理工作目录 */
+  workingDirectory?: ConversationSpaceBinding['workingDirectory'];
+  /** @deprecated Use workingDirectory instead. Kept for compatibility during workspace terminology migration. */
+  workspace?: ConversationWorkspaceCompat['workspace'];
+  /** @deprecated Prefer mountId or workingDirectory. Kept for compatibility with existing runtime flows. */
+  customWorkspace?: ConversationWorkspaceCompat['customWorkspace'];
   defaultFiles?: string[];
   backend?: AcpBackendAll;
   cliPath?: string;
@@ -901,6 +951,13 @@ export interface ICreateConversationExtra {
   deferInitialWorkspaceLoad?: boolean;
   /** Runtime validation snapshot used for post-switch strong checks (OpenClaw) */
   runtimeValidation?: {
+    /** Logical Space expected by the runtime binding */
+    expectedSpaceId?: string;
+    /** Device-local Mount expected by the runtime binding */
+    expectedMountId?: string;
+    /** Physical working directory expected by the runtime */
+    expectedWorkingDirectory?: string;
+    /** @deprecated Use expectedWorkingDirectory instead. */
     expectedWorkspace?: string;
     expectedBackend?: string;
     expectedAgentName?: string;
@@ -912,15 +969,16 @@ export interface ICreateConversationExtra {
   };
   /** Explicit marker for temporary health-check conversations */
   isHealthCheck?: boolean;
-  /** Discussion group child conversation metadata */
+  /** Group child conversation metadata */
   groupMeta?: ConversationGroupMeta;
-  /** Discussion group participants */
-  participants?: Array<IDiscussionGroupParticipantCreateParams | DiscussionGroupParticipant>;
-  /** Discussion orchestration */
-  orchestration?: {
-    mode: DiscussionGroupMode;
-    rounds?: 1 | 2;
-  };
+  /** Group participants */
+  participants?: Array<IGroupParticipantCreateParams | DiscussionGroupParticipant>;
+  /** Group orchestration */
+  orchestration?: GroupOrchestration;
+  /** Group collaboration mode + execution boundary */
+  collaboration?: GroupCollaborationConfig;
+  /** Workflow runtime state for long-running group runs */
+  runState?: WorkflowGroupRunState;
 }
 
 export interface ICreateConversationParams {
@@ -935,7 +993,7 @@ export type IAssistantConversationCreateParams = ICreateConversationParams & {
   type: NonGroupConversationType;
 };
 
-export interface IDiscussionGroupParticipantCreateParams {
+export interface IGroupParticipantCreateParams {
   id: string;
   participantType: DiscussionGroupParticipantType;
   participantKey: string;
@@ -944,15 +1002,20 @@ export interface IDiscussionGroupParticipantCreateParams {
   name: string;
   avatar?: string;
   description?: string;
+  role?: GroupParticipantRole;
   conversation: IAssistantConversationCreateParams;
 }
 
-export type IDiscussionGroupCreateParams = ICreateConversationParams & {
+export type IDiscussionGroupParticipantCreateParams = IGroupParticipantCreateParams;
+
+export type IGroupConversationCreateParams = ICreateConversationParams & {
   type: 'group';
   extra: ICreateConversationExtra & {
-    participants: IDiscussionGroupParticipantCreateParams[];
+    participants: IGroupParticipantCreateParams[];
   };
 };
+
+export type IDiscussionGroupCreateParams = IGroupConversationCreateParams;
 interface IResetConversationParams {
   id?: string;
   gemini?: {
@@ -968,6 +1031,14 @@ export interface IDirOrFile {
   isDir: boolean;
   isFile: boolean;
   children?: Array<IDirOrFile>;
+}
+
+export interface IGitRepositoryInfo {
+  isRepository: boolean;
+  repositoryRoot?: string;
+  branch?: string | null;
+  gitDir?: string | null;
+  remoteUrl?: string | null;
 }
 
 // 文件元数据接口
@@ -1157,6 +1228,10 @@ export const extensions = {
 // ==================== Channel API ====================
 
 import type {
+  IChannelBindingCatalog,
+  IChannelBinding,
+  IChannelHandoffRequest,
+  IChannelHandoffResult,
   IChannelPairingRequest,
   IChannelPluginStatus,
   IChannelSession,
@@ -1172,7 +1247,7 @@ export const channel = {
   disablePlugin: bridge.buildProvider<IBridgeResponse, { pluginId: string }>('channel.disable-plugin'),
   testPlugin: bridge.buildProvider<
     IBridgeResponse<{ success: boolean; botUsername?: string; error?: string }>,
-    { pluginId: string; token: string; extraConfig?: { appId?: string; appSecret?: string } }
+    { pluginId: string; token: string; extraConfig?: Record<string, string | boolean | undefined> }
   >('channel.test-plugin'),
 
   // Pairing Management
@@ -1188,6 +1263,19 @@ export const channel = {
 
   // Session Management (MVP: read-only view)
   getActiveSessions: bridge.buildProvider<IBridgeResponse<IChannelSession[]>, void>('channel.get-active-sessions'),
+
+  // Binding Management
+  getBindingCatalog: bridge.buildProvider<IBridgeResponse<IChannelBindingCatalog>, { connectorId?: string }>(
+    'channel.get-binding-catalog'
+  ),
+  getBindings: bridge.buildProvider<IBridgeResponse<IChannelBinding[]>, { connectorId?: string } | void>(
+    'channel.get-bindings'
+  ),
+  upsertBinding: bridge.buildProvider<IBridgeResponse, { binding: IChannelBinding }>('channel.upsert-binding'),
+  deleteBinding: bridge.buildProvider<IBridgeResponse, { bindingId: string }>('channel.delete-binding'),
+  handoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffResult>, IChannelHandoffRequest>(
+    'channel.handoff-session'
+  ),
 
   // Settings Sync
   syncChannelSettings: bridge.buildProvider<

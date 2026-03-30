@@ -24,7 +24,7 @@ import { useConversationAgents } from '../hooks/useConversationAgents';
 import { applyDefaultConversationName } from '../utils/newConversationName';
 import { buildCliAgentParams, buildPresetAssistantParams } from '../utils/createConversationParams';
 import { iconColors } from '@/renderer/styles/colors';
-import CreateDiscussionGroupModal from '../platforms/group/CreateDiscussionGroupModal';
+import CreateGroupModal from '../platforms/group/CreateGroupModal';
 
 const TAB_OVERFLOW_THRESHOLD = 10;
 const ICON_ONLY_TAB_THRESHOLD = 10;
@@ -393,7 +393,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
     [activeTabId, cliAgents, defaultConversationName, i18n.language, navigate, openTab, openTabs, presetAssistants, t]
   );
 
-  const handleOpenDiscussionGroup = useCallback(() => {
+  const handleOpenGroupModal = useCallback(() => {
     setGroupModalVisible(true);
   }, []);
 
@@ -402,7 +402,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
       <Menu
         onClickMenuItem={(key) => {
           if (key === 'group') {
-            handleOpenDiscussionGroup();
+            handleOpenGroupModal();
             return;
           }
 
@@ -472,7 +472,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
         </Menu.Item>
       </Menu>
     ),
-    [cliAgents, handleCreateConversation, handleOpenDiscussionGroup, presetAssistants, t]
+    [cliAgents, handleCreateConversation, handleOpenGroupModal, presetAssistants, t]
   );
 
   const isDropdownDisabled = isLoading || !currentWorkspaceTab?.workspace;
@@ -488,7 +488,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
         title={t('conversation.entry.create')}
         menu={renderCreateMenu()}
       />
-      <CreateDiscussionGroupModal
+      <CreateGroupModal
         visible={groupModalVisible}
         workspace={currentWorkspaceTab?.workspace}
         cliAgents={cliAgents}

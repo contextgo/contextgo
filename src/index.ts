@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -66,11 +66,11 @@ import electronSquirrelStartup from 'electron-squirrel-startup';
 // Acquire lock early so the second instance quits before doing unnecessary work.
 // When a second instance starts (e.g. from protocol URL), it sends its data
 // to the first instance via second-instance event, then quits.
-const isE2ETestMode = process.env.AIONUI_E2E_TEST === '1';
+const isE2ETestMode = process.env.CONTEXTGO_E2E_TEST === '1';
 const deepLinkFromArgv = process.argv.find((arg) => arg.startsWith(`${PROTOCOL_SCHEME}://`));
 const gotTheLock = isE2ETestMode ? true : app.requestSingleInstanceLock({ deepLinkUrl: deepLinkFromArgv });
 if (!gotTheLock) {
-  console.warn('[AionUi] Another instance is already running; current process will exit.');
+  console.warn('[ContextGo] Another instance is already running; current process will exit.');
   app.quit();
 } else {
   app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
@@ -90,7 +90,7 @@ if (!gotTheLock) {
       showOrCreateMainWindow({
         mainWindow,
         createWindow: () => {
-          console.log('[AionUi] second-instance received with no active main window, recreating main window');
+          console.log('[ContextGo] second-instance received with no active main window, recreating main window');
           createWindow();
         },
       });
@@ -190,7 +190,7 @@ let isExplicitQuit = false;
 let mainWindow: BrowserWindow;
 
 const createWindow = (): void => {
-  console.log('[AionUi] Creating main window...');
+  console.log('[ContextGo] Creating main window...');
   // Get primary display size
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
@@ -237,25 +237,25 @@ const createWindow = (): void => {
       webviewTag: true, // 启用 webview 标签用于 HTML 预览 / Enable webview tag for HTML preview
     },
   });
-  console.log(`[AionUi] Main window created (id=${mainWindow.id})`);
+  console.log(`[ContextGo] Main window created (id=${mainWindow.id})`);
 
   // Show window after content is ready to prevent FOUC (Flash of Unstyled Content)
   // Use 'ready-to-show' which fires when renderer has painted first frame,
   // combined with 'did-finish-load' as belt-and-suspenders approach.
   const showWindow = () => {
     if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
-      console.log('[AionUi] Showing main window');
+      console.log('[ContextGo] Showing main window');
       mainWindow.show();
       mainWindow.focus();
     }
   };
   mainWindow.once('ready-to-show', () => {
-    console.log('[AionUi] Window ready-to-show');
+    console.log('[ContextGo] Window ready-to-show');
     showWindow();
   });
   // Belt-and-suspenders: also show on did-finish-load in case ready-to-show already fired
   mainWindow.webContents.once('did-finish-load', () => {
-    console.log('[AionUi] Renderer did-finish-load');
+    console.log('[ContextGo] Renderer did-finish-load');
     showWindow();
   });
   // Fallback: show window after 5s even if events don't fire (e.g. loadURL failure)
@@ -272,7 +272,7 @@ const createWindow = (): void => {
   // 初始化自动更新服务（通过环境变量禁用时跳过，例如 E2E / CI 场景）
   const isCiRuntime = process.env.CI === 'true' || process.env.CI === '1' || process.env.GITHUB_ACTIONS === 'true';
   const disableAutoUpdater =
-    process.env.AIONUI_DISABLE_AUTO_UPDATE === '1' || process.env.AIONUI_E2E_TEST === '1' || isCiRuntime;
+    process.env.CONTEXTGO_DISABLE_AUTO_UPDATE === '1' || process.env.CONTEXTGO_E2E_TEST === '1' || isCiRuntime;
   if (!disableAutoUpdater) {
     Promise.all([import('./process/services/autoUpdaterService'), import('./process/bridge/updateBridge')])
       .then(([{ autoUpdaterService }, { createAutoUpdateStatusBroadcast }]) => {
@@ -289,7 +289,7 @@ const createWindow = (): void => {
         console.error('[App] Failed to initialize autoUpdaterService:', error);
       });
   } else {
-    console.log('[AionUi] Auto-updater disabled via env/CI guard');
+    console.log('[ContextGo] Auto-updater disabled via env/CI guard');
   }
 
   // Load the renderer: dev server URL in development, built HTML file in production
@@ -324,52 +324,52 @@ const createWindow = (): void => {
       return;
     }
 
-    console.warn('[AionUi] Blocked unexpected main-window navigation:', targetUrl);
+    console.warn('[ContextGo] Blocked unexpected main-window navigation:', targetUrl);
     event.preventDefault();
 
     const currentUrl = mainWindow.webContents.getURL();
     if (!isAllowedMainWindowNavigation(currentUrl)) {
       if (!app.isPackaged && rendererUrl) {
         void mainWindow.loadURL(rendererUrl).catch((error) => {
-          console.error('[AionUi] Failed to recover renderer URL after blocked navigation:', error);
+          console.error('[ContextGo] Failed to recover renderer URL after blocked navigation:', error);
         });
       } else {
         void mainWindow.loadURL(fallbackFileUrl).catch((error) => {
-          console.error('[AionUi] Failed to recover renderer file after blocked navigation:', error);
+          console.error('[ContextGo] Failed to recover renderer file after blocked navigation:', error);
         });
       }
     }
   });
 
   if (!app.isPackaged && rendererUrl) {
-    console.log(`[AionUi] Loading renderer URL: ${rendererUrl}`);
+    console.log(`[ContextGo] Loading renderer URL: ${rendererUrl}`);
     mainWindow.loadURL(rendererUrl).catch((error) => {
-      console.error('[AionUi] loadURL failed, falling back to file:', error.message || error);
+      console.error('[ContextGo] loadURL failed, falling back to file:', error.message || error);
       mainWindow.loadFile(fallbackFile).catch((e2) => {
-        console.error('[AionUi] loadFile fallback also failed:', e2.message || e2);
+        console.error('[ContextGo] loadFile fallback also failed:', e2.message || e2);
       });
     });
   } else {
-    console.log(`[AionUi] Loading renderer file: ${fallbackFile}`);
+    console.log(`[ContextGo] Loading renderer file: ${fallbackFile}`);
     mainWindow.loadFile(fallbackFile).catch((error) => {
-      console.error('[AionUi] loadFile failed:', error.message || error);
+      console.error('[ContextGo] loadFile failed:', error.message || error);
     });
   }
 
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-    console.error('[AionUi] did-fail-load:', { errorCode, errorDescription, validatedURL, isMainFrame });
+    console.error('[ContextGo] did-fail-load:', { errorCode, errorDescription, validatedURL, isMainFrame });
   });
 
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
-    console.error('[AionUi] render-process-gone:', details);
+    console.error('[ContextGo] render-process-gone:', details);
   });
 
   mainWindow.webContents.on('unresponsive', () => {
-    console.warn('[AionUi] Renderer became unresponsive');
+    console.warn('[ContextGo] Renderer became unresponsive');
   });
 
   mainWindow.on('closed', () => {
-    console.log('[AionUi] Main window closed');
+    console.log('[ContextGo] Main window closed');
   });
 
   // DevTools is no longer auto-opened at startup.
@@ -396,7 +396,7 @@ const createWindow = (): void => {
 
 const handleAppReady = async (): Promise<void> => {
   const t0 = performance.now();
-  const mark = (label: string) => console.log(`[AionUi:ready] ${label} +${Math.round(performance.now() - t0)}ms`);
+  const mark = (label: string) => console.log(`[ContextGo:ready] ${label} +${Math.round(performance.now() - t0)}ms`);
   mark('start');
 
   // CLI mode: print app version and exit immediately (used by CI smoke tests)
@@ -667,7 +667,7 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', async () => {
-  console.log('[AionUi] before-quit');
+  console.log('[ContextGo] before-quit');
   setIsQuitting(true);
   isExplicitQuit = true;
   destroyTray();
@@ -690,11 +690,11 @@ app.on('before-quit', async () => {
 });
 
 app.on('will-quit', () => {
-  console.log('[AionUi] will-quit');
+  console.log('[ContextGo] will-quit');
 });
 
 app.on('quit', (_event, exitCode) => {
-  console.log(`[AionUi] quit (exitCode=${exitCode})`);
+  console.log(`[ContextGo] quit (exitCode=${exitCode})`);
 });
 
 // In this file you can include the rest of your app's specific main process

@@ -5,22 +5,19 @@
  */
 
 import type { TMessage } from '@/common/chat/chatLib';
-import type { TChatConversation } from '@/common/config/storage';
-import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
-import { getDatabase } from '@process/services/database';
-import { ProcessConfig } from '@process/utils/initStorage';
-import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
 import { buildChatErrorResponse, chatActions } from '../actions/ChatActions';
 import { handlePairingShow, platformActions } from '../actions/PlatformActions';
-import { getChannelDefaultModel, systemActions } from '../actions/SystemActions';
+import { systemActions } from '../actions/SystemActions';
 import type { IActionContext, IRegisteredAction } from '../actions/types';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
+import { getChannelRouteResolver } from '../core/ChannelRouteResolver';
 import type { SessionManager } from '../core/SessionManager';
 import type { PairingService } from '../pairing/PairingService';
 import type { PluginMessageHandler } from '../plugins/BasePlugin';
-import { getChannelConversationName, resolveChannelConvType } from '../types';
 import { createMainMenuCard, createErrorRecoveryCard, createToolConfirmationCard } from '../plugins/lark/LarkCards';
 import { convertHtmlToLarkMarkdown } from '../plugins/lark/LarkAdapter';
+import { convertHtmlToDiscordMarkdown } from '../plugins/discord/DiscordAdapter';
+import { convertHtmlToSlackMrkdwn } from '../plugins/slack/SlackAdapter';
 import {
   createMainMenuCard as createDingTalkMainMenuCard,
   createErrorRecoveryCard as createDingTalkErrorRecoveryCard,
@@ -30,100 +27,138 @@ import {
 import { convertHtmlToDingTalkMarkdown } from '../plugins/dingtalk/DingTalkAdapter';
 import { createMainMenuKeyboard, createToolConfirmationKeyboard } from '../plugins/telegram/TelegramKeyboards';
 import { escapeHtml } from '../plugins/telegram/TelegramAdapter';
+import {
+  buildErrorRecoveryActionButtons,
+  buildMainMenuActionButtons,
+  buildResponseActionButtons,
+  buildToolConfirmationActionButtons,
+} from '../utils/actionButtons';
 import { stripHtml } from '../plugins/weixin/WeixinAdapter';
-import type { ChannelAgentType, IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType } from '../types';
+import type { IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType } from '../types';
 import type { PluginManager } from './PluginManager';
-import type { AcpBackend } from '@/common/types/acpTypes';
 
-type SavedChannelAgent = {
-  backend?: string;
-  customAgentId?: string;
-  name?: string;
-  openclawAgentId?: string;
-  workspace?: string;
-  cliPath?: string;
-};
-
-const normalizeOpenClawAgentId = (agentId?: string): string => agentId?.trim().toLowerCase() || 'main';
-
-const resolveSavedOpenClawAgent = (savedAgent: unknown) => {
-  const selection = (savedAgent && typeof savedAgent === 'object' ? savedAgent : {}) as SavedChannelAgent;
-  const configuredAgents = listConfiguredOpenClawAgents();
-  const selectedAgentId = normalizeOpenClawAgentId(selection.openclawAgentId);
-  const configuredAgent =
-    configuredAgents.find((agent) => normalizeOpenClawAgentId(agent.agentId) === selectedAgentId) ||
-    configuredAgents[0];
-
-  return {
-    backend: 'openclaw-gateway' as const,
-    agentName: selection.name?.trim() || configuredAgent?.name || 'OpenClaw',
-    openclawAgentId: selectedAgentId || configuredAgent?.agentId || 'main',
-    workspace: selection.workspace?.trim() || configuredAgent?.workspace,
-    cliPath: selection.cliPath?.trim() || 'openclaw',
-  };
-};
+function usesActionButtons(platform: PluginType): boolean {
+  return platform === 'slack' || platform === 'discord';
+}
 
 // ==================== Platform-specific Helpers ====================
 
 /**
  * Get main menu reply markup based on platform
  */
-function getMainMenuMarkup(platform: PluginType) {
+function getMainMenuExtras(platform: PluginType): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
+  if (usesActionButtons(platform)) {
+    return {
+      buttons: buildMainMenuActionButtons(),
+    };
+  }
   if (platform === 'lark') {
-    return createMainMenuCard();
+    return {
+      replyMarkup: createMainMenuCard(),
+    };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkMainMenuCard();
+    return {
+      replyMarkup: createDingTalkMainMenuCard(),
+    };
   }
-  return createMainMenuKeyboard();
+  return {
+    replyMarkup: createMainMenuKeyboard(),
+  };
 }
 
 /**
  * Get response actions markup based on platform
  */
-function getResponseActionsMarkup(platform: PluginType, text?: string) {
+function getResponseActionExtras(
+  platform: PluginType,
+  text?: string
+): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
+  if (usesActionButtons(platform)) {
+    return {
+      buttons: buildResponseActionButtons(),
+    };
+  }
   if (platform === 'dingtalk') {
-    return createDingTalkResponseActionsCard(text || '');
+    return {
+      replyMarkup: createDingTalkResponseActionsCard(text || ''),
+    };
   }
   // Telegram and Lark: no response action buttons
-  return undefined;
+  return {};
 }
 
 /**
  * Get tool confirmation markup based on platform
  */
-function getToolConfirmationMarkup(
+function getToolConfirmationExtras(
   platform: PluginType,
   callId: string,
   options: Array<{ label: string; value: string }>,
+  chatId?: string,
+  conversationId?: string,
   title?: string,
   description?: string
-) {
+): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
+  if (usesActionButtons(platform)) {
+    return {
+      buttons: buildToolConfirmationActionButtons(callId, options),
+    };
+  }
   if (platform === 'lark') {
-    return createToolConfirmationCard(callId, title || 'Confirmation', description || 'Please confirm', options);
+    return {
+      replyMarkup: createToolConfirmationCard(
+        callId,
+        title || 'Confirmation',
+        description || 'Please confirm',
+        options,
+        chatId,
+        conversationId
+      ),
+    };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkToolConfirmationCard(
-      callId,
-      title || 'Confirmation',
-      description || 'Please confirm',
-      options
-    );
+    return {
+      replyMarkup: createDingTalkToolConfirmationCard(
+        callId,
+        title || 'Confirmation',
+        description || 'Please confirm',
+        options,
+        chatId,
+        conversationId
+      ),
+    };
   }
-  return createToolConfirmationKeyboard(callId, options);
+  return {
+    replyMarkup: createToolConfirmationKeyboard(callId, options, chatId, conversationId),
+  };
 }
 
 /**
  * Get error recovery markup based on platform
  */
-function getErrorRecoveryMarkup(platform: PluginType, errorMessage?: string) {
+function getErrorRecoveryExtras(
+  platform: PluginType,
+  errorMessage?: string
+): Pick<IUnifiedOutgoingMessage, 'replyMarkup' | 'buttons'> {
+  if (usesActionButtons(platform)) {
+    return {
+      buttons: buildErrorRecoveryActionButtons(),
+    };
+  }
   if (platform === 'lark') {
-    return createErrorRecoveryCard(errorMessage);
+    return {
+      replyMarkup: createErrorRecoveryCard(errorMessage),
+    };
   }
   if (platform === 'dingtalk') {
-    return createDingTalkErrorRecoveryCard(errorMessage);
+    return {
+      replyMarkup: createDingTalkErrorRecoveryCard(errorMessage),
+    };
   }
-  return createMainMenuKeyboard(); // Telegram uses main menu for recovery
+  return {
+    replyMarkup: createMainMenuKeyboard(), // Telegram uses main menu for recovery
+  };
 }
 
 /**
@@ -132,6 +167,12 @@ function getErrorRecoveryMarkup(platform: PluginType, errorMessage?: string) {
 function formatTextForPlatform(text: string, platform: PluginType): string {
   if (platform === 'lark') {
     return convertHtmlToLarkMarkdown(text);
+  }
+  if (platform === 'slack') {
+    return convertHtmlToSlackMrkdwn(text);
+  }
+  if (platform === 'discord') {
+    return convertHtmlToDiscordMarkdown(text);
   }
   if (platform === 'dingtalk') {
     return convertHtmlToDingTalkMarkdown(text);
@@ -198,6 +239,71 @@ function getConfirmationPrompt(details: { type: string; title?: string; [key: st
   }
 }
 
+function extractRemoteChatType(message: IUnifiedIncomingMessage): string | undefined {
+  if (message.peer?.chatType) {
+    return message.peer.chatType;
+  }
+
+  const raw = message.raw;
+  if (!raw || typeof raw !== 'object') {
+    return undefined;
+  }
+
+  if (message.platform === 'telegram') {
+    const telegramChat =
+      'message' in raw && raw.message && typeof raw.message === 'object' && 'chat' in raw.message
+        ? raw.message.chat
+        : 'chat' in raw
+          ? raw.chat
+          : undefined;
+    if (telegramChat && typeof telegramChat === 'object' && 'type' in telegramChat) {
+      return typeof telegramChat.type === 'string' ? telegramChat.type : undefined;
+    }
+    return undefined;
+  }
+
+  if (message.platform === 'lark') {
+    const event = 'event' in raw && raw.event && typeof raw.event === 'object' ? raw.event : undefined;
+    const larkMessage =
+      event && 'message' in event && event.message && typeof event.message === 'object' ? event.message : undefined;
+    if (larkMessage && 'chat_type' in larkMessage) {
+      return typeof larkMessage.chat_type === 'string' ? larkMessage.chat_type : undefined;
+    }
+    return undefined;
+  }
+
+  if (message.platform === 'dingtalk' && 'conversationType' in raw) {
+    return typeof raw.conversationType === 'string' ? raw.conversationType : undefined;
+  }
+
+  return undefined;
+}
+
+function buildWeixinAttachmentPrompt(content: IUnifiedIncomingMessage['content']): string {
+  const lines: string[] = ['[WeChat media message]'];
+
+  const userText = content.text?.trim();
+  if (userText) {
+    lines.push(`User text: ${userText}`);
+  }
+
+  for (const [index, attachment] of (content.attachments || []).entries()) {
+    lines.push(
+      `Attachment ${index + 1}: type=${attachment.type}, path=${attachment.fileId}, name=${attachment.fileName || '-'}, mime=${attachment.mimeType || '-'}, size=${attachment.size ?? '-'}, duration=${attachment.duration ?? '-'}`
+    );
+  }
+
+  lines.push('Use the local attachment path(s) above if you need to inspect the media/file content.');
+  return lines.join('\n');
+}
+
+function extractAttachmentPaths(content: IUnifiedIncomingMessage['content']): string[] {
+  const fileIds = (content.attachments || [])
+    .map((attachment) => attachment.fileId)
+    .filter((fileId): fileId is string => Boolean(fileId));
+  return Array.from(new Set(fileIds));
+}
+
 /**
  * 将 TMessage 转换为 IUnifiedOutgoingMessage
  * Convert TMessage to IUnifiedOutgoingMessage for platform
@@ -205,6 +311,8 @@ function getConfirmationPrompt(details: { type: string; title?: string; [key: st
 function convertTMessageToOutgoing(
   message: TMessage,
   platform: PluginType,
+  chatId?: string,
+  conversationId?: string,
   isComplete = false
 ): IUnifiedOutgoingMessage {
   switch (message.type) {
@@ -217,7 +325,7 @@ function convertTMessageToOutgoing(
         type: 'text',
         text,
         parseMode: 'HTML',
-        replyMarkup: isComplete ? getResponseActionsMarkup(platform, text) : undefined,
+        ...(isComplete ? getResponseActionExtras(platform, text) : {}),
       };
     }
 
@@ -262,10 +370,12 @@ function convertTMessageToOutgoing(
           type: 'text',
           text: confirmText,
           parseMode: 'HTML',
-          replyMarkup: getToolConfirmationMarkup(
+          ...getToolConfirmationExtras(
             platform,
             confirmingTool.callId,
             options,
+            chatId,
+            conversationId,
             'Tool Confirmation',
             confirmText
           ),
@@ -349,6 +459,8 @@ export class ActionExecutor {
    */
   private async handleIncomingMessage(message: IUnifiedIncomingMessage): Promise<void> {
     const { platform, chatId, user, content, action } = message;
+    const routingChatId = message.peer?.key ?? chatId;
+    const transportChatId = message.peer?.platformChatId ?? chatId;
 
     // Get plugin for sending responses
     const plugin = this.getPluginForMessage(message);
@@ -360,19 +472,24 @@ export class ActionExecutor {
     // Build action context
     const context: IActionContext = {
       platform,
-      pluginId: `${platform}_default`, // TODO: Get actual plugin ID
+      pluginId: message.pluginId ?? `${platform}_default`,
       userId: user.id,
-      chatId,
+      chatId: routingChatId,
       displayName: user.displayName,
       originalMessage: message,
       originalMessageId: message.id,
-      sendMessage: async (msg) => plugin.sendMessage(chatId, msg),
-      editMessage: async (msgId, msg) => plugin.editMessage(chatId, msgId, msg),
+      sendMessage: async (msg) => plugin.sendMessage(transportChatId, msg),
+      editMessage: async (msgId, msg) => plugin.editMessage(transportChatId, msgId, msg),
     };
 
     try {
       // Check if user is authorized
-      const isAuthorized = await this.pairingService.isUserAuthorized(user.id, platform);
+      const isAuthorized = await this.pairingService.isUserAuthorized(
+        user.id,
+        platform,
+        routingChatId,
+        context.pluginId
+      );
 
       // Handle /start command - always show pairing
       if (content.type === 'command' && content.text === '/start') {
@@ -392,203 +509,24 @@ export class ActionExecutor {
         return;
       }
 
-      // User is authorized - look up the assistant user
-      const db = await getDatabase();
-      const userResult = db.getChannelUserByPlatform(user.id, platform);
-      const channelUser = userResult.data;
+      const route = await getChannelRouteResolver().resolveAuthorizedRoute({
+        platform,
+        pluginId: context.pluginId,
+        platformUserId: user.id,
+        chatId: routingChatId,
+        remoteChatType: extractRemoteChatType(message),
+        displayName: user.displayName,
+      });
+      await this.sessionManager.storeSession(route.session);
 
-      if (!channelUser) {
-        console.error(`[ActionExecutor] Authorized user not found in database: ${user.id}`);
-        await context.sendMessage({
-          type: 'text',
-          text: '❌ User data error. Please re-pair your account.',
-          parseMode: 'HTML',
-        });
-        return;
-      }
-
-      // Set the assistant user in context
-      context.channelUser = channelUser;
-
-      // Get or create session (scoped by chatId for per-chat isolation)
-      let session = this.sessionManager.getSession(channelUser.id, chatId);
-      if (!session || !session.conversationId) {
-        const source = platform;
-
-        // Read selected agent for this platform (defaults to Gemini)
-        let savedAgent: unknown = undefined;
-        try {
-          savedAgent = await ProcessConfig.get(
-            `assistant.${platform}.agent` as Parameters<typeof ProcessConfig.get>[0]
-          );
-        } catch {
-          // ignore
-        }
-        const backend = (
-          savedAgent && typeof savedAgent === 'object' && typeof (savedAgent as any).backend === 'string'
-            ? (savedAgent as any).backend
-            : 'gemini'
-        ) as string;
-        const customAgentId =
-          savedAgent && typeof savedAgent === 'object'
-            ? ((savedAgent as any).customAgentId as string | undefined)
-            : undefined;
-        const agentName =
-          savedAgent && typeof savedAgent === 'object' ? ((savedAgent as any).name as string | undefined) : undefined;
-        const openclawSelection = backend === 'openclaw-gateway' ? resolveSavedOpenClawAgent(savedAgent) : null;
-
-        // Always resolve a provider model (required by ICreateConversationParams typing; ignored by ACP/Codex)
-        const model = await getChannelDefaultModel(platform);
-
-        // Map backend to conversation type for lookup
-        const { convType, convBackend } = resolveChannelConvType(backend);
-        const conversationName = getChannelConversationName(platform, convType, convBackend, chatId);
-
-        // Lookup existing conversation by source + chatId + type + backend (per-chat isolation)
-        const db2 = await getDatabase();
-        const latest = db2.findChannelConversation(source, chatId, convType, convBackend);
-        const existing = latest.success ? latest.data : null;
-
-        let sessionConversation: TChatConversation | null = existing ?? null;
-        if (sessionConversation?.type === 'openclaw-gateway' && openclawSelection) {
-          const currentExtra = (sessionConversation.extra || {}) as Record<string, unknown>;
-          const currentWorkspace = typeof currentExtra.workspace === 'string' ? currentExtra.workspace : undefined;
-          const currentCustomWorkspace =
-            typeof currentExtra.customWorkspace === 'boolean' ? currentExtra.customWorkspace : undefined;
-          const currentRuntimeValidation =
-            typeof currentExtra.runtimeValidation === 'object' && currentExtra.runtimeValidation
-              ? (currentExtra.runtimeValidation as Record<string, unknown>)
-              : {};
-          const expectedWorkspace = openclawSelection.workspace;
-          const nextExtra = {
-            ...currentExtra,
-            backend: openclawSelection.backend,
-            cliPath:
-              typeof currentExtra.cliPath === 'string' && currentExtra.cliPath.trim()
-                ? currentExtra.cliPath
-                : openclawSelection.cliPath,
-            agentName:
-              typeof currentExtra.agentName === 'string' && currentExtra.agentName.trim()
-                ? currentExtra.agentName
-                : openclawSelection.agentName,
-            openclawAgentId:
-              typeof currentExtra.openclawAgentId === 'string' && currentExtra.openclawAgentId.trim()
-                ? currentExtra.openclawAgentId
-                : openclawSelection.openclawAgentId,
-            workspace: expectedWorkspace || currentWorkspace,
-            customWorkspace: expectedWorkspace ? true : currentCustomWorkspace,
-            runtimeValidation: {
-              ...currentRuntimeValidation,
-              expectedWorkspace: expectedWorkspace || currentWorkspace,
-              expectedBackend: openclawSelection.backend,
-              expectedAgentName:
-                (typeof currentExtra.agentName === 'string' && currentExtra.agentName.trim()) ||
-                openclawSelection.agentName,
-              expectedOpenClawAgentId:
-                (typeof currentExtra.openclawAgentId === 'string' && currentExtra.openclawAgentId.trim()) ||
-                openclawSelection.openclawAgentId,
-              expectedCliPath:
-                (typeof currentExtra.cliPath === 'string' && currentExtra.cliPath.trim()) || openclawSelection.cliPath,
-              switchedAt:
-                typeof currentRuntimeValidation.switchedAt === 'number'
-                  ? currentRuntimeValidation.switchedAt
-                  : Date.now(),
-            },
-          };
-
-          if (JSON.stringify(nextExtra) !== JSON.stringify(currentExtra)) {
-            db2.updateConversation(sessionConversation.id, {
-              extra: nextExtra,
-            } as Partial<TChatConversation>);
-            sessionConversation = {
-              ...sessionConversation,
-              extra: nextExtra,
-            };
-          }
-        }
-
-        if (!sessionConversation) {
-          try {
-            if (backend === 'gemini') {
-              sessionConversation = await conversationServiceSingleton.createConversation({
-                type: 'gemini',
-                model,
-                name: conversationName,
-                source,
-                channelChatId: chatId,
-                extra: {},
-              });
-            } else if (backend === 'codex') {
-              sessionConversation = await conversationServiceSingleton.createConversation({
-                type: 'codex',
-                model,
-                name: conversationName,
-                source,
-                channelChatId: chatId,
-                extra: {},
-              });
-            } else if (backend === 'openclaw-gateway') {
-              sessionConversation = await conversationServiceSingleton.createConversation({
-                type: 'openclaw-gateway',
-                model,
-                name: conversationName,
-                source,
-                channelChatId: chatId,
-                extra: {
-                  backend: openclawSelection?.backend,
-                  cliPath: openclawSelection?.cliPath,
-                  agentName: openclawSelection?.agentName,
-                  openclawAgentId: openclawSelection?.openclawAgentId,
-                  workspace: openclawSelection?.workspace,
-                  customWorkspace: Boolean(openclawSelection?.workspace),
-                  runtimeValidation: {
-                    expectedWorkspace: openclawSelection?.workspace,
-                    expectedBackend: openclawSelection?.backend,
-                    expectedAgentName: openclawSelection?.agentName,
-                    expectedOpenClawAgentId: openclawSelection?.openclawAgentId,
-                    expectedCliPath: openclawSelection?.cliPath,
-                    switchedAt: Date.now(),
-                  },
-                },
-              });
-            } else {
-              sessionConversation = await conversationServiceSingleton.createConversation({
-                type: 'acp',
-                model,
-                name: conversationName,
-                source,
-                channelChatId: chatId,
-                extra: {
-                  backend: backend as AcpBackend,
-                  customAgentId,
-                  agentName,
-                },
-              });
-            }
-          } catch (error) {
-            console.error(`[ActionExecutor] Failed to create conversation:`, error);
-            await context.sendMessage({
-              type: 'text',
-              text: `❌ Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              parseMode: 'HTML',
-            });
-            return;
-          }
-        }
-
-        if (sessionConversation) {
-          const { convType: agentType } = resolveChannelConvType(backend);
-          session = await this.sessionManager.createSessionWithConversation(
-            channelUser,
-            sessionConversation.id,
-            agentType as ChannelAgentType,
-            undefined,
-            chatId
-          );
-        }
-      }
-      context.sessionId = session.id;
-      context.conversationId = session.conversationId;
+      context.channelUser = route.channelUser;
+      context.connector = route.connector;
+      context.remoteIdentity = route.remoteIdentity;
+      context.channelBinding = route.binding;
+      context.agentProfile = route.agentProfile;
+      context.externalSession = route.externalSession;
+      context.sessionId = route.session.id;
+      context.conversationId = route.conversation.id;
 
       // Route based on action or content
       if (action) {
@@ -600,22 +538,26 @@ export class ActionExecutor {
       } else if (content.type === 'text' && content.text) {
         // Regular text message - send to AI
         await this.handleChatMessage(context, content.text);
+      } else if (platform === 'weixin' && content.attachments && content.attachments.length > 0) {
+        // Weixin media message: convert attachments to a text prompt so the AI pipeline can process it.
+        await this.handleChatMessage(context, buildWeixinAttachmentPrompt(content), extractAttachmentPaths(content));
       } else {
         // Unsupported content type
         await context.sendMessage({
           type: 'text',
           text: 'This message type is not supported. Please send a text message.',
           parseMode: 'HTML',
-          replyMarkup: getMainMenuMarkup(platform as PluginType),
+          ...getMainMenuExtras(platform as PluginType),
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[ActionExecutor] Error handling message:`, error);
       await context.sendMessage({
         type: 'text',
-        text: `❌ Error processing message: ${error.message}`,
+        text: `❌ Error processing message: ${errorMessage}`,
         parseMode: 'HTML',
-        replyMarkup: getErrorRecoveryMarkup(platform as PluginType, error.message),
+        ...getErrorRecoveryExtras(platform as PluginType, errorMessage),
       });
     }
   }
@@ -646,11 +588,12 @@ export class ActionExecutor {
       if (result.message) {
         await context.sendMessage(result.message);
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[ActionExecutor] Action ${actionName} failed:`, error);
       await context.sendMessage({
         type: 'text',
-        text: `❌ Action failed: ${error.message}`,
+        text: `❌ Action failed: ${errorMessage}`,
         parseMode: 'HTML',
       });
     }
@@ -659,9 +602,11 @@ export class ActionExecutor {
   /**
    * Handle chat message - send to AI and stream response
    */
-  private async handleChatMessage(context: IActionContext, text: string): Promise<void> {
-    // Update session activity (scoped by chatId)
-    if (context.channelUser) {
+  private async handleChatMessage(context: IActionContext, text: string, files?: string[]): Promise<void> {
+    // Update session activity using the stable external-session-backed ID.
+    if (context.sessionId) {
+      this.sessionManager.updateSessionActivityById(context.sessionId, context.conversationId);
+    } else if (context.channelUser) {
       this.sessionManager.updateSessionActivity(context.channelUser.id, context.chatId);
     }
 
@@ -720,7 +665,13 @@ export class ActionExecutor {
 
           // 转换消息格式（根据平台）
           // Convert message format (based on platform)
-          const outgoingMessage = convertTMessageToOutgoing(message, context.platform as PluginType, false);
+          const outgoingMessage = convertTMessageToOutgoing(
+            message,
+            context.platform as PluginType,
+            context.chatId,
+            context.conversationId,
+            false
+          );
 
           // Strip replyMarkup during streaming to prevent premature card finalization.
           // Tool confirmation cards set replyMarkup (e.g., for Confirming status),
@@ -802,7 +753,8 @@ export class ActionExecutor {
               }, delay);
             }
           }
-        }
+        },
+        files
       );
 
       // 清除待处理的定时器，确保最后一条消息被处理
@@ -828,30 +780,34 @@ export class ActionExecutor {
       try {
         // 使用最后一条消息的实际内容，添加操作按钮（根据平台）
         // Use actual content of last message, add action buttons (based on platform)
-        const responseMarkup = getResponseActionsMarkup(context.platform as PluginType, lastMessageContent?.text);
+        const responseExtras = getResponseActionExtras(context.platform as PluginType, lastMessageContent?.text);
         const finalMessage: IUnifiedOutgoingMessage = lastMessageContent
-          ? { ...lastMessageContent, replyMarkup: responseMarkup }
+          ? { ...lastMessageContent, ...responseExtras }
           : {
               type: 'text',
               text: '✅ Done',
               parseMode: 'HTML',
-              replyMarkup: responseMarkup,
+              ...responseExtras,
             };
         await context.editMessage(lastMsgId, finalMessage);
       } catch {
         // 忽略最终编辑错误
         // Ignore final edit error
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[ActionExecutor] Chat processing failed:`, error);
 
       // Update message with error
-      const errorResponse = buildChatErrorResponse(error.message);
+      const errorResponse = buildChatErrorResponse(errorMessage);
+      const errorExtras = getErrorRecoveryExtras(context.platform as PluginType, errorMessage);
       await context.editMessage(thinkingMsgId, {
         type: 'text',
         text: errorResponse.text,
         parseMode: errorResponse.parseMode,
-        replyMarkup: errorResponse.replyMarkup,
+        ...(errorResponse.replyMarkup ? { replyMarkup: errorResponse.replyMarkup } : {}),
+        ...(errorExtras.replyMarkup ? { replyMarkup: errorExtras.replyMarkup } : {}),
+        ...(errorExtras.buttons ? { buttons: errorExtras.buttons } : {}),
       });
     }
   }
@@ -860,6 +816,13 @@ export class ActionExecutor {
    * Get plugin instance for a message
    */
   private getPluginForMessage(message: IUnifiedIncomingMessage) {
+    if (message.pluginId) {
+      const exactPlugin = this.pluginManager.getPlugin(message.pluginId);
+      if (exactPlugin) {
+        return exactPlugin;
+      }
+    }
+
     // For now, get the first plugin of the matching type
     const plugins = this.pluginManager.getAllPlugins();
     return plugins.find((p) => p.type === message.platform);

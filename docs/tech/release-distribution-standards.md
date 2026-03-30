@@ -32,6 +32,11 @@ Stable rule:
 
 - do not split desktop, mobile-shell, and future website release logic into separate repositories unless there is an explicit product decision
 
+Current explicit exception:
+
+- the source repository may remain private while public installers, manifests, and GitHub Releases are published from a dedicated public distribution repository under the same organization
+- when this model is active, the public distribution repository becomes the website-facing release endpoint and download source of truth
+
 ## Distribution Policy By Platform
 
 ### Windows

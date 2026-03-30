@@ -39,9 +39,45 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          CHECKOUT_REF: ${{ inputs.ref != '' && inputs.ref || github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${CHECKOUT_REF}"
+
+          for attempt in 1 2 3 4 5; do
+            echo "Archive checkout attempt ${attempt}/5 for ${CHECKOUT_REF}"
+            find "$WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            ARCHIVE_PATH="$(mktemp "${RUNNER_TEMP:-/tmp}/contextgo-build.XXXXXX.tar.gz")"
+
+            if curl --fail --show-error --silent --location \
+              --http1.1 \
+              --retry 5 \
+              --retry-all-errors \
+              --retry-delay 5 \
+              --connect-timeout 20 \
+              --max-time 300 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "${ARCHIVE_URL}" \
+              -o "${ARCHIVE_PATH}"; then
+              tar -xzf "${ARCHIVE_PATH}" --strip-components=1 -C "${WORKSPACE}"
+              rm -f "${ARCHIVE_PATH}"
+              break
+            fi
+
+            rm -f "${ARCHIVE_PATH}"
+
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::Failed to checkout ${CHECKOUT_REF} after 5 attempts"
+              exit 1
+            fi
+
+            sleep $((attempt * 15))
+          done
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -86,9 +122,45 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          CHECKOUT_REF: ${{ inputs.ref != '' && inputs.ref || github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${CHECKOUT_REF}"
+
+          for attempt in 1 2 3 4 5; do
+            echo "Archive checkout attempt ${attempt}/5 for ${CHECKOUT_REF}"
+            find "$WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            ARCHIVE_PATH="$(mktemp "${RUNNER_TEMP:-/tmp}/contextgo-build.XXXXXX.tar.gz")"
+
+            if curl --fail --show-error --silent --location \
+              --http1.1 \
+              --retry 5 \
+              --retry-all-errors \
+              --retry-delay 5 \
+              --connect-timeout 20 \
+              --max-time 300 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "${ARCHIVE_URL}" \
+              -o "${ARCHIVE_PATH}"; then
+              tar -xzf "${ARCHIVE_PATH}" --strip-components=1 -C "${WORKSPACE}"
+              rm -f "${ARCHIVE_PATH}"
+              break
+            fi
+
+            rm -f "${ARCHIVE_PATH}"
+
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::Failed to checkout ${CHECKOUT_REF} after 5 attempts"
+              exit 1
+            fi
+
+            sleep $((attempt * 15))
+          done
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -97,12 +169,11 @@ jobs:
 
       - name: Get commit hash
         id: commit
-        run: >-
-          node -e 'const { execSync } = require("node:child_process"); const
-          { appendFileSync } = require("node:fs"); const short =
-          execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
-          appendFileSync(process.env.GITHUB_OUTPUT, `short=${short}\n`);
-          console.log(`Commit: ${short}`);'
+        shell: bash
+        run: |
+          SHORT="${GITHUB_SHA::7}"
+          echo "short=${SHORT}" >> "$GITHUB_OUTPUT"
+          echo "Commit: ${SHORT}"
 
       - name: Setup bun
         uses: oven-sh/setup-bun@v2

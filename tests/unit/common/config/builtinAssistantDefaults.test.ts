@@ -32,7 +32,7 @@ describe('builtinAssistantDefaults', () => {
       'quality-gate',
       'continuity-handoff',
     ]);
-    expect(assistants.find((assistant) => assistant.id === 'builtin-morph-ppt')?.enabledHooks).toEqual([
+    expect(assistants.find((assistant) => assistant.id === 'builtin-pptx-generator')?.enabledHooks).toEqual([
       'prompt-clarifier',
       'secret-guard',
     ]);

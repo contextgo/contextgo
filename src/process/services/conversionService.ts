@@ -4,20 +4,48 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { ConversionResult, ExcelWorkbookData, PPTJsonData } from '@/common/types/conversion';
-import { DOMParser } from '@xmldom/xmldom';
+import { getPlatformServices } from '@/common/platform';
+import type { ConversionResult, ExcelWorkbookData, PPTJsonData, PPTPdfData } from '@/common/types/conversion';
+import { DOMParser, type Document as XmlDocument, type Element as XmlElement } from '@xmldom/xmldom';
 import { Document as DocxDocument, Packer, Paragraph, TextRun } from 'docx';
 import type { BrowserWindow } from 'electron';
 import { electronBrowserWindow as BrowserWindowCtor } from '@/common/electronSafe';
+import { execFile, spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'fs/promises';
 import mammoth from 'mammoth';
+import path from 'node:path';
 import PPTX2Json from 'pptx2json';
 import TurndownService from 'turndown';
+import { promisify } from 'node:util';
+import { getEnhancedEnv } from '@process/utils/shellEnv';
 import * as XLSX from 'xlsx-republish';
 import * as yauzl from 'yauzl';
 
+const execFileAsync = promisify(execFile);
+
+function buildLibreOfficeCandidates(): string[] {
+  const candidates = [
+    process.env.LIBREOFFICE_BIN,
+    'soffice',
+    'libreoffice',
+    '/Applications/LibreOffice.app/Contents/MacOS/soffice',
+    process.env.PROGRAMFILES ? path.join(process.env.PROGRAMFILES, 'LibreOffice', 'program', 'soffice.exe') : null,
+    process.env['PROGRAMFILES(X86)']
+      ? path.join(process.env['PROGRAMFILES(X86)'], 'LibreOffice', 'program', 'soffice.exe')
+      : null,
+  ];
+  return candidates.filter((candidate): candidate is string => Boolean(candidate));
+}
+
+export function getPptPreviewCacheDir(): string {
+  return path.join(getPlatformServices().paths.getDataDir(), 'preview-cache', 'ppt');
+}
+
 class ConversionService {
   private turndownService: TurndownService;
+  private libreOfficeCommand: string | null = null;
+  private readonly pendingPptPdfConversions = new Map<string, Promise<ConversionResult<PPTPdfData>>>();
 
   constructor() {
     this.turndownService = new TurndownService({
@@ -222,6 +250,136 @@ class ConversionService {
   }
 
   /**
+   * PowerPoint (.ppt/.pptx) -> PDF
+   * 使用 LibreOffice headless 将 PowerPoint 转换为缓存 PDF，供预览面板复用
+   */
+  public async pptToPdf(filePath: string): Promise<ConversionResult<PPTPdfData>> {
+    try {
+      const sourcePath = await fs.realpath(filePath).catch(() => filePath);
+      const stats = await fs.stat(sourcePath);
+      const cacheKey = crypto.createHash('sha1').update(`${sourcePath}|${stats.size}|${stats.mtimeMs}`).digest('hex');
+      const pdfPath = path.join(getPptPreviewCacheDir(), `${cacheKey}.pdf`);
+
+      const existing = await this.tryGetCachedPdf(pdfPath);
+      if (existing) {
+        return existing;
+      }
+
+      const inFlight = this.pendingPptPdfConversions.get(pdfPath);
+      if (inFlight) {
+        return inFlight;
+      }
+
+      const task = this.convertPptToPdf(sourcePath, pdfPath);
+      this.pendingPptPdfConversions.set(pdfPath, task);
+
+      try {
+        return await task;
+      } finally {
+        this.pendingPptPdfConversions.delete(pdfPath);
+      }
+    } catch (error) {
+      console.error('[ConversionService] pptToPdf failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  private async tryGetCachedPdf(pdfPath: string): Promise<ConversionResult<PPTPdfData> | null> {
+    try {
+      await fs.access(pdfPath);
+      return {
+        success: true,
+        data: {
+          pdfPath,
+        },
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private resolveLibreOfficeCommand(): string {
+    if (this.libreOfficeCommand) {
+      return this.libreOfficeCommand;
+    }
+
+    const env = getEnhancedEnv();
+    for (const candidate of buildLibreOfficeCandidates()) {
+      const result = spawnSync(candidate, ['--version'], {
+        env,
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+      if (!result.error && result.status === 0) {
+        this.libreOfficeCommand = candidate;
+        return candidate;
+      }
+    }
+
+    throw new Error('LibreOffice is not installed. Install LibreOffice and ensure soffice is available in PATH.');
+  }
+
+  private async convertPptToPdf(sourcePath: string, pdfPath: string): Promise<ConversionResult<PPTPdfData>> {
+    const libreOfficeCommand = this.resolveLibreOfficeCommand();
+    const previewCacheDir = getPptPreviewCacheDir();
+    await fs.mkdir(previewCacheDir, { recursive: true });
+    const conversionDir = await fs.mkdtemp(path.join(previewCacheDir, 'convert-'));
+    const extension = path.extname(sourcePath);
+    const exportedPdfPath = path.join(conversionDir, `${path.basename(sourcePath, extension)}.pdf`);
+
+    try {
+      await execFileAsync(
+        libreOfficeCommand,
+        [
+          '--headless',
+          '--nologo',
+          '--norestore',
+          '--nolockcheck',
+          '--nodefault',
+          '--convert-to',
+          'pdf',
+          '--outdir',
+          conversionDir,
+          sourcePath,
+        ],
+        {
+          env: getEnhancedEnv(),
+          timeout: 120_000,
+          windowsHide: true,
+          maxBuffer: 10 * 1024 * 1024,
+        }
+      );
+
+      await fs.access(exportedPdfPath);
+      await fs.copyFile(exportedPdfPath, pdfPath);
+
+      return {
+        success: true,
+        data: {
+          pdfPath,
+        },
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      const detail = error instanceof Error && 'stderr' in error ? String(error.stderr || error.message) : message;
+      console.error('[ConversionService] LibreOffice PPT preview conversion failed:', error);
+      return {
+        success: false,
+        error: `LibreOffice conversion failed: ${detail}`,
+      };
+    } finally {
+      try {
+        await fs.rm(conversionDir, { recursive: true, force: true });
+      } catch {
+        // Ignore temp cleanup failures after preview generation.
+      }
+    }
+  }
+
+  /**
    * 提取 Excel 中的图片资源，并且定位到对应单元格
    */
   private async extractExcelImages(buffer: Buffer): Promise<
@@ -327,14 +485,14 @@ class ConversionService {
   /**
    * 解析 Drawing XML 中的图片锚点信息
    */
-  private parseDrawingAnchors(doc: Document): Array<{
+  private parseDrawingAnchors(doc: XmlDocument): Array<{
     row: number;
     col: number;
     embedId: string;
     width?: number;
     height?: number;
   }> {
-    const anchors: Element[] = [];
+    const anchors: XmlElement[] = [];
     const anchorTags = [
       'xdr:twoCellAnchor',
       'xdr:oneCellAnchor',
@@ -398,7 +556,7 @@ class ConversionService {
     return pixels > 0 ? pixels : undefined;
   }
 
-  private findFirstChild(root: Element | null, tagNames: string[]): Element | null {
+  private findFirstChild(root: XmlElement | null, tagNames: string[]): XmlElement | null {
     if (!root) return null;
     for (const tag of tagNames) {
       const nodes = root.getElementsByTagName(tag);
@@ -507,7 +665,7 @@ class ConversionService {
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(typeof xml === 'string' ? xml : xml.toString('utf8'), 'text/xml');
-    const nodes: Element[] = [];
+    const nodes: XmlElement[] = [];
     const byTag = doc.getElementsByTagName('Relationship');
     for (let i = 0; i < byTag.length; i++) {
       const node = byTag.item(i);

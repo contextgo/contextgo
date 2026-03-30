@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -131,6 +131,28 @@ export interface IConfigStorageRefer {
     customAgentId?: string;
     name?: string;
   };
+  // Slack assistant default model / Slack 助手默认模型
+  'assistant.slack.defaultModel'?: {
+    id: string;
+    useModel: string;
+  };
+  // Slack assistant agent selection / Slack 助手所使用的 Agent
+  'assistant.slack.agent'?: {
+    backend: AcpBackendAll;
+    customAgentId?: string;
+    name?: string;
+  };
+  // Discord assistant default model / Discord 助手默认模型
+  'assistant.discord.defaultModel'?: {
+    id: string;
+    useModel: string;
+  };
+  // Discord assistant agent selection / Discord 助手所使用的 Agent
+  'assistant.discord.agent'?: {
+    backend: AcpBackendAll;
+    customAgentId?: string;
+    name?: string;
+  };
   // Lark assistant default model / Lark 助手默认模型
   'assistant.lark.defaultModel'?: {
     id: string;
@@ -164,9 +186,9 @@ export interface IConfigStorageRefer {
     customAgentId?: string;
     name?: string;
   };
-  // Skills Market: whether the aionui-skills builtin skill is enabled
-  'skillsMarket.enabled'?: boolean;
   'command.library'?: ManagedSlashCommandRecord[];
+  // Skills Market: whether the bundled builtin skill is enabled
+  'skillsMarket.enabled'?: boolean;
 }
 
 export interface IEnvStorageRefer {
@@ -180,7 +202,15 @@ export interface IEnvStorageRefer {
  * Conversation source type - identifies where the conversation was created
  * 会话来源类型 - 标识会话创建的来源
  */
-export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | 'weixin' | (string & {});
+export type ConversationSource =
+  | 'contextgo'
+  | 'telegram'
+  | 'slack'
+  | 'discord'
+  | 'lark'
+  | 'dingtalk'
+  | 'weixin'
+  | (string & {});
 
 export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 
@@ -205,9 +235,25 @@ export type GroupCollaborationConfig = {
   executionBoundary: CollaborationExecutionBoundary;
 };
 
+export type GroupOrchestrationKind = 'discussion' | 'workflow';
+
+export type BuiltInGroupParticipantRole = CollaborationParticipantRole | 'writer';
+
+export type GroupParticipantRole = BuiltInGroupParticipantRole | 'custom' | (string & {});
+
+export type WorkflowGroupTemplate = 'planner-writer-evaluator' | 'plan-build-evaluate' | (string & {});
+
+export type WorkflowGroupReviewMode = 'per-iteration' | 'final-only';
+
+export type WorkflowGroupStage = 'planning' | 'writing' | 'evaluating' | 'completed' | 'failed';
+export type WorkflowGroupRunnableStage = Exclude<WorkflowGroupStage, 'completed' | 'failed'>;
+export type WorkflowGroupRunStatus = 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
+
+export type WorkflowGroupDecision = 'continue' | 'accept' | 'stop';
+
 export type DiscussionGroupParticipantType = 'preset-assistant' | 'cli-agent';
 
-export type DiscussionGroupParticipant = {
+export type GroupParticipant = {
   id: string;
   participantType: DiscussionGroupParticipantType;
   participantKey: string;
@@ -216,13 +262,55 @@ export type DiscussionGroupParticipant = {
   name: string;
   avatar?: string;
   description?: string;
-  role?: CollaborationParticipantRole;
   childConversationId: string;
+  role?: GroupParticipantRole;
 };
 
+export type DiscussionGroupParticipant = GroupParticipant;
+
 export type DiscussionGroupOrchestration = {
+  kind: 'discussion';
   mode: DiscussionGroupMode;
   rounds: 1 | 2;
+};
+
+export type WorkflowGroupOrchestration = {
+  kind: 'workflow';
+  template: WorkflowGroupTemplate;
+  maxIterations: number;
+  scoreTarget?: number;
+  artifactPath?: string;
+  reviewMode?: WorkflowGroupReviewMode;
+};
+
+export type GroupOrchestration = DiscussionGroupOrchestration | WorkflowGroupOrchestration;
+
+export type WorkflowGroupStageRecord = {
+  stageId: string;
+  stage: WorkflowGroupRunnableStage;
+  participantId?: string;
+  participantRole?: GroupParticipantRole;
+  iteration: number;
+  startedAt: number;
+  completedAt?: number;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+};
+
+export type WorkflowGroupRunState = {
+  runId: string;
+  status: WorkflowGroupRunStatus;
+  stage: WorkflowGroupStage;
+  activeStageId?: string;
+  iteration: number;
+  latestScore?: number;
+  latestDecision?: WorkflowGroupDecision;
+  planningBrief?: string;
+  artifactPath?: string;
+  activeParticipantId?: string;
+  startedAt?: number;
+  completedAt?: number;
+  stageHistory: WorkflowGroupStageRecord[];
+  updatedAt: number;
 };
 
 export type ConversationGroupMeta = {
@@ -230,19 +318,32 @@ export type ConversationGroupMeta = {
   participantId: string;
   participantName: string;
   participantAvatar?: string;
-  participantRole?: CollaborationParticipantRole;
+  participantRole?: GroupParticipantRole;
   hiddenFromHistory?: boolean;
 };
 
-export type MessageGroupMeta = {
+type BaseMessageGroupMeta = {
   participantId: string;
   participantName: string;
   participantAvatar?: string;
-  participantRole?: CollaborationParticipantRole;
   childConversationId?: string;
+  participantRole?: GroupParticipantRole;
+};
+
+export type DiscussionMessageGroupMeta = BaseMessageGroupMeta & {
+  kind?: 'discussion';
   mode: DiscussionGroupMode;
   round: number;
 };
+
+export type WorkflowMessageGroupMeta = BaseMessageGroupMeta & {
+  kind: 'workflow';
+  template: WorkflowGroupTemplate;
+  stage: WorkflowGroupStage;
+  iteration: number;
+};
+
+export type MessageGroupMeta = DiscussionMessageGroupMeta | WorkflowMessageGroupMeta;
 
 interface IChatConversation<T, Extra> {
   createTime: number;
@@ -254,11 +355,51 @@ interface IChatConversation<T, Extra> {
   extra: Extra;
   model: TProviderWithModel;
   status?: 'pending' | 'running' | 'finished' | undefined;
-  /** 会话来源，默认为 aionui / Conversation source, defaults to aionui */
+  /** 会话来源，默认为 contextgo / Conversation source, defaults to contextgo */
   source?: ConversationSource;
   /** Channel chat isolation ID (e.g. user:xxx, group:xxx) */
   channelChatId?: string;
+  /** Durable external session this conversation belongs to, if any */
+  externalSessionId?: string;
+  /** Root execution run for this conversation, if any */
+  rootRunId?: string;
 }
+
+export type ConversationSpaceBinding = {
+  /** Logical Space identifier for long-lived ownership / 长期上下文归属的逻辑 Space ID */
+  spaceId?: string;
+  /** Selected mount identifier on the current device/runtime / 当前设备或运行时选中的挂载点 ID */
+  mountId?: string;
+  /** Physical working directory used by the agent runtime / Agent 运行时使用的物理工作目录 */
+  workingDirectory?: string;
+};
+
+export type SpaceEngine = 'affine' | (string & {});
+
+export type TSpace = {
+  id: string;
+  name: string;
+  engine: SpaceEngine;
+  description?: string;
+  isDefault?: boolean;
+  archivedAt?: number;
+  createTime: number;
+  modifyTime: number;
+};
+
+export type ConversationWorkspaceCompat = {
+  /** @deprecated Use workingDirectory instead. Kept for compatibility during workspace terminology migration. */
+  workspace?: string;
+  /** @deprecated Prefer mountId or workingDirectory. Kept for compatibility with existing runtime flows. */
+  customWorkspace?: boolean;
+};
+
+export type ConversationRequiredWorkspaceCompat = {
+  /** @deprecated Required only for legacy conversation shapes. Use workingDirectory instead. */
+  workspace: string;
+  /** @deprecated Prefer mountId or workingDirectory. Kept only for compatibility with existing runtime flows. */
+  customWorkspace?: boolean;
+};
 
 // Token 使用统计数据类型
 export interface TokenUsageData {
@@ -268,48 +409,14 @@ export interface TokenUsageData {
 export type TChatConversation =
   | IChatConversation<
       'gemini',
-      {
-        workspace: string;
-        customWorkspace?: boolean; // true 用户指定工作目录 false 系统默认工作目录
-        webSearchEngine?: 'google' | 'default'; // 搜索引擎配置
-        lastTokenUsage?: TokenUsageData; // 上次的 token 使用统计
-        contextFileName?: string;
-        contextContent?: string;
-        // 系统规则支持 / System rules support
-        presetRules?: string; // 系统规则，在初始化时注入 / System rules, injected at initialization
-        /** 启用的 skills 列表，用于过滤 SkillManager 加载的 skills / Enabled skills list for filtering SkillManager skills */
-        enabledSkills?: string[];
-        /** 启用的 hooks 列表 / Enabled hooks list */
-        enabledHooks?: string[];
-        /** 预设助手 ID，用于在会话面板显示助手名称和头像 / Preset assistant ID for displaying name and avatar in conversation panel */
-        presetAssistantId?: string;
-        /** 是否置顶会话 / Whether this conversation is pinned */
-        pinned?: boolean;
-        /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
-        pinnedAt?: number;
-        /** 是否已归档会话 / Whether this conversation is archived */
-        archived?: boolean;
-        /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
-        archivedAt?: number;
-        /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
-        sessionMode?: string;
-        /** Explicit marker for temporary health-check conversations */
-        isHealthCheck?: boolean;
-        /** Discussion group child conversation metadata */
-        groupMeta?: ConversationGroupMeta;
-      }
-    >
-  | Omit<
-      IChatConversation<
-        'acp',
-        {
-          workspace?: string;
-          backend: AcpBackend;
-          cliPath?: string;
-          customWorkspace?: boolean;
-          agentName?: string;
-          customAgentId?: string; // UUID for identifying specific custom agent
-          presetContext?: string; // 智能助手的预设规则/提示词 / Preset context from smart assistant
+      ConversationSpaceBinding &
+        ConversationRequiredWorkspaceCompat & {
+          webSearchEngine?: 'google' | 'default'; // 搜索引擎配置
+          lastTokenUsage?: TokenUsageData; // 上次的 token 使用统计
+          contextFileName?: string;
+          contextContent?: string;
+          // 系统规则支持 / System rules support
+          presetRules?: string; // 系统规则，在初始化时注入 / System rules, injected at initialization
           /** 启用的 skills 列表，用于过滤 SkillManager 加载的 skills / Enabled skills list for filtering SkillManager skills */
           enabledSkills?: string[];
           /** 启用的 hooks 列表 / Enabled hooks list */
@@ -324,175 +431,207 @@ export type TChatConversation =
           archived?: boolean;
           /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
           archivedAt?: number;
-          /** ACP 后端的 session UUID，用于会话恢复 / ACP backend session UUID for session resume */
-          acpSessionId?: string;
-          /** ACP session 最后更新时间 / Last update time of ACP session */
-          acpSessionUpdatedAt?: number;
-          /** Last context usage from usage_update */
-          lastTokenUsage?: TokenUsageData;
-          /** Context window capacity from usage_update */
-          lastContextLimit?: number;
           /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
           sessionMode?: string;
-          /** Persisted model ID for resume support / 持久化的模型 ID，用于恢复 */
-          currentModelId?: string;
-          /** Marks a conversation imported from an external CLI session / 标记该会话由外部 CLI session 导入 */
-          externalSessionImported?: boolean;
-          /** Skip the first workspace tree hydration until user explicitly requests it / 首次进入时延迟加载工作空间树 */
-          deferInitialWorkspaceLoad?: boolean;
           /** Explicit marker for temporary health-check conversations */
           isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
+          /** Group child conversation metadata */
           groupMeta?: ConversationGroupMeta;
         }
+    >
+  | Omit<
+      IChatConversation<
+        'acp',
+        ConversationSpaceBinding &
+          ConversationWorkspaceCompat & {
+            backend: AcpBackend;
+            cliPath?: string;
+            agentName?: string;
+            customAgentId?: string; // UUID for identifying specific custom agent
+            presetContext?: string; // 智能助手的预设规则/提示词 / Preset context from smart assistant
+            /** 启用的 skills 列表，用于过滤 SkillManager 加载的 skills / Enabled skills list for filtering SkillManager skills */
+            enabledSkills?: string[];
+            /** 启用的 hooks 列表 / Enabled hooks list */
+            enabledHooks?: string[];
+            /** 预设助手 ID，用于在会话面板显示助手名称和头像 / Preset assistant ID for displaying name and avatar in conversation panel */
+            presetAssistantId?: string;
+            /** 是否置顶会话 / Whether this conversation is pinned */
+            pinned?: boolean;
+            /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
+            pinnedAt?: number;
+            /** 是否已归档会话 / Whether this conversation is archived */
+            archived?: boolean;
+            /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+            archivedAt?: number;
+            /** ACP 后端的 session UUID，用于会话恢复 / ACP backend session UUID for session resume */
+            acpSessionId?: string;
+            /** ACP session 最后更新时间 / Last update time of ACP session */
+            acpSessionUpdatedAt?: number;
+            /** Last context usage from usage_update */
+            lastTokenUsage?: TokenUsageData;
+            /** Context window capacity from usage_update */
+            lastContextLimit?: number;
+            /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
+            sessionMode?: string;
+            /** Persisted model ID for resume support / 持久化的模型 ID，用于恢复 */
+            currentModelId?: string;
+            /** Marks a conversation imported from an external CLI session / 标记该会话由外部 CLI session 导入 */
+            externalSessionImported?: boolean;
+            /** Skip the first workspace tree hydration until user explicitly requests it / 首次进入时延迟加载工作空间树 */
+            deferInitialWorkspaceLoad?: boolean;
+            /** Explicit marker for temporary health-check conversations */
+            isHealthCheck?: boolean;
+            /** Discussion group child conversation metadata */
+            groupMeta?: ConversationGroupMeta;
+          }
       >,
       'model'
     >
   | Omit<
       IChatConversation<
         'codex',
-        {
-          workspace?: string;
-          cliPath?: string;
-          customWorkspace?: boolean;
-          sandboxMode?: 'read-only' | 'workspace-write' | 'danger-full-access'; // Codex sandbox permission mode
-          presetContext?: string; // 智能助手的预设规则/提示词 / Preset context from smart assistant
-          /** 启用的 skills 列表，用于过滤 SkillManager 加载的 skills / Enabled skills list for filtering SkillManager skills */
-          enabledSkills?: string[];
-          /** 启用的 hooks 列表 / Enabled hooks list */
-          enabledHooks?: string[];
-          /** 预设助手 ID，用于在会话面板显示助手名称和头像 / Preset assistant ID for displaying name and avatar in conversation panel */
-          presetAssistantId?: string;
-          /** 是否置顶会话 / Whether this conversation is pinned */
-          pinned?: boolean;
-          /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
-          pinnedAt?: number;
-          /** 是否已归档会话 / Whether this conversation is archived */
-          archived?: boolean;
-          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
-          archivedAt?: number;
-          /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
-          sessionMode?: string;
-          /** User-selected Codex model from Guid page / 用户在引导页选择的 Codex 模型 */
-          codexModel?: string;
-          /** Explicit marker for temporary health-check conversations */
-          isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
-          groupMeta?: ConversationGroupMeta;
-        }
+        ConversationSpaceBinding &
+          ConversationWorkspaceCompat & {
+            cliPath?: string;
+            sandboxMode?: 'read-only' | 'workspace-write' | 'danger-full-access'; // Codex sandbox permission mode
+            presetContext?: string; // 智能助手的预设规则/提示词 / Preset context from smart assistant
+            /** 启用的 skills 列表，用于过滤 SkillManager 加载的 skills / Enabled skills list for filtering SkillManager skills */
+            enabledSkills?: string[];
+            /** 启用的 hooks 列表 / Enabled hooks list */
+            enabledHooks?: string[];
+            /** 预设助手 ID，用于在会话面板显示助手名称和头像 / Preset assistant ID for displaying name and avatar in conversation panel */
+            presetAssistantId?: string;
+            /** 是否置顶会话 / Whether this conversation is pinned */
+            pinned?: boolean;
+            /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
+            pinnedAt?: number;
+            /** 是否已归档会话 / Whether this conversation is archived */
+            archived?: boolean;
+            /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+            archivedAt?: number;
+            /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
+            sessionMode?: string;
+            /** User-selected Codex model from Guid page / 用户在引导页选择的 Codex 模型 */
+            codexModel?: string;
+            /** Explicit marker for temporary health-check conversations */
+            isHealthCheck?: boolean;
+            /** Group child conversation metadata */
+            groupMeta?: ConversationGroupMeta;
+          }
       >,
       'model'
     >
   | Omit<
       IChatConversation<
         'openclaw-gateway',
-        {
-          workspace?: string;
-          backend?: AcpBackendAll;
-          agentName?: string;
-          openclawAgentId?: string;
-          customWorkspace?: boolean;
-          /** Gateway configuration */
-          gateway?: {
-            host?: string;
-            port?: number;
-            token?: string;
-            password?: string;
-            useExternalGateway?: boolean;
-            cliPath?: string;
-          };
-          /** Session key for resume */
-          sessionKey?: string;
-          /** Whether this conversation was imported from an external OpenClaw session */
-          externalSessionImported?: boolean;
-          /** Whether workspace hydration should be deferred on first open */
-          deferInitialWorkspaceLoad?: boolean;
-          /** Best-effort history reconcile metadata for imported OpenClaw sessions */
-          externalHistorySync?: {
-            provider?: 'openclaw-gateway';
-            lastSyncedAt?: number;
-            lastHistoryMessageAt?: number;
-            lastSessionKey?: string;
-            lastInsertedCount?: number;
-          };
-          /** Runtime validation snapshot used for post-switch strong checks */
-          runtimeValidation?: {
-            expectedWorkspace?: string;
-            expectedBackend?: string;
-            expectedAgentName?: string;
-            expectedOpenClawAgentId?: string;
-            expectedCliPath?: string;
-            expectedModel?: string;
-            expectedIdentityHash?: string | null;
-            switchedAt?: number;
-          };
-          /** 启用的 skills 列表 / Enabled skills list */
-          enabledSkills?: string[];
-          /** 启用的 hooks 列表 / Enabled hooks list */
-          enabledHooks?: string[];
-          /** 预设助手 ID / Preset assistant ID */
-          presetAssistantId?: string;
-          /** 是否置顶会话 / Whether this conversation is pinned */
-          pinned?: boolean;
-          /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
-          pinnedAt?: number;
-          /** 是否已归档会话 / Whether this conversation is archived */
-          archived?: boolean;
-          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
-          archivedAt?: number;
-          /** Explicit marker for temporary health-check conversations */
-          isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
-          groupMeta?: ConversationGroupMeta;
-        }
+        ConversationSpaceBinding &
+          ConversationWorkspaceCompat & {
+            backend?: AcpBackendAll;
+            agentName?: string;
+            openclawAgentId?: string;
+            /** Gateway configuration */
+            gateway?: {
+              host?: string;
+              port?: number;
+              token?: string;
+              password?: string;
+              useExternalGateway?: boolean;
+              cliPath?: string;
+            };
+            /** Session key for resume */
+            sessionKey?: string;
+            /** Whether this conversation was imported from an external OpenClaw session */
+            externalSessionImported?: boolean;
+            /** Whether workspace hydration should be deferred on first open */
+            deferInitialWorkspaceLoad?: boolean;
+            /** Best-effort history reconcile metadata for imported OpenClaw sessions */
+            externalHistorySync?: {
+              provider?: 'openclaw-gateway';
+              lastSyncedAt?: number;
+              lastHistoryMessageAt?: number;
+              lastSessionKey?: string;
+              lastInsertedCount?: number;
+            };
+            /** Runtime validation snapshot used for post-switch strong checks */
+            runtimeValidation?: {
+              expectedSpaceId?: string;
+              expectedMountId?: string;
+              expectedWorkingDirectory?: string;
+              expectedWorkspace?: string;
+              expectedBackend?: string;
+              expectedAgentName?: string;
+              expectedOpenClawAgentId?: string;
+              expectedCliPath?: string;
+              expectedModel?: string;
+              expectedIdentityHash?: string | null;
+              switchedAt?: number;
+            };
+            /** 启用的 skills 列表 / Enabled skills list */
+            enabledSkills?: string[];
+            /** 启用的 hooks 列表 / Enabled hooks list */
+            enabledHooks?: string[];
+            /** 预设助手 ID / Preset assistant ID */
+            presetAssistantId?: string;
+            /** 是否置顶会话 / Whether this conversation is pinned */
+            pinned?: boolean;
+            /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
+            pinnedAt?: number;
+            /** 是否已归档会话 / Whether this conversation is archived */
+            archived?: boolean;
+            /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+            archivedAt?: number;
+            /** Explicit marker for temporary health-check conversations */
+            isHealthCheck?: boolean;
+            /** Group child conversation metadata */
+            groupMeta?: ConversationGroupMeta;
+          }
       >,
       'model'
     >
   | Omit<
       IChatConversation<
         'nanobot',
-        {
-          workspace?: string;
-          customWorkspace?: boolean;
-          /** 启用的 skills 列表 / Enabled skills list */
-          enabledSkills?: string[];
-          /** 启用的 hooks 列表 / Enabled hooks list */
-          enabledHooks?: string[];
-          /** 预设助手 ID / Preset assistant ID */
-          presetAssistantId?: string;
-          /** 是否置顶会话 / Whether this conversation is pinned */
-          pinned?: boolean;
-          /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
-          pinnedAt?: number;
-          /** 是否已归档会话 / Whether this conversation is archived */
-          archived?: boolean;
-          /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
-          archivedAt?: number;
-          /** Explicit marker for temporary health-check conversations */
-          isHealthCheck?: boolean;
-          /** Discussion group child conversation metadata */
-          groupMeta?: ConversationGroupMeta;
-        }
+        ConversationSpaceBinding &
+          ConversationWorkspaceCompat & {
+            /** 启用的 skills 列表 / Enabled skills list */
+            enabledSkills?: string[];
+            /** 启用的 hooks 列表 / Enabled hooks list */
+            enabledHooks?: string[];
+            /** 预设助手 ID / Preset assistant ID */
+            presetAssistantId?: string;
+            /** 是否置顶会话 / Whether this conversation is pinned */
+            pinned?: boolean;
+            /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
+            pinnedAt?: number;
+            /** 是否已归档会话 / Whether this conversation is archived */
+            archived?: boolean;
+            /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
+            archivedAt?: number;
+            /** Explicit marker for temporary health-check conversations */
+            isHealthCheck?: boolean;
+            /** Group child conversation metadata */
+            groupMeta?: ConversationGroupMeta;
+          }
       >,
       'model'
     >
   | IChatConversation<
       'group',
-      {
-        workspace?: string;
-        customWorkspace?: boolean;
-        participants: DiscussionGroupParticipant[];
-        orchestration: DiscussionGroupOrchestration;
-        collaboration?: GroupCollaborationConfig;
-        /** Whether this conversation is pinned */
-        pinned?: boolean;
-        /** Pin timestamp in milliseconds */
-        pinnedAt?: number;
-        /** Whether this conversation is archived */
-        archived?: boolean;
-        /** Archive timestamp in milliseconds */
-        archivedAt?: number;
-      }
+      ConversationSpaceBinding &
+        ConversationWorkspaceCompat & {
+          participants: GroupParticipant[];
+          orchestration: GroupOrchestration;
+          collaboration?: GroupCollaborationConfig;
+          runState?: WorkflowGroupRunState;
+          /** Whether this conversation is pinned */
+          pinned?: boolean;
+          /** Pin timestamp in milliseconds */
+          pinnedAt?: number;
+          /** Whether this conversation is archived */
+          archived?: boolean;
+          /** Archive timestamp in milliseconds */
+          archivedAt?: number;
+        }
     >;
 
 export type IChatConversationRefer = {
@@ -629,7 +768,7 @@ export interface IMcpServer {
   createdAt: number;
   updatedAt: number;
   originalJson: string; // 存储原始JSON配置，用于编辑时的准确显示
-  /** Built-in MCP server managed by AionUi (hide edit/delete in UI) */
+  /** Built-in MCP server managed by ContextGo (hide edit/delete in UI) */
   builtin?: boolean;
 }
 

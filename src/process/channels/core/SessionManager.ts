@@ -30,6 +30,15 @@ export class SessionManager {
     return chatId ? `${userId}:${chatId}` : userId;
   }
 
+  private findSessionEntryById(sessionId: string): { key: string; session: IChannelSession } | null {
+    for (const [key, session] of this.activeSessions.entries()) {
+      if (session.id === sessionId) {
+        return { key, session };
+      }
+    }
+    return null;
+  }
+
   /**
    * Load active sessions from database into memory
    */
@@ -53,6 +62,26 @@ export class SessionManager {
   }
 
   /**
+   * Store a resolved session projection in cache and database.
+   */
+  async storeSession(session: IChannelSession): Promise<void> {
+    const key = this.buildKey(session.userId, session.chatId);
+    const db = await getDatabase();
+    const existingById = this.findSessionEntryById(session.id);
+    if (existingById && existingById.key !== key) {
+      this.activeSessions.delete(existingById.key);
+    }
+
+    const existingSession = this.activeSessions.get(key);
+    if (existingSession && existingSession.id !== session.id) {
+      db.deleteChannelSession(existingSession.id);
+    }
+
+    this.activeSessions.set(key, session);
+    db.upsertChannelSession(session);
+  }
+
+  /**
    * Get session by platform user (lookup user first, then get session)
    */
   async getSessionByPlatformUser(
@@ -61,13 +90,28 @@ export class SessionManager {
     chatId?: string
   ): Promise<IChannelSession | null> {
     const db = await getDatabase();
-    const userResult = db.getChannelUserByPlatform(platformUserId, platformType);
-
-    if (!userResult.success || !userResult.data) {
+    const usersResult = db.getChannelUsers();
+    if (!usersResult.success || !usersResult.data) {
       return null;
     }
 
-    return this.getSession(userResult.data.id, chatId);
+    const projectedUsers = usersResult.data.filter(
+      (user) => user.platformUserId === platformUserId && user.platformType === platformType
+    );
+    if (projectedUsers.length === 0) {
+      return null;
+    }
+
+    if (chatId) {
+      for (const projectedUser of projectedUsers) {
+        const session = this.getSession(projectedUser.id, chatId);
+        if (session) {
+          return session;
+        }
+      }
+    }
+
+    return this.getSession(projectedUsers[0].id, chatId);
   }
 
   /**
@@ -117,10 +161,7 @@ export class SessionManager {
     };
 
     // Save to database
-    db.upsertChannelSession(session);
-
-    // Update in-memory cache
-    this.activeSessions.set(key, session);
+    await this.storeSession(session);
 
     // Update user's session reference
     db.getChannelUserByPlatform(user.platformUserId, user.platformType);
@@ -132,8 +173,6 @@ export class SessionManager {
    * Update session's conversation ID (after creating a conversation)
    */
   async updateSessionConversation(sessionId: string, conversationId: string): Promise<boolean> {
-    const db = await getDatabase();
-
     // Find session by ID and its key
     let foundKey: string | null = null;
     let foundSession: IChannelSession | null = null;
@@ -157,9 +196,13 @@ export class SessionManager {
       lastActivity: Date.now(),
     };
 
-    // Save to database and update cache
-    db.upsertChannelSession(updated);
-    this.activeSessions.set(foundKey, updated);
+    // Persist the source of truth before refreshing the legacy mirror row.
+    const db = await getDatabase();
+    db.updateExternalSessionActivity(updated.id, {
+      lastActivity: updated.lastActivity,
+      activeConversationId: updated.conversationId,
+    });
+    await this.storeSession(updated);
 
     return true;
   }
@@ -177,6 +220,35 @@ export class SessionManager {
     this.activeSessions.set(key, updated);
 
     const db = await getDatabase();
+    db.updateExternalSessionActivity(updated.id, {
+      lastActivity: updated.lastActivity,
+      activeConversationId: updated.conversationId,
+    });
+    db.upsertChannelSession(updated);
+  }
+
+  /**
+   * Update session activity by stable session ID.
+   * Preferred for the new resource model because session ID maps to external_session.id.
+   */
+  async updateSessionActivityById(sessionId: string, conversationId?: string): Promise<void> {
+    const entry = this.findSessionEntryById(sessionId);
+    if (!entry) {
+      return;
+    }
+
+    const updated: IChannelSession = {
+      ...entry.session,
+      conversationId: conversationId ?? entry.session.conversationId,
+      lastActivity: Date.now(),
+    };
+    this.activeSessions.set(entry.key, updated);
+
+    const db = await getDatabase();
+    db.updateExternalSessionActivity(updated.id, {
+      lastActivity: updated.lastActivity,
+      activeConversationId: updated.conversationId,
+    });
     db.upsertChannelSession(updated);
   }
 
@@ -191,6 +263,14 @@ export class SessionManager {
     }
 
     const db = await getDatabase();
+    const externalSession = db.getExternalSession(session.id);
+    if (externalSession.success && externalSession.data?.bindingId) {
+      const bindingResult = db.getChannelBinding(externalSession.data.bindingId);
+      if (bindingResult.success && bindingResult.data?.temporary) {
+        db.deleteChannelBinding(bindingResult.data.id);
+      }
+    }
+
     db.deleteChannelSession(session.id);
     this.activeSessions.delete(key);
 

@@ -40,8 +40,8 @@ describe('buildDisplayMessage', () => {
     expect(result).toBe('hello');
   });
 
-  it('strips AIONUI timestamp separators from filenames', () => {
-    const files = [`${workspace}/uploads/photo_aionui_1234567890123.jpg`];
+  it('strips ContextGo timestamp separators from filenames', () => {
+    const files = [`${workspace}/uploads/photo_contextgo_1234567890123.jpg`];
     const result = buildDisplayMessage('hello', files, workspace);
     expect(result).toContain(`${workspace}/uploads/photo.jpg`);
   });

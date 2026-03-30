@@ -12,15 +12,15 @@ describe('ClaudeMcpAgent helpers', () => {
   it('builds stdio MCP JSON config including env vars', () => {
     const server: IMcpServer = {
       id: 'builtin-image-gen',
-      name: 'aionui-image-generation',
+      name: 'contextgo-image-generation',
       enabled: true,
       transport: {
         type: 'stdio',
         command: 'node',
         args: ['/abs/builtin-mcp-image-gen.js'],
         env: {
-          AIONUI_IMG_PLATFORM: 'openai',
-          AIONUI_IMG_MODEL: 'gpt-image-1',
+          CONTEXTGO_IMG_PLATFORM: 'openai',
+          CONTEXTGO_IMG_MODEL: 'gpt-image-1',
         },
       },
       createdAt: 1,
@@ -32,8 +32,8 @@ describe('ClaudeMcpAgent helpers', () => {
       command: 'node',
       args: ['/abs/builtin-mcp-image-gen.js'],
       env: {
-        AIONUI_IMG_PLATFORM: 'openai',
-        AIONUI_IMG_MODEL: 'gpt-image-1',
+        CONTEXTGO_IMG_PLATFORM: 'openai',
+        CONTEXTGO_IMG_MODEL: 'gpt-image-1',
       },
     });
   });

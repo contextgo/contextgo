@@ -89,7 +89,7 @@ describe('migrateFromElectronConfig', () => {
       }),
     };
     // Explicitly mock existsSync to return false — do not rely on real filesystem
-    // (CI machines might have ~/.aionui-config from a previous run)
+    // (CI machines might have ~/.contextgo-config from a previous run)
     vi.doMock('fs', () => ({
       existsSync: vi.fn().mockReturnValue(false),
       readFileSync: vi.fn().mockReturnValue(''),

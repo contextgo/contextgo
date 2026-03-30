@@ -31,8 +31,8 @@ vi.mock('@/renderer/hooks/agent/usePresetAssistantInfo', () => ({
 }));
 
 vi.mock('@/renderer/pages/cron', () => ({
-  CronJobManager: ({ conversationId }: { conversationId: string }) => (
-    <div data-testid='cron-job-manager'>{conversationId}</div>
+  CronJobManager: ({ conversation }: { conversation: TChatConversation }) => (
+    <div data-testid='cron-job-manager'>{conversation.id}</div>
   ),
 }));
 

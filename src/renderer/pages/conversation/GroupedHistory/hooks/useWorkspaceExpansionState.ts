@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 
-export const WORKSPACE_EXPANSION_STORAGE_KEY = 'aionui_workspace_expansion';
-export const WORKSPACE_EXPANSION_EVENT = 'aionui:workspace-expansion-changed';
-export const DISCUSSION_GROUP_EXPANSION_STORAGE_KEY = 'aionui_discussion_group_expansion';
-export const DISCUSSION_GROUP_EXPANSION_EVENT = 'aionui:discussion-group-expansion-changed';
+export const WORKSPACE_EXPANSION_STORAGE_KEY = 'contextgo_workspace_expansion';
+export const WORKSPACE_EXPANSION_EVENT = 'contextgo:workspace-expansion-changed';
+export const GROUP_CONVERSATION_EXPANSION_STORAGE_KEY = 'contextgo_group_conversation_expansion';
+export const GROUP_CONVERSATION_EXPANSION_EVENT = 'contextgo:group-conversation-expansion-changed';
 
 type WorkspaceExpansionChangeDetail = {
   expandedWorkspaces: string[];
 };
 
-type DiscussionGroupExpansionChangeDetail = {
-  expandedDiscussionGroups: string[];
+type GroupConversationExpansionChangeDetail = {
+  expandedGroupConversations: string[];
 };
 
 export const readExpandedWorkspaces = (): string[] => {
@@ -43,13 +43,13 @@ export const dispatchWorkspaceExpansionChange = (expandedWorkspaces: string[]): 
   );
 };
 
-export const readExpandedDiscussionGroups = (): string[] => {
+export const readExpandedGroupConversations = (): string[] => {
   if (typeof window === 'undefined') {
     return [];
   }
 
   try {
-    const stored = localStorage.getItem(DISCUSSION_GROUP_EXPANSION_STORAGE_KEY);
+    const stored = localStorage.getItem(GROUP_CONVERSATION_EXPANSION_STORAGE_KEY);
     if (!stored) {
       return [];
     }
@@ -61,14 +61,14 @@ export const readExpandedDiscussionGroups = (): string[] => {
   }
 };
 
-export const dispatchDiscussionGroupExpansionChange = (expandedDiscussionGroups: string[]): void => {
+export const dispatchGroupConversationExpansionChange = (expandedGroupConversations: string[]): void => {
   if (typeof window === 'undefined') {
     return;
   }
 
   window.dispatchEvent(
-    new CustomEvent<DiscussionGroupExpansionChangeDetail>(DISCUSSION_GROUP_EXPANSION_EVENT, {
-      detail: { expandedDiscussionGroups },
+    new CustomEvent<GroupConversationExpansionChangeDetail>(GROUP_CONVERSATION_EXPANSION_EVENT, {
+      detail: { expandedGroupConversations },
     })
   );
 };
@@ -100,34 +100,34 @@ export const useWorkspaceExpansionState = (): string[] => {
   return expandedWorkspaces;
 };
 
-export const useDiscussionGroupExpansionState = (): string[] => {
-  const [expandedDiscussionGroups, setExpandedDiscussionGroups] = useState<string[]>(() =>
-    readExpandedDiscussionGroups()
+export const useGroupConversationExpansionState = (): string[] => {
+  const [expandedGroupConversations, setExpandedGroupConversations] = useState<string[]>(() =>
+    readExpandedGroupConversations()
   );
 
   useEffect(() => {
-    const handleDiscussionGroupExpansionChange = (event: Event) => {
-      const customEvent = event as CustomEvent<DiscussionGroupExpansionChangeDetail>;
-      setExpandedDiscussionGroups(customEvent.detail?.expandedDiscussionGroups ?? readExpandedDiscussionGroups());
+    const handleGroupConversationExpansionChange = (event: Event) => {
+      const customEvent = event as CustomEvent<GroupConversationExpansionChangeDetail>;
+      setExpandedGroupConversations(customEvent.detail?.expandedGroupConversations ?? readExpandedGroupConversations());
     };
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === DISCUSSION_GROUP_EXPANSION_STORAGE_KEY) {
-        setExpandedDiscussionGroups(readExpandedDiscussionGroups());
+      if (event.key === GROUP_CONVERSATION_EXPANSION_STORAGE_KEY) {
+        setExpandedGroupConversations(readExpandedGroupConversations());
       }
     };
 
-    window.addEventListener(DISCUSSION_GROUP_EXPANSION_EVENT, handleDiscussionGroupExpansionChange as EventListener);
+    window.addEventListener(GROUP_CONVERSATION_EXPANSION_EVENT, handleGroupConversationExpansionChange as EventListener);
     window.addEventListener('storage', handleStorage);
 
     return () => {
       window.removeEventListener(
-        DISCUSSION_GROUP_EXPANSION_EVENT,
-        handleDiscussionGroupExpansionChange as EventListener
+        GROUP_CONVERSATION_EXPANSION_EVENT,
+        handleGroupConversationExpansionChange as EventListener
       );
       window.removeEventListener('storage', handleStorage);
     };
   }, []);
 
-  return expandedDiscussionGroups;
+  return expandedGroupConversations;
 };
