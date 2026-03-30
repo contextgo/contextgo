@@ -188,3 +188,60 @@ describe('BrowserContextAssetService.revokeAsset', () => {
     await expect(service.revokeAsset('missing')).rejects.toThrow('Browser context asset not found: missing');
   });
 });
+
+describe('BrowserContextAssetService.updateAsset', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('updates browser context metadata and usage timestamps without changing ownership', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(9_999);
+    const asset: TBrowserContextAsset = {
+      id: 'asset-1',
+      spaceId: 'space-alpha',
+      label: 'Browser A',
+      kind: 'managed',
+      provider: 'agent-browser',
+      consentStatus: 'granted',
+      storageMode: 'local-encrypted',
+      metadata: {
+        homeUrl: 'https://old.example.com',
+        sticky: true,
+      },
+      createTime: 1,
+      modifyTime: 1,
+    };
+    const store = createStore([asset]);
+    const service = new BrowserContextAssetService(store);
+
+    const updated = await service.updateAsset({
+      id: 'asset-1',
+      label: '  Main Browser  ',
+      domains: ['Docs.Example.com', 'docs.example.com'],
+      lastUsedAt: 8_888,
+      metadata: {
+        ...asset.metadata,
+        homeUrl: 'https://example.com',
+      },
+    });
+
+    expect(updated.spaceId).toBe('space-alpha');
+    expect(updated.label).toBe('Main Browser');
+    expect(updated.domains).toEqual(['docs.example.com']);
+    expect(updated.lastUsedAt).toBe(8_888);
+    expect(updated.metadata).toEqual({
+      homeUrl: 'https://example.com',
+      sticky: true,
+    });
+    expect(updated.modifyTime).toBe(9_999);
+    expect(store.snapshot()[0]?.metadata?.homeUrl).toBe('https://example.com');
+  });
+
+  it('fails when the target asset is missing', async () => {
+    const service = new BrowserContextAssetService(createStore());
+
+    await expect(service.updateAsset({ id: 'missing', lastUsedAt: 1 })).rejects.toThrow(
+      'Browser context asset not found: missing'
+    );
+  });
+});

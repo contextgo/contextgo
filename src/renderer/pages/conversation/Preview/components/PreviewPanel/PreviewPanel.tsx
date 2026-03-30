@@ -630,7 +630,9 @@ const PreviewPanel: React.FC = () => {
       );
     } else if (contentType === 'url') {
       // URL 预览模式 / URL preview mode
-      return <URLViewer url={content} title={metadata?.title} />;
+      return (
+        <URLViewer url={content} title={metadata?.title} browserContextAssetId={metadata?.browserContextAssetId} />
+      );
     }
 
     return null;

@@ -215,6 +215,22 @@
   },
   "noAgentsAvailable": "No agents available",
   "noModelConfigured": "No model configured. Please configure in settings.",
+  "browser": {
+    "open": "Open browser context",
+    "createTitle": "Create browser context",
+    "configureTitle": "Configure browser context",
+    "startUrlLabel": "Start URL",
+    "startUrlPlaceholder": "Enter the URL to open in the right browser pane",
+    "missingSpace": "This conversation is not bound to a Space yet",
+    "invalidUrl": "Please enter a valid HTTP or HTTPS URL",
+    "openFailed": "Failed to open the browser context",
+    "createFailed": "Failed to create the browser context",
+    "updateFailed": "Failed to update the browser context",
+    "bindFailed": "Failed to bind the browser context to this conversation",
+    "missingHomeUrl": "This browser context does not have a start URL yet",
+    "defaultLabel": "Browser Context",
+    "conversationLabel": "{{name}} Browser"
+  },
   "createFailed": "Failed to create conversation",
   "workspace": {
     "title": "Workspace",

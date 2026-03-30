@@ -51,6 +51,17 @@ export function initBrowserContextBridge(): void {
     }
   });
 
+  ipcBridge.browserContext.update.provider(async (params) => {
+    try {
+      return {
+        success: true,
+        data: await browserContextAssetService.updateAsset(params),
+      };
+    } catch (error) {
+      return { success: false, msg: toErrorMessage(error) };
+    }
+  });
+
   ipcBridge.browserContext.updateConsent.provider(async (params) => {
     try {
       return {

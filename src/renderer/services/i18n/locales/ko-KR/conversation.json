@@ -209,6 +209,22 @@
   },
   "noAgentsAvailable": "사용 가능한 에이전트가 없습니다",
   "noModelConfigured": "모델이 설정되지 않았습니다. 설정 페이지에서 설정하세요.",
+  "browser": {
+    "open": "브라우저 컨텍스트 열기",
+    "createTitle": "브라우저 컨텍스트 만들기",
+    "configureTitle": "브라우저 컨텍스트 설정",
+    "startUrlLabel": "시작 URL",
+    "startUrlPlaceholder": "오른쪽 브라우저 패널에서 열 URL을 입력하세요",
+    "missingSpace": "이 대화는 아직 Space에 연결되어 있지 않습니다",
+    "invalidUrl": "유효한 HTTP 또는 HTTPS URL을 입력하세요",
+    "openFailed": "브라우저 컨텍스트를 열지 못했습니다",
+    "createFailed": "브라우저 컨텍스트를 만들지 못했습니다",
+    "updateFailed": "브라우저 컨텍스트를 업데이트하지 못했습니다",
+    "bindFailed": "브라우저 컨텍스트를 이 대화에 연결하지 못했습니다",
+    "missingHomeUrl": "이 브라우저 컨텍스트에는 아직 시작 URL이 없습니다",
+    "defaultLabel": "브라우저 컨텍스트",
+    "conversationLabel": "{{name}} 브라우저"
+  },
   "createFailed": "대화 생성에 실패했습니다",
   "tabs": {
     "closeAll": "모두 닫기",
