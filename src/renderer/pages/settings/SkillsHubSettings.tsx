@@ -1,5 +1,11 @@
 import { ipcBridge } from '@/common';
-import type { SkillMarketItem } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
+import type {
+  SkillMarketBundle,
+  SkillMarketIndustry,
+  SkillMarketItem,
+  SkillMarketStats,
+  SkillMarketView,
+} from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import { Button, Message, Modal, Typography, Input, Dropdown, Menu } from '@arco-design/web-react';
 import { Delete, FolderOpen, Info, Search, Plus, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
@@ -50,12 +56,18 @@ const SkillsHubSettings: React.FC = () => {
   const [searchExternalQuery, setSearchExternalQuery] = useState('');
   const [marketQuery, setMarketQuery] = useState('');
   const [marketSkills, setMarketSkills] = useState<SkillMarketItem[]>([]);
+  const [marketView, setMarketView] = useState<SkillMarketView>('curated');
+  const [marketIndustryId, setMarketIndustryId] = useState('all');
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketLoadingMore, setMarketLoadingMore] = useState(false);
   const [marketRefreshing, setMarketRefreshing] = useState(false);
+  const [marketBrandName, setMarketBrandName] = useState('ContextGo');
   const [marketTotal, setMarketTotal] = useState(0);
   const [marketTotalAvailable, setMarketTotalAvailable] = useState(0);
   const [marketSiteUrl, setMarketSiteUrl] = useState('https://www.skillmarket.com.cn');
+  const [marketStats, setMarketStats] = useState<SkillMarketStats | null>(null);
+  const [marketIndustries, setMarketIndustries] = useState<SkillMarketIndustry[]>([]);
+  const [marketBundles, setMarketBundles] = useState<SkillMarketBundle[]>([]);
   const [marketInstallingId, setMarketInstallingId] = useState<string | null>(null);
   const [showAddPathModal, setShowAddPathModal] = useState(false);
   const [customPathName, setCustomPathName] = useState('');
@@ -104,12 +116,18 @@ const SkillsHubSettings: React.FC = () => {
       append = false,
       forceRefresh = false,
       nextQuery,
+      nextView,
+      nextIndustryId,
     }: {
       append?: boolean;
       forceRefresh?: boolean;
       nextQuery?: string;
+      nextView?: SkillMarketView;
+      nextIndustryId?: string;
     } = {}) => {
       const query = nextQuery ?? marketQuery;
+      const view = nextView ?? marketView;
+      const industryId = nextIndustryId ?? marketIndustryId;
 
       if (append) {
         setMarketLoadingMore(true);
@@ -125,6 +143,8 @@ const SkillsHubSettings: React.FC = () => {
           limit: 24,
           offset: append ? marketSkills.length : 0,
           forceRefresh,
+          view,
+          industryId: industryId === 'all' ? undefined : industryId,
         });
 
         if (!response.success || !response.data) {
@@ -138,9 +158,13 @@ const SkillsHubSettings: React.FC = () => {
         }
 
         setMarketSkills((current) => (append ? [...current, ...response.data.items] : response.data.items));
+        setMarketBrandName(response.data.brandName);
         setMarketTotal(response.data.total);
         setMarketTotalAvailable(response.data.totalAvailable);
         setMarketSiteUrl(response.data.siteUrl);
+        setMarketStats(response.data.stats);
+        setMarketIndustries(response.data.industryIndex);
+        setMarketBundles(response.data.bundles);
       } catch (error) {
         console.error('Failed to load Skill Market:', error);
         Message.error(
@@ -154,7 +178,7 @@ const SkillsHubSettings: React.FC = () => {
         setMarketRefreshing(false);
       }
     },
-    [marketQuery, marketSkills.length, t]
+    [marketIndustryId, marketQuery, marketSkills.length, marketView, t]
   );
 
   useEffect(() => {
@@ -165,7 +189,7 @@ const SkillsHubSettings: React.FC = () => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [marketQuery, loadSkillMarket]);
+  }, [marketIndustryId, marketQuery, marketView, loadSkillMarket]);
 
   const handleImport = async (skillPath: string) => {
     try {
@@ -233,6 +257,70 @@ const SkillsHubSettings: React.FC = () => {
       }
     },
     [fetchData, t]
+  );
+
+  const handleInstallMarketBundle = useCallback(
+    async (bundle: SkillMarketBundle) => {
+      const alreadyInstalled = new Set(availableSkills.map((skill) => skill.name));
+      const installableSkills = bundle.skills.filter(
+        (skill) => skill.archives.length > 0 && !alreadyInstalled.has(skill.name)
+      );
+
+      if (installableSkills.length === 0) {
+        Message.warning(
+          t('settings.skillsHub.marketBundleNoInstallableSkills', {
+            defaultValue: 'All skills in this bundle are already installed or unavailable',
+          })
+        );
+        return;
+      }
+
+      setMarketInstallingId(`bundle:${bundle.id}`);
+      try {
+        const installResults = await Promise.all(
+          installableSkills.map(async (skill) => ({
+            skill,
+            result: await ipcBridge.fs.installSkillMarketSkill.invoke({
+              skillId: skill.id,
+              archive: skill.archives[0],
+            }),
+          }))
+        );
+        const failedResult = installResults.find(({ result }) => !result.success);
+
+        if (failedResult) {
+          throw new Error(
+            failedResult.result.msg ||
+              t('settings.skillsHub.marketInstallFailed', {
+                name: failedResult.skill.displayName || failedResult.skill.name,
+                defaultValue: 'Failed to install "{{name}}" from Skill Market',
+              })
+          );
+        }
+
+        Message.success(
+          t('settings.skillsHub.marketBundleInstallSuccess', {
+            name: bundle.title,
+            count: installableSkills.length,
+            defaultValue: 'Installed {{count}} skills from "{{name}}"',
+          })
+        );
+        await fetchData();
+      } catch (error) {
+        console.error('Failed to install Skill Market bundle:', error);
+        Message.error(
+          error instanceof Error
+            ? error.message
+            : t('settings.skillsHub.marketBundleInstallFailed', {
+                name: bundle.title,
+                defaultValue: 'Failed to install bundle "{{name}}"',
+              })
+        );
+      } finally {
+        setMarketInstallingId(null);
+      }
+    },
+    [availableSkills, fetchData, t]
   );
 
   const handleImportAll = async (skills: Array<{ name: string; path: string }>) => {
@@ -348,17 +436,23 @@ const SkillsHubSettings: React.FC = () => {
           <div className='space-y-16px pb-24px'>
             <div className='relative overflow-hidden border border-b-base bg-base px-[16px] py-32px shadow-sm rd-16px md:px-[32px] md:rd-24px transition-all'>
               <div className='relative z-10 flex flex-col gap-16px'>
-                <div className='flex flex-col gap-16px lg:flex-row lg:items-start lg:justify-between'>
-                  <div className='flex flex-col'>
-                    <div className='mb-8px flex items-center gap-10px'>
+                <div className='flex flex-col gap-16px xl:flex-row xl:items-start xl:justify-between'>
+                  <div className='flex flex-1 flex-col gap-10px'>
+                    <div className='flex flex-wrap items-center gap-10px'>
                       <span className='text-16px font-bold tracking-tight text-t-primary md:text-18px'>
                         {t('settings.skillsHub.marketTitle', { defaultValue: 'Skill Market' })}
                       </span>
-                      <span className='bg-[rgba(var(--primary-6),0.08)] text-primary-6 text-12px px-10px py-2px rd-[100px] font-medium ml-4px'>
+                      <span className='bg-[rgba(var(--primary-6),0.08)] text-primary-6 text-12px px-10px py-2px rd-[100px] font-medium'>
                         {marketTotalAvailable}
                       </span>
+                      <span className='rounded-[100px] bg-fill-2 px-8px py-2px text-11px text-t-secondary'>
+                        {t('settings.skillsHub.marketCatalogTitle', {
+                          brand: marketBrandName,
+                          defaultValue: '{{brand}} curated catalog',
+                        })}
+                      </span>
                     </div>
-                    <Typography.Text className='max-w-xl text-13px leading-relaxed text-t-secondary'>
+                    <Typography.Text className='max-w-2xl text-13px leading-relaxed text-t-secondary'>
                       {t('settings.skillsHub.marketDescription', {
                         defaultValue:
                           'Search the remote catalog, install skills into your local library, and reuse them across assistants.',
@@ -366,7 +460,7 @@ const SkillsHubSettings: React.FC = () => {
                     </Typography.Text>
                   </div>
 
-                  <div className='flex flex-col gap-12px lg:w-auto lg:min-w-[320px]'>
+                  <div className='flex flex-col gap-12px xl:min-w-[360px]'>
                     <Input
                       prefix={<Search />}
                       placeholder={t('settings.skillsHub.marketSearchPlaceholder', {
@@ -376,25 +470,171 @@ const SkillsHubSettings: React.FC = () => {
                       onChange={(value) => setMarketQuery(value)}
                       className='rounded-[8px] bg-fill-2'
                     />
-                    <div className='flex items-center justify-end gap-8px'>
-                      <Button
-                        size='small'
-                        type='text'
-                        icon={<Refresh theme='outline' size={16} className={marketRefreshing ? 'animate-spin' : ''} />}
-                        onClick={() => void loadSkillMarket({ forceRefresh: true })}
-                      >
-                        {t('common.refresh', { defaultValue: 'Refresh' })}
-                      </Button>
-                      <Button
-                        size='small'
-                        type='outline'
-                        onClick={() => void ipcBridge.shell.openExternal.invoke(marketSiteUrl)}
-                      >
-                        {t('common.website', { defaultValue: 'Website' })}
-                      </Button>
+                    <div className='flex flex-wrap items-center justify-between gap-8px'>
+                      <div className='flex flex-wrap items-center gap-8px'>
+                        <Button
+                          size='small'
+                          type={marketView === 'curated' ? 'primary' : 'secondary'}
+                          className='rounded-[100px]'
+                          onClick={() => setMarketView('curated')}
+                        >
+                          {t('settings.skillsHub.marketCuratedView', { defaultValue: 'Curated' })}
+                        </Button>
+                        <Button
+                          size='small'
+                          type={marketView === 'full' ? 'primary' : 'secondary'}
+                          className='rounded-[100px]'
+                          onClick={() => setMarketView('full')}
+                        >
+                          {t('settings.skillsHub.marketFullView', { defaultValue: 'Full Library' })}
+                        </Button>
+                      </div>
+                      <div className='flex items-center gap-8px'>
+                        <Button
+                          size='small'
+                          type='text'
+                          icon={
+                            <Refresh theme='outline' size={16} className={marketRefreshing ? 'animate-spin' : ''} />
+                          }
+                          onClick={() => void loadSkillMarket({ forceRefresh: true })}
+                        >
+                          {t('common.refresh', { defaultValue: 'Refresh' })}
+                        </Button>
+                        <Button
+                          size='small'
+                          type='outline'
+                          onClick={() => void ipcBridge.shell.openExternal.invoke(marketSiteUrl)}
+                        >
+                          {t('common.website', { defaultValue: 'Website' })}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                <div className='grid grid-cols-2 gap-10px lg:grid-cols-4'>
+                  <div className='rounded-12px border border-border-1 bg-fill-1 p-12px'>
+                    <div className='text-20px font-semibold text-t-primary'>
+                      {marketStats?.total ?? marketTotalAvailable}
+                    </div>
+                    <div className='mt-2px text-11px text-t-secondary'>
+                      {t('settings.skillsHub.marketCuratedCount', { defaultValue: 'Curated skills' })}
+                    </div>
+                  </div>
+                  <div className='rounded-12px border border-border-1 bg-fill-1 p-12px'>
+                    <div className='text-20px font-semibold text-t-primary'>{marketIndustries.length}</div>
+                    <div className='mt-2px text-11px text-t-secondary'>
+                      {t('settings.skillsHub.marketIndustryCount', { defaultValue: 'Industry tracks' })}
+                    </div>
+                  </div>
+                  <div className='rounded-12px border border-border-1 bg-fill-1 p-12px'>
+                    <div className='text-20px font-semibold text-t-primary'>{marketBundles.length}</div>
+                    <div className='mt-2px text-11px text-t-secondary'>
+                      {t('settings.skillsHub.marketBundleCount', { defaultValue: 'Solution bundles' })}
+                    </div>
+                  </div>
+                  <div className='rounded-12px border border-border-1 bg-fill-1 p-12px'>
+                    <div className='text-20px font-semibold text-t-primary'>{marketStats?.clusterCount ?? 0}</div>
+                    <div className='mt-2px text-11px text-t-secondary'>
+                      {t('settings.skillsHub.marketCapabilityCount', { defaultValue: 'Capability clusters' })}
+                    </div>
+                  </div>
+                </div>
+
+                {marketIndustries.length > 0 ? (
+                  <div className='flex gap-8px overflow-x-auto custom-scrollbar pb-2px'>
+                    <Button
+                      size='small'
+                      type={marketIndustryId === 'all' ? 'primary' : 'secondary'}
+                      className='rounded-[100px]'
+                      onClick={() => setMarketIndustryId('all')}
+                    >
+                      {t('settings.skillsHub.marketIndustryAll', { defaultValue: 'All industries' })}
+                    </Button>
+                    {marketIndustries.map((industry) => (
+                      <Button
+                        key={industry.id}
+                        size='small'
+                        type={marketIndustryId === industry.id ? 'primary' : 'secondary'}
+                        className='rounded-[100px]'
+                        onClick={() => setMarketIndustryId(industry.id)}
+                      >
+                        {`${industry.label} (${industry.count})`}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {!marketQuery.trim() && marketBundles.length > 0 ? (
+                  <div className='flex flex-col gap-10px'>
+                    <div className='flex items-center justify-between gap-12px'>
+                      <Typography.Text className='text-13px font-medium text-t-primary'>
+                        {t('settings.skillsHub.marketBundlesTitle', { defaultValue: 'Scenario bundles' })}
+                      </Typography.Text>
+                      <Typography.Text className='text-11px text-t-tertiary'>
+                        {t('settings.skillsHub.marketBundlesHint', {
+                          defaultValue: 'Install proven combinations instead of assembling skills from scratch',
+                        })}
+                      </Typography.Text>
+                    </div>
+                    <div className='grid gap-10px xl:grid-cols-2'>
+                      {marketBundles.slice(0, 4).map((bundle) => {
+                        const isInstallingBundle = marketInstallingId === `bundle:${bundle.id}`;
+
+                        return (
+                          <div key={bundle.id} className='rounded-12px border border-border-1 bg-fill-1 p-16px'>
+                            <div className='flex flex-col gap-10px'>
+                              <div className='flex items-start justify-between gap-12px'>
+                                <div className='min-w-0 flex-1'>
+                                  <div className='flex flex-wrap items-center gap-8px'>
+                                    <div className='text-14px font-semibold text-t-primary'>{bundle.title}</div>
+                                    {bundle.industries[0] ? (
+                                      <span className='rounded-[100px] bg-base px-8px py-2px text-10px text-t-secondary'>
+                                        {bundle.industries[0]}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <div className='mt-4px text-12px leading-relaxed text-t-secondary'>
+                                    {bundle.summary}
+                                  </div>
+                                </div>
+                                <Button
+                                  size='small'
+                                  type='primary'
+                                  loading={isInstallingBundle}
+                                  disabled={bundle.skills.length === 0}
+                                  className='rounded-[100px]'
+                                  onClick={() => void handleInstallMarketBundle(bundle)}
+                                >
+                                  {t('settings.skillsHub.marketBundleInstall', { defaultValue: 'Install bundle' })}
+                                </Button>
+                              </div>
+                              <div className='flex flex-wrap gap-6px text-11px text-t-tertiary'>
+                                <span>
+                                  {t('settings.skillsHub.marketBundleSkillsCount', {
+                                    count: bundle.skills.length,
+                                    defaultValue: '{{count}} skills',
+                                  })}
+                                </span>
+                                {bundle.forTeams ? <span>{bundle.forTeams}</span> : null}
+                              </div>
+                              <div className='flex flex-wrap gap-6px'>
+                                {bundle.steps.slice(0, 4).map((step, index) => (
+                                  <span
+                                    key={`${bundle.id}-${step.label}`}
+                                    className='rounded-[100px] bg-base px-8px py-2px text-10px text-t-secondary'
+                                  >
+                                    {`${index + 1}. ${step.label}`}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className='flex items-center gap-8px text-12px text-t-tertiary'>
                   <FolderOpen size={16} className='shrink-0' />
@@ -437,9 +677,14 @@ const SkillsHubSettings: React.FC = () => {
                                     {`v${skill.version}`}
                                   </span>
                                 ) : null}
-                                {skill.categories[0] ? (
+                                {skill.primaryCapability ? (
+                                  <span className='bg-[rgba(var(--primary-6),0.08)] text-primary-6 text-11px px-6px py-1px rd-4px font-medium'>
+                                    {skill.primaryCapability}
+                                  </span>
+                                ) : null}
+                                {skill.industries[0] || skill.categories[0] ? (
                                   <span className='bg-fill-2 text-t-secondary text-11px px-6px py-1px rd-4px font-medium'>
-                                    {skill.categories[0]}
+                                    {skill.industries[0] || skill.categories[0]}
                                   </span>
                                 ) : null}
                               </div>
@@ -452,8 +697,15 @@ const SkillsHubSettings: React.FC = () => {
                                 </p>
                               ) : null}
                               <div className='text-12px text-t-tertiary'>
-                                {[skill.author, `${skill.installs}`].filter(Boolean).join(' · ')}
+                                {[skill.author, `${skill.installs}`, skill.stars ? `${skill.stars}` : '']
+                                  .filter(Boolean)
+                                  .join(' · ')}
                               </div>
+                              {skill.selectionReason ? (
+                                <div className='rounded-8px bg-fill-2 px-8px py-6px text-11px text-t-secondary'>
+                                  {skill.selectionReason}
+                                </div>
+                              ) : null}
                             </div>
 
                             <div className='mt-8px flex shrink-0 items-center sm:mt-0 sm:self-center'>

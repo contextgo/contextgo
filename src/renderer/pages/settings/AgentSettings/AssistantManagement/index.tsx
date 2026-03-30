@@ -179,12 +179,20 @@ const AssistantManagement: React.FC<AssistantManagementProps> = ({ message }) =>
         marketSkills={skills.marketSkills}
         marketQuery={skills.marketQuery}
         setMarketQuery={skills.setMarketQuery}
+        marketView={skills.marketView}
+        setMarketView={skills.setMarketView}
+        marketIndustryId={skills.marketIndustryId}
+        setMarketIndustryId={skills.setMarketIndustryId}
         marketLoading={skills.marketLoading}
         marketLoadingMore={skills.marketLoadingMore}
         marketRefreshing={skills.marketRefreshing}
+        marketBrandName={skills.marketBrandName}
         marketTotal={skills.marketTotal}
         marketTotalAvailable={skills.marketTotalAvailable}
         marketSiteUrl={skills.marketSiteUrl}
+        marketStats={skills.marketStats}
+        marketIndustries={skills.marketIndustries}
+        marketBundles={skills.marketBundles}
         hasMoreMarketSkills={skills.hasMoreMarketSkills}
         searchExternalQuery={skills.searchExternalQuery}
         setSearchExternalQuery={skills.setSearchExternalQuery}
@@ -195,6 +203,7 @@ const AssistantManagement: React.FC<AssistantManagementProps> = ({ message }) =>
         setShowAddPathModal={skills.setShowAddPathModal}
         customSkills={editor.customSkills}
         handleAddFoundSkills={skills.handleAddFoundSkills}
+        handleAddMarketBundle={skills.handleAddMarketBundle}
       />
 
       <SkillConfirmModals
