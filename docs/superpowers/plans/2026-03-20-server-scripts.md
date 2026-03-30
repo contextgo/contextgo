@@ -29,7 +29,7 @@
 - [ ] **Step 1: Install tsx**
 
 ```bash
-cd /Users/zhangyaxiong/Workspace/src/github/iOfficeAI/AionUi-Bak
+cd /Users/zhangyaxiong/Workspace/src/github/iOfficeAI/ContextGo-Bak
 bun add -D tsx@^4.19.1
 ```
 

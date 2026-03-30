@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -17,7 +17,7 @@ function createTempExtension(
   name: string,
   webui: NonNullable<LoadedExtension['manifest']['contributes']['webui']>
 ): LoadedExtension {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), `aionui-ext-${name}-`));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `contextgo-ext-${name}-`));
   tempRoots.push(root);
 
   fs.mkdirSync(path.join(root, 'webui'), { recursive: true });

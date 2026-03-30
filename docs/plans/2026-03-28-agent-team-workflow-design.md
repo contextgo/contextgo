@@ -170,12 +170,7 @@ Add persisted runtime state on the parent group conversation:
 type WorkflowRunState = {
   status: 'idle' | 'running' | 'paused' | 'completed' | 'failed';
   iteration: number;
-  stage:
-    | 'planning'
-    | 'writing'
-    | 'evaluating'
-    | 'handoff'
-    | 'finalizing';
+  stage: 'planning' | 'writing' | 'evaluating' | 'handoff' | 'finalizing';
   latestScore?: number;
   latestDecision?: 'continue' | 'accept' | 'stop';
   artifactPath?: string;
@@ -439,7 +434,7 @@ Short version:
 - make `planner-writer-evaluator` the new default workflow template
 - keep "discussion group" as one collaboration template, not the whole concept
 
-This gives AionUi a cleaner path:
+This gives ContextGo a cleaner path:
 
 - ad hoc comparison stays in discussion mode
 - long-running production work moves into workflow mode

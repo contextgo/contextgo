@@ -146,11 +146,11 @@ vi.mock('@arco-design/web-react', () => {
   };
 });
 
-vi.mock('@/renderer/components/base/AionScrollArea', () => ({
+vi.mock('@/renderer/components/base/ContextGoScrollArea', () => ({
   default: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 }));
 
-vi.mock('@/renderer/components/base/AionSelect', () => {
+vi.mock('@/renderer/components/base/ContextGoSelect', () => {
   const Select = ({
     children,
     value,

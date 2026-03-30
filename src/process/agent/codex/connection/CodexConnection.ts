@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -227,7 +227,7 @@ export class CodexConnection {
       finalArgs = [...finalArgs, '-c', 'approval_policy=never'];
     } else {
       // Read user's config.toml setting and pass it explicitly to mcp-server.
-      // IMPORTANT: Skip 'never' — AionUi manages approval decisions at the Manager
+      // IMPORTANT: Skip 'never' — ContextGo manages approval decisions at the Manager
       // layer (Plan / Auto Edit / Full Auto modes). Passing 'never' to CLI causes
       // a dual-approval conflict where both CLI and Manager try to approve,
       // leading to the CLI hanging on exec_approval_request events.

@@ -110,7 +110,7 @@
   "assistantSkillsHint": "List preferred tools/skills for the assistant.",
   "assistantSkillsPlaceholder": "Markdown 형식으로 스킬 입력...",
   "assistantHooks": "Hooks",
-  "assistantHooksHint": "AionUi 는 현재 before_user_prompt 의 prompt-transform Hook 을 직접 실행하며, 계획·안전·품질·연속성·인수인계용 builtin 패턴도 Hook 라이브러리로 정리해 두었습니다.",
+  "assistantHooksHint": "ContextGo 는 현재 before_user_prompt 의 prompt-transform Hook 을 직접 실행하며, 계획·안전·품질·연속성·인수인계용 builtin 패턴도 Hook 라이브러리로 정리해 두었습니다.",
   "hooksPage": "Hooks",
   "hooksPageDescription": "시스템 제공 Hook 과 가져온 Hook 을 여기서 관리합니다. builtin 라이브러리는 프롬프트 명확화, 안전 가드, 품질 게이트, 세션 연속성, operator 전달 요약 같은 재사용 패턴을 정리합니다.",
   "hooksPageManageAssistants": "어시스턴트 관리",

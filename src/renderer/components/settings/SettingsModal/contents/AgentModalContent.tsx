@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import { Collapse, Message } from '@arco-design/web-react';
 import React from 'react';
 import AssistantManagement from '@/renderer/pages/settings/AgentSettings/AssistantManagement';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { useSettingsViewMode } from '../settingsViewContext';
 
 const AgentModalContent: React.FC = () => {
@@ -19,7 +19,7 @@ const AgentModalContent: React.FC = () => {
     <div className='flex flex-col h-full w-full'>
       {agentMessageContext}
 
-      <AionScrollArea className='flex-1 min-h-0 pb-16px scrollbar-hide' disableOverflow={isPageMode}>
+      <ContextGoScrollArea className='flex-1 min-h-0 pb-16px scrollbar-hide' disableOverflow={isPageMode}>
         {isPageMode ? (
           <AssistantManagement message={agentMessage} />
         ) : (
@@ -27,7 +27,7 @@ const AgentModalContent: React.FC = () => {
             <AssistantManagement message={agentMessage} />
           </Collapse>
         )}
-      </AionScrollArea>
+      </ContextGoScrollArea>
     </div>
   );
 };

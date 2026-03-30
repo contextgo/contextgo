@@ -48,7 +48,7 @@ describe('prepareBundledBun', () => {
   });
 
   it('copies bundled bun from cache when cache metadata is valid', () => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aionui-bun-test-'));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'contextgo-bun-test-'));
 
     targetExisted = fs.existsSync(targetDir);
     if (targetExisted) {

@@ -182,10 +182,10 @@ describe('conversationBridge', () => {
       vi.mocked(service.getConversation).mockResolvedValue(noWorkspace);
       vi.mocked(service.listAllConversations).mockClear();
 
-    const handler = handlers['getAssociateConversation'];
-    const result = await handler({ conversation_id: 'c1' });
+      const handler = handlers['getAssociateConversation'];
+      const result = await handler({ conversation_id: 'c1' });
 
-    expect(result).toEqual([]);
+      expect(result).toEqual([]);
     });
 
     it('returns empty array when current conversation is not found', async () => {

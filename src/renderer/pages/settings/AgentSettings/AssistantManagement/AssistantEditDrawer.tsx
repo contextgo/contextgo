@@ -660,7 +660,7 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
             <Typography.Text type='secondary' className='block text-12px'>
               {t('settings.assistantHooksHint', {
                 defaultValue:
-                  'AionUi currently runs prompt-transform hooks on before_user_prompt. Builtin hooks also package reusable patterns for planning, safety, quality, continuity, and operator handoff.',
+                  'ContextGo currently runs prompt-transform hooks on before_user_prompt. Builtin hooks also package reusable patterns for planning, safety, quality, continuity, and operator handoff.',
               })}
             </Typography.Text>
             <div className='mt-8px rounded-8px bg-bg-1 p-10px'>

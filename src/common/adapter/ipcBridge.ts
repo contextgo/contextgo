@@ -1250,7 +1250,7 @@ export interface IExtensionSettingsTab {
   id: string;
   name: string;
   icon?: string;
-  /** aion-asset:// local page or external https:// URL */
+  /** contextgo-asset:// local page or external https:// URL */
   entryUrl: string;
   /** Position anchor relative to a built-in or other extension tab */
   position?: { anchor: string; placement: 'before' | 'after' };

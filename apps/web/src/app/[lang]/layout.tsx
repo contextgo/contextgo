@@ -1,6 +1,6 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { getDictionary } from "@/app/dictionaries";
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import { getDictionary } from '@/app/dictionaries';
 
 export const runtime = 'edge';
 
@@ -15,24 +15,13 @@ export default async function LangLayout({
   const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
   const dict = await getDictionary(validLang);
 
-    return (
+  return (
+    <>
+      <Navbar dict={dict.navbar} lang={validLang} />
 
-      <>
+      <main className='flex-grow pt-16'>{children}</main>
 
-        <Navbar dict={dict.navbar} lang={validLang} />
-
-        <main className="flex-grow pt-16">
-
-          {children}
-
-        </main>
-
-        <Footer dict={dict.footer} lang={validLang} />
-
-      </>
-
-    );
-
-  }
-
-  
+      <Footer dict={dict.footer} lang={validLang} />
+    </>
+  );
+}

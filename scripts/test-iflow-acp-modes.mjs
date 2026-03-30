@@ -125,7 +125,7 @@ async function main() {
     log('STEP', '1. Sending initialize...');
     const initResp = await send('initialize', {
       protocolVersion: 1,
-      clientInfo: { name: 'aionui-test', version: '1.0.0' },
+      clientInfo: { name: 'contextgo-test', version: '1.0.0' },
       clientCapabilities: {
         prompts: {},
         tools: {},

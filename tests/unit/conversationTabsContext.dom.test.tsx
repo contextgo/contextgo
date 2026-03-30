@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -70,7 +70,7 @@ const createNormalConversation = (): TChatConversation =>
     modifyTime: 1,
     model: { provider: 'openai', model: 'gpt-4.1' },
     extra: {
-      workspace: '/Users/bytedance/project/AionUi',
+      workspace: '/Users/bytedance/project/ContextGo',
       customWorkspace: true,
     },
   }) as TChatConversation;

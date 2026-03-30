@@ -34,7 +34,7 @@ vi.mock('@/common/config/presets/assistantPresets', () => ({
 
 vi.mock('@/renderer/utils/platform', () => ({
   resolveExtensionAssetUrl: (url: string) => {
-    if (url.startsWith('ext://')) return url.replace('ext://', 'aion-asset://extensions/');
+    if (url.startsWith('ext://')) return url.replace('ext://', 'contextgo-asset://extensions/');
     return '';
   },
 }));

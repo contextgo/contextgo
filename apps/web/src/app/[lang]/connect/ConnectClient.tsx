@@ -52,11 +52,7 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
         <section className='theme-surface-primary theme-shadow-soft theme-border relative overflow-hidden rounded-[36px] border px-6 py-10 backdrop-blur md:px-10 md:py-14'>
           <div className='theme-divider-gradient absolute inset-x-12 top-0 h-px' />
           <div className='grid gap-10 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:items-start'>
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
               <div className='theme-button-secondary theme-text-tertiary inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em]'>
                 <span className='h-2 w-2 rounded-full bg-[var(--surface-accent)]' />
                 {dict.connect.badge}
@@ -83,14 +79,13 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
                 {dict.connect.features.map((feature, index) => {
                   const Icon = featureIcons[index] ?? Sparkles;
                   return (
-                    <div
-                      key={feature.title}
-                      className='theme-card-gradient theme-border rounded-[24px] border p-5'
-                    >
+                    <div key={feature.title} className='theme-card-gradient theme-border rounded-[24px] border p-5'>
                       <div className='theme-surface-accent flex h-11 w-11 items-center justify-center rounded-2xl'>
                         <Icon size={18} />
                       </div>
-                      <div className='theme-text-primary mt-4 text-lg font-semibold tracking-tight'>{feature.title}</div>
+                      <div className='theme-text-primary mt-4 text-lg font-semibold tracking-tight'>
+                        {feature.title}
+                      </div>
                       <p className='theme-text-secondary mt-2 text-sm leading-6'>{feature.desc}</p>
                     </div>
                   );
@@ -148,7 +143,9 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
             <div className='theme-surface-secondary theme-shadow-card theme-border theme-text-tertiary inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs uppercase tracking-[0.24em]'>
               {dict.connect.panel_label}
             </div>
-            <h2 className='theme-text-primary mt-5 text-3xl font-semibold tracking-tight'>{dict.connect.panel_title}</h2>
+            <h2 className='theme-text-primary mt-5 text-3xl font-semibold tracking-tight'>
+              {dict.connect.panel_title}
+            </h2>
             <p className='theme-text-secondary mt-4 max-w-xl text-sm leading-7'>{dict.connect.panel_body}</p>
 
             <div className='mt-8 space-y-4'>

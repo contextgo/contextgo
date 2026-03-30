@@ -144,7 +144,7 @@ export default function ContextParticles() {
       const changedTheme = mutations.some(
         (mutation) =>
           mutation.type === 'attributes' &&
-          (mutation.attributeName === 'data-theme' || mutation.attributeName === 'data-theme-mode'),
+          (mutation.attributeName === 'data-theme' || mutation.attributeName === 'data-theme-mode')
       );
 
       if (changedTheme) {

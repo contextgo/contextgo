@@ -26,7 +26,7 @@ describe('readDirectoryRecursive', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'aionui-test-'));
+    tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'contextgo-test-'));
   });
 
   afterEach(async () => {

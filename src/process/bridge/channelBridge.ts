@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -156,7 +156,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
                 iconField.startsWith('https://') ||
                 iconField.startsWith('data:') ||
                 iconField.startsWith('file://') ||
-                iconField.startsWith('aion-asset://')
+                iconField.startsWith('contextgo-asset://')
               ) {
                 extensionMeta.icon = iconField;
               } else {

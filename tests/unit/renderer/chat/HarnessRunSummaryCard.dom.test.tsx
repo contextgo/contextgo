@@ -121,11 +121,11 @@ const createManifest = (status: HarnessArtifactManifest['status']): HarnessArtif
     branch: 'main',
   },
   files: {
-    request: '.aionui/discussion-groups/group-1/latest/request.md',
-    planner: '.aionui/discussion-groups/group-1/latest/planner.md',
-    generator: '.aionui/discussion-groups/group-1/latest/generator.md',
-    evaluator: '.aionui/discussion-groups/group-1/latest/evaluator.md',
-    manifest: '.aionui/discussion-groups/group-1/latest/manifest.json',
+    request: '.contextgo/discussion-groups/group-1/latest/request.md',
+    planner: '.contextgo/discussion-groups/group-1/latest/planner.md',
+    generator: '.contextgo/discussion-groups/group-1/latest/generator.md',
+    evaluator: '.contextgo/discussion-groups/group-1/latest/evaluator.md',
+    manifest: '.contextgo/discussion-groups/group-1/latest/manifest.json',
   },
   rounds: [
     {
@@ -193,7 +193,7 @@ describe('HarnessRunSummaryCard', () => {
         expect.objectContaining({
           title: 'planner.md',
           fileName: 'planner.md',
-          filePath: '/workspace/.aionui/discussion-groups/group-1/latest/planner.md',
+          filePath: '/workspace/.contextgo/discussion-groups/group-1/latest/planner.md',
           workspace: '/workspace',
           editable: false,
           language: 'markdown',
@@ -204,7 +204,7 @@ describe('HarnessRunSummaryCard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Open Folder' }));
 
     await waitFor(() => {
-      expect(openFileInvokeMock).toHaveBeenCalledWith('/workspace/.aionui/discussion-groups/group-1/latest');
+      expect(openFileInvokeMock).toHaveBeenCalledWith('/workspace/.contextgo/discussion-groups/group-1/latest');
     });
   });
 

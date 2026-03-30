@@ -299,7 +299,7 @@ Variable expectations:
 
 - `BUILD_RUNNER_MODE` should be `hosted` or `self-hosted`
 - `RELEASE_BUILD_PLATFORMS` should be `all` or a comma-separated subset such as `macos-arm64,linux`
-- `*_LABELS_JSON` values should be JSON arrays of runner labels, for example `["self-hosted","macOS","arm64","aionui-macos"]`
+- `*_LABELS_JSON` values should be JSON arrays of runner labels, for example `["self-hosted","macOS","arm64","contextgo-macos"]`
 
 Stable rule:
 

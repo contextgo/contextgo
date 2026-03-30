@@ -22,7 +22,7 @@ describe('normalizeVoiceInputConfig', () => {
           languageHints: ['zh', 'zh', '', 'en'],
           vocabularyId: ' vocab-1 ',
           phraseId: ' phrase-1 ',
-          hotwords: ['aionui', 'aionui', 'voice'],
+          hotwords: ['contextgo', 'contextgo', 'voice'],
         },
         volcengine: {
           appKey: '  app-1  ',
@@ -51,7 +51,7 @@ describe('normalizeVoiceInputConfig', () => {
     expect(config.providers.dashscope.languageHints).toEqual(['zh', 'en']);
     expect(config.providers.dashscope.vocabularyId).toBe('vocab-1');
     expect(config.providers.dashscope.phraseId).toBe('phrase-1');
-    expect(config.providers.dashscope.hotwords).toEqual(['aionui', 'voice']);
+    expect(config.providers.dashscope.hotwords).toEqual(['contextgo', 'voice']);
     expect(config.providers.volcengine.appKey).toBe('app-1');
     expect(config.providers.volcengine.accessKey).toBe('access-1');
     expect(config.providers.volcengine.resourceId).toBe('volc.custom.resource');

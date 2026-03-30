@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -9,8 +9,8 @@
 export const BUILTIN_IMAGE_GEN_ID = 'builtin-image-gen';
 export const BUILTIN_IMAGE_GEN_NAME = 'contextgo-image-generation';
 export const BUILTIN_IMAGE_GEN_LEGACY_NAMES = [
-  'AionUi Image Generation',
-  'aionui-image-generation',
+  'ContextGo Image Generation',
+  'contextgo-image-generation',
   BUILTIN_IMAGE_GEN_ID,
 ] as const;
 

@@ -8,7 +8,7 @@ This document explains why a local desktop build can appear to "finish" while th
 
 The biggest source of confusion is `scripts/build-with-builder.js`.
 
-Inside [`scripts/build-with-builder.js`](/Users/bytedance/project/AionUi/scripts/build-with-builder.js), `--pack-only` only runs the electron-vite bundle phase and then returns early:
+Inside [`scripts/build-with-builder.js`](/Users/bytedance/project/ContextGo/scripts/build-with-builder.js), `--pack-only` only runs the electron-vite bundle phase and then returns early:
 
 ```js
 if (packOnly) {
@@ -129,18 +129,18 @@ Practical consequence:
 
 This was specifically mitigated by excluding `html` preview tabs from persistence in:
 
-- [`src/renderer/pages/conversation/Preview/context/PreviewContext.tsx`](/Users/bytedance/project/AionUi/src/renderer/pages/conversation/Preview/context/PreviewContext.tsx)
+- [`src/renderer/pages/conversation/Preview/context/PreviewContext.tsx`](/Users/bytedance/project/ContextGo/src/renderer/pages/conversation/Preview/context/PreviewContext.tsx)
 
 and by guarding suspicious embedded document navigations in:
 
-- [`src/renderer/pages/conversation/Preview/components/renderers/HTMLRenderer.tsx`](/Users/bytedance/project/AionUi/src/renderer/pages/conversation/Preview/components/renderers/HTMLRenderer.tsx)
-- [`src/renderer/components/media/WebviewHost.tsx`](/Users/bytedance/project/AionUi/src/renderer/components/media/WebviewHost.tsx)
-- [`src/renderer/components/settings/SettingsModal/contents/ExtensionSettingsTabContent.tsx`](/Users/bytedance/project/AionUi/src/renderer/components/settings/SettingsModal/contents/ExtensionSettingsTabContent.tsx)
-- [`src/renderer/pages/settings/ExtensionSettingsPage.tsx`](/Users/bytedance/project/AionUi/src/renderer/pages/settings/ExtensionSettingsPage.tsx)
+- [`src/renderer/pages/conversation/Preview/components/renderers/HTMLRenderer.tsx`](/Users/bytedance/project/ContextGo/src/renderer/pages/conversation/Preview/components/renderers/HTMLRenderer.tsx)
+- [`src/renderer/components/media/WebviewHost.tsx`](/Users/bytedance/project/ContextGo/src/renderer/components/media/WebviewHost.tsx)
+- [`src/renderer/components/settings/SettingsModal/contents/ExtensionSettingsTabContent.tsx`](/Users/bytedance/project/ContextGo/src/renderer/components/settings/SettingsModal/contents/ExtensionSettingsTabContent.tsx)
+- [`src/renderer/pages/settings/ExtensionSettingsPage.tsx`](/Users/bytedance/project/ContextGo/src/renderer/pages/settings/ExtensionSettingsPage.tsx)
 
 The shared URL/path guard lives in:
 
-- [`src/renderer/utils/ui/documentNavigationGuard.ts`](/Users/bytedance/project/AionUi/src/renderer/utils/ui/documentNavigationGuard.ts)
+- [`src/renderer/utils/ui/documentNavigationGuard.ts`](/Users/bytedance/project/ContextGo/src/renderer/utils/ui/documentNavigationGuard.ts)
 
 ### 8. Bulk `security` keychain inspection can create the very popup storm being investigated
 

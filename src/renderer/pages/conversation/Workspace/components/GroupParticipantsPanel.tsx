@@ -63,7 +63,7 @@ const resolveAvatarImageSrc = (avatar: string | undefined): string | null => {
   const resolvedAvatar = resolveExtensionAssetUrl(value) || value;
   const isImageLike =
     /\.(svg|png|jpe?g|webp|gif)$/i.test(resolvedAvatar) ||
-    /^(https?:|aion-asset:\/\/|file:\/\/|data:)/i.test(resolvedAvatar);
+    /^(https?:|contextgo-asset:\/\/|file:\/\/|data:)/i.test(resolvedAvatar);
   return isImageLike ? resolvedAvatar : null;
 };
 

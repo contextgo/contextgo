@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -12,7 +12,7 @@
  *   - `ui` (ui.html) — iframe UI thread, handles rendering
  *   - Communication via `figma.ui.postMessage()` / `figma.ui.onmessage`
  *
- * AionUI adaptation:
+ * ContextGoUI adaptation:
  *   - Settings Tab / WebUI extensions render in sandboxed <iframe>
  *   - Main process holds the extension's logic and data
  *   - Structured message protocol for bidirectional communication

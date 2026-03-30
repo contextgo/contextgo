@@ -46,7 +46,7 @@ vi.mock('@arco-design/web-react', async (importOriginal) => {
 
 vi.mock('@icon-park/react', () => ({}));
 
-vi.mock('@/renderer/components/base/AionScrollArea', () => ({
+vi.mock('@/renderer/components/base/ContextGoScrollArea', () => ({
   default: ({ children }: any) => <div data-testid='scroll-area'>{children}</div>,
 }));
 

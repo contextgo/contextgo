@@ -17,7 +17,7 @@ describe('builtin skills sync', () => {
   let destDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'aionui-test-'));
+    tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'contextgo-test-'));
     srcDir = path.join(tmpDir, 'source');
     destDir = path.join(tmpDir, 'builtin-skills');
     mkdirSync(srcDir, { recursive: true });

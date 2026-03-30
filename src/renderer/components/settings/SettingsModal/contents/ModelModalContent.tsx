@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -17,7 +17,7 @@ import AddModelModal from '@/renderer/pages/settings/components/AddModelModal';
 import AddPlatformModal from '@/renderer/pages/settings/components/AddPlatformModal';
 import { isNewApiPlatform, NEW_API_PROTOCOL_OPTIONS } from '@/renderer/utils/model/modelPlatforms';
 import EditModeModal from '@/renderer/pages/settings/components/EditModeModal';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { useSettingsViewMode } from '../settingsViewContext';
 import { consumePendingDeepLink } from '@/renderer/hooks/system/useDeepLink';
 import '../model-provider.css';
@@ -481,7 +481,7 @@ const ModelModalContent: React.FC = () => {
       </div>
 
       {/* Content Area */}
-      <AionScrollArea className='flex-1 min-h-0' disableOverflow={isPageMode}>
+      <ContextGoScrollArea className='flex-1 min-h-0' disableOverflow={isPageMode}>
         {!data || data.length === 0 ? (
           <div className='flex flex-col items-center justify-center py-40px'>
             <Info theme='outline' size='48' className='text-t-secondary mb-16px' />
@@ -717,7 +717,7 @@ const ModelModalContent: React.FC = () => {
             })}
           </div>
         )}
-      </AionScrollArea>
+      </ContextGoScrollArea>
     </div>
   );
 };

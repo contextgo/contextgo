@@ -160,9 +160,9 @@ test.describe('Extension IPC: Settings Tabs', () => {
     for (const tab of snapshot.settingsTabs) {
       expect(tab.id).toBeTruthy();
       expect(tab.name).toBeTruthy();
-      // entryUrl must be aion-asset:// (local) or http(s):// (external)
+      // entryUrl must be contextgo-asset:// (local) or http(s):// (external)
       expect(
-        tab.entryUrl.startsWith('aion-asset://') ||
+        tab.entryUrl.startsWith('contextgo-asset://') ||
           tab.entryUrl.startsWith('http://') ||
           tab.entryUrl.startsWith('https://')
       ).toBeTruthy();

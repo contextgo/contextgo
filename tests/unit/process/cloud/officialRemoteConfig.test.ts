@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -73,6 +73,8 @@ remotePort = 18080
   });
 
   it('builds the default official remote config path under ~/.config/frp', () => {
-    expect(getDefaultOfficialRemoteFrpConfigPath('/tmp/test-home')).toBe('/tmp/test-home/.config/frp/contextgo-remote.toml');
+    expect(getDefaultOfficialRemoteFrpConfigPath('/tmp/test-home')).toBe(
+      '/tmp/test-home/.config/frp/contextgo-remote.toml'
+    );
   });
 });

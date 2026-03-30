@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -192,9 +192,9 @@ export function resolveChannelPlugins(extensions: LoadedExtension[]): Map<string
           ? (PluginClass as typeof BasePlugin)
           : createDuckTypedWrapper(plugin.type, PluginClass as new (config?: unknown) => LegacyExternalPlugin);
 
-        // Resolve icon path to absolute URL (aion-asset://) for frontend
+        // Resolve icon path to absolute URL (contextgo-asset://) for frontend
         let iconUrl = plugin.icon;
-        if (plugin.icon && !plugin.icon.match(/^(https?:|data:|aion-asset:|file:)/)) {
+        if (plugin.icon && !plugin.icon.match(/^(https?:|data:|contextgo-asset:|file:)/)) {
           const absPath = path.resolve(ext.directory, plugin.icon);
           iconUrl = toAssetUrl(absPath);
         }

@@ -110,7 +110,7 @@
   "assistantSkillsHint": "List preferred tools/skills for the assistant.",
   "assistantSkillsPlaceholder": "Yetenekleri Markdown formatında girin...",
   "assistantHooks": "Hooks",
-  "assistantHooksHint": "AionUi şu anda before_user_prompt üzerindeki prompt-transform hook'ları doğrudan çalıştırır ve planlama, güvenlik, kalite, süreklilik ve devir özetleri için builtin kalıpları da hook kitaplığında sunar.",
+  "assistantHooksHint": "ContextGo şu anda before_user_prompt üzerindeki prompt-transform hook'ları doğrudan çalıştırır ve planlama, güvenlik, kalite, süreklilik ve devir özetleri için builtin kalıpları da hook kitaplığında sunar.",
   "hooksPage": "Hooks",
   "hooksPageDescription": "Sistem tarafından sağlanan ve içe aktarılan hook'ları burada yönetin. Builtin kitaplık; istem netleştirme, güvenlik korumaları, kalite kapıları, oturum sürekliliği ve operator odaklı teslim özetleri için yeniden kullanılabilir kalıpları düzenler.",
   "hooksPageManageAssistants": "Asistanları Yönet",

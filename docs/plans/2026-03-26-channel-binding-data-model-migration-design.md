@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-26
 **Status:** Proposed
-**Depends on:** [2026-03-26-channel-binding-resource-model-design.md](/Users/bytedance/project/AionUi-channel-binding-design/docs/plans/2026-03-26-channel-binding-resource-model-design.md)
+**Depends on:** [2026-03-26-channel-binding-resource-model-design.md](/Users/bytedance/project/ContextGo-channel-binding-design/docs/plans/2026-03-26-channel-binding-resource-model-design.md)
 
 ## Background
 

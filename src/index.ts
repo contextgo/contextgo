@@ -21,7 +21,7 @@ import * as path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { initMainAdapterWithWindow } from './common/adapter/main';
 import { ipcBridge } from './common';
-import { AION_ASSET_PROTOCOL } from '@process/extensions';
+import { CONTEXTGO_ASSET_PROTOCOL } from '@process/extensions';
 import { initializeProcess } from './process';
 import { ProcessConfig } from './process/utils/initStorage';
 import { loadShellEnvironmentAsync, logEnvironmentDiagnostics, mergePaths } from './process/utils/shellEnv';
@@ -133,12 +133,12 @@ if (electronSquirrelStartup) {
 }
 
 // ============ Custom Asset Protocol ============
-// Register aion-asset:// as a privileged scheme BEFORE app.whenReady().
+// Register contextgo-asset:// as a privileged scheme BEFORE app.whenReady().
 // This protocol serves local extension assets (icons, covers) bypassing
 // the browser security policy that blocks file:// URLs from http://localhost.
 protocol.registerSchemesAsPrivileged([
   {
-    scheme: AION_ASSET_PROTOCOL,
+    scheme: CONTEXTGO_ASSET_PROTOCOL,
     privileges: {
       standard: true,
       secure: true,
@@ -406,10 +406,10 @@ const handleAppReady = async (): Promise<void> => {
     return;
   }
 
-  // Register aion-asset:// protocol handler.
-  // Converts aion-asset://asset/C:/path/to/file.svg → file:///C:/path/to/file.svg
+  // Register contextgo-asset:// protocol handler.
+  // Converts contextgo-asset://asset/C:/path/to/file.svg → file:///C:/path/to/file.svg
   // and serves the local file through Electron's net module.
-  protocol.handle(AION_ASSET_PROTOCOL, (request) => {
+  protocol.handle(CONTEXTGO_ASSET_PROTOCOL, (request) => {
     const url = new URL(request.url);
     // pathname is /C:/path/to/file.svg — strip leading slash on Windows
     let filePath = decodeURIComponent(url.pathname);
@@ -417,7 +417,7 @@ const handleAppReady = async (): Promise<void> => {
       filePath = filePath.slice(1);
     }
     if (!fs.existsSync(filePath)) {
-      console.warn(`[aion-asset] File not found: ${request.url} -> ${filePath}`);
+      console.warn(`[contextgo-asset] File not found: ${request.url} -> ${filePath}`);
     }
     return net.fetch(pathToFileURL(filePath).href);
   });

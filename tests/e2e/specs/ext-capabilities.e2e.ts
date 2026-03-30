@@ -41,7 +41,7 @@ test.describe('Extension: Complete Capabilities', () => {
 
     const allEntryUrlsValid = snapshot.settingsTabs.every(
       (item) =>
-        item.entryUrl.startsWith('aion-asset://') ||
+        item.entryUrl.startsWith('contextgo-asset://') ||
         item.entryUrl.startsWith('http://') ||
         item.entryUrl.startsWith('https://')
     );

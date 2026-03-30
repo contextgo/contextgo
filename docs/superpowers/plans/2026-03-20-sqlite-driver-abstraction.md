@@ -4,7 +4,7 @@
 
 **Goal:** Introduce a thin driver adapter layer so `bun run server` uses `bun:sqlite` (no native ABI) while `bun run start` (Electron) continues using `better-sqlite3`.
 
-**Architecture:** Define `ISqliteDriver` interface; implement `BetterSqlite3Driver` and `BunSqliteDriver`; add a dynamic-`import()` factory `createDriver()` that selects the correct driver at runtime via `process.versions.bun`; migrate `AionUIDatabase` from a sync constructor to a static async factory; update all call sites to `await getDatabase()`.
+**Architecture:** Define `ISqliteDriver` interface; implement `BetterSqlite3Driver` and `BunSqliteDriver`; add a dynamic-`import()` factory `createDriver()` that selects the correct driver at runtime via `process.versions.bun`; migrate `ContextGoUIDatabase` from a sync constructor to a static async factory; update all call sites to `await getDatabase()`.
 
 **Tech Stack:** TypeScript, better-sqlite3 (Electron path), bun:sqlite (server path), esbuild (build), Vitest 4 (unit tests for BetterSqlite3 driver), bun test (unit tests for BunSqliteDriver)
 
@@ -72,7 +72,7 @@ export interface ISqliteDriver {
 - [ ] **Step 2: Verify type check passes**
 
 ```bash
-cd /Users/zhangyaxiong/Workspace/src/github/iOfficeAI/AionUi-Bak
+cd /Users/zhangyaxiong/Workspace/src/github/iOfficeAI/ContextGo-Bak
 bunx tsc --noEmit
 ```
 
@@ -898,7 +898,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
   extra TEXT NOT NULL,
   model TEXT,
   status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-  source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram')),
+  source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram')),
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -1002,7 +1002,7 @@ git commit -m "refactor(database): update migrations.ts to use ISqliteDriver, sp
 3. `private db: Database.Database` → `private db: ISqliteDriver`
 4. Remove constructor body (no more sync initialization); add private constructor
 5. Add `static async create(dbPath: string)` factory method
-6. Change `getDatabase()` to return `Promise<AionUIDatabase>`
+6. Change `getDatabase()` to return `Promise<ContextGoUIDatabase>`
 
 - [ ] **Step 1: Update imports at top of file**
 
@@ -1016,24 +1016,24 @@ import type { ISqliteDriver } from './drivers/ISqliteDriver';
 import { createDriver } from './drivers/createDriver';
 ```
 
-- [ ] **Step 2: Refactor AionUIDatabase class**
+- [ ] **Step 2: Refactor ContextGoUIDatabase class**
 
 Replace the constructor and add static factory. Keep all SQL methods unchanged — only the class-level wiring changes.
 
 ```typescript
-export class AionUIDatabase {
+export class ContextGoUIDatabase {
   private db: ISqliteDriver;
   private readonly defaultUserId = 'system_default_user';
   private readonly systemPasswordPlaceholder = '';
 
-  // Private constructor — use AionUIDatabase.create() instead
+  // Private constructor — use ContextGoUIDatabase.create() instead
   private constructor(db: ISqliteDriver) {
     this.db = db;
   }
 
-  static async create(dbPath: string): Promise<AionUIDatabase> {
+  static async create(dbPath: string): Promise<ContextGoUIDatabase> {
     const driver = await createDriver(dbPath);
-    const instance = new AionUIDatabase(driver);
+    const instance = new ContextGoUIDatabase(driver);
     instance.initialize();
     return instance;
   }
@@ -1061,19 +1061,19 @@ export class AionUIDatabase {
 
 ```typescript
 // REMOVE old synchronous implementation:
-// let dbInstance: AionUIDatabase | null = null;
-// export function getDatabase(): AionUIDatabase { ... }
+// let dbInstance: ContextGoUIDatabase | null = null;
+// export function getDatabase(): ContextGoUIDatabase { ... }
 
 // ADD async lazy initialization:
-let dbInstancePromise: Promise<AionUIDatabase> | null = null;
+let dbInstancePromise: Promise<ContextGoUIDatabase> | null = null;
 
 function resolveDbPath(): string {
-  return path.join(getDataPath(), 'aionui.db');
+  return path.join(getDataPath(), 'contextgo.db');
 }
 
-export function getDatabase(): Promise<AionUIDatabase> {
+export function getDatabase(): Promise<ContextGoUIDatabase> {
   if (!dbInstancePromise) {
-    dbInstancePromise = AionUIDatabase.create(resolveDbPath());
+    dbInstancePromise = ContextGoUIDatabase.create(resolveDbPath());
   }
   return dbInstancePromise;
 }
@@ -1092,14 +1092,14 @@ export function closeDatabase(): void {
 The corruption recovery logic in the old constructor used `new BetterSqlite3()` and `fs.renameSync`. Since the constructor is now private and path-agnostic, this logic moves into the static `create()` method:
 
 ```typescript
-static async create(dbPath: string): Promise<AionUIDatabase> {
+static async create(dbPath: string): Promise<ContextGoUIDatabase> {
   const dir = path.dirname(dbPath);
   ensureDirectory(dir);
 
   // Attempt normal initialization
   try {
     const driver = await createDriver(dbPath);
-    const instance = new AionUIDatabase(driver);
+    const instance = new ContextGoUIDatabase(driver);
     instance.initialize();
     return instance;
   } catch (error) {
@@ -1124,7 +1124,7 @@ static async create(dbPath: string): Promise<AionUIDatabase> {
 
   // Retry with fresh file
   const driver = await createDriver(dbPath);
-  const instance = new AionUIDatabase(driver);
+  const instance = new ContextGoUIDatabase(driver);
   instance.initialize();
   return instance;
 }
@@ -1142,7 +1142,7 @@ Expected: errors in the 22 call-site files (they still call `getDatabase()` with
 
 ```bash
 git add src/process/services/database/index.ts
-git commit -m "refactor(database): migrate AionUIDatabase to static async factory, async getDatabase()"
+git commit -m "refactor(database): migrate ContextGoUIDatabase to static async factory, async getDatabase()"
 ```
 
 ---
@@ -1262,7 +1262,7 @@ const isAuthorized = await this.pairingService.isUserAuthorized(user.id, platfor
 bunx tsc --noEmit
 ```
 
-Expected: 0 errors. If there are errors, they will be in call sites where `getDatabase()` is used in a sync context or the return type is used as `AionUIDatabase` instead of `Promise<AionUIDatabase>`. Fix each one by adding `await` and making the enclosing function `async`.
+Expected: 0 errors. If there are errors, they will be in call sites where `getDatabase()` is used in a sync context or the return type is used as `ContextGoUIDatabase` instead of `Promise<ContextGoUIDatabase>`. Fix each one by adding `await` and making the enclosing function `async`.
 
 - [ ] **Step 6: Run lint**
 
@@ -1386,7 +1386,7 @@ Before claiming complete:
 - [ ] `bun run test:bun` — all BunSqliteDriver bun tests pass
 - [ ] `bun run server` — server starts without ABI or import errors
 - [ ] No `console.log` left in changed files (CI hook checks this)
-- [ ] `getDatabase()` returns `Promise<AionUIDatabase>` everywhere in the codebase
+- [ ] `getDatabase()` returns `Promise<ContextGoUIDatabase>` everywhere in the codebase
 - [ ] No `better-sqlite3` import remains in `index.ts`
 - [ ] No multi-statement `db.exec()` remains in `schema.ts` or `migrations.ts`
 

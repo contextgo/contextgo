@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const tempDirs: string[] = [];
 
 function createPackagedRendererRoot(): string {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aionui-static-routes-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'contextgo-static-routes-'));
   const rendererDir = path.join(root, 'out', 'renderer');
   fs.mkdirSync(rendererDir, { recursive: true });
   fs.writeFileSync(path.join(rendererDir, 'index.html'), '<!doctype html><html><body>ok</body></html>', 'utf8');

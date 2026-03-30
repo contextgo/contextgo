@@ -225,7 +225,9 @@ function ensureReleaseRepositoryEnv() {
   const legacyRepo = process.env.CONTEXTGO_GITHUB_REPO?.trim();
   const configuredRepo = process.env.CONTEXTGO_RELEASE_REPO?.trim();
   const releaseRepo =
-    explicitOwner && explicitName ? `${explicitOwner}/${explicitName}` : configuredRepo || legacyRepo || DEFAULT_RELEASE_REPOSITORY;
+    explicitOwner && explicitName
+      ? `${explicitOwner}/${explicitName}`
+      : configuredRepo || legacyRepo || DEFAULT_RELEASE_REPOSITORY;
   const [owner, repo] = releaseRepo.split('/');
 
   if (!owner || !repo) {

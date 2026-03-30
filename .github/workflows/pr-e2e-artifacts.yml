@@ -60,7 +60,7 @@ jobs:
           CI: true
           E2E_DEV: '1'
           E2E_SCREENSHOTS: '1'
-          AIONUI_EXTENSIONS_PATH: ${{ github.workspace }}/examples
+          CONTEXTGO_EXTENSIONS_PATH: ${{ github.workspace }}/examples
 
       - name: Upload E2E report (self-contained with screenshots & traces)
         if: always()

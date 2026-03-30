@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -12,7 +12,7 @@ import path from 'path';
 import { startMonitor } from '@process/channels/plugins/weixin/WeixinMonitor';
 import type { MonitorOptions } from '@process/channels/plugins/weixin/WeixinMonitor';
 
-const TEST_DIR = path.join(os.tmpdir(), `aionui-weixin-monitor-${process.pid}`);
+const TEST_DIR = path.join(os.tmpdir(), `contextgo-weixin-monitor-${process.pid}`);
 
 function makeOpts(overrides: Partial<MonitorOptions> = {}): MonitorOptions {
   const controller = new AbortController();

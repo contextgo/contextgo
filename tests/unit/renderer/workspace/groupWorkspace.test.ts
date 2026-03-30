@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -120,10 +120,7 @@ describe('groupWorkspace', () => {
       return null;
     });
 
-    const updatedConversations = await syncGroupFamilyWorkspace(
-      groupConversation,
-      '/Users/bytedance/project/demo'
-    );
+    const updatedConversations = await syncGroupFamilyWorkspace(groupConversation, '/Users/bytedance/project/demo');
 
     expect(updatedConversations.map((conversation) => conversation.id)).toEqual(['group-1', 'child-1', 'child-2']);
     expect(updateInvoke).toHaveBeenCalledTimes(3);
@@ -171,10 +168,7 @@ describe('groupWorkspace', () => {
       return null;
     });
 
-    const updatedConversations = await syncGroupFamilyWorkspace(
-      childConversation1,
-      '/Users/bytedance/project/demo'
-    );
+    const updatedConversations = await syncGroupFamilyWorkspace(childConversation1, '/Users/bytedance/project/demo');
 
     expect(getInvoke).toHaveBeenCalledWith({ id: 'group-1' });
     expect(updatedConversations.map((conversation) => conversation.id)).toEqual(['group-1', 'child-1', 'child-2']);

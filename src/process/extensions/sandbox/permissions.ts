@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -12,7 +12,7 @@ import { z } from 'zod';
  * Extensions declare what capabilities they need. The system validates these
  * declarations and can enforce them at runtime (P2: enforcement layer).
  *
- * Example in aion-extension.json:
+ * Example in contextgo-extension.json:
  * ```json
  * {
  *   "permissions": {
@@ -48,7 +48,7 @@ export const FilesystemPermissionSchema = z.enum([
 
 export const ExtPermissionsSchema = z
   .object({
-    /** Read/write to AionUI persistent storage */
+    /** Read/write to ContextGoUI persistent storage */
     storage: z.boolean().default(false),
     /** Network access control */
     network: NetworkPermissionSchema.default(false),

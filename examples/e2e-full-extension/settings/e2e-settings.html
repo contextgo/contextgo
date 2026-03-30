@@ -92,13 +92,13 @@
 
         window.addEventListener('message', (event) => {
           const data = event.data || {};
-          if (data.type === 'aion:init') {
+          if (data.type === 'contextgo:init') {
             applyTranslations(data);
           }
         });
 
         if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ type: 'aion:get-locale' }, '*');
+          window.parent.postMessage({ type: 'contextgo:get-locale' }, '*');
         }
       })();
     </script>

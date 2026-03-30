@@ -110,7 +110,7 @@
   "assistantSkillsHint": "List preferred tools/skills for the assistant.",
   "assistantSkillsPlaceholder": "Enter skills in Markdown format...",
   "assistantHooks": "Hooks",
-  "assistantHooksHint": "AionUi currently runs prompt-transform hooks on before_user_prompt. Builtin hooks also package reusable patterns for planning, safety, quality, continuity, and operator handoff.",
+  "assistantHooksHint": "ContextGo currently runs prompt-transform hooks on before_user_prompt. Builtin hooks also package reusable patterns for planning, safety, quality, continuity, and operator handoff.",
   "hooksPage": "Hooks",
   "hooksPageDescription": "Manage system-provided and imported hooks here. The builtin library now organizes reusable patterns for prompt clarity, safety, quality gates, session continuity, and operator-friendly delivery.",
   "hooksPageManageAssistants": "Manage Assistants",

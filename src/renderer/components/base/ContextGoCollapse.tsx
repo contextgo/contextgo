@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -11,7 +11,7 @@ import React, { useMemo, useState } from 'react';
 /**
  * 可折叠面板组件属性 / Collapsible panel component props
  */
-export interface AionCollapseProps {
+export interface ContextGoCollapseProps {
   children: React.ReactNode;
   /** 额外的类名 / Additional class name */
   className?: string;
@@ -34,7 +34,7 @@ export interface AionCollapseProps {
 /**
  * 可折叠面板子项属性 / Collapsible panel item props
  */
-export interface AionCollapseItemProps {
+export interface ContextGoCollapseItemProps {
   /** 唯一标识符 / Unique identifier */
   name: string;
   /** 面板标题 / Panel header */
@@ -76,8 +76,8 @@ const DefaultIcon: React.FC<{ active: boolean }> = ({ active }) => (
  * 折叠面板子项组件（仅用于类型检查和结构化）
  * Collapse item component (used for type checking and structure only)
  */
-const AionCollapseItem: React.FC<AionCollapseItemProps> = ({ children }) => <>{children}</>;
-AionCollapseItem.displayName = 'AionCollapseItem';
+const ContextGoCollapseItem: React.FC<ContextGoCollapseItemProps> = ({ children }) => <>{children}</>;
+ContextGoCollapseItem.displayName = 'ContextGoCollapseItem';
 
 /**
  * 可折叠面板组件 / Collapsible panel component
@@ -88,31 +88,31 @@ AionCollapseItem.displayName = 'AionCollapseItem';
  * @example
  * ```tsx
  * // 基本用法 / Basic usage
- * <AionCollapse defaultActiveKey={['1']}>
- *   <AionCollapse.Item name="1" header="面板1">
+ * <ContextGoCollapse defaultActiveKey={['1']}>
+ *   <ContextGoCollapse.Item name="1" header="面板1">
  *     内容1
- *   </AionCollapse.Item>
- *   <AionCollapse.Item name="2" header="面板2">
+ *   </ContextGoCollapse.Item>
+ *   <ContextGoCollapse.Item name="2" header="面板2">
  *     内容2
- *   </AionCollapse.Item>
- * </AionCollapse>
+ *   </ContextGoCollapse.Item>
+ * </ContextGoCollapse>
  *
  * // 手风琴模式 / Accordion mode
- * <AionCollapse accordion defaultActiveKey="1">
- *   <AionCollapse.Item name="1" header="面板1">内容1</AionCollapse.Item>
- *   <AionCollapse.Item name="2" header="面板2">内容2</AionCollapse.Item>
- * </AionCollapse>
+ * <ContextGoCollapse accordion defaultActiveKey="1">
+ *   <ContextGoCollapse.Item name="1" header="面板1">内容1</ContextGoCollapse.Item>
+ *   <ContextGoCollapse.Item name="2" header="面板2">内容2</ContextGoCollapse.Item>
+ * </ContextGoCollapse>
  *
  * // 自定义图标 / Custom icon
- * <AionCollapse
+ * <ContextGoCollapse
  *   expandIcon={(active) => <Icon type={active ? 'up' : 'down'} />}
  *   expandIconPosition="right"
  * >
- *   <AionCollapse.Item name="1" header="面板1">内容1</AionCollapse.Item>
- * </AionCollapse>
+ *   <ContextGoCollapse.Item name="1" header="面板1">内容1</ContextGoCollapse.Item>
+ * </ContextGoCollapse>
  * ```
  */
-const AionCollapseComponent: React.FC<AionCollapseProps> & { Item: typeof AionCollapseItem } = ({
+const ContextGoCollapseComponent: React.FC<ContextGoCollapseProps> & { Item: typeof ContextGoCollapseItem } = ({
   children,
   className,
   defaultActiveKey,
@@ -130,8 +130,8 @@ const AionCollapseComponent: React.FC<AionCollapseProps> & { Item: typeof AionCo
 
   // 提取并过滤有效的子面板项 / Extract and filter valid child panel items
   const items = useMemo(() => {
-    return React.Children.toArray(children).filter((child): child is React.ReactElement<AionCollapseItemProps> => {
-      return React.isValidElement(child) && child.type === AionCollapseItem;
+    return React.Children.toArray(children).filter((child): child is React.ReactElement<ContextGoCollapseItemProps> => {
+      return React.isValidElement(child) && child.type === ContextGoCollapseItem;
     });
   }, [children]);
 
@@ -223,6 +223,6 @@ const AionCollapseComponent: React.FC<AionCollapseProps> & { Item: typeof AionCo
   );
 };
 
-AionCollapseComponent.Item = AionCollapseItem;
+ContextGoCollapseComponent.Item = ContextGoCollapseItem;
 
-export default AionCollapseComponent;
+export default ContextGoCollapseComponent;

@@ -37,7 +37,7 @@ These tests import `startMonitor` from `WeixinMonitor` (which does not exist yet
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -49,7 +49,7 @@ import path from 'path';
 import { startMonitor } from '@process/channels/plugins/weixin/WeixinMonitor';
 import type { MonitorOptions } from '@process/channels/plugins/weixin/WeixinMonitor';
 
-const TEST_DIR = path.join(os.tmpdir(), `aionui-weixin-monitor-${process.pid}`);
+const TEST_DIR = path.join(os.tmpdir(), `contextgo-weixin-monitor-${process.pid}`);
 
 function makeOpts(overrides: Partial<MonitorOptions> = {}): MonitorOptions {
   const controller = new AbortController();
@@ -255,7 +255,7 @@ Public types exported: `WeixinChatRequest`, `WeixinChatResponse`, `WeixinAgent`,
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -581,7 +581,7 @@ The adapter changes:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -631,7 +631,7 @@ describe('toUnifiedIncomingMessage', () => {
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -733,7 +733,7 @@ import fs from 'fs';
 
 let mockStartFn = vi.fn();
 
-const TEST_DATA_DIR = path.join(os.tmpdir(), 'aionui-test-weixin');
+const TEST_DATA_DIR = path.join(os.tmpdir(), 'contextgo-test-weixin');
 
 async function loadPluginClass() {
   vi.resetModules();
@@ -980,7 +980,7 @@ Key changes:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 

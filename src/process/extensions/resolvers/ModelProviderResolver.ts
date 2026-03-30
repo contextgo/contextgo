@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -21,7 +21,7 @@ export interface ResolvedModelProvider {
   baseUrl?: string;
   /** Default models */
   models: string[];
-  /** Logo URL (aion-asset://) */
+  /** Logo URL (contextgo-asset://) */
   logo?: string;
   /** Source extension name */
   _extensionName: string;

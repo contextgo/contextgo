@@ -1,4 +1,4 @@
-/* Discourse Horizon Theme - AionUi Adaptation */
+/* Discourse Horizon Theme - ContextGo Adaptation */
 /* Inspired by the official Horizon theme for Discourse */
 /* Spacious surfaces, soft indigo accents, pill controls, and quiet contrast */
 
@@ -491,7 +491,7 @@ body {
 .settings-page-wrapper .bg-2.rd-12px,
 .settings-page-wrapper .arco-collapse-item.bg-2,
 .arco-card,
-.aion-file-changes-panel {
+.contextgo-file-changes-panel {
   background: linear-gradient(180deg, var(--horizon-surface) 0%, var(--horizon-surface-soft) 100%) !important;
   border: 1px solid var(--border-base) !important;
   border-radius: 20px !important;
@@ -505,7 +505,7 @@ body {
 [data-theme='dark'] .settings-page-wrapper .bg-2.rd-12px,
 [data-theme='dark'] .settings-page-wrapper .arco-collapse-item.bg-2,
 [data-theme='dark'] .arco-card,
-[data-theme='dark'] .aion-file-changes-panel {
+[data-theme='dark'] .contextgo-file-changes-panel {
   background: linear-gradient(180deg, var(--horizon-surface-soft) 0%, var(--horizon-surface) 100%) !important;
   box-shadow: var(--horizon-shadow-soft) !important;
 }
@@ -1466,7 +1466,7 @@ body {
   border-color: color-mix(in srgb, var(--border-base) 86%, transparent) !important;
 }
 
-.aion-file-changes-panel > div:first-child {
+.contextgo-file-changes-panel > div:first-child {
   box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--border-base) 82%, transparent);
 }
 
@@ -1539,6 +1539,6 @@ body {
   }
 }
 
-/* AionUi Theme Background Start */
+/* ContextGo Theme Background Start */
 /* Preview cover only: do not auto-inject full-page background image */
-/* AionUi Theme Background End */
+/* ContextGo Theme Background End */

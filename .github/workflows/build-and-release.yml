@@ -700,7 +700,16 @@ jobs:
   release:
     name: Create Release
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
-    needs: [prepare-matrix, build-pipeline, build-android-shell, build-ios-shell, build-harmony-shell, create-tag, build-ios-testflight]
+    needs:
+      [
+        prepare-matrix,
+        build-pipeline,
+        build-android-shell,
+        build-ios-shell,
+        build-harmony-shell,
+        create-tag,
+        build-ios-testflight,
+      ]
     if: >-
       always() &&
       needs.build-pipeline.result == 'success' &&
@@ -710,7 +719,6 @@ jobs:
       (needs.build-harmony-shell.result == 'success' || needs.build-harmony-shell.result == 'skipped') &&
       (needs.build-ios-testflight.result == 'success' || needs.build-ios-testflight.result == 'skipped')
     environment: release
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

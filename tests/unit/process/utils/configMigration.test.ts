@@ -22,8 +22,8 @@ describe('getElectronConfigCandidatePaths', () => {
     const paths = getElectronConfigCandidatePaths();
     expect(paths).toContain(path.join(home, '.contextgo-config', 'contextgo-config.txt'));
     expect(paths).toContain(path.join(home, '.contextgo-config-dev', 'contextgo-config.txt'));
-    expect(paths).toContain(path.join(home, '.aionui-config', 'aionui-config.txt'));
-    expect(paths).toContain(path.join(home, '.aionui-config-dev', 'aionui-config.txt'));
+    expect(paths).toContain(path.join(home, '.contextgo-config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(home, '.contextgo-config-dev', 'contextgo-config.txt'));
     expect(paths).toHaveLength(8);
   });
 
@@ -35,10 +35,10 @@ describe('getElectronConfigCandidatePaths', () => {
     const paths = getElectronConfigCandidatePaths();
     expect(paths).toContain(path.join(appData, 'ContextGo', 'config', 'contextgo-config.txt'));
     expect(paths).toContain(path.join(appData, 'ContextGo-Dev', 'config', 'contextgo-config.txt'));
-    expect(paths).toContain(path.join(appData, 'ContextGo', 'config', 'aionui-config.txt'));
-    expect(paths).toContain(path.join(appData, 'ContextGo-Dev', 'config', 'aionui-config.txt'));
-    expect(paths).toContain(path.join(appData, 'AionUi', 'config', 'aionui-config.txt'));
-    expect(paths).toContain(path.join(appData, 'AionUi-Dev', 'config', 'aionui-config.txt'));
+    expect(paths).toContain(path.join(appData, 'ContextGo', 'config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(appData, 'ContextGo-Dev', 'config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(appData, 'ContextGo', 'config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(appData, 'ContextGo-Dev', 'config', 'contextgo-config.txt'));
     expect(paths).toHaveLength(8);
   });
 
@@ -49,10 +49,10 @@ describe('getElectronConfigCandidatePaths', () => {
     const paths = getElectronConfigCandidatePaths();
     expect(paths).toContain(path.join(home, '.config', 'ContextGo', 'config', 'contextgo-config.txt'));
     expect(paths).toContain(path.join(home, '.config', 'ContextGo-Dev', 'config', 'contextgo-config.txt'));
-    expect(paths).toContain(path.join(home, '.config', 'ContextGo', 'config', 'aionui-config.txt'));
-    expect(paths).toContain(path.join(home, '.config', 'ContextGo-Dev', 'config', 'aionui-config.txt'));
-    expect(paths).toContain(path.join(home, '.config', 'AionUi', 'config', 'aionui-config.txt'));
-    expect(paths).toContain(path.join(home, '.config', 'AionUi-Dev', 'config', 'aionui-config.txt'));
+    expect(paths).toContain(path.join(home, '.config', 'ContextGo', 'config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(home, '.config', 'ContextGo-Dev', 'config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(home, '.config', 'ContextGo', 'config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(home, '.config', 'ContextGo-Dev', 'config', 'contextgo-config.txt'));
     expect(paths).toHaveLength(8);
   });
 });

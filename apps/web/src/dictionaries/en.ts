@@ -20,10 +20,8 @@ export const en = {
   },
   philosophy: {
     title: 'Context comes before agents.',
-    description_start:
-      'Without context, an agent can answer.',
-    description_end:
-      'Once connected, it can understand, collaborate, and move work forward.',
+    description_start: 'Without context, an agent can answer.',
+    description_end: 'Once connected, it can understand, collaborate, and move work forward.',
     points: [
       'Connect context before agents',
       'No new habits required',
@@ -31,9 +29,18 @@ export const en = {
       'One workspace for people and AI',
     ],
     features: {
-      private: { title: 'Context Bridge', desc: 'Connect knowledge, tasks, discussions, and history into one layer agents can actually use.' },
-      editor: { title: 'Keep Your Habits', desc: 'No new tools. No new process. Plug into the environment teams already use.' },
-      connect: { title: 'Channel Collaboration', desc: 'Bring agents into Feishu, Discord, Slack, and the web to work alongside people.' },
+      private: {
+        title: 'Context Bridge',
+        desc: 'Connect knowledge, tasks, discussions, and history into one layer agents can actually use.',
+      },
+      editor: {
+        title: 'Keep Your Habits',
+        desc: 'No new tools. No new process. Plug into the environment teams already use.',
+      },
+      connect: {
+        title: 'Channel Collaboration',
+        desc: 'Bring agents into Feishu, Discord, Slack, and the web to work alongside people.',
+      },
       manage: { title: 'Unified Workspace', desc: 'Bring AI, context, and collaboration into one workspace.' },
     },
   },
@@ -42,7 +49,11 @@ export const en = {
     title: 'Connect The Context. Then Connect Everything Else.',
     description:
       'One connector layer for docs, notes, drives, chats, databases, and workspaces. Bring sources in once. Send the context wherever work happens.',
-    highlights: ['Local sources and cloud apps, together', 'One context surface for every workflow', 'Ready for agents, retrieval, and publishing'],
+    highlights: [
+      'Local sources and cloud apps, together',
+      'One context surface for every workflow',
+      'Ready for agents, retrieval, and publishing',
+    ],
     marquee_label: 'Connector surfaces',
     marquee_hint: 'Files, hubs, chats, docs, and data systems',
     connector_story_label: 'Why connectors matter',

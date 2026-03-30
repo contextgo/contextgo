@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
 
 describe('buildDisplayMessage', () => {
-  const workspace = '/tmp/aion/workspace-1';
+  const workspace = '/tmp/contextgo/workspace-1';
 
   it('preserves uploads/ subdirectory for files inside workspace', () => {
     const files = [`${workspace}/uploads/photo.jpg`];

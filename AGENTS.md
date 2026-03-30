@@ -1,4 +1,4 @@
-# AionUi - Project Guide
+# ContextGo - Project Guide
 
 ## Code Conventions
 

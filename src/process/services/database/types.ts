@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -330,10 +330,10 @@ export function rowToConversation(row: IConversationRow): TChatConversation {
     return {
       ...base,
       type: 'group' as const,
-        extra: JSON.parse(row.extra),
-        model: row.model
-          ? JSON.parse(row.model)
-          : {
+      extra: JSON.parse(row.extra),
+      model: row.model
+        ? JSON.parse(row.model)
+        : {
             id: 'group-placeholder',
             name: 'Group',
             useModel: 'group',

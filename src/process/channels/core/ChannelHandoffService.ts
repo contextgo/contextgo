@@ -1,12 +1,12 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import type { TChatConversation } from '@/common/config/storage';
 import { uuid } from '@/common/utils';
-import type { AionUIDatabase } from '@process/services/database';
+import type { ContextGoUIDatabase } from '@process/services/database';
 import { getDatabase } from '@process/services/database';
 import type { IAgentManager } from '@process/task/IAgentManager';
 import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
@@ -302,7 +302,7 @@ export class ChannelHandoffService {
     return transaction.data;
   }
 
-  private resolveSourceContext(db: AionUIDatabase, params: IChannelHandoffRequest): SourceContext {
+  private resolveSourceContext(db: ContextGoUIDatabase, params: IChannelHandoffRequest): SourceContext {
     if (!params.sourceExternalSessionId && !params.sourceConversationId) {
       throw new Error('sourceExternalSessionId or sourceConversationId is required');
     }
@@ -359,7 +359,7 @@ export class ChannelHandoffService {
     };
   }
 
-  private ensureSourceAgentProfile(db: AionUIDatabase, source: SourceContext): IAgentProfile {
+  private ensureSourceAgentProfile(db: ContextGoUIDatabase, source: SourceContext): IAgentProfile {
     const existing = assertQuerySuccess(
       db.getAgentProfile(source.sourceAgentProfile.id),
       'Failed to query agent profile'
@@ -371,7 +371,7 @@ export class ChannelHandoffService {
     return source.sourceAgentProfile;
   }
 
-  private buildAgentProfileFromConversation(db: AionUIDatabase, conversation: TChatConversation): IAgentProfile {
+  private buildAgentProfileFromConversation(db: ContextGoUIDatabase, conversation: TChatConversation): IAgentProfile {
     const backend = mapConversationBackend(conversation);
     const modelRef = extractConversationModelRef(conversation);
     const workspaceRef = extractConversationWorkspace(conversation);

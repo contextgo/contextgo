@@ -40,8 +40,8 @@ BUILD_RUNNER_MODE=self-hosted
 RELEASE_BUILD_PLATFORMS=linux
 PR_CHECKS_PLATFORM_SCOPE=linux-only
 SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON=["self-hosted","Linux","X64","contextgo-org","tencent-sh-1"]
-SELF_HOSTED_MACOS_RUNNER_LABELS_JSON=["self-hosted","macOS","arm64","aionui-macos"]
-SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON=["self-hosted","Windows","x64","aionui-windows"]
+SELF_HOSTED_MACOS_RUNNER_LABELS_JSON=["self-hosted","macOS","arm64","contextgo-macos"]
+SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON=["self-hosted","Windows","x64","contextgo-windows"]
 SELF_HOSTED_LINUX_RUNNER_LABELS_JSON=["self-hosted","Linux","X64","contextgo-org","tencent-sh-1"]
 ```
 

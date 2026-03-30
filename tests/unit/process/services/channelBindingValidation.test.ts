@@ -1,12 +1,12 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { IChannelBinding } from '../../../../src/process/channels/types';
-import { AionUIDatabase } from '../../../../src/process/services/database';
+import { ContextGoUIDatabase } from '../../../../src/process/services/database';
 import type { IStatement, ISqliteDriver } from '../../../../src/process/services/database/drivers/ISqliteDriver';
 import { withChannelBindingTarget } from '../../../../src/process/channels/types';
 
@@ -33,7 +33,7 @@ function createNoopStatement(): IStatement {
   };
 }
 
-function createDatabaseForBindingTests(): AionUIDatabase {
+function createDatabaseForBindingTests(): ContextGoUIDatabase {
   const bindingRows = new Map<string, StoredBindingRow>();
 
   const driver: ISqliteDriver = {
@@ -92,13 +92,13 @@ function createDatabaseForBindingTests(): AionUIDatabase {
     close: () => {},
   };
 
-  const database = Object.create(AionUIDatabase.prototype) as AionUIDatabase;
+  const database = Object.create(ContextGoUIDatabase.prototype) as ContextGoUIDatabase;
   (database as unknown as { db: ISqliteDriver }).db = driver;
   return database;
 }
 
-describe('AionUIDatabase channel binding validation', () => {
-  let database: AionUIDatabase;
+describe('ContextGoUIDatabase channel binding validation', () => {
+  let database: ContextGoUIDatabase;
 
   beforeEach(() => {
     database = createDatabaseForBindingTests();

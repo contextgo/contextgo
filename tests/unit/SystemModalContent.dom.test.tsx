@@ -59,7 +59,7 @@ vi.mock('@/renderer/components/settings/LanguageSwitcher', () => ({
   default: () => <div data-testid='language-switcher' />,
 }));
 
-vi.mock('@/renderer/components/base/AionScrollArea', () => ({
+vi.mock('@/renderer/components/base/ContextGoScrollArea', () => ({
   default: ({ children }: any) => <div data-testid='scroll-area'>{children}</div>,
 }));
 

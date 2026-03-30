@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Integrate `weixin-agent-sdk` into AionUi's channel plugin system so WeChat users can chat with the Aion AI assistant.
+**Goal:** Integrate `weixin-agent-sdk` into ContextGo's channel plugin system so WeChat users can chat with the Aion AI assistant.
 
-**Architecture:** `WeixinPlugin` extends `BasePlugin` and acts as a Promise bridge between the SDK's synchronous `agent.chat()` model and AionUi's event-driven plugin system. `WeixinAdapter` handles stateless message format conversion. `WeixinLogin` implements the QR-code login HTTP flow independently (the SDK's built-in `login()` only prints to terminal). `WeixinLoginHandler` wires the login flow into Electron's IPC system.
+**Architecture:** `WeixinPlugin` extends `BasePlugin` and acts as a Promise bridge between the SDK's synchronous `agent.chat()` model and ContextGo's event-driven plugin system. `WeixinAdapter` handles stateless message format conversion. `WeixinLogin` implements the QR-code login HTTP flow independently (the SDK's built-in `login()` only prints to terminal). `WeixinLoginHandler` wires the login flow into Electron's IPC system.
 
 **Tech Stack:** `weixin-agent-sdk` (npm), Vitest (tests), Electron `ipcMain`/`ipcRenderer`, TypeScript strict mode.
 
@@ -286,7 +286,7 @@ Create `src/process/channels/plugins/weixin/WeixinAdapter.ts`:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -571,7 +571,7 @@ Create `src/process/channels/plugins/weixin/WeixinLogin.ts`:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -964,7 +964,7 @@ Create `src/process/channels/plugins/weixin/WeixinPlugin.ts`:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -1280,7 +1280,7 @@ Create `src/process/channels/plugins/weixin/WeixinLoginHandler.ts`:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -1343,7 +1343,7 @@ Create `src/process/bridge/weixinLoginBridge.ts`:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -1455,7 +1455,7 @@ Create `src/process/channels/plugins/weixin/index.ts`:
 ```typescript
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 

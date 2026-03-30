@@ -5,7 +5,7 @@
 
 ## Overview
 
-Replace the `weixin-agent-sdk` npm dependency with a self-contained implementation inside the `weixin/` plugin directory. The goal is simpler, more controllable code with logs integrated into AionUi's own system. Only text messaging is supported in this iteration; media (images, files, audio) is out of scope.
+Replace the `weixin-agent-sdk` npm dependency with a self-contained implementation inside the `weixin/` plugin directory. The goal is simpler, more controllable code with logs integrated into ContextGo's own system. Only text messaging is supported in this iteration; media (images, files, audio) is out of scope.
 
 ## Motivation
 

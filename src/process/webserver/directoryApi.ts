@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -209,7 +209,7 @@ router.get('/browse', fileOperationLimiter, (req, res) => {
       });
     }
 
-    // 默认打开 AionUi 运行目录，而不是用户 home 目录
+    // 默认打开 ContextGo 运行目录，而不是用户 home 目录
     const rawPath = queryPath || process.cwd();
 
     // Validate path to prevent directory traversal / 验证路径以防止目录遍历

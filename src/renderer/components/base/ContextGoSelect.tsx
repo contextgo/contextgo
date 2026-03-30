@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -15,22 +15,22 @@ import React from 'react';
  */
 type NativeSelectProps = Omit<SelectProps, 'size'>;
 type NativeSelectSize = NonNullable<SelectProps['size']>;
-type AionSelectSize = NativeSelectSize | 'middle';
+type ContextGoSelectSize = NativeSelectSize | 'middle';
 
-export interface AionSelectProps extends NativeSelectProps {
+export interface ContextGoSelectProps extends NativeSelectProps {
   /** 额外的类名 / Additional class name */
   className?: string;
   /** 统一尺寸，新增 middle（32px）/ Unified size with additional "middle" (32px) */
-  size?: AionSelectSize;
+  size?: ContextGoSelectSize;
 }
 
 /**
  * 基础样式类名
- * 注意：主题相关样式（背景色、边框色）在 arco-override.css 的 .aion-select 类中定义
- * Note: Theme-related styles (background, border colors) are defined in .aion-select class in arco-override.css
+ * 注意：主题相关样式（背景色、边框色）在 arco-override.css 的 .contextgo-select 类中定义
+ * Note: Theme-related styles (background, border colors) are defined in .contextgo-select class in arco-override.css
  */
 const BASE_CLASS = classNames(
-  'aion-select',
+  'contextgo-select',
   '[&_.arco-select-view]:rounded-[4px]',
   '[&_.arco-select-view]:border',
   '[&_.arco-select-view]:border-solid',
@@ -75,42 +75,44 @@ const defaultGetPopupContainer = (): HTMLElement => {
  * @example
  * ```tsx
  * // 基本用法 / Basic usage
- * <AionSelect placeholder="请选择" style={{ width: 200 }}>
- *   <AionSelect.Option value="1">选项1</AionSelect.Option>
- *   <AionSelect.Option value="2">选项2</AionSelect.Option>
- * </AionSelect>
+ * <ContextGoSelect placeholder="请选择" style={{ width: 200 }}>
+ *   <ContextGoSelect.Option value="1">选项1</ContextGoSelect.Option>
+ *   <ContextGoSelect.Option value="2">选项2</ContextGoSelect.Option>
+ * </ContextGoSelect>
  *
  * // 多选 / Multiple selection
- * <AionSelect mode="multiple" placeholder="请选择多个">
- *   <AionSelect.Option value="1">选项1</AionSelect.Option>
- *   <AionSelect.Option value="2">选项2</AionSelect.Option>
- * </AionSelect>
+ * <ContextGoSelect mode="multiple" placeholder="请选择多个">
+ *   <ContextGoSelect.Option value="1">选项1</ContextGoSelect.Option>
+ *   <ContextGoSelect.Option value="2">选项2</ContextGoSelect.Option>
+ * </ContextGoSelect>
  *
  * // 分组 / Grouped options
- * <AionSelect placeholder="请选择">
- *   <AionSelect.OptGroup label="分组1">
- *     <AionSelect.Option value="1">选项1</AionSelect.Option>
- *   </AionSelect.OptGroup>
- *   <AionSelect.OptGroup label="分组2">
- *     <AionSelect.Option value="2">选项2</AionSelect.Option>
- *   </AionSelect.OptGroup>
- * </AionSelect>
+ * <ContextGoSelect placeholder="请选择">
+ *   <ContextGoSelect.OptGroup label="分组1">
+ *     <ContextGoSelect.Option value="1">选项1</ContextGoSelect.Option>
+ *   </ContextGoSelect.OptGroup>
+ *   <ContextGoSelect.OptGroup label="分组2">
+ *     <ContextGoSelect.Option value="2">选项2</ContextGoSelect.Option>
+ *   </ContextGoSelect.OptGroup>
+ * </ContextGoSelect>
  * ```
  *
- * @see arco-override.css for theme-related styles (.aion-select)
+ * @see arco-override.css for theme-related styles (.contextgo-select)
  */
-const mapSizeToNative = (size?: AionSelectSize): NativeSelectSize | undefined => {
+const mapSizeToNative = (size?: ContextGoSelectSize): NativeSelectSize | undefined => {
   if (!size) return undefined;
   if (size === 'middle') return 'default';
   return size;
 };
 
-type AionSelectComponent = React.ForwardRefExoticComponent<AionSelectProps & React.RefAttributes<SelectHandle>> & {
+type ContextGoSelectComponent = React.ForwardRefExoticComponent<
+  ContextGoSelectProps & React.RefAttributes<SelectHandle>
+> & {
   Option: typeof Select.Option;
   OptGroup: typeof Select.OptGroup;
 };
 
-const InternalSelect = React.forwardRef<SelectHandle, AionSelectProps>(
+const InternalSelect = React.forwardRef<SelectHandle, ContextGoSelectProps>(
   ({ className, getPopupContainer, size = 'middle', ...rest }, ref) => {
     const normalizedSize = mapSizeToNative(size);
     return (
@@ -125,12 +127,12 @@ const InternalSelect = React.forwardRef<SelectHandle, AionSelectProps>(
   }
 );
 
-const AionSelect = InternalSelect as AionSelectComponent;
+const ContextGoSelect = InternalSelect as ContextGoSelectComponent;
 
-AionSelect.displayName = 'AionSelect';
+ContextGoSelect.displayName = 'ContextGoSelect';
 
 // 导出子组件 / Export sub-components
-AionSelect.Option = Select.Option;
-AionSelect.OptGroup = Select.OptGroup;
+ContextGoSelect.Option = Select.Option;
+ContextGoSelect.OptGroup = Select.OptGroup;
 
-export default AionSelect;
+export default ContextGoSelect;

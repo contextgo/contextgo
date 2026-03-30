@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 // ============ Reserved Prefixes ============
 
-export const RESERVED_NAME_PREFIXES = ['aion-', 'internal-', 'builtin-', 'system-'];
+export const RESERVED_NAME_PREFIXES = ['contextgo-', 'internal-', 'builtin-', 'system-'];
 
 function validateExtensionName(name: string): boolean {
   return !RESERVED_NAME_PREFIXES.some((prefix) => name.startsWith(prefix));
