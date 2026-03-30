@@ -50,30 +50,29 @@ jobs:
           set -euo pipefail
 
           WORKSPACE="${GITHUB_WORKSPACE}"
-          ARCHIVE_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${CHECKOUT_REF}"
+          REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           for attempt in 1 2 3 4 5; do
-            echo "Archive checkout attempt ${attempt}/5 for ${CHECKOUT_REF}"
+            echo "Git checkout attempt ${attempt}/5 for ${CHECKOUT_REF}"
             find "$WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-            ARCHIVE_PATH="$(mktemp "${RUNNER_TEMP:-/tmp}/contextgo-build.XXXXXX.tar.gz")"
+            rm -rf "${WORKSPACE}/.git"
+            git -C "${WORKSPACE}" init
+            git -C "${WORKSPACE}" remote add origin "${REMOTE_URL}"
+            git -C "${WORKSPACE}" config advice.detachedHead false
+            git -C "${WORKSPACE}" config gc.auto 0
 
-            if curl --fail --show-error --silent --location \
-              --http1.1 \
-              --retry 5 \
-              --retry-all-errors \
-              --retry-delay 5 \
-              --connect-timeout 20 \
-              --max-time 300 \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "${ARCHIVE_URL}" \
-              -o "${ARCHIVE_PATH}"; then
-              tar -xzf "${ARCHIVE_PATH}" --strip-components=1 -C "${WORKSPACE}"
-              rm -f "${ARCHIVE_PATH}"
+            if timeout 240s env GIT_TERMINAL_PROMPT=0 git -C "${WORKSPACE}" \
+              -c protocol.version=2 \
+              -c http.version=HTTP/1.1 \
+              -c http.lowSpeedLimit=1024 \
+              -c http.lowSpeedTime=30 \
+              fetch --depth=1 --no-tags origin "${CHECKOUT_REF}" && \
+              git -C "${WORKSPACE}" checkout --detach FETCH_HEAD; then
+              rm -rf "${WORKSPACE}/.git"
               break
             fi
 
-            rm -f "${ARCHIVE_PATH}"
+            rm -rf "${WORKSPACE}/.git"
 
             if [ "$attempt" -eq 5 ]; then
               echo "::error::Failed to checkout ${CHECKOUT_REF} after 5 attempts"
@@ -133,30 +132,29 @@ jobs:
           set -euo pipefail
 
           WORKSPACE="${GITHUB_WORKSPACE}"
-          ARCHIVE_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${CHECKOUT_REF}"
+          REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           for attempt in 1 2 3 4 5; do
-            echo "Archive checkout attempt ${attempt}/5 for ${CHECKOUT_REF}"
+            echo "Git checkout attempt ${attempt}/5 for ${CHECKOUT_REF}"
             find "$WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-            ARCHIVE_PATH="$(mktemp "${RUNNER_TEMP:-/tmp}/contextgo-build.XXXXXX.tar.gz")"
+            rm -rf "${WORKSPACE}/.git"
+            git -C "${WORKSPACE}" init
+            git -C "${WORKSPACE}" remote add origin "${REMOTE_URL}"
+            git -C "${WORKSPACE}" config advice.detachedHead false
+            git -C "${WORKSPACE}" config gc.auto 0
 
-            if curl --fail --show-error --silent --location \
-              --http1.1 \
-              --retry 5 \
-              --retry-all-errors \
-              --retry-delay 5 \
-              --connect-timeout 20 \
-              --max-time 300 \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "${ARCHIVE_URL}" \
-              -o "${ARCHIVE_PATH}"; then
-              tar -xzf "${ARCHIVE_PATH}" --strip-components=1 -C "${WORKSPACE}"
-              rm -f "${ARCHIVE_PATH}"
+            if timeout 240s env GIT_TERMINAL_PROMPT=0 git -C "${WORKSPACE}" \
+              -c protocol.version=2 \
+              -c http.version=HTTP/1.1 \
+              -c http.lowSpeedLimit=1024 \
+              -c http.lowSpeedTime=30 \
+              fetch --depth=1 --no-tags origin "${CHECKOUT_REF}" && \
+              git -C "${WORKSPACE}" checkout --detach FETCH_HEAD; then
+              rm -rf "${WORKSPACE}/.git"
               break
             fi
 
-            rm -f "${ARCHIVE_PATH}"
+            rm -rf "${WORKSPACE}/.git"
 
             if [ "$attempt" -eq 5 ]; then
               echo "::error::Failed to checkout ${CHECKOUT_REF} after 5 attempts"
