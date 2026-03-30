@@ -18,7 +18,16 @@ concurrency:
 jobs:
   deploy:
     name: Deploy contextgo.io
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.SITE_DEPLOY_RUNNER_LABELS_JSON != '' &&
+          vars.SITE_DEPLOY_RUNNER_LABELS_JSON ||
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
     defaults:
       run:
         shell: bash
@@ -57,12 +66,37 @@ jobs:
             exit 1
           fi
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          clean: true
-          token: ${{ secrets.GH_TOKEN || github.token }}
+      - name: Download source archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+      
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+      
+          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          rm -rf "${EXTRACT_DIR}"
+      
+          curl --fail --show-error --silent --location \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+      
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+      
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+      
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
 
       - name: Setup Node.js
         working-directory: ${{ github.workspace }}
