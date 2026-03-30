@@ -276,4 +276,72 @@ describe('createConversationParams', () => {
       rounds: 1,
     });
   });
+
+  it('stores harness collaboration metadata and ordered participant roles', async () => {
+    const params = await buildDiscussionGroupParams({
+      name: 'Harness Group',
+      workspace: '/tmp/workspace',
+      language: 'en-US',
+      mode: 'debate',
+      collaborationMode: 'planner-generator-evaluator',
+      gitRepository: {
+        isRepository: true,
+        repositoryRoot: '/tmp/workspace',
+        branch: 'main',
+        gitDir: '/tmp/workspace/.git',
+        remoteUrl: 'git@github.com:example/repo.git',
+      },
+      participants: [
+        {
+          type: 'cli-agent',
+          participantKey: 'codex:/usr/local/bin/codex:Planner',
+          name: 'Planner',
+          description: 'codex · /usr/local/bin/codex',
+          agent: {
+            backend: 'codex',
+            name: 'Planner',
+            cliPath: '/usr/local/bin/codex',
+          },
+        },
+        {
+          type: 'cli-agent',
+          participantKey: 'qwen:/usr/local/bin/qwen:Generator',
+          name: 'Generator',
+          description: 'qwen · /usr/local/bin/qwen',
+          agent: {
+            backend: 'qwen',
+            name: 'Generator',
+            cliPath: '/usr/local/bin/qwen',
+          },
+        },
+        {
+          type: 'cli-agent',
+          participantKey: 'claude:/usr/local/bin/claude:Evaluator',
+          name: 'Evaluator',
+          description: 'claude · /usr/local/bin/claude',
+          agent: {
+            backend: 'claude',
+            name: 'Evaluator',
+            cliPath: '/usr/local/bin/claude',
+          },
+        },
+      ],
+    });
+
+    expect(params.extra.collaboration).toEqual({
+      mode: 'planner-generator-evaluator',
+      executionBoundary: {
+        type: 'git-repository',
+        repositoryRoot: '/tmp/workspace',
+        branch: 'main',
+        gitDir: '/tmp/workspace/.git',
+        remoteUrl: 'git@github.com:example/repo.git',
+      },
+    });
+    expect(params.extra.participants?.map((participant) => participant.role)).toEqual([
+      'planner',
+      'generator',
+      'evaluator',
+    ]);
+  });
 });

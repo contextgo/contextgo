@@ -106,6 +106,13 @@
     "workspaceHint": "ディスカッショングループとすべての参加セッションはこのワークスペースを共有します。空欄の場合は既定の一時ワークスペースを自動作成します。",
     "selectWorkspace": "フォルダを選択",
     "selectWorkspaceFailed": "ワークスペースの選択に失敗しました",
+    "collaborationLabel": "コラボレーションモード",
+    "collaborationDiscussion": "一般ディスカッション",
+    "collaborationHarness": "Planner / Generator / Evaluator",
+    "collaborationHint": {
+      "discussion": "汎用的なマルチエージェント議論モードです。比較、ブレインストーミング、批判的レビューに向いています。",
+      "planner-generator-evaluator": "コード志向の Harness モードです。参加者はちょうど3人で、Git リポジトリ境界が必要です。"
+    },
     "modeLabel": "ディスカッションモード",
     "modeDebate": "ディベート",
     "modeBroadcast": "ブロードキャスト",
@@ -118,6 +125,28 @@
     "participantsLabel": "参加者",
     "minimumParticipants": "少なくとも 2 人の参加者を選択してください",
     "minimumParticipantsHint": "ディスカッショングループを作成するには 2 人以上の参加者を選択してください。",
+    "harnessParticipantsHint": "Harness モードでは参加者がちょうど3人必要で、順序は Planner -> Generator -> Evaluator です。",
+    "harnessRoleHint": "Harness スロット #{{roleIndex}}",
+    "harnessUsesDebate": "Harness モードは常に2ラウンドのディベートフローを使用します。",
+    "harnessRequiresWorkspace": "Harness モードではワークスペースフォルダが必要です。",
+    "harnessRequiresThreeParticipants": "Harness モードでは参加者がちょうど3人必要です。",
+    "harnessRequiresGitRepo": "Harness モードでは選択したワークスペースが Git リポジトリ内にある必要があります。",
+    "role": {
+      "participant": "参加者",
+      "planner": "Planner",
+      "generator": "Generator",
+      "evaluator": "Evaluator"
+    },
+    "summary": {
+      "title": "最新の Harness 実行",
+      "empty": "Harness 成果物はまだありません。",
+      "loading": "Harness 成果物を生成中です...",
+      "updatedAt": "更新日時",
+      "completedSteps": "完了した出力",
+      "flow": "フロー",
+      "latestStep": "最新ステップ",
+      "repository": "リポジトリ"
+    },
     "noDescription": "説明なし",
     "sendPlaceholder": "ディスカッショングループに質問する...",
     "roundLabel": "ラウンド {{round}}"
@@ -154,6 +183,28 @@
       "count": "{{count}} 人のメンバー",
       "open": "Members {{count}}",
       "close": "Hide Members",
+      "modeLabel": "モード",
+      "statusLabel": "状態",
+      "flowLabel": "フロー",
+      "boundaryLabel": "境界",
+      "artifactRootLabel": "成果物ディレクトリ",
+      "artifactUnavailable": "Harness 成果物はまだ利用できません。",
+      "artifactOpenFailed": "Harness 成果物を開けませんでした。",
+      "status": {
+        "pending": "待機中",
+        "running": "実行中",
+        "finished": "完了",
+        "stopped": "停止",
+        "error": "エラー"
+      },
+      "artifacts": {
+        "request": "Request",
+        "planner": "Planner",
+        "generator": "Generator",
+        "evaluator": "Evaluator",
+        "manifest": "Manifest",
+        "folder": "フォルダを開く"
+      },
       "participantType": {
         "cliAgent": "CLI Agent",
         "presetAssistant": "プリセットアシスタント"

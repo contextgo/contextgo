@@ -106,6 +106,13 @@
     "workspaceHint": "討論群組和所有參與者 session 將共享這個工作目錄；留空時會自動建立預設臨時目錄。",
     "selectWorkspace": "選擇目錄",
     "selectWorkspaceFailed": "選擇工作目錄失敗",
+    "collaborationLabel": "協作模式",
+    "collaborationDiscussion": "一般討論",
+    "collaborationHarness": "規劃 / 生成 / 評估",
+    "collaborationHint": {
+      "discussion": "通用的多智能體討論模式，適合方案比較、腦力激盪與批判式評審。",
+      "planner-generator-evaluator": "面向程式碼任務的 Harness 模式。要求剛好 3 位參與者，並綁定 Git 儲存庫邊界。"
+    },
     "modeLabel": "討論模式",
     "modeDebate": "辯論式",
     "modeBroadcast": "廣播式",
@@ -118,6 +125,28 @@
     "participantsLabel": "參與者",
     "minimumParticipants": "請至少選擇兩位參與者",
     "minimumParticipantsHint": "至少選擇 2 位參與者後才能建立討論群組。",
+    "harnessParticipantsHint": "Harness 模式要求剛好 3 位參與者，順序依次為 Planner -> Generator -> Evaluator。",
+    "harnessRoleHint": "Harness 插槽 #{{roleIndex}}",
+    "harnessUsesDebate": "Harness 模式固定使用雙輪辯論流程。",
+    "harnessRequiresWorkspace": "Harness 模式必須選擇工作目錄。",
+    "harnessRequiresThreeParticipants": "Harness 模式必須剛好選擇 3 位參與者。",
+    "harnessRequiresGitRepo": "Harness 模式要求所選工作目錄位於 Git 儲存庫內。",
+    "role": {
+      "participant": "參與者",
+      "planner": "規劃者",
+      "generator": "生成者",
+      "evaluator": "評估者"
+    },
+    "summary": {
+      "title": "最近一次 Harness 執行",
+      "empty": "尚未產生 Harness 產物。",
+      "loading": "Harness 產物產生中...",
+      "updatedAt": "更新時間",
+      "completedSteps": "已完成輸出",
+      "flow": "流程",
+      "latestStep": "最近步驟",
+      "repository": "儲存庫"
+    },
     "noDescription": "暫無描述",
     "sendPlaceholder": "向討論群組提出問題...",
     "roundLabel": "第 {{round}} 輪"
@@ -154,6 +183,28 @@
       "count": "{{count}} 位成員",
       "open": "成員 {{count}}",
       "close": "收起成員",
+      "modeLabel": "模式",
+      "statusLabel": "狀態",
+      "flowLabel": "流程",
+      "boundaryLabel": "邊界",
+      "artifactRootLabel": "產物目錄",
+      "artifactUnavailable": "Harness 產物尚不可用。",
+      "artifactOpenFailed": "開啟 Harness 產物失敗。",
+      "status": {
+        "pending": "待執行",
+        "running": "執行中",
+        "finished": "已完成",
+        "stopped": "已停止",
+        "error": "出錯"
+      },
+      "artifacts": {
+        "request": "請求",
+        "planner": "規劃",
+        "generator": "生成",
+        "evaluator": "評估",
+        "manifest": "清單",
+        "folder": "開啟資料夾"
+      },
       "participantType": {
         "cliAgent": "CLI Agent",
         "presetAssistant": "預設助手"

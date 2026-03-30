@@ -14,3 +14,12 @@ export {
   isContextGoHostname,
   isLoopbackHostname,
 } from './cloudAuth';
+export {
+  buildHarnessArtifactPaths,
+  isHarnessArtifactRole,
+  type HarnessArtifactEntry,
+  type HarnessArtifactManifest,
+  type HarnessArtifactPaths,
+  type HarnessArtifactRole,
+  type HarnessArtifactStatus,
+} from './discussionArtifacts';

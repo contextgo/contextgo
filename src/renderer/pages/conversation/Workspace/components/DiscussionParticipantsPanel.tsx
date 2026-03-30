@@ -4,17 +4,31 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { DiscussionGroupParticipant } from '@/common/config/storage';
+import { ipcBridge } from '@/common';
+import { joinPath } from '@/common/chat/chatLib';
+import type {
+  DiscussionGroupOrchestration,
+  DiscussionGroupParticipant,
+  GroupCollaborationConfig,
+  TChatConversation,
+} from '@/common/config/storage';
+import { buildHarnessArtifactPaths } from '@/common/utils';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
+import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
-import { Typography } from '@arco-design/web-react';
+import { Button, Message, Typography } from '@arco-design/web-react';
 import { Robot } from '@icon-park/react';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type DiscussionParticipantsPanelProps = {
   participants: DiscussionGroupParticipant[];
+  collaboration?: GroupCollaborationConfig;
+  orchestration?: DiscussionGroupOrchestration;
+  workspace?: string;
+  conversationId?: string;
+  status?: TChatConversation['status'];
 };
 
 const resolveParticipantTypeLabelKey = (participantType: DiscussionGroupParticipant['participantType']) => {
@@ -95,12 +109,128 @@ const getParticipantMetaLabel = (participant: DiscussionGroupParticipant, partic
   return participantTypeLabel;
 };
 
-const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = ({ participants }) => {
+const resolveRoleLabelKey = (role: DiscussionGroupParticipant['role']): string | null => {
+  if (!role) {
+    return null;
+  }
+
+  return `conversation.group.role.${role}`;
+};
+
+const resolveStatusLabelKey = (status: TChatConversation['status']): string => {
+  if (status === 'running') {
+    return 'conversation.workspace.groupMembers.status.running';
+  }
+  if (status === 'finished') {
+    return 'conversation.workspace.groupMembers.status.finished';
+  }
+  return 'conversation.workspace.groupMembers.status.pending';
+};
+
+const resolveModeLabelKey = (mode: DiscussionGroupOrchestration['mode'] | undefined): string => {
+  if (mode === 'broadcast') {
+    return 'conversation.group.modeBroadcast';
+  }
+  if (mode === 'relay') {
+    return 'conversation.group.modeRelay';
+  }
+  return 'conversation.group.modeDebate';
+};
+
+const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = ({
+  participants,
+  collaboration,
+  orchestration,
+  workspace,
+  conversationId,
+  status,
+}) => {
   const { t } = useTranslation();
+  const { openPreview } = usePreviewContext();
+
+  const isHarnessMode = collaboration?.mode === 'planner-generator-evaluator';
+  const harnessCollaboration = isHarnessMode ? collaboration : undefined;
+  const artifactPaths = useMemo(() => {
+    return conversationId ? buildHarnessArtifactPaths(conversationId) : null;
+  }, [conversationId]);
 
   if (participants.length === 0) {
     return null;
   }
+
+  const artifactActions =
+    harnessCollaboration && workspace && artifactPaths
+      ? [
+          {
+            key: 'request',
+            label: t('conversation.workspace.groupMembers.artifacts.request'),
+            relativePath: artifactPaths.requestFile,
+            contentType: 'markdown' as const,
+          },
+          {
+            key: 'planner',
+            label: t('conversation.workspace.groupMembers.artifacts.planner'),
+            relativePath: artifactPaths.plannerFile,
+            contentType: 'markdown' as const,
+          },
+          {
+            key: 'generator',
+            label: t('conversation.workspace.groupMembers.artifacts.generator'),
+            relativePath: artifactPaths.generatorFile,
+            contentType: 'markdown' as const,
+          },
+          {
+            key: 'evaluator',
+            label: t('conversation.workspace.groupMembers.artifacts.evaluator'),
+            relativePath: artifactPaths.evaluatorFile,
+            contentType: 'markdown' as const,
+          },
+          {
+            key: 'manifest',
+            label: t('conversation.workspace.groupMembers.artifacts.manifest'),
+            relativePath: artifactPaths.manifestFile,
+            contentType: 'code' as const,
+          },
+        ]
+      : [];
+
+  const openArtifactPreview = async (relativePath: string, contentType: 'markdown' | 'code') => {
+    if (!workspace) {
+      Message.warning(t('conversation.workspace.groupMembers.artifactUnavailable'));
+      return;
+    }
+
+    const absolutePath = joinPath(workspace, relativePath);
+    const content = await ipcBridge.fs.readFile.invoke({ path: absolutePath }).catch((): null => null);
+    if (content === null || content === undefined) {
+      Message.warning(t('conversation.workspace.groupMembers.artifactUnavailable'));
+      return;
+    }
+
+    openPreview(content, contentType, {
+      title: relativePath.split('/').pop() || relativePath,
+      fileName: relativePath.split('/').pop() || relativePath,
+      filePath: absolutePath,
+      workspace,
+      editable: false,
+      language: contentType === 'code' ? 'json' : 'markdown',
+    });
+  };
+
+  const openArtifactFolder = async () => {
+    if (!workspace || !artifactPaths) {
+      Message.warning(t('conversation.workspace.groupMembers.artifactUnavailable'));
+      return;
+    }
+
+    const absoluteRootDir = joinPath(workspace, artifactPaths.rootDir);
+    try {
+      await ipcBridge.shell.openFile.invoke(absoluteRootDir);
+    } catch (error) {
+      console.error('Failed to open harness artifact folder:', error);
+      Message.error(t('conversation.workspace.groupMembers.artifactOpenFailed'));
+    }
+  };
 
   return (
     <div
@@ -116,11 +246,53 @@ const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = 
         </Typography.Text>
       </div>
 
+      {harnessCollaboration && artifactPaths ? (
+        <div className='mb-12px rounded-16px border border-border-2 bg-[var(--color-fill-1)] px-12px py-12px'>
+          <div className='grid grid-cols-[auto,1fr] gap-x-8px gap-y-6px text-11px text-t-secondary'>
+            <span>{t('conversation.workspace.groupMembers.modeLabel')}</span>
+            <span className='text-t-primary'>{t('conversation.group.collaborationHarness')}</span>
+            <span>{t('conversation.workspace.groupMembers.statusLabel')}</span>
+            <span className='text-t-primary'>{t(resolveStatusLabelKey(status))}</span>
+            <span>{t('conversation.workspace.groupMembers.flowLabel')}</span>
+            <span className='text-t-primary'>
+              {t(resolveModeLabelKey(orchestration?.mode))} · {orchestration?.rounds || 2}
+            </span>
+            {harnessCollaboration.executionBoundary.type === 'git-repository' ? (
+              <>
+                <span>{t('conversation.workspace.groupMembers.boundaryLabel')}</span>
+                <span className='break-all text-t-primary'>
+                  {harnessCollaboration.executionBoundary.repositoryRoot}
+                </span>
+              </>
+            ) : null}
+            <span>{t('conversation.workspace.groupMembers.artifactRootLabel')}</span>
+            <span className='break-all text-t-primary'>{artifactPaths.rootDir}</span>
+          </div>
+
+          <div className='mt-10px flex flex-wrap gap-6px'>
+            {artifactActions.map((action) => (
+              <Button
+                key={action.key}
+                size='mini'
+                type='secondary'
+                onClick={() => void openArtifactPreview(action.relativePath, action.contentType)}
+              >
+                {action.label}
+              </Button>
+            ))}
+            <Button size='mini' type='secondary' onClick={() => void openArtifactFolder()}>
+              {t('conversation.workspace.groupMembers.artifacts.folder')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div className='flex max-h-240px flex-col gap-8px overflow-y-auto pr-4px'>
         {participants.map((participant) => {
           const { imageSrc, fallbackText } = resolveParticipantVisual(participant);
           const participantTypeLabel = t(resolveParticipantTypeLabelKey(participant.participantType));
           const metaLabel = getParticipantMetaLabel(participant, participantTypeLabel);
+          const roleLabelKey = resolveRoleLabelKey(participant.role);
 
           return (
             <div
@@ -142,6 +314,12 @@ const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = 
                       {participant.name}
                     </Typography.Text>
                     <div className='mt-3px flex items-center gap-6px text-11px text-t-secondary'>
+                      {roleLabelKey ? (
+                        <>
+                          <span className='truncate text-[var(--color-primary-6)]'>{t(roleLabelKey)}</span>
+                          <span className='h-3px w-3px shrink-0 rounded-full bg-[var(--color-fill-4)]'></span>
+                        </>
+                      ) : null}
                       <span className='truncate'>{participantTypeLabel}</span>
                       <span className='h-3px w-3px shrink-0 rounded-full bg-[var(--color-fill-4)]'></span>
                       <span className='truncate'>{metaLabel}</span>
@@ -149,7 +327,7 @@ const DiscussionParticipantsPanel: React.FC<DiscussionParticipantsPanelProps> = 
                   </div>
                   <span className='inline-flex shrink-0 items-center gap-4px rounded-full bg-[var(--color-fill-2)] px-8px py-3px text-11px text-t-secondary'>
                     <Robot size={12} />
-                    {metaLabel}
+                    {roleLabelKey ? t(roleLabelKey) : metaLabel}
                   </span>
                 </div>
               </div>
