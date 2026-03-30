@@ -144,7 +144,7 @@ describe('Auto-Update IPC Bridge Integration', () => {
       expect(result.error).toBe('AutoUpdaterService not initialized');
     });
 
-    it('should use ContextGo GitHub releases by default for manual checks', async () => {
+    it('should use the public ContextGo release repository by default for manual checks', async () => {
       const fetchMock = vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify([
@@ -152,7 +152,7 @@ describe('Auto-Update IPC Bridge Integration', () => {
               tag_name: 'v1.2.0',
               name: 'v1.2.0',
               body: 'Bug fixes',
-              html_url: 'https://github.com/contextgo/contextgo/releases/tag/v1.2.0',
+              html_url: 'https://github.com/contextgo/contextgo-releases/releases/tag/v1.2.0',
               published_at: '2025-01-01T00:00:00Z',
               prerelease: false,
               draft: false,
@@ -182,7 +182,7 @@ describe('Auto-Update IPC Bridge Integration', () => {
 
       const result = await updateHandler({});
 
-      expect(fetchMock).toHaveBeenCalledWith('https://api.github.com/repos/contextgo/contextgo/releases', {
+      expect(fetchMock).toHaveBeenCalledWith('https://api.github.com/repos/contextgo/contextgo-releases/releases', {
         headers: {
           Accept: 'application/vnd.github+json',
           'User-Agent': 'ContextGo',
@@ -199,7 +199,7 @@ describe('Auto-Update IPC Bridge Integration', () => {
             version: '1.2.0',
             name: 'v1.2.0',
             body: 'Bug fixes',
-            htmlUrl: 'https://github.com/contextgo/contextgo/releases/tag/v1.2.0',
+            htmlUrl: 'https://github.com/contextgo/contextgo-releases/releases/tag/v1.2.0',
             publishedAt: '2025-01-01T00:00:00Z',
             prerelease: false,
             draft: false,

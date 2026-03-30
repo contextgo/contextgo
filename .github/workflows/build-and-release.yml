@@ -17,6 +17,22 @@ on:
       - '.github/workflows/_build-reusable.yml'
       - 'scripts/install-ubuntu.sh'
   workflow_dispatch:
+    inputs:
+      build_android_shell:
+        description: 'Build and publish the Android mobile shell'
+        required: false
+        default: false
+        type: boolean
+      build_ios_shell:
+        description: 'Build and publish the iOS mobile shell archive/export artifacts'
+        required: false
+        default: false
+        type: boolean
+      build_harmony_shell:
+        description: 'Build and publish the HarmonyOS mobile shell artifacts'
+        required: false
+        default: false
+        type: boolean
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
@@ -168,7 +184,238 @@ jobs:
     with:
       matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
+      release_repository: ${{ env.PUBLIC_RELEASE_REPOSITORY }}
     secrets: inherit
+
+  build-android-shell:
+    name: Build Android Shell
+    needs: prepare-matrix
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (
+        vars.RELEASE_BUILD_ANDROID_SHELL == 'true' ||
+        (github.event_name == 'workflow_dispatch' && inputs.build_android_shell)
+      )
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        )
+      }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare Android signing inputs
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            KEYSTORE_PATH="${RUNNER_TEMP}/contextgo-android.keystore"
+            echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${KEYSTORE_PATH}"
+            echo "ANDROID_KEYSTORE_PATH=${KEYSTORE_PATH}" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Build Android shell
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          CONTEXTGO_RELEASE_BUILD_NUMBER="${GITHUB_RUN_NUMBER}" \
+          CONTEXTGO_RELEASE_VERSION_CODE="${GITHUB_RUN_NUMBER}" \
+          bash mobile-shell/scripts/build-android-release.sh "${VERSION}" mobile-shell/build/android-release
+
+      - name: Upload Android shell artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-shell-build
+          path: |
+            mobile-shell/build/android-release/*.apk
+            mobile-shell/build/android-release/*.aab
+          if-no-files-found: error
+          retention-days: 7
+
+  build-ios-shell:
+    name: Build iOS Shell
+    needs: prepare-matrix
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (
+        vars.RELEASE_BUILD_IOS_SHELL == 'true' ||
+        (github.event_name == 'workflow_dispatch' && inputs.build_ios_shell)
+      )
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        )
+      }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Prepare iOS signing inputs
+        shell: bash
+        env:
+          IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
+          CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST_BASE64: ${{ secrets.CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD || 'temp-keychain-password' }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${IOS_BUILD_CERTIFICATE_BASE64:-}" ]; then
+            CERT_PATH="${RUNNER_TEMP}/contextgo-ios-build.p12"
+            echo "${IOS_BUILD_CERTIFICATE_BASE64}" | base64 --decode > "${CERT_PATH}"
+            security create-keychain -p "${KEYCHAIN_PASSWORD}" build-ios.keychain
+            security default-keychain -s build-ios.keychain
+            security unlock-keychain -p "${KEYCHAIN_PASSWORD}" build-ios.keychain
+            security import "${CERT_PATH}" -k build-ios.keychain -P "${IOS_P12_PASSWORD}" -T /usr/bin/codesign -T /usr/bin/security
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" build-ios.keychain
+            rm -f "${CERT_PATH}"
+          fi
+
+          if [ -n "${IOS_BUILD_PROVISION_PROFILE_BASE64:-}" ]; then
+            PROFILE_DIR="${HOME}/Library/MobileDevice/Provisioning Profiles"
+            mkdir -p "${PROFILE_DIR}"
+            PROFILE_PATH="${PROFILE_DIR}/contextgo.mobileprovision"
+            echo "${IOS_BUILD_PROVISION_PROFILE_BASE64}" | base64 --decode > "${PROFILE_PATH}"
+            echo "CONTEXTGO_IOS_PROVISION_PROFILE_PATH=${PROFILE_PATH}" >> "${GITHUB_ENV}"
+          fi
+
+          if [ -n "${CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST_BASE64:-}" ]; then
+            EXPORT_OPTIONS_PATH="${RUNNER_TEMP}/ContextGo-ExportOptions.plist"
+            echo "${CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST_BASE64}" | base64 --decode > "${EXPORT_OPTIONS_PATH}"
+            echo "CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST=${EXPORT_OPTIONS_PATH}" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Build iOS shell
+        shell: bash
+        env:
+          IOS_DEVELOPMENT_TEAM: ${{ vars.IOS_DEVELOPMENT_TEAM }}
+          IOS_CODE_SIGN_IDENTITY: ${{ vars.IOS_CODE_SIGN_IDENTITY }}
+          IOS_PROVISIONING_PROFILE_SPECIFIER: ${{ vars.IOS_PROVISIONING_PROFILE_SPECIFIER }}
+          CONTEXTGO_IOS_SCHEME: ${{ vars.CONTEXTGO_IOS_SCHEME != '' && vars.CONTEXTGO_IOS_SCHEME || 'ContextGo' }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          OUTPUT_DIR="mobile-shell/build/ios-release"
+
+          CONTEXTGO_RELEASE_BUILD_NUMBER="${GITHUB_RUN_NUMBER}" \
+          bash mobile-shell/scripts/build-ios-release.sh "${VERSION}" "${OUTPUT_DIR}"
+
+          ARCHIVE_PATH="${OUTPUT_DIR}/ContextGo.xcarchive"
+          if [ -d "${ARCHIVE_PATH}" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "${ARCHIVE_PATH}" "${OUTPUT_DIR}/ContextGo-${VERSION}-ios-universal.xcarchive.zip"
+          fi
+
+      - name: Upload iOS shell artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-shell-build
+          path: |
+            mobile-shell/build/ios-release/*.ipa
+            mobile-shell/build/ios-release/*.xcarchive.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Clean up iOS signing inputs
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          security delete-keychain build-ios.keychain 2>/dev/null || true
+          rm -f "${HOME}/Library/MobileDevice/Provisioning Profiles/contextgo.mobileprovision" 2>/dev/null || true
+
+  build-harmony-shell:
+    name: Build HarmonyOS Shell
+    needs: prepare-matrix
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (
+        vars.RELEASE_BUILD_HARMONY_SHELL == 'true' ||
+        (github.event_name == 'workflow_dispatch' && inputs.build_harmony_shell)
+      )
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        )
+      }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build HarmonyOS shell
+        shell: bash
+        env:
+          DEVECO_SDK_HOME: ${{ vars.DEVECO_SDK_HOME }}
+          CONTEXTGO_HARMONY_RELEASE_COMMAND: ${{ vars.CONTEXTGO_HARMONY_RELEASE_COMMAND }}
+          CONTEXTGO_HARMONY_ARCH: ${{ vars.CONTEXTGO_HARMONY_ARCH != '' && vars.CONTEXTGO_HARMONY_ARCH || 'arm64' }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          bash mobile-shell/scripts/build-harmony-release.sh "${VERSION}" mobile-shell/build/harmony-release
+
+      - name: Upload HarmonyOS shell artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: harmony-shell-build
+          path: |
+            mobile-shell/build/harmony-release/*.hap
+            mobile-shell/build/harmony-release/*.app
+          if-no-files-found: error
+          retention-days: 7
 
   # 自动重试 workflow（当构建失败时）
   auto-retry-workflow:
@@ -337,8 +584,14 @@ jobs:
   release:
     name: Create Release
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
-    needs: [prepare-matrix, build-pipeline, create-tag]
-    if: always() && needs.build-pipeline.result == 'success' && needs.create-tag.result == 'success'
+    needs: [prepare-matrix, build-pipeline, build-android-shell, build-ios-shell, build-harmony-shell, create-tag]
+    if: >-
+      always() &&
+      needs.build-pipeline.result == 'success' &&
+      needs.create-tag.result == 'success' &&
+      (needs.build-android-shell.result == 'success' || needs.build-android-shell.result == 'skipped') &&
+      (needs.build-ios-shell.result == 'success' || needs.build-ios-shell.result == 'skipped') &&
+      (needs.build-harmony-shell.result == 'success' || needs.build-harmony-shell.result == 'skipped')
     environment: release
 
     steps:
@@ -452,6 +705,8 @@ jobs:
             release-assets/**/*.json
             release-assets/**/*.yml
             release-assets/**/*.md
+            build-artifacts/**/*.ipa
+            build-artifacts/**/*.xcarchive.zip
           draft: false
           make_latest: true
           prerelease: ${{ contains(steps.version.outputs.tag_name, 'beta') || contains(steps.version.outputs.tag_name, 'alpha') || contains(steps.version.outputs.tag_name, 'rc') }}

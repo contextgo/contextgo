@@ -32,7 +32,7 @@ export interface UpdateCheckResult {
 
 export interface UpdateCheckRequest {
   includePrerelease?: boolean;
-  /** Defaults to contextgo/contextgo when omitted */
+  /** Defaults to contextgo/contextgo-releases when omitted */
   repo?: string;
 }
 

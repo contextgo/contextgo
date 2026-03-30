@@ -227,7 +227,7 @@ electronDownload:
 
 publish:
   provider: github
-  owner: contextgo
-  repo: contextgo
+  owner: ${env.CONTEXTGO_RELEASE_OWNER}
+  repo: ${env.CONTEXTGO_RELEASE_NAME}
   publishAutoUpdate: true
   releaseType: release

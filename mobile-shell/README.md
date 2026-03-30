@@ -87,17 +87,17 @@ Keeping both under one repository still gives a single maintenance surface witho
 - `xcodebuild -showdestinations -project mobile-shell/ios/ContextGo.xcodeproj -scheme ContextGo`: passed on 2026-03-28 after the iOS runtime installation completed
 - iOS simulator build: passed with `xcodebuild -project mobile-shell/ios/ContextGo.xcodeproj -scheme ContextGo -destination 'id=88D8275A-21B1-4B7D-AF87-3871965664BC' CODE_SIGNING_ALLOWED=NO build`
 - iOS simulator install + launch: passed with `xcrun simctl install` and `xcrun simctl launch io.contextgo.ios`
-- iOS stable tag packaging now supports signed `xcarchive` plus optional exported `ipa` workflow artifacts through `.github/workflows/build-and-release.yml`
+- iOS stable tag packaging now supports signed `xcarchive` plus optional exported `ipa` workflow artifacts through `.github/workflows/build-and-release.yml` when `RELEASE_BUILD_IOS_SHELL=true` and the signing secrets are configured
 - `bun run mobile-shell:android:tasks`: passed and enumerates Gradle tasks
 - Android full assemble: passed and produced a debug APK
-- Android stable tag packaging is now wired into `.github/workflows/build-and-release.yml` and emits canonical `ContextGo-<version>-android-universal.apk` / `.aab` assets when release signing secrets are configured
+- Android stable tag packaging is now wired into `.github/workflows/build-and-release.yml` and emits canonical `ContextGo-<version>-android-universal.apk` / `.aab` assets when `RELEASE_BUILD_ANDROID_SHELL=true` and Android signing secrets are configured
 - HarmonyOS package-manager setup: `ohpm install` passed
 - HarmonyOS CLI task discovery: passed with `DEVECO_SDK_HOME=~/Library/Huawei/command-line-tools/sdk hvigorw tasks`
 - HarmonyOS CLI full assemble: passed on 2026-03-28 with `DEVECO_SDK_HOME="$HOME/Library/Huawei/command-line-tools/sdk" hvigorw assembleApp --debug --stacktrace`
 - HarmonyOS output packages:
   - `mobile-shell/harmony/build/outputs/default/harmony-default-unsigned.app`
   - `mobile-shell/harmony/entry/build/default/outputs/default/entry-default-unsigned.hap`
-- Harmony tag packaging is now wired as an opt-in release job and uploads assets only when the runner produces signed non-unsigned outputs
+- Harmony tag packaging is now wired as an opt-in release job and uploads assets only when `RELEASE_BUILD_HARMONY_SHELL=true` and the runner-specific `CONTEXTGO_HARMONY_RELEASE_COMMAND` produces signed non-unsigned outputs
 
 Tooling gaps now mainly affect release signing. Android, iOS, and HarmonyOS shell projects are laid out and locally buildable on this machine.
 

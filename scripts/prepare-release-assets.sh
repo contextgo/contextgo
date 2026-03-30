@@ -25,7 +25,10 @@ mkdir -p "$OUTPUT_DIR"
 echo "==> Copying distributables from $ARTIFACTS_DIR ..."
 DISTRIBUTABLES=()
 while IFS= read -r file; do
-  DISTRIBUTABLES+=("$file")
+  base_name="$(basename "$file")"
+  if [[ "$base_name" =~ -(mac|macos|win|windows|linux|android|harmony|harmonyos)- ]]; then
+    DISTRIBUTABLES+=("$file")
+  fi
 done < <(find "$ARTIFACTS_DIR" -type f \( \
   -name "*.aab" -o \
   -name "*.apk" -o \
