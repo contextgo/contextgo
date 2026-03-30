@@ -1,7 +1,9 @@
 export const en = {
   navbar: {
-    product: 'Introduction',
+    product: 'Product',
     connect: 'Connect',
+    docs: 'Docs',
+    blog: 'Blog',
     download: 'Download',
     theme: {
       toggle: 'Theme',
@@ -157,6 +159,9 @@ export const en = {
     rights: 'ContextGo. All rights reserved.',
     product: 'Product',
     connect: 'Connect',
+    docs: 'Docs',
+    blog: 'Blog',
+    changelog: 'Changelog',
     download: 'Download',
     privacy: 'Privacy',
     terms: 'Terms',
