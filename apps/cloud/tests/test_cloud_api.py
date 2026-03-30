@@ -18,6 +18,7 @@ if str(CLOUD_ROOT) not in sys.path:
 MODULE_NAMES = (
     "contextgo_cloud.config",
     "contextgo_cloud.db",
+    "contextgo_cloud.infermesh",
     "contextgo_cloud.oauth",
     "contextgo_cloud.app",
 )
@@ -32,6 +33,16 @@ ENV_KEYS = (
     "CONTEXTGO_GITHUB_CLIENT_SECRET",
     "CONTEXTGO_GOOGLE_CLIENT_ID",
     "CONTEXTGO_GOOGLE_CLIENT_SECRET",
+    "CONTEXTGO_INFERMESH_API_BASE_URL",
+    "CONTEXTGO_INFERMESH_CONSOLE_BASE_URL",
+    "CONTEXTGO_INFERMESH_ADMIN_BASE_URL",
+    "CONTEXTGO_INFERMESH_ADMIN_USERNAME",
+    "CONTEXTGO_INFERMESH_ADMIN_PASSWORD",
+    "CONTEXTGO_INFERMESH_ADMIN_ACCESS_CLIENT_ID",
+    "CONTEXTGO_INFERMESH_ADMIN_ACCESS_CLIENT_SECRET",
+    "CONTEXTGO_INFERMESH_PASSWORD_SECRET",
+    "CONTEXTGO_INFERMESH_USERNAME_PREFIX",
+    "CONTEXTGO_INFERMESH_PROVIDER_NAME",
 )
 
 
@@ -57,6 +68,14 @@ class CloudApiTestCase(unittest.TestCase):
         os.environ["CONTEXTGO_GITHUB_CLIENT_SECRET"] = "github-client-secret"
         os.environ["CONTEXTGO_GOOGLE_CLIENT_ID"] = "google-client-id"
         os.environ["CONTEXTGO_GOOGLE_CLIENT_SECRET"] = "google-client-secret"
+        os.environ["CONTEXTGO_INFERMESH_API_BASE_URL"] = "https://api.infermesh.test"
+        os.environ["CONTEXTGO_INFERMESH_CONSOLE_BASE_URL"] = "https://newapi.infermesh.test"
+        os.environ["CONTEXTGO_INFERMESH_ADMIN_BASE_URL"] = "https://newapi-admin.infermesh.test"
+        os.environ["CONTEXTGO_INFERMESH_ADMIN_USERNAME"] = "root"
+        os.environ["CONTEXTGO_INFERMESH_ADMIN_PASSWORD"] = "test-password"
+        os.environ["CONTEXTGO_INFERMESH_PASSWORD_SECRET"] = "test-secret"
+        os.environ["CONTEXTGO_INFERMESH_USERNAME_PREFIX"] = "cg"
+        os.environ["CONTEXTGO_INFERMESH_PROVIDER_NAME"] = "InferMesh Cloud"
 
         unload_modules()
         self.app_module = importlib.import_module("contextgo_cloud.app")
@@ -204,6 +223,57 @@ class CloudApiTestCase(unittest.TestCase):
 
         refreshed_devices = self.client.get("/api/devices").json()["devices"]
         self.assertEqual(refreshed_devices[0]["status"], "revoked")
+
+    def test_infermesh_provider_uses_browser_session(self) -> None:
+        user, _session = self._create_browser_session()
+        provider_payload = {
+            "id": "infermesh-cloud-managed",
+            "name": "InferMesh Cloud",
+            "platform": "new-api",
+            "baseUrl": "https://api.infermesh.test",
+            "apiKey": "sk-test",
+            "model": ["gpt-5.4"],
+            "modelProtocols": {"gpt-5.4": "openai"},
+        }
+
+        with patch.object(
+            self.app_module,
+            "provision_infermesh_provider",
+            AsyncMock(return_value=provider_payload),
+        ) as provision:
+            response = self.client.get("/api/integrations/infermesh/provider")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["provider"], provider_payload)
+        provision.assert_awaited_once_with(self.settings, user)
+
+    def test_infermesh_provider_accepts_device_token(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device_token = registration["token"]
+        self.client.cookies.pop(self.settings.session_cookie_name, None)
+
+        provider_payload = {
+            "id": "infermesh-cloud-managed",
+            "name": "InferMesh Cloud",
+            "platform": "new-api",
+            "baseUrl": "https://api.infermesh.test",
+            "apiKey": "sk-test",
+            "model": ["claude-sonnet-4"],
+            "modelProtocols": {"claude-sonnet-4": "anthropic"},
+        }
+
+        with patch.object(
+            self.app_module,
+            "provision_infermesh_provider",
+            AsyncMock(return_value=provider_payload),
+        ):
+            response = self.client.get(
+                "/api/integrations/infermesh/provider",
+                headers={"Authorization": f"Bearer {device_token}"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["provider"]["apiKey"], "sk-test")
 
     def test_sync_requires_device_token(self) -> None:
         response = self.client.post("/api/sync/push", json={"changes": []})
