@@ -12,6 +12,7 @@ const { handlers, mockService } = vi.hoisted(() => ({
     listBySpace: vi.fn(),
     getAsset: vi.fn(),
     createAsset: vi.fn(),
+    updateAsset: vi.fn(),
     updateConsent: vi.fn(),
     revokeAsset: vi.fn(),
     assertBindableToSpace: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('@/common', () => ({
       listBySpace: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.listBySpace = fn)) },
       get: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.get = fn)) },
       create: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.create = fn)) },
+      update: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.update = fn)) },
       updateConsent: {
         provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.updateConsent = fn)),
       },
@@ -41,6 +43,7 @@ vi.mock('@process/services/space/browser/BrowserContextAssetService', () => ({
       listBySpace = mockService.listBySpace;
       getAsset = mockService.getAsset;
       createAsset = mockService.createAsset;
+      updateAsset = mockService.updateAsset;
       updateConsent = mockService.updateConsent;
       revokeAsset = mockService.revokeAsset;
       assertBindableToSpace = mockService.assertBindableToSpace;
@@ -80,6 +83,35 @@ describe('browserContextBridge', () => {
     expect(response).toEqual({
       success: false,
       msg: 'bad create',
+    });
+  });
+
+  it('updates the requested asset and returns the updated payload', async () => {
+    mockService.updateAsset.mockResolvedValueOnce({
+      id: 'asset-1',
+      metadata: { homeUrl: 'https://example.com' },
+      lastUsedAt: 123,
+    });
+    initBrowserContextBridge();
+
+    const response = await handlers.update?.({
+      id: 'asset-1',
+      metadata: { homeUrl: 'https://example.com' },
+      lastUsedAt: 123,
+    });
+
+    expect(mockService.updateAsset).toHaveBeenCalledWith({
+      id: 'asset-1',
+      metadata: { homeUrl: 'https://example.com' },
+      lastUsedAt: 123,
+    });
+    expect(response).toEqual({
+      success: true,
+      data: {
+        id: 'asset-1',
+        metadata: { homeUrl: 'https://example.com' },
+        lastUsedAt: 123,
+      },
     });
   });
 });

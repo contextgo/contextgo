@@ -12,6 +12,8 @@ interface URLViewerProps {
   url: string;
   /** Optional title for the page */
   title?: string;
+  /** Optional browser context asset binding for session partition isolation */
+  browserContextAssetId?: string;
 }
 
 /**
@@ -20,8 +22,10 @@ interface URLViewerProps {
  *
  * Delegates to the shared WebviewHost with navigation bar enabled.
  */
-const URLViewer: React.FC<URLViewerProps> = ({ url }) => {
-  return <WebviewHost url={url} showNavBar className='bg-bg-1' />;
+const URLViewer: React.FC<URLViewerProps> = ({ url, browserContextAssetId }) => {
+  const partition = browserContextAssetId ? `persist:browser-context-${browserContextAssetId}` : undefined;
+
+  return <WebviewHost url={url} showNavBar partition={partition} className='bg-bg-1' />;
 };
 
 export default URLViewer;

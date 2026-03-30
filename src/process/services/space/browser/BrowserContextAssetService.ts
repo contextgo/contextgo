@@ -40,6 +40,18 @@ type UpdateBrowserContextConsentInput = {
   expiresAt?: number;
 };
 
+type UpdateBrowserContextAssetInput = {
+  id: string;
+  label?: string;
+  domains?: string[];
+  fingerprintRef?: string;
+  profileRef?: string;
+  storageRef?: string;
+  expiresAt?: number;
+  lastUsedAt?: number;
+  metadata?: TBrowserContextAsset['metadata'];
+};
+
 const BROWSER_CONTEXT_ASSET_KEY = 'browser.context.assets';
 
 const normalizeDomains = (domains?: string[]): string[] | undefined => {
@@ -174,6 +186,31 @@ export class BrowserContextAssetService {
       revokedAt: input.consentStatus === 'revoked' ? now : undefined,
       modifyTime: now,
     };
+
+    await this.writeAssets(assets.map((item) => (item.id === updatedAsset.id ? updatedAsset : item)));
+    return updatedAsset;
+  }
+
+  async updateAsset(input: UpdateBrowserContextAssetInput): Promise<TBrowserContextAsset> {
+    const assets = await this.readAssets();
+    const asset = assets.find((item) => item.id === input.id.trim());
+
+    if (!asset) {
+      throw new Error(`Browser context asset not found: ${input.id}`);
+    }
+
+    const updatedAsset: TBrowserContextAsset = normalizeAsset({
+      ...asset,
+      label: input.label ?? asset.label,
+      domains: input.domains ?? asset.domains,
+      fingerprintRef: input.fingerprintRef ?? asset.fingerprintRef,
+      profileRef: input.profileRef ?? asset.profileRef,
+      storageRef: input.storageRef ?? asset.storageRef,
+      expiresAt: input.expiresAt ?? asset.expiresAt,
+      lastUsedAt: input.lastUsedAt ?? asset.lastUsedAt,
+      metadata: input.metadata ?? asset.metadata,
+      modifyTime: Date.now(),
+    });
 
     await this.writeAssets(assets.map((item) => (item.id === updatedAsset.id ? updatedAsset : item)));
     return updatedAsset;

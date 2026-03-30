@@ -213,6 +213,18 @@ export interface IUpdateBrowserContextConsentParams {
   expiresAt?: number;
 }
 
+export interface IUpdateBrowserContextAssetParams {
+  id: string;
+  label?: string;
+  domains?: string[];
+  fingerprintRef?: string;
+  profileRef?: string;
+  storageRef?: string;
+  expiresAt?: number;
+  lastUsedAt?: number;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
 export const browserContext = {
   listBySpace: bridge.buildProvider<
     IBridgeResponse<TBrowserContextAsset[]>,
@@ -221,6 +233,9 @@ export const browserContext = {
   get: bridge.buildProvider<IBridgeResponse<TBrowserContextAsset>, { id: string }>('browser-context.get'),
   create: bridge.buildProvider<IBridgeResponse<TBrowserContextAsset>, ICreateBrowserContextAssetParams>(
     'browser-context.create'
+  ),
+  update: bridge.buildProvider<IBridgeResponse<TBrowserContextAsset>, IUpdateBrowserContextAssetParams>(
+    'browser-context.update'
   ),
   updateConsent: bridge.buildProvider<IBridgeResponse<TBrowserContextAsset>, IUpdateBrowserContextConsentParams>(
     'browser-context.update-consent'
