@@ -9,21 +9,25 @@ import type { IDiscussionGroupCreateParams } from '@/common/adapter/ipcBridge';
 import type { IConversationTurnCompletedEvent } from '@/common/adapter/ipcBridge';
 import type { IMessageText } from '@/common/chat/chatLib';
 import type {
+  GroupCollaborationConfig,
   DiscussionGroupParticipant,
+  DiscussionGroupMode,
   DiscussionGroupOrchestration,
   MessageGroupMeta,
   TChatConversation,
 } from '@/common/config/storage';
-import { uuid } from '@/common/utils';
+import { isHarnessArtifactRole, uuid, type HarnessArtifactEntry, type HarnessArtifactStatus } from '@/common/utils';
 import { getChannelMessageService } from '@process/channels/agent/ChannelMessageService';
 import type { IConversationService } from '@process/services/IConversationService';
 import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
 import { getDatabase } from '@process/services/database';
 import {
   buildDiscussionRoundPrompt,
+  normalizeGroupCollaboration,
   normalizeDiscussionOrchestration,
   type DiscussionRoundSummary,
 } from './discussionHelpers';
+import { persistHarnessArtifacts } from './discussionArtifacts';
 
 type GroupConversation = Extract<TChatConversation, { type: 'group' }>;
 
@@ -48,6 +52,7 @@ const buildProjectedMessageMeta = (
     participantId: participant.id,
     participantName: participant.name,
     participantAvatar: participant.avatar,
+    participantRole: participant.role,
     childConversationId,
     mode: orchestration.mode,
     round,
@@ -71,6 +76,8 @@ export class DiscussionGroupService {
   ): Promise<GroupConversation> {
     const parentId = params.id || uuid();
     const orchestration = normalizeDiscussionOrchestration(params.extra.orchestration);
+    const collaboration = normalizeGroupCollaboration(params.extra.collaboration);
+    this.validateCollaborationBoundary(collaboration);
     const parentConversation = await this.conversationService.createConversation({
       type: 'group',
       id: parentId,
@@ -83,6 +90,7 @@ export class DiscussionGroupService {
         customWorkspace: params.extra.customWorkspace,
         participants: [],
         orchestration,
+        collaboration,
       },
     });
 
@@ -104,6 +112,7 @@ export class DiscussionGroupService {
               participantId: participant.id,
               participantName: participant.name,
               participantAvatar: participant.avatar,
+              participantRole: participant.role,
               hiddenFromHistory: true,
             },
           },
@@ -117,6 +126,7 @@ export class DiscussionGroupService {
           name: participant.name,
           avatar: participant.avatar,
           description: participant.description,
+          role: participant.role,
           childConversationId: childConversation.id,
         });
       }
@@ -132,6 +142,7 @@ export class DiscussionGroupService {
       ...parentConversation.extra,
       participants,
       orchestration,
+      collaboration,
     };
 
     await this.conversationService.updateConversation(parentConversation.id, {
@@ -170,6 +181,7 @@ export class DiscussionGroupService {
 
     this.cancelledGroupIds.delete(conversation.id);
     const orchestration = normalizeDiscussionOrchestration(conversation.extra.orchestration);
+    const collaboration = normalizeGroupCollaboration(conversation.extra.collaboration);
     await this.persistUserMessage(conversation, {
       id: options.msgId,
       type: 'text',
@@ -190,8 +202,18 @@ export class DiscussionGroupService {
 
     await this.conversationService.updateConversation(conversation.id, { status: 'running' });
     this.emitTurnState(conversation, 'running', 'ai_generating', 'Discussion group is responding');
+    const harnessEntries: HarnessArtifactEntry[] = [];
 
     try {
+      await this.persistHarnessArtifactsSafe({
+        conversation,
+        collaboration,
+        orchestrationMode: orchestration.mode,
+        request: options.input,
+        entries: harnessEntries,
+        status: 'running',
+      });
+
       let previousRoundSummariesByParticipant = new Map<string, DiscussionRoundSummary>();
 
       for (let round = 1; round <= orchestration.rounds; round += 1) {
@@ -215,10 +237,12 @@ export class DiscussionGroupService {
                     .filter((item): item is DiscussionRoundSummary => Boolean(item));
 
           const prompt = buildDiscussionRoundPrompt({
+            collaboration,
             mode: orchestration.mode,
             round,
             userInput: options.input,
             participantName: participant.name,
+            participantRole: participant.role,
             peerSummaries,
           });
 
@@ -236,12 +260,39 @@ export class DiscussionGroupService {
               participantName: participant.name,
               content: summaryText,
             });
+
+            if (isHarnessArtifactRole(participant.role)) {
+              this.upsertHarnessArtifactEntry(harnessEntries, {
+                round,
+                role: participant.role,
+                participantId: participant.id,
+                participantName: participant.name,
+                summary: summaryText,
+                updatedAt: Date.now(),
+              });
+              await this.persistHarnessArtifactsSafe({
+                conversation,
+                collaboration,
+                orchestrationMode: orchestration.mode,
+                request: options.input,
+                entries: harnessEntries,
+                status: 'running',
+              });
+            }
           }
         }
 
         previousRoundSummariesByParticipant = currentRoundSummariesByParticipant;
       }
 
+      await this.persistHarnessArtifactsSafe({
+        conversation,
+        collaboration,
+        orchestrationMode: orchestration.mode,
+        request: options.input,
+        entries: harnessEntries,
+        status: 'finished',
+      });
       await this.conversationService.updateConversation(conversation.id, { status: 'finished' });
       this.emitTurnState(conversation, 'finished', 'ai_waiting_input', 'Discussion group completed');
       ipcBridge.conversation.responseStream.emit({
@@ -252,6 +303,14 @@ export class DiscussionGroupService {
       });
     } catch (error) {
       if (error instanceof DiscussionGroupCancelledError) {
+        await this.persistHarnessArtifactsSafe({
+          conversation,
+          collaboration,
+          orchestrationMode: orchestration.mode,
+          request: options.input,
+          entries: harnessEntries,
+          status: 'stopped',
+        });
         await this.conversationService.updateConversation(conversation.id, { status: 'finished' });
         this.emitTurnState(conversation, 'finished', 'ai_waiting_input', 'Discussion group stopped');
         ipcBridge.conversation.responseStream.emit({
@@ -263,6 +322,14 @@ export class DiscussionGroupService {
         return;
       }
 
+      await this.persistHarnessArtifactsSafe({
+        conversation,
+        collaboration,
+        orchestrationMode: orchestration.mode,
+        request: options.input,
+        entries: harnessEntries,
+        status: 'error',
+      });
       await this.conversationService.updateConversation(conversation.id, { status: 'finished' });
       const message = error instanceof Error ? error.message : String(error);
       await this.persistProjectedMessage(
@@ -361,6 +428,59 @@ export class DiscussionGroupService {
     }
 
     return projectedMessages;
+  }
+
+  private validateCollaborationBoundary(collaboration: GroupCollaborationConfig): void {
+    if (collaboration.mode !== 'planner-generator-evaluator') {
+      return;
+    }
+
+    if (
+      collaboration.executionBoundary.type !== 'git-repository' ||
+      !collaboration.executionBoundary.repositoryRoot.trim()
+    ) {
+      throw new Error('Planner/Generator/Evaluator mode requires a git repository boundary.');
+    }
+  }
+
+  private async persistHarnessArtifactsSafe(options: {
+    conversation: GroupConversation;
+    collaboration: GroupCollaborationConfig;
+    orchestrationMode: DiscussionGroupMode;
+    request: string;
+    entries: HarnessArtifactEntry[];
+    status: HarnessArtifactStatus;
+  }): Promise<void> {
+    if (options.collaboration.mode !== 'planner-generator-evaluator') {
+      return;
+    }
+
+    try {
+      await persistHarnessArtifacts({
+        workspace: options.conversation.extra.workspace,
+        conversationId: options.conversation.id,
+        request: options.request,
+        orchestrationMode: options.orchestrationMode,
+        executionBoundary: options.collaboration.executionBoundary,
+        status: options.status,
+        entries: options.entries,
+      });
+    } catch (error) {
+      console.error('[DiscussionGroupService] Failed to persist harness artifacts:', error);
+    }
+  }
+
+  private upsertHarnessArtifactEntry(entries: HarnessArtifactEntry[], nextEntry: HarnessArtifactEntry): void {
+    const existingEntryIndex = entries.findIndex(
+      (entry) => entry.round === nextEntry.round && entry.role === nextEntry.role
+    );
+
+    if (existingEntryIndex >= 0) {
+      entries[existingEntryIndex] = nextEntry;
+      return;
+    }
+
+    entries.push(nextEntry);
   }
 
   private throwIfCancelled(conversationId: string): void {

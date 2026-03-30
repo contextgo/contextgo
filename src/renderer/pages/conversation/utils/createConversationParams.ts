@@ -8,8 +8,14 @@ import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
 import { ConfigStorage } from '@/common/config/storage';
 import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
 import type { IAssistantConversationCreateParams } from '@/common/adapter/ipcBridge';
+import type { IGitRepositoryInfo } from '@/common/adapter/ipcBridge';
 import type { TProviderWithModel } from '@/common/config/storage';
-import type { DiscussionGroupMode } from '@/common/config/storage';
+import type {
+  CollaborationMode,
+  CollaborationParticipantRole,
+  DiscussionGroupMode,
+  GroupCollaborationConfig,
+} from '@/common/config/storage';
 import { resolveLocaleKey } from '@/common/utils';
 import { loadPresetAssistantResources } from '@/renderer/utils/model/presetAssistantResources';
 import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
@@ -35,6 +41,44 @@ export type DiscussionGroupCliParticipantInput = {
 };
 
 export type DiscussionGroupParticipantInput = DiscussionGroupAssistantInput | DiscussionGroupCliParticipantInput;
+
+const HARNESS_ROLE_ORDER: CollaborationParticipantRole[] = ['planner', 'generator', 'evaluator'];
+
+const resolveGroupCollaboration = (options: {
+  collaborationMode?: CollaborationMode;
+  gitRepository?: IGitRepositoryInfo;
+}): GroupCollaborationConfig => {
+  if (options.collaborationMode === 'planner-generator-evaluator') {
+    return {
+      mode: 'planner-generator-evaluator',
+      executionBoundary: {
+        type: 'git-repository',
+        repositoryRoot: options.gitRepository?.repositoryRoot || '',
+        branch: options.gitRepository?.branch ?? null,
+        gitDir: options.gitRepository?.gitDir ?? null,
+        remoteUrl: options.gitRepository?.remoteUrl ?? null,
+      },
+    };
+  }
+
+  return {
+    mode: 'discussion',
+    executionBoundary: {
+      type: 'workspace',
+    },
+  };
+};
+
+const resolveParticipantRole = (
+  collaborationMode: CollaborationMode | undefined,
+  participantIndex: number
+): CollaborationParticipantRole => {
+  if (collaborationMode === 'planner-generator-evaluator') {
+    return HARNESS_ROLE_ORDER[participantIndex] || 'participant';
+  }
+
+  return 'participant';
+};
 
 const buildGoogleAuthGeminiModel = (useModel: string, id = GOOGLE_AUTH_PROVIDER_ID): TProviderWithModel => {
   return {
@@ -237,12 +281,19 @@ export async function buildDiscussionGroupParams(options: {
   language: string;
   mode: DiscussionGroupMode;
   participants: DiscussionGroupParticipantInput[];
+  collaborationMode?: CollaborationMode;
+  gitRepository?: IGitRepositoryInfo;
 }): Promise<ICreateConversationParams> {
   const customWorkspace = Boolean(options.workspace?.trim());
   const normalizedWorkspace = options.workspace?.trim() || undefined;
+  const collaboration = resolveGroupCollaboration({
+    collaborationMode: options.collaborationMode,
+    gitRepository: options.gitRepository,
+  });
 
   const participants = await Promise.all(
-    options.participants.map(async (participant) => {
+    options.participants.map(async (participant, participantIndex) => {
+      const participantWorkspace = normalizedWorkspace || '';
       const conversation =
         participant.type === 'preset-assistant'
           ? ((await buildPresetAssistantParams(
@@ -253,10 +304,13 @@ export async function buildDiscussionGroupParams(options: {
                 isPreset: true,
                 presetAgentType: participant.presetAgentType,
               },
-              options.workspace,
+              participantWorkspace,
               options.language
             )) as IAssistantConversationCreateParams)
-          : ((await buildCliAgentParams(participant.agent, options.workspace)) as IAssistantConversationCreateParams);
+          : ((await buildCliAgentParams(
+              participant.agent,
+              participantWorkspace
+            )) as IAssistantConversationCreateParams);
 
       return {
         id: uuid(),
@@ -266,6 +320,7 @@ export async function buildDiscussionGroupParams(options: {
         name: participant.name,
         avatar: participant.avatar,
         description: participant.description,
+        role: resolveParticipantRole(options.collaborationMode, participantIndex),
         conversation: {
           ...conversation,
           name: participant.name,
@@ -291,6 +346,7 @@ export async function buildDiscussionGroupParams(options: {
         mode: options.mode,
         rounds: options.mode === 'debate' ? 2 : 1,
       },
+      collaboration,
     },
   };
 }

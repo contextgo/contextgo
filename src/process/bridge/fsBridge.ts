@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AIONUI_TIMESTAMP_SEPARATOR } from '@/common/config/constants';
+import { CONTEXTGO_TIMESTAMP_SEPARATOR } from '@/common/config/constants';
 import {
   getHookOutputTargets,
   getRunnableHookEvents,
@@ -20,6 +20,8 @@ import path from 'path';
 import os from 'os';
 import https from 'node:https';
 import http from 'node:http';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import JSZip from 'jszip';
 import { ipcBridge } from '@/common';
 import {
@@ -32,6 +34,8 @@ import {
 } from '@process/utils/initStorage';
 import { readDirectoryRecursive } from '@process/utils';
 import { discoverSkillDirectories, resolveSkillDirectory } from '@process/utils/skillDiscovery';
+
+const execFileAsync = promisify(execFile);
 
 // ============================================================================
 // Helper functions for builtin resource directory resolution
@@ -97,6 +101,54 @@ async function readBuiltinResource(resourceType: ResourceType, fileName: string)
   }
   const dir = await findBuiltinResourceDirNode(resourceType);
   return fs.readFile(path.join(dir, safeFileName), 'utf-8');
+}
+
+async function getGitRepositoryInfo(targetPath: string): Promise<{
+  isRepository: boolean;
+  repositoryRoot?: string;
+  branch?: string | null;
+  gitDir?: string | null;
+  remoteUrl?: string | null;
+}> {
+  const resolvedPath = path.resolve(targetPath);
+  let workingDir = resolvedPath;
+
+  try {
+    const stat = await fs.stat(resolvedPath);
+    if (!stat.isDirectory()) {
+      workingDir = path.dirname(resolvedPath);
+    }
+  } catch {
+    return { isRepository: false };
+  }
+
+  try {
+    const { stdout: rootStdout } = await execFileAsync('git', ['rev-parse', '--show-toplevel'], {
+      cwd: workingDir,
+    });
+    const repositoryRoot = rootStdout.trim();
+    if (!repositoryRoot) {
+      return { isRepository: false };
+    }
+
+    const [{ stdout: branchStdout }, { stdout: gitDirStdout }, remoteResult] = await Promise.all([
+      execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: repositoryRoot }),
+      execFileAsync('git', ['rev-parse', '--git-dir'], { cwd: repositoryRoot }),
+      execFileAsync('git', ['config', '--get', 'remote.origin.url'], { cwd: repositoryRoot }).catch(() => ({
+        stdout: '',
+      })),
+    ]);
+
+    return {
+      isRepository: true,
+      repositoryRoot,
+      branch: branchStdout.trim() || null,
+      gitDir: gitDirStdout.trim() || null,
+      remoteUrl: remoteResult.stdout.trim() || null,
+    };
+  } catch {
+    return { isRepository: false };
+  }
 }
 
 /**
@@ -362,8 +414,8 @@ export function initFsBridge(): void {
           targetUrl,
           {
             headers: {
-              'User-Agent': 'AionUI-Preview',
-              Referer: 'https://github.com/iOfficeAI/AionUi',
+              'User-Agent': 'ContextGo-Preview',
+              Referer: 'https://github.com/contextgo/contextgo',
             },
           },
           (response) => {
@@ -451,7 +503,7 @@ export function initFsBridge(): void {
         const timestamp = Date.now();
         const ext = path.extname(safeFileName);
         const name = path.basename(safeFileName, ext);
-        const tempFileName = `${name}${AIONUI_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
+        const tempFileName = `${name}${CONTEXTGO_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
         tempFilePath = path.join(tempDir, tempFileName);
       }
 
@@ -493,6 +545,20 @@ export function initFsBridge(): void {
       }
       console.error('Failed to read file buffer:', error);
       throw error;
+    }
+  });
+
+  ipcBridge.fs.getGitRepositoryInfo.provider(async ({ path: targetPath }) => {
+    try {
+      return {
+        success: true,
+        data: await getGitRepositoryInfo(targetPath),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
     }
   });
 
@@ -750,7 +816,7 @@ export function initFsBridge(): void {
             const name = path.basename(targetPath, ext);
             // Construct new path in the same directory / 在同一目录下构建新路径
             const dir = path.dirname(targetPath);
-            const newFileName = `${name}${AIONUI_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
+            const newFileName = `${name}${CONTEXTGO_TIMESTAMP_SEPARATOR}${timestamp}${ext}`;
             finalTargetPath = path.join(dir, newFileName);
           }
 
@@ -1890,6 +1956,6 @@ async function readBundledSkillsMarketMd(): Promise<string> {
     return await fs.readFile(fallbackPath, 'utf-8');
   } catch (error) {
     console.warn('[fsBridge] Failed to read bundled aionui-skills SKILL.md:', error);
-    return `---\nname: aionui-skills\ndescription: "Access the AionUI Skills registry — discover and download AI agent skills."\n---\n\n# AionUI Skills Registry\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/aionui-skills\ncurl -s https://skills.aionui.com/SKILL.md > ~/.config/aionui-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
+    return `---\nname: aionui-skills\ndescription: "Access the ContextGo Skills registry — discover and download AI agent skills."\n---\n\n# ContextGo Skills Registry\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/aionui-skills\ncurl -s https://skills.aionui.com/SKILL.md > ~/.config/aionui-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
   }
 }

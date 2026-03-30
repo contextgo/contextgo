@@ -44,6 +44,12 @@ vi.mock('@/renderer/utils/model/agentLogo', () => ({
   getAgentLogo: (agent: string | undefined | null) => (agent === 'codex' ? '/mock-codex-logo.svg' : null),
 }));
 
+vi.mock('@/renderer/pages/conversation/Preview', () => ({
+  usePreviewContext: () => ({
+    openPreview: vi.fn(),
+  }),
+}));
+
 import DiscussionParticipantsPanel from '@/renderer/pages/conversation/Workspace/components/DiscussionParticipantsPanel';
 
 const participants: DiscussionGroupParticipant[] = [

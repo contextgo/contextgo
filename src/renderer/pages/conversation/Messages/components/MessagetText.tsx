@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 ContextGo (contextgo.io)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import type { IMessageText } from '@/common/chat/chatLib';
-import { AIONUI_FILES_MARKER } from '@/common/config/constants';
+import { findContextGoFileMarker } from '@/common/config/constants';
 import { iconColors } from '@/renderer/styles/colors';
 import { Alert, Message, Tooltip } from '@arco-design/web-react';
 import { Copy } from '@icon-park/react';
@@ -22,12 +22,12 @@ import MessageCronBadge from './MessageCronBadge';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 
 const parseFileMarker = (content: string) => {
-  const markerIndex = content.indexOf(AIONUI_FILES_MARKER);
-  if (markerIndex === -1) {
+  const markerMatch = findContextGoFileMarker(content);
+  if (!markerMatch) {
     return { text: content, files: [] as string[] };
   }
-  const text = content.slice(0, markerIndex).trimEnd();
-  const afterMarker = content.slice(markerIndex + AIONUI_FILES_MARKER.length).trim();
+  const text = content.slice(0, markerMatch.index).trimEnd();
+  const afterMarker = content.slice(markerMatch.index + markerMatch.marker.length).trim();
   const files = afterMarker
     ? afterMarker
         .split('\n')
@@ -121,6 +121,11 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
               <span className='text-14px leading-18px'>{groupMeta.participantAvatar}</span>
             ) : null}
             <span className='font-medium text-[var(--color-text-2)]'>{groupMeta.participantName}</span>
+            {groupMeta.participantRole ? (
+              <span className='rounded-full bg-[var(--color-fill-2)] px-6px py-1px text-11px text-[var(--color-primary-6)]'>
+                {t(`conversation.group.role.${groupMeta.participantRole}`)}
+              </span>
+            ) : null}
             {groupMeta.round > 0 ? <span>{t('conversation.group.roundLabel', { round: groupMeta.round })}</span> : null}
           </div>
         )}

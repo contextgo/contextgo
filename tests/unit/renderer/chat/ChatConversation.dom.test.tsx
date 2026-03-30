@@ -89,7 +89,9 @@ vi.mock('@/renderer/pages/conversation/platforms/openclaw/OpenClawChat', () => (
 
 vi.mock('@/renderer/pages/conversation/platforms/group/GroupChat', () => ({
   __esModule: true,
-  default: ({ conversationId }: { conversationId: string }) => <div data-testid='group-chat'>{conversationId}</div>,
+  default: ({ conversation }: { conversation: Extract<TChatConversation, { type: 'group' }> }) => (
+    <div data-testid='group-chat'>{conversation.id}</div>
+  ),
 }));
 
 vi.mock('@/renderer/components/agent/AcpModelSelector', () => ({
@@ -117,9 +119,7 @@ vi.mock('@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection'
 
 vi.mock('@/renderer/pages/conversation/platforms/gemini/GeminiChat', () => ({
   __esModule: true,
-  default: ({ conversation_id }: { conversation_id: string }) => (
-    <div data-testid='gemini-chat'>{conversation_id}</div>
-  ),
+  default: ({ conversation_id }: { conversation_id: string }) => <div data-testid='gemini-chat'>{conversation_id}</div>,
 }));
 
 vi.mock('@/renderer/pages/conversation/platforms/openclaw/StarOfficeMonitorCard.tsx', () => ({
@@ -151,7 +151,10 @@ describe('ChatConversation', () => {
   });
 
   it('keeps hook order stable when switching from a gemini conversation to a non-gemini conversation', () => {
-    const geminiConversation = createConversation('gemini', 'gemini-1') as Extract<TChatConversation, { type: 'gemini' }>;
+    const geminiConversation = createConversation('gemini', 'gemini-1') as Extract<
+      TChatConversation,
+      { type: 'gemini' }
+    >;
     const acpConversation = createConversation('acp', 'acp-1');
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 

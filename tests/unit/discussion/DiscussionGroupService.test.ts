@@ -301,4 +301,45 @@ describe('DiscussionGroupService', () => {
       })
     );
   });
+
+  it('rejects harness groups that are not bound to a git repository', async () => {
+    const conversationService = {
+      createConversation: vi.fn(),
+      updateConversation: vi.fn(),
+      deleteConversation: vi.fn(),
+    };
+
+    const service = new DiscussionGroupService(
+      conversationService as unknown as IConversationService,
+      {
+        kill: vi.fn(),
+      } as unknown as IWorkerTaskManager
+    );
+
+    await expect(
+      service.createConversation({
+        id: 'group-1',
+        type: 'group',
+        name: 'Harness Review',
+        model,
+        extra: {
+          workspace: '/tmp/workspace',
+          customWorkspace: true,
+          participants: [],
+          orchestration: {
+            mode: 'debate',
+            rounds: 2,
+          },
+          collaboration: {
+            mode: 'planner-generator-evaluator',
+            executionBoundary: {
+              type: 'workspace',
+            },
+          },
+        },
+      } as never)
+    ).rejects.toThrow('git repository');
+
+    expect(conversationService.createConversation).not.toHaveBeenCalled();
+  });
 });

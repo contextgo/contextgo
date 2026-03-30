@@ -112,6 +112,12 @@ export interface IConfigStorageRefer {
   'cloud.device'?: CloudDevice;
   // ContextGo cloud device token (ctxdev_...) / ContextGo 云端设备令牌
   'cloud.deviceToken'?: string;
+  // ContextGo cloud WebUI cached user profile / ContextGo 云端 WebUI 缓存用户信息
+  'cloud.webui.user'?: CloudUser;
+  // ContextGo cloud WebUI device binding / ContextGo 云端 WebUI 设备绑定信息
+  'cloud.webui.device'?: CloudDevice;
+  // ContextGo cloud WebUI device token (ctxdev_...) / ContextGo 云端 WebUI 设备令牌
+  'cloud.webui.deviceToken'?: string;
   // ContextGo cloud sync cursor + per-item timestamps / ContextGo 云端同步游标与时间戳
   'cloud.sync.state'?: CloudStoredSyncState;
   // Telegram assistant default model / Telegram 助手默认模型
@@ -164,7 +170,7 @@ export interface IConfigStorageRefer {
 }
 
 export interface IEnvStorageRefer {
-  'aionui.dir': {
+  'contextgo.dir': {
     workDir: string;
     cacheDir: string;
   };
@@ -178,6 +184,27 @@ export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | '
 
 export type DiscussionGroupMode = 'broadcast' | 'relay' | 'debate';
 
+export type CollaborationMode = 'discussion' | 'planner-generator-evaluator';
+
+export type CollaborationParticipantRole = 'participant' | 'planner' | 'generator' | 'evaluator';
+
+export type CollaborationExecutionBoundary =
+  | {
+      type: 'workspace';
+    }
+  | {
+      type: 'git-repository';
+      repositoryRoot: string;
+      branch?: string | null;
+      gitDir?: string | null;
+      remoteUrl?: string | null;
+    };
+
+export type GroupCollaborationConfig = {
+  mode: CollaborationMode;
+  executionBoundary: CollaborationExecutionBoundary;
+};
+
 export type DiscussionGroupParticipantType = 'preset-assistant' | 'cli-agent';
 
 export type DiscussionGroupParticipant = {
@@ -189,6 +216,7 @@ export type DiscussionGroupParticipant = {
   name: string;
   avatar?: string;
   description?: string;
+  role?: CollaborationParticipantRole;
   childConversationId: string;
 };
 
@@ -202,6 +230,7 @@ export type ConversationGroupMeta = {
   participantId: string;
   participantName: string;
   participantAvatar?: string;
+  participantRole?: CollaborationParticipantRole;
   hiddenFromHistory?: boolean;
 };
 
@@ -209,6 +238,7 @@ export type MessageGroupMeta = {
   participantId: string;
   participantName: string;
   participantAvatar?: string;
+  participantRole?: CollaborationParticipantRole;
   childConversationId?: string;
   mode: DiscussionGroupMode;
   round: number;
@@ -453,6 +483,7 @@ export type TChatConversation =
         customWorkspace?: boolean;
         participants: DiscussionGroupParticipant[];
         orchestration: DiscussionGroupOrchestration;
+        collaboration?: GroupCollaborationConfig;
         /** Whether this conversation is pinned */
         pinned?: boolean;
         /** Pin timestamp in milliseconds */
