@@ -11,8 +11,9 @@ import crypto from 'crypto';
 import type Database from 'better-sqlite3';
 import BetterSqlite3 from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
-import { getDataPath, ensureDirectory } from '@process/utils';
+import { ensureDirectory } from '@process/utils';
 import path from 'path';
+import { getDatabasePath } from '@process/services/database';
 
 // 颜色输出 / Color output
 const colors = {
@@ -74,7 +75,7 @@ export async function resetPasswordCLI(username: string): Promise<void> {
     log.info(`Target user: ${username}`);
 
     // Get database path using the same logic as the main app
-    const dbPath = path.join(getDataPath(), 'aionui.db');
+    const dbPath = getDatabasePath();
     log.info(`Database path: ${dbPath}`);
 
     // Ensure directory exists
@@ -93,10 +94,10 @@ export async function resetPasswordCLI(username: string): Promise<void> {
       log.error('Database is not initialized yet');
       log.info('');
       log.info('Please run ContextGo at least once to initialize the database:');
-      log.info('  aionui --webui');
+      log.info('  ContextGo --webui');
       log.info('');
       log.info('Then you can reset the password using:');
-      log.info('  aionui --resetpass <username>');
+      log.info('  ContextGo --resetpass <username>');
       process.exit(1);
     }
 

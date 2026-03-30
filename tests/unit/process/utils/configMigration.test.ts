@@ -20,9 +20,11 @@ describe('getElectronConfigCandidatePaths', () => {
     const { getElectronConfigCandidatePaths } = await import('../../../../src/process/utils/configMigration');
     const home = os.homedir();
     const paths = getElectronConfigCandidatePaths();
+    expect(paths).toContain(path.join(home, '.contextgo-config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(home, '.contextgo-config-dev', 'contextgo-config.txt'));
     expect(paths).toContain(path.join(home, '.aionui-config', 'aionui-config.txt'));
     expect(paths).toContain(path.join(home, '.aionui-config-dev', 'aionui-config.txt'));
-    expect(paths).toHaveLength(2);
+    expect(paths).toHaveLength(8);
   });
 
   it('returns both app-name candidates on Windows', async () => {
@@ -31,9 +33,13 @@ describe('getElectronConfigCandidatePaths', () => {
     process.env.APPDATA = appData;
     const { getElectronConfigCandidatePaths } = await import('../../../../src/process/utils/configMigration');
     const paths = getElectronConfigCandidatePaths();
+    expect(paths).toContain(path.join(appData, 'ContextGo', 'config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(appData, 'ContextGo-Dev', 'config', 'contextgo-config.txt'));
     expect(paths).toContain(path.join(appData, 'ContextGo', 'config', 'aionui-config.txt'));
     expect(paths).toContain(path.join(appData, 'ContextGo-Dev', 'config', 'aionui-config.txt'));
-    expect(paths).toHaveLength(2);
+    expect(paths).toContain(path.join(appData, 'AionUi', 'config', 'aionui-config.txt'));
+    expect(paths).toContain(path.join(appData, 'AionUi-Dev', 'config', 'aionui-config.txt'));
+    expect(paths).toHaveLength(8);
   });
 
   it('returns both app-name candidates on Linux', async () => {
@@ -41,9 +47,13 @@ describe('getElectronConfigCandidatePaths', () => {
     const { getElectronConfigCandidatePaths } = await import('../../../../src/process/utils/configMigration');
     const home = os.homedir();
     const paths = getElectronConfigCandidatePaths();
+    expect(paths).toContain(path.join(home, '.config', 'ContextGo', 'config', 'contextgo-config.txt'));
+    expect(paths).toContain(path.join(home, '.config', 'ContextGo-Dev', 'config', 'contextgo-config.txt'));
     expect(paths).toContain(path.join(home, '.config', 'ContextGo', 'config', 'aionui-config.txt'));
     expect(paths).toContain(path.join(home, '.config', 'ContextGo-Dev', 'config', 'aionui-config.txt'));
-    expect(paths).toHaveLength(2);
+    expect(paths).toContain(path.join(home, '.config', 'AionUi', 'config', 'aionui-config.txt'));
+    expect(paths).toContain(path.join(home, '.config', 'AionUi-Dev', 'config', 'aionui-config.txt'));
+    expect(paths).toHaveLength(8);
   });
 });
 
@@ -284,7 +294,7 @@ describe('importConfigFromFile', () => {
       readFileSync: vi.fn().mockReturnValue(encodedSource),
     }));
     const { importConfigFromFile } = await import('../../../../src/process/utils/configMigration');
-    await importConfigFromFile('/path/aionui-config.txt', false, configStore as any);
+    await importConfigFromFile('/path/contextgo-config.txt', false, configStore as any);
     expect(configStore.set).not.toHaveBeenCalledWith('model.config', expect.anything());
     expect(configStore.set).toHaveBeenCalledWith('gemini.config', sourceData['gemini.config']);
   });
@@ -305,7 +315,7 @@ describe('importConfigFromFile', () => {
       readFileSync: vi.fn().mockReturnValue(encodedSource),
     }));
     const { importConfigFromFile } = await import('../../../../src/process/utils/configMigration');
-    await importConfigFromFile('/path/aionui-config.txt', true, configStore as any);
+    await importConfigFromFile('/path/contextgo-config.txt', true, configStore as any);
     expect(configStore.set).toHaveBeenCalledWith('model.config', sourceData['model.config']);
   });
 
@@ -346,7 +356,7 @@ describe('importConfigFromFile', () => {
       readFileSync: vi.fn().mockReturnValue(encodedSource),
     }));
     const { importConfigFromFile } = await import('../../../../src/process/utils/configMigration');
-    await importConfigFromFile('/path/aionui-config.txt', true, configStore as any);
+    await importConfigFromFile('/path/contextgo-config.txt', true, configStore as any);
     const written = (configStore.set as ReturnType<typeof vi.fn>).mock.calls.find(
       ([k]) => k === 'mcp.config'
     )?.[1] as unknown[];

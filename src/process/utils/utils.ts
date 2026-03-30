@@ -7,7 +7,21 @@
 import type { IDirOrFile } from '@/common/adapter/ipcBridge';
 import { getPlatformServices } from '@/common/platform';
 import { getEnvAwareName } from '@/common/config/appEnv';
-import { existsSync, lstatSync, mkdirSync, readlinkSync, symlinkSync, unlinkSync } from 'fs';
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  readlinkSync,
+  renameSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  unlinkSync,
+} from 'fs';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
@@ -91,26 +105,225 @@ const ensureCliSafeSymlink = (targetPath: string, symlinkName: string): string =
 
 /**
  * Get data path, using CLI-safe symlink on macOS.
- * Release builds use ~/.aionui; dev builds use ~/.aionui-dev.
+ * Release builds use ~/.contextgo; dev builds use ~/.contextgo-dev.
  * 获取数据目录路径，macOS 上使用符号链接。
- * Release 使用 ~/.aionui，Dev 模式使用 ~/.aionui-dev。
+ * Release 使用 ~/.contextgo，Dev 模式使用 ~/.contextgo-dev。
  */
 export const getDataPath = (): string => {
   const rootPath = getElectronPathOrFallback('userData');
-  const dataPath = path.join(rootPath, 'aionui');
-  return ensureCliSafeSymlink(dataPath, getEnvAwareName('.aionui'));
+  const dataPath = resolveBrandStoragePath({
+    baseDir: rootPath,
+    preferredName: 'contextgo',
+    legacyNames: ['aionui'],
+    kind: 'directory',
+  });
+  return ensureCliSafeSymlink(dataPath, getEnvAwareName('.contextgo'));
 };
 
 /**
  * Get config path, using CLI-safe symlink on macOS.
- * Release builds use ~/.aionui-config; dev builds use ~/.aionui-config-dev.
+ * Release builds use ~/.contextgo-config; dev builds use ~/.contextgo-config-dev.
  * 获取配置目录路径，macOS 上使用符号链接。
- * Release 使用 ~/.aionui-config，Dev 模式使用 ~/.aionui-config-dev。
+ * Release 使用 ~/.contextgo-config，Dev 模式使用 ~/.contextgo-config-dev。
  */
 export const getConfigPath = (): string => {
   const rootPath = getElectronPathOrFallback('userData');
   const configPath = path.join(rootPath, 'config');
-  return ensureCliSafeSymlink(configPath, getEnvAwareName('.aionui-config'));
+  return ensureCliSafeSymlink(configPath, getEnvAwareName('.contextgo-config'));
+};
+
+type StorageArtifactKind = 'file' | 'directory';
+
+type ResolveBrandStoragePathOptions = {
+  baseDir: string;
+  preferredName: string;
+  legacyNames: string[];
+  kind: StorageArtifactKind;
+  sidecarSuffixes?: string[];
+};
+
+const STORAGE_MIGRATION_BACKUP_STAMP = new Date().toISOString().replace(/[:.]/g, '-');
+const STORAGE_MIGRATION_BACKUP_SCOPE = path.join('migration-backups', 'storage-brand-rewrite');
+
+const buildArtifactPath = (baseDir: string, name: string) => path.join(baseDir, name);
+
+const isMeaningfulArtifactSync = (artifactPath: string, kind: StorageArtifactKind): boolean => {
+  try {
+    const stats = statSync(artifactPath);
+    if (kind === 'directory') {
+      return stats.isDirectory() && readdirSync(artifactPath).length > 0;
+    }
+    return stats.isFile() && stats.size > 0;
+  } catch {
+    return false;
+  }
+};
+
+const filesAreEquivalentSync = (fileA: string, fileB: string): boolean => {
+  try {
+    const statA = statSync(fileA);
+    const statB = statSync(fileB);
+    if (!statA.isFile() || !statB.isFile() || statA.size !== statB.size) {
+      return false;
+    }
+    if (statA.size === 0) {
+      return true;
+    }
+    if (statA.size > 5 * 1024 * 1024) {
+      return false;
+    }
+    return readFileSync(fileA).equals(readFileSync(fileB));
+  } catch {
+    return false;
+  }
+};
+
+const ensureParentDirectorySync = (targetPath: string) => {
+  mkdirSync(path.dirname(targetPath), { recursive: true });
+};
+
+const listArtifactPaths = (
+  artifactPath: string,
+  kind: StorageArtifactKind,
+  sidecarSuffixes: string[] = []
+): string[] => {
+  if (kind === 'directory') {
+    return [artifactPath];
+  }
+  return [artifactPath, ...sidecarSuffixes.map((suffix) => `${artifactPath}${suffix}`)];
+};
+
+const backupArtifactSync = (
+  baseDir: string,
+  artifactPath: string,
+  kind: StorageArtifactKind,
+  sidecarSuffixes: string[] = []
+): void => {
+  const artifactPaths = listArtifactPaths(artifactPath, kind, sidecarSuffixes).filter((entry) => existsSync(entry));
+  if (artifactPaths.length === 0) {
+    return;
+  }
+
+  for (const sourcePath of artifactPaths) {
+    const relativePath = path.relative(baseDir, sourcePath);
+    const backupPath = path.join(baseDir, STORAGE_MIGRATION_BACKUP_SCOPE, STORAGE_MIGRATION_BACKUP_STAMP, relativePath);
+    ensureParentDirectorySync(backupPath);
+
+    const stats = lstatSync(sourcePath);
+    if (stats.isDirectory()) {
+      cpSync(sourcePath, backupPath, {
+        recursive: true,
+      });
+      continue;
+    }
+
+    copyFileSync(sourcePath, backupPath);
+  }
+};
+
+const removeArtifactSync = (artifactPath: string, kind: StorageArtifactKind, sidecarSuffixes: string[] = []): void => {
+  for (const entry of listArtifactPaths(artifactPath, kind, sidecarSuffixes)) {
+    if (!existsSync(entry)) {
+      continue;
+    }
+    if (kind === 'directory') {
+      rmSync(entry, { recursive: true, force: true });
+      continue;
+    }
+    rmSync(entry, { force: true });
+  }
+};
+
+const mergeDirectoryIntoPreferredSync = (legacyPath: string, preferredPath: string): void => {
+  cpSync(legacyPath, preferredPath, {
+    recursive: true,
+    force: false,
+    errorOnExist: false,
+  });
+};
+
+const moveArtifactSync = (
+  sourcePath: string,
+  targetPath: string,
+  kind: StorageArtifactKind,
+  sidecarSuffixes: string[] = []
+): void => {
+  ensureParentDirectorySync(targetPath);
+  renameSync(sourcePath, targetPath);
+
+  if (kind === 'file') {
+    for (const suffix of sidecarSuffixes) {
+      const sidecarSource = `${sourcePath}${suffix}`;
+      const sidecarTarget = `${targetPath}${suffix}`;
+      if (!existsSync(sidecarSource)) {
+        continue;
+      }
+      renameSync(sidecarSource, sidecarTarget);
+    }
+  }
+};
+
+/**
+ * Resolve a storage artifact path after applying brand rename migration rules.
+ * Prefers the new artifact name, automatically adopts safe legacy artifacts,
+ * and backs up conflicting legacy data before removing it.
+ */
+export const resolveBrandStoragePath = ({
+  baseDir,
+  preferredName,
+  legacyNames,
+  kind,
+  sidecarSuffixes = [],
+}: ResolveBrandStoragePathOptions): string => {
+  const preferredPath = buildArtifactPath(baseDir, preferredName);
+  const legacyPaths = legacyNames.map((name) => buildArtifactPath(baseDir, name));
+
+  for (const legacyPath of legacyPaths) {
+    if (!existsSync(legacyPath)) {
+      continue;
+    }
+
+    if (!existsSync(preferredPath)) {
+      moveArtifactSync(legacyPath, preferredPath, kind, sidecarSuffixes);
+      console.log(`[ContextGo] Migrated storage artifact to new brand name: ${legacyPath} -> ${preferredPath}`);
+      continue;
+    }
+
+    if (kind === 'file' && filesAreEquivalentSync(preferredPath, legacyPath)) {
+      removeArtifactSync(legacyPath, kind, sidecarSuffixes);
+      continue;
+    }
+
+    const preferredMeaningful = isMeaningfulArtifactSync(preferredPath, kind);
+    const legacyMeaningful = isMeaningfulArtifactSync(legacyPath, kind);
+
+    if (!preferredMeaningful && legacyMeaningful) {
+      backupArtifactSync(baseDir, preferredPath, kind, sidecarSuffixes);
+      removeArtifactSync(preferredPath, kind, sidecarSuffixes);
+      moveArtifactSync(legacyPath, preferredPath, kind, sidecarSuffixes);
+      console.log(`[ContextGo] Replaced empty preferred storage artifact with legacy data: ${legacyPath}`);
+      continue;
+    }
+
+    if (!legacyMeaningful) {
+      removeArtifactSync(legacyPath, kind, sidecarSuffixes);
+      continue;
+    }
+
+    if (kind === 'directory') {
+      backupArtifactSync(baseDir, legacyPath, kind, sidecarSuffixes);
+      mergeDirectoryIntoPreferredSync(legacyPath, preferredPath);
+      removeArtifactSync(legacyPath, kind, sidecarSuffixes);
+      console.log(`[ContextGo] Merged legacy storage directory into preferred path: ${legacyPath} -> ${preferredPath}`);
+      continue;
+    }
+
+    backupArtifactSync(baseDir, legacyPath, kind, sidecarSuffixes);
+    removeArtifactSync(legacyPath, kind, sidecarSuffixes);
+    console.warn(`[ContextGo] Backed up conflicting legacy storage artifact and kept preferred path: ${legacyPath}`);
+  }
+
+  return preferredPath;
 };
 
 export const generateHashWithFullName = (fullName: string): string => {
@@ -253,10 +466,11 @@ export async function readDirectoryRecursive(
  */
 interface CopyOptions {
   overwrite?: boolean;
+  removeStale?: boolean;
 }
 
 export async function copyDirectoryRecursively(src: string, dest: string, options: CopyOptions = {}) {
-  const { overwrite = true } = options;
+  const { overwrite = true, removeStale = false } = options;
 
   // 标准化路径：Windows 转小写（不区分大小写），Unix/macOS 保持原样（区分大小写）
   const isWindows = process.platform === 'win32';
@@ -301,6 +515,21 @@ export async function copyDirectoryRecursively(src: string, dest: string, option
       await fs.copyFile(srcPath, destPath);
     }
   }
+
+  if (!removeStale || !existsSync(dest)) {
+    return;
+  }
+
+  const sourceNames = new Set(entries.map((entry) => entry.name));
+  const destEntries = await fs.readdir(dest, { withFileTypes: true });
+
+  for (const entry of destEntries) {
+    if (sourceNames.has(entry.name)) {
+      continue;
+    }
+
+    await fs.rm(path.join(dest, entry.name), { recursive: true, force: true });
+  }
 }
 
 // 验证两个目录的文件名结构是否相同
@@ -339,7 +568,7 @@ export async function verifyDirectoryFiles(dir1: string, dir2: string): Promise<
 
     return true;
   } catch (error) {
-    console.warn('[AionUi] Error verifying directory files:', error);
+    console.warn('[ContextGo] Error verifying directory files:', error);
     return false;
   }
 }
@@ -364,8 +593,8 @@ export const copyFilesToDirectory = async (
     try {
       await fs.access(absoluteFilePath);
     } catch (error) {
-      console.warn(`[AionUi] Source file does not exist, skipping: ${absoluteFilePath}`);
-      console.warn(`[AionUi] Original path: ${file}`);
+      console.warn(`[ContextGo] Source file does not exist, skipping: ${absoluteFilePath}`);
+      console.warn(`[ContextGo] Original path: ${file}`);
       // 跳过不存在的文件，而不是抛出错误
       continue;
     }
@@ -396,7 +625,7 @@ export const copyFilesToDirectory = async (
       await fs.copyFile(absoluteFilePath, destPath);
       copiedFiles.push(destPath);
     } catch (error) {
-      console.error(`[AionUi] Failed to copy file from ${absoluteFilePath} to ${destPath}:`, error);
+      console.error(`[ContextGo] Failed to copy file from ${absoluteFilePath} to ${destPath}:`, error);
       // 继续处理其他文件，而不是完全失败
     }
 

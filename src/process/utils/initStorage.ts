@@ -28,6 +28,7 @@ import {
   getDataPath,
   getTempPath,
   hasElectronAppPath,
+  resolveBrandStoragePath,
   verifyDirectoryFiles,
 } from './utils';
 import { resolveSkillDirectory } from './skillDiscovery';
@@ -46,16 +47,25 @@ type ArchitectureType = 'x64' | 'arm64' | 'ia32' | 'arm';
 const nodePath = path;
 
 const STORAGE_PATH = {
-  config: 'aionui-config.txt',
-  chatMessage: 'aionui-chat-message.txt',
-  chat: 'aionui-chat.txt',
-  env: '.aionui-env',
+  config: 'contextgo-config.txt',
+  chatMessage: 'contextgo-chat-message.txt',
+  chat: 'contextgo-chat.txt',
+  env: '.contextgo-env',
+  chatHistory: 'contextgo-chat-history',
   assistants: 'assistants',
   skills: 'skills',
   hooks: 'hooks',
   builtinSkills: 'builtin-skills',
   builtinHooks: 'builtin-hooks',
 };
+
+const LEGACY_STORAGE_PATH = {
+  config: 'aionui-config.txt',
+  chatMessage: 'aionui-chat-message.txt',
+  chat: 'aionui-chat.txt',
+  env: '.aionui-env',
+  chatHistory: 'aionui-chat-history',
+} as const;
 
 const getHomePage = getConfigPath;
 
@@ -78,7 +88,7 @@ const migrateLegacyData = async () => {
         try {
           return existsSync(newDir) && readdirSync(newDir).length === 0;
         } catch (error) {
-          console.warn('[AionUi] Warning: Could not read new directory during migration check:', error);
+          console.warn('[ContextGo] Warning: Could not read new directory during migration check:', error);
           return false; // 假设非空以避免迁移覆盖
         }
       })();
@@ -99,7 +109,7 @@ const migrateLegacyData = async () => {
           try {
             await fs.rm(oldDir, { recursive: true });
           } catch (cleanupError) {
-            console.warn('[AionUi] 原目录清理失败，请手动删除:', oldDir, cleanupError);
+            console.warn('[ContextGo] 原目录清理失败，请手动删除:', oldDir, cleanupError);
           }
         }
       }
@@ -107,7 +117,7 @@ const migrateLegacyData = async () => {
       return true;
     }
   } catch (error) {
-    console.error('[AionUi] 数据迁移失败:', error);
+    console.error('[ContextGo] 数据迁移失败:', error);
   }
 
   return false;
@@ -271,17 +281,70 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(path: strin
   };
 };
 
-const envFile = JsonFileBuilder<IEnvStorageRefer>(path.join(getHomePage(), STORAGE_PATH.env));
+const envFile = JsonFileBuilder<IEnvStorageRefer>(
+  resolveBrandStoragePath({
+    baseDir: getHomePage(),
+    preferredName: STORAGE_PATH.env,
+    legacyNames: [LEGACY_STORAGE_PATH.env],
+    kind: 'file',
+  })
+);
 
-const dirConfig = envFile.getSync('aionui.dir');
+const rawDirConfig = envFile.getSync('aionui.dir');
+const platformDataRoot = getPlatformServices().paths.getDataDir();
+const legacyActualDataDir = path.join(platformDataRoot, 'aionui');
+const preferredActualDataDir = path.join(platformDataRoot, 'contextgo');
+
+const normalizeStoredWorkDir = (workDir?: string): string | undefined => {
+  if (!workDir) {
+    return workDir;
+  }
+
+  const resolvedWorkDir = path.resolve(workDir);
+  const resolvedLegacyDataDir = path.resolve(legacyActualDataDir);
+  if (resolvedWorkDir !== resolvedLegacyDataDir && !resolvedWorkDir.startsWith(resolvedLegacyDataDir + path.sep)) {
+    return workDir;
+  }
+
+  const relativeSuffix = path.relative(resolvedLegacyDataDir, resolvedWorkDir);
+  return relativeSuffix ? path.join(preferredActualDataDir, relativeSuffix) : preferredActualDataDir;
+};
+
+const dirConfig = rawDirConfig
+  ? {
+      ...rawDirConfig,
+      workDir: normalizeStoredWorkDir(rawDirConfig.workDir),
+    }
+  : rawDirConfig;
 
 const cacheDir = dirConfig?.cacheDir || getHomePage();
 
-const configFile = JsonFileBuilder<IConfigStorageRefer>(path.join(cacheDir, STORAGE_PATH.config));
+const configFile = JsonFileBuilder<IConfigStorageRefer>(
+  resolveBrandStoragePath({
+    baseDir: cacheDir,
+    preferredName: STORAGE_PATH.config,
+    legacyNames: [LEGACY_STORAGE_PATH.config],
+    kind: 'file',
+  })
+);
 type ConversationHistoryData = Record<string, TMessage[]>;
 
-const _chatMessageFile = JsonFileBuilder<ConversationHistoryData>(path.join(cacheDir, STORAGE_PATH.chatMessage));
-const _chatFile = JsonFileBuilder<IChatConversationRefer>(path.join(cacheDir, STORAGE_PATH.chat));
+const _chatMessageFile = JsonFileBuilder<ConversationHistoryData>(
+  resolveBrandStoragePath({
+    baseDir: cacheDir,
+    preferredName: STORAGE_PATH.chatMessage,
+    legacyNames: [LEGACY_STORAGE_PATH.chatMessage],
+    kind: 'file',
+  })
+);
+const _chatFile = JsonFileBuilder<IChatConversationRefer>(
+  resolveBrandStoragePath({
+    baseDir: cacheDir,
+    preferredName: STORAGE_PATH.chat,
+    legacyNames: [LEGACY_STORAGE_PATH.chat],
+    kind: 'file',
+  })
+);
 
 // 创建带字段迁移的聊天历史代理
 const isGeminiConversation = (
@@ -324,11 +387,17 @@ const chatFile = {
 };
 
 const buildMessageListStorage = (conversation_id: string, dir: string) => {
-  const fullName = path.join(dir, 'aionui-chat-history', conversation_id + '.txt');
+  const historyDir = resolveBrandStoragePath({
+    baseDir: dir,
+    preferredName: STORAGE_PATH.chatHistory,
+    legacyNames: [LEGACY_STORAGE_PATH.chatHistory],
+    kind: 'directory',
+  });
+  const fullName = path.join(historyDir, `${conversation_id}.txt`);
   if (!existsSync(fullName)) {
-    mkdirSync(path.join(dir, 'aionui-chat-history'));
+    mkdirSync(historyDir);
   }
-  return JsonFileBuilder<TMessage[]>(path.join(dir, 'aionui-chat-history', conversation_id + '.txt'));
+  return JsonFileBuilder<TMessage[]>(fullName);
 };
 
 const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string) => {
@@ -348,9 +417,13 @@ const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string)
     },
     backup(conversation_id: string) {
       const storage = buildMessageListStorage(conversation_id, dir);
-      return storage.backup(
-        path.join(dir, 'aionui-chat-history', 'backup', conversation_id + '_' + Date.now() + '.txt')
-      );
+      const historyDir = resolveBrandStoragePath({
+        baseDir: dir,
+        preferredName: STORAGE_PATH.chatHistory,
+        legacyNames: [LEGACY_STORAGE_PATH.chatHistory],
+        kind: 'directory',
+      });
+      return storage.backup(path.join(historyDir, 'backup', conversation_id + '_' + Date.now() + '.txt'));
     },
   };
 };
@@ -437,7 +510,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       }
     }
 
-    console.warn(`[AionUi] Could not find builtin ${dirPath} directory, tried:`, candidates);
+    console.warn(`[ContextGo] Could not find builtin ${dirPath} directory, tried:`, candidates);
     return candidates[0];
   };
 
@@ -484,21 +557,10 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       }
       await copyDirectoryRecursively(builtinSkillsDir, builtinSkillsCopyDir, {
         overwrite: true,
+        removeStale: true,
       });
-      // Remove stale: entries in dest that no longer exist in source
-      const srcNames = new Set(
-        readdirSync(builtinSkillsDir, { withFileTypes: true })
-          .filter((e) => e.isDirectory())
-          .map((e) => e.name)
-      );
-      for (const entry of readdirSync(builtinSkillsCopyDir, { withFileTypes: true })) {
-        if (!entry.isDirectory()) continue;
-        if (!srcNames.has(entry.name)) {
-          await fs.rm(path.join(builtinSkillsCopyDir, entry.name), { recursive: true, force: true });
-        }
-      }
     } catch (error) {
-      console.warn(`[AionUi] Failed to sync builtin skills directory:`, error);
+      console.warn(`[ContextGo] Failed to sync builtin skills directory:`, error);
     }
   }
 
@@ -511,20 +573,10 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
       }
       await copyDirectoryRecursively(builtinHooksDir, builtinHooksCopyDir, {
         overwrite: true,
+        removeStale: true,
       });
-      const srcNames = new Set(
-        readdirSync(builtinHooksDir, { withFileTypes: true })
-          .filter((e) => e.isDirectory())
-          .map((e) => e.name)
-      );
-      for (const entry of readdirSync(builtinHooksCopyDir, { withFileTypes: true })) {
-        if (!entry.isDirectory()) continue;
-        if (!srcNames.has(entry.name)) {
-          await fs.rm(path.join(builtinHooksCopyDir, entry.name), { recursive: true, force: true });
-        }
-      }
     } catch (error) {
-      console.warn('[AionUi] Failed to sync builtin hooks directory:', error);
+      console.warn('[ContextGo] Failed to sync builtin hooks directory:', error);
     }
   }
 
@@ -564,7 +616,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 
           // 检查源文件是否存在 / Check if source file exists
           if (!existsSync(sourceRulesPath)) {
-            console.warn(`[AionUi] Source rule file not found: ${sourceRulesPath}`);
+            console.warn(`[ContextGo] Source rule file not found: ${sourceRulesPath}`);
             continue;
           }
 
@@ -577,7 +629,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
           await fs.writeFile(targetPath, content, 'utf-8');
         } catch (error) {
           // 忽略缺失的语言文件 / Ignore missing locale files
-          console.warn(`[AionUi] Failed to copy rule file ${ruleFile}:`, error);
+          console.warn(`[ContextGo] Failed to copy rule file ${ruleFile}:`, error);
         }
       }
     } else {
@@ -609,7 +661,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 
           // 检查源文件是否存在 / Check if source file exists
           if (!existsSync(sourceSkillsPath)) {
-            console.warn(`[AionUi] Source skill file not found: ${sourceSkillsPath}`);
+            console.warn(`[ContextGo] Source skill file not found: ${sourceSkillsPath}`);
             continue;
           }
 
@@ -622,7 +674,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
           await fs.writeFile(targetPath, content, 'utf-8');
         } catch (error) {
           // 忽略缺失的技能文件 / Ignore missing skill files
-          console.warn(`[AionUi] Failed to copy skill file ${skillFile}:`, error);
+          console.warn(`[ContextGo] Failed to copy skill file ${skillFile}:`, error);
         }
       }
     } else {
@@ -727,10 +779,10 @@ const ensureBuiltinMcpServers = async (): Promise<void> => {
     const buildEnvFromConfig = (cfg: typeof oldConfig): Record<string, string> => {
       if (!cfg) return {};
       const env: Record<string, string> = {};
-      if (cfg.platform) env.AIONUI_IMG_PLATFORM = cfg.platform;
-      if (cfg.baseUrl) env.AIONUI_IMG_BASE_URL = cfg.baseUrl;
-      if (cfg.apiKey) env.AIONUI_IMG_API_KEY = cfg.apiKey;
-      if (cfg.useModel) env.AIONUI_IMG_MODEL = cfg.useModel;
+      if (cfg.platform) env.CONTEXTGO_IMG_PLATFORM = cfg.platform;
+      if (cfg.baseUrl) env.CONTEXTGO_IMG_BASE_URL = cfg.baseUrl;
+      if (cfg.apiKey) env.CONTEXTGO_IMG_API_KEY = cfg.apiKey;
+      if (cfg.useModel) env.CONTEXTGO_IMG_MODEL = cfg.useModel;
       return env;
     };
 
@@ -815,7 +867,7 @@ const ensureBuiltinMcpServers = async (): Promise<void> => {
 
     if (changed) {
       await configFile.set('mcp.config', mcpServers);
-      console.log('[AionUi] Built-in MCP servers ensured');
+      console.log('[ContextGo] Built-in MCP servers ensured');
     }
 
     // Clear old switch flag after migration
@@ -824,7 +876,7 @@ const ensureBuiltinMcpServers = async (): Promise<void> => {
       await configFile.set('tools.imageGenerationModel', rest as typeof oldConfig);
     }
   } catch (error) {
-    console.error('[AionUi] Failed to ensure built-in MCP servers:', error);
+    console.error('[ContextGo] Failed to ensure built-in MCP servers:', error);
   }
 };
 
@@ -861,16 +913,16 @@ const cleanupOrphanedHealthCheckConversations = async () => {
     });
 
     if (deletedCount > 0) {
-      console.log(`[AionUi] Cleaned up ${deletedCount} orphaned health-check conversation(s) on startup`);
+      console.log(`[ContextGo] Cleaned up ${deletedCount} orphaned health-check conversation(s) on startup`);
     }
   } catch (error) {
-    console.warn('[AionUi] Failed to cleanup orphaned health-check conversations:', error);
+    console.warn('[ContextGo] Failed to cleanup orphaned health-check conversations:', error);
   }
 };
 
 const initStorage = async () => {
   const t0 = performance.now();
-  const mark = (label: string) => console.log(`[AionUi:init] ${label} +${Math.round(performance.now() - t0)}ms`);
+  const mark = (label: string) => console.log(`[ContextGo:init] ${label} +${Math.round(performance.now() - t0)}ms`);
   mark('start');
 
   // 1. 先执行数据迁移（在任何目录创建之前）
@@ -890,6 +942,11 @@ const initStorage = async () => {
   ChatMessageStorage.interceptor(chatMessageFile);
   EnvStorage.interceptor(envFile);
   mark('3. storage interceptors');
+
+  if (rawDirConfig && dirConfig && rawDirConfig.workDir !== dirConfig.workDir) {
+    await envFile.set('aionui.dir', dirConfig);
+    console.log('[ContextGo] Updated stored workDir to the renamed data directory:', dirConfig.workDir);
+  }
 
   // Config migration only makes sense in standalone server mode (not inside Electron itself)
   if (!hasElectronAppPath()) {
@@ -916,10 +973,10 @@ const initStorage = async () => {
     if (!existingMcpConfig || !Array.isArray(existingMcpConfig) || existingMcpConfig.length === 0) {
       const defaultServers = getDefaultMcpServers();
       await configFile.set('mcp.config', defaultServers);
-      console.log('[AionUi] Default MCP servers initialized');
+      console.log('[ContextGo] Default MCP servers initialized');
     }
   } catch (error) {
-    console.error('[AionUi] Failed to initialize default MCP servers:', error);
+    console.error('[ContextGo] Failed to initialize default MCP servers:', error);
   }
 
   // 4.1 Ensure built-in MCP servers exist and are up-to-date
@@ -1067,7 +1124,7 @@ const initStorage = async () => {
     }
     mark('5.2 assistant config + migrations');
   } catch (error) {
-    console.error('[AionUi] Failed to initialize builtin assistants:', error);
+    console.error('[ContextGo] Failed to initialize builtin assistants:', error);
   }
 
   // 6. 初始化数据库（better-sqlite3）
@@ -1184,7 +1241,7 @@ export const loadSkillsContent = async (enabledSkills: string[]): Promise<string
         skillContents.push(`## Skill: ${skillName}\n${content}`);
       }
     } catch (error) {
-      console.warn(`[AionUi] Failed to load skill ${skillName}:`, error);
+      console.warn(`[ContextGo] Failed to load skill ${skillName}:`, error);
     }
   }
 
