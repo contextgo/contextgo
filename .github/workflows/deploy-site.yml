@@ -31,7 +31,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: apps/web
+        working-directory: ${{ github.workspace }}
     env:
       CONTEXTGO_RELEASE_REPO: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
       NEXT_PUBLIC_CONTEXTGO_GITHUB_URL: ${{ vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL != '' && vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || 'https://github.com/contextgo' }}
@@ -96,6 +96,12 @@ jobs:
               -c http.lowSpeedTime=30 \
               fetch --depth=1 --filter=blob:none --no-tags origin "${CHECKOUT_REF}" && \
               git -C "${WORKSPACE}" checkout --detach FETCH_HEAD; then
+              if [ -d "${WORKSPACE}/apps/web" ]; then
+                shopt -s dotglob nullglob
+                mv "${WORKSPACE}/apps/web/"* "${WORKSPACE}/"
+                shopt -u dotglob nullglob
+                rm -rf "${WORKSPACE}/apps"
+              fi
               rm -rf "${WORKSPACE}/.git"
               break
             fi
