@@ -516,7 +516,7 @@ const getPlatformPermissions = (locale: Locale): Record<PlatformId, string[]> =>
 const createFallbackAction = (locale: Locale, releaseUrl: string): DownloadEntryAction => {
   return {
     href: releaseUrl,
-    label: localized(locale, { en: 'View Latest Updates', zh: '查看最新动态' }),
+    label: localized(locale, { en: 'Latest Release', zh: '最新版本' }),
     emphasis: 'secondary',
     external: true,
   };
@@ -662,7 +662,7 @@ const getPlatformEntries = (
   if (releaseConfig.androidUrl) {
     androidActions.push({
       href: releaseConfig.androidUrl,
-      label: localized(locale, { en: 'Android Download', zh: 'Android 下载' }),
+      label: localized(locale, { en: 'Android', zh: 'Android' }),
       emphasis: 'primary',
       external: true,
     });
@@ -741,10 +741,10 @@ const getPlatformEntries = (
     {
       id: 'macos',
       title: 'macOS',
-      channel: localized(locale, { en: 'Desktop Download', zh: '桌面下载' }),
+      channel: localized(locale, { en: 'Direct', zh: '直链' }),
       summary: localized(locale, {
-        en: 'Desktop downloads for Mac, with Universal, Apple Silicon, and Intel builds when available.',
-        zh: '适用于 Mac 的桌面安装包，提供通用版、Apple Silicon 和 Intel 版本。',
+        en: 'macOS builds, including Universal, Apple Silicon, and Intel when available.',
+        zh: 'macOS 安装包；提供通用版、Apple Silicon 与 Intel 版本（如有）。',
       }),
       status: macAssetDetails.length > 0 ? 'direct' : 'pending',
       actions: macActions,
@@ -755,10 +755,10 @@ const getPlatformEntries = (
     {
       id: 'windows',
       title: 'Windows',
-      channel: localized(locale, { en: 'Desktop Download', zh: '桌面下载' }),
+      channel: localized(locale, { en: 'Direct', zh: '直链' }),
       summary: localized(locale, {
-        en: 'Desktop installers for Windows, with x64 and ARM64 options when available.',
-        zh: '适用于 Windows 的桌面安装包，提供 x64 和 ARM64 版本。',
+        en: 'Windows installers with x64 and ARM64 options when available.',
+        zh: 'Windows 安装包；提供 x64 与 ARM64 版本（如有）。',
       }),
       status: windowsAssetDetails.length > 0 ? 'direct' : 'pending',
       actions: windowsActions,
@@ -769,10 +769,10 @@ const getPlatformEntries = (
     {
       id: 'linux',
       title: 'Linux',
-      channel: localized(locale, { en: 'Desktop Download', zh: '桌面下载' }),
+      channel: localized(locale, { en: 'Direct', zh: '直链' }),
       summary: localized(locale, {
-        en: 'Debian-compatible desktop packages for Ubuntu, Debian, and similar Linux environments.',
-        zh: '适用于 Ubuntu、Debian 等 Linux 环境的桌面安装包。',
+        en: 'Debian-compatible packages for Linux desktops.',
+        zh: '适用于 Linux 桌面环境的 Debian 系安装包。',
       }),
       status: linuxAssetDetails.length > 0 ? 'direct' : 'pending',
       actions: linuxActions,
@@ -784,12 +784,12 @@ const getPlatformEntries = (
       id: 'android',
       title: 'Android',
       channel: localized(locale, {
-        en: androidActions.length > 0 ? 'Android Download' : 'Coming Soon',
-        zh: androidActions.length > 0 ? 'Android 下载' : '即将提供',
+        en: androidActions.length > 0 ? 'Direct' : 'Coming Soon',
+        zh: androidActions.length > 0 ? '直链' : '即将提供',
       }),
       summary: localized(locale, {
-        en: 'Get ContextGo on Android through a direct package download or a dedicated mobile download page.',
-        zh: '通过直链安装包或独立的移动下载页，在 Android 上获取 ContextGo。',
+        en: 'Install on Android through a direct package or a dedicated mobile page.',
+        zh: '可通过直链安装包或独立移动页在 Android 上安装。',
       }),
       status: androidActions.length > 0 ? 'direct' : 'pending',
       actions: androidActions.length > 0 ? androidActions : [createFallbackAction(locale, releaseUrl)],
@@ -801,12 +801,12 @@ const getPlatformEntries = (
       id: 'ios',
       title: localized(locale, { en: 'iPhone / iPad', zh: 'iPhone / iPad' }),
       channel: localized(locale, {
-        en: iosActions.length > 0 ? 'Official Install' : 'Coming Soon',
-        zh: iosActions.length > 0 ? '官方安装' : '即将提供',
+        en: iosActions.length > 0 ? 'Official' : 'Coming Soon',
+        zh: iosActions.length > 0 ? '官方' : '即将提供',
       }),
       summary: localized(locale, {
-        en: 'Open the best install path for your device, such as the App Store, TestFlight, or your web onboarding page.',
-        zh: '前往最适合你设备的安装入口，例如 App Store、TestFlight 或网页引导页。',
+        en: 'Open the best official install path for your device.',
+        zh: '前往适合你设备的官方安装路径。',
       }),
       status: iosActions.length > 0 ? 'official' : 'pending',
       actions: iosActions.length > 0 ? iosActions : [createFallbackAction(locale, releaseUrl)],
@@ -818,12 +818,20 @@ const getPlatformEntries = (
       id: 'harmony',
       title: 'HarmonyOS',
       channel: localized(locale, {
-        en: harmonyActions.length > 0 || harmonyAssetDetails.length > 0 ? 'Install Options' : 'Coming Soon',
-        zh: harmonyActions.length > 0 || harmonyAssetDetails.length > 0 ? '安装方式' : '即将提供',
+        en: harmonyActions.some((action) => action.emphasis === 'primary' && action.href === releaseConfig.harmonyUrl)
+          ? 'Official'
+          : harmonyAssetDetails.length > 0
+            ? 'Direct'
+            : 'Coming Soon',
+        zh: harmonyActions.some((action) => action.emphasis === 'primary' && action.href === releaseConfig.harmonyUrl)
+          ? '官方'
+          : harmonyAssetDetails.length > 0
+            ? '直链'
+            : '即将提供',
       }),
       summary: localized(locale, {
-        en: 'Use the official HarmonyOS channel first, with direct packages available here later if you choose to provide them.',
-        zh: '优先通过 HarmonyOS 官方渠道安装，后续如果提供直链安装包，也会在这里显示。',
+        en: 'Start with the official HarmonyOS path. Direct packages can appear here later.',
+        zh: '优先通过 HarmonyOS 官方路径安装。直链安装包后续也可在这里提供。',
       }),
       status: harmonyActions.some((action) => action.emphasis === 'primary' && action.href === releaseConfig.harmonyUrl)
         ? 'official'
