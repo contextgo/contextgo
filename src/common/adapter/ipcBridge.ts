@@ -1407,6 +1407,7 @@ import type {
   IChannelBindingCatalog,
   IChannelBinding,
   IChannelHandoffRequest,
+  IChannelHandoffReleaseResult,
   IChannelHandoffResult,
   IChannelPairingRequest,
   IChannelPluginStatus,
@@ -1457,6 +1458,9 @@ export const channel = {
   ),
   handoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffResult>, IChannelHandoffRequest>(
     'channel.handoff-session'
+  ),
+  endHandoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffReleaseResult>, { targetExternalSessionId: string }>(
+    'channel.end-handoff-session'
   ),
 
   // Settings Sync
