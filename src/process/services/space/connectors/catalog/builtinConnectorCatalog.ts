@@ -1,0 +1,268 @@
+/**
+ * @license
+ * Copyright 2025 ContextGo (contextgo.io)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import type { SpaceConnectorDescriptor, SpaceConnectorId } from './types.ts';
+
+const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
+  {
+    id: 'contextgo-browser',
+    familyId: 'contextgo-native',
+    name: 'ContextGo Browser',
+    summary: 'Space-owned browser context assets bound to conversation entry and desktop preview.',
+    kind: 'managed-runtime',
+    runtimeOwner: 'contextgo-desktop',
+    launchSurface: 'conversation-entry',
+    profileStrategy: 'space-owned-browser-context',
+    storeTarget: 'space-assets',
+    upstreamSource: 'contextgo-native',
+    status: 'ready',
+    fusionWave: 'wave-1',
+    desktopHostOnly: true,
+    spaceScoped: true,
+    contextEngineReady: true,
+    ownershipBoundary: 'Product semantics, consent, and browser-context ownership stay inside ContextGo.',
+    nextStep: 'Promote browser context picker and manager from conversation-bound flow to a Space-level connector surface.',
+    dependencies: [
+      {
+        kind: 'binary',
+        name: 'agent-browser',
+        required: true,
+        notes: 'Default managed browser runtime for ContextGo browser contexts.',
+      },
+    ],
+  },
+  {
+    id: 'contextgo-clipboard',
+    familyId: 'activity',
+    name: 'ContextGo Clipboard',
+    summary: 'Desktop-host clipboard observation promoted into activity events and daily context summaries.',
+    kind: 'activity',
+    runtimeOwner: 'contextgo-managed-sidecar',
+    launchSurface: 'space-background',
+    profileStrategy: 'local-observer-config',
+    storeTarget: 'activity-events',
+    upstreamSource: 'connector-repo',
+    status: 'scaffolded',
+    fusionWave: 'wave-1',
+    desktopHostOnly: true,
+    spaceScoped: true,
+    contextEngineReady: true,
+    ownershipBoundary: 'Runtime can incubate from the connector repository, but retention, consent, and storage policy belong to ContextGo.',
+    nextStep: 'Wrap clipboard runtime as a managed desktop observer with pause, retention, and collect controls.',
+    dependencies: [
+      {
+        kind: 'python-module',
+        name: 'connector.infohub.activity_clipboard_runtime',
+        required: true,
+        notes: 'Current runtime shape already exists in the connector repository and can be hosted by ContextGo.',
+      },
+    ],
+  },
+  {
+    id: 'feishu-openapi',
+    familyId: 'feishu',
+    name: 'Feishu OpenAPI',
+    summary: 'Official Feishu/Lark OpenAPI runtime for docs, chats, calendar, and files through a managed external connector.',
+    kind: 'official-cli',
+    runtimeOwner: 'contextgo-managed-sidecar',
+    launchSurface: 'managed-external-runtime',
+    profileStrategy: 'oauth-user',
+    storeTarget: 'connector-store',
+    upstreamSource: 'official-open-source-cli',
+    status: 'scaffolded',
+    fusionWave: 'wave-1',
+    desktopHostOnly: true,
+    spaceScoped: true,
+    contextEngineReady: true,
+    ownershipBoundary: 'Feishu API execution may run out-of-process, but datasource, source assets, and collect results remain ContextGo-owned.',
+    nextStep: 'Add a managed runtime wrapper around the official lark-openapi-mcp project and expose datasource-level auth and collect flows.',
+    dependencies: [
+      {
+        kind: 'binary',
+        name: 'lark-openapi-mcp',
+        required: true,
+        notes: 'Official open-source Feishu/Lark runtime published by LarkSuite on GitHub.',
+      },
+      {
+        kind: 'oauth-app',
+        name: 'Feishu Open Platform app credentials',
+        required: true,
+      },
+    ],
+  },
+  {
+    id: 'google-drive',
+    familyId: 'google-workspace',
+    name: 'Google Drive',
+    summary: 'Workspace file and metadata ingestion through official Google APIs.',
+    kind: 'official-sdk',
+    runtimeOwner: 'contextgo-managed-sidecar',
+    launchSurface: 'managed-external-runtime',
+    profileStrategy: 'oauth-user',
+    storeTarget: 'connector-store',
+    upstreamSource: 'official-sdk',
+    status: 'scaffolded',
+    fusionWave: 'wave-1',
+    desktopHostOnly: true,
+    spaceScoped: true,
+    contextEngineReady: true,
+    ownershipBoundary: 'Google API calls can use a managed Go runtime, but datasource scope and collected content must remain inside ContextGo.',
+    nextStep: 'Implement Drive datasource auth, file listing, and collect runs first before broader workspace coverage.',
+    dependencies: [
+      {
+        kind: 'go-module',
+        name: 'google.golang.org/api/drive/v3',
+        required: true,
+        notes: 'Official Google API Go client package.',
+      },
+      {
+        kind: 'oauth-app',
+        name: 'Google OAuth client credentials',
+        required: true,
+      },
+    ],
+  },
+  {
+    id: 'google-docs',
+    familyId: 'google-workspace',
+    name: 'Google Docs',
+    summary: 'Structured document fetch and normalization through the official Google Docs API.',
+    kind: 'official-sdk',
+    runtimeOwner: 'contextgo-managed-sidecar',
+    launchSurface: 'managed-external-runtime',
+    profileStrategy: 'oauth-user',
+    storeTarget: 'connector-store',
+    upstreamSource: 'official-sdk',
+    status: 'scaffolded',
+    fusionWave: 'wave-1',
+    desktopHostOnly: true,
+    spaceScoped: true,
+    contextEngineReady: true,
+    ownershipBoundary: 'Docs normalization belongs to ContextGo even if transport uses Google-owned API clients.',
+    nextStep: 'Share Google auth with Drive, then add doc fetch and markdown-oriented normalization.',
+    dependencies: [
+      {
+        kind: 'go-module',
+        name: 'google.golang.org/api/docs/v1',
+        required: true,
+        notes: 'Official Google API Go client package.',
+      },
+      {
+        kind: 'oauth-app',
+        name: 'Google OAuth client credentials',
+        required: true,
+      },
+    ],
+  },
+  {
+    id: 'google-sheets',
+    familyId: 'google-workspace',
+    name: 'Google Sheets',
+    summary: 'Spreadsheet range and sheet metadata ingestion through the official Google Sheets API.',
+    kind: 'official-sdk',
+    runtimeOwner: 'contextgo-managed-sidecar',
+    launchSurface: 'managed-external-runtime',
+    profileStrategy: 'oauth-user',
+    storeTarget: 'connector-store',
+    upstreamSource: 'official-sdk',
+    status: 'scaffolded',
+    fusionWave: 'wave-1',
+    desktopHostOnly: true,
+    spaceScoped: true,
+    contextEngineReady: true,
+    ownershipBoundary: 'ContextGo owns spreadsheet datasource policy and collected snapshots, not the external Go client.',
+    nextStep: 'Reuse Google auth, then add spreadsheet snapshot collect and row-range fetch flows.',
+    dependencies: [
+      {
+        kind: 'go-module',
+        name: 'google.golang.org/api/sheets/v4',
+        required: true,
+        notes: 'Official Google API Go client package.',
+      },
+      {
+        kind: 'oauth-app',
+        name: 'Google OAuth client credentials',
+        required: true,
+      },
+    ],
+  },
+  {
+    id: 'gmail',
+    familyId: 'google-workspace',
+    name: 'Gmail',
+    summary: 'Mailbox metadata and message fetch through the official Gmail API.',
+    kind: 'official-sdk',
+    runtimeOwner: 'contextgo-managed-sidecar',
+    launchSurface: 'managed-external-runtime',
+    profileStrategy: 'oauth-user',
+    storeTarget: 'connector-store',
+    upstreamSource: 'official-sdk',
+    status: 'scaffolded',
+    fusionWave: 'wave-1',
+    desktopHostOnly: true,
+    spaceScoped: true,
+    contextEngineReady: true,
+    ownershipBoundary: 'Message ingestion policy and retention belong to ContextGo even if Gmail transport is externalized.',
+    nextStep: 'Add Gmail datasource auth and conservative metadata-first collect before full message-body ingestion.',
+    dependencies: [
+      {
+        kind: 'go-module',
+        name: 'google.golang.org/api/gmail/v1',
+        required: true,
+        notes: 'Official Google API Go client package.',
+      },
+      {
+        kind: 'oauth-app',
+        name: 'Google OAuth client credentials',
+        required: true,
+      },
+    ],
+  },
+  {
+    id: 'google-calendar',
+    familyId: 'google-workspace',
+    name: 'Google Calendar',
+    summary: 'Calendar event and availability ingestion through the official Google Calendar API.',
+    kind: 'official-sdk',
+    runtimeOwner: 'contextgo-managed-sidecar',
+    launchSurface: 'managed-external-runtime',
+    profileStrategy: 'oauth-user',
+    storeTarget: 'connector-store',
+    upstreamSource: 'official-sdk',
+    status: 'scaffolded',
+    fusionWave: 'wave-1',
+    desktopHostOnly: true,
+    spaceScoped: true,
+    contextEngineReady: true,
+    ownershipBoundary: 'Schedule semantics and collect policies belong to ContextGo, not the external calendar client.',
+    nextStep: 'Start with read-only calendar listing and event collect, then expand into recurring-event normalization.',
+    dependencies: [
+      {
+        kind: 'go-module',
+        name: 'google.golang.org/api/calendar/v3',
+        required: true,
+        notes: 'Official Google API Go client package.',
+      },
+      {
+        kind: 'oauth-app',
+        name: 'Google OAuth client credentials',
+        required: true,
+      },
+    ],
+  },
+];
+
+const CONNECTOR_MAP = new Map<SpaceConnectorId, SpaceConnectorDescriptor>(
+  FIRST_WAVE_CONNECTORS.map((connector) => [connector.id, connector])
+);
+
+export function listBuiltinSpaceConnectors(): readonly SpaceConnectorDescriptor[] {
+  return FIRST_WAVE_CONNECTORS;
+}
+
+export function getBuiltinSpaceConnector(id: SpaceConnectorId): SpaceConnectorDescriptor | undefined {
+  return CONNECTOR_MAP.get(id);
+}

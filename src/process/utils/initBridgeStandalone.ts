@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -22,14 +22,19 @@ import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
 import { initAcpConversationBridge } from '@process/bridge/acpConversationBridge';
 import { initAuthBridge } from '@process/bridge/authBridge';
 import { initBedrockBridge } from '@process/bridge/bedrockBridge';
+import { initClipboardConnectorBridge } from '@process/bridge/clipboardConnectorBridge';
 import { initChannelBridge } from '@process/bridge/channelBridge';
 import { initConversationBridge } from '@process/bridge/conversationBridge';
 import { initDatabaseBridge } from '@process/bridge/databaseBridge';
 import { initDocumentBridge } from '@process/bridge/documentBridge';
 import { initExtensionsBridge } from '@process/bridge/extensionsBridge';
+import { initFeishuConnectorBridge } from '@process/bridge/feishuConnectorBridge';
 import { initFileWatchBridge } from '@process/bridge/fileWatchBridge';
 import { initGeminiBridge } from '@process/bridge/geminiBridge';
 import { initGeminiConversationBridge } from '@process/bridge/geminiConversationBridge';
+import { initGoogleDriveConnectorBridge } from '@process/bridge/googleDriveConnectorBridge';
+import { initGoogleDocsConnectorBridge } from '@process/bridge/googleDocsConnectorBridge';
+import { initGoogleSheetsConnectorBridge, initGmailConnectorBridge, initGoogleCalendarConnectorBridge } from '@process/bridge/googleWorkspaceFamilyBridges';
 import { initModelBridge } from '@process/bridge/modelBridge';
 import { initPreviewHistoryBridge } from '@process/bridge/previewHistoryBridge';
 import { initStarOfficeBridge } from '@process/bridge/starOfficeBridge';
@@ -61,7 +66,14 @@ export async function initBridgeStandalone(): Promise<void> {
   initGeminiConversationBridge(workerTaskManager);
   initGeminiBridge();
   initBedrockBridge();
+  initClipboardConnectorBridge();
   initAcpConversationBridge(workerTaskManager, conversationService);
+  initFeishuConnectorBridge();
+  initGoogleDriveConnectorBridge();
+  initGoogleDocsConnectorBridge();
+  initGoogleSheetsConnectorBridge();
+  initGmailConnectorBridge();
+  initGoogleCalendarConnectorBridge();
   initAuthBridge();
   initModelBridge();
   initPreviewHistoryBridge();
