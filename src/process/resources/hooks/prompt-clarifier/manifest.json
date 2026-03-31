@@ -1,9 +1,0 @@
-{
-  "name": "prompt-clarifier",
-  "description": "Clarify vague requests, surface assumptions, and ask at most one blocker question before execution.",
-  "version": "1.0.0",
-  "executionType": "prompt-transform",
-  "events": ["before_user_prompt"],
-  "category": "clarity",
-  "tags": ["ambiguity", "assumptions", "clarification", "user-prompt-submit"]
-}

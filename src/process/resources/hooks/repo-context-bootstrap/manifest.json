@@ -1,9 +1,0 @@
-{
-  "name": "repo-context-bootstrap",
-  "description": "Bootstrap each task with repository, branch, workspace, and implementation context before edits begin.",
-  "version": "1.0.0",
-  "executionType": "prompt-transform",
-  "events": ["before_user_prompt"],
-  "category": "continuity",
-  "tags": ["session-start", "workspace", "git", "context"]
-}
