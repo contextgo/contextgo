@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -36,7 +36,7 @@ type RuntimeAwareDetectedAgent = ReturnType<typeof acpDetector.getDetectedAgents
 };
 
 async function getRuntimeAwareDetectedAgents(): Promise<RuntimeAwareDetectedAgent[]> {
-  const detectedAgents = acpDetector.getDetectedAgents().map((agent) => ({
+  const detectedAgents: RuntimeAwareDetectedAgent[] = acpDetector.getDetectedAgents().map((agent) => ({
     ...agent,
     runtimeSource: agent.backend === 'gemini' ? 'builtin' : 'detected',
   }));

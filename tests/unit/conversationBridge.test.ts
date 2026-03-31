@@ -35,6 +35,9 @@ vi.mock('@/common', () => ({
       sendMessage: makeChannel('sendMessage'),
       getSlashCommands: makeChannel('getSlashCommands'),
       reloadContext: makeChannel('reloadContext'),
+      listMemoryCandidates: makeChannel('listMemoryCandidates'),
+      reviewMemoryCandidate: makeChannel('reviewMemoryCandidate'),
+      promoteMemoryCandidate: makeChannel('promoteMemoryCandidate'),
       getWorkspace: makeChannel('getWorkspace'),
       responseSearchWorkSpace: makeChannel('responseSearchWorkSpace'),
       confirmation: {

@@ -26,6 +26,7 @@ const mockConversationService = {
   updateConversation: vi.fn(async () => {}),
   getConversation: vi.fn(async () => ({ id: 'conv-1', source: 'contextgo', name: 'Original Name', type: 'gemini' })),
   createWithMigration: vi.fn(async () => ({ id: 'conv-migrated', source: 'contextgo' })),
+  listAllConversations: vi.fn(async () => []),
 };
 
 const mockWorkerTaskManager = {
@@ -71,6 +72,9 @@ const registerMocks = () => {
         getSlashCommands: createCommand('conversation.getSlashCommands'),
         sendMessage: createCommand('conversation.sendMessage'),
         warmup: createCommand('conversation.warmup'),
+        listMemoryCandidates: createCommand('conversation.listMemoryCandidates'),
+        reviewMemoryCandidate: createCommand('conversation.reviewMemoryCandidate'),
+        promoteMemoryCandidate: createCommand('conversation.promoteMemoryCandidate'),
         responseStream: { emit: vi.fn() },
         listChanged: { emit: vi.fn() },
         confirmation: {

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -73,6 +73,143 @@ export function initSchema(db: ISqliteDriver): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_id ON spaces(user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_updated ON spaces(user_id, updated_at DESC)');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_spaces_default_per_user ON spaces(user_id) WHERE is_default = 1');
+
+  db.exec(`CREATE TABLE IF NOT EXISTS context_sources (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL,
+    thread_id TEXT,
+    artifact_id TEXT,
+    kind TEXT NOT NULL,
+    title TEXT,
+    canonical_uri TEXT,
+    checksum TEXT,
+    tags TEXT NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_sources_space_updated ON context_sources(space_id, updated_at DESC)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_sources_space_kind ON context_sources(space_id, kind)');
+
+  db.exec(`CREATE TABLE IF NOT EXISTS context_documents (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    storage_uri TEXT NOT NULL,
+    title TEXT,
+    checksum TEXT NOT NULL,
+    token_count INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_id) REFERENCES context_sources(id) ON DELETE CASCADE
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_documents_space_created ON context_documents(space_id, created_at DESC)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_documents_source ON context_documents(source_id)');
+
+  db.exec(`CREATE TABLE IF NOT EXISTS context_chunks (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL,
+    document_id TEXT NOT NULL,
+    sequence INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    token_count INTEGER NOT NULL DEFAULT 0,
+    content_hash TEXT NOT NULL,
+    tier TEXT NOT NULL DEFAULT 'source',
+    embedding_key TEXT,
+    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (document_id) REFERENCES context_documents(id) ON DELETE CASCADE
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_chunks_document_sequence ON context_chunks(document_id, sequence ASC)');
+
+  db.exec(`CREATE TABLE IF NOT EXISTS context_memories (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    detail TEXT,
+    source_ids TEXT NOT NULL DEFAULT '[]',
+    chunk_ids TEXT NOT NULL DEFAULT '[]',
+    confidence REAL NOT NULL DEFAULT 0,
+    tier TEXT NOT NULL DEFAULT 'factual',
+    priority TEXT NOT NULL,
+    state TEXT NOT NULL,
+    superseded_by_id TEXT,
+    expires_at TEXT,
+    last_accessed_at TEXT,
+    last_confirmed_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_memories_space_state ON context_memories(space_id, state)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_memories_space_updated ON context_memories(space_id, updated_at DESC)');
+
+  db.exec(`CREATE TABLE IF NOT EXISTS context_memory_candidates (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL,
+    thread_id TEXT,
+    kind TEXT NOT NULL,
+    tier TEXT NOT NULL DEFAULT 'factual',
+    summary TEXT NOT NULL,
+    detail TEXT,
+    source_ids TEXT NOT NULL DEFAULT '[]',
+    chunk_ids TEXT NOT NULL DEFAULT '[]',
+    confidence REAL NOT NULL DEFAULT 0,
+    priority TEXT NOT NULL,
+    evidence_count INTEGER NOT NULL DEFAULT 1,
+    repeated_across_sources INTEGER NOT NULL DEFAULT 0,
+    recent_reference_count INTEGER NOT NULL DEFAULT 1,
+    user_confirmed INTEGER NOT NULL DEFAULT 0,
+    manually_pinned INTEGER NOT NULL DEFAULT 0,
+    execution_backed INTEGER NOT NULL DEFAULT 0,
+    contradiction_detected INTEGER NOT NULL DEFAULT 0,
+    promotion_score INTEGER NOT NULL DEFAULT 0,
+    promotion_rationale TEXT NOT NULL DEFAULT '[]',
+    destination TEXT NOT NULL DEFAULT 'memory',
+    state TEXT NOT NULL,
+    review_status TEXT NOT NULL,
+    promoted_memory_id TEXT,
+    reviewed_at TEXT,
+    reviewed_by TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_memory_candidates_space_state ON context_memory_candidates(space_id, state)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_memory_candidates_thread ON context_memory_candidates(thread_id, created_at DESC)');
+
+  db.exec(`CREATE TABLE IF NOT EXISTS context_profiles (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    memory_ids TEXT NOT NULL DEFAULT '[]',
+    confidence REAL NOT NULL DEFAULT 0,
+    state TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_profiles_space_state ON context_profiles(space_id, state)');
+
+  db.exec(`CREATE TABLE IF NOT EXISTS context_operations (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL,
+    thread_id TEXT,
+    replica_id TEXT,
+    actor_kind TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    payload TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_operations_space_created ON context_operations(space_id, created_at DESC)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_operations_space_type ON context_operations(space_id, type)');
 
   // Conversations table (会话表 - 存储TChatConversation)
   db.exec(`CREATE TABLE IF NOT EXISTS conversations (
@@ -394,4 +531,4 @@ export function setDatabaseVersion(db: ISqliteDriver, version: number): void {
  * Current database schema version
  * Update this when adding new migrations in migrations.ts
  */
-export const CURRENT_DB_VERSION = 21;
+export const CURRENT_DB_VERSION = 22;

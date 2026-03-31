@@ -41,12 +41,16 @@ vi.mock('@renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
   useConversationTabs: () => useConversationTabsMock(),
 }));
 
-vi.mock('@renderer/pages/conversation/platforms/group/CreateDiscussionGroupModal', () => ({
+vi.mock('@renderer/pages/conversation/platforms/group/CreateGroupModal', () => ({
   default: () => null,
 }));
 
 vi.mock('@renderer/utils/emitter', () => ({
   emitter: { emit: vi.fn() },
+}));
+
+vi.mock('@/renderer/components/layout/Titlebar/SpaceSwitcher', () => ({
+  default: () => <div data-testid='space-switcher' />,
 }));
 
 vi.mock('react-router-dom', async () => {

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -38,7 +38,7 @@ import { discoverSkillDirectories, resolveSkillDirectory } from '@process/utils/
 
 const execFileAsync = promisify(execFile);
 const SKILLS_MARKET_SKILL_DIR = 'contextgo-skills';
-const LEGACY_SKILLS_MARKET_SKILL_DIR = 'contextgo-skills';
+const LEGACY_SKILLS_MARKET_SKILL_DIR = 'aionui-skills';
 
 // ============================================================================
 // Helper functions for builtin resource directory resolution

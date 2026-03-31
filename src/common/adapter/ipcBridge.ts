@@ -18,6 +18,7 @@ import type {
   IMcpServer,
   IProvider,
   TChatConversation,
+  TSpace,
   TBrowserContextAsset,
   TProviderWithModel,
   ICssTheme,
@@ -47,6 +48,12 @@ export const shell = {
   openFile: bridge.buildProvider<void, string>('open-file'), // 使用系统默认程序打开文件
   showItemInFolder: bridge.buildProvider<void, string>('show-item-in-folder'), // 打开文件夹
   openExternal: bridge.buildProvider<void, string>('open-external'), // 使用系统默认程序打开外部链接
+};
+
+export const space = {
+  list: bridge.buildProvider<TSpace[], void>('space.list'),
+  ensureDefault: bridge.buildProvider<TSpace, void>('space.ensure-default'),
+  create: bridge.buildProvider<TSpace, { name: string; description?: string }>('space.create'),
 };
 
 //通用会话能力
@@ -91,6 +98,18 @@ export const conversation = {
     'conversation.response.search.workspace'
   ),
   reloadContext: bridge.buildProvider<IBridgeResponse, { conversation_id: string }>('conversation.reload-context'),
+  listMemoryCandidates: bridge.buildProvider<
+    IBridgeResponse<{ candidates: IContextMemoryCandidateView[] }>,
+    { conversation_id?: string; spaceId?: string; state?: string; reviewStatus?: string }
+  >('conversation.list-memory-candidates'),
+  reviewMemoryCandidate: bridge.buildProvider<
+    IBridgeResponse<{ candidate?: IContextMemoryCandidateView }>,
+    { candidateId: string; action: 'approve' | 'reject'; reviewerId?: string }
+  >('conversation.review-memory-candidate'),
+  promoteMemoryCandidate: bridge.buildProvider<
+    IBridgeResponse<{ candidate?: IContextMemoryCandidateView }>,
+    { candidateId: string; destination: 'document' | 'board'; reviewerId?: string }
+  >('conversation.promote-memory-candidate'),
   confirmation: {
     add: bridge.buildEmitter<IConfirmation<any> & { conversation_id: string }>('confirmation.add'),
     update: bridge.buildEmitter<IConfirmation<any> & { conversation_id: string }>('confirmation.update'),
@@ -1231,6 +1250,28 @@ export interface IResponseMessage {
   data: unknown;
   msg_id: string;
   conversation_id: string;
+}
+
+export interface IContextMemoryCandidateView {
+  id: string;
+  spaceId: string;
+  threadId?: string;
+  kind: string;
+  tier: string;
+  summary: string;
+  detail?: string;
+  confidence: number;
+  priority: string;
+  destination: string;
+  state: string;
+  reviewStatus: string;
+  promotionScore: number;
+  promotionRationale: readonly string[];
+  promotedMemoryId?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface IConversationTurnCompletedEvent {
