@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
@@ -28,6 +28,8 @@ ENV_KEYS = (
     "CONTEXTGO_DATABASE_PATH",
     "CONTEXTGO_AUTH_BASE_URL",
     "CONTEXTGO_API_BASE_URL",
+    "CONTEXTGO_REMOTE_BASE_URL",
+    "CONTEXTGO_RENDERER_BUILD_ROOT",
     "CONTEXTGO_SESSION_COOKIE_DOMAIN",
     "CONTEXTGO_ALLOWED_EMAILS",
     "CONTEXTGO_GITHUB_CLIENT_ID",
@@ -56,6 +58,14 @@ class CloudApiTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
+        self.renderer_dir = Path(self.temp_dir.name) / "renderer-build"
+        assets_dir = self.renderer_dir / "assets"
+        assets_dir.mkdir(parents=True)
+        (self.renderer_dir / "index.html").write_text(
+            "<!doctype html><html><body><div id=\"root\"></div><script src=\"./assets/app.js\"></script></body></html>",
+            encoding="utf-8",
+        )
+        (assets_dir / "app.js").write_text("console.log('remote shell');", encoding="utf-8")
 
         self.previous_env = {key: os.environ.get(key) for key in ENV_KEYS}
         self.addCleanup(self._restore_environment)
@@ -63,6 +73,8 @@ class CloudApiTestCase(unittest.TestCase):
         os.environ["CONTEXTGO_DATABASE_PATH"] = str(Path(self.temp_dir.name) / "contextgo-cloud.db")
         os.environ["CONTEXTGO_AUTH_BASE_URL"] = "http://testserver"
         os.environ["CONTEXTGO_API_BASE_URL"] = "http://testserver"
+        os.environ["CONTEXTGO_REMOTE_BASE_URL"] = "https://remote.contextgo.io"
+        os.environ["CONTEXTGO_RENDERER_BUILD_ROOT"] = str(self.renderer_dir)
         os.environ["CONTEXTGO_SESSION_COOKIE_DOMAIN"] = ""
         os.environ["CONTEXTGO_ALLOWED_EMAILS"] = "yeyitech@gmail.com"
         os.environ["CONTEXTGO_GITHUB_CLIENT_ID"] = "github-client-id"
@@ -193,6 +205,35 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(callback_response.status_code, 303)
         self.assertEqual(callback_response.headers["location"], next_url)
 
+    def test_oauth_callback_without_next_redirects_to_remote_devices(self) -> None:
+        start_response = self.client.get("/api/auth/oauth/google/start", follow_redirects=False)
+        self.assertEqual(start_response.status_code, 302)
+
+        redirect_url = start_response.headers["location"]
+        state = parse_qs(urlparse(redirect_url).query)["state"][0]
+        profile = self.oauth_module.OAuthProfile(
+            provider="google",
+            provider_user_id="google-user-3",
+            email="yeyitech@gmail.com",
+            email_verified=True,
+            username_candidate="yeyitech",
+            display_name="Yeyi Tech",
+            avatar_url="https://example.com/avatar.png",
+        )
+
+        with patch.object(
+            self.app_module,
+            "exchange_code_for_profile",
+            AsyncMock(return_value=profile),
+        ):
+            callback_response = self.client.get(
+                f"/api/auth/oauth/google/callback?state={state}&code=test-code",
+                follow_redirects=False,
+            )
+
+        self.assertEqual(callback_response.status_code, 303)
+        self.assertEqual(callback_response.headers["location"], "https://remote.contextgo.io/remote/devices")
+
     def test_device_management_requires_browser_session(self) -> None:
         response = self.client.post(
             "/api/devices/register",
@@ -238,7 +279,7 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(payload["devices"][0]["remoteStatus"]["transport"], "cloud-relay")
 
     def test_remote_devices_page_redirects_to_login_with_next_path(self) -> None:
-        response = self.client.get("/remote/devices", follow_redirects=False)
+        response = self.client.get("/remote/devices", follow_redirects=False, headers={"host": "remote.contextgo.io"})
 
         self.assertEqual(response.status_code, 303)
         self.assertEqual(response.headers["location"], "/login?next=%2Fremote%2Fdevices")
@@ -247,10 +288,29 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(login_response.status_code, 200)
         self.assertIn("/api/auth/oauth/github/start?next=%2Fremote%2Fdevices", login_response.text)
 
+    def test_mobile_shell_login_page_uses_shell_completion_redirect(self) -> None:
+        response = self.client.get(
+            "/login?next=/device/device-123",
+            headers={
+                "host": "remote.contextgo.io",
+                "user-agent": "Mozilla/5.0 ContextGoMobileShell/1.0",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        expected_next = (
+            f"/api/auth/oauth/github/start?next={quote(self.settings.auth_base_url, safe='')}"
+            "%2Fmobile-shell-login-complete%3Ftarget%3Dhttps%253A%252F%252Fremote.contextgo.io%252Fdevice%252Fdevice-123"
+        )
+        self.assertIn(
+            expected_next,
+            response.text,
+        )
+
     def test_remote_devices_page_marks_registered_but_disconnected_devices_as_unavailable(self) -> None:
         self._register_device(device_name="Studio", platform="macos")
 
-        response = self.client.get("/remote/devices")
+        response = self.client.get("/remote/devices", headers={"host": "remote.contextgo.io"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("ContextGo Remote", response.text)
@@ -258,6 +318,18 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertIn("macos · device active", response.text)
         self.assertIn("Unavailable", response.text)
         self.assertIn("Desktop is not connected to ContextGo Cloud relay right now.", response.text)
+
+    def test_remote_devices_page_shows_disconnect_notices(self) -> None:
+        self._create_browser_session()
+
+        response = self.client.get(
+            "/remote/devices?remoteNotice=session_replaced",
+            headers={"host": "remote.contextgo.io"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("This hosted session was replaced.", response.text)
+        self.assertIn("Another browser took over the live session.", response.text)
 
     def test_remote_devices_page_uses_cloud_relay_presence_for_available_and_live_session_states(self) -> None:
         registration = self._register_device(device_name="Studio", platform="macos")
@@ -271,11 +343,11 @@ class CloudApiTestCase(unittest.TestCase):
             hello = device_ws.receive_json()
             self.assertEqual(hello["type"], "hello")
 
-            available_response = self.client.get("/remote/devices")
+            available_response = self.client.get("/remote/devices", headers={"host": "remote.contextgo.io"})
             self.assertEqual(available_response.status_code, 200)
             self.assertIn("Available", available_response.text)
             self.assertIn("Desktop is online and ready through ContextGo Cloud relay.", available_response.text)
-            self.assertIn(f'/remote/app/?device_id={device["id"]}', available_response.text)
+            self.assertIn(f'/device/{device["id"]}', available_response.text)
             self.assertIn("contextgo-remote://open?target=", available_response.text)
 
             with self.client.websocket_connect(f"/api/remote/client-connect?device_id={device['id']}") as client_ws:
@@ -283,7 +355,7 @@ class CloudApiTestCase(unittest.TestCase):
                 self.assertEqual(client_status["type"], "client_status")
                 self.assertTrue(client_status["connected"])
 
-                busy_response = self.client.get("/remote/devices")
+                busy_response = self.client.get("/remote/devices", headers={"host": "remote.contextgo.io"})
                 self.assertEqual(busy_response.status_code, 200)
                 self.assertIn("Live session", busy_response.text)
                 self.assertIn(
@@ -294,19 +366,69 @@ class CloudApiTestCase(unittest.TestCase):
                 client_ws.send_json({"name": "pong", "data": {"timestamp": 1}})
 
     def test_remote_app_page_redirects_to_login_and_preserves_device_query(self) -> None:
-        response = self.client.get("/remote/app/?device_id=device-123", follow_redirects=False)
+        response = self.client.get("/device/device-123", follow_redirects=False, headers={"host": "remote.contextgo.io"})
 
         self.assertEqual(response.status_code, 303)
-        self.assertEqual(response.headers["location"], "/login?next=%2Fremote%2Fapp%2F%3Fdevice_id%3Ddevice-123")
+        self.assertEqual(response.headers["location"], "/login?next=%2Fdevice%2Fdevice-123")
 
     def test_remote_app_page_serves_renderer_shell_for_authenticated_user(self) -> None:
         self._create_browser_session()
 
-        response = self.client.get("/remote/app/?device_id=device-123")
+        response = self.client.get("/device/device-123", headers={"host": "remote.contextgo.io"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("<div id=\"root\"></div>", response.text)
-        self.assertIn("./assets/", response.text)
+        self.assertIn("/remote/app/assets/", response.text)
+
+    def test_mobile_shell_login_complete_redirects_back_to_shell_target(self) -> None:
+        self._create_browser_session()
+
+        response = self.client.get(
+            "/mobile-shell-login-complete?target=https%3A%2F%2Fremote.contextgo.io%2Fdevice%2Fdevice-123",
+            follow_redirects=False,
+            headers={"host": "auth.contextgo.io"},
+        )
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(
+            response.headers["location"],
+            "contextgo-remote://open?target=https%3A%2F%2Fremote.contextgo.io%2Fdevice%2Fdevice-123",
+        )
+
+    def test_mobile_shell_login_complete_sends_missing_session_back_to_remote_login(self) -> None:
+        response = self.client.get(
+            "/mobile-shell-login-complete?target=https%3A%2F%2Fremote.contextgo.io%2Fdevice%2Fdevice-123",
+            follow_redirects=False,
+            headers={"host": "auth.contextgo.io"},
+        )
+
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("contextgo-remote://open?target=", response.headers["location"])
+        self.assertIn("oauthError%3Dmissing_session", response.headers["location"])
+
+    def test_remote_root_redirects_to_devices_on_remote_host(self) -> None:
+        response = self.client.get("/", follow_redirects=False, headers={"host": "remote.contextgo.io"})
+
+        self.assertEqual(response.status_code, 307)
+        self.assertEqual(response.headers["location"], "/remote/devices")
+
+    def test_remote_devices_page_redirects_auth_host_requests_to_remote_host(self) -> None:
+        response = self.client.get("/remote/devices", follow_redirects=False, headers={"host": "auth.contextgo.io"})
+
+        self.assertEqual(response.status_code, 307)
+        self.assertEqual(response.headers["location"], "https://remote.contextgo.io/remote/devices")
+
+    def test_legacy_remote_app_url_is_not_served(self) -> None:
+        response = self.client.get(
+            "/remote/app/?device_id=device-123",
+            follow_redirects=False,
+            headers={"host": "remote.contextgo.io"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_renderer_build_root_prefers_explicit_environment_override(self) -> None:
+        self.assertEqual(self.app_module.RENDERER_BUILD_ROOT, self.renderer_dir.resolve())
 
     def test_remote_auth_aliases_match_browser_runtime_expectations(self) -> None:
         session = self.client.get("/api/auth/user")

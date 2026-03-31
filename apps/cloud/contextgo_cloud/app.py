@@ -7,11 +7,11 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Union
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, quote, urlencode, urlparse
 
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -74,13 +74,44 @@ class DesktopLoginConsumeRequest(BaseModel):
 
 settings: Settings = load_settings()
 api_host = urlparse(settings.api_base_url).hostname or ""
+remote_host = urlparse(settings.remote_base_url).hostname or ""
 DESKTOP_LOGIN_COMPLETE_PATH = "/desktop-login-complete"
+MOBILE_SHELL_LOGIN_COMPLETE_PATH = "/mobile-shell-login-complete"
 REMOTE_DEVICES_PATH = "/remote/devices"
 REMOTE_APP_PATH = "/remote/app"
 REMOTE_APP_ASSETS_PATH = f"{REMOTE_APP_PATH}/assets"
+REMOTE_DEVICE_PATH_PREFIX = "/device"
 REMOTE_SHELL_SCHEME = "contextgo-remote"
-REPO_ROOT = Path(__file__).resolve().parents[3]
-RENDERER_BUILD_ROOT = REPO_ROOT / "out" / "renderer"
+RENDERER_BUILD_ROOT_ENV = "CONTEXTGO_RENDERER_BUILD_ROOT"
+
+
+def resolve_renderer_build_root() -> Path:
+    app_path = Path(__file__).resolve()
+    candidates: list[Path] = []
+    explicit_root = os.getenv(RENDERER_BUILD_ROOT_ENV, "").strip()
+    if explicit_root:
+        candidates.append(Path(explicit_root).expanduser())
+
+    if len(app_path.parents) > 3:
+        candidates.append(app_path.parents[3] / "out" / "renderer")
+
+    candidates.append(Path.cwd() / "out" / "renderer")
+    candidates.append(app_path.parents[1] / "out" / "renderer")
+
+    resolved_candidates: list[Path] = []
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved not in resolved_candidates:
+            resolved_candidates.append(resolved)
+
+    for candidate in resolved_candidates:
+        if (candidate / "index.html").is_file():
+            return candidate
+
+    return resolved_candidates[0]
+
+
+RENDERER_BUILD_ROOT = resolve_renderer_build_root()
 RENDERER_INDEX_PATH = RENDERER_BUILD_ROOT / "index.html"
 RENDERER_ASSETS_PATH = RENDERER_BUILD_ROOT / "assets"
 IOS_ASSOCIATED_APP_IDS_ENV = "CONTEXTGO_IOS_ASSOCIATED_APP_IDS"
@@ -138,6 +169,57 @@ def parse_csv_env(name: str) -> list[str]:
 def build_current_path_with_query(request: Request) -> str:
     query = request.url.query
     return f"{request.url.path}?{query}" if query else request.url.path
+
+
+def get_request_hostname(request: Request) -> str:
+    return (request.headers.get("host") or "").split(":")[0].strip().lower()
+
+
+def is_remote_request(request: Request) -> bool:
+    return get_request_hostname(request) == remote_host
+
+
+def build_remote_url(path: str) -> str:
+    return f"{settings.remote_base_url}{path}"
+
+
+def is_mobile_shell_request(request: Request) -> bool:
+    return "contextgomobileshell/" in request.headers.get("user-agent", "").lower()
+
+
+def resolve_mobile_shell_target_url(request: Request, next_path: str) -> str:
+    safe_next_path = pick_next_path(next_path)
+    if safe_next_path == "/":
+        return build_remote_url(REMOTE_DEVICES_PATH)
+
+    if safe_next_path.startswith("http://") or safe_next_path.startswith("https://"):
+        return safe_next_path
+
+    if safe_next_path.startswith(REMOTE_DEVICE_PATH_PREFIX) or safe_next_path.startswith("/remote/"):
+        return build_remote_url(safe_next_path)
+
+    if is_remote_request(request):
+        return build_remote_url(safe_next_path)
+
+    return f"{str(request.base_url).rstrip('/')}{safe_next_path}"
+
+
+def build_mobile_shell_login_complete_url(target_url: str) -> str:
+    return f"{settings.auth_base_url}{MOBILE_SHELL_LOGIN_COMPLETE_PATH}?{urlencode({'target': target_url})}"
+
+
+def render_remote_app_shell() -> str:
+    if not RENDERER_INDEX_PATH.is_file():
+        raise FileNotFoundError(RENDERER_INDEX_PATH)
+
+    html = RENDERER_INDEX_PATH.read_text(encoding="utf-8")
+    asset_prefix = f"{REMOTE_APP_ASSETS_PATH}/"
+    return (
+        html.replace('href="./assets/', f'href="{asset_prefix}')
+        .replace('src="./assets/', f'src="{asset_prefix}')
+        .replace("href='./assets/", f"href='{asset_prefix}")
+        .replace("src='./assets/", f"src='{asset_prefix}")
+    )
 
 
 def set_session_cookie(response: Union[RedirectResponse, JSONResponse, HTMLResponse], token: str) -> None:
@@ -348,8 +430,15 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
         href = f"/api/auth/oauth/{provider}/start"
         if desktop_mode:
             href = f'{href}?{urlencode({"next": build_desktop_login_complete_url(provider), "desktop": "1"})}'
-        elif next_path != "/":
-            href = f'{href}?{urlencode({"next": next_path})}'
+        else:
+            next_target = next_path
+            if is_mobile_shell_request(request):
+                next_target = build_mobile_shell_login_complete_url(resolve_mobile_shell_target_url(request, next_path))
+            elif next_path == "/" and is_remote_request(request):
+                next_target = REMOTE_DEVICES_PATH
+
+            if next_target != "/":
+                href = f'{href}?{urlencode({"next": next_target})}'
         provider_buttons.append(
             f'<a class="provider" href="{escape(href)}">{escape(label)}</a>'
         )
@@ -532,11 +621,43 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
 
 
 def build_remote_session_url(device_id: str) -> str:
-    return f"{REMOTE_APP_PATH}/?{urlencode({'device_id': device_id})}"
+    return f"{REMOTE_DEVICE_PATH_PREFIX}/{quote(device_id, safe='')}"
 
 
 def build_mobile_shell_open_url(target_url: str) -> str:
     return f"{REMOTE_SHELL_SCHEME}://open?{urlencode({'target': target_url})}"
+
+
+def describe_remote_notice(notice: Optional[str]) -> Optional[dict[str, str]]:
+    if notice == "device_not_found":
+        return {
+            "className": "error",
+            "title": "This remote device could not be found.",
+            "detail": "It may have been revoked or linked to another cloud account.",
+        }
+
+    if notice == "device_offline":
+        return {
+            "className": "info",
+            "title": "The desktop relay is offline.",
+            "detail": "Reconnect ContextGo on the desktop, then refresh this device list.",
+        }
+
+    if notice == "session_replaced":
+        return {
+            "className": "info",
+            "title": "This hosted session was replaced.",
+            "detail": "Another browser took over the live session. Choose a device again to continue here.",
+        }
+
+    if notice == "service_restarted":
+        return {
+            "className": "info",
+            "title": "The hosted remote session was restarted.",
+            "detail": "Refresh the list and reopen the desktop session.",
+        }
+
+    return None
 
 
 def describe_remote_device_availability(device_payload: dict[str, object]) -> dict[str, object]:
@@ -583,7 +704,12 @@ def describe_remote_device_availability(device_payload: dict[str, object]) -> di
     }
 
 
-def render_remote_devices_page(user: User, devices: list[dict[str, object]], remote_origin: str) -> str:
+def render_remote_devices_page(
+    user: User,
+    devices: list[dict[str, object]],
+    remote_origin: str,
+    notice: Optional[dict[str, str]] = None,
+) -> str:
     cards = []
     for device in devices:
         availability = describe_remote_device_availability(device)
@@ -637,6 +763,14 @@ def render_remote_devices_page(user: User, devices: list[dict[str, object]], rem
 
     account_name = escape(user.display_name)
     account_email = escape(user.email)
+    notice_markup = ""
+    if notice is not None:
+        notice_markup = f"""
+        <section class="notice notice-{escape(notice["className"])}">
+          <strong>{escape(notice["title"])}</strong>
+          <p>{escape(notice["detail"])}</p>
+        </section>
+        """
 
     return f"""<!doctype html>
 <html lang="en">
@@ -700,6 +834,31 @@ def render_remote_devices_page(user: User, devices: list[dict[str, object]], rem
     .grid {{
       display: grid;
       gap: 16px;
+    }}
+    .notice {{
+      margin-bottom: 16px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+      background: rgba(255, 255, 255, 0.92);
+    }}
+    .notice strong {{
+      display: block;
+      font-size: 15px;
+    }}
+    .notice p {{
+      margin: 8px 0 0;
+      color: #475569;
+      line-height: 1.6;
+    }}
+    .notice-error {{
+      background: #fff7f7;
+      border-color: rgba(220, 38, 38, 0.15);
+    }}
+    .notice-info {{
+      background: #f8fbff;
+      border-color: rgba(37, 99, 235, 0.12);
     }}
     .device-card, .empty-state {{
       background: rgba(255, 255, 255, 0.9);
@@ -819,6 +978,7 @@ def render_remote_devices_page(user: User, devices: list[dict[str, object]], rem
         </div>
       </div>
     </section>
+    {notice_markup}
     <section class="grid">
       {devices_markup}
     </section>
@@ -1115,16 +1275,20 @@ async def api_healthz() -> JSONResponse:
 
 @app.get("/", response_class=HTMLResponse, response_model=None)
 async def root(request: Request):
-    host = (request.headers.get("host") or "").split(":")[0]
+    host = get_request_hostname(request)
     if host == api_host:
         return JSONResponse(
             {
                 "service": "contextgo-cloud-auth",
                 "authBaseUrl": settings.auth_base_url,
                 "apiBaseUrl": settings.api_base_url,
+                "remoteBaseUrl": settings.remote_base_url,
                 "providers": get_enabled_providers(settings),
             }
         )
+
+    if host == remote_host:
+        return RedirectResponse(url=REMOTE_DEVICES_PATH, status_code=307)
 
     return HTMLResponse(render_login_page(request, read_current_user(request)))
 
@@ -1136,27 +1300,28 @@ async def login_page(request: Request) -> HTMLResponse:
 
 @app.get(REMOTE_DEVICES_PATH, response_class=HTMLResponse)
 async def remote_devices_page(request: Request) -> HTMLResponse:
+    if not is_remote_request(request):
+        return RedirectResponse(url=build_remote_url(REMOTE_DEVICES_PATH), status_code=307)
+
     user = read_current_user(request)
     if user is None:
         return RedirectResponse(url=build_login_url(next_path=REMOTE_DEVICES_PATH), status_code=303)
 
     devices = [serialize_device(device) for device in list_devices_for_user(settings, user.id)]
-    remote_origin = str(request.base_url).rstrip("/")
-    return HTMLResponse(render_remote_devices_page(user, devices, remote_origin))
+    remote_origin = settings.remote_base_url
+    remote_notice = describe_remote_notice(request.query_params.get("remoteNotice"))
+    return HTMLResponse(render_remote_devices_page(user, devices, remote_origin, remote_notice))
 
 
 def build_remote_app_login_redirect(request: Request) -> RedirectResponse:
     return RedirectResponse(url=build_login_url(next_path=build_current_path_with_query(request)), status_code=303)
 
 
-@app.get(REMOTE_APP_PATH)
-async def remote_app_redirect(request: Request) -> RedirectResponse:
-    query_suffix = f"?{request.url.query}" if request.url.query else ""
-    return RedirectResponse(url=f"{REMOTE_APP_PATH}/{query_suffix}", status_code=307)
+@app.get(f"{REMOTE_DEVICE_PATH_PREFIX}/{{device_id}}", response_class=HTMLResponse)
+async def remote_device_page(device_id: str, request: Request):
+    if not is_remote_request(request):
+        return RedirectResponse(url=build_remote_url(build_remote_session_url(device_id)), status_code=307)
 
-
-@app.get(f"{REMOTE_APP_PATH}/", response_class=HTMLResponse)
-async def remote_app_page(request: Request):
     user = read_current_user(request)
     if user is None:
         return build_remote_app_login_redirect(request)
@@ -1167,7 +1332,18 @@ async def remote_app_page(request: Request):
             status_code=503,
         )
 
-    return FileResponse(RENDERER_INDEX_PATH)
+    return HTMLResponse(render_remote_app_shell())
+
+
+@app.get(MOBILE_SHELL_LOGIN_COMPLETE_PATH)
+async def mobile_shell_login_complete(request: Request) -> RedirectResponse:
+    target_url = resolve_mobile_shell_target_url(request, request.query_params.get("target") or REMOTE_DEVICES_PATH)
+    user = read_current_user(request)
+    if user is None:
+        login_target = build_remote_url(build_login_url(error_code="missing_session", next_path=REMOTE_DEVICES_PATH))
+        return RedirectResponse(url=build_mobile_shell_open_url(login_target), status_code=303)
+
+    return RedirectResponse(url=build_mobile_shell_open_url(target_url), status_code=303)
 
 
 @app.get(DESKTOP_LOGIN_COMPLETE_PATH, response_class=HTMLResponse)
@@ -1448,7 +1624,10 @@ async def auth_oauth_callback(provider: str, request: Request) -> RedirectRespon
         user_agent=request.headers.get("user-agent"),
     )
 
-    response = RedirectResponse(url=next_path if next_path != "/" else build_login_url(success=True), status_code=303)
+    response = RedirectResponse(
+        url=next_path if next_path != "/" else build_remote_url(REMOTE_DEVICES_PATH),
+        status_code=303,
+    )
     set_session_cookie(response, session.token)
     clear_oauth_state_cookie(response)
     return response

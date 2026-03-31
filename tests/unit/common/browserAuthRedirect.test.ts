@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { buildBrowserLoginRedirectPath } from '@/common/adapter/browserAuthRedirect';
+import {
+  buildBrowserLoginRedirectPath,
+  buildHostedRemoteNoticeRedirectPath,
+  extractRemoteDeviceId,
+  resolveHostedRemoteDisconnectRedirectPath,
+} from '@/common/adapter/browserAuthRedirect';
 
 describe('buildBrowserLoginRedirectPath', () => {
-  it('preserves the hosted remote session target on contextgo hosts', () => {
-    expect(
-      buildBrowserLoginRedirectPath('https://remote.contextgo.io/remote/app/?device_id=device-1#/conversation/abc')
-    ).toBe('/login?next=%2Fremote%2Fapp%2F%3Fdevice_id%3Ddevice-1%23%2Fconversation%2Fabc');
+  it('preserves canonical device routes on contextgo hosts', () => {
+    expect(buildBrowserLoginRedirectPath('https://remote.contextgo.io/device/device-1#/conversation/abc')).toBe(
+      '/login?next=%2Fdevice%2Fdevice-1%23%2Fconversation%2Fabc'
+    );
   });
 
   it('keeps plain login redirects for non-contextgo hosts', () => {
@@ -14,5 +19,47 @@ describe('buildBrowserLoginRedirectPath', () => {
 
   it('avoids nesting another next parameter when already on the login shell', () => {
     expect(buildBrowserLoginRedirectPath('https://remote.contextgo.io/login?next=%2Fremote%2Fdevices')).toBe('/login');
+  });
+});
+
+describe('extractRemoteDeviceId', () => {
+  it('reads device id from canonical device paths', () => {
+    expect(extractRemoteDeviceId('https://remote.contextgo.io/device/device-1#/conversation/abc')).toBe('device-1');
+  });
+
+  it('returns null when the current URL is not a device session page', () => {
+    expect(extractRemoteDeviceId('https://remote.contextgo.io/remote/devices')).toBeNull();
+  });
+});
+
+describe('resolveHostedRemoteDisconnectRedirectPath', () => {
+  const currentHref = 'https://remote.contextgo.io/device/device-1#/conversation/abc';
+
+  it('redirects auth failures back through the login shell', () => {
+    expect(resolveHostedRemoteDisconnectRedirectPath(currentHref, 4401, 'Authentication required')).toBe(
+      '/login?next=%2Fdevice%2Fdevice-1%23%2Fconversation%2Fabc'
+    );
+  });
+
+  it('maps missing or offline devices back to the device list with a notice', () => {
+    expect(resolveHostedRemoteDisconnectRedirectPath(currentHref, 4404, 'Device not found')).toBe(
+      buildHostedRemoteNoticeRedirectPath('device_not_found')
+    );
+    expect(resolveHostedRemoteDisconnectRedirectPath(currentHref, 4404, 'Device offline')).toBe(
+      buildHostedRemoteNoticeRedirectPath('device_offline')
+    );
+  });
+
+  it('maps session replacement and restart style closes to list notices', () => {
+    expect(resolveHostedRemoteDisconnectRedirectPath(currentHref, 1012, 'Remote session replaced')).toBe(
+      buildHostedRemoteNoticeRedirectPath('session_replaced')
+    );
+    expect(resolveHostedRemoteDisconnectRedirectPath(currentHref, 1012, 'service restart')).toBe(
+      buildHostedRemoteNoticeRedirectPath('service_restarted')
+    );
+  });
+
+  it('returns null for close codes that should continue reconnecting', () => {
+    expect(resolveHostedRemoteDisconnectRedirectPath(currentHref, 1006, '')).toBeNull();
   });
 });

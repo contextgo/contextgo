@@ -7,7 +7,11 @@
 import { bridge, logger } from '@office-ai/platform';
 import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import type { ElectronBridgeAPI } from '@/common/types/electron';
-import { buildBrowserLoginRedirectPath } from './browserAuthRedirect';
+import {
+  buildBrowserLoginRedirectPath,
+  extractRemoteDeviceId,
+  resolveHostedRemoteDisconnectRedirectPath,
+} from './browserAuthRedirect';
 
 interface CustomWindow extends Window {
   electronAPI?: ElectronBridgeAPI;
@@ -45,7 +49,7 @@ if (win.electronAPI) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const defaultHost = `${window.location.hostname}:${WEBUI_DEFAULT_PORT}`;
   const socketParams = new URLSearchParams();
-  const remoteDeviceId = new URLSearchParams(window.location.search).get('device_id');
+  const remoteDeviceId = extractRemoteDeviceId(window.location.href);
   if (remoteDeviceId) {
     socketParams.set('device_id', remoteDeviceId);
   }
@@ -97,7 +101,7 @@ if (win.electronAPI) {
 
     try {
       socket = new WebSocket(socketUrl);
-    } catch (error) {
+    } catch {
       scheduleReconnect();
       return;
     }
@@ -164,13 +168,30 @@ if (win.electronAPI) {
         }
 
         emitterRef.emit(payload.name, payload.data);
-      } catch (error) {
+      } catch {
         // 忽略格式错误的消息 / Ignore malformed payloads
       }
     });
 
     socket.addEventListener('close', (event: CloseEvent) => {
       socket = null;
+
+      const hostedRemoteRedirectPath = resolveHostedRemoteDisconnectRedirectPath(
+        window.location.href,
+        event.code,
+        event.reason
+      );
+      if (hostedRemoteRedirectPath) {
+        shouldReconnect = false;
+        if (reconnectTimer !== null) {
+          window.clearTimeout(reconnectTimer);
+          reconnectTimer = null;
+        }
+        setTimeout(() => {
+          window.location.href = hostedRemoteRedirectPath;
+        }, event.code === 4401 ? 500 : 300);
+        return;
+      }
 
       // Detect auth failure from close code (server sends 1008 for token issues).
       // This acts as a fallback in case the auth-expired message was not received
@@ -225,7 +246,7 @@ if (win.electronAPI) {
         try {
           socket.send(JSON.stringify(message));
           return;
-        } catch (error) {
+        } catch {
           scheduleReconnect();
         }
       }
