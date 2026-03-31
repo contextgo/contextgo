@@ -5,16 +5,60 @@ import classNames from 'classnames';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import ClipboardConnectorPanel from './panels/ClipboardConnectorPanel';
+import FeishuConnectorPanel from './panels/FeishuConnectorPanel';
+import GoogleDriveConnectorPanel from './panels/GoogleDriveConnectorPanel';
+import GoogleDocsConnectorPanel from './panels/GoogleDocsConnectorPanel';
+import GoogleWorkspaceFamilyPanel from './panels/GoogleWorkspaceFamilyPanel';
 import ConnectorLogo from './ConnectorLogo';
 import { CONNECTOR_CATEGORY_ORDER, CONNECTOR_MAP, CONNECTORS } from './connectors';
 import styles from './ConnectorsPage.module.css';
-import type { ConnectorAuthType, ConnectorCategory, ConnectorResource, ConnectorStage } from './types';
+import type {
+  ConnectorAuthType,
+  ConnectorCategory,
+  ConnectorExperienceTab,
+  ConnectorResource,
+  ConnectorStage,
+  ConnectorSupportSource,
+} from './types';
 
 const getResourceKey = (resource: ConnectorResource): string => `settings.connectors.resourceTypes.${resource}`;
 const getAuthKey = (authType: ConnectorAuthType): string => `settings.connectors.authTypes.${authType}`;
 const getCategoryKey = (category: ConnectorCategory): string => `settings.connectors.categories.${category}`;
 const getStageKey = (stage: ConnectorStage): string =>
   stage === 'priority' ? 'settings.connectors.stagePriority' : 'settings.connectors.stagePlanned';
+const getImplementationOwnerLabel = (owner?: string): string => {
+  switch (owner) {
+    case 'official':
+      return 'Official Support';
+    case 'contextgo':
+      return 'ContextGo Native';
+    case 'connector-repo':
+      return 'Connector Repository';
+    case 'hybrid':
+      return 'Hybrid Support';
+    default:
+      return 'Connector Support';
+  }
+};
+
+const getSupportKindLabel = (kind: ConnectorSupportSource['kind']): string => {
+  switch (kind) {
+    case 'official-docs':
+      return 'Official Docs';
+    case 'official-runtime':
+      return 'Official Runtime';
+    case 'official-sdk':
+      return 'Official SDK';
+    case 'contextgo-native':
+      return 'ContextGo';
+    case 'connector-repo':
+      return 'Connector Repo';
+    default:
+      return 'Support';
+  }
+};
+
 const createInitialCollapsedState = (): Record<ConnectorCategory, boolean> =>
   Object.fromEntries(CONNECTOR_CATEGORY_ORDER.map((category) => [category, false])) as Record<
     ConnectorCategory,
@@ -27,6 +71,7 @@ const ConnectorsPage: React.FC = () => {
   const { t } = useTranslation();
   const [collapsedCategories, setCollapsedCategories] =
     useState<Record<ConnectorCategory, boolean>>(createInitialCollapsedState);
+  const [activeTab, setActiveTab] = useState<ConnectorExperienceTab>('overview');
 
   const groupedConnectors = useMemo(
     () =>
@@ -58,6 +103,7 @@ const ConnectorsPage: React.FC = () => {
       return;
     }
 
+    setActiveTab('overview');
     setCollapsedCategories((previous) => {
       if (!previous[resolvedConnector.category]) {
         return previous;
@@ -72,6 +118,14 @@ const ConnectorsPage: React.FC = () => {
   if (!resolvedConnector) {
     return null;
   }
+
+  const connectorSummary =
+    resolvedConnector.summary ||
+    t('settings.connectors.summaryTemplate', {
+      name: resolvedConnector.name,
+      category: t(getCategoryKey(resolvedConnector.category)),
+    });
+  const supportSources = resolvedConnector.supportSources || [];
 
   return (
     <div className={styles.page}>
@@ -155,12 +209,7 @@ const ConnectorsPage: React.FC = () => {
             <ConnectorLogo connector={resolvedConnector} size='large' />
             <div className={styles.detailHeroMeta}>
               <h2 className={styles.detailTitle}>{resolvedConnector.name}</h2>
-              <p className={styles.detailSubtitle}>
-                {t('settings.connectors.summaryTemplate', {
-                  name: resolvedConnector.name,
-                  category: t(getCategoryKey(resolvedConnector.category)),
-                })}
-              </p>
+              <p className={styles.detailSubtitle}>{connectorSummary}</p>
               <div className={styles.detailBadges}>
                 <Tag color='arcoblue'>{t(getStageKey(resolvedConnector.stage))}</Tag>
                 <Tag color='gray'>{t(getAuthKey(resolvedConnector.authType))}</Tag>
@@ -169,41 +218,103 @@ const ConnectorsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className={styles.detailGrid}>
-            <div className={styles.detailCard}>
-              <h3 className={styles.detailCardTitle}>{t('settings.connectors.resources')}</h3>
-              <div className={styles.chipWrap}>
-                {resolvedConnector.resources.map((resource) => (
-                  <Tag key={resource} size='small' color='arcoblue'>
-                    {t(getResourceKey(resource))}
-                  </Tag>
-                ))}
+          <div className={styles.detailTabs} role='tablist' aria-label='Connector detail tabs'>
+            <Button
+              type={activeTab === 'overview' ? 'primary' : 'outline'}
+              className={styles.detailTabButton}
+              onClick={() => setActiveTab('overview')}
+            >
+              Overview
+            </Button>
+            <Button
+              type={activeTab === 'configure' ? 'primary' : 'outline'}
+              className={styles.detailTabButton}
+              onClick={() => setActiveTab('configure')}
+            >
+              Configure
+            </Button>
+          </div>
+
+          {activeTab === 'overview' ? (
+            <div className={styles.detailGrid}>
+              <div className={styles.detailCard}>
+                <h3 className={styles.detailCardTitle}>{t('settings.connectors.resources')}</h3>
+                <div className={styles.chipWrap}>
+                  {resolvedConnector.resources.map((resource) => (
+                    <Tag key={resource} size='small' color='arcoblue'>
+                      {t(getResourceKey(resource))}
+                    </Tag>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.detailCard}>
+                <h3 className={styles.detailCardTitle}>{t('settings.connectors.auth')}</h3>
+                <div className={styles.detailCardText}>{t(getAuthKey(resolvedConnector.authType))}</div>
+              </div>
+
+              <div className={styles.detailCard}>
+                <h3 className={styles.detailCardTitle}>{t('settings.connectors.officialSite')}</h3>
+                <div className={styles.detailCardText}>{resolvedConnector.websiteUrl}</div>
+              </div>
+
+              <div className={styles.detailCard}>
+                <h3 className={styles.detailCardTitle}>{t('common.website')}</h3>
+                <Button
+                  type='outline'
+                  icon={<Send theme='outline' size='14' />}
+                  onClick={() => {
+                    void ipcBridge.shell.openExternal.invoke(resolvedConnector.websiteUrl);
+                  }}
+                >
+                  {t('settings.connectors.openWebsite')}
+                </Button>
+              </div>
+
+              <div className={styles.detailCard}>
+                <h3 className={styles.detailCardTitle}>Implementation</h3>
+                <div className={styles.detailCardText}>
+                  {getImplementationOwnerLabel(resolvedConnector.implementationOwner)}
+                </div>
+              </div>
+
+              <div className={styles.detailCard}>
+                <h3 className={styles.detailCardTitle}>Support Sources</h3>
+                <div className={styles.supportSourceList}>
+                  {supportSources.length === 0 ? (
+                    <div className={styles.detailCardText}>No linked support sources yet.</div>
+                  ) : (
+                    supportSources.map((source) => (
+                      <button
+                        key={`${source.kind}-${source.url}`}
+                        type='button'
+                        className={styles.supportSourceItem}
+                        onClick={() => {
+                          void ipcBridge.shell.openExternal.invoke(source.url);
+                        }}
+                      >
+                        <div className={styles.supportSourceMetaRow}>
+                          <Tag size='small' color='arcoblue'>
+                            {getSupportKindLabel(source.kind)}
+                          </Tag>
+                          <span className={styles.supportSourceLabel}>{source.label}</span>
+                        </div>
+                        <div className={styles.detailCardText}>{source.description}</div>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
-
-            <div className={styles.detailCard}>
-              <h3 className={styles.detailCardTitle}>{t('settings.connectors.auth')}</h3>
-              <div className={styles.detailCardText}>{t(getAuthKey(resolvedConnector.authType))}</div>
-            </div>
-
-            <div className={styles.detailCard}>
-              <h3 className={styles.detailCardTitle}>{t('settings.connectors.officialSite')}</h3>
-              <div className={styles.detailCardText}>{resolvedConnector.websiteUrl}</div>
-            </div>
-
-            <div className={styles.detailCard}>
-              <h3 className={styles.detailCardTitle}>{t('common.website')}</h3>
-              <Button
-                type='outline'
-                icon={<Send theme='outline' size='14' />}
-                onClick={() => {
-                  void ipcBridge.shell.openExternal.invoke(resolvedConnector.websiteUrl);
-                }}
-              >
-                {t('settings.connectors.openWebsite')}
-              </Button>
-            </div>
-          </div>
+          ) : (
+            <>
+              <ClipboardConnectorPanel connectorId={resolvedConnector.id} />
+              <FeishuConnectorPanel connectorId={resolvedConnector.id} />
+              <GoogleDriveConnectorPanel connectorId={resolvedConnector.id} />
+              <GoogleDocsConnectorPanel connectorId={resolvedConnector.id} />
+              <GoogleWorkspaceFamilyPanel connectorId={resolvedConnector.id} />
+            </>
+          )}
 
           <div className={styles.footerNote}>
             <ConnectionPoint theme='outline' size='16' className='mr-8px inline-block align-text-bottom' />

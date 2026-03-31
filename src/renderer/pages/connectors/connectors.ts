@@ -1,5 +1,140 @@
-import type { ConnectorCategory, ConnectorDefinition } from './types';
+import type { ConnectorCategory, ConnectorDefinition, ConnectorSupportSource } from './types';
 import { CONNECTOR_LOCAL_LOGOS } from './localLogos';
+
+const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
+  'contextgo-clipboard': [
+    {
+      kind: 'contextgo-native',
+      label: 'ContextGo Managed Runtime',
+      url: 'https://contextgo.io',
+      description:
+        'Clipboard is productized inside ContextGo through a managed observer wrapper and local store/collect flow.',
+    },
+    {
+      kind: 'connector-repo',
+      label: 'Connector Repository',
+      url: 'https://github.com/contextgo/connector',
+      description:
+        'The sibling connector repository provides the upstream clipboard observer and activity-model reference implementation.',
+    },
+  ],
+  lark: [
+    {
+      kind: 'official-docs',
+      label: 'Feishu Open Platform',
+      url: 'https://open.feishu.cn/document/home/index',
+      description: 'Official developer documentation for Feishu/Lark app credentials, OAuth, and API scopes.',
+    },
+    {
+      kind: 'official-runtime',
+      label: 'lark-openapi-mcp',
+      url: 'https://github.com/larksuite/lark-openapi-mcp',
+      description: 'Official open-source runtime project used as the managed Feishu sidecar direction.',
+    },
+  ],
+  'google-drive': [
+    {
+      kind: 'official-docs',
+      label: 'Drive API Go Quickstart',
+      url: 'https://developers.google.com/workspace/drive/api/quickstart/go',
+      description: 'Official Google Drive API quickstart for Go, which defines the baseline OAuth and API flow.',
+    },
+    {
+      kind: 'official-sdk',
+      label: 'google-api-go-client',
+      url: 'https://github.com/googleapis/google-api-go-client',
+      description:
+        'Official Google APIs for Go client repository, which is the planned SDK base for the Drive sidecar.',
+    },
+    {
+      kind: 'contextgo-native',
+      label: 'ContextGo Go Stub',
+      url: 'https://contextgo.io',
+      description:
+        'ContextGo currently ships a managed Go sidecar stub contract before the full Drive OAuth/files.list workflow is implemented.',
+    },
+  ],
+  'google-docs': [
+    {
+      kind: 'official-docs',
+      label: 'Docs API Reference',
+      url: 'https://developers.google.com/workspace/docs/api/reference/rest',
+      description: 'Official Google Docs API reference for document structure and read operations.',
+    },
+    {
+      kind: 'official-sdk',
+      label: 'google-api-go-client',
+      url: 'https://github.com/googleapis/google-api-go-client',
+      description: 'Official Go client family that the Google Workspace sidecars build around.',
+    },
+    {
+      kind: 'contextgo-native',
+      label: 'ContextGo Google Workspace Sidecar',
+      url: 'https://contextgo.io',
+      description: 'ContextGo reuses the Google Workspace token cache and sidecar contract to mount Google Docs.',
+    },
+  ],
+  'google-sheets': [
+    {
+      kind: 'official-docs',
+      label: 'Sheets API Reference',
+      url: 'https://developers.google.com/workspace/sheets/api/reference/rest',
+      description: 'Official Google Sheets API reference and OAuth guidance.',
+    },
+    {
+      kind: 'official-sdk',
+      label: 'google-api-go-client',
+      url: 'https://github.com/googleapis/google-api-go-client',
+      description: 'Official Go client base reused by the Workspace sidecars.',
+    },
+    {
+      kind: 'contextgo-native',
+      label: 'ContextGo Workspace Sidecar',
+      url: 'https://contextgo.io',
+      description: 'ContextGo mounts Google Sheets on top of the shared Workspace token cache.',
+    },
+  ],
+  gmail: [
+    {
+      kind: 'official-docs',
+      label: 'Gmail API Reference',
+      url: 'https://developers.google.com/gmail/api/reference/rest',
+      description: 'Official Gmail API reference for labels and mailbox metadata.',
+    },
+    {
+      kind: 'official-sdk',
+      label: 'google-api-go-client',
+      url: 'https://github.com/googleapis/google-api-go-client',
+      description: 'Official Go client base reused by the Workspace sidecars.',
+    },
+    {
+      kind: 'contextgo-native',
+      label: 'ContextGo Workspace Sidecar',
+      url: 'https://contextgo.io',
+      description: 'ContextGo mounts Gmail on top of the shared Workspace token cache.',
+    },
+  ],
+  'google-calendar': [
+    {
+      kind: 'official-docs',
+      label: 'Calendar API Reference',
+      url: 'https://developers.google.com/workspace/calendar/api/v3/reference',
+      description: 'Official Google Calendar API reference for calendar list and event metadata.',
+    },
+    {
+      kind: 'official-sdk',
+      label: 'google-api-go-client',
+      url: 'https://github.com/googleapis/google-api-go-client',
+      description: 'Official Go client base reused by the Workspace sidecars.',
+    },
+    {
+      kind: 'contextgo-native',
+      label: 'ContextGo Workspace Sidecar',
+      url: 'https://contextgo.io',
+      description: 'ContextGo mounts Google Calendar on top of the shared Workspace token cache.',
+    },
+  ],
+};
 
 export const CONNECTOR_CATEGORY_ORDER: ConnectorCategory[] = [
   'contextgo',
@@ -23,6 +158,10 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
     resources: ['clipboard'],
     authType: 'native',
     stage: 'priority',
+    summary:
+      'Space-owned clipboard activity connector with a managed observer, local event store, and collect workflow.',
+    implementationOwner: 'hybrid',
+    supportSources: CONNECTOR_SUPPORT_SOURCES['contextgo-clipboard'],
   },
   {
     id: 'contextgo-browser-extension',
@@ -73,6 +212,10 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
     resources: ['files', 'docs', 'sheets'],
     authType: 'oauth',
     stage: 'priority',
+    summary:
+      'Managed Google Drive connector built around the official Drive API Go route and a ContextGo Go sidecar contract.',
+    implementationOwner: 'hybrid',
+    supportSources: CONNECTOR_SUPPORT_SOURCES['google-drive'],
   },
   {
     id: 'google-docs',
@@ -83,6 +226,10 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
     resources: ['docs'],
     authType: 'oauth',
     stage: 'priority',
+    summary:
+      'Managed Google Docs connector that reuses Google Workspace OAuth and a Go sidecar to list and sync Docs documents.',
+    implementationOwner: 'hybrid',
+    supportSources: CONNECTOR_SUPPORT_SOURCES['google-docs'],
   },
   {
     id: 'google-sheets',
@@ -93,6 +240,9 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
     resources: ['sheets', 'docs'],
     authType: 'oauth',
     stage: 'priority',
+    summary: 'Managed Google Sheets connector that reuses Workspace OAuth and a shared Go sidecar contract.',
+    implementationOwner: 'hybrid',
+    supportSources: CONNECTOR_SUPPORT_SOURCES['google-sheets'],
   },
   {
     id: 'google-calendar',
@@ -103,6 +253,9 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
     resources: ['calendar'],
     authType: 'oauth',
     stage: 'priority',
+    summary: 'Managed Google Calendar connector that reuses Workspace OAuth and a shared Go sidecar contract.',
+    implementationOwner: 'hybrid',
+    supportSources: CONNECTOR_SUPPORT_SOURCES['google-calendar'],
   },
   {
     id: 'gmail',
@@ -113,6 +266,9 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
     resources: ['email'],
     authType: 'oauth',
     stage: 'priority',
+    summary: 'Managed Gmail connector that reuses Workspace OAuth and a shared Go sidecar contract.',
+    implementationOwner: 'hybrid',
+    supportSources: CONNECTOR_SUPPORT_SOURCES.gmail,
   },
   {
     id: 'google-keep',
@@ -163,6 +319,10 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
     resources: ['chat', 'docs', 'calendar', 'files'],
     authType: 'oauth',
     stage: 'priority',
+    summary:
+      'Managed Feishu OpenAPI connector that uses official Open Platform docs and the official lark-openapi-mcp runtime path.',
+    implementationOwner: 'official',
+    supportSources: CONNECTOR_SUPPORT_SOURCES.lark,
   },
   {
     id: 'dingtalk-bot',

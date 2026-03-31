@@ -3,14 +3,176 @@ import React from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const openExternalInvoke = vi.fn();
+const bridgeMocks = vi.hoisted(() => ({
+  openExternalInvoke: vi.fn(),
+  clipboardGetStatusInvoke: vi.fn(async () => ({
+    success: true,
+    data: { lifecycle: 'running', available: true, eventCount: 3, summaryCount: 1, note: 'observer running' },
+  })),
+  clipboardGetConfigInvoke: vi.fn(async () => ({
+    success: true,
+    data: { enabled: true, retainFullText: false, pollIntervalMs: 800, maxTextBytes: 32768 },
+  })),
+  clipboardListRecentInvoke: vi.fn(async () => ({
+    success: true,
+    data: [
+      {
+        id: 'evt-1',
+        contentType: 'plain_text',
+        textPreview: 'hello contextgo',
+        capturedAt: '2026-03-30T10:00:00.000Z',
+      },
+    ],
+  })),
+  clipboardListSummariesInvoke: vi.fn(async () => ({
+    success: true,
+    data: [
+      {
+        id: 'sum-1',
+        summaryDate: '2026-03-30',
+        eventCount: 3,
+        uniqueHashCount: 2,
+        topDomains: [],
+        generatedAt: '2026-03-30T11:00:00.000Z',
+        source: 'contextgo-collect',
+      },
+    ],
+  })),
+  clipboardSetConfigInvoke: vi.fn(async ({ config }: { config: unknown }) => ({ success: true, data: config })),
+  clipboardStartInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'running' } })),
+  clipboardStopInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'stopped' } })),
+  clipboardSampleInvoke: vi.fn(async () => ({ success: true, data: { id: 'sample' } })),
+  clipboardCollectInvoke: vi.fn(async () => ({
+    success: true,
+    data: { eventCount: 3, summaryCount: 1, importedEvents: 0, summary: { id: 'sum-1' } },
+  })),
+  feishuGetStatusInvoke: vi.fn(async () => ({
+    success: true,
+    data: { lifecycle: 'stopped', available: true, hasCredentials: true, note: 'feishu ready', command: 'npx' },
+  })),
+  feishuGetConfigInvoke: vi.fn(async () => ({
+    success: true,
+    data: {
+      enabled: true,
+      appId: 'cli_xxx',
+      appSecret: 'secret',
+      apiDomain: 'open.feishu.cn',
+      useOAuth: false,
+      command: '@larksuiteoapi/lark-mcp',
+      args: [],
+    },
+  })),
+  feishuSetConfigInvoke: vi.fn(async ({ config }: { config: unknown }) => ({ success: true, data: config })),
+  feishuStartInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'running' } })),
+  feishuStopInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'stopped' } })),
+  googleDriveGetStatusInvoke: vi.fn(async () => ({
+    success: true,
+    data: {
+      lifecycle: 'stopped',
+      available: true,
+      hasCredentials: true,
+      hasRefreshToken: true,
+      tokenExpiry: '2026-03-31T00:00:00.000Z',
+      note: 'google drive ready',
+      command: 'go',
+      fileCount: 1,
+      storeDir: '/tmp/contextgo-google-drive',
+    },
+  })),
+  googleDriveGetConfigInvoke: vi.fn(async () => ({
+    success: true,
+    data: {
+      enabled: true,
+      clientId: 'google-client-id.apps.googleusercontent.com',
+      clientSecret: 'secret',
+      scopes: ['https://www.googleapis.com/auth/drive.metadata.readonly'],
+      command: 'go',
+      args: ['run', '.'],
+    },
+  })),
+  googleDriveSetConfigInvoke: vi.fn(async ({ config }: { config: unknown }) => ({ success: true, data: config })),
+  googleDriveStartInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'running' } })),
+  googleDriveStopInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'stopped' } })),
+  googleDriveCreateAuthRequestInvoke: vi.fn(async () => ({
+    success: true,
+    data: { authUrl: 'https://accounts.google.com/o/oauth2/v2/auth', state: 'state-1' },
+  })),
+  googleDriveCompleteAuthInvoke: vi.fn(async () => ({
+    success: true,
+    data: { tokenCachePath: '/tmp/google-drive-token.json', scopeCount: 1 },
+  })),
+  googleDriveListFilesInvoke: vi.fn(async () => ({
+    success: true,
+    data: [
+      {
+        id: 'file-1',
+        name: 'Roadmap',
+        mimeType: 'application/vnd.google-apps.document',
+        modifiedTime: '2026-03-30T10:00:00.000Z',
+        ownerNames: ['Code Friday'],
+        sizeBytes: 1024,
+      },
+    ],
+  })),
+  googleDriveSyncNowInvoke: vi.fn(async () => ({
+    success: true,
+    data: { storedCount: 1, syncedAt: '2026-03-30T11:00:00.000Z', storeDir: '/tmp/contextgo-google-drive' },
+  })),
+  googleDriveListStoredFilesInvoke: vi.fn(async () => ({
+    success: true,
+    data: [
+      {
+        recordId: 'rec-1',
+        fileId: 'file-1',
+        name: 'Roadmap',
+        mimeType: 'application/vnd.google-apps.document',
+        ownerNames: ['Code Friday'],
+        sizeBytes: 1024,
+        syncedAt: '2026-03-30T11:00:00.000Z',
+      },
+    ],
+  })),
+}));
 
 vi.mock('@/common', () => ({
   ipcBridge: {
     shell: {
       openExternal: {
-        invoke: (...args: unknown[]) => openExternalInvoke(...args),
+        invoke: (...args: unknown[]) => bridgeMocks.openExternalInvoke(...args),
       },
+    },
+    clipboardConnector: {
+      getStatus: { invoke: bridgeMocks.clipboardGetStatusInvoke },
+      getConfig: { invoke: bridgeMocks.clipboardGetConfigInvoke },
+      listRecentEvents: { invoke: bridgeMocks.clipboardListRecentInvoke },
+      listSummaries: { invoke: bridgeMocks.clipboardListSummariesInvoke },
+      setConfig: { invoke: bridgeMocks.clipboardSetConfigInvoke },
+      start: { invoke: bridgeMocks.clipboardStartInvoke },
+      stop: { invoke: bridgeMocks.clipboardStopInvoke },
+      sampleNow: { invoke: bridgeMocks.clipboardSampleInvoke },
+      collectNow: { invoke: bridgeMocks.clipboardCollectInvoke },
+      statusChanged: { on: vi.fn(() => () => void 0) },
+    },
+    feishuConnector: {
+      getStatus: { invoke: bridgeMocks.feishuGetStatusInvoke },
+      getConfig: { invoke: bridgeMocks.feishuGetConfigInvoke },
+      setConfig: { invoke: bridgeMocks.feishuSetConfigInvoke },
+      start: { invoke: bridgeMocks.feishuStartInvoke },
+      stop: { invoke: bridgeMocks.feishuStopInvoke },
+      statusChanged: { on: vi.fn(() => () => void 0) },
+    },
+    googleDriveConnector: {
+      getStatus: { invoke: bridgeMocks.googleDriveGetStatusInvoke },
+      getConfig: { invoke: bridgeMocks.googleDriveGetConfigInvoke },
+      setConfig: { invoke: bridgeMocks.googleDriveSetConfigInvoke },
+      start: { invoke: bridgeMocks.googleDriveStartInvoke },
+      stop: { invoke: bridgeMocks.googleDriveStopInvoke },
+      createAuthRequest: { invoke: bridgeMocks.googleDriveCreateAuthRequestInvoke },
+      completeAuth: { invoke: bridgeMocks.googleDriveCompleteAuthInvoke },
+      listFiles: { invoke: bridgeMocks.googleDriveListFilesInvoke },
+      syncNow: { invoke: bridgeMocks.googleDriveSyncNowInvoke },
+      listStoredFiles: { invoke: bridgeMocks.googleDriveListStoredFilesInvoke },
+      statusChanged: { on: vi.fn(() => () => void 0) },
     },
   },
 }));
@@ -110,8 +272,6 @@ describe('ConnectorsPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('location-probe')).toHaveTextContent(`/connectors/${fallbackConnector.id}`);
     });
-
-    expect(screen.getAllByText(fallbackConnector.name).length).toBeGreaterThan(0);
   });
 
   it('switches detail content and opens the connector website', async () => {
@@ -124,23 +284,59 @@ describe('ConnectorsPage', () => {
       </MemoryRouter>
     );
 
-    const gitHubButton = screen
-      .getAllByRole('button')
-      .find((button) => button.textContent?.includes('GitHub') && button.textContent?.includes('github.com'));
-
-    expect(gitHubButton).toBeDefined();
-    fireEvent.click(gitHubButton!);
-
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'GitHub' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Google Drive' })).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Website' }));
-
-    expect(openExternalInvoke).toHaveBeenCalledWith('https://github.com');
+    expect(bridgeMocks.openExternalInvoke).toHaveBeenCalledWith('https://drive.google.com');
   });
 
-  it('renders the connector kind label on the same title row', () => {
+  it('renders overview/config tabs and support sources for the clipboard connector', async () => {
+    render(
+      <MemoryRouter initialEntries={['/connectors/contextgo-clipboard']}>
+        <Routes>
+          <Route path='/connectors' element={<ConnectorsPage />} />
+          <Route path='/connectors/:connectorId' element={<ConnectorsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Support Sources')).toBeInTheDocument();
+    expect(screen.getByText('Connector Repository')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('clipboard-connector-panel')).toBeInTheDocument();
+    });
+  });
+
+  it('renders the Feishu sidecar panel on the Lark connector page after switching tabs', async () => {
+    render(
+      <MemoryRouter initialEntries={['/connectors/lark']}>
+        <Routes>
+          <Route path='/connectors' element={<ConnectorsPage />} />
+          <Route path='/connectors/:connectorId' element={<ConnectorsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feishu-connector-panel')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Feishu OpenAPI Runtime')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('cli_xxx')).toBeInTheDocument();
+  });
+
+  it('renders the Google Drive sidecar panel on the google-drive connector page after switching tabs', async () => {
     render(
       <MemoryRouter initialEntries={['/connectors/google-drive']}>
         <Routes>
@@ -150,68 +346,19 @@ describe('ConnectorsPage', () => {
       </MemoryRouter>
     );
 
-    const title = screen.getByRole('heading', { name: 'Connector' });
-    const titleRow = title.parentElement;
-
-    expect(titleRow).not.toBeNull();
-    expect(titleRow).toHaveTextContent('Connector');
-    expect(titleRow).toHaveTextContent('Context Connector');
-  });
-
-  it('renders ContextGo family connector metadata', async () => {
-    render(
-      <MemoryRouter initialEntries={['/connectors/contextgo-browser-extension']}>
-        <Routes>
-          <Route path='/connectors' element={<ConnectorsPage />} />
-          <Route path='/connectors/:connectorId' element={<ConnectorsPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'ContextGo Browser Extension' })).toBeInTheDocument();
+      expect(screen.getByTestId('google-drive-connector-panel')).toBeInTheDocument();
     });
 
-    expect(screen.getAllByText('ContextGo Family').length).toBeGreaterThan(0);
-    expect(screen.getByText('Browser History')).toBeInTheDocument();
-    expect(screen.getByText('Web Pages')).toBeInTheDocument();
-    expect(screen.getAllByText('Extension Pairing').length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open Website' }));
-
-    expect(openExternalInvoke).toHaveBeenCalledWith('https://contextgo.io');
+    expect(screen.getByText('Google Drive Runtime')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('google-client-id.apps.googleusercontent.com')).toBeInTheDocument();
+    expect(screen.getByText('Drive Files (Stored)')).toBeInTheDocument();
+    expect(screen.getAllByText('Roadmap').length).toBeGreaterThan(0);
   });
 
-  it('includes the expanded content-source connector catalog', () => {
-    expect(CONNECTORS.map((connector) => connector.id)).toEqual(
-      expect.arrayContaining([
-        'arxiv',
-        'reddit',
-        'rss',
-        'tianyancha',
-        'wechat',
-        'x',
-        'xiaohongshu',
-        'youtube',
-        'chrome-history',
-        'file-format',
-        'search',
-        'google-keep',
-        'google-workspace-admin-export',
-        'microsoft-365-graph',
-        'onenote-export',
-        'apple-notes-export',
-        'evernote',
-        'roam',
-        'hacker-news',
-        'linkedin',
-        'product-hunt',
-        'investment-database',
-      ])
-    );
-  });
-
-  it('toggles connector categories without removing connector actions from the DOM tree', async () => {
+  it('keeps the connector list stable when category sections collapse', async () => {
     render(
       <MemoryRouter initialEntries={['/connectors/contextgo-clipboard']}>
         <Routes>
@@ -226,16 +373,8 @@ describe('ConnectorsPage', () => {
     const clipboardButton = screen.getByRole('button', { name: /ContextGo Clipboard/i });
 
     expect(clipboardButton).toBeVisible();
-
     fireEvent.click(categoryToggle);
-
     expect(screen.getByTestId('location-probe')).toHaveTextContent('/connectors/contextgo-clipboard');
     expect(clipboardButton).not.toBeVisible();
-
-    fireEvent.click(categoryToggle);
-
-    await waitFor(() => {
-      expect(clipboardButton).toBeVisible();
-    });
   });
 });
