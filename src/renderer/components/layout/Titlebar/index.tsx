@@ -27,6 +27,7 @@ import CreateGroupModal from '@renderer/pages/conversation/platforms/group/Creat
 import { emitter } from '@renderer/utils/emitter';
 import { iconColors } from '@renderer/styles/colors';
 import './titlebar.css';
+import SpaceSwitcher from './SpaceSwitcher';
 
 interface TitlebarProps {
   workspaceAvailable: boolean;
@@ -165,14 +166,14 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       const path = `${location.pathname}${location.search}${location.hash}`;
       lastNonSettingsPathRef.current = path;
       try {
-        sessionStorage.setItem('contextgo:last-non-settings-path', path);
+        sessionStorage.setItem('aion:last-non-settings-path', path);
       } catch {
         // ignore
       }
       return;
     }
     try {
-      const stored = sessionStorage.getItem('contextgo:last-non-settings-path');
+      const stored = sessionStorage.getItem('aion:last-non-settings-path');
       if (stored) {
         lastNonSettingsPathRef.current = stored;
       }
@@ -344,6 +345,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
             {showDesktopToolbar && (
               <div ref={toolbarRef} className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
                 <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />
+                <SpaceSwitcher compact />
                 {showWorkspaceButton && (
                   <button
                     type='button'
@@ -451,6 +453,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
               </button>
             </Dropdown>
           )}
+          <SpaceSwitcher compact={layout?.isMobile} />
           {showWorkspaceButton && (
             <button
               type='button'

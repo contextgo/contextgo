@@ -1,15 +1,19 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import type { SpaceId, ThreadId, Timestamp } from './domain';
 
 export type ContextOperationType =
+  | 'thread.bound'
   | 'source.ingested'
   | 'document.snapshotted'
   | 'chunk.indexed'
+  | 'memory.candidate_created'
+  | 'memory.candidate_approved'
+  | 'memory.candidate_rejected'
   | 'memory.proposed'
   | 'memory.promoted'
   | 'memory.rejected'

@@ -9,12 +9,6 @@ const DEFAULT_PAGE_SIZE = 24;
 const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 const STATS_CACHE_TTL_MS = 5 * 60 * 1000;
 const MANIFEST_CACHE_TTL_MS = 10 * 60 * 1000;
-const INDUSTRY_CACHE_TTL_MS = 10 * 60 * 1000;
-const BUNDLE_CACHE_TTL_MS = 10 * 60 * 1000;
-
-const SKILL_MARKET_VIEWS = ['curated', 'full'] as const;
-
-export type SkillMarketView = (typeof SKILL_MARKET_VIEWS)[number];
 
 export type SkillMarketArchive = {
   source: string;
@@ -22,56 +16,30 @@ export type SkillMarketArchive = {
   label?: string;
 };
 
-export type SkillMarketTopIndustry = {
-  id: string;
-  label: string;
-  count: number;
-};
-
-export type SkillMarketTopCapability = {
-  label: string;
-  count: number;
-};
-
 type SkillMarketConfigPayload = {
   brandName?: string;
   siteUrl?: string;
   manifestUrl?: string;
   statsUrl?: string;
-  fullManifestUrl?: string;
-  fullStatsUrl?: string;
-  industryUrl?: string;
-  bundleUrl?: string;
   packageBaseUrls?: Record<string, string>;
   featuredCount?: number;
   pageSize?: number;
-  defaultView?: string;
 };
 
 type SkillMarketConfig = {
   brandName: string;
   siteUrl: string;
-  manifestUrls: Record<SkillMarketView, string>;
-  statsUrls: Record<SkillMarketView, string>;
-  industryUrl?: string;
-  bundleUrl?: string;
+  manifestUrl: string;
+  statsUrl: string;
   packageBaseUrls: Record<string, string>;
   featuredCount: number;
   pageSize: number;
-  defaultView: SkillMarketView;
 };
 
-export type SkillMarketStats = {
+type SkillMarketStats = {
   total: number;
   categories: string[];
   sources: Record<string, number>;
-  sourceTotal: number;
-  reducedCount: number;
-  reductionRatio: number;
-  clusterCount: number;
-  topIndustries: SkillMarketTopIndustry[];
-  topCapabilities: SkillMarketTopCapability[];
-  generatedAt?: string;
 };
 
 type SkillMarketManifestItem = {
@@ -83,10 +51,6 @@ type SkillMarketManifestItem = {
   description?: string;
   categories?: string[];
   tags?: string[];
-  themes?: string[];
-  industries?: string[];
-  primaryCapability?: string;
-  selectionReason?: string;
   sources?: string[];
   homepage?: string;
   readmeUrl?: string;
@@ -94,43 +58,10 @@ type SkillMarketManifestItem = {
   archives?: SkillMarketArchive[];
   metrics?: Record<string, number>;
   popularity?: number;
-  qualityScore?: number;
 };
 
 type SkillMarketManifest = {
   items: SkillMarketManifestItem[];
-};
-
-type SkillMarketIndustryPayload = {
-  id?: string;
-  label?: string;
-  summary?: string;
-  problems?: string[];
-  useCases?: string[];
-  outcomes?: string[];
-  workflow?: string[];
-  count?: number;
-  topThemes?: string[];
-  bundleIds?: string[];
-  recommendedSkillIds?: string[];
-};
-
-type SkillMarketBundleStepPayload = {
-  label?: string;
-  themes?: string[];
-  skillIds?: string[];
-};
-
-type SkillMarketBundlePayload = {
-  id?: string;
-  title?: string;
-  summary?: string;
-  industries?: string[];
-  forTeams?: string;
-  deliverables?: string[];
-  valuePoints?: string[];
-  steps?: SkillMarketBundleStepPayload[];
-  skillIds?: string[];
 };
 
 export type SkillMarketSearchItem = {
@@ -142,50 +73,12 @@ export type SkillMarketSearchItem = {
   description: string;
   categories: string[];
   tags: string[];
-  themes: string[];
-  industries: string[];
-  primaryCapability?: string;
-  selectionReason?: string;
   homepage?: string;
   readmeUrl?: string;
   archives: SkillMarketArchive[];
   popularity: number;
-  qualityScore: number;
   installs: number;
   stars: number;
-};
-
-export type SkillMarketIndustry = {
-  id: string;
-  label: string;
-  summary: string;
-  problems: string[];
-  useCases: string[];
-  outcomes: string[];
-  workflow: string[];
-  count: number;
-  topThemes: string[];
-  bundleIds: string[];
-  recommendedSkills: SkillMarketSearchItem[];
-};
-
-export type SkillMarketBundleStep = {
-  label: string;
-  themes: string[];
-  skillIds: string[];
-  skills: SkillMarketSearchItem[];
-};
-
-export type SkillMarketBundle = {
-  id: string;
-  title: string;
-  summary: string;
-  industries: string[];
-  forTeams: string;
-  deliverables: string[];
-  valuePoints: string[];
-  steps: SkillMarketBundleStep[];
-  skills: SkillMarketSearchItem[];
 };
 
 export type SkillMarketSearchParams = {
@@ -193,14 +86,9 @@ export type SkillMarketSearchParams = {
   limit?: number;
   offset?: number;
   forceRefresh?: boolean;
-  view?: SkillMarketView;
-  industryId?: string;
 };
 
 export type SkillMarketSearchResult = {
-  brandName: string;
-  view: SkillMarketView;
-  defaultView: SkillMarketView;
   items: SkillMarketSearchItem[];
   total: number;
   totalAvailable: number;
@@ -209,9 +97,6 @@ export type SkillMarketSearchResult = {
   featuredCount: number;
   categories: string[];
   sources: Record<string, number>;
-  stats: SkillMarketStats;
-  industryIndex: SkillMarketIndustry[];
-  bundles: SkillMarketBundle[];
 };
 
 export type SkillMarketInstallParams = {
@@ -278,17 +163,9 @@ const normalizeMetrics = (value: unknown): Record<string, number> => {
   return Object.fromEntries(Object.entries(value).map(([key, rawValue]) => [key, normalizeNumber(rawValue)]));
 };
 
-const normalizeView = (value: unknown, fallback: SkillMarketView = 'curated'): SkillMarketView =>
-  value === 'full' ? 'full' : value === 'curated' ? 'curated' : fallback;
-
 const tokenizeQuery = (query: string): string[] => query.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
 const resolveUrl = (value: string | undefined, base: string): string => new URL(value || '.', base).toString();
-
-const resolveOptionalUrl = (value: string | undefined, base: string): string | undefined => {
-  const normalized = normalizeString(value);
-  return normalized ? resolveUrl(normalized, base) : undefined;
-};
 
 const getInstallCount = (metrics: Record<string, number>): number =>
   (metrics.skillhub_installs || 0) + (metrics.openclawmp_installs || 0);
@@ -308,10 +185,6 @@ const normalizeSearchItem = (item: SkillMarketManifestItem): SkillMarketSearchIt
     description: normalizeString(item.description),
     categories: normalizeStringArray(item.categories),
     tags: normalizeStringArray(item.tags),
-    themes: normalizeStringArray(item.themes),
-    industries: normalizeStringArray(item.industries),
-    primaryCapability: normalizeString(item.primaryCapability) || undefined,
-    selectionReason: normalizeString(item.selectionReason) || undefined,
     homepage: normalizeString(item.homepage) || undefined,
     readmeUrl: normalizeString(item.readmeUrl) || undefined,
     archives: Array.isArray(item.archives)
@@ -324,7 +197,6 @@ const normalizeSearchItem = (item: SkillMarketManifestItem): SkillMarketSearchIt
           .filter((archive) => archive.source && archive.relativePath)
       : [],
     popularity: normalizeNumber(item.popularity),
-    qualityScore: Math.max(0, normalizeNumber(item.qualityScore)),
     installs: getInstallCount(metrics),
     stars: getStarCount(metrics),
   };
@@ -332,7 +204,7 @@ const normalizeSearchItem = (item: SkillMarketManifestItem): SkillMarketSearchIt
 
 const scoreItem = (item: SkillMarketSearchItem, tokens: string[]): number => {
   if (tokens.length === 0) {
-    return item.qualityScore * 1000 + item.popularity * 10 + item.installs * 50 + item.stars * 100;
+    return item.popularity * 10 + item.installs * 50 + item.stars * 100;
   }
 
   const haystacks = {
@@ -340,11 +212,8 @@ const scoreItem = (item: SkillMarketSearchItem, tokens: string[]): number => {
     displayName: item.displayName.toLowerCase(),
     author: item.author.toLowerCase(),
     description: item.description.toLowerCase(),
-    capability: (item.primaryCapability || '').toLowerCase(),
     categories: item.categories.map((category) => category.toLowerCase()),
     tags: item.tags.map((tag) => tag.toLowerCase()),
-    themes: item.themes.map((theme) => theme.toLowerCase()),
-    industries: item.industries.map((industry) => industry.toLowerCase()),
   };
 
   let score = 0;
@@ -368,27 +237,12 @@ const scoreItem = (item: SkillMarketSearchItem, tokens: string[]): number => {
       tokenMatched = true;
     }
 
-    if (haystacks.capability.includes(token)) {
-      score += 800;
-      tokenMatched = true;
-    }
-
     if (haystacks.tags.some((tag) => tag.includes(token))) {
       score += 700;
       tokenMatched = true;
     }
 
     if (haystacks.categories.some((category) => category.includes(token))) {
-      score += 600;
-      tokenMatched = true;
-    }
-
-    if (haystacks.themes.some((theme) => theme.includes(token))) {
-      score += 600;
-      tokenMatched = true;
-    }
-
-    if (haystacks.industries.some((industry) => industry.includes(token))) {
       score += 600;
       tokenMatched = true;
     }
@@ -403,7 +257,7 @@ const scoreItem = (item: SkillMarketSearchItem, tokens: string[]): number => {
     }
   }
 
-  return score + item.qualityScore * 20 + item.popularity / 1000 + item.installs / 10 + item.stars * 5;
+  return score + item.popularity / 1000 + item.installs / 10 + item.stars * 5;
 };
 
 const sanitizeZipEntryPath = (entryName: string): string => {
@@ -432,77 +286,14 @@ const parseSkillFrontMatter = (content: string): { name: string; description: st
   };
 };
 
-const normalizeTopIndustries = (value: unknown): SkillMarketTopIndustry[] => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((entry) => ({
-      id: normalizeString((entry as SkillMarketTopIndustry).id),
-      label: normalizeString((entry as SkillMarketTopIndustry).label),
-      count: Math.max(0, normalizeNumber((entry as SkillMarketTopIndustry).count)),
-    }))
-    .filter((entry) => entry.id && entry.label);
-};
-
-const normalizeTopCapabilities = (value: unknown): SkillMarketTopCapability[] => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((entry) => ({
-      label: normalizeString((entry as SkillMarketTopCapability).label),
-      count: Math.max(0, normalizeNumber((entry as SkillMarketTopCapability).count)),
-    }))
-    .filter((entry) => entry.label);
-};
-
-const getCategoriesFromItems = (items: SkillMarketSearchItem[]): string[] =>
-  Array.from(new Set(items.flatMap((item) => item.categories).filter(Boolean))).toSorted((left, right) =>
-    left.localeCompare(right)
-  );
-
-const resolveReferencedSkills = (
-  skillIds: string[] | undefined,
-  itemMap: Map<string, SkillMarketSearchItem>
-): SkillMarketSearchItem[] => {
-  if (!skillIds) {
-    return [];
-  }
-
-  const resolvedItems: SkillMarketSearchItem[] = [];
-  const seen = new Set<string>();
-
-  for (const skillId of skillIds) {
-    const normalizedId = normalizeString(skillId);
-    if (!normalizedId || seen.has(normalizedId)) {
-      continue;
-    }
-
-    const item = itemMap.get(normalizedId);
-    if (!item) {
-      continue;
-    }
-
-    seen.add(normalizedId);
-    resolvedItems.push(item);
-  }
-
-  return resolvedItems;
-};
-
 export class SkillMarketService {
   private readonly fetchImpl: typeof fetch;
   private readonly configUrl: string;
   private readonly skillsDir: string;
 
   private configCache: CacheEntry<SkillMarketConfig> | null = null;
-  private statsCache: Partial<Record<SkillMarketView, CacheEntry<SkillMarketStats>>> = {};
-  private manifestCache: Partial<Record<SkillMarketView, CacheEntry<SkillMarketManifest>>> = {};
-  private industryCache: CacheEntry<SkillMarketIndustryPayload[]> | null = null;
-  private bundleCache: CacheEntry<SkillMarketBundlePayload[]> | null = null;
+  private statsCache: CacheEntry<SkillMarketStats> | null = null;
+  private manifestCache: CacheEntry<SkillMarketManifest> | null = null;
 
   constructor(options: SkillMarketServiceOptions = {}) {
     this.fetchImpl = options.fetchImpl || fetch;
@@ -513,35 +304,20 @@ export class SkillMarketService {
   async searchSkills(params: SkillMarketSearchParams = {}): Promise<SkillMarketSearchResult> {
     const limit = Math.max(1, Math.min(params.limit || DEFAULT_PAGE_SIZE, 50));
     const offset = Math.max(0, params.offset || 0);
-    const config = await this.getConfig(Boolean(params.forceRefresh));
-    const view = normalizeView(params.view, config.defaultView);
-    const forceRefresh = Boolean(params.forceRefresh);
-
-    const [stats, manifest, rawIndustries, rawBundles] = await Promise.all([
-      this.getStats(view, forceRefresh),
-      this.getManifest(view, forceRefresh),
-      this.getIndustryIndex(forceRefresh),
-      this.getBundles(forceRefresh),
+    const [config, stats, manifest] = await Promise.all([
+      this.getConfig(Boolean(params.forceRefresh)),
+      this.getStats(Boolean(params.forceRefresh)),
+      this.getManifest(Boolean(params.forceRefresh)),
     ]);
-    const curatedManifest = view === 'curated' ? manifest : await this.getManifest('curated', forceRefresh);
 
-    const normalizedItems = manifest.items.map(normalizeSearchItem);
-    const curatedItemMap = new Map(
-      curatedManifest.items.map(normalizeSearchItem).map((item) => [item.id, item] as const)
-    );
     const tokens = tokenizeQuery(params.query || '');
-    const normalizedIndustryId = normalizeString(params.industryId);
-    const rankedItems = normalizedItems
-      .filter((item) => !normalizedIndustryId || item.industries.includes(normalizedIndustryId))
+    const rankedItems = manifest.items
+      .map(normalizeSearchItem)
       .map((item) => ({ item, score: scoreItem(item, tokens) }))
       .filter((entry) => entry.score >= 0)
       .toSorted((left, right) => {
         if (right.score !== left.score) {
           return right.score - left.score;
-        }
-
-        if (right.item.qualityScore !== left.item.qualityScore) {
-          return right.item.qualityScore - left.item.qualityScore;
         }
 
         if (right.item.popularity !== left.item.popularity) {
@@ -555,63 +331,15 @@ export class SkillMarketService {
         return left.item.name.localeCompare(right.item.name);
       });
 
-    const industryIndex: SkillMarketIndustry[] = rawIndustries
-      .map((industry) => ({
-        id: normalizeString(industry.id),
-        label: normalizeString(industry.label),
-        summary: normalizeString(industry.summary),
-        problems: normalizeStringArray(industry.problems),
-        useCases: normalizeStringArray(industry.useCases),
-        outcomes: normalizeStringArray(industry.outcomes),
-        workflow: normalizeStringArray(industry.workflow),
-        count: Math.max(0, normalizeNumber(industry.count)),
-        topThemes: normalizeStringArray(industry.topThemes),
-        bundleIds: normalizeStringArray(industry.bundleIds),
-        recommendedSkills: resolveReferencedSkills(industry.recommendedSkillIds, curatedItemMap),
-      }))
-      .filter((industry) => industry.id && industry.label);
-
-    const bundles: SkillMarketBundle[] = rawBundles
-      .map((bundle) => ({
-        id: normalizeString(bundle.id),
-        title: normalizeString(bundle.title),
-        summary: normalizeString(bundle.summary),
-        industries: normalizeStringArray(bundle.industries),
-        forTeams: normalizeString(bundle.forTeams),
-        deliverables: normalizeStringArray(bundle.deliverables),
-        valuePoints: normalizeStringArray(bundle.valuePoints),
-        steps: Array.isArray(bundle.steps)
-          ? bundle.steps
-              .map((step) => {
-                const skillIds = normalizeStringArray(step.skillIds);
-                return {
-                  label: normalizeString(step.label),
-                  themes: normalizeStringArray(step.themes),
-                  skillIds,
-                  skills: resolveReferencedSkills(skillIds, curatedItemMap),
-                };
-              })
-              .filter((step) => step.label)
-          : [],
-        skills: resolveReferencedSkills(bundle.skillIds, curatedItemMap),
-      }))
-      .filter((bundle) => bundle.id && bundle.title);
-
     return {
-      brandName: config.brandName,
-      view,
-      defaultView: config.defaultView,
       items: rankedItems.slice(offset, offset + limit).map((entry) => entry.item),
       total: rankedItems.length,
       totalAvailable: Math.max(stats.total, manifest.items.length),
       siteUrl: config.siteUrl,
       pageSize: config.pageSize,
       featuredCount: config.featuredCount,
-      categories: stats.categories.length > 0 ? stats.categories : getCategoriesFromItems(normalizedItems),
+      categories: stats.categories,
       sources: stats.sources,
-      stats,
-      industryIndex,
-      bundles,
     };
   }
 
@@ -621,7 +349,7 @@ export class SkillMarketService {
       throw new Error('Skill id is required');
     }
 
-    const [config, manifest] = await Promise.all([this.getConfig(false), this.getManifest('full', false)]);
+    const [config, manifest] = await Promise.all([this.getConfig(false), this.getManifest(false)]);
     const item = manifest.items.find((candidate) => normalizeString(candidate.id) === skillId);
 
     if (!item) {
@@ -664,21 +392,11 @@ export class SkillMarketService {
     const rawConfig = this.parseConfig(content);
     const siteUrl = normalizeString(rawConfig.siteUrl) || 'https://www.skillmarket.com.cn';
     const siteBaseUrl = siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`;
-    const manifestUrl = resolveUrl(rawConfig.manifestUrl, siteBaseUrl);
-    const statsUrl = resolveUrl(rawConfig.statsUrl, siteBaseUrl);
     const config: SkillMarketConfig = {
       brandName: normalizeString(rawConfig.brandName) || 'ContextGo',
       siteUrl,
-      manifestUrls: {
-        curated: manifestUrl,
-        full: resolveUrl(rawConfig.fullManifestUrl || rawConfig.manifestUrl, siteBaseUrl),
-      },
-      statsUrls: {
-        curated: statsUrl,
-        full: resolveUrl(rawConfig.fullStatsUrl || rawConfig.statsUrl, siteBaseUrl),
-      },
-      industryUrl: resolveOptionalUrl(rawConfig.industryUrl, siteBaseUrl),
-      bundleUrl: resolveOptionalUrl(rawConfig.bundleUrl, siteBaseUrl),
+      manifestUrl: resolveUrl(rawConfig.manifestUrl, siteBaseUrl),
+      statsUrl: resolveUrl(rawConfig.statsUrl, siteBaseUrl),
       packageBaseUrls: Object.fromEntries(
         Object.entries(rawConfig.packageBaseUrls || {}).map(([source, baseUrl]) => [
           source,
@@ -687,7 +405,6 @@ export class SkillMarketService {
       ),
       featuredCount: Math.max(1, normalizeNumber(rawConfig.featuredCount) || 8),
       pageSize: Math.max(1, normalizeNumber(rawConfig.pageSize) || DEFAULT_PAGE_SIZE),
-      defaultView: normalizeView(rawConfig.defaultView, 'curated'),
     };
 
     this.configCache = {
@@ -698,15 +415,14 @@ export class SkillMarketService {
     return config;
   }
 
-  private async getStats(view: SkillMarketView, forceRefresh: boolean): Promise<SkillMarketStats> {
+  private async getStats(forceRefresh: boolean): Promise<SkillMarketStats> {
     const now = Date.now();
-    const cacheEntry = this.statsCache[view];
-    if (!forceRefresh && cacheEntry && cacheEntry.expiresAt > now) {
-      return cacheEntry.value;
+    if (!forceRefresh && this.statsCache && this.statsCache.expiresAt > now) {
+      return this.statsCache.value;
     }
 
     const config = await this.getConfig(forceRefresh);
-    const response = await this.fetchImpl(config.statsUrls[view]);
+    const response = await this.fetchImpl(config.statsUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch Skill Market stats (${response.status})`);
     }
@@ -715,13 +431,6 @@ export class SkillMarketService {
       total?: number;
       categories?: string[];
       sources?: Record<string, number>;
-      sourceTotal?: number;
-      reducedCount?: number;
-      reductionRatio?: number;
-      clusterCount?: number;
-      topIndustries?: SkillMarketTopIndustry[];
-      topCapabilities?: SkillMarketTopCapability[];
-      generatedAt?: string;
     };
     const stats: SkillMarketStats = {
       total: Math.max(0, normalizeNumber(rawStats.total)),
@@ -732,16 +441,9 @@ export class SkillMarketService {
               Object.entries(rawStats.sources).map(([key, value]) => [key, Math.max(0, normalizeNumber(value))])
             )
           : {},
-      sourceTotal: Math.max(0, normalizeNumber(rawStats.sourceTotal)),
-      reducedCount: Math.max(0, normalizeNumber(rawStats.reducedCount)),
-      reductionRatio: Math.max(0, normalizeNumber(rawStats.reductionRatio)),
-      clusterCount: Math.max(0, normalizeNumber(rawStats.clusterCount)),
-      topIndustries: normalizeTopIndustries(rawStats.topIndustries),
-      topCapabilities: normalizeTopCapabilities(rawStats.topCapabilities),
-      generatedAt: normalizeString(rawStats.generatedAt) || undefined,
     };
 
-    this.statsCache[view] = {
+    this.statsCache = {
       value: stats,
       expiresAt: now + STATS_CACHE_TTL_MS,
     };
@@ -749,15 +451,14 @@ export class SkillMarketService {
     return stats;
   }
 
-  private async getManifest(view: SkillMarketView, forceRefresh: boolean): Promise<SkillMarketManifest> {
+  private async getManifest(forceRefresh: boolean): Promise<SkillMarketManifest> {
     const now = Date.now();
-    const cacheEntry = this.manifestCache[view];
-    if (!forceRefresh && cacheEntry && cacheEntry.expiresAt > now) {
-      return cacheEntry.value;
+    if (!forceRefresh && this.manifestCache && this.manifestCache.expiresAt > now) {
+      return this.manifestCache.value;
     }
 
     const config = await this.getConfig(forceRefresh);
-    const response = await this.fetchImpl(config.manifestUrls[view]);
+    const response = await this.fetchImpl(config.manifestUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch Skill Market catalog (${response.status})`);
     }
@@ -767,66 +468,12 @@ export class SkillMarketService {
       items: Array.isArray(rawManifest.items) ? rawManifest.items : [],
     };
 
-    this.manifestCache[view] = {
+    this.manifestCache = {
       value: manifest,
       expiresAt: now + MANIFEST_CACHE_TTL_MS,
     };
 
     return manifest;
-  }
-
-  private async getIndustryIndex(forceRefresh: boolean): Promise<SkillMarketIndustryPayload[]> {
-    const now = Date.now();
-    if (!forceRefresh && this.industryCache && this.industryCache.expiresAt > now) {
-      return this.industryCache.value;
-    }
-
-    const config = await this.getConfig(forceRefresh);
-    if (!config.industryUrl) {
-      return [];
-    }
-
-    const response = await this.fetchImpl(config.industryUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Skill Market industry index (${response.status})`);
-    }
-
-    const rawPayload = (await response.json()) as { industries?: SkillMarketIndustryPayload[] };
-    const industries = Array.isArray(rawPayload.industries) ? rawPayload.industries : [];
-
-    this.industryCache = {
-      value: industries,
-      expiresAt: now + INDUSTRY_CACHE_TTL_MS,
-    };
-
-    return industries;
-  }
-
-  private async getBundles(forceRefresh: boolean): Promise<SkillMarketBundlePayload[]> {
-    const now = Date.now();
-    if (!forceRefresh && this.bundleCache && this.bundleCache.expiresAt > now) {
-      return this.bundleCache.value;
-    }
-
-    const config = await this.getConfig(forceRefresh);
-    if (!config.bundleUrl) {
-      return [];
-    }
-
-    const response = await this.fetchImpl(config.bundleUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Skill Market bundles (${response.status})`);
-    }
-
-    const rawPayload = (await response.json()) as { bundles?: SkillMarketBundlePayload[] };
-    const bundles = Array.isArray(rawPayload.bundles) ? rawPayload.bundles : [];
-
-    this.bundleCache = {
-      value: bundles,
-      expiresAt: now + BUNDLE_CACHE_TTL_MS,
-    };
-
-    return bundles;
   }
 
   private parseConfig(content: string): SkillMarketConfigPayload {

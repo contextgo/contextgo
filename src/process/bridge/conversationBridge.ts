@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -23,6 +23,7 @@ import { computeOpenClawIdentityHash } from '@process/utils/openclawUtils';
 import { migrateConversationToDatabase } from './migrationUtils';
 import { AssistantHookRuntime } from './services/AssistantHookRuntime';
 import { GroupConversationService } from './services/group/GroupConversationService';
+import { contextService, contextRuntimeService } from '@process/services/context/contextServiceSingleton';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
@@ -204,9 +205,58 @@ export function initConversationBridge(
             ...params,
             source: 'contextgo', // Mark conversations created by ContextGo as contextgo
           });
+    await contextRuntimeService.registerConversation(conversation);
     emitConversationListChanged(conversation, 'created');
     await refreshTrayMenuSafely();
     return conversation;
+  });
+
+  ipcBridge.conversation.listMemoryCandidates.provider(async ({ conversation_id, spaceId, state, reviewStatus }) => {
+    try {
+      let resolvedSpaceId = spaceId;
+      let threadId: string | undefined;
+
+      if (!resolvedSpaceId && conversation_id) {
+        const conversation = await conversationService.getConversation(conversation_id);
+        resolvedSpaceId = conversation?.extra?.spaceId;
+        threadId = conversation?.id;
+      }
+
+      if (!resolvedSpaceId) {
+        return { success: false, msg: 'space not found' };
+      }
+
+      const candidates = await contextService.listMemoryCandidates({
+        spaceId: resolvedSpaceId,
+        threadId,
+        ...(state ? { state: state as any } : {}),
+        ...(reviewStatus ? { reviewStatus: reviewStatus as any } : {}),
+      });
+      return { success: true, data: { candidates } };
+    } catch (error) {
+      return { success: false, msg: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcBridge.conversation.reviewMemoryCandidate.provider(async ({ candidateId, action, reviewerId }) => {
+    try {
+      const candidate =
+        action === 'approve'
+          ? await contextService.approveMemoryCandidate(candidateId, reviewerId)
+          : await contextService.rejectMemoryCandidate(candidateId, reviewerId);
+      return { success: true, data: { candidate } };
+    } catch (error) {
+      return { success: false, msg: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcBridge.conversation.promoteMemoryCandidate.provider(async ({ candidateId, destination, reviewerId }) => {
+    try {
+      const candidate = await contextService.promoteMemoryCandidateToDestination(candidateId, destination, reviewerId);
+      return { success: true, data: { candidate } };
+    } catch (error) {
+      return { success: false, msg: error instanceof Error ? error.message : String(error) };
+    }
   });
 
   // Manually reload conversation context (Gemini): inject recent history into memory
@@ -279,6 +329,7 @@ export function initConversationBridge(
           sourceConversationId,
           migrateCron,
         });
+        await contextRuntimeService.registerConversation(result);
         workerTaskManager.getOrBuildTask(result.id).catch((err) => {
           console.warn('[conversationBridge] Failed to pre-warm task after migration:', err);
         });
@@ -561,6 +612,7 @@ export function initConversationBridge(
     // OpenClaw uses full-content mode: inject full skill text rather than index paths,
     // because the CLI may not proactively read SKILL.md files the way ACP agents do.
     let agentContent = hookInjectedInput;
+    let agentInput = hookInjectedInput;
     if (other.injectSkills?.length) {
       agentContent = await prepareFirstMessage(hookInjectedInput, {
         enabledSkills: other.injectSkills,
@@ -575,6 +627,16 @@ export function initConversationBridge(
       );
     }
 
+    const preparedTurn = await contextRuntimeService.prepareOutgoingTurn({
+      conversation,
+      userInput: hookInjectedInput,
+      agentInput,
+      agentContent,
+      msgId: other.msg_id,
+    });
+    agentInput = preparedTurn.agentInput;
+    agentContent = preparedTurn.agentContent;
+
     try {
       // Pass unified data — each agent reads the fields it needs from the unknown payload.
       // `content` aliases `input` for ACP/Codex/NanoBot/OpenClaw agents.
@@ -584,7 +646,7 @@ export function initConversationBridge(
         content: other.input,
         input: other.input,
         files: workspaceFiles,
-        agentInput: hookInjectedInput,
+        agentInput,
         agentContent,
       });
       return { success: true };

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -9,7 +9,7 @@
  * Use this file to import database functionality throughout the app
  */
 
-export { ContextGoUIDatabase, getDatabase, getDatabasePath, closeDatabase } from './index';
+export { AionUIDatabase, getDatabase, getDatabasePath, closeDatabase } from './index';
 export {
   runMigrations,
   rollbackMigrations,

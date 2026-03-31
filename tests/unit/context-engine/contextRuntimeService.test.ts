@@ -1,0 +1,240 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mockDb = {
+  getConversationMessages: vi.fn(),
+  getConversation: vi.fn(),
+};
+
+const mockContextService = {
+  retrieve: vi.fn(),
+  assemble: vi.fn(),
+  ingestSource: vi.fn(),
+  appendSystemOperation: vi.fn(),
+  indexTextDocument: vi.fn(),
+  evaluatePromotion: vi.fn(),
+  saveMemoryCandidate: vi.fn(),
+  saveMemory: vi.fn(),
+};
+
+vi.mock('@process/services/database', () => ({
+  getDatabase: vi.fn(async () => mockDb),
+}));
+
+const { ContextRuntimeService } = await import('../../../src/process/services/context/ContextRuntimeService');
+
+function makeConversation() {
+  return {
+    id: 'conv-1',
+    name: 'Context Engine Test',
+    type: 'acp',
+    model: {
+      id: 'model-1',
+      name: 'Model 1',
+      useModel: 'model-1',
+      platform: 'openai',
+      apiKey: '',
+      baseUrl: '',
+    },
+    source: 'contextgo',
+    createTime: 1,
+    modifyTime: 1,
+    extra: {
+      backend: 'claude',
+      workspace: '/tmp/workspace',
+      workingDirectory: '/tmp/workspace',
+      spaceId: 'space-1',
+    },
+  };
+}
+
+describe('ContextRuntimeService', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDb.getConversationMessages.mockReturnValue({ data: [] });
+    mockDb.getConversation.mockReturnValue({ success: true, data: makeConversation() });
+    mockContextService.retrieve.mockResolvedValue({
+      memories: [
+        {
+          memory: {
+            id: 'memory-1',
+            spaceId: 'space-1',
+            kind: 'workflow',
+            summary: 'Use the approved release checklist before shipping.',
+            sourceIds: ['source-memory'],
+            chunkIds: [],
+            confidence: 0.9,
+            tier: 'experiential',
+            priority: 'high',
+            state: 'accepted',
+            createdAt: '2026-03-30T00:00:00.000Z',
+            updatedAt: '2026-03-30T00:00:00.000Z',
+          },
+          score: 88,
+          matchedBy: ['release'],
+        },
+      ],
+      profiles: [
+        {
+          id: 'profile-1',
+          spaceId: 'space-1',
+          key: 'style',
+          summary: 'Team prefers minimal diffs and explicit validation steps.',
+          memoryIds: ['memory-1'],
+          confidence: 0.8,
+          state: 'active',
+          createdAt: '2026-03-30T00:00:00.000Z',
+          updatedAt: '2026-03-30T00:00:00.000Z',
+        },
+      ],
+      chunks: [],
+      sources: [],
+      totalEstimatedTokens: 80,
+    });
+    mockContextService.assemble.mockResolvedValue({
+      pack: {
+        id: 'pack-1',
+        spaceId: 'space-1',
+        threadId: 'conv-1',
+        budgetTokens: 420,
+        sections: [
+          {
+            kind: 'profile',
+            id: 'profile-1',
+            summary: 'Team prefers minimal diffs and explicit validation steps.',
+            tokenCount: 12,
+            priority: 90,
+          },
+        ],
+        provenance: {
+          sourceIds: [],
+          memoryIds: ['memory-1'],
+          profileIds: ['profile-1'],
+          artifactIds: [],
+        },
+        generatedAt: '2026-03-30T00:00:00.000Z',
+      },
+      omittedEntityIds: [],
+    });
+    mockContextService.ingestSource.mockResolvedValue({
+      source: { id: 'source-1' },
+      chunkIds: [],
+      operations: [],
+    });
+    mockContextService.appendSystemOperation.mockResolvedValue(undefined);
+    mockContextService.indexTextDocument.mockResolvedValue({ snapshot: { id: 'doc-1' }, chunks: [] });
+    mockContextService.evaluatePromotion.mockResolvedValue({
+      score: 72,
+      shouldPromote: true,
+      rationale: ['promote'],
+    });
+    mockContextService.saveMemoryCandidate.mockResolvedValue(undefined);
+    mockContextService.saveMemory.mockResolvedValue(undefined);
+  });
+
+  it('registers a bound thread operation when a conversation has a space', async () => {
+    const service = new ContextRuntimeService(mockContextService as any);
+
+    await service.registerConversation(makeConversation());
+
+    expect(mockContextService.appendSystemOperation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spaceId: 'space-1',
+        threadId: 'conv-1',
+        type: 'thread.bound',
+        entityId: 'conv-1',
+      })
+    );
+  });
+
+  it('assembles and injects a context pack before user request content', async () => {
+    const service = new ContextRuntimeService(mockContextService as any);
+    const recentMessages = [
+      {
+        id: 'm-1',
+        conversation_id: 'conv-1',
+        type: 'text',
+        position: 'right',
+        content: { content: 'Please help with release prep.' },
+        createdAt: 1,
+      },
+    ];
+    mockDb.getConversationMessages.mockReturnValue({ data: recentMessages });
+
+    const result = await service.prepareOutgoingTurn({
+      conversation: makeConversation(),
+      userInput: 'We prefer release changes to stay minimal and verifiable.',
+      agentInput: 'We prefer release changes to stay minimal and verifiable.',
+      agentContent: '[User Request]\nWe prefer release changes to stay minimal and verifiable.',
+      msgId: 'msg-1',
+    });
+
+    expect(mockContextService.retrieve).toHaveBeenCalledWith(
+      expect.objectContaining({ spaceId: 'space-1', threadId: 'conv-1' })
+    );
+    expect(mockContextService.ingestSource).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'conversation-message', title: 'User message', checksum: 'msg-1' })
+    );
+    expect(mockContextService.indexTextDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'source-1', tier: 'working' })
+    );
+    expect(result.agentContent).toContain('[ContextGo Runtime Context]');
+    expect(result.agentContent).toContain('[User Request]');
+    expect(result.agentInput).toContain('read-only background data');
+  });
+
+  it('auto-promotes strong candidates into durable memories', async () => {
+    const service = new ContextRuntimeService(mockContextService as any);
+    await service.prepareOutgoingTurn({
+      conversation: makeConversation(),
+      userInput: 'We prefer test-first debugging and we must avoid large diffs.',
+      agentInput: 'We prefer test-first debugging and we must avoid large diffs.',
+      agentContent: 'We prefer test-first debugging and we must avoid large diffs.',
+      msgId: 'msg-2',
+    });
+
+    await service.completeAssistantTurn(
+      'conv-1',
+      'Decision: use the staged release checklist.\nNext steps:\n- Run focused tests\n- Keep diffs small',
+      'assistant-1'
+    );
+
+    expect(mockContextService.ingestSource).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'conversation-message', title: 'Assistant response', checksum: 'assistant-1' })
+    );
+    expect(mockContextService.indexTextDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Assistant response', tier: 'working' })
+    );
+    expect(mockContextService.saveMemoryCandidate).toHaveBeenCalled();
+    expect(mockContextService.saveMemory).toHaveBeenCalled();
+    const savedSummaries = mockContextService.saveMemory.mock.calls.map((call) => call[0].summary);
+    expect(savedSummaries.some((summary: string) => summary.includes('Decision'))).toBe(true);
+  });
+
+  it('notifies humans when candidates require review instead of auto-promotion', async () => {
+    const notifyPendingReview = vi.fn();
+    mockContextService.evaluatePromotion.mockResolvedValue({
+      score: 40,
+      shouldPromote: false,
+      rationale: ['keep-as-candidate'],
+    });
+    const service = new ContextRuntimeService(mockContextService as any, notifyPendingReview);
+    await service.prepareOutgoingTurn({
+      conversation: makeConversation(),
+      userInput: 'We should not change the release checklist without review.',
+      agentInput: 'We should not change the release checklist without review.',
+      agentContent: 'We should not change the release checklist without review.',
+      msgId: 'msg-3',
+    });
+
+    await service.completeAssistantTurn('conv-1', 'Plan: keep the current checklist and review changes manually.', 'assistant-2');
+
+    expect(mockContextService.saveMemory).not.toHaveBeenCalled();
+    expect(mockContextService.saveMemoryCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewStatus: 'pending', state: 'pending_review' }),
+      expect.objectContaining({ operationType: 'memory.candidate_created' })
+    );
+    expect(notifyPendingReview).toHaveBeenCalledWith(
+      expect.objectContaining({ conversationId: 'conv-1', spaceId: 'space-1' })
+    );
+  });
+});
