@@ -1,9 +1,0 @@
-{
-  "displayName": "Star Office Eklentisi",
-  "description": "Tüm ajanların aktivitelerini görselleştiren Star Office tarzı sekme.",
-  "settingsTabs": {
-    "star-office": { "name": "Star Office" },
-    "contextgo-home": { "name": "ContextGo Ana Sayfa" },
-    "contextgo-issues": { "name": "ContextGo Sorunlar" }
-  }
-}

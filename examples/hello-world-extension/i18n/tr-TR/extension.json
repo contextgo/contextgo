@@ -1,7 +1,0 @@
-{
-  "displayName": "Hello World Eklentisi",
-  "description": "Tüm ContextGoUI eklenti yeteneklerini sergileyen eksiksiz bir demo eklenti",
-  "settingsTabs": {
-    "hello-settings": { "name": "Hello Ayarlar" }
-  }
-}
