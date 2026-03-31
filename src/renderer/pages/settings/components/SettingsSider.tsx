@@ -10,7 +10,7 @@ import { Tooltip } from '@arco-design/web-react';
 import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
-const BUILTIN_TAB_IDS = ['cron', 'tools', 'commands', 'display', 'webui', 'agentEntry', 'system', 'about'] as const;
+const BUILTIN_TAB_IDS = ['cron', 'tools', 'runtime', 'commands', 'display', 'webui', 'agentEntry', 'system', 'about'] as const;
 
 type SiderItem = {
   id: string;
@@ -98,6 +98,12 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         path: 'cron',
       },
       tools: { id: 'tools', label: t('settings.tools'), icon: <Toolkit />, path: 'tools' },
+      runtime: {
+        id: 'runtime',
+        label: t('settings.runtimeManager.title', { defaultValue: 'Runtime' }),
+        icon: <Command />,
+        path: 'runtime',
+      },
       commands: { id: 'commands', label: t('settings.commands.title'), icon: <Command />, path: 'commands' },
       display: { id: 'display', label: t('settings.display'), icon: <Computer />, path: 'display' },
       webui: {

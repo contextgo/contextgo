@@ -11,7 +11,7 @@ import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/pl
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import { Tabs } from '@arco-design/web-react';
-import { Communication, Computer, Earth, Gemini, Info, LinkCloud, Puzzle, Toolkit } from '@icon-park/react';
+import { Command, Communication, Computer, Earth, Gemini, Info, LinkCloud, Puzzle, Toolkit } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,7 @@ import ChannelModalContent from './contents/channels/ChannelModalContent';
 import ExtensionSettingsTabContent from './contents/ExtensionSettingsTabContent';
 import GeminiModalContent from './contents/GeminiModalContent';
 import ModelModalContent from './contents/ModelModalContent';
+import RuntimeManagement from '@/renderer/pages/settings/AgentSettings/CustomAcpAgent';
 import SystemModalContent from './contents/SystemModalContent';
 import ToolsModalContent from './contents/ToolsModalContent';
 import WebuiModalContent from './contents/WebuiModalContent';
@@ -56,7 +57,16 @@ const RESIZE_DEBOUNCE_DELAY = 150;
 /**
  * 内置设置标签页类型 / Built-in settings tab type
  */
-export type BuiltinSettingTab = 'gemini' | 'model' | 'agent' | 'tools' | 'webui' | 'agentEntry' | 'system' | 'about';
+export type BuiltinSettingTab =
+  | 'gemini'
+  | 'model'
+  | 'agent'
+  | 'runtime'
+  | 'tools'
+  | 'webui'
+  | 'agentEntry'
+  | 'system'
+  | 'about';
 
 /**
  * 设置标签页类型（内置 + 扩展）/ Settings tab type (built-in + extension)
@@ -219,6 +229,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
         label: t('settings.tools'),
         icon: <Toolkit theme='outline' size='20' fill={iconColors.secondary} />,
       },
+      {
+        key: 'runtime',
+        label: t('settings.runtimeManager.title', { defaultValue: 'Runtime' }),
+        icon: <Command theme='outline' size='20' fill={iconColors.secondary} />,
+      },
     ];
 
     if (isDesktop) {
@@ -327,6 +342,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
         return <AgentModalContent />;
       case 'tools':
         return <ToolsModalContent />;
+      case 'runtime':
+        return <RuntimeManagement />;
       case 'webui':
         return <WebuiModalContent />;
       case 'agentEntry':
