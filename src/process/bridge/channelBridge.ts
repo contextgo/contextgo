@@ -12,7 +12,14 @@ import { getPairingService } from '@process/channels/pairing/PairingService';
 import { ExtensionRegistry } from '@process/extensions';
 import { toAssetUrl } from '@process/extensions/protocol/assetProtocol';
 import * as path from 'path';
-import type { IChannelAudienceEntry, IChannelPluginStatus, IRemoteIdentity } from '@process/channels/types';
+import type {
+  IChannelActiveSessionEntry,
+  IChannelAudienceEntry,
+  IChannelPluginStatus,
+  IChannelSession,
+  IConnectorInstance,
+  IRemoteIdentity,
+} from '@process/channels/types';
 import { hasPluginCredentials } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
 
@@ -106,6 +113,35 @@ function buildAudienceEntries(remoteIdentities: IRemoteIdentity[]): IChannelAudi
   return [...remoteUserAudiences, ...remoteChatAudiences].toSorted(
     (left, right) => (right.lastActive ?? 0) - (left.lastActive ?? 0)
   );
+}
+
+function buildActiveSessionEntries(params: {
+  sessions: IChannelSession[];
+  remoteIdentities: IRemoteIdentity[];
+  connectors: IConnectorInstance[];
+}): IChannelActiveSessionEntry[] {
+  const remoteIdentityMap = new Map(params.remoteIdentities.map((identity) => [identity.id, identity]));
+  const connectorMap = new Map(params.connectors.map((connector) => [connector.id, connector]));
+
+  return params.sessions.map((session) => {
+    const remoteIdentity = remoteIdentityMap.get(session.userId);
+    const connector = remoteIdentity ? connectorMap.get(remoteIdentity.connectorId) : undefined;
+
+    return {
+      id: session.id,
+      connectorId: connector?.id,
+      connectorName: connector?.name,
+      connectorPlatform: connector?.platform,
+      remoteIdentityId: remoteIdentity?.id,
+      audienceTitle: remoteIdentity?.displayName || remoteIdentity?.remoteChatId || session.chatId || session.id,
+      audienceKey: remoteIdentity?.remoteChatId || session.chatId,
+      conversationId: session.conversationId,
+      workspace: session.workspace,
+      agentType: session.agentType,
+      createdAt: session.createdAt,
+      lastActivity: session.lastActivity,
+    };
+  });
 }
 
 /**
@@ -398,6 +434,27 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return { success: true, data };
     } catch (error) {
       console.error('[ChannelBridge] getActiveSessions error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.getActiveSessionCatalog.provider(async () => {
+    try {
+      const [sessions, connectors, remoteIdentities] = await Promise.all([
+        channelRepo.getChannelSessions(),
+        channelRepo.getConnectorInstances(),
+        channelRepo.getRemoteIdentities(),
+      ]);
+      return {
+        success: true,
+        data: buildActiveSessionEntries({
+          sessions,
+          connectors,
+          remoteIdentities,
+        }),
+      };
+    } catch (error) {
+      console.error('[ChannelBridge] getActiveSessionCatalog error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });

@@ -366,8 +366,8 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, model
 
       {/* Agent Selection */}
       <PreferenceRow
-        label={t('settings.weixin.agent', '对话Agent')}
-        description={t('settings.weixin.agentDesc', 'Used for WeChat conversations')}
+        label={t('settings.weixin.agent', '兜底 Agent')}
+        description={t('settings.weixin.agentDesc', '当微信入口还没有命中发布绑定时，使用这里的兜底运行时')}
       >
         <Dropdown
           trigger='click'
@@ -426,7 +426,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, model
       {/* Default Model Selection */}
       <PreferenceRow
         label={t('settings.assistant.defaultModel', '对话模型')}
-        description={t('settings.weixin.defaultModelDesc', '用于Agent对话时调用')}
+        description={t('settings.weixin.defaultModelDesc', '当微信入口还没有命中发布绑定时，使用这里的兜底模型')}
       >
         <ChannelModelSelector
           selection={isGeminiAgent ? modelSelection : undefined}

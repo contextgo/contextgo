@@ -37,6 +37,7 @@ import { renderConversationHeaderAddons } from '../platforms/conversationHeaderA
 type PublicationIntent = {
   agentProfileId?: string;
   conversationId: string;
+  conversationName?: string;
   backend: string;
   customAgentId?: string;
   workspace?: string;
@@ -51,6 +52,7 @@ function buildPublicationIntent(conversation: TChatConversation): PublicationInt
   if (conversation.type === 'gemini' || conversation.type === 'codex' || conversation.type === 'openclaw-gateway') {
     return {
       conversationId: conversation.id,
+      conversationName: conversation.name,
       backend: conversation.type,
       workspace: 'workspace' in conversation.extra ? conversation.extra.workspace : undefined,
     };
@@ -67,6 +69,7 @@ function buildPublicationIntent(conversation: TChatConversation): PublicationInt
 
   return {
     conversationId: conversation.id,
+    conversationName: conversation.name,
     backend,
     customAgentId: conversation.extra?.customAgentId,
     workspace: conversation.extra?.workspace,
@@ -80,7 +83,7 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
   const [loading, setLoading] = useState(false);
   const publicationIntent = useMemo(() => buildPublicationIntent(conversation), [conversation]);
 
-  const handlePublish = useCallback(async () => {
+  const handlePublishAgent = useCallback(async () => {
     if (!publicationIntent) {
       return;
     }
@@ -96,7 +99,7 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
 
       void navigate(
         {
-          pathname: '/settings/agent-entry',
+          pathname: '/settings/channels',
         },
         {
           state: {
@@ -114,28 +117,64 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
     }
   }, [conversation.id, navigate, publicationIntent, t]);
 
+  const handleContinueSession = useCallback(() => {
+    if (!publicationIntent) {
+      return;
+    }
+
+    void navigate(
+      {
+        pathname: '/settings/active-sessions',
+      },
+      {
+        state: {
+          sessionHandoffIntent: {
+            sourceConversationId: publicationIntent.conversationId,
+            conversationName: publicationIntent.conversationName,
+            backend: publicationIntent.backend,
+            workspace: publicationIntent.workspace,
+            agentName: publicationIntent.agentName,
+          },
+        },
+      }
+    );
+  }, [navigate, publicationIntent]);
+
   if (!publicationIntent) {
     return null;
   }
 
   return (
-    <Tooltip content={t('conversation.header.publishAgentEntryHint')}>
-      <Button
-        type='text'
-        size='small'
-        className='chat-header-publish-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
-        loading={loading}
-        aria-label={t('conversation.header.publishAgentEntry')}
-        onClick={() => void handlePublish()}
-      >
-        <span className='inline-flex items-center gap-6px rounded-full px-8px py-2px bg-2'>
-          <ConnectionPoint theme='outline' size={16} fill={iconColors.primary} />
-          <span className='hidden md:inline text-12px text-t-primary'>
-            {t('conversation.header.publishAgentEntry')}
+    <Dropdown
+      trigger='click'
+      droplist={
+        <Menu>
+          <Menu.Item key='publish-agent' onClick={() => void handlePublishAgent()}>
+            {t('conversation.header.publishAgentAction')}
+          </Menu.Item>
+          <Menu.Item key='continue-session' onClick={() => handleContinueSession()}>
+            {t('conversation.header.handoffSessionAction')}
+          </Menu.Item>
+        </Menu>
+      }
+    >
+      <Tooltip content={t('conversation.header.publishAgentEntryHint')}>
+        <Button
+          type='text'
+          size='small'
+          className='chat-header-publish-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
+          loading={loading}
+          aria-label={t('conversation.header.publishAgentEntry')}
+        >
+          <span className='inline-flex items-center gap-6px rounded-full px-8px py-2px bg-2'>
+            <ConnectionPoint theme='outline' size={16} fill={iconColors.primary} />
+            <span className='hidden md:inline text-12px text-t-primary'>
+              {t('conversation.header.publishAgentEntry')}
+            </span>
           </span>
-        </span>
-      </Button>
-    </Tooltip>
+        </Button>
+      </Tooltip>
+    </Dropdown>
   );
 };
 

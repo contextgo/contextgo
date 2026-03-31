@@ -440,6 +440,21 @@ export interface IChannelSession {
   lastActivity: number;
 }
 
+export type IChannelActiveSessionEntry = {
+  id: string;
+  connectorId?: string;
+  connectorName?: string;
+  connectorPlatform?: PluginType;
+  remoteIdentityId?: string;
+  audienceTitle: string;
+  audienceKey?: string;
+  conversationId?: string;
+  workspace?: string;
+  agentType: ChannelAgentType;
+  createdAt: number;
+  lastActivity: number;
+};
+
 /**
  * Database row for assistant sessions
  */

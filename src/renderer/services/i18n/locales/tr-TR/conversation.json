@@ -394,8 +394,10 @@
     }
   },
   "header": {
-    "publishAgentEntry": "Yayınla",
-    "publishAgentEntryHint": "Agent Entry ekranını açın ve bu konuşmanın yeniden kullanılabilir kanal bağlarını yönetin.",
+    "publishAgentEntry": "IM'e Yayinla",
+    "publishAgentEntryHint": "Bu konusmayi yeniden kullanilabilir bir Agent'e donusturun ve kullaniciya, gruba, konuya veya baska bir IM yuzeyine yayinlayin.",
+    "publishAgentAction": "Publish this Agent",
+    "handoffSessionAction": "Continue current session in IM",
     "publishPrepareFailed": "Bu agent giriş noktası hazırlanamadı"
   },
   "noAgentsAvailable": "No agents available",

@@ -56,7 +56,17 @@ const RESIZE_DEBOUNCE_DELAY = 150;
 /**
  * 内置设置标签页类型 / Built-in settings tab type
  */
-export type BuiltinSettingTab = 'gemini' | 'model' | 'agent' | 'tools' | 'webui' | 'agentEntry' | 'system' | 'about';
+export type BuiltinSettingTab =
+  | 'gemini'
+  | 'model'
+  | 'agent'
+  | 'tools'
+  | 'webui'
+  | 'agentEntry'
+  | 'channels'
+  | 'activeSessions'
+  | 'system'
+  | 'about';
 
 /**
  * 设置标签页类型（内置 + 扩展）/ Settings tab type (built-in + extension)
@@ -228,8 +238,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
         icon: <Earth theme='outline' size='20' fill={iconColors.secondary} />,
       });
       builtinItems.push({
-        key: 'agentEntry',
-        label: t('settings.agentEntry'),
+        key: 'channels',
+        label: t('settings.channels'),
+        icon: <Communication theme='outline' size='20' fill={iconColors.secondary} />,
+      });
+      builtinItems.push({
+        key: 'activeSessions',
+        label: t('settings.activeSessions'),
         icon: <Communication theme='outline' size='20' fill={iconColors.secondary} />,
       });
     }
@@ -329,8 +344,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
         return <ToolsModalContent />;
       case 'webui':
         return <WebuiModalContent />;
+      case 'channels':
+        return <ChannelModalContent mode='channels' />;
       case 'agentEntry':
-        return <ChannelModalContent />;
+        return <ChannelModalContent mode='channels' />;
+      case 'activeSessions':
+        return <ChannelModalContent mode='sessions' />;
       case 'system':
         return <SystemModalContent />;
       case 'about':
