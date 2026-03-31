@@ -411,8 +411,10 @@
     "preset_registered": "Agent preset registered successfully!"
   },
   "header": {
-    "publishAgentEntry": "Publish",
-    "publishAgentEntryHint": "Open Agent Entry and manage reusable channel bindings for this conversation.",
+    "publishAgentEntry": "Publish to IM",
+    "publishAgentEntryHint": "Turn this conversation into a reusable Agent and publish it to a user, group, topic, or other IM surface.",
+    "publishAgentAction": "Publish this Agent",
+    "handoffSessionAction": "Continue current session in IM",
     "publishPrepareFailed": "Failed to prepare this agent entry"
   }
 }

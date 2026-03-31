@@ -411,8 +411,10 @@
     "preset_registered": "已保存为全局预设"
   },
   "header": {
-    "publishAgentEntry": "发布",
-    "publishAgentEntryHint": "打开 Agent 入口，并管理当前会话可复用的渠道绑定。",
+    "publishAgentEntry": "发布到 IM",
+    "publishAgentEntryHint": "把当前会话整理成可复用 Agent，并继续发布到用户、群、话题或其他 IM 入口。",
+    "publishAgentAction": "发布这个 Agent",
+    "handoffSessionAction": "把当前会话接力到 IM",
     "publishPrepareFailed": "准备当前 Agent 入口失败"
   }
 }

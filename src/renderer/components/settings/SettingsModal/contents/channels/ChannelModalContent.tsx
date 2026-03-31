@@ -23,6 +23,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsViewMode } from '../../settingsViewContext';
 import ChannelItem from './ChannelItem';
+import SessionHandoffPanel from './SessionHandoffPanel';
 import type { ChannelConfig } from './types';
 import PublicationBindingPanel from './publication/PublicationBindingPanel';
 import {
@@ -160,7 +161,7 @@ const useChannelModelSelection = (configKey: BuiltinChannelDefaultModelConfigKey
 /**
  * Assistant Settings Content Component
  */
-const ChannelModalContent: React.FC = () => {
+const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mode = 'channels' }) => {
   const { t } = useTranslation();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
@@ -964,56 +965,64 @@ const ChannelModalContent: React.FC = () => {
     }
     return undefined;
   };
-  const channelGuideText = t('settings.webui.featureChannelsDesc', {
-    defaultValue:
-      'Connect Telegram, Slack, Discord, Lark, DingTalk, and WeChat to interact with ContextGo from IM apps.',
-  });
   const channelSetupSteps = [
     t('settings.channels.selectFirst', {
-      defaultValue: 'Select a channel and configure credentials.',
+      defaultValue: 'Configure a channel account and enable message access.',
     }),
     t('settings.channels.enableAfterConfig', {
-      defaultValue: 'Enable it and start chatting with your AI agent.',
+      defaultValue: 'Publish an Agent to a user, group, topic, or connector default entry.',
     }),
   ];
+  const pageTitle = mode === 'sessions' ? t('settings.activeSessions') : t('settings.channels');
+  const pageDescription =
+    mode === 'sessions'
+      ? t('settings.activeSessionsDesc', {
+          defaultValue: 'Review live work sessions and hand them off to a paired IM audience when you need to keep working away from desktop.',
+        })
+      : t('settings.agentEntryDesc', {
+          defaultValue: 'Manage your reusable agent entry points, connectors, and audience bindings separately from remote access.',
+        });
 
   return (
     <ContextGoScrollArea className={isPageMode ? 'h-full' : ''}>
       <div className='px-[12px] md:px-[28px]'>
-        <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.agentEntry')}</h2>
+        <h2 className='text-20px font-500 text-t-primary m-0'>{pageTitle}</h2>
         <div className='space-y-8px mt-10px'>
-          <div className='text-13px text-t-secondary leading-relaxed'>
-            {t('settings.agentEntryDesc', {
-              defaultValue:
-                'Manage your reusable agent entry points, connectors, and audience bindings separately from remote access.',
-            })}
-          </div>
-          <div className='flex flex-wrap gap-x-12px gap-y-6px'>
-            {channelSetupSteps.map((stepLabel, idx) => (
-              <div key={stepLabel} className='inline-flex items-center gap-6px'>
-                <span className='inline-flex items-center justify-center w-16px h-16px rd-50% text-10px font-600 bg-[rgba(var(--primary-6),0.12)] text-[rgb(var(--primary-6))]'>
-                  {idx + 1}
-                </span>
-                <CheckOne theme='outline' size='12' className='text-[rgb(var(--primary-6))]' />
-                <span className='text-12px text-t-secondary'>{stepLabel}</span>
-              </div>
-            ))}
-          </div>
+          <div className='text-13px text-t-secondary leading-relaxed'>{pageDescription}</div>
+          {mode === 'channels' ? (
+            <div className='flex flex-wrap gap-x-12px gap-y-6px'>
+              {channelSetupSteps.map((stepLabel, idx) => (
+                <div key={stepLabel} className='inline-flex items-center gap-6px'>
+                  <span className='inline-flex items-center justify-center w-16px h-16px rd-50% text-10px font-600 bg-[rgba(var(--primary-6),0.12)] text-[rgb(var(--primary-6))]'>
+                    {idx + 1}
+                  </span>
+                  <CheckOne theme='outline' size='12' className='text-[rgb(var(--primary-6))]' />
+                  <span className='text-12px text-t-secondary'>{stepLabel}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
 
-        <div className='space-y-12px mt-12px'>
-          {channels.map((channelConfig) => (
-            <ChannelItem
-              key={channelConfig.id}
-              channel={channelConfig}
-              isCollapsed={collapseKeys[channelConfig.id] || false}
-              onToggleCollapse={() => handleToggleCollapse(channelConfig.id)}
-              onToggleEnabled={getToggleHandler(channelConfig.id)}
-            />
-          ))}
-        </div>
+        {mode === 'channels' ? (
+          <>
+            <div className='space-y-12px mt-12px'>
+              {channels.map((channelConfig) => (
+                <ChannelItem
+                  key={channelConfig.id}
+                  channel={channelConfig}
+                  isCollapsed={collapseKeys[channelConfig.id] || false}
+                  onToggleCollapse={() => handleToggleCollapse(channelConfig.id)}
+                  onToggleEnabled={getToggleHandler(channelConfig.id)}
+                />
+              ))}
+            </div>
 
-        <PublicationBindingPanel />
+            <PublicationBindingPanel />
+          </>
+        ) : (
+          <SessionHandoffPanel />
+        )}
       </div>
     </ContextGoScrollArea>
   );

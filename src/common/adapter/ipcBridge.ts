@@ -1402,6 +1402,7 @@ export const extensions = {
 // ==================== Channel API ====================
 
 import type {
+  IChannelActiveSessionEntry,
   IAgentProfile,
   IChannelBindingCatalog,
   IChannelBinding,
@@ -1438,6 +1439,9 @@ export const channel = {
 
   // Session Management (MVP: read-only view)
   getActiveSessions: bridge.buildProvider<IBridgeResponse<IChannelSession[]>, void>('channel.get-active-sessions'),
+  getActiveSessionCatalog: bridge.buildProvider<IBridgeResponse<IChannelActiveSessionEntry[]>, void>(
+    'channel.get-active-session-catalog'
+  ),
 
   // Binding Management
   getBindingCatalog: bridge.buildProvider<IBridgeResponse<IChannelBindingCatalog>, { connectorId?: string }>(
