@@ -411,8 +411,10 @@
     "preset_registered": "Agent preset registered successfully!"
   },
   "header": {
-    "publishAgentEntry": "發布",
-    "publishAgentEntryHint": "打開 Agent 入口，並管理目前會話可重用的渠道綁定。",
+    "publishAgentEntry": "發布到 IM",
+    "publishAgentEntryHint": "把目前會話整理成可重用 Agent，並繼續發布到使用者、群組、話題或其他 IM 入口。",
+    "publishAgentAction": "發布這個 Agent",
+    "handoffSessionAction": "把目前會話接力到 IM",
     "publishPrepareFailed": "準備目前 Agent 入口失敗"
   }
 }

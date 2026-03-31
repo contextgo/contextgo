@@ -411,8 +411,10 @@
     "preset_registered": "Agent preset registered successfully!"
   },
   "header": {
-    "publishAgentEntry": "公開",
-    "publishAgentEntryHint": "Agent Entry を開き、この会話の再利用可能なチャネル連携を管理します。",
+    "publishAgentEntry": "IM に公開",
+    "publishAgentEntryHint": "この会話を再利用可能な Agent に整理し、ユーザー、グループ、トピック、その他の IM 面に公開します。",
+    "publishAgentAction": "Publish this Agent",
+    "handoffSessionAction": "Continue current session in IM",
     "publishPrepareFailed": "この Agent Entry を準備できませんでした"
   }
 }

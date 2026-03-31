@@ -13,12 +13,15 @@ import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
 import crypto from 'crypto';
 import { inferRemoteChatType } from './ChannelRouteResolver';
 import {
+  type IChannelControlLease,
   resolveChannelConvType,
   withChannelBindingTarget,
+  type ChannelControlMode,
   type ChannelHandoffMode,
   type IAgentProfile,
   type IChannelBinding,
   type IChannelHandoffRequest,
+  type IChannelHandoffReleaseResult,
   type IChannelHandoffResult,
   type IChannelSession,
   type IExternalSession,
@@ -46,6 +49,7 @@ type QueryResult<T> = {
 const DEFAULT_HANDOFF_MODE: ChannelHandoffMode = 'resume';
 const DEFAULT_CONFLICT_POLICY: NonNullable<IChannelHandoffRequest['conflictPolicy']> = 'reject';
 const DEFAULT_HANDOFF_PRIORITY = 120;
+const DEFAULT_CONTROL_MODE: ChannelControlMode = 'im_owner';
 
 function assertQuerySuccess<T>(result: QueryResult<T>, fallback: string): T {
   if (!result.success) {
@@ -95,6 +99,14 @@ function buildStableBindingId(connectorId: string, chatId: string): string {
   return `binding_handoff_${hash}`;
 }
 
+function buildDesktopOwnerKey(conversationId: string): string {
+  return `desktop:${conversationId}`;
+}
+
+function buildImOwnerKey(connectorId: string, chatId: string): string {
+  return `im:${connectorId}:${chatId}`;
+}
+
 function toChannelAgentType(backend: string): IChannelSession['agentType'] {
   const { convType } = resolveChannelConvType(backend);
   return convType as IChannelSession['agentType'];
@@ -119,6 +131,7 @@ export class ChannelHandoffService {
   async handoffSession(params: IChannelHandoffRequest): Promise<IChannelHandoffResult> {
     const mode = params.mode ?? DEFAULT_HANDOFF_MODE;
     const conflictPolicy = params.conflictPolicy ?? DEFAULT_CONFLICT_POLICY;
+    const controlMode = params.controlMode ?? DEFAULT_CONTROL_MODE;
     const db = await this.deps.getDatabase();
 
     const connector = assertQuerySuccess(
@@ -220,7 +233,11 @@ export class ChannelHandoffService {
             metadata: {
               ...existingTargetSession.metadata,
               control: {
-                ownerKey: `${params.targetConnectorId}:${params.targetChatId}`,
+                ownerKey:
+                  controlMode === 'im_owner'
+                    ? buildImOwnerKey(params.targetConnectorId, params.targetChatId)
+                    : buildDesktopOwnerKey(source.sourceConversationId || existingTargetSession.activeConversationId || 'unknown'),
+                controlMode,
                 sourceExternalSessionId: source.sourceExternalSession?.id,
                 sourceConversationId: source.sourceConversationId,
                 mode,
@@ -241,7 +258,11 @@ export class ChannelHandoffService {
             metadata: {
               source: 'channel-handoff',
               control: {
-                ownerKey: `${params.targetConnectorId}:${params.targetChatId}`,
+                ownerKey:
+                  controlMode === 'im_owner'
+                    ? buildImOwnerKey(params.targetConnectorId, params.targetChatId)
+                    : buildDesktopOwnerKey(source.sourceConversationId || 'unknown'),
+                controlMode,
                 sourceExternalSessionId: source.sourceExternalSession?.id,
                 sourceConversationId: source.sourceConversationId,
                 mode,
@@ -250,6 +271,22 @@ export class ChannelHandoffService {
             },
           };
       assertQuerySuccess(db.upsertExternalSession(nextTargetSession), 'Failed to upsert target external session');
+      assertQuerySuccess(
+        db.upsertChannelControlLease({
+          externalSessionId: nextTargetSession.id,
+          ownerKey:
+            controlMode === 'im_owner'
+              ? buildImOwnerKey(params.targetConnectorId, params.targetChatId)
+              : buildDesktopOwnerKey(source.sourceConversationId || 'unknown'),
+          controlMode,
+          sourceExternalSessionId: source.sourceExternalSession?.id,
+          sourceConversationId: source.sourceConversationId,
+          handoffMode: mode,
+          createdAt: existingTargetSession ? now : now,
+          updatedAt: now,
+        } satisfies IChannelControlLease),
+        'Failed to upsert channel control lease'
+      );
 
       if (
         mode === 'resume' &&
@@ -300,6 +337,241 @@ export class ChannelHandoffService {
     }
 
     return transaction.data;
+  }
+
+  async releaseHandoff(targetExternalSessionId: string): Promise<IChannelHandoffReleaseResult> {
+    const db = await this.deps.getDatabase();
+    const targetExternalSession = assertQuerySuccess(
+      db.getExternalSession(targetExternalSessionId),
+      `Failed to load target external session ${targetExternalSessionId}`
+    );
+    if (!targetExternalSession) {
+      throw new Error(`Target external session ${targetExternalSessionId} not found`);
+    }
+
+    const binding = targetExternalSession.bindingId
+      ? assertQuerySuccess(db.getChannelBinding(targetExternalSession.bindingId), 'Failed to load handoff binding')
+      : null;
+
+    const bindingMetadata = binding?.metadata && typeof binding.metadata === 'object'
+      ? (binding.metadata as Record<string, unknown>)
+      : {};
+    const bindingHandoff =
+      bindingMetadata.handoff && typeof bindingMetadata.handoff === 'object'
+        ? (bindingMetadata.handoff as Record<string, unknown>)
+        : {};
+    const targetMetadata =
+      targetExternalSession.metadata && typeof targetExternalSession.metadata === 'object'
+        ? (targetExternalSession.metadata as Record<string, unknown>)
+        : {};
+    const controlMetadata =
+      targetMetadata.control && typeof targetMetadata.control === 'object'
+        ? (targetMetadata.control as Record<string, unknown>)
+        : {};
+
+    const sourceExternalSessionId =
+      typeof controlMetadata.sourceExternalSessionId === 'string' && controlMetadata.sourceExternalSessionId
+        ? controlMetadata.sourceExternalSessionId
+        : typeof bindingHandoff.sourceExternalSessionId === 'string' && bindingHandoff.sourceExternalSessionId
+          ? bindingHandoff.sourceExternalSessionId
+          : undefined;
+
+    const sourceConversationId =
+      typeof controlMetadata.sourceConversationId === 'string' && controlMetadata.sourceConversationId
+        ? controlMetadata.sourceConversationId
+        : typeof bindingHandoff.sourceConversationId === 'string' && bindingHandoff.sourceConversationId
+          ? bindingHandoff.sourceConversationId
+          : typeof bindingHandoff.resumeConversationId === 'string' && bindingHandoff.resumeConversationId
+            ? bindingHandoff.resumeConversationId
+            : undefined;
+
+    const now = Date.now();
+    const transaction = db.runInTransaction(() => {
+      if (binding?.temporary) {
+        assertQuerySuccess(db.deleteChannelBinding(binding.id), `Failed to delete handoff binding ${binding.id}`);
+      }
+
+      const releasedTargetSession: IExternalSession = {
+        ...targetExternalSession,
+        bindingId: binding?.temporary ? undefined : targetExternalSession.bindingId,
+        activeConversationId: undefined,
+        lastActivity: now,
+        metadata: {
+          ...targetMetadata,
+          control: {
+            ...controlMetadata,
+            controlMode: 'desktop_owner',
+            releasedAt: now,
+          },
+        },
+      };
+      assertQuerySuccess(db.upsertExternalSession(releasedTargetSession), 'Failed to release target external session');
+      assertQuerySuccess(
+        db.upsertChannelControlLease({
+          externalSessionId: releasedTargetSession.id,
+          ownerKey: buildDesktopOwnerKey(sourceConversationId || releasedTargetSession.activeConversationId || 'unknown'),
+          controlMode: 'desktop_owner',
+          sourceExternalSessionId,
+          sourceConversationId,
+          handoffMode: bindingHandoff.mode === 'new_thread' || bindingHandoff.mode === 'resume' ? bindingHandoff.mode : undefined,
+          createdAt: now,
+          updatedAt: now,
+          releasedAt: now,
+        } satisfies IChannelControlLease),
+        'Failed to update released control lease'
+      );
+
+      let restoredSourceExternalSessionId: string | undefined;
+      let restoredConversationId: string | undefined;
+      if (sourceExternalSessionId && sourceConversationId) {
+        const sourceExternalSession = assertQuerySuccess(
+          db.getExternalSession(sourceExternalSessionId),
+          `Failed to load source external session ${sourceExternalSessionId}`
+        );
+        if (sourceExternalSession) {
+          const restoredSourceSession: IExternalSession = {
+            ...sourceExternalSession,
+            activeConversationId: sourceConversationId,
+            lastActivity: now,
+            metadata: {
+              ...sourceExternalSession.metadata,
+              control: {
+                ownerKey: buildDesktopOwnerKey(sourceConversationId),
+                controlMode: 'desktop_owner',
+                restoredAt: now,
+              },
+              handoff: {
+                transferredConversationId: undefined,
+                targetExternalSessionId: undefined,
+                restoredAt: now,
+              },
+            },
+          };
+          assertQuerySuccess(db.upsertExternalSession(restoredSourceSession), 'Failed to restore source external session');
+          assertQuerySuccess(
+            db.upsertChannelControlLease({
+              externalSessionId: restoredSourceSession.id,
+              ownerKey: buildDesktopOwnerKey(sourceConversationId),
+              controlMode: 'desktop_owner',
+              createdAt: now,
+              updatedAt: now,
+              releasedAt: now,
+            } satisfies IChannelControlLease),
+            'Failed to restore source control lease'
+          );
+          restoredSourceExternalSessionId = restoredSourceSession.id;
+          restoredConversationId = sourceConversationId;
+        }
+      }
+
+      const mirroredSessions = assertQuerySuccess(db.getChannelSessions(), 'Failed to load channel session mirrors');
+      const targetMirror = mirroredSessions.find((session) => session.id === releasedTargetSession.id);
+      if (targetMirror) {
+        assertQuerySuccess(db.deleteChannelSession(targetMirror.id), 'Failed to delete target handoff session mirror');
+      }
+
+      if (restoredSourceExternalSessionId) {
+        const sourceMirror = mirroredSessions.find((session) => session.id === restoredSourceExternalSessionId);
+        if (sourceMirror && restoredConversationId) {
+          assertQuerySuccess(
+            db.upsertChannelSession({
+              ...sourceMirror,
+              conversationId: restoredConversationId,
+              lastActivity: now,
+            }),
+            'Failed to refresh source channel session mirror'
+          );
+        }
+      }
+
+      return {
+        targetExternalSessionId,
+        releasedBindingId: binding?.id,
+        restoredSourceExternalSessionId,
+        restoredConversationId,
+      } satisfies IChannelHandoffReleaseResult;
+    });
+
+    if (!transaction.success || !transaction.data) {
+      throw new Error(transaction.error || 'Channel handoff release transaction failed');
+    }
+
+    return transaction.data;
+  }
+
+  async updateHandoffControlMode(
+    targetExternalSessionId: string,
+    controlMode: ChannelControlMode
+  ): Promise<IChannelHandoffReleaseResult> {
+    const db = await this.deps.getDatabase();
+    const targetExternalSession = assertQuerySuccess(
+      db.getExternalSession(targetExternalSessionId),
+      `Failed to load target external session ${targetExternalSessionId}`
+    );
+    if (!targetExternalSession) {
+      throw new Error(`Target external session ${targetExternalSessionId} not found`);
+    }
+
+    const targetMetadata =
+      targetExternalSession.metadata && typeof targetExternalSession.metadata === 'object'
+        ? (targetExternalSession.metadata as Record<string, unknown>)
+        : {};
+    const controlMetadata =
+      targetMetadata.control && typeof targetMetadata.control === 'object'
+        ? (targetMetadata.control as Record<string, unknown>)
+        : {};
+    const targetRemoteIdentity = assertQuerySuccess(
+      db.getRemoteIdentity(targetExternalSession.remoteIdentityId),
+      `Failed to load target remote identity ${targetExternalSession.remoteIdentityId}`
+    );
+    const sourceConversationId =
+      typeof controlMetadata.sourceConversationId === 'string' && controlMetadata.sourceConversationId
+        ? controlMetadata.sourceConversationId
+        : targetExternalSession.activeConversationId;
+
+    const updated: IExternalSession = {
+      ...targetExternalSession,
+      lastActivity: Date.now(),
+      metadata: {
+        ...targetMetadata,
+        control: {
+          ...controlMetadata,
+          ownerKey:
+            controlMode === 'im_owner'
+              ? buildImOwnerKey(targetExternalSession.connectorId, targetRemoteIdentity?.remoteChatId || 'unknown')
+              : buildDesktopOwnerKey(sourceConversationId || 'unknown'),
+          controlMode,
+          updatedAt: Date.now(),
+        },
+      },
+    };
+    assertQuerySuccess(db.upsertExternalSession(updated), 'Failed to update handoff control mode');
+    assertQuerySuccess(
+      db.upsertChannelControlLease({
+        externalSessionId: updated.id,
+        ownerKey:
+          controlMode === 'im_owner'
+            ? buildImOwnerKey(targetExternalSession.connectorId, targetRemoteIdentity?.remoteChatId || 'unknown')
+            : buildDesktopOwnerKey(sourceConversationId || 'unknown'),
+        controlMode,
+        sourceExternalSessionId:
+          typeof controlMetadata.sourceExternalSessionId === 'string' ? controlMetadata.sourceExternalSessionId : undefined,
+        sourceConversationId,
+        handoffMode:
+          controlMetadata.mode === 'resume' || controlMetadata.mode === 'new_thread' ? controlMetadata.mode : undefined,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        releasedAt:
+          controlMode === 'desktop_owner'
+            ? Date.now()
+            : undefined,
+      } satisfies IChannelControlLease),
+      'Failed to update channel control lease'
+    );
+    return {
+      targetExternalSessionId: updated.id,
+      restoredConversationId: sourceConversationId,
+    };
   }
 
   private resolveSourceContext(db: ContextGoUIDatabase, params: IChannelHandoffRequest): SourceContext {

@@ -19,6 +19,11 @@ const applyBeforeUserPromptMock = vi.fn(async (_conversation: unknown, input: st
   appliedHooks: [],
 }));
 const prepareFirstMessageMock = vi.fn(async (msg: string) => msg);
+const getDatabaseMock = vi.fn(async () => ({
+  getExternalSession: vi.fn(() => ({ success: true, data: null })),
+  getExternalSessionByActiveConversation: vi.fn(() => ({ success: true, data: null })),
+  getChannelControlLease: vi.fn(() => ({ success: true, data: null })),
+}));
 
 vi.mock('@/common', () => ({
   ipcBridge: {
@@ -57,6 +62,10 @@ vi.mock('@/common', () => ({
   },
 }));
 
+vi.mock('@process/services/database', () => ({
+  getDatabase: (...args: unknown[]) => getDatabaseMock(...args),
+}));
+
 vi.mock('@process/utils/initStorage', () => ({
   ProcessChat: { get: vi.fn(async () => []) },
   ProcessConfig: { get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) },
@@ -77,6 +86,9 @@ vi.mock('@process/agent/gemini', () => ({
 vi.mock('@process/utils', () => ({
   copyFilesToDirectory: vi.fn(async () => []),
   readDirectoryRecursive: vi.fn(async () => null),
+  ensureDirectory: vi.fn(),
+  getDataPath: vi.fn(() => '/tmp'),
+  resolveBrandStoragePath: vi.fn(() => '/tmp/contextgo.db'),
 }));
 
 vi.mock('@process/utils/openclawUtils', () => ({

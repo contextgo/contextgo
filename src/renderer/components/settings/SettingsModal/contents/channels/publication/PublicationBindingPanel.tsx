@@ -177,6 +177,26 @@ function resolvePreferredProfileId(
   return bestProfileId;
 }
 
+function getConnectorGuide(platform: string, t: ReturnType<typeof useTranslation>['t']): string {
+  if (platform === 'weixin') {
+    return t('settings.channels.publication.connectorGuide.weixin');
+  }
+
+  return t('settings.channels.publication.connectorGuide.multiSession');
+}
+
+function getScopeHint(scopeType: DurableBindingScopeType, t: ReturnType<typeof useTranslation>['t']): string {
+  if (scopeType === 'connector_default') {
+    return t('settings.channels.publication.targetTypeHint.connectorDefault');
+  }
+
+  if (scopeType === 'remote_user') {
+    return t('settings.channels.publication.targetTypeHint.remoteUser');
+  }
+
+  return t('settings.channels.publication.targetTypeHint.remoteChat');
+}
+
 const PublicationBindingPanel: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -187,6 +207,8 @@ const PublicationBindingPanel: React.FC = () => {
   const [deletingBindingId, setDeletingBindingId] = useState('');
   const [durableEditor, setDurableEditor] = useState<DurableEditorState>(createDurableEditorState());
   const [temporaryEditor, setTemporaryEditor] = useState<TemporaryEditorState>(createTemporaryEditorState());
+  const [showDurableManualScope, setShowDurableManualScope] = useState(false);
+  const [showTemporaryManualScope, setShowTemporaryManualScope] = useState(false);
   const [appliedIntentKey, setAppliedIntentKey] = useState('');
 
   const publicationIntent = useMemo(
@@ -260,6 +282,12 @@ const PublicationBindingPanel: React.FC = () => {
     () => resolvePreferredProfileId(catalog.agentProfiles, publicationIntent),
     [catalog.agentProfiles, publicationIntent]
   );
+  const intentProfile = useMemo(
+    () =>
+      (preferredProfileId ? profileMap.get(preferredProfileId) : undefined) ||
+      (publicationIntent?.agentProfileId ? profileMap.get(publicationIntent.agentProfileId) : undefined),
+    [preferredProfileId, profileMap, publicationIntent?.agentProfileId]
+  );
 
   const selectedConnector = useMemo<IConnectorInstance | undefined>(
     () => catalog.connectors.find((connector) => connector.id === selectedConnectorId),
@@ -276,10 +304,11 @@ const PublicationBindingPanel: React.FC = () => {
     [catalog.audiences, selectedConnectorId]
   );
 
-  const { durableBindings, temporaryBindings } = useMemo(
+  const { durableBindings, temporaryBindings, systemFallbackBindings } = useMemo(
     () => splitBindingsByLifetime(selectedBindings),
     [selectedBindings]
   );
+  const systemFallbackBinding = systemFallbackBindings[0];
 
   const durableScopeOptions = useMemo<BindingScopeOption[]>(
     () => [
@@ -312,8 +341,15 @@ const PublicationBindingPanel: React.FC = () => {
     [selectedAudiences]
   );
 
+  const durableScopeHint = useMemo(() => getScopeHint(durableEditor.scopeType, t), [durableEditor.scopeType, t]);
+  const connectorGuide = useMemo(
+    () => (selectedConnector ? getConnectorGuide(selectedConnector.platform, t) : t('settings.channels.publication.connectorGuide')),
+    [selectedConnector, t]
+  );
+
   const resetDurableEditor = useCallback(
     (nextAgentProfileId?: string) => {
+      setShowDurableManualScope(false);
       setDurableEditor(createDurableEditorState(nextAgentProfileId ?? durableEditor.agentProfileId));
     },
     [durableEditor.agentProfileId]
@@ -321,6 +357,7 @@ const PublicationBindingPanel: React.FC = () => {
 
   const resetTemporaryEditor = useCallback(
     (nextAgentProfileId?: string) => {
+      setShowTemporaryManualScope(false);
       setTemporaryEditor(createTemporaryEditorState(nextAgentProfileId ?? temporaryEditor.agentProfileId));
     },
     [temporaryEditor.agentProfileId]
@@ -431,6 +468,7 @@ const PublicationBindingPanel: React.FC = () => {
 
   const handleEditBinding = useCallback((binding: IChannelBinding) => {
     if (binding.temporary) {
+      setShowTemporaryManualScope(true);
       setTemporaryEditor({
         editingBindingId: binding.id,
         selectedAudienceKey: binding.scopeKey ?? '',
@@ -441,6 +479,7 @@ const PublicationBindingPanel: React.FC = () => {
       return;
     }
 
+    setShowDurableManualScope(true);
     setDurableEditor({
       editingBindingId: binding.id,
       scopeType: binding.scopeType as DurableBindingScopeType,
@@ -543,6 +582,36 @@ const PublicationBindingPanel: React.FC = () => {
 
       <Spin loading={loading}>
         <div className='space-y-12px'>
+          {publicationIntent ? (
+            <div className='border border-[rgba(var(--primary-6),0.22)] bg-[rgba(var(--primary-6),0.06)] rd-12px p-12px space-y-8px'>
+              <div className='text-14px font-600 text-t-primary'>{t('settings.channels.publication.intentTitle')}</div>
+              <div className='text-12px text-t-secondary leading-relaxed'>
+                {t('settings.channels.publication.intentDescription')}
+              </div>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-8px'>
+                <div className='text-12px text-t-secondary'>
+                  {t('settings.channels.publication.intentProfile')}:
+                  <span className='ml-6px text-t-primary'>
+                    {intentProfile ? getProfileLabel(intentProfile) : publicationIntent.agentProfileId || '-'}
+                  </span>
+                </div>
+                <div className='text-12px text-t-secondary'>
+                  {t('settings.channels.publication.intentConversation')}:
+                  <span className='ml-6px text-t-primary'>{publicationIntent.conversationId || '-'}</span>
+                </div>
+                <div className='text-12px text-t-secondary'>
+                  {t('settings.channels.publication.intentBackend')}:
+                  <span className='ml-6px text-t-primary'>{publicationIntent.backend || '-'}</span>
+                </div>
+                <div className='text-12px text-t-secondary'>
+                  {t('settings.channels.publication.intentWorkspace')}:
+                  <span className='ml-6px text-t-primary break-all'>{publicationIntent.workspace || '-'}</span>
+                </div>
+              </div>
+              <div className='text-12px text-t-secondary'>{t('settings.channels.publication.intentSelectedHint')}</div>
+            </div>
+          ) : null}
+
           <div className='space-y-6px'>
             <div className='text-12px font-500 text-t-primary'>{t('settings.channels.publication.connectorLabel')}</div>
             <Select
@@ -553,17 +622,39 @@ const PublicationBindingPanel: React.FC = () => {
               allowClear={false}
             />
             {selectedConnector ? (
-              <div className='text-12px text-t-secondary'>
-                {t('settings.channels.publication.connectorHint', {
-                  platform: selectedConnector.platform,
-                  name: selectedConnector.name,
-                })}
+              <div className='space-y-4px'>
+                <div className='text-12px text-t-secondary'>
+                  {t('settings.channels.publication.connectorHint', {
+                    platform: selectedConnector.platform,
+                    name: selectedConnector.name,
+                  })}
+                </div>
+                <div className='text-12px text-t-secondary leading-relaxed'>{connectorGuide}</div>
               </div>
             ) : null}
           </div>
 
           {selectedConnectorId ? (
             <>
+              {systemFallbackBinding ? (
+                <div className='border border-[rgba(var(--primary-6),0.18)] bg-[rgba(var(--primary-6),0.04)] rd-12px p-12px space-y-8px'>
+                  <div className='text-14px font-600 text-t-primary'>
+                    {t('settings.channels.publication.fallbackTitle')}
+                  </div>
+                  <div className='text-12px text-t-secondary leading-relaxed'>
+                    {t('settings.channels.publication.fallbackDescription')}
+                  </div>
+                  <div className='text-13px text-t-primary break-all'>
+                    {profileMap.get(systemFallbackBinding.agentProfileId)
+                      ? getProfileLabel(profileMap.get(systemFallbackBinding.agentProfileId)!)
+                      : systemFallbackBinding.agentProfileId}
+                  </div>
+                  <div className='text-12px text-t-secondary'>
+                    {t('settings.channels.publication.fallbackHint')}
+                  </div>
+                </div>
+              ) : null}
+
               <div className='grid grid-cols-1 xl:grid-cols-2 gap-12px'>
                 <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
                   <div className='space-y-4px'>
@@ -578,6 +669,9 @@ const PublicationBindingPanel: React.FC = () => {
                     ) : null}
                   </div>
                   <div className='space-y-8px'>
+                    <div className='text-12px font-500 text-t-primary'>
+                      {t('settings.channels.publication.targetTypeLabel')}
+                    </div>
                     <Select
                       value={durableEditor.scopeType}
                       options={durableScopeOptions}
@@ -590,6 +684,7 @@ const PublicationBindingPanel: React.FC = () => {
                         }))
                       }
                     />
+                    <div className='text-12px text-t-secondary leading-relaxed'>{durableScopeHint}</div>
                     {durableEditor.scopeType !== 'connector_default' ? (
                       <>
                         <Select
@@ -606,14 +701,27 @@ const PublicationBindingPanel: React.FC = () => {
                           }
                           allowClear
                         />
-                        <Input
-                          value={durableEditor.manualScopeKey}
-                          onChange={(value) => setDurableEditor((editor) => ({ ...editor, manualScopeKey: value }))}
-                          placeholder={durableScopeKeyPlaceholder}
-                        />
-                        <div className='text-12px text-t-secondary'>
-                          {t('settings.channels.publication.manualKeyHint')}
-                        </div>
+                        <Button
+                          type='text'
+                          className='!justify-start !px-0'
+                          onClick={() => setShowDurableManualScope((current) => !current)}
+                        >
+                          {t('settings.channels.publication.manualScopeToggle')}
+                        </Button>
+                        {showDurableManualScope ? (
+                          <>
+                            <Input
+                              value={durableEditor.manualScopeKey}
+                              onChange={(value) =>
+                                setDurableEditor((editor) => ({ ...editor, manualScopeKey: value }))
+                              }
+                              placeholder={durableScopeKeyPlaceholder}
+                            />
+                            <div className='text-12px text-t-secondary'>
+                              {t('settings.channels.publication.manualKeyHint')}
+                            </div>
+                          </>
+                        ) : null}
                       </>
                     ) : null}
                     <Select
@@ -629,6 +737,7 @@ const PublicationBindingPanel: React.FC = () => {
                       placeholder={t('settings.channels.publication.priorityLabel')}
                       className='w-full'
                     />
+                    <div className='text-12px text-t-secondary'>{t('settings.channels.publication.priorityHint')}</div>
                     <div className='flex flex-wrap gap-8px'>
                       <Button
                         type='primary'
@@ -697,12 +806,25 @@ const PublicationBindingPanel: React.FC = () => {
                       }
                       allowClear
                     />
-                    <Input
-                      value={temporaryEditor.manualScopeKey}
-                      onChange={(value) => setTemporaryEditor((editor) => ({ ...editor, manualScopeKey: value }))}
-                      placeholder={t('settings.channels.publication.scopeKeyRemoteChatPlaceholder')}
-                    />
-                    <div className='text-12px text-t-secondary'>{t('settings.channels.publication.manualKeyHint')}</div>
+                    <Button
+                      type='text'
+                      className='!justify-start !px-0'
+                      onClick={() => setShowTemporaryManualScope((current) => !current)}
+                    >
+                      {t('settings.channels.publication.manualScopeToggle')}
+                    </Button>
+                    {showTemporaryManualScope ? (
+                      <>
+                        <Input
+                          value={temporaryEditor.manualScopeKey}
+                          onChange={(value) => setTemporaryEditor((editor) => ({ ...editor, manualScopeKey: value }))}
+                          placeholder={t('settings.channels.publication.scopeKeyRemoteChatPlaceholder')}
+                        />
+                        <div className='text-12px text-t-secondary'>
+                          {t('settings.channels.publication.manualKeyHint')}
+                        </div>
+                      </>
+                    ) : null}
                     <Select
                       value={temporaryEditor.agentProfileId || undefined}
                       options={profileOptions}
@@ -720,6 +842,7 @@ const PublicationBindingPanel: React.FC = () => {
                       placeholder={t('settings.channels.publication.priorityLabel')}
                       className='w-full'
                     />
+                    <div className='text-12px text-t-secondary'>{t('settings.channels.publication.priorityHint')}</div>
                     <div className='flex flex-wrap gap-8px'>
                       <Button
                         type='primary'

@@ -411,8 +411,10 @@
     "preset_registered": "에이전트 프리셋이 성공적으로 등록되었습니다!"
   },
   "header": {
-    "publishAgentEntry": "배포",
-    "publishAgentEntryHint": "Agent Entry를 열고 현재 대화의 재사용 가능한 채널 바인딩을 관리합니다.",
+    "publishAgentEntry": "IM에 게시",
+    "publishAgentEntryHint": "현재 대화를 재사용 가능한 Agent로 정리하고 사용자, 그룹, 토픽 또는 다른 IM 표면에 게시합니다.",
+    "publishAgentAction": "Publish this Agent",
+    "handoffSessionAction": "Continue current session in IM",
     "publishPrepareFailed": "이 Agent Entry를 준비하지 못했습니다"
   }
 }

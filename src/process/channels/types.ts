@@ -213,6 +213,19 @@ export type ChannelBindingScopeType = 'connector_default' | 'remote_user' | 'rem
 export type ChannelBindingTargetType = 'agent_profile' | 'external_session';
 export type ChannelHandoffMode = 'resume' | 'new_thread';
 export type ChannelHandoffConflictPolicy = 'reject' | 'interrupt';
+export type ChannelControlMode = 'desktop_owner' | 'im_owner' | 'im_observer';
+
+export interface IChannelControlLease {
+  externalSessionId: string;
+  ownerKey: string;
+  controlMode: ChannelControlMode;
+  sourceExternalSessionId?: string;
+  sourceConversationId?: string;
+  handoffMode?: ChannelHandoffMode;
+  createdAt: number;
+  updatedAt: number;
+  releasedAt?: number;
+}
 
 /**
  * Explicit routing rule from connector scope to agent profile.
@@ -273,6 +286,7 @@ export type IChannelHandoffRequest = {
   targetChatType?: string;
   mode?: ChannelHandoffMode;
   conflictPolicy?: ChannelHandoffConflictPolicy;
+  controlMode?: ChannelControlMode;
   temporary?: boolean;
   priority?: number;
 };
@@ -284,6 +298,13 @@ export type IChannelHandoffResult = {
   conversationId?: string;
   agentProfileId: string;
   mode: ChannelHandoffMode;
+};
+
+export type IChannelHandoffReleaseResult = {
+  targetExternalSessionId: string;
+  releasedBindingId?: string;
+  restoredSourceExternalSessionId?: string;
+  restoredConversationId?: string;
 };
 
 /**
@@ -303,11 +324,56 @@ export interface IExternalSession {
   metadata?: Record<string, unknown>;
 }
 
+export type IExternalSessionControlState = {
+  ownerKey?: string;
+  controlMode?: ChannelControlMode;
+  sourceExternalSessionId?: string;
+  sourceConversationId?: string;
+  handoffMode?: ChannelHandoffMode;
+};
+
 function toRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
   }
   return value as Record<string, unknown>;
+}
+
+export function getExternalSessionControlState(session: IExternalSession): IExternalSessionControlState {
+  const metadata = toRecord(session.metadata);
+  const control = toRecord(metadata?.control);
+
+  return {
+    ownerKey: typeof control?.ownerKey === 'string' && control.ownerKey ? control.ownerKey : undefined,
+    controlMode:
+      control?.controlMode === 'desktop_owner' ||
+      control?.controlMode === 'im_owner' ||
+      control?.controlMode === 'im_observer'
+        ? control.controlMode
+        : undefined,
+    sourceExternalSessionId:
+      typeof control?.sourceExternalSessionId === 'string' && control.sourceExternalSessionId
+        ? control.sourceExternalSessionId
+        : undefined,
+    sourceConversationId:
+      typeof control?.sourceConversationId === 'string' && control.sourceConversationId
+        ? control.sourceConversationId
+        : undefined,
+    handoffMode:
+      control?.mode === 'resume' || control?.mode === 'new_thread'
+        ? control.mode
+        : undefined,
+  };
+}
+
+export function getChannelBindingSource(binding: IChannelBinding): string | undefined {
+  const metadata = toRecord(binding.metadata);
+  return typeof metadata?.source === 'string' && metadata.source ? metadata.source : undefined;
+}
+
+export function isSystemFallbackBinding(binding: IChannelBinding): boolean {
+  const source = getChannelBindingSource(binding);
+  return source === 'legacy-default' || source === 'system-fallback-runtime';
 }
 
 /**
@@ -439,6 +505,32 @@ export interface IChannelSession {
   createdAt: number;
   lastActivity: number;
 }
+
+export type IChannelActiveSessionEntry = {
+  id: string;
+  connectorId?: string;
+  connectorName?: string;
+  connectorPlatform?: PluginType;
+  remoteIdentityId?: string;
+  audienceTitle: string;
+  audienceKey?: string;
+  conversationId?: string;
+  workspace?: string;
+  agentType: ChannelAgentType;
+  createdAt: number;
+  lastActivity: number;
+  bindingId?: string;
+  bindingTemporary?: boolean;
+  bindingSource?: string;
+  bindingSystemFallback?: boolean;
+  ownerKey?: string;
+  controlMode?: ChannelControlMode;
+  handoffMode?: ChannelHandoffMode;
+  handoffSourceExternalSessionId?: string;
+  handoffSourceConversationId?: string;
+  leaseUpdatedAt?: number;
+  leaseReleasedAt?: number;
+};
 
 /**
  * Database row for assistant sessions

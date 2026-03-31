@@ -9,11 +9,21 @@ import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '
 import { getChannelManager } from '@process/channels/core/ChannelManager';
 import { getChannelHandoffService } from '@process/channels/core/ChannelHandoffService';
 import { getPairingService } from '@process/channels/pairing/PairingService';
+import { getDatabase } from '@process/services/database';
 import { ExtensionRegistry } from '@process/extensions';
 import { toAssetUrl } from '@process/extensions/protocol/assetProtocol';
 import * as path from 'path';
-import type { IChannelAudienceEntry, IChannelPluginStatus, IRemoteIdentity } from '@process/channels/types';
-import { hasPluginCredentials } from '@process/channels/types';
+import type {
+  IChannelActiveSessionEntry,
+  IChannelAudienceEntry,
+  IChannelBinding,
+  IChannelPluginStatus,
+  IChannelSession,
+  IConnectorInstance,
+  IExternalSession,
+  IRemoteIdentity,
+} from '@process/channels/types';
+import { getChannelBindingSource, hasPluginCredentials, isSystemFallbackBinding } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
 
 function getErrorMessage(error: unknown): string {
@@ -106,6 +116,55 @@ function buildAudienceEntries(remoteIdentities: IRemoteIdentity[]): IChannelAudi
   return [...remoteUserAudiences, ...remoteChatAudiences].toSorted(
     (left, right) => (right.lastActive ?? 0) - (left.lastActive ?? 0)
   );
+}
+
+function buildActiveSessionEntries(params: {
+  sessions: IChannelSession[];
+  remoteIdentities: IRemoteIdentity[];
+  connectors: IConnectorInstance[];
+  bindings: IChannelBinding[];
+  externalSessions: IExternalSession[];
+  controlLeases: import('@process/channels/types').IChannelControlLease[];
+}): IChannelActiveSessionEntry[] {
+  const remoteIdentityMap = new Map(params.remoteIdentities.map((identity) => [identity.id, identity]));
+  const connectorMap = new Map(params.connectors.map((connector) => [connector.id, connector]));
+  const bindingMap = new Map(params.bindings.map((binding) => [binding.id, binding]));
+  const externalSessionMap = new Map(params.externalSessions.map((session) => [session.id, session]));
+  const controlLeaseMap = new Map(params.controlLeases.map((lease) => [lease.externalSessionId, lease]));
+
+  return params.sessions.map((session) => {
+    const remoteIdentity = remoteIdentityMap.get(session.userId);
+    const connector = remoteIdentity ? connectorMap.get(remoteIdentity.connectorId) : undefined;
+    const externalSession = externalSessionMap.get(session.id);
+    const binding = externalSession?.bindingId ? bindingMap.get(externalSession.bindingId) : undefined;
+    const controlLease = controlLeaseMap.get(session.id);
+
+    return {
+      id: session.id,
+      connectorId: connector?.id,
+      connectorName: connector?.name,
+      connectorPlatform: connector?.platform,
+      remoteIdentityId: remoteIdentity?.id,
+      audienceTitle: remoteIdentity?.displayName || remoteIdentity?.remoteChatId || session.chatId || session.id,
+      audienceKey: remoteIdentity?.remoteChatId || session.chatId,
+      conversationId: session.conversationId,
+      workspace: session.workspace,
+      agentType: session.agentType,
+      createdAt: session.createdAt,
+      lastActivity: session.lastActivity,
+      bindingId: binding?.id ?? externalSession?.bindingId,
+      bindingTemporary: binding?.temporary,
+      bindingSource: binding ? getChannelBindingSource(binding) : undefined,
+      bindingSystemFallback: binding ? isSystemFallbackBinding(binding) : undefined,
+      ownerKey: controlLease?.ownerKey,
+      controlMode: controlLease?.controlMode,
+      handoffMode: controlLease?.handoffMode,
+      handoffSourceExternalSessionId: controlLease?.sourceExternalSessionId,
+      handoffSourceConversationId: controlLease?.sourceConversationId,
+      leaseUpdatedAt: controlLease?.updatedAt,
+      leaseReleasedAt: controlLease?.releasedAt,
+    };
+  });
 }
 
 /**
@@ -402,6 +461,40 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
+  channel.getActiveSessionCatalog.provider(async () => {
+    try {
+      const db = await getDatabase();
+      const [sessions, connectors, remoteIdentities, bindings] = await Promise.all([
+        channelRepo.getChannelSessions(),
+        channelRepo.getConnectorInstances(),
+        channelRepo.getRemoteIdentities(),
+        channelRepo.getChannelBindings(),
+      ]);
+      const externalSessionsResult = db.getAllExternalSessions();
+      const controlLeasesResult = db.getAllChannelControlLeases();
+      if (!externalSessionsResult.success || !externalSessionsResult.data) {
+        throw new Error(externalSessionsResult.error || 'Failed to load external sessions');
+      }
+      if (!controlLeasesResult.success || !controlLeasesResult.data) {
+        throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
+      }
+      return {
+        success: true,
+        data: buildActiveSessionEntries({
+          sessions,
+          connectors,
+          remoteIdentities,
+          bindings,
+          externalSessions: externalSessionsResult.data,
+          controlLeases: controlLeasesResult.data,
+        }),
+      };
+    } catch (error) {
+      console.error('[ChannelBridge] getActiveSessionCatalog error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
   /**
    * Get binding catalog for publication management.
    */
@@ -477,6 +570,28 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return { success: true, data };
     } catch (error) {
       console.error('[ChannelBridge] handoffSession error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.endHandoffSession.provider(async ({ targetExternalSessionId }) => {
+    try {
+      const handoffService = getChannelHandoffService();
+      const data = await handoffService.releaseHandoff(targetExternalSessionId);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] endHandoffSession error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.setHandoffControlMode.provider(async ({ targetExternalSessionId, controlMode }) => {
+    try {
+      const handoffService = getChannelHandoffService();
+      const data = await handoffService.updateHandoffControlMode(targetExternalSessionId, controlMode);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] setHandoffControlMode error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });
