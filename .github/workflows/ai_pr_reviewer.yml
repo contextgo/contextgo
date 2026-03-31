@@ -18,8 +18,9 @@ concurrency:
 
 jobs:
   review:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
+      - uses: actions/checkout@v4
       - uses: coderabbitai/ai-pr-reviewer@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
