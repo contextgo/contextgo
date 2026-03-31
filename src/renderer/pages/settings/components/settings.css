@@ -1,0 +1,143 @@
+/* Settings shared control style */
+.settings-page-wrapper,
+.settings-modal,
+.settings-sub-modal {
+  --settings-control-radius: 12px;
+  --settings-control-radius-lg: 14px;
+  --settings-control-pill-radius: 999px;
+}
+
+.settings-page-wrapper :where(.arco-space-horizontal.arco-space-align-center.arco-space-wrap),
+.settings-modal :where(.arco-space-horizontal.arco-space-align-center.arco-space-wrap),
+.settings-sub-modal :where(.arco-space-horizontal.arco-space-align-center.arco-space-wrap) {
+  gap: 8px 10px !important;
+}
+
+.settings-page-wrapper :where(.arco-space-item > .arco-btn),
+.settings-modal :where(.arco-space-item > .arco-btn),
+.settings-sub-modal :where(.arco-space-item > .arco-btn) {
+  border-radius: var(--settings-control-radius) !important;
+}
+
+.settings-page-wrapper :where(.arco-btn),
+.settings-modal :where(.arco-btn),
+.settings-sub-modal :where(.arco-btn) {
+  border-radius: var(--settings-control-radius) !important;
+}
+
+.settings-page-wrapper :where(.arco-btn.arco-btn-shape-round),
+.settings-page-wrapper :where(.arco-btn.arco-btn-shape-circle),
+.settings-modal :where(.arco-btn.arco-btn-shape-round),
+.settings-modal :where(.arco-btn.arco-btn-shape-circle),
+.settings-sub-modal :where(.arco-btn.arco-btn-shape-round),
+.settings-sub-modal :where(.arco-btn.arco-btn-shape-circle) {
+  border-radius: var(--settings-control-pill-radius) !important;
+}
+
+.settings-page-wrapper :where(.arco-btn.arco-btn-size-mini),
+.settings-page-wrapper :where(.arco-btn.arco-btn-size-small),
+.settings-modal :where(.arco-btn.arco-btn-size-mini),
+.settings-modal :where(.arco-btn.arco-btn-size-small),
+.settings-sub-modal :where(.arco-btn.arco-btn-size-mini),
+.settings-sub-modal :where(.arco-btn.arco-btn-size-small) {
+  min-height: 30px;
+}
+
+.settings-page-wrapper :where(.arco-input-wrapper),
+.settings-page-wrapper :where(.arco-input),
+.settings-page-wrapper :where(.arco-textarea-wrapper),
+.settings-page-wrapper :where(.arco-textarea),
+.settings-page-wrapper :where(.arco-select-view),
+.settings-page-wrapper :where(.arco-input-number),
+.settings-page-wrapper :where(.arco-picker),
+.settings-page-wrapper :where(.arco-cascader-view),
+.settings-page-wrapper :where(.arco-tree-select-view),
+.settings-page-wrapper :where(.arco-auto-complete-view),
+.settings-page-wrapper :where(.arco-mentions-view),
+.settings-modal :where(.arco-input-wrapper),
+.settings-modal :where(.arco-input),
+.settings-modal :where(.arco-textarea-wrapper),
+.settings-modal :where(.arco-textarea),
+.settings-modal :where(.arco-select-view),
+.settings-modal :where(.arco-input-number),
+.settings-modal :where(.arco-picker),
+.settings-modal :where(.arco-cascader-view),
+.settings-modal :where(.arco-tree-select-view),
+.settings-modal :where(.arco-auto-complete-view),
+.settings-modal :where(.arco-mentions-view),
+.settings-sub-modal :where(.arco-input-wrapper),
+.settings-sub-modal :where(.arco-input),
+.settings-sub-modal :where(.arco-textarea-wrapper),
+.settings-sub-modal :where(.arco-textarea),
+.settings-sub-modal :where(.arco-select-view),
+.settings-sub-modal :where(.arco-input-number),
+.settings-sub-modal :where(.arco-picker),
+.settings-sub-modal :where(.arco-cascader-view),
+.settings-sub-modal :where(.arco-tree-select-view),
+.settings-sub-modal :where(.arco-auto-complete-view),
+.settings-sub-modal :where(.arco-mentions-view) {
+  border-radius: var(--settings-control-radius-lg) !important;
+}
+
+.settings-page-wrapper :where(.arco-input, .arco-textarea),
+.settings-modal :where(.arco-input, .arco-textarea),
+.settings-sub-modal :where(.arco-input, .arco-textarea) {
+  border-radius: inherit !important;
+}
+
+.settings-page-wrapper :where(.arco-input-number .arco-input),
+.settings-modal :where(.arco-input-number .arco-input),
+.settings-sub-modal :where(.arco-input-number .arco-input) {
+  border-radius: inherit !important;
+}
+
+/* Settings mobile top nav */
+@media (max-width: 767px) {
+  .settings-mobile-top-nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+
+  .settings-mobile-top-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-mobile-top-nav__item {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-base);
+    background: var(--bg-1);
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .settings-mobile-top-nav__item--active {
+    background: var(--bg-active);
+    color: var(--text-primary);
+    border-color: var(--border-base);
+  }
+
+  .settings-mobile-top-nav__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+  }
+
+  .settings-mobile-top-nav__label {
+    white-space: nowrap;
+    font-weight: 500;
+  }
+}

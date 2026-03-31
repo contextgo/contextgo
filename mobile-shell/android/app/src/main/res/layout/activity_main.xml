@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+
+  <ScrollView
+    android:id="@+id/connectContainer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:gravity="center_vertical"
+      android:orientation="vertical"
+      android:padding="24dp">
+
+      <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/connect_title"
+        android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+        android:textStyle="bold" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/connect_description"
+        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+      <Button
+        android:id="@+id/officialRemoteButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="@string/official_remote_action" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/official_remote_detail"
+        android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/custom_host_title"
+        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        android:textStyle="bold" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/custom_host_description"
+        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+      <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:hint="@string/connect_hint">
+
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/urlInput"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:autofillHints=""
+          android:importantForAutofill="no"
+          android:inputType="textUri"
+          android:maxLines="2"
+          android:singleLine="false" />
+      </com.google.android.material.textfield.TextInputLayout>
+
+      <TextView
+        android:id="@+id/errorText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+        android:textColor="@android:color/holo_red_dark"
+        android:visibility="gone" />
+
+      <Button
+        android:id="@+id/connectButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/connect_action" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/connect_notes"
+        android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+    </LinearLayout>
+  </ScrollView>
+
+  <LinearLayout
+    android:id="@+id/webContainer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:background="?attr/colorSurfaceContainer"
+      android:gravity="center_vertical"
+      android:orientation="horizontal"
+      android:padding="12dp">
+
+      <Button
+        android:id="@+id/backButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/back_action" />
+
+      <Button
+        android:id="@+id/reloadButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="@string/reload_action" />
+
+      <Space
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1" />
+
+      <Button
+        android:id="@+id/reconnectButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/change_host_action" />
+    </LinearLayout>
+
+    <WebView
+      android:id="@+id/webView"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1" />
+  </LinearLayout>
+</FrameLayout>

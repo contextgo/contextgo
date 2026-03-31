@@ -1,0 +1,253 @@
+{
+  "scheduledTasks": "定时任务",
+  "taskCount": "{{count}} 个任务",
+  "schedule": "调度规则",
+  "nextRun": "下次执行",
+  "lastRun": "上次执行",
+  "lastError": "错误信息",
+  "message": "执行内容",
+  "goToConversation": "跳转到所属会话",
+  "status": {
+    "active": "运行中",
+    "paused": "已暂停",
+    "error": "执行出错",
+    "unread": "有新执行",
+    "unconfigured": "未配置定时任务",
+    "unconfiguredHint": "当前会话暂无定时任务，和 Agent 一起创建一个吧",
+    "createNow": "立即创建",
+    "defaultPrompt": "每天早上10点，为我搜索AI最新的新闻动向，汇总并输出洞察报告。"
+  },
+  "actions": {
+    "goTo": "查看会话",
+    "pause": "暂停",
+    "resume": "恢复",
+    "delete": "删除",
+    "runNow": "立即执行"
+  },
+  "confirmDelete": "确定要删除此定时任务吗？",
+  "deleteSuccess": "任务已删除",
+  "pauseSuccess": "任务已暂停",
+  "resumeSuccess": "任务已恢复",
+  "drawer.title": "定时任务详细",
+  "drawer.name": "名称",
+  "drawer.namePlaceholder": "请输入任务名称",
+  "drawer.taskStatus": "任务状态",
+  "drawer.enabled": "已开启",
+  "drawer.disabled": "已暂停",
+  "drawer.command": "定时指令",
+  "drawer.commandPlaceholder": "请输入要执行的指令",
+  "drawer.schedule": "执行规则",
+  "drawer.nextRun": "下次执行",
+  "drawer.save": "保存",
+  "drawer.saveSuccess": "保存成功",
+  "message.badge": "定时任务",
+  "allScheduledTasks": "全部定时任务",
+  "noTasks": "暂无定时任务",
+  "overview": {
+    "description": "在这里统一查看和管理所有会话中的定时任务。",
+    "stats": {
+      "total": "任务总数",
+      "active": "运行中",
+      "paused": "已暂停",
+      "error": "异常任务"
+    },
+    "filters": {
+      "allStatuses": "全部状态",
+      "searchPlaceholder": "按任务、会话、指令、Agent 或错误信息搜索"
+    },
+    "emptyInitial": "暂时还没有定时任务。可先在某个会话中创建，随后会出现在这里。",
+    "emptyFiltered": "当前筛选条件下没有匹配的定时任务。"
+  },
+  "presets": {
+    "title": "开箱即用的预置定时器",
+    "description": "直接启用这些高价值自动化场景，后续也可以继续修改，或者让 Agent 按你的需求细化。",
+    "packPacksTitle": "按行业模板包挑选",
+    "rolePacksTitle": "按角色挑选",
+    "fillTemplate": "请为当前会话创建一个定时任务。\n名称：{{name}}\n执行时间：{{scheduleDescription}}\n执行内容：{{message}}",
+    "createSuccess": "已创建预置定时任务：{{name}}",
+    "directCreateHint": "这些预置会直接绑定到当前会话。如果你想改时间或内容，也可以先填入输入框，再让 Agent 帮你调整。",
+    "fillOnlyHint": "当前会话类型暂不支持直接创建。你仍可先把预置填入输入框，再让 Agent 帮你生成定时任务。",
+    "emptyHint": "预置定时器需要绑定到具体会话。先打开一个单 Agent 会话，再点击右上角时钟按钮即可一键启用。",
+    "recommended": "默认推荐",
+    "roles": {
+      "all": "全部",
+      "product": "产品",
+      "content": "内容",
+      "operations": "运营",
+      "sales": "销售",
+      "research": "投研"
+    },
+    "packs": {
+      "all": "全部",
+      "saasProduct": "SaaS 产品包",
+      "contentGrowth": "内容增长包",
+      "recruitingOps": "招聘运营包",
+      "salesFollowUp": "销售跟进包",
+      "researchMonitoring": "投研监控包"
+    },
+    "actions": {
+      "useNow": "一键启用",
+      "fillPrompt": "填入输入框",
+      "customize": "自定义创建",
+      "browseAllPacks": "查看全部行业包",
+      "viewAllInPack": "查看全部 {{count}} 个预置",
+      "showLessInPack": "收起部分模板"
+    },
+    "categories": {
+      "research": "信息追踪",
+      "planning": "每日规划",
+      "review": "收工复盘",
+      "reporting": "周报总结",
+      "operations": "业务运营"
+    },
+    "packDetails": {
+      "presetCount": "个预置",
+      "bestForLabel": "适合谁",
+      "outcomeLabel": "你会得到什么",
+      "all": {
+        "title": "全部行业模板包",
+        "description": "查看覆盖产品、增长、招聘、销售、投研五类场景的完整预置库。",
+        "bestFor": "还在探索定时自动化最适合落在哪些工作流上的团队。",
+        "outcome": "先快速对比不同运营方式，再收敛到最适合自己团队的行业包。"
+      },
+      "saasProduct": {
+        "description": "面向产品型 SaaS 团队，重点覆盖用户行为、需求优先级、竞品动态和每周执行节奏。",
+        "bestFor": "产品经理、产品运营，以及想先从一个强默认包起步的创业团队。",
+        "outcome": "更早发现使用异动，持续校准优先级，并用更低成本维持稳定的决策节奏。"
+      },
+      "contentGrowth": {
+        "description": "面向内容与增长团队，围绕选题发现、排期巡检、增长实验和受众信号建立重复可用的工作流。",
+        "bestFor": "内容负责人、增长运营，以及人手有限但要持续做自然增长的团队。",
+        "outcome": "持续保持内容供给、减少选题断档，把零散增长动作沉淀成稳定节奏。"
+      },
+      "recruitingOps": {
+        "description": "面向招聘运营场景，帮助团队每天掌握候选人流转、面试反馈和各岗位推进状态。",
+        "bestFor": "招聘负责人、用人经理，以及同时推进多个岗位和候选人的团队。",
+        "outcome": "更快发现流程卡点，及时推进停滞候选人，并用更清晰的摘要支撑招聘决策。"
+      },
+      "salesFollowUp": {
+        "description": "面向销售跟进场景，重点解决回复节奏、商机老化预警和漏跟进问题。",
+        "bestFor": "销售、创始人亲自跟单的团队，以及不能承受跟进掉线的收入团队。",
+        "outcome": "更早拉回停滞商机，维持稳定跟进节奏，在管道质量变差前看到下一步动作。"
+      },
+      "researchMonitoring": {
+        "description": "面向投研和情报监控场景，覆盖政策信号、市场变化、竞品跟踪和结构化周总结。",
+        "bestFor": "分析师、投资研究团队、战略团队，以及需要长期跟踪动态行业的人。",
+        "outcome": "减少信息滞后，让监控更加持续稳定，并把分散更新收敛成更清晰的研究判断。"
+      }
+    },
+    "items": {
+      "aiDigest": {
+        "name": "AI 情报晨报",
+        "description": "每个工作日自动追踪最新 AI 模型、产品和行业动态，并整理成可执行的简报。",
+        "scheduleDescription": "每个工作日 09:00",
+        "message": "请追踪过去 24 小时内最新的 AI 模型、产品、融资、政策或行业动态，输出 5 条最重要信号，并分别说明影响、风险和可执行建议。"
+      },
+      "competitorWatch": {
+        "name": "竞品动态追踪",
+        "description": "在下午自动回看竞品产品、定价、功能发布或营销动作，避免重要变化被漏掉。",
+        "scheduleDescription": "每个工作日 14:00",
+        "message": "请追踪重点竞品今天是否有新的产品发布、功能更新、价格调整、渠道动作或舆情变化，并整理成一份包含影响判断与应对建议的竞品动态摘要。"
+      },
+      "morningFocus": {
+        "name": "开工聚焦清单",
+        "description": "每天上午自动盘点当前会话上下文，给出当天最值得先做的事情和推进顺序。",
+        "scheduleDescription": "每个工作日 09:30",
+        "message": "请基于当前会话和已有上下文，整理今天最重要的 3 个优先事项、潜在阻塞、建议的推进顺序，以及第一小时最值得立即执行的动作。"
+      },
+      "contentRadar": {
+        "name": "内容选题雷达",
+        "description": "每周固定两次生成值得写、值得发、值得跟进的话题候选，适合内容和增长团队。",
+        "scheduleDescription": "每周二、周四 11:00",
+        "message": "请结合当前会话方向，生成 5 个值得输出的内容选题或传播角度，并说明受众、核心观点、推荐标题方向以及适合发布的渠道。"
+      },
+      "saasUsageReview": {
+        "name": "活跃用户异动复盘",
+        "description": "每天上午自动检查活跃用户、使用频次和关键行为信号，适合产品和运营一起盯住异常变化。",
+        "scheduleDescription": "每个工作日 10:00",
+        "message": "请结合当前会话中的产品目标与用户上下文，复盘最近的活跃用户变化、使用频次异常、功能使用偏移和潜在流失信号，并说明最值得优先排查的原因与动作。"
+      },
+      "backlogPrioritization": {
+        "name": "需求池优先级巡检",
+        "description": "每周固定两次回看需求池，帮助产品团队及时重新排序和识别高风险需求。",
+        "scheduleDescription": "每周二、周四 15:30",
+        "message": "请基于当前会话中的需求、问题、目标和反馈上下文，重新审视需求池优先级，列出最该先做的事项、可以延后的事项、存在风险的需求，以及推荐的排序依据。"
+      },
+      "contentCalendar": {
+        "name": "内容排期巡检",
+        "description": "每周多次检查接下来几天的内容排期、主题覆盖和渠道节奏，适合内容增长团队。",
+        "scheduleDescription": "每周一、周三、周五 10:00",
+        "message": "请检查当前会话中的内容计划和传播目标，整理未来几天的内容排期建议，指出主题空档、渠道节奏问题、优先补位的内容，以及最值得加推的题材。"
+      },
+      "growthExperimentReview": {
+        "name": "增长实验复盘",
+        "description": "每周中自动复盘增长实验表现，及时总结有效动作、异常波动和下一步验证方向。",
+        "scheduleDescription": "每周三 17:00",
+        "message": "请复盘本周正在推进的增长实验或传播动作，总结表现最好的尝试、异常波动、可能原因、继续验证的假设，以及下一步最值得执行的实验建议。"
+      },
+      "candidatePipelineReview": {
+        "name": "候选人推进看板",
+        "description": "招聘运营每天自动梳理候选人阶段分布、卡点和需要推进的人选。",
+        "scheduleDescription": "每个工作日 10:00",
+        "message": "请根据当前会话中的招聘职位、候选人和流程上下文，整理候选人推进看板，列出各阶段人数、卡点、最需要推进的人选，以及今天最该执行的招聘动作。"
+      },
+      "interviewFeedbackDigest": {
+        "name": "面试反馈归纳",
+        "description": "每天傍晚统一整理面试反馈，提炼候选人亮点、风险和是否推进的建议。",
+        "scheduleDescription": "每个工作日 18:00",
+        "message": "请汇总今天的面试反馈，归纳候选人的优势、风险点、待验证项和是否建议推进，并输出一个便于招聘团队快速决策的反馈摘要。"
+      },
+      "staleDealAlert": {
+        "name": "老化商机预警",
+        "description": "每天下午自动发现长时间未推进的商机，帮助销售及时拉回跟进节奏。",
+        "scheduleDescription": "每个工作日 14:30",
+        "message": "请识别当前会话中的老化商机或长时间未跟进的客户，列出停滞原因、成交风险、建议唤醒方式，以及今天最应该发出的跟进动作。"
+      },
+      "policySignalWatch": {
+        "name": "政策信号监控",
+        "description": "工作日早上自动跟踪与行业、市场或技术相关的政策和监管信号。",
+        "scheduleDescription": "每个工作日 08:30",
+        "message": "请跟踪过去 24 小时内与当前研究主题相关的政策、监管、行业指引或官方表态，提炼最关键的信号，并说明它们对判断、风险和后续研究方向的影响。"
+      },
+      "endOfDayReview": {
+        "name": "收工复盘",
+        "description": "工作日结束前自动总结当天进展、遗留问题和明日衔接事项。",
+        "scheduleDescription": "每个工作日 18:30",
+        "message": "请对今天的推进情况做收工复盘：总结已完成事项、未完成事项、当前风险和需要明天继续跟进的内容，并给出一个清晰的明日交接清单。"
+      },
+      "userFeedbackDigest": {
+        "name": "用户反馈归纳",
+        "description": "每天下午自动整理用户声音，提炼高频问题、情绪趋势和最需要处理的事项。",
+        "scheduleDescription": "每个工作日 16:00",
+        "message": "请归纳今天收集到的用户反馈、需求、投诉或疑问，提炼高频主题、用户情绪、潜在风险，并列出最值得优先处理的 3 个问题。"
+      },
+      "weeklyReview": {
+        "name": "周五周报",
+        "description": "每周五固定生成一份周总结，方便回顾成果、风险和下周计划。",
+        "scheduleDescription": "每周五 17:30",
+        "message": "请整理本周总结：列出关键成果、未决事项、风险提醒、需要决策的问题，以及下周最重要的 3 个优先方向，输出为一份结构化周报。"
+      },
+      "leadFollowUp": {
+        "name": "商机跟进清单",
+        "description": "工作日上午自动整理待跟进客户、商机状态和最该推进的下一步动作。",
+        "scheduleDescription": "每个工作日 10:30",
+        "message": "请基于当前会话中的销售线索、客户沟通或合作上下文，整理今天需要优先跟进的商机，列出当前状态、风险点、建议回复方向和下一步推进动作。"
+      }
+    }
+  },
+  "runNowSuccess": "任务已触发执行",
+  "notification": {
+    "taskComplete": "任务完成",
+    "scheduledTask": "定时任务",
+    "scheduledTaskComplete": "{{title}}的定时任务完成",
+    "taskDone": "任务已完成"
+  },
+  "error": {
+    "alreadyExists": "该会话已存在定时任务 \"{{name}}\" (ID: {{id}})。请先删除它，或使用 [CRON_LIST] 查看已有任务。",
+    "missedJob": "⏰ 定时任务 \"{{name}}\" 在系统休眠期间未执行。\n预定时间：{{time}}\n计时器已重启，将在下次预定时间运行。",
+    "jobNotFound": "未找到脚本: {{id}}",
+    "conversationNotFound": "未找到会话",
+    "scheduledTimePassed": "定时时间已过",
+    "conversationBusy": "会话繁忙，在 {{count}} 次尝试后跳过"
+  }
+}

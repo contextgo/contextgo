@@ -1,0 +1,190 @@
+name: Deploy Website
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/deploy-site.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-website-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy contextgo.io
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ github.workspace }}
+    env:
+      CONTEXTGO_RELEASE_REPO: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
+      NEXT_PUBLIC_CONTEXTGO_GITHUB_URL: ${{ vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL != '' && vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || 'https://github.com/contextgo' }}
+      CONTEXTGO_ANDROID_URL: ${{ vars.CONTEXTGO_ANDROID_URL }}
+      CONTEXTGO_IOS_URL: ${{ vars.CONTEXTGO_IOS_URL }}
+      CONTEXTGO_IOS_LABEL: ${{ vars.CONTEXTGO_IOS_LABEL }}
+      CONTEXTGO_HARMONY_URL: ${{ vars.CONTEXTGO_HARMONY_URL }}
+      CONTEXTGO_HARMONY_LABEL: ${{ vars.CONTEXTGO_HARMONY_LABEL }}
+      SITE_CLOUDFLARE_PROJECT_NAME: ${{ vars.SITE_CLOUDFLARE_PROJECT_NAME != '' && vars.SITE_CLOUDFLARE_PROJECT_NAME || 'contextgo-web' }}
+
+    steps:
+      - name: Verify Cloudflare deploy secrets
+        working-directory: ${{ github.workspace }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          missing_secrets=()
+
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            missing_secrets+=("CLOUDFLARE_API_TOKEN")
+          fi
+
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            missing_secrets+=("CLOUDFLARE_ACCOUNT_ID")
+          fi
+
+          if [ "${#missing_secrets[@]}" -gt 0 ]; then
+            echo "::error::Missing required GitHub Actions secrets: ${missing_secrets[*]}"
+            exit 1
+          fi
+
+      - name: Download source archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+      
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+      
+          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          rm -rf "${EXTRACT_DIR}"
+      
+          curl --fail --show-error --silent --location --http1.1 \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 900 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+      
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+      
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+      
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+
+      - name: Setup Node.js
+        working-directory: ${{ github.workspace }}
+        env:
+          NODE_VERSION_SPEC: latest-v22.x
+        run: |
+          set -euo pipefail
+
+          TOOL_ROOT="${RUNNER_TOOL_CACHE:-${RUNNER_TEMP:-/tmp}}/node"
+          CACHE_ROOT="${RUNNER_TOOL_CACHE:-${RUNNER_TEMP:-/tmp}}/npm-cache"
+          SHASUMS_URL="https://nodejs.org/dist/${NODE_VERSION_SPEC}/SHASUMS256.txt"
+          NODE_LINE="$(
+            curl --fail --show-error --silent --location \
+              --retry 5 \
+              --retry-all-errors \
+              --retry-delay 5 \
+              --connect-timeout 20 \
+              --max-time 60 \
+              "${SHASUMS_URL}" | awk '/linux-x64\.tar\.xz$/ {print $1 " " $2; exit}'
+          )"
+
+          NODE_SHA256="${NODE_LINE%% *}"
+          NODE_ARCHIVE="${NODE_LINE##* }"
+
+          if [ -z "${NODE_SHA256}" ] || [ -z "${NODE_ARCHIVE}" ]; then
+            echo "::error::Failed to resolve Node.js archive from ${SHASUMS_URL}"
+            exit 1
+          fi
+
+          NODE_VERSION="${NODE_ARCHIVE#node-v}"
+          NODE_VERSION="${NODE_VERSION%-linux-x64.tar.xz}"
+          NODE_DIST_DIR="${TOOL_ROOT}/${NODE_VERSION}/x64"
+          NODE_BIN_DIR="${NODE_DIST_DIR}/bin"
+
+          if [ ! -x "${NODE_BIN_DIR}/node" ]; then
+            ARCHIVE_PATH="$(mktemp "${RUNNER_TEMP:-/tmp}/node-v22.XXXXXX.tar.xz")"
+            EXTRACT_DIR="$(mktemp -d "${RUNNER_TEMP:-/tmp}/node-v22.XXXXXX")"
+
+            curl --fail --show-error --silent --location \
+              --retry 5 \
+              --retry-all-errors \
+              --retry-delay 5 \
+              --connect-timeout 20 \
+              --max-time 300 \
+              "https://nodejs.org/dist/${NODE_VERSION_SPEC}/${NODE_ARCHIVE}" \
+              -o "${ARCHIVE_PATH}"
+
+            echo "${NODE_SHA256}  ${ARCHIVE_PATH}" | sha256sum -c -
+            tar -xJf "${ARCHIVE_PATH}" -C "${EXTRACT_DIR}"
+
+            rm -rf "${NODE_DIST_DIR}"
+            mkdir -p "$(dirname "${NODE_DIST_DIR}")"
+            mv "${EXTRACT_DIR}/node-v${NODE_VERSION}-linux-x64" "${NODE_DIST_DIR}"
+            rm -rf "${EXTRACT_DIR}"
+            rm -f "${ARCHIVE_PATH}"
+          fi
+
+          mkdir -p "${CACHE_ROOT}"
+          echo "${NODE_BIN_DIR}" >> "${GITHUB_PATH}"
+          echo "npm_config_cache=${CACHE_ROOT}" >> "${GITHUB_ENV}"
+          export PATH="${NODE_BIN_DIR}:${PATH}"
+
+          "${NODE_BIN_DIR}/node" -v
+          "${NODE_BIN_DIR}/npm" -v
+
+      - name: Install website dependencies
+        run: npm ci
+
+      - name: Lint website
+        run: npm run lint
+
+      - name: Build website
+        run: npm run build
+
+      - name: Build Cloudflare Pages output
+        run: npx @cloudflare/next-on-pages --skip-build
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy .vercel/output/static --project-name "$SITE_CLOUDFLARE_PROJECT_NAME" --branch main

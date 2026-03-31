@@ -1,0 +1,9 @@
+{
+  "displayName": "Star Office 拡張",
+  "description": "すべてのエージェントのアクティビティを可視化するStar Officeスタイルのタブ。",
+  "settingsTabs": {
+    "star-office": { "name": "Star Office" },
+    "contextgo-home": { "name": "ContextGo ホーム" },
+    "contextgo-issues": { "name": "ContextGo 課題" }
+  }
+}
