@@ -165,14 +165,15 @@ describe('Titlebar', () => {
     expect(container.querySelector('.app-titlebar__desktop-right')).toBeNull();
   });
 
-  it('does not render desktop conversation content when only one tab is open', async () => {
+  it('renders desktop conversation content as soon as the first tab is open', async () => {
     const { container } = renderTitlebar('/conversation/conv-1', {
       workspaceAvailable: true,
       openTabs: [createTab('conv-1')],
     });
 
     expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
-    expect(container.querySelector('.app-titlebar__desktop-content')).toBeNull();
+    expect(container.querySelector('.app-titlebar__desktop-content--conversation')).toBeTruthy();
+    expect(container.querySelector('#app-titlebar-chat-slot')).toBeTruthy();
   });
 
   it('renders desktop conversation content when multiple tabs are open', async () => {

@@ -489,7 +489,7 @@
   "webui.port": "ポート",
   "webui.portDesc": "WebUI サービスのリスニングポート",
   "webui.allowRemote": "LAN / セルフホストアクセスを許可",
-  "webui.allowRemoteDesc": "このデバイスを LAN、または自分のリバースプロキシ、FRP、Tailscale に公開します",
+  "webui.allowRemoteDesc": "このデバイスを LAN、または自分のリバースプロキシ、VPN、セルフホストのネットワーク経路に公開します",
   "webui.viewGuide": "ガイドを見る",
   "webui.accessInfo": "アクセスURL",
   "webui.localUrl": "ローカルURL",

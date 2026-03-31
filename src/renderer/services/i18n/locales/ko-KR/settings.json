@@ -489,7 +489,7 @@
   "webui.port": "포트",
   "webui.portDesc": "WebUI 서비스 리스닝 포트",
   "webui.allowRemote": "LAN / 셀프호스트 접근 허용",
-  "webui.allowRemoteDesc": "이 장치를 LAN 또는 직접 운영하는 리버스 프록시, FRP, Tailscale에 노출합니다",
+  "webui.allowRemoteDesc": "이 장치를 LAN 또는 직접 운영하는 리버스 프록시, VPN, 셀프 호스트 네트워크 경로에 노출합니다",
   "webui.viewGuide": "가이드 보기",
   "webui.accessInfo": "접근 URL",
   "webui.localUrl": "로컬 URL",

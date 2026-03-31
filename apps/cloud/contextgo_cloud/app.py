@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from html import escape
 import json
+import os
+from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Union
 from urllib.parse import parse_qs, urlencode, urlparse
 
-from fastapi import FastAPI, HTTPException, Query, Request, status
+from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .config import Settings, load_settings
@@ -28,6 +32,7 @@ from .db import (
     delete_session,
     find_user_by_email,
     find_user_by_oauth_account,
+    get_device_for_user,
     get_user_by_device_token,
     get_user_by_session_token,
     initialize_database,
@@ -41,6 +46,7 @@ from .db import (
 )
 from .infermesh import InfermeshProvisionError, is_infermesh_configured, provision_infermesh_provider
 from .oauth import OAuthProfile, build_authorization_url, exchange_code_for_profile, get_enabled_providers, is_provider_enabled
+from .remote import RemoteRelayHub
 
 ProviderId = Literal["github", "google"]
 
@@ -69,6 +75,16 @@ class DesktopLoginConsumeRequest(BaseModel):
 settings: Settings = load_settings()
 api_host = urlparse(settings.api_base_url).hostname or ""
 DESKTOP_LOGIN_COMPLETE_PATH = "/desktop-login-complete"
+REMOTE_DEVICES_PATH = "/remote/devices"
+REMOTE_APP_PATH = "/remote/app"
+REMOTE_APP_ASSETS_PATH = f"{REMOTE_APP_PATH}/assets"
+REMOTE_SHELL_SCHEME = "contextgo-remote"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+RENDERER_BUILD_ROOT = REPO_ROOT / "out" / "renderer"
+RENDERER_INDEX_PATH = RENDERER_BUILD_ROOT / "index.html"
+RENDERER_ASSETS_PATH = RENDERER_BUILD_ROOT / "assets"
+IOS_ASSOCIATED_APP_IDS_ENV = "CONTEXTGO_IOS_ASSOCIATED_APP_IDS"
+ANDROID_APP_LINK_TARGETS_ENV = "CONTEXTGO_ANDROID_APP_LINK_TARGETS"
 
 
 @asynccontextmanager
@@ -79,6 +95,10 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="ContextGo Cloud Auth Service", lifespan=lifespan)
+remote_relay_hub = RemoteRelayHub()
+
+if RENDERER_ASSETS_PATH.is_dir():
+    app.mount(REMOTE_APP_ASSETS_PATH, StaticFiles(directory=str(RENDERER_ASSETS_PATH)), name="remote-app-assets")
 
 allowed_origins = [
     "https://contextgo.io",
@@ -105,6 +125,19 @@ def is_allowed_email(email: str) -> bool:
 
 def build_cookie_domain() -> Optional[str]:
     return settings.session_cookie_domain or None
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def parse_csv_env(name: str) -> list[str]:
+    return [item.strip() for item in os.getenv(name, "").split(",") if item.strip()]
+
+
+def build_current_path_with_query(request: Request) -> str:
+    query = request.url.query
+    return f"{request.url.path}?{query}" if query else request.url.path
 
 
 def set_session_cookie(response: Union[RedirectResponse, JSONResponse, HTMLResponse], token: str) -> None:
@@ -148,7 +181,10 @@ def clear_oauth_state_cookie(response: RedirectResponse) -> None:
 
 
 def read_current_user(request: Request) -> Optional[User]:
-    raw_token = request.cookies.get(settings.session_cookie_name)
+    return read_current_user_from_session_token(request.cookies.get(settings.session_cookie_name))
+
+
+def read_current_user_from_session_token(raw_token: Optional[str]) -> Optional[User]:
     if not raw_token:
         return None
 
@@ -213,6 +249,7 @@ def build_login_url(
     cancel: bool = False,
     provider: Optional[str] = None,
     desktop: bool = False,
+    next_path: Optional[str] = None,
 ) -> str:
     query: Dict[str, str] = {}
     if error_code:
@@ -225,6 +262,10 @@ def build_login_url(
         query["provider"] = provider
     if desktop:
         query["desktop"] = "1"
+    if next_path:
+        safe_next_path = pick_next_path(next_path)
+        if safe_next_path != "/":
+            query["next"] = safe_next_path
 
     return f"/login?{urlencode(query)}" if query else "/login"
 
@@ -295,6 +336,7 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
     cancel = request.query_params.get("cancel")
     selected_provider = normalize_provider(request.query_params.get("provider"))
     desktop_mode = request.query_params.get("desktop") == "1"
+    next_path = pick_next_path(request.query_params.get("next"))
 
     provider_ids = get_enabled_providers(settings)
     if selected_provider in provider_ids:
@@ -306,6 +348,8 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
         href = f"/api/auth/oauth/{provider}/start"
         if desktop_mode:
             href = f'{href}?{urlencode({"next": build_desktop_login_complete_url(provider), "desktop": "1"})}'
+        elif next_path != "/":
+            href = f'{href}?{urlencode({"next": next_path})}'
         provider_buttons.append(
             f'<a class="provider" href="{escape(href)}">{escape(label)}</a>'
         )
@@ -487,6 +531,302 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
 </html>"""
 
 
+def build_remote_session_url(device_id: str) -> str:
+    return f"{REMOTE_APP_PATH}/?{urlencode({'device_id': device_id})}"
+
+
+def build_mobile_shell_open_url(target_url: str) -> str:
+    return f"{REMOTE_SHELL_SCHEME}://open?{urlencode({'target': target_url})}"
+
+
+def describe_remote_device_availability(device_payload: dict[str, object]) -> dict[str, object]:
+    remote_status = device_payload.get("remoteStatus")
+    remote_data = remote_status if isinstance(remote_status, dict) else {}
+    connected = remote_data.get("connected") is True
+    client_connected = remote_data.get("clientConnected") is True
+    transport = remote_data.get("transport") if isinstance(remote_data.get("transport"), str) else "cloud-relay"
+    transport_label = "ContextGo Cloud relay" if transport == "cloud-relay" else transport
+
+    if connected and client_connected:
+        return {
+            "connected": True,
+            "clientConnected": True,
+            "badge": "Live session",
+            "badgeClass": "busy",
+            "summary": f"Desktop is online and already attached to a browser session through {transport_label}.",
+            "detail": "A second browser can still take over, but the current session is already active.",
+            "actionLabel": "Open live session",
+            "actionHref": build_remote_session_url(str(device_payload.get("id", ""))),
+        }
+
+    if connected:
+        return {
+            "connected": True,
+            "clientConnected": False,
+            "badge": "Available",
+            "badgeClass": "ready",
+            "summary": f"Desktop is online and ready through {transport_label}.",
+            "detail": "This device has an authenticated outbound relay connection and can open a live WebUI session now.",
+            "actionLabel": "Open live session",
+            "actionHref": build_remote_session_url(str(device_payload.get("id", ""))),
+        }
+
+    return {
+        "connected": False,
+        "clientConnected": False,
+        "badge": "Unavailable",
+        "badgeClass": "offline",
+        "summary": f"Desktop is not connected to {transport_label} right now.",
+        "detail": "The machine may still be registered and active, but hosted remote access stays unavailable until the desktop relay reconnects.",
+        "actionLabel": "Unavailable",
+        "actionHref": None,
+    }
+
+
+def render_remote_devices_page(user: User, devices: list[dict[str, object]], remote_origin: str) -> str:
+    cards = []
+    for device in devices:
+        availability = describe_remote_device_availability(device)
+        action_markup = ""
+        if availability["actionHref"]:
+            relative_target_url = str(availability["actionHref"])
+            absolute_target_url = f"{remote_origin}{relative_target_url}"
+            mobile_shell_url = build_mobile_shell_open_url(absolute_target_url)
+            action_markup = (
+                f'<a class="primary" href="{escape(relative_target_url)}">{escape(str(availability["actionLabel"]))}</a>'
+                f'<a class="secondary" href="{escape(mobile_shell_url)}">Open in app</a>'
+            )
+        else:
+            action_markup = '<span class="secondary disabled" aria-disabled="true">Unavailable</span>'
+        connected_at = ""
+        remote_status = device.get("remoteStatus")
+        remote_data = remote_status if isinstance(remote_status, dict) else {}
+        if isinstance(remote_data.get("connectedAt"), str) and remote_data["connectedAt"]:
+            connected_at = f'<p class="meta">Relay connected at {escape(str(remote_data["connectedAt"]))}</p>'
+        elif isinstance(device.get("lastSeenAt"), str) and device["lastSeenAt"]:
+            connected_at = f'<p class="meta">Last seen at {escape(str(device["lastSeenAt"]))}</p>'
+
+        cards.append(
+            f"""
+            <article class="device-card">
+              <div class="device-header">
+                <div>
+                  <h2>{escape(str(device.get("deviceName", "Unnamed device")))}</h2>
+                  <p class="device-subtitle">{escape(str(device.get("platform", "unknown")))} · device {escape(str(device.get("status", "unknown")))}</p>
+                </div>
+                <span class="badge badge-{escape(str(availability["badgeClass"]))}">{escape(str(availability["badge"]))}</span>
+              </div>
+              <p class="summary">{escape(str(availability["summary"]))}</p>
+              <p class="detail">{escape(str(availability["detail"]))}</p>
+              {connected_at}
+              <div class="actions">
+                {action_markup}
+              </div>
+            </article>
+            """
+        )
+
+    devices_markup = "\n".join(cards)
+    if not devices_markup:
+        devices_markup = """
+        <section class="empty-state">
+          <h2>No desktop devices are registered yet.</h2>
+          <p>Sign in on a desktop build of ContextGo first. Once that device links to your cloud account, it will appear here automatically.</p>
+        </section>
+        """
+
+    account_name = escape(user.display_name)
+    account_email = escape(user.email)
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ContextGo Remote</title>
+  <style>
+    body {{
+      margin: 0;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+      color: #0f172a;
+    }}
+    .wrap {{
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }}
+    .topbar {{
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 28px;
+    }}
+    .topbar h1 {{
+      margin: 0;
+      font-size: 34px;
+    }}
+    .topbar p {{
+      margin: 8px 0 0;
+      color: #475569;
+      line-height: 1.6;
+    }}
+    .account-card {{
+      min-width: 260px;
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 20px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+      padding: 18px 20px;
+    }}
+    .account-card p {{
+      margin: 0;
+      line-height: 1.5;
+    }}
+    .account-meta {{
+      color: #475569;
+      font-size: 14px;
+      margin-top: 4px;
+    }}
+    .toolbar {{
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 14px;
+    }}
+    .grid {{
+      display: grid;
+      gap: 16px;
+    }}
+    .device-card, .empty-state {{
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 24px;
+      box-shadow: 0 20px 56px rgba(15, 23, 42, 0.08);
+      padding: 24px;
+    }}
+    .device-header {{
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }}
+    .device-header h2, .empty-state h2 {{
+      margin: 0;
+      font-size: 24px;
+    }}
+    .device-subtitle {{
+      margin: 8px 0 0;
+      color: #64748b;
+      text-transform: lowercase;
+    }}
+    .summary {{
+      margin: 18px 0 0;
+      color: #0f172a;
+      line-height: 1.7;
+      font-weight: 600;
+    }}
+    .detail, .meta, .empty-state p {{
+      margin: 10px 0 0;
+      color: #475569;
+      line-height: 1.7;
+    }}
+    .badge {{
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }}
+    .badge-ready {{
+      background: #ecfdf5;
+      color: #166534;
+    }}
+    .badge-busy {{
+      background: #eff6ff;
+      color: #1d4ed8;
+    }}
+    .badge-offline {{
+      background: #f8fafc;
+      color: #64748b;
+    }}
+    .actions {{
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+    }}
+    a.primary, a.secondary, button.secondary, .secondary.disabled {{
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      box-sizing: border-box;
+    }}
+    a.primary {{
+      background: #111827;
+      border-color: #111827;
+      color: white;
+    }}
+    a.secondary, button.secondary, .secondary.disabled {{
+      background: white;
+      color: #0f172a;
+    }}
+    .secondary.disabled {{
+      color: #94a3b8;
+      cursor: not-allowed;
+    }}
+    form {{
+      margin: 0;
+    }}
+    @media (max-width: 768px) {{
+      .topbar, .device-header {{
+        flex-direction: column;
+      }}
+      .account-card {{
+        width: 100%;
+      }}
+    }}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="topbar">
+      <div>
+        <h1>ContextGo Remote</h1>
+        <p>Signed in as {account_name} · {account_email}</p>
+        <p>Choose a desktop device that currently has a live cloud relay connection. Registered devices stay listed, but only relay-connected machines can open a hosted remote session.</p>
+      </div>
+      <div class="account-card">
+        <p><strong>{account_name}</strong></p>
+        <p class="account-meta">@{escape(user.username)}</p>
+        <div class="toolbar">
+          <a class="secondary" href="{REMOTE_DEVICES_PATH}">Refresh devices</a>
+          <form method="post" action="/api/auth/logout?next={escape(REMOTE_DEVICES_PATH)}">
+            <button class="secondary" type="submit">Sign out</button>
+          </form>
+        </div>
+      </div>
+    </section>
+    <section class="grid">
+      {devices_markup}
+    </section>
+  </main>
+</body>
+</html>"""
+
+
 def render_desktop_login_complete_page(deep_link_url: str, is_error: bool, message: str) -> str:
     escaped_deep_link_url = escape(deep_link_url)
     escaped_message = escape(message)
@@ -632,6 +972,7 @@ def build_session_payload(user: Optional[User]) -> dict[str, object]:
 
 
 def serialize_device(device: Device) -> dict[str, object]:
+    remote_status = remote_relay_hub.get_presence(device.id)
     return {
         "id": device.id,
         "userId": device.user_id,
@@ -643,6 +984,13 @@ def serialize_device(device: Device) -> dict[str, object]:
         "lastSeenAt": device.last_seen_at,
         "lastIpAddress": device.last_ip_address,
         "lastUserAgent": device.last_user_agent,
+        "remoteStatus": {
+            "connected": remote_status.connected,
+            "connectedAt": remote_status.connected_at,
+            "clientConnected": remote_status.client_connected,
+            "clientConnectedAt": remote_status.client_connected_at,
+            "transport": remote_status.transport,
+        },
     }
 
 
@@ -667,6 +1015,26 @@ def read_bearer_token(request: Request) -> Optional[str]:
     return token or None
 
 
+def read_bearer_token_from_header(authorization: Optional[str]) -> Optional[str]:
+    if not authorization:
+        return None
+
+    bearer_prefix = "bearer "
+    normalized = authorization.strip()
+    if not normalized.lower().startswith(bearer_prefix):
+        return None
+
+    token = normalized[len(bearer_prefix) :].strip()
+    return token or None
+
+
+def read_user_and_device_from_device_token(raw_token: Optional[str]) -> tuple[Optional[User], Optional[Device]]:
+    if not raw_token:
+        return None, None
+
+    return get_user_by_device_token(settings, raw_token)
+
+
 def require_current_device(request: Request) -> tuple[User, Device]:
     raw_token = read_bearer_token(request)
     if raw_token is None:
@@ -675,7 +1043,7 @@ def require_current_device(request: Request) -> tuple[User, Device]:
             detail="Device token is required",
         )
 
-    user, device = get_user_by_device_token(settings, raw_token)
+    user, device = read_user_and_device_from_device_token(raw_token)
     if user is None or device is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -766,6 +1134,42 @@ async def login_page(request: Request) -> HTMLResponse:
     return HTMLResponse(render_login_page(request, read_current_user(request)))
 
 
+@app.get(REMOTE_DEVICES_PATH, response_class=HTMLResponse)
+async def remote_devices_page(request: Request) -> HTMLResponse:
+    user = read_current_user(request)
+    if user is None:
+        return RedirectResponse(url=build_login_url(next_path=REMOTE_DEVICES_PATH), status_code=303)
+
+    devices = [serialize_device(device) for device in list_devices_for_user(settings, user.id)]
+    remote_origin = str(request.base_url).rstrip("/")
+    return HTMLResponse(render_remote_devices_page(user, devices, remote_origin))
+
+
+def build_remote_app_login_redirect(request: Request) -> RedirectResponse:
+    return RedirectResponse(url=build_login_url(next_path=build_current_path_with_query(request)), status_code=303)
+
+
+@app.get(REMOTE_APP_PATH)
+async def remote_app_redirect(request: Request) -> RedirectResponse:
+    query_suffix = f"?{request.url.query}" if request.url.query else ""
+    return RedirectResponse(url=f"{REMOTE_APP_PATH}/{query_suffix}", status_code=307)
+
+
+@app.get(f"{REMOTE_APP_PATH}/", response_class=HTMLResponse)
+async def remote_app_page(request: Request):
+    user = read_current_user(request)
+    if user is None:
+        return build_remote_app_login_redirect(request)
+
+    if not RENDERER_INDEX_PATH.is_file():
+        return HTMLResponse(
+            "<h1>Hosted remote shell is unavailable</h1><p>The renderer build was not found on this deployment.</p>",
+            status_code=503,
+        )
+
+    return FileResponse(RENDERER_INDEX_PATH)
+
+
 @app.get(DESKTOP_LOGIN_COMPLETE_PATH, response_class=HTMLResponse)
 async def desktop_login_complete(request: Request) -> HTMLResponse:
     provider = normalize_provider(request.query_params.get("provider"))
@@ -818,6 +1222,32 @@ async def auth_providers() -> JSONResponse:
     return JSONResponse({"success": True, "providers": get_enabled_providers(settings)})
 
 
+@app.get("/api/auth/oauth/providers")
+async def auth_oauth_providers() -> JSONResponse:
+    return JSONResponse({"success": True, "providers": get_enabled_providers(settings)})
+
+
+@app.get("/api/auth/user")
+async def auth_current_user_alias(request: Request) -> JSONResponse:
+    user = read_current_user(request)
+    if user is None:
+        return JSONResponse({"success": True, "user": None})
+
+    return JSONResponse(
+        {
+            "success": True,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "displayName": user.display_name,
+                "email": user.email,
+                "avatarUrl": user.avatar_url,
+                "authSource": "cloud",
+            },
+        }
+    )
+
+
 @app.get("/api/auth/session")
 async def auth_session(request: Request) -> JSONResponse:
     return JSONResponse(build_session_payload(read_current_user(request)))
@@ -851,6 +1281,51 @@ async def auth_logout_get(request: Request, next: Optional[str] = Query(default=
 @app.post("/api/auth/logout")
 async def auth_logout(request: Request, next: Optional[str] = Query(default=None)) -> RedirectResponse:
     return build_logout_response(request, next)
+
+
+@app.post("/logout")
+async def auth_logout_alias(request: Request, next: Optional[str] = Query(default=None)) -> RedirectResponse:
+    return build_logout_response(request, next)
+
+
+@app.get("/.well-known/apple-app-site-association")
+async def apple_app_site_association() -> JSONResponse:
+    app_ids = parse_csv_env(IOS_ASSOCIATED_APP_IDS_ENV)
+    details = [{"appIDs": app_ids, "components": [{"/": "/remote/*"}, {"/": "/login"}]}] if app_ids else []
+    return JSONResponse(
+        {
+            "applinks": {
+                "apps": [],
+                "details": details,
+            }
+        }
+    )
+
+
+@app.get("/.well-known/assetlinks.json")
+async def android_asset_links() -> JSONResponse:
+    statements = []
+    for raw_item in parse_csv_env(ANDROID_APP_LINK_TARGETS_ENV):
+        package_name, separator, fingerprint_list = raw_item.partition("@")
+        if not separator or not package_name or not fingerprint_list:
+            continue
+
+        fingerprints = [fingerprint.strip() for fingerprint in fingerprint_list.split(";") if fingerprint.strip()]
+        if not fingerprints:
+            continue
+
+        statements.append(
+            {
+                "relation": ["delegate_permission/common.handle_all_urls"],
+                "target": {
+                    "namespace": "android_app",
+                    "package_name": package_name.strip(),
+                    "sha256_cert_fingerprints": fingerprints,
+                },
+            }
+        )
+
+    return JSONResponse(statements)
 
 
 @app.post("/api/auth/desktop/consume")
@@ -1020,6 +1495,18 @@ async def api_devices(request: Request) -> JSONResponse:
     )
 
 
+@app.get("/api/remote/devices")
+async def api_remote_devices(request: Request) -> JSONResponse:
+    user = require_current_user(request)
+    devices = [serialize_device(device) for device in list_devices_for_user(settings, user.id)]
+    return JSONResponse(
+        {
+            "success": True,
+            "devices": devices,
+        }
+    )
+
+
 @app.post("/api/devices/{device_id}/revoke")
 async def api_device_revoke(device_id: str, request: Request) -> JSONResponse:
     user = require_current_user(request)
@@ -1056,3 +1543,114 @@ async def api_sync_pull(
         limit=limit,
     )
     return JSONResponse({"success": True, **result})
+
+
+async def handle_remote_client_websocket(websocket: WebSocket, device_id: str) -> None:
+    user = read_current_user_from_session_token(websocket.cookies.get(settings.session_cookie_name))
+    if user is None:
+        await websocket.close(code=4401, reason="Authentication required")
+        return
+
+    device = get_device_for_user(settings, user.id, device_id)
+    if device is None:
+        await websocket.close(code=4404, reason="Device not found")
+        return
+
+    await websocket.accept()
+    registered = await remote_relay_hub.register_client(
+        user_id=user.id,
+        device_id=device.id,
+        websocket=websocket,
+        connected_at=utc_now_iso(),
+    )
+    if not registered:
+        await websocket.close(code=4404, reason="Device offline")
+        return
+
+    try:
+        while True:
+            payload = await websocket.receive_json()
+            if not isinstance(payload, dict):
+                continue
+
+            if payload.get("name") == "pong":
+                continue
+
+            await remote_relay_hub.forward_bridge_to_device(device.id, payload)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await remote_relay_hub.unregister_client(device.id, websocket)
+
+
+@app.websocket("/")
+async def root_websocket(websocket: WebSocket) -> None:
+    device_id = websocket.query_params.get("device_id")
+    if not device_id:
+        await websocket.close(code=4400, reason="device_id is required")
+        return
+
+    await handle_remote_client_websocket(websocket, device_id)
+
+
+@app.websocket("/api/remote/client-connect")
+async def remote_client_connect(websocket: WebSocket) -> None:
+    device_id = websocket.query_params.get("device_id")
+    if not device_id:
+        await websocket.close(code=4400, reason="device_id is required")
+        return
+
+    await handle_remote_client_websocket(websocket, device_id)
+
+
+@app.websocket("/api/remote/device-connect")
+async def remote_device_connect(websocket: WebSocket) -> None:
+    raw_token = read_bearer_token_from_header(websocket.headers.get("authorization"))
+    user, device = read_user_and_device_from_device_token(raw_token)
+    if user is None or device is None:
+        await websocket.close(code=4401, reason="Invalid device token")
+        return
+
+    touch_device(
+        settings=settings,
+        device_id=device.id,
+        ip_address=websocket.client.host if websocket.client else None,
+        user_agent=websocket.headers.get("user-agent"),
+    )
+
+    await websocket.accept()
+    await remote_relay_hub.register_device(
+        user_id=user.id,
+        device_id=device.id,
+        websocket=websocket,
+        connected_at=utc_now_iso(),
+    )
+    await websocket.send_json(
+        {
+            "type": "hello",
+            "deviceId": device.id,
+            "connectedAt": utc_now_iso(),
+            "transport": "cloud-relay",
+        }
+    )
+
+    try:
+        while True:
+            payload = await websocket.receive_json()
+            if not isinstance(payload, dict):
+                continue
+
+            payload_type = payload.get("type")
+            if payload_type == "pong":
+                continue
+
+            if payload_type == "ping":
+                await websocket.send_json({"type": "pong"})
+                continue
+
+            if payload_type == "bridge" and isinstance(payload.get("payload"), dict):
+                await remote_relay_hub.forward_bridge_to_client(device.id, payload["payload"])
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await remote_relay_hub.unregister_device(device.id, websocket)

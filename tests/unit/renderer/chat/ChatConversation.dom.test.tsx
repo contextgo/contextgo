@@ -4,11 +4,17 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const openPreviewMock = vi.fn();
+const acpModelSelectorMock = vi.fn(() => <div data-testid='acp-model-selector' />);
+const navigateMock = vi.fn();
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
+}));
+
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
@@ -96,7 +102,7 @@ vi.mock('@/renderer/pages/conversation/platforms/group/GroupChat', () => ({
 
 vi.mock('@/renderer/components/agent/AcpModelSelector', () => ({
   __esModule: true,
-  default: () => <div data-testid='acp-model-selector' />,
+  default: (props: unknown) => acpModelSelectorMock(props),
 }));
 
 vi.mock('@/renderer/pages/conversation/platforms/gemini/GeminiModelSelector', () => ({
@@ -181,5 +187,25 @@ describe('ChatConversation', () => {
     } finally {
       consoleErrorSpy.mockRestore();
     }
+  });
+
+  it('passes the codex backend and persisted model into the shared model selector', () => {
+    const conversation = {
+      ...createConversation('codex', 'codex-1'),
+      extra: {
+        workspace: '/tmp/codex-1',
+        codexModel: 'gpt-5',
+      },
+    } as Extract<TChatConversation, { type: 'codex' }>;
+
+    render(<ChatConversation conversation={conversation} />);
+
+    expect(acpModelSelectorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 'codex-1',
+        backend: 'codex',
+        initialModelId: 'gpt-5',
+      })
+    );
   });
 });

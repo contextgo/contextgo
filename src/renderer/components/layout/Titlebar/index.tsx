@@ -113,7 +113,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const newEntryTooltip = t('conversation.entry.create');
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const isSettingsRoute = location.pathname.startsWith('/settings');
-  const showDesktopConversationTabs = !layout?.isMobile && workspaceAvailable && openTabs.length > 1;
+  const showDesktopConversationTabs = !layout?.isMobile && workspaceAvailable && openTabs.length > 0;
   const iconSize = layout?.isMobile ? 24 : 18;
   // 统一在标题栏左侧展示主侧栏开关 / Always expose sidebar toggle on titlebar left side
   const showSiderToggle = Boolean(layout?.setSiderCollapsed) && !(layout?.isMobile && isSettingsRoute);

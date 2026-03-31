@@ -4,126 +4,60 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { app } from 'electron';
-import { ipcBridge } from '@/common';
-import { SERVER_CONFIG } from '@process/webserver/config/constants';
-import { startWebServerWithInstance } from '@process/webserver';
+import { Buffer } from 'node:buffer';
+import WebSocket, { type RawData } from 'ws';
+import type { OfficialRemoteStatus } from '@/common/types/cloud';
+import { getBridgeEmitter, registerWebSocketBroadcaster } from '@/common/adapter/registry';
 import { ProcessConfig } from '@process/utils/initStorage';
-import { getWebServerInstance, setWebServerInstance } from '@process/bridge/webuiBridge';
-import { WebuiService } from '@process/bridge/services/WebuiService';
-import {
-  buildManagedFrpClientConfig,
-  getDefaultOfficialRemoteFrpConfigPath,
-  parseFrpClientConfig,
-} from './officialRemoteConfig';
+import { CLOUD_API_BASE_URL } from './constants';
 
 const CLOUD_DEVICE_TOKEN_KEY = 'cloud.deviceToken';
-const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
-const DESKTOP_WEBUI_ALLOW_REMOTE_KEY = 'webui.desktop.allowRemote';
-const DESKTOP_WEBUI_PORT_KEY = 'webui.desktop.port';
 const OFFICIAL_REMOTE_RETRY_DELAY_MS = 3_000;
 const OFFICIAL_REMOTE_RECONCILE_INTERVAL_MS = 15_000;
+const OFFICIAL_REMOTE_PING_INTERVAL_MS = 20_000;
 
-type WebServerInstance = NonNullable<ReturnType<typeof getWebServerInstance>>;
+type OfficialRemoteRelayFrame =
+  | { type: 'hello'; deviceId?: string; connectedAt?: string; transport?: string }
+  | { type: 'ping'; timestamp?: number }
+  | { type: 'pong'; timestamp?: number }
+  | { type: 'client_status'; connected?: boolean; connectedAt?: string }
+  | { type: 'bridge'; payload?: { name?: string; data?: unknown } };
 
-type OfficialRemoteTunnelState = {
-  desired: boolean;
-  running: boolean;
-  localPort?: number;
-  remotePort?: number;
-  configPath?: string;
-  managedConfigPath?: string;
-  binaryPath?: string;
-  message?: string;
-};
+const DEFAULT_READY_MESSAGE = 'Official Remote is connected through ContextGo Cloud relay.';
 
-function getExecutableCandidates(): string[] {
-  const fromEnv = [process.env.CONTEXTGO_FRPC_PATH, process.env.FRPC_PATH].filter((value): value is string =>
-    Boolean(value?.trim())
-  );
-
-  const localCandidates = process.platform === 'win32' ? ['frpc.exe', 'frpc'] : ['frpc'];
-
-  return [
-    ...fromEnv,
-    ...localCandidates,
-    '/opt/homebrew/bin/frpc',
-    '/opt/homebrew/opt/frpc/bin/frpc',
-    '/usr/local/bin/frpc',
-    path.join(app.getPath('home'), '.local', 'bin', 'frpc'),
-  ];
+export function buildOfficialRemoteRelayWebSocketUrl(apiBaseUrl: string = CLOUD_API_BASE_URL): string {
+  const url = new URL('/api/remote/device-connect', apiBaseUrl);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  return url.toString();
 }
 
-async function isExecutable(candidatePath: string): Promise<boolean> {
+export function parseOfficialRemoteRelayFrame(raw: string): OfficialRemoteRelayFrame | null {
   try {
-    await fs.access(candidatePath);
-    return true;
+    const parsed = JSON.parse(raw) as OfficialRemoteRelayFrame;
+    return parsed && typeof parsed === 'object' && typeof parsed.type === 'string' ? parsed : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
-async function resolveExecutableFromPath(command: string): Promise<string | null> {
-  if (path.isAbsolute(command)) {
-    return (await isExecutable(command)) ? command : null;
+function rawDataToString(value: RawData): string {
+  if (typeof value === 'string') {
+    return value;
   }
 
-  const searchPaths = (process.env.PATH || '')
-    .split(path.delimiter)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-
-  for (const searchPath of searchPaths) {
-    const candidate = path.join(searchPath, command);
-    if (await isExecutable(candidate)) {
-      return candidate;
-    }
+  if (Array.isArray(value)) {
+    return Buffer.concat(value.map((chunk) => (Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)))).toString('utf-8');
   }
 
-  return null;
-}
-
-async function resolveFrpcBinaryPath(): Promise<string | null> {
-  for (const candidate of getExecutableCandidates()) {
-    const resolvedPath = await resolveExecutableFromPath(candidate);
-    if (resolvedPath) {
-      return resolvedPath;
-    }
+  if (Buffer.isBuffer(value)) {
+    return value.toString('utf-8');
   }
 
-  return null;
-}
-
-async function stopChildProcess(child: ChildProcessWithoutNullStreams): Promise<void> {
-  if (child.killed || child.exitCode !== null) {
-    return;
+  if (value instanceof ArrayBuffer) {
+    return Buffer.from(value).toString('utf-8');
   }
 
-  await new Promise<void>((resolve) => {
-    let settled = false;
-    const finalize = (): void => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      resolve();
-    };
-
-    const timeoutId = setTimeout(() => {
-      child.kill('SIGKILL');
-      finalize();
-    }, 2_000);
-
-    child.once('exit', () => {
-      clearTimeout(timeoutId);
-      finalize();
-    });
-
-    child.kill('SIGTERM');
-  });
+  return Buffer.from(value).toString('utf-8');
 }
 
 export class OfficialRemoteTunnelService {
@@ -140,14 +74,19 @@ export class OfficialRemoteTunnelService {
   private initialized = false;
   private reconcileInFlight = false;
   private reconcileQueued = false;
-  private child: ChildProcessWithoutNullStreams | null = null;
-  private activeSignature: string | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private intervalTimer: ReturnType<typeof setInterval> | null = null;
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
   private statusChangedCallback: (() => void) | null = null;
-  private state: OfficialRemoteTunnelState = {
+  private unregisterBridgeBroadcast: (() => void) | null = null;
+  private socket: WebSocket | null = null;
+  private activeToken: string | null = null;
+  private relayUrl = buildOfficialRemoteRelayWebSocketUrl();
+  private state: OfficialRemoteStatus = {
     desired: false,
     running: false,
+    transport: 'cloud-relay',
+    relayUrl: this.relayUrl,
   };
 
   public initialize(statusChangedCallback?: () => void): void {
@@ -160,6 +99,15 @@ export class OfficialRemoteTunnelService {
     }
 
     this.initialized = true;
+    this.unregisterBridgeBroadcast = registerWebSocketBroadcaster((name, data) => {
+      this.sendFrame({
+        type: 'bridge',
+        payload: {
+          name,
+          data,
+        },
+      });
+    });
     this.intervalTimer = setInterval(() => {
       void this.reconcile('periodic');
     }, OFFICIAL_REMOTE_RECONCILE_INTERVAL_MS);
@@ -192,251 +140,211 @@ export class OfficialRemoteTunnelService {
       clearInterval(this.intervalTimer);
       this.intervalTimer = null;
     }
-
-    const currentChild = this.child;
-    this.child = null;
-    this.activeSignature = null;
-    if (currentChild) {
-      await stopChildProcess(currentChild);
-    }
+    this.stopPingTimer();
+    this.unregisterBridgeBroadcast?.();
+    this.unregisterBridgeBroadcast = null;
+    this.disconnectSocket();
   }
 
-  public getState(): OfficialRemoteTunnelState {
+  public getState(): OfficialRemoteStatus {
     return { ...this.state };
   }
 
   private async reconcileInternal(_reason: string): Promise<void> {
-    const [deviceToken, webuiEnabled] = await Promise.all([
-      ProcessConfig.get(CLOUD_DEVICE_TOKEN_KEY),
-      ProcessConfig.get(DESKTOP_WEBUI_ENABLED_KEY),
-    ]);
+    const rawToken = await ProcessConfig.get(CLOUD_DEVICE_TOKEN_KEY);
+    const deviceToken = typeof rawToken === 'string' && rawToken.trim() !== '' ? rawToken.trim() : null;
+    const desired = Boolean(deviceToken);
 
-    const desired = Boolean(deviceToken) && webuiEnabled === true;
-    if (!desired) {
+    if (!desired || !deviceToken) {
+      this.activeToken = null;
       this.updateState({
         desired: false,
         running: false,
-        message: deviceToken ? 'Official Remote is paused because WebUI is disabled.' : undefined,
+        clientConnected: false,
+        transport: 'cloud-relay',
+        relayUrl: this.relayUrl,
+        message: 'Official Remote is not enabled on this desktop yet.',
       });
-      await this.stopTunnel();
+      this.disconnectSocket();
       return;
     }
-
-    const webuiInstance = await this.ensureWebUiRunning();
-    const sourceConfigPath = process.env.CONTEXTGO_FRPC_CONFIG_PATH || getDefaultOfficialRemoteFrpConfigPath();
-    const sourceConfigRaw = await fs.readFile(sourceConfigPath, 'utf-8').catch((): null => null);
-    if (!sourceConfigRaw) {
-      this.updateState({
-        desired: true,
-        running: false,
-        localPort: webuiInstance.port,
-        configPath: sourceConfigPath,
-        message: `Official Remote FRP config was not found at ${sourceConfigPath}.`,
-      });
-      await this.stopTunnel();
-      return;
-    }
-
-    const parsedConfig = parseFrpClientConfig(sourceConfigRaw);
-    if (!parsedConfig) {
-      this.updateState({
-        desired: true,
-        running: false,
-        localPort: webuiInstance.port,
-        configPath: sourceConfigPath,
-        message: `Official Remote FRP config is invalid: ${sourceConfigPath}.`,
-      });
-      await this.stopTunnel();
-      return;
-    }
-
-    const binaryPath = await resolveFrpcBinaryPath();
-    if (!binaryPath) {
-      this.updateState({
-        desired: true,
-        running: false,
-        localPort: webuiInstance.port,
-        remotePort: parsedConfig.proxy.remotePort,
-        configPath: sourceConfigPath,
-        message: 'frpc is not installed. Install frpc or set CONTEXTGO_FRPC_PATH.',
-      });
-      await this.stopTunnel();
-      return;
-    }
-
-    const managedConfigDir = path.join(app.getPath('userData'), 'official-remote');
-    const managedConfigPath = path.join(managedConfigDir, 'frpc.managed.toml');
-    await fs.mkdir(managedConfigDir, { recursive: true });
-    await fs.writeFile(
-      managedConfigPath,
-      buildManagedFrpClientConfig(parsedConfig, {
-        localIP: '127.0.0.1',
-        localPort: webuiInstance.port,
-      }),
-      'utf-8'
-    );
-
-    const nextSignature = `${binaryPath}|${managedConfigPath}|${webuiInstance.port}|${parsedConfig.proxy.remotePort}`;
-    if (this.child && this.activeSignature === nextSignature && this.child.exitCode === null) {
-      this.updateState({
-        desired: true,
-        running: true,
-        localPort: webuiInstance.port,
-        remotePort: parsedConfig.proxy.remotePort,
-        configPath: sourceConfigPath,
-        managedConfigPath,
-        binaryPath,
-        message: undefined,
-      });
-      return;
-    }
-
-    await this.stopTunnel();
-    this.startTunnel(
-      binaryPath,
-      managedConfigPath,
-      sourceConfigPath,
-      webuiInstance.port,
-      parsedConfig.proxy.remotePort
-    );
-  }
-
-  private async ensureWebUiRunning(): Promise<WebServerInstance> {
-    const currentInstance = getWebServerInstance();
-    if (currentInstance) {
-      return currentInstance;
-    }
-
-    const [allowRemotePref, portPref] = await Promise.all([
-      ProcessConfig.get(DESKTOP_WEBUI_ALLOW_REMOTE_KEY),
-      ProcessConfig.get(DESKTOP_WEBUI_PORT_KEY),
-    ]);
-
-    const allowRemote = allowRemotePref === true;
-    const preferredPort = typeof portPref === 'number' && portPref > 0 ? portPref : SERVER_CONFIG.DEFAULT_PORT;
-    const instance = await startWebServerWithInstance(preferredPort, allowRemote);
-    setWebServerInstance(instance);
-
-    const lanIP = WebuiService.getLanIP();
-    const networkUrl = allowRemote && lanIP ? `http://${lanIP}:${instance.port}` : undefined;
-    ipcBridge.webui.statusChanged.emit({
-      running: true,
-      port: instance.port,
-      localUrl: `http://localhost:${instance.port}`,
-      networkUrl,
-    });
-
-    return instance;
-  }
-
-  private startTunnel(
-    binaryPath: string,
-    managedConfigPath: string,
-    sourceConfigPath: string,
-    localPort: number,
-    remotePort: number
-  ): void {
-    const child = spawn(binaryPath, ['-c', managedConfigPath], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    const signature = `${binaryPath}|${managedConfigPath}|${localPort}|${remotePort}`;
-    this.child = child;
-    this.activeSignature = signature;
 
     this.updateState({
       desired: true,
-      running: false,
-      binaryPath,
-      configPath: sourceConfigPath,
-      managedConfigPath,
-      localPort,
-      remotePort,
-      message: 'Official Remote tunnel is starting.',
+      transport: 'cloud-relay',
+      relayUrl: this.relayUrl,
     });
 
-    const handleOutput = (chunk: Buffer, stream: 'stdout' | 'stderr'): void => {
-      const text = chunk.toString().trim();
-      if (!text) {
+    if (this.socket && this.activeToken !== deviceToken) {
+      this.disconnectSocket();
+    }
+
+    if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    this.connectSocket(deviceToken);
+  }
+
+  private connectSocket(deviceToken: string): void {
+    this.activeToken = deviceToken;
+    this.updateState({
+      desired: true,
+      running: false,
+      transport: 'cloud-relay',
+      relayUrl: this.relayUrl,
+      message: 'Connecting to ContextGo Cloud relay.',
+    });
+
+    const socket = new WebSocket(this.relayUrl, {
+      headers: {
+        Authorization: `Bearer ${deviceToken}`,
+      },
+    });
+
+    this.socket = socket;
+
+    socket.on('open', () => {
+      if (this.socket !== socket) {
         return;
       }
-      console.log(`[OfficialRemote][${stream}] ${text}`);
-    };
 
-    child.stdout.on('data', (chunk: Buffer) => handleOutput(chunk, 'stdout'));
-    child.stderr.on('data', (chunk: Buffer) => handleOutput(chunk, 'stderr'));
-
-    child.once('spawn', () => {
+      this.startPingTimer();
       this.updateState({
         desired: true,
         running: true,
-        binaryPath,
-        configPath: sourceConfigPath,
-        managedConfigPath,
-        localPort,
-        remotePort,
-        message: undefined,
+        clientConnected: false,
+        transport: 'cloud-relay',
+        relayUrl: this.relayUrl,
+        message: DEFAULT_READY_MESSAGE,
       });
     });
 
-    child.once('error', (error) => {
-      console.error('[OfficialRemote] Failed to start frpc:', error);
-      if (this.child === child) {
-        this.child = null;
-        this.activeSignature = null;
+    socket.on('message', (rawData: RawData) => {
+      const frame = parseOfficialRemoteRelayFrame(rawDataToString(rawData));
+      if (!frame) {
+        return;
       }
-      this.updateState({
-        desired: true,
-        running: false,
-        binaryPath,
-        configPath: sourceConfigPath,
-        managedConfigPath,
-        localPort,
-        remotePort,
-        message: error.message,
-      });
-      this.scheduleRetry();
+
+      if (frame.type === 'ping') {
+        this.sendFrame({ type: 'pong', timestamp: Date.now() });
+        return;
+      }
+
+      if (frame.type === 'hello') {
+        this.updateState({
+          desired: true,
+          running: true,
+          clientConnected: false,
+          transport: 'cloud-relay',
+          relayUrl: this.relayUrl,
+          message: DEFAULT_READY_MESSAGE,
+        });
+        return;
+      }
+
+      if (frame.type === 'client_status') {
+        const clientConnected = frame.connected === true;
+        this.updateState({
+          desired: true,
+          running: true,
+          clientConnected,
+          transport: 'cloud-relay',
+          relayUrl: this.relayUrl,
+          message: clientConnected ? 'A browser session is connected through Official Remote.' : DEFAULT_READY_MESSAGE,
+        });
+        return;
+      }
+
+      if (frame.type === 'bridge' && frame.payload?.name) {
+        const emitter = getBridgeEmitter();
+        emitter?.emit(frame.payload.name, frame.payload.data);
+      }
     });
 
-    child.once('exit', (code, signal) => {
-      if (this.child === child) {
-        this.child = null;
-        this.activeSignature = null;
+    socket.on('close', (code, reason) => {
+      if (this.socket !== socket) {
+        return;
       }
+
+      this.socket = null;
+      this.stopPingTimer();
 
       if (!this.state.desired) {
         return;
       }
 
-      const exitReason =
-        code !== null ? `frpc exited with code ${code}` : signal ? `frpc exited with signal ${signal}` : 'frpc exited';
-      console.warn(`[OfficialRemote] ${exitReason}`);
+      const reasonText = rawDataToString(reason).trim();
+      const message = reasonText
+        ? `Official Remote relay disconnected: ${reasonText}`
+        : `Official Remote relay disconnected (code ${code}).`;
       this.updateState({
         desired: true,
         running: false,
-        binaryPath,
-        configPath: sourceConfigPath,
-        managedConfigPath,
-        localPort,
-        remotePort,
-        message: exitReason,
+        clientConnected: false,
+        transport: 'cloud-relay',
+        relayUrl: this.relayUrl,
+        message,
       });
       this.scheduleRetry();
     });
+
+    socket.on('error', (error) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
+      this.updateState({
+        desired: true,
+        running: false,
+        clientConnected: false,
+        transport: 'cloud-relay',
+        relayUrl: this.relayUrl,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    });
   }
 
-  private async stopTunnel(): Promise<void> {
+  private disconnectSocket(): void {
     if (this.retryTimer) {
       clearTimeout(this.retryTimer);
       this.retryTimer = null;
     }
 
-    const currentChild = this.child;
-    this.child = null;
-    this.activeSignature = null;
+    this.stopPingTimer();
 
-    if (currentChild) {
-      await stopChildProcess(currentChild);
+    const currentSocket = this.socket;
+    this.socket = null;
+    if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+      currentSocket.close(1000, 'Official Remote disabled');
+    } else {
+      currentSocket?.terminate();
+    }
+  }
+
+  private startPingTimer(): void {
+    this.stopPingTimer();
+    this.pingTimer = setInterval(() => {
+      this.sendFrame({ type: 'ping', timestamp: Date.now() });
+    }, OFFICIAL_REMOTE_PING_INTERVAL_MS);
+  }
+
+  private stopPingTimer(): void {
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
+  }
+
+  private sendFrame(frame: OfficialRemoteRelayFrame): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    try {
+      this.socket.send(JSON.stringify(frame));
+    } catch {
+      // Ignore transient send errors; close handler will reconcile.
     }
   }
 
@@ -451,7 +359,7 @@ export class OfficialRemoteTunnelService {
     }, OFFICIAL_REMOTE_RETRY_DELAY_MS);
   }
 
-  private updateState(nextPartialState: Partial<OfficialRemoteTunnelState>): void {
+  private updateState(nextPartialState: Partial<OfficialRemoteStatus>): void {
     this.state = {
       ...this.state,
       ...nextPartialState,

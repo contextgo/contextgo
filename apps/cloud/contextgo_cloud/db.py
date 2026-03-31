@@ -254,6 +254,15 @@ def _row_to_device(row: Optional[sqlite3.Row]) -> Optional[Device]:
     )
 
 
+def get_device_for_user(settings: Settings, user_id: str, device_id: str) -> Optional[Device]:
+    with get_connection(settings) as connection:
+        row = connection.execute(
+            "SELECT * FROM devices WHERE id = ? AND user_id = ?",
+            (device_id, user_id),
+        ).fetchone()
+    return _row_to_device(row)
+
+
 def find_user_by_email(settings: Settings, email: str) -> Optional[User]:
     with get_connection(settings) as connection:
         row = connection.execute(

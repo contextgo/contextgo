@@ -19,6 +19,37 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
+const normalizeModelLookupValue = (value?: string | null) => value?.trim().toLowerCase() || '';
+
+const buildCodexPreservedModelInfo = (
+  current: AcpModelInfo | null,
+  nextCurrentModelId: string | null,
+  nextCurrentModelLabel?: string | null
+): AcpModelInfo | null => {
+  if (!current || current.availableModels.length === 0) {
+    return null;
+  }
+
+  const currentModelId = nextCurrentModelId || current.currentModelId || null;
+  const matchedModel = current.availableModels.find(
+    (model) => normalizeModelLookupValue(model.id) === normalizeModelLookupValue(currentModelId)
+  );
+  const switchSupported = current.switchSupported ?? true;
+
+  return {
+    ...current,
+    currentModelId,
+    currentModelLabel: nextCurrentModelLabel || matchedModel?.label || current.currentModelLabel || currentModelId,
+    availableModels: current.availableModels,
+    switchSupported,
+    canSwitch:
+      switchSupported &&
+      current.availableModels.some(
+        (model) => normalizeModelLookupValue(model.id) !== normalizeModelLookupValue(currentModelId)
+      ),
+  };
+};
+
 /**
  * Model selector for ACP-based agents.
  * Fetches model info via IPC and listens for real-time updates via responseStream.
@@ -51,6 +82,8 @@ const AcpModelSelector: React.FC<{
   // Fetch initial model info on mount, fallback to cached models if manager not ready
   useEffect(() => {
     let cancelled = false;
+    setModelInfo(null);
+    hasUserChangedModel.current = false;
     const loadModelInfo = isOpenClaw
       ? ipcBridge.openclawConversation.getModelInfo.invoke({ conversation_id: conversationId })
       : ipcBridge.acpConversation.getModelInfo.invoke({ conversationId });
@@ -140,11 +173,29 @@ const AcpModelSelector: React.FC<{
             return;
           }
         }
+        if (backend === 'codex' && incoming.availableModels.length === 0) {
+          const preserved = buildCodexPreservedModelInfo(
+            modelInfoRef.current,
+            incoming.currentModelId,
+            incoming.currentModelLabel
+          );
+          if (preserved) {
+            setModelInfo({
+              ...incoming,
+              ...preserved,
+            });
+            return;
+          }
+        }
         setModelInfo(incoming);
       } else if (message.type === 'codex_model_info' && message.data) {
-        // Codex model info: always read-only display
         const data = message.data as { model: string };
         if (data.model) {
+          const preserved = buildCodexPreservedModelInfo(modelInfoRef.current, data.model, data.model);
+          if (preserved) {
+            setModelInfo(preserved);
+            return;
+          }
           setModelInfo({
             source: 'models',
             currentModelId: data.model,
@@ -196,7 +247,7 @@ const AcpModelSelector: React.FC<{
 
   // 获取模型配置数据（包含健康状态）
   const { data: modelConfig } = useSWR<IProvider[]>('model.config', () => ipcBridge.mode.getModelConfig.invoke());
-  const normalizeLookupValue = React.useCallback((value?: string | null) => value?.trim().toLowerCase() || '', []);
+  const normalizeLookupValue = React.useCallback(normalizeModelLookupValue, []);
   const openclawFallbackModelInfo = React.useMemo(() => {
     if (!isOpenClaw) {
       return null;

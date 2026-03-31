@@ -30,6 +30,7 @@ ANDROID_KEY_PASSWORD=... \
 
 ## Shell Behavior
 
+- First launch defaults to `https://remote.contextgo.io/remote/devices`
 - Accepts a base WebUI URL such as `http://192.168.1.10:3000`
 - Accepts a QR-login URL such as `http://192.168.1.10:3000/qr-login?token=...`
 - Persists the last successful endpoint in `SharedPreferences`

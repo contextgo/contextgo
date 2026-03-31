@@ -2,7 +2,7 @@
 "connection.title" = "ContextGo 연결";
 "connection.description" = "ContextGo는 기본적으로 Official Remote를 엽니다. 내 데스크톱이나 셀프 호스팅 게이트웨이에 직접 연결하려는 경우에만 사용자 지정 WebUI 호스트를 사용하세요.";
 "connection.officialRemote.action" = "Official Remote 사용";
-"connection.officialRemote.detail" = "https://remote.contextgo.io/login 열기";
+"connection.officialRemote.detail" = "https://remote.contextgo.io/remote/devices 열기";
 "connection.custom.title" = "사용자 지정 호스트";
 "connection.custom.description" = "ContextGo가 생성한 /qr-login?token=... 링크 또는 http://192.168.1.10:3000 같은 WebUI 기본 URL을 붙여 넣으세요.";
 "connection.custom.placeholder" = "http://192.168.1.10:3000";

@@ -588,11 +588,14 @@ const SkillsHubSettings: React.FC = () => {
                                 <div className='min-w-0 flex-1'>
                                   <div className='flex flex-wrap items-center gap-8px'>
                                     <div className='text-14px font-semibold text-t-primary'>{bundle.title}</div>
-                                    {bundle.industries[0] ? (
-                                      <span className='rounded-[100px] bg-base px-8px py-2px text-10px text-t-secondary'>
-                                        {bundle.industries[0]}
+                                    {bundle.industries.map((industry) => (
+                                      <span
+                                        key={`${bundle.id}-${industry}`}
+                                        className='rounded-[100px] bg-base px-8px py-2px text-10px text-t-secondary'
+                                      >
+                                        {industry}
                                       </span>
-                                    ) : null}
+                                    ))}
                                   </div>
                                   <div className='mt-4px text-12px leading-relaxed text-t-secondary'>
                                     {bundle.summary}

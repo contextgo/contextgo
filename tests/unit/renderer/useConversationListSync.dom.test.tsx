@@ -167,4 +167,42 @@ describe('useConversationListSync', () => {
 
     expect(result.current.isConversationGenerating('openclaw-conv-1')).toBe(false);
   });
+
+  it('ignores model-info and codex bootstrap events when opening a conversation', async () => {
+    const { useConversationListSync } =
+      await import('@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync');
+    const { result } = renderHook(() => useConversationListSync());
+
+    await waitFor(() => {
+      expect(result.current.conversations).toHaveLength(1);
+    });
+
+    act(() => {
+      responseStreamListeners.forEach((listener) =>
+        listener({
+          conversation_id: 'openclaw-conv-1',
+          type: 'acp_model_info',
+          data: {
+            currentModelId: 'gpt-5',
+            currentModelLabel: 'GPT-5',
+            availableModels: [],
+            canSwitch: false,
+            source: 'models',
+          },
+        })
+      );
+      responseStreamListeners.forEach((listener) =>
+        listener({
+          conversation_id: 'openclaw-conv-1',
+          type: 'agent_status',
+          data: {
+            backend: 'codex',
+            status: 'connecting',
+          },
+        })
+      );
+    });
+
+    expect(result.current.isConversationGenerating('openclaw-conv-1')).toBe(false);
+  });
 });

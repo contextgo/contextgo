@@ -12,7 +12,15 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { GroupChildConversationMap } from '../types';
 
 const shouldIgnoreStreamMessage = (type: string): boolean => {
-  return type === 'user_content' || type === 'request_trace' || type === 'finished';
+  return (
+    type === 'user_content' ||
+    type === 'request_trace' ||
+    type === 'finished' ||
+    type === 'acp_model_info' ||
+    type === 'openclaw_model_info' ||
+    type === 'codex_model_info' ||
+    type === 'acp_context_usage'
+  );
 };
 
 const getAgentStatusData = (data: unknown): { backend?: string; status?: string } | null => {
@@ -29,6 +37,17 @@ const isOpenClawBootstrapAgentStatus = (data: unknown): boolean => {
     agentStatus?.backend === 'openclaw-gateway' &&
     (agentStatus.status === 'connecting' ||
       agentStatus.status === 'connected' ||
+      agentStatus.status === 'session_active')
+  );
+};
+
+const isBootstrapAgentStatus = (data: unknown): boolean => {
+  const agentStatus = getAgentStatusData(data);
+  return (
+    typeof agentStatus?.backend === 'string' &&
+    (agentStatus.status === 'connecting' ||
+      agentStatus.status === 'connected' ||
+      agentStatus.status === 'authenticated' ||
       agentStatus.status === 'session_active')
   );
 };
@@ -273,7 +292,10 @@ const initializeConversationListSyncStore = () => {
       return;
     }
 
-    if (message.type === 'agent_status' && isOpenClawBootstrapAgentStatus(message.data)) {
+    if (
+      (message.type === 'agent_status' && isOpenClawBootstrapAgentStatus(message.data)) ||
+      (message.type === 'agent_status' && isBootstrapAgentStatus(message.data))
+    ) {
       return;
     }
 

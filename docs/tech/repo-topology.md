@@ -22,8 +22,7 @@ The old `ContextGo-Web` repository is deprecated for feature work.
 - `contextgo.io` and `www.contextgo.io`: public website from `apps/web/`
 - `auth.contextgo.io`: cloud auth service from `apps/cloud/`
 - `api.contextgo.io`: cloud API and sync service from `apps/cloud/`
-- `remote.contextgo.io`: FRP-backed desktop remote WebUI entry
-- `tunnel.contextgo.io`: FRP server endpoint
+- `remote.contextgo.io`: cloud-relay-backed official remote WebUI entry
 
 ## Local Commands
 

@@ -286,11 +286,14 @@ const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
                           <div className='min-w-0 flex-1'>
                             <div className='flex flex-wrap items-center gap-8px'>
                               <div className='text-13px font-medium text-t-primary'>{bundle.title}</div>
-                              {bundle.industries[0] ? (
-                                <span className='rounded-[100px] bg-fill-2 px-6px py-1px text-10px text-t-secondary'>
-                                  {bundle.industries[0]}
+                              {bundle.industries.map((industry) => (
+                                <span
+                                  key={`${bundle.id}-${industry}`}
+                                  className='rounded-[100px] bg-fill-2 px-6px py-1px text-10px text-t-secondary'
+                                >
+                                  {industry}
                                 </span>
-                              ) : null}
+                              ))}
                             </div>
                             <div className='mt-4px text-12px text-t-secondary'>{bundle.summary}</div>
                             <div className='mt-6px text-11px text-t-tertiary'>

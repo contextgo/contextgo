@@ -10,6 +10,11 @@ const syncNowInvoke = vi.fn();
 const statusChangedOn = vi.fn();
 const messageSuccess = vi.fn();
 const messageError = vi.fn();
+const webuiGetStatusInvoke = vi.fn();
+const webuiStatusChangedOn = vi.fn();
+const webuiResetPasswordResultOn = vi.fn();
+const shellOpenExternalInvoke = vi.fn();
+const configStorageGet = vi.fn();
 
 const translations: Record<string, string> = {
   'common.refresh': 'Refresh',
@@ -36,6 +41,18 @@ const translations: Record<string, string> = {
   'settings.cloud.notAvailable': 'Not available',
   'settings.cloud.syncNow': 'Sync now',
   'settings.cloud.signOut': 'Sign out',
+  'settings.webui': 'WebUI',
+  'settings.webui.description': 'WebUI description',
+  'settings.webui.passwordHidden': '******',
+  'settings.webui.officialRemoteTitle': 'Official Remote',
+  'settings.webui.officialRemoteDesc': 'Official Remote description',
+  'settings.webui.officialRemoteLoginRequired': 'Official Remote requires cloud login',
+  'settings.webui.officialRemoteSignedIn': 'Signed in as {{name}}',
+  'settings.webui.officialRemoteDeviceReady': 'This device is linked and ready for Official Remote.',
+  'settings.webui.officialRemoteDevicePending': 'Cloud session is active, but this device is not fully linked yet.',
+  'settings.webui.openOfficialRemote': 'Open Official Remote',
+  'settings.webui.officialRemoteSignedOut': 'Official Remote is not connected yet.',
+  'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this device.',
 };
 
 const unauthenticatedStatus: CloudStatus = {
@@ -44,6 +61,10 @@ const unauthenticatedStatus: CloudStatus = {
   user: null,
   device: null,
   deviceTokenAvailable: false,
+  officialRemote: {
+    desired: false,
+    running: false,
+  },
   providers: ['github', 'google'],
   authBaseUrl: 'https://auth.contextgo.io',
   apiBaseUrl: 'https://api.contextgo.io',
@@ -74,6 +95,10 @@ const authenticatedStatus: CloudStatus = {
     lastSeenAt: '2026-03-28T10:00:00.000Z',
   },
   deviceTokenAvailable: true,
+  officialRemote: {
+    desired: true,
+    running: true,
+  },
   providers: ['github', 'google'],
   authBaseUrl: 'https://auth.contextgo.io',
   apiBaseUrl: 'https://api.contextgo.io',
@@ -102,6 +127,46 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
       on: statusChangedOn,
     },
   },
+  webui: {
+    getStatus: {
+      invoke: webuiGetStatusInvoke,
+    },
+    statusChanged: {
+      on: webuiStatusChangedOn,
+    },
+    resetPasswordResult: {
+      on: webuiResetPasswordResultOn,
+    },
+  },
+  shell: {
+    openExternal: {
+      invoke: shellOpenExternalInvoke,
+    },
+  },
+}));
+
+vi.mock('@/common/config/storage', () => ({
+  ConfigStorage: {
+    get: (...args: unknown[]) => configStorageGet(...args),
+  },
+}));
+
+vi.mock('@/renderer/utils/platform', () => ({
+  isElectronDesktop: () => true,
+}));
+
+vi.mock('@/renderer/components/base/ContextGoModal', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('@/renderer/components/base/ContextGoScrollArea', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('@/renderer/components/settings/SettingsModal/settingsViewContext', () => ({
+  useSettingsViewMode: () => 'page',
 }));
 
 vi.mock('@arco-design/web-react', async () => {
@@ -130,7 +195,38 @@ describe('CloudSyncSection', () => {
     statusChangedOn.mockReset();
     messageSuccess.mockReset();
     messageError.mockReset();
+    webuiGetStatusInvoke.mockReset();
+    webuiStatusChangedOn.mockReset();
+    webuiResetPasswordResultOn.mockReset();
+    shellOpenExternalInvoke.mockReset();
+    configStorageGet.mockReset();
     statusChangedOn.mockImplementation(() => () => undefined);
+    webuiStatusChangedOn.mockImplementation(() => () => undefined);
+    webuiResetPasswordResultOn.mockImplementation(() => () => undefined);
+    configStorageGet.mockResolvedValue(false);
+    webuiGetStatusInvoke.mockResolvedValue({
+      success: true,
+      data: {
+        running: false,
+        port: 3000,
+        allowRemote: false,
+        localUrl: 'http://localhost:3000',
+        adminUsername: 'admin',
+      },
+    });
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: false,
+        media: '',
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
   });
 
   it('renders GitHub and Google login actions when no cloud user is connected', async () => {
@@ -229,5 +325,29 @@ describe('CloudSyncSection', () => {
     });
     expect(messageSuccess).toHaveBeenCalledWith('Cloud account connected');
     expect(messageError).not.toHaveBeenCalled();
+  });
+
+  it('shows device-pending copy instead of the raw tunnel message when cloud login exists but desktop linking is incomplete', async () => {
+    getStatusInvoke.mockResolvedValue({
+      success: true,
+      data: {
+        ...authenticatedStatus,
+        deviceTokenAvailable: false,
+        officialRemote: {
+          desired: false,
+          running: false,
+          message: 'Official Remote is not enabled on this desktop yet.',
+        },
+      },
+    });
+
+    const { default: WebuiModalContent } =
+      await import('@/renderer/components/settings/SettingsModal/contents/WebuiModalContent');
+
+    render(<WebuiModalContent />);
+
+    expect(await screen.findByText('Signed in as {{name}}')).toBeInTheDocument();
+    expect(screen.getByText('Cloud session is active, but this device is not fully linked yet.')).toBeInTheDocument();
+    expect(screen.queryByText('Official Remote is not enabled on this desktop yet.')).not.toBeInTheDocument();
   });
 });
