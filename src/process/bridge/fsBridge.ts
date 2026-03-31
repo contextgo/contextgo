@@ -1871,27 +1871,31 @@ export function initFsBridge(): void {
     builtinSkillsDir: getBuiltinSkillsCopyDir(),
   }));
 
-  ipcBridge.fs.searchSkillMarket.provider(async ({ query, limit, offset, forceRefresh } = {}) => {
-    try {
-      const data = await skillMarketService.searchSkills({
-        query,
-        limit,
-        offset,
-        forceRefresh,
-      });
+  ipcBridge.fs.searchSkillMarket.provider(
+    async ({ query, limit, offset, forceRefresh, view, industryId } = {}) => {
+      try {
+        const data = await skillMarketService.searchSkills({
+          query,
+          limit,
+          offset,
+          forceRefresh,
+          view,
+          industryId,
+        });
 
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      console.error('[fsBridge] Failed to search Skill Market:', error);
-      return {
-        success: false,
-        msg: `Failed to search Skill Market: ${error instanceof Error ? error.message : String(error)}`,
-      };
+        return {
+          success: true,
+          data,
+        };
+      } catch (error) {
+        console.error('[fsBridge] Failed to search Skill Market:', error);
+        return {
+          success: false,
+          msg: `Failed to search Skill Market: ${error instanceof Error ? error.message : String(error)}`,
+        };
+      }
     }
-  });
+  );
 
   ipcBridge.fs.installSkillMarketSkill.provider(async ({ skillId, archive }) => {
     try {

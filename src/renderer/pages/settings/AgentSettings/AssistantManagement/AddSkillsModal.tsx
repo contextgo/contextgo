@@ -1,4 +1,5 @@
 import { ipcBridge } from '@/common';
+import { ContextGoModal } from '@/renderer/components/base';
 import type {
   AddableSkill,
   ExternalSource,
@@ -8,7 +9,7 @@ import type {
   SkillMarketStats,
   SkillMarketView,
 } from './types';
-import { Button, Input, Modal, Typography } from '@arco-design/web-react';
+import { Button, Input, Typography } from '@arco-design/web-react';
 import { Plus, Refresh, Search } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -106,12 +107,25 @@ const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
   const showMarket = browseMode === 'skill-market';
 
   return (
-    <Modal
+    <ContextGoModal
       visible={visible}
       onCancel={onCancel}
       footer={null}
-      title={t('settings.addSkillsTitle', { defaultValue: 'Add Skills' })}
-      className='w-[90vw] md:w-[680px]'
+      className='add-skills-modal'
+      header={{
+        title: t('settings.addSkillsTitle', { defaultValue: 'Add Skills' }),
+        showClose: true,
+        className: 'px-24px pt-20px',
+      }}
+      style={{
+        width: 'min(720px, calc(100vw - 32px))',
+        maxHeight: 'calc(100vh - 40px)',
+      }}
+      contentStyle={{
+        padding: '12px 24px 24px',
+        overflow: 'hidden',
+        maxHeight: 'calc(100vh - 120px)',
+      }}
       wrapStyle={{ zIndex: 2500 }}
       maskStyle={{ zIndex: 2490 }}
       autoFocus={false}
@@ -535,7 +549,7 @@ const AddSkillsModal: React.FC<AddSkillsModalProps> = ({
           )}
         </div>
       </div>
-    </Modal>
+    </ContextGoModal>
   );
 };
 

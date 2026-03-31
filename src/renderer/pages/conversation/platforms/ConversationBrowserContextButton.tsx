@@ -6,9 +6,10 @@
 
 import { ipcBridge } from '@/common';
 import type { TBrowserContextAsset, TChatConversation } from '@/common/config/storage';
+import { ContextGoModal } from '@/renderer/components/base';
 import type { PreviewMetadata } from '@/renderer/pages/conversation/Preview/context/PreviewContext';
 import { iconColors } from '@/renderer/styles/colors';
-import { Button, Input, Message, Modal, Tooltip } from '@arco-design/web-react';
+import { Button, Input, Message, Tooltip } from '@arco-design/web-react';
 import { Earth } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -251,19 +252,36 @@ const ConversationBrowserContextButton: React.FC<ConversationBrowserContextButto
         />
       </Tooltip>
 
-      <Modal
+      <ContextGoModal
         visible={visible}
-        title={draft?.id ? t('conversation.browser.configureTitle') : t('conversation.browser.createTitle')}
         onCancel={closeModal}
-        onOk={() => {
-          void handleConfirm();
+        header={{
+          title: draft?.id ? t('conversation.browser.configureTitle') : t('conversation.browser.createTitle'),
+          showClose: true,
+          className: 'px-24px pt-20px',
         }}
-        okText={draft?.id ? t('common.confirm') : t('common.create')}
-        cancelText={t('common.cancel')}
-        confirmLoading={submitting}
-        style={{ borderRadius: '12px' }}
-        alignCenter
-        getPopupContainer={() => document.body}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={closeModal} className='min-w-88px px-18px'>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type='primary'
+                onClick={() => {
+                  void handleConfirm();
+                }}
+                loading={submitting}
+                className='min-w-104px px-18px'
+              >
+                {draft?.id ? t('common.confirm') : t('common.create')}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(460px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <div className='flex flex-col gap-8px'>
           <div className='text-14px text-t-secondary'>{t('conversation.browser.startUrlLabel')}</div>
@@ -277,7 +295,7 @@ const ConversationBrowserContextButton: React.FC<ConversationBrowserContextButto
             placeholder={t('conversation.browser.startUrlPlaceholder')}
           />
         </div>
-      </Modal>
+      </ContextGoModal>
     </>
   );
 };

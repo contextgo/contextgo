@@ -3,9 +3,10 @@
  * 1. Delete pending skill confirmation
  * 2. Remove custom skill from assistant confirmation
  */
+import { ContextGoModal } from '@/renderer/components/base';
 import type { Message } from '@arco-design/web-react';
 import type { PendingSkill } from './types';
-import { Modal } from '@arco-design/web-react';
+import { Button } from '@arco-design/web-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -47,73 +48,111 @@ const SkillConfirmModals: React.FC<SkillConfirmModalsProps> = ({
   return (
     <>
       {/* Delete Pending Skill Confirmation Modal */}
-      <Modal
+      <ContextGoModal
         visible={deletePendingSkillName !== null}
         onCancel={() => setDeletePendingSkillName(null)}
-        title={t('settings.deletePendingSkillTitle', { defaultValue: 'Delete Pending Skill' })}
-        okButtonProps={{ status: 'danger' }}
-        okText={t('common.delete', { defaultValue: 'Delete' })}
-        cancelText={t('common.cancel', { defaultValue: 'Cancel' })}
-        onOk={() => {
-          if (deletePendingSkillName) {
-            setPendingSkills(pendingSkills.filter((s) => s.name !== deletePendingSkillName));
-            setCustomSkills(customSkills.filter((s) => s !== deletePendingSkillName));
-            setSelectedSkills(selectedSkills.filter((s) => s !== deletePendingSkillName));
-            setDeletePendingSkillName(null);
-            message.success(t('settings.skillDeleted', { defaultValue: 'Skill removed from pending list' }));
-          }
+        header={{
+          title: t('settings.deletePendingSkillTitle', { defaultValue: 'Delete Pending Skill' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
         }}
-        className='w-[90vw] md:w-[400px]'
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setDeletePendingSkillName(null)} className='min-w-88px px-18px'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button
+                type='primary'
+                status='danger'
+                onClick={() => {
+                  if (deletePendingSkillName) {
+                    setPendingSkills(pendingSkills.filter((s) => s.name !== deletePendingSkillName));
+                    setCustomSkills(customSkills.filter((s) => s !== deletePendingSkillName));
+                    setSelectedSkills(selectedSkills.filter((s) => s !== deletePendingSkillName));
+                    setDeletePendingSkillName(null);
+                    message.success(t('settings.skillDeleted', { defaultValue: 'Skill removed from pending list' }));
+                  }
+                }}
+                className='min-w-104px px-18px'
+              >
+                {t('common.delete', { defaultValue: 'Delete' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(440px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
         wrapStyle={{ zIndex: 10000 }}
         maskStyle={{ zIndex: 9999 }}
       >
-        <p>
+        <p className='mb-0 text-14px leading-6 text-t-secondary'>
           {t('settings.deletePendingSkillConfirm', {
             defaultValue: `Are you sure you want to remove "${deletePendingSkillName}"? This skill has not been imported yet.`,
           })}
         </p>
-        <div className='mt-12px text-12px text-t-secondary bg-fill-2 p-12px rounded-lg'>
+        <div className='mt-14px rounded-16px border border-b-base bg-fill-1 p-12px text-12px leading-5 text-t-secondary shadow-[0_12px_30px_rgba(15,23,42,0.04)]'>
           {t('settings.deletePendingSkillNote', {
             defaultValue:
               'This will only remove the skill from the pending list. If you want to add it again later, you can use "Add Skills".',
           })}
         </div>
-      </Modal>
+      </ContextGoModal>
 
       {/* Remove Custom Skill from Assistant Modal */}
-      <Modal
+      <ContextGoModal
         visible={deleteCustomSkillName !== null}
         onCancel={() => setDeleteCustomSkillName(null)}
-        title={t('settings.removeCustomSkillTitle', { defaultValue: 'Remove Skill from Assistant' })}
-        okButtonProps={{ status: 'danger' }}
-        okText={t('common.remove', { defaultValue: 'Remove' })}
-        cancelText={t('common.cancel', { defaultValue: 'Cancel' })}
-        onOk={() => {
-          if (deleteCustomSkillName) {
-            setCustomSkills(customSkills.filter((s) => s !== deleteCustomSkillName));
-            setSelectedSkills(selectedSkills.filter((s) => s !== deleteCustomSkillName));
-            setDeleteCustomSkillName(null);
-            message.success(
-              t('settings.skillRemovedFromAssistant', { defaultValue: 'Skill removed from this assistant' })
-            );
-          }
+        header={{
+          title: t('settings.removeCustomSkillTitle', { defaultValue: 'Remove Skill from Assistant' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
         }}
-        className='w-[90vw] md:w-[400px]'
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setDeleteCustomSkillName(null)} className='min-w-88px px-18px'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button
+                type='primary'
+                status='danger'
+                onClick={() => {
+                  if (deleteCustomSkillName) {
+                    setCustomSkills(customSkills.filter((s) => s !== deleteCustomSkillName));
+                    setSelectedSkills(selectedSkills.filter((s) => s !== deleteCustomSkillName));
+                    setDeleteCustomSkillName(null);
+                    message.success(
+                      t('settings.skillRemovedFromAssistant', { defaultValue: 'Skill removed from this assistant' })
+                    );
+                  }
+                }}
+                className='min-w-104px px-18px'
+              >
+                {t('common.remove', { defaultValue: 'Remove' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(440px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
         wrapStyle={{ zIndex: 10000 }}
         maskStyle={{ zIndex: 9999 }}
       >
-        <p>
+        <p className='mb-0 text-14px leading-6 text-t-secondary'>
           {t('settings.removeCustomSkillConfirm', {
             defaultValue: `Are you sure you want to remove "${deleteCustomSkillName}" from this assistant?`,
           })}
         </p>
-        <div className='mt-12px text-12px text-t-secondary bg-fill-2 p-12px rounded-lg'>
+        <div className='mt-14px rounded-16px border border-b-base bg-fill-1 p-12px text-12px leading-5 text-t-secondary shadow-[0_12px_30px_rgba(15,23,42,0.04)]'>
           {t('settings.removeCustomSkillNote', {
             defaultValue:
               'This will only remove the skill from this assistant. The skill will remain in Builtin Skills and can be re-added later.',
           })}
         </div>
-      </Modal>
+      </ContextGoModal>
     </>
   );
 };

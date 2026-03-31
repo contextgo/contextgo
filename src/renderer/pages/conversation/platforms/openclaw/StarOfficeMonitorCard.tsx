@@ -5,7 +5,8 @@
  */
 
 import type { PreviewMetadata } from '@renderer/pages/conversation/Preview/context/PreviewContext.tsx';
-import { Button, Input, Modal, Tooltip } from '@arco-design/web-react';
+import { ContextGoModal } from '@/renderer/components/base';
+import { Button, Input, Tooltip } from '@arco-design/web-react';
 import { Tv } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -339,14 +340,20 @@ const StarOfficeMonitorCard: React.FC<StarOfficeMonitorCardProps> = ({ conversat
     <>
       <Tooltip content={tooltipText}>{buttonNode}</Tooltip>
 
-      <Modal
-        title={t('starOffice.monitor.openMonitor', { defaultValue: 'Open live monitor' })}
+      <ContextGoModal
         visible={visible}
+        header={{
+          title: t('starOffice.monitor.openMonitor', { defaultValue: 'Open live monitor' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
         footer={null}
         onCancel={() => {
           setShowManualUrlEditor(false);
           setVisible(false);
         }}
+        style={{ width: 'min(580px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px', maxHeight: 'min(78vh, 820px)', overflow: 'auto' }}
       >
         <div className='flex flex-col gap-12px'>
           <div className='rounded-12px border border-3 bg-2 p-12px'>
@@ -489,7 +496,7 @@ const StarOfficeMonitorCard: React.FC<StarOfficeMonitorCardProps> = ({ conversat
             </>
           ) : null}
         </div>
-      </Modal>
+      </ContextGoModal>
     </>
   );
 };

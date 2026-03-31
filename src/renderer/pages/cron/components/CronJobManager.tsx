@@ -16,6 +16,7 @@ import { getCronDirectCreateContext, getCronPresets, type CronPresetId } from '.
 import { useCronJobs } from '../useCronJobs';
 import { getJobStatusFlags } from '../cronUtils';
 import CronPresetLibrary from './CronPresetLibrary';
+import styles from './CronJobManager.module.css';
 import CronJobDrawer from './CronJobDrawer';
 
 interface CronJobManagerProps {
@@ -89,13 +90,14 @@ const CronJobManager: React.FC<CronJobManagerProps> = ({ conversation }) => {
       <>
         {messageContext}
         <Popover
+          className={styles.presetPopover}
           trigger='click'
           position='bottom'
           popupVisible={presetPopoverVisible}
           onVisibleChange={setPresetPopoverVisible}
           content={
-            <div className='w-340px max-w-[calc(100vw-32px)] p-4px'>
-              <div className='max-h-[70vh] overflow-y-auto pr-4px'>
+            <div className={styles.presetPopoverShell}>
+              <div className={styles.presetPopoverScrollArea}>
                 <CronPresetLibrary
                   presets={presets}
                   creatingPresetId={creatingPresetId}
@@ -105,7 +107,7 @@ const CronJobManager: React.FC<CronJobManagerProps> = ({ conversation }) => {
                 />
               </div>
 
-              <Button className='mt-10px w-full' size='mini' onClick={handleCreateClick}>
+              <Button className={styles.presetPopoverAction} size='mini' onClick={handleCreateClick}>
                 {t('cron.presets.actions.customize')}
               </Button>
             </div>

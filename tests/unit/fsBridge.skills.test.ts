@@ -4,6 +4,8 @@ import path from 'path';
 // Store all mock states at module scope to ensure they remain accessible in vi.doMock
 let mockFsStore: Record<string, any> = {};
 let mockCustomExternalPaths: Array<{ name: string; path: string }> = [];
+let mockSearchSkillMarket = vi.fn();
+let mockInstallSkillMarketSkill = vi.fn();
 
 describe('fsBridge skills functionality', () => {
   const originalEnv = { ...process.env };
@@ -13,6 +15,8 @@ describe('fsBridge skills functionality', () => {
     vi.clearAllMocks();
     mockFsStore = {};
     mockCustomExternalPaths = [];
+    mockSearchSkillMarket = vi.fn();
+    mockInstallSkillMarketSkill = vi.fn();
 
     // Mock electron
     vi.doMock('electron', () => ({
@@ -166,6 +170,13 @@ describe('fsBridge skills functionality', () => {
     vi.doMock('@process/task/AcpSkillManager', () => ({
       AcpSkillManager: {
         resetInstance: vi.fn(),
+      },
+    }));
+
+    vi.doMock('@process/bridge/services/skillmarket/SkillMarketService', () => ({
+      skillMarketService: {
+        searchSkills: mockSearchSkillMarket,
+        installSkill: mockInstallSkillMarketSkill,
       },
     }));
 
@@ -873,6 +884,61 @@ describe('fsBridge skills functionality', () => {
       expect(result2.success).toBe(true);
       expect(result2.data).toHaveLength(1);
       expect(result2.data[0].name).toBe('RootSkill');
+    });
+  });
+
+  describe('skill market bridge', () => {
+    it('forwards view and industry filters to SkillMarketService', async () => {
+      const expectedData = {
+        brandName: 'ContextGo',
+        view: 'full',
+        defaultView: 'curated',
+        items: [],
+        total: 0,
+        totalAvailable: 0,
+        siteUrl: 'https://market.example',
+        pageSize: 24,
+        featuredCount: 8,
+        categories: [],
+        sources: {},
+        stats: {
+          total: 0,
+          categories: [],
+          sources: {},
+          sourceTotal: 0,
+          reducedCount: 0,
+          reductionRatio: 0,
+          clusterCount: 0,
+          topIndustries: [],
+          topCapabilities: [],
+        },
+        industryIndex: [],
+        bundles: [],
+      };
+      mockSearchSkillMarket.mockResolvedValue(expectedData);
+
+      const handler = await getProvider('searchSkillMarket');
+      const result = await handler({
+        query: 'analytics',
+        limit: 24,
+        offset: 0,
+        forceRefresh: true,
+        view: 'full',
+        industryId: 'research-analysis',
+      });
+
+      expect(mockSearchSkillMarket).toHaveBeenCalledWith({
+        query: 'analytics',
+        limit: 24,
+        offset: 0,
+        forceRefresh: true,
+        view: 'full',
+        industryId: 'research-analysis',
+      });
+      expect(result).toEqual({
+        success: true,
+        data: expectedData,
+      });
     });
   });
 });

@@ -9,7 +9,7 @@ import type { TChatConversation } from '@/common/config/storage';
 import { emitter } from '@/renderer/utils/emitter';
 import { blockMobileInputFocus, blurActiveElement } from '@/renderer/utils/ui/focus';
 import { Message, Modal } from '@arco-design/web-react';
-import { useCallback, useEffect, useState } from 'react';
+import { createElement, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -101,10 +101,15 @@ export const useConversationActions = ({
     (conversationId: string) => {
       Modal.confirm({
         title: t('conversation.history.deleteTitle'),
-        content: t('conversation.history.deleteConfirm'),
+        content: createElement(
+          'div',
+          { className: 'text-14px leading-6 text-t-secondary' },
+          t('conversation.history.deleteConfirm')
+        ),
         okText: t('conversation.history.confirmDelete'),
         cancelText: t('conversation.history.cancelDelete'),
         okButtonProps: { status: 'warning' },
+        className: 'contextgo-modal',
         onOk: async () => {
           try {
             const success = await removeConversation(conversationId);
@@ -119,7 +124,10 @@ export const useConversationActions = ({
             Message.error(t('conversation.history.deleteFailed'));
           }
         },
-        style: { borderRadius: '12px' },
+        style: {
+          width: 'min(440px, calc(100vw - 32px))',
+          borderRadius: 'var(--app-modal-radius-lg)',
+        },
         alignCenter: true,
         getPopupContainer: () => document.body,
       });
@@ -135,10 +143,15 @@ export const useConversationActions = ({
 
     Modal.confirm({
       title: t('conversation.history.batchDelete'),
-      content: t('conversation.history.batchDeleteConfirm', { count: selectedConversationIds.size }),
+      content: createElement(
+        'div',
+        { className: 'text-14px leading-6 text-t-secondary' },
+        t('conversation.history.batchDeleteConfirm', { count: selectedConversationIds.size })
+      ),
       okText: t('conversation.history.confirmDelete'),
       cancelText: t('conversation.history.cancelDelete'),
       okButtonProps: { status: 'warning' },
+      className: 'contextgo-modal',
       onOk: async () => {
         const selectedIds = Array.from(selectedConversationIds);
         try {
@@ -158,7 +171,10 @@ export const useConversationActions = ({
           onBatchModeChange?.(false);
         }
       },
-      style: { borderRadius: '12px' },
+      style: {
+        width: 'min(460px, calc(100vw - 32px))',
+        borderRadius: 'var(--app-modal-radius-lg)',
+      },
       alignCenter: true,
       getPopupContainer: () => document.body,
     });

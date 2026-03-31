@@ -1,4 +1,5 @@
-import { Button, Input, Modal, Spin, Tooltip } from '@arco-design/web-react';
+import { ContextGoModal } from '@/renderer/components/base';
+import { Button, Input, Spin, Tooltip } from '@arco-design/web-react';
 import { CheckOne, CloseOne, Delete, Edit, Plus, DeleteFive, CheckSmall, Shield } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -157,12 +158,29 @@ const ApiKeyEditorModal: React.FC<ApiKeyEditorModalProps> = ({ visible, apiKeys,
   };
 
   return (
-    <Modal
+    <ContextGoModal
       visible={visible}
       onCancel={onClose}
-      title={t('settings.editApiKey')}
-      footer={null}
-      style={{ maxWidth: '500px', width: '90vw' }}
+      header={{
+        title: t('settings.editApiKey'),
+        showClose: true,
+        className: 'px-24px pt-20px',
+      }}
+      footer={{
+        className: 'px-24px pb-20px',
+        render: () => (
+          <div className='flex justify-end gap-10px pt-4px'>
+            <Button onClick={onClose} className='min-w-88px px-18px'>
+              {t('common.cancel')}
+            </Button>
+            <Button type='primary' onClick={handleSave} className='min-w-104px px-18px'>
+              {t('common.confirm')}
+            </Button>
+          </div>
+        ),
+      }}
+      style={{ width: 'min(520px, calc(100vw - 32px))' }}
+      contentStyle={{ padding: '12px 24px 12px', maxHeight: 'min(72vh, 680px)', overflow: 'auto' }}
       unmountOnExit
     >
       <div className='flex flex-col gap-12px'>
@@ -270,15 +288,8 @@ const ApiKeyEditorModal: React.FC<ApiKeyEditorModalProps> = ({ visible, apiKeys,
             </Button>
           </div>
         </div>
-
-        {/* 确认按钮 */}
-        <div className='flex justify-end pt-8px'>
-          <Button type='primary' onClick={handleSave}>
-            {t('common.confirm')}
-          </Button>
-        </div>
       </div>
-    </Modal>
+    </ContextGoModal>
   );
 };
 

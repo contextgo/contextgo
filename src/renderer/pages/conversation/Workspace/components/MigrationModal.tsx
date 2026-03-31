@@ -4,9 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { ContextGoModal } from '@/renderer/components/base';
 import DirectorySelectionModal from '@/renderer/components/settings/DirectorySelectionModal';
 import { getLastDirectoryName } from '@/renderer/utils/workspace/workspace';
-import { Modal } from '@arco-design/web-react';
+import { Button } from '@arco-design/web-react';
 import { AlarmClock, FolderOpen } from '@icon-park/react';
 import React from 'react';
 import type { TFunction } from 'i18next';
@@ -61,125 +62,85 @@ const MigrationModal: React.FC<MigrationModalProps> = ({
   return (
     <>
       {/* Workspace Migration Modal */}
-      <Modal
+      <ContextGoModal
         visible={showMigrationModal}
-        title={t('conversation.workspace.migration.title')}
         onCancel={handleCloseMigrationModal}
-        footer={null}
-        style={{ borderRadius: '12px' }}
         className='workspace-migration-modal'
-        alignCenter
-        getPopupContainer={() => document.body}
+        header={{
+          title: t('conversation.workspace.migration.title'),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={null}
+        style={{ width: 'min(560px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <div className='py-8px'>
           {/* Current workspace info */}
-          <div className='text-14px mb-16px' style={{ color: 'var(--color-text-3)' }}>
+          <div className='mb-16px text-14px text-t-secondary'>
             {t('conversation.workspace.migration.currentWorkspaceLabel')}
             <span className='font-mono'>/{getLastDirectoryName(workspace)}</span>
           </div>
 
           {/* Target folder selection card */}
-          <div className='mb-16px p-16px rounded-12px' style={{ backgroundColor: 'var(--color-fill-1)' }}>
-            <div className='text-14px mb-8px' style={{ color: 'var(--color-text-1)' }}>
-              {t('conversation.workspace.migration.moveToNewFolder')}
-            </div>
+          <div className='mb-16px rounded-18px border border-b-base bg-fill-1 p-16px shadow-[0_12px_30px_rgba(15,23,42,0.04)]'>
+            <div className='mb-8px text-14px text-t-primary'>{t('conversation.workspace.migration.moveToNewFolder')}</div>
             <div
-              className='flex items-center justify-between px-12px py-10px rounded-8px cursor-pointer transition-colors hover:bg-[var(--color-fill-2)]'
-              style={{
-                backgroundColor: 'var(--color-bg-1)',
-                border: '1px solid var(--color-border-2)',
-              }}
+              className='flex cursor-pointer items-center justify-between rounded-14px border border-b-base bg-base px-14px py-12px transition-colors hover:bg-fill-1'
               onClick={handleSelectFolder}
             >
-              <span
-                className='text-14px'
-                style={{ color: selectedTargetPath ? 'var(--color-text-1)' : 'var(--color-text-3)' }}
-              >
+              <span className={`text-14px ${selectedTargetPath ? 'text-t-primary' : 'text-t-secondary'}`}>
                 {selectedTargetPath || t('conversation.workspace.migration.selectFolder')}
               </span>
-              <FolderOpen theme='outline' size='18' fill='var(--color-text-3)' />
+              <FolderOpen theme='outline' size='18' fill='currentColor' className='text-t-secondary' />
             </div>
           </div>
 
           {/* Hint */}
-          <div className='flex items-center gap-8px mb-20px text-14px' style={{ color: 'var(--color-text-3)' }}>
+          <div className='mb-20px flex items-center gap-8px text-14px text-t-secondary'>
             <span>💡</span>
             <span>{t('conversation.workspace.migration.hint')}</span>
           </div>
 
           {/* Button area */}
           <div className='flex gap-12px justify-end'>
-            <button
-              className='px-24px py-8px rounded-20px text-14px font-medium transition-all'
-              style={{
-                border: '1px solid var(--color-border-2)',
-                backgroundColor: 'var(--color-fill-2)',
-                color: 'var(--color-text-1)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--color-fill-3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--color-fill-2)';
-              }}
-              onClick={handleCloseMigrationModal}
-              disabled={migrationLoading}
-            >
+            <Button onClick={handleCloseMigrationModal} disabled={migrationLoading} className='min-w-88px px-18px'>
               {t('common.cancel')}
-            </button>
-            <button
-              className='px-24px py-8px rounded-20px text-14px font-medium transition-all'
-              style={{
-                border: 'none',
-                backgroundColor: migrationLoading ? 'var(--color-fill-3)' : 'var(--color-text-1)',
-                color: 'var(--color-bg-1)',
-                cursor: migrationLoading ? 'not-allowed' : 'pointer',
-              }}
-              onMouseEnter={(e) => {
-                if (!migrationLoading) {
-                  e.currentTarget.style.opacity = '0.85';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!migrationLoading) {
-                  e.currentTarget.style.opacity = '1';
-                }
-              }}
+            </Button>
+            <Button
+              type='primary'
+              loading={migrationLoading}
               onClick={handleMigrationConfirm}
-              disabled={migrationLoading || !selectedTargetPath}
+              disabled={!selectedTargetPath}
+              className='min-w-104px px-18px'
             >
-              {migrationLoading ? t('conversation.workspace.migration.migrating') : t('common.confirm')}
-            </button>
+              {t('common.confirm')}
+            </Button>
           </div>
         </div>
-      </Modal>
+      </ContextGoModal>
 
       {/* Cron Migration Modal */}
-      <Modal
+      <ContextGoModal
         visible={showCronMigrationPrompt}
-        title={t('conversation.workspace.migration.cronMigrationTitle')}
         onCancel={handleCloseMigrationModal}
-        footer={null}
-        style={{ borderRadius: '12px' }}
         className='cron-migration-modal'
-        alignCenter
-        getPopupContainer={() => document.body}
+        header={{
+          title: t('conversation.workspace.migration.cronMigrationTitle'),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={null}
+        style={{ width: 'min(520px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <div className='py-8px'>
-          <div
-            className='flex items-center gap-12px p-16px rounded-12px mb-16px'
-            style={{ backgroundColor: 'var(--color-fill-1)' }}
-          >
-            <div
-              className='w-40px h-40px rounded-full flex items-center justify-center'
-              style={{ backgroundColor: 'rgba(var(--primary-6), 0.1)' }}
-            >
+          <div className='mb-16px flex items-center gap-12px rounded-18px border border-b-base bg-fill-1 p-16px shadow-[0_12px_30px_rgba(15,23,42,0.04)]'>
+            <div className='flex h-40px w-40px items-center justify-center rounded-full bg-primary-light-1'>
               <AlarmClock theme='outline' size='22' fill='rgb(var(--primary-6))' />
             </div>
             <div className='flex-1'>
-              <div className='text-15px font-medium mb-4px'>
-                {t('conversation.workspace.migration.cronMigrationTitle')}
-              </div>
+              <div className='mb-4px text-15px font-medium text-t-primary'>{t('conversation.workspace.migration.cronMigrationTitle')}</div>
               <div className='text-13px text-t-secondary'>
                 {t('conversation.workspace.migration.cronMigrationHint')}
               </div>
@@ -187,34 +148,20 @@ const MigrationModal: React.FC<MigrationModalProps> = ({
           </div>
 
           <div className='flex gap-12px justify-end'>
-            <button
-              className='px-20px py-8px rounded-20px text-14px font-medium transition-all'
-              style={{
-                border: '1px solid var(--color-border-2)',
-                backgroundColor: 'var(--color-fill-2)',
-                color: 'var(--color-text-1)',
-              }}
-              onClick={() => executeMigration(false)}
-              disabled={migrationLoading}
-            >
+            <Button onClick={() => executeMigration(false)} disabled={migrationLoading} className='min-w-96px px-18px'>
               {t('conversation.workspace.migration.cronMigrationSkip')}
-            </button>
-            <button
-              className='px-20px py-8px rounded-20px text-14px font-medium transition-all'
-              style={{
-                border: 'none',
-                backgroundColor: 'var(--color-text-1)',
-                color: 'var(--color-bg-1)',
-                cursor: 'pointer',
-              }}
+            </Button>
+            <Button
+              type='primary'
+              loading={migrationLoading}
               onClick={() => executeMigration(true)}
-              disabled={migrationLoading}
+              className='min-w-108px px-18px'
             >
               {t('conversation.workspace.migration.cronMigrationConfirm')}
-            </button>
+            </Button>
           </div>
         </div>
-      </Modal>
+      </ContextGoModal>
 
       {/* Directory Selection Modal (for WebUI only) */}
       <DirectorySelectionModal

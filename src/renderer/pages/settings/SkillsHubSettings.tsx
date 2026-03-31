@@ -1,4 +1,5 @@
 import { ipcBridge } from '@/common';
+import { ContextGoModal } from '@/renderer/components/base';
 import type {
   SkillMarketBundle,
   SkillMarketIndustry,
@@ -6,7 +7,7 @@ import type {
   SkillMarketStats,
   SkillMarketView,
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
-import { Button, Message, Modal, Typography, Input, Dropdown, Menu } from '@arco-design/web-react';
+import { Button, Message, Typography, Input, Dropdown, Menu } from '@arco-design/web-react';
 import { Delete, FolderOpen, Info, Search, Plus, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,6 +73,7 @@ const SkillsHubSettings: React.FC = () => {
   const [showAddPathModal, setShowAddPathModal] = useState(false);
   const [customPathName, setCustomPathName] = useState('');
   const [customPathValue, setCustomPathValue] = useState('');
+  const [deleteSkillName, setDeleteSkillName] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const filteredSkills = useMemo(() => {
@@ -1074,17 +1076,7 @@ const SkillsHubSettings: React.FC = () => {
                         {skill.isCustom && (
                           <button
                             className='p-8px hover:bg-danger-1 hover:text-danger-6 text-t-tertiary rd-6px outline-none flex items-center justify-center border border-transparent cursor-pointer transition-colors shadow-sm bg-base sm:bg-transparent sm:shadow-none'
-                            onClick={() => {
-                              Modal.confirm({
-                                title: t('settings.skillsHub.deleteConfirmTitle', { defaultValue: 'Delete Skill' }),
-                                content: t('settings.skillsHub.deleteConfirmContent', {
-                                  name: skill.name,
-                                  defaultValue: `Are you sure you want to delete "${skill.name}"?`,
-                                }),
-                                okButtonProps: { status: 'danger' },
-                                onOk: () => void handleDelete(skill.name),
-                              });
-                            }}
+                            onClick={() => setDeleteSkillName(skill.name)}
                             title={t('common.delete', { defaultValue: 'Delete' })}
                           >
                             <Delete size={16} />
@@ -1119,19 +1111,45 @@ const SkillsHubSettings: React.FC = () => {
         </div>
       </SettingsPageWrapper>
 
-      {/* Add Custom External Path Modal */}
-      <Modal
-        title={t('settings.skillsHub.addCustomPath', { defaultValue: 'Add Custom Skill Path' })}
+      <ContextGoModal
         visible={showAddPathModal}
         onCancel={() => {
           setShowAddPathModal(false);
           setCustomPathName('');
           setCustomPathValue('');
         }}
-        onOk={() => void handleAddCustomPath()}
-        okText={t('common.confirm', { defaultValue: 'Confirm' })}
-        cancelText={t('common.cancel', { defaultValue: 'Cancel' })}
-        okButtonProps={{ disabled: !customPathName.trim() || !customPathValue.trim() }}
+        header={{
+          title: t('settings.skillsHub.addCustomPath', { defaultValue: 'Add Custom Skill Path' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button
+                onClick={() => {
+                  setShowAddPathModal(false);
+                  setCustomPathName('');
+                  setCustomPathValue('');
+                }}
+                className='min-w-88px px-18px'
+              >
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button
+                type='primary'
+                onClick={() => void handleAddCustomPath()}
+                disabled={!customPathName.trim() || !customPathValue.trim()}
+                className='min-w-104px px-18px'
+              >
+                {t('common.confirm', { defaultValue: 'Confirm' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(560px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
         autoFocus={false}
         focusLock
       >
@@ -1178,7 +1196,50 @@ const SkillsHubSettings: React.FC = () => {
             </div>
           </div>
         </div>
-      </Modal>
+      </ContextGoModal>
+
+      <ContextGoModal
+        visible={deleteSkillName !== null}
+        onCancel={() => setDeleteSkillName(null)}
+        header={{
+          title: t('settings.skillsHub.deleteConfirmTitle', { defaultValue: 'Delete Skill' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setDeleteSkillName(null)} className='min-w-88px px-18px'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button
+                type='primary'
+                status='danger'
+                onClick={() => {
+                  if (!deleteSkillName) {
+                    return;
+                  }
+                  void handleDelete(deleteSkillName);
+                  setDeleteSkillName(null);
+                }}
+                className='min-w-104px px-18px'
+              >
+                {t('common.delete', { defaultValue: 'Delete' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(440px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
+      >
+        <p className='mb-0 text-14px leading-6 text-t-secondary'>
+          {t('settings.skillsHub.deleteConfirmContent', {
+            name: deleteSkillName || '',
+            defaultValue: `Are you sure you want to delete "${deleteSkillName || ''}"?`,
+          })}
+        </p>
+      </ContextGoModal>
     </>
   );
 };

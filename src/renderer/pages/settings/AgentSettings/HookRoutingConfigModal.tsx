@@ -1,5 +1,6 @@
 import { HOOK_OUTPUT_BASE_DIRS, HOOK_OUTPUT_TARGETS, type HookInfo } from '@/common/types/hookTypes';
-import { Checkbox, Input, Modal, Select, Typography } from '@arco-design/web-react';
+import { ContextGoModal } from '@/renderer/components/base';
+import { Button, Checkbox, Input, Select, Typography } from '@arco-design/web-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -49,14 +50,32 @@ const HookRoutingConfigModal: React.FC<HookRoutingConfigModalProps> = ({
   };
 
   return (
-    <Modal
+    <ContextGoModal
       visible={visible}
-      title={t('settings.hookRoutingDialogTitle', {
-        defaultValue: 'Configure Hook Delivery',
-      })}
-      confirmLoading={saving}
       onCancel={onCancel}
-      onOk={onSave}
+      className='hook-routing-config-modal'
+      header={{
+        title: t('settings.hookRoutingDialogTitle', {
+          defaultValue: 'Configure Hook Delivery',
+        }),
+        showClose: true,
+        className: 'px-24px pt-20px',
+      }}
+      footer={{
+        className: 'px-24px pb-20px',
+        render: () => (
+          <div className='flex justify-end gap-10px pt-4px'>
+            <Button onClick={onCancel} className='min-w-88px px-18px'>
+              {t('common.cancel', { defaultValue: 'Cancel' })}
+            </Button>
+            <Button type='primary' loading={saving} onClick={onSave} className='min-w-104px px-18px'>
+              {t('common.save', { defaultValue: 'Save' })}
+            </Button>
+          </div>
+        ),
+      }}
+      style={{ width: 'min(620px, calc(100vw - 32px))' }}
+      contentStyle={{ padding: '12px 24px 24px', overflow: 'auto', maxHeight: 'calc(100vh - 140px)' }}
     >
       <div className='flex flex-col gap-16px'>
         <Typography.Paragraph className='!mb-0 text-t-secondary'>
@@ -172,7 +191,7 @@ const HookRoutingConfigModal: React.FC<HookRoutingConfigModalProps> = ({
           </div>
         )}
       </div>
-    </Modal>
+    </ContextGoModal>
   );
 };
 

@@ -105,5 +105,6 @@ Those are adjacent capabilities, but they are not the same module boundary.
 
 ## Migration Notes
 
-- Keep the legacy deployment repo read-only until CI/CD is switched to this repository.
+- Production website and cloud deployment workflows now live in this repository.
+- Keep the legacy deployment repo read-only; it no longer owns production deploys.
 - Do not split website and cloud changes back out into a separate repo.

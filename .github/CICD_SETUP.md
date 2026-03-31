@@ -31,6 +31,21 @@
   - 支持通过 `runner_mode` 输入切换 `self-hosted` 或 `hosted`
   - 在 self-hosted 模式下读取仓库变量中的 runner labels
 
+### 3. `deploy-site.yml` - Hosted Services 部署流
+
+- **触发时机**:
+  - 推送到 `main`
+  - 手动 `workflow_dispatch`
+- **功能**:
+  - 部署 `apps/web/` 到 Cloudflare Pages
+  - 部署 `apps/cloud/` 到单台 VM 上的 `/opt/contextgo-cloud`
+  - 自动重建 hosted remote shell 需要的 `out/renderer`
+  - 云端部署前执行 `bun run cloud:test`
+- **手动触发输入**:
+  - `deploy_target=site`
+  - `deploy_target=cloud`
+  - `deploy_target=both`
+
 ## 推荐的 GitHub Actions Variables 配置
 
 在仓库的 Settings → Secrets and variables → Actions → Variables 中配置：
@@ -97,6 +112,38 @@ GH_TOKEN=相同的Personal Access Token
 ```
 
 如果当前发布流程只操作本仓库资源，这一项可以暂时留空，先依赖 `github.token`。
+
+### Website 部署
+
+```
+CLOUDFLARE_API_TOKEN=Cloudflare API Token
+CLOUDFLARE_ACCOUNT_ID=Cloudflare Account ID
+```
+
+### Cloud VM 自动部署
+
+```
+CLOUD_VM_HOST=VM 公网 IP 或可解析域名
+CLOUD_VM_SSH_USER=部署使用的 SSH 用户
+CLOUD_VM_SSH_PRIVATE_KEY=对应 SSH 私钥（多行内容原样保存）
+```
+
+推荐同时配置以下 GitHub Actions Variables：
+
+```text
+CLOUD_VM_PORT=22
+CLOUD_DEPLOY_PATH=/opt/contextgo-cloud
+CLOUD_ENV_FILE=/etc/contextgo-cloud/contextgo-cloud.env
+CLOUD_SERVICE_NAME=contextgo-cloud
+CLOUD_DEPLOY_OWNER=contextgo
+```
+
+说明：
+
+- workflow 会把 `apps/cloud/` 和新构建的 `out/renderer/` 一起打包上传到 VM
+- 远端会保留 `${CLOUD_DEPLOY_PATH}/.venv`
+- 远端会自动写入或更新 `CONTEXTGO_RENDERER_BUILD_ROOT=${CLOUD_DEPLOY_PATH}/out/renderer`
+- 远端会覆盖 `/etc/systemd/system/${CLOUD_SERVICE_NAME}.service`，然后执行 `systemctl daemon-reload && systemctl restart`
 
 ## 如何获取 Apple 签名配置
 

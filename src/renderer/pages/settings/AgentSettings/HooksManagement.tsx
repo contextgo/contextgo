@@ -6,9 +6,10 @@
 
 import { ipcBridge } from '@/common';
 import type { HookCategory } from '@/common/types/hookTypes';
+import { ContextGoModal } from '@/renderer/components/base';
 import SettingsPageWrapper from '@/renderer/pages/settings/components/SettingsPageWrapper';
 import type { HookInfo } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
-import { Button, Collapse, Empty, Input, Message, Modal, Tag, Typography } from '@arco-design/web-react';
+import { Button, Collapse, Empty, Input, Message, Tag, Typography } from '@arco-design/web-react';
 import { Delete, FolderOpen, Plus, Search } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -551,19 +552,42 @@ const HooksManagement: React.FC = () => {
         </div>
       </SettingsPageWrapper>
 
-      <Modal
+      <ContextGoModal
         visible={deleteHookName !== null}
-        title={t('settings.deleteHookTitle', { defaultValue: 'Delete Hook' })}
         onCancel={() => setDeleteHookName(null)}
-        onOk={() => void handleDeleteHookConfirm()}
+        header={{
+          title: t('settings.deleteHookTitle', { defaultValue: 'Delete Hook' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setDeleteHookName(null)} className='min-w-88px px-18px'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button
+                type='primary'
+                status='danger'
+                onClick={() => void handleDeleteHookConfirm()}
+                className='min-w-104px px-18px'
+              >
+                {t('common.delete', { defaultValue: 'Delete' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(460px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <Typography.Text>
+        <Typography.Text className='text-14px leading-6 text-t-secondary'>
           {t('settings.deleteHookConfirm', {
             name: deleteHookName || '',
             defaultValue: 'Are you sure you want to delete "{{name}}"? This action cannot be undone.',
           })}
         </Typography.Text>
-      </Modal>
+      </ContextGoModal>
 
       <HookRoutingConfigModal
         visible={configuringHook !== null && routingDraft !== null}

@@ -2,7 +2,8 @@
  * AddCustomPathModal — Modal for adding a custom external skill directory path.
  */
 import { ipcBridge } from '@/common';
-import { Button, Input, Modal } from '@arco-design/web-react';
+import { ContextGoModal } from '@/renderer/components/base';
+import { Button, Input } from '@arco-design/web-react';
 import { FolderOpen } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,14 +30,34 @@ const AddCustomPathModal: React.FC<AddCustomPathModalProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Modal
-      title={t('settings.skillsHub.addCustomPath', { defaultValue: 'Add Custom Skill Path' })}
+    <ContextGoModal
       visible={visible}
       onCancel={onCancel}
-      onOk={onOk}
-      okText={t('common.confirm', { defaultValue: 'Confirm' })}
-      cancelText={t('common.cancel', { defaultValue: 'Cancel' })}
-      okButtonProps={{ disabled: !customPathName.trim() || !customPathValue.trim() }}
+      header={{
+        title: t('settings.skillsHub.addCustomPath', { defaultValue: 'Add Custom Skill Path' }),
+        showClose: true,
+        className: 'px-24px pt-20px',
+      }}
+      footer={{
+        className: 'px-24px pb-20px',
+        render: () => (
+          <div className='flex justify-end gap-10px pt-4px'>
+            <Button onClick={onCancel} className='min-w-88px px-18px'>
+              {t('common.cancel', { defaultValue: 'Cancel' })}
+            </Button>
+            <Button
+              type='primary'
+              onClick={onOk}
+              disabled={!customPathName.trim() || !customPathValue.trim()}
+              className='min-w-104px px-18px'
+            >
+              {t('common.confirm', { defaultValue: 'Confirm' })}
+            </Button>
+          </div>
+        ),
+      }}
+      style={{ width: 'min(560px, calc(100vw - 32px))' }}
+      contentStyle={{ padding: '12px 24px 24px' }}
       autoFocus={false}
       focusLock
       wrapStyle={{ zIndex: 10000 }}
@@ -85,7 +106,7 @@ const AddCustomPathModal: React.FC<AddCustomPathModalProps> = ({
           </div>
         </div>
       </div>
-    </Modal>
+    </ContextGoModal>
   );
 };
 
