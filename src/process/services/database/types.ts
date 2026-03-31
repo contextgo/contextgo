@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -20,6 +20,15 @@ import type {
   PluginType,
 } from '@process/channels/types';
 import { decryptCredentials } from '@process/channels/utils/credentialCrypto';
+import type {
+  ChunkRecord,
+  DocumentSnapshot,
+  MemoryCandidateEntry,
+  MemoryEntry,
+  ProfileSegment,
+  SourceRecord,
+} from '../../../../packages/context-engine/src/domain';
+import type { ContextOperation } from '../../../../packages/context-engine/src/operations';
 
 /**
  * ======================
@@ -330,10 +339,10 @@ export function rowToConversation(row: IConversationRow): TChatConversation {
     return {
       ...base,
       type: 'group' as const,
-      extra: JSON.parse(row.extra),
-      model: row.model
-        ? JSON.parse(row.model)
-        : {
+        extra: JSON.parse(row.extra),
+        model: row.model
+          ? JSON.parse(row.model)
+          : {
             id: 'group-placeholder',
             name: 'Group',
             useModel: 'group',
@@ -372,6 +381,384 @@ export function rowToSpace(row: ISpaceRow): TSpace {
     archivedAt: row.archived_at ?? undefined,
     createTime: row.created_at,
     modifyTime: row.updated_at,
+  };
+}
+
+export interface IContextSourceRow {
+  id: string;
+  space_id: string;
+  thread_id: string | null;
+  artifact_id: string | null;
+  kind: SourceRecord['kind'];
+  title: string | null;
+  canonical_uri: string | null;
+  checksum: string | null;
+  tags: string;
+  status: SourceRecord['status'];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IContextDocumentRow {
+  id: string;
+  space_id: string;
+  source_id: string;
+  mime_type: string;
+  storage_uri: string;
+  title: string | null;
+  checksum: string;
+  token_count: number;
+  status: DocumentSnapshot['status'];
+  created_at: string;
+}
+
+export interface IContextChunkRow {
+  id: string;
+  space_id: string;
+  document_id: string;
+  sequence: number;
+  text: string;
+  token_count: number;
+  content_hash: string;
+  tier: ChunkRecord['tier'];
+  embedding_key: string | null;
+}
+
+export interface IContextMemoryRow {
+  id: string;
+  space_id: string;
+  kind: MemoryEntry['kind'];
+  summary: string;
+  detail: string | null;
+  source_ids: string;
+  chunk_ids: string;
+  confidence: number;
+  tier: MemoryEntry['tier'];
+  priority: MemoryEntry['priority'];
+  state: MemoryEntry['state'];
+  superseded_by_id: string | null;
+  expires_at: string | null;
+  last_accessed_at: string | null;
+  last_confirmed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IContextMemoryCandidateRow {
+  id: string;
+  space_id: string;
+  thread_id: string | null;
+  kind: MemoryCandidateEntry['kind'];
+  tier: MemoryCandidateEntry['tier'];
+  summary: string;
+  detail: string | null;
+  source_ids: string;
+  chunk_ids: string;
+  confidence: number;
+  priority: MemoryCandidateEntry['priority'];
+  evidence_count: number;
+  repeated_across_sources: number;
+  recent_reference_count: number;
+  user_confirmed: number;
+  manually_pinned: number;
+  execution_backed: number;
+  contradiction_detected: number;
+  promotion_score: number;
+  promotion_rationale: string;
+  destination: MemoryCandidateEntry['destination'];
+  state: MemoryCandidateEntry['state'];
+  review_status: MemoryCandidateEntry['reviewStatus'];
+  promoted_memory_id: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IContextProfileRow {
+  id: string;
+  space_id: string;
+  key: string;
+  summary: string;
+  memory_ids: string;
+  confidence: number;
+  state: ProfileSegment['state'];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IContextOperationRow {
+  id: string;
+  space_id: string;
+  thread_id: string | null;
+  replica_id: string | null;
+  actor_kind: ContextOperation['actor']['kind'];
+  actor_id: string;
+  type: ContextOperation['type'];
+  entity_id: string;
+  payload: string;
+  created_at: string;
+}
+
+export function contextSourceToRow(source: SourceRecord): IContextSourceRow {
+  return {
+    id: source.id,
+    space_id: source.spaceId,
+    thread_id: source.threadId ?? null,
+    artifact_id: source.artifactId ?? null,
+    kind: source.kind,
+    title: source.title ?? null,
+    canonical_uri: source.canonicalUri ?? null,
+    checksum: source.checksum ?? null,
+    tags: JSON.stringify(source.tags ?? []),
+    status: source.status,
+    created_at: source.createdAt,
+    updated_at: source.updatedAt,
+  };
+}
+
+export function rowToContextSource(row: IContextSourceRow): SourceRecord {
+  return {
+    id: row.id,
+    spaceId: row.space_id,
+    threadId: row.thread_id ?? undefined,
+    artifactId: row.artifact_id ?? undefined,
+    kind: row.kind,
+    title: row.title ?? undefined,
+    canonicalUri: row.canonical_uri ?? undefined,
+    checksum: row.checksum ?? undefined,
+    tags: parseJson(row.tags, []),
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function contextDocumentToRow(snapshot: DocumentSnapshot): IContextDocumentRow {
+  return {
+    id: snapshot.id,
+    space_id: snapshot.spaceId,
+    source_id: snapshot.sourceId,
+    mime_type: snapshot.mimeType,
+    storage_uri: snapshot.storageUri,
+    title: snapshot.title ?? null,
+    checksum: snapshot.checksum,
+    token_count: snapshot.tokenCount,
+    status: snapshot.status,
+    created_at: snapshot.createdAt,
+  };
+}
+
+export function rowToContextDocument(row: IContextDocumentRow): DocumentSnapshot {
+  return {
+    id: row.id,
+    spaceId: row.space_id,
+    sourceId: row.source_id,
+    mimeType: row.mime_type,
+    storageUri: row.storage_uri,
+    title: row.title ?? undefined,
+    checksum: row.checksum,
+    tokenCount: row.token_count,
+    status: row.status,
+    createdAt: row.created_at,
+  };
+}
+
+export function contextChunkToRow(chunk: ChunkRecord): IContextChunkRow {
+  return {
+    id: chunk.id,
+    space_id: chunk.spaceId,
+    document_id: chunk.documentId,
+    sequence: chunk.sequence,
+    text: chunk.text,
+    token_count: chunk.tokenCount,
+    content_hash: chunk.contentHash,
+    tier: chunk.tier,
+    embedding_key: chunk.embeddingKey ?? null,
+  };
+}
+
+export function rowToContextChunk(row: IContextChunkRow): ChunkRecord {
+  return {
+    id: row.id,
+    spaceId: row.space_id,
+    documentId: row.document_id,
+    sequence: row.sequence,
+    text: row.text,
+    tokenCount: row.token_count,
+    contentHash: row.content_hash,
+    tier: row.tier,
+    embeddingKey: row.embedding_key ?? undefined,
+  };
+}
+
+export function contextMemoryCandidateToRow(candidate: MemoryCandidateEntry): IContextMemoryCandidateRow {
+  return {
+    id: candidate.id,
+    space_id: candidate.spaceId,
+    thread_id: candidate.threadId ?? null,
+    kind: candidate.kind,
+    tier: candidate.tier,
+    summary: candidate.summary,
+    detail: candidate.detail ?? null,
+    source_ids: JSON.stringify(candidate.sourceIds ?? []),
+    chunk_ids: JSON.stringify(candidate.chunkIds ?? []),
+    confidence: candidate.confidence,
+    priority: candidate.priority,
+    evidence_count: candidate.evidenceCount,
+    repeated_across_sources: candidate.repeatedAcrossSources,
+    recent_reference_count: candidate.recentReferenceCount,
+    user_confirmed: candidate.userConfirmed ? 1 : 0,
+    manually_pinned: candidate.manuallyPinned ? 1 : 0,
+    execution_backed: candidate.executionBacked ? 1 : 0,
+    contradiction_detected: candidate.contradictionDetected ? 1 : 0,
+    promotion_score: candidate.promotionScore,
+    promotion_rationale: JSON.stringify(candidate.promotionRationale ?? []),
+    destination: candidate.destination,
+    state: candidate.state,
+    review_status: candidate.reviewStatus,
+    promoted_memory_id: candidate.promotedMemoryId ?? null,
+    reviewed_at: candidate.reviewedAt ?? null,
+    reviewed_by: candidate.reviewedBy ?? null,
+    created_at: candidate.createdAt,
+    updated_at: candidate.updatedAt,
+  };
+}
+
+export function rowToContextMemoryCandidate(row: IContextMemoryCandidateRow): MemoryCandidateEntry {
+  return {
+    id: row.id,
+    spaceId: row.space_id,
+    threadId: row.thread_id ?? undefined,
+    kind: row.kind,
+    tier: row.tier,
+    summary: row.summary,
+    detail: row.detail ?? undefined,
+    sourceIds: parseJson(row.source_ids, []),
+    chunkIds: parseJson(row.chunk_ids, []),
+    confidence: row.confidence,
+    priority: row.priority,
+    evidenceCount: row.evidence_count,
+    repeatedAcrossSources: row.repeated_across_sources,
+    recentReferenceCount: row.recent_reference_count,
+    userConfirmed: row.user_confirmed === 1,
+    manuallyPinned: row.manually_pinned === 1,
+    executionBacked: row.execution_backed === 1,
+    contradictionDetected: row.contradiction_detected === 1,
+    promotionScore: row.promotion_score,
+    promotionRationale: parseJson(row.promotion_rationale, []),
+    destination: row.destination,
+    state: row.state,
+    reviewStatus: row.review_status,
+    promotedMemoryId: row.promoted_memory_id ?? undefined,
+    reviewedAt: row.reviewed_at ?? undefined,
+    reviewedBy: row.reviewed_by ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function contextMemoryToRow(memory: MemoryEntry): IContextMemoryRow {
+  return {
+    id: memory.id,
+    space_id: memory.spaceId,
+    kind: memory.kind,
+    summary: memory.summary,
+    detail: memory.detail ?? null,
+    source_ids: JSON.stringify(memory.sourceIds ?? []),
+    chunk_ids: JSON.stringify(memory.chunkIds ?? []),
+    confidence: memory.confidence,
+    tier: memory.tier,
+    priority: memory.priority,
+    state: memory.state,
+    superseded_by_id: memory.supersededById ?? null,
+    expires_at: memory.expiresAt ?? null,
+    last_accessed_at: memory.lastAccessedAt ?? null,
+    last_confirmed_at: memory.lastConfirmedAt ?? null,
+    created_at: memory.createdAt,
+    updated_at: memory.updatedAt,
+  };
+}
+
+export function rowToContextMemory(row: IContextMemoryRow): MemoryEntry {
+  return {
+    id: row.id,
+    spaceId: row.space_id,
+    kind: row.kind,
+    summary: row.summary,
+    detail: row.detail ?? undefined,
+    sourceIds: parseJson(row.source_ids, []),
+    chunkIds: parseJson(row.chunk_ids, []),
+    confidence: row.confidence,
+    tier: row.tier,
+    priority: row.priority,
+    state: row.state,
+    supersededById: row.superseded_by_id ?? undefined,
+    expiresAt: row.expires_at ?? undefined,
+    lastAccessedAt: row.last_accessed_at ?? undefined,
+    lastConfirmedAt: row.last_confirmed_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function contextProfileToRow(profile: ProfileSegment): IContextProfileRow {
+  return {
+    id: profile.id,
+    space_id: profile.spaceId,
+    key: profile.key,
+    summary: profile.summary,
+    memory_ids: JSON.stringify(profile.memoryIds ?? []),
+    confidence: profile.confidence,
+    state: profile.state,
+    created_at: profile.createdAt,
+    updated_at: profile.updatedAt,
+  };
+}
+
+export function rowToContextProfile(row: IContextProfileRow): ProfileSegment {
+  return {
+    id: row.id,
+    spaceId: row.space_id,
+    key: row.key,
+    summary: row.summary,
+    memoryIds: parseJson(row.memory_ids, []),
+    confidence: row.confidence,
+    state: row.state,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function contextOperationToRow(operation: ContextOperation): IContextOperationRow {
+  return {
+    id: operation.id,
+    space_id: operation.spaceId,
+    thread_id: operation.threadId ?? null,
+    replica_id: operation.replicaId ?? null,
+    actor_kind: operation.actor.kind,
+    actor_id: operation.actor.id,
+    type: operation.type,
+    entity_id: operation.entityId,
+    payload: JSON.stringify(operation.payload ?? {}),
+    created_at: operation.createdAt,
+  };
+}
+
+export function rowToContextOperation(row: IContextOperationRow): ContextOperation {
+  return {
+    id: row.id,
+    spaceId: row.space_id,
+    threadId: row.thread_id ?? undefined,
+    replicaId: row.replica_id ?? undefined,
+    actor: {
+      kind: row.actor_kind,
+      id: row.actor_id,
+    },
+    type: row.type,
+    entityId: row.entity_id,
+    payload: parseJson(row.payload, {}),
+    createdAt: row.created_at,
   };
 }
 

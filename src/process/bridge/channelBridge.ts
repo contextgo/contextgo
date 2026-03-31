@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -156,7 +156,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
                 iconField.startsWith('https://') ||
                 iconField.startsWith('data:') ||
                 iconField.startsWith('file://') ||
-                iconField.startsWith('contextgo-asset://')
+                iconField.startsWith('aion-asset://')
               ) {
                 extensionMeta.icon = iconField;
               } else {
@@ -463,17 +463,6 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return { success: true };
     } catch (error) {
       console.error('[ChannelBridge] deleteBinding error:', error);
-      return { success: false, msg: getErrorMessage(error) };
-    }
-  });
-
-  channel.prepareConversationAgentProfile.provider(async ({ conversationId }) => {
-    try {
-      const handoffService = getChannelHandoffService();
-      const data = await handoffService.prepareConversationAgentProfile(conversationId);
-      return { success: true, data };
-    } catch (error) {
-      console.error('[ChannelBridge] prepareConversationAgentProfile error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });

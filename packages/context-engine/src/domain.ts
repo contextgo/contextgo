@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -56,6 +56,8 @@ export type DocumentSnapshot = {
   createdAt: Timestamp;
 };
 
+export type ContextTier = 'working' | 'experiential' | 'factual' | 'source';
+
 export type ChunkRecord = {
   id: ChunkId;
   spaceId: SpaceId;
@@ -64,6 +66,7 @@ export type ChunkRecord = {
   text: string;
   tokenCount: number;
   contentHash: string;
+  tier: ContextTier;
   embeddingKey?: string;
 };
 
@@ -82,12 +85,52 @@ export type MemoryEntry = {
   sourceIds: readonly SourceRecordId[];
   chunkIds: readonly ChunkId[];
   confidence: number;
+  tier: Exclude<ContextTier, 'source'>;
   priority: MemoryPriority;
   state: MemoryEntryState;
   supersededById?: MemoryEntryId;
   expiresAt?: Timestamp;
   lastAccessedAt?: Timestamp;
   lastConfirmedAt?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+export type MemoryCandidateId = string;
+
+export type MemoryCandidateState = 'pending_review' | 'approved' | 'promoted' | 'rejected' | 'archived';
+
+export type MemoryCandidateReviewStatus = 'pending' | 'auto_approved' | 'approved' | 'rejected';
+
+export type MemoryCandidateDestination = 'memory' | 'document' | 'board';
+
+export type MemoryCandidateEntry = {
+  id: MemoryCandidateId;
+  spaceId: SpaceId;
+  threadId?: ThreadId;
+  kind: MemoryKind;
+  tier: Exclude<ContextTier, 'source'>;
+  summary: string;
+  detail?: string;
+  sourceIds: readonly SourceRecordId[];
+  chunkIds: readonly ChunkId[];
+  confidence: number;
+  priority: MemoryPriority;
+  evidenceCount: number;
+  repeatedAcrossSources: number;
+  recentReferenceCount: number;
+  userConfirmed: boolean;
+  manuallyPinned: boolean;
+  executionBacked: boolean;
+  contradictionDetected: boolean;
+  promotionScore: number;
+  promotionRationale: readonly string[];
+  destination: MemoryCandidateDestination;
+  state: MemoryCandidateState;
+  reviewStatus: MemoryCandidateReviewStatus;
+  promotedMemoryId?: MemoryEntryId;
+  reviewedAt?: Timestamp;
+  reviewedBy?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

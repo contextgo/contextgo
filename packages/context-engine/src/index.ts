@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,6 +10,9 @@ export * from './promotion';
 export * from './compaction';
 export * from './forgetting';
 export * from './contracts';
+export * from './vectorIndex';
+export * from './ContextEngineService';
+export * from './inMemoryStores';
 
 export type ContextEngineStage = 'design' | 'contract';
 
