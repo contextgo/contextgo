@@ -15,6 +15,7 @@ const CLOUD_DEVICE_TOKEN_KEY = 'cloud.deviceToken';
 const OFFICIAL_REMOTE_RETRY_DELAY_MS = 3_000;
 const OFFICIAL_REMOTE_RECONCILE_INTERVAL_MS = 15_000;
 const OFFICIAL_REMOTE_PING_INTERVAL_MS = 20_000;
+const OFFICIAL_REMOTE_AUTH_CLOSE_CODES = new Set([4401]);
 
 type OfficialRemoteRelayFrame =
   | { type: 'hello'; deviceId?: string; connectedAt?: string; transport?: string }
@@ -24,6 +25,12 @@ type OfficialRemoteRelayFrame =
   | { type: 'bridge'; payload?: { name?: string; data?: unknown } };
 
 const DEFAULT_READY_MESSAGE = 'Official Remote is connected through ContextGo Cloud relay.';
+const DEFAULT_REAUTH_MESSAGE = 'Official Remote needs a fresh cloud login before this desktop can reconnect.';
+
+export type OfficialRemoteTokenRefreshResult = {
+  refreshed: boolean;
+  message?: string;
+};
 
 export function buildOfficialRemoteRelayWebSocketUrl(apiBaseUrl: string = CLOUD_API_BASE_URL): string {
   const url = new URL('/api/remote/device-connect', apiBaseUrl);
@@ -78,9 +85,11 @@ export class OfficialRemoteTunnelService {
   private intervalTimer: ReturnType<typeof setInterval> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private statusChangedCallback: (() => void) | null = null;
+  private refreshDeviceTokenCallback: (() => Promise<OfficialRemoteTokenRefreshResult>) | null = null;
   private unregisterBridgeBroadcast: (() => void) | null = null;
   private socket: WebSocket | null = null;
   private activeToken: string | null = null;
+  private tokenRefreshInFlight: Promise<void> | null = null;
   private relayUrl = buildOfficialRemoteRelayWebSocketUrl();
   private state: OfficialRemoteStatus = {
     desired: false,
@@ -89,9 +98,15 @@ export class OfficialRemoteTunnelService {
     relayUrl: this.relayUrl,
   };
 
-  public initialize(statusChangedCallback?: () => void): void {
+  public initialize(
+    statusChangedCallback?: () => void,
+    refreshDeviceTokenCallback?: () => Promise<OfficialRemoteTokenRefreshResult>
+  ): void {
     if (statusChangedCallback) {
       this.statusChangedCallback = statusChangedCallback;
+    }
+    if (refreshDeviceTokenCallback) {
+      this.refreshDeviceTokenCallback = refreshDeviceTokenCallback;
     }
 
     if (this.initialized) {
@@ -164,6 +179,7 @@ export class OfficialRemoteTunnelService {
         transport: 'cloud-relay',
         relayUrl: this.relayUrl,
         message: 'Official Remote is not enabled on this desktop yet.',
+        needsAttention: false,
       });
       this.disconnectSocket();
       return;
@@ -173,6 +189,7 @@ export class OfficialRemoteTunnelService {
       desired: true,
       transport: 'cloud-relay',
       relayUrl: this.relayUrl,
+      needsAttention: false,
     });
 
     if (this.socket && this.activeToken !== deviceToken) {
@@ -194,6 +211,7 @@ export class OfficialRemoteTunnelService {
       transport: 'cloud-relay',
       relayUrl: this.relayUrl,
       message: 'Connecting to ContextGo Cloud relay.',
+      needsAttention: false,
     });
 
     const socket = new WebSocket(this.relayUrl, {
@@ -217,6 +235,7 @@ export class OfficialRemoteTunnelService {
         transport: 'cloud-relay',
         relayUrl: this.relayUrl,
         message: DEFAULT_READY_MESSAGE,
+        needsAttention: false,
       });
     });
 
@@ -239,6 +258,7 @@ export class OfficialRemoteTunnelService {
           transport: 'cloud-relay',
           relayUrl: this.relayUrl,
           message: DEFAULT_READY_MESSAGE,
+          needsAttention: false,
         });
         return;
       }
@@ -252,6 +272,7 @@ export class OfficialRemoteTunnelService {
           transport: 'cloud-relay',
           relayUrl: this.relayUrl,
           message: clientConnected ? 'A browser session is connected through Official Remote.' : DEFAULT_READY_MESSAGE,
+          needsAttention: false,
         });
         return;
       }
@@ -275,6 +296,11 @@ export class OfficialRemoteTunnelService {
       }
 
       const reasonText = rawDataToString(reason).trim();
+      if (OFFICIAL_REMOTE_AUTH_CLOSE_CODES.has(code)) {
+        void this.handleAuthFailure(reasonText || `Official Remote relay disconnected (code ${code}).`);
+        return;
+      }
+
       const message = reasonText
         ? `Official Remote relay disconnected: ${reasonText}`
         : `Official Remote relay disconnected (code ${code}).`;
@@ -285,6 +311,7 @@ export class OfficialRemoteTunnelService {
         transport: 'cloud-relay',
         relayUrl: this.relayUrl,
         message,
+        needsAttention: false,
       });
       this.scheduleRetry();
     });
@@ -301,6 +328,7 @@ export class OfficialRemoteTunnelService {
         transport: 'cloud-relay',
         relayUrl: this.relayUrl,
         message: error instanceof Error ? error.message : String(error),
+        needsAttention: false,
       });
     });
   }
@@ -357,6 +385,64 @@ export class OfficialRemoteTunnelService {
       this.retryTimer = null;
       void this.reconcile('retry');
     }, OFFICIAL_REMOTE_RETRY_DELAY_MS);
+  }
+
+  private async handleAuthFailure(message: string): Promise<void> {
+    this.updateState({
+      desired: true,
+      running: false,
+      clientConnected: false,
+      transport: 'cloud-relay',
+      relayUrl: this.relayUrl,
+      message,
+      needsAttention: true,
+    });
+
+    if (!this.refreshDeviceTokenCallback) {
+      this.scheduleRetry();
+      return;
+    }
+
+    if (this.tokenRefreshInFlight) {
+      await this.tokenRefreshInFlight;
+      return;
+    }
+
+    this.tokenRefreshInFlight = this.refreshDeviceTokenCallback()
+      .then(async (result) => {
+        this.tokenRefreshInFlight = null;
+        this.activeToken = null;
+
+        if (!result.refreshed) {
+          this.updateState({
+            desired: false,
+            running: false,
+            clientConnected: false,
+            transport: 'cloud-relay',
+            relayUrl: this.relayUrl,
+            message: result.message || DEFAULT_REAUTH_MESSAGE,
+            needsAttention: true,
+          });
+          return;
+        }
+
+        await this.reconcile('token-refresh');
+      })
+      .catch((error: unknown) => {
+        this.tokenRefreshInFlight = null;
+        this.updateState({
+          desired: true,
+          running: false,
+          clientConnected: false,
+          transport: 'cloud-relay',
+          relayUrl: this.relayUrl,
+          message: error instanceof Error ? error.message : DEFAULT_REAUTH_MESSAGE,
+          needsAttention: true,
+        });
+        this.scheduleRetry();
+      });
+
+    await this.tokenRefreshInFlight;
   }
 
   private updateState(nextPartialState: Partial<OfficialRemoteStatus>): void {

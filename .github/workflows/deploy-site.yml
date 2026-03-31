@@ -1,4 +1,4 @@
-name: Deploy Website
+name: Deploy Hosted Services
 
 permissions:
   contents: read
@@ -8,16 +8,149 @@ on:
     branches: [main]
     paths:
       - 'apps/web/**'
+      - 'apps/cloud/**'
+      - 'src/renderer/**'
+      - 'src/common/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsconfig.json'
+      - 'uno.config.ts'
+      - 'vite.renderer.config.ts'
       - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: 'Deployment target'
+        required: false
+        default: both
+        type: choice
+        options:
+          - cloud
+          - site
+          - both
 
 concurrency:
-  group: deploy-website-main
+  group: deploy-hosted-services-main
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  detect-targets:
+    name: Detect Deployment Targets
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    outputs:
+      deploy_site: ${{ steps.targets.outputs.deploy_site }}
+      deploy_cloud: ${{ steps.targets.outputs.deploy_cloud }}
+    steps:
+      - name: Checkout code for diff detection
+        if: github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Determine deployment targets
+        id: targets
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DEPLOY_TARGET: ${{ inputs.deploy_target }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            case "${DEPLOY_TARGET:-both}" in
+              site)
+                echo "deploy_site=true" >> "${GITHUB_OUTPUT}"
+                echo "deploy_cloud=false" >> "${GITHUB_OUTPUT}"
+                ;;
+              cloud)
+                echo "deploy_site=false" >> "${GITHUB_OUTPUT}"
+                echo "deploy_cloud=true" >> "${GITHUB_OUTPUT}"
+                ;;
+              both)
+                echo "deploy_site=true" >> "${GITHUB_OUTPUT}"
+                echo "deploy_cloud=true" >> "${GITHUB_OUTPUT}"
+                ;;
+              *)
+                echo "::error::Unsupported deploy_target: ${DEPLOY_TARGET}"
+                exit 1
+                ;;
+            esac
+            exit 0
+          fi
+
+          if [ "${BEFORE_SHA}" = "0000000000000000000000000000000000000000" ]; then
+            git ls-tree -r --name-only "${AFTER_SHA}" > "${RUNNER_TEMP}/changed-files.txt"
+          else
+            git diff --name-only "${BEFORE_SHA}" "${AFTER_SHA}" > "${RUNNER_TEMP}/changed-files.txt"
+          fi
+
+          echo "Changed files:"
+          sed -n '1,200p' "${RUNNER_TEMP}/changed-files.txt"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          changed_files = [
+              line.strip()
+              for line in Path(os.environ["RUNNER_TEMP"]).joinpath("changed-files.txt").read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+
+          site = False
+          cloud = False
+          exact_cloud_files = {
+              "index.html",
+              "package.json",
+              "bun.lock",
+              "tsconfig.json",
+              "uno.config.ts",
+              "vite.renderer.config.ts",
+          }
+
+          for path in changed_files:
+              if path == ".github/workflows/deploy-site.yml":
+                  site = True
+                  cloud = True
+                  continue
+
+              if path.startswith("apps/web/"):
+                  site = True
+
+              if (
+                  path.startswith("apps/cloud/")
+                  or path.startswith("src/renderer/")
+                  or path.startswith("src/common/")
+                  or path.startswith("public/")
+                  or path in exact_cloud_files
+              ):
+                  cloud = True
+
+          github_output = Path(os.environ["GITHUB_OUTPUT"])
+          with github_output.open("a", encoding="utf-8") as handle:
+              handle.write(f"deploy_site={'true' if site else 'false'}\n")
+              handle.write(f"deploy_cloud={'true' if cloud else 'false'}\n")
+
+          print(f"deploy_site={site}")
+          print(f"deploy_cloud={cloud}")
+          PY
+
+  deploy-site:
     name: Deploy contextgo.io
+    needs: detect-targets
+    if: needs.detect-targets.outputs.deploy_site == 'true'
     runs-on: >-
       ${{
         fromJSON(
@@ -48,7 +181,6 @@ jobs:
 
     steps:
       - name: Verify Cloudflare deploy secrets
-        working-directory: ${{ github.workspace }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -71,20 +203,19 @@ jobs:
           fi
 
       - name: Download source archive
-        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
           ARCHIVE_REF: ${{ github.sha }}
         run: |
           set -euo pipefail
-      
+
           WORKSPACE="${GITHUB_WORKSPACE}"
           ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
           EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
-      
+
           find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           rm -rf "${EXTRACT_DIR}"
-      
+
           curl --fail --show-error --silent --location --http1.1 \
             --retry 8 \
             --retry-all-errors \
@@ -95,81 +226,22 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
             -o "${ARCHIVE}"
-      
+
           mkdir -p "${EXTRACT_DIR}"
           tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
-      
+
           SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
           if [ -z "${SOURCE_DIR}" ]; then
             echo "::error::Failed to unpack source archive"
             exit 1
           fi
-      
+
           cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
 
       - name: Setup Node.js
-        working-directory: ${{ github.workspace }}
-        env:
-          NODE_VERSION_SPEC: latest-v22.x
-        run: |
-          set -euo pipefail
-
-          TOOL_ROOT="${RUNNER_TOOL_CACHE:-${RUNNER_TEMP:-/tmp}}/node"
-          CACHE_ROOT="${RUNNER_TOOL_CACHE:-${RUNNER_TEMP:-/tmp}}/npm-cache"
-          SHASUMS_URL="https://nodejs.org/dist/${NODE_VERSION_SPEC}/SHASUMS256.txt"
-          NODE_LINE="$(
-            curl --fail --show-error --silent --location \
-              --retry 5 \
-              --retry-all-errors \
-              --retry-delay 5 \
-              --connect-timeout 20 \
-              --max-time 60 \
-              "${SHASUMS_URL}" | awk '/linux-x64\.tar\.xz$/ {print $1 " " $2; exit}'
-          )"
-
-          NODE_SHA256="${NODE_LINE%% *}"
-          NODE_ARCHIVE="${NODE_LINE##* }"
-
-          if [ -z "${NODE_SHA256}" ] || [ -z "${NODE_ARCHIVE}" ]; then
-            echo "::error::Failed to resolve Node.js archive from ${SHASUMS_URL}"
-            exit 1
-          fi
-
-          NODE_VERSION="${NODE_ARCHIVE#node-v}"
-          NODE_VERSION="${NODE_VERSION%-linux-x64.tar.xz}"
-          NODE_DIST_DIR="${TOOL_ROOT}/${NODE_VERSION}/x64"
-          NODE_BIN_DIR="${NODE_DIST_DIR}/bin"
-
-          if [ ! -x "${NODE_BIN_DIR}/node" ]; then
-            ARCHIVE_PATH="$(mktemp "${RUNNER_TEMP:-/tmp}/node-v22.XXXXXX.tar.xz")"
-            EXTRACT_DIR="$(mktemp -d "${RUNNER_TEMP:-/tmp}/node-v22.XXXXXX")"
-
-            curl --fail --show-error --silent --location \
-              --retry 5 \
-              --retry-all-errors \
-              --retry-delay 5 \
-              --connect-timeout 20 \
-              --max-time 300 \
-              "https://nodejs.org/dist/${NODE_VERSION_SPEC}/${NODE_ARCHIVE}" \
-              -o "${ARCHIVE_PATH}"
-
-            echo "${NODE_SHA256}  ${ARCHIVE_PATH}" | sha256sum -c -
-            tar -xJf "${ARCHIVE_PATH}" -C "${EXTRACT_DIR}"
-
-            rm -rf "${NODE_DIST_DIR}"
-            mkdir -p "$(dirname "${NODE_DIST_DIR}")"
-            mv "${EXTRACT_DIR}/node-v${NODE_VERSION}-linux-x64" "${NODE_DIST_DIR}"
-            rm -rf "${EXTRACT_DIR}"
-            rm -f "${ARCHIVE_PATH}"
-          fi
-
-          mkdir -p "${CACHE_ROOT}"
-          echo "${NODE_BIN_DIR}" >> "${GITHUB_PATH}"
-          echo "npm_config_cache=${CACHE_ROOT}" >> "${GITHUB_ENV}"
-          export PATH="${NODE_BIN_DIR}:${PATH}"
-
-          "${NODE_BIN_DIR}/node" -v
-          "${NODE_BIN_DIR}/npm" -v
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Install website dependencies
         run: npm ci
@@ -188,3 +260,221 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler pages deploy .vercel/output/static --project-name "$SITE_CLOUDFLARE_PROJECT_NAME" --branch main
+
+  deploy-cloud:
+    name: Deploy apps/cloud to VM
+    needs: detect-targets
+    if: needs.detect-targets.outputs.deploy_cloud == 'true'
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ github.workspace }}
+    env:
+      BUN_INSTALL_REGISTRY: https://registry.npmjs.org/
+      CLOUD_VM_HOST: ${{ secrets.CLOUD_VM_HOST }}
+      CLOUD_VM_SSH_USER: ${{ secrets.CLOUD_VM_SSH_USER }}
+      CLOUD_VM_SSH_PRIVATE_KEY: ${{ secrets.CLOUD_VM_SSH_PRIVATE_KEY }}
+      CLOUD_VM_PORT: ${{ vars.CLOUD_VM_PORT != '' && vars.CLOUD_VM_PORT || '22' }}
+      CLOUD_DEPLOY_PATH: ${{ vars.CLOUD_DEPLOY_PATH != '' && vars.CLOUD_DEPLOY_PATH || '/opt/contextgo-cloud' }}
+      CLOUD_ENV_FILE: ${{ vars.CLOUD_ENV_FILE != '' && vars.CLOUD_ENV_FILE || '/etc/contextgo-cloud/contextgo-cloud.env' }}
+      CLOUD_SERVICE_NAME: ${{ vars.CLOUD_SERVICE_NAME != '' && vars.CLOUD_SERVICE_NAME || 'contextgo-cloud' }}
+      CLOUD_DEPLOY_OWNER: ${{ vars.CLOUD_DEPLOY_OWNER != '' && vars.CLOUD_DEPLOY_OWNER || 'contextgo' }}
+
+    steps:
+      - name: Verify VM deploy secrets
+        run: |
+          set -euo pipefail
+
+          missing=()
+
+          if [ -z "${CLOUD_VM_HOST:-}" ]; then
+            missing+=("CLOUD_VM_HOST")
+          fi
+
+          if [ -z "${CLOUD_VM_SSH_USER:-}" ]; then
+            missing+=("CLOUD_VM_SSH_USER")
+          fi
+
+          if [ -z "${CLOUD_VM_SSH_PRIVATE_KEY:-}" ]; then
+            missing+=("CLOUD_VM_SSH_PRIVATE_KEY")
+          fi
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing required VM deployment secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Download source archive
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+
+          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          rm -rf "${EXTRACT_DIR}"
+
+          curl --fail --show-error --silent --location --http1.1 \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 900 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: bun install --no-frozen-lockfile
+
+      - name: Run postinstall
+        run: bun run postinstall || true
+
+      - name: Build hosted remote renderer
+        run: bun run build:renderer:web
+
+      - name: Run cloud tests
+        run: bun run cloud:test
+
+      - name: Build cloud deploy bundle
+        run: |
+          set -euo pipefail
+
+          PACKAGE_ROOT="${RUNNER_TEMP}/contextgo-cloud-deploy"
+          ARCHIVE_PATH="${RUNNER_TEMP}/contextgo-cloud-deploy.tgz"
+
+          rm -rf "${PACKAGE_ROOT}" "${ARCHIVE_PATH}"
+          mkdir -p "${PACKAGE_ROOT}/cloud" "${PACKAGE_ROOT}/renderer"
+
+          cp -R apps/cloud/. "${PACKAGE_ROOT}/cloud/"
+          cp -R out/renderer/. "${PACKAGE_ROOT}/renderer/"
+
+          tar -czf "${ARCHIVE_PATH}" -C "${PACKAGE_ROOT}" .
+          echo "CLOUD_DEPLOY_ARCHIVE=${ARCHIVE_PATH}" >> "${GITHUB_ENV}"
+
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d "${HOME}/.ssh"
+          printf '%s' "${CLOUD_VM_SSH_PRIVATE_KEY}" > "${HOME}/.ssh/contextgo-cloud-deploy"
+          chmod 600 "${HOME}/.ssh/contextgo-cloud-deploy"
+          ssh-keyscan -p "${CLOUD_VM_PORT}" -H "${CLOUD_VM_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Upload deploy bundle
+        run: |
+          set -euo pipefail
+
+          scp \
+            -P "${CLOUD_VM_PORT}" \
+            -i "${HOME}/.ssh/contextgo-cloud-deploy" \
+            "${CLOUD_DEPLOY_ARCHIVE}" \
+            "${CLOUD_VM_SSH_USER}@${CLOUD_VM_HOST}:/tmp/contextgo-cloud-deploy.tgz"
+
+      - name: Deploy on VM
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -p "${CLOUD_VM_PORT}" \
+            -i "${HOME}/.ssh/contextgo-cloud-deploy" \
+            "${CLOUD_VM_SSH_USER}@${CLOUD_VM_HOST}" \
+            "CLOUD_DEPLOY_PATH='${CLOUD_DEPLOY_PATH}' CLOUD_ENV_FILE='${CLOUD_ENV_FILE}' CLOUD_SERVICE_NAME='${CLOUD_SERVICE_NAME}' CLOUD_DEPLOY_OWNER='${CLOUD_DEPLOY_OWNER}' bash -se" <<'EOF'
+          set -euo pipefail
+
+          DEPLOY_PATH="${CLOUD_DEPLOY_PATH}"
+          ENV_FILE="${CLOUD_ENV_FILE}"
+          SERVICE_NAME="${CLOUD_SERVICE_NAME}"
+          DEPLOY_OWNER="${CLOUD_DEPLOY_OWNER}"
+          SERVICE_UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+          DEPLOY_BUNDLE="/tmp/contextgo-cloud-deploy.tgz"
+          TMP_DIR="$(mktemp -d /tmp/contextgo-cloud-deploy.XXXXXX)"
+
+          cleanup() {
+            rm -rf "${TMP_DIR}"
+            rm -f "${DEPLOY_BUNDLE}"
+          }
+
+          trap cleanup EXIT
+
+          tar -xzf "${DEPLOY_BUNDLE}" -C "${TMP_DIR}"
+
+          if [ -d "${DEPLOY_PATH}" ]; then
+            BACKUP_PATH="${DEPLOY_PATH}.backup-$(date +%Y%m%d%H%M%S)"
+            sudo cp -a "${DEPLOY_PATH}" "${BACKUP_PATH}"
+            echo "backup=${BACKUP_PATH}"
+          fi
+
+          sudo mkdir -p "${DEPLOY_PATH}"
+          sudo find "${DEPLOY_PATH}" -mindepth 1 -maxdepth 1 ! -name .venv -exec rm -rf -- {} +
+          sudo cp -a "${TMP_DIR}/cloud/." "${DEPLOY_PATH}/"
+
+          sudo rm -rf "${DEPLOY_PATH}/out/renderer"
+          sudo mkdir -p "${DEPLOY_PATH}/out/renderer"
+          sudo cp -a "${TMP_DIR}/renderer/." "${DEPLOY_PATH}/out/renderer/"
+
+          if [ -f "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.service" ]; then
+            sudo cp "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.service" "${SERVICE_UNIT_PATH}"
+          fi
+
+          if sudo grep -q '^CONTEXTGO_RENDERER_BUILD_ROOT=' "${ENV_FILE}"; then
+            sudo sed -i "s#^CONTEXTGO_RENDERER_BUILD_ROOT=.*#CONTEXTGO_RENDERER_BUILD_ROOT=${DEPLOY_PATH}/out/renderer#" "${ENV_FILE}"
+          else
+            printf '\nCONTEXTGO_RENDERER_BUILD_ROOT=%s/out/renderer\n' "${DEPLOY_PATH}" | sudo tee -a "${ENV_FILE}" >/dev/null
+          fi
+
+          sudo chown -R "${DEPLOY_OWNER}:${DEPLOY_OWNER}" "${DEPLOY_PATH}"
+
+          if [ ! -x "${DEPLOY_PATH}/.venv/bin/pip" ]; then
+            sudo -u "${DEPLOY_OWNER}" python3 -m venv "${DEPLOY_PATH}/.venv"
+          fi
+
+          sudo -u "${DEPLOY_OWNER}" "${DEPLOY_PATH}/.venv/bin/pip" install -r "${DEPLOY_PATH}/requirements.txt"
+
+          sudo systemctl daemon-reload
+          sudo systemctl restart "${SERVICE_NAME}"
+          sudo systemctl is-active --quiet "${SERVICE_NAME}"
+
+          curl --fail --silent http://127.0.0.1:3001/healthz
+          sudo journalctl -u "${SERVICE_NAME}" -n 50 --no-pager
+          EOF

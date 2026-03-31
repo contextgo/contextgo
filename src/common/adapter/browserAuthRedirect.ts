@@ -6,10 +6,23 @@
 
 const CONTEXTGO_ROOT_HOST = 'contextgo.io';
 const CONTEXTGO_HOST_SUFFIX = `.${CONTEXTGO_ROOT_HOST}`;
+const REMOTE_DEVICES_PATH = '/remote/devices';
+
+export type HostedRemoteDisconnectNotice =
+  | 'device_not_found'
+  | 'device_offline'
+  | 'session_replaced'
+  | 'service_restarted';
 
 function isContextGoHostname(hostname: string): boolean {
   const normalizedHostname = hostname.trim().toLowerCase();
   return normalizedHostname === CONTEXTGO_ROOT_HOST || normalizedHostname.endsWith(CONTEXTGO_HOST_SUFFIX);
+}
+
+export function extractRemoteDeviceId(currentHref: string): string | null {
+  const currentUrl = new URL(currentHref);
+  const match = currentUrl.pathname.match(/^\/device\/([^/]+)$/);
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 export function buildBrowserLoginRedirectPath(currentHref: string): string {
@@ -25,4 +38,37 @@ export function buildBrowserLoginRedirectPath(currentHref: string): string {
 
   const nextPath = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
   return `/login?next=${encodeURIComponent(nextPath)}`;
+}
+
+export function buildHostedRemoteNoticeRedirectPath(notice: HostedRemoteDisconnectNotice): string {
+  return `${REMOTE_DEVICES_PATH}?remoteNotice=${encodeURIComponent(notice)}`;
+}
+
+export function resolveHostedRemoteDisconnectRedirectPath(currentHref: string, code: number, reason: string): string | null {
+  const normalizedReason = reason.trim().toLowerCase();
+  if (code === 4401) {
+    return buildBrowserLoginRedirectPath(currentHref);
+  }
+
+  if (code === 4404) {
+    return buildHostedRemoteNoticeRedirectPath(normalizedReason.includes('offline') ? 'device_offline' : 'device_not_found');
+  }
+
+  if (code !== 1012) {
+    return null;
+  }
+
+  if (normalizedReason.includes('session replaced')) {
+    return buildHostedRemoteNoticeRedirectPath('session_replaced');
+  }
+
+  if (normalizedReason.includes('restart')) {
+    return buildHostedRemoteNoticeRedirectPath('service_restarted');
+  }
+
+  if (normalizedReason.includes('disconnected')) {
+    return buildHostedRemoteNoticeRedirectPath('device_offline');
+  }
+
+  return buildHostedRemoteNoticeRedirectPath('service_restarted');
 }

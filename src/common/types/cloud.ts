@@ -49,6 +49,7 @@ export type OfficialRemoteStatus = {
   relayUrl?: string;
   clientConnected?: boolean;
   message?: string;
+  needsAttention?: boolean;
 };
 
 export type CloudStatus = {

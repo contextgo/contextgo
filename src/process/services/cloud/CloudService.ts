@@ -182,11 +182,14 @@ export class CloudService {
     }
 
     this.initialized = true;
-    this.officialRemoteTunnelService.initialize(() => {
-      void this.emitStatusChanged().catch((error: unknown) => {
-        console.warn('[Cloud] Failed to emit status after official remote change:', error);
-      });
-    });
+    this.officialRemoteTunnelService.initialize(
+      () => {
+        void this.emitStatusChanged().catch((error: unknown) => {
+          console.warn('[Cloud] Failed to emit status after official remote change:', error);
+        });
+      },
+      async () => this.refreshOfficialRemoteDeviceRegistration()
+    );
     void this.initializeAfterReady();
   }
 
@@ -681,6 +684,32 @@ export class CloudService {
     await ProcessConfig.remove(CLOUD_DEVICE_KEY);
     await ProcessConfig.remove(CLOUD_DEVICE_TOKEN_KEY);
     await ProcessConfig.remove(CLOUD_SYNC_STATE_KEY);
+  }
+
+  private async clearStoredDeviceBinding(): Promise<void> {
+    await ProcessConfig.remove(CLOUD_DEVICE_KEY);
+    await ProcessConfig.remove(CLOUD_DEVICE_TOKEN_KEY);
+  }
+
+  private async refreshOfficialRemoteDeviceRegistration(): Promise<{ refreshed: boolean; message?: string }> {
+    const sessionUser = await this.fetchSessionUser().catch((): CloudUser | null => null);
+    if (!sessionUser) {
+      await this.clearStoredDeviceBinding();
+      await this.emitStatusChanged().catch((error: unknown) => {
+        console.warn('[Cloud] Failed to emit status after clearing stale Official Remote device token:', error);
+      });
+      return {
+        refreshed: false,
+        message: 'Official Remote needs a fresh cloud login before this desktop can reconnect.',
+      };
+    }
+
+    await ProcessConfig.set(CLOUD_USER_KEY, sessionUser);
+    await this.ensureDeviceRegistration(true);
+    await this.emitStatusChanged().catch((error: unknown) => {
+      console.warn('[Cloud] Failed to emit status after refreshing Official Remote device token:', error);
+    });
+    return { refreshed: true };
   }
 
   private async emitStatusChanged(status?: CloudStatus): Promise<void> {
