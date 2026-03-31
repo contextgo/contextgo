@@ -1,0 +1,6 @@
+{
+  name: 'entry',
+  version: '1.0.0',
+  description: 'ContextGo HarmonyOS shell entry module',
+  dependencies: {},
+}

@@ -1,0 +1,273 @@
+name: '🔨 Manual Build'
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build from'
+        required: true
+        default: 'main'
+        type: string
+      platform:
+        description: 'Platform to build'
+        required: true
+        type: choice
+        options:
+          - macos-arm64
+          - macos-x64
+          - windows-x64
+          - windows-arm64
+          - linux
+          - all
+        default: 'macos-arm64'
+      runner_mode:
+        description: 'Use self-hosted or GitHub-hosted runners'
+        required: true
+        type: choice
+        options:
+          - self-hosted
+          - hosted
+        default: 'self-hosted'
+      skip_code_quality:
+        description: 'Skip code quality checks (faster builds for debugging)'
+        required: false
+        type: boolean
+        default: false
+      runner_health_check:
+        description: 'Run minimal self-hosted runner diagnostics instead of the build pipeline'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
+
+jobs:
+  prepare-matrix:
+    name: Prepare Build Matrix
+    if: ${{ !inputs.runner_health_check }}
+    runs-on: >-
+      ${{
+        fromJSON(
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      control_runner: ${{ steps.set-matrix.outputs.control_runner }}
+    env:
+      RUNNER_MODE: ${{ inputs.runner_mode }}
+      CONTROL_RUNNER: >-
+        ${{
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        }}
+      MACOS_RUNNER: >-
+        ${{
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        }}
+      WINDOWS_RUNNER: >-
+        ${{
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON ||
+            '["self-hosted","Windows"]'
+          ) ||
+          '["windows-2022"]'
+        }}
+      LINUX_RUNNER: >-
+        ${{
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+            '["self-hosted","Linux"]'
+          ) ||
+          '["ubuntu-latest"]'
+        }}
+
+    steps:
+      - name: Generate build matrix
+        id: set-matrix
+        shell: bash
+        run: |
+          PLATFORM="${{ inputs.platform }}"
+
+          escape_json() {
+            printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+          }
+
+          build_entry() {
+            local platform="$1"
+            local runner="$2"
+            local command="$3"
+            local artifact_name="$4"
+            local arch="$5"
+            local runner_escaped
+
+            runner_escaped=$(escape_json "$runner")
+
+            printf '{"platform":"%s","runner":"%s","command":"%s","artifact-name":"%s","arch":"%s"}' \
+              "$platform" \
+              "$runner_escaped" \
+              "$command" \
+              "$artifact_name" \
+              "$arch"
+          }
+
+          MACOS_ARM64=$(build_entry 'macos-arm64' "$MACOS_RUNNER" 'node scripts/build-with-builder.js arm64 --mac --arm64' 'macos-build-arm64' 'arm64')
+          MACOS_X64=$(build_entry 'macos-x64' "$MACOS_RUNNER" 'node scripts/build-with-builder.js x64 --mac --x64' 'macos-build-x64' 'x64')
+          WINDOWS_X64=$(build_entry 'windows-x64' "$WINDOWS_RUNNER" 'node scripts/build-with-builder.js x64 --win --x64' 'windows-build-x64' 'x64')
+          WINDOWS_ARM64=$(build_entry 'windows-arm64' "$WINDOWS_RUNNER" 'node scripts/build-with-builder.js arm64 --win --arm64' 'windows-build-arm64' 'arm64')
+          LINUX=$(build_entry 'linux' "$LINUX_RUNNER" 'bun run dist:linux' 'linux-build' 'x64-arm64')
+
+          echo "control_runner=$CONTROL_RUNNER" >> $GITHUB_OUTPUT
+
+          if [ "$PLATFORM" = "all" ]; then
+            MATRIX="{\"include\":[$MACOS_ARM64,$MACOS_X64,$WINDOWS_X64,$WINDOWS_ARM64,$LINUX]}"
+          elif [ "$PLATFORM" = "macos-arm64" ]; then
+            MATRIX="{\"include\":[$MACOS_ARM64]}"
+          elif [ "$PLATFORM" = "macos-x64" ]; then
+            MATRIX="{\"include\":[$MACOS_X64]}"
+          elif [ "$PLATFORM" = "windows-x64" ]; then
+            MATRIX="{\"include\":[$WINDOWS_X64]}"
+          elif [ "$PLATFORM" = "windows-arm64" ]; then
+            MATRIX="{\"include\":[$WINDOWS_ARM64]}"
+          elif [ "$PLATFORM" = "linux" ]; then
+            MATRIX="{\"include\":[$LINUX]}"
+          fi
+
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Generated matrix for platform '$PLATFORM':"
+          echo "$MATRIX"
+
+  build-pipeline:
+    needs: prepare-matrix
+    if: ${{ !inputs.runner_health_check }}
+    uses: ./.github/workflows/_build-reusable.yml
+    with:
+      matrix: ${{ needs.prepare-matrix.outputs.matrix }}
+      ref: ${{ inputs.branch }}
+      skip_code_quality: ${{ inputs.skip_code_quality }}
+      control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
+      append_commit_hash: true
+      upload_installers_only: true
+      release_repository: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
+    secrets: inherit
+
+  runner-health-shell:
+    name: Runner Health / Shell Smoke
+    if: ${{ inputs.runner_health_check }}
+    runs-on: >-
+      ${{
+        fromJSON(
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+
+    steps:
+      - name: Print runner context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "runner_name=${RUNNER_NAME:-unknown}"
+          echo "runner_os=${RUNNER_OS:-unknown}"
+          echo "runner_arch=${RUNNER_ARCH:-unknown}"
+          echo "workspace=${GITHUB_WORKSPACE}"
+          echo "pwd=$(pwd)"
+          date -u
+
+      - name: Verify basic shell operations
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "${GITHUB_WORKSPACE}"
+          mkdir -p "${RUNNER_TEMP}/runner-health-check"
+          printf 'ok\n' > "${RUNNER_TEMP}/runner-health-check/smoke.txt"
+          cat "${RUNNER_TEMP}/runner-health-check/smoke.txt"
+          uname -a
+
+      - name: Probe GitHub API and git fetch path
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          timeout 30s curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}" >/dev/null
+
+          timeout 60s env GIT_TERMINAL_PROMPT=0 git ls-remote \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD
+
+  runner-health-checkout:
+    name: Runner Health / Checkout Smoke
+    if: ${{ inputs.runner_health_check }}
+    needs: runner-health-shell
+    runs-on: >-
+      ${{
+        fromJSON(
+          inputs.runner_mode == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 1
+          clean: false
+          token: ${{ secrets.GH_TOKEN || github.token }}
+
+      - name: Verify checkout result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          test -f package.json
+          ls -la . | sed -n '1,40p'

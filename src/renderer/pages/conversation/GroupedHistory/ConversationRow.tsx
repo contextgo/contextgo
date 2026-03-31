@@ -1,0 +1,293 @@
+/**
+ * @license
+ * Copyright 2025 ContextGo (contextgo.io)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
+import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
+import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
+import { CronJobIndicator } from '@/renderer/pages/cron';
+import { cleanupSiderTooltips } from '@/renderer/utils/ui/siderTooltip';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
+import { Checkbox, Dropdown, Menu, Spin } from '@arco-design/web-react';
+import { DeleteOne, EditOne, Export, InboxIn, MessageOne, Pushpin } from '@icon-park/react';
+import classNames from 'classnames';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+
+import type { ConversationRowProps } from './types';
+import { getBackendKeyFromConversation } from './utils/exportHelpers';
+import { isConversationPinned } from './utils/groupingHelpers';
+
+const ConversationRow: React.FC<ConversationRowProps> = (props) => {
+  const {
+    conversation,
+    isGenerating,
+    hasCompletionUnread,
+    allowActions = true,
+    allowBatchSelection = true,
+    leadingSlot,
+    collapsed,
+    tooltipEnabled: _tooltipEnabled,
+    batchMode,
+    checked,
+    selected,
+    menuVisible,
+  } = props;
+  const rowBatchMode = batchMode && allowBatchSelection;
+  const layout = useLayoutContext();
+  const isMobile = layout?.isMobile ?? false;
+  const {
+    onToggleChecked,
+    onConversationClick,
+    onOpenMenu,
+    onMenuVisibleChange,
+    onEditStart,
+    onDelete,
+    onExport,
+    onTogglePin,
+    onArchive,
+    getJobStatus,
+  } = props;
+  const { t } = useTranslation();
+  const { info: assistantInfo } = usePresetAssistantInfo(conversation);
+  const isPinned = isConversationPinned(conversation);
+  const cronStatus = getJobStatus(conversation.id);
+  const workspacePath = getConversationWorkspacePath(conversation);
+  const rowTitle = workspacePath || conversation.name || t('conversation.welcome.newConversation');
+
+  const renderLeadingIcon = () => {
+    if (cronStatus !== 'none') {
+      return <CronJobIndicator status={cronStatus} size={20} className='flex-shrink-0' />;
+    }
+
+    if (assistantInfo) {
+      if (assistantInfo.isEmoji) {
+        return (
+          <span className='inline-flex h-20px w-20px items-center justify-center text-18px leading-none flex-shrink-0'>
+            {assistantInfo.logo}
+          </span>
+        );
+      }
+      return (
+        <span className='inline-flex h-20px w-20px items-center justify-center flex-shrink-0 leading-none'>
+          <img
+            src={assistantInfo.logo}
+            alt={assistantInfo.name}
+            className='block w-20px h-20px rounded-50% object-contain flex-shrink-0'
+          />
+        </span>
+      );
+    }
+
+    const backendKey = getBackendKeyFromConversation(conversation);
+    const logo = getAgentLogo(backendKey);
+    if (logo) {
+      return (
+        <span className='inline-flex h-20px w-20px items-center justify-center flex-shrink-0 leading-none'>
+          <img
+            src={logo}
+            alt={`${backendKey || 'agent'} logo`}
+            className='block w-20px h-20px rounded-50% object-contain flex-shrink-0'
+          />
+        </span>
+      );
+    }
+
+    return (
+      <span className='inline-flex h-20px w-20px items-center justify-center flex-shrink-0 leading-none'>
+        <MessageOne theme='outline' size='20' className='line-height-0 flex-shrink-0' />
+      </span>
+    );
+  };
+
+  const handleRowClick = () => {
+    cleanupSiderTooltips();
+    if (rowBatchMode) {
+      onToggleChecked(conversation);
+      return;
+    }
+    onConversationClick(conversation);
+  };
+
+  const renderCompletionUnreadDot = () => {
+    if (rowBatchMode || !hasCompletionUnread || isGenerating) {
+      return null;
+    }
+
+    return (
+      <span className='absolute right-10px top-1/2 -translate-y-1/2 flex items-center justify-center group-hover:hidden'>
+        <span className='h-8px w-8px rounded-full bg-#2C7FFF shadow-[0_0_0_2px_rgba(44,127,255,0.18)]' />
+      </span>
+    );
+  };
+
+  const actionMenu = (
+    <Menu
+      onClickMenuItem={(key) => {
+        if (key === 'pin') {
+          onTogglePin(conversation);
+          return;
+        }
+        if (key === 'rename') {
+          onEditStart(conversation);
+          return;
+        }
+        if (key === 'archive') {
+          onArchive(conversation);
+          return;
+        }
+        if (key === 'export') {
+          onExport(conversation);
+          return;
+        }
+        if (key === 'delete') {
+          onDelete(conversation.id);
+        }
+      }}
+    >
+      <Menu.Item key='pin'>
+        <div className='flex items-center gap-8px'>
+          <Pushpin theme='outline' size='14' />
+          <span>{isPinned ? t('conversation.history.unpin') : t('conversation.history.pin')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='rename'>
+        <div className='flex items-center gap-8px'>
+          <EditOne theme='outline' size='14' />
+          <span>{t('conversation.history.rename')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='archive'>
+        <div className='flex items-center gap-8px'>
+          <InboxIn theme='outline' size='14' />
+          <span>{t('conversation.history.archive')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='export'>
+        <div className='flex items-center gap-8px'>
+          <Export theme='outline' size='14' />
+          <span>{t('conversation.history.export')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='delete'>
+        <div className='flex items-center gap-8px text-[rgb(var(--warning-6))]'>
+          <DeleteOne theme='outline' size='14' />
+          <span>{t('conversation.history.deleteTitle')}</span>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
+
+  const rowNode = (
+    <div
+      id={'c-' + conversation.id}
+      className={classNames(
+        'chat-history__item w-full box-border px-12px py-8px rd-8px flex justify-start items-center group cursor-pointer relative overflow-hidden shrink-0 conversation-item [&.conversation-item+&.conversation-item]:mt-2px min-w-0 max-w-full transition-colors',
+        {
+          'hover:bg-[rgba(var(--primary-6),0.14)]': !rowBatchMode,
+          '!bg-active': selected,
+          'bg-[rgba(var(--primary-6),0.08)]': rowBatchMode && checked,
+        }
+      )}
+      title={collapsed || !workspacePath ? rowTitle : undefined}
+      onClick={handleRowClick}
+    >
+      {rowBatchMode && (
+        <span
+          className='mr-8px flex-center'
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleChecked(conversation);
+          }}
+        >
+          <Checkbox checked={checked} />
+        </span>
+      )}
+      {leadingSlot ? (
+        <span className='mr-6px flex-shrink-0 flex items-center justify-center'>{leadingSlot}</span>
+      ) : null}
+      {isGenerating && !batchMode ? <Spin size={16} className='flex-shrink-0' /> : renderLeadingIcon()}
+      <FlexFullContainer
+        className='h-24px min-w-0 flex-1 collapsed-hidden ml-10px pr-18px overflow-hidden'
+        containerClassName='overflow-hidden'
+      >
+        <div
+          className={classNames(
+            'chat-history__item-name overflow-hidden text-ellipsis block w-full max-w-full text-14px lh-24px whitespace-nowrap min-w-0 group-hover:text-1',
+            selected && !rowBatchMode ? 'text-1 font-medium' : 'text-2'
+          )}
+          title={workspacePath || undefined}
+        >
+          <span className='block w-full overflow-hidden text-ellipsis whitespace-nowrap'>{conversation.name}</span>
+        </div>
+      </FlexFullContainer>
+
+      {renderCompletionUnreadDot()}
+      {!rowBatchMode && allowActions && (
+        <div
+          className={classNames('absolute right-0px top-0px h-full items-center justify-end !collapsed-hidden pr-8px', {
+            flex: isMobile || isPinned || menuVisible,
+            'hidden group-hover:flex': !isMobile && !isPinned && !menuVisible,
+          })}
+          style={{
+            backgroundImage: selected
+              ? `linear-gradient(to right, transparent, var(--aou-2) 50%)`
+              : `linear-gradient(to right, transparent, var(--aou-1) 50%)`,
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+          }}
+        >
+          {isPinned && !menuVisible && (
+            <span className='flex-center text-t-secondary group-hover:hidden pr-4px'>
+              <Pushpin theme='outline' size='16' />
+            </span>
+          )}
+          <Dropdown
+            droplist={actionMenu}
+            trigger='click'
+            position='br'
+            popupVisible={menuVisible}
+            onVisibleChange={(visible) => onMenuVisibleChange(conversation.id, visible)}
+            getPopupContainer={() => document.body}
+            unmountOnExit={false}
+          >
+            <span
+              className={classNames(
+                'flex-center cursor-pointer hover:bg-fill-2 rd-4px p-4px transition-colors relative text-t-primary',
+                {
+                  flex: isMobile || menuVisible,
+                  'hidden group-hover:flex': !isMobile && !menuVisible,
+                }
+              )}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenMenu(conversation);
+              }}
+            >
+              <div
+                className='flex flex-col gap-2px items-center justify-center'
+                style={{ width: '16px', height: '16px' }}
+              >
+                <div className='w-2px h-2px rounded-full bg-current'></div>
+                <div className='w-2px h-2px rounded-full bg-current'></div>
+                <div className='w-2px h-2px rounded-full bg-current'></div>
+              </div>
+            </span>
+          </Dropdown>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <Dropdown droplist={actionMenu} trigger='contextMenu' position='bl' getPopupContainer={() => document.body}>
+      {rowNode}
+    </Dropdown>
+  );
+};
+
+export default ConversationRow;

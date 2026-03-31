@@ -1,0 +1,145 @@
+/* Workspace component styles */
+
+.workspace-header__toggle {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.workspace-header__toggle:hover {
+  background-color: var(--bg-hover);
+}
+
+.workspace-header__toggle:active {
+  background-color: var(--bg-active);
+}
+
+.workspace-toggle-floating {
+  background-color: var(--bg-2);
+  border: 1px solid var(--bg-3);
+}
+
+.chat-workspace .workspace-toolbar-shell {
+  padding-top: 10px;
+}
+
+.chat-workspace .workspace-toolbar-search {
+  padding-bottom: 10px;
+}
+
+.chat-workspace .workspace-search-input .arco-input-inner-wrapper {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 92%, transparent);
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--bg-1) 94%, var(--fill-2) 6%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 6px 18px rgba(15, 23, 42, 0.08);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.chat-workspace .workspace-search-input .arco-input {
+  background: transparent !important;
+}
+
+.chat-workspace .workspace-search-input .arco-input-inner-wrapper:hover {
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--border-base));
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%);
+}
+
+.chat-workspace .workspace-search-input .arco-input-inner-wrapper.arco-input-focus {
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border-base));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 0 4px color-mix(in srgb, var(--primary) 10%, transparent),
+    0 10px 24px rgba(15, 23, 42, 0.1);
+}
+
+[data-theme='dark'] .chat-workspace .workspace-search-input .arco-input-inner-wrapper {
+  border-color: color-mix(in srgb, var(--border-base) 82%, transparent);
+  background: color-mix(in srgb, var(--bg-1) 88%, var(--fill-2) 12%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme='dark'] .chat-workspace .workspace-search-input .arco-input-inner-wrapper:hover {
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--border-base));
+}
+
+[data-theme='dark'] .chat-workspace .workspace-search-input .arco-input-inner-wrapper.arco-input-focus {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border-base));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 4px color-mix(in srgb, var(--primary) 14%, transparent),
+    0 12px 28px rgba(0, 0, 0, 0.3);
+}
+
+/* Mobile: workspace panel adaptation */
+@media (max-width: 767px) {
+  .chat-workspace .workspace-toolbar-search {
+    padding-bottom: 10px !important;
+  }
+
+  .chat-workspace .workspace-search-input .arco-input-inner-wrapper,
+  .chat-workspace .workspace-search-input .arco-input {
+    min-height: 40px;
+    font-size: 15px !important;
+    line-height: 22px !important;
+  }
+
+  .chat-workspace .workspace-toolbar-row {
+    min-height: 40px;
+    align-items: center;
+  }
+
+  .chat-workspace .workspace-title-label {
+    font-size: 15px !important;
+    line-height: 24px !important;
+  }
+
+  .chat-workspace .workspace-toolbar-actions {
+    gap: 10px !important;
+  }
+
+  .chat-workspace .workspace-toolbar-icon-btn {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chat-workspace .workspace-tree .arco-tree-node-title {
+    font-size: 15px !important;
+    line-height: 24px !important;
+  }
+
+  .chat-workspace .workspace-tree .arco-tree-node-title-wrapper {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+  }
+
+  .chat-workspace .workspace-node-more-btn {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 10px !important;
+  }
+
+  .chat-workspace .workspace-tree .arco-tree-node {
+    margin-bottom: 2px;
+  }
+}

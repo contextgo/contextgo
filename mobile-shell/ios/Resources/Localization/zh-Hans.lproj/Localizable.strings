@@ -1,0 +1,18 @@
+"app.title" = "ContextGo";
+"connection.title" = "连接 ContextGo";
+"connection.description" = "ContextGo 默认打开官方 Remote。只有在你想直连自己的桌面设备或自托管网关时，才需要使用自定义 WebUI 地址。";
+"connection.officialRemote.action" = "使用官方 Remote";
+"connection.officialRemote.detail" = "打开 https://remote.contextgo.io/login";
+"connection.custom.title" = "自定义地址";
+"connection.custom.description" = "粘贴 WebUI 基础地址，例如 http://192.168.1.10:3000，或粘贴 ContextGo 生成的 /qr-login?token=... 链接。";
+"connection.custom.placeholder" = "http://192.168.1.10:3000";
+"connection.custom.action" = "打开自定义地址";
+"connection.validation.invalid" = "请输入有效的 http(s) ContextGo WebUI 地址或 /qr-login 链接。";
+"connection.howItWorks.title" = "使用方式";
+"connection.howItWorks.step1" = "1. 官方 Remote 会打开 ContextGo 托管的登录流程。";
+"connection.howItWorks.step2" = "2. 自定义地址模式会直接连接你的桌面设备或自托管 WebUI。";
+"connection.howItWorks.step3" = "3. App 会保存上一次成功连接的入口，下次自动重新打开。";
+"browser.back" = "返回";
+"browser.reload" = "重新加载";
+"browser.changeHost" = "切换地址";
+"browser.connection.title" = "连接";

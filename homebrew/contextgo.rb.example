@@ -1,0 +1,39 @@
+# =============================================================================
+# REFERENCE TEMPLATE ONLY - DO NOT MODIFY
+# =============================================================================
+# This file is a reference template for the Homebrew cask definition.
+# The actual cask is maintained in the official Homebrew repository:
+#   https://github.com/Homebrew/homebrew-cask/blob/master/Casks/a/contextgo.rb
+#
+# Legacy cask identifier note: upstream still uses `contextgo` while the rename
+# to ContextGo is pending. This template tracks ContextGo release artifacts.
+# =============================================================================
+
+cask "contextgo" do
+  arch arm: "arm64", intel: "x64"
+
+  version "1.7.1"
+  sha256 arm:   "ec758b0f4727eea1fb13a7ca4176dbf75baab2f3dc135eacbaa8ce091d27d219",
+         intel: "bdb9be0d79f6c7c6c7457f2668dd23ccd0c00a9c7b5a4129960c5d7650190a3a"
+
+  url "https://github.com/contextgo/contextgo/releases/download/v#{version}/ContextGo-#{version}-mac-#{arch}.dmg"
+  name "ContextGo"
+  desc "Unified GUI for command-line AI agents"
+  homepage "https://github.com/contextgo/contextgo"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  auto_updates true
+  depends_on macos: ">= :big_sur"
+
+  app "ContextGo.app"
+
+  zap trash: [
+    "~/Library/Application Support/ContextGo",
+    "~/Library/Preferences/io.contextgo.desktop.plist",
+    "~/Library/Saved Application State/io.contextgo.desktop.savedState",
+  ]
+end
