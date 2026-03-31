@@ -138,6 +138,8 @@ const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert } = vi.
       state.externalSessions.set(String(session.id), session);
       return { success: true, data: true };
     }),
+    upsertChannelControlLease: vi.fn((_lease: Record<string, unknown>) => ({ success: true, data: true })),
+    deleteChannelControlLease: vi.fn((_externalSessionId: string) => ({ success: true, data: true })),
     upsertChannelSession: vi.fn((session: Record<string, unknown>) => {
       state.mirroredSessions.push(session);
       return { success: true, data: true };

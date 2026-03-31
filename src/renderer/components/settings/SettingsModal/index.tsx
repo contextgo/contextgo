@@ -65,6 +65,11 @@ export type BuiltinSettingTab =
   | 'tools'
   | 'webui'
   | 'agentEntry'
+  | 'channels'
+  | 'activeSessions'
+  | 'tools'
+  | 'webui'
+  | 'agentEntry'
   | 'system'
   | 'about';
 
@@ -243,8 +248,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
         icon: <Earth theme='outline' size='20' fill={iconColors.secondary} />,
       });
       builtinItems.push({
-        key: 'agentEntry',
-        label: t('settings.agentEntry'),
+        key: 'channels',
+        label: t('settings.channels'),
+        icon: <Communication theme='outline' size='20' fill={iconColors.secondary} />,
+      });
+      builtinItems.push({
+        key: 'activeSessions',
+        label: t('settings.activeSessions'),
         icon: <Communication theme='outline' size='20' fill={iconColors.secondary} />,
       });
     }
@@ -346,8 +356,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
         return <RuntimeManagement />;
       case 'webui':
         return <WebuiModalContent />;
+      case 'channels':
+        return <ChannelModalContent mode='channels' />;
       case 'agentEntry':
-        return <ChannelModalContent />;
+        return <ChannelModalContent mode='channels' />;
+      case 'activeSessions':
+        return <ChannelModalContent mode='sessions' />;
       case 'system':
         return <SystemModalContent />;
       case 'about':

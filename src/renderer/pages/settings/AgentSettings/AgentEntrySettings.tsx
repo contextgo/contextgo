@@ -12,11 +12,15 @@ import SettingsPageWrapper from '../components/SettingsPageWrapper';
 
 const AgentEntrySettings: React.FC = () => {
   const { pathname } = useLocation();
-  const mode = pathname.endsWith('/runtime') ? 'runtime' : 'channels';
+  const mode = pathname.endsWith('/runtime')
+    ? 'runtime'
+    : pathname.endsWith('/active-sessions')
+      ? 'sessions'
+      : 'channels';
 
   return (
     <SettingsPageWrapper contentClassName={mode === 'runtime' ? 'max-w-1200px' : undefined}>
-      {mode === 'runtime' ? <RuntimeManagement /> : <ChannelModalContent />}
+      {mode === 'runtime' ? <RuntimeManagement /> : <ChannelModalContent mode={mode} />}
     </SettingsPageWrapper>
   );
 };

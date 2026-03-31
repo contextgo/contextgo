@@ -1444,10 +1444,13 @@ export const extensions = {
 // ==================== Channel API ====================
 
 import type {
+  IChannelActiveSessionEntry,
   IAgentProfile,
   IChannelBindingCatalog,
   IChannelBinding,
+  ChannelControlMode,
   IChannelHandoffRequest,
+  IChannelHandoffReleaseResult,
   IChannelHandoffResult,
   IChannelPairingRequest,
   IChannelPluginStatus,
@@ -1480,6 +1483,9 @@ export const channel = {
 
   // Session Management (MVP: read-only view)
   getActiveSessions: bridge.buildProvider<IBridgeResponse<IChannelSession[]>, void>('channel.get-active-sessions'),
+  getActiveSessionCatalog: bridge.buildProvider<IBridgeResponse<IChannelActiveSessionEntry[]>, void>(
+    'channel.get-active-session-catalog'
+  ),
 
   // Binding Management
   getBindingCatalog: bridge.buildProvider<IBridgeResponse<IChannelBindingCatalog>, { connectorId?: string }>(
@@ -1496,6 +1502,13 @@ export const channel = {
   handoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffResult>, IChannelHandoffRequest>(
     'channel.handoff-session'
   ),
+  endHandoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffReleaseResult>, { targetExternalSessionId: string }>(
+    'channel.end-handoff-session'
+  ),
+  setHandoffControlMode: bridge.buildProvider<
+    IBridgeResponse<IChannelHandoffReleaseResult>,
+    { targetExternalSessionId: string; controlMode: ChannelControlMode }
+  >('channel.set-handoff-control-mode'),
 
   // Settings Sync
   syncChannelSettings: bridge.buildProvider<

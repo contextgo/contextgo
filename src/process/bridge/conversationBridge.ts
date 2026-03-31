@@ -20,6 +20,8 @@ import { prepareFirstMessage } from '../task/agentUtils';
 import { refreshTrayMenu } from '@process/utils/tray';
 import { copyFilesToDirectory, readDirectoryRecursive } from '@process/utils';
 import { computeOpenClawIdentityHash } from '@process/utils/openclawUtils';
+import { getDatabase } from '@process/services/database';
+import { getExternalSessionControlState } from '@process/channels/types';
 import { migrateConversationToDatabase } from './migrationUtils';
 import { AssistantHookRuntime } from './services/AssistantHookRuntime';
 import { GroupConversationService } from './services/group/GroupConversationService';
@@ -60,6 +62,27 @@ export function initConversationBridge(
       action,
       source: conversation.source || 'contextgo',
     });
+  };
+
+  const assertDesktopCanControl = async (conversation: TChatConversation): Promise<void> => {
+    const db = await getDatabase();
+    const externalSessionResult = conversation.externalSessionId
+      ? db.getExternalSession(conversation.externalSessionId)
+      : db.getExternalSessionByActiveConversation(conversation.id);
+    if (!externalSessionResult.success || !externalSessionResult.data) {
+      return;
+    }
+    const controlLeaseResult = db.getChannelControlLease(externalSessionResult.data.id);
+    const control =
+      controlLeaseResult.success && controlLeaseResult.data
+        ? {
+            ownerKey: controlLeaseResult.data.ownerKey,
+            controlMode: controlLeaseResult.data.controlMode,
+          }
+        : getExternalSessionControlState(externalSessionResult.data);
+    if (control.controlMode === 'im_owner') {
+      throw new Error('This session is currently controlled from IM. Reclaim control before sending from desktop.');
+    }
   };
 
   ipcBridge.openclawConversation.getRuntime.provider(async ({ conversation_id }) => {
@@ -601,6 +624,15 @@ export function initConversationBridge(
 
     if (!task) {
       return { success: false, msg: 'conversation not found' };
+    }
+
+    try {
+      await assertDesktopCanControl(conversation);
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
     }
 
     // Copy files to workspace (unified for all agents)

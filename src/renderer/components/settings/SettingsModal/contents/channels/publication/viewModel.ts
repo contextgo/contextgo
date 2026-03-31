@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { ChannelBindingScopeType, IChannelBinding } from '@process/channels/types';
+import { isSystemFallbackBinding, type ChannelBindingScopeType, type IChannelBinding } from '@process/channels/types';
 
 export type DurableBindingScopeType = Exclude<ChannelBindingScopeType, 'temporary_override'>;
 
@@ -34,10 +34,12 @@ export function normalizeScopeKey(scopeType: ChannelBindingScopeType, scopeKey: 
 export function splitBindingsByLifetime(bindings: IChannelBinding[]): {
   durableBindings: IChannelBinding[];
   temporaryBindings: IChannelBinding[];
+  systemFallbackBindings: IChannelBinding[];
 } {
   return {
-    durableBindings: bindings.filter((binding) => !binding.temporary),
+    durableBindings: bindings.filter((binding) => !binding.temporary && !isSystemFallbackBinding(binding)),
     temporaryBindings: bindings.filter((binding) => binding.temporary),
+    systemFallbackBindings: bindings.filter((binding) => !binding.temporary && isSystemFallbackBinding(binding)),
   };
 }
 

@@ -786,7 +786,8 @@ export class ChannelRouteResolver {
       enabled: true,
       temporary: false,
       metadata: {
-        source: 'legacy-default',
+        source: 'system-fallback-runtime',
+        semantic: 'fallback-runtime',
       },
       createdAt: Date.now(),
       updatedAt: Date.now(),
