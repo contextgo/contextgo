@@ -51,6 +51,14 @@ vi.mock('../../src/process/agent/acp/AcpDetector', () => ({
   acpDetector: { getDetectedAgents: vi.fn(() => []), refreshCustomAgents: vi.fn(async () => {}) },
 }));
 
+const processConfigGetMock = vi.fn(async () => undefined);
+
+vi.mock('../../src/process/utils/initStorage', () => ({
+  ProcessConfig: {
+    get: (...args: unknown[]) => processConfigGetMock(...args),
+  },
+}));
+
 const listConfiguredOpenClawAgentsMock = vi.fn(() => []);
 
 vi.mock('../../src/process/agent/openclaw/openclawConfig', () => ({
@@ -145,6 +153,11 @@ describe('acpConversationBridge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    processConfigGetMock.mockImplementation(async (key: string) => {
+      if (key === 'acp.config') return {};
+      if (key === 'codex.config') return {};
+      return undefined;
+    });
     listConfiguredOpenClawAgentsMock.mockReturnValue([]);
     taskManager = makeTaskManager();
     conversationService = {
@@ -246,12 +259,14 @@ describe('acpConversationBridge', () => {
         {
           backend: 'gemini',
           name: 'Gemini',
+          runtimeSource: 'builtin',
           supportedTransports: [],
         },
         {
           backend: 'openclaw-gateway',
           name: 'OpenClaw',
           cliPath: 'openclaw',
+          runtimeSource: 'detected',
           openclawAgentId: 'main',
           workspace: '/Users/test/.openclaw/workspace',
           isDefault: true,
@@ -261,6 +276,7 @@ describe('acpConversationBridge', () => {
           backend: 'openclaw-gateway',
           name: 'Reviewer (reviewer)',
           cliPath: 'openclaw',
+          runtimeSource: 'detected',
           openclawAgentId: 'reviewer',
           workspace: '/Users/test/.openclaw/workspace-reviewer',
           avatar: '🦞',
@@ -268,6 +284,75 @@ describe('acpConversationBridge', () => {
           supportedTransports: [],
         },
       ],
+    });
+  });
+
+  it('merges configured runtime paths into available agents when PATH detection misses them', async () => {
+    vi.mocked(acpDetector.getDetectedAgents).mockReturnValue([{ backend: 'gemini', name: 'Gemini' }] as any);
+    processConfigGetMock.mockImplementation(async (key: string) => {
+      if (key === 'acp.config') {
+        return {
+          claude: {
+            cliPath: '/Applications/Claude Code.app/Contents/MacOS/claude',
+          },
+        };
+      }
+      if (key === 'codex.config') {
+        return {
+          cliPath: '/opt/codex/bin/codex',
+        };
+      }
+      return undefined;
+    });
+
+    const result = await handlers['getAvailableAgents']();
+
+    expect(result).toEqual({
+      success: true,
+      data: [
+        {
+          backend: 'gemini',
+          name: 'Gemini',
+          runtimeSource: 'builtin',
+          supportedTransports: [],
+        },
+        {
+          backend: 'claude',
+          name: 'Claude Code',
+          cliPath: '/Applications/Claude Code.app/Contents/MacOS/claude',
+          runtimeSource: 'configured',
+          supportedTransports: [],
+        },
+        {
+          backend: 'codex',
+          name: 'Codex',
+          cliPath: '/opt/codex/bin/codex',
+          acpArgs: [],
+          runtimeSource: 'configured',
+          supportedTransports: [],
+        },
+      ],
+    });
+  });
+
+  it('detectCliPath prefers the configured runtime path for built-in backends', async () => {
+    processConfigGetMock.mockImplementation(async (key: string) => {
+      if (key === 'acp.config') return {};
+      if (key === 'codex.config') {
+        return {
+          cliPath: '/opt/codex/bin/codex',
+        };
+      }
+      return undefined;
+    });
+
+    const result = await handlers['detectCliPath']({ backend: 'codex' });
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        path: '/opt/codex/bin/codex',
+      },
     });
   });
 });

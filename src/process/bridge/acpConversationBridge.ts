@@ -9,6 +9,7 @@ import { AcpConnection } from '@process/agent/acp/AcpConnection';
 import { buildAcpModelInfo, summarizeAcpModelInfo } from '@process/agent/acp/modelInfo';
 import { CodexConnection } from '@process/agent/codex/connection/CodexConnection';
 import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
+import { ProcessConfig } from '@process/utils/initStorage';
 import { refreshTrayMenu } from '@process/utils/tray';
 import type { IConversationService } from '@process/services/IConversationService';
 import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
@@ -18,6 +19,7 @@ import { GeminiAgentManager } from '@process/task/GeminiAgentManager';
 import { mcpService } from '@/process/services/mcpServices/McpService';
 import { mainLog, mainWarn } from '@/process/utils/mainLogger';
 import { ipcBridge } from '@/common';
+import { ACP_BACKENDS_ALL, type AcpBackend } from '@/common/types/acpTypes';
 import { ExternalSessionDiscoveryService } from './services/ExternalSessionDiscoveryService';
 import * as os from 'os';
 
@@ -28,6 +30,69 @@ const refreshTrayMenuSafely = async (): Promise<void> => {
     console.warn('[acpConversationBridge] Failed to refresh tray menu:', error);
   }
 };
+
+type RuntimeAwareDetectedAgent = ReturnType<typeof acpDetector.getDetectedAgents>[number] & {
+  runtimeSource?: 'builtin' | 'detected' | 'configured';
+};
+
+async function getRuntimeAwareDetectedAgents(): Promise<RuntimeAwareDetectedAgent[]> {
+  const detectedAgents = acpDetector.getDetectedAgents().map((agent) => ({
+    ...agent,
+    runtimeSource: agent.backend === 'gemini' ? 'builtin' : 'detected',
+  }));
+  const acpConfig = await ProcessConfig.get('acp.config');
+  const codexConfig = await ProcessConfig.get('codex.config');
+
+  const getConfiguredCliPath = (backend: RuntimeAwareDetectedAgent['backend']): string | undefined => {
+    if (backend === 'codex') {
+      return codexConfig?.cliPath?.trim() || undefined;
+    }
+
+    if (!(backend in ACP_BACKENDS_ALL) || backend === 'custom') {
+      return undefined;
+    }
+
+    return acpConfig?.[backend as AcpBackend]?.cliPath?.trim() || undefined;
+  };
+
+  const detectedBackends = new Set<RuntimeAwareDetectedAgent['backend']>();
+
+  for (const agent of detectedAgents) {
+    detectedBackends.add(agent.backend);
+
+    const configuredCliPath = getConfiguredCliPath(agent.backend);
+    if (configuredCliPath) {
+      agent.cliPath = configuredCliPath;
+    }
+  }
+
+  for (const [backend, config] of Object.entries(ACP_BACKENDS_ALL)) {
+    const typedBackend = backend as AcpBackend;
+    if (
+      typedBackend === 'gemini' ||
+      typedBackend === 'custom' ||
+      typedBackend === 'openclaw-gateway' ||
+      typedBackend === 'nanobot'
+    ) {
+      continue;
+    }
+
+    const configuredCliPath = getConfiguredCliPath(typedBackend);
+    if (!configuredCliPath || detectedBackends.has(typedBackend)) {
+      continue;
+    }
+
+    detectedAgents.push({
+      backend: typedBackend,
+      name: config.name,
+      cliPath: configuredCliPath,
+      acpArgs: config.acpArgs,
+      runtimeSource: 'configured',
+    });
+  }
+
+  return detectedAgents;
+}
 
 export function initAcpConversationBridge(
   workerTaskManager: IWorkerTaskManager,
@@ -50,25 +115,26 @@ export function initAcpConversationBridge(
   });
 
   // 保留旧的detectCliPath接口用于向后兼容，但使用新检测器的结果
-  ipcBridge.acpConversation.detectCliPath.provider(({ backend }) => {
-    const agents = acpDetector.getDetectedAgents();
+  ipcBridge.acpConversation.detectCliPath.provider(async ({ backend }) => {
+    const agents = await getRuntimeAwareDetectedAgents();
     const agent = agents.find((a) => a.backend === backend);
 
     if (agent?.cliPath) {
-      return Promise.resolve({ success: true, data: { path: agent.cliPath } });
+      return { success: true, data: { path: agent.cliPath } };
     }
 
-    return Promise.resolve({
+    return {
       success: false,
       msg: `${backend} CLI not found. Please install it and ensure it's accessible.`,
-    });
+    };
   });
 
   // 新的ACP检测接口 - 基于全局标记位
   // Enrich with MCP transport support info so the frontend can show accurate counts
-  ipcBridge.acpConversation.getAvailableAgents.provider(() => {
+  ipcBridge.acpConversation.getAvailableAgents.provider(async () => {
     try {
-      const agents = acpDetector.getDetectedAgents().flatMap((agent) => {
+      const runtimeAwareAgents = await getRuntimeAwareDetectedAgents();
+      const agents = runtimeAwareAgents.flatMap((agent) => {
         if (agent.backend !== 'openclaw-gateway') {
           return [agent];
         }
@@ -94,12 +160,12 @@ export function initAcpConversationBridge(
           supportedTransports: mcpService.getSupportedTransportsForAgent(agent),
         })
       );
-      return Promise.resolve({ success: true, data: enriched });
+      return { success: true, data: enriched };
     } catch (error) {
-      return Promise.resolve({
+      return {
         success: false,
         msg: error instanceof Error ? error.message : 'Unknown error',
-      });
+      };
     }
   });
 
@@ -158,7 +224,7 @@ export function initAcpConversationBridge(
     const startTime = Date.now();
 
     // Step 1: Check if CLI is installed
-    const agents = acpDetector.getDetectedAgents();
+    const agents = await getRuntimeAwareDetectedAgents();
     const agent = agents.find((a) => a.backend === backend);
 
     // Skip CLI check for claude/codebuddy (uses npx) and codex (has its own detection)
@@ -317,7 +383,7 @@ export function initAcpConversationBridge(
   });
 
   ipcBridge.acpConversation.probeModelInfo.provider(async ({ backend }) => {
-    const agents = acpDetector.getDetectedAgents();
+    const agents = await getRuntimeAwareDetectedAgents();
     const agent = agents.find((item) => item.backend === backend);
 
     if (!agent?.cliPath && backend !== 'claude' && backend !== 'codebuddy' && backend !== 'codex') {
