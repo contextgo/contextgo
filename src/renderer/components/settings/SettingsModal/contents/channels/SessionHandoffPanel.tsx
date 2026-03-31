@@ -76,9 +76,11 @@ const SessionHandoffPanel: React.FC = () => {
   const [selectedConnectorId, setSelectedConnectorId] = useState('');
   const [selectedAudienceKey, setSelectedAudienceKey] = useState('');
   const [handoffMode, setHandoffMode] = useState<'resume' | 'new_thread'>('resume');
+  const [controlMode, setControlMode] = useState<'im_owner' | 'im_observer'>('im_owner');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [endingSessionId, setEndingSessionId] = useState('');
+  const [updatingControlSessionId, setUpdatingControlSessionId] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -217,6 +219,7 @@ const SessionHandoffPanel: React.FC = () => {
         targetDisplayName: selectedAudience.displayName || selectedAudience.title,
         targetChatType: selectedAudience.remoteChatType,
         mode: handoffMode,
+        controlMode,
         temporary: true,
         priority: 150,
         ...(selectedSource.startsWith('conversation:')
@@ -244,7 +247,7 @@ const SessionHandoffPanel: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [handoffMode, loadData, selectedAudience, selectedConnectorId, selectedSource, t]);
+  }, [controlMode, handoffMode, loadData, selectedAudience, selectedConnectorId, selectedSource, t]);
 
   const handleEndHandoff = useCallback(
     async (targetExternalSessionId: string) => {
@@ -260,6 +263,32 @@ const SessionHandoffPanel: React.FC = () => {
         Message.error(error instanceof Error ? error.message : t('settings.activeSessions.endHandoffFailed'));
       } finally {
         setEndingSessionId('');
+      }
+    },
+    [loadData, t]
+  );
+
+  const handleSetControlMode = useCallback(
+    async (targetExternalSessionId: string, nextControlMode: 'im_owner' | 'im_observer') => {
+      setUpdatingControlSessionId(targetExternalSessionId);
+      try {
+        const result = await channel.setHandoffControlMode.invoke({
+          targetExternalSessionId,
+          controlMode: nextControlMode,
+        });
+        if (!result.success || !result.data) {
+          throw new Error(result.msg || t('settings.activeSessions.updateControlFailed'));
+        }
+        Message.success(
+          nextControlMode === 'im_owner'
+            ? t('settings.activeSessions.switchToImOwnerSuccess')
+            : t('settings.activeSessions.switchToObserverSuccess')
+        );
+        await loadData();
+      } catch (error) {
+        Message.error(error instanceof Error ? error.message : t('settings.activeSessions.updateControlFailed'));
+      } finally {
+        setUpdatingControlSessionId('');
       }
     },
     [loadData, t]
@@ -317,6 +346,16 @@ const SessionHandoffPanel: React.FC = () => {
                       {t('settings.activeSessions.currentControllerLabel')}: {matchedHandoffSession.ownerKey}
                     </div>
                   ) : null}
+                  {matchedHandoffSession.controlMode ? (
+                    <div className='text-12px text-t-secondary'>
+                      {t('settings.activeSessions.currentControlModeLabel')}:{' '}
+                      {matchedHandoffSession.controlMode === 'im_owner'
+                        ? t('settings.activeSessions.controlMode.imOwner')
+                        : matchedHandoffSession.controlMode === 'im_observer'
+                          ? t('settings.activeSessions.controlMode.imObserver')
+                          : t('settings.activeSessions.controlMode.desktopOwner')}
+                    </div>
+                  ) : null}
                   <div className='flex flex-wrap gap-8px'>
                     <Button
                       status='warning'
@@ -329,6 +368,23 @@ const SessionHandoffPanel: React.FC = () => {
                     <Button type='secondary' onClick={() => setSelectedSource(`session:${matchedHandoffSession.id}`)}>
                       {t('settings.activeSessions.inspectHandoff')}
                     </Button>
+                    {matchedHandoffSession.controlMode === 'im_owner' ? (
+                      <Button
+                        type='secondary'
+                        loading={updatingControlSessionId === matchedHandoffSession.id}
+                        onClick={() => void handleSetControlMode(matchedHandoffSession.id, 'im_observer')}
+                      >
+                        {t('settings.activeSessions.switchToObserver')}
+                      </Button>
+                    ) : (
+                      <Button
+                        type='secondary'
+                        loading={updatingControlSessionId === matchedHandoffSession.id}
+                        onClick={() => void handleSetControlMode(matchedHandoffSession.id, 'im_owner')}
+                      >
+                        {t('settings.activeSessions.switchToImOwner')}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -384,6 +440,16 @@ const SessionHandoffPanel: React.FC = () => {
                             {t('settings.activeSessions.currentControllerLabel')}: {session.ownerKey}
                           </div>
                         ) : null}
+                        {session.controlMode ? (
+                          <div className='text-12px text-t-secondary'>
+                            {t('settings.activeSessions.currentControlModeLabel')}:{' '}
+                            {session.controlMode === 'im_owner'
+                              ? t('settings.activeSessions.controlMode.imOwner')
+                              : session.controlMode === 'im_observer'
+                                ? t('settings.activeSessions.controlMode.imObserver')
+                                : t('settings.activeSessions.controlMode.desktopOwner')}
+                          </div>
+                        ) : null}
                         <div className='flex items-center justify-between gap-8px'>
                           <span className='text-12px text-t-secondary'>
                             {formatRelativeTime(session.lastActivity, i18n.language)}
@@ -436,10 +502,23 @@ const SessionHandoffPanel: React.FC = () => {
                 ]}
                 onChange={(value) => setHandoffMode(value as 'resume' | 'new_thread')}
               />
+              <Select
+                value={controlMode}
+                options={[
+                  { value: 'im_owner', label: t('settings.activeSessions.controlMode.imOwner') },
+                  { value: 'im_observer', label: t('settings.activeSessions.controlMode.imObserver') },
+                ]}
+                onChange={(value) => setControlMode(value as 'im_owner' | 'im_observer')}
+              />
               <div className='text-12px text-t-secondary leading-relaxed'>
                 {handoffMode === 'resume'
                   ? t('settings.activeSessions.mode.resumeHint')
                   : t('settings.activeSessions.mode.newThreadHint')}
+              </div>
+              <div className='text-12px text-t-secondary leading-relaxed'>
+                {controlMode === 'im_owner'
+                  ? t('settings.activeSessions.controlMode.imOwnerHint')
+                  : t('settings.activeSessions.controlMode.imObserverHint')}
               </div>
               <Button type='primary' loading={submitting} onClick={() => void handleSubmit()}>
                 {handoffMode === 'resume'

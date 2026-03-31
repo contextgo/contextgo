@@ -1406,6 +1406,7 @@ import type {
   IAgentProfile,
   IChannelBindingCatalog,
   IChannelBinding,
+  ChannelControlMode,
   IChannelHandoffRequest,
   IChannelHandoffReleaseResult,
   IChannelHandoffResult,
@@ -1462,6 +1463,10 @@ export const channel = {
   endHandoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffReleaseResult>, { targetExternalSessionId: string }>(
     'channel.end-handoff-session'
   ),
+  setHandoffControlMode: bridge.buildProvider<
+    IBridgeResponse<IChannelHandoffReleaseResult>,
+    { targetExternalSessionId: string; controlMode: ChannelControlMode }
+  >('channel.set-handoff-control-mode'),
 
   // Settings Sync
   syncChannelSettings: bridge.buildProvider<
