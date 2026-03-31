@@ -165,6 +165,16 @@ const SessionHandoffPanel: React.FC = () => {
     () => targetAudiences.find((audience) => getAudienceOptionValue(audience) === selectedAudienceKey),
     [selectedAudienceKey, targetAudiences]
   );
+  const matchedHandoffSession = useMemo(
+    () =>
+      sessionHandoffIntent?.sourceConversationId
+        ? sessions.find(
+            (session) =>
+              session.bindingTemporary && session.handoffSourceConversationId === sessionHandoffIntent.sourceConversationId
+          )
+        : undefined,
+    [sessionHandoffIntent?.sourceConversationId, sessions]
+  );
 
   const connectorOptions = useMemo(
     () =>
@@ -291,6 +301,37 @@ const SessionHandoffPanel: React.FC = () => {
                   <span className='ml-6px text-t-primary break-all'>{sessionHandoffIntent.workspace || '-'}</span>
                 </div>
               </div>
+              {matchedHandoffSession ? (
+                <div className='border border-[rgba(var(--orange-6),0.24)] bg-[rgba(var(--orange-6),0.08)] rd-10px p-10px space-y-6px'>
+                  <div className='text-13px font-600 text-t-primary'>
+                    {t('settings.activeSessions.currentHandoffTitle')}
+                  </div>
+                  <div className='text-12px text-t-secondary leading-relaxed'>
+                    {t('settings.activeSessions.currentHandoffDescription', {
+                      audience: matchedHandoffSession.audienceTitle,
+                      connector: matchedHandoffSession.connectorName || matchedHandoffSession.connectorPlatform || '-',
+                    })}
+                  </div>
+                  {matchedHandoffSession.ownerKey ? (
+                    <div className='text-12px text-t-secondary break-all'>
+                      {t('settings.activeSessions.currentControllerLabel')}: {matchedHandoffSession.ownerKey}
+                    </div>
+                  ) : null}
+                  <div className='flex flex-wrap gap-8px'>
+                    <Button
+                      status='warning'
+                      type='primary'
+                      loading={endingSessionId === matchedHandoffSession.id}
+                      onClick={() => void handleEndHandoff(matchedHandoffSession.id)}
+                    >
+                      {t('settings.activeSessions.reclaimControl')}
+                    </Button>
+                    <Button type='secondary' onClick={() => setSelectedSource(`session:${matchedHandoffSession.id}`)}>
+                      {t('settings.activeSessions.inspectHandoff')}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -336,6 +377,11 @@ const SessionHandoffPanel: React.FC = () => {
                           <div className='text-12px text-t-secondary break-all'>
                             {t('settings.activeSessions.handoffSourceLabel')}:{' '}
                             {session.handoffSourceConversationId || session.handoffSourceExternalSessionId}
+                          </div>
+                        ) : null}
+                        {session.ownerKey ? (
+                          <div className='text-12px text-t-secondary break-all'>
+                            {t('settings.activeSessions.currentControllerLabel')}: {session.ownerKey}
                           </div>
                         ) : null}
                         <div className='flex items-center justify-between gap-8px'>
