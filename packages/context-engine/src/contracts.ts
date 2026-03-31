@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -9,8 +9,11 @@ import type {
   ChunkId,
   ChunkRecord,
   ContextPack,
+  ContextTier,
   DocumentSnapshot,
   DocumentSnapshotId,
+  MemoryCandidateEntry,
+  MemoryCandidateId,
   MemoryEntry,
   MemoryEntryId,
   ProfileSegment,
@@ -26,6 +29,7 @@ import type { CompactionCandidate, CompactionDecision, CompactionPolicy } from '
 import type { ForgettingAssessment, ForgettingCandidate, ForgettingPolicy } from './forgetting';
 import type { ContextOperation, ContextOperationCursor } from './operations';
 import type { PromotionCandidate, PromotionDecision, PromotionPolicy } from './promotion';
+import type { VectorIndexProvider, VectorSearchHit } from './vectorIndex';
 
 export type IngestSourceInput = {
   spaceId: SpaceId;
@@ -52,6 +56,15 @@ export type RetrievedMemory = {
   memory: MemoryEntry;
   score: number;
   matchedBy: readonly string[];
+  vectorHits?: readonly VectorSearchHit[];
+};
+
+export type RetrievedChunk = {
+  chunk: ChunkRecord;
+  documentId: DocumentSnapshotId;
+  score: number;
+  matchedBy: readonly string[];
+  vectorHits?: readonly VectorSearchHit[];
 };
 
 export type RetrieveContextInput = {
@@ -60,12 +73,17 @@ export type RetrieveContextInput = {
   query: string;
   budgetTokens: number;
   memoryLimit?: number;
+  chunkLimit?: number;
   includeProfiles?: boolean;
   includeSources?: boolean;
+  includeChunks?: boolean;
+  memoryTiers?: readonly Exclude<ContextTier, 'source'>[];
+  searchMode?: 'lexical' | 'vector' | 'hybrid';
 };
 
 export type RetrieveContextResult = {
   memories: readonly RetrievedMemory[];
+  chunks: readonly RetrievedChunk[];
   profiles: readonly ProfileSegment[];
   sources: readonly SourceRecord[];
   totalEstimatedTokens: number;
@@ -133,6 +151,12 @@ export type MemoryStore = {
   save(memory: MemoryEntry): Promise<void>;
 };
 
+export type MemoryCandidateStore = {
+  getById(id: MemoryCandidateId): Promise<MemoryCandidateEntry | null>;
+  listBySpace(spaceId: SpaceId): Promise<readonly MemoryCandidateEntry[]>;
+  save(candidate: MemoryCandidateEntry): Promise<void>;
+};
+
 export type ProfileStore = {
   getById(id: ProfileSegmentId): Promise<ProfileSegment | null>;
   listBySpace(spaceId: SpaceId): Promise<readonly ProfileSegment[]>;
@@ -156,7 +180,9 @@ export type ContextEngineDependencies = {
   documents: DocumentSnapshotStore;
   chunks: ChunkStore;
   memories: MemoryStore;
+  candidates: MemoryCandidateStore;
   profiles: ProfileStore;
   operations: OperationLogStore;
   policies: ContextEnginePolicySet;
+  vectorIndex?: VectorIndexProvider;
 };

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -9,6 +9,7 @@ import type { IChannelRepository } from '@process/services/database/IChannelRepo
 import type { IConversationRepository } from '@process/services/database/IConversationRepository';
 import type { IConversationService } from '@process/services/IConversationService';
 import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
+import type { ISpaceService } from '@process/services/space/ISpaceService';
 import { initAcpConversationBridge } from './acpConversationBridge';
 import { initApplicationBridge } from './applicationBridge';
 import { initAuthBridge } from './authBridge';
@@ -29,6 +30,7 @@ import { initMcpBridge } from './mcpBridge';
 import { initModelBridge } from './modelBridge';
 import { initPreviewHistoryBridge } from './previewHistoryBridge';
 import { initShellBridge } from './shellBridge';
+import { initSpaceBridge } from './spaceBridge';
 import { initStarOfficeBridge } from './starOfficeBridge';
 import { initTaskBridge } from './taskBridge';
 import { initUpdateBridge } from './updateBridge';
@@ -44,6 +46,7 @@ export interface BridgeDependencies {
   conversationRepo: IConversationRepository;
   workerTaskManager: IWorkerTaskManager;
   channelRepo: IChannelRepository;
+  spaceService: ISpaceService;
 }
 
 /**
@@ -68,6 +71,7 @@ export function initAllBridges(deps: BridgeDependencies): void {
   initMcpBridge();
   initPreviewHistoryBridge();
   initDocumentBridge();
+  initSpaceBridge(deps.spaceService);
   initWindowControlsBridge();
   initUpdateBridge();
   initWebuiBridge();
@@ -117,6 +121,7 @@ export {
   initNotificationBridge,
   initPreviewHistoryBridge,
   initShellBridge,
+  initSpaceBridge,
   initStarOfficeBridge,
   initSystemSettingsBridge,
   initTaskBridge,

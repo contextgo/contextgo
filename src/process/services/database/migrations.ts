@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -232,7 +232,7 @@ const migration_v8: IMigration = {
   name: 'Add source column to conversations',
   up: (db) => {
     // Add source column to conversations table
-    db.exec(`ALTER TABLE conversations ADD COLUMN source TEXT CHECK(source IN ('contextgo', 'telegram'))`);
+    db.exec(`ALTER TABLE conversations ADD COLUMN source TEXT CHECK(source IN ('aionui', 'telegram'))`);
 
     // Create index for efficient source-based queries
     db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source)');
@@ -368,9 +368,7 @@ const migration_v11: IMigration = {
     // so DROP TABLE will NOT trigger ON DELETE CASCADE on the messages table.
 
     // Clean up any invalid source values before copying
-    db.exec(
-      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('contextgo', 'telegram')`
-    );
+    db.exec(`UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('aionui', 'telegram')`);
 
     db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
         id TEXT PRIMARY KEY,
@@ -380,7 +378,7 @@ const migration_v11: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram')),
+        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -410,7 +408,7 @@ const migration_v11: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram')),
+        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -444,7 +442,7 @@ const migration_v12: IMigration = {
 
     // Clean up any invalid source values before copying
     db.exec(
-      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('contextgo', 'telegram', 'lark')`
+      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('aionui', 'telegram', 'lark')`
     );
 
     db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
@@ -455,7 +453,7 @@ const migration_v12: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark')),
+        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -488,7 +486,7 @@ const migration_v12: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram')),
+        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -528,7 +526,7 @@ const migration_v13: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark')),
+        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -561,7 +559,7 @@ const migration_v13: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark')),
+        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -610,7 +608,7 @@ const migration_v14: IMigration = {
     // NOTE: The migration runner disables foreign_keys before the transaction,
     // so DROP TABLE will NOT trigger ON DELETE CASCADE on the messages table.
     db.exec(
-      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('contextgo', 'telegram', 'lark', 'dingtalk')`
+      `UPDATE conversations SET source = NULL WHERE source IS NOT NULL AND source NOT IN ('aionui', 'telegram', 'lark', 'dingtalk')`
     );
 
     db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
@@ -621,7 +619,7 @@ const migration_v14: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark', 'dingtalk')),
+        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark', 'dingtalk')),
         channel_chat_id TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
@@ -681,7 +679,7 @@ const migration_v14: IMigration = {
         extra TEXT NOT NULL,
         model TEXT,
         status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT CHECK(source IS NULL OR source IN ('contextgo', 'telegram', 'lark')),
+        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -701,390 +699,6 @@ const migration_v14: IMigration = {
   },
 };
 
-/**
- * All migrations in order
- */
-/**
- * Migration v14 -> v15: Remove strict CHECK constraints on type/source
- * to allow extension-contributed channel plugins.
- */
-const migration_v15: IMigration = {
-  version: 15,
-  name: 'Remove strict constraints for extension channels',
-  up: (db) => {
-    // 1. Recreate assistant_plugins without strict type constraint
-    db.exec(`CREATE TABLE IF NOT EXISTS assistant_plugins_new (
-        id TEXT PRIMARY KEY,
-        type TEXT NOT NULL, -- Removed CHECK constraint
-        name TEXT NOT NULL,
-        enabled INTEGER NOT NULL DEFAULT 0,
-        config TEXT NOT NULL,
-        status TEXT CHECK(status IN ('created', 'initializing', 'ready', 'starting', 'running', 'stopping', 'stopped', 'error')),
-        last_connected INTEGER,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )`);
-    db.exec('INSERT OR IGNORE INTO assistant_plugins_new SELECT * FROM assistant_plugins');
-    db.exec('DROP TABLE IF EXISTS assistant_plugins');
-    db.exec('ALTER TABLE assistant_plugins_new RENAME TO assistant_plugins');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_assistant_plugins_type ON assistant_plugins(type)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_assistant_plugins_enabled ON assistant_plugins(enabled)');
-
-    // 2. Recreate conversations without strict source constraint
-    db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex', 'openclaw-gateway', 'nanobot')),
-        extra TEXT NOT NULL,
-        model TEXT,
-        status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT, -- Removed CHECK constraint
-        channel_chat_id TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )`);
-    db.exec(`INSERT INTO conversations_new (id, user_id, name, type, extra, model, status, source, channel_chat_id, created_at, updated_at)
-      SELECT id, user_id, name, type, extra, model, status, source, channel_chat_id, created_at, updated_at FROM conversations`);
-    db.exec('DROP TABLE conversations');
-    db.exec('ALTER TABLE conversations_new RENAME TO conversations');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source_updated ON conversations(source, updated_at DESC)');
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_conversations_source_chat ON conversations(source, channel_chat_id, updated_at DESC)'
-    );
-
-    console.log('[Migration v15] Removed strict constraints for extension channels');
-  },
-  down: (_db) => {
-    // Cannot safely rollback if there are custom types/sources in the database.
-    // For now, we just log a warning and do nothing, or we could delete them.
-    console.warn('[Migration v15] Rollback skipped to prevent data loss of extension channels.');
-  },
-};
-
-const migration_v16: IMigration = {
-  version: 16,
-  name: 'Add voice_input_records table',
-  up: (db) => {
-    db.exec(`CREATE TABLE IF NOT EXISTS voice_input_records (
-        id TEXT PRIMARY KEY,
-        provider_id TEXT NOT NULL,
-        trigger_mode TEXT NOT NULL,
-        status TEXT NOT NULL CHECK(status IN ('inserted', 'copied', 'recorded', 'failed')),
-        transcript TEXT NOT NULL,
-        transcript_length INTEGER NOT NULL,
-        source_app_name TEXT,
-        source_bundle_id TEXT,
-        model TEXT,
-        language_hints TEXT NOT NULL DEFAULT '[]',
-        vocabulary_id TEXT,
-        hotwords TEXT NOT NULL DEFAULT '[]',
-        duration_ms INTEGER,
-        error_message TEXT,
-        created_at INTEGER NOT NULL
-      )`);
-    db.exec('CREATE INDEX IF NOT EXISTS idx_voice_input_records_created_at ON voice_input_records(created_at DESC)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_voice_input_records_status ON voice_input_records(status)');
-
-    console.log('[Migration v16] Added voice_input_records table');
-  },
-  down: (db) => {
-    db.exec('DROP INDEX IF EXISTS idx_voice_input_records_status');
-    db.exec('DROP INDEX IF EXISTS idx_voice_input_records_created_at');
-    db.exec('DROP TABLE IF EXISTS voice_input_records');
-
-    console.log('[Migration v16] Rolled back: Removed voice_input_records table');
-  },
-};
-
-/**
- * Migration v16 -> v17: Add group conversation type
- */
-const migration_v17: IMigration = {
-  version: 17,
-  name: 'Add discussion group conversation type',
-  up: (db) => {
-    db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex', 'openclaw-gateway', 'nanobot', 'group')),
-        extra TEXT NOT NULL,
-        model TEXT,
-        status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT,
-        channel_chat_id TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )`);
-    db.exec(`INSERT INTO conversations_new (id, user_id, name, type, extra, model, status, source, channel_chat_id, created_at, updated_at)
-      SELECT id, user_id, name, type, extra, model, status, source, channel_chat_id, created_at, updated_at FROM conversations`);
-    db.exec('DROP TABLE conversations');
-    db.exec('ALTER TABLE conversations_new RENAME TO conversations');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source_updated ON conversations(source, updated_at DESC)');
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_conversations_source_chat ON conversations(source, channel_chat_id, updated_at DESC)'
-    );
-
-    console.log('[Migration v17] Added discussion group conversation type');
-  },
-  down: (_db) => {
-    console.warn('[Migration v17] Rollback skipped to prevent data loss of discussion group conversations.');
-  },
-};
-
-const migration_v20: IMigration = {
-  version: 20,
-  name: 'Rename internal conversation source to contextgo',
-  up: (db) => {
-    db.exec(`UPDATE conversations SET source = 'contextgo' WHERE source = 'contextgo'`);
-    console.log('[Migration v20] Renamed internal conversation source from contextgo to contextgo');
-  },
-  down: (db) => {
-    db.exec(`UPDATE conversations SET source = 'contextgo' WHERE source = 'contextgo'`);
-    console.log('[Migration v20] Rolled back internal conversation source rename');
-  },
-};
-
-/**
- * Migration v17 -> v18: Add channel binding resource model tables
- */
-const migration_v18: IMigration = {
-  version: 18,
-  name: 'Add connector, binding, external session, and run tables',
-  up: (db) => {
-    db.exec(`CREATE TABLE IF NOT EXISTS connector_instances (
-        id TEXT PRIMARY KEY,
-        platform TEXT NOT NULL,
-        name TEXT NOT NULL,
-        enabled INTEGER NOT NULL DEFAULT 0,
-        status TEXT NOT NULL CHECK(status IN ('created', 'initializing', 'ready', 'starting', 'running', 'stopping', 'stopped', 'error')),
-        credentials TEXT NOT NULL,
-        runtime_config TEXT NOT NULL,
-        capabilities TEXT NOT NULL DEFAULT '{}',
-        legacy_plugin_id TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )`);
-    db.exec('CREATE INDEX IF NOT EXISTS idx_connector_instances_platform ON connector_instances(platform)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_connector_instances_enabled ON connector_instances(enabled)');
-
-    db.exec(`CREATE TABLE IF NOT EXISTS remote_identities (
-        id TEXT PRIMARY KEY,
-        connector_id TEXT NOT NULL,
-        remote_user_id TEXT,
-        remote_chat_id TEXT NOT NULL,
-        remote_chat_type TEXT,
-        display_name TEXT,
-        authorized_at INTEGER NOT NULL,
-        last_active INTEGER,
-        metadata TEXT NOT NULL DEFAULT '{}',
-        legacy_user_id TEXT,
-        FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE,
-        UNIQUE (connector_id, remote_chat_id)
-      )`);
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_remote_identities_connector_chat ON remote_identities(connector_id, remote_chat_id)'
-    );
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_remote_identities_connector_user ON remote_identities(connector_id, remote_user_id)'
-    );
-
-    db.exec(`CREATE TABLE IF NOT EXISTS agent_profiles (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        backend TEXT NOT NULL,
-        model_ref TEXT,
-        workspace_ref TEXT,
-        prompt_profile TEXT NOT NULL DEFAULT '{}',
-        tool_policy TEXT NOT NULL DEFAULT '{}',
-        memory_policy TEXT NOT NULL DEFAULT '{}',
-        delegation_policy TEXT NOT NULL DEFAULT '{}',
-        published_from_conversation_id TEXT,
-        version INTEGER NOT NULL DEFAULT 1,
-        archived INTEGER NOT NULL DEFAULT 0,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY (published_from_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
-      )`);
-    db.exec('CREATE INDEX IF NOT EXISTS idx_agent_profiles_backend ON agent_profiles(backend)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_agent_profiles_archived ON agent_profiles(archived)');
-
-    db.exec(`CREATE TABLE IF NOT EXISTS channel_bindings (
-        id TEXT PRIMARY KEY,
-        connector_id TEXT NOT NULL,
-        scope_type TEXT NOT NULL,
-        scope_key TEXT,
-        agent_profile_id TEXT NOT NULL,
-        priority INTEGER NOT NULL DEFAULT 0,
-        enabled INTEGER NOT NULL DEFAULT 1,
-        temporary INTEGER NOT NULL DEFAULT 0,
-        fallback_agent_profile_id TEXT,
-        metadata TEXT NOT NULL DEFAULT '{}',
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE,
-        FOREIGN KEY (agent_profile_id) REFERENCES agent_profiles(id) ON DELETE CASCADE,
-        FOREIGN KEY (fallback_agent_profile_id) REFERENCES agent_profiles(id) ON DELETE SET NULL
-      )`);
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_channel_bindings_connector_scope ON channel_bindings(connector_id, scope_type, scope_key, enabled, priority)'
-    );
-
-    db.exec(`CREATE TABLE IF NOT EXISTS external_sessions (
-        id TEXT PRIMARY KEY,
-        connector_id TEXT NOT NULL,
-        remote_identity_id TEXT NOT NULL,
-        binding_id TEXT,
-        agent_profile_id TEXT NOT NULL,
-        active_conversation_id TEXT,
-        state TEXT NOT NULL DEFAULT 'active',
-        created_at INTEGER NOT NULL,
-        last_activity INTEGER NOT NULL,
-        metadata TEXT NOT NULL DEFAULT '{}',
-        FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE,
-        FOREIGN KEY (remote_identity_id) REFERENCES remote_identities(id) ON DELETE CASCADE,
-        FOREIGN KEY (binding_id) REFERENCES channel_bindings(id) ON DELETE SET NULL,
-        FOREIGN KEY (agent_profile_id) REFERENCES agent_profiles(id) ON DELETE CASCADE,
-        FOREIGN KEY (active_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL,
-        UNIQUE (connector_id, remote_identity_id)
-      )`);
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_external_sessions_conversation ON external_sessions(active_conversation_id)'
-    );
-    db.exec('CREATE INDEX IF NOT EXISTS idx_external_sessions_last_activity ON external_sessions(last_activity DESC)');
-
-    db.exec(`CREATE TABLE IF NOT EXISTS runs (
-        id TEXT PRIMARY KEY,
-        external_session_id TEXT,
-        parent_run_id TEXT,
-        root_run_id TEXT NOT NULL,
-        agent_profile_id TEXT NOT NULL,
-        backend TEXT NOT NULL,
-        conversation_id TEXT,
-        workspace_ref TEXT,
-        status TEXT NOT NULL,
-        input_message_id TEXT,
-        metadata TEXT NOT NULL DEFAULT '{}',
-        started_at INTEGER NOT NULL,
-        ended_at INTEGER,
-        FOREIGN KEY (external_session_id) REFERENCES external_sessions(id) ON DELETE SET NULL,
-        FOREIGN KEY (parent_run_id) REFERENCES runs(id) ON DELETE SET NULL,
-        FOREIGN KEY (agent_profile_id) REFERENCES agent_profiles(id) ON DELETE CASCADE,
-        FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
-      )`);
-    db.exec('CREATE INDEX IF NOT EXISTS idx_runs_external_session ON runs(external_session_id, started_at DESC)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_runs_root_run ON runs(root_run_id)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_runs_parent_run ON runs(parent_run_id)');
-
-    db.exec(`CREATE TABLE IF NOT EXISTS pairing_requests_v2 (
-        code TEXT PRIMARY KEY,
-        connector_id TEXT NOT NULL,
-        remote_user_id TEXT,
-        remote_chat_id TEXT NOT NULL,
-        display_name TEXT,
-        requested_at INTEGER NOT NULL,
-        expires_at INTEGER NOT NULL,
-        status TEXT NOT NULL CHECK(status IN ('pending', 'approved', 'rejected', 'expired')),
-        metadata TEXT NOT NULL DEFAULT '{}',
-        FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE
-      )`);
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_pairing_requests_v2_connector_status ON pairing_requests_v2(connector_id, status, expires_at)'
-    );
-
-    db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex', 'openclaw-gateway', 'nanobot', 'group')),
-        extra TEXT NOT NULL,
-        model TEXT,
-        status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT,
-        channel_chat_id TEXT,
-        external_session_id TEXT,
-        root_run_id TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )`);
-    db.exec(`INSERT INTO conversations_new (
-        id, user_id, name, type, extra, model, status, source, channel_chat_id, external_session_id, root_run_id, created_at, updated_at
-      )
-      SELECT id, user_id, name, type, extra, model, status, source, channel_chat_id, NULL, NULL, created_at, updated_at
-      FROM conversations`);
-    db.exec('DROP TABLE conversations');
-    db.exec('ALTER TABLE conversations_new RENAME TO conversations');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source_updated ON conversations(source, updated_at DESC)');
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_conversations_source_chat ON conversations(source, channel_chat_id, updated_at DESC)'
-    );
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_external_session ON conversations(external_session_id)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_root_run ON conversations(root_run_id)');
-
-    console.log('[Migration v18] Added channel binding resource model tables');
-  },
-  down: (db) => {
-    db.exec(`CREATE TABLE IF NOT EXISTS conversations_rollback (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex', 'openclaw-gateway', 'nanobot', 'group')),
-        extra TEXT NOT NULL,
-        model TEXT,
-        status TEXT CHECK(status IN ('pending', 'running', 'finished')),
-        source TEXT,
-        channel_chat_id TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )`);
-    db.exec(`INSERT INTO conversations_rollback (
-        id, user_id, name, type, extra, model, status, source, channel_chat_id, created_at, updated_at
-      )
-      SELECT id, user_id, name, type, extra, model, status, source, channel_chat_id, created_at, updated_at
-      FROM conversations`);
-    db.exec('DROP TABLE conversations');
-    db.exec('ALTER TABLE conversations_rollback RENAME TO conversations');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source)');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source_updated ON conversations(source, updated_at DESC)');
-    db.exec(
-      'CREATE INDEX IF NOT EXISTS idx_conversations_source_chat ON conversations(source, channel_chat_id, updated_at DESC)'
-    );
-
-    db.exec('DROP TABLE IF EXISTS pairing_requests_v2');
-    db.exec('DROP TABLE IF EXISTS runs');
-    db.exec('DROP TABLE IF EXISTS external_sessions');
-    db.exec('DROP TABLE IF EXISTS channel_bindings');
-    db.exec('DROP TABLE IF EXISTS agent_profiles');
-    db.exec('DROP TABLE IF EXISTS remote_identities');
-    db.exec('DROP TABLE IF EXISTS connector_instances');
-
-    console.log('[Migration v18] Rolled back: Removed channel binding resource model tables');
-  },
-};
 
 /**
  * Migration v18 -> v19: Expand assistant_sessions compatibility agent types
@@ -1179,6 +793,183 @@ const migration_v21: IMigration = {
 };
 
 /**
+ * Migration v21 -> v22: Add context engine tables
+ */
+const migration_v22: IMigration = {
+  version: 22,
+  name: 'Add context engine tables',
+  up: (db) => {
+    db.exec(`CREATE TABLE IF NOT EXISTS context_sources (
+        id TEXT PRIMARY KEY,
+        space_id TEXT NOT NULL,
+        thread_id TEXT,
+        artifact_id TEXT,
+        kind TEXT NOT NULL,
+        title TEXT,
+        canonical_uri TEXT,
+        checksum TEXT,
+        tags TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+      )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_sources_space_updated ON context_sources(space_id, updated_at DESC)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_sources_space_kind ON context_sources(space_id, kind)');
+
+    db.exec(`CREATE TABLE IF NOT EXISTS context_documents (
+        id TEXT PRIMARY KEY,
+        space_id TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        storage_uri TEXT NOT NULL,
+        title TEXT,
+        checksum TEXT NOT NULL,
+        token_count INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE,
+        FOREIGN KEY (source_id) REFERENCES context_sources(id) ON DELETE CASCADE
+      )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_documents_space_created ON context_documents(space_id, created_at DESC)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_documents_source ON context_documents(source_id)');
+
+    db.exec(`CREATE TABLE IF NOT EXISTS context_chunks (
+        id TEXT PRIMARY KEY,
+        space_id TEXT NOT NULL,
+        document_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        token_count INTEGER NOT NULL DEFAULT 0,
+        content_hash TEXT NOT NULL,
+        tier TEXT NOT NULL DEFAULT 'source',
+        embedding_key TEXT,
+        FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE,
+        FOREIGN KEY (document_id) REFERENCES context_documents(id) ON DELETE CASCADE
+      )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_chunks_document_sequence ON context_chunks(document_id, sequence ASC)');
+
+    db.exec(`CREATE TABLE IF NOT EXISTS context_memories (
+        id TEXT PRIMARY KEY,
+        space_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        detail TEXT,
+        source_ids TEXT NOT NULL DEFAULT '[]',
+        chunk_ids TEXT NOT NULL DEFAULT '[]',
+        confidence REAL NOT NULL DEFAULT 0,
+        tier TEXT NOT NULL DEFAULT 'factual',
+        priority TEXT NOT NULL,
+        state TEXT NOT NULL,
+        superseded_by_id TEXT,
+        expires_at TEXT,
+        last_accessed_at TEXT,
+        last_confirmed_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+      )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_memories_space_state ON context_memories(space_id, state)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_memories_space_updated ON context_memories(space_id, updated_at DESC)');
+
+    db.exec(`CREATE TABLE IF NOT EXISTS context_memory_candidates (
+        id TEXT PRIMARY KEY,
+        space_id TEXT NOT NULL,
+        thread_id TEXT,
+        kind TEXT NOT NULL,
+        tier TEXT NOT NULL DEFAULT 'factual',
+        summary TEXT NOT NULL,
+        detail TEXT,
+        source_ids TEXT NOT NULL DEFAULT '[]',
+        chunk_ids TEXT NOT NULL DEFAULT '[]',
+        confidence REAL NOT NULL DEFAULT 0,
+        priority TEXT NOT NULL,
+        evidence_count INTEGER NOT NULL DEFAULT 1,
+        repeated_across_sources INTEGER NOT NULL DEFAULT 0,
+        recent_reference_count INTEGER NOT NULL DEFAULT 1,
+        user_confirmed INTEGER NOT NULL DEFAULT 0,
+        manually_pinned INTEGER NOT NULL DEFAULT 0,
+        execution_backed INTEGER NOT NULL DEFAULT 0,
+        contradiction_detected INTEGER NOT NULL DEFAULT 0,
+        promotion_score INTEGER NOT NULL DEFAULT 0,
+        promotion_rationale TEXT NOT NULL DEFAULT '[]',
+        destination TEXT NOT NULL DEFAULT 'memory',
+        state TEXT NOT NULL,
+        review_status TEXT NOT NULL,
+        promoted_memory_id TEXT,
+        reviewed_at TEXT,
+        reviewed_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+      )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_memory_candidates_space_state ON context_memory_candidates(space_id, state)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_memory_candidates_thread ON context_memory_candidates(thread_id, created_at DESC)');
+
+    db.exec(`CREATE TABLE IF NOT EXISTS context_profiles (
+        id TEXT PRIMARY KEY,
+        space_id TEXT NOT NULL,
+        key TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        memory_ids TEXT NOT NULL DEFAULT '[]',
+        confidence REAL NOT NULL DEFAULT 0,
+        state TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+      )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_profiles_space_state ON context_profiles(space_id, state)');
+
+    db.exec(`CREATE TABLE IF NOT EXISTS context_operations (
+        id TEXT PRIMARY KEY,
+        space_id TEXT NOT NULL,
+        thread_id TEXT,
+        replica_id TEXT,
+        actor_kind TEXT NOT NULL,
+        actor_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        payload TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
+      )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_operations_space_created ON context_operations(space_id, created_at DESC)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_context_operations_space_type ON context_operations(space_id, type)');
+
+    console.log('[Migration v22] Added context engine tables');
+  },
+  down: (db) => {
+    db.exec('DROP INDEX IF EXISTS idx_context_operations_space_type');
+    db.exec('DROP INDEX IF EXISTS idx_context_operations_space_created');
+    db.exec('DROP TABLE IF EXISTS context_operations');
+
+    db.exec('DROP INDEX IF EXISTS idx_context_profiles_space_state');
+    db.exec('DROP TABLE IF EXISTS context_profiles');
+
+    db.exec('DROP INDEX IF EXISTS idx_context_memory_candidates_thread');
+    db.exec('DROP INDEX IF EXISTS idx_context_memory_candidates_space_state');
+    db.exec('DROP TABLE IF EXISTS context_memory_candidates');
+
+    db.exec('DROP INDEX IF EXISTS idx_context_memories_space_updated');
+    db.exec('DROP INDEX IF EXISTS idx_context_memories_space_state');
+    db.exec('DROP TABLE IF EXISTS context_memories');
+
+    db.exec('DROP INDEX IF EXISTS idx_context_chunks_document_sequence');
+    db.exec('DROP TABLE IF EXISTS context_chunks');
+
+    db.exec('DROP INDEX IF EXISTS idx_context_documents_source');
+    db.exec('DROP INDEX IF EXISTS idx_context_documents_space_created');
+    db.exec('DROP TABLE IF EXISTS context_documents');
+
+    db.exec('DROP INDEX IF EXISTS idx_context_sources_space_kind');
+    db.exec('DROP INDEX IF EXISTS idx_context_sources_space_updated');
+    db.exec('DROP TABLE IF EXISTS context_sources');
+
+    console.log('[Migration v22] Rolled back: Removed context engine tables');
+  },
+};
+
+/**
  * All migrations in order
  */
 // prettier-ignore
@@ -1186,7 +977,7 @@ export const ALL_MIGRATIONS: IMigration[] = [
   migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6,
   migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12,
   migration_v13, migration_v14, migration_v15, migration_v16, migration_v17, migration_v18,
-  migration_v19, migration_v20, migration_v21,
+  migration_v19, migration_v20, migration_v21, migration_v22,
 ];
 
 /**

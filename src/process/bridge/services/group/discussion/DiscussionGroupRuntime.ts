@@ -15,7 +15,12 @@ import type {
   GroupCollaborationConfig,
   MessageGroupMeta,
 } from '@/common/config/storage';
-import { isHarnessArtifactRole, uuid, type HarnessArtifactEntry, type HarnessArtifactStatus } from '@/common/utils';
+import {
+  isHarnessArtifactRole,
+  uuid,
+  type HarnessArtifactEntry,
+  type HarnessArtifactStatus,
+} from '@/common/utils';
 import { getChannelMessageService } from '@process/channels/agent/ChannelMessageService';
 import type { IConversationService } from '@process/services/IConversationService';
 import {
