@@ -1,0 +1,2 @@
+- name: AI-based PR Reviewer & Summarizer with Chat Capabilities
+  uses: coderabbitai/ai-pr-reviewer@1.16.2
