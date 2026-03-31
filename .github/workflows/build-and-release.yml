@@ -41,38 +41,14 @@ env:
 jobs:
   prepare-matrix:
     name: Prepare Build Matrix
-    runs-on: >-
-      ${{
-        fromJSON(
-          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
-          (
-            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
-            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
-            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
-            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
-            '["self-hosted","macOS"]'
-          ) ||
-          '["ubuntu-latest"]'
-        )
-      }}
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       control_runner: ${{ steps.set-matrix.outputs.control_runner }}
     env:
       RUNNER_MODE: ${{ vars.BUILD_RUNNER_MODE != '' && vars.BUILD_RUNNER_MODE || 'hosted' }}
       RELEASE_BUILD_PLATFORMS: ${{ vars.RELEASE_BUILD_PLATFORMS != '' && vars.RELEASE_BUILD_PLATFORMS || 'all' }}
-      CONTROL_RUNNER: >-
-        ${{
-          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
-          (
-            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
-            vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
-            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
-            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
-            '["self-hosted","macOS"]'
-          ) ||
-          '["ubuntu-latest"]'
-        }}
+      CONTROL_RUNNER: '["ubuntu-latest"]'
       MACOS_RUNNER: >-
         ${{
           vars.BUILD_RUNNER_MODE == 'self-hosted' &&
