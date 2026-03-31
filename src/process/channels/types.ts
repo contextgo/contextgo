@@ -213,6 +213,7 @@ export type ChannelBindingScopeType = 'connector_default' | 'remote_user' | 'rem
 export type ChannelBindingTargetType = 'agent_profile' | 'external_session';
 export type ChannelHandoffMode = 'resume' | 'new_thread';
 export type ChannelHandoffConflictPolicy = 'reject' | 'interrupt';
+export type ChannelControlMode = 'desktop_owner' | 'im_owner' | 'im_observer';
 
 /**
  * Explicit routing rule from connector scope to agent profile.
@@ -273,6 +274,7 @@ export type IChannelHandoffRequest = {
   targetChatType?: string;
   mode?: ChannelHandoffMode;
   conflictPolicy?: ChannelHandoffConflictPolicy;
+  controlMode?: ChannelControlMode;
   temporary?: boolean;
   priority?: number;
 };
@@ -310,11 +312,46 @@ export interface IExternalSession {
   metadata?: Record<string, unknown>;
 }
 
+export type IExternalSessionControlState = {
+  ownerKey?: string;
+  controlMode?: ChannelControlMode;
+  sourceExternalSessionId?: string;
+  sourceConversationId?: string;
+  handoffMode?: ChannelHandoffMode;
+};
+
 function toRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
   }
   return value as Record<string, unknown>;
+}
+
+export function getExternalSessionControlState(session: IExternalSession): IExternalSessionControlState {
+  const metadata = toRecord(session.metadata);
+  const control = toRecord(metadata?.control);
+
+  return {
+    ownerKey: typeof control?.ownerKey === 'string' && control.ownerKey ? control.ownerKey : undefined,
+    controlMode:
+      control?.controlMode === 'desktop_owner' ||
+      control?.controlMode === 'im_owner' ||
+      control?.controlMode === 'im_observer'
+        ? control.controlMode
+        : undefined,
+    sourceExternalSessionId:
+      typeof control?.sourceExternalSessionId === 'string' && control.sourceExternalSessionId
+        ? control.sourceExternalSessionId
+        : undefined,
+    sourceConversationId:
+      typeof control?.sourceConversationId === 'string' && control.sourceConversationId
+        ? control.sourceConversationId
+        : undefined,
+    handoffMode:
+      control?.mode === 'resume' || control?.mode === 'new_thread'
+        ? control.mode
+        : undefined,
+  };
 }
 
 /**
@@ -463,6 +500,7 @@ export type IChannelActiveSessionEntry = {
   bindingId?: string;
   bindingTemporary?: boolean;
   ownerKey?: string;
+  controlMode?: ChannelControlMode;
   handoffMode?: ChannelHandoffMode;
   handoffSourceExternalSessionId?: string;
   handoffSourceConversationId?: string;

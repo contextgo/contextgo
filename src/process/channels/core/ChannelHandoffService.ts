@@ -15,6 +15,7 @@ import { inferRemoteChatType } from './ChannelRouteResolver';
 import {
   resolveChannelConvType,
   withChannelBindingTarget,
+  type ChannelControlMode,
   type ChannelHandoffMode,
   type IAgentProfile,
   type IChannelBinding,
@@ -47,6 +48,7 @@ type QueryResult<T> = {
 const DEFAULT_HANDOFF_MODE: ChannelHandoffMode = 'resume';
 const DEFAULT_CONFLICT_POLICY: NonNullable<IChannelHandoffRequest['conflictPolicy']> = 'reject';
 const DEFAULT_HANDOFF_PRIORITY = 120;
+const DEFAULT_CONTROL_MODE: ChannelControlMode = 'im_owner';
 
 function assertQuerySuccess<T>(result: QueryResult<T>, fallback: string): T {
   if (!result.success) {
@@ -96,6 +98,14 @@ function buildStableBindingId(connectorId: string, chatId: string): string {
   return `binding_handoff_${hash}`;
 }
 
+function buildDesktopOwnerKey(conversationId: string): string {
+  return `desktop:${conversationId}`;
+}
+
+function buildImOwnerKey(connectorId: string, chatId: string): string {
+  return `im:${connectorId}:${chatId}`;
+}
+
 function toChannelAgentType(backend: string): IChannelSession['agentType'] {
   const { convType } = resolveChannelConvType(backend);
   return convType as IChannelSession['agentType'];
@@ -120,6 +130,7 @@ export class ChannelHandoffService {
   async handoffSession(params: IChannelHandoffRequest): Promise<IChannelHandoffResult> {
     const mode = params.mode ?? DEFAULT_HANDOFF_MODE;
     const conflictPolicy = params.conflictPolicy ?? DEFAULT_CONFLICT_POLICY;
+    const controlMode = params.controlMode ?? DEFAULT_CONTROL_MODE;
     const db = await this.deps.getDatabase();
 
     const connector = assertQuerySuccess(
@@ -221,7 +232,11 @@ export class ChannelHandoffService {
             metadata: {
               ...existingTargetSession.metadata,
               control: {
-                ownerKey: `${params.targetConnectorId}:${params.targetChatId}`,
+                ownerKey:
+                  controlMode === 'im_owner'
+                    ? buildImOwnerKey(params.targetConnectorId, params.targetChatId)
+                    : buildDesktopOwnerKey(source.sourceConversationId || existingTargetSession.activeConversationId || 'unknown'),
+                controlMode,
                 sourceExternalSessionId: source.sourceExternalSession?.id,
                 sourceConversationId: source.sourceConversationId,
                 mode,
@@ -242,7 +257,11 @@ export class ChannelHandoffService {
             metadata: {
               source: 'channel-handoff',
               control: {
-                ownerKey: `${params.targetConnectorId}:${params.targetChatId}`,
+                ownerKey:
+                  controlMode === 'im_owner'
+                    ? buildImOwnerKey(params.targetConnectorId, params.targetChatId)
+                    : buildDesktopOwnerKey(source.sourceConversationId || 'unknown'),
+                controlMode,
                 sourceExternalSessionId: source.sourceExternalSession?.id,
                 sourceConversationId: source.sourceConversationId,
                 mode,
@@ -364,6 +383,7 @@ export class ChannelHandoffService {
           ...targetMetadata,
           control: {
             ...controlMetadata,
+            controlMode: 'desktop_owner',
             releasedAt: now,
           },
         },
@@ -384,6 +404,11 @@ export class ChannelHandoffService {
             lastActivity: now,
             metadata: {
               ...sourceExternalSession.metadata,
+              control: {
+                ownerKey: buildDesktopOwnerKey(sourceConversationId),
+                controlMode: 'desktop_owner',
+                restoredAt: now,
+              },
               handoff: {
                 transferredConversationId: undefined,
                 targetExternalSessionId: undefined,
@@ -430,6 +455,59 @@ export class ChannelHandoffService {
     }
 
     return transaction.data;
+  }
+
+  async updateHandoffControlMode(
+    targetExternalSessionId: string,
+    controlMode: ChannelControlMode
+  ): Promise<IChannelHandoffReleaseResult> {
+    const db = await this.deps.getDatabase();
+    const targetExternalSession = assertQuerySuccess(
+      db.getExternalSession(targetExternalSessionId),
+      `Failed to load target external session ${targetExternalSessionId}`
+    );
+    if (!targetExternalSession) {
+      throw new Error(`Target external session ${targetExternalSessionId} not found`);
+    }
+
+    const targetMetadata =
+      targetExternalSession.metadata && typeof targetExternalSession.metadata === 'object'
+        ? (targetExternalSession.metadata as Record<string, unknown>)
+        : {};
+    const controlMetadata =
+      targetMetadata.control && typeof targetMetadata.control === 'object'
+        ? (targetMetadata.control as Record<string, unknown>)
+        : {};
+    const targetRemoteIdentity = assertQuerySuccess(
+      db.getRemoteIdentity(targetExternalSession.remoteIdentityId),
+      `Failed to load target remote identity ${targetExternalSession.remoteIdentityId}`
+    );
+    const sourceConversationId =
+      typeof controlMetadata.sourceConversationId === 'string' && controlMetadata.sourceConversationId
+        ? controlMetadata.sourceConversationId
+        : targetExternalSession.activeConversationId;
+
+    const updated: IExternalSession = {
+      ...targetExternalSession,
+      lastActivity: Date.now(),
+      metadata: {
+        ...targetMetadata,
+        control: {
+          ...controlMetadata,
+          ownerKey:
+            controlMode === 'im_owner'
+              ? buildImOwnerKey(targetExternalSession.connectorId, targetRemoteIdentity?.remoteChatId || 'unknown')
+              : buildDesktopOwnerKey(sourceConversationId || 'unknown'),
+          controlMode,
+          updatedAt: Date.now(),
+        },
+      },
+    };
+    assertQuerySuccess(db.upsertExternalSession(updated), 'Failed to update handoff control mode');
+    return {
+      targetExternalSessionId: updated.id,
+      restoredConversationId: sourceConversationId,
+    };
   }
 
   private resolveSourceContext(db: ContextGoUIDatabase, params: IChannelHandoffRequest): SourceContext {

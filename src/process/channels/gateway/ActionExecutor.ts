@@ -34,11 +34,20 @@ import {
   buildToolConfirmationActionButtons,
 } from '../utils/actionButtons';
 import { stripHtml } from '../plugins/weixin/WeixinAdapter';
-import type { IUnifiedIncomingMessage, IUnifiedOutgoingMessage, PluginType } from '../types';
+import { getExternalSessionControlState, type IUnifiedIncomingMessage, type IUnifiedOutgoingMessage, type PluginType } from '../types';
 import type { PluginManager } from './PluginManager';
 
 function usesActionButtons(platform: PluginType): boolean {
   return platform === 'slack' || platform === 'discord';
+}
+
+function buildCurrentImOwnerKey(context: IActionContext): string | null {
+  const connectorId = context.connector?.id;
+  const chatId = context.remoteIdentity?.remoteChatId || context.chatId;
+  if (!connectorId || !chatId) {
+    return null;
+  }
+  return `im:${connectorId}:${chatId}`;
 }
 
 // ==================== Platform-specific Helpers ====================
@@ -603,6 +612,27 @@ export class ActionExecutor {
    * Handle chat message - send to AI and stream response
    */
   private async handleChatMessage(context: IActionContext, text: string, files?: string[]): Promise<void> {
+    if (context.externalSession) {
+      const control = getExternalSessionControlState(context.externalSession);
+      const currentImOwnerKey = buildCurrentImOwnerKey(context);
+
+      if (control.controlMode === 'desktop_owner' || control.controlMode === 'im_observer') {
+        await context.sendMessage({
+          type: 'text',
+          text: 'This session is currently desktop-controlled. Use Active Sessions to transfer control before sending from IM.',
+        });
+        return;
+      }
+
+      if (control.controlMode === 'im_owner' && control.ownerKey && currentImOwnerKey && control.ownerKey !== currentImOwnerKey) {
+        await context.sendMessage({
+          type: 'text',
+          text: 'This session is currently controlled from another IM entry.',
+        });
+        return;
+      }
+    }
+
     // Update session activity using the stable external-session-backed ID.
     if (context.sessionId) {
       this.sessionManager.updateSessionActivityById(context.sessionId, context.conversationId);

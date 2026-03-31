@@ -158,6 +158,12 @@ function buildActiveSessionEntries(params: {
       bindingId: binding?.id ?? externalSession?.bindingId,
       bindingTemporary: binding?.temporary,
       ownerKey: typeof control.ownerKey === 'string' ? control.ownerKey : undefined,
+      controlMode:
+        control.controlMode === 'desktop_owner' ||
+        control.controlMode === 'im_owner' ||
+        control.controlMode === 'im_observer'
+          ? control.controlMode
+          : undefined,
       handoffMode:
         control.mode === 'new_thread' || control.mode === 'resume' ? control.mode : undefined,
       handoffSourceExternalSessionId:
@@ -588,6 +594,17 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return { success: true, data };
     } catch (error) {
       console.error('[ChannelBridge] endHandoffSession error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.setHandoffControlMode.provider(async ({ targetExternalSessionId, controlMode }) => {
+    try {
+      const handoffService = getChannelHandoffService();
+      const data = await handoffService.updateHandoffControlMode(targetExternalSessionId, controlMode);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] setHandoffControlMode error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });
