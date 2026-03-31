@@ -62,8 +62,14 @@ export function initConversationBridge(
     if (!externalSessionResult.success || !externalSessionResult.data) {
       return;
     }
-
-    const control = getExternalSessionControlState(externalSessionResult.data);
+    const controlLeaseResult = db.getChannelControlLease(externalSessionResult.data.id);
+    const control =
+      controlLeaseResult.success && controlLeaseResult.data
+        ? {
+            ownerKey: controlLeaseResult.data.ownerKey,
+            controlMode: controlLeaseResult.data.controlMode,
+          }
+        : getExternalSessionControlState(externalSessionResult.data);
     if (control.controlMode === 'im_owner') {
       throw new Error('This session is currently controlled from IM. Reclaim control before sending from desktop.');
     }

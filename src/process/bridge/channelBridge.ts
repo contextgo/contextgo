@@ -124,23 +124,20 @@ function buildActiveSessionEntries(params: {
   connectors: IConnectorInstance[];
   bindings: IChannelBinding[];
   externalSessions: IExternalSession[];
+  controlLeases: import('@process/channels/types').IChannelControlLease[];
 }): IChannelActiveSessionEntry[] {
   const remoteIdentityMap = new Map(params.remoteIdentities.map((identity) => [identity.id, identity]));
   const connectorMap = new Map(params.connectors.map((connector) => [connector.id, connector]));
   const bindingMap = new Map(params.bindings.map((binding) => [binding.id, binding]));
   const externalSessionMap = new Map(params.externalSessions.map((session) => [session.id, session]));
+  const controlLeaseMap = new Map(params.controlLeases.map((lease) => [lease.externalSessionId, lease]));
 
   return params.sessions.map((session) => {
     const remoteIdentity = remoteIdentityMap.get(session.userId);
     const connector = remoteIdentity ? connectorMap.get(remoteIdentity.connectorId) : undefined;
     const externalSession = externalSessionMap.get(session.id);
     const binding = externalSession?.bindingId ? bindingMap.get(externalSession.bindingId) : undefined;
-    const metadata =
-      externalSession?.metadata && typeof externalSession.metadata === 'object'
-        ? (externalSession.metadata as Record<string, unknown>)
-        : {};
-    const control =
-      metadata.control && typeof metadata.control === 'object' ? (metadata.control as Record<string, unknown>) : {};
+    const controlLease = controlLeaseMap.get(session.id);
 
     return {
       id: session.id,
@@ -159,21 +156,13 @@ function buildActiveSessionEntries(params: {
       bindingTemporary: binding?.temporary,
       bindingSource: binding ? getChannelBindingSource(binding) : undefined,
       bindingSystemFallback: binding ? isSystemFallbackBinding(binding) : undefined,
-      ownerKey: typeof control.ownerKey === 'string' ? control.ownerKey : undefined,
-      controlMode:
-        control.controlMode === 'desktop_owner' ||
-        control.controlMode === 'im_owner' ||
-        control.controlMode === 'im_observer'
-          ? control.controlMode
-          : undefined,
-      handoffMode:
-        control.mode === 'new_thread' || control.mode === 'resume' ? control.mode : undefined,
-      handoffSourceExternalSessionId:
-        typeof control.sourceExternalSessionId === 'string' ? control.sourceExternalSessionId : undefined,
-      handoffSourceConversationId:
-        typeof control.sourceConversationId === 'string' ? control.sourceConversationId : undefined,
-      leaseUpdatedAt: typeof control.updatedAt === 'number' ? control.updatedAt : undefined,
-      leaseReleasedAt: typeof control.releasedAt === 'number' ? control.releasedAt : undefined,
+      ownerKey: controlLease?.ownerKey,
+      controlMode: controlLease?.controlMode,
+      handoffMode: controlLease?.handoffMode,
+      handoffSourceExternalSessionId: controlLease?.sourceExternalSessionId,
+      handoffSourceConversationId: controlLease?.sourceConversationId,
+      leaseUpdatedAt: controlLease?.updatedAt,
+      leaseReleasedAt: controlLease?.releasedAt,
     };
   });
 }
@@ -482,8 +471,12 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         channelRepo.getChannelBindings(),
       ]);
       const externalSessionsResult = db.getAllExternalSessions();
+      const controlLeasesResult = db.getAllChannelControlLeases();
       if (!externalSessionsResult.success || !externalSessionsResult.data) {
         throw new Error(externalSessionsResult.error || 'Failed to load external sessions');
+      }
+      if (!controlLeasesResult.success || !controlLeasesResult.data) {
+        throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
       }
       return {
         success: true,
@@ -493,6 +486,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           remoteIdentities,
           bindings,
           externalSessions: externalSessionsResult.data,
+          controlLeases: controlLeasesResult.data,
         }),
       };
     } catch (error) {

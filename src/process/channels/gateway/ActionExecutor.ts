@@ -12,6 +12,7 @@ import type { IActionContext, IRegisteredAction } from '../actions/types';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
 import { getChannelRouteResolver } from '../core/ChannelRouteResolver';
 import type { SessionManager } from '../core/SessionManager';
+import { getDatabase } from '@process/services/database';
 import type { PairingService } from '../pairing/PairingService';
 import type { PluginMessageHandler } from '../plugins/BasePlugin';
 import { createMainMenuCard, createErrorRecoveryCard, createToolConfirmationCard } from '../plugins/lark/LarkCards';
@@ -613,7 +614,15 @@ export class ActionExecutor {
    */
   private async handleChatMessage(context: IActionContext, text: string, files?: string[]): Promise<void> {
     if (context.externalSession) {
-      const control = getExternalSessionControlState(context.externalSession);
+      const db = await getDatabase();
+      const controlLeaseResult = db.getChannelControlLease(context.externalSession.id);
+      const control =
+        controlLeaseResult.success && controlLeaseResult.data
+          ? {
+              ownerKey: controlLeaseResult.data.ownerKey,
+              controlMode: controlLeaseResult.data.controlMode,
+            }
+          : getExternalSessionControlState(context.externalSession);
       const currentImOwnerKey = buildCurrentImOwnerKey(context);
 
       if (control.controlMode === 'desktop_owner' || control.controlMode === 'im_observer') {

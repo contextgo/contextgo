@@ -16,6 +16,7 @@ import {
   agentProfileToRow,
   channelBindingToRow,
   channelRunToRow,
+  channelControlLeaseToRow,
   connectorInstanceToRow,
   conversationToRow,
   externalSessionToRow,
@@ -24,6 +25,7 @@ import {
   rowToAgentProfile,
   rowToChannelBinding,
   rowToChannelRun,
+  rowToChannelControlLease,
   rowToConnectorInstance,
   rowToConversation,
   rowToExternalSession,
@@ -36,6 +38,7 @@ import type {
   IAgentProfileRow,
   IChannelBindingRow,
   IChannelRunRow,
+  IChannelControlLeaseRow,
   IConnectorInstanceRow,
   IConversationRow,
   IExternalSessionRow,
@@ -53,6 +56,7 @@ import type { VoiceInputRecord, VoiceInputStats } from '@/common/types/voiceInpu
 import type {
   IAgentProfile,
   IChannelBinding,
+  IChannelControlLease,
   IChannelPluginConfig,
   IChannelUser,
   IChannelSession,
@@ -1991,6 +1995,73 @@ export class ContextGoUIDatabase {
       return { success: true, data: rows.map(rowToExternalSession) };
     } catch (error: any) {
       return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  getChannelControlLease(externalSessionId: string): IQueryResult<IChannelControlLease | null> {
+    try {
+      const row = this.db
+        .prepare('SELECT * FROM channel_control_leases WHERE external_session_id = ?')
+        .get(externalSessionId) as IChannelControlLeaseRow | undefined;
+      return { success: true, data: row ? rowToChannelControlLease(row) : null };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  getAllChannelControlLeases(): IQueryResult<IChannelControlLease[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM channel_control_leases ORDER BY updated_at DESC')
+        .all() as IChannelControlLeaseRow[];
+      return { success: true, data: rows.map(rowToChannelControlLease) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  upsertChannelControlLease(lease: IChannelControlLease): IQueryResult<boolean> {
+    try {
+      const row = channelControlLeaseToRow(lease);
+      this.db
+        .prepare(`
+          INSERT INTO channel_control_leases (
+            external_session_id, owner_key, control_mode, source_external_session_id,
+            source_conversation_id, handoff_mode, created_at, updated_at, released_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(external_session_id) DO UPDATE SET
+            owner_key = excluded.owner_key,
+            control_mode = excluded.control_mode,
+            source_external_session_id = excluded.source_external_session_id,
+            source_conversation_id = excluded.source_conversation_id,
+            handoff_mode = excluded.handoff_mode,
+            updated_at = excluded.updated_at,
+            released_at = excluded.released_at
+        `)
+        .run(
+          row.external_session_id,
+          row.owner_key,
+          row.control_mode,
+          row.source_external_session_id,
+          row.source_conversation_id,
+          row.handoff_mode,
+          row.created_at,
+          row.updated_at,
+          row.released_at
+        );
+      return { success: true, data: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  deleteChannelControlLease(externalSessionId: string): IQueryResult<boolean> {
+    try {
+      const result = this.db.prepare('DELETE FROM channel_control_leases WHERE external_session_id = ?').run(externalSessionId);
+      return { success: true, data: result.changes > 0 };
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
   }
 

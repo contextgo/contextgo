@@ -107,6 +107,22 @@ export function initSchema(db: ISqliteDriver): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_voice_input_records_created_at ON voice_input_records(created_at DESC)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_voice_input_records_status ON voice_input_records(status)');
 
+  db.exec(`CREATE TABLE IF NOT EXISTS channel_control_leases (
+    external_session_id TEXT PRIMARY KEY,
+    owner_key TEXT NOT NULL,
+    control_mode TEXT NOT NULL,
+    source_external_session_id TEXT,
+    source_conversation_id TEXT,
+    handoff_mode TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    released_at INTEGER,
+    FOREIGN KEY (external_session_id) REFERENCES external_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_external_session_id) REFERENCES external_sessions(id) ON DELETE SET NULL,
+    FOREIGN KEY (source_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_channel_control_leases_updated_at ON channel_control_leases(updated_at DESC)');
+
   console.log('[Database] Schema initialized successfully');
 }
 
@@ -135,4 +151,4 @@ export function setDatabaseVersion(db: ISqliteDriver, version: number): void {
  * Current database schema version
  * Update this when adding new migrations in migrations.ts
  */
-export const CURRENT_DB_VERSION = 21;
+export const CURRENT_DB_VERSION = 22;

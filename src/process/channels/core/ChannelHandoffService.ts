@@ -13,6 +13,7 @@ import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
 import crypto from 'crypto';
 import { inferRemoteChatType } from './ChannelRouteResolver';
 import {
+  type IChannelControlLease,
   resolveChannelConvType,
   withChannelBindingTarget,
   type ChannelControlMode,
@@ -270,6 +271,22 @@ export class ChannelHandoffService {
             },
           };
       assertQuerySuccess(db.upsertExternalSession(nextTargetSession), 'Failed to upsert target external session');
+      assertQuerySuccess(
+        db.upsertChannelControlLease({
+          externalSessionId: nextTargetSession.id,
+          ownerKey:
+            controlMode === 'im_owner'
+              ? buildImOwnerKey(params.targetConnectorId, params.targetChatId)
+              : buildDesktopOwnerKey(source.sourceConversationId || 'unknown'),
+          controlMode,
+          sourceExternalSessionId: source.sourceExternalSession?.id,
+          sourceConversationId: source.sourceConversationId,
+          handoffMode: mode,
+          createdAt: existingTargetSession ? now : now,
+          updatedAt: now,
+        } satisfies IChannelControlLease),
+        'Failed to upsert channel control lease'
+      );
 
       if (
         mode === 'resume' &&
@@ -389,6 +406,20 @@ export class ChannelHandoffService {
         },
       };
       assertQuerySuccess(db.upsertExternalSession(releasedTargetSession), 'Failed to release target external session');
+      assertQuerySuccess(
+        db.upsertChannelControlLease({
+          externalSessionId: releasedTargetSession.id,
+          ownerKey: buildDesktopOwnerKey(sourceConversationId || releasedTargetSession.activeConversationId || 'unknown'),
+          controlMode: 'desktop_owner',
+          sourceExternalSessionId,
+          sourceConversationId,
+          handoffMode: bindingHandoff.mode === 'new_thread' || bindingHandoff.mode === 'resume' ? bindingHandoff.mode : undefined,
+          createdAt: now,
+          updatedAt: now,
+          releasedAt: now,
+        } satisfies IChannelControlLease),
+        'Failed to update released control lease'
+      );
 
       let restoredSourceExternalSessionId: string | undefined;
       let restoredConversationId: string | undefined;
@@ -417,6 +448,17 @@ export class ChannelHandoffService {
             },
           };
           assertQuerySuccess(db.upsertExternalSession(restoredSourceSession), 'Failed to restore source external session');
+          assertQuerySuccess(
+            db.upsertChannelControlLease({
+              externalSessionId: restoredSourceSession.id,
+              ownerKey: buildDesktopOwnerKey(sourceConversationId),
+              controlMode: 'desktop_owner',
+              createdAt: now,
+              updatedAt: now,
+              releasedAt: now,
+            } satisfies IChannelControlLease),
+            'Failed to restore source control lease'
+          );
           restoredSourceExternalSessionId = restoredSourceSession.id;
           restoredConversationId = sourceConversationId;
         }
@@ -504,6 +546,28 @@ export class ChannelHandoffService {
       },
     };
     assertQuerySuccess(db.upsertExternalSession(updated), 'Failed to update handoff control mode');
+    assertQuerySuccess(
+      db.upsertChannelControlLease({
+        externalSessionId: updated.id,
+        ownerKey:
+          controlMode === 'im_owner'
+            ? buildImOwnerKey(targetExternalSession.connectorId, targetRemoteIdentity?.remoteChatId || 'unknown')
+            : buildDesktopOwnerKey(sourceConversationId || 'unknown'),
+        controlMode,
+        sourceExternalSessionId:
+          typeof controlMetadata.sourceExternalSessionId === 'string' ? controlMetadata.sourceExternalSessionId : undefined,
+        sourceConversationId,
+        handoffMode:
+          controlMetadata.mode === 'resume' || controlMetadata.mode === 'new_thread' ? controlMetadata.mode : undefined,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        releasedAt:
+          controlMode === 'desktop_owner'
+            ? Date.now()
+            : undefined,
+      } satisfies IChannelControlLease),
+      'Failed to update channel control lease'
+    );
     return {
       targetExternalSessionId: updated.id,
       restoredConversationId: sourceConversationId,

@@ -1178,6 +1178,34 @@ const migration_v21: IMigration = {
   },
 };
 
+const migration_v22: IMigration = {
+  version: 22,
+  name: 'Add channel control leases table',
+  up: (db) => {
+    db.exec(`CREATE TABLE IF NOT EXISTS channel_control_leases (
+        external_session_id TEXT PRIMARY KEY,
+        owner_key TEXT NOT NULL,
+        control_mode TEXT NOT NULL,
+        source_external_session_id TEXT,
+        source_conversation_id TEXT,
+        handoff_mode TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        released_at INTEGER,
+        FOREIGN KEY (external_session_id) REFERENCES external_sessions(id) ON DELETE CASCADE,
+        FOREIGN KEY (source_external_session_id) REFERENCES external_sessions(id) ON DELETE SET NULL,
+        FOREIGN KEY (source_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
+      )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_channel_control_leases_updated_at ON channel_control_leases(updated_at DESC)');
+    console.log('[Migration v22] Added channel_control_leases table');
+  },
+  down: (db) => {
+    db.exec('DROP INDEX IF EXISTS idx_channel_control_leases_updated_at');
+    db.exec('DROP TABLE IF EXISTS channel_control_leases');
+    console.log('[Migration v22] Rolled back: Removed channel_control_leases table');
+  },
+};
+
 /**
  * All migrations in order
  */
@@ -1186,7 +1214,7 @@ export const ALL_MIGRATIONS: IMigration[] = [
   migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6,
   migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12,
   migration_v13, migration_v14, migration_v15, migration_v16, migration_v17, migration_v18,
-  migration_v19, migration_v20, migration_v21,
+  migration_v19, migration_v20, migration_v21, migration_v22,
 ];
 
 /**

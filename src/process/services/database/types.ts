@@ -9,9 +9,11 @@ import type { ConversationSource, TChatConversation, IConfigStorageRefer, TSpace
 import type { TMessage } from '@/common/chat/chatLib';
 import type {
   ChannelBindingScopeType,
+  ChannelControlMode,
   ChannelRunStatus,
   IAgentProfile,
   IChannelBinding,
+  IChannelControlLease,
   IChannelRun,
   IConnectorInstance,
   IExternalSession,
@@ -180,6 +182,18 @@ export interface IExternalSessionRow {
   created_at: number;
   last_activity: number;
   metadata: string;
+}
+
+export interface IChannelControlLeaseRow {
+  external_session_id: string;
+  owner_key: string;
+  control_mode: ChannelControlMode;
+  source_external_session_id: string | null;
+  source_conversation_id: string | null;
+  handoff_mode: string | null;
+  created_at: number;
+  updated_at: number;
+  released_at: number | null;
 }
 
 /**
@@ -578,6 +592,34 @@ export function externalSessionToRow(session: IExternalSession): IExternalSessio
     created_at: session.createdAt,
     last_activity: session.lastActivity,
     metadata: JSON.stringify(session.metadata ?? {}),
+  };
+}
+
+export function rowToChannelControlLease(row: IChannelControlLeaseRow): IChannelControlLease {
+  return {
+    externalSessionId: row.external_session_id,
+    ownerKey: row.owner_key,
+    controlMode: row.control_mode,
+    sourceExternalSessionId: row.source_external_session_id ?? undefined,
+    sourceConversationId: row.source_conversation_id ?? undefined,
+    handoffMode: row.handoff_mode === 'resume' || row.handoff_mode === 'new_thread' ? row.handoff_mode : undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    releasedAt: row.released_at ?? undefined,
+  };
+}
+
+export function channelControlLeaseToRow(lease: IChannelControlLease): IChannelControlLeaseRow {
+  return {
+    external_session_id: lease.externalSessionId,
+    owner_key: lease.ownerKey,
+    control_mode: lease.controlMode,
+    source_external_session_id: lease.sourceExternalSessionId ?? null,
+    source_conversation_id: lease.sourceConversationId ?? null,
+    handoff_mode: lease.handoffMode ?? null,
+    created_at: lease.createdAt,
+    updated_at: lease.updatedAt,
+    released_at: lease.releasedAt ?? null,
   };
 }
 

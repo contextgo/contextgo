@@ -215,6 +215,18 @@ export type ChannelHandoffMode = 'resume' | 'new_thread';
 export type ChannelHandoffConflictPolicy = 'reject' | 'interrupt';
 export type ChannelControlMode = 'desktop_owner' | 'im_owner' | 'im_observer';
 
+export interface IChannelControlLease {
+  externalSessionId: string;
+  ownerKey: string;
+  controlMode: ChannelControlMode;
+  sourceExternalSessionId?: string;
+  sourceConversationId?: string;
+  handoffMode?: ChannelHandoffMode;
+  createdAt: number;
+  updatedAt: number;
+  releasedAt?: number;
+}
+
 /**
  * Explicit routing rule from connector scope to agent profile.
  */
