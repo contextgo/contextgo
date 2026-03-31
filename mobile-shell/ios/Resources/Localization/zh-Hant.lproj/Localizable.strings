@@ -2,7 +2,7 @@
 "connection.title" = "連接 ContextGo";
 "connection.description" = "ContextGo 預設會開啟官方 Remote。只有在你想直接連到自己的桌面裝置或自託管閘道時，才需要使用自訂 WebUI 位址。";
 "connection.officialRemote.action" = "使用官方 Remote";
-"connection.officialRemote.detail" = "開啟 https://remote.contextgo.io/login";
+"connection.officialRemote.detail" = "開啟 https://remote.contextgo.io/remote/devices";
 "connection.custom.title" = "自訂位址";
 "connection.custom.description" = "貼上 WebUI 基礎位址，例如 http://192.168.1.10:3000，或貼上 ContextGo 產生的 /qr-login?token=... 連結。";
 "connection.custom.placeholder" = "http://192.168.1.10:3000";

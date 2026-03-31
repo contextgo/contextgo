@@ -489,7 +489,7 @@
   "webui.port": "連接埠",
   "webui.portDesc": "WebUI 服務監聽連接埠",
   "webui.allowRemote": "允許區域網路 / 自託管存取",
-  "webui.allowRemoteDesc": "將目前裝置暴露給區域網路，或接到你自己的反向代理、FRP、Tailscale 等方案",
+  "webui.allowRemoteDesc": "將目前裝置暴露給區域網路，或接到你自己的反向代理、VPN、內網穿透或其他自託管網路方案",
   "webui.viewGuide": "查看方式",
   "webui.accessInfo": "存取網址",
   "webui.localUrl": "本機網址",

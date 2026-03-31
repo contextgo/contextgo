@@ -101,7 +101,6 @@ const CLOUD_USER_KEY = 'cloud.user';
 const CLOUD_DEVICE_KEY = 'cloud.device';
 const CLOUD_DEVICE_TOKEN_KEY = 'cloud.deviceToken';
 const CLOUD_SYNC_STATE_KEY = 'cloud.sync.state';
-const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
 const CLOUD_LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 
 const isCloudRequestError = (error: unknown): error is CloudRequestError => error instanceof CloudRequestError;
@@ -229,6 +228,7 @@ export class CloudService {
       user: effectiveUser,
       device: effectiveDevice,
       deviceTokenAvailable: Boolean(deviceToken),
+      officialRemote: this.officialRemoteTunnelService.getState(),
       providers: CLOUD_AUTH_PROVIDERS,
       authBaseUrl: CLOUD_AUTH_BASE_URL,
       apiBaseUrl: CLOUD_API_BASE_URL,
@@ -282,7 +282,6 @@ export class CloudService {
     await this.syncManagedInfermeshProvider().catch((error: unknown) => {
       console.warn('[Cloud] InferMesh provider sync failed after login:', error);
     });
-    await this.enableDesktopWebUiForOfficialRemote();
     await this.syncNow().catch((error: unknown) => {
       console.warn('[Cloud] Post-login sync failed:', error);
     });
@@ -682,15 +681,6 @@ export class CloudService {
     await ProcessConfig.remove(CLOUD_DEVICE_KEY);
     await ProcessConfig.remove(CLOUD_DEVICE_TOKEN_KEY);
     await ProcessConfig.remove(CLOUD_SYNC_STATE_KEY);
-  }
-
-  private async enableDesktopWebUiForOfficialRemote(): Promise<void> {
-    const currentValue = await ProcessConfig.get(DESKTOP_WEBUI_ENABLED_KEY);
-    if (currentValue === true) {
-      return;
-    }
-
-    await ProcessConfig.set(DESKTOP_WEBUI_ENABLED_KEY, true);
   }
 
   private async emitStatusChanged(status?: CloudStatus): Promise<void> {

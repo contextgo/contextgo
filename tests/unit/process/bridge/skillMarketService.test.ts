@@ -128,6 +128,41 @@ const createManifestResponse = () =>
     }
   );
 
+const createMismatchedIdManifestResponse = () =>
+  new Response(
+    JSON.stringify({
+      items: [
+        {
+          id: 'trackup-food-analyze',
+          name: 'trackup-food-analyze',
+          displayName: 'Trackup Food Analyze',
+          version: '1.0.5',
+          author: 'militing',
+          description: 'Analyzes food-related tracking workflows.',
+          categories: ['automation'],
+          tags: ['food'],
+          themes: ['analysis'],
+          industries: ['operations'],
+          primaryCapability: 'Analysis',
+          archives: [
+            {
+              source: 'skillhub',
+              relativePath: 'trackup-food-analyze/1.0.5.zip',
+              label: 'SkillHub Archive',
+            },
+          ],
+          metrics: {
+            skillhub_installs: 4,
+          },
+        },
+      ],
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+
 const createIndustryResponse = () =>
   new Response(
     JSON.stringify({
@@ -144,6 +179,19 @@ const createIndustryResponse = () =>
           topThemes: ['code'],
           bundleIds: ['engineering-copilot'],
           recommendedSkillIds: ['market-skill::1.0.0::tester'],
+        },
+        {
+          id: 'research-analysis',
+          label: 'Research Analysis',
+          summary: 'Track markets and summarize signals.',
+          problems: ['Scattered sources'],
+          useCases: ['Industry briefings'],
+          outcomes: ['Faster weekly reports'],
+          workflow: ['Collect', 'Summarize'],
+          count: 1,
+          topThemes: ['analytics'],
+          bundleIds: ['research-briefing'],
+          recommendedSkillIds: ['analytics-skill::2.0.0::tester'],
         },
       ],
     }),
@@ -173,6 +221,40 @@ const createBundleResponse = () =>
             },
           ],
           skillIds: ['market-skill::1.0.0::tester', 'analytics-skill::2.0.0::tester'],
+        },
+        {
+          id: 'engineering-foundation',
+          title: 'Engineering Foundation',
+          summary: 'Baseline automation for engineering teams.',
+          industries: ['engineering'],
+          forTeams: 'Platform teams',
+          deliverables: ['Checklists'],
+          valuePoints: ['Consistent quality'],
+          steps: [
+            {
+              label: 'Verify',
+              themes: ['cli'],
+              skillIds: ['market-skill::1.0.0::tester'],
+            },
+          ],
+          skillIds: ['market-skill::1.0.0::tester'],
+        },
+        {
+          id: 'research-briefing',
+          title: 'Research Briefing',
+          summary: 'Collect signals and generate briefings.',
+          industries: ['research-analysis'],
+          forTeams: 'Research teams',
+          deliverables: ['Briefings'],
+          valuePoints: ['Clearer updates'],
+          steps: [
+            {
+              label: 'Summarize',
+              themes: ['analytics'],
+              skillIds: ['analytics-skill::2.0.0::tester'],
+            },
+          ],
+          skillIds: ['analytics-skill::2.0.0::tester'],
         },
       ],
     }),
@@ -236,6 +318,29 @@ describe('SkillMarketService.searchSkills', () => {
     });
 
     await expect(service.searchSkills({ query: 'anything' })).rejects.toThrow('Failed to fetch Skill Market config');
+  });
+
+  it('filters bundles by industry and keeps industry-recommended bundles first', async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === CONFIG_URL) return createConfigResponse();
+      if (url === CURATED_STATS_URL) return createStatsResponse();
+      if (url === CURATED_MANIFEST_URL) return createManifestResponse();
+      if (url === INDUSTRY_URL) return createIndustryResponse();
+      if (url === BUNDLE_URL) return createBundleResponse();
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const service = new SkillMarketService({
+      fetchImpl,
+      configUrl: CONFIG_URL,
+      skillsDir: path.join(os.tmpdir(), 'unused-skill-market-industry'),
+    });
+
+    const result = await service.searchSkills({ industryId: 'engineering', limit: 10 });
+
+    expect(result.items.map((item) => item.id)).toEqual(['market-skill::1.0.0::tester']);
+    expect(result.bundles.map((bundle) => bundle.id)).toEqual(['engineering-copilot', 'engineering-foundation']);
   });
 });
 
@@ -314,6 +419,49 @@ describe('SkillMarketService.installSkill', () => {
 
     await expect(service.installSkill({ skillId: 'market-skill::1.0.0::tester' })).rejects.toThrow(
       'Downloaded archive does not contain a SKILL.md entry point'
+    );
+  });
+
+  it('installs a skill when the full manifest id differs from the structured market skill id', async () => {
+    skillsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'skill-market-install-mismatched-id-'));
+    const archiveBuffer = await createArchiveBuffer({
+      'trackup-food-analyze/SKILL.md':
+        '---\nname: trackup-food-analyze\ndescription: test skill\n---\n# Trackup Food Analyze',
+    });
+    const trackupPackageUrl = `${SITE_URL}/packages/skillhub/trackup-food-analyze/1.0.5.zip`;
+
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === CONFIG_URL) return createConfigResponse();
+      if (url === FULL_MANIFEST_URL) return createMismatchedIdManifestResponse();
+      if (url === trackupPackageUrl) {
+        return new Response(archiveBuffer, {
+          status: 200,
+          headers: { 'Content-Type': 'application/zip' },
+        });
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const service = new SkillMarketService({
+      fetchImpl,
+      configUrl: CONFIG_URL,
+      skillsDir,
+    });
+
+    const result = await service.installSkill({
+      skillId: 'trackup-food-analyze::1.0.5::militing',
+      archive: {
+        source: 'skillhub',
+        relativePath: 'trackup-food-analyze/1.0.5.zip',
+      },
+    });
+
+    expect(result.skillName).toBe('trackup-food-analyze');
+    expect(result.archiveUrl).toBe(trackupPackageUrl);
+    await expect(fs.readFile(path.join(skillsDir, 'trackup-food-analyze', 'SKILL.md'), 'utf-8')).resolves.toContain(
+      'trackup-food-analyze'
     );
   });
 });

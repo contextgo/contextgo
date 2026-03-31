@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 final class ConnectionStore: ObservableObject {
-  static let officialRemoteURL = "https://remote.contextgo.io/"
+  static let officialRemoteURL = "https://remote.contextgo.io/remote/devices"
 
   @Published var inputText: String = ""
   @Published var targetURL: URL?
@@ -42,6 +42,14 @@ final class ConnectionStore: ObservableObject {
     }
 
     applyTarget(resolvedURL, persist: persist)
+  }
+
+  func handleIncomingURL(_ incomingURL: URL) {
+    guard let resolvedURL = ShellTargetResolver.resolve(rawInput: incomingURL.absoluteString) else {
+      return
+    }
+
+    applyTarget(resolvedURL)
   }
 
   func prepareCustomHostInput() {

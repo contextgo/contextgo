@@ -2,7 +2,7 @@
 "connection.title" = "ContextGo'ya Bağlan";
 "connection.description" = "ContextGo varsayılan olarak Official Remote'u açar. Özel bir WebUI ana bilgisayarını yalnızca kendi masaüstünüze veya self-hosted ağ geçidine doğrudan bağlanmak istediğinizde kullanın.";
 "connection.officialRemote.action" = "Official Remote'u Kullan";
-"connection.officialRemote.detail" = "https://remote.contextgo.io/login adresini aç";
+"connection.officialRemote.detail" = "https://remote.contextgo.io/remote/devices adresini aç";
 "connection.custom.title" = "Özel ana bilgisayar";
 "connection.custom.description" = "ContextGo tarafından oluşturulan bir /qr-login?token=... bağlantısını veya http://192.168.1.10:3000 gibi bir WebUI temel URL'sini yapıştırın.";
 "connection.custom.placeholder" = "http://192.168.1.10:3000";

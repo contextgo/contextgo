@@ -42,12 +42,22 @@ export type CloudSyncState = {
   pendingLanguageSync: boolean;
 };
 
+export type OfficialRemoteStatus = {
+  desired: boolean;
+  running: boolean;
+  transport?: 'cloud-relay';
+  relayUrl?: string;
+  clientConnected?: boolean;
+  message?: string;
+};
+
 export type CloudStatus = {
   authenticated: boolean;
   browserSessionExpired: boolean;
   user: CloudUser | null;
   device: CloudDevice | null;
   deviceTokenAvailable: boolean;
+  officialRemote: OfficialRemoteStatus;
   providers: CloudAuthProviderId[];
   authBaseUrl: string;
   apiBaseUrl: string;

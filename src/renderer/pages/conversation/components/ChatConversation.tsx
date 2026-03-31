@@ -369,6 +369,7 @@ const ChatConversation: React.FC<{
       const extra = conversation.extra as { backend?: string; currentModelId?: string };
       return (
         <AcpModelSelector
+          key={`${conversation.id}:${extra.backend || 'acp'}`}
           conversationId={conversation.id}
           backend={extra.backend}
           initialModelId={extra.currentModelId}
@@ -376,12 +377,21 @@ const ChatConversation: React.FC<{
       );
     }
     if (conversation.type === 'codex') {
-      return <AcpModelSelector conversationId={conversation.id} />;
+      const extra = conversation.extra as { codexModel?: string };
+      return (
+        <AcpModelSelector
+          key={`${conversation.id}:codex`}
+          conversationId={conversation.id}
+          backend='codex'
+          initialModelId={extra.codexModel}
+        />
+      );
     }
     if (conversation.type === 'openclaw-gateway') {
       const extra = conversation.extra as { runtimeValidation?: { expectedModel?: string } };
       return (
         <AcpModelSelector
+          key={`${conversation.id}:openclaw-gateway`}
           conversationId={conversation.id}
           backend='openclaw-gateway'
           initialModelId={extra.runtimeValidation?.expectedModel}

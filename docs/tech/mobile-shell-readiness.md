@@ -144,7 +144,7 @@ For current product direction, mobile should be understood as:
 
 - a remote use-side / control-side client
 - attached to a desktop-hosted ContextGo runtime
-- optionally exposed over FRP or another reverse-tunnel / reverse-proxy layer
+- reached either through the official cloud relay or through a user-managed local / self-hosted network path
 
 The expected file flow is:
 

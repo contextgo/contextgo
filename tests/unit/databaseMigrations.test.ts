@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { runMigrations } from '../../src/process/services/database/migrations';
 import type { IStatement, ISqliteDriver } from '../../src/process/services/database/drivers/ISqliteDriver';
+import { initSchema } from '../../src/process/services/database/schema';
 
 class NodeSqliteStatement implements IStatement {
   constructor(private readonly statement: ReturnType<DatabaseSync['prepare']>) {}
@@ -128,5 +129,60 @@ describe('database migrations', () => {
       'idx_spaces_user_updated',
       'sqlite_autoindex_spaces_1',
     ]);
+  });
+
+  it('repairs a v21 database when channel binding tables are missing', () => {
+    driver = new NodeSqliteDriver();
+    driver.pragma('user_version = 21');
+
+    driver.exec(`CREATE TABLE users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE,
+      password_hash TEXT NOT NULL,
+      avatar_path TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      last_login INTEGER
+    )`);
+    driver.exec(`CREATE TABLE conversations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      extra TEXT NOT NULL,
+      model TEXT,
+      status TEXT,
+      source TEXT,
+      channel_chat_id TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`);
+
+    initSchema(driver);
+
+    const repairedTables = driver
+      .prepare(
+        `SELECT name FROM sqlite_master
+         WHERE type = 'table' AND name IN ('connector_instances', 'agent_profiles', 'channel_bindings', 'external_sessions', 'runs', 'pairing_requests_v2')
+         ORDER BY name`
+      )
+      .all() as Array<{ name: string }>;
+
+    expect(repairedTables.map(({ name }) => name)).toEqual([
+      'agent_profiles',
+      'channel_bindings',
+      'connector_instances',
+      'external_sessions',
+      'pairing_requests_v2',
+      'runs',
+    ]);
+
+    const conversationColumns = driver.pragma('table_info(conversations)') as Array<{ name: string }>;
+    expect(conversationColumns.map(({ name }) => name)).toContain('external_session_id');
+    expect(conversationColumns.map(({ name }) => name)).toContain('root_run_id');
+
+    const userColumns = driver.pragma('table_info(users)') as Array<{ name: string }>;
+    expect(userColumns.map(({ name }) => name)).toContain('jwt_secret');
   });
 });

@@ -7,6 +7,7 @@
 import { bridge, logger } from '@office-ai/platform';
 import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import type { ElectronBridgeAPI } from '@/common/types/electron';
+import { buildBrowserLoginRedirectPath } from './browserAuthRedirect';
 
 interface CustomWindow extends Window {
   electronAPI?: ElectronBridgeAPI;
@@ -43,7 +44,13 @@ if (win.electronAPI) {
   // Web runtime bridge: ensure the socket reconnects after login so session cookie can be sent
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const defaultHost = `${window.location.hostname}:${WEBUI_DEFAULT_PORT}`;
-  const socketUrl = `${protocol}//${window.location.host || defaultHost}`;
+  const socketParams = new URLSearchParams();
+  const remoteDeviceId = new URLSearchParams(window.location.search).get('device_id');
+  if (remoteDeviceId) {
+    socketParams.set('device_id', remoteDeviceId);
+  }
+  const socketQuery = socketParams.toString();
+  const socketUrl = `${protocol}//${window.location.host || defaultHost}${socketQuery ? `?${socketQuery}` : ''}`;
 
   type QueuedMessage = { name: string; data: unknown };
 
@@ -139,14 +146,18 @@ if (win.electronAPI) {
 
           // 已在登录页则不再重定向，防止无限刷新循环
           // Skip redirect if already on login page to prevent infinite reload loop
-          if (window.location.pathname === '/login' || window.location.hash.includes('/login')) {
+          const redirectPath = buildBrowserLoginRedirectPath(window.location.href);
+          if (
+            redirectPath === '/login' &&
+            (window.location.pathname === '/login' || window.location.hash.includes('/login'))
+          ) {
             return;
           }
 
           // 短暂延迟后跳转到登录页，以便显示 UI 反馈
           // Redirect to login page after a short delay to show any UI feedback
           setTimeout(() => {
-            window.location.href = '/login';
+            window.location.href = redirectPath;
           }, 1000);
 
           return;
@@ -176,11 +187,15 @@ if (win.electronAPI) {
         }
         // 已在登录页则不再重定向，防止无限刷新循环
         // Skip redirect if already on login page to prevent infinite reload loop
-        if (window.location.pathname === '/login' || window.location.hash.includes('/login')) {
+        const redirectPath = buildBrowserLoginRedirectPath(window.location.href);
+        if (
+          redirectPath === '/login' &&
+          (window.location.pathname === '/login' || window.location.hash.includes('/login'))
+        ) {
           return;
         }
         setTimeout(() => {
-          window.location.href = '/login';
+          window.location.href = redirectPath;
         }, 500);
         return;
       }

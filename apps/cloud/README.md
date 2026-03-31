@@ -8,6 +8,7 @@ This directory contains the lightweight cloud-side auth and API service for Cont
 - Google OAuth login
 - SQLite-backed users, OAuth accounts, sessions, and OAuth state
 - Browser-session-backed device registration and device management
+- WebSocket-based Official Remote cloud relay for live desktop sessions
 - Device-token-backed sync API with append-only event cursor
 - Shared secure session cookie for `*.contextgo.io`
 - Human-friendly login page on `auth.contextgo.io`
@@ -84,6 +85,7 @@ python3 -m unittest discover -s tests
 
 - `GET /healthz`
 - `GET /login`
+- `GET /remote/devices`
 - `GET /api/auth/providers`
 - `GET /api/auth/oauth/{provider}/start`
 - `GET /api/auth/oauth/{provider}/callback`
@@ -91,7 +93,10 @@ python3 -m unittest discover -s tests
 - `POST /api/auth/logout`
 - `POST /api/devices/register`
 - `GET /api/devices`
+- `GET /api/remote/devices`
 - `POST /api/devices/{device_id}/revoke`
+- `WS /api/remote/device-connect`
+- `WS /api/remote/client-connect?device_id=...`
 - `GET /api/integrations/infermesh/provider`
 - `POST /api/sync/push`
 - `GET /api/sync/pull`

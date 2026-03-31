@@ -640,6 +640,14 @@ const WebuiModalContent: React.FC = () => {
   };
   const displayPassword = getDisplayPassword();
   const displayUsername = status?.adminUsername || 'admin';
+  const officialRemoteStatus = cloudStatus?.officialRemote;
+  const officialRemoteRunning = officialRemoteStatus?.running === true;
+  const officialRemoteNeedsLink = Boolean(cloudStatus?.user) && !cloudStatus?.deviceTokenAvailable;
+  const officialRemoteStatusText = officialRemoteRunning
+    ? t('settings.webui.officialRemoteDeviceReady')
+    : officialRemoteNeedsLink
+      ? t('settings.webui.officialRemoteDevicePending')
+      : officialRemoteStatus?.message || t('settings.webui.officialRemoteDevicePending');
 
   const handleCloudLogin = useCallback(
     async (provider: CloudAuthProviderId) => {
@@ -743,13 +751,14 @@ const WebuiModalContent: React.FC = () => {
                     name: cloudStatus.user.displayName || cloudStatus.user.username,
                   })}
                 </div>
-                <div className='text-12px text-t-secondary'>
-                  {cloudStatus.deviceTokenAvailable
-                    ? t('settings.webui.officialRemoteDeviceReady')
-                    : t('settings.webui.officialRemoteDevicePending')}
-                </div>
+                <div className='text-12px text-t-secondary'>{officialRemoteStatusText}</div>
                 <div className='flex flex-wrap gap-8px'>
-                  <Button type='primary' onClick={handleOpenOfficialRemote}>
+                  <Button
+                    type='primary'
+                    onClick={handleOpenOfficialRemote}
+                    disabled={!officialRemoteRunning}
+                    title={!officialRemoteRunning ? officialRemoteStatusText : undefined}
+                  >
                     {t('settings.webui.openOfficialRemote')}
                   </Button>
                 </div>

@@ -13,17 +13,20 @@ const docsContent: Record<SiteLocale, DocsSection> = {
       {
         id: 'guides',
         title: 'Guides',
-        description: 'Start here to understand the product model, install flow, and how users should approach the first working setup.',
+        description:
+          'Start here to understand the product model, install flow, and how users should approach the first working setup.',
       },
       {
         id: 'features',
         title: 'Features',
-        description: 'These docs explain the functional surfaces users actually operate: agents, hooks, schedules, runtimes, connectors, and the skill market.',
+        description:
+          'These docs explain the functional surfaces users actually operate: agents, hooks, schedules, runtimes, connectors, and the skill market.',
       },
       {
         id: 'operations',
         title: 'Operations',
-        description: 'These docs define cloud account behavior, remote-access mechanics, release operations, and troubleshooting guidance.',
+        description:
+          'These docs define cloud account behavior, remote-access mechanics, release operations, and troubleshooting guidance.',
       },
     ],
     entries: [
@@ -361,8 +364,8 @@ const docsContent: Record<SiteLocale, DocsSection> = {
           {
             heading: 'Why a stable device-side connection matters',
             paragraphs: [
-              'A public remote page only works when the desktop host has an active outbound connection to the relay or tunnel layer. In the earlier FRP-based design, that meant the desktop had to keep a stable FRP client session.',
-              'The same product principle remains true even if the transport changes. Whether you use FRP, Cloudflare Tunnel, or a custom relay, the device side still has to remain connected and authenticated.',
+              'A public remote page only works when the desktop host has an active outbound connection to the official cloud relay. The hosted experience depends on the device keeping that authenticated relay session alive.',
+              'The underlying transport can evolve, but the product principle does not change: the device side still has to remain connected and authenticated before the remote page becomes usable.',
             ],
             bullets: [
               'Desktop host publishes availability',
@@ -486,8 +489,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'guides',
         eyebrow: '快速开始',
         title: '在第一台桌面设备上完成 ContextGo 初始化',
-        summary:
-          '安装桌面端、登录云账号、绑定当前设备，并确认本地主机已经为移动端和浏览器访问准备完成。',
+        summary: '安装桌面端、登录云账号、绑定当前设备，并确认本地主机已经为移动端和浏览器访问准备完成。',
         readingTime: '5 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -504,11 +506,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
               '通过桌面端里的云账号入口，使用 GitHub 或 Google 登录。浏览器流程完成后，ContextGo 会把当前桌面设备注册成云端账号下的一台设备。',
               '云账号并不是把执行搬到云端，而是把身份、设备注册和轻量同步状态绑定起来，让多台设备能够相互发现。',
             ],
-            bullets: [
-              '桌面端仍然是执行主机',
-              '云账号负责身份与设备绑定',
-              '移动端和网页通过云层发现同一批设备',
-            ],
+            bullets: ['桌面端仍然是执行主机', '云账号负责身份与设备绑定', '移动端和网页通过云层发现同一批设备'],
           },
           {
             heading: '确认本地主机状态正常',
@@ -524,8 +522,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'guides',
         eyebrow: '产品模型',
         title: '先理解 ContextGo 的产品模型，再扩大使用范围',
-        summary:
-          '先厘清桌面主机、移动壳、云账号、WebUI 和 release 仓库之间的关系，再去扩展更多设备和团队使用。',
+        summary: '先厘清桌面主机、移动壳、云账号、WebUI 和 release 仓库之间的关系，再去扩展更多设备和团队使用。',
         readingTime: '6 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -542,11 +539,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
               '桌面端仍然是执行主机。云账号负责身份与设备发现。移动端和浏览器端是控制面，用来发现并连接这些主机。',
               '版本运维又是另一条线：contextgo/contextgo-releases 是安装包、校验值和版本历史的事实来源。',
             ],
-            bullets: [
-              '桌面端负责执行',
-              '云端负责身份与设备发现',
-              'release 仓库负责产物事实来源',
-            ],
+            bullets: ['桌面端负责执行', '云端负责身份与设备发现', 'release 仓库负责产物事实来源'],
           },
           {
             heading: '后面的文档怎么读',
@@ -579,11 +572,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
               'Assistants 管理属于配置层，负责保存可复用的定义、能力、指令或 Runtime 绑定。它和真正开始执行工作的主界面是不同层次。',
               '特别是在支持多个 Runtime 之后，这个区分会更加重要，因为 Runtime 层、Assistant 层和当前执行层必须保持分离。',
             ],
-            bullets: [
-              'Agent 入口：开始工作',
-              'Assistants 管理：维护可复用定义',
-              'Runtime 管理：安装与修复执行后端',
-            ],
+            bullets: ['Agent 入口：开始工作', 'Assistants 管理：维护可复用定义', 'Runtime 管理：安装与修复执行后端'],
           },
           {
             heading: '推荐的信息架构',
@@ -598,8 +587,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'features',
         eyebrow: '协作模式',
         title: 'Harness 模式与 Agent 协作工作流',
-        summary:
-          '解释本地 harness 模式如何与远端 workflow 共存，以及为什么 Agent 协作模式是产品的一等工作方式。',
+        summary: '解释本地 harness 模式如何与远端 workflow 共存，以及为什么 Agent 协作模式是产品的一等工作方式。',
         readingTime: '7 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -630,8 +618,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'features',
         eyebrow: 'Hooks',
         title: '在合适的时机用 Hooks 扩展工作流',
-        summary:
-          'Hooks 是在执行事件附近插入受控行为的机制。用户需要看到清晰的触发模型，而不是一个孤立配置表单。',
+        summary: 'Hooks 是在执行事件附近插入受控行为的机制。用户需要看到清晰的触发模型，而不是一个孤立配置表单。',
         readingTime: '6 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -648,17 +635,11 @@ const docsContent: Record<SiteLocale, DocsSection> = {
               '用户首先需要知道 Hook 会在什么时候运行，例如开始前、输出后、发布动作发生时，或任务状态切换时。没有这个模型，Hook 配置就会显得很随机。',
               '触发模型清楚之后，再去解释输入、输出和安全边界，用户才容易真正理解。',
             ],
-            bullets: [
-              '什么事件会触发 Hook',
-              'Hook 会收到哪些上下文',
-              'Hook 被允许产生什么副作用',
-            ],
+            bullets: ['什么事件会触发 Hook', 'Hook 会收到哪些上下文', 'Hook 被允许产生什么副作用'],
           },
           {
             heading: '为什么它对 ContextGo 很重要',
-            paragraphs: [
-              'Hooks 把上下文工作和可重复自动化连接起来，让产品既能保留人工审阅，又能把重复步骤标准化。',
-            ],
+            paragraphs: ['Hooks 把上下文工作和可重复自动化连接起来，让产品既能保留人工审阅，又能把重复步骤标准化。'],
           },
         ],
       },
@@ -667,8 +648,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'features',
         eyebrow: '定时任务',
         title: '定时任务与 Cron 驱动自动化',
-        summary:
-          '解释周期执行是如何工作的、哪些自动化适合放进定时任务，以及长时间运行场景下用户应该关注什么。',
+        summary: '解释周期执行是如何工作的、哪些自动化适合放进定时任务，以及长时间运行场景下用户应该关注什么。',
         readingTime: '6 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -688,9 +668,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
           },
           {
             heading: '最适合的使用方式',
-            paragraphs: [
-              '它最适合那些规律性强、可重复、需要上下文但不需要人每天手工点一遍的工作。',
-            ],
+            paragraphs: ['它最适合那些规律性强、可重复、需要上下文但不需要人每天手工点一遍的工作。'],
           },
         ],
       },
@@ -699,8 +677,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'features',
         eyebrow: '技能市场',
         title: '技能市场与可复用能力包',
-        summary:
-          '让用户理解技能市场如何扩展 ContextGo、如何看待本地 skill 与下载 skill，以及安装信任边界应该怎么讲。',
+        summary: '让用户理解技能市场如何扩展 ContextGo、如何看待本地 skill 与下载 skill，以及安装信任边界应该怎么讲。',
         readingTime: '6 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -717,11 +694,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
               '用户需要知道当前 skill 是内置的、本地的，还是下载的；也需要知道它只是补充提示词和说明，还是会带来脚本、代码或联网行为。',
               '好的文档应该把“安装了什么、它放在哪里、如何更新和移除”讲清楚。',
             ],
-            bullets: [
-              '内置 skill 与下载 skill 的区别',
-              'skill 会引入哪些文件或行为',
-              '如何更新和卸载',
-            ],
+            bullets: ['内置 skill 与下载 skill 的区别', 'skill 会引入哪些文件或行为', '如何更新和卸载'],
           },
           {
             heading: '为什么这是核心能力',
@@ -736,8 +709,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'features',
         eyebrow: '运行时',
         title: '本地运行时与 CLI 健康管理',
-        summary:
-          '安装支持的运行时、修复损坏的 CLI 环境，并理解为什么“已安装”并不等于“已可用”。',
+        summary: '安装支持的运行时、修复损坏的 CLI 环境，并理解为什么“已安装”并不等于“已可用”。',
         readingTime: '6 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -768,8 +740,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'features',
         eyebrow: 'Connectors',
         title: 'Connectors、渠道与发布路径',
-        summary:
-          '解释来源接入和渠道发布如何构成同一条产品链路，以及为什么 Connectors 不只是可选集成。',
+        summary: '解释来源接入和渠道发布如何构成同一条产品链路，以及为什么 Connectors 不只是可选集成。',
         readingTime: '6 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -800,8 +771,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'operations',
         eyebrow: '远程访问',
         title: 'ContextGo 的远程访问到底是怎么工作的',
-        summary:
-          '理解桌面主机模型、为什么远程访问依赖设备侧稳定连接，以及移动端应该向用户呈现什么预期。',
+        summary: '理解桌面主机模型、为什么远程访问依赖设备侧稳定连接，以及移动端应该向用户呈现什么预期。',
         readingTime: '7 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -815,14 +785,10 @@ const docsContent: Record<SiteLocale, DocsSection> = {
           {
             heading: '为什么设备侧稳定连接很重要',
             paragraphs: [
-              '公开 remote 页面只有在桌面主机对外建立了稳定的出站连接之后才有意义。早期基于 FRP 的方案，本质就是要求桌面端长期维持 FRP client 会话。',
-              '即便未来把传输层换成 Cloudflare Tunnel 或自建 relay，产品原则也不会变。无论底层是什么，设备侧都必须持续在线并完成认证。',
+              '公开 remote 页面只有在桌面主机对官方 cloud relay 建立稳定的出站连接之后才有意义。托管 remote 体验依赖设备侧长期保持这条已认证的 relay 会话。',
+              '底层传输可以继续演进，但产品原则不会变。无论实现细节如何，设备侧都必须持续在线并完成认证，remote 页面才真正可用。',
             ],
-            bullets: [
-              '桌面主机负责发布可用性',
-              '云账号负责把设备映射到用户',
-              '只有主机可达时，remote 页面才真正可用',
-            ],
+            bullets: ['桌面主机负责发布可用性', '云账号负责把设备映射到用户', '只有主机可达时，remote 页面才真正可用'],
           },
           {
             heading: '移动端真正运行的是什么',
@@ -838,8 +804,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'operations',
         eyebrow: '云账号',
         title: 'ContextGo 云账号到底同步了什么',
-        summary:
-          '澄清云层的职责、账号会绑定哪些状态，以及为什么它不应该被描述成完整的云执行环境。',
+        summary: '澄清云层的职责、账号会绑定哪些状态，以及为什么它不应该被描述成完整的云执行环境。',
         readingTime: '6 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -856,11 +821,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
               '当前云层更适合承载轻量状态，例如语言偏好、设备注册和远程能力元数据。不应该把它表述成“完整同步整台桌面工作区”。',
               '随着产品演进，可以继续把更多轻量偏好放进云账号，但不应该改变“执行仍留在桌面端”的核心原则。',
             ],
-            bullets: [
-              '语言偏好',
-              '浏览器登录会话状态',
-              '设备注册与远程能力状态',
-            ],
+            bullets: ['语言偏好', '浏览器登录会话状态', '设备注册与远程能力状态'],
           },
           {
             heading: '什么不会自动上云',
@@ -875,8 +836,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
         category: 'operations',
         eyebrow: '更新与排障',
         title: '更新、版本发布与常见排障入口',
-        summary:
-          '把桌面端内更新、官网下载页和 release 仓库之间的关系讲清楚，并给用户一个统一的运维排障入口。',
+        summary: '把桌面端内更新、官网下载页和 release 仓库之间的关系讲清楚，并给用户一个统一的运维排障入口。',
         readingTime: '7 分钟',
         updatedAt: '2026-03-30',
         sections: [
@@ -893,12 +853,7 @@ const docsContent: Record<SiteLocale, DocsSection> = {
               '这个排障入口应该覆盖用户真正能感知到的问题：浏览器登录没完成、remote 状态 unavailable、设备绑定没刷新、更新检查中途闪失败，或者 Runtime 已安装但仍不可用。',
               '用户并不关心内部到底是哪一个子系统报错，他们只关心眼前的运维症状。',
             ],
-            bullets: [
-              '登录和浏览器会话问题',
-              '设备状态与远程访问问题',
-              'Runtime 检测与认证问题',
-              '更新与版本分发问题',
-            ],
+            bullets: ['登录和浏览器会话问题', '设备状态与远程访问问题', 'Runtime 检测与认证问题', '更新与版本分发问题'],
           },
           {
             heading: '这类页面必须提供什么',

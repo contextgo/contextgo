@@ -18,6 +18,8 @@ const openclawResponseStreamOnMock = vi.fn(() => vi.fn());
 const openclawGetRuntimeInvokeMock = vi.fn();
 const getModelConfigInvokeMock = vi.fn();
 const messageErrorMock = vi.fn();
+let acpResponseStreamHandler: ((message: { conversation_id?: string; type: string; data?: unknown }) => void) | null =
+  null;
 const chatConversationMock = vi.fn(({ conversation }: { conversation: { name: string } }) => (
   <div data-testid='chat-conversation'>{conversation.name}</div>
 ));
@@ -280,7 +282,13 @@ describe('ConversationTabs', () => {
       },
     });
     setModelInvokeMock.mockResolvedValue({ success: true, data: { modelInfo: null } });
-    responseStreamOnMock.mockReturnValue(vi.fn());
+    acpResponseStreamHandler = null;
+    responseStreamOnMock.mockImplementation(
+      (listener: (message: { conversation_id?: string; type: string; data?: unknown }) => void) => {
+        acpResponseStreamHandler = listener;
+        return vi.fn();
+      }
+    );
     getModelConfigInvokeMock.mockResolvedValue([
       {
         id: 'provider-1',
@@ -459,6 +467,80 @@ describe('ConversationTabs', () => {
     await waitFor(() => {
       const button = container.querySelector('button[title="claude-3.7-sonnet"]');
       expect(button).toBeTruthy();
+    });
+  });
+
+  it('keeps Codex model selector clickable after a stream update without model list', async () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+    getModelInfoInvokeMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'gpt-5',
+          currentModelLabel: 'gpt-5',
+          canSwitch: true,
+          availableModels: [
+            { id: 'gpt-5', label: 'GPT-5' },
+            { id: 'gpt-5-mini', label: 'GPT-5 Mini' },
+          ],
+        },
+      },
+    });
+
+    const { container } = render(
+      <AcpModelSelector conversationId='conv-codex' backend='codex' initialModelId='gpt-5' />
+    );
+
+    await waitFor(() => {
+      const button = container.querySelector('button[title="gpt-5"]');
+      expect(button).toBeTruthy();
+      expect(button?.hasAttribute('disabled')).toBe(false);
+    });
+
+    acpResponseStreamHandler?.({
+      conversation_id: 'conv-codex',
+      type: 'acp_model_info',
+      data: {
+        source: 'models',
+        currentModelId: 'gpt-5',
+        currentModelLabel: 'gpt-5',
+        canSwitch: false,
+        availableModels: [],
+      },
+    });
+
+    await waitFor(() => {
+      const button = container.querySelector('button[title="gpt-5"]');
+      expect(button).toBeTruthy();
+      expect(button?.hasAttribute('disabled')).toBe(false);
+    });
+
+    expect(screen.getByText('GPT-5 Mini')).toBeInTheDocument();
+  });
+
+  it('clears stale OpenClaw model entries when switching the selector to a Codex conversation', async () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+
+    const { rerender } = render(
+      <AcpModelSelector conversationId='conv-openclaw' backend='openclaw-gateway' initialModelId='claude-3.7-sonnet' />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('claude-3.5-haiku')).toBeInTheDocument();
+    });
+
+    getModelInfoInvokeMock.mockResolvedValueOnce({
+      success: false,
+      data: {
+        modelInfo: null,
+      },
+    });
+
+    rerender(<AcpModelSelector conversationId='conv-codex' backend='codex' initialModelId='gpt-5' />);
+
+    await waitFor(() => {
+      expect(screen.queryByText('claude-3.5-haiku')).not.toBeInTheDocument();
     });
   });
 

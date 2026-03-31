@@ -188,6 +188,11 @@ export type SkillMarketBundle = {
   skills: SkillMarketSearchItem[];
 };
 
+type RankedSkillMarketBundle = {
+  bundle: SkillMarketBundle;
+  score: number;
+};
+
 export type SkillMarketSearchParams = {
   query?: string;
   limit?: number;
@@ -223,6 +228,13 @@ export type SkillMarketInstallResult = {
   skillName: string;
   installedPath: string;
   archiveUrl: string;
+};
+
+type SkillMarketIdentity = {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
 };
 
 type CacheEntry<T> = {
@@ -295,6 +307,41 @@ const getInstallCount = (metrics: Record<string, number>): number =>
 
 const getStarCount = (metrics: Record<string, number>): number =>
   (metrics.skillhub_stars || 0) + (metrics.openclawmp_total_stars || 0) + (metrics.openclawmp_github_stars || 0);
+
+const parseSkillIdentity = (skillId: string): SkillMarketIdentity => {
+  const normalizedId = normalizeString(skillId);
+  const [rawName = '', rawVersion = '', rawAuthor = ''] = normalizedId.split('::');
+
+  return {
+    id: normalizedId,
+    name: normalizeString(rawName),
+    version: normalizeString(rawVersion),
+    author: normalizeString(rawAuthor),
+  };
+};
+
+const getManifestItemIdentity = (item: SkillMarketManifestItem): SkillMarketIdentity => {
+  const name = normalizeString(item.name);
+  const version = normalizeString(item.version);
+  const author = normalizeString(item.author);
+  const normalizedId = normalizeString(item.id);
+
+  return {
+    id: normalizedId || [name, version, author].join('::'),
+    name,
+    version,
+    author,
+  };
+};
+
+const archiveMatches = (left: SkillMarketArchive | undefined, right: SkillMarketArchive | undefined): boolean =>
+  normalizeString(left?.source) === normalizeString(right?.source) &&
+  normalizeString(left?.relativePath) === normalizeString(right?.relativePath);
+
+const sameIdentity = (left: SkillMarketIdentity, right: SkillMarketIdentity): boolean =>
+  left.name === right.name &&
+  (!left.version || left.version === right.version) &&
+  (!left.author || left.author === right.author);
 
 const normalizeSearchItem = (item: SkillMarketManifestItem): SkillMarketSearchItem => {
   const metrics = normalizeMetrics(item.metrics);
@@ -464,6 +511,104 @@ const getCategoriesFromItems = (items: SkillMarketSearchItem[]): string[] =>
     left.localeCompare(right)
   );
 
+const scoreBundle = (bundle: SkillMarketBundle, tokens: string[]): number => {
+  const skillThemes = bundle.steps.flatMap((step) => step.themes);
+  const skillIndustries = bundle.skills.flatMap((skill) => skill.industries);
+  const haystacks = {
+    id: bundle.id.toLowerCase(),
+    title: bundle.title.toLowerCase(),
+    summary: bundle.summary.toLowerCase(),
+    teams: bundle.forTeams.toLowerCase(),
+    deliverables: bundle.deliverables.map((item) => item.toLowerCase()),
+    valuePoints: bundle.valuePoints.map((item) => item.toLowerCase()),
+    steps: bundle.steps.map((step) => step.label.toLowerCase()),
+    stepThemes: skillThemes.map((theme) => theme.toLowerCase()),
+    industries: bundle.industries.map((industry) => industry.toLowerCase()),
+    skillNames: bundle.skills.map((skill) => skill.name.toLowerCase()),
+    skillDisplayNames: bundle.skills.map((skill) => skill.displayName.toLowerCase()),
+    skillIndustries: skillIndustries.map((industry) => industry.toLowerCase()),
+  };
+
+  if (tokens.length === 0) {
+    return (
+      bundle.skills.reduce(
+        (total, skill) => total + skill.qualityScore * 100 + skill.installs * 10 + skill.stars * 20,
+        0
+      ) +
+      bundle.steps.length * 100 +
+      bundle.deliverables.length * 20
+    );
+  }
+
+  let score = 0;
+
+  for (const token of tokens) {
+    let tokenMatched = false;
+
+    if (haystacks.id === token || haystacks.title === token) {
+      score += 5000;
+      tokenMatched = true;
+    } else if (haystacks.id.startsWith(token) || haystacks.title.startsWith(token)) {
+      score += 3200;
+      tokenMatched = true;
+    } else if (haystacks.id.includes(token) || haystacks.title.includes(token)) {
+      score += 2200;
+      tokenMatched = true;
+    }
+
+    if (haystacks.summary.includes(token)) {
+      score += 1000;
+      tokenMatched = true;
+    }
+
+    if (haystacks.teams.includes(token)) {
+      score += 900;
+      tokenMatched = true;
+    }
+
+    if (haystacks.industries.some((industry) => industry.includes(token))) {
+      score += 800;
+      tokenMatched = true;
+    }
+
+    if (haystacks.stepThemes.some((theme) => theme.includes(token))) {
+      score += 700;
+      tokenMatched = true;
+    }
+
+    if (haystacks.steps.some((step) => step.includes(token))) {
+      score += 600;
+      tokenMatched = true;
+    }
+
+    if (
+      haystacks.deliverables.some((item) => item.includes(token)) ||
+      haystacks.valuePoints.some((item) => item.includes(token))
+    ) {
+      score += 500;
+      tokenMatched = true;
+    }
+
+    if (
+      haystacks.skillNames.some((name) => name.includes(token)) ||
+      haystacks.skillDisplayNames.some((name) => name.includes(token)) ||
+      haystacks.skillIndustries.some((industry) => industry.includes(token))
+    ) {
+      score += 400;
+      tokenMatched = true;
+    }
+
+    if (!tokenMatched) {
+      return -1;
+    }
+  }
+
+  return (
+    score +
+    bundle.skills.reduce((total, skill) => total + skill.qualityScore * 10 + skill.installs + skill.stars * 2, 0)
+  );
+};
+
 const resolveReferencedSkills = (
   skillIds: string[] | undefined,
   itemMap: Map<string, SkillMarketSearchItem>
@@ -597,6 +742,40 @@ export class SkillMarketService {
       }))
       .filter((bundle) => bundle.id && bundle.title);
 
+    const selectedIndustry = normalizedIndustryId
+      ? industryIndex.find((industry) => industry.id === normalizedIndustryId) || null
+      : null;
+    const selectedIndustryBundleIds = new Set(selectedIndustry?.bundleIds || []);
+    const rankedBundles: RankedSkillMarketBundle[] = bundles
+      .filter((bundle) => {
+        if (!selectedIndustry) {
+          return true;
+        }
+
+        return bundle.industries.includes(selectedIndustry.id) || selectedIndustryBundleIds.has(bundle.id);
+      })
+      .map((bundle) => ({
+        bundle,
+        score: scoreBundle(bundle, tokens),
+      }))
+      .toSorted((left, right) => {
+        const leftRecommended = selectedIndustryBundleIds.has(left.bundle.id);
+        const rightRecommended = selectedIndustryBundleIds.has(right.bundle.id);
+        if (leftRecommended !== rightRecommended) {
+          return rightRecommended ? 1 : -1;
+        }
+
+        if (right.score !== left.score) {
+          return right.score - left.score;
+        }
+
+        if (right.bundle.skills.length !== left.bundle.skills.length) {
+          return right.bundle.skills.length - left.bundle.skills.length;
+        }
+
+        return left.bundle.title.localeCompare(right.bundle.title);
+      });
+
     return {
       brandName: config.brandName,
       view,
@@ -611,7 +790,7 @@ export class SkillMarketService {
       sources: stats.sources,
       stats,
       industryIndex,
-      bundles,
+      bundles: rankedBundles.map((entry) => entry.bundle),
     };
   }
 
@@ -622,7 +801,20 @@ export class SkillMarketService {
     }
 
     const [config, manifest] = await Promise.all([this.getConfig(false), this.getManifest('full', false)]);
-    const item = manifest.items.find((candidate) => normalizeString(candidate.id) === skillId);
+    const requestedIdentity = parseSkillIdentity(skillId);
+    const exactMatch = manifest.items.find((candidate) => normalizeString(candidate.id) === skillId);
+    const identityMatches = manifest.items.filter((candidate) =>
+      sameIdentity(requestedIdentity, getManifestItemIdentity(candidate))
+    );
+
+    const item =
+      exactMatch ||
+      identityMatches.find((candidate) =>
+        params.archive
+          ? normalizeSearchItem(candidate).archives.some((archive) => archiveMatches(archive, params.archive))
+          : false
+      ) ||
+      identityMatches[0];
 
     if (!item) {
       throw new Error(`Skill "${skillId}" was not found in Skill Market`);

@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, patch
 from urllib.parse import parse_qs, urlparse
 
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 CLOUD_ROOT = Path(__file__).resolve().parents[1]
 if str(CLOUD_ROOT) not in sys.path:
@@ -223,6 +224,159 @@ class CloudApiTestCase(unittest.TestCase):
 
         refreshed_devices = self.client.get("/api/devices").json()["devices"]
         self.assertEqual(refreshed_devices[0]["status"], "revoked")
+
+    def test_remote_devices_report_cloud_relay_presence(self) -> None:
+        registration = self._register_device()
+        device = registration["device"]
+
+        response = self.client.get("/api/remote/devices")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload["devices"]), 1)
+        self.assertEqual(payload["devices"][0]["id"], device["id"])
+        self.assertFalse(payload["devices"][0]["remoteStatus"]["connected"])
+        self.assertEqual(payload["devices"][0]["remoteStatus"]["transport"], "cloud-relay")
+
+    def test_remote_devices_page_redirects_to_login_with_next_path(self) -> None:
+        response = self.client.get("/remote/devices", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], "/login?next=%2Fremote%2Fdevices")
+
+        login_response = self.client.get(response.headers["location"])
+        self.assertEqual(login_response.status_code, 200)
+        self.assertIn("/api/auth/oauth/github/start?next=%2Fremote%2Fdevices", login_response.text)
+
+    def test_remote_devices_page_marks_registered_but_disconnected_devices_as_unavailable(self) -> None:
+        self._register_device(device_name="Studio", platform="macos")
+
+        response = self.client.get("/remote/devices")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("ContextGo Remote", response.text)
+        self.assertIn("Studio", response.text)
+        self.assertIn("macos · device active", response.text)
+        self.assertIn("Unavailable", response.text)
+        self.assertIn("Desktop is not connected to ContextGo Cloud relay right now.", response.text)
+
+    def test_remote_devices_page_uses_cloud_relay_presence_for_available_and_live_session_states(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+
+            available_response = self.client.get("/remote/devices")
+            self.assertEqual(available_response.status_code, 200)
+            self.assertIn("Available", available_response.text)
+            self.assertIn("Desktop is online and ready through ContextGo Cloud relay.", available_response.text)
+            self.assertIn(f'/remote/app/?device_id={device["id"]}', available_response.text)
+            self.assertIn("contextgo-remote://open?target=", available_response.text)
+
+            with self.client.websocket_connect(f"/api/remote/client-connect?device_id={device['id']}") as client_ws:
+                client_status = device_ws.receive_json()
+                self.assertEqual(client_status["type"], "client_status")
+                self.assertTrue(client_status["connected"])
+
+                busy_response = self.client.get("/remote/devices")
+                self.assertEqual(busy_response.status_code, 200)
+                self.assertIn("Live session", busy_response.text)
+                self.assertIn(
+                    "Desktop is online and already attached to a browser session through ContextGo Cloud relay.",
+                    busy_response.text,
+                )
+
+                client_ws.send_json({"name": "pong", "data": {"timestamp": 1}})
+
+    def test_remote_app_page_redirects_to_login_and_preserves_device_query(self) -> None:
+        response = self.client.get("/remote/app/?device_id=device-123", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], "/login?next=%2Fremote%2Fapp%2F%3Fdevice_id%3Ddevice-123")
+
+    def test_remote_app_page_serves_renderer_shell_for_authenticated_user(self) -> None:
+        self._create_browser_session()
+
+        response = self.client.get("/remote/app/?device_id=device-123")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("<div id=\"root\"></div>", response.text)
+        self.assertIn("./assets/", response.text)
+
+    def test_remote_auth_aliases_match_browser_runtime_expectations(self) -> None:
+        session = self.client.get("/api/auth/user")
+        self.assertEqual(session.status_code, 200)
+        self.assertEqual(session.json(), {"success": True, "user": None})
+
+        user, _ = self._create_browser_session()
+
+        providers_response = self.client.get("/api/auth/oauth/providers")
+        self.assertEqual(providers_response.status_code, 200)
+        self.assertTrue(providers_response.json()["success"])
+        self.assertIn("github", providers_response.json()["providers"])
+
+        current_user_response = self.client.get("/api/auth/user")
+        self.assertEqual(current_user_response.status_code, 200)
+        self.assertEqual(current_user_response.json()["user"]["email"], user.email)
+
+    def test_remote_relay_bridges_browser_client_and_device_connection(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+            self.assertEqual(hello["deviceId"], device["id"])
+
+            remote_devices = self.client.get("/api/remote/devices").json()["devices"]
+            self.assertTrue(remote_devices[0]["remoteStatus"]["connected"])
+
+            with self.client.websocket_connect(f"/api/remote/client-connect?device_id={device['id']}") as client_ws:
+                client_status = device_ws.receive_json()
+                self.assertEqual(client_status["type"], "client_status")
+                self.assertTrue(client_status["connected"])
+
+                client_ws.send_json({"name": "conversation.get", "data": {"id": "conv-1"}})
+                forwarded_to_device = device_ws.receive_json()
+                self.assertEqual(forwarded_to_device["type"], "bridge")
+                self.assertEqual(forwarded_to_device["payload"]["name"], "conversation.get")
+                self.assertEqual(forwarded_to_device["payload"]["data"]["id"], "conv-1")
+
+                device_ws.send_json(
+                    {
+                        "type": "bridge",
+                        "payload": {
+                            "name": "chat.response.stream",
+                            "data": {"conversation_id": "conv-1", "type": "content"},
+                        },
+                    }
+                )
+                forwarded_to_client = client_ws.receive_json()
+                self.assertEqual(forwarded_to_client["name"], "chat.response.stream")
+                self.assertEqual(forwarded_to_client["data"]["conversation_id"], "conv-1")
+
+    def test_remote_client_requires_authenticated_session(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ):
+            self.client.cookies.pop(self.settings.session_cookie_name, None)
+            with self.assertRaises(WebSocketDisconnect):
+                with self.client.websocket_connect(f"/api/remote/client-connect?device_id={device['id']}"):
+                    pass
 
     def test_infermesh_provider_uses_browser_session(self) -> None:
         user, _session = self._create_browser_session()

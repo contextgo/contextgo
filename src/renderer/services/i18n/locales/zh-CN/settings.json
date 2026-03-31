@@ -489,7 +489,7 @@
   "webui.port": "端口",
   "webui.portDesc": "WebUI 服务监听端口",
   "webui.allowRemote": "允许局域网 / 自托管访问",
-  "webui.allowRemoteDesc": "将当前设备暴露给局域网，或接入你自己的反向代理、FRP、Tailscale 等方案",
+  "webui.allowRemoteDesc": "将当前设备暴露给局域网，或接入你自己的反向代理、VPN、内网穿透或其他自托管网络方案",
   "webui.viewGuide": "查看方式",
   "webui.accessInfo": "访问地址",
   "webui.localUrl": "本地地址",

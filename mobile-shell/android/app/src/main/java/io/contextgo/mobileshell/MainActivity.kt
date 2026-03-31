@@ -41,12 +41,20 @@ class MainActivity : AppCompatActivity() {
     configureWebView()
     bindEvents()
 
-    val storedTarget = preferences.getString(TARGET_URL_KEY, null)
-    if (storedTarget.isNullOrBlank()) {
-      openOfficialRemote(persist = false)
-    } else {
-      openTarget(storedTarget)
+    if (!openIntentTarget(intent)) {
+      val storedTarget = preferences.getString(TARGET_URL_KEY, null)
+      if (storedTarget.isNullOrBlank()) {
+        openOfficialRemote(persist = false)
+      } else {
+        openTarget(storedTarget)
+      }
     }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    openIntentTarget(intent)
   }
 
   @Deprecated("Deprecated in Java")
@@ -180,6 +188,13 @@ class MainActivity : AppCompatActivity() {
     openTarget(resolvedTarget, persist)
   }
 
+  private fun openIntentTarget(intent: Intent?): Boolean {
+    val rawTarget = intent?.dataString ?: return false
+    val resolvedTarget = ShellTargetResolver.resolve(rawTarget) ?: return false
+    openTarget(resolvedTarget)
+    return true
+  }
+
   private fun openTarget(targetUrl: String, persist: Boolean = true) {
     if (persist) {
       preferences.edit().putString(TARGET_URL_KEY, targetUrl).apply()
@@ -214,13 +229,16 @@ class MainActivity : AppCompatActivity() {
   }
 
   private companion object {
-    const val OFFICIAL_REMOTE_URL = "https://remote.contextgo.io/"
+    const val OFFICIAL_REMOTE_URL = "https://remote.contextgo.io/remote/devices"
     const val PREFERENCES_NAME = "contextgo_mobile_shell"
     const val TARGET_URL_KEY = "target_url"
   }
 }
 
 private object ShellTargetResolver {
+  private const val OFFICIAL_REMOTE_HOST = "remote.contextgo.io"
+  private const val REMOTE_SHELL_SCHEME = "contextgo-remote"
+
   fun resolve(rawInput: String): String? {
     val trimmed = rawInput.trim()
     if (trimmed.isEmpty()) {
@@ -230,8 +248,21 @@ private object ShellTargetResolver {
     val normalized = if (trimmed.contains("://")) trimmed else "http://$trimmed"
     val parsed = Uri.parse(normalized)
     val scheme = parsed.scheme?.lowercase(Locale.US)
+    if (scheme == REMOTE_SHELL_SCHEME) {
+      val wrappedTarget = parsed.getQueryParameter("target") ?: return null
+      return resolve(wrappedTarget)
+    }
+
     if ((scheme != "http" && scheme != "https") || parsed.host.isNullOrBlank()) {
       return null
+    }
+
+    if (parsed.host?.lowercase(Locale.US) == OFFICIAL_REMOTE_HOST) {
+      val currentPath = parsed.encodedPath.orEmpty()
+      if (currentPath.isEmpty() || currentPath == "/" || currentPath == "/login") {
+        return parsed.buildUpon().encodedPath("/remote/devices").build().toString()
+      }
+      return parsed.toString()
     }
 
     val path = parsed.encodedPath.orEmpty()

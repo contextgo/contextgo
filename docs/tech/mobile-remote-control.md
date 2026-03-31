@@ -70,14 +70,16 @@ Reasons:
 
 This means mobile should reuse the existing WebUI runtime instead of maintaining a disconnected static frontend fork.
 
-### 4. FRP or reverse tunneling is a transport choice, not the product runtime
+### 4. Remote transport does not replace the product runtime
 
-FRP is a valid way to expose a reachable desktop-hosted ContextGo instance to external clients.
+Official Remote should use a desktop-initiated cloud relay, not a tunnel product as a first-class product path.
+
+Self-hosted users can still choose their own reverse proxy, VPN, or tunnel when exposing a desktop-hosted ContextGo instance to external clients.
 
 But the product logic still remains:
 
 - ContextGo desktop / WebUI provides the real application runtime
-- FRP only exposes connectivity
+- the transport layer only exposes connectivity
 - user identity, session, and authorization must still be handled by ContextGo itself
 
 Future networking changes should preserve this boundary.
