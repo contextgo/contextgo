@@ -424,7 +424,7 @@
 }
 
 .logoFallback,
-.logoContextGo,
+.logoContextgo,
 .logoGoogleWorkspace,
 .logoCollaboration,
 .logoDevelopment,
@@ -436,7 +436,7 @@
   color: var(--text-primary);
 }
 
-.logoContextGo {
+.logoContextgo {
   background: linear-gradient(
     135deg,
     color-mix(in srgb, rgb(var(--primary-6)) 22%, var(--bg-1) 78%),
@@ -505,4 +505,130 @@
   .detailGrid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.clipboardPanel {
+  margin-top: 18px;
+}
+
+.clipboardStatusRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.clipboardInfoList {
+  display: grid;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.clipboardNote {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.clipboardActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.clipboardControlList {
+  display: grid;
+  gap: 12px;
+}
+
+.clipboardControlRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.clipboardList {
+  display: grid;
+  gap: 10px;
+}
+
+.clipboardListItem {
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-2) 96%, var(--fill-1) 4%);
+}
+
+.clipboardListMetaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.clipboardListPreview {
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.clipboardControlRowColumn {
+  display: grid;
+  gap: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.detailTabs {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.detailTabButton {
+  border-radius: 999px;
+}
+
+.supportSourceList {
+  display: grid;
+  gap: 10px;
+}
+
+.supportSourceItem {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-2) 96%, var(--fill-1) 4%);
+  text-align: left;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.supportSourceItem:hover {
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 28%, var(--border-base) 72%);
+  background: color-mix(in srgb, var(--color-primary-light-1) 40%, var(--bg-1) 60%);
+}
+
+.supportSourceMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.supportSourceLabel {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
 }

@@ -35,6 +35,9 @@ export type ConnectorAuthType = 'oauth' | 'bot' | 'apiKey' | 'pat' | 'serviceAcc
 export type ConnectorStage = 'priority' | 'planned';
 
 export type ConnectorDefinition = {
+  summary?: string;
+  implementationOwner?: 'official' | 'contextgo' | 'connector-repo' | 'hybrid';
+  supportSources?: ConnectorSupportSource[];
   id: string;
   name: string;
   websiteUrl: string;
@@ -45,3 +48,19 @@ export type ConnectorDefinition = {
   stage: ConnectorStage;
   localLogo?: string;
 };
+
+export type ConnectorSupportSourceKind =
+  | 'official-docs'
+  | 'official-runtime'
+  | 'official-sdk'
+  | 'contextgo-native'
+  | 'connector-repo';
+
+export type ConnectorSupportSource = {
+  kind: ConnectorSupportSourceKind;
+  label: string;
+  url: string;
+  description: string;
+};
+
+export type ConnectorExperienceTab = 'overview' | 'configure';
