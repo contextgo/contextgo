@@ -26,6 +26,7 @@ import {
   type GroupParticipantInput,
   type WorkflowGroupParticipantInput,
 } from '@/renderer/pages/conversation/utils/createConversationParams';
+import { ContextGoModal } from '@/renderer/components/base';
 import { renderWorkflowTemplateConfigFields } from '@/renderer/pages/conversation/platforms/group/workflow/workflowUiRegistry';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import type { AssistantListItem } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
@@ -35,7 +36,7 @@ import {
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/assistantUtils';
 import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
-import { Button, Checkbox, Input, Message, Modal, Radio, Select, Typography } from '@arco-design/web-react';
+import { Button, Checkbox, Input, Message, Radio, Select, Typography } from '@arco-design/web-react';
 import { FolderOpen, Robot } from '@icon-park/react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -395,18 +396,42 @@ const CreateGroupModal: React.FC<{
   };
 
   return (
-    <Modal
-      title={t('conversation.group.createTitle')}
+    <ContextGoModal
       visible={visible}
       onCancel={onCancel}
-      footer={
-        <div className='flex justify-end gap-8px'>
-          <Button onClick={onCancel}>{t('common.cancel')}</Button>
-          <Button type='primary' loading={submitting} onClick={() => void handleSubmit()}>
-            {t('conversation.group.createAction')}
-          </Button>
-        </div>
-      }
+      className='create-group-modal'
+      header={{
+        title: t('conversation.group.createTitle'),
+        showClose: true,
+        className: 'px-24px pt-20px',
+      }}
+      footer={{
+        className: 'px-24px pb-20px',
+        render: () => (
+          <div className='flex justify-end gap-10px pt-4px'>
+            <Button onClick={onCancel} className='min-w-88px px-18px'>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type='primary'
+              loading={submitting}
+              onClick={() => void handleSubmit()}
+              className='min-w-104px px-18px'
+            >
+              {t('conversation.group.createAction')}
+            </Button>
+          </div>
+        ),
+      }}
+      style={{
+        width: 'min(760px, calc(100vw - 32px))',
+        maxHeight: 'calc(100vh - 40px)',
+      }}
+      contentStyle={{
+        padding: '16px 24px 24px',
+        overflow: 'auto',
+        maxHeight: 'calc(100vh - 180px)',
+      }}
     >
       <div className='flex flex-col gap-16px'>
         <div className='flex flex-col gap-6px'>
@@ -584,7 +609,7 @@ const CreateGroupModal: React.FC<{
           </Typography.Text>
         </div>
       </div>
-    </Modal>
+    </ContextGoModal>
   );
 };
 

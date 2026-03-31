@@ -14,6 +14,16 @@
   --app-popup-selected-bg: color-mix(in srgb, var(--primary) 10%, var(--bg-2) 90%);
   --app-popup-selected-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent) inset;
   --app-popup-title-color: color-mix(in srgb, var(--text-secondary) 88%, var(--text-primary) 12%);
+  --app-modal-radius-lg: 24px;
+  --app-modal-radius-md: 18px;
+  --app-modal-surface: color-mix(in srgb, var(--bg-1) 92%, var(--fill-2) 8%);
+  --app-modal-content-bg: color-mix(in srgb, var(--bg-1) 96%, transparent);
+  --app-modal-border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+  --app-modal-outline: color-mix(in srgb, white 54%, transparent);
+  --app-modal-shadow: 0 28px 72px rgba(15, 23, 42, 0.18), 0 12px 28px rgba(15, 23, 42, 0.1);
+  --app-modal-mask: color-mix(in srgb, rgb(15 23 42) 18%, transparent);
+  --app-modal-divider: color-mix(in srgb, var(--border-base) 72%, transparent);
+  --app-modal-close-hover: color-mix(in srgb, var(--fill-2) 90%, transparent);
 }
 
 [data-theme='dark'] {
@@ -24,6 +34,14 @@
   --app-popup-selected-bg: color-mix(in srgb, var(--primary) 18%, var(--bg-2) 82%);
   --app-popup-selected-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent) inset;
   --app-popup-title-color: color-mix(in srgb, var(--text-secondary) 92%, var(--text-primary) 8%);
+  --app-modal-surface: color-mix(in srgb, var(--bg-1) 88%, var(--fill-2) 12%);
+  --app-modal-content-bg: color-mix(in srgb, var(--bg-1) 92%, transparent);
+  --app-modal-border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  --app-modal-outline: color-mix(in srgb, white 16%, transparent);
+  --app-modal-shadow: 0 30px 80px rgba(0, 0, 0, 0.46), 0 14px 30px rgba(0, 0, 0, 0.28);
+  --app-modal-mask: color-mix(in srgb, black 38%, transparent);
+  --app-modal-divider: color-mix(in srgb, var(--border-base) 66%, transparent);
+  --app-modal-close-hover: color-mix(in srgb, var(--fill-2) 82%, transparent);
 }
 
 .app-shell {

@@ -11,7 +11,8 @@ import {
   BUILTIN_IMAGE_GEN_ID,
 } from '@/common/config/storage';
 import { acpConversation } from '@/common/adapter/ipcBridge';
-import { Divider, Form, Tooltip, Message, Button, Dropdown, Menu, Modal, Switch } from '@arco-design/web-react';
+import { ContextGoModal } from '@/renderer/components/base';
+import { Divider, Form, Tooltip, Message, Button, Dropdown, Menu, Switch } from '@arco-design/web-react';
 import { Help, Down, Plus } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -319,17 +320,37 @@ const ModalMcpManagementSection: React.FC<{
         importMode={importMode}
       />
 
-      <Modal
-        title={t('settings.mcpDeleteServer')}
+      <ContextGoModal
         visible={deleteConfirmVisible}
         onCancel={hideDeleteConfirm}
-        onOk={handleConfirmDelete}
-        okButtonProps={{ status: 'danger' }}
-        okText={t('common.confirm')}
-        cancelText={t('common.cancel')}
+        header={{
+          title: t('settings.mcpDeleteServer'),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={hideDeleteConfirm} className='min-w-88px px-18px'>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type='primary'
+                status='danger'
+                onClick={() => void handleConfirmDelete()}
+                className='min-w-104px px-18px'
+              >
+                {t('common.confirm')}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(440px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <p>{t('settings.mcpDeleteConfirm')}</p>
-      </Modal>
+        <p className='mb-0 text-14px leading-6 text-t-secondary'>{t('settings.mcpDeleteConfirm')}</p>
+      </ContextGoModal>
     </div>
   );
 };

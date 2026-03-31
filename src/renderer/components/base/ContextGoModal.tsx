@@ -96,9 +96,9 @@ export interface ContextGoModalProps extends Omit<ModalProps, 'title' | 'footer'
 // ==================== 样式常量 / Style Constants ====================
 
 const HEADER_BASE_CLASS = 'flex items-center justify-between pb-20px';
-const TITLE_BASE_CLASS = 'text-18px font-500 text-t-primary m-0';
+const TITLE_BASE_CLASS = 'text-18px font-600 text-t-primary m-0';
 const CLOSE_BUTTON_CLASS =
-  'w-32px h-32px flex items-center justify-center rd-8px transition-colors duration-200 cursor-pointer border-0 bg-transparent p-0 hover:bg-2 focus:outline-none';
+  'w-32px h-32px flex items-center justify-center rd-999px transition-all duration-180 cursor-pointer border border-solid border-b-base bg-[color:color-mix(in_srgb,var(--bg-1)_74%,transparent)] p-0 hover:bg-fill-2 focus:outline-none';
 const FOOTER_BASE_CLASS = 'flex-shrink-0 bg-transparent';
 
 /**
@@ -178,7 +178,7 @@ const ContextGoModal: React.FC<ContextGoModalProps> = ({
   const { fontScale } = useThemeContext();
   // 处理 contentStyle 配置，转换为 CSS 变量
   const contentBg = contentStyle?.background || 'var(--bg-1)';
-  const contentBorderRadius = contentStyle?.borderRadius || '16px';
+  const contentBorderRadius = contentStyle?.borderRadius || 'var(--app-modal-radius-lg)';
   const contentPadding = contentStyle?.padding || '0';
   const contentOverflow = contentStyle?.overflow || 'auto';
 
@@ -234,12 +234,13 @@ const ContextGoModal: React.FC<ContextGoModalProps> = ({
 
   const finalStyle: CSSProperties = {
     ...mergedStyle,
-    borderRadius: mergedStyle.borderRadius ?? '16px',
+    borderRadius: mergedStyle.borderRadius ?? 'var(--app-modal-radius-lg)',
   };
 
   const bodyInlineStyle = React.useMemo<CSSProperties>(() => {
     const style: CSSProperties = {
       background: contentBg,
+      padding: paddingVal,
       overflow: contentOverflow,
     };
 
@@ -335,7 +336,7 @@ const ContextGoModal: React.FC<ContextGoModalProps> = ({
     const headerClassName = classNames(HEADER_BASE_CLASS, headerConfig.className);
 
     const headerStyle: CSSProperties = {
-      borderBottom: '1px solid var(--bg-3)',
+      borderBottom: '1px solid var(--app-modal-divider)',
       ...headerConfig.style,
     };
 
@@ -344,7 +345,7 @@ const ContextGoModal: React.FC<ContextGoModalProps> = ({
         {headerConfig.title && <h3 className={TITLE_BASE_CLASS}>{headerConfig.title}</h3>}
         {headerConfig.showClose && (
           <button onClick={onCancel} className={CLOSE_BUTTON_CLASS} aria-label='Close'>
-            {headerConfig.closeIcon || <Close size={20} fill='#86909c' />}
+            {headerConfig.closeIcon || <Close size={18} fill='currentColor' />}
           </button>
         )}
       </div>

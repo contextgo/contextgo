@@ -5,7 +5,8 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
-import { Button, Empty, Input, Modal } from '@arco-design/web-react';
+import { Button, Empty, Input } from '@arco-design/web-react';
+import { ContextGoModal } from '@/renderer/components/base';
 import DirectorySelectionModal from '@/renderer/components/settings/DirectorySelectionModal';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import { useCronJobsMap } from '@/renderer/pages/cron';
@@ -285,18 +286,36 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
 
   return (
     <FlexFullContainer>
-      <Modal
-        title={t('conversation.history.renameTitle')}
+      <ContextGoModal
         visible={renameModalVisible}
-        onOk={handleRenameConfirm}
         onCancel={handleRenameCancel}
-        okText={t('conversation.history.saveName')}
-        cancelText={t('conversation.history.cancelEdit')}
-        confirmLoading={renameLoading}
-        okButtonProps={{ disabled: !renameModalName.trim() }}
-        style={{ borderRadius: '12px' }}
-        alignCenter
-        getPopupContainer={() => document.body}
+        className='conversation-rename-modal'
+        header={{
+          title: t('conversation.history.renameTitle'),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={handleRenameCancel} className='min-w-88px px-18px'>
+                {t('conversation.history.cancelEdit')}
+              </Button>
+              <Button
+                type='primary'
+                loading={renameLoading}
+                disabled={!renameModalName.trim()}
+                onClick={() => void handleRenameConfirm()}
+                className='min-w-104px px-18px'
+              >
+                {t('conversation.history.saveName')}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(520px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <Input
           autoFocus
@@ -306,17 +325,20 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
           placeholder={t('conversation.history.renamePlaceholder')}
           allowClear
         />
-      </Modal>
+      </ContextGoModal>
 
-      <Modal
+      <ContextGoModal
         visible={exportModalVisible}
-        title={t('conversation.history.exportDialogTitle')}
         onCancel={closeExportModal}
-        footer={null}
-        style={{ borderRadius: '12px' }}
         className='conversation-export-modal'
-        alignCenter
-        getPopupContainer={() => document.body}
+        header={{
+          title: t('conversation.history.exportDialogTitle'),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={null}
+        style={{ width: 'min(560px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <div className='py-8px'>
           <div className='text-14px mb-16px text-t-secondary'>
@@ -325,27 +347,18 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
               : t('conversation.history.exportDialogSingleDescription')}
           </div>
 
-          <div className='mb-16px p-16px rounded-12px bg-fill-1'>
+          <div className='mb-16px rounded-18px border border-b-base bg-fill-1 p-16px shadow-[0_12px_30px_rgba(15,23,42,0.04)]'>
             <div className='text-14px mb-8px text-t-primary'>{t('conversation.history.exportTargetFolder')}</div>
             <div
-              className='flex items-center justify-between px-12px py-10px rounded-8px transition-colors'
-              style={{
-                backgroundColor: 'var(--color-bg-1)',
-                border: '1px solid var(--color-border-2)',
-                cursor: exportModalLoading ? 'not-allowed' : 'pointer',
-                opacity: exportModalLoading ? 0.55 : 1,
-              }}
+              className={`flex items-center justify-between rounded-14px border border-b-base bg-base px-14px py-12px transition-colors ${exportModalLoading ? 'cursor-not-allowed opacity-55' : 'cursor-pointer hover:bg-fill-1'}`}
               onClick={() => {
                 void handleSelectExportFolder();
               }}
             >
-              <span
-                className='text-14px overflow-hidden text-ellipsis whitespace-nowrap'
-                style={{ color: exportTargetPath ? 'var(--color-text-1)' : 'var(--color-text-3)' }}
-              >
+              <span className={`overflow-hidden text-ellipsis whitespace-nowrap text-14px ${exportTargetPath ? 'text-t-primary' : 'text-t-secondary'}`}>
                 {exportTargetPath || t('conversation.history.exportSelectFolder')}
               </span>
-              <FolderOpen theme='outline' size='18' fill='var(--color-text-3)' />
+              <FolderOpen theme='outline' size='18' fill='currentColor' className='text-t-secondary' />
             </div>
           </div>
 
@@ -355,51 +368,22 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
           </div>
 
           <div className='flex gap-12px justify-end'>
-            <button
-              className='px-24px py-8px rounded-20px text-14px font-medium transition-all'
-              style={{
-                border: '1px solid var(--color-border-2)',
-                backgroundColor: 'var(--color-fill-2)',
-                color: 'var(--color-text-1)',
-              }}
-              onMouseEnter={(event) => {
-                event.currentTarget.style.backgroundColor = 'var(--color-fill-3)';
-              }}
-              onMouseLeave={(event) => {
-                event.currentTarget.style.backgroundColor = 'var(--color-fill-2)';
-              }}
-              onClick={closeExportModal}
-            >
+            <Button onClick={closeExportModal} className='min-w-88px px-18px'>
               {t('common.cancel')}
-            </button>
-            <button
-              className='px-24px py-8px rounded-20px text-14px font-medium transition-all'
-              style={{
-                border: 'none',
-                backgroundColor: exportModalLoading ? 'var(--color-fill-3)' : 'var(--color-text-1)',
-                color: 'var(--color-bg-1)',
-                cursor: exportModalLoading ? 'not-allowed' : 'pointer',
-              }}
-              onMouseEnter={(event) => {
-                if (!exportModalLoading) {
-                  event.currentTarget.style.opacity = '0.85';
-                }
-              }}
-              onMouseLeave={(event) => {
-                if (!exportModalLoading) {
-                  event.currentTarget.style.opacity = '1';
-                }
-              }}
+            </Button>
+            <Button
+              type='primary'
+              loading={exportModalLoading}
               onClick={() => {
                 void handleConfirmExport();
               }}
-              disabled={exportModalLoading}
+              className='min-w-104px px-18px'
             >
-              {exportModalLoading ? t('conversation.history.exporting') : t('common.confirm')}
-            </button>
+              {t('common.confirm')}
+            </Button>
           </div>
         </div>
-      </Modal>
+      </ContextGoModal>
 
       <DirectorySelectionModal
         visible={showExportDirectorySelector}

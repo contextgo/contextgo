@@ -7,6 +7,7 @@ import { getIncompatibleHookNames, hasBuiltinSkills, isHookSupportedByBackend } 
 import { HOOK_OUTPUT_TARGET_PRESENTATION } from '../hookLibraryUtils';
 import HookRoutingConfigModal from '../HookRoutingConfigModal';
 import EmojiPicker from '@/renderer/components/chat/EmojiPicker';
+import { ContextGoModal } from '@/renderer/components/base';
 import MarkdownView from '@/renderer/components/Markdown';
 import { ipcBridge } from '@/common';
 import {
@@ -850,19 +851,42 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
           </div>
         </div>
       </div>
-      <Modal
+      <ContextGoModal
         visible={deleteHookName !== null}
-        title={t('settings.deleteHookTitle', { defaultValue: 'Delete Hook' })}
         onCancel={() => setDeleteHookName(null)}
-        onOk={() => void handleDeleteHookConfirm()}
+        header={{
+          title: t('settings.deleteHookTitle', { defaultValue: 'Delete Hook' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setDeleteHookName(null)} className='min-w-88px px-18px'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button
+                type='primary'
+                status='danger'
+                onClick={() => void handleDeleteHookConfirm()}
+                className='min-w-104px px-18px'
+              >
+                {t('common.delete', { defaultValue: 'Delete' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(460px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <Typography.Text>
+        <Typography.Text className='text-14px leading-6 text-t-secondary'>
           {t('settings.deleteHookConfirm', {
             name: deleteHookName || '',
             defaultValue: 'Are you sure you want to delete "{{name}}"? This action cannot be undone.',
           })}
         </Typography.Text>
-      </Modal>
+      </ContextGoModal>
       <HookRoutingConfigModal
         visible={configuringHook !== null && routingDraft !== null}
         hook={configuringHook}

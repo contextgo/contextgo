@@ -1,6 +1,6 @@
 import { Alert, Button, Collapse, Input, Message, Space, Tag, Typography } from '@arco-design/web-react';
 import { Delete, EditTwo, Plus } from '@icon-park/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { mutate } from 'swr';
 import { acpConversation, shell } from '@/common/adapter/ipcBridge';
@@ -167,6 +167,8 @@ const CustomAcpAgent: React.FC = () => {
   const [editingAgent, setEditingAgent] = useState<AcpBackendConfig | null>(null);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState<AcpBackendConfig | null>(null);
+  const loadingRef = useRef(false);
+  const requestSeqRef = useRef(0);
 
   const refreshAgentDetection = useCallback(async () => {
     try {
@@ -177,8 +179,16 @@ const CustomAcpAgent: React.FC = () => {
     }
   }, []);
 
-  const loadRuntimeState = useCallback(async () => {
+  const loadRuntimeState = useEffectEvent(async () => {
+    if (loadingRef.current) {
+      return;
+    }
+
+    loadingRef.current = true;
+    const requestId = requestSeqRef.current + 1;
+    requestSeqRef.current = requestId;
     setLoading(true);
+
     try {
       const [agentsResponse, nextAcpConfig, nextCodexConfig, nextCustomAgents] = await Promise.all([
         acpConversation.getAvailableAgents.invoke(),
@@ -187,37 +197,44 @@ const CustomAcpAgent: React.FC = () => {
         ConfigStorage.get('acp.customAgents'),
       ]);
 
-      if (agentsResponse.success && agentsResponse.data) {
-        setAvailableAgents(agentsResponse.data);
-      } else {
-        setAvailableAgents([]);
-      }
+      if (requestSeqRef.current === requestId) {
+        if (agentsResponse.success && agentsResponse.data) {
+          setAvailableAgents(agentsResponse.data);
+        } else {
+          setAvailableAgents([]);
+        }
 
-      setAcpConfig(nextAcpConfig);
-      setCodexConfig(nextCodexConfig);
-      setCustomAgents((nextCustomAgents || []).filter((agent) => !agent.isPreset));
+        setAcpConfig(nextAcpConfig);
+        setCodexConfig(nextCodexConfig);
+        setCustomAgents((nextCustomAgents || []).filter((agent) => !agent.isPreset));
 
-      const nextDrafts: Partial<Record<ManagedRuntimeBackend, string>> = {};
-      for (const backend of MANAGED_RUNTIME_BACKENDS) {
-        nextDrafts[backend] =
-          backend === 'codex' ? nextCodexConfig?.cliPath || '' : nextAcpConfig?.[backend as AcpBackend]?.cliPath || '';
+        const nextDrafts: Partial<Record<ManagedRuntimeBackend, string>> = {};
+        for (const backend of MANAGED_RUNTIME_BACKENDS) {
+          nextDrafts[backend] =
+            backend === 'codex' ? nextCodexConfig?.cliPath || '' : nextAcpConfig?.[backend as AcpBackend]?.cliPath || '';
+        }
+        setRuntimePathDrafts(nextDrafts);
       }
-      setRuntimePathDrafts(nextDrafts);
     } catch (error) {
       console.error('[RuntimeSettings] Failed to load runtime state:', error);
-      message.error(
-        t('settings.runtimeManager.loadFailed', {
-          defaultValue: 'Failed to load runtime status.',
-        })
-      );
+      if (requestSeqRef.current === requestId) {
+        message.error(
+          t('settings.runtimeManager.loadFailed', {
+            defaultValue: 'Failed to load runtime status.',
+          })
+        );
+      }
     } finally {
-      setLoading(false);
+      if (requestSeqRef.current === requestId) {
+        setLoading(false);
+      }
+      loadingRef.current = false;
     }
-  }, [message, t]);
+  });
 
   useEffect(() => {
     void loadRuntimeState();
-  }, [loadRuntimeState]);
+  }, []);
 
   const availableAgentMap = useMemo(() => {
     const map = new Map<ManagedRuntimeBackend, AvailableRuntimeAgent>();
@@ -505,15 +522,15 @@ const CustomAcpAgent: React.FC = () => {
     <div className='space-y-16px'>
       {messageContext}
 
-      <div className='px-[12px] md:px-[32px] py-16px bg-2 rd-16px space-y-16px'>
+      <div className='space-y-18px rounded-24px border border-border-2 bg-[color:color-mix(in_srgb,var(--color-bg-1)_90%,transparent)] px-16px py-18px shadow-[0_18px_44px_rgba(15,23,42,0.05)] md:px-[28px]'>
         <div className='flex items-start justify-between gap-16px flex-wrap'>
           <div className='space-y-4px'>
-            <div className='text-15px text-t-primary font-600'>
+            <div className='text-20px text-t-primary font-600 leading-28px'>
               {t('settings.runtimeManager.title', {
                 defaultValue: 'Runtime Management',
               })}
             </div>
-            <div className='text-13px text-t-secondary max-w-720px'>
+            <div className='text-14px leading-6 text-t-secondary max-w-760px'>
               {t('settings.runtimeManager.description', {
                 defaultValue:
                   'Manage local coding runtimes such as Claude Code and Codex. Backend identifiers stay unchanged; this page only manages installation guidance, CLI paths, authentication readiness, and health checks.',
@@ -521,7 +538,7 @@ const CustomAcpAgent: React.FC = () => {
             </div>
           </div>
 
-          <Button onClick={() => void loadRuntimeState()} loading={loading}>
+          <Button type='outline' shape='round' onClick={() => void loadRuntimeState()} loading={loading}>
             {t('settings.runtimeManager.refresh', {
               defaultValue: 'Refresh',
             })}
@@ -549,11 +566,14 @@ const CustomAcpAgent: React.FC = () => {
               effectiveCliPath,
               health,
             }) => (
-              <div key={backend} className='rd-16px border border-border-2 bg-bg-1 p-16px space-y-12px'>
+              <div
+                key={backend}
+                className='space-y-14px rounded-20px border border-border-2 bg-[color:color-mix(in_srgb,var(--color-bg-1)_94%,transparent)] p-18px shadow-[0_12px_30px_rgba(15,23,42,0.04)]'
+              >
                 <div className='flex items-start justify-between gap-12px flex-wrap'>
                   <div className='space-y-4px'>
                     <div className='text-15px font-600 text-t-primary'>{backendConfig.name}</div>
-                    <div className='text-13px text-t-secondary'>
+                    <div className='text-13px leading-5 text-t-secondary'>
                       {t(meta.descriptionKey, {
                         defaultValue: meta.descriptionDefault,
                       })}
@@ -596,40 +616,32 @@ const CustomAcpAgent: React.FC = () => {
                   </Space>
                 </div>
 
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-10px text-13px'>
-                  <div>
-                    <div className='text-t-secondary'>
-                      {t('settings.runtimeManager.cliCommand', {
-                        defaultValue: 'CLI Command',
-                      })}
-                    </div>
-                    <div className='text-t-primary break-all'>{backendConfig.cliCommand || '-'}</div>
-                  </div>
-                  <div>
-                    <div className='text-t-secondary'>
-                      {t('settings.runtimeManager.currentPath', {
-                        defaultValue: 'Current Runtime Path',
-                      })}
-                    </div>
-                    <div className='text-t-primary break-all'>
-                      {effectiveCliPath || backendConfig.cliCommand || '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className='text-t-secondary'>
-                      {t('settings.runtimeManager.reportedPath', {
-                        defaultValue: 'Reported Runtime Path',
-                      })}
-                    </div>
-                    <div className='text-t-primary break-all'>{agent?.cliPath || '-'}</div>
-                  </div>
-                  <div>
-                    <div className='text-t-secondary'>
+                <div className='rounded-16px bg-fill-1 px-14px py-12px text-13px leading-6 text-t-secondary'>
+                  {health.status === 'ready'
+                    ? t('settings.runtimeManager.summary.ready', {
+                        defaultValue: '已经检查通过，可以直接使用。',
+                      })
+                    : detected
+                      ? t('settings.runtimeManager.summary.detected', {
+                          defaultValue: '已经在本机检测到，建议再做一次可用性检查。',
+                        })
+                      : configuredCliPath || configuredOnly
+                        ? t('settings.runtimeManager.summary.configured', {
+                            defaultValue: '你已手动指定路径，保存后可以检查是否可用。',
+                          })
+                        : t('settings.runtimeManager.summary.missing', {
+                            defaultValue: '当前还没有检测到这个工具，如需使用可以先安装。',
+                          })}
+                </div>
+
+                <div className='grid grid-cols-1 gap-10px text-13px md:grid-cols-2'>
+                  <div className='rounded-14px bg-fill-1 p-12px'>
+                    <div className='text-t-secondary text-12px'>
                       {t('settings.runtimeManager.healthTitle', {
                         defaultValue: 'Health Status',
                       })}
                     </div>
-                    <div className='text-t-primary break-all'>
+                    <div className='mt-4px text-t-primary break-all leading-5'>
                       {health.status === 'checking'
                         ? t('settings.runtimeManager.health.checking', {
                             defaultValue: 'Checking...',
@@ -637,6 +649,32 @@ const CustomAcpAgent: React.FC = () => {
                         : health.message || '-'}
                       {health.status === 'ready' && health.latency !== undefined ? ` (${health.latency}ms)` : ''}
                     </div>
+                  </div>
+                  <div className='rounded-14px bg-fill-1 p-12px'>
+                    <div className='text-t-secondary text-12px'>
+                      {t('settings.runtimeManager.cliCommand', {
+                        defaultValue: 'CLI Command',
+                      })}
+                    </div>
+                    <div className='mt-4px text-t-primary break-all leading-5'>{backendConfig.cliCommand || '-'}</div>
+                  </div>
+                  <div className='rounded-14px bg-fill-1 p-12px'>
+                    <div className='text-t-secondary text-12px'>
+                      {t('settings.runtimeManager.currentPath', {
+                        defaultValue: 'Current Runtime Path',
+                      })}
+                    </div>
+                    <div className='mt-4px text-t-primary break-all leading-5'>
+                      {effectiveCliPath || backendConfig.cliCommand || '-'}
+                    </div>
+                  </div>
+                  <div className='rounded-14px bg-fill-1 p-12px'>
+                    <div className='text-t-secondary text-12px'>
+                      {t('settings.runtimeManager.reportedPath', {
+                        defaultValue: 'Reported Runtime Path',
+                      })}
+                    </div>
+                    <div className='mt-4px text-t-primary break-all leading-5'>{agent?.cliPath || '-'}</div>
                   </div>
                 </div>
 
@@ -653,12 +691,12 @@ const CustomAcpAgent: React.FC = () => {
                       placeholder={backendConfig.cliCommand || backendConfig.defaultCliPath || ''}
                     />
                     <Space wrap>
-                      <Button onClick={() => void handleSaveRuntimePath(backend)}>
+                      <Button type='outline' shape='round' onClick={() => void handleSaveRuntimePath(backend)}>
                         {t('settings.runtimeManager.savePath', {
                           defaultValue: 'Save Path',
                         })}
                       </Button>
-                      <Button onClick={() => void handleResetRuntimePath(backend)}>
+                      <Button type='outline' shape='round' onClick={() => void handleResetRuntimePath(backend)}>
                         {t('settings.runtimeManager.resetPath', {
                           defaultValue: 'Reset',
                         })}
@@ -668,13 +706,20 @@ const CustomAcpAgent: React.FC = () => {
                 </div>
 
                 <Space wrap>
-                  <Button loading={health.status === 'checking'} onClick={() => void handleHealthCheck(backend)}>
+                  <Button
+                    type='primary'
+                    shape='round'
+                    loading={health.status === 'checking'}
+                    onClick={() => void handleHealthCheck(backend)}
+                  >
                     {t('settings.runtimeManager.checkHealth', {
                       defaultValue: 'Check Health',
                     })}
                   </Button>
                   {meta.installCommand ? (
                     <Button
+                      type='outline'
+                      shape='round'
                       onClick={() =>
                         void handleCopy(
                           meta.installCommand!,
@@ -690,6 +735,8 @@ const CustomAcpAgent: React.FC = () => {
                   ) : null}
                   {meta.loginCommand ? (
                     <Button
+                      type='outline'
+                      shape='round'
                       onClick={() =>
                         void handleCopy(
                           meta.loginCommand!,
@@ -704,7 +751,7 @@ const CustomAcpAgent: React.FC = () => {
                     </Button>
                   ) : null}
                   {meta.docsUrl ? (
-                    <Button onClick={() => void handleOpenDocs(meta.docsUrl)}>
+                    <Button type='outline' shape='round' onClick={() => void handleOpenDocs(meta.docsUrl)}>
                       {t('settings.runtimeManager.openGuide', {
                         defaultValue: 'Open Guide',
                       })}
@@ -713,12 +760,16 @@ const CustomAcpAgent: React.FC = () => {
                 </Space>
 
                 {meta.installCommand ? (
-                  <Alert
-                    type='info'
-                    content={`${t('settings.runtimeManager.installCommandLabel', {
-                      defaultValue: 'Suggested Install Command',
-                    })}: ${meta.installCommand}`}
-                  />
+                  <div className='rounded-16px border border-dashed border-border-2 bg-fill-1 px-14px py-12px'>
+                    <div className='text-12px text-t-secondary'>
+                      {t('settings.runtimeManager.installCommandLabel', {
+                        defaultValue: 'Suggested Install Command',
+                      })}
+                    </div>
+                    <div className='mt-6px break-all font-mono text-13px leading-5 text-t-primary'>
+                      {meta.installCommand}
+                    </div>
+                  </div>
                 ) : null}
               </div>
             )
@@ -726,15 +777,15 @@ const CustomAcpAgent: React.FC = () => {
         </div>
       </div>
 
-      <div className='px-[12px] md:px-[32px] py-16px bg-2 rd-16px space-y-16px'>
+      <div className='space-y-18px rounded-24px border border-border-2 bg-[color:color-mix(in_srgb,var(--color-bg-1)_90%,transparent)] px-16px py-18px shadow-[0_18px_44px_rgba(15,23,42,0.05)] md:px-[28px]'>
         <div className='flex items-start justify-between gap-16px flex-wrap'>
           <div className='space-y-4px'>
-            <div className='text-15px text-t-primary font-600'>
+            <div className='text-18px text-t-primary font-600 leading-26px'>
               {t('settings.runtimeManager.customSectionTitle', {
                 defaultValue: 'Custom Runtime Adapters',
               })}
             </div>
-            <div className='text-13px text-t-secondary max-w-720px'>
+            <div className='text-14px leading-6 text-t-secondary max-w-760px'>
               {t('settings.runtimeManager.customSectionDescription', {
                 defaultValue:
                   'Add custom ACP-compatible runtimes when you want ContextGo to launch a CLI outside the built-in backend catalog.',
@@ -774,7 +825,10 @@ const CustomAcpAgent: React.FC = () => {
             >
               <div className='space-y-10px'>
                 {customAgents.map((agent) => (
-                  <div key={agent.id} className='p-4 bg-fill-2 rounded-lg'>
+                  <div
+                    key={agent.id}
+                    className='rounded-18px border border-border-2 bg-fill-1 p-16px shadow-[0_10px_24px_rgba(15,23,42,0.04)]'
+                  >
                     <div className='flex items-center justify-between mb-2'>
                       <div className='font-medium'>
                         {agent.name || t('settings.customAcpAgent', { defaultValue: 'Custom Agent' })}
@@ -801,7 +855,7 @@ const CustomAcpAgent: React.FC = () => {
                         />
                       </Space>
                     </div>
-                    <div className='text-sm text-t-secondary space-y-2px'>
+                    <div className='space-y-4px text-sm text-t-secondary'>
                       <div>
                         <span className='font-medium'>
                           {t('settings.runtimeManager.currentPath', {

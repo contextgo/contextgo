@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { ContextGoModal } from '@/renderer/components/base';
 import {
   Button,
-  Modal,
   Radio,
   Message,
   Dropdown,
@@ -110,12 +110,17 @@ Please acknowledge receiving this rule/skill and confirm you will apply it.
   };
 
   return (
-    <Modal
-      title={t('conversation.skill_generator.load_title', { defaultValue: 'Load Rule/Skill' })}
+    <ContextGoModal
       visible={visible}
       onCancel={onCancel}
+      header={{
+        title: t('conversation.skill_generator.load_title', { defaultValue: 'Load Rule/Skill' }),
+        showClose: true,
+        className: 'px-24px pt-20px',
+      }}
       footer={null}
-      className='w-[90vw] md:w-[500px]'
+      style={{ width: 'min(500px, calc(100vw - 32px))' }}
+      contentStyle={{ padding: '12px 24px 24px', maxHeight: 'min(72vh, 680px)', overflow: 'auto' }}
     >
       <Spin loading={loading} style={{ display: 'block' }}>
         {files.length === 0 ? (
@@ -154,7 +159,7 @@ Please acknowledge receiving this rule/skill and confirm you will apply it.
           />
         )}
       </Spin>
-    </Modal>
+    </ContextGoModal>
   );
 };
 
@@ -316,14 +321,34 @@ Requirements:
       </Dropdown>
 
       {/* Generate Modal */}
-      <Modal
-        title={t('conversation.skill_generator.title', { defaultValue: 'Generate Skill/Rule' })}
+      <ContextGoModal
         visible={generateVisible}
-        onOk={handleGenerate}
         onCancel={() => setGenerateVisible(false)}
-        okText={t('conversation.skill_generator.generate', { defaultValue: 'Generate' })}
-        confirmLoading={loading}
-        className='w-[90vw] md:w-[500px]'
+        header={{
+          title: t('conversation.skill_generator.title', { defaultValue: 'Generate Skill/Rule' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setGenerateVisible(false)} className='min-w-88px px-18px'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button
+                type='primary'
+                onClick={() => void handleGenerate()}
+                loading={loading}
+                className='min-w-104px px-18px'
+              >
+                {t('conversation.skill_generator.generate', { defaultValue: 'Generate' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(500px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <div style={{ marginBottom: 16 }}>
           <div className='mb-4'>
@@ -351,7 +376,7 @@ Requirements:
           </Radio>
           <Radio value='rule'>{t('conversation.skill_generator.type_rule', { defaultValue: 'Rule (JSON/MD)' })}</Radio>
         </Radio.Group>
-      </Modal>
+      </ContextGoModal>
 
       {/* Load Modal */}
       <LoadRuleModal

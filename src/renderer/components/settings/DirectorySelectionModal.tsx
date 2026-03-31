@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Button, Modal, Spin } from '@arco-design/web-react';
+import { ContextGoModal } from '@/renderer/components/base';
+import { Button, Spin } from '@arco-design/web-react';
 import { IconFile, IconFolder, IconUp } from '@arco-design/web-react/icon';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -120,18 +121,20 @@ const DirectorySelectionModal: React.FC<DirectorySelectionModalProps> = ({
   };
 
   return (
-    <Modal
+    <ContextGoModal
       visible={visible}
-      title={isFileMode ? '📄 ' + t('fileSelection.selectFile') : '📁 ' + t('fileSelection.selectDirectory')}
       onCancel={onCancel}
-      onOk={handleConfirm}
-      okButtonProps={{ disabled: !selectedPath }}
-      className='w-[90vw] md:w-[600px]'
-      style={{ width: 'min(600px, 90vw)' }}
+      header={{
+        title: isFileMode ? '📄 ' + t('fileSelection.selectFile') : '📁 ' + t('fileSelection.selectDirectory'),
+        showClose: true,
+        className: 'px-24px pt-20px',
+      }}
+      className='directory-selection-modal'
+      style={{ width: 'min(640px, calc(100vw - 32px))' }}
       wrapStyle={{ zIndex: 3000 }}
       maskStyle={{ zIndex: 2990 }}
       footer={
-        <div className='w-full flex justify-between items-center'>
+        <div className='flex w-full items-center justify-between gap-12px px-24px pb-20px pt-4px'>
           <div
             className='text-t-secondary text-14px overflow-hidden text-ellipsis whitespace-nowrap max-w-[70vw]'
             title={selectedPath || currentPath}
@@ -148,13 +151,14 @@ const DirectorySelectionModal: React.FC<DirectorySelectionModalProps> = ({
           </div>
         </div>
       }
+      contentStyle={{ padding: '12px 24px 0' }}
     >
       <Spin loading={loading} className='w-full'>
-        <div className='w-full border border-b-base rd-4px overflow-hidden' style={{ height: 'min(400px, 60vh)' }}>
+        <div className='w-full overflow-hidden rounded-18px border border-b-base bg-fill-1 shadow-[0_12px_30px_rgba(15,23,42,0.04)]' style={{ height: 'min(420px, 60vh)' }}>
           <div className='h-full overflow-y-auto'>
             {directoryData.canGoUp && (
               <div
-                className='flex items-center p-10px border-b border-b-light cursor-pointer hover:bg-hover transition'
+                className='flex cursor-pointer items-center border-b border-b-light px-14px py-12px transition hover:bg-fill-1'
                 onClick={handleGoUp}
               >
                 <IconUp className='mr-10px text-t-secondary' />
@@ -172,7 +176,7 @@ const DirectorySelectionModal: React.FC<DirectorySelectionModalProps> = ({
             {directoryData.items.map((item, index) => (
               <div
                 key={index}
-                className='flex items-center justify-between p-10px border-b border-b-light cursor-pointer hover:bg-hover transition'
+                className='flex items-center justify-between border-b border-b-light px-14px py-12px transition hover:bg-fill-1'
                 style={selectedPath === item.path ? { background: 'var(--brand-light)' } : {}}
                 onClick={() => handleItemClick(item)}
                 onDoubleClick={() => handleItemDoubleClick(item)}
@@ -202,7 +206,7 @@ const DirectorySelectionModal: React.FC<DirectorySelectionModalProps> = ({
           </div>
         </div>
       </Spin>
-    </Modal>
+    </ContextGoModal>
   );
 };
 

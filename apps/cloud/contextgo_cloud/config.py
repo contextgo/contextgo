@@ -19,6 +19,7 @@ class Settings:
     database_path: str
     auth_base_url: str
     api_base_url: str
+    remote_base_url: str
     session_cookie_domain: Optional[str]
     allowed_emails: tuple[str, ...]
     github_client_id: Optional[str]
@@ -51,8 +52,11 @@ def load_settings() -> Settings:
 
     auth_base_url = _read_env("CONTEXTGO_AUTH_BASE_URL", "https://auth.contextgo.io")
     api_base_url = _read_env("CONTEXTGO_API_BASE_URL", "https://api.contextgo.io")
-    if auth_base_url is None or api_base_url is None:
-        raise RuntimeError("CONTEXTGO_AUTH_BASE_URL and CONTEXTGO_API_BASE_URL must be configured")
+    remote_base_url = _read_env("CONTEXTGO_REMOTE_BASE_URL", "https://remote.contextgo.io")
+    if auth_base_url is None or api_base_url is None or remote_base_url is None:
+        raise RuntimeError(
+            "CONTEXTGO_AUTH_BASE_URL, CONTEXTGO_API_BASE_URL, and CONTEXTGO_REMOTE_BASE_URL must be configured"
+        )
 
     session_cookie_domain = _read_env("CONTEXTGO_SESSION_COOKIE_DOMAIN", ".contextgo.io")
 
@@ -60,6 +64,7 @@ def load_settings() -> Settings:
         database_path=_read_env("CONTEXTGO_DATABASE_PATH", "./data/contextgo-cloud.db") or "./data/contextgo-cloud.db",
         auth_base_url=auth_base_url.rstrip("/"),
         api_base_url=api_base_url.rstrip("/"),
+        remote_base_url=remote_base_url.rstrip("/"),
         session_cookie_domain=session_cookie_domain,
         allowed_emails=allowed_emails,
         github_client_id=_read_env("CONTEXTGO_GITHUB_CLIENT_ID"),

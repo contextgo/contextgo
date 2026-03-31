@@ -1,4 +1,5 @@
-import { Button, Collapse, Modal, Input, Typography } from '@arco-design/web-react';
+import { ContextGoModal } from '@/renderer/components/base';
+import { Button, Collapse, Input, Typography } from '@arco-design/web-react';
 import type { Message } from '@arco-design/web-react';
 import { EditTwo, Delete, Lightning } from '@icon-park/react';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -145,12 +146,29 @@ const PresetManagement: React.FC<PresetManagementProps> = ({ message }) => {
       </Collapse.Item>
 
       {/* Edit Modal */}
-      <Modal
-        title={t('settings.edit_preset', { defaultValue: 'Edit Preset' })}
+      <ContextGoModal
         visible={editVisible}
-        onOk={handleSave}
         onCancel={() => setEditVisible(false)}
-        style={{ width: 600 }}
+        header={{
+          title: t('settings.edit_preset', { defaultValue: 'Edit Preset' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setEditVisible(false)} className='min-w-88px px-18px'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button type='primary' onClick={() => void handleSave()} className='min-w-104px px-18px'>
+                {t('common.save', { defaultValue: 'Save' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(680px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px', maxHeight: 'min(76vh, 760px)', overflow: 'auto' }}
       >
         <div className='space-y-4'>
           <div>
@@ -172,19 +190,41 @@ const PresetManagement: React.FC<PresetManagementProps> = ({ message }) => {
             </div>
           </div>
         </div>
-      </Modal>
+      </ContextGoModal>
 
       {/* Delete Confirm */}
-      <Modal
-        title={t('common.confirm', { defaultValue: 'Confirm Delete' })}
+      <ContextGoModal
         visible={deleteVisible}
-        onOk={handleDelete}
         onCancel={() => setDeleteVisible(false)}
-        okButtonProps={{ status: 'danger' }}
+        header={{
+          title: t('common.confirm', { defaultValue: 'Confirm Delete' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setDeleteVisible(false)} className='min-w-88px px-18px'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button
+                type='primary'
+                status='danger'
+                onClick={() => void handleDelete()}
+                className='min-w-104px px-18px'
+              >
+                {t('common.delete', { defaultValue: 'Delete' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(440px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <p>{t('settings.delete_preset_confirm', { defaultValue: 'Are you sure you want to delete this preset?' })}</p>
         <Typography.Text bold>{presetToDelete?.name}</Typography.Text>
-      </Modal>
+      </ContextGoModal>
     </div>
   );
 };

@@ -6,8 +6,9 @@
 
 import { ipcBridge } from '@/common';
 import type { ExternalSessionProvider, ExternalSessionSummary } from '@/common/types/externalSessions';
+import { ContextGoModal } from '@/renderer/components/base';
 import { emitter } from '@/renderer/utils/emitter';
-import { Button, Empty, Message, Modal, Tabs, Tag, Typography } from '@arco-design/web-react';
+import { Button, Empty, Message, Tabs, Tag, Typography } from '@arco-design/web-react';
 import { Down, Refresh, Right } from '@icon-park/react';
 import React, { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -196,7 +197,7 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
   const renderSessionCard = (session: ExternalSessionSummary) => (
     <div
       key={`${session.provider}:${session.sessionId}`}
-      className='flex items-center gap-12px rounded-14px border border-border-2 bg-fill-1 px-14px py-12px'
+      className='flex items-center gap-14px rounded-18px border border-b-base bg-2 px-16px py-14px shadow-[0_12px_30px_rgba(15,23,42,0.06)]'
     >
       <div className='min-w-0 flex-1'>
         <div className='flex items-center gap-8px flex-wrap'>
@@ -237,15 +238,28 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
   return (
     <>
       {messageContext}
-      <Modal
+      <ContextGoModal
         visible={visible}
-        title={t('guid.externalSessions.title', {
-          defaultValue: 'Continue external sessions',
-        })}
-        style={{ width: 680 }}
-        footer={null}
-        unmountOnExit
         onCancel={onClose}
+        unmountOnExit
+        className='external-sessions-modal'
+        header={{
+          title: t('guid.externalSessions.title', {
+            defaultValue: 'Continue external sessions',
+          }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={null}
+        style={{
+          width: 'min(720px, calc(100vw - 32px))',
+          maxHeight: 'calc(100vh - 40px)',
+        }}
+        contentStyle={{
+          padding: '14px 24px 24px',
+          overflow: 'auto',
+          maxHeight: 'calc(100vh - 136px)',
+        }}
       >
         <div className='flex min-h-220px flex-col gap-12px'>
           <div className='flex items-start justify-between gap-12px'>
@@ -305,7 +319,7 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
               {openclawSessionGroups.map(({ agent, sessions: agentSessions }) => (
                 <div key={agent.agentId} className='flex flex-col gap-8px'>
                   <div
-                    className='flex cursor-pointer items-center gap-8px rounded-12px border border-border-2 bg-fill-0 px-12px py-10px'
+                    className='flex cursor-pointer items-center gap-8px rounded-16px border border-b-base bg-fill-1 px-14px py-12px shadow-[0_10px_24px_rgba(15,23,42,0.04)]'
                     onClick={() => {
                       toggleOpenClawAgentGroup(agent.agentId);
                     }}
@@ -357,7 +371,7 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
             />
           )}
         </div>
-      </Modal>
+      </ContextGoModal>
     </>
   );
 };

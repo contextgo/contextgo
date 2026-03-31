@@ -16,9 +16,10 @@ import {
 } from '@/common/chat/slash/library';
 import { ConfigStorage } from '@/common/config/storage';
 import { uuid } from '@/common/utils';
+import { ContextGoModal } from '@/renderer/components/base';
 import SettingsPageWrapper from '@/renderer/pages/settings/components/SettingsPageWrapper';
 import { emitter } from '@/renderer/utils/emitter';
-import { Button, Empty, Input, Message, Modal, Switch, Tag, Typography } from '@arco-design/web-react';
+import { Button, Empty, Input, Message, Switch, Tag, Typography } from '@arco-design/web-react';
 import { Command, Edit, Plus, Refresh, Delete } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -364,18 +365,37 @@ const CommandSettings: React.FC = () => {
         </div>
       </div>
 
-      <Modal
-        title={
-          editorState.id
-            ? t('settings.commands.editTitle', { name: `/${editorState.name || editorState.id}` })
-            : t('settings.commands.createTitle')
-        }
+      <ContextGoModal
         visible={editorVisible}
-        onOk={() => {
-          void saveEditor();
-        }}
         onCancel={closeEditor}
-        style={{ width: 760 }}
+        header={{
+          title: editorState.id
+            ? t('settings.commands.editTitle', { name: `/${editorState.name || editorState.id}` })
+            : t('settings.commands.createTitle'),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={closeEditor} className='min-w-88px px-18px'>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type='primary'
+                onClick={() => {
+                  void saveEditor();
+                }}
+                className='min-w-104px px-18px'
+              >
+                {t('common.save')}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(760px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px', maxHeight: 'min(70vh, 720px)', overflow: 'auto' }}
       >
         <div className='flex flex-col gap-16px'>
           <div>
@@ -417,20 +437,42 @@ const CommandSettings: React.FC = () => {
             </Typography.Paragraph>
           )}
         </div>
-      </Modal>
+      </ContextGoModal>
 
-      <Modal
-        title={t('common.confirmDelete')}
+      <ContextGoModal
         visible={Boolean(deleteTarget)}
-        onOk={() => {
-          void deleteCommand();
-        }}
         onCancel={() => setDeleteTarget(null)}
-        okButtonProps={{ status: 'danger' }}
+        header={{
+          title: t('common.confirmDelete'),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setDeleteTarget(null)} className='min-w-88px px-18px'>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type='primary'
+                status='danger'
+                onClick={() => {
+                  void deleteCommand();
+                }}
+                className='min-w-104px px-18px'
+              >
+                {t('common.delete')}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(440px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <Typography.Paragraph>{t('settings.commands.deleteConfirm')}</Typography.Paragraph>
         <Typography.Text bold>{deleteTarget ? `/${deleteTarget.name}` : ''}</Typography.Text>
-      </Modal>
+      </ContextGoModal>
     </SettingsPageWrapper>
   );
 };

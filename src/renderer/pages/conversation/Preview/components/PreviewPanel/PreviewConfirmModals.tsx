@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Modal } from '@arco-design/web-react';
+import { ContextGoModal } from '@/renderer/components/base';
+import { Button } from '@arco-design/web-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -95,56 +96,65 @@ const PreviewConfirmModals: React.FC<PreviewConfirmModalsProps> = ({
   return (
     <>
       {/* 退出编辑确认对话框 / Exit edit confirmation modal */}
-      <Modal
+      <ContextGoModal
         visible={showExitConfirm}
-        title={t('preview.unsavedChangesTitle')}
         onCancel={onCancelExit}
-        onOk={onConfirmExit}
-        okText={t('preview.confirmExit')}
-        cancelText={t('preview.continueEdit')}
-        style={{ borderRadius: '12px' }}
-        alignCenter
-        getPopupContainer={() => document.body}
+        className='preview-exit-confirm-modal'
+        header={{
+          title: t('preview.unsavedChangesTitle'),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={onCancelExit} className='min-w-104px px-18px'>
+                {t('preview.continueEdit')}
+              </Button>
+              <Button type='primary' onClick={onConfirmExit} className='min-w-104px px-18px'>
+                {t('preview.confirmExit')}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(460px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <div className='text-14px text-t-secondary'>{t('preview.unsavedChangesMessage')}</div>
-      </Modal>
+      </ContextGoModal>
 
       {/* 关闭tab确认对话框 / Close tab confirmation modal */}
-      <Modal
+      <ContextGoModal
         visible={closeTabConfirm.show}
-        title={t('preview.closeTabTitle')}
         onCancel={onCancelCloseTab}
-        onOk={onSaveAndCloseTab}
-        okText={t('preview.saveAndClose')}
-        cancelText={t('common.cancel')}
-        style={{ borderRadius: '12px' }}
-        alignCenter
-        getPopupContainer={() => document.body}
-        footer={
-          <div className='flex justify-end gap-8px'>
-            <button
-              className='px-16px py-6px cursor-pointer border-none hover:bg-bg-3 transition-colors text-14px text-t-primary'
-              onClick={onCancelCloseTab}
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              className='px-16px py-6px cursor-pointer border-none hover:bg-bg-3 transition-colors text-14px text-t-primary'
-              onClick={onCloseWithoutSave}
-            >
-              {t('preview.closeWithoutSave')}
-            </button>
-            <button
-              className='px-16px py-6px cursor-pointer border-none bg-primary text-white hover:opacity-80 transition-opacity text-14px'
-              onClick={onSaveAndCloseTab}
-            >
-              {t('preview.saveAndClose')}
-            </button>
-          </div>
-        }
+        className='preview-close-tab-modal'
+        header={{
+          title: t('preview.closeTabTitle'),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={onCancelCloseTab} className='min-w-88px px-18px'>
+                {t('common.cancel')}
+              </Button>
+              <Button onClick={onCloseWithoutSave} className='min-w-120px px-18px'>
+                {t('preview.closeWithoutSave')}
+              </Button>
+              <Button type='primary' onClick={onSaveAndCloseTab} className='min-w-120px px-18px'>
+                {t('preview.saveAndClose')}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(520px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
       >
         <div className='text-14px text-t-secondary'>{t('preview.closeTabMessage')}</div>
-      </Modal>
+      </ContextGoModal>
     </>
   );
 };
