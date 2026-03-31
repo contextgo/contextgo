@@ -19,6 +19,7 @@ import {
   type IAgentProfile,
   type IChannelBinding,
   type IChannelHandoffRequest,
+  type IChannelHandoffReleaseResult,
   type IChannelHandoffResult,
   type IChannelSession,
   type IExternalSession,
@@ -297,6 +298,135 @@ export class ChannelHandoffService {
 
     if (!transaction.success || !transaction.data) {
       throw new Error(transaction.error || 'Channel handoff transaction failed');
+    }
+
+    return transaction.data;
+  }
+
+  async releaseHandoff(targetExternalSessionId: string): Promise<IChannelHandoffReleaseResult> {
+    const db = await this.deps.getDatabase();
+    const targetExternalSession = assertQuerySuccess(
+      db.getExternalSession(targetExternalSessionId),
+      `Failed to load target external session ${targetExternalSessionId}`
+    );
+    if (!targetExternalSession) {
+      throw new Error(`Target external session ${targetExternalSessionId} not found`);
+    }
+
+    const binding = targetExternalSession.bindingId
+      ? assertQuerySuccess(db.getChannelBinding(targetExternalSession.bindingId), 'Failed to load handoff binding')
+      : null;
+
+    const bindingMetadata = binding?.metadata && typeof binding.metadata === 'object'
+      ? (binding.metadata as Record<string, unknown>)
+      : {};
+    const bindingHandoff =
+      bindingMetadata.handoff && typeof bindingMetadata.handoff === 'object'
+        ? (bindingMetadata.handoff as Record<string, unknown>)
+        : {};
+    const targetMetadata =
+      targetExternalSession.metadata && typeof targetExternalSession.metadata === 'object'
+        ? (targetExternalSession.metadata as Record<string, unknown>)
+        : {};
+    const controlMetadata =
+      targetMetadata.control && typeof targetMetadata.control === 'object'
+        ? (targetMetadata.control as Record<string, unknown>)
+        : {};
+
+    const sourceExternalSessionId =
+      typeof controlMetadata.sourceExternalSessionId === 'string' && controlMetadata.sourceExternalSessionId
+        ? controlMetadata.sourceExternalSessionId
+        : typeof bindingHandoff.sourceExternalSessionId === 'string' && bindingHandoff.sourceExternalSessionId
+          ? bindingHandoff.sourceExternalSessionId
+          : undefined;
+
+    const sourceConversationId =
+      typeof controlMetadata.sourceConversationId === 'string' && controlMetadata.sourceConversationId
+        ? controlMetadata.sourceConversationId
+        : typeof bindingHandoff.sourceConversationId === 'string' && bindingHandoff.sourceConversationId
+          ? bindingHandoff.sourceConversationId
+          : typeof bindingHandoff.resumeConversationId === 'string' && bindingHandoff.resumeConversationId
+            ? bindingHandoff.resumeConversationId
+            : undefined;
+
+    const now = Date.now();
+    const transaction = db.runInTransaction(() => {
+      if (binding?.temporary) {
+        assertQuerySuccess(db.deleteChannelBinding(binding.id), `Failed to delete handoff binding ${binding.id}`);
+      }
+
+      const releasedTargetSession: IExternalSession = {
+        ...targetExternalSession,
+        bindingId: binding?.temporary ? undefined : targetExternalSession.bindingId,
+        activeConversationId: undefined,
+        lastActivity: now,
+        metadata: {
+          ...targetMetadata,
+          control: {
+            ...controlMetadata,
+            releasedAt: now,
+          },
+        },
+      };
+      assertQuerySuccess(db.upsertExternalSession(releasedTargetSession), 'Failed to release target external session');
+
+      let restoredSourceExternalSessionId: string | undefined;
+      let restoredConversationId: string | undefined;
+      if (sourceExternalSessionId && sourceConversationId) {
+        const sourceExternalSession = assertQuerySuccess(
+          db.getExternalSession(sourceExternalSessionId),
+          `Failed to load source external session ${sourceExternalSessionId}`
+        );
+        if (sourceExternalSession) {
+          const restoredSourceSession: IExternalSession = {
+            ...sourceExternalSession,
+            activeConversationId: sourceConversationId,
+            lastActivity: now,
+            metadata: {
+              ...sourceExternalSession.metadata,
+              handoff: {
+                transferredConversationId: undefined,
+                targetExternalSessionId: undefined,
+                restoredAt: now,
+              },
+            },
+          };
+          assertQuerySuccess(db.upsertExternalSession(restoredSourceSession), 'Failed to restore source external session');
+          restoredSourceExternalSessionId = restoredSourceSession.id;
+          restoredConversationId = sourceConversationId;
+        }
+      }
+
+      const mirroredSessions = assertQuerySuccess(db.getChannelSessions(), 'Failed to load channel session mirrors');
+      const targetMirror = mirroredSessions.find((session) => session.id === releasedTargetSession.id);
+      if (targetMirror) {
+        assertQuerySuccess(db.deleteChannelSession(targetMirror.id), 'Failed to delete target handoff session mirror');
+      }
+
+      if (restoredSourceExternalSessionId) {
+        const sourceMirror = mirroredSessions.find((session) => session.id === restoredSourceExternalSessionId);
+        if (sourceMirror && restoredConversationId) {
+          assertQuerySuccess(
+            db.upsertChannelSession({
+              ...sourceMirror,
+              conversationId: restoredConversationId,
+              lastActivity: now,
+            }),
+            'Failed to refresh source channel session mirror'
+          );
+        }
+      }
+
+      return {
+        targetExternalSessionId,
+        releasedBindingId: binding?.id,
+        restoredSourceExternalSessionId,
+        restoredConversationId,
+      } satisfies IChannelHandoffReleaseResult;
+    });
+
+    if (!transaction.success || !transaction.data) {
+      throw new Error(transaction.error || 'Channel handoff release transaction failed');
     }
 
     return transaction.data;

@@ -25,6 +25,10 @@ type SourceOption = {
   value: string;
 };
 
+function getAudienceOptionValue(audience: IChannelBindingCatalog['audiences'][number]): string {
+  return `${audience.scopeType}:${audience.key}`;
+}
+
 const EMPTY_CATALOG: IChannelBindingCatalog = {
   connectors: [],
   agentProfiles: [],
@@ -74,6 +78,7 @@ const SessionHandoffPanel: React.FC = () => {
   const [handoffMode, setHandoffMode] = useState<'resume' | 'new_thread'>('resume');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [endingSessionId, setEndingSessionId] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -119,16 +124,15 @@ const SessionHandoffPanel: React.FC = () => {
   }, [loadData]);
 
   const targetAudiences = useMemo(
-    () =>
-      catalog.audiences.filter(
-        (audience) => audience.connectorId === selectedConnectorId && audience.scopeType === 'remote_chat'
-      ),
+    () => catalog.audiences.filter((audience) => audience.connectorId === selectedConnectorId),
     [catalog.audiences, selectedConnectorId]
   );
 
   useEffect(() => {
     setSelectedAudienceKey((current) =>
-      targetAudiences.some((audience) => audience.key === current) ? current : (targetAudiences[0]?.key ?? '')
+      targetAudiences.some((audience) => getAudienceOptionValue(audience) === current)
+        ? current
+        : (targetAudiences[0] ? getAudienceOptionValue(targetAudiences[0]) : '')
     );
   }, [targetAudiences]);
 
@@ -158,7 +162,7 @@ const SessionHandoffPanel: React.FC = () => {
   }, [sessionHandoffIntent, sessions]);
 
   const selectedAudience = useMemo(
-    () => targetAudiences.find((audience) => audience.key === selectedAudienceKey),
+    () => targetAudiences.find((audience) => getAudienceOptionValue(audience) === selectedAudienceKey),
     [selectedAudienceKey, targetAudiences]
   );
 
@@ -174,7 +178,7 @@ const SessionHandoffPanel: React.FC = () => {
   const audienceOptions = useMemo(
     () =>
       targetAudiences.map((audience) => ({
-        value: audience.key,
+        value: getAudienceOptionValue(audience),
         label: audience.subtitle ? `${audience.title} · ${audience.subtitle}` : audience.title,
       })),
     [targetAudiences]
@@ -231,6 +235,25 @@ const SessionHandoffPanel: React.FC = () => {
       setSubmitting(false);
     }
   }, [handoffMode, loadData, selectedAudience, selectedConnectorId, selectedSource, t]);
+
+  const handleEndHandoff = useCallback(
+    async (targetExternalSessionId: string) => {
+      setEndingSessionId(targetExternalSessionId);
+      try {
+        const result = await channel.endHandoffSession.invoke({ targetExternalSessionId });
+        if (!result.success || !result.data) {
+          throw new Error(result.msg || t('settings.activeSessions.endHandoffFailed'));
+        }
+        Message.success(t('settings.activeSessions.endHandoffSuccess'));
+        await loadData();
+      } catch (error) {
+        Message.error(error instanceof Error ? error.message : t('settings.activeSessions.endHandoffFailed'));
+      } finally {
+        setEndingSessionId('');
+      }
+    },
+    [loadData, t]
+  );
 
   return (
     <div className='mt-16px border border-[var(--color-border-2)] rd-14px px-14px py-14px space-y-14px'>
@@ -297,6 +320,9 @@ const SessionHandoffPanel: React.FC = () => {
                           </Tag>
                           <Tag>{session.agentType}</Tag>
                           {session.connectorPlatform ? <Tag>{session.connectorPlatform}</Tag> : null}
+                          {session.bindingTemporary ? (
+                            <Tag color='orangered'>{t('settings.activeSessions.handoffTag')}</Tag>
+                          ) : null}
                         </div>
                         <div className='text-13px text-t-primary break-all'>
                           {session.connectorName
@@ -306,13 +332,31 @@ const SessionHandoffPanel: React.FC = () => {
                         <div className='text-12px text-t-secondary break-all'>
                           {session.workspace || session.conversationId || t('settings.activeSessions.noConversation')}
                         </div>
+                        {session.bindingTemporary && (session.handoffSourceConversationId || session.handoffSourceExternalSessionId) ? (
+                          <div className='text-12px text-t-secondary break-all'>
+                            {t('settings.activeSessions.handoffSourceLabel')}:{' '}
+                            {session.handoffSourceConversationId || session.handoffSourceExternalSessionId}
+                          </div>
+                        ) : null}
                         <div className='flex items-center justify-between gap-8px'>
                           <span className='text-12px text-t-secondary'>
                             {formatRelativeTime(session.lastActivity, i18n.language)}
                           </span>
-                          <Button type='text' onClick={() => setSelectedSource(`session:${session.id}`)}>
-                            {t('settings.activeSessions.useAsSource')}
-                          </Button>
+                          <div className='flex items-center gap-8px'>
+                            <Button type='text' onClick={() => setSelectedSource(`session:${session.id}`)}>
+                              {t('settings.activeSessions.useAsSource')}
+                            </Button>
+                            {session.bindingTemporary ? (
+                              <Button
+                                type='text'
+                                status='danger'
+                                loading={endingSessionId === session.id}
+                                onClick={() => void handleEndHandoff(session.id)}
+                              >
+                                {t('settings.activeSessions.endHandoff')}
+                              </Button>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     );

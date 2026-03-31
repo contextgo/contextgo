@@ -1983,6 +1983,17 @@ export class ContextGoUIDatabase {
     }
   }
 
+  getAllExternalSessions(): IQueryResult<IExternalSession[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM external_sessions ORDER BY last_activity DESC')
+        .all() as IExternalSessionRow[];
+      return { success: true, data: rows.map(rowToExternalSession) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
   upsertExternalSession(session: IExternalSession): IQueryResult<boolean> {
     try {
       const now = Date.now();
@@ -2660,6 +2671,7 @@ export class ContextGoUIDatabase {
             FROM external_sessions es
             INNER JOIN remote_identities ri ON ri.id = es.remote_identity_id
             INNER JOIN agent_profiles ap ON ap.id = es.agent_profile_id
+            WHERE es.active_conversation_id IS NOT NULL
             ORDER BY es.last_activity DESC
           `
         )

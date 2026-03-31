@@ -9,15 +9,18 @@ import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '
 import { getChannelManager } from '@process/channels/core/ChannelManager';
 import { getChannelHandoffService } from '@process/channels/core/ChannelHandoffService';
 import { getPairingService } from '@process/channels/pairing/PairingService';
+import { getDatabase } from '@process/services/database';
 import { ExtensionRegistry } from '@process/extensions';
 import { toAssetUrl } from '@process/extensions/protocol/assetProtocol';
 import * as path from 'path';
 import type {
   IChannelActiveSessionEntry,
   IChannelAudienceEntry,
+  IChannelBinding,
   IChannelPluginStatus,
   IChannelSession,
   IConnectorInstance,
+  IExternalSession,
   IRemoteIdentity,
 } from '@process/channels/types';
 import { hasPluginCredentials } from '@process/channels/types';
@@ -119,13 +122,25 @@ function buildActiveSessionEntries(params: {
   sessions: IChannelSession[];
   remoteIdentities: IRemoteIdentity[];
   connectors: IConnectorInstance[];
+  bindings: IChannelBinding[];
+  externalSessions: IExternalSession[];
 }): IChannelActiveSessionEntry[] {
   const remoteIdentityMap = new Map(params.remoteIdentities.map((identity) => [identity.id, identity]));
   const connectorMap = new Map(params.connectors.map((connector) => [connector.id, connector]));
+  const bindingMap = new Map(params.bindings.map((binding) => [binding.id, binding]));
+  const externalSessionMap = new Map(params.externalSessions.map((session) => [session.id, session]));
 
   return params.sessions.map((session) => {
     const remoteIdentity = remoteIdentityMap.get(session.userId);
     const connector = remoteIdentity ? connectorMap.get(remoteIdentity.connectorId) : undefined;
+    const externalSession = externalSessionMap.get(session.id);
+    const binding = externalSession?.bindingId ? bindingMap.get(externalSession.bindingId) : undefined;
+    const metadata =
+      externalSession?.metadata && typeof externalSession.metadata === 'object'
+        ? (externalSession.metadata as Record<string, unknown>)
+        : {};
+    const control =
+      metadata.control && typeof metadata.control === 'object' ? (metadata.control as Record<string, unknown>) : {};
 
     return {
       id: session.id,
@@ -140,6 +155,15 @@ function buildActiveSessionEntries(params: {
       agentType: session.agentType,
       createdAt: session.createdAt,
       lastActivity: session.lastActivity,
+      bindingId: binding?.id ?? externalSession?.bindingId,
+      bindingTemporary: binding?.temporary,
+      ownerKey: typeof control.ownerKey === 'string' ? control.ownerKey : undefined,
+      handoffMode:
+        control.mode === 'new_thread' || control.mode === 'resume' ? control.mode : undefined,
+      handoffSourceExternalSessionId:
+        typeof control.sourceExternalSessionId === 'string' ? control.sourceExternalSessionId : undefined,
+      handoffSourceConversationId:
+        typeof control.sourceConversationId === 'string' ? control.sourceConversationId : undefined,
     };
   });
 }
@@ -440,17 +464,25 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
 
   channel.getActiveSessionCatalog.provider(async () => {
     try {
-      const [sessions, connectors, remoteIdentities] = await Promise.all([
+      const db = await getDatabase();
+      const [sessions, connectors, remoteIdentities, bindings] = await Promise.all([
         channelRepo.getChannelSessions(),
         channelRepo.getConnectorInstances(),
         channelRepo.getRemoteIdentities(),
+        channelRepo.getChannelBindings(),
       ]);
+      const externalSessionsResult = db.getAllExternalSessions();
+      if (!externalSessionsResult.success || !externalSessionsResult.data) {
+        throw new Error(externalSessionsResult.error || 'Failed to load external sessions');
+      }
       return {
         success: true,
         data: buildActiveSessionEntries({
           sessions,
           connectors,
           remoteIdentities,
+          bindings,
+          externalSessions: externalSessionsResult.data,
         }),
       };
     } catch (error) {
@@ -545,6 +577,17 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return { success: true, data };
     } catch (error) {
       console.error('[ChannelBridge] handoffSession error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.endHandoffSession.provider(async ({ targetExternalSessionId }) => {
+    try {
+      const handoffService = getChannelHandoffService();
+      const data = await handoffService.releaseHandoff(targetExternalSessionId);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] endHandoffSession error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });

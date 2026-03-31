@@ -286,6 +286,13 @@ export type IChannelHandoffResult = {
   mode: ChannelHandoffMode;
 };
 
+export type IChannelHandoffReleaseResult = {
+  targetExternalSessionId: string;
+  releasedBindingId?: string;
+  restoredSourceExternalSessionId?: string;
+  restoredConversationId?: string;
+};
+
 /**
  * Long-lived external chat relationship.
  * The active conversation may rotate on `/new`, but the external session remains stable.
@@ -453,6 +460,12 @@ export type IChannelActiveSessionEntry = {
   agentType: ChannelAgentType;
   createdAt: number;
   lastActivity: number;
+  bindingId?: string;
+  bindingTemporary?: boolean;
+  ownerKey?: string;
+  handoffMode?: ChannelHandoffMode;
+  handoffSourceExternalSessionId?: string;
+  handoffSourceConversationId?: string;
 };
 
 /**
