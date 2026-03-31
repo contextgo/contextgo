@@ -3,7 +3,7 @@ import { Delete, EditTwo, Plus } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { mutate } from 'swr';
-import { acpConversation, ipcBridge } from '@/common/adapter/ipcBridge';
+import { acpConversation, shell } from '@/common/adapter/ipcBridge';
 import { ConfigStorage, type IConfigStorageRefer } from '@/common/config/storage';
 import { ACP_BACKENDS_ALL, type AcpBackend, type AcpBackendConfig } from '@/common/types/acpTypes';
 import { copyText } from '@/renderer/utils/ui/clipboard';
@@ -285,7 +285,7 @@ const CustomAcpAgent: React.FC = () => {
     if (!url) return;
 
     try {
-      await ipcBridge.shell.openExternal.invoke(url);
+      await shell.openExternal.invoke(url);
     } catch (error) {
       console.error('[RuntimeSettings] Failed to open runtime docs:', error);
     }

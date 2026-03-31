@@ -12,6 +12,7 @@ const Conversation = React.lazy(() => import('@renderer/pages/conversation'));
 const ConnectorsPage = React.lazy(() => import('@renderer/pages/connectors'));
 const Guid = React.lazy(() => import('@renderer/pages/guid'));
 const GlobalCronSettings = React.lazy(() => import('@renderer/pages/cron/GlobalCronSettings'));
+const SpacePage = React.lazy(() => import('@renderer/pages/space/SpacePage'));
 const AgentSettings = React.lazy(() => import('@renderer/pages/settings/AgentSettings'));
 const AgentEntrySettings = React.lazy(() => import('@renderer/pages/settings/AgentSettings/AgentEntrySettings'));
 const HooksManagement = React.lazy(() => import('@renderer/pages/settings/AgentSettings/HooksManagement'));
@@ -87,6 +88,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           <Route path='/hooks' element={withRouteFallback(HooksManagement)} />
           <Route path='/connectors' element={withRouteFallback(ConnectorsPage)} />
           <Route path='/connectors/:connectorId' element={withRouteFallback(ConnectorsPage)} />
+          <Route path='/space/:spaceId' element={withRouteFallback(SpacePage)} />
           <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
           <Route path='/conversation/:id' element={withRouteFallback(Conversation)} />
           <Route path='/agents' element={withRouteFallback(AgentSettings)} />

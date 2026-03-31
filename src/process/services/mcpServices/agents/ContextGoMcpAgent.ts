@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { McpOperationResult } from '../McpProtocol';
-import { AbstractMcpAgent } from '../McpProtocol';
 import type { IMcpServer } from '@/common/config/storage';
 import { ProcessConfig } from '@process/utils/initStorage';
+import { AbstractMcpAgent } from '../McpProtocol';
+import type { McpOperationResult } from '../McpProtocol';
 
 /**
  * ContextGo 内置 MCP 代理实现

@@ -27,6 +27,7 @@ initAllBridges({
   conversationRepo: repo,
   workerTaskManager,
   channelRepo,
+  spaceService,
 });
 
 // Initialize cron service (load jobs from database and start timers)

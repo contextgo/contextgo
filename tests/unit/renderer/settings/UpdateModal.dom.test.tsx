@@ -110,7 +110,7 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
-vi.mock('@/renderer/components/base/AionModal', () => ({
+vi.mock('@/renderer/components/base/ContextGoModal', () => ({
   default: ({
     visible,
     children,

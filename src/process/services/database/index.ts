@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -17,6 +17,13 @@ import {
   channelBindingToRow,
   channelRunToRow,
   connectorInstanceToRow,
+  contextChunkToRow,
+  contextDocumentToRow,
+  contextMemoryCandidateToRow,
+  contextMemoryToRow,
+  contextOperationToRow,
+  contextProfileToRow,
+  contextSourceToRow,
   conversationToRow,
   externalSessionToRow,
   messageToRow,
@@ -25,6 +32,13 @@ import {
   rowToChannelBinding,
   rowToChannelRun,
   rowToConnectorInstance,
+  rowToContextChunk,
+  rowToContextDocument,
+  rowToContextMemory,
+  rowToContextMemoryCandidate,
+  rowToContextOperation,
+  rowToContextProfile,
+  rowToContextSource,
   rowToConversation,
   rowToExternalSession,
   rowToMessage,
@@ -37,6 +51,13 @@ import type {
   IChannelBindingRow,
   IChannelRunRow,
   IConnectorInstanceRow,
+  IContextChunkRow,
+  IContextDocumentRow,
+  IContextMemoryCandidateRow,
+  IContextMemoryRow,
+  IContextOperationRow,
+  IContextProfileRow,
+  IContextSourceRow,
   IConversationRow,
   IExternalSessionRow,
   IMessageRow,
@@ -68,6 +89,15 @@ import type {
   PluginStatus,
 } from '@process/channels/types';
 import type { ConversationSource, TProviderWithModel, TSpace } from '@/common/config/storage';
+import type {
+  ChunkRecord,
+  DocumentSnapshot,
+  MemoryCandidateEntry,
+  MemoryEntry,
+  ProfileSegment,
+  SourceRecord,
+} from '../../../../packages/context-engine/src/domain';
+import type { ContextOperation } from '../../../../packages/context-engine/src/operations';
 import {
   getChannelBindingTarget,
   resolveChannelConvType,
@@ -199,10 +229,10 @@ const rowToVoiceInputRecord = (row: VoiceInputRecordRow): VoiceInputRecord => ({
 });
 
 /**
- * Main database class for ContextGo
+ * Main database class for AionUi
  * Uses a pluggable ISqliteDriver for SQLite operations
  */
-export class ContextGoUIDatabase {
+export class AionUIDatabase {
   private db: ISqliteDriver;
   private readonly defaultUserId = 'system_default_user';
   private readonly systemPasswordPlaceholder = '';
@@ -212,17 +242,17 @@ export class ContextGoUIDatabase {
   }
 
   /**
-   * Create a new ContextGoUIDatabase instance with corruption recovery.
+   * Create a new AionUIDatabase instance with corruption recovery.
    * This is the only way to obtain an instance — the constructor is private.
    */
-  static async create(dbPath: string): Promise<ContextGoUIDatabase> {
+  static async create(dbPath: string): Promise<AionUIDatabase> {
     const dir = path.dirname(dbPath);
     ensureDirectory(dir);
 
     // Attempt normal initialization
     try {
       const driver = await createDriver(dbPath);
-      const instance = new ContextGoUIDatabase(driver);
+      const instance = new AionUIDatabase(driver);
       instance.initialize();
       return instance;
     } catch (error) {
@@ -265,7 +295,7 @@ export class ContextGoUIDatabase {
 
     // Retry with fresh file
     const driver = await createDriver(dbPath);
-    const instance = new ContextGoUIDatabase(driver);
+    const instance = new AionUIDatabase(driver);
     instance.initialize();
     return instance;
   }
@@ -791,6 +821,479 @@ export class ContextGoUIDatabase {
         error: error.message,
         data: false,
       };
+    }
+  }
+
+  getContextSource(sourceId: string): IQueryResult<SourceRecord | null> {
+    try {
+      const row = this.db.prepare('SELECT * FROM context_sources WHERE id = ?').get(sourceId) as
+        | IContextSourceRow
+        | undefined;
+      return { success: true, data: row ? rowToContextSource(row) : null };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: null };
+    }
+  }
+
+  listContextSourcesBySpace(spaceId: string): IQueryResult<SourceRecord[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM context_sources WHERE space_id = ? ORDER BY updated_at DESC, id DESC')
+        .all(spaceId) as IContextSourceRow[];
+      return { success: true, data: rows.map(rowToContextSource) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  upsertContextSource(source: SourceRecord): IQueryResult<SourceRecord> {
+    try {
+      const row = contextSourceToRow(source);
+      this.db
+        .prepare(`
+          INSERT INTO context_sources (
+            id, space_id, thread_id, artifact_id, kind, title, canonical_uri, checksum, tags, status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            space_id = excluded.space_id,
+            thread_id = excluded.thread_id,
+            artifact_id = excluded.artifact_id,
+            kind = excluded.kind,
+            title = excluded.title,
+            canonical_uri = excluded.canonical_uri,
+            checksum = excluded.checksum,
+            tags = excluded.tags,
+            status = excluded.status,
+            created_at = excluded.created_at,
+            updated_at = excluded.updated_at
+        `)
+        .run(
+          row.id,
+          row.space_id,
+          row.thread_id,
+          row.artifact_id,
+          row.kind,
+          row.title,
+          row.canonical_uri,
+          row.checksum,
+          row.tags,
+          row.status,
+          row.created_at,
+          row.updated_at
+        );
+      return { success: true, data: source };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  getContextDocument(documentId: string): IQueryResult<DocumentSnapshot | null> {
+    try {
+      const row = this.db.prepare('SELECT * FROM context_documents WHERE id = ?').get(documentId) as
+        | IContextDocumentRow
+        | undefined;
+      return { success: true, data: row ? rowToContextDocument(row) : null };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: null };
+    }
+  }
+
+  listContextDocumentsBySpace(spaceId: string): IQueryResult<DocumentSnapshot[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM context_documents WHERE space_id = ? ORDER BY created_at DESC, id DESC')
+        .all(spaceId) as IContextDocumentRow[];
+      return { success: true, data: rows.map(rowToContextDocument) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  saveContextDocument(snapshot: DocumentSnapshot): IQueryResult<DocumentSnapshot> {
+    try {
+      const row = contextDocumentToRow(snapshot);
+      this.db
+        .prepare(`
+          INSERT INTO context_documents (
+            id, space_id, source_id, mime_type, storage_uri, title, checksum, token_count, status, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            space_id = excluded.space_id,
+            source_id = excluded.source_id,
+            mime_type = excluded.mime_type,
+            storage_uri = excluded.storage_uri,
+            title = excluded.title,
+            checksum = excluded.checksum,
+            token_count = excluded.token_count,
+            status = excluded.status,
+            created_at = excluded.created_at
+        `)
+        .run(
+          row.id,
+          row.space_id,
+          row.source_id,
+          row.mime_type,
+          row.storage_uri,
+          row.title,
+          row.checksum,
+          row.token_count,
+          row.status,
+          row.created_at
+        );
+      return { success: true, data: snapshot };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  listContextChunksByDocument(documentId: string): IQueryResult<ChunkRecord[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM context_chunks WHERE document_id = ? ORDER BY sequence ASC')
+        .all(documentId) as IContextChunkRow[];
+      return { success: true, data: rows.map(rowToContextChunk) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  saveContextChunks(chunks: readonly ChunkRecord[]): IQueryResult<number> {
+    try {
+      const statement = this.db.prepare(`
+        INSERT INTO context_chunks (
+          id, space_id, document_id, sequence, text, token_count, content_hash, tier, embedding_key
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          space_id = excluded.space_id,
+          document_id = excluded.document_id,
+          sequence = excluded.sequence,
+          text = excluded.text,
+          token_count = excluded.token_count,
+          content_hash = excluded.content_hash,
+          tier = excluded.tier,
+          embedding_key = excluded.embedding_key
+      `);
+      const run = this.db.transaction((records: readonly ChunkRecord[]) => {
+        for (const chunk of records) {
+          const row = contextChunkToRow(chunk);
+          statement.run(
+            row.id,
+            row.space_id,
+            row.document_id,
+            row.sequence,
+            row.text,
+            row.token_count,
+            row.content_hash,
+            row.tier,
+            row.embedding_key
+          );
+        }
+      });
+      run(chunks);
+      return { success: true, data: chunks.length };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: 0 };
+    }
+  }
+
+  getContextMemory(memoryId: string): IQueryResult<MemoryEntry | null> {
+    try {
+      const row = this.db.prepare('SELECT * FROM context_memories WHERE id = ?').get(memoryId) as
+        | IContextMemoryRow
+        | undefined;
+      return { success: true, data: row ? rowToContextMemory(row) : null };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: null };
+    }
+  }
+
+  listContextMemoriesBySpace(spaceId: string): IQueryResult<MemoryEntry[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM context_memories WHERE space_id = ? ORDER BY updated_at DESC, id DESC')
+        .all(spaceId) as IContextMemoryRow[];
+      return { success: true, data: rows.map(rowToContextMemory) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  saveContextMemory(memory: MemoryEntry): IQueryResult<MemoryEntry> {
+    try {
+      const row = contextMemoryToRow(memory);
+      this.db
+        .prepare(`
+          INSERT INTO context_memories (
+            id, space_id, kind, summary, detail, source_ids, chunk_ids, confidence, tier, priority, state, superseded_by_id,
+            expires_at, last_accessed_at, last_confirmed_at, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            space_id = excluded.space_id,
+            kind = excluded.kind,
+            summary = excluded.summary,
+            detail = excluded.detail,
+            source_ids = excluded.source_ids,
+            chunk_ids = excluded.chunk_ids,
+            confidence = excluded.confidence,
+            tier = excluded.tier,
+            priority = excluded.priority,
+            state = excluded.state,
+            superseded_by_id = excluded.superseded_by_id,
+            expires_at = excluded.expires_at,
+            last_accessed_at = excluded.last_accessed_at,
+            last_confirmed_at = excluded.last_confirmed_at,
+            created_at = excluded.created_at,
+            updated_at = excluded.updated_at
+        `)
+        .run(
+          row.id,
+          row.space_id,
+          row.kind,
+          row.summary,
+          row.detail,
+          row.source_ids,
+          row.chunk_ids,
+          row.confidence,
+          row.tier,
+          row.priority,
+          row.state,
+          row.superseded_by_id,
+          row.expires_at,
+          row.last_accessed_at,
+          row.last_confirmed_at,
+          row.created_at,
+          row.updated_at
+        );
+      return { success: true, data: memory };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  getContextMemoryCandidate(candidateId: string): IQueryResult<MemoryCandidateEntry | null> {
+    try {
+      const row = this.db.prepare('SELECT * FROM context_memory_candidates WHERE id = ?').get(candidateId) as
+        | IContextMemoryCandidateRow
+        | undefined;
+      return { success: true, data: row ? rowToContextMemoryCandidate(row) : null };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: null };
+    }
+  }
+
+  listContextMemoryCandidatesBySpace(spaceId: string): IQueryResult<MemoryCandidateEntry[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM context_memory_candidates WHERE space_id = ? ORDER BY created_at DESC, id DESC')
+        .all(spaceId) as IContextMemoryCandidateRow[];
+      return { success: true, data: rows.map(rowToContextMemoryCandidate) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  saveContextMemoryCandidate(candidate: MemoryCandidateEntry): IQueryResult<MemoryCandidateEntry> {
+    try {
+      const row = contextMemoryCandidateToRow(candidate);
+      this.db
+        .prepare(`
+          INSERT INTO context_memory_candidates (
+            id, space_id, thread_id, kind, tier, summary, detail, source_ids, chunk_ids, confidence, priority,
+            evidence_count, repeated_across_sources, recent_reference_count, user_confirmed, manually_pinned,
+            execution_backed, contradiction_detected, promotion_score, promotion_rationale, destination, state,
+            review_status, promoted_memory_id, reviewed_at, reviewed_by, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            space_id = excluded.space_id,
+            thread_id = excluded.thread_id,
+            kind = excluded.kind,
+            tier = excluded.tier,
+            summary = excluded.summary,
+            detail = excluded.detail,
+            source_ids = excluded.source_ids,
+            chunk_ids = excluded.chunk_ids,
+            confidence = excluded.confidence,
+            priority = excluded.priority,
+            evidence_count = excluded.evidence_count,
+            repeated_across_sources = excluded.repeated_across_sources,
+            recent_reference_count = excluded.recent_reference_count,
+            user_confirmed = excluded.user_confirmed,
+            manually_pinned = excluded.manually_pinned,
+            execution_backed = excluded.execution_backed,
+            contradiction_detected = excluded.contradiction_detected,
+            promotion_score = excluded.promotion_score,
+            promotion_rationale = excluded.promotion_rationale,
+            destination = excluded.destination,
+            state = excluded.state,
+            review_status = excluded.review_status,
+            promoted_memory_id = excluded.promoted_memory_id,
+            reviewed_at = excluded.reviewed_at,
+            reviewed_by = excluded.reviewed_by,
+            created_at = excluded.created_at,
+            updated_at = excluded.updated_at
+        `)
+        .run(
+          row.id,
+          row.space_id,
+          row.thread_id,
+          row.kind,
+          row.tier,
+          row.summary,
+          row.detail,
+          row.source_ids,
+          row.chunk_ids,
+          row.confidence,
+          row.priority,
+          row.evidence_count,
+          row.repeated_across_sources,
+          row.recent_reference_count,
+          row.user_confirmed,
+          row.manually_pinned,
+          row.execution_backed,
+          row.contradiction_detected,
+          row.promotion_score,
+          row.promotion_rationale,
+          row.destination,
+          row.state,
+          row.review_status,
+          row.promoted_memory_id,
+          row.reviewed_at,
+          row.reviewed_by,
+          row.created_at,
+          row.updated_at
+        );
+      return { success: true, data: candidate };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  getContextProfile(profileId: string): IQueryResult<ProfileSegment | null> {
+    try {
+      const row = this.db.prepare('SELECT * FROM context_profiles WHERE id = ?').get(profileId) as
+        | IContextProfileRow
+        | undefined;
+      return { success: true, data: row ? rowToContextProfile(row) : null };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: null };
+    }
+  }
+
+  listContextProfilesBySpace(spaceId: string): IQueryResult<ProfileSegment[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM context_profiles WHERE space_id = ? ORDER BY updated_at DESC, id DESC')
+        .all(spaceId) as IContextProfileRow[];
+      return { success: true, data: rows.map(rowToContextProfile) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  saveContextProfile(profile: ProfileSegment): IQueryResult<ProfileSegment> {
+    try {
+      const row = contextProfileToRow(profile);
+      this.db
+        .prepare(`
+          INSERT INTO context_profiles (
+            id, space_id, key, summary, memory_ids, confidence, state, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            space_id = excluded.space_id,
+            key = excluded.key,
+            summary = excluded.summary,
+            memory_ids = excluded.memory_ids,
+            confidence = excluded.confidence,
+            state = excluded.state,
+            created_at = excluded.created_at,
+            updated_at = excluded.updated_at
+        `)
+        .run(
+          row.id,
+          row.space_id,
+          row.key,
+          row.summary,
+          row.memory_ids,
+          row.confidence,
+          row.state,
+          row.created_at,
+          row.updated_at
+        );
+      return { success: true, data: profile };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  appendContextOperation(operation: ContextOperation): IQueryResult<ContextOperation> {
+    try {
+      const row = contextOperationToRow(operation);
+      this.db
+        .prepare(`
+          INSERT INTO context_operations (
+            id, space_id, thread_id, replica_id, actor_kind, actor_id, type, entity_id, payload, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .run(
+          row.id,
+          row.space_id,
+          row.thread_id,
+          row.replica_id,
+          row.actor_kind,
+          row.actor_id,
+          row.type,
+          row.entity_id,
+          row.payload,
+          row.created_at
+        );
+      return { success: true, data: operation };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  listContextOperations(
+    spaceId: string,
+    cursor?: { operationId: string; createdAt: string }
+  ): IQueryResult<ContextOperation[]> {
+    try {
+      const rows = (
+        cursor
+          ? this.db
+              .prepare(
+                `SELECT * FROM context_operations
+               WHERE space_id = ? AND (created_at > ? OR (created_at = ? AND id != ?))
+               ORDER BY created_at ASC, id ASC`
+              )
+              .all(spaceId, cursor.createdAt, cursor.createdAt, cursor.operationId)
+          : this.db
+              .prepare('SELECT * FROM context_operations WHERE space_id = ? ORDER BY created_at ASC, id ASC')
+              .all(spaceId)
+      ) as IContextOperationRow[];
+      return { success: true, data: rows.map(rowToContextOperation) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  getLatestContextOperationCursor(spaceId: string): IQueryResult<{ operationId: string; createdAt: string } | null> {
+    try {
+      const row = this.db
+        .prepare(
+          'SELECT id, created_at FROM context_operations WHERE space_id = ? ORDER BY created_at DESC, id DESC LIMIT 1'
+        )
+        .get(spaceId) as { id: string; created_at: string } | undefined;
+      return {
+        success: true,
+        data: row
+          ? {
+              operationId: row.id,
+              createdAt: row.created_at,
+            }
+          : null,
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: null };
     }
   }
 
@@ -3129,23 +3632,23 @@ export class ContextGoUIDatabase {
 }
 
 // Async singleton with Promise cache
-let dbInstancePromise: Promise<ContextGoUIDatabase> | null = null;
+let dbInstancePromise: Promise<AionUIDatabase> | null = null;
 // Synchronous reference to the resolved instance — used for safe close on exit
-let dbResolved: ContextGoUIDatabase | null = null;
+let dbResolved: AionUIDatabase | null = null;
 
 export function getDatabasePath(): string {
   return resolveBrandStoragePath({
     baseDir: getDataPath(),
     preferredName: 'contextgo.db',
-    legacyNames: [],
+    legacyNames: ['aionui.db'],
     kind: 'file',
     sidecarSuffixes: ['-wal', '-shm'],
   });
 }
 
-export function getDatabase(): Promise<ContextGoUIDatabase> {
+export function getDatabase(): Promise<AionUIDatabase> {
   if (!dbInstancePromise) {
-    dbInstancePromise = ContextGoUIDatabase.create(getDatabasePath()).then((db) => {
+    dbInstancePromise = AionUIDatabase.create(getDatabasePath()).then((db) => {
       dbResolved = db;
       return db;
     });
@@ -3166,3 +3669,6 @@ export function closeDatabase(): void {
   }
   dbInstancePromise = null;
 }
+
+export { AionUIDatabase as ContextGoUIDatabase };
+export type { AionUIDatabase as ContextGoUIDatabaseType };

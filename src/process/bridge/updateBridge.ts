@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 ContextGo (contextgo.io)
+ * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -44,7 +44,7 @@ interface AutoUpdateCheckParams {
   includePrerelease?: boolean;
 }
 
-const DEFAULT_REPO = 'contextgo/contextgo-releases';
+const DEFAULT_REPO = 'contextgo/contextgo';
 const DEFAULT_USER_AGENT = 'ContextGo';
 const ALLOWED_ASSET_EXTS = new Set(['.exe', '.msi', '.dmg', '.zip', '.deb', '.rpm']);
 const ALLOWED_DOWNLOAD_HOSTS = new Set<string>([
@@ -170,9 +170,8 @@ export const pickRecommendedAsset = (
 };
 
 const resolveRepo = (requestRepo?: string): string => {
-  const envReleaseRepo = process.env.CONTEXTGO_RELEASE_REPO?.trim();
   const envRepo = process.env.CONTEXTGO_GITHUB_REPO?.trim();
-  const repo = (requestRepo || envReleaseRepo || envRepo || DEFAULT_REPO).trim();
+  const repo = (requestRepo || envRepo || DEFAULT_REPO).trim();
   return repo || DEFAULT_REPO;
 };
 
