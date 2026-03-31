@@ -354,6 +354,16 @@ export function getExternalSessionControlState(session: IExternalSession): IExte
   };
 }
 
+export function getChannelBindingSource(binding: IChannelBinding): string | undefined {
+  const metadata = toRecord(binding.metadata);
+  return typeof metadata?.source === 'string' && metadata.source ? metadata.source : undefined;
+}
+
+export function isSystemFallbackBinding(binding: IChannelBinding): boolean {
+  const source = getChannelBindingSource(binding);
+  return source === 'legacy-default' || source === 'system-fallback-runtime';
+}
+
 /**
  * Resolve binding routing target from metadata.
  * Falls back to `agent_profile` target semantics for existing rows.
@@ -499,11 +509,15 @@ export type IChannelActiveSessionEntry = {
   lastActivity: number;
   bindingId?: string;
   bindingTemporary?: boolean;
+  bindingSource?: string;
+  bindingSystemFallback?: boolean;
   ownerKey?: string;
   controlMode?: ChannelControlMode;
   handoffMode?: ChannelHandoffMode;
   handoffSourceExternalSessionId?: string;
   handoffSourceConversationId?: string;
+  leaseUpdatedAt?: number;
+  leaseReleasedAt?: number;
 };
 
 /**
