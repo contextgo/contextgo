@@ -18,7 +18,20 @@ concurrency:
 jobs:
   deploy:
     name: Deploy contextgo.io
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
     defaults:
       run:
         shell: bash
