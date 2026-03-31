@@ -65,6 +65,10 @@ function formatRelativeTime(timestamp: number, locale: string): string {
   return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-deltaDays, 'day');
 }
 
+function formatOptionalRelativeTime(timestamp: number | undefined, locale: string): string | null {
+  return typeof timestamp === 'number' ? formatRelativeTime(timestamp, locale) : null;
+}
+
 const SessionHandoffPanel: React.FC = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -356,6 +360,12 @@ const SessionHandoffPanel: React.FC = () => {
                           : t('settings.activeSessions.controlMode.desktopOwner')}
                     </div>
                   ) : null}
+                  {formatOptionalRelativeTime(matchedHandoffSession.leaseUpdatedAt, i18n.language) ? (
+                    <div className='text-12px text-t-secondary'>
+                      {t('settings.activeSessions.lastLeaseChangeLabel')}:{' '}
+                      {formatOptionalRelativeTime(matchedHandoffSession.leaseUpdatedAt, i18n.language)}
+                    </div>
+                  ) : null}
                   <div className='flex flex-wrap gap-8px'>
                     <Button
                       status='warning'
@@ -438,6 +448,18 @@ const SessionHandoffPanel: React.FC = () => {
                         {session.ownerKey ? (
                           <div className='text-12px text-t-secondary break-all'>
                             {t('settings.activeSessions.currentControllerLabel')}: {session.ownerKey}
+                          </div>
+                        ) : null}
+                        {formatOptionalRelativeTime(session.leaseUpdatedAt, i18n.language) ? (
+                          <div className='text-12px text-t-secondary'>
+                            {t('settings.activeSessions.lastLeaseChangeLabel')}:{' '}
+                            {formatOptionalRelativeTime(session.leaseUpdatedAt, i18n.language)}
+                          </div>
+                        ) : null}
+                        {formatOptionalRelativeTime(session.leaseReleasedAt, i18n.language) ? (
+                          <div className='text-12px text-t-secondary'>
+                            {t('settings.activeSessions.lastLeaseReleaseLabel')}:{' '}
+                            {formatOptionalRelativeTime(session.leaseReleasedAt, i18n.language)}
                           </div>
                         ) : null}
                         {session.controlMode ? (

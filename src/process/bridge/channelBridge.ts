@@ -23,7 +23,7 @@ import type {
   IExternalSession,
   IRemoteIdentity,
 } from '@process/channels/types';
-import { hasPluginCredentials } from '@process/channels/types';
+import { getChannelBindingSource, hasPluginCredentials, isSystemFallbackBinding } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
 
 function getErrorMessage(error: unknown): string {
@@ -157,6 +157,8 @@ function buildActiveSessionEntries(params: {
       lastActivity: session.lastActivity,
       bindingId: binding?.id ?? externalSession?.bindingId,
       bindingTemporary: binding?.temporary,
+      bindingSource: binding ? getChannelBindingSource(binding) : undefined,
+      bindingSystemFallback: binding ? isSystemFallbackBinding(binding) : undefined,
       ownerKey: typeof control.ownerKey === 'string' ? control.ownerKey : undefined,
       controlMode:
         control.controlMode === 'desktop_owner' ||
@@ -170,6 +172,8 @@ function buildActiveSessionEntries(params: {
         typeof control.sourceExternalSessionId === 'string' ? control.sourceExternalSessionId : undefined,
       handoffSourceConversationId:
         typeof control.sourceConversationId === 'string' ? control.sourceConversationId : undefined,
+      leaseUpdatedAt: typeof control.updatedAt === 'number' ? control.updatedAt : undefined,
+      leaseReleasedAt: typeof control.releasedAt === 'number' ? control.releasedAt : undefined,
     };
   });
 }
