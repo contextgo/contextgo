@@ -152,7 +152,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ${{ github.workspace }}/apps/web
+        working-directory: ${{ github.workspace }}
     env:
       CONTEXTGO_RELEASE_REPO: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
       NEXT_PUBLIC_CONTEXTGO_GITHUB_URL: ${{ vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL != '' && vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || 'https://github.com/contextgo' }}
@@ -228,21 +228,26 @@ jobs:
 
       - name: Install website dependencies
         run: npm ci
+        working-directory: ${{ github.workspace }}/apps/web
 
       - name: Lint website
         run: npm run lint
+        working-directory: ${{ github.workspace }}/apps/web
 
       - name: Build website
         run: npm run build
+        working-directory: ${{ github.workspace }}/apps/web
 
       - name: Build Cloudflare Pages output
         run: npx @cloudflare/next-on-pages --skip-build
+        working-directory: ${{ github.workspace }}/apps/web
 
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler pages deploy .vercel/output/static --project-name "$SITE_CLOUDFLARE_PROJECT_NAME" --branch main
+        working-directory: ${{ github.workspace }}/apps/web
 
   deploy-cloud:
     name: Deploy apps/cloud backend to VM
