@@ -71,6 +71,12 @@ type ImportedConversationMessage = {
   position: 'left' | 'right';
 };
 
+type ImportedMessageInsertSummary = {
+  insertedCount: number;
+  skippedCount: number;
+  failedCount: number;
+};
+
 type CodexRolloutEntry = {
   timestamp?: string;
   type?: string;
@@ -879,7 +885,12 @@ export class ExternalSessionDiscoveryService {
       }
 
       const importedMessages = await this.readCodexRolloutMessages(thread.rollout_path);
-      await this.insertImportedMessages(conversationId, importedMessages, 'Codex');
+      const summary = await this.insertImportedMessages(conversationId, importedMessages, 'Codex');
+      console.log('[ExternalSessionDiscoveryService] Imported Codex history summary:', {
+        conversationId,
+        sessionId,
+        ...summary,
+      });
     } catch (error) {
       console.warn('[ExternalSessionDiscoveryService] Failed to import Codex history:', error);
     }
@@ -893,7 +904,12 @@ export class ExternalSessionDiscoveryService {
       }
 
       const importedMessages = await this.readGeminiChatMessages(session.chatPath);
-      await this.insertImportedMessages(conversationId, importedMessages, 'Gemini');
+      const summary = await this.insertImportedMessages(conversationId, importedMessages, 'Gemini');
+      console.log('[ExternalSessionDiscoveryService] Imported Gemini history summary:', {
+        conversationId,
+        sessionId,
+        ...summary,
+      });
     } catch (error) {
       console.warn('[ExternalSessionDiscoveryService] Failed to import Gemini history:', error);
     }
@@ -944,7 +960,12 @@ export class ExternalSessionDiscoveryService {
         .map((messageRow) => this.parseOpencodeImportedMessage(messageRow, partsByMessageId.get(messageRow.id) || []))
         .filter((message): message is ImportedConversationMessage => message !== null);
 
-      await this.insertImportedMessages(conversationId, importedMessages, 'OpenCode');
+      const summary = await this.insertImportedMessages(conversationId, importedMessages, 'OpenCode');
+      console.log('[ExternalSessionDiscoveryService] Imported OpenCode history summary:', {
+        conversationId,
+        sessionId,
+        ...summary,
+      });
     } catch (error) {
       console.warn('[ExternalSessionDiscoveryService] Failed to import OpenCode history:', error);
     } finally {
@@ -963,7 +984,12 @@ export class ExternalSessionDiscoveryService {
         .filter((message): message is ImportedConversationMessage => message !== null)
         .toSorted((left, right) => left.createdAt - right.createdAt);
 
-      await this.insertImportedMessages(conversationId, importedMessages, 'OpenClaw');
+      const summary = await this.insertImportedMessages(conversationId, importedMessages, 'OpenClaw');
+      console.log('[ExternalSessionDiscoveryService] Imported OpenClaw history summary:', {
+        conversationId,
+        sessionKey,
+        ...summary,
+      });
     } catch (error) {
       console.warn('[ExternalSessionDiscoveryService] Failed to import OpenClaw history:', error);
     }
@@ -977,7 +1003,12 @@ export class ExternalSessionDiscoveryService {
       }
 
       const importedMessages = await this.readClaudeSessionMessages(sessionFilePath);
-      await this.insertImportedMessages(conversationId, importedMessages, 'Claude');
+      const summary = await this.insertImportedMessages(conversationId, importedMessages, 'Claude');
+      console.log('[ExternalSessionDiscoveryService] Imported Claude history summary:', {
+        conversationId,
+        sessionId,
+        ...summary,
+      });
     } catch (error) {
       console.warn('[ExternalSessionDiscoveryService] Failed to import Claude history:', error);
     }
@@ -1701,21 +1732,35 @@ export class ExternalSessionDiscoveryService {
     conversationId: string,
     importedMessages: ImportedConversationMessage[],
     providerName: string
-  ): Promise<void> {
+  ): Promise<ImportedMessageInsertSummary> {
     if (importedMessages.length === 0) {
-      return;
+      return {
+        insertedCount: 0,
+        skippedCount: 0,
+        failedCount: 0,
+      };
     }
 
     const db = await getDatabase();
+    const conversation = db.getConversation(conversationId);
+    if (!conversation.success || !conversation.data) {
+      throw new Error(`Cannot import ${providerName} history: conversation ${conversationId} was not persisted`);
+    }
+
+    let insertedCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
     for (const importedMessage of importedMessages) {
       const normalizedContent = normalizeImportedMessageText(importedMessage.content);
       if (!normalizedContent) {
+        skippedCount += 1;
         continue;
       }
 
       const stableMsgId = importedMessage.msgId || uuid(36);
       const existing = db.getMessageByMsgId(conversationId, stableMsgId, 'text');
       if (existing.success && existing.data) {
+        skippedCount += 1;
         continue;
       }
 
@@ -1734,9 +1779,24 @@ export class ExternalSessionDiscoveryService {
 
       const result = db.insertMessage(message);
       if (!result.success) {
-        throw new Error(result.error || `Failed to insert imported ${providerName} history message`);
+        failedCount += 1;
+        console.warn(`[ExternalSessionDiscoveryService] Failed to insert imported ${providerName} history message`, {
+          conversationId,
+          msgId: stableMsgId,
+          createdAt: importedMessage.createdAt,
+          error: result.error || 'unknown database error',
+        });
+        continue;
       }
+
+      insertedCount += 1;
     }
+
+    return {
+      insertedCount,
+      skippedCount,
+      failedCount,
+    };
   }
 
   private collectManagedSessions(conversations: TChatConversation[]): Set<string> {
