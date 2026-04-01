@@ -197,7 +197,6 @@ jobs:
           ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
           EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
 
-          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           rm -rf "${EXTRACT_DIR}"
 
           curl --fail --show-error --silent --location --http1.1 \
@@ -327,7 +326,6 @@ jobs:
           ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
           EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
 
-          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           rm -rf "${EXTRACT_DIR}"
 
           curl --fail --show-error --silent --location --http1.1 \
