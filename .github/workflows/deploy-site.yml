@@ -441,6 +441,13 @@ jobs:
           sudo systemctl restart "${SERVICE_NAME}"
           sudo systemctl is-active --quiet "${SERVICE_NAME}"
 
-          curl --fail --silent http://127.0.0.1:3001/healthz
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --show-error http://127.0.0.1:3001/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl --fail --silent --show-error http://127.0.0.1:3001/healthz
           sudo journalctl -u "${SERVICE_NAME}" -n 50 --no-pager
           EOF
