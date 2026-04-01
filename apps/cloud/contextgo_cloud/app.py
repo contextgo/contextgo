@@ -2131,9 +2131,14 @@ async def auth_oauth_callback(provider: str, request: Request) -> RedirectRespon
 
     expected_state = request.cookies.get(settings.oauth_state_cookie_name)
     code = request.query_params.get("code")
-    if not expected_state or not returned_state or expected_state != returned_state:
-        state_hint = expected_state or returned_state
-        context_provider, desktop_mode, loopback_url = peek_login_context(provider, state_hint)
+    if not returned_state:
+        context_provider, desktop_mode, loopback_url = peek_login_context(provider, expected_state)
+        response = redirect_to_login("invalid_state", provider=context_provider, desktop=desktop_mode, loopback_url=loopback_url)
+        clear_oauth_state_cookie(response)
+        return response
+
+    if expected_state and expected_state != returned_state:
+        context_provider, desktop_mode, loopback_url = peek_login_context(provider, expected_state)
         response = redirect_to_login("invalid_state", provider=context_provider, desktop=desktop_mode, loopback_url=loopback_url)
         clear_oauth_state_cookie(response)
         return response
