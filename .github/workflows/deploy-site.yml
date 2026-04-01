@@ -10,15 +10,8 @@ on:
     paths:
       - 'apps/web/**'
       - 'apps/cloud/**'
-      - 'src/renderer/**'
-      - 'src/common/**'
-      - 'public/**'
-      - 'index.html'
       - 'package.json'
       - 'bun.lock'
-      - 'tsconfig.json'
-      - 'uno.config.ts'
-      - 'vite.renderer.config.ts'
       - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
     inputs:
@@ -112,13 +105,9 @@ jobs:
 
           site = False
           cloud = False
-          exact_cloud_files = {
-              "index.html",
+          exact_site_files = {
               "package.json",
               "bun.lock",
-              "tsconfig.json",
-              "uno.config.ts",
-              "vite.renderer.config.ts",
           }
 
           for path in changed_files:
@@ -127,16 +116,10 @@ jobs:
                   cloud = True
                   continue
 
-              if path.startswith("apps/web/"):
+              if path.startswith("apps/web/") or path in exact_site_files:
                   site = True
 
-              if (
-                  path.startswith("apps/cloud/")
-                  or path.startswith("src/renderer/")
-                  or path.startswith("src/common/")
-                  or path.startswith("public/")
-                  or path in exact_cloud_files
-              ):
+              if path.startswith("apps/cloud/"):
                   cloud = True
 
           github_output = Path(os.environ["GITHUB_OUTPUT"])
@@ -263,7 +246,7 @@ jobs:
         run: npx wrangler pages deploy .vercel/output/static --project-name "$SITE_CLOUDFLARE_PROJECT_NAME" --branch main
 
   deploy-cloud:
-    name: Deploy apps/cloud to VM
+    name: Deploy apps/cloud backend to VM
     needs: detect-targets
     if: needs.detect-targets.outputs.deploy_cloud == 'true'
     runs-on: >-
@@ -280,7 +263,6 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}
     env:
-      BUN_INSTALL_REGISTRY: https://registry.npmjs.org/
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       GCP_COMPUTE_ZONE: ${{ vars.GCP_COMPUTE_ZONE }}
       GCP_COMPUTE_VM_INSTANCE: ${{ vars.GCP_COMPUTE_VM_INSTANCE }}
@@ -370,32 +352,13 @@ jobs:
 
           cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Setup bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
-        run: bun install --no-frozen-lockfile
-
-      - name: Run postinstall
-        run: bun run postinstall || true
-
-      - name: Build hosted remote renderer
-        run: bun run build:renderer:web
-
       - name: Run cloud tests
-        run: bun run cloud:test
+        run: python3 -m unittest discover -s apps/cloud/tests
 
       - name: Build cloud deploy bundle
         run: |
@@ -405,10 +368,9 @@ jobs:
           ARCHIVE_PATH="${RUNNER_TEMP}/contextgo-cloud-deploy.tgz"
 
           rm -rf "${PACKAGE_ROOT}" "${ARCHIVE_PATH}"
-          mkdir -p "${PACKAGE_ROOT}/cloud" "${PACKAGE_ROOT}/renderer"
+          mkdir -p "${PACKAGE_ROOT}/cloud"
 
           cp -R apps/cloud/. "${PACKAGE_ROOT}/cloud/"
-          cp -R out/renderer/. "${PACKAGE_ROOT}/renderer/"
 
           tar -czf "${ARCHIVE_PATH}" -C "${PACKAGE_ROOT}" .
           echo "CLOUD_DEPLOY_ARCHIVE=${ARCHIVE_PATH}" >> "${GITHUB_ENV}"
@@ -437,7 +399,6 @@ jobs:
           set -euo pipefail
 
           DEPLOY_PATH="${CLOUD_DEPLOY_PATH}"
-          ENV_FILE="${CLOUD_ENV_FILE}"
           SERVICE_NAME="${CLOUD_SERVICE_NAME}"
           DEPLOY_OWNER="${CLOUD_DEPLOY_OWNER}"
           SERVICE_UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -460,21 +421,11 @@ jobs:
           fi
 
           sudo mkdir -p "${DEPLOY_PATH}"
-          sudo find "${DEPLOY_PATH}" -mindepth 1 -maxdepth 1 ! -name .venv -exec rm -rf -- {} +
+          sudo find "${DEPLOY_PATH}" -mindepth 1 -maxdepth 1 ! -name .venv ! -name out -exec rm -rf -- {} +
           sudo cp -a "${TMP_DIR}/cloud/." "${DEPLOY_PATH}/"
-
-          sudo rm -rf "${DEPLOY_PATH}/out/renderer"
-          sudo mkdir -p "${DEPLOY_PATH}/out/renderer"
-          sudo cp -a "${TMP_DIR}/renderer/." "${DEPLOY_PATH}/out/renderer/"
 
           if [ -f "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.service" ]; then
             sudo cp "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.service" "${SERVICE_UNIT_PATH}"
-          fi
-
-          if sudo grep -q '^CONTEXTGO_RENDERER_BUILD_ROOT=' "${ENV_FILE}"; then
-            sudo sed -i "s#^CONTEXTGO_RENDERER_BUILD_ROOT=.*#CONTEXTGO_RENDERER_BUILD_ROOT=${DEPLOY_PATH}/out/renderer#" "${ENV_FILE}"
-          else
-            printf '\nCONTEXTGO_RENDERER_BUILD_ROOT=%s/out/renderer\n' "${DEPLOY_PATH}" | sudo tee -a "${ENV_FILE}" >/dev/null
           fi
 
           sudo chown -R "${DEPLOY_OWNER}:${DEPLOY_OWNER}" "${DEPLOY_PATH}"
