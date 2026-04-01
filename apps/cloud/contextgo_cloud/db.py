@@ -81,6 +81,7 @@ class Device:
     user_id: str
     device_name: str
     platform: str
+    device_kind: str
     status: str
     created_at: str
     updated_at: str
@@ -113,6 +114,65 @@ def get_connection(settings: Settings) -> Iterator[sqlite3.Connection]:
         connection.commit()
     finally:
         connection.close()
+
+
+def _table_columns(connection: sqlite3.Connection, table_name: str) -> set[str]:
+    rows = connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return {str(row["name"]) for row in rows}
+
+
+def _ensure_device_kind_column(connection: sqlite3.Connection) -> None:
+    device_columns = _table_columns(connection, "devices")
+    if "device_kind" not in device_columns:
+        connection.execute("ALTER TABLE devices ADD COLUMN device_kind TEXT NOT NULL DEFAULT 'desktop'")
+
+    connection.execute(
+        "UPDATE devices SET device_kind = 'desktop' WHERE TRIM(COALESCE(device_kind, '')) = ''"
+    )
+
+
+def _cleanup_duplicate_devices(connection: sqlite3.Connection) -> None:
+    rows = connection.execute(
+        """
+        SELECT id, user_id, device_name, platform, device_kind, status, updated_at, created_at
+        FROM devices
+        ORDER BY
+          CASE status WHEN 'active' THEN 0 ELSE 1 END,
+          updated_at DESC,
+          created_at DESC,
+          id DESC
+        """
+    ).fetchall()
+
+    seen: set[tuple[str, str, str, str]] = set()
+    duplicate_ids: list[str] = []
+    for row in rows:
+        key = (
+            str(row["user_id"]),
+            str(row["device_name"]),
+            str(row["platform"]),
+            str(row["device_kind"] or "desktop"),
+        )
+        if key in seen:
+            duplicate_ids.append(str(row["id"]))
+            continue
+
+        seen.add(key)
+
+    if not duplicate_ids:
+        return
+
+    placeholders = ", ".join(["?"] * len(duplicate_ids))
+    connection.execute(f"DELETE FROM devices WHERE id IN ({placeholders})", duplicate_ids)
+
+
+def _ensure_device_identity_index(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_devices_user_identity
+        ON devices (user_id, device_name, platform, device_kind)
+        """
+    )
 
 
 def initialize_database(settings: Settings) -> None:
@@ -161,6 +221,7 @@ def initialize_database(settings: Settings) -> None:
               user_id TEXT NOT NULL,
               device_name TEXT NOT NULL,
               platform TEXT NOT NULL,
+              device_kind TEXT NOT NULL DEFAULT 'desktop',
               device_token_hash TEXT NOT NULL UNIQUE,
               status TEXT NOT NULL,
               created_at TEXT NOT NULL,
@@ -218,6 +279,9 @@ def initialize_database(settings: Settings) -> None:
             );
             """
         )
+        _ensure_device_kind_column(connection)
+        _cleanup_duplicate_devices(connection)
+        _ensure_device_identity_index(connection)
 
 
 def _row_to_user(row: Optional[sqlite3.Row]) -> Optional[User]:
@@ -245,6 +309,7 @@ def _row_to_device(row: Optional[sqlite3.Row]) -> Optional[Device]:
         user_id=row["user_id"],
         device_name=row["device_name"],
         platform=row["platform"],
+        device_kind=row["device_kind"] if "device_kind" in row.keys() else "desktop",
         status=row["status"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
@@ -583,34 +648,71 @@ def create_device(
     user_id: str,
     device_name: str,
     platform: str,
+    device_kind: str,
     ip_address: Optional[str],
     user_agent: Optional[str],
 ) -> tuple[Device, str]:
-    device_id = str(uuid.uuid4())
+    normalized_device_name = device_name.strip() or "Unnamed device"
+    normalized_platform = platform.strip() or "unknown"
+    normalized_device_kind = device_kind.strip().lower() or "desktop"
     token = f"ctxdev_{create_token()}"
     now = utc_now_iso()
 
     with get_connection(settings) as connection:
+        existing = connection.execute(
+            """
+            SELECT id, created_at
+            FROM devices
+            WHERE user_id = ? AND device_name = ? AND platform = ? AND device_kind = ?
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (user_id, normalized_device_name, normalized_platform, normalized_device_kind),
+        ).fetchone()
+
+        device_id = existing["id"] if existing else str(uuid.uuid4())
+        created_at = existing["created_at"] if existing else now
+
         connection.execute(
             """
             INSERT INTO devices (
-              id, user_id, device_name, platform, device_token_hash, status,
+              id, user_id, device_name, platform, device_kind, device_token_hash, status,
               created_at, updated_at, last_seen_at, last_ip_address, last_user_agent
             )
-            VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              device_name = excluded.device_name,
+              platform = excluded.platform,
+              device_kind = excluded.device_kind,
+              device_token_hash = excluded.device_token_hash,
+              status = 'active',
+              updated_at = excluded.updated_at,
+              last_seen_at = excluded.last_seen_at,
+              last_ip_address = excluded.last_ip_address,
+              last_user_agent = excluded.last_user_agent
             """,
             (
                 device_id,
                 user_id,
-                device_name.strip() or "Unnamed device",
-                platform.strip() or "unknown",
+                normalized_device_name,
+                normalized_platform,
+                normalized_device_kind,
                 token_hash(token),
-                now,
+                created_at,
                 now,
                 now,
                 ip_address,
                 user_agent,
             ),
+        )
+
+        connection.execute(
+            """
+            UPDATE devices
+            SET status = 'revoked', updated_at = ?
+            WHERE user_id = ? AND device_name = ? AND platform = ? AND device_kind = ? AND id <> ? AND status = 'active'
+            """,
+            (now, user_id, normalized_device_name, normalized_platform, normalized_device_kind, device_id),
         )
         row = connection.execute("SELECT * FROM devices WHERE id = ?", (device_id,)).fetchone()
 
@@ -656,6 +758,7 @@ def get_user_by_device_token(settings: Settings, raw_token: str) -> tuple[Option
         user_id=row["user_id"],
         device_name=row["device_name"],
         platform=row["platform"],
+        device_kind=row["device_kind"] if "device_kind" in row.keys() else "desktop",
         status=row["status"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],

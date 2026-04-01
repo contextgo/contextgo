@@ -120,18 +120,23 @@ CLOUDFLARE_API_TOKEN=Cloudflare API Token
 CLOUDFLARE_ACCOUNT_ID=Cloudflare Account ID
 ```
 
-### Cloud VM 自动部署
+### GCP 原生 Cloud 自动部署
 
-```
-CLOUD_VM_HOST=VM 公网 IP 或可解析域名
-CLOUD_VM_SSH_USER=部署使用的 SSH 用户
-CLOUD_VM_SSH_PRIVATE_KEY=对应 SSH 私钥（多行内容原样保存）
+推荐把 cloud 部署切到 GCP 原生链路：GitHub Actions 通过 `google-github-actions/auth` 获取 Google Cloud 身份，再直接使用 `gcloud compute scp/ssh` 发布到 GCE VM。
+
+必需的 GitHub Actions Variables / Secrets：
+
+```text
+GCP_PROJECT_ID=contextgo
+GCP_COMPUTE_ZONE=asia-east2-a
+GCP_COMPUTE_VM_INSTANCE=ctxgo-hk-1
+GCP_WORKLOAD_IDENTITY_PROVIDER=projects/123456789/locations/global/workloadIdentityPools/github/providers/contextgo
+GCP_SERVICE_ACCOUNT_EMAIL=github-deploy@contextgo.iam.gserviceaccount.com
 ```
 
 推荐同时配置以下 GitHub Actions Variables：
 
 ```text
-CLOUD_VM_PORT=22
 CLOUD_DEPLOY_PATH=/opt/contextgo-cloud
 CLOUD_ENV_FILE=/etc/contextgo-cloud/contextgo-cloud.env
 CLOUD_SERVICE_NAME=contextgo-cloud
@@ -140,7 +145,9 @@ CLOUD_DEPLOY_OWNER=contextgo
 
 说明：
 
-- workflow 会把 `apps/cloud/` 和新构建的 `out/renderer/` 一起打包上传到 VM
+- workflow 会把 `apps/cloud/` 和新构建的 `out/renderer/` 一起打包上传到 GCE VM
+- workflow 不再依赖 `CLOUD_VM_HOST` / `CLOUD_VM_SSH_USER` / `CLOUD_VM_SSH_PRIVATE_KEY` 这类长期 SSH secrets
+- GCE 连接通过 `gcloud compute scp` 和 `gcloud compute ssh` 完成，默认使用短期 SSH key
 - 远端会保留 `${CLOUD_DEPLOY_PATH}/.venv`
 - 远端会自动写入或更新 `CONTEXTGO_RENDERER_BUILD_ROOT=${CLOUD_DEPLOY_PATH}/out/renderer`
 - 远端会覆盖 `/etc/systemd/system/${CLOUD_SERVICE_NAME}.service`，然后执行 `systemctl daemon-reload && systemctl restart`

@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, quote, urlencode, urlparse
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from starlette.datastructures import URL
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -32,6 +33,7 @@ from .db import (
     delete_session,
     find_user_by_email,
     find_user_by_oauth_account,
+    get_connection,
     get_device_for_user,
     get_user_by_device_token,
     get_user_by_session_token,
@@ -54,6 +56,7 @@ ProviderId = Literal["github", "google"]
 class DeviceRegisterRequest(BaseModel):
     deviceName: str = Field(min_length=1, max_length=120)
     platform: str = Field(default="unknown", min_length=1, max_length=64)
+    deviceKind: str = Field(default="desktop", min_length=1, max_length=32)
 
 
 class SyncChangePayload(BaseModel):
@@ -83,6 +86,475 @@ REMOTE_APP_ASSETS_PATH = f"{REMOTE_APP_PATH}/assets"
 REMOTE_DEVICE_PATH_PREFIX = "/device"
 REMOTE_SHELL_SCHEME = "contextgo-remote"
 RENDERER_BUILD_ROOT_ENV = "CONTEXTGO_RENDERER_BUILD_ROOT"
+FALLBACK_CLOUD_LANGUAGE = "en-US"
+FALLBACK_CLOUD_SUPPORTED_LANGUAGES = ("zh-CN", "en-US", "ja-JP", "zh-TW", "ko-KR", "tr-TR")
+SHORT_CLOUD_LANGUAGE_MAP = {
+    "en": "en-US",
+    "ja": "ja-JP",
+    "ko": "ko-KR",
+    "tr": "tr-TR",
+    "zh": "zh-CN",
+    "zh-cn": "zh-CN",
+    "zh-sg": "zh-CN",
+    "zh-hans": "zh-CN",
+    "zh-tw": "zh-TW",
+    "zh-hk": "zh-TW",
+    "zh-mo": "zh-TW",
+    "zh-hant": "zh-TW",
+}
+CLOUD_I18N = {
+    "en-US": {
+        "login.title": "ContextGo account",
+        "login.subtitle": "Cloud-side OAuth and session service for ContextGo users.",
+        "login.continue.github": "Continue with GitHub",
+        "login.continue.google": "Continue with Google",
+        "login.cancelAndClose": "Cancel and Close",
+        "login.providersUnavailable": "No OAuth providers are configured.",
+        "login.failed": "Login failed: {error}",
+        "login.succeeded": "Login succeeded.",
+        "login.cancelled": "Login cancelled. You can close this window safely.",
+        "login.desktopHint.loopback": "Continue in your browser. ContextGo will finish sign-in automatically.",
+        "login.desktopHint.deepLink": "Continue in your browser. ContextGo will reopen automatically after sign-in.",
+        "login.signOut": "Sign out",
+        "login.cookieDomain": "Session cookie domain: {domain}",
+        "login.hostOnly": "host-only",
+        "remote.title": "ContextGo Remote",
+        "remote.signedInAs": "Signed in as {name} · {email}",
+        "remote.description": "Choose a desktop device that currently has a live cloud relay connection. Registered devices stay listed, but only relay-connected machines can open a hosted remote session.",
+        "remote.refreshDevices": "Refresh devices",
+        "remote.signOut": "Sign out",
+        "remote.openInApp": "Open in app",
+        "remote.relayConnectedAt": "Relay connected at {timestamp}",
+        "remote.lastSeenAt": "Last seen at {timestamp}",
+        "remote.unnamedDevice": "Unnamed device",
+        "remote.deviceSubtitle": "{platform} · device {status}",
+        "remote.emptyTitle": "No desktop devices are registered yet.",
+        "remote.emptyDetail": "Sign in on a desktop build of ContextGo first. Once that device links to your cloud account, it will appear here automatically.",
+        "remote.notice.deviceNotFound.title": "This remote device could not be found.",
+        "remote.notice.deviceNotFound.detail": "It may have been revoked or linked to another cloud account.",
+        "remote.notice.deviceOffline.title": "The desktop relay is offline.",
+        "remote.notice.deviceOffline.detail": "Reconnect ContextGo on the desktop, then refresh this device list.",
+        "remote.notice.sessionReplaced.title": "This hosted session was replaced.",
+        "remote.notice.sessionReplaced.detail": "Another browser took over the live session. Choose a device again to continue here.",
+        "remote.notice.serviceRestarted.title": "The hosted remote session was restarted.",
+        "remote.notice.serviceRestarted.detail": "Refresh the list and reopen the desktop session.",
+        "remote.badge.liveSession": "Live session",
+        "remote.badge.available": "Available",
+        "remote.badge.unavailable": "Unavailable",
+        "remote.summary.liveSession": "Desktop is online and already attached to a browser session through {transportLabel}.",
+        "remote.detail.liveSession": "A second browser can still take over, but the current session is already active.",
+        "remote.summary.available": "Desktop is online and ready through {transportLabel}.",
+        "remote.detail.available": "This device has an authenticated outbound relay connection and can open a live WebUI session now.",
+        "remote.summary.unavailable": "Desktop is not connected to {transportLabel} right now.",
+        "remote.detail.unavailable": "The machine may still be registered and active, but hosted remote access stays unavailable until the desktop relay reconnects.",
+        "remote.action.openLiveSession": "Open live session",
+        "remote.action.unavailable": "Unavailable",
+        "remote.rendererUnavailableTitle": "Hosted remote shell is unavailable",
+        "remote.rendererUnavailableDetail": "The renderer build was not found on this deployment.",
+        "desktop.title": "Return to ContextGo",
+        "desktop.action.return": "Return to ContextGo",
+        "desktop.action.open": "Open ContextGo",
+        "desktop.caption.autoOpen": "If ContextGo does not open automatically, use the button above.",
+        "desktop.caption.deepLink": "Deep link: {url}",
+        "desktop.message.invalidProvider": "Desktop sign-in is missing a valid OAuth provider.",
+        "desktop.message.errorWithCode": "ContextGo sign-in could not be completed: {error}.",
+        "desktop.message.missingSession": "Browser sign-in finished, but no cloud session was found for this page.",
+        "desktop.message.success": "Browser sign-in succeeded. ContextGo should continue automatically.",
+        "transport.cloudRelay": "ContextGo Cloud relay",
+    },
+    "zh-CN": {
+        "login.title": "ContextGo 账号",
+        "login.subtitle": "用于登录 ContextGo Cloud 并管理当前会话。",
+        "login.continue.github": "使用 GitHub 继续",
+        "login.continue.google": "使用 Google 继续",
+        "login.cancelAndClose": "取消并关闭",
+        "login.providersUnavailable": "当前未配置可用的 OAuth 登录方式。",
+        "login.failed": "登录失败：{error}",
+        "login.succeeded": "登录成功。",
+        "login.cancelled": "已取消登录。现在可以安全关闭此窗口。",
+        "login.desktopHint.loopback": "请在浏览器中继续。ContextGo 会自动完成登录。",
+        "login.desktopHint.deepLink": "请在浏览器中继续。登录完成后 ContextGo 会自动重新打开。",
+        "login.signOut": "退出登录",
+        "login.cookieDomain": "会话 Cookie 域：{domain}",
+        "login.hostOnly": "仅当前主机",
+        "remote.title": "ContextGo 远程访问",
+        "remote.signedInAs": "当前登录为 {name} · {email}",
+        "remote.description": "选择一个当前已连接云中继的桌面设备。已注册设备会保留在列表中，但只有已连上中继的机器才能打开托管远程会话。",
+        "remote.refreshDevices": "刷新设备",
+        "remote.signOut": "退出登录",
+        "remote.openInApp": "在应用中打开",
+        "remote.relayConnectedAt": "中继连接时间：{timestamp}",
+        "remote.lastSeenAt": "最近在线时间：{timestamp}",
+        "remote.unnamedDevice": "未命名设备",
+        "remote.deviceSubtitle": "{platform} · 设备 {status}",
+        "remote.emptyTitle": "还没有已注册的桌面设备",
+        "remote.emptyDetail": "请先在桌面版 ContextGo 中登录。设备绑定到你的云账号后，会自动出现在这里。",
+        "remote.notice.deviceNotFound.title": "找不到这个远程设备。",
+        "remote.notice.deviceNotFound.detail": "它可能已经被撤销，或者已经关联到另一个云账号。",
+        "remote.notice.deviceOffline.title": "桌面端中继当前离线。",
+        "remote.notice.deviceOffline.detail": "请在桌面端重新连接 ContextGo，然后刷新设备列表。",
+        "remote.notice.sessionReplaced.title": "这个托管会话已被替换。",
+        "remote.notice.sessionReplaced.detail": "另一个浏览器接管了当前实时会话。请选择设备以继续。",
+        "remote.notice.serviceRestarted.title": "托管远程会话已重启。",
+        "remote.notice.serviceRestarted.detail": "请刷新列表并重新打开桌面会话。",
+        "remote.badge.liveSession": "会话进行中",
+        "remote.badge.available": "可用",
+        "remote.badge.unavailable": "不可用",
+        "remote.summary.liveSession": "桌面端已在线，并且已经通过 {transportLabel} 连接到一个浏览器会话。",
+        "remote.detail.liveSession": "你仍然可以由第二个浏览器接管，但当前会话已经处于活动状态。",
+        "remote.summary.available": "桌面端已在线，可通过 {transportLabel} 使用。",
+        "remote.detail.available": "此设备已建立经过认证的出站中继连接，现在可以直接打开实时 WebUI 会话。",
+        "remote.summary.unavailable": "桌面端当前未连接到 {transportLabel}。",
+        "remote.detail.unavailable": "这台机器可能仍然已注册且处于激活状态，但在桌面端重新连上中继之前，托管远程访问不可用。",
+        "remote.action.openLiveSession": "打开实时会话",
+        "remote.action.unavailable": "不可用",
+        "remote.rendererUnavailableTitle": "托管远程 Shell 当前不可用",
+        "remote.rendererUnavailableDetail": "当前部署上未找到前端构建产物。",
+        "desktop.title": "返回 ContextGo",
+        "desktop.action.return": "返回 ContextGo",
+        "desktop.action.open": "打开 ContextGo",
+        "desktop.caption.autoOpen": "如果 ContextGo 没有自动打开，请点击上方按钮。",
+        "desktop.caption.deepLink": "深链：{url}",
+        "desktop.message.invalidProvider": "桌面登录缺少有效的 OAuth 提供方。",
+        "desktop.message.errorWithCode": "ContextGo 登录未完成：{error}。",
+        "desktop.message.missingSession": "浏览器端登录已完成，但这个页面没有找到对应的云会话。",
+        "desktop.message.success": "浏览器端登录成功。ContextGo 应会自动继续。",
+        "transport.cloudRelay": "ContextGo Cloud 中继",
+    },
+    "zh-TW": {
+        "login.title": "ContextGo 帳號",
+        "login.subtitle": "用於登入 ContextGo Cloud 並管理目前工作階段。",
+        "login.continue.github": "使用 GitHub 繼續",
+        "login.continue.google": "使用 Google 繼續",
+        "login.cancelAndClose": "取消並關閉",
+        "login.providersUnavailable": "目前未設定可用的 OAuth 登入方式。",
+        "login.failed": "登入失敗：{error}",
+        "login.succeeded": "登入成功。",
+        "login.cancelled": "已取消登入。你現在可以安全關閉此視窗。",
+        "login.desktopHint.loopback": "請在瀏覽器中繼續。ContextGo 會自動完成登入。",
+        "login.desktopHint.deepLink": "請在瀏覽器中繼續。登入完成後 ContextGo 會自動重新開啟。",
+        "login.signOut": "登出",
+        "login.cookieDomain": "工作階段 Cookie 網域：{domain}",
+        "login.hostOnly": "僅目前主機",
+        "remote.title": "ContextGo 遠端存取",
+        "remote.signedInAs": "目前登入為 {name} · {email}",
+        "remote.description": "選擇一台目前已連上雲端中繼的桌面裝置。已註冊的裝置會保留在清單中，但只有已連上中繼的機器才能開啟託管遠端工作階段。",
+        "remote.refreshDevices": "重新整理裝置",
+        "remote.signOut": "登出",
+        "remote.openInApp": "在應用程式中開啟",
+        "remote.relayConnectedAt": "中繼連線時間：{timestamp}",
+        "remote.lastSeenAt": "上次上線時間：{timestamp}",
+        "remote.unnamedDevice": "未命名裝置",
+        "remote.deviceSubtitle": "{platform} · 裝置 {status}",
+        "remote.emptyTitle": "尚未註冊任何桌面裝置",
+        "remote.emptyDetail": "請先在桌面版 ContextGo 中登入。裝置綁定到你的雲端帳號後，會自動顯示在這裡。",
+        "remote.notice.deviceNotFound.title": "找不到這台遠端裝置。",
+        "remote.notice.deviceNotFound.detail": "它可能已被撤銷，或已連結到另一個雲端帳號。",
+        "remote.notice.deviceOffline.title": "桌面端中繼目前離線。",
+        "remote.notice.deviceOffline.detail": "請在桌面端重新連線 ContextGo，然後重新整理裝置清單。",
+        "remote.notice.sessionReplaced.title": "這個託管工作階段已被取代。",
+        "remote.notice.sessionReplaced.detail": "另一個瀏覽器接管了目前的即時工作階段。請重新選擇裝置以繼續。",
+        "remote.notice.serviceRestarted.title": "託管遠端工作階段已重新啟動。",
+        "remote.notice.serviceRestarted.detail": "請重新整理清單並重新開啟桌面工作階段。",
+        "remote.badge.liveSession": "工作階段進行中",
+        "remote.badge.available": "可用",
+        "remote.badge.unavailable": "不可用",
+        "remote.summary.liveSession": "桌面端已上線，且已透過 {transportLabel} 連接到瀏覽器工作階段。",
+        "remote.detail.liveSession": "第二個瀏覽器仍可接管，但目前工作階段已處於活動狀態。",
+        "remote.summary.available": "桌面端已上線，可透過 {transportLabel} 使用。",
+        "remote.detail.available": "這台裝置已建立經驗證的對外中繼連線，現在可以直接開啟即時 WebUI 工作階段。",
+        "remote.summary.unavailable": "桌面端目前未連接到 {transportLabel}。",
+        "remote.detail.unavailable": "這台機器可能仍已註冊且處於啟用狀態，但在桌面端重新連上中繼之前，託管遠端存取仍不可用。",
+        "remote.action.openLiveSession": "開啟即時工作階段",
+        "remote.action.unavailable": "不可用",
+        "remote.rendererUnavailableTitle": "託管遠端 Shell 目前不可用",
+        "remote.rendererUnavailableDetail": "目前部署上找不到前端建置產物。",
+        "desktop.title": "返回 ContextGo",
+        "desktop.action.return": "返回 ContextGo",
+        "desktop.action.open": "開啟 ContextGo",
+        "desktop.caption.autoOpen": "如果 ContextGo 沒有自動開啟，請點選上方按鈕。",
+        "desktop.caption.deepLink": "深層連結：{url}",
+        "desktop.message.invalidProvider": "桌面登入缺少有效的 OAuth 提供者。",
+        "desktop.message.errorWithCode": "ContextGo 登入未完成：{error}。",
+        "desktop.message.missingSession": "瀏覽器端登入已完成，但此頁面找不到對應的雲端工作階段。",
+        "desktop.message.success": "瀏覽器端登入成功。ContextGo 應會自動繼續。",
+        "transport.cloudRelay": "ContextGo Cloud 中繼",
+    },
+    "ja-JP": {
+        "login.title": "ContextGo アカウント",
+        "login.subtitle": "ContextGo Cloud へのサインインと現在のセッション管理に使用します。",
+        "login.continue.github": "GitHub で続行",
+        "login.continue.google": "Google で続行",
+        "login.cancelAndClose": "キャンセルして閉じる",
+        "login.providersUnavailable": "利用可能な OAuth プロバイダーが設定されていません。",
+        "login.failed": "サインインに失敗しました: {error}",
+        "login.succeeded": "サインインに成功しました。",
+        "login.cancelled": "サインインはキャンセルされました。このウィンドウは安全に閉じられます。",
+        "login.desktopHint.loopback": "ブラウザで続行してください。ContextGo が自動的にサインインを完了します。",
+        "login.desktopHint.deepLink": "ブラウザで続行してください。サインイン後に ContextGo が自動的に再度開きます。",
+        "login.signOut": "サインアウト",
+        "login.cookieDomain": "セッション Cookie ドメイン: {domain}",
+        "login.hostOnly": "このホストのみ",
+        "remote.title": "ContextGo Remote",
+        "remote.signedInAs": "{name} · {email} としてサインイン中",
+        "remote.description": "現在クラウドリレーに接続しているデスクトップ デバイスを選択してください。登録済みデバイスは一覧に残りますが、ホスト型リモートセッションを開けるのはリレー接続中の端末だけです。",
+        "remote.refreshDevices": "デバイスを更新",
+        "remote.signOut": "サインアウト",
+        "remote.openInApp": "アプリで開く",
+        "remote.relayConnectedAt": "リレー接続時刻: {timestamp}",
+        "remote.lastSeenAt": "最終確認時刻: {timestamp}",
+        "remote.unnamedDevice": "名称未設定のデバイス",
+        "remote.deviceSubtitle": "{platform} · デバイス {status}",
+        "remote.emptyTitle": "まだ登録されたデスクトップ デバイスはありません。",
+        "remote.emptyDetail": "まず ContextGo のデスクトップ版でサインインしてください。デバイスがクラウド アカウントに紐付くと、ここに自動で表示されます。",
+        "remote.notice.deviceNotFound.title": "このリモート デバイスは見つかりませんでした。",
+        "remote.notice.deviceNotFound.detail": "無効化されたか、別のクラウド アカウントに紐付いている可能性があります。",
+        "remote.notice.deviceOffline.title": "デスクトップ リレーはオフラインです。",
+        "remote.notice.deviceOffline.detail": "デスクトップ側で ContextGo を再接続してから、この一覧を更新してください。",
+        "remote.notice.sessionReplaced.title": "このホスト型セッションは置き換えられました。",
+        "remote.notice.sessionReplaced.detail": "別のブラウザが現在のライブ セッションを引き継ぎました。続行するにはもう一度デバイスを選択してください。",
+        "remote.notice.serviceRestarted.title": "ホスト型リモート セッションが再起動されました。",
+        "remote.notice.serviceRestarted.detail": "一覧を更新して、デスクトップ セッションをもう一度開いてください。",
+        "remote.badge.liveSession": "ライブ セッション",
+        "remote.badge.available": "利用可能",
+        "remote.badge.unavailable": "利用不可",
+        "remote.summary.liveSession": "デスクトップはオンラインで、すでに {transportLabel} 経由でブラウザ セッションに接続されています。",
+        "remote.detail.liveSession": "別のブラウザが引き継ぐことはできますが、現在のセッションはすでにアクティブです。",
+        "remote.summary.available": "デスクトップはオンラインで、{transportLabel} 経由で利用できます。",
+        "remote.detail.available": "このデバイスには認証済みのアウトバウンド リレー接続があり、今すぐライブ WebUI セッションを開けます。",
+        "remote.summary.unavailable": "デスクトップは現在 {transportLabel} に接続していません。",
+        "remote.detail.unavailable": "このマシンは登録済みかつ有効なままの可能性がありますが、デスクトップ リレーが再接続するまでホスト型リモート アクセスは利用できません。",
+        "remote.action.openLiveSession": "ライブ セッションを開く",
+        "remote.action.unavailable": "利用不可",
+        "remote.rendererUnavailableTitle": "ホスト型リモート Shell は利用できません",
+        "remote.rendererUnavailableDetail": "このデプロイにはレンダラーのビルド成果物が見つかりませんでした。",
+        "desktop.title": "ContextGo に戻る",
+        "desktop.action.return": "ContextGo に戻る",
+        "desktop.action.open": "ContextGo を開く",
+        "desktop.caption.autoOpen": "ContextGo が自動で開かない場合は、上のボタンを使用してください。",
+        "desktop.caption.deepLink": "ディープリンク: {url}",
+        "desktop.message.invalidProvider": "デスクトップ サインインに有効な OAuth プロバイダーがありません。",
+        "desktop.message.errorWithCode": "ContextGo のサインインを完了できませんでした: {error}。",
+        "desktop.message.missingSession": "ブラウザでのサインインは完了しましたが、このページに対応するクラウド セッションが見つかりませんでした。",
+        "desktop.message.success": "ブラウザでのサインインに成功しました。ContextGo が自動的に続行するはずです。",
+        "transport.cloudRelay": "ContextGo Cloud relay",
+    },
+    "ko-KR": {
+        "login.title": "ContextGo 계정",
+        "login.subtitle": "ContextGo Cloud 로그인과 현재 세션 관리에 사용됩니다.",
+        "login.continue.github": "GitHub로 계속",
+        "login.continue.google": "Google로 계속",
+        "login.cancelAndClose": "취소하고 닫기",
+        "login.providersUnavailable": "사용 가능한 OAuth 공급자가 구성되어 있지 않습니다.",
+        "login.failed": "로그인 실패: {error}",
+        "login.succeeded": "로그인되었습니다.",
+        "login.cancelled": "로그인이 취소되었습니다. 이 창은 안전하게 닫아도 됩니다.",
+        "login.desktopHint.loopback": "브라우저에서 계속하세요. ContextGo가 자동으로 로그인을 완료합니다.",
+        "login.desktopHint.deepLink": "브라우저에서 계속하세요. 로그인 후 ContextGo가 자동으로 다시 열립니다.",
+        "login.signOut": "로그아웃",
+        "login.cookieDomain": "세션 쿠키 도메인: {domain}",
+        "login.hostOnly": "현재 호스트만",
+        "remote.title": "ContextGo Remote",
+        "remote.signedInAs": "{name} · {email} 계정으로 로그인됨",
+        "remote.description": "현재 클라우드 릴레이에 연결된 데스크톱 기기를 선택하세요. 등록된 기기는 목록에 계속 남지만, 릴레이에 연결된 기기만 호스팅 원격 세션을 열 수 있습니다.",
+        "remote.refreshDevices": "기기 새로고침",
+        "remote.signOut": "로그아웃",
+        "remote.openInApp": "앱에서 열기",
+        "remote.relayConnectedAt": "릴레이 연결 시각: {timestamp}",
+        "remote.lastSeenAt": "마지막 확인 시각: {timestamp}",
+        "remote.unnamedDevice": "이름 없는 기기",
+        "remote.deviceSubtitle": "{platform} · 기기 {status}",
+        "remote.emptyTitle": "등록된 데스크톱 기기가 아직 없습니다.",
+        "remote.emptyDetail": "먼저 데스크톱용 ContextGo에서 로그인하세요. 기기가 클라우드 계정에 연결되면 여기에 자동으로 표시됩니다.",
+        "remote.notice.deviceNotFound.title": "이 원격 기기를 찾을 수 없습니다.",
+        "remote.notice.deviceNotFound.detail": "이미 해제되었거나 다른 클라우드 계정에 연결되었을 수 있습니다.",
+        "remote.notice.deviceOffline.title": "데스크톱 릴레이가 오프라인입니다.",
+        "remote.notice.deviceOffline.detail": "데스크톱에서 ContextGo를 다시 연결한 뒤 이 목록을 새로고침하세요.",
+        "remote.notice.sessionReplaced.title": "이 호스팅 세션이 다른 세션으로 대체되었습니다.",
+        "remote.notice.sessionReplaced.detail": "다른 브라우저가 현재 라이브 세션을 가져갔습니다. 계속하려면 기기를 다시 선택하세요.",
+        "remote.notice.serviceRestarted.title": "호스팅 원격 세션이 다시 시작되었습니다.",
+        "remote.notice.serviceRestarted.detail": "목록을 새로고침하고 데스크톱 세션을 다시 여세요.",
+        "remote.badge.liveSession": "라이브 세션",
+        "remote.badge.available": "사용 가능",
+        "remote.badge.unavailable": "사용 불가",
+        "remote.summary.liveSession": "데스크톱이 온라인이며 이미 {transportLabel}을 통해 브라우저 세션에 연결되어 있습니다.",
+        "remote.detail.liveSession": "다른 브라우저가 이어받을 수는 있지만 현재 세션은 이미 활성 상태입니다.",
+        "remote.summary.available": "데스크톱이 온라인이며 {transportLabel}을 통해 바로 사용할 수 있습니다.",
+        "remote.detail.available": "이 기기는 인증된 아웃바운드 릴레이 연결을 가지고 있어 지금 바로 라이브 WebUI 세션을 열 수 있습니다.",
+        "remote.summary.unavailable": "데스크톱이 현재 {transportLabel}에 연결되어 있지 않습니다.",
+        "remote.detail.unavailable": "이 기기는 여전히 등록 및 활성 상태일 수 있지만, 데스크톱 릴레이가 다시 연결되기 전까지 호스팅 원격 액세스는 사용할 수 없습니다.",
+        "remote.action.openLiveSession": "라이브 세션 열기",
+        "remote.action.unavailable": "사용 불가",
+        "remote.rendererUnavailableTitle": "호스팅 원격 Shell을 사용할 수 없습니다",
+        "remote.rendererUnavailableDetail": "이 배포에서 렌더러 빌드를 찾을 수 없습니다.",
+        "desktop.title": "ContextGo로 돌아가기",
+        "desktop.action.return": "ContextGo로 돌아가기",
+        "desktop.action.open": "ContextGo 열기",
+        "desktop.caption.autoOpen": "ContextGo가 자동으로 열리지 않으면 위의 버튼을 사용하세요.",
+        "desktop.caption.deepLink": "딥 링크: {url}",
+        "desktop.message.invalidProvider": "데스크톱 로그인에 유효한 OAuth 공급자가 없습니다.",
+        "desktop.message.errorWithCode": "ContextGo 로그인을 완료할 수 없습니다: {error}.",
+        "desktop.message.missingSession": "브라우저 로그인은 끝났지만 이 페이지에 해당하는 클라우드 세션을 찾지 못했습니다.",
+        "desktop.message.success": "브라우저 로그인이 완료되었습니다. ContextGo가 자동으로 이어서 진행됩니다.",
+        "transport.cloudRelay": "ContextGo Cloud relay",
+    },
+    "tr-TR": {
+        "login.title": "ContextGo hesabı",
+        "login.subtitle": "ContextGo Cloud oturumu açmak ve mevcut oturumu yönetmek için kullanılır.",
+        "login.continue.github": "GitHub ile devam et",
+        "login.continue.google": "Google ile devam et",
+        "login.cancelAndClose": "İptal et ve kapat",
+        "login.providersUnavailable": "Yapılandırılmış bir OAuth sağlayıcısı yok.",
+        "login.failed": "Giriş başarısız oldu: {error}",
+        "login.succeeded": "Giriş başarılı.",
+        "login.cancelled": "Giriş iptal edildi. Bu pencereyi güvenle kapatabilirsiniz.",
+        "login.desktopHint.loopback": "Tarayıcıda devam edin. ContextGo oturumu otomatik olarak tamamlayacak.",
+        "login.desktopHint.deepLink": "Tarayıcıda devam edin. Oturum açıldıktan sonra ContextGo otomatik olarak yeniden açılacak.",
+        "login.signOut": "Çıkış yap",
+        "login.cookieDomain": "Oturum çerezi alanı: {domain}",
+        "login.hostOnly": "yalnızca bu ana makine",
+        "remote.title": "ContextGo Remote",
+        "remote.signedInAs": "{name} · {email} olarak oturum açıldı",
+        "remote.description": "Şu anda bulut rölesine bağlı olan bir masaüstü cihaz seçin. Kayıtlı cihazlar listede kalır, ancak yalnızca röleye bağlı makineler barındırılan uzak oturumu açabilir.",
+        "remote.refreshDevices": "Cihazları yenile",
+        "remote.signOut": "Çıkış yap",
+        "remote.openInApp": "Uygulamada aç",
+        "remote.relayConnectedAt": "Röle bağlantı zamanı: {timestamp}",
+        "remote.lastSeenAt": "Son görülme zamanı: {timestamp}",
+        "remote.unnamedDevice": "Adsız cihaz",
+        "remote.deviceSubtitle": "{platform} · cihaz {status}",
+        "remote.emptyTitle": "Henüz kayıtlı masaüstü cihaz yok.",
+        "remote.emptyDetail": "Önce ContextGo masaüstü sürümünde oturum açın. Cihaz bulut hesabınıza bağlandıktan sonra burada otomatik olarak görünecektir.",
+        "remote.notice.deviceNotFound.title": "Bu uzak cihaz bulunamadı.",
+        "remote.notice.deviceNotFound.detail": "İptal edilmiş veya başka bir bulut hesabına bağlanmış olabilir.",
+        "remote.notice.deviceOffline.title": "Masaüstü rölesi çevrimdışı.",
+        "remote.notice.deviceOffline.detail": "Masaüstünde ContextGo'yu yeniden bağlayın, sonra bu cihaz listesini yenileyin.",
+        "remote.notice.sessionReplaced.title": "Bu barındırılan oturum değiştirildi.",
+        "remote.notice.sessionReplaced.detail": "Başka bir tarayıcı canlı oturumu devraldı. Burada devam etmek için cihazı yeniden seçin.",
+        "remote.notice.serviceRestarted.title": "Barındırılan uzak oturum yeniden başlatıldı.",
+        "remote.notice.serviceRestarted.detail": "Listeyi yenileyin ve masaüstü oturumunu tekrar açın.",
+        "remote.badge.liveSession": "Canlı oturum",
+        "remote.badge.available": "Kullanılabilir",
+        "remote.badge.unavailable": "Kullanılamıyor",
+        "remote.summary.liveSession": "Masaüstü çevrimiçi ve zaten {transportLabel} üzerinden bir tarayıcı oturumuna bağlı.",
+        "remote.detail.liveSession": "İkinci bir tarayıcı devralabilir, ancak mevcut oturum zaten etkin durumda.",
+        "remote.summary.available": "Masaüstü çevrimiçi ve {transportLabel} üzerinden hazır.",
+        "remote.detail.available": "Bu cihaz doğrulanmış bir giden röle bağlantısına sahip ve canlı bir WebUI oturumunu hemen açabilir.",
+        "remote.summary.unavailable": "Masaüstü şu anda {transportLabel} ağına bağlı değil.",
+        "remote.detail.unavailable": "Makine hâlâ kayıtlı ve etkin olabilir, ancak masaüstü rölesi yeniden bağlanana kadar barındırılan uzak erişim kullanılamaz.",
+        "remote.action.openLiveSession": "Canlı oturumu aç",
+        "remote.action.unavailable": "Kullanılamıyor",
+        "remote.rendererUnavailableTitle": "Barındırılan uzak Shell kullanılamıyor",
+        "remote.rendererUnavailableDetail": "Bu dağıtımda renderer derleme çıktısı bulunamadı.",
+        "desktop.title": "ContextGo'ya dön",
+        "desktop.action.return": "ContextGo'ya dön",
+        "desktop.action.open": "ContextGo'yu aç",
+        "desktop.caption.autoOpen": "ContextGo otomatik açılmazsa yukarıdaki düğmeyi kullanın.",
+        "desktop.caption.deepLink": "Derin bağlantı: {url}",
+        "desktop.message.invalidProvider": "Masaüstü girişi için geçerli bir OAuth sağlayıcısı eksik.",
+        "desktop.message.errorWithCode": "ContextGo oturumu tamamlanamadı: {error}.",
+        "desktop.message.missingSession": "Tarayıcı girişi tamamlandı, ancak bu sayfa için bir bulut oturumu bulunamadı.",
+        "desktop.message.success": "Tarayıcı girişi başarılı oldu. ContextGo otomatik olarak devam etmelidir.",
+        "transport.cloudRelay": "ContextGo Cloud relay",
+    },
+}
+
+
+def load_cloud_supported_languages() -> tuple[str, ...]:
+    config_path = Path(__file__).resolve().parents[3] / "src" / "common" / "config" / "i18n-config.json"
+    try:
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return FALLBACK_CLOUD_SUPPORTED_LANGUAGES
+
+    supported = tuple(
+        str(item)
+        for item in payload.get("supportedLanguages", [])
+        if isinstance(item, str) and item in CLOUD_I18N
+    )
+    return supported or FALLBACK_CLOUD_SUPPORTED_LANGUAGES
+
+
+CLOUD_SUPPORTED_LANGUAGES = load_cloud_supported_languages()
+
+
+def match_cloud_locale(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+
+    normalized = value.strip().replace("_", "-")
+    if not normalized:
+        return None
+
+    if normalized in CLOUD_SUPPORTED_LANGUAGES:
+        return normalized
+
+    lowered = normalized.lower()
+    mapped = SHORT_CLOUD_LANGUAGE_MAP.get(lowered)
+    if mapped in CLOUD_SUPPORTED_LANGUAGES:
+        return mapped
+
+    primary = lowered.split("-", 1)[0]
+    mapped = SHORT_CLOUD_LANGUAGE_MAP.get(primary)
+    if mapped in CLOUD_SUPPORTED_LANGUAGES:
+        return mapped
+
+    return None
+
+
+def normalize_cloud_locale(value: Optional[str]) -> str:
+    return match_cloud_locale(value) or FALLBACK_CLOUD_LANGUAGE
+
+
+def cloud_text(language: str, key: str, **kwargs: object) -> str:
+    catalog = CLOUD_I18N.get(language) or CLOUD_I18N[FALLBACK_CLOUD_LANGUAGE]
+    template = catalog.get(key) or CLOUD_I18N[FALLBACK_CLOUD_LANGUAGE].get(key) or key
+    if not kwargs:
+        return template
+
+    normalized_kwargs = {name: str(value) for name, value in kwargs.items()}
+    return template.format(**normalized_kwargs)
+
+
+def read_user_cloud_language(user: Optional[User]) -> Optional[str]:
+    if user is None:
+        return None
+
+    with get_connection(settings) as connection:
+        row = connection.execute(
+            """
+            SELECT value_json
+            FROM sync_items
+            WHERE user_id = ? AND namespace = 'preferences' AND item_key = 'language' AND deleted = 0
+            LIMIT 1
+            """,
+            (user.id,),
+        ).fetchone()
+
+    if row is None or row["value_json"] is None:
+        return None
+
+    try:
+        value = json.loads(row["value_json"])
+    except json.JSONDecodeError:
+        return None
+
+    return normalize_cloud_locale(value) if isinstance(value, str) else None
+
+
+def detect_request_language(request: Request, user: Optional[User] = None) -> str:
+    user_language = read_user_cloud_language(user)
+    if user_language:
+        return user_language
+
+    accept_language = request.headers.get("accept-language", "")
+    for raw_part in accept_language.split(","):
+        locale_candidate = raw_part.split(";", 1)[0].strip()
+        matched = match_cloud_locale(locale_candidate)
+        if matched:
+            return matched
+
+    return FALLBACK_CLOUD_LANGUAGE
 
 
 def resolve_renderer_build_root() -> Path:
@@ -359,12 +831,45 @@ def normalize_provider(value: Optional[str]) -> Optional[ProviderId]:
     return None
 
 
-def build_desktop_login_complete_url(provider: Optional[str] = None, error_code: Optional[str] = None) -> str:
+def normalize_loopback_callback_url(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+
+    trimmed = value.strip()
+    if not trimmed:
+        return None
+
+    parsed = urlparse(trimmed)
+    hostname = (parsed.hostname or "").strip().lower()
+    if parsed.scheme != "http" or hostname not in {"127.0.0.1", "::1", "localhost"}:
+        return None
+
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+
+    if port is None:
+        return None
+
+    normalized_path = parsed.path or "/"
+    return parsed._replace(path=normalized_path, query="", fragment="").geturl()
+
+
+def build_desktop_login_complete_url(
+    provider: Optional[str] = None,
+    error_code: Optional[str] = None,
+    loopback_url: Optional[str] = None,
+) -> str:
     query: Dict[str, str] = {}
     if provider:
         query["provider"] = provider
     if error_code:
         query["error"] = error_code
+
+    normalized_loopback_url = normalize_loopback_callback_url(loopback_url)
+    if normalized_loopback_url:
+        query["loopback"] = normalized_loopback_url
 
     return f"{DESKTOP_LOGIN_COMPLETE_PATH}?{urlencode(query)}" if query else DESKTOP_LOGIN_COMPLETE_PATH
 
@@ -386,38 +891,48 @@ def build_desktop_login_deep_link(
     return f"contextgo://cloud-login?{urlencode(query)}" if query else "contextgo://cloud-login"
 
 
-def extract_login_context(next_path: Optional[str]) -> tuple[Optional[str], bool]:
+def extract_login_context(next_path: Optional[str]) -> tuple[Optional[str], bool, Optional[str]]:
     if not next_path:
-        return None, False
+        return None, False, None
 
     parsed = urlparse(next_path)
     if parsed.path == DESKTOP_LOGIN_COMPLETE_PATH:
         query = parse_qs(parsed.query)
-        return normalize_provider(query.get("provider", [None])[0]), True
+        return (
+            normalize_provider(query.get("provider", [None])[0]),
+            True,
+            normalize_loopback_callback_url(query.get("loopback", [None])[0]),
+        )
 
     if parsed.path != "/login":
-        return None, False
+        return None, False, None
 
     query = parse_qs(parsed.query)
-    return normalize_provider(query.get("provider", [None])[0]), query.get("desktop", [None])[0] == "1"
+    return (
+        normalize_provider(query.get("provider", [None])[0]),
+        query.get("desktop", [None])[0] == "1",
+        normalize_loopback_callback_url(query.get("loopback", [None])[0]),
+    )
 
 
-def peek_login_context(provider: str, state_value: Optional[str]) -> tuple[Optional[str], bool]:
+def peek_login_context(provider: str, state_value: Optional[str]) -> tuple[Optional[str], bool, Optional[str]]:
     next_path = peek_oauth_state(settings, state_value, provider) if state_value else None
-    next_provider, desktop_mode = extract_login_context(next_path)
+    next_provider, desktop_mode, loopback_url = extract_login_context(next_path)
     if next_provider:
-        return next_provider, desktop_mode
+        return next_provider, desktop_mode, loopback_url
 
     fallback_provider = provider if provider in ("github", "google") else None
-    return fallback_provider, desktop_mode
+    return fallback_provider, desktop_mode, loopback_url
 
 
 def render_login_page(request: Request, user: Optional[User]) -> str:
+    language = detect_request_language(request, user)
     oauth_error = request.query_params.get("oauthError")
     success = request.query_params.get("success")
     cancel = request.query_params.get("cancel")
     selected_provider = normalize_provider(request.query_params.get("provider"))
     desktop_mode = request.query_params.get("desktop") == "1"
+    desktop_loopback_url = normalize_loopback_callback_url(request.query_params.get("loopback"))
     next_path = pick_next_path(request.query_params.get("next"))
 
     provider_ids = get_enabled_providers(settings)
@@ -426,10 +941,10 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
 
     provider_buttons = []
     for provider in provider_ids:
-        label = "Continue with GitHub" if provider == "github" else "Continue with Google"
+        label = cloud_text(language, f"login.continue.{provider}")
         href = f"/api/auth/oauth/{provider}/start"
         if desktop_mode:
-            href = f'{href}?{urlencode({"next": build_desktop_login_complete_url(provider), "desktop": "1"})}'
+            href = f'{href}?{urlencode({"next": build_desktop_login_complete_url(provider, loopback_url=desktop_loopback_url), "desktop": "1"})}'
         else:
             next_target = next_path
             if is_mobile_shell_request(request):
@@ -439,31 +954,26 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
 
             if next_target != "/":
                 href = f'{href}?{urlencode({"next": next_target})}'
-        provider_buttons.append(
-            f'<a class="provider" href="{escape(href)}">{escape(label)}</a>'
-        )
+        provider_buttons.append(f'<a class="provider" href="{escape(href)}">{escape(label)}</a>')
 
     if desktop_mode:
         provider_buttons.append(
-            f'<a class="secondary" href="{escape(build_desktop_login_complete_url(selected_provider, "cancelled"))}">Cancel and Close</a>'
+            f'<a class="secondary" href="{escape(build_desktop_login_complete_url(selected_provider, "cancelled", desktop_loopback_url))}">{escape(cloud_text(language, "login.cancelAndClose"))}</a>'
         )
 
-    provider_markup = "\n".join(provider_buttons) or "<p>No OAuth providers are configured.</p>"
+    provider_markup = "\n".join(provider_buttons) or f'<p>{escape(cloud_text(language, "login.providersUnavailable"))}</p>'
     message = ""
     if oauth_error:
-        message = f'<p class="message error">Login failed: {escape(oauth_error)}</p>'
+        message = f'<p class="message error">{escape(cloud_text(language, "login.failed", error=oauth_error))}</p>'
     elif success:
-        message = '<p class="message success">Login succeeded.</p>'
+        message = f'<p class="message success">{escape(cloud_text(language, "login.succeeded"))}</p>'
     elif cancel:
-        message = '<p class="message info">Login cancelled. You can close this window safely.</p>'
+        message = f'<p class="message info">{escape(cloud_text(language, "login.cancelled"))}</p>'
 
     desktop_hint = ""
     if desktop_mode:
-        desktop_hint = (
-            '<p class="caption intro">'
-            'Continue in your browser. ContextGo will reopen automatically after sign-in.'
-            '</p>'
-        )
+        hint_key = "login.desktopHint.loopback" if desktop_loopback_url else "login.desktopHint.deepLink"
+        desktop_hint = f'<p class="caption intro">{escape(cloud_text(language, hint_key))}</p>'
 
     account_markup = ""
     if user:
@@ -481,17 +991,21 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
             </div>
           </div>
           <form method="post" action="/api/auth/logout">
-            <button class="secondary" type="submit">Sign out</button>
+            <button class="secondary" type="submit">{escape(cloud_text(language, "login.signOut"))}</button>
           </form>
         </section>
         """
 
+    cookie_domain = settings.session_cookie_domain or cloud_text(language, "login.hostOnly")
+    title = cloud_text(language, "login.title")
+    subtitle = cloud_text(language, "login.subtitle")
+    cookie_domain_text = cloud_text(language, "login.cookieDomain", domain=cookie_domain)
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{escape(language)}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ContextGo Auth</title>
+  <title>{escape(title)}</title>
   <style>
     body {{
       margin: 0;
@@ -605,15 +1119,15 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
 <body>
   <div class="wrap">
     <main class="card">
-      <h1>ContextGo account</h1>
-      <p>Cloud-side OAuth and session service for ContextGo users.</p>
+      <h1>{escape(title)}</h1>
+      <p>{escape(subtitle)}</p>
       {message}
       {desktop_hint}
       <div class="stack">
         {provider_markup}
       </div>
       {account_markup}
-      <p class="caption">Session cookie domain: <code>{escape(settings.session_cookie_domain or "host-only")}</code></p>
+      <p class="caption">{escape(cookie_domain_text)}</p>
     </main>
   </div>
 </body>
@@ -628,55 +1142,55 @@ def build_mobile_shell_open_url(target_url: str) -> str:
     return f"{REMOTE_SHELL_SCHEME}://open?{urlencode({'target': target_url})}"
 
 
-def describe_remote_notice(notice: Optional[str]) -> Optional[dict[str, str]]:
+def describe_remote_notice(language: str, notice: Optional[str]) -> Optional[dict[str, str]]:
     if notice == "device_not_found":
         return {
             "className": "error",
-            "title": "This remote device could not be found.",
-            "detail": "It may have been revoked or linked to another cloud account.",
+            "title": cloud_text(language, "remote.notice.deviceNotFound.title"),
+            "detail": cloud_text(language, "remote.notice.deviceNotFound.detail"),
         }
 
     if notice == "device_offline":
         return {
             "className": "info",
-            "title": "The desktop relay is offline.",
-            "detail": "Reconnect ContextGo on the desktop, then refresh this device list.",
+            "title": cloud_text(language, "remote.notice.deviceOffline.title"),
+            "detail": cloud_text(language, "remote.notice.deviceOffline.detail"),
         }
 
     if notice == "session_replaced":
         return {
             "className": "info",
-            "title": "This hosted session was replaced.",
-            "detail": "Another browser took over the live session. Choose a device again to continue here.",
+            "title": cloud_text(language, "remote.notice.sessionReplaced.title"),
+            "detail": cloud_text(language, "remote.notice.sessionReplaced.detail"),
         }
 
     if notice == "service_restarted":
         return {
             "className": "info",
-            "title": "The hosted remote session was restarted.",
-            "detail": "Refresh the list and reopen the desktop session.",
+            "title": cloud_text(language, "remote.notice.serviceRestarted.title"),
+            "detail": cloud_text(language, "remote.notice.serviceRestarted.detail"),
         }
 
     return None
 
 
-def describe_remote_device_availability(device_payload: dict[str, object]) -> dict[str, object]:
+def describe_remote_device_availability(language: str, device_payload: dict[str, object]) -> dict[str, object]:
     remote_status = device_payload.get("remoteStatus")
     remote_data = remote_status if isinstance(remote_status, dict) else {}
     connected = remote_data.get("connected") is True
     client_connected = remote_data.get("clientConnected") is True
     transport = remote_data.get("transport") if isinstance(remote_data.get("transport"), str) else "cloud-relay"
-    transport_label = "ContextGo Cloud relay" if transport == "cloud-relay" else transport
+    transport_label = cloud_text(language, "transport.cloudRelay") if transport == "cloud-relay" else transport
 
     if connected and client_connected:
         return {
             "connected": True,
             "clientConnected": True,
-            "badge": "Live session",
+            "badge": cloud_text(language, "remote.badge.liveSession"),
             "badgeClass": "busy",
-            "summary": f"Desktop is online and already attached to a browser session through {transport_label}.",
-            "detail": "A second browser can still take over, but the current session is already active.",
-            "actionLabel": "Open live session",
+            "summary": cloud_text(language, "remote.summary.liveSession", transportLabel=transport_label),
+            "detail": cloud_text(language, "remote.detail.liveSession"),
+            "actionLabel": cloud_text(language, "remote.action.openLiveSession"),
             "actionHref": build_remote_session_url(str(device_payload.get("id", ""))),
         }
 
@@ -684,35 +1198,37 @@ def describe_remote_device_availability(device_payload: dict[str, object]) -> di
         return {
             "connected": True,
             "clientConnected": False,
-            "badge": "Available",
+            "badge": cloud_text(language, "remote.badge.available"),
             "badgeClass": "ready",
-            "summary": f"Desktop is online and ready through {transport_label}.",
-            "detail": "This device has an authenticated outbound relay connection and can open a live WebUI session now.",
-            "actionLabel": "Open live session",
+            "summary": cloud_text(language, "remote.summary.available", transportLabel=transport_label),
+            "detail": cloud_text(language, "remote.detail.available"),
+            "actionLabel": cloud_text(language, "remote.action.openLiveSession"),
             "actionHref": build_remote_session_url(str(device_payload.get("id", ""))),
         }
 
     return {
         "connected": False,
         "clientConnected": False,
-        "badge": "Unavailable",
+        "badge": cloud_text(language, "remote.badge.unavailable"),
         "badgeClass": "offline",
-        "summary": f"Desktop is not connected to {transport_label} right now.",
-        "detail": "The machine may still be registered and active, but hosted remote access stays unavailable until the desktop relay reconnects.",
-        "actionLabel": "Unavailable",
+        "summary": cloud_text(language, "remote.summary.unavailable", transportLabel=transport_label),
+        "detail": cloud_text(language, "remote.detail.unavailable"),
+        "actionLabel": cloud_text(language, "remote.action.unavailable"),
         "actionHref": None,
     }
 
 
 def render_remote_devices_page(
+    request: Request,
     user: User,
     devices: list[dict[str, object]],
     remote_origin: str,
     notice: Optional[dict[str, str]] = None,
 ) -> str:
+    language = detect_request_language(request, user)
     cards = []
     for device in devices:
-        availability = describe_remote_device_availability(device)
+        availability = describe_remote_device_availability(language, device)
         action_markup = ""
         if availability["actionHref"]:
             relative_target_url = str(availability["actionHref"])
@@ -720,25 +1236,30 @@ def render_remote_devices_page(
             mobile_shell_url = build_mobile_shell_open_url(absolute_target_url)
             action_markup = (
                 f'<a class="primary" href="{escape(relative_target_url)}">{escape(str(availability["actionLabel"]))}</a>'
-                f'<a class="secondary" href="{escape(mobile_shell_url)}">Open in app</a>'
+                f'<a class="secondary" href="{escape(mobile_shell_url)}">{escape(cloud_text(language, "remote.openInApp"))}</a>'
             )
         else:
-            action_markup = '<span class="secondary disabled" aria-disabled="true">Unavailable</span>'
+            action_markup = f'<span class="secondary disabled" aria-disabled="true">{escape(cloud_text(language, "remote.action.unavailable"))}</span>'
+
         connected_at = ""
         remote_status = device.get("remoteStatus")
         remote_data = remote_status if isinstance(remote_status, dict) else {}
         if isinstance(remote_data.get("connectedAt"), str) and remote_data["connectedAt"]:
-            connected_at = f'<p class="meta">Relay connected at {escape(str(remote_data["connectedAt"]))}</p>'
+            connected_at = f'<p class="meta">{escape(cloud_text(language, "remote.relayConnectedAt", timestamp=str(remote_data["connectedAt"])))}</p>'
         elif isinstance(device.get("lastSeenAt"), str) and device["lastSeenAt"]:
-            connected_at = f'<p class="meta">Last seen at {escape(str(device["lastSeenAt"]))}</p>'
+            connected_at = f'<p class="meta">{escape(cloud_text(language, "remote.lastSeenAt", timestamp=str(device["lastSeenAt"])))}</p>'
 
+        device_name = str(device.get("deviceName") or cloud_text(language, "remote.unnamedDevice"))
+        platform = str(device.get("platform", "unknown"))
+        status = str(device.get("status", "unknown"))
+        subtitle = cloud_text(language, "remote.deviceSubtitle", platform=platform, status=status)
         cards.append(
             f"""
             <article class="device-card">
               <div class="device-header">
                 <div>
-                  <h2>{escape(str(device.get("deviceName", "Unnamed device")))}</h2>
-                  <p class="device-subtitle">{escape(str(device.get("platform", "unknown")))} · device {escape(str(device.get("status", "unknown")))}</p>
+                  <h2>{escape(device_name)}</h2>
+                  <p class="device-subtitle">{escape(subtitle)}</p>
                 </div>
                 <span class="badge badge-{escape(str(availability["badgeClass"]))}">{escape(str(availability["badge"]))}</span>
               </div>
@@ -754,10 +1275,10 @@ def render_remote_devices_page(
 
     devices_markup = "\n".join(cards)
     if not devices_markup:
-        devices_markup = """
+        devices_markup = f"""
         <section class="empty-state">
-          <h2>No desktop devices are registered yet.</h2>
-          <p>Sign in on a desktop build of ContextGo first. Once that device links to your cloud account, it will appear here automatically.</p>
+          <h2>{escape(cloud_text(language, "remote.emptyTitle"))}</h2>
+          <p>{escape(cloud_text(language, "remote.emptyDetail"))}</p>
         </section>
         """
 
@@ -772,12 +1293,17 @@ def render_remote_devices_page(
         </section>
         """
 
+    title = cloud_text(language, "remote.title")
+    signed_in_as = cloud_text(language, "remote.signedInAs", name=user.display_name, email=user.email)
+    description = cloud_text(language, "remote.description")
+    refresh_label = cloud_text(language, "remote.refreshDevices")
+    sign_out_label = cloud_text(language, "remote.signOut")
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{escape(language)}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ContextGo Remote</title>
+  <title>{escape(title)}</title>
   <style>
     body {{
       margin: 0;
@@ -880,7 +1406,6 @@ def render_remote_devices_page(
     .device-subtitle {{
       margin: 8px 0 0;
       color: #64748b;
-      text-transform: lowercase;
     }}
     .summary {{
       margin: 18px 0 0;
@@ -963,17 +1488,17 @@ def render_remote_devices_page(
   <main class="wrap">
     <section class="topbar">
       <div>
-        <h1>ContextGo Remote</h1>
-        <p>Signed in as {account_name} · {account_email}</p>
-        <p>Choose a desktop device that currently has a live cloud relay connection. Registered devices stay listed, but only relay-connected machines can open a hosted remote session.</p>
+        <h1>{escape(title)}</h1>
+        <p>{escape(signed_in_as)}</p>
+        <p>{escape(description)}</p>
       </div>
       <div class="account-card">
         <p><strong>{account_name}</strong></p>
         <p class="account-meta">@{escape(user.username)}</p>
         <div class="toolbar">
-          <a class="secondary" href="{REMOTE_DEVICES_PATH}">Refresh devices</a>
+          <a class="secondary" href="{REMOTE_DEVICES_PATH}">{escape(refresh_label)}</a>
           <form method="post" action="/api/auth/logout?next={escape(REMOTE_DEVICES_PATH)}">
-            <button class="secondary" type="submit">Sign out</button>
+            <button class="secondary" type="submit">{escape(sign_out_label)}</button>
           </form>
         </div>
       </div>
@@ -987,19 +1512,22 @@ def render_remote_devices_page(
 </html>"""
 
 
-def render_desktop_login_complete_page(deep_link_url: str, is_error: bool, message: str) -> str:
+def render_desktop_login_complete_page(language: str, deep_link_url: str, is_error: bool, message: str) -> str:
     escaped_deep_link_url = escape(deep_link_url)
     escaped_message = escape(message)
     status_class = "error" if is_error else "success"
-    action_label = "Return to ContextGo" if is_error else "Open ContextGo"
+    action_label = cloud_text(language, "desktop.action.return") if is_error else cloud_text(language, "desktop.action.open")
     script_deep_link_url = json.dumps(deep_link_url)
+    title = cloud_text(language, "desktop.title")
+    caption_auto_open = cloud_text(language, "desktop.caption.autoOpen")
+    caption_deep_link_label = cloud_text(language, "desktop.caption.deepLink", url="").rstrip()
 
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{escape(language)}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ContextGo Desktop Login</title>
+  <title>{escape(title)}</title>
   <style>
     body {{
       margin: 0;
@@ -1076,13 +1604,13 @@ def render_desktop_login_complete_page(deep_link_url: str, is_error: bool, messa
 <body>
   <div class="wrap">
     <main class="card">
-      <h1>Return to ContextGo</h1>
+      <h1>{escape(title)}</h1>
       <p class="message {status_class}">{escaped_message}</p>
       <div class="stack">
-        <a class="primary" href="{escaped_deep_link_url}">{action_label}</a>
+        <a class="primary" href="{escaped_deep_link_url}">{escape(action_label)}</a>
       </div>
-      <p class="caption">If ContextGo does not open automatically, use the button above.</p>
-      <p class="caption">Deep link: <code>{escaped_deep_link_url}</code></p>
+      <p class="caption">{escape(caption_auto_open)}</p>
+      <p class="caption">{escape(caption_deep_link_label)} <code>{escaped_deep_link_url}</code></p>
     </main>
   </div>
   <script>
@@ -1099,10 +1627,11 @@ def redirect_to_login(
     success: bool = False,
     provider: Optional[str] = None,
     desktop: bool = False,
+    loopback_url: Optional[str] = None,
 ) -> RedirectResponse:
     if desktop:
         return RedirectResponse(
-            url=build_desktop_login_complete_url(provider=provider, error_code=error_code),
+            url=build_desktop_login_complete_url(provider=provider, error_code=error_code, loopback_url=loopback_url),
             status_code=303,
         )
 
@@ -1138,6 +1667,7 @@ def serialize_device(device: Device) -> dict[str, object]:
         "userId": device.user_id,
         "deviceName": device.device_name,
         "platform": device.platform,
+        "deviceKind": device.device_kind,
         "status": device.status,
         "createdAt": device.created_at,
         "updatedAt": device.updated_at,
@@ -1152,6 +1682,14 @@ def serialize_device(device: Device) -> dict[str, object]:
             "transport": remote_status.transport,
         },
     }
+
+
+def list_remote_devices_payload(user_id: str) -> list[dict[str, object]]:
+    return [
+        serialize_device(device)
+        for device in list_devices_for_user(settings, user_id)
+        if device.device_kind == "desktop"
+    ]
 
 
 def require_current_user(request: Request) -> User:
@@ -1307,10 +1845,11 @@ async def remote_devices_page(request: Request) -> HTMLResponse:
     if user is None:
         return RedirectResponse(url=build_login_url(next_path=REMOTE_DEVICES_PATH), status_code=303)
 
-    devices = [serialize_device(device) for device in list_devices_for_user(settings, user.id)]
+    devices = list_remote_devices_payload(user.id)
     remote_origin = settings.remote_base_url
-    remote_notice = describe_remote_notice(request.query_params.get("remoteNotice"))
-    return HTMLResponse(render_remote_devices_page(user, devices, remote_origin, remote_notice))
+    language = detect_request_language(request, user)
+    remote_notice = describe_remote_notice(language, request.query_params.get("remoteNotice"))
+    return HTMLResponse(render_remote_devices_page(request, user, devices, remote_origin, remote_notice))
 
 
 def build_remote_app_login_redirect(request: Request) -> RedirectResponse:
@@ -1327,10 +1866,12 @@ async def remote_device_page(device_id: str, request: Request):
         return build_remote_app_login_redirect(request)
 
     if not RENDERER_INDEX_PATH.is_file():
-        return HTMLResponse(
-            "<h1>Hosted remote shell is unavailable</h1><p>The renderer build was not found on this deployment.</p>",
-            status_code=503,
+        language = detect_request_language(request, user)
+        unavailable_html = (
+            f"<h1>{escape(cloud_text(language, 'remote.rendererUnavailableTitle'))}</h1>"
+            f"<p>{escape(cloud_text(language, 'remote.rendererUnavailableDetail'))}</p>"
         )
+        return HTMLResponse(unavailable_html, status_code=503)
 
     return HTMLResponse(render_remote_app_shell())
 
@@ -1347,48 +1888,71 @@ async def mobile_shell_login_complete(request: Request) -> RedirectResponse:
 
 
 @app.get(DESKTOP_LOGIN_COMPLETE_PATH, response_class=HTMLResponse)
-async def desktop_login_complete(request: Request) -> HTMLResponse:
+async def desktop_login_complete(request: Request):
     provider = normalize_provider(request.query_params.get("provider"))
     error_code = request.query_params.get("error")
+    loopback_url = normalize_loopback_callback_url(request.query_params.get("loopback"))
+    language = detect_request_language(request, read_current_user(request))
+
+    def build_result_redirect(**params: str) -> RedirectResponse:
+        callback_url = URL(loopback_url)
+        callback_url = callback_url.include_query_params(**params)
+        return RedirectResponse(url=str(callback_url), status_code=303)
 
     if provider is None:
+        if loopback_url:
+            return build_result_redirect(error="invalid_provider")
+
         deep_link_url = build_desktop_login_deep_link(error_code="invalid_provider")
         return HTMLResponse(
             render_desktop_login_complete_page(
+                language=language,
                 deep_link_url=deep_link_url,
                 is_error=True,
-                message="Desktop sign-in is missing a valid OAuth provider.",
+                message=cloud_text(language, "desktop.message.invalidProvider"),
             )
         )
 
     if error_code:
+        if loopback_url:
+            return build_result_redirect(provider=provider, error=error_code)
+
         deep_link_url = build_desktop_login_deep_link(provider=provider, error_code=error_code)
         return HTMLResponse(
             render_desktop_login_complete_page(
+                language=language,
                 deep_link_url=deep_link_url,
                 is_error=True,
-                message=f"ContextGo sign-in could not be completed: {error_code}.",
+                message=cloud_text(language, "desktop.message.errorWithCode", error=error_code),
             )
         )
 
     user = read_current_user(request)
     if user is None:
+        if loopback_url:
+            return build_result_redirect(provider=provider, error="missing_session")
+
         deep_link_url = build_desktop_login_deep_link(provider=provider, error_code="missing_session")
         return HTMLResponse(
             render_desktop_login_complete_page(
+                language=language,
                 deep_link_url=deep_link_url,
                 is_error=True,
-                message="Browser sign-in finished, but no cloud session was found for this page.",
+                message=cloud_text(language, "desktop.message.missingSession"),
             )
         )
 
     code = create_desktop_login_code(settings, user.id, provider)
+    if loopback_url:
+        return build_result_redirect(provider=provider, code=code)
+
     deep_link_url = build_desktop_login_deep_link(code=code, provider=provider)
     return HTMLResponse(
         render_desktop_login_complete_page(
+            language=language,
             deep_link_url=deep_link_url,
             is_error=False,
-            message="Browser sign-in succeeded. ContextGo should continue automatically.",
+            message=cloud_text(language, "desktop.message.success"),
         )
     )
 
@@ -1529,10 +2093,16 @@ async def auth_desktop_consume(request: Request, payload: DesktopLoginConsumeReq
 @app.get("/api/auth/oauth/{provider}/start")
 async def auth_oauth_start(provider: str, request: Request) -> RedirectResponse:
     desktop_mode = request.query_params.get("desktop") == "1"
-    if not is_provider_enabled(settings, provider):
-        return redirect_to_login("provider_not_enabled", provider=provider, desktop=desktop_mode)
-
     next_path = pick_next_path(request.query_params.get("next"))
+    _, _, loopback_url = extract_login_context(next_path)
+    if not is_provider_enabled(settings, provider):
+        return redirect_to_login(
+            "provider_not_enabled",
+            provider=provider,
+            desktop=desktop_mode,
+            loopback_url=loopback_url,
+        )
+
     state = create_oauth_state(settings, provider, next_path)
     authorization_url = build_authorization_url(settings, provider, state)  # type: ignore[arg-type]
 
@@ -1544,9 +2114,9 @@ async def auth_oauth_start(provider: str, request: Request) -> RedirectResponse:
 @app.get("/api/auth/oauth/{provider}/callback")
 async def auth_oauth_callback(provider: str, request: Request) -> RedirectResponse:
     returned_state = request.query_params.get("state")
-    context_provider, desktop_mode = peek_login_context(provider, returned_state)
+    context_provider, desktop_mode, loopback_url = peek_login_context(provider, returned_state)
     if not is_provider_enabled(settings, provider):
-        return redirect_to_login("provider_not_enabled", provider=context_provider or provider, desktop=desktop_mode)
+        return redirect_to_login("provider_not_enabled", provider=context_provider or provider, desktop=desktop_mode, loopback_url=loopback_url)
 
     callback_error = request.query_params.get("error")
     if callback_error:
@@ -1554,6 +2124,7 @@ async def auth_oauth_callback(provider: str, request: Request) -> RedirectRespon
             "access_denied" if callback_error == "access_denied" else "callback_failed",
             provider=context_provider,
             desktop=desktop_mode,
+            loopback_url=loopback_url,
         )
         clear_oauth_state_cookie(response)
         return response
@@ -1562,24 +2133,25 @@ async def auth_oauth_callback(provider: str, request: Request) -> RedirectRespon
     code = request.query_params.get("code")
     if not expected_state or not returned_state or expected_state != returned_state:
         state_hint = expected_state or returned_state
-        context_provider, desktop_mode = peek_login_context(provider, state_hint)
-        response = redirect_to_login("invalid_state", provider=context_provider, desktop=desktop_mode)
+        context_provider, desktop_mode, loopback_url = peek_login_context(provider, state_hint)
+        response = redirect_to_login("invalid_state", provider=context_provider, desktop=desktop_mode, loopback_url=loopback_url)
         clear_oauth_state_cookie(response)
         return response
 
     if not code:
-        response = redirect_to_login("missing_code", provider=context_provider, desktop=desktop_mode)
+        response = redirect_to_login("missing_code", provider=context_provider, desktop=desktop_mode, loopback_url=loopback_url)
         clear_oauth_state_cookie(response)
         return response
 
     next_path_hint = peek_oauth_state(settings, returned_state, provider)
     next_path = consume_oauth_state(settings, returned_state, provider)
     if next_path is None:
-        next_provider, next_desktop_mode = extract_login_context(next_path_hint)
+        next_provider, next_desktop_mode, next_loopback_url = extract_login_context(next_path_hint)
         response = redirect_to_login(
             "invalid_state",
             provider=next_provider or context_provider,
             desktop=next_desktop_mode or desktop_mode,
+            loopback_url=next_loopback_url or loopback_url,
         )
         clear_oauth_state_cookie(response)
         return response
@@ -1587,31 +2159,34 @@ async def auth_oauth_callback(provider: str, request: Request) -> RedirectRespon
     try:
         profile = await exchange_code_for_profile(settings, provider, code)  # type: ignore[arg-type]
     except Exception:
-        next_provider, next_desktop_mode = extract_login_context(next_path)
+        next_provider, next_desktop_mode, next_loopback_url = extract_login_context(next_path)
         response = redirect_to_login(
             "callback_failed",
             provider=next_provider or context_provider,
             desktop=next_desktop_mode or desktop_mode,
+            loopback_url=next_loopback_url or loopback_url,
         )
         clear_oauth_state_cookie(response)
         return response
 
     if not profile.email or not profile.email_verified:
-        next_provider, next_desktop_mode = extract_login_context(next_path)
+        next_provider, next_desktop_mode, next_loopback_url = extract_login_context(next_path)
         response = redirect_to_login(
             "email_required",
             provider=next_provider or context_provider,
             desktop=next_desktop_mode or desktop_mode,
+            loopback_url=next_loopback_url or loopback_url,
         )
         clear_oauth_state_cookie(response)
         return response
 
     if not is_allowed_email(profile.email):
-        next_provider, next_desktop_mode = extract_login_context(next_path)
+        next_provider, next_desktop_mode, next_loopback_url = extract_login_context(next_path)
         response = redirect_to_login(
             "email_not_allowed",
             provider=next_provider or context_provider,
             desktop=next_desktop_mode or desktop_mode,
+            loopback_url=next_loopback_url or loopback_url,
         )
         clear_oauth_state_cookie(response)
         return response
@@ -1638,10 +2213,11 @@ async def api_device_register(request: Request, payload: DeviceRegisterRequest) 
     user = require_current_user(request)
     device_name = payload.deviceName.strip()
     platform = payload.platform.strip()
-    if not device_name or not platform:
+    device_kind = payload.deviceKind.strip().lower()
+    if not device_name or not platform or not device_kind:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="deviceName and platform are required",
+            detail="deviceName, platform, and deviceKind are required",
         )
 
     device, raw_token = create_device(
@@ -1649,6 +2225,7 @@ async def api_device_register(request: Request, payload: DeviceRegisterRequest) 
         user_id=user.id,
         device_name=device_name,
         platform=platform,
+        device_kind=device_kind,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
@@ -1677,7 +2254,7 @@ async def api_devices(request: Request) -> JSONResponse:
 @app.get("/api/remote/devices")
 async def api_remote_devices(request: Request) -> JSONResponse:
     user = require_current_user(request)
-    devices = [serialize_device(device) for device in list_devices_for_user(settings, user.id)]
+    devices = list_remote_devices_payload(user.id)
     return JSONResponse(
         {
             "success": True,

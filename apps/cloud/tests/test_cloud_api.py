@@ -109,13 +109,15 @@ class CloudApiTestCase(unittest.TestCase):
         unload_modules()
 
     def _create_browser_session(self) -> tuple[object, object]:
-        user = self.db_module.create_user(
-            settings=self.settings,
-            email="yeyitech@gmail.com",
-            username="yeyitech",
-            display_name="Yeyi Tech",
-            avatar_url=None,
-        )
+        user = self.db_module.find_user_by_email(self.settings, "yeyitech@gmail.com")
+        if user is None:
+            user = self.db_module.create_user(
+                settings=self.settings,
+                email="yeyitech@gmail.com",
+                username="yeyitech",
+                display_name="Yeyi Tech",
+                avatar_url=None,
+            )
         session = self.db_module.create_session(
             settings=self.settings,
             user=user,
@@ -132,6 +134,7 @@ class CloudApiTestCase(unittest.TestCase):
             json={
                 "deviceName": device_name,
                 "platform": platform,
+                "deviceKind": "desktop",
             },
         )
         self.assertEqual(response.status_code, 201)
@@ -240,10 +243,52 @@ class CloudApiTestCase(unittest.TestCase):
             json={
                 "deviceName": "Mac mini",
                 "platform": "macos",
+                "deviceKind": "desktop",
             },
         )
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json()["detail"], "Authentication required")
+
+    def test_device_register_reuses_existing_device_for_same_identity(self) -> None:
+        first = self._register_device(device_name="Studio", platform="macos")
+        second = self._register_device(device_name="Studio", platform="macos")
+
+        self.assertEqual(first["device"]["id"], second["device"]["id"])
+        self.assertNotEqual(first["token"], second["token"])
+
+        devices_payload = self.client.get("/api/devices").json()
+        self.assertEqual(len(devices_payload["devices"]), 1)
+        self.assertEqual(devices_payload["devices"][0]["deviceKind"], "desktop")
+
+    def test_device_register_keeps_webui_and_desktop_bindings_separate(self) -> None:
+        self._create_browser_session()
+
+        desktop = self.client.post(
+            "/api/devices/register",
+            json={
+                "deviceName": "Studio",
+                "platform": "macos",
+                "deviceKind": "desktop",
+            },
+        )
+        self.assertEqual(desktop.status_code, 201)
+
+        webui = self.client.post(
+            "/api/devices/register",
+            json={
+                "deviceName": "Studio",
+                "platform": "macos",
+                "deviceKind": "webui",
+            },
+        )
+        self.assertEqual(webui.status_code, 201)
+
+        devices_payload = self.client.get("/api/devices").json()
+        self.assertEqual(len(devices_payload["devices"]), 2)
+        self.assertEqual(
+            {device["deviceKind"] for device in devices_payload["devices"]},
+            {"desktop", "webui"},
+        )
 
     def test_device_register_list_and_revoke(self) -> None:
         registration = self._register_device()
@@ -277,6 +322,35 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(payload["devices"][0]["id"], device["id"])
         self.assertFalse(payload["devices"][0]["remoteStatus"]["connected"])
         self.assertEqual(payload["devices"][0]["remoteStatus"]["transport"], "cloud-relay")
+
+    def test_remote_devices_hide_webui_bindings(self) -> None:
+        self._create_browser_session()
+
+        self.client.post(
+            "/api/devices/register",
+            json={
+                "deviceName": "Studio",
+                "platform": "macos",
+                "deviceKind": "desktop",
+            },
+        )
+        self.client.post(
+            "/api/devices/register",
+            json={
+                "deviceName": "ContextGo WebUI on Studio",
+                "platform": "macos",
+                "deviceKind": "webui",
+            },
+        )
+
+        api_payload = self.client.get("/api/remote/devices").json()
+        self.assertEqual(len(api_payload["devices"]), 1)
+        self.assertEqual(api_payload["devices"][0]["deviceKind"], "desktop")
+
+        page_response = self.client.get("/remote/devices", headers={"host": "remote.contextgo.io"})
+        self.assertEqual(page_response.status_code, 200)
+        self.assertIn("Studio", page_response.text)
+        self.assertNotIn("ContextGo WebUI on Studio", page_response.text)
 
     def test_remote_devices_page_redirects_to_login_with_next_path(self) -> None:
         response = self.client.get("/remote/devices", follow_redirects=False, headers={"host": "remote.contextgo.io"})
@@ -587,6 +661,65 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Login cancelled. You can close this window safely.", response.text)
 
+    def test_login_page_uses_accept_language_for_localized_copy(self) -> None:
+        response = self.client.get("/login?cancel=1", headers={"accept-language": "zh-CN,zh;q=0.9"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("ContextGo 账号", response.text)
+        self.assertIn("已取消登录。现在可以安全关闭此窗口。", response.text)
+
+    def test_remote_devices_page_uses_synced_user_language(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        self.db_module.apply_sync_changes(
+            self.settings,
+            registration["device"]["userId"],
+            registration["device"]["id"],
+            [
+                {
+                    "namespace": "preferences",
+                    "key": "language",
+                    "value": "zh-CN",
+                    "deleted": False,
+                    "clientUpdatedAt": "2026-04-01T12:00:00Z",
+                }
+            ],
+        )
+
+        response = self.client.get(
+            "/remote/devices",
+            headers={"host": "remote.contextgo.io", "accept-language": "en-US,en;q=0.9"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("ContextGo 远程访问", response.text)
+        self.assertIn("当前登录为", response.text)
+        self.assertIn("桌面端当前未连接到 ContextGo Cloud 中继。", response.text)
+
+    def test_desktop_login_complete_page_uses_accept_language_for_errors(self) -> None:
+        response = self.client.get(
+            "/desktop-login-complete?provider=github&error=access_denied",
+            headers={"accept-language": "zh-CN,zh;q=0.9"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("返回 ContextGo", response.text)
+        self.assertIn("ContextGo 登录未完成：access_denied。", response.text)
+
+    def test_remote_device_renderer_missing_page_is_localized(self) -> None:
+        self._create_browser_session()
+        original_index_path = self.app_module.RENDERER_INDEX_PATH
+        self.app_module.RENDERER_INDEX_PATH = original_index_path.parent / "missing-index.html"
+        self.addCleanup(setattr, self.app_module, "RENDERER_INDEX_PATH", original_index_path)
+
+        response = self.client.get(
+            "/device/device-123",
+            headers={"host": "remote.contextgo.io", "accept-language": "zh-CN,zh;q=0.9"},
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("托管远程 Shell 当前不可用", response.text)
+        self.assertIn("当前部署上未找到前端构建产物。", response.text)
+
     def test_desktop_login_complete_creates_deep_link_for_authenticated_browser_session(self) -> None:
         self._create_browser_session()
 
@@ -603,6 +736,58 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("contextgo://cloud-login?provider=github&amp;error=access_denied", response.text)
         self.assertIn("ContextGo sign-in could not be completed: access_denied.", response.text)
+
+    def test_desktop_login_page_preserves_loopback_callback_actions(self) -> None:
+        loopback = "http://127.0.0.1:43123/contextgo-cloud-login/test-flow"
+        response = self.client.get(f"/login?provider=github&desktop=1&loopback={quote(loopback, safe='')}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(quote(loopback, safe=''), response.text)
+        self.assertIn(
+            'href="/desktop-login-complete?provider=github&amp;error=cancelled&amp;loopback=',
+            response.text,
+        )
+        self.assertIn("ContextGo will finish sign-in automatically", response.text)
+
+    def test_desktop_login_complete_redirects_to_loopback_callback_with_code(self) -> None:
+        self._create_browser_session()
+        loopback = "http://127.0.0.1:43123/contextgo-cloud-login/test-flow"
+
+        response = self.client.get(
+            f"/desktop-login-complete?provider=github&loopback={quote(loopback, safe='')}",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 303)
+        redirected = response.headers["location"]
+        parsed = urlparse(redirected)
+        self.assertEqual(f"{parsed.scheme}://{parsed.netloc}{parsed.path}", loopback)
+        self.assertEqual(parse_qs(parsed.query)["provider"], ["github"])
+        self.assertEqual(len(parse_qs(parsed.query)["code"][0]), 43)
+
+    def test_desktop_login_complete_redirects_to_loopback_callback_with_error(self) -> None:
+        loopback = "http://127.0.0.1:43123/contextgo-cloud-login/test-flow"
+        response = self.client.get(
+            f"/desktop-login-complete?provider=github&error=access_denied&loopback={quote(loopback, safe='')}",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 303)
+        redirected = response.headers["location"]
+        parsed = urlparse(redirected)
+        self.assertEqual(f"{parsed.scheme}://{parsed.netloc}{parsed.path}", loopback)
+        self.assertEqual(parse_qs(parsed.query)["provider"], ["github"])
+        self.assertEqual(parse_qs(parsed.query)["error"], ["access_denied"])
+
+    def test_desktop_login_complete_ignores_non_loopback_callback_url(self) -> None:
+        self._create_browser_session()
+        response = self.client.get(
+            "/desktop-login-complete?provider=github&loopback=https%3A%2F%2Fevil.example%2Fcb",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("contextgo://cloud-login?code=", response.text)
 
     def test_desktop_login_consume_creates_session_from_one_time_code(self) -> None:
         user = self.db_module.create_user(
