@@ -2,6 +2,7 @@ name: Deploy Hosted Services
 
 permissions:
   contents: read
+  id-token: write
 
 on:
   push:
@@ -280,38 +281,58 @@ jobs:
         working-directory: ${{ github.workspace }}
     env:
       BUN_INSTALL_REGISTRY: https://registry.npmjs.org/
-      CLOUD_VM_HOST: ${{ secrets.CLOUD_VM_HOST }}
-      CLOUD_VM_SSH_USER: ${{ secrets.CLOUD_VM_SSH_USER }}
-      CLOUD_VM_SSH_PRIVATE_KEY: ${{ secrets.CLOUD_VM_SSH_PRIVATE_KEY }}
-      CLOUD_VM_PORT: ${{ vars.CLOUD_VM_PORT != '' && vars.CLOUD_VM_PORT || '22' }}
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_COMPUTE_ZONE: ${{ vars.GCP_COMPUTE_ZONE }}
+      GCP_COMPUTE_VM_INSTANCE: ${{ vars.GCP_COMPUTE_VM_INSTANCE }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER || secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT_EMAIL: ${{ vars.GCP_SERVICE_ACCOUNT_EMAIL != '' && vars.GCP_SERVICE_ACCOUNT_EMAIL || secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
       CLOUD_DEPLOY_PATH: ${{ vars.CLOUD_DEPLOY_PATH != '' && vars.CLOUD_DEPLOY_PATH || '/opt/contextgo-cloud' }}
       CLOUD_ENV_FILE: ${{ vars.CLOUD_ENV_FILE != '' && vars.CLOUD_ENV_FILE || '/etc/contextgo-cloud/contextgo-cloud.env' }}
       CLOUD_SERVICE_NAME: ${{ vars.CLOUD_SERVICE_NAME != '' && vars.CLOUD_SERVICE_NAME || 'contextgo-cloud' }}
       CLOUD_DEPLOY_OWNER: ${{ vars.CLOUD_DEPLOY_OWNER != '' && vars.CLOUD_DEPLOY_OWNER || 'contextgo' }}
 
     steps:
-      - name: Verify VM deploy secrets
+      - name: Verify GCP deploy configuration
         run: |
           set -euo pipefail
 
           missing=()
 
-          if [ -z "${CLOUD_VM_HOST:-}" ]; then
-            missing+=("CLOUD_VM_HOST")
+          if [ -z "${GCP_PROJECT_ID:-}" ]; then
+            missing+=("GCP_PROJECT_ID")
           fi
 
-          if [ -z "${CLOUD_VM_SSH_USER:-}" ]; then
-            missing+=("CLOUD_VM_SSH_USER")
+          if [ -z "${GCP_COMPUTE_ZONE:-}" ]; then
+            missing+=("GCP_COMPUTE_ZONE")
           fi
 
-          if [ -z "${CLOUD_VM_SSH_PRIVATE_KEY:-}" ]; then
-            missing+=("CLOUD_VM_SSH_PRIVATE_KEY")
+          if [ -z "${GCP_COMPUTE_VM_INSTANCE:-}" ]; then
+            missing+=("GCP_COMPUTE_VM_INSTANCE")
+          fi
+
+          if [ -z "${GCP_WORKLOAD_IDENTITY_PROVIDER:-}" ]; then
+            missing+=("GCP_WORKLOAD_IDENTITY_PROVIDER")
+          fi
+
+          if [ -z "${GCP_SERVICE_ACCOUNT_EMAIL:-}" ]; then
+            missing+=("GCP_SERVICE_ACCOUNT_EMAIL")
           fi
 
           if [ "${#missing[@]}" -gt 0 ]; then
-            echo "::error::Missing required VM deployment secrets: ${missing[*]}"
+            echo "::error::Missing required GCP deployment configuration: ${missing[*]}"
             exit 1
           fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: Download source archive
         env:
@@ -392,34 +413,27 @@ jobs:
           tar -czf "${ARCHIVE_PATH}" -C "${PACKAGE_ROOT}" .
           echo "CLOUD_DEPLOY_ARCHIVE=${ARCHIVE_PATH}" >> "${GITHUB_ENV}"
 
-      - name: Configure SSH
+      - name: Upload deploy bundle to GCE
         run: |
           set -euo pipefail
 
-          install -m 700 -d "${HOME}/.ssh"
-          printf '%s' "${CLOUD_VM_SSH_PRIVATE_KEY}" > "${HOME}/.ssh/contextgo-cloud-deploy"
-          chmod 600 "${HOME}/.ssh/contextgo-cloud-deploy"
-          ssh-keyscan -p "${CLOUD_VM_PORT}" -H "${CLOUD_VM_HOST}" >> "${HOME}/.ssh/known_hosts"
-
-      - name: Upload deploy bundle
-        run: |
-          set -euo pipefail
-
-          scp \
-            -P "${CLOUD_VM_PORT}" \
-            -i "${HOME}/.ssh/contextgo-cloud-deploy" \
+          gcloud compute scp \
+            --project "${GCP_PROJECT_ID}" \
+            --zone "${GCP_COMPUTE_ZONE}" \
+            --ssh-key-expire-after=5m \
             "${CLOUD_DEPLOY_ARCHIVE}" \
-            "${CLOUD_VM_SSH_USER}@${CLOUD_VM_HOST}:/tmp/contextgo-cloud-deploy.tgz"
+            "${GCP_COMPUTE_VM_INSTANCE}:~/contextgo-cloud-deploy.tgz"
 
-      - name: Deploy on VM
+      - name: Deploy on GCE VM
         run: |
           set -euo pipefail
 
-          ssh \
-            -p "${CLOUD_VM_PORT}" \
-            -i "${HOME}/.ssh/contextgo-cloud-deploy" \
-            "${CLOUD_VM_SSH_USER}@${CLOUD_VM_HOST}" \
-            "CLOUD_DEPLOY_PATH='${CLOUD_DEPLOY_PATH}' CLOUD_ENV_FILE='${CLOUD_ENV_FILE}' CLOUD_SERVICE_NAME='${CLOUD_SERVICE_NAME}' CLOUD_DEPLOY_OWNER='${CLOUD_DEPLOY_OWNER}' bash -se" <<'EOF'
+          gcloud compute ssh \
+            "${GCP_COMPUTE_VM_INSTANCE}" \
+            --project "${GCP_PROJECT_ID}" \
+            --zone "${GCP_COMPUTE_ZONE}" \
+            --ssh-key-expire-after=5m \
+            --command "CLOUD_DEPLOY_PATH='${CLOUD_DEPLOY_PATH}' CLOUD_ENV_FILE='${CLOUD_ENV_FILE}' CLOUD_SERVICE_NAME='${CLOUD_SERVICE_NAME}' CLOUD_DEPLOY_OWNER='${CLOUD_DEPLOY_OWNER}' bash -se" <<'EOF'
           set -euo pipefail
 
           DEPLOY_PATH="${CLOUD_DEPLOY_PATH}"
@@ -427,7 +441,7 @@ jobs:
           SERVICE_NAME="${CLOUD_SERVICE_NAME}"
           DEPLOY_OWNER="${CLOUD_DEPLOY_OWNER}"
           SERVICE_UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
-          DEPLOY_BUNDLE="/tmp/contextgo-cloud-deploy.tgz"
+          DEPLOY_BUNDLE="${HOME}/contextgo-cloud-deploy.tgz"
           TMP_DIR="$(mktemp -d /tmp/contextgo-cloud-deploy.XXXXXX)"
 
           cleanup() {
