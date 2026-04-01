@@ -237,6 +237,53 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(callback_response.status_code, 303)
         self.assertEqual(callback_response.headers["location"], "https://remote.contextgo.io/remote/devices")
 
+    def test_oauth_callback_allows_mobile_browser_handoff_without_state_cookie(self) -> None:
+        start_response = self.client.get("/api/auth/oauth/google/start?next=%2Fremote%2Fdevices", follow_redirects=False)
+        self.assertEqual(start_response.status_code, 302)
+
+        redirect_url = start_response.headers["location"]
+        state = parse_qs(urlparse(redirect_url).query)["state"][0]
+        profile = self.oauth_module.OAuthProfile(
+            provider="google",
+            provider_user_id="google-user-mobile",
+            email="yeyitech@gmail.com",
+            email_verified=True,
+            username_candidate="yeyitech",
+            display_name="Yeyi Tech",
+            avatar_url="https://example.com/avatar.png",
+        )
+
+        self.client.cookies.pop(self.settings.oauth_state_cookie_name, None)
+
+        with patch.object(
+            self.app_module,
+            "exchange_code_for_profile",
+            AsyncMock(return_value=profile),
+        ):
+            callback_response = self.client.get(
+                f"/api/auth/oauth/google/callback?state={state}&code=test-code",
+                follow_redirects=False,
+            )
+
+        self.assertEqual(callback_response.status_code, 303)
+        self.assertEqual(callback_response.headers["location"], "/remote/devices")
+
+    def test_oauth_callback_rejects_mismatched_state_cookie_even_if_returned_state_exists(self) -> None:
+        start_response = self.client.get("/api/auth/oauth/google/start?next=%2Fremote%2Fdevices", follow_redirects=False)
+        self.assertEqual(start_response.status_code, 302)
+
+        redirect_url = start_response.headers["location"]
+        returned_state = parse_qs(urlparse(redirect_url).query)["state"][0]
+        self.client.cookies.set(self.settings.oauth_state_cookie_name, "wrong-state")
+
+        callback_response = self.client.get(
+            f"/api/auth/oauth/google/callback?state={returned_state}&code=test-code",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(callback_response.status_code, 303)
+        self.assertEqual(callback_response.headers["location"], "/login?oauthError=invalid_state&provider=google")
+
     def test_device_management_requires_browser_session(self) -> None:
         response = self.client.post(
             "/api/devices/register",
