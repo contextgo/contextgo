@@ -152,7 +152,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ${{ github.workspace }}
+        working-directory: ${{ github.workspace }}/apps/web
     env:
       CONTEXTGO_RELEASE_REPO: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
       NEXT_PUBLIC_CONTEXTGO_GITHUB_URL: ${{ vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL != '' && vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || 'https://github.com/contextgo' }}
