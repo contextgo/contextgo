@@ -1,43 +1,42 @@
 import { notFound } from 'next/navigation';
 import ContentArticlePage from '@/components/content/ContentArticlePage';
-import { getDocEntry, getSiteContent } from '@/lib/site-content';
+import { getReleaseDocEntry, getReleaseDocsRepositoryUrl, getResolvedReleaseDocs } from '@/lib/releaseDocs';
 
 export const runtime = 'edge';
 
-export default async function DocArticlePage({
-  params,
-}: {
-  params: Promise<{ lang: string; slug: string }>;
-}) {
+export default async function DocArticlePage({ params }: { params: Promise<{ lang: string; slug: string }> }) {
   const { lang, slug } = await params;
   const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
-  const article = getDocEntry(validLang, slug);
+  const resolved = await getResolvedReleaseDocs(validLang);
+  const article = getReleaseDocEntry(resolved, slug);
 
   if (!article) {
     notFound();
   }
 
-  const siteContent = getSiteContent(validLang);
-
   return (
     <ContentArticlePage
       article={article}
       backHref={`/${validLang}/docs`}
-      backLabel={siteContent.labels.backToDocs}
+      backLabel={resolved.bundle.labels.backToDocs}
       meta={[
-        { label: siteContent.labels.updated, value: article.updatedAt || '-' },
-        { label: siteContent.labels.readingTime, value: article.readingTime },
+        { label: resolved.bundle.labels.updated, value: article.updatedAt || '-' },
+        { label: resolved.bundle.labels.readingTime, value: article.readingTime },
       ]}
       primaryAction={{
         href: `/${validLang}/download`,
-        label: siteContent.labels.openDownloadCenter,
+        label: resolved.bundle.labels.openDownloadCenter,
       }}
       secondaryAction={{
         href: `/${validLang}/changelog`,
-        label: siteContent.changelog.title,
+        label: resolved.bundle.labels.releaseHistory,
       }}
-      sidebarTitle={siteContent.labels.articleSidebarTitle}
-      sidebarBody={siteContent.labels.articleSidebarBody}
+      sidebarTitle={resolved.bundle.labels.articleSidebarTitle}
+      sidebarBody={resolved.bundle.labels.articleSidebarBody}
+      version={resolved.bundle.version}
+      versionLabel={resolved.bundle.labels.docsVersionLabel}
+      repositoryUrl={`${getReleaseDocsRepositoryUrl()}/tree/main/docs/${resolved.bundle.version}`}
+      openVersionedDocsLabel={resolved.bundle.labels.openVersionedDocs}
     />
   );
 }

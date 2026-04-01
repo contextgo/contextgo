@@ -6,7 +6,6 @@
 
 import { InlineKeyboard, Keyboard } from 'grammy';
 import crypto from 'crypto';
-import { buildAgentSelectionCallbackToken } from '../../utils/agentSelection';
 
 type TelegramToolConfirmPayload = {
   callId: string;
@@ -84,14 +83,7 @@ export function resolveToolConfirmToken(token: string): Omit<TelegramToolConfirm
  * Displayed persistently below the message input
  */
 export function createMainMenuKeyboard(): Keyboard {
-  return new Keyboard()
-    .text('🆕 New Chat')
-    .text('🔄 Agent')
-    .row()
-    .text('📊 Status')
-    .text('❓ Help')
-    .resized()
-    .persistent();
+  return new Keyboard().text('🆕 New Chat').row().text('📊 Status').text('❓ Help').resized().persistent();
 }
 
 /**
@@ -102,46 +94,6 @@ export function createPairingKeyboard(): Keyboard {
 }
 
 // ==================== Inline Keyboards ====================
-
-/**
- * Agent info for keyboard display
- */
-export interface AgentDisplayInfo {
-  key: string;
-  backend: string;
-  emoji: string;
-  name: string;
-  customAgentId?: string;
-}
-
-/**
- * Agent selection keyboard
- * Shows available agents with current selection marked
- * @param availableAgents - List of available agents to display
- * @param currentAgent - Currently selected agent type
- */
-export function createAgentSelectionKeyboard(
-  availableAgents: AgentDisplayInfo[],
-  currentAgentKey?: string
-): InlineKeyboard {
-  const keyboard = new InlineKeyboard();
-
-  // Add agents in rows of 2
-  for (let i = 0; i < availableAgents.length; i++) {
-    const agent = availableAgents[i];
-    const label = currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
-    const callbackToken = buildAgentSelectionCallbackToken(agent);
-
-    keyboard.text(label, `agent:${callbackToken}`);
-
-    // Start new row after every 2 buttons, except for the last one
-    if ((i + 1) % 2 === 0 && i < availableAgents.length - 1) {
-      keyboard.row();
-    }
-  }
-
-  return keyboard;
-}
 
 /**
  * Action buttons for AI response messages

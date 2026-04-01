@@ -19,7 +19,8 @@ Verified locally on 2026-03-28:
 
 ## Shell Behavior
 
-- First launch defaults to `https://remote.contextgo.io/remote/devices`
+- First launch stays on the native connection screen until the user chooses Official Remote or enters a custom host
+- Tapping Official Remote opens `https://remote.contextgo.io/remote/devices`
 - Custom host mode still accepts a base WebUI URL such as `http://192.168.1.10:3000`
 - Custom host mode still accepts a QR-login URL such as `http://192.168.1.10:3000/qr-login?token=...`
 - Persists the last successful endpoint in `UserDefaults`

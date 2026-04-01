@@ -1,6 +1,6 @@
 import type { AskAgentSelectionPayload, SpaceSelectionItem } from '../types';
 
-export type AffineDocRef = {
+export type ContextGoDocRef = {
   id: string;
   title: string;
   spaceId: string;
@@ -8,7 +8,7 @@ export type AffineDocRef = {
   content?: string;
 };
 
-export type AffineBoardCardRef = {
+export type ContextGoBoardCardRef = {
   id: string;
   title: string;
   preview?: string;
@@ -16,33 +16,33 @@ export type AffineBoardCardRef = {
   sourceCandidateId?: string;
 };
 
-export type AffineBoardRef = {
+export type ContextGoBoardRef = {
   id: string;
   title: string;
   spaceId: string;
   preview?: string;
   content?: string;
-  cards?: readonly AffineBoardCardRef[];
+  cards?: readonly ContextGoBoardCardRef[];
 };
 
-export type AffineSelectionContext = {
+export type ContextGoSelectionContext = {
   items: readonly SpaceSelectionItem[];
   summary?: string;
 };
 
-export type AffineEmbedTarget = {
+export type ContextGoEmbedTarget = {
   kind: 'doc' | 'board';
   spaceId: string;
   entityId: string;
 };
 
-export type AffineEmbedDescriptor = {
+export type ContextGoEmbedDescriptor = {
   src?: string;
   title: string;
   mode: 'iframe' | 'webview' | 'placeholder';
 };
 
-export type AffineProviderStatus = {
+export type ContextGoSurfaceStatus = {
   mode: 'mock' | 'shell' | 'embedded';
   ready: boolean;
   label: string;
@@ -51,29 +51,29 @@ export type AffineProviderStatus = {
   webAppUrl?: string;
 };
 
-export interface IAffineSpaceProvider {
-  getStatus(): Promise<AffineProviderStatus>;
-  listDocs(spaceId: string): Promise<readonly AffineDocRef[]>;
-  listBoards(spaceId: string): Promise<readonly AffineBoardRef[]>;
-  createDoc(spaceId: string, title: string, initialContent?: string): Promise<AffineDocRef>;
-  createBoard(spaceId: string, title: string, initialContent?: string): Promise<AffineBoardRef>;
+export interface IContextGoSpaceProvider {
+  getStatus(): Promise<ContextGoSurfaceStatus>;
+  listDocs(spaceId: string): Promise<readonly ContextGoDocRef[]>;
+  listBoards(spaceId: string): Promise<readonly ContextGoBoardRef[]>;
+  createDoc(spaceId: string, title: string, initialContent?: string): Promise<ContextGoDocRef>;
+  createBoard(spaceId: string, title: string, initialContent?: string): Promise<ContextGoBoardRef>;
   openDoc(spaceId: string, docId: string): Promise<void>;
   openBoard(spaceId: string, boardId: string): Promise<void>;
-  getEmbedDescriptor(target: AffineEmbedTarget): Promise<AffineEmbedDescriptor>;
+  getEmbedDescriptor(target: ContextGoEmbedTarget): Promise<ContextGoEmbedDescriptor>;
   promoteCandidateToDoc(params: {
     spaceId: string;
     candidateId: string;
     docId?: string;
     title?: string;
     content?: string;
-  }): Promise<AffineDocRef>;
+  }): Promise<ContextGoDocRef>;
   promoteCandidateToBoard(params: {
     spaceId: string;
     candidateId: string;
     boardId?: string;
     title?: string;
     content?: string;
-  }): Promise<AffineBoardRef>;
-  getSelectionContext(spaceId: string): Promise<AffineSelectionContext>;
+  }): Promise<ContextGoBoardRef>;
+  getSelectionContext(spaceId: string): Promise<ContextGoSelectionContext>;
   askAgentWithSelection(payload: AskAgentSelectionPayload): Promise<void>;
 }

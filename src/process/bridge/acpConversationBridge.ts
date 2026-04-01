@@ -22,6 +22,8 @@ import { ipcBridge } from '@/common';
 import { ACP_BACKENDS_ALL, type AcpBackend } from '@/common/types/acpTypes';
 import { ExternalSessionDiscoveryService } from './services/ExternalSessionDiscoveryService';
 import * as os from 'os';
+import { safeExec, safeExecFile } from '@process/utils/safeExec';
+import { getEnhancedEnv } from '@process/utils/shellEnv';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
@@ -34,6 +36,45 @@ const refreshTrayMenuSafely = async (): Promise<void> => {
 type RuntimeAwareDetectedAgent = ReturnType<typeof acpDetector.getDetectedAgents>[number] & {
   runtimeSource?: 'builtin' | 'detected' | 'configured';
 };
+
+const MANAGED_RUNTIME_INSTALL_COMMANDS: Partial<Record<AcpBackend, string>> = {
+  claude: 'npm install -g @anthropic-ai/claude-code',
+  codex: 'npm install -g @openai/codex',
+  qwen: 'npm install -g @qwen-code/qwen-code@latest',
+  codebuddy: 'npm install -g @tencent-ai/codebuddy-code',
+};
+
+async function getCodexAuthStatus(cliPath?: string): Promise<{
+  loginStatus: string;
+  isAuthenticated: boolean;
+  hasCodexApiKey: boolean;
+  hasOpenAiApiKey: boolean;
+  hasChatGptSession: boolean;
+}> {
+  const env = getEnhancedEnv();
+  const codexCommand = cliPath?.trim() || 'codex';
+  let loginStatus = 'unknown';
+  let isAuthenticated = false;
+
+  try {
+    const result = await safeExecFile(codexCommand, ['login', 'status'], {
+      timeout: 5000,
+      env,
+    });
+    loginStatus = result.stdout.trim() || loginStatus;
+    isAuthenticated = /logged in/i.test(loginStatus) && !/not logged in/i.test(loginStatus);
+  } catch (error) {
+    mainWarn('[ACP codex]', 'Failed to read codex login status during health check', error);
+  }
+
+  return {
+    loginStatus,
+    isAuthenticated,
+    hasCodexApiKey: Boolean(env.CODEX_API_KEY),
+    hasOpenAiApiKey: Boolean(env.OPENAI_API_KEY),
+    hasChatGptSession: /chatgpt/i.test(loginStatus),
+  };
+}
 
 async function getRuntimeAwareDetectedAgents(): Promise<RuntimeAwareDetectedAgent[]> {
   const detectedAgents: RuntimeAwareDetectedAgent[] = acpDetector.getDetectedAgents().map((agent) => ({
@@ -218,6 +259,50 @@ export function initAcpConversationBridge(
     }
   });
 
+  ipcBridge.acpConversation.installManagedRuntime.provider(async ({ backend }) => {
+    const command = MANAGED_RUNTIME_INSTALL_COMMANDS[backend];
+    if (!command) {
+      return {
+        success: false,
+        msg: `No managed install command is configured for ${backend}`,
+      };
+    }
+
+    try {
+      const result = await safeExec(command, {
+        timeout: 15 * 60 * 1000,
+        env: getEnhancedEnv(),
+      });
+
+      await acpDetector.refreshDetectedAgents();
+
+      return {
+        success: true,
+        data: {
+          backend,
+          command,
+          stdout: result.stdout,
+          stderr: result.stderr,
+        },
+      };
+    } catch (error) {
+      const stdout = typeof error === 'object' && error && 'stdout' in error ? String(error.stdout || '') : '';
+      const stderr = typeof error === 'object' && error && 'stderr' in error ? String(error.stderr || '') : '';
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      return {
+        success: false,
+        msg: stderr.trim() || stdout.trim() || errorMsg,
+        data: {
+          backend,
+          command,
+          stdout,
+          stderr,
+        },
+      };
+    }
+  });
+
   // Check agent health by sending a real test message
   // This is the most reliable way to verify an agent can actually respond
   ipcBridge.acpConversation.checkAgentHealth.provider(async ({ backend }) => {
@@ -240,6 +325,21 @@ export function initAcpConversationBridge(
 
     // Step 2: Handle Codex separately - it uses MCP protocol, not ACP
     if (backend === 'codex') {
+      const authStatus = await getCodexAuthStatus(agent?.cliPath);
+      if (!authStatus.isAuthenticated && !authStatus.hasCodexApiKey && !authStatus.hasOpenAiApiKey) {
+        return {
+          success: false,
+          msg: 'codex not authenticated',
+          data: {
+            available: false,
+            error:
+              authStatus.loginStatus && authStatus.loginStatus !== 'unknown'
+                ? authStatus.loginStatus
+                : 'Codex authentication required. Please run "codex auth" or configure CODEX_API_KEY / OPENAI_API_KEY.',
+          },
+        };
+      }
+
       const codexConnection = new CodexConnection();
       try {
         // Start Codex MCP server

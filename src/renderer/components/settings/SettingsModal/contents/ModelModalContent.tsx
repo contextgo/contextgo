@@ -18,6 +18,7 @@ import AddPlatformModal from '@/renderer/pages/settings/components/AddPlatformMo
 import { isNewApiPlatform, NEW_API_PROTOCOL_OPTIONS } from '@/renderer/utils/model/modelPlatforms';
 import EditModeModal from '@/renderer/pages/settings/components/EditModeModal';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
+import { getPublicDocsUrl, PUBLIC_DOC_SLUGS } from '@/common/update/publicUrls';
 import { useSettingsViewMode } from '../settingsViewContext';
 import { consumePendingDeepLink } from '@/renderer/hooks/system/useDeepLink';
 import '../model-provider.css';
@@ -96,7 +97,7 @@ const isModelEnabled = (platform: IProvider, model: string): boolean => {
 const HEALTH_CHECK_FIRST_RESPONSE_TIMEOUT_MS = 30000;
 
 const ModelModalContent: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
   const [collapseKey, setCollapseKey] = useState<Record<string, boolean>>({});
@@ -489,7 +490,7 @@ const ModelModalContent: React.FC = () => {
             <p className='text-14px text-t-secondary text-center max-w-400px'>
               {t('settings.needHelpConfigGuide')}
               <a
-                href='https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power'
+                href={getPublicDocsUrl(i18n.language, PUBLIC_DOC_SLUGS.runtimeManagement)}
                 target='_blank'
                 rel='noopener noreferrer'
                 className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ml-4px'

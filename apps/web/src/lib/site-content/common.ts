@@ -120,6 +120,13 @@ const labelsContent: Record<SiteLocale, SiteLabels> = {
     articleSidebarTitle: 'ContextGo',
     articleSidebarBody:
       'Keep customer-facing guidance on the website, and keep installable artifacts in the release repository.',
+    docsSource: 'Docs source',
+    docsSourceRelease: 'Release docs v{{version}}',
+    docsSourceFallback: 'Draft docs fallback',
+    openReleaseRepository: 'Open release repository',
+    openVersionedDocs: 'Open versioned docs',
+    releaseHistory: 'Release history',
+    docsVersionLabel: 'Docs version',
   },
   zh: {
     updated: '更新于',
@@ -133,6 +140,13 @@ const labelsContent: Record<SiteLocale, SiteLabels> = {
     openReleasePage: '打开版本页',
     articleSidebarTitle: 'ContextGo',
     articleSidebarBody: '把对客文档留在官网，把可安装产物留在 release 仓库里。',
+    docsSource: '文档来源',
+    docsSourceRelease: 'Release 文档 v{{version}}',
+    docsSourceFallback: '站内草稿回退',
+    openReleaseRepository: '打开 release 仓库',
+    openVersionedDocs: '打开版本文档',
+    releaseHistory: '版本历史',
+    docsVersionLabel: '文档版本',
   },
 };
 

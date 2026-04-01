@@ -8,12 +8,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Mocks (vi.hoisted so factories can reference them) ---
 
-const { openFileProvider, showItemInFolderProvider, openExternalProvider, execFileMock } = vi.hoisted(() => ({
-  openFileProvider: { fn: undefined as ((...args: any[]) => any) | undefined },
-  showItemInFolderProvider: { fn: undefined as ((...args: any[]) => any) | undefined },
-  openExternalProvider: { fn: undefined as ((...args: any[]) => any) | undefined },
-  execFileMock: vi.fn(),
-}));
+const { openFileProvider, showItemInFolderProvider, openExternalProvider, revealPathProvider, execFileMock } =
+  vi.hoisted(() => ({
+    openFileProvider: { fn: undefined as ((...args: any[]) => any) | undefined },
+    showItemInFolderProvider: { fn: undefined as ((...args: any[]) => any) | undefined },
+    openExternalProvider: { fn: undefined as ((...args: any[]) => any) | undefined },
+    revealPathProvider: { fn: undefined as ((...args: any[]) => any) | undefined },
+    execFileMock: vi.fn(),
+  }));
 
 vi.mock('@/common', () => ({
   ipcBridge: {
@@ -31,6 +33,11 @@ vi.mock('@/common', () => ({
       openExternal: {
         provider: vi.fn((fn: (...args: any[]) => any) => {
           openExternalProvider.fn = fn;
+        }),
+      },
+      revealPath: {
+        provider: vi.fn((fn: (...args: any[]) => any) => {
+          revealPathProvider.fn = fn;
         }),
       },
     },
@@ -51,6 +58,7 @@ beforeEach(async () => {
   openFileProvider.fn = undefined;
   showItemInFolderProvider.fn = undefined;
   openExternalProvider.fn = undefined;
+  revealPathProvider.fn = undefined;
 
   const mod = await import('../../src/process/bridge/shellBridgeStandalone');
   initShellBridgeStandalone = mod.initShellBridgeStandalone;
@@ -63,6 +71,7 @@ describe('shellBridgeStandalone', () => {
       expect(openFileProvider.fn).toBeDefined();
       expect(showItemInFolderProvider.fn).toBeDefined();
       expect(openExternalProvider.fn).toBeDefined();
+      expect(revealPathProvider.fn).toBeDefined();
     });
   });
 
@@ -79,13 +88,18 @@ describe('shellBridgeStandalone', () => {
     });
 
     it('showItemInFolder calls open with the parent directory', async () => {
-      await showItemInFolderProvider.fn!('/path/to/file.pdf');
-      expect(execFileMock).toHaveBeenCalledWith('open', ['/path/to'], expect.any(Function));
+      await showItemInFolderProvider.fn!('/tmp/file.pdf');
+      expect(execFileMock).toHaveBeenCalledWith('open', ['/tmp'], expect.any(Function));
     });
 
     it('openExternal calls open with the URL', async () => {
       await openExternalProvider.fn!('https://example.com');
       expect(execFileMock).toHaveBeenCalledWith('open', ['https://example.com'], expect.any(Function));
+    });
+
+    it('revealPath opens the parent directory for a file', async () => {
+      await revealPathProvider.fn!('/tmp/file.pdf');
+      expect(execFileMock).toHaveBeenCalledWith('open', ['/tmp'], expect.any(Function));
     });
   });
 

@@ -86,12 +86,7 @@ export function createMainMenuCard(): DingTalkCard {
     title: 'ContextGo Assistant',
     text: '### ContextGo Assistant\n\nWelcome! Choose an action below:',
     btnOrientation: '1',
-    btns: [
-      btn('New Chat', 'session.new'),
-      btn('Agent', 'agent.show'),
-      btn('Status', 'session.status'),
-      btn('Help', 'help.show'),
-    ],
+    btns: [btn('New Chat', 'session.new'), btn('Status', 'session.status'), btn('Help', 'help.show')],
   };
 }
 
@@ -134,7 +129,7 @@ export function createPairingStatusCard(pairingCode: string): DingTalkCard {
       '',
       'Please approve in ContextGo settings:',
       '1. Open ContextGo app',
-      '2. Go to WebUI > Channels',
+      '2. Go to Settings > Agent入口',
       '3. Click "Approve" for this code',
     ].join('\n'),
     btnOrientation: '1',
@@ -159,7 +154,7 @@ export function createPairingHelpCard(): DingTalkCard {
       '1. Send any message to this bot',
       '2. You will receive a pairing code',
       '3. Open ContextGo desktop app',
-      '4. Go to WebUI > Channels > DingTalk',
+      '4. Go to Settings > Agent入口 > DingTalk',
       '5. Click "Approve" for your code',
       '',
       '**FAQ:**',
@@ -168,33 +163,6 @@ export function createPairingHelpCard(): DingTalkCard {
       '- One account can only pair once',
     ].join('\n'),
     btns: [btn('Get Pairing Code', 'pairing.show')],
-  };
-}
-
-/**
- * Create agent selection card
- */
-export function createAgentSelectionCard(availableAgents: AgentDisplayInfo[], currentAgentKey?: string): DingTalkCard {
-  const currentAgentInfo = availableAgents.find((a) => a.key === currentAgentKey);
-  const currentAgentName = currentAgentInfo ? `${currentAgentInfo.emoji} ${currentAgentInfo.name}` : 'None';
-
-  const agentButtons: DingTalkButton[] = availableAgents.map((agent) => {
-    const label =
-      currentAgentKey === agent.key ? `[Current] ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`;
-    return btn(label, 'agent.select', { agentKey: agent.key });
-  });
-
-  return {
-    title: 'Switch Agent',
-    text: [
-      `### Switch Agent`,
-      '',
-      `Select an AI agent for your conversations:`,
-      '',
-      `Current: **${currentAgentName}**`,
-    ].join('\n'),
-    btnOrientation: '0',
-    btns: agentButtons,
   };
 }
 
@@ -252,7 +220,6 @@ export function createHelpCard(): DingTalkCard {
       '',
       '**Common Actions:**',
       '- New Chat - Start a new session',
-      '- Agent - Switch AI agent',
       '- Status - View current session status',
       '- Help - Show this help message',
       '',
@@ -402,7 +369,7 @@ export function createSettingsCard(): DingTalkCard {
       '',
       'Channel settings need to be configured in the ContextGo app.',
       '',
-      'Open ContextGo > WebUI > Channels',
+      'Open ContextGo > Settings > Agent入口 / Agent发布',
     ].join('\n'),
     btns: [btn('Back', 'help.show')],
   };

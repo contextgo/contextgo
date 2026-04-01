@@ -127,72 +127,6 @@ export interface IConfigStorageRefer {
   'cloud.webui.deviceToken'?: string;
   // ContextGo cloud sync cursor + per-item timestamps / ContextGo 云端同步游标与时间戳
   'cloud.sync.state'?: CloudStoredSyncState;
-  // Telegram assistant default model / Telegram 助手默认模型
-  'assistant.telegram.defaultModel'?: {
-    id: string;
-    useModel: string;
-  };
-  // Telegram assistant agent selection / Telegram 助手所使用的 Agent
-  'assistant.telegram.agent'?: {
-    backend: AcpBackendAll;
-    customAgentId?: string;
-    name?: string;
-  };
-  // Slack assistant default model / Slack 助手默认模型
-  'assistant.slack.defaultModel'?: {
-    id: string;
-    useModel: string;
-  };
-  // Slack assistant agent selection / Slack 助手所使用的 Agent
-  'assistant.slack.agent'?: {
-    backend: AcpBackendAll;
-    customAgentId?: string;
-    name?: string;
-  };
-  // Discord assistant default model / Discord 助手默认模型
-  'assistant.discord.defaultModel'?: {
-    id: string;
-    useModel: string;
-  };
-  // Discord assistant agent selection / Discord 助手所使用的 Agent
-  'assistant.discord.agent'?: {
-    backend: AcpBackendAll;
-    customAgentId?: string;
-    name?: string;
-  };
-  // Lark assistant default model / Lark 助手默认模型
-  'assistant.lark.defaultModel'?: {
-    id: string;
-    useModel: string;
-  };
-  // Lark assistant agent selection / Lark 助手所使用的 Agent
-  'assistant.lark.agent'?: {
-    backend: AcpBackendAll;
-    customAgentId?: string;
-    name?: string;
-  };
-  // DingTalk assistant default model / DingTalk 助手默认模型
-  'assistant.dingtalk.defaultModel'?: {
-    id: string;
-    useModel: string;
-  };
-  // DingTalk assistant agent selection / DingTalk 助手所使用的 Agent
-  'assistant.dingtalk.agent'?: {
-    backend: AcpBackendAll;
-    customAgentId?: string;
-    name?: string;
-  };
-  // WeChat assistant default model / WeChat 助手默认模型
-  'assistant.weixin.defaultModel'?: {
-    id: string;
-    useModel: string;
-  };
-  // WeChat assistant agent selection / WeChat 助手所使用的 Agent
-  'assistant.weixin.agent'?: {
-    backend: AcpBackendAll;
-    customAgentId?: string;
-    name?: string;
-  };
   'command.library'?: ManagedSlashCommandRecord[];
   // Skills Market: whether the bundled builtin skill is enabled
   'skillsMarket.enabled'?: boolean;
@@ -430,10 +364,50 @@ export type TSpace = {
   name: string;
   engine: SpaceEngine;
   description?: string;
+  members?: SpaceMember[];
+  permissionsPolicy?: SpacePermissionsPolicy;
+  providerRef?: SpaceProviderRef;
   isDefault?: boolean;
   archivedAt?: number;
   createTime: number;
   modifyTime: number;
+};
+
+export type SpaceMemberRole = 'owner' | 'admin' | 'editor' | 'reviewer' | 'viewer';
+
+export type SpaceCapability =
+  | 'content.edit'
+  | 'agent.run'
+  | 'memory.review'
+  | 'members.manage'
+  | 'context.view'
+  | 'workflow.reuse';
+
+export type SpaceProviderPermissionRole = 'owner' | 'admin' | 'editor' | 'viewer';
+
+export type SpaceProviderRef = {
+  engine: SpaceEngine;
+  workspaceId: string;
+  homeBoardId?: string;
+  homeDocId?: string;
+};
+
+export type SpaceMember = {
+  id: string;
+  displayName: string;
+  secondaryText?: string;
+  avatarUrl?: string | null;
+  role: SpaceMemberRole;
+  status: 'active';
+  createTime: number;
+  modifyTime: number;
+};
+
+export type SpacePermissionsPolicy = {
+  roleCapabilities?: Record<SpaceMemberRole, SpaceCapability[]>;
+  durableMemoryRoles?: SpaceMemberRole[];
+  criticalMemoryReviewRoles?: SpaceMemberRole[];
+  providerRoleBindings?: Record<SpaceMemberRole, { affine: SpaceProviderPermissionRole }>;
 };
 
 export type ConversationWorkspaceCompat = {

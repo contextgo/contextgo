@@ -30,7 +30,7 @@
 		AB57C24CD668707D4A050B46 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
 		AE3196B30FBF57B3B331382E /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		B270ED8ED74540537F645349 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
-		D8F5FF634415C8C66A282EE4 /* ContextGo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ContextGo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D8F5FF634415C8C66A282EE4 /* ContextGo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ContextGo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DEF4CB44F49773CB2439548B /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		E377F895B701DA0FDBB718EF /* ShellTargetResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellTargetResolver.swift; sourceTree = "<group>"; };
 		F6A51588669A84A87AF57024 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -146,11 +146,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-					E58CC56A98AC23826E4F1D1B = {
-						DevelopmentTeam = "";
-					};
-				};
 			};
 			buildConfigurationList = 9738B07E718D895460805F80 /* Build configuration list for PBXProject "ContextGo" */;
 			developmentRegion = en;
@@ -349,6 +344,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/ContextGo.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DQ362F38WB;
 				INFOPLIST_FILE = Config/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -371,6 +367,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/ContextGo.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DQ362F38WB;
 				INFOPLIST_FILE = Config/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -1,7 +1,19 @@
 import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
-import { AlarmClock, Command, Communication, Computer, Earth, Info, Puzzle, System, Toolkit } from '@icon-park/react';
+import {
+  AlarmClock,
+  Command,
+  Communication,
+  Computer,
+  ConnectionPoint,
+  Earth,
+  Info,
+  Puzzle,
+  System,
+  Terminal,
+  Toolkit,
+} from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -112,7 +124,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
       runtime: {
         id: 'runtime',
         label: t('settings.runtimeManager.title', { defaultValue: 'Runtime' }),
-        icon: <Command />,
+        icon: <Terminal />,
         path: 'runtime',
       },
       commands: { id: 'commands', label: t('settings.commands.title'), icon: <Command />, path: 'commands' },
@@ -125,14 +137,14 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
       },
       channels: {
         id: 'channels',
-        label: t('settings.channels'),
+        label: t('settings.agentEntry'),
         icon: <Communication />,
         path: 'channels',
       },
       activeSessions: {
         id: 'activeSessions',
         label: t('settings.activeSessions'),
-        icon: <Communication />,
+        icon: <ConnectionPoint />,
         path: 'active-sessions',
       },
       system: { id: 'system', label: t('settings.system'), icon: <System />, path: 'system' },

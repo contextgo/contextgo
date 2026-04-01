@@ -5,15 +5,11 @@
  */
 
 import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from '@process/channels/types';
-import { acpConversation, channel } from '@/common/adapter/ipcBridge';
-import { ConfigStorage } from '@/common/config/storage';
-import type { AcpBackendAll } from '@/common/types/acpTypes';
-import type { GeminiModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection';
-import { Button, Dropdown, Empty, Input, Menu, Message, Spin, Switch, Tooltip } from '@arco-design/web-react';
-import { CheckOne, CloseOne, Copy, Delete, Down, Refresh } from '@icon-park/react';
+import { channel } from '@/common/adapter/ipcBridge';
+import { Button, Empty, Input, Message, Spin, Switch, Tooltip } from '@arco-design/web-react';
+import { CheckOne, CloseOne, Copy, Delete, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ChannelModelSelector from '../ChannelModelSelector';
 
 const PreferenceRow: React.FC<{
   label: string;
@@ -47,17 +43,11 @@ type DiscordConfigDraft = {
 
 interface DiscordConfigFormProps {
   pluginStatus: IChannelPluginStatus | null;
-  modelSelection: GeminiModelSelection;
   onStatusChange: (status: IChannelPluginStatus | null) => void;
   onConfigChange?: (config: DiscordConfigDraft) => void;
 }
 
-const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
-  pluginStatus,
-  modelSelection,
-  onStatusChange,
-  onConfigChange,
-}) => {
+const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({ pluginStatus, onStatusChange, onConfigChange }) => {
   const { t } = useTranslation();
 
   const [token, setToken] = useState('');
@@ -68,12 +58,6 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
   const [usersLoading, setUsersLoading] = useState(false);
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
   const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
-  const [availableAgents, setAvailableAgents] = useState<
-    Array<{ backend: AcpBackendAll; name: string; customAgentId?: string; isPreset?: boolean; isExtension?: boolean }>
-  >([]);
-  const [selectedAgent, setSelectedAgent] = useState<{ backend: AcpBackendAll; name?: string; customAgentId?: string }>(
-    { backend: 'gemini' }
-  );
 
   const loadPendingPairings = useCallback(async () => {
     setPairingLoading(true);
@@ -108,63 +92,12 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
     void loadAuthorizedUsers();
   }, [loadAuthorizedUsers, loadPendingPairings]);
 
-  useEffect(() => {
-    const loadAgentsAndSelection = async () => {
-      try {
-        const [agentsResp, saved] = await Promise.all([
-          acpConversation.getAvailableAgents.invoke(),
-          ConfigStorage.get('assistant.discord.agent'),
-        ]);
-
-        if (agentsResp.success && agentsResp.data) {
-          const list = agentsResp.data
-            .filter((agent) => !agent.isPreset)
-            .map((agent) => ({
-              backend: agent.backend,
-              name: agent.name,
-              customAgentId: agent.customAgentId,
-              isPreset: agent.isPreset,
-              isExtension: agent.isExtension,
-            }));
-          setAvailableAgents(list);
-        }
-
-        if (saved && typeof saved === 'object' && 'backend' in saved && typeof (saved as any).backend === 'string') {
-          setSelectedAgent({
-            backend: (saved as any).backend as AcpBackendAll,
-            customAgentId: (saved as any).customAgentId,
-            name: (saved as any).name,
-          });
-        } else if (typeof saved === 'string') {
-          setSelectedAgent({ backend: saved as AcpBackendAll });
-        }
-      } catch (error) {
-        console.error('[DiscordConfig] Failed to load agents:', error);
-      }
-    };
-
-    void loadAgentsAndSelection();
-  }, []);
-
   const emitConfigChange = useCallback(
     (nextConfig: DiscordConfigDraft) => {
       onConfigChange?.(nextConfig);
     },
     [onConfigChange]
   );
-
-  const persistSelectedAgent = async (agent: { backend: AcpBackendAll; customAgentId?: string; name?: string }) => {
-    try {
-      await ConfigStorage.set('assistant.discord.agent', agent);
-      await channel.syncChannelSettings
-        .invoke({ platform: 'discord', agent })
-        .catch((error) => console.warn('[DiscordConfig] syncChannelSettings failed:', error));
-      Message.success(t('settings.assistant.agentSwitched', 'Agent switched successfully'));
-    } catch (error) {
-      console.error('[DiscordConfig] Failed to save agent:', error);
-      Message.error(t('common.saveFailed', 'Failed to save'));
-    }
-  };
 
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
@@ -322,9 +255,6 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
   const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString();
   const getRemainingTime = (expiresAt: number) => `${Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000 / 60))} min`;
 
-  const isGeminiAgent = selectedAgent.backend === 'gemini';
-  const agentOptions: Array<{ backend: AcpBackendAll; name: string; customAgentId?: string; isExtension?: boolean }> =
-    availableAgents.length > 0 ? availableAgents : [{ backend: 'gemini', name: 'Gemini CLI' }];
   const configLocked = authorizedUsers.length > 0;
 
   return (
@@ -409,81 +339,6 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
           'Remember to enable the Message Content intent in the Discord Developer Portal before testing the bot.'
         )}
       </div>
-
-      <PreferenceRow
-        label={t('settings.agent', 'Agent')}
-        description={t('settings.discord.agentDesc', 'Used for Discord conversations')}
-      >
-        <Dropdown
-          trigger='click'
-          position='br'
-          droplist={
-            <Menu
-              selectedKeys={[
-                selectedAgent.customAgentId
-                  ? `${selectedAgent.backend}|${selectedAgent.customAgentId}`
-                  : selectedAgent.backend,
-              ]}
-            >
-              {agentOptions.map((agent) => {
-                const key = agent.customAgentId ? `${agent.backend}|${agent.customAgentId}` : agent.backend;
-                return (
-                  <Menu.Item
-                    key={key}
-                    onClick={() => {
-                      const currentKey = selectedAgent.customAgentId
-                        ? `${selectedAgent.backend}|${selectedAgent.customAgentId}`
-                        : selectedAgent.backend;
-                      if (key === currentKey) {
-                        return;
-                      }
-                      const next = {
-                        backend: agent.backend,
-                        customAgentId: agent.customAgentId,
-                        name: agent.name,
-                      };
-                      setSelectedAgent(next);
-                      void persistSelectedAgent(next);
-                    }}
-                  >
-                    {agent.name}
-                  </Menu.Item>
-                );
-              })}
-            </Menu>
-          }
-        >
-          <Button type='secondary' className='min-w-160px flex items-center justify-between gap-8px'>
-            <span className='truncate'>
-              {selectedAgent.name ||
-                availableAgents.find(
-                  (agent) =>
-                    (agent.customAgentId ? `${agent.backend}|${agent.customAgentId}` : agent.backend) ===
-                    (selectedAgent.customAgentId
-                      ? `${selectedAgent.backend}|${selectedAgent.customAgentId}`
-                      : selectedAgent.backend)
-                )?.name ||
-                selectedAgent.backend}
-            </span>
-            <Down theme='outline' size={14} />
-          </Button>
-        </Dropdown>
-      </PreferenceRow>
-
-      <PreferenceRow
-        label={t('settings.assistant.defaultModel', 'Default Model')}
-        description={t('settings.discord.defaultModelDesc', 'Model used for Discord conversations')}
-      >
-        <ChannelModelSelector
-          selection={isGeminiAgent ? modelSelection : undefined}
-          disabled={!isGeminiAgent}
-          label={
-            !isGeminiAgent
-              ? t('settings.assistant.autoFollowCliModel', 'Automatically follow the model when CLI is running')
-              : undefined
-          }
-        />
-      </PreferenceRow>
 
       {pluginStatus?.enabled && pluginStatus?.connected && authorizedUsers.length === 0 && (
         <div className='bg-blue-50 dark:bg-blue-900/20 rd-12px p-16px border border-blue-200 dark:border-blue-800'>

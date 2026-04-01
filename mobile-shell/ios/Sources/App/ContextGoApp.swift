@@ -8,9 +8,6 @@ struct ContextGoApp: App {
     WindowGroup {
       ContentView()
         .environmentObject(connectionStore)
-        .onOpenURL { incomingURL in
-          connectionStore.handleIncomingURL(incomingURL)
-        }
     }
   }
 }

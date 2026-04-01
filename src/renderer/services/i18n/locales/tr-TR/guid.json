@@ -5,6 +5,8 @@
   "agentTabAutoSwitch": "Model not compatible with Gemini, auto-switched to {{fallback}}",
   "autoSwitchToAgent": "Gemini is not configured, auto-switching to {{agent}}",
   "autoSwitchedAgent": "{{from}} is not available, switched to {{to}}",
+  "sendFailed": "Mesaj gönderilemedi. Lütfen tekrar deneyin.",
+  "sendFailedWithReason": "Mesaj gönderilemedi: {{reason}}",
   "externalSessions": {
     "title": "Harici Session'ları Devral",
     "description": "ContextGo dışında başlatılan ve henüz devralınmamış CLI oturumları burada görünür.",

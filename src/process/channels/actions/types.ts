@@ -86,8 +86,6 @@ export const SystemActionNames = {
   HELP_PAIRING: 'help.pairing',
   HELP_TIPS: 'help.tips',
   SETTINGS_SHOW: 'settings.show',
-  AGENT_SHOW: 'agent.show',
-  AGENT_SELECT: 'agent.select',
 } as const;
 
 /**

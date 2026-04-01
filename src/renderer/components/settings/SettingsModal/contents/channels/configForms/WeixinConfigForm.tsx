@@ -5,15 +5,11 @@
  */
 
 import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from '@process/channels/types';
-import { acpConversation, channel } from '@/common/adapter/ipcBridge';
-import { ConfigStorage } from '@/common/config/storage';
-import type { GeminiModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection';
-import type { AcpBackendAll } from '@/common/types/acpTypes';
-import { Button, Dropdown, Empty, Menu, Message, Spin, Tooltip } from '@arco-design/web-react';
-import { CheckOne, CloseOne, Copy, Delete, Down, Refresh } from '@icon-park/react';
+import { channel } from '@/common/adapter/ipcBridge';
+import { Button, Empty, Message, Spin, Tooltip } from '@arco-design/web-react';
+import { CheckOne, CloseOne, Copy, Delete, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ChannelModelSelector from '../ChannelModelSelector';
 
 type LoginState = 'idle' | 'loading_qr' | 'showing_qr' | 'scanned' | 'connected';
 
@@ -43,7 +39,6 @@ const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({ 
 
 interface WeixinConfigFormProps {
   pluginStatus: IChannelPluginStatus | null;
-  modelSelection: GeminiModelSelection;
   onStatusChange: (status: IChannelPluginStatus | null) => void;
 }
 
@@ -54,7 +49,7 @@ const getRemainingTime = (expiresAt: number) => {
 
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString();
 
-const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, modelSelection, onStatusChange }) => {
+const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, onStatusChange }) => {
   const { t } = useTranslation();
 
   const [loginState, setLoginState] = useState<LoginState>(pluginStatus?.hasToken ? 'connected' : 'idle');
@@ -65,16 +60,6 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, model
   const [usersLoading, setUsersLoading] = useState(false);
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
   const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
-
-  // Agent selection
-  const [availableAgents, setAvailableAgents] = useState<
-    Array<{ backend: AcpBackendAll; name: string; customAgentId?: string }>
-  >([]);
-  const [selectedAgent, setSelectedAgent] = useState<{
-    backend: AcpBackendAll;
-    name?: string;
-    customAgentId?: string;
-  }>({ backend: 'gemini' });
 
   // Sync connected state when pluginStatus changes externally
   useEffect(() => {
@@ -191,58 +176,6 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, model
     Message.success(t('common.copySuccess', 'Copied'));
   };
 
-  // Load agents + saved selection
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [agentsResp, saved] = await Promise.all([
-          acpConversation.getAvailableAgents.invoke(),
-          ConfigStorage.get('assistant.weixin.agent'),
-        ]);
-        if (agentsResp.success && agentsResp.data) {
-          setAvailableAgents(
-            agentsResp.data
-              .filter((a) => !a.isPreset)
-              .map((a) => ({
-                backend: a.backend,
-                name: a.name,
-                customAgentId: a.customAgentId,
-              }))
-          );
-        }
-        if (
-          saved &&
-          typeof saved === 'object' &&
-          'backend' in saved &&
-          typeof (saved as Record<string, unknown>).backend === 'string'
-        ) {
-          const s = saved as { backend: AcpBackendAll; customAgentId?: string; name?: string };
-          setSelectedAgent({
-            backend: s.backend,
-            customAgentId: s.customAgentId,
-            name: s.name,
-          });
-        }
-      } catch (error) {
-        console.error('[WeixinConfig] Failed to load agents:', error);
-      }
-    };
-    void load();
-  }, []);
-
-  const persistSelectedAgent = async (agent: { backend: AcpBackendAll; customAgentId?: string; name?: string }) => {
-    try {
-      await ConfigStorage.set('assistant.weixin.agent', agent);
-      await channel.syncChannelSettings
-        .invoke({ platform: 'weixin', agent })
-        .catch((err) => console.warn('[WeixinConfig] syncChannelSettings failed:', err));
-      Message.success(t('settings.assistant.agentSwitched', 'Agent switched successfully'));
-    } catch (error) {
-      console.error('[WeixinConfig] Failed to save agent:', error);
-      Message.error(t('common.saveFailed', 'Failed to save'));
-    }
-  };
-
   const handleLogin = async () => {
     setLoginState('loading_qr');
     setQrcodeDataUrl(null);
@@ -302,13 +235,6 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, model
     }
   };
 
-  const isGeminiAgent = selectedAgent.backend === 'gemini';
-  const agentOptions: Array<{
-    backend: AcpBackendAll;
-    name: string;
-    customAgentId?: string;
-  }> = availableAgents.length > 0 ? availableAgents : [{ backend: 'gemini', name: 'Gemini CLI' }];
-
   const renderLoginArea = () => {
     if (loginState === 'connected' || pluginStatus?.hasToken) {
       return (
@@ -362,77 +288,6 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, model
         }
       >
         {renderLoginArea()}
-      </PreferenceRow>
-
-      {/* Agent Selection */}
-      <PreferenceRow
-        label={t('settings.weixin.agent', '兜底 Agent')}
-        description={t('settings.weixin.agentDesc', '当微信入口还没有命中发布绑定时，使用这里的兜底运行时')}
-      >
-        <Dropdown
-          trigger='click'
-          position='br'
-          droplist={
-            <Menu
-              selectedKeys={[
-                selectedAgent.customAgentId
-                  ? `${selectedAgent.backend}|${selectedAgent.customAgentId}`
-                  : selectedAgent.backend,
-              ]}
-            >
-              {agentOptions.map((a) => {
-                const key = a.customAgentId ? `${a.backend}|${a.customAgentId}` : a.backend;
-                return (
-                  <Menu.Item
-                    key={key}
-                    onClick={() => {
-                      const currentKey = selectedAgent.customAgentId
-                        ? `${selectedAgent.backend}|${selectedAgent.customAgentId}`
-                        : selectedAgent.backend;
-                      if (key === currentKey) return;
-                      const next = {
-                        backend: a.backend,
-                        customAgentId: a.customAgentId,
-                        name: a.name,
-                      };
-                      setSelectedAgent(next);
-                      void persistSelectedAgent(next);
-                    }}
-                  >
-                    {a.name}
-                  </Menu.Item>
-                );
-              })}
-            </Menu>
-          }
-        >
-          <Button type='secondary' className='min-w-160px flex items-center justify-between gap-8px'>
-            <span className='truncate'>
-              {selectedAgent.name ||
-                availableAgents.find(
-                  (a) =>
-                    (a.customAgentId ? `${a.backend}|${a.customAgentId}` : a.backend) ===
-                    (selectedAgent.customAgentId
-                      ? `${selectedAgent.backend}|${selectedAgent.customAgentId}`
-                      : selectedAgent.backend)
-                )?.name ||
-                selectedAgent.backend}
-            </span>
-            <Down theme='outline' size={14} />
-          </Button>
-        </Dropdown>
-      </PreferenceRow>
-
-      {/* Default Model Selection */}
-      <PreferenceRow
-        label={t('settings.assistant.defaultModel', '对话模型')}
-        description={t('settings.weixin.defaultModelDesc', '当微信入口还没有命中发布绑定时，使用这里的兜底模型')}
-      >
-        <ChannelModelSelector
-          selection={isGeminiAgent ? modelSelection : undefined}
-          disabled={!isGeminiAgent}
-          label={!isGeminiAgent ? t('settings.assistant.autoFollowCliModel', '自动跟随CLI运行时的模型') : undefined}
-        />
       </PreferenceRow>
 
       {/* Next Steps Guide - shown when connected but no authorized users yet */}

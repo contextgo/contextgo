@@ -1,41 +1,54 @@
 import React from 'react';
-import { Button, Card, Empty, List, Message, Space, Tabs, Tag, Typography } from '@arco-design/web-react';
+import { Avatar, Button, Card, List, Message, Space, Tabs, Tag, Typography } from '@arco-design/web-react';
+import { Left } from '@icon-park/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ipcBridge } from '@/common';
-import type { TChatConversation } from '@/common/config/storage';
-import type { IContextMemoryCandidateView } from '@/common/adapter/ipcBridge';
-import { SPACE_MVP_PRIMARY_VIEWS } from './constants';
-import type { SpacePrimaryView } from './types';
 import type {
-  AffineBoardRef,
-  AffineDocRef,
-  AffineProviderStatus,
-  IAffineSpaceProvider,
-} from './affine/IAffineSpaceProvider';
-import { AffineProviderBridge } from './affine/AffineProviderBridge';
-import { getAffineRuntimeConfig } from './affine/affineRuntimeConfig';
-import AffineDocSurface from './affine/AffineDocSurface';
-import AffineCanvasSurface from './affine/AffineCanvasSurface';
+  IContextMemoryCandidateView,
+  IContextMemoryView,
+  IContextProfileView,
+} from '@/common/adapter/ipcBridge';
+import type { SpaceMember, SpacePermissionsPolicy, TChatConversation, TSpace } from '@/common/config/storage';
+import { useAuth } from '@/renderer/hooks/context/AuthContext';
+import { SPACE_MVP_PRIMARY_VIEWS } from './constants';
+import type {
+  SpacePrimaryView,
+} from './types';
+import type {
+  ContextGoBoardRef,
+  ContextGoDocRef,
+  ContextGoSurfaceStatus,
+  IContextGoSpaceProvider,
+} from './content/IContextGoSpaceProvider';
+import { ContextGoContentBridge } from './content/ContextGoContentBridge';
+import { getSpaceContentRuntimeConfig } from './content/spaceContentRuntimeConfig';
+import ContextGoDocsSurface from './content/ContextGoDocsSurface';
+import ContextGoCanvasSurface from './content/ContextGoCanvasSurface';
+import SpaceContextPanel from './components/SpaceContextPanel';
+import SpaceMembersPanel, { DEFAULT_ROLE_CAPABILITIES } from './components/SpaceMembersPanel';
 
-const { Title, Text } = Typography;
+const { Paragraph, Title, Text } = Typography;
 
 type SpaceShellProps = {
   spaceId: string;
   spaceName: string;
-  provider?: IAffineSpaceProvider;
+  provider?: IContextGoSpaceProvider;
 };
 
-function useSpaceProvider(provider?: IAffineSpaceProvider): IAffineSpaceProvider {
-  const runtimeConfig = getAffineRuntimeConfig();
+function useSpaceProvider(spaceRecord?: TSpace, provider?: IContextGoSpaceProvider): IContextGoSpaceProvider {
+  const runtimeConfig = getSpaceContentRuntimeConfig();
   return useMemo(
     () =>
       provider ??
-      new AffineProviderBridge({
+      new ContextGoContentBridge({
+        space: spaceRecord,
         mode: runtimeConfig.webAppUrl ? 'embedded' : 'shell',
         repoPath: '/Users/codefriday/workspace/project/contextgo/affine',
         webAppUrl: runtimeConfig.webAppUrl,
       }),
-    [provider, runtimeConfig.webAppUrl]
+    [provider, runtimeConfig.webAppUrl, spaceRecord]
   );
 }
 
@@ -53,21 +66,49 @@ function sortConversationsByModifyTime(conversations: readonly TChatConversation
   return [...conversations].sort((left, right) => (right.modifyTime || 0) - (left.modifyTime || 0));
 }
 
+function buildDefaultLocalMember(user: ReturnType<typeof useAuth>['user']): SpaceMember {
+  const now = Date.now();
+  return {
+    id: user?.id || 'local-user',
+    displayName: user?.displayName || user?.username || 'Local User',
+    secondaryText: user?.email || (user?.username ? `@${user.username}` : 'Local-only session'),
+    avatarUrl: user?.avatarUrl ?? null,
+    role: 'owner',
+    status: 'active',
+    createTime: now,
+    modifyTime: now,
+  };
+}
+
+function buildDefaultPermissionsPolicy(): SpacePermissionsPolicy {
+  return {
+    roleCapabilities: DEFAULT_ROLE_CAPABILITIES,
+    durableMemoryRoles: ['owner', 'admin', 'reviewer'],
+    criticalMemoryReviewRoles: ['owner', 'admin', 'reviewer'],
+  };
+}
+
 export default function SpaceShell(props: SpaceShellProps) {
   const [messageApi, messageHolder] = Message.useMessage();
-  const provider = useSpaceProvider(props.provider);
-  const [activeView, setActiveView] = useState<SpacePrimaryView>('overview');
-  const [docs, setDocs] = useState<readonly AffineDocRef[]>([]);
-  const [boards, setBoards] = useState<readonly AffineBoardRef[]>([]);
-  const [providerStatus, setProviderStatus] = useState<AffineProviderStatus | undefined>();
-  const [selectionSummary, setSelectionSummary] = useState<string>('No active selection');
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [activeView, setActiveView] = useState<SpacePrimaryView>('canvas');
+  const [docs, setDocs] = useState<readonly ContextGoDocRef[]>([]);
+  const [boards, setBoards] = useState<readonly ContextGoBoardRef[]>([]);
+  const [providerStatus, setProviderStatus] = useState<ContextGoSurfaceStatus | undefined>();
+  const [selectionSummary, setSelectionSummary] = useState<string>('');
   const [selectionCount, setSelectionCount] = useState<number>(0);
   const [conversations, setConversations] = useState<TChatConversation[]>([]);
+  const [spaceRecord, setSpaceRecord] = useState<TSpace | undefined>();
+  const provider = useSpaceProvider(spaceRecord, props.provider);
+  const [acceptedMemories, setAcceptedMemories] = useState<readonly IContextMemoryView[]>([]);
+  const [profiles, setProfiles] = useState<readonly IContextProfileView[]>([]);
   const [pendingCandidates, setPendingCandidates] = useState<IContextMemoryCandidateView[]>([]);
   const [reviewingCandidateId, setReviewingCandidateId] = useState<string | null>(null);
 
   const loadSpaceData = useCallback(async () => {
-    const [status, nextDocs, nextBoards, selection, allConversations, reviewResult] = await Promise.all([
+    const [status, nextDocs, nextBoards, selection, allConversations, reviewResult, contextResult, nextSpace] = await Promise.all([
       provider.getStatus(),
       provider.listDocs(props.spaceId),
       provider.listBoards(props.spaceId),
@@ -78,19 +119,24 @@ export default function SpaceShell(props: SpaceShellProps) {
         state: 'pending_review',
         reviewStatus: 'pending',
       }),
+      ipcBridge.space.getContext.invoke({ spaceId: props.spaceId }),
+      ipcBridge.space.get.invoke({ id: props.spaceId }),
     ]);
+
+    const nextConversations = sortConversationsByModifyTime(
+      allConversations.filter((conversation) => conversation.extra?.spaceId === props.spaceId)
+    );
 
     setProviderStatus(status);
     setDocs(nextDocs);
     setBoards(nextBoards);
-    setSelectionSummary(selection.summary ?? 'No active selection');
+    setSelectionSummary(selection.summary ?? '');
     setSelectionCount(selection.items.length);
-    setConversations(
-      sortConversationsByModifyTime(
-        allConversations.filter((conversation) => conversation.extra?.spaceId === props.spaceId)
-      )
-    );
+    setConversations(nextConversations);
+    setSpaceRecord(nextSpace);
     setPendingCandidates(reviewResult.data?.candidates ?? []);
+    setAcceptedMemories(contextResult.memories ?? []);
+    setProfiles(contextResult.profiles ?? []);
   }, [props.spaceId, provider]);
 
   useEffect(() => {
@@ -107,7 +153,7 @@ export default function SpaceShell(props: SpaceShellProps) {
     return () => {
       cancelled = true;
     };
-  }, [loadSpaceData, messageApi]);
+  }, [loadSpaceData]);
 
   const handleAskAgentWithSelection = async () => {
     const selection = await provider.getSelectionContext(props.spaceId);
@@ -116,7 +162,7 @@ export default function SpaceShell(props: SpaceShellProps) {
       view: activeView,
       items: selection.items,
     });
-    await messageApi.info(`Sent ${selection.items.length} selected item(s) to Agent`);
+    await messageApi.info(`${selection.items.length} item(s) sent to Agent`);
   };
 
   const handleReviewCandidate = async (candidateId: string, action: 'approve' | 'reject') => {
@@ -127,7 +173,9 @@ export default function SpaceShell(props: SpaceShellProps) {
         throw new Error(result.msg || `Failed to ${action} candidate`);
       }
       await loadSpaceData();
-      await messageApi.success(action === 'approve' ? 'Candidate approved' : 'Candidate rejected');
+      await messageApi.success(
+        action === 'approve' ? t('space.context.actions.approve') : t('space.context.actions.reject')
+      );
     } catch (error) {
       console.warn('[SpaceShell] Failed to review candidate:', error);
       await messageApi.error(action === 'approve' ? 'Approve failed' : 'Reject failed');
@@ -135,6 +183,7 @@ export default function SpaceShell(props: SpaceShellProps) {
       setReviewingCandidateId(null);
     }
   };
+
   const handlePromoteCandidate = async (candidateId: string, destination: 'document' | 'board', boardId?: string) => {
     try {
       setReviewingCandidateId(candidateId);
@@ -168,7 +217,9 @@ export default function SpaceShell(props: SpaceShellProps) {
       }
 
       await loadSpaceData();
-      await messageApi.success(destination === 'document' ? 'Promoted to Doc' : 'Promoted to Board');
+      await messageApi.success(
+        destination === 'document' ? t('space.context.actions.promoteDoc') : t('space.context.actions.promoteBoard')
+      );
     } catch (error) {
       console.warn('[SpaceShell] Failed to promote candidate:', error);
       await messageApi.error(destination === 'document' ? 'Promote to Doc failed' : 'Promote to Board failed');
@@ -177,112 +228,70 @@ export default function SpaceShell(props: SpaceShellProps) {
     }
   };
 
-  const recentThreads = conversations.slice(0, 5);
-  const pendingReviewPreview = pendingCandidates.slice(0, 5);
+  const members = useMemo<readonly SpaceMember[]>(() => {
+    if (spaceRecord?.members && spaceRecord.members.length > 0) {
+      return spaceRecord.members;
+    }
 
-  const renderOverview = () => {
-    return (
-      <div className='grid grid-cols-1 gap-4 xl:grid-cols-2'>
-        <Card size='small' title={`Recent Threads (${recentThreads.length})`}>
-          {recentThreads.length === 0 ? (
-            <Empty description='No threads in this space yet' />
-          ) : (
-            <List
-              dataSource={recentThreads}
-              render={(item) => (
-                <List.Item key={item.id}>
-                  <Space direction='vertical' size={2} className='w-full'>
-                    <Text>{item.name}</Text>
-                    <Text type='secondary'>{item.type}</Text>
-                  </Space>
-                </List.Item>
-              )}
-            />
-          )}
-        </Card>
-        <Card size='small' title={`Recent Docs (${docs.length})`}>
-          {docs.length === 0 ? (
-            <Empty description='No docs yet' />
-          ) : (
-            <List
-              dataSource={docs.slice(0, 5)}
-              render={(item) => (
-                <List.Item key={item.id}>
-                  <Space direction='vertical' size={2} className='w-full'>
-                    <Text>{item.title}</Text>
-                    {item.preview ? <Text type='secondary'>{item.preview}</Text> : null}
-                  </Space>
-                </List.Item>
-              )}
-            />
-          )}
-        </Card>
-        <Card size='small' title={`Recent Boards (${boards.length})`}>
-          {boards.length === 0 ? (
-            <Empty description='No boards yet' />
-          ) : (
-            <List
-              dataSource={boards.slice(0, 5)}
-              render={(item) => (
-                <List.Item key={item.id}>
-                  <Space direction='vertical' size={2} className='w-full'>
-                    <Text>{item.title}</Text>
-                    {item.preview ? <Text type='secondary'>{item.preview}</Text> : null}
-                  </Space>
-                </List.Item>
-              )}
-            />
-          )}
-        </Card>
-        <Card size='small' title='Connector Status'>
-          <Space direction='vertical' size='small'>
-            <Text type='secondary'>Connector overview will be connected next.</Text>
-            <Tag color='gray'>No connector status bridge yet</Tag>
-          </Space>
-        </Card>
-        <Card size='small' title={`Pending Reviews (${pendingReviewPreview.length})`}>
-          {pendingReviewPreview.length === 0 ? (
-            <Empty description='No pending candidate memories' />
-          ) : (
-            <List
-              dataSource={pendingReviewPreview}
-              render={(item) => (
-                <List.Item key={item.id}>
-                  <Space direction='vertical' size={2} className='w-full'>
-                    <Text>{item.summary}</Text>
-                    <Text type='secondary'>
-                      score {item.promotionScore} · {item.tier}
-                    </Text>
-                  </Space>
-                </List.Item>
-              )}
-            />
-          )}
-        </Card>
-      </div>
-    );
-  };
+    return [buildDefaultLocalMember(user)];
+  }, [spaceRecord?.members, user]);
+
+  const permissionsPolicy = useMemo<SpacePermissionsPolicy>(() => {
+    return spaceRecord?.permissionsPolicy ?? buildDefaultPermissionsPolicy();
+  }, [spaceRecord?.permissionsPolicy]);
+
+  const handleMembersChange = useCallback(
+    async (nextMembers: readonly SpaceMember[], nextPermissionsPolicy: SpacePermissionsPolicy) => {
+      const result = await ipcBridge.space.update.invoke({
+        id: props.spaceId,
+        updates: {
+          members: [...nextMembers],
+          permissionsPolicy: nextPermissionsPolicy,
+        },
+      });
+
+      if (!result) {
+        throw new Error('Failed to update space members');
+      }
+
+      setSpaceRecord(result);
+      await messageApi.success(t('common.saveSuccess'));
+    },
+    [messageApi, props.spaceId, t]
+  );
 
   const renderDocs = () => {
     return (
-      <AffineDocSurface
-        spaceId={props.spaceId}
-        docs={docs}
-        provider={provider}
-        status={providerStatus}
-        onCreated={(doc) => setDocs((prev) => [doc, ...prev])}
-      />
+      <div className='grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.75fr)]'>
+        <ContextGoDocsSurface
+          spaceId={props.spaceId}
+          docs={docs}
+          provider={provider}
+          status={providerStatus}
+          onCreated={(doc) => setDocs((prev) => [doc, ...prev])}
+        />
+        <SpaceContextPanel
+          docsCount={docs.length}
+          boardsCount={boards.length}
+          threadCount={conversations.length}
+          acceptedMemories={acceptedMemories}
+          profiles={profiles}
+          pendingCandidates={pendingCandidates}
+          selectionSummary={selectionSummary}
+          compact
+        />
+      </div>
     );
   };
 
   const renderCanvas = () => {
     return (
-      <AffineCanvasSurface
-        spaceId={props.spaceId}
-        boards={boards}
-        provider={provider}
+        <ContextGoCanvasSurface
+          spaceId={props.spaceId}
+          boards={boards}
+          provider={provider}
         status={providerStatus}
-        selectionSummary={selectionSummary}
+        selectionSummary={selectionSummary || t('space.context.selectionEmpty')}
         selectionCount={selectionCount}
         candidateCards={pendingCandidates}
         reviewingCandidateId={reviewingCandidateId}
@@ -296,17 +305,23 @@ export default function SpaceShell(props: SpaceShellProps) {
 
   const renderContext = () => {
     return (
-      <div className='grid grid-cols-1 gap-4 xl:grid-cols-2'>
-        <Card size='small' title='Accepted Memories'>
-          <Text type='secondary'>Memory list will be linked to context engine APIs.</Text>
-        </Card>
-        <Card size='small' title={`Candidate Memories (${pendingCandidates.length})`}>
+      <div className='grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+        <SpaceContextPanel
+          docsCount={docs.length}
+          boardsCount={boards.length}
+          threadCount={conversations.length}
+          acceptedMemories={acceptedMemories}
+          profiles={profiles}
+          pendingCandidates={pendingCandidates}
+          selectionSummary={selectionSummary}
+        />
+        <Card size='small' title={t('space.context.candidateTitle')}>
           {pendingCandidates.length === 0 ? (
-            <Empty description='No candidate memories' />
+            <Text type='secondary'>{t('space.context.candidateEmpty')}</Text>
           ) : (
             <List
-              dataSource={pendingCandidates.slice(0, 12)}
-              render={(item) => (
+              dataSource={[...pendingCandidates.slice(0, 12)]}
+              render={(item: IContextMemoryCandidateView) => (
                 <List.Item key={item.id}>
                   <Space direction='vertical' size={8} className='w-full'>
                     <Space direction='vertical' size={2} className='w-full'>
@@ -315,14 +330,14 @@ export default function SpaceShell(props: SpaceShellProps) {
                         {item.reviewStatus} · score {item.promotionScore} · {item.tier} · {item.destination}
                       </Text>
                     </Space>
-                    <Space>
+                    <Space wrap>
                       <Button
                         size='small'
                         type='primary'
                         loading={reviewingCandidateId === item.id}
                         onClick={() => void handleReviewCandidate(item.id, 'approve')}
                       >
-                        Approve
+                        {t('space.context.actions.approve')}
                       </Button>
                       <Button
                         size='small'
@@ -330,21 +345,21 @@ export default function SpaceShell(props: SpaceShellProps) {
                         loading={reviewingCandidateId === item.id}
                         onClick={() => void handleReviewCandidate(item.id, 'reject')}
                       >
-                        Reject
+                        {t('space.context.actions.reject')}
                       </Button>
                       <Button
                         size='small'
                         loading={reviewingCandidateId === item.id}
                         onClick={() => void handlePromoteCandidate(item.id, 'document')}
                       >
-                        Promote to Doc
+                        {t('space.context.actions.promoteDoc')}
                       </Button>
                       <Button
                         size='small'
                         loading={reviewingCandidateId === item.id}
                         onClick={() => void handlePromoteCandidate(item.id, 'board')}
                       >
-                        Promote to Board
+                        {t('space.context.actions.promoteBoard')}
                       </Button>
                     </Space>
                   </Space>
@@ -357,17 +372,27 @@ export default function SpaceShell(props: SpaceShellProps) {
     );
   };
 
+  const renderMembers = () => {
+    return (
+      <SpaceMembersPanel
+        members={members}
+        permissionsPolicy={permissionsPolicy}
+        onChange={handleMembersChange}
+      />
+    );
+  };
+
   const renderActiveView = () => {
     switch (activeView) {
       case 'docs':
         return renderDocs();
-      case 'canvas':
-        return renderCanvas();
       case 'context':
         return renderContext();
-      case 'overview':
+      case 'members':
+        return renderMembers();
+      case 'canvas':
       default:
-        return renderOverview();
+        return renderCanvas();
     }
   };
 
@@ -376,18 +401,41 @@ export default function SpaceShell(props: SpaceShellProps) {
       {messageHolder}
       <Card size='small'>
         <Space direction='vertical' size='small' className='w-full'>
-          <Space align='center' className='w-full justify-between'>
-            <div>
-              <Title heading={4} className='mb-0'>
-                {props.spaceName}
-              </Title>
-              <Text type='secondary'>Space ID: {props.spaceId}</Text>
-            </div>
-            <Tag color='green'>{providerStatus?.label || 'AFFiNE-ready'}</Tag>
+          <Space align='start' className='w-full justify-between'>
+            <Space direction='vertical' size='small' className='min-w-0'>
+              <Button
+                type='outline'
+                size='small'
+                icon={<Left theme='outline' size='14' />}
+                onClick={() => void navigate('/guid')}
+              >
+                {t('common.returnToWorkbench')}
+              </Button>
+              <div>
+                <Title heading={4} className='mb-0'>
+                  {props.spaceName}
+                </Title>
+                <Paragraph className='mb-0 mt-4px text-13px text-t-secondary'>{t('space.header.subtitle')}</Paragraph>
+              </div>
+            </Space>
+            <Space direction='vertical' size='small' align='end'>
+              <Space wrap>
+                <Tag color='green'>{providerStatus?.label || t('space.header.providerFallback')}</Tag>
+                <Tag color='arcoblue'>{t('space.header.members', { count: members.length })}</Tag>
+                <Tag color='purple'>{t('space.header.roleAware')}</Tag>
+              </Space>
+              <Space>
+                {members.slice(0, 3).map((member) => (
+                  <Avatar key={member.id} size={28}>
+                    {member.avatarUrl ? <img src={member.avatarUrl} alt={member.displayName} /> : member.displayName[0]}
+                  </Avatar>
+                ))}
+              </Space>
+            </Space>
           </Space>
           <Tabs activeTab={activeView} onChange={(key) => setActiveView(key as SpacePrimaryView)}>
             {SPACE_MVP_PRIMARY_VIEWS.map((view) => (
-              <Tabs.TabPane key={view} title={view.charAt(0).toUpperCase() + view.slice(1)} />
+              <Tabs.TabPane key={view} title={t(`space.tabs.${view}`)} />
             ))}
           </Tabs>
         </Space>

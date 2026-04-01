@@ -11,7 +11,19 @@ import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/pl
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import { Tabs } from '@arco-design/web-react';
-import { Command, Communication, Computer, Earth, Gemini, Info, LinkCloud, Puzzle, Toolkit } from '@icon-park/react';
+import {
+  Command,
+  Communication,
+  Computer,
+  ConnectionPoint,
+  Earth,
+  Gemini,
+  Info,
+  LinkCloud,
+  Puzzle,
+  Terminal,
+  Toolkit,
+} from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -237,7 +249,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
       {
         key: 'runtime',
         label: t('settings.runtimeManager.title', { defaultValue: 'Runtime' }),
-        icon: <Command theme='outline' size='20' fill={iconColors.secondary} />,
+        icon: <Terminal theme='outline' size='20' fill={iconColors.secondary} />,
       },
     ];
 
@@ -249,13 +261,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
       });
       builtinItems.push({
         key: 'channels',
-        label: t('settings.channels'),
+        label: t('settings.agentEntry'),
         icon: <Communication theme='outline' size='20' fill={iconColors.secondary} />,
       });
       builtinItems.push({
         key: 'activeSessions',
         label: t('settings.activeSessions'),
-        icon: <Communication theme='outline' size='20' fill={iconColors.secondary} />,
+        icon: <ConnectionPoint theme='outline' size='20' fill={iconColors.secondary} />,
       });
     }
 

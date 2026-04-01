@@ -16,7 +16,9 @@ final class ConnectionStore: ObservableObject {
 
   func restore() {
     guard let storedValue = UserDefaults.standard.string(forKey: defaultsKey), let restoredURL = URL(string: storedValue) else {
-      connectToOfficialRemote(persist: false)
+      inputText = ""
+      targetURL = nil
+      validationMessage = nil
       return
     }
 

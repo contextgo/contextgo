@@ -1,0 +1,112 @@
+{
+  "tabs": {
+    "canvas": "畫板",
+    "docs": "文件",
+    "context": "上下文",
+    "members": "成員"
+  },
+  "header": {
+    "subtitle": "一個把內容、上下文與成員協作放在同一邊界內的空間。",
+    "members": "{{count}} 位成員",
+    "roleAware": "角色治理",
+    "providerFallback": "畫板已就緒"
+  },
+  "context": {
+    "viewTitle": "空間上下文",
+    "viewDescription": "這裡展示這個空間裡哪些內容會影響 Agent，以及這些上下文如何被治理。",
+    "activeTitle": "目前生效上下文",
+    "activeDescription": "Agent 在這個空間裡目前應優先關注的內容。",
+    "selectionTitle": "目前選區",
+    "selectionEmpty": "目前沒有活動選區",
+    "stats": {
+      "threads": "執行緒",
+      "docs": "文件",
+      "boards": "畫板",
+      "candidates": "待處理候選"
+    },
+    "durableTitle": "長期上下文層",
+    "durableDescription": "穩定的空間上下文應來自審核後的記憶、摘要、文件與畫板，而不是原始聊天紀錄的堆疊。",
+    "layers": {
+      "memories": "已接受記憶",
+      "memoriesHint": "經過審核的事實記憶與經驗記憶。",
+      "profiles": "摘要画像",
+      "profilesHint": "角色、流程與穩定偏好的壓縮摘要。",
+      "sources": "內容表面",
+      "sourcesHint": "提供溯源的文件、畫板、執行緒與選區。"
+    },
+    "governanceTitle": "治理規則",
+    "governanceDescription": "共享記憶不應被任何參與者靜默寫入，而應由角色流程來晉升。",
+    "rules": {
+      "reviewers": "只有 reviewer 及以上角色才能晉升為已接受記憶。",
+      "decisions": "約束和決策在成為長期上下文前應經過明確審核。",
+      "provenance": "重要記憶都應保留清楚的內容溯源。"
+    },
+    "queueTitle": "候選佇列",
+    "queueEmpty": "這個空間裡還沒有候選記憶。",
+    "acceptedTitle": "已接受記憶",
+    "acceptedEmpty": "還沒有已接受記憶。建議先從約束、決策與流程開始沉澱。",
+    "profilesTitle": "生效中的摘要画像",
+    "profilesEmpty": "還沒有生效中的摘要画像。",
+    "candidateTitle": "候選記憶",
+    "candidateEmpty": "沒有候選記憶",
+    "actions": {
+      "approve": "核准",
+      "reject": "拒絕",
+      "promoteDoc": "提升到文件",
+      "promoteBoard": "提升到畫板"
+    }
+  },
+  "members": {
+    "viewTitle": "成員與角色",
+    "viewDescription": "空間成員關係應決定誰能編輯內容、執行 Agent，以及審核記憶。",
+    "currentTitle": "目前成員",
+    "currentEmpty": "這個空間裡還沒有成員。",
+    "currentRole": "目前角色",
+    "localOnly": "僅本機會話",
+    "roleModelTitle": "角色模型",
+    "roleModelDescription": "共享空間在引入多人上下文前，需要先有明確的角色模型。",
+    "permissionsTitle": "核心能力",
+    "actions": {
+      "invite": "邀請成員",
+      "manage": "管理角色"
+    },
+    "form": {
+      "displayName": "顯示名稱",
+      "secondaryText": "信箱或備註"
+    },
+    "comingSoon": "多成員管理與審批流程會是 Space 下一階段的核心產品能力。",
+    "roles": {
+      "owner": {
+        "label": "Owner",
+        "description": "完整控制成員、Provider、策略與長期上下文。"
+      },
+      "admin": {
+        "label": "Admin",
+        "description": "管理結構、協作規則與執行設定。"
+      },
+      "editor": {
+        "label": "Editor",
+        "description": "編輯文件與畫板、執行 Agent、建立候選上下文。"
+      },
+      "reviewer": {
+        "label": "Reviewer",
+        "description": "審核並晉升候選記憶，特別是決策與約束。"
+      },
+      "viewer": {
+        "label": "Viewer",
+        "description": "唯讀檢視內容與上下文，不改變共享狀態。"
+      }
+    },
+    "capabilities": {
+      "contentEdit": "編輯文件與畫板",
+      "agentRun": "執行 Agent 與流程",
+      "memoryReview": "審核記憶晉升",
+      "memberManage": "管理成員與角色",
+      "viewOnly": "檢視共享內容與上下文",
+      "workflowReuse": "復用已核准流程"
+    },
+    "status": {
+      "active": "活躍"
+    }
+  }
+}

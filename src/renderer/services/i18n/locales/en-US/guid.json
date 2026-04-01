@@ -5,6 +5,8 @@
   "agentTabAutoSwitch": "Model not compatible with Gemini, auto-switched to {{fallback}}",
   "autoSwitchToAgent": "Gemini is not configured, auto-switching to {{agent}}",
   "autoSwitchedAgent": "{{from}} is not available, switched to {{to}}",
+  "sendFailed": "Failed to send the message. Please try again.",
+  "sendFailedWithReason": "Failed to send the message: {{reason}}",
   "externalSessions": {
     "title": "Continue external sessions",
     "description": "New CLI sessions created outside ContextGo will appear here when they have not been taken over yet.",

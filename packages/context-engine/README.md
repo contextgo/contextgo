@@ -33,6 +33,7 @@
 - [docs/implementation-phases.md](./docs/implementation-phases.md)
 - [docs/phase-0-1-foundation.md](./docs/phase-0-1-foundation.md)
 - [docs/supermemory-context-os-fit.md](./docs/supermemory-context-os-fit.md)
+- [docs/reference-landscape.md](./docs/reference-landscape.md)
 
 ## 设计原则
 

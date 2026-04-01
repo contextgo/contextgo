@@ -18,6 +18,7 @@ export const zh = {
     description:
       'Agent 难落地，往往不是模型不够，而是上下文没到位。ContextGo 接通知识、任务、讨论与渠道，让 AI 在你现有的工作流里继续工作。',
     download_btn: '下载体验',
+    docs_btn: '查看文档',
     connect_btn: '了解连接',
   },
   philosophy: {

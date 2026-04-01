@@ -4,9 +4,13 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getAvailableAgentsInvokeMock = vi.fn();
+const listExternalSessionsInvokeMock = vi.fn();
 const checkAgentHealthInvokeMock = vi.fn();
+const installManagedRuntimeInvokeMock = vi.fn();
 const refreshCustomAgentsInvokeMock = vi.fn().mockResolvedValue({ success: true });
 const openExternalInvokeMock = vi.fn().mockResolvedValue(undefined);
+const openFileInvokeMock = vi.fn().mockResolvedValue(undefined);
+const revealPathInvokeMock = vi.fn().mockResolvedValue({ resolvedPath: '/custom/codex', exists: true });
 const configStorageGetMock = vi.fn();
 const configStorageSetMock = vi.fn().mockResolvedValue(undefined);
 const mutateMock = vi.fn().mockResolvedValue(undefined);
@@ -23,8 +27,15 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/common/adapter/ipcBridge', () => ({
   acpConversation: {
     getAvailableAgents: { invoke: (...args: unknown[]) => getAvailableAgentsInvokeMock(...args) },
+    listExternalSessions: { invoke: (...args: unknown[]) => listExternalSessionsInvokeMock(...args) },
     checkAgentHealth: { invoke: (...args: unknown[]) => checkAgentHealthInvokeMock(...args) },
+    installManagedRuntime: { invoke: (...args: unknown[]) => installManagedRuntimeInvokeMock(...args) },
     refreshCustomAgents: { invoke: (...args: unknown[]) => refreshCustomAgentsInvokeMock(...args) },
+  },
+  shell: {
+    openExternal: { invoke: (...args: unknown[]) => openExternalInvokeMock(...args) },
+    openFile: { invoke: (...args: unknown[]) => openFileInvokeMock(...args) },
+    revealPath: { invoke: (...args: unknown[]) => revealPathInvokeMock(...args) },
   },
   ipcBridge: {
     shell: {
@@ -160,9 +171,21 @@ describe('Runtime Settings page', () => {
       success: true,
       data: [{ backend: 'codex', name: 'Codex', cliPath: '/opt/codex/bin/codex', runtimeSource: 'detected' }],
     });
+    listExternalSessionsInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        sessions: [
+          { provider: 'codex', sessionId: 'session-1', title: 'Resume me', workspace: '/tmp/project', updatedAt: 1 },
+        ],
+      },
+    });
     checkAgentHealthInvokeMock.mockResolvedValue({
       success: true,
       data: { available: true, latency: 123 },
+    });
+    installManagedRuntimeInvokeMock.mockResolvedValue({
+      success: true,
+      data: { backend: 'codex', command: 'npm install -g @openai/codex' },
     });
     configStorageGetMock.mockImplementation(async (key: string) => {
       if (key === 'acp.config') return {};
@@ -178,15 +201,16 @@ describe('Runtime Settings page', () => {
     expect(await screen.findByText('Runtime Management')).toBeInTheDocument();
     expect(screen.getByText('Codex')).toBeInTheDocument();
     expect(screen.getByText('Claude Code')).toBeInTheDocument();
+    expect(screen.getAllByText('Takeover sessions').length).toBeGreaterThan(0);
     expect(screen.getByText('/custom/codex')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Copy Install Command' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Copy install command' }).length).toBeGreaterThan(0);
   });
 
   it('runs a health check for the selected runtime card', async () => {
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
-    fireEvent.click(screen.getAllByRole('button', { name: 'Check Health' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Check availability' })[0]);
 
     await waitFor(() => {
       expect(checkAgentHealthInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
@@ -200,12 +224,23 @@ describe('Runtime Settings page', () => {
     fireEvent.change(screen.getAllByRole('textbox')[0], {
       target: { value: '/new/codex/path' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Save Path' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save path' })[0]);
 
     await waitFor(() => {
       expect(configStorageSetMock).toHaveBeenCalledWith('codex.config', {
         cliPath: '/new/codex/path',
       });
+    });
+  });
+
+  it('runs managed install for a missing runtime', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Install locally' })[0]);
+
+    await waitFor(() => {
+      expect(installManagedRuntimeInvokeMock).toHaveBeenCalled();
     });
   });
 });

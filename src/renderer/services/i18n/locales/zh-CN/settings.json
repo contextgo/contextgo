@@ -473,11 +473,11 @@
   "fontSizeReset": "恢复默认缩放",
   "lightMode": "浅色",
   "darkMode": "深色",
-  "agent": "兜底 Agent",
-  "agentEntry": "Agent 入口",
-  "agentEntryDesc": "把可复用的 IM 入口资源独立管理，包括渠道账号、已发布 Agent 和 audience 绑定。",
-  "activeSessions": "活动会话",
-  "activeSessionsDesc": "查看正在进行的工作会话，并在离开桌面时把它们临时接力到已配对的 IM 入口。",
+  "agent": "兜底运行时",
+  "agentEntry": "Agent入口",
+  "agentEntryDesc": "管理各种 IM 渠道的配置。每种渠道类型都可以配置多个入口实例，发布关系在 Agent发布 中单独管理。",
+  "activeSessions": "Agent发布",
+  "activeSessionsDesc": "管理 Agent 正式发布到哪些 IM，以及把当前会话临时接力到哪些 IM。",
   "tools": "工具",
   "webui": "远程连接",
   "installed": "已安装",
@@ -615,7 +615,7 @@
   "assistant.tokenLocked": "请先关闭 Channel 并删除所有已授权用户后，再尝试修改",
   "assistant.tokenValid": "Token 有效",
   "assistant.defaultModel": "兜底模型",
-  "assistant.defaultModelDesc": "只有在当前渠道入口还没有命中发布绑定时，才会使用这里的运行时配置。",
+  "assistant.defaultModelDesc": "只有在当前渠道入口还没有命中发布绑定时，才会使用这里的兜底模型配置。",
   "assistant.noAvailableModels": "暂无可用的 Gemini 模型",
   "assistant.selectModel": "选择模型",
   "assistant.nextSteps": "下一步操作",
@@ -643,7 +643,7 @@
   "discord.tokenRequired": "请输入 Discord Bot Token",
   "discord.connectionSuccess": "连接成功！机器人：{{username}}",
   "discord.connectionFailed": "连接失败",
-  "channels.title": "渠道配置",
+  "channels.title": "IM 渠道配置",
   "channels.telegramTitle": "Telegram",
   "channels.telegramDesc": "通过 Telegram 与 ContextGo 助手对话",
   "channels.slackTitle": "Slack",
@@ -660,9 +660,9 @@
   "channels.comingSoonDesc": "即将支持通过 {{channel}} 与助手直接对话",
   "channels.notConfigured": "未配置",
   "channels.configured": "已配置",
-  "channels.guide": "连接 Telegram、飞书、钉钉等消息应用，让你的 AI Agent 随时在线可控。",
-  "channels.selectFirst": "先配置渠道账号并启用消息接入。",
-  "channels.enableAfterConfig": "再把 Agent 发布到用户、群、话题或渠道默认入口。",
+  "channels.guide": "在这里配置各种 IM 渠道入口。每种渠道类型都可以配置多个实例，负责消息收发、配对和鉴权。",
+  "channels.selectFirst": "先配置一个或多个 IM 渠道入口，并启用消息接入。",
+  "channels.enableAfterConfig": "正式发布和会话接力统一到 Agent发布 页面管理。",
   "channels.extension.requiredField": "请填写必填项：{{field}}",
   "channels.extension.enabled": "渠道已启用",
   "channels.extension.enableFailed": "启用渠道失败",
@@ -671,14 +671,14 @@
   "channels.extension.noConfig": "无需额外配置。",
   "channels.extension.selectPlaceholder": "请选择",
   "channels.extension.defaultDesc": "扩展渠道插件",
-  "channels.publication.title": "发布到 IM",
-  "channels.publication.description": "先选一个渠道账号，再把可复用 Agent 绑定到正确的 IM 目标。渠道账号只负责收发消息和鉴权，不决定最终的 Agent 路由。",
+  "channels.publication.title": "正式发布到 IM",
+  "channels.publication.description": "先选一个渠道账号，再把可复用 Agent 正式发布到正确的 IM 目标。渠道账号只负责收发消息和鉴权，不决定最终由哪个运行时响应。",
   "channels.publication.connectorLabel": "1. 渠道入口",
   "channels.publication.connectorPlaceholder": "选择一个渠道账号",
-  "channels.publication.connectorHint": "当前通过 {{platform}} / {{name}} 发布 Agent。",
+  "channels.publication.connectorHint": "当前通过 {{platform}} / {{name}} 配置 Agent 发布目标。",
   "channels.publication.connectorRequired": "请先选择连接器",
-  "channels.publication.agentRequired": "请选择要发布的 Agent",
-  "channels.publication.agentPlaceholder": "选择要发布的 Agent",
+  "channels.publication.agentRequired": "请选择要正式发布的 Agent",
+  "channels.publication.agentPlaceholder": "选择要正式发布的 Agent",
   "channels.publication.audiencePlaceholder": "选择一个已发现的目标",
   "channels.publication.scopeKeyRequired": "请选择目标，或手动填写目标 key",
   "channels.publication.scopeKeyRemoteUserPlaceholder": "远端用户 key，例如：user_123456",
@@ -722,26 +722,26 @@
   "channels.publication.scope.remote_user": "某个用户 / 私聊",
   "channels.publication.scope.remote_chat": "某个群 / 频道 / 话题",
   "channels.publication.scope.temporary_override": "当前会话接管",
-  "channels.publication.intentTitle": "准备发布这个 Agent",
-  "channels.publication.intentDescription": "这里发布的是一个可复用 Agent 入口。渠道账号只提供 IM 表面，不会替换当前会话已经选定的运行时。",
+  "channels.publication.intentTitle": "准备正式发布这个 Agent",
+  "channels.publication.intentDescription": "这里发布的是一个可复用 Agent。渠道账号只提供 IM 表面，不会替换当前会话已经选定的运行时。",
   "channels.publication.intentProfile": "将要发布的 Agent",
   "channels.publication.intentConversation": "来源会话",
   "channels.publication.intentBackend": "运行时后端",
   "channels.publication.intentWorkspace": "工作目录",
-  "channels.publication.intentSelectedHint": "当前会话已经被整理成一个可复用 Agent Profile，并已在下面为你预选好。",
-  "channels.publication.connectorGuide": "渠道账号只负责收发消息和鉴权，真正决定谁来响应的是下面的发布绑定。",
+  "channels.publication.intentSelectedHint": "当前会话已经被整理成一个可复用 Agent 配置，并已在下面为你预选好。",
+  "channels.publication.connectorGuide": "渠道账号只负责收发消息和鉴权，真正决定哪个 Agent 来响应的是下面的发布绑定。",
   "channels.publication.connectorGuide.weixin": "微信通常更接近单人单入口场景，建议先从“整个渠道账号”或“某个用户”开始。",
   "channels.publication.connectorGuide.multiSession": "像飞书话题、Discord 频道、Slack 频道、Telegram 话题这类平台，一个渠道账号下面可以长期挂很多入口。",
   "channels.publication.targetTypeLabel": "2. 发布目标类型",
-  "channels.publication.targetTypeHint.connectorDefault": "当整个渠道账号都应该共享同一个默认 Agent 入口时，用这个。",
-  "channels.publication.targetTypeHint.remoteUser": "当某个人或某个私聊需要拥有自己独立的长期 Agent 入口时，用这个。",
+  "channels.publication.targetTypeHint.connectorDefault": "当整个渠道账号都应该共享同一个默认 Agent 发布入口时，用这个。",
+  "channels.publication.targetTypeHint.remoteUser": "当某个人或某个私聊需要拥有自己独立的长期 Agent 发布入口时，用这个。",
   "channels.publication.targetTypeHint.remoteChat": "当某个群、频道或话题应该成为独立会话入口时，用这个。",
   "channels.publication.fallbackTitle": "当前只在使用兜底运行时",
-  "channels.publication.fallbackDescription": "这个渠道账号目前还没有任何长期发布入口。当没有命中任何 audience 绑定时，系统只会回退到下面这个兜底 Agent / 模型。",
+  "channels.publication.fallbackDescription": "这个渠道账号目前还没有任何长期发布入口。当没有命中任何 audience 绑定时，系统只会回退到下面这个兜底运行时 / 模型。",
   "channels.publication.fallbackHint": "只有当这个渠道账号本身应该拥有一个可复用长期入口时，才需要创建长期发布。",
   "activeSessions.loadFailed": "加载活动会话失败",
   "activeSessions.handoffTitle": "把当前工作接力到 IM",
-  "activeSessions.handoffDescription": "把进行中的 session 临时接到一个已配对的 IM 目标继续做事，而不是把它变成长期发布入口。",
+  "activeSessions.handoffDescription": "把进行中的 session 临时接到一个已配对的 IM 目标继续做事，而不是把它变成正式发布关系。",
   "activeSessions.intentTitle": "已选择当前会话",
   "activeSessions.intentDescription": "下面的来源会话已经从你打开此页的当前对话中预先选好。",
   "activeSessions.intentConversation": "当前对话",
@@ -756,7 +756,7 @@
   "activeSessions.useAsSource": "用这个接力",
   "activeSessions.empty": "还没有活动中的 IM 会话",
   "activeSessions.targetTitle": "2. 接力到这个 IM 目标",
-  "activeSessions.targetDescription": "选择一个已配对 IM 目标。这里默认创建的是临时接力，不会替换长期 Agent 发布关系。",
+  "activeSessions.targetDescription": "选择一个已配对 IM 目标。这里默认创建的是临时接力，不会替换正式 Agent 发布关系。",
   "activeSessions.connectorPlaceholder": "选择一个渠道账号",
   "activeSessions.targetPlaceholder": "选择一个已配对的用户、群或话题",
   "activeSessions.sourceRequired": "请先选择来源会话",
@@ -926,7 +926,7 @@
   "simpleModeTip": "选择已检测到的 CLI 并自定义名称。如需配置环境变量等更多选项，请切换到高级模式。",
   "runtimeManager": {
     "title": "运行环境",
-    "description": "在这里查看 Claude Code、Codex 等本地命令行助手是否已经装好，也可以手动指定启动路径、补充登录，并检查当前是否能正常使用。",
+    "description": "在这里查看哪些本地 Agent 运行时已经可用、还能接管多少外部会话、它们的配置放在哪里，并对缺失但支持托管安装的运行时直接执行一键安装。",
     "refresh": "刷新状态",
     "note": "如果你手动填写了路径，ContextGo 会优先使用这里的路径。“可用性检查”会按当前保存的路径确认这个运行环境现在是否真的能启动。",
     "loadFailed": "加载运行环境状态失败。",
@@ -969,21 +969,71 @@
       "checking": "正在检查..."
     },
     "runtime": {
-      "claude": { "description": "Anthropic Claude Code 命令行工具。" },
-      "codex": { "description": "OpenAI Codex 命令行工具，适合本地编码与改项目。" },
-      "qwen": { "description": "阿里 Qwen Code 命令行工具。" },
-      "codebuddy": { "description": "腾讯 CodeBuddy Code 命令行工具。" },
-      "opencode": { "description": "OpenCode 命令行工具。" },
-      "goose": { "description": "Block Goose 命令行工具。" },
-      "auggie": { "description": "Augment Code 命令行工具。" },
-      "kimi": { "description": "Kimi 命令行工具。" },
-      "iflow": { "description": "iFlow 命令行工具。" },
-      "droid": { "description": "Factory Droid 命令行工具。" },
-      "copilot": { "description": "GitHub Copilot 命令行工具。" },
-      "qoder": { "description": "Qoder 命令行工具。" },
-      "vibe": { "description": "Mistral Vibe 命令行工具。" },
-      "cursor": { "description": "Cursor Agent 命令行工具。" }
-    }
+      "claude": {
+        "description": "Anthropic Claude Code 命令行工具。"
+      },
+      "codex": {
+        "description": "OpenAI Codex 命令行工具，适合本地编码与改项目。"
+      },
+      "qwen": {
+        "description": "阿里 Qwen Code 命令行工具。"
+      },
+      "codebuddy": {
+        "description": "腾讯 CodeBuddy Code 命令行工具。"
+      },
+      "opencode": {
+        "description": "OpenCode 命令行工具。"
+      },
+      "goose": {
+        "description": "Block Goose 命令行工具。"
+      },
+      "auggie": {
+        "description": "Augment Code 命令行工具。"
+      },
+      "kimi": {
+        "description": "Kimi 命令行工具。"
+      },
+      "iflow": {
+        "description": "iFlow 命令行工具。"
+      },
+      "droid": {
+        "description": "Factory Droid 命令行工具。"
+      },
+      "copilot": {
+        "description": "GitHub Copilot 命令行工具。"
+      },
+      "qoder": {
+        "description": "Qoder 命令行工具。"
+      },
+      "vibe": {
+        "description": "Mistral Vibe 命令行工具。"
+      },
+      "cursor": {
+        "description": "Cursor Agent 命令行工具。"
+      }
+    },
+    "revealPathFailed": "打开系统文件管理器失败。",
+    "openConfigFailed": "打开运行环境配置位置失败。",
+    "installFailed": "安装这个运行环境失败。",
+    "installSuccess": "运行环境已安装，并已刷新检测状态。",
+    "externalSessionCount": "可接管会话数",
+    "externalSessionUnsupported": "暂不支持",
+    "revealPath": "定位",
+    "configLocation": "配置位置",
+    "openConfig": "打开",
+    "installNow": "一键安装",
+    "summaryCards": {
+      "ready": "可直接使用",
+      "detected": "本机已检测到",
+      "sessions": "可接管会话",
+      "missing": "尚未安装"
+    },
+    "activeSectionTitle": "已检测到或已配置",
+    "activeSectionDescription": "这些运行时已经在本机检测到，或者已经手动指定了启动路径。",
+    "emptyActive": "还没有检测到或配置任何运行时。",
+    "missingSectionTitle": "尚未安装",
+    "missingSectionDescription": "这些运行时当前还没有在本机准备好；如果支持托管安装，可以直接在这里一键安装。",
+    "emptyMissing": "所有内置运行时都已经检测到或已手动配置。"
   },
   "command": "命令",
   "args": "参数",
@@ -1071,7 +1121,7 @@
     "copyCode": "复制配对码",
     "agentDescTelegram": "当 Telegram 入口还没有命中发布绑定时，使用这里的兜底运行时",
     "autoFollowCliModel": "兜底执行时自动跟随 CLI 运行时的模型",
-    "agentSwitched": "Agent 切换成功",
+    "agentSwitched": "兜底运行时已切换",
     "modelSwitched": "模型切换成功"
   },
   "slack": {
@@ -1128,7 +1178,7 @@
     "waitingConnection": "WebSocket 连接正在建立，请稍候...",
     "showOptionalFields": "显示可选配置",
     "hideOptionalFields": "隐藏可选配置",
-    "agent": "兜底 Agent",
+    "agent": "兜底运行时",
     "agentDesc": "当飞书入口还没有命中发布绑定时，使用这里的兜底运行时",
     "autoFollowCliModel": "兜底执行时自动跟随 CLI 运行时的模型"
   },
@@ -1157,7 +1207,7 @@
     "step3": "配对请求会显示在下方，点击「批准」授权用户",
     "step4": "授权成功后，你可以通过钉钉与 AI 助手聊天！",
     "waitingConnection": "连接正在建立，请稍候...",
-    "agent": "兜底 Agent",
+    "agent": "兜底运行时",
     "agentDesc": "当钉钉入口还没有命中发布绑定时，使用这里的兜底运行时"
   },
   "connectors": {

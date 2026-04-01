@@ -44,6 +44,16 @@
   border-bottom: none !important;
 }
 
+.app-titlebar__top-drag-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  z-index: 20;
+  -webkit-app-region: drag;
+}
+
 .app-titlebar--mac {
   height: 45px;
   min-height: 36px;
@@ -115,7 +125,7 @@
   flex: 1;
   display: flex;
   align-items: stretch;
-  -webkit-app-region: no-drag;
+  -webkit-app-region: drag;
 }
 
 .app-titlebar__desktop-content {
@@ -130,6 +140,12 @@
 
 .app-titlebar__desktop-content--conversation {
   background: var(--bg-1);
+}
+
+.app-titlebar__drag-spacer {
+  flex: 0 0 72px;
+  min-width: 72px;
+  -webkit-app-region: drag;
 }
 
 #app-titlebar-chat-slot {

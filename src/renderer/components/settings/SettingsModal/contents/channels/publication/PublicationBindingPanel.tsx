@@ -304,11 +304,10 @@ const PublicationBindingPanel: React.FC = () => {
     [catalog.audiences, selectedConnectorId]
   );
 
-  const { durableBindings, temporaryBindings, systemFallbackBindings } = useMemo(
+  const { durableBindings, temporaryBindings } = useMemo(
     () => splitBindingsByLifetime(selectedBindings),
     [selectedBindings]
   );
-  const systemFallbackBinding = systemFallbackBindings[0];
 
   const durableScopeOptions = useMemo<BindingScopeOption[]>(
     () => [
@@ -343,7 +342,10 @@ const PublicationBindingPanel: React.FC = () => {
 
   const durableScopeHint = useMemo(() => getScopeHint(durableEditor.scopeType, t), [durableEditor.scopeType, t]);
   const connectorGuide = useMemo(
-    () => (selectedConnector ? getConnectorGuide(selectedConnector.platform, t) : t('settings.channels.publication.connectorGuide')),
+    () =>
+      selectedConnector
+        ? getConnectorGuide(selectedConnector.platform, t)
+        : t('settings.channels.publication.connectorGuide'),
     [selectedConnector, t]
   );
 
@@ -636,25 +638,6 @@ const PublicationBindingPanel: React.FC = () => {
 
           {selectedConnectorId ? (
             <>
-              {systemFallbackBinding ? (
-                <div className='border border-[rgba(var(--primary-6),0.18)] bg-[rgba(var(--primary-6),0.04)] rd-12px p-12px space-y-8px'>
-                  <div className='text-14px font-600 text-t-primary'>
-                    {t('settings.channels.publication.fallbackTitle')}
-                  </div>
-                  <div className='text-12px text-t-secondary leading-relaxed'>
-                    {t('settings.channels.publication.fallbackDescription')}
-                  </div>
-                  <div className='text-13px text-t-primary break-all'>
-                    {profileMap.get(systemFallbackBinding.agentProfileId)
-                      ? getProfileLabel(profileMap.get(systemFallbackBinding.agentProfileId)!)
-                      : systemFallbackBinding.agentProfileId}
-                  </div>
-                  <div className='text-12px text-t-secondary'>
-                    {t('settings.channels.publication.fallbackHint')}
-                  </div>
-                </div>
-              ) : null}
-
               <div className='grid grid-cols-1 xl:grid-cols-2 gap-12px'>
                 <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
                   <div className='space-y-4px'>
@@ -712,9 +695,7 @@ const PublicationBindingPanel: React.FC = () => {
                           <>
                             <Input
                               value={durableEditor.manualScopeKey}
-                              onChange={(value) =>
-                                setDurableEditor((editor) => ({ ...editor, manualScopeKey: value }))
-                              }
+                              onChange={(value) => setDurableEditor((editor) => ({ ...editor, manualScopeKey: value }))}
                               placeholder={durableScopeKeyPlaceholder}
                             />
                             <div className='text-12px text-t-secondary'>

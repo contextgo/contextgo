@@ -323,7 +323,6 @@ export class TelegramPlugin extends BasePlugin {
       '🆕 New Chat': { type: 'system', action: 'session.new' },
       '📊 Status': { type: 'system', action: 'session.status' },
       '❓ Help': { type: 'system', action: 'help.show' },
-      '🔄 Agent': { type: 'system', action: 'agent.show' },
       '🔄 Refresh Status': { type: 'platform', action: 'pairing.check' },
     };
 
@@ -422,34 +421,6 @@ export class TelegramPlugin extends BasePlugin {
           .catch((error) => console.error(`[TelegramPlugin] Error handling confirm callback:`, error));
       } else {
         console.warn(`[TelegramPlugin] Invalid confirm callback data or no confirmHandler:`, data);
-      }
-      return;
-    }
-
-    // 处理 agent 选择回调，格式: agent:{agentKey}
-    // Handle agent selection callback, format: agent:{agentKey}
-    if (category === 'agent') {
-      const agentKey = extractAction(data);
-      const unifiedMessage = toUnifiedIncomingMessage(ctx);
-      if (unifiedMessage && this.messageHandler) {
-        unifiedMessage.content.type = 'action';
-        unifiedMessage.content.text = 'agent.select';
-        unifiedMessage.action = {
-          type: 'system',
-          name: 'agent.select',
-          params: { agentKey },
-        };
-        // Don't await - process in background
-        void this.messageHandler(unifiedMessage)
-          .then(async () => {
-            // Remove inline keyboard after selection
-            try {
-              await ctx.editMessageReplyMarkup({ reply_markup: undefined });
-            } catch (editError) {
-              console.debug(`[TelegramPlugin] Failed to remove agent selection buttons (ignored):`, editError);
-            }
-          })
-          .catch((error) => console.error(`[TelegramPlugin] Error handling agent selection:`, error));
       }
       return;
     }

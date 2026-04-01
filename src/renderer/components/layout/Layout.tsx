@@ -64,6 +64,7 @@ const Layout: React.FC<{
   const navigate = useNavigate();
   useConversationShortcuts({ navigate });
   const location = useLocation();
+  const isSpaceRoute = location.pathname.startsWith('/space/');
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isConversationDetailRoute = location.pathname.startsWith('/conversation/');
   const workspaceAvailable = isConversationDetailRoute;
@@ -318,9 +319,10 @@ const Layout: React.FC<{
         Math.min(MOBILE_SIDER_MAX_WIDTH, Math.round(viewportWidth * MOBILE_SIDER_WIDTH_RATIO))
       )
     : DEFAULT_SIDER_WIDTH;
+  const showPrimarySider = !isSpaceRoute;
   const desktopExpandedSiderWidth = siderWidth;
   const desktopCollapsedSiderWidth = 0;
-  const leftOffset = isMobile ? 0 : (collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth) + 16;
+  const leftOffset = isMobile ? 0 : showPrimarySider ? (collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth) + 16 : 16;
   const appShellStyle = {
     '--app-left-offset': `${leftOffset}px`,
   } as React.CSSProperties;
@@ -341,52 +343,54 @@ const Layout: React.FC<{
           leftPaneWidth={collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth}
         />
         {/* 移动端左侧边栏蒙板 / Mobile left sider backdrop */}
-        {isMobile && !collapsed && (
+        {isMobile && showPrimarySider && !collapsed && (
           <div className='fixed inset-0 bg-black/30 z-90' onClick={() => setCollapsed(true)} aria-hidden='true' />
         )}
 
         <ArcoLayout className={'size-full layout flex-1 min-h-0'}>
-          <ArcoLayout.Sider
-            collapsedWidth={isMobile ? 0 : desktopCollapsedSiderWidth}
-            collapsed={collapsed}
-            width={desktopExpandedSiderWidth}
-            className={classNames('!bg-2 layout-sider', {
-              collapsed: collapsed,
-            })}
-            style={
-              isMobile
-                ? {
-                    position: 'fixed',
-                    left: 0,
-                    zIndex: 100,
-                    transform: collapsed ? 'translateX(-100%)' : 'translateX(0)',
-                    transition: 'none',
-                    pointerEvents: collapsed ? 'none' : 'auto',
-                  }
-                : undefined
-            }
-          >
-            <ArcoLayout.Content className='layout-sider-content !flex !flex-1 !min-h-0 p-8px'>
-              <div className='flex h-full min-h-0 min-w-0 w-full flex-1'>
-                <div className='min-h-0 min-w-0 flex-1 w-full'>
-                  {React.isValidElement(sider)
-                    ? React.cloneElement(sider, {
-                        onSessionClick: () => {
-                          cleanupSiderTooltips();
-                          if (isMobile) setCollapsed(true);
-                        },
-                        collapsed,
-                      } as any)
-                    : sider}
+          {showPrimarySider ? (
+            <ArcoLayout.Sider
+              collapsedWidth={isMobile ? 0 : desktopCollapsedSiderWidth}
+              collapsed={collapsed}
+              width={desktopExpandedSiderWidth}
+              className={classNames('!bg-2 layout-sider', {
+                collapsed: collapsed,
+              })}
+              style={
+                isMobile
+                  ? {
+                      position: 'fixed',
+                      left: 0,
+                      zIndex: 100,
+                      transform: collapsed ? 'translateX(-100%)' : 'translateX(0)',
+                      transition: 'none',
+                      pointerEvents: collapsed ? 'none' : 'auto',
+                    }
+                  : undefined
+              }
+            >
+              <ArcoLayout.Content className='layout-sider-content !flex !flex-1 !min-h-0 p-8px'>
+                <div className='flex h-full min-h-0 min-w-0 w-full flex-1'>
+                  <div className='min-h-0 min-w-0 flex-1 w-full'>
+                    {React.isValidElement(sider)
+                      ? React.cloneElement(sider, {
+                          onSessionClick: () => {
+                            cleanupSiderTooltips();
+                            if (isMobile) setCollapsed(true);
+                          },
+                          collapsed,
+                        } as any)
+                      : sider}
+                  </div>
                 </div>
-              </div>
-            </ArcoLayout.Content>
-          </ArcoLayout.Sider>
+              </ArcoLayout.Content>
+            </ArcoLayout.Sider>
+          ) : null}
 
           <ArcoLayout.Content
             className={'bg-1 layout-content flex flex-col min-h-0'}
             onClick={() => {
-              if (isMobile && !collapsed) setCollapsed(true);
+              if (isMobile && showPrimarySider && !collapsed) setCollapsed(true);
             }}
             style={
               isMobile

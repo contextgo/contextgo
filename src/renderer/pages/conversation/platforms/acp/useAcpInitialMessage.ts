@@ -9,6 +9,7 @@ import type { TMessage } from '@/common/chat/chatLib';
 import { uuid } from '@/common/utils';
 import { emitter } from '@/renderer/utils/emitter';
 import { useEffect } from 'react';
+import type { TFunction } from 'i18next';
 
 type UseAcpInitialMessageParams = {
   conversationId: string;
@@ -16,6 +17,7 @@ type UseAcpInitialMessageParams = {
   setAiProcessing: (value: boolean) => void;
   checkAndUpdateTitle: (conversationId: string, input: string) => void;
   addOrUpdateMessage: (message: TMessage, prepend?: boolean) => void;
+  t: TFunction;
 };
 
 /**
@@ -28,6 +30,7 @@ export const useAcpInitialMessage = ({
   setAiProcessing,
   checkAndUpdateTitle,
   addOrUpdateMessage,
+  t,
 }: UseAcpInitialMessageParams): void => {
   useEffect(() => {
     const storageKey = `acp_initial_message_${conversationId}`;
@@ -39,6 +42,22 @@ export const useAcpInitialMessage = ({
     sessionStorage.removeItem(storageKey);
 
     const sendInitialMessage = async () => {
+      const showInitialMessageError = (errorMessage: string) => {
+        const message: TMessage = {
+          id: uuid(),
+          msg_id: uuid(),
+          conversation_id: conversationId,
+          type: 'tips',
+          position: 'center',
+          content: {
+            content: errorMessage,
+            type: 'error',
+          },
+          createdAt: Date.now() + 2,
+        };
+        addOrUpdateMessage(message, true);
+      };
+
       try {
         const initialMessage = JSON.parse(storedMessage);
         const { input, files } = initialMessage;
@@ -47,8 +66,20 @@ export const useAcpInitialMessage = ({
         // File references are added by the backend ACP agent (using actual copied paths)
         // Avoid two inconsistent sets of file references in the message
         const msg_id = uuid();
+        const userMessage: TMessage = {
+          id: msg_id,
+          msg_id,
+          conversation_id: conversationId,
+          type: 'text',
+          position: 'right',
+          content: {
+            content: input,
+          },
+          createdAt: Date.now(),
+        };
 
         // Start AI processing loading state (user message will be added via backend response)
+        addOrUpdateMessage(userMessage, true);
         setAiProcessing(true);
 
         // Send the message
@@ -64,26 +95,37 @@ export const useAcpInitialMessage = ({
           void checkAndUpdateTitle(conversationId, input);
           emitter.emit('chat.history.refresh');
         } else {
-          // Handle send failure
+          const resultMessage = result?.msg || t('guid.sendFailed');
+          const lowerMessage = resultMessage.toLowerCase();
           console.error('[ACP-FRONTEND] Failed to send initial message:', result);
-          // Create error message in UI
-          const errorMessage: TMessage = {
-            id: uuid(),
-            msg_id: uuid(),
-            conversation_id: conversationId,
-            type: 'tips',
-            position: 'center',
-            content: {
-              content: 'Failed to send message. Please try again.',
-              type: 'error',
-            },
-            createdAt: Date.now() + 2,
-          };
-          addOrUpdateMessage(errorMessage, true);
+          showInitialMessageError(
+            lowerMessage.includes('auth') || lowerMessage.includes('login') || lowerMessage.includes('api key')
+              ? t('acp.auth.failed', {
+                  backend,
+                  error: resultMessage,
+                })
+              : t('guid.sendFailedWithReason', {
+                  reason: resultMessage,
+                  defaultValue: resultMessage,
+                })
+          );
           setAiProcessing(false); // Stop loading state on failure
         }
       } catch (error) {
         console.error('Error sending initial message:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const lowerMessage = errorMessage.toLowerCase();
+        showInitialMessageError(
+          lowerMessage.includes('auth') || lowerMessage.includes('login') || lowerMessage.includes('api key')
+            ? t('acp.auth.failed', {
+                backend,
+                error: errorMessage,
+              })
+            : t('guid.sendFailedWithReason', {
+                reason: errorMessage,
+                defaultValue: errorMessage,
+              })
+        );
         setAiProcessing(false); // Stop loading state on error
       }
     };
@@ -91,5 +133,5 @@ export const useAcpInitialMessage = ({
     sendInitialMessage().catch((error) => {
       console.error('Failed to send initial message:', error);
     });
-  }, [conversationId, backend]);
+  }, [conversationId, backend, addOrUpdateMessage, checkAndUpdateTitle, setAiProcessing, t]);
 };

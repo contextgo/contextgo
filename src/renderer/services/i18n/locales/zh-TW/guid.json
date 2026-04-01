@@ -5,6 +5,8 @@
   "agentTabAutoSwitch": "Model not compatible with Gemini, auto-switched to {{fallback}}",
   "autoSwitchToAgent": "Gemini is not configured, auto-switching to {{agent}}",
   "autoSwitchedAgent": "{{from}} is not available, switched to {{to}}",
+  "sendFailed": "訊息傳送失敗，請重試。",
+  "sendFailedWithReason": "訊息傳送失敗：{{reason}}",
   "externalSessions": {
     "title": "接管外部 Session",
     "description": "在 ContextGo 外啟動且尚未接管的 CLI 會話會顯示在這裡。",

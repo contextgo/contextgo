@@ -119,11 +119,11 @@ const Main = () => {
 
   return (
     <Router
-      layout={
+      renderLayout={() => (
         <ConversationHistoryProvider>
           <Layout sider={<Sider />} />
         </ConversationHistoryProvider>
-      }
+      )}
     />
   );
 };

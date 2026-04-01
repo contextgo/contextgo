@@ -5,9 +5,6 @@
  */
 
 import type { IActionButton } from '../types';
-import { buildAgentSelectionCallbackToken, type ChannelSelectableAgent } from './agentSelection';
-
-export type GenericAgentButtonInfo = ChannelSelectableAgent;
 
 function row(...buttons: IActionButton[]): IActionButton[][] {
   return [buttons];
@@ -15,10 +12,7 @@ function row(...buttons: IActionButton[]): IActionButton[][] {
 
 export function buildMainMenuActionButtons(): IActionButton[][] {
   return [
-    [
-      { label: '🆕 New Chat', action: 'session.new' },
-      { label: '🔄 Agent', action: 'agent.show' },
-    ],
+    [{ label: '🆕 New Chat', action: 'session.new' }],
     [
       { label: '📊 Status', action: 'session.status' },
       { label: '❓ Help', action: 'help.show' },
@@ -90,26 +84,5 @@ export function buildToolConfirmationActionButtons(
       }))
     );
   }
-  return rows;
-}
-
-export function buildAgentSelectionActionButtons(
-  availableAgents: GenericAgentButtonInfo[],
-  currentAgentKey?: string
-): IActionButton[][] {
-  const rows: IActionButton[][] = [];
-
-  for (let index = 0; index < availableAgents.length; index += 2) {
-    rows.push(
-      availableAgents.slice(index, index + 2).map((agent) => ({
-        label: currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`,
-        action: 'agent.select',
-        params: {
-          agentKey: buildAgentSelectionCallbackToken(agent),
-        },
-      }))
-    );
-  }
-
   return rows;
 }

@@ -18,6 +18,7 @@ export const en = {
     description:
       'Agents stall for a simple reason: the context never arrives. ContextGo connects knowledge, tasks, conversations, and channels, so AI can keep working inside the flow you already use.',
     download_btn: 'Download',
+    docs_btn: 'Open Docs',
     connect_btn: 'Learn More',
   },
   philosophy: {

@@ -11,6 +11,7 @@ import {
   BUILTIN_IMAGE_GEN_ID,
 } from '@/common/config/storage';
 import { acpConversation } from '@/common/adapter/ipcBridge';
+import { getPublicDocsUrl, PUBLIC_DOC_SLUGS } from '@/common/update/publicUrls';
 import { ContextGoModal } from '@/renderer/components/base';
 import { Divider, Form, Tooltip, Message, Button, Dropdown, Menu, Switch } from '@arco-design/web-react';
 import { Help, Down, Plus } from '@icon-park/react';
@@ -45,7 +46,7 @@ const ModalMcpManagementSection: React.FC<{
   saveMcpServers: (serversOrUpdater: IMcpServer[] | ((prev: IMcpServer[]) => IMcpServer[])) => Promise<void>;
   isPageMode?: boolean;
 }> = ({ message, mcpServers, extensionMcpServers, saveMcpServers, isPageMode }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { agentInstallStatus, setAgentInstallStatus, isServerLoading, checkSingleServerInstallStatus } =
     useMcpAgentStatus();
   const { syncMcpToAgents, removeMcpFromAgents } = useMcpOperations(mcpServers, message);
@@ -356,7 +357,7 @@ const ModalMcpManagementSection: React.FC<{
 };
 
 const ToolsModalContent: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [mcpMessage, mcpMessageContext] = Message.useMessage({ maxCount: 10 });
   const [imageGenerationModel, setImageGenerationModel] = useState<
     IConfigStorageRefer['tools.imageGenerationModel'] | undefined
@@ -660,7 +661,7 @@ const ToolsModalContent: React.FC = () => {
                         <div>
                           {t('settings.needHelpTooltip')}
                           <a
-                            href='https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing'
+                            href={getPublicDocsUrl(i18n.language, PUBLIC_DOC_SLUGS.runtimeManagement)}
                             target='_blank'
                             rel='noopener noreferrer'
                             className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ml-4px'
@@ -672,7 +673,7 @@ const ToolsModalContent: React.FC = () => {
                       }
                     >
                       <a
-                        href='https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing'
+                        href={getPublicDocsUrl(i18n.language, PUBLIC_DOC_SLUGS.runtimeManagement)}
                         target='_blank'
                         rel='noopener noreferrer'
                         className='ml-8px text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] cursor-pointer'

@@ -52,12 +52,18 @@ export default function HomeClient({
             <span className='theme-text-tertiary'>{dict.hero.title_end}</span>
           </h1>
           <p className='theme-text-secondary mx-auto max-w-2xl text-xl'>{dict.hero.description}</p>
-          <div className='flex justify-center gap-4 pt-8'>
+          <div className='flex flex-wrap justify-center gap-4 pt-8'>
             <Link
               href={`/${lang}/download`}
               className='theme-button-primary inline-flex rounded-full px-8 py-3 font-medium transition-all hover:scale-105 active:scale-95'
             >
               {dict.hero.download_btn}
+            </Link>
+            <Link
+              href={`/${lang}/docs`}
+              className='theme-button-secondary theme-shadow-card inline-flex rounded-full px-8 py-3 font-medium transition-all'
+            >
+              {dict.hero.docs_btn}
             </Link>
             <Link
               href={`/${lang}/connect`}
@@ -157,7 +163,9 @@ export default function HomeClient({
                   href={`/${lang}${card.href}`}
                   className='theme-surface-secondary theme-shadow-card theme-border group rounded-[28px] border px-6 py-6 transition-transform duration-200 hover:-translate-y-1'
                 >
-                  <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>{card.eyebrow}</div>
+                  <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>
+                    {card.eyebrow}
+                  </div>
                   <h3 className='theme-text-primary mt-3 text-2xl font-semibold tracking-tight'>{card.title}</h3>
                   <p className='theme-text-secondary mt-3 text-sm leading-7'>{card.summary}</p>
                   <div className='theme-text-primary mt-5 inline-flex items-center gap-2 text-sm font-medium'>

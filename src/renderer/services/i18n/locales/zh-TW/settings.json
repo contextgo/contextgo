@@ -926,7 +926,7 @@
   "simpleModeTip": "選擇已偵測到的 CLI 並自訂名稱。如需設定環境變數等更多選項，請切換到進階模式。",
   "runtimeManager": {
     "title": "執行環境",
-    "description": "在這裡查看 Claude Code、Codex 等本機命令列助手是否已安裝，也可以手動指定啟動路徑、補上登入，並檢查目前是否能正常使用。",
+    "description": "在這裡查看哪些本地 Agent 執行環境已可用、還能接管多少外部 Session、它們的設定放在哪裡，並對缺失但支援託管安裝的執行環境直接一鍵安裝。",
     "refresh": "重新整理狀態",
     "note": "如果你手動填寫了路徑，ContextGo 會優先使用這裡的設定。「可用性檢查」會依照目前儲存的路徑，確認這個執行環境現在是否真的能啟動。",
     "loadFailed": "載入執行環境狀態失敗。",
@@ -969,21 +969,71 @@
       "checking": "檢查中..."
     },
     "runtime": {
-      "claude": { "description": "Anthropic Claude Code 命令列工具。" },
-      "codex": { "description": "OpenAI Codex 命令列工具，適合本機編碼與修改專案。" },
-      "qwen": { "description": "Qwen Code 命令列工具。" },
-      "codebuddy": { "description": "Tencent CodeBuddy Code 命令列工具。" },
-      "opencode": { "description": "OpenCode 命令列工具。" },
-      "goose": { "description": "Block Goose 命令列工具。" },
-      "auggie": { "description": "Augment Code 命令列工具。" },
-      "kimi": { "description": "Kimi 命令列工具。" },
-      "iflow": { "description": "iFlow 命令列工具。" },
-      "droid": { "description": "Factory Droid 命令列工具。" },
-      "copilot": { "description": "GitHub Copilot 命令列工具。" },
-      "qoder": { "description": "Qoder 命令列工具。" },
-      "vibe": { "description": "Mistral Vibe 命令列工具。" },
-      "cursor": { "description": "Cursor Agent 命令列工具。" }
-    }
+      "claude": {
+        "description": "Anthropic Claude Code 命令列工具。"
+      },
+      "codex": {
+        "description": "OpenAI Codex 命令列工具，適合本機編碼與修改專案。"
+      },
+      "qwen": {
+        "description": "Qwen Code 命令列工具。"
+      },
+      "codebuddy": {
+        "description": "Tencent CodeBuddy Code 命令列工具。"
+      },
+      "opencode": {
+        "description": "OpenCode 命令列工具。"
+      },
+      "goose": {
+        "description": "Block Goose 命令列工具。"
+      },
+      "auggie": {
+        "description": "Augment Code 命令列工具。"
+      },
+      "kimi": {
+        "description": "Kimi 命令列工具。"
+      },
+      "iflow": {
+        "description": "iFlow 命令列工具。"
+      },
+      "droid": {
+        "description": "Factory Droid 命令列工具。"
+      },
+      "copilot": {
+        "description": "GitHub Copilot 命令列工具。"
+      },
+      "qoder": {
+        "description": "Qoder 命令列工具。"
+      },
+      "vibe": {
+        "description": "Mistral Vibe 命令列工具。"
+      },
+      "cursor": {
+        "description": "Cursor Agent 命令列工具。"
+      }
+    },
+    "revealPathFailed": "開啟系統檔案管理器失敗。",
+    "openConfigFailed": "開啟執行環境設定位置失敗。",
+    "installFailed": "安裝這個執行環境失敗。",
+    "installSuccess": "執行環境已安裝，且已重新整理偵測狀態。",
+    "externalSessionCount": "可接管 Session 數",
+    "externalSessionUnsupported": "暫不支援",
+    "revealPath": "定位",
+    "configLocation": "設定位置",
+    "openConfig": "開啟",
+    "installNow": "一鍵安裝",
+    "summaryCards": {
+      "ready": "可直接使用",
+      "detected": "本機已偵測到",
+      "sessions": "可接管 Session",
+      "missing": "尚未安裝"
+    },
+    "activeSectionTitle": "已偵測到或已設定",
+    "activeSectionDescription": "這些執行環境已經在本機偵測到，或已手動指定啟動路徑。",
+    "emptyActive": "還沒有偵測到或設定任何執行環境。",
+    "missingSectionTitle": "尚未安裝",
+    "missingSectionDescription": "這些執行環境目前尚未在本機準備好；如果支援託管安裝，可以直接在這裡一鍵安裝。",
+    "emptyMissing": "所有內建執行環境都已偵測到或已手動設定。"
   },
   "command": "指令",
   "args": "參數",

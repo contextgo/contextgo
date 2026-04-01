@@ -1,4 +1,15 @@
-export type SpacePrimaryView = 'overview' | 'docs' | 'canvas' | 'context';
+export type SpacePrimaryView = 'overview' | 'docs' | 'canvas' | 'context' | 'members';
+
+export type SpaceMemberRole = 'owner' | 'admin' | 'editor' | 'reviewer' | 'viewer';
+
+export type SpaceMemberSummary = {
+  id: string;
+  displayName: string;
+  secondaryText?: string;
+  avatarUrl?: string | null;
+  role: SpaceMemberRole;
+  status: 'active';
+};
 
 export type SpaceSelectionKind =
   | 'document'

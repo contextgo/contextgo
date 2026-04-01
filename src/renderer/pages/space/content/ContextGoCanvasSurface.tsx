@@ -1,35 +1,36 @@
 import React from 'react';
 import { Button, Card, Empty, List, Space, Tag, Typography } from '@arco-design/web-react';
 import { useEffect, useMemo, useState } from 'react';
-import type {
-  AffineBoardRef,
-  AffineEmbedDescriptor,
-  AffineProviderStatus,
-  IAffineSpaceProvider,
-} from './IAffineSpaceProvider';
 import type { IContextMemoryCandidateView } from '@/common/adapter/ipcBridge';
-import AffineEmbedContainer from './AffineEmbedContainer';
+import type {
+  ContextGoBoardRef,
+  ContextGoEmbedDescriptor,
+  ContextGoSurfaceStatus,
+  IContextGoSpaceProvider,
+} from './IContextGoSpaceProvider';
+import ContextGoEmbedContainer from './ContextGoEmbedContainer';
+import ContextGoNativeCanvasHost from './native/ContextGoNativeCanvasHost';
 
 const { Paragraph, Text } = Typography;
 
-type AffineCanvasSurfaceProps = {
+type ContextGoCanvasSurfaceProps = {
   spaceId: string;
-  boards: readonly AffineBoardRef[];
-  provider: IAffineSpaceProvider;
-  status?: AffineProviderStatus;
+  boards: readonly ContextGoBoardRef[];
+  provider: IContextGoSpaceProvider;
+  status?: ContextGoSurfaceStatus;
   selectionSummary: string;
   selectionCount: number;
   candidateCards: readonly IContextMemoryCandidateView[];
   reviewingCandidateId?: string | null;
-  onCreated?: (board: AffineBoardRef) => void;
+  onCreated?: (board: ContextGoBoardRef) => void;
   onAskAgentWithSelection: () => Promise<void>;
   onPromoteCandidate: (candidateId: string, destination: 'document' | 'board', boardId?: string) => Promise<void>;
   onReviewCandidate: (candidateId: string, action: 'approve' | 'reject') => Promise<void>;
 };
 
-export default function AffineCanvasSurface(props: AffineCanvasSurfaceProps) {
+export default function ContextGoCanvasSurface(props: ContextGoCanvasSurfaceProps) {
   const [activeBoardId, setActiveBoardId] = useState<string | undefined>(props.boards[0]?.id);
-  const [embedDescriptor, setEmbedDescriptor] = useState<AffineEmbedDescriptor | undefined>();
+  const [embedDescriptor, setEmbedDescriptor] = useState<ContextGoEmbedDescriptor | undefined>();
 
   useEffect(() => {
     if (!activeBoardId) {
@@ -70,6 +71,7 @@ export default function AffineCanvasSurface(props: AffineCanvasSurfaceProps) {
   );
   const boardPromotionLabel = activeBoard ? `Promote to ${activeBoard.title}` : 'Promote to New Board';
   const activeBoardCards = [...(activeBoard?.cards ?? [])];
+  const embeddedCanvasSrc = useMemo(() => embedDescriptor?.src, [embedDescriptor?.src]);
 
   const renderCandidateCards = () => {
     return (
@@ -156,14 +158,14 @@ export default function AffineCanvasSurface(props: AffineCanvasSurfaceProps) {
     );
   };
 
-  if (props.status?.mode === 'embedded' && activeBoardId && embedDescriptor) {
+  if (props.status?.mode === 'embedded' && embeddedCanvasSrc) {
     return (
       <Space direction='vertical' size='medium' className='w-full'>
-        <Card size='small' title='AFFiNE Canvas Surface'>
+        <Card size='small' title='Space Canvas'>
           <Space direction='vertical' size='small' className='w-full'>
             <Tag color='green'>{props.status.mode}</Tag>
             <Text type='secondary'>
-              {props.status?.webAppUrl ? `Connected to ${props.status.webAppUrl}` : 'AFFiNE URL not configured yet'}
+              {props.status?.webAppUrl ? `Connected to ${props.status.webAppUrl}` : 'Canvas URL not configured yet'}
             </Text>
             <Paragraph className='mb-0'>{props.selectionSummary}</Paragraph>
             <Space>
@@ -174,13 +176,59 @@ export default function AffineCanvasSurface(props: AffineCanvasSurfaceProps) {
               <Button size='small' onClick={() => void handleCreate()}>
                 New Board
               </Button>
-              <Button size='small' onClick={() => void props.provider.openBoard(props.spaceId, activeBoardId)}>
-                Open in AFFiNE
+              <Button size='small' onClick={() => void props.provider.openBoard(props.spaceId, activeBoardId || props.spaceId)}>
+                Open Canvas
               </Button>
             </Space>
           </Space>
         </Card>
-        <AffineEmbedContainer descriptor={embedDescriptor} height={560} />
+        <ContextGoEmbedContainer
+          descriptor={{
+            title: embedDescriptor?.title || 'Space Canvas',
+            mode: 'iframe',
+            src: embeddedCanvasSrc,
+          }}
+          height={760}
+        />
+      </Space>
+    );
+  }
+
+  if (props.status?.mode === 'shell') {
+    return (
+      <Space direction='vertical' size='medium' className='w-full'>
+        <ContextGoNativeCanvasHost
+          spaceId={props.spaceId}
+          boardId={activeBoardId}
+          selectionSummary={props.selectionSummary}
+        />
+        <Card size='small' title={`Boards (${props.boards.length})`}>
+          {props.boards.length === 0 ? (
+            <Empty description='No boards yet' />
+          ) : (
+            <List
+              dataSource={[...props.boards]}
+              render={(item) => (
+                <List.Item key={item.id}>
+                  <Space className='w-full justify-between'>
+                    <Space direction='vertical' size={2} className='w-full'>
+                      <Text>{item.title}</Text>
+                      {item.preview ? <Text type='secondary'>{item.preview}</Text> : null}
+                    </Space>
+                    <Space>
+                      <Button size='mini' onClick={() => setActiveBoardId(item.id)}>
+                        Select
+                      </Button>
+                      <Button size='mini' onClick={() => void props.provider.openBoard(props.spaceId, item.id)}>
+                        Open
+                      </Button>
+                    </Space>
+                  </Space>
+                </List.Item>
+              )}
+            />
+          )}
+        </Card>
         {renderActiveBoardPreview()}
         {renderCandidateCards()}
       </Space>
@@ -189,11 +237,11 @@ export default function AffineCanvasSurface(props: AffineCanvasSurfaceProps) {
 
   return (
     <Space direction='vertical' size='medium' className='w-full'>
-      <Card size='small' title='AFFiNE Canvas Surface'>
+      <Card size='small' title='Space Canvas'>
         <Space direction='vertical' size='small' className='w-full'>
           <Tag color='green'>{props.status?.mode || 'shell'}</Tag>
           <Text type='secondary'>
-            {props.status?.webAppUrl ? `Connected to ${props.status.webAppUrl}` : 'AFFiNE URL not configured yet'}
+            {props.status?.webAppUrl ? `Connected to ${props.status.webAppUrl}` : 'Canvas URL not configured yet'}
           </Text>
           <Paragraph className='mb-0'>{props.selectionSummary}</Paragraph>
           <Space>

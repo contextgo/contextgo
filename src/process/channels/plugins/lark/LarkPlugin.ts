@@ -415,7 +415,6 @@ export class LarkPlugin extends BasePlugin {
       'session.new': { type: 'system', action: 'session.new' },
       'session.status': { type: 'system', action: 'session.status' },
       'help.show': { type: 'system', action: 'help.show' },
-      'agent.show': { type: 'system', action: 'agent.show' },
       'pairing.check': { type: 'platform', action: 'pairing.check' },
     };
     return menuActions[text] || null;
