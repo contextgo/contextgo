@@ -357,6 +357,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install cloud Python dependencies
+        run: python3 -m pip install -r apps/cloud/requirements.txt
+
       - name: Run cloud tests
         run: python3 -m unittest discover -s apps/cloud/tests
 
