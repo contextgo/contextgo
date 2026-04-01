@@ -231,14 +231,22 @@ const migration_v8: IMigration = {
   version: 8,
   name: 'Add source column to conversations',
   up: (db) => {
-    // Add source column to conversations table
-    db.exec(`ALTER TABLE conversations ADD COLUMN source TEXT CHECK(source IN ('aionui', 'telegram'))`);
+    const tableInfo = db.prepare('PRAGMA table_info(conversations)').all() as Array<{ name: string }>;
+    const hasSource = tableInfo.some((column) => column.name === 'source');
+
+    if (!hasSource) {
+      db.exec(`ALTER TABLE conversations ADD COLUMN source TEXT CHECK(source IN ('aionui', 'telegram'))`);
+    }
 
     // Create index for efficient source-based queries
     db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source_updated ON conversations(source, updated_at DESC)');
 
-    console.log('[Migration v8] Added source column to conversations table');
+    console.log(
+      hasSource
+        ? '[Migration v8] source column already exists, created indexes only'
+        : '[Migration v8] Added source column to conversations table'
+    );
   },
   down: (db) => {
     // SQLite doesn't support DROP COLUMN directly, need to recreate table
@@ -809,13 +817,147 @@ const migration_v23: IMigration = {
         FOREIGN KEY (source_external_session_id) REFERENCES external_sessions(id) ON DELETE SET NULL,
         FOREIGN KEY (source_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
       )`);
-    db.exec('CREATE INDEX IF NOT EXISTS idx_channel_control_leases_updated_at ON channel_control_leases(updated_at DESC)');
+    db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_channel_control_leases_updated_at ON channel_control_leases(updated_at DESC)'
+    );
     console.log('[Migration v23] Added channel_control_leases table');
   },
   down: (db) => {
     db.exec('DROP INDEX IF EXISTS idx_channel_control_leases_updated_at');
     db.exec('DROP TABLE IF EXISTS channel_control_leases');
     console.log('[Migration v23] Rolled back: Removed channel_control_leases table');
+  },
+};
+
+const migration_v24: IMigration = {
+  version: 24,
+  name: 'Add space members and permissions policy',
+  up: (db) => {
+    const tableInfo = db.prepare('PRAGMA table_info(spaces)').all() as Array<{ name: string }>;
+    const hasMembersJson = tableInfo.some((column) => column.name === 'members_json');
+    const hasPermissionsPolicyJson = tableInfo.some((column) => column.name === 'permissions_policy_json');
+
+    if (!hasMembersJson) {
+      db.exec(`ALTER TABLE spaces ADD COLUMN members_json TEXT NOT NULL DEFAULT '[]'`);
+    }
+
+    if (!hasPermissionsPolicyJson) {
+      db.exec(`ALTER TABLE spaces ADD COLUMN permissions_policy_json TEXT NOT NULL DEFAULT '{}'`);
+    }
+
+    console.log('[Migration v24] Added space members and permissions policy columns');
+  },
+  down: (_db) => {
+    console.log('[Migration v24] Rollback skipped (SQLite column removal not supported directly)');
+  },
+};
+
+const migration_v25: IMigration = {
+  version: 25,
+  name: 'Add space provider ref',
+  up: (db) => {
+    const tableInfo = db.prepare('PRAGMA table_info(spaces)').all() as Array<{ name: string }>;
+    const hasProviderRefJson = tableInfo.some((column) => column.name === 'provider_ref_json');
+
+    if (!hasProviderRefJson) {
+      db.exec('ALTER TABLE spaces ADD COLUMN provider_ref_json TEXT');
+    }
+
+    console.log('[Migration v25] Added space provider ref column');
+  },
+  down: (_db) => {
+    console.log('[Migration v25] Rollback skipped (SQLite column removal not supported directly)');
+  },
+};
+
+const migration_v26: IMigration = {
+  version: 26,
+  name: 'Relax conversations source constraint for local contextgo conversations',
+  up: (db) => {
+    db.exec(`CREATE TABLE IF NOT EXISTS conversations_new (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex', 'openclaw-gateway', 'nanobot', 'group')),
+        extra TEXT NOT NULL,
+        model TEXT,
+        status TEXT CHECK(status IN ('pending', 'running', 'finished')),
+        source TEXT,
+        channel_chat_id TEXT,
+        external_session_id TEXT,
+        root_run_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`);
+    db.exec(`INSERT INTO conversations_new (
+        id, user_id, name, type, extra, model, status, source, channel_chat_id,
+        external_session_id, root_run_id, created_at, updated_at
+      )
+      SELECT
+        id, user_id, name, type, extra, model, status, source, channel_chat_id,
+        external_session_id, root_run_id, created_at, updated_at
+      FROM conversations`);
+    db.exec('DROP TABLE conversations');
+    db.exec('ALTER TABLE conversations_new RENAME TO conversations');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source_updated ON conversations(source, updated_at DESC)');
+    db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_conversations_source_chat ON conversations(source, channel_chat_id, updated_at DESC)'
+    );
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_external_session ON conversations(external_session_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_root_run ON conversations(root_run_id)');
+
+    console.log('[Migration v26] Removed legacy conversations.source CHECK constraint');
+  },
+  down: (db) => {
+    db.exec(`UPDATE conversations
+      SET source = NULL
+      WHERE source IS NOT NULL AND source NOT IN ('aionui', 'telegram', 'lark', 'dingtalk')`);
+    db.exec(`CREATE TABLE IF NOT EXISTS conversations_rollback (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex', 'openclaw-gateway', 'nanobot')),
+        extra TEXT NOT NULL,
+        model TEXT,
+        status TEXT CHECK(status IN ('pending', 'running', 'finished')),
+        source TEXT CHECK(source IS NULL OR source IN ('aionui', 'telegram', 'lark', 'dingtalk')),
+        channel_chat_id TEXT,
+        external_session_id TEXT,
+        root_run_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`);
+    db.exec(`INSERT INTO conversations_rollback (
+        id, user_id, name, type, extra, model, status, source, channel_chat_id,
+        external_session_id, root_run_id, created_at, updated_at
+      )
+      SELECT
+        id, user_id, name, type, extra, model, status, source, channel_chat_id,
+        external_session_id, root_run_id, created_at, updated_at
+      FROM conversations
+      WHERE type != 'group'`);
+    db.exec('DROP TABLE conversations');
+    db.exec('ALTER TABLE conversations_rollback RENAME TO conversations');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source ON conversations(source)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_source_updated ON conversations(source, updated_at DESC)');
+    db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_conversations_source_chat ON conversations(source, channel_chat_id, updated_at DESC)'
+    );
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_external_session ON conversations(external_session_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_root_run ON conversations(root_run_id)');
+
+    console.log('[Migration v26] Restored legacy conversations.source CHECK constraint');
   },
 };
 
@@ -1018,7 +1160,7 @@ export const ALL_MIGRATIONS: IMigration[] = [
   migration_v1, migration_v2, migration_v3, migration_v4, migration_v5, migration_v6,
   migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12,
   migration_v13, migration_v14, migration_v19, migration_v21, migration_v22,
-  migration_v23,
+  migration_v23, migration_v24, migration_v25, migration_v26,
 ];
 
 /**

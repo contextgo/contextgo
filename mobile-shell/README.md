@@ -32,7 +32,7 @@ They do not try to run the Electron main process on mobile. Instead, they:
 2. load that URL inside a native WebView
 3. persist the last successful endpoint locally
 
-The current shells default to `https://remote.contextgo.io/remote/devices` on first launch and keep custom host entry as a secondary action for direct or self-hosted access.
+The current shells start on a native connection screen on first launch. From there the user can open Official Remote at `https://remote.contextgo.io/remote/devices` or enter a custom host for direct or self-hosted access.
 
 In the intended long-term product model:
 

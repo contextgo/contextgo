@@ -35,6 +35,7 @@ vi.mock('../../src/common', () => ({
       listExternalSessions: makeChannel('listExternalSessions'),
       importExternalSession: makeChannel('importExternalSession'),
       refreshCustomAgents: makeChannel('refreshCustomAgents'),
+      installManagedRuntime: makeChannel('installManagedRuntime'),
       checkAgentHealth: makeChannel('checkAgentHealth'),
       getMode: makeChannel('getMode'),
       getModelInfo: makeChannel('getModelInfo'),
@@ -48,7 +49,11 @@ vi.mock('../../src/common', () => ({
 }));
 
 vi.mock('../../src/process/agent/acp/AcpDetector', () => ({
-  acpDetector: { getDetectedAgents: vi.fn(() => []), refreshCustomAgents: vi.fn(async () => {}) },
+  acpDetector: {
+    getDetectedAgents: vi.fn(() => []),
+    refreshCustomAgents: vi.fn(async () => {}),
+    refreshDetectedAgents: vi.fn(async () => {}),
+  },
 }));
 
 const processConfigGetMock = vi.fn(async () => undefined);
@@ -106,6 +111,17 @@ vi.mock('../../src/process/utils/mainLogger', () => ({
 
 vi.mock('../../src/process/utils/tray', () => ({
   refreshTrayMenu: vi.fn(async () => {}),
+}));
+
+const safeExecMock = vi.fn(async () => ({ stdout: '', stderr: '' }));
+const getEnhancedEnvMock = vi.fn(() => ({ PATH: '/usr/bin' }));
+
+vi.mock('../../src/process/utils/safeExec', () => ({
+  safeExec: (...args: unknown[]) => safeExecMock(...args),
+}));
+
+vi.mock('../../src/process/utils/shellEnv', () => ({
+  getEnhancedEnv: (...args: unknown[]) => getEnhancedEnvMock(...args),
 }));
 
 const listSessionsMock = vi.fn(async () => []);
@@ -227,6 +243,25 @@ describe('acpConversationBridge', () => {
       conversationId: 'imported-conversation',
       action: 'created',
       source: 'contextgo',
+    });
+  });
+
+  it('runs the managed install command and refreshes runtime detection', async () => {
+    const result = await handlers['installManagedRuntime']({ backend: 'codex' });
+
+    expect(safeExecMock).toHaveBeenCalledWith('npm install -g @openai/codex', {
+      timeout: 15 * 60 * 1000,
+      env: { PATH: '/usr/bin' },
+    });
+    expect(vi.mocked(acpDetector.refreshDetectedAgents)).toHaveBeenCalled();
+    expect(result).toEqual({
+      success: true,
+      data: {
+        backend: 'codex',
+        command: 'npm install -g @openai/codex',
+        stdout: '',
+        stderr: '',
+      },
     });
   });
 

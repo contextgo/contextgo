@@ -15,6 +15,10 @@ export default function ContentArticlePage({
   secondaryAction,
   sidebarTitle,
   sidebarBody,
+  version,
+  versionLabel,
+  repositoryUrl,
+  openVersionedDocsLabel,
 }: {
   article: ContentArticle;
   backHref: string;
@@ -24,6 +28,10 @@ export default function ContentArticlePage({
   secondaryAction: { href: string; label: string };
   sidebarTitle: string;
   sidebarBody: string;
+  version?: string;
+  versionLabel?: string;
+  repositoryUrl?: string;
+  openVersionedDocsLabel?: string;
 }) {
   return (
     <section className='theme-page px-4 py-20'>
@@ -32,7 +40,9 @@ export default function ContentArticlePage({
           <Link href={backHref} className='theme-text-tertiary text-sm font-medium hover:theme-text-primary'>
             {backLabel}
           </Link>
-          <div className='theme-text-tertiary mt-6 text-xs font-semibold uppercase tracking-[0.22em]'>{article.eyebrow}</div>
+          <div className='theme-text-tertiary mt-6 text-xs font-semibold uppercase tracking-[0.22em]'>
+            {article.eyebrow}
+          </div>
           <h1 className='theme-text-primary mt-3 max-w-4xl text-4xl font-semibold tracking-[-0.04em] md:text-5xl'>
             {article.title}
           </h1>
@@ -73,6 +83,11 @@ export default function ContentArticlePage({
             <div className='theme-card-gradient theme-shadow-card theme-border rounded-[28px] border p-6'>
               <div className='theme-text-primary text-lg font-semibold'>{sidebarTitle}</div>
               <p className='theme-text-secondary mt-3 text-sm leading-7'>{sidebarBody}</p>
+              {version ? (
+                <div className='theme-border theme-text-secondary mt-4 rounded-[18px] border px-4 py-3 text-sm'>
+                  {versionLabel}: v{version}
+                </div>
+              ) : null}
               <div className='mt-5 flex flex-col gap-3'>
                 <Link
                   href={primaryAction.href}
@@ -86,6 +101,16 @@ export default function ContentArticlePage({
                 >
                   {secondaryAction.label}
                 </Link>
+                {repositoryUrl && openVersionedDocsLabel ? (
+                  <a
+                    href={repositoryUrl}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='theme-button-secondary inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition-colors'
+                  >
+                    {openVersionedDocsLabel}
+                  </a>
+                ) : null}
               </div>
             </div>
           </aside>

@@ -8,6 +8,7 @@ import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import { cloud, shell, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import { ConfigStorage } from '@/common/config/storage';
 import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
+import { getPublicDocsUrl, PUBLIC_DOC_SLUGS } from '@/common/update/publicUrls';
 import ContextGoModal from '@/renderer/components/base/ContextGoModal';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { isElectronDesktop } from '@/renderer/utils/platform';
@@ -54,7 +55,7 @@ const CLOUD_REMOTE_PROVIDERS: CloudAuthProviderId[] = ['github', 'google'];
  * WebUI settings content component
  */
 const WebuiModalContent: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
 
@@ -842,7 +843,7 @@ const WebuiModalContent: React.FC = () => {
                   className='text-primary hover:underline cursor-pointer bg-transparent border-none p-0 text-12px'
                   onClick={() =>
                     shell.openExternal
-                      .invoke('https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md#remote-access')
+                      .invoke(getPublicDocsUrl(i18n.language, PUBLIC_DOC_SLUGS.remoteAccess))
                       .catch(console.error)
                   }
                 >

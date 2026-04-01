@@ -158,7 +158,7 @@ function resolveButtonStyle(button: IActionButton): ButtonStyle {
   if (button.action === 'system.confirm' && button.params?.value === 'cancel') {
     return ButtonStyle.Danger;
   }
-  if (button.action === 'system.confirm' || button.action === 'agent.select') {
+  if (button.action === 'system.confirm') {
     return ButtonStyle.Primary;
   }
   return ButtonStyle.Secondary;

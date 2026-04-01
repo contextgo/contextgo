@@ -498,14 +498,14 @@ jobs:
           ARCHIVE_REF: ${{ github.sha }}
         run: |
           set -euo pipefail
-      
+
           WORKSPACE="${GITHUB_WORKSPACE}"
           ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
           EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
-      
+
           find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           rm -rf "${EXTRACT_DIR}"
-      
+
           curl --fail --show-error --silent --location --http1.1 \
             --retry 8 \
             --retry-all-errors \
@@ -516,16 +516,16 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
             -o "${ARCHIVE}"
-      
+
           mkdir -p "${EXTRACT_DIR}"
           tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
-      
+
           SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
           if [ -z "${SOURCE_DIR}" ]; then
             echo "::error::Failed to unpack source archive"
             exit 1
           fi
-      
+
           cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
 
       - name: Setup Node.js
@@ -785,14 +785,14 @@ jobs:
           ARCHIVE_REF: ${{ github.sha }}
         run: |
           set -euo pipefail
-      
+
           WORKSPACE="${GITHUB_WORKSPACE}"
           ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
           EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
-      
+
           find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           rm -rf "${EXTRACT_DIR}"
-      
+
           curl --fail --show-error --silent --location --http1.1 \
             --retry 8 \
             --retry-all-errors \
@@ -803,16 +803,16 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
             -o "${ARCHIVE}"
-      
+
           mkdir -p "${EXTRACT_DIR}"
           tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
-      
+
           SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
           if [ -z "${SOURCE_DIR}" ]; then
             echo "::error::Failed to unpack source archive"
             exit 1
           fi
-      
+
           cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
 
       - name: Get version for release
@@ -850,6 +850,11 @@ jobs:
       - name: Verify release assets
         shell: bash
         run: bash scripts/verify-release-assets.sh release-assets
+
+      - name: Setup Node.js for release docs sync
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Generate public release notes
         shell: bash
@@ -889,3 +894,36 @@ jobs:
           draft: false
           make_latest: true
           prerelease: ${{ contains(steps.version.outputs.tag_name, 'beta') || contains(steps.version.outputs.tag_name, 'alpha') || contains(steps.version.outputs.tag_name, 'rc') }}
+
+      - name: Sync versioned docs to public release repository
+        shell: bash
+        env:
+          PUBLISH_TOKEN: ${{ secrets.GH_TOKEN != '' && secrets.GH_TOKEN || github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag_name }}
+          SOURCE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          TARGET_DIR="${RUNNER_TEMP}/contextgo-release-repo"
+          AUTH_REMOTE="https://x-access-token:${PUBLISH_TOKEN}@github.com/${PUBLIC_RELEASE_REPOSITORY}.git"
+
+          rm -rf "${TARGET_DIR}"
+          git clone "${AUTH_REMOTE}" "${TARGET_DIR}"
+
+          npx --yes tsx scripts/release/export-release-docs.ts \
+            --target "${TARGET_DIR}" \
+            --version "${RELEASE_TAG}" \
+            --source-ref "${SOURCE_REF}"
+
+          cd "${TARGET_DIR}"
+
+          if [ -z "$(git status --porcelain -- docs)" ]; then
+            echo "No docs changes to publish."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          git commit -m "docs(release): sync versioned docs for ${RELEASE_TAG}"
+          git push origin HEAD:main

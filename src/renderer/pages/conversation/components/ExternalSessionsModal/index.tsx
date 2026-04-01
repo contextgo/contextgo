@@ -13,7 +13,8 @@ import { Down, Refresh, Right } from '@icon-park/react';
 import React, { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useConversationTabs } from '../hooks/ConversationTabsContext';
+import { useConversationTabs } from '../../hooks/ConversationTabsContext';
+import styles from './ExternalSessionsModal.module.css';
 
 type ExternalSessionsModalProps = {
   visible: boolean;
@@ -195,10 +196,7 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
   };
 
   const renderSessionCard = (session: ExternalSessionSummary) => (
-    <div
-      key={`${session.provider}:${session.sessionId}`}
-      className='flex items-center gap-14px rounded-18px border border-b-base bg-2 px-16px py-14px shadow-[0_12px_30px_rgba(15,23,42,0.06)]'
-    >
+    <div key={`${session.provider}:${session.sessionId}`} className={styles.sessionCard}>
       <div className='min-w-0 flex-1'>
         <div className='flex items-center gap-8px flex-wrap'>
           <Tag size='small' color='arcoblue'>
@@ -206,14 +204,10 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
               defaultValue: session.provider,
             })}
           </Tag>
-          <span className='min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-14px font-600 text-t-primary'>
-            {session.title}
-          </span>
+          <span className={styles.sessionTitle}>{session.title}</span>
         </div>
-        <div className='mt-4px overflow-hidden text-ellipsis whitespace-nowrap text-12px text-t-secondary'>
-          {session.workspace}
-        </div>
-        <div className='mt-4px overflow-hidden text-ellipsis whitespace-nowrap text-12px text-t-secondary'>
+        <div className={styles.sessionMeta}>{session.workspace}</div>
+        <div className={styles.sessionMeta}>
           {t('guid.externalSessions.updatedAt', {
             defaultValue: 'Updated {{time}}',
             time: new Date(session.updatedAt).toLocaleString(),
@@ -261,7 +255,7 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
           maxHeight: 'calc(100vh - 136px)',
         }}
       >
-        <div className='flex min-h-220px flex-col gap-12px'>
+        <div className={styles.modalBody}>
           <div className='flex items-start justify-between gap-12px'>
             <Typography.Paragraph className='!mb-0 text-t-secondary'>
               {t('guid.externalSessions.description', {
@@ -284,29 +278,32 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
             </Button>
           </div>
 
-          <Tabs
-            activeTab={activeFilter}
-            size='small'
-            type='capsule'
-            onChange={(key) => {
-              setActiveFilter(key as ExternalSessionFilter);
-            }}
-          >
-            {FILTER_ORDER.map((filter) => (
-              <Tabs.TabPane
-                key={filter}
-                title={
-                  filter === 'all'
-                    ? t('guid.externalSessions.filters.all', {
-                        defaultValue: 'All',
-                      })
-                    : t(`guid.externalSessions.providers.${filter}`, {
-                        defaultValue: filter,
-                      })
-                }
-              />
-            ))}
-          </Tabs>
+          <div className={styles.filterRail}>
+            <Tabs
+              className={styles.filterTabs}
+              activeTab={activeFilter}
+              size='small'
+              type='rounded'
+              onChange={(key) => {
+                setActiveFilter(key as ExternalSessionFilter);
+              }}
+            >
+              {FILTER_ORDER.map((filter) => (
+                <Tabs.TabPane
+                  key={filter}
+                  title={
+                    filter === 'all'
+                      ? t('guid.externalSessions.filters.all', {
+                          defaultValue: 'All',
+                        })
+                      : t(`guid.externalSessions.providers.${filter}`, {
+                          defaultValue: filter,
+                        })
+                  }
+                />
+              ))}
+            </Tabs>
+          </div>
 
           {loading && filteredSessions.length === 0 && sessions.length === 0 ? (
             <div className='py-20px text-center text-13px text-t-secondary'>
@@ -315,11 +312,11 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
               })}
             </div>
           ) : activeFilter === 'openclaw-gateway' && openclawSessionGroups.length > 0 ? (
-            <div className='flex flex-col gap-14px max-h-420px overflow-y-auto'>
+            <div className={styles.groupList}>
               {openclawSessionGroups.map(({ agent, sessions: agentSessions }) => (
                 <div key={agent.agentId} className='flex flex-col gap-8px'>
                   <div
-                    className='flex cursor-pointer items-center gap-8px rounded-16px border border-b-base bg-fill-1 px-14px py-12px shadow-[0_10px_24px_rgba(15,23,42,0.04)]'
+                    className={styles.groupHeader}
                     onClick={() => {
                       toggleOpenClawAgentGroup(agent.agentId);
                     }}
@@ -329,27 +326,20 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
                     ) : (
                       <Right size={16} className='shrink-0 text-t-secondary' />
                     )}
-                    <span className='min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-14px font-600 text-t-primary'>
-                      {agent.agentName}
-                    </span>
+                    <span className={styles.groupTitle}>{agent.agentName}</span>
                     <Tag size='small' color='gray'>
                       {String(agentSessions.length)}
                     </Tag>
                   </div>
                   {expandedOpenClawAgents.includes(agent.agentId) ? (
-                    <div className='flex flex-col gap-8px pl-26px'>
-                      <div className='overflow-hidden text-ellipsis whitespace-nowrap text-12px text-t-secondary'>
-                        {agent.workspace || agentSessions[0]?.workspace || ''}
-                      </div>
+                    <div className={styles.groupChildren}>
+                      <div className={styles.sessionMeta}>{agent.workspace || agentSessions[0]?.workspace || ''}</div>
                       {agentSessions.length > 0 ? (
-                        <div className='flex flex-col gap-10px'>
+                        <div className={styles.sessionsList}>
                           {agentSessions.map((session) => renderSessionCard(session))}
                         </div>
                       ) : (
-                        <div
-                          aria-hidden='true'
-                          className='h-44px rounded-14px border border-dashed border-border-2 bg-fill-0'
-                        />
+                        <div aria-hidden='true' className={styles.emptyBranch} />
                       )}
                     </div>
                   ) : null}
@@ -357,9 +347,7 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
               ))}
             </div>
           ) : filteredSessions.length > 0 ? (
-            <div className='flex flex-col gap-10px max-h-420px overflow-y-auto'>
-              {filteredSessions.map((session) => renderSessionCard(session))}
-            </div>
+            <div className={styles.sessionsList}>{filteredSessions.map((session) => renderSessionCard(session))}</div>
           ) : (
             <Empty
               className='py-24px'

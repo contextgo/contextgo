@@ -125,12 +125,6 @@ export function createMainMenuCard(): LarkCard {
             type: 'primary',
             value: { action: 'session.new' },
           },
-          {
-            tag: 'button',
-            text: { tag: 'plain_text', content: '🔄 Agent' },
-            type: 'default',
-            value: { action: 'agent.show' },
-          },
         ],
       },
       {
@@ -222,7 +216,7 @@ export function createPairingStatusCard(pairingCode: string): LarkCard {
           '',
           'Please approve in ContextGo settings:',
           '1. Open ContextGo app',
-          '2. Go to WebUI → Channels',
+          '2. Go to Settings → Agent入口',
           '3. Click "Approve" for this code',
         ].join('\n'),
       },
@@ -270,7 +264,7 @@ export function createPairingHelpCard(): LarkCard {
           '1. Send any message to this bot',
           '2. You will receive a pairing code',
           '3. Open ContextGo desktop app',
-          '4. Go to WebUI → Channels → Lark',
+          '4. Go to Settings → Agent入口 → Lark',
           '5. Click "Approve" for your code',
           '',
           '**FAQ:**',
@@ -290,49 +284,6 @@ export function createPairingHelpCard(): LarkCard {
           },
         ],
       },
-    ],
-  };
-}
-
-/**
- * Create agent selection card
- * Shows available agents with current selection marked
- */
-export function createAgentSelectionCard(availableAgents: AgentDisplayInfo[], currentAgentKey?: string): LarkCard {
-  const agentButtons: LarkButtonElement[] = availableAgents.map((agent) => ({
-    tag: 'button',
-    text: {
-      tag: 'plain_text',
-      content: currentAgentKey === agent.key ? `✓ ${agent.emoji} ${agent.name}` : `${agent.emoji} ${agent.name}`,
-    },
-    type: currentAgentKey === agent.key ? 'primary' : 'default',
-    value: { action: 'agent.select', agentKey: agent.key },
-  }));
-
-  // Split buttons into rows of 2
-  const actionRows: LarkActionElement[] = [];
-  for (let i = 0; i < agentButtons.length; i += 2) {
-    actionRows.push({
-      tag: 'action',
-      actions: agentButtons.slice(i, i + 2),
-    });
-  }
-
-  const currentAgentInfo = availableAgents.find((a) => a.key === currentAgentKey);
-  const currentAgentName = currentAgentInfo ? `${currentAgentInfo.emoji} ${currentAgentInfo.name}` : 'None';
-
-  return {
-    config: { wide_screen_mode: true },
-    header: {
-      title: { tag: 'plain_text', content: '🔄 Switch Agent' },
-      template: 'indigo',
-    },
-    elements: [
-      {
-        tag: 'markdown',
-        content: `Select an AI agent for your conversations:\n\nCurrent: **${currentAgentName}**`,
-      },
-      ...actionRows,
     ],
   };
 }
@@ -431,7 +382,6 @@ export function createHelpCard(): LarkCard {
           '',
           '**Common Actions:**',
           '• 🆕 New Chat - Start a new session',
-          '• 🔄 Agent - Switch AI agent',
           '• 📊 Status - View current session status',
           '• ❓ Help - Show this help message',
           '',
@@ -773,7 +723,7 @@ export function createSettingsCard(): LarkCard {
         content: [
           'Channel settings need to be configured in the ContextGo app.',
           '',
-          'Open ContextGo → WebUI → Channels',
+          'Open ContextGo → Settings → Agent入口 / Agent发布',
         ].join('\n'),
       },
       {

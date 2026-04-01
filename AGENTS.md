@@ -51,6 +51,25 @@ Three process types — never mix their APIs:
 Cross-process communication must go through the IPC bridge (`src/preload.ts`).
 See [docs/tech/architecture.md](docs/tech/architecture.md) for details.
 
+### Space Product Boundary
+
+When changing `Space`, canvas/doc editing, collaboration surfaces, members/roles, or context governance:
+
+- treat `Space` as a first-class ContextGo product object, not as a thin wrapper around any external product
+- do not expose third-party product names such as `AFFiNE` in user-facing UI copy, navigation labels, product concepts, or default empty states
+- third-party editor/canvas code may be absorbed as implementation detail, but the product surface must stay branded and modeled as ContextGo
+- avoid adding new bridge/iframe/embed-first product flows as the primary long-term path for Space
+- prefer native ContextGo surface names such as `Space Canvas`, `Space Docs`, `Space Context`, and `Members`
+- keep content-surface capabilities separate from context-governance capabilities:
+  - content editing/collaboration may borrow external implementation ideas
+  - memory, roles, permissions, agent execution, approval, and context assembly remain ContextGo-owned
+
+Read these before changing the model:
+
+- [docs/tech/space-model.md](docs/tech/space-model.md)
+- [packages/context-engine/docs/affine-space-provider.md](packages/context-engine/docs/affine-space-provider.md)
+- [packages/context-engine/docs/reference-landscape.md](packages/context-engine/docs/reference-landscape.md)
+
 ### Mobile / Remote Access Product Model
 
 When changing mobile access, WebUI/browser runtime behavior, remote login, upload flows, or shell packaging, treat the following as the default product model:

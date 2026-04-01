@@ -34,6 +34,8 @@ import { useConversationTabs } from '@renderer/pages/conversation/hooks/Conversa
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import { isElectronDesktop, isMacOS } from '@renderer/utils/platform';
+import SpaceSwitcher from './Titlebar/SpaceSwitcher';
+import { preloadRoutePath } from './routerLocation';
 
 const WorkspaceGroupedHistory = React.lazy(() => import('@renderer/pages/conversation/GroupedHistory'));
 const SettingsSider = React.lazy(() => import('@renderer/pages/settings/components/SettingsSider'));
@@ -84,6 +86,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { user } = useAuth();
 
   const handleNavigate = (target: string) => {
+    preloadRoutePath(target);
     cleanupSiderTooltips();
     blurActiveElement();
     closePreview();
@@ -94,6 +97,10 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     if (onSessionClick) {
       onSessionClick();
     }
+  };
+
+  const handlePreloadRoute = (target: string) => {
+    preloadRoutePath(target);
   };
 
   const handleConversationSelect = () => {
@@ -444,6 +451,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 type='button'
                 className={classNames(actionRowClassName, pathname === '/hooks' && actionRowActiveClassName)}
                 onClick={() => handleNavigate('/hooks')}
+                onMouseEnter={() => handlePreloadRoute('/hooks')}
+                onFocus={() => handlePreloadRoute('/hooks')}
               >
                 <Puzzle
                   theme='outline'
@@ -462,6 +471,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                   pathname.startsWith('/connectors') && actionRowActiveClassName
                 )}
                 onClick={() => handleNavigate('/connectors')}
+                onMouseEnter={() => handlePreloadRoute('/connectors')}
+                onFocus={() => handlePreloadRoute('/connectors')}
               >
                 <ConnectionPoint
                   theme='outline'
@@ -477,6 +488,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 type='button'
                 className={classNames(actionRowClassName, pathname === '/skills-hub' && actionRowActiveClassName)}
                 onClick={() => handleNavigate('/skills-hub')}
+                onMouseEnter={() => handlePreloadRoute('/skills-hub')}
+                onFocus={() => handlePreloadRoute('/skills-hub')}
               >
                 <Lightning
                   theme='outline'
@@ -492,6 +505,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 type='button'
                 className={classNames(actionRowClassName, pathname === '/agents' && actionRowActiveClassName)}
                 onClick={() => handleNavigate('/agents')}
+                onMouseEnter={() => handlePreloadRoute('/agents')}
+                onFocus={() => handlePreloadRoute('/agents')}
               >
                 <RobotOne
                   theme='outline'
@@ -525,6 +540,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         )}
       </div>
       <div className='sider-footer mt-auto shrink-0 pt-10px'>
+        <div className='sider-space-switcher-wrap mb-8px'>
+          <SpaceSwitcher compact={collapsed && !isMobile} placement='sider' />
+        </div>
         <div className='sider-user-card-wrap'>
           <Dropdown
             droplist={userMenu}

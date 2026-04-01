@@ -8,7 +8,6 @@ import type { TChatConversation, TProviderWithModel } from '@/common/config/stor
 import type { AcpBackendAll } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
 import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
-import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
 import { getDatabase } from '@process/services/database';
 import { ProcessConfig } from '@process/utils/initStorage';
 import crypto from 'crypto';
@@ -24,16 +23,12 @@ import type {
   IRemoteIdentity,
   PluginType,
 } from '../types';
-import { getChannelBindingTarget, getChannelConversationName, resolveChannelConvType } from '../types';
-
-type SavedAgentConfig = {
-  backend: string;
-  customAgentId?: string;
-  name?: string;
-  openclawAgentId?: string;
-  workspace?: string;
-  cliPath?: string;
-};
+import {
+  getChannelBindingTarget,
+  getChannelConversationName,
+  isSystemFallbackBinding,
+  resolveChannelConvType,
+} from '../types';
 
 type RemoteChatType = 'direct' | 'group';
 
@@ -159,31 +154,7 @@ type ResolveRouteParams = {
   remoteChatType?: string;
   displayName?: string;
   forceNewConversation?: boolean;
-  overrideAgentType?: ChannelAgentType;
-  overrideAgentProfileId?: string;
 };
-
-const DIRECT_BACKENDS = new Set(['gemini', 'codex', 'openclaw-gateway']);
-
-function normalizeOpenClawAgentId(agentId?: string): string {
-  return agentId?.trim().toLowerCase() || 'main';
-}
-
-function resolveSavedOpenClawAgent(savedAgent: SavedAgentConfig): SavedAgentConfig {
-  const configuredAgents = listConfiguredOpenClawAgents();
-  const selectedAgentId = normalizeOpenClawAgentId(savedAgent.openclawAgentId);
-  const configuredAgent =
-    configuredAgents.find((agent) => normalizeOpenClawAgentId(agent.agentId) === selectedAgentId) ||
-    configuredAgents[0];
-
-  return {
-    backend: 'openclaw-gateway',
-    name: savedAgent.name?.trim() || configuredAgent?.name || 'OpenClaw',
-    openclawAgentId: selectedAgentId || configuredAgent?.agentId || 'main',
-    workspace: savedAgent.workspace?.trim() || configuredAgent?.workspace,
-    cliPath: savedAgent.cliPath?.trim() || 'openclaw',
-  };
-}
 
 function buildStableId(prefix: string, ...parts: Array<string | undefined>): string {
   const hash = crypto
@@ -211,64 +182,7 @@ function backendToAgentType(backend: string): ChannelAgentType {
   return convType as ChannelAgentType;
 }
 
-async function getSavedAgentConfig(platform: PluginType): Promise<SavedAgentConfig> {
-  const key =
-    platform === 'lark'
-      ? 'assistant.lark.agent'
-      : platform === 'dingtalk'
-        ? 'assistant.dingtalk.agent'
-        : platform === 'weixin'
-          ? 'assistant.weixin.agent'
-          : 'assistant.telegram.agent';
-
-  const saved = await ProcessConfig.get(key);
-  if (saved && typeof saved === 'object' && typeof saved.backend === 'string') {
-    const record = saved as Record<string, unknown>;
-    return {
-      backend: saved.backend,
-      customAgentId: typeof record.customAgentId === 'string' ? record.customAgentId : undefined,
-      name: typeof record.name === 'string' ? record.name : undefined,
-      openclawAgentId: typeof record.openclawAgentId === 'string' ? record.openclawAgentId : undefined,
-      workspace: typeof record.workspace === 'string' ? record.workspace : undefined,
-      cliPath: typeof record.cliPath === 'string' ? record.cliPath : undefined,
-    };
-  }
-
-  return { backend: 'gemini' };
-}
-
-async function getSavedDefaultModelRef(platform: PluginType): Promise<{ id: string; useModel: string } | undefined> {
-  const key =
-    platform === 'lark'
-      ? 'assistant.lark.defaultModel'
-      : platform === 'dingtalk'
-        ? 'assistant.dingtalk.defaultModel'
-        : platform === 'weixin'
-          ? 'assistant.weixin.defaultModel'
-          : 'assistant.telegram.defaultModel';
-
-  const saved = await ProcessConfig.get(key);
-  if (
-    saved &&
-    typeof saved === 'object' &&
-    typeof saved.id === 'string' &&
-    saved.id &&
-    typeof saved.useModel === 'string' &&
-    saved.useModel
-  ) {
-    return {
-      id: saved.id,
-      useModel: saved.useModel,
-    };
-  }
-
-  return undefined;
-}
-
-async function resolveProviderModel(
-  platform: PluginType,
-  preferred?: { id: string; useModel: string }
-): Promise<TProviderWithModel> {
+async function resolveProviderModel(preferred?: { id: string; useModel: string }): Promise<TProviderWithModel> {
   const providers = await ProcessConfig.get('model.config');
   const providerList = Array.isArray(providers) ? providers : [];
 
@@ -280,19 +194,6 @@ async function resolveProviderModel(
       return {
         ...matched,
         useModel: preferred.useModel,
-      } as TProviderWithModel;
-    }
-  }
-
-  const saved = await getSavedDefaultModelRef(platform);
-  if (saved) {
-    const matched = providerList.find(
-      (provider) => provider.id === saved.id && provider.model?.includes(saved.useModel)
-    );
-    if (matched) {
-      return {
-        ...matched,
-        useModel: saved.useModel,
       } as TProviderWithModel;
     }
   }
@@ -337,31 +238,6 @@ function conversationMatchesProfile(conversation: TChatConversation, profile: IA
   }
 
   return true;
-}
-
-function mapAgentTypeToBackend(savedAgent: SavedAgentConfig, agentType?: ChannelAgentType): SavedAgentConfig {
-  if (!agentType) {
-    return savedAgent.backend === 'openclaw-gateway' ? resolveSavedOpenClawAgent(savedAgent) : savedAgent;
-  }
-
-  if (agentType === 'openclaw-gateway') {
-    return savedAgent.backend === 'openclaw-gateway'
-      ? resolveSavedOpenClawAgent(savedAgent)
-      : { backend: 'openclaw-gateway' };
-  }
-
-  if (agentType === 'gemini' || agentType === 'codex') {
-    return { backend: agentType };
-  }
-
-  if (!DIRECT_BACKENDS.has(savedAgent.backend)) {
-    return savedAgent;
-  }
-
-  return {
-    backend: 'claude',
-    name: 'Claude',
-  };
 }
 
 export class ChannelRouteResolver {
@@ -437,8 +313,6 @@ export class ChannelRouteResolver {
       connector,
       remoteIdentity,
       platform: params.platform,
-      overrideAgentType: params.overrideAgentType,
-      overrideAgentProfileId: params.overrideAgentProfileId,
     });
     const bindingTarget = getChannelBindingTarget(binding);
     const bindingHandoffConfig = readBindingHandoffConfig(binding);
@@ -694,43 +568,8 @@ export class ChannelRouteResolver {
     connector: IConnectorInstance;
     remoteIdentity: IRemoteIdentity;
     platform: PluginType;
-    overrideAgentType?: ChannelAgentType;
-    overrideAgentProfileId?: string;
   }): Promise<IChannelBinding> {
     const db = await getDatabase();
-
-    if (params.overrideAgentProfileId || params.overrideAgentType) {
-      const profile = params.overrideAgentProfileId
-        ? this.assertExistingAgentProfile(
-            db.getAgentProfile(params.overrideAgentProfileId),
-            params.overrideAgentProfileId
-          )
-        : await this.ensureAgentProfile(params.connector, params.platform, params.overrideAgentType, 'chat-override');
-      const overrideBinding: IChannelBinding = {
-        id: buildStableId(
-          'binding',
-          params.connector.id,
-          'temporary_override',
-          params.remoteIdentity.remoteChatId,
-          profile.id
-        ),
-        connectorId: params.connector.id,
-        scopeType: 'temporary_override',
-        scopeKey: params.remoteIdentity.remoteChatId,
-        agentProfileId: profile.id,
-        priority: 100,
-        enabled: true,
-        temporary: true,
-        metadata: {
-          source: 'agent-select',
-          overrideMode: params.overrideAgentProfileId ? 'agent-profile' : 'agent-type',
-        },
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      db.upsertChannelBinding(overrideBinding);
-      return overrideBinding;
-    }
 
     const temporaryOverrides = db.getChannelBindingsForScope(
       params.connector.id,
@@ -771,38 +610,16 @@ export class ChannelRouteResolver {
     }
 
     const defaultBindings = db.getChannelBindingsForScope(params.connector.id, 'connector_default');
-    const existingDefault = defaultBindings.success ? getPreferredBinding(defaultBindings.data) : undefined;
+    const existingDefault = defaultBindings.success
+      ? getPreferredBinding(defaultBindings.data.filter((binding) => !isSystemFallbackBinding(binding)))
+      : undefined;
     if (existingDefault) {
       return existingDefault;
     }
 
-    const profile = await this.ensureAgentProfile(params.connector, params.platform, undefined, 'connector-default');
-    const defaultBinding: IChannelBinding = {
-      id: buildStableId('binding', params.connector.id, 'connector_default'),
-      connectorId: params.connector.id,
-      scopeType: 'connector_default',
-      agentProfileId: profile.id,
-      priority: 0,
-      enabled: true,
-      temporary: false,
-      metadata: {
-        source: 'system-fallback-runtime',
-        semantic: 'fallback-runtime',
-      },
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    db.upsertChannelBinding(defaultBinding);
-    return defaultBinding;
-  }
-
-  async resolveAgentProfileForSelection(params: {
-    platform: PluginType;
-    pluginId?: string;
-    agentType: ChannelAgentType;
-  }): Promise<IAgentProfile> {
-    const connector = await this.resolveConnectorInstance(params.platform, params.pluginId);
-    return this.ensureAgentProfile(connector, params.platform, params.agentType, 'chat-override');
+    throw new Error(
+      `No Agent publication is configured for channel entry "${params.connector.name}". Open Agent Publish and bind an Agent first.`
+    );
   }
 
   async resolveAgentProfileById(profileId: string): Promise<IAgentProfile> {
@@ -822,59 +639,6 @@ export class ChannelRouteResolver {
     }
 
     return result.data;
-  }
-
-  private async ensureAgentProfile(
-    connector: IConnectorInstance,
-    platform: PluginType,
-    overrideAgentType?: ChannelAgentType,
-    scope = 'default'
-  ): Promise<IAgentProfile> {
-    const db = await getDatabase();
-    const savedAgent = mapAgentTypeToBackend(await getSavedAgentConfig(platform), overrideAgentType);
-    const preferredModelRef = await getSavedDefaultModelRef(platform);
-    const model = await resolveProviderModel(platform, preferredModelRef);
-    const modelRef = {
-      id: model.id,
-      useModel: model.useModel,
-    };
-
-    const profileId = buildStableId(
-      'agent_profile',
-      connector.id,
-      savedAgent.backend,
-      savedAgent.customAgentId,
-      modelRef.id,
-      modelRef.useModel,
-      scope
-    );
-
-    const existing = db.getAgentProfile(profileId);
-    const name = savedAgent.name ?? `${connector.name} ${savedAgent.backend}`;
-    const profile: IAgentProfile = {
-      id: profileId,
-      name,
-      backend: savedAgent.backend,
-      modelRef,
-      workspaceRef: savedAgent.workspace,
-      promptProfile: {
-        customAgentId: savedAgent.customAgentId,
-        agentName: savedAgent.name,
-        openclawAgentId: savedAgent.openclawAgentId,
-        cliPath: savedAgent.cliPath,
-        platform,
-        scope,
-      },
-      toolPolicy: {},
-      memoryPolicy: {},
-      delegationPolicy: {},
-      version: existing.data?.version ?? 1,
-      archived: false,
-      createdAt: existing.data?.createdAt ?? Date.now(),
-      updatedAt: Date.now(),
-    };
-    db.upsertAgentProfile(profile);
-    return profile;
   }
 
   private async ensureExternalSession(
@@ -1067,7 +831,7 @@ export class ChannelRouteResolver {
     chatId: string,
     agentProfile: IAgentProfile
   ): Promise<TChatConversation> {
-    const model = await resolveProviderModel(platform, agentProfile.modelRef);
+    const model = await resolveProviderModel(agentProfile.modelRef);
     const { convType, convBackend } = resolveChannelConvType(agentProfile.backend);
     const name = getChannelConversationName(platform, convType, convBackend, chatId);
     const promptProfile = (agentProfile.promptProfile ?? {}) as {

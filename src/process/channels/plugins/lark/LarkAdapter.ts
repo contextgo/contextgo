@@ -226,7 +226,7 @@ function extractMessageContent(message: LarkMessageEvent['event']['message']): I
 
 /**
  * Map action prefix to valid ActionCategory
- * Actions are named like 'category.action' (e.g., 'agent.select', 'session.new')
+ * Actions are named like 'category.action' (e.g., 'system.confirm', 'session.new')
  * But valid categories are only: 'platform', 'system', 'chat'
  */
 function mapToActionCategory(prefix: string): 'platform' | 'system' | 'chat' {
@@ -278,7 +278,7 @@ export function extractCardAction(action: LarkCardActionEvent['event']['action']
   // Map prefix to valid category, keep the full action name
   return {
     type: mapToActionCategory(prefix),
-    name: `${prefix}.${name}`, // Keep original action name like 'agent.select'
+    name: `${prefix}.${name}`, // Keep original action name like 'session.new'
     params,
   };
 }

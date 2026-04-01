@@ -339,6 +339,26 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       }
 
       try {
+        if (acpBackend === 'codex') {
+          const health = await ipcBridge.acpConversation.checkAgentHealth.invoke({ backend: 'codex' });
+          if (!health?.success || health.data?.available === false) {
+            const errorMessage = health?.data?.error || health?.msg || t('guid.sendFailed');
+            const lowerMessage = errorMessage.toLowerCase();
+            Message.error(
+              lowerMessage.includes('auth') || lowerMessage.includes('login') || lowerMessage.includes('api key')
+                ? t('acp.auth.failed', {
+                    backend: 'codex',
+                    error: errorMessage,
+                  })
+                : t('guid.sendFailedWithReason', {
+                    reason: errorMessage,
+                    defaultValue: errorMessage,
+                  })
+            );
+            return;
+          }
+        }
+
         const conversation = await ipcBridge.conversation.create.invoke({
           type: 'acp',
           name: input,
@@ -384,6 +404,13 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         await navigate(`/conversation/${conversation.id}`);
       } catch (error: unknown) {
         console.error('Failed to create ACP conversation:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        Message.error(
+          t('guid.sendFailedWithReason', {
+            reason: errorMessage,
+            defaultValue: errorMessage,
+          })
+        );
         throw error;
       }
     }

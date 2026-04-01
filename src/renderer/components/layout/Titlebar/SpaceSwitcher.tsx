@@ -2,22 +2,24 @@ import React from 'react';
 import { Dropdown, Menu, Message } from '@arco-design/web-react';
 import { Down, Plus } from '@icon-park/react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ipcBridge } from '@/common';
 import type { TSpace } from '@/common/config/storage';
 
 type SpaceSwitcherProps = {
   compact?: boolean;
+  placement?: 'titlebar' | 'sider';
 };
-
-const DEFAULT_LABEL = 'My Space';
 
 export default function SpaceSwitcher(props: SpaceSwitcherProps) {
   const [messageApi, holder] = Message.useMessage();
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [spaces, setSpaces] = useState<TSpace[]>([]);
   const [currentSpaceId, setCurrentSpaceId] = useState<string | undefined>();
+  const isSiderPlacement = props.placement === 'sider';
 
   useEffect(() => {
     let cancelled = false;
@@ -32,8 +34,17 @@ export default function SpaceSwitcher(props: SpaceSwitcherProps) {
         setSpaces([]);
       });
 
-    const match = location.pathname.match(/^\/conversation\/([^/]+)/);
-    const conversationId = match?.[1];
+    const spaceMatch = location.pathname.match(/^\/space\/([^/]+)/);
+    const routeSpaceId = spaceMatch?.[1];
+    if (routeSpaceId) {
+      setCurrentSpaceId(routeSpaceId);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const conversationMatch = location.pathname.match(/^\/conversation\/([^/]+)/);
+    const conversationId = conversationMatch?.[1];
     if (!conversationId) {
       void ipcBridge.space.ensureDefault
         .invoke()
@@ -72,13 +83,15 @@ export default function SpaceSwitcher(props: SpaceSwitcherProps) {
     () => spaces.find((space) => space.id === currentSpaceId) || spaces.find((space) => space.isDefault),
     [spaces, currentSpaceId]
   );
+  const currentSpaceLabel = currentSpace?.name || t('common.mySpace');
+  const currentSpaceInitial = currentSpaceLabel.trim().charAt(0).toUpperCase() || 'S';
 
   const handleCreateSpace = async () => {
-    const nextName = `Space ${spaces.length + 1}`;
+    const nextName = `${t('common.space')} ${spaces.length + 1}`;
     const space = await ipcBridge.space.create.invoke({ name: nextName });
     setSpaces((prev) => [space, ...prev]);
     setCurrentSpaceId(space.id);
-    await messageApi.success(`Created ${space.name}`);
+    await messageApi.success(t('common.spaceCreated', { name: space.name }));
     void navigate(`/space/${space.id}`);
   };
 
@@ -99,18 +112,43 @@ export default function SpaceSwitcher(props: SpaceSwitcherProps) {
       <Menu.Item key='__create__'>
         <div className='flex items-center gap-8px'>
           <Plus theme='outline' size={14} />
-          <span>New Space</span>
+          <span>{t('common.newSpace')}</span>
         </div>
       </Menu.Item>
     </Menu>
   );
 
+  if (isSiderPlacement) {
+    return (
+      <>
+        {holder}
+        <Dropdown droplist={menu} trigger='click' position='tr'>
+          <button
+            type='button'
+            className={`sider-space-trigger ${props.compact ? 'sider-space-trigger--compact' : ''}`}
+            aria-label={t('common.switchSpace')}
+            title={currentSpaceLabel}
+          >
+            <span className='sider-space-trigger__avatar'>{currentSpaceInitial}</span>
+            {!props.compact ? (
+              <span className='min-w-0 flex-1 text-left'>
+                <span className='block truncate text-14px font-600 text-t-primary'>{currentSpaceLabel}</span>
+                <span className='block truncate text-12px text-t-secondary'>{t('common.space')}</span>
+              </span>
+            ) : null}
+            {!props.compact ? <Down theme='outline' size={16} className='sider-space-trigger__chevron' /> : null}
+          </button>
+        </Dropdown>
+      </>
+    );
+  }
+
   return (
     <>
       {holder}
       <Dropdown droplist={menu} trigger='click' position='bl'>
-        <button type='button' className='app-titlebar__button' aria-label='Switch space'>
-          <span className={props.compact ? 'hidden' : 'mr-4px'}>{currentSpace?.name || DEFAULT_LABEL}</span>
+        <button type='button' className='app-titlebar__button' aria-label={t('common.switchSpace')}>
+          <span className={props.compact ? 'hidden' : 'mr-4px'}>{currentSpaceLabel}</span>
           <Down theme='outline' size={14} />
         </button>
       </Dropdown>

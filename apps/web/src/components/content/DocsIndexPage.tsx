@@ -10,6 +10,14 @@ export default function DocsIndexPage({
   featuredDescription,
   groups,
   lang,
+  version,
+  source,
+  versions,
+  repositoryUrl,
+  sourceLabel,
+  sourceReleaseLabel,
+  sourceFallbackLabel,
+  openRepositoryLabel,
 }: {
   badge: string;
   title: string;
@@ -18,6 +26,14 @@ export default function DocsIndexPage({
   featuredDescription: string;
   groups: DocGroup[];
   lang: string;
+  version: string;
+  source: 'release-repo' | 'site-fallback';
+  versions: Array<{ version: string; exportedAt: string }>;
+  repositoryUrl: string;
+  sourceLabel: string;
+  sourceReleaseLabel: string;
+  sourceFallbackLabel: string;
+  openRepositoryLabel: string;
 }) {
   return (
     <>
@@ -26,9 +42,49 @@ export default function DocsIndexPage({
       <section className='theme-page-muted px-4 py-18'>
         <div className='container-custom'>
           <div className='theme-card-gradient theme-shadow-soft theme-border rounded-[30px] border p-7 md:p-8'>
-            <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>{featuredLabel}</div>
-            <h2 className='theme-text-primary mt-4 text-3xl font-semibold tracking-tight md:text-4xl'>{title}</h2>
-            <p className='theme-text-secondary mt-4 max-w-3xl text-sm leading-7 md:text-base'>{featuredDescription}</p>
+            <div className='flex flex-col gap-5 md:flex-row md:items-start md:justify-between'>
+              <div>
+                <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>
+                  {featuredLabel}
+                </div>
+                <h2 className='theme-text-primary mt-4 text-3xl font-semibold tracking-tight md:text-4xl'>{title}</h2>
+                <p className='theme-text-secondary mt-4 max-w-3xl text-sm leading-7 md:text-base'>
+                  {featuredDescription}
+                </p>
+              </div>
+              <div className='theme-surface-secondary theme-border flex min-w-[240px] flex-col gap-3 rounded-[22px] border p-4'>
+                <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.18em]'>
+                  {sourceLabel}
+                </div>
+                <div className='theme-text-primary text-sm font-semibold'>
+                  {source === 'release-repo' ? sourceReleaseLabel.replace('{{version}}', version) : sourceFallbackLabel}
+                </div>
+                <a
+                  href={repositoryUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='theme-text-primary text-sm font-medium underline-offset-4 hover:underline'
+                >
+                  {openRepositoryLabel}
+                </a>
+              </div>
+            </div>
+
+            {versions.length > 0 ? (
+              <div className='mt-6 flex flex-wrap gap-2'>
+                {versions.map((entry) => (
+                  <a
+                    key={entry.version}
+                    href={`${repositoryUrl}/tree/main/docs/${entry.version}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='theme-surface-secondary theme-border theme-text-secondary rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:theme-text-primary'
+                  >
+                    v{entry.version}
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

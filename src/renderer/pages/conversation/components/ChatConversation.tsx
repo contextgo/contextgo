@@ -99,7 +99,7 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
 
       void navigate(
         {
-          pathname: '/settings/channels',
+          pathname: '/settings/active-sessions',
         },
         {
           state: {

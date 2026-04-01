@@ -2,26 +2,26 @@ import React from 'react';
 import { Button, Card, Empty, List, Space, Tag, Typography } from '@arco-design/web-react';
 import { useEffect, useState } from 'react';
 import type {
-  AffineDocRef,
-  AffineEmbedDescriptor,
-  AffineProviderStatus,
-  IAffineSpaceProvider,
-} from './IAffineSpaceProvider';
-import AffineEmbedContainer from './AffineEmbedContainer';
+  ContextGoDocRef,
+  ContextGoEmbedDescriptor,
+  ContextGoSurfaceStatus,
+  IContextGoSpaceProvider,
+} from './IContextGoSpaceProvider';
+import ContextGoEmbedContainer from './ContextGoEmbedContainer';
 
 const { Paragraph, Text } = Typography;
 
-type AffineDocSurfaceProps = {
+type ContextGoDocsSurfaceProps = {
   spaceId: string;
-  docs: readonly AffineDocRef[];
-  provider: IAffineSpaceProvider;
-  status?: AffineProviderStatus;
-  onCreated?: (doc: AffineDocRef) => void;
+  docs: readonly ContextGoDocRef[];
+  provider: IContextGoSpaceProvider;
+  status?: ContextGoSurfaceStatus;
+  onCreated?: (doc: ContextGoDocRef) => void;
 };
 
-export default function AffineDocSurface(props: AffineDocSurfaceProps) {
+export default function ContextGoDocsSurface(props: ContextGoDocsSurfaceProps) {
   const [activeDocId, setActiveDocId] = useState<string | undefined>(props.docs[0]?.id);
-  const [embedDescriptor, setEmbedDescriptor] = useState<AffineEmbedDescriptor | undefined>();
+  const [embedDescriptor, setEmbedDescriptor] = useState<ContextGoEmbedDescriptor | undefined>();
 
   useEffect(() => {
     if (!activeDocId) {
@@ -58,7 +58,7 @@ export default function AffineDocSurface(props: AffineDocSurfaceProps) {
   if (props.status?.mode === 'embedded' && activeDocId && embedDescriptor) {
     return (
       <Space direction='vertical' size='medium' className='w-full'>
-        <Card size='small' title='AFFiNE Doc Surface'>
+        <Card size='small' title='Space Docs'>
           <Space direction='vertical' size='small' className='w-full'>
             <Tag color='arcoblue'>{props.status.mode}</Tag>
             <Paragraph className='mb-0'>{props.status.description}</Paragraph>
@@ -67,26 +67,26 @@ export default function AffineDocSurface(props: AffineDocSurfaceProps) {
                 New Doc
               </Button>
               <Button size='small' onClick={() => void props.provider.openDoc(props.spaceId, activeDocId)}>
-                Open in AFFiNE
+                Open Document
               </Button>
             </Space>
           </Space>
         </Card>
-        <AffineEmbedContainer descriptor={embedDescriptor} />
+        <ContextGoEmbedContainer descriptor={embedDescriptor} />
       </Space>
     );
   }
 
   return (
     <Space direction='vertical' size='medium' className='w-full'>
-      <Card size='small' title='AFFiNE Doc Surface'>
+      <Card size='small' title='Space Docs'>
         <Space direction='vertical' size='small' className='w-full'>
           <Tag color='arcoblue'>{props.status?.mode || 'shell'}</Tag>
           <Text type='secondary'>
-            {props.status?.webAppUrl ? `Connected to ${props.status.webAppUrl}` : 'AFFiNE URL not configured yet'}
+            {props.status?.webAppUrl ? `Connected to ${props.status.webAppUrl}` : 'Canvas URL not configured yet'}
           </Text>
           <Paragraph className='mb-0'>
-            {props.status?.description || 'Doc surface shell ready for AFFiNE embedding.'}
+            {props.status?.description || 'Document surface shell ready for native canvas integration.'}
           </Paragraph>
           <Space>
             <Button type='primary' size='small' onClick={() => void handleCreate()}>

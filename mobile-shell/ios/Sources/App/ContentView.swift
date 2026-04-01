@@ -18,11 +18,6 @@ struct ContentView: View {
       }
       .navigationTitle("app.title")
       .navigationBarTitleDisplayMode(.inline)
-      .onAppear {
-        webViewStore.onOpenURL = { incomingURL in
-          connectionStore.handleIncomingURL(incomingURL)
-        }
-      }
     }
   }
 }

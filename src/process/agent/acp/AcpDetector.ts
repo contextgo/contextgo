@@ -33,6 +33,95 @@ class AcpDetector {
   private detectedAgents: DetectedAgent[] = [];
   private isDetected = false;
 
+  private async detectAgents(): Promise<DetectedAgent[]> {
+    console.log('[ACP] Starting agent detection...');
+    const startTime = Date.now();
+
+    const isWindows = process.platform === 'win32';
+    const whichCommand = isWindows ? 'where' : 'which';
+
+    // Get enhanced environment with user's shell PATH (includes ~/.local/bin, etc.)
+    // 获取增强的环境变量，包含用户 shell 的 PATH（如 ~/.local/bin 等）
+    const enhancedEnv = getEnhancedEnv();
+
+    const isCliAvailable = (cliCommand: string): boolean => {
+      // Keep original behavior: prefer where/which, then fallback on Windows to Get-Command.
+      // 保持原逻辑：优先使用 where/which，Windows 下失败再回退到 Get-Command。
+      try {
+        execSync(`${whichCommand} ${cliCommand}`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+          timeout: 1000,
+          env: enhancedEnv,
+        });
+        return true;
+      } catch {
+        if (!isWindows) return false;
+      }
+
+      if (isWindows) {
+        try {
+          // PowerShell fallback for shim scripts like claude.ps1 (vfox)
+          // PowerShell 回退，支持 claude.ps1 这类 shim（例如 vfox）
+          execSync(
+            `powershell -NoProfile -NonInteractive -Command "Get-Command -All ${cliCommand} | Select-Object -First 1 | Out-Null"`,
+            {
+              encoding: 'utf-8',
+              stdio: 'pipe',
+              timeout: 1000,
+              env: enhancedEnv,
+            }
+          );
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      return false;
+    };
+
+    const detected: DetectedAgent[] = [];
+
+    const detectionPromises = POTENTIAL_ACP_CLIS.map((cli) => {
+      return Promise.resolve().then(() => {
+        if (!isCliAvailable(cli.cmd)) {
+          return null;
+        }
+
+        return {
+          backend: cli.backendId,
+          name: cli.name,
+          cliPath: cli.cmd,
+          acpArgs: cli.args,
+        };
+      });
+    });
+
+    const results = await Promise.allSettled(detectionPromises);
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        detected.push(result.value);
+      }
+    }
+
+    detected.unshift({
+      backend: 'gemini',
+      name: 'Gemini CLI',
+      cliPath: undefined,
+      acpArgs: undefined,
+    });
+
+    this.addExtensionAgentsToList(detected);
+    await this.addCustomAgentsToList(detected);
+
+    const elapsed = Date.now() - startTime;
+    console.log(`[ACP] Detection completed in ${elapsed}ms, found ${detected.length} agents`);
+
+    return detected;
+  }
+
   /**
    * 将扩展贡献的 ACP adapter 添加到检测列表（即开即用，不落盘）
    * Add extension-contributed ACP adapters to detected list (hot-load, no persistence).
@@ -123,101 +212,8 @@ class AcpDetector {
    */
   async initialize(): Promise<void> {
     if (this.isDetected) return;
-
-    console.log('[ACP] Starting agent detection...');
-    const startTime = Date.now();
-
-    const isWindows = process.platform === 'win32';
-    const whichCommand = isWindows ? 'where' : 'which';
-
-    // Get enhanced environment with user's shell PATH (includes ~/.local/bin, etc.)
-    // 获取增强的环境变量，包含用户 shell 的 PATH（如 ~/.local/bin 等）
-    const enhancedEnv = getEnhancedEnv();
-
-    const isCliAvailable = (cliCommand: string): boolean => {
-      // Keep original behavior: prefer where/which, then fallback on Windows to Get-Command.
-      // 保持原逻辑：优先使用 where/which，Windows 下失败再回退到 Get-Command。
-      try {
-        execSync(`${whichCommand} ${cliCommand}`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-          timeout: 1000,
-          env: enhancedEnv,
-        });
-        return true;
-      } catch {
-        if (!isWindows) return false;
-      }
-
-      if (isWindows) {
-        try {
-          // PowerShell fallback for shim scripts like claude.ps1 (vfox)
-          // PowerShell 回退，支持 claude.ps1 这类 shim（例如 vfox）
-          execSync(
-            `powershell -NoProfile -NonInteractive -Command "Get-Command -All ${cliCommand} | Select-Object -First 1 | Out-Null"`,
-            {
-              encoding: 'utf-8',
-              stdio: 'pipe',
-              timeout: 1000,
-              env: enhancedEnv,
-            }
-          );
-          return true;
-        } catch {
-          return false;
-        }
-      }
-
-      return false;
-    };
-
-    const detected: DetectedAgent[] = [];
-
-    // 并行检测所有潜在的 ACP CLI
-    const detectionPromises = POTENTIAL_ACP_CLIS.map((cli) => {
-      return Promise.resolve().then(() => {
-        if (!isCliAvailable(cli.cmd)) {
-          return null;
-        }
-
-        return {
-          backend: cli.backendId,
-          name: cli.name,
-          cliPath: cli.cmd,
-          acpArgs: cli.args,
-        };
-      });
-    });
-
-    const results = await Promise.allSettled(detectionPromises);
-
-    // 收集检测结果
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value) {
-        detected.push(result.value);
-      }
-    }
-
-    // 始终添加内置 Gemini 作为默认选项（无需检测其他 CLI）
-    // Always add built-in Gemini as default option (no CLI detection needed)
-    detected.unshift({
-      backend: 'gemini',
-      name: 'Gemini CLI',
-      cliPath: undefined,
-      acpArgs: undefined,
-    });
-
-    // Add extension-contributed agents (hot-load, no persistence)
-    this.addExtensionAgentsToList(detected);
-
-    // Check for custom agents configuration
-    await this.addCustomAgentsToList(detected);
-
-    this.detectedAgents = detected;
+    this.detectedAgents = await this.detectAgents();
     this.isDetected = true;
-
-    const elapsed = Date.now() - startTime;
-    console.log(`[ACP] Detection completed in ${elapsed}ms, found ${detected.length} agents`);
   }
 
   /**
@@ -243,6 +239,11 @@ class AcpDetector {
 
     // Re-add custom agents with current config
     await this.addCustomAgentsToList(this.detectedAgents);
+  }
+
+  async refreshDetectedAgents(): Promise<void> {
+    this.detectedAgents = await this.detectAgents();
+    this.isDetected = true;
   }
 }
 

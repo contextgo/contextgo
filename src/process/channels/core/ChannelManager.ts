@@ -12,12 +12,10 @@ import {
 import { getDatabase } from '@process/services/database';
 import { ExtensionRegistry } from '@process/extensions';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
-import { getChannelDefaultModel } from '../actions/SystemActions';
 import { ActionExecutor } from '../gateway/ActionExecutor';
 import { PluginManager, registerPlugin } from '../gateway/PluginManager';
 import { PairingService } from '../pairing/PairingService';
-import { isBuiltinChannelPlatform, resolveChannelConvType } from '../types';
-import type { ChannelPlatform, IChannelPluginConfig, PluginType } from '../types';
+import type { IChannelPluginConfig, PluginType } from '../types';
 import { getChannelRouteResolver } from './ChannelRouteResolver';
 import { BUILTIN_CHANNEL_RUNTIME } from './builtinChannelRuntime';
 import { SessionManager } from './SessionManager';
@@ -447,52 +445,6 @@ export class ChannelManager {
       }
     } catch (error) {
       console.warn('[ChannelManager] Failed to register extension channel plugins:', error);
-    }
-  }
-
-  // ==================== Settings Sync ====================
-
-  /**
-   * Sync channel settings after agent or model change in the Settings UI.
-   * Clears all cached sessions so the next incoming message re-evaluates
-   * which conversation to use. For gemini type changes, also updates the
-   * model field on existing conversations.
-   */
-  async syncChannelSettings(
-    platform: ChannelPlatform,
-    agent: { backend: string; customAgentId?: string; name?: string },
-    model?: { id: string; useModel: string }
-  ): Promise<{ success: boolean; error?: string }> {
-    if (!this.initialized || !this.sessionManager) {
-      return { success: false, error: 'Channel manager not initialized' };
-    }
-
-    try {
-      const { convType: newType } = resolveChannelConvType(agent.backend);
-
-      // For gemini + model info: update existing conversations' model field
-      if (newType === 'gemini' && model?.id && model?.useModel) {
-        if (isBuiltinChannelPlatform(platform)) {
-          const builtinPlatform: 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' = platform;
-          const fullModel = await getChannelDefaultModel(builtinPlatform);
-          const db = await getDatabase();
-          const result = db.updateChannelConversationModel(builtinPlatform, 'gemini', fullModel);
-          if (result.success) {
-            console.log(`[ChannelManager] Updated ${result.data} gemini conversation(s) for ${builtinPlatform}`);
-          }
-        } else {
-          console.log(`[ChannelManager] Skip conversation model sync for extension platform: ${platform}`);
-        }
-      }
-
-      // Clear all sessions to force re-evaluation on next message
-      const cleared = await this.sessionManager.clearAllSessions();
-      console.log(`[ChannelManager] syncChannelSettings: platform=${platform}, type=${newType}, cleared=${cleared}`);
-
-      return { success: true };
-    } catch (error: any) {
-      console.error(`[ChannelManager] syncChannelSettings failed:`, error);
-      return { success: false, error: error.message };
     }
   }
 

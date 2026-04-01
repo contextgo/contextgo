@@ -1,6 +1,6 @@
 import type { DocsSection, SiteLocale } from './types';
 
-const docsContent: Record<SiteLocale, DocsSection> = {
+export const docsContent: Record<SiteLocale, DocsSection> = {
   en: {
     badge: 'Documentation',
     title: 'ContextGo Docs',

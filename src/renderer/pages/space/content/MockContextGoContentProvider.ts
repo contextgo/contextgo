@@ -1,19 +1,19 @@
 import type {
-  AffineBoardCardRef,
-  AffineBoardRef,
-  AffineDocRef,
-  AffineEmbedDescriptor,
-  AffineEmbedTarget,
-  AffineProviderStatus,
-  AffineSelectionContext,
-  IAffineSpaceProvider,
-} from './IAffineSpaceProvider';
+  ContextGoBoardCardRef,
+  ContextGoBoardRef,
+  ContextGoDocRef,
+  ContextGoEmbedDescriptor,
+  ContextGoEmbedTarget,
+  ContextGoSelectionContext,
+  ContextGoSurfaceStatus,
+  IContextGoSpaceProvider,
+} from './IContextGoSpaceProvider';
 import type { AskAgentSelectionPayload } from '../types';
 
-export type MockAffineSpaceProviderOptions = {
-  docs?: readonly AffineDocRef[];
-  boards?: readonly AffineBoardRef[];
-  selection?: AffineSelectionContext;
+export type MockContextGoContentProviderOptions = {
+  docs?: readonly ContextGoDocRef[];
+  boards?: readonly ContextGoBoardRef[];
+  selection?: ContextGoSelectionContext;
   onAskAgentWithSelection?: (payload: AskAgentSelectionPayload) => void | Promise<void>;
 };
 
@@ -25,6 +25,7 @@ function buildPreview(content: string | undefined): string | undefined {
   if (!content) {
     return undefined;
   }
+
   return content
     .split('\n')
     .map((line) => line.trim())
@@ -33,7 +34,7 @@ function buildPreview(content: string | undefined): string | undefined {
     .join(' · ');
 }
 
-function createBoardCard(params: { candidateId: string; title: string; markdown?: string }): AffineBoardCardRef {
+function createBoardCard(params: { candidateId: string; title: string; markdown?: string }): ContextGoBoardCardRef {
   return {
     id: createId('card'),
     title: params.title,
@@ -43,13 +44,13 @@ function createBoardCard(params: { candidateId: string; title: string; markdown?
   };
 }
 
-export class MockAffineSpaceProvider implements IAffineSpaceProvider {
-  private docs: AffineDocRef[];
-  private boards: AffineBoardRef[];
-  private selection: AffineSelectionContext;
-  private readonly onAskAgentWithSelection?: MockAffineSpaceProviderOptions['onAskAgentWithSelection'];
+export class MockContextGoContentProvider implements IContextGoSpaceProvider {
+  private docs: ContextGoDocRef[];
+  private boards: ContextGoBoardRef[];
+  private selection: ContextGoSelectionContext;
+  private readonly onAskAgentWithSelection?: MockContextGoContentProviderOptions['onAskAgentWithSelection'];
 
-  constructor(options: MockAffineSpaceProviderOptions = {}) {
+  constructor(options: MockContextGoContentProviderOptions = {}) {
     this.docs = [...(options.docs ?? [])];
     this.boards = [...(options.boards ?? [])];
     this.selection =
@@ -57,48 +58,48 @@ export class MockAffineSpaceProvider implements IAffineSpaceProvider {
       ({
         items: [],
         summary: 'No active selection',
-      } satisfies AffineSelectionContext);
+      } satisfies ContextGoSelectionContext);
     this.onAskAgentWithSelection = options.onAskAgentWithSelection;
   }
 
-  async getStatus(): Promise<AffineProviderStatus> {
+  async getStatus(): Promise<ContextGoSurfaceStatus> {
     return {
       mode: 'mock',
       ready: true,
-      label: 'Mock AFFiNE Provider',
-      description: 'Markdown-first mock provider for docs and boards.',
+      label: 'Canvas Runtime',
+      description: 'Markdown-first content runtime for docs and boards.',
     };
   }
 
-  async listDocs(spaceId: string): Promise<readonly AffineDocRef[]> {
+  async listDocs(spaceId: string): Promise<readonly ContextGoDocRef[]> {
     return this.docs.filter((doc) => doc.spaceId === spaceId);
   }
 
-  async listBoards(spaceId: string): Promise<readonly AffineBoardRef[]> {
+  async listBoards(spaceId: string): Promise<readonly ContextGoBoardRef[]> {
     return this.boards.filter((board) => board.spaceId === spaceId);
   }
 
-  async createDoc(spaceId: string, title: string, initialContent?: string): Promise<AffineDocRef> {
+  async createDoc(spaceId: string, title: string, initialContent?: string): Promise<ContextGoDocRef> {
     const doc = {
       id: createId('doc'),
       title,
       spaceId,
       content: initialContent,
       preview: buildPreview(initialContent),
-    } satisfies AffineDocRef;
+    } satisfies ContextGoDocRef;
     this.docs = [doc, ...this.docs];
     return doc;
   }
 
-  async createBoard(spaceId: string, title: string, initialContent?: string): Promise<AffineBoardRef> {
+  async createBoard(spaceId: string, title: string, initialContent?: string): Promise<ContextGoBoardRef> {
     const board = {
       id: createId('board'),
       title,
       spaceId,
       content: initialContent,
       preview: buildPreview(initialContent),
-      cards: [] as AffineBoardCardRef[],
-    } satisfies AffineBoardRef;
+      cards: [] as ContextGoBoardCardRef[],
+    } satisfies ContextGoBoardRef;
     this.boards = [board, ...this.boards];
     return board;
   }
@@ -107,9 +108,9 @@ export class MockAffineSpaceProvider implements IAffineSpaceProvider {
 
   async openBoard(_spaceId: string, _boardId: string): Promise<void> {}
 
-  async getEmbedDescriptor(target: AffineEmbedTarget): Promise<AffineEmbedDescriptor> {
+  async getEmbedDescriptor(target: ContextGoEmbedTarget): Promise<ContextGoEmbedDescriptor> {
     return {
-      title: target.kind === 'doc' ? 'AFFiNE Doc Surface' : 'AFFiNE Canvas Surface',
+      title: target.kind === 'doc' ? 'Space Docs' : 'Space Canvas',
       mode: 'placeholder',
     };
   }
@@ -120,7 +121,7 @@ export class MockAffineSpaceProvider implements IAffineSpaceProvider {
     docId?: string;
     title?: string;
     content?: string;
-  }): Promise<AffineDocRef> {
+  }): Promise<ContextGoDocRef> {
     if (params.docId) {
       const existing = this.docs.find((doc) => doc.id === params.docId && doc.spaceId === params.spaceId);
       if (existing) {
@@ -136,7 +137,7 @@ export class MockAffineSpaceProvider implements IAffineSpaceProvider {
     boardId?: string;
     title?: string;
     content?: string;
-  }): Promise<AffineBoardRef> {
+  }): Promise<ContextGoBoardRef> {
     const card = createBoardCard({
       candidateId: params.candidateId,
       title: params.title || `Candidate ${params.candidateId}`,
@@ -146,7 +147,7 @@ export class MockAffineSpaceProvider implements IAffineSpaceProvider {
     if (params.boardId) {
       const existing = this.boards.find((board) => board.id === params.boardId && board.spaceId === params.spaceId);
       if (existing) {
-        const nextBoard: AffineBoardRef = {
+        const nextBoard: ContextGoBoardRef = {
           ...existing,
           preview: card.preview ?? existing.preview,
           cards: [card, ...(existing.cards ?? [])],
@@ -161,7 +162,7 @@ export class MockAffineSpaceProvider implements IAffineSpaceProvider {
       params.title || `Candidate ${params.candidateId}`,
       params.content
     );
-    const nextBoard: AffineBoardRef = {
+    const nextBoard: ContextGoBoardRef = {
       ...board,
       cards: [card],
       preview: card.preview ?? board.preview,
@@ -170,7 +171,7 @@ export class MockAffineSpaceProvider implements IAffineSpaceProvider {
     return nextBoard;
   }
 
-  async getSelectionContext(spaceId: string): Promise<AffineSelectionContext> {
+  async getSelectionContext(spaceId: string): Promise<ContextGoSelectionContext> {
     return {
       ...this.selection,
       items: this.selection.items.filter((item) => item.id.length > 0),

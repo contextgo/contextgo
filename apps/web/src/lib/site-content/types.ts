@@ -83,6 +83,13 @@ export type SiteLabels = {
   openReleasePage: string;
   articleSidebarTitle: string;
   articleSidebarBody: string;
+  docsSource: string;
+  docsSourceRelease: string;
+  docsSourceFallback: string;
+  openReleaseRepository: string;
+  openVersionedDocs: string;
+  releaseHistory: string;
+  docsVersionLabel: string;
 };
 
 export type SiteContentBundle = {
@@ -91,6 +98,42 @@ export type SiteContentBundle = {
   changelog: ChangelogSection;
   resources: ResourcesSection;
   labels: SiteLabels;
+};
+
+export type ReleaseDocsVersion = {
+  version: string;
+  exportedAt: string;
+  sourceRef?: string;
+};
+
+export type ReleaseDocsLatest = {
+  schemaVersion: 1;
+  version: string;
+  exportedAt: string;
+  sourceRef?: string;
+};
+
+export type ReleaseDocsIndex = {
+  schemaVersion: 1;
+  latestVersion: string;
+  exportedAt: string;
+  versions: ReleaseDocsVersion[];
+};
+
+export type ReleaseDocsBundle = {
+  schemaVersion: 1;
+  version: string;
+  locale: SiteLocale;
+  exportedAt: string;
+  sourceRef?: string;
+  docs: DocsSection;
+  labels: SiteLabels;
+};
+
+export type ResolvedReleaseDocs = {
+  source: 'release-repo' | 'site-fallback';
+  bundle: ReleaseDocsBundle;
+  index: ReleaseDocsIndex;
 };
 
 export type DocGroup = {

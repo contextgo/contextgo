@@ -1,19 +1,19 @@
 import React from 'react';
 import { Card, Empty, Typography } from '@arco-design/web-react';
-import type { AffineEmbedDescriptor } from './IAffineSpaceProvider';
+import type { ContextGoEmbedDescriptor } from './IContextGoSpaceProvider';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
-type AffineEmbedContainerProps = {
-  descriptor: AffineEmbedDescriptor;
+type ContextGoEmbedContainerProps = {
+  descriptor: ContextGoEmbedDescriptor;
   height?: number;
 };
 
-export default function AffineEmbedContainer(props: AffineEmbedContainerProps) {
+export default function ContextGoEmbedContainer(props: ContextGoEmbedContainerProps) {
   if (props.descriptor.mode === 'placeholder' || !props.descriptor.src) {
     return (
       <Card size='small' title={props.descriptor.title}>
-        <Empty description='Embedded AFFiNE surface not ready yet' />
+        <Empty description='Embedded canvas surface not ready yet' />
       </Card>
     );
   }

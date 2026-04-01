@@ -1,4 +1,3 @@
-import AuthenticationServices
 import Foundation
 import UIKit
 import UniformTypeIdentifiers
@@ -7,9 +6,7 @@ import WebKit
 @MainActor
 final class WebViewStore: NSObject, ObservableObject {
   let webView: WKWebView
-  var onOpenURL: ((URL) -> Void)?
 
-  private var authenticationSession: ASWebAuthenticationSession?
   private var openPanelCompletionHandler: (([URL]?) -> Void)?
 
   override init() {
@@ -46,39 +43,6 @@ final class WebViewStore: NSObject, ObservableObject {
     webView.goBack()
   }
 
-  private func startAuthenticationSession(url: URL) {
-    authenticationSession?.cancel()
-
-    let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "contextgo-remote") { [weak self] callbackURL, _error in
-      Task { @MainActor in
-        self?.authenticationSession = nil
-        guard let callbackURL else { return }
-        self?.onOpenURL?(callbackURL)
-      }
-    }
-    session.presentationContextProvider = self
-    session.prefersEphemeralWebBrowserSession = false
-
-    if session.start() {
-      authenticationSession = session
-      return
-    }
-
-    webView.load(URLRequest(url: url))
-  }
-
-  private func shouldUseExternalAuthenticationSession(for url: URL) -> Bool {
-    guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
-      return false
-    }
-
-    guard let host = url.host?.lowercased(), host == "auth.contextgo.io" || host == "remote.contextgo.io" else {
-      return false
-    }
-
-    return url.path.starts(with: "/api/auth/oauth/")
-  }
-
   private func topViewController(startingFrom rootViewController: UIViewController?) -> UIViewController? {
     guard let rootViewController else { return nil }
 
@@ -98,12 +62,6 @@ final class WebViewStore: NSObject, ObservableObject {
   }
 }
 
-extension WebViewStore: ASWebAuthenticationPresentationContextProviding {
-  func presentationAnchor(for _session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-    webView.window ?? ASPresentationAnchor()
-  }
-}
-
 extension WebViewStore: WKNavigationDelegate {
   func webView(
     _ webView: WKWebView,
@@ -112,12 +70,6 @@ extension WebViewStore: WKNavigationDelegate {
   ) {
     guard let targetURL = navigationAction.request.url else {
       decisionHandler(.allow)
-      return
-    }
-
-    if shouldUseExternalAuthenticationSession(for: targetURL) {
-      startAuthenticationSession(url: targetURL)
-      decisionHandler(.cancel)
       return
     }
 

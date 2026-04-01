@@ -60,7 +60,10 @@ export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lan
             <Link href={`/${lang}/connect`} className={linkClass(`/${lang}/connect`)}>
               {dict.connect}
             </Link>
-            <Link href={`/${lang}/docs`} className={linkClass(`/${lang}/docs`)}>
+            <Link
+              href={`/${lang}/docs`}
+              className='theme-button-secondary rounded-full px-4 py-2 text-sm font-medium transition-colors'
+            >
               {dict.docs}
             </Link>
             <Link href={`/${lang}/blog`} className={linkClass(`/${lang}/blog`)}>

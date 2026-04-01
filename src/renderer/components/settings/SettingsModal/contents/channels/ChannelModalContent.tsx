@@ -4,19 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
-  BUILTIN_CHANNEL_TYPE_SET,
-  BUILTIN_CHANNEL_TYPES,
-  type BuiltinChannelDefaultModelConfigKey,
-} from '@/common/config/builtinChannels';
+import { BUILTIN_CHANNEL_TYPE_SET, BUILTIN_CHANNEL_TYPES } from '@/common/config/builtinChannels';
 import type { IChannelPluginStatus } from '@process/channels/types';
-import type { IProvider, TProviderWithModel } from '@/common/config/storage';
 import { channel, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
-import { ConfigStorage } from '@/common/config/storage';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
-import { useModelProviderList } from '@/renderer/hooks/agent/useModelProviderList';
-import type { GeminiModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection';
-import { useGeminiModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection';
 import { Input, InputNumber, Message, Select, Switch } from '@arco-design/web-react';
 import { CheckOne } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -51,112 +42,6 @@ type ExtensionFieldValues = Record<string, Record<string, string | number | bool
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
-
-/**
- * Internal hook: wraps useGeminiModelSelection with ConfigStorage persistence
- * for a specific channel config key (e.g. 'assistant.telegram.defaultModel').
- *
- * Restoration is done by resolving the saved model reference into a full
- * TProviderWithModel and passing it as `initialModel` — this avoids triggering
- * the onSelectModel callback (and its toast) on mount.
- */
-const useChannelModelSelection = (configKey: BuiltinChannelDefaultModelConfigKey): GeminiModelSelection => {
-  const { t } = useTranslation();
-
-  // Resolve persisted model into a full TProviderWithModel for initialModel.
-  // useModelProviderList is SWR-backed so the duplicate call inside
-  // useGeminiModelSelection is deduplicated automatically.
-  const { providers } = useModelProviderList();
-  const [resolvedInitialModel, setResolvedInitialModel] = useState<TProviderWithModel | undefined>(undefined);
-  const [restored, setRestored] = useState(false);
-
-  useEffect(() => {
-    if (restored || providers.length === 0) return;
-
-    const restore = async () => {
-      try {
-        const saved = (await ConfigStorage.get(configKey)) as { id: string; useModel: string } | undefined;
-        if (!saved?.id || !saved?.useModel) {
-          // Nothing saved — mark restored so we don't keep retrying
-          setRestored(true);
-          return;
-        }
-
-        const provider = providers.find((p) => p.id === saved.id);
-        if (!provider) {
-          // Provider not found in current list — don't mark as restored.
-          // The Google Auth provider may load after API-key providers;
-          // leaving restored=false lets this effect re-run when providers update.
-          return;
-        }
-
-        // Google Auth provider's model array only contains top-level modes
-        // ('auto', 'auto-gemini-2.5', 'manual'), but sub-model values like
-        // 'gemini-2.5-flash' are also valid — skip strict membership check.
-        const isGoogleAuth = provider.platform?.toLowerCase().includes('gemini-with-google-auth');
-        if (isGoogleAuth || provider.model?.includes(saved.useModel)) {
-          setResolvedInitialModel({
-            ...provider,
-            useModel: saved.useModel,
-          } as TProviderWithModel);
-        }
-        setRestored(true);
-      } catch (error) {
-        console.error(`[ChannelSettings] Failed to restore model for ${configKey}:`, error);
-        setRestored(true);
-      }
-    };
-
-    void restore();
-  }, [configKey, providers, restored]);
-
-  // Only called on explicit user selection — not during restoration
-  const onSelectModel = useCallback(
-    async (provider: IProvider, modelName: string) => {
-      try {
-        const modelRef = { id: provider.id, useModel: modelName };
-        await ConfigStorage.set(configKey, modelRef);
-
-        // Derive platform from configKey and sync to channel system
-        const platform = configKey.replace('assistant.', '').replace('.defaultModel', '') as
-          | 'telegram'
-          | 'slack'
-          | 'discord'
-          | 'lark'
-          | 'dingtalk'
-          | 'weixin';
-        const agentKey = `assistant.${platform}.agent` as const;
-        const currentAgent = await ConfigStorage.get(agentKey);
-        await channel.syncChannelSettings
-          .invoke({
-            platform,
-            agent: (currentAgent as {
-              backend: string;
-              customAgentId?: string;
-              name?: string;
-            }) || {
-              backend: 'gemini',
-            },
-            model: modelRef,
-          })
-          .catch((err) => console.warn(`[ChannelSettings] syncChannelSettings failed for ${platform}:`, err));
-
-        Message.success(t('settings.assistant.modelSwitched', 'Model switched successfully'));
-        return true;
-      } catch (error) {
-        console.error(`[ChannelSettings] Failed to save model for ${configKey}:`, error);
-        Message.error(t('settings.assistant.modelSaveFailed', 'Failed to save model'));
-        return false;
-      }
-    },
-    [configKey, t]
-  );
-
-  return useGeminiModelSelection({
-    initialModel: resolvedInitialModel,
-    onSelectModel,
-  });
-};
 
 /**
  * Assistant Settings Content Component
@@ -200,14 +85,6 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
   const [collapseKeys, setCollapseKeys] = useState<Record<string, boolean>>(
     Object.fromEntries(BUILTIN_CHANNEL_TYPES.map((type) => [type, true]))
   );
-
-  // Model selection state — uses unified hook with ConfigStorage persistence
-  const telegramModelSelection = useChannelModelSelection('assistant.telegram.defaultModel');
-  const slackModelSelection = useChannelModelSelection('assistant.slack.defaultModel');
-  const discordModelSelection = useChannelModelSelection('assistant.discord.defaultModel');
-  const larkModelSelection = useChannelModelSelection('assistant.lark.defaultModel');
-  const dingtalkModelSelection = useChannelModelSelection('assistant.dingtalk.defaultModel');
-  const weixinModelSelection = useChannelModelSelection('assistant.weixin.defaultModel');
 
   // Load plugin status
   const loadPluginStatus = useCallback(async () => {
@@ -784,11 +661,9 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       disabled: enableLoading,
       isConnected: pluginStatus?.connected || false,
       botUsername: pluginStatus?.botUsername,
-      defaultModel: telegramModelSelection.currentModel?.useModel,
       content: (
         <TelegramConfigForm
           pluginStatus={pluginStatus}
-          modelSelection={telegramModelSelection}
           onStatusChange={setPluginStatus}
           onTokenChange={(token) => {
             telegramTokenRef.current = token;
@@ -805,14 +680,7 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       enabled: larkPluginStatus?.enabled || false,
       disabled: larkEnableLoading,
       isConnected: larkPluginStatus?.connected || false,
-      defaultModel: larkModelSelection.currentModel?.useModel,
-      content: (
-        <LarkConfigForm
-          pluginStatus={larkPluginStatus}
-          modelSelection={larkModelSelection}
-          onStatusChange={setLarkPluginStatus}
-        />
-      ),
+      content: <LarkConfigForm pluginStatus={larkPluginStatus} onStatusChange={setLarkPluginStatus} />,
     };
 
     const slackChannel: ChannelConfig = {
@@ -824,11 +692,9 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       disabled: slackEnableLoading,
       isConnected: slackPluginStatus?.connected || false,
       botUsername: slackPluginStatus?.botUsername,
-      defaultModel: slackModelSelection.currentModel?.useModel,
       content: (
         <SlackConfigForm
           pluginStatus={slackPluginStatus}
-          modelSelection={slackModelSelection}
           onStatusChange={setSlackPluginStatus}
           onConfigChange={(config) => {
             slackConfigRef.current = config;
@@ -846,11 +712,9 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       disabled: discordEnableLoading,
       isConnected: discordPluginStatus?.connected || false,
       botUsername: discordPluginStatus?.botUsername,
-      defaultModel: discordModelSelection.currentModel?.useModel,
       content: (
         <DiscordConfigForm
           pluginStatus={discordPluginStatus}
-          modelSelection={discordModelSelection}
           onStatusChange={setDiscordPluginStatus}
           onConfigChange={(config) => {
             discordConfigRef.current = config;
@@ -867,14 +731,7 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       enabled: dingtalkPluginStatus?.enabled || false,
       disabled: dingtalkEnableLoading,
       isConnected: dingtalkPluginStatus?.connected || false,
-      defaultModel: dingtalkModelSelection.currentModel?.useModel,
-      content: (
-        <DingTalkConfigForm
-          pluginStatus={dingtalkPluginStatus}
-          modelSelection={dingtalkModelSelection}
-          onStatusChange={setDingtalkPluginStatus}
-        />
-      ),
+      content: <DingTalkConfigForm pluginStatus={dingtalkPluginStatus} onStatusChange={setDingtalkPluginStatus} />,
     };
 
     const weixinChannel: ChannelConfig = {
@@ -885,14 +742,7 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       enabled: weixinPluginStatus?.enabled || false,
       disabled: weixinEnableLoading,
       isConnected: weixinPluginStatus?.connected || false,
-      defaultModel: weixinModelSelection.currentModel?.useModel,
-      content: (
-        <WeixinConfigForm
-          pluginStatus={weixinPluginStatus}
-          modelSelection={weixinModelSelection}
-          onStatusChange={setWeixinPluginStatus}
-        />
-      ),
+      content: <WeixinConfigForm pluginStatus={weixinPluginStatus} onStatusChange={setWeixinPluginStatus} />,
     };
 
     const extensionChannels: ChannelConfig[] = Object.values(extensionStatuses)
@@ -933,11 +783,6 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
     dingtalkPluginStatus,
     extensionStatuses,
     extensionLoadingMap,
-    telegramModelSelection,
-    slackModelSelection,
-    discordModelSelection,
-    larkModelSelection,
-    dingtalkModelSelection,
     enableLoading,
     slackEnableLoading,
     discordEnableLoading,
@@ -945,7 +790,6 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
     dingtalkEnableLoading,
     weixinPluginStatus,
     weixinEnableLoading,
-    weixinModelSelection,
     renderExtensionConfigForm,
     t,
   ]);
@@ -967,20 +811,22 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
   };
   const channelSetupSteps = [
     t('settings.channels.selectFirst', {
-      defaultValue: 'Configure a channel account and enable message access.',
+      defaultValue: 'Configure one or more IM channel accounts and enable message access.',
     }),
     t('settings.channels.enableAfterConfig', {
-      defaultValue: 'Publish an Agent to a user, group, topic, or connector default entry.',
+      defaultValue: 'Use Agent Publish to manage formal publication and session handoff.',
     }),
   ];
-  const pageTitle = mode === 'sessions' ? t('settings.activeSessions') : t('settings.channels');
+  const pageTitle = mode === 'sessions' ? t('settings.activeSessions') : t('settings.agentEntry');
   const pageDescription =
     mode === 'sessions'
       ? t('settings.activeSessionsDesc', {
-          defaultValue: 'Review live work sessions and hand them off to a paired IM audience when you need to keep working away from desktop.',
+          defaultValue:
+            'Manage where Agents are formally published in IM, and hand off live sessions when you need temporary continuation away from desktop.',
         })
       : t('settings.agentEntryDesc', {
-          defaultValue: 'Manage your reusable agent entry points, connectors, and audience bindings separately from remote access.',
+          defaultValue:
+            'Manage IM channel configurations. Each channel type can have multiple entries, and publishing is handled separately in Agent Publish.',
         });
 
   return (
@@ -1006,6 +852,20 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
 
         {mode === 'channels' ? (
           <>
+            <div className='mt-18px space-y-4px'>
+              <div className='text-15px font-600 text-t-primary'>
+                {t('settings.channels.title', {
+                  defaultValue: 'Channel Accounts',
+                })}
+              </div>
+              <div className='text-12px text-t-secondary leading-relaxed'>
+                {t('settings.channels.guide', {
+                  defaultValue:
+                    'Connect IM accounts here so agent entries can use them for delivery, pairing, and transport.',
+                })}
+              </div>
+            </div>
+
             <div className='space-y-12px mt-12px'>
               {channels.map((channelConfig) => (
                 <ChannelItem
@@ -1017,11 +877,12 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
                 />
               ))}
             </div>
-
-            <PublicationBindingPanel />
           </>
         ) : (
-          <SessionHandoffPanel />
+          <>
+            <PublicationBindingPanel />
+            <SessionHandoffPanel />
+          </>
         )}
       </div>
     </ContextGoScrollArea>

@@ -5,16 +5,12 @@
  */
 
 import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from '@process/channels/types';
-import { acpConversation, channel } from '@/common/adapter/ipcBridge';
-import { ConfigStorage } from '@/common/config/storage';
+import { channel } from '@/common/adapter/ipcBridge';
 import { openExternalUrl } from '@/renderer/utils/platform';
-import type { GeminiModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection';
-import type { AcpBackendAll } from '@/common/types/acpTypes';
-import { Button, Dropdown, Empty, Input, Menu, Message, Spin, Tooltip } from '@arco-design/web-react';
+import { Button, Empty, Input, Message, Spin, Tooltip } from '@arco-design/web-react';
 import { CheckOne, CloseOne, Copy, Delete, Down, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ChannelModelSelector from '../ChannelModelSelector';
 
 /**
  * Preference row component
@@ -53,13 +49,12 @@ const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({ 
 
 interface LarkConfigFormProps {
   pluginStatus: IChannelPluginStatus | null;
-  modelSelection: GeminiModelSelection;
   onStatusChange: (status: IChannelPluginStatus | null) => void;
 }
 
 const LARK_DEV_DOCS_URL = 'https://open.feishu.cn/document/develop-an-echo-bot/introduction';
 
-const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, modelSelection, onStatusChange }) => {
+const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, onStatusChange }) => {
   const { t } = useTranslation();
 
   // Lark credentials
@@ -76,14 +71,6 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, modelSele
   const [usersLoading, setUsersLoading] = useState(false);
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
   const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
-
-  // Agent selection (used for Lark conversations)
-  const [availableAgents, setAvailableAgents] = useState<
-    Array<{ backend: AcpBackendAll; name: string; customAgentId?: string; isPreset?: boolean }>
-  >([]);
-  const [selectedAgent, setSelectedAgent] = useState<{ backend: AcpBackendAll; name?: string; customAgentId?: string }>(
-    { backend: 'gemini' }
-  );
 
   // Load pending pairings
   const loadPendingPairings = useCallback(async () => {
@@ -122,58 +109,6 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, modelSele
     void loadPendingPairings();
     void loadAuthorizedUsers();
   }, [loadPendingPairings, loadAuthorizedUsers]);
-
-  // Load available agents + saved selection
-  useEffect(() => {
-    const loadAgentsAndSelection = async () => {
-      try {
-        const [agentsResp, saved] = await Promise.all([
-          acpConversation.getAvailableAgents.invoke(),
-          ConfigStorage.get('assistant.lark.agent'),
-        ]);
-
-        if (agentsResp.success && agentsResp.data) {
-          const list = agentsResp.data
-            .filter((a) => !a.isPreset)
-            .map((a) => ({
-              backend: a.backend,
-              name: a.name,
-              customAgentId: a.customAgentId,
-              isPreset: a.isPreset,
-              isExtension: a.isExtension,
-            }));
-          setAvailableAgents(list);
-        }
-
-        if (saved && typeof saved === 'object' && 'backend' in saved && typeof (saved as any).backend === 'string') {
-          setSelectedAgent({
-            backend: (saved as any).backend as AcpBackendAll,
-            customAgentId: (saved as any).customAgentId,
-            name: (saved as any).name,
-          });
-        } else if (typeof saved === 'string') {
-          setSelectedAgent({ backend: saved as AcpBackendAll });
-        }
-      } catch (error) {
-        console.error('[LarkConfig] Failed to load agents:', error);
-      }
-    };
-
-    void loadAgentsAndSelection();
-  }, []);
-
-  const persistSelectedAgent = async (agent: { backend: AcpBackendAll; customAgentId?: string; name?: string }) => {
-    try {
-      await ConfigStorage.set('assistant.lark.agent', agent);
-      await channel.syncChannelSettings
-        .invoke({ platform: 'lark', agent })
-        .catch((err) => console.warn('[LarkConfig] syncChannelSettings failed:', err));
-      Message.success(t('settings.assistant.agentSwitched', 'Agent switched successfully'));
-    } catch (error) {
-      console.error('[LarkConfig] Failed to save agent:', error);
-      Message.error(t('common.saveFailed', 'Failed to save'));
-    }
-  };
 
   // Listen for pairing requests
   useEffect(() => {
@@ -342,9 +277,6 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, modelSele
   };
 
   const hasExistingUsers = authorizedUsers.length > 0;
-  const isGeminiAgent = selectedAgent.backend === 'gemini';
-  const agentOptions: Array<{ backend: AcpBackendAll; name: string; customAgentId?: string; isExtension?: boolean }> =
-    availableAgents.length > 0 ? availableAgents : [{ backend: 'gemini', name: 'Gemini CLI' }];
 
   return (
     <div className='flex flex-col gap-24px'>
@@ -594,81 +526,6 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, modelSele
           </Button>
         </div>
       )}
-
-      {/* Agent Selection */}
-      <div className='flex flex-col gap-8px'>
-        <PreferenceRow
-          label={t('settings.lark.agent', 'Agent')}
-          description={t('settings.lark.agentDesc', 'Used for Lark conversations')}
-        >
-          <Dropdown
-            trigger='click'
-            position='br'
-            droplist={
-              <Menu
-                selectedKeys={[
-                  selectedAgent.customAgentId
-                    ? `${selectedAgent.backend}|${selectedAgent.customAgentId}`
-                    : selectedAgent.backend,
-                ]}
-              >
-                {agentOptions.map((a) => {
-                  const key = a.customAgentId ? `${a.backend}|${a.customAgentId}` : a.backend;
-                  return (
-                    <Menu.Item
-                      key={key}
-                      onClick={() => {
-                        const currentKey = selectedAgent.customAgentId
-                          ? `${selectedAgent.backend}|${selectedAgent.customAgentId}`
-                          : selectedAgent.backend;
-                        if (key === currentKey) {
-                          return;
-                        }
-                        const next = { backend: a.backend, customAgentId: a.customAgentId, name: a.name };
-                        setSelectedAgent(next);
-                        void persistSelectedAgent(next);
-                      }}
-                    >
-                      {a.name}
-                    </Menu.Item>
-                  );
-                })}
-              </Menu>
-            }
-          >
-            <Button type='secondary' className='min-w-160px flex items-center justify-between gap-8px'>
-              <span className='truncate'>
-                {selectedAgent.name ||
-                  availableAgents.find(
-                    (a) =>
-                      (a.customAgentId ? `${a.backend}|${a.customAgentId}` : a.backend) ===
-                      (selectedAgent.customAgentId
-                        ? `${selectedAgent.backend}|${selectedAgent.customAgentId}`
-                        : selectedAgent.backend)
-                  )?.name ||
-                  selectedAgent.backend}
-              </span>
-              <Down theme='outline' size={14} />
-            </Button>
-          </Dropdown>
-        </PreferenceRow>
-      </div>
-
-      {/* Default Model Selection */}
-      <PreferenceRow
-        label={t('settings.assistant.defaultModel', 'Default Model')}
-        description={t('settings.lark.defaultModelDesc', 'Model used for Lark conversations')}
-      >
-        <ChannelModelSelector
-          selection={isGeminiAgent ? modelSelection : undefined}
-          disabled={!isGeminiAgent}
-          label={
-            !isGeminiAgent
-              ? t('settings.assistant.autoFollowCliModel', 'Automatically follow the model when CLI is running')
-              : undefined
-          }
-        />
-      </PreferenceRow>
 
       {/* Connection Status - show when bot is enabled */}
       {pluginStatus?.enabled && authorizedUsers.length === 0 && (

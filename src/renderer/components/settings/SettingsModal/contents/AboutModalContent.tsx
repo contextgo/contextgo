@@ -11,14 +11,20 @@ import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import { useSettingsViewMode } from '../settingsViewContext';
 import { isElectronDesktop, openExternalUrl } from '@/renderer/utils/platform';
+import {
+  getPublicDocsUrl,
+  PUBLIC_RELEASES_URL,
+  PUBLIC_RELEASE_ISSUES_URL,
+  PUBLIC_RELEASE_REPOSITORY_URL,
+  PUBLIC_WEBSITE_URL,
+} from '@/common/update/publicUrls';
 import packageJson from '../../../../../../package.json';
 
-const REPOSITORY_URL = 'https://github.com/contextgo/contextgo';
-const DOCUMENTATION_URL = `${REPOSITORY_URL}/tree/main/docs`;
-const RELEASE_NOTES_URL = `${REPOSITORY_URL}/releases`;
-const FEEDBACK_URL = `${REPOSITORY_URL}/issues/new/choose`;
-const CONTACT_URL = `${REPOSITORY_URL}/discussions`;
-const OFFICIAL_WEBSITE_URL = 'https://contextgo.io';
+const REPOSITORY_URL = PUBLIC_RELEASE_REPOSITORY_URL;
+const RELEASE_NOTES_URL = PUBLIC_RELEASES_URL;
+const FEEDBACK_URL = `${PUBLIC_RELEASE_ISSUES_URL}/new/choose`;
+const CONTACT_URL = PUBLIC_RELEASE_ISSUES_URL;
+const OFFICIAL_WEBSITE_URL = PUBLIC_WEBSITE_URL;
 
 const checkUpdate = () => {
   // 使用 window 自定义事件在渲染进程内部通信（buildEmitter 只支持主进程->渲染进程）
@@ -27,7 +33,7 @@ const checkUpdate = () => {
 };
 
 const AboutModalContent: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
   const isElectron = isElectronDesktop();
@@ -55,7 +61,7 @@ const AboutModalContent: React.FC = () => {
   const linkItems = [
     {
       title: t('settings.helpDocumentation'),
-      url: DOCUMENTATION_URL,
+      url: getPublicDocsUrl(i18n.language),
       icon: <Right theme='outline' size='16' className='app-icon' />,
     },
     {

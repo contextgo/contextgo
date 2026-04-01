@@ -926,7 +926,7 @@
   "simpleModeTip": "検出された CLI を選択してカスタム名を付けてください。環境変数などの詳細設定には詳細モードに切り替えてください。",
   "runtimeManager": {
     "title": "Runtime Setup",
-    "description": "Check whether Claude Code, Codex, and other local coding CLIs are installed. You can also set a launch path manually, finish login, and verify whether each runtime is ready to use.",
+    "description": "Check which local agent runtimes are already available, how many external sessions can be taken over, where each runtime keeps its config, and install the missing ones when a managed command is available.",
     "refresh": "Refresh status",
     "note": "If you enter a path manually, ContextGo will prefer it over automatic PATH detection. The availability check always uses the saved path to confirm whether the runtime can actually start right now.",
     "loadFailed": "Failed to load runtime status.",
@@ -969,21 +969,71 @@
       "checking": "Checking..."
     },
     "runtime": {
-      "claude": { "description": "Anthropic Claude Code CLI." },
-      "codex": { "description": "OpenAI Codex CLI for local coding sessions." },
-      "qwen": { "description": "Qwen Code CLI." },
-      "codebuddy": { "description": "Tencent CodeBuddy Code CLI." },
-      "opencode": { "description": "OpenCode CLI." },
-      "goose": { "description": "Block Goose CLI." },
-      "auggie": { "description": "Augment Code CLI." },
-      "kimi": { "description": "Kimi CLI." },
-      "iflow": { "description": "iFlow CLI." },
-      "droid": { "description": "Factory Droid CLI." },
-      "copilot": { "description": "GitHub Copilot CLI." },
-      "qoder": { "description": "Qoder CLI." },
-      "vibe": { "description": "Mistral Vibe CLI." },
-      "cursor": { "description": "Cursor Agent CLI." }
-    }
+      "claude": {
+        "description": "Anthropic Claude Code CLI."
+      },
+      "codex": {
+        "description": "OpenAI Codex CLI for local coding sessions."
+      },
+      "qwen": {
+        "description": "Qwen Code CLI."
+      },
+      "codebuddy": {
+        "description": "Tencent CodeBuddy Code CLI."
+      },
+      "opencode": {
+        "description": "OpenCode CLI."
+      },
+      "goose": {
+        "description": "Block Goose CLI."
+      },
+      "auggie": {
+        "description": "Augment Code CLI."
+      },
+      "kimi": {
+        "description": "Kimi CLI."
+      },
+      "iflow": {
+        "description": "iFlow CLI."
+      },
+      "droid": {
+        "description": "Factory Droid CLI."
+      },
+      "copilot": {
+        "description": "GitHub Copilot CLI."
+      },
+      "qoder": {
+        "description": "Qoder CLI."
+      },
+      "vibe": {
+        "description": "Mistral Vibe CLI."
+      },
+      "cursor": {
+        "description": "Cursor Agent CLI."
+      }
+    },
+    "revealPathFailed": "Failed to open the path in the system file manager.",
+    "openConfigFailed": "Failed to open the runtime config location.",
+    "installFailed": "Failed to install this runtime.",
+    "installSuccess": "Runtime installed. Detection status has been refreshed.",
+    "externalSessionCount": "Takeover sessions",
+    "externalSessionUnsupported": "Not supported",
+    "revealPath": "Reveal",
+    "configLocation": "Config location",
+    "openConfig": "Open",
+    "installNow": "Install locally",
+    "summaryCards": {
+      "ready": "Ready runtimes",
+      "detected": "Detected locally",
+      "sessions": "Takeover sessions",
+      "missing": "Not installed"
+    },
+    "activeSectionTitle": "Detected or configured",
+    "activeSectionDescription": "These runtimes are already detected locally or have a manual path configured.",
+    "emptyActive": "No runtime has been detected or configured yet.",
+    "missingSectionTitle": "Not installed yet",
+    "missingSectionDescription": "These runtimes are still missing on this device. Use the managed install action where available.",
+    "emptyMissing": "All built-in managed runtimes are already detected or manually configured."
   },
   "command": "コマンド",
   "args": "引数",

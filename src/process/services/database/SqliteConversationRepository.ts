@@ -20,6 +20,14 @@ export class SqliteConversationRepository implements IConversationRepository {
     return getDatabase();
   }
 
+  private assertSuccess<T>(result: { success: boolean; error?: string; data?: T }, operation: string): T {
+    if (!result.success) {
+      throw new Error(result.error || `${operation} failed`);
+    }
+
+    return result.data as T;
+  }
+
   async getConversation(id: string): Promise<TChatConversation | undefined> {
     const db = await this.getDb();
     const result = db.getConversation(id);
@@ -28,17 +36,17 @@ export class SqliteConversationRepository implements IConversationRepository {
 
   async createConversation(conversation: TChatConversation): Promise<void> {
     const db = await this.getDb();
-    db.createConversation(conversation);
+    this.assertSuccess(db.createConversation(conversation), 'createConversation');
   }
 
   async updateConversation(id: string, updates: Partial<TChatConversation>): Promise<void> {
     const db = await this.getDb();
-    db.updateConversation(id, updates);
+    this.assertSuccess(db.updateConversation(id, updates), 'updateConversation');
   }
 
   async deleteConversation(id: string): Promise<void> {
     const db = await this.getDb();
-    db.deleteConversation(id);
+    this.assertSuccess(db.deleteConversation(id), 'deleteConversation');
   }
 
   async getMessages(
@@ -58,7 +66,7 @@ export class SqliteConversationRepository implements IConversationRepository {
 
   async insertMessage(message: TMessage): Promise<void> {
     const db = await this.getDb();
-    db.insertMessage(message);
+    this.assertSuccess(db.insertMessage(message), 'insertMessage');
   }
 
   /**

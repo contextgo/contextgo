@@ -141,6 +141,7 @@ const AcpSendBox: React.FC<{
     setAiProcessing,
     checkAndUpdateTitle,
     addOrUpdateMessage: addOrUpdateMessageRef.current,
+    t,
   });
 
   const sendAcpMessage = useCallback(

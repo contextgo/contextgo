@@ -183,7 +183,7 @@ function resolveButtonStyle(action: IActionButton): 'primary' | 'danger' | undef
   if (action.action === 'system.confirm' && action.params?.value === 'cancel') {
     return 'danger';
   }
-  if (action.action === 'system.confirm' || action.action === 'agent.select') {
+  if (action.action === 'system.confirm') {
     return 'primary';
   }
   return undefined;

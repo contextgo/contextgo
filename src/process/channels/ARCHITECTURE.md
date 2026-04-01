@@ -348,8 +348,6 @@ sequenceDiagram
 |              | `session.status`                  | `handleSessionStatus`  | 显示当前会话状态                      |
 |              | `help.show/features/pairing/tips` | `handleHelp*`          | 帮助信息                              |
 |              | `settings.show`                   | `handleSettingsShow`   | 设置引导                              |
-|              | `agent.show`                      | `handleAgentShow`      | 显示可用 Agent 列表                   |
-|              | `agent.select`                    | `handleAgentSelect`    | 切换 Agent 类型                       |
 | **platform** | `pairing.show`                    | `handlePairingShow`    | 生成并显示配对码                      |
 |              | `pairing.refresh`                 | `handlePairingRefresh` | 刷新配对码                            |
 |              | `pairing.check`                   | `handlePairingCheck`   | 检查配对状态                          |

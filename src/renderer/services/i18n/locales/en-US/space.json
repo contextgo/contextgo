@@ -1,0 +1,112 @@
+{
+  "tabs": {
+    "canvas": "Canvas",
+    "docs": "Docs",
+    "context": "Context",
+    "members": "Members"
+  },
+  "header": {
+    "subtitle": "A collaborative space where content, context, and members stay aligned.",
+    "members": "{{count}} member(s)",
+    "roleAware": "Role-aware",
+    "providerFallback": "Canvas ready"
+  },
+  "context": {
+    "viewTitle": "Space Context",
+    "viewDescription": "This surface shows what should influence agents inside the space and how that context is governed.",
+    "activeTitle": "Active Context",
+    "activeDescription": "What the agent should care about right now in this space.",
+    "selectionTitle": "Current Selection",
+    "selectionEmpty": "No active selection",
+    "stats": {
+      "threads": "Threads",
+      "docs": "Docs",
+      "boards": "Boards",
+      "candidates": "Pending candidates"
+    },
+    "durableTitle": "Durable Context Layers",
+    "durableDescription": "Stable space context should come from reviewed memories, profiles, docs, and boards instead of raw chat history.",
+    "layers": {
+      "memories": "Accepted memories",
+      "memoriesHint": "Reviewed factual and experiential memory for the space.",
+      "profiles": "Profiles",
+      "profilesHint": "Compacted role, workflow, and stable preference summaries.",
+      "sources": "Content surfaces",
+      "sourcesHint": "Docs, boards, threads, and selections that provide provenance."
+    },
+    "governanceTitle": "Governance Rules",
+    "governanceDescription": "Shared memory should be promoted through roles, not silently written by every participant.",
+    "rules": {
+      "reviewers": "Only reviewers and above should promote accepted memory.",
+      "decisions": "Constraints and decisions should require explicit review before becoming durable context.",
+      "provenance": "Every important memory should keep clear provenance to space content."
+    },
+    "queueTitle": "Candidate Queue",
+    "queueEmpty": "No candidate memories in this space yet.",
+    "acceptedTitle": "Accepted Memories",
+    "acceptedEmpty": "No accepted memories yet. Start with reviewed constraints, decisions, and workflows.",
+    "profilesTitle": "Active Profiles",
+    "profilesEmpty": "No active profiles yet.",
+    "candidateTitle": "Candidate Memories",
+    "candidateEmpty": "No candidate memories",
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "promoteDoc": "Promote to Doc",
+      "promoteBoard": "Promote to Board"
+    }
+  },
+  "members": {
+    "viewTitle": "Members & Roles",
+    "viewDescription": "Space membership should decide who can edit content, run agents, and approve memory.",
+    "currentTitle": "Current Members",
+    "currentEmpty": "No members in this space yet.",
+    "currentRole": "Current role",
+    "localOnly": "Local-only session",
+    "roleModelTitle": "Role Model",
+    "roleModelDescription": "A shared space needs explicit roles before multi-member context becomes trustworthy.",
+    "permissionsTitle": "Core Capabilities",
+    "actions": {
+      "invite": "Invite Member",
+      "manage": "Manage Roles"
+    },
+    "form": {
+      "displayName": "Display name",
+      "secondaryText": "Email or note"
+    },
+    "comingSoon": "Multi-member membership and approval workflows are the next product layer for Space.",
+    "roles": {
+      "owner": {
+        "label": "Owner",
+        "description": "Full control over members, providers, policies, and durable context."
+      },
+      "admin": {
+        "label": "Admin",
+        "description": "Manage structure, collaboration policy, and operational settings."
+      },
+      "editor": {
+        "label": "Editor",
+        "description": "Edit docs and boards, run agents, and create candidate context."
+      },
+      "reviewer": {
+        "label": "Reviewer",
+        "description": "Review and promote candidate memories, especially decisions and constraints."
+      },
+      "viewer": {
+        "label": "Viewer",
+        "description": "Read content and context without changing shared state."
+      }
+    },
+    "capabilities": {
+      "contentEdit": "Edit docs and boards",
+      "agentRun": "Run agents and workflows",
+      "memoryReview": "Approve memory promotion",
+      "memberManage": "Manage members and roles",
+      "viewOnly": "View shared content and context",
+      "workflowReuse": "Reuse approved workflows"
+    },
+    "status": {
+      "active": "Active"
+    }
+  }
+}

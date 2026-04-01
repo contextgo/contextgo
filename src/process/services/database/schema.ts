@@ -64,12 +64,18 @@ export function initSchema(db: ISqliteDriver): void {
     name TEXT NOT NULL,
     engine TEXT NOT NULL,
     description TEXT,
+    members_json TEXT NOT NULL DEFAULT '[]',
+    permissions_policy_json TEXT NOT NULL DEFAULT '{}',
+    provider_ref_json TEXT,
     is_default INTEGER NOT NULL DEFAULT 0,
     archived_at INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
+  ensureColumn(db, 'spaces', 'members_json', `members_json TEXT NOT NULL DEFAULT '[]'`);
+  ensureColumn(db, 'spaces', 'permissions_policy_json', `permissions_policy_json TEXT NOT NULL DEFAULT '{}'`);
+  ensureColumn(db, 'spaces', 'provider_ref_json', 'provider_ref_json TEXT');
   db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_id ON spaces(user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_updated ON spaces(user_id, updated_at DESC)');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_spaces_default_per_user ON spaces(user_id) WHERE is_default = 1');
@@ -106,7 +112,9 @@ export function initSchema(db: ISqliteDriver): void {
     FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE,
     FOREIGN KEY (source_id) REFERENCES context_sources(id) ON DELETE CASCADE
   )`);
-  db.exec('CREATE INDEX IF NOT EXISTS idx_context_documents_space_created ON context_documents(space_id, created_at DESC)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_context_documents_space_created ON context_documents(space_id, created_at DESC)'
+  );
   db.exec('CREATE INDEX IF NOT EXISTS idx_context_documents_source ON context_documents(source_id)');
 
   db.exec(`CREATE TABLE IF NOT EXISTS context_chunks (
@@ -122,7 +130,9 @@ export function initSchema(db: ISqliteDriver): void {
     FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE,
     FOREIGN KEY (document_id) REFERENCES context_documents(id) ON DELETE CASCADE
   )`);
-  db.exec('CREATE INDEX IF NOT EXISTS idx_context_chunks_document_sequence ON context_chunks(document_id, sequence ASC)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_context_chunks_document_sequence ON context_chunks(document_id, sequence ASC)'
+  );
 
   db.exec(`CREATE TABLE IF NOT EXISTS context_memories (
     id TEXT PRIMARY KEY,
@@ -145,7 +155,9 @@ export function initSchema(db: ISqliteDriver): void {
     FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
   )`);
   db.exec('CREATE INDEX IF NOT EXISTS idx_context_memories_space_state ON context_memories(space_id, state)');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_context_memories_space_updated ON context_memories(space_id, updated_at DESC)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_context_memories_space_updated ON context_memories(space_id, updated_at DESC)'
+  );
 
   db.exec(`CREATE TABLE IF NOT EXISTS context_memory_candidates (
     id TEXT PRIMARY KEY,
@@ -178,8 +190,12 @@ export function initSchema(db: ISqliteDriver): void {
     updated_at TEXT NOT NULL,
     FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
   )`);
-  db.exec('CREATE INDEX IF NOT EXISTS idx_context_memory_candidates_space_state ON context_memory_candidates(space_id, state)');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_context_memory_candidates_thread ON context_memory_candidates(thread_id, created_at DESC)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_context_memory_candidates_space_state ON context_memory_candidates(space_id, state)'
+  );
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_context_memory_candidates_thread ON context_memory_candidates(thread_id, created_at DESC)'
+  );
 
   db.exec(`CREATE TABLE IF NOT EXISTS context_profiles (
     id TEXT PRIMARY KEY,
@@ -208,7 +224,9 @@ export function initSchema(db: ISqliteDriver): void {
     created_at TEXT NOT NULL,
     FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
   )`);
-  db.exec('CREATE INDEX IF NOT EXISTS idx_context_operations_space_created ON context_operations(space_id, created_at DESC)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_context_operations_space_created ON context_operations(space_id, created_at DESC)'
+  );
   db.exec('CREATE INDEX IF NOT EXISTS idx_context_operations_space_type ON context_operations(space_id, type)');
 
   // Conversations table (会话表 - 存储TChatConversation)
@@ -517,7 +535,9 @@ export function initSchema(db: ISqliteDriver): void {
     FOREIGN KEY (source_external_session_id) REFERENCES external_sessions(id) ON DELETE SET NULL,
     FOREIGN KEY (source_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
   )`);
-  db.exec('CREATE INDEX IF NOT EXISTS idx_channel_control_leases_updated_at ON channel_control_leases(updated_at DESC)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_channel_control_leases_updated_at ON channel_control_leases(updated_at DESC)'
+  );
 
   console.log('[Database] Schema initialized successfully');
 }
@@ -547,4 +567,4 @@ export function setDatabaseVersion(db: ISqliteDriver, version: number): void {
  * Current database schema version
  * Update this when adding new migrations in migrations.ts
  */
-export const CURRENT_DB_VERSION = 23;
+export const CURRENT_DB_VERSION = 26;

@@ -11,6 +11,7 @@ import { DEFAULT_VOICE_INPUT_CONFIG, EMPTY_VOICE_INPUT_STATS } from '@/common/ty
 import { Alert, Button, Form, Input, Select, Space, Switch, Tag, Typography } from '@arco-design/web-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import styles from './VoiceInputSection.module.css';
 
 const OPEN_WHISPER_MODELS: Array<{
   id: VoiceInputOpenWhisperModelId;
@@ -369,7 +370,7 @@ const VoiceInputSection: React.FC = () => {
   );
 
   return (
-    <div className='px-[12px] md:px-[32px] py-16px bg-2 rd-16px space-y-16px'>
+    <div className={`${styles.voiceInputSection} px-[12px] md:px-[32px] py-16px bg-2 rd-16px space-y-16px`}>
       <div className='flex items-start justify-between gap-16px'>
         <div className='space-y-4px'>
           <div className='text-15px text-t-primary font-600'>{t('settings.voiceInput.title')}</div>

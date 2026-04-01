@@ -189,15 +189,39 @@ let isExplicitQuit = false;
 
 let mainWindow: BrowserWindow;
 
+const DEFAULT_WINDOW_WIDTH_RATIO = 0.74;
+const DEFAULT_WINDOW_HEIGHT_RATIO = 0.84;
+const DEFAULT_WINDOW_MIN_WIDTH = 960;
+const DEFAULT_WINDOW_MIN_HEIGHT = 700;
+const DEFAULT_WINDOW_MAX_WIDTH = 1560;
+const DEFAULT_WINDOW_MAX_HEIGHT = 1120;
+
+const clampWindowDimension = (value: number, minimum: number, maximum: number, available: number): number => {
+  const safeMinimum = Math.min(minimum, available);
+  const safeMaximum = Math.min(Math.max(maximum, safeMinimum), available);
+  return Math.min(Math.max(value, safeMinimum), safeMaximum);
+};
+
 const createWindow = (): void => {
   console.log('[ContextGo] Creating main window...');
   // Get primary display size
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-  // Set window size to 80% (4/5) of screen size for better visibility on high-resolution displays
-  const windowWidth = Math.floor(screenWidth * 0.8);
-  const windowHeight = Math.floor(screenHeight * 0.8);
+  // Use a slightly taller, less wide default window and clamp it so large displays
+  // do not open an excessively wide first-run layout.
+  const windowWidth = clampWindowDimension(
+    Math.floor(screenWidth * DEFAULT_WINDOW_WIDTH_RATIO),
+    DEFAULT_WINDOW_MIN_WIDTH,
+    DEFAULT_WINDOW_MAX_WIDTH,
+    screenWidth
+  );
+  const windowHeight = clampWindowDimension(
+    Math.floor(screenHeight * DEFAULT_WINDOW_HEIGHT_RATIO),
+    DEFAULT_WINDOW_MIN_HEIGHT,
+    DEFAULT_WINDOW_MAX_HEIGHT,
+    screenHeight
+  );
 
   // Get app icon for development mode (Windows/Linux need icon in BrowserWindow)
   // In production, icons are set via forge.config.ts packagerConfig

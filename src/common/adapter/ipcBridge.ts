@@ -31,6 +31,8 @@ import type {
   GroupOrchestration,
   GroupParticipantRole,
   WorkflowGroupRunState,
+  SpaceMember,
+  SpacePermissionsPolicy,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
 import type { CloudAuthProviderId, CloudStatus, CloudSyncSummary } from '../types/cloud';
@@ -94,12 +96,22 @@ export const shell = {
   openFile: bridge.buildProvider<void, string>('open-file'), // 使用系统默认程序打开文件
   showItemInFolder: bridge.buildProvider<void, string>('show-item-in-folder'), // 打开文件夹
   openExternal: bridge.buildProvider<void, string>('open-external'), // 使用系统默认程序打开外部链接
+  revealPath: bridge.buildProvider<{ resolvedPath: string; exists: boolean }, string>('reveal-path'), // 定位文件或目录
 };
 
 export const space = {
   list: bridge.buildProvider<TSpace[], void>('space.list'),
+  get: bridge.buildProvider<TSpace | undefined, { id: string }>('space.get'),
   ensureDefault: bridge.buildProvider<TSpace, void>('space.ensure-default'),
   create: bridge.buildProvider<TSpace, { name: string; description?: string }>('space.create'),
+  update: bridge.buildProvider<
+    TSpace | undefined,
+    { id: string; updates: Partial<Pick<TSpace, 'name' | 'description' | 'members' | 'permissionsPolicy'>> }
+  >('space.update'),
+  getContext: bridge.buildProvider<
+    { memories: IContextMemoryView[]; profiles: IContextProfileView[] },
+    { spaceId: string }
+  >('space.get-context'),
 };
 
 //通用会话能力
@@ -906,6 +918,10 @@ export const acpConversation = {
   >('acp.import-external-session'),
   checkEnv: bridge.buildProvider<{ env: Record<string, string> }, void>('acp.check.env'),
   refreshCustomAgents: bridge.buildProvider<IBridgeResponse, void>('acp.refresh-custom-agents'),
+  installManagedRuntime: bridge.buildProvider<
+    IBridgeResponse<{ backend: AcpBackend; command: string; stdout?: string; stderr?: string }>,
+    { backend: AcpBackend }
+  >('acp.install-managed-runtime'),
   checkAgentHealth: bridge.buildProvider<
     IBridgeResponse<{ available: boolean; latency?: number; error?: string }>,
     { backend: AcpBackend }
@@ -1482,6 +1498,29 @@ export interface IContextMemoryCandidateView {
   updatedAt: string;
 }
 
+export interface IContextMemoryView {
+  id: string;
+  spaceId: string;
+  kind: string;
+  tier: string;
+  summary: string;
+  detail?: string;
+  confidence: number;
+  priority: string;
+  state: string;
+  updatedAt: string;
+}
+
+export interface IContextProfileView {
+  id: string;
+  spaceId: string;
+  key: string;
+  summary: string;
+  confidence: number;
+  state: string;
+  updatedAt: string;
+}
+
 export interface IConversationTurnCompletedEvent {
   sessionId: string;
   status: 'pending' | 'running' | 'finished';
@@ -1718,16 +1757,6 @@ export const channel = {
     IBridgeResponse<IChannelHandoffReleaseResult>,
     { targetExternalSessionId: string; controlMode: ChannelControlMode }
   >('channel.set-handoff-control-mode'),
-
-  // Settings Sync
-  syncChannelSettings: bridge.buildProvider<
-    IBridgeResponse,
-    {
-      platform: string;
-      agent: { backend: string; customAgentId?: string; name?: string };
-      model?: { id: string; useModel: string };
-    }
-  >('channel.sync-channel-settings'),
 
   // Events
   pairingRequested: bridge.buildEmitter<IChannelPairingRequest>('channel.pairing-requested'),

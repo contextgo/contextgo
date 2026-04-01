@@ -52,7 +52,7 @@ export default function SpacePage(props: SpacePageProps) {
     return () => {
       cancelled = true;
     };
-  }, [messageApi, props.spaceName, resolvedSpaceId]);
+  }, [props.spaceName, resolvedSpaceId]);
 
   if (!resolvedSpaceId) {
     return (
