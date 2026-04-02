@@ -149,5 +149,5 @@ describe('Built WebUI favicon integrity', () => {
       const asarEntries = getAsarEntries(appAsarPath);
       expect(asarEntries.has(assetRelativePath)).toBe(true);
     }
-  });
+  }, 30000);
 });

@@ -199,7 +199,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
       if (errorMessage.includes('timed out')) {
         suggestions = [
           'Check if Codex CLI is installed: run "codex --version"',
-          'Verify authentication: run "codex auth status"',
+          'Verify authentication: run "codex login status"',
           'Check network connectivity',
           'Try restarting the application',
         ];
@@ -211,7 +211,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
         ];
       } else if (errorMessage.includes('authentication')) {
         suggestions = [
-          'Run "codex auth" to authenticate with your account',
+          'Run "codex login" to authenticate with your account',
           'Check if your authentication token is valid',
           'Try logging out and logging back in',
         ];

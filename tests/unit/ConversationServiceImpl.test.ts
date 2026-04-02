@@ -17,6 +17,10 @@ vi.mock('../../src/process/services/cron/cronServiceSingleton', () => ({
     updateJob: vi.fn(async () => {}),
   },
 }));
+
+vi.mock('../../src/process/bridge/services/workspaceAutomation', () => ({
+  copyWorkspaceAutomationHooks: vi.fn(async () => {}),
+}));
 vi.mock('@process/utils/initAgent', () => ({
   createGeminiAgent: vi.fn(async () => ({ id: 'gen-id', type: 'gemini', name: 'test', extra: {} })),
   createAcpAgent: vi.fn(async () => ({ id: 'acp-id', type: 'acp', name: 'test', extra: {} })),
@@ -60,6 +64,7 @@ function makeSpaceService(overrides: Partial<ISpaceService> = {}): ISpaceService
 }
 
 import { ConversationServiceImpl } from '../../src/process/services/ConversationServiceImpl';
+import { copyWorkspaceAutomationHooks } from '../../src/process/bridge/services/workspaceAutomation';
 
 describe('ConversationServiceImpl.getConversation', () => {
   it('returns conversation from repo', async () => {
@@ -144,6 +149,54 @@ describe('ConversationServiceImpl.createWithMigration', () => {
     const conv = { id: 'new', name: 'test' } as any;
     await svc.createWithMigration({ conversation: conv });
     expect(repo.createConversation).toHaveBeenCalledWith(expect.objectContaining({ id: 'new' }));
+  });
+
+  it('copies workspace hooks and updates cron workspace metadata during migration', async () => {
+    const repo = makeRepo({
+      getConversation: vi.fn(
+        () =>
+          ({
+            id: 'src',
+            extra: { workspace: '/source-ws' },
+          }) as any
+      ),
+      getMessages: vi.fn(() => ({ data: [], total: 0, hasMore: false })),
+    });
+    const svc = new ConversationServiceImpl(repo);
+
+    const { cronService } = await import('../../src/process/services/cron/cronServiceSingleton');
+    vi.mocked(cronService.listJobsByConversation).mockResolvedValue([
+      {
+        id: 'job-1',
+        metadata: {
+          conversationId: 'src',
+          conversationTitle: 'Source',
+          workspacePath: '/source-ws',
+        },
+      } as any,
+    ]);
+
+    await svc.createWithMigration({
+      conversation: {
+        id: 'new',
+        name: 'Migrated',
+        extra: { workspace: '/target-ws' },
+      } as any,
+      sourceConversationId: 'src',
+      migrateCron: true,
+    });
+
+    expect(copyWorkspaceAutomationHooks).toHaveBeenCalledWith('/source-ws', '/target-ws');
+    expect(cronService.updateJob).toHaveBeenCalledWith(
+      'job-1',
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          conversationId: 'new',
+          conversationTitle: 'Migrated',
+          workspacePath: '/target-ws',
+        }),
+      })
+    );
   });
 
   it('copies messages from source conversation', async () => {

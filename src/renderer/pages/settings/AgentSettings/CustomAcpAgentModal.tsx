@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
-import ContextGoModal from '@/renderer/components/base/ContextGoModal';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import { uuid } from '@/common/utils';
 import { acpConversation } from '@/common/adapter/ipcBridge';
 import { CheckSmall } from '@icon-park/react';
@@ -239,22 +239,19 @@ const CustomAcpAgentModal: React.FC<CustomAcpAgentModalProps> = ({ visible, agen
   if (!visible) return null;
 
   return (
-    <ContextGoModal
+    <SettingsSubModal
       visible={visible}
       onCancel={onCancel}
       onOk={handleSubmit}
       okButtonProps={{ disabled: isSubmitDisabled() }}
-      header={{
-        title: agent
+      title={
+        agent
           ? t('settings.editCustomAgent') || 'Edit Custom Agent'
-          : t('settings.configureCustomAgent') || 'Add Custom Agent',
-        showClose: true,
-      }}
+          : t('settings.configureCustomAgent') || 'Add Custom Agent'
+      }
       style={{ width: 520, height: 'auto', maxHeight: '80vh' }}
       contentStyle={{
-        borderRadius: 16,
         padding: '20px',
-        background: 'var(--bg-1)',
         overflow: 'auto',
       }}
     >
@@ -374,7 +371,7 @@ const CustomAcpAgentModal: React.FC<CustomAcpAgentModalProps> = ({ visible, agen
           </Collapse>
         )}
       </div>
-    </ContextGoModal>
+    </SettingsSubModal>
   );
 };
 

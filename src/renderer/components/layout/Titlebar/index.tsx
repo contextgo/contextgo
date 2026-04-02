@@ -113,11 +113,10 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const newEntryTooltip = t('conversation.entry.create');
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const isSettingsRoute = location.pathname.startsWith('/settings');
-  const isSpaceRoute = location.pathname.startsWith('/space/');
   const showDesktopConversationTabs = !layout?.isMobile && workspaceAvailable && openTabs.length > 0;
   const iconSize = layout?.isMobile ? 24 : 18;
   // 统一在标题栏左侧展示主侧栏开关 / Always expose sidebar toggle on titlebar left side
-  const showSiderToggle = Boolean(layout?.setSiderCollapsed) && !isSpaceRoute && !(layout?.isMobile && isSettingsRoute);
+  const showSiderToggle = Boolean(layout?.setSiderCollapsed) && !(layout?.isMobile && isSettingsRoute);
   const showBackToChatButton = Boolean(layout?.isMobile && isSettingsRoute);
   const showNewConversationButton = Boolean(layout?.isMobile && workspaceAvailable);
   const siderTooltip = layout?.siderCollapsed
@@ -337,13 +336,15 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
         {isDesktopRuntime ? <div className='app-titlebar__top-drag-strip' aria-hidden='true' /> : null}
         {desktopLeftControls}
         {showDesktopRightSection && (
-          <div className='app-titlebar__desktop-right'>
+          <div className={classNames('app-titlebar__desktop-right', showDesktopConversationTabs && 'app-titlebar__desktop-right--conversation')}>
             {showDesktopConversationTabs ? (
               <div className='app-titlebar__desktop-content app-titlebar__desktop-content--conversation'>
                 <div id='app-titlebar-chat-slot' className='h-full min-w-0' />
+                {isDesktopRuntime ? <div className='app-titlebar__drag-spacer' aria-hidden='true' /> : null}
               </div>
+            ) : isDesktopRuntime ? (
+              <div className='app-titlebar__drag-spacer' aria-hidden='true' />
             ) : null}
-            {isDesktopRuntime ? <div className='app-titlebar__drag-spacer' aria-hidden='true' /> : null}
             {showDesktopToolbar && (
               <div ref={toolbarRef} className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
                 <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />

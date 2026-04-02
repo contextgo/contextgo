@@ -37,6 +37,7 @@ const COMPACT_TAB_MIN_WIDTH = 68;
 const COMPACT_TAB_MAX_WIDTH = 100;
 const FULL_TAB_MIN_WIDTH = 108;
 const FULL_TAB_MAX_WIDTH = 184;
+const CONVERSATION_TAB_STRIP_BG = 'var(--app-conversation-strip-bg, var(--bg-1))';
 
 interface TabFadeState {
   left: boolean;
@@ -233,7 +234,7 @@ const ConversationTabView: React.FC<ConversationTabViewProps> = ({
   const tabClassName = `conversation-tab flex items-center h-34px min-w-0 cursor-pointer transition-[background-color,border-color,color,box-shadow] duration-180 shrink-0 rounded-12px border border-solid ${
     isActive
       ? 'bg-[color:color-mix(in_srgb,var(--bg-1)_96%,white_4%)] text-[color:var(--color-text-1)] border-[color:color-mix(in_srgb,var(--border-base)_86%,transparent)] shadow-[0_10px_24px_rgba(15,23,42,0.08)]'
-      : 'bg-[color:color-mix(in_srgb,var(--bg-2)_92%,var(--fill-2)_8%)] text-[color:var(--color-text-3)] border-[color:color-mix(in_srgb,var(--border-base)_46%,transparent)] hover:text-[color:var(--color-text-2)] hover:border-[color:color-mix(in_srgb,var(--border-base)_68%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--bg-2)_76%,var(--fill-2)_24%)]'
+      : 'bg-transparent text-[color:var(--color-text-3)] border-transparent hover:text-[color:var(--color-text-2)] hover:border-[color:color-mix(in_srgb,var(--border-base)_58%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--bg-1)_82%,white_18%)]'
   } ${isIconOnly ? 'justify-center px-0' : isCompact ? 'gap-6px px-7px' : 'gap-7px px-8px'}`;
 
   const tabStyle: React.CSSProperties | undefined = width
@@ -662,7 +663,7 @@ const ConversationTabs: React.FC<{ showHeaderActions?: boolean }> = ({ showHeade
 
   const tabsRootClassName = isMobile
     ? 'relative w-full min-w-0 shrink-0 bg-1 min-h-42px px-8px py-4px'
-    : 'relative flex h-full w-full min-w-0 max-w-full items-center overflow-hidden bg-1 px-6px';
+    : 'relative flex h-full w-full min-w-0 max-w-full items-center overflow-hidden px-6px';
   const tabsInnerClassName = isMobile
     ? 'relative flex h-32px w-full min-w-0 items-center gap-6px'
     : 'relative flex h-full w-full min-w-0 max-w-full items-center gap-6px overflow-hidden';
@@ -680,7 +681,7 @@ const ConversationTabs: React.FC<{ showHeaderActions?: boolean }> = ({ showHeade
   });
 
   return (
-    <div className={tabsRootClassName}>
+    <div className={tabsRootClassName} style={isMobile ? undefined : { background: CONVERSATION_TAB_STRIP_BG }}>
       <div className={tabsInnerClassName}>
         {/* Tabs 滚动区域 */}
         <div
@@ -705,13 +706,17 @@ const ConversationTabs: React.FC<{ showHeaderActions?: boolean }> = ({ showHeade
 
         {/* 左侧渐变指示器 */}
         {showLeftFade && (
-          <div className='pointer-events-none absolute left-0 top-0 bottom-0 w-32px [background:linear-gradient(90deg,var(--bg-1)_8%,transparent_100%)]' />
+          <div
+            className='pointer-events-none absolute left-0 top-0 bottom-0 w-32px'
+            style={{ background: `linear-gradient(90deg, ${CONVERSATION_TAB_STRIP_BG} 16%, transparent 100%)` }}
+          />
         )}
 
         {/* 右侧渐变指示器 */}
         {showRightFade && (
           <div
-            className={`pointer-events-none absolute top-0 bottom-0 w-32px [background:linear-gradient(270deg,var(--bg-1)_8%,transparent_100%)] ${showHeaderActions ? 'right-56px' : 'right-0'}`}
+            className={`pointer-events-none absolute top-0 bottom-0 w-32px ${showHeaderActions ? 'right-56px' : 'right-0'}`}
+            style={{ background: `linear-gradient(270deg, ${CONVERSATION_TAB_STRIP_BG} 16%, transparent 100%)` }}
           />
         )}
       </div>

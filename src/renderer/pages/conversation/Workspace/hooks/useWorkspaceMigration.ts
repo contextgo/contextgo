@@ -167,6 +167,7 @@ export function useWorkspaceMigration({
           conversation: newConversation,
           sourceConversationId: conversation_id,
           migrateCron,
+          sourceWorkspace: workspace,
         });
 
         // Close modal and reset state

@@ -67,7 +67,16 @@
     "pinnedSection": "Pinned",
     "deleteSuccess": "削除しました",
     "deleteFailed": "削除に失敗しました",
-    "toggleGroupConversation": "グループセッションを切り替え"
+    "toggleGroupConversation": "グループセッションを切り替え",
+    "deleteModalHeadline": "この会話を完全に削除しますか？",
+    "deleteModalDescription": "この操作は元に戻せません。会話メッセージと関連記録が削除されます。",
+    "deleteTargetLabel": "会話",
+    "groupConversationTag": "グループ",
+    "deleteGroupImpact": "このグループを削除すると、関連する子会話 {{count}} 件も削除されます。",
+    "deleteModalBatchHeadline": "選択した会話を完全に削除しますか？",
+    "deleteModalBatchDescription": "この操作は元に戻せません。選択した会話のメッセージと関連記録が削除されます。",
+    "deleteBatchTargetLabel": "選択内容",
+    "deleteBatchCount": "{{count}} 件の会話を選択中"
   },
   "historySearch": {
     "tooltip": "検索",
@@ -87,7 +96,7 @@
     "group": "グループ"
   },
   "dropdown": {
-    "cliAgents": "CLI Agents",
+    "cliAgents": "実行可能な Agent",
     "presetAssistants": "プリセットアシスタント"
   },
   "group": {
@@ -386,7 +395,11 @@
     }
   },
   "contextUsage": {
-    "contextUsed": "コンテキスト使用量"
+    "contextUsed": "コンテキスト使用量",
+    "title": "コンテキスト使用量 {{percentage}}",
+    "used": "使用済み",
+    "remaining": "残り",
+    "limit": "上限"
   },
   "skill_generator": {
     "title": "Generate Skill/Rule",
@@ -411,10 +424,35 @@
     "preset_registered": "Agent preset registered successfully!"
   },
   "header": {
-    "publishAgentEntry": "IM に公開",
-    "publishAgentEntryHint": "この会話を再利用可能な Agent に整理し、ユーザー、グループ、トピック、その他の IM 面に公開します。",
-    "publishAgentAction": "Publish this Agent",
-    "handoffSessionAction": "Continue current session in IM",
+    "publishAgentEntry": "Agent を公開",
+    "publishAgentEntryHint": "この会話を再利用可能な Agent に整理し、IM ターゲットへの長期公開を管理します。",
+    "publishAgentAction": "Agent を公開",
     "publishPrepareFailed": "この Agent Entry を準備できませんでした"
+  },
+  "runStatus": {
+    "showDetails": "詳細を表示",
+    "hideDetails": "詳細を隠す",
+    "rawTask": "元のタスク",
+    "liveThought": "リアルタイム思考",
+    "runtimeStats": "実行統計",
+    "backend": "バックエンド",
+    "model": "モデル",
+    "mode": "モード",
+    "startedAt": "開始時刻",
+    "elapsed": "経過時間",
+    "unknown": "不明",
+    "noThoughtYet": "思考ストリームはまだありません",
+    "runtimeDisconnected": "エージェント実行環境が予期せず停止しました。再送信して再開してください。",
+    "activeTools": "{{count}} 個のツールを実行中",
+    "phase": {
+      "preparing": "準備中",
+      "reasoning": "思考中",
+      "toolRunning": "ツール実行中",
+      "waitingPermission": "権限待ち",
+      "composing": "生成中",
+      "completed": "完了",
+      "error": "エラー"
+    },
+    "activeTools_other": "{{count}} 個のツールを実行中"
   }
 }

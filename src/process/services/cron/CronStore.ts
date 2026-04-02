@@ -29,6 +29,7 @@ export type CronJob = {
   metadata: {
     conversationId: string;
     conversationTitle?: string;
+    workspacePath?: string;
     agentType: AcpBackendAll;
     createdBy: 'user' | 'agent';
     createdAt: number;
@@ -59,6 +60,7 @@ type CronJobRow = {
   payload_message: string;
   conversation_id: string;
   conversation_title: string | null;
+  workspace_path: string | null;
   agent_type: string;
   created_by: string;
   created_at: number;
@@ -98,6 +100,7 @@ function jobToRow(job: CronJob): CronJobRow {
     payload_message: job.target.payload.text,
     conversation_id: job.metadata.conversationId,
     conversation_title: job.metadata.conversationTitle ?? null,
+    workspace_path: job.metadata.workspacePath ?? null,
     agent_type: job.metadata.agentType,
     created_by: job.metadata.createdBy,
     created_at: job.metadata.createdAt,
@@ -155,6 +158,7 @@ function rowToJob(row: CronJobRow): CronJob {
     metadata: {
       conversationId: row.conversation_id,
       conversationTitle: row.conversation_title ?? undefined,
+      workspacePath: row.workspace_path ?? undefined,
       agentType: row.agent_type as AcpBackendAll,
       createdBy: row.created_by as 'user' | 'agent',
       createdAt: row.created_at,
@@ -191,7 +195,7 @@ class CronStore {
         id, name, enabled,
         schedule_kind, schedule_value, schedule_tz, schedule_description,
         payload_message,
-        conversation_id, conversation_title, agent_type, created_by,
+        conversation_id, conversation_title, workspace_path, agent_type, created_by,
         created_at, updated_at,
         next_run_at, last_run_at, last_status, last_error,
         run_count, retry_count, max_retries
@@ -209,6 +213,7 @@ class CronStore {
         row.payload_message,
         row.conversation_id,
         row.conversation_title,
+        row.workspace_path,
         row.agent_type,
         row.created_by,
         row.created_at,
@@ -262,7 +267,7 @@ class CronStore {
         name = ?, enabled = ?,
         schedule_kind = ?, schedule_value = ?, schedule_tz = ?, schedule_description = ?,
         payload_message = ?,
-        conversation_id = ?, conversation_title = ?, agent_type = ?,
+        conversation_id = ?, conversation_title = ?, workspace_path = ?, agent_type = ?,
         updated_at = ?,
         next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?,
         run_count = ?, retry_count = ?, max_retries = ?
@@ -279,6 +284,7 @@ class CronStore {
         row.payload_message,
         row.conversation_id,
         row.conversation_title,
+        row.workspace_path,
         row.agent_type,
         row.updated_at,
         row.next_run_at,

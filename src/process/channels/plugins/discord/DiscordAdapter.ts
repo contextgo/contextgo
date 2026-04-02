@@ -12,11 +12,52 @@ import type {
   IUnifiedIncomingMessage,
   IUnifiedMessageContent,
   IUnifiedOutgoingMessage,
+  IUnifiedPeer,
   IUnifiedUser,
 } from '../../types';
 
 export const DISCORD_MESSAGE_LIMIT = 2000;
 export const DISCORD_BUTTON_LABEL_LIMIT = 80;
+
+
+type DiscordChannelLike = {
+  id?: string;
+  parentId?: string | null;
+  isThread?: () => boolean;
+  isDMBased?: () => boolean;
+};
+
+type DiscordPeerSource = {
+  channelId?: string;
+  guildId?: string | null;
+  channel?: DiscordChannelLike | null;
+};
+
+function buildDiscordPeer(source: DiscordPeerSource): IUnifiedPeer {
+  const channelId = source.channelId || source.channel?.id || '';
+  const parentId = source.channel?.parentId || undefined;
+  const isThread = typeof source.channel?.isThread === 'function' ? source.channel.isThread() : false;
+  const isDirectMessage =
+    typeof source.channel?.isDMBased === 'function' ? source.channel.isDMBased() : !source.guildId;
+
+  if (isThread && channelId && parentId) {
+    return {
+      key: `${parentId}:thread:${channelId}`,
+      platformChatId: parentId,
+      parentChatId: parentId,
+      threadId: channelId,
+      scope: 'thread',
+      chatType: 'thread',
+    };
+  }
+
+  return {
+    key: channelId,
+    platformChatId: channelId,
+    scope: 'chat',
+    chatType: isDirectMessage ? 'dm' : 'group',
+  };
+}
 
 function mapToActionCategory(prefix: string): 'platform' | 'system' | 'chat' {
   if (prefix === 'pairing') return 'platform';
@@ -94,10 +135,17 @@ export function toUnifiedIncomingMessage(message: Message, botUserId?: string): 
   const user = toUnifiedUser(message);
   if (!user) return null;
 
+  const peer = buildDiscordPeer({
+    channelId: message.channelId,
+    guildId: message.guildId,
+    channel: message.channel,
+  });
+
   return {
     id: message.id,
     platform: 'discord',
-    chatId: message.channelId,
+    chatId: peer.platformChatId,
+    peer,
     user,
     content: buildTextContent(normalizeText(message.content || '', botUserId)),
     timestamp: message.createdTimestamp,
@@ -106,6 +154,7 @@ export function toUnifiedIncomingMessage(message: Message, botUserId?: string): 
       id: message.id,
       guildId: message.guildId,
       channelId: message.channelId,
+      parentChannelId: message.channel && 'parentId' in message.channel ? message.channel.parentId : undefined,
     },
   };
 }
@@ -117,10 +166,17 @@ export function toUnifiedActionMessage(
   const user = interaction.user;
   if (!user?.id) return null;
 
+  const peer = buildDiscordPeer({
+    channelId: interaction.channelId,
+    guildId: interaction.guildId,
+    channel: interaction.channel,
+  });
+
   return {
     id: interaction.id,
     platform: 'discord',
-    chatId: interaction.channelId,
+    chatId: peer.platformChatId,
+    peer,
     user: {
       id: user.id,
       username: user.username,
@@ -141,6 +197,8 @@ export function toUnifiedActionMessage(
       id: interaction.id,
       customId: interaction.customId,
       channelId: interaction.channelId,
+      parentChannelId:
+        interaction.channel && 'parentId' in interaction.channel ? interaction.channel.parentId : undefined,
     },
   };
 }

@@ -277,7 +277,7 @@ export class CodexConnection {
           } else if (errorMsg.includes('permission denied')) {
             reject(new Error(`Permission denied when starting codex. Error: ${errorMsg}`));
           } else if (errorMsg.includes('authentication') || errorMsg.includes('login')) {
-            reject(new Error(`Codex authentication required. Please run 'codex auth' first. Error: ${errorMsg}`));
+            reject(new Error(`Codex authentication required. Please run 'codex login' first. Error: ${errorMsg}`));
           } else if (
             errorMsg.includes('unknown flag') ||
             errorMsg.includes('invalid option') ||

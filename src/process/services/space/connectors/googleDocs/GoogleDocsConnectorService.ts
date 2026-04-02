@@ -15,13 +15,19 @@ import { resolveGoogleWorkspaceOAuthDir } from '../googleWorkspace/shared.ts';
 
 const execFile = promisify(execFileCallback);
 const GOOGLE_DOCS_CONNECTOR_CONFIG_KEY = 'connector.googleDocs.config';
-const DEFAULT_GOOGLE_DOCS_SCOPES = ['https://www.googleapis.com/auth/documents.readonly', 'https://www.googleapis.com/auth/drive.metadata.readonly'];
+const DEFAULT_GOOGLE_DOCS_SCOPES = [
+  'https://www.googleapis.com/auth/documents.readonly',
+  'https://www.googleapis.com/auth/drive.metadata.readonly',
+];
 
 type GoogleDocsConfigStore = Pick<IConfigStorageRefer, 'connector.googleDocs.config'>;
 
 type GoogleDocsStore = {
   get<K extends keyof GoogleDocsConfigStore>(key: K): Promise<GoogleDocsConfigStore[K]>;
-  set<K extends keyof GoogleDocsConfigStore>(key: K, value: GoogleDocsConfigStore[K]): Promise<GoogleDocsConfigStore[K]>;
+  set<K extends keyof GoogleDocsConfigStore>(
+    key: K,
+    value: GoogleDocsConfigStore[K]
+  ): Promise<GoogleDocsConfigStore[K]>;
 };
 
 type GoogleDocsStoreFactory = () => Promise<GoogleDocsStore>;
@@ -89,7 +95,8 @@ export class GoogleDocsConnectorService {
     const config = await this.getConfig();
     const tokenCacheDir = await resolveGoogleWorkspaceOAuthDir();
     const command = config.command.trim() || 'go';
-    const cwd = command === 'go' ? path.join(process.cwd(), 'resources', 'native', 'google-drive-sidecar-go') : process.cwd();
+    const cwd =
+      command === 'go' ? path.join(process.cwd(), 'resources', 'native', 'google-drive-sidecar-go') : process.cwd();
     const baseArgs = [
       ...config.args,
       '--client-id',
@@ -151,17 +158,44 @@ export class GoogleDocsConnectorService {
     const config = await this.getConfig();
     const now = Date.now();
     if (!config.clientId || !config.clientSecret) {
-      this.state = { ...this.state, lifecycle: 'error', desiredState: 'running', hasCredentials: false, lastError: 'Google Docs connector requires Client ID and Client Secret before launch.', note: 'Google Docs connector requires Client ID and Client Secret before launch.', lastStartAt: now };
+      this.state = {
+        ...this.state,
+        lifecycle: 'error',
+        desiredState: 'running',
+        hasCredentials: false,
+        lastError: 'Google Docs connector requires Client ID and Client Secret before launch.',
+        note: 'Google Docs connector requires Client ID and Client Secret before launch.',
+        lastStartAt: now,
+      };
       return this.getStatus();
     }
     const result = await this.controller.start(config);
-    this.state = { ...this.state, lifecycle: 'running', desiredState: 'running', hasCredentials: true, command: result.command, args: result.args, pid: result.pid, note: result.note, lastStartAt: now, lastError: undefined };
+    this.state = {
+      ...this.state,
+      lifecycle: 'running',
+      desiredState: 'running',
+      hasCredentials: true,
+      command: result.command,
+      args: result.args,
+      pid: result.pid,
+      note: result.note,
+      lastStartAt: now,
+      lastError: undefined,
+    };
     return this.getStatus();
   }
 
   async stop(): Promise<GoogleDocsConnectorRuntimeStatus> {
     await this.controller.stop();
-    this.state = { ...this.state, lifecycle: 'stopped', desiredState: 'stopped', pid: undefined, note: 'Managed Google Docs sidecar is stopped.', lastStopAt: Date.now(), lastError: undefined };
+    this.state = {
+      ...this.state,
+      lifecycle: 'stopped',
+      desiredState: 'stopped',
+      pid: undefined,
+      note: 'Managed Google Docs sidecar is stopped.',
+      lastStopAt: Date.now(),
+      lastError: undefined,
+    };
     return this.getStatus();
   }
 

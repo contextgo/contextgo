@@ -28,7 +28,10 @@ type GoogleDriveConfigStore = Pick<IConfigStorageRefer, 'connector.googleDrive.c
 
 type GoogleDriveStore = {
   get<K extends keyof GoogleDriveConfigStore>(key: K): Promise<GoogleDriveConfigStore[K]>;
-  set<K extends keyof GoogleDriveConfigStore>(key: K, value: GoogleDriveConfigStore[K]): Promise<GoogleDriveConfigStore[K]>;
+  set<K extends keyof GoogleDriveConfigStore>(
+    key: K,
+    value: GoogleDriveConfigStore[K]
+  ): Promise<GoogleDriveConfigStore[K]>;
 };
 
 type GoogleDriveStoreFactory = () => Promise<GoogleDriveStore>;
@@ -87,7 +90,6 @@ export class GoogleDriveConnectorService {
     return this.storeOrFactory;
   }
 
-
   private async readTokenCacheMeta(tokenCachePath: string): Promise<GoogleDriveCachedToken | null> {
     try {
       const raw = await readFileAsync(tokenCachePath, 'utf-8');
@@ -119,7 +121,8 @@ export class GoogleDriveConnectorService {
       tokenCacheDir,
     ];
     const command = config.command.trim() || 'go';
-    const cwd = command === 'go' ? path.join(process.cwd(), 'resources', 'native', 'google-drive-sidecar-go') : process.cwd();
+    const cwd =
+      command === 'go' ? path.join(process.cwd(), 'resources', 'native', 'google-drive-sidecar-go') : process.cwd();
     const { stdout } = await execFile(command, [...baseArgs, ...args], {
       cwd,
       windowsHide: true,
@@ -156,11 +159,7 @@ export class GoogleDriveConnectorService {
 
     return {
       ...this.state,
-      lifecycle: details.running
-        ? 'running'
-        : this.state.desiredState === 'running'
-          ? 'error'
-          : this.state.lifecycle,
+      lifecycle: details.running ? 'running' : this.state.desiredState === 'running' ? 'error' : this.state.lifecycle,
       hasCredentials,
       command: details.command,
       args: details.args,
@@ -178,7 +177,12 @@ export class GoogleDriveConnectorService {
   async createAuthRequest(): Promise<GoogleDriveAuthRequest> {
     const state = `contextgo-google-drive-${Date.now()}`;
     const output = await this.executeSidecar(['--print-auth-url', '--state', state]);
-    const payload = JSON.parse(output) as { auth_url?: string; state?: string; redirect_uri?: string; token_cache_path?: string };
+    const payload = JSON.parse(output) as {
+      auth_url?: string;
+      state?: string;
+      redirect_uri?: string;
+      token_cache_path?: string;
+    };
     return {
       authUrl: payload.auth_url || '',
       state: payload.state || state,

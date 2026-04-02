@@ -122,7 +122,7 @@ export class CodexAgent {
               '1. Codex CLI is not responding\n' +
               '2. Network connectivity issues\n' +
               '3. Authentication problems\n' +
-              'Please check: codex auth status, network connection, and try again.',
+              'Please check: codex login status, network connection, and try again.',
             { cause: error }
           );
         } else if (error.message.includes('command not found')) {
@@ -130,7 +130,7 @@ export class CodexAgent {
             cause: error,
           });
         } else if (error.message.includes('authentication')) {
-          throw new Error('Codex authentication required. Please run "codex auth" to authenticate.', { cause: error });
+          throw new Error('Codex authentication required. Please run "codex login" to authenticate.', { cause: error });
         }
       }
 

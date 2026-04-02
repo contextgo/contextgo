@@ -416,8 +416,9 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const tab = tabs.find((t) => t.id === targetTabId);
       if (!tab) return false;
 
-      // 如果有 filePath 和 workspace，写回工作空间文件 / If filePath and workspace exist, write back to workspace file
-      if (tab.metadata?.filePath && tab.metadata?.workspace) {
+      // 如果有 filePath，则允许直接写回磁盘文件（工作区文件和绝对路径配置文件都支持）
+      // If filePath exists, allow writing back to disk for both workspace files and absolute config files.
+      if (tab.metadata?.filePath) {
         try {
           const filePath = tab.metadata.filePath;
 

@@ -40,20 +40,11 @@ export class GeminiRotatingClient extends RotatingApiClient<GoogleGenAI> {
       return new GoogleGenAI(clientConfig);
     };
 
-    super(apiKeys, authType, createClient, options);
+    super(apiKeys, createClient, options);
     this.config = config;
     this.converter = new OpenAI2GeminiConverter({
       defaultModel: config.model || 'gemini-1.5-flash',
     });
-  }
-
-  protected getCurrentApiKey(): string | undefined {
-    if (this.apiKeyManager?.hasMultipleKeys()) {
-      // For Gemini, try to get from environment first
-      return process.env.GEMINI_API_KEY || this.apiKeyManager.getCurrentKey();
-    }
-    // Use base class method for single key
-    return super.getCurrentApiKey();
   }
 
   // Remove async override since base class is now sync

@@ -9,6 +9,17 @@ import type { IWebUIStatus } from '@/common/adapter/ipcBridge';
 import { AuthService } from '@process/webserver/auth/service/AuthService';
 import { UserRepository } from '@process/webserver/auth/repository/UserRepository';
 import { AUTH_CONFIG, SERVER_CONFIG } from '@process/webserver/config/constants';
+import { ProcessConfig } from '@process/utils/initStorage';
+
+const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
+const DESKTOP_WEBUI_ALLOW_REMOTE_KEY = 'webui.desktop.allowRemote';
+const DESKTOP_WEBUI_PORT_KEY = 'webui.desktop.port';
+
+type WebuiLocalAccessPreferences = {
+  enabled?: boolean;
+  allowRemote?: boolean;
+  port?: number;
+};
 
 /**
  * WebUI 服务层 - 封装所有 WebUI 相关的业务逻辑
@@ -116,7 +127,11 @@ export class WebuiService {
   ): Promise<IWebUIStatus> {
     await this.loadWebServerFunctions();
 
-    const adminUser = await UserRepository.getSystemUser();
+    const [adminUser, localAccessEnabledPref, localAccessAllowRemotePref] = await Promise.all([
+      UserRepository.getSystemUser(),
+      ProcessConfig.get(DESKTOP_WEBUI_ENABLED_KEY),
+      ProcessConfig.get(DESKTOP_WEBUI_ALLOW_REMOTE_KEY),
+    ]);
     const running = webServerInstance !== null;
     const port = webServerInstance?.port ?? SERVER_CONFIG.DEFAULT_PORT;
     const allowRemote = webServerInstance?.allowRemote ?? false;
@@ -134,7 +149,25 @@ export class WebuiService {
       lanIP: lanIP ?? undefined,
       adminUsername: adminUser?.username ?? AUTH_CONFIG.DEFAULT_USER.USERNAME,
       initialPassword: this.getInitialAdminPassword() ?? undefined,
+      localAccessEnabled: localAccessEnabledPref === true,
+      localAccessAllowRemote: localAccessAllowRemotePref === true,
     };
+  }
+
+  static async updateLocalAccessPreferences(preferences: WebuiLocalAccessPreferences): Promise<void> {
+    const writes: Array<Promise<unknown>> = [];
+
+    if (typeof preferences.enabled === 'boolean') {
+      writes.push(ProcessConfig.set(DESKTOP_WEBUI_ENABLED_KEY, preferences.enabled));
+    }
+    if (typeof preferences.allowRemote === 'boolean') {
+      writes.push(ProcessConfig.set(DESKTOP_WEBUI_ALLOW_REMOTE_KEY, preferences.allowRemote));
+    }
+    if (typeof preferences.port === 'number' && Number.isFinite(preferences.port) && preferences.port > 0) {
+      writes.push(ProcessConfig.set(DESKTOP_WEBUI_PORT_KEY, preferences.port));
+    }
+
+    await Promise.all(writes);
   }
 
   /**

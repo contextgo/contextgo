@@ -19,6 +19,7 @@ export type CloudDevice = {
   userId: string;
   deviceName: string;
   platform: string;
+  deviceKind?: string;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -27,32 +28,20 @@ export type CloudDevice = {
   lastUserAgent?: string | null;
 };
 
-export type CloudStoredSyncState = {
-  cursor?: number;
-  languageUpdatedAt?: string;
-  syncedLanguageUpdatedAt?: string;
-  lastSyncAt?: string;
-};
-
-export type CloudSyncState = {
-  cursor: number;
-  languageUpdatedAt?: string;
-  syncedLanguageUpdatedAt?: string;
-  lastSyncAt?: string;
-  pendingLanguageSync: boolean;
-};
-
 export type OfficialRemoteStatus = {
   desired: boolean;
   running: boolean;
   transport?: 'cloud-relay';
   relayUrl?: string;
   clientConnected?: boolean;
+  browserEntryReady?: boolean;
+  browserEntryReason?: string;
   message?: string;
   needsAttention?: boolean;
 };
 
 export type CloudStatus = {
+  officialRemoteReady?: boolean;
   authenticated: boolean;
   browserSessionExpired: boolean;
   user: CloudUser | null;
@@ -62,12 +51,4 @@ export type CloudStatus = {
   providers: CloudAuthProviderId[];
   authBaseUrl: string;
   apiBaseUrl: string;
-  syncState: CloudSyncState;
-};
-
-export type CloudSyncSummary = {
-  status: CloudStatus;
-  pushedChanges: number;
-  pulledChanges: number;
-  reRegisteredDevice: boolean;
 };

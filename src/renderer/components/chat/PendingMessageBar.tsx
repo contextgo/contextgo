@@ -44,60 +44,54 @@ const PendingMessageBar: React.FC<PendingMessageBarProps> = ({ messages, onRemov
         <div className='text-11px text-t-tertiary'>{t('conversation.pendingMessages.shortcuts')}</div>
       </div>
 
-      <div className='flex flex-col gap-8px'>
+      <div className='flex flex-col gap-6px'>
         {sortedMessages.map((message) => {
-          const isDispatching = message.status === 'dispatching';
           const nextMode: PendingConversationMessageMode = message.mode === 'queue' ? 'steer' : 'queue';
 
           return (
-            <div key={message.id} className='rounded-12px border border-border-2 bg-fill-1 px-12px py-10px'>
-              <div className='mb-8px flex items-center gap-8px'>
-                <Tag color={message.mode === 'steer' ? 'blue' : 'gray'}>
-                  {t(`conversation.pendingMessages.mode.${message.mode}`)}
-                </Tag>
-                {message.attachments.length > 0 && (
-                  <span className='text-11px text-t-tertiary'>
-                    {t('conversation.pendingMessages.attachments', { count: message.attachments.length })}
-                  </span>
-                )}
-                {isDispatching && (
-                  <span className='text-11px text-[var(--color-primary-6)]'>
-                    {t('conversation.pendingMessages.dispatching')}
-                  </span>
-                )}
-              </div>
+            <div key={message.id} className='rounded-10px border border-border-2 bg-fill-1 px-10px py-8px'>
+              <div className='flex items-start justify-between gap-8px'>
+                <div className='min-w-0 flex-1'>
+                  <div className='mb-4px flex flex-wrap items-center gap-6px'>
+                    <Tag color={message.mode === 'steer' ? 'blue' : 'gray'}>
+                      {t(`conversation.pendingMessages.mode.${message.mode}`)}
+                    </Tag>
+                    {message.attachments.length > 0 && (
+                      <span className='text-11px text-t-tertiary'>
+                        {t('conversation.pendingMessages.attachments', { count: message.attachments.length })}
+                      </span>
+                    )}
+                  </div>
+                  <div className='break-words text-13px text-t-primary'>{summarizeMessage(message.content)}</div>
+                </div>
 
-              <div className='mb-10px break-words text-13px text-t-primary'>{summarizeMessage(message.content)}</div>
-
-              <div className='flex flex-wrap items-center gap-6px'>
-                <Button
-                  size='mini'
-                  type='outline'
-                  icon={<EditTwo theme='outline' size={12} />}
-                  disabled={isDispatching}
-                  onClick={() => onEdit(message.id)}
-                >
-                  {t('conversation.pendingMessages.edit')}
-                </Button>
-                <Button
-                  size='mini'
-                  type='outline'
-                  icon={<ArrowUp theme='outline' size={12} />}
-                  disabled={isDispatching}
-                  onClick={() => onSetMode(message.id, nextMode)}
-                >
-                  {t(`conversation.pendingMessages.actions.${nextMode}`)}
-                </Button>
-                <Button
-                  size='mini'
-                  type='outline'
-                  status='danger'
-                  icon={<DeleteFive theme='outline' size={12} />}
-                  disabled={isDispatching}
-                  onClick={() => onRemove(message.id)}
-                >
-                  {t('common.delete')}
-                </Button>
+                <div className='flex shrink-0 items-center gap-4px'>
+                  <Button
+                    size='mini'
+                    type='text'
+                    icon={<EditTwo theme='outline' size={12} />}
+                    onClick={() => onEdit(message.id)}
+                  >
+                    {t('conversation.pendingMessages.edit')}
+                  </Button>
+                  <Button
+                    size='mini'
+                    type='text'
+                    icon={<ArrowUp theme='outline' size={12} />}
+                    onClick={() => onSetMode(message.id, nextMode)}
+                  >
+                    {t(`conversation.pendingMessages.actions.${nextMode}`)}
+                  </Button>
+                  <Button
+                    size='mini'
+                    type='text'
+                    status='danger'
+                    icon={<DeleteFive theme='outline' size={12} />}
+                    onClick={() => onRemove(message.id)}
+                  >
+                    {t('common.delete')}
+                  </Button>
+                </div>
               </div>
             </div>
           );

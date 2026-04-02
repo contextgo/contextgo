@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Check } from '@icon-park/react';
 import { iconColors } from '@/renderer/styles/colors';
 import ContextGoSteps from '@/renderer/components/base/ContextGoSteps';
-import ContextGoModal from '@/renderer/components/base/ContextGoModal';
+import { SettingsSubModal } from '@/renderer/components/settings';
 
 interface OneClickImportModalProps {
   visible: boolean;
@@ -271,16 +271,14 @@ const OneClickImportModal: React.FC<OneClickImportModalProps> = ({ visible, onCa
   );
 
   return (
-    <ContextGoModal
-      header={{ title: t('settings.mcpOneKeyImport'), showClose: true }}
+    <SettingsSubModal
+      title={t('settings.mcpOneKeyImport')}
       visible={visible}
       onCancel={onCancel}
       footer={{ render: renderFooter }}
       style={{ width: 600, height: 420 }}
       contentStyle={{
-        borderRadius: 16,
         padding: '24px',
-        background: 'var(--bg-1)',
         overflow: 'hidden',
         height: 420 - 96,
       }}
@@ -308,7 +306,7 @@ const OneClickImportModal: React.FC<OneClickImportModalProps> = ({ visible, onCa
           {currentStep === 3 && renderStep3()}
         </div>
       </div>
-    </ContextGoModal>
+    </SettingsSubModal>
   );
 };
 

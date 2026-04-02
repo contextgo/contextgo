@@ -12,6 +12,7 @@ import {
   AssistantHookOutputRouter,
   type AfterResponseHookDelivery,
 } from '@process/bridge/services/AssistantHookOutputRouter';
+import { getWorkspaceHookDir, resolveWorkspacePath } from '@process/bridge/services/workspaceAutomation';
 import { getDatabase } from '@process/services/database';
 import { getBuiltinHooksCopyDir, getHooksDir } from '@process/utils/initStorage';
 import fs from 'fs/promises';
@@ -71,6 +72,13 @@ const renderTemplate = (template: string, values: Record<string, string>): strin
 
 const getConversationExtra = (conversation: TChatConversation): Record<string, unknown> => {
   return (conversation.extra || {}) as Record<string, unknown>;
+};
+
+const getConversationWorkspace = (conversation: TChatConversation): string | undefined => {
+  const extra = getConversationExtra(conversation);
+  const workingDirectory = typeof extra.workingDirectory === 'string' ? extra.workingDirectory : undefined;
+  const workspace = typeof extra.workspace === 'string' ? extra.workspace : undefined;
+  return resolveWorkspacePath(workingDirectory || workspace);
 };
 
 const getEnabledHooks = (conversation: TChatConversation): string[] => {
@@ -263,7 +271,7 @@ export class AssistantHookRuntime {
       return null;
     }
 
-    const hookDir = await this.resolveHookDir(hookName);
+    const hookDir = await this.resolveHookDir(conversation, hookName);
     if (!hookDir) return null;
 
     const manifest = await this.readHookManifest(hookDir);
@@ -316,7 +324,7 @@ export class AssistantHookRuntime {
       return null;
     }
 
-    const hookDir = await this.resolveHookDir(hookName);
+    const hookDir = await this.resolveHookDir(context.conversation, hookName);
     if (!hookDir) return null;
 
     const manifest = await this.readHookManifest(hookDir);
@@ -475,8 +483,10 @@ export class AssistantHookRuntime {
     }
   }
 
-  private async resolveHookDir(hookName: string): Promise<string | null> {
-    const candidates = [path.join(getHooksDir(), hookName), path.join(getBuiltinHooksCopyDir(), hookName)];
+  private async resolveHookDir(conversation: TChatConversation, hookName: string): Promise<string | null> {
+    const workspaceHookDir = getWorkspaceHookDir(getConversationWorkspace(conversation), hookName);
+    const candidates = [workspaceHookDir, path.join(getHooksDir(), hookName), path.join(getBuiltinHooksCopyDir(), hookName)]
+      .filter((candidate): candidate is string => typeof candidate === 'string');
     const results = await Promise.allSettled(
       candidates.map(async (candidate) => fs.access(candidate).then(() => candidate))
     );

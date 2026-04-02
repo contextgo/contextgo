@@ -49,9 +49,6 @@ vi.mock('@renderer/utils/emitter', () => ({
   emitter: { emit: vi.fn() },
 }));
 
-vi.mock('@/renderer/components/layout/Titlebar/SpaceSwitcher', () => ({
-  default: () => <div data-testid='space-switcher' />,
-}));
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -176,8 +173,11 @@ describe('Titlebar', () => {
     });
 
     expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
-    expect(container.querySelector('.app-titlebar__desktop-content--conversation')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar__desktop-right--conversation')).toBeTruthy();
+    const conversationContent = container.querySelector('.app-titlebar__desktop-content--conversation');
+    expect(conversationContent).toBeTruthy();
     expect(container.querySelector('#app-titlebar-chat-slot')).toBeTruthy();
+    expect(conversationContent?.querySelector('.app-titlebar__drag-spacer')).toBeTruthy();
   });
 
   it('renders desktop conversation content when multiple tabs are open', async () => {

@@ -344,6 +344,8 @@ export type TMessage =
 const AGENT_CONNECTION_ERROR_PATTERNS = [
   /^Gateway disconnected:/i,
   /^Connection error:/i,
+  /^ACP process exited unexpectedly \(code: .* signal: .*\)$/i,
+  /^Codex process exited unexpectedly \(code: .* signal: .*\)$/i,
   /process disconnected unexpectedly .*Please try sending a new message to reconnect\./i,
 ] as const;
 

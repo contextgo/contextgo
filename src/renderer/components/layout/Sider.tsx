@@ -34,7 +34,6 @@ import { useConversationTabs } from '@renderer/pages/conversation/hooks/Conversa
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import { isElectronDesktop, isMacOS } from '@renderer/utils/platform';
-import SpaceSwitcher from './Titlebar/SpaceSwitcher';
 import { preloadRoutePath } from './routerLocation';
 
 const WorkspaceGroupedHistory = React.lazy(() => import('@renderer/pages/conversation/GroupedHistory'));
@@ -540,9 +539,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         )}
       </div>
       <div className='sider-footer mt-auto shrink-0 pt-10px'>
-        <div className='sider-space-switcher-wrap mb-8px'>
-          <SpaceSwitcher compact={collapsed && !isMobile} placement='sider' />
-        </div>
         <div className='sider-user-card-wrap'>
           <Dropdown
             droplist={userMenu}

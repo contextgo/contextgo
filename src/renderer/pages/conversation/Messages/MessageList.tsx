@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { CodexToolCallUpdate, IMessageAcpToolCall, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
+import type { CodexToolCallUpdate, IMessageAcpToolCall, IMessageCodexToolCall, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
 import { shouldSuppressAgentLifecyclePersistedMessage } from '@/common/chat/chatLib';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { iconColors } from '@/renderer/styles/colors';
@@ -21,7 +21,6 @@ import { Virtuoso } from 'react-virtuoso';
 import { uuid } from '@renderer/utils/common';
 import './messages.css';
 import HOC from '@renderer/utils/ui/HOC';
-import MessageCodexToolCall from './codex/MessageCodexToolCall';
 import type { FileChangeInfo } from './codex/MessageFileChanges';
 import MessageFileChanges, { parseDiff } from './codex/MessageFileChanges';
 import { useMessageList } from './hooks';
@@ -44,7 +43,7 @@ type IMessageVO =
   | {
       type: 'tool_summary';
       id: string;
-      messages: Array<IMessageToolGroup | IMessageAcpToolCall>;
+      messages: Array<IMessageToolGroup | IMessageAcpToolCall | IMessageCodexToolCall>;
       sourceMessageIds: string[];
     };
 
@@ -127,7 +126,7 @@ const MessageItem: React.FC<{ message: TMessage; highlighted?: boolean }> = Reac
         // Permission UI is now handled by ConversationChatConfirm component
         return null;
       case 'codex_tool_call':
-        return <MessageCodexToolCall message={message}></MessageCodexToolCall>;
+        return null;
       case 'plan':
         return <MessagePlan message={message}></MessagePlan>;
       case 'available_commands':
@@ -179,7 +178,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
       conversationContext?.type === 'openclaw-gateway';
     let diffsChanges: FileChangeInfo[] = [];
     let diffsSourceMessageIds: string[] = [];
-    let toolList: Array<IMessageToolGroup | IMessageAcpToolCall> = [];
+    let toolList: Array<IMessageToolGroup | IMessageAcpToolCall | IMessageCodexToolCall> = [];
     let toolSourceMessageIds: string[] = [];
 
     const pushFileDffChanges = (changes: FileChangeInfo, sourceMessageId: string) => {
@@ -197,7 +196,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
       toolList = [];
       toolSourceMessageIds = [];
     };
-    const pushToolList = (message: IMessageToolGroup | IMessageAcpToolCall) => {
+    const pushToolList = (message: IMessageToolGroup | IMessageAcpToolCall | IMessageCodexToolCall) => {
       if (!toolList.length) {
         toolSourceMessageIds = [];
         result.push({
@@ -246,7 +245,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
         pushToolList(message);
         continue;
       }
-      if (message.type === 'acp_tool_call') {
+      if (message.type === 'acp_tool_call' || message.type === 'codex_tool_call') {
         pushToolList(message);
         continue;
       }

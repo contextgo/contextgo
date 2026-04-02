@@ -53,6 +53,122 @@ Conversation -> working directory -> agent task
 Space -> Thread -> Agent execution
 ```
 
+## 术语边界
+
+这一节补充几个容易混淆、但必须区分清楚的术语。
+
+### Space
+
+`Space` 是产品层的一等逻辑空间。
+
+它负责：
+
+- 持久上下文归属
+- connector 归属
+- thread / task 默认边界
+- 长期文档、画板、artifact、source item 组织
+
+`Space` 不是某个会话，也不是某个本地文件夹。
+
+### Thread
+
+`Thread` 是 `Space` 内的一条执行视图或任务线。
+
+它更接近：
+
+- 某次任务导向的 conversation
+- 某条 workflow 的执行窗口
+- 某个 agent 协作过程的上下文视图
+
+它负责：
+
+- 承载一次具体任务
+- 记录 agent 交互、审批和产物关联
+- 引用当前 thread 选中的 space context
+- 在需要时绑定本地 mount
+
+因此：
+
+- `Thread belongs to Space`
+- `Thread` 不是长期知识归档容器
+- `Thread` 也不是本地工作目录
+
+### Conversation
+
+在当前产品和代码里，很多地方仍然以 `Conversation` 作为主要 UI 承载对象。
+
+迁移期内可以把它理解为：
+
+- `Conversation` 是当前实现中的执行会话对象
+- 在未来的 space-first 模型里，它更接近 `Thread` 的现有形态
+
+也就是说：
+
+- 现在的 `Conversation` 可以作为 `Thread` 的实现近似
+- 但产品语义上，顶层对象已经不应再是 `Conversation`
+
+### Mount
+
+`Mount` 是某个 `Space` 在当前设备上的本地执行挂载点。
+
+它负责：
+
+- 把本地文件系统路径或资源根暴露给当前设备
+- 为 agent execution 提供可选 working directory / resource root
+- 表达“这个 space 在这台机器上可以访问哪些本地资源”
+
+它的边界是：
+
+- `Mount belongs to Space`
+- 但 `Mount` 只在当前设备或 runtime 上生效
+- `Mount` 不是 space 的全局身份
+- `Mount` 不应该被直接当成同步对象在设备间复制
+
+### Runtime Workspace
+
+`Runtime Workspace` 不是新的顶层产品对象，而是执行时概念。
+
+它通常表示：
+
+- 某个 agent runtime 启动时实际绑定的 cwd
+- 某次执行使用的本地目录
+- 某个临时目录、仓库目录、导出目录或素材目录
+
+它和 `Mount` 的关系应该是：
+
+- `Mount` 是模型层 / 产品层的“可挂载本地资源”
+- `Runtime Workspace` 是运行时层真正拿去执行的本地目录
+
+因此：
+
+- 一个 `Runtime Workspace` 可以来自某个 `Mount`
+- 也可以来自系统自动创建的临时目录
+- 它是 host-specific 的执行状态，不是持久上下文本体
+
+### 一句话区分
+
+- `Space` 是长期逻辑空间
+- `Thread` 是空间里的任务线 / 执行视图
+- `Conversation` 是当前实现里对 thread 的近似承载
+- `Mount` 是 space 在当前设备上的本地资源挂载点
+- `Runtime Workspace` 是 agent runtime 真正使用的执行目录
+
+### 当前推荐心智模型
+
+```text
+Space
+└── Thread
+    └── Agent Execution
+        ├── Runtime Workspace (cwd)
+        └── Tools / Skills / Runtime State
+```
+
+补充说明：
+
+- 长期上下文属于 `Space`
+- 一次任务的执行视角属于 `Thread`
+- 本地目录只是执行附着物，不应上升为产品顶层身份
+
 ## 设计原则
 
 ### 1. Space 是逻辑空间，不是磁盘目录

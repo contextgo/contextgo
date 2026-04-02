@@ -1,0 +1,216 @@
+.formRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.preferenceRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.preferenceRowStacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.preferenceInfo {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.preferenceInfoStacked {
+  flex: none;
+  width: 100%;
+}
+
+.preferenceLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.preferenceLabel {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.preferenceDescription {
+  min-width: 0;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.preferenceControl {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 1 1 260px;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.preferenceControlStacked {
+  flex: none;
+  width: 100%;
+  justify-content: center;
+}
+
+.inlineRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.controlInput {
+  width: min(100%, 280px);
+  max-width: 100%;
+}
+
+.actionHint {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  margin: 0;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.sectionCard {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--fill-1);
+  box-sizing: border-box;
+}
+
+.optionalToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.statusList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.statusItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--fill-2);
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+
+.statusItemMain {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.statusItemActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.metaText {
+  min-width: 0;
+  margin-top: 4px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.inlineCode {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.qrImage {
+  width: min(160px, 100%);
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+}
+
+.qrPanelRow {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.qrPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: min(100%, 220px);
+  max-width: 100%;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .preferenceControl {
+    justify-content: flex-start;
+  }
+
+  .statusItemActions {
+    width: 100%;
+  }
+}

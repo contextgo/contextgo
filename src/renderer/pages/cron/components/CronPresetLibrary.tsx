@@ -12,14 +12,11 @@ import {
   DEFAULT_CRON_PRESET_PACK,
   DEFAULT_CRON_PRESET_HERO_IDS,
   CRON_PRESET_PACK_ORDER,
-  CRON_PRESET_ROLE_ORDER,
   filterCronPresetsByPack,
-  filterCronPresetsByRole,
   type CronPreset,
   type CronPresetCategory,
   type CronPresetId,
   type CronPresetPack,
-  type CronPresetRole,
 } from '../cronPresetUtils';
 
 const categoryColorMap: Record<CronPresetCategory, 'arcoblue' | 'green' | 'orange' | 'purple' | 'gray'> = {
@@ -49,29 +46,24 @@ const CronPresetLibrary: React.FC<CronPresetLibraryProps> = ({
 }) => {
   const { t } = useTranslation();
   const [activePack, setActivePack] = useState<CronPresetPack | 'all'>(DEFAULT_CRON_PRESET_PACK);
-  const [activeRole, setActiveRole] = useState<CronPresetRole | 'all'>('all');
   const [showAllInPack, setShowAllInPack] = useState(false);
   const packFilteredPresets = useMemo(() => filterCronPresetsByPack(presets, activePack), [activePack, presets]);
-  const filteredPresets = useMemo(
-    () => filterCronPresetsByRole(packFilteredPresets, activeRole),
-    [activeRole, packFilteredPresets]
-  );
   const activePackDetailKey = activePack === 'all' ? 'all' : activePack;
   const activePackPresetCount = activePack === 'all' ? presets.length : packFilteredPresets.length;
   const isRecommendedPack = activePack === DEFAULT_CRON_PRESET_PACK;
-  const shouldCondenseDefaultPack = activePack === DEFAULT_CRON_PRESET_PACK && activeRole === 'all';
+  const shouldCondenseDefaultPack = activePack === DEFAULT_CRON_PRESET_PACK;
   const condensedDefaultPresets = useMemo(
     () =>
-      filteredPresets
+      packFilteredPresets
         .filter((preset) => DEFAULT_CRON_PRESET_HERO_IDS.includes(preset.id))
         .sort((left, right) => {
           return DEFAULT_CRON_PRESET_HERO_IDS.indexOf(left.id) - DEFAULT_CRON_PRESET_HERO_IDS.indexOf(right.id);
         }),
-    [filteredPresets]
+    [packFilteredPresets]
   );
-  const visiblePresets = shouldCondenseDefaultPack && !showAllInPack ? condensedDefaultPresets : filteredPresets;
+  const visiblePresets = shouldCondenseDefaultPack && !showAllInPack ? condensedDefaultPresets : packFilteredPresets;
   const hiddenPresetCount = shouldCondenseDefaultPack
-    ? Math.max(filteredPresets.length - condensedDefaultPresets.length, 0)
+    ? Math.max(packFilteredPresets.length - condensedDefaultPresets.length, 0)
     : 0;
   const packOptions = useMemo(
     () =>
@@ -80,16 +72,6 @@ const CronPresetLibrary: React.FC<CronPresetLibraryProps> = ({
         count: presets.filter((preset) => preset.packs.includes(pack)).length,
       })),
     [presets]
-  );
-  const roleOptions = useMemo(
-    () => [
-      { value: 'all' as const, count: packFilteredPresets.length },
-      ...CRON_PRESET_ROLE_ORDER.map((role) => ({
-        value: role,
-        count: packFilteredPresets.filter((preset) => preset.roles.includes(role)).length,
-      })),
-    ],
-    [packFilteredPresets]
   );
   const groupedPresets = useMemo(
     () =>
@@ -102,12 +84,6 @@ const CronPresetLibrary: React.FC<CronPresetLibraryProps> = ({
 
   const handlePackChange = (pack: CronPresetPack | 'all') => {
     setActivePack(pack);
-    setActiveRole('all');
-    setShowAllInPack(false);
-  };
-
-  const handleRoleChange = (role: CronPresetRole | 'all') => {
-    setActiveRole(role);
     setShowAllInPack(false);
   };
 
@@ -188,25 +164,6 @@ const CronPresetLibrary: React.FC<CronPresetLibraryProps> = ({
         </div>
       </div>
 
-      <div className='flex flex-col gap-8px'>
-        <Typography.Text className='text-11px font-semibold tracking-[0.04em] text-t-secondary uppercase'>
-          {t('cron.presets.rolePacksTitle')}
-        </Typography.Text>
-        <div className='flex flex-wrap gap-8px'>
-          {roleOptions.map((option) => (
-            <Button
-              key={option.value}
-              size='mini'
-              type={activeRole === option.value ? 'primary' : 'outline'}
-              onClick={() => handleRoleChange(option.value)}
-            >
-              {t(option.value === 'all' ? 'cron.presets.roles.all' : `cron.presets.roles.${option.value}`)}{' '}
-              {option.count}
-            </Button>
-          ))}
-        </div>
-      </div>
-
       <div className='flex flex-col gap-14px'>
         {groupedPresets.map((group) => (
           <div key={group.category} className='flex flex-col gap-10px'>
@@ -237,11 +194,6 @@ const CronPresetLibrary: React.FC<CronPresetLibraryProps> = ({
                         {preset.packs.map((pack) => (
                           <Tag key={`${preset.id}-${pack}`} size='small' color='arcoblue'>
                             {t(`cron.presets.packs.${pack}`)}
-                          </Tag>
-                        ))}
-                        {preset.roles.map((role) => (
-                          <Tag key={`${preset.id}-${role}`} size='small'>
-                            {t(`cron.presets.roles.${role}`)}
                           </Tag>
                         ))}
                       </div>
@@ -295,7 +247,7 @@ const CronPresetLibrary: React.FC<CronPresetLibraryProps> = ({
           <Button size='mini' type='outline' onClick={() => setShowAllInPack((value) => !value)}>
             {showAllInPack
               ? t('cron.presets.actions.showLessInPack')
-              : t('cron.presets.actions.viewAllInPack', { count: filteredPresets.length })}
+              : t('cron.presets.actions.viewAllInPack', { count: packFilteredPresets.length })}
           </Button>
         </div>
       ) : null}

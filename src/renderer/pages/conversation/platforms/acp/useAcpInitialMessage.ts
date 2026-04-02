@@ -15,6 +15,7 @@ type UseAcpInitialMessageParams = {
   conversationId: string;
   backend: string;
   setAiProcessing: (value: boolean) => void;
+  beginRun: (input: string, files?: string[]) => void;
   checkAndUpdateTitle: (conversationId: string, input: string) => void;
   addOrUpdateMessage: (message: TMessage, prepend?: boolean) => void;
   t: TFunction;
@@ -30,6 +31,7 @@ export const useAcpInitialMessage = ({
   setAiProcessing,
   checkAndUpdateTitle,
   addOrUpdateMessage,
+  beginRun,
   t,
 }: UseAcpInitialMessageParams): void => {
   useEffect(() => {
@@ -80,6 +82,7 @@ export const useAcpInitialMessage = ({
 
         // Start AI processing loading state (user message will be added via backend response)
         addOrUpdateMessage(userMessage, true);
+        beginRun(input, files);
         setAiProcessing(true);
 
         // Send the message
@@ -133,5 +136,5 @@ export const useAcpInitialMessage = ({
     sendInitialMessage().catch((error) => {
       console.error('Failed to send initial message:', error);
     });
-  }, [conversationId, backend, addOrUpdateMessage, checkAndUpdateTitle, setAiProcessing, t]);
+  }, [conversationId, backend, addOrUpdateMessage, beginRun, checkAndUpdateTitle, setAiProcessing, t]);
 };

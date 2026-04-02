@@ -192,13 +192,37 @@ vi.mock('react-i18next', () => ({
         'settings.connectors.title': 'Connector',
         'settings.connectors.description': 'Connector catalog',
         'settings.connectors.kind': 'Context Connector',
+        'settings.connectors.support': 'Support Status',
         'settings.connectors.resources': 'Resources',
         'settings.connectors.auth': 'Authentication',
+        'settings.connectors.overviewTab': 'Overview',
+        'settings.connectors.configureTab': 'Configure',
+        'settings.connectors.detailTabsAriaLabel': 'Connector detail tabs',
         'settings.connectors.officialSite': 'Official Site',
         'settings.connectors.openWebsite': 'Open Website',
         'settings.connectors.note': 'Connector note',
+        'settings.connectors.configureAvailableDesc': 'Config is available.',
+        'settings.connectors.configureUnavailableTitle': 'Configuration is not available yet',
+        'settings.connectors.configureUnavailableDesc': 'This connector is still catalog only.',
+        'settings.connectors.onlySupportedCanConfigure': 'Only supported connectors can be configured here.',
         'settings.connectors.stagePriority': 'Priority',
         'settings.connectors.stagePlanned': 'Planned',
+        'settings.connectors.supportStatus.supported': 'Supported',
+        'settings.connectors.supportStatus.notSupportedYet': 'Not Supported Yet',
+        'settings.connectors.implementation': 'Implementation',
+        'settings.connectors.implementationOwners.official': 'Official support',
+        'settings.connectors.implementationOwners.contextgo': 'ContextGo native',
+        'settings.connectors.implementationOwners.connectorRepo': 'Connector repository',
+        'settings.connectors.implementationOwners.hybrid': 'Hybrid support',
+        'settings.connectors.implementationOwners.default': 'Connector support',
+        'settings.connectors.supportSources': 'Support Sources',
+        'settings.connectors.noSupportSources': 'No linked support sources yet.',
+        'settings.connectors.supportKinds.officialDocs': 'Official Docs',
+        'settings.connectors.supportKinds.officialRuntime': 'Official Runtime',
+        'settings.connectors.supportKinds.officialSdk': 'Official SDK',
+        'settings.connectors.supportKinds.contextgoNative': 'ContextGo',
+        'settings.connectors.supportKinds.connectorRepo': 'Connector Repo',
+        'settings.connectors.supportKinds.default': 'Support',
         'settings.connectors.categories.contextgo': 'ContextGo Family',
         'settings.connectors.categories.googleWorkspace': 'Google Workspace',
         'settings.connectors.categories.collaboration': 'Collaboration',
@@ -308,6 +332,7 @@ describe('ConnectorsPage', () => {
 
     expect(screen.getByText('Support Sources')).toBeInTheDocument();
     expect(screen.getByText('Connector Repository')).toBeInTheDocument();
+    expect(screen.getAllByText('Supported').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
 
@@ -376,5 +401,26 @@ describe('ConnectorsPage', () => {
     fireEvent.click(categoryToggle);
     expect(screen.getByTestId('location-probe')).toHaveTextContent('/connectors/contextgo-clipboard');
     expect(clipboardButton).not.toBeVisible();
+  });
+
+  it('marks unsupported connectors clearly and disables configuration', async () => {
+    render(
+      <MemoryRouter initialEntries={['/connectors/github']}>
+        <Routes>
+          <Route path='/connectors' element={<ConnectorsPage />} />
+          <Route path='/connectors/:connectorId' element={<ConnectorsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'GitHub' })).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText('Not Supported Yet').length).toBeGreaterThan(0);
+    expect(screen.getByText('Only supported connectors can be configured here.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Configure' })).toBeDisabled();
+    expect(screen.queryByTestId('google-drive-connector-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('clipboard-connector-panel')).not.toBeInTheDocument();
   });
 });

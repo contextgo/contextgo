@@ -5,6 +5,7 @@
  */
 
 import type { TMessage } from '@/common/chat/chatLib';
+import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import { buildChatErrorResponse, chatActions } from '../actions/ChatActions';
 import { handlePairingShow, platformActions } from '../actions/PlatformActions';
 import { systemActions } from '../actions/SystemActions';
@@ -35,7 +36,12 @@ import {
   buildToolConfirmationActionButtons,
 } from '../utils/actionButtons';
 import { stripHtml } from '../plugins/weixin/WeixinAdapter';
-import { getExternalSessionControlState, type IUnifiedIncomingMessage, type IUnifiedOutgoingMessage, type PluginType } from '../types';
+import {
+  getExternalSessionControlState,
+  type IUnifiedIncomingMessage,
+  type IUnifiedOutgoingMessage,
+  type PluginType,
+} from '../types';
 import type { PluginManager } from './PluginManager';
 
 function usesActionButtons(platform: PluginType): boolean {
@@ -289,6 +295,45 @@ function extractRemoteChatType(message: IUnifiedIncomingMessage): string | undef
   return undefined;
 }
 
+function applyThreadRouting(message: IUnifiedIncomingMessage, outgoing: IUnifiedOutgoingMessage): IUnifiedOutgoingMessage {
+  const peer = message.peer;
+  if (!peer || peer.scope !== 'thread') {
+    return outgoing;
+  }
+
+  if (message.platform === 'telegram') {
+    return {
+      ...outgoing,
+      threadId: outgoing.threadId ?? peer.threadId,
+    };
+  }
+
+  if (message.platform === 'slack') {
+    return {
+      ...outgoing,
+      replyToMessageId: outgoing.replyToMessageId ?? message.replyToMessageId,
+    };
+  }
+
+  if (message.platform === 'discord') {
+    return {
+      ...outgoing,
+      threadId: outgoing.threadId ?? peer.threadId,
+    };
+  }
+
+  if (message.platform === 'lark') {
+    return {
+      ...outgoing,
+      replyToMessageId: outgoing.replyToMessageId ?? message.id,
+      threadId: outgoing.threadId ?? peer.threadId,
+      replyInThread: outgoing.replyInThread ?? true,
+    };
+  }
+
+  return outgoing;
+}
+
 function buildWeixinAttachmentPrompt(content: IUnifiedIncomingMessage['content']): string {
   const lines: string[] = ['[WeChat media message]'];
 
@@ -312,6 +357,16 @@ function extractAttachmentPaths(content: IUnifiedIncomingMessage['content']): st
     .map((attachment) => attachment.fileId)
     .filter((fileId): fileId is string => Boolean(fileId));
   return Array.from(new Set(fileIds));
+}
+
+function buildChannelDisplayMessage(text: string | undefined, files: string[]): string {
+  const normalizedText = text?.trim() || '';
+  if (!files.length) {
+    return normalizedText;
+  }
+
+  const markerBlock = `${CONTEXTGO_FILES_MARKER}\n${files.join('\n')}`;
+  return normalizedText ? `${normalizedText}\n\n${markerBlock}` : markerBlock;
 }
 
 /**
@@ -488,8 +543,8 @@ export class ActionExecutor {
       displayName: user.displayName,
       originalMessage: message,
       originalMessageId: message.id,
-      sendMessage: async (msg) => plugin.sendMessage(transportChatId, msg),
-      editMessage: async (msgId, msg) => plugin.editMessage(transportChatId, msgId, msg),
+      sendMessage: async (msg) => plugin.sendMessage(transportChatId, applyThreadRouting(message, msg)),
+      editMessage: async (msgId, msg) => plugin.editMessage(transportChatId, msgId, applyThreadRouting(message, msg)),
     };
 
     try {
@@ -498,7 +553,8 @@ export class ActionExecutor {
         user.id,
         platform,
         routingChatId,
-        context.pluginId
+        context.pluginId,
+        transportChatId
       );
 
       // Handle /start command - always show pairing
@@ -524,6 +580,10 @@ export class ActionExecutor {
         pluginId: context.pluginId,
         platformUserId: user.id,
         chatId: routingChatId,
+        platformChatId: transportChatId,
+        peerScope: message.peer?.scope,
+        parentChatId: message.peer?.parentChatId,
+        threadId: message.peer?.threadId,
         remoteChatType: extractRemoteChatType(message),
         displayName: user.displayName,
       });
@@ -549,8 +609,14 @@ export class ActionExecutor {
         // Regular text message - send to AI
         await this.handleChatMessage(context, content.text);
       } else if (platform === 'weixin' && content.attachments && content.attachments.length > 0) {
-        // Weixin media message: convert attachments to a text prompt so the AI pipeline can process it.
-        await this.handleChatMessage(context, buildWeixinAttachmentPrompt(content), extractAttachmentPaths(content));
+        // Weixin media message: keep the desktop bubble readable while preserving rich agent-side attachment context.
+        const files = extractAttachmentPaths(content);
+        await this.handleChatMessage(
+          context,
+          buildChannelDisplayMessage(content.text, files),
+          files,
+          buildWeixinAttachmentPrompt(content)
+        );
       } else {
         // Unsupported content type
         await context.sendMessage({
@@ -612,7 +678,12 @@ export class ActionExecutor {
   /**
    * Handle chat message - send to AI and stream response
    */
-  private async handleChatMessage(context: IActionContext, text: string, files?: string[]): Promise<void> {
+  private async handleChatMessage(
+    context: IActionContext,
+    text: string,
+    files?: string[],
+    agentText?: string
+  ): Promise<void> {
     if (context.externalSession) {
       const db = await getDatabase();
       const controlLeaseResult = db.getChannelControlLease(context.externalSession.id);
@@ -633,7 +704,12 @@ export class ActionExecutor {
         return;
       }
 
-      if (control.controlMode === 'im_owner' && control.ownerKey && currentImOwnerKey && control.ownerKey !== currentImOwnerKey) {
+      if (
+        control.controlMode === 'im_owner' &&
+        control.ownerKey &&
+        currentImOwnerKey &&
+        control.ownerKey !== currentImOwnerKey
+      ) {
         await context.sendMessage({
           type: 'text',
           text: 'This session is currently controlled from another IM entry.',
@@ -793,7 +869,8 @@ export class ActionExecutor {
             }
           }
         },
-        files
+        files,
+        agentText
       );
 
       // 清除待处理的定时器，确保最后一条消息被处理

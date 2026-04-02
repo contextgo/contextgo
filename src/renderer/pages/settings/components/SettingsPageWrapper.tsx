@@ -1,14 +1,15 @@
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { SettingsViewModeProvider } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
+import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import {
   AlarmClock,
   Command,
   Communication,
-  Computer,
   ConnectionPoint,
   Earth,
   Info,
@@ -20,6 +21,8 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import './settings.css';
+
+const normalizeSettingsAnchor = (anchor: string): string => (anchor === 'display' ? 'system' : anchor);
 
 interface SettingsPageWrapperProps {
   children: React.ReactNode;
@@ -34,6 +37,7 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
   const { pathname } = useLocation();
   const { t } = useTranslation();
   const isDesktop = isElectronDesktop();
+  const { isOpen: isPreviewOpen, activeTab } = usePreviewContext();
 
   const [extensionTabs, setExtensionTabs] = useState<IExtensionSettingsTab[]>([]);
 
@@ -69,12 +73,6 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
         path: 'commands',
       },
       {
-        id: 'display',
-        label: t('settings.display'),
-        icon: <Computer theme='outline' size='16' className='app-icon' />,
-        path: 'display',
-      },
-      {
         id: 'webui',
         label: t('settings.webui'),
         icon: isDesktop ? (
@@ -94,7 +92,7 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
         id: 'activeSessions',
         label: t('settings.activeSessions'),
         icon: <ConnectionPoint theme='outline' size='16' className='app-icon' />,
-        path: 'active-sessions',
+        path: 'agent-publish',
       },
       {
         id: 'system',
@@ -121,11 +119,12 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
         unanchored.push(tab);
         continue;
       }
+      const anchor = normalizeSettingsAnchor(tab.position.anchor);
       const map = tab.position.placement === 'before' ? beforeMap : afterMap;
-      let list = map.get(tab.position.anchor);
+      let list = map.get(anchor);
       if (!list) {
         list = [];
-        map.set(tab.position.anchor, list);
+        map.set(anchor, list);
       }
       list.push(tab);
     }
@@ -162,40 +161,60 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
   }, [isDesktop, t, extensionTabs, resolveExtTabName]);
 
   const containerClass = classNames(
-    'settings-page-wrapper w-full min-h-full box-border overflow-y-auto',
-    isMobile ? 'px-16px py-14px' : 'px-12px md:px-40px py-32px',
+    'settings-page-wrapper secondary-page-frame w-full min-h-full box-border overflow-y-auto',
     className
   );
 
-  const contentClass = classNames('settings-page-content mx-auto w-full md:max-w-1024px', contentClassName);
+  const contentClass = classNames('settings-page-content secondary-page-inner mx-auto w-full md:max-w-[min(1440px,calc(100vw-144px))]', contentClassName);
+  const showPreviewDock = !isMobile && isPreviewOpen && Boolean(activeTab);
+  const previewDock =
+    showPreviewDock && typeof document !== 'undefined'
+      ? createPortal(
+          <aside
+            className='settings-page-preview-shell'
+            data-testid='settings-page-preview'
+            aria-label={t('preview.preview', { defaultValue: 'Preview' })}
+          >
+            <div className='settings-page-preview-panel'>
+              <PreviewPanel />
+            </div>
+          </aside>,
+          document.body
+        )
+      : null;
 
   return (
     <SettingsViewModeProvider value='page'>
       <div className={containerClass}>
-        {isMobile && (
-          <div className='settings-mobile-top-nav'>
-            {menuItems.map((item) => {
-              const active = pathname.includes(`/settings/${item.path}`);
-              return (
-                <button
-                  key={item.path}
-                  type='button'
-                  className={classNames('settings-mobile-top-nav__item', {
-                    'settings-mobile-top-nav__item--active': active,
-                  })}
-                  onClick={() => {
-                    void navigate(`/settings/${item.path}`, { replace: true });
-                  }}
-                >
-                  <span className='settings-mobile-top-nav__icon app-icon-slot'>{item.icon}</span>
-                  <span className='settings-mobile-top-nav__label'>{item.label}</span>
-                </button>
-              );
-            })}
+        <div className='settings-page-shell'>
+          <div className='settings-page-main'>
+            {isMobile && (
+              <div className='settings-mobile-top-nav'>
+                {menuItems.map((item) => {
+                  const active = pathname.includes(`/settings/${item.path}`);
+                  return (
+                    <button
+                      key={item.path}
+                      type='button'
+                      className={classNames('settings-mobile-top-nav__item', {
+                        'settings-mobile-top-nav__item--active': active,
+                      })}
+                      onClick={() => {
+                        void navigate(`/settings/${item.path}`, { replace: true });
+                      }}
+                    >
+                      <span className='settings-mobile-top-nav__icon app-icon-slot'>{item.icon}</span>
+                      <span className='settings-mobile-top-nav__label'>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className={contentClass}>{children}</div>
           </div>
-        )}
-        <div className={contentClass}>{children}</div>
+        </div>
       </div>
+      {previewDock}
     </SettingsViewModeProvider>
   );
 };

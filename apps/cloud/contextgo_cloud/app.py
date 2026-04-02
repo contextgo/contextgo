@@ -53,7 +53,12 @@ from .db import (
     update_user_profile,
     upsert_oauth_account,
 )
-from .infermesh import InfermeshProvisionError, is_infermesh_configured, provision_infermesh_provider
+from .infermesh import (
+    InfermeshProvisionError,
+    build_infermesh_handoff_url,
+    is_infermesh_configured,
+    provision_infermesh_provider,
+)
 from .oidc import (
     OIDC_SUPPORTED_CLAIMS,
     OIDC_SUPPORTED_CLIENT_AUTH_METHODS,
@@ -2384,6 +2389,27 @@ async def auth_current_user_alias(request: Request) -> JSONResponse:
 @app.get("/api/auth/session")
 async def auth_session(request: Request) -> JSONResponse:
     return JSONResponse(build_session_payload(read_current_user(request)))
+
+
+@app.get("/api/integrations/infermesh/handoff")
+async def infermesh_handoff(request: Request) -> JSONResponse:
+    if not is_infermesh_configured(settings):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="InferMesh integration is not configured",
+        )
+
+    _browser_user = require_current_user(request)
+    user = require_current_user_or_device(request)
+    try:
+        handoff_url = build_infermesh_handoff_url(settings, user)
+    except InfermeshProvisionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+    return JSONResponse({"success": True, "url": handoff_url})
 
 
 @app.get("/api/integrations/infermesh/provider")

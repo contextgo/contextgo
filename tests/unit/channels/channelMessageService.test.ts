@@ -176,6 +176,60 @@ describe('ChannelMessageService', () => {
     await expect(promise).resolves.toMatch(/^channel_msg_/);
   });
 
+  it('uses agent-facing content for hook injection while keeping clean display content', async () => {
+    const sendMessage = vi.fn(async () => undefined);
+    const applyBeforeUserPrompt = vi.fn(async (_conversation: unknown, content: string) => ({
+      content: `hooked: ${content}`,
+      appliedHooks: ['prompt-guard'],
+    }));
+    const files = ['/tmp/weixin-media/voice.wav'];
+    const visibleMessage = 'RTF1模式是啥意思\n\n[[CONTEXTGO_FILES]]\n/tmp/weixin-media/voice.wav';
+    const agentMessage = [
+      '[WeChat media message]',
+      'User text: RTF1模式是啥意思',
+      'Attachment 1: type=voice, path=/tmp/weixin-media/voice.wav, name=voice.wav, mime=audio/wav, size=131564, duration=2760',
+    ].join('\n');
+    const service = new ChannelMessageService({
+      taskManager: {
+        getTask: vi.fn(() => undefined),
+        getOrBuildTask: vi.fn(async () => ({
+          type: 'openclaw',
+          sendMessage,
+        })),
+      },
+      getDatabase: async () =>
+        ({
+          getConversation: vi.fn(() => ({
+            success: true,
+            data: {
+              id: 'conv-media',
+              type: 'openclaw',
+              source: 'weixin',
+              extra: {},
+            },
+          })),
+        }) as unknown as Awaited<ReturnType<typeof import('../../../src/process/services/database').getDatabase>>,
+      hookRuntime: {
+        applyBeforeUserPrompt,
+      },
+    });
+
+    const promise = service.sendMessage('session-1', 'conv-media', visibleMessage, vi.fn(), files, agentMessage);
+    await vi.waitFor(() => {
+      expect(applyBeforeUserPrompt).toHaveBeenCalledWith(expect.objectContaining({ id: 'conv-media' }), agentMessage);
+      expect(sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: visibleMessage,
+          agentContent: `hooked: ${agentMessage}`,
+          files,
+        })
+      );
+    });
+
+    agentMessageListener?.({ type: 'finish', conversation_id: 'conv-media', data: null });
+    await expect(promise).resolves.toMatch(/^channel_msg_/);
+  });
+
   it('enables yolo mode for Discord channel conversations', async () => {
     const sendMessage = vi.fn(async () => undefined);
     const getOrBuildTask = vi.fn(async (_conversationId: string, _options: { yoloMode: boolean }) => ({

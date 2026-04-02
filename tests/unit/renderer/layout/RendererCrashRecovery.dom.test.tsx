@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,6 +31,14 @@ vi.mock('react-i18next', () => ({
         'common.rendererCrash.type': 'Error Type',
         'common.rendererCrash.route': 'Route',
         'common.rendererCrash.time': 'Occurred At',
+        'common.rendererCrash.reactBoundaryValue': 'React Error Boundary',
+        'common.rendererCrash.errorValue': 'Error',
+        'common.rendererCrash.lastSafeRoute': 'Last Safe Route',
+        'common.rendererCrash.diagnostics': 'Diagnostics',
+        'common.rendererCrash.resetUi': 'Reset UI',
+        'common.rendererCrash.backToLastSafeRoute': 'Back to Last Safe Route',
+        'common.rendererCrash.reloadApp': 'Reload App',
+        'common.rendererCrash.openSystemSettings': 'Open System Settings',
       };
 
       return labels[key] || key;
@@ -52,17 +60,27 @@ const ThrowOnRender: React.FC = () => {
   throw new Error('Boundary boom');
 };
 
+const findCrashDialog = async (): Promise<HTMLElement> => screen.findByRole('alertdialog');
+
+const expectCrashMessage = (dialog: HTMLElement, message: string): void => {
+  expect(within(dialog).getByText(message, { selector: '.renderer-crash-overlay__message-body' })).toBeInTheDocument();
+};
+
 describe('Renderer crash recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mountRendererCrashOverlay();
-    registerRendererCrashReporting();
+    act(() => {
+      mountRendererCrashOverlay();
+      registerRendererCrashReporting();
+    });
   });
 
   afterEach(() => {
     cleanup();
-    unregisterRendererCrashReporting();
-    unmountRendererCrashOverlay();
+    act(() => {
+      unregisterRendererCrashReporting();
+      unmountRendererCrashOverlay();
+    });
   });
 
   it('shows a recovery overlay when an error boundary catches a render failure', async () => {
@@ -76,8 +94,10 @@ describe('Renderer crash recovery', () => {
       );
     });
 
-    expect(await screen.findByText('This page crashed before it finished rendering.')).toBeInTheDocument();
-    expect(screen.getByText(/Boundary boom/i)).toBeInTheDocument();
+    const dialog = await findCrashDialog();
+
+    expect(within(dialog).getByText('This page crashed before it finished rendering.')).toBeInTheDocument();
+    expectCrashMessage(dialog, 'Boundary boom');
     expect(reportRendererErrorInvoke).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'react-error-boundary',
@@ -98,8 +118,10 @@ describe('Renderer crash recovery', () => {
       );
     });
 
-    expect(await screen.findByText('This page crashed before it finished rendering.')).toBeInTheDocument();
-    expect(screen.getByText(/Global boom/i)).toBeInTheDocument();
+    const dialog = await findCrashDialog();
+
+    expect(within(dialog).getByText('This page crashed before it finished rendering.')).toBeInTheDocument();
+    expectCrashMessage(dialog, 'Global boom');
     expect(reportRendererErrorInvoke).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',
@@ -132,8 +154,10 @@ describe('Renderer crash recovery', () => {
       script.dispatchEvent(new Event('error'));
     });
 
-    expect(await screen.findByText('This page crashed before it finished rendering.')).toBeInTheDocument();
-    expect(screen.getByText(/Failed to load script resource/i)).toBeInTheDocument();
+    const dialog = await findCrashDialog();
+
+    expect(within(dialog).getByText('This page crashed before it finished rendering.')).toBeInTheDocument();
+    expectCrashMessage(dialog, 'Failed to load script resource');
     expect(reportRendererErrorInvoke).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',

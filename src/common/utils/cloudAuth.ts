@@ -46,15 +46,31 @@ export function buildCloudOAuthStartUrl(provider: CloudAuthProviderId, nextUrl: 
   return url.toString();
 }
 
-function buildCloudDesktopLoginReturnUrl(provider: CloudAuthProviderId): string {
+type BuildCloudDesktopOAuthStartUrlOptions = {
+  loopbackCallbackUrl?: string;
+};
+
+function buildCloudDesktopLoginReturnUrl(
+  provider: CloudAuthProviderId,
+  loopbackCallbackUrl?: string
+): string {
   const url = new URL(CLOUD_DESKTOP_LOGIN_COMPLETE_PATH, CONTEXTGO_AUTH_BASE_URL);
   url.searchParams.set('provider', provider);
+
+  const normalizedLoopbackCallbackUrl = loopbackCallbackUrl?.trim();
+  if (normalizedLoopbackCallbackUrl) {
+    url.searchParams.set('loopback', normalizedLoopbackCallbackUrl);
+  }
+
   return url.toString();
 }
 
-export function buildCloudDesktopOAuthStartUrl(provider: CloudAuthProviderId): string {
+export function buildCloudDesktopOAuthStartUrl(
+  provider: CloudAuthProviderId,
+  options?: BuildCloudDesktopOAuthStartUrlOptions
+): string {
   const url = new URL(`/api/auth/oauth/${provider}/start`, CONTEXTGO_AUTH_BASE_URL);
-  url.searchParams.set('next', buildCloudDesktopLoginReturnUrl(provider));
+  url.searchParams.set('next', buildCloudDesktopLoginReturnUrl(provider, options?.loopbackCallbackUrl));
   url.searchParams.set('desktop', '1');
   return url.toString();
 }

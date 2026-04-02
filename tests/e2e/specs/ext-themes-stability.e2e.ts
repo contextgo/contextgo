@@ -12,15 +12,15 @@ import { goToGuid, goToSettings, goToExtensionSettings, takeScreenshot, waitForS
 // ═════════════════════════════════════════════════════════════════════════════
 
 test.describe('Extension: Themes', () => {
-  test('display settings page loads', async ({ page }) => {
-    await goToSettings(page, 'display');
+  test('system settings page loads merged appearance preferences', async ({ page }) => {
+    await goToSettings(page, 'system');
     await waitForSettle(page);
     const body = await page.locator('body').textContent();
     expect(body!.length).toBeGreaterThan(50);
   });
 
-  test('extension themes may appear in theme list', async ({ page }) => {
-    await goToSettings(page, 'display');
+  test('extension themes may appear in the merged system preferences', async ({ page }) => {
+    await goToSettings(page, 'system');
     await waitForSettle(page);
 
     const body = await page.locator('body').textContent();
@@ -29,11 +29,11 @@ test.describe('Extension: Themes', () => {
     expect(body!.length).toBeGreaterThan(100);
   });
 
-  test('screenshot: display with extension themes', async ({ page }) => {
+  test('screenshot: system with extension themes', async ({ page }) => {
     test.skip(!process.env.E2E_SCREENSHOTS, 'screenshots disabled');
-    await goToSettings(page, 'display');
+    await goToSettings(page, 'system');
     await waitForSettle(page);
-    await takeScreenshot(page, 'ext-themes');
+    await takeScreenshot(page, 'system-ext-themes');
   });
 });
 
@@ -73,7 +73,7 @@ test.describe('Extension: Assistants', () => {
 
 test.describe('Extension System Stability', () => {
   test('navigating across all settings pages with extensions does not crash', async ({ page }) => {
-    const tabs = ['agent', 'tools', 'display', 'webui', 'system', 'about'] as const;
+    const tabs = ['agent', 'tools', 'webui', 'system', 'about'] as const;
 
     for (const tab of tabs) {
       await goToSettings(page, tab);
@@ -96,7 +96,7 @@ test.describe('Extension System Stability', () => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
 
-    const tabs = ['agent', 'tools', 'display', 'webui'] as const;
+    const tabs = ['agent', 'tools', 'webui', 'system'] as const;
     for (const tab of tabs) {
       await goToSettings(page, tab);
       await waitForSettle(page);

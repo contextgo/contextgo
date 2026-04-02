@@ -28,6 +28,16 @@ import {
   HARNESS_DEFAULT_PRESET_ASSISTANT_IDS,
   resolveHarnessDefaultSelectionKeys,
 } from './createDiscussionGroupModalHelpers';
+import GroupModalSection, {
+  GROUP_MODAL_CONTENT_STYLE,
+  GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME,
+  GROUP_MODAL_PARTICIPANT_CARD_CLASS_NAME,
+  GROUP_MODAL_PARTICIPANT_LIST_STYLE,
+  GROUP_MODAL_PARTICIPANT_META_CLASS_NAME,
+  GROUP_MODAL_PARTICIPANT_CARD_SELECTED_CLASS_NAME,
+  GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME,
+  GROUP_MODAL_STYLE,
+} from './GroupModalShared';
 
 const resolveAssistantDisplayName = (assistant: AssistantListItem, localeKey: string): string => {
   return assistant.nameI18n?.[localeKey] || assistant.name;
@@ -84,8 +94,6 @@ const ParticipantAvatar: React.FC<{ participant: ParticipantOption }> = ({ parti
 
 const DEFAULT_MODE: DiscussionGroupMode = 'broadcast';
 const DEFAULT_COLLABORATION_MODE: CollaborationMode = 'discussion';
-const SECTION_CLASS_NAME =
-  'flex flex-col gap-10px bg-2 border border-solid border-[var(--border-base)] px-16px py-14px rd-20px shadow-[0_12px_30px_rgba(15,23,42,0.06)]';
 
 const buildPresetParticipantOption = (assistant: AssistantListItem, localeKey: string): ParticipantOption => {
   return {
@@ -322,49 +330,40 @@ const CreateDiscussionGroupModal: React.FC<{
       header={{
         title: t('conversation.group.createTitle'),
         showClose: true,
-        className: 'px-24px pt-20px',
+        className: 'px-20px pt-16px',
       }}
       footer={{
-        className: 'px-24px pb-20px',
+        className: 'px-20px pb-16px',
         render: () => (
           <div className='flex justify-end gap-10px pt-4px'>
-            <Button onClick={onCancel} className='min-w-88px px-18px'>
+            <Button onClick={onCancel} className={GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME}>
               {t('common.cancel')}
             </Button>
             <Button
               type='primary'
               loading={submitting}
               onClick={() => void handleSubmit()}
-              className='min-w-104px px-18px'
+              className={GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME}
             >
               {t('conversation.group.createAction')}
             </Button>
           </div>
         ),
       }}
-      style={{
-        width: 'min(760px, calc(100vw - 32px))',
-        maxHeight: 'calc(100vh - 40px)',
-      }}
-      contentStyle={{
-        padding: '16px 24px 24px',
-        overflow: 'auto',
-        maxHeight: 'calc(100vh - 180px)',
-      }}
+      style={GROUP_MODAL_STYLE}
+      contentStyle={GROUP_MODAL_CONTENT_STYLE}
     >
-      <div className='flex flex-col gap-16px'>
-        <div className={SECTION_CLASS_NAME}>
-          <Typography.Text className='font-600'>{t('conversation.group.nameLabel')}</Typography.Text>
+      <div className='flex w-full min-w-0 flex-col gap-12px'>
+        <GroupModalSection title={t('conversation.group.nameLabel')}>
           <Input value={groupName} onChange={setGroupName} placeholder={t('conversation.group.namePlaceholder')} />
-        </div>
+        </GroupModalSection>
 
-        <div className={SECTION_CLASS_NAME}>
-          <Typography.Text className='font-600'>{t('conversation.group.collaborationLabel')}</Typography.Text>
+        <GroupModalSection title={t('conversation.group.collaborationLabel')}>
           <Radio.Group
             value={collaborationMode}
             onChange={(value) => setCollaborationMode(value as CollaborationMode)}
             type='button'
-            className='flex flex-wrap gap-8px'
+            className={GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME}
           >
             <Radio value='discussion'>{t('conversation.group.collaborationDiscussion')}</Radio>
             <Radio value='planner-generator-evaluator'>{t('conversation.group.collaborationHarness')}</Radio>
@@ -372,11 +371,10 @@ const CreateDiscussionGroupModal: React.FC<{
           <Typography.Text type='secondary'>
             {t(`conversation.group.collaborationHint.${collaborationMode}`)}
           </Typography.Text>
-        </div>
+        </GroupModalSection>
 
-        <div className={SECTION_CLASS_NAME}>
-          <Typography.Text className='font-600'>{t('conversation.group.workspaceLabel')}</Typography.Text>
-          <div className='flex flex-col gap-10px md:flex-row md:items-center'>
+        <GroupModalSection title={t('conversation.group.workspaceLabel')}>
+          <div className='flex flex-col gap-8px md:flex-row md:items-center'>
             <Input
               value={selectedWorkspace}
               onChange={setSelectedWorkspace}
@@ -396,15 +394,14 @@ const CreateDiscussionGroupModal: React.FC<{
             </Button>
           </div>
           <Typography.Text type='secondary'>{t('conversation.group.workspaceHint')}</Typography.Text>
-        </div>
+        </GroupModalSection>
 
-        <div className={SECTION_CLASS_NAME}>
-          <Typography.Text className='font-600'>{t('conversation.group.modeLabel')}</Typography.Text>
+        <GroupModalSection title={t('conversation.group.modeLabel')}>
           <Radio.Group
             value={mode}
             onChange={(value) => setMode(value as DiscussionGroupMode)}
             type='button'
-            className='flex flex-wrap gap-8px'
+            className={GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME}
           >
             <Radio value='broadcast' disabled={collaborationMode === 'planner-generator-evaluator'}>
               {t('conversation.group.modeBroadcast')}
@@ -418,11 +415,10 @@ const CreateDiscussionGroupModal: React.FC<{
           {collaborationMode === 'planner-generator-evaluator' ? (
             <Typography.Text type='secondary'>{t('conversation.group.harnessUsesDebate')}</Typography.Text>
           ) : null}
-        </div>
+        </GroupModalSection>
 
-        <div className={SECTION_CLASS_NAME}>
-          <Typography.Text className='font-600'>{t('conversation.group.participantsLabel')}</Typography.Text>
-          <div className='flex flex-col gap-8px overflow-y-auto pr-4px' style={{ maxHeight: 'min(42vh, 440px)' }}>
+        <GroupModalSection title={t('conversation.group.participantsLabel')}>
+          <div className='flex flex-col gap-8px overflow-y-auto pr-4px' style={GROUP_MODAL_PARTICIPANT_LIST_STYLE}>
             {sections.map((section) => (
               <div key={section.key} className='flex flex-col gap-8px'>
                 <Typography.Text type='secondary' className='text-12px uppercase tracking-0.08em'>
@@ -434,7 +430,10 @@ const CreateDiscussionGroupModal: React.FC<{
                   return (
                     <div
                       key={participant.selectionKey}
-                      className={`flex items-start gap-12px p-12px rd-16px border border-solid transition-all ${selected ? 'border-[var(--color-primary-light-4)] bg-[var(--color-fill-1)] shadow-[0_10px_24px_rgba(15,23,42,0.08)]' : 'border-[var(--border-base)] bg-[var(--fill-0)] shadow-[0_6px_18px_rgba(15,23,42,0.04)]'}`}
+                      className={[
+                        GROUP_MODAL_PARTICIPANT_CARD_CLASS_NAME,
+                        selected ? GROUP_MODAL_PARTICIPANT_CARD_SELECTED_CLASS_NAME : '',
+                      ].join(' ')}
                     >
                       <Checkbox
                         checked={selected}
@@ -466,9 +465,11 @@ const CreateDiscussionGroupModal: React.FC<{
                           {participant.description || t('conversation.group.noDescription')}
                         </Typography.Paragraph>
                         {collaborationMode === 'planner-generator-evaluator' && selected ? (
-                          <Typography.Text type='secondary' className='text-12px'>
-                            {t(resolveHarnessRoleLabelKey(selectedRoleIndex))}
-                          </Typography.Text>
+                          <div className={GROUP_MODAL_PARTICIPANT_META_CLASS_NAME}>
+                            <Typography.Text type='secondary' className='text-12px'>
+                              {t(resolveHarnessRoleLabelKey(selectedRoleIndex))}
+                            </Typography.Text>
+                          </div>
                         ) : null}
                       </div>
                     </div>
@@ -482,7 +483,7 @@ const CreateDiscussionGroupModal: React.FC<{
               ? t('conversation.group.harnessParticipantsHint')
               : t('conversation.group.minimumParticipantsHint')}
           </Typography.Text>
-        </div>
+        </GroupModalSection>
       </div>
     </ContextGoModal>
   );

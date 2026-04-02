@@ -1,9 +1,9 @@
 import type { IProvider } from '@/common/config/storage';
 import ModalHOC from '@/renderer/utils/ui/ModalHOC';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import { Form, Input, Message, Select } from '@arco-design/web-react';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import ContextGoModal from '@/renderer/components/base/ContextGoModal';
 import { LinkCloud } from '@icon-park/react';
 import { ipcBridge } from '@/common';
 import useModeModeList from '@renderer/hooks/agent/useModeModeList';
@@ -139,12 +139,12 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
     }, [data, form]);
 
     return (
-      <ContextGoModal
+      <SettingsSubModal
         visible={modalProps.visible}
         onCancel={modalCtrl.close}
-        header={{ title: t('settings.editModel'), showClose: true }}
+        title={t('settings.editModel')}
         style={{ minHeight: '400px', maxHeight: '90vh', borderRadius: 16 }}
-        contentStyle={{ background: 'var(--bg-1)', borderRadius: 16, padding: '20px 24px 16px', overflow: 'auto' }}
+        contentStyle={{ padding: '20px 24px 16px', overflow: 'auto' }}
         onOk={async () => {
           const values = await form.validate();
           const updatedProvider: IProvider = {
@@ -212,9 +212,8 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
               required={!isBedrock}
               rules={[{ required: !isBedrock }]}
               field={'apiKey'}
-              extra={<div className='text-11px text-t-secondary mt-2'>💡 {t('settings.multiApiKeyEditTip')}</div>}
             >
-              <Input.TextArea rows={4} placeholder={t('settings.apiKeyPlaceholder')} />
+              <Input.Password placeholder={t('settings.apiKeyPlaceholder')} visibilityToggle />
             </Form.Item>
 
             {/* AWS Bedrock Authentication Method */}
@@ -364,7 +363,7 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
             </Form.Item>
           </Form>
         </div>
-      </ContextGoModal>
+      </SettingsSubModal>
     );
   }
 );

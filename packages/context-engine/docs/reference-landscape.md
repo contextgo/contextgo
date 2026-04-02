@@ -219,6 +219,10 @@
 
 ## 分层责任边界
 
+术语主定义以 [Space 模型](../../../docs/tech/space-model.md) 为准。
+尤其是 `Space`、`Thread`、`Conversation`、`Mount`、`Runtime Workspace` 这几个词，
+后续在上下文引擎、connector、renderer shell 和 runtime 接线中都不应各自漂移。
+
 把三类参考放在一起之后，项目边界应保持清晰：
 
 - `ContextGo Space`

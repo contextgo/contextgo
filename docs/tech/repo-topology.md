@@ -93,7 +93,7 @@ Those are adjacent capabilities, but they are not the same module boundary.
 - `contextgo.io` and `www.contextgo.io`: public website from `apps/web/`
 - `auth.contextgo.io`: cloud auth service from `apps/cloud/`
 - `api.contextgo.io`: cloud API and sync service from `apps/cloud/`
-- `remote.contextgo.io`: cloud-relay-backed official remote WebUI entry
+- `remote.contextgo.io`: official remote control-plane entry from `apps/cloud/`; device selection happens here, but the actual runtime should resolve to the desktop-hosted WebUI instead of a separate cloud-hosted frontend
 
 ## Local Commands
 

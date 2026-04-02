@@ -59,7 +59,7 @@ export class WeixinLoginHandler {
     });
   }
 
-  startLogin(): Promise<{ accountId: string; botToken: string; baseUrl: string }> {
+  startLogin(): Promise<{ accountId: string; botToken: string; baseUrl: string; scannerUserId?: string }> {
     this.loginHandle?.abort();
 
     return new Promise((resolve, reject) => {

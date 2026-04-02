@@ -12,6 +12,7 @@ import type {
   IUnifiedIncomingMessage,
   IUnifiedMessageContent,
   IUnifiedOutgoingMessage,
+  IUnifiedPeer,
   IUnifiedUser,
 } from '../../types';
 
@@ -140,6 +141,26 @@ function buildTextContent(text: string): IUnifiedMessageContent {
   };
 }
 
+function buildSlackPeer(event: SlackMessageEvent): IUnifiedPeer {
+  if (event.thread_ts && event.thread_ts !== event.ts) {
+    return {
+      key: `${event.channel}:thread:${event.thread_ts}`,
+      platformChatId: event.channel || '',
+      parentChatId: event.channel,
+      threadId: event.thread_ts,
+      scope: 'thread',
+      chatType: 'thread',
+    };
+  }
+
+  return {
+    key: event.channel || '',
+    platformChatId: event.channel || '',
+    scope: 'chat',
+    chatType: event.channel_type,
+  };
+}
+
 export function toUnifiedIncomingMessage(event: SlackMessageEvent, botUserId?: string): IUnifiedIncomingMessage | null {
   const user = toUnifiedUser(event.user);
   if (!user || !event.channel) return null;
@@ -149,6 +170,7 @@ export function toUnifiedIncomingMessage(event: SlackMessageEvent, botUserId?: s
     id: event.ts || Date.now().toString(),
     platform: 'slack',
     chatId: event.channel,
+    peer: buildSlackPeer(event),
     user,
     content: buildTextContent(text),
     timestamp: slackTimestampToMillis(event.ts),
@@ -246,10 +268,12 @@ export function toSlackSendParams(message: IUnifiedOutgoingMessage): {
       .join(' · ') ||
     'ContextGo response';
 
+  const threadTs = message.threadId || message.replyToMessageId;
+
   return {
     text: fallbackText,
     ...(blocks ? { blocks } : {}),
-    ...(message.replyToMessageId ? { threadTs: message.replyToMessageId } : {}),
+    ...(threadTs ? { threadTs } : {}),
   };
 }
 

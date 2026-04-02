@@ -575,6 +575,7 @@ export function initFsBridge(): void {
     try {
       // 处理字符串类型 / Handle string type
       if (typeof data === 'string') {
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, data, 'utf-8');
 
         // 发送流式内容更新事件到预览面板（用于实时更新）
@@ -624,6 +625,7 @@ export function initFsBridge(): void {
         bufferData = data;
       }
 
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, bufferData);
       return true;
     } catch (error) {
@@ -769,6 +771,7 @@ export function initFsBridge(): void {
         size: stats.size,
         type: '', // MIME type可以根据扩展名推断
         lastModified: stats.mtime.getTime(),
+        isDirectory: stats.isDirectory(),
       };
     } catch (error) {
       // Return empty metadata instead of throwing to avoid unhandled rejection
@@ -780,6 +783,7 @@ export function initFsBridge(): void {
         size: -1,
         type: '',
         lastModified: 0,
+        isDirectory: false,
       };
     }
   });
@@ -1871,31 +1875,29 @@ export function initFsBridge(): void {
     builtinSkillsDir: getBuiltinSkillsCopyDir(),
   }));
 
-  ipcBridge.fs.searchSkillMarket.provider(
-    async ({ query, limit, offset, forceRefresh, view, industryId } = {}) => {
-      try {
-        const data = await skillMarketService.searchSkills({
-          query,
-          limit,
-          offset,
-          forceRefresh,
-          view,
-          industryId,
-        });
+  ipcBridge.fs.searchSkillMarket.provider(async ({ query, limit, offset, forceRefresh, view, industryId } = {}) => {
+    try {
+      const data = await skillMarketService.searchSkills({
+        query,
+        limit,
+        offset,
+        forceRefresh,
+        view,
+        industryId,
+      });
 
-        return {
-          success: true,
-          data,
-        };
-      } catch (error) {
-        console.error('[fsBridge] Failed to search Skill Market:', error);
-        return {
-          success: false,
-          msg: `Failed to search Skill Market: ${error instanceof Error ? error.message : String(error)}`,
-        };
-      }
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to search Skill Market:', error);
+      return {
+        success: false,
+        msg: `Failed to search Skill Market: ${error instanceof Error ? error.message : String(error)}`,
+      };
     }
-  );
+  });
 
   ipcBridge.fs.installSkillMarketSkill.provider(async ({ skillId, archive }) => {
     try {

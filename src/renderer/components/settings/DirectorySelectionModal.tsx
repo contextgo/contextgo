@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ContextGoModal } from '@/renderer/components/base';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import { Button, Spin } from '@arco-design/web-react';
 import { IconFile, IconFolder, IconUp } from '@arco-design/web-react/icon';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -121,14 +121,10 @@ const DirectorySelectionModal: React.FC<DirectorySelectionModalProps> = ({
   };
 
   return (
-    <ContextGoModal
+    <SettingsSubModal
       visible={visible}
       onCancel={onCancel}
-      header={{
-        title: isFileMode ? '📄 ' + t('fileSelection.selectFile') : '📁 ' + t('fileSelection.selectDirectory'),
-        showClose: true,
-        className: 'px-24px pt-20px',
-      }}
+      title={isFileMode ? '📄 ' + t('fileSelection.selectFile') : '📁 ' + t('fileSelection.selectDirectory')}
       className='directory-selection-modal'
       style={{ width: 'min(640px, calc(100vw - 32px))' }}
       wrapStyle={{ zIndex: 3000 }}
@@ -154,7 +150,7 @@ const DirectorySelectionModal: React.FC<DirectorySelectionModalProps> = ({
       contentStyle={{ padding: '12px 24px 0' }}
     >
       <Spin loading={loading} className='w-full'>
-        <div className='w-full overflow-hidden rounded-18px border border-b-base bg-fill-1 shadow-[0_12px_30px_rgba(15,23,42,0.04)]' style={{ height: 'min(420px, 60vh)' }}>
+        <div className='settings-sub-modal__surface w-full' style={{ height: 'min(420px, 60vh)' }}>
           <div className='h-full overflow-y-auto'>
             {directoryData.canGoUp && (
               <div
@@ -206,7 +202,7 @@ const DirectorySelectionModal: React.FC<DirectorySelectionModalProps> = ({
           </div>
         </div>
       </Spin>
-    </ContextGoModal>
+    </SettingsSubModal>
   );
 };
 

@@ -13,7 +13,9 @@ import {
 } from '../../src/process/services/space/connectors/clipboard/ClipboardConnectorService';
 
 type ClipboardConfigStore = {
-  get: <K extends 'connector.clipboard.config'>(key: K) => Promise<{ 'connector.clipboard.config'?: ClipboardConnectorConfig }[K]>;
+  get: <K extends 'connector.clipboard.config'>(
+    key: K
+  ) => Promise<{ 'connector.clipboard.config'?: ClipboardConnectorConfig }[K]>;
   set: <K extends 'connector.clipboard.config'>(
     key: K,
     value: { 'connector.clipboard.config'?: ClipboardConnectorConfig }[K]
@@ -21,14 +23,15 @@ type ClipboardConfigStore = {
   snapshot: () => ClipboardConnectorConfig | undefined;
 };
 
-
 type MockObserverController = {
   start: ReturnType<typeof vi.fn>;
   stop: ReturnType<typeof vi.fn>;
   getRuntimeDetails: ReturnType<typeof vi.fn>;
 };
 
-function createObserverController(overrides: Partial<Record<'running' | 'lastError', unknown>> = {}): MockObserverController {
+function createObserverController(
+  overrides: Partial<Record<'running' | 'lastError', unknown>> = {}
+): MockObserverController {
   let running = Boolean(overrides.running);
   let pid = overrides.running ? 4321 : undefined;
   let lastError = typeof overrides.lastError === 'string' ? overrides.lastError : undefined;
@@ -152,7 +155,6 @@ describe('ClipboardConnectorService', () => {
     expect(stopped.desiredState).toBe('stopped');
     expect(stopped.lastStopAt).toBe(1_717_000_000_000);
   });
-
 
   it('starts and stops the managed observer process', async () => {
     const observer = createObserverController();

@@ -38,7 +38,9 @@ export default function ContentIndexPage({
                 href={`/${lang}${basePath}/${entry.slug}`}
                 className='theme-surface-secondary theme-shadow-card theme-border block rounded-[28px] border px-6 py-6 transition-transform duration-200 hover:-translate-y-1'
               >
-                <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>{entry.eyebrow}</div>
+                <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>
+                  {entry.eyebrow}
+                </div>
                 <h3 className='theme-text-primary mt-3 text-2xl font-semibold tracking-tight'>{entry.title}</h3>
                 <p className='theme-text-secondary mt-3 text-sm leading-7'>{entry.summary}</p>
                 <div className='theme-text-tertiary mt-5 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em]'>

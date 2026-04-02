@@ -12,127 +12,96 @@ import { Button, Empty, Input, Message, Spin, Tooltip } from '@arco-design/web-r
 import { CheckOne, CloseOne, Copy, Delete, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-/**
- * Preference row component
- */
-const PreferenceRow: React.FC<{
-  label: string;
-  description?: React.ReactNode;
-  extra?: React.ReactNode;
-  required?: boolean;
-  children: React.ReactNode;
-}> = ({ label, description, extra, required, children }) => (
-  <div className='flex items-center justify-between gap-24px py-12px'>
-    <div className='flex-1'>
-      <div className='flex items-center gap-8px'>
-        <span className='text-14px text-t-primary'>
-          {label}
-          {required && <span className='text-red-500 ml-2px'>*</span>}
-        </span>
-        {extra}
-      </div>
-      {description && <div className='text-12px text-t-tertiary mt-2px'>{description}</div>}
-    </div>
-    <div className='flex items-center'>{children}</div>
-  </div>
-);
-
-/**
- * Section header component
- */
-const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({ title, action }) => (
-  <div className='flex items-center justify-between mb-12px'>
-    <h3 className='text-14px font-500 text-t-primary m-0'>{title}</h3>
-    {action}
-  </div>
-);
+import { FormPreferenceRow, FormSectionHeader, formLayoutStyles } from './FormLayout';
 
 interface DingTalkConfigFormProps {
+  pluginId: string;
   pluginStatus: IChannelPluginStatus | null;
   onStatusChange: (status: IChannelPluginStatus | null) => void;
 }
 
-const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, onStatusChange }) => {
+const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginId, pluginStatus, onStatusChange }) => {
   const { t, i18n } = useTranslation();
+  const runtimeId = pluginStatus?.runtimeId ?? pluginId;
+  const channelAccountId = pluginId;
   const dingTalkDocsUrl = getPublicDocsUrl(i18n.language, PUBLIC_DOC_SLUGS.connectorsAndChannels);
 
-  // DingTalk credentials
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
-
   const [testLoading, setTestLoading] = useState(false);
-  const [_credentialsTested, setCredentialsTested] = useState(false);
   const [touched, setTouched] = useState({ clientId: false, clientSecret: false });
   const [pairingLoading, setPairingLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
   const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
 
-  // Load pending pairings
   const loadPendingPairings = useCallback(async () => {
     setPairingLoading(true);
     try {
       const result = await channel.getPendingPairings.invoke();
       if (result.success && result.data) {
-        setPendingPairings(result.data.filter((p) => p.platformType === 'dingtalk'));
+        setPendingPairings(
+          result.data.filter(
+            (item) => item.platformType === 'dingtalk' && (!item.connectorId || item.connectorId === channelAccountId)
+          )
+        );
       }
     } catch (error) {
       console.error('[DingTalkConfig] Failed to load pending pairings:', error);
     } finally {
       setPairingLoading(false);
     }
-  }, []);
+  }, [channelAccountId]);
 
-  // Load authorized users
   const loadAuthorizedUsers = useCallback(async () => {
     setUsersLoading(true);
     try {
       const result = await channel.getAuthorizedUsers.invoke();
       if (result.success && result.data) {
-        setAuthorizedUsers(result.data.filter((u) => u.platformType === 'dingtalk'));
+        setAuthorizedUsers(
+          result.data.filter(
+            (item) => item.platformType === 'dingtalk' && (!item.connectorId || item.connectorId === channelAccountId)
+          )
+        );
       }
     } catch (error) {
       console.error('[DingTalkConfig] Failed to load authorized users:', error);
     } finally {
       setUsersLoading(false);
     }
-  }, []);
+  }, [channelAccountId]);
 
-  // Initial load
   useEffect(() => {
     void loadPendingPairings();
     void loadAuthorizedUsers();
-  }, [loadPendingPairings, loadAuthorizedUsers]);
+  }, [loadAuthorizedUsers, loadPendingPairings]);
 
-  // Listen for pairing requests
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
-      if (request.platformType !== 'dingtalk') return;
+      if (request.platformType !== 'dingtalk' || (request.connectorId && request.connectorId !== channelAccountId))
+        return;
       setPendingPairings((prev) => {
-        const exists = prev.some((p) => p.code === request.code);
+        const exists = prev.some((item) => item.code === request.code);
         if (exists) return prev;
         return [request, ...prev];
       });
     });
     return () => unsubscribe();
-  }, []);
+  }, [channelAccountId]);
 
-  // Listen for user authorization
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'dingtalk') return;
+      if (user.platformType !== 'dingtalk' || (user.connectorId && user.connectorId !== channelAccountId)) return;
       setAuthorizedUsers((prev) => {
-        const exists = prev.some((u) => u.id === user.id);
+        const exists = prev.some((item) => item.id === user.id);
         if (exists) return prev;
         return [user, ...prev];
       });
-      setPendingPairings((prev) => prev.filter((p) => p.platformUserId !== user.platformUserId));
+      setPendingPairings((prev) => prev.filter((item) => item.platformUserId !== user.platformUserId));
     });
     return () => unsubscribe();
-  }, []);
+  }, [channelAccountId]);
 
-  // Test DingTalk connection
   const handleTestConnection = async () => {
     setTouched({ clientId: true, clientSecret: true });
 
@@ -142,10 +111,9 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
     }
 
     setTestLoading(true);
-    setCredentialsTested(false);
     try {
       const result = await channel.testPlugin.invoke({
-        pluginId: 'dingtalk_default',
+        pluginId: runtimeId,
         token: '',
         extraConfig: {
           appId: clientId.trim(),
@@ -154,26 +122,22 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
       });
 
       if (result.success && result.data?.success) {
-        setCredentialsTested(true);
         Message.success(t('settings.dingtalk.connectionSuccess', 'Connected to DingTalk API!'));
         await handleAutoEnable();
       } else {
-        setCredentialsTested(false);
         Message.error(result.data?.error || t('settings.dingtalk.connectionFailed', 'Connection failed'));
       }
     } catch (error: any) {
-      setCredentialsTested(false);
       Message.error(error.message || t('settings.dingtalk.connectionFailed', 'Connection failed'));
     } finally {
       setTestLoading(false);
     }
   };
 
-  // Auto-enable plugin after successful test
   const handleAutoEnable = async () => {
     try {
       const result = await channel.enablePlugin.invoke({
-        pluginId: 'dingtalk_default',
+        pluginId: runtimeId,
         config: {
           clientId: clientId.trim(),
           clientSecret: clientSecret.trim(),
@@ -184,7 +148,7 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
         Message.success(t('settings.dingtalk.pluginEnabled', 'DingTalk bot enabled'));
         const statusResult = await channel.getPluginStatus.invoke();
         if (statusResult.success && statusResult.data) {
-          const dingtalkPlugin = statusResult.data.find((p) => p.type === 'dingtalk');
+          const dingtalkPlugin = statusResult.data.find((item) => item.id === channelAccountId);
           onStatusChange(dingtalkPlugin || null);
         }
       } else {
@@ -197,12 +161,6 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
     }
   };
 
-  // Reset credentials tested state when credentials change
-  const handleCredentialsChange = () => {
-    setCredentialsTested(false);
-  };
-
-  // Approve pairing
   const handleApprovePairing = async (code: string) => {
     try {
       const result = await channel.approvePairing.invoke({ code });
@@ -218,7 +176,6 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
     }
   };
 
-  // Reject pairing
   const handleRejectPairing = async (code: string) => {
     try {
       const result = await channel.rejectPairing.invoke({ code });
@@ -233,7 +190,6 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
     }
   };
 
-  // Revoke user
   const handleRevokeUser = async (userId: string) => {
     try {
       const result = await channel.revokeUser.invoke({ userId });
@@ -248,45 +204,36 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
     }
   };
 
-  // Copy to clipboard
   const copyToClipboard = (text: string) => {
     void navigator.clipboard.writeText(text);
     Message.success(t('common.copySuccess', 'Copied'));
   };
 
-  // Format timestamp
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString();
-  };
-
-  // Calculate remaining time
-  const getRemainingTime = (expiresAt: number) => {
-    const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000 / 60));
-    return `${remaining} min`;
-  };
-
+  const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString();
+  const getRemainingTime = (expiresAt: number) => `${Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000 / 60))} min`;
   const hasExistingUsers = authorizedUsers.length > 0;
 
+  const renderDocDescription = (suffixKey: string, fallback: string) => (
+    <span>
+      <a
+        className='text-primary hover:underline cursor-pointer text-12px'
+        href={dingTalkDocsUrl}
+        onClick={(event) => {
+          event.preventDefault();
+          openExternalUrl(dingTalkDocsUrl).catch(console.error);
+        }}
+      >
+        {t('settings.dingtalk.devConsoleLink', 'DingTalk Open Platform')}
+      </a>{' '}
+      {t(suffixKey, fallback)}
+    </span>
+  );
+
   return (
-    <div className='flex flex-col gap-24px'>
-      {/* Client ID */}
-      <PreferenceRow
+    <div className={formLayoutStyles.formRoot}>
+      <FormPreferenceRow
         label={t('settings.dingtalk.clientId', 'Client ID')}
-        description={
-          <span>
-            <a
-              className='text-primary hover:underline cursor-pointer text-12px'
-              href={dingTalkDocsUrl}
-              onClick={(e) => {
-                e.preventDefault();
-                openExternalUrl(dingTalkDocsUrl).catch(console.error);
-              }}
-            >
-              {t('settings.dingtalk.devConsoleLink', 'DingTalk Open Platform')}
-            </a>{' '}
-            {t('settings.dingtalk.clientIdDescSuffix', 'to get your Client ID')}
-          </span>
-        }
+        description={renderDocDescription('settings.dingtalk.clientIdDescSuffix', 'to get your Client ID')}
         required
       >
         {hasExistingUsers ? (
@@ -299,52 +246,30 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
             <span>
               <Input
                 value={clientId}
-                onChange={(value) => {
-                  setClientId(value);
-                  handleCredentialsChange();
-                }}
+                onChange={(value) => setClientId(value)}
                 onBlur={() => setTouched((prev) => ({ ...prev, clientId: true }))}
                 placeholder={hasExistingUsers || pluginStatus?.hasToken ? '••••••••••••••••' : 'dingxxxxxxxxxx'}
-                style={{ width: 240 }}
+                className={formLayoutStyles.controlInput}
                 status={touched.clientId && !clientId.trim() && !pluginStatus?.hasToken ? 'error' : undefined}
-                disabled={hasExistingUsers}
+                disabled
               />
             </span>
           </Tooltip>
         ) : (
           <Input
             value={clientId}
-            onChange={(value) => {
-              setClientId(value);
-              handleCredentialsChange();
-            }}
+            onChange={(value) => setClientId(value)}
             onBlur={() => setTouched((prev) => ({ ...prev, clientId: true }))}
             placeholder={hasExistingUsers || pluginStatus?.hasToken ? '••••••••••••••••' : 'dingxxxxxxxxxx'}
-            style={{ width: 240 }}
+            className={formLayoutStyles.controlInput}
             status={touched.clientId && !clientId.trim() && !pluginStatus?.hasToken ? 'error' : undefined}
-            disabled={hasExistingUsers}
           />
         )}
-      </PreferenceRow>
+      </FormPreferenceRow>
 
-      {/* Client Secret */}
-      <PreferenceRow
+      <FormPreferenceRow
         label={t('settings.dingtalk.clientSecret', 'Client Secret')}
-        description={
-          <span>
-            <a
-              className='text-primary hover:underline cursor-pointer text-12px'
-              href={dingTalkDocsUrl}
-              onClick={(e) => {
-                e.preventDefault();
-                openExternalUrl(dingTalkDocsUrl).catch(console.error);
-              }}
-            >
-              {t('settings.dingtalk.devConsoleLink', 'DingTalk Open Platform')}
-            </a>{' '}
-            {t('settings.dingtalk.clientSecretDescSuffix', 'to get Client Secret')}
-          </span>
-        }
+        description={renderDocDescription('settings.dingtalk.clientSecretDescSuffix', 'to get Client Secret')}
         required
       >
         {hasExistingUsers ? (
@@ -357,61 +282,52 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
             <span>
               <Input.Password
                 value={clientSecret}
-                onChange={(value) => {
-                  setClientSecret(value);
-                  handleCredentialsChange();
-                }}
+                onChange={(value) => setClientSecret(value)}
                 onBlur={() => setTouched((prev) => ({ ...prev, clientSecret: true }))}
                 placeholder={hasExistingUsers || pluginStatus?.hasToken ? '••••••••••••••••' : 'xxxxxxxxxxxxxxxxxx'}
-                style={{ width: 240 }}
+                className={formLayoutStyles.controlInput}
                 status={touched.clientSecret && !clientSecret.trim() && !pluginStatus?.hasToken ? 'error' : undefined}
                 visibilityToggle
-                disabled={hasExistingUsers}
+                disabled
               />
             </span>
           </Tooltip>
         ) : (
           <Input.Password
             value={clientSecret}
-            onChange={(value) => {
-              setClientSecret(value);
-              handleCredentialsChange();
-            }}
+            onChange={(value) => setClientSecret(value)}
             onBlur={() => setTouched((prev) => ({ ...prev, clientSecret: true }))}
             placeholder={hasExistingUsers || pluginStatus?.hasToken ? '••••••••••••••••' : 'xxxxxxxxxxxxxxxxxx'}
-            style={{ width: 240 }}
+            className={formLayoutStyles.controlInput}
             status={touched.clientSecret && !clientSecret.trim() && !pluginStatus?.hasToken ? 'error' : undefined}
             visibilityToggle
-            disabled={hasExistingUsers}
           />
         )}
-      </PreferenceRow>
+      </FormPreferenceRow>
 
-      {/* Test Connection Button */}
-      {!hasExistingUsers && !pluginStatus?.connected && (
-        <div className='flex justify-end'>
+      {!hasExistingUsers && !pluginStatus?.connected ? (
+        <div className='flex items-center justify-end gap-8px flex-wrap'>
           {pluginStatus?.hasToken && !clientId.trim() && !clientSecret.trim() ? (
-            <span className='text-12px text-t-tertiary mr-12px self-center'>
+            <span className={formLayoutStyles.actionHint}>
               {t('settings.dingtalk.credentialsSaved', 'Credentials already configured. Enter new values to update.')}
             </span>
           ) : null}
           <Button
             type='primary'
             loading={testLoading}
-            onClick={handleTestConnection}
+            onClick={() => void handleTestConnection()}
             disabled={pluginStatus?.hasToken && !clientId.trim() && !clientSecret.trim()}
           >
             {t('settings.dingtalk.testAndConnect', 'Test & Connect')}
           </Button>
         </div>
-      )}
+      ) : null}
 
-      {/* Connection Status */}
-      {pluginStatus?.enabled && authorizedUsers.length === 0 && (
+      {pluginStatus?.enabled && authorizedUsers.length === 0 ? (
         <div
           className={`rd-12px p-16px border ${pluginStatus?.connected ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : pluginStatus?.error ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'}`}
         >
-          <SectionHeader
+          <FormSectionHeader
             title={t('settings.dingtalk.connectionStatus', 'Connection Status')}
             action={
               <span
@@ -425,10 +341,10 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
               </span>
             }
           />
-          {pluginStatus?.error && (
+          {pluginStatus?.error ? (
             <div className='text-14px text-red-600 dark:text-red-400 mb-12px'>{pluginStatus.error}</div>
-          )}
-          {pluginStatus?.connected && (
+          ) : null}
+          {pluginStatus?.connected ? (
             <div className='text-14px text-t-secondary space-y-8px'>
               <p className='m-0 font-500'>{t('settings.assistant.nextSteps', 'Next Steps')}:</p>
               <p className='m-0'>
@@ -452,19 +368,18 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
                 )}
               </p>
             </div>
-          )}
-          {!pluginStatus?.connected && !pluginStatus?.error && (
+          ) : null}
+          {!pluginStatus?.connected && !pluginStatus?.error ? (
             <div className='text-14px text-t-secondary'>
               {t('settings.dingtalk.waitingConnection', 'Connection is being established. Please wait...')}
             </div>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
 
-      {/* Pending Pairings */}
-      {pluginStatus?.enabled && authorizedUsers.length === 0 && (
-        <div className='bg-fill-1 rd-12px pt-16px pr-16px pb-16px pl-0'>
-          <SectionHeader
+      {pluginStatus?.enabled && authorizedUsers.length === 0 ? (
+        <div className={formLayoutStyles.sectionCard}>
+          <FormSectionHeader
             title={t('settings.assistant.pendingPairings', 'Pending Pairing Requests')}
             action={
               <Button
@@ -474,7 +389,7 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
                 loading={pairingLoading}
                 onClick={loadPendingPairings}
               >
-                {t('conversation.workspace.refresh', 'Refresh')}
+                {t('common.refresh', 'Refresh')}
               </Button>
             }
           />
@@ -486,34 +401,39 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
           ) : pendingPairings.length === 0 ? (
             <Empty description={t('settings.assistant.noPendingPairings', 'No pending pairing requests')} />
           ) : (
-            <div className='flex flex-col gap-12px'>
+            <div className={formLayoutStyles.statusList}>
               {pendingPairings.map((pairing) => (
-                <div key={pairing.code} className='flex items-center justify-between bg-fill-2 rd-8px p-12px'>
-                  <div className='flex-1'>
-                    <div className='flex items-center gap-8px'>
-                      <span className='text-14px font-500 text-t-primary'>{pairing.displayName || 'Unknown User'}</span>
-                      <Tooltip content={t('settings.assistant.copyCode', 'Copy pairing code')}>
-                        <button
-                          className='p-4px bg-transparent border-none text-t-tertiary hover:text-t-primary cursor-pointer'
-                          onClick={() => copyToClipboard(pairing.code)}
-                        >
-                          <Copy size={14} />
-                        </button>
-                      </Tooltip>
-                    </div>
-                    <div className='text-12px text-t-tertiary mt-4px'>
-                      {t('settings.assistant.pairingCode', 'Code')}:{' '}
-                      <code className='bg-fill-3 px-4px rd-2px'>{pairing.code}</code>
-                      <span className='mx-8px'>|</span>
-                      {t('settings.assistant.expiresIn', 'Expires in')}: {getRemainingTime(pairing.expiresAt)}
+                <div key={pairing.code} className={formLayoutStyles.statusItem}>
+                  <div className={formLayoutStyles.statusItemMain}>
+                    <div className='space-y-8px'>
+                      <div className={formLayoutStyles.inlineRow}>
+                        <span className='text-14px font-500 text-t-primary'>
+                          {pairing.displayName || pairing.platformUserId || 'Unknown User'}
+                        </span>
+                        <Tooltip content={t('settings.assistant.copyCode', 'Copy pairing code')}>
+                          <Button
+                            size='mini'
+                            type='text'
+                            icon={<Copy size={14} />}
+                            onClick={() => copyToClipboard(pairing.code)}
+                          />
+                        </Tooltip>
+                      </div>
+                      <div className={formLayoutStyles.metaText}>
+                        {t('settings.assistant.pairingCode', 'Code')}:{' '}
+                        <code className={formLayoutStyles.inlineCode}>{pairing.code}</code>
+                      </div>
+                      <div className={formLayoutStyles.metaText}>
+                        {t('settings.assistant.expiresIn', 'Expires in')}: {getRemainingTime(pairing.expiresAt)}
+                      </div>
                     </div>
                   </div>
-                  <div className='flex items-center gap-8px'>
+                  <div className={formLayoutStyles.statusItemActions}>
                     <Button
                       type='primary'
                       size='small'
                       icon={<CheckOne size={14} />}
-                      onClick={() => handleApprovePairing(pairing.code)}
+                      onClick={() => void handleApprovePairing(pairing.code)}
                     >
                       {t('settings.assistant.approve', 'Approve')}
                     </Button>
@@ -522,7 +442,7 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
                       size='small'
                       status='danger'
                       icon={<CloseOne size={14} />}
-                      onClick={() => handleRejectPairing(pairing.code)}
+                      onClick={() => void handleRejectPairing(pairing.code)}
                     >
                       {t('settings.assistant.reject', 'Reject')}
                     </Button>
@@ -532,12 +452,11 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
-      {/* Authorized Users */}
-      {authorizedUsers.length > 0 && (
-        <div className='bg-fill-1 rd-12px pt-16px pr-16px pb-16px pl-0'>
-          <SectionHeader
+      {authorizedUsers.length > 0 ? (
+        <div className={formLayoutStyles.sectionCard}>
+          <FormSectionHeader
             title={t('settings.assistant.authorizedUsers', 'Authorized Users')}
             action={
               <Button
@@ -559,32 +478,37 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, o
           ) : authorizedUsers.length === 0 ? (
             <Empty description={t('settings.assistant.noAuthorizedUsers', 'No authorized users yet')} />
           ) : (
-            <div className='flex flex-col gap-12px'>
+            <div className={formLayoutStyles.statusList}>
               {authorizedUsers.map((user) => (
-                <div key={user.id} className='flex items-center justify-between bg-fill-2 rd-8px p-12px'>
-                  <div className='flex-1'>
-                    <div className='text-14px font-500 text-t-primary'>{user.displayName || 'Unknown User'}</div>
-                    <div className='text-12px text-t-tertiary mt-4px'>
+                <div key={user.id} className={formLayoutStyles.statusItem}>
+                  <div className={formLayoutStyles.statusItemMain}>
+                    <div className='text-14px font-500 text-t-primary'>
+                      {user.displayName || user.platformUserId || 'Unknown User'}
+                    </div>
+                    <div className={formLayoutStyles.metaText}>
                       {t('settings.assistant.platform', 'Platform')}: {user.platformType}
-                      <span className='mx-8px'>|</span>
+                    </div>
+                    <div className={formLayoutStyles.metaText}>
                       {t('settings.assistant.authorizedAt', 'Authorized')}: {formatTime(user.authorizedAt)}
                     </div>
                   </div>
-                  <Tooltip content={t('settings.assistant.revokeAccess', 'Revoke access')}>
-                    <Button
-                      type='text'
-                      status='danger'
-                      size='small'
-                      icon={<Delete size={16} />}
-                      onClick={() => handleRevokeUser(user.id)}
-                    />
-                  </Tooltip>
+                  <div className={formLayoutStyles.statusItemActions}>
+                    <Tooltip content={t('settings.assistant.revokeAccess', 'Revoke access')}>
+                      <Button
+                        type='text'
+                        status='danger'
+                        size='small'
+                        icon={<Delete size={16} />}
+                        onClick={() => void handleRevokeUser(user.id)}
+                      />
+                    </Tooltip>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

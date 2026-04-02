@@ -8,12 +8,13 @@ import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
 import { emitter } from '@/renderer/utils/emitter';
 import { blockMobileInputFocus, blurActiveElement } from '@/renderer/utils/ui/focus';
-import { Message, Modal } from '@arco-design/web-react';
-import { createElement, useCallback, useEffect, useState } from 'react';
+import { Message } from '@arco-design/web-react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { useConversationTabs } from '../../hooks/ConversationTabsContext';
+import type { DeleteConversationModalState } from '../types';
 import { isConversationPinned } from '../utils/groupingHelpers';
 
 type UseConversationActionsParams = {
@@ -40,12 +41,13 @@ export const useConversationActions = ({
   const [renameModalId, setRenameModalId] = useState<string | null>(null);
   const [renameLoading, setRenameLoading] = useState(false);
   const [dropdownVisibleId, setDropdownVisibleId] = useState<string | null>(null);
+  const [deleteModalState, setDeleteModalState] = useState<DeleteConversationModalState>(null);
+  const [deleteModalDeleting, setDeleteModalDeleting] = useState(false);
   const { id } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { openTab, updateTabName } = useConversationTabs();
 
-  // Close dropdown when entering batch mode
   useEffect(() => {
     if (batchMode) {
       setDropdownVisibleId(null);
@@ -99,40 +101,22 @@ export const useConversationActions = ({
 
   const handleDeleteClick = useCallback(
     (conversationId: string) => {
-      Modal.confirm({
-        title: t('conversation.history.deleteTitle'),
-        content: createElement(
-          'div',
-          { className: 'text-14px leading-6 text-t-secondary' },
-          t('conversation.history.deleteConfirm')
-        ),
-        okText: t('conversation.history.confirmDelete'),
-        cancelText: t('conversation.history.cancelDelete'),
-        okButtonProps: { status: 'warning' },
-        className: 'contextgo-modal',
-        onOk: async () => {
-          try {
-            const success = await removeConversation(conversationId);
-            if (success) {
-              emitter.emit('chat.history.refresh');
-              Message.success(t('conversation.history.deleteSuccess'));
-            } else {
-              Message.error(t('conversation.history.deleteFailed'));
-            }
-          } catch (error) {
-            console.error('Failed to remove conversation:', error);
+      setDropdownVisibleId(null);
+      void (async () => {
+        try {
+          const conversation = await ipcBridge.conversation.get.invoke({ id: conversationId });
+          if (!conversation) {
             Message.error(t('conversation.history.deleteFailed'));
+            return;
           }
-        },
-        style: {
-          width: 'min(440px, calc(100vw - 32px))',
-          borderRadius: 'var(--app-modal-radius-lg)',
-        },
-        alignCenter: true,
-        getPopupContainer: () => document.body,
-      });
+          setDeleteModalState({ kind: 'single', conversation });
+        } catch (error) {
+          console.error('Failed to prepare delete conversation modal:', error);
+          Message.error(t('conversation.history.deleteFailed'));
+        }
+      })();
     },
-    [removeConversation, t]
+    [t]
   );
 
   const handleBatchDelete = useCallback(() => {
@@ -141,44 +125,62 @@ export const useConversationActions = ({
       return;
     }
 
-    Modal.confirm({
-      title: t('conversation.history.batchDelete'),
-      content: createElement(
-        'div',
-        { className: 'text-14px leading-6 text-t-secondary' },
-        t('conversation.history.batchDeleteConfirm', { count: selectedConversationIds.size })
-      ),
-      okText: t('conversation.history.confirmDelete'),
-      cancelText: t('conversation.history.cancelDelete'),
-      okButtonProps: { status: 'warning' },
-      className: 'contextgo-modal',
-      onOk: async () => {
+    setDropdownVisibleId(null);
+    setDeleteModalState({ kind: 'batch', count: selectedConversationIds.size });
+  }, [selectedConversationIds, t]);
+
+  const handleDeleteModalCancel = useCallback(() => {
+    if (deleteModalDeleting) {
+      return;
+    }
+    setDeleteModalState(null);
+  }, [deleteModalDeleting]);
+
+  const handleDeleteModalConfirm = useCallback(async () => {
+    if (!deleteModalState) {
+      return;
+    }
+
+    setDeleteModalDeleting(true);
+
+    try {
+      if (deleteModalState.kind === 'batch') {
         const selectedIds = Array.from(selectedConversationIds);
-        try {
-          const results = await Promise.all(selectedIds.map((conversationId) => removeConversation(conversationId)));
-          const successCount = results.filter(Boolean).length;
-          emitter.emit('chat.history.refresh');
-          if (successCount > 0) {
-            Message.success(t('conversation.history.batchDeleteSuccess', { count: successCount }));
-          } else {
-            Message.error(t('conversation.history.deleteFailed'));
-          }
-        } catch (error) {
-          console.error('Failed to batch delete conversations:', error);
-          Message.error(t('conversation.history.deleteFailed'));
-        } finally {
-          setSelectedConversationIds(new Set());
-          onBatchModeChange?.(false);
+        if (selectedIds.length === 0) {
+          Message.warning(t('conversation.history.batchNoSelection'));
+          return;
         }
-      },
-      style: {
-        width: 'min(460px, calc(100vw - 32px))',
-        borderRadius: 'var(--app-modal-radius-lg)',
-      },
-      alignCenter: true,
-      getPopupContainer: () => document.body,
-    });
-  }, [onBatchModeChange, removeConversation, selectedConversationIds, t, setSelectedConversationIds]);
+
+        const results = await Promise.all(selectedIds.map((conversationId) => removeConversation(conversationId)));
+        const successCount = results.filter(Boolean).length;
+        emitter.emit('chat.history.refresh');
+
+        if (successCount > 0) {
+          Message.success(t('conversation.history.batchDeleteSuccess', { count: successCount }));
+        } else {
+          Message.error(t('conversation.history.deleteFailed'));
+        }
+
+        setSelectedConversationIds(new Set());
+        onBatchModeChange?.(false);
+        return;
+      }
+
+      const success = await removeConversation(deleteModalState.conversation.id);
+      if (success) {
+        emitter.emit('chat.history.refresh');
+        Message.success(t('conversation.history.deleteSuccess'));
+      } else {
+        Message.error(t('conversation.history.deleteFailed'));
+      }
+    } catch (error) {
+      console.error('Failed to remove conversation:', error);
+      Message.error(t('conversation.history.deleteFailed'));
+    } finally {
+      setDeleteModalDeleting(false);
+      setDeleteModalState(null);
+    }
+  }, [deleteModalState, onBatchModeChange, removeConversation, selectedConversationIds, setSelectedConversationIds, t]);
 
   const handleEditStart = useCallback((conversation: TChatConversation) => {
     setRenameModalId(conversation.id);
@@ -291,9 +293,13 @@ export const useConversationActions = ({
     setRenameModalName,
     renameLoading,
     dropdownVisibleId,
+    deleteModalState,
+    deleteModalDeleting,
     handleConversationClick,
     handleDeleteClick,
     handleBatchDelete,
+    handleDeleteModalCancel,
+    handleDeleteModalConfirm,
     handleEditStart,
     handleRenameConfirm,
     handleRenameCancel,

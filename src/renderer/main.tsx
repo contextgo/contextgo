@@ -53,13 +53,10 @@ import './styles/themes/index.css';
 import './services/i18n';
 
 // Components and utilities
-import Layout from './components/layout/Layout';
 import RendererCrashBoundary from './components/layout/RendererCrashBoundary';
 import { mountRendererCrashOverlay } from './components/layout/RendererCrashOverlay';
 import Router from './components/layout/Router';
-import Sider from './components/layout/Sider';
 import { useAuth } from './hooks/context/AuthContext';
-import { ConversationHistoryProvider } from './hooks/context/ConversationHistoryContext';
 import { registerRendererCrashReporting } from './utils/ui/rendererCrashReporting';
 
 // Patch Korean locale with missing properties from English locale
@@ -117,15 +114,7 @@ const Main = () => {
     return null;
   }
 
-  return (
-    <Router
-      renderLayout={() => (
-        <ConversationHistoryProvider>
-          <Layout sider={<Sider />} />
-        </ConversationHistoryProvider>
-      )}
-    />
-  );
+  return <Router />;
 };
 
 const App: React.FC = () => (

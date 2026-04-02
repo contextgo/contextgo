@@ -38,6 +38,7 @@ export function filterGlobalCronJobs(jobs: ICronJob[], query: string, status: Gl
       job.schedule.description,
       job.metadata.conversationTitle,
       job.metadata.conversationId,
+      job.metadata.workspacePath,
       job.metadata.agentType,
       job.state.lastError,
     ];

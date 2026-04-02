@@ -7,9 +7,11 @@
 import { useMemo } from 'react';
 import useSWR from 'swr';
 import { ipcBridge } from '@/common';
+import { useAssistantList } from '@/renderer/hooks/assistant';
 import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
 import {
   AVAILABLE_AGENTS_SWR_KEY,
+  buildConversationPresetAssistants,
   filterAvailableAgentsForUi,
   splitConversationDropdownAgents,
 } from '@/renderer/utils/model/availableAgents';
@@ -30,6 +32,7 @@ export type UseConversationAgentsResult = {
  * Filters out gemini-CLI agents (BUG-4: matches useGuidAgentSelection filter logic).
  */
 export const useConversationAgents = (): UseConversationAgentsResult => {
+  const { assistants, localeKey } = useAssistantList();
   const {
     data: availableAgents,
     isLoading,
@@ -43,11 +46,15 @@ export const useConversationAgents = (): UseConversationAgentsResult => {
   });
 
   const { cliAgents, presetAssistants } = useMemo(() => {
+    const resolvedPresetAssistants = buildConversationPresetAssistants(assistants, localeKey);
+
     if (!availableAgents) {
-      return { cliAgents: [], presetAssistants: [] };
+      return { cliAgents: [], presetAssistants: resolvedPresetAssistants };
     }
-    return splitConversationDropdownAgents(availableAgents);
-  }, [availableAgents]);
+
+    const { cliAgents } = splitConversationDropdownAgents(availableAgents);
+    return { cliAgents, presetAssistants: resolvedPresetAssistants };
+  }, [assistants, availableAgents, localeKey]);
 
   const refresh = async () => {
     await mutate();

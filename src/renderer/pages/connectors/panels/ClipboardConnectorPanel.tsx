@@ -81,9 +81,11 @@ const ClipboardConnectorPanel: React.FC<ClipboardConnectorPanelProps> = ({ conne
       return;
     }
 
-    const unsubscribe = ipcBridge.clipboardConnector.statusChanged.on?.((nextStatus: ClipboardConnectorRuntimeStatus) => {
-      setStatus(nextStatus);
-    });
+    const unsubscribe = ipcBridge.clipboardConnector.statusChanged.on?.(
+      (nextStatus: ClipboardConnectorRuntimeStatus) => {
+        setStatus(nextStatus);
+      }
+    );
 
     return () => {
       unsubscribe?.();
@@ -185,12 +187,24 @@ const ClipboardConnectorPanel: React.FC<ClipboardConnectorPanelProps> = ({ conne
               {status?.observerPid ? <Tag color='cyan'>PID {status.observerPid}</Tag> : null}
             </div>
             <div className={styles.clipboardInfoList}>
-              <div><strong>Events:</strong> {status?.eventCount ?? 0}</div>
-              <div><strong>Summaries:</strong> {status?.summaryCount ?? 0}</div>
-              <div><strong>Last captured:</strong> {formatTime(status?.lastCapturedAt)}</div>
-              <div><strong>Last collected:</strong> {formatTime(status?.lastCollectedAt)}</div>
-              <div><strong>Observer repo:</strong> {status?.observerRepoDir || '—'}</div>
-              <div><strong>ContextGo store:</strong> {status?.storeDir || '—'}</div>
+              <div>
+                <strong>Events:</strong> {status?.eventCount ?? 0}
+              </div>
+              <div>
+                <strong>Summaries:</strong> {status?.summaryCount ?? 0}
+              </div>
+              <div>
+                <strong>Last captured:</strong> {formatTime(status?.lastCapturedAt)}
+              </div>
+              <div>
+                <strong>Last collected:</strong> {formatTime(status?.lastCollectedAt)}
+              </div>
+              <div>
+                <strong>Observer repo:</strong> {status?.observerRepoDir || '—'}
+              </div>
+              <div>
+                <strong>ContextGo store:</strong> {status?.storeDir || '—'}
+              </div>
             </div>
             <div className={styles.clipboardNote}>{status?.note || 'Clipboard observer status unavailable.'}</div>
             <div className={styles.clipboardActionRow}>
@@ -205,13 +219,25 @@ const ClipboardConnectorPanel: React.FC<ClipboardConnectorPanelProps> = ({ conne
               >
                 Start
               </Button>
-              <Button icon={<Pause theme='outline' size='14' />} onClick={() => void runAction('stop')} loading={actionBusy === 'stop'}>
+              <Button
+                icon={<Pause theme='outline' size='14' />}
+                onClick={() => void runAction('stop')}
+                loading={actionBusy === 'stop'}
+              >
                 Stop
               </Button>
-              <Button icon={<HistoryQuery theme='outline' size='14' />} onClick={() => void runAction('sample')} loading={actionBusy === 'sample'}>
+              <Button
+                icon={<HistoryQuery theme='outline' size='14' />}
+                onClick={() => void runAction('sample')}
+                loading={actionBusy === 'sample'}
+              >
                 Sample Now
               </Button>
-              <Button icon={<FileAddition theme='outline' size='14' />} onClick={() => void runAction('collect')} loading={actionBusy === 'collect'}>
+              <Button
+                icon={<FileAddition theme='outline' size='14' />}
+                onClick={() => void runAction('collect')}
+                loading={actionBusy === 'collect'}
+              >
                 Collect Today
               </Button>
             </div>
@@ -224,7 +250,10 @@ const ClipboardConnectorPanel: React.FC<ClipboardConnectorPanelProps> = ({ conne
             <div className={styles.clipboardControlList}>
               <div className={styles.clipboardControlRow}>
                 <span>Enabled</span>
-                <Switch checked={config?.enabled ?? false} onChange={(value) => handleConfigPatch({ enabled: value })} />
+                <Switch
+                  checked={config?.enabled ?? false}
+                  onChange={(value) => handleConfigPatch({ enabled: value })}
+                />
               </div>
               <div className={styles.clipboardControlRow}>
                 <span>Retain full text</span>
@@ -235,15 +264,25 @@ const ClipboardConnectorPanel: React.FC<ClipboardConnectorPanelProps> = ({ conne
               </div>
               <div className={styles.clipboardControlRow}>
                 <span>Poll interval ms</span>
-                <InputNumber min={200} value={config?.pollIntervalMs} onChange={(value) => handleConfigPatch({ pollIntervalMs: Number(value || 200) })} />
+                <InputNumber
+                  min={200}
+                  value={config?.pollIntervalMs}
+                  onChange={(value) => handleConfigPatch({ pollIntervalMs: Number(value || 200) })}
+                />
               </div>
               <div className={styles.clipboardControlRow}>
                 <span>Max text bytes</span>
-                <InputNumber min={256} value={config?.maxTextBytes} onChange={(value) => handleConfigPatch({ maxTextBytes: Number(value || 256) })} />
+                <InputNumber
+                  min={256}
+                  value={config?.maxTextBytes}
+                  onChange={(value) => handleConfigPatch({ maxTextBytes: Number(value || 256) })}
+                />
               </div>
             </div>
             <div className={styles.clipboardActionRow}>
-              <Button type='primary' onClick={() => void saveConfig()} loading={saving}>Save Settings</Button>
+              <Button type='primary' onClick={() => void saveConfig()} loading={saving}>
+                Save Settings
+              </Button>
             </div>
           </Spin>
         </div>
@@ -251,11 +290,15 @@ const ClipboardConnectorPanel: React.FC<ClipboardConnectorPanelProps> = ({ conne
         <div className={styles.detailCard}>
           <h3 className={styles.detailCardTitle}>Recent Events</h3>
           <div className={styles.clipboardList} data-testid='clipboard-recent-list'>
-            {events.length === 0 ? <div className={styles.detailCardText}>No clipboard events stored in ContextGo yet.</div> : null}
+            {events.length === 0 ? (
+              <div className={styles.detailCardText}>No clipboard events stored in ContextGo yet.</div>
+            ) : null}
             {events.map((event) => (
               <div key={event.id} className={styles.clipboardListItem}>
                 <div className={styles.clipboardListMetaRow}>
-                  <Tag size='small' color='arcoblue'>{event.contentType}</Tag>
+                  <Tag size='small' color='arcoblue'>
+                    {event.contentType}
+                  </Tag>
                   <span>{formatTime(event.capturedAt)}</span>
                 </div>
                 <div className={styles.clipboardListPreview}>{event.textPreview || '—'}</div>
@@ -267,12 +310,18 @@ const ClipboardConnectorPanel: React.FC<ClipboardConnectorPanelProps> = ({ conne
         <div className={styles.detailCard}>
           <h3 className={styles.detailCardTitle}>Daily Summaries</h3>
           <div className={styles.clipboardList} data-testid='clipboard-summary-list'>
-            {summaries.length === 0 ? <div className={styles.detailCardText}>No ContextGo clipboard summaries yet.</div> : null}
+            {summaries.length === 0 ? (
+              <div className={styles.detailCardText}>No ContextGo clipboard summaries yet.</div>
+            ) : null}
             {summaries.map((summary) => (
               <div key={summary.id} className={styles.clipboardListItem}>
                 <div className={styles.clipboardListMetaRow}>
-                  <Tag size='small' color='green'>{summary.summaryDate}</Tag>
-                  <span>{summary.eventCount} events / {summary.uniqueHashCount} unique</span>
+                  <Tag size='small' color='green'>
+                    {summary.summaryDate}
+                  </Tag>
+                  <span>
+                    {summary.eventCount} events / {summary.uniqueHashCount} unique
+                  </span>
                 </div>
                 <div className={styles.detailCardText}>
                   {summary.topDomains.length > 0

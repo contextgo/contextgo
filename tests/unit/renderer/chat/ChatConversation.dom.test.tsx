@@ -208,4 +208,24 @@ describe('ChatConversation', () => {
       })
     );
   });
+
+  it('does not render the browser context header button when the conversation has no bound browser context', () => {
+    render(<ChatConversation conversation={createConversation('acp', 'acp-no-browser')} />);
+
+    expect(screen.queryByTestId('browser-context-button')).not.toBeInTheDocument();
+  });
+
+  it('renders the browser context header button when the conversation is already bound to a browser context', () => {
+    const conversation = {
+      ...createConversation('acp', 'acp-browser-bound'),
+      extra: {
+        workspace: '/tmp/acp-browser-bound',
+        browserContextAssetId: 'asset-1',
+      },
+    } as TChatConversation;
+
+    render(<ChatConversation conversation={conversation} />);
+
+    expect(screen.getByTestId('browser-context-button')).toBeInTheDocument();
+  });
 });

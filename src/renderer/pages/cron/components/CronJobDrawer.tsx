@@ -11,6 +11,7 @@ import { AlarmClock, DeleteOne } from '@icon-park/react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import styles from './CronJobDrawer.module.css';
 
 const FormItem = Form.Item;
 const TextArea = Input.TextArea;
@@ -88,6 +89,7 @@ const CronJobDrawer: React.FC<CronJobDrawerProps> = ({ visible, job, onClose, on
 
   return (
     <Drawer
+      className={styles.cronDrawer}
       placement={isMobile ? 'bottom' : 'right'}
       width={isMobile ? 'calc(100vw - 12px)' : 400}
       height={isMobile ? 'min(84vh, 760px)' : undefined}

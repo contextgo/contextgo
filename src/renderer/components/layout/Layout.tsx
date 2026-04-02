@@ -64,7 +64,6 @@ const Layout: React.FC<{
   const navigate = useNavigate();
   useConversationShortcuts({ navigate });
   const location = useLocation();
-  const isSpaceRoute = location.pathname.startsWith('/space/');
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isConversationDetailRoute = location.pathname.startsWith('/conversation/');
   const workspaceAvailable = isConversationDetailRoute;
@@ -319,10 +318,14 @@ const Layout: React.FC<{
         Math.min(MOBILE_SIDER_MAX_WIDTH, Math.round(viewportWidth * MOBILE_SIDER_WIDTH_RATIO))
       )
     : DEFAULT_SIDER_WIDTH;
-  const showPrimarySider = !isSpaceRoute;
+  const showPrimarySider = true;
   const desktopExpandedSiderWidth = siderWidth;
   const desktopCollapsedSiderWidth = 0;
-  const leftOffset = isMobile ? 0 : showPrimarySider ? (collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth) + 16 : 16;
+  const leftOffset = isMobile
+    ? 0
+    : showPrimarySider
+      ? (collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth) + 16
+      : 16;
   const appShellStyle = {
     '--app-left-offset': `${leftOffset}px`,
   } as React.CSSProperties;

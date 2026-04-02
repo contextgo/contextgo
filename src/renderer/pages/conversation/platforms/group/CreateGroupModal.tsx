@@ -40,6 +40,20 @@ import { Button, Checkbox, Input, Message, Radio, Select, Typography } from '@ar
 import { FolderOpen, Robot } from '@icon-park/react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import GroupModalSection, {
+  GROUP_MODAL_CONTENT_STYLE,
+  GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME,
+  GROUP_MODAL_INNER_PANEL_CLASS_NAME,
+  GROUP_MODAL_INLINE_CONTROL_ROW_CLASS_NAME,
+  GROUP_MODAL_PARTICIPANT_CARD_CLASS_NAME,
+  GROUP_MODAL_PARTICIPANT_CARD_DISABLED_CLASS_NAME,
+  GROUP_MODAL_PARTICIPANT_LIST_STYLE,
+  GROUP_MODAL_PARTICIPANT_META_CLASS_NAME,
+  GROUP_MODAL_PARTICIPANT_CARD_SELECTED_CLASS_NAME,
+  GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME,
+  GROUP_MODAL_STYLE,
+  GROUP_MODAL_SELECT_CLASS_NAME,
+} from './GroupModalShared';
 
 const resolveAssistantDisplayName = (assistant: AssistantListItem, localeKey: string): string => {
   return assistant.nameI18n?.[localeKey] || assistant.name;
@@ -403,52 +417,48 @@ const CreateGroupModal: React.FC<{
       header={{
         title: t('conversation.group.createTitle'),
         showClose: true,
-        className: 'px-24px pt-20px',
+        className: 'px-20px pt-16px',
       }}
       footer={{
-        className: 'px-24px pb-20px',
+        className: 'px-20px pb-16px',
         render: () => (
           <div className='flex justify-end gap-10px pt-4px'>
-            <Button onClick={onCancel} className='min-w-88px px-18px'>
+            <Button onClick={onCancel} className={GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME}>
               {t('common.cancel')}
             </Button>
             <Button
               type='primary'
               loading={submitting}
               onClick={() => void handleSubmit()}
-              className='min-w-104px px-18px'
+              className={GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME}
             >
               {t('conversation.group.createAction')}
             </Button>
           </div>
         ),
       }}
-      style={{
-        width: 'min(760px, calc(100vw - 32px))',
-        maxHeight: 'calc(100vh - 40px)',
-      }}
-      contentStyle={{
-        padding: '16px 24px 24px',
-        overflow: 'auto',
-        maxHeight: 'calc(100vh - 180px)',
-      }}
+      style={GROUP_MODAL_STYLE}
+      contentStyle={GROUP_MODAL_CONTENT_STYLE}
     >
-      <div className='flex flex-col gap-16px'>
-        <div className='flex flex-col gap-6px'>
-          <Typography.Text>{t('conversation.group.nameLabel')}</Typography.Text>
+      <div className='flex w-full min-w-0 flex-col gap-12px'>
+        <GroupModalSection title={t('conversation.group.nameLabel')}>
           <Input value={groupName} onChange={setGroupName} placeholder={t('conversation.group.namePlaceholder')} />
-        </div>
+        </GroupModalSection>
 
-        <div className='flex flex-col gap-6px'>
-          <Typography.Text>{t('conversation.group.workspaceLabel')}</Typography.Text>
-          <div className='flex items-center gap-8px'>
+        <GroupModalSection title={t('conversation.group.workspaceLabel')}>
+          <div className='flex flex-col gap-8px md:flex-row md:items-center'>
             <Input
               value={selectedWorkspace}
               onChange={setSelectedWorkspace}
               placeholder={t('conversation.group.workspacePlaceholder')}
               allowClear
+              className='min-w-0 flex-1'
             />
-            <Button type='secondary' onClick={() => void handleSelectWorkspace()}>
+            <Button
+              type='secondary'
+              onClick={() => void handleSelectWorkspace()}
+              className='shrink-0 self-start md:self-auto'
+            >
               <span className='flex items-center gap-6px'>
                 <FolderOpen theme='outline' size='16' />
                 <span>{t('conversation.group.selectWorkspace')}</span>
@@ -456,38 +466,42 @@ const CreateGroupModal: React.FC<{
             </Button>
           </div>
           <Typography.Text type='secondary'>{t('conversation.group.workspaceHint')}</Typography.Text>
-        </div>
+        </GroupModalSection>
 
-        <div className='flex flex-col gap-6px'>
-          <Typography.Text>{t('conversation.group.kindLabel')}</Typography.Text>
+        <GroupModalSection title={t('conversation.group.kindLabel')}>
           <Radio.Group
             value={groupKind}
             onChange={(value) => handleGroupKindChange(value as GroupCreationKind)}
             type='button'
+            className={GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME}
           >
             <Radio value='workflow'>{t('conversation.group.kindWorkflow')}</Radio>
             <Radio value='discussion'>{t('conversation.group.kindDiscussion')}</Radio>
           </Radio.Group>
           <Typography.Text type='secondary'>{t(`conversation.group.kindHint.${groupKind}`)}</Typography.Text>
-        </div>
+        </GroupModalSection>
 
         {groupKind === 'discussion' ? (
-          <div className='flex flex-col gap-6px'>
-            <Typography.Text>{t('conversation.group.modeLabel')}</Typography.Text>
-            <Radio.Group value={mode} onChange={(value) => setMode(value as DiscussionGroupMode)} type='button'>
+          <GroupModalSection title={t('conversation.group.modeLabel')}>
+            <Radio.Group
+              value={mode}
+              onChange={(value) => setMode(value as DiscussionGroupMode)}
+              type='button'
+              className={GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME}
+            >
               <Radio value='broadcast'>{t('conversation.group.modeBroadcast')}</Radio>
               <Radio value='relay'>{t('conversation.group.modeRelay')}</Radio>
               <Radio value='debate'>{t('conversation.group.modeDebate')}</Radio>
             </Radio.Group>
             <Typography.Text type='secondary'>{t(`conversation.group.modeHint.${mode}`)}</Typography.Text>
-          </div>
+          </GroupModalSection>
         ) : (
-          <div className='flex flex-col gap-10px'>
-            <div className='flex flex-col gap-6px'>
-              <Typography.Text>{t('conversation.group.workflow.templateLabel')}</Typography.Text>
+          <GroupModalSection title={t('conversation.group.workflow.templateLabel')}>
+            <div className='flex flex-col gap-8px'>
               <Select
                 value={workflowTemplate}
                 onChange={(value) => handleWorkflowTemplateChange(value as WorkflowGroupTemplate)}
+                className={GROUP_MODAL_SELECT_CLASS_NAME}
               >
                 {workflowTemplates.map((template) => (
                   <Select.Option key={template.id} value={template.id}>
@@ -497,19 +511,22 @@ const CreateGroupModal: React.FC<{
               </Select>
               <Typography.Text type='secondary'>{t(workflowTemplateDefinition.hintKey)}</Typography.Text>
             </div>
-            {renderWorkflowTemplateConfigFields({
-              template: workflowTemplate,
-              templateDefinition: workflowTemplateDefinition,
-              values: workflowFieldValues,
-              onChange: handleWorkflowFieldValueChange,
-              t,
-            })}
-          </div>
+            <div className={GROUP_MODAL_INNER_PANEL_CLASS_NAME}>
+              <div className='flex flex-col gap-10px'>
+                {renderWorkflowTemplateConfigFields({
+                  template: workflowTemplate,
+                  templateDefinition: workflowTemplateDefinition,
+                  values: workflowFieldValues,
+                  onChange: handleWorkflowFieldValueChange,
+                  t,
+                })}
+              </div>
+            </div>
+          </GroupModalSection>
         )}
 
-        <div className='flex flex-col gap-8px'>
-          <Typography.Text>{t('conversation.group.participantsLabel')}</Typography.Text>
-          <div className='flex max-h-320px flex-col gap-8px overflow-y-auto pr-4px'>
+        <GroupModalSection title={t('conversation.group.participantsLabel')}>
+          <div className='flex flex-col gap-8px overflow-y-auto pr-4px' style={GROUP_MODAL_PARTICIPANT_LIST_STYLE}>
             {sections.map((section) => (
               <div key={section.key} className='flex flex-col gap-8px'>
                 <Typography.Text type='secondary' className='text-12px uppercase tracking-0.08em'>
@@ -525,11 +542,11 @@ const CreateGroupModal: React.FC<{
                   return (
                     <div
                       key={participant.selectionKey}
-                      className={`flex items-start gap-10px border border-solid p-10px rd-10px ${
-                        selected
-                          ? 'border-[var(--color-primary-light-4)] bg-[var(--color-fill-1)]'
-                          : 'border-[var(--border-base)] bg-transparent'
-                      }`}
+                      className={[
+                        GROUP_MODAL_PARTICIPANT_CARD_CLASS_NAME,
+                        selected ? GROUP_MODAL_PARTICIPANT_CARD_SELECTED_CLASS_NAME : '',
+                        disableSelection ? GROUP_MODAL_PARTICIPANT_CARD_DISABLED_CLASS_NAME : '',
+                      ].join(' ')}
                     >
                       <Checkbox
                         checked={selected}
@@ -554,45 +571,52 @@ const CreateGroupModal: React.FC<{
                           {participant.description || t('conversation.group.noDescription')}
                         </Typography.Paragraph>
                         {groupKind === 'workflow' && selected ? (
-                          <div className='mt-8px flex items-center gap-8px'>
-                            <Typography.Text type='secondary' className='text-12px'>
-                              {t('conversation.group.workflow.roleLabel')}
-                            </Typography.Text>
-                            <Select
-                              size='small'
-                              value={workflowRolesByParticipantKey[participant.selectionKey]}
-                              style={{ width: 180 }}
-                              onChange={(value) => {
-                                const nextRole = value as WorkflowRole;
-                                setWorkflowRolesByParticipantKey((previousRoles) => {
-                                  const nextRoles: Partial<Record<string, WorkflowRole>> = {};
-                                  for (const [key, role] of Object.entries(previousRoles)) {
-                                    const assignedRole = role as WorkflowRole | undefined;
-                                    if (!assignedRole) {
-                                      continue;
+                          <div className={GROUP_MODAL_PARTICIPANT_META_CLASS_NAME}>
+                            <div className={GROUP_MODAL_INLINE_CONTROL_ROW_CLASS_NAME}>
+                              <Typography.Text type='secondary' className='text-12px'>
+                                {t('conversation.group.workflow.roleLabel')}
+                              </Typography.Text>
+                              <Select
+                                size='small'
+                                value={workflowRolesByParticipantKey[participant.selectionKey]}
+                                style={{ width: 180 }}
+                                className={GROUP_MODAL_SELECT_CLASS_NAME}
+                                onChange={(value) => {
+                                  const nextRole = value as WorkflowRole;
+                                  setWorkflowRolesByParticipantKey((previousRoles) => {
+                                    const nextRoles: Partial<Record<string, WorkflowRole>> = {};
+                                    for (const [key, role] of Object.entries(previousRoles)) {
+                                      const assignedRole = role as WorkflowRole | undefined;
+                                      if (!assignedRole) {
+                                        continue;
+                                      }
+                                      if (assignedRole === nextRole && key !== participant.selectionKey) {
+                                        continue;
+                                      }
+                                      nextRoles[key] = assignedRole;
                                     }
-                                    if (assignedRole === nextRole && key !== participant.selectionKey) {
-                                      continue;
-                                    }
-                                    nextRoles[key] = assignedRole;
-                                  }
-                                  nextRoles[participant.selectionKey] = nextRole;
-                                  return normalizeWorkflowRoles(selectedParticipantKeys, nextRoles, workflowRoleOrder);
-                                });
-                              }}
-                            >
-                              {workflowRoleOrder.map((role) => {
-                                const isTakenByOtherParticipant = Object.entries(workflowRolesByParticipantKey).some(
-                                  ([key, assignedRole]) => key !== participant.selectionKey && assignedRole === role
-                                );
+                                    nextRoles[participant.selectionKey] = nextRole;
+                                    return normalizeWorkflowRoles(
+                                      selectedParticipantKeys,
+                                      nextRoles,
+                                      workflowRoleOrder
+                                    );
+                                  });
+                                }}
+                              >
+                                {workflowRoleOrder.map((role) => {
+                                  const isTakenByOtherParticipant = Object.entries(workflowRolesByParticipantKey).some(
+                                    ([key, assignedRole]) => key !== participant.selectionKey && assignedRole === role
+                                  );
 
-                                return (
-                                  <Select.Option key={role} value={role} disabled={isTakenByOtherParticipant}>
-                                    {resolveWorkflowRoleLabel(role, t)}
-                                  </Select.Option>
-                                );
-                              })}
-                            </Select>
+                                  return (
+                                    <Select.Option key={role} value={role} disabled={isTakenByOtherParticipant}>
+                                      {resolveWorkflowRoleLabel(role, t)}
+                                    </Select.Option>
+                                  );
+                                })}
+                              </Select>
+                            </div>
                           </div>
                         ) : null}
                       </div>
@@ -607,7 +631,7 @@ const CreateGroupModal: React.FC<{
               ? t('conversation.group.workflow.exactParticipantsHint')
               : t('conversation.group.minimumParticipantsHint')}
           </Typography.Text>
-        </div>
+        </GroupModalSection>
       </div>
     </ContextGoModal>
   );

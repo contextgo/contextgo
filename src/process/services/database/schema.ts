@@ -347,6 +347,7 @@ export function initSchema(db: ISqliteDriver): void {
     payload_message TEXT NOT NULL,
     conversation_id TEXT NOT NULL,
     conversation_title TEXT,
+    workspace_path TEXT,
     agent_type TEXT NOT NULL,
     created_by TEXT NOT NULL,
     created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
@@ -359,7 +360,9 @@ export function initSchema(db: ISqliteDriver): void {
     retry_count INTEGER DEFAULT 0,
     max_retries INTEGER DEFAULT 3
   )`);
+  ensureColumn(db, 'cron_jobs', 'workspace_path', 'workspace_path TEXT');
   db.exec('CREATE INDEX IF NOT EXISTS idx_cron_jobs_conversation ON cron_jobs(conversation_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_cron_jobs_workspace ON cron_jobs(workspace_path)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_cron_jobs_next_run ON cron_jobs(next_run_at) WHERE enabled = 1');
   db.exec('CREATE INDEX IF NOT EXISTS idx_cron_jobs_agent_type ON cron_jobs(agent_type)');
 
@@ -384,7 +387,11 @@ export function initSchema(db: ISqliteDriver): void {
     connector_id TEXT NOT NULL,
     remote_user_id TEXT,
     remote_chat_id TEXT NOT NULL,
+    platform_chat_id TEXT,
     remote_chat_type TEXT,
+    peer_scope TEXT,
+    parent_chat_id TEXT,
+    thread_id TEXT,
     display_name TEXT,
     authorized_at INTEGER NOT NULL,
     last_active INTEGER,
@@ -393,8 +400,15 @@ export function initSchema(db: ISqliteDriver): void {
     FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE,
     UNIQUE (connector_id, remote_chat_id)
   )`);
+  ensureColumn(db, 'remote_identities', 'platform_chat_id', 'platform_chat_id TEXT');
+  ensureColumn(db, 'remote_identities', 'peer_scope', 'peer_scope TEXT');
+  ensureColumn(db, 'remote_identities', 'parent_chat_id', 'parent_chat_id TEXT');
+  ensureColumn(db, 'remote_identities', 'thread_id', 'thread_id TEXT');
   db.exec(
     'CREATE INDEX IF NOT EXISTS idx_remote_identities_connector_chat ON remote_identities(connector_id, remote_chat_id)'
+  );
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_remote_identities_connector_platform_chat ON remote_identities(connector_id, platform_chat_id)'
   );
   db.exec(
     'CREATE INDEX IF NOT EXISTS idx_remote_identities_connector_user ON remote_identities(connector_id, remote_user_id)'
@@ -527,7 +541,7 @@ export function initSchema(db: ISqliteDriver): void {
     control_mode TEXT NOT NULL,
     source_external_session_id TEXT,
     source_conversation_id TEXT,
-    handoff_mode TEXT,
+    continuation_mode TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     released_at INTEGER,
@@ -567,4 +581,4 @@ export function setDatabaseVersion(db: ISqliteDriver, version: number): void {
  * Current database schema version
  * Update this when adding new migrations in migrations.ts
  */
-export const CURRENT_DB_VERSION = 26;
+export const CURRENT_DB_VERSION = 1;

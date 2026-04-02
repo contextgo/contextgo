@@ -34,6 +34,8 @@ export type ConnectorAuthType = 'oauth' | 'bot' | 'apiKey' | 'pat' | 'serviceAcc
 
 export type ConnectorStage = 'priority' | 'planned';
 
+export type ConnectorSupportStatus = 'supported' | 'notSupportedYet';
+
 export type ConnectorDefinition = {
   summary?: string;
   implementationOwner?: 'official' | 'contextgo' | 'connector-repo' | 'hybrid';
@@ -46,6 +48,7 @@ export type ConnectorDefinition = {
   resources: ConnectorResource[];
   authType: ConnectorAuthType;
   stage: ConnectorStage;
+  supportStatus: ConnectorSupportStatus;
   localLogo?: string;
 };
 

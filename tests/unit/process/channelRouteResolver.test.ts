@@ -10,6 +10,7 @@ const { mockDb, mockProcessConfigGet, mockCreateConversation } = vi.hoisted(() =
   mockDb: {
     getConnectorInstances: vi.fn(),
     getRemoteIdentityByConnectorChat: vi.fn(),
+    getRemoteIdentityByConnectorPlatformChat: vi.fn(),
     getConversation: vi.fn(),
     getLegacyChannelUserByPlatform: vi.fn(),
     ensureChannelUserMirror: vi.fn(),
@@ -67,6 +68,7 @@ describe('ChannelRouteResolver', () => {
 
     mockDb.getConnectorInstances.mockReturnValue({ success: true, data: [connector] });
     mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: null });
+    mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({ success: true, data: null });
     mockDb.getConversation.mockReturnValue({
       success: true,
       data: {
@@ -130,11 +132,12 @@ describe('ChannelRouteResolver', () => {
           channelUser: IChannelUser,
           platformUserId: string,
           chatId: string,
+          platformChatId?: string,
           remoteChatType?: string,
           displayName?: string
         ) => Promise<IRemoteIdentity>;
       }
-    ).ensureRemoteIdentity(connector, channelUser, 'user-2', 'group:alpha', 'group', 'Team Alpha');
+    ).ensureRemoteIdentity(connector, channelUser, 'user-2', 'group:alpha', undefined, 'group', 'Team Alpha');
 
     expect(result.remoteUserId).toBe('user-1');
     expect(result.remoteChatType).toBe('group');
@@ -172,7 +175,7 @@ describe('ChannelRouteResolver', () => {
           displayName?: string
         ) => Promise<IRemoteIdentity>;
       }
-    ).ensureRemoteIdentity(connector, channelUser, 'user-2', 'user:alpha', 'direct', 'User 2');
+    ).ensureRemoteIdentity(connector, channelUser, 'user-2', 'user:alpha', undefined, 'direct', 'User 2');
 
     expect(result.remoteUserId).toBe('user-2');
     expect(result.remoteChatType).toBe('direct');
@@ -206,11 +209,12 @@ describe('ChannelRouteResolver', () => {
           platformUserId: string,
           platform: 'telegram',
           chatId: string,
+          platformChatId?: string,
           displayName?: string,
           remoteChatType?: string
         ) => Promise<IChannelUser>;
       }
-    ).ensureChannelUserProjection(connector, 'user-1', 'telegram', 'user-1', 'Legacy User', 'direct');
+    ).ensureChannelUserProjection(connector, 'user-1', 'telegram', 'user-1', undefined, 'Legacy User', 'direct');
 
     expect(result.id.startsWith('remote_identity_')).toBe(true);
     expect(mockDb.upsertRemoteIdentity).toHaveBeenCalledWith(
@@ -260,11 +264,12 @@ describe('ChannelRouteResolver', () => {
             platformUserId: string,
             platform: 'telegram',
             chatId: string,
+            platformChatId?: string,
             displayName?: string,
             remoteChatType?: string
           ) => Promise<IChannelUser>;
         }
-      ).ensureChannelUserProjection(connector, 'user-1', 'telegram', 'user-1', 'Legacy User', 'direct')
+      ).ensureChannelUserProjection(connector, 'user-1', 'telegram', 'user-1', undefined, 'Legacy User', 'direct')
     ).rejects.toThrow('User not authorized');
   });
 

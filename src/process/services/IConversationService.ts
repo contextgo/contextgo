@@ -33,6 +33,7 @@ export interface MigrateConversationParams {
   conversation: TChatConversation;
   sourceConversationId?: string;
   migrateCron?: boolean;
+  sourceWorkspace?: string;
 }
 
 export interface IConversationService {

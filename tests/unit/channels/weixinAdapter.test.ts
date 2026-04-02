@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WeixinChatRequest } from '@process/channels/plugins/weixin/WeixinMonitor';
 import { toUnifiedIncomingMessage, stripHtml } from '@process/channels/plugins/weixin/WeixinAdapter';
+import { buildDingTalkPeer, toUnifiedIncomingMessage as toUnifiedDingTalkMessage } from '@process/channels/plugins/dingtalk/DingTalkAdapter';
 
 describe('toUnifiedIncomingMessage', () => {
   const baseRequest: WeixinChatRequest = {
@@ -14,11 +15,31 @@ describe('toUnifiedIncomingMessage', () => {
     text: 'Hello world',
   };
 
-  it('maps conversationId to id, chatId, and user.id', () => {
+  it('maps conversationId to id, chatId, user.id, and a private peer key', () => {
     const msg = toUnifiedIncomingMessage(baseRequest);
     expect(msg.id).toBe('user_abc123');
     expect(msg.chatId).toBe('user_abc123');
     expect(msg.user.id).toBe('user_abc123');
+    expect(msg.peer).toEqual({
+      key: 'user_abc123',
+      platformChatId: 'user_abc123',
+      scope: 'chat',
+      chatType: 'private',
+    });
+  });
+
+  it('marks chatroom-style conversations as group peers', () => {
+    const msg = toUnifiedIncomingMessage({
+      conversationId: 'team_room@chatroom',
+      text: 'hello group',
+    });
+
+    expect(msg.peer).toEqual({
+      key: 'team_room@chatroom',
+      platformChatId: 'team_room@chatroom',
+      scope: 'chat',
+      chatType: 'group',
+    });
   });
 
   it('uses last 6 chars of conversationId as displayName fallback', () => {
@@ -122,5 +143,83 @@ describe('stripHtml', () => {
 
   it('handles empty string', () => {
     expect(stripHtml('')).toBe('');
+  });
+});
+
+
+describe('DingTalkAdapter', () => {
+  it('maps private conversations to user-scoped peers', () => {
+    const msg = toUnifiedDingTalkMessage({
+      msgId: 'dt-msg-1',
+      senderStaffId: 'staff-1',
+      senderNick: 'Alice',
+      conversationType: '1',
+      msgtype: 'text',
+      text: { content: 'hello' },
+      createAt: 1710000000000,
+    });
+
+    expect(msg).not.toBeNull();
+    expect(msg?.chatId).toBe('user:staff-1');
+    expect(msg?.peer).toEqual({
+      key: 'user:staff-1',
+      platformChatId: 'user:staff-1',
+      scope: 'chat',
+      chatType: 'private',
+    });
+  });
+
+  it('maps group conversations to group-scoped peers and strips bot mentions', () => {
+    const msg = toUnifiedDingTalkMessage({
+      msgId: 'dt-msg-2',
+      senderStaffId: 'staff-2',
+      senderNick: 'Bob',
+      conversationId: 'cid-1',
+      conversationType: '2',
+      msgtype: 'text',
+      text: { content: '@ContextGo 请帮我总结' },
+      createAt: 1710000001000,
+    });
+
+    expect(msg).not.toBeNull();
+    expect(msg?.chatId).toBe('group:cid-1');
+    expect(msg?.peer).toEqual({
+      key: 'group:cid-1',
+      platformChatId: 'group:cid-1',
+      scope: 'chat',
+      chatType: 'group',
+    });
+    expect(msg?.content.text).toBe('请帮我总结');
+  });
+
+  it('exposes action callbacks on the same peer identity', () => {
+    const peer = buildDingTalkPeer({
+      conversationId: 'cid-9',
+      conversationType: '2',
+      senderStaffId: 'staff-9',
+    });
+
+    const msg = toUnifiedDingTalkMessage(
+      {
+        msgId: 'dt-action-1',
+        senderStaffId: 'staff-9',
+        senderNick: 'Carol',
+        conversationId: 'cid-9',
+        conversationType: '2',
+      },
+      {
+        type: 'system',
+        name: 'session.new',
+      }
+    );
+
+    expect(peer).toEqual({
+      key: 'group:cid-9',
+      platformChatId: 'group:cid-9',
+      scope: 'chat',
+      chatType: 'group',
+    });
+    expect(msg?.peer).toEqual(peer);
+    expect(msg?.content.type).toBe('action');
   });
 });

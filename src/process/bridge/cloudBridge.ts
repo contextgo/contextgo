@@ -39,11 +39,11 @@ export function initCloudBridge(): void {
     }
   });
 
-  ipcBridge.cloud.logout.provider(async () => {
+  ipcBridge.cloud.ensureOfficialRemoteReady.provider(async () => {
     try {
       return {
         success: true,
-        data: await cloudService.logout(),
+        data: await cloudService.ensureOfficialRemoteReady(),
       };
     } catch (error) {
       return {
@@ -53,11 +53,25 @@ export function initCloudBridge(): void {
     }
   });
 
-  ipcBridge.cloud.syncNow.provider(async () => {
+  ipcBridge.cloud.openInfermesh.provider(async () => {
     try {
       return {
         success: true,
-        data: await cloudService.syncNow(),
+        data: await cloudService.openInfermesh(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.cloud.logout.provider(async () => {
+    try {
+      return {
+        success: true,
+        data: await cloudService.logout(),
       };
     } catch (error) {
       return {

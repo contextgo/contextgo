@@ -112,7 +112,6 @@ vi.mock('react-i18next', () => ({
         'cron.presets.title': 'Starter Scheduled Tasks',
         'cron.presets.description': 'Turn on high-value automations out of the box.',
         'cron.presets.packPacksTitle': 'Browse by Industry Pack',
-        'cron.presets.rolePacksTitle': 'Browse by Role',
         'cron.presets.emptyHint': 'Open a single-agent conversation to enable a preset timer.',
         'cron.presets.recommended': 'Recommended Default',
         'cron.presets.packs.all': 'All',
@@ -164,12 +163,6 @@ vi.mock('react-i18next', () => ({
           'Analysts, investors, strategy teams, and operators tracking moving markets or regulated sectors.',
         'cron.presets.packDetails.researchMonitoring.outcome':
           'Reduce signal lag, keep monitoring consistent, and turn fragmented updates into a sharper research decision loop.',
-        'cron.presets.roles.all': 'All',
-        'cron.presets.roles.product': 'Product',
-        'cron.presets.roles.content': 'Content',
-        'cron.presets.roles.operations': 'Operations',
-        'cron.presets.roles.sales': 'Sales',
-        'cron.presets.roles.research': 'Research',
         'cron.presets.categories.research': 'Research',
         'cron.presets.categories.planning': 'Planning',
         'cron.presets.categories.review': 'Review',
@@ -404,7 +397,6 @@ describe('GlobalCronSettings', () => {
 
     expect(screen.getByText('Starter Scheduled Tasks')).toBeInTheDocument();
     expect(screen.getByText('Browse by Industry Pack')).toBeInTheDocument();
-    expect(screen.getByText('Browse by Role')).toBeInTheDocument();
     expect(screen.getAllByText(/SaaS Product Pack/).length).toBeGreaterThan(0);
     expect(screen.getByText('Recommended Default')).toBeInTheDocument();
     expect(screen.getByText('Best For')).toBeInTheDocument();

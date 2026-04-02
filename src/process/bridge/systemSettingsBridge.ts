@@ -15,7 +15,6 @@
 import { ipcBridge } from '@/common';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { changeLanguage } from '@process/services/i18n';
-import { getCloudService } from '@process/services/cloud/CloudService';
 import { voiceInputRuntime } from './services/voice';
 
 type CloseToTrayChangeListener = (enabled: boolean) => void;
@@ -41,8 +40,6 @@ export function onLanguageChanged(listener: LanguageChangeListener): void {
 }
 
 export function initSystemSettingsBridge(): void {
-  const cloudService = getCloudService();
-
   // 获取"关闭到托盘"设置 / Get "close to tray" setting
   ipcBridge.systemSettings.getCloseToTray.provider(async () => {
     const value = await ProcessConfig.get('system.closeToTray');
@@ -93,10 +90,6 @@ export function initSystemSettingsBridge(): void {
     // Update main process i18n (non-blocking – don't let a hang here block the provider)
     changeLanguage(language).catch((error) => {
       console.error('[SystemSettings] Main process changeLanguage failed:', error);
-    });
-
-    cloudService.handleLocalLanguageChange(language).catch((error) => {
-      console.warn('[SystemSettings] Cloud language sync failed:', error);
     });
   });
 

@@ -5,18 +5,23 @@
  */
 
 import { channel } from '@/common/adapter/ipcBridge';
-import type {
-  IAgentProfile,
-  IChannelAudienceEntry,
-  IChannelBinding,
-  IChannelBindingCatalog,
-  IConnectorInstance,
+import {
+  getChannelAccountId,
+  type IAgentProfile,
+  type IChannelAccount,
+  type IChannelActiveSessionEntry,
+  type IChannelAudienceEntry,
+  type IChannelBinding,
+  type IChannelBindingCatalog,
 } from '@process/channels/types';
-import { Button, Empty, Input, InputNumber, Message, Select, Spin, Tag } from '@arco-design/web-react';
+import { Button, Empty, Input, Message, Select, Spin, Tag, Tooltip } from '@arco-design/web-react';
 import { Delete, Edit, Plus, Refresh, Undo } from '@icon-park/react';
+import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+import styles from '../ChannelModalContent.module.css';
 import {
   buildBindingPayload,
   splitBindingsByLifetime,
@@ -35,16 +40,10 @@ type DurableEditorState = {
   selectedAudienceKey: string;
   manualScopeKey: string;
   agentProfileId: string;
-  priority: number;
 };
 
-type TemporaryEditorState = {
-  editingBindingId: string;
-  selectedAudienceKey: string;
-  manualScopeKey: string;
-  agentProfileId: string;
-  priority: number;
-};
+type TranslationFn = ReturnType<typeof useTranslation>['t'];
+type AudienceKind = 'connector' | 'direct' | 'group' | 'channel' | 'topic' | 'thread' | 'chat';
 
 type PublicationIntent = {
   agentProfileId?: string;
@@ -55,8 +54,19 @@ type PublicationIntent = {
   agentName?: string;
 };
 
+type PublishedTargetCard = {
+  binding: IChannelBinding;
+  profile?: IAgentProfile;
+  title: string;
+  detail: string;
+  kindLabel: string;
+  recentConversation?: IChannelActiveSessionEntry;
+  conversationCount: number;
+};
+
 const EMPTY_CATALOG: IChannelBindingCatalog = {
   connectors: [],
+  channelAccounts: [],
   agentProfiles: [],
   bindings: [],
   audiences: [],
@@ -77,17 +87,6 @@ function createDurableEditorState(agentProfileId = ''): DurableEditorState {
     selectedAudienceKey: '',
     manualScopeKey: '',
     agentProfileId,
-    priority: 0,
-  };
-}
-
-function createTemporaryEditorState(agentProfileId = ''): TemporaryEditorState {
-  return {
-    editingBindingId: '',
-    selectedAudienceKey: '',
-    manualScopeKey: '',
-    agentProfileId,
-    priority: 100,
   };
 }
 
@@ -177,7 +176,7 @@ function resolvePreferredProfileId(
   return bestProfileId;
 }
 
-function getConnectorGuide(platform: string, t: ReturnType<typeof useTranslation>['t']): string {
+function getChannelAccountGuide(platform: string, t: TranslationFn): string {
   if (platform === 'weixin') {
     return t('settings.channels.publication.connectorGuide.weixin');
   }
@@ -185,7 +184,7 @@ function getConnectorGuide(platform: string, t: ReturnType<typeof useTranslation
   return t('settings.channels.publication.connectorGuide.multiSession');
 }
 
-function getScopeHint(scopeType: DurableBindingScopeType, t: ReturnType<typeof useTranslation>['t']): string {
+function getScopeHint(scopeType: DurableBindingScopeType, t: TranslationFn): string {
   if (scopeType === 'connector_default') {
     return t('settings.channels.publication.targetTypeHint.connectorDefault');
   }
@@ -197,18 +196,156 @@ function getScopeHint(scopeType: DurableBindingScopeType, t: ReturnType<typeof u
   return t('settings.channels.publication.targetTypeHint.remoteChat');
 }
 
+function inferAudienceKindFromKey(key: string): Exclude<AudienceKind, 'connector'> {
+  const normalized = key.toLowerCase();
+
+  if (normalized.includes('/topic/')) {
+    return 'topic';
+  }
+  if (normalized.includes(':thread:') || normalized.includes('/thread/')) {
+    return 'thread';
+  }
+  if (
+    normalized.startsWith('user:') ||
+    normalized.includes('/user/') ||
+    normalized.includes('/friend/') ||
+    normalized.includes('/dm/') ||
+    normalized.includes('/p2p/')
+  ) {
+    return 'direct';
+  }
+  if (normalized.startsWith('group:') || normalized.includes('/group/')) {
+    return 'group';
+  }
+  if (normalized.includes('/channel/')) {
+    return 'channel';
+  }
+
+  return 'chat';
+}
+
+function getAudienceKind(
+  audience: Pick<IChannelAudienceEntry, 'key' | 'scopeType' | 'remoteChatType' | 'peerScope'>
+): Exclude<AudienceKind, 'connector'> {
+  if (audience.scopeType === 'remote_user') {
+    return 'direct';
+  }
+
+  const normalizedChatType = audience.remoteChatType?.toLowerCase();
+  if (normalizedChatType === 'topic') {
+    return 'topic';
+  }
+  if (normalizedChatType === 'thread') {
+    return 'thread';
+  }
+  if (normalizedChatType === 'channel') {
+    return 'channel';
+  }
+  if (normalizedChatType === 'group' || normalizedChatType === 'supergroup') {
+    return 'group';
+  }
+  if (normalizedChatType === 'direct' || normalizedChatType === 'dm' || normalizedChatType === 'private') {
+    return 'direct';
+  }
+  if (audience.peerScope === 'thread') {
+    return inferAudienceKindFromKey(audience.key) === 'topic' ? 'topic' : 'thread';
+  }
+
+  return inferAudienceKindFromKey(audience.key);
+}
+
+function getAudienceKindLabel(
+  audience: Pick<IChannelAudienceEntry, 'key' | 'scopeType' | 'remoteChatType' | 'peerScope'>,
+  t: TranslationFn
+): string {
+  return t(`settings.channels.publication.audienceKind.${getAudienceKind(audience)}`);
+}
+
+function looksTechnicalAudienceText(value?: string): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return (
+    value.includes('://') ||
+    value.includes('peer ') ||
+    value.includes('transport ') ||
+    value.includes('parent ') ||
+    value.startsWith('user:') ||
+    value.startsWith('group:') ||
+    value.includes(':thread:')
+  );
+}
+
+function getAudienceDetailText(audience: IChannelAudienceEntry, t: TranslationFn): string {
+  if (audience.subtitle && !looksTechnicalAudienceText(audience.subtitle)) {
+    return audience.subtitle;
+  }
+
+  return getAudienceKindLabel(audience, t);
+}
+
+function formatRelativeTime(timestamp: number, locale: string): string {
+  const deltaMinutes = Math.max(1, Math.floor((Date.now() - timestamp) / 1000 / 60));
+
+  if (deltaMinutes < 60) {
+    return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-deltaMinutes, 'minute');
+  }
+
+  const deltaHours = Math.floor(deltaMinutes / 60);
+  if (deltaHours < 24) {
+    return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-deltaHours, 'hour');
+  }
+
+  const deltaDays = Math.floor(deltaHours / 24);
+  return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-deltaDays, 'day');
+}
+
+function getSessionChannelAccountId(session: IChannelActiveSessionEntry): string {
+  return session.connectorId ?? session.channelAccountId ?? '';
+}
+
+function matchesBindingSession(binding: IChannelBinding, session: IChannelActiveSessionEntry): boolean {
+  if (session.bindingId && session.bindingId === binding.id) {
+    return true;
+  }
+
+  if (getSessionChannelAccountId(session) !== getChannelAccountId(binding)) {
+    return false;
+  }
+
+  if (!binding.scopeKey || binding.scopeType === 'connector_default') {
+    return false;
+  }
+
+  return session.audienceKey === binding.scopeKey;
+}
+
+function buildFallbackAudience(binding: IChannelBinding, t: TranslationFn): IChannelAudienceEntry {
+  return {
+    key: binding.scopeKey || `${binding.connectorId}:default`,
+    connectorId: binding.connectorId,
+    channelAccountId: getChannelAccountId(binding),
+    scopeType: binding.scopeType === 'remote_user' ? 'remote_user' : 'remote_chat',
+    remoteUserId: binding.scopeType === 'remote_user' ? binding.scopeKey : undefined,
+    remoteChatId: binding.scopeType === 'remote_chat' ? binding.scopeKey : undefined,
+    platformChatId: binding.scopeType === 'remote_chat' ? binding.scopeKey : undefined,
+    title: binding.scopeKey || t('settings.channels.publication.connectorDefaultAudience'),
+  };
+}
+
 const PublicationBindingPanel: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [catalog, setCatalog] = useState<IChannelBindingCatalog>(EMPTY_CATALOG);
-  const [selectedConnectorId, setSelectedConnectorId] = useState('');
+  const [sessions, setSessions] = useState<IChannelActiveSessionEntry[]>([]);
+  const [selectedChannelAccountId, setSelectedChannelAccountId] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingBindingId, setDeletingBindingId] = useState('');
   const [durableEditor, setDurableEditor] = useState<DurableEditorState>(createDurableEditorState());
-  const [temporaryEditor, setTemporaryEditor] = useState<TemporaryEditorState>(createTemporaryEditorState());
   const [showDurableManualScope, setShowDurableManualScope] = useState(false);
-  const [showTemporaryManualScope, setShowTemporaryManualScope] = useState(false);
   const [appliedIntentKey, setAppliedIntentKey] = useState('');
 
   const publicationIntent = useMemo(
@@ -216,28 +353,40 @@ const PublicationBindingPanel: React.FC = () => {
     [location.search, location.state]
   );
   const publicationIntentKey = useMemo(() => JSON.stringify(publicationIntent ?? null), [publicationIntent]);
+  const catalogChannelAccounts = useMemo(
+    () => catalog.channelAccounts ?? catalog.connectors,
+    [catalog.channelAccounts, catalog.connectors]
+  );
 
   const loadCatalog = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await channel.getBindingCatalog.invoke({});
-      if (!result.success || !result.data) {
-        throw new Error(result.msg || t('settings.channels.publication.loadFailed'));
+      const [catalogResult, sessionResult] = await Promise.all([
+        channel.getBindingCatalog.invoke({}),
+        channel.getActiveSessionCatalog.invoke(),
+      ]);
+
+      if (!catalogResult.success || !catalogResult.data) {
+        throw new Error(catalogResult.msg || t('settings.channels.publication.loadFailed'));
+      }
+      if (!sessionResult.success || !sessionResult.data) {
+        throw new Error(sessionResult.msg || t('settings.channels.publication.loadFailed'));
       }
 
-      const firstAgentProfileId = result.data.agentProfiles[0]?.id || '';
-      setCatalog(result.data);
-      setSelectedConnectorId((currentConnectorId) => {
-        if (currentConnectorId && result.data.connectors.some((connector) => connector.id === currentConnectorId)) {
-          return currentConnectorId;
+      const firstAgentProfileId = catalogResult.data.agentProfiles[0]?.id || '';
+      const nextChannelAccounts = catalogResult.data.channelAccounts ?? catalogResult.data.connectors;
+      setCatalog(catalogResult.data);
+      setSessions(sessionResult.data);
+      setSelectedChannelAccountId((currentChannelAccountId) => {
+        if (
+          currentChannelAccountId &&
+          nextChannelAccounts.some((channelAccount) => channelAccount.id === currentChannelAccountId)
+        ) {
+          return currentChannelAccountId;
         }
-        return result.data.connectors[0]?.id ?? '';
+        return nextChannelAccounts[0]?.id ?? '';
       });
       setDurableEditor((editor) => ({
-        ...editor,
-        agentProfileId: editor.agentProfileId || firstAgentProfileId,
-      }));
-      setTemporaryEditor((editor) => ({
         ...editor,
         agentProfileId: editor.agentProfileId || firstAgentProfileId,
       }));
@@ -252,15 +401,6 @@ const PublicationBindingPanel: React.FC = () => {
     void loadCatalog();
   }, [loadCatalog]);
 
-  const connectorOptions = useMemo(
-    () =>
-      catalog.connectors.map((connector) => ({
-        label: `${connector.name} · ${connector.platform}`,
-        value: connector.id,
-      })),
-    [catalog.connectors]
-  );
-
   const profileOptions = useMemo(
     () =>
       catalog.agentProfiles.map((profile) => ({
@@ -271,11 +411,11 @@ const PublicationBindingPanel: React.FC = () => {
   );
 
   const profileMap = useMemo(
-    () => new Map(catalog.agentProfiles.map((profile) => [profile.id, profile])),
+    () => new Map(catalog.agentProfiles.map((profile) => [profile.id, profile] as const)),
     [catalog.agentProfiles]
   );
   const audienceMap = useMemo(
-    () => new Map(catalog.audiences.map((audience) => [audience.key, audience])),
+    () => new Map(catalog.audiences.map((audience) => [audience.key, audience] as const)),
     [catalog.audiences]
   );
   const preferredProfileId = useMemo(
@@ -289,25 +429,31 @@ const PublicationBindingPanel: React.FC = () => {
     [preferredProfileId, profileMap, publicationIntent?.agentProfileId]
   );
 
-  const selectedConnector = useMemo<IConnectorInstance | undefined>(
-    () => catalog.connectors.find((connector) => connector.id === selectedConnectorId),
-    [catalog.connectors, selectedConnectorId]
+  const selectedChannelAccount = useMemo<IChannelAccount | undefined>(
+    () => catalogChannelAccounts.find((channelAccount) => channelAccount.id === selectedChannelAccountId),
+    [catalogChannelAccounts, selectedChannelAccountId]
   );
 
   const selectedBindings = useMemo(
-    () => catalog.bindings.filter((binding) => binding.connectorId === selectedConnectorId),
-    [catalog.bindings, selectedConnectorId]
+    () => catalog.bindings.filter((binding) => getChannelAccountId(binding) === selectedChannelAccountId),
+    [catalog.bindings, selectedChannelAccountId]
   );
 
   const selectedAudiences = useMemo(
-    () => catalog.audiences.filter((audience) => audience.connectorId === selectedConnectorId),
-    [catalog.audiences, selectedConnectorId]
+    () => catalog.audiences.filter((audience) => getChannelAccountId(audience) === selectedChannelAccountId),
+    [catalog.audiences, selectedChannelAccountId]
   );
 
-  const { durableBindings, temporaryBindings } = useMemo(
-    () => splitBindingsByLifetime(selectedBindings),
-    [selectedBindings]
+  const selectedSessions = useMemo(
+    () =>
+      sessions
+        .filter((session) => getSessionChannelAccountId(session) === selectedChannelAccountId)
+        .toSorted((left, right) => right.lastActivity - left.lastActivity),
+    [selectedChannelAccountId, sessions]
   );
+
+  const { durableBindings } = useMemo(() => splitBindingsByLifetime(selectedBindings), [selectedBindings]);
+  const selectedPublishedCount = durableBindings.length;
 
   const durableScopeOptions = useMemo<BindingScopeOption[]>(
     () => [
@@ -329,25 +475,54 @@ const PublicationBindingPanel: React.FC = () => {
     [durableEditor.scopeType, selectedAudiences]
   );
 
-  const temporaryAudienceOptions = useMemo(
+  const durableScopeHint = useMemo(() => getScopeHint(durableEditor.scopeType, t), [durableEditor.scopeType, t]);
+  const channelAccountGuide = useMemo(
     () =>
-      selectedAudiences
-        .filter((audience) => audience.scopeType === 'remote_chat')
-        .map((audience) => ({
-          label: getAudienceLabel(audience),
-          value: audience.key,
-        })),
-    [selectedAudiences]
+      selectedChannelAccount
+        ? getChannelAccountGuide(selectedChannelAccount.platform, t)
+        : t('settings.channels.publication.connectorGuide'),
+    [selectedChannelAccount, t]
   );
 
-  const durableScopeHint = useMemo(() => getScopeHint(durableEditor.scopeType, t), [durableEditor.scopeType, t]);
-  const connectorGuide = useMemo(
-    () =>
-      selectedConnector
-        ? getConnectorGuide(selectedConnector.platform, t)
-        : t('settings.channels.publication.connectorGuide'),
-    [selectedConnector, t]
-  );
+  const publishedTargetCards = useMemo<PublishedTargetCard[]>(() => {
+    return durableBindings
+      .map((binding) => {
+        const profile = profileMap.get(binding.agentProfileId);
+        const audience = binding.scopeKey ? audienceMap.get(binding.scopeKey) : undefined;
+        const resolvedAudience = audience ?? buildFallbackAudience(binding, t);
+        const title =
+          binding.scopeType === 'connector_default'
+            ? t('settings.channels.publication.connectorDefaultAudience')
+            : resolvedAudience.title;
+        const detail =
+          binding.scopeType === 'connector_default'
+            ? t('settings.channels.publication.scope.connectorDefault')
+            : getAudienceDetailText(resolvedAudience, t);
+        const kindLabel =
+          binding.scopeType === 'connector_default'
+            ? t('settings.channels.publication.audienceKind.connector')
+            : getAudienceKindLabel(resolvedAudience, t);
+        const bindingSessions = selectedSessions
+          .filter((session) => matchesBindingSession(binding, session))
+          .toSorted((left, right) => right.lastActivity - left.lastActivity);
+
+        return {
+          binding,
+          profile,
+          title,
+          detail,
+          kindLabel,
+          recentConversation: bindingSessions[0],
+          conversationCount: bindingSessions.length,
+        };
+      })
+      .toSorted((left, right) => {
+        if (left.conversationCount !== right.conversationCount) {
+          return right.conversationCount - left.conversationCount;
+        }
+        return (right.recentConversation?.lastActivity ?? 0) - (left.recentConversation?.lastActivity ?? 0);
+      });
+  }, [audienceMap, durableBindings, profileMap, selectedSessions, t]);
 
   const resetDurableEditor = useCallback(
     (nextAgentProfileId?: string) => {
@@ -357,16 +532,8 @@ const PublicationBindingPanel: React.FC = () => {
     [durableEditor.agentProfileId]
   );
 
-  const resetTemporaryEditor = useCallback(
-    (nextAgentProfileId?: string) => {
-      setShowTemporaryManualScope(false);
-      setTemporaryEditor(createTemporaryEditorState(nextAgentProfileId ?? temporaryEditor.agentProfileId));
-    },
-    [temporaryEditor.agentProfileId]
-  );
-
   useEffect(() => {
-    if (!selectedConnectorId) {
+    if (!selectedChannelAccountId) {
       return;
     }
 
@@ -382,20 +549,7 @@ const PublicationBindingPanel: React.FC = () => {
         selectedAudienceKey: '',
       };
     });
-
-    setTemporaryEditor((editor) => {
-      const audienceStillValid =
-        !editor.selectedAudienceKey ||
-        selectedAudiences.some((audience) => audience.key === editor.selectedAudienceKey);
-      if (audienceStillValid) {
-        return editor;
-      }
-      return {
-        ...editor,
-        selectedAudienceKey: '',
-      };
-    });
-  }, [selectedAudiences, selectedConnectorId]);
+  }, [selectedAudiences, selectedChannelAccountId]);
 
   useEffect(() => {
     if (!preferredProfileId || appliedIntentKey === publicationIntentKey) {
@@ -405,15 +559,12 @@ const PublicationBindingPanel: React.FC = () => {
     setDurableEditor((editor) =>
       editor.editingBindingId ? editor : { ...editor, agentProfileId: preferredProfileId }
     );
-    setTemporaryEditor((editor) =>
-      editor.editingBindingId ? editor : { ...editor, agentProfileId: preferredProfileId }
-    );
     setAppliedIntentKey(publicationIntentKey);
   }, [appliedIntentKey, preferredProfileId, publicationIntentKey]);
 
   const validateDraft = useCallback(
     (draft: BindingDraft) => {
-      if (!draft.connectorId) {
+      if (!draft.channelAccountId) {
         throw new Error(t('settings.channels.publication.connectorRequired'));
       }
       if (!draft.agentProfileId) {
@@ -436,11 +587,7 @@ const PublicationBindingPanel: React.FC = () => {
         if (!result.success) {
           throw new Error(result.msg || t('settings.channels.publication.saveFailed'));
         }
-        Message.success(
-          draft.temporary
-            ? t('settings.channels.publication.temporarySaved')
-            : t('settings.channels.publication.durableSaved')
-        );
+        Message.success(t('settings.channels.publication.durableSaved'));
         await loadCatalog();
       } finally {
         setSaving(false);
@@ -469,18 +616,6 @@ const PublicationBindingPanel: React.FC = () => {
   );
 
   const handleEditBinding = useCallback((binding: IChannelBinding) => {
-    if (binding.temporary) {
-      setShowTemporaryManualScope(true);
-      setTemporaryEditor({
-        editingBindingId: binding.id,
-        selectedAudienceKey: binding.scopeKey ?? '',
-        manualScopeKey: binding.scopeKey ?? '',
-        agentProfileId: binding.agentProfileId,
-        priority: binding.priority,
-      });
-      return;
-    }
-
     setShowDurableManualScope(true);
     setDurableEditor({
       editingBindingId: binding.id,
@@ -488,74 +623,40 @@ const PublicationBindingPanel: React.FC = () => {
       selectedAudienceKey: binding.scopeKey ?? '',
       manualScopeKey: binding.scopeKey ?? '',
       agentProfileId: binding.agentProfileId,
-      priority: binding.priority,
     });
   }, []);
 
-  const renderBindingList = useCallback(
-    (bindings: IChannelBinding[], emptyText: string) => {
-      if (bindings.length === 0) {
-        return <Empty description={emptyText} className='py-16px' />;
-      }
+  const handleAudienceShortcut = useCallback((audience: IChannelAudienceEntry) => {
+    setShowDurableManualScope(false);
 
-      return (
-        <div className='space-y-8px'>
-          {bindings.map((binding) => {
-            const profile = profileMap.get(binding.agentProfileId);
-            const audience = binding.scopeKey ? audienceMap.get(binding.scopeKey) : undefined;
-            return (
-              <div
-                key={binding.id}
-                className='border border-[var(--color-border-2)] rd-10px px-12px py-10px flex items-start justify-between gap-12px'
-              >
-                <div className='min-w-0 space-y-6px'>
-                  <div className='flex flex-wrap items-center gap-6px'>
-                    <Tag color={binding.temporary ? 'orangered' : 'arcoblue'}>
-                      {binding.temporary
-                        ? t('settings.channels.publication.temporaryTag')
-                        : t('settings.channels.publication.durableTag')}
-                    </Tag>
-                    <Tag>{t(`settings.channels.publication.scope.${binding.scopeType}`)}</Tag>
-                    <Tag color={binding.enabled ? 'green' : 'gray'}>
-                      {binding.enabled
-                        ? t('settings.channels.publication.enabled')
-                        : t('settings.channels.publication.disabled')}
-                    </Tag>
-                  </div>
-                  <div className='text-13px text-t-primary break-all'>
-                    {profile ? getProfileLabel(profile) : binding.agentProfileId}
-                  </div>
-                  <div className='text-12px text-t-secondary break-all'>
-                    {audience
-                      ? getAudienceLabel(audience)
-                      : binding.scopeKey || t('settings.channels.publication.connectorDefaultAudience')}
-                  </div>
-                </div>
-                <div className='flex items-center gap-4px shrink-0'>
-                  <Button
-                    type='text'
-                    icon={<Edit theme='outline' size='16' />}
-                    onClick={() => handleEditBinding(binding)}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                  <Button
-                    status='danger'
-                    type='text'
-                    icon={<Delete theme='outline' size='16' />}
-                    loading={deletingBindingId === binding.id}
-                    onClick={() => void handleDeleteBinding(binding.id)}
-                  >
-                    {t('common.delete')}
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      );
+    if (audience.scopeType === 'remote_user') {
+      setDurableEditor((editor) => ({
+        ...editor,
+        editingBindingId: '',
+        scopeType: 'remote_user',
+        selectedAudienceKey: audience.key,
+        manualScopeKey: '',
+      }));
+      return;
+    }
+
+    setDurableEditor((editor) => ({
+      ...editor,
+      editingBindingId: '',
+      scopeType: 'remote_chat',
+      selectedAudienceKey: audience.key,
+      manualScopeKey: '',
+    }));
+  }, []);
+
+  const openConversation = useCallback(
+    (conversationId?: string) => {
+      if (!conversationId) {
+        return;
+      }
+      void navigate(`/conversation/${conversationId}`);
     },
-    [audienceMap, deletingBindingId, handleDeleteBinding, handleEditBinding, profileMap, t]
+    [navigate]
   );
 
   const durableScopeKeyPlaceholder = useMemo(() => {
@@ -568,22 +669,23 @@ const PublicationBindingPanel: React.FC = () => {
     return '';
   }, [durableEditor.scopeType, t]);
 
-  return (
-    <div className='mt-16px border border-[var(--color-border-2)] rd-14px px-14px py-14px space-y-14px'>
-      <div className='flex flex-wrap items-center justify-between gap-12px'>
-        <div className='space-y-4px'>
-          <div className='text-15px font-600 text-t-primary'>{t('settings.channels.publication.title')}</div>
-          <div className='text-12px text-t-secondary leading-relaxed'>
-            {t('settings.channels.publication.description')}
-          </div>
-        </div>
-        <Button icon={<Refresh theme='outline' size='16' />} onClick={() => void loadCatalog()} loading={loading}>
-          {t('common.refresh')}
-        </Button>
-      </div>
+  const hasChannelAccounts = catalogChannelAccounts.length > 0;
+  const showCatalogLoading = loading && !hasChannelAccounts;
 
-      <Spin loading={loading}>
+  return (
+    <div className='mt-16px border border-[var(--color-border-2)] rd-14px px-14px py-14px'>
+      {showCatalogLoading ? (
+        <div className='min-h-[460px] flex items-center justify-center'>
+          <Spin loading />
+        </div>
+      ) : hasChannelAccounts ? (
         <div className='space-y-12px'>
+          <div className='flex justify-end'>
+            <Button icon={<Refresh theme='outline' size='16' />} onClick={() => void loadCatalog()} loading={loading}>
+              {t('common.refresh')}
+            </Button>
+          </div>
+
           {publicationIntent ? (
             <div className='border border-[rgba(var(--primary-6),0.22)] bg-[rgba(var(--primary-6),0.06)] rd-12px p-12px space-y-8px'>
               <div className='text-14px font-600 text-t-primary'>{t('settings.channels.publication.intentTitle')}</div>
@@ -610,293 +712,408 @@ const PublicationBindingPanel: React.FC = () => {
                   <span className='ml-6px text-t-primary break-all'>{publicationIntent.workspace || '-'}</span>
                 </div>
               </div>
-              <div className='text-12px text-t-secondary'>{t('settings.channels.publication.intentSelectedHint')}</div>
             </div>
           ) : null}
 
-          <div className='space-y-6px'>
-            <div className='text-12px font-500 text-t-primary'>{t('settings.channels.publication.connectorLabel')}</div>
-            <Select
-              value={selectedConnectorId || undefined}
-              options={connectorOptions}
-              placeholder={t('settings.channels.publication.connectorPlaceholder')}
-              onChange={(value) => setSelectedConnectorId(String(value))}
-              allowClear={false}
-            />
-            {selectedConnector ? (
+          <div className='grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-12px items-start'>
+            <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px xl:sticky xl:top-0'>
               <div className='space-y-4px'>
-                <div className='text-12px text-t-secondary'>
-                  {t('settings.channels.publication.connectorHint', {
-                    platform: selectedConnector.platform,
-                    name: selectedConnector.name,
-                  })}
+                <div className='text-13px font-600 text-t-primary'>
+                  {t('settings.channels.publication.connectorLabel')}
                 </div>
-                <div className='text-12px text-t-secondary leading-relaxed'>{connectorGuide}</div>
+                <div className='text-12px text-t-secondary leading-relaxed'>
+                  {t('settings.channels.publication.connectorGuide')}
+                </div>
               </div>
-            ) : null}
-          </div>
+              <div className='space-y-8px'>
+                {catalogChannelAccounts.map((channelAccount) => {
+                  const channelAccountSelected = channelAccount.id === selectedChannelAccountId;
+                  const channelAccountAudiences = catalog.audiences.filter(
+                    (audience) => getChannelAccountId(audience) === channelAccount.id
+                  );
+                  const channelAccountBindings = catalog.bindings.filter(
+                    (binding) => getChannelAccountId(binding) === channelAccount.id
+                  );
+                  const channelAccountBindingSummary = splitBindingsByLifetime(channelAccountBindings);
+                  const channelAccountSessions = sessions.filter(
+                    (session) => getSessionChannelAccountId(session) === channelAccount.id
+                  );
 
-          {selectedConnectorId ? (
-            <>
-              <div className='grid grid-cols-1 xl:grid-cols-2 gap-12px'>
-                <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
-                  <div className='space-y-4px'>
-                    <div className='text-14px font-600 text-t-primary'>
-                      {t('settings.channels.publication.durableTitle')}
-                    </div>
-                    <div className='text-12px text-t-secondary leading-relaxed'>
-                      {t('settings.channels.publication.durableDescription')}
-                    </div>
-                    {durableEditor.editingBindingId ? (
-                      <Tag color='arcoblue'>{t('settings.channels.publication.editingDurable')}</Tag>
-                    ) : null}
-                  </div>
-                  <div className='space-y-8px'>
-                    <div className='text-12px font-500 text-t-primary'>
-                      {t('settings.channels.publication.targetTypeLabel')}
-                    </div>
-                    <Select
-                      value={durableEditor.scopeType}
-                      options={durableScopeOptions}
-                      onChange={(value) =>
-                        setDurableEditor((editor) => ({
-                          ...editor,
-                          scopeType: value as DurableBindingScopeType,
-                          selectedAudienceKey: '',
-                          manualScopeKey: '',
-                        }))
-                      }
-                    />
-                    <div className='text-12px text-t-secondary leading-relaxed'>{durableScopeHint}</div>
-                    {durableEditor.scopeType !== 'connector_default' ? (
-                      <>
-                        <Select
-                          showSearch
-                          value={durableEditor.selectedAudienceKey || undefined}
-                          options={durableAudienceOptions}
-                          placeholder={t('settings.channels.publication.audiencePlaceholder')}
-                          onChange={(value) =>
-                            setDurableEditor((editor) => ({
-                              ...editor,
-                              selectedAudienceKey: String(value),
-                              manualScopeKey: '',
-                            }))
-                          }
-                          allowClear
-                        />
-                        <Button
-                          type='text'
-                          className='!justify-start !px-0'
-                          onClick={() => setShowDurableManualScope((current) => !current)}
-                        >
-                          {t('settings.channels.publication.manualScopeToggle')}
-                        </Button>
-                        {showDurableManualScope ? (
-                          <>
-                            <Input
-                              value={durableEditor.manualScopeKey}
-                              onChange={(value) => setDurableEditor((editor) => ({ ...editor, manualScopeKey: value }))}
-                              placeholder={durableScopeKeyPlaceholder}
-                            />
-                            <div className='text-12px text-t-secondary'>
-                              {t('settings.channels.publication.manualKeyHint')}
-                            </div>
-                          </>
-                        ) : null}
-                      </>
-                    ) : null}
-                    <Select
-                      value={durableEditor.agentProfileId || undefined}
-                      options={profileOptions}
-                      placeholder={t('settings.channels.publication.agentPlaceholder')}
-                      onChange={(value) => setDurableEditor((editor) => ({ ...editor, agentProfileId: String(value) }))}
-                    />
-                    <InputNumber
-                      value={durableEditor.priority}
-                      min={0}
-                      onChange={(value) => setDurableEditor((editor) => ({ ...editor, priority: Number(value || 0) }))}
-                      placeholder={t('settings.channels.publication.priorityLabel')}
-                      className='w-full'
-                    />
-                    <div className='text-12px text-t-secondary'>{t('settings.channels.publication.priorityHint')}</div>
-                    <div className='flex flex-wrap gap-8px'>
-                      <Button
-                        type='primary'
-                        icon={<Plus theme='outline' size='16' />}
-                        loading={saving}
-                        onClick={() =>
-                          void saveBinding({
-                            connectorId: selectedConnectorId,
-                            scopeType: durableEditor.scopeType,
-                            scopeKey:
-                              durableEditor.scopeType === 'connector_default'
-                                ? ''
-                                : resolveScopeKey(durableEditor.selectedAudienceKey, durableEditor.manualScopeKey),
-                            agentProfileId: durableEditor.agentProfileId,
-                            temporary: false,
-                            priority: durableEditor.priority,
-                          })
-                            .then(() => resetDurableEditor())
-                            .catch((error) =>
-                              Message.error(
-                                error instanceof Error ? error.message : t('settings.channels.publication.saveFailed')
-                              )
-                            )
-                        }
-                      >
-                        {durableEditor.editingBindingId
-                          ? t('settings.channels.publication.updateDurable')
-                          : t('settings.channels.publication.saveDurable')}
-                      </Button>
-                      {durableEditor.editingBindingId ? (
-                        <Button
-                          icon={<Undo theme='outline' size='16' />}
-                          onClick={() => resetDurableEditor(catalog.agentProfiles[0]?.id)}
-                        >
-                          {t('common.cancel')}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-
-                <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
-                  <div className='space-y-4px'>
-                    <div className='text-14px font-600 text-t-primary'>
-                      {t('settings.channels.publication.temporaryTitle')}
-                    </div>
-                    <div className='text-12px text-t-secondary leading-relaxed'>
-                      {t('settings.channels.publication.temporaryDescription')}
-                    </div>
-                    {temporaryEditor.editingBindingId ? (
-                      <Tag color='orangered'>{t('settings.channels.publication.editingTemporary')}</Tag>
-                    ) : null}
-                  </div>
-                  <div className='space-y-8px'>
-                    <Select
-                      showSearch
-                      value={temporaryEditor.selectedAudienceKey || undefined}
-                      options={temporaryAudienceOptions}
-                      placeholder={t('settings.channels.publication.audiencePlaceholder')}
-                      onChange={(value) =>
-                        setTemporaryEditor((editor) => ({
-                          ...editor,
-                          selectedAudienceKey: String(value),
-                          manualScopeKey: '',
-                        }))
-                      }
-                      allowClear
-                    />
+                  return (
                     <Button
+                      key={channelAccount.id}
                       type='text'
-                      className='!justify-start !px-0'
-                      onClick={() => setShowTemporaryManualScope((current) => !current)}
+                      className={classNames(styles.instanceButton, channelAccountSelected && styles.instanceButtonActive)}
+                      onClick={() => setSelectedChannelAccountId(channelAccount.id)}
                     >
-                      {t('settings.channels.publication.manualScopeToggle')}
-                    </Button>
-                    {showTemporaryManualScope ? (
-                      <>
-                        <Input
-                          value={temporaryEditor.manualScopeKey}
-                          onChange={(value) => setTemporaryEditor((editor) => ({ ...editor, manualScopeKey: value }))}
-                          placeholder={t('settings.channels.publication.scopeKeyRemoteChatPlaceholder')}
-                        />
-                        <div className='text-12px text-t-secondary'>
-                          {t('settings.channels.publication.manualKeyHint')}
+                      <div className={styles.instanceButtonInner}>
+                        <div className={styles.selectorCardBody}>
+                          <div className={styles.selectorHeading}>
+                            <span className={styles.selectorTitle} title={channelAccount.name}>
+                              {channelAccount.name}
+                            </span>
+                            <Tag className={styles.platformTag} title={channelAccount.platform}>
+                              {channelAccount.platform}
+                            </Tag>
+                          </div>
+                          <div className={styles.selectorDescription}>
+                            {t('settings.channels.publication.connectorHint', {
+                              platform: channelAccount.platform,
+                              name: channelAccount.name,
+                            })}
+                          </div>
+                          <div className={styles.selectorStats}>
+                            <Tag className={styles.pillTag}>
+                              {t('settings.channels.publication.summaryPublished')}: {channelAccountBindingSummary.durableBindings.length}
+                            </Tag>
+                            <Tag className={styles.pillTag}>
+                              {t('settings.channels.publication.summaryAudiences')}: {channelAccountAudiences.length}
+                            </Tag>
+                            <Tag className={styles.pillTag}>
+                              {t('settings.channels.publication.summaryConversations')}: {channelAccountSessions.length}
+                            </Tag>
+                          </div>
                         </div>
-                      </>
-                    ) : null}
-                    <Select
-                      value={temporaryEditor.agentProfileId || undefined}
-                      options={profileOptions}
-                      placeholder={t('settings.channels.publication.agentPlaceholder')}
-                      onChange={(value) =>
-                        setTemporaryEditor((editor) => ({ ...editor, agentProfileId: String(value) }))
-                      }
-                    />
-                    <InputNumber
-                      value={temporaryEditor.priority}
-                      min={1}
-                      onChange={(value) =>
-                        setTemporaryEditor((editor) => ({ ...editor, priority: Number(value || 100) }))
-                      }
-                      placeholder={t('settings.channels.publication.priorityLabel')}
-                      className='w-full'
-                    />
-                    <div className='text-12px text-t-secondary'>{t('settings.channels.publication.priorityHint')}</div>
+                      </div>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className='space-y-12px'>
+              {selectedChannelAccount ? (
+                <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-12px'>
+                  <div className='space-y-4px'>
+                    <div className='flex flex-wrap items-center gap-8px'>
+                      <div className={styles.selectorTitle} title={selectedChannelAccount.name}>
+                        {selectedChannelAccount.name}
+                      </div>
+                      <Tag className={styles.platformTag} title={selectedChannelAccount.platform}>
+                        {selectedChannelAccount.platform}
+                      </Tag>
+                    </div>
+                    <div className='text-13px text-t-primary leading-relaxed'>
+                      {t('settings.channels.publication.accountOverview')}
+                    </div>
                     <div className='flex flex-wrap gap-8px'>
-                      <Button
-                        type='primary'
-                        status='warning'
-                        icon={<Plus theme='outline' size='16' />}
-                        loading={saving}
-                        onClick={() =>
-                          void saveBinding({
-                            connectorId: selectedConnectorId,
-                            scopeType: 'temporary_override',
-                            scopeKey: resolveScopeKey(
-                              temporaryEditor.selectedAudienceKey,
-                              temporaryEditor.manualScopeKey
-                            ),
-                            agentProfileId: temporaryEditor.agentProfileId,
-                            temporary: true,
-                            priority: temporaryEditor.priority,
-                          })
-                            .then(() => resetTemporaryEditor())
-                            .catch((error) =>
-                              Message.error(
-                                error instanceof Error ? error.message : t('settings.channels.publication.saveFailed')
-                              )
-                            )
-                        }
-                      >
-                        {temporaryEditor.editingBindingId
-                          ? t('settings.channels.publication.updateTemporary')
-                          : t('settings.channels.publication.saveTemporary')}
-                      </Button>
-                      {temporaryEditor.editingBindingId ? (
-                        <Button
-                          icon={<Undo theme='outline' size='16' />}
-                          onClick={() => resetTemporaryEditor(catalog.agentProfiles[0]?.id)}
-                        >
-                          {t('common.cancel')}
-                        </Button>
-                      ) : null}
+                      <Tag className={styles.pillTag}>
+                        {t('settings.channels.publication.summaryPublished')}: {selectedPublishedCount}
+                      </Tag>
+                      <Tag className={styles.pillTag}>
+                        {t('settings.channels.publication.summaryAudiences')}: {selectedAudiences.length}
+                      </Tag>
+                      <Tag className={styles.pillTag}>
+                        {t('settings.channels.publication.summaryConversations')}: {selectedSessions.length}
+                      </Tag>
                     </div>
                   </div>
+                  <div className='text-12px text-t-secondary leading-relaxed'>{channelAccountGuide}</div>
                 </div>
-              </div>
+              ) : null}
 
-              <div className='space-y-10px'>
+              <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
                 <div className='space-y-4px'>
                   <div className='text-14px font-600 text-t-primary'>
-                    {t('settings.channels.publication.existingTitle')}
+                    {t('settings.channels.publication.publishedTargetsTitle')}
                   </div>
                   <div className='text-12px text-t-secondary leading-relaxed'>
-                    {t('settings.channels.publication.existingDescription')}
+                    {t('settings.channels.publication.publishedTargetsDescription')}
                   </div>
                 </div>
-                <div className='grid grid-cols-1 xl:grid-cols-2 gap-12px'>
+                {publishedTargetCards.length > 0 ? (
                   <div className='space-y-8px'>
-                    <div className='text-13px font-500 text-t-primary'>
-                      {t('settings.channels.publication.durableListTitle')}
-                    </div>
-                    {renderBindingList(durableBindings, t('settings.channels.publication.emptyDurable'))}
+                    {publishedTargetCards.map((card) => {
+                      const conversationSummary = card.recentConversation
+                        ? formatRelativeTime(card.recentConversation.lastActivity, i18n.language)
+                        : t('settings.channels.publication.noConversationYet');
+                      const profileLabel = card.profile ? getProfileLabel(card.profile) : card.binding.agentProfileId;
+
+                      return (
+                        <div key={card.binding.id} className={styles.bindingCard}>
+                          <div className={styles.bindingMain}>
+                            <div className={styles.bindingHeader}>
+                              <div className={styles.bindingTitleBlock}>
+                                <div className='flex flex-wrap items-center gap-6px'>
+                                  <Tag className={styles.pillTag}>{card.kindLabel}</Tag>
+                                  {!card.binding.enabled ? (
+                                    <Tag className={styles.statusTag}>{t('settings.channels.publication.disabled')}</Tag>
+                                  ) : null}
+                                </div>
+                                <div className={styles.bindingTitleRow}>
+                                  <div className={styles.bindingTitleText}>
+                                    <div className={styles.selectorTitle} title={card.title}>
+                                      {card.title}
+                                    </div>
+                                  </div>
+                                  {card.conversationCount > 0 ? (
+                                    <div
+                                      className={styles.bindingCountBadge}
+                                      title={`${t('settings.channels.publication.summaryConversations')}: ${card.conversationCount}`}
+                                    >
+                                      {card.conversationCount}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <div className={styles.bindingDetail}>{card.detail}</div>
+                              </div>
+                              <div className={styles.bindingActions}>
+                                <Tooltip content={t('common.edit')}>
+                                  <Button
+                                    size='mini'
+                                    type='text'
+                                    shape='circle'
+                                    className={styles.bindingIconButton}
+                                    icon={<Edit theme='outline' size='16' />}
+                                    onClick={() => handleEditBinding(card.binding)}
+                                  />
+                                </Tooltip>
+                                <Tooltip content={t('common.delete')}>
+                                  <Button
+                                    size='mini'
+                                    status='danger'
+                                    type='text'
+                                    shape='circle'
+                                    className={styles.bindingIconButton}
+                                    icon={<Delete theme='outline' size='16' />}
+                                    loading={deletingBindingId === card.binding.id}
+                                    onClick={() => void handleDeleteBinding(card.binding.id)}
+                                  />
+                                </Tooltip>
+                              </div>
+                            </div>
+
+                            <div className={styles.bindingProfileCard}>
+                              <div className={styles.bindingProfileMeta}>
+                                <div className={styles.bindingProfileLabel}>
+                                  {t('settings.channels.publication.intentProfile')}
+                                </div>
+                                <div className={styles.bindingProfileValue} title={profileLabel}>
+                                  {profileLabel}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className={styles.bindingConversationRow}>
+                              <div className={styles.bindingConversationMeta}>
+                                <div className={styles.bindingConversationLabel}>
+                                  {t('settings.channels.publication.recentConversation')}
+                                </div>
+                                <div className={styles.bindingConversationValue}>{conversationSummary}</div>
+                              </div>
+                              {card.recentConversation?.conversationId ? (
+                                <Button
+                                  type='primary'
+                                  size='small'
+                                  className={styles.bindingPrimaryAction}
+                                  onClick={() => openConversation(card.recentConversation?.conversationId)}
+                                >
+                                  {t('settings.channels.publication.openConversation')}
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className='space-y-8px'>
-                    <div className='text-13px font-500 text-t-primary'>
-                      {t('settings.channels.publication.temporaryListTitle')}
-                    </div>
-                    {renderBindingList(temporaryBindings, t('settings.channels.publication.emptyTemporary'))}
+                ) : (
+                  <div className='min-h-120px flex items-center justify-center'>
+                    <Empty
+                      description={t('settings.channels.publication.emptyPublishedTargets')}
+                      className='w-full py-16px text-center'
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
+                <div className='space-y-4px'>
+                  <div className='text-14px font-600 text-t-primary'>
+                    {t('settings.channels.publication.discoveryTitle')}
+                  </div>
+                  <div className='text-12px text-t-secondary leading-relaxed'>
+                    {t('settings.channels.publication.discoveryDescription')}
+                  </div>
+                </div>
+                {selectedAudiences.length > 0 ? (
+                  <div className='grid grid-cols-1 lg:grid-cols-2 gap-8px'>
+                    {selectedAudiences.map((audience) => {
+                      const durableSelected =
+                        durableEditor.scopeType === audience.scopeType &&
+                        durableEditor.selectedAudienceKey === audience.key &&
+                        !durableEditor.manualScopeKey;
+                      const audienceDetail = getAudienceDetailText(audience, t);
+
+                      return (
+                        <Button
+                          key={audience.key}
+                          type='text'
+                          className={classNames(styles.instanceButton, durableSelected && styles.instanceButtonActive)}
+                          onClick={() => handleAudienceShortcut(audience)}
+                        >
+                          <div className={styles.instanceButtonInner}>
+                            <div className={styles.selectorCardBody}>
+                              <div className={styles.selectorHeading}>
+                                <span className={styles.selectorTitle} title={audience.title}>
+                                  {audience.title}
+                                </span>
+                                <Tag className={styles.pillTag}>{getAudienceKindLabel(audience, t)}</Tag>
+                                {durableSelected ? (
+                                  <Tag className={styles.metricTag}>{t('settings.channels.publication.durableTag')}</Tag>
+                                ) : null}
+                              </div>
+                              {audienceDetail !== audience.title ? (
+                                <div className={styles.selectorDescription} title={audienceDetail}>
+                                  {audienceDetail}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className='min-h-120px flex items-center justify-center'>
+                    <Empty
+                      description={t('settings.channels.publication.discoveryEmpty')}
+                      className='w-full py-16px text-center'
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
+                <div className='space-y-4px'>
+                  <div className='text-14px font-600 text-t-primary'>
+                    {t('settings.channels.publication.addTargetTitle')}
+                  </div>
+                  <div className='text-12px text-t-secondary leading-relaxed'>
+                    {t('settings.channels.publication.addTargetDescription')}
+                  </div>
+                  {durableEditor.editingBindingId ? (
+                    <Tag color='arcoblue'>{t('settings.channels.publication.editingDurable')}</Tag>
+                  ) : null}
+                </div>
+                <div className='space-y-8px'>
+                  <div className='text-12px font-500 text-t-primary'>
+                    {t('settings.channels.publication.targetTypeLabel')}
+                  </div>
+                  <Select
+                    value={durableEditor.scopeType}
+                    options={durableScopeOptions}
+                    onChange={(value) =>
+                      setDurableEditor((editor) => ({
+                        ...editor,
+                        scopeType: value as DurableBindingScopeType,
+                        selectedAudienceKey: '',
+                        manualScopeKey: '',
+                      }))
+                    }
+                  />
+                  <div className='text-12px text-t-secondary leading-relaxed'>{durableScopeHint}</div>
+                  {durableEditor.scopeType !== 'connector_default' ? (
+                    <>
+                      <Select
+                        showSearch
+                        value={durableEditor.selectedAudienceKey || undefined}
+                        options={durableAudienceOptions}
+                        placeholder={t('settings.channels.publication.audiencePlaceholder')}
+                        onChange={(value) =>
+                          setDurableEditor((editor) => ({
+                            ...editor,
+                            selectedAudienceKey: String(value),
+                            manualScopeKey: '',
+                          }))
+                        }
+                        allowClear
+                      />
+                      <Button
+                        type='text'
+                        className='!justify-start !px-0'
+                        onClick={() => setShowDurableManualScope((current) => !current)}
+                      >
+                        {t('settings.channels.publication.manualScopeToggle')}
+                      </Button>
+                      {showDurableManualScope ? (
+                        <>
+                          <Input
+                            value={durableEditor.manualScopeKey}
+                            onChange={(value) => setDurableEditor((editor) => ({ ...editor, manualScopeKey: value }))}
+                            placeholder={durableScopeKeyPlaceholder}
+                          />
+                          <div className='text-12px text-t-secondary'>
+                            {t('settings.channels.publication.manualKeyHint')}
+                          </div>
+                        </>
+                      ) : null}
+                    </>
+                  ) : null}
+                  <Select
+                    value={durableEditor.agentProfileId || undefined}
+                    options={profileOptions}
+                    placeholder={t('settings.channels.publication.agentPlaceholder')}
+                    onChange={(value) => setDurableEditor((editor) => ({ ...editor, agentProfileId: String(value) }))}
+                  />
+                  <div className='flex flex-wrap gap-8px'>
+                    <Button
+                      type='primary'
+                      icon={<Plus theme='outline' size='16' />}
+                      loading={saving}
+                      onClick={() =>
+                        void saveBinding({
+                          channelAccountId: selectedChannelAccountId,
+                          scopeType: durableEditor.scopeType,
+                          scopeKey:
+                            durableEditor.scopeType === 'connector_default'
+                              ? ''
+                              : resolveScopeKey(durableEditor.selectedAudienceKey, durableEditor.manualScopeKey),
+                          agentProfileId: durableEditor.agentProfileId,
+                          temporary: false,
+                          priority: 0,
+                        })
+                          .then(() => resetDurableEditor())
+                          .catch((error) =>
+                            Message.error(
+                              error instanceof Error ? error.message : t('settings.channels.publication.saveFailed')
+                            )
+                          )
+                      }
+                    >
+                      {durableEditor.editingBindingId
+                        ? t('settings.channels.publication.updateDurable')
+                        : t('settings.channels.publication.saveDurable')}
+                    </Button>
+                    {durableEditor.editingBindingId ? (
+                      <Button
+                        icon={<Undo theme='outline' size='16' />}
+                        onClick={() => resetDurableEditor(catalog.agentProfiles[0]?.id)}
+                      >
+                        {t('common.cancel')}
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               </div>
-            </>
-          ) : (
-            <Empty description={t('settings.channels.publication.noConnector')} className='py-20px' />
-          )}
+            </div>
+          </div>
         </div>
-      </Spin>
+      ) : (
+        <div className='min-h-[460px] flex items-center justify-center px-16px'>
+          <div className='w-full max-w-480px flex flex-col items-center justify-center gap-16px text-center mx-auto'>
+            <Empty description={t('settings.channels.publication.noConnector')} className='mx-auto' />
+            <Button
+              type='primary'
+              onClick={() => {
+                void navigate('/settings/channels');
+              }}
+            >
+              {t('settings.channels.publication.goToAccounts')}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

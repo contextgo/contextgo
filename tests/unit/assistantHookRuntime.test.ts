@@ -92,6 +92,52 @@ describe('AssistantHookRuntime', () => {
     });
   });
 
+  it('prefers workspace hooks before user and builtin hook directories', async () => {
+    mockAccess.mockImplementation(async (filePath: string) => {
+      if (normalizePath(filePath) === '/workspace/project/.contextgo/hooks/quality-gate') return;
+      throw new Error(`ENOENT ${filePath}`);
+    });
+
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      const normalizedPath = normalizePath(filePath);
+      if (normalizedPath === '/workspace/project/.contextgo/hooks/quality-gate/manifest.json') {
+        return JSON.stringify({
+          name: 'quality-gate',
+          executionType: 'prompt-transform',
+          events: ['before_user_prompt'],
+        });
+      }
+      if (normalizedPath === '/workspace/project/.contextgo/hooks/quality-gate/before_user_prompt.md') {
+        return 'Workspace hook for {{backend}}\n\n{{userPrompt}}';
+      }
+      throw new Error(`ENOENT ${filePath}`);
+    });
+
+    const { AssistantHookRuntime } = await import('../../src/process/bridge/services/AssistantHookRuntime');
+    const runtime = new AssistantHookRuntime();
+
+    const result = await runtime.applyBeforeUserPrompt(
+      {
+        id: 'conv-workspace',
+        type: 'acp',
+        name: 'Workspace Conversation',
+        createTime: Date.now(),
+        modifyTime: Date.now(),
+        extra: {
+          backend: 'claude',
+          workingDirectory: '/workspace/project',
+          enabledHooks: ['quality-gate'],
+        },
+      } as any,
+      'Check workspace precedence'
+    );
+
+    expect(result).toEqual({
+      content: 'Workspace hook for claude\n\nCheck workspace precedence',
+      appliedHooks: ['quality-gate'],
+    });
+  });
+
   it('falls back to builtin hooks when the user hooks directory does not contain the hook', async () => {
     mockAccess.mockImplementation(async (filePath: string) => {
       if (normalizePath(filePath) === '/mock/builtin-hooks/plan-before-coding') return;

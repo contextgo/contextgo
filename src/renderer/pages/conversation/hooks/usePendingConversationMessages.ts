@@ -1,6 +1,6 @@
 import { uuid } from '@/common/utils';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef } from 'react';
 import useSWR from 'swr';
 
 export type PendingConversationMessageMode = 'queue' | 'steer';
@@ -95,6 +95,7 @@ export function usePendingConversationMessages(options: UsePendingConversationMe
   const onDispatchRef = useLatestRef(onDispatch);
   const onDispatchErrorRef = useLatestRef(onDispatchError);
   const dispatchingMessageIdRef = useRef<string | null>(null);
+  const [dispatchTick, bumpDispatchTick] = useReducer((value: number) => value + 1, 0);
 
   const mutatePendingMessages = useCallback(
     (updater: (messages: PendingConversationMessage[]) => PendingConversationMessage[]) => {
@@ -190,31 +191,36 @@ export function usePendingConversationMessages(options: UsePendingConversationMe
     }
 
     dispatchingMessageIdRef.current = nextPendingMessage.id;
-    mutatePendingMessages((messages) =>
-      updateMessageList(messages, nextPendingMessage.id, (message) => ({
-        ...message,
-        status: 'dispatching',
-      }))
-    );
+    mutatePendingMessages((messages) => messages.filter((message) => message.id !== nextPendingMessage.id));
 
     void onDispatchRef
       .current(nextPendingMessage)
       .then(() => {
-        mutatePendingMessages((messages) => messages.filter((message) => message.id !== nextPendingMessage.id));
+        dispatchingMessageIdRef.current = null;
+        bumpDispatchTick();
       })
       .catch((error) => {
         onDispatchErrorRef.current?.(error, nextPendingMessage);
-        mutatePendingMessages((messages) =>
-          updateMessageList(messages, nextPendingMessage.id, (message) => ({
-            ...message,
+        mutatePendingMessages((messages) => [
+          ...messages,
+          {
+            ...nextPendingMessage,
             status: 'pending',
-          }))
-        );
-      })
-      .finally(() => {
-        dispatchingMessageIdRef.current = null;
+          },
+        ]);
+        setTimeout(() => {
+          dispatchingMessageIdRef.current = null;
+        }, 0);
       });
-  }, [canSendNow, canSteerNow, mutatePendingMessages, onDispatchErrorRef, onDispatchRef, pendingMessages]);
+  }, [
+    canSendNow,
+    canSteerNow,
+    dispatchTick,
+    mutatePendingMessages,
+    onDispatchErrorRef,
+    onDispatchRef,
+    pendingMessages,
+  ]);
 
   return {
     pendingMessages,

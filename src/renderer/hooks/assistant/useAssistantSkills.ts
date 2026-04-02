@@ -96,16 +96,19 @@ export const useAssistantSkills = ({
       nextQuery,
       nextView,
       nextIndustryId,
+      nextOffset,
     }: {
       append?: boolean;
       forceRefresh?: boolean;
       nextQuery?: string;
       nextView?: SkillMarketView;
       nextIndustryId?: string;
+      nextOffset?: number;
     } = {}) => {
       const query = nextQuery ?? marketQuery;
       const view = nextView ?? marketView;
       const industryId = nextIndustryId ?? marketIndustryId;
+      const offset = nextOffset ?? 0;
 
       if (append) {
         setMarketLoadingMore(true);
@@ -119,7 +122,7 @@ export const useAssistantSkills = ({
         const response = await ipcBridge.fs.searchSkillMarket.invoke({
           query,
           limit: 24,
-          offset: append ? marketSkills.length : 0,
+          offset,
           forceRefresh,
           view,
           industryId: industryId === 'all' ? undefined : industryId,
@@ -156,7 +159,7 @@ export const useAssistantSkills = ({
         setMarketRefreshing(false);
       }
     },
-    [marketIndustryId, marketQuery, marketSkills.length, marketView, message, t]
+    [marketIndustryId, marketQuery, marketView, message, t]
   );
 
   // Detect external skill paths when modal opens
@@ -352,7 +355,7 @@ export const useAssistantSkills = ({
     filteredExternalSkills,
     handleRefreshExternal,
     handleRefreshSkillMarket: () => loadSkillMarket({ forceRefresh: true }),
-    handleLoadMoreSkillMarket: () => loadSkillMarket({ append: true }),
+    handleLoadMoreSkillMarket: () => loadSkillMarket({ append: true, nextOffset: marketSkills.length }),
     handleAddCustomPath,
     handleAddFoundSkills,
     handleAddMarketBundle,

@@ -72,6 +72,22 @@ export class SqliteChannelRepository implements IChannelRepository {
     return result.data;
   }
 
+  async upsertConnectorInstance(connector: IConnectorInstance): Promise<void> {
+    const db = await getDatabase();
+    const result = db.upsertConnectorInstance(connector);
+    if (!result.success) {
+      throw new Error(result.error ?? `Failed to upsert connector instance ${connector.id}`);
+    }
+  }
+
+  async deleteConnectorInstance(connectorId: string): Promise<void> {
+    const db = await getDatabase();
+    const result = db.deleteConnectorInstance(connectorId);
+    if (!result.success) {
+      throw new Error(result.error ?? `Failed to delete connector instance ${connectorId}`);
+    }
+  }
+
   async getAgentProfiles(): Promise<IAgentProfile[]> {
     const db = await getDatabase();
     const result = db.getAgentProfiles();

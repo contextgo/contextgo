@@ -6,6 +6,7 @@
 
 import { InlineKeyboard, Keyboard } from 'grammy';
 import crypto from 'crypto';
+import { buildAgentSelectionCallbackToken } from '../../utils/agentSelection';
 
 type TelegramToolConfirmPayload = {
   callId: string;
@@ -185,6 +186,36 @@ export function createToolConfirmationKeyboard(
       keyboard.text(options[i + 1].label, `confirm:${rightToken}`);
     }
   }
+  return keyboard;
+}
+
+export type TelegramSelectableAgent = {
+  key: string;
+  backend: string;
+  emoji?: string;
+  name: string;
+};
+
+export function createAgentSelectionKeyboard(
+  agents: TelegramSelectableAgent[],
+  selectedAgentKey?: string
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+
+  agents.forEach((agent, index) => {
+    if (index > 0) {
+      keyboard.row();
+    }
+
+    const callbackToken = buildAgentSelectionCallbackToken({
+      key: agent.key,
+      backend: agent.backend,
+    });
+    const prefix = agent.key === selectedAgentKey ? '✅ ' : '';
+    const icon = agent.emoji ? `${agent.emoji} ` : '';
+    keyboard.text(`${prefix}${icon}${agent.name}`, `agent:${callbackToken}`);
+  });
+
   return keyboard;
 }
 

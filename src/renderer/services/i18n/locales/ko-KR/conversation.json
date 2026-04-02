@@ -67,7 +67,16 @@
     "pinnedSection": "Pinned",
     "deleteSuccess": "삭제되었습니다",
     "deleteFailed": "삭제에 실패했습니다",
-    "toggleGroupConversation": "그룹 세션 펼치기/접기"
+    "toggleGroupConversation": "그룹 세션 펼치기/접기",
+    "deleteModalHeadline": "이 대화를 영구적으로 삭제할까요?",
+    "deleteModalDescription": "이 작업은 되돌릴 수 없습니다. 대화 메시지와 관련 기록이 함께 삭제됩니다.",
+    "deleteTargetLabel": "대화",
+    "groupConversationTag": "그룹",
+    "deleteGroupImpact": "이 그룹을 삭제하면 연결된 하위 대화 {{count}}개도 함께 삭제됩니다.",
+    "deleteModalBatchHeadline": "선택한 대화를 영구적으로 삭제할까요?",
+    "deleteModalBatchDescription": "이 작업은 되돌릴 수 없습니다. 선택한 모든 대화의 메시지와 관련 기록이 함께 삭제됩니다.",
+    "deleteBatchTargetLabel": "선택 항목",
+    "deleteBatchCount": "대화 {{count}}개 선택됨"
   },
   "historySearch": {
     "tooltip": "검색",
@@ -87,7 +96,7 @@
     "group": "그룹"
   },
   "dropdown": {
-    "cliAgents": "CLI Agents",
+    "cliAgents": "실행 가능한 Agent",
     "presetAssistants": "프리셋 어시스턴트"
   },
   "group": {
@@ -386,7 +395,11 @@
     }
   },
   "contextUsage": {
-    "contextUsed": "사용된 컨텍스트"
+    "contextUsed": "사용된 컨텍스트",
+    "title": "컨텍스트 사용량 {{percentage}}",
+    "used": "사용됨",
+    "remaining": "남음",
+    "limit": "한도"
   },
   "skill_generator": {
     "title": "스킬/규칙 생성",
@@ -411,10 +424,35 @@
     "preset_registered": "에이전트 프리셋이 성공적으로 등록되었습니다!"
   },
   "header": {
-    "publishAgentEntry": "IM에 게시",
-    "publishAgentEntryHint": "현재 대화를 재사용 가능한 Agent로 정리하고 사용자, 그룹, 토픽 또는 다른 IM 표면에 게시합니다.",
-    "publishAgentAction": "Publish this Agent",
-    "handoffSessionAction": "Continue current session in IM",
+    "publishAgentEntry": "Agent 게시",
+    "publishAgentEntryHint": "현재 대화를 재사용 가능한 Agent로 정리하고 IM 대상에 대한 장기 게시를 관리합니다.",
+    "publishAgentAction": "Agent 게시",
     "publishPrepareFailed": "이 Agent Entry를 준비하지 못했습니다"
+  },
+  "runStatus": {
+    "showDetails": "세부 정보 보기",
+    "hideDetails": "세부 정보 숨기기",
+    "rawTask": "원본 작업",
+    "liveThought": "실시간 사고",
+    "runtimeStats": "실행 통계",
+    "backend": "백엔드",
+    "model": "모델",
+    "mode": "모드",
+    "startedAt": "시작 시각",
+    "elapsed": "경과 시간",
+    "unknown": "알 수 없음",
+    "noThoughtYet": "아직 사고 스트림이 없습니다",
+    "runtimeDisconnected": "에이전트 런타임이 예기치 않게 중단되었습니다. 다시 보내 재시작하세요.",
+    "activeTools": "{{count}}개 도구 실행 중",
+    "phase": {
+      "preparing": "준비 중",
+      "reasoning": "사고 중",
+      "toolRunning": "도구 실행 중",
+      "waitingPermission": "권한 대기 중",
+      "composing": "생성 중",
+      "completed": "완료",
+      "error": "오류"
+    },
+    "activeTools_other": "{{count}}개 도구 실행 중"
   }
 }

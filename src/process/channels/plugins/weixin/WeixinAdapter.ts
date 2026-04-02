@@ -5,9 +5,26 @@
  */
 
 import type { WeixinChatRequest } from './WeixinMonitor';
-import type { IUnifiedIncomingMessage } from '../../types';
+import type { IUnifiedIncomingMessage, IUnifiedPeer } from '../../types';
 
 // ==================== Inbound ====================
+
+function resolveWeixinChatType(conversationId: string): string {
+  if (conversationId.endsWith('@chatroom') || conversationId.startsWith('group_') || conversationId.startsWith('room_')) {
+    return 'group';
+  }
+
+  return 'private';
+}
+
+export function buildWeixinPeer(conversationId: string): IUnifiedPeer {
+  return {
+    key: conversationId,
+    platformChatId: conversationId,
+    scope: 'chat',
+    chatType: resolveWeixinChatType(conversationId),
+  };
+}
 
 /**
  * Convert a WeixinChatRequest to the unified incoming message format.
@@ -15,6 +32,7 @@ import type { IUnifiedIncomingMessage } from '../../types';
  */
 export function toUnifiedIncomingMessage(request: WeixinChatRequest): IUnifiedIncomingMessage {
   const { conversationId, text, attachments } = request;
+  const peer = buildWeixinPeer(conversationId);
   const first = attachments?.[0];
   const contentType =
     first?.kind === 'image'
@@ -30,7 +48,8 @@ export function toUnifiedIncomingMessage(request: WeixinChatRequest): IUnifiedIn
   return {
     id: conversationId,
     platform: 'weixin',
-    chatId: conversationId,
+    chatId: peer.platformChatId,
+    peer,
     user: {
       id: conversationId,
       displayName: conversationId.slice(-6),

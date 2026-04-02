@@ -42,7 +42,9 @@ vi.mock('@/common', () => ({
       },
       listFiles: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.listFiles = fn)) },
       syncNow: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.syncNow = fn)) },
-      listStoredFiles: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.listStoredFiles = fn)) },
+      listStoredFiles: {
+        provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.listStoredFiles = fn)),
+      },
       statusChanged: { emit: emitters.statusChanged },
     },
   },
@@ -95,13 +97,20 @@ describe('googleDriveConnectorBridge', () => {
       data: { clientId: 'google-client-id.apps.googleusercontent.com' },
     });
     await expect(handlers.start?.({})).resolves.toEqual({ success: true, data: { lifecycle: 'running' } });
-    expect(emitters.statusChanged).toHaveBeenCalledWith({ lifecycle: 'running', fileCount: 0, storeDir: '/tmp/google-drive' });
+    expect(emitters.statusChanged).toHaveBeenCalledWith({
+      lifecycle: 'running',
+      fileCount: 0,
+      storeDir: '/tmp/google-drive',
+    });
   });
-
 
   it('syncs files into store and returns stored file list', async () => {
     mockService.listFiles.mockResolvedValueOnce([{ id: 'file-1', name: 'Roadmap' }]);
-    mockStoreService.syncFiles.mockResolvedValueOnce({ storedCount: 1, syncedAt: '2026-03-30T11:00:00.000Z', storeDir: '/tmp/google-drive' });
+    mockStoreService.syncFiles.mockResolvedValueOnce({
+      storedCount: 1,
+      syncedAt: '2026-03-30T11:00:00.000Z',
+      storeDir: '/tmp/google-drive',
+    });
     mockService.getStatus.mockResolvedValueOnce({ lifecycle: 'stopped' });
     mockStoreService.getStats.mockResolvedValueOnce({ fileCount: 1, storeDir: '/tmp/google-drive' });
     mockStoreService.listStoredFiles.mockResolvedValueOnce([{ recordId: 'rec-1', name: 'Roadmap' }]);

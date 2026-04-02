@@ -44,6 +44,11 @@ export type ExportTask =
   | { mode: 'batch'; conversationIds: string[] }
   | null;
 
+export type DeleteConversationModalState =
+  | { kind: 'single'; conversation: TChatConversation }
+  | { kind: 'batch'; count: number }
+  | null;
+
 export type ConversationRowProps = {
   conversation: TChatConversation;
   isGenerating: boolean;

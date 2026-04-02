@@ -1,12 +1,18 @@
 .modalBody {
   display: flex;
+  width: 100%;
   min-height: 220px;
+  min-width: 0;
   flex-direction: column;
   gap: 14px;
 }
 
 .filterRail {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
   border-radius: 999px;
   padding: 6px;
@@ -19,19 +25,29 @@
 }
 
 .filterTabs {
-  min-width: max-content;
+  width: 100%;
+  min-width: 0;
 }
 
 .filterTabs :global(.arco-tabs-header) {
   display: flex;
+  min-width: 0;
   gap: 8px;
 }
 
 .filterTabs :global(.arco-tabs-header-wrapper) {
+  min-width: 0;
   justify-content: flex-start;
 }
 
+.filterTabs :global(.arco-tabs-header-scroll) {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .filterTabs :global(.arco-tabs-header-nav-rounded) {
+  display: inline-flex;
+  min-width: max-content;
   padding: 0;
 }
 
@@ -80,6 +96,7 @@
 .sessionsList {
   display: flex;
   max-height: 420px;
+  min-width: 0;
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
@@ -89,6 +106,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
   border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
   border-radius: 24px;
   padding: 16px 18px;
@@ -131,6 +149,7 @@
 .groupList {
   display: flex;
   max-height: 420px;
+  min-width: 0;
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
@@ -141,6 +160,7 @@
   cursor: pointer;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
   border-radius: 22px;
   padding: 14px 16px;
@@ -172,6 +192,7 @@
 }
 
 .groupChildren {
+  min-width: 0;
   margin-left: 12px;
   padding-left: 18px;
   border-left: 1px solid color-mix(in srgb, var(--border-base) 56%, transparent);

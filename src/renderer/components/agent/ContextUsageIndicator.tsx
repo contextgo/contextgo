@@ -9,8 +9,6 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { TokenUsageData } from '@/common/config/storage';
-
-// 从 modelContextLimits 导入默认上下文限制
 import { DEFAULT_CONTEXT_LIMIT } from '@/renderer/utils/model/modelContextLimits';
 
 interface ContextUsageIndicatorProps {
@@ -28,69 +26,85 @@ const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const { percentage, displayTotal, displayLimit, isWarning, isDanger } = useMemo(() => {
+  const { percentage, percentageLabel, displayTotal, displayLimit, displayRemaining, isWarning, isDanger } = useMemo(() => {
     if (!tokenUsage) {
       return {
         percentage: 0,
+        percentageLabel: '0.0%',
         displayTotal: '0',
         displayLimit: formatTokenCount(contextLimit, true),
+        displayRemaining: formatTokenCount(contextLimit, true),
         isWarning: false,
         isDanger: false,
       };
     }
 
-    const total = tokenUsage.totalTokens;
-    const pct = (total / contextLimit) * 100;
+    const total = Math.max(tokenUsage.totalTokens, 0);
+    const safeLimit = Math.max(contextLimit, 1);
+    const rawPercentage = (total / safeLimit) * 100;
+    const boundedPercentage = Math.min(rawPercentage, 100);
+    const remaining = Math.max(safeLimit - total, 0);
 
     return {
-      percentage: pct,
+      percentage: boundedPercentage,
+      percentageLabel: `${rawPercentage.toFixed(1)}%`,
       displayTotal: formatTokenCount(total),
-      displayLimit: formatTokenCount(contextLimit, true),
-      isWarning: pct > 70,
-      isDanger: pct > 90,
+      displayLimit: formatTokenCount(safeLimit, true),
+      displayRemaining: formatTokenCount(remaining, true),
+      isWarning: rawPercentage > 70,
+      isDanger: rawPercentage > 90,
     };
   }, [tokenUsage, contextLimit]);
 
-  // 如果没有 token 数据，不显示
   if (!tokenUsage) {
     return null;
   }
 
-  // 计算圆环参数
   const strokeWidth = 2.5;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-  // 根据状态获取颜色
   const getStrokeColor = () => {
     if (isDanger) return 'rgb(var(--danger-6))';
     if (isWarning) return 'rgb(var(--warning-6))';
     return 'rgb(var(--primary-6))';
   };
 
-  // 背景圆环颜色 - 适配深浅主题
   const getTrackColor = () => {
     return 'var(--color-fill-3)';
   };
 
   const popoverContent = (
-    <div className='p-8px min-w-160px'>
+    <div className='min-w-220px rounded-14px border border-[var(--color-border-2)] bg-[color-mix(in_srgb,var(--color-bg-1)_94%,var(--color-fill-1)_6%)] p-12px shadow-[0_14px_34px_rgba(15,23,42,0.14)] backdrop-blur-[14px]'>
       <div className='text-14px font-medium text-t-primary'>
-        {percentage.toFixed(1)}% · {displayTotal} / {displayLimit}{' '}
-        {t('conversation.contextUsage.contextUsed', 'context used')}
+        {t('conversation.contextUsage.title', { percentage: percentageLabel })}
+      </div>
+      <div className='mt-8px grid grid-cols-[auto_1fr] gap-x-12px gap-y-4px text-13px leading-20px'>
+        <span className='text-t-secondary'>{t('conversation.contextUsage.used')}</span>
+        <span className='text-right text-t-primary'>{displayTotal}</span>
+        <span className='text-t-secondary'>{t('conversation.contextUsage.remaining')}</span>
+        <span className='text-right text-t-primary'>{displayRemaining}</span>
+        <span className='text-t-secondary'>{t('conversation.contextUsage.limit')}</span>
+        <span className='text-right text-t-primary'>{displayLimit}</span>
       </div>
     </div>
   );
 
   return (
-    <Popover content={popoverContent} position='top' trigger='hover' className='context-usage-popover'>
+    <Popover
+      content={popoverContent}
+      position='top'
+      trigger='hover'
+      className='context-usage-popover'
+      triggerProps={{ popupStyle: { padding: 0, background: 'transparent', boxShadow: 'none', borderRadius: 16 } }}
+    >
       <div
         className={`context-usage-indicator cursor-pointer flex items-center justify-center ${className}`}
         style={{ width: size, height: size }}
+        aria-label={t('conversation.contextUsage.title', { percentage: percentageLabel })}
       >
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
-          {/* 背景圆环 */}
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -99,7 +113,6 @@ const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
             stroke={getTrackColor()}
             strokeWidth={strokeWidth}
           />
-          {/* 进度圆环 */}
           <circle
             cx={size / 2}
             cy={size / 2}

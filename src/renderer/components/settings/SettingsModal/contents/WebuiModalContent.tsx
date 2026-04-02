@@ -4,14 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
-import { cloud, shell, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
-import { ConfigStorage } from '@/common/config/storage';
+import { CONTEXTGO_AUTH_BASE_URL, WEBUI_DEFAULT_PORT } from '@/common/config/constants';
+import { cloud, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
 import { getPublicDocsUrl, PUBLIC_DOC_SLUGS } from '@/common/update/publicUrls';
-import ContextGoModal from '@/renderer/components/base/ContextGoModal';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
-import { isElectronDesktop } from '@/renderer/utils/platform';
+import { SettingsSubModal } from '@/renderer/components/settings';
+import { openExternalUrl } from '@/renderer/utils/platform';
 import { Button, Form, Input, Message, Switch, Tooltip } from '@arco-design/web-react';
 import { CheckOne, Copy, Earth, EditTwo, LinkCloud, Refresh } from '@icon-park/react';
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
@@ -45,9 +44,11 @@ const QRCodeSVGLazy = React.lazy(async () => {
   return { default: mod.QRCodeSVG };
 });
 
-const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
-const DESKTOP_WEBUI_ALLOW_REMOTE_KEY = 'webui.desktop.allowRemote';
-const OFFICIAL_REMOTE_URL = 'https://remote.contextgo.io/';
+const buildOfficialRemoteUrl = (authBaseUrl?: string): string => {
+  const normalizedBaseUrl = authBaseUrl?.trim().replace(/\/+$/, '') || CONTEXTGO_AUTH_BASE_URL.replace(/\/+$/, '');
+  return `${normalizedBaseUrl}/remote/devices`;
+};
+
 const CLOUD_REMOTE_PROVIDERS: CloudAuthProviderId[] = ['github', 'google'];
 
 /**
@@ -59,15 +60,10 @@ const WebuiModalContent: React.FC = () => {
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
 
-  // 检测是否在 Electron 桌面环境 / Check if running in Electron desktop environment
-  const isDesktop = isElectronDesktop();
-
   const [status, setStatus] = useState<IWebUIStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [startLoading, setStartLoading] = useState(false);
   const port = WEBUI_DEFAULT_PORT;
-  const [webuiEnabled, setWebuiEnabled] = useState(false);
-  const [allowRemotePreference, setAllowRemotePreference] = useState(false);
   const [cachedIP, setCachedIP] = useState<string | null>(null);
   const [cachedPassword, setCachedPassword] = useState<string | null>(null);
   // 标记密码是否可以明文显示（首次启动且未复制过）/ Flag for plaintext password display (first startup and not copied)
@@ -89,28 +85,16 @@ const WebuiModalContent: React.FC = () => {
   const [cloudStatus, setCloudStatus] = useState<CloudStatus | null>(null);
   const [cloudLoading, setCloudLoading] = useState(true);
   const [cloudAuthLoadingProvider, setCloudAuthLoadingProvider] = useState<CloudAuthProviderId | null>(null);
+  const [officialRemotePreparing, setOfficialRemotePreparing] = useState(false);
+  const webuiEnabled = status?.localAccessEnabled ?? false;
+  const allowRemotePreference = status?.localAccessAllowRemote ?? false;
 
   // 加载状态 / Load status
   const loadStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const [savedEnabled, savedAllowRemote] = await Promise.all([
-        ConfigStorage.get(DESKTOP_WEBUI_ENABLED_KEY).catch(() => false),
-        ConfigStorage.get(DESKTOP_WEBUI_ALLOW_REMOTE_KEY).catch(() => false),
-      ]);
-      setWebuiEnabled(savedEnabled === true);
-      setAllowRemotePreference(savedAllowRemote === true);
-
-      let result: { success: boolean; data?: IWebUIStatus } | null = null;
-
-      // 优先使用直接 IPC（Electron 环境）/ Prefer direct IPC (Electron environment)
-      if (window.electronAPI?.webuiGetStatus) {
-        result = await window.electronAPI.webuiGetStatus();
-      } else {
-        // 后备方案：使用 bridge（减少超时）/ Fallback: use bridge (reduced timeout)
-        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
-        result = await Promise.race([webui.getStatus.invoke(), timeoutPromise]);
-      }
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
+      const result = await Promise.race([webui.getStatus.invoke(), timeoutPromise]);
 
       if (result && result.success && result.data) {
         setStatus(result.data);
@@ -138,6 +122,8 @@ const WebuiModalContent: React.FC = () => {
               allowRemote: false,
               localUrl: `http://localhost:${WEBUI_DEFAULT_PORT}`,
               adminUsername: 'admin',
+              localAccessEnabled: false,
+              localAccessAllowRemote: false,
             }
         );
       }
@@ -153,11 +139,6 @@ const WebuiModalContent: React.FC = () => {
   }, [loadStatus]);
 
   const refreshCloudStatus = useCallback(async () => {
-    if (!isDesktop) {
-      setCloudLoading(false);
-      return;
-    }
-
     setCloudLoading(true);
     try {
       const result = await cloud.getStatus.invoke();
@@ -169,14 +150,10 @@ const WebuiModalContent: React.FC = () => {
     } finally {
       setCloudLoading(false);
     }
-  }, [isDesktop]);
+  }, []);
 
   useEffect(() => {
     void refreshCloudStatus();
-
-    if (!isDesktop) {
-      return;
-    }
 
     const unsubscribe = cloud.statusChanged.on((nextStatus) => {
       setCloudStatus(nextStatus);
@@ -186,14 +163,18 @@ const WebuiModalContent: React.FC = () => {
     return () => {
       unsubscribe();
     };
-  }, [isDesktop, refreshCloudStatus]);
+  }, [refreshCloudStatus]);
 
   // 监听状态变更事件 / Listen to status change events
   useEffect(() => {
     const unsubscribe = webui.statusChanged.on((data) => {
       if (data.running) {
         setStatus((prev) => ({
-          ...(prev || { adminUsername: 'admin' }),
+          ...(prev || {
+            adminUsername: 'admin',
+            localAccessEnabled: false,
+            localAccessAllowRemote: false,
+          }),
           running: true,
           port: data.port ?? prev?.port ?? WEBUI_DEFAULT_PORT,
           allowRemote: prev?.allowRemote ?? false,
@@ -201,6 +182,8 @@ const WebuiModalContent: React.FC = () => {
           networkUrl: data.networkUrl,
           lanIP: prev?.lanIP,
           initialPassword: prev?.initialPassword,
+          localAccessEnabled: prev?.localAccessEnabled ?? false,
+          localAccessAllowRemote: prev?.localAccessAllowRemote ?? false,
         }));
         if (data.networkUrl) {
           const match = data.networkUrl.match(/http:\/\/([^:]+):/);
@@ -272,7 +255,18 @@ const WebuiModalContent: React.FC = () => {
 
     // 立即显示 loading / Immediately show loading
     setStartLoading(true);
-    setWebuiEnabled(enabled);
+    setStatus((prev) => ({
+      ...(prev || {
+        running: false,
+        port,
+        allowRemote: false,
+        localUrl: `http://localhost:${port}`,
+        adminUsername: 'admin',
+        localAccessEnabled: false,
+        localAccessAllowRemote: allowRemotePreference,
+      }),
+      localAccessEnabled: enabled,
+    }));
 
     try {
       if (enabled) {
@@ -295,7 +289,11 @@ const WebuiModalContent: React.FC = () => {
           }
 
           setStatus((prev) => ({
-            ...(prev || { adminUsername: 'admin' }),
+            ...(prev || {
+              adminUsername: 'admin',
+              localAccessEnabled: true,
+              localAccessAllowRemote: allowRemotePreference,
+            }),
             running: true,
             port,
             allowRemote: allowRemotePreference,
@@ -303,10 +301,16 @@ const WebuiModalContent: React.FC = () => {
             networkUrl: allowRemotePreference && responseIP ? `http://${responseIP}:${port}` : undefined,
             lanIP: responseIP,
             initialPassword: responsePassword || cachedPassword || prev?.initialPassword,
+            localAccessEnabled: true,
+            localAccessAllowRemote: allowRemotePreference,
           }));
         } else {
           setStatus((prev) => ({
-            ...(prev || { adminUsername: 'admin' }),
+            ...(prev || {
+              adminUsername: 'admin',
+              localAccessEnabled: true,
+              localAccessAllowRemote: allowRemotePreference,
+            }),
             running: true,
             port,
             allowRemote: allowRemotePreference,
@@ -314,22 +318,21 @@ const WebuiModalContent: React.FC = () => {
             lanIP: currentIP || prev?.lanIP,
             networkUrl: allowRemotePreference && currentIP ? `http://${currentIP}:${port}` : undefined,
             initialPassword: cachedPassword || prev?.initialPassword,
+            localAccessEnabled: true,
+            localAccessAllowRemote: allowRemotePreference,
           }));
         }
 
-        // 启动成功后再持久化 / Persist only after successful start
-        await ConfigStorage.set(DESKTOP_WEBUI_ENABLED_KEY, true);
         Message.success(t('settings.webui.startSuccess'));
       } else {
         // 立即更新UI，异步停止服务器 / Update UI immediately, stop server async
-        setStatus((prev) => (prev ? { ...prev, running: false } : null));
-        await ConfigStorage.set(DESKTOP_WEBUI_ENABLED_KEY, false);
+        setStatus((prev) => (prev ? { ...prev, running: false, localAccessEnabled: false } : null));
         Message.success(t('settings.webui.stopSuccess'));
         webui.stop.invoke().catch((err) => console.error('WebUI stop error:', err));
       }
     } catch (error) {
       // 回滚 UI 状态 / Rollback UI state
-      setWebuiEnabled(previousEnabled);
+      setStatus((prev) => (prev ? { ...prev, localAccessEnabled: previousEnabled } : prev));
       console.error('Toggle WebUI error:', error);
       Message.error(t('settings.webui.operationFailed'));
     } finally {
@@ -342,7 +345,7 @@ const WebuiModalContent: React.FC = () => {
   const handleAllowRemoteChange = async (checked: boolean) => {
     // 保存原始值用于回滚 / Save original value for rollback
     const previousAllowRemote = allowRemotePreference;
-    setAllowRemotePreference(checked);
+    setStatus((prev) => (prev ? { ...prev, localAccessAllowRemote: checked } : prev));
 
     const wasRunning = status?.running;
 
@@ -372,7 +375,11 @@ const WebuiModalContent: React.FC = () => {
           if (responsePassword) setCachedPassword(responsePassword);
 
           setStatus((prev) => ({
-            ...(prev || { adminUsername: 'admin' }),
+            ...(prev || {
+              adminUsername: 'admin',
+              localAccessEnabled: true,
+              localAccessAllowRemote: checked,
+            }),
             running: true,
             port,
             allowRemote: checked,
@@ -380,23 +387,18 @@ const WebuiModalContent: React.FC = () => {
             networkUrl: checked && responseIP ? `http://${responseIP}:${port}` : undefined,
             lanIP: responseIP,
             initialPassword: responsePassword || cachedPassword || prev?.initialPassword,
+            localAccessEnabled: true,
+            localAccessAllowRemote: checked,
           }));
 
-          // 成功后再持久化 / Persist only after success
-          await ConfigStorage.set(DESKTOP_WEBUI_ALLOW_REMOTE_KEY, checked);
           Message.success(t('settings.webui.restartSuccess'));
         } else {
           // 响应为空或失败，但服务器可能已启动，检查状态
           // Response is null or failed, but server might have started, check status
-          let statusResult: { success: boolean; data?: IWebUIStatus } | null = null;
-          if (window.electronAPI?.webuiGetStatus) {
-            statusResult = await window.electronAPI.webuiGetStatus();
-          } else {
-            statusResult = await Promise.race([
-              webui.getStatus.invoke(),
-              new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
-            ]);
-          }
+          const statusResult = await Promise.race([
+            webui.getStatus.invoke(),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+          ]);
 
           if (statusResult?.success && statusResult?.data?.running) {
             // 服务器实际上已启动 / Server actually started
@@ -404,19 +406,18 @@ const WebuiModalContent: React.FC = () => {
             if (responseIP) setCachedIP(responseIP);
 
             setStatus(statusResult.data);
-            // 成功后再持久化 / Persist only after success
-            await ConfigStorage.set(DESKTOP_WEBUI_ALLOW_REMOTE_KEY, checked);
             Message.success(t('settings.webui.restartSuccess'));
           } else {
             // 真的启动失败，回滚 / Really failed to start, rollback
-            setAllowRemotePreference(previousAllowRemote);
+            setStatus((prev) =>
+              prev ? { ...prev, running: false, localAccessAllowRemote: previousAllowRemote } : prev
+            );
             Message.error(t('settings.webui.operationFailed'));
-            setStatus((prev) => (prev ? { ...prev, running: false } : null));
           }
         }
       } catch (error) {
         // 回滚 UI 状态 / Rollback UI state
-        setAllowRemotePreference(previousAllowRemote);
+        setStatus((prev) => (prev ? { ...prev, localAccessAllowRemote: previousAllowRemote } : prev));
         console.error('[WebuiModal] Restart error:', error);
         Message.error(t('settings.webui.operationFailed'));
       } finally {
@@ -425,36 +426,18 @@ const WebuiModalContent: React.FC = () => {
     } else {
       // 服务器未运行，直接持久化 / Server not running, persist directly
       try {
-        await ConfigStorage.set(DESKTOP_WEBUI_ALLOW_REMOTE_KEY, checked);
-
-        // 获取 IP 用于显示 / Get IP for display
-        let newIP: string | undefined;
-        try {
-          if (window.electronAPI?.webuiGetStatus) {
-            const result = await window.electronAPI.webuiGetStatus();
-            if (result?.success && result?.data?.lanIP) {
-              newIP = result.data.lanIP;
-              setCachedIP(newIP);
-            }
-          }
-        } catch {
-          // ignore
+        const result = await webui.updatePreferences.invoke({ allowRemote: checked, port });
+        if (!result.success || !result.data) {
+          throw new Error(result.msg || t('settings.webui.operationFailed'));
         }
 
-        const existingIP = newIP || cachedIP || status?.lanIP;
-        setStatus((prev) =>
-          prev
-            ? {
-                ...prev,
-                allowRemote: checked,
-                lanIP: existingIP || prev.lanIP,
-                networkUrl: checked && existingIP ? `http://${existingIP}:${port}` : undefined,
-              }
-            : null
-        );
+        if (result.data.lanIP) {
+          setCachedIP(result.data.lanIP);
+        }
+        setStatus(result.data);
       } catch (error) {
         // 回滚 UI 状态 / Rollback UI state
-        setAllowRemotePreference(previousAllowRemote);
+        setStatus((prev) => (prev ? { ...prev, localAccessAllowRemote: previousAllowRemote } : prev));
         console.error('[WebuiModal] Failed to persist allowRemote:', error);
         Message.error(t('settings.webui.operationFailed'));
       }
@@ -486,17 +469,9 @@ const WebuiModalContent: React.FC = () => {
       const values = await form.validate();
       setPasswordLoading(true);
 
-      let result: { success: boolean; msg?: string };
-
-      // 优先使用直接 IPC（Electron 环境）/ Prefer direct IPC (Electron environment)
-      if (window.electronAPI?.webuiChangePassword) {
-        result = await window.electronAPI.webuiChangePassword(values.newPassword);
-      } else {
-        // 后备方案：使用 bridge / Fallback: use bridge
-        result = await webui.changePassword.invoke({
-          newPassword: values.newPassword,
-        });
-      }
+      const result = await webui.changePassword.invoke({
+        newPassword: values.newPassword,
+      });
 
       if (result.success) {
         Message.success(t('settings.webui.passwordChanged'));
@@ -522,15 +497,9 @@ const WebuiModalContent: React.FC = () => {
       const values = await usernameForm.validate();
       setUsernameLoading(true);
 
-      let result: { success: boolean; msg?: string; data?: { username: string } };
-
-      if (window.electronAPI?.webuiChangeUsername) {
-        result = await window.electronAPI.webuiChangeUsername(values.newUsername);
-      } else {
-        result = await webui.changeUsername.invoke({
-          newUsername: values.newUsername,
-        });
-      }
+      const result = await webui.changeUsername.invoke({
+        newUsername: values.newUsername,
+      });
 
       const nextUsername = result.data?.username ?? values.newUsername.trim();
       if (result.success) {
@@ -555,19 +524,7 @@ const WebuiModalContent: React.FC = () => {
 
     setQrLoading(true);
     try {
-      // 优先使用直接 IPC（Electron 环境）/ Prefer direct IPC (Electron environment)
-      let result: {
-        success: boolean;
-        data?: { token: string; expiresAt: number; qrUrl: string };
-        msg?: string;
-      } | null = null;
-
-      if (window.electronAPI?.webuiGenerateQRToken) {
-        result = await window.electronAPI.webuiGenerateQRToken();
-      } else {
-        // 后备方案：使用 bridge / Fallback: use bridge
-        result = await webui.generateQRToken.invoke();
-      }
+      const result = await webui.generateQRToken.invoke();
 
       if (result && result.success && result.data) {
         setQrUrl(result.data.qrUrl);
@@ -642,13 +599,33 @@ const WebuiModalContent: React.FC = () => {
   const displayPassword = getDisplayPassword();
   const displayUsername = status?.adminUsername || 'admin';
   const officialRemoteStatus = cloudStatus?.officialRemote;
-  const officialRemoteRunning = officialRemoteStatus?.running === true;
+  const officialRemoteRelayRunning = officialRemoteStatus?.running === true;
+  const officialRemoteBrowserEntryReady = officialRemoteStatus?.browserEntryReady === true;
+  const officialRemoteReady =
+    cloudStatus?.officialRemoteReady === true || (officialRemoteRelayRunning && officialRemoteBrowserEntryReady);
   const officialRemoteNeedsLink = Boolean(cloudStatus?.user) && !cloudStatus?.deviceTokenAvailable;
-  const officialRemoteStatusText = officialRemoteRunning
+  const officialRemoteNeedsRelogin = officialRemoteStatus?.needsAttention === true;
+  const officialRemoteSetupInProgress =
+    Boolean(cloudStatus?.user) &&
+    cloudStatus?.deviceTokenAvailable &&
+    officialRemoteRelayRunning &&
+    !officialRemoteBrowserEntryReady;
+  const officialRemoteRelayConnecting =
+    Boolean(cloudStatus?.user) &&
+    cloudStatus?.deviceTokenAvailable &&
+    officialRemoteStatus?.desired === true &&
+    !officialRemoteRelayRunning;
+  const officialRemoteStatusText = officialRemoteReady
     ? t('settings.webui.officialRemoteDeviceReady')
-    : officialRemoteNeedsLink
-      ? t('settings.webui.officialRemoteDevicePending')
-      : officialRemoteStatus?.message || t('settings.webui.officialRemoteDevicePending');
+    : officialRemoteNeedsRelogin
+      ? t('settings.webui.officialRemoteNeedsRelogin')
+      : officialRemoteNeedsLink
+        ? t('settings.webui.officialRemoteDevicePending')
+        : officialRemoteSetupInProgress
+          ? t('settings.webui.officialRemotePreparing')
+          : officialRemoteRelayConnecting
+            ? t('settings.webui.officialRemoteConnecting')
+            : t('settings.webui.officialRemoteUnavailable');
 
   const handleCloudLogin = useCallback(
     async (provider: CloudAuthProviderId) => {
@@ -673,28 +650,41 @@ const WebuiModalContent: React.FC = () => {
     [t]
   );
 
-  const handleOpenOfficialRemote = useCallback(() => {
-    shell.openExternal.invoke(OFFICIAL_REMOTE_URL).catch(console.error);
-  }, []);
+  const handlePrepareOfficialRemote = useCallback(async () => {
+    setOfficialRemotePreparing(true);
+    try {
+      const result = await cloud.ensureOfficialRemoteReady.invoke();
+      if (result.success && result.data) {
+        setCloudStatus(result.data);
+        return result.data;
+      }
 
-  // 浏览器端：Remote 页面只显示不支持提示
-  if (!isDesktop) {
-    return (
-      <div className='flex flex-col h-full w-full'>
-        <ContextGoScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
-          <div className='space-y-10px px-[12px] md:px-[28px]'>
-            <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.webui')}</h2>
-            <div className='rd-12px border border-line bg-2 px-14px py-14px space-y-6px'>
-              <div className='text-14px font-500 text-t-primary'>{t('settings.webui.browserNotSupported')}</div>
-              <div className='text-13px text-t-secondary leading-relaxed'>
-                {t('settings.webui.browserNotSupportedDesc')}
-              </div>
-            </div>
-          </div>
-        </ContextGoScrollArea>
-      </div>
-    );
-  }
+      throw new Error(result.msg || t('settings.cloud.actionFailed'));
+    } catch (error) {
+      console.error('[WebuiModal] Failed to prepare Official Remote:', error);
+      Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
+      return null;
+    } finally {
+      setOfficialRemotePreparing(false);
+    }
+  }, [t]);
+
+  const officialRemoteUrl = buildOfficialRemoteUrl(cloudStatus?.authBaseUrl);
+
+  const handleOpenOfficialRemote = useCallback(async () => {
+    const latestStatus = officialRemoteReady ? cloudStatus : await handlePrepareOfficialRemote();
+    if (!latestStatus?.officialRemoteReady) {
+      Message.error(officialRemoteStatusText);
+      return;
+    }
+
+    try {
+      await openExternalUrl(officialRemoteUrl);
+    } catch (error) {
+      console.error('[WebuiModal] Failed to open Official Remote:', error);
+      Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
+    }
+  }, [cloudStatus, handlePrepareOfficialRemote, officialRemoteReady, officialRemoteStatusText, officialRemoteUrl, t]);
 
   const webuiPanel = (
     <ContextGoScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
@@ -752,13 +742,14 @@ const WebuiModalContent: React.FC = () => {
                     name: cloudStatus.user.displayName || cloudStatus.user.username,
                   })}
                 </div>
+                <div className='text-12px text-t-tertiary'>{t('settings.webui.officialRemoteRuntimeHint')}</div>
                 <div className='text-12px text-t-secondary'>{officialRemoteStatusText}</div>
                 <div className='flex flex-wrap gap-8px'>
                   <Button
                     type='primary'
-                    onClick={handleOpenOfficialRemote}
-                    disabled={!officialRemoteRunning}
-                    title={!officialRemoteRunning ? officialRemoteStatusText : undefined}
+                    onClick={() => void handleOpenOfficialRemote()}
+                    loading={officialRemotePreparing}
+                    title={!officialRemoteReady ? officialRemoteStatusText : undefined}
                   >
                     {t('settings.webui.openOfficialRemote')}
                   </Button>
@@ -802,7 +793,7 @@ const WebuiModalContent: React.FC = () => {
             extra={
               startLoading ? (
                 <span className='text-12px text-warning'>{t('settings.webui.starting')}</span>
-              ) : status?.running ? (
+              ) : status?.running && webuiEnabled ? (
                 <span className='text-12px text-success'>✓ {t('settings.webui.running')}</span>
               ) : null
             }
@@ -810,23 +801,25 @@ const WebuiModalContent: React.FC = () => {
             <Switch checked={webuiEnabled} loading={startLoading} onChange={handleToggle} />
           </PreferenceRow>
 
-          {/* 访问地址（仅运行时显示）/ Access URL (only when running) */}
-          {status?.running && (
+          {/* 访问地址（仅本地/自托管启用且运行时显示）/ Access URL (only when local/self-hosted access is enabled and running) */}
+          {status?.running && webuiEnabled && (
             <PreferenceRow label={t('settings.webui.accessUrl')}>
               <div className='flex items-center gap-8px min-w-0'>
-                <button
-                  className='text-14px text-primary font-mono hover:underline cursor-pointer bg-transparent border-none p-0 truncate'
-                  onClick={() => shell.openExternal.invoke(getDisplayUrl()).catch(console.error)}
+                <Button
+                  type='text'
+                  className='!px-0 !min-w-0 !h-auto text-14px text-primary font-mono truncate'
+                  onClick={() => void openExternalUrl(getDisplayUrl())}
                 >
                   {getDisplayUrl()}
-                </button>
+                </Button>
                 <Tooltip content={t('common.copy')}>
-                  <button
-                    className='p-4px text-t-tertiary hover:text-t-primary cursor-pointer bg-transparent border-none'
+                  <Button
+                    type='text'
+                    className='!p-4px text-t-tertiary hover:text-t-primary'
                     onClick={() => handleCopy(getDisplayUrl())}
                   >
                     <Copy size={16} />
-                  </button>
+                  </Button>
                 </Tooltip>
               </div>
             </PreferenceRow>
@@ -842,9 +835,7 @@ const WebuiModalContent: React.FC = () => {
                 <button
                   className='text-primary hover:underline cursor-pointer bg-transparent border-none p-0 text-12px'
                   onClick={() =>
-                    shell.openExternal
-                      .invoke(getPublicDocsUrl(i18n.language, PUBLIC_DOC_SLUGS.remoteAccess))
-                      .catch(console.error)
+                    void openExternalUrl(getPublicDocsUrl(i18n.language, PUBLIC_DOC_SLUGS.remoteAccess))
                   }
                 >
                   {t('settings.webui.viewGuide')}
@@ -870,6 +861,7 @@ const WebuiModalContent: React.FC = () => {
                   type='text'
                   size='mini'
                   className='rd-100px !px-6px inline-flex items-center !h-24px'
+                  aria-label={t('common.copy')}
                   onClick={() => handleCopy(displayUsername)}
                 >
                   <Copy size={14} />
@@ -880,6 +872,7 @@ const WebuiModalContent: React.FC = () => {
                   type='text'
                   size='mini'
                   className='rd-100px !px-6px inline-flex items-center !h-24px'
+                  aria-label={t('settings.webui.editUsernameTooltip')}
                   onClick={handleResetUsername}
                 >
                   <EditTwo size={14} />
@@ -898,6 +891,7 @@ const WebuiModalContent: React.FC = () => {
                   type='text'
                   size='mini'
                   className='rd-100px !px-6px inline-flex items-center !h-24px'
+                  aria-label={t('settings.webui.resetPasswordTooltip')}
                   onClick={handleResetPassword}
                   disabled={resetLoading}
                 >
@@ -908,7 +902,7 @@ const WebuiModalContent: React.FC = () => {
           </div>
 
           {/* 二维码登录（仅服务器运行且允许远程访问时显示）/ QR Code Login (only when server running and remote access allowed) */}
-          {status?.running && status.allowRemote && (
+          {status?.running && webuiEnabled && status.allowRemote && (
             <>
               <div className='border-t border-line my-12px' />
               <div className='text-14px font-500 mb-4px text-t-primary'>{t('settings.webui.qrLogin')}</div>
@@ -977,99 +971,103 @@ const WebuiModalContent: React.FC = () => {
 
   const settingsSubModals = (
     <>
-      <ContextGoModal
+      <SettingsSubModal
         visible={setUsernameModalVisible}
         onCancel={() => setSetUsernameModalVisible(false)}
-        onOk={handleSetNewUsername}
-        confirmLoading={usernameLoading}
+        style={{ width: 'min(440px, calc(100vw - 32px))' }}
         title={t('settings.webui.setNewUsername')}
-        size='small'
+        onOk={() => void handleSetNewUsername()}
+        confirmLoading={usernameLoading}
       >
-        <Form form={usernameForm} layout='vertical' className='pt-16px'>
-          <Form.Item
-            label={t('settings.webui.newUsername')}
-            field='newUsername'
-            rules={[
-              { required: true, message: t('settings.webui.newUsernameRequired') },
-              {
-                validator: (value, callback) => {
-                  if (typeof value !== 'string') {
+        <div className='w-full'>
+          <Form form={usernameForm} layout='vertical' className='w-full'>
+            <Form.Item
+              label={t('settings.webui.newUsername')}
+              field='newUsername'
+              rules={[
+                { required: true, message: t('settings.webui.newUsernameRequired') },
+                {
+                  validator: (value, callback) => {
+                    if (typeof value !== 'string') {
+                      callback();
+                      return;
+                    }
+
+                    const trimmed = value.trim();
+                    if (trimmed.length < 3) {
+                      callback(t('settings.webui.usernameMinLength'));
+                      return;
+                    }
+                    if (trimmed.length > 32) {
+                      callback(t('settings.webui.usernameMaxLength'));
+                      return;
+                    }
+                    if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+                      callback(t('settings.webui.usernameFormatError'));
+                      return;
+                    }
+                    if (/^[_-]|[_-]$/.test(trimmed)) {
+                      callback(t('settings.webui.usernameEdgeError'));
+                      return;
+                    }
+
                     callback();
-                    return;
-                  }
-
-                  const trimmed = value.trim();
-                  if (trimmed.length < 3) {
-                    callback(t('settings.webui.usernameMinLength'));
-                    return;
-                  }
-                  if (trimmed.length > 32) {
-                    callback(t('settings.webui.usernameMaxLength'));
-                    return;
-                  }
-                  if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
-                    callback(t('settings.webui.usernameFormatError'));
-                    return;
-                  }
-                  if (/^[_-]|[_-]$/.test(trimmed)) {
-                    callback(t('settings.webui.usernameEdgeError'));
-                    return;
-                  }
-
-                  callback();
+                  },
                 },
-              },
-            ]}
-          >
-            <Input placeholder={t('settings.webui.newUsernamePlaceholder')} />
-          </Form.Item>
-        </Form>
-      </ContextGoModal>
+              ]}
+            >
+              <Input placeholder={t('settings.webui.newUsernamePlaceholder')} />
+            </Form.Item>
+          </Form>
+        </div>
+      </SettingsSubModal>
 
-      <ContextGoModal
+      <SettingsSubModal
         visible={setPasswordModalVisible}
         onCancel={() => setSetPasswordModalVisible(false)}
+        style={{ width: 'min(440px, calc(100vw - 32px))' }}
+        title={t('settings.webui.setNewPassword')}
         onOk={() => void handleSetNewPassword()}
         confirmLoading={passwordLoading}
-        title={t('settings.webui.setNewPassword')}
-        size='small'
       >
-        <Form form={form} layout='vertical' className='pt-16px'>
-          <Form.Item
-            label={t('settings.webui.newPassword')}
-            field='newPassword'
-            rules={[
-              { required: true, message: t('settings.webui.newPasswordRequired') },
-              {
-                minLength: 8,
-                message: t('settings.webui.passwordMinLength'),
-              },
-            ]}
-          >
-            <Input.Password placeholder={t('settings.webui.newPasswordPlaceholder')} />
-          </Form.Item>
-
-          <Form.Item
-            label={t('settings.webui.confirmPassword')}
-            field='confirmPassword'
-            rules={[
-              { required: true, message: t('settings.webui.confirmPasswordRequired') },
-              {
-                validator: (value, callback) => {
-                  const nextPassword = form.getFieldValue('newPassword');
-                  if (value && nextPassword && value !== nextPassword) {
-                    callback(t('settings.webui.passwordMismatch'));
-                    return;
-                  }
-                  callback();
+        <div className='w-full'>
+          <Form form={form} layout='vertical' className='w-full'>
+            <Form.Item
+              label={t('settings.webui.newPassword')}
+              field='newPassword'
+              rules={[
+                { required: true, message: t('settings.webui.newPasswordRequired') },
+                {
+                  minLength: 8,
+                  message: t('settings.webui.passwordMinLength'),
                 },
-              },
-            ]}
-          >
-            <Input.Password placeholder={t('settings.webui.confirmPasswordPlaceholder')} />
-          </Form.Item>
-        </Form>
-      </ContextGoModal>
+              ]}
+            >
+              <Input.Password placeholder={t('settings.webui.newPasswordPlaceholder')} />
+            </Form.Item>
+
+            <Form.Item
+              label={t('settings.webui.confirmPassword')}
+              field='confirmPassword'
+              rules={[
+                { required: true, message: t('settings.webui.confirmPasswordRequired') },
+                {
+                  validator: (value, callback) => {
+                    const nextPassword = form.getFieldValue('newPassword');
+                    if (value && nextPassword && value !== nextPassword) {
+                      callback(t('settings.webui.passwordMismatch'));
+                      return;
+                    }
+                    callback();
+                  },
+                },
+              ]}
+            >
+              <Input.Password placeholder={t('settings.webui.confirmPasswordPlaceholder')} />
+            </Form.Item>
+          </Form>
+        </div>
+      </SettingsSubModal>
     </>
   );
 

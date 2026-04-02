@@ -9,6 +9,7 @@ import type {
   IUnifiedIncomingMessage,
   IUnifiedMessageContent,
   IUnifiedOutgoingMessage,
+  IUnifiedPeer,
   IUnifiedUser,
 } from '../../types';
 
@@ -40,6 +41,9 @@ interface LarkMessageEvent {
       message_id?: string;
       chat_id?: string;
       chat_type?: string;
+      root_id?: string;
+      parent_id?: string;
+      thread_id?: string;
       content?: string;
       message_type?: string;
       create_time?: string;
@@ -76,6 +80,33 @@ interface LarkCardActionEvent {
   };
 }
 
+function buildLarkPeer(params: {
+  chatId: string;
+  chatType?: string;
+  rootId?: string;
+  threadId?: string;
+}): IUnifiedPeer {
+  const topicThreadId = params.rootId || params.threadId;
+
+  if (params.chatId && topicThreadId) {
+    return {
+      key: `${params.chatId}:thread:${topicThreadId}`,
+      platformChatId: params.chatId,
+      parentChatId: params.chatId,
+      threadId: topicThreadId,
+      scope: 'thread',
+      chatType: params.chatType === 'topic' ? 'topic' : 'thread',
+    };
+  }
+
+  return {
+    key: params.chatId,
+    platformChatId: params.chatId,
+    scope: 'chat',
+    chatType: params.chatType,
+  };
+}
+
 /**
  * Convert Lark event to unified incoming message
  */
@@ -97,6 +128,9 @@ export function toUnifiedIncomingMessage(
       id: cardEvent.event?.token || Date.now().toString(),
       platform: 'lark',
       chatId,
+      peer: buildLarkPeer({
+        chatId,
+      }),
       user: {
         id: userId,
         displayName: `User ${userId.slice(-6)}`,
@@ -125,11 +159,18 @@ export function toUnifiedIncomingMessage(
   if (!user) return null;
 
   const content = extractMessageContent(message);
+  const chatId = message.chat_id || userId;
 
   return {
     id: message.message_id || Date.now().toString(),
     platform: 'lark',
-    chatId: message.chat_id || userId,
+    chatId,
+    peer: buildLarkPeer({
+      chatId,
+      chatType: message.chat_type,
+      rootId: message.root_id,
+      threadId: message.thread_id,
+    }),
     user,
     content,
     timestamp: message.create_time ? parseInt(message.create_time, 10) : Date.now(),

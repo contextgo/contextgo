@@ -70,7 +70,6 @@ export interface GoogleDriveController {
   getRuntimeDetails(): GoogleDriveRuntimeDetails;
 }
 
-
 const resolveRepoRootCandidates = (): string[] => {
   const cwd = process.cwd();
   return [cwd, path.resolve(cwd, '..'), path.resolve(cwd, '../..')];
@@ -100,7 +99,10 @@ const resolveGoCommand = async (): Promise<string | null> => {
   return null;
 };
 
-const buildRuntimeCommand = (config: GoogleDriveConnectorConfig, goCommand: string): { command: string; args: string[]; cwd?: string } => {
+const buildRuntimeCommand = (
+  config: GoogleDriveConnectorConfig,
+  goCommand: string
+): { command: string; args: string[]; cwd?: string } => {
   const trimmedCommand = config.command.trim();
   if (!trimmedCommand || trimmedCommand === 'go') {
     return {

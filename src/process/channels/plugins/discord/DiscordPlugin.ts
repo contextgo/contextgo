@@ -34,6 +34,10 @@ type DiscordSendableChannel = {
   messages: {
     fetch: (messageId: string) => Promise<Message>;
   };
+  isThread?: () => boolean;
+  threads?: {
+    fetch: (threadId: string) => Promise<DiscordSendableChannel | null>;
+  };
 };
 
 type PendingDiscordAction = {
@@ -137,7 +141,7 @@ export class DiscordPlugin extends BasePlugin {
   }
 
   async sendMessage(chatId: string, message: IUnifiedOutgoingMessage): Promise<string> {
-    const channel = await this.resolveTextChannel(chatId);
+    const channel = await this.resolveTextChannel(chatId, message.threadId);
     this.pruneExpiredActions();
 
     const payload = toDiscordMessagePayload(message, (button) => this.registerActionId(button));
@@ -160,7 +164,7 @@ export class DiscordPlugin extends BasePlugin {
   }
 
   async editMessage(chatId: string, messageId: string, message: IUnifiedOutgoingMessage): Promise<void> {
-    const channel = await this.resolveTextChannel(chatId);
+    const channel = await this.resolveTextChannel(chatId, message.threadId);
     this.pruneExpiredActions();
 
     const payload = toDiscordMessagePayload(message, (button) => this.registerActionId(button));
@@ -264,17 +268,29 @@ export class DiscordPlugin extends BasePlugin {
     }
   }
 
-  private async resolveTextChannel(chatId: string): Promise<DiscordSendableChannel> {
+  private async resolveTextChannel(chatId: string, threadId?: string): Promise<DiscordSendableChannel> {
     if (!this.client) {
       throw new Error('Discord client not initialized');
     }
 
-    const channel = await this.client.channels.fetch(chatId);
-    if (!channel || !channel.isTextBased() || !('send' in channel) || !('messages' in channel)) {
+    const baseChannel = await this.client.channels.fetch(chatId);
+    if (!baseChannel || !baseChannel.isTextBased() || !('send' in baseChannel) || !('messages' in baseChannel)) {
       throw new Error('Discord channel is not text-based');
     }
 
-    return channel as unknown as DiscordSendableChannel;
+    const sendableBaseChannel = baseChannel as unknown as DiscordSendableChannel;
+    if (!threadId) {
+      return sendableBaseChannel;
+    }
+
+    if (typeof sendableBaseChannel.threads?.fetch === 'function') {
+      const threadChannel = await sendableBaseChannel.threads.fetch(threadId);
+      if (threadChannel && (!threadChannel.isThread || threadChannel.isThread()) && 'send' in threadChannel) {
+        return threadChannel;
+      }
+    }
+
+    throw new Error(`Discord thread ${threadId} is not available under channel ${chatId}`);
   }
 
   static async testConnection(

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
-import ContextGoModal from '@/renderer/components/base/ContextGoModal';
+import { SettingsSubModal } from '@/renderer/components/settings';
 
 interface JsonImportModalProps {
   visible: boolean;
@@ -168,20 +168,18 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
   if (!visible) return null;
 
   return (
-    <ContextGoModal
+    <SettingsSubModal
       visible={visible}
       onCancel={onCancel}
       onOk={handleSubmit}
       okButtonProps={{ disabled: !validation.isValid }}
-      header={{ title: server ? t('settings.mcpEditServer') : t('settings.mcpImportFromJSON'), showClose: true }}
+      title={server ? t('settings.mcpEditServer') : t('settings.mcpImportFromJSON')}
       style={{ width: 600, height: 450 }}
       contentStyle={{
-        borderRadius: 16,
         padding: '24px',
-        background: 'var(--bg-1)',
         overflow: 'auto',
         height: 420 - 80,
-      }} // 与“添加模型”弹窗保持统一尺寸 / Keep same size as Add Model modal
+      }}
     >
       <div className='space-y-12px'>
         <div>
@@ -285,7 +283,7 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
           }
         />
       </div>
-    </ContextGoModal>
+    </SettingsSubModal>
   );
 };
 

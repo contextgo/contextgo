@@ -15,7 +15,7 @@ const MAX_QR_RETRIES = 3;
 export interface LoginCallbacks {
   onQR: (qrcodeUrl: string) => void;
   onScanned: () => void;
-  onDone: (result: { accountId: string; botToken: string; baseUrl: string }) => void;
+  onDone: (result: { accountId: string; botToken: string; baseUrl: string; scannerUserId?: string }) => void;
   onError: (error: Error) => void;
 }
 
@@ -67,14 +67,14 @@ async function runLoginFlow(callbacks: LoginCallbacks, signal: AbortSignal): Pro
     }
     if (pollResult === 'aborted') return;
 
-    callbacks.onDone(pollResult as { accountId: string; botToken: string; baseUrl: string });
+    callbacks.onDone(pollResult as { accountId: string; botToken: string; baseUrl: string; scannerUserId?: string });
     return;
   }
 
   callbacks.onError(new Error('QR code expired too many times'));
 }
 
-type PollResult = 'expired' | 'aborted' | { accountId: string; botToken: string; baseUrl: string };
+type PollResult = 'expired' | 'aborted' | { accountId: string; botToken: string; baseUrl: string; scannerUserId?: string };
 
 async function pollQRStatus(qrcode: string, callbacks: LoginCallbacks, signal: AbortSignal): Promise<PollResult> {
   while (!signal.aborted) {
@@ -119,6 +119,7 @@ async function pollQRStatus(qrcode: string, callbacks: LoginCallbacks, signal: A
           accountId: result.ilink_bot_id,
           botToken: result.bot_token,
           baseUrl: result.baseurl || DEFAULT_BASE_URL,
+          scannerUserId: result.ilink_user_id,
         };
     }
   }

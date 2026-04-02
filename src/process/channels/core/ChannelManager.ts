@@ -4,21 +4,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
-  BUILTIN_CHANNEL_TYPES,
-  getBuiltinChannelBotName,
-  getBuiltinChannelByPluginId,
-} from '@/common/config/builtinChannels';
+import { BUILTIN_CHANNEL_TYPES, getBuiltinChannelBotName, isBuiltinChannelType } from '@/common/config/builtinChannels';
+import { uuid } from '@/common/utils';
 import { getDatabase } from '@process/services/database';
 import { ExtensionRegistry } from '@process/extensions';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
 import { ActionExecutor } from '../gateway/ActionExecutor';
 import { PluginManager, registerPlugin } from '../gateway/PluginManager';
 import { PairingService } from '../pairing/PairingService';
-import type { IChannelPluginConfig, PluginType } from '../types';
+import type { IChannelPluginConfig, IConnectorInstance, PluginType } from '../types';
 import { getChannelRouteResolver } from './ChannelRouteResolver';
 import { BUILTIN_CHANNEL_RUNTIME } from './builtinChannelRuntime';
 import { SessionManager } from './SessionManager';
+
+function createChannelAccountId(): string {
+  return `chacct_${uuid(24)}`;
+}
 
 /**
  * ChannelManager - Main orchestrator for the Channel subsystem
@@ -228,6 +229,49 @@ export class ChannelManager {
     await this.pluginManager.startPlugin(config);
   }
 
+  async createChannelAccount(params: {
+    platform: PluginType;
+    name: string;
+  }): Promise<{ success: boolean; data?: { id: string }; error?: string }> {
+    const db = await getDatabase();
+    const now = Date.now();
+    const accountId = createChannelAccountId();
+
+    const result = db.upsertConnectorInstance({
+      id: accountId,
+      platform: params.platform,
+      name: params.name,
+      enabled: false,
+      status: 'stopped',
+      legacyPluginId: accountId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    return { success: true, data: { id: accountId } };
+  }
+
+  private resolveChannelAccountFromRuntimeId(
+    db: Awaited<ReturnType<typeof getDatabase>>,
+    pluginId: string
+  ): IConnectorInstance | null {
+    const direct = db.getConnectorInstance(pluginId);
+    if (direct.success && direct.data) {
+      return direct.data;
+    }
+
+    const legacy = db.getConnectorInstanceByLegacyPluginId(pluginId);
+    if (legacy.success && legacy.data) {
+      return legacy.data;
+    }
+
+    return null;
+  }
+
   /**
    * Enable and start a plugin.
    * Supports both built-in plugins and extension-contributed plugins.
@@ -245,16 +289,13 @@ export class ChannelManager {
     // Get existing plugin or create new one
     const existingResult = db.getChannelPlugin(pluginId);
     const existing = existingResult.data;
-
-    // Resolve plugin type — always derive from pluginId so stale DB records don't cause
-    // "Unknown plugin type" errors after renaming or fixing the type mapping.
-    const builtinChannel = getBuiltinChannelByPluginId(pluginId);
-    const pluginType = (builtinChannel?.type || this.getPluginTypeFromId(pluginId)) as PluginType;
+    const channelAccount = this.resolveChannelAccountFromRuntimeId(db, pluginId);
+    const pluginType = (channelAccount?.platform ?? existing?.type ?? this.getPluginTypeFromId(pluginId)) as PluginType;
     let credentials = existing?.credentials;
     let pluginRuntimeConfig = existing?.config ? { ...existing.config } : {};
 
-    if (builtinChannel) {
-      const builtinResult = BUILTIN_CHANNEL_RUNTIME[builtinChannel.type].buildEnableResult(
+    if (isBuiltinChannelType(pluginType)) {
+      const builtinResult = BUILTIN_CHANNEL_RUNTIME[pluginType].buildEnableResult(
         config,
         existing?.credentials,
         existing?.config
@@ -319,7 +360,7 @@ export class ChannelManager {
     const pluginConfig: IChannelPluginConfig = {
       id: pluginId,
       type: pluginType,
-      name: existing?.name || this.getPluginNameFromId(pluginId),
+      name: existing?.name || channelAccount?.name || this.getPluginNameFromType(pluginType),
       enabled: true,
       credentials,
       config: pluginRuntimeConfig,
@@ -379,9 +420,12 @@ export class ChannelManager {
     token: string,
     extraConfig?: Record<string, string | boolean | undefined>
   ): Promise<{ success: boolean; botUsername?: string; error?: string }> {
-    const builtinChannel = getBuiltinChannelByPluginId(pluginId);
-    if (builtinChannel) {
-      const runtime = BUILTIN_CHANNEL_RUNTIME[builtinChannel.type];
+    const db = await getDatabase();
+    const channelAccount = this.resolveChannelAccountFromRuntimeId(db, pluginId);
+    const pluginType = channelAccount?.platform ?? this.getPluginTypeFromId(pluginId);
+
+    if (isBuiltinChannelType(pluginType)) {
+      const runtime = BUILTIN_CHANNEL_RUNTIME[pluginType];
       if (runtime.testConnection) {
         return await runtime.testConnection(token, extraConfig);
       }
@@ -396,31 +440,29 @@ export class ChannelManager {
    * For built-in plugins, derives from ID prefix. For others, returns the ID as type.
    */
   private getPluginTypeFromId(pluginId: string): PluginType {
-    return getBuiltinChannelByPluginId(pluginId)?.type || pluginId;
+    return pluginId;
   }
 
   /**
-   * Get plugin name from plugin ID.
+   * Get plugin name from channel type.
    * For extension plugins, tries to look up display name from registry.
    */
-  private getPluginNameFromId(pluginId: string): string {
-    const builtinChannel = getBuiltinChannelByPluginId(pluginId);
-    if (builtinChannel) {
-      return getBuiltinChannelBotName(builtinChannel.type);
+  private getPluginNameFromType(pluginType: PluginType): string {
+    if (isBuiltinChannelType(pluginType)) {
+      return getBuiltinChannelBotName(pluginType);
     }
 
-    // Check extension registry for display name
     try {
       const registry = ExtensionRegistry.getInstance();
-      const meta = registry.getChannelPluginMeta(pluginId);
+      const meta = registry.getChannelPluginMeta(pluginType);
       if (meta && typeof meta === 'object' && 'name' in meta) {
         return (meta as { name: string }).name;
       }
     } catch {
       // Registry may not be initialized, fall through
     }
-    const type = this.getPluginTypeFromId(pluginId);
-    return type.charAt(0).toUpperCase() + type.slice(1) + ' Bot';
+
+    return pluginType.charAt(0).toUpperCase() + pluginType.slice(1) + ' Bot';
   }
 
   // ==================== Extension Channel Plugin Registration ====================

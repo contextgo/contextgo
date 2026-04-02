@@ -123,7 +123,9 @@ export function createInMemoryContextEngineDependencies(
           if (!cursor) {
             return true;
           }
-          return item.createdAt > cursor.createdAt || (item.createdAt === cursor.createdAt && item.id !== cursor.operationId);
+          return (
+            item.createdAt > cursor.createdAt || (item.createdAt === cursor.createdAt && item.id !== cursor.operationId)
+          );
         });
       },
       async getLatestCursor(spaceId) {

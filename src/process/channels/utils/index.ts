@@ -6,3 +6,4 @@
 
 export * from './credentialCrypto';
 export * from './actionButtons';
+export * from './agentSelection';

@@ -16,7 +16,7 @@ import {
 } from '@/common/chat/slash/library';
 import { ConfigStorage } from '@/common/config/storage';
 import { uuid } from '@/common/utils';
-import { ContextGoModal } from '@/renderer/components/base';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import SettingsPageWrapper from '@/renderer/pages/settings/components/SettingsPageWrapper';
 import { emitter } from '@/renderer/utils/emitter';
 import { Button, Empty, Input, Message, Switch, Tag, Typography } from '@arco-design/web-react';
@@ -297,7 +297,7 @@ const CommandSettings: React.FC = () => {
   };
 
   return (
-    <SettingsPageWrapper contentClassName='max-w-1080px'>
+    <SettingsPageWrapper>
       {contextHolder}
       <div className='flex flex-col gap-16px'>
         <div className='rounded-20px border border-solid border-[var(--color-border-2)] bg-[var(--color-bg-1)] p-20px'>
@@ -365,35 +365,18 @@ const CommandSettings: React.FC = () => {
         </div>
       </div>
 
-      <ContextGoModal
+      <SettingsSubModal
         visible={editorVisible}
         onCancel={closeEditor}
-        header={{
-          title: editorState.id
+        title={
+          editorState.id
             ? t('settings.commands.editTitle', { name: `/${editorState.name || editorState.id}` })
-            : t('settings.commands.createTitle'),
-          showClose: true,
-          className: 'px-24px pt-20px',
+            : t('settings.commands.createTitle')
+        }
+        onOk={() => {
+          void saveEditor();
         }}
-        footer={{
-          className: 'px-24px pb-20px',
-          render: () => (
-            <div className='flex justify-end gap-10px pt-4px'>
-              <Button onClick={closeEditor} className='min-w-88px px-18px'>
-                {t('common.cancel')}
-              </Button>
-              <Button
-                type='primary'
-                onClick={() => {
-                  void saveEditor();
-                }}
-                className='min-w-104px px-18px'
-              >
-                {t('common.save')}
-              </Button>
-            </div>
-          ),
-        }}
+        okText={t('common.save')}
         style={{ width: 'min(760px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px', maxHeight: 'min(70vh, 720px)', overflow: 'auto' }}
       >
@@ -437,42 +420,34 @@ const CommandSettings: React.FC = () => {
             </Typography.Paragraph>
           )}
         </div>
-      </ContextGoModal>
+      </SettingsSubModal>
 
-      <ContextGoModal
+      <SettingsSubModal
         visible={Boolean(deleteTarget)}
         onCancel={() => setDeleteTarget(null)}
-        header={{
-          title: t('common.confirmDelete'),
-          showClose: true,
-          className: 'px-24px pt-20px',
+        title={t('common.confirmDelete')}
+        onOk={() => {
+          void deleteCommand();
         }}
-        footer={{
-          className: 'px-24px pb-20px',
-          render: () => (
-            <div className='flex justify-end gap-10px pt-4px'>
-              <Button onClick={() => setDeleteTarget(null)} className='min-w-88px px-18px'>
-                {t('common.cancel')}
-              </Button>
-              <Button
-                type='primary'
-                status='danger'
-                onClick={() => {
-                  void deleteCommand();
-                }}
-                className='min-w-104px px-18px'
-              >
-                {t('common.delete')}
-              </Button>
-            </div>
-          ),
-        }}
+        okText={t('common.delete')}
+        okButtonProps={{ status: 'danger' }}
         style={{ width: 'min(440px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <Typography.Paragraph>{t('settings.commands.deleteConfirm')}</Typography.Paragraph>
-        <Typography.Text bold>{deleteTarget ? `/${deleteTarget.name}` : ''}</Typography.Text>
-      </ContextGoModal>
+        <div className='settings-sub-modal__stack'>
+          <p className='settings-sub-modal__lead'>{t('settings.commands.deleteConfirm')}</p>
+          {deleteTarget ? (
+            <div className='settings-sub-modal__entity-card settings-sub-modal__entity-card--danger'>
+              <div className='settings-sub-modal__meta'>
+                <div className='settings-sub-modal__meta-title'>{`/${deleteTarget.name}`}</div>
+                {deleteTarget.description ? (
+                  <div className='settings-sub-modal__meta-description'>{deleteTarget.description}</div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </SettingsSubModal>
     </SettingsPageWrapper>
   );
 };

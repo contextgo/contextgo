@@ -516,8 +516,8 @@ const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
 };
 
 export const ConversationSearchPage: React.FC = () => (
-  <div className='conversation-search-page size-full min-h-0 overflow-hidden p-16px'>
-    <div className='conversation-search-page__shell mx-auto flex min-h-0 w-full max-w-960px overflow-hidden'>
+  <div className='conversation-search-page secondary-page-frame size-full min-h-0 overflow-hidden'>
+    <div className='conversation-search-page__shell secondary-page-inner mx-auto flex min-h-0 w-full overflow-hidden'>
       <ConversationSearchPanel inputAutoFocus />
     </div>
   </div>

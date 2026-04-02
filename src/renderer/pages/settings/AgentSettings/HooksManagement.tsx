@@ -6,10 +6,10 @@
 
 import { ipcBridge } from '@/common';
 import type { HookCategory } from '@/common/types/hookTypes';
-import { ContextGoModal } from '@/renderer/components/base';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import SettingsPageWrapper from '@/renderer/pages/settings/components/SettingsPageWrapper';
 import type { HookInfo } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
-import { Button, Collapse, Empty, Input, Message, Tag, Typography } from '@arco-design/web-react';
+import { Button, Collapse, Empty, Input, Message, Tag } from '@arco-design/web-react';
 import { Delete, FolderOpen, Plus, Search } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -248,7 +248,7 @@ const HooksManagement: React.FC = () => {
   const renderHookCard = (hook: HookInfo, canDelete: boolean) => (
     <div key={hook.name} className={styles.libraryCard}>
       <div className={styles.libraryCardMain}>
-        <div className='flex items-center gap-6px flex-wrap'>
+        <div className={styles.libraryCardHeader}>
           <div className='text-13px font-medium text-t-primary'>{hook.name}</div>
           {hook.isCustom && (
             <Tag size='small' color='orange' className={styles.hookBadgeTag}>
@@ -284,6 +284,11 @@ const HooksManagement: React.FC = () => {
               v{hook.version}
             </Tag>
           )}
+          {hook.events?.map((eventName) => (
+            <Tag key={`${hook.name}-${eventName}`} size='small' color='green' className={styles.hookBadgeTag}>
+              {eventName}
+            </Tag>
+          ))}
         </div>
         {hook.description && <div className='mt-4px text-12px text-t-secondary'>{hook.description}</div>}
         <div className='mt-6px'>
@@ -337,15 +342,6 @@ const HooksManagement: React.FC = () => {
             )}
           </div>
         )}
-        {hook.events && hook.events.length > 0 && (
-          <div className='mt-6px flex flex-wrap gap-4px'>
-            {hook.events.map((eventName) => (
-              <Tag key={`${hook.name}-${eventName}`} size='small' color='green' className={styles.hookBadgeTag}>
-                {eventName}
-              </Tag>
-            ))}
-          </div>
-        )}
       </div>
       <div className={styles.libraryActions}>
         {canConfigureHookOutputRouting(hook) && (
@@ -385,7 +381,7 @@ const HooksManagement: React.FC = () => {
   return (
     <>
       {messageContext}
-      <SettingsPageWrapper contentClassName='max-w-1200px'>
+      <SettingsPageWrapper>
         <div className={styles.pageStack}>
           <div className={styles.heroSurface}>
             <div className={styles.heroRow}>
@@ -468,7 +464,7 @@ const HooksManagement: React.FC = () => {
                 {customHooks.length > 0 && (
                   <Collapse.Item
                     header={
-                      <span className='text-13px font-medium'>
+                      <span className={styles.collapseHeaderTitle}>
                         {t('settings.hooksPageCustom', { defaultValue: 'Custom Hooks' })}
                       </span>
                     }
@@ -481,7 +477,7 @@ const HooksManagement: React.FC = () => {
                 {builtinHooks.length > 0 && (
                   <Collapse.Item
                     header={
-                      <span className='text-13px font-medium'>
+                      <span className={styles.collapseHeaderTitle}>
                         {t('settings.hooksPageBuiltin', { defaultValue: 'Builtin Hooks' })}
                       </span>
                     }
@@ -552,42 +548,32 @@ const HooksManagement: React.FC = () => {
         </div>
       </SettingsPageWrapper>
 
-      <ContextGoModal
+      <SettingsSubModal
         visible={deleteHookName !== null}
         onCancel={() => setDeleteHookName(null)}
-        header={{
-          title: t('settings.deleteHookTitle', { defaultValue: 'Delete Hook' }),
-          showClose: true,
-          className: 'px-24px pt-20px',
-        }}
-        footer={{
-          className: 'px-24px pb-20px',
-          render: () => (
-            <div className='flex justify-end gap-10px pt-4px'>
-              <Button onClick={() => setDeleteHookName(null)} className='min-w-88px px-18px'>
-                {t('common.cancel', { defaultValue: 'Cancel' })}
-              </Button>
-              <Button
-                type='primary'
-                status='danger'
-                onClick={() => void handleDeleteHookConfirm()}
-                className='min-w-104px px-18px'
-              >
-                {t('common.delete', { defaultValue: 'Delete' })}
-              </Button>
-            </div>
-          ),
-        }}
+        title={t('settings.deleteHookTitle', { defaultValue: 'Delete Hook' })}
+        onOk={() => void handleDeleteHookConfirm()}
+        okText={t('common.delete', { defaultValue: 'Delete' })}
+        okButtonProps={{ status: 'danger' }}
         style={{ width: 'min(460px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <Typography.Text className='text-14px leading-6 text-t-secondary'>
-          {t('settings.deleteHookConfirm', {
-            name: deleteHookName || '',
-            defaultValue: 'Are you sure you want to delete "{{name}}"? This action cannot be undone.',
-          })}
-        </Typography.Text>
-      </ContextGoModal>
+        <div className='settings-sub-modal__stack'>
+          <p className='settings-sub-modal__lead'>
+            {t('settings.deleteHookConfirm', {
+              name: deleteHookName || '',
+              defaultValue: 'Are you sure you want to delete "{{name}}"? This action cannot be undone.',
+            })}
+          </p>
+          {deleteHookName ? (
+            <div className='settings-sub-modal__entity-card settings-sub-modal__entity-card--danger'>
+              <div className='settings-sub-modal__meta'>
+                <div className='settings-sub-modal__meta-title'>{deleteHookName}</div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </SettingsSubModal>
 
       <HookRoutingConfigModal
         visible={configuringHook !== null && routingDraft !== null}

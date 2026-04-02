@@ -94,7 +94,7 @@ const GlobalCronSettings: React.FC = () => {
   return (
     <>
       {messageContext}
-      <SettingsPageWrapper contentClassName='max-w-1200px'>
+      <SettingsPageWrapper>
         <div className={styles.pageStack}>
           <div className={styles.heroSurface}>
             <div className={styles.heroRow}>

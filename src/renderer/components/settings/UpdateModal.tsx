@@ -484,23 +484,34 @@ const UpdateModal: React.FC = () => {
     }
   };
 
+  const isAvailableView = status === 'available';
+
   return (
     <ContextGoModal
       visible={visible}
       onCancel={handleClose}
-      size={status === 'available' ? 'medium' : 'small'}
+      className={isAvailableView ? 'update-modal update-modal--available' : 'update-modal'}
+      size={isAvailableView ? 'medium' : 'small'}
+      style={
+        isAvailableView
+          ? {
+              width: '680px',
+              height: 'min(720px, calc(100vh - 48px))',
+            }
+          : undefined
+      }
       header={{
         title: t('update.modalTitle'),
         showClose: true,
       }}
       footer={{ render: () => null }}
       contentStyle={{
-        height: status === 'available' ? '420px' : 'auto',
+        height: isAvailableView ? '100%' : 'auto',
         padding: 0,
         overflow: 'hidden',
       }}
     >
-      <div className='flex flex-col h-full w-full'>{renderContent()}</div>
+      <div className='flex flex-col h-full min-h-0 w-full'>{renderContent()}</div>
     </ContextGoModal>
   );
 };

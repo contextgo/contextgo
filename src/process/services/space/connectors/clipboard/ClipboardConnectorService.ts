@@ -110,8 +110,9 @@ export class ClipboardConnectorService {
   private state: ClipboardConnectorRuntimeStatus;
 
   constructor(
-    private readonly storeOrFactory: ClipboardConnectorStore | ClipboardConnectorStoreFactory =
-      defaultClipboardConnectorStoreFactory,
+    private readonly storeOrFactory:
+      | ClipboardConnectorStore
+      | ClipboardConnectorStoreFactory = defaultClipboardConnectorStoreFactory,
     private readonly readClipboardText: ClipboardTextReader = defaultClipboardTextReader,
     private readonly platform: NodeJS.Platform = process.platform,
     private readonly observerController: ClipboardObserverController = new NodeClipboardObserverController()
@@ -171,9 +172,7 @@ export class ClipboardConnectorService {
       ...this.state,
       lifecycle,
       available,
-      note: !available
-        ? buildUnavailableMessage(this.platform)
-        : observerRuntime.note ?? this.state.note,
+      note: !available ? buildUnavailableMessage(this.platform) : (observerRuntime.note ?? this.state.note),
       lastError: observerRuntime.lastError ?? this.state.lastError,
       observerPid: observerRuntime.pid,
       observerRepoDir: observerRuntime.repoDir,
@@ -235,9 +234,7 @@ export class ClipboardConnectorService {
       desiredState: 'stopped',
       lastStopAt: Date.now(),
       lastError: undefined,
-      note: this.isAvailable()
-        ? 'Clipboard runtime wrapper is stopped.'
-        : buildUnavailableMessage(this.platform),
+      note: this.isAvailable() ? 'Clipboard runtime wrapper is stopped.' : buildUnavailableMessage(this.platform),
       observerPid: undefined,
       observerRepoDir: undefined,
       observerCommand: undefined,

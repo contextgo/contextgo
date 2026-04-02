@@ -41,6 +41,9 @@ import {
 } from './process/utils/deepLink';
 import {
   bindMainWindowReferences,
+  promptMainWindowLoadFailure,
+  promptMainWindowRenderProcessGone,
+  promptMainWindowUnresponsive,
   showAndFocusMainWindow,
   showOrCreateMainWindow,
 } from './process/utils/mainWindowLifecycle';
@@ -382,14 +385,37 @@ const createWindow = (): void => {
 
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     console.error('[ContextGo] did-fail-load:', { errorCode, errorDescription, validatedURL, isMainFrame });
+
+    void promptMainWindowLoadFailure(mainWindow, {
+      errorCode,
+      errorDescription,
+      validatedURL,
+      isMainFrame,
+    }).then((action) => {
+      if (action === 'reload' && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.reload();
+      }
+    });
   });
 
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     console.error('[ContextGo] render-process-gone:', details);
+
+    void promptMainWindowRenderProcessGone(mainWindow, details).then((action) => {
+      if (action === 'reload' && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.reload();
+      }
+    });
   });
 
   mainWindow.webContents.on('unresponsive', () => {
     console.warn('[ContextGo] Renderer became unresponsive');
+
+    void promptMainWindowUnresponsive(mainWindow).then((action) => {
+      if (action === 'reload' && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.reload();
+      }
+    });
   });
 
   mainWindow.on('closed', () => {

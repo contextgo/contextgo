@@ -91,7 +91,7 @@ function shouldUseRemoteUserBinding(
   );
 }
 
-function readBindingHandoffConfig(binding: IChannelBinding): {
+function readBindingContinuationConfig(binding: IChannelBinding): {
   mode?: 'resume' | 'new_thread';
   resumeConversationId?: string;
 } {
@@ -100,17 +100,22 @@ function readBindingHandoffConfig(binding: IChannelBinding): {
     return {};
   }
 
-  const handoff = (metadata as Record<string, unknown>).handoff;
-  if (!handoff || typeof handoff !== 'object') {
+  const continuation = (metadata as Record<string, unknown>).continuation;
+  if (!continuation || typeof continuation !== 'object') {
     return {};
   }
 
-  const handoffRecord = handoff as Record<string, unknown>;
+  const continuationRecord = continuation as Record<string, unknown>;
   return {
-    mode: handoffRecord.mode === 'new_thread' ? 'new_thread' : handoffRecord.mode === 'resume' ? 'resume' : undefined,
+    mode:
+      continuationRecord.mode === 'new_thread'
+        ? 'new_thread'
+        : continuationRecord.mode === 'resume'
+          ? 'resume'
+          : undefined,
     resumeConversationId:
-      typeof handoffRecord.resumeConversationId === 'string' && handoffRecord.resumeConversationId
-        ? handoffRecord.resumeConversationId
+      typeof continuationRecord.resumeConversationId === 'string' && continuationRecord.resumeConversationId
+        ? continuationRecord.resumeConversationId
         : undefined,
   };
 }
@@ -151,9 +156,14 @@ type ResolveRouteParams = {
   pluginId?: string;
   platformUserId: string;
   chatId: string;
+  platformChatId?: string;
+  peerScope?: 'chat' | 'thread';
+  parentChatId?: string;
+  threadId?: string;
   remoteChatType?: string;
   displayName?: string;
   forceNewConversation?: boolean;
+  overrideAgentType?: ChannelAgentType;
 };
 
 function buildStableId(prefix: string, ...parts: Array<string | undefined>): string {
@@ -241,7 +251,7 @@ function conversationMatchesProfile(conversation: TChatConversation, profile: IA
 }
 
 export class ChannelRouteResolver {
-  async resolveConnectorInstance(platform: PluginType, pluginId?: string): Promise<IConnectorInstance> {
+  async resolveChannelAccount(platform: PluginType, pluginId?: string): Promise<IConnectorInstance> {
     const db = await getDatabase();
 
     if (pluginId) {
@@ -289,24 +299,36 @@ export class ChannelRouteResolver {
     throw new Error(`No connector configured for platform ${platform}`);
   }
 
+  async resolveConnectorInstance(platform: PluginType, pluginId?: string): Promise<IConnectorInstance> {
+    return this.resolveChannelAccount(platform, pluginId);
+  }
+
   async resolveAuthorizedRoute(params: ResolveRouteParams): Promise<ResolvedChannelRoute> {
     const db = await getDatabase();
-    const connector = await this.resolveConnectorInstance(params.platform, params.pluginId);
+    const connector = await this.resolveChannelAccount(params.platform, params.pluginId);
     const channelUser = await this.ensureChannelUserProjection(
       connector,
       params.platformUserId,
       params.platform,
       params.chatId,
+      params.platformChatId,
       params.displayName,
-      params.remoteChatType
+      params.remoteChatType,
+      params.peerScope,
+      params.parentChatId,
+      params.threadId
     );
     const remoteIdentity = await this.ensureRemoteIdentity(
       connector,
       channelUser,
       params.platformUserId,
       params.chatId,
+      params.platformChatId,
       params.remoteChatType,
-      params.displayName
+      params.displayName,
+      params.peerScope,
+      params.parentChatId,
+      params.threadId
     );
 
     const binding = await this.resolveBinding({
@@ -315,7 +337,7 @@ export class ChannelRouteResolver {
       platform: params.platform,
     });
     const bindingTarget = getChannelBindingTarget(binding);
-    const bindingHandoffConfig = readBindingHandoffConfig(binding);
+    const bindingContinuationConfig = readBindingContinuationConfig(binding);
 
     let sourceExternalSession: IExternalSession | null = null;
     let agentProfileId = binding.agentProfileId;
@@ -338,12 +360,12 @@ export class ChannelRouteResolver {
 
     let externalSession = await this.ensureExternalSession(connector, remoteIdentity, binding, agentProfile);
     const externalSessionTargetMode =
-      bindingTarget.type === 'external_session' ? (bindingTarget.mode ?? 'resume') : bindingHandoffConfig.mode;
+      bindingTarget.type === 'external_session' ? (bindingTarget.mode ?? 'resume') : bindingContinuationConfig.mode;
     const shouldForceNewConversation = params.forceNewConversation || externalSessionTargetMode === 'new_thread';
 
     const resumeConversationId =
       externalSessionTargetMode === 'resume'
-        ? (sourceExternalSession?.activeConversationId ?? bindingHandoffConfig.resumeConversationId)
+        ? (sourceExternalSession?.activeConversationId ?? bindingContinuationConfig.resumeConversationId)
         : undefined;
     if (resumeConversationId) {
       externalSession = await this.attachConversationToExternalSession(
@@ -365,7 +387,7 @@ export class ChannelRouteResolver {
     const session: IChannelSession = {
       id: externalSession.id,
       userId: channelUser.id,
-      agentType: backendToAgentType(agentProfile.backend),
+      agentType: params.overrideAgentType ?? backendToAgentType(agentProfile.backend),
       conversationId: conversation.id,
       chatId: params.chatId,
       workspace: agentProfile.workspaceRef,
@@ -392,11 +414,23 @@ export class ChannelRouteResolver {
     platformUserId: string,
     platform: PluginType,
     chatId: string,
+    platformChatId?: string,
     displayName?: string,
-    remoteChatType?: string
+    remoteChatType?: string,
+    peerScope?: 'chat' | 'thread',
+    parentChatId?: string,
+    threadId?: string
   ): Promise<IChannelUser> {
     const db = await getDatabase();
-    const existingIdentity = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
+    const resolvedPlatformChatId = platformChatId ?? chatId;
+    const exactIdentity = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
+    const existingIdentity =
+      exactIdentity.success && exactIdentity.data
+        ? exactIdentity
+        : resolvedPlatformChatId !== chatId
+          ? db.getRemoteIdentityByConnectorPlatformChat(connector.id, resolvedPlatformChatId)
+          : exactIdentity;
+
     if (existingIdentity.success && existingIdentity.data) {
       const mirrorUserResult = db.ensureChannelUserMirror({
         remoteIdentityId: existingIdentity.data.id,
@@ -425,8 +459,12 @@ export class ChannelRouteResolver {
       platformUserId,
       platform,
       chatId,
+      platformChatId: resolvedPlatformChatId,
       remoteChatType,
       displayName,
+      peerScope,
+      parentChatId,
+      threadId,
     });
     if (legacyBootstrapUser) {
       return legacyBootstrapUser;
@@ -440,8 +478,12 @@ export class ChannelRouteResolver {
     platformUserId: string;
     platform: PluginType;
     chatId: string;
+    platformChatId?: string;
     remoteChatType?: string;
     displayName?: string;
+    peerScope?: 'chat' | 'thread';
+    parentChatId?: string;
+    threadId?: string;
   }): Promise<IChannelUser | null> {
     const db = await getDatabase();
     const resolvedChatType = inferRemoteChatType({
@@ -476,7 +518,11 @@ export class ChannelRouteResolver {
       connectorId: params.connector.id,
       remoteUserId: params.platformUserId,
       remoteChatId: params.chatId,
-      remoteChatType: resolvedChatType ?? 'direct',
+      platformChatId: params.platformChatId ?? params.chatId,
+      remoteChatType: params.remoteChatType ?? resolvedChatType ?? 'direct',
+      peerScope: params.peerScope ?? 'chat',
+      parentChatId: params.parentChatId,
+      threadId: params.threadId,
       displayName: params.displayName ?? legacyUserResult.data.displayName,
       authorizedAt: legacyUserResult.data.authorizedAt,
       lastActive: now,
@@ -519,24 +565,40 @@ export class ChannelRouteResolver {
     channelUser: IChannelUser,
     platformUserId: string,
     chatId: string,
+    platformChatId?: string,
     remoteChatType?: string,
-    displayName?: string
+    displayName?: string,
+    peerScope?: 'chat' | 'thread',
+    parentChatId?: string,
+    threadId?: string
   ): Promise<IRemoteIdentity> {
     const db = await getDatabase();
     const now = Date.now();
+    const resolvedPlatformChatId = platformChatId ?? chatId;
+    const normalizedPeerScope = peerScope ?? (resolvedPlatformChatId !== chatId ? 'thread' : 'chat');
+    const fallbackGroupType = inferRemoteChatType({
+      chatId: resolvedPlatformChatId,
+      platformUserId,
+      remoteChatType,
+    });
+    const normalizedChatType = remoteChatType ?? fallbackGroupType;
 
     const byChat = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
     if (byChat.success && byChat.data) {
-      const resolvedChatType =
-        inferRemoteChatType({
-          chatId,
-          platformUserId,
-          remoteChatType: remoteChatType ?? byChat.data.remoteChatType,
-        }) ?? byChat.data.remoteChatType;
+      const resolvedBindingType = inferRemoteChatType({
+        chatId: resolvedPlatformChatId,
+        platformUserId,
+        remoteChatType: normalizedChatType ?? byChat.data.remoteChatType,
+      });
       const nextIdentity: IRemoteIdentity = {
         ...byChat.data,
-        remoteUserId: resolvedChatType === 'group' ? (byChat.data.remoteUserId ?? platformUserId) : platformUserId,
-        remoteChatType: resolvedChatType,
+        remoteUserId:
+          resolvedBindingType === 'group' ? (byChat.data.remoteUserId ?? platformUserId) : platformUserId,
+        platformChatId: resolvedPlatformChatId,
+        remoteChatType: normalizedChatType ?? byChat.data.remoteChatType,
+        peerScope: peerScope ?? byChat.data.peerScope ?? normalizedPeerScope,
+        parentChatId: parentChatId ?? byChat.data.parentChatId,
+        threadId: threadId ?? byChat.data.threadId,
         displayName: displayName ?? byChat.data.displayName,
         lastActive: now,
         legacyUserId: byChat.data.legacyUserId,
@@ -545,13 +607,51 @@ export class ChannelRouteResolver {
       return nextIdentity;
     }
 
-    const resolvedChatType = inferRemoteChatType({ chatId, platformUserId, remoteChatType });
+    const byPlatformChat =
+      resolvedPlatformChatId !== chatId
+        ? db.getRemoteIdentityByConnectorPlatformChat(connector.id, resolvedPlatformChatId)
+        : { success: true, data: null };
+    if (byPlatformChat.success && byPlatformChat.data) {
+      const resolvedBindingType = inferRemoteChatType({
+        chatId: resolvedPlatformChatId,
+        platformUserId,
+        remoteChatType: normalizedChatType ?? byPlatformChat.data.remoteChatType,
+      });
+      const remoteIdentity: IRemoteIdentity = {
+        id: `remote_identity_${uuid()}`,
+        connectorId: connector.id,
+        remoteUserId:
+          resolvedBindingType === 'group' ? (byPlatformChat.data.remoteUserId ?? platformUserId) : platformUserId,
+        remoteChatId: chatId,
+        platformChatId: resolvedPlatformChatId,
+        remoteChatType: normalizedChatType ?? byPlatformChat.data.remoteChatType,
+        peerScope: normalizedPeerScope,
+        parentChatId: parentChatId ?? byPlatformChat.data.parentChatId ?? resolvedPlatformChatId,
+        threadId,
+        displayName: displayName ?? byPlatformChat.data.displayName,
+        authorizedAt: byPlatformChat.data.authorizedAt,
+        lastActive: now,
+        legacyUserId: byPlatformChat.data.legacyUserId,
+        metadata: {
+          ...byPlatformChat.data.metadata,
+          source: 'channel-runtime-peer',
+          parentIdentityId: byPlatformChat.data.id,
+        },
+      };
+      db.upsertRemoteIdentity(remoteIdentity);
+      return remoteIdentity;
+    }
+
     const remoteIdentity: IRemoteIdentity = {
       id: `remote_identity_${uuid()}`,
       connectorId: connector.id,
       remoteUserId: platformUserId,
       remoteChatId: chatId,
-      remoteChatType: resolvedChatType,
+      platformChatId: resolvedPlatformChatId,
+      remoteChatType: normalizedChatType,
+      peerScope: normalizedPeerScope,
+      parentChatId,
+      threadId,
       displayName,
       authorizedAt: channelUser.authorizedAt,
       lastActive: now,
@@ -568,31 +668,68 @@ export class ChannelRouteResolver {
     connector: IConnectorInstance;
     remoteIdentity: IRemoteIdentity;
     platform: PluginType;
+    overrideAgentProfileId?: string;
   }): Promise<IChannelBinding> {
     const db = await getDatabase();
 
-    const temporaryOverrides = db.getChannelBindingsForScope(
-      params.connector.id,
-      'temporary_override',
-      params.remoteIdentity.remoteChatId
-    );
-    const activeTemporaryOverride = temporaryOverrides.success
-      ? getPreferredBinding(temporaryOverrides.data)
-      : undefined;
-    if (activeTemporaryOverride) {
-      return activeTemporaryOverride;
+    if (params.overrideAgentProfileId) {
+      this.assertExistingAgentProfile(db.getAgentProfile(params.overrideAgentProfileId), params.overrideAgentProfileId);
+
+      const now = Date.now();
+      const overrideBinding: IChannelBinding = {
+        id: buildStableId(
+          'binding_override',
+          params.connector.id,
+          params.remoteIdentity.remoteChatId,
+          params.overrideAgentProfileId
+        ),
+        connectorId: params.connector.id,
+        scopeType: 'temporary_override',
+        scopeKey: params.remoteIdentity.remoteChatId,
+        agentProfileId: params.overrideAgentProfileId,
+        priority: 1000,
+        enabled: true,
+        temporary: true,
+        metadata: {
+          source: 'agent-select',
+          overrideMode: 'agent-profile',
+        },
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      db.upsertChannelBinding(overrideBinding);
+      return overrideBinding;
     }
 
-    const remoteChatBindings = db.getChannelBindingsForScope(
-      params.connector.id,
-      'remote_chat',
-      params.remoteIdentity.remoteChatId
+    const candidateAudienceKeys = Array.from(
+      new Set(
+        [
+          params.remoteIdentity.remoteChatId,
+          params.remoteIdentity.parentChatId,
+          params.remoteIdentity.platformChatId,
+        ].filter((value): value is string => Boolean(value))
+      )
     );
-    const preferredRemoteChatBinding = remoteChatBindings.success
-      ? getPreferredBinding(remoteChatBindings.data)
-      : undefined;
-    if (preferredRemoteChatBinding) {
-      return preferredRemoteChatBinding;
+
+    for (const audienceKey of candidateAudienceKeys) {
+      const temporaryOverrides = db.getChannelBindingsForScope(params.connector.id, 'temporary_override', audienceKey);
+      const activeTemporaryOverride = temporaryOverrides.success
+        ? getPreferredBinding(temporaryOverrides.data)
+        : undefined;
+      if (activeTemporaryOverride) {
+        return activeTemporaryOverride;
+      }
+    }
+
+    for (const audienceKey of candidateAudienceKeys) {
+      const remoteChatBindings = db.getChannelBindingsForScope(params.connector.id, 'remote_chat', audienceKey);
+      const preferredRemoteChatBinding = remoteChatBindings.success
+        ? getPreferredBinding(remoteChatBindings.data)
+        : undefined;
+      if (preferredRemoteChatBinding) {
+        return preferredRemoteChatBinding;
+      }
     }
 
     if (shouldUseRemoteUserBinding(params.remoteIdentity)) {
@@ -697,7 +834,7 @@ export class ChannelRouteResolver {
       lastActivity: now,
       metadata: {
         ...externalSession.metadata,
-        handoff: {
+        continuation: {
           resumeConversationId: conversationId,
           sourceExternalSessionId,
           updatedAt: now,

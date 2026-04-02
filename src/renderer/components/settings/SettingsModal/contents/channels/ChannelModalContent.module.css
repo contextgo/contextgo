@@ -1,0 +1,967 @@
+.page {
+  min-height: 100%;
+}
+
+.pageLayout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pageHeader {
+  flex-shrink: 0;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  align-items: start;
+  overflow: hidden;
+}
+
+.sidebarCard,
+.heroCard,
+.instanceCard,
+.detailCard {
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-2) 95%, var(--fill-1) 5%);
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.sidebarCard {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  min-height: 0;
+  max-height: 100%;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.heroCard,
+.instanceCard,
+.detailCard {
+  padding: 18px;
+}
+
+.detailColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.sectionDescription {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.familyList,
+.instanceList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.familyList {
+  margin-top: 12px;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.familyButton,
+.instanceButton {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.familyButton :global(.arco-btn-content),
+.instanceButton :global(.arco-btn-content) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  box-sizing: border-box;
+}
+
+.familyButtonInner,
+.instanceButtonInner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 14px;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--fill-1) 88%, var(--bg-1) 12%);
+  text-align: left;
+  overflow: hidden;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.familyButtonInner:hover,
+.instanceButtonInner:hover {
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 26%, var(--border-base) 74%);
+  background: color-mix(in srgb, var(--color-primary-light-1) 36%, var(--bg-1) 64%);
+  transform: translateY(-1px);
+}
+
+.familyButtonActive .familyButtonInner,
+.instanceButtonActive .instanceButtonInner {
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 44%, var(--border-base) 56%);
+  background: color-mix(in srgb, var(--color-primary-light-1) 58%, var(--bg-1) 42%);
+  box-shadow: 0 10px 24px color-mix(in srgb, rgb(var(--primary-6)) 10%, transparent);
+}
+
+.familyMeta,
+.instanceMeta,
+.heroCopy,
+.detailHeaderCopy {
+  min-width: 0;
+  flex: 1;
+}
+
+.familyTitleRow,
+.instanceHeadingRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.familyTitle,
+.instanceName,
+.heroTitle,
+.detailTitle {
+  margin: 0;
+  min-width: 0;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.familyTitle,
+.instanceName {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heroTitle,
+.detailTitle {
+  font-size: 20px;
+  line-height: 1.25;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.familyDescription,
+.instanceDescription,
+.heroDescription,
+.detailSubtitle {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.familyDescription,
+.instanceDescription {
+  margin-top: 6px;
+  font-size: 12px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.heroDescription,
+.detailSubtitle {
+  margin-top: 6px;
+  font-size: 13px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.familyStats,
+.instanceMetaRow,
+.heroBadges,
+.detailBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.familyStats,
+.instanceMetaRow {
+  margin-top: 10px;
+}
+
+.heroBadges,
+.detailBadges {
+  margin-top: 12px;
+}
+
+.instanceMetaRow {
+  align-items: center;
+}
+
+.instanceId {
+  min-width: 0;
+  max-width: min(44%, 240px);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.pillTag,
+.countTag,
+.metricTag,
+.statusTag,
+.platformTag,
+.identifierTag,
+.usernameTag {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 70%, transparent);
+  background: color-mix(in srgb, var(--fill-1) 86%, var(--bg-1) 14%);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.pillTag :global(.arco-tag-content),
+.countTag :global(.arco-tag-content),
+.metricTag :global(.arco-tag-content),
+.statusTag :global(.arco-tag-content),
+.platformTag :global(.arco-tag-content),
+.identifierTag :global(.arco-tag-content),
+.usernameTag :global(.arco-tag-content) {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.countTag {
+  min-width: 30px;
+  padding-inline: 8px;
+  text-align: center;
+  background: color-mix(in srgb, var(--color-primary-light-1) 62%, var(--bg-1) 38%);
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 24%, var(--border-base) 76%);
+  color: rgb(var(--primary-6));
+}
+
+.countTag :global(.arco-tag-content) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.metricTag {
+  background: color-mix(in srgb, var(--color-primary-light-1) 38%, var(--bg-1) 62%);
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 18%, var(--border-base) 82%);
+  color: color-mix(in srgb, rgb(var(--primary-6)) 72%, var(--text-primary) 28%);
+}
+
+.statusTag {
+  background: color-mix(in srgb, var(--fill-2) 82%, var(--bg-1) 18%);
+  border-color: color-mix(in srgb, var(--border-base) 78%, transparent);
+  color: var(--text-primary);
+}
+
+.platformTag {
+  text-transform: capitalize;
+  background: color-mix(in srgb, var(--fill-2) 84%, var(--bg-1) 16%);
+  color: var(--text-primary);
+}
+
+.identifierTag,
+.usernameTag {
+  max-width: min(100%, 220px);
+  font-family:
+    ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  letter-spacing: 0.01em;
+}
+
+.identifierTag {
+  background: color-mix(in srgb, var(--fill-2) 82%, var(--bg-1) 18%);
+}
+
+.usernameTag {
+  background: color-mix(in srgb, var(--warning-1) 52%, var(--bg-1) 48%);
+  border-color: color-mix(in srgb, rgb(var(--warning-6)) 14%, var(--border-base) 86%);
+  color: color-mix(in srgb, rgb(var(--warning-6)) 74%, var(--text-primary) 26%);
+}
+
+.selectorCardBody {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selectorHeading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.selectorTitle {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.selectorDescription {
+  min-width: 0;
+  max-width: 100%;
+  color: inherit;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.selectorStats {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selectorCardBody > * {
+  min-width: 0;
+}
+
+.selectorCardBody :global(.arco-tag) {
+  max-width: 100%;
+}
+
+.selectorCardBody :global(.arco-tag-content) {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metaGrid {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.metaText,
+.metaMonoText {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.metaMonoText {
+  font-family:
+    ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.bindingCard {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--fill-1) 88%, var(--bg-1) 12%),
+    color-mix(in srgb, var(--bg-1) 94%, var(--fill-1) 6%)
+  );
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+.bindingMain {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bindingHeader {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bindingTitleBlock {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bindingTitleRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bindingTitleText {
+  min-width: 0;
+  flex: 1;
+}
+
+.bindingCountBadge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-2) 86%, var(--bg-1) 14%);
+  border: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.bindingDetail {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.bindingProfileCard {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 70%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--fill-1) 78%, var(--bg-1) 22%);
+}
+
+.bindingProfileMeta {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bindingProfileLabel {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.bindingProfileValue {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bindingConversationRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-2) 92%, var(--fill-1) 8%);
+}
+
+.bindingConversationMeta {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bindingConversationLabel {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.bindingConversationValue {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bindingPrimaryAction {
+  flex-shrink: 0;
+  min-width: 92px;
+  border-radius: 999px;
+}
+
+.bindingActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.bindingIconButton {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--text-tertiary);
+  background: transparent;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.bindingIconButton:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--fill-2) 84%, var(--bg-1) 16%);
+}
+
+.bindingIconButton:global(.arco-btn-status-danger) {
+  color: color-mix(in srgb, rgb(var(--danger-6)) 72%, var(--text-secondary) 28%);
+}
+
+.bindingIconButton:global(.arco-btn-status-danger):hover {
+  color: rgb(var(--danger-6));
+  background: color-mix(in srgb, var(--danger-1) 72%, var(--bg-1) 28%);
+}
+
+@media (max-width: 900px) {
+  .bindingHeader,
+  .bindingConversationRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bindingTitleRow {
+    align-items: flex-start;
+  }
+
+  .bindingActions {
+    justify-content: flex-start;
+  }
+
+  .bindingIconButton {
+    margin-left: -4px;
+  }
+
+  .bindingPrimaryAction {
+    width: 100%;
+  }
+}
+
+.bindingTargetRow {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.bindingTargetValue {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  color: var(--text-primary);
+}
+
+.heroCard {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--bg-2) 90%, var(--fill-1) 10%),
+    color-mix(in srgb, var(--bg-1) 94%, var(--color-primary-light-1) 6%)
+  );
+}
+
+.heroRow,
+.detailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.heroMain,
+.detailHeaderMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+  max-width: 100%;
+}
+
+.detailActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.detailCard :global(.grid) {
+  min-width: 0;
+}
+
+.detailCard :global(.arco-input-wrapper),
+.detailCard :global(.arco-input),
+.detailCard :global(.arco-input-number),
+.detailCard :global(.arco-select-view),
+.detailCard :global(.arco-textarea-wrapper),
+.detailCard :global(.arco-textarea) {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.detailCard :global(.arco-btn) {
+  max-width: 100%;
+}
+
+.detailCard :global(.arco-space) {
+  max-width: 100%;
+}
+
+.detailCard :global(.arco-tag) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.detailCard :global(.flex) {
+  min-width: 0;
+}
+
+.detailCard :global(.flex.items-center.justify-between),
+.detailCard :global(.flex.items-start.justify-between) {
+  flex-wrap: wrap;
+}
+
+.detailCard :global(.flex.items-center.gap-8px),
+.detailCard :global(.flex.items-center.gap-12px),
+.detailCard :global(.flex.items-start.gap-12px),
+.detailCard :global(.flex.items-center.gap-24px) {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.detailCard :global(.flex-1) {
+  min-width: 0;
+}
+
+.detailCard :global(.space-y-12px > *),
+.detailCard :global(.space-y-8px > *),
+.detailCard :global(.space-y-6px > *),
+.detailCard :global(.space-y-4px > *) {
+  min-width: 0;
+}
+
+.detailCard :global(code) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.detailCard :global(img) {
+  max-width: 100%;
+}
+
+.logoBase {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--fill-2) 80%, var(--bg-1) 20%),
+    color-mix(in srgb, var(--bg-1) 88%, var(--fill-1) 12%)
+  );
+}
+
+.logoSmall {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+}
+
+.logoLarge {
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+}
+
+.logoImage {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+}
+
+.logoLarge .logoImage {
+  width: 76%;
+  height: 76%;
+}
+
+.logoFallback {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.logoLarge.logoFallback {
+  font-size: 24px;
+}
+
+@media (max-width: 1100px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: visible;
+  }
+
+  .sidebarCard {
+    position: static;
+    max-height: none;
+  }
+
+  .detailColumn,
+  .familyList {
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .sidebarCard,
+  .heroCard,
+  .instanceCard,
+  .detailCard {
+    padding: 14px;
+  }
+
+  .heroMain,
+  .detailHeaderMain {
+    gap: 12px;
+  }
+
+  .heroTitle,
+  .detailTitle {
+    font-size: 18px;
+  }
+
+  .detailActions {
+    justify-content: flex-start;
+  }
+
+  .familyTitleRow,
+  .instanceHeadingRow,
+  .heroMain,
+  .detailHeaderMain {
+    flex-direction: column;
+  }
+
+  .instanceId {
+    text-align: left;
+  }
+}
+
+.instanceEmptyState {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px dashed color-mix(in srgb, var(--border-base) 70%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--fill-1) 82%, var(--bg-1) 18%);
+  box-sizing: border-box;
+}
+
+.instanceEmptyHint {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.setupCard {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, rgb(var(--primary-6)) 14%, var(--border-base) 86%);
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary-light-1) 42%, var(--bg-1) 58%),
+    color-mix(in srgb, var(--fill-1) 88%, var(--bg-1) 12%)
+  );
+}
+
+.setupHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.setupSteps {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.setupStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-1) 88%, var(--fill-1) 12%);
+}
+
+.setupStepIndex {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, rgb(var(--primary-6)) 14%, var(--bg-1) 86%);
+  color: rgb(var(--primary-6));
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.setupStepBody {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.setupStepTitle {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}

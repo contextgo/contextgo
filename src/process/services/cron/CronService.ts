@@ -13,6 +13,7 @@ import { Cron } from 'croner';
 import i18n, { i18nReady } from '@process/services/i18n';
 import type { IConversationRepository } from '@process/services/database/IConversationRepository';
 import { ProcessConfig } from '@process/utils/initStorage';
+import path from 'node:path';
 import type { CronJob, CronSchedule } from './CronStore';
 import type { ICronRepository } from './ICronRepository';
 import type { ICronEventEmitter } from './ICronEventEmitter';
@@ -27,6 +28,7 @@ export type CreateCronJobParams = {
   message: string;
   conversationId: string;
   conversationTitle?: string;
+  workspacePath?: string;
   agentType: import('@/common/types/acpTypes').AcpBackendAll;
   createdBy: 'user' | 'agent';
 };
@@ -37,6 +39,17 @@ export type CreateCronJobParams = {
  * Manages scheduled tasks that send messages to conversations at specified times.
  * Handles conflicts when conversation is busy.
  */
+const extractConversationWorkspace = (
+  conversation: Awaited<ReturnType<IConversationRepository['getConversation']>>
+): string | undefined => {
+  const extra = conversation?.extra as Record<string, unknown> | undefined;
+  const workingDirectory = typeof extra?.workingDirectory === 'string' ? extra.workingDirectory : undefined;
+  const workspace = typeof extra?.workspace === 'string' ? extra.workspace : undefined;
+  const candidate = workingDirectory || workspace;
+
+  return candidate?.trim() ? path.resolve(candidate) : undefined;
+};
+
 export class CronService {
   private timers: Map<string, Cron | NodeJS.Timeout> = new Map();
   private retryTimers: Map<string, NodeJS.Timeout> = new Map();
@@ -117,6 +130,7 @@ export class CronService {
       );
     }
 
+    const conversation = await this.conversationRepo.getConversation(params.conversationId);
     const now = Date.now();
     const jobId = `cron_${uuid()}`;
 
@@ -130,7 +144,8 @@ export class CronService {
       },
       metadata: {
         conversationId: params.conversationId,
-        conversationTitle: params.conversationTitle,
+        conversationTitle: params.conversationTitle ?? conversation?.name,
+        workspacePath: params.workspacePath ?? extractConversationWorkspace(conversation),
         agentType: params.agentType,
         createdBy: params.createdBy,
         createdAt: now,

@@ -3,7 +3,6 @@ import type { TChatConversation } from '@/common/config/storage';
 import {
   buildCronPresetPrompt,
   filterCronPresetsByPack,
-  filterCronPresetsByRole,
   getCronDirectCreateContext,
   getCronPresets,
 } from '@/renderer/pages/cron/cronPresetUtils';
@@ -93,7 +92,7 @@ const createConversation = (overrides: Partial<TChatConversation> = {}): TChatCo
     modifyTime: 1,
     extra: {
       backend: 'claude',
-      workspace: '/tmp/workspace',
+      workspace: '/tmp/workspace-alpha',
     },
     status: 'finished',
     ...overrides,
@@ -159,43 +158,6 @@ describe('buildCronPresetPrompt', () => {
   });
 });
 
-describe('filterCronPresetsByRole', () => {
-  it('filters presets by the selected role pack', () => {
-    const presets = getCronPresets(t);
-
-    expect(filterCronPresetsByRole(presets, 'sales').map((preset) => preset.id)).toEqual([
-      'candidatePipelineReview',
-      'staleDealAlert',
-      'endOfDayReview',
-      'weeklyReview',
-      'leadFollowUp',
-    ]);
-    expect(filterCronPresetsByRole(presets, 'content').map((preset) => preset.id)).toEqual([
-      'aiDigest',
-      'morningFocus',
-      'contentRadar',
-      'contentCalendar',
-      'growthExperimentReview',
-      'weeklyReview',
-    ]);
-    expect(filterCronPresetsByRole(presets, 'research').map((preset) => preset.id)).toEqual([
-      'aiDigest',
-      'competitorWatch',
-      'contentRadar',
-      'saasUsageReview',
-      'growthExperimentReview',
-      'policySignalWatch',
-      'userFeedbackDigest',
-    ]);
-  });
-
-  it('returns all presets when no role filter is applied', () => {
-    const presets = getCronPresets(t);
-
-    expect(filterCronPresetsByRole(presets, 'all')).toEqual(presets);
-  });
-});
-
 describe('filterCronPresetsByPack', () => {
   it('filters presets by the selected industry pack', () => {
     const presets = getCronPresets(t);
@@ -241,6 +203,7 @@ describe('getCronDirectCreateContext', () => {
     expect(getCronDirectCreateContext(createConversation())).toEqual({
       conversationId: 'conv-1',
       conversationTitle: 'Workspace Alpha',
+      workspacePath: '/tmp/workspace-alpha',
       agentType: 'claude',
     });
 
@@ -250,12 +213,14 @@ describe('getCronDirectCreateContext', () => {
           type: 'openclaw-gateway',
           extra: {
             backend: 'qwen',
+            workspace: '/tmp/workspace-alpha',
           },
         })
       )
     ).toEqual({
       conversationId: 'conv-1',
       conversationTitle: 'Workspace Alpha',
+      workspacePath: '/tmp/workspace-alpha',
       agentType: 'qwen',
     });
   });

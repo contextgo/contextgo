@@ -256,7 +256,12 @@ export class ContextRuntimeService {
     }
 
     const db = await getDatabase();
-    const recentMessages = db.getConversationMessages(input.conversation.id, 0, MAX_THREAD_SUMMARY_MESSAGES, 'DESC').data;
+    const recentMessages = db.getConversationMessages(
+      input.conversation.id,
+      0,
+      MAX_THREAD_SUMMARY_MESSAGES,
+      'DESC'
+    ).data;
     const retrieval = await this.contextService.retrieve({
       spaceId,
       threadId: input.conversation.id,
@@ -338,7 +343,11 @@ export class ContextRuntimeService {
     );
   }
 
-  async completeAssistantTurn(conversationId: string, assistantText: string, assistantMessageId?: string): Promise<void> {
+  async completeAssistantTurn(
+    conversationId: string,
+    assistantText: string,
+    assistantMessageId?: string
+  ): Promise<void> {
     const text = normalizeText(assistantText);
     if (!text) {
       return;
@@ -387,7 +396,9 @@ export class ContextRuntimeService {
     const pendingReviewCandidates: MemoryCandidateEntry[] = [];
 
     for (const draft of drafts) {
-      const sourceIds = pendingTurn ? [pendingTurn.userSourceId, assistantSource.source.id] : [assistantSource.source.id];
+      const sourceIds = pendingTurn
+        ? [pendingTurn.userSourceId, assistantSource.source.id]
+        : [assistantSource.source.id];
       const promotion = await this.contextService.evaluatePromotion({
         spaceId,
         candidate: {

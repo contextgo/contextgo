@@ -9,7 +9,6 @@ import type { TProviderWithModel } from '../config/storage';
 import { OpenAIRotatingClient, type OpenAIClientConfig } from './OpenAIRotatingClient';
 import { GeminiRotatingClient, type GeminiClientConfig } from './GeminiRotatingClient';
 import { AnthropicRotatingClient, type AnthropicClientConfig } from './AnthropicRotatingClient';
-import type { RotatingApiClientOptions } from './RotatingApiClient';
 import { getProviderAuthType } from '../utils/platformAuthType';
 import { isNewApiPlatform } from '../utils/platformConstants';
 
@@ -17,7 +16,6 @@ export interface ClientOptions {
   timeout?: number;
   proxy?: string;
   baseConfig?: OpenAIClientConfig | GeminiClientConfig | AnthropicClientConfig;
-  rotatingOptions?: RotatingApiClientOptions;
 }
 
 export type RotatingClient = OpenAIRotatingClient | GeminiRotatingClient | AnthropicRotatingClient;
@@ -65,7 +63,6 @@ export class ClientFactory {
     options: ClientOptions = {}
   ): Promise<RotatingClient> {
     const authType = getProviderAuthType(provider);
-    const rotatingOptions = options.rotatingOptions || { maxRetries: 3, retryDelay: 1000 };
 
     // 对 new-api 网关进行 URL 规范化 / Normalize URL for new-api gateway
     const isNewApi = isNewApiPlatform(provider.platform);
@@ -89,7 +86,7 @@ export class ClientFactory {
           clientConfig.httpAgent = new HttpsProxyAgent(options.proxy);
         }
 
-        return new OpenAIRotatingClient(provider.apiKey, clientConfig, rotatingOptions);
+        return new OpenAIRotatingClient(provider.apiKey, clientConfig);
       }
 
       case AuthType.USE_GEMINI: {
@@ -99,7 +96,7 @@ export class ClientFactory {
           ...(options.baseConfig as GeminiClientConfig),
         };
 
-        return new GeminiRotatingClient(provider.apiKey, clientConfig, rotatingOptions, authType);
+        return new GeminiRotatingClient(provider.apiKey, clientConfig, undefined, authType);
       }
 
       case AuthType.USE_VERTEX_AI: {
@@ -109,7 +106,7 @@ export class ClientFactory {
           ...(options.baseConfig as GeminiClientConfig),
         };
 
-        return new GeminiRotatingClient(provider.apiKey, clientConfig, rotatingOptions, authType);
+        return new GeminiRotatingClient(provider.apiKey, clientConfig, undefined, authType);
       }
 
       case AuthType.USE_ANTHROPIC: {
@@ -120,7 +117,7 @@ export class ClientFactory {
           ...(options.baseConfig as AnthropicClientConfig),
         };
 
-        return new AnthropicRotatingClient(provider.apiKey, clientConfig, rotatingOptions);
+        return new AnthropicRotatingClient(provider.apiKey, clientConfig);
       }
 
       default: {
@@ -141,7 +138,7 @@ export class ClientFactory {
           clientConfig.httpAgent = new HttpsProxyAgent(options.proxy);
         }
 
-        return new OpenAIRotatingClient(provider.apiKey, clientConfig, rotatingOptions);
+        return new OpenAIRotatingClient(provider.apiKey, clientConfig);
       }
     }
   }

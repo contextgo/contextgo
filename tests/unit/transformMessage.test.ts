@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { transformMessage } from '@/common/chat/chatLib';
+import { isAgentConnectionErrorText, shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 
 const makeMessage = (type: string, data: unknown = 'test'): IResponseMessage => ({
@@ -89,5 +89,27 @@ describe('transformMessage', () => {
     expect(result).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Unsupported message type 'some_unknown_type'"));
     warnSpy.mockRestore();
+  });
+
+  it('recognizes ACP/Codex runtime exit errors as transport-layer disconnect noise', () => {
+    expect(isAgentConnectionErrorText('ACP process exited unexpectedly (code: 1, signal: null)')).toBe(true);
+    expect(isAgentConnectionErrorText('Codex process exited unexpectedly (code: 1, signal: SIGTERM)')).toBe(true);
+  });
+
+  it('suppresses runtime exit errors from the live stream', () => {
+    expect(
+      shouldSuppressAgentLifecycleStreamMessage(
+        makeMessage('error', 'ACP process exited unexpectedly (code: 1, signal: null)')
+      )
+    ).toBe(true);
+    expect(
+      shouldSuppressAgentLifecycleStreamMessage(
+        makeMessage('error', 'Codex process exited unexpectedly (code: 1, signal: SIGTERM)')
+      )
+    ).toBe(true);
+  });
+
+  it('does not treat generic business errors as connection lifecycle noise', () => {
+    expect(shouldSuppressAgentLifecycleStreamMessage(makeMessage('error', 'something went wrong'))).toBe(false);
   });
 });

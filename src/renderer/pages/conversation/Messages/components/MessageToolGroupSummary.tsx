@@ -2,7 +2,7 @@ import type { BadgeProps } from '@arco-design/web-react';
 import { Badge } from '@arco-design/web-react';
 import { IconDown, IconRight } from '@arco-design/web-react/icon';
 import React, { useMemo, useState } from 'react';
-import type { IMessageAcpToolCall, IMessageToolGroup } from '@/common/chat/chatLib';
+import type { IMessageAcpToolCall, IMessageCodexToolCall, IMessageToolGroup } from '@/common/chat/chatLib';
 import './MessageToolGroupSummary.css';
 
 type ToolItem = {
@@ -105,6 +105,58 @@ const ToolAcpMapper = (message: IMessageAcpToolCall): ToolItem | undefined => {
   };
 };
 
+const ToolCodexMapper = (message: IMessageCodexToolCall): ToolItem | undefined => {
+  const update = message.content;
+  const data = update.data || {};
+
+  const command = 'command' in data && Array.isArray(data.command) ? data.command.join(' ') : undefined;
+  const query = 'query' in data && typeof data.query === 'string' ? data.query : undefined;
+  const invocation = 'invocation' in data && data.invocation && typeof data.invocation === 'object' ? data.invocation : null;
+  const toolName = invocation
+    ? invocation.tool || invocation.name || invocation.method || undefined
+    : undefined;
+
+  const desc = update.description || command || query || toolName || update.kind;
+
+  const inputParts: string[] = [];
+  if (command) {
+    inputParts.push(command);
+  }
+  if (query) {
+    inputParts.push(query);
+  }
+  if (invocation && invocation.arguments !== undefined) {
+    inputParts.push(formatValue(invocation.arguments));
+  }
+
+  const outputParts = [
+    ...(update.content || []).map((item) => {
+      if (item.type === 'output' && item.output) return item.output;
+      if (item.type === 'text' && item.text) return item.text;
+      if (item.type === 'diff' && item.filePath) return `[diff] ${item.filePath}`;
+      return '';
+    }),
+    'result' in data && data.result !== undefined ? formatValue(data.result) : '',
+    'exit_code' in data && data.exit_code !== undefined ? `exit_code=${String(data.exit_code)}` : '',
+  ].filter(Boolean);
+
+  return {
+    key: update.toolCallId,
+    name: update.title || update.kind,
+    desc,
+    status:
+      update.status === 'success'
+        ? 'success'
+        : update.status === 'error'
+          ? 'error'
+          : update.status === 'canceled'
+            ? 'default'
+            : ('processing' as BadgeProps['status']),
+    input: inputParts.length > 0 ? inputParts.join('\n\n') : undefined,
+    output: outputParts.length > 0 ? outputParts.join('\n\n') : undefined,
+  };
+};
+
 const ToolItemDetail: React.FC<{ item: ToolItem }> = ({ item }) => {
   const [expanded, setExpanded] = useState(false);
   const hasDetail = item.input || item.output;
@@ -152,7 +204,7 @@ const ToolItemDetail: React.FC<{ item: ToolItem }> = ({ item }) => {
   );
 };
 
-const MessageToolGroupSummary: React.FC<{ messages: Array<IMessageToolGroup | IMessageAcpToolCall> }> = ({
+const MessageToolGroupSummary: React.FC<{ messages: Array<IMessageToolGroup | IMessageAcpToolCall | IMessageCodexToolCall> }> = ({
   messages,
 }) => {
   const [showMore, setShowMore] = useState(() => {
@@ -161,13 +213,15 @@ const MessageToolGroupSummary: React.FC<{ messages: Array<IMessageToolGroup | IM
       (m) =>
         (m.type === 'tool_group' &&
           m.content.some((t) => t.status !== 'Success' && t.status !== 'Error' && t.status !== 'Canceled')) ||
-        (m.type === 'acp_tool_call' && m.content.update.status !== 'completed')
+        (m.type === 'acp_tool_call' && m.content.update.status !== 'completed') ||
+        (m.type === 'codex_tool_call' && !['success', 'error', 'canceled'].includes(m.content.status))
     );
   });
   const tools = useMemo(() => {
     return messages.flatMap((m) => {
       if (m.type === 'tool_group') return ToolGroupMapper(m);
-      return ToolAcpMapper(m);
+      if (m.type === 'acp_tool_call') return ToolAcpMapper(m);
+      return ToolCodexMapper(m);
     });
   }, [messages]);
 

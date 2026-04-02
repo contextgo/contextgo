@@ -32,4 +32,13 @@ describe('cloud auth helpers', () => {
     expect(nextUrl.pathname).toBe('/desktop-login-complete');
     expect(nextUrl.searchParams.get('provider')).toBe('google');
   });
+
+  it('includes loopback callback url for dev desktop oauth flows', () => {
+    const callbackUrl = 'http://127.0.0.1:45821/contextgo-cloud-login/test-run';
+    const url = new URL(buildCloudDesktopOAuthStartUrl('github', { loopbackCallbackUrl: callbackUrl }));
+    const nextUrl = new URL(url.searchParams.get('next')!);
+
+    expect(nextUrl.searchParams.get('provider')).toBe('github');
+    expect(nextUrl.searchParams.get('loopback')).toBe(callbackUrl);
+  });
 });

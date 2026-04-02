@@ -29,6 +29,8 @@ const PERF_LOG = process.env.ACP_PERF === '1';
  * 当 Electron 应用从 Finder/launchd 启动时，这些变量可能不可用。
  */
 const SHELL_INHERITED_ENV_VARS = [
+  'HOME', // Required so CLIs resolve ~/.config, ~/.codex, keychains, etc. correctly
+  'XDG_CONFIG_HOME', // Some CLIs prefer XDG config dirs over ~/.config
   'PATH', // Required for finding CLI tools (e.g., ~/.npm-global/bin, ~/.nvm/...)
   'NODE_EXTRA_CA_CERTS', // Custom CA certificates
   'SSL_CERT_FILE',
@@ -36,6 +38,8 @@ const SHELL_INHERITED_ENV_VARS = [
   'REQUESTS_CA_BUNDLE',
   'CURL_CA_BUNDLE',
   'NODE_TLS_REJECT_UNAUTHORIZED',
+  'CODEX_API_KEY',
+  'OPENAI_API_KEY',
   'ANTHROPIC_AUTH_TOKEN', // Claude authentication (#776)
   'ANTHROPIC_API_KEY',
   'ANTHROPIC_BASE_URL',

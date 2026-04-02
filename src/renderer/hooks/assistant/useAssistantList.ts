@@ -6,6 +6,7 @@ import {
   normalizeExtensionAssistants,
   sortAssistants as sortAssistantsUtil,
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/assistantUtils';
+import { mergeAssistantsWithBuiltinFallback } from '@/renderer/utils/model/assistantCatalog';
 import type { AssistantListItem } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,7 +44,7 @@ export const useAssistantList = () => {
       // Read stored assistants from config (includes builtin and user-defined)
       const localAgents: AssistantListItem[] = (await ConfigStorage.get('acp.customAgents')) || [];
 
-      const mergedAgents = [...localAgents];
+      const mergedAgents = mergeAssistantsWithBuiltinFallback(localAgents) as AssistantListItem[];
       for (const extAssistant of normalizedExtAssistants) {
         if (!mergedAgents.some((agent) => agent.id === extAssistant.id)) {
           mergedAgents.push(extAssistant);

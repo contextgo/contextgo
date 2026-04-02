@@ -6,40 +6,40 @@ import type { CloudStatus } from '@/common/types/cloud';
 const getStatusInvoke = vi.fn();
 const startLoginInvoke = vi.fn();
 const logoutInvoke = vi.fn();
-const syncNowInvoke = vi.fn();
+const openInfermeshInvoke = vi.fn();
 const statusChangedOn = vi.fn();
 const messageSuccess = vi.fn();
 const messageError = vi.fn();
 const webuiGetStatusInvoke = vi.fn();
 const webuiStatusChangedOn = vi.fn();
 const webuiResetPasswordResultOn = vi.fn();
-const shellOpenExternalInvoke = vi.fn();
 const configStorageGet = vi.fn();
 
 const translations: Record<string, string> = {
   'common.refresh': 'Refresh',
   'settings.cloud.title': 'ContextGo Account',
-  'settings.cloud.description': 'Cloud account section',
+  'settings.cloud.description':
+    'Sign in once with GitHub or Google so ContextGo can bind this desktop device to your account.',
   'settings.cloud.loading': 'Checking cloud account status...',
   'settings.cloud.loginWithGithub': 'Continue with GitHub',
   'settings.cloud.loginWithGoogle': 'Continue with Google',
   'settings.cloud.loginSuccess': 'Cloud account connected',
   'settings.cloud.logoutSuccess': 'Cloud account disconnected',
-  'settings.cloud.syncSuccess': 'Cloud data synced',
   'settings.cloud.actionFailed': 'The cloud action could not be completed',
   'settings.cloud.notConnected': 'Not connected',
-  'settings.cloud.notConnectedDesc': 'Sign in to continue',
+  'settings.cloud.notConnectedDesc':
+    'Use GitHub or Google sign-in to finish OAuth login and bind this desktop. If you need the full account flow, you can continue on the InferMesh website.',
   'settings.cloud.sessionActive': 'Browser session active',
   'settings.cloud.sessionExpired': 'Browser session expired',
   'settings.cloud.sessionExpiredDesc': 'Session expired',
   'settings.cloud.deviceLinked': 'Device linked',
   'settings.cloud.deviceMissing': 'Device not linked',
-  'settings.cloud.pendingSync': 'Pending sync',
   'settings.cloud.deviceName': 'Device',
-  'settings.cloud.lastSync': 'Last sync',
-  'settings.cloud.notSyncedYet': 'Not synced yet',
   'settings.cloud.notAvailable': 'Not available',
-  'settings.cloud.syncNow': 'Sync now',
+  'settings.cloud.infermeshAccess': 'InferMesh website',
+  'settings.cloud.infermeshAccessDesc':
+    'ContextGo only needs the OAuth login and device binding. If you still need to register or complete account setup, continue on the InferMesh website.',
+  'settings.cloud.openInfermesh': 'Open InferMesh',
   'settings.cloud.signOut': 'Sign out',
   'settings.webui': 'WebUI',
   'settings.webui.description': 'WebUI description',
@@ -50,6 +50,8 @@ const translations: Record<string, string> = {
   'settings.webui.officialRemoteSignedIn': 'Signed in as {{name}}',
   'settings.webui.officialRemoteDeviceReady': 'This device is linked and ready for Official Remote.',
   'settings.webui.officialRemoteDevicePending': 'Cloud session is active, but this device is not fully linked yet.',
+  'settings.webui.officialRemoteRuntimeHint':
+    'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.',
   'settings.webui.openOfficialRemote': 'Open Official Remote',
   'settings.webui.officialRemoteSignedOut': 'Official Remote is not connected yet.',
   'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this device.',
@@ -68,10 +70,6 @@ const unauthenticatedStatus: CloudStatus = {
   providers: ['github', 'google'],
   authBaseUrl: 'https://auth.contextgo.io',
   apiBaseUrl: 'https://api.contextgo.io',
-  syncState: {
-    cursor: 0,
-    pendingLanguageSync: false,
-  },
 };
 
 const authenticatedStatus: CloudStatus = {
@@ -102,11 +100,6 @@ const authenticatedStatus: CloudStatus = {
   providers: ['github', 'google'],
   authBaseUrl: 'https://auth.contextgo.io',
   apiBaseUrl: 'https://api.contextgo.io',
-  syncState: {
-    cursor: 5,
-    lastSyncAt: '2026-03-28T10:00:00.000Z',
-    pendingLanguageSync: false,
-  },
 };
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
@@ -120,8 +113,8 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     logout: {
       invoke: logoutInvoke,
     },
-    syncNow: {
-      invoke: syncNowInvoke,
+    openInfermesh: {
+      invoke: openInfermeshInvoke,
     },
     statusChanged: {
       on: statusChangedOn,
@@ -136,11 +129,6 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     },
     resetPasswordResult: {
       on: webuiResetPasswordResultOn,
-    },
-  },
-  shell: {
-    openExternal: {
-      invoke: shellOpenExternalInvoke,
     },
   },
 }));
@@ -191,18 +179,18 @@ describe('CloudSyncSection', () => {
     getStatusInvoke.mockReset();
     startLoginInvoke.mockReset();
     logoutInvoke.mockReset();
-    syncNowInvoke.mockReset();
     statusChangedOn.mockReset();
     messageSuccess.mockReset();
     messageError.mockReset();
     webuiGetStatusInvoke.mockReset();
     webuiStatusChangedOn.mockReset();
     webuiResetPasswordResultOn.mockReset();
-    shellOpenExternalInvoke.mockReset();
+    openInfermeshInvoke.mockReset();
     configStorageGet.mockReset();
     statusChangedOn.mockImplementation(() => () => undefined);
     webuiStatusChangedOn.mockImplementation(() => () => undefined);
     webuiResetPasswordResultOn.mockImplementation(() => () => undefined);
+    openInfermeshInvoke.mockResolvedValue({ success: true, data: authenticatedStatus });
     configStorageGet.mockResolvedValue(false);
     webuiGetStatusInvoke.mockResolvedValue({
       success: true,
@@ -245,19 +233,10 @@ describe('CloudSyncSection', () => {
     expect(getStatusInvoke).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the bound device and triggers sync for an authenticated user', async () => {
+  it('shows the bound device and infermesh entry for an authenticated user', async () => {
     getStatusInvoke.mockResolvedValue({
       success: true,
       data: authenticatedStatus,
-    });
-    syncNowInvoke.mockResolvedValue({
-      success: true,
-      data: {
-        status: authenticatedStatus,
-        pushedChanges: 1,
-        pulledChanges: 0,
-        reRegisteredDevice: false,
-      },
     });
 
     const { default: CloudSyncSection } =
@@ -266,12 +245,44 @@ describe('CloudSyncSection', () => {
     render(<CloudSyncSection />);
 
     expect(await screen.findByText('ContextGo on mbp')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Sync now' }));
+    expect(screen.getByText('Device linked')).toBeInTheDocument();
+    expect(screen.getByText('InferMesh website')).toBeInTheDocument();
+  });
+
+  it('offers direct access to InferMesh before cloud login completes', async () => {
+    getStatusInvoke.mockResolvedValue({
+      success: true,
+      data: unauthenticatedStatus,
+    });
+
+    const { default: CloudSyncSection } =
+      await import('@/renderer/components/settings/SettingsModal/contents/SystemModalContent/CloudSyncSection');
+
+    render(<CloudSyncSection />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open InferMesh' }));
 
     await waitFor(() => {
-      expect(syncNowInvoke).toHaveBeenCalledTimes(1);
+      expect(openInfermeshInvoke).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByText('Device linked')).toBeInTheDocument();
+  });
+
+  it('opens the InferMesh portal after account binding is complete', async () => {
+    getStatusInvoke.mockResolvedValue({
+      success: true,
+      data: authenticatedStatus,
+    });
+
+    const { default: CloudSyncSection } =
+      await import('@/renderer/components/settings/SettingsModal/contents/SystemModalContent/CloudSyncSection');
+
+    render(<CloudSyncSection />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open InferMesh' }));
+
+    await waitFor(() => {
+      expect(openInfermeshInvoke).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('shows the returned login error message when cloud login fails', async () => {

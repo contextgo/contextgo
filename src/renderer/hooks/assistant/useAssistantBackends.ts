@@ -1,4 +1,5 @@
 import { ipcBridge } from '@/common';
+import { isProductVisibleRuntimeBackend } from '@/renderer/utils/model/availableAgents';
 import { useCallback, useEffect, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 
@@ -20,7 +21,9 @@ export const useAssistantBackends = () => {
       try {
         const resp = await ipcBridge.acpConversation.getAvailableAgents.invoke();
         if (resp.success && resp.data) {
-          setAvailableBackends(new Set(resp.data.map((a) => a.backend)));
+          setAvailableBackends(
+            new Set(resp.data.map((a) => a.backend).filter((backend) => isProductVisibleRuntimeBackend(backend)))
+          );
         }
       } catch {
         // fallback to default

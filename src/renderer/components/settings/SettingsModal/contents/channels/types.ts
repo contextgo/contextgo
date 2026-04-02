@@ -10,10 +10,15 @@ export type ChannelStatus = 'active' | 'coming_soon';
 
 export interface ChannelConfig {
   id: string;
+  familyId?: string;
+  familyTitle?: string;
+  familyDescription?: string;
   title: string;
   description: string;
   status: ChannelStatus;
   enabled: boolean;
+  configured?: boolean;
+  pairedCount?: number;
   disabled?: boolean;
   isConnected?: boolean;
   botUsername?: string;

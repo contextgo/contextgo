@@ -34,8 +34,10 @@ export class SpaceConnectorRuntimeService {
           installSource: 'sibling-repo',
           hostProcess: 'desktop-sidecar',
           needsUserProvisioning: false,
-          commandHint: 'Wrap connector.infohub.activity_clipboard_runtime behind ClipboardConnectorService and a managed desktop observer process.',
-          notes: 'Keep retention, consent, and pause controls in ContextGo while incubating the runtime from the sibling repository.',
+          commandHint:
+            'Wrap connector.infohub.activity_clipboard_runtime behind ClipboardConnectorService and a managed desktop observer process.',
+          notes:
+            'Keep retention, consent, and pause controls in ContextGo while incubating the runtime from the sibling repository.',
         };
       case 'feishu-openapi':
         return {
@@ -59,7 +61,8 @@ export class SpaceConnectorRuntimeService {
           hostProcess: 'desktop-sidecar',
           needsUserProvisioning: true,
           commandHint: 'Build a small ContextGo-managed Go runtime around the official google-api-go-client packages.',
-          notes: 'Share OAuth state across the Google Workspace family, but keep datasource scoping and collect results in ContextGo.',
+          notes:
+            'Share OAuth state across the Google Workspace family, but keep datasource scoping and collect results in ContextGo.',
         };
     }
   }

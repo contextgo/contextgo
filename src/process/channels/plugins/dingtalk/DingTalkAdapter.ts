@@ -9,6 +9,7 @@ import type {
   IUnifiedIncomingMessage,
   IUnifiedMessageContent,
   IUnifiedOutgoingMessage,
+  IUnifiedPeer,
   IUnifiedUser,
 } from '../../types';
 
@@ -127,6 +128,16 @@ export function parseChatId(chatId: string): { type: 'user' | 'group'; id: strin
   return { type: 'user', id: chatId };
 }
 
+export function buildDingTalkPeer(data: DingTalkStreamMessage): IUnifiedPeer {
+  const encodedChatId = encodeChatId(data);
+  return {
+    key: encodedChatId,
+    platformChatId: encodedChatId,
+    scope: 'chat',
+    chatType: data.conversationType === '2' ? 'group' : 'private',
+  };
+}
+
 /**
  * Convert DingTalk Stream callback data to unified incoming message
  */
@@ -137,12 +148,13 @@ export function toUnifiedIncomingMessage(
   // Handle card action
   if (actionInfo) {
     const userId = data.senderStaffId || '';
-    const chatId = encodeChatId(data);
+    const peer = buildDingTalkPeer(data);
 
     return {
       id: data.msgId || Date.now().toString(),
       platform: 'dingtalk',
-      chatId,
+      chatId: peer.platformChatId,
+      peer,
       user: {
         id: userId,
         displayName: data.senderNick || `User ${userId.slice(-6)}`,
@@ -164,12 +176,13 @@ export function toUnifiedIncomingMessage(
   if (!user) return null;
 
   const content = extractMessageContent(data);
-  const chatId = encodeChatId(data);
+  const peer = buildDingTalkPeer(data);
 
   return {
     id: data.msgId || Date.now().toString(),
     platform: 'dingtalk',
-    chatId,
+    chatId: peer.platformChatId,
+    peer,
     user,
     content,
     timestamp: data.createAt || Date.now(),

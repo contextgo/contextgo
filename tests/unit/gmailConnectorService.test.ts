@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { GmailConnectorService, normalizeGmailConnectorConfig } from '../../src/process/services/space/connectors/googleWorkspace/GmailConnectorService';
+import {
+  GmailConnectorService,
+  normalizeGmailConnectorConfig,
+} from '../../src/process/services/space/connectors/googleWorkspace/GmailConnectorService';
 import type { GmailConnectorConfig } from '../../src/common/types/connectors/gmail';
 
 type GmailStore = {

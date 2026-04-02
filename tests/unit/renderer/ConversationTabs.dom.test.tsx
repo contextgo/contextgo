@@ -2,10 +2,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const hoistedMocks = vi.hoisted(() => ({
+  configStorageGetMock: vi.fn(),
+}));
+
 const useLayoutContextMock = vi.fn();
 const useConversationTabsMock = vi.fn();
 const useSWRMock = vi.fn();
-const configStorageGetMock = vi.fn();
+const configStorageGetMock = hoistedMocks.configStorageGetMock;
 const navigateMock = vi.fn();
 const useParamsMock = vi.fn();
 const closePreviewMock = vi.fn();
@@ -48,12 +52,23 @@ vi.mock('@/common', () => ({
 
 vi.mock('@/common/config/storage', () => ({
   ConfigStorage: {
-    get: (...args: unknown[]) => configStorageGetMock(...args),
+    get: (...args: unknown[]) => hoistedMocks.configStorageGetMock(...args),
   },
 }));
 
 vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
   useLayoutContext: () => useLayoutContextMock(),
+}));
+
+vi.mock('@/renderer/hooks/context/ThemeContext', () => ({
+  useThemeContext: () => ({
+    theme: 'light',
+    setTheme: vi.fn(),
+    colorScheme: 'default',
+    setColorScheme: vi.fn(),
+    fontScale: 1,
+    setFontScale: vi.fn(),
+  }),
 }));
 
 vi.mock('@/renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
@@ -171,7 +186,21 @@ vi.mock('@arco-design/web-react', () => ({
   Message: {
     error: (...args: unknown[]) => messageErrorMock(...args),
   },
+  Select: Object.assign(
+    ({ children, value, onChange }: { children?: React.ReactNode; value?: string; onChange?: (value: string) => void }) => (
+      <select value={value} onChange={(event) => onChange?.(event.target.value)}>
+        {children}
+      </select>
+    ),
+    {
+      Option: ({ children, value }: { children?: React.ReactNode; value: string }) => <option value={value}>{children}</option>,
+      OptGroup: ({ children, label }: { children?: React.ReactNode; label: string }) => <optgroup label={label}>{children}</optgroup>,
+    }
+  ),
   Spin: ({ loading }: { loading?: boolean }) => (loading ? <div>loading</div> : null),
+  Steps: Object.assign(({ children }: { children?: React.ReactNode }) => <div>{children}</div>, {
+    Step: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  }),
 }));
 
 vi.mock('swr', () => ({
@@ -337,6 +366,8 @@ describe('ConversationTabs', () => {
     expect(inner?.className).toContain('h-full');
     expect(inner?.className).toContain('max-w-full');
     expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
+    expect(root).not.toHaveClass('bg-1');
+    expect(root).toHaveStyle({ background: 'var(--app-conversation-strip-bg, var(--bg-1))' });
   });
 
   it('keeps the compact mobile wrapper sizing on mobile', () => {

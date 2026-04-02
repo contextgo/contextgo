@@ -13,6 +13,8 @@ import type { ISpaceService } from '@process/services/space/ISpaceService';
 import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
 import { uuid } from '@/common/utils';
 import { cronService } from './cron/cronServiceSingleton';
+import { copyWorkspaceAutomationHooks } from '@process/bridge/services/workspaceAutomation';
+import path from 'node:path';
 import {
   createGeminiAgent,
   createAcpAgent,
@@ -21,6 +23,15 @@ import {
   createNanobotAgent,
   createGroupConversation,
 } from '@process/utils/initAgent';
+
+const resolveConversationWorkspace = (conversation?: Pick<TChatConversation, 'extra'> | null): string | undefined => {
+  const extra = conversation?.extra as Record<string, unknown> | undefined;
+  const workingDirectory = typeof extra?.workingDirectory === 'string' ? extra.workingDirectory : undefined;
+  const workspace = typeof extra?.workspace === 'string' ? extra.workspace : undefined;
+  const candidate = workingDirectory || workspace;
+
+  return candidate?.trim() ? path.resolve(candidate) : undefined;
+};
 
 // Keep legacy workspace fields synchronized with the new Space/Mount/workingDirectory model
 // so mixed old/new records can still round-trip safely through update flows.
@@ -128,12 +139,26 @@ export class ConversationServiceImpl implements IConversationService {
   }
 
   async createWithMigration(params: MigrateConversationParams): Promise<TChatConversation> {
-    const { conversation, sourceConversationId, migrateCron } = params;
+    const { conversation, sourceConversationId, migrateCron, sourceWorkspace } = params;
+    const normalizedConversation = conversation.extra
+      ? ({
+          ...conversation,
+          extra: normalizeConversationExtraCompatibility(conversation.extra),
+        } as TChatConversation)
+      : conversation;
     const conv: TChatConversation = {
-      ...conversation,
-      createTime: conversation.createTime ?? Date.now(),
-      modifyTime: conversation.modifyTime ?? Date.now(),
+      ...normalizedConversation,
+      createTime: normalizedConversation.createTime ?? Date.now(),
+      modifyTime: normalizedConversation.modifyTime ?? Date.now(),
     };
+    const targetWorkspace = resolveConversationWorkspace(conv);
+    let resolvedSourceWorkspace = sourceWorkspace?.trim() ? path.resolve(sourceWorkspace) : undefined;
+
+    if (sourceConversationId && !resolvedSourceWorkspace) {
+      const sourceConversation = await this.repo.getConversation(sourceConversationId);
+      resolvedSourceWorkspace = resolveConversationWorkspace(sourceConversation);
+    }
+
     await this.repo.createConversation(conv);
 
     if (sourceConversationId) {
@@ -155,6 +180,12 @@ export class ConversationServiceImpl implements IConversationService {
         page++;
       }
 
+      try {
+        await copyWorkspaceAutomationHooks(resolvedSourceWorkspace, targetWorkspace);
+      } catch (err) {
+        console.warn('[ConversationServiceImpl] Failed to copy workspace hooks during migration:', err);
+      }
+
       // Migrate or delete cron jobs associated with source conversation
       try {
         const jobs = await cronService.listJobsByConversation(sourceConversationId);
@@ -165,6 +196,7 @@ export class ConversationServiceImpl implements IConversationService {
                 ...job.metadata,
                 conversationId: conv.id,
                 conversationTitle: conv.name,
+                workspacePath: targetWorkspace,
               },
             });
           }

@@ -21,6 +21,7 @@ import type {
   PluginStatus,
   PluginType,
 } from '@process/channels/types';
+import { hasPluginCredentials } from '@process/channels/types';
 import { decryptCredentials } from '@process/channels/utils/credentialCrypto';
 import type {
   ChunkRecord,
@@ -131,7 +132,11 @@ export interface IRemoteIdentityRow {
   connector_id: string;
   remote_user_id: string | null;
   remote_chat_id: string;
+  platform_chat_id: string | null;
   remote_chat_type: string | null;
+  peer_scope: string | null;
+  parent_chat_id: string | null;
+  thread_id: string | null;
   display_name: string | null;
   authorized_at: number;
   last_active: number | null;
@@ -199,7 +204,7 @@ export interface IChannelControlLeaseRow {
   control_mode: ChannelControlMode;
   source_external_session_id: string | null;
   source_conversation_id: string | null;
-  handoff_mode: string | null;
+  continuation_mode: string | null;
   created_at: number;
   updated_at: number;
   released_at: number | null;
@@ -356,10 +361,10 @@ export function rowToConversation(row: IConversationRow): TChatConversation {
     return {
       ...base,
       type: 'group' as const,
-        extra: JSON.parse(row.extra),
-        model: row.model
-          ? JSON.parse(row.model)
-          : {
+      extra: JSON.parse(row.extra),
+      model: row.model
+        ? JSON.parse(row.model)
+        : {
             id: 'group-placeholder',
             name: 'Group',
             useModel: 'group',
@@ -828,14 +833,17 @@ const parseJson = <T>(value: string | null | undefined, fallback: T): T => {
 };
 
 export function rowToConnectorInstance(row: IConnectorInstanceRow): IConnectorInstance {
+  const credentials = decryptCredentials(parseJson(row.credentials, {}));
+
   return {
     id: row.id,
     platform: row.platform as PluginType,
     name: row.name,
     enabled: row.enabled === 1,
     status: row.status as PluginStatus,
-    credentials: decryptCredentials(parseJson(row.credentials, {})),
+    credentials,
     runtimeConfig: parseJson(row.runtime_config, {}),
+    configured: hasPluginCredentials(row.platform as PluginType, credentials),
     capabilities: parseJson(row.capabilities, {}),
     legacyPluginId: row.legacy_plugin_id ?? undefined,
     createdAt: row.created_at,
@@ -865,7 +873,11 @@ export function rowToRemoteIdentity(row: IRemoteIdentityRow): IRemoteIdentity {
     connectorId: row.connector_id,
     remoteUserId: row.remote_user_id ?? undefined,
     remoteChatId: row.remote_chat_id,
+    platformChatId: row.platform_chat_id ?? undefined,
     remoteChatType: row.remote_chat_type ?? undefined,
+    peerScope: row.peer_scope === 'thread' || row.peer_scope === 'chat' ? row.peer_scope : undefined,
+    parentChatId: row.parent_chat_id ?? undefined,
+    threadId: row.thread_id ?? undefined,
     displayName: row.display_name ?? undefined,
     authorizedAt: row.authorized_at,
     lastActive: row.last_active ?? undefined,
@@ -880,7 +892,11 @@ export function remoteIdentityToRow(identity: IRemoteIdentity): IRemoteIdentityR
     connector_id: identity.connectorId,
     remote_user_id: identity.remoteUserId ?? null,
     remote_chat_id: identity.remoteChatId,
+    platform_chat_id: identity.platformChatId ?? null,
     remote_chat_type: identity.remoteChatType ?? null,
+    peer_scope: identity.peerScope ?? null,
+    parent_chat_id: identity.parentChatId ?? null,
+    thread_id: identity.threadId ?? null,
     display_name: identity.displayName ?? null,
     authorized_at: identity.authorizedAt,
     last_active: identity.lastActive ?? null,
@@ -998,7 +1014,10 @@ export function rowToChannelControlLease(row: IChannelControlLeaseRow): IChannel
     controlMode: row.control_mode,
     sourceExternalSessionId: row.source_external_session_id ?? undefined,
     sourceConversationId: row.source_conversation_id ?? undefined,
-    handoffMode: row.handoff_mode === 'resume' || row.handoff_mode === 'new_thread' ? row.handoff_mode : undefined,
+    continuationMode:
+      row.continuation_mode === 'resume' || row.continuation_mode === 'new_thread'
+        ? row.continuation_mode
+        : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     releasedAt: row.released_at ?? undefined,
@@ -1012,7 +1031,7 @@ export function channelControlLeaseToRow(lease: IChannelControlLease): IChannelC
     control_mode: lease.controlMode,
     source_external_session_id: lease.sourceExternalSessionId ?? null,
     source_conversation_id: lease.sourceConversationId ?? null,
-    handoff_mode: lease.handoffMode ?? null,
+    continuation_mode: lease.continuationMode ?? null,
     created_at: lease.createdAt,
     updated_at: lease.updatedAt,
     released_at: lease.releasedAt ?? null,

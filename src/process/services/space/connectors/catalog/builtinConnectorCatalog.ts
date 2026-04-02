@@ -24,7 +24,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     spaceScoped: true,
     contextEngineReady: true,
     ownershipBoundary: 'Product semantics, consent, and browser-context ownership stay inside ContextGo.',
-    nextStep: 'Promote browser context picker and manager from conversation-bound flow to a Space-level connector surface.',
+    nextStep:
+      'Promote browser context picker and manager from conversation-bound flow to a Space-level connector surface.',
     dependencies: [
       {
         kind: 'binary',
@@ -50,7 +51,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     desktopHostOnly: true,
     spaceScoped: true,
     contextEngineReady: true,
-    ownershipBoundary: 'Runtime can incubate from the connector repository, but retention, consent, and storage policy belong to ContextGo.',
+    ownershipBoundary:
+      'Runtime can incubate from the connector repository, but retention, consent, and storage policy belong to ContextGo.',
     nextStep: 'Wrap clipboard runtime as a managed desktop observer with pause, retention, and collect controls.',
     dependencies: [
       {
@@ -65,7 +67,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     id: 'feishu-openapi',
     familyId: 'feishu',
     name: 'Feishu OpenAPI',
-    summary: 'Official Feishu/Lark OpenAPI runtime for docs, chats, calendar, and files through a managed external connector.',
+    summary:
+      'Official Feishu/Lark OpenAPI runtime for docs, chats, calendar, and files through a managed external connector.',
     kind: 'official-cli',
     runtimeOwner: 'contextgo-managed-sidecar',
     launchSurface: 'managed-external-runtime',
@@ -77,8 +80,10 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     desktopHostOnly: true,
     spaceScoped: true,
     contextEngineReady: true,
-    ownershipBoundary: 'Feishu API execution may run out-of-process, but datasource, source assets, and collect results remain ContextGo-owned.',
-    nextStep: 'Add a managed runtime wrapper around the official lark-openapi-mcp project and expose datasource-level auth and collect flows.',
+    ownershipBoundary:
+      'Feishu API execution may run out-of-process, but datasource, source assets, and collect results remain ContextGo-owned.',
+    nextStep:
+      'Add a managed runtime wrapper around the official lark-openapi-mcp project and expose datasource-level auth and collect flows.',
     dependencies: [
       {
         kind: 'binary',
@@ -109,8 +114,10 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     desktopHostOnly: true,
     spaceScoped: true,
     contextEngineReady: true,
-    ownershipBoundary: 'Google API calls can use a managed Go runtime, but datasource scope and collected content must remain inside ContextGo.',
-    nextStep: 'Implement Drive datasource auth, file listing, and collect runs first before broader workspace coverage.',
+    ownershipBoundary:
+      'Google API calls can use a managed Go runtime, but datasource scope and collected content must remain inside ContextGo.',
+    nextStep:
+      'Implement Drive datasource auth, file listing, and collect runs first before broader workspace coverage.',
     dependencies: [
       {
         kind: 'go-module',
@@ -173,7 +180,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     desktopHostOnly: true,
     spaceScoped: true,
     contextEngineReady: true,
-    ownershipBoundary: 'ContextGo owns spreadsheet datasource policy and collected snapshots, not the external Go client.',
+    ownershipBoundary:
+      'ContextGo owns spreadsheet datasource policy and collected snapshots, not the external Go client.',
     nextStep: 'Reuse Google auth, then add spreadsheet snapshot collect and row-range fetch flows.',
     dependencies: [
       {
@@ -205,7 +213,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     desktopHostOnly: true,
     spaceScoped: true,
     contextEngineReady: true,
-    ownershipBoundary: 'Message ingestion policy and retention belong to ContextGo even if Gmail transport is externalized.',
+    ownershipBoundary:
+      'Message ingestion policy and retention belong to ContextGo even if Gmail transport is externalized.',
     nextStep: 'Add Gmail datasource auth and conservative metadata-first collect before full message-body ingestion.',
     dependencies: [
       {
@@ -238,7 +247,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     spaceScoped: true,
     contextEngineReady: true,
     ownershipBoundary: 'Schedule semantics and collect policies belong to ContextGo, not the external calendar client.',
-    nextStep: 'Start with read-only calendar listing and event collect, then expand into recurring-event normalization.',
+    nextStep:
+      'Start with read-only calendar listing and event collect, then expand into recurring-event normalization.',
     dependencies: [
       {
         kind: 'go-module',

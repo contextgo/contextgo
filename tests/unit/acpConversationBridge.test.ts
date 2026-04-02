@@ -5,6 +5,10 @@ vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tm
 const handlers: Record<string, (...args: any[]) => any> = {};
 const hoisted = vi.hoisted(() => ({
   conversationListChangedEmit: vi.fn(),
+  codexStart: vi.fn(async () => {}),
+  codexWaitForServerReady: vi.fn(async () => {}),
+  codexPing: vi.fn(async () => true),
+  codexStop: vi.fn(async () => {}),
 }));
 
 function makeChannel(name: string) {
@@ -88,12 +92,14 @@ vi.mock('../../src/process/agent/acp/modelInfo', () => ({
 }));
 
 vi.mock('../../src/process/agent/codex/connection/CodexConnection', () => ({
-  CodexConnection: vi.fn(() => ({
-    start: vi.fn(async () => {}),
-    waitForServerReady: vi.fn(async () => {}),
-    ping: vi.fn(async () => true),
-    stop: vi.fn(async () => {}),
-  })),
+  CodexConnection: vi.fn(function MockCodexConnection() {
+    return {
+      start: hoisted.codexStart,
+      waitForServerReady: hoisted.codexWaitForServerReady,
+      ping: hoisted.codexPing,
+      stop: hoisted.codexStop,
+    };
+  }),
 }));
 
 vi.mock('../../src/process/task/AcpAgentManager', () => ({ default: class AcpAgentManager {} }));
@@ -114,10 +120,12 @@ vi.mock('../../src/process/utils/tray', () => ({
 }));
 
 const safeExecMock = vi.fn(async () => ({ stdout: '', stderr: '' }));
+const safeExecFileMock = vi.fn(async () => ({ stdout: '', stderr: '' }));
 const getEnhancedEnvMock = vi.fn(() => ({ PATH: '/usr/bin' }));
 
 vi.mock('../../src/process/utils/safeExec', () => ({
   safeExec: (...args: unknown[]) => safeExecMock(...args),
+  safeExecFile: (...args: unknown[]) => safeExecFileMock(...args),
 }));
 
 vi.mock('../../src/process/utils/shellEnv', () => ({
@@ -169,6 +177,16 @@ describe('acpConversationBridge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    safeExecFileMock.mockReset();
+    safeExecFileMock.mockResolvedValue({ stdout: '', stderr: '' });
+    hoisted.codexStart.mockReset();
+    hoisted.codexStart.mockResolvedValue(undefined);
+    hoisted.codexWaitForServerReady.mockReset();
+    hoisted.codexWaitForServerReady.mockResolvedValue(undefined);
+    hoisted.codexPing.mockReset();
+    hoisted.codexPing.mockResolvedValue(true);
+    hoisted.codexStop.mockReset();
+    hoisted.codexStop.mockResolvedValue(undefined);
     processConfigGetMock.mockImplementation(async (key: string) => {
       if (key === 'acp.config') return {};
       if (key === 'codex.config') return {};
@@ -288,38 +306,37 @@ describe('acpConversationBridge', () => {
 
     const result = await handlers['getAvailableAgents']();
 
-    expect(result).toEqual({
-      success: true,
-      data: [
-        {
-          backend: 'gemini',
-          name: 'Gemini',
-          runtimeSource: 'builtin',
-          supportedTransports: [],
-        },
-        {
-          backend: 'openclaw-gateway',
-          name: 'OpenClaw',
-          cliPath: 'openclaw',
-          runtimeSource: 'detected',
-          openclawAgentId: 'main',
-          workspace: '/Users/test/.openclaw/workspace',
-          isDefault: true,
-          supportedTransports: [],
-        },
-        {
-          backend: 'openclaw-gateway',
-          name: 'Reviewer (reviewer)',
-          cliPath: 'openclaw',
-          runtimeSource: 'detected',
-          openclawAgentId: 'reviewer',
-          workspace: '/Users/test/.openclaw/workspace-reviewer',
-          avatar: '🦞',
-          isDefault: false,
-          supportedTransports: [],
-        },
-      ],
-    });
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual([
+      expect.objectContaining({
+        backend: 'gemini',
+        name: 'Gemini',
+        cliPath: 'gemini',
+        runtimeSource: 'builtin',
+        supportedTransports: [],
+      }),
+      expect.objectContaining({
+        backend: 'openclaw-gateway',
+        name: 'OpenClaw',
+        cliPath: 'openclaw',
+        runtimeSource: 'detected',
+        openclawAgentId: 'main',
+        workspace: '/Users/test/.openclaw/workspace',
+        isDefault: true,
+        supportedTransports: [],
+      }),
+      expect.objectContaining({
+        backend: 'openclaw-gateway',
+        name: 'Reviewer (reviewer)',
+        cliPath: 'openclaw',
+        runtimeSource: 'detected',
+        openclawAgentId: 'reviewer',
+        workspace: '/Users/test/.openclaw/workspace-reviewer',
+        avatar: '🦞',
+        isDefault: false,
+        supportedTransports: [],
+      }),
+    ]);
   });
 
   it('merges configured runtime paths into available agents when PATH detection misses them', async () => {
@@ -342,32 +359,69 @@ describe('acpConversationBridge', () => {
 
     const result = await handlers['getAvailableAgents']();
 
-    expect(result).toEqual({
-      success: true,
-      data: [
-        {
-          backend: 'gemini',
-          name: 'Gemini',
-          runtimeSource: 'builtin',
-          supportedTransports: [],
-        },
-        {
-          backend: 'claude',
-          name: 'Claude Code',
-          cliPath: '/Applications/Claude Code.app/Contents/MacOS/claude',
-          runtimeSource: 'configured',
-          supportedTransports: [],
-        },
-        {
-          backend: 'codex',
-          name: 'Codex',
-          cliPath: '/opt/codex/bin/codex',
-          acpArgs: [],
-          runtimeSource: 'configured',
-          supportedTransports: [],
-        },
-      ],
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual([
+      expect.objectContaining({
+        backend: 'gemini',
+        name: 'Gemini',
+        cliPath: 'gemini',
+        runtimeSource: 'builtin',
+        supportedTransports: [],
+      }),
+      expect.objectContaining({
+        backend: 'claude',
+        name: 'Claude Code',
+        cliPath: '/Applications/Claude Code.app/Contents/MacOS/claude',
+        resolvedCliPath: '/Applications/Claude Code.app/Contents/MacOS/claude',
+        runtimeSource: 'configured',
+        supportedTransports: [],
+      }),
+      expect.objectContaining({
+        backend: 'codex',
+        name: 'Codex',
+        cliPath: '/opt/codex/bin/codex',
+        resolvedCliPath: '/opt/codex/bin/codex',
+        acpArgs: [],
+        runtimeSource: 'configured',
+        supportedTransports: [],
+      }),
+    ]);
+  });
+
+  it('resolves Gemini to the actual executable path for runtime display', async () => {
+    vi.mocked(acpDetector.getDetectedAgents).mockReturnValue([{ backend: 'gemini', name: 'Gemini' }] as any);
+    safeExecFileMock.mockImplementation(async (command: string, args?: string[]) => {
+      if ((command === 'which' || command === '/usr/bin/which') && args?.[0] === 'gemini') {
+        return {
+          stdout: '/opt/homebrew/bin/gemini\n',
+          stderr: '',
+        };
+      }
+
+      return {
+        stdout: '',
+        stderr: '',
+      };
     });
+
+    const result = await handlers['getAvailableAgents']();
+
+    expect(safeExecFileMock).toHaveBeenCalledWith('/usr/bin/which', ['gemini'], {
+      timeout: 1000,
+      env: { PATH: '/usr/bin' },
+    });
+    expect(result.success).toBe(true);
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]).toEqual(
+      expect.objectContaining({
+        backend: 'gemini',
+        name: 'Gemini',
+        cliPath: 'gemini',
+        runtimeSource: 'builtin',
+        supportedTransports: [],
+      })
+    );
+    expect(result.data[0]?.resolvedCliPath).toBe('/opt/homebrew/bin/gemini');
   });
 
   it('detectCliPath prefers the configured runtime path for built-in backends', async () => {
@@ -387,6 +441,76 @@ describe('acpConversationBridge', () => {
       success: true,
       data: {
         path: '/opt/codex/bin/codex',
+      },
+    });
+  });
+
+  it('uses codex login wording when codex authentication is missing', async () => {
+    getEnhancedEnvMock.mockReturnValue({ PATH: '/usr/bin' });
+    safeExecFileMock.mockRejectedValue(new Error('not logged in'));
+    hoisted.codexStart.mockRejectedValue(new Error('authentication required'));
+
+    vi.resetModules();
+    const { initAcpConversationBridge: initBridge } = await import('../../src/process/bridge/acpConversationBridge');
+    initBridge(taskManager, conversationService);
+
+    const result = await handlers['checkAgentHealth']({ backend: 'codex' });
+
+    expect(result).toEqual({
+      success: false,
+      msg: 'codex not authenticated',
+      data: {
+        available: false,
+        error: 'authentication required',
+      },
+    });
+    expect(hoisted.codexStart).toHaveBeenCalled();
+  });
+
+  it('treats codex stderr login status as authenticated during health checks', async () => {
+    getEnhancedEnvMock.mockReturnValue({ PATH: '/usr/bin' });
+    safeExecFileMock.mockResolvedValue({
+      stdout: '',
+      stderr: 'Logged in using an API key - sk-test',
+    });
+
+    vi.resetModules();
+    const { initAcpConversationBridge: initBridge } = await import('../../src/process/bridge/acpConversationBridge');
+    initBridge(taskManager, conversationService);
+
+    const result = await handlers['checkAgentHealth']({ backend: 'codex' });
+
+    expect(safeExecFileMock).toHaveBeenCalledWith('codex', ['login', 'status'], {
+      timeout: 5000,
+      env: { PATH: '/usr/bin' },
+    });
+    expect(result).toEqual({
+      success: true,
+      data: {
+        available: true,
+        latency: expect.any(Number),
+      },
+    });
+  });
+
+  it('still starts Codex when login status is unavailable but runtime is actually usable', async () => {
+    getEnhancedEnvMock.mockReturnValue({ PATH: '/usr/bin' });
+    safeExecFileMock.mockRejectedValue(new Error('status unavailable'));
+
+    vi.resetModules();
+    const { initAcpConversationBridge: initBridge } = await import('../../src/process/bridge/acpConversationBridge');
+    initBridge(taskManager, conversationService);
+
+    const result = await handlers['checkAgentHealth']({ backend: 'codex' });
+
+    expect(hoisted.codexStart).toHaveBeenCalledWith('codex', expect.any(String));
+    expect(hoisted.codexWaitForServerReady).toHaveBeenCalledWith(15000);
+    expect(hoisted.codexPing).toHaveBeenCalledWith(5000);
+    expect(result).toEqual({
+      success: true,
+      data: {
+        available: true,
+        latency: expect.any(Number),
       },
     });
   });

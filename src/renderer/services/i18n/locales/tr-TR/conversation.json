@@ -67,7 +67,16 @@
     "pinnedSection": "Pinned",
     "deleteSuccess": "Başarıyla silindi",
     "deleteFailed": "Silme başarısız oldu",
-    "toggleGroupConversation": "Grup oturumlarını aç/kapat"
+    "toggleGroupConversation": "Grup oturumlarını aç/kapat",
+    "deleteModalHeadline": "Bu sohbet kalıcı olarak silinsin mi?",
+    "deleteModalDescription": "Bu işlem geri alınamaz. Sohbet mesajları ve ilgili kayıtlar silinecektir.",
+    "deleteTargetLabel": "Sohbet",
+    "groupConversationTag": "Grup",
+    "deleteGroupImpact": "Bu grup silinirse bağlı {{count}} alt sohbet de kaldırılır.",
+    "deleteModalBatchHeadline": "Seçili sohbetler kalıcı olarak silinsin mi?",
+    "deleteModalBatchDescription": "Bu işlem geri alınamaz. Seçili tüm sohbet mesajları ve ilgili kayıtlar silinecektir.",
+    "deleteBatchTargetLabel": "Seçim",
+    "deleteBatchCount": "{{count}} sohbet seçildi"
   },
   "historySearch": {
     "tooltip": "Ara",
@@ -233,7 +242,11 @@
     "modelSwitchNotSupported": "Mevcut OpenClaw Gateway model değiştirmeyi desteklemiyor"
   },
   "contextUsage": {
-    "contextUsed": "bağlam kullanıldı"
+    "contextUsed": "bağlam kullanıldı",
+    "title": "Bağlam kullanımı {{percentage}}",
+    "used": "Kullanılan",
+    "remaining": "Kalan",
+    "limit": "Limit"
   },
   "skill_generator": {
     "title": "Yetenek/Kural Oluştur",
@@ -258,7 +271,7 @@
     "preset_registered": "Ajan hazır ayarı başarıyla kaydedildi!"
   },
   "dropdown": {
-    "cliAgents": "CLI Agents",
+    "cliAgents": "Calistirilabilir Agent'lar",
     "presetAssistants": "Preset Assistants"
   },
   "group": {
@@ -394,10 +407,9 @@
     }
   },
   "header": {
-    "publishAgentEntry": "IM'e Yayinla",
-    "publishAgentEntryHint": "Bu konusmayi yeniden kullanilabilir bir Agent'e donusturun ve kullaniciya, gruba, konuya veya baska bir IM yuzeyine yayinlayin.",
-    "publishAgentAction": "Publish this Agent",
-    "handoffSessionAction": "Continue current session in IM",
+    "publishAgentEntry": "Agent'i Yayinla",
+    "publishAgentEntryHint": "Bu konusmayi yeniden kullanilabilir bir Agent'e donusturun ve IM hedeflerine uzun vadeli yayini yonetin.",
+    "publishAgentAction": "Agent'i Yayinla",
     "publishPrepareFailed": "Bu agent giriş noktası hazırlanamadı"
   },
   "noAgentsAvailable": "No agents available",
@@ -418,5 +430,31 @@
     "defaultLabel": "Tarayici Baglami",
     "conversationLabel": "{{name}} Tarayici"
   },
-  "createFailed": "Failed to create conversation"
+  "createFailed": "Failed to create conversation",
+  "runStatus": {
+    "showDetails": "Ayrıntıları göster",
+    "hideDetails": "Ayrıntıları gizle",
+    "rawTask": "Ham görev",
+    "liveThought": "Canlı düşünce",
+    "runtimeStats": "Çalışma istatistikleri",
+    "backend": "Arka uç",
+    "model": "Model",
+    "mode": "Mod",
+    "startedAt": "Başlangıç zamanı",
+    "elapsed": "Geçen süre",
+    "unknown": "Bilinmiyor",
+    "noThoughtYet": "Henüz düşünce akışı yok",
+    "runtimeDisconnected": "Ajan çalışma zamanı beklenmedik şekilde durdu. Yeniden başlatmak için tekrar gönderin.",
+    "activeTools": "{{count}} etkin araç",
+    "activeTools_other": "{{count}} etkin araç",
+    "phase": {
+      "preparing": "Hazırlanıyor",
+      "reasoning": "Düşünüyor",
+      "toolRunning": "Araçlar çalışıyor",
+      "waitingPermission": "İzin bekleniyor",
+      "composing": "Yanıt oluşturuluyor",
+      "completed": "Tamamlandı",
+      "error": "Hata"
+    }
+  }
 }

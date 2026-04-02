@@ -13,7 +13,9 @@ import { blockMobileInputFocus, blurActiveElement } from '@/renderer/utils/ui/fo
 import { cleanupSiderTooltips, getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 import { getActivityTime, createTimelineGrouper } from '@/renderer/utils/chat/timeline';
 import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
-import { Empty, Popconfirm, Input, Tooltip } from '@arco-design/web-react';
+import DeleteConversationModal from '@/renderer/pages/conversation/GroupedHistory/DeleteConversationModal';
+import type { DeleteConversationModalState } from '@/renderer/pages/conversation/GroupedHistory/types';
+import { Empty, Input, Message, Tooltip } from '@arco-design/web-react';
 import { DeleteOne, MessageOne, EditOne } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
@@ -70,6 +72,8 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
   const [chatHistory, setChatHistory] = useState<TChatConversation[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
+  const [deleteModalState, setDeleteModalState] = useState<DeleteConversationModalState>(null);
+  const [deleteModalDeleting, setDeleteModalDeleting] = useState(false);
   const { id } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -124,21 +128,69 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
     return addEventListener('chat.history.refresh', refresh);
   }, [isConversation]);
 
-  const handleRemoveConversation = (conversationIdToRemove: string) => {
-    void ipcBridge.conversation.remove
-      .invoke({ id: conversationIdToRemove })
-      .then((success) => {
-        if (success) {
-          // Trigger refresh to reload from database
-          emitter.emit('chat.history.refresh');
-          void Promise.resolve(navigate('/')).catch((error) => {
-            console.error('Navigation failed:', error);
-          });
+  const handleDeleteClick = (conversationId: string) => {
+    void ipcBridge.conversation.get
+      .invoke({ id: conversationId })
+      .then((conversation) => {
+        if (!conversation) {
+          Message.error(t('conversation.history.deleteFailed'));
+          return;
         }
+
+        setDeleteModalState({ kind: 'single', conversation });
       })
       .catch((error) => {
-        console.error('Failed to remove conversation:', error);
+        console.error('Failed to prepare delete conversation modal:', error);
+        Message.error(t('conversation.history.deleteFailed'));
       });
+  };
+
+  const handleDeleteCancel = () => {
+    if (deleteModalDeleting) {
+      return;
+    }
+
+    setDeleteModalState(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModalState || deleteModalState.kind !== 'single') {
+      return;
+    }
+
+    setDeleteModalDeleting(true);
+
+    try {
+      const conversation = deleteModalState.conversation;
+      const deletedConversationIds =
+        conversation.type === 'group'
+          ? [conversation.id, ...conversation.extra.participants.map((participant) => participant.childConversationId)]
+          : [conversation.id];
+
+      const success = await ipcBridge.conversation.remove.invoke({ id: conversation.id });
+      if (!success) {
+        Message.error(t('conversation.history.deleteFailed'));
+        return;
+      }
+
+      deletedConversationIds.forEach((deletedId) => {
+        emitter.emit('conversation.deleted', deletedId);
+      });
+      emitter.emit('chat.history.refresh');
+      Message.success(t('conversation.history.deleteSuccess'));
+
+      if (id && deletedConversationIds.includes(id)) {
+        void Promise.resolve(navigate('/')).catch((error) => {
+          console.error('Navigation failed:', error);
+        });
+      }
+    } catch (error) {
+      console.error('Failed to remove conversation:', error);
+      Message.error(t('conversation.history.deleteFailed'));
+    } finally {
+      setDeleteModalDeleting(false);
+      setDeleteModalState(null);
+    }
   };
 
   const handleEditStart = (conversation: TChatConversation) => {
@@ -259,28 +311,17 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
                 </span>
               )}
               {!isEditing && (
-                <Popconfirm
-                  title={t('conversation.history.deleteTitle')}
-                  content={t('conversation.history.deleteConfirm')}
-                  okText={t('conversation.history.confirmDelete')}
-                  cancelText={t('conversation.history.cancelDelete')}
-                  onOk={(event) => {
+                <span
+                  className='flex-center'
+                  role='button'
+                  aria-label={t('conversation.history.deleteTitle')}
+                  onClick={(event) => {
                     event.stopPropagation();
-                    handleRemoveConversation(conversation.id);
-                  }}
-                  onCancel={(event) => {
-                    event.stopPropagation();
+                    handleDeleteClick(conversation.id);
                   }}
                 >
-                  <span
-                    className='flex-center'
-                    onClick={(event) => {
-                      event.stopPropagation();
-                    }}
-                  >
-                    <DeleteOne theme='outline' size='20' className='flex' />
-                  </span>
-                </Popconfirm>
+                  <DeleteOne theme='outline' size='20' className='flex' />
+                </span>
               )}
             </div>
           )}
@@ -292,6 +333,16 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
 
   return (
     <FlexFullContainer>
+      <DeleteConversationModal
+        visible={deleteModalState !== null}
+        state={deleteModalState}
+        deleting={deleteModalDeleting}
+        onCancel={handleDeleteCancel}
+        onConfirm={() => {
+          void handleDeleteConfirm();
+        }}
+      />
+
       <div
         className={classNames('size-full chat-history', {
           'flex-center': !chatHistory.length,

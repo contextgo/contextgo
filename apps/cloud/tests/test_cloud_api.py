@@ -41,6 +41,7 @@ ENV_KEYS = (
     "CONTEXTGO_GOOGLE_CLIENT_SECRET",
     "CONTEXTGO_INFERMESH_API_BASE_URL",
     "CONTEXTGO_INFERMESH_CONSOLE_BASE_URL",
+    "CONTEXTGO_INFERMESH_PORTAL_URL",
     "CONTEXTGO_INFERMESH_ADMIN_BASE_URL",
     "CONTEXTGO_INFERMESH_ADMIN_USERNAME",
     "CONTEXTGO_INFERMESH_ADMIN_PASSWORD",
@@ -92,6 +93,7 @@ class CloudApiTestCase(unittest.TestCase):
         os.environ["CONTEXTGO_GOOGLE_CLIENT_SECRET"] = "google-client-secret"
         os.environ["CONTEXTGO_INFERMESH_API_BASE_URL"] = "https://api.infermesh.test"
         os.environ["CONTEXTGO_INFERMESH_CONSOLE_BASE_URL"] = "https://newapi.infermesh.test"
+        os.environ["CONTEXTGO_INFERMESH_PORTAL_URL"] = "https://infermesh.test"
         os.environ["CONTEXTGO_INFERMESH_ADMIN_BASE_URL"] = "https://newapi-admin.infermesh.test"
         os.environ["CONTEXTGO_INFERMESH_ADMIN_USERNAME"] = "root"
         os.environ["CONTEXTGO_INFERMESH_ADMIN_PASSWORD"] = "test-password"
@@ -963,6 +965,34 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["provider"], provider_payload)
         provision.assert_awaited_once_with(self.settings, user)
+
+    def test_infermesh_handoff_requires_browser_session(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device_token = registration["token"]
+        self.client.cookies.pop(self.settings.session_cookie_name, None)
+
+        response = self.client.get(
+            "/api/integrations/infermesh/handoff",
+            headers={"Authorization": f"Bearer {device_token}"},
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["detail"], "Authentication required")
+
+    def test_infermesh_handoff_returns_signed_portal_url_for_same_user(self) -> None:
+        self._create_browser_session()
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device_token = registration["token"]
+
+        response = self.client.get(
+            "/api/integrations/infermesh/handoff",
+            headers={"Authorization": f"Bearer {device_token}"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertTrue(payload["url"].startswith("https://infermesh.test/api/oauth/contextgo/handoff?token="))
 
     def test_infermesh_provider_accepts_device_token(self) -> None:
         registration = self._register_device(device_name="Studio", platform="macos")

@@ -81,6 +81,7 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   const { t } = useTranslation();
   const [showCopyAlert, setShowCopyAlert] = useState(false);
   const isUserMessage = message.position === 'right';
+  const hasTextBody = json || Boolean(text.trim());
 
   // 过滤空内容，避免渲染空DOM
   if (!message.content.content || (typeof message.content.content === 'string' && !message.content.content.trim())) {
@@ -168,32 +169,36 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
             )}
           </div>
         )}
-        <div
-          className={classNames('min-w-0 [&>p:first-child]:mt-0px [&>p:last-child]:mb-0px md:max-w-780px', {
-            'bg-aou-2 p-8px': isUserMessage || cronMeta,
-            'w-full': !(isUserMessage || cronMeta),
-          })}
-          style={isUserMessage || cronMeta ? { borderRadius: '8px 0 8px 8px' } : undefined}
-        >
-          {/* JSON 内容使用折叠组件 Use CollapsibleContent for JSON content */}
-          {json ? (
-            <CollapsibleContent maxHeight={200} defaultCollapsed={true}>
-              <MarkdownView
-                codeStyle={{ marginTop: 4, marginBlock: 4 }}
-              >{`\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``}</MarkdownView>
-            </CollapsibleContent>
-          ) : (
-            <MarkdownView codeStyle={{ marginTop: 4, marginBlock: 4 }}>{data}</MarkdownView>
-          )}
-        </div>
-        <div
-          className={classNames('h-32px flex items-center mt-4px', {
-            'justify-end': isUserMessage,
-            'justify-start': !isUserMessage,
-          })}
-        >
-          {copyButton}
-        </div>
+        {hasTextBody && (
+          <div
+            className={classNames('min-w-0 [&>p:first-child]:mt-0px [&>p:last-child]:mb-0px md:max-w-780px', {
+              'bg-aou-2 p-8px': isUserMessage || cronMeta,
+              'w-full': !(isUserMessage || cronMeta),
+            })}
+            style={isUserMessage || cronMeta ? { borderRadius: '8px 0 8px 8px' } : undefined}
+          >
+            {/* JSON 内容使用折叠组件 Use CollapsibleContent for JSON content */}
+            {json ? (
+              <CollapsibleContent maxHeight={200} defaultCollapsed={true}>
+                <MarkdownView
+                  codeStyle={{ marginTop: 4, marginBlock: 4 }}
+                >{`\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``}</MarkdownView>
+              </CollapsibleContent>
+            ) : (
+              <MarkdownView codeStyle={{ marginTop: 4, marginBlock: 4 }}>{data}</MarkdownView>
+            )}
+          </div>
+        )}
+        {hasTextBody && (
+          <div
+            className={classNames('h-32px flex items-center mt-4px', {
+              'justify-end': isUserMessage,
+              'justify-start': !isUserMessage,
+            })}
+          >
+            {copyButton}
+          </div>
+        )}
       </div>
       {showCopyAlert && (
         <Alert

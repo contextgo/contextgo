@@ -1205,6 +1205,10 @@ describe('ExternalSessionDiscoveryService', () => {
       success: true,
     }));
     vi.spyOn(databaseModule, 'getDatabase').mockResolvedValue({
+      getConversation: vi.fn(() => ({
+        success: true,
+        data: { id: 'imported-conversation' },
+      })),
       getMessageByMsgId: vi.fn(() => ({ success: true, data: null })),
       insertMessage,
     } as unknown as Awaited<ReturnType<typeof databaseModule.getDatabase>>);
@@ -1261,6 +1265,10 @@ describe('ExternalSessionDiscoveryService', () => {
       success: true,
     }));
     vi.spyOn(databaseModule, 'getDatabase').mockResolvedValue({
+      getConversation: vi.fn(() => ({
+        success: true,
+        data: { id: 'imported-conversation' },
+      })),
       getMessageByMsgId: vi.fn(() => ({ success: true, data: null })),
       insertMessage,
     } as unknown as Awaited<ReturnType<typeof databaseModule.getDatabase>>);
@@ -1331,6 +1339,10 @@ describe('ExternalSessionDiscoveryService', () => {
       success: true,
     }));
     vi.spyOn(databaseModule, 'getDatabase').mockResolvedValue({
+      getConversation: vi.fn(() => ({
+        success: true,
+        data: { id: 'imported-conversation' },
+      })),
       getMessageByMsgId: vi.fn(() => ({ success: true, data: null })),
       insertMessage,
     } as unknown as Awaited<ReturnType<typeof databaseModule.getDatabase>>);
@@ -1386,6 +1398,10 @@ describe('ExternalSessionDiscoveryService', () => {
       success: true,
     }));
     vi.spyOn(databaseModule, 'getDatabase').mockResolvedValue({
+      getConversation: vi.fn(() => ({
+        success: true,
+        data: { id: 'imported-conversation' },
+      })),
       getMessageByMsgId: vi.fn(() => ({ success: true, data: null })),
       insertMessage,
     } as unknown as Awaited<ReturnType<typeof databaseModule.getDatabase>>);
@@ -1430,6 +1446,10 @@ describe('ExternalSessionDiscoveryService', () => {
       success: true,
     }));
     vi.spyOn(databaseModule, 'getDatabase').mockResolvedValue({
+      getConversation: vi.fn(() => ({
+        success: true,
+        data: { id: 'imported-conversation' },
+      })),
       getMessageByMsgId: vi.fn(() => ({ success: true, data: null })),
       insertMessage,
     } as unknown as Awaited<ReturnType<typeof databaseModule.getDatabase>>);

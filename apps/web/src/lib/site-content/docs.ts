@@ -785,7 +785,7 @@ export const docsContent: Record<SiteLocale, DocsSection> = {
           {
             heading: '为什么设备侧稳定连接很重要',
             paragraphs: [
-              '公开 remote 页面只有在桌面主机对官方 cloud relay 建立稳定的出站连接之后才有意义。托管 remote 体验依赖设备侧长期保持这条已认证的 relay 会话。',
+              '公开 remote 入口只有在桌面主机对官方 cloud relay 建立稳定的出站连接之后才有意义。官方云层负责登录、设备发现和中继控制；浏览器真正进入的仍应是桌面端自己暴露的 WebUI。',
               '底层传输可以继续演进，但产品原则不会变。无论实现细节如何，设备侧都必须持续在线并完成认证，remote 页面才真正可用。',
             ],
             bullets: ['桌面主机负责发布可用性', '云账号负责把设备映射到用户', '只有主机可达时，remote 页面才真正可用'],

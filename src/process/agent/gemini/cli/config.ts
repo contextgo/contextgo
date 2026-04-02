@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { TelemetryTarget, GeminiCLIExtension, FallbackIntent, SkillDefinition } from '@office-ai/aioncli-core';
+import type { TelemetryTarget, GeminiCLIExtension, SkillDefinition } from '@office-ai/aioncli-core';
 import {
   ApprovalMode,
   Config,
@@ -23,7 +23,6 @@ import process from 'node:process';
 import path from 'node:path';
 import type { Settings } from './settings';
 import { annotateActiveExtensions } from './extension';
-import { getCurrentGeminiAgent } from '../index';
 
 // Simple console logger for now - replace with actual logger if available
 const logger = {
@@ -323,63 +322,6 @@ export async function loadCliConfig({
     // This is usually a transient error caused by network instability or proxy issues
     retryFetchErrors: true,
   });
-
-  // FallbackModelHandler 返回类型在 aioncli-core v0.18.4 中使用 FallbackIntent
-  // FallbackModelHandler return type uses FallbackIntent in aioncli-core v0.18.4
-  // 可用值 / Available values: 'retry_always' | 'retry_once' | 'stop' | 'retry_later' | 'upgrade' | null
-  //
-  // 工作流程 / Workflow:
-  // 1. handler 调用 apiKeyManager.rotateKey() 更新 process.env 中的 API Key
-  //    handler calls apiKeyManager.rotateKey() to update API Key in process.env
-  // 2. aioncli-core 的 tryRotateApiKey 检测到 env 变化后会调用 config.refreshAuth()
-  //    aioncli-core's tryRotateApiKey detects env change and calls config.refreshAuth()
-  // 3. 返回 'retry_once' 表示本次重试，'stop' 表示停止
-  //    Return 'retry_once' for one-time retry, 'stop' to stop retrying
-  //
-  // 重要：返回 'retry_once' 会导致 aioncli-core 重置重试计数并继续重试
-  // IMPORTANT: returning 'retry_once' causes aioncli-core to reset retry count and continue
-  // 对于 RATE_LIMIT 错误，如果没有其他 API key 可用，应该返回 null 让内置重试机制处理
-  // For RATE_LIMIT errors, if no other API keys available, return null to let built-in retry handle it
-  const fallbackModelHandler = async (
-    _currentModel: string,
-    _fallbackModel: string,
-    _error?: unknown
-  ): Promise<FallbackIntent | null> => {
-    try {
-      const agent = getCurrentGeminiAgent();
-      const apiKeyManager = agent?.getApiKeyManager();
-
-      if (!apiKeyManager?.hasMultipleKeys()) {
-        // 单 Key 模式，返回 'stop' 停止重试
-        // 避免返回 'retry_once' 导致无限重试循环
-        // Single key mode, return 'stop' to stop retrying
-        // Avoid returning 'retry_once' which causes infinite retry loop
-        console.log('[FallbackHandler] Single key mode, stopping retry');
-        return 'stop';
-      }
-
-      // 轮换到下一个可用的 API Key，这会更新 process.env
-      // Rotate to next available API Key, this updates process.env
-      const hasMoreKeys = apiKeyManager.rotateKey();
-
-      if (hasMoreKeys) {
-        // 还有可用的 Key，重试一次
-        // More keys available, retry once
-        return 'retry_once';
-      }
-
-      // 所有 Key 都已用尽或被 blacklist，停止重试
-      // All keys exhausted or blacklisted, stop retrying
-      return 'stop';
-    } catch (e) {
-      console.error(`[FallbackHandler] Handler error:`, e);
-      // 发生错误时返回 'stop'，停止重试
-      // On error, return 'stop' to stop retrying
-      return 'stop';
-    }
-  };
-
-  config.setFallbackModelHandler(fallbackModelHandler);
 
   return config;
 }

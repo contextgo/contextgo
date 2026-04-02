@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { IAgentEventEmitter } from '../../src/process/task/IAgentEventEmitter';
 import type { IAgentManager } from '../../src/process/task/IAgentManager';
 
@@ -30,6 +30,8 @@ function makeMockEmitter(): IAgentEventEmitter {
 import BaseAgentManager from '../../src/process/task/BaseAgentManager';
 
 /** Minimal concrete subclass exposing protected helpers for testing */
+const createdAgents: IAgentManager[] = [];
+
 function makeAgent(type: any = 'gemini', data: any = {}, emitter?: IAgentEventEmitter) {
   const e = emitter ?? makeMockEmitter();
   class TestAgent extends BaseAgentManager<unknown> {
@@ -44,11 +46,20 @@ function makeAgent(type: any = 'gemini', data: any = {}, emitter?: IAgentEventEm
     }
   }
   const agent = new TestAgent();
+  createdAgents.push(agent);
   (agent as any).conversation_id = 'conv-' + type;
   return { agent, emitter: e };
 }
 
 describe('BaseAgentManager with injected emitter', () => {
+  afterEach(() => {
+    for (const agent of createdAgents.splice(0)) {
+      if ('kill' in agent && typeof agent.kill === 'function') {
+        (agent as IAgentManager & { kill: () => void }).kill();
+      }
+    }
+  });
+
   // --- addConfirmation ---
 
   it('addConfirmation calls emitter.emitConfirmationAdd', () => {

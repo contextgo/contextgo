@@ -4,11 +4,7 @@ import { getBlogEntry, getSiteContent } from '@/lib/site-content';
 
 export const runtime = 'edge';
 
-export default async function BlogArticlePage({
-  params,
-}: {
-  params: Promise<{ lang: string; slug: string }>;
-}) {
+export default async function BlogArticlePage({ params }: { params: Promise<{ lang: string; slug: string }> }) {
   const { lang, slug } = await params;
   const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
   const article = getBlogEntry(validLang, slug);

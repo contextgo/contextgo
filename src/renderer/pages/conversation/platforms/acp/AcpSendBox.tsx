@@ -4,7 +4,7 @@ import type { TMessage } from '@/common/chat/chatLib';
 import { uuid } from '@/common/utils';
 import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import SendBox from '@/renderer/components/chat/sendbox';
-import ThoughtDisplay from '@/renderer/components/chat/ThoughtDisplay';
+import AgentRunStatus from '@/renderer/components/chat/AgentRunStatus';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useSendBoxFiles';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
@@ -84,7 +84,6 @@ const AcpSendBox: React.FC<{
   agentName?: string;
 }> = ({ conversation_id, backend, sessionMode, agentName }) => {
   const {
-    thought,
     running,
     acpStatus,
     aiProcessing,
@@ -93,6 +92,8 @@ const AcpSendBox: React.FC<{
     resetState,
     tokenUsage,
     contextLimit,
+    runTrace,
+    beginRun,
   } = useAcpMessage(conversation_id);
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
@@ -141,6 +142,7 @@ const AcpSendBox: React.FC<{
     setAiProcessing,
     checkAndUpdateTitle,
     addOrUpdateMessage: addOrUpdateMessageRef.current,
+    beginRun,
     t,
   });
 
@@ -160,6 +162,7 @@ const AcpSendBox: React.FC<{
         createdAt: Date.now(),
       };
       addOrUpdateMessage(userMessage, true);
+      beginRun(message, files);
       setAiProcessing(true);
 
       try {
@@ -205,7 +208,7 @@ const AcpSendBox: React.FC<{
         emitter.emit('acp.workspace.refresh');
       }
     },
-    [addOrUpdateMessage, backend, checkAndUpdateTitle, conversation_id, setAiProcessing, t]
+    [addOrUpdateMessage, backend, beginRun, checkAndUpdateTitle, conversation_id, setAiProcessing, t]
   );
 
   const {
@@ -302,7 +305,7 @@ const AcpSendBox: React.FC<{
 
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
-      <ThoughtDisplay thought={thought} running={running || aiProcessing} onStop={handleStop} />
+      <AgentRunStatus trace={runTrace} running={running || aiProcessing} />
 
       <SendBox
         value={content}
