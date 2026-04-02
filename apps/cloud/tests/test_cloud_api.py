@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import importlib
+import json
 import os
 import sys
 import tempfile
@@ -156,6 +157,15 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         payload = response.json()
         self.assertTrue(payload["success"])
+        return payload
+
+    def _decode_infermesh_handoff_payload(self, handoff_url: str) -> dict[str, object]:
+        token = parse_qs(urlparse(handoff_url).query)["token"][0]
+        payload_segment = token.split(".", 1)[0]
+        padded_segment = payload_segment + "=" * (-len(payload_segment) % 4)
+        payload_bytes = base64.urlsafe_b64decode(padded_segment)
+        payload = json.loads(payload_bytes.decode("utf-8"))
+        self.assertIsInstance(payload, dict)
         return payload
 
     def _authorize_oidc_code(
@@ -1034,6 +1044,8 @@ class CloudApiTestCase(unittest.TestCase):
         payload = response.json()
         self.assertTrue(payload["success"])
         self.assertTrue(payload["url"].startswith("https://infermesh.test/api/oauth/contextgo/handoff?token="))
+        handoff_payload = self._decode_infermesh_handoff_payload(payload["url"])
+        self.assertRegex(str(handoff_payload["username"]), r"^cgo-[0-9a-f]{8}$")
 
     def test_infermesh_handoff_uses_oidc_secret_without_provider_bootstrap_config(self) -> None:
         self._create_browser_session()
