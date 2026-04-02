@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import base64
 import importlib
 import os
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -20,6 +22,7 @@ MODULE_NAMES = (
     "contextgo_cloud.config",
     "contextgo_cloud.db",
     "contextgo_cloud.infermesh",
+    "contextgo_cloud.oidc",
     "contextgo_cloud.oauth",
     "contextgo_cloud.app",
 )
@@ -46,6 +49,12 @@ ENV_KEYS = (
     "CONTEXTGO_INFERMESH_PASSWORD_SECRET",
     "CONTEXTGO_INFERMESH_USERNAME_PREFIX",
     "CONTEXTGO_INFERMESH_PROVIDER_NAME",
+    "CONTEXTGO_OIDC_CLIENT_ID",
+    "CONTEXTGO_OIDC_CLIENT_SECRET",
+    "CONTEXTGO_OIDC_CLIENT_NAME",
+    "CONTEXTGO_OIDC_REDIRECT_URIS",
+    "CONTEXTGO_OIDC_SIGNING_KEY_PEM",
+    "CONTEXTGO_OIDC_SIGNING_KEY_ID",
 )
 
 
@@ -89,6 +98,11 @@ class CloudApiTestCase(unittest.TestCase):
         os.environ["CONTEXTGO_INFERMESH_PASSWORD_SECRET"] = "test-secret"
         os.environ["CONTEXTGO_INFERMESH_USERNAME_PREFIX"] = "cg"
         os.environ["CONTEXTGO_INFERMESH_PROVIDER_NAME"] = "InferMesh Cloud"
+        os.environ["CONTEXTGO_OIDC_CLIENT_ID"] = "infermesh-oidc-client"
+        os.environ["CONTEXTGO_OIDC_CLIENT_SECRET"] = "infermesh-oidc-secret"
+        os.environ["CONTEXTGO_OIDC_CLIENT_NAME"] = "InferMesh"
+        os.environ["CONTEXTGO_OIDC_REDIRECT_URIS"] = "https://newapi.infermesh.test/oauth/oidc"
+        os.environ["CONTEXTGO_OIDC_SIGNING_KEY_ID"] = "test-key-1"
 
         unload_modules()
         self.app_module = importlib.import_module("contextgo_cloud.app")
@@ -142,6 +156,40 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertTrue(payload["success"])
         return payload
 
+    def _authorize_oidc_code(
+        self,
+        *,
+        scope: str = "openid profile email",
+        state: str = "state-123",
+        nonce: str = "nonce-123",
+        code_challenge: str | None = None,
+        code_challenge_method: str | None = None,
+    ) -> tuple[str, str]:
+        self._create_browser_session()
+        redirect_uri = "https://newapi.infermesh.test/oauth/oidc"
+        params = {
+            "client_id": self.settings.oidc_client_id,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "scope": scope,
+            "state": state,
+            "nonce": nonce,
+        }
+        if code_challenge is not None:
+            params["code_challenge"] = code_challenge
+        if code_challenge_method is not None:
+            params["code_challenge_method"] = code_challenge_method
+
+        response = self.client.get("/oauth/authorize", params=params, follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        location = response.headers["location"]
+        parsed = urlparse(location)
+        self.assertEqual(parsed.scheme, "https")
+        self.assertEqual(parsed.netloc, "newapi.infermesh.test")
+        query = parse_qs(parsed.query)
+        self.assertEqual(query["state"][0], state)
+        return query["code"][0], redirect_uri
+
     def test_oauth_callback_creates_session(self) -> None:
         start_response = self.client.get("/api/auth/oauth/google/start?next=/desktop", follow_redirects=False)
         self.assertEqual(start_response.status_code, 302)
@@ -177,6 +225,105 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertTrue(session_payload["authenticated"])
         self.assertEqual(session_payload["user"]["email"], "yeyitech@gmail.com")
         self.assertEqual(session_payload["user"]["username"], "yeyitech")
+
+    def test_oidc_discovery_document_is_exposed(self) -> None:
+        response = self.client.get("/.well-known/openid-configuration")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["issuer"], "http://testserver")
+        self.assertEqual(payload["authorization_endpoint"], "http://testserver/oauth/authorize")
+        self.assertEqual(payload["token_endpoint"], "http://testserver/oauth/token")
+        self.assertEqual(payload["userinfo_endpoint"], "http://testserver/oauth/userinfo")
+        self.assertEqual(payload["jwks_uri"], "http://testserver/oauth/jwks")
+        self.assertIn("openid", payload["scopes_supported"])
+
+    def test_oidc_authorize_redirects_to_login_when_browser_session_missing(self) -> None:
+        response = self.client.get(
+            "/oauth/authorize",
+            params={
+                "client_id": self.settings.oidc_client_id,
+                "redirect_uri": "https://newapi.infermesh.test/oauth/oidc",
+                "response_type": "code",
+                "scope": "openid profile email",
+                "state": "oidc-state",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("/login?next=", response.headers["location"])
+        self.assertIn("oauth%2Fauthorize", response.headers["location"])
+
+    def test_oidc_token_and_userinfo_complete_authorization_code_flow(self) -> None:
+        code, redirect_uri = self._authorize_oidc_code()
+
+        token_response = self.client.post(
+            "/oauth/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "client_id": self.settings.oidc_client_id,
+                "client_secret": self.settings.oidc_client_secret,
+            },
+        )
+
+        self.assertEqual(token_response.status_code, 200)
+        token_payload = token_response.json()
+        self.assertEqual(token_payload["token_type"], "Bearer")
+        self.assertEqual(token_payload["scope"], "openid profile email")
+        self.assertTrue(token_payload["access_token"].startswith("ctxat_"))
+        self.assertTrue(token_payload["id_token"])
+
+        userinfo_response = self.client.get(
+            "/oauth/userinfo",
+            headers={"authorization": f"Bearer {token_payload['access_token']}"},
+        )
+        self.assertEqual(userinfo_response.status_code, 200)
+        userinfo = userinfo_response.json()
+        self.assertEqual(userinfo["email"], "yeyitech@gmail.com")
+        self.assertEqual(userinfo["preferred_username"], "yeyitech")
+
+    def test_oidc_token_validates_pkce(self) -> None:
+        code_verifier = "pkce-verifier-1234567890"
+        code_challenge = "U0RIF4P8X7U3t7c6JtS6b8I6J0u2nW0V2y4W4v6Pv0M"
+        code, redirect_uri = self._authorize_oidc_code(
+            code_challenge=code_challenge,
+            code_challenge_method="S256",
+        )
+
+        token_response = self.client.post(
+            "/oauth/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "client_id": self.settings.oidc_client_id,
+                "client_secret": self.settings.oidc_client_secret,
+                "code_verifier": code_verifier,
+            },
+        )
+
+        self.assertEqual(token_response.status_code, 400)
+        self.assertEqual(token_response.json()["error"], "invalid_grant")
+
+    def test_oidc_token_requires_valid_client_secret(self) -> None:
+        code, redirect_uri = self._authorize_oidc_code()
+
+        token_response = self.client.post(
+            "/oauth/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "client_id": self.settings.oidc_client_id,
+                "client_secret": "wrong-secret",
+            },
+        )
+
+        self.assertEqual(token_response.status_code, 401)
+        self.assertEqual(token_response.json()["error"], "invalid_client")
 
     def test_oauth_callback_allows_remote_contextgo_return_url(self) -> None:
         next_url = "https://remote.contextgo.io/login"
@@ -463,6 +610,7 @@ class CloudApiTestCase(unittest.TestCase):
         ) as device_ws:
             hello = device_ws.receive_json()
             self.assertEqual(hello["type"], "hello")
+            device_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.8:25809/", "ready": True}})
 
             available_response = self.client.get("/remote/devices", headers={"host": "remote.contextgo.io"})
             self.assertEqual(available_response.status_code, 200)
@@ -486,20 +634,162 @@ class CloudApiTestCase(unittest.TestCase):
 
                 client_ws.send_json({"name": "pong", "data": {"timestamp": 1}})
 
+    def test_remote_devices_page_marks_device_without_browser_entry_as_unavailable(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+            response = self.client.get("/remote/devices", headers={"host": "remote.contextgo.io"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Unavailable", response.text)
+        self.assertIn("Desktop relay is online through ContextGo Cloud relay, and ContextGo is still preparing the desktop browser entry.", response.text)
+        self.assertIn("ContextGo Cloud relay is connected, but the desktop-hosted WebUI entry is not ready yet. Keep the desktop app running and retry in a moment.", response.text)
+
     def test_remote_app_page_redirects_to_login_and_preserves_device_query(self) -> None:
         response = self.client.get("/device/device-123", follow_redirects=False, headers={"host": "remote.contextgo.io"})
 
         self.assertEqual(response.status_code, 303)
         self.assertEqual(response.headers["location"], "/login?next=%2Fdevice%2Fdevice-123")
 
-    def test_remote_app_page_serves_renderer_shell_for_authenticated_user(self) -> None:
+    def test_remote_app_page_serves_hosted_remote_shell_for_authenticated_user(self) -> None:
         self._create_browser_session()
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
 
-        response = self.client.get("/device/device-123", headers={"host": "remote.contextgo.io"})
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+            device_ws.send_json(
+                {
+                    "type": "hello",
+                    "browserEntry": {
+                        "url": "official-remote://relay-ready",
+                        "ready": True,
+                    },
+                }
+            )
 
+            response_holder: dict[str, object] = {}
+
+            def fetch_remote_page() -> None:
+                response_holder["response"] = self.client.get(
+                    f"/device/{device['id']}",
+                    follow_redirects=False,
+                    headers={"host": "remote.contextgo.io"},
+                )
+
+            request_thread = threading.Thread(target=fetch_remote_page)
+            request_thread.start()
+
+            relay_request = device_ws.receive_json()
+            self.assertEqual(relay_request["type"], "http_request")
+            self.assertEqual(relay_request["request"]["method"], "GET")
+            self.assertEqual(relay_request["request"]["path"], "/")
+
+            device_ws.send_json(
+                {
+                    "type": "http_response",
+                    "requestId": relay_request["requestId"],
+                    "response": {
+                        "statusCode": 200,
+                        "headers": {
+                            "content-type": "text/html; charset=utf-8",
+                        },
+                        "bodyBase64": base64.b64encode(
+                            b'<!doctype html><html><body><div id="root">Desktop Remote</div><script type="module" src="/@vite/client"></script></body></html>'
+                        ).decode("ascii"),
+                        "setCookies": [],
+                    },
+                }
+            )
+            request_thread.join(timeout=3)
+
+        response = response_holder.get("response")
+        self.assertIsNotNone(response)
+        assert response is not None
         self.assertEqual(response.status_code, 200)
-        self.assertIn("<div id=\"root\"></div>", response.text)
-        self.assertIn("/remote/app/assets/", response.text)
+        self.assertIn('Desktop Remote', response.text)
+        self.assertIn('/@vite/client', response.text)
+        self.assertNotIn('/assets/app.js', response.text)
+        self.assertNotIn('http://192.168.1.8:25809/', response.text)
+
+    def test_remote_runtime_requests_are_relayed_to_active_device(self) -> None:
+        self._create_browser_session()
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+            device_ws.send_json(
+                {
+                    "type": "hello",
+                    "browserEntry": {
+                        "url": "official-remote://relay-ready",
+                        "ready": True,
+                    },
+                }
+            )
+
+            self.client.cookies.set("contextgo_remote_device", device["id"])
+
+            asset_holder: dict[str, object] = {}
+
+            def fetch_asset() -> None:
+                asset_holder["response"] = self.client.get(
+                    "/@vite/client",
+                    headers={"host": "remote.contextgo.io"},
+                )
+
+            asset_thread = threading.Thread(target=fetch_asset)
+            asset_thread.start()
+            asset_request = device_ws.receive_json()
+            self.assertEqual(asset_request["type"], "http_request")
+            self.assertEqual(asset_request["request"]["path"], "/@vite/client")
+            self.assertEqual(asset_request["request"]["query"], "")
+            device_ws.send_json(
+                {
+                    "type": "http_response",
+                    "requestId": asset_request["requestId"],
+                    "response": {
+                        "statusCode": 200,
+                        "headers": {
+                            "content-type": "application/javascript",
+                        },
+                        "bodyBase64": base64.b64encode(
+                            (
+                                'const serverHost = "localhost:5173/";\n'
+                                'const hmrPort = 5173;\n'
+                                'const socketHost = `${"localhost" || importMetaUrl.hostname}:${hmrPort || importMetaUrl.port}${"/"}`;\n'
+                                'const directSocketHost = "localhost:5173/";\n'
+                            ).encode("utf-8")
+                        ).decode("ascii"),
+                        "setCookies": [],
+                    },
+                }
+            )
+            asset_thread.join(timeout=3)
+
+        asset_response = asset_holder.get("response")
+        self.assertIsNotNone(asset_response)
+        assert asset_response is not None
+        self.assertEqual(asset_response.status_code, 200)
+        self.assertIn(f'/api/remote/vite/{device["id"]}', asset_response.text)
+        self.assertNotIn('localhost:5173/', asset_response.text)
 
     def test_mobile_shell_login_complete_redirects_back_to_shell_target(self) -> None:
         self._create_browser_session()
@@ -546,7 +836,8 @@ class CloudApiTestCase(unittest.TestCase):
             headers={"host": "remote.contextgo.io"},
         )
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], "/login?next=%2Fremote%2Fapp%2F%3Fdevice_id%3Ddevice-123")
 
     def test_renderer_build_root_prefers_explicit_environment_override(self) -> None:
         self.assertEqual(self.app_module.RENDERER_BUILD_ROOT, self.renderer_dir.resolve())
@@ -752,20 +1043,27 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertIn("返回 ContextGo", response.text)
         self.assertIn("ContextGo 登录未完成：access_denied。", response.text)
 
-    def test_remote_device_renderer_missing_page_is_localized(self) -> None:
+    def test_remote_device_without_browser_entry_redirects_to_remote_notice(self) -> None:
         self._create_browser_session()
-        original_index_path = self.app_module.RENDERER_INDEX_PATH
-        self.app_module.RENDERER_INDEX_PATH = original_index_path.parent / "missing-index.html"
-        self.addCleanup(setattr, self.app_module, "RENDERER_INDEX_PATH", original_index_path)
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
 
-        response = self.client.get(
-            "/device/device-123",
-            headers={"host": "remote.contextgo.io", "accept-language": "zh-CN,zh;q=0.9"},
-        )
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
 
-        self.assertEqual(response.status_code, 503)
-        self.assertIn("托管远程 Shell 当前不可用", response.text)
-        self.assertIn("当前部署上未找到前端构建产物。", response.text)
+            response = self.client.get(
+                f"/device/{device['id']}",
+                follow_redirects=False,
+                headers={"host": "remote.contextgo.io", "accept-language": "zh-CN,zh;q=0.9"},
+            )
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], "https://remote.contextgo.io/remote/devices?remoteNotice=browser_entry_unavailable")
 
     def test_desktop_login_complete_creates_deep_link_for_authenticated_browser_session(self) -> None:
         self._create_browser_session()

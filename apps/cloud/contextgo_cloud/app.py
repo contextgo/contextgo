@@ -3,29 +3,34 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from html import escape
+import base64
 import json
 import os
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Union
 from urllib.parse import parse_qs, quote, urlencode, urlparse
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from starlette.datastructures import URL
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .config import Settings, load_settings
 from .db import (
     Device,
+    OidcAccessToken,
     User,
     apply_sync_changes,
     allocate_username,
     cleanup_expired_rows,
+    consume_oidc_authorization_code,
     consume_desktop_login_code,
     create_device,
     create_desktop_login_code,
+    create_oidc_access_token,
+    create_oidc_authorization_code,
     consume_oauth_state,
     create_oauth_state,
     create_session,
@@ -33,8 +38,10 @@ from .db import (
     delete_session,
     find_user_by_email,
     find_user_by_oauth_account,
+    find_user_by_id,
     get_connection,
     get_device_for_user,
+    get_oidc_access_token,
     get_user_by_device_token,
     get_user_by_session_token,
     initialize_database,
@@ -47,8 +54,23 @@ from .db import (
     upsert_oauth_account,
 )
 from .infermesh import InfermeshProvisionError, is_infermesh_configured, provision_infermesh_provider
+from .oidc import (
+    OIDC_SUPPORTED_CLAIMS,
+    OIDC_SUPPORTED_CLIENT_AUTH_METHODS,
+    OIDC_SUPPORTED_ID_TOKEN_ALGORITHMS,
+    OIDC_SUPPORTED_RESPONSE_TYPES,
+    OIDC_SUPPORTED_SCOPES,
+    OIDC_SUPPORTED_SUBJECT_TYPES,
+    build_userinfo_payload,
+    create_id_token,
+    decode_basic_auth_header,
+    load_oidc_signing_key,
+    normalize_scope,
+    validate_requested_scope,
+    verify_pkce,
+)
 from .oauth import OAuthProfile, build_authorization_url, exchange_code_for_profile, get_enabled_providers, is_provider_enabled
-from .remote import RemoteRelayHub
+from .remote import RemoteHttpRelayResponse, RemoteRelayHub
 
 ProviderId = Literal["github", "google"]
 
@@ -75,16 +97,38 @@ class DesktopLoginConsumeRequest(BaseModel):
     code: str = Field(min_length=1, max_length=256)
 
 
+class OidcTokenSuccessResponse(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    scope: str
+    id_token: str
+
+
+class OidcAuthorizeApproveRequest(BaseModel):
+    client_id: str = Field(min_length=1, max_length=256)
+    redirect_uri: str = Field(min_length=1, max_length=2048)
+    response_type: str = Field(min_length=1, max_length=64)
+    scope: str = Field(min_length=1, max_length=256)
+    state: Optional[str] = Field(default=None, max_length=1024)
+    nonce: Optional[str] = Field(default=None, max_length=1024)
+    code_challenge: Optional[str] = Field(default=None, max_length=512)
+    code_challenge_method: Optional[str] = Field(default=None, max_length=64)
+
+
 settings: Settings = load_settings()
 api_host = urlparse(settings.api_base_url).hostname or ""
 remote_host = urlparse(settings.remote_base_url).hostname or ""
 DESKTOP_LOGIN_COMPLETE_PATH = "/desktop-login-complete"
 MOBILE_SHELL_LOGIN_COMPLETE_PATH = "/mobile-shell-login-complete"
 REMOTE_DEVICES_PATH = "/remote/devices"
-REMOTE_APP_PATH = "/remote/app"
-REMOTE_APP_ASSETS_PATH = f"{REMOTE_APP_PATH}/assets"
 REMOTE_DEVICE_PATH_PREFIX = "/device"
+REMOTE_ACTIVE_DEVICE_COOKIE = "contextgo_remote_device"
 REMOTE_SHELL_SCHEME = "contextgo-remote"
+OIDC_AUTHORIZE_PATH = "/oauth/authorize"
+OIDC_TOKEN_PATH = "/oauth/token"
+OIDC_USERINFO_PATH = "/oauth/userinfo"
+OIDC_JWKS_PATH = "/oauth/jwks"
 RENDERER_BUILD_ROOT_ENV = "CONTEXTGO_RENDERER_BUILD_ROOT"
 FALLBACK_CLOUD_LANGUAGE = "en-US"
 FALLBACK_CLOUD_SUPPORTED_LANGUAGES = ("zh-CN", "en-US", "ja-JP", "zh-TW", "ko-KR", "tr-TR")
@@ -120,7 +164,7 @@ CLOUD_I18N = {
         "login.hostOnly": "host-only",
         "remote.title": "ContextGo Remote",
         "remote.signedInAs": "Signed in as {name} · {email}",
-        "remote.description": "Choose a desktop device that currently has a live cloud relay connection. Registered devices stay listed, but only relay-connected machines can open a hosted remote session.",
+        "remote.description": "Choose a desktop device that currently has a live cloud relay connection. ContextGo Cloud only helps sign in, discover devices, and relay transport; the browser opens the desktop-hosted WebUI itself.",
         "remote.refreshDevices": "Refresh devices",
         "remote.signOut": "Sign out",
         "remote.openInApp": "Open in app",
@@ -134,23 +178,26 @@ CLOUD_I18N = {
         "remote.notice.deviceNotFound.detail": "It may have been revoked or linked to another cloud account.",
         "remote.notice.deviceOffline.title": "The desktop relay is offline.",
         "remote.notice.deviceOffline.detail": "Reconnect ContextGo on the desktop, then refresh this device list.",
+        "remote.notice.browserEntryUnavailable.title": "Desktop browser entry is still preparing.",
+        "remote.notice.browserEntryUnavailable.detail": "ContextGo Cloud relay is connected, but the desktop-hosted WebUI entry is not ready yet. Keep the desktop app running and try again in a moment.",
         "remote.notice.sessionReplaced.title": "This hosted session was replaced.",
         "remote.notice.sessionReplaced.detail": "Another browser took over the live session. Choose a device again to continue here.",
-        "remote.notice.serviceRestarted.title": "The hosted remote session was restarted.",
-        "remote.notice.serviceRestarted.detail": "Refresh the list and reopen the desktop session.",
+        "remote.notice.serviceRestarted.title": "The remote browser session was restarted.",
+        "remote.notice.serviceRestarted.detail": "Refresh the list and reopen the desktop session. The browser should return to the desktop-hosted WebUI.",
         "remote.badge.liveSession": "Live session",
         "remote.badge.available": "Available",
         "remote.badge.unavailable": "Unavailable",
         "remote.summary.liveSession": "Desktop is online and already attached to a browser session through {transportLabel}.",
         "remote.detail.liveSession": "A second browser can still take over, but the current session is already active.",
         "remote.summary.available": "Desktop is online and ready through {transportLabel}.",
-        "remote.detail.available": "This device has an authenticated outbound relay connection and can open a live WebUI session now.",
+        "remote.detail.available": "This device has an authenticated outbound relay connection, and its own desktop-hosted WebUI is ready to open in the browser.",
+        "remote.summary.browserEntryUnavailable": "Desktop relay is online through {transportLabel}, and ContextGo is still preparing the desktop browser entry.",
         "remote.summary.unavailable": "Desktop is not connected to {transportLabel} right now.",
-        "remote.detail.unavailable": "The machine may still be registered and active, but hosted remote access stays unavailable until the desktop relay reconnects.",
-        "remote.action.openLiveSession": "Open live session",
+        "remote.detail.unavailable": "The machine may still be registered and active, but browser remote access stays unavailable until the desktop relay reconnects and exposes its WebUI entry.",
+        "remote.action.openLiveSession": "Open desktop WebUI",
         "remote.action.unavailable": "Unavailable",
-        "remote.rendererUnavailableTitle": "Hosted remote shell is unavailable",
-        "remote.rendererUnavailableDetail": "The renderer build was not found on this deployment.",
+        "remote.rendererUnavailableTitle": "Desktop browser entry is unavailable",
+        "remote.rendererUnavailableDetail": "ContextGo Cloud relay is connected, but the desktop-hosted WebUI entry is not ready yet. Keep the desktop app running and retry in a moment.",
         "desktop.title": "Return to ContextGo",
         "desktop.action.return": "Return to ContextGo",
         "desktop.action.open": "Open ContextGo",
@@ -179,7 +226,7 @@ CLOUD_I18N = {
         "login.hostOnly": "仅当前主机",
         "remote.title": "ContextGo 远程访问",
         "remote.signedInAs": "当前登录为 {name} · {email}",
-        "remote.description": "选择一个当前已连接云中继的桌面设备。已注册设备会保留在列表中，但只有已连上中继的机器才能打开托管远程会话。",
+        "remote.description": "选择一个当前已连接云中继的桌面设备。ContextGo Cloud 只负责登录、设备发现和中继；浏览器里打开的仍然是桌面端自己提供的 WebUI。",
         "remote.refreshDevices": "刷新设备",
         "remote.signOut": "退出登录",
         "remote.openInApp": "在应用中打开",
@@ -193,23 +240,26 @@ CLOUD_I18N = {
         "remote.notice.deviceNotFound.detail": "它可能已经被撤销，或者已经关联到另一个云账号。",
         "remote.notice.deviceOffline.title": "桌面端中继当前离线。",
         "remote.notice.deviceOffline.detail": "请在桌面端重新连接 ContextGo，然后刷新设备列表。",
+        "remote.notice.browserEntryUnavailable.title": "桌面浏览器入口仍在准备中。",
+        "remote.notice.browserEntryUnavailable.detail": "ContextGo Cloud 中继已经连上，但桌面端自己的 WebUI 入口还没准备好。请保持桌面应用运行，稍后再试。",
         "remote.notice.sessionReplaced.title": "这个托管会话已被替换。",
         "remote.notice.sessionReplaced.detail": "另一个浏览器接管了当前实时会话。请选择设备以继续。",
-        "remote.notice.serviceRestarted.title": "托管远程会话已重启。",
-        "remote.notice.serviceRestarted.detail": "请刷新列表并重新打开桌面会话。",
+        "remote.notice.serviceRestarted.title": "远程浏览器会话已重启。",
+        "remote.notice.serviceRestarted.detail": "请刷新列表并重新打开桌面会话。浏览器应回到桌面端自己提供的 WebUI。",
         "remote.badge.liveSession": "会话进行中",
         "remote.badge.available": "可用",
         "remote.badge.unavailable": "不可用",
         "remote.summary.liveSession": "桌面端已在线，并且已经通过 {transportLabel} 连接到一个浏览器会话。",
         "remote.detail.liveSession": "你仍然可以由第二个浏览器接管，但当前会话已经处于活动状态。",
         "remote.summary.available": "桌面端已在线，可通过 {transportLabel} 使用。",
-        "remote.detail.available": "此设备已建立经过认证的出站中继连接，现在可以直接打开实时 WebUI 会话。",
+        "remote.detail.available": "此设备已建立经过认证的出站中继连接，而且桌面端自己的 WebUI 入口已经就绪，现在可以直接在浏览器里打开。",
+        "remote.summary.browserEntryUnavailable": "桌面端已连上 {transportLabel}，ContextGo 正在准备桌面浏览器入口。",
         "remote.summary.unavailable": "桌面端当前未连接到 {transportLabel}。",
-        "remote.detail.unavailable": "这台机器可能仍然已注册且处于激活状态，但在桌面端重新连上中继之前，托管远程访问不可用。",
-        "remote.action.openLiveSession": "打开实时会话",
+        "remote.detail.unavailable": "这台机器可能仍然已注册且处于激活状态，但在桌面端重新连上中继并暴露自己的 WebUI 入口之前，浏览器远程访问不可用。",
+        "remote.action.openLiveSession": "打开桌面 WebUI",
         "remote.action.unavailable": "不可用",
-        "remote.rendererUnavailableTitle": "托管远程 Shell 当前不可用",
-        "remote.rendererUnavailableDetail": "当前部署上未找到前端构建产物。",
+        "remote.rendererUnavailableTitle": "桌面浏览器入口当前不可用",
+        "remote.rendererUnavailableDetail": "ContextGo Cloud 中继已经连上，但桌面端自己的 WebUI 入口还没准备好。请保持桌面应用运行，稍后再试。",
         "desktop.title": "返回 ContextGo",
         "desktop.action.return": "返回 ContextGo",
         "desktop.action.open": "打开 ContextGo",
@@ -252,6 +302,8 @@ CLOUD_I18N = {
         "remote.notice.deviceNotFound.detail": "它可能已被撤銷，或已連結到另一個雲端帳號。",
         "remote.notice.deviceOffline.title": "桌面端中繼目前離線。",
         "remote.notice.deviceOffline.detail": "請在桌面端重新連線 ContextGo，然後重新整理裝置清單。",
+        "remote.notice.browserEntryUnavailable.title": "桌面瀏覽器入口仍在準備中。",
+        "remote.notice.browserEntryUnavailable.detail": "ContextGo Cloud 中繼已經連上，但桌面端自己的 WebUI 入口尚未就緒。請保持桌面應用運行，稍後再試。",
         "remote.notice.sessionReplaced.title": "這個託管工作階段已被取代。",
         "remote.notice.sessionReplaced.detail": "另一個瀏覽器接管了目前的即時工作階段。請重新選擇裝置以繼續。",
         "remote.notice.serviceRestarted.title": "託管遠端工作階段已重新啟動。",
@@ -262,13 +314,14 @@ CLOUD_I18N = {
         "remote.summary.liveSession": "桌面端已上線，且已透過 {transportLabel} 連接到瀏覽器工作階段。",
         "remote.detail.liveSession": "第二個瀏覽器仍可接管，但目前工作階段已處於活動狀態。",
         "remote.summary.available": "桌面端已上線，可透過 {transportLabel} 使用。",
-        "remote.detail.available": "這台裝置已建立經驗證的對外中繼連線，現在可以直接開啟即時 WebUI 工作階段。",
+        "remote.detail.available": "這台裝置已建立經驗證的對外中繼連線，桌面端自己的 WebUI 入口也已就緒，現在可以直接在瀏覽器中開啟。",
+        "remote.summary.browserEntryUnavailable": "桌面端已連上 {transportLabel}，ContextGo 正在準備桌面瀏覽器入口。",
         "remote.summary.unavailable": "桌面端目前未連接到 {transportLabel}。",
         "remote.detail.unavailable": "這台機器可能仍已註冊且處於啟用狀態，但在桌面端重新連上中繼之前，託管遠端存取仍不可用。",
         "remote.action.openLiveSession": "開啟即時工作階段",
         "remote.action.unavailable": "不可用",
         "remote.rendererUnavailableTitle": "託管遠端 Shell 目前不可用",
-        "remote.rendererUnavailableDetail": "目前部署上找不到前端建置產物。",
+        "remote.rendererUnavailableDetail": "ContextGo Cloud 中繼已經連上，但桌面端自己的 WebUI 入口尚未就緒。請保持桌面應用運行，稍後再試。",
         "desktop.title": "返回 ContextGo",
         "desktop.action.return": "返回 ContextGo",
         "desktop.action.open": "開啟 ContextGo",
@@ -311,6 +364,8 @@ CLOUD_I18N = {
         "remote.notice.deviceNotFound.detail": "無効化されたか、別のクラウド アカウントに紐付いている可能性があります。",
         "remote.notice.deviceOffline.title": "デスクトップ リレーはオフラインです。",
         "remote.notice.deviceOffline.detail": "デスクトップ側で ContextGo を再接続してから、この一覧を更新してください。",
+        "remote.notice.browserEntryUnavailable.title": "デスクトップのブラウザ入口はまだ準備中です。",
+        "remote.notice.browserEntryUnavailable.detail": "ContextGo Cloud relay は接続済みですが、デスクトップ側の WebUI 入口はまだ利用できません。デスクトップアプリを起動したまま少し待ってから再試行してください。",
         "remote.notice.sessionReplaced.title": "このホスト型セッションは置き換えられました。",
         "remote.notice.sessionReplaced.detail": "別のブラウザが現在のライブ セッションを引き継ぎました。続行するにはもう一度デバイスを選択してください。",
         "remote.notice.serviceRestarted.title": "ホスト型リモート セッションが再起動されました。",
@@ -321,13 +376,14 @@ CLOUD_I18N = {
         "remote.summary.liveSession": "デスクトップはオンラインで、すでに {transportLabel} 経由でブラウザ セッションに接続されています。",
         "remote.detail.liveSession": "別のブラウザが引き継ぐことはできますが、現在のセッションはすでにアクティブです。",
         "remote.summary.available": "デスクトップはオンラインで、{transportLabel} 経由で利用できます。",
-        "remote.detail.available": "このデバイスには認証済みのアウトバウンド リレー接続があり、今すぐライブ WebUI セッションを開けます。",
+        "remote.detail.available": "このデバイスには認証済みのアウトバウンド リレー接続があり、デスクトップ側の WebUI 入口も準備できているため、そのままブラウザで開けます。",
+        "remote.summary.browserEntryUnavailable": "デスクトップは {transportLabel} に接続されており、ContextGo がデスクトップのブラウザ入口を準備しています。",
         "remote.summary.unavailable": "デスクトップは現在 {transportLabel} に接続していません。",
         "remote.detail.unavailable": "このマシンは登録済みかつ有効なままの可能性がありますが、デスクトップ リレーが再接続するまでホスト型リモート アクセスは利用できません。",
         "remote.action.openLiveSession": "ライブ セッションを開く",
         "remote.action.unavailable": "利用不可",
         "remote.rendererUnavailableTitle": "ホスト型リモート Shell は利用できません",
-        "remote.rendererUnavailableDetail": "このデプロイにはレンダラーのビルド成果物が見つかりませんでした。",
+        "remote.rendererUnavailableDetail": "ContextGo Cloud relay は接続済みですが、デスクトップ側の WebUI 入口はまだ利用できません。デスクトップアプリを起動したまま少し待ってから再試行してください。",
         "desktop.title": "ContextGo に戻る",
         "desktop.action.return": "ContextGo に戻る",
         "desktop.action.open": "ContextGo を開く",
@@ -370,6 +426,8 @@ CLOUD_I18N = {
         "remote.notice.deviceNotFound.detail": "이미 해제되었거나 다른 클라우드 계정에 연결되었을 수 있습니다.",
         "remote.notice.deviceOffline.title": "데스크톱 릴레이가 오프라인입니다.",
         "remote.notice.deviceOffline.detail": "데스크톱에서 ContextGo를 다시 연결한 뒤 이 목록을 새로고침하세요.",
+        "remote.notice.browserEntryUnavailable.title": "데스크톱 브라우저 진입점을 아직 준비 중입니다.",
+        "remote.notice.browserEntryUnavailable.detail": "ContextGo Cloud relay는 연결되어 있지만 데스크톱 자체 WebUI 진입점은 아직 준비되지 않았습니다. 데스크톱 앱을 켜 둔 채 잠시 후 다시 시도하세요.",
         "remote.notice.sessionReplaced.title": "이 호스팅 세션이 다른 세션으로 대체되었습니다.",
         "remote.notice.sessionReplaced.detail": "다른 브라우저가 현재 라이브 세션을 가져갔습니다. 계속하려면 기기를 다시 선택하세요.",
         "remote.notice.serviceRestarted.title": "호스팅 원격 세션이 다시 시작되었습니다.",
@@ -380,13 +438,14 @@ CLOUD_I18N = {
         "remote.summary.liveSession": "데스크톱이 온라인이며 이미 {transportLabel}을 통해 브라우저 세션에 연결되어 있습니다.",
         "remote.detail.liveSession": "다른 브라우저가 이어받을 수는 있지만 현재 세션은 이미 활성 상태입니다.",
         "remote.summary.available": "데스크톱이 온라인이며 {transportLabel}을 통해 바로 사용할 수 있습니다.",
-        "remote.detail.available": "이 기기는 인증된 아웃바운드 릴레이 연결을 가지고 있어 지금 바로 라이브 WebUI 세션을 열 수 있습니다.",
+        "remote.detail.available": "이 기기는 인증된 아웃바운드 릴레이 연결을 가지고 있고, 데스크톱 측 WebUI 진입점도 준비되어 있어 브라우저에서 바로 열 수 있습니다.",
+        "remote.summary.browserEntryUnavailable": "데스크톱은 {transportLabel}에 연결되어 있으며 ContextGo가 데스크톱 브라우저 진입점을 준비하고 있습니다.",
         "remote.summary.unavailable": "데스크톱이 현재 {transportLabel}에 연결되어 있지 않습니다.",
         "remote.detail.unavailable": "이 기기는 여전히 등록 및 활성 상태일 수 있지만, 데스크톱 릴레이가 다시 연결되기 전까지 호스팅 원격 액세스는 사용할 수 없습니다.",
         "remote.action.openLiveSession": "라이브 세션 열기",
         "remote.action.unavailable": "사용 불가",
         "remote.rendererUnavailableTitle": "호스팅 원격 Shell을 사용할 수 없습니다",
-        "remote.rendererUnavailableDetail": "이 배포에서 렌더러 빌드를 찾을 수 없습니다.",
+        "remote.rendererUnavailableDetail": "ContextGo Cloud relay는 연결되어 있지만 데스크톱 자체 WebUI 진입점은 아직 준비되지 않았습니다. 데스크톱 앱을 켜 둔 채 잠시 후 다시 시도하세요.",
         "desktop.title": "ContextGo로 돌아가기",
         "desktop.action.return": "ContextGo로 돌아가기",
         "desktop.action.open": "ContextGo 열기",
@@ -429,6 +488,8 @@ CLOUD_I18N = {
         "remote.notice.deviceNotFound.detail": "İptal edilmiş veya başka bir bulut hesabına bağlanmış olabilir.",
         "remote.notice.deviceOffline.title": "Masaüstü rölesi çevrimdışı.",
         "remote.notice.deviceOffline.detail": "Masaüstünde ContextGo'yu yeniden bağlayın, sonra bu cihaz listesini yenileyin.",
+        "remote.notice.browserEntryUnavailable.title": "Masaüstü tarayıcı girişi hâlâ hazırlanıyor.",
+        "remote.notice.browserEntryUnavailable.detail": "ContextGo Cloud relay bağlı, ancak masaüstünün kendi WebUI girişi henüz hazır değil. Masaüstü uygulamasını açık bırakın ve biraz sonra tekrar deneyin.",
         "remote.notice.sessionReplaced.title": "Bu barındırılan oturum değiştirildi.",
         "remote.notice.sessionReplaced.detail": "Başka bir tarayıcı canlı oturumu devraldı. Burada devam etmek için cihazı yeniden seçin.",
         "remote.notice.serviceRestarted.title": "Barındırılan uzak oturum yeniden başlatıldı.",
@@ -439,13 +500,14 @@ CLOUD_I18N = {
         "remote.summary.liveSession": "Masaüstü çevrimiçi ve zaten {transportLabel} üzerinden bir tarayıcı oturumuna bağlı.",
         "remote.detail.liveSession": "İkinci bir tarayıcı devralabilir, ancak mevcut oturum zaten etkin durumda.",
         "remote.summary.available": "Masaüstü çevrimiçi ve {transportLabel} üzerinden hazır.",
-        "remote.detail.available": "Bu cihaz doğrulanmış bir giden röle bağlantısına sahip ve canlı bir WebUI oturumunu hemen açabilir.",
+        "remote.detail.available": "Bu cihaz doğrulanmış bir giden röle bağlantısına sahip ve masaüstünün kendi WebUI girişini tarayıcıda açmaya hazır.",
+        "remote.summary.browserEntryUnavailable": "Masaüstü {transportLabel} üzerinden bağlı ve ContextGo masaüstü tarayıcı girişini hazırlıyor.",
         "remote.summary.unavailable": "Masaüstü şu anda {transportLabel} ağına bağlı değil.",
         "remote.detail.unavailable": "Makine hâlâ kayıtlı ve etkin olabilir, ancak masaüstü rölesi yeniden bağlanana kadar barındırılan uzak erişim kullanılamaz.",
         "remote.action.openLiveSession": "Canlı oturumu aç",
         "remote.action.unavailable": "Kullanılamıyor",
         "remote.rendererUnavailableTitle": "Barındırılan uzak Shell kullanılamıyor",
-        "remote.rendererUnavailableDetail": "Bu dağıtımda renderer derleme çıktısı bulunamadı.",
+        "remote.rendererUnavailableDetail": "ContextGo Cloud relay bağlı, ancak masaüstünün kendi WebUI girişi henüz hazır değil. Masaüstü uygulamasını açık bırakın ve biraz sonra tekrar deneyin.",
         "desktop.title": "ContextGo'ya dön",
         "desktop.action.return": "ContextGo'ya dön",
         "desktop.action.open": "ContextGo'yu aç",
@@ -588,6 +650,7 @@ RENDERER_INDEX_PATH = RENDERER_BUILD_ROOT / "index.html"
 RENDERER_ASSETS_PATH = RENDERER_BUILD_ROOT / "assets"
 IOS_ASSOCIATED_APP_IDS_ENV = "CONTEXTGO_IOS_ASSOCIATED_APP_IDS"
 ANDROID_APP_LINK_TARGETS_ENV = "CONTEXTGO_ANDROID_APP_LINK_TARGETS"
+oidc_signing_key = load_oidc_signing_key(settings)
 
 
 @asynccontextmanager
@@ -599,9 +662,6 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="ContextGo Cloud Auth Service", lifespan=lifespan)
 remote_relay_hub = RemoteRelayHub()
-
-if RENDERER_ASSETS_PATH.is_dir():
-    app.mount(REMOTE_APP_ASSETS_PATH, StaticFiles(directory=str(RENDERER_ASSETS_PATH)), name="remote-app-assets")
 
 allowed_origins = [
     "https://contextgo.io",
@@ -618,6 +678,116 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
+
+def is_oidc_client_enabled() -> bool:
+    return bool(settings.oidc_client_id and settings.oidc_client_secret and settings.oidc_redirect_uris)
+
+
+def build_oidc_discovery_document() -> dict[str, object]:
+    return {
+        'issuer': settings.auth_base_url,
+        'authorization_endpoint': f'{settings.auth_base_url}{OIDC_AUTHORIZE_PATH}',
+        'token_endpoint': f'{settings.auth_base_url}{OIDC_TOKEN_PATH}',
+        'userinfo_endpoint': f'{settings.auth_base_url}{OIDC_USERINFO_PATH}',
+        'jwks_uri': f'{settings.auth_base_url}{OIDC_JWKS_PATH}',
+        'response_types_supported': list(OIDC_SUPPORTED_RESPONSE_TYPES),
+        'subject_types_supported': list(OIDC_SUPPORTED_SUBJECT_TYPES),
+        'id_token_signing_alg_values_supported': list(OIDC_SUPPORTED_ID_TOKEN_ALGORITHMS),
+        'scopes_supported': list(OIDC_SUPPORTED_SCOPES),
+        'token_endpoint_auth_methods_supported': list(OIDC_SUPPORTED_CLIENT_AUTH_METHODS),
+        'claims_supported': list(OIDC_SUPPORTED_CLAIMS),
+    }
+
+
+def ensure_oidc_client_enabled() -> None:
+    if not is_oidc_client_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='OIDC provider is not configured',
+        )
+
+
+def validate_oidc_client(client_id: Optional[str], redirect_uri: Optional[str]) -> tuple[str, str]:
+    ensure_oidc_client_enabled()
+
+    normalized_client_id = (client_id or '').strip()
+    normalized_redirect_uri = (redirect_uri or '').strip()
+    if normalized_client_id != settings.oidc_client_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid OIDC client')
+
+    if normalized_redirect_uri not in settings.oidc_redirect_uris:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid OIDC redirect URI')
+
+    return normalized_client_id, normalized_redirect_uri
+
+
+def build_oidc_redirect_url(redirect_uri: str, params: dict[str, Optional[str]]) -> str:
+    serialized = {key: value for key, value in params.items() if value is not None}
+    return str(URL(redirect_uri).include_query_params(**serialized))
+
+
+def build_oidc_authorize_error_response(
+    *,
+    redirect_uri: Optional[str],
+    error: str,
+    state_value: Optional[str],
+    description: Optional[str] = None,
+) -> RedirectResponse:
+    if redirect_uri:
+        return RedirectResponse(
+            url=build_oidc_redirect_url(
+                redirect_uri,
+                {
+                    'error': error,
+                    'error_description': description,
+                    'state': state_value,
+                },
+            ),
+            status_code=303,
+        )
+
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=description or error)
+
+
+def build_oidc_token_error(
+    error: str,
+    description: str,
+    *,
+    status_code: int = status.HTTP_400_BAD_REQUEST,
+    headers: Optional[dict[str, str]] = None,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            'error': error,
+            'error_description': description,
+        },
+        headers=headers,
+    )
+
+
+def authenticate_oidc_access_token(request: Request) -> tuple[Optional[User], Optional[OidcAccessToken]]:
+    bearer_token = read_bearer_token(request)
+    if not bearer_token:
+        return None, None
+
+    access_token = get_oidc_access_token(settings, bearer_token)
+    if access_token is None:
+        return None, None
+
+    user = find_user_by_id(settings, access_token.user_id)
+    if user is None:
+        return None, None
+
+    return user, access_token
+
+
+def read_oidc_client_credentials(request: Request, payload: dict[str, str]) -> tuple[Optional[str], Optional[str]]:
+    basic_client_id, basic_client_secret = decode_basic_auth_header(request.headers.get('authorization'))
+    client_id = (basic_client_id or payload.get('client_id') or '').strip() or None
+    client_secret = (basic_client_secret or payload.get('client_secret') or '').strip() or None
+    return client_id, client_secret
 
 def is_allowed_email(email: str) -> bool:
     if not settings.allowed_emails:
@@ -678,20 +848,6 @@ def resolve_mobile_shell_target_url(request: Request, next_path: str) -> str:
 
 def build_mobile_shell_login_complete_url(target_url: str) -> str:
     return f"{settings.auth_base_url}{MOBILE_SHELL_LOGIN_COMPLETE_PATH}?{urlencode({'target': target_url})}"
-
-
-def render_remote_app_shell() -> str:
-    if not RENDERER_INDEX_PATH.is_file():
-        raise FileNotFoundError(RENDERER_INDEX_PATH)
-
-    html = RENDERER_INDEX_PATH.read_text(encoding="utf-8")
-    asset_prefix = f"{REMOTE_APP_ASSETS_PATH}/"
-    return (
-        html.replace('href="./assets/', f'href="{asset_prefix}')
-        .replace('src="./assets/', f'src="{asset_prefix}')
-        .replace("href='./assets/", f"href='{asset_prefix}")
-        .replace("src='./assets/", f"src='{asset_prefix}")
-    )
 
 
 def set_session_cookie(response: Union[RedirectResponse, JSONResponse, HTMLResponse], token: str) -> None:
@@ -1164,6 +1320,13 @@ def describe_remote_notice(language: str, notice: Optional[str]) -> Optional[dic
             "detail": cloud_text(language, "remote.notice.sessionReplaced.detail"),
         }
 
+    if notice == "browser_entry_unavailable":
+        return {
+            "className": "info",
+            "title": cloud_text(language, "remote.notice.browserEntryUnavailable.title"),
+            "detail": cloud_text(language, "remote.notice.browserEntryUnavailable.detail"),
+        }
+
     if notice == "service_restarted":
         return {
             "className": "info",
@@ -1174,27 +1337,151 @@ def describe_remote_notice(language: str, notice: Optional[str]) -> Optional[dic
     return None
 
 
+def resolve_remote_browser_entry_url(remote_status: dict[str, object]) -> Optional[str]:
+    browser_entry_url = remote_status.get("browserEntryUrl")
+    if not isinstance(browser_entry_url, str):
+        return None
+
+    normalized = browser_entry_url.strip()
+    return normalized or None
+
+
+def read_active_remote_device_id(request: Request) -> Optional[str]:
+    raw_device_id = request.cookies.get(REMOTE_ACTIVE_DEVICE_COOKIE)
+    if not raw_device_id:
+        return None
+
+    normalized = raw_device_id.strip()
+    return normalized or None
+
+
+def set_active_remote_device_cookie(response: Response, device_id: str) -> None:
+    response.set_cookie(
+        key=REMOTE_ACTIVE_DEVICE_COOKIE,
+        value=device_id,
+        httponly=True,
+        secure=settings.remote_base_url.startswith("https://"),
+        samesite="lax",
+        path="/",
+        max_age=settings.session_ttl_seconds,
+    )
+
+
+def clear_active_remote_device_cookie(response: Response) -> None:
+    response.delete_cookie(key=REMOTE_ACTIVE_DEVICE_COOKIE, path="/")
+
+
+def is_remote_control_plane_path(path: str) -> bool:
+    return (
+        path == "/"
+        or path.startswith(f"{REMOTE_DEVICE_PATH_PREFIX}/")
+        or path.startswith(REMOTE_DEVICES_PATH)
+        or path.startswith("/api/remote/")
+        or path == DESKTOP_LOGIN_COMPLETE_PATH
+        or path == MOBILE_SHELL_LOGIN_COMPLETE_PATH
+        or path == "/healthz"
+        or path == "/api/healthz"
+    )
+
+
+def should_rewrite_vite_client(path: str, headers: dict[str, str]) -> bool:
+    if path != "/@vite/client":
+        return False
+
+    content_type = headers.get("content-type", "")
+    return "javascript" in content_type or "ecmascript" in content_type or not content_type
+
+
+def rewrite_vite_client_source(source: str, device_id: str) -> str:
+    vite_socket_path = f'/api/remote/vite/{quote(device_id, safe="")}'
+    replacements = {
+        'const serverHost = "localhost:5173/";': f'const serverHost = `${{importMetaUrl.host}}{vite_socket_path}`;',
+        'const hmrPort = 5173;': 'const hmrPort = null;',
+        'const socketHost = `${"localhost" || importMetaUrl.hostname}:${hmrPort || importMetaUrl.port}${"/"}`;': f'const socketHost = `${{importMetaUrl.host}}{vite_socket_path}`;',
+        'const directSocketHost = "localhost:5173/";': 'const directSocketHost = socketHost;',
+    }
+
+    rewritten = source
+    for old_snippet, new_snippet in replacements.items():
+        rewritten = rewritten.replace(old_snippet, new_snippet)
+
+    return rewritten
+
+
+async def relay_remote_http_request(
+    request: Request,
+    *,
+    user: User,
+    device: Device,
+    desktop_path: str,
+) -> Response:
+    request_id = uuid4().hex
+    request_headers = {key: value for key, value in request.headers.items()}
+    request_headers["x-forwarded-host"] = request.headers.get("host", "")
+    if request.client and request.client.host:
+        request_headers["x-forwarded-for"] = request.client.host
+
+    request_body = await request.body()
+    relay_response = await remote_relay_hub.begin_http_request(
+        user_id=user.id,
+        device_id=device.id,
+        request_id=request_id,
+        payload={
+            "type": "http_request",
+            "requestId": request_id,
+            "request": {
+                "method": request.method,
+                "path": desktop_path,
+                "query": request.url.query,
+                "headers": request_headers,
+                "bodyBase64": base64.b64encode(request_body).decode("ascii") if request_body else "",
+            },
+        },
+    )
+    if relay_response is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Remote device is offline")
+
+    body = relay_response.body
+    response_headers = {
+        key: value
+        for key, value in relay_response.headers.items()
+        if key.lower() not in {"connection", "content-length", "transfer-encoding", "set-cookie"}
+    }
+
+    if should_rewrite_vite_client(desktop_path, response_headers):
+        rewritten_body = rewrite_vite_client_source(body.decode("utf-8"), device.id)
+        body = rewritten_body.encode("utf-8")
+        response_headers["content-length"] = str(len(body))
+
+    response = Response(content=body, status_code=relay_response.status_code, headers=response_headers)
+    for set_cookie in relay_response.set_cookies:
+        response.headers.append("set-cookie", set_cookie)
+
+    return response
+
+
 def describe_remote_device_availability(language: str, device_payload: dict[str, object]) -> dict[str, object]:
     remote_status = device_payload.get("remoteStatus")
     remote_data = remote_status if isinstance(remote_status, dict) else {}
     connected = remote_data.get("connected") is True
     client_connected = remote_data.get("clientConnected") is True
+    browser_entry_ready = remote_data.get("browserEntryReady") is True
     transport = remote_data.get("transport") if isinstance(remote_data.get("transport"), str) else "cloud-relay"
     transport_label = cloud_text(language, "transport.cloudRelay") if transport == "cloud-relay" else transport
 
-    if connected and client_connected:
-        return {
-            "connected": True,
-            "clientConnected": True,
-            "badge": cloud_text(language, "remote.badge.liveSession"),
-            "badgeClass": "busy",
-            "summary": cloud_text(language, "remote.summary.liveSession", transportLabel=transport_label),
-            "detail": cloud_text(language, "remote.detail.liveSession"),
-            "actionLabel": cloud_text(language, "remote.action.openLiveSession"),
-            "actionHref": build_remote_session_url(str(device_payload.get("id", ""))),
-        }
+    if connected and browser_entry_ready:
+        if client_connected:
+            return {
+                "connected": True,
+                "clientConnected": True,
+                "badge": cloud_text(language, "remote.badge.liveSession"),
+                "badgeClass": "busy",
+                "summary": cloud_text(language, "remote.summary.liveSession", transportLabel=transport_label),
+                "detail": cloud_text(language, "remote.detail.liveSession"),
+                "actionLabel": cloud_text(language, "remote.action.openLiveSession"),
+                "actionHref": build_remote_session_url(str(device_payload.get("id", ""))),
+            }
 
-    if connected:
         return {
             "connected": True,
             "clientConnected": False,
@@ -1206,17 +1493,28 @@ def describe_remote_device_availability(language: str, device_payload: dict[str,
             "actionHref": build_remote_session_url(str(device_payload.get("id", ""))),
         }
 
+    if connected:
+        return {
+            "connected": False,
+            "clientConnected": client_connected,
+            "badge": cloud_text(language, "remote.badge.unavailable"),
+            "badgeClass": "offline",
+            "summary": cloud_text(language, "remote.summary.browserEntryUnavailable", transportLabel=transport_label),
+            "detail": cloud_text(language, "remote.rendererUnavailableDetail"),
+            "actionLabel": cloud_text(language, "remote.action.unavailable"),
+            "actionHref": None,
+        }
+
     return {
         "connected": False,
-        "clientConnected": False,
+        "clientConnected": client_connected,
         "badge": cloud_text(language, "remote.badge.unavailable"),
         "badgeClass": "offline",
         "summary": cloud_text(language, "remote.summary.unavailable", transportLabel=transport_label),
-        "detail": cloud_text(language, "remote.detail.unavailable"),
+        "detail": cloud_text(language, "remote.detail.unavailable", transportLabel=transport_label),
         "actionLabel": cloud_text(language, "remote.action.unavailable"),
         "actionHref": None,
     }
-
 
 def render_remote_devices_page(
     request: Request,
@@ -1512,6 +1810,35 @@ def render_remote_devices_page(
 </html>"""
 
 
+def load_remote_renderer_index_html() -> str:
+    if not RENDERER_INDEX_PATH.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Remote renderer build is unavailable",
+        )
+
+    html = RENDERER_INDEX_PATH.read_text(encoding="utf-8")
+    return html.replace('./assets/', '/assets/')
+
+
+def resolve_renderer_asset_path(asset_path: str) -> Optional[Path]:
+    normalized = asset_path.strip().lstrip('/')
+    if not normalized:
+        return None
+
+    assets_root = RENDERER_ASSETS_PATH.resolve()
+    candidate = (assets_root / normalized).resolve()
+    try:
+        candidate.relative_to(assets_root)
+    except ValueError:
+        return None
+
+    if not candidate.is_file():
+        return None
+
+    return candidate
+
+
 def render_desktop_login_complete_page(language: str, deep_link_url: str, is_error: bool, message: str) -> str:
     escaped_deep_link_url = escape(deep_link_url)
     escaped_message = escape(message)
@@ -1680,6 +2007,9 @@ def serialize_device(device: Device) -> dict[str, object]:
             "clientConnected": remote_status.client_connected,
             "clientConnectedAt": remote_status.client_connected_at,
             "transport": remote_status.transport,
+            "browserEntryUrl": remote_status.browser_entry_url,
+            "browserEntryReady": remote_status.browser_entry_ready,
+            "browserEntryReason": remote_status.browser_entry_reason,
         },
     }
 
@@ -1846,18 +2176,19 @@ async def remote_devices_page(request: Request) -> HTMLResponse:
         return RedirectResponse(url=build_login_url(next_path=REMOTE_DEVICES_PATH), status_code=303)
 
     devices = list_remote_devices_payload(user.id)
-    remote_origin = settings.remote_base_url
     language = detect_request_language(request, user)
     remote_notice = describe_remote_notice(language, request.query_params.get("remoteNotice"))
-    return HTMLResponse(render_remote_devices_page(request, user, devices, remote_origin, remote_notice))
+    response = HTMLResponse(render_remote_devices_page(request, user, devices, settings.remote_base_url, remote_notice))
+    clear_active_remote_device_cookie(response)
+    return response
 
 
 def build_remote_app_login_redirect(request: Request) -> RedirectResponse:
     return RedirectResponse(url=build_login_url(next_path=build_current_path_with_query(request)), status_code=303)
 
 
-@app.get(f"{REMOTE_DEVICE_PATH_PREFIX}/{{device_id}}", response_class=HTMLResponse)
-async def remote_device_page(device_id: str, request: Request):
+@app.get(f"{REMOTE_DEVICE_PATH_PREFIX}/{{device_id}}", response_model=None)
+async def remote_device_page(device_id: str, request: Request) -> Response:
     if not is_remote_request(request):
         return RedirectResponse(url=build_remote_url(build_remote_session_url(device_id)), status_code=307)
 
@@ -1865,15 +2196,45 @@ async def remote_device_page(device_id: str, request: Request):
     if user is None:
         return build_remote_app_login_redirect(request)
 
-    if not RENDERER_INDEX_PATH.is_file():
-        language = detect_request_language(request, user)
-        unavailable_html = (
-            f"<h1>{escape(cloud_text(language, 'remote.rendererUnavailableTitle'))}</h1>"
-            f"<p>{escape(cloud_text(language, 'remote.rendererUnavailableDetail'))}</p>"
-        )
-        return HTMLResponse(unavailable_html, status_code=503)
+    device = get_device_for_user(settings, user.id, device_id)
+    if device is None or device.device_kind != "desktop":
+        return RedirectResponse(url=build_remote_url(f"{REMOTE_DEVICES_PATH}?remoteNotice=device_not_found"), status_code=303)
 
-    return HTMLResponse(render_remote_app_shell())
+    remote_status = serialize_device(device).get("remoteStatus")
+    remote_data = remote_status if isinstance(remote_status, dict) else {}
+    if remote_data.get("connected") is not True or remote_data.get("browserEntryReady") is not True:
+        return RedirectResponse(url=build_remote_url(f"{REMOTE_DEVICES_PATH}?remoteNotice=browser_entry_unavailable"), status_code=303)
+
+    response = await relay_remote_http_request(request, user=user, device=device, desktop_path="/")
+    set_active_remote_device_cookie(response, device.id)
+    return response
+
+
+@app.api_route(
+    f"{REMOTE_DEVICE_PATH_PREFIX}/{{device_id}}/{{desktop_path:path}}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    response_model=None,
+)
+async def remote_device_prefixed_relay(device_id: str, desktop_path: str, request: Request) -> Response:
+    if not is_remote_request(request):
+        return RedirectResponse(url=build_remote_url(build_remote_session_url(device_id)), status_code=307)
+
+    user = read_current_user(request)
+    if user is None:
+        return build_remote_app_login_redirect(request)
+
+    device = get_device_for_user(settings, user.id, device_id)
+    if device is None or device.device_kind != "desktop":
+        return RedirectResponse(url=build_remote_url(f"{REMOTE_DEVICES_PATH}?remoteNotice=device_not_found"), status_code=303)
+
+    remote_status = serialize_device(device).get("remoteStatus")
+    remote_data = remote_status if isinstance(remote_status, dict) else {}
+    if remote_data.get("connected") is not True or remote_data.get("browserEntryReady") is not True:
+        return RedirectResponse(url=build_remote_url(f"{REMOTE_DEVICES_PATH}?remoteNotice=browser_entry_unavailable"), status_code=303)
+
+    response = await relay_remote_http_request(request, user=user, device=device, desktop_path=f"/{desktop_path}")
+    set_active_remote_device_cookie(response, device.id)
+    return response
 
 
 @app.get(MOBILE_SHELL_LOGIN_COMPLETE_PATH)
@@ -2026,6 +2387,166 @@ async def auth_logout(request: Request, next: Optional[str] = Query(default=None
 @app.post("/logout")
 async def auth_logout_alias(request: Request, next: Optional[str] = Query(default=None)) -> RedirectResponse:
     return build_logout_response(request, next)
+
+
+@app.get('/.well-known/openid-configuration')
+async def oidc_openid_configuration() -> JSONResponse:
+    ensure_oidc_client_enabled()
+    return JSONResponse(build_oidc_discovery_document())
+
+
+@app.get(OIDC_JWKS_PATH)
+async def oidc_jwks() -> JSONResponse:
+    ensure_oidc_client_enabled()
+    return JSONResponse({'keys': [oidc_signing_key.jwk]})
+
+
+@app.get(OIDC_AUTHORIZE_PATH)
+async def oidc_authorize(request: Request) -> RedirectResponse:
+    client_id = request.query_params.get('client_id')
+    redirect_uri = request.query_params.get('redirect_uri')
+    state_value = request.query_params.get('state')
+
+    try:
+        validated_client_id, validated_redirect_uri = validate_oidc_client(client_id, redirect_uri)
+    except HTTPException as error:
+        return build_oidc_authorize_error_response(
+            redirect_uri=redirect_uri,
+            error='invalid_request',
+            state_value=state_value,
+            description=str(error.detail),
+        )
+
+    response_type = (request.query_params.get('response_type') or '').strip()
+    if response_type != 'code':
+        return build_oidc_authorize_error_response(
+            redirect_uri=validated_redirect_uri,
+            error='unsupported_response_type',
+            state_value=state_value,
+            description='Only authorization code flow is supported',
+        )
+
+    normalized_scope = normalize_scope(request.query_params.get('scope'))
+    if not normalized_scope or not validate_requested_scope(normalized_scope):
+        return build_oidc_authorize_error_response(
+            redirect_uri=validated_redirect_uri,
+            error='invalid_scope',
+            state_value=state_value,
+            description='Requested OIDC scopes are invalid',
+        )
+
+    code_challenge = request.query_params.get('code_challenge')
+    code_challenge_method = request.query_params.get('code_challenge_method')
+    if code_challenge_method and code_challenge_method not in {'plain', 'S256'}:
+        return build_oidc_authorize_error_response(
+            redirect_uri=validated_redirect_uri,
+            error='invalid_request',
+            state_value=state_value,
+            description='Unsupported code_challenge_method',
+        )
+
+    user = read_current_user(request)
+    if user is None:
+        login_target = build_current_path_with_query(request)
+        return RedirectResponse(url=build_login_url(next_path=login_target), status_code=303)
+
+    authorization_code = create_oidc_authorization_code(
+        settings,
+        client_id=validated_client_id,
+        user_id=user.id,
+        redirect_uri=validated_redirect_uri,
+        scope=normalized_scope,
+        code_challenge=code_challenge,
+        code_challenge_method=code_challenge_method,
+        nonce=request.query_params.get('nonce'),
+    )
+    return RedirectResponse(
+        url=build_oidc_redirect_url(
+            validated_redirect_uri,
+            {
+                'code': authorization_code,
+                'state': state_value,
+            },
+        ),
+        status_code=303,
+    )
+
+
+@app.post(OIDC_TOKEN_PATH)
+async def oidc_token(request: Request) -> JSONResponse:
+    ensure_oidc_client_enabled()
+    raw_body = (await request.body()).decode('utf-8')
+    parsed_body = parse_qs(raw_body, keep_blank_values=True)
+    payload = {
+        key: values[-1] if values else ''
+        for key, values in parsed_body.items()
+    }
+    client_id, client_secret = read_oidc_client_credentials(request, payload)
+    if client_id != settings.oidc_client_id or client_secret != settings.oidc_client_secret:
+        return build_oidc_token_error(
+            'invalid_client',
+            'OIDC client authentication failed',
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={'WWW-Authenticate': 'Basic realm="ContextGo OIDC"'},
+        )
+
+    if payload.get('grant_type') != 'authorization_code':
+        return build_oidc_token_error('unsupported_grant_type', 'Only authorization_code grant is supported')
+
+    code = (payload.get('code') or '').strip()
+    redirect_uri = (payload.get('redirect_uri') or '').strip()
+    if not code or not redirect_uri:
+        return build_oidc_token_error('invalid_request', 'code and redirect_uri are required')
+
+    code_record = consume_oidc_authorization_code(settings, code)
+    if code_record is None:
+        return build_oidc_token_error('invalid_grant', 'Authorization code is invalid or expired')
+
+    if code_record.client_id != settings.oidc_client_id or code_record.redirect_uri != redirect_uri:
+        return build_oidc_token_error('invalid_grant', 'Authorization code does not match the OIDC client')
+
+    if not verify_pkce(payload.get('code_verifier'), code_record.code_challenge, code_record.code_challenge_method):
+        return build_oidc_token_error('invalid_grant', 'PKCE verification failed')
+
+    user = find_user_by_id(settings, code_record.user_id)
+    if user is None:
+        return build_oidc_token_error('invalid_grant', 'Authorization code user no longer exists')
+
+    access_token = create_oidc_access_token(
+        settings,
+        user_id=user.id,
+        client_id=code_record.client_id,
+        scope=code_record.scope,
+    )
+    id_token = create_id_token(
+        signing_key=oidc_signing_key,
+        settings=settings,
+        user=user,
+        audience=code_record.client_id,
+        nonce=code_record.nonce,
+    )
+    response_payload = OidcTokenSuccessResponse(
+        access_token=access_token.token,
+        token_type='Bearer',
+        expires_in=settings.oidc_access_token_ttl_seconds,
+        scope=code_record.scope,
+        id_token=id_token,
+    )
+    return JSONResponse(response_payload.model_dump())
+
+
+@app.get(OIDC_USERINFO_PATH)
+async def oidc_userinfo(request: Request) -> JSONResponse:
+    ensure_oidc_client_enabled()
+    user, _access_token = authenticate_oidc_access_token(request)
+    if user is None:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={'detail': 'Invalid or missing access token'},
+            headers={'WWW-Authenticate': 'Bearer realm="ContextGo OIDC"'},
+        )
+
+    return JSONResponse(build_userinfo_payload(user))
 
 
 @app.get("/.well-known/apple-app-site-association")
@@ -2306,6 +2827,108 @@ async def api_sync_pull(
     return JSONResponse({"success": True, **result})
 
 
+@app.api_route("/{relay_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"], response_model=None)
+async def remote_device_runtime_relay(relay_path: str, request: Request) -> Response:
+    if not is_remote_request(request) or is_remote_control_plane_path(request.url.path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+
+    user = read_current_user(request)
+    if user is None:
+        return build_remote_app_login_redirect(request)
+
+    active_device_id = read_active_remote_device_id(request)
+    if not active_device_id:
+        return RedirectResponse(url=build_remote_url(REMOTE_DEVICES_PATH), status_code=303)
+
+    device = get_device_for_user(settings, user.id, active_device_id)
+    if device is None or device.device_kind != "desktop":
+        response = RedirectResponse(url=build_remote_url(f"{REMOTE_DEVICES_PATH}?remoteNotice=device_not_found"), status_code=303)
+        clear_active_remote_device_cookie(response)
+        return response
+
+    remote_status = serialize_device(device).get("remoteStatus")
+    remote_data = remote_status if isinstance(remote_status, dict) else {}
+    if remote_data.get("connected") is not True or remote_data.get("browserEntryReady") is not True:
+        response = RedirectResponse(url=build_remote_url(f"{REMOTE_DEVICES_PATH}?remoteNotice=browser_entry_unavailable"), status_code=303)
+        clear_active_remote_device_cookie(response)
+        return response
+
+    response = await relay_remote_http_request(request, user=user, device=device, desktop_path=f"/{relay_path}")
+    set_active_remote_device_cookie(response, device.id)
+    return response
+
+
+def read_requested_websocket_protocols(websocket: WebSocket) -> list[str]:
+    header_value = websocket.headers.get("sec-websocket-protocol", "")
+    return [item.strip() for item in header_value.split(",") if item.strip()]
+
+
+@app.websocket("/api/remote/vite/{device_id}")
+async def remote_vite_connect(device_id: str, websocket: WebSocket) -> None:
+    user = read_current_user_from_session_token(websocket.cookies.get(settings.session_cookie_name))
+    if user is None:
+        await websocket.close(code=4401, reason="Authentication required")
+        return
+
+    device = get_device_for_user(settings, user.id, device_id)
+    if device is None or device.device_kind != "desktop":
+        await websocket.close(code=4404, reason="Device not found")
+        return
+
+    requested_protocols = read_requested_websocket_protocols(websocket)
+    await websocket.accept(subprotocol=requested_protocols[0] if requested_protocols else None)
+
+    socket_id = uuid4().hex
+    registered = await remote_relay_hub.register_vite_client(
+        user_id=user.id,
+        device_id=device.id,
+        socket_id=socket_id,
+        websocket=websocket,
+        connected_at=utc_now_iso(),
+    )
+    if not registered:
+        await websocket.close(code=4404, reason="Device offline")
+        return
+
+    sent = await remote_relay_hub.forward_vite_to_device(
+        device.id,
+        {
+            "type": "vite_client_connect",
+            "socketId": socket_id,
+            "query": websocket.scope.get("query_string", b"").decode("utf-8"),
+            "protocols": requested_protocols,
+        },
+    )
+    if not sent:
+        await remote_relay_hub.unregister_vite_client(socket_id, websocket)
+        await websocket.close(code=4404, reason="Device offline")
+        return
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await remote_relay_hub.forward_vite_to_device(
+                device.id,
+                {
+                    "type": "vite_client_frame",
+                    "socketId": socket_id,
+                    "data": data,
+                },
+            )
+    except WebSocketDisconnect as exc:
+        await remote_relay_hub.forward_vite_to_device(
+            device.id,
+            {
+                "type": "vite_client_disconnect",
+                "socketId": socket_id,
+                "code": exc.code,
+                "reason": "Remote Vite client disconnected",
+            },
+        )
+    finally:
+        await remote_relay_hub.unregister_vite_client(socket_id, websocket)
+
+
 async def handle_remote_client_websocket(websocket: WebSocket, device_id: str) -> None:
     user = read_current_user_from_session_token(websocket.cookies.get(settings.session_cookie_name))
     if user is None:
@@ -2409,8 +3032,65 @@ async def remote_device_connect(websocket: WebSocket) -> None:
                 await websocket.send_json({"type": "pong"})
                 continue
 
+            if payload_type == "hello":
+                browser_entry = payload.get("browserEntry") if isinstance(payload.get("browserEntry"), dict) else {}
+                browser_entry_url = browser_entry.get("url") if isinstance(browser_entry.get("url"), str) else None
+                browser_entry_reason = browser_entry.get("reason") if isinstance(browser_entry.get("reason"), str) else None
+                browser_entry_ready = browser_entry.get("ready") is True
+                await remote_relay_hub.update_device_browser_entry(
+                    device.id,
+                    websocket,
+                    browser_entry_url=browser_entry_url.strip() if browser_entry_url else None,
+                    browser_entry_ready=browser_entry_ready,
+                    browser_entry_reason=browser_entry_reason.strip() if browser_entry_reason else None,
+                )
+                continue
+
             if payload_type == "bridge" and isinstance(payload.get("payload"), dict):
                 await remote_relay_hub.forward_bridge_to_client(device.id, payload["payload"])
+                continue
+
+            if payload_type == "http_response" and isinstance(payload.get("response"), dict):
+                response_payload = payload["response"]
+                body_base64 = response_payload.get("bodyBase64") if isinstance(response_payload.get("bodyBase64"), str) else ""
+                body = base64.b64decode(body_base64) if body_base64 else b""
+                headers = response_payload.get("headers") if isinstance(response_payload.get("headers"), dict) else {}
+                normalized_headers = {
+                    str(key): str(value)
+                    for key, value in headers.items()
+                    if isinstance(key, str) and isinstance(value, str)
+                }
+                set_cookies = response_payload.get("setCookies") if isinstance(response_payload.get("setCookies"), list) else []
+                await remote_relay_hub.resolve_http_response(
+                    device_id=device.id,
+                    request_id=str(payload.get("requestId") or ""),
+                    response=RemoteHttpRelayResponse(
+                        status_code=int(response_payload.get("statusCode") or 200),
+                        headers=normalized_headers,
+                        body=body,
+                        set_cookies=[str(item) for item in set_cookies if isinstance(item, str)],
+                    ),
+                )
+                continue
+
+            if payload_type == "http_error":
+                await remote_relay_hub.reject_http_response(
+                    device_id=device.id,
+                    request_id=str(payload.get("requestId") or ""),
+                    message=str(payload.get("message") or "Remote device HTTP relay failed"),
+                )
+                continue
+
+            if payload_type == "vite_client_frame" and isinstance(payload.get("socketId"), str):
+                await remote_relay_hub.send_vite_client_text(str(payload["socketId"]), str(payload.get("data") or ""))
+                continue
+
+            if payload_type == "vite_client_disconnect" and isinstance(payload.get("socketId"), str):
+                await remote_relay_hub.disconnect_vite_client(
+                    str(payload["socketId"]),
+                    code=int(payload.get("code") or 1000),
+                    reason=str(payload.get("reason") or "Desktop Vite relay disconnected"),
+                )
     except WebSocketDisconnect:
         pass
     finally:
