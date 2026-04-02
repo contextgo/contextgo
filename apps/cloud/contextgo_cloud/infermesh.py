@@ -26,7 +26,15 @@ class InfermeshProvisionError(RuntimeError):
     """Raised when InferMesh provisioning cannot complete safely."""
 
 
-def is_infermesh_configured(settings: Settings) -> bool:
+def is_infermesh_handoff_configured(settings: Settings) -> bool:
+    required_values = (
+        settings.infermesh_portal_url,
+        settings.oidc_client_secret or settings.infermesh_password_secret,
+    )
+    return all(required_values)
+
+
+def is_infermesh_provider_configured(settings: Settings) -> bool:
     required_values = (
         settings.infermesh_api_base_url,
         settings.infermesh_console_base_url,
@@ -36,6 +44,10 @@ def is_infermesh_configured(settings: Settings) -> bool:
         settings.infermesh_password_secret,
     )
     return all(required_values)
+
+
+def is_infermesh_configured(settings: Settings) -> bool:
+    return is_infermesh_provider_configured(settings)
 
 
 def _normalize_base_url(raw_url: Optional[str]) -> str:
@@ -52,7 +64,7 @@ def build_infermesh_username(settings: Settings, user: User) -> str:
 
 
 def build_infermesh_password(settings: Settings, user: User) -> str:
-    secret = settings.infermesh_password_secret
+    secret = settings.infermesh_password_secret or settings.oidc_client_secret
     if not secret:
         raise InfermeshProvisionError("InferMesh password secret is not configured")
     digest = sha256(f"{secret}:{user.id}".encode("utf-8")).hexdigest()
@@ -345,7 +357,7 @@ async def _fetch_models(api_base_url: str, api_key: str) -> list[str]:
 
 
 async def provision_infermesh_provider(settings: Settings, user: User) -> dict[str, Any]:
-    if not is_infermesh_configured(settings):
+    if not is_infermesh_provider_configured(settings):
         raise InfermeshProvisionError("InferMesh integration is not configured")
 
     api_base_url = _normalize_base_url(settings.infermesh_api_base_url)

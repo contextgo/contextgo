@@ -1035,6 +1035,32 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertTrue(payload["success"])
         self.assertTrue(payload["url"].startswith("https://infermesh.test/api/oauth/contextgo/handoff?token="))
 
+    def test_infermesh_handoff_uses_oidc_secret_without_provider_bootstrap_config(self) -> None:
+        self._create_browser_session()
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device_token = registration["token"]
+
+        relaxed_settings = self.settings.__class__(
+            **{
+                **self.settings.__dict__,
+                "infermesh_admin_base_url": None,
+                "infermesh_admin_username": None,
+                "infermesh_admin_password": None,
+                "infermesh_password_secret": None,
+            }
+        )
+
+        with patch.object(self.app_module, "settings", relaxed_settings):
+            response = self.client.get(
+                "/api/integrations/infermesh/handoff",
+                headers={"Authorization": f"Bearer {device_token}"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertTrue(payload["url"].startswith("https://infermesh.test/api/oauth/contextgo/handoff?token="))
+
     def test_infermesh_provider_accepts_device_token(self) -> None:
         registration = self._register_device(device_name="Studio", platform="macos")
         device_token = registration["token"]
