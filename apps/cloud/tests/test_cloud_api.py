@@ -546,6 +546,34 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertIn("Studio", page_response.text)
         self.assertNotIn("ContextGo WebUI on Studio", page_response.text)
 
+    def test_remote_devices_hide_revoked_desktop_devices(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        revoked_id = registration["device"]["id"]
+
+        revoke_response = self.client.post(f"/api/devices/{revoked_id}/revoke")
+        self.assertEqual(revoke_response.status_code, 200)
+
+        replacement_response = self.client.post(
+            "/api/devices/register",
+            json={
+                "deviceName": "Studio Dev",
+                "platform": "macos",
+                "deviceKind": "desktop",
+            },
+        )
+        self.assertEqual(replacement_response.status_code, 201)
+
+        api_payload = self.client.get("/api/remote/devices").json()
+        self.assertEqual(len(api_payload["devices"]), 1)
+        self.assertEqual(api_payload["devices"][0]["deviceName"], "Studio Dev")
+        self.assertEqual(api_payload["devices"][0]["status"], "active")
+
+        page_response = self.client.get("/remote/devices", headers={"host": "remote.contextgo.io"})
+        self.assertEqual(page_response.status_code, 200)
+        self.assertIn("Studio Dev", page_response.text)
+        self.assertNotIn("macos · device revoked", page_response.text)
+        self.assertNotIn("Studio</h2>", page_response.text)
+
     def test_remote_devices_page_redirects_to_login_with_next_path(self) -> None:
         response = self.client.get("/remote/devices", follow_redirects=False, headers={"host": "remote.contextgo.io"})
 
