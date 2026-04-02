@@ -57,6 +57,7 @@ from .infermesh import (
     InfermeshProvisionError,
     build_infermesh_handoff_url,
     is_infermesh_configured,
+    is_infermesh_handoff_configured,
     provision_infermesh_provider,
 )
 from .oidc import (
@@ -2481,7 +2482,7 @@ async def auth_session(request: Request) -> JSONResponse:
 
 @app.get("/api/integrations/infermesh/handoff")
 async def infermesh_handoff(request: Request) -> JSONResponse:
-    if not is_infermesh_configured(settings):
+    if not is_infermesh_handoff_configured(settings):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="InferMesh integration is not configured",
