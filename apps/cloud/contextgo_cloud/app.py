@@ -1165,20 +1165,33 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
 <html lang="{escape(language)}">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{escape(title)}</title>
   <style>
+    :root {{
+      color-scheme: light;
+    }}
+    html {{
+      min-height: 100%;
+      background: #eef3ff;
+    }}
     body {{
       margin: 0;
       font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: linear-gradient(180deg, #f4f7fb 0%, #eef3ff 100%);
       color: #0f172a;
+      min-height: 100vh;
     }}
     .wrap {{
       min-height: 100vh;
       display: grid;
       place-items: center;
-      padding: 32px 16px;
+      padding:
+        calc(24px + env(safe-area-inset-top, 0px))
+        max(16px, env(safe-area-inset-right, 0px))
+        calc(24px + env(safe-area-inset-bottom, 0px))
+        max(16px, env(safe-area-inset-left, 0px));
+      box-sizing: border-box;
     }}
     .card {{
       width: min(560px, 100%);
@@ -1274,6 +1287,27 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
       background: rgba(15, 23, 42, 0.06);
       padding: 2px 6px;
       border-radius: 8px;
+    }}
+    @media (max-width: 768px) {{
+      .wrap {{
+        place-items: stretch;
+        min-height: auto;
+      }}
+      .card {{
+        width: 100%;
+        border-radius: 20px;
+        padding: 24px 20px;
+        box-sizing: border-box;
+      }}
+      h1 {{
+        font-size: 29px;
+      }}
+      .provider, button {{
+        width: 100%;
+      }}
+      .session-header {{
+        align-items: flex-start;
+      }}
     }}
   </style>
 </head>
@@ -1561,6 +1595,7 @@ def render_remote_devices_page(
     notice: Optional[dict[str, str]] = None,
 ) -> str:
     language = detect_request_language(request, user)
+    mobile_shell_request = is_mobile_shell_request(request)
     cards = []
     for device in devices:
         availability = describe_remote_device_availability(language, device)
@@ -1569,10 +1604,9 @@ def render_remote_devices_page(
             relative_target_url = str(availability["actionHref"])
             absolute_target_url = f"{remote_origin}{relative_target_url}"
             mobile_shell_url = build_mobile_shell_open_url(absolute_target_url)
-            action_markup = (
-                f'<a class="primary" href="{escape(relative_target_url)}">{escape(str(availability["actionLabel"]))}</a>'
-                f'<a class="secondary" href="{escape(mobile_shell_url)}">{escape(cloud_text(language, "remote.openInApp"))}</a>'
-            )
+            action_markup = f'<a class="primary" href="{escape(relative_target_url)}">{escape(str(availability["actionLabel"]))}</a>'
+            if not mobile_shell_request:
+                action_markup += f'<a class="secondary" href="{escape(mobile_shell_url)}">{escape(cloud_text(language, "remote.openInApp"))}</a>'
         else:
             action_markup = f'<span class="secondary disabled" aria-disabled="true">{escape(cloud_text(language, "remote.action.unavailable"))}</span>'
 
@@ -1637,9 +1671,16 @@ def render_remote_devices_page(
 <html lang="{escape(language)}">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{escape(title)}</title>
   <style>
+    :root {{
+      color-scheme: light;
+    }}
+    html {{
+      min-height: 100%;
+      background: #eef4ff;
+    }}
     body {{
       margin: 0;
       font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -1647,11 +1688,17 @@ def render_remote_devices_page(
         radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 28%),
         linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
       color: #0f172a;
+      min-height: 100vh;
     }}
     .wrap {{
       width: min(1100px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 32px 0 56px;
+      padding:
+        calc(24px + env(safe-area-inset-top, 0px))
+        max(16px, env(safe-area-inset-right, 0px))
+        calc(40px + env(safe-area-inset-bottom, 0px))
+        max(16px, env(safe-area-inset-left, 0px));
+      box-sizing: border-box;
     }}
     .topbar {{
       display: flex;
@@ -1695,6 +1742,7 @@ def render_remote_devices_page(
     .grid {{
       display: grid;
       gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     }}
     .notice {{
       margin-bottom: 16px;
@@ -1777,6 +1825,7 @@ def render_remote_devices_page(
     .actions {{
       display: flex;
       gap: 12px;
+      flex-wrap: wrap;
       margin-top: 18px;
     }}
     a.primary, a.secondary, button.secondary, .secondary.disabled {{
@@ -1792,6 +1841,7 @@ def render_remote_devices_page(
       font-weight: 700;
       border: 1px solid rgba(15, 23, 42, 0.1);
       box-sizing: border-box;
+      flex: 1 1 180px;
     }}
     a.primary {{
       background: #111827;
@@ -1810,11 +1860,49 @@ def render_remote_devices_page(
       margin: 0;
     }}
     @media (max-width: 768px) {{
+      .wrap {{
+        width: 100%;
+        padding-top: calc(18px + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+      }}
       .topbar, .device-header {{
         flex-direction: column;
       }}
+      .topbar h1 {{
+        font-size: 28px;
+      }}
       .account-card {{
         width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+      }}
+      .toolbar {{
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+      }}
+      .toolbar a.secondary, .toolbar button.secondary {{
+        width: 100%;
+      }}
+      .grid {{
+        grid-template-columns: 1fr;
+      }}
+      .device-card, .empty-state {{
+        border-radius: 20px;
+        padding: 20px;
+      }}
+      .device-header h2, .empty-state h2 {{
+        font-size: 21px;
+      }}
+      .actions {{
+        flex-direction: column;
+      }}
+      .actions > * {{
+        width: 100%;
+      }}
+      a.primary, a.secondary, button.secondary, .secondary.disabled {{
+        width: 100%;
+        flex-basis: auto;
       }}
     }}
   </style>

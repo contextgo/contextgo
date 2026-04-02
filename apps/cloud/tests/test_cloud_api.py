@@ -605,6 +605,47 @@ class CloudApiTestCase(unittest.TestCase):
             response.text,
         )
 
+    def test_remote_devices_page_hides_open_in_app_link_inside_mobile_shell(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+            device_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.8:25809/", "ready": True}})
+
+            response = self.client.get(
+                "/remote/devices",
+                headers={
+                    "host": "remote.contextgo.io",
+                    "user-agent": "Mozilla/5.0 ContextGoMobileShell/1.0",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(f'/device/{device["id"]}', response.text)
+        self.assertNotIn("Open in app", response.text)
+        self.assertNotIn("contextgo-remote://open?target=", response.text)
+
+    def test_mobile_shell_login_complete_redirects_back_to_shell_target(self) -> None:
+        self._create_browser_session()
+
+        response = self.client.get(
+            "/mobile-shell-login-complete?target=https%3A%2F%2Fremote.contextgo.io%2Fdevice%2Fdevice-123",
+            follow_redirects=False,
+            headers={"host": "auth.contextgo.io"},
+        )
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(
+            response.headers["location"],
+            "contextgo-remote://open?target=https%3A%2F%2Fremote.contextgo.io%2Fdevice%2Fdevice-123",
+        )
+
     def test_remote_devices_page_marks_registered_but_disconnected_devices_as_unavailable(self) -> None:
         self._register_device(device_name="Studio", platform="macos")
 
