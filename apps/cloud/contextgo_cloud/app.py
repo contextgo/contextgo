@@ -2018,7 +2018,7 @@ def list_remote_devices_payload(user_id: str) -> list[dict[str, object]]:
     return [
         serialize_device(device)
         for device in list_devices_for_user(settings, user_id)
-        if device.device_kind == "desktop"
+        if device.device_kind == "desktop" and device.status == "active"
     ]
 
 
