@@ -57,10 +57,10 @@ def _normalize_base_url(raw_url: Optional[str]) -> str:
 
 
 def build_infermesh_username(settings: Settings, user: User) -> str:
-    prefix = (settings.infermesh_username_prefix or "cg").strip().lower()
-    safe_prefix = "".join(char for char in prefix if char.isalnum())[:4] or "cg"
-    digest = sha256(user.id.encode("utf-8")).hexdigest()
-    return f"{safe_prefix}{digest[:16]}"[:20]
+    normalized_uid = "".join(char for char in user.id.lower() if char.isalnum())
+    if len(normalized_uid) < 8:
+        normalized_uid = f"{normalized_uid}{sha256(user.id.encode('utf-8')).hexdigest()}"
+    return f"cgo-{normalized_uid[:8]}"
 
 
 def build_infermesh_password(settings: Settings, user: User) -> str:
