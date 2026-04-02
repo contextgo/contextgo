@@ -276,6 +276,8 @@ jobs:
       CLOUD_ENV_FILE: ${{ vars.CLOUD_ENV_FILE != '' && vars.CLOUD_ENV_FILE || '/etc/contextgo-cloud/contextgo-cloud.env' }}
       CLOUD_SERVICE_NAME: ${{ vars.CLOUD_SERVICE_NAME != '' && vars.CLOUD_SERVICE_NAME || 'contextgo-cloud' }}
       CLOUD_DEPLOY_OWNER: ${{ vars.CLOUD_DEPLOY_OWNER != '' && vars.CLOUD_DEPLOY_OWNER || 'contextgo' }}
+      CONTEXTGO_OIDC_CLIENT_SECRET: ${{ secrets.CONTEXTGO_OIDC_CLIENT_SECRET }}
+      CONTEXTGO_OIDC_SIGNING_KEY_PEM: ${{ secrets.CONTEXTGO_OIDC_SIGNING_KEY_PEM }}
 
     steps:
       - name: Verify GCP deploy configuration
@@ -302,6 +304,14 @@ jobs:
 
           if [ -z "${GCP_SERVICE_ACCOUNT_EMAIL:-}" ]; then
             missing+=("GCP_SERVICE_ACCOUNT_EMAIL")
+          fi
+
+          if [ -z "${CONTEXTGO_OIDC_CLIENT_SECRET:-}" ]; then
+            missing+=("CONTEXTGO_OIDC_CLIENT_SECRET")
+          fi
+
+          if [ -z "${CONTEXTGO_OIDC_SIGNING_KEY_PEM:-}" ]; then
+            missing+=("CONTEXTGO_OIDC_SIGNING_KEY_PEM")
           fi
 
           if [ "${#missing[@]}" -gt 0 ]; then
@@ -381,6 +391,21 @@ jobs:
           tar -czf "${ARCHIVE_PATH}" -C "${PACKAGE_ROOT}" .
           echo "CLOUD_DEPLOY_ARCHIVE=${ARCHIVE_PATH}" >> "${GITHUB_ENV}"
 
+      - name: Prepare OIDC deploy secrets
+        run: |
+          set -euo pipefail
+
+          CLIENT_SECRET_PATH="${RUNNER_TEMP}/contextgo-oidc-client-secret.txt"
+          SIGNING_KEY_PATH="${RUNNER_TEMP}/contextgo-oidc-signing-key.pem"
+
+          printf '%s' "${CONTEXTGO_OIDC_CLIENT_SECRET}" > "${CLIENT_SECRET_PATH}"
+          printf '%s' "${CONTEXTGO_OIDC_SIGNING_KEY_PEM}" > "${SIGNING_KEY_PATH}"
+
+          chmod 600 "${CLIENT_SECRET_PATH}" "${SIGNING_KEY_PATH}"
+
+          echo "OIDC_CLIENT_SECRET_PATH=${CLIENT_SECRET_PATH}" >> "${GITHUB_ENV}"
+          echo "OIDC_SIGNING_KEY_PATH=${SIGNING_KEY_PATH}" >> "${GITHUB_ENV}"
+
       - name: Upload deploy bundle to GCE
         run: |
           set -euo pipefail
@@ -391,6 +416,14 @@ jobs:
             --ssh-key-expire-after=5m \
             "${CLOUD_DEPLOY_ARCHIVE}" \
             "${GCP_COMPUTE_VM_INSTANCE}:~/contextgo-cloud-deploy.tgz"
+
+          gcloud compute scp \
+            --project "${GCP_PROJECT_ID}" \
+            --zone "${GCP_COMPUTE_ZONE}" \
+            --ssh-key-expire-after=5m \
+            "${OIDC_CLIENT_SECRET_PATH}" \
+            "${OIDC_SIGNING_KEY_PATH}" \
+            "${GCP_COMPUTE_VM_INSTANCE}:~/"
 
       - name: Deploy on GCE VM
         run: |
@@ -409,11 +442,14 @@ jobs:
           DEPLOY_OWNER="${CLOUD_DEPLOY_OWNER}"
           SERVICE_UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
           DEPLOY_BUNDLE="${HOME}/contextgo-cloud-deploy.tgz"
+          OIDC_CLIENT_SECRET_FILE="${HOME}/contextgo-oidc-client-secret.txt"
+          OIDC_SIGNING_KEY_FILE="${HOME}/contextgo-oidc-signing-key.pem"
           TMP_DIR="$(mktemp -d /tmp/contextgo-cloud-deploy.XXXXXX)"
 
           cleanup() {
             rm -rf "${TMP_DIR}"
             rm -f "${DEPLOY_BUNDLE}"
+            rm -f "${OIDC_CLIENT_SECRET_FILE}" "${OIDC_SIGNING_KEY_FILE}"
           }
 
           trap cleanup EXIT
@@ -432,6 +468,74 @@ jobs:
 
           if [ -f "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.service" ]; then
             sudo cp "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.service" "${SERVICE_UNIT_PATH}"
+          fi
+
+          if [ ! -f "${CLOUD_ENV_FILE}" ] && [ -f "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.env.example" ]; then
+            sudo mkdir -p "$(dirname "${CLOUD_ENV_FILE}")"
+            sudo cp "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.env.example" "${CLOUD_ENV_FILE}"
+            sudo chown root:root "${CLOUD_ENV_FILE}"
+            sudo chmod 600 "${CLOUD_ENV_FILE}"
+            echo "Created ${CLOUD_ENV_FILE} from example template. Fill OAuth/OIDC secrets before relying on login flows."
+          fi
+
+          if [ -f "${OIDC_CLIENT_SECRET_FILE}" ] && [ -f "${OIDC_SIGNING_KEY_FILE}" ]; then
+            sudo python3 - "${CLOUD_ENV_FILE}" "${OIDC_CLIENT_SECRET_FILE}" "${OIDC_SIGNING_KEY_FILE}" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+env_path = Path(sys.argv[1])
+client_secret_path = Path(sys.argv[2])
+signing_key_path = Path(sys.argv[3])
+
+if not env_path.exists():
+    raise SystemExit(f"Missing env file: {env_path}")
+
+client_secret = client_secret_path.read_text(encoding='utf-8').strip()
+signing_key = signing_key_path.read_text(encoding='utf-8').strip()
+
+if not client_secret:
+    raise SystemExit('OIDC client secret is empty')
+
+if not signing_key:
+    raise SystemExit('OIDC signing key PEM is empty')
+
+managed_block = (
+    '# BEGIN CONTEXTGO MANAGED OIDC\n'
+    f'CONTEXTGO_OIDC_CLIENT_SECRET={client_secret}\n'
+    f"CONTEXTGO_OIDC_SIGNING_KEY_PEM='{signing_key}'\n"
+    '# END CONTEXTGO MANAGED OIDC\n'
+)
+
+contents = env_path.read_text(encoding='utf-8')
+contents = re.sub(
+    r'\n?# BEGIN CONTEXTGO MANAGED OIDC\n.*?\n# END CONTEXTGO MANAGED OIDC\n?',
+    '\n',
+    contents,
+    flags=re.S,
+).rstrip('\n')
+updated = f'{contents}\n\n{managed_block}'
+env_path.write_text(updated, encoding='utf-8')
+PY
+          fi
+
+          if [ -f "${CLOUD_ENV_FILE}" ]; then
+            for required_key in \
+              CONTEXTGO_AUTH_BASE_URL \
+              CONTEXTGO_API_BASE_URL \
+              CONTEXTGO_REMOTE_BASE_URL \
+              CONTEXTGO_OIDC_CLIENT_ID \
+              CONTEXTGO_OIDC_CLIENT_SECRET \
+              CONTEXTGO_OIDC_REDIRECT_URIS \
+              CONTEXTGO_OIDC_SIGNING_KEY_PEM; do
+              if ! sudo grep -Eq "^${required_key}=" "${CLOUD_ENV_FILE}"; then
+                echo "::error::Missing ${required_key} in ${CLOUD_ENV_FILE}"
+                exit 1
+              fi
+            done
+          else
+            echo "::error::Cloud env file ${CLOUD_ENV_FILE} is missing"
+            exit 1
           fi
 
           sudo chown -R "${DEPLOY_OWNER}:${DEPLOY_OWNER}" "${DEPLOY_PATH}"

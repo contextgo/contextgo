@@ -143,6 +143,24 @@ CLOUD_SERVICE_NAME=contextgo-cloud
 CLOUD_DEPLOY_OWNER=contextgo
 ```
 
+远端 `${CLOUD_ENV_FILE}` 里至少需要补齐以下 OIDC 配置，InferMesh 才能通过 `auth.contextgo.io` 完成单点登录：
+
+```text
+CONTEXTGO_OIDC_CLIENT_ID=infermesh-oidc-client
+CONTEXTGO_OIDC_CLIENT_SECRET=<generate-a-strong-shared-secret>
+CONTEXTGO_OIDC_REDIRECT_URIS=https://newapi.infermesh.org/oauth/oidc,https://newapi-admin.infermesh.org/oauth/oidc
+CONTEXTGO_OIDC_SIGNING_KEY_PEM='-----BEGIN PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----'
+CONTEXTGO_OIDC_SIGNING_KEY_ID=contextgo-auth-1
+```
+
+补充说明：
+
+- `CONTEXTGO_OIDC_CLIENT_SECRET` 是 ContextGo Cloud 与 InferMesh OIDC client 之间的共享密钥，不应提交到仓库。
+- `CONTEXTGO_OIDC_SIGNING_KEY_PEM` 用于签发 `id_token`，必须是 RSA 私钥 PEM。
+- 仓库里提供了 `apps/cloud/systemd/contextgo-cloud.env.example` 模板，首次部署时会自动拷贝为 `${CLOUD_ENV_FILE}`；如果这些 OIDC 项缺失，deploy workflow 会直接失败。
+
 说明：
 
 - workflow 会把 `apps/cloud/` 和新构建的 `out/renderer/` 一起打包上传到 GCE VM

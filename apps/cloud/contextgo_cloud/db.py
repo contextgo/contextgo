@@ -76,6 +76,28 @@ class Session:
 
 
 @dataclass(frozen=True)
+class OidcAuthorizationCode:
+    code: str
+    client_id: str
+    user_id: str
+    redirect_uri: str
+    scope: str
+    code_challenge: Optional[str]
+    code_challenge_method: Optional[str]
+    nonce: Optional[str]
+    expires_at: str
+
+
+@dataclass(frozen=True)
+class OidcAccessToken:
+    token: str
+    user_id: str
+    client_id: str
+    scope: str
+    expires_at: str
+
+
+@dataclass(frozen=True)
 class Device:
     id: str
     user_id: str
@@ -244,6 +266,30 @@ def initialize_database(settings: Settings) -> None:
               code TEXT PRIMARY KEY,
               user_id TEXT NOT NULL,
               provider TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              expires_at TEXT NOT NULL,
+              FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS oidc_authorization_codes (
+              code_hash TEXT PRIMARY KEY,
+              client_id TEXT NOT NULL,
+              user_id TEXT NOT NULL,
+              redirect_uri TEXT NOT NULL,
+              scope TEXT NOT NULL,
+              code_challenge TEXT,
+              code_challenge_method TEXT,
+              nonce TEXT,
+              created_at TEXT NOT NULL,
+              expires_at TEXT NOT NULL,
+              FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS oidc_access_tokens (
+              token_hash TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              client_id TEXT NOT NULL,
+              scope TEXT NOT NULL,
               created_at TEXT NOT NULL,
               expires_at TEXT NOT NULL,
               FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -538,6 +584,8 @@ def cleanup_expired_rows(settings: Settings) -> None:
         connection.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
         connection.execute("DELETE FROM oauth_states WHERE expires_at <= ?", (now,))
         connection.execute("DELETE FROM desktop_login_codes WHERE expires_at <= ?", (now,))
+        connection.execute("DELETE FROM oidc_authorization_codes WHERE expires_at <= ?", (now,))
+        connection.execute("DELETE FROM oidc_access_tokens WHERE expires_at <= ?", (now,))
 
 
 def create_oauth_state(settings: Settings, provider: str, next_path: str) -> str:
@@ -572,6 +620,147 @@ def create_desktop_login_code(settings: Settings, user_id: str, provider: str) -
         )
 
     return code
+
+
+def create_oidc_authorization_code(
+    settings: Settings,
+    *,
+    client_id: str,
+    user_id: str,
+    redirect_uri: str,
+    scope: str,
+    code_challenge: Optional[str],
+    code_challenge_method: Optional[str],
+    nonce: Optional[str],
+) -> str:
+    code = create_token()
+    now = utc_now()
+    expires_at = now + timedelta(seconds=settings.oidc_authorization_code_ttl_seconds)
+
+    with get_connection(settings) as connection:
+        connection.execute(
+            """
+            INSERT INTO oidc_authorization_codes (
+              code_hash, client_id, user_id, redirect_uri, scope,
+              code_challenge, code_challenge_method, nonce, created_at, expires_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                token_hash(code),
+                client_id,
+                user_id,
+                redirect_uri,
+                scope,
+                code_challenge,
+                code_challenge_method,
+                nonce,
+                now.isoformat(),
+                expires_at.isoformat(),
+            ),
+        )
+
+    return code
+
+
+def consume_oidc_authorization_code(settings: Settings, code: str) -> Optional[OidcAuthorizationCode]:
+    now = utc_now_iso()
+    hashed = token_hash(code)
+
+    with get_connection(settings) as connection:
+        row = connection.execute(
+            """
+            SELECT * FROM oidc_authorization_codes
+            WHERE code_hash = ?
+            """,
+            (hashed,),
+        ).fetchone()
+
+        connection.execute(
+            "DELETE FROM oidc_authorization_codes WHERE code_hash = ?",
+            (hashed,),
+        )
+
+    if row is None or row["expires_at"] <= now:
+        return None
+
+    return OidcAuthorizationCode(
+        code=code,
+        client_id=row["client_id"],
+        user_id=row["user_id"],
+        redirect_uri=row["redirect_uri"],
+        scope=row["scope"],
+        code_challenge=row["code_challenge"],
+        code_challenge_method=row["code_challenge_method"],
+        nonce=row["nonce"],
+        expires_at=row["expires_at"],
+    )
+
+
+def create_oidc_access_token(
+    settings: Settings,
+    *,
+    user_id: str,
+    client_id: str,
+    scope: str,
+) -> OidcAccessToken:
+    token = f"ctxat_{create_token()}"
+    now = utc_now()
+    expires_at = now + timedelta(seconds=settings.oidc_access_token_ttl_seconds)
+
+    with get_connection(settings) as connection:
+        connection.execute(
+            """
+            INSERT INTO oidc_access_tokens (token_hash, user_id, client_id, scope, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                token_hash(token),
+                user_id,
+                client_id,
+                scope,
+                now.isoformat(),
+                expires_at.isoformat(),
+            ),
+        )
+
+    return OidcAccessToken(
+        token=token,
+        user_id=user_id,
+        client_id=client_id,
+        scope=scope,
+        expires_at=expires_at.isoformat(),
+    )
+
+
+def get_oidc_access_token(settings: Settings, token: str) -> Optional[OidcAccessToken]:
+    now = utc_now_iso()
+    hashed = token_hash(token)
+
+    with get_connection(settings) as connection:
+        row = connection.execute(
+            """
+            SELECT * FROM oidc_access_tokens
+            WHERE token_hash = ?
+            """,
+            (hashed,),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    if row["expires_at"] <= now:
+        with get_connection(settings) as connection:
+            connection.execute("DELETE FROM oidc_access_tokens WHERE token_hash = ?", (hashed,))
+        return None
+
+    return OidcAccessToken(
+        token=token,
+        user_id=row["user_id"],
+        client_id=row["client_id"],
+        scope=row["scope"],
+        expires_at=row["expires_at"],
+    )
 
 
 def consume_desktop_login_code(settings: Settings, code: str) -> Optional[tuple[User, str]]:

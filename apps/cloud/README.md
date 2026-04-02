@@ -2,6 +2,24 @@
 
 This directory contains the lightweight cloud-side auth and API service for ContextGo.
 
+## Product Boundary
+
+`apps/cloud` is the official ContextGo Cloud control-plane service. It is responsible for:
+
+- user sign-in and OAuth session management
+- desktop device registration and ownership
+- Official Remote relay presence and long-lived device connections
+- lightweight cloud APIs such as sync and provider bootstrap
+
+It is **not** the public marketing website, and it is **not** meant to run a second hosted copy of the product UI.
+
+Current domain split:
+
+- `contextgo.io` / `www.contextgo.io`: public website from `apps/web`
+- `auth.contextgo.io`: human-facing cloud auth pages from `apps/cloud`
+- `api.contextgo.io`: cloud auth / sync / remote APIs from `apps/cloud`
+- `remote.contextgo.io`: official remote control-plane entry from `apps/cloud`; device open should resolve to the desktop-hosted WebUI rather than a separate cloud-rendered app shell
+
 ## Features
 
 - GitHub OAuth login
@@ -13,6 +31,7 @@ This directory contains the lightweight cloud-side auth and API service for Cont
 - Shared secure session cookie for `*.contextgo.io`
 - Human-friendly login page on `auth.contextgo.io`
 - JSON session API on `api.contextgo.io`
+- OIDC identity provider endpoints for InferMesh and other first-party consumers
 
 ## Environment Variables
 
@@ -35,6 +54,12 @@ This directory contains the lightweight cloud-side auth and API service for Cont
 - `CONTEXTGO_INFERMESH_PASSWORD_SECRET`
 - `CONTEXTGO_INFERMESH_USERNAME_PREFIX`
 - `CONTEXTGO_INFERMESH_PROVIDER_NAME`
+- `CONTEXTGO_OIDC_CLIENT_ID`
+- `CONTEXTGO_OIDC_CLIENT_SECRET`
+- `CONTEXTGO_OIDC_CLIENT_NAME`
+- `CONTEXTGO_OIDC_REDIRECT_URIS`
+- `CONTEXTGO_OIDC_SIGNING_KEY_PEM`
+- `CONTEXTGO_OIDC_SIGNING_KEY_ID`
 
 ## Local Run
 
@@ -63,9 +88,22 @@ export CONTEXTGO_INFERMESH_ADMIN_ACCESS_CLIENT_SECRET="..."
 export CONTEXTGO_INFERMESH_PASSWORD_SECRET="..."
 export CONTEXTGO_INFERMESH_USERNAME_PREFIX="cg"
 export CONTEXTGO_INFERMESH_PROVIDER_NAME="InferMesh Cloud"
+export CONTEXTGO_OIDC_CLIENT_ID="infermesh-oidc-client"
+export CONTEXTGO_OIDC_CLIENT_SECRET="..."
+export CONTEXTGO_OIDC_CLIENT_NAME="InferMesh"
+export CONTEXTGO_OIDC_REDIRECT_URIS="https://newapi.infermesh.org/oauth/oidc,https://newapi-admin.infermesh.org/oauth/oidc"
+export CONTEXTGO_OIDC_SIGNING_KEY_PEM="-----BEGIN PRIVATE KEY-----..."
+export CONTEXTGO_OIDC_SIGNING_KEY_ID="contextgo-auth-1"
 
 uvicorn contextgo_cloud.app:app --host 127.0.0.1 --port 3001
 ```
+
+## Deployment Model
+
+- Deployment is triggered by GitHub Actions from this repository.
+- `apps/web` deploys to Cloudflare Pages.
+- `apps/cloud` deploys to GCP Compute Engine through `gcloud` in `.github/workflows/deploy-site.yml`.
+- Cloud and website share the repository, but they are separate deploy targets and should be treated as separate services.
 
 ## Local Tests
 
@@ -86,6 +124,11 @@ python3 -m unittest discover -s tests
 - `GET /healthz`
 - `GET /login`
 - `GET /remote/devices`
+- `GET /.well-known/openid-configuration`
+- `GET /oauth/jwks`
+- `GET /oauth/authorize`
+- `POST /oauth/token`
+- `GET /oauth/userinfo`
 - `GET /api/auth/providers`
 - `GET /api/auth/oauth/{provider}/start`
 - `GET /api/auth/oauth/{provider}/callback`
