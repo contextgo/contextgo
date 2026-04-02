@@ -1,4 +1,4 @@
-import { ContextGoModal } from '@/renderer/components/base';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import { Button, Collapse, Input, Typography } from '@arco-design/web-react';
 import type { Message } from '@arco-design/web-react';
 import { EditTwo, Delete, Lightning } from '@icon-park/react';
@@ -146,27 +146,12 @@ const PresetManagement: React.FC<PresetManagementProps> = ({ message }) => {
       </Collapse.Item>
 
       {/* Edit Modal */}
-      <ContextGoModal
+      <SettingsSubModal
         visible={editVisible}
         onCancel={() => setEditVisible(false)}
-        header={{
-          title: t('settings.edit_preset', { defaultValue: 'Edit Preset' }),
-          showClose: true,
-          className: 'px-24px pt-20px',
-        }}
-        footer={{
-          className: 'px-24px pb-20px',
-          render: () => (
-            <div className='flex justify-end gap-10px pt-4px'>
-              <Button onClick={() => setEditVisible(false)} className='min-w-88px px-18px'>
-                {t('common.cancel', { defaultValue: 'Cancel' })}
-              </Button>
-              <Button type='primary' onClick={() => void handleSave()} className='min-w-104px px-18px'>
-                {t('common.save', { defaultValue: 'Save' })}
-              </Button>
-            </div>
-          ),
-        }}
+        title={t('settings.edit_preset', { defaultValue: 'Edit Preset' })}
+        onOk={() => void handleSave()}
+        okText={t('common.save', { defaultValue: 'Save' })}
         style={{ width: 'min(680px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px', maxHeight: 'min(76vh, 760px)', overflow: 'auto' }}
       >
@@ -190,41 +175,32 @@ const PresetManagement: React.FC<PresetManagementProps> = ({ message }) => {
             </div>
           </div>
         </div>
-      </ContextGoModal>
+      </SettingsSubModal>
 
       {/* Delete Confirm */}
-      <ContextGoModal
+      <SettingsSubModal
         visible={deleteVisible}
         onCancel={() => setDeleteVisible(false)}
-        header={{
-          title: t('common.confirm', { defaultValue: 'Confirm Delete' }),
-          showClose: true,
-          className: 'px-24px pt-20px',
-        }}
-        footer={{
-          className: 'px-24px pb-20px',
-          render: () => (
-            <div className='flex justify-end gap-10px pt-4px'>
-              <Button onClick={() => setDeleteVisible(false)} className='min-w-88px px-18px'>
-                {t('common.cancel', { defaultValue: 'Cancel' })}
-              </Button>
-              <Button
-                type='primary'
-                status='danger'
-                onClick={() => void handleDelete()}
-                className='min-w-104px px-18px'
-              >
-                {t('common.delete', { defaultValue: 'Delete' })}
-              </Button>
-            </div>
-          ),
-        }}
+        title={t('common.confirm', { defaultValue: 'Confirm Delete' })}
+        onOk={() => void handleDelete()}
+        okText={t('common.delete', { defaultValue: 'Delete' })}
+        okButtonProps={{ status: 'danger' }}
         style={{ width: 'min(440px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <p>{t('settings.delete_preset_confirm', { defaultValue: 'Are you sure you want to delete this preset?' })}</p>
-        <Typography.Text bold>{presetToDelete?.name}</Typography.Text>
-      </ContextGoModal>
+        <div className='settings-sub-modal__stack'>
+          <p className='settings-sub-modal__lead'>
+            {t('settings.delete_preset_confirm', { defaultValue: 'Are you sure you want to delete this preset?' })}
+          </p>
+          {presetToDelete ? (
+            <div className='settings-sub-modal__entity-card settings-sub-modal__entity-card--danger'>
+              <div className='settings-sub-modal__meta'>
+                <div className='settings-sub-modal__meta-title'>{presetToDelete.name}</div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </SettingsSubModal>
     </div>
   );
 };

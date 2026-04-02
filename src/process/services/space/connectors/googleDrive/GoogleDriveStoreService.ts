@@ -40,7 +40,9 @@ const writeJsonFile = async <T>(filePath: string, value: readonly T[]): Promise<
 };
 
 const buildRecordId = (file: GoogleDriveFile): string => {
-  return createHash('sha256').update(`${file.id}:${file.name}:${file.modifiedTime || ''}:${file.sizeBytes || 0}`).digest('hex');
+  return createHash('sha256')
+    .update(`${file.id}:${file.name}:${file.modifiedTime || ''}:${file.sizeBytes || 0}`)
+    .digest('hex');
 };
 
 export class GoogleDriveStoreService {

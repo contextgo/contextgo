@@ -42,7 +42,7 @@ export const useAgentAvailability = ({
   );
 
   const getAvailableFallbackAgent = useCallback((): string | null => {
-    const fallbackOrder: PresetAgentType[] = ['gemini', 'claude', 'qwen', 'codex', 'codebuddy', 'opencode'];
+    const fallbackOrder: PresetAgentType[] = ['gemini', 'claude', 'codex', 'opencode'];
     for (const agentType of fallbackOrder) {
       if (isMainAgentAvailable(agentType)) {
         return agentType;

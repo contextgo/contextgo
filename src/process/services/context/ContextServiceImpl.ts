@@ -69,7 +69,10 @@ export class ContextServiceImpl extends ContextEngineService {
     });
   }
 
-  async saveMemory(memory: MemoryEntry, options?: { operationType?: ContextOperationType; threadId?: string }): Promise<void> {
+  async saveMemory(
+    memory: MemoryEntry,
+    options?: { operationType?: ContextOperationType; threadId?: string }
+  ): Promise<void> {
     await this.deps.memories.save(memory);
     await this.indexMemory(memory, options?.threadId);
 
@@ -135,7 +138,10 @@ export class ContextServiceImpl extends ContextEngineService {
     });
   }
 
-  async approveMemoryCandidate(candidateId: string, reviewerId = 'human-reviewer'): Promise<MemoryCandidateEntry | undefined> {
+  async approveMemoryCandidate(
+    candidateId: string,
+    reviewerId = 'human-reviewer'
+  ): Promise<MemoryCandidateEntry | undefined> {
     const candidate = await this.deps.candidates.getById(candidateId);
     if (!candidate) {
       return undefined;
@@ -226,7 +232,10 @@ export class ContextServiceImpl extends ContextEngineService {
     return promotedCandidate;
   }
 
-  async rejectMemoryCandidate(candidateId: string, reviewerId = 'human-reviewer'): Promise<MemoryCandidateEntry | undefined> {
+  async rejectMemoryCandidate(
+    candidateId: string,
+    reviewerId = 'human-reviewer'
+  ): Promise<MemoryCandidateEntry | undefined> {
     const candidate = await this.deps.candidates.getById(candidateId);
     if (!candidate) {
       return undefined;

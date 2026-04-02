@@ -23,11 +23,17 @@ type BoundCloudIdentity = {
   deviceToken: string | null;
 };
 
+const CLOUD_WEBUI_USER_KEY = 'cloud.webui.user';
+const CLOUD_WEBUI_DEVICE_KEY = 'cloud.webui.device';
+const CLOUD_WEBUI_DEVICE_TOKEN_KEY = 'cloud.webui.deviceToken';
+
 type DeviceRegisterPayload = {
   success?: boolean;
   device?: CloudDevice;
   token?: string;
 };
+
+const CLOUD_WEBUI_DEVICE_KIND = 'webui';
 
 type RequestHeadersCarrier = {
   headers: Request['headers'];
@@ -145,9 +151,9 @@ export const CloudSessionService = {
 
 async function readBoundIdentity(): Promise<BoundCloudIdentity | null> {
   const [user, device, deviceToken] = await Promise.all([
-    ProcessConfig.get('cloud.user'),
-    ProcessConfig.get('cloud.device'),
-    ProcessConfig.get('cloud.deviceToken'),
+    ProcessConfig.get(CLOUD_WEBUI_USER_KEY),
+    ProcessConfig.get(CLOUD_WEBUI_DEVICE_KEY),
+    ProcessConfig.get(CLOUD_WEBUI_DEVICE_TOKEN_KEY),
   ]);
 
   if (!user && !device && !deviceToken) {
@@ -213,6 +219,7 @@ async function registerDeviceBinding(sessionToken: string, sessionUser: CloudUse
     body: JSON.stringify({
       deviceName: buildDeviceName(),
       platform: buildDevicePlatform(),
+      deviceKind: CLOUD_WEBUI_DEVICE_KIND,
     }),
   });
 
@@ -227,7 +234,7 @@ async function registerDeviceBinding(sessionToken: string, sessionUser: CloudUse
 
   // ProcessConfig performs read-modify-write updates per key, so these writes
   // must stay sequential to avoid losing earlier fields under concurrent access.
-  await ProcessConfig.set('cloud.user', sessionUser);
-  await ProcessConfig.set('cloud.device', payload.device);
-  await ProcessConfig.set('cloud.deviceToken', payload.token);
+  await ProcessConfig.set(CLOUD_WEBUI_USER_KEY, sessionUser);
+  await ProcessConfig.set(CLOUD_WEBUI_DEVICE_KEY, payload.device);
+  await ProcessConfig.set(CLOUD_WEBUI_DEVICE_TOKEN_KEY, payload.token);
 }

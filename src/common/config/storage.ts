@@ -5,7 +5,7 @@
  */
 
 import type { AcpBackend, AcpBackendAll, AcpBackendConfig } from '@/common/types/acpTypes';
-import type { CloudDevice, CloudStoredSyncState, CloudUser } from '@/common/types/cloud';
+import type { CloudDevice, CloudUser } from '@/common/types/cloud';
 import type { VoiceInputConfig } from '@/common/types/voiceInput';
 import type { ClipboardConnectorConfig } from '@/common/types/connectors/clipboard';
 import type { FeishuConnectorConfig } from '@/common/types/connectors/feishu';
@@ -84,6 +84,18 @@ export interface IConfigStorageRefer {
   'css.themes': ICssTheme[]; // 自定义 CSS 主题列表 / Custom CSS themes list
   'css.activeThemeId': string; // 当前激活的主题 ID / Currently active theme ID
   'gemini.defaultModel': string | { id: string; useModel: string };
+  'assistant.telegram.defaultModel'?: string | { id: string; useModel: string };
+  'assistant.slack.defaultModel'?: string | { id: string; useModel: string };
+  'assistant.discord.defaultModel'?: string | { id: string; useModel: string };
+  'assistant.lark.defaultModel'?: string | { id: string; useModel: string };
+  'assistant.dingtalk.defaultModel'?: string | { id: string; useModel: string };
+  'assistant.weixin.defaultModel'?: string | { id: string; useModel: string };
+  'assistant.telegram.agent'?: { backend: string; name?: string; customAgentId?: string; presetAgentType?: string };
+  'assistant.slack.agent'?: { backend: string; name?: string; customAgentId?: string; presetAgentType?: string };
+  'assistant.discord.agent'?: { backend: string; name?: string; customAgentId?: string; presetAgentType?: string };
+  'assistant.lark.agent'?: { backend: string; name?: string; customAgentId?: string; presetAgentType?: string };
+  'assistant.dingtalk.agent'?: { backend: string; name?: string; customAgentId?: string; presetAgentType?: string };
+  'assistant.weixin.agent'?: { backend: string; name?: string; customAgentId?: string; presetAgentType?: string };
   'tools.imageGenerationModel': TProviderWithModel & {
     /** @deprecated Image generation is now controlled via built-in MCP server toggle */
     switch?: boolean;
@@ -125,8 +137,6 @@ export interface IConfigStorageRefer {
   'cloud.webui.device'?: CloudDevice;
   // ContextGo cloud WebUI device token (ctxdev_...) / ContextGo 云端 WebUI 设备令牌
   'cloud.webui.deviceToken'?: string;
-  // ContextGo cloud sync cursor + per-item timestamps / ContextGo 云端同步游标与时间戳
-  'cloud.sync.state'?: CloudStoredSyncState;
   'command.library'?: ManagedSlashCommandRecord[];
   // Skills Market: whether the bundled builtin skill is enabled
   'skillsMarket.enabled'?: boolean;

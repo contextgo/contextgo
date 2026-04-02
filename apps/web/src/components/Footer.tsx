@@ -11,14 +11,51 @@ export default function Footer({ dict, lang }: { dict: Dictionary['footer']; lan
             <p className='theme-text-secondary mt-1 text-sm'>{dict.tagline}</p>
           </div>
           <div className='flex flex-wrap justify-center gap-6'>
-            <Link href={`/${lang}`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.product}</Link>
-            <Link href={`/${lang}/connect`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.connect}</Link>
-            <Link href={`/${lang}/docs`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.docs}</Link>
-            <Link href={`/${lang}/blog`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.blog}</Link>
-            <Link href={`/${lang}/changelog`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.changelog}</Link>
-            <Link href={`/${lang}/download`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.download}</Link>
-            <Link href={`/${lang}/privacy`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.privacy}</Link>
-            <Link href={`/${lang}/terms`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>{dict.terms}</Link>
+            <Link href={`/${lang}`} className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'>
+              {dict.product}
+            </Link>
+            <Link
+              href={`/${lang}/connect`}
+              className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'
+            >
+              {dict.connect}
+            </Link>
+            <Link
+              href={`/${lang}/docs`}
+              className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'
+            >
+              {dict.docs}
+            </Link>
+            <Link
+              href={`/${lang}/blog`}
+              className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'
+            >
+              {dict.blog}
+            </Link>
+            <Link
+              href={`/${lang}/changelog`}
+              className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'
+            >
+              {dict.changelog}
+            </Link>
+            <Link
+              href={`/${lang}/download`}
+              className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'
+            >
+              {dict.download}
+            </Link>
+            <Link
+              href={`/${lang}/privacy`}
+              className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'
+            >
+              {dict.privacy}
+            </Link>
+            <Link
+              href={`/${lang}/terms`}
+              className='theme-text-secondary hover:theme-text-primary text-sm transition-colors'
+            >
+              {dict.terms}
+            </Link>
           </div>
         </div>
         <div className='theme-border theme-text-tertiary mt-8 border-t pt-8 text-center text-sm'>

@@ -23,7 +23,14 @@ describe('DiscordAdapter', () => {
           displayAvatarURL: () => 'https://example.com/avatar.png',
         },
         member: null,
+        guildId: 'guild-1',
         channelId: 'channel-1',
+        channel: {
+          id: 'channel-1',
+          parentId: null,
+          isThread: () => false,
+          isDMBased: () => false,
+        },
         createdTimestamp: 1740000000123,
         reference: null,
       } as any,
@@ -33,7 +40,53 @@ describe('DiscordAdapter', () => {
     expect(message).not.toBeNull();
     expect(message?.platform).toBe('discord');
     expect(message?.chatId).toBe('channel-1');
+    expect(message?.peer).toEqual({
+      key: 'channel-1',
+      platformChatId: 'channel-1',
+      scope: 'chat',
+      chatType: 'group',
+    });
     expect(message?.content.text).toBe('hello there');
+  });
+
+
+  it('maps Discord thread messages to parent transport chat and thread peer key', () => {
+    const message = toUnifiedIncomingMessage(
+      {
+        id: 'msg-thread-1',
+        content: 'thread update',
+        author: {
+          id: 'user-1',
+          username: 'alice',
+          globalName: 'Alice',
+          displayAvatarURL: () => 'https://example.com/avatar.png',
+        },
+        member: null,
+        guildId: 'guild-1',
+        channelId: 'thread-1',
+        channel: {
+          id: 'thread-1',
+          parentId: 'channel-parent-1',
+          isThread: () => true,
+          isDMBased: () => false,
+        },
+        createdTimestamp: 1740000000123,
+        reference: { messageId: 'origin-1' },
+      } as any,
+      '123'
+    );
+
+    expect(message).not.toBeNull();
+    expect(message?.chatId).toBe('channel-parent-1');
+    expect(message?.peer).toEqual({
+      key: 'channel-parent-1:thread:thread-1',
+      platformChatId: 'channel-parent-1',
+      parentChatId: 'channel-parent-1',
+      threadId: 'thread-1',
+      scope: 'thread',
+      chatType: 'thread',
+    });
+    expect(message?.replyToMessageId).toBe('origin-1');
   });
 
   it('parses Discord button interactions into actions', () => {

@@ -10,7 +10,7 @@ import SettingsPageWrapper from '../components/SettingsPageWrapper';
 
 const ToolsSettings: React.FC = () => {
   return (
-    <SettingsPageWrapper contentClassName='max-w-1200px'>
+    <SettingsPageWrapper>
       <ToolsModalContent />
     </SettingsPageWrapper>
   );

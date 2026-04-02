@@ -27,8 +27,12 @@ const buildId = (message: GmailMessage) =>
     .digest('hex');
 export class GmailStoreService {
   constructor(private readonly resolveBaseDir: BaseDirResolver = defaultResolver) {}
-  private async getBaseDir() { return this.resolveBaseDir(); }
-  private async getPath() { return path.join(await this.getBaseDir(), 'messages.json'); }
+  private async getBaseDir() {
+    return this.resolveBaseDir();
+  }
+  private async getPath() {
+    return path.join(await this.getBaseDir(), 'messages.json');
+  }
   async getStats() {
     const rows = await parseJson<GmailStoredMessage>(await this.getPath());
     return { messageCount: rows.length, lastSyncedAt: rows[0]?.syncedAt, storeDir: await this.getBaseDir() };

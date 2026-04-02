@@ -182,7 +182,7 @@ describe('Auto-Update IPC Bridge Integration', () => {
 
       const result = await updateHandler({});
 
-      expect(fetchMock).toHaveBeenCalledWith('https://api.github.com/repos/contextgo/contextgo/releases', {
+      expect(fetchMock).toHaveBeenCalledWith('https://api.github.com/repos/contextgo/contextgo-releases/releases', {
         headers: {
           Accept: 'application/vnd.github+json',
           'User-Agent': 'ContextGo',

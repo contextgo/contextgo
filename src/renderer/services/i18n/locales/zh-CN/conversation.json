@@ -67,7 +67,16 @@
     "pinnedSection": "置顶",
     "deleteSuccess": "删除成功",
     "deleteFailed": "删除失败",
-    "toggleGroupConversation": "展开或收起协作组子会话"
+    "toggleGroupConversation": "展开或收起协作组子会话",
+    "deleteModalHeadline": "永久删除这个对话？",
+    "deleteModalDescription": "此操作无法撤销，对话消息和相关记录都会被一并删除。",
+    "deleteTargetLabel": "对话",
+    "groupConversationTag": "协作组",
+    "deleteGroupImpact": "删除该协作组后，还会同时移除 {{count}} 个关联子会话。",
+    "deleteModalBatchHeadline": "永久删除已选对话？",
+    "deleteModalBatchDescription": "此操作无法撤销，所有已选对话的消息和相关记录都会被一并删除。",
+    "deleteBatchTargetLabel": "已选内容",
+    "deleteBatchCount": "已选 {{count}} 个对话"
   },
   "historySearch": {
     "tooltip": "搜索",
@@ -93,7 +102,7 @@
     "closeOthers": "关闭其他"
   },
   "dropdown": {
-    "cliAgents": "CLI Agents",
+    "cliAgents": "可运行 Agent",
     "presetAssistants": "预设助手"
   },
   "group": {
@@ -107,7 +116,7 @@
     "namePlaceholder": "请输入协作组名称",
     "workspaceLabel": "工作目录",
     "workspacePlaceholder": "可选，不填则自动创建默认工作目录",
-    "workspaceHint": "协作组和所有参与者 session 将共享这个工作目录；留空时会自动创建默认临时目录。",
+    "workspaceHint": "协作组和所有参与者会话将共享这个工作目录；留空时会自动创建默认临时目录。",
     "selectWorkspace": "选择目录",
     "selectWorkspaceFailed": "选择工作目录失败",
     "collaborationLabel": "协作模式",
@@ -115,13 +124,13 @@
     "collaborationHarness": "规划 / 生成 / 评估",
     "collaborationHint": {
       "discussion": "通用多智能体讨论模式，适合方案对比、头脑风暴和批判性评审。",
-      "planner-generator-evaluator": "面向代码任务的 Harness 模式。要求恰好 3 个参与者，并绑定 Git 仓库边界。"
+      "planner-generator-evaluator": "面向代码任务的协作流水线模式。要求恰好 3 个参与者，并绑定 Git 仓库边界。"
     },
     "kindLabel": "协作方式",
-    "kindWorkflow": "Workflow",
-    "kindDiscussion": "Discussion",
+    "kindWorkflow": "工作流",
+    "kindDiscussion": "讨论",
     "kindHint": {
-      "workflow": "默认模式。planner、writer、evaluator 会在共享工作区中多轮协作完成任务。",
+      "workflow": "默认模式。规划者、写作者、评估者会在共享工作区中多轮协作完成任务。",
       "discussion": "保留原有讨论模式，适合对比观点、接力分析和辩论。"
     },
     "modeLabel": "讨论模式",
@@ -136,12 +145,12 @@
     "participantsLabel": "参与者",
     "minimumParticipants": "请至少选择两个参与者",
     "minimumParticipantsHint": "至少选择 2 个参与者后才能创建讨论组。",
-    "harnessParticipantsHint": "Harness 模式要求恰好 3 个参与者，顺序依次为 Planner -> Generator -> Evaluator。",
-    "harnessRoleHint": "Harness 槽位 #{{roleIndex}}",
-    "harnessUsesDebate": "Harness 模式固定使用双轮辩论流程。",
-    "harnessRequiresWorkspace": "Harness 模式必须选择工作目录。",
-    "harnessRequiresThreeParticipants": "Harness 模式必须恰好选择 3 个参与者。",
-    "harnessRequiresGitRepo": "Harness 模式要求所选工作目录位于 Git 仓库内。",
+    "harnessParticipantsHint": "协作流水线模式要求恰好 3 个参与者，顺序依次为规划者 -> 生成者 -> 评估者。",
+    "harnessRoleHint": "流水线槽位 #{{roleIndex}}",
+    "harnessUsesDebate": "协作流水线模式固定使用双轮辩论流程。",
+    "harnessRequiresWorkspace": "协作流水线模式必须选择工作目录。",
+    "harnessRequiresThreeParticipants": "协作流水线模式必须恰好选择 3 个参与者。",
+    "harnessRequiresGitRepo": "协作流水线模式要求所选工作目录位于 Git 仓库内。",
     "role": {
       "participant": "参与者",
       "planner": "规划者",
@@ -151,9 +160,9 @@
       "custom": "自定义"
     },
     "summary": {
-      "title": "最近一次 Harness 运行",
-      "empty": "还没有 Harness 产物。",
-      "loading": "Harness 产物生成中...",
+      "title": "最近一次协作流水线运行",
+      "empty": "还没有协作流水线产物。",
+      "loading": "协作流水线产物生成中...",
       "updatedAt": "更新时间",
       "completedSteps": "已完成输出",
       "flow": "流程",
@@ -164,15 +173,15 @@
     "sendPlaceholder": "给协作组分配任务...",
     "roundLabel": "第 {{round}} 轮",
     "workflow": {
-      "templateLabel": "Workflow 模板",
-      "templatePlannerWriterEvaluator": "Planner + Writer + Evaluator",
-      "templateHint": "planner 负责定义目标和验收标准，writer 在共享工作区里产出或修改结果，evaluator 负责打分并提出可执行反馈。",
-      "templatePlannerWriterEvaluatorHint": "迭代式 harness：planner 先定义目标与验收标准，writer 多轮修改共享产物，evaluator 每轮给出独立反馈。",
-      "templatePlanBuildEvaluate": "Plan + Build + Evaluate",
-      "templatePlanBuildEvaluateHint": "单次主构建 harness：planner 先定范围，builder 做一次连贯构建，evaluator 在尾部统一评审。",
-      "exactParticipants": "该 workflow 模板需要恰好 3 个参与者",
-      "exactParticipantsHint": "Planner / Writer / Evaluator 模板要求恰好 3 个参与者，并分别承担不同角色。",
-      "assignRoles": "请为 3 个参与者分别分配 planner、writer、evaluator 角色",
+      "templateLabel": "工作流模板",
+      "templatePlannerWriterEvaluator": "规划 + 写作 + 评估",
+      "templateHint": "规划者负责定义目标和验收标准，写作者在共享工作区里产出或修改结果，评估者负责打分并提出可执行反馈。",
+      "templatePlannerWriterEvaluatorHint": "迭代式协作流水线：规划者先定义目标与验收标准，写作者多轮修改共享产物，评估者每轮给出独立反馈。",
+      "templatePlanBuildEvaluate": "规划 + 构建 + 评估",
+      "templatePlanBuildEvaluateHint": "单次主构建协作流水线：规划者先定范围，构建者做一次连贯构建，评估者在尾部统一评审。",
+      "exactParticipants": "该工作流模板需要恰好 3 个参与者",
+      "exactParticipantsHint": "规划 / 写作 / 评估 模板要求恰好 3 个参与者，并分别承担不同角色。",
+      "assignRoles": "请为 3 个参与者分别分配规划者、写作者、评估者角色",
       "roleLabel": "角色",
       "iterationLabel": "第 {{iteration}} 次迭代",
       "stage": {
@@ -189,7 +198,7 @@
       "artifactPathLabel": "产物路径",
       "artifactPathHint": "填写共享工作区内的相对路径；不允许绝对路径或上级目录跳转。",
       "reviewModeLabel": "评审模式",
-      "reviewModeHint": "决定 evaluator 是每轮介入，还是只在最终产物交付时做尾部评审。",
+      "reviewModeHint": "决定评估者是每轮介入，还是只在最终产物交付时做尾部评审。",
       "reviewMode": {
         "perIteration": "每轮评审",
         "finalOnly": "仅尾部评审"
@@ -371,10 +380,9 @@
     "modelSwitchNotSupported": "当前 OpenClaw Gateway 不支持切换模型"
   },
   "pendingMessages": {
-    "title": "待发送 {{count}} 条",
-    "shortcuts": "Tab 入队 · Cmd/Ctrl+Enter 引导 · Option/Alt+↑ 编辑最近一条",
+    "title": "待发送 {{count}}",
+    "shortcuts": "Tab 入队 · Cmd/Ctrl+Enter 引导 · Option/Alt+↑ 取回最近一条",
     "attachments": "{{count}} 个文件",
-    "dispatching": "发送中...",
     "edit": "重新编辑",
     "mode": {
       "queue": "队列",
@@ -386,7 +394,11 @@
     }
   },
   "contextUsage": {
-    "contextUsed": "上下文已使用"
+    "contextUsed": "上下文已使用",
+    "title": "上下文使用 {{percentage}}",
+    "used": "已使用",
+    "remaining": "剩余",
+    "limit": "上限"
   },
   "skill_generator": {
     "title": "生成 Skill/规则",
@@ -411,10 +423,35 @@
     "preset_registered": "已保存为全局预设"
   },
   "header": {
-    "publishAgentEntry": "Agent发布",
-    "publishAgentEntryHint": "把当前会话整理成可复用 Agent，并继续管理它正式发布到哪些 IM，或把当前会话临时接力出去。",
-    "publishAgentAction": "发布这个 Agent",
-    "handoffSessionAction": "把当前会话接力到 IM",
+    "publishAgentEntry": "发布Agent",
+    "publishAgentEntryHint": "把当前会话整理成可复用 Agent，并继续管理它正式发布到哪些 IM 目标。",
+    "publishAgentAction": "发布Agent",
     "publishPrepareFailed": "准备当前 Agent 发布失败"
+  },
+  "runStatus": {
+    "showDetails": "查看详情",
+    "hideDetails": "收起详情",
+    "rawTask": "原始任务",
+    "liveThought": "实时思考",
+    "runtimeStats": "运行统计",
+    "backend": "后端",
+    "model": "模型",
+    "mode": "模式",
+    "startedAt": "开始时间",
+    "elapsed": "已运行",
+    "unknown": "未知",
+    "noThoughtYet": "暂未收到思考流",
+    "runtimeDisconnected": "Agent 运行时异常中断，请重新发送以恢复。",
+    "activeTools": "{{count}} 个工具运行中",
+    "phase": {
+      "preparing": "准备中",
+      "reasoning": "思考中",
+      "toolRunning": "工具执行中",
+      "waitingPermission": "等待授权",
+      "composing": "正在生成",
+      "completed": "已完成",
+      "error": "出错"
+    },
+    "activeTools_other": "{{count}} 个工具运行中"
   }
 }

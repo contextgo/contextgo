@@ -6,11 +6,16 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { GoogleDriveConnectorService, normalizeGoogleDriveConnectorConfig } from '../../src/process/services/space/connectors/googleDrive/GoogleDriveConnectorService';
+import {
+  GoogleDriveConnectorService,
+  normalizeGoogleDriveConnectorConfig,
+} from '../../src/process/services/space/connectors/googleDrive/GoogleDriveConnectorService';
 import type { GoogleDriveConnectorConfig } from '../../src/common/types/connectors/googleDrive';
 
 type GoogleDriveStore = {
-  get: <K extends 'connector.googleDrive.config'>(key: K) => Promise<{ 'connector.googleDrive.config'?: GoogleDriveConnectorConfig }[K]>;
+  get: <K extends 'connector.googleDrive.config'>(
+    key: K
+  ) => Promise<{ 'connector.googleDrive.config'?: GoogleDriveConnectorConfig }[K]>;
   set: <K extends 'connector.googleDrive.config'>(
     key: K,
     value: { 'connector.googleDrive.config'?: GoogleDriveConnectorConfig }[K]

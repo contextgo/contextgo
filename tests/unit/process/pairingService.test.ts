@@ -19,6 +19,7 @@ const { pairingRequestedEmit, userAuthorizedEmit, mockResolveConnectorInstance, 
       getPairingRequestByCode: vi.fn(),
       updatePairingRequestStatus: vi.fn(),
       getRemoteIdentityByConnectorChat: vi.fn(),
+      getRemoteIdentityByConnectorPlatformChat: vi.fn(),
       getLegacyChannelUserByPlatform: vi.fn(),
       getChannelUsers: vi.fn(),
       upsertRemoteIdentity: vi.fn(),
@@ -35,7 +36,8 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
 
 vi.mock('@process/channels/core/ChannelRouteResolver', () => ({
   getChannelRouteResolver: vi.fn(() => ({
-    resolveConnectorInstance: mockResolveConnectorInstance,
+    resolveChannelAccount: mockResolveConnectorInstance,
+      resolveConnectorInstance: mockResolveConnectorInstance,
   })),
   inferRemoteChatType: mockInferRemoteChatType,
 }));
@@ -74,6 +76,7 @@ describe('PairingService', () => {
     mockDb.getPairingRequestByCode.mockReturnValue({ success: true, data: null });
     mockDb.updatePairingRequestStatus.mockReturnValue({ success: true, data: true });
     mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: null });
+    mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({ success: true, data: null });
     mockDb.getLegacyChannelUserByPlatform.mockReturnValue({ success: true, data: null });
     mockDb.getChannelUsers.mockReturnValue({ success: true, data: [] });
     mockDb.upsertRemoteIdentity.mockReturnValue({ success: true, data: true });
@@ -227,6 +230,62 @@ describe('PairingService', () => {
     const authorized = await service.isUserAuthorized('user-1', 'telegram', 'user-1', 'telegram_b');
 
     expect(authorized).toBe(false);
+  });
+
+
+  it('accepts authorization through parent platform chat for thread peers', async () => {
+    const service = createService();
+    mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({
+      success: true,
+      data: {
+        id: 'remote-parent-1',
+        connectorId: 'connector-b',
+        remoteUserId: 'user-1',
+        remoteChatId: 'discord://guild/guild-1/channel/channel-parent-1',
+        platformChatId: 'channel-parent-1',
+        remoteChatType: 'group',
+        authorizedAt: Date.now(),
+      },
+    });
+
+    const authorized = await service.isUserAuthorized(
+      'user-1',
+      'discord',
+      'channel-parent-1:thread:thread-1',
+      'discord_default',
+      'channel-parent-1'
+    );
+
+    expect(authorized).toBe(true);
+    expect(mockDb.getRemoteIdentityByConnectorPlatformChat).toHaveBeenCalledWith('connector-b', 'channel-parent-1');
+  });
+
+
+  it('authorizes a remote user directly without creating a pending pairing code', async () => {
+    const service = createService();
+
+    const result = await service.authorizeRemoteUser({
+      platformUserId: 'wx-user-1',
+      platformType: 'weixin',
+      displayName: 'Scanner',
+      chatId: 'wx-user-1',
+      pluginId: 'weixin_default',
+      metadata: {
+        source: 'weixin-qr-login',
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockDb.upsertRemoteIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectorId: 'connector-b',
+        remoteChatId: 'wx-user-1',
+        remoteUserId: 'wx-user-1',
+        metadata: expect.objectContaining({ source: 'weixin-qr-login' }),
+      })
+    );
+    expect(mockDb.updatePairingRequestStatus).not.toHaveBeenCalled();
+    expect(userAuthorizedEmit).toHaveBeenCalledWith(expect.objectContaining({ id: result.user?.id }));
   });
 
   it('returns remote identity ids after approving pairing', async () => {

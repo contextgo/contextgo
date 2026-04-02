@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { shell } from 'electron';
+import { ipcMain, shell } from 'electron';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -75,6 +75,16 @@ async function revealResolvedPath(targetPath: string): Promise<{ resolvedPath: s
 }
 
 export function initShellBridge(): void {
+  ipcMain.handle('shell-direct-open-external', async (_event, { url }: { url: string }) => {
+    try {
+      await shell.openExternal(url);
+      return { success: true };
+    } catch (error) {
+      console.error('[ShellBridge] Direct openExternal failed:', url, error);
+      throw error;
+    }
+  });
+
   ipcBridge.shell.openFile.provider(async (path) => {
     await openResolvedPath(path);
   });

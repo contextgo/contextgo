@@ -215,6 +215,50 @@
   background: color-mix(in srgb, var(--fill-1) 72%, var(--bg-1) 28%) !important;
 }
 
+.libraryCollapse :global(.arco-collapse-item-header-left) {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  gap: 8px;
+  padding-right: 44px;
+}
+
+.libraryCollapse :global(.arco-collapse-item-header-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.libraryCollapse :global(.arco-collapse-item-header-title) {
+  display: block;
+  min-width: 0;
+  flex: 1;
+}
+
+.libraryCollapse :global(.arco-collapse-item-header-extra) {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  margin-right: 28px;
+  float: none;
+}
+
+.libraryCollapse :global(.arco-collapse-item-icon-hover) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.libraryCollapse :global(.arco-collapse-item-icon-hover-right) {
+  right: 12px;
+}
+
 .libraryCollapse :global(.arco-collapse-item-active > .arco-collapse-item-header) {
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
@@ -282,6 +326,14 @@
   flex: 1;
 }
 
+.libraryCardHeader {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
 .libraryActions {
   display: flex;
   align-items: center;
@@ -324,6 +376,18 @@
 
 .hookBadgeTag {
   border-radius: 10px !important;
+}
+
+.collapseHeaderTitle {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .assistantList {

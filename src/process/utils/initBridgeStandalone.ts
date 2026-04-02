@@ -34,7 +34,11 @@ import { initGeminiBridge } from '@process/bridge/geminiBridge';
 import { initGeminiConversationBridge } from '@process/bridge/geminiConversationBridge';
 import { initGoogleDriveConnectorBridge } from '@process/bridge/googleDriveConnectorBridge';
 import { initGoogleDocsConnectorBridge } from '@process/bridge/googleDocsConnectorBridge';
-import { initGoogleSheetsConnectorBridge, initGmailConnectorBridge, initGoogleCalendarConnectorBridge } from '@process/bridge/googleWorkspaceFamilyBridges';
+import {
+  initGoogleSheetsConnectorBridge,
+  initGmailConnectorBridge,
+  initGoogleCalendarConnectorBridge,
+} from '@process/bridge/googleWorkspaceFamilyBridges';
 import { initModelBridge } from '@process/bridge/modelBridge';
 import { initPreviewHistoryBridge } from '@process/bridge/previewHistoryBridge';
 import { initStarOfficeBridge } from '@process/bridge/starOfficeBridge';

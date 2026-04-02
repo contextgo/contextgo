@@ -8,6 +8,8 @@ type BuiltinChannelDefinition = {
   pluginId: string;
   displayName: string;
   conversationSource: string;
+  defaultModelConfigKey: string;
+  agentConfigKey: string;
   usesActionButtons: boolean;
 };
 
@@ -16,36 +18,48 @@ export const BUILTIN_CHANNELS = {
     pluginId: 'telegram_default',
     displayName: 'Telegram',
     conversationSource: 'telegram',
+    defaultModelConfigKey: 'assistant.telegram.defaultModel',
+    agentConfigKey: 'assistant.telegram.agent',
     usesActionButtons: false,
   },
   slack: {
     pluginId: 'slack_default',
     displayName: 'Slack',
     conversationSource: 'slack',
+    defaultModelConfigKey: 'assistant.slack.defaultModel',
+    agentConfigKey: 'assistant.slack.agent',
     usesActionButtons: true,
   },
   discord: {
     pluginId: 'discord_default',
     displayName: 'Discord',
     conversationSource: 'discord',
+    defaultModelConfigKey: 'assistant.discord.defaultModel',
+    agentConfigKey: 'assistant.discord.agent',
     usesActionButtons: true,
   },
   lark: {
     pluginId: 'lark_default',
     displayName: 'Lark',
     conversationSource: 'lark',
+    defaultModelConfigKey: 'assistant.lark.defaultModel',
+    agentConfigKey: 'assistant.lark.agent',
     usesActionButtons: false,
   },
   dingtalk: {
     pluginId: 'dingtalk_default',
     displayName: 'DingTalk',
     conversationSource: 'dingtalk',
+    defaultModelConfigKey: 'assistant.dingtalk.defaultModel',
+    agentConfigKey: 'assistant.dingtalk.agent',
     usesActionButtons: false,
   },
   weixin: {
     pluginId: 'weixin_default',
     displayName: 'WeChat',
     conversationSource: 'weixin',
+    defaultModelConfigKey: 'assistant.weixin.defaultModel',
+    agentConfigKey: 'assistant.weixin.agent',
     usesActionButtons: false,
   },
 } as const satisfies Record<string, BuiltinChannelDefinition>;
@@ -73,7 +87,7 @@ export function getBuiltinChannelByPluginId(pluginId: string): {
 } | null {
   for (const type of BUILTIN_CHANNEL_TYPES) {
     const definition = BUILTIN_CHANNELS[type];
-    if (pluginId === type || pluginId === definition.pluginId || pluginId.startsWith(`${type}_`)) {
+    if (pluginId === type || pluginId === definition.pluginId) {
       return { type, definition };
     }
   }

@@ -86,19 +86,13 @@ export class FeishuConnectorService {
 
     return {
       ...this.state,
-      lifecycle: details.running
-        ? 'running'
-        : this.state.desiredState === 'running'
-          ? 'error'
-          : this.state.lifecycle,
+      lifecycle: details.running ? 'running' : this.state.desiredState === 'running' ? 'error' : this.state.lifecycle,
       hasCredentials,
       command: details.command,
       args: details.args,
       pid: details.pid,
       lastError: details.lastError ?? this.state.lastError,
-      note: details.running
-        ? 'Managed Feishu OpenAPI sidecar is running.'
-        : this.state.note,
+      note: details.running ? 'Managed Feishu OpenAPI sidecar is running.' : this.state.note,
     };
   }
 

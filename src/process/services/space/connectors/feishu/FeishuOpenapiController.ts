@@ -48,7 +48,10 @@ const resolveNpxCommand = async (): Promise<string | null> => {
   return null;
 };
 
-const buildRuntimeCommand = (config: FeishuConnectorConfig, npxCommand: string): { command: string; args: string[] } => {
+const buildRuntimeCommand = (
+  config: FeishuConnectorConfig,
+  npxCommand: string
+): { command: string; args: string[] } => {
   const packageArgs = config.command.trim() ? config.command.trim().split(/\s+/) : [FEISHU_PACKAGE_NAME];
   const extraArgs = config.args.filter((value) => value.trim());
   const runtimeArgs = [

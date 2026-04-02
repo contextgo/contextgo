@@ -9,7 +9,7 @@ import type { TChatConversation } from '@/common/config/storage';
 import { iconColors } from '@/renderer/styles/colors';
 import { emitter } from '@/renderer/utils/emitter';
 import { Button, Message, Popover, Tooltip } from '@arco-design/web-react';
-import { AlarmClock } from '@icon-park/react';
+import { AlarmClock, Edit } from '@icon-park/react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCronDirectCreateContext, getCronPresets, type CronPresetId } from '../cronPresetUtils';
@@ -67,6 +67,7 @@ const CronJobManager: React.FC<CronJobManagerProps> = ({ conversation }) => {
         message: preset.message,
         conversationId: directCreateContext.conversationId,
         conversationTitle: directCreateContext.conversationTitle,
+        workspacePath: directCreateContext.workspacePath,
         agentType: directCreateContext.agentType,
         createdBy: 'user',
       });
@@ -107,20 +108,29 @@ const CronJobManager: React.FC<CronJobManagerProps> = ({ conversation }) => {
                 />
               </div>
 
-              <Button className={styles.presetPopoverAction} size='mini' onClick={handleCreateClick}>
-                {t('cron.presets.actions.customize')}
-              </Button>
+              <div className={styles.presetPopoverFooter}>
+                <Button
+                  type='primary'
+                  className={`${styles.presetPopoverAction} ${styles.presetPopoverPrimaryAction}`}
+                  icon={<Edit theme='outline' size={14} />}
+                  onClick={handleCreateClick}
+                >
+                  {t('cron.presets.actions.customize')}
+                </Button>
+              </div>
             </div>
           }
         >
           <Button
             type='text'
             size='small'
-            className='cron-job-manager-button chat-header-cron-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
+            className='app-header-pill-button cron-job-manager-button chat-header-cron-pill !h-auto !w-auto !min-w-0'
           >
-            <span className='inline-flex items-center gap-2px rounded-full px-8px py-2px bg-2'>
-              <AlarmClock theme='outline' size={16} fill={iconColors.disabled} />
-              <span className='ml-4px h-8px w-8px rounded-full bg-[rgb(var(--gray-6))]' />
+            <span className='app-header-pill app-header-pill--status'>
+              <span className='app-header-pill__icon'>
+                <AlarmClock theme='outline' size={16} fill={iconColors.disabled} />
+              </span>
+              <span className='app-header-pill__dot bg-[rgb(var(--gray-6))]' />
             </span>
           </Button>
         </Popover>
@@ -159,13 +169,15 @@ const CronJobManager: React.FC<CronJobManagerProps> = ({ conversation }) => {
         <Button
           type='text'
           size='small'
-          className='cron-job-manager-button chat-header-cron-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
+          className='app-header-pill-button cron-job-manager-button chat-header-cron-pill !h-auto !w-auto !min-w-0'
           onClick={() => setDrawerVisible(true)}
         >
-          <span className='inline-flex items-center gap-2px rounded-full px-8px py-2px bg-2'>
-            <AlarmClock theme='outline' size={16} fill={iconColors.primary} />
+          <span className='app-header-pill app-header-pill--status'>
+            <span className='app-header-pill__icon'>
+              <AlarmClock theme='outline' size={16} fill={iconColors.primary} />
+            </span>
             <span
-              className={`ml-4px h-8px w-8px rounded-full ${hasError ? 'bg-[rgb(var(--danger-6))]' : isPaused ? 'bg-[rgb(var(--warning-6))]' : 'bg-[rgb(var(--success-6))]'}`}
+              className={`app-header-pill__dot ${hasError ? 'bg-[rgb(var(--danger-6))]' : isPaused ? 'bg-[rgb(var(--warning-6))]' : 'bg-[rgb(var(--success-6))]'}`}
             />
           </span>
         </Button>

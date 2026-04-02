@@ -86,7 +86,7 @@ export const usePreviewLauncher = () => {
       editable,
       fallbackContent,
       diffContent,
-    }: PreviewLaunchOptions) => {
+    }: PreviewLaunchOptions): Promise<boolean> => {
       setLoading(true);
 
       // 路径解析 / Path resolution
@@ -131,7 +131,7 @@ export const usePreviewLauncher = () => {
                 ...metadata,
                 editable,
               });
-              return;
+              return true;
             }
 
             const binaryOnlyTypes: PreviewContentType[] = ['pdf', 'ppt', 'word', 'excel'];
@@ -142,7 +142,7 @@ export const usePreviewLauncher = () => {
                 ...metadata,
                 editable,
               });
-              return;
+              return true;
             }
 
             // 使用 Promise.race 防止长时间卡死 / Use Promise.race to prevent hanging
@@ -155,26 +155,27 @@ export const usePreviewLauncher = () => {
               ...metadata,
               editable: normalizedContent.truncated ? false : editable,
             });
-            return;
-          } catch (error) {
-            // 读取失败，如果已经显示了乐观预览，则只记录警告
-            // Read failed, log warning if optimistic preview is already shown
+            return true;
+          } catch {
+            // 读取失败，如果已经显示了乐观预览，则保留当前预览
+            // Read failed; keep the optimistic preview if one is already mounted.
           }
         }
 
         // 3. 如果尚未打开且没有成功读取文件，处理回退情况 / If not opened and file read failed, handle fallback cases
-        if (!hasOpened) {
+        if (!hasOpened && diffContent) {
           // 显示 diff 内容（只读）/ Show diff content (read-only)
-          if (diffContent) {
-            openPreview(diffContent, 'diff', {
-              ...metadata,
-              editable: false,
-            });
-            return;
-          }
+          openPreview(diffContent, 'diff', {
+            ...metadata,
+            editable: false,
+          });
+          return true;
         }
+
+        return hasOpened;
       } catch (error) {
         console.error('[usePreviewLauncher] Failed to open preview:', error);
+        return hasOpened;
       } finally {
         setLoading(false);
       }

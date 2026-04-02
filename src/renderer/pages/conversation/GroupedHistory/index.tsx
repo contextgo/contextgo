@@ -7,8 +7,8 @@
 import type { TChatConversation } from '@/common/config/storage';
 import { Button, Empty, Input } from '@arco-design/web-react';
 import { ContextGoModal } from '@/renderer/components/base';
-import DirectorySelectionModal from '@/renderer/components/settings/DirectorySelectionModal';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
+import DirectorySelectionModal from '@/renderer/components/settings/DirectorySelectionModal';
 import { useCronJobsMap } from '@/renderer/pages/cron';
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -20,6 +20,7 @@ import { useParams } from 'react-router-dom';
 
 import WorkspaceCollapse from '../components/WorkspaceCollapse';
 import ConversationRow from './ConversationRow';
+import DeleteConversationModal from './DeleteConversationModal';
 import DragOverlayContent from './DragOverlayContent';
 import SortableConversationRow from './SortableConversationRow';
 import { useBatchSelection } from './hooks/useBatchSelection';
@@ -40,8 +41,6 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   const { t } = useTranslation();
   const { getJobStatus, markAsRead, setActiveConversation } = useCronJobsMap();
 
-  // Sync active conversation ref when route changes (for URL navigation)
-  // This doesn't trigger state update, avoiding double render
   useEffect(() => {
     if (id) {
       setActiveConversation(id);
@@ -77,9 +76,13 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     setRenameModalName,
     renameLoading,
     dropdownVisibleId,
+    deleteModalState,
+    deleteModalDeleting,
     handleConversationClick,
     handleDeleteClick,
     handleBatchDelete,
+    handleDeleteModalCancel,
+    handleDeleteModalConfirm,
     handleEditStart,
     handleRenameConfirm,
     handleRenameCancel,
@@ -271,7 +274,6 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     );
   };
 
-  // Collect all sortable IDs for the pinned section
   const pinnedIds = useMemo(() => pinnedConversations.map((c) => c.id), [pinnedConversations]);
 
   if (timelineSections.length === 0 && pinnedConversations.length === 0) {
@@ -327,6 +329,16 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
         />
       </ContextGoModal>
 
+      <DeleteConversationModal
+        visible={deleteModalState !== null}
+        state={deleteModalState}
+        deleting={deleteModalDeleting}
+        onCancel={handleDeleteModalCancel}
+        onConfirm={() => {
+          void handleDeleteModalConfirm();
+        }}
+      />
+
       <ContextGoModal
         visible={exportModalVisible}
         onCancel={closeExportModal}
@@ -355,7 +367,9 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                 void handleSelectExportFolder();
               }}
             >
-              <span className={`overflow-hidden text-ellipsis whitespace-nowrap text-14px ${exportTargetPath ? 'text-t-primary' : 'text-t-secondary'}`}>
+              <span
+                className={`overflow-hidden text-ellipsis whitespace-nowrap text-14px ${exportTargetPath ? 'text-t-primary' : 'text-t-secondary'}`}
+              >
                 {exportTargetPath || t('conversation.history.exportSelectFolder')}
               </span>
               <FolderOpen theme='outline' size='18' fill='currentColor' className='text-t-secondary' />

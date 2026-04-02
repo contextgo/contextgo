@@ -38,7 +38,9 @@ export function createVectorIndexProvider(config: ContextVectorProviderConfig): 
   }
 }
 
-export function createVectorIndexProviderFromEnv(env: NodeJS.ProcessEnv = process.env): VectorIndexProvider | undefined {
+export function createVectorIndexProviderFromEnv(
+  env: NodeJS.ProcessEnv = process.env
+): VectorIndexProvider | undefined {
   const kind = (env.CONTEXTGO_VECTOR_PROVIDER || 'disabled') as VectorProviderKind;
   if (kind === 'memory') {
     return createVectorIndexProvider({ kind: 'memory' });

@@ -36,14 +36,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   // 获取拖拽文件/目录的绝对路径 / Get absolute path for dragged file/directory
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
-  // 直接 IPC 调用（绕过 bridge 库）/ Direct IPC calls (bypass bridge library)
-  webuiResetPassword: () => ipcRenderer.invoke('webui-direct-reset-password'),
-  webuiGetStatus: () => ipcRenderer.invoke('webui-direct-get-status'),
-  // 修改密码不需要当前密码 / Change password without current password
-  webuiChangePassword: (newPassword: string) => ipcRenderer.invoke('webui-direct-change-password', { newPassword }),
-  webuiChangeUsername: (newUsername: string) => ipcRenderer.invoke('webui-direct-change-username', { newUsername }),
-  // 生��二维码 token / Generate QR token
-  webuiGenerateQRToken: () => ipcRenderer.invoke('webui-direct-generate-qr-token'),
+  // 直接 IPC: 打开外部链接 / Direct IPC: Open external URL
+  shellOpenExternal: (url: string) => ipcRenderer.invoke('shell-direct-open-external', { url }),
   // WeChat login IPC
   weixinLoginStart: () => ipcRenderer.invoke('weixin:login:start'),
   weixinLoginOnQR: (callback: (data: { qrcodeUrl: string }) => void) => {
@@ -56,8 +50,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('weixin:login:scanned', h);
     return () => ipcRenderer.off('weixin:login:scanned', h);
   },
-  weixinLoginOnDone: (callback: (data: { accountId: string }) => void) => {
-    const h = (_event: unknown, data: { accountId: string }) => callback(data);
+  weixinLoginOnDone: (callback: (data: { accountId: string; scannerUserId?: string }) => void) => {
+    const h = (_event: unknown, data: { accountId: string; scannerUserId?: string }) => callback(data);
     ipcRenderer.on('weixin:login:done', h);
     return () => ipcRenderer.off('weixin:login:done', h);
   },

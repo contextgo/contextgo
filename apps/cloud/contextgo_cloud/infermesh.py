@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import json
+import time
 from hashlib import sha256
 from typing import Any, Optional
 
@@ -10,6 +15,7 @@ from .db import User
 
 DEFAULT_PROVIDER_ID = "infermesh-cloud-managed"
 DEFAULT_TOKEN_NAME = "ContextGo Auto Connect"
+CONTEXTGO_HANDOFF_AUDIENCE = "infermesh-handoff"
 NEW_API_USER_HEADER = "New-Api-User"
 SERVICE_TOKEN_ID_HEADER = "CF-Access-Client-Id"
 SERVICE_TOKEN_SECRET_HEADER = "CF-Access-Client-Secret"
@@ -56,6 +62,42 @@ def build_infermesh_password(settings: Settings, user: User) -> str:
 def build_infermesh_display_name(user: User) -> str:
     candidate = (user.display_name or user.username or user.email.split("@")[0] or "ContextGo").strip()
     return candidate[:20] or "ContextGo"
+
+
+def _base64url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b'=').decode('ascii')
+
+
+def _build_handoff_signing_key(settings: Settings) -> bytes:
+    secret = settings.oidc_client_secret or settings.infermesh_password_secret
+    if not secret:
+        raise InfermeshProvisionError("InferMesh handoff secret is not configured")
+    return sha256(f"contextgo-handoff:{secret}".encode("utf-8")).digest()
+
+
+def create_infermesh_handoff_token(settings: Settings, user: User, *, ttl_seconds: int = 60) -> str:
+    issued_at = int(time.time())
+    payload = {
+        "iss": settings.auth_base_url,
+        "aud": CONTEXTGO_HANDOFF_AUDIENCE,
+        "sub": user.id,
+        "email": user.email,
+        "username": build_infermesh_username(settings, user),
+        "password": build_infermesh_password(settings, user),
+        "display_name": build_infermesh_display_name(user),
+        "iat": issued_at,
+        "exp": issued_at + ttl_seconds,
+    }
+    payload_bytes = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    payload_segment = _base64url_encode(payload_bytes)
+    signature = hmac.new(_build_handoff_signing_key(settings), payload_segment.encode("ascii"), hashlib.sha256).digest()
+    return f"{payload_segment}.{_base64url_encode(signature)}"
+
+
+def build_infermesh_handoff_url(settings: Settings, user: User) -> str:
+    portal_base_url = _normalize_base_url(settings.infermesh_portal_url)
+    token = create_infermesh_handoff_token(settings, user)
+    return f"{portal_base_url}/api/oauth/contextgo/handoff?token={token}"
 
 
 def detect_model_protocol(model_name: str) -> str:

@@ -280,6 +280,7 @@ export interface TelegramSendOptions {
   parse_mode?: 'HTML' | 'MarkdownV2' | 'Markdown';
   reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
   reply_to_message_id?: number;
+  message_thread_id?: number;
   disable_notification?: boolean;
   disable_web_page_preview?: boolean;
 }
@@ -302,6 +303,10 @@ export function toTelegramSendParams(message: IUnifiedOutgoingMessage): {
 
   if (message.replyToMessageId) {
     options.reply_to_message_id = parseInt(message.replyToMessageId, 10);
+  }
+
+  if (message.threadId) {
+    options.message_thread_id = parseInt(message.threadId, 10);
   }
 
   return {

@@ -336,7 +336,6 @@ const ContextGoModal: React.FC<ContextGoModalProps> = ({
     const headerClassName = classNames(HEADER_BASE_CLASS, headerConfig.className);
 
     const headerStyle: CSSProperties = {
-      borderBottom: '1px solid var(--app-modal-divider)',
       ...headerConfig.style,
     };
 

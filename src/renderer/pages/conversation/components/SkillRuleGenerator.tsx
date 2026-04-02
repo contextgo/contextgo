@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ContextGoModal } from '@/renderer/components/base';
-import {
-  Button,
-  Radio,
-  Message,
-  Dropdown,
-  Menu,
-  List,
-  Spin,
-  Empty,
-  Typography,
-  Input,
-} from '@arco-design/web-react';
+import { Button, Radio, Message, Dropdown, Menu, List, Spin, Empty, Typography, Input } from '@arco-design/web-react';
 import { Magic, FolderOpen, Lightning } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { ipcBridge } from '@/common';

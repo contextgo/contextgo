@@ -10,9 +10,6 @@ import {
   type ProtocolDetectionRequest,
   type ProtocolDetectionResponse,
   type ProtocolType,
-  type MultiKeyTestResult,
-  parseApiKeys,
-  maskApiKey,
   normalizeBaseUrl,
   removeApiPathSuffix,
   guessProtocolFromUrl,
@@ -566,17 +563,11 @@ export function initModelBridge(): void {
   ipcBridge.mode.detectProtocol.provider(async function detectProtocol(
     request: ProtocolDetectionRequest
   ): Promise<{ success: boolean; msg?: string; data?: ProtocolDetectionResponse }> {
-    const {
-      baseUrl: rawBaseUrl,
-      apiKey: apiKeyString,
-      timeout = 10000,
-      testAllKeys = false,
-      preferredProtocol,
-    } = request;
+    const { baseUrl: rawBaseUrl, apiKey: apiKeyString, timeout = 10000 } = request;
 
     const baseUrl = normalizeBaseUrl(rawBaseUrl);
     const baseUrlCandidates = buildBaseUrlCandidates(baseUrl);
-    const apiKeys = parseApiKeys(apiKeyString);
+    const apiKey = apiKeyString.trim();
 
     if (!baseUrl) {
       return {
@@ -591,7 +582,7 @@ export function initModelBridge(): void {
       };
     }
 
-    if (apiKeys.length === 0) {
+    if (!apiKey) {
       return {
         success: false,
         msg: 'API Key is required',
@@ -604,20 +595,15 @@ export function initModelBridge(): void {
       };
     }
 
-    const firstKey = apiKeys[0];
-
     // 智能预判：根据 URL 和 Key 格式猜测协议
     // Smart prediction: guess protocol from URL and key format
     const urlGuess = guessProtocolFromUrl(baseUrl);
-    const keyGuess = guessProtocolFromKey(firstKey);
+    const keyGuess = guessProtocolFromKey(apiKey);
 
     // 确定测试顺序：优先测试猜测的协议
     // Determine test order: prioritize guessed protocols
     const protocolsToTest: ProtocolType[] = [];
 
-    if (preferredProtocol && preferredProtocol !== 'unknown') {
-      protocolsToTest.push(preferredProtocol);
-    }
     if (urlGuess && !protocolsToTest.includes(urlGuess)) {
       protocolsToTest.push(urlGuess);
     }
@@ -642,7 +628,7 @@ export function initModelBridge(): void {
     // Test each protocol in order
     for (const protocol of protocolsToTest) {
       for (const candidateBaseUrl of baseUrlCandidates) {
-        const result = await testProtocol(candidateBaseUrl, firstKey, protocol, timeout);
+        const result = await testProtocol(candidateBaseUrl, apiKey, protocol, timeout);
 
         if (result.success) {
           detectedProtocol = protocol;
@@ -660,13 +646,7 @@ export function initModelBridge(): void {
       }
     }
 
-    // 多 Key 测试
-    // Multi-key testing
-    let multiKeyResult: MultiKeyTestResult | undefined;
     const baseUrlForTesting = detectedBaseUrl || baseUrlCandidates[0] || baseUrl;
-    if (testAllKeys && apiKeys.length > 1 && detectedProtocol !== 'unknown') {
-      multiKeyResult = await testMultipleKeys(baseUrlForTesting, apiKeys, detectedProtocol, timeout);
-    }
 
     // 生成建议
     // Generate suggestion
@@ -679,7 +659,6 @@ export function initModelBridge(): void {
       error: detectedProtocol === 'unknown' ? detectionError : undefined,
       fixedBaseUrl,
       suggestion,
-      multiKeyResult,
       models,
     };
 
@@ -1044,66 +1023,6 @@ async function testAnthropicProtocol(
   }
 
   return { success: false, confidence: 0, error: 'Not an Anthropic API endpoint' };
-}
-
-/**
- * 测试多个 Key 的连通性（并发执行）
- * Test connectivity for multiple keys (concurrent execution)
- *
- * 参考 GPT-Load 的设计，采用并发测试提高效率
- * Reference GPT-Load design, use concurrent testing for efficiency
- */
-async function testMultipleKeys(
-  baseUrl: string,
-  apiKeys: string[],
-  protocol: ProtocolType,
-  timeout: number,
-  concurrency: number = 5 // 最大并发数，避免触发限流 / Max concurrency to avoid rate limiting
-): Promise<MultiKeyTestResult> {
-  const results: MultiKeyTestResult['details'] = [];
-
-  // 分批并发执行 / Execute in batches concurrently
-  for (let batchStart = 0; batchStart < apiKeys.length; batchStart += concurrency) {
-    const batchEnd = Math.min(batchStart + concurrency, apiKeys.length);
-    const batch = apiKeys.slice(batchStart, batchEnd);
-
-    const batchPromises = batch.map(async (key, batchIndex) => {
-      const globalIndex = batchStart + batchIndex;
-      const startTime = Date.now();
-
-      try {
-        const result = await testProtocol(baseUrl, key, protocol, timeout);
-        return {
-          index: globalIndex,
-          maskedKey: maskApiKey(key),
-          valid: result.success,
-          error: result.error,
-          latency: Date.now() - startTime,
-        };
-      } catch (e: unknown) {
-        return {
-          index: globalIndex,
-          maskedKey: maskApiKey(key),
-          valid: false,
-          error: e instanceof Error ? e.message : String(e),
-          latency: Date.now() - startTime,
-        };
-      }
-    });
-
-    const batchResults = await Promise.all(batchPromises);
-    results.push(...batchResults);
-  }
-
-  // 按原始索引排序 / Sort by original index
-  results.sort((a, b) => a.index - b.index);
-
-  return {
-    total: apiKeys.length,
-    valid: results.filter((r) => r.valid).length,
-    invalid: results.filter((r) => !r.valid).length,
-    details: results,
-  };
 }
 
 /**

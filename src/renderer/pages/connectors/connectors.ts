@@ -1,6 +1,11 @@
 import type { ConnectorCategory, ConnectorDefinition, ConnectorSupportSource } from './types';
 import { CONNECTOR_LOCAL_LOGOS } from './localLogos';
 
+type RawConnectorDefinition = Omit<ConnectorDefinition, 'localLogo' | 'supportStatus'> & {
+  localLogo?: string;
+  supportStatus?: ConnectorDefinition['supportStatus'];
+};
+
 const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
   'contextgo-clipboard': [
     {
@@ -148,7 +153,7 @@ export const CONNECTOR_CATEGORY_ORDER: ConnectorCategory[] = [
   'data',
 ];
 
-const RAW_CONNECTORS: ConnectorDefinition[] = [
+const RAW_CONNECTORS: RawConnectorDefinition[] = [
   {
     id: 'contextgo-clipboard',
     name: 'ContextGo Clipboard',
@@ -956,8 +961,19 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
   },
 ];
 
+const SUPPORTED_CONNECTOR_IDS = new Set([
+  'contextgo-clipboard',
+  'google-drive',
+  'google-docs',
+  'google-sheets',
+  'gmail',
+  'google-calendar',
+  'lark',
+]);
+
 export const CONNECTORS: ConnectorDefinition[] = RAW_CONNECTORS.map((connector) => ({
   ...connector,
+  supportStatus: connector.supportStatus ?? (SUPPORTED_CONNECTOR_IDS.has(connector.id) ? 'supported' : 'notSupportedYet'),
   localLogo: CONNECTOR_LOCAL_LOGOS[connector.id] || connector.localLogo,
 }));
 

@@ -10,7 +10,7 @@ import { ContextGoModal } from '@/renderer/components/base';
 import { emitter } from '@/renderer/utils/emitter';
 import { Button, Empty, Message, Tabs, Tag, Typography } from '@arco-design/web-react';
 import { Down, Refresh, Right } from '@icon-park/react';
-import React, { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useConversationTabs } from '../../hooks/ConversationTabsContext';
@@ -43,6 +43,7 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
   const [openclawAgents, setOpenclawAgents] = useState<OpenClawAgentSummary[]>([]);
   const [activeFilter, setActiveFilter] = useState<ExternalSessionFilter>('all');
   const [expandedOpenClawAgents, setExpandedOpenClawAgents] = useState<string[]>([]);
+  const [hasInitializedOpenClawExpansion, setHasInitializedOpenClawExpansion] = useState(false);
   const [importingSessionId, setImportingSessionId] = useState<string | null>(null);
   const loadingRef = useRef(false);
   const requestSeqRef = useRef(0);
@@ -159,37 +160,60 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
     void loadSessions();
   }, [visible]);
 
-  const providerFilteredSessions =
-    activeFilter === 'all' ? sessions : sessions.filter((session) => session.provider === activeFilter);
-  const filteredSessions = providerFilteredSessions;
-  const openclawSessionGroups =
-    activeFilter === 'openclaw-gateway'
-      ? openclawAgents.map((agent) => ({
-          agent,
-          sessions: filteredSessions.filter(
-            (session) =>
-              session.provider === 'openclaw-gateway' &&
-              normalizeOpenClawAgentId(session.openclawAgentId) === agent.agentId
-          ),
-        }))
-      : [];
+  const filteredSessions = useMemo(
+    () => (activeFilter === 'all' ? sessions : sessions.filter((session) => session.provider === activeFilter)),
+    [activeFilter, sessions]
+  );
+
+  const openclawSessionGroups = useMemo(
+    () =>
+      activeFilter === 'openclaw-gateway'
+        ? openclawAgents.map((agent) => ({
+            agent,
+            sessions: filteredSessions.filter(
+              (session) =>
+                session.provider === 'openclaw-gateway' &&
+                normalizeOpenClawAgentId(session.openclawAgentId) === agent.agentId
+            ),
+          }))
+        : [],
+    [activeFilter, filteredSessions, openclawAgents]
+  );
+
+  const openclawAgentIds = useMemo(() => openclawSessionGroups.map((group) => group.agent.agentId), [openclawSessionGroups]);
+  const openclawAgentIdsKey = openclawAgentIds.join('|');
+  const openclawNonEmptyAgentIds = useMemo(
+    () => openclawSessionGroups.filter((group) => group.sessions.length > 0).map((group) => group.agent.agentId),
+    [openclawSessionGroups]
+  );
+  const openclawNonEmptyAgentIdsKey = openclawNonEmptyAgentIds.join('|');
 
   useEffect(() => {
     if (activeFilter !== 'openclaw-gateway') {
+      setHasInitializedOpenClawExpansion(false);
       return;
     }
 
     setExpandedOpenClawAgents((current) => {
-      const next =
-        current.length > 0
-          ? current.filter((agentId) => openclawSessionGroups.some((group) => group.agent.agentId === agentId))
-          : openclawSessionGroups.filter((group) => group.sessions.length > 0).map((group) => group.agent.agentId);
-
+      const validCurrent = current.filter((agentId) => openclawAgentIds.includes(agentId));
+      const next = hasInitializedOpenClawExpansion ? validCurrent : openclawNonEmptyAgentIds;
       return isSameAgentList(current, next) ? current : next;
     });
-  }, [activeFilter, openclawSessionGroups]);
+
+    if (!hasInitializedOpenClawExpansion) {
+      setHasInitializedOpenClawExpansion(true);
+    }
+  }, [
+    activeFilter,
+    hasInitializedOpenClawExpansion,
+    openclawAgentIds,
+    openclawAgentIdsKey,
+    openclawNonEmptyAgentIds,
+    openclawNonEmptyAgentIdsKey,
+  ]);
 
   const toggleOpenClawAgentGroup = (agentId: string) => {
+    setHasInitializedOpenClawExpansion(true);
     setExpandedOpenClawAgents((current) =>
       current.includes(agentId) ? current.filter((item) => item !== agentId) : [...current, agentId]
     );
@@ -243,6 +267,7 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
           }),
           showClose: true,
           className: 'px-24px pt-20px',
+          style: { borderBottom: 'none' },
         }}
         footer={null}
         style={{

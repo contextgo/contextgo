@@ -6,6 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import { ConfigStorage } from '@/common/config/storage';
+import { mergeAssistantsWithBuiltinFallback } from '@/renderer/utils/model/assistantCatalog';
 import type { AcpBackendConfig } from '../types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { mutate } from 'swr';
@@ -42,7 +43,9 @@ export const useCustomAgentsLoader = ({
     ])
       .then(([agents, extAssistants]) => {
         if (!isActive) return;
-        const list = (agents || []).filter((agent: AcpBackendConfig) => {
+        const list = mergeAssistantsWithBuiltinFallback(agents as AcpBackendConfig[] | undefined).filter((
+          agent: AcpBackendConfig
+        ) => {
           // Keep preset assistants visible on Guid homepage even when ACP detection
           // has not produced custom IDs yet (startup race / transient detection failure).
           if (agent.isPreset) return true;

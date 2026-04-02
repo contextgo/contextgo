@@ -67,7 +67,16 @@
     "pinnedSection": "Pinned",
     "deleteSuccess": "Deleted successfully",
     "deleteFailed": "Delete failed",
-    "toggleGroupConversation": "Toggle group sessions"
+    "toggleGroupConversation": "Toggle group sessions",
+    "deleteModalHeadline": "Delete this conversation permanently?",
+    "deleteModalDescription": "This action cannot be undone. Conversation messages and related records will be removed.",
+    "deleteTargetLabel": "Conversation",
+    "groupConversationTag": "Group",
+    "deleteGroupImpact": "Deleting this group will also remove {{count}} linked child conversations.",
+    "deleteModalBatchHeadline": "Delete the selected conversations permanently?",
+    "deleteModalBatchDescription": "This action cannot be undone. All selected conversation messages and related records will be removed.",
+    "deleteBatchTargetLabel": "Selection",
+    "deleteBatchCount": "{{count}} conversations selected"
   },
   "historySearch": {
     "tooltip": "Search",
@@ -93,7 +102,7 @@
     "closeOthers": "Close Others"
   },
   "dropdown": {
-    "cliAgents": "CLI Agents",
+    "cliAgents": "Runnable Agents",
     "presetAssistants": "Preset Assistants"
   },
   "group": {
@@ -371,10 +380,9 @@
     "modelSwitchNotSupported": "The current OpenClaw Gateway does not support model switching"
   },
   "pendingMessages": {
-    "title": "{{count}} pending",
-    "shortcuts": "Tab queue · Cmd/Ctrl+Enter steer · Option/Alt+↑ edit latest",
+    "title": "Pending {{count}}",
+    "shortcuts": "Tab queue · Cmd/Ctrl+Enter steer · Option/Alt+↑ restore latest",
     "attachments": "{{count}} files",
-    "dispatching": "Sending...",
     "edit": "Edit",
     "mode": {
       "queue": "Queue",
@@ -386,7 +394,11 @@
     }
   },
   "contextUsage": {
-    "contextUsed": "context used"
+    "contextUsed": "context used",
+    "title": "Context usage {{percentage}}",
+    "used": "Used",
+    "remaining": "Remaining",
+    "limit": "Limit"
   },
   "skill_generator": {
     "title": "Generate Skill/Rule",
@@ -411,10 +423,35 @@
     "preset_registered": "Agent preset registered successfully!"
   },
   "header": {
-    "publishAgentEntry": "Publish to IM",
-    "publishAgentEntryHint": "Turn this conversation into a reusable Agent and publish it to a user, group, topic, or other IM surface.",
-    "publishAgentAction": "Publish this Agent",
-    "handoffSessionAction": "Continue current session in IM",
+    "publishAgentEntry": "Publish Agent",
+    "publishAgentEntryHint": "Turn this conversation into a reusable Agent and manage its long-term publication to IM targets.",
+    "publishAgentAction": "Publish Agent",
     "publishPrepareFailed": "Failed to prepare this agent entry"
+  },
+  "runStatus": {
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
+    "rawTask": "Raw task",
+    "liveThought": "Live thought",
+    "runtimeStats": "Runtime stats",
+    "backend": "Backend",
+    "model": "Model",
+    "mode": "Mode",
+    "startedAt": "Started at",
+    "elapsed": "Elapsed",
+    "unknown": "Unknown",
+    "noThoughtYet": "No thought streamed yet",
+    "runtimeDisconnected": "The agent runtime stopped unexpectedly. Send again to restart it.",
+    "activeTools": "{{count}} active tool",
+    "activeTools_other": "{{count}} active tools",
+    "phase": {
+      "preparing": "Preparing",
+      "reasoning": "Reasoning",
+      "toolRunning": "Running tools",
+      "waitingPermission": "Waiting permission",
+      "composing": "Composing",
+      "completed": "Completed",
+      "error": "Error"
+    }
   }
 }

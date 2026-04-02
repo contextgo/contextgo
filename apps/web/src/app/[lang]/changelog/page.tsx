@@ -9,7 +9,10 @@ export const revalidate = 300;
 export default async function ChangelogPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
-  const [siteContent, snapshot] = await Promise.all([Promise.resolve(getSiteContent(validLang)), getReleaseSnapshot(validLang)]);
+  const [siteContent, snapshot] = await Promise.all([
+    Promise.resolve(getSiteContent(validLang)),
+    getReleaseSnapshot(validLang),
+  ]);
 
   return (
     <>

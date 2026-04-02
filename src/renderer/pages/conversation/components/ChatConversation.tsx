@@ -90,7 +90,7 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
 
     setLoading(true);
     try {
-      const result = await channel.prepareConversationAgentProfile.invoke({
+      const result = await channel.prepareConversationPublication.invoke({
         conversationId: conversation.id,
       });
       if (!result.success || !result.data) {
@@ -99,10 +99,11 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
 
       void navigate(
         {
-          pathname: '/settings/active-sessions',
+          pathname: '/settings/agent-publish',
         },
         {
           state: {
+            agentPublishFocus: 'publication',
             publicationIntent: {
               ...publicationIntent,
               agentProfileId: result.data.id,
@@ -117,64 +118,28 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
     }
   }, [conversation.id, navigate, publicationIntent, t]);
 
-  const handleContinueSession = useCallback(() => {
-    if (!publicationIntent) {
-      return;
-    }
-
-    void navigate(
-      {
-        pathname: '/settings/active-sessions',
-      },
-      {
-        state: {
-          sessionHandoffIntent: {
-            sourceConversationId: publicationIntent.conversationId,
-            conversationName: publicationIntent.conversationName,
-            backend: publicationIntent.backend,
-            workspace: publicationIntent.workspace,
-            agentName: publicationIntent.agentName,
-          },
-        },
-      }
-    );
-  }, [navigate, publicationIntent]);
-
   if (!publicationIntent) {
     return null;
   }
 
   return (
-    <Dropdown
-      trigger='click'
-      droplist={
-        <Menu>
-          <Menu.Item key='publish-agent' onClick={() => void handlePublishAgent()}>
-            {t('conversation.header.publishAgentAction')}
-          </Menu.Item>
-          <Menu.Item key='continue-session' onClick={() => handleContinueSession()}>
-            {t('conversation.header.handoffSessionAction')}
-          </Menu.Item>
-        </Menu>
-      }
-    >
-      <Tooltip content={t('conversation.header.publishAgentEntryHint')}>
-        <Button
-          type='text'
-          size='small'
-          className='chat-header-publish-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
-          loading={loading}
-          aria-label={t('conversation.header.publishAgentEntry')}
-        >
-          <span className='inline-flex items-center gap-6px rounded-full px-8px py-2px bg-2'>
-            <ConnectionPoint theme='outline' size={16} fill={iconColors.primary} />
-            <span className='hidden md:inline text-12px text-t-primary'>
-              {t('conversation.header.publishAgentEntry')}
-            </span>
+    <Tooltip content={t('conversation.header.publishAgentEntryHint')}>
+      <Button
+        type='text'
+        size='small'
+        className='chat-header-publish-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
+        loading={loading}
+        aria-label={t('conversation.header.publishAgentEntry')}
+        onClick={() => void handlePublishAgent()}
+      >
+        <span className='inline-flex items-center gap-6px rounded-full px-8px py-2px bg-2'>
+          <ConnectionPoint theme='outline' size={16} fill={iconColors.primary} />
+          <span className='hidden md:inline text-12px text-t-primary'>
+            {t('conversation.header.publishAgentEntry')}
           </span>
-        </Button>
-      </Tooltip>
-    </Dropdown>
+        </span>
+      </Button>
+    </Tooltip>
   );
 };
 
@@ -192,7 +157,7 @@ const _AssociatedConversation: React.FC<{ conversation_id: string }> = ({ conver
     <Dropdown
       droplist={
         <Menu
-          onClickMenuItem={(key) => {
+          onClickMenuItem={(key: string) => {
             Promise.resolve(navigate(`/conversation/${key}`)).catch((error) => {
               console.error('Navigation failed:', error);
             });

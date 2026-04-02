@@ -84,7 +84,9 @@ const MigrationModal: React.FC<MigrationModalProps> = ({
 
           {/* Target folder selection card */}
           <div className='mb-16px rounded-18px border border-b-base bg-fill-1 p-16px shadow-[0_12px_30px_rgba(15,23,42,0.04)]'>
-            <div className='mb-8px text-14px text-t-primary'>{t('conversation.workspace.migration.moveToNewFolder')}</div>
+            <div className='mb-8px text-14px text-t-primary'>
+              {t('conversation.workspace.migration.moveToNewFolder')}
+            </div>
             <div
               className='flex cursor-pointer items-center justify-between rounded-14px border border-b-base bg-base px-14px py-12px transition-colors hover:bg-fill-1'
               onClick={handleSelectFolder}
@@ -140,7 +142,9 @@ const MigrationModal: React.FC<MigrationModalProps> = ({
               <AlarmClock theme='outline' size='22' fill='rgb(var(--primary-6))' />
             </div>
             <div className='flex-1'>
-              <div className='mb-4px text-15px font-medium text-t-primary'>{t('conversation.workspace.migration.cronMigrationTitle')}</div>
+              <div className='mb-4px text-15px font-medium text-t-primary'>
+                {t('conversation.workspace.migration.cronMigrationTitle')}
+              </div>
               <div className='text-13px text-t-secondary'>
                 {t('conversation.workspace.migration.cronMigrationHint')}
               </div>

@@ -114,9 +114,11 @@ function getPairingHelpMarkup(platform: string) {
 export const handlePairingShow: ActionHandler = async (context) => {
   const pairingService = getPairingService();
   const platform = context.platform;
+  const routingChatId = context.originalMessage.peer?.key ?? context.chatId;
+  const transportChatId = context.originalMessage.peer?.platformChatId;
 
   // Check if user is already authorized
-  if (await pairingService.isUserAuthorized(context.userId, platform, context.chatId, context.pluginId)) {
+  if (await pairingService.isUserAuthorized(context.userId, platform, routingChatId, context.pluginId, transportChatId)) {
     return createSuccessResponse({
       type: 'text',
       text: [
@@ -137,8 +139,9 @@ export const handlePairingShow: ActionHandler = async (context) => {
       context.userId,
       platform,
       context.displayName,
-      context.chatId,
-      context.pluginId
+      routingChatId,
+      context.pluginId,
+      context.originalMessage.peer
     );
 
     const expiresInMinutes = Math.ceil((expiresAt - Date.now()) / 1000 / 60);
@@ -174,9 +177,11 @@ export const handlePairingShow: ActionHandler = async (context) => {
 export const handlePairingRefresh: ActionHandler = async (context) => {
   const pairingService = getPairingService();
   const platform = context.platform;
+  const routingChatId = context.originalMessage.peer?.key ?? context.chatId;
+  const transportChatId = context.originalMessage.peer?.platformChatId;
 
   // Check if user is already authorized
-  if (await pairingService.isUserAuthorized(context.userId, platform, context.chatId, context.pluginId)) {
+  if (await pairingService.isUserAuthorized(context.userId, platform, routingChatId, context.pluginId, transportChatId)) {
     return createSuccessResponse({
       type: 'text',
       text: '✅ You are already paired. No need to refresh the pairing code.',
@@ -191,8 +196,9 @@ export const handlePairingRefresh: ActionHandler = async (context) => {
       context.userId,
       platform,
       context.displayName,
-      context.chatId,
-      context.pluginId
+      routingChatId,
+      context.pluginId,
+      context.originalMessage.peer
     );
 
     const expiresInMinutes = Math.ceil((expiresAt - Date.now()) / 1000 / 60);
@@ -223,9 +229,11 @@ export const handlePairingRefresh: ActionHandler = async (context) => {
 export const handlePairingCheck: ActionHandler = async (context) => {
   const pairingService = getPairingService();
   const platform = context.platform;
+  const routingChatId = context.originalMessage.peer?.key ?? context.chatId;
+  const transportChatId = context.originalMessage.peer?.platformChatId;
 
   // Check if user is already authorized
-  if (await pairingService.isUserAuthorized(context.userId, platform, context.chatId, context.pluginId)) {
+  if (await pairingService.isUserAuthorized(context.userId, platform, routingChatId, context.pluginId, transportChatId)) {
     return createSuccessResponse({
       type: 'text',
       text: [
@@ -244,7 +252,7 @@ export const handlePairingCheck: ActionHandler = async (context) => {
   const pendingRequest = await pairingService.getPendingRequestForUser(
     context.userId,
     platform,
-    context.chatId,
+    routingChatId,
     context.pluginId
   );
 

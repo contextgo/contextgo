@@ -226,7 +226,11 @@ describe('ContextRuntimeService', () => {
       msgId: 'msg-3',
     });
 
-    await service.completeAssistantTurn('conv-1', 'Plan: keep the current checklist and review changes manually.', 'assistant-2');
+    await service.completeAssistantTurn(
+      'conv-1',
+      'Plan: keep the current checklist and review changes manually.',
+      'assistant-2'
+    );
 
     expect(mockContextService.saveMemory).not.toHaveBeenCalled();
     expect(mockContextService.saveMemoryCandidate).toHaveBeenCalledWith(

@@ -1,5 +1,5 @@
 import { HOOK_OUTPUT_BASE_DIRS, HOOK_OUTPUT_TARGETS, type HookInfo } from '@/common/types/hookTypes';
-import { ContextGoModal } from '@/renderer/components/base';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import { Button, Checkbox, Input, Select, Typography } from '@arco-design/web-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,30 +50,16 @@ const HookRoutingConfigModal: React.FC<HookRoutingConfigModalProps> = ({
   };
 
   return (
-    <ContextGoModal
+    <SettingsSubModal
       visible={visible}
       onCancel={onCancel}
       className='hook-routing-config-modal'
-      header={{
-        title: t('settings.hookRoutingDialogTitle', {
-          defaultValue: 'Configure Hook Delivery',
-        }),
-        showClose: true,
-        className: 'px-24px pt-20px',
-      }}
-      footer={{
-        className: 'px-24px pb-20px',
-        render: () => (
-          <div className='flex justify-end gap-10px pt-4px'>
-            <Button onClick={onCancel} className='min-w-88px px-18px'>
-              {t('common.cancel', { defaultValue: 'Cancel' })}
-            </Button>
-            <Button type='primary' loading={saving} onClick={onSave} className='min-w-104px px-18px'>
-              {t('common.save', { defaultValue: 'Save' })}
-            </Button>
-          </div>
-        ),
-      }}
+      title={t('settings.hookRoutingDialogTitle', {
+        defaultValue: 'Configure Hook Delivery',
+      })}
+      onOk={onSave}
+      okText={t('common.save', { defaultValue: 'Save' })}
+      confirmLoading={saving}
       style={{ width: 'min(620px, calc(100vw - 32px))' }}
       contentStyle={{ padding: '12px 24px 24px', overflow: 'auto', maxHeight: 'calc(100vh - 140px)' }}
     >
@@ -191,7 +177,7 @@ const HookRoutingConfigModal: React.FC<HookRoutingConfigModalProps> = ({
           </div>
         )}
       </div>
-    </ContextGoModal>
+    </SettingsSubModal>
   );
 };
 

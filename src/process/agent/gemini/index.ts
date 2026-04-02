@@ -33,7 +33,6 @@ import {
   sessionId,
 } from '@office-ai/aioncli-core';
 import fs from 'fs';
-import { ApiKeyManager } from '@/common/api/ApiKeyManager';
 import { handleAtCommand } from './cli/atCommandProcessor';
 import { loadCliConfig } from './cli/config';
 import { loadExtensions } from './cli/extension';
@@ -52,9 +51,6 @@ import {
 } from './utils';
 import path from 'path';
 import os from 'os';
-
-// Global registry for current agent instance (used by flashFallbackHandler)
-let currentGeminiAgent: GeminiAgent | null = null;
 
 /**
  * Check if Google OAuth credentials exist
@@ -120,7 +116,6 @@ export class GeminiAgent {
   private presetRules?: string;
   private contextContent?: string; // 向后兼容 / Backward compatible
   private toolConfig: ConversationToolConfig; // 对话级别的工具配置
-  private apiKeyManager: ApiKeyManager | null = null; // 多API Key管理器
   private settings: Settings | null = null;
   private historyPrefix: string | null = null;
   private historyUsedOnce = false;
@@ -157,10 +152,6 @@ export class GeminiAgent {
       webSearchEngine: this.webSearchEngine,
     });
 
-    // Register as current agent for flashFallbackHandler access
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    currentGeminiAgent = this;
-
     this.bootstrap = this.initialize();
   }
 
@@ -172,17 +163,6 @@ export class GeminiAgent {
       if (value2 && value2 !== 'undefined') {
         process.env[key] = value2;
       }
-    };
-
-    // Initialize multi-key manager for supported auth types
-    this.initializeMultiKeySupport();
-
-    // Get the current API key to use (either from multi-key manager or original)
-    const getCurrentApiKey = () => {
-      if (this.apiKeyManager && this.apiKeyManager.hasMultipleKeys()) {
-        return process.env[this.apiKeyManager.getStatus().envKey] || this.model.apiKey;
-      }
-      return this.model.apiKey;
     };
 
     // 清除所有认证相关的环境变量，避免不同认证类型之间的干扰
@@ -210,12 +190,12 @@ export class GeminiAgent {
       isNewApi ? normalizeNewApiBaseUrl(this.model.baseUrl, this.authType) : this.model.baseUrl;
 
     if (this.authType === AuthType.USE_GEMINI) {
-      fallbackValue('GEMINI_API_KEY', getCurrentApiKey());
+      fallbackValue('GEMINI_API_KEY', this.model.apiKey);
       fallbackValue('GOOGLE_GEMINI_BASE_URL', getBaseUrl());
       return;
     }
     if (this.authType === AuthType.USE_VERTEX_AI) {
-      fallbackValue('GOOGLE_API_KEY', getCurrentApiKey());
+      fallbackValue('GOOGLE_API_KEY', this.model.apiKey);
       process.env.GOOGLE_GENAI_USE_VERTEXAI = 'true';
       return;
     }
@@ -235,12 +215,12 @@ export class GeminiAgent {
     }
     if (this.authType === AuthType.USE_OPENAI) {
       fallbackValue('OPENAI_BASE_URL', getBaseUrl());
-      fallbackValue('OPENAI_API_KEY', getCurrentApiKey());
+      fallbackValue('OPENAI_API_KEY', this.model.apiKey);
       return;
     }
     if (this.authType === AuthType.USE_ANTHROPIC) {
       fallbackValue('ANTHROPIC_BASE_URL', getBaseUrl());
-      fallbackValue('ANTHROPIC_API_KEY', getCurrentApiKey());
+      fallbackValue('ANTHROPIC_API_KEY', this.model.apiKey);
       return;
     }
     if (this.authType === AuthType.USE_BEDROCK) {
@@ -270,29 +250,6 @@ export class GeminiAgent {
       }
       return;
     }
-  }
-
-  private initializeMultiKeySupport(): void {
-    const apiKey = this.model?.apiKey;
-    if (!apiKey || (!apiKey.includes(',') && !apiKey.includes('\n'))) {
-      return; // Single key or no key, skip multi-key setup
-    }
-
-    // Only initialize for supported auth types
-    if (
-      this.authType === AuthType.USE_OPENAI ||
-      this.authType === AuthType.USE_GEMINI ||
-      this.authType === AuthType.USE_ANTHROPIC
-    ) {
-      this.apiKeyManager = new ApiKeyManager(apiKey, this.authType);
-    }
-  }
-
-  /**
-   * Get multi-key manager (used by flashFallbackHandler)
-   */
-  getApiKeyManager(): ApiKeyManager | null {
-    return this.apiKeyManager;
   }
 
   private createAbortController() {
@@ -921,11 +878,4 @@ export class GeminiAgent {
       // ignore injection errors
     }
   }
-}
-
-/**
- * Get current GeminiAgent instance (used by flashFallbackHandler)
- */
-export function getCurrentGeminiAgent(): GeminiAgent | null {
-  return currentGeminiAgent;
 }

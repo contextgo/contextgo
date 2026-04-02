@@ -6,6 +6,7 @@ import type { AssistantListItem, HookInfo, SkillInfo } from './types';
 import { getIncompatibleHookNames, hasBuiltinSkills, isHookSupportedByBackend } from './assistantUtils';
 import { HOOK_OUTPUT_TARGET_PRESENTATION } from '../hookLibraryUtils';
 import HookRoutingConfigModal from '../HookRoutingConfigModal';
+import { PRODUCT_VISIBLE_PRESET_AGENT_TYPES } from '@/renderer/utils/model/availableAgents';
 import EmojiPicker from '@/renderer/components/chat/EmojiPicker';
 import { ContextGoModal } from '@/renderer/components/base';
 import MarkdownView from '@/renderer/components/Markdown';
@@ -372,11 +373,14 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
               {[
                 { value: 'gemini', label: 'Gemini CLI' },
                 { value: 'claude', label: 'Claude Code' },
-                { value: 'qwen', label: 'Qwen Code' },
                 { value: 'codex', label: 'Codex' },
-                { value: 'codebuddy', label: 'CodeBuddy' },
                 { value: 'opencode', label: 'OpenCode' },
               ]
+                .filter((opt) =>
+                  PRODUCT_VISIBLE_PRESET_AGENT_TYPES.includes(
+                    opt.value as (typeof PRODUCT_VISIBLE_PRESET_AGENT_TYPES)[number]
+                  )
+                )
                 .filter((opt) => availableBackends.has(opt.value))
                 .map((opt) => (
                   <Select.Option key={opt.value} value={opt.value}>

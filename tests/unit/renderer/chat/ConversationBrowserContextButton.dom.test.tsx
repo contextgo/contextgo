@@ -53,6 +53,27 @@ vi.mock('@/common', () => ({
   },
 }));
 
+vi.mock('@/renderer/components/base', () => ({
+  ContextGoModal: ({
+    visible,
+    children,
+    header,
+    footer,
+  }: {
+    visible?: boolean;
+    children?: React.ReactNode;
+    header?: { title?: React.ReactNode };
+    footer?: { render?: () => React.ReactNode };
+  }) =>
+    visible ? (
+      <div data-testid='contextgo-modal'>
+        <div>{header?.title}</div>
+        {children}
+        {footer?.render?.()}
+      </div>
+    ) : null,
+}));
+
 vi.mock('@arco-design/web-react', () => {
   const Button = ({
     children,
@@ -273,4 +294,5 @@ describe('ConversationBrowserContextButton', () => {
       lastUsedAt: expect.any(Number),
     });
   });
+
 });

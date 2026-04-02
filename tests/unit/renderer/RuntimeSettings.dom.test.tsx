@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,12 +9,8 @@ const checkAgentHealthInvokeMock = vi.fn();
 const installManagedRuntimeInvokeMock = vi.fn();
 const refreshCustomAgentsInvokeMock = vi.fn().mockResolvedValue({ success: true });
 const openExternalInvokeMock = vi.fn().mockResolvedValue(undefined);
-const openFileInvokeMock = vi.fn().mockResolvedValue(undefined);
-const revealPathInvokeMock = vi.fn().mockResolvedValue({ resolvedPath: '/custom/codex', exists: true });
 const configStorageGetMock = vi.fn();
-const configStorageSetMock = vi.fn().mockResolvedValue(undefined);
 const mutateMock = vi.fn().mockResolvedValue(undefined);
-const copyTextMock = vi.fn().mockResolvedValue(undefined);
 const messageSuccessMock = vi.fn();
 const messageErrorMock = vi.fn();
 
@@ -34,8 +30,6 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
   },
   shell: {
     openExternal: { invoke: (...args: unknown[]) => openExternalInvokeMock(...args) },
-    openFile: { invoke: (...args: unknown[]) => openFileInvokeMock(...args) },
-    revealPath: { invoke: (...args: unknown[]) => revealPathInvokeMock(...args) },
   },
   ipcBridge: {
     shell: {
@@ -47,16 +41,12 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
 vi.mock('@/common/config/storage', () => ({
   ConfigStorage: {
     get: (...args: unknown[]) => configStorageGetMock(...args),
-    set: (...args: unknown[]) => configStorageSetMock(...args),
+    set: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
 vi.mock('swr', () => ({
   mutate: (...args: unknown[]) => mutateMock(...args),
-}));
-
-vi.mock('@/renderer/utils/ui/clipboard', () => ({
-  copyText: (...args: unknown[]) => copyTextMock(...args),
 }));
 
 vi.mock('@/renderer/pages/settings/components/SettingsPageWrapper', () => ({
@@ -94,6 +84,10 @@ vi.mock('@/renderer/components/base/ContextGoModal', () => ({
 
 vi.mock('@/renderer/pages/settings/AgentSettings/CustomAcpAgentModal', () => ({
   default: () => null,
+}));
+
+vi.mock('@/renderer/utils/model/agentLogo', () => ({
+  getAgentLogo: () => '/logo.svg',
 }));
 
 vi.mock('@icon-park/react', () => ({
@@ -148,9 +142,6 @@ vi.mock('@arco-design/web-react', () => ({
   },
   Space: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   Tag: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
-  Typography: {
-    Paragraph: ({ children }: { children?: React.ReactNode }) => <p>{children}</p>,
-  },
 }));
 
 import AgentEntrySettings from '@/renderer/pages/settings/AgentSettings/AgentEntrySettings';
@@ -169,14 +160,20 @@ describe('Runtime Settings page', () => {
     vi.clearAllMocks();
     getAvailableAgentsInvokeMock.mockResolvedValue({
       success: true,
-      data: [{ backend: 'codex', name: 'Codex', cliPath: '/opt/codex/bin/codex', runtimeSource: 'detected' }],
+      data: [
+        {
+          backend: 'codex',
+          name: 'Codex',
+          cliPath: '/opt/codex/bin/codex',
+          resolvedCliPath: '/opt/codex/bin/codex',
+          runtimeSource: 'detected',
+        },
+      ],
     });
     listExternalSessionsInvokeMock.mockResolvedValue({
       success: true,
       data: {
-        sessions: [
-          { provider: 'codex', sessionId: 'session-1', title: 'Resume me', workspace: '/tmp/project', updatedAt: 1 },
-        ],
+        sessions: [{ provider: 'codex', sessionId: 'session-1', title: 'Resume me', workspace: '/tmp/project', updatedAt: 1 }],
       },
     });
     checkAgentHealthInvokeMock.mockResolvedValue({
@@ -188,22 +185,84 @@ describe('Runtime Settings page', () => {
       data: { backend: 'codex', command: 'npm install -g @openai/codex' },
     });
     configStorageGetMock.mockImplementation(async (key: string) => {
-      if (key === 'acp.config') return {};
-      if (key === 'codex.config') return { cliPath: '/custom/codex' };
       if (key === 'acp.customAgents') return [];
       return undefined;
     });
   });
 
-  it('renders the dedicated runtime entry and shows runtime management content', async () => {
+  it('renders the dedicated runtime entry and shows the simplified runtime management content', async () => {
     renderRuntimeSettings();
 
     expect(await screen.findByText('Runtime Management')).toBeInTheDocument();
     expect(screen.getByText('Codex')).toBeInTheDocument();
     expect(screen.getByText('Claude Code')).toBeInTheDocument();
-    expect(screen.getAllByText('Takeover sessions').length).toBeGreaterThan(0);
-    expect(screen.getByText('/custom/codex')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Copy install command' }).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('runtime-card-opencode')).toBeInTheDocument();
+    expect(screen.queryByTestId('runtime-card-qwen')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('runtime-card-auggie')).not.toBeInTheDocument();
+
+    const codexCard = screen.getByTestId('runtime-card-codex');
+    expect(within(codexCard).getByText('/opt/codex/bin/codex')).toBeInTheDocument();
+    expect(within(codexCard).getByText('Takeover sessions 1')).toBeInTheDocument();
+  });
+
+  it('does not render the removed custom runtime section', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+
+    expect(screen.queryByText('Custom Runtime Adapters')).not.toBeInTheDocument();
+    expect(screen.queryByText('Custom runtimes')).not.toBeInTheDocument();
+  });
+
+  it('hides install actions for a detected runtime and keeps login actions available', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+
+    const codexCard = screen.getByTestId('runtime-card-codex');
+
+    expect(within(codexCard).queryByRole('button', { name: 'Install locally' })).not.toBeInTheDocument();
+    expect(within(codexCard).queryByText('Needs Login')).not.toBeInTheDocument();
+  });
+
+  it('hides availability checks for missing runtimes', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+
+    const nanobotCard = screen.getByTestId('runtime-card-nanobot');
+    expect(within(nanobotCard).queryByRole('button', { name: 'Check availability' })).not.toBeInTheDocument();
+    expect(within(nanobotCard).getByRole('button', { name: 'Install locally' })).toBeInTheDocument();
+    expect(within(nanobotCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
+    expect(within(nanobotCard).queryByText('No path is being used yet.')).not.toBeInTheDocument();
+
+    const opencodeCard = screen.getByTestId('runtime-card-opencode');
+    expect(within(opencodeCard).queryByRole('button', { name: 'Check availability' })).not.toBeInTheDocument();
+    expect(within(opencodeCard).getByRole('button', { name: 'Install locally' })).toBeInTheDocument();
+    expect(within(opencodeCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
+    expect(within(opencodeCard).queryByText('No path is being used yet.')).not.toBeInTheDocument();
+  });
+
+  it('shows docs for missing runtimes and keeps install entry when managed install is supported', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+
+    const opencodeCard = screen.getByTestId('runtime-card-opencode');
+
+    expect(within(opencodeCard).getByRole('button', { name: 'Install locally' })).toBeInTheDocument();
+    expect(within(opencodeCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
+  });
+
+  it('opens the updated official openclaw page', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+    fireEvent.click(within(screen.getByTestId('runtime-card-openclaw-gateway')).getByRole('button', { name: 'Official page' }));
+
+    await waitFor(() => {
+      expect(openExternalInvokeMock).toHaveBeenCalledWith('https://github.com/openclaw/openclaw');
+    });
   });
 
   it('runs a health check for the selected runtime card', async () => {
@@ -217,22 +276,6 @@ describe('Runtime Settings page', () => {
     });
   });
 
-  it('saves the overridden runtime path for codex', async () => {
-    renderRuntimeSettings();
-
-    await screen.findByText('Runtime Management');
-    fireEvent.change(screen.getAllByRole('textbox')[0], {
-      target: { value: '/new/codex/path' },
-    });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Save path' })[0]);
-
-    await waitFor(() => {
-      expect(configStorageSetMock).toHaveBeenCalledWith('codex.config', {
-        cliPath: '/new/codex/path',
-      });
-    });
-  });
-
   it('runs managed install for a missing runtime', async () => {
     renderRuntimeSettings();
 
@@ -243,4 +286,5 @@ describe('Runtime Settings page', () => {
       expect(installManagedRuntimeInvokeMock).toHaveBeenCalled();
     });
   });
+
 });

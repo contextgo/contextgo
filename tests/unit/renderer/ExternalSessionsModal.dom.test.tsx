@@ -89,6 +89,16 @@ vi.mock('@arco-design/web-react', () => {
   };
 });
 
+vi.mock('@/renderer/components/base', () => ({
+  ContextGoModal: ({
+    visible,
+    children,
+  }: {
+    visible?: boolean;
+    children?: React.ReactNode;
+  }) => (visible ? <div>{children}</div> : null),
+}));
+
 vi.mock('@/common', () => ({
   ipcBridge: {
     acpConversation: {

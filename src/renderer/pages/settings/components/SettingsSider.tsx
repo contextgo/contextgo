@@ -5,10 +5,9 @@ import {
   AlarmClock,
   Command,
   Communication,
-  Computer,
   ConnectionPoint,
-  Earth,
   Info,
+  LinkCloud,
   Puzzle,
   System,
   Terminal,
@@ -27,13 +26,14 @@ const BUILTIN_TAB_IDS = [
   'tools',
   'runtime',
   'commands',
-  'display',
   'webui',
   'channels',
   'activeSessions',
   'system',
   'about',
 ] as const;
+
+const normalizeSettingsAnchor = (anchor: string): string => (anchor === 'display' ? 'system' : anchor);
 
 type SiderItem = {
   id: string;
@@ -51,8 +51,6 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  const isDesktop = isElectronDesktop();
-
   const [extensionTabs, setExtensionTabs] = useState<IExtensionSettingsTab[]>([]);
   const { resolveExtTabName } = useExtI18n();
 
@@ -128,11 +126,10 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         path: 'runtime',
       },
       commands: { id: 'commands', label: t('settings.commands.title'), icon: <Command />, path: 'commands' },
-      display: { id: 'display', label: t('settings.display'), icon: <Computer />, path: 'display' },
       webui: {
         id: 'webui',
         label: t('settings.webui'),
-        icon: isDesktop ? <Earth /> : <Communication />,
+        icon: <LinkCloud />,
         path: 'webui',
       },
       channels: {
@@ -145,7 +142,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         id: 'activeSessions',
         label: t('settings.activeSessions'),
         icon: <ConnectionPoint />,
-        path: 'active-sessions',
+        path: 'agent-publish',
       },
       system: { id: 'system', label: t('settings.system'), icon: <System />, path: 'system' },
       about: { id: 'about', label: t('settings.about'), icon: <Info />, path: 'about' },
@@ -164,8 +161,8 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         unanchored.push(tab);
         continue;
       }
-      const { anchor, placement } = tab.position;
-      const map = placement === 'before' ? beforeMap : afterMap;
+      const anchor = normalizeSettingsAnchor(tab.position.anchor);
+      const map = tab.position.placement === 'before' ? beforeMap : afterMap;
       let list = map.get(anchor);
       if (!list) {
         list = [];
@@ -207,7 +204,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
     }
 
     return result;
-  }, [t, isDesktop, extensionTabs, resolveExtTabName]);
+  }, [t, extensionTabs, resolveExtTabName]);
 
   const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
   return (

@@ -10,46 +10,24 @@ import { Button, Empty, Input, Message, Spin, Tooltip } from '@arco-design/web-r
 import { CheckOne, CloseOne, Copy, Delete, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-/**
- * Preference row component
- */
-const PreferenceRow: React.FC<{
-  label: string;
-  description?: React.ReactNode;
-  extra?: React.ReactNode;
-  children: React.ReactNode;
-}> = ({ label, description, extra, children }) => (
-  <div className='flex items-center justify-between gap-24px py-12px'>
-    <div className='flex-1'>
-      <div className='flex items-center gap-8px'>
-        <span className='text-14px text-t-primary'>{label}</span>
-        {extra}
-      </div>
-      {description && <div className='text-12px text-t-tertiary mt-2px'>{description}</div>}
-    </div>
-    <div className='flex items-center'>{children}</div>
-  </div>
-);
-
-/**
- * Section header component
- */
-const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({ title, action }) => (
-  <div className='flex items-center justify-between mb-12px'>
-    <h3 className='text-14px font-500 text-t-primary m-0'>{title}</h3>
-    {action}
-  </div>
-);
+import { FormPreferenceRow, FormSectionHeader, formLayoutStyles } from './FormLayout';
 
 interface TelegramConfigFormProps {
+  pluginId: string;
   pluginStatus: IChannelPluginStatus | null;
   onStatusChange: (status: IChannelPluginStatus | null) => void;
   onTokenChange?: (token: string) => void;
 }
 
-const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, onStatusChange, onTokenChange }) => {
+const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
+  pluginId,
+  pluginStatus,
+  onStatusChange,
+  onTokenChange,
+}) => {
   const { t } = useTranslation();
+  const runtimeId = pluginStatus?.runtimeId ?? pluginId;
+  const channelAccountId = pluginId;
 
   const [telegramToken, setTelegramToken] = useState('');
   const [testLoading, setTestLoading] = useState(false);
@@ -66,14 +44,18 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
     try {
       const result = await channel.getPendingPairings.invoke();
       if (result.success && result.data) {
-        setPendingPairings(result.data.filter((p) => p.platformType === 'telegram'));
+        setPendingPairings(
+          result.data.filter(
+            (p) => p.platformType === 'telegram' && (!p.connectorId || p.connectorId === channelAccountId)
+          )
+        );
       }
     } catch (error) {
       console.error('[ChannelSettings] Failed to load pending pairings:', error);
     } finally {
       setPairingLoading(false);
     }
-  }, []);
+  }, [channelAccountId]);
 
   // Load authorized users
   const loadAuthorizedUsers = useCallback(async () => {
@@ -81,14 +63,18 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
     try {
       const result = await channel.getAuthorizedUsers.invoke();
       if (result.success && result.data) {
-        setAuthorizedUsers(result.data.filter((u) => u.platformType === 'telegram'));
+        setAuthorizedUsers(
+          result.data.filter(
+            (u) => u.platformType === 'telegram' && (!u.connectorId || u.connectorId === channelAccountId)
+          )
+        );
       }
     } catch (error) {
       console.error('[ChannelSettings] Failed to load authorized users:', error);
     } finally {
       setUsersLoading(false);
     }
-  }, []);
+  }, [channelAccountId]);
 
   // Initial load
   useEffect(() => {
@@ -99,7 +85,8 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
   // Listen for pairing requests
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
-      if (request.platformType !== 'telegram') return;
+      if (request.platformType !== 'telegram' || (request.connectorId && request.connectorId !== channelAccountId))
+        return;
       setPendingPairings((prev) => {
         const exists = prev.some((p) => p.code === request.code);
         if (exists) return prev;
@@ -107,11 +94,12 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
       });
     });
     return () => unsubscribe();
-  }, []);
+  }, [channelAccountId]);
 
   // Listen for user authorization
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
+      if (user.platformType !== 'telegram' || (user.connectorId && user.connectorId !== channelAccountId)) return;
       setAuthorizedUsers((prev) => {
         const exists = prev.some((u) => u.id === user.id);
         if (exists) return prev;
@@ -120,7 +108,15 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
       setPendingPairings((prev) => prev.filter((p) => p.platformUserId !== user.platformUserId));
     });
     return () => unsubscribe();
-  }, []);
+  }, [channelAccountId]);
+
+  const refreshChannelStatus = async () => {
+    const statusResult = await channel.getPluginStatus.invoke();
+    if (statusResult.success && statusResult.data) {
+      const telegramPlugin = statusResult.data.find((item) => item.id === channelAccountId);
+      onStatusChange(telegramPlugin || null);
+    }
+  };
 
   // Test Telegram connection
   const handleTestConnection = async () => {
@@ -134,7 +130,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
     setTestedBotUsername(null);
     try {
       const result = await channel.testPlugin.invoke({
-        pluginId: 'telegram_default',
+        pluginId: runtimeId,
         token: telegramToken.trim(),
       });
 
@@ -163,17 +159,13 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
   const handleAutoEnable = async () => {
     try {
       const result = await channel.enablePlugin.invoke({
-        pluginId: 'telegram_default',
+        pluginId: runtimeId,
         config: { token: telegramToken.trim() },
       });
 
       if (result.success) {
         Message.success(t('settings.assistant.pluginEnabled', 'Telegram bot enabled'));
-        const statusResult = await channel.getPluginStatus.invoke();
-        if (statusResult.success && statusResult.data) {
-          const telegramPlugin = statusResult.data.find((p) => p.type === 'telegram');
-          onStatusChange(telegramPlugin || null);
-        }
+        await refreshChannelStatus();
       }
     } catch (error: any) {
       console.error('[ChannelSettings] Auto-enable failed:', error);
@@ -252,15 +244,15 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
   };
 
   return (
-    <div className='flex flex-col gap-24px'>
-      <PreferenceRow
+    <div className={formLayoutStyles.formRoot}>
+      <FormPreferenceRow
         label={t('settings.assistant.botToken', 'Bot Token')}
         description={t(
           'settings.assistant.botTokenDesc',
           'Open Telegram, find @BotFather and send /newbot to get your Bot Token.'
         )}
       >
-        <div className='flex items-center gap-8px'>
+        <div className={formLayoutStyles.inlineRow}>
           {authorizedUsers.length > 0 ? (
             <Tooltip
               content={t(
@@ -275,7 +267,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
                   placeholder={
                     authorizedUsers.length > 0 || pluginStatus?.hasToken ? '••••••••••••••••' : '123456:ABC-DEF...'
                   }
-                  style={{ width: 240 }}
+                  className={formLayoutStyles.controlInput}
                   visibilityToggle
                   disabled={authorizedUsers.length > 0}
                 />
@@ -288,7 +280,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
               placeholder={
                 authorizedUsers.length > 0 || pluginStatus?.hasToken ? '••••••••••••••••' : '123456:ABC-DEF...'
               }
-              style={{ width: 240 }}
+              className={formLayoutStyles.controlInput}
               visibilityToggle
               disabled={authorizedUsers.length > 0}
             />
@@ -322,12 +314,12 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
             </Button>
           )}
         </div>
-      </PreferenceRow>
+      </FormPreferenceRow>
 
       {/* Next Steps Guide - show when bot is enabled and no authorized users yet */}
       {pluginStatus?.enabled && pluginStatus?.connected && authorizedUsers.length === 0 && (
         <div className='bg-blue-50 dark:bg-blue-900/20 rd-12px p-16px border border-blue-200 dark:border-blue-800'>
-          <SectionHeader title={t('settings.assistant.nextSteps', 'Next Steps')} />
+          <FormSectionHeader title={t('settings.assistant.nextSteps', 'Next Steps')} />
           <div className='text-14px text-t-secondary space-y-8px'>
             <p className='m-0'>
               <strong>1.</strong> {t('settings.assistant.step1', 'Open Telegram and search for your bot')}
@@ -358,8 +350,8 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
 
       {/* Pending Pairings - show when bot is enabled and no authorized users yet */}
       {pluginStatus?.enabled && authorizedUsers.length === 0 && (
-        <div className='bg-fill-1 rd-12px pt-16px pr-16px pb-16px pl-0'>
-          <SectionHeader
+        <div className={formLayoutStyles.sectionCard}>
+          <FormSectionHeader
             title={t('settings.assistant.pendingPairings', 'Pending Pairing Requests')}
             action={
               <Button
@@ -381,29 +373,29 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
           ) : pendingPairings.length === 0 ? (
             <Empty description={t('settings.assistant.noPendingPairings', 'No pending pairing requests')} />
           ) : (
-            <div className='flex flex-col gap-12px'>
+            <div className={formLayoutStyles.statusList}>
               {pendingPairings.map((pairing) => (
-                <div key={pairing.code} className='flex items-center justify-between bg-fill-2 rd-8px p-12px'>
-                  <div className='flex-1'>
-                    <div className='flex items-center gap-8px'>
+                <div key={pairing.code} className={formLayoutStyles.statusItem}>
+                  <div className={formLayoutStyles.statusItemMain}>
+                    <div className={formLayoutStyles.inlineRow}>
                       <span className='text-14px font-500 text-t-primary'>{pairing.displayName || 'Unknown User'}</span>
                       <Tooltip content={t('settings.assistant.copyCode', 'Copy pairing code')}>
-                        <button
-                          className='p-4px bg-transparent border-none text-t-tertiary hover:text-t-primary cursor-pointer'
+                        <Button
+                          type='text'
+                          size='mini'
+                          icon={<Copy size={14} />}
                           onClick={() => copyToClipboard(pairing.code)}
-                        >
-                          <Copy size={14} />
-                        </button>
+                        />
                       </Tooltip>
                     </div>
-                    <div className='text-12px text-t-tertiary mt-4px'>
+                    <div className={formLayoutStyles.metaText}>
                       {t('settings.assistant.pairingCode', 'Code')}:{' '}
-                      <code className='bg-fill-3 px-4px rd-2px'>{pairing.code}</code>
+                      <code className={`bg-fill-3 px-4px rd-2px ${formLayoutStyles.inlineCode}`}>{pairing.code}</code>
                       <span className='mx-8px'>|</span>
                       {t('settings.assistant.expiresIn', 'Expires in')}: {getRemainingTime(pairing.expiresAt)}
                     </div>
                   </div>
-                  <div className='flex items-center gap-8px'>
+                  <div className={formLayoutStyles.statusItemActions}>
                     <Button
                       type='primary'
                       size='small'
@@ -431,8 +423,8 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
 
       {/* Authorized Users - show when there are authorized users */}
       {authorizedUsers.length > 0 && (
-        <div className='bg-fill-1 rd-12px pt-16px pr-16px pb-16px pl-0'>
-          <SectionHeader
+        <div className={formLayoutStyles.sectionCard}>
+          <FormSectionHeader
             title={t('settings.assistant.authorizedUsers', 'Authorized Users')}
             action={
               <Button
@@ -454,12 +446,12 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({ pluginStatus, o
           ) : authorizedUsers.length === 0 ? (
             <Empty description={t('settings.assistant.noAuthorizedUsers', 'No authorized users yet')} />
           ) : (
-            <div className='flex flex-col gap-12px'>
+            <div className={formLayoutStyles.statusList}>
               {authorizedUsers.map((user) => (
-                <div key={user.id} className='flex items-center justify-between bg-fill-2 rd-8px p-12px'>
-                  <div className='flex-1'>
+                <div key={user.id} className={formLayoutStyles.statusItem}>
+                  <div className={formLayoutStyles.statusItemMain}>
                     <div className='text-14px font-500 text-t-primary'>{user.displayName || 'Unknown User'}</div>
-                    <div className='text-12px text-t-tertiary mt-4px'>
+                    <div className={formLayoutStyles.metaText}>
                       {t('settings.assistant.platform', 'Platform')}: {user.platformType}
                       <span className='mx-8px'>|</span>
                       {t('settings.assistant.authorizedAt', 'Authorized')}: {formatTime(user.authorizedAt)}

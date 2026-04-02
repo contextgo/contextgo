@@ -2,7 +2,7 @@
  * AddCustomPathModal — Modal for adding a custom external skill directory path.
  */
 import { ipcBridge } from '@/common';
-import { ContextGoModal } from '@/renderer/components/base';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import { Button, Input } from '@arco-design/web-react';
 import { FolderOpen } from '@icon-park/react';
 import React from 'react';
@@ -30,32 +30,12 @@ const AddCustomPathModal: React.FC<AddCustomPathModalProps> = ({
   const { t } = useTranslation();
 
   return (
-    <ContextGoModal
+    <SettingsSubModal
       visible={visible}
       onCancel={onCancel}
-      header={{
-        title: t('settings.skillsHub.addCustomPath', { defaultValue: 'Add Custom Skill Path' }),
-        showClose: true,
-        className: 'px-24px pt-20px',
-      }}
-      footer={{
-        className: 'px-24px pb-20px',
-        render: () => (
-          <div className='flex justify-end gap-10px pt-4px'>
-            <Button onClick={onCancel} className='min-w-88px px-18px'>
-              {t('common.cancel', { defaultValue: 'Cancel' })}
-            </Button>
-            <Button
-              type='primary'
-              onClick={onOk}
-              disabled={!customPathName.trim() || !customPathValue.trim()}
-              className='min-w-104px px-18px'
-            >
-              {t('common.confirm', { defaultValue: 'Confirm' })}
-            </Button>
-          </div>
-        ),
-      }}
+      title={t('settings.skillsHub.addCustomPath', { defaultValue: 'Add Custom Skill Path' })}
+      onOk={onOk}
+      okButtonProps={{ disabled: !customPathName.trim() || !customPathValue.trim() }}
       style={{ width: 'min(560px, calc(100vw - 32px))' }}
       contentStyle={{ padding: '12px 24px 24px' }}
       autoFocus={false}
@@ -106,7 +86,7 @@ const AddCustomPathModal: React.FC<AddCustomPathModalProps> = ({
           </div>
         </div>
       </div>
-    </ContextGoModal>
+    </SettingsSubModal>
   );
 };
 

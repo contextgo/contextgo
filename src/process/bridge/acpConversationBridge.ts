@@ -22,6 +22,8 @@ import { ipcBridge } from '@/common';
 import { ACP_BACKENDS_ALL, type AcpBackend } from '@/common/types/acpTypes';
 import { ExternalSessionDiscoveryService } from './services/ExternalSessionDiscoveryService';
 import * as os from 'os';
+import fs from 'node:fs';
+import path from 'node:path';
 import { safeExec, safeExecFile } from '@process/utils/safeExec';
 import { getEnhancedEnv } from '@process/utils/shellEnv';
 
@@ -35,6 +37,7 @@ const refreshTrayMenuSafely = async (): Promise<void> => {
 
 type RuntimeAwareDetectedAgent = ReturnType<typeof acpDetector.getDetectedAgents>[number] & {
   runtimeSource?: 'builtin' | 'detected' | 'configured';
+  resolvedCliPath?: string;
 };
 
 const MANAGED_RUNTIME_INSTALL_COMMANDS: Partial<Record<AcpBackend, string>> = {
@@ -61,7 +64,7 @@ async function getCodexAuthStatus(cliPath?: string): Promise<{
       timeout: 5000,
       env,
     });
-    loginStatus = result.stdout.trim() || loginStatus;
+    loginStatus = result.stdout.trim() || result.stderr.trim() || loginStatus;
     isAuthenticated = /logged in/i.test(loginStatus) && !/not logged in/i.test(loginStatus);
   } catch (error) {
     mainWarn('[ACP codex]', 'Failed to read codex login status during health check', error);
@@ -74,6 +77,90 @@ async function getCodexAuthStatus(cliPath?: string): Promise<{
     hasOpenAiApiKey: Boolean(env.OPENAI_API_KEY),
     hasChatGptSession: /chatgpt/i.test(loginStatus),
   };
+}
+
+function isCodexAuthenticationError(errorMsg: string): boolean {
+  const lowerError = errorMsg.toLowerCase();
+  return (
+    lowerError.includes('auth') ||
+    lowerError.includes('login') ||
+    lowerError.includes('api key') ||
+    lowerError.includes('unauthorized') ||
+    lowerError.includes('forbidden') ||
+    lowerError.includes('not authenticated')
+  );
+}
+
+const resolveUserPath = (input: string): string => {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  const pathApi = process.platform === 'win32' ? path.win32 : path.posix;
+  if (trimmed.startsWith('~')) {
+    return pathApi.resolve(trimmed.replace(/^~(?=$|[\\/])/, os.homedir()));
+  }
+
+  return pathApi.resolve(trimmed);
+};
+
+async function resolveRuntimeDisplayPath(cliPath?: string): Promise<string | undefined> {
+  const trimmed = cliPath?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const normalized = trimmed.replace(/^['"]|['"]$/g, '');
+  const looksLikePath = normalized.startsWith('~') || normalized.includes('/') || normalized.includes('\\');
+
+  if (looksLikePath) {
+    const resolvedPath = resolveUserPath(normalized);
+    return resolvedPath;
+  }
+
+  if (/\s/.test(normalized)) {
+    return undefined;
+  }
+
+  const env = getEnhancedEnv();
+
+  try {
+    const result = await safeExecFile(process.platform === 'win32' ? 'where' : '/usr/bin/which', [normalized], {
+      timeout: 1000,
+      env,
+    });
+    const resolved = result.stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find(Boolean);
+
+    if (!resolved) {
+      throw new Error('Command path lookup returned no output');
+    }
+
+    return resolved;
+  } catch {
+    const candidateDirs = [
+      ...(env.PATH || '').split(path.delimiter),
+      ...(process.platform === 'darwin' ? ['/opt/homebrew/bin', '/usr/local/bin'] : []),
+    ]
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    for (const dir of candidateDirs) {
+      const candidatePath = path.join(dir, normalized);
+
+      try {
+        fs.accessSync(candidatePath, process.platform === 'win32' ? fs.constants.F_OK : fs.constants.X_OK);
+        return candidatePath;
+      } catch {
+        continue;
+      }
+    }
+
+    return undefined;
+  }
 }
 
 async function getRuntimeAwareDetectedAgents(): Promise<RuntimeAwareDetectedAgent[]> {
@@ -102,9 +189,15 @@ async function getRuntimeAwareDetectedAgents(): Promise<RuntimeAwareDetectedAgen
     detectedBackends.add(agent.backend);
 
     const configuredCliPath = getConfiguredCliPath(agent.backend);
-    if (configuredCliPath) {
-      agent.cliPath = configuredCliPath;
+    const fallbackCliPath =
+      agent.backend === 'gemini' ? ACP_BACKENDS_ALL.gemini.cliCommand || agent.cliPath : agent.cliPath;
+    const effectiveCliPath = configuredCliPath || fallbackCliPath;
+
+    if (effectiveCliPath) {
+      agent.cliPath = effectiveCliPath;
     }
+
+    agent.resolvedCliPath = await resolveRuntimeDisplayPath(effectiveCliPath);
   }
 
   for (const [backend, config] of Object.entries(ACP_BACKENDS_ALL)) {
@@ -127,6 +220,7 @@ async function getRuntimeAwareDetectedAgents(): Promise<RuntimeAwareDetectedAgen
       backend: typedBackend,
       name: config.name,
       cliPath: configuredCliPath,
+      resolvedCliPath: await resolveRuntimeDisplayPath(configuredCliPath),
       acpArgs: config.acpArgs,
       runtimeSource: 'configured',
     });
@@ -326,20 +420,6 @@ export function initAcpConversationBridge(
     // Step 2: Handle Codex separately - it uses MCP protocol, not ACP
     if (backend === 'codex') {
       const authStatus = await getCodexAuthStatus(agent?.cliPath);
-      if (!authStatus.isAuthenticated && !authStatus.hasCodexApiKey && !authStatus.hasOpenAiApiKey) {
-        return {
-          success: false,
-          msg: 'codex not authenticated',
-          data: {
-            available: false,
-            error:
-              authStatus.loginStatus && authStatus.loginStatus !== 'unknown'
-                ? authStatus.loginStatus
-                : 'Codex authentication required. Please run "codex auth" or configure CODEX_API_KEY / OPENAI_API_KEY.',
-          },
-        };
-      }
-
       const codexConnection = new CodexConnection();
       try {
         // Start Codex MCP server
@@ -368,15 +448,19 @@ export function initAcpConversationBridge(
         }
 
         const errorMsg = error instanceof Error ? error.message : String(error);
-        const lowerError = errorMsg.toLowerCase();
+        if (isCodexAuthenticationError(errorMsg)) {
+          const fallbackError =
+            authStatus.loginStatus && authStatus.loginStatus !== 'unknown'
+              ? authStatus.loginStatus
+              : 'Codex authentication required. Please run "codex login" or configure CODEX_API_KEY / OPENAI_API_KEY.';
+          return {
+            success: false,
+            msg: 'codex not authenticated',
+            data: { available: false, error: errorMsg || fallbackError },
+          };
+        }
 
-        if (
-          lowerError.includes('auth') ||
-          lowerError.includes('login') ||
-          lowerError.includes('api key') ||
-          lowerError.includes('not found') ||
-          lowerError.includes('command not found')
-        ) {
+        if (errorMsg.toLowerCase().includes('not found') || errorMsg.toLowerCase().includes('command not found')) {
           return {
             success: false,
             msg: `codex not available`,

@@ -2,9 +2,17 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@arco-design/web-react', () => ({
-  Modal: ({ visible, children }: { visible?: boolean; children: React.ReactNode }) =>
+vi.mock('@/renderer/components/base', () => ({
+  ContextGoModal: ({ visible, children }: { visible?: boolean; children?: React.ReactNode }) =>
     visible ? <div data-testid='paste-confirm-modal'>{children}</div> : null,
+}));
+
+vi.mock('@arco-design/web-react', () => ({
+  Button: ({ children, onClick }: { children?: React.ReactNode; onClick?: () => void }) => (
+    <button type='button' onClick={onClick}>
+      {children}
+    </button>
+  ),
   Checkbox: ({
     checked,
     children,

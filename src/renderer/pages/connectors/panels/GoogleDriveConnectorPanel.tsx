@@ -67,9 +67,11 @@ const GoogleDriveConnectorPanel: React.FC<GoogleDriveConnectorPanelProps> = ({ c
       return;
     }
 
-    const unsubscribe = ipcBridge.googleDriveConnector.statusChanged.on?.((nextStatus: GoogleDriveConnectorRuntimeStatus) => {
-      setStatus(nextStatus);
-    });
+    const unsubscribe = ipcBridge.googleDriveConnector.statusChanged.on?.(
+      (nextStatus: GoogleDriveConnectorRuntimeStatus) => {
+        setStatus(nextStatus);
+      }
+    );
 
     return () => {
       unsubscribe?.();
@@ -97,20 +99,24 @@ const GoogleDriveConnectorPanel: React.FC<GoogleDriveConnectorPanelProps> = ({ c
     }
   }, [config, loadAll]);
 
-  const runAction = useCallback(async (action: 'start' | 'stop') => {
-    setActionBusy(action);
-    try {
-      const response = action === 'start'
-        ? await ipcBridge.googleDriveConnector.start.invoke()
-        : await ipcBridge.googleDriveConnector.stop.invoke();
-      if (!response.success) {
-        Message.error(response.msg || `Failed to ${action} Google Drive sidecar.`);
+  const runAction = useCallback(
+    async (action: 'start' | 'stop') => {
+      setActionBusy(action);
+      try {
+        const response =
+          action === 'start'
+            ? await ipcBridge.googleDriveConnector.start.invoke()
+            : await ipcBridge.googleDriveConnector.stop.invoke();
+        if (!response.success) {
+          Message.error(response.msg || `Failed to ${action} Google Drive sidecar.`);
+        }
+        await loadAll();
+      } finally {
+        setActionBusy(null);
       }
-      await loadAll();
-    } finally {
-      setActionBusy(null);
-    }
-  }, [loadAll]);
+    },
+    [loadAll]
+  );
 
   const handleCreateAuthUrl = useCallback(async () => {
     setActionBusy('auth-url');
@@ -199,25 +205,64 @@ const GoogleDriveConnectorPanel: React.FC<GoogleDriveConnectorPanelProps> = ({ c
             <div className={styles.clipboardStatusRow}>
               <Tag color={lifecycleColor}>{status?.lifecycle || 'unknown'}</Tag>
               <Tag color='arcoblue'>{status?.hasCredentials ? 'credentials ready' : 'credentials missing'}</Tag>
-              <Tag color={status?.hasCachedToken ? 'green' : 'gray'}>{status?.hasCachedToken ? 'token cached' : 'token missing'}</Tag>
+              <Tag color={status?.hasCachedToken ? 'green' : 'gray'}>
+                {status?.hasCachedToken ? 'token cached' : 'token missing'}
+              </Tag>
               {status?.pid ? <Tag color='cyan'>PID {status.pid}</Tag> : null}
             </div>
             <div className={styles.clipboardInfoList}>
-              <div><strong>Command:</strong> {status?.command || config?.command || 'go'}</div>
-              <div><strong>Scopes:</strong> {config?.scopes.join(', ') || DEFAULT_SCOPE}</div>
-              <div><strong>Token cache:</strong> {status?.tokenCachePath || '—'}</div>
-              <div><strong>Token expiry:</strong> {status?.tokenExpiry || '—'}</div>
-              <div><strong>Refresh token:</strong> {status?.hasRefreshToken ? 'available' : 'missing'}</div>
-              <div><strong>Stored files:</strong> {status?.fileCount ?? 0}</div>
-              <div><strong>Store dir:</strong> {status?.storeDir || '—'}</div>
+              <div>
+                <strong>Command:</strong> {status?.command || config?.command || 'go'}
+              </div>
+              <div>
+                <strong>Scopes:</strong> {config?.scopes.join(', ') || DEFAULT_SCOPE}
+              </div>
+              <div>
+                <strong>Token cache:</strong> {status?.tokenCachePath || '—'}
+              </div>
+              <div>
+                <strong>Token expiry:</strong> {status?.tokenExpiry || '—'}
+              </div>
+              <div>
+                <strong>Refresh token:</strong> {status?.hasRefreshToken ? 'available' : 'missing'}
+              </div>
+              <div>
+                <strong>Stored files:</strong> {status?.fileCount ?? 0}
+              </div>
+              <div>
+                <strong>Store dir:</strong> {status?.storeDir || '—'}
+              </div>
             </div>
             <div className={styles.clipboardNote}>{status?.note || 'Google Drive connector status unavailable.'}</div>
             <div className={styles.clipboardActionRow}>
-              <Button icon={<Refresh theme='outline' size='14' />} onClick={() => void loadAll()} loading={loading}>Refresh</Button>
-              <Button type='primary' icon={<PlayOne theme='outline' size='14' />} onClick={() => void runAction('start')} loading={actionBusy === 'start'}>Start</Button>
-              <Button icon={<Pause theme='outline' size='14' />} onClick={() => void runAction('stop')} loading={actionBusy === 'stop'}>Stop</Button>
-              <Button icon={<Send theme='outline' size='14' />} onClick={() => void handleListFiles()} loading={actionBusy === 'list-files'}>List Files</Button>
-              <Button onClick={() => void handleSyncNow()} loading={actionBusy === 'sync-now'}>Sync Now</Button>
+              <Button icon={<Refresh theme='outline' size='14' />} onClick={() => void loadAll()} loading={loading}>
+                Refresh
+              </Button>
+              <Button
+                type='primary'
+                icon={<PlayOne theme='outline' size='14' />}
+                onClick={() => void runAction('start')}
+                loading={actionBusy === 'start'}
+              >
+                Start
+              </Button>
+              <Button
+                icon={<Pause theme='outline' size='14' />}
+                onClick={() => void runAction('stop')}
+                loading={actionBusy === 'stop'}
+              >
+                Stop
+              </Button>
+              <Button
+                icon={<Send theme='outline' size='14' />}
+                onClick={() => void handleListFiles()}
+                loading={actionBusy === 'list-files'}
+              >
+                List Files
+              </Button>
+              <Button onClick={() => void handleSyncNow()} loading={actionBusy === 'sync-now'}>
+                Sync Now
+              </Button>
             </div>
           </Spin>
         </div>
@@ -232,20 +277,42 @@ const GoogleDriveConnectorPanel: React.FC<GoogleDriveConnectorPanelProps> = ({ c
               </div>
               <div className={styles.clipboardControlRowColumn}>
                 <span>Client ID</span>
-                <Input value={config?.clientId ?? ''} onChange={(value) => patchConfig({ clientId: value })} placeholder='google-client-id.apps.googleusercontent.com' />
+                <Input
+                  value={config?.clientId ?? ''}
+                  onChange={(value) => patchConfig({ clientId: value })}
+                  placeholder='google-client-id.apps.googleusercontent.com'
+                />
               </div>
               <div className={styles.clipboardControlRowColumn}>
                 <span>Client Secret</span>
-                <Input.Password value={config?.clientSecret ?? ''} onChange={(value) => patchConfig({ clientSecret: value })} placeholder='google-client-secret' />
+                <Input.Password
+                  value={config?.clientSecret ?? ''}
+                  onChange={(value) => patchConfig({ clientSecret: value })}
+                  placeholder='google-client-secret'
+                />
               </div>
               <div className={styles.clipboardControlRowColumn}>
                 <span>Scopes</span>
-                <Input value={config?.scopes.join(', ') ?? DEFAULT_SCOPE} onChange={(value) => patchConfig({ scopes: value.split(',').map((item) => item.trim()).filter(Boolean) })} />
+                <Input
+                  value={config?.scopes.join(', ') ?? DEFAULT_SCOPE}
+                  onChange={(value) =>
+                    patchConfig({
+                      scopes: value
+                        .split(',')
+                        .map((item) => item.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                />
               </div>
             </div>
             <div className={styles.clipboardActionRow}>
-              <Button type='primary' onClick={() => void saveConfig()} loading={saving}>Save Google Drive Config</Button>
-              <Button onClick={() => void handleCreateAuthUrl()} loading={actionBusy === 'auth-url'}>Create Auth URL</Button>
+              <Button type='primary' onClick={() => void saveConfig()} loading={saving}>
+                Save Google Drive Config
+              </Button>
+              <Button onClick={() => void handleCreateAuthUrl()} loading={actionBusy === 'auth-url'}>
+                Create Auth URL
+              </Button>
             </div>
             {authRequest ? (
               <div className={styles.clipboardControlRowColumn}>
@@ -263,7 +330,9 @@ const GoogleDriveConnectorPanel: React.FC<GoogleDriveConnectorPanelProps> = ({ c
               />
             </div>
             <div className={styles.clipboardActionRow}>
-              <Button onClick={() => void handleCompleteAuth()} loading={actionBusy === 'complete-auth'}>Complete Auth</Button>
+              <Button onClick={() => void handleCompleteAuth()} loading={actionBusy === 'complete-auth'}>
+                Complete Auth
+              </Button>
             </div>
           </Spin>
         </div>
@@ -275,7 +344,9 @@ const GoogleDriveConnectorPanel: React.FC<GoogleDriveConnectorPanelProps> = ({ c
             {files.map((file) => (
               <div key={file.id} className={styles.clipboardListItem}>
                 <div className={styles.clipboardListMetaRow}>
-                  <Tag size='small' color='arcoblue'>{file.mimeType}</Tag>
+                  <Tag size='small' color='arcoblue'>
+                    {file.mimeType}
+                  </Tag>
                   <span>{file.modifiedTime || '—'}</span>
                 </div>
                 <div className={styles.clipboardListPreview}>{file.name}</div>
@@ -291,11 +362,15 @@ const GoogleDriveConnectorPanel: React.FC<GoogleDriveConnectorPanelProps> = ({ c
         <div className={styles.detailCard}>
           <h3 className={styles.detailCardTitle}>Drive Files (Stored)</h3>
           <div className={styles.clipboardList} data-testid='google-drive-stored-file-list'>
-            {storedFiles.length === 0 ? <div className={styles.detailCardText}>No persisted Google Drive files in ContextGo store yet.</div> : null}
+            {storedFiles.length === 0 ? (
+              <div className={styles.detailCardText}>No persisted Google Drive files in ContextGo store yet.</div>
+            ) : null}
             {storedFiles.map((file) => (
               <div key={file.recordId} className={styles.clipboardListItem}>
                 <div className={styles.clipboardListMetaRow}>
-                  <Tag size='small' color='green'>{file.mimeType}</Tag>
+                  <Tag size='small' color='green'>
+                    {file.mimeType}
+                  </Tag>
                   <span>{file.syncedAt}</span>
                 </div>
                 <div className={styles.clipboardListPreview}>{file.name}</div>

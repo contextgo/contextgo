@@ -4,12 +4,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { isSystemFallbackBinding, type ChannelBindingScopeType, type IChannelBinding } from '@process/channels/types';
+import {
+  getChannelAccountId,
+  isSystemFallbackBinding,
+  type ChannelBindingScopeType,
+  type IChannelBinding,
+} from '@process/channels/types';
 
 export type DurableBindingScopeType = Exclude<ChannelBindingScopeType, 'temporary_override'>;
 
 export type BindingDraft = {
-  connectorId: string;
+  channelAccountId: string;
   scopeType: ChannelBindingScopeType;
   scopeKey: string;
   agentProfileId: string;
@@ -17,10 +22,10 @@ export type BindingDraft = {
   priority: number;
 };
 
-function buildManualBindingId(connectorId: string, scopeType: ChannelBindingScopeType, scopeKey: string): string {
+function buildManualBindingId(channelAccountId: string, scopeType: ChannelBindingScopeType, scopeKey: string): string {
   const normalizedScopeKey = normalizeScopeKey(scopeType, scopeKey) || 'default';
   const randomSuffix = Math.random().toString(36).slice(2, 8);
-  return `binding_manual_${connectorId}_${scopeType}_${normalizedScopeKey}_${randomSuffix}`;
+  return `binding_manual_${channelAccountId}_${scopeType}_${normalizedScopeKey}_${randomSuffix}`;
 }
 
 export function normalizeScopeKey(scopeType: ChannelBindingScopeType, scopeKey: string): string {
@@ -47,7 +52,7 @@ export function findMatchingBinding(bindings: IChannelBinding[], draft: BindingD
   const normalizedScopeKey = normalizeScopeKey(draft.scopeType, draft.scopeKey);
   return bindings.find(
     (binding) =>
-      binding.connectorId === draft.connectorId &&
+      getChannelAccountId(binding) === draft.channelAccountId &&
       binding.scopeType === draft.scopeType &&
       Boolean(binding.temporary) === draft.temporary &&
       (binding.scopeKey ?? '') === normalizedScopeKey
@@ -60,8 +65,9 @@ export function buildBindingPayload(bindings: IChannelBinding[], draft: BindingD
   const existing = findMatchingBinding(bindings, draft);
 
   return {
-    id: existing?.id ?? buildManualBindingId(draft.connectorId, draft.scopeType, normalizedScopeKey),
-    connectorId: draft.connectorId,
+    id: existing?.id ?? buildManualBindingId(draft.channelAccountId, draft.scopeType, normalizedScopeKey),
+    connectorId: draft.channelAccountId,
+    channelAccountId: draft.channelAccountId,
     scopeType: draft.scopeType,
     scopeKey: normalizedScopeKey || undefined,
     agentProfileId: draft.agentProfileId,

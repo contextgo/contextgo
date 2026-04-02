@@ -4,18 +4,22 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock i18next
+const mockEnablePlugin = vi.fn(async () => ({ success: true }));
+const mockGetPluginStatus = vi.fn(async () => ({ success: true, data: [] }));
+const mockGetPendingPairings = vi.fn(async () => ({ success: true, data: [] }));
+const mockGetAuthorizedUsers = vi.fn(async () => ({ success: true, data: [] }));
+const mockAuthorizeRemoteUser = vi.fn(async () => ({ success: true }));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, fallback: string) => fallback ?? key,
+    t: (key: string, fallback?: string) => fallback ?? key,
   }),
 }));
 
-// Mock electronAPI
 const mockWeixinLoginStart = vi.fn();
 const mockWeixinLoginOnQR = vi.fn(() => vi.fn());
 const mockWeixinLoginOnScanned = vi.fn(() => vi.fn());
@@ -23,6 +27,7 @@ const mockWeixinLoginOnDone = vi.fn(() => vi.fn());
 
 Object.defineProperty(window, 'electronAPI', {
   value: {
+    ...(window.electronAPI ?? {}),
     weixinLoginStart: mockWeixinLoginStart,
     weixinLoginOnQR: mockWeixinLoginOnQR,
     weixinLoginOnScanned: mockWeixinLoginOnScanned,
@@ -31,37 +36,53 @@ Object.defineProperty(window, 'electronAPI', {
   writable: true,
 });
 
-// Mock channel IPC bridge
 vi.mock('@/common/adapter/ipcBridge', () => ({
   channel: {
-    enablePlugin: { invoke: vi.fn(async () => ({ success: true })) },
-    getPluginStatus: { invoke: vi.fn(async () => ({ success: true, data: [] })) },
-    syncChannelSettings: { invoke: vi.fn(async () => ({ success: true })) },
-    getPendingPairings: { invoke: vi.fn(async () => ({ success: true, data: [] })) },
-    getAuthorizedUsers: { invoke: vi.fn(async () => ({ success: true, data: [] })) },
+    enablePlugin: { invoke: (...args: unknown[]) => mockEnablePlugin(...args) },
+    getPluginStatus: { invoke: (...args: unknown[]) => mockGetPluginStatus(...args) },
+    getPendingPairings: { invoke: (...args: unknown[]) => mockGetPendingPairings(...args) },
+    getAuthorizedUsers: { invoke: (...args: unknown[]) => mockGetAuthorizedUsers(...args) },
+    approvePairing: { invoke: vi.fn(async () => ({ success: true })) },
+    authorizeRemoteUser: { invoke: (...args: unknown[]) => mockAuthorizeRemoteUser(...args) },
+    rejectPairing: { invoke: vi.fn(async () => ({ success: true })) },
+    revokeUser: { invoke: vi.fn(async () => ({ success: true })) },
+    disablePlugin: { invoke: vi.fn(async () => ({ success: true })) },
     pairingRequested: { on: vi.fn(() => vi.fn()) },
     userAuthorized: { on: vi.fn(() => vi.fn()) },
   },
-  acpConversation: {
-    getAvailableAgents: { invoke: vi.fn(async () => ({ success: true, data: [] })) },
-  },
 }));
 
-vi.mock('@/common/config/storage', () => ({
-  ConfigStorage: { get: vi.fn(async () => undefined), set: vi.fn(async () => {}) },
-}));
+vi.mock('@arco-design/web-react', async () => {
+  const ReactModule = await import('react');
 
-vi.mock('@/renderer/components/settings/SettingsModal/contents/channels/ChannelModelSelector', () => ({
-  default: () => <div data-testid='model-selector' />,
+  return {
+    Button: ({ children, onClick, loading, icon, type }: any) => (
+      <button type='button' data-loading={loading ? 'true' : 'false'} data-kind={type} onClick={onClick}>
+        {icon}
+        {children}
+      </button>
+    ),
+    Empty: ({ description }: { description?: React.ReactNode }) => <div>{description}</div>,
+    Message: {
+      error: vi.fn(),
+      info: vi.fn(),
+      success: vi.fn(),
+      warning: vi.fn(),
+    },
+    Spin: ({ size }: { size?: number }) => <div data-testid='spin'>{size ?? 'default'}</div>,
+    Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  };
+});
+
+vi.mock('@icon-park/react', () => ({
+  CheckOne: () => <span>check</span>,
+  CloseOne: () => <span>close</span>,
+  Copy: () => <span>copy</span>,
+  Delete: () => <span>delete</span>,
+  Refresh: () => <span>refresh</span>,
 }));
 
 import WeixinConfigForm from '@/renderer/components/settings/SettingsModal/contents/channels/configForms/WeixinConfigForm';
-
-const noopModelSelection = {
-  currentModel: undefined,
-  isLoading: false,
-  onSelectModel: vi.fn(),
-} as any;
 
 describe('WeixinConfigForm', () => {
   beforeEach(() => {
@@ -69,69 +90,74 @@ describe('WeixinConfigForm', () => {
     mockWeixinLoginOnQR.mockReturnValue(vi.fn());
     mockWeixinLoginOnScanned.mockReturnValue(vi.fn());
     mockWeixinLoginOnDone.mockReturnValue(vi.fn());
+    mockGetPendingPairings.mockResolvedValue({ success: true, data: [] });
+    mockGetAuthorizedUsers.mockResolvedValue({ success: true, data: [] });
+    mockGetPluginStatus.mockResolvedValue({ success: true, data: [] });
+    mockEnablePlugin.mockResolvedValue({ success: true });
+    mockAuthorizeRemoteUser.mockResolvedValue({ success: true });
   });
 
   it('renders login button in idle state', () => {
-    render(<WeixinConfigForm pluginStatus={null} modelSelection={noopModelSelection} onStatusChange={vi.fn()} />);
-    expect(screen.getByText('扫码登录')).toBeTruthy();
+    render(<WeixinConfigForm pluginId='weixin_default' pluginStatus={null} onStatusChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: '扫码登录' })).toBeInTheDocument();
   });
 
   it('shows loading state when login starts', async () => {
-    // weixinLoginStart never resolves in this test — stays in loading
     mockWeixinLoginStart.mockReturnValue(new Promise(() => {}));
 
-    render(<WeixinConfigForm pluginStatus={null} modelSelection={noopModelSelection} onStatusChange={vi.fn()} />);
+    render(<WeixinConfigForm pluginId='weixin_default' pluginStatus={null} onStatusChange={vi.fn()} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByText('扫码登录'));
+      fireEvent.click(screen.getByRole('button', { name: '扫码登录' }));
     });
 
-    // Button should be loading/disabled
-    const btn = screen.getByRole('button', { name: /扫码登录/i });
-    expect(btn).toBeTruthy();
+    expect(screen.getByRole('button', { name: '扫码登录' })).toHaveAttribute('data-loading', 'true');
   });
 
-  it('displays QR image when qrcodeUrl is set', async () => {
+  it('displays QR image and centered panel when qrcodeUrl is set', async () => {
     let qrCallback: ((data: { qrcodeUrl: string }) => void) | null = null;
-    mockWeixinLoginOnQR.mockImplementation((cb: any) => {
+    mockWeixinLoginOnQR.mockImplementation((cb: (data: { qrcodeUrl: string }) => void) => {
       qrCallback = cb;
       return vi.fn();
     });
     mockWeixinLoginStart.mockReturnValue(new Promise(() => {}));
 
-    render(<WeixinConfigForm pluginStatus={null} modelSelection={noopModelSelection} onStatusChange={vi.fn()} />);
+    const { container } = render(
+      <WeixinConfigForm pluginId='weixin_default' pluginStatus={null} onStatusChange={vi.fn()} />
+    );
 
     await act(async () => {
-      fireEvent.click(screen.getByText('扫码登录'));
+      fireEvent.click(screen.getByRole('button', { name: '扫码登录' }));
     });
 
     await act(async () => {
       qrCallback?.({ qrcodeUrl: 'https://example.com/qr.png' });
     });
 
-    const img = screen.getByRole('img');
+    const img = screen.getByRole('img', { name: 'WeChat QR code' });
     expect((img as HTMLImageElement).src).toContain('qr.png');
-    expect(screen.getByText('请用微信扫描二维码')).toBeTruthy();
+    expect(screen.getByText('请用微信扫描二维码')).toBeInTheDocument();
+    expect(container.querySelector('[class*="qrPanel"]')).not.toBeNull();
   });
 
   it('shows scanned text when onScanned fires', async () => {
     let qrCallback: ((data: { qrcodeUrl: string }) => void) | null = null;
     let scannedCallback: (() => void) | null = null;
 
-    mockWeixinLoginOnQR.mockImplementation((cb: any) => {
+    mockWeixinLoginOnQR.mockImplementation((cb: (data: { qrcodeUrl: string }) => void) => {
       qrCallback = cb;
       return vi.fn();
     });
-    mockWeixinLoginOnScanned.mockImplementation((cb: any) => {
+    mockWeixinLoginOnScanned.mockImplementation((cb: () => void) => {
       scannedCallback = cb;
       return vi.fn();
     });
     mockWeixinLoginStart.mockReturnValue(new Promise(() => {}));
 
-    render(<WeixinConfigForm pluginStatus={null} modelSelection={noopModelSelection} onStatusChange={vi.fn()} />);
+    render(<WeixinConfigForm pluginId='weixin_default' pluginStatus={null} onStatusChange={vi.fn()} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByText('扫码登录'));
+      fireEvent.click(screen.getByRole('button', { name: '扫码登录' }));
     });
     await act(async () => {
       qrCallback?.({ qrcodeUrl: 'https://example.com/qr.png' });
@@ -140,30 +166,79 @@ describe('WeixinConfigForm', () => {
       scannedCallback?.();
     });
 
-    expect(screen.getByText('已扫码，等待确认...')).toBeTruthy();
+    expect(screen.getByText('已扫码，等待确认...')).toBeInTheDocument();
+  });
+
+
+  it('auto-authorizes the scanned wechat user after login succeeds', async () => {
+    mockWeixinLoginStart.mockResolvedValue({
+      accountId: 'wx-bot-1',
+      botToken: 'token-1',
+      scannerUserId: 'wx-user-1',
+    });
+
+    render(<WeixinConfigForm pluginId='weixin_default' pluginStatus={null} onStatusChange={vi.fn()} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '扫码登录' }));
+    });
+
+    expect(mockEnablePlugin).toHaveBeenCalledWith({
+      pluginId: 'weixin_default',
+      config: { accountId: 'wx-bot-1', botToken: 'token-1' },
+    });
+    expect(mockAuthorizeRemoteUser).toHaveBeenCalledWith({
+      platformUserId: 'wx-user-1',
+      platformType: 'weixin',
+      displayName: '当前扫码微信',
+      chatId: 'wx-user-1',
+      pluginId: 'weixin_default',
+      metadata: {
+        source: 'weixin-qr-login',
+        loginAccountId: 'wx-bot-1',
+      },
+    });
+  });
+
+
+  it('rolls back enablement when the scanned wechat user is missing', async () => {
+    mockWeixinLoginStart.mockResolvedValue({
+      accountId: 'wx-bot-1',
+      botToken: 'token-1',
+    });
+
+    render(<WeixinConfigForm pluginId='weixin_default' pluginStatus={null} onStatusChange={vi.fn()} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '扫码登录' }));
+    });
+
+    const disablePlugin = vi.mocked((await import('@/common/adapter/ipcBridge')).channel.disablePlugin.invoke);
+    await waitFor(() => {
+      expect(disablePlugin).toHaveBeenCalledWith({ pluginId: 'weixin_default' });
+    });
+    expect(mockAuthorizeRemoteUser).not.toHaveBeenCalled();
   });
 
   it('shows already-connected state when pluginStatus.hasToken is true', () => {
-    const pluginStatus = {
-      id: 'weixin_default',
-      type: 'weixin',
-      enabled: true,
-      connected: true,
-      hasToken: true,
-      name: 'WeChat',
-      status: 'running' as const,
-    };
-
     render(
       <WeixinConfigForm
-        pluginStatus={pluginStatus as any}
-        modelSelection={noopModelSelection}
+        pluginId='weixin_default'
+        pluginStatus={{
+          id: 'weixin_default',
+          type: 'weixin',
+          enabled: true,
+          connected: true,
+          hasToken: true,
+          name: 'WeChat',
+          status: 'running',
+          activeUsers: 0,
+        }}
         onStatusChange={vi.fn()}
       />
     );
 
-    expect(screen.getByText('已连接')).toBeTruthy();
-    // Login button should not be shown
-    expect(screen.queryByText('扫码登录')).toBeNull();
+    expect(screen.getByText('已连接')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '扫码登录' })).toBeNull();
   });
 });

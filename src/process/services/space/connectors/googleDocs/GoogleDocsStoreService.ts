@@ -34,7 +34,9 @@ const writeJsonFile = async <T>(filePath: string, value: readonly T[]): Promise<
 };
 
 const buildRecordId = (doc: GoogleDoc): string => {
-  return createHash('sha256').update(`${doc.id}:${doc.title}:${doc.modifiedTime || ''}:${doc.sizeBytes || 0}`).digest('hex');
+  return createHash('sha256')
+    .update(`${doc.id}:${doc.title}:${doc.modifiedTime || ''}:${doc.sizeBytes || 0}`)
+    .digest('hex');
 };
 
 export class GoogleDocsStoreService {

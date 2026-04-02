@@ -29,7 +29,11 @@ import { initGeminiBridge } from './geminiBridge';
 import { initGeminiConversationBridge } from './geminiConversationBridge';
 import { initGoogleDriveConnectorBridge } from './googleDriveConnectorBridge';
 import { initGoogleDocsConnectorBridge } from './googleDocsConnectorBridge';
-import { initGoogleSheetsConnectorBridge, initGmailConnectorBridge, initGoogleCalendarConnectorBridge } from './googleWorkspaceFamilyBridges';
+import {
+  initGoogleSheetsConnectorBridge,
+  initGmailConnectorBridge,
+  initGoogleCalendarConnectorBridge,
+} from './googleWorkspaceFamilyBridges';
 import { initMcpBridge } from './mcpBridge';
 import { initModelBridge } from './modelBridge';
 import { initPreviewHistoryBridge } from './previewHistoryBridge';

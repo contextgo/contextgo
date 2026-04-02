@@ -29,7 +29,6 @@ export const contextRuntimeService = new ContextRuntimeService(contextService, (
     type: 'system',
     conversation_id: conversationId,
     msg_id: uuid(),
-    data:
-      `[ContextGo Review Required]\n${candidates.length} memory candidate(s) need human review before promotion.\n${preview}`,
+    data: `[ContextGo Review Required]\n${candidates.length} memory candidate(s) need human review before promotion.\n${preview}`,
   });
 });

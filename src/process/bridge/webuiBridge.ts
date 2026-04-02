@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ipcMain } from 'electron';
 import { webui } from '@/common/adapter/ipcBridge';
 import { SERVER_CONFIG } from '@process/webserver/config/constants';
 import { WebuiService } from './services/WebuiService';
@@ -52,6 +51,14 @@ export function initWebuiBridge(): void {
     }, 'Get status');
   });
 
+  webui.updatePreferences.provider(async ({ allowRemote, port }) => {
+    return WebuiService.handleAsync(async () => {
+      await WebuiService.updateLocalAccessPreferences({ allowRemote, port });
+      const status = await WebuiService.getStatus(webServerInstance);
+      return { success: true, data: status };
+    }, 'Update preferences');
+  });
+
   // 启动 WebUI / Start WebUI
   webui.start.provider(async ({ port: requestedPort, allowRemote }) => {
     try {
@@ -79,6 +86,11 @@ export function initWebuiBridge(): void {
       // 使用预加载的模块 / Use preloaded module
       const instance = await startWebServerWithInstance(port, remote);
       webServerInstance = instance;
+      await WebuiService.updateLocalAccessPreferences({
+        enabled: true,
+        allowRemote: remote,
+        port: instance.port,
+      });
 
       // 获取服务器信息 / Get server info
       const status = await WebuiService.getStatus(webServerInstance);
@@ -142,6 +154,10 @@ export function initWebuiBridge(): void {
       // 清理 WebSocket 广播注册 / Cleanup WebSocket broadcaster registration
       cleanupWebAdapter();
 
+      await WebuiService.updateLocalAccessPreferences({
+        enabled: false,
+        port: webServerInstance.port,
+      });
       webServerInstance = null;
 
       // 发送状态变更事件 / Emit status changed event
@@ -231,73 +247,5 @@ export function initWebuiBridge(): void {
   // 验证二维码 token / Verify QR token
   webui.verifyQRToken.provider(async ({ qrToken }) => {
     return verifyQRTokenDirect(qrToken);
-  });
-
-  // ===== 直接 IPC 处理器（绕过 bridge 库）/ Direct IPC handlers (bypass bridge library) =====
-  // 这些处理器直接返回结果，不依赖 emitter 模式
-  // These handlers return results directly, without relying on emitter pattern
-
-  // 直接 IPC: 重置密码 / Direct IPC: Reset password
-  ipcMain.handle('webui-direct-reset-password', async () => {
-    return WebuiService.handleAsync(async () => {
-      const newPassword = await WebuiService.resetPassword();
-      return { success: true, newPassword };
-    }, 'Direct IPC: Reset password');
-  });
-
-  // 直接 IPC: 获取状态 / Direct IPC: Get status
-  ipcMain.handle('webui-direct-get-status', async () => {
-    return WebuiService.handleAsync(async () => {
-      const status = await WebuiService.getStatus(webServerInstance);
-      return { success: true, data: status };
-    }, 'Direct IPC: Get status');
-  });
-
-  // 直接 IPC: 修改密码（不需要当前密码）/ Direct IPC: Change password (no current password required)
-  ipcMain.handle('webui-direct-change-password', async (_event, { newPassword }: { newPassword: string }) => {
-    return WebuiService.handleAsync(async () => {
-      await WebuiService.changePassword(newPassword);
-      return { success: true };
-    }, 'Direct IPC: Change password');
-  });
-
-  ipcMain.handle('webui-direct-change-username', async (_event, { newUsername }: { newUsername: string }) => {
-    return WebuiService.handleAsync(async () => {
-      const username = await WebuiService.changeUsername(newUsername);
-      return { success: true, data: { username } };
-    }, 'Direct IPC: Change username');
-  });
-
-  // 直接 IPC: 生成二维码 token / Direct IPC: Generate QR token
-  ipcMain.handle('webui-direct-generate-qr-token', async () => {
-    // 检查 webServerInstance 状态
-    if (!webServerInstance) {
-      return {
-        success: false,
-        msg: 'WebUI is not running. Please start WebUI first.',
-      };
-    }
-
-    try {
-      const { port, allowRemote } = webServerInstance;
-      const { qrUrl, expiresAt } = generateQRLoginUrlDirect(port, allowRemote);
-      // Extract token from QR URL
-      const token = new URL(qrUrl).searchParams.get('token') ?? '';
-
-      return {
-        success: true,
-        data: {
-          token,
-          expiresAt,
-          qrUrl,
-        },
-      };
-    } catch (error) {
-      console.error('[WebUI Bridge] Direct IPC: Generate QR token error:', error);
-      return {
-        success: false,
-        msg: error instanceof Error ? error.message : 'Failed to generate QR token',
-      };
-    }
   });
 }

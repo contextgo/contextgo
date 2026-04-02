@@ -9,6 +9,8 @@ import WebSocket, { type RawData } from 'ws';
 import type { OfficialRemoteStatus } from '@/common/types/cloud';
 import { getBridgeEmitter, registerWebSocketBroadcaster } from '@/common/adapter/registry';
 import { ProcessConfig } from '@process/utils/initStorage';
+import { getWebServerInstance } from '@process/bridge/webuiBridge';
+import { OfficialRemoteBrowserRelay } from './OfficialRemoteBrowserRelay';
 import { CLOUD_API_BASE_URL } from './constants';
 
 const CLOUD_DEVICE_TOKEN_KEY = 'cloud.deviceToken';
@@ -16,16 +18,55 @@ const OFFICIAL_REMOTE_RETRY_DELAY_MS = 3_000;
 const OFFICIAL_REMOTE_RECONCILE_INTERVAL_MS = 15_000;
 const OFFICIAL_REMOTE_PING_INTERVAL_MS = 20_000;
 const OFFICIAL_REMOTE_AUTH_CLOSE_CODES = new Set([4401]);
+const OFFICIAL_REMOTE_BROWSER_ENTRY_PLACEHOLDER_URL = 'official-remote://relay-ready';
+
+type OfficialRemoteRelayBrowserEntry = {
+  url?: string;
+  ready?: boolean;
+  reason?: string;
+};
 
 type OfficialRemoteRelayFrame =
-  | { type: 'hello'; deviceId?: string; connectedAt?: string; transport?: string }
+  | {
+      type: 'hello';
+      deviceId?: string;
+      connectedAt?: string;
+      transport?: string;
+      browserEntry?: OfficialRemoteRelayBrowserEntry;
+    }
   | { type: 'ping'; timestamp?: number }
   | { type: 'pong'; timestamp?: number }
   | { type: 'client_status'; connected?: boolean; connectedAt?: string }
-  | { type: 'bridge'; payload?: { name?: string; data?: unknown } };
+  | { type: 'bridge'; payload?: { name?: string; data?: unknown } }
+  | {
+      type: 'http_request';
+      requestId?: string;
+      request?: {
+        method?: string;
+        path?: string;
+        query?: string;
+        headers?: Record<string, string>;
+        bodyBase64?: string;
+      };
+    }
+  | {
+      type: 'http_response';
+      requestId?: string;
+      response?: {
+        statusCode?: number;
+        headers?: Record<string, string>;
+        bodyBase64?: string;
+        setCookies?: string[];
+      };
+    }
+  | { type: 'http_error'; requestId?: string; message?: string }
+  | { type: 'vite_client_connect'; socketId?: string; query?: string; protocols?: string[] }
+  | { type: 'vite_client_frame'; socketId?: string; data?: string }
+  | { type: 'vite_client_disconnect'; socketId?: string; code?: number; reason?: string };
 
 const DEFAULT_READY_MESSAGE = 'Official Remote is connected through ContextGo Cloud relay.';
 const DEFAULT_REAUTH_MESSAGE = 'Official Remote needs a fresh cloud login before this desktop can reconnect.';
+const BROWSER_ENTRY_UNAVAILABLE_MESSAGE = 'Desktop browser entry is still preparing for Official Remote.';
 
 export type OfficialRemoteTokenRefreshResult = {
   refreshed: boolean;
@@ -67,6 +108,29 @@ function rawDataToString(value: RawData): string {
   return Buffer.from(value).toString('utf-8');
 }
 
+function resolveBrowserEntryAvailability(): Promise<boolean> {
+  try {
+    const instance = getWebServerInstance();
+    if (Number.isFinite(instance?.port) && (instance?.port ?? 0) > 0) {
+      return Promise.resolve(true);
+    }
+  } catch {
+    // Fallback to persisted preference lookup below.
+  }
+
+  return ProcessConfig.get('webui.desktop.enabled')
+    .then(async (enabledValue) => {
+      if (enabledValue !== true) {
+        return false;
+      }
+
+      const portValue = await ProcessConfig.get('webui.desktop.port');
+      const port = typeof portValue === 'number' && Number.isFinite(portValue) && portValue > 0 ? portValue : null;
+      return Boolean(port);
+    })
+    .catch((): boolean => false);
+}
+
 export class OfficialRemoteTunnelService {
   private static instance: OfficialRemoteTunnelService | null = null;
 
@@ -88,6 +152,7 @@ export class OfficialRemoteTunnelService {
   private refreshDeviceTokenCallback: (() => Promise<OfficialRemoteTokenRefreshResult>) | null = null;
   private unregisterBridgeBroadcast: (() => void) | null = null;
   private socket: WebSocket | null = null;
+  private browserRelay: OfficialRemoteBrowserRelay | null = null;
   private activeToken: string | null = null;
   private tokenRefreshInFlight: Promise<void> | null = null;
   private relayUrl = buildOfficialRemoteRelayWebSocketUrl();
@@ -159,6 +224,7 @@ export class OfficialRemoteTunnelService {
     this.unregisterBridgeBroadcast?.();
     this.unregisterBridgeBroadcast = null;
     this.disconnectSocket();
+    await this.disposeBrowserRelay();
   }
 
   public getState(): OfficialRemoteStatus {
@@ -176,38 +242,54 @@ export class OfficialRemoteTunnelService {
         desired: false,
         running: false,
         clientConnected: false,
+        browserEntryReady: false,
+        browserEntryReason: 'Official Remote is not ready on this desktop yet.',
         transport: 'cloud-relay',
         relayUrl: this.relayUrl,
-        message: 'Official Remote is not enabled on this desktop yet.',
+        message: 'Official Remote is not ready on this desktop yet.',
         needsAttention: false,
       });
       this.disconnectSocket();
       return;
     }
 
-    this.updateState({
-      desired: true,
-      transport: 'cloud-relay',
-      relayUrl: this.relayUrl,
-      needsAttention: false,
-    });
-
     if (this.socket && this.activeToken !== deviceToken) {
       this.disconnectSocket();
     }
 
     if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+      this.updateState({
+        desired: true,
+        transport: 'cloud-relay',
+        relayUrl: this.relayUrl,
+        needsAttention: false,
+      });
       return;
     }
+
+    this.updateState({
+      desired: true,
+      browserEntryReady: false,
+      browserEntryReason: BROWSER_ENTRY_UNAVAILABLE_MESSAGE,
+      transport: 'cloud-relay',
+      relayUrl: this.relayUrl,
+      needsAttention: false,
+    });
 
     this.connectSocket(deviceToken);
   }
 
   private connectSocket(deviceToken: string): void {
     this.activeToken = deviceToken;
+    void this.disposeBrowserRelay();
+    this.browserRelay = new OfficialRemoteBrowserRelay((frame) => {
+      this.sendFrame(frame as OfficialRemoteRelayFrame);
+    });
     this.updateState({
       desired: true,
       running: false,
+      browserEntryReady: false,
+      browserEntryReason: BROWSER_ENTRY_UNAVAILABLE_MESSAGE,
       transport: 'cloud-relay',
       relayUrl: this.relayUrl,
       message: 'Connecting to ContextGo Cloud relay.',
@@ -232,10 +314,37 @@ export class OfficialRemoteTunnelService {
         desired: true,
         running: true,
         clientConnected: false,
+        browserEntryReady: false,
+        browserEntryReason: BROWSER_ENTRY_UNAVAILABLE_MESSAGE,
         transport: 'cloud-relay',
         relayUrl: this.relayUrl,
         message: DEFAULT_READY_MESSAGE,
         needsAttention: false,
+      });
+
+      void resolveBrowserEntryAvailability().then((browserEntryReady) => {
+        if (this.socket !== socket || socket.readyState !== WebSocket.OPEN) {
+          return;
+        }
+
+        this.updateState({
+          desired: true,
+          running: true,
+          clientConnected: false,
+          browserEntryReady,
+          browserEntryReason: browserEntryReady ? undefined : BROWSER_ENTRY_UNAVAILABLE_MESSAGE,
+          transport: 'cloud-relay',
+          relayUrl: this.relayUrl,
+          message: DEFAULT_READY_MESSAGE,
+          needsAttention: false,
+        });
+
+        this.sendFrame({
+          type: 'hello',
+          browserEntry: browserEntryReady
+            ? { url: OFFICIAL_REMOTE_BROWSER_ENTRY_PLACEHOLDER_URL, ready: true }
+            : { ready: false, reason: BROWSER_ENTRY_UNAVAILABLE_MESSAGE },
+        });
       });
     });
 
@@ -251,10 +360,20 @@ export class OfficialRemoteTunnelService {
       }
 
       if (frame.type === 'hello') {
+        const hasBrowserEntryState = frame.browserEntry && typeof frame.browserEntry === 'object';
+        const browserEntryReady = hasBrowserEntryState
+          ? frame.browserEntry?.ready === true
+          : this.state.browserEntryReady === true;
         this.updateState({
           desired: true,
           running: true,
           clientConnected: false,
+          browserEntryReady,
+          browserEntryReason: hasBrowserEntryState
+            ? browserEntryReady
+              ? undefined
+              : frame.browserEntry?.reason?.trim() || BROWSER_ENTRY_UNAVAILABLE_MESSAGE
+            : this.state.browserEntryReason,
           transport: 'cloud-relay',
           relayUrl: this.relayUrl,
           message: DEFAULT_READY_MESSAGE,
@@ -277,6 +396,26 @@ export class OfficialRemoteTunnelService {
         return;
       }
 
+      if (frame.type === 'http_request') {
+        void this.browserRelay?.handleHttpRequest(frame);
+        return;
+      }
+
+      if (frame.type === 'vite_client_connect') {
+        void this.browserRelay?.handleViteClientConnect(frame);
+        return;
+      }
+
+      if (frame.type === 'vite_client_frame') {
+        this.browserRelay?.handleViteClientFrame(frame);
+        return;
+      }
+
+      if (frame.type === 'vite_client_disconnect') {
+        this.browserRelay?.handleViteClientDisconnect(frame);
+        return;
+      }
+
       if (frame.type === 'bridge' && frame.payload?.name) {
         const emitter = getBridgeEmitter();
         emitter?.emit(frame.payload.name, frame.payload.data);
@@ -290,6 +429,7 @@ export class OfficialRemoteTunnelService {
 
       this.socket = null;
       this.stopPingTimer();
+      void this.disposeBrowserRelay();
 
       if (!this.state.desired) {
         return;
@@ -308,6 +448,8 @@ export class OfficialRemoteTunnelService {
         desired: true,
         running: false,
         clientConnected: false,
+        browserEntryReady: false,
+        browserEntryReason: BROWSER_ENTRY_UNAVAILABLE_MESSAGE,
         transport: 'cloud-relay',
         relayUrl: this.relayUrl,
         message,
@@ -325,6 +467,8 @@ export class OfficialRemoteTunnelService {
         desired: true,
         running: false,
         clientConnected: false,
+        browserEntryReady: false,
+        browserEntryReason: BROWSER_ENTRY_UNAVAILABLE_MESSAGE,
         transport: 'cloud-relay',
         relayUrl: this.relayUrl,
         message: error instanceof Error ? error.message : String(error),
@@ -343,6 +487,7 @@ export class OfficialRemoteTunnelService {
 
     const currentSocket = this.socket;
     this.socket = null;
+    void this.disposeBrowserRelay();
     if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
       currentSocket.close(1000, 'Official Remote disabled');
     } else {
@@ -362,6 +507,12 @@ export class OfficialRemoteTunnelService {
       clearInterval(this.pingTimer);
       this.pingTimer = null;
     }
+  }
+
+  private async disposeBrowserRelay(): Promise<void> {
+    const relay = this.browserRelay;
+    this.browserRelay = null;
+    await relay?.dispose();
   }
 
   private sendFrame(frame: OfficialRemoteRelayFrame): void {
@@ -392,6 +543,8 @@ export class OfficialRemoteTunnelService {
       desired: true,
       running: false,
       clientConnected: false,
+      browserEntryReady: false,
+      browserEntryReason: BROWSER_ENTRY_UNAVAILABLE_MESSAGE,
       transport: 'cloud-relay',
       relayUrl: this.relayUrl,
       message,
@@ -418,6 +571,8 @@ export class OfficialRemoteTunnelService {
             desired: false,
             running: false,
             clientConnected: false,
+            browserEntryReady: false,
+            browserEntryReason: result.message || DEFAULT_REAUTH_MESSAGE,
             transport: 'cloud-relay',
             relayUrl: this.relayUrl,
             message: result.message || DEFAULT_REAUTH_MESSAGE,
@@ -434,6 +589,8 @@ export class OfficialRemoteTunnelService {
           desired: true,
           running: false,
           clientConnected: false,
+          browserEntryReady: false,
+          browserEntryReason: error instanceof Error ? error.message : DEFAULT_REAUTH_MESSAGE,
           transport: 'cloud-relay',
           relayUrl: this.relayUrl,
           message: error instanceof Error ? error.message : DEFAULT_REAUTH_MESSAGE,

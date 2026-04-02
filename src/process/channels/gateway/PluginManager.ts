@@ -152,7 +152,7 @@ export class PluginManager {
       db.updateChannelPluginStatus(id, 'error');
 
       // Emit status change event with error
-      this.emitStatusChangeWithError(id, config, errorMsg);
+      void this.emitStatusChangeWithError(id, config, errorMsg);
 
       throw error;
     }
@@ -186,7 +186,7 @@ export class PluginManager {
       db.updateChannelPluginStatus(id, 'error');
 
       // Emit status change event with error
-      this.emitStatusChangeWithError(id, config, errorMsg);
+      void this.emitStatusChangeWithError(id, config, errorMsg);
 
       throw error;
     }
@@ -276,6 +276,37 @@ export class PluginManager {
     };
   }
 
+  private async buildBridgeStatus(
+    runtimeId: string,
+    config: IChannelPluginConfig,
+    overrides?: Partial<IChannelPluginStatus>
+  ): Promise<IChannelPluginStatus> {
+    const db = await getDatabase();
+    const connectorResult = db.getConnectorInstanceByLegacyPluginId(runtimeId);
+    const directConnectorResult = db.getConnectorInstance(runtimeId);
+    const connector =
+      connectorResult.success && connectorResult.data
+        ? connectorResult.data
+        : (directConnectorResult.success ? (directConnectorResult.data ?? undefined) : undefined);
+    const baseStatus = this.buildPluginStatus(config);
+    const resolvedType = connector?.platform ?? baseStatus.type;
+
+    return {
+      ...baseStatus,
+      ...overrides,
+      id: connector?.id ?? overrides?.id ?? baseStatus.id,
+      runtimeId,
+      type: resolvedType,
+      name: connector?.name ?? overrides?.name ?? baseStatus.name,
+      enabled: connector?.enabled ?? overrides?.enabled ?? baseStatus.enabled,
+      hasToken:
+        connector?.configured ??
+        overrides?.hasToken ??
+        hasPluginCredentials(resolvedType, connector?.credentials ?? config.credentials),
+      isExtension: !['telegram', 'lark', 'dingtalk', 'slack', 'discord'].includes(resolvedType),
+    };
+  }
+
   /**
    * Emit status change event to renderer
    */
@@ -284,7 +315,7 @@ export class PluginManager {
     const configResult = db.getChannelPlugin(pluginId);
 
     if (configResult.success && configResult.data) {
-      const status = this.buildPluginStatus(configResult.data);
+      const status = await this.buildBridgeStatus(pluginId, configResult.data);
       channelBridge.pluginStatusChanged.emit({ pluginId, status });
     }
   }
@@ -293,20 +324,18 @@ export class PluginManager {
    * Emit status change event with error (when plugin is not yet created)
    * 发送带错误的状态变化事件（当插件尚未创建时）
    */
-  private emitStatusChangeWithError(pluginId: string, config: IChannelPluginConfig, errorMessage: string): void {
-    const status: IChannelPluginStatus = {
-      id: config.id,
-      type: config.type,
-      name: config.name,
-      enabled: config.enabled,
+  private async emitStatusChangeWithError(
+    pluginId: string,
+    config: IChannelPluginConfig,
+    errorMessage: string
+  ): Promise<void> {
+    const status = await this.buildBridgeStatus(pluginId, config, {
       connected: false,
       status: 'error',
-      lastConnected: config.lastConnected,
       error: errorMessage,
       activeUsers: 0,
       botUsername: undefined,
-      hasToken: hasPluginCredentials(config.type, config.credentials),
-    };
+    });
     channelBridge.pluginStatusChanged.emit({ pluginId, status });
   }
 

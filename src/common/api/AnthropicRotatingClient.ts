@@ -5,7 +5,6 @@
  */
 
 import Anthropic, { type ClientOptions as AnthropicClientOptions_ } from '@anthropic-ai/sdk';
-import { AuthType } from '@office-ai/aioncli-core';
 import type { RotatingApiClientOptions } from './RotatingApiClient';
 import { RotatingApiClient } from './RotatingApiClient';
 import {
@@ -43,20 +42,11 @@ export class AnthropicRotatingClient extends RotatingApiClient<Anthropic> {
       return new Anthropic(clientConfig);
     };
 
-    super(apiKeys, AuthType.USE_ANTHROPIC, createClient, options);
+    super(apiKeys, createClient, options);
     this.config = config;
     this.converter = new OpenAI2AnthropicConverter({
       defaultModel: config.model || 'claude-sonnet-4-20250514',
     });
-  }
-
-  protected getCurrentApiKey(): string | undefined {
-    if (this.apiKeyManager?.hasMultipleKeys()) {
-      // For Anthropic, try to get from environment first
-      return process.env.ANTHROPIC_API_KEY || this.apiKeyManager.getCurrentKey();
-    }
-    // Use base class method for single key
-    return super.getCurrentApiKey();
   }
 
   /**

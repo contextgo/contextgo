@@ -1,6 +1,3 @@
-import { ApiKeyManager } from './ApiKeyManager';
-import type { AuthType } from '@office-ai/aioncli-core';
-
 // Unified interface for chat completion across different providers
 export interface UnifiedChatCompletionParams {
   model: string;
@@ -47,34 +44,24 @@ export interface ApiError extends Error {
 }
 
 export abstract class RotatingApiClient<T> {
-  protected apiKeyManager?: ApiKeyManager;
   protected client?: T;
   protected readonly createClientFn: (apiKey: string) => T;
   protected readonly options: Required<RotatingApiClientOptions>;
-  protected readonly originalApiKeys: string;
+  protected readonly apiKey: string;
 
-  constructor(
-    apiKeys: string,
-    authType: AuthType,
-    createClientFn: (apiKey: string) => T,
-    options: RotatingApiClientOptions = {}
-  ) {
-    this.originalApiKeys = apiKeys;
+  constructor(apiKey: string, createClientFn: (apiKey: string) => T, options: RotatingApiClientOptions = {}) {
+    this.apiKey = apiKey.trim();
     this.createClientFn = createClientFn;
     this.options = {
       maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
       retryDelay: options.retryDelay ?? DEFAULT_RETRY_DELAY,
     };
 
-    if (apiKeys && (apiKeys.includes(',') || apiKeys.includes('\n'))) {
-      this.apiKeyManager = new ApiKeyManager(apiKeys, authType);
-    }
-
     this.initializeClient();
   }
 
   protected initializeClient(): void {
-    const apiKey = this.getCurrentApiKey();
+    const apiKey = this.apiKey;
 
     if (apiKey) {
       try {
@@ -84,36 +71,6 @@ export abstract class RotatingApiClient<T> {
         throw error;
       }
     }
-  }
-
-  protected getCurrentApiKey(): string | undefined {
-    if (this.apiKeyManager?.hasMultipleKeys()) {
-      return this.apiKeyManager.getCurrentKey();
-    }
-    // For single key case, extract the first key
-    return this.extractFirstKey();
-  }
-
-  private extractFirstKey(): string | undefined {
-    if (!this.originalApiKeys) return undefined;
-
-    if (this.isSingleKey()) {
-      return this.originalApiKeys.trim() || undefined;
-    }
-
-    const keys = this.parseMultipleKeys();
-    return keys[0] || undefined;
-  }
-
-  private isSingleKey(): boolean {
-    return !this.originalApiKeys.includes(',') && !this.originalApiKeys.includes('\n');
-  }
-
-  private parseMultipleKeys(): string[] {
-    return this.originalApiKeys
-      .split(/[,\n]/)
-      .map((key) => key.trim())
-      .filter((key) => key);
   }
 
   protected isRetryableError(error: unknown): boolean {
@@ -144,13 +101,6 @@ export abstract class RotatingApiClient<T> {
         lastError = error;
 
         const isLastAttempt = attempt === this.options.maxRetries - 1;
-        const canRotateKey = this.apiKeyManager?.hasMultipleKeys() && this.isRetryableError(error) && !isLastAttempt;
-
-        if (canRotateKey && this.apiKeyManager.rotateKey()) {
-          this.initializeClient();
-          await this.delay(this.options.retryDelay * (attempt + 1));
-          continue;
-        }
 
         if (!this.isRetryableError(error) || isLastAttempt) {
           break;
@@ -162,13 +112,5 @@ export abstract class RotatingApiClient<T> {
     }
 
     throw lastError;
-  }
-
-  hasMultipleKeys(): boolean {
-    return this.apiKeyManager?.hasMultipleKeys() ?? false;
-  }
-
-  getKeyStatus() {
-    return this.apiKeyManager?.getStatus() ?? null;
   }
 }

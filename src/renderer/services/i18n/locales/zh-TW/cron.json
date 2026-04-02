@@ -62,21 +62,12 @@
     "title": "開箱即用的預設定時器",
     "description": "直接啟用這些高價值自動化場景，之後也可以繼續調整，或交給 Agent 進一步細化。",
     "packPacksTitle": "依行業模板包挑選",
-    "rolePacksTitle": "依角色挑選",
     "fillTemplate": "請為目前會話建立一個定時任務。\n名稱：{{name}}\n執行時間：{{scheduleDescription}}\n執行內容：{{message}}",
     "createSuccess": "已建立預設定時任務：{{name}}",
     "directCreateHint": "這些預設會直接綁定到目前會話。如果你想先調整時間或內容，也可以先填入輸入框，再讓 Agent 幫你修改。",
     "fillOnlyHint": "目前會話類型暫不支援直接建立。你仍可先把預設填入輸入框，再讓 Agent 協助建立定時任務。",
     "emptyHint": "預設定時器需要綁定到具體會話。先打開單一 Agent 會話，再點擊右上角時鐘按鈕即可一鍵啟用。",
     "recommended": "預設推薦",
-    "roles": {
-      "all": "全部",
-      "product": "產品",
-      "content": "內容",
-      "operations": "營運",
-      "sales": "銷售",
-      "research": "投研"
-    },
     "packs": {
       "all": "全部",
       "saasProduct": "SaaS 產品包",

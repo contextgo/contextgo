@@ -4,8 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { IProvider, TProviderWithModel } from '@/common/config/storage';
 import { getBuiltinChannel } from '@/common/config/builtinChannels';
+import { acpDetector } from '@process/agent/acp/AcpDetector';
 import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
+import { ProcessConfig } from '@process/utils/initStorage';
 import { getChannelMessageService } from '../agent/ChannelMessageService';
 import { getChannelManager } from '../core/ChannelManager';
 import { getChannelRouteResolver } from '../core/ChannelRouteResolver';
@@ -19,6 +22,7 @@ import {
   buildMainMenuActionButtons,
   buildSessionControlActionButtons,
 } from '../utils/actionButtons';
+import { resolveAgentSelectionCallbackToken } from '../utils/agentSelection';
 import {
   createFeaturesCard,
   createHelpCard,
@@ -52,6 +56,246 @@ function getPlatformDisplayName(platform: PluginType): string {
   }
   return platform === 'lark' ? 'Lark/Feishu' : builtinChannel.displayName;
 }
+
+type DetectedChannelAgent = ReturnType<typeof acpDetector.getDetectedAgents>[number];
+
+type SavedChannelAgentConfig = {
+  backend: string;
+  name?: string;
+  customAgentId?: string;
+  presetAgentType?: string;
+};
+
+const DEFAULT_CHANNEL_MODEL: TProviderWithModel = {
+  id: 'gemini_default',
+  platform: 'gemini',
+  name: 'Gemini',
+  baseUrl: 'https://generativelanguage.googleapis.com',
+  apiKey: '',
+  useModel: 'gemini-2.0-flash',
+};
+
+function toProviderWithModel(provider: IProvider, useModel: string): TProviderWithModel {
+  return {
+    ...provider,
+    useModel,
+  };
+}
+
+function resolveStoredPreferredModel(value: unknown): { id: string; useModel: string } | undefined {
+  if (typeof value === 'string' && value.trim()) {
+    return {
+      id: DEFAULT_CHANNEL_MODEL.id,
+      useModel: value.trim(),
+    };
+  }
+
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.id !== 'string' || typeof record.useModel !== 'string') {
+    return undefined;
+  }
+
+  return {
+    id: record.id,
+    useModel: record.useModel,
+  };
+}
+
+function resolveChannelAgentSessionType(backend: string): 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' {
+  if (backend === 'gemini') {
+    return 'gemini';
+  }
+  if (backend === 'codex') {
+    return 'codex';
+  }
+  if (backend === 'openclaw-gateway') {
+    return 'openclaw-gateway';
+  }
+  return 'acp';
+}
+
+function resolveChannelAgentEmoji(backend: string): string {
+  if (backend === 'claude') {
+    return '🧠';
+  }
+  if (backend === 'gemini') {
+    return '✨';
+  }
+  if (backend === 'codex') {
+    return '⌘';
+  }
+  if (backend === 'openclaw-gateway') {
+    return '🦅';
+  }
+  return '🤖';
+}
+
+function buildDetectedAgentSelectionKey(agent: Pick<DetectedChannelAgent, 'backend' | 'customAgentId'>): string {
+  if (agent.customAgentId) {
+    return `${agent.backend}:${agent.customAgentId}`;
+  }
+  return agent.backend;
+}
+
+function resolveDetectedChannelAgent(agentKey: string): DetectedChannelAgent | null {
+  const normalizedKey = resolveAgentSelectionCallbackToken(agentKey)?.key ?? agentKey;
+  if (!normalizedKey.trim()) {
+    return null;
+  }
+
+  const detectedAgents = acpDetector.getDetectedAgents();
+  return (
+    detectedAgents.find((agent) => {
+      const selectionKey = buildDetectedAgentSelectionKey(agent);
+      return selectionKey === normalizedKey || agent.backend === normalizedKey;
+    }) ?? null
+  );
+}
+
+function buildMainMenuDecoration(platform: PluginType): Record<string, unknown> {
+  if (platform === 'lark') {
+    return { replyMarkup: createMainMenuCard() };
+  }
+  if (platform === 'dingtalk') {
+    return { replyMarkup: createDingTalkMainMenuCard() };
+  }
+  if (usesActionButtons(platform)) {
+    return { buttons: buildMainMenuActionButtons() };
+  }
+  return { replyMarkup: createMainMenuKeyboard() };
+}
+
+export async function getChannelDefaultModel(platform: PluginType): Promise<TProviderWithModel> {
+  const builtinChannel = getBuiltinChannel(platform);
+
+  try {
+    const preferred = builtinChannel
+      ? resolveStoredPreferredModel(await ProcessConfig.get(builtinChannel.defaultModelConfigKey))
+      : undefined;
+    const providers = (await ProcessConfig.get('model.config')) as IProvider[] | undefined;
+    const providerList = Array.isArray(providers) ? providers : [];
+
+    if (preferred) {
+      const matchedProvider = providerList.find(
+        (provider) => provider.id === preferred.id && provider.model?.includes(preferred.useModel)
+      );
+      if (matchedProvider) {
+        return toProviderWithModel(matchedProvider, preferred.useModel);
+      }
+    }
+
+    const geminiProvider = providerList.find(
+      (provider) => provider.platform === 'gemini' && provider.apiKey && provider.model?.length
+    );
+    if (geminiProvider) {
+      return toProviderWithModel(geminiProvider, geminiProvider.model[0]);
+    }
+
+    const availableProvider = providerList.find((provider) => provider.apiKey && provider.model?.length);
+    if (availableProvider) {
+      return toProviderWithModel(availableProvider, availableProvider.model[0]);
+    }
+  } catch {
+    return DEFAULT_CHANNEL_MODEL;
+  }
+
+  return DEFAULT_CHANNEL_MODEL;
+}
+
+export const handleAgentSelect: ActionHandler = async (context, params) => {
+  const builtinChannel = getBuiltinChannel(context.platform);
+  if (!builtinChannel) {
+    return createErrorResponse('Unsupported channel platform');
+  }
+  if (!context.channelUser) {
+    return createErrorResponse('User not authorized');
+  }
+
+  const agentKey = typeof params?.agentKey === 'string' ? params.agentKey : '';
+  const selectedAgent = resolveDetectedChannelAgent(agentKey);
+  if (!selectedAgent) {
+    return createErrorResponse('Invalid or unavailable agent');
+  }
+
+  const savedAgentConfig: SavedChannelAgentConfig = {
+    backend: selectedAgent.backend,
+    name: selectedAgent.name,
+    ...(selectedAgent.customAgentId ? { customAgentId: selectedAgent.customAgentId } : {}),
+    ...(selectedAgent.presetAgentType ? { presetAgentType: selectedAgent.presetAgentType } : {}),
+  };
+
+  await ProcessConfig.set(builtinChannel.agentConfigKey, savedAgentConfig);
+
+  const sessionManager = getChannelManager().getSessionManager();
+  if (!sessionManager) {
+    return createErrorResponse('Session manager not available');
+  }
+
+  const existingSession = sessionManager.getSession(context.channelUser.id, context.chatId);
+  if (existingSession) {
+    await getChannelMessageService().clearContext(existingSession.id);
+    if (existingSession.conversationId) {
+      try {
+        workerTaskManager.kill(existingSession.conversationId);
+      } catch (error) {
+        console.warn('[SystemActions] Failed to kill conversation during agent switch:', error);
+      }
+    }
+  }
+
+  await sessionManager.clearSession(context.channelUser.id, context.chatId);
+
+  const route = await getChannelRouteResolver().resolveAuthorizedRoute({
+    platform: context.platform,
+    pluginId: context.pluginId,
+    platformUserId: context.userId,
+    chatId: context.chatId,
+    displayName: context.displayName,
+    forceNewConversation: true,
+    overrideAgentType: resolveChannelAgentSessionType(selectedAgent.backend),
+  });
+
+  await sessionManager.storeSession(route.session);
+  context.channelUser = route.channelUser;
+  context.connector = route.connector;
+  context.remoteIdentity = route.remoteIdentity;
+  context.channelBinding = route.binding;
+  context.agentProfile = route.agentProfile;
+  context.externalSession = route.externalSession;
+  context.sessionId = route.session.id;
+  context.conversationId = route.conversation.id;
+
+  return createSuccessResponse({
+    type: 'text',
+    text: `Switched to <b>${resolveChannelAgentEmoji(selectedAgent.backend)} ${selectedAgent.name}</b>`,
+    parseMode: 'HTML',
+    ...buildMainMenuDecoration(context.platform),
+  });
+};
+
+export const handleAgentShow: ActionHandler = async (context) => {
+  const builtinChannel = getBuiltinChannel(context.platform);
+  if (!builtinChannel) {
+    return createErrorResponse('Unsupported channel platform');
+  }
+
+  const savedConfig = (await ProcessConfig.get(builtinChannel.agentConfigKey)) as SavedChannelAgentConfig | undefined;
+  const savedKey = savedConfig?.customAgentId ? `${savedConfig.backend}:${savedConfig.customAgentId}` : savedConfig?.backend;
+  const detectedAgent = savedKey ? resolveDetectedChannelAgent(savedKey) : null;
+  const backend = detectedAgent?.backend ?? savedConfig?.backend ?? 'gemini';
+  const displayName = detectedAgent?.name ?? savedConfig?.name ?? backend;
+
+  return createSuccessResponse({
+    type: 'text',
+    text: `Current: <b>${resolveChannelAgentEmoji(backend)} ${displayName}</b>`,
+    parseMode: 'HTML',
+    ...buildMainMenuDecoration(context.platform),
+  });
+};
 
 /**
  * SystemActions - Handlers for system-level actions

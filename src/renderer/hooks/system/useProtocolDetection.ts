@@ -19,8 +19,6 @@ interface UseProtocolDetectionOptions {
   autoDetect?: boolean;
   /** 超时时间（毫秒）/ Timeout in milliseconds */
   timeout?: number;
-  /** 是否测试所有 Key / Whether to test all keys */
-  testAllKeys?: boolean;
 }
 
 /**
@@ -48,7 +46,7 @@ interface UseProtocolDetectionResult {
  * Used to auto-detect the protocol type used by an API endpoint
  *
  * @param baseUrl - Base URL
- * @param apiKey - API Key（可以是逗号或换行分隔的多个 Key）
+ * @param apiKey - API Key
  * @param options - 配置选项
  */
 export function useProtocolDetection(
@@ -56,7 +54,7 @@ export function useProtocolDetection(
   apiKey: string,
   options: UseProtocolDetectionOptions = {}
 ): UseProtocolDetectionResult {
-  const { debounceMs = 800, autoDetect = true, timeout = 10000, testAllKeys = false } = options;
+  const { debounceMs = 800, autoDetect = true, timeout = 10000 } = options;
 
   const [isDetecting, setIsDetecting] = useState(false);
   const [result, setResult] = useState<ProtocolDetectionResponse | null>(null);
@@ -97,7 +95,6 @@ export function useProtocolDetection(
           baseUrl: url,
           apiKey: key,
           timeout,
-          testAllKeys,
         });
 
         // 检查是否是最新的请求
@@ -127,7 +124,7 @@ export function useProtocolDetection(
         }
       }
     },
-    [timeout, testAllKeys]
+    [timeout]
   );
 
   /**

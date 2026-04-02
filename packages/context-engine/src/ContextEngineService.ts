@@ -271,7 +271,9 @@ export class ContextEngineService implements IContextService {
     ]);
 
     const memoryTierFilter = input.memoryTiers ? new Set(input.memoryTiers) : null;
-    const eligibleMemories = allMemories.filter((memory) => (memoryTierFilter ? memoryTierFilter.has(memory.tier) : true));
+    const eligibleMemories = allMemories.filter((memory) =>
+      memoryTierFilter ? memoryTierFilter.has(memory.tier) : true
+    );
 
     const lexicalMemories = new Map<string, RetrievedMemory>();
     if (searchMode !== 'vector') {
@@ -411,7 +413,10 @@ export class ContextEngineService implements IContextService {
     );
 
     const totalEstimatedTokens =
-      memories.reduce((sum, item) => sum + estimateTokenCount(`${item.memory.summary} ${item.memory.detail ?? ''}`), 0) +
+      memories.reduce(
+        (sum, item) => sum + estimateTokenCount(`${item.memory.summary} ${item.memory.detail ?? ''}`),
+        0
+      ) +
       chunks.reduce((sum, item) => sum + estimateTokenCount(item.chunk.text), 0) +
       profiles.reduce((sum, item) => sum + estimateTokenCount(item.summary), 0) +
       sources.reduce((sum, item) => sum + estimateTokenCount(`${item.title ?? ''} ${item.tags.join(' ')}`), 0);

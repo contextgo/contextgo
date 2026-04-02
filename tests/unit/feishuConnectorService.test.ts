@@ -6,11 +6,16 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { FeishuConnectorService, normalizeFeishuConnectorConfig } from '../../src/process/services/space/connectors/feishu/FeishuConnectorService';
+import {
+  FeishuConnectorService,
+  normalizeFeishuConnectorConfig,
+} from '../../src/process/services/space/connectors/feishu/FeishuConnectorService';
 import type { FeishuConnectorConfig } from '../../src/common/types/connectors/feishu';
 
 type FeishuStore = {
-  get: <K extends 'connector.feishu.openapi.config'>(key: K) => Promise<{ 'connector.feishu.openapi.config'?: FeishuConnectorConfig }[K]>;
+  get: <K extends 'connector.feishu.openapi.config'>(
+    key: K
+  ) => Promise<{ 'connector.feishu.openapi.config'?: FeishuConnectorConfig }[K]>;
   set: <K extends 'connector.feishu.openapi.config'>(
     key: K,
     value: { 'connector.feishu.openapi.config'?: FeishuConnectorConfig }[K]

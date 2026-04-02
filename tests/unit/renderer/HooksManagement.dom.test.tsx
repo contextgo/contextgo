@@ -40,6 +40,35 @@ vi.mock('@/common', () => ({
   },
 }));
 
+vi.mock('@/renderer/components/base', () => ({
+  ContextGoModal: ({
+    visible,
+    header,
+    footer,
+    children,
+  }: {
+    visible?: boolean;
+    header?: React.ReactNode | { title?: React.ReactNode };
+    footer?: React.ReactNode | { render?: () => React.ReactNode };
+    children?: React.ReactNode;
+  }) => {
+    if (!visible) {
+      return null;
+    }
+
+    const headerTitle = typeof header === 'object' && header !== null && 'title' in header ? header.title : header;
+    const footerNode = typeof footer === 'object' && footer !== null && 'render' in footer ? footer.render?.() : footer;
+
+    return (
+      <div data-testid='mock-contextgo-modal'>
+        <div>{headerTitle}</div>
+        <div>{children}</div>
+        <div>{footerNode}</div>
+      </div>
+    );
+  },
+}));
+
 vi.mock('@/renderer/pages/settings/components/SettingsPageWrapper', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div data-testid='settings-page-wrapper'>{children}</div>,
 }));
@@ -54,6 +83,17 @@ vi.mock('@/renderer/components/Markdown', () => ({
 
 vi.mock('@/renderer/components/chat/CollapsibleContent', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('@/renderer/hooks/context/ThemeContext', () => ({
+  useThemeContext: () => ({
+    theme: 'light',
+    setTheme: vi.fn(),
+    colorScheme: 'default',
+    setColorScheme: vi.fn(),
+    fontScale: 1,
+    setFontScale: vi.fn(),
+  }),
 }));
 
 vi.mock('@office-ai/platform', () => ({
@@ -378,7 +418,7 @@ describe('HooksManagement', () => {
       target: { value: 'handoff/{{conversationId}}' },
     });
 
-    fireEvent.click(screen.getByText('OK'));
+    fireEvent.click(screen.getAllByText('Save')[0]);
 
     await waitFor(() => {
       expect(updateHookManifestMock).toHaveBeenCalledWith({
@@ -497,7 +537,7 @@ describe('AssistantEditDrawer hook routing', () => {
       target: { value: 'handoff/{{conversationId}}' },
     });
 
-    fireEvent.click(screen.getByText('OK'));
+    fireEvent.click(screen.getAllByText('Save')[0]);
 
     await waitFor(() => {
       expect(updateHookManifestMock).toHaveBeenCalledWith({

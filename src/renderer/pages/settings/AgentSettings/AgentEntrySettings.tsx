@@ -14,12 +14,17 @@ const AgentEntrySettings: React.FC = () => {
   const { pathname } = useLocation();
   const mode = pathname.endsWith('/runtime')
     ? 'runtime'
-    : pathname.endsWith('/active-sessions')
+    : pathname.endsWith('/active-sessions') || pathname.endsWith('/agent-publish')
       ? 'sessions'
       : 'channels';
 
+  const useContainedScrollLayout = mode === 'channels';
+
   return (
-    <SettingsPageWrapper contentClassName={mode === 'runtime' ? 'max-w-1200px' : undefined}>
+    <SettingsPageWrapper
+      className={useContainedScrollLayout ? 'settings-page-wrapper--contained' : undefined}
+      contentClassName={useContainedScrollLayout ? 'settings-page-content--contained' : undefined}
+    >
       {mode === 'runtime' ? <RuntimeManagement /> : <ChannelModalContent mode={mode} />}
     </SettingsPageWrapper>
   );

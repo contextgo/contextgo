@@ -173,6 +173,12 @@ describe('CronService', () => {
   it('addJob inserts into repo and emits jobCreated', async () => {
     vi.mocked(repo.listByConversation).mockReturnValue([]);
 
+    vi.mocked(conversationRepo.getConversation).mockReturnValue({
+      id: 'conv-1',
+      name: 'Workspace Alpha',
+      extra: { workspace: '/tmp/workspace-alpha' },
+    } as any);
+
     const job = await service.addJob({
       name: 'my-job',
       schedule: { kind: 'every', everyMs: 10000, description: 'test' },
@@ -182,7 +188,15 @@ describe('CronService', () => {
       createdBy: 'user',
     });
 
-    expect(repo.insert).toHaveBeenCalledWith(expect.objectContaining({ name: 'my-job' }));
+    expect(repo.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'my-job',
+        metadata: expect.objectContaining({
+          conversationTitle: 'Workspace Alpha',
+          workspacePath: '/tmp/workspace-alpha',
+        }),
+      })
+    );
     expect(emitter.emitJobCreated).toHaveBeenCalledWith(expect.objectContaining({ name: 'my-job' }));
     expect(job.name).toBe('my-job');
   });

@@ -81,12 +81,20 @@ describe('gmailConnectorBridge', () => {
       data: { clientId: 'gmail-client-id' },
     });
     await expect(handlers.start?.({})).resolves.toEqual({ success: true, data: { lifecycle: 'running' } });
-    expect(emitters.statusChanged).toHaveBeenCalledWith({ lifecycle: 'running', messageCount: 0, storeDir: '/tmp/gmail-store' });
+    expect(emitters.statusChanged).toHaveBeenCalledWith({
+      lifecycle: 'running',
+      messageCount: 0,
+      storeDir: '/tmp/gmail-store',
+    });
   });
 
   it('lists and syncs gmail messages', async () => {
     mockService.listMessages.mockResolvedValueOnce([{ id: 'msg-1', subject: 'Hello' }]);
-    mockStoreService.syncMessages.mockResolvedValueOnce({ storedCount: 1, syncedAt: '2026-03-31T10:00:00.000Z', storeDir: '/tmp/gmail-store' });
+    mockStoreService.syncMessages.mockResolvedValueOnce({
+      storedCount: 1,
+      syncedAt: '2026-03-31T10:00:00.000Z',
+      storeDir: '/tmp/gmail-store',
+    });
     mockService.getStatus.mockResolvedValueOnce({ lifecycle: 'stopped' });
     mockStoreService.getStats.mockResolvedValueOnce({ messageCount: 1, storeDir: '/tmp/gmail-store' });
     mockStoreService.listStoredMessages.mockResolvedValueOnce([{ recordId: 'rec-1', subject: 'Hello' }]);

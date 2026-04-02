@@ -238,4 +238,49 @@ describe('connectCodex - Windows diagnostics', () => {
     expect(setup).toHaveBeenCalledTimes(1);
     expect(cleanup).not.toHaveBeenCalled();
   });
+
+  it('captures codex login status from stderr when stdout is empty', async () => {
+    const mainLogMock = vi.fn();
+    const mainWarnMock = vi.fn();
+
+    vi.doMock('@process/utils/mainLogger', () => ({
+      mainLog: mainLogMock,
+      mainWarn: mainWarnMock,
+    }));
+
+    vi.resetModules();
+
+    const { execFile: execFileMock } = await import('child_process');
+    vi.mocked(execFileMock).mockImplementation(
+      (
+        _cmd: string,
+        args: string[],
+        _opts: unknown,
+        cb: (err: null, result: { stdout: string; stderr: string }) => void
+      ) => {
+        if (args[0] === '--version') {
+          cb(null, { stdout: '0.0.1\n', stderr: '' });
+          return undefined as never;
+        }
+
+        cb(null, { stdout: '', stderr: 'Logged in using an API key - sk-test\n' });
+        return undefined as never;
+      }
+    );
+
+    const { connectCodex: connectCodexWithFreshMocks } = await import('../../src/process/agent/acp/acpConnectors');
+
+    const setup = vi.fn().mockResolvedValue(undefined);
+    const cleanup = vi.fn().mockResolvedValue(undefined);
+
+    await connectCodexWithFreshMocks('/tmp/codex', { setup, cleanup });
+
+    expect(mainWarnMock).not.toHaveBeenCalledWith('[ACP codex]', 'Failed to read codex login status', expect.anything());
+    expect(mainLogMock).toHaveBeenCalledWith('[ACP codex]', 'Runtime diagnostics',
+      expect.objectContaining({
+        loginStatus: 'Logged in using an API key - sk-test',
+        hasChatGptSession: false,
+      })
+    );
+  });
 });

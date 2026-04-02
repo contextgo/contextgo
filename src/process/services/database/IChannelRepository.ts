@@ -22,6 +22,8 @@ export interface IChannelRepository {
   deleteChannelUser(userId: string): Promise<void>;
   getChannelSessions(): Promise<IChannelSession[]>;
   getConnectorInstances(): Promise<IConnectorInstance[]>;
+  upsertConnectorInstance(connector: IConnectorInstance): Promise<void>;
+  deleteConnectorInstance(connectorId: string): Promise<void>;
   getAgentProfiles(): Promise<IAgentProfile[]>;
   getRemoteIdentities(connectorId?: string): Promise<IRemoteIdentity[]>;
   getChannelBindings(connectorId?: string): Promise<IChannelBinding[]>;

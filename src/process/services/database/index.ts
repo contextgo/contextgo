@@ -762,7 +762,9 @@ export class AionUIDatabase {
 
   updateSpace(
     spaceId: string,
-    updates: Partial<Pick<TSpace, 'name' | 'engine' | 'description' | 'members' | 'permissionsPolicy' | 'isDefault' | 'archivedAt'>>
+    updates: Partial<
+      Pick<TSpace, 'name' | 'engine' | 'description' | 'members' | 'permissionsPolicy' | 'isDefault' | 'archivedAt'>
+    >
   ): IQueryResult<boolean> {
     try {
       const existing = this.getSpace(spaceId);
@@ -2147,6 +2149,27 @@ export class AionUIDatabase {
     }
   }
 
+  getRemoteIdentityByConnectorPlatformChat(
+    connectorId: string,
+    platformChatId: string
+  ): IQueryResult<IRemoteIdentity | null> {
+    try {
+      const row = this.db
+        .prepare(
+          `SELECT * FROM remote_identities
+           WHERE connector_id = ? AND (
+             platform_chat_id = ? OR (platform_chat_id IS NULL AND remote_chat_id = ?)
+           )
+           ORDER BY COALESCE(last_active, authorized_at) DESC, authorized_at DESC
+           LIMIT 1`
+        )
+        .get(connectorId, platformChatId, platformChatId) as IRemoteIdentityRow | undefined;
+      return { success: true, data: row ? rowToRemoteIdentity(row) : null };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
   getRemoteIdentityByLegacyUserId(legacyUserId: string): IQueryResult<IRemoteIdentity | null> {
     try {
       const row = this.db.prepare('SELECT * FROM remote_identities WHERE legacy_user_id = ?').get(legacyUserId) as
@@ -2183,15 +2206,20 @@ export class AionUIDatabase {
       this.db
         .prepare(`
           INSERT INTO remote_identities (
-            id, connector_id, remote_user_id, remote_chat_id, remote_chat_type,
+            id, connector_id, remote_user_id, remote_chat_id, platform_chat_id,
+            remote_chat_type, peer_scope, parent_chat_id, thread_id,
             display_name, authorized_at, last_active, metadata, legacy_user_id
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             connector_id = excluded.connector_id,
             remote_user_id = excluded.remote_user_id,
             remote_chat_id = excluded.remote_chat_id,
+            platform_chat_id = excluded.platform_chat_id,
             remote_chat_type = excluded.remote_chat_type,
+            peer_scope = excluded.peer_scope,
+            parent_chat_id = excluded.parent_chat_id,
+            thread_id = excluded.thread_id,
             display_name = excluded.display_name,
             authorized_at = excluded.authorized_at,
             last_active = excluded.last_active,
@@ -2203,7 +2231,11 @@ export class AionUIDatabase {
           row.connector_id,
           row.remote_user_id,
           row.remote_chat_id,
+          row.platform_chat_id,
           row.remote_chat_type,
+          row.peer_scope,
+          row.parent_chat_id,
+          row.thread_id,
           row.display_name,
           row.authorized_at,
           row.last_active,
@@ -2541,7 +2573,7 @@ export class AionUIDatabase {
         .prepare(`
           INSERT INTO channel_control_leases (
             external_session_id, owner_key, control_mode, source_external_session_id,
-            source_conversation_id, handoff_mode, created_at, updated_at, released_at
+            source_conversation_id, continuation_mode, created_at, updated_at, released_at
           )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(external_session_id) DO UPDATE SET
@@ -2549,7 +2581,7 @@ export class AionUIDatabase {
             control_mode = excluded.control_mode,
             source_external_session_id = excluded.source_external_session_id,
             source_conversation_id = excluded.source_conversation_id,
-            handoff_mode = excluded.handoff_mode,
+            continuation_mode = excluded.continuation_mode,
             updated_at = excluded.updated_at,
             released_at = excluded.released_at
         `)
@@ -2559,7 +2591,7 @@ export class AionUIDatabase {
           row.control_mode,
           row.source_external_session_id,
           row.source_conversation_id,
-          row.handoff_mode,
+          row.continuation_mode,
           row.created_at,
           row.updated_at,
           row.released_at
@@ -2572,7 +2604,9 @@ export class AionUIDatabase {
 
   deleteChannelControlLease(externalSessionId: string): IQueryResult<boolean> {
     try {
-      const result = this.db.prepare('DELETE FROM channel_control_leases WHERE external_session_id = ?').run(externalSessionId);
+      const result = this.db
+        .prepare('DELETE FROM channel_control_leases WHERE external_session_id = ?')
+        .run(externalSessionId);
       return { success: true, data: result.changes > 0 };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -2777,6 +2811,7 @@ export class AionUIDatabase {
           `
             SELECT
               ri.id,
+              ri.connector_id,
               ri.legacy_user_id,
               COALESCE(ri.remote_user_id, au.platform_user_id, ri.remote_chat_id) AS platform_user_id,
               ci.platform AS platform_type,
@@ -2793,6 +2828,7 @@ export class AionUIDatabase {
         )
         .all() as Array<{
         id: string;
+        connector_id: string;
         legacy_user_id: string | null;
         platform_user_id: string;
         platform_type: string;
@@ -2804,6 +2840,7 @@ export class AionUIDatabase {
 
       const projectedUsers: IChannelUser[] = projectedRows.map((row) => ({
         id: row.id,
+        connectorId: row.connector_id,
         platformUserId: row.platform_user_id,
         platformType: row.platform_type as PluginType,
         displayName: row.display_name ?? undefined,
@@ -2841,6 +2878,7 @@ export class AionUIDatabase {
           `
             SELECT
               ri.id AS remote_identity_id,
+              ri.connector_id,
               au.id AS assistant_user_id,
               COALESCE(ri.remote_user_id, au.platform_user_id, ri.remote_chat_id) AS platform_user_id,
               ci.platform AS platform_type,
@@ -2860,6 +2898,7 @@ export class AionUIDatabase {
         .get(platformType, platformUserId) as
         | {
             remote_identity_id: string;
+            connector_id: string;
             assistant_user_id: string | null;
             platform_user_id: string;
             platform_type: string;
@@ -2881,6 +2920,7 @@ export class AionUIDatabase {
         success: true,
         data: {
           id: projectedRow.remote_identity_id,
+          connectorId: projectedRow.connector_id,
           platformUserId: projectedRow.platform_user_id,
           platformType: projectedRow.platform_type as PluginType,
           displayName: projectedRow.display_name ?? undefined,

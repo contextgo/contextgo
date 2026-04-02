@@ -4,7 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { VectorIndexDocument, VectorIndexProvider, VectorSearchHit, VectorSearchInput } from '../../../../../packages/context-engine/src/vectorIndex';
+import type {
+  VectorIndexDocument,
+  VectorIndexProvider,
+  VectorSearchHit,
+  VectorSearchInput,
+} from '../../../../../packages/context-engine/src/vectorIndex';
 import type { EmbeddingProvider } from './OpenAICompatibleEmbeddingProvider';
 
 export type QdrantVectorProviderConfig = {
@@ -68,9 +73,7 @@ export class QdrantVectorProvider implements VectorIndexProvider {
 
   async search(input: VectorSearchInput): Promise<readonly VectorSearchHit[]> {
     const vector = await this.embeddings.embedQuery(input.query);
-    const must: Array<Record<string, unknown>> = [
-      { key: 'spaceId', match: { value: input.spaceId } },
-    ];
+    const must: Array<Record<string, unknown>> = [{ key: 'spaceId', match: { value: input.spaceId } }];
 
     if (input.threadId) {
       must.push({

@@ -90,9 +90,12 @@ vi.mock('@arco-design/web-react', () => {
       {children}
     </label>
   );
+  const Steps = ({ children }: React.PropsWithChildren) => <div>{children}</div>;
+  Steps.Step = ({ children }: React.PropsWithChildren) => <div>{children}</div>;
 
   return {
     Divider: () => <hr />,
+    Steps,
     Form: Object.assign(FormComponent, { Item: FormItem }),
     Tooltip: ({ children }: React.PropsWithChildren) => <>{children}</>,
     Button: ({
@@ -145,6 +148,35 @@ vi.mock('@arco-design/web-react', () => {
     },
   };
 });
+
+vi.mock('@/renderer/components/base', () => ({
+  ContextGoModal: ({
+    visible,
+    header,
+    footer,
+    children,
+  }: {
+    visible?: boolean;
+    header?: React.ReactNode | { title?: React.ReactNode };
+    footer?: React.ReactNode | { render?: () => React.ReactNode };
+    children?: React.ReactNode;
+  }) => {
+    if (!visible) {
+      return null;
+    }
+
+    const headerTitle = typeof header === 'object' && header !== null && 'title' in header ? header.title : header;
+    const footerNode = typeof footer === 'object' && footer !== null && 'render' in footer ? footer.render?.() : footer;
+
+    return (
+      <div data-testid='mock-contextgo-modal'>
+        <div>{headerTitle}</div>
+        <div>{children}</div>
+        <div>{footerNode}</div>
+      </div>
+    );
+  },
+}));
 
 vi.mock('@/renderer/components/base/ContextGoScrollArea', () => ({
   default: ({ children }: React.PropsWithChildren) => <div>{children}</div>,

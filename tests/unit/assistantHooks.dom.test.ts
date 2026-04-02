@@ -149,9 +149,10 @@ describe('useAssistantList', () => {
     const { result } = renderHook(() => useAssistantList());
 
     await waitFor(() => {
-      expect(result.current.assistants.length).toBe(2);
+      expect(result.current.assistants.length).toBe(3);
     });
 
+    // builtin fallback keeps default and coder available, then we switch to the custom agent
     // Set active to custom-1
     act(() => {
       result.current.setActiveAssistantId('custom-1');
@@ -171,7 +172,7 @@ describe('useAssistantList', () => {
     const { result } = renderHook(() => useAssistantList());
 
     await waitFor(() => {
-      expect(result.current.assistants.length).toBe(2);
+      expect(result.current.assistants.length).toBe(3);
     });
 
     act(() => {
@@ -207,7 +208,11 @@ describe('useAssistantList', () => {
     const { result } = renderHook(() => useAssistantList());
 
     await waitFor(() => {
-      expect(result.current.assistants.length).toBe(1);
+      expect(result.current.assistants.length).toBe(3);
+    });
+
+    act(() => {
+      result.current.setActiveAssistantId('ext-buddy');
     });
 
     expect(result.current.isReadonlyAssistant).toBe(true);

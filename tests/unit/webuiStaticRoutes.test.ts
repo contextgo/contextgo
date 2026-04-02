@@ -34,6 +34,37 @@ afterEach(() => {
 });
 
 describe('registerStaticRoutes', () => {
+  it('prefers the live Vite renderer in Electron dev even when a renderer build exists', async () => {
+    const packagedRoot = createPackagedRendererRoot();
+    const originalRendererUrl = process.env.ELECTRON_RENDERER_URL;
+    process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173';
+
+    vi.doMock('electron', () => ({
+      app: {
+        setName: vi.fn(),
+        getAppPath: () => packagedRoot,
+      },
+    }));
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    try {
+      const { registerStaticRoutes } = await import('@process/webserver/routes/staticRoutes');
+      const app = express();
+
+      registerStaticRoutes(app);
+
+      expect(getRegisteredGetRoutePaths(app)).toEqual([]);
+      expect(logSpy).toHaveBeenCalledWith('[WebUI] Using live renderer dev server via proxy: http://localhost:5173');
+    } finally {
+      if (originalRendererUrl === undefined) {
+        delete process.env.ELECTRON_RENDERER_URL;
+      } else {
+        process.env.ELECTRON_RENDERER_URL = originalRendererUrl;
+      }
+    }
+  });
+
   it('does not register a dedicated /favicon.ico route in production static mode', async () => {
     const packagedRoot = createPackagedRendererRoot();
 
@@ -42,6 +73,13 @@ describe('registerStaticRoutes', () => {
         setName: vi.fn(),
         getAppPath: () => packagedRoot,
       },
+    }));
+    vi.doMock('@/common/platform', () => ({
+      getPlatformServices: () => ({
+        paths: {
+          getAppPath: () => packagedRoot,
+        },
+      }),
     }));
     vi.doMock('@process/webserver/auth/middleware/TokenMiddleware', () => ({
       TokenMiddleware: {

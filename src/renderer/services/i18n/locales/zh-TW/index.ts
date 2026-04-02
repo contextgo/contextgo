@@ -17,7 +17,6 @@ import cron from './cron.json';
 import starOffice from './starOffice.json';
 import guid from './guid.json';
 import agent from './agent.json';
-import space from './space.json';
 
 export default {
   common,
@@ -38,5 +37,4 @@ export default {
   starOffice,
   guid,
   agent,
-  space,
 };

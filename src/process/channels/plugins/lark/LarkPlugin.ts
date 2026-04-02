@@ -196,42 +196,41 @@ export class LarkPlugin extends BasePlugin {
 
     const { contentType, content, rawText } = toLarkSendParams(message);
     const receiveIdType = this.getReceiveIdType(chatId);
+    const payload =
+      contentType === 'text' && rawText !== undefined
+        ? {
+            msgType: 'interactive' as const,
+            content: JSON.stringify(this.buildTextCard(rawText)),
+          }
+        : {
+            msgType: contentType,
+            content: JSON.stringify(content),
+          };
 
-    // Handle text messages - send as card for streaming support
-    // Lark only allows editing card messages, not text messages
-    if (contentType === 'text' && rawText !== undefined) {
-      // Build a simple card with text content
-      const card = this.buildTextCard(rawText);
-
-      try {
-        const response = await this.client.im.message.create({
-          params: {
-            receive_id_type: receiveIdType,
+    try {
+      if (message.replyToMessageId) {
+        const response = await this.client.im.message.reply({
+          path: {
+            message_id: message.replyToMessageId,
           },
           data: {
-            receive_id: chatId,
-            msg_type: 'interactive',
-            content: JSON.stringify(card),
+            content: payload.content,
+            msg_type: payload.msgType,
+            ...(message.replyInThread ? { reply_in_thread: true } : {}),
           },
         });
 
         return response.data?.message_id || '';
-      } catch (error) {
-        console.error('[LarkPlugin] Failed to send card message:', error);
-        throw error;
       }
-    }
 
-    // Send interactive card or other content types
-    try {
       const response = await this.client.im.message.create({
         params: {
           receive_id_type: receiveIdType,
         },
         data: {
           receive_id: chatId,
-          msg_type: contentType,
-          content: JSON.stringify(content),
+          msg_type: payload.msgType,
+          content: payload.content,
         },
       });
 

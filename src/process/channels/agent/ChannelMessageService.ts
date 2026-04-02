@@ -152,9 +152,10 @@ export class ChannelMessageService {
    *
    * @param _sessionId - User session ID (kept for API compatibility)
    * @param conversationId - Conversation ID for context
-   * @param message - User message text
+   * @param message - User-visible message text persisted to chat history
    * @param onStream - Callback for streaming updates
    * @param files - Optional local file paths to forward to CLI agents
+   * @param agentMessage - Optional agent-facing prompt text when display content differs from model input
    * @returns Promise that resolves when streaming is complete
    */
   async sendMessage(
@@ -162,7 +163,8 @@ export class ChannelMessageService {
     conversationId: string,
     message: string,
     onStream: StreamCallback,
-    files?: string[]
+    files?: string[],
+    agentMessage?: string
   ): Promise<string> {
     // 确保服务已初始化
     // Ensure service is initialized
@@ -198,9 +200,10 @@ export class ChannelMessageService {
         yoloMode: isFromChannel,
       });
 
+      const agentInputMessage = agentMessage || message;
       const hookResult = conversation
-        ? await hookRuntime.applyBeforeUserPrompt(conversation, message)
-        : { content: message, appliedHooks: [] };
+        ? await hookRuntime.applyBeforeUserPrompt(conversation, agentInputMessage)
+        : { content: agentInputMessage, appliedHooks: [] };
       const transformedMessage = hookResult.content;
 
       return new Promise((resolve, reject) => {

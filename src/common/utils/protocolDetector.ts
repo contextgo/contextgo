@@ -49,46 +49,16 @@ export interface ProtocolDetectionResult {
 }
 
 /**
- * 多 Key 测试结果
- * Multi-key test result
- */
-export interface MultiKeyTestResult {
-  /** 总 Key 数量 / Total key count */
-  total: number;
-  /** 有效 Key 数量 / Valid key count */
-  valid: number;
-  /** 无效 Key 数量 / Invalid key count */
-  invalid: number;
-  /** 每个 Key 的详细结果 / Detailed result for each key */
-  details: Array<{
-    /** Key 索引 / Key index */
-    index: number;
-    /** Key 掩码（只显示前后几位）/ Masked key */
-    maskedKey: string;
-    /** 是否有效 / Whether valid */
-    valid: boolean;
-    /** 错误信息 / Error message */
-    error?: string;
-    /** 响应时间 / Latency */
-    latency?: number;
-  }>;
-}
-
-/**
  * 协议检测请求参数
  * Protocol detection request parameters
  */
 export interface ProtocolDetectionRequest {
   /** Base URL */
   baseUrl: string;
-  /** API Key（可以是逗号或换行分隔的多个 Key）/ API Key (can be comma or newline separated) */
+  /** API Key */
   apiKey: string;
   /** 超时时间（毫秒）/ Timeout in milliseconds */
   timeout?: number;
-  /** 是否测试所有 Key（默认只测试第一个）/ Whether to test all keys */
-  testAllKeys?: boolean;
-  /** 指定要测试的协议（如果已知）/ Specific protocol to test (if known) */
-  preferredProtocol?: ProtocolType;
 }
 
 /**
@@ -119,8 +89,6 @@ export interface ProtocolDetectionResponse {
     /** i18n 参数 / i18n parameters */
     i18nParams?: Record<string, string>;
   };
-  /** 多 Key 测试结果（如果启用）/ Multi-key test result if enabled */
-  multiKeyResult?: MultiKeyTestResult;
   /** 模型列表 / Model list */
   models?: string[];
 }
@@ -300,27 +268,6 @@ export const THIRD_PARTY_KEY_PATTERNS: Array<{ pattern: RegExp; name: string; pr
   { pattern: /^[A-Za-z0-9]{32}$/, name: 'DeepSeek/Moonshot', protocol: 'openai' },
   { pattern: /^[A-Za-z0-9]{64}$/, name: 'SiliconFlow/Together', protocol: 'openai' },
 ];
-
-/**
- * 解析多个 API Key
- * Parse multiple API keys from string
- */
-export function parseApiKeys(apiKeyString: string): string[] {
-  if (!apiKeyString) return [];
-  return apiKeyString
-    .split(/[,\n]/)
-    .map((k) => k.trim())
-    .filter((k) => k.length > 0);
-}
-
-/**
- * 掩码 API Key
- * Mask API key for display
- */
-export function maskApiKey(apiKey: string): string {
-  if (apiKey.length <= 8) return '***';
-  return `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
-}
 
 /**
  * 常见的 API 路径后缀

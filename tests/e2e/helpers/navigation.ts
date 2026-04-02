@@ -16,7 +16,6 @@ export const ROUTES = {
     model: '#/settings/model',
     agent: '#/settings/agent',
     tools: '#/settings/tools',
-    display: '#/settings/display',
     webui: '#/settings/webui',
     system: '#/settings/system',
     about: '#/settings/about',

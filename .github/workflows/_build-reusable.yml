@@ -49,14 +49,14 @@ jobs:
           ARCHIVE_REF: ${{ inputs.ref != '' && inputs.ref || github.sha }}
         run: |
           set -euo pipefail
-      
+
           WORKSPACE="${GITHUB_WORKSPACE}"
           ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
           EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
-      
+
           find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           rm -rf "${EXTRACT_DIR}"
-      
+
           curl --fail --show-error --silent --location --http1.1 \
             --retry 8 \
             --retry-all-errors \
@@ -67,16 +67,16 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
             -o "${ARCHIVE}"
-      
+
           mkdir -p "${EXTRACT_DIR}"
           tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
-      
+
           SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
           if [ -z "${SOURCE_DIR}" ]; then
             echo "::error::Failed to unpack source archive"
             exit 1
           fi
-      
+
           cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
 
       - name: Setup Node.js
@@ -128,14 +128,14 @@ jobs:
           ARCHIVE_REF: ${{ inputs.ref != '' && inputs.ref || github.sha }}
         run: |
           set -euo pipefail
-      
+
           WORKSPACE="${GITHUB_WORKSPACE}"
           ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
           EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
-      
+
           find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           rm -rf "${EXTRACT_DIR}"
-      
+
           curl --fail --show-error --silent --location --http1.1 \
             --retry 8 \
             --retry-all-errors \
@@ -146,16 +146,16 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
             -o "${ARCHIVE}"
-      
+
           mkdir -p "${EXTRACT_DIR}"
           tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
-      
+
           SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
           if [ -z "${SOURCE_DIR}" ]; then
             echo "::error::Failed to unpack source archive"
             exit 1
           fi
-      
+
           cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
 
       - name: Setup Node.js

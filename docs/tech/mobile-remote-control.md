@@ -76,6 +76,8 @@ Official Remote should use a desktop-initiated cloud relay, not a tunnel product
 
 Self-hosted users can still choose their own reverse proxy, VPN, or tunnel when exposing a desktop-hosted ContextGo instance to external clients.
 
+For the official cloud path, `apps/cloud` remains a control plane: it owns sign-in, device discovery, and relay orchestration. It should not become a second hosted frontend that diverges from the desktop runtime. When a browser opens a remote device, the expected target is still the desktop-hosted WebUI for that device.
+
 But the product logic still remains:
 
 - ContextGo desktop / WebUI provides the real application runtime

@@ -40,12 +40,7 @@ export type SpaceConnectorUpstreamSource =
   | 'official-open-source-cli'
   | 'official-sdk';
 
-export type SpaceConnectorDependencyKind =
-  | 'binary'
-  | 'python-module'
-  | 'go-module'
-  | 'oauth-app'
-  | 'browser-extension';
+export type SpaceConnectorDependencyKind = 'binary' | 'python-module' | 'go-module' | 'oauth-app' | 'browser-extension';
 
 export type SpaceConnectorDependency = {
   kind: SpaceConnectorDependencyKind;
@@ -74,7 +69,6 @@ export type SpaceConnectorDescriptor = {
   nextStep: string;
   dependencies: readonly SpaceConnectorDependency[];
 };
-
 
 export type SpaceConnectorExecutionMode =
   | 'native-contextgo'

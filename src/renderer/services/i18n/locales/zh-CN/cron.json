@@ -62,21 +62,12 @@
     "title": "开箱即用的预置定时器",
     "description": "直接启用这些高价值自动化场景，后续也可以继续修改，或者让 Agent 按你的需求细化。",
     "packPacksTitle": "按行业模板包挑选",
-    "rolePacksTitle": "按角色挑选",
     "fillTemplate": "请为当前会话创建一个定时任务。\n名称：{{name}}\n执行时间：{{scheduleDescription}}\n执行内容：{{message}}",
     "createSuccess": "已创建预置定时任务：{{name}}",
     "directCreateHint": "这些预置会直接绑定到当前会话。如果你想改时间或内容，也可以先填入输入框，再让 Agent 帮你调整。",
     "fillOnlyHint": "当前会话类型暂不支持直接创建。你仍可先把预置填入输入框，再让 Agent 帮你生成定时任务。",
     "emptyHint": "预置定时器需要绑定到具体会话。先打开一个单 Agent 会话，再点击右上角时钟按钮即可一键启用。",
     "recommended": "默认推荐",
-    "roles": {
-      "all": "全部",
-      "product": "产品",
-      "content": "内容",
-      "operations": "运营",
-      "sales": "销售",
-      "research": "投研"
-    },
     "packs": {
       "all": "全部",
       "saasProduct": "SaaS 产品包",

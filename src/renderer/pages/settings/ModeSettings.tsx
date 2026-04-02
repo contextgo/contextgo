@@ -10,7 +10,7 @@ import SettingsPageWrapper from './components/SettingsPageWrapper';
 
 const ModeSettings: React.FC = () => {
   return (
-    <SettingsPageWrapper contentClassName='max-w-1100px'>
+    <SettingsPageWrapper>
       <ModelModalContent />
     </SettingsPageWrapper>
   );

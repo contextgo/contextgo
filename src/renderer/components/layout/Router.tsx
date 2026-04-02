@@ -2,6 +2,7 @@ import { Button } from '@arco-design/web-react';
 import { copyText } from '@renderer/utils/ui/clipboard';
 import AppLoader from '@renderer/components/layout/AppLoader';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
+import { ConversationHistoryProvider } from '@renderer/hooks/context/ConversationHistoryContext';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import {
@@ -17,6 +18,8 @@ import {
   rememberStableHashRoute,
   warmCriticalRendererRoutes,
 } from './routerLocation';
+import Layout from './Layout';
+import Sider from './Sider';
 
 type LazyRouteLoader = () => Promise<{ default: React.ComponentType }>;
 
@@ -24,12 +27,10 @@ const loadConversation = () => import('@renderer/pages/conversation');
 const loadConnectorsPage = () => import('@renderer/pages/connectors');
 const loadGuid = () => import('@renderer/pages/guid');
 const loadGlobalCronSettings = () => import('@renderer/pages/cron/GlobalCronSettings');
-const loadSpacePage = () => import('@renderer/pages/space/SpacePage');
 const loadAgentSettings = () => import('@renderer/pages/settings/AgentSettings');
 const loadAgentEntrySettings = () => import('@renderer/pages/settings/AgentSettings/AgentEntrySettings');
 const loadHooksManagement = () => import('@renderer/pages/settings/AgentSettings/HooksManagement');
 const loadSkillsHubSettings = () => import('@renderer/pages/settings/SkillsHubSettings');
-const loadDisplaySettings = () => import('@renderer/pages/settings/DisplaySettings');
 const loadGeminiSettings = () => import('@renderer/pages/settings/GeminiSettings');
 const loadModeSettings = () => import('@renderer/pages/settings/ModeSettings');
 const loadSystemSettings = () => import('@renderer/pages/settings/SystemSettings');
@@ -221,12 +222,12 @@ class RecoverableLazyRoute extends React.Component<RecoverableLazyRouteProps, Re
 }
 
 const withRouteFallback = (loader: LazyRouteLoader, routePath: string) => (
-  <RecoverableLazyRoute loader={loader} routePath={routePath} />
+  <RecoverableLazyRoute key={routePath} loader={loader} routePath={routePath} />
 );
 
-const ProtectedLayout: React.FC<{ renderLayout: () => React.ReactElement }> = ({ renderLayout }) => {
-  const { status } = useAuth();
-
+const ProtectedLayout: React.FC<{
+  status: ReturnType<typeof useAuth>['status'];
+}> = ({ status }) => {
   if (status === 'checking') {
     return <AppLoader />;
   }
@@ -235,7 +236,11 @@ const ProtectedLayout: React.FC<{ renderLayout: () => React.ReactElement }> = ({
     return <Navigate to='/login' replace />;
   }
 
-  return renderLayout();
+  return (
+    <ConversationHistoryProvider>
+      <Layout sider={<Sider />} />
+    </ConversationHistoryProvider>
+  );
 };
 
 const StartupConversationRedirect: React.FC = () => {
@@ -249,19 +254,18 @@ const StartupConversationRedirect: React.FC = () => {
   return <Navigate to='/guid' replace />;
 };
 
-const RoutedPanels: React.FC<{ renderLayout: () => React.ReactElement; status: ReturnType<typeof useAuth>['status'] }> = ({
-  renderLayout,
-  status,
-}) => {
-  const location = useLocation();
-
+const RoutedPanels: React.FC<{
+  status: ReturnType<typeof useAuth>['status'];
+}> = ({ status }) => {
   return (
-    <Routes key={location.pathname}>
+    <Routes>
       <Route
         path='/login'
-        element={status === 'authenticated' ? <StartupConversationRedirect /> : withRouteFallback(loadLoginPage, '/login')}
+        element={
+          status === 'authenticated' ? <StartupConversationRedirect /> : withRouteFallback(loadLoginPage, '/login')
+        }
       />
-      <Route element={<ProtectedLayout renderLayout={renderLayout} />}>
+      <Route element={<ProtectedLayout status={status} />}>
         <Route index element={<StartupConversationRedirect />} />
         <Route path='/guid' element={withRouteFallback(loadGuid, '/guid')} />
         <Route path='/hooks' element={withRouteFallback(loadHooksManagement, '/hooks')} />
@@ -270,7 +274,7 @@ const RoutedPanels: React.FC<{ renderLayout: () => React.ReactElement; status: R
           path='/connectors/:connectorId'
           element={withRouteFallback(loadConnectorsPage, '/connectors/:connectorId')}
         />
-        <Route path='/space/:spaceId' element={withRouteFallback(loadSpacePage, '/space/:spaceId')} />
+        <Route path='/space/:spaceId' element={<Navigate to='/guid' replace />} />
         <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
         <Route path='/conversation/:id' element={withRouteFallback(loadConversation, '/conversation/:id')} />
         <Route path='/agents' element={withRouteFallback(loadAgentSettings, '/agents')} />
@@ -280,18 +284,16 @@ const RoutedPanels: React.FC<{ renderLayout: () => React.ReactElement; status: R
         <Route path='/settings/agent' element={withRouteFallback(loadAgentSettings, '/settings/agent')} />
         <Route path='/settings/hooks' element={<Navigate to='/hooks' replace />} />
         <Route path='/settings/cron' element={withRouteFallback(loadGlobalCronSettings, '/settings/cron')} />
-        <Route
-          path='/settings/skills-hub'
-          element={withRouteFallback(loadSkillsHubSettings, '/settings/skills-hub')}
-        />
-        <Route path='/settings/display' element={withRouteFallback(loadDisplaySettings, '/settings/display')} />
+        <Route path='/settings/skills-hub' element={withRouteFallback(loadSkillsHubSettings, '/settings/skills-hub')} />
+        <Route path='/settings/display' element={<Navigate to='/settings/system' replace />} />
         <Route path='/settings/webui' element={withRouteFallback(loadWebuiSettings, '/settings/webui')} />
         <Route path='/settings/runtime' element={withRouteFallback(loadAgentEntrySettings, '/settings/runtime')} />
         <Route path='/settings/channels' element={withRouteFallback(loadAgentEntrySettings, '/settings/channels')} />
         <Route
-          path='/settings/active-sessions'
-          element={withRouteFallback(loadAgentEntrySettings, '/settings/active-sessions')}
+          path='/settings/agent-publish'
+          element={withRouteFallback(loadAgentEntrySettings, '/settings/agent-publish')}
         />
+        <Route path='/settings/active-sessions' element={<Navigate to='/settings/agent-publish' replace />} />
         <Route
           path='/settings/agent-entry'
           element={withRouteFallback(loadAgentEntrySettings, '/settings/agent-entry')}
@@ -315,7 +317,7 @@ const RoutedPanels: React.FC<{ renderLayout: () => React.ReactElement; status: R
   );
 };
 
-const PanelRoute: React.FC<{ renderLayout: () => React.ReactElement }> = ({ renderLayout }) => {
+const PanelRoute: React.FC = () => {
   const { status } = useAuth();
 
   React.useEffect(() => {
@@ -341,7 +343,7 @@ const PanelRoute: React.FC<{ renderLayout: () => React.ReactElement }> = ({ rend
 
   return (
     <HashRouter>
-      <RoutedPanels renderLayout={renderLayout} status={status} />
+      <RoutedPanels status={status} />
     </HashRouter>
   );
 };

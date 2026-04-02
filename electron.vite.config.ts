@@ -238,6 +238,7 @@ export default defineConfig(({ mode }) => {
           'remark-breaks',
           'rehype-raw',
           'rehype-katex',
+          '@chenglou/pretext',
         ],
       },
     },

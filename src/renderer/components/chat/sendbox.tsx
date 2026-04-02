@@ -12,6 +12,7 @@ import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils/ui/focus';
+import { getTextLayoutStyle, measureTextLineCount } from '@/renderer/utils/chat/textLayout';
 import { Button, Input, Message, Tag } from '@arco-design/web-react';
 import { ArrowUp, CloseSmall } from '@icon-park/react';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
@@ -84,7 +85,6 @@ const SendBox: React.FC<{
   const { activeBorderColor, inactiveBorderColor, activeShadow } = useInputFocusRing();
   const containerRef = useRef<HTMLDivElement>(null);
   const singleLineWidthRef = useRef<number>(0);
-  const measurementCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const mobileUserFocusIntentUntilRef = useRef(0);
   const warmedConversationRef = useRef<string | undefined>(undefined);
   const warmupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -142,6 +142,15 @@ const SendBox: React.FC<{
       return;
     }
 
+    // 空文本默认回到单行，除非外部明确锁定多行模式
+    // Reset to single-line mode for empty input unless multi-line is explicitly locked
+    if (!input.length) {
+      if (!lockMultiLine) {
+        setIsSingleLine(true);
+      }
+      return;
+    }
+
     // 还没获取到基准宽度时不做判断
     // Skip detection if baseline width is not yet obtained
     if (singleLineWidthRef.current === 0) {
@@ -149,55 +158,31 @@ const SendBox: React.FC<{
     }
 
     // 长文本无需测量，直接切换多行，防止创建超宽 DOM 触发长时间布局计算
-    // Skip measurement for long text and switch to multi-line immediately to avoid expensive layout caused by extra-wide DOM
+    // Skip measurement for long text and switch to multi-line immediately to avoid heavy layout work
     if (input.length >= MAX_SINGLE_LINE_CHARACTERS) {
       setIsSingleLine(false);
       return;
     }
 
-    // 检测内容宽度
-    // Detect content width
+    // 通过 pretext 进行按行布局判断，而不是只看单次宽度测量
+    // Use pretext-driven line counting instead of a single width threshold
     const frame = requestAnimationFrame(() => {
       const textarea = containerRef.current?.querySelector('textarea');
       if (!textarea) {
         return;
       }
 
-      // 复用单个离屏 canvas，防止持续创建/销毁元素
-      // Reuse a single offscreen canvas to avoid creating/destroying DOM nodes repeatedly
-      const canvas = measurementCanvasRef.current ?? document.createElement('canvas');
-      if (!measurementCanvasRef.current) {
-        measurementCanvasRef.current = canvas;
-      }
-      const context = canvas.getContext('2d');
-      if (!context) {
-        return;
-      }
+      const lineCount = measureTextLineCount({
+        text: input,
+        maxWidth: singleLineWidthRef.current,
+        ...getTextLayoutStyle(textarea),
+      });
 
-      const textareaStyle = getComputedStyle(textarea);
-      const fallbackFontSize = textareaStyle.fontSize || '14px';
-      const fallbackFontFamily = textareaStyle.fontFamily || 'sans-serif';
-      context.font = textareaStyle.font || `${fallbackFontSize} ${fallbackFontFamily}`.trim();
-
-      const textWidth = context.measureText(input || '').width;
-
-      // 使用初始化时保存的固定宽度作为判断基准
-      // Use the fixed baseline width saved during initialization
-      const baseWidth = singleLineWidthRef.current;
-
-      // 文本宽度超过基准宽度时切换到多行
-      // Switch to multi-line when text width exceeds baseline width
-      if (textWidth >= baseWidth) {
+      if (lineCount > 1) {
         setIsSingleLine(false);
-      } else if (textWidth < baseWidth - 30 && !lockMultiLine) {
-        // 文本宽度小于基准宽度减30px时切回单行，留出小缓冲区避免临界点抖动
-        // 如果 lockMultiLine 为 true，则不切换回单行
-        // Switch back to single-line when text width is less than baseline minus 30px, leaving a small buffer to avoid flickering at the threshold
-        // If lockMultiLine is true, do not switch back to single-line
+      } else if (!lockMultiLine) {
         setIsSingleLine(true);
       }
-      // 在 (baseWidth-30) 到 baseWidth 之间保持当前状态
-      // Maintain current state between (baseWidth-30) and baseWidth
     });
 
     return () => cancelAnimationFrame(frame);

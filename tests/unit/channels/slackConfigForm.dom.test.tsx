@@ -101,7 +101,14 @@ describe('SlackConfigForm', () => {
   });
 
   it('renders Slack credential fields', () => {
-    render(<SlackConfigForm pluginStatus={null} modelSelection={noopModelSelection} onStatusChange={vi.fn()} />);
+    render(
+      <SlackConfigForm
+        pluginId='slack_default'
+        pluginStatus={null}
+        modelSelection={noopModelSelection}
+        onStatusChange={vi.fn()}
+      />
+    );
 
     expect(screen.getByPlaceholderText('xoxb-...')).toBeTruthy();
     expect(screen.getByPlaceholderText('xapp-...')).toBeTruthy();
@@ -111,7 +118,14 @@ describe('SlackConfigForm', () => {
   it('tests and auto-enables Slack plugin with both tokens', async () => {
     const onStatusChange = vi.fn();
 
-    render(<SlackConfigForm pluginStatus={null} modelSelection={noopModelSelection} onStatusChange={onStatusChange} />);
+    render(
+      <SlackConfigForm
+        pluginId='slack_default'
+        pluginStatus={null}
+        modelSelection={noopModelSelection}
+        onStatusChange={onStatusChange}
+      />
+    );
 
     fireEvent.change(screen.getByPlaceholderText('xoxb-...'), {
       target: { value: 'xoxb-test-token' },

@@ -1,5 +1,27 @@
 /* Layout-level styles: sidebar, sider animations, message positioning */
 
+/* Shared secondary-detail page container */
+.secondary-page-frame {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 16px 16px 20px;
+}
+
+.secondary-page-inner {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+@media (min-width: 768px) {
+  .secondary-page-frame {
+    padding: 16px 20px 24px;
+  }
+}
+
 /* Layout sider base styles */
 .layout-sider {
   overflow-x: hidden;

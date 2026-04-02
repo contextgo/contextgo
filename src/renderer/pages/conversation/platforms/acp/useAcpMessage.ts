@@ -5,11 +5,12 @@
  */
 
 import { ipcBridge } from '@/common';
-import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
+import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import type { TokenUsageData } from '@/common/config/storage';
-import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
+import type { AgentRunTrace } from '@/renderer/components/chat/AgentRunStatus/types';
 import type { ThoughtData } from '@/renderer/components/chat/ThoughtDisplay';
+import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseAcpMessageReturn = {
@@ -23,34 +24,96 @@ type UseAcpMessageReturn = {
   resetState: () => void;
   tokenUsage: TokenUsageData | null;
   contextLimit: number;
+  runTrace: AgentRunTrace | null;
+  beginRun: (input: string, files?: string[]) => void;
 };
+
+const buildRunTaskText = (input: string, files: string[] = []): string => {
+  const normalizedInput = input.trim();
+  const normalizedFiles = [...new Set(files.filter(Boolean))];
+
+  if (normalizedFiles.length === 0) {
+    return normalizedInput;
+  }
+
+  const fileSection = ['[Files]', ...normalizedFiles.map((file) => `- ${file}`)].join('\n');
+  return normalizedInput ? `${normalizedInput}\n\n${fileSection}` : fileSection;
+};
+
+const mergeThoughtText = (previous: string, incoming: string): string => {
+  const next = incoming.trim();
+  if (!next) {
+    return previous;
+  }
+
+  if (!previous) {
+    return incoming;
+  }
+
+  if (incoming.startsWith(previous)) {
+    return incoming;
+  }
+
+  if (previous.endsWith(incoming)) {
+    return previous;
+  }
+
+  return `${previous}${incoming}`;
+};
+
+const extractThoughtSubject = (content: string): string => {
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const firstLine = lines[0] || '';
+
+  const heading = firstLine.match(/^\*\*(.+?)\*\*$/);
+  if (heading) {
+    return heading[1];
+  }
+
+  if (firstLine && firstLine.length <= 80 && !firstLine.endsWith('.')) {
+    return firstLine;
+  }
+
+  const firstSentence = content.split('.')[0]?.trim();
+  if (firstSentence && firstSentence.length <= 100) {
+    return firstSentence;
+  }
+
+  return 'Thinking';
+};
+
+const createBaseRunTrace = (rawTask: string, startedAt = Date.now()): AgentRunTrace => ({
+  rawTask,
+  startedAt,
+  phase: 'preparing',
+  liveThoughtText: '',
+  activeToolCount: 0,
+});
 
 export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
   const addOrUpdateMessage = useAddOrUpdateMessage();
   const [running, setRunning] = useState(false);
-  const [thought, setThought] = useState<ThoughtData>({
-    description: '',
-    subject: '',
-  });
+  const [thought, setThought] = useState<ThoughtData>({ description: '', subject: '' });
+  const [runTrace, setRunTrace] = useState<AgentRunTrace | null>(null);
   const [acpStatus, setAcpStatus] = useState<
     'connecting' | 'connected' | 'authenticated' | 'session_active' | 'disconnected' | 'error' | null
   >(null);
-  const [aiProcessing, setAiProcessing] = useState(false); // New loading state for AI response
+  const [aiProcessing, setAiProcessing] = useState(false);
   const [hasActiveToolCalls, setHasActiveToolCalls] = useState(false);
   const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(false);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageData | null>(null);
   const [contextLimit, setContextLimit] = useState<number>(0);
 
-  // Use refs to sync state for immediate access in event handlers
   const runningRef = useRef(running);
   const aiProcessingRef = useRef(aiProcessing);
   const activeToolCallIdsRef = useRef<Set<string>>(new Set());
-
-  // Track whether current turn has content output
-  // Only reset aiProcessing when finish arrives after content (not after tool calls)
   const hasContentInTurnRef = useRef(false);
+  const pendingTaskRef = useRef('');
+  const thoughtTextRef = useRef('');
 
-  // Track request trace state for displaying complete request lifecycle
   const requestTraceRef = useRef<{
     startTime: number;
     backend: string;
@@ -58,7 +121,6 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
     sessionMode?: string;
   } | null>(null);
 
-  // Throttle thought updates to reduce render frequency
   const thoughtThrottleRef = useRef<{
     lastUpdate: number;
     pending: ThoughtData | null;
@@ -97,13 +159,31 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
     };
   }, []);
 
-  // Clean up throttle timer
   useEffect(() => {
     return () => {
       if (thoughtThrottleRef.current.timer) {
         clearTimeout(thoughtThrottleRef.current.timer);
       }
     };
+  }, []);
+
+  const clearTransientState = useCallback(() => {
+    activeToolCallIdsRef.current = new Set();
+    setHasActiveToolCalls(false);
+    setSawToolActivityInTurn(false);
+    thoughtTextRef.current = '';
+    pendingTaskRef.current = '';
+  }, []);
+
+  const beginRun = useCallback((input: string, files: string[] = []) => {
+    const rawTask = buildRunTaskText(input, files);
+    pendingTaskRef.current = rawTask;
+    thoughtTextRef.current = '';
+    activeToolCallIdsRef.current = new Set();
+    setHasActiveToolCalls(false);
+    setSawToolActivityInTurn(false);
+    setThought({ subject: '', description: '' });
+    setRunTrace(createBaseRunTrace(rawTask));
   }, []);
 
   const handleResponseMessage = useCallback(
@@ -114,84 +194,122 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
 
       const transformedMessage = transformMessage(message);
       const shouldSuppressLifecycleMessage = shouldSuppressAgentLifecycleStreamMessage(message);
+
       switch (message.type) {
-        case 'thought':
-          // Auto-recover running state if thought arrives after finish
+        case 'thought': {
           if (!runningRef.current) {
             setRunning(true);
             runningRef.current = true;
           }
-          throttledSetThought(message.data as ThoughtData);
+
+          const incomingThought = message.data as ThoughtData;
+          const mergedThoughtText = mergeThoughtText(
+            thoughtTextRef.current,
+            incomingThought.description || incomingThought.subject || ''
+          );
+          thoughtTextRef.current = mergedThoughtText;
+
+          const nextThought = {
+            subject: extractThoughtSubject(mergedThoughtText),
+            description: mergedThoughtText,
+          };
+
+          throttledSetThought(nextThought);
+          setRunTrace((current) => ({
+            ...(current || createBaseRunTrace(pendingTaskRef.current)),
+            rawTask: current?.rawTask || pendingTaskRef.current,
+            phase: 'reasoning',
+            liveThoughtText: mergedThoughtText,
+            activeToolCount: activeToolCallIdsRef.current.size,
+            endedAt: undefined,
+            errorMessage: undefined,
+          }));
           break;
-        case 'start':
+        }
+        case 'start': {
           setRunning(true);
           runningRef.current = true;
-          // Don't reset aiProcessing here - let content arrival handle it
+          setRunTrace((current) => ({
+            ...(current || createBaseRunTrace(pendingTaskRef.current)),
+            rawTask: current?.rawTask || pendingTaskRef.current,
+            phase: 'preparing',
+            endedAt: undefined,
+            errorMessage: undefined,
+          }));
           break;
-        case 'finish':
-          {
-            // Immediate state reset (notification is handled by centralized hook)
-            setRunning(false);
-            runningRef.current = false;
-            setAiProcessing(false);
-            aiProcessingRef.current = false;
-            activeToolCallIdsRef.current = new Set();
-            setHasActiveToolCalls(false);
-            setSawToolActivityInTurn(false);
-            setThought({ subject: '', description: '' });
-            hasContentInTurnRef.current = false;
-            // Log request completion
-            if (requestTraceRef.current) {
-              const duration = Date.now() - requestTraceRef.current.startTime;
-              console.log(
-                `%c[RequestTrace]%c FINISH | ${requestTraceRef.current.backend} → ${requestTraceRef.current.modelId} | ${duration}ms | ${new Date().toISOString()}`,
-                'color: #52c41a; font-weight: bold',
-                'color: inherit'
-              );
-              requestTraceRef.current = null;
-            }
+        }
+        case 'finish': {
+          setRunning(false);
+          runningRef.current = false;
+          setAiProcessing(false);
+          aiProcessingRef.current = false;
+          setThought({ subject: '', description: '' });
+          hasContentInTurnRef.current = false;
+          setRunTrace((current) =>
+            current
+              ? {
+                  ...current,
+                  phase: current.phase === 'error' ? 'error' : 'completed',
+                  activeToolCount: 0,
+                  endedAt: Date.now(),
+                }
+              : current
+          );
+
+          if (requestTraceRef.current) {
+            const duration = Date.now() - requestTraceRef.current.startTime;
+            console.log(
+              `%c[RequestTrace]%c FINISH | ${requestTraceRef.current.backend} → ${requestTraceRef.current.modelId} | ${duration}ms | ${new Date().toISOString()}`,
+              'color: #52c41a; font-weight: bold',
+              'color: inherit'
+            );
+            requestTraceRef.current = null;
           }
+
+          clearTransientState();
           break;
+        }
         case 'content': {
-          // Mark that current turn has content output
           hasContentInTurnRef.current = true;
-          // Auto-recover running state if content arrives after finish
           if (!runningRef.current) {
             setRunning(true);
             runningRef.current = true;
           }
-          // Clear thought when final answer arrives
           setThought({ subject: '', description: '' });
+          setRunTrace((current) =>
+            current
+              ? {
+                  ...current,
+                  phase: 'composing',
+                  activeToolCount: activeToolCallIdsRef.current.size,
+                  endedAt: undefined,
+                }
+              : current
+          );
           if (!shouldSuppressLifecycleMessage) {
             addOrUpdateMessage(transformedMessage);
           }
           break;
         }
         case 'agent_status': {
-          // Auto-recover running state if agent_status arrives after finish
           if (!runningRef.current) {
             setRunning(true);
             runningRef.current = true;
           }
-          // Update ACP/Agent status
           const agentData = message.data as {
             status?: 'connecting' | 'connected' | 'authenticated' | 'session_active' | 'disconnected' | 'error';
-            backend?: string;
           };
           if (agentData?.status) {
             setAcpStatus(agentData.status);
-            // Reset running state when authentication is complete
             if (['authenticated', 'session_active'].includes(agentData.status)) {
               setRunning(false);
               runningRef.current = false;
             }
-            // Reset all loading states on error or disconnect so UI doesn't stay stuck
             if (['error', 'disconnected'].includes(agentData.status)) {
               setRunning(false);
               runningRef.current = false;
               setAiProcessing(false);
               aiProcessingRef.current = false;
-              activeToolCallIdsRef.current = new Set();
               setHasActiveToolCalls(false);
               setSawToolActivityInTurn(false);
             }
@@ -208,6 +326,7 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
           const update = (message.data as { update?: { toolCallId?: string; status?: string } })?.update;
           const toolCallId = update?.toolCallId;
           const status = update?.status;
+          let activeToolCount = activeToolCallIdsRef.current.size;
 
           if (toolCallId) {
             const nextActiveToolCallIds = new Set(activeToolCallIdsRef.current);
@@ -220,22 +339,43 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
             }
 
             activeToolCallIdsRef.current = nextActiveToolCallIds;
-            setHasActiveToolCalls(nextActiveToolCallIds.size > 0);
+            activeToolCount = nextActiveToolCallIds.size;
+            setHasActiveToolCalls(activeToolCount > 0);
           }
+
+          setRunTrace((current) =>
+            current
+              ? {
+                  ...current,
+                  phase: activeToolCount > 0 ? 'tool_running' : current.phase,
+                  activeToolCount,
+                  endedAt: undefined,
+                }
+              : current
+          );
 
           addOrUpdateMessage(transformedMessage);
           break;
         }
-        case 'acp_permission':
-          // Auto-recover running state if permission request arrives after finish
+        case 'acp_permission': {
           if (!runningRef.current) {
             setRunning(true);
             runningRef.current = true;
           }
+          setRunTrace((current) =>
+            current
+              ? {
+                  ...current,
+                  phase: 'waiting_permission',
+                  activeToolCount: activeToolCallIdsRef.current.size,
+                  endedAt: undefined,
+                }
+              : current
+          );
           addOrUpdateMessage(transformedMessage);
           break;
+        }
         case 'acp_model_info':
-          // Model info updates are handled by AcpModelSelector, no action needed here
           break;
         case 'acp_context_usage': {
           const usageData = message.data as { used: number; size: number };
@@ -247,36 +387,58 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
           }
           break;
         }
-        case 'request_trace':
-          {
-            const trace = message.data as Record<string, unknown>;
-            requestTraceRef.current = {
-              startTime: Number(trace.timestamp) || Date.now(),
-              backend: String(trace.backend || 'unknown'),
-              modelId: String(trace.modelId || 'unknown'),
-              sessionMode: trace.sessionMode as string | undefined,
-            };
-            console.log(
-              `%c[RequestTrace]%c START | ${trace.backend} → ${trace.modelId} | ${new Date().toISOString()}`,
-              'color: #1890ff; font-weight: bold',
-              'color: inherit',
-              trace
-            );
-          }
+        case 'request_trace': {
+          const trace = message.data as Record<string, unknown>;
+          const startTime = Number(trace.timestamp) || Date.now();
+          requestTraceRef.current = {
+            startTime,
+            backend: String(trace.backend || 'unknown'),
+            modelId: String(trace.modelId || 'unknown'),
+            sessionMode: trace.sessionMode as string | undefined,
+          };
+
+          setRunTrace((current) => ({
+            ...(current || createBaseRunTrace(pendingTaskRef.current, startTime)),
+            rawTask: current?.rawTask || pendingTaskRef.current,
+            startedAt: startTime,
+            backend: String(trace.backend || 'unknown'),
+            modelId: String(trace.modelId || 'unknown'),
+            sessionMode: trace.sessionMode as string | undefined,
+            phase: current?.phase || 'preparing',
+            liveThoughtText: current?.liveThoughtText || '',
+            activeToolCount: current?.activeToolCount || activeToolCallIdsRef.current.size,
+            endedAt: undefined,
+          }));
+
+          console.log(
+            `%c[RequestTrace]%c START | ${trace.backend} → ${trace.modelId} | ${new Date().toISOString()}`,
+            'color: #1890ff; font-weight: bold',
+            'color: inherit',
+            trace
+          );
           break;
-        case 'error':
-          // Stop all loading states when error occurs
+        }
+        case 'error': {
           setRunning(false);
           runningRef.current = false;
           setAiProcessing(false);
           aiProcessingRef.current = false;
-          activeToolCallIdsRef.current = new Set();
           setHasActiveToolCalls(false);
           setSawToolActivityInTurn(false);
           if (!shouldSuppressLifecycleMessage) {
             addOrUpdateMessage(transformedMessage);
           }
-          // Log request error
+          setRunTrace((current) =>
+            current
+              ? {
+                  ...current,
+                  phase: 'error',
+                  activeToolCount: 0,
+                  endedAt: Date.now(),
+                  errorMessage: typeof message.data === 'string' ? message.data : JSON.stringify(message.data),
+                }
+              : current
+          );
           if (requestTraceRef.current) {
             const duration = Date.now() - requestTraceRef.current.startTime;
             console.log(
@@ -287,9 +449,10 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
             );
             requestTraceRef.current = null;
           }
+          clearTransientState();
           break;
+        }
         default:
-          // Auto-recover running state if other messages arrive after finish
           if (!runningRef.current) {
             setRunning(true);
             runningRef.current = true;
@@ -300,34 +463,33 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
           break;
       }
     },
-    [conversation_id, addOrUpdateMessage, throttledSetThought, setThought, setRunning, setAiProcessing, setAcpStatus]
+    [addOrUpdateMessage, clearTransientState, conversation_id, throttledSetThought]
   );
 
   useEffect(() => {
     return ipcBridge.acpConversation.responseStream.on(handleResponseMessage);
   }, [handleResponseMessage]);
 
-  // Reset state when conversation changes and restore actual running status
   useEffect(() => {
     setThought({ subject: '', description: '' });
     setAcpStatus(null);
     setTokenUsage(null);
     setContextLimit(0);
+    setRunTrace(null);
     hasContentInTurnRef.current = false;
+    pendingTaskRef.current = '';
+    thoughtTextRef.current = '';
 
-    // Check actual conversation status from backend before resetting running/aiProcessing
-    // to avoid flicker when switching to a running conversation
     void ipcBridge.conversation.get.invoke({ id: conversation_id }).then((res) => {
       if (!res) {
         setRunning(false);
         runningRef.current = false;
         setAiProcessing(false);
         aiProcessingRef.current = false;
-        activeToolCallIdsRef.current = new Set();
-        setHasActiveToolCalls(false);
-        setSawToolActivityInTurn(false);
+        clearTransientState();
         return;
       }
+
       const isRunning = res.status === 'running';
       setRunning(isRunning);
       runningRef.current = isRunning;
@@ -337,7 +499,6 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
       setHasActiveToolCalls(false);
       setSawToolActivityInTurn(false);
 
-      // Restore persisted context usage data
       if (res.type === 'acp' && res.extra?.lastTokenUsage) {
         const { lastTokenUsage, lastContextLimit } = res.extra;
         if (lastTokenUsage.totalTokens > 0) {
@@ -348,19 +509,18 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
         }
       }
     });
-  }, [conversation_id]);
+  }, [clearTransientState, conversation_id]);
 
   const resetState = useCallback(() => {
     setRunning(false);
     runningRef.current = false;
     setAiProcessing(false);
     aiProcessingRef.current = false;
-    activeToolCallIdsRef.current = new Set();
-    setHasActiveToolCalls(false);
-    setSawToolActivityInTurn(false);
     setThought({ subject: '', description: '' });
+    setRunTrace(null);
     hasContentInTurnRef.current = false;
-  }, []);
+    clearTransientState();
+  }, [clearTransientState]);
 
   return {
     thought,
@@ -373,5 +533,7 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
     resetState,
     tokenUsage,
     contextLimit,
+    runTrace,
+    beginRun,
   };
 };

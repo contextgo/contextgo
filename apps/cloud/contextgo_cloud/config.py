@@ -60,6 +60,7 @@ class Settings:
     google_client_secret: Optional[str]
     infermesh_api_base_url: Optional[str]
     infermesh_console_base_url: Optional[str]
+    infermesh_portal_url: str
     infermesh_admin_base_url: Optional[str]
     infermesh_admin_username: Optional[str]
     infermesh_admin_password: Optional[str]
@@ -102,6 +103,7 @@ def load_settings() -> Settings:
     session_cookie_domain = _read_env("CONTEXTGO_SESSION_COOKIE_DOMAIN", ".contextgo.io")
     infermesh_api_base_url = _read_env("CONTEXTGO_INFERMESH_API_BASE_URL", "https://api.infermesh.org")
     infermesh_console_base_url = _read_env("CONTEXTGO_INFERMESH_CONSOLE_BASE_URL", "https://newapi.infermesh.org")
+    infermesh_portal_url = _read_env("CONTEXTGO_INFERMESH_PORTAL_URL", "https://infermesh.org") or "https://infermesh.org"
     infermesh_admin_base_url = _read_env("CONTEXTGO_INFERMESH_ADMIN_BASE_URL", "https://newapi-admin.infermesh.org")
     default_oidc_redirect_uris = _build_default_oidc_redirect_uris(
         infermesh_console_base_url,
@@ -125,6 +127,7 @@ def load_settings() -> Settings:
         google_client_secret=_read_env("CONTEXTGO_GOOGLE_CLIENT_SECRET"),
         infermesh_api_base_url=infermesh_api_base_url,
         infermesh_console_base_url=infermesh_console_base_url,
+        infermesh_portal_url=infermesh_portal_url.rstrip('/'),
         infermesh_admin_base_url=infermesh_admin_base_url,
         infermesh_admin_username=_read_env("CONTEXTGO_INFERMESH_ADMIN_USERNAME"),
         infermesh_admin_password=_read_env("CONTEXTGO_INFERMESH_ADMIN_PASSWORD"),

@@ -354,12 +354,13 @@ export function initConversationBridge(
   });
 
   ipcBridge.conversation.createWithConversation.provider(
-    async ({ conversation, sourceConversationId, migrateCron }) => {
+    async ({ conversation, sourceConversationId, migrateCron, sourceWorkspace }) => {
       try {
         const result = await conversationService.createWithMigration({
           conversation,
           sourceConversationId,
           migrateCron,
+          sourceWorkspace,
         });
         await contextRuntimeService.registerConversation(result);
         workerTaskManager.getOrBuildTask(result.id).catch((err) => {
@@ -427,7 +428,13 @@ export function initConversationBridge(
         const prevModel = existing && 'model' in existing ? existing.model : undefined;
         const nextModel = 'model' in updates ? updates.model : undefined;
         const modelChanged = !!nextModel && JSON.stringify(prevModel) !== JSON.stringify(nextModel);
-        // model change detection for task rebuild
+        const prevWorkspace = existing?.extra?.workingDirectory || existing?.extra?.workspace;
+        const nextWorkspace = updates.extra?.workingDirectory || updates.extra?.workspace;
+        const workspaceChanged =
+          typeof nextWorkspace === 'string' &&
+          nextWorkspace.length > 0 &&
+          JSON.stringify(prevWorkspace) !== JSON.stringify(nextWorkspace);
+        // runtime-affecting changes should force task rebuild
 
         await conversationService.updateConversation(id, updates, mergeExtra);
 
@@ -436,7 +443,7 @@ export function initConversationBridge(
         }
 
         // If model changed, kill running task to force rebuild with new model on next send
-        if (modelChanged) {
+        if (modelChanged || workspaceChanged) {
           try {
             workerTaskManager.kill(id);
           } catch {

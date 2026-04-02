@@ -4,14 +4,13 @@ import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
 import { isGoogleApisHost } from '@/common/utils/urlValidation';
 import ModalHOC from '@/renderer/utils/ui/ModalHOC';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import { Form, Input, Message, Select } from '@arco-design/web-react';
-import { LinkCloud, Edit, Search, Loading } from '@icon-park/react';
+import { LinkCloud, Search, Loading } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useModeModeList from '@renderer/hooks/agent/useModeModeList';
 import useProtocolDetection from '@renderer/hooks/system/useProtocolDetection';
-import ContextGoModal from '@/renderer/components/base/ContextGoModal';
-import ApiKeyEditorModal from './ApiKeyEditorModal';
 import {
   MODEL_PLATFORMS,
   NEW_API_PROTOCOL_OPTIONS,
@@ -94,7 +93,7 @@ const ProtocolDetectionStatus: React.FC<ProtocolDetectionStatusProps> = ({
     return null;
   }
 
-  const { protocol, success, suggestion, multiKeyResult } = result;
+  const { protocol, success, suggestion } = result;
   const iconConfig = PROTOCOL_ICONS[protocol] || PROTOCOL_ICONS.unknown;
 
   // Detection successful
@@ -140,22 +139,6 @@ const ProtocolDetectionStatus: React.FC<ProtocolDetectionStatusProps> = ({
             </button>
           )}
         </div>
-
-        {/* Multi-key test result */}
-        {multiKeyResult && multiKeyResult.total > 1 && (
-          <div className='flex items-center gap-6px text-11px text-t-tertiary pl-22px'>
-            <span>
-              {multiKeyResult.invalid === 0
-                ? t('settings.multiKeyAllValid', { total: String(multiKeyResult.total) })
-                : multiKeyResult.valid === 0
-                  ? t('settings.multiKeyAllInvalid', { total: String(multiKeyResult.total) })
-                  : t('settings.multiKeyPartialValid', {
-                      valid: String(multiKeyResult.valid),
-                      invalid: String(multiKeyResult.invalid),
-                    })}
-            </span>
-          </div>
-        )}
       </div>
     );
   }
@@ -212,7 +195,6 @@ const AddPlatformModal = ModalHOC<{
   const [message, messageContext] = Message.useMessage();
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const [apiKeyEditorVisible, setApiKeyEditorVisible] = useState(false);
   // 用于追踪上次检测时的输入值，避免重复检测
   // Track last detection input to avoid redundant detection
   const [lastDetectionInput, setLastDetectionInput] = useState<{ baseUrl: string; apiKey: string } | null>(null);
@@ -383,12 +365,12 @@ const AddPlatformModal = ModalHOC<{
   };
 
   return (
-    <ContextGoModal
+    <SettingsSubModal
       visible={modalProps.visible}
       onCancel={modalCtrl.close}
-      header={{ title: t('settings.addModel'), showClose: true }}
+      title={t('settings.addModel')}
       style={{ maxWidth: '92vw', borderRadius: 16 }}
-      contentStyle={{ background: 'var(--bg-1)', borderRadius: 16, padding: '20px 24px 16px', overflow: 'auto' }}
+      contentStyle={{ padding: '20px 24px 16px', overflow: 'auto' }}
       onOk={handleSubmit}
       confirmLoading={modalProps.confirmLoading}
       okText={t('common.confirm')}
@@ -468,32 +450,21 @@ const AddPlatformModal = ModalHOC<{
             rules={[{ required: !isBedrock }]}
             field={'apiKey'}
             extra={
-              <div className='space-y-2px'>
-                <div className='text-11px text-t-secondary mt-2 leading-4'>{t('settings.multiApiKeyTip')}</div>
-                {/* 协议检测状态 / Protocol detection status */}
-                {shouldShowDetectionResult && (
-                  <ProtocolDetectionStatus
-                    isDetecting={protocolDetection.isDetecting}
-                    result={protocolDetection.result}
-                    currentPlatform={platformValue}
-                    onSwitchPlatform={handleSwitchPlatform}
-                  />
-                )}
-              </div>
+              shouldShowDetectionResult ? (
+                <ProtocolDetectionStatus
+                  isDetecting={protocolDetection.isDetecting}
+                  result={protocolDetection.result}
+                  currentPlatform={platformValue}
+                  onSwitchPlatform={handleSwitchPlatform}
+                />
+              ) : undefined
             }
           >
             <Input
+              placeholder={t('settings.apiKeyPlaceholder')}
               onBlur={() => {
                 void modelListState.mutate();
               }}
-              suffix={
-                <Edit
-                  theme='outline'
-                  size={16}
-                  className='cursor-pointer text-t-secondary hover:text-t-primary flex'
-                  onClick={() => setApiKeyEditorVisible(true)}
-                />
-              }
             />
           </Form.Item>
 
@@ -672,31 +643,7 @@ const AddPlatformModal = ModalHOC<{
           )}
         </Form>
       </div>
-
-      {/* API Key 编辑器弹窗 / API Key Editor Modal */}
-      <ApiKeyEditorModal
-        visible={apiKeyEditorVisible}
-        apiKeys={apiKey || ''}
-        onClose={() => setApiKeyEditorVisible(false)}
-        onSave={(keys) => {
-          form.setFieldValue('apiKey', keys);
-          void modelListState.mutate();
-        }}
-        onTestKey={async (key) => {
-          try {
-            const res = await ipcBridge.mode.fetchModelList.invoke({
-              base_url: actualBaseUrl,
-              api_key: key,
-              platform: selectedPlatform?.platform ?? 'custom',
-            });
-            // 严格检查：success 为 true 且返回了模型列表
-            return res.success === true && Array.isArray(res.data?.mode) && res.data.mode.length > 0;
-          } catch {
-            return false;
-          }
-        }}
-      />
-    </ContextGoModal>
+    </SettingsSubModal>
   );
 });
 

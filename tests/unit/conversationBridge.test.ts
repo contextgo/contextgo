@@ -236,6 +236,27 @@ describe('conversationBridge', () => {
     });
   });
 
+  describe('createWithConversation — migration params passthrough', () => {
+    it('passes sourceWorkspace through to createWithMigration', async () => {
+      const conversation = makeConversation('migrated-id');
+      vi.mocked(service.createWithMigration).mockResolvedValue(conversation);
+
+      await handlers['createWithConversation']({
+        conversation,
+        sourceConversationId: 'source-id',
+        migrateCron: true,
+        sourceWorkspace: '/source/workspace',
+      });
+
+      expect(service.createWithMigration).toHaveBeenCalledWith({
+        conversation,
+        sourceConversationId: 'source-id',
+        migrateCron: true,
+        sourceWorkspace: '/source/workspace',
+      });
+    });
+  });
+
   describe('sendMessage — hook runtime integration', () => {
     it('keeps raw user content but passes transformed prompt to gemini worker payload', async () => {
       const conversation = makeConversation('c1', '/ws/project');

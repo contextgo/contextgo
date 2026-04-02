@@ -6,7 +6,9 @@
 
 import { ipcBridge } from '@/common';
 import { ConfigStorage } from '@/common/config/storage';
+import FontSizeControl from '@/renderer/components/settings/FontSizeControl';
 import LanguageSwitcher from '@/renderer/components/settings/LanguageSwitcher';
+import { ThemeSwitcher } from '@/renderer/components/settings/ThemeSwitcher';
 import { iconColors } from '@/renderer/styles/colors';
 import { Alert, Button, Collapse, Form, InputNumber, Modal, Switch, Tooltip } from '@arco-design/web-react';
 import { FolderSearch } from '@icon-park/react';
@@ -113,6 +115,8 @@ const SystemModalContent: React.FC = () => {
 
   const preferenceItems = [
     { key: 'language', label: t('settings.language'), component: <LanguageSwitcher /> },
+    { key: 'theme', label: t('settings.theme'), component: <ThemeSwitcher /> },
+    { key: 'fontSize', label: t('settings.fontSize'), component: <FontSizeControl /> },
     {
       key: 'closeToTray',
       label: t('settings.closeToTray'),

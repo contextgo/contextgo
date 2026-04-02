@@ -10,31 +10,7 @@ import { Button, Empty, Input, Message, Spin, Switch, Tooltip } from '@arco-desi
 import { CheckOne, CloseOne, Copy, Delete, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-const PreferenceRow: React.FC<{
-  label: string;
-  description?: React.ReactNode;
-  extra?: React.ReactNode;
-  children: React.ReactNode;
-}> = ({ label, description, extra, children }) => (
-  <div className='flex items-center justify-between gap-24px py-12px'>
-    <div className='flex-1'>
-      <div className='flex items-center gap-8px'>
-        <span className='text-14px text-t-primary'>{label}</span>
-        {extra}
-      </div>
-      {description && <div className='text-12px text-t-tertiary mt-2px'>{description}</div>}
-    </div>
-    <div className='flex items-center'>{children}</div>
-  </div>
-);
-
-const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({ title, action }) => (
-  <div className='flex items-center justify-between mb-12px'>
-    <h3 className='text-14px font-500 text-t-primary m-0'>{title}</h3>
-    {action}
-  </div>
-);
+import { FormPreferenceRow, FormSectionHeader, formLayoutStyles } from './FormLayout';
 
 type SlackConfigDraft = {
   botToken: string;
@@ -43,13 +19,21 @@ type SlackConfigDraft = {
 };
 
 interface SlackConfigFormProps {
+  pluginId: string;
   pluginStatus: IChannelPluginStatus | null;
   onStatusChange: (status: IChannelPluginStatus | null) => void;
   onConfigChange?: (config: SlackConfigDraft) => void;
 }
 
-const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatusChange, onConfigChange }) => {
+const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
+  pluginId,
+  pluginStatus,
+  onStatusChange,
+  onConfigChange,
+}) => {
   const { t } = useTranslation();
+  const runtimeId = pluginStatus?.runtimeId ?? pluginId;
+  const channelAccountId = pluginId;
 
   const [botToken, setBotToken] = useState('');
   const [appToken, setAppToken] = useState('');
@@ -67,28 +51,36 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
     try {
       const result = await channel.getPendingPairings.invoke();
       if (result.success && result.data) {
-        setPendingPairings(result.data.filter((item) => item.platformType === 'slack'));
+        setPendingPairings(
+          result.data.filter(
+            (item) => item.platformType === 'slack' && (!item.connectorId || item.connectorId === channelAccountId)
+          )
+        );
       }
     } catch (error) {
       console.error('[SlackConfig] Failed to load pending pairings:', error);
     } finally {
       setPairingLoading(false);
     }
-  }, []);
+  }, [channelAccountId]);
 
   const loadAuthorizedUsers = useCallback(async () => {
     setUsersLoading(true);
     try {
       const result = await channel.getAuthorizedUsers.invoke();
       if (result.success && result.data) {
-        setAuthorizedUsers(result.data.filter((item) => item.platformType === 'slack'));
+        setAuthorizedUsers(
+          result.data.filter(
+            (item) => item.platformType === 'slack' && (!item.connectorId || item.connectorId === channelAccountId)
+          )
+        );
       }
     } catch (error) {
       console.error('[SlackConfig] Failed to load authorized users:', error);
     } finally {
       setUsersLoading(false);
     }
-  }, []);
+  }, [channelAccountId]);
 
   useEffect(() => {
     void loadPendingPairings();
@@ -104,7 +96,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
 
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
-      if (request.platformType !== 'slack') return;
+      if (request.platformType !== 'slack' || (request.connectorId && request.connectorId !== channelAccountId)) return;
       setPendingPairings((prev) => {
         const exists = prev.some((item) => item.code === request.code);
         if (exists) return prev;
@@ -112,11 +104,11 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
       });
     });
     return () => unsubscribe();
-  }, []);
+  }, [channelAccountId]);
 
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'slack') return;
+      if (user.platformType !== 'slack' || (user.connectorId && user.connectorId !== channelAccountId)) return;
       setAuthorizedUsers((prev) => {
         const exists = prev.some((item) => item.id === user.id);
         if (exists) return prev;
@@ -125,7 +117,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
       setPendingPairings((prev) => prev.filter((item) => item.platformUserId !== user.platformUserId));
     });
     return () => unsubscribe();
-  }, []);
+  }, [channelAccountId]);
 
   const handleBotTokenChange = (value: string) => {
     setBotToken(value);
@@ -158,10 +150,10 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
     });
   };
 
-  const refreshSlackStatus = async () => {
+  const refreshChannelStatus = async () => {
     const statusResult = await channel.getPluginStatus.invoke();
     if (statusResult.success && statusResult.data) {
-      const slackPlugin = statusResult.data.find((plugin) => plugin.type === 'slack');
+      const slackPlugin = statusResult.data.find((plugin) => plugin.id === channelAccountId);
       onStatusChange(slackPlugin || null);
     }
   };
@@ -169,7 +161,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
   const handleAutoEnable = async () => {
     try {
       const result = await channel.enablePlugin.invoke({
-        pluginId: 'slack_default',
+        pluginId: runtimeId,
         config: {
           botToken: botToken.trim(),
           appToken: appToken.trim(),
@@ -179,7 +171,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
 
       if (result.success) {
         Message.success(t('settings.slack.pluginEnabled', 'Slack bot enabled'));
-        await refreshSlackStatus();
+        await refreshChannelStatus();
       } else {
         Message.error(result.msg || t('settings.slack.enableFailed', 'Failed to enable Slack plugin'));
       }
@@ -200,7 +192,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
     setTestedBotUsername(null);
     try {
       const result = await channel.testPlugin.invoke({
-        pluginId: 'slack_default',
+        pluginId: runtimeId,
         token: botToken.trim(),
         extraConfig: {
           appToken: appToken.trim(),
@@ -282,15 +274,15 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
   const configLocked = authorizedUsers.length > 0;
 
   return (
-    <div className='flex flex-col gap-24px'>
-      <PreferenceRow
+    <div className={formLayoutStyles.formRoot}>
+      <FormPreferenceRow
         label={t('settings.slack.botToken', 'Bot User OAuth Token')}
         description={t(
           'settings.slack.botTokenDesc',
           'Create a Slack bot and paste the Bot User OAuth Token (starts with xoxb-).'
         )}
       >
-        <div className='flex items-center gap-8px'>
+        <div className={formLayoutStyles.inlineRow}>
           {configLocked ? (
             <Tooltip
               content={t(
@@ -303,7 +295,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
                   value={botToken}
                   onChange={handleBotTokenChange}
                   placeholder={pluginStatus?.hasToken ? '••••••••••••••••' : 'xoxb-...'}
-                  style={{ width: 240 }}
+                  className={formLayoutStyles.controlInput}
                   visibilityToggle
                   disabled
                 />
@@ -314,21 +306,21 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
               value={botToken}
               onChange={handleBotTokenChange}
               placeholder={pluginStatus?.hasToken ? '••••••••••••••••' : 'xoxb-...'}
-              style={{ width: 240 }}
+              className={formLayoutStyles.controlInput}
               visibilityToggle
             />
           )}
         </div>
-      </PreferenceRow>
+      </FormPreferenceRow>
 
-      <PreferenceRow
+      <FormPreferenceRow
         label={t('settings.slack.appToken', 'App-Level Token')}
         description={t(
           'settings.slack.appTokenDesc',
           'Enable Socket Mode in Slack and create an app-level token with the connections:write scope (starts with xapp-).'
         )}
       >
-        <div className='flex items-center gap-8px'>
+        <div className={formLayoutStyles.inlineRow}>
           {configLocked ? (
             <Tooltip
               content={t(
@@ -341,7 +333,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
                   value={appToken}
                   onChange={handleAppTokenChange}
                   placeholder={pluginStatus?.hasToken ? '••••••••••••••••' : 'xapp-...'}
-                  style={{ width: 240 }}
+                  className={formLayoutStyles.controlInput}
                   visibilityToggle
                   disabled
                 />
@@ -352,7 +344,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
               value={appToken}
               onChange={handleAppTokenChange}
               placeholder={pluginStatus?.hasToken ? '••••••••••••••••' : 'xapp-...'}
-              style={{ width: 240 }}
+              className={formLayoutStyles.controlInput}
               visibilityToggle
             />
           )}
@@ -375,9 +367,9 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
             </Button>
           )}
         </div>
-      </PreferenceRow>
+      </FormPreferenceRow>
 
-      <PreferenceRow
+      <FormPreferenceRow
         label={t('settings.slack.requireMention', 'Require mention in channels')}
         description={t(
           'settings.slack.requireMentionDesc',
@@ -385,11 +377,11 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
         )}
       >
         <Switch checked={requireMention} onChange={handleRequireMentionChange} disabled={configLocked} />
-      </PreferenceRow>
+      </FormPreferenceRow>
 
       {pluginStatus?.enabled && pluginStatus?.connected && authorizedUsers.length === 0 && (
         <div className='bg-blue-50 dark:bg-blue-900/20 rd-12px p-16px border border-blue-200 dark:border-blue-800'>
-          <SectionHeader title={t('settings.assistant.nextSteps', 'Next Steps')} />
+          <FormSectionHeader title={t('settings.assistant.nextSteps', 'Next Steps')} />
           <div className='text-14px text-t-secondary space-y-8px'>
             <p className='m-0'>
               <strong>1.</strong>{' '}
@@ -421,8 +413,8 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
       )}
 
       {pluginStatus?.enabled && authorizedUsers.length === 0 && (
-        <div className='bg-fill-1 rd-12px pt-16px pr-16px pb-16px pl-0'>
-          <SectionHeader
+        <div className={formLayoutStyles.sectionCard}>
+          <FormSectionHeader
             title={t('settings.assistant.pendingPairings', 'Pending Pairing Requests')}
             action={
               <Button
@@ -444,16 +436,18 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
           ) : pendingPairings.length === 0 ? (
             <Empty description={t('settings.assistant.noPendingPairings', 'No pending pairing requests')} />
           ) : (
-            <div className='space-y-12px'>
+            <div className={formLayoutStyles.statusList}>
               {pendingPairings.map((pairing) => (
-                <div key={pairing.code} className='bg-fill-2 rd-12px p-16px'>
-                  <div className='flex items-start justify-between gap-12px'>
+                <div key={pairing.code} className={formLayoutStyles.statusItem}>
+                  <div className={formLayoutStyles.statusItemMain}>
                     <div className='space-y-8px'>
-                      <div className='flex items-center gap-8px'>
+                      <div className={formLayoutStyles.inlineRow}>
                         <span className='text-13px text-t-secondary'>
                           {t('settings.assistant.pairingCode', 'Code')}
                         </span>
-                        <code className='bg-fill-3 px-8px py-4px rd-6px text-13px'>{pairing.code}</code>
+                        <code className={`bg-fill-3 px-8px py-4px rd-6px text-13px ${formLayoutStyles.inlineCode}`}>
+                          {pairing.code}
+                        </code>
                         <Button
                           size='mini'
                           type='text'
@@ -466,25 +460,24 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
                         {t('settings.assistant.expiresIn', 'Expires in')}: {getRemainingTime(pairing.expiresAt)}
                       </div>
                     </div>
-
-                    <div className='flex items-center gap-8px'>
-                      <Button
-                        type='primary'
-                        size='small'
-                        icon={<CheckOne size={14} />}
-                        onClick={() => void handleApprovePairing(pairing.code)}
-                      >
-                        {t('settings.assistant.approve', 'Approve')}
-                      </Button>
-                      <Button
-                        status='danger'
-                        size='small'
-                        icon={<CloseOne size={14} />}
-                        onClick={() => void handleRejectPairing(pairing.code)}
-                      >
-                        {t('settings.assistant.reject', 'Reject')}
-                      </Button>
-                    </div>
+                  </div>
+                  <div className={formLayoutStyles.statusItemActions}>
+                    <Button
+                      type='primary'
+                      size='small'
+                      icon={<CheckOne size={14} />}
+                      onClick={() => void handleApprovePairing(pairing.code)}
+                    >
+                      {t('settings.assistant.approve', 'Approve')}
+                    </Button>
+                    <Button
+                      status='danger'
+                      size='small'
+                      icon={<CloseOne size={14} />}
+                      onClick={() => void handleRejectPairing(pairing.code)}
+                    >
+                      {t('settings.assistant.reject', 'Reject')}
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -493,8 +486,8 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
         </div>
       )}
 
-      <div className='bg-fill-1 rd-12px pt-16px pr-16px pb-16px pl-0'>
-        <SectionHeader
+      <div className={formLayoutStyles.sectionCard}>
+        <FormSectionHeader
           title={t('settings.assistant.authorizedUsers', 'Authorized Users')}
           action={
             <Button
@@ -516,10 +509,10 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
         ) : authorizedUsers.length === 0 ? (
           <Empty description={t('settings.assistant.noAuthorizedUsers', 'No authorized users yet')} />
         ) : (
-          <div className='space-y-12px'>
+          <div className={formLayoutStyles.statusList}>
             {authorizedUsers.map((user) => (
-              <div key={user.id} className='bg-fill-2 rd-12px p-16px'>
-                <div className='flex items-start justify-between gap-12px'>
+              <div key={user.id} className={formLayoutStyles.statusItem}>
+                <div className={formLayoutStyles.statusItemMain}>
                   <div className='space-y-6px'>
                     <div className='text-14px text-t-primary font-500'>{user.displayName || user.platformUserId}</div>
                     <div className='text-12px text-t-tertiary'>
@@ -529,7 +522,8 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({ pluginStatus, onStatu
                       {t('settings.assistant.authorizedAt', 'Authorized')}: {formatTime(user.authorizedAt)}
                     </div>
                   </div>
-
+                </div>
+                <div className={formLayoutStyles.statusItemActions}>
                   <Button
                     status='danger'
                     size='small'

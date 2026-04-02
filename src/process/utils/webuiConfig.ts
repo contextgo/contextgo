@@ -5,17 +5,49 @@
  */
 
 import { app } from 'electron';
+import { webui } from '@/common/adapter/ipcBridge';
 import * as fs from 'fs';
 import * as path from 'path';
-import { setWebServerInstance } from '../bridge/webuiBridge';
+import { getWebServerInstance, setWebServerInstance } from '../bridge/webuiBridge';
 import { ProcessConfig } from './initStorage';
 import { startWebServerWithInstance } from '../webserver';
+import { cleanupWebAdapter } from '../webserver/adapter';
 import { SERVER_CONFIG } from '../webserver/config/constants';
 
 const WEBUI_CONFIG_FILE = 'webui.config.json';
 const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
 const DESKTOP_WEBUI_ALLOW_REMOTE_KEY = 'webui.desktop.allowRemote';
 const DESKTOP_WEBUI_PORT_KEY = 'webui.desktop.port';
+
+const emitWebuiRuntimeStatus = (port: number, allowRemote: boolean): void => {
+  webui.statusChanged.emit({
+    running: true,
+    port,
+    localUrl: `http://localhost:${port}`,
+    networkUrl: getNetworkUrl(port, allowRemote),
+  });
+};
+
+const stopCurrentWebuiInstance = async (reason: string): Promise<void> => {
+  const currentInstance = getWebServerInstance();
+  if (!currentInstance) {
+    return;
+  }
+
+  try {
+    const { server, wss } = currentInstance;
+    wss.clients.forEach((client) => client.close(1000, reason));
+    await new Promise<void>((resolve) => {
+      server.close(() => resolve());
+      setTimeout(resolve, 2000);
+    });
+    cleanupWebAdapter();
+  } catch (error) {
+    console.warn(`[WebUI] Failed to stop WebUI instance (${reason}):`, error);
+  }
+
+  setWebServerInstance(null);
+};
 
 export type WebUIUserConfig = {
   port?: number | string;
@@ -86,6 +118,29 @@ export const resolveRemoteAccess = (config: WebUIUserConfig, isRemoteMode: boole
   return isRemoteMode || hostRequestsRemote || envRemote === true || configRemote;
 };
 
+const getNetworkUrl = (port: number, allowRemote: boolean): string | undefined => {
+  if (!allowRemote) {
+    return undefined;
+  }
+
+  const nets = require('node:os').networkInterfaces() as ReturnType<typeof import('node:os').networkInterfaces>;
+  for (const name of Object.keys(nets)) {
+    const netInfo = nets[name];
+    if (!netInfo) {
+      continue;
+    }
+
+    for (const net of netInfo) {
+      const isIPv4 = net.family === 'IPv4' || (net.family as unknown) === 4;
+      if (isIPv4 && !net.internal) {
+        return `http://${net.address}:${port}`;
+      }
+    }
+  }
+
+  return undefined;
+};
+
 export const restoreDesktopWebUIFromPreferences = async (): Promise<void> => {
   try {
     const enabled = (await ProcessConfig.get(DESKTOP_WEBUI_ENABLED_KEY)) === true;
@@ -104,4 +159,45 @@ export const restoreDesktopWebUIFromPreferences = async (): Promise<void> => {
   } catch (error) {
     console.error('[WebUI] Failed to auto-restore from desktop preferences:', error);
   }
+};
+
+export const ensureDesktopWebUIForOfficialRemote = async (): Promise<void> => {
+  try {
+    await app.whenReady();
+
+    const portPref = await ProcessConfig.get(DESKTOP_WEBUI_PORT_KEY);
+    const preferredPort = typeof portPref === 'number' && portPref > 0 ? portPref : SERVER_CONFIG.DEFAULT_PORT;
+    const currentInstance = getWebServerInstance();
+
+    if (currentInstance && Number.isFinite(currentInstance.port) && currentInstance.port > 0) {
+      emitWebuiRuntimeStatus(currentInstance.port, currentInstance.allowRemote);
+      return;
+    }
+
+    const instance = await startWebServerWithInstance(preferredPort, false);
+    setWebServerInstance(instance);
+    await ProcessConfig.set(DESKTOP_WEBUI_PORT_KEY, instance.port);
+    emitWebuiRuntimeStatus(instance.port, false);
+    console.log(`[WebUI] Official Remote runtime ensured (port=${instance.port}, allowRemote=false)`);
+  } catch (error) {
+    console.error('[WebUI] Failed to ensure browser entry for Official Remote:', error);
+    throw error;
+  }
+};
+
+export const releaseDesktopWebUIForOfficialRemote = async (): Promise<void> => {
+  await app.whenReady();
+
+  const localAccessEnabled = (await ProcessConfig.get(DESKTOP_WEBUI_ENABLED_KEY)) === true;
+  if (localAccessEnabled) {
+    return;
+  }
+
+  if (!getWebServerInstance()) {
+    return;
+  }
+
+  await stopCurrentWebuiInstance('Official Remote runtime released');
+  webui.statusChanged.emit({ running: false });
+  console.log('[WebUI] Official Remote runtime released because local access is disabled.');
 };

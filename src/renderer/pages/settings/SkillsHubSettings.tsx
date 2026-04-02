@@ -1,5 +1,5 @@
 import { ipcBridge } from '@/common';
-import { ContextGoModal } from '@/renderer/components/base';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import type {
   SkillMarketBundle,
   SkillMarketIndustry,
@@ -120,16 +120,19 @@ const SkillsHubSettings: React.FC = () => {
       nextQuery,
       nextView,
       nextIndustryId,
+      nextOffset,
     }: {
       append?: boolean;
       forceRefresh?: boolean;
       nextQuery?: string;
       nextView?: SkillMarketView;
       nextIndustryId?: string;
+      nextOffset?: number;
     } = {}) => {
       const query = nextQuery ?? marketQuery;
       const view = nextView ?? marketView;
       const industryId = nextIndustryId ?? marketIndustryId;
+      const offset = nextOffset ?? 0;
 
       if (append) {
         setMarketLoadingMore(true);
@@ -143,7 +146,7 @@ const SkillsHubSettings: React.FC = () => {
         const response = await ipcBridge.fs.searchSkillMarket.invoke({
           query,
           limit: 24,
-          offset: append ? marketSkills.length : 0,
+          offset,
           forceRefresh,
           view,
           industryId: industryId === 'all' ? undefined : industryId,
@@ -180,7 +183,7 @@ const SkillsHubSettings: React.FC = () => {
         setMarketRefreshing(false);
       }
     },
-    [marketIndustryId, marketQuery, marketSkills.length, marketView, t]
+    [marketIndustryId, marketQuery, marketView, t]
   );
 
   useEffect(() => {
@@ -748,7 +751,7 @@ const SkillsHubSettings: React.FC = () => {
                           type='secondary'
                           loading={marketLoadingMore}
                           className='mt-8px rd-8px'
-                          onClick={() => void loadSkillMarket({ append: true })}
+                          onClick={() => void loadSkillMarket({ append: true, nextOffset: marketSkills.length })}
                         >
                           {t('settings.skillsHub.loadMore', { defaultValue: 'Load More' })}
                         </Button>
@@ -1111,43 +1114,16 @@ const SkillsHubSettings: React.FC = () => {
         </div>
       </SettingsPageWrapper>
 
-      <ContextGoModal
+      <SettingsSubModal
         visible={showAddPathModal}
         onCancel={() => {
           setShowAddPathModal(false);
           setCustomPathName('');
           setCustomPathValue('');
         }}
-        header={{
-          title: t('settings.skillsHub.addCustomPath', { defaultValue: 'Add Custom Skill Path' }),
-          showClose: true,
-          className: 'px-24px pt-20px',
-        }}
-        footer={{
-          className: 'px-24px pb-20px',
-          render: () => (
-            <div className='flex justify-end gap-10px pt-4px'>
-              <Button
-                onClick={() => {
-                  setShowAddPathModal(false);
-                  setCustomPathName('');
-                  setCustomPathValue('');
-                }}
-                className='min-w-88px px-18px'
-              >
-                {t('common.cancel', { defaultValue: 'Cancel' })}
-              </Button>
-              <Button
-                type='primary'
-                onClick={() => void handleAddCustomPath()}
-                disabled={!customPathName.trim() || !customPathValue.trim()}
-                className='min-w-104px px-18px'
-              >
-                {t('common.confirm', { defaultValue: 'Confirm' })}
-              </Button>
-            </div>
-          ),
-        }}
+        title={t('settings.skillsHub.addCustomPath', { defaultValue: 'Add Custom Skill Path' })}
+        onOk={() => void handleAddCustomPath()}
+        okButtonProps={{ disabled: !customPathName.trim() || !customPathValue.trim() }}
         style={{ width: 'min(560px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px' }}
         autoFocus={false}
@@ -1196,50 +1172,40 @@ const SkillsHubSettings: React.FC = () => {
             </div>
           </div>
         </div>
-      </ContextGoModal>
+      </SettingsSubModal>
 
-      <ContextGoModal
+      <SettingsSubModal
         visible={deleteSkillName !== null}
         onCancel={() => setDeleteSkillName(null)}
-        header={{
-          title: t('settings.skillsHub.deleteConfirmTitle', { defaultValue: 'Delete Skill' }),
-          showClose: true,
-          className: 'px-24px pt-20px',
+        title={t('settings.skillsHub.deleteConfirmTitle', { defaultValue: 'Delete Skill' })}
+        onOk={() => {
+          if (!deleteSkillName) {
+            return;
+          }
+          void handleDelete(deleteSkillName);
+          setDeleteSkillName(null);
         }}
-        footer={{
-          className: 'px-24px pb-20px',
-          render: () => (
-            <div className='flex justify-end gap-10px pt-4px'>
-              <Button onClick={() => setDeleteSkillName(null)} className='min-w-88px px-18px'>
-                {t('common.cancel', { defaultValue: 'Cancel' })}
-              </Button>
-              <Button
-                type='primary'
-                status='danger'
-                onClick={() => {
-                  if (!deleteSkillName) {
-                    return;
-                  }
-                  void handleDelete(deleteSkillName);
-                  setDeleteSkillName(null);
-                }}
-                className='min-w-104px px-18px'
-              >
-                {t('common.delete', { defaultValue: 'Delete' })}
-              </Button>
-            </div>
-          ),
-        }}
+        okText={t('common.delete', { defaultValue: 'Delete' })}
+        okButtonProps={{ status: 'danger' }}
         style={{ width: 'min(440px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <p className='mb-0 text-14px leading-6 text-t-secondary'>
-          {t('settings.skillsHub.deleteConfirmContent', {
-            name: deleteSkillName || '',
-            defaultValue: `Are you sure you want to delete "${deleteSkillName || ''}"?`,
-          })}
-        </p>
-      </ContextGoModal>
+        <div className='settings-sub-modal__stack'>
+          <p className='settings-sub-modal__lead'>
+            {t('settings.skillsHub.deleteConfirmContent', {
+              name: deleteSkillName || '',
+              defaultValue: `Are you sure you want to delete "${deleteSkillName || ''}"?`,
+            })}
+          </p>
+          {deleteSkillName ? (
+            <div className='settings-sub-modal__entity-card settings-sub-modal__entity-card--danger'>
+              <div className='settings-sub-modal__meta'>
+                <div className='settings-sub-modal__meta-title'>{deleteSkillName}</div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </SettingsSubModal>
     </>
   );
 };

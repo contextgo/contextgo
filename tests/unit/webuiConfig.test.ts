@@ -17,6 +17,7 @@ describe('webuiConfig module', () => {
     vi.doMock('electron', () => ({
       app: {
         getPath: vi.fn(() => '/mock/userData'),
+        whenReady: vi.fn(() => Promise.resolve()),
       },
       ipcMain: {
         handle: vi.fn(),
@@ -31,13 +32,27 @@ describe('webuiConfig module', () => {
     }));
 
     vi.doMock('@process/bridge/webuiBridge', () => ({
+      getWebServerInstance: vi.fn(() => null),
       setWebServerInstance: vi.fn(),
     }));
 
     vi.doMock('@process/utils/initStorage', () => ({
       ProcessConfig: {
         get: vi.fn(() => Promise.resolve(undefined)),
+        set: vi.fn(() => Promise.resolve(undefined)),
       },
+    }));
+
+    vi.doMock('@/common/adapter/ipcBridge', () => ({
+      webui: {
+        statusChanged: {
+          emit: vi.fn(),
+        },
+      },
+    }));
+
+    vi.doMock('@process/webserver/adapter', () => ({
+      cleanupWebAdapter: vi.fn(),
     }));
 
     vi.doMock('@process/webserver', () => ({
@@ -192,6 +207,26 @@ describe('webuiConfig module', () => {
       const { resolveRemoteAccess } = await import('@process/utils/webuiConfig');
 
       expect(resolveRemoteAccess({}, false)).toBe(false);
+    });
+  });
+
+  describe('official remote runtime helpers', () => {
+    it('ensures official remote runtime without forcing local remote exposure', async () => {
+      const { ensureDesktopWebUIForOfficialRemote } = await import('@process/utils/webuiConfig');
+      const { startWebServerWithInstance } = await import('@process/webserver');
+      const { ProcessConfig } = await import('@process/utils/initStorage');
+      const { webui } = await import('@/common/adapter/ipcBridge');
+
+      await ensureDesktopWebUIForOfficialRemote();
+
+      expect(startWebServerWithInstance).toHaveBeenCalledWith(3000, false);
+      expect(ProcessConfig.set).toHaveBeenCalledWith('webui.desktop.port', 3000);
+      expect(webui.statusChanged.emit).toHaveBeenCalledWith({
+        running: true,
+        port: 3000,
+        localUrl: 'http://localhost:3000',
+        networkUrl: undefined,
+      });
     });
   });
 });

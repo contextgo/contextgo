@@ -134,5 +134,5 @@ describe('Packaged i18n build integrity', () => {
     const missing = expectedFiles.filter((file) => !asarEntries.has(file));
 
     expect(missing).toEqual([]);
-  });
+  }, 30000);
 });

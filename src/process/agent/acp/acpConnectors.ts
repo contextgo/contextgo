@@ -293,8 +293,8 @@ async function prepareCodex(): Promise<NpxPrepareResult> {
   }
 
   try {
-    const { stdout } = await execFile(codexCommand, ['login', 'status'], codexExecOptions);
-    diagnostics.loginStatus = stdout.trim() || diagnostics.loginStatus;
+    const { stdout, stderr } = await execFile(codexCommand, ['login', 'status'], codexExecOptions);
+    diagnostics.loginStatus = stdout.trim() || stderr.trim() || diagnostics.loginStatus;
     diagnostics.hasChatGptSession = /chatgpt/i.test(diagnostics.loginStatus);
   } catch (error) {
     mainWarn('[ACP codex]', 'Failed to read codex login status', error);

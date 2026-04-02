@@ -105,6 +105,8 @@ export interface IChannelPluginConfig {
  */
 export interface IChannelPluginStatus {
   id: string;
+  /** Runtime/plugin row id used internally by the channel runtime. */
+  runtimeId?: string;
   type: PluginType;
   name: string;
   enabled: boolean;
@@ -150,10 +152,10 @@ export interface IChannelPluginStatus {
 // ==================== Resource Model Types ====================
 
 /**
- * First-class connector instance used for ingress/egress routing.
+ * First-class channel account used for ingress/egress routing.
  * This is the target semantic replacement for plugin-centric channel routing.
  */
-export interface IConnectorInstance {
+export interface IChannelAccount {
   id: string;
   platform: PluginType;
   name: string;
@@ -161,21 +163,34 @@ export interface IConnectorInstance {
   status: PluginStatus;
   credentials?: IPluginCredentials;
   runtimeConfig?: IPluginConfigOptions;
+  configured?: boolean;
   capabilities?: Record<string, unknown>;
   legacyPluginId?: string;
   createdAt: number;
   updatedAt: number;
 }
 
+/** @deprecated Use IChannelAccount. */
+export type IConnectorInstance = IChannelAccount;
+
 /**
- * Remote identity authorized through a specific connector instance.
+ * Remote identity authorized through a specific channel account.
  */
 export interface IRemoteIdentity {
   id: string;
   connectorId: string;
+  /** @deprecated Use connectorId. */
+  channelAccountId?: string;
   remoteUserId?: string;
+  /** Stable peer/audience key used for routing and session isolation. */
   remoteChatId: string;
+  /** Raw platform chat target used for message transport. */
+  platformChatId?: string;
   remoteChatType?: string;
+  peerScope?: UnifiedPeerScope;
+  /** Parent audience key for thread/topic peers, used for fallback routing. */
+  parentChatId?: string;
+  threadId?: string;
   displayName?: string;
   authorizedAt: number;
   lastActive?: number;
@@ -211,8 +226,8 @@ export interface IAgentProfile {
  */
 export type ChannelBindingScopeType = 'connector_default' | 'remote_user' | 'remote_chat' | 'temporary_override';
 export type ChannelBindingTargetType = 'agent_profile' | 'external_session';
-export type ChannelHandoffMode = 'resume' | 'new_thread';
-export type ChannelHandoffConflictPolicy = 'reject' | 'interrupt';
+export type ChannelContinuationMode = 'resume' | 'new_thread';
+export type ChannelContinuationConflictPolicy = 'reject' | 'interrupt';
 export type ChannelControlMode = 'desktop_owner' | 'im_owner' | 'im_observer';
 
 export interface IChannelControlLease {
@@ -221,18 +236,20 @@ export interface IChannelControlLease {
   controlMode: ChannelControlMode;
   sourceExternalSessionId?: string;
   sourceConversationId?: string;
-  handoffMode?: ChannelHandoffMode;
+  continuationMode?: ChannelContinuationMode;
   createdAt: number;
   updatedAt: number;
   releasedAt?: number;
 }
 
 /**
- * Explicit routing rule from connector scope to agent profile.
+ * Explicit routing rule from channel account scope to agent profile.
  */
 export interface IChannelBinding {
   id: string;
   connectorId: string;
+  /** @deprecated Use connectorId. */
+  channelAccountId?: string;
   scopeType: ChannelBindingScopeType;
   scopeKey?: string;
   agentProfileId: string;
@@ -250,11 +267,15 @@ export type ChannelAudienceScope = 'remote_user' | 'remote_chat';
 export interface IChannelAudienceEntry {
   key: string;
   connectorId: string;
+  /** @deprecated Use connectorId. */
+  channelAccountId?: string;
   scopeType: ChannelAudienceScope;
   remoteIdentityId?: string;
   remoteUserId?: string;
   remoteChatId?: string;
+  platformChatId?: string;
   remoteChatType?: string;
+  peerScope?: UnifiedPeerScope;
   parentChatId?: string;
   threadId?: string;
   displayName?: string;
@@ -264,7 +285,9 @@ export interface IChannelAudienceEntry {
 }
 
 export type IChannelBindingCatalog = {
-  connectors: IConnectorInstance[];
+  connectors: IChannelAccount[];
+  /** @deprecated Use connectors. */
+  channelAccounts?: IChannelAccount[];
   agentProfiles: IAgentProfile[];
   bindings: IChannelBinding[];
   audiences: IChannelAudienceEntry[];
@@ -273,34 +296,37 @@ export type IChannelBindingCatalog = {
 export type IChannelBindingTarget = {
   type: ChannelBindingTargetType;
   id: string;
-  mode?: ChannelHandoffMode;
+  mode?: ChannelContinuationMode;
 };
 
-export type IChannelHandoffRequest = {
+export type IChannelContinuationRequest = {
   sourceConversationId?: string;
   sourceExternalSessionId?: string;
-  targetConnectorId: string;
+  targetChannelAccountId?: string;
+  /** @deprecated Use targetChannelAccountId. */
+  targetConnectorId?: string;
   targetChatId: string;
+  targetPlatformChatId?: string;
   targetPlatformUserId?: string;
   targetDisplayName?: string;
   targetChatType?: string;
-  mode?: ChannelHandoffMode;
-  conflictPolicy?: ChannelHandoffConflictPolicy;
+  mode?: ChannelContinuationMode;
+  conflictPolicy?: ChannelContinuationConflictPolicy;
   controlMode?: ChannelControlMode;
   temporary?: boolean;
   priority?: number;
 };
 
-export type IChannelHandoffResult = {
+export type IChannelContinuationResult = {
   bindingId: string;
   targetExternalSessionId: string;
   sourceExternalSessionId?: string;
   conversationId?: string;
   agentProfileId: string;
-  mode: ChannelHandoffMode;
+  mode: ChannelContinuationMode;
 };
 
-export type IChannelHandoffReleaseResult = {
+export type IChannelContinuationReleaseResult = {
   targetExternalSessionId: string;
   releasedBindingId?: string;
   restoredSourceExternalSessionId?: string;
@@ -314,6 +340,8 @@ export type IChannelHandoffReleaseResult = {
 export interface IExternalSession {
   id: string;
   connectorId: string;
+  /** @deprecated Use connectorId. */
+  channelAccountId?: string;
   remoteIdentityId: string;
   bindingId?: string;
   agentProfileId: string;
@@ -329,7 +357,7 @@ export type IExternalSessionControlState = {
   controlMode?: ChannelControlMode;
   sourceExternalSessionId?: string;
   sourceConversationId?: string;
-  handoffMode?: ChannelHandoffMode;
+  continuationMode?: ChannelContinuationMode;
 };
 
 function toRecord(value: unknown): Record<string, unknown> | null {
@@ -337,6 +365,22 @@ function toRecord(value: unknown): Record<string, unknown> | null {
     return null;
   }
   return value as Record<string, unknown>;
+}
+
+export function getChannelAccountId(value: { connectorId?: string; channelAccountId?: string }): string | undefined {
+  return value.channelAccountId ?? value.connectorId;
+}
+
+export function withChannelAccountId<T extends { connectorId?: string; channelAccountId?: string }>(value: T): T {
+  const channelAccountId = getChannelAccountId(value);
+  if (!channelAccountId) {
+    return value;
+  }
+  return {
+    ...value,
+    connectorId: channelAccountId,
+    channelAccountId,
+  };
 }
 
 export function getExternalSessionControlState(session: IExternalSession): IExternalSessionControlState {
@@ -359,10 +403,7 @@ export function getExternalSessionControlState(session: IExternalSession): IExte
       typeof control?.sourceConversationId === 'string' && control.sourceConversationId
         ? control.sourceConversationId
         : undefined,
-    handoffMode:
-      control?.mode === 'resume' || control?.mode === 'new_thread'
-        ? control.mode
-        : undefined,
+    continuationMode: control?.mode === 'resume' || control?.mode === 'new_thread' ? control.mode : undefined,
   };
 }
 
@@ -464,6 +505,9 @@ export interface IChannelRun {
  */
 export interface IChannelUser {
   id: string;
+  connectorId?: string;
+  /** @deprecated Use connectorId. */
+  channelAccountId?: string;
   platformUserId: string;
   platformType: PluginType;
   displayName?: string;
@@ -509,8 +553,14 @@ export interface IChannelSession {
 export type IChannelActiveSessionEntry = {
   id: string;
   connectorId?: string;
+  /** @deprecated Use connectorId. */
+  channelAccountId?: string;
   connectorName?: string;
+  /** @deprecated Use connectorName. */
+  channelAccountName?: string;
   connectorPlatform?: PluginType;
+  /** @deprecated Use connectorPlatform. */
+  channelAccountPlatform?: PluginType;
   remoteIdentityId?: string;
   audienceTitle: string;
   audienceKey?: string;
@@ -525,9 +575,9 @@ export type IChannelActiveSessionEntry = {
   bindingSystemFallback?: boolean;
   ownerKey?: string;
   controlMode?: ChannelControlMode;
-  handoffMode?: ChannelHandoffMode;
-  handoffSourceExternalSessionId?: string;
-  handoffSourceConversationId?: string;
+  continuationMode?: ChannelContinuationMode;
+  continuationSourceExternalSessionId?: string;
+  continuationSourceConversationId?: string;
   leaseUpdatedAt?: number;
   leaseReleasedAt?: number;
 };
@@ -561,6 +611,8 @@ export interface IChannelPairingRequest {
   platformUserId: string;
   platformType: PluginType;
   connectorId?: string;
+  /** @deprecated Use connectorId. */
+  channelAccountId?: string;
   remoteChatId?: string;
   displayName?: string;
   requestedAt: number;
@@ -703,6 +755,8 @@ export interface IUnifiedOutgoingMessage {
   fileUrl?: string;
   fileName?: string;
   replyToMessageId?: string;
+  threadId?: string;
+  replyInThread?: boolean;
   silent?: boolean;
 }
 

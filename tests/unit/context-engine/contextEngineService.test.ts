@@ -179,7 +179,11 @@ describe('ContextEngineService', () => {
     const dependencies = createInMemoryContextEngineDependencies({
       memories: [
         makeMemory({ id: 'memory-1', summary: 'Stable preference: use TypeScript strict mode.', tier: 'factual' }),
-        makeMemory({ id: 'memory-2', summary: 'Workflow: start debugging from the narrowest failing test.', tier: 'experiential' }),
+        makeMemory({
+          id: 'memory-2',
+          summary: 'Workflow: start debugging from the narrowest failing test.',
+          tier: 'experiential',
+        }),
       ],
     });
     const service = new ContextEngineService(dependencies);

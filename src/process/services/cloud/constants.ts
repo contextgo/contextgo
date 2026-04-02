@@ -13,6 +13,3 @@ export const CLOUD_AUTH_BASE_URL = CONTEXTGO_AUTH_BASE_URL.replace(/\/+$/, '');
 export const CLOUD_API_BASE_URL = CONTEXTGO_API_BASE_URL.replace(/\/+$/, '');
 
 export const CLOUD_AUTH_PROVIDERS: CloudAuthProviderId[] = ['github', 'google'];
-
-export const CLOUD_SYNC_NAMESPACE = 'preferences';
-export const CLOUD_SYNC_LANGUAGE_KEY = 'language';

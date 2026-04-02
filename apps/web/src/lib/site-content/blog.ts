@@ -95,8 +95,7 @@ const blogContent: Record<SiteLocale, BlogSection> = {
         slug: 'context-before-agents',
         eyebrow: '产品模型',
         title: '为什么 ContextGo 先做上下文，再谈 Agent',
-        summary:
-          '这个产品不是先造一个聊天框，而是先把工作上下文接通，让 Agent 能真正进入现实工作流。',
+        summary: '这个产品不是先造一个聊天框，而是先把工作上下文接通，让 Agent 能真正进入现实工作流。',
         readingTime: '4 分钟',
         publishedAt: '2026-03-30',
         sections: [
@@ -119,8 +118,7 @@ const blogContent: Record<SiteLocale, BlogSection> = {
         slug: 'release-operations-source-of-truth',
         eyebrow: '发布运维',
         title: '发布运维应该统一收口到 contextgo-releases',
-        summary:
-          '当官网、下载中心和桌面端更新都读取同一个 release 仓库时，产品版本事实来源才会真正清晰。',
+        summary: '当官网、下载中心和桌面端更新都读取同一个 release 仓库时，产品版本事实来源才会真正清晰。',
         readingTime: '5 分钟',
         publishedAt: '2026-03-30',
         sections: [
@@ -143,8 +141,7 @@ const blogContent: Record<SiteLocale, BlogSection> = {
         slug: 'desktop-host-mobile-client',
         eyebrow: '远程产品',
         title: '桌面主机，移动端客户端，这个产品模型要说清楚',
-        summary:
-          '只有当用户理解桌面端仍是主机、移动端仍是远程控制面时，远程访问能力才会真正显得一致。',
+        summary: '只有当用户理解桌面端仍是主机、移动端仍是远程控制面时，远程访问能力才会真正显得一致。',
         readingTime: '5 分钟',
         publishedAt: '2026-03-30',
         sections: [

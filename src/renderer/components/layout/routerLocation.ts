@@ -103,16 +103,10 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
     loaders: [() => import('@renderer/pages/settings/AgentSettings')],
   },
   {
-    match: (routePath) => routePath === '/settings/system' || routePath === '/settings/about',
+    match: (routePath) =>
+      routePath === '/settings/system' || routePath === '/settings/about' || routePath === '/settings/display',
     loaders: [
       () => import('@renderer/pages/settings/SystemSettings'),
-      () => import('@renderer/pages/settings/components/SettingsSider'),
-    ],
-  },
-  {
-    match: (routePath) => routePath === '/settings/display',
-    loaders: [
-      () => import('@renderer/pages/settings/DisplaySettings'),
       () => import('@renderer/pages/settings/components/SettingsSider'),
     ],
   },

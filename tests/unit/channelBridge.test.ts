@@ -30,27 +30,41 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     getPendingPairings: makeChannel('getPendingPairings'),
     approvePairing: makeChannel('approvePairing'),
     rejectPairing: makeChannel('rejectPairing'),
+    authorizeRemoteUser: makeChannel('authorizeRemoteUser'),
     getAuthorizedUsers: makeChannel('getAuthorizedUsers'),
     revokeUser: makeChannel('revokeUser'),
     getActiveSessions: makeChannel('getActiveSessions'),
     getActiveSessionCatalog: makeChannel('getActiveSessionCatalog'),
+    getChannelAccounts: makeChannel('getChannelAccounts'),
+    createChannelAccount: makeChannel('createChannelAccount'),
+    getConnectorInstances: makeChannel('getConnectorInstances'),
+    upsertChannelAccount: makeChannel('upsertChannelAccount'),
+    upsertConnectorInstance: makeChannel('upsertConnectorInstance'),
+    deleteChannelAccount: makeChannel('deleteChannelAccount'),
+    deleteConnectorInstance: makeChannel('deleteConnectorInstance'),
     getBindingCatalog: makeChannel('getBindingCatalog'),
     getBindings: makeChannel('getBindings'),
     upsertBinding: makeChannel('upsertBinding'),
     deleteBinding: makeChannel('deleteBinding'),
-    handoffSession: makeChannel('handoffSession'),
-    endHandoffSession: makeChannel('endHandoffSession'),
-    setHandoffControlMode: makeChannel('setHandoffControlMode'),
+    prepareConversationPublication: makeChannel('prepareConversationPublication'),
+    prepareConversationAgentProfile: makeChannel('prepareConversationAgentProfile'),
+    continuationSession: makeChannel('continuationSession'),
+    endContinuationSession: makeChannel('endContinuationSession'),
+    setContinuationControlMode: makeChannel('setContinuationControlMode'),
     syncChannelSettings: makeChannel('syncChannelSettings'),
   },
 }));
 
+const mockEnablePlugin = vi.fn(async () => ({ success: true }));
+const mockDisablePlugin = vi.fn(async () => ({ success: true }));
+const mockTestPlugin = vi.fn(async () => ({ success: true }));
+const mockSyncChannelSettings = vi.fn(async () => ({ success: true }));
 vi.mock('@process/channels/core/ChannelManager', () => ({
   getChannelManager: vi.fn(() => ({
-    enablePlugin: vi.fn(async () => ({ success: true })),
-    disablePlugin: vi.fn(async () => ({ success: true })),
-    testPlugin: vi.fn(async () => ({ success: true })),
-    syncChannelSettings: vi.fn(async () => ({ success: true })),
+    enablePlugin: mockEnablePlugin,
+    disablePlugin: mockDisablePlugin,
+    testPlugin: mockTestPlugin,
+    syncChannelSettings: mockSyncChannelSettings,
   })),
 }));
 
@@ -58,20 +72,36 @@ vi.mock('@process/channels/pairing/PairingService', () => ({
   getPairingService: vi.fn(() => ({
     approvePairing: vi.fn(async () => ({ success: true })),
     rejectPairing: vi.fn(async () => ({ success: true })),
+    authorizeRemoteUser: vi.fn(async () => ({ success: true })),
   })),
 }));
 
-const mockHandoffSession = vi.fn(async () => ({
-  bindingId: 'binding-handoff-1',
+const mockPrepareConversationPublication = vi.fn(async () => ({
+  id: 'agent-profile-1',
+  name: 'Prepared Agent',
+  backend: 'openclaw-gateway',
+  version: 1,
+  archived: false,
+  createdAt: 1000,
+  updatedAt: 1000,
+}));
+const mockContinuationSession = vi.fn(async () => ({
+  bindingId: 'binding-continuation-1',
   targetExternalSessionId: 'external-session-target-1',
   sourceExternalSessionId: 'external-session-source-1',
   conversationId: 'conversation-1',
   agentProfileId: 'agent-profile-1',
   mode: 'resume',
 }));
-vi.mock('@process/channels/core/ChannelHandoffService', () => ({
-  getChannelHandoffService: vi.fn(() => ({
-    handoffSession: mockHandoffSession,
+vi.mock('@process/channels/core/ChannelContinuationService', () => ({
+  getChannelContinuationService: vi.fn(() => ({
+    continueSession: mockContinuationSession,
+  })),
+}));
+
+vi.mock('@process/channels/core/ChannelPublicationService', () => ({
+  getChannelPublicationService: vi.fn(() => ({
+    prepareConversationPublication: mockPrepareConversationPublication,
   })),
 }));
 
@@ -89,6 +119,21 @@ vi.mock('@/extensions', () => ({
 }));
 
 vi.mock('@/extensions/assetProtocol', () => ({ toAssetUrl: vi.fn((p: string) => `asset://${p}`) }));
+
+const mockDeleteChannelPlugin = vi.fn(() => ({ success: true }));
+const mockGetRemoteIdentities = vi.fn(() => ({ success: true, data: [] }));
+const mockDeleteChannelUser = vi.fn(() => ({ success: true, data: true }));
+const mockDbDeleteConnectorInstance = vi.fn(() => ({ success: true, data: true }));
+const mockRunInTransaction = vi.fn((fn: () => unknown) => ({ success: true, data: fn() }));
+vi.mock('@process/services/database', () => ({
+  getDatabase: vi.fn(async () => ({
+    getRemoteIdentities: mockGetRemoteIdentities,
+    deleteChannelUser: mockDeleteChannelUser,
+    deleteChannelPlugin: mockDeleteChannelPlugin,
+    deleteConnectorInstance: mockDbDeleteConnectorInstance,
+    runInTransaction: mockRunInTransaction,
+  })),
+}));
 
 import { initChannelBridge } from '../../src/process/bridge/channelBridge';
 import type { IChannelRepository } from '../../src/process/services/database/IChannelRepository';
@@ -111,6 +156,8 @@ function makeRepo(overrides?: Partial<IChannelRepository>): IChannelRepository {
     deleteChannelUser: vi.fn(),
     getChannelSessions: vi.fn(() => []),
     getConnectorInstances: vi.fn(() => []),
+    upsertConnectorInstance: vi.fn(),
+    deleteConnectorInstance: vi.fn(),
     getAgentProfiles: vi.fn(() => []),
     getRemoteIdentities: vi.fn(() => []),
     getChannelBindings: vi.fn(() => []),
@@ -140,6 +187,10 @@ describe('channelBridge', () => {
     mockGetLoadedExtensions.mockReturnValue([]);
     mockGetChannelPluginMeta.mockReturnValue(undefined);
     mockGetChannelPlugins.mockReturnValue(new Map());
+    mockGetRemoteIdentities.mockReturnValue({ success: true, data: [] });
+    mockDeleteChannelUser.mockReturnValue({ success: true, data: true });
+    mockDbDeleteConnectorInstance.mockReturnValue({ success: true, data: true });
+    mockRunInTransaction.mockImplementation((fn: () => unknown) => ({ success: true, data: fn() }));
 
     repo = makeRepo();
     initChannelBridge(repo);
@@ -193,6 +244,7 @@ describe('channelBridge', () => {
     it('returns users from repo', async () => {
       const user: IChannelUser = {
         id: 'u1',
+        connectorId: 'telegram_default',
         platformUserId: 'tg-123',
         platformType: 'telegram',
         authorizedAt: 1000,
@@ -272,6 +324,21 @@ describe('channelBridge', () => {
     });
   });
 
+  describe('authorizeRemoteUser', () => {
+    it('delegates direct authorization to pairing service', async () => {
+      const result = await handlers['authorizeRemoteUser']({
+        platformUserId: 'wx-user-1',
+        platformType: 'weixin',
+        displayName: 'Scanner',
+        chatId: 'wx-user-1',
+        pluginId: 'weixin_default',
+        metadata: { source: 'weixin-qr-login' },
+      });
+
+      expect(result.success).toBe(true);
+    });
+  });
+
   // --- getActiveSessions ---
 
   describe('getActiveSessions', () => {
@@ -303,6 +370,72 @@ describe('channelBridge', () => {
     });
   });
 
+  describe('getConnectorInstances', () => {
+    it('returns connector instances from repo', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-1',
+        platform: 'telegram',
+        name: 'Telegram Ops',
+        enabled: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+
+      const result = await handlers['getConnectorInstances']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([connector]);
+    });
+  });
+
+  describe('upsertConnectorInstance', () => {
+    it('upserts connector instance through repo', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-2',
+        platform: 'slack',
+        name: 'Slack Alerts',
+        enabled: false,
+        status: 'stopped',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const result = await handlers['upsertConnectorInstance']({ connector });
+
+      expect(repo.upsertConnectorInstance).toHaveBeenCalledWith({
+        ...connector,
+        legacyPluginId: 'connector-2',
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('deleteConnectorInstance', () => {
+    it('disables plugin, removes legacy plugin row, and deletes connector instance', async () => {
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([
+        {
+          id: 'connector-3',
+          platform: 'weixin',
+          name: 'WeChat',
+          enabled: true,
+          status: 'running',
+          legacyPluginId: 'connector-3',
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ]);
+
+      const result = await handlers['deleteConnectorInstance']({ connectorId: 'connector-3' });
+
+      expect(mockDisablePlugin).toHaveBeenCalledWith('connector-3');
+      expect(mockDeleteChannelPlugin).toHaveBeenCalledWith('connector-3');
+      expect(mockDbDeleteConnectorInstance).toHaveBeenCalledWith('connector-3');
+      expect(result.success).toBe(true);
+    });
+  });
+
   // --- binding management ---
 
   describe('getBindingCatalog', () => {
@@ -312,6 +445,7 @@ describe('channelBridge', () => {
         platform: 'telegram',
         name: 'Telegram',
         enabled: true,
+        configured: true,
         status: 'running',
         createdAt: 1000,
         updatedAt: 1000,
@@ -358,17 +492,113 @@ describe('channelBridge', () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual({
         connectors: [connector],
+        channelAccounts: [connector],
         agentProfiles: [profile],
-        bindings: [binding],
+        bindings: [{ ...binding, channelAccountId: binding.connectorId }],
         audiences: expect.arrayContaining([
           expect.objectContaining({
             key: 'group:alpha:thread:9',
             scopeType: 'remote_chat',
             title: 'Ops Topic',
+            subtitle: 'peer group:alpha:thread:9 · parent group:alpha · thread 9',
+            parentChatId: 'group:alpha',
             threadId: '9',
           }),
         ]),
       });
+    });
+
+    it('dedupes WeChat personal audiences so one paired account shows one discovered target', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-weixin',
+        platform: 'weixin',
+        name: 'WeChat Personal',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-weixin-1',
+        connectorId: 'connector-weixin',
+        remoteUserId: 'wx-user-1',
+        remoteChatId: 'wx-user-1',
+        platformChatId: 'wx-user-1',
+        remoteChatType: 'direct',
+        displayName: 'Alice',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual([
+        expect.objectContaining({
+          connectorId: 'connector-weixin',
+          scopeType: 'remote_user',
+          key: 'wx-user-1',
+          title: 'Alice',
+        }),
+      ]);
+    });
+
+    it('only returns configured, enabled, and paired connectors', async () => {
+      const readyConnector: IConnectorInstance = {
+        id: 'connector-ready',
+        platform: 'telegram',
+        name: 'Telegram Ready',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const draftConnector: IConnectorInstance = {
+        id: 'connector-draft',
+        platform: 'telegram',
+        name: 'Telegram Draft',
+        enabled: true,
+        configured: false,
+        status: 'stopped',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const disabledConnector: IConnectorInstance = {
+        id: 'connector-disabled',
+        platform: 'slack',
+        name: 'Slack Disabled',
+        enabled: false,
+        configured: true,
+        status: 'stopped',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const pairedIdentity: IRemoteIdentity = {
+        id: 'remote-ready',
+        connectorId: 'connector-ready',
+        remoteUserId: 'user-1',
+        remoteChatId: 'user:1',
+        authorizedAt: 1000,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([readyConnector, draftConnector, disabledConnector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([pairedIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(
+        expect.objectContaining({
+          connectors: [readyConnector],
+        })
+      );
     });
   });
 
@@ -392,7 +622,7 @@ describe('channelBridge', () => {
 
       expect(repo.getChannelBindings).toHaveBeenCalledWith('connector-1');
       expect(result.success).toBe(true);
-      expect(result.data).toEqual([binding]);
+      expect(result.data).toEqual([{ ...binding, channelAccountId: binding.connectorId }]);
     });
 
     it('returns error when repo throws', async () => {
@@ -404,6 +634,21 @@ describe('channelBridge', () => {
 
       expect(result.success).toBe(false);
       expect(result.msg).toBe('bindings unavailable');
+    });
+  });
+
+  describe('prepareConversationPublication', () => {
+    it('prepares a reusable agent profile before navigating into publication settings', async () => {
+      const result = await handlers['prepareConversationAgentProfile']({ conversationId: 'conversation-1' });
+
+      expect(mockPrepareConversationPublication).toHaveBeenCalledWith('conversation-1');
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(
+        expect.objectContaining({
+          id: 'agent-profile-1',
+          name: 'Prepared Agent',
+        })
+      );
     });
   });
 
@@ -424,7 +669,7 @@ describe('channelBridge', () => {
 
       const result = await handlers['upsertBinding']({ binding });
 
-      expect(repo.upsertChannelBinding).toHaveBeenCalledWith(binding);
+      expect(repo.upsertChannelBinding).toHaveBeenCalledWith({ ...binding, channelAccountId: binding.connectorId });
       expect(result.success).toBe(true);
     });
 
@@ -471,37 +716,37 @@ describe('channelBridge', () => {
     });
   });
 
-  describe('handoffSession', () => {
-    it('returns handoff result data from service', async () => {
+  describe('continuationSession', () => {
+    it('returns continuation result data from service', async () => {
       const payload = {
         sourceConversationId: 'conversation-source',
         targetConnectorId: 'connector-1',
         targetChatId: 'group:ops',
       };
 
-      const result = await handlers['handoffSession'](payload);
+      const result = await handlers['continuationSession'](payload);
 
-      expect(mockHandoffSession).toHaveBeenCalledWith(payload);
+      expect(mockContinuationSession).toHaveBeenCalledWith(payload);
       expect(result.success).toBe(true);
       expect(result.data).toEqual(
         expect.objectContaining({
-          bindingId: 'binding-handoff-1',
+          bindingId: 'binding-continuation-1',
           targetExternalSessionId: 'external-session-target-1',
         })
       );
     });
 
-    it('returns error when handoff service throws', async () => {
-      mockHandoffSession.mockRejectedValueOnce(new Error('handoff failed'));
+    it('returns error when continuation service throws', async () => {
+      mockContinuationSession.mockRejectedValueOnce(new Error('continuation failed'));
 
-      const result = await handlers['handoffSession']({
+      const result = await handlers['continuationSession']({
         sourceConversationId: 'conversation-source',
         targetConnectorId: 'connector-1',
         targetChatId: 'group:ops',
       });
 
       expect(result.success).toBe(false);
-      expect(result.msg).toBe('handoff failed');
+      expect(result.msg).toBe('continuation failed');
     });
   });
 });

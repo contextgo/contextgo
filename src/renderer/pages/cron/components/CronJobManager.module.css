@@ -39,10 +39,26 @@
 .presetPopoverScrollArea {
   max-height: min(70vh, 640px);
   overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
   padding-inline: 2px;
+}
+
+.presetPopoverScrollArea::-webkit-scrollbar {
+  display: none;
 }
 
 .presetPopoverAction {
   width: 100%;
   border-radius: 14px;
+}
+
+.presetPopoverFooter {
+  padding-top: 2px;
+}
+
+.presetPopoverPrimaryAction {
+  min-height: 38px;
+  font-weight: 600;
+  box-shadow: 0 10px 24px color-mix(in srgb, rgb(var(--primary-6)) 22%, transparent);
 }

@@ -1,9 +1,21 @@
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { runMigrations } from '../../src/process/services/database/migrations';
+import {
+  getMigrationHistory,
+  getMigrationsToRollback,
+  getMigrationsToRun,
+  isMigrationApplied,
+  rollbackMigrations,
+  runMigrations,
+} from '../../src/process/services/database/migrations';
 import type { IStatement, ISqliteDriver } from '../../src/process/services/database/drivers/ISqliteDriver';
-import { initSchema } from '../../src/process/services/database/schema';
+import {
+  CURRENT_DB_VERSION,
+  getDatabaseVersion,
+  initSchema,
+  setDatabaseVersion,
+} from '../../src/process/services/database/schema';
 
 class NodeSqliteStatement implements IStatement {
   constructor(private readonly statement: ReturnType<DatabaseSync['prepare']>) {}
@@ -72,117 +84,96 @@ describe('database migrations', () => {
     driver = undefined;
   });
 
-  it('renames the internal conversation source from contextgo to contextgo in v20', () => {
-    driver = new NodeSqliteDriver();
-    driver.exec(`CREATE TABLE conversations (
-      id TEXT PRIMARY KEY,
-      source TEXT
-    )`);
-    driver.exec(`INSERT INTO conversations (id, source) VALUES
-      ('conv-contextgo', 'contextgo'),
-      ('conv-telegram', 'telegram'),
-      ('conv-null', NULL)
-    `);
-
-    runMigrations(driver, 19, 20);
-
-    const rows = driver.prepare('SELECT id, source FROM conversations ORDER BY id').all() as Array<{
-      id: string;
-      source: string | null;
-    }>;
-
-    expect(rows).toEqual([
-      { id: 'conv-contextgo', source: 'contextgo' },
-      { id: 'conv-null', source: null },
-      { id: 'conv-telegram', source: 'telegram' },
-    ]);
+  it('ships a single baseline migration for the first public release', () => {
+    expect(CURRENT_DB_VERSION).toBe(1);
+    expect(getMigrationsToRun(0, 1).map((migration) => migration.version)).toEqual([1]);
+    expect(getMigrationsToRun(1, 1)).toEqual([]);
+    expect(getMigrationsToRollback(1, 0).map((migration) => migration.version)).toEqual([1]);
   });
 
-  it('adds the spaces table in v21', () => {
+  it('initializes the baseline schema directly from schema.ts', () => {
     driver = new NodeSqliteDriver();
-    driver.exec(`CREATE TABLE users (
-      id TEXT PRIMARY KEY
-    )`);
-
-    runMigrations(driver, 20, 21);
-
-    const columns = driver.pragma('table_info(spaces)') as Array<{ name: string }>;
-    expect(columns.map(({ name }) => name)).toEqual([
-      'id',
-      'user_id',
-      'name',
-      'engine',
-      'description',
-      'is_default',
-      'archived_at',
-      'created_at',
-      'updated_at',
-    ]);
-
-    const indexes = driver
-      .prepare(`SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'spaces' ORDER BY name`)
-      .all() as Array<{ name: string }>;
-
-    expect(indexes.map(({ name }) => name)).toEqual([
-      'idx_spaces_default_per_user',
-      'idx_spaces_user_id',
-      'idx_spaces_user_updated',
-      'sqlite_autoindex_spaces_1',
-    ]);
-  });
-
-  it('repairs a v21 database when channel binding tables are missing', () => {
-    driver = new NodeSqliteDriver();
-    driver.pragma('user_version = 21');
-
-    driver.exec(`CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      username TEXT UNIQUE NOT NULL,
-      email TEXT UNIQUE,
-      password_hash TEXT NOT NULL,
-      avatar_path TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      last_login INTEGER
-    )`);
-    driver.exec(`CREATE TABLE conversations (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL,
-      extra TEXT NOT NULL,
-      model TEXT,
-      status TEXT,
-      source TEXT,
-      channel_chat_id TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )`);
-
     initSchema(driver);
 
-    const repairedTables = driver
-      .prepare(
-        `SELECT name FROM sqlite_master
-         WHERE type = 'table' AND name IN ('connector_instances', 'agent_profiles', 'channel_bindings', 'external_sessions', 'runs', 'pairing_requests_v2')
-         ORDER BY name`
-      )
+    const tables = driver
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`)
       .all() as Array<{ name: string }>;
 
-    expect(repairedTables.map(({ name }) => name)).toEqual([
+    expect(tables.map(({ name }) => name)).toEqual([
       'agent_profiles',
+      'assistant_pairing_codes',
+      'assistant_plugins',
+      'assistant_sessions',
+      'assistant_users',
       'channel_bindings',
+      'channel_control_leases',
       'connector_instances',
+      'context_chunks',
+      'context_documents',
+      'context_memories',
+      'context_memory_candidates',
+      'context_operations',
+      'context_profiles',
+      'context_sources',
+      'conversations',
+      'cron_jobs',
       'external_sessions',
+      'messages',
       'pairing_requests_v2',
+      'remote_identities',
       'runs',
+      'spaces',
+      'users',
+      'voice_input_records',
     ]);
 
-    const conversationColumns = driver.pragma('table_info(conversations)') as Array<{ name: string }>;
-    expect(conversationColumns.map(({ name }) => name)).toContain('external_session_id');
-    expect(conversationColumns.map(({ name }) => name)).toContain('root_run_id');
+    const controlLeaseColumns = driver.pragma('table_info(channel_control_leases)') as Array<{ name: string }>;
+    expect(controlLeaseColumns.map(({ name }) => name)).toContain('continuation_mode');
+    expect(controlLeaseColumns.map(({ name }) => name)).not.toContain('handoff_mode');
+  });
 
-    const userColumns = driver.pragma('table_info(users)') as Array<{ name: string }>;
-    expect(userColumns.map(({ name }) => name)).toContain('jwt_secret');
+  it('tracks the public baseline version via user_version', () => {
+    driver = new NodeSqliteDriver();
+    expect(getDatabaseVersion(driver)).toBe(0);
+
+    setDatabaseVersion(driver, CURRENT_DB_VERSION);
+    expect(getDatabaseVersion(driver)).toBe(CURRENT_DB_VERSION);
+    expect(isMigrationApplied(driver, 1)).toBe(true);
+    expect(isMigrationApplied(driver, 2)).toBe(false);
+  });
+
+  it('returns a simplified migration history for the baseline release', () => {
+    driver = new NodeSqliteDriver();
+    setDatabaseVersion(driver, 1);
+
+    expect(getMigrationHistory(driver)).toEqual([
+      {
+        version: 1,
+        name: 'Baseline public schema',
+        timestamp: expect.any(Number),
+      },
+    ]);
+  });
+
+  it('allows explicit rollback of the baseline migration in tests', () => {
+    driver = new NodeSqliteDriver();
+    initSchema(driver);
+    rollbackMigrations(driver, 1, 0);
+
+    const remainingTables = driver
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`)
+      .all() as Array<{ name: string }>;
+
+    expect(remainingTables).toEqual([]);
+  });
+
+  it('runs the baseline migration as a no-op over an already initialized schema', () => {
+    driver = new NodeSqliteDriver();
+    initSchema(driver);
+
+    expect(() => runMigrations(driver, 0, 1)).not.toThrow();
+
+    const controlLeaseColumns = driver.pragma('table_info(channel_control_leases)') as Array<{ name: string }>;
+    expect(controlLeaseColumns.map(({ name }) => name)).toContain('continuation_mode');
   });
 });

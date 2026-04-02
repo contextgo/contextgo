@@ -70,7 +70,7 @@ const ConnectorLogo: React.FC<ConnectorLogoProps> = ({ connector, size = 'small'
         <img
           src={logoUrl}
           alt=''
-          className={styles.logoImage}
+          className={classNames(styles.logoImage, connector.category === 'contextgo' && styles.logoImageFullBleed)}
           onError={() => {
             setLogoIndex((currentIndex) => currentIndex + 1);
           }}

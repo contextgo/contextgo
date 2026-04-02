@@ -80,20 +80,24 @@ const FeishuConnectorPanel: React.FC<FeishuConnectorPanelProps> = ({ connectorId
     }
   }, [config, loadAll]);
 
-  const runAction = useCallback(async (action: 'start' | 'stop') => {
-    setActionBusy(action);
-    try {
-      const response = action === 'start'
-        ? await ipcBridge.feishuConnector.start.invoke()
-        : await ipcBridge.feishuConnector.stop.invoke();
-      if (!response.success) {
-        Message.error(response.msg || `Failed to ${action} Feishu sidecar.`);
+  const runAction = useCallback(
+    async (action: 'start' | 'stop') => {
+      setActionBusy(action);
+      try {
+        const response =
+          action === 'start'
+            ? await ipcBridge.feishuConnector.start.invoke()
+            : await ipcBridge.feishuConnector.stop.invoke();
+        if (!response.success) {
+          Message.error(response.msg || `Failed to ${action} Feishu sidecar.`);
+        }
+        await loadAll();
+      } finally {
+        setActionBusy(null);
       }
-      await loadAll();
-    } finally {
-      setActionBusy(null);
-    }
-  }, [loadAll]);
+    },
+    [loadAll]
+  );
 
   const lifecycleColor = useMemo(() => {
     if (status?.lifecycle === 'running') return 'green';
@@ -117,16 +121,39 @@ const FeishuConnectorPanel: React.FC<FeishuConnectorPanelProps> = ({ connectorId
               {status?.pid ? <Tag color='cyan'>PID {status.pid}</Tag> : null}
             </div>
             <div className={styles.clipboardInfoList}>
-              <div><strong>Package:</strong> {config?.command || '@larksuiteoapi/lark-mcp'}</div>
-              <div><strong>Domain:</strong> {config?.apiDomain || 'open.feishu.cn'}</div>
-              <div><strong>OAuth mode:</strong> {config?.useOAuth ? 'enabled' : 'disabled'}</div>
-              <div><strong>Command:</strong> {status?.command || 'npx'}</div>
+              <div>
+                <strong>Package:</strong> {config?.command || '@larksuiteoapi/lark-mcp'}
+              </div>
+              <div>
+                <strong>Domain:</strong> {config?.apiDomain || 'open.feishu.cn'}
+              </div>
+              <div>
+                <strong>OAuth mode:</strong> {config?.useOAuth ? 'enabled' : 'disabled'}
+              </div>
+              <div>
+                <strong>Command:</strong> {status?.command || 'npx'}
+              </div>
             </div>
             <div className={styles.clipboardNote}>{status?.note || 'Feishu connector status unavailable.'}</div>
             <div className={styles.clipboardActionRow}>
-              <Button icon={<Refresh theme='outline' size='14' />} onClick={() => void loadAll()} loading={loading}>Refresh</Button>
-              <Button type='primary' icon={<PlayOne theme='outline' size='14' />} onClick={() => void runAction('start')} loading={actionBusy === 'start'}>Start</Button>
-              <Button icon={<Pause theme='outline' size='14' />} onClick={() => void runAction('stop')} loading={actionBusy === 'stop'}>Stop</Button>
+              <Button icon={<Refresh theme='outline' size='14' />} onClick={() => void loadAll()} loading={loading}>
+                Refresh
+              </Button>
+              <Button
+                type='primary'
+                icon={<PlayOne theme='outline' size='14' />}
+                onClick={() => void runAction('start')}
+                loading={actionBusy === 'start'}
+              >
+                Start
+              </Button>
+              <Button
+                icon={<Pause theme='outline' size='14' />}
+                onClick={() => void runAction('stop')}
+                loading={actionBusy === 'stop'}
+              >
+                Stop
+              </Button>
             </div>
           </Spin>
         </div>
@@ -141,11 +168,19 @@ const FeishuConnectorPanel: React.FC<FeishuConnectorPanelProps> = ({ connectorId
               </div>
               <div className={styles.clipboardControlRowColumn}>
                 <span>App ID</span>
-                <Input value={config?.appId ?? ''} onChange={(value) => patchConfig({ appId: value })} placeholder='cli_a1b2c3' />
+                <Input
+                  value={config?.appId ?? ''}
+                  onChange={(value) => patchConfig({ appId: value })}
+                  placeholder='cli_a1b2c3'
+                />
               </div>
               <div className={styles.clipboardControlRowColumn}>
                 <span>App Secret</span>
-                <Input.Password value={config?.appSecret ?? ''} onChange={(value) => patchConfig({ appSecret: value })} placeholder='secret' />
+                <Input.Password
+                  value={config?.appSecret ?? ''}
+                  onChange={(value) => patchConfig({ appSecret: value })}
+                  placeholder='secret'
+                />
               </div>
               <div className={styles.clipboardControlRow}>
                 <span>Use OAuth</span>
@@ -153,7 +188,9 @@ const FeishuConnectorPanel: React.FC<FeishuConnectorPanelProps> = ({ connectorId
               </div>
             </div>
             <div className={styles.clipboardActionRow}>
-              <Button type='primary' onClick={() => void saveConfig()} loading={saving}>Save Feishu Config</Button>
+              <Button type='primary' onClick={() => void saveConfig()} loading={saving}>
+                Save Feishu Config
+              </Button>
             </div>
           </Spin>
         </div>

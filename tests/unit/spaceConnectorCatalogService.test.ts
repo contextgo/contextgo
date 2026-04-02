@@ -6,7 +6,10 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { SpaceConnectorCatalogService, SpaceConnectorRuntimeService } from '../../src/process/services/space/connectors';
+import {
+  SpaceConnectorCatalogService,
+  SpaceConnectorRuntimeService,
+} from '../../src/process/services/space/connectors';
 
 describe('Space connector fusion services', () => {
   it('lists the first-wave connector fusion set', () => {

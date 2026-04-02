@@ -1,7 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { GoogleSheet, GoogleSheetsStoredSpreadsheet, GoogleSheetsSyncResult } from '@/common/types/connectors/googleSheets';
+import type {
+  GoogleSheet,
+  GoogleSheetsStoredSpreadsheet,
+  GoogleSheetsSyncResult,
+} from '@/common/types/connectors/googleSheets';
 
 type BaseDirResolver = () => Promise<string>;
 const defaultResolver: BaseDirResolver = async () => {
@@ -22,11 +26,17 @@ const writeJson = async <T>(file: string, value: readonly T[]) => {
   await fs.writeFile(file, JSON.stringify(value, null, 2), 'utf-8');
 };
 const buildId = (sheet: GoogleSheet) =>
-  createHash('sha256').update(`${sheet.id}:${sheet.title}:${sheet.modifiedTime || ''}`).digest('hex');
+  createHash('sha256')
+    .update(`${sheet.id}:${sheet.title}:${sheet.modifiedTime || ''}`)
+    .digest('hex');
 export class GoogleSheetsStoreService {
   constructor(private readonly resolveBaseDir: BaseDirResolver = defaultResolver) {}
-  private async getBaseDir() { return this.resolveBaseDir(); }
-  private async getPath() { return path.join(await this.getBaseDir(), 'spreadsheets.json'); }
+  private async getBaseDir() {
+    return this.resolveBaseDir();
+  }
+  private async getPath() {
+    return path.join(await this.getBaseDir(), 'spreadsheets.json');
+  }
   async getStats() {
     const rows = await parseJson<GoogleSheetsStoredSpreadsheet>(await this.getPath());
     return { sheetCount: rows.length, lastSyncedAt: rows[0]?.syncedAt, storeDir: await this.getBaseDir() };

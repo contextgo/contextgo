@@ -1,7 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { GoogleCalendarEntry, GoogleCalendarStoredEntry, GoogleCalendarSyncResult } from '@/common/types/connectors/googleCalendar';
+import type {
+  GoogleCalendarEntry,
+  GoogleCalendarStoredEntry,
+  GoogleCalendarSyncResult,
+} from '@/common/types/connectors/googleCalendar';
 
 type BaseDirResolver = () => Promise<string>;
 const defaultResolver: BaseDirResolver = async () => {
@@ -21,11 +25,16 @@ const writeJson = async <T>(file: string, value: readonly T[]) => {
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, JSON.stringify(value, null, 2), 'utf-8');
 };
-const buildId = (entry: GoogleCalendarEntry) => createHash('sha256').update(`${entry.id}:${entry.summary}`).digest('hex');
+const buildId = (entry: GoogleCalendarEntry) =>
+  createHash('sha256').update(`${entry.id}:${entry.summary}`).digest('hex');
 export class GoogleCalendarStoreService {
   constructor(private readonly resolveBaseDir: BaseDirResolver = defaultResolver) {}
-  private async getBaseDir() { return this.resolveBaseDir(); }
-  private async getPath() { return path.join(await this.getBaseDir(), 'calendars.json'); }
+  private async getBaseDir() {
+    return this.resolveBaseDir();
+  }
+  private async getPath() {
+    return path.join(await this.getBaseDir(), 'calendars.json');
+  }
   async getStats() {
     const rows = await parseJson<GoogleCalendarStoredEntry>(await this.getPath());
     return { calendarCount: rows.length, lastSyncedAt: rows[0]?.syncedAt, storeDir: await this.getBaseDir() };

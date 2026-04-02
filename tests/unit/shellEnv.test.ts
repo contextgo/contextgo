@@ -125,6 +125,76 @@ describe('getEnhancedEnv', () => {
     process.env.SHELL = originalShell;
   });
 
+  it('inherits HOME from the login shell so child CLIs can resolve user config directories', async () => {
+    if (process.platform === 'win32') return;
+
+    vi.doMock('child_process', () => ({
+      execFileSync: vi.fn().mockReturnValue('PATH=/shell/bin\nHOME=/Users/shell-user\nXDG_CONFIG_HOME=/Users/shell-user/.config\n'),
+      execFile: vi.fn(),
+    }));
+
+    const originalHome = process.env.HOME;
+    const originalPath = process.env.PATH;
+    const originalShell = process.env.SHELL;
+    delete process.env.XDG_CONFIG_HOME;
+    process.env.HOME = '/tmp/dev-hot-reload-home';
+    process.env.PATH = '/usr/local/bin';
+    process.env.SHELL = '/bin/bash';
+
+    const { getEnhancedEnv } = await import('@process/utils/shellEnv');
+    const result = getEnhancedEnv();
+
+    expect(result.HOME).toBe('/Users/shell-user');
+    expect(result.XDG_CONFIG_HOME).toBe('/Users/shell-user/.config');
+    expect(result.PATH).toContain('/usr/local/bin');
+
+    process.env.HOME = originalHome;
+    process.env.PATH = originalPath;
+    process.env.SHELL = originalShell;
+  });
+
+  it('inherits Codex and OpenAI auth env vars from the login shell', async () => {
+    if (process.platform === 'win32') return;
+
+    vi.doMock('child_process', () => ({
+      execFileSync: vi
+        .fn()
+        .mockReturnValue(
+          'PATH=/shell/bin\nHOME=/Users/shell-user\nCODEX_API_KEY=codex-shell-key\nOPENAI_API_KEY=openai-shell-key\n'
+        ),
+      execFile: vi.fn(),
+    }));
+
+    const originalPath = process.env.PATH;
+    const originalShell = process.env.SHELL;
+    const originalCodexApiKey = process.env.CODEX_API_KEY;
+    const originalOpenAiApiKey = process.env.OPENAI_API_KEY;
+
+    delete process.env.CODEX_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    process.env.PATH = '/usr/local/bin';
+    process.env.SHELL = '/bin/bash';
+
+    const { getEnhancedEnv } = await import('@process/utils/shellEnv');
+    const result = getEnhancedEnv();
+
+    expect(result.CODEX_API_KEY).toBe('codex-shell-key');
+    expect(result.OPENAI_API_KEY).toBe('openai-shell-key');
+
+    process.env.PATH = originalPath;
+    process.env.SHELL = originalShell;
+    if (originalCodexApiKey === undefined) {
+      delete process.env.CODEX_API_KEY;
+    } else {
+      process.env.CODEX_API_KEY = originalCodexApiKey;
+    }
+    if (originalOpenAiApiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = originalOpenAiApiKey;
+    }
+  });
+
   it('merges customEnv.PATH with both process.env.PATH and shell PATH', async () => {
     vi.doMock('child_process', () => ({
       execFileSync: vi.fn().mockImplementation(() => {

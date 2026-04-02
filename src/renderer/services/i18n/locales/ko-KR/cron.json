@@ -62,21 +62,12 @@
     "title": "바로 쓰는 예약 프리셋",
     "description": "가치가 높은 자동화 시나리오를 즉시 켤 수 있습니다. 이후에 직접 수정하거나 Agent에게 더 세밀하게 조정하도록 요청할 수도 있습니다.",
     "packPacksTitle": "산업 템플릿 팩으로 보기",
-    "rolePacksTitle": "역할별로 보기",
     "fillTemplate": "이 대화에 예약 작업을 만들어 주세요.\n이름: {{name}}\n실행 시간: {{scheduleDescription}}\n실행 내용: {{message}}",
     "createSuccess": "프리셋 예약 작업이 생성되었습니다: {{name}}",
     "directCreateHint": "이 프리셋은 현재 대화에 바로 연결됩니다. 시간이나 내용을 먼저 바꾸고 싶다면 입력창에 채운 뒤 Agent가 조정하도록 할 수도 있습니다.",
     "fillOnlyHint": "현재 대화 유형은 아직 직접 생성이 지원되지 않습니다. 대신 프리셋을 입력창에 채우고 Agent가 예약 작업을 만들도록 할 수 있습니다.",
     "emptyHint": "프리셋 타이머는 특정 대화에 연결되어야 합니다. 단일 Agent 대화를 연 뒤 오른쪽 위 시계 버튼을 눌러 바로 활성화하세요.",
     "recommended": "기본 추천",
-    "roles": {
-      "all": "전체",
-      "product": "제품",
-      "content": "콘텐츠",
-      "operations": "운영",
-      "sales": "영업",
-      "research": "리서치"
-    },
     "packs": {
       "all": "전체",
       "saasProduct": "SaaS 제품 팩",

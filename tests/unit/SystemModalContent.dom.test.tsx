@@ -59,6 +59,14 @@ vi.mock('@/renderer/components/settings/LanguageSwitcher', () => ({
   default: () => <div data-testid='language-switcher' />,
 }));
 
+vi.mock('@/renderer/components/settings/ThemeSwitcher', () => ({
+  ThemeSwitcher: () => <div data-testid='theme-switcher' />,
+}));
+
+vi.mock('@/renderer/components/settings/FontSizeControl', () => ({
+  default: () => <div data-testid='font-size-control' />,
+}));
+
 vi.mock('@/renderer/components/base/ContextGoScrollArea', () => ({
   default: ({ children }: any) => <div data-testid='scroll-area'>{children}</div>,
 }));
@@ -284,7 +292,7 @@ describe('SystemModalContent', () => {
     mockVoiceInputStateChangedOn.mockReturnValue(vi.fn());
   });
 
-  it('should render system settings with language switcher and preferences', async () => {
+  it('should render system settings with merged appearance preferences', async () => {
     render(<SystemModalContent />);
 
     await waitFor(() => {
@@ -292,7 +300,11 @@ describe('SystemModalContent', () => {
     });
 
     expect(screen.getByText('settings.language')).toBeInTheDocument();
+    expect(screen.getByText('settings.theme')).toBeInTheDocument();
+    expect(screen.getByText('settings.fontSize')).toBeInTheDocument();
     expect(screen.getByText('settings.closeToTray')).toBeInTheDocument();
+    expect(screen.getByTestId('theme-switcher')).toBeInTheDocument();
+    expect(screen.getByTestId('font-size-control')).toBeInTheDocument();
   });
 
   it('should render DevTools toggle button', async () => {

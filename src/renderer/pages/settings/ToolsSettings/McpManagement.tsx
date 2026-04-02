@@ -1,4 +1,4 @@
-import { ContextGoModal } from '@/renderer/components/base';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import { Button, Collapse, Dropdown, Menu } from '@arco-design/web-react';
 import { Plus, Down } from '@icon-park/react';
 import React from 'react';
@@ -326,37 +326,27 @@ const McpManagement: React.FC<McpManagementProps> = ({ message }) => {
         importMode={importMode}
       />
 
-      <ContextGoModal
+      <SettingsSubModal
         visible={deleteConfirmVisible}
         onCancel={hideDeleteConfirm}
-        header={{
-          title: t('settings.mcpDeleteServer'),
-          showClose: true,
-          className: 'px-24px pt-20px',
-        }}
-        footer={{
-          className: 'px-24px pb-20px',
-          render: () => (
-            <div className='flex justify-end gap-10px pt-4px'>
-              <Button onClick={hideDeleteConfirm} className='min-w-88px px-18px'>
-                {t('common.cancel')}
-              </Button>
-              <Button
-                type='primary'
-                status='danger'
-                onClick={() => void handleConfirmDelete()}
-                className='min-w-104px px-18px'
-              >
-                {t('common.confirm')}
-              </Button>
-            </div>
-          ),
-        }}
+        title={t('settings.mcpDeleteServer')}
+        onOk={() => void handleConfirmDelete()}
+        okText={t('common.delete', { defaultValue: 'Delete' })}
+        okButtonProps={{ status: 'danger' }}
         style={{ width: 'min(440px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <p className='mb-0 text-14px leading-6 text-t-secondary'>{t('settings.mcpDeleteConfirm')}</p>
-      </ContextGoModal>
+        <div className='settings-sub-modal__stack'>
+          <p className='settings-sub-modal__lead'>{t('settings.mcpDeleteConfirm')}</p>
+          {serverToDelete ? (
+            <div className='settings-sub-modal__entity-card settings-sub-modal__entity-card--danger'>
+              <div className='settings-sub-modal__meta'>
+                <div className='settings-sub-modal__meta-title'>{serverToDelete}</div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </SettingsSubModal>
     </div>
   );
 };

@@ -28,6 +28,7 @@ const windowControlsMock = {
 (global as any).electronAPI = {
   emit: noop,
   on: () => {},
+  shellOpenExternal: noop,
   windowControls: windowControlsMock,
 };
 

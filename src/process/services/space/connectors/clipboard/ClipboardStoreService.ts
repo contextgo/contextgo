@@ -181,7 +181,10 @@ export class ClipboardStoreService {
 
     for (const item of importedEvents) {
       const capturedAt = typeof item.captured_at === 'string' ? item.captured_at : new Date().toISOString();
-      const textHash = typeof item.text_hash === 'string' ? item.text_hash : createHash('sha256').update(JSON.stringify(item)).digest('hex');
+      const textHash =
+        typeof item.text_hash === 'string'
+          ? item.text_hash
+          : createHash('sha256').update(JSON.stringify(item)).digest('hex');
       const observerId = typeof item.observer_id === 'string' ? item.observer_id : 'clipboard_main';
       const id = buildImportedEventId(capturedAt, textHash, observerId);
       if (existingIds.has(id)) {
@@ -208,7 +211,9 @@ export class ClipboardStoreService {
     return imported;
   }
 
-  async collectDailySummary(summaryDate: string = normalizeIsoDate(new Date().toISOString())): Promise<ClipboardCollectResult> {
+  async collectDailySummary(
+    summaryDate: string = normalizeIsoDate(new Date().toISOString())
+  ): Promise<ClipboardCollectResult> {
     const importedEvents = await this.syncRecentFromConnectorRepo();
     const events = (await this.readEvents()).filter((event) => normalizeIsoDate(event.capturedAt) === summaryDate);
     const uniqueHashes = new Set(events.map((event) => event.textHash));

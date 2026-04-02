@@ -7,7 +7,8 @@
 import { channel } from '@/common/adapter/ipcBridge';
 import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '@/common/config/builtinChannels';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
-import { getChannelHandoffService } from '@process/channels/core/ChannelHandoffService';
+import { getChannelContinuationService } from '@process/channels/core/ChannelContinuationService';
+import { getChannelPublicationService } from '@process/channels/core/ChannelPublicationService';
 import { getPairingService } from '@process/channels/pairing/PairingService';
 import { getDatabase } from '@process/services/database';
 import { ExtensionRegistry } from '@process/extensions';
@@ -23,7 +24,13 @@ import type {
   IExternalSession,
   IRemoteIdentity,
 } from '@process/channels/types';
-import { getChannelBindingSource, hasPluginCredentials, isSystemFallbackBinding } from '@process/channels/types';
+import {
+  getChannelAccountId,
+  getChannelBindingSource,
+  hasPluginCredentials,
+  isSystemFallbackBinding,
+  withChannelAccountId,
+} from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
 
 function getErrorMessage(error: unknown): string {
@@ -43,27 +50,197 @@ function toThreadParts(remoteChatId: string): { parentChatId?: string; threadId?
   };
 }
 
+type AudienceKind = 'Direct user' | 'Direct chat' | 'Group' | 'Channel' | 'Topic' | 'Thread' | 'Chat';
+
+function looksLikeTechnicalIdentifier(value?: string): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return value.includes('://') || value.startsWith('user:') || value.startsWith('group:') || value.includes(':thread:');
+}
+
+function toReadableIdentifier(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const threadMarker = ':thread:';
+  if (value.includes(threadMarker)) {
+    return value.slice(value.indexOf(threadMarker) + threadMarker.length) || undefined;
+  }
+
+  if (value.startsWith('user:')) {
+    return value.slice(5) || undefined;
+  }
+
+  if (value.startsWith('group:')) {
+    return value.slice(6) || undefined;
+  }
+
+  if (value.includes('://')) {
+    const segments = value.split('/').filter(Boolean);
+    return segments.at(-1) || undefined;
+  }
+
+  return value;
+}
+
+function inferAudienceKind(params: {
+  scopeType: IChannelAudienceEntry['scopeType'];
+  remoteChatType?: string;
+  peerScope?: IRemoteIdentity['peerScope'];
+  key: string;
+}): AudienceKind {
+  if (params.scopeType === 'remote_user') {
+    return 'Direct user';
+  }
+
+  const normalizedChatType = params.remoteChatType?.toLowerCase();
+  const normalizedKey = params.key.toLowerCase();
+
+  if (normalizedChatType === 'topic' || normalizedKey.includes('/topic/')) {
+    return 'Topic';
+  }
+  if (
+    normalizedChatType === 'thread' ||
+    params.peerScope === 'thread' ||
+    normalizedKey.includes('/thread/') ||
+    normalizedKey.includes(':thread:')
+  ) {
+    return 'Thread';
+  }
+  if (normalizedChatType === 'channel' || normalizedKey.includes('/channel/')) {
+    return 'Channel';
+  }
+  if (
+    normalizedChatType === 'group' ||
+    normalizedChatType === 'supergroup' ||
+    normalizedKey.startsWith('group:') ||
+    normalizedKey.includes('/group/')
+  ) {
+    return 'Group';
+  }
+  if (
+    normalizedChatType === 'direct' ||
+    normalizedChatType === 'dm' ||
+    normalizedChatType === 'private' ||
+    normalizedChatType === 'p2p' ||
+    normalizedKey.startsWith('user:') ||
+    normalizedKey.includes('/user/') ||
+    normalizedKey.includes('/friend/') ||
+    normalizedKey.includes('/dm/') ||
+    normalizedKey.includes('/p2p/')
+  ) {
+    return 'Direct chat';
+  }
+
+  return 'Chat';
+}
+
+function buildAudienceTitle(params: {
+  kind: AudienceKind;
+  displayName?: string;
+  remoteUserId?: string;
+  platformChatId?: string;
+  remoteChatId: string;
+  threadId?: string;
+}): string {
+  if (params.displayName && !looksLikeTechnicalIdentifier(params.displayName)) {
+    return params.displayName;
+  }
+
+  const preferredId =
+    params.threadId ||
+    params.platformChatId ||
+    params.remoteUserId ||
+    toReadableIdentifier(params.remoteChatId) ||
+    params.remoteChatId;
+
+  return `${params.kind} ${preferredId}`;
+}
+
+function buildAudienceSubtitle(params: {
+  kind: AudienceKind;
+  remoteUserId?: string;
+  remoteChatId?: string;
+  platformChatId?: string;
+  parentChatId?: string;
+  threadId?: string;
+}): string {
+  const parts: string[] = [];
+
+  if (params.remoteChatId) {
+    parts.push(`peer ${params.remoteChatId}`);
+  }
+
+  if (params.remoteUserId && (!params.remoteChatId || params.kind === 'Direct user' || params.kind === 'Direct chat')) {
+    parts.push(`user ${params.remoteUserId}`);
+  }
+
+  if (
+    params.platformChatId &&
+    params.platformChatId !== params.remoteChatId &&
+    params.platformChatId !== params.threadId
+  ) {
+    parts.push(`transport ${params.platformChatId}`);
+  }
+
+  if (
+    params.parentChatId &&
+    params.parentChatId !== params.remoteChatId &&
+    params.parentChatId !== params.platformChatId
+  ) {
+    parts.push(`parent ${params.parentChatId}`);
+  }
+
+  if (params.threadId && params.threadId !== params.platformChatId) {
+    parts.push(`${params.kind === 'Topic' ? 'topic' : 'thread'} ${params.threadId}`);
+  }
+
+  return parts.length > 0 ? parts.join(' · ') : params.kind;
+}
+
 function buildRemoteChatAudience(identity: IRemoteIdentity): IChannelAudienceEntry {
-  const { parentChatId, threadId } = toThreadParts(identity.remoteChatId);
-  const chatType = identity.remoteChatType ?? (threadId ? 'thread' : undefined);
-  const title = identity.displayName || identity.remoteChatId;
-  const subtitle =
-    chatType === 'thread'
-      ? parentChatId
-        ? `Topic in ${parentChatId}`
-        : 'Topic / thread audience'
-      : chatType === 'group' || chatType === 'supergroup' || chatType === 'channel'
-        ? 'Group / shared audience'
-        : 'Direct or exact audience binding';
+  const threadParts = toThreadParts(identity.remoteChatId);
+  const parentChatId = identity.parentChatId ?? threadParts.parentChatId;
+  const threadId = identity.threadId ?? threadParts.threadId;
+  const peerScope = identity.peerScope ?? (threadId ? 'thread' : 'chat');
+  const chatType = identity.remoteChatType ?? (peerScope === 'thread' ? 'thread' : undefined);
+  const kind = inferAudienceKind({
+    scopeType: 'remote_chat',
+    remoteChatType: chatType,
+    peerScope,
+    key: identity.remoteChatId,
+  });
+  const title = buildAudienceTitle({
+    kind,
+    displayName: identity.displayName,
+    remoteUserId: identity.remoteUserId,
+    platformChatId: identity.platformChatId,
+    remoteChatId: identity.remoteChatId,
+    threadId,
+  });
+  const subtitle = buildAudienceSubtitle({
+    kind,
+    remoteUserId: identity.remoteUserId,
+    remoteChatId: identity.remoteChatId,
+    platformChatId: identity.platformChatId,
+    parentChatId,
+    threadId,
+  });
 
   return {
     key: identity.remoteChatId,
     connectorId: identity.connectorId,
+    channelAccountId: getChannelAccountId(identity),
     scopeType: 'remote_chat',
     remoteIdentityId: identity.id,
     remoteUserId: identity.remoteUserId,
     remoteChatId: identity.remoteChatId,
+    platformChatId: identity.platformChatId,
     remoteChatType: chatType,
+    peerScope,
     parentChatId,
     threadId,
     displayName: identity.displayName,
@@ -94,26 +271,80 @@ function buildRemoteUserAudiences(identities: IRemoteIdentity[]): IChannelAudien
     }
   }
 
-  return Array.from(uniqueByUser.values()).map((identity) => ({
-    key: identity.remoteUserId!,
-    connectorId: identity.connectorId,
-    scopeType: 'remote_user',
-    remoteIdentityId: identity.id,
-    remoteUserId: identity.remoteUserId,
-    remoteChatId: identity.remoteChatId,
-    remoteChatType: identity.remoteChatType,
-    displayName: identity.displayName,
-    title: identity.displayName || identity.remoteUserId!,
-    subtitle: identity.remoteChatId ? `Direct audience via ${identity.remoteChatId}` : 'Direct audience',
-    lastActive: identity.lastActive,
-  }));
+  return Array.from(uniqueByUser.values()).map((identity) => {
+    const kind = inferAudienceKind({
+      scopeType: 'remote_user',
+      remoteChatType: identity.remoteChatType,
+      peerScope: identity.peerScope,
+      key: identity.remoteUserId!,
+    });
+
+    return {
+      key: identity.remoteUserId!,
+      connectorId: identity.connectorId,
+      channelAccountId: getChannelAccountId(identity),
+      scopeType: 'remote_user',
+      remoteIdentityId: identity.id,
+      remoteUserId: identity.remoteUserId,
+      remoteChatId: identity.remoteChatId,
+      platformChatId: identity.platformChatId,
+      remoteChatType: identity.remoteChatType,
+      peerScope: identity.peerScope,
+      displayName: identity.displayName,
+      title: buildAudienceTitle({
+        kind,
+        displayName: identity.displayName,
+        remoteUserId: identity.remoteUserId,
+        platformChatId: identity.platformChatId,
+        remoteChatId: identity.remoteChatId || identity.remoteUserId!,
+      }),
+      subtitle: buildAudienceSubtitle({
+        kind,
+        remoteUserId: identity.remoteUserId,
+        remoteChatId: identity.remoteChatId,
+        platformChatId: identity.platformChatId,
+      }),
+      lastActive: identity.lastActive,
+    };
+  });
 }
 
-function buildAudienceEntries(remoteIdentities: IRemoteIdentity[]): IChannelAudienceEntry[] {
+function buildAudienceEntries(
+  remoteIdentities: IRemoteIdentity[],
+  connectors: IConnectorInstance[]
+): IChannelAudienceEntry[] {
   const remoteChatAudiences = remoteIdentities.map(buildRemoteChatAudience);
   const remoteUserAudiences = buildRemoteUserAudiences(remoteIdentities);
+  const connectorMap = new Map(connectors.map((connector) => [connector.id, connector]));
+  const remoteUserAudienceKeys = new Set(
+    remoteUserAudiences
+      .filter((audience) => audience.remoteUserId)
+      .map((audience) => `${getChannelAccountId(audience)}::${audience.remoteUserId}`)
+  );
+  const dedupedRemoteChatAudiences = remoteChatAudiences.filter((audience) => {
+    if (!audience.remoteUserId) {
+      return true;
+    }
 
-  return [...remoteUserAudiences, ...remoteChatAudiences].toSorted(
+    const connector = connectorMap.get(getChannelAccountId(audience) ?? '');
+    if (connector?.platform !== 'weixin') {
+      return true;
+    }
+
+    const kind = inferAudienceKind({
+      scopeType: 'remote_chat',
+      remoteChatType: audience.remoteChatType,
+      peerScope: audience.peerScope,
+      key: audience.key,
+    });
+    if (kind !== 'Direct chat') {
+      return true;
+    }
+
+    return !remoteUserAudienceKeys.has(`${getChannelAccountId(audience)}::${audience.remoteUserId}`);
+  });
+
+  return [...remoteUserAudiences, ...dedupedRemoteChatAudiences].toSorted(
     (left, right) => (right.lastActive ?? 0) - (left.lastActive ?? 0)
   );
 }
@@ -134,7 +365,7 @@ function buildActiveSessionEntries(params: {
 
   return params.sessions.map((session) => {
     const remoteIdentity = remoteIdentityMap.get(session.userId);
-    const connector = remoteIdentity ? connectorMap.get(remoteIdentity.connectorId) : undefined;
+    const connector = remoteIdentity ? connectorMap.get(getChannelAccountId(remoteIdentity) ?? '') : undefined;
     const externalSession = externalSessionMap.get(session.id);
     const binding = externalSession?.bindingId ? bindingMap.get(externalSession.bindingId) : undefined;
     const controlLease = controlLeaseMap.get(session.id);
@@ -142,8 +373,11 @@ function buildActiveSessionEntries(params: {
     return {
       id: session.id,
       connectorId: connector?.id,
+      channelAccountId: connector?.id,
       connectorName: connector?.name,
+      channelAccountName: connector?.name,
       connectorPlatform: connector?.platform,
+      channelAccountPlatform: connector?.platform,
       remoteIdentityId: remoteIdentity?.id,
       audienceTitle: remoteIdentity?.displayName || remoteIdentity?.remoteChatId || session.chatId || session.id,
       audienceKey: remoteIdentity?.remoteChatId || session.chatId,
@@ -158,9 +392,9 @@ function buildActiveSessionEntries(params: {
       bindingSystemFallback: binding ? isSystemFallbackBinding(binding) : undefined,
       ownerKey: controlLease?.ownerKey,
       controlMode: controlLease?.controlMode,
-      handoffMode: controlLease?.handoffMode,
-      handoffSourceExternalSessionId: controlLease?.sourceExternalSessionId,
-      handoffSourceConversationId: controlLease?.sourceConversationId,
+      continuationMode: controlLease?.continuationMode,
+      continuationSourceExternalSessionId: controlLease?.sourceExternalSessionId,
+      continuationSourceConversationId: controlLease?.sourceConversationId,
       leaseUpdatedAt: controlLease?.updatedAt,
       leaseReleasedAt: controlLease?.releasedAt,
     };
@@ -182,16 +416,29 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   channel.getPluginStatus.provider(async () => {
     try {
       let dbPlugins: import('@process/channels/types').IChannelPluginConfig[] = [];
+      let connectors: IConnectorInstance[] = [];
+
       try {
         dbPlugins = await channelRepo.getChannelPlugins();
       } catch (dbError) {
-        console.warn('[ChannelBridge] getChannelPlugins failed, proceeding with builtin-only list:', dbError);
+        console.warn('[ChannelBridge] getChannelPlugins failed, proceeding with connector-only list:', dbError);
       }
 
-      // Pre-fetch extension plugin metadata (lazy, cached by registry)
-      const registry = ExtensionRegistry.getInstance();
+      try {
+        connectors = await channelRepo.getConnectorInstances();
+      } catch (dbError) {
+        console.warn('[ChannelBridge] getConnectorInstances failed, proceeding with plugin-only list:', dbError);
+      }
 
+      const registry = ExtensionRegistry.getInstance();
       const extensions = registry.getLoadedExtensions();
+      const connectorMap = new Map(connectors.map((connector) => [connector.id, connector]));
+      const connectorByRuntimeId = new Map(
+        connectors
+          .filter((connector) => Boolean(connector.legacyPluginId))
+          .map((connector) => [connector.legacyPluginId!, connector] as const)
+      );
+
       const resolveExtensionMeta = (pluginType: string): IChannelPluginStatus['extensionMeta'] | undefined => {
         try {
           const meta = registry.getChannelPluginMeta(pluginType);
@@ -231,7 +478,6 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         }
       };
 
-      // Build a set of channel types whose parent extension is currently enabled
       const enabledExtChannelTypes = new Set<string>();
       for (const [pluginType] of registry.getChannelPlugins()) {
         enabledExtChannelTypes.add(pluginType);
@@ -240,36 +486,66 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       const statusMap = new Map<string, IChannelPluginStatus>();
 
       for (const plugin of dbPlugins) {
-        const isExtension = !isBuiltinChannelType(plugin.type);
+        const connector = connectorMap.get(plugin.id) ?? connectorByRuntimeId.get(plugin.id);
+        const statusId = connector?.id ?? plugin.id;
+        const pluginType = connector?.platform ?? plugin.type;
+        const isExtension = !isBuiltinChannelType(pluginType);
+        const configured =
+          connector?.configured ?? hasPluginCredentials(pluginType, connector?.credentials ?? plugin.credentials);
 
-        // Skip extension channels whose parent extension is not loaded/enabled
-        if (isExtension && !enabledExtChannelTypes.has(plugin.type)) {
+        if (isExtension && !enabledExtChannelTypes.has(pluginType)) {
           continue;
         }
 
-        statusMap.set(plugin.type, {
-          id: plugin.id,
-          type: plugin.type,
-          name: plugin.name,
-          enabled: plugin.enabled,
+        statusMap.set(statusId, {
+          id: statusId,
+          runtimeId: plugin.id,
+          type: pluginType,
+          name: connector?.name || plugin.name,
+          enabled: connector?.enabled ?? plugin.enabled,
           connected: plugin.status === 'running',
           status: plugin.status,
           lastConnected: plugin.lastConnected,
           activeUsers: 0,
-          hasToken: hasPluginCredentials(plugin.type, plugin.credentials),
+          hasToken: configured,
           isExtension,
-          extensionMeta: isExtension ? resolveExtensionMeta(plugin.type) : undefined,
+          extensionMeta: isExtension ? resolveExtensionMeta(pluginType) : undefined,
         });
       }
 
-      // Ensure extension-contributed channel plugins are always visible in settings
-      // even before first enable (i.e. not yet persisted in DB).
+      for (const connector of connectors) {
+        if (statusMap.has(connector.id)) {
+          continue;
+        }
+
+        const isExtension = !isBuiltinChannelType(connector.platform);
+        if (isExtension && !enabledExtChannelTypes.has(connector.platform)) {
+          continue;
+        }
+
+        statusMap.set(connector.id, {
+          id: connector.id,
+          runtimeId: connector.legacyPluginId ?? connector.id,
+          type: connector.platform,
+          name: connector.name,
+          enabled: connector.enabled,
+          connected: false,
+          status: connector.status,
+          activeUsers: 0,
+          hasToken: connector.configured ?? hasPluginCredentials(connector.platform, connector.credentials),
+          isExtension,
+          extensionMeta: isExtension ? resolveExtensionMeta(connector.platform) : undefined,
+        });
+      }
+
       for (const [pluginType, entry] of registry.getChannelPlugins()) {
-        if (statusMap.has(pluginType)) continue;
+        const alreadyVisible = Array.from(statusMap.values()).some((status) => status.type === pluginType);
+        if (alreadyVisible) continue;
         const extensionMeta = resolveExtensionMeta(pluginType);
         const meta = entry.meta as { name?: string } | undefined;
         statusMap.set(pluginType, {
           id: pluginType,
+          runtimeId: pluginType,
           type: pluginType,
           name: meta?.name || pluginType,
           enabled: false,
@@ -282,13 +558,13 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         });
       }
 
-      // Ensure builtin channel types are always visible in settings
-      // even before user configures them (i.e. not yet persisted in DB).
       for (const builtinType of BUILTIN_CHANNEL_TYPES) {
-        if (statusMap.has(builtinType)) continue;
+        const alreadyVisible = Array.from(statusMap.values()).some((status) => status.type === builtinType);
+        if (alreadyVisible) continue;
         const builtinChannel = getBuiltinChannel(builtinType);
-        statusMap.set(builtinType, {
-          id: builtinType,
+        statusMap.set(builtinChannel?.pluginId || builtinType, {
+          id: builtinChannel?.pluginId || builtinType,
+          runtimeId: builtinChannel?.pluginId || builtinType,
           type: builtinType,
           name: builtinChannel?.displayName || builtinType,
           enabled: false,
@@ -416,6 +692,31 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
+  channel.authorizeRemoteUser.provider(
+    async ({ platformUserId, platformType, displayName, chatId, pluginId, metadata }) => {
+      try {
+        const pairingService = getPairingService();
+        const result = await pairingService.authorizeRemoteUser({
+          platformUserId,
+          platformType,
+          displayName,
+          chatId,
+          pluginId,
+          metadata,
+        });
+
+        if (!result.success) {
+          return { success: false, msg: result.error };
+        }
+
+        return { success: true };
+      } catch (error) {
+        console.error('[ChannelBridge] authorizeRemoteUser error:', error);
+        return { success: false, msg: getErrorMessage(error) };
+      }
+    }
+  );
+
   // ==================== User Management ====================
 
   /**
@@ -495,24 +796,164 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
+  const listChannelAccounts = async () => {
+    return channelRepo.getConnectorInstances();
+  };
+
+  const createChannelAccount = async (params: { platform: IConnectorInstance['platform']; name: string }) => {
+    const manager = getChannelManager();
+    return manager.createChannelAccount(params);
+  };
+
+  const upsertChannelAccount = async (channelAccount: IConnectorInstance) => {
+    await channelRepo.upsertConnectorInstance({
+      ...channelAccount,
+      legacyPluginId: channelAccount.legacyPluginId ?? channelAccount.id,
+    });
+  };
+
+  const deleteChannelAccount = async (channelAccountId: string) => {
+    const manager = getChannelManager();
+    const db = await getDatabase();
+    const channelAccount = (await channelRepo.getConnectorInstances()).find((item) => item.id === channelAccountId);
+    const runtimeId = channelAccount?.legacyPluginId ?? channelAccountId;
+
+    const disableResult = await manager.disablePlugin(runtimeId);
+    if (!disableResult.success) {
+      console.warn('[ChannelBridge] deleteChannelAccount disablePlugin warning:', disableResult.error);
+    }
+
+    const deletionResult = db.runInTransaction(() => {
+      const remoteIdentitiesResult = db.getRemoteIdentities(channelAccountId);
+      if (!remoteIdentitiesResult.success) {
+        throw new Error(remoteIdentitiesResult.error || `Failed to load remote identities for ${channelAccountId}`);
+      }
+
+      for (const remoteIdentity of remoteIdentitiesResult.data ?? []) {
+        const deleteUserResult = db.deleteChannelUser(remoteIdentity.id);
+        if (!deleteUserResult.success) {
+          throw new Error(deleteUserResult.error || `Failed to delete authorized user ${remoteIdentity.id}`);
+        }
+      }
+
+      const deletePluginResult = db.deleteChannelPlugin(runtimeId);
+      if (!deletePluginResult.success) {
+        throw new Error(deletePluginResult.error || `Failed to delete channel plugin ${runtimeId}`);
+      }
+
+      const deleteConnectorResult = db.deleteConnectorInstance(channelAccountId);
+      if (!deleteConnectorResult.success) {
+        throw new Error(deleteConnectorResult.error || `Failed to delete channel account ${channelAccountId}`);
+      }
+    });
+
+    if (!deletionResult.success) {
+      throw new Error(deletionResult.error || `Failed to delete channel account ${channelAccountId}`);
+    }
+  };
+
+  channel.getChannelAccounts.provider(async () => {
+    try {
+      const data = await listChannelAccounts();
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] getChannelAccounts error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.getConnectorInstances.provider(async () => {
+    try {
+      const data = await listChannelAccounts();
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] getConnectorInstances error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.createChannelAccount.provider(async ({ platform, name }) => {
+    try {
+      const result = await createChannelAccount({ platform, name });
+      if (!result.success) {
+        return { success: false, msg: result.error };
+      }
+      return { success: true, data: result.data };
+    } catch (error) {
+      console.error('[ChannelBridge] createChannelAccount error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.upsertChannelAccount.provider(async ({ channelAccount }) => {
+    try {
+      await upsertChannelAccount(channelAccount);
+      return { success: true };
+    } catch (error) {
+      console.error('[ChannelBridge] upsertChannelAccount error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.upsertConnectorInstance.provider(async ({ connector }) => {
+    try {
+      await upsertChannelAccount(connector);
+      return { success: true };
+    } catch (error) {
+      console.error('[ChannelBridge] upsertConnectorInstance error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.deleteChannelAccount.provider(async ({ channelAccountId }) => {
+    try {
+      await deleteChannelAccount(channelAccountId);
+      return { success: true };
+    } catch (error) {
+      console.error('[ChannelBridge] deleteChannelAccount error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.deleteConnectorInstance.provider(async ({ connectorId }) => {
+    try {
+      await deleteChannelAccount(connectorId);
+      return { success: true };
+    } catch (error) {
+      console.error('[ChannelBridge] deleteConnectorInstance error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
   /**
    * Get binding catalog for publication management.
    */
-  channel.getBindingCatalog.provider(async (params?: { connectorId?: string }) => {
+  channel.getBindingCatalog.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
     try {
-      const [connectors, agentProfiles, bindings, remoteIdentities] = await Promise.all([
-        channelRepo.getConnectorInstances(),
+      const channelAccountId = params?.channelAccountId ?? params?.connectorId;
+      const [allConnectors, agentProfiles, bindings, remoteIdentities] = await Promise.all([
+        listChannelAccounts(),
         channelRepo.getAgentProfiles(),
-        channelRepo.getChannelBindings(params?.connectorId),
-        channelRepo.getRemoteIdentities(params?.connectorId),
+        channelRepo.getChannelBindings(channelAccountId),
+        channelRepo.getRemoteIdentities(channelAccountId),
       ]);
+      const pairedConnectorIds = new Set(
+        remoteIdentities.map((identity) => getChannelAccountId(identity)).filter((id): id is string => Boolean(id))
+      );
+      const connectors = allConnectors.filter(
+        (connector) => (connector.configured ?? false) && connector.enabled && pairedConnectorIds.has(connector.id)
+      );
       return {
         success: true,
         data: {
           connectors,
+          channelAccounts: connectors,
           agentProfiles,
-          bindings,
-          audiences: buildAudienceEntries(remoteIdentities),
+          bindings: bindings.map((binding) => withChannelAccountId(binding)),
+          audiences: buildAudienceEntries(
+            remoteIdentities.map((identity) => withChannelAccountId(identity)),
+            allConnectors
+          ),
         },
       };
     } catch (error) {
@@ -524,10 +965,11 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   /**
    * Get channel bindings
    */
-  channel.getBindings.provider(async (params?: { connectorId?: string }) => {
+  channel.getBindings.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
     try {
-      const data = await channelRepo.getChannelBindings(params?.connectorId);
-      return { success: true, data };
+      const channelAccountId = params?.channelAccountId ?? params?.connectorId;
+      const data = await channelRepo.getChannelBindings(channelAccountId);
+      return { success: true, data: data.map((binding) => withChannelAccountId(binding)) };
     } catch (error) {
       console.error('[ChannelBridge] getBindings error:', error);
       return { success: false, msg: getErrorMessage(error) };
@@ -539,7 +981,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
    */
   channel.upsertBinding.provider(async ({ binding }) => {
     try {
-      await channelRepo.upsertChannelBinding(binding);
+      await channelRepo.upsertChannelBinding(withChannelAccountId(binding));
       return { success: true };
     } catch (error) {
       console.error('[ChannelBridge] upsertBinding error:', error);
@@ -560,38 +1002,63 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
+  const prepareConversationPublication = async (conversationId: string) => {
+    const publicationService = getChannelPublicationService();
+    return publicationService.prepareConversationPublication(conversationId);
+  };
+
+  channel.prepareConversationPublication.provider(async ({ conversationId }) => {
+    try {
+      const data = await prepareConversationPublication(conversationId);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] prepareConversationPublication error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.prepareConversationAgentProfile.provider(async ({ conversationId }) => {
+    try {
+      const data = await prepareConversationPublication(conversationId);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] prepareConversationAgentProfile error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
   /**
-   * Handoff a source session/conversation to a target channel chat.
+   * Continue a source session/conversation in a target channel chat.
    */
-  channel.handoffSession.provider(async (params) => {
+  channel.continuationSession.provider(async (params) => {
     try {
-      const handoffService = getChannelHandoffService();
-      const data = await handoffService.handoffSession(params);
+      const continuationService = getChannelContinuationService();
+      const data = await continuationService.continueSession(params);
       return { success: true, data };
     } catch (error) {
-      console.error('[ChannelBridge] handoffSession error:', error);
+      console.error('[ChannelBridge] continuationSession error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });
 
-  channel.endHandoffSession.provider(async ({ targetExternalSessionId }) => {
+  channel.endContinuationSession.provider(async ({ targetExternalSessionId }) => {
     try {
-      const handoffService = getChannelHandoffService();
-      const data = await handoffService.releaseHandoff(targetExternalSessionId);
+      const continuationService = getChannelContinuationService();
+      const data = await continuationService.releaseContinuation(targetExternalSessionId);
       return { success: true, data };
     } catch (error) {
-      console.error('[ChannelBridge] endHandoffSession error:', error);
+      console.error('[ChannelBridge] endContinuationSession error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });
 
-  channel.setHandoffControlMode.provider(async ({ targetExternalSessionId, controlMode }) => {
+  channel.setContinuationControlMode.provider(async ({ targetExternalSessionId, controlMode }) => {
     try {
-      const handoffService = getChannelHandoffService();
-      const data = await handoffService.updateHandoffControlMode(targetExternalSessionId, controlMode);
+      const continuationService = getChannelContinuationService();
+      const data = await continuationService.updateContinuationControlMode(targetExternalSessionId, controlMode);
       return { success: true, data };
     } catch (error) {
-      console.error('[ChannelBridge] setHandoffControlMode error:', error);
+      console.error('[ChannelBridge] setContinuationControlMode error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });

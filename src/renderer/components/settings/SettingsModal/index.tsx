@@ -6,6 +6,7 @@
 
 import ContextGoModal from '@/renderer/components/base/ContextGoModal';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
+import { SettingsSubModal } from '@/renderer/components/settings';
 import { iconColors } from '@/renderer/styles/colors';
 import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
@@ -129,16 +130,9 @@ interface SubModalProps {
  */
 export const SubModal: React.FC<SubModalProps> = ({ visible, onCancel, title, children }) => {
   return (
-    <ContextGoModal
-      visible={visible}
-      onCancel={onCancel}
-      footer={null}
-      className='settings-sub-modal'
-      size='medium'
-      title={title}
-    >
+    <SettingsSubModal visible={visible} onCancel={onCancel} footer={null} size='medium' title={title}>
       <ContextGoScrollArea className='h-full px-20px pb-16px text-14px text-t-primary'>{children}</ContextGoScrollArea>
-    </ContextGoModal>
+    </SettingsSubModal>
   );
 };
 

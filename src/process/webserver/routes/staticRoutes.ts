@@ -138,13 +138,25 @@ function registerProductionStaticRoutes(expressApp: Express, staticRoot: string,
   }
 }
 
+function shouldUseViteDevProxy(): boolean {
+  return typeof process.env['ELECTRON_RENDERER_URL'] === 'string' && process.env['ELECTRON_RENDERER_URL'].trim() !== '';
+}
+
 /**
  * Register static assets and page routes
  *
- * In production: serve built files from out/renderer/
- * In development: proxy to Vite dev server (localhost:5173)
+ * In development: proxy to Vite dev server (localhost:5173) so WebUI/Official Remote
+ * stays aligned with the live Electron renderer instead of stale out/renderer assets.
+ * In production: serve built files from out/renderer/.
  */
 export function registerStaticRoutes(expressApp: Express): void {
+  if (shouldUseViteDevProxy()) {
+    console.log(`[WebUI] Using live renderer dev server via proxy: http://localhost:${VITE_DEV_PORT}`);
+    const proxy = createViteDevProxy();
+    expressApp.use(proxy);
+    return;
+  }
+
   const resolved = resolveRendererPath();
 
   if (resolved) {
@@ -153,7 +165,6 @@ export function registerStaticRoutes(expressApp: Express): void {
     return;
   }
 
-  // No built assets - proxy to Vite dev server in development mode
   console.log(`[WebUI] No renderer build found, proxying to Vite dev server at http://localhost:${VITE_DEV_PORT}`);
   const proxy = createViteDevProxy();
   expressApp.use(proxy);

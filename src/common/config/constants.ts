@@ -60,6 +60,14 @@ export const CONTEXTGO_AUTH_BASE_URL = process.env.CONTEXTGO_AUTH_BASE_URL?.trim
 /** Shared cloud API base URL for device registration and sync APIs. */
 export const CONTEXTGO_API_BASE_URL = process.env.CONTEXTGO_API_BASE_URL?.trim() || 'https://api.contextgo.io';
 
+/** Public InferMesh portal base URL used for browser entry and trusted handoff. */
+export const INFERMESH_PORTAL_URL = process.env.CONTEXTGO_INFERMESH_PORTAL_URL?.trim() || 'https://infermesh.org';
+
+/** Public InferMesh login URL used as the fallback entry when trusted handoff is unavailable. */
+export const INFERMESH_LOGIN_URL =
+  process.env.CONTEXTGO_INFERMESH_LOGIN_URL?.trim() ||
+  `${INFERMESH_PORTAL_URL.replace(/\/+$/, '')}/login?provider=oidc&auto=1&source=contextgo`;
+
 // ===== AI Provider 相关常量 =====
 
 // Stable ID for the Google Auth virtual provider.

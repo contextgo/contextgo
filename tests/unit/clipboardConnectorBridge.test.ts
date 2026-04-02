@@ -37,7 +37,9 @@ vi.mock('@/common', () => ({
       start: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.start = fn)) },
       stop: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.stop = fn)) },
       sampleNow: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.sampleNow = fn)) },
-      listRecentEvents: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.listRecentEvents = fn)) },
+      listRecentEvents: {
+        provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.listRecentEvents = fn)),
+      },
       listSummaries: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.listSummaries = fn)) },
       collectNow: { provider: vi.fn((fn: (payload: unknown) => Promise<unknown>) => (handlers.collectNow = fn)) },
       statusChanged: { emit: emitters.statusChanged },
@@ -57,7 +59,6 @@ vi.mock('@process/services/space/connectors/clipboard/ClipboardConnectorService'
     }
   ),
 }));
-
 
 vi.mock('@process/services/space/connectors/clipboard/ClipboardStoreService', () => ({
   ClipboardStoreService: vi.fn(
@@ -104,7 +105,12 @@ describe('clipboardConnectorBridge', () => {
     });
 
     expect(mockService.setConfig).toHaveBeenCalledWith({ enabled: true });
-    expect(emitters.statusChanged).toHaveBeenCalledWith({ lifecycle: 'stopped', desiredState: 'stopped', eventCount: 1, summaryCount: 0 });
+    expect(emitters.statusChanged).toHaveBeenCalledWith({
+      lifecycle: 'stopped',
+      desiredState: 'stopped',
+      eventCount: 1,
+      summaryCount: 0,
+    });
     expect(response).toEqual({
       success: true,
       data: { enabled: true, mode: 'macos-pasteboard' },
@@ -119,13 +125,17 @@ describe('clipboardConnectorBridge', () => {
 
     const response = await handlers.start?.({});
 
-    expect(emitters.statusChanged).toHaveBeenCalledWith({ lifecycle: 'running', desiredState: 'running', eventCount: 0, summaryCount: 0 });
+    expect(emitters.statusChanged).toHaveBeenCalledWith({
+      lifecycle: 'running',
+      desiredState: 'running',
+      eventCount: 0,
+      summaryCount: 0,
+    });
     expect(response).toEqual({
       success: true,
       data: { lifecycle: 'running', desiredState: 'running' },
     });
   });
-
 
   it('returns recent events from ContextGo store', async () => {
     mockStoreService.listRecentEvents.mockResolvedValueOnce([{ id: 'evt-1', textPreview: 'hello' }]);
@@ -140,7 +150,12 @@ describe('clipboardConnectorBridge', () => {
   });
 
   it('collects daily summaries through the ContextGo store service', async () => {
-    mockStoreService.collectDailySummary.mockResolvedValueOnce({ eventCount: 2, summaryCount: 1, importedEvents: 1, summary: { id: 'sum-1' } });
+    mockStoreService.collectDailySummary.mockResolvedValueOnce({
+      eventCount: 2,
+      summaryCount: 1,
+      importedEvents: 1,
+      summary: { id: 'sum-1' },
+    });
     mockService.getStatus.mockResolvedValueOnce({ lifecycle: 'running', desiredState: 'running' });
     mockStoreService.getStats.mockResolvedValueOnce({ eventCount: 2, summaryCount: 1 });
     initClipboardConnectorBridge();

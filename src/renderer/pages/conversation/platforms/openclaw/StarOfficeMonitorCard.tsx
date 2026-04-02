@@ -7,7 +7,7 @@
 import type { PreviewMetadata } from '@renderer/pages/conversation/Preview/context/PreviewContext.tsx';
 import { ContextGoModal } from '@/renderer/components/base';
 import { Button, Input, Tooltip } from '@arco-design/web-react';
-import { Tv } from '@icon-park/react';
+import { Loading, Tv } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ipcBridge } from '@/common';
@@ -324,14 +324,22 @@ const StarOfficeMonitorCard: React.FC<StarOfficeMonitorCardProps> = ({ conversat
     <Button
       type='text'
       size='small'
-      className='cron-job-manager-button chat-header-cron-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
-      loading={detecting}
-      onClick={handlePrimaryClick}
+      className='app-header-pill-button cron-job-manager-button chat-header-cron-pill !h-auto !w-auto !min-w-0'
+      onClick={() => {
+        if (detecting) return;
+        handlePrimaryClick();
+      }}
       aria-label={t('starOffice.monitor.openMonitor', { defaultValue: 'Open live monitor' })}
     >
-      <span className='inline-flex items-center gap-2px rounded-full px-8px py-2px bg-2'>
-        <Tv theme='outline' size={16} fill={iconFill} />
-        <span className='ml-4px w-8px h-8px rounded-full' style={{ backgroundColor: statusBadgeColor }} />
+      <span className='app-header-pill app-header-pill--status'>
+        <span className='app-header-pill__icon'>
+          {detecting ? (
+            <Loading theme='outline' size={16} fill={iconFill} className='animate-spin' />
+          ) : (
+            <Tv theme='outline' size={16} fill={iconFill} />
+          )}
+        </span>
+        <span className='app-header-pill__dot' style={{ backgroundColor: statusBadgeColor }} />
       </span>
     </Button>
   );

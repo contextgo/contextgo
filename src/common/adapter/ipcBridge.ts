@@ -35,7 +35,7 @@ import type {
   SpacePermissionsPolicy,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
-import type { CloudAuthProviderId, CloudStatus, CloudSyncSummary } from '../types/cloud';
+import type { CloudAuthProviderId, CloudStatus } from '../types/cloud';
 import type {
   UpdateCheckRequest,
   UpdateCheckResult,
@@ -119,7 +119,12 @@ export const conversation = {
   create: bridge.buildProvider<TChatConversation, ICreateConversationParams>('create-conversation'), // 创建对话
   createWithConversation: bridge.buildProvider<
     TChatConversation,
-    { conversation: TChatConversation; sourceConversationId?: string; migrateCron?: boolean }
+    {
+      conversation: TChatConversation;
+      sourceConversationId?: string;
+      migrateCron?: boolean;
+      sourceWorkspace?: string;
+    }
   >('create-conversation-with-conversation'), // Create new conversation from history (supports migration) / 通过历史会话创建新对话（支持迁移）
   get: bridge.buildProvider<TChatConversation, { id: string }>('get-conversation'), // 获取对话信息
   getAssociateConversation: bridge.buildProvider<TChatConversation[], { conversation_id: string }>(
@@ -263,8 +268,11 @@ export const cloud = {
   startLogin: bridge.buildProvider<IBridgeResponse<CloudStatus>, { provider: CloudAuthProviderId }>(
     'cloud.start-login'
   ),
+  ensureOfficialRemoteReady: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>(
+    'cloud.ensure-official-remote-ready'
+  ),
+  openInfermesh: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.open-infermesh'),
   logout: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.logout'),
-  syncNow: bridge.buildProvider<IBridgeResponse<CloudSyncSummary>, void>('cloud.sync-now'),
   statusChanged: bridge.buildEmitter<CloudStatus>('cloud.status-changed'),
 };
 
@@ -891,6 +899,7 @@ export const acpConversation = {
         backend: AcpBackend;
         name: string;
         cliPath?: string;
+        resolvedCliPath?: string;
         customAgentId?: string;
         openclawAgentId?: string;
         isDefault?: boolean;
@@ -1196,11 +1205,17 @@ export interface IWebUIStatus {
   lanIP?: string; // 局域网 IP，用于构建远程访问 URL / LAN IP for building remote access URL
   adminUsername: string;
   initialPassword?: string;
+  localAccessEnabled: boolean;
+  localAccessAllowRemote: boolean;
 }
 
 export const webui = {
   // 获取 WebUI 状态 / Get WebUI status
   getStatus: bridge.buildProvider<IBridgeResponse<IWebUIStatus>, void>('webui.get-status'),
+  // 更新本地访问偏好 / Update local access preferences
+  updatePreferences: bridge.buildProvider<IBridgeResponse<IWebUIStatus>, { allowRemote?: boolean; port?: number }>(
+    'webui.update-preferences'
+  ),
   // 启动 WebUI / Start WebUI
   start: bridge.buildProvider<
     IBridgeResponse<{ port: number; localUrl: string; networkUrl?: string; lanIP?: string; initialPassword?: string }>,
@@ -1269,6 +1284,7 @@ export interface ICronJob {
   metadata: {
     conversationId: string;
     conversationTitle?: string;
+    workspacePath?: string;
     agentType: AcpBackendAll;
     createdBy: 'user' | 'agent';
     createdAt: number;
@@ -1291,6 +1307,7 @@ export interface ICreateCronJobParams {
   message: string;
   conversationId: string;
   conversationTitle?: string;
+  workspacePath?: string;
   agentType: AcpBackendAll;
   createdBy: 'user' | 'agent';
 }
@@ -1696,13 +1713,15 @@ import type {
   IChannelBindingCatalog,
   IChannelBinding,
   ChannelControlMode,
-  IChannelHandoffRequest,
-  IChannelHandoffReleaseResult,
-  IChannelHandoffResult,
+  IChannelContinuationRequest,
+  IChannelContinuationReleaseResult,
+  IChannelContinuationResult,
   IChannelPairingRequest,
   IChannelPluginStatus,
   IChannelSession,
   IChannelUser,
+  IChannelAccount,
+  IConnectorInstance,
 } from '@process/channels/types';
 
 export const channel = {
@@ -1723,6 +1742,17 @@ export const channel = {
   ),
   approvePairing: bridge.buildProvider<IBridgeResponse, { code: string }>('channel.approve-pairing'),
   rejectPairing: bridge.buildProvider<IBridgeResponse, { code: string }>('channel.reject-pairing'),
+  authorizeRemoteUser: bridge.buildProvider<
+    IBridgeResponse,
+    {
+      platformUserId: string;
+      platformType: string;
+      displayName?: string;
+      chatId?: string;
+      pluginId?: string;
+      metadata?: Record<string, unknown>;
+    }
+  >('channel.authorize-remote-user'),
 
   // User Management
   getAuthorizedUsers: bridge.buildProvider<IBridgeResponse<IChannelUser[]>, void>('channel.get-authorized-users'),
@@ -1734,29 +1764,58 @@ export const channel = {
     'channel.get-active-session-catalog'
   ),
 
+  // Channel Account Management
+  getChannelAccounts: bridge.buildProvider<IBridgeResponse<IChannelAccount[]>, void>('channel.get-channel-accounts'),
+  createChannelAccount: bridge.buildProvider<
+    IBridgeResponse<{ id: string }>,
+    { platform: IChannelAccount['platform']; name: string }
+  >('channel.create-channel-account'),
+  upsertChannelAccount: bridge.buildProvider<IBridgeResponse, { channelAccount: IChannelAccount }>(
+    'channel.upsert-channel-account'
+  ),
+  deleteChannelAccount: bridge.buildProvider<IBridgeResponse, { channelAccountId: string }>(
+    'channel.delete-channel-account'
+  ),
+  // Deprecated compatibility aliases
+  getConnectorInstances: bridge.buildProvider<IBridgeResponse<IConnectorInstance[]>, void>(
+    'channel.get-connector-instances'
+  ),
+  upsertConnectorInstance: bridge.buildProvider<IBridgeResponse, { connector: IConnectorInstance }>(
+    'channel.upsert-connector-instance'
+  ),
+  deleteConnectorInstance: bridge.buildProvider<IBridgeResponse, { connectorId: string }>(
+    'channel.delete-connector-instance'
+  ),
+
   // Binding Management
-  getBindingCatalog: bridge.buildProvider<IBridgeResponse<IChannelBindingCatalog>, { connectorId?: string }>(
-    'channel.get-binding-catalog'
-  ),
-  getBindings: bridge.buildProvider<IBridgeResponse<IChannelBinding[]>, { connectorId?: string } | void>(
-    'channel.get-bindings'
-  ),
+  getBindingCatalog: bridge.buildProvider<
+    IBridgeResponse<IChannelBindingCatalog>,
+    { channelAccountId?: string; connectorId?: string }
+  >('channel.get-binding-catalog'),
+  getBindings: bridge.buildProvider<
+    IBridgeResponse<IChannelBinding[]>,
+    { channelAccountId?: string; connectorId?: string } | void
+  >('channel.get-bindings'),
   upsertBinding: bridge.buildProvider<IBridgeResponse, { binding: IChannelBinding }>('channel.upsert-binding'),
   deleteBinding: bridge.buildProvider<IBridgeResponse, { bindingId: string }>('channel.delete-binding'),
+  prepareConversationPublication: bridge.buildProvider<IBridgeResponse<IAgentProfile>, { conversationId: string }>(
+    'channel.prepare-conversation-publication'
+  ),
+  // Deprecated compatibility alias
   prepareConversationAgentProfile: bridge.buildProvider<IBridgeResponse<IAgentProfile>, { conversationId: string }>(
     'channel.prepare-conversation-agent-profile'
   ),
-  handoffSession: bridge.buildProvider<IBridgeResponse<IChannelHandoffResult>, IChannelHandoffRequest>(
-    'channel.handoff-session'
+  continuationSession: bridge.buildProvider<IBridgeResponse<IChannelContinuationResult>, IChannelContinuationRequest>(
+    'channel.continuation-session'
   ),
-  endHandoffSession: bridge.buildProvider<
-    IBridgeResponse<IChannelHandoffReleaseResult>,
+  endContinuationSession: bridge.buildProvider<
+    IBridgeResponse<IChannelContinuationReleaseResult>,
     { targetExternalSessionId: string }
-  >('channel.end-handoff-session'),
-  setHandoffControlMode: bridge.buildProvider<
-    IBridgeResponse<IChannelHandoffReleaseResult>,
+  >('channel.end-continuation-session'),
+  setContinuationControlMode: bridge.buildProvider<
+    IBridgeResponse<IChannelContinuationReleaseResult>,
     { targetExternalSessionId: string; controlMode: ChannelControlMode }
-  >('channel.set-handoff-control-mode'),
+  >('channel.set-continuation-control-mode'),
 
   // Events
   pairingRequested: bridge.buildEmitter<IChannelPairingRequest>('channel.pairing-requested'),

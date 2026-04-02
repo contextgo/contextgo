@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import { AuthType } from '@office-ai/aioncli-core';
 import type { RotatingApiClientOptions } from './RotatingApiClient';
 import { RotatingApiClient } from './RotatingApiClient';
 
@@ -29,17 +28,8 @@ export class OpenAIRotatingClient extends RotatingApiClient<OpenAI> {
       return new OpenAI(openaiConfig);
     };
 
-    super(apiKeys, AuthType.USE_OPENAI, createClient, options);
+    super(apiKeys, createClient, options);
     this.baseConfig = config;
-  }
-
-  protected getCurrentApiKey(): string | undefined {
-    if (this.apiKeyManager?.hasMultipleKeys()) {
-      // For OpenAI, try to get from environment first
-      return process.env.OPENAI_API_KEY || this.apiKeyManager.getCurrentKey();
-    }
-    // Use base class method for single key
-    return super.getCurrentApiKey();
   }
 
   // Convenience methods for common OpenAI operations

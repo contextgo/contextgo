@@ -101,7 +101,14 @@ describe('DiscordConfigForm', () => {
   });
 
   it('renders Discord credential fields', () => {
-    render(<DiscordConfigForm pluginStatus={null} modelSelection={noopModelSelection} onStatusChange={vi.fn()} />);
+    render(
+      <DiscordConfigForm
+        pluginId='discord_default'
+        pluginStatus={null}
+        modelSelection={noopModelSelection}
+        onStatusChange={vi.fn()}
+      />
+    );
 
     expect(screen.getByPlaceholderText('Discord bot token')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Test & Connect' })).toBeTruthy();
@@ -111,7 +118,12 @@ describe('DiscordConfigForm', () => {
     const onStatusChange = vi.fn();
 
     render(
-      <DiscordConfigForm pluginStatus={null} modelSelection={noopModelSelection} onStatusChange={onStatusChange} />
+      <DiscordConfigForm
+        pluginId='discord_default'
+        pluginStatus={null}
+        modelSelection={noopModelSelection}
+        onStatusChange={onStatusChange}
+      />
     );
 
     fireEvent.change(screen.getByPlaceholderText('Discord bot token'), {

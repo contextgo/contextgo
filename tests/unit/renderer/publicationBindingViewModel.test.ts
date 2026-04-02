@@ -41,7 +41,7 @@ describe('publication binding view model', () => {
 
   it('reuses an existing binding id when saving the same scope again', () => {
     const nextBinding = buildBindingPayload([baseBinding], {
-      connectorId: 'connector-1',
+      channelAccountId: 'connector-1',
       scopeType: 'remote_chat',
       scopeKey: 'group:alpha',
       agentProfileId: 'agent-profile-2',
@@ -50,6 +50,7 @@ describe('publication binding view model', () => {
     });
 
     expect(nextBinding.id).toBe('binding-1');
+    expect(nextBinding.channelAccountId).toBe('connector-1');
     expect(nextBinding.agentProfileId).toBe('agent-profile-2');
     expect(nextBinding.priority).toBe(20);
     expect(nextBinding.metadata).toEqual(

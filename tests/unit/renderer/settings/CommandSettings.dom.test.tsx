@@ -2,8 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 
-const getConfigMock = vi.fn();
-const setConfigMock = vi.fn().mockResolvedValue(undefined);
+const hoistedConfigMocks = vi.hoisted(() => ({
+  getConfigMock: vi.fn(),
+  setConfigMock: vi.fn().mockResolvedValue(undefined),
+}));
+
+const getConfigMock = hoistedConfigMocks.getConfigMock;
+const setConfigMock = hoistedConfigMocks.setConfigMock;
 const emitMock = vi.fn();
 const successMessageMock = vi.fn();
 const errorMessageMock = vi.fn();
@@ -20,6 +25,8 @@ vi.mock('react-i18next', () => ({
         'common.saveSuccess': 'Saved successfully',
         'common.createSuccess': 'Created successfully',
         'common.deleteSuccess': 'Deleted successfully',
+        'common.cancel': 'Cancel',
+        'common.save': 'Save',
         'settings.commands.title': 'Commands',
         'settings.commands.description': 'Manage reusable slash commands.',
         'settings.commands.usageHint': 'Type / in chat.',
@@ -81,6 +88,35 @@ vi.mock('@/common/utils', () => ({
   uuid: () => 'generated-command-id',
 }));
 
+vi.mock('@/renderer/components/base', () => ({
+  ContextGoModal: ({
+    visible,
+    header,
+    footer,
+    children,
+  }: {
+    visible?: boolean;
+    header?: React.ReactNode | { title?: React.ReactNode };
+    footer?: React.ReactNode | { render?: () => React.ReactNode };
+    children?: React.ReactNode;
+  }) => {
+    if (!visible) {
+      return null;
+    }
+
+    const headerTitle = typeof header === 'object' && header !== null && 'title' in header ? header.title : header;
+    const footerNode = typeof footer === 'object' && footer !== null && 'render' in footer ? footer.render?.() : footer;
+
+    return (
+      <div data-testid='mock-contextgo-modal'>
+        <div>{headerTitle}</div>
+        <div>{children}</div>
+        <div>{footerNode}</div>
+      </div>
+    );
+  },
+}));
+
 vi.mock('@/renderer/utils/emitter', () => ({
   emitter: {
     emit: (...args: unknown[]) => emitMock(...args),
@@ -96,12 +132,14 @@ vi.mock('@arco-design/web-react', () => ({
     children,
     onClick,
     icon,
+    disabled,
   }: {
     children?: React.ReactNode;
     onClick?: () => void;
     icon?: React.ReactNode;
+    disabled?: boolean;
   }) => (
-    <button type='button' onClick={onClick}>
+    <button type='button' onClick={onClick} disabled={disabled}>
       {icon}
       {children}
     </button>
@@ -116,6 +154,7 @@ vi.mock('@arco-design/web-react', () => ({
       value?: string;
       placeholder?: string;
       onChange?: (value: string) => void;
+      className?: string;
     }) => <input value={value} placeholder={placeholder} onChange={(event) => onChange?.(event.target.value)} />,
     {
       TextArea: ({
@@ -138,31 +177,6 @@ vi.mock('@arco-design/web-react', () => ({
       <div key='message-holder' />,
     ],
   },
-  Modal: ({
-    title,
-    visible,
-    onOk,
-    onCancel,
-    children,
-  }: {
-    title?: React.ReactNode;
-    visible?: boolean;
-    onOk?: () => void;
-    onCancel?: () => void;
-    children?: React.ReactNode;
-  }) =>
-    visible ? (
-      <div>
-        <div>{title}</div>
-        {children}
-        <button type='button' onClick={onOk}>
-          modal-ok
-        </button>
-        <button type='button' onClick={onCancel}>
-          modal-cancel
-        </button>
-      </div>
-    ) : null,
   Switch: ({ checked, onChange }: { checked?: boolean; onChange?: (value: boolean) => void }) => (
     <button type='button' onClick={() => onChange?.(!checked)}>
       {checked ? 'on' : 'off'}
@@ -217,7 +231,7 @@ describe('CommandSettings', () => {
       expect(screen.getByDisplayValue('Check lint, tests, and release notes.')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('modal-ok'));
+    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(setConfigMock).toHaveBeenCalledTimes(2);

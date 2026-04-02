@@ -331,6 +331,7 @@ export const ExtModelProviderSchema = z.object({
  * Built-in settings tab IDs — used by extensions to anchor relative positioning.
  *
  * Route-page tabs:  gemini | model | agent | tools | display | webui | system | about
+ * `display` remains as a deprecated anchor alias and is normalized to `system` in current settings navigation.
  * Modal-only tabs:  gemini | model | tools | webui | system | about
  */
 export const BUILTIN_SETTINGS_TAB_IDS = [
