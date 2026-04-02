@@ -1392,6 +1392,33 @@ def should_rewrite_vite_client(path: str, headers: dict[str, str]) -> bool:
     return "javascript" in content_type or "ecmascript" in content_type or not content_type
 
 
+def should_rewrite_remote_html(path: str, headers: dict[str, str]) -> bool:
+    if path != "/":
+        return False
+
+    content_type = headers.get("content-type", "")
+    return "text/html" in content_type or "application/xhtml+xml" in content_type
+
+
+def rewrite_remote_html_source(source: str, device_id: str) -> str:
+    base_href = f"{REMOTE_DEVICE_PATH_PREFIX}/{quote(device_id, safe='')}/"
+    base_tag = f'<base href="{base_href}">'
+
+    if "<base " in source.lower():
+        return source
+
+    lower_source = source.lower()
+    head_close = lower_source.find("</head>")
+    if head_close >= 0:
+        return f"{source[:head_close]}  {base_tag}\n{source[head_close:]}"
+
+    body_open = lower_source.find("<body")
+    if body_open >= 0:
+        return f"{source[:body_open]}{base_tag}\n{source[body_open:]}"
+
+    return f"{base_tag}\n{source}"
+
+
 def rewrite_vite_client_source(source: str, device_id: str) -> str:
     vite_socket_path = f'/api/remote/vite/{quote(device_id, safe="")}'
     replacements = {
@@ -1450,6 +1477,11 @@ async def relay_remote_http_request(
 
     if should_rewrite_vite_client(desktop_path, response_headers):
         rewritten_body = rewrite_vite_client_source(body.decode("utf-8"), device.id)
+        body = rewritten_body.encode("utf-8")
+        response_headers["content-length"] = str(len(body))
+
+    if should_rewrite_remote_html(desktop_path, response_headers):
+        rewritten_body = rewrite_remote_html_source(body.decode("utf-8"), device.id)
         body = rewritten_body.encode("utf-8")
         response_headers["content-length"] = str(len(body))
 
