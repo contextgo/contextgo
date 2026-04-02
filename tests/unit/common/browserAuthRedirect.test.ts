@@ -3,6 +3,7 @@ import {
   buildBrowserLoginRedirectPath,
   buildHostedRemoteNoticeRedirectPath,
   extractRemoteDeviceId,
+  resolveHostedRemoteDisconnect,
   resolveHostedRemoteDisconnectRedirectPath,
 } from '@/common/adapter/browserAuthRedirect';
 
@@ -50,10 +51,18 @@ describe('resolveHostedRemoteDisconnectRedirectPath', () => {
     );
   });
 
-  it('maps session replacement and restart style closes to list notices', () => {
-    expect(resolveHostedRemoteDisconnectRedirectPath(currentHref, 1012, 'Remote session replaced')).toBe(
-      buildHostedRemoteNoticeRedirectPath('session_replaced')
-    );
+  it('treats hosted remote session replacement as a reconnect instead of forcing a list redirect', () => {
+    expect(resolveHostedRemoteDisconnect(currentHref, 1012, 'Remote session replaced')).toEqual({
+      type: 'reconnect',
+    });
+    expect(resolveHostedRemoteDisconnectRedirectPath(currentHref, 1012, 'Remote session replaced')).toBeNull();
+  });
+
+  it('maps hosted remote restarts to list notices', () => {
+    expect(resolveHostedRemoteDisconnect(currentHref, 1012, 'service restart')).toEqual({
+      type: 'redirect',
+      path: buildHostedRemoteNoticeRedirectPath('service_restarted'),
+    });
     expect(resolveHostedRemoteDisconnectRedirectPath(currentHref, 1012, 'service restart')).toBe(
       buildHostedRemoteNoticeRedirectPath('service_restarted')
     );
