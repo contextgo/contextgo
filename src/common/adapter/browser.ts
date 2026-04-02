@@ -10,7 +10,7 @@ import type { ElectronBridgeAPI } from '@/common/types/electron';
 import {
   buildBrowserLoginRedirectPath,
   extractRemoteDeviceId,
-  resolveHostedRemoteDisconnectRedirectPath,
+  resolveHostedRemoteDisconnect,
 } from './browserAuthRedirect';
 
 interface CustomWindow extends Window {
@@ -176,20 +176,30 @@ if (win.electronAPI) {
     socket.addEventListener('close', (event: CloseEvent) => {
       socket = null;
 
-      const hostedRemoteRedirectPath = resolveHostedRemoteDisconnectRedirectPath(
-        window.location.href,
-        event.code,
-        event.reason
-      );
-      if (hostedRemoteRedirectPath) {
+      const hostedRemoteDisconnect = resolveHostedRemoteDisconnect(window.location.href, event.code, event.reason);
+      if (hostedRemoteDisconnect.type === 'reconnect') {
+        shouldReconnect = true;
+        reconnectDelay = 200;
+        if (reconnectTimer !== null) {
+          window.clearTimeout(reconnectTimer);
+          reconnectTimer = null;
+        }
+        scheduleReconnect();
+        return;
+      }
+
+      if (hostedRemoteDisconnect.type === 'redirect') {
         shouldReconnect = false;
         if (reconnectTimer !== null) {
           window.clearTimeout(reconnectTimer);
           reconnectTimer = null;
         }
-        setTimeout(() => {
-          window.location.href = hostedRemoteRedirectPath;
-        }, event.code === 4401 ? 500 : 300);
+        setTimeout(
+          () => {
+            window.location.href = hostedRemoteDisconnect.path;
+          },
+          event.code === 4401 ? 500 : 300
+        );
         return;
       }
 

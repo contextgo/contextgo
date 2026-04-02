@@ -44,31 +44,52 @@ export function buildHostedRemoteNoticeRedirectPath(notice: HostedRemoteDisconne
   return `${REMOTE_DEVICES_PATH}?remoteNotice=${encodeURIComponent(notice)}`;
 }
 
-export function resolveHostedRemoteDisconnectRedirectPath(currentHref: string, code: number, reason: string): string | null {
+export type HostedRemoteDisconnectResolution =
+  | { type: 'redirect'; path: string }
+  | { type: 'reconnect' }
+  | { type: 'none' };
+
+export function resolveHostedRemoteDisconnect(
+  currentHref: string,
+  code: number,
+  reason: string
+): HostedRemoteDisconnectResolution {
   const normalizedReason = reason.trim().toLowerCase();
   if (code === 4401) {
-    return buildBrowserLoginRedirectPath(currentHref);
+    return { type: 'redirect', path: buildBrowserLoginRedirectPath(currentHref) };
   }
 
   if (code === 4404) {
-    return buildHostedRemoteNoticeRedirectPath(normalizedReason.includes('offline') ? 'device_offline' : 'device_not_found');
+    return {
+      type: 'redirect',
+      path: buildHostedRemoteNoticeRedirectPath(normalizedReason.includes('offline') ? 'device_offline' : 'device_not_found'),
+    };
   }
 
   if (code !== 1012) {
-    return null;
+    return { type: 'none' };
   }
 
   if (normalizedReason.includes('session replaced')) {
-    return buildHostedRemoteNoticeRedirectPath('session_replaced');
+    return isContextGoHostname(new URL(currentHref).hostname) ? { type: 'reconnect' } : { type: 'redirect', path: buildHostedRemoteNoticeRedirectPath('session_replaced') };
   }
 
   if (normalizedReason.includes('restart')) {
-    return buildHostedRemoteNoticeRedirectPath('service_restarted');
+    return { type: 'redirect', path: buildHostedRemoteNoticeRedirectPath('service_restarted') };
   }
 
   if (normalizedReason.includes('disconnected')) {
-    return buildHostedRemoteNoticeRedirectPath('device_offline');
+    return { type: 'redirect', path: buildHostedRemoteNoticeRedirectPath('device_offline') };
   }
 
-  return buildHostedRemoteNoticeRedirectPath('service_restarted');
+  return { type: 'redirect', path: buildHostedRemoteNoticeRedirectPath('service_restarted') };
+}
+
+export function resolveHostedRemoteDisconnectRedirectPath(
+  currentHref: string,
+  code: number,
+  reason: string
+): string | null {
+  const resolution = resolveHostedRemoteDisconnect(currentHref, code, reason);
+  return resolution.type === 'redirect' ? resolution.path : null;
 }
