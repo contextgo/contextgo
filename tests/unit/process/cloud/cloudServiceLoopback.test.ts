@@ -450,6 +450,22 @@ describe('CloudService desktop loopback login', () => {
 
   it('falls back to the public InferMesh login page when cloud auth is missing', async () => {
     const cloudService = await importCloudService();
+    const defaultFetch = authSessionFetch.getMockImplementation();
+
+    authSessionFetch.mockImplementationOnce(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/auth/session')) {
+        return new Response(JSON.stringify({ authenticated: false, user: null }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!defaultFetch) {
+        throw new Error(`Unexpected fetch URL: ${url} ${init?.method ?? 'GET'}`);
+      }
+
+      return defaultFetch(url, init);
+    });
 
     await cloudService.openInfermesh();
 
