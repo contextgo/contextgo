@@ -208,3 +208,7 @@ resources/bundled-bun
 
 # Server build output
 dist-server/
+# Local cloud runtime database
+data/contextgo-cloud.db
+data/contextgo-cloud.db-shm
+data/contextgo-cloud.db-wal
