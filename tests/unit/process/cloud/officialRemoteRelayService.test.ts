@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const storage = new Map<string, unknown>();
 const socketInstances: FakeWebSocket[] = [];
+const relayInstances: MockOfficialRemoteBrowserRelay[] = [];
 
 class FakeWebSocket extends EventEmitter {
   static CONNECTING = 0;
@@ -50,6 +51,42 @@ vi.mock('ws', () => ({
   default: FakeWebSocket,
 }));
 
+vi.mock('@process/bridge/webuiBridge', () => ({
+  getWebServerInstance: vi.fn(() => null),
+}));
+
+class MockOfficialRemoteBrowserRelay {
+  public readonly handleHttpRequest = vi.fn(async (_frame: unknown) => undefined);
+  public readonly handleViteClientConnect = vi.fn(async (_frame: unknown) => undefined);
+  public readonly handleViteClientFrame = vi.fn((_frame: unknown) => undefined);
+  public readonly handleViteClientDisconnect = vi.fn((_frame: unknown) => undefined);
+  public readonly dispose = vi.fn(async () => undefined);
+
+  constructor(public readonly sendFrame: (frame: unknown) => void) {
+    relayInstances.push(this);
+  }
+}
+
+vi.mock('@/process/services/cloud/OfficialRemoteBrowserRelay', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/process/services/cloud/OfficialRemoteBrowserRelay')>();
+  return {
+    ...actual,
+    OfficialRemoteBrowserRelay: MockOfficialRemoteBrowserRelay,
+  };
+});
+
+vi.mock('node:os', async () => {
+  const actual = await vi.importActual<typeof import('node:os')>('node:os');
+  return {
+    ...actual,
+    networkInterfaces: () => ({
+      en0: [
+        { address: '192.168.1.8', family: 'IPv4', internal: false },
+      ],
+    }),
+  };
+});
+
 vi.mock('@/common/adapter/registry', () => ({
   getBridgeEmitter: () => ({ emit: vi.fn() }),
   registerWebSocketBroadcaster: () => () => {},
@@ -69,7 +106,12 @@ function flushPromises(): Promise<void> {
     .then(() => undefined);
 }
 
-describe('OfficialRemoteTunnelService relay helpers', () => {
+
+
+describe('OfficialRemoteBrowserRelay', () => {
+  const originalFetch = global.fetch;
+  const originalRendererUrl = process.env.ELECTRON_RENDERER_URL;
+
   beforeEach(() => {
     storage.clear();
     socketInstances.length = 0;
@@ -77,11 +119,74 @@ describe('OfficialRemoteTunnelService relay helpers', () => {
   });
 
   afterEach(() => {
+    global.fetch = originalFetch;
+    if (originalRendererUrl === undefined) {
+      delete process.env.ELECTRON_RENDERER_URL;
+    } else {
+      process.env.ELECTRON_RENDERER_URL = originalRendererUrl;
+    }
     socketInstances.length = 0;
   });
 
+  it('prefers the configured renderer dev server host when probing official remote vite relay', async () => {
+    process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173';
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: url.startsWith('http://localhost:5173/@vite/client'),
+      } as Response;
+    }) as typeof fetch;
+
+    const { buildLocalViteDevProbeUrls, resolveLocalViteDevWebSocketUrl } =
+      await import('@/process/services/cloud/OfficialRemoteBrowserRelay');
+
+    expect(buildLocalViteDevProbeUrls().map((url) => url.toString())).toEqual([
+      'http://localhost:5173/',
+      'http://[::1]:5173/',
+      'http://127.0.0.1:5173/',
+    ]);
+
+    const socketUrl = await resolveLocalViteDevWebSocketUrl('token=abc');
+    expect(socketUrl?.toString()).toBe('ws://localhost:5173/?token=abc');
+    expect(global.fetch).toHaveBeenCalledWith(
+      new URL('http://localhost:5173/@vite/client'),
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
+  it('falls back across localhost variants until a reachable vite dev server is found', async () => {
+    delete process.env.ELECTRON_RENDERER_URL;
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: url.startsWith('http://[::1]:5173/@vite/client'),
+      } as Response;
+    }) as typeof fetch;
+
+    const { resolveLocalViteDevWebSocketUrl } = await import('@/process/services/cloud/OfficialRemoteBrowserRelay');
+
+    const socketUrl = await resolveLocalViteDevWebSocketUrl();
+    expect(socketUrl?.toString()).toBe('ws://[::1]:5173/');
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('OfficialRemoteTunnelService relay helpers', () => {
+  beforeEach(() => {
+    storage.clear();
+    socketInstances.length = 0;
+    relayInstances.length = 0;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    socketInstances.length = 0;
+    relayInstances.length = 0;
+  });
+
   it('builds a secure websocket relay URL from the cloud API base URL', async () => {
-    const { buildOfficialRemoteRelayWebSocketUrl } = await import('@/process/services/cloud/OfficialRemoteTunnelService');
+    const { buildOfficialRemoteRelayWebSocketUrl } =
+      await import('@/process/services/cloud/OfficialRemoteTunnelService');
 
     expect(buildOfficialRemoteRelayWebSocketUrl('https://api.contextgo.io')).toBe(
       'wss://api.contextgo.io/api/remote/device-connect'
@@ -104,12 +209,14 @@ describe('OfficialRemoteTunnelService relay helpers', () => {
 });
 
 describe('OfficialRemoteTunnelService', () => {
-  let serviceUnderTest: InstanceType<typeof import('@/process/services/cloud/OfficialRemoteTunnelService').OfficialRemoteTunnelService> | null =
-    null;
+  let serviceUnderTest: InstanceType<
+    typeof import('@/process/services/cloud/OfficialRemoteTunnelService').OfficialRemoteTunnelService
+  > | null = null;
 
   beforeEach(() => {
     storage.clear();
     socketInstances.length = 0;
+    relayInstances.length = 0;
     vi.clearAllMocks();
     serviceUnderTest = null;
   });
@@ -117,6 +224,7 @@ describe('OfficialRemoteTunnelService', () => {
   afterEach(async () => {
     await serviceUnderTest?.dispose();
     socketInstances.length = 0;
+    relayInstances.length = 0;
   });
 
   it('refreshes the device token and reconnects after a 4401 relay close', async () => {
@@ -178,6 +286,141 @@ describe('OfficialRemoteTunnelService', () => {
       running: false,
       needsAttention: true,
       message: 'Official Remote needs a fresh cloud login before this desktop can reconnect.',
+    });
+  });
+
+  it('marks browser entry ready locally as soon as the relay socket opens with a resolvable desktop runtime', async () => {
+    const { OfficialRemoteTunnelService } = await import('@/process/services/cloud/OfficialRemoteTunnelService');
+
+    storage.set('cloud.deviceToken', 'ctxdev_ready');
+    storage.set('webui.desktop.enabled', true);
+    storage.set('webui.desktop.port', 25809);
+
+    const service = new OfficialRemoteTunnelService();
+    serviceUnderTest = service;
+    service.initialize();
+    await service.reconcile('test');
+
+    socketInstances[0].open();
+    await flushPromises();
+
+    expect(service.getState()).toMatchObject({
+      desired: true,
+      running: true,
+      browserEntryReady: true,
+      needsAttention: false,
+    });
+
+    expect(socketInstances[0].sentFrames).toHaveLength(1);
+    expect(JSON.parse(socketInstances[0].sentFrames[0])).toEqual({
+      type: 'hello',
+      browserEntry: {
+        url: 'official-remote://relay-ready',
+        ready: true,
+      },
+    });
+  });
+
+  it('keeps the local browser runtime ready state when the relay hello frame omits browser entry data', async () => {
+    const { OfficialRemoteTunnelService } = await import('@/process/services/cloud/OfficialRemoteTunnelService');
+
+    storage.set('cloud.deviceToken', 'ctxdev_ready');
+    storage.set('webui.desktop.enabled', true);
+    storage.set('webui.desktop.port', 25809);
+
+    const service = new OfficialRemoteTunnelService();
+    serviceUnderTest = service;
+    service.initialize();
+    await service.reconcile('test');
+
+    socketInstances[0].open();
+    await flushPromises();
+    socketInstances[0].emit('message', JSON.stringify({
+      type: 'hello',
+      deviceId: 'device-1',
+      connectedAt: '2026-04-02T00:00:00Z',
+      transport: 'cloud-relay',
+    }));
+
+    expect(service.getState()).toMatchObject({
+      desired: true,
+      running: true,
+      browserEntryReady: true,
+      needsAttention: false,
+    });
+  });
+
+  it('forwards http and vite relay frames into the desktop browser relay', async () => {
+    const { OfficialRemoteTunnelService } = await import('@/process/services/cloud/OfficialRemoteTunnelService');
+
+    storage.set('cloud.deviceToken', 'ctxdev_ready');
+
+    const service = new OfficialRemoteTunnelService();
+    serviceUnderTest = service;
+    service.initialize();
+    await service.reconcile('test');
+
+    expect(relayInstances).toHaveLength(1);
+
+    socketInstances[0].open();
+    await flushPromises();
+
+    socketInstances[0].emit(
+      'message',
+      JSON.stringify({
+        type: 'http_request',
+        requestId: 'req-1',
+        request: { method: 'GET', path: '/' },
+      })
+    );
+    socketInstances[0].emit(
+      'message',
+      JSON.stringify({
+        type: 'vite_client_connect',
+        socketId: 'vite-1',
+        query: 'token=1',
+        protocols: ['vite-hmr'],
+      })
+    );
+    socketInstances[0].emit(
+      'message',
+      JSON.stringify({
+        type: 'vite_client_frame',
+        socketId: 'vite-1',
+        data: 'ping',
+      })
+    );
+    socketInstances[0].emit(
+      'message',
+      JSON.stringify({
+        type: 'vite_client_disconnect',
+        socketId: 'vite-1',
+        code: 1000,
+        reason: 'done',
+      })
+    );
+
+    expect(relayInstances[0].handleHttpRequest).toHaveBeenCalledWith({
+      type: 'http_request',
+      requestId: 'req-1',
+      request: { method: 'GET', path: '/' },
+    });
+    expect(relayInstances[0].handleViteClientConnect).toHaveBeenCalledWith({
+      type: 'vite_client_connect',
+      socketId: 'vite-1',
+      query: 'token=1',
+      protocols: ['vite-hmr'],
+    });
+    expect(relayInstances[0].handleViteClientFrame).toHaveBeenCalledWith({
+      type: 'vite_client_frame',
+      socketId: 'vite-1',
+      data: 'ping',
+    });
+    expect(relayInstances[0].handleViteClientDisconnect).toHaveBeenCalledWith({
+      type: 'vite_client_disconnect',
+      socketId: 'vite-1',
+      code: 1000,
+      reason: 'done',
     });
   });
 });
