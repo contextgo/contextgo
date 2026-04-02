@@ -748,6 +748,7 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('Desktop Remote', response.text)
         self.assertIn('/@vite/client', response.text)
+        self.assertIn(f'<base href="/device/{device["id"]}/">', response.text)
         self.assertNotIn('/assets/app.js', response.text)
         self.assertNotIn('http://192.168.1.8:25809/', response.text)
 
