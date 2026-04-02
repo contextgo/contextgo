@@ -479,46 +479,31 @@ jobs:
           fi
 
           if [ -f "${OIDC_CLIENT_SECRET_FILE}" ] && [ -f "${OIDC_SIGNING_KEY_FILE}" ]; then
-            sudo python3 - "${CLOUD_ENV_FILE}" "${OIDC_CLIENT_SECRET_FILE}" "${OIDC_SIGNING_KEY_FILE}" <<'PY'
-            from pathlib import Path
-            import re
-            import sys
+            shell_single_quote() { python3 -c 'import shlex, sys; print(shlex.quote(sys.argv[1]))' "$1"; }
 
-            env_path = Path(sys.argv[1])
-            client_secret_path = Path(sys.argv[2])
-            signing_key_path = Path(sys.argv[3])
+            client_secret="$(cat "${OIDC_CLIENT_SECRET_FILE}")"
+            signing_key="$(cat "${OIDC_SIGNING_KEY_FILE}")"
 
-            if not env_path.exists():
-                raise SystemExit(f"Missing env file: {env_path}")
+            if [ -z "${client_secret}" ]; then
+              echo "::error::OIDC client secret is empty"
+              exit 1
+            fi
 
-            client_secret = client_secret_path.read_text(encoding='utf-8').strip()
-            signing_key = signing_key_path.read_text(encoding='utf-8').strip()
+            if [ -z "${signing_key}" ]; then
+              echo "::error::OIDC signing key PEM is empty"
+              exit 1
+            fi
 
-            if not client_secret:
-                raise SystemExit('OIDC client secret is empty')
+            client_secret_quoted="$(shell_single_quote "${client_secret}")"
+            signing_key_quoted="$(shell_single_quote "${signing_key}")"
 
-            if not signing_key:
-                raise SystemExit('OIDC signing key PEM is empty')
+            sudo perl -0pi -e 's/\n?# BEGIN CONTEXTGO MANAGED OIDC\n.*?\n# END CONTEXTGO MANAGED OIDC\n?/\n/s' "${CLOUD_ENV_FILE}"
 
-            managed_block = (
-                '# BEGIN CONTEXTGO MANAGED OIDC\n'
-                f'CONTEXTGO_OIDC_CLIENT_SECRET={client_secret}\n'
-                f"CONTEXTGO_OIDC_SIGNING_KEY_PEM='{signing_key}'\n"
-                '# END CONTEXTGO MANAGED OIDC\n'
-            )
-
-            contents = env_path.read_text(encoding='utf-8')
-            contents = re.sub(
-                r'\n?# BEGIN CONTEXTGO MANAGED OIDC\n.*?\n# END CONTEXTGO MANAGED OIDC\n?',
-                '\n',
-                contents,
-                flags=re.S,
-            ).rstrip('\n')
-            updated = f'{contents}\n\n{managed_block}'
-            env_path.write_text(updated, encoding='utf-8')
-            PY
+            printf '\n# BEGIN CONTEXTGO MANAGED OIDC\n' | sudo tee -a "${CLOUD_ENV_FILE}" >/dev/null
+            printf 'CONTEXTGO_OIDC_CLIENT_SECRET=%s\n' "${client_secret_quoted}" | sudo tee -a "${CLOUD_ENV_FILE}" >/dev/null
+            printf 'CONTEXTGO_OIDC_SIGNING_KEY_PEM=%s\n' "${signing_key_quoted}" | sudo tee -a "${CLOUD_ENV_FILE}" >/dev/null
+            printf '# END CONTEXTGO MANAGED OIDC\n' | sudo tee -a "${CLOUD_ENV_FILE}" >/dev/null
           fi
-
           if [ -f "${CLOUD_ENV_FILE}" ]; then
             for required_key in \
               CONTEXTGO_AUTH_BASE_URL \
