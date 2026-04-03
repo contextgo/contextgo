@@ -927,10 +927,15 @@ export const acpConversation = {
   >('acp.import-external-session'),
   checkEnv: bridge.buildProvider<{ env: Record<string, string> }, void>('acp.check.env'),
   refreshCustomAgents: bridge.buildProvider<IBridgeResponse, void>('acp.refresh-custom-agents'),
+  refreshDetectedAgents: bridge.buildProvider<IBridgeResponse, void>('acp.refresh-detected-agents'),
   installManagedRuntime: bridge.buildProvider<
     IBridgeResponse<{ backend: AcpBackend; command: string; stdout?: string; stderr?: string }>,
     { backend: AcpBackend }
   >('acp.install-managed-runtime'),
+  getManagedRuntimeConfigLocation: bridge.buildProvider<
+    IBridgeResponse<{ backend: AcpBackend; configPath: string; exists: boolean } | null>,
+    { backend: AcpBackend }
+  >('acp.get-managed-runtime-config-location'),
   checkAgentHealth: bridge.buildProvider<
     IBridgeResponse<{ available: boolean; latency?: number; error?: string }>,
     { backend: AcpBackend }
@@ -1753,6 +1758,10 @@ export const channel = {
       metadata?: Record<string, unknown>;
     }
   >('channel.authorize-remote-user'),
+  startWeixinLogin: bridge.buildProvider<
+    IBridgeResponse<{ accountId: string; botToken: string; baseUrl: string; scannerUserId?: string }>,
+    void
+  >('channel.start-weixin-login'),
 
   // User Management
   getAuthorizedUsers: bridge.buildProvider<IBridgeResponse<IChannelUser[]>, void>('channel.get-authorized-users'),
@@ -1823,4 +1832,6 @@ export const channel = {
     'channel.plugin-status-changed'
   ),
   userAuthorized: bridge.buildEmitter<IChannelUser>('channel.user-authorized'),
+  weixinLoginQr: bridge.buildEmitter<{ qrcodeUrl: string }>('channel.weixin-login-qr'),
+  weixinLoginScanned: bridge.buildEmitter<Record<string, never>>('channel.weixin-login-scanned'),
 };

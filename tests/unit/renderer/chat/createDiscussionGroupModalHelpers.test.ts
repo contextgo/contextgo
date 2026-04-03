@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { resolveHarnessDefaultSelectionKeys } from '@/renderer/pages/conversation/platforms/group/createDiscussionGroupModalHelpers';
 
-const PLANNER_ID = 'builtin-engineering-planner';
-const WORKBENCH_ID = 'builtin-engineering-workbench';
-const REVIEWER_ID = 'builtin-engineering-reviewer';
+const PLANNER_ID = 'builtin-workflow-planner';
+const WRITER_ID = 'builtin-workflow-writer';
+const EVALUATOR_ID = 'builtin-workflow-evaluator';
 
 describe('createDiscussionGroupModalHelpers', () => {
-  it('prefers the built-in planner, workbench, and reviewer trio for harness mode', () => {
+  it('prefers the built-in planner, writer, and evaluator trio for harness mode', () => {
     const selectionKeys = resolveHarnessDefaultSelectionKeys([
       {
         type: 'cli-agent',
@@ -15,8 +15,8 @@ describe('createDiscussionGroupModalHelpers', () => {
       },
       {
         type: 'preset-assistant',
-        participantKey: REVIEWER_ID,
-        selectionKey: `preset-assistant:${REVIEWER_ID}`,
+        participantKey: EVALUATOR_ID,
+        selectionKey: `preset-assistant:${EVALUATOR_ID}`,
       },
       {
         type: 'preset-assistant',
@@ -25,15 +25,15 @@ describe('createDiscussionGroupModalHelpers', () => {
       },
       {
         type: 'preset-assistant',
-        participantKey: WORKBENCH_ID,
-        selectionKey: `preset-assistant:${WORKBENCH_ID}`,
+        participantKey: WRITER_ID,
+        selectionKey: `preset-assistant:${WRITER_ID}`,
       },
     ]);
 
     expect(selectionKeys).toEqual([
       `preset-assistant:${PLANNER_ID}`,
-      `preset-assistant:${WORKBENCH_ID}`,
-      `preset-assistant:${REVIEWER_ID}`,
+      `preset-assistant:${WRITER_ID}`,
+      `preset-assistant:${EVALUATOR_ID}`,
     ]);
   });
 
@@ -51,8 +51,8 @@ describe('createDiscussionGroupModalHelpers', () => {
       },
       {
         type: 'preset-assistant',
-        participantKey: REVIEWER_ID,
-        selectionKey: `preset-assistant:${REVIEWER_ID}`,
+        participantKey: EVALUATOR_ID,
+        selectionKey: `preset-assistant:${EVALUATOR_ID}`,
       },
       {
         type: 'preset-assistant',
@@ -63,7 +63,7 @@ describe('createDiscussionGroupModalHelpers', () => {
 
     expect(selectionKeys).toEqual([
       `preset-assistant:${PLANNER_ID}`,
-      `preset-assistant:${REVIEWER_ID}`,
+      `preset-assistant:${EVALUATOR_ID}`,
       'cli-agent:codex:/usr/local/bin/codex:Codex CLI',
     ]);
   });

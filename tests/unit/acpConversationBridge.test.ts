@@ -39,7 +39,9 @@ vi.mock('../../src/common', () => ({
       listExternalSessions: makeChannel('listExternalSessions'),
       importExternalSession: makeChannel('importExternalSession'),
       refreshCustomAgents: makeChannel('refreshCustomAgents'),
+      refreshDetectedAgents: makeChannel('refreshDetectedAgents'),
       installManagedRuntime: makeChannel('installManagedRuntime'),
+      getManagedRuntimeConfigLocation: makeChannel('getManagedRuntimeConfigLocation'),
       checkAgentHealth: makeChannel('checkAgentHealth'),
       getMode: makeChannel('getMode'),
       getModelInfo: makeChannel('getModelInfo'),
@@ -177,6 +179,8 @@ describe('acpConversationBridge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    safeExecMock.mockReset();
+    safeExecMock.mockResolvedValue({ stdout: '', stderr: '' });
     safeExecFileMock.mockReset();
     safeExecFileMock.mockResolvedValue({ stdout: '', stderr: '' });
     hoisted.codexStart.mockReset();

@@ -1,0 +1,25 @@
+{
+  "sidebar": {
+    "enterCurrent": "스페이스 열기",
+    "recentSpaces": "최근 스페이스"
+  },
+  "views": {
+    "overview": "개요",
+    "docs": "문서",
+    "canvas": "캔버스",
+    "context": "컨텍스트",
+    "runs": "실행",
+    "members": "멤버",
+    "settings": "설정"
+  },
+  "shell": {
+    "description": "현재 스페이스의 장기 컨텍스트와 협업을 위한 뷰입니다.",
+    "engine": "엔진",
+    "members": "멤버",
+    "memory": "메모리",
+    "profiles": "프로필",
+    "emptyDescription": "스페이스를 찾을 수 없습니다.",
+    "comingSoon": "이 영역은 준비 중입니다.",
+    "workbenchHint": "Workbench에서 스레드를 열면 이 스페이스의 컨텍스트로 Agent와 계속 협업할 수 있습니다."
+  }
+}

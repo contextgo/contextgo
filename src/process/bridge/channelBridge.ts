@@ -717,6 +717,35 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   );
 
+  channel.startWeixinLogin.provider(async () => {
+    try {
+      const { BrowserWindow } = await import('electron');
+      const { WeixinLoginHandler } = await import('@process/channels/plugins/weixin/WeixinLoginHandler');
+      const getWindow = () => BrowserWindow.getAllWindows()[0] ?? null;
+      const handler = new WeixinLoginHandler(getWindow);
+      const mainWindow = getWindow();
+
+      const result = await handler.startLogin({
+        onQR: (payload) => {
+          channel.weixinLoginQr.emit(payload);
+          mainWindow?.webContents.send('weixin:login:qr', payload);
+        },
+        onScanned: () => {
+          channel.weixinLoginScanned.emit({});
+          mainWindow?.webContents.send('weixin:login:scanned');
+        },
+        onDone: (payload) => {
+          mainWindow?.webContents.send('weixin:login:done', payload);
+        },
+      });
+
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('[ChannelBridge] startWeixinLogin error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
   // ==================== User Management ====================
 
   /**

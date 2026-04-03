@@ -147,6 +147,59 @@
   color: var(--text-secondary);
 }
 
+.sider-space-nav-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 6px 4px 10px;
+}
+
+.sider-space-nav-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.sider-space-nav-kicker {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sider-space-nav-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.sider-space-view-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: color-mix(in srgb, rgb(var(--primary-6)) 14%, var(--bg-1) 86%);
+  color: rgb(var(--primary-6));
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .sider-user-trigger {
   width: 100%;
   min-width: 0;
@@ -344,6 +397,63 @@
 .sider-user-menu__item--active .sider-user-menu__row-text,
 .sider-user-menu__item--active .sider-user-menu__row-value {
   color: rgb(var(--primary-6));
+}
+
+.sider-user-menu__cloud-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.sider-user-menu__cloud-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--fill-2) 76%, var(--bg-1) 24%);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bg-1) 55%, transparent);
+}
+
+.sider-user-menu__cloud-avatar-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.sider-user-menu__cloud-meta {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.sider-user-menu__cloud-meta > span:first-child {
+  line-height: 1.2;
+}
+
+.sider-user-menu__cloud-meta > span:last-child {
+  line-height: 1.15;
+}
+
+.sider-user-menu__cloud-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .sider-user-panel {

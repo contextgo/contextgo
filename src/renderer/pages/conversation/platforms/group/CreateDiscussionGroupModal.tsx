@@ -30,6 +30,7 @@ import {
 } from './createDiscussionGroupModalHelpers';
 import GroupModalSection, {
   GROUP_MODAL_CONTENT_STYLE,
+  GROUP_MODAL_FIELD_CLASS_NAME,
   GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME,
   GROUP_MODAL_PARTICIPANT_CARD_CLASS_NAME,
   GROUP_MODAL_PARTICIPANT_LIST_STYLE,
@@ -355,7 +356,12 @@ const CreateDiscussionGroupModal: React.FC<{
     >
       <div className='flex w-full min-w-0 flex-col gap-12px'>
         <GroupModalSection title={t('conversation.group.nameLabel')}>
-          <Input value={groupName} onChange={setGroupName} placeholder={t('conversation.group.namePlaceholder')} />
+          <Input
+            value={groupName}
+            onChange={setGroupName}
+            placeholder={t('conversation.group.namePlaceholder')}
+            className={GROUP_MODAL_FIELD_CLASS_NAME}
+          />
         </GroupModalSection>
 
         <GroupModalSection title={t('conversation.group.collaborationLabel')}>
@@ -380,7 +386,7 @@ const CreateDiscussionGroupModal: React.FC<{
               onChange={setSelectedWorkspace}
               placeholder={t('conversation.group.workspacePlaceholder')}
               allowClear
-              className='min-w-0 flex-1'
+              className={`min-w-0 flex-1 ${GROUP_MODAL_FIELD_CLASS_NAME}`}
             />
             <Button
               type='secondary'

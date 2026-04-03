@@ -6,8 +6,10 @@
 
 import { acpDetector } from '@process/agent/acp/AcpDetector';
 import { AcpConnection } from '@process/agent/acp/AcpConnection';
+import { getClaudeSettingsPath } from '@process/agent/acp/utils';
 import { buildAcpModelInfo, summarizeAcpModelInfo } from '@process/agent/acp/modelInfo';
-import { CodexConnection } from '@process/agent/codex/connection/CodexConnection';
+import { CodexConnection, getCodexConfigPath } from '@process/agent/codex/connection/CodexConnection';
+import { USER_SETTINGS_PATH } from '@process/agent/gemini/cli/settings';
 import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { refreshTrayMenu } from '@process/utils/tray';
@@ -43,9 +45,16 @@ type RuntimeAwareDetectedAgent = ReturnType<typeof acpDetector.getDetectedAgents
 const MANAGED_RUNTIME_INSTALL_COMMANDS: Partial<Record<AcpBackend, string>> = {
   claude: 'npm install -g @anthropic-ai/claude-code',
   codex: 'npm install -g @openai/codex',
+  opencode: 'npm install -g @opencode-ai/cli',
   qwen: 'npm install -g @qwen-code/qwen-code@latest',
   codebuddy: 'npm install -g @tencent-ai/codebuddy-code',
+  'openclaw-gateway': 'npm install -g openclaw',
+  nanobot: 'python3 -m pip install -U nanobot-ai',
 };
+
+const OPENCLAW_DEFAULT_STATE_DIR = path.join(os.homedir(), '.openclaw');
+const OPENCLAW_LEGACY_STATE_DIRS = ['.clawdbot', '.moltbot', '.moldbot'].map((dir) => path.join(os.homedir(), dir));
+const OPENCLAW_CONFIG_FILENAMES = ['openclaw.json', 'clawdbot.json', 'moltbot.json', 'moldbot.json'];
 
 async function getCodexAuthStatus(cliPath?: string): Promise<{
   loginStatus: string;
@@ -160,6 +169,55 @@ async function resolveRuntimeDisplayPath(cliPath?: string): Promise<string | und
     }
 
     return undefined;
+  }
+}
+
+function resolveOpenClawStateDir(): string {
+  const override = process.env.OPENCLAW_STATE_DIR?.trim() || process.env.CLAWDBOT_STATE_DIR?.trim();
+  if (override) {
+    return resolveUserPath(override);
+  }
+
+  if (fs.existsSync(OPENCLAW_DEFAULT_STATE_DIR)) {
+    return OPENCLAW_DEFAULT_STATE_DIR;
+  }
+
+  const legacyDir = OPENCLAW_LEGACY_STATE_DIRS.find((candidate) => {
+    try {
+      return fs.existsSync(candidate);
+    } catch {
+      return false;
+    }
+  });
+
+  return legacyDir || OPENCLAW_DEFAULT_STATE_DIR;
+}
+
+function resolveOpenClawConfigPath(): string {
+  const override = process.env.OPENCLAW_CONFIG_PATH?.trim() || process.env.CLAWDBOT_CONFIG_PATH?.trim();
+  if (override) {
+    return resolveUserPath(override);
+  }
+
+  const stateDir = resolveOpenClawStateDir();
+  const candidates = OPENCLAW_CONFIG_FILENAMES.map((name) => path.join(stateDir, name));
+  const existingCandidate = candidates.find((candidate) => fs.existsSync(candidate));
+
+  return existingCandidate || candidates[0];
+}
+
+function resolveManagedRuntimeConfigPath(backend: AcpBackend): string | null {
+  switch (backend) {
+    case 'gemini':
+      return USER_SETTINGS_PATH;
+    case 'claude':
+      return getClaudeSettingsPath();
+    case 'codex':
+      return getCodexConfigPath();
+    case 'openclaw-gateway':
+      return resolveOpenClawConfigPath();
+    default:
+      return null;
   }
 }
 
@@ -345,6 +403,41 @@ export function initAcpConversationBridge(
     try {
       await acpDetector.refreshCustomAgents();
       return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  ipcBridge.acpConversation.refreshDetectedAgents.provider(async () => {
+    try {
+      await acpDetector.refreshDetectedAgents();
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  ipcBridge.acpConversation.getManagedRuntimeConfigLocation.provider(async ({ backend }) => {
+    try {
+      const configPath = resolveManagedRuntimeConfigPath(backend);
+      if (!configPath) {
+        return { success: true, data: null };
+      }
+
+      return {
+        success: true,
+        data: {
+          backend,
+          configPath,
+          exists: fs.existsSync(configPath),
+        },
+      };
     } catch (error) {
       return {
         success: false,

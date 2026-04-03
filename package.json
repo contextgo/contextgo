@@ -51,7 +51,7 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "i18n:types": "node scripts/generate-i18n-types.js",
-    "test": "vitest run",
+    "test": "NODE_OPTIONS='--max-old-space-size=8192' vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:contract": "vitest run tests/contract --passWithNoTests",

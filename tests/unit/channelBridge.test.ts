@@ -31,6 +31,7 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     approvePairing: makeChannel('approvePairing'),
     rejectPairing: makeChannel('rejectPairing'),
     authorizeRemoteUser: makeChannel('authorizeRemoteUser'),
+    startWeixinLogin: makeChannel('startWeixinLogin'),
     getAuthorizedUsers: makeChannel('getAuthorizedUsers'),
     revokeUser: makeChannel('revokeUser'),
     getActiveSessions: makeChannel('getActiveSessions'),
@@ -52,6 +53,8 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     endContinuationSession: makeChannel('endContinuationSession'),
     setContinuationControlMode: makeChannel('setContinuationControlMode'),
     syncChannelSettings: makeChannel('syncChannelSettings'),
+    weixinLoginQr: { emit: vi.fn(), on: vi.fn() },
+    weixinLoginScanned: { emit: vi.fn(), on: vi.fn() },
   },
 }));
 

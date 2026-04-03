@@ -1374,7 +1374,7 @@
     "notAvailable": "없음",
     "infermeshAccess": "InferMesh 웹사이트",
     "infermeshAccessDesc": "ContextGo 쪽에서는 OAuth 로그인과 기기 연결만 필요합니다. 가입 등 추가 계정 절차가 필요하면 InferMesh 웹사이트에서 이어서 진행하세요.",
-    "openInfermesh": "InferMesh 열기"
+    "openInfermesh": "모델 센터"
   },
   "commands": {
     "title": "Commands",

@@ -443,6 +443,42 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(callback_response.status_code, 303)
         self.assertEqual(callback_response.headers["location"], "/login?oauthError=invalid_state&provider=google")
 
+    def test_oauth_callback_allows_mobile_shell_handoff_with_stale_state_cookie(self) -> None:
+        mobile_shell_next = "/mobile-shell-login-complete?target=https%3A%2F%2Fremote.contextgo.io%2Fdevice%2Fdevice-123&provider=google"
+        start_response = self.client.get(
+            f"/api/auth/oauth/google/start?next={quote(mobile_shell_next, safe='')}",
+            follow_redirects=False,
+        )
+        self.assertEqual(start_response.status_code, 302)
+
+        redirect_url = start_response.headers["location"]
+        returned_state = parse_qs(urlparse(redirect_url).query)["state"][0]
+        profile = self.oauth_module.OAuthProfile(
+            provider="google",
+            provider_user_id="google-user-mobile-shell",
+            email="yeyitech@gmail.com",
+            email_verified=True,
+            username_candidate="yeyitech",
+            display_name="Yeyi Tech",
+            avatar_url="https://example.com/avatar.png",
+        )
+
+        self.client.cookies.set(self.settings.oauth_state_cookie_name, "stale-browser-state")
+
+        with patch.object(
+            self.app_module,
+            "exchange_code_for_profile",
+            AsyncMock(return_value=profile),
+        ):
+            callback_response = self.client.get(
+                f"/api/auth/oauth/google/callback?state={returned_state}&code=test-code",
+                follow_redirects=False,
+            )
+
+        self.assertEqual(callback_response.status_code, 303)
+        self.assertEqual(callback_response.headers["location"], mobile_shell_next)
+
+
     def test_device_management_requires_browser_session(self) -> None:
         response = self.client.post(
             "/api/devices/register",
@@ -608,7 +644,7 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         expected_next = (
             f"/api/auth/oauth/github/start?next={quote(self.settings.auth_base_url, safe='')}"
-            "%2Fmobile-shell-login-complete%3Ftarget%3Dhttps%253A%252F%252Fremote.contextgo.io%252Fdevice%252Fdevice-123"
+            "%2Fmobile-shell-login-complete%3Ftarget%3Dhttps%253A%252F%252Fremote.contextgo.io%252Fdevice%252Fdevice-123%26provider%3Dgithub"
         )
         self.assertIn(
             expected_next,
@@ -651,10 +687,11 @@ class CloudApiTestCase(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 303)
-        self.assertEqual(
-            response.headers["location"],
-            "contextgo-remote://open?target=https%3A%2F%2Fremote.contextgo.io%2Fdevice%2Fdevice-123",
-        )
+        parsed = urlparse(response.headers["location"])
+        self.assertEqual(parsed.scheme, "contextgo-remote")
+        query = parse_qs(parsed.query)
+        self.assertEqual(query["target"], ["https://remote.contextgo.io/device/device-123"])
+        self.assertEqual(len(query.get("code", [])), 1)
 
     def test_remote_devices_page_marks_registered_but_disconnected_devices_as_unavailable(self) -> None:
         self._register_device(device_name="Studio", platform="macos")
@@ -873,7 +910,7 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertIn(f'/api/remote/vite/{device["id"]}', asset_response.text)
         self.assertNotIn('localhost:5173/', asset_response.text)
 
-    def test_mobile_shell_login_complete_redirects_back_to_shell_target(self) -> None:
+    def test_mobile_shell_login_complete_redirects_back_to_shell_target_with_login_code(self) -> None:
         self._create_browser_session()
 
         response = self.client.get(
@@ -883,10 +920,11 @@ class CloudApiTestCase(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 303)
-        self.assertEqual(
-            response.headers["location"],
-            "contextgo-remote://open?target=https%3A%2F%2Fremote.contextgo.io%2Fdevice%2Fdevice-123",
-        )
+        parsed = urlparse(response.headers["location"])
+        self.assertEqual(parsed.scheme, "contextgo-remote")
+        query = parse_qs(parsed.query)
+        self.assertEqual(query["target"], ["https://remote.contextgo.io/device/device-123"])
+        self.assertEqual(len(query.get("code", [])), 1)
 
     def test_mobile_shell_login_complete_sends_missing_session_back_to_remote_login(self) -> None:
         response = self.client.get(

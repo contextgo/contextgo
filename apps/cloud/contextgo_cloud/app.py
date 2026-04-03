@@ -852,8 +852,12 @@ def resolve_mobile_shell_target_url(request: Request, next_path: str) -> str:
     return f"{str(request.base_url).rstrip('/')}{safe_next_path}"
 
 
-def build_mobile_shell_login_complete_url(target_url: str) -> str:
-    return f"{settings.auth_base_url}{MOBILE_SHELL_LOGIN_COMPLETE_PATH}?{urlencode({'target': target_url})}"
+def build_mobile_shell_login_complete_url(target_url: str, provider: Optional[str] = None) -> str:
+    query = {"target": target_url}
+    if provider:
+        query["provider"] = provider
+
+    return f"{settings.auth_base_url}{MOBILE_SHELL_LOGIN_COMPLETE_PATH}?{urlencode(query)}"
 
 
 def set_session_cookie(response: Union[RedirectResponse, JSONResponse, HTMLResponse], token: str) -> None:
@@ -1066,6 +1070,14 @@ def extract_login_context(next_path: Optional[str]) -> tuple[Optional[str], bool
             normalize_loopback_callback_url(query.get("loopback", [None])[0]),
         )
 
+    if parsed.path == MOBILE_SHELL_LOGIN_COMPLETE_PATH:
+        query = parse_qs(parsed.query)
+        return (
+            normalize_provider(query.get("provider", [None])[0]),
+            False,
+            None,
+        )
+
     if parsed.path != "/login":
         return None, False, None
 
@@ -1075,6 +1087,32 @@ def extract_login_context(next_path: Optional[str]) -> tuple[Optional[str], bool
         query.get("desktop", [None])[0] == "1",
         normalize_loopback_callback_url(query.get("loopback", [None])[0]),
     )
+
+
+def is_mobile_shell_login_context(next_path: Optional[str]) -> bool:
+    if not next_path:
+        return False
+
+    return urlparse(next_path).path == MOBILE_SHELL_LOGIN_COMPLETE_PATH
+
+
+def redirect_to_mobile_shell_login_error(error_code: Optional[str], provider: Optional[str] = None) -> RedirectResponse:
+    login_target = build_remote_url(build_login_url(error_code=error_code, provider=provider, next_path=REMOTE_DEVICES_PATH))
+    return RedirectResponse(url=build_mobile_shell_open_url(login_target), status_code=303)
+
+
+def redirect_to_login_context(
+    error_code: Optional[str],
+    *,
+    provider: Optional[str],
+    desktop: bool,
+    loopback_url: Optional[str],
+    mobile_shell: bool,
+) -> RedirectResponse:
+    if mobile_shell:
+        return redirect_to_mobile_shell_login_error(error_code, provider=provider)
+
+    return redirect_to_login(error_code, provider=provider, desktop=desktop, loopback_url=loopback_url)
 
 
 def peek_login_context(provider: str, state_value: Optional[str]) -> tuple[Optional[str], bool, Optional[str]]:
@@ -1110,13 +1148,16 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
         else:
             next_target = next_path
             if is_mobile_shell_request(request):
-                next_target = build_mobile_shell_login_complete_url(resolve_mobile_shell_target_url(request, next_path))
+                next_target = build_mobile_shell_login_complete_url(
+                    resolve_mobile_shell_target_url(request, next_path),
+                    provider=provider,
+                )
             elif next_path == "/" and is_remote_request(request):
                 next_target = REMOTE_DEVICES_PATH
 
             if next_target != "/":
                 href = f'{href}?{urlencode({"next": next_target})}'
-        provider_buttons.append(f'<a class="provider" href="{escape(href)}">{escape(label)}</a>')
+        provider_buttons.append(f'<a class="provider {escape(provider)}" href="{escape(href)}">{escape(label)}</a>')
 
     if desktop_mode:
         provider_buttons.append(
@@ -1171,100 +1212,228 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
   <style>
     :root {{
       color-scheme: light;
+      --bg-top: #f4efe7;
+      --bg-bottom: #dce6f2;
+      --panel: rgba(255, 252, 246, 0.94);
+      --panel-border: rgba(124, 58, 34, 0.12);
+      --text-strong: #1f2937;
+      --text-muted: #667085;
+      --brand: #c65d2e;
+      --brand-strong: #a9471b;
+      --brand-soft: rgba(198, 93, 46, 0.12);
+      --line: rgba(31, 41, 55, 0.12);
+      --shadow: 0 28px 80px rgba(76, 48, 33, 0.18);
+    }}
+    * {{
+      box-sizing: border-box;
     }}
     html {{
       min-height: 100%;
-      background: #eef3ff;
+      background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
     }}
     body {{
       margin: 0;
-      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #f4f7fb 0%, #eef3ff 100%);
-      color: #0f172a;
       min-height: 100vh;
+      color: var(--text-strong);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.78), transparent 36%),
+        radial-gradient(circle at bottom right, rgba(198, 93, 46, 0.14), transparent 28%),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    }}
+    body::before,
+    body::after {{
+      content: "";
+      position: fixed;
+      inset: auto;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      pointer-events: none;
+      filter: blur(6px);
+      opacity: 0.8;
+    }}
+    body::before {{
+      top: -72px;
+      right: -48px;
+      background: radial-gradient(circle, rgba(198, 93, 46, 0.22) 0%, rgba(198, 93, 46, 0) 70%);
+    }}
+    body::after {{
+      bottom: -88px;
+      left: -56px;
+      background: radial-gradient(circle, rgba(15, 23, 42, 0.12) 0%, rgba(15, 23, 42, 0) 72%);
     }}
     .wrap {{
       min-height: 100vh;
       display: grid;
       place-items: center;
       padding:
-        calc(24px + env(safe-area-inset-top, 0px))
-        max(16px, env(safe-area-inset-right, 0px))
+        calc(28px + env(safe-area-inset-top, 0px))
+        max(18px, env(safe-area-inset-right, 0px))
         calc(24px + env(safe-area-inset-bottom, 0px))
-        max(16px, env(safe-area-inset-left, 0px));
-      box-sizing: border-box;
+        max(18px, env(safe-area-inset-left, 0px));
+    }}
+    .shell {{
+      width: min(100%, 448px);
+      position: relative;
+    }}
+    .badge {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 250, 244, 0.78);
+      border: 1px solid rgba(198, 93, 46, 0.18);
+      color: #93502d;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      backdrop-filter: blur(12px);
+    }}
+    .badge::before {{
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--brand);
+      box-shadow: 0 0 0 5px rgba(198, 93, 46, 0.14);
     }}
     .card {{
-      width: min(560px, 100%);
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      border-radius: 24px;
-      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
-      padding: 32px;
+      margin-top: 14px;
+      width: 100%;
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--panel-border);
+      border-radius: 30px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }}
+    .card::before {{
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 126px;
+      background: linear-gradient(135deg, rgba(198, 93, 46, 0.16), rgba(255, 255, 255, 0));
+      pointer-events: none;
+    }}
+    .hero {{
+      position: relative;
+      z-index: 1;
     }}
     h1 {{
-      margin: 0 0 8px;
-      font-size: 34px;
+      margin: 16px 0 10px;
+      font-size: clamp(32px, 6vw, 42px);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
     }}
-    p {{
+    .subtitle {{
       margin: 0;
-      line-height: 1.6;
-      color: #475569;
-    }}
-    .stack {{
-      display: grid;
-      gap: 14px;
-      margin-top: 24px;
-    }}
-    .provider, button {{
-      appearance: none;
-      border: 0;
-      border-radius: 999px;
-      padding: 14px 18px;
       font-size: 15px;
-      font-weight: 600;
-      text-decoration: none;
-      text-align: center;
-      cursor: pointer;
-    }}
-    .provider {{
-      background: #111827;
-      color: white;
-    }}
-    .provider:hover {{
-      background: #1f2937;
-    }}
-    .secondary {{
-      background: white;
-      color: #111827;
-      border: 1px solid rgba(15, 23, 42, 0.12);
+      line-height: 1.7;
+      color: var(--text-muted);
+      max-width: 30ch;
     }}
     .message {{
       margin-top: 18px;
-      padding: 12px 14px;
-      border-radius: 14px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.5;
+      border: 1px solid transparent;
     }}
     .message.success {{
-      background: #ecfdf5;
+      background: rgba(22, 101, 52, 0.08);
+      border-color: rgba(22, 101, 52, 0.12);
       color: #166534;
     }}
     .message.error {{
-      background: #fef2f2;
+      background: rgba(185, 28, 28, 0.08);
+      border-color: rgba(185, 28, 28, 0.12);
       color: #991b1b;
     }}
     .message.info {{
-      background: #eff6ff;
+      background: rgba(29, 78, 216, 0.08);
+      border-color: rgba(29, 78, 216, 0.12);
       color: #1d4ed8;
     }}
+    .intro {{
+      margin-top: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #7b6a5f;
+    }}
+    .stack {{
+      display: grid;
+      gap: 12px;
+      margin-top: 24px;
+      position: relative;
+      z-index: 1;
+    }}
+    .provider, .secondary, button {{
+      appearance: none;
+      display: flex;
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 56px;
+      padding: 14px 18px;
+      border-radius: 18px;
+      box-sizing: border-box;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+      text-decoration: none;
+      text-align: center;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+      cursor: pointer;
+    }}
+    .provider::before {{
+      content: "";
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    }}
+    .provider:hover, .secondary:hover, button:hover {{
+      transform: translateY(-1px);
+    }}
+    .provider.github {{
+      background: linear-gradient(135deg, #202938 0%, #101828 100%);
+      color: #fff;
+      box-shadow: 0 16px 28px rgba(16, 24, 40, 0.18);
+    }}
+    .provider.google {{
+      background: linear-gradient(135deg, #d86437 0%, #c14b24 100%);
+      color: #fff;
+      box-shadow: 0 16px 28px rgba(193, 75, 36, 0.24);
+    }}
+    .secondary, button.secondary {{
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--text-strong);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }}
     .session {{
-      margin-top: 20px;
+      margin-top: 22px;
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(31, 41, 55, 0.08);
     }}
     .session-header {{
       display: flex;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 18px;
+      gap: 14px;
+      margin-bottom: 16px;
     }}
     .avatar {{
       width: 56px;
@@ -1272,39 +1441,50 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
       border-radius: 50%;
       object-fit: cover;
     }}
+    .session h2 {{
+      margin: 0 0 4px;
+      font-size: 18px;
+    }}
+    .session p {{
+      margin: 0;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }}
     .muted {{
-      color: #64748b;
-      font-size: 14px;
+      color: #8a7a6e;
+      font-size: 13px;
+    }}
+    .footer {{
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+      position: relative;
+      z-index: 1;
     }}
     .caption {{
-      margin-top: 24px;
-      font-size: 14px;
-      color: #64748b;
-    }}
-    .intro {{
-      margin-top: 16px;
-    }}
-    code {{
-      background: rgba(15, 23, 42, 0.06);
-      padding: 2px 6px;
-      border-radius: 8px;
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #8a7a6e;
     }}
     @media (max-width: 768px) {{
       .wrap {{
         place-items: stretch;
         min-height: auto;
       }}
-      .card {{
+      .shell {{
         width: 100%;
-        border-radius: 20px;
-        padding: 24px 20px;
-        box-sizing: border-box;
+      }}
+      .card {{
+        margin-top: 12px;
+        padding: 24px 18px 20px;
+        border-radius: 26px;
       }}
       h1 {{
-        font-size: 29px;
+        font-size: 34px;
       }}
-      .provider, button {{
-        width: 100%;
+      .subtitle {{
+        max-width: none;
       }}
       .session-header {{
         align-items: flex-start;
@@ -1314,16 +1494,23 @@ def render_login_page(request: Request, user: Optional[User]) -> str:
 </head>
 <body>
   <div class="wrap">
-    <main class="card">
-      <h1>{escape(title)}</h1>
-      <p>{escape(subtitle)}</p>
-      {message}
-      {desktop_hint}
-      <div class="stack">
-        {provider_markup}
-      </div>
-      {account_markup}
-      <p class="caption">{escape(cookie_domain_text)}</p>
+    <main class="shell">
+      <div class="badge">ContextGo Cloud</div>
+      <section class="card">
+        <div class="hero">
+          <h1>{escape(title)}</h1>
+          <p class="subtitle">{escape(subtitle)}</p>
+        </div>
+        {message}
+        {desktop_hint}
+        <div class="stack">
+          {provider_markup}
+        </div>
+        {account_markup}
+        <div class="footer">
+          <p class="caption">{escape(cookie_domain_text)}</p>
+        </div>
+      </section>
     </main>
   </div>
 </body>
@@ -1334,8 +1521,12 @@ def build_remote_session_url(device_id: str) -> str:
     return f"{REMOTE_DEVICE_PATH_PREFIX}/{quote(device_id, safe='')}"
 
 
-def build_mobile_shell_open_url(target_url: str) -> str:
-    return f"{REMOTE_SHELL_SCHEME}://open?{urlencode({'target': target_url})}"
+def build_mobile_shell_open_url(target_url: str, code: Optional[str] = None) -> str:
+    query = {"target": target_url}
+    if code:
+        query["code"] = code
+
+    return f"{REMOTE_SHELL_SCHEME}://open?{urlencode(query)}"
 
 
 def describe_remote_notice(language: str, notice: Optional[str]) -> Optional[dict[str, str]]:
@@ -2366,12 +2557,14 @@ async def remote_device_prefixed_relay(device_id: str, desktop_path: str, reques
 @app.get(MOBILE_SHELL_LOGIN_COMPLETE_PATH)
 async def mobile_shell_login_complete(request: Request) -> RedirectResponse:
     target_url = resolve_mobile_shell_target_url(request, request.query_params.get("target") or REMOTE_DEVICES_PATH)
+    provider = normalize_provider(request.query_params.get("provider"))
     user = read_current_user(request)
     if user is None:
         login_target = build_remote_url(build_login_url(error_code="missing_session", next_path=REMOTE_DEVICES_PATH))
         return RedirectResponse(url=build_mobile_shell_open_url(login_target), status_code=303)
 
-    return RedirectResponse(url=build_mobile_shell_open_url(target_url), status_code=303)
+    code = create_desktop_login_code(settings, user.id, provider or "google")
+    return RedirectResponse(url=build_mobile_shell_open_url(target_url, code=code), status_code=303)
 
 
 @app.get(DESKTOP_LOGIN_COMPLETE_PATH, response_class=HTMLResponse)
@@ -2782,49 +2975,78 @@ async def auth_oauth_start(provider: str, request: Request) -> RedirectResponse:
 @app.get("/api/auth/oauth/{provider}/callback")
 async def auth_oauth_callback(provider: str, request: Request) -> RedirectResponse:
     returned_state = request.query_params.get("state")
+    returned_next_path_hint = peek_oauth_state(settings, returned_state, provider) if returned_state else None
+    mobile_shell_mode = is_mobile_shell_login_context(returned_next_path_hint)
     context_provider, desktop_mode, loopback_url = peek_login_context(provider, returned_state)
     if not is_provider_enabled(settings, provider):
-        return redirect_to_login("provider_not_enabled", provider=context_provider or provider, desktop=desktop_mode, loopback_url=loopback_url)
+        return redirect_to_login_context(
+            "provider_not_enabled",
+            provider=context_provider or provider,
+            desktop=desktop_mode,
+            loopback_url=loopback_url,
+            mobile_shell=mobile_shell_mode,
+        )
 
     callback_error = request.query_params.get("error")
     if callback_error:
-        response = redirect_to_login(
+        response = redirect_to_login_context(
             "access_denied" if callback_error == "access_denied" else "callback_failed",
             provider=context_provider,
             desktop=desktop_mode,
             loopback_url=loopback_url,
+            mobile_shell=mobile_shell_mode,
         )
         clear_oauth_state_cookie(response)
         return response
 
     expected_state = request.cookies.get(settings.oauth_state_cookie_name)
+    expected_next_path_hint = peek_oauth_state(settings, expected_state, provider) if expected_state else None
     code = request.query_params.get("code")
     if not returned_state:
         context_provider, desktop_mode, loopback_url = peek_login_context(provider, expected_state)
-        response = redirect_to_login("invalid_state", provider=context_provider, desktop=desktop_mode, loopback_url=loopback_url)
+        response = redirect_to_login_context(
+            "invalid_state",
+            provider=context_provider,
+            desktop=desktop_mode,
+            loopback_url=loopback_url,
+            mobile_shell=is_mobile_shell_login_context(expected_next_path_hint),
+        )
         clear_oauth_state_cookie(response)
         return response
 
-    if expected_state and expected_state != returned_state:
+    if expected_state and expected_state != returned_state and not (mobile_shell_mode and expected_next_path_hint is None):
         context_provider, desktop_mode, loopback_url = peek_login_context(provider, expected_state)
-        response = redirect_to_login("invalid_state", provider=context_provider, desktop=desktop_mode, loopback_url=loopback_url)
+        response = redirect_to_login_context(
+            "invalid_state",
+            provider=context_provider,
+            desktop=desktop_mode,
+            loopback_url=loopback_url,
+            mobile_shell=is_mobile_shell_login_context(expected_next_path_hint),
+        )
         clear_oauth_state_cookie(response)
         return response
 
     if not code:
-        response = redirect_to_login("missing_code", provider=context_provider, desktop=desktop_mode, loopback_url=loopback_url)
+        response = redirect_to_login_context(
+            "missing_code",
+            provider=context_provider,
+            desktop=desktop_mode,
+            loopback_url=loopback_url,
+            mobile_shell=mobile_shell_mode,
+        )
         clear_oauth_state_cookie(response)
         return response
 
-    next_path_hint = peek_oauth_state(settings, returned_state, provider)
+    next_path_hint = returned_next_path_hint
     next_path = consume_oauth_state(settings, returned_state, provider)
     if next_path is None:
         next_provider, next_desktop_mode, next_loopback_url = extract_login_context(next_path_hint)
-        response = redirect_to_login(
+        response = redirect_to_login_context(
             "invalid_state",
             provider=next_provider or context_provider,
             desktop=next_desktop_mode or desktop_mode,
             loopback_url=next_loopback_url or loopback_url,
+            mobile_shell=is_mobile_shell_login_context(next_path_hint),
         )
         clear_oauth_state_cookie(response)
         return response
@@ -2833,33 +3055,36 @@ async def auth_oauth_callback(provider: str, request: Request) -> RedirectRespon
         profile = await exchange_code_for_profile(settings, provider, code)  # type: ignore[arg-type]
     except Exception:
         next_provider, next_desktop_mode, next_loopback_url = extract_login_context(next_path)
-        response = redirect_to_login(
+        response = redirect_to_login_context(
             "callback_failed",
             provider=next_provider or context_provider,
             desktop=next_desktop_mode or desktop_mode,
             loopback_url=next_loopback_url or loopback_url,
+            mobile_shell=is_mobile_shell_login_context(next_path),
         )
         clear_oauth_state_cookie(response)
         return response
 
     if not profile.email or not profile.email_verified:
         next_provider, next_desktop_mode, next_loopback_url = extract_login_context(next_path)
-        response = redirect_to_login(
+        response = redirect_to_login_context(
             "email_required",
             provider=next_provider or context_provider,
             desktop=next_desktop_mode or desktop_mode,
             loopback_url=next_loopback_url or loopback_url,
+            mobile_shell=is_mobile_shell_login_context(next_path),
         )
         clear_oauth_state_cookie(response)
         return response
 
     if not is_allowed_email(profile.email):
         next_provider, next_desktop_mode, next_loopback_url = extract_login_context(next_path)
-        response = redirect_to_login(
+        response = redirect_to_login_context(
             "email_not_allowed",
             provider=next_provider or context_provider,
             desktop=next_desktop_mode or desktop_mode,
             loopback_url=next_loopback_url or loopback_url,
+            mobile_shell=is_mobile_shell_login_context(next_path),
         )
         clear_oauth_state_cookie(response)
         return response

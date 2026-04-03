@@ -18,6 +18,7 @@ export default defineConfig({
   test: {
     globals: true,
     testTimeout: 10000,
+    maxWorkers: 2,
     // Use projects to run different environments (Vitest 4+)
     projects: [
       // Node environment tests (existing tests)

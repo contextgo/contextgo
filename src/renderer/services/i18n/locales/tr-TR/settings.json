@@ -1372,7 +1372,7 @@
     "notAvailable": "Mevcut degil",
     "infermeshAccess": "InferMesh web sitesi",
     "infermeshAccessDesc": "ContextGo tarafinda yalnizca OAuth girisi ve cihaz baglama gerekir. Kayit gibi ek hesap adimlari gerekiyorsa InferMesh web sitesinde devam edin.",
-    "openInfermesh": "InferMesh'i Ac"
+    "openInfermesh": "Model Merkezi"
   },
   "commands": {
     "title": "Commands",

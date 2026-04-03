@@ -254,7 +254,9 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     }
 
     const reserveMacTrafficLights = isMacRuntime && !isFullScreen;
-    const minimumWidth = reserveMacTrafficLights ? 120 : 56;
+    const visibleControlCount = [showSiderToggle, true, true].filter(Boolean).length;
+    const contentWidth = Math.max(visibleControlCount * 40, 56);
+    const minimumWidth = reserveMacTrafficLights ? Math.max(contentWidth + 72, 120) : contentWidth + 16;
     if (!shouldDockDesktopLeftToPane) {
       return {
         paddingLeft: reserveMacTrafficLights ? '72px' : '8px',
@@ -270,7 +272,14 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       paddingLeft: reserveMacTrafficLights ? '72px' : '8px',
       paddingRight: '8px',
     };
-  }, [isFullScreen, isMacRuntime, layout?.isMobile, leftPaneWidth, shouldDockDesktopLeftToPane]);
+  }, [
+    isFullScreen,
+    isMacRuntime,
+    layout?.isMobile,
+    leftPaneWidth,
+    shouldDockDesktopLeftToPane,
+    showSiderToggle,
+  ]);
 
   const desktopLeftControls = (
     <div

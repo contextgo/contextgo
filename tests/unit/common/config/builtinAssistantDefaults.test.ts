@@ -16,6 +16,29 @@ describe('builtinAssistantDefaults', () => {
   it('builds builtin assistants with first-batch default hooks', () => {
     const assistants = buildBuiltinAssistants();
 
+    expect(assistants.find((assistant) => assistant.id === 'builtin-workflow-planner')?.enabledHooks).toEqual([
+      'repo-context-bootstrap',
+      'plan-before-coding',
+      'secret-guard',
+      'tool-safety-guard',
+      'continuity-handoff',
+    ]);
+    expect(assistants.find((assistant) => assistant.id === 'builtin-workflow-writer')?.enabledHooks).toEqual([
+      'repo-context-bootstrap',
+      'plan-before-coding',
+      'secret-guard',
+      'tool-safety-guard',
+      'quality-gate',
+      'tdd-guard',
+      'continuity-handoff',
+    ]);
+    expect(assistants.find((assistant) => assistant.id === 'builtin-workflow-evaluator')?.enabledHooks).toEqual([
+      'repo-context-bootstrap',
+      'secret-guard',
+      'tool-safety-guard',
+      'quality-gate',
+      'continuity-handoff',
+    ]);
     expect(assistants.find((assistant) => assistant.id === 'builtin-cowork')?.enabledHooks).toEqual([
       'repo-context-bootstrap',
       'plan-before-coding',
@@ -62,6 +85,19 @@ describe('builtinAssistantDefaults', () => {
   });
 
   it('falls back to preset defaults only when enabled skills are missing', () => {
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-workflow-planner', undefined)).toEqual([
+      'engineering-planning',
+      'verification-loop',
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-workflow-writer', undefined)).toEqual([
+      'tdd-workflow',
+      'verification-loop',
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-workflow-evaluator', undefined)).toEqual([
+      'code-review-workflow',
+      'security-review',
+      'verification-loop',
+    ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-cowork', undefined)).toEqual([
       'skill-creator',
       'pptx',

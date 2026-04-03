@@ -5,9 +5,15 @@ import WebKit
 
 @MainActor
 final class WebViewStore: NSObject, ObservableObject {
+  private static let officialRemoteHost = "remote.contextgo.io"
+
   let webView: WKWebView
+  private let loginSessionStore: LoginSessionStore
 
   private var openPanelCompletionHandler: (([URL]?) -> Void)?
+  private var authenticationHandler: ((URL) -> Void)?
+  private var recoveryHandler: ((String?) -> Void)?
+  private var requestedURL: String?
 
   override init() {
     let configuration = WKWebViewConfiguration()
@@ -19,6 +25,7 @@ final class WebViewStore: NSObject, ObservableObject {
     webView.allowsBackForwardNavigationGestures = true
     webView.scrollView.contentInsetAdjustmentBehavior = .never
     self.webView = webView
+    self.loginSessionStore = LoginSessionStore(cookieStore: webView.configuration.websiteDataStore.httpCookieStore)
 
     super.init()
 
@@ -26,12 +33,48 @@ final class WebViewStore: NSObject, ObservableObject {
     webView.uiDelegate = self
   }
 
-  func load(url: URL) {
-    if webView.url?.absoluteString == url.absoluteString {
+  func load(url: URL, force: Bool = false, headers: [String: String] = [:]) {
+    if !force && headers.isEmpty && requestedURL == url.absoluteString {
       return
     }
 
-    webView.load(URLRequest(url: url))
+    requestedURL = url.absoluteString
+
+    var request = URLRequest(
+      url: url,
+      cachePolicy: force ? .reloadIgnoringLocalCacheData : .useProtocolCachePolicy
+    )
+    for (field, value) in headers {
+      request.setValue(value, forHTTPHeaderField: field)
+    }
+
+    webView.load(request)
+  }
+
+  func completeLoginIfNeeded(payload: LoginCompletionPayload) async -> String? {
+    print("[MobileShell] Completing login for target:", payload.targetURL.absoluteString, "code:", payload.loginCode ?? "nil", "error:", payload.errorCode ?? "nil")
+
+    var bootstrapHeaders: [String: String] = [:]
+    if let code = payload.loginCode {
+      do {
+        let cookies = try await loginSessionStore.consumeLoginCode(code, targetURL: payload.targetURL)
+        bootstrapHeaders = loginSessionStore.bootstrapHeaders(for: payload.targetURL, cookies: cookies)
+      } catch {
+        print("[MobileShell] Failed to consume login code:", error)
+        return "consume_failed"
+      }
+    }
+
+    load(url: payload.targetURL, force: true, headers: bootstrapHeaders)
+    return nil
+  }
+
+  func setAuthenticationHandler(_ handler: @escaping (URL) -> Void) {
+    authenticationHandler = handler
+  }
+
+  func setRecoveryHandler(_ handler: @escaping (String?) -> Void) {
+    recoveryHandler = handler
   }
 
   func reload() {
@@ -60,6 +103,55 @@ final class WebViewStore: NSObject, ObservableObject {
 
     return rootViewController
   }
+
+  private func shouldRouteThroughSystemBrowser(_ url: URL) -> Bool {
+    guard let host = url.host?.lowercased(), host == Self.officialRemoteHost else {
+      return false
+    }
+
+    let path = url.path.lowercased()
+    return path.hasPrefix("/api/auth/oauth/")
+  }
+
+  private func loginRecoveryErrorCode(for url: URL) -> String? {
+    guard let host = url.host?.lowercased(), host == Self.officialRemoteHost else {
+      return nil
+    }
+
+    let path = url.path.lowercased()
+    guard path == "/login" else {
+      return nil
+    }
+
+    let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+    let errorCode = components?.queryItems?.first(where: { item in
+      item.name == "oauthError" || item.name == "error"
+    })?.value
+
+    let trimmed = errorCode?.trimmingCharacters(in: .whitespacesAndNewlines)
+    return (trimmed?.isEmpty == false) ? trimmed : "login_required"
+  }
+
+  private func recoverIfNeeded(for url: URL) -> Bool {
+    guard let recoveryHandler,
+          let errorCode = loginRecoveryErrorCode(for: url)
+    else {
+      return false
+    }
+
+    print("[MobileShell] Intercepted hosted login page. Recovering natively with error:", errorCode)
+    recoveryHandler(errorCode)
+    return true
+  }
+
+  private func startAuthenticationIfNeeded(for url: URL) -> Bool {
+    guard shouldRouteThroughSystemBrowser(url), let authenticationHandler else {
+      return false
+    }
+
+    authenticationHandler(url)
+    return true
+  }
 }
 
 extension WebViewStore: WKNavigationDelegate {
@@ -73,6 +165,16 @@ extension WebViewStore: WKNavigationDelegate {
       return
     }
 
+    if recoverIfNeeded(for: targetURL) {
+      decisionHandler(.cancel)
+      return
+    }
+
+    if startAuthenticationIfNeeded(for: targetURL) {
+      decisionHandler(.cancel)
+      return
+    }
+
     let scheme = targetURL.scheme?.lowercased() ?? ""
     if scheme == "http" || scheme == "https" {
       decisionHandler(.allow)
@@ -81,6 +183,29 @@ extension WebViewStore: WKNavigationDelegate {
 
     UIApplication.shared.open(targetURL)
     decisionHandler(.cancel)
+  }
+
+  func webView(
+    _ webView: WKWebView,
+    decidePolicyFor navigationResponse: WKNavigationResponse,
+    decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+  ) {
+    guard let responseURL = navigationResponse.response.url else {
+      decisionHandler(.allow)
+      return
+    }
+
+    if recoverIfNeeded(for: responseURL) {
+      decisionHandler(.cancel)
+      return
+    }
+
+    if startAuthenticationIfNeeded(for: responseURL) {
+      decisionHandler(.cancel)
+      return
+    }
+
+    decisionHandler(.allow)
   }
 }
 

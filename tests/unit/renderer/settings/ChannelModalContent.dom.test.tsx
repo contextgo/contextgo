@@ -301,7 +301,7 @@ describe('ChannelModalContent', () => {
       expect(mockGetAuthorizedUsersInvoke).toHaveBeenCalled();
     });
 
-    expect(screen.getByText('IM Channel Accounts')).toBeInTheDocument();
+    expect(screen.getByText('IM Channels')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /Telegram/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /Slack/i }).length).toBeGreaterThan(0);
     expect(screen.getByText('telegram form')).toBeInTheDocument();
@@ -317,7 +317,7 @@ describe('ChannelModalContent', () => {
     });
 
     expect(screen.queryByText('telegram form')).not.toBeInTheDocument();
-    expect(screen.getByText('Needs pairing')).toBeInTheDocument();
+    expect(screen.getAllByText('Needs enablement').length).toBeGreaterThan(0);
     expect(
       screen.getByText(
         'Each instance should expose one clear primary state: finish setup first, then it becomes usable.'
@@ -354,11 +354,7 @@ describe('ChannelModalContent', () => {
     });
 
     expect(screen.getByText('No instances yet')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'This channel type has no fully onboarded instance yet. Adding one will start the setup and pairing flow directly, and it only counts as added after pairing succeeds.'
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add and pair' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Default/i })).not.toBeInTheDocument();
   });
 

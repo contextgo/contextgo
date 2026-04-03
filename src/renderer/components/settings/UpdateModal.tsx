@@ -498,7 +498,10 @@ const UpdateModal: React.FC = () => {
               width: '680px',
               height: 'min(720px, calc(100vh - 48px))',
             }
-          : undefined
+          : {
+              width: '460px',
+              height: '360px',
+            }
       }
       header={{
         title: t('update.modalTitle'),
@@ -506,7 +509,7 @@ const UpdateModal: React.FC = () => {
       }}
       footer={{ render: () => null }}
       contentStyle={{
-        height: isAvailableView ? '100%' : 'auto',
+        height: '100%',
         padding: 0,
         overflow: 'hidden',
       }}

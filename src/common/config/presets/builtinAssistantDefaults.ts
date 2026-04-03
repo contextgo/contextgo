@@ -12,6 +12,9 @@ const BUILTIN_ASSISTANT_PREFIX = 'builtin-';
 const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
   'pptx-generator',
   'cowork',
+  'workflow-planner',
+  'workflow-writer',
+  'workflow-evaluator',
   'engineering-workbench',
   'engineering-planner',
   'engineering-reviewer',
