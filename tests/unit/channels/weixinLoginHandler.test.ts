@@ -32,9 +32,10 @@ describe('WeixinLoginHandler', () => {
     expect(result.botToken).toBe('tok');
   });
 
-  it('sends weixin:login:qr event with canvas data URL after renderQRPage', async () => {
+  it('passes the rendered QR image to the onQR callback', async () => {
     const win = makeMockWindow();
     const handler = new WeixinLoginHandler(() => win as never);
+    const onQR = vi.fn();
 
     // Spy on the private renderQRPage — avoids spinning up a real hidden BrowserWindow
     vi.spyOn(handler as never, 'renderQRPage').mockResolvedValue(FAKE_DATA_URL as never);
@@ -48,7 +49,7 @@ describe('WeixinLoginHandler', () => {
       return { abort: vi.fn() };
     });
 
-    const loginPromise = handler.startLogin();
+    const loginPromise = handler.startLogin({ onQR });
 
     // Trigger onQR — handler calls renderQRPage(pageUrl) then sends the data URL to renderer
     capturedOnQR?.('https://qr.weixin.qq.com/page');
@@ -57,9 +58,10 @@ describe('WeixinLoginHandler', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(win.webContents.send).toHaveBeenCalledWith('weixin:login:qr', {
+    expect(onQR).toHaveBeenCalledWith({
       qrcodeUrl: FAKE_DATA_URL,
     });
+    expect(win.webContents.send).not.toHaveBeenCalled();
 
     capturedOnDone?.({ accountId: 'u1', botToken: 'tok', baseUrl: 'https://x' });
     await loginPromise;

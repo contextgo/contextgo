@@ -39,6 +39,32 @@ const WORKFLOW_WITH_HANDOFF_DEFAULT_HOOKS = [...WORKFLOW_DEFAULT_HOOKS, 'continu
 
 const CONTENT_CREATION_DEFAULT_HOOKS = ['prompt-clarifier', 'secret-guard'] as const;
 
+const WORKFLOW_PLANNER_DEFAULT_HOOKS = [
+  'repo-context-bootstrap',
+  'plan-before-coding',
+  'secret-guard',
+  'tool-safety-guard',
+  'continuity-handoff',
+] as const;
+
+const WORKFLOW_WRITER_DEFAULT_HOOKS = [
+  'repo-context-bootstrap',
+  'plan-before-coding',
+  'secret-guard',
+  'tool-safety-guard',
+  'quality-gate',
+  'tdd-guard',
+  'continuity-handoff',
+] as const;
+
+const WORKFLOW_EVALUATOR_DEFAULT_HOOKS = [
+  'repo-context-bootstrap',
+  'secret-guard',
+  'tool-safety-guard',
+  'quality-gate',
+  'continuity-handoff',
+] as const;
+
 const ENGINEERING_DEFAULT_HOOKS = [
   'repo-context-bootstrap',
   'plan-before-coding',
@@ -88,6 +114,12 @@ const ENGINEERING_REVIEWER_SKILLS = [
   'verification-loop',
   'tooling-mcp-playbook',
 ] as const;
+
+const WORKFLOW_PLANNER_SKILLS = ['engineering-planning', 'verification-loop'] as const;
+
+const WORKFLOW_WRITER_SKILLS = ['tdd-workflow', 'verification-loop'] as const;
+
+const WORKFLOW_EVALUATOR_SKILLS = ['code-review-workflow', 'security-review', 'verification-loop'] as const;
 
 export const ASSISTANT_PRESETS: AssistantPreset[] = [
   {
@@ -317,6 +349,105 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
         'Create a project plan for migrating to a new framework',
       ],
       'zh-CN': ['规划一个包含里程碑的全面重构任务', '将功能实现拆分为可执行的步骤', '创建迁移到新框架的项目计划'],
+    },
+  },
+  {
+    id: 'workflow-planner',
+    avatar: '🧭',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/engineering/workflow-planner',
+    ruleFiles: {
+      'en-US': 'workflow-planner.md',
+      'zh-CN': 'workflow-planner.zh-CN.md',
+    },
+    defaultEnabledSkills: [...WORKFLOW_PLANNER_SKILLS],
+    defaultEnabledHooks: [...WORKFLOW_PLANNER_DEFAULT_HOOKS],
+    nameI18n: {
+      'en-US': 'Workflow Planner',
+      'zh-CN': '工作流规划者',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Role-specialized planner for shared-workspace workflows. Defines the brief, acceptance contract, constraints, and handoff plan before execution starts.',
+      'zh-CN': '面向共享工作区协作流的规划角色。负责在执行前定义任务简报、验收标准、约束条件与交接方案。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Turn this task into a clear brief with acceptance criteria for a writer and evaluator',
+        'Define the iteration plan and risk checkpoints before implementation starts',
+        'Plan the artifact path, constraints, and handoff contract for this workflow',
+      ],
+      'zh-CN': [
+        '把这个任务整理成给写作者和评估者使用的明确简报与验收标准',
+        '在开始实现前定义迭代计划和风险检查点',
+        '为这次工作流规划产物路径、约束条件和交接契约',
+      ],
+    },
+  },
+  {
+    id: 'workflow-writer',
+    avatar: '✍️',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/engineering/workflow-writer',
+    ruleFiles: {
+      'en-US': 'workflow-writer.md',
+      'zh-CN': 'workflow-writer.zh-CN.md',
+    },
+    defaultEnabledSkills: [...WORKFLOW_WRITER_SKILLS],
+    defaultEnabledHooks: [...WORKFLOW_WRITER_DEFAULT_HOOKS],
+    nameI18n: {
+      'en-US': 'Workflow Writer',
+      'zh-CN': '工作流写作者',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Role-specialized writer for shared-workspace workflows. Produces and revises the artifact against the planner brief until it is ready for evaluator review.',
+      'zh-CN': '面向共享工作区协作流的写作角色。依据规划简报产出并迭代修改产物，直到进入评估阶段。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Execute the planner brief and produce the shared artifact for review',
+        'Revise the artifact based on evaluator feedback without drifting from the brief',
+        'Make the deliverable coherent, testable, and ready for acceptance review',
+      ],
+      'zh-CN': [
+        '根据规划简报执行并产出可评审的共享产物',
+        '依据评估反馈修改产物，同时不要偏离原始简报',
+        '把交付物完善到可测试、可验收的状态',
+      ],
+    },
+  },
+  {
+    id: 'workflow-evaluator',
+    avatar: '🧪',
+    presetAgentType: 'gemini',
+    resourceDir: 'src/process/resources/assistant/engineering/workflow-evaluator',
+    ruleFiles: {
+      'en-US': 'workflow-evaluator.md',
+      'zh-CN': 'workflow-evaluator.zh-CN.md',
+    },
+    defaultEnabledSkills: [...WORKFLOW_EVALUATOR_SKILLS],
+    defaultEnabledHooks: [...WORKFLOW_EVALUATOR_DEFAULT_HOOKS],
+    nameI18n: {
+      'en-US': 'Workflow Evaluator',
+      'zh-CN': '工作流评估者',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Role-specialized evaluator for shared-workspace workflows. Scores the actual artifact, decides whether to continue or accept, and provides revision-ready feedback.',
+      'zh-CN': '面向共享工作区协作流的评估角色。负责审查实际产物、给出分数和决策，并输出可直接执行的修订反馈。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Review the artifact directly and decide whether to continue, accept, or stop',
+        'Score the result against the acceptance contract and list concrete revision points',
+        'Audit the shared artifact for regressions, missing validation, and weak assumptions',
+      ],
+      'zh-CN': [
+        '直接审查产物，并决定继续、接受或停止',
+        '根据验收契约给出分数，并列出明确的修订点',
+        '从回归、验证缺口和薄弱假设角度审计共享产物',
+      ],
     },
   },
   {

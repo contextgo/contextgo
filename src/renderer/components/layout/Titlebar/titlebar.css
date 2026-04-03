@@ -107,6 +107,12 @@
   min-height: var(--titlebar-height);
   box-sizing: border-box;
   background: transparent;
+  transition:
+    width 0.18s ease,
+    min-width 0.18s ease,
+    padding-left 0.18s ease,
+    padding-right 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .app-titlebar__desktop-left--docked {

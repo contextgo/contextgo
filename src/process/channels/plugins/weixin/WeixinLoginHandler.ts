@@ -9,6 +9,19 @@ import { BrowserWindow as ElectronBrowserWindow } from 'electron';
 import { startLogin } from './WeixinLogin';
 import type { LoginHandle } from './WeixinLogin';
 
+export type WeixinLoginResult = {
+  accountId: string;
+  botToken: string;
+  baseUrl: string;
+  scannerUserId?: string;
+};
+
+export type WeixinLoginProgressCallbacks = {
+  onQR?: (payload: { qrcodeUrl: string }) => void;
+  onScanned?: () => void;
+  onDone?: (result: WeixinLoginResult) => void;
+};
+
 /**
  * Manages the WeChat QR-code login flow over Electron IPC.
  * Instantiated once by weixinLoginBridge and reused for all login requests.
@@ -59,23 +72,21 @@ export class WeixinLoginHandler {
     });
   }
 
-  startLogin(): Promise<{ accountId: string; botToken: string; baseUrl: string; scannerUserId?: string }> {
+  startLogin(callbacks: WeixinLoginProgressCallbacks = {}): Promise<WeixinLoginResult> {
     this.loginHandle?.abort();
 
     return new Promise((resolve, reject) => {
-      const win = this.getWindow();
-
       this.loginHandle = startLogin({
         onQR: (pageUrl) => {
           this.renderQRPage(pageUrl)
-            .then((dataUrl) => win?.webContents.send('weixin:login:qr', { qrcodeUrl: dataUrl }))
+            .then((dataUrl) => callbacks.onQR?.({ qrcodeUrl: dataUrl }))
             .catch((err) => console.error('[WeixinLoginHandler] Failed to render QR page:', err));
         },
         onScanned: () => {
-          win?.webContents.send('weixin:login:scanned');
+          callbacks.onScanned?.();
         },
         onDone: (result) => {
-          win?.webContents.send('weixin:login:done', result);
+          callbacks.onDone?.(result);
           resolve(result);
         },
         onError: (error) => {

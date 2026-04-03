@@ -46,6 +46,36 @@ The new workflow should support:
 - structured handoff between loops
 - resumable run state instead of one-shot discussion rounds
 
+## External Reference Distillation
+
+The downloaded HTML reference is useful for its harness ideas, not for its visual presentation.
+For this repository, the right move is to absorb the method into our existing workflow design notes instead of vendoring a style-heavy HTML artifact.
+
+### What Is Worth Keeping
+
+- The two core failure modes are `context anxiety` and `self-evaluation bias`.
+- Context anxiety means long-running agents gradually lose coherence as context grows, so the system needs explicit reset and handoff mechanisms instead of assuming one child session can run forever.
+- Self-evaluation bias means the same agent that produced the work is a weak judge of its own quality, especially for subjective outputs such as design, writing, and UX.
+- The structural response is a role split: one agent produces, another evaluates, and the evaluator stays skeptical by design.
+- Evaluation should use an explicit rubric with thresholds and actionable revision points rather than free-form praise or vague critique.
+- For artifact work, evaluation should inspect the artifact or running system directly, not just the transcript describing it.
+- The planner / generator / evaluator pattern is useful, but the important part is the contract between roles, not the exact names.
+- Every harness component encodes a bet about current model weaknesses, so the harness should be simplified when stronger models make a scaffold non-load-bearing.
+
+### Product Mapping For ContextGo
+
+- In ContextGo terms, the article's `generator` maps more naturally to `writer` or `builder`, depending on artifact type.
+- Workflow mode should remain artifact-first rather than transcript-first.
+- The parent group session should persist stage, iteration count, latest evaluator score, latest decision, artifact path, and handoff snapshots.
+- Child-session renewal should be a first-class workflow tool so the system can reset context without losing the execution thread.
+- Evaluator output should be structured enough to either stop the run cleanly or feed the next revision loop.
+- Planner, writer, and evaluator should align on a concrete acceptance contract before the writer starts a loop whenever the task has non-trivial ambiguity.
+
+### Repository Storage Decision
+
+- Keep the distilled lessons in repository docs.
+- Do not store the original HTML file in the repo because its styling is not the key asset.
+
 ## Recommendation
 
 Do **not** model this as "just another discussion mode" at the product level.

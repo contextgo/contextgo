@@ -60,6 +60,11 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
     }
   }, [pluginStatus, loginState]);
 
+  useEffect(() => {
+    setLoginState(pluginStatus?.hasToken ? 'connected' : 'idle');
+    setQrcodeDataUrl(null);
+  }, [channelAccountId, pluginStatus?.hasToken]);
+
   const loadPendingPairings = useCallback(async () => {
     setPairingLoading(true);
     try {
@@ -179,27 +184,21 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
     setLoginState('loading_qr');
     setQrcodeDataUrl(null);
 
-    const unsubQR =
-      window.electronAPI?.weixinLoginOnQR?.(({ qrcodeUrl: dataUrl }: { qrcodeUrl: string }) => {
-        setQrcodeDataUrl(dataUrl);
-        setLoginState('showing_qr');
-      }) ?? (() => {});
-    const unsubScanned =
-      window.electronAPI?.weixinLoginOnScanned?.(() => {
-        setLoginState('scanned');
-      }) ?? (() => {});
-    const unsubDone =
-      window.electronAPI?.weixinLoginOnDone?.(() => {
-        // login promise resolves with the final payload; the event is only for progress sync
-      }) ?? (() => {});
+    const unsubBridgeQR = channel.weixinLoginQr.on(({ qrcodeUrl: dataUrl }) => {
+      setQrcodeDataUrl(dataUrl);
+      setLoginState('showing_qr');
+    });
+    const unsubBridgeScanned = channel.weixinLoginScanned.on(() => {
+      setLoginState('scanned');
+    });
 
     try {
-      const result = await window.electronAPI?.weixinLoginStart?.();
-      const { accountId, botToken, scannerUserId } = (result ?? {}) as {
-        accountId: string;
-        botToken: string;
-        scannerUserId?: string;
-      };
+      const loginResult = await channel.startWeixinLogin.invoke();
+      if (!loginResult.success || !loginResult.data) {
+        throw new Error(loginResult.msg || t('settings.weixin.loginError', 'WeChat login failed'));
+      }
+
+      const { accountId, botToken, scannerUserId } = loginResult.data;
 
       const enableResult = await channel.enablePlugin.invoke({
         pluginId: runtimeId,
@@ -230,6 +229,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
       const authorizeResult = await channel.authorizeRemoteUser.invoke({
         platformUserId: scannerUserId,
         platformType: 'weixin',
+        displayName: t('settings.weixin.scannerUserLabel', '当前扫码微信'),
         chatId: scannerUserId,
         pluginId: channelAccountId,
         metadata: {
@@ -268,9 +268,8 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
       setLoginState('idle');
       setQrcodeDataUrl(null);
     } finally {
-      unsubQR();
-      unsubScanned();
-      unsubDone();
+      unsubBridgeQR();
+      unsubBridgeScanned();
     }
   };
 

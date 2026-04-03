@@ -1,0 +1,25 @@
+{
+  "sidebar": {
+    "enterCurrent": "Enter Space",
+    "recentSpaces": "Recent Spaces"
+  },
+  "views": {
+    "overview": "Overview",
+    "docs": "Docs",
+    "canvas": "Canvas",
+    "context": "Context",
+    "runs": "Runs",
+    "members": "Members",
+    "settings": "Settings"
+  },
+  "shell": {
+    "description": "Long-term context and collaboration surface for the current space.",
+    "engine": "Engine",
+    "members": "Members",
+    "memory": "Memories",
+    "profiles": "Profiles",
+    "emptyDescription": "No space found.",
+    "comingSoon": "This section is being prepared.",
+    "workbenchHint": "Open a thread in Workbench to collaborate with Agents inside this space."
+  }
+}

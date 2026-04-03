@@ -6,3 +6,4 @@
 
 export * as ipcBridge from './adapter/ipcBridge';
 export { conversation } from './adapter/ipcBridge';
+export type { IContextMemoryView, IContextProfileView } from './adapter/ipcBridge';

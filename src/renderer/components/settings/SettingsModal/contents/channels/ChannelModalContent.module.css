@@ -66,6 +66,8 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding-right: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .sectionHeader {
@@ -101,6 +103,8 @@
   flex: 1;
   overflow-y: auto;
   padding-right: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .familyButton,
@@ -393,11 +397,24 @@
   -webkit-line-clamp: 2;
 }
 
+
 .selectorStats {
   min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.selectorStats :global(.arco-tag) {
+  width: 100%;
+}
+
+.selectorStats :global(.arco-tag-content) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
 }
 
 .selectorCardBody > * {
@@ -415,6 +432,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.selectorStats :global(.arco-tag) {
+  width: 100%;
+}
+
+.selectorStats :global(.arco-tag-content) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
 }
 
 .metaGrid {
@@ -828,7 +857,7 @@
   font-size: 24px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 920px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
     overflow: visible;
@@ -964,4 +993,9 @@
   font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
+}
+
+.detailColumn::-webkit-scrollbar,
+.familyList::-webkit-scrollbar {
+  display: none;
 }

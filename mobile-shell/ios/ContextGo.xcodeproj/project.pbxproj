@@ -13,6 +13,10 @@
 		47FC24780DE135C447C7BC2A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 84D876EBFB04DC117CE73AEF /* Localizable.strings */; };
 		54BDCDD142982D119C80409E /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0E078B495D3052B264AA47 /* ConnectionStore.swift */; };
 		7E696B53F7DCB21744F6518F /* ContextGoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1363A6EABC9675947C3DCD59 /* ContextGoApp.swift */; };
+		8A4EDB341B2D4F6E9C001001 /* OAuthSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4EDB341B2D4F6E9C001002 /* OAuthSessionController.swift */; };
+		8A4EDB341B2D4F6E9C001011 /* AuthProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4EDB341B2D4F6E9C001012 /* AuthProvider.swift */; };
+		8A4EDB341B2D4F6E9C001003 /* LoginCompletionPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4EDB341B2D4F6E9C001004 /* LoginCompletionPayload.swift */; };
+		8A4EDB341B2D4F6E9C001005 /* LoginSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4EDB341B2D4F6E9C001006 /* LoginSessionStore.swift */; };
 		DA388B80959C49E9D5205541 /* WebViewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE439F83DBF0AB8B93722D1 /* WebViewStore.swift */; };
 		DC6270E2B5AC6912FF7BEC4A /* ShellTargetResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E377F895B701DA0FDBB718EF /* ShellTargetResolver.swift */; };
 		F7037677D0F585177A222AD9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1C075BE29AC572371E3BFF67 /* Assets.xcassets */; };
@@ -24,6 +28,10 @@
 		1C075BE29AC572371E3BFF67 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2EDCE9B1F5F965232B19A210 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5E0E078B495D3052B264AA47 /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
+		8A4EDB341B2D4F6E9C001002 /* OAuthSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Auth/OAuthSessionController.swift; sourceTree = SOURCE_ROOT; };
+		8A4EDB341B2D4F6E9C001004 /* LoginCompletionPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Domain/LoginCompletionPayload.swift; sourceTree = SOURCE_ROOT; };
+		8A4EDB341B2D4F6E9C001006 /* LoginSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Domain/LoginSessionStore.swift; sourceTree = SOURCE_ROOT; };
+		8A4EDB341B2D4F6E9C001012 /* AuthProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Auth/AuthProvider.swift; sourceTree = SOURCE_ROOT; };
 		64A483BE7C97AB0E9BE566A3 /* ShellWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellWebView.swift; sourceTree = "<group>"; };
 		7AC0F0041412EF844389E31C /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		7D71320C1B7FDE648EE5FBCE /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -58,6 +66,8 @@
 			isa = PBXGroup;
 			children = (
 				5E0E078B495D3052B264AA47 /* ConnectionStore.swift */,
+				8A4EDB341B2D4F6E9C001004 /* LoginCompletionPayload.swift */,
+				8A4EDB341B2D4F6E9C001006 /* LoginSessionStore.swift */,
 				E377F895B701DA0FDBB718EF /* ShellTargetResolver.swift */,
 			);
 			path = Domain;
@@ -73,6 +83,15 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		8A4EDB341B2D4F6E9C001010 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				8A4EDB341B2D4F6E9C001012 /* AuthProvider.swift */,
+				8A4EDB341B2D4F6E9C001002 /* OAuthSessionController.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
 		96BDC563CC01CC3873667523 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -85,6 +104,7 @@
 			isa = PBXGroup;
 			children = (
 				F428CC8D39273EBBBAC070B7 /* App */,
+				8A4EDB341B2D4F6E9C001010 /* Auth */,
 				6B1DBF4F32C59A9554FCCF46 /* Domain */,
 				B90360D44887DBB68AF46FB7 /* Web */,
 			);
@@ -118,6 +138,7 @@
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
 
 /* Begin PBXNativeTarget section */
 		E58CC56A98AC23826E4F1D1B /* ContextGo */ = {
@@ -192,6 +213,10 @@
 				54BDCDD142982D119C80409E /* ConnectionStore.swift in Sources */,
 				2B625E36AAECDDC700798C70 /* ContentView.swift in Sources */,
 				7E696B53F7DCB21744F6518F /* ContextGoApp.swift in Sources */,
+				8A4EDB341B2D4F6E9C001003 /* LoginCompletionPayload.swift in Sources */,
+				8A4EDB341B2D4F6E9C001005 /* LoginSessionStore.swift in Sources */,
+				8A4EDB341B2D4F6E9C001011 /* AuthProvider.swift in Sources */,
+				8A4EDB341B2D4F6E9C001001 /* OAuthSessionController.swift in Sources */,
 				DC6270E2B5AC6912FF7BEC4A /* ShellTargetResolver.swift in Sources */,
 				3DA99C29FE4772AF62CACFE0 /* ShellWebView.swift in Sources */,
 				DA388B80959C49E9D5205541 /* WebViewStore.swift in Sources */,

@@ -473,7 +473,7 @@ const SkillsHubSettings: React.FC = () => {
                       })}
                       value={marketQuery}
                       onChange={(value) => setMarketQuery(value)}
-                      className='rounded-[8px] bg-fill-2'
+                      className='bg-transparent [&_.arco-input-wrapper]:rd-16px [&_.arco-input-wrapper]:border [&_.arco-input-wrapper]:border-solid [&_.arco-input-wrapper]:border-[color:color-mix(in_srgb,var(--border-base)_78%,transparent)] [&_.arco-input-wrapper]:bg-[color:color-mix(in_srgb,var(--bg-1)_92%,var(--fill-1)_8%)] [&_.arco-input-wrapper]:px-2px [&_.arco-input-wrapper]:shadow-[inset_0_1px_0_color-mix(in_srgb,white_18%,transparent),0_10px_24px_color-mix(in_srgb,rgb(15_23_42)_7%,transparent)] [&_.arco-input-wrapper]:transition-all [&_.arco-input-wrapper:hover]:border-[color:color-mix(in_srgb,rgb(var(--primary-6))_28%,var(--border-base))] [&_.arco-input-wrapper:hover]:bg-[color:color-mix(in_srgb,var(--bg-1)_96%,var(--fill-1)_4%)] [&_.arco-input-wrapper:hover]:shadow-[inset_0_1px_0_color-mix(in_srgb,white_18%,transparent),0_12px_28px_color-mix(in_srgb,rgb(15_23_42)_9%,transparent)] [&_.arco-input-wrapper:focus-within]:border-[color:color-mix(in_srgb,rgb(var(--primary-6))_42%,var(--border-base))] [&_.arco-input-wrapper:focus-within]:bg-base [&_.arco-input-wrapper:focus-within]:shadow-[inset_0_1px_0_color-mix(in_srgb,white_18%,transparent),0_14px_30px_color-mix(in_srgb,rgb(var(--primary-6))_12%,transparent)] [&_.arco-input]:bg-transparent [&_.arco-input]:py-8px [&_.arco-input]:text-13px [&_.arco-input::placeholder]:text-t-tertiary [&_.arco-input-group-prefix]:pl-10px [&_.arco-input-group-prefix]:text-t-tertiary [&_.arco-input-group-prefix]:transition-colors [&_.arco-input-wrapper:focus-within_.arco-input-group-prefix]:text-primary-6'
                     />
                     <div className='flex flex-wrap items-center justify-between gap-8px'>
                       <div className='flex flex-wrap items-center gap-8px'>
@@ -547,7 +547,7 @@ const SkillsHubSettings: React.FC = () => {
                 </div>
 
                 {marketIndustries.length > 0 ? (
-                  <div className='flex gap-8px overflow-x-auto custom-scrollbar pb-2px'>
+                  <div className='flex gap-8px overflow-x-auto pb-2px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                     <Button
                       size='small'
                       type={marketIndustryId === 'all' ? 'primary' : 'secondary'}
@@ -803,7 +803,7 @@ const SkillsHubSettings: React.FC = () => {
                     </div>
                     <input
                       type='text'
-                      className='w-full bg-fill-1 hover:bg-fill-2 border border-border-1 focus:border-primary-5 focus:bg-base outline-none rd-8px py-6px pl-36px pr-12px text-13px text-t-primary placeholder:text-t-tertiary transition-all shadow-sm box-border m-0'
+                      className='w-full bg-[color:color-mix(in_srgb,var(--bg-1)_92%,var(--fill-1)_8%)] hover:bg-[color:color-mix(in_srgb,var(--bg-1)_96%,var(--fill-1)_4%)] border border-[color:color-mix(in_srgb,var(--border-base)_78%,transparent)] focus:border-[color:color-mix(in_srgb,rgb(var(--primary-6))_42%,var(--border-base))] focus:bg-base outline-none rd-16px py-8px pl-38px pr-14px text-13px text-t-primary placeholder:text-t-tertiary transition-all shadow-[inset_0_1px_0_color-mix(in_srgb,white_18%,transparent),0_10px_24px_color-mix(in_srgb,rgb(15_23_42)_7%,transparent)] focus:shadow-[inset_0_1px_0_color-mix(in_srgb,white_18%,transparent),0_14px_30px_color-mix(in_srgb,rgb(var(--primary-6))_12%,transparent)] box-border m-0'
                       placeholder={t('settings.skillsHub.searchPlaceholder', { defaultValue: 'Search skills...' })}
                       value={searchExternalQuery}
                       onChange={(e) => setSearchExternalQuery(e.target.value)}
@@ -940,7 +940,7 @@ const SkillsHubSettings: React.FC = () => {
                     </div>
                     <input
                       type='text'
-                      className='w-full bg-fill-1 hover:bg-fill-2 border border-border-1 focus:border-primary-5 focus:bg-base outline-none rd-8px py-6px pl-36px pr-12px text-13px text-t-primary placeholder:text-t-tertiary transition-all shadow-sm box-border m-0'
+                      className='w-full bg-[color:color-mix(in_srgb,var(--bg-1)_92%,var(--fill-1)_8%)] hover:bg-[color:color-mix(in_srgb,var(--bg-1)_96%,var(--fill-1)_4%)] border border-[color:color-mix(in_srgb,var(--border-base)_78%,transparent)] focus:border-[color:color-mix(in_srgb,rgb(var(--primary-6))_42%,var(--border-base))] focus:bg-base outline-none rd-16px py-8px pl-38px pr-14px text-13px text-t-primary placeholder:text-t-tertiary transition-all shadow-[inset_0_1px_0_color-mix(in_srgb,white_18%,transparent),0_10px_24px_color-mix(in_srgb,rgb(15_23_42)_7%,transparent)] focus:shadow-[inset_0_1px_0_color-mix(in_srgb,white_18%,transparent),0_14px_30px_color-mix(in_srgb,rgb(var(--primary-6))_12%,transparent)] box-border m-0'
                       placeholder={t('settings.skillsHub.searchPlaceholder', { defaultValue: 'Search skills...' })}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}

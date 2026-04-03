@@ -950,6 +950,7 @@
     "title": "运行环境",
     "description": "在这里先看哪些本地运行环境已经能直接用，再处理真正会阻塞启动的几件事：安装、登录或执行路径。",
     "refresh": "刷新状态",
+    "refreshFailed": "刷新运行环境检测状态失败。",
     "note": "只有自动检测不准时，才需要手动覆盖路径。保存后再跑一次可用性检查，确认这个运行环境现在真的能启动。",
     "loadFailed": "加载运行环境状态失败。",
     "copyFailed": "复制失败。",
@@ -1361,7 +1362,7 @@
     "notAvailable": "暂无",
     "infermeshAccess": "InferMesh 官网",
     "infermeshAccessDesc": "ContextGo 这里只需要 OAuth 登录和设备绑定。如果你还需要注册或补完账号流程，再去 InferMesh 官网继续。",
-    "openInfermesh": "打开 InferMesh"
+    "openInfermesh": "模型中心"
   },
   "commands": {
     "title": "Commands",

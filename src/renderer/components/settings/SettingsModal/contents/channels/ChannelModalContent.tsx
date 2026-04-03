@@ -391,7 +391,7 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
     };
 
     void loadWebuiStatus();
-  }, [isChannelMode, t]);
+  }, [isChannelMode]);
 
   useEffect(() => {
     if (!isChannelMode) {
@@ -443,13 +443,16 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       return;
     }
     setInstanceNameDrafts((prev) => {
+      let changed = false;
       const next = { ...prev };
       for (const status of pluginStatuses) {
-        if (next[status.id] === undefined) {
-          next[status.id] = getChannelDisplayName(status, t);
+        if (next[status.id] !== undefined) {
+          continue;
         }
+        next[status.id] = getChannelDisplayName(status, t);
+        changed = true;
       }
-      return next;
+      return changed ? next : prev;
     });
   }, [isChannelMode, pluginStatuses, t]);
 

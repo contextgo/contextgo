@@ -22,6 +22,7 @@ export const GROUP_MODAL_CONTENT_STYLE = {
 export const GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME = 'min-w-96px px-18px rd-12px';
 export const GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME = styles.segmentedGroup;
 export const GROUP_MODAL_SELECT_CLASS_NAME = styles.roundedSelect;
+export const GROUP_MODAL_FIELD_CLASS_NAME = styles.roundedField;
 export const GROUP_MODAL_PARTICIPANT_CARD_CLASS_NAME = styles.participantCard;
 export const GROUP_MODAL_PARTICIPANT_CARD_SELECTED_CLASS_NAME = styles.participantCardSelected;
 export const GROUP_MODAL_PARTICIPANT_CARD_DISABLED_CLASS_NAME = styles.participantCardDisabled;

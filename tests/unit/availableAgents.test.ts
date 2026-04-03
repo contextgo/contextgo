@@ -30,9 +30,10 @@ describe('availableAgents helpers', () => {
     expect(AVAILABLE_AGENTS_SWR_KEY).toBe('acp.agents.available');
   });
 
-  it('filters out unsupported runtimes and gemini cli entries but keeps supported runtimes', () => {
+  it('filters out unsupported runtimes while keeping supported runtime entries', () => {
     expect(filterAvailableAgentsForUi(agents)).toEqual([
       { backend: 'gemini', name: 'Gemini' },
+      { backend: 'gemini', name: 'Gemini CLI', cliPath: '/usr/local/bin/gemini' },
       { backend: 'claude', name: 'Claude Code', cliPath: '/usr/local/bin/claude' },
       { backend: 'opencode', name: 'OpenCode', cliPath: '/usr/local/bin/opencode' },
       { backend: 'custom', name: 'Custom Agent', customAgentId: 'custom-1' },
@@ -45,6 +46,7 @@ describe('availableAgents helpers', () => {
     expect(splitConversationDropdownAgents(filterAvailableAgentsForUi(agents))).toEqual({
       cliAgents: [
         { backend: 'gemini', name: 'Gemini' },
+        { backend: 'gemini', name: 'Gemini CLI', cliPath: '/usr/local/bin/gemini' },
         { backend: 'claude', name: 'Claude Code', cliPath: '/usr/local/bin/claude' },
         { backend: 'opencode', name: 'OpenCode', cliPath: '/usr/local/bin/opencode' },
         { backend: 'custom', name: 'Custom Agent', customAgentId: 'custom-1' },

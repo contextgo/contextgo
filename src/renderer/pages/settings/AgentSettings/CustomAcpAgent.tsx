@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { acpConversation, shell } from '@/common/adapter/ipcBridge';
 import { ACP_BACKENDS_ALL, type AcpBackend } from '@/common/types/acpTypes';
 import type { ExternalSessionProvider, ExternalSessionSummary } from '@/common/types/externalSessions';
+import { useFilePreviewOpener } from '@/renderer/hooks/file/useFilePreviewOpener';
 import { PRODUCT_VISIBLE_RUNTIME_BACKENDS } from '@/renderer/utils/model/availableAgents';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 
@@ -13,6 +14,10 @@ type RuntimeHealthState = {
   status: 'idle' | 'checking' | 'ready' | 'error';
   latency?: number;
   message?: string;
+};
+
+type RuntimeConfigLocation = {
+  configPath: string;
 };
 
 type AvailableRuntimeAgent = {
@@ -69,6 +74,7 @@ const hasRuntimeAuthIssue = (message?: string): boolean => {
 };
 
 const MANAGED_RUNTIME_BACKENDS: readonly ManagedRuntimeBackend[] = PRODUCT_VISIBLE_RUNTIME_BACKENDS;
+const CONFIGURABLE_RUNTIME_BACKENDS = new Set<ManagedRuntimeBackend>(['gemini', 'claude', 'codex', 'openclaw-gateway']);
 
 const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   gemini: {
@@ -123,12 +129,16 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
 const CustomAcpAgent: React.FC = () => {
   const { t } = useTranslation();
   const [message, messageContext] = Message.useMessage({ maxCount: 8 });
+  const { openFilePreview } = useFilePreviewOpener();
 
   const [availableAgents, setAvailableAgents] = useState<AvailableRuntimeAgent[]>([]);
   const [externalSessions, setExternalSessions] = useState<ExternalSessionSummary[]>([]);
   const [healthState, setHealthState] = useState<Partial<Record<ManagedRuntimeBackend, RuntimeHealthState>>>({});
   const [loading, setLoading] = useState(false);
   const [installingBackend, setInstallingBackend] = useState<ManagedRuntimeBackend | null>(null);
+  const [configActionState, setConfigActionState] = useState<Partial<Record<ManagedRuntimeBackend, 'open' | 'reveal'>>>(
+    {}
+  );
   const loadingRef = useRef(false);
   const requestSeqRef = useRef(0);
 
@@ -169,6 +179,31 @@ const CustomAcpAgent: React.FC = () => {
       }
       loadingRef.current = false;
     }
+  });
+
+  const refreshRuntimeState = useEffectEvent(async () => {
+    try {
+      const refreshResult = await acpConversation.refreshDetectedAgents.invoke();
+      if (!refreshResult.success) {
+        throw new Error(
+          refreshResult.msg ||
+            t('settings.runtimeManager.refreshFailed', {
+              defaultValue: 'Failed to refresh runtime detection.',
+            })
+        );
+      }
+    } catch (error) {
+      console.error('[RuntimeSettings] Failed to refresh detected runtimes:', error);
+      message.error(
+        error instanceof Error
+          ? error.message
+          : t('settings.runtimeManager.refreshFailed', {
+              defaultValue: 'Failed to refresh runtime detection.',
+            })
+      );
+    }
+
+    await loadRuntimeState();
   });
 
   useEffect(() => {
@@ -239,6 +274,29 @@ const CustomAcpAgent: React.FC = () => {
   const activeRuntimeCards = useMemo(() => runtimeCards.filter((card) => !card.isMissing), [runtimeCards]);
   const missingRuntimeCards = useMemo(() => runtimeCards.filter((card) => card.isMissing), [runtimeCards]);
 
+  const getRuntimeConfigLocation = useCallback(
+    async (backend: ManagedRuntimeBackend): Promise<RuntimeConfigLocation | null> => {
+      const result = await acpConversation.getManagedRuntimeConfigLocation.invoke({ backend });
+      if (!result.success) {
+        throw new Error(
+          result.msg ||
+            t('settings.runtimeManager.openConfigFailed', {
+              defaultValue: 'Failed to open the runtime config location.',
+            })
+        );
+      }
+
+      if (!result.data) {
+        return null;
+      }
+
+      return {
+        configPath: result.data.configPath,
+      };
+    },
+    [t]
+  );
+
   const handleOpenDocs = useCallback(async (url: string | undefined) => {
     if (!url) return;
 
@@ -248,6 +306,85 @@ const CustomAcpAgent: React.FC = () => {
       console.error('[RuntimeSettings] Failed to open runtime docs:', error);
     }
   }, []);
+
+  const handleOpenConfig = useCallback(
+    async (backend: ManagedRuntimeBackend) => {
+      setConfigActionState((current) => ({
+        ...current,
+        [backend]: 'open',
+      }));
+
+      try {
+        const configLocation = await getRuntimeConfigLocation(backend);
+        if (!configLocation?.configPath) {
+          throw new Error(
+            t('settings.runtimeManager.openConfigFailed', {
+              defaultValue: 'Failed to open the runtime config location.',
+            })
+          );
+        }
+
+        const opened = await openFilePreview({ path: configLocation.configPath });
+        if (!opened) {
+          await shell.openFile.invoke(configLocation.configPath);
+        }
+      } catch (error) {
+        console.error('[RuntimeSettings] Failed to open runtime config:', error);
+        message.error(
+          error instanceof Error
+            ? error.message
+            : t('settings.runtimeManager.openConfigFailed', {
+                defaultValue: 'Failed to open the runtime config location.',
+              })
+        );
+      } finally {
+        setConfigActionState((current) => {
+          const next = { ...current };
+          delete next[backend];
+          return next;
+        });
+      }
+    },
+    [getRuntimeConfigLocation, message, openFilePreview, t]
+  );
+
+  const handleRevealConfigPath = useCallback(
+    async (backend: ManagedRuntimeBackend) => {
+      setConfigActionState((current) => ({
+        ...current,
+        [backend]: 'reveal',
+      }));
+
+      try {
+        const configLocation = await getRuntimeConfigLocation(backend);
+        if (!configLocation?.configPath) {
+          throw new Error(
+            t('settings.runtimeManager.revealPathFailed', {
+              defaultValue: 'Failed to open the path in the system file manager.',
+            })
+          );
+        }
+
+        await shell.revealPath.invoke(configLocation.configPath);
+      } catch (error) {
+        console.error('[RuntimeSettings] Failed to reveal runtime config path:', error);
+        message.error(
+          error instanceof Error
+            ? error.message
+            : t('settings.runtimeManager.revealPathFailed', {
+                defaultValue: 'Failed to open the path in the system file manager.',
+              })
+        );
+      } finally {
+        setConfigActionState((current) => {
+          const next = { ...current };
+          delete next[backend];
+          return next;
+        });
+      }
+    },
+    [getRuntimeConfigLocation, message, t]
+  );
 
   const handleInstallRuntime = useCallback(
     async (backend: ManagedRuntimeBackend) => {
@@ -341,8 +478,20 @@ const CustomAcpAgent: React.FC = () => {
   );
 
   const renderRuntimeCard = (card: RuntimeCard) => {
-    const { backend, meta, backendConfig, detected, configuredOnly, effectiveCliPath, health, sessionCount, isMissing } = card;
+    const {
+      backend,
+      meta,
+      backendConfig,
+      detected,
+      configuredOnly,
+      effectiveCliPath,
+      health,
+      sessionCount,
+      isMissing,
+    } = card;
     const guideLogo = getAgentLogo(backend);
+    const supportsConfig = CONFIGURABLE_RUNTIME_BACKENDS.has(backend);
+    const configAction = configActionState[backend];
 
     const statusText =
       health.status === 'ready'
@@ -397,15 +546,7 @@ const CustomAcpAgent: React.FC = () => {
                     {` ${sessionCount}`}
                   </Tag>
                 ) : null}
-                <Tag
-                  color={
-                    health.status === 'ready' || detected
-                      ? 'green'
-                      : configuredOnly
-                        ? 'orange'
-                        : 'gray'
-                  }
-                >
+                <Tag color={health.status === 'ready' || detected ? 'green' : configuredOnly ? 'orange' : 'gray'}>
                   {statusText}
                 </Tag>
                 {showAuthRequiredTag ? (
@@ -452,8 +593,36 @@ const CustomAcpAgent: React.FC = () => {
                   })}
                 </Button>
               ) : null}
+              {supportsConfig ? (
+                <Button
+                  type='outline'
+                  shape='round'
+                  loading={configAction === 'open'}
+                  onClick={() => void handleOpenConfig(backend)}
+                >
+                  {t('settings.runtimeManager.openConfig', {
+                    defaultValue: 'Open config',
+                  })}
+                </Button>
+              ) : null}
+              {supportsConfig ? (
+                <Button
+                  type='outline'
+                  shape='round'
+                  loading={configAction === 'reveal'}
+                  onClick={() => void handleRevealConfigPath(backend)}
+                >
+                  {t('settings.runtimeManager.revealPath', {
+                    defaultValue: 'Reveal',
+                  })}
+                </Button>
+              ) : null}
               {meta.docsUrl ? (
-                <Button type={emphasizeGuideAction ? 'primary' : 'outline'} shape='round' onClick={() => void handleOpenDocs(meta.docsUrl)}>
+                <Button
+                  type={emphasizeGuideAction ? 'primary' : 'outline'}
+                  shape='round'
+                  onClick={() => void handleOpenDocs(meta.docsUrl)}
+                >
                   {t('settings.runtimeManager.openGuide', {
                     defaultValue: 'Official page',
                   })}
@@ -492,7 +661,7 @@ const CustomAcpAgent: React.FC = () => {
             </div>
           </div>
 
-          <Button type='outline' shape='round' onClick={() => void loadRuntimeState()} loading={loading}>
+          <Button type='outline' shape='round' onClick={() => void refreshRuntimeState()} loading={loading}>
             {t('settings.runtimeManager.refresh', {
               defaultValue: 'Refresh status',
             })}

@@ -32,11 +32,7 @@ export function filterAvailableAgentsForUi(availableAgents: AvailableAgent[]): A
       return true;
     }
 
-    if (!isProductVisibleRuntimeBackend(agent.backend)) {
-      return false;
-    }
-
-    return !(agent.backend === 'gemini' && agent.cliPath);
+    return isProductVisibleRuntimeBackend(agent.backend);
   });
 }
 

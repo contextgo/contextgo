@@ -7,8 +7,14 @@ const getAvailableAgentsInvokeMock = vi.fn();
 const listExternalSessionsInvokeMock = vi.fn();
 const checkAgentHealthInvokeMock = vi.fn();
 const installManagedRuntimeInvokeMock = vi.fn();
-const refreshCustomAgentsInvokeMock = vi.fn().mockResolvedValue({ success: true });
+const getManagedRuntimeConfigLocationInvokeMock = vi.fn();
+const refreshDetectedAgentsInvokeMock = vi.fn().mockResolvedValue({ success: true });
 const openExternalInvokeMock = vi.fn().mockResolvedValue(undefined);
+const openFileInvokeMock = vi.fn().mockResolvedValue(undefined);
+const revealPathInvokeMock = vi
+  .fn()
+  .mockResolvedValue({ resolvedPath: '/Users/tester/.codex/config.toml', exists: true });
+const openFilePreviewMock = vi.fn().mockResolvedValue(true);
 const configStorageGetMock = vi.fn();
 const mutateMock = vi.fn().mockResolvedValue(undefined);
 const messageSuccessMock = vi.fn();
@@ -26,16 +32,23 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     listExternalSessions: { invoke: (...args: unknown[]) => listExternalSessionsInvokeMock(...args) },
     checkAgentHealth: { invoke: (...args: unknown[]) => checkAgentHealthInvokeMock(...args) },
     installManagedRuntime: { invoke: (...args: unknown[]) => installManagedRuntimeInvokeMock(...args) },
-    refreshCustomAgents: { invoke: (...args: unknown[]) => refreshCustomAgentsInvokeMock(...args) },
+    getManagedRuntimeConfigLocation: {
+      invoke: (...args: unknown[]) => getManagedRuntimeConfigLocationInvokeMock(...args),
+    },
+    refreshDetectedAgents: { invoke: (...args: unknown[]) => refreshDetectedAgentsInvokeMock(...args) },
   },
   shell: {
     openExternal: { invoke: (...args: unknown[]) => openExternalInvokeMock(...args) },
+    openFile: { invoke: (...args: unknown[]) => openFileInvokeMock(...args) },
+    revealPath: { invoke: (...args: unknown[]) => revealPathInvokeMock(...args) },
   },
-  ipcBridge: {
-    shell: {
-      openExternal: { invoke: (...args: unknown[]) => openExternalInvokeMock(...args) },
-    },
-  },
+}));
+
+vi.mock('@/renderer/hooks/file/useFilePreviewOpener', () => ({
+  useFilePreviewOpener: () => ({
+    openFilePreview: (...args: unknown[]) => openFilePreviewMock(...args),
+    loading: false,
+  }),
 }));
 
 vi.mock('@/common/config/storage', () => ({
@@ -173,7 +186,9 @@ describe('Runtime Settings page', () => {
     listExternalSessionsInvokeMock.mockResolvedValue({
       success: true,
       data: {
-        sessions: [{ provider: 'codex', sessionId: 'session-1', title: 'Resume me', workspace: '/tmp/project', updatedAt: 1 }],
+        sessions: [
+          { provider: 'codex', sessionId: 'session-1', title: 'Resume me', workspace: '/tmp/project', updatedAt: 1 },
+        ],
       },
     });
     checkAgentHealthInvokeMock.mockResolvedValue({
@@ -183,6 +198,14 @@ describe('Runtime Settings page', () => {
     installManagedRuntimeInvokeMock.mockResolvedValue({
       success: true,
       data: { backend: 'codex', command: 'npm install -g @openai/codex' },
+    });
+    getManagedRuntimeConfigLocationInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        backend: 'codex',
+        configPath: '/Users/tester/.codex/config.toml',
+        exists: true,
+      },
     });
     configStorageGetMock.mockImplementation(async (key: string) => {
       if (key === 'acp.customAgents') return [];
@@ -203,6 +226,8 @@ describe('Runtime Settings page', () => {
     const codexCard = screen.getByTestId('runtime-card-codex');
     expect(within(codexCard).getByText('/opt/codex/bin/codex')).toBeInTheDocument();
     expect(within(codexCard).getByText('Takeover sessions 1')).toBeInTheDocument();
+    expect(within(codexCard).getByRole('button', { name: 'Open config' })).toBeInTheDocument();
+    expect(within(codexCard).getByRole('button', { name: 'Reveal' })).toBeInTheDocument();
   });
 
   it('does not render the removed custom runtime section', async () => {
@@ -258,10 +283,49 @@ describe('Runtime Settings page', () => {
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
-    fireEvent.click(within(screen.getByTestId('runtime-card-openclaw-gateway')).getByRole('button', { name: 'Official page' }));
+    fireEvent.click(
+      within(screen.getByTestId('runtime-card-openclaw-gateway')).getByRole('button', { name: 'Official page' })
+    );
 
     await waitFor(() => {
       expect(openExternalInvokeMock).toHaveBeenCalledWith('https://github.com/openclaw/openclaw');
+    });
+  });
+
+  it('opens the runtime config in the shared preview panel', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+    fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Open config' }));
+
+    await waitFor(() => {
+      expect(getManagedRuntimeConfigLocationInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
+      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/config.toml' });
+    });
+
+    expect(openFileInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the system opener when config preview cannot be mounted', async () => {
+    openFilePreviewMock.mockResolvedValueOnce(false);
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+    fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Open config' }));
+
+    await waitFor(() => {
+      expect(openFileInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex/config.toml');
+    });
+  });
+
+  it('reveals the runtime config path in the system file manager', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+    fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Reveal' }));
+
+    await waitFor(() => {
+      expect(revealPathInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex/config.toml');
     });
   });
 
@@ -286,5 +350,4 @@ describe('Runtime Settings page', () => {
       expect(installManagedRuntimeInvokeMock).toHaveBeenCalled();
     });
   });
-
 });

@@ -27,6 +27,7 @@
 
 ## 文档索引
 
+- [context-engine-architecture-report.html](./context-engine-architecture-report.html)
 - [docs/charter.md](./docs/charter.md)
 - [docs/domain-model.md](./docs/domain-model.md)
 - [docs/local-first-sync.md](./docs/local-first-sync.md)

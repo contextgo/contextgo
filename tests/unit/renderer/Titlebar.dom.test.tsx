@@ -190,4 +190,18 @@ describe('Titlebar', () => {
     expect(container.querySelector('.app-titlebar__desktop-content--conversation')).toBeTruthy();
     expect(container.querySelector('#app-titlebar-chat-slot')).toBeTruthy();
   });
+
+  it('does not reserve mac traffic-light width while fullscreen is active', async () => {
+    isFullScreenInvokeMock.mockResolvedValue(true);
+
+    const { container } = renderTitlebar('/conversation/conv-1', {
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+    });
+
+    await screen.findByRole('button', { name: 'Collapse sidebar' });
+    const leftControls = container.querySelector('.app-titlebar__desktop-left') as HTMLDivElement | null;
+    expect(leftControls).toBeTruthy();
+    expect(leftControls?.style.paddingLeft).toBe('8px');
+  });
 });

@@ -40,8 +40,13 @@ import { Button, Checkbox, Input, Message, Radio, Select, Typography } from '@ar
 import { FolderOpen, Robot } from '@icon-park/react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  orderHarnessSelectableParticipants,
+  resolveHarnessDefaultSelectionKeys,
+} from './createDiscussionGroupModalHelpers';
 import GroupModalSection, {
   GROUP_MODAL_CONTENT_STYLE,
+  GROUP_MODAL_FIELD_CLASS_NAME,
   GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME,
   GROUP_MODAL_INNER_PANEL_CLASS_NAME,
   GROUP_MODAL_INLINE_CONTROL_ROW_CLASS_NAME,
@@ -204,20 +209,22 @@ const CreateGroupModal: React.FC<{
   }, [assistants]);
 
   const presetParticipantOptions = useMemo<ParticipantOption[]>(() => {
-    return presetAssistants.map((assistant) => {
-      const assistantId = assistant.customAgentId || assistant.name;
-      const metadata = presetAssistantMap.get(assistantId);
-      const participantKey = assistantId;
-      return {
-        type: 'preset-assistant',
-        selectionKey: buildSelectionKey('preset-assistant', participantKey),
-        participantKey,
-        name: metadata ? resolveAssistantDisplayName(metadata, localeKey) : assistant.name,
-        avatar: metadata?.avatar || assistant.avatar,
-        description: metadata ? resolveAssistantDescription(metadata, localeKey) : '',
-        presetAgentType: metadata?.presetAgentType || assistant.presetAgentType,
-      };
-    });
+    return orderHarnessSelectableParticipants(
+      presetAssistants.map((assistant) => {
+        const assistantId = assistant.customAgentId || assistant.name;
+        const metadata = presetAssistantMap.get(assistantId);
+        const participantKey = assistantId;
+        return {
+          type: 'preset-assistant',
+          selectionKey: buildSelectionKey('preset-assistant', participantKey),
+          participantKey,
+          name: metadata ? resolveAssistantDisplayName(metadata, localeKey) : assistant.name,
+          avatar: metadata?.avatar || assistant.avatar,
+          description: metadata ? resolveAssistantDescription(metadata, localeKey) : '',
+          presetAgentType: metadata?.presetAgentType || assistant.presetAgentType,
+        };
+      })
+    );
   }, [localeKey, presetAssistantMap, presetAssistants]);
 
   const cliParticipantOptions = useMemo<ParticipantOption[]>(() => {
@@ -264,9 +271,10 @@ const CreateGroupModal: React.FC<{
     }
 
     const defaultTemplateDefinition = getWorkflowGroupTemplateDefinition(DEFAULT_WORKFLOW_GROUP_TEMPLATE);
-    const defaultSelectionKeys = availableParticipants
-      .slice(0, defaultTemplateDefinition.requiredParticipantCount)
-      .map((participant) => participant.selectionKey);
+    const defaultSelectionKeys = resolveHarnessDefaultSelectionKeys(
+      availableParticipants,
+      defaultTemplateDefinition.requiredParticipantCount
+    );
 
     setGroupName(t('conversation.group.defaultName'));
     setSelectedWorkspace(workspace || '');
@@ -442,7 +450,12 @@ const CreateGroupModal: React.FC<{
     >
       <div className='flex w-full min-w-0 flex-col gap-12px'>
         <GroupModalSection title={t('conversation.group.nameLabel')}>
-          <Input value={groupName} onChange={setGroupName} placeholder={t('conversation.group.namePlaceholder')} />
+          <Input
+            value={groupName}
+            onChange={setGroupName}
+            placeholder={t('conversation.group.namePlaceholder')}
+            className={GROUP_MODAL_FIELD_CLASS_NAME}
+          />
         </GroupModalSection>
 
         <GroupModalSection title={t('conversation.group.workspaceLabel')}>
@@ -452,7 +465,7 @@ const CreateGroupModal: React.FC<{
               onChange={setSelectedWorkspace}
               placeholder={t('conversation.group.workspacePlaceholder')}
               allowClear
-              className='min-w-0 flex-1'
+              className={`min-w-0 flex-1 ${GROUP_MODAL_FIELD_CLASS_NAME}`}
             />
             <Button
               type='secondary'
@@ -501,7 +514,7 @@ const CreateGroupModal: React.FC<{
               <Select
                 value={workflowTemplate}
                 onChange={(value) => handleWorkflowTemplateChange(value as WorkflowGroupTemplate)}
-                className={GROUP_MODAL_SELECT_CLASS_NAME}
+                className={`${GROUP_MODAL_SELECT_CLASS_NAME} ${GROUP_MODAL_FIELD_CLASS_NAME}`}
               >
                 {workflowTemplates.map((template) => (
                   <Select.Option key={template.id} value={template.id}>

@@ -1,0 +1,25 @@
+{
+  "sidebar": {
+    "enterCurrent": "进入空间",
+    "recentSpaces": "最近空间"
+  },
+  "views": {
+    "overview": "概览",
+    "docs": "文档",
+    "canvas": "画布",
+    "context": "上下文",
+    "runs": "运行",
+    "members": "成员",
+    "settings": "设置"
+  },
+  "shell": {
+    "description": "当前空间的长期上下文与协作视角。",
+    "engine": "引擎",
+    "members": "成员",
+    "memory": "记忆",
+    "profiles": "画像",
+    "emptyDescription": "未找到该空间。",
+    "comingSoon": "该区域正在准备中。",
+    "workbenchHint": "在工作区中打开一个线程后，就可以带着这个空间的上下文继续和 Agent 协作。"
+  }
+}

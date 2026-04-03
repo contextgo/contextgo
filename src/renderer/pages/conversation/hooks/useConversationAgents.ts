@@ -17,7 +17,7 @@ import {
 } from '@/renderer/utils/model/availableAgents';
 
 export type UseConversationAgentsResult = {
-  /** CLI Agents (non-custom, non-preset backends, excluding gemini-CLI) */
+  /** CLI Agents (non-custom, non-preset backends) */
   cliAgents: AvailableAgent[];
   /** Preset assistants (isPreset === true) */
   presetAssistants: AvailableAgent[];
@@ -29,7 +29,6 @@ export type UseConversationAgentsResult = {
 
 /**
  * Hook to fetch available CLI agents and preset assistants for the conversation tab dropdown.
- * Filters out gemini-CLI agents (BUG-4: matches useGuidAgentSelection filter logic).
  */
 export const useConversationAgents = (): UseConversationAgentsResult => {
   const { assistants, localeKey } = useAssistantList();

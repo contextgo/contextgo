@@ -1,0 +1,25 @@
+{
+  "sidebar": {
+    "enterCurrent": "スペースに入る",
+    "recentSpaces": "最近のスペース"
+  },
+  "views": {
+    "overview": "概要",
+    "docs": "ドキュメント",
+    "canvas": "キャンバス",
+    "context": "コンテキスト",
+    "runs": "実行",
+    "members": "メンバー",
+    "settings": "設定"
+  },
+  "shell": {
+    "description": "現在のスペースにおける長期コンテキストと協業のビューです。",
+    "engine": "エンジン",
+    "members": "メンバー",
+    "memory": "メモリ",
+    "profiles": "プロフィール",
+    "emptyDescription": "スペースが見つかりません。",
+    "comingSoon": "このセクションは準備中です。",
+    "workbenchHint": "Workbench でスレッドを開くと、このスペースのコンテキストを使って Agent と連携できます。"
+  }
+}

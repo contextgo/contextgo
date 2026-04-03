@@ -10,14 +10,36 @@ const openDevToolsInvokeMock = vi.fn().mockResolvedValue(false);
 const isDevToolsOpenedInvokeMock = vi.fn().mockResolvedValue(false);
 const getPathInvokeMock = vi.fn().mockResolvedValue('/Users/bytedance');
 const devToolsStateChangedOnMock = vi.fn(() => vi.fn());
+const cloudGetStatusInvokeMock = vi.fn().mockResolvedValue({ success: false });
+const cloudStatusChangedOnMock = vi.fn(() => vi.fn());
+const spaceListInvokeMock = vi.fn();
+const spaceEnsureDefaultInvokeMock = vi.fn();
+const spaceCreateInvokeMock = vi.fn();
 const openTabMock = vi.fn();
 let authUserMock: AuthUser | null = {
   id: 'user-1',
   username: 'bytedance',
 };
 
+const defaultSpace = {
+  id: 'space-1',
+  name: 'My Space',
+  engine: 'affine',
+  createTime: 1,
+  modifyTime: 1,
+};
+
 vi.mock('@/common', () => ({
   ipcBridge: {
+    cloud: {
+      getStatus: { invoke: (...args: unknown[]) => cloudGetStatusInvokeMock(...args) },
+      statusChanged: { on: (...args: unknown[]) => cloudStatusChangedOnMock(...args) },
+    },
+    space: {
+      list: { invoke: (...args: unknown[]) => spaceListInvokeMock(...args) },
+      ensureDefault: { invoke: (...args: unknown[]) => spaceEnsureDefaultInvokeMock(...args) },
+      create: { invoke: (...args: unknown[]) => spaceCreateInvokeMock(...args) },
+    },
     application: {
       openDevTools: { invoke: (...args: unknown[]) => openDevToolsInvokeMock(...args) },
       isDevToolsOpened: { invoke: (...args: unknown[]) => isDevToolsOpenedInvokeMock(...args) },
@@ -139,6 +161,10 @@ const renderSider = (
 describe('Sider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    cloudGetStatusInvokeMock.mockResolvedValue({ success: false });
+    spaceListInvokeMock.mockResolvedValue([defaultSpace]);
+    spaceEnsureDefaultInvokeMock.mockResolvedValue(defaultSpace);
+    spaceCreateInvokeMock.mockResolvedValue({ ...defaultSpace, id: 'space-2', name: 'New Space 2' });
     authUserMock = {
       id: 'user-1',
       username: 'bytedance',
@@ -184,5 +210,37 @@ describe('Sider', () => {
     expect(await screen.findByText('Yeyi Tech')).toBeInTheDocument();
     expect(screen.getByText('yeyitech@gmail.com')).toBeInTheDocument();
     expect(screen.getByAltText('Yeyi Tech')).toBeInTheDocument();
+  });
+
+  it('shows the space card above the user card in workbench routes', async () => {
+    renderSider('/guid');
+
+    expect(await screen.findByText('My Space')).toBeInTheDocument();
+    expect(screen.getByText('common.space')).toBeInTheDocument();
+  });
+
+  it('switches the space card into a return-to-workbench action inside space routes', async () => {
+    renderSider('/space/space-1');
+
+    expect(await screen.findByRole('button', { name: /common\.returnToWorkbench/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'space.views.overview' })).toBeInTheDocument();
+  });
+
+  it('shows the final space shell navigation entries inside space routes', async () => {
+    renderSider('/space/space-1?view=context');
+
+    await screen.findByRole('button', { name: 'space.views.overview' });
+
+    for (const key of [
+      'space.views.overview',
+      'space.views.docs',
+      'space.views.canvas',
+      'space.views.context',
+      'space.views.runs',
+      'space.views.members',
+      'space.views.settings',
+    ]) {
+      expect(screen.getByRole('button', { name: key })).toBeInTheDocument();
+    }
   });
 });

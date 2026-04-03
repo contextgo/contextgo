@@ -1374,7 +1374,7 @@
     "notAvailable": "未設定",
     "infermeshAccess": "InferMesh 公式サイト",
     "infermeshAccessDesc": "ContextGo 側で必要なのは OAuth サインインと端末紐付けだけです。登録など追加のアカウント手続きが必要なら、InferMesh 公式サイトで続けてください。",
-    "openInfermesh": "InferMesh を開く"
+    "openInfermesh": "モデルセンター"
   },
   "commands": {
     "title": "Commands",

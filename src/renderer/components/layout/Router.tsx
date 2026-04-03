@@ -26,6 +26,7 @@ type LazyRouteLoader = () => Promise<{ default: React.ComponentType }>;
 const loadConversation = () => import('@renderer/pages/conversation');
 const loadConnectorsPage = () => import('@renderer/pages/connectors');
 const loadGuid = () => import('@renderer/pages/guid');
+const loadSpacePage = () => import('@renderer/pages/space');
 const loadGlobalCronSettings = () => import('@renderer/pages/cron/GlobalCronSettings');
 const loadAgentSettings = () => import('@renderer/pages/settings/AgentSettings');
 const loadAgentEntrySettings = () => import('@renderer/pages/settings/AgentSettings/AgentEntrySettings');
@@ -274,7 +275,7 @@ const RoutedPanels: React.FC<{
           path='/connectors/:connectorId'
           element={withRouteFallback(loadConnectorsPage, '/connectors/:connectorId')}
         />
-        <Route path='/space/:spaceId' element={<Navigate to='/guid' replace />} />
+        <Route path='/space/:spaceId' element={withRouteFallback(loadSpacePage, '/space/:spaceId')} />
         <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
         <Route path='/conversation/:id' element={withRouteFallback(loadConversation, '/conversation/:id')} />
         <Route path='/agents' element={withRouteFallback(loadAgentSettings, '/agents')} />

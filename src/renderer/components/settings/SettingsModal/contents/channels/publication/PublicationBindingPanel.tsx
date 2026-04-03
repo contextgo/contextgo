@@ -321,6 +321,29 @@ function matchesBindingSession(binding: IChannelBinding, session: IChannelActive
   return session.audienceKey === binding.scopeKey;
 }
 
+function collectPublishedSessions(
+  bindings: IChannelBinding[],
+  sessions: IChannelActiveSessionEntry[]
+): IChannelActiveSessionEntry[] {
+  if (bindings.length === 0 || sessions.length === 0) {
+    return [];
+  }
+
+  const seenSessionIds = new Set<string>();
+
+  return sessions.filter((session) => {
+    if (seenSessionIds.has(session.id)) {
+      return false;
+    }
+
+    const matched = bindings.some((binding) => matchesBindingSession(binding, session));
+    if (matched) {
+      seenSessionIds.add(session.id);
+    }
+    return matched;
+  });
+}
+
 function buildFallbackAudience(binding: IChannelBinding, t: TranslationFn): IChannelAudienceEntry {
   return {
     key: binding.scopeKey || `${binding.connectorId}:default`,
@@ -454,6 +477,10 @@ const PublicationBindingPanel: React.FC = () => {
 
   const { durableBindings } = useMemo(() => splitBindingsByLifetime(selectedBindings), [selectedBindings]);
   const selectedPublishedCount = durableBindings.length;
+  const selectedPublishedSessions = useMemo(
+    () => collectPublishedSessions(durableBindings, selectedSessions),
+    [durableBindings, selectedSessions]
+  );
 
   const durableScopeOptions = useMemo<BindingScopeOption[]>(
     () => [
@@ -680,11 +707,6 @@ const PublicationBindingPanel: React.FC = () => {
         </div>
       ) : hasChannelAccounts ? (
         <div className='space-y-12px'>
-          <div className='flex justify-end'>
-            <Button icon={<Refresh theme='outline' size='16' />} onClick={() => void loadCatalog()} loading={loading}>
-              {t('common.refresh')}
-            </Button>
-          </div>
 
           {publicationIntent ? (
             <div className='border border-[rgba(var(--primary-6),0.22)] bg-[rgba(var(--primary-6),0.06)] rd-12px p-12px space-y-8px'>
@@ -738,6 +760,10 @@ const PublicationBindingPanel: React.FC = () => {
                   const channelAccountSessions = sessions.filter(
                     (session) => getSessionChannelAccountId(session) === channelAccount.id
                   );
+                  const channelAccountPublishedSessions = collectPublishedSessions(
+                    channelAccountBindingSummary.durableBindings,
+                    channelAccountSessions
+                  );
 
                   return (
                     <Button
@@ -756,12 +782,6 @@ const PublicationBindingPanel: React.FC = () => {
                               {channelAccount.platform}
                             </Tag>
                           </div>
-                          <div className={styles.selectorDescription}>
-                            {t('settings.channels.publication.connectorHint', {
-                              platform: channelAccount.platform,
-                              name: channelAccount.name,
-                            })}
-                          </div>
                           <div className={styles.selectorStats}>
                             <Tag className={styles.pillTag}>
                               {t('settings.channels.publication.summaryPublished')}: {channelAccountBindingSummary.durableBindings.length}
@@ -770,7 +790,7 @@ const PublicationBindingPanel: React.FC = () => {
                               {t('settings.channels.publication.summaryAudiences')}: {channelAccountAudiences.length}
                             </Tag>
                             <Tag className={styles.pillTag}>
-                              {t('settings.channels.publication.summaryConversations')}: {channelAccountSessions.length}
+                              {t('settings.channels.publication.summaryConversations')}: {channelAccountPublishedSessions.length}
                             </Tag>
                           </div>
                         </div>
@@ -804,7 +824,7 @@ const PublicationBindingPanel: React.FC = () => {
                         {t('settings.channels.publication.summaryAudiences')}: {selectedAudiences.length}
                       </Tag>
                       <Tag className={styles.pillTag}>
-                        {t('settings.channels.publication.summaryConversations')}: {selectedSessions.length}
+                        {t('settings.channels.publication.summaryConversations')}: {selectedPublishedSessions.length}
                       </Tag>
                     </div>
                   </div>

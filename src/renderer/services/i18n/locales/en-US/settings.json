@@ -1368,7 +1368,7 @@
     "notAvailable": "Not available",
     "infermeshAccess": "InferMesh website",
     "infermeshAccessDesc": "ContextGo only needs the OAuth login and device binding. If you still need to register or complete account setup, continue on the InferMesh website.",
-    "openInfermesh": "Open InferMesh"
+    "openInfermesh": "Model Center"
   },
   "commands": {
     "title": "Commands",

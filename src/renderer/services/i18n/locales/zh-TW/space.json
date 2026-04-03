@@ -1,0 +1,25 @@
+{
+  "sidebar": {
+    "enterCurrent": "進入空間",
+    "recentSpaces": "最近空間"
+  },
+  "views": {
+    "overview": "概覽",
+    "docs": "文件",
+    "canvas": "畫布",
+    "context": "上下文",
+    "runs": "執行",
+    "members": "成員",
+    "settings": "設定"
+  },
+  "shell": {
+    "description": "目前空間的長期上下文與協作視角。",
+    "engine": "引擎",
+    "members": "成員",
+    "memory": "記憶",
+    "profiles": "畫像",
+    "emptyDescription": "找不到該空間。",
+    "comingSoon": "此區域正在準備中。",
+    "workbenchHint": "在工作台中開啟一個執行緒後，就能帶著這個空間的上下文繼續和 Agent 協作。"
+  }
+}

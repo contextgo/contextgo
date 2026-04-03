@@ -19,7 +19,7 @@ import { JSONRPC_VERSION } from '@/common/types/acpTypes';
  * - Windows: %APPDATA%\codex\config.toml or ~/.codex/config.toml
  * - macOS/Linux: ~/.codex/config.toml
  */
-function getCodexConfigPath(): string {
+export function getCodexConfigPath(): string {
   if (process.platform === 'win32') {
     // Windows: try APPDATA first, then fallback to home directory
     const appData = process.env.APPDATA;

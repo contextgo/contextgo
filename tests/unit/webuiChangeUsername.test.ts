@@ -133,6 +133,12 @@ describe('WebuiService.changeUsername', () => {
     const updateUsernameMock = vi.fn();
     const invalidateAllTokensMock = vi.fn();
 
+    vi.doMock('@process/utils/initStorage', () => ({
+      ProcessConfig: {
+        get: vi.fn(async () => undefined),
+        set: vi.fn(async () => undefined),
+      },
+    }));
     vi.doMock('@process/webserver/auth/repository/UserRepository', () => ({
       UserRepository: {
         getSystemUser: vi.fn(() => makeAdminUser('admin')),
@@ -159,6 +165,12 @@ describe('WebuiService.changeUsername', () => {
   });
 
   it('throws when username fails validation', async () => {
+    vi.doMock('@process/utils/initStorage', () => ({
+      ProcessConfig: {
+        get: vi.fn(async () => undefined),
+        set: vi.fn(async () => undefined),
+      },
+    }));
     vi.doMock('@process/webserver/auth/repository/UserRepository', () => ({
       UserRepository: {
         getSystemUser: vi.fn(() => makeAdminUser('admin')),
@@ -187,6 +199,12 @@ describe('WebuiService.changeUsername', () => {
   it('throws when username is already taken by another user', async () => {
     const otherUser = { ...makeAdminUser('taken'), id: 'other-user-id' };
 
+    vi.doMock('@process/utils/initStorage', () => ({
+      ProcessConfig: {
+        get: vi.fn(async () => undefined),
+        set: vi.fn(async () => undefined),
+      },
+    }));
     vi.doMock('@process/webserver/auth/repository/UserRepository', () => ({
       UserRepository: {
         getSystemUser: vi.fn(() => makeAdminUser('admin')),
@@ -213,6 +231,12 @@ describe('WebuiService.changeUsername', () => {
     const updateUsernameMock = vi.fn();
     const invalidateAllTokensMock = vi.fn();
 
+    vi.doMock('@process/utils/initStorage', () => ({
+      ProcessConfig: {
+        get: vi.fn(async () => undefined),
+        set: vi.fn(async () => undefined),
+      },
+    }));
     vi.doMock('@process/webserver/auth/repository/UserRepository', () => ({
       UserRepository: {
         getSystemUser: vi.fn(() => makeAdminUser('admin')),

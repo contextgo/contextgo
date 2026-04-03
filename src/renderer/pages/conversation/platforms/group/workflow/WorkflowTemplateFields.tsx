@@ -9,6 +9,7 @@ import type { WorkflowGroupReviewMode } from '@/common/config/storage';
 import { Input, InputNumber, Select, Typography } from '@arco-design/web-react';
 import React from 'react';
 import type { TFunction } from 'i18next';
+import { GROUP_MODAL_FIELD_CLASS_NAME, GROUP_MODAL_SELECT_CLASS_NAME } from '../GroupModalShared';
 
 export type WorkflowTemplateFieldValues = {
   maxIterations: number;
@@ -50,6 +51,7 @@ const WorkflowTemplateFields: React.FC<WorkflowTemplateFieldsProps> = ({ templat
                 max={field.constraint.max}
                 step={field.constraint.step}
                 precision={field.key === 'scoreTarget' ? 1 : 0}
+                className={GROUP_MODAL_FIELD_CLASS_NAME}
                 onChange={(nextValue) => {
                   onChange(
                     field.key,
@@ -70,6 +72,7 @@ const WorkflowTemplateFields: React.FC<WorkflowTemplateFieldsProps> = ({ templat
                 value={values[field.key]}
                 onChange={(nextValue) => onChange(field.key, nextValue)}
                 placeholder={field.placeholder || templateDefinition.defaults.artifactPath}
+                className={GROUP_MODAL_FIELD_CLASS_NAME}
               />
               <Typography.Text type='secondary'>{renderFieldHint(field, t)}</Typography.Text>
             </div>
@@ -82,6 +85,7 @@ const WorkflowTemplateFields: React.FC<WorkflowTemplateFieldsProps> = ({ templat
             <Select
               value={values.reviewMode}
               onChange={(nextValue) => onChange(field.key, nextValue as WorkflowGroupReviewMode)}
+              className={`${GROUP_MODAL_SELECT_CLASS_NAME} ${GROUP_MODAL_FIELD_CLASS_NAME}`}
             >
               {field.options.map((option) => (
                 <Select.Option key={option.value} value={option.value}>

@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { useSettingsViewMode } from '../../settingsViewContext';
-import CloudSyncSection from './CloudSyncSection';
 import DevSettings from './DevSettings';
 import DirInputItem from './DirInputItem';
 import PreferenceRow from './PreferenceRow';
@@ -210,14 +209,14 @@ const SystemModalContent: React.FC = () => {
                   handleNotificationEnabledChange(false);
                 }
               }}
-              className='[&_.arco-collapse-item]:!border-none [&_.arco-collapse-item-header]:!pl-0 [&_.arco-collapse-item-header]:!pr-12px [&_.arco-collapse-item-header-title]:!flex-1 [&_.arco-collapse-item-content-box]:!px-0 [&_.arco-collapse-item-content-box]:!pb-0'
+              className='[&_.arco-collapse-item]:!border-none [&_.arco-collapse-item-header]:!px-12px [&_.arco-collapse-item-header-title]:!flex-1 [&_.arco-collapse-item-content-box]:!px-0 [&_.arco-collapse-item-content-box]:!pb-0'
             >
               <Collapse.Item
                 name='notification'
                 showExpandIcon={false}
                 header={
                   <div className='flex flex-1 items-center justify-between gap-24px w-full min-w-0'>
-                    <span className='text-14px text-2 ml-12px'>{t('settings.notification')}</span>
+                    <span className='text-14px text-2'>{t('settings.notification')}</span>
                     <Switch
                       checked={notificationEnabled}
                       onClick={(e) => e.stopPropagation()}
@@ -226,7 +225,7 @@ const SystemModalContent: React.FC = () => {
                   </div>
                 }
               >
-                <div className='pl-12px'>
+                <div>
                   <PreferenceRow label={t('settings.cronNotificationEnabled')}>
                     <Switch
                       checked={cronNotificationEnabled}
@@ -270,9 +269,6 @@ const SystemModalContent: React.FC = () => {
               )}
             </Form>
           </div>
-
-          <CloudSyncSection />
-
           <VoiceInputSection />
 
           {/* Developer settings: DevTools + CDP (only visible in dev mode) */}

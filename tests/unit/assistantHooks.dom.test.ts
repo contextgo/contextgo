@@ -259,12 +259,12 @@ describe('useAssistantBackends', () => {
     const { result } = renderHook(() => useAssistantBackends());
 
     await waitFor(() => {
-      expect(result.current.availableBackends.size).toBe(3);
+      expect(result.current.availableBackends.size).toBe(2);
     });
 
     expect(result.current.availableBackends.has('gemini')).toBe(true);
     expect(result.current.availableBackends.has('claude')).toBe(true);
-    expect(result.current.availableBackends.has('qwen')).toBe(true);
+    expect(result.current.availableBackends.has('qwen')).toBe(false);
   });
 
   it('falls back to default when getAvailableAgents fails', async () => {

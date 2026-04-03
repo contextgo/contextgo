@@ -1,0 +1,25 @@
+{
+  "sidebar": {
+    "enterCurrent": "Alana Gir",
+    "recentSpaces": "Son Alanlar"
+  },
+  "views": {
+    "overview": "Genel Bakis",
+    "docs": "Dokumanlar",
+    "canvas": "Tuval",
+    "context": "Baglam",
+    "runs": "Calismalar",
+    "members": "Uyeler",
+    "settings": "Ayarlar"
+  },
+  "shell": {
+    "description": "Mevcut alan icin uzun vadeli baglam ve is birligi gorunumu.",
+    "engine": "Motor",
+    "members": "Uyeler",
+    "memory": "Bellekler",
+    "profiles": "Profiller",
+    "emptyDescription": "Alan bulunamadi.",
+    "comingSoon": "Bu bolum hazirlaniyor.",
+    "workbenchHint": "Workbench icinde bir is parcacigi acarak bu alanin baglamiyla Agent'larla calismaya devam edebilirsiniz."
+  }
+}

@@ -1374,7 +1374,7 @@
     "notAvailable": "暫無",
     "infermeshAccess": "InferMesh 官網",
     "infermeshAccessDesc": "ContextGo 這裡只需要 OAuth 登入和裝置綁定。如果你還需要註冊或補完帳號流程，再去 InferMesh 官網繼續。",
-    "openInfermesh": "打開 InferMesh"
+    "openInfermesh": "模型中心"
   },
   "commands": {
     "title": "Commands",
