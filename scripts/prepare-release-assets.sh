@@ -87,17 +87,39 @@ echo "==> Writing architecture-specific updater metadata ..."
 [ -n "$MAC_ARM64_LATEST" ]  && cp -f "$MAC_ARM64_LATEST"  "$OUTPUT_DIR/latest-arm64-mac.yml"
 
 # ---------------------------------------------------------------------------
-# 5) Hard validation for required updater metadata
+# 5) Validate updater metadata for the platform/arch assets that were built
 # ---------------------------------------------------------------------------
 echo "==> Validating required metadata ..."
 
 MISSING=0
-for required in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml; do
-  if [ ! -f "$OUTPUT_DIR/$required" ]; then
-    echo "::error::Missing required updater metadata: $required"
+
+has_output_asset() {
+  local pattern="$1"
+  find "$OUTPUT_DIR" -maxdepth 1 -type f | grep -Eq "$pattern"
+}
+
+require_metadata_if_asset_exists() {
+  local asset_pattern="$1"
+  local metadata_file="$2"
+  local description="$3"
+
+  if ! has_output_asset "$asset_pattern"; then
+    echo "INFO: skipping ${description} metadata check (no matching asset)"
+    return
+  fi
+
+  if [ ! -f "$OUTPUT_DIR/$metadata_file" ]; then
+    echo "::error::Missing required updater metadata for ${description}: $metadata_file"
     MISSING=1
   fi
-done
+}
+
+require_metadata_if_asset_exists '/ContextGo-.*-(win|windows)-x64\.(exe|msi|zip)$' 'latest.yml' 'windows/x64'
+require_metadata_if_asset_exists '/ContextGo-.*-(win|windows)-arm64\.(exe|msi|zip)$' 'latest-win-arm64.yml' 'windows/arm64'
+require_metadata_if_asset_exists '/ContextGo-.*-(mac|macos)-x64\.(dmg|zip)$' 'latest-mac.yml' 'macos/x64'
+require_metadata_if_asset_exists '/ContextGo-.*-(mac|macos)-arm64\.(dmg|zip)$' 'latest-arm64-mac.yml' 'macos/arm64'
+require_metadata_if_asset_exists '/ContextGo-.*-linux-x64\.deb$' 'latest-linux.yml' 'linux/x64'
+require_metadata_if_asset_exists '/ContextGo-.*-linux-arm64\.deb$' 'latest-linux-arm64.yml' 'linux/arm64'
 
 if [ "$MISSING" -ne 0 ]; then
   exit 1

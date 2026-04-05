@@ -239,6 +239,34 @@ function ensureReleaseRepositoryEnv() {
   process.env.CONTEXTGO_RELEASE_NAME = repo;
 }
 
+function configureMacSigningEnv() {
+  if (process.platform !== 'darwin') {
+    return;
+  }
+
+  const explicitIdentity =
+    process.env.CSC_NAME?.trim() ||
+    process.env.identity?.trim() ||
+    process.env.IDENTITY?.trim() ||
+    process.env.CSC_LINK?.trim();
+
+  if (explicitIdentity) {
+    process.env.CSC_NAME = explicitIdentity;
+    process.env.identity = explicitIdentity;
+    process.env.CSC_IDENTITY_AUTO_DISCOVERY = process.env.CSC_IDENTITY_AUTO_DISCOVERY || 'false';
+
+    console.log(`🔐 Using explicit macOS signing identity: ${explicitIdentity}`);
+    if (/Apple Development:/i.test(explicitIdentity)) {
+      console.log('⚠️  Apple Development identity is only suitable for local validation. Public releases should use Developer ID Application.');
+    }
+    return;
+  }
+
+  process.env.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
+  console.log('🔐 No explicit macOS signing identity configured; disabled keychain auto-discovery for deterministic packaging.');
+  console.log('   To produce a public macOS release, set CSC_NAME/IDENTITY to a Developer ID Application certificate.');
+}
+
 function compileMacVoiceInputHelper(targetArchs) {
   if (process.platform !== 'darwin') return;
   if (!fs.existsSync(MAC_NATIVE_HELPER_SOURCE)) {
@@ -456,6 +484,7 @@ const shouldBuildMacArtifacts =
 
 try {
   ensureReleaseRepositoryEnv();
+  configureMacSigningEnv();
 
   // 1. Ensure package.json main entry is correct for electron-vite
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));

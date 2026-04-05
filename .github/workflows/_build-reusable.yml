@@ -687,8 +687,10 @@ jobs:
             out/*.msi
             out/*.dmg
             out/*.deb
-            out/ContextGo-*-win32-*.zip
+            out/ContextGo-*-win-*.zip
+            out/ContextGo-*-windows-*.zip
             out/ContextGo-*-mac-*.zip
+            out/ContextGo-*-macos-*.zip
             out/*.yml
           if-no-files-found: warn
           retention-days: 7
