@@ -51,7 +51,6 @@ describe('DiscordAdapter', () => {
     expect(message?.content.text).toBe('hello there');
   });
 
-
   it('maps Discord thread messages to parent transport chat and thread peer key', () => {
     const message = toUnifiedIncomingMessage(
       {

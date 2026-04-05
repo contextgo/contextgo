@@ -131,7 +131,7 @@ const resolveBlockSuiteDistPath = (source: string, importer?: string) => {
     candidatePaths.push(resolve(packageDir, 'dist', 'index.js'));
   }
 
-  return candidatePaths.find(candidate => existsSync(candidate)) ?? null;
+  return candidatePaths.find((candidate) => existsSync(candidate)) ?? null;
 };
 
 function blockSuiteDistResolvePlugin() {
@@ -150,7 +150,7 @@ function blockSuiteDistResolvePlugin() {
 
 const bunPackagesDir = resolve('node_modules/.bun');
 const findBunPackageDir = (prefix: string, packageSubpath: string) => {
-  const entry = readdirSync(bunPackagesDir).find(name => name.startsWith(prefix));
+  const entry = readdirSync(bunPackagesDir).find((name) => name.startsWith(prefix));
   if (!entry) {
     return null;
   }
@@ -164,7 +164,8 @@ const preactSignalsCorePackagePath = findBunPackageDir('@blocksuite+global@', '@
 
 const extendShimPath = resolve('src/common/utils/shims/extend.js');
 const extendShimSource = readFileSync(extendShimPath, 'utf8');
-const isExtendModule = (id: string) => id.includes('/node_modules/.bun/extend@') && id.endsWith('/node_modules/extend/index.js');
+const isExtendModule = (id: string) =>
+  id.includes('/node_modules/.bun/extend@') && id.endsWith('/node_modules/extend/index.js');
 
 const shouldTranspileBlockSuiteModule = (id: string) => {
   if (!id.includes('node_modules')) return false;
@@ -180,10 +181,7 @@ function blockSuiteSyntaxCompatPlugin() {
       const [cleanId] = id.split('?');
 
       if (source.includes("from 'extend'")) {
-        source = source.replaceAll(
-          "from 'extend'",
-          "from '/src/common/utils/shims/extend.js?contextgo-shim=1'"
-        );
+        source = source.replaceAll("from 'extend'", "from '/src/common/utils/shims/extend.js?contextgo-shim=1'");
       }
 
       if (isExtendModule(cleanId)) {

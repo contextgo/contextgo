@@ -424,7 +424,11 @@ describe('WebuiModalContent', () => {
 
     render(<WebuiModalContent />);
 
-    expect(await screen.findByText('Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.'
+      )
+    ).toBeInTheDocument();
     expect(screen.queryByText('http://localhost:3000')).not.toBeInTheDocument();
   });
 
@@ -485,6 +489,3 @@ describe('WebuiModalContent', () => {
     expect(screen.queryByText('Running')).not.toBeInTheDocument();
   });
 });
-
-
-

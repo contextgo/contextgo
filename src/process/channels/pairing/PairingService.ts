@@ -37,7 +37,8 @@ function readPairingPeerMetadata(metadata: Record<string, unknown> | undefined):
     platformChatId:
       typeof metadata.platformChatId === 'string' && metadata.platformChatId ? metadata.platformChatId : undefined,
     peerScope: metadata.peerScope === 'thread' || metadata.peerScope === 'chat' ? metadata.peerScope : undefined,
-    parentChatId: typeof metadata.parentChatId === 'string' && metadata.parentChatId ? metadata.parentChatId : undefined,
+    parentChatId:
+      typeof metadata.parentChatId === 'string' && metadata.parentChatId ? metadata.parentChatId : undefined,
     threadId: typeof metadata.threadId === 'string' && metadata.threadId ? metadata.threadId : undefined,
     remoteChatType:
       typeof metadata.remoteChatType === 'string' && metadata.remoteChatType ? metadata.remoteChatType : undefined,
@@ -369,7 +370,7 @@ export class PairingService {
               connectorId: connector.id,
               remoteUserId:
                 remoteChatType === 'group'
-                  ? inheritedIdentity?.remoteUserId ?? params.platformUserId
+                  ? (inheritedIdentity?.remoteUserId ?? params.platformUserId)
                   : params.platformUserId,
               remoteChatId,
               platformChatId,

@@ -691,8 +691,7 @@ export class ChannelRouteResolver {
       });
       const nextIdentity: IRemoteIdentity = {
         ...byChat.data,
-        remoteUserId:
-          resolvedBindingType === 'group' ? (byChat.data.remoteUserId ?? platformUserId) : platformUserId,
+        remoteUserId: resolvedBindingType === 'group' ? (byChat.data.remoteUserId ?? platformUserId) : platformUserId,
         platformChatId: resolvedPlatformChatId,
         remoteChatType: normalizedChatType ?? byChat.data.remoteChatType,
         peerScope: peerScope ?? byChat.data.peerScope ?? normalizedPeerScope,
