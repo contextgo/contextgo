@@ -1,7 +1,10 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import { existsSync, readFileSync, readdirSync, realpathSync } from 'fs';
 import { resolve } from 'path';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 import UnoCSS from 'unocss/vite';
+import { transformWithEsbuild } from 'vite';
 import unoConfig from './uno.config.ts';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
@@ -29,6 +32,175 @@ function iconParkPlugin() {
       );
       if (transformedSource !== source) return { code: transformedSource, map: null } as { code: string; map: null };
       return null;
+    },
+  };
+}
+
+const blockSuiteImportPattern = /^@blocksuite\/([^/]+)(\/.*)?$/;
+const blockSuitePackageExportsCache = new Map<string, Map<string, string>>();
+
+const stripQuery = (id: string) => id.split('?')[0];
+
+const findNearestNodeModulesRoot = (id?: string) => {
+  if (!id) {
+    return null;
+  }
+
+  const match = stripQuery(id).match(/^(.*[\/]node_modules)(?:[\/].*)$/);
+  return match?.[1] ?? null;
+};
+
+const findBlockSuitePackageDir = (packageName: string, importer?: string) => {
+  const importerNodeModulesRoot = findNearestNodeModulesRoot(importer);
+  const candidates = [
+    importerNodeModulesRoot ? resolve(importerNodeModulesRoot, '@blocksuite', packageName) : null,
+    resolve('node_modules', '@blocksuite', packageName),
+  ].filter((value): value is string => Boolean(value));
+
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) {
+      continue;
+    }
+
+    try {
+      return realpathSync(candidate);
+    } catch {
+      return candidate;
+    }
+  }
+
+  return null;
+};
+
+const getBlockSuitePackageExports = (packageDir: string) => {
+  const cached = blockSuitePackageExportsCache.get(packageDir);
+  if (cached) {
+    return cached;
+  }
+
+  const packageJsonPath = resolve(packageDir, 'package.json');
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+    exports?: Record<string, string | { default?: string }>;
+  };
+  const exportMap = new Map<string, string>();
+
+  Object.entries(packageJson.exports ?? {}).forEach(([key, value]) => {
+    if (typeof value === 'string') {
+      exportMap.set(key, value);
+      return;
+    }
+
+    if (typeof value?.default === 'string') {
+      exportMap.set(key, value.default);
+    }
+  });
+
+  blockSuitePackageExportsCache.set(packageDir, exportMap);
+  return exportMap;
+};
+
+const resolveBlockSuiteDistPath = (source: string, importer?: string) => {
+  const match = source.match(blockSuiteImportPattern);
+  if (!match) {
+    return null;
+  }
+
+  const [, packageName, rawSubpath] = match;
+  const packageDir = findBlockSuitePackageDir(packageName, importer);
+  if (!packageDir) {
+    return null;
+  }
+
+  const exportMap = getBlockSuitePackageExports(packageDir);
+  const exportKey = rawSubpath ? `.${rawSubpath}` : '.';
+  const exportTarget = exportMap.get(exportKey);
+  const candidatePaths: string[] = [];
+
+  if (exportTarget) {
+    const distTarget = exportTarget.startsWith('./src/')
+      ? exportTarget.replace(/^\.\/src\//, './dist/').replace(/\.tsx?$/, '.js')
+      : exportTarget;
+    candidatePaths.push(resolve(packageDir, distTarget));
+  }
+
+  if (rawSubpath) {
+    const relativeSubpath = rawSubpath.slice(1);
+    candidatePaths.push(resolve(packageDir, 'dist', `${relativeSubpath}.js`));
+    candidatePaths.push(resolve(packageDir, 'dist', relativeSubpath, 'index.js'));
+  } else {
+    candidatePaths.push(resolve(packageDir, 'dist', 'index.js'));
+  }
+
+  return candidatePaths.find(candidate => existsSync(candidate)) ?? null;
+};
+
+function blockSuiteDistResolvePlugin() {
+  return {
+    name: 'vite-plugin-blocksuite-dist-resolve',
+    enforce: 'pre' as const,
+    resolveId(source: string, importer?: string) {
+      if (!source.startsWith('@blocksuite/')) {
+        return null;
+      }
+
+      return resolveBlockSuiteDistPath(source, importer);
+    },
+  };
+}
+
+const bunPackagesDir = resolve('node_modules/.bun');
+const findBunPackageDir = (prefix: string, packageSubpath: string) => {
+  const entry = readdirSync(bunPackagesDir).find(name => name.startsWith(prefix));
+  if (!entry) {
+    return null;
+  }
+
+  const candidate = resolve(bunPackagesDir, entry, 'node_modules', packageSubpath);
+  return existsSync(candidate) ? realpathSync(candidate) : null;
+};
+
+const litPackagePath = findBunPackageDir('@blocksuite+global@', 'lit');
+const preactSignalsCorePackagePath = findBunPackageDir('@blocksuite+global@', '@preact/signals-core');
+
+const extendShimPath = resolve('src/common/utils/shims/extend.js');
+const extendShimSource = readFileSync(extendShimPath, 'utf8');
+const isExtendModule = (id: string) => id.includes('/node_modules/.bun/extend@') && id.endsWith('/node_modules/extend/index.js');
+
+const shouldTranspileBlockSuiteModule = (id: string) => {
+  if (!id.includes('node_modules')) return false;
+
+  return id.includes('/node_modules/.bun/@blocksuite+') || id.includes('/node_modules/@blocksuite/');
+};
+
+function blockSuiteSyntaxCompatPlugin() {
+  return {
+    name: 'vite-plugin-blocksuite-syntax-compat',
+    enforce: 'pre' as const,
+    async transform(source: string, id: string) {
+      const [cleanId] = id.split('?');
+
+      if (source.includes("from 'extend'")) {
+        source = source.replaceAll(
+          "from 'extend'",
+          "from '/src/common/utils/shims/extend.js?contextgo-shim=1'"
+        );
+      }
+
+      if (isExtendModule(cleanId)) {
+        return {
+          code: extendShimSource,
+          map: null as null,
+        };
+      }
+
+      if (!shouldTranspileBlockSuiteModule(cleanId)) return null;
+      if (!cleanId.endsWith('.js') && !cleanId.endsWith('.mjs') && !cleanId.endsWith('.ts')) return null;
+
+      return transformWithEsbuild(source, cleanId, {
+        loader: cleanId.endsWith('.ts') ? 'ts' : 'js',
+        sourcemap: false,
+        target: 'es2022',
+      });
     },
   };
 }
@@ -155,12 +327,19 @@ export default defineConfig(({ mode }) => {
           '@worker': resolve('src/process/worker'),
           // Force ESM version of streamdown
           streamdown: resolve('node_modules/streamdown/dist/index.js'),
+          // BlockSuite mindmap imports expect a default export shape that esbuild does not infer.
+          'simple-xml-to-json': resolve('src/common/utils/shims/simpleXmlToJson.js'),
+          ...(litPackagePath ? { lit: litPackagePath } : {}),
+          ...(preactSignalsCorePackagePath ? { '@preact/signals-core': preactSignalsCorePackagePath } : {}),
         },
         extensions: ['.ts', '.tsx', '.js', '.jsx', '.css'],
         dedupe: ['react', 'react-dom', 'react-router-dom'],
       },
       plugins: [
+        blockSuiteDistResolvePlugin(),
+        blockSuiteSyntaxCompatPlugin(),
         UnoCSS(unoConfig),
+        vanillaExtractPlugin(),
         iconParkPlugin(),
         ...(enableSentrySourceMaps ? [sentryVitePlugin(sentryPluginOptions)] : []),
       ],
@@ -216,7 +395,24 @@ export default defineConfig(({ mode }) => {
         global: 'globalThis',
       },
       optimizeDeps: {
-        exclude: ['electron'],
+        exclude: [
+          'electron',
+          '@blocksuite/affine/effects',
+          '@blocksuite/affine/ext-loader',
+          '@blocksuite/affine/extensions/store',
+          '@blocksuite/affine/extensions/view',
+          '@blocksuite/affine/global/lit',
+          '@blocksuite/affine/model',
+          '@blocksuite/affine/shared/services',
+          '@blocksuite/affine/std',
+          '@blocksuite/affine/std/gfx',
+          '@blocksuite/affine/store',
+          '@blocksuite/affine/store/test',
+          'lit',
+          'lit/directives/keyed.js',
+          'lit/directives/when.js',
+          '@preact/signals-core',
+        ],
         include: [
           'react',
           'react-dom',

@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from '@process/channels/types';
+import type { IChannelAuthorizedTarget, IChannelPairingRequest, IChannelPluginStatus } from '@process/channels/types';
 import { channel } from '@/common/adapter/ipcBridge';
 import { Button, Empty, Input, Message, Spin, Switch, Tooltip } from '@arco-design/web-react';
-import { CheckOne, CloseOne, Copy, Delete, Refresh } from '@icon-park/react';
+import { CheckOne, CloseOne, Copy, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AuthorizedTargetList } from './AuthorizedTargets';
 import { FormPreferenceRow, FormSectionHeader, formLayoutStyles } from './FormLayout';
 
 type SlackConfigDraft = {
@@ -44,7 +45,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
   const [pairingLoading, setPairingLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
-  const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
+  const [authorizedTargets, setAuthorizedTargets] = useState<IChannelAuthorizedTarget[]>([]);
 
   const loadPendingPairings = useCallback(async () => {
     setPairingLoading(true);
@@ -64,19 +65,19 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
     }
   }, [channelAccountId]);
 
-  const loadAuthorizedUsers = useCallback(async () => {
+  const loadAuthorizedTargets = useCallback(async () => {
     setUsersLoading(true);
     try {
-      const result = await channel.getAuthorizedUsers.invoke();
+      const result = await channel.getAuthorizedTargets.invoke();
       if (result.success && result.data) {
-        setAuthorizedUsers(
+        setAuthorizedTargets(
           result.data.filter(
             (item) => item.platformType === 'slack' && (!item.connectorId || item.connectorId === channelAccountId)
           )
         );
       }
     } catch (error) {
-      console.error('[SlackConfig] Failed to load authorized users:', error);
+      console.error('[SlackConfig] Failed to load authorized targets:', error);
     } finally {
       setUsersLoading(false);
     }
@@ -84,8 +85,8 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
 
   useEffect(() => {
     void loadPendingPairings();
-    void loadAuthorizedUsers();
-  }, [loadAuthorizedUsers, loadPendingPairings]);
+    void loadAuthorizedTargets();
+  }, [loadAuthorizedTargets, loadPendingPairings]);
 
   const emitConfigChange = useCallback(
     (nextConfig: SlackConfigDraft) => {
@@ -108,16 +109,14 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
 
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'slack' || (user.connectorId && user.connectorId !== channelAccountId)) return;
-      setAuthorizedUsers((prev) => {
-        const exists = prev.some((item) => item.id === user.id);
-        if (exists) return prev;
-        return [user, ...prev];
-      });
+      if (user.platformType !== 'slack' || (user.connectorId && user.connectorId !== channelAccountId)) {
+        return;
+      }
+      void loadAuthorizedTargets();
       setPendingPairings((prev) => prev.filter((item) => item.platformUserId !== user.platformUserId));
     });
     return () => unsubscribe();
-  }, [channelAccountId]);
+  }, [channelAccountId, loadAuthorizedTargets]);
 
   const handleBotTokenChange = (value: string) => {
     setBotToken(value);
@@ -225,7 +224,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
       if (result.success) {
         Message.success(t('settings.assistant.pairingApproved', 'Pairing approved'));
         await loadPendingPairings();
-        await loadAuthorizedUsers();
+        await loadAuthorizedTargets();
       } else {
         Message.error(result.msg || t('settings.assistant.approveFailed', 'Failed to approve pairing'));
       }
@@ -252,10 +251,10 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
     try {
       const result = await channel.revokeUser.invoke({ userId });
       if (result.success) {
-        Message.success(t('settings.assistant.userRevoked', 'User access revoked'));
-        await loadAuthorizedUsers();
+        Message.success(t('settings.assistant.userRevoked', 'Target authorization revoked'));
+        await loadAuthorizedTargets();
       } else {
-        Message.error(result.msg || t('settings.assistant.revokeFailed', 'Failed to revoke user'));
+        Message.error(result.msg || t('settings.assistant.revokeFailed', 'Failed to revoke authorization'));
       }
     } catch (error: any) {
       Message.error(error.message);
@@ -267,11 +266,9 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
     Message.success(t('common.copySuccess', 'Copied'));
   };
 
-  const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString();
-
   const getRemainingTime = (expiresAt: number) => `${Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000 / 60))} min`;
 
-  const configLocked = authorizedUsers.length > 0;
+  const configLocked = authorizedTargets.length > 0;
 
   return (
     <div className={formLayoutStyles.formRoot}>
@@ -287,7 +284,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
             <Tooltip
               content={t(
                 'settings.assistant.tokenLocked',
-                'Please close the Channel and delete all authorized users before modifying the configuration'
+                'Please close the Channel and delete all authorized targets before modifying the configuration'
               )}
             >
               <span>
@@ -325,7 +322,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
             <Tooltip
               content={t(
                 'settings.assistant.tokenLocked',
-                'Please close the Channel and delete all authorized users before modifying the configuration'
+                'Please close the Channel and delete all authorized targets before modifying the configuration'
               )}
             >
               <span>
@@ -352,7 +349,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
             <Tooltip
               content={t(
                 'settings.assistant.tokenLocked',
-                'Please close the Channel and delete all authorized users before modifying the configuration'
+                'Please close the Channel and delete all authorized targets before modifying the configuration'
               )}
             >
               <span>
@@ -379,7 +376,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
         <Switch checked={requireMention} onChange={handleRequireMentionChange} disabled={configLocked} />
       </FormPreferenceRow>
 
-      {pluginStatus?.enabled && pluginStatus?.connected && authorizedUsers.length === 0 && (
+      {pluginStatus?.enabled && pluginStatus?.connected && authorizedTargets.length === 0 && (
         <div className='bg-blue-50 dark:bg-blue-900/20 rd-12px p-16px border border-blue-200 dark:border-blue-800'>
           <FormSectionHeader title={t('settings.assistant.nextSteps', 'Next Steps')} />
           <div className='text-14px text-t-secondary space-y-8px'>
@@ -412,7 +409,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
         </div>
       )}
 
-      {pluginStatus?.enabled && authorizedUsers.length === 0 && (
+      {pluginStatus?.enabled && authorizedTargets.length === 0 && (
         <div className={formLayoutStyles.sectionCard}>
           <FormSectionHeader
             title={t('settings.assistant.pendingPairings', 'Pending Pairing Requests')}
@@ -486,59 +483,13 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
         </div>
       )}
 
-      <div className={formLayoutStyles.sectionCard}>
-        <FormSectionHeader
-          title={t('settings.assistant.authorizedUsers', 'Authorized Users')}
-          action={
-            <Button
-              size='mini'
-              type='text'
-              icon={<Refresh size={14} />}
-              loading={usersLoading}
-              onClick={loadAuthorizedUsers}
-            >
-              {t('common.refresh', 'Refresh')}
-            </Button>
-          }
-        />
-
-        {usersLoading ? (
-          <div className='py-20px text-center'>
-            <Spin />
-          </div>
-        ) : authorizedUsers.length === 0 ? (
-          <Empty description={t('settings.assistant.noAuthorizedUsers', 'No authorized users yet')} />
-        ) : (
-          <div className={formLayoutStyles.statusList}>
-            {authorizedUsers.map((user) => (
-              <div key={user.id} className={formLayoutStyles.statusItem}>
-                <div className={formLayoutStyles.statusItemMain}>
-                  <div className='space-y-6px'>
-                    <div className='text-14px text-t-primary font-500'>{user.displayName || user.platformUserId}</div>
-                    <div className='text-12px text-t-tertiary'>
-                      {t('settings.assistant.platform', 'Platform')}: Slack
-                    </div>
-                    <div className='text-12px text-t-tertiary'>
-                      {t('settings.assistant.authorizedAt', 'Authorized')}: {formatTime(user.authorizedAt)}
-                    </div>
-                  </div>
-                </div>
-                <div className={formLayoutStyles.statusItemActions}>
-                  <Button
-                    status='danger'
-                    size='small'
-                    icon={<Delete size={14} />}
-                    onClick={() => void handleRevokeUser(user.id)}
-                  >
-                    {t('settings.assistant.revokeAccess', 'Revoke access')}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
+      <AuthorizedTargetList
+        loading={usersLoading}
+        targets={authorizedTargets}
+        onRefresh={() => void loadAuthorizedTargets()}
+        onRevoke={(targetId) => void handleRevokeUser(targetId)}
+        t={t}
+      />
       {credentialsTested && testedBotUsername && (
         <div className='text-12px text-green-600 dark:text-green-400'>
           {t('settings.slack.connectionVerified', {

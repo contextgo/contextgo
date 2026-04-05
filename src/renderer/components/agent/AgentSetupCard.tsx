@@ -32,6 +32,7 @@ import GooseLogo from '@/renderer/assets/logos/tools/goose.svg';
 import AuggieLogo from '@/renderer/assets/logos/brand/auggie.svg';
 import KimiLogo from '@/renderer/assets/logos/ai-china/kimi.svg';
 import { applyDefaultConversationName } from '@/renderer/pages/conversation/utils/newConversationName';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 
 const AGENT_LOGOS: Partial<Record<AcpBackendAll, string>> = {
   claude: ClaudeLogo,
@@ -78,6 +79,8 @@ const AgentSetupCard: React.FC<AgentSetupCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const layout = useLayoutContext();
+  const isMobile = layout?.isMobile ?? false;
   const [switching, setSwitching] = useState(false);
   const [expanded, setExpanded] = useState(false); // Default collapsed
   const switchingRef = React.useRef(false); // Use ref to avoid stale closure in auto-switch
@@ -220,7 +223,12 @@ const AgentSetupCard: React.FC<AgentSetupCardProps> = ({
   return (
     <div className='mb-12px'>
       {/* Main Card - 主卡片 */}
-      <div className='relative rounded-12px p-16px bg-bg-2 border-1 border-solid border-border-2'>
+      <div
+        className={classNames(
+          'relative bg-bg-2 border-1 border-solid border-border-2',
+          isMobile ? 'rounded-16px px-12px py-14px' : 'rounded-12px p-16px'
+        )}
+      >
         {/* Collapsed View - 收起状态：一行提示 + 展开按钮 */}
         {!expanded && !hasAvailableAndSwitching && (
           <div className='flex items-center justify-between cursor-pointer' onClick={() => setExpanded(true)}>
@@ -282,8 +290,11 @@ const AgentSetupCard: React.FC<AgentSetupCardProps> = ({
 
             {/* Agent Cards - Agent 卡片列表 */}
             {availableAgents.length > 0 && (
-              <div className='overflow-x-auto pb-4px -mx-4px px-4px'>
-                <div className='flex gap-10px' style={{ width: 'max-content' }}>
+              <div className={classNames('pb-4px', isMobile ? 'overflow-visible' : 'overflow-x-auto -mx-4px px-4px')}>
+                <div
+                  className={classNames(isMobile ? 'grid grid-cols-1 gap-10px' : 'flex gap-10px')}
+                  style={{ width: isMobile ? '100%' : 'max-content' }}
+                >
                   {availableAgents
                     .toSorted((a, b) => {
                       // Best match first, then available ones, then by checking status
@@ -341,7 +352,8 @@ const AgentSetupCard: React.FC<AgentSetupCardProps> = ({
                         <div
                           key={result.backend}
                           className={classNames(
-                            'rounded-10px p-12px transition-all min-w-120px flex-shrink-0',
+                            'rounded-10px p-12px transition-all',
+                            isMobile ? 'w-full min-w-0' : 'min-w-120px flex-shrink-0',
                             cardStyle
                           )}
                           onClick={
@@ -398,7 +410,12 @@ const AgentSetupCard: React.FC<AgentSetupCardProps> = ({
                 <div className='text-12px text-t-secondary'>
                   {t('agent.setup.configureFirst', { defaultValue: 'Please configure an agent in Settings first.' })}
                 </div>
-                <Button type='outline' size='small' className='mt-8px' onClick={() => navigate('/settings')}>
+                <Button
+                  type='outline'
+                  size='small'
+                  className={classNames('mt-8px', isMobile && 'w-full')}
+                  onClick={() => navigate('/settings')}
+                >
                   {t('common.goToSettings', { defaultValue: 'Go to Settings' })}
                 </Button>
               </div>
@@ -406,8 +423,8 @@ const AgentSetupCard: React.FC<AgentSetupCardProps> = ({
 
             {/* Retry button */}
             {!isChecking && !switching && onRetry && availableCount === 0 && (
-              <div className='mt-12px flex justify-end'>
-                <Button type='text' size='small' onClick={onRetry}>
+              <div className={classNames('mt-12px flex', isMobile ? 'justify-stretch' : 'justify-end')}>
+                <Button type='text' size='small' className={classNames(isMobile && 'w-full')} onClick={onRetry}>
                   {t('common.retry', { defaultValue: 'Retry' })}
                 </Button>
               </div>

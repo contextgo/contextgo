@@ -17,6 +17,8 @@
 "browser.reload" = "重新整理";
 "browser.changeHost" = "切換位址";
 "browser.connection.title" = "連線";
+"browser.devices" = "裝置列表";
+"browser.exit" = "離開 Remote";
 "home.subtitle" = "從單一官方行動入口查看桌面裝置、遠端工作階段與上傳流轉。";
 "home.feature.devices" = "快速查看目前在線的桌面裝置。";
 "home.feature.files" = "把手機中的檔案回傳到桌面主機。";

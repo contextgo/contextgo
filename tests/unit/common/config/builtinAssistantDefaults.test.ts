@@ -69,6 +69,16 @@ describe('builtinAssistantDefaults', () => {
       'continuity-handoff',
     ]);
     expect(assistants.find((assistant) => assistant.id === 'builtin-moltbook')?.enabledHooks).toBeUndefined();
+    expect(assistants.find((assistant) => assistant.id === 'builtin-superpowers')?.harnessTagI18n).toEqual({
+      'en-US': 'Superpowers',
+      'zh-CN': 'Superpowers',
+    });
+    expect(
+      assistants.find((assistant) => assistant.id === 'builtin-everything-in-claude-code')?.recommendedDomainI18n
+    ).toEqual({
+      'en-US': 'Engineering',
+      'zh-CN': '研发',
+    });
   });
 
   it('falls back to preset defaults only when enabled hooks are missing', () => {

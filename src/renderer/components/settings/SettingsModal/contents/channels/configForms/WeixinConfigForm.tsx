@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from '@process/channels/types';
+import type { IChannelAuthorizedTarget, IChannelPairingRequest, IChannelPluginStatus } from '@process/channels/types';
 import { channel } from '@/common/adapter/ipcBridge';
 import { Button, Empty, Message, Spin, Tooltip } from '@arco-design/web-react';
-import { CheckOne, CloseOne, Copy, Delete, Refresh } from '@icon-park/react';
+import { CheckOne, CloseOne, Copy, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AuthorizedTargetList } from './AuthorizedTargets';
 import { FormPreferenceRow, FormSectionHeader, formLayoutStyles } from './FormLayout';
 
 type LoginState = 'idle' | 'loading_qr' | 'showing_qr' | 'scanned' | 'authorizing' | 'connected';
@@ -25,8 +26,6 @@ const getRemainingTime = (expiresAt: number) => {
   return `${remaining} min`;
 };
 
-const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString();
-
 const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginStatus, onStatusChange }) => {
   const { t } = useTranslation();
   const runtimeId = pluginStatus?.runtimeId ?? pluginId;
@@ -37,7 +36,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
   const [pairingLoading, setPairingLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
-  const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
+  const [authorizedTargets, setAuthorizedTargets] = useState<IChannelAuthorizedTarget[]>([]);
 
   const getIdentityLabel = useCallback(
     (identity: { displayName?: string; platformUserId?: string; platformType?: string }) => {
@@ -83,19 +82,19 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
     }
   }, [channelAccountId]);
 
-  const loadAuthorizedUsers = useCallback(async () => {
+  const loadAuthorizedTargets = useCallback(async () => {
     setUsersLoading(true);
     try {
-      const result = await channel.getAuthorizedUsers.invoke();
+      const result = await channel.getAuthorizedTargets.invoke();
       if (result.success && result.data) {
-        setAuthorizedUsers(
+        setAuthorizedTargets(
           result.data.filter(
             (item) => item.platformType === 'weixin' && (!item.connectorId || item.connectorId === channelAccountId)
           )
         );
       }
     } catch (error) {
-      console.error('[WeixinConfig] Failed to load authorized users:', error);
+      console.error('[WeixinConfig] Failed to load authorized targets:', error);
     } finally {
       setUsersLoading(false);
     }
@@ -103,8 +102,8 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
 
   useEffect(() => {
     void loadPendingPairings();
-    void loadAuthorizedUsers();
-  }, [loadAuthorizedUsers, loadPendingPairings]);
+    void loadAuthorizedTargets();
+  }, [loadAuthorizedTargets, loadPendingPairings]);
 
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
@@ -121,16 +120,14 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
 
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'weixin' || (user.connectorId && user.connectorId !== channelAccountId)) return;
-      setAuthorizedUsers((prev) => {
-        const exists = prev.some((item) => item.id === user.id);
-        if (exists) return prev;
-        return [user, ...prev];
-      });
+      if (user.platformType !== 'weixin' || (user.connectorId && user.connectorId !== channelAccountId)) {
+        return;
+      }
+      void loadAuthorizedTargets();
       setPendingPairings((prev) => prev.filter((item) => item.platformUserId !== user.platformUserId));
     });
     return () => unsubscribe();
-  }, [channelAccountId]);
+  }, [channelAccountId, loadAuthorizedTargets]);
 
   const handleApprovePairing = async (code: string) => {
     try {
@@ -138,7 +135,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
       if (result.success) {
         Message.success(t('settings.assistant.pairingApproved', 'Pairing approved'));
         await loadPendingPairings();
-        await loadAuthorizedUsers();
+        await loadAuthorizedTargets();
       } else {
         Message.error(result.msg || t('settings.assistant.approveFailed', 'Failed to approve pairing'));
       }
@@ -165,10 +162,10 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
     try {
       const result = await channel.revokeUser.invoke({ userId });
       if (result.success) {
-        Message.success(t('settings.assistant.userRevoked', 'User access revoked'));
-        await loadAuthorizedUsers();
+        Message.success(t('settings.assistant.userRevoked', 'Target authorization revoked'));
+        await loadAuthorizedTargets();
       } else {
-        Message.error(result.msg || t('settings.assistant.revokeFailed', 'Failed to revoke user'));
+        Message.error(result.msg || t('settings.assistant.revokeFailed', 'Failed to revoke authorization'));
       }
     } catch (error) {
       Message.error(error instanceof Error ? error.message : String(error));
@@ -256,7 +253,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
         onStatusChange(weixinPlugin || null);
       }
       await loadPendingPairings();
-      await loadAuthorizedUsers();
+      await loadAuthorizedTargets();
       setLoginState('connected');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -348,7 +345,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
         {renderLoginArea()}
       </FormPreferenceRow>
 
-      {pluginStatus?.connected && authorizedUsers.length === 0 ? (
+      {pluginStatus?.connected && authorizedTargets.length === 0 ? (
         <div className='bg-blue-50 dark:bg-blue-900/20 rd-12px p-16px border border-blue-200 dark:border-blue-800'>
           <FormSectionHeader title={t('settings.assistant.nextSteps', 'Next Steps')} />
           <div className='text-14px text-t-secondary space-y-8px'>
@@ -439,54 +436,14 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
         </div>
       ) : null}
 
-      {authorizedUsers.length > 0 ? (
-        <div className={formLayoutStyles.sectionCard}>
-          <FormSectionHeader
-            title={t('settings.assistant.authorizedUsers', 'Authorized Users')}
-            action={
-              <Button
-                size='mini'
-                type='text'
-                icon={<Refresh size={14} />}
-                loading={usersLoading}
-                onClick={loadAuthorizedUsers}
-              >
-                {t('common.refresh', 'Refresh')}
-              </Button>
-            }
-          />
-
-          {usersLoading ? (
-            <div className='flex justify-center py-24px'>
-              <Spin />
-            </div>
-          ) : (
-            <div className={formLayoutStyles.statusList}>
-              {authorizedUsers.map((user) => (
-                <div key={user.id} className={formLayoutStyles.statusItem}>
-                  <div className={formLayoutStyles.statusItemMain}>
-                    <div className='text-14px font-500 text-t-primary'>{getIdentityLabel(user)}</div>
-                    <div className={formLayoutStyles.metaText}>
-                      {t('settings.assistant.authorizedAt', 'Authorized')}: {formatTime(user.authorizedAt)}
-                    </div>
-                  </div>
-                  <div className={formLayoutStyles.statusItemActions}>
-                    <Tooltip content={t('settings.assistant.revokeAccess', 'Revoke access')}>
-                      <Button
-                        type='text'
-                        status='danger'
-                        size='small'
-                        icon={<Delete size={16} />}
-                        onClick={() => void handleRevokeUser(user.id)}
-                      />
-                    </Tooltip>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : null}
+      <AuthorizedTargetList
+        loading={usersLoading}
+        targets={authorizedTargets}
+        onRefresh={() => void loadAuthorizedTargets()}
+        onRevoke={(targetId) => void handleRevokeUser(targetId)}
+        t={t}
+        hideWhenEmpty
+      />
     </div>
   );
 };

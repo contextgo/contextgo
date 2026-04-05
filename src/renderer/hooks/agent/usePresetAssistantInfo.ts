@@ -10,7 +10,7 @@ import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
 import type { TChatConversation } from '@/common/config/storage';
 import { ConfigStorage } from '@/common/config/storage';
 import { ipcBridge } from '@/common';
-import CoworkLogo from '@/renderer/assets/icons/cowork.svg';
+import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import useSWR from 'swr';
 export interface PresetAssistantInfo {
@@ -71,8 +71,9 @@ function normalizeAvatar(avatar: string | undefined): { logo: string; isEmoji: b
   const value = (avatar || '').trim();
   if (!value) return { logo: '🤖', isEmoji: true };
 
-  if (value === 'cowork.svg') {
-    return { logo: CoworkLogo, isEmoji: false };
+  const mappedAvatar = CUSTOM_AVATAR_IMAGE_MAP[value];
+  if (mappedAvatar) {
+    return { logo: mappedAvatar, isEmoji: false };
   }
 
   const resolved = resolveExtensionAssetUrl(value) || value;

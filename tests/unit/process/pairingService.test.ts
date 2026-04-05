@@ -79,6 +79,7 @@ describe('PairingService', () => {
     mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({ success: true, data: null });
     mockDb.getLegacyChannelUserByPlatform.mockReturnValue({ success: true, data: null });
     mockDb.getChannelUsers.mockReturnValue({ success: true, data: [] });
+    mockDb.getChannelBindingsForScope = vi.fn().mockReturnValue({ success: true, data: [] });
     mockDb.upsertRemoteIdentity.mockReturnValue({ success: true, data: true });
     mockDb.ensureChannelUserMirror.mockReturnValue({
       success: true,
@@ -258,6 +259,88 @@ describe('PairingService', () => {
 
     expect(authorized).toBe(true);
     expect(mockDb.getRemoteIdentityByConnectorPlatformChat).toHaveBeenCalledWith('connector-b', 'channel-parent-1');
+  });
+
+  it('treats a published topic audience as authorized even before pairing identity exists', async () => {
+    const service = createService();
+    mockInferRemoteChatType.mockReturnValue('group');
+    mockDb.getChannelBindingsForScope.mockImplementation(
+      (_connectorId: string, scopeType: string, scopeKey?: string) => {
+        if (scopeType === 'remote_chat' && scopeKey === 'oc_topic_1:thread:om_topic_root_1') {
+          return {
+            success: true,
+            data: [
+              {
+                id: 'binding-topic',
+                connectorId: 'connector-b',
+                scopeType: 'remote_chat',
+                scopeKey,
+                agentProfileId: 'agent-topic',
+                priority: 0,
+                enabled: true,
+                temporary: false,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              },
+            ],
+          };
+        }
+
+        return { success: true, data: [] };
+      }
+    );
+
+    const authorized = await service.isUserAuthorized(
+      'ou_user_1',
+      'lark',
+      'oc_topic_1:thread:om_topic_root_1',
+      'lark_default',
+      'oc_topic_1',
+      'topic'
+    );
+
+    expect(authorized).toBe(true);
+  });
+
+  it('treats a published parent group audience as authorization for child topics', async () => {
+    const service = createService();
+    mockInferRemoteChatType.mockReturnValue('group');
+    mockDb.getChannelBindingsForScope.mockImplementation(
+      (_connectorId: string, scopeType: string, scopeKey?: string) => {
+        if (scopeType === 'remote_chat' && scopeKey === 'oc_group_1') {
+          return {
+            success: true,
+            data: [
+              {
+                id: 'binding-group',
+                connectorId: 'connector-b',
+                scopeType: 'remote_chat',
+                scopeKey,
+                agentProfileId: 'agent-group',
+                priority: 0,
+                enabled: true,
+                temporary: false,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              },
+            ],
+          };
+        }
+
+        return { success: true, data: [] };
+      }
+    );
+
+    const authorized = await service.isUserAuthorized(
+      'ou_user_1',
+      'lark',
+      'oc_group_1:thread:om_topic_root_1',
+      'lark_default',
+      'oc_group_1',
+      'topic'
+    );
+
+    expect(authorized).toBe(true);
   });
 
 

@@ -554,7 +554,8 @@ export class ActionExecutor {
         platform,
         routingChatId,
         context.pluginId,
-        transportChatId
+        transportChatId,
+        extractRemoteChatType(message)
       );
 
       // Handle /start command - always show pairing
@@ -586,6 +587,9 @@ export class ActionExecutor {
         threadId: message.peer?.threadId,
         remoteChatType: extractRemoteChatType(message),
         displayName: user.displayName,
+        containerId: message.peer?.containerId,
+        containerType: message.peer?.containerType,
+        containerTitle: message.peer?.containerTitle,
       });
       await this.sessionManager.storeSession(route.session);
 

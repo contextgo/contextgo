@@ -17,6 +17,8 @@
 "browser.reload" = "Reload";
 "browser.changeHost" = "Change Host";
 "browser.connection.title" = "Connection";
+"browser.devices" = "Devices";
+"browser.exit" = "Exit Remote";
 "home.subtitle" = "Open your desktop devices, relay sessions, and uploads from one official mobile entry.";
 "home.feature.devices" = "See your online desktop devices instantly.";
 "home.feature.files" = "Send phone files back to the desktop host.";

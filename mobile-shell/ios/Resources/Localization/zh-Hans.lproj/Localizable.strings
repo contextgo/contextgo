@@ -17,6 +17,8 @@
 "browser.reload" = "重新加载";
 "browser.changeHost" = "切换地址";
 "browser.connection.title" = "连接";
+"browser.devices" = "设备列表";
+"browser.exit" = "退出 Remote";
 "home.subtitle" = "从一个官方移动入口查看桌面设备、远程会话和上传流转。";
 "home.feature.devices" = "快速查看当前在线的桌面设备。";
 "home.feature.files" = "把手机里的文件回传到桌面主机。";

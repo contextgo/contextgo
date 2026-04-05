@@ -5,6 +5,7 @@
  */
 
 import { Button, Spin, Tag } from '@arco-design/web-react';
+import MarkdownView from '@/renderer/components/Markdown';
 import { Down, Up } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -132,7 +133,7 @@ const AgentRunStatus: React.FC<AgentRunStatusProps> = ({ trace, running = false 
     return '';
   }, [t, trace]);
 
-  if (!trace) {
+  if (!trace || !running) {
     return null;
   }
 
@@ -191,7 +192,11 @@ const AgentRunStatus: React.FC<AgentRunStatusProps> = ({ trace, running = false 
             </Button>
           </div>
 
-          {summaryText ? <div className='mt-6px break-words text-13px text-t-primary'>{summaryText}</div> : null}
+          {summaryText ? (
+            <MarkdownView className='mt-6px text-13px text-t-primary [&_.markdown-shadow-body_p]:m-0 [&_.markdown-shadow-body_strong]:font-600'>
+              {summaryText}
+            </MarkdownView>
+          ) : null}
         </div>
       </div>
 
@@ -210,9 +215,9 @@ const AgentRunStatus: React.FC<AgentRunStatusProps> = ({ trace, running = false 
             <div className='text-11px font-500 uppercase tracking-[0.08em] text-t-tertiary'>
               {t('conversation.runStatus.liveThought')}
             </div>
-            <div className='max-h-220px overflow-auto rounded-12px bg-fill-2 px-10px py-8px text-12px text-t-primary whitespace-pre-wrap break-words'>
+            <MarkdownView className='max-h-220px overflow-auto rounded-12px bg-fill-2 px-10px py-8px text-12px text-t-primary [&_.markdown-shadow-body_p]:m-0 [&_.markdown-shadow-body_strong]:font-600'>
               {trace.liveThoughtText || t('conversation.runStatus.noThoughtYet')}
-            </div>
+            </MarkdownView>
           </div>
 
           <div className='flex flex-col gap-6px'>

@@ -27,6 +27,9 @@ describe('ChannelPublicationService', () => {
     model: {
       id: 'model-provider-1',
       useModel: 'gpt-4.1',
+      platform: 'gemini-with-google-auth',
+      name: 'Gemini',
+      baseUrl: '',
     },
   };
 
@@ -38,6 +41,9 @@ describe('ChannelPublicationService', () => {
     modelRef: {
       id: 'model-provider-1',
       useModel: 'gpt-4.1',
+      platform: 'gemini-with-google-auth',
+      name: 'Gemini',
+      baseUrl: '',
     },
     workspaceRef: '/workspace/project',
     promptProfile: {},
@@ -99,5 +105,19 @@ describe('ChannelPublicationService', () => {
       })
     );
     expect(result.id).toBe(canonicalProfileId);
+  });
+
+  it('preserves provider metadata in the publication model ref for later channel restores', async () => {
+    const service = new ChannelPublicationService({ getDatabase: vi.fn(async () => db as never) });
+
+    const result = await service.prepareConversationPublication(conversation.id);
+
+    expect(result.modelRef).toEqual({
+      id: 'model-provider-1',
+      useModel: 'gpt-4.1',
+      platform: 'gemini-with-google-auth',
+      name: 'Gemini',
+      baseUrl: '',
+    });
   });
 });

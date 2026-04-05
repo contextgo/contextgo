@@ -5,6 +5,7 @@ private enum RemoteBrand {
   static let pageGradientTop = Color.white
   static let pageGradientMid = Color(red: 0.965, green: 0.973, blue: 0.980)
   static let pageGradientBottom = Color(red: 0.957, green: 0.961, blue: 0.969)
+  static let shellChrome = Color(red: 0.969, green: 0.973, blue: 0.980)
 
   static let orbStrong = Color.black.opacity(0.06)
   static let orbSoft = Color(red: 0.545, green: 0.584, blue: 0.655).opacity(0.16)
@@ -23,6 +24,24 @@ private enum RemoteBrand {
   static let accentMuted = Color(red: 0.122, green: 0.161, blue: 0.216)
   static let accentSoft = Color(red: 0.373, green: 0.408, blue: 0.467)
   static let accentFaint = Color(red: 0.663, green: 0.702, blue: 0.765)
+}
+
+private struct BrandLockupView: View {
+  var body: some View {
+    if let brandImage = UIImage(named: "BrandLogo") {
+      Image(uiImage: brandImage)
+        .renderingMode(.original)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 160, height: 44)
+        .accessibilityLabel(Text("ContextGo"))
+    } else {
+      Text("ContextGo")
+        .font(.system(size: 28, weight: .black, design: .rounded))
+        .foregroundStyle(RemoteBrand.textPrimary)
+        .accessibilityLabel(Text("ContextGo"))
+    }
+  }
 }
 
 struct ContentView: View {
@@ -93,31 +112,26 @@ private struct HomeView: View {
       backgroundView
 
       ScrollView(showsIndicators: false) {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 18) {
+          headerBar
+
           if let loginErrorBanner {
             loginRecoveryBanner(title: loginErrorBanner.title, detail: loginErrorBanner.detail)
           }
 
-          heroView
-
           if homeSnapshot.isAuthenticated {
-            statusBoard
-
             if let user = homeSnapshot.user {
-              accountPanel(user: user)
+              signedInSummary(user: user)
             }
 
-            recentDevicesPanel
+            devicesPanel
           } else {
-            highlightsView
-            previewPanel
+            signedOutPanel
           }
-
-          ctaPanel
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 28)
-        .padding(.bottom, 28)
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 24)
       }
       .refreshable {
         await refreshHomeSnapshot(showSpinner: false)
@@ -136,6 +150,11 @@ private struct HomeView: View {
         await refreshHomeSnapshot(showSpinner: false)
       }
     }
+    .onChange(of: connectionStore.homeRefreshRevision) { _ in
+      Task {
+        await refreshHomeSnapshot(showSpinner: true)
+      }
+    }
     .sheet(isPresented: $isPresentingProviderSheet) {
       LoginProviderSheet(providers: availableProviders) { provider in
         guard let loginURL = connectionStore.buildOfficialAuthenticationURL(for: provider) else {
@@ -150,6 +169,160 @@ private struct HomeView: View {
       .presentationDetents([.height(396)])
       .presentationDragIndicator(.visible)
     }
+  }
+
+  private var headerBar: some View {
+    HStack(alignment: .center, spacing: 14) {
+      brandLockup
+
+      Spacer(minLength: 0)
+
+      if isRefreshingSnapshot {
+        ProgressView()
+          .controlSize(.small)
+          .tint(RemoteBrand.accent)
+      }
+    }
+    .padding(.top, 4)
+  }
+
+  private func signedInSummary(user: OfficialUser) -> some View {
+    VStack(alignment: .leading, spacing: 18) {
+      HStack(alignment: .center, spacing: 14) {
+        avatarView(for: user)
+
+        VStack(alignment: .leading, spacing: 4) {
+          Text(user.preferredName)
+            .font(.system(size: 24, weight: .black, design: .rounded))
+            .foregroundStyle(RemoteBrand.textPrimary)
+            .lineLimit(2)
+
+          if let secondaryLine = user.secondaryLine {
+            Text(secondaryLine)
+              .font(.system(size: 14, weight: .medium, design: .rounded))
+              .foregroundStyle(RemoteBrand.textSecondary)
+              .lineLimit(2)
+          }
+        }
+
+        Spacer(minLength: 0)
+      }
+
+      ViewThatFits {
+        HStack(spacing: 12) {
+          summaryBadge(title: String(localized: "home.metric.devices"), value: homeSnapshot.deviceCount.formatted())
+          summaryBadge(title: String(localized: "home.metric.ready"), value: homeSnapshot.readyDeviceCount.formatted())
+          summaryBadge(title: String(localized: "home.metric.live"), value: homeSnapshot.liveSessionCount.formatted())
+        }
+
+        VStack(spacing: 12) {
+          summaryBadge(title: String(localized: "home.metric.devices"), value: homeSnapshot.deviceCount.formatted())
+          summaryBadge(title: String(localized: "home.metric.ready"), value: homeSnapshot.readyDeviceCount.formatted())
+          summaryBadge(title: String(localized: "home.metric.live"), value: homeSnapshot.liveSessionCount.formatted())
+        }
+      }
+    }
+    .padding(22)
+    .background(RemoteBrand.cardBackground)
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .overlay(
+      RoundedRectangle(cornerRadius: 28, style: .continuous)
+        .stroke(RemoteBrand.cardBorder, lineWidth: 1)
+    )
+  }
+
+  private var devicesPanel: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text(String(localized: "home.metric.devices"))
+        .font(.system(size: 18, weight: .bold, design: .rounded))
+        .foregroundStyle(RemoteBrand.textPrimary)
+
+      if homeSnapshot.devices.isEmpty {
+        emptyDevicesView
+      } else {
+        VStack(spacing: 12) {
+          ForEach(homeSnapshot.devices) { device in
+            deviceRow(device)
+          }
+        }
+      }
+    }
+    .padding(22)
+    .background(RemoteBrand.cardBackground)
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .overlay(
+      RoundedRectangle(cornerRadius: 28, style: .continuous)
+        .stroke(RemoteBrand.cardBorder, lineWidth: 1)
+    )
+  }
+
+  private var signedOutPanel: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text(String(localized: "home.headline"))
+        .font(.system(size: 28, weight: .black, design: .rounded))
+        .foregroundStyle(RemoteBrand.textPrimary)
+        .fixedSize(horizontal: false, vertical: true)
+
+      Text(String(localized: "home.openRemoteHint"))
+        .font(.system(size: 15, weight: .medium, design: .rounded))
+        .foregroundStyle(RemoteBrand.textSecondary)
+        .lineSpacing(4)
+        .fixedSize(horizontal: false, vertical: true)
+
+      Button(action: {
+        Task {
+          await openOfficialRemote()
+        }
+      }) {
+        HStack(spacing: 10) {
+          if isCheckingSession {
+            ProgressView()
+              .tint(.white)
+          } else {
+            Image(systemName: "person.crop.circle.badge.checkmark")
+          }
+
+          Text(String(localized: "home.openRemote"))
+          Spacer(minLength: 0)
+          Image(systemName: "arrow.right")
+        }
+        .font(.system(size: 16, weight: .bold, design: .rounded))
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
+        .background(RemoteBrand.accentMuted)
+        .foregroundStyle(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+      }
+      .buttonStyle(.plain)
+      .disabled(isCheckingSession)
+    }
+    .padding(22)
+    .background(RemoteBrand.cardBackground)
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .overlay(
+      RoundedRectangle(cornerRadius: 28, style: .continuous)
+        .stroke(RemoteBrand.cardBorder, lineWidth: 1)
+    )
+  }
+
+  private func summaryBadge(title: String, value: String) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text(value)
+        .font(.system(size: 22, weight: .black, design: .rounded))
+        .foregroundStyle(RemoteBrand.textPrimary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+
+      Text(title)
+        .font(.system(size: 12, weight: .bold, design: .rounded))
+        .foregroundStyle(RemoteBrand.textSecondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .padding(14)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(RemoteBrand.mutedSurface)
+    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
   }
 
   private var backgroundView: some View {
@@ -600,7 +773,7 @@ private struct HomeView: View {
     isCheckingSession = false
 
     if hasSession {
-      connectionStore.connectToOfficialRemote()
+      await refreshHomeSnapshot(showSpinner: true)
       return
     }
 
@@ -609,19 +782,7 @@ private struct HomeView: View {
 
   @ViewBuilder
   private var brandLockup: some View {
-    if let brandImage = UIImage(named: "BrandLogo") {
-      Image(uiImage: brandImage)
-        .renderingMode(.original)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 160, height: 44)
-        .accessibilityLabel(Text("ContextGo"))
-    } else {
-      Text("ContextGo")
-        .font(.system(size: 28, weight: .black, design: .rounded))
-        .foregroundStyle(RemoteBrand.textPrimary)
-        .accessibilityLabel(Text("ContextGo"))
-    }
+    BrandLockupView()
   }
 
   private func loginRecoveryBanner(title: String, detail: String) -> some View {
@@ -1079,12 +1240,81 @@ private extension AuthProvider {
 }
 
 private struct ShellBrowserView: View {
+  @EnvironmentObject private var connectionStore: ConnectionStore
   @EnvironmentObject private var webViewStore: WebViewStore
 
   let targetURL: URL
 
   var body: some View {
-    ShellWebView(store: webViewStore, url: targetURL)
-      .ignoresSafeArea()
+    GeometryReader { geometry in
+      ZStack(alignment: .top) {
+        RemoteBrand.shellChrome
+          .ignoresSafeArea()
+
+        ShellWebView(store: webViewStore, url: targetURL)
+          .ignoresSafeArea(.container, edges: .bottom)
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+        HStack(spacing: 0) {
+          edgeBackGestureStrip
+          Spacer(minLength: 0)
+        }
+        .ignoresSafeArea(.container, edges: .bottom)
+
+        if webViewStore.shouldShowLaunchOverlay {
+          shellLaunchOverlay(topInset: geometry.safeAreaInsets.top)
+        }
+      }
+    }
+    .background(RemoteBrand.shellChrome)
+  }
+
+  private var edgeBackGestureStrip: some View {
+    Color.clear
+      .frame(width: 28)
+      .contentShape(Rectangle())
+      .gesture(
+        DragGesture(minimumDistance: 18, coordinateSpace: .local)
+          .onEnded { value in
+            guard value.startLocation.x <= 28,
+                  value.translation.width >= 88,
+                  abs(value.translation.height) <= 48
+            else {
+              return
+            }
+
+            connectionStore.returnToHome()
+          }
+      )
+      .allowsHitTesting(true)
+  }
+
+  private func shellLaunchOverlay(topInset: CGFloat) -> some View {
+    ZStack(alignment: .top) {
+      RemoteBrand.shellChrome
+        .ignoresSafeArea()
+
+      VStack(spacing: 20) {
+        Spacer(minLength: max(topInset, 0) + 48)
+
+        BrandLockupView()
+
+        VStack(spacing: 10) {
+          ProgressView()
+            .controlSize(.regular)
+            .tint(RemoteBrand.accent)
+
+          Text(String(localized: "home.openRemoteHint"))
+            .font(.system(size: 14, weight: .medium, design: .rounded))
+            .foregroundStyle(RemoteBrand.textSecondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 32)
+        }
+
+        Spacer()
+      }
+    }
+    .transition(.opacity)
+    .allowsHitTesting(false)
   }
 }

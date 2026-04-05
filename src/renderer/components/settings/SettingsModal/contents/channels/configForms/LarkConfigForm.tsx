@@ -4,13 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from '@process/channels/types';
+import type { IChannelAuthorizedTarget, IChannelPairingRequest, IChannelPluginStatus } from '@process/channels/types';
 import { channel } from '@/common/adapter/ipcBridge';
 import { openExternalUrl } from '@/renderer/utils/platform';
 import { Button, Empty, Input, Message, Spin, Tooltip } from '@arco-design/web-react';
-import { CheckOne, CloseOne, Copy, Delete, Down, Refresh } from '@icon-park/react';
+import { CheckOne, CloseOne, Copy, Down, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AuthorizedTargetList } from './AuthorizedTargets';
 import { FormPreferenceRow, FormSectionHeader, formLayoutStyles } from './FormLayout';
 
 interface LarkConfigFormProps {
@@ -36,7 +37,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
   const [pairingLoading, setPairingLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
-  const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
+  const [authorizedTargets, setAuthorizedTargets] = useState<IChannelAuthorizedTarget[]>([]);
 
   const loadPendingPairings = useCallback(async () => {
     setPairingLoading(true);
@@ -56,19 +57,19 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
     }
   }, [channelAccountId]);
 
-  const loadAuthorizedUsers = useCallback(async () => {
+  const loadAuthorizedTargets = useCallback(async () => {
     setUsersLoading(true);
     try {
-      const result = await channel.getAuthorizedUsers.invoke();
+      const result = await channel.getAuthorizedTargets.invoke();
       if (result.success && result.data) {
-        setAuthorizedUsers(
+        setAuthorizedTargets(
           result.data.filter(
             (item) => item.platformType === 'lark' && (!item.connectorId || item.connectorId === channelAccountId)
           )
         );
       }
     } catch (error) {
-      console.error('[LarkConfig] Failed to load authorized users:', error);
+      console.error('[LarkConfig] Failed to load authorized targets:', error);
     } finally {
       setUsersLoading(false);
     }
@@ -76,8 +77,8 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
 
   useEffect(() => {
     void loadPendingPairings();
-    void loadAuthorizedUsers();
-  }, [loadAuthorizedUsers, loadPendingPairings]);
+    void loadAuthorizedTargets();
+  }, [loadAuthorizedTargets, loadPendingPairings]);
 
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
@@ -93,16 +94,14 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
 
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'lark' || (user.connectorId && user.connectorId !== channelAccountId)) return;
-      setAuthorizedUsers((prev) => {
-        const exists = prev.some((item) => item.id === user.id);
-        if (exists) return prev;
-        return [user, ...prev];
-      });
+      if (user.platformType !== 'lark' || (user.connectorId && user.connectorId !== channelAccountId)) {
+        return;
+      }
+      void loadAuthorizedTargets();
       setPendingPairings((prev) => prev.filter((item) => item.platformUserId !== user.platformUserId));
     });
     return () => unsubscribe();
-  }, [channelAccountId]);
+  }, [channelAccountId, loadAuthorizedTargets]);
 
   const handleTestConnection = async () => {
     setTouched({ appId: true, appSecret: true });
@@ -171,7 +170,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
       if (result.success) {
         Message.success(t('settings.assistant.pairingApproved', 'Pairing approved'));
         await loadPendingPairings();
-        await loadAuthorizedUsers();
+        await loadAuthorizedTargets();
       } else {
         Message.error(result.msg || t('settings.assistant.approveFailed', 'Failed to approve pairing'));
       }
@@ -198,10 +197,10 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
     try {
       const result = await channel.revokeUser.invoke({ userId });
       if (result.success) {
-        Message.success(t('settings.assistant.userRevoked', 'User access revoked'));
-        await loadAuthorizedUsers();
+        Message.success(t('settings.assistant.userRevoked', 'Target authorization revoked'));
+        await loadAuthorizedTargets();
       } else {
-        Message.error(result.msg || t('settings.assistant.revokeFailed', 'Failed to revoke user'));
+        Message.error(result.msg || t('settings.assistant.revokeFailed', 'Failed to revoke authorization'));
       }
     } catch (error: any) {
       Message.error(error.message);
@@ -213,9 +212,8 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
     Message.success(t('common.copySuccess', 'Copied'));
   };
 
-  const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString();
   const getRemainingTime = (expiresAt: number) => `${Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000 / 60))} min`;
-  const hasExistingUsers = authorizedUsers.length > 0;
+  const hasExistingUsers = authorizedTargets.length > 0;
 
   const renderDocDescription = (suffixKey: string, fallback: string) => (
     <span>
@@ -244,7 +242,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
           <Tooltip
             content={t(
               'settings.assistant.tokenLocked',
-              'Please close the Channel and delete all authorized users before modifying the configuration'
+              'Please close the Channel and delete all authorized targets before modifying the configuration'
             )}
           >
             <span>
@@ -280,7 +278,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
           <Tooltip
             content={t(
               'settings.assistant.tokenLocked',
-              'Please close the Channel and delete all authorized users before modifying the configuration'
+              'Please close the Channel and delete all authorized targets before modifying the configuration'
             )}
           >
             <span>
@@ -340,7 +338,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
               <Tooltip
                 content={t(
                   'settings.assistant.tokenLocked',
-                  'Please close the Channel and delete all authorized users before modifying the configuration'
+                  'Please close the Channel and delete all authorized targets before modifying the configuration'
                 )}
               >
                 <span>
@@ -376,7 +374,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
               <Tooltip
                 content={t(
                   'settings.assistant.tokenLocked',
-                  'Please close the Channel and delete all authorized users before modifying the configuration'
+                  'Please close the Channel and delete all authorized targets before modifying the configuration'
                 )}
               >
                 <span>
@@ -421,7 +419,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
         </div>
       ) : null}
 
-      {pluginStatus?.enabled && authorizedUsers.length === 0 ? (
+      {pluginStatus?.enabled && authorizedTargets.length === 0 ? (
         <div
           className={`rd-12px p-16px border ${pluginStatus?.connected ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : pluginStatus?.error ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'}`}
         >
@@ -472,7 +470,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
         </div>
       ) : null}
 
-      {pluginStatus?.enabled && authorizedUsers.length === 0 ? (
+      {pluginStatus?.enabled && authorizedTargets.length === 0 ? (
         <div className={formLayoutStyles.sectionCard}>
           <FormSectionHeader
             title={t('settings.assistant.pendingPairings', 'Pending Pairing Requests')}
@@ -549,61 +547,14 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
         </div>
       ) : null}
 
-      {authorizedUsers.length > 0 ? (
-        <div className={formLayoutStyles.sectionCard}>
-          <FormSectionHeader
-            title={t('settings.assistant.authorizedUsers', 'Authorized Users')}
-            action={
-              <Button
-                size='mini'
-                type='text'
-                icon={<Refresh size={14} />}
-                loading={usersLoading}
-                onClick={loadAuthorizedUsers}
-              >
-                {t('common.refresh', 'Refresh')}
-              </Button>
-            }
-          />
-
-          {usersLoading ? (
-            <div className='flex justify-center py-24px'>
-              <Spin />
-            </div>
-          ) : authorizedUsers.length === 0 ? (
-            <Empty description={t('settings.assistant.noAuthorizedUsers', 'No authorized users yet')} />
-          ) : (
-            <div className={formLayoutStyles.statusList}>
-              {authorizedUsers.map((user) => (
-                <div key={user.id} className={formLayoutStyles.statusItem}>
-                  <div className={formLayoutStyles.statusItemMain}>
-                    <div className='text-14px font-500 text-t-primary'>
-                      {user.displayName || user.platformUserId || 'Unknown User'}
-                    </div>
-                    <div className={formLayoutStyles.metaText}>
-                      {t('settings.assistant.platform', 'Platform')}: {user.platformType}
-                    </div>
-                    <div className={formLayoutStyles.metaText}>
-                      {t('settings.assistant.authorizedAt', 'Authorized')}: {formatTime(user.authorizedAt)}
-                    </div>
-                  </div>
-                  <div className={formLayoutStyles.statusItemActions}>
-                    <Tooltip content={t('settings.assistant.revokeAccess', 'Revoke access')}>
-                      <Button
-                        type='text'
-                        status='danger'
-                        size='small'
-                        icon={<Delete size={16} />}
-                        onClick={() => void handleRevokeUser(user.id)}
-                      />
-                    </Tooltip>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : null}
+      <AuthorizedTargetList
+        loading={usersLoading}
+        targets={authorizedTargets}
+        onRefresh={() => void loadAuthorizedTargets()}
+        onRevoke={(targetId) => void handleRevokeUser(targetId)}
+        t={t}
+        hideWhenEmpty
+      />
     </div>
   );
 };

@@ -1,4 +1,6 @@
 import { ipcBridge } from '@/common';
+import ContextGoSelect from '@/renderer/components/base/ContextGoSelect';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { Button, Tag } from '@arco-design/web-react';
 import { ConnectionPoint, Right, Send } from '@icon-park/react';
 import classNames from 'classnames';
@@ -28,8 +30,7 @@ const getAuthKey = (authType: ConnectorAuthType): string => `settings.connectors
 const getCategoryKey = (category: ConnectorCategory): string => `settings.connectors.categories.${category}`;
 const getStageKey = (stage: ConnectorStage): string =>
   stage === 'priority' ? 'settings.connectors.stagePriority' : 'settings.connectors.stagePlanned';
-const getSupportStatusKey = (status: ConnectorSupportStatus): string =>
-  `settings.connectors.supportStatus.${status}`;
+const getSupportStatusKey = (status: ConnectorSupportStatus): string => `settings.connectors.supportStatus.${status}`;
 const getImplementationOwnerKey = (owner?: string): string => {
   switch (owner) {
     case 'official':
@@ -72,6 +73,8 @@ const ConnectorsPage: React.FC = () => {
   const { connectorId } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const layout = useLayoutContext();
+  const isMobile = layout?.isMobile ?? false;
   const [collapsedCategories, setCollapsedCategories] =
     useState<Record<ConnectorCategory, boolean>>(createInitialCollapsedState);
   const [activeTab, setActiveTab] = useState<ConnectorExperienceTab>('overview');
@@ -131,6 +134,51 @@ const ConnectorsPage: React.FC = () => {
   const isSupported = resolvedConnector.supportStatus === 'supported';
   const supportSources = resolvedConnector.supportSources || [];
 
+  const mobileCatalog = isMobile ? (
+    <section className={styles.mobileCatalog} data-testid='connector-mobile-catalog'>
+      <div className={styles.mobileCatalogHeader}>
+        <div className={styles.mobileCatalogHeaderCopy}>
+          <div className={styles.mobileCatalogEyebrow}>{t('settings.connectors.kind')}</div>
+          <h1 className={styles.mobileCatalogTitle}>{t('settings.connectors.title')}</h1>
+        </div>
+        <Tag color='gray' className={styles.mobileCatalogCount}>
+          {t('settings.connectors.count', { count: CONNECTORS.length })}
+        </Tag>
+      </div>
+      <p className={styles.mobileCatalogDescription}>{t('settings.connectors.description')}</p>
+      <div className={styles.mobileCatalogSelectWrap}>
+        <ContextGoSelect
+          value={resolvedConnector.id}
+          size='large'
+          className={styles.mobileCatalogSelect}
+          placeholder={t('settings.connectors.title')}
+          onChange={(value) => {
+            if (typeof value === 'string' && value !== resolvedConnector.id) {
+              void navigate(`/connectors/${value}`);
+            }
+          }}
+        >
+          {groupedConnectors.map((group) => (
+            <ContextGoSelect.OptGroup key={group.category} label={t(getCategoryKey(group.category))}>
+              {group.items.map((connector) => (
+                <ContextGoSelect.Option key={connector.id} value={connector.id}>
+                  {connector.name}
+                </ContextGoSelect.Option>
+              ))}
+            </ContextGoSelect.OptGroup>
+          ))}
+        </ContextGoSelect>
+      </div>
+      <div className={styles.mobileCatalogActive}>
+        <ConnectorLogo connector={resolvedConnector} />
+        <div className={styles.mobileCatalogActiveMeta}>
+          <div className={styles.mobileCatalogActiveName}>{resolvedConnector.name}</div>
+          <div className={styles.mobileCatalogActiveDomain}>{resolvedConnector.domain}</div>
+        </div>
+      </div>
+    </section>
+  ) : null;
+
   const renderConfigurePanel = (): React.ReactNode => {
     if (!isSupported) {
       return (
@@ -157,83 +205,87 @@ const ConnectorsPage: React.FC = () => {
     <div className='secondary-page-frame'>
       <div className='secondary-page-inner'>
         <div className={styles.page}>
-          <div className={styles.shell}>
-            <aside className={styles.sidebar}>
-              <div className={styles.sidebarHeader}>
-                <div className={styles.sidebarTitleRow}>
-                  <h1 className={styles.sidebarTitle}>{t('settings.connectors.title')}</h1>
-                  <div className={styles.eyebrow}>{t('settings.connectors.kind')}</div>
+          <div className={classNames(styles.shell, isMobile && styles.shellMobile)}>
+            {isMobile ? mobileCatalog : null}
+            {!isMobile ? (
+              <aside className={styles.sidebar}>
+                <div className={styles.sidebarHeader}>
+                  <div className={styles.sidebarTitleRow}>
+                    <h1 className={styles.sidebarTitle}>{t('settings.connectors.title')}</h1>
+                    <div className={styles.eyebrow}>{t('settings.connectors.kind')}</div>
+                  </div>
+                  <p className={styles.sidebarDescription}>
+                    {t('settings.connectors.description')}{' '}
+                    {t('settings.connectors.count', { count: CONNECTORS.length })}
+                  </p>
                 </div>
-                <p className={styles.sidebarDescription}>
-                  {t('settings.connectors.description')} {t('settings.connectors.count', { count: CONNECTORS.length })}
-                </p>
-              </div>
 
-              <div className={styles.listWrap}>
-                {groupedConnectors.map((group) => (
-                  <section key={group.category} className={styles.categorySection}>
-                    <Button
-                      type='text'
-                      className={styles.categoryToggle}
-                      aria-expanded={!collapsedCategories[group.category]}
-                      onClick={() => {
-                        setCollapsedCategories((previous) => ({
-                          ...previous,
-                          [group.category]: !previous[group.category],
-                        }));
-                      }}
-                    >
-                      <span className={styles.categoryTitle}>
-                        <span className={styles.categoryTitleMeta}>
-                          <Right
-                            theme='outline'
-                            size='14'
-                            className={classNames(
-                              styles.categoryChevron,
-                              collapsedCategories[group.category] && styles.categoryChevronCollapsed
-                            )}
-                          />
-                          <span className={styles.categoryTitleText}>{t(getCategoryKey(group.category))}</span>
+                <div className={styles.listWrap}>
+                  {groupedConnectors.map((group) => (
+                    <section key={group.category} className={styles.categorySection}>
+                      <Button
+                        type='text'
+                        className={styles.categoryToggle}
+                        aria-expanded={!collapsedCategories[group.category]}
+                        onClick={() => {
+                          setCollapsedCategories((previous) => ({
+                            ...previous,
+                            [group.category]: !previous[group.category],
+                          }));
+                        }}
+                      >
+                        <span className={styles.categoryTitle}>
+                          <span className={styles.categoryTitleMeta}>
+                            <Right
+                              theme='outline'
+                              size='14'
+                              className={classNames(
+                                styles.categoryChevron,
+                                collapsedCategories[group.category] && styles.categoryChevronCollapsed
+                              )}
+                            />
+                            <span className={styles.categoryTitleText}>{t(getCategoryKey(group.category))}</span>
+                          </span>
+                          <span className={styles.categoryCount}>{group.items.length}</span>
                         </span>
-                        <span className={styles.categoryCount}>{group.items.length}</span>
-                      </span>
-                    </Button>
+                      </Button>
 
-                    <div className={styles.categoryItems} hidden={collapsedCategories[group.category]}>
-                      {group.items.map((connector) => {
-                        const isActive = connector.id === resolvedConnector.id;
-                        return (
-                          <Button
-                            key={connector.id}
-                            type='text'
-                            className={classNames(styles.connectorItem, isActive && styles.connectorItemActive)}
-                            onClick={() => {
-                              void navigate(`/connectors/${connector.id}`);
-                            }}
-                          >
-                            <div className={styles.connectorItemInner}>
-                              <ConnectorLogo connector={connector} />
-                              <div className={styles.connectorMeta}>
-                                <div className={styles.connectorNameRow}>
-                                  <span className={styles.connectorName}>{connector.name}</span>
-                                  <Tag
-                                    size='small'
-                                    color={connector.supportStatus === 'supported' ? 'green' : 'gray'}
-                                  >
-                                    {t(getSupportStatusKey(connector.supportStatus))}
-                                  </Tag>
+                      <div className={styles.categoryItems} hidden={collapsedCategories[group.category]}>
+                        {group.items.map((connector) => {
+                          const isActive = connector.id === resolvedConnector.id;
+                          return (
+                            <Button
+                              key={connector.id}
+                              type='text'
+                              className={classNames(styles.connectorItem, isActive && styles.connectorItemActive)}
+                              onClick={() => {
+                                void navigate(`/connectors/${connector.id}`);
+                              }}
+                            >
+                              <div className={styles.connectorItemInner}>
+                                <ConnectorLogo connector={connector} />
+                                <div className={styles.connectorMeta}>
+                                  <div className={styles.connectorNameRow}>
+                                    <span className={styles.connectorName}>{connector.name}</span>
+                                    <Tag
+                                      size='small'
+                                      color={connector.supportStatus === 'supported' ? 'green' : 'gray'}
+                                    >
+                                      {t(getSupportStatusKey(connector.supportStatus))}
+                                    </Tag>
+                                  </div>
+                                  <div className={styles.connectorDomain}>{connector.domain}</div>
                                 </div>
-                                <div className={styles.connectorDomain}>{connector.domain}</div>
                               </div>
-                            </div>
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            </aside>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </aside>
+            ) : null}
 
             <section className={styles.detail}>
               <div className={styles.detailHero}>
@@ -342,9 +394,9 @@ const ConnectorsPage: React.FC = () => {
                         <div className={styles.detailCardText}>{t('settings.connectors.noSupportSources')}</div>
                       ) : (
                         supportSources.map((source) => (
-                          <button
+                          <Button
                             key={`${source.kind}-${source.url}`}
-                            type='button'
+                            type='text'
                             className={styles.supportSourceItem}
                             onClick={() => {
                               void ipcBridge.shell.openExternal.invoke(source.url);
@@ -357,7 +409,7 @@ const ConnectorsPage: React.FC = () => {
                               <span className={styles.supportSourceLabel}>{source.label}</span>
                             </div>
                             <div className={styles.detailCardText}>{source.description}</div>
-                          </button>
+                          </Button>
                         ))
                       )}
                     </div>

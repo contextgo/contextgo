@@ -17,6 +17,8 @@
 "browser.reload" = "새로고침";
 "browser.changeHost" = "호스트 변경";
 "browser.connection.title" = "연결";
+"browser.devices" = "기기 목록";
+"browser.exit" = "Remote 종료";
 "home.subtitle" = "하나의 공식 모바일 진입점에서 데스크톱 기기, 원격 세션, 업로드 흐름을 바로 엽니다.";
 "home.feature.devices" = "현재 온라인인 데스크톱 기기를 바로 확인합니다.";
 "home.feature.files" = "휴대폰 파일을 데스크톱 호스트로 다시 보냅니다.";

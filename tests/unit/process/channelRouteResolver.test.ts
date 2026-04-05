@@ -42,6 +42,7 @@ vi.mock('@/process/services/conversationServiceSingleton', () => ({
   },
 }));
 
+import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
 import { ChannelRouteResolver, inferRemoteChatType } from '@process/channels/core/ChannelRouteResolver';
 import type { IChannelBinding, IChannelUser, IConnectorInstance, IRemoteIdentity } from '@process/channels/types';
 
@@ -271,6 +272,127 @@ describe('ChannelRouteResolver', () => {
         }
       ).ensureChannelUserProjection(connector, 'user-1', 'telegram', 'user-1', undefined, 'Legacy User', 'direct')
     ).rejects.toThrow('User not authorized');
+  });
+
+  it('creates a projected user for a published topic audience before a remote identity exists', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockDb.getChannelBindingsForScope.mockImplementation(
+      (_connectorId: string, scopeType: IChannelBinding['scopeType'], scopeKey?: string) => {
+        if (scopeType === 'remote_chat' && scopeKey === 'oc_group_1:thread:om_topic_root_1') {
+          return {
+            success: true,
+            data: [
+              {
+                id: 'binding-topic',
+                connectorId: connector.id,
+                scopeType: 'remote_chat',
+                scopeKey,
+                agentProfileId: 'agent-topic',
+                priority: 0,
+                enabled: true,
+                temporary: false,
+                createdAt: 1,
+                updatedAt: 1,
+              },
+            ],
+          };
+        }
+
+        return { success: true, data: [] };
+      }
+    );
+
+    const result = await (
+      resolver as unknown as {
+        ensureChannelUserProjection: (
+          connector: IConnectorInstance,
+          platformUserId: string,
+          platform: 'lark',
+          chatId: string,
+          platformChatId?: string,
+          displayName?: string,
+          remoteChatType?: string,
+          peerScope?: 'chat' | 'thread',
+          parentChatId?: string,
+          threadId?: string
+        ) => Promise<IChannelUser>;
+      }
+    ).ensureChannelUserProjection(
+      { ...connector, platform: 'lark', name: 'Feishu' },
+      'ou_user_1',
+      'lark',
+      'oc_group_1:thread:om_topic_root_1',
+      'oc_group_1',
+      'Topic User',
+      'topic',
+      'thread',
+      'oc_group_1',
+      'om_topic_root_1'
+    );
+
+    expect(result.id).toMatch(/^remote_identity_published_/);
+    expect(result.platformUserId).toBe('ou_user_1');
+    expect(result.platformType).toBe('lark');
+  });
+
+  it('creates a projected user for a topic when only the parent group is published', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockDb.getChannelBindingsForScope.mockImplementation(
+      (_connectorId: string, scopeType: IChannelBinding['scopeType'], scopeKey?: string) => {
+        if (scopeType === 'remote_chat' && scopeKey === 'oc_group_1') {
+          return {
+            success: true,
+            data: [
+              {
+                id: 'binding-group',
+                connectorId: connector.id,
+                scopeType: 'remote_chat',
+                scopeKey,
+                agentProfileId: 'agent-group',
+                priority: 0,
+                enabled: true,
+                temporary: false,
+                createdAt: 1,
+                updatedAt: 1,
+              },
+            ],
+          };
+        }
+
+        return { success: true, data: [] };
+      }
+    );
+
+    const result = await (
+      resolver as unknown as {
+        ensureChannelUserProjection: (
+          connector: IConnectorInstance,
+          platformUserId: string,
+          platform: 'lark',
+          chatId: string,
+          platformChatId?: string,
+          displayName?: string,
+          remoteChatType?: string,
+          peerScope?: 'chat' | 'thread',
+          parentChatId?: string,
+          threadId?: string
+        ) => Promise<IChannelUser>;
+      }
+    ).ensureChannelUserProjection(
+      { ...connector, platform: 'lark', name: 'Feishu' },
+      'ou_user_1',
+      'lark',
+      'oc_group_1:thread:om_topic_root_1',
+      'oc_group_1',
+      'Topic User',
+      'topic',
+      'thread',
+      'oc_group_1',
+      'om_topic_root_1'
+    );
+
+    expect(result.id).toMatch(/^remote_identity_published_/);
+    expect(result.platformUserId).toBe('ou_user_1');
   });
 
   it('skips remote_user bindings for group chats', async () => {
@@ -565,6 +687,68 @@ describe('ChannelRouteResolver', () => {
     });
 
     expect(result.id).toBe('binding-default');
+  });
+
+  it('reconstructs google auth gemini models when creating conversations from published agents', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockProcessConfigGet.mockResolvedValue([]);
+    mockCreateConversation.mockResolvedValue({
+      id: 'conv-google-auth',
+      type: 'gemini',
+      extra: {},
+    });
+
+    await (
+      resolver as unknown as {
+        createConversation: (
+          platform: 'telegram',
+          chatId: string,
+          agentProfile: {
+            id: string;
+            name: string;
+            backend: string;
+            modelRef: {
+              id: string;
+              useModel: string;
+              platform?: string;
+              name?: string;
+              baseUrl?: string;
+            };
+            version: number;
+            archived: boolean;
+            createdAt: number;
+            updatedAt: number;
+          }
+        ) => Promise<{ id: string; type: string; extra: Record<string, never> }>;
+      }
+    ).createConversation('telegram', 'group:alpha', {
+      id: 'agent-google-auth',
+      name: 'Gemini Agent',
+      backend: 'gemini',
+      modelRef: {
+        id: GOOGLE_AUTH_PROVIDER_ID,
+        useModel: 'gemini-2.5-pro',
+        platform: 'gemini-with-google-auth',
+        name: 'Gemini',
+        baseUrl: '',
+      },
+      version: 1,
+      archived: false,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    expect(mockCreateConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'gemini',
+        model: expect.objectContaining({
+          id: GOOGLE_AUTH_PROVIDER_ID,
+          platform: 'gemini-with-google-auth',
+          useModel: 'gemini-2.5-pro',
+          apiKey: '',
+        }),
+      })
+    );
   });
 
   it('transfers conversation ownership when reusing an existing conversation', async () => {

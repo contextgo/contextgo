@@ -8,7 +8,7 @@ import FilePreview from '@/renderer/components/media/FilePreview';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useCompositionInput } from '@/renderer/hooks/chat/useCompositionInput';
 import type { useDragUpload } from '@/renderer/hooks/file/useDragUpload';
-import { Input, Tooltip } from '@arco-design/web-react';
+import { Button, Input, Tooltip } from '@arco-design/web-react';
 import { IconClose } from '@arco-design/web-react/icon';
 import { FolderOpen } from '@icon-park/react';
 import { iconColors } from '@/renderer/styles/colors';
@@ -87,13 +87,10 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
 
   return (
     <div
-      className={`${styles.guidInputCard} relative p-16px ${dir ? 'pb-8px' : ''} border-3 b bg-dialog-fill-0 b-solid rd-20px flex flex-col ${mentionOpen ? 'overflow-visible' : 'overflow-hidden'} transition-all duration-200 ${isFileDragging ? 'border-dashed' : ''}`}
+      className={`${styles.guidInputCard} ${isMobile ? styles.guidInputCardMobile : ''} relative p-16px ${dir ? 'pb-8px' : ''} border-3 b bg-dialog-fill-0 b-solid rd-20px flex flex-col ${mentionOpen ? 'overflow-visible' : 'overflow-hidden'} transition-all duration-200 ${isFileDragging ? 'border-dashed' : ''}`}
       style={{
         zIndex: 1,
         transition: 'box-shadow 0.25s ease, border-color 0.25s ease, border-width 0.25s ease',
-        width: isMobile ? 'calc(100% + 28px)' : undefined,
-        marginLeft: isMobile ? -14 : undefined,
-        marginRight: isMobile ? -14 : undefined,
         ...(isFileDragging
           ? {
               backgroundColor: 'var(--color-primary-light-1)',
@@ -122,7 +119,7 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
         onKeyDown={handleKeyDown}
       />
       {mentionOpen && (
-        <div className='absolute z-50' style={{ left: 16, top: 44 }}>
+        <div className={`absolute z-50 ${styles.guidMentionDropdown}`} style={{ left: 0, top: isMobile ? 56 : 44 }}>
           {mentionDropdown}
         </div>
       )}
@@ -159,15 +156,15 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
             </Tooltip>
           </div>
           <Tooltip content={t('conversation.welcome.clearWorkspace')} position='top' disabled={isMobile}>
-            <button
-              type='button'
-              className='mt-1px h-28px w-28px rd-999px flex items-center justify-center flex-shrink-0 text-t-tertiary hover:text-[rgb(var(--danger-6))] hover:bg-[rgba(var(--danger-6),0.12)] active:bg-[rgba(var(--danger-6),0.18)] transition-colors'
+            <Button
+              type='text'
+              shape='circle'
+              className='!mt-1px !h-28px !w-28px !min-w-28px !p-0 flex-shrink-0 text-t-tertiary hover:text-[rgb(var(--danger-6))] hover:bg-[rgba(var(--danger-6),0.12)] active:bg-[rgba(var(--danger-6),0.18)] transition-colors'
               onClick={onClearDir}
               aria-label={t('conversation.welcome.clearWorkspace')}
+              icon={<IconClose strokeWidth={3} style={{ fontSize: 15 }} />}
               style={{ border: '1px solid var(--border-base)' }}
-            >
-              <IconClose strokeWidth={3} style={{ fontSize: 15 }} />
-            </button>
+            />
           </Tooltip>
         </div>
       )}

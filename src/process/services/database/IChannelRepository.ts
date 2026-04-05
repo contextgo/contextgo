@@ -11,6 +11,7 @@ import type {
   IConnectorInstance,
   IChannelPluginConfig,
   IChannelPairingRequest,
+  IChannelAuthorizedTarget,
   IChannelUser,
   IChannelSession,
 } from '@process/channels/types';
@@ -19,6 +20,7 @@ export interface IChannelRepository {
   getChannelPlugins(): Promise<IChannelPluginConfig[]>;
   getPendingPairingRequests(): Promise<IChannelPairingRequest[]>;
   getChannelUsers(): Promise<IChannelUser[]>;
+  getChannelAuthorizedTargets(): Promise<IChannelAuthorizedTarget[]>;
   deleteChannelUser(userId: string): Promise<void>;
   getChannelSessions(): Promise<IChannelSession[]>;
   getConnectorInstances(): Promise<IConnectorInstance[]>;

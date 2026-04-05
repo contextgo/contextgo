@@ -439,9 +439,18 @@
   flex: 1;
 }
 
-.assistantName {
-  display: block;
+.assistantTitleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   min-width: 0;
+}
+
+.assistantName {
+  display: inline-block;
+  min-width: 0;
+  flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -456,6 +465,28 @@
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.assistantBadgeRow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.assistantBadgeTag {
+  border-radius: 999px !important;
+}
+
+.assistantWorkspaceHint {
+  margin-top: 6px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .assistantActions {

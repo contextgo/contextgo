@@ -8,6 +8,7 @@ import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import type { AcpBackend, AvailableAgent } from '../types';
+import { Button } from '@arco-design/web-react';
 import { Robot } from '@icon-park/react';
 import React from 'react';
 import styles from '../index.module.css';
@@ -27,6 +28,45 @@ const AgentPillBar: React.FC<AgentPillBarProps> = ({
 }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
+  const displayAgents = availableAgents.filter((agent) => agent.backend !== 'custom' || agent.isExtension);
+
+  if (isMobile) {
+    return (
+      <div className='w-full'>
+        <div className={styles.agentPillViewport}>
+          <div className={styles.agentPillRail}>
+            {displayAgents.map((agent) => {
+              const isSelected = selectedAgentKey === getAgentKey(agent);
+              const extensionAvatar = resolveExtensionAssetUrl(agent.isExtension ? agent.avatar : undefined);
+              const logoSrc = extensionAvatar || getAgentLogo(agent.backend);
+
+              return (
+                <Button
+                  key={getAgentKey(agent)}
+                  type='text'
+                  className={`${styles.agentPillChip} ${isSelected ? styles.agentPillChipActive : ''}`}
+                  onClick={() => onSelectAgent(getAgentKey(agent))}
+                >
+                  {logoSrc ? (
+                    <img
+                      src={logoSrc}
+                      alt={`${agent.backend} logo`}
+                      width={18}
+                      height={18}
+                      style={{ objectFit: 'contain', flexShrink: 0 }}
+                    />
+                  ) : (
+                    <Robot theme='outline' size={18} fill='currentColor' style={{ flexShrink: 0 }} />
+                  )}
+                  <span className={styles.agentPillChipLabel}>{agent.name}</span>
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='w-full flex justify-center'>
@@ -48,9 +88,7 @@ const AgentPillBar: React.FC<AgentPillBarProps> = ({
           color: 'var(--text-primary)',
         }}
       >
-        {availableAgents
-          .filter((agent) => agent.backend !== 'custom' || agent.isExtension)
-          .map((agent, index) => {
+        {displayAgents.map((agent, index) => {
             const isSelected = selectedAgentKey === getAgentKey(agent);
             const extensionAvatar = resolveExtensionAssetUrl(agent.isExtension ? agent.avatar : undefined);
             const logoSrc = extensionAvatar || getAgentLogo(agent.backend);

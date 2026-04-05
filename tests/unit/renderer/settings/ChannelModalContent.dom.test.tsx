@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetPluginStatusInvoke = vi.fn();
 const mockGetChannelAccountsInvoke = vi.fn();
-const mockGetAuthorizedUsersInvoke = vi.fn();
+const mockGetAuthorizedTargetsInvoke = vi.fn();
 const mockWebuiStatusInvoke = vi.fn();
 const mockPluginStatusChangedOn = vi.fn(() => vi.fn());
 const mockUserAuthorizedOn = vi.fn(() => vi.fn());
@@ -66,8 +66,7 @@ const translations: Record<string, string> = {
   'settings.assistant.connected': 'Connected',
   'settings.assistant.disconnected': 'Disconnected',
   'settings.activeSessions': 'Agent Publish',
-  'settings.activeSessionsDesc':
-    'Choose a usable channel account, then set stable long-term publication rules.',
+  'settings.activeSessionsDesc': 'Choose a usable channel account, then set stable long-term publication rules.',
 };
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
@@ -78,8 +77,8 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     getChannelAccounts: {
       invoke: (...args: unknown[]) => mockGetChannelAccountsInvoke(...args),
     },
-    getAuthorizedUsers: {
-      invoke: (...args: unknown[]) => mockGetAuthorizedUsersInvoke(...args),
+    getAuthorizedTargets: {
+      invoke: (...args: unknown[]) => mockGetAuthorizedTargetsInvoke(...args),
     },
     pluginStatusChanged: {
       on: (...args: unknown[]) => mockPluginStatusChangedOn(...args),
@@ -255,13 +254,16 @@ describe('ChannelModalContent', () => {
         },
       ],
     });
-    mockGetAuthorizedUsersInvoke.mockResolvedValue({
+    mockGetAuthorizedTargetsInvoke.mockResolvedValue({
       success: true,
       data: [
         {
           id: 'remote-telegram-1',
           connectorId: 'telegram_default',
-          platformUserId: 'tg-123',
+          targetId: 'user:tg-123',
+          targetType: 'direct',
+          remoteUserId: 'tg-123',
+          platformChatId: 'tg-123',
           platformType: 'telegram',
           authorizedAt: 1000,
         },
@@ -286,9 +288,7 @@ describe('ChannelModalContent', () => {
     expect(screen.getByText('publication panel')).toBeInTheDocument();
     expect(screen.getByText('Agent Publish')).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'Choose a usable channel account, then set stable long-term publication rules.'
-      )
+      screen.getByText('Choose a usable channel account, then set stable long-term publication rules.')
     ).toBeInTheDocument();
   });
 
@@ -298,7 +298,7 @@ describe('ChannelModalContent', () => {
     await waitFor(() => {
       expect(mockGetPluginStatusInvoke).toHaveBeenCalled();
       expect(mockGetChannelAccountsInvoke).toHaveBeenCalled();
-      expect(mockGetAuthorizedUsersInvoke).toHaveBeenCalled();
+      expect(mockGetAuthorizedTargetsInvoke).toHaveBeenCalled();
     });
 
     expect(screen.getByText('IM Channels')).toBeInTheDocument();

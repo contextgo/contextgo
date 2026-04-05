@@ -116,9 +116,19 @@ export const handlePairingShow: ActionHandler = async (context) => {
   const platform = context.platform;
   const routingChatId = context.originalMessage.peer?.key ?? context.chatId;
   const transportChatId = context.originalMessage.peer?.platformChatId;
+  const remoteChatType = context.originalMessage.peer?.chatType;
 
   // Check if user is already authorized
-  if (await pairingService.isUserAuthorized(context.userId, platform, routingChatId, context.pluginId, transportChatId)) {
+  if (
+    await pairingService.isUserAuthorized(
+      context.userId,
+      platform,
+      routingChatId,
+      context.pluginId,
+      transportChatId,
+      remoteChatType
+    )
+  ) {
     return createSuccessResponse({
       type: 'text',
       text: [
@@ -179,9 +189,19 @@ export const handlePairingRefresh: ActionHandler = async (context) => {
   const platform = context.platform;
   const routingChatId = context.originalMessage.peer?.key ?? context.chatId;
   const transportChatId = context.originalMessage.peer?.platformChatId;
+  const remoteChatType = context.originalMessage.peer?.chatType;
 
   // Check if user is already authorized
-  if (await pairingService.isUserAuthorized(context.userId, platform, routingChatId, context.pluginId, transportChatId)) {
+  if (
+    await pairingService.isUserAuthorized(
+      context.userId,
+      platform,
+      routingChatId,
+      context.pluginId,
+      transportChatId,
+      remoteChatType
+    )
+  ) {
     return createSuccessResponse({
       type: 'text',
       text: '✅ You are already paired. No need to refresh the pairing code.',
@@ -231,9 +251,19 @@ export const handlePairingCheck: ActionHandler = async (context) => {
   const platform = context.platform;
   const routingChatId = context.originalMessage.peer?.key ?? context.chatId;
   const transportChatId = context.originalMessage.peer?.platformChatId;
+  const remoteChatType = context.originalMessage.peer?.chatType;
 
   // Check if user is already authorized
-  if (await pairingService.isUserAuthorized(context.userId, platform, routingChatId, context.pluginId, transportChatId)) {
+  if (
+    await pairingService.isUserAuthorized(
+      context.userId,
+      platform,
+      routingChatId,
+      context.pluginId,
+      transportChatId,
+      remoteChatType
+    )
+  ) {
     return createSuccessResponse({
       type: 'text',
       text: [

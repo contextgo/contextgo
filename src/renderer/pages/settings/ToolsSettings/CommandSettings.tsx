@@ -297,7 +297,7 @@ const CommandSettings: React.FC = () => {
   };
 
   return (
-    <SettingsPageWrapper>
+    <SettingsPageWrapper contentClassName='pb-[calc(24px+env(safe-area-inset-bottom,0px))]'>
       {contextHolder}
       <div className='flex flex-col gap-16px'>
         <div className='rounded-20px border border-solid border-[var(--color-border-2)] bg-[var(--color-bg-1)] p-20px'>

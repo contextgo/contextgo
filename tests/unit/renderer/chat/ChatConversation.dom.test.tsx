@@ -1,11 +1,20 @@
 import type { TChatConversation } from '@/common/config/storage';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const openPreviewMock = vi.fn();
 const acpModelSelectorMock = vi.fn(() => <div data-testid='acp-model-selector' />);
 const navigateMock = vi.fn();
+const mockPrepareConversationPublicationInvoke = vi.fn();
+
+vi.mock('@/common/adapter/ipcBridge', () => ({
+  channel: {
+    prepareConversationPublication: {
+      invoke: (...args: unknown[]) => mockPrepareConversationPublicationInvoke(...args),
+    },
+  },
+}));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -138,6 +147,28 @@ vi.mock('@/renderer/pages/conversation/platforms/ConversationBrowserContextButto
   default: () => <div data-testid='browser-context-button' />,
 }));
 
+vi.mock('@arco-design/web-react', () => ({
+  Button: ({ children, onClick, disabled, loading, ...props }: any) => (
+    <button type='button' onClick={onClick} disabled={disabled || loading} {...props}>
+      {children}
+    </button>
+  ),
+  Dropdown: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  Menu: Object.assign(
+    ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    {
+      Item: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    }
+  ),
+  Message: {
+    error: vi.fn(),
+  },
+  Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  Typography: {
+    Ellipsis: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
+  },
+}));
+
 import ChatConversation from '@/renderer/pages/conversation/components/ChatConversation';
 
 const createConversation = (type: TChatConversation['type'], id: string): TChatConversation =>
@@ -159,6 +190,12 @@ const createConversation = (type: TChatConversation['type'], id: string): TChatC
 describe('ChatConversation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrepareConversationPublicationInvoke.mockResolvedValue({
+      success: true,
+      data: {
+        id: 'agent-profile-1',
+      },
+    });
   });
 
   it('keeps hook order stable when switching from a gemini conversation to a non-gemini conversation', () => {
@@ -227,5 +264,49 @@ describe('ChatConversation', () => {
     render(<ChatConversation conversation={conversation} />);
 
     expect(screen.getByTestId('browser-context-button')).toBeInTheDocument();
+  });
+
+  it('writes publication intent into url search when opening the agent publish page', async () => {
+    const conversation = {
+      ...createConversation('acp', 'acp-publish-1'),
+      name: 'Workspace triage',
+      extra: {
+        workspace: '/tmp/publish',
+        backend: 'openclaw-gateway',
+        customAgentId: 'agent-custom-1',
+        agentName: 'Support Agent',
+      },
+    } as TChatConversation;
+
+    render(<ChatConversation conversation={conversation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.header.publishAgentEntry' }));
+
+    await waitFor(() => {
+      expect(mockPrepareConversationPublicationInvoke).toHaveBeenCalledWith({
+        conversationId: 'acp-publish-1',
+      });
+      expect(navigateMock).toHaveBeenCalledWith(
+        {
+          pathname: '/settings/agent-publish',
+          search:
+            '?agentProfileId=agent-profile-1&conversationId=acp-publish-1&conversationName=Workspace+triage&backend=openclaw-gateway&customAgentId=agent-custom-1&workspace=%2Ftmp%2Fpublish&agentName=Support+Agent',
+        },
+        {
+          state: {
+            agentPublishFocus: 'publication',
+            publicationIntent: {
+              agentProfileId: 'agent-profile-1',
+              conversationId: 'acp-publish-1',
+              conversationName: 'Workspace triage',
+              backend: 'openclaw-gateway',
+              customAgentId: 'agent-custom-1',
+              workspace: '/tmp/publish',
+              agentName: 'Support Agent',
+            },
+          },
+        }
+      );
+    });
   });
 });

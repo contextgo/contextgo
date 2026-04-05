@@ -34,6 +34,16 @@
 }
 
 .app-titlebar--mobile {
+  height: calc(58px + env(safe-area-inset-top, 0px));
+  min-height: calc(58px + env(safe-area-inset-top, 0px));
+  padding:
+    calc(6px + env(safe-area-inset-top, 0px))
+    calc(10px + env(safe-area-inset-right, 0px))
+    0
+    calc(10px + env(safe-area-inset-left, 0px));
+}
+
+.app-titlebar--mobile-shell {
   height: 58px;
   min-height: 58px;
   padding: 6px 10px 0;
@@ -78,7 +88,11 @@
   position: absolute;
   left: 50%;
   transform: translateX(calc(-50% + var(--app-titlebar-mobile-center-offset, 0px)));
-  max-width: calc(100% - 180px);
+  max-width: calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 200px);
+}
+
+.app-titlebar--mobile-shell .app-titlebar__brand {
+  max-width: calc(100% - 200px);
 }
 
 .app-titlebar__brand-text {
@@ -98,6 +112,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .app-titlebar__desktop-left {
@@ -174,6 +189,7 @@
   -webkit-app-region: no-drag;
   margin-left: auto;
   min-height: var(--titlebar-height);
+  flex-shrink: 0;
 }
 
 .app-titlebar__toolbar--desktop {

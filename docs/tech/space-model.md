@@ -3,7 +3,8 @@
 ## 状态
 
 - 方向已确认
-- 初始实现尚未开始
+- `spaceId / mountId / workingDirectory` 的基础字段与部分运行时接线已经开始
+- 完整产品模型、`Project` 层对象和 space-first UI 仍未完成
 
 ## 背景
 
@@ -32,11 +33,82 @@ AFFiNE 之所以适合作为第一个高能力 space engine，是因为它已经
 
 本文档定义的就是这样一种空间模型：既能让 AFFiNE 能力被吸收进来，又不改变 ContextGo 的产品主轴。
 
+## 产品定位
+
+### ContextGo 要解决的问题
+
+ContextGo 不是单纯的 AI 聊天窗口，也不是把本地目录直接包一层 Agent UI。
+
+它要解决的是：
+
+- 用户的长期工作上下文分散在会话、目录、文件、浏览器、外部系统和不同设备里
+- Agent 的执行窗口通常是短期的，每次都像从零开始
+- 本地目录对执行很重要，但并不能代表完整的长期工作语义
+- 移动端、浏览器和远程入口需要接入同一套工作系统，但不能破坏桌面主机上的本地所有权
+
+因此，ContextGo 的长期方向不是“会话驱动的聊天产品”，而是一个：
+
+- desktop-first
+- local-first
+- multi-agent
+- long-lived context driven
+
+的工作系统。
+
+一句话定义：
+
+```text
+ContextGo 是一个以本地为主权基础、以长期上下文为核心、由桌面主机驱动的多 Agent 工作系统。
+```
+
+### 当前可发版产品
+
+当前最适合对外表达的产品定义是：
+
+```text
+ContextGo 是一个 desktop-first 的 Agent Workbench。
+```
+
+它当前已经清晰成立的部分包括：
+
+- 桌面端作为真实执行宿主
+- session / conversation 驱动的 Agent 工作流
+- 本地工作目录与运行时工具接入
+- WebUI / browser 访问
+- Android / iOS / HarmonyOS 远程壳接入
+- 持续演进中的 context engine 基础设施
+
+当前不应对外过度承诺的部分包括：
+
+- 完整成熟的 Space-first 信息架构
+- 完整多人协作语义
+- 完整 `Project` 层对象模型
+- 完整可操作的 `Mount` 管理产品面
+- 把 context engine 直接包装成面向用户的独立主功能
+
+### 长期目标产品
+
+长期目标可以定义为：
+
+```text
+Space-first 的 local-first Agent Work System。
+```
+
+也就是：
+
+- `Workbench` 是执行入口
+- `Space` 是长期上下文与协作容器
+- `Project` 是 Space 内的工作单元
+- `Session / Thread` 是具体执行视图
+- `Context Engine` 负责长期沉淀、检索、压缩和组装上下文
+- 桌面主机负责执行，移动端和浏览器作为远程使用面接入
+
 ## 核心决策
 
 产品顶层对象应该是 `Space`，而不是 `Conversation`。
 
 - `Space` 是持久上下文容器
+- `Project` 是 `Space` 内的工作单元
 - `Thread` 是空间内的执行视图
 - `Artifact` 是空间内的执行产物
 - `Mount` 是设备本地执行挂载点，不等于空间本体
@@ -50,7 +122,7 @@ Conversation -> working directory -> agent task
 转向：
 
 ```text
-Space -> Thread -> Agent execution
+Space -> Project -> Thread -> Agent execution
 ```
 
 ## 术语边界
@@ -69,6 +141,46 @@ Space -> Thread -> Agent execution
 - 长期文档、画板、artifact、source item 组织
 
 `Space` 不是某个会话，也不是某个本地文件夹。
+
+同时，`Space` 是长期上下文边界。
+它可以管理：
+
+- 某个单独项目的长期上下文
+- 某个客户、团队或课题的跨项目上下文
+- 一个用户在多个执行线程之上共享的长期知识与规则
+
+因此：
+
+- `Space` 可以只对应一个项目
+- 也可以高于单个项目，承载跨项目共享上下文
+
+### Project
+
+`Project` 是 `Space` 内的工作单元。
+
+它更接近用户真正理解的“当前正在推进的一项工作”，例如：
+
+- 一个代码仓库
+- 一个产品迭代
+- 一个研究课题
+- 一个交付任务
+
+它负责：
+
+- 组织同一项工作下的 session / thread
+- 绑定默认本地资源入口或默认 working directory
+- 在同一 `Space` 内隔离不同工作单元的执行上下文
+
+因此：
+
+- `Project belongs to Space`
+- `Project` 可以绑定一个默认本地工作目录
+- 但 `Project` 不应被直接定义成“某个磁盘路径本身”
+- 同一个 `Project` 后续允许对应多个本地资源入口或跨设备不同路径
+
+当前仓库中，`Project` 还没有成为一等实现对象。
+在现阶段，如果需要一个近似落点，可以临时把“一个带明确 working directory 的工作单元”近似看成 project-like object，
+但不要把这种兼容做法误认为最终产品定义。
 
 ### Thread
 
@@ -90,6 +202,7 @@ Space -> Thread -> Agent execution
 因此：
 
 - `Thread belongs to Space`
+- 长期目标中 `Thread belongs to Project`，而 `Project belongs to Space`
 - `Thread` 不是长期知识归档容器
 - `Thread` 也不是本地工作目录
 
@@ -107,6 +220,11 @@ Space -> Thread -> Agent execution
 - 现在的 `Conversation` 可以作为 `Thread` 的实现近似
 - 但产品语义上，顶层对象已经不应再是 `Conversation`
 
+在 `Project` 尚未落地前，当前实现可以近似理解为：
+
+- `Conversation belongs to Space`
+- 后续推荐演进到 `Conversation / Session belongs to Project`
+
 ### Mount
 
 `Mount` 是某个 `Space` 在当前设备上的本地执行挂载点。
@@ -123,6 +241,12 @@ Space -> Thread -> Agent execution
 - 但 `Mount` 只在当前设备或 runtime 上生效
 - `Mount` 不是 space 的全局身份
 - `Mount` 不应该被直接当成同步对象在设备间复制
+
+`Mount` 不是“这次具体跑在哪个目录”的同义词。
+更准确地说：
+
+- `Mount` 是某个本地资源入口或资源根的稳定引用
+- `workingDirectory` 才是某次执行最终实际使用的物理目录
 
 ### Runtime Workspace
 
@@ -145,9 +269,20 @@ Space -> Thread -> Agent execution
 - 也可以来自系统自动创建的临时目录
 - 它是 host-specific 的执行状态，不是持久上下文本体
 
+如果用户当前明确选择“在这台机器上的某个目录里工作”，那个具体概念优先对应：
+
+- `workingDirectory`
+
+而不是：
+
+- `mountId`
+
+`mountId` 更像“这个目录属于哪个本机挂载入口”的引用。
+
 ### 一句话区分
 
 - `Space` 是长期逻辑空间
+- `Project` 是空间内的工作单元
 - `Thread` 是空间里的任务线 / 执行视图
 - `Conversation` 是当前实现里对 thread 的近似承载
 - `Mount` 是 space 在当前设备上的本地资源挂载点
@@ -157,15 +292,17 @@ Space -> Thread -> Agent execution
 
 ```text
 Space
-└── Thread
-    └── Agent Execution
-        ├── Runtime Workspace (cwd)
-        └── Tools / Skills / Runtime State
+└── Project
+    └── Thread
+        └── Agent Execution
+            ├── Runtime Workspace (cwd)
+            └── Tools / Skills / Runtime State
 ```
 
 补充说明：
 
 - 长期上下文属于 `Space`
+- 项目级执行组织属于 `Project`
 - 一次任务的执行视角属于 `Thread`
 - 本地目录只是执行附着物，不应上升为产品顶层身份
 
@@ -187,6 +324,21 @@ Space
 - `Space` 是逻辑对象
 - 文件系统路径只是可选的设备本地挂载点
 - local-first 存储应通过 replica 实现，而不是通过路径身份实现
+
+### 1.1 Project 可以绑定路径，但不应退化成路径本体
+
+`Project` 可以默认绑定一个工作目录，但不应直接定义成“磁盘路径本身”。
+
+原因：
+
+- 同一个项目可能对应多个本地资源入口
+- 同一个项目在不同设备上的路径可能不同
+- 项目是用户理解的工作单元，目录只是其本机执行入口之一
+
+因此：
+
+- `Project` 可以以 working directory 为默认锚点
+- 但 `Project` 的长期身份应独立于某一条具体路径
 
 ### 2. 同步的是空间内容，不是设备状态
 
@@ -272,6 +424,29 @@ ContextGo 继续负责：
 - 一个个人研究空间
 - 一个团队知识空间
 
+### Project
+
+空间内的工作单元。
+
+职责：
+
+- 组织同一项工作下的 session / thread
+- 绑定默认工作目录或默认本机资源入口
+- 作为用户理解的“当前正在推进的某项工作”的长期对象
+
+例子：
+
+- 某个代码仓库项目
+- 某次版本发布项目
+- 某个客户交付项目
+- 某个研究主题项目
+
+说明：
+
+- 一个 space 可以有多个 project
+- 一个 project 可以在不同设备上映射到不同路径
+- project 可以帮助把“项目内上下文”和“跨项目共享上下文”区分开
+
 ### Replica
 
 某个 space 在某个设备或 runtime 上的 local-first 存储副本。
@@ -309,6 +484,7 @@ ContextGo 继续负责：
 
 - 一个 space 可以有零个、一个或多个 mount
 - mount 不是全局同步的空间身份
+- mount 更像本机资源入口引用，不等于最终 working directory
 
 ### Thread
 
@@ -324,6 +500,7 @@ ContextGo 继续负责：
 说明：
 
 - thread 属于某个 space
+- 长期目标中 thread 更推荐归属某个 project，再由 project 归属于 space
 - thread 不是长期知识归档容器
 
 ### Artifact
@@ -414,6 +591,7 @@ User
 └── Space
     ├── Replica (per device/runtime)
     ├── Mount (per device/runtime)
+    ├── Project
     ├── Document
     ├── Board
     ├── Artifact
@@ -427,6 +605,8 @@ User
 关键归属规则：
 
 - `Thread belongs to Space`
+- `Project belongs to Space`
+- `Thread belongs to Project` 是长期推荐模型
 - `Artifact belongs to Space`
 - `Document belongs to Space`
 - `Board belongs to Space`
@@ -443,6 +623,7 @@ User
 
 - global space switcher
 - space overview
+- projects
 - docs
 - boards
 - threads
@@ -542,6 +723,7 @@ AFFiNE Copilot 不在第一阶段集成范围内。
 
 - 用 AFFiNE 替换 ContextGo
 - 把一个 space 绑定成一个磁盘目录
+- 把 `Project` 直接定义成某个固定物理目录
 - 采用 AFFiNE Copilot 作为主 agent 层
 - 现在就设计完整 `cgo` 命令面
 - 把设备本地 runtime state 当成持久空间内容同步
@@ -554,6 +736,7 @@ space-centered 的上下文与执行平台。
 在这个目标架构里：
 
 - `Space` 是持久逻辑容器
+- `Project` 是空间内的工作单元
 - `Replica` 是 local-first 存储状态
 - `Mount` 是设备本地执行挂载点
 - `Thread` 是任务导向的执行视图

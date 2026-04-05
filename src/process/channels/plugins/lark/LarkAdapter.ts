@@ -87,6 +87,7 @@ function buildLarkPeer(params: {
   threadId?: string;
 }): IUnifiedPeer {
   const topicThreadId = params.rootId || params.threadId;
+  const containerType = params.chatType === 'topic' ? 'group' : undefined;
 
   if (params.chatId && topicThreadId) {
     return {
@@ -96,6 +97,8 @@ function buildLarkPeer(params: {
       threadId: topicThreadId,
       scope: 'thread',
       chatType: params.chatType === 'topic' ? 'topic' : 'thread',
+      containerId: params.chatId,
+      containerType,
     };
   }
 

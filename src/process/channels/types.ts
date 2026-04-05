@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { TProviderWithModel } from '@/common/config/storage';
 import { isBuiltinChannelType, type BuiltinChannelType } from '@/common/config/builtinChannels';
 
 // ==================== Plugin Types ====================
@@ -198,6 +199,9 @@ export interface IRemoteIdentity {
   legacyUserId?: string;
 }
 
+export type ChannelObjectKind = 'person' | 'dm' | 'group' | 'channel' | 'topic' | 'thread' | 'server' | 'space' | 'chat';
+export type ChannelObjectParentKind = Exclude<ChannelObjectKind, 'person' | 'dm'>;
+
 /**
  * Published reusable agent capability.
  */
@@ -205,10 +209,8 @@ export interface IAgentProfile {
   id: string;
   name: string;
   backend: string;
-  modelRef?: {
-    id: string;
-    useModel: string;
-  };
+  modelRef?: Pick<TProviderWithModel, 'id' | 'useModel'> &
+    Partial<Pick<TProviderWithModel, 'platform' | 'name' | 'baseUrl'>>;
   workspaceRef?: string;
   promptProfile?: Record<string, unknown>;
   toolPolicy?: Record<string, unknown>;
@@ -279,6 +281,13 @@ export interface IChannelAudienceEntry {
   parentChatId?: string;
   threadId?: string;
   displayName?: string;
+  objectKey?: string;
+  objectKind?: ChannelObjectKind;
+  objectTitle?: string;
+  objectSubtitle?: string;
+  parentObjectKey?: string;
+  parentObjectTitle?: string;
+  parentObjectKind?: ChannelObjectParentKind;
   title: string;
   subtitle?: string;
   lastActive?: number;
@@ -516,6 +525,24 @@ export interface IChannelUser {
   sessionId?: string;
 }
 
+export interface IChannelAuthorizedTarget {
+  id: string;
+  connectorId?: string;
+  /** @deprecated Use connectorId. */
+  channelAccountId?: string;
+  platformType: PluginType;
+  targetId: string;
+  displayName?: string;
+  targetType?: string;
+  parentTargetId?: string;
+  threadId?: string;
+  remoteUserId?: string;
+  platformChatId?: string;
+  authorizedAt: number;
+  lastActive?: number;
+  sessionId?: string;
+}
+
 /**
  * Database row for assistant users
  */
@@ -564,6 +591,13 @@ export type IChannelActiveSessionEntry = {
   remoteIdentityId?: string;
   audienceTitle: string;
   audienceKey?: string;
+  objectKey?: string;
+  objectKind?: ChannelObjectKind;
+  objectTitle?: string;
+  objectSubtitle?: string;
+  parentObjectKey?: string;
+  parentObjectTitle?: string;
+  parentObjectKind?: ChannelObjectParentKind;
   conversationId?: string;
   workspace?: string;
   agentType: ChannelAgentType;
@@ -725,6 +759,9 @@ export interface IUnifiedPeer {
   parentChatId?: string;
   threadId?: string;
   chatType?: string;
+  containerId?: string;
+  containerType?: string;
+  containerTitle?: string;
 }
 
 /**

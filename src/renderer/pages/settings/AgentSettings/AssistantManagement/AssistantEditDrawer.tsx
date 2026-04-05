@@ -2,8 +2,21 @@
  * AssistantEditDrawer — Drawer for creating/editing an assistant.
  * Contains name/avatar fields, agent selector, rules editor, and skills section.
  */
-import type { AssistantListItem, HookInfo, SkillInfo } from './types';
-import { getIncompatibleHookNames, hasBuiltinSkills, isHookSupportedByBackend } from './assistantUtils';
+import type {
+  AssistantListItem,
+  HookInfo,
+  PendingSkill,
+  RelevantAssistantHook,
+  RelevantAssistantSkill,
+  SkillInfo,
+} from './types';
+import {
+  getIncompatibleHookNames,
+  getRelevantAssistantHooks,
+  getRelevantAssistantSkills,
+  hasBuiltinSkills,
+  isHookSupportedByBackend,
+} from './assistantUtils';
 import { HOOK_OUTPUT_TARGET_PRESENTATION } from '../hookLibraryUtils';
 import HookRoutingConfigModal from '../HookRoutingConfigModal';
 import { PRODUCT_VISIBLE_PRESET_AGENT_TYPES } from '@/renderer/utils/model/availableAgents';
@@ -71,7 +84,7 @@ type AssistantEditDrawerProps = {
   deleteHookName: string | null;
   setDeleteHookName: (v: string | null) => void;
   handleDeleteHookConfirm: () => Promise<void>;
-  pendingSkills: Array<{ name: string; description: string }>;
+  pendingSkills: PendingSkill[];
   customSkills: string[];
   setDeletePendingSkillName: (v: string | null) => void;
   setDeleteCustomSkillName: (v: string | null) => void;
@@ -151,6 +164,7 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
   const [configuringHook, setConfiguringHook] = useState<HookInfo | null>(null);
   const [routingDraft, setRoutingDraft] = useState<HookOutputRoutingDraft | null>(null);
   const [savingHookRouting, setSavingHookRouting] = useState(false);
+  const [hookLibraryVisible, setHookLibraryVisible] = useState(false);
 
   // Auto focus textarea when drawer opens in edit mode
   useEffect(() => {
@@ -181,7 +195,340 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
     isCreating ||
     (activeAssistantId !== null && hasBuiltinSkills(activeAssistantId)) ||
     (activeAssistant !== null && !activeAssistant.isBuiltin && !isExtensionAssistant(activeAssistant));
+  const relevantSkills = getRelevantAssistantSkills({
+    availableSkills,
+    selectedSkills,
+    pendingSkills,
+  });
+  const relevantHooks = getRelevantAssistantHooks({
+    availableHooks,
+    selectedHooks,
+  });
   const incompatibleHookNameSet = new Set(getIncompatibleHookNames(availableHooks, selectedHooks, editAgent));
+
+  const renderRelevantSkillItem = (skill: RelevantAssistantSkill) => {
+    return (
+      <div key={skill.name} className='flex items-start gap-8px p-8px hover:bg-fill-1 rounded-4px'>
+        <Checkbox
+          checked={selectedSkills.includes(skill.name)}
+          className='mt-2px cursor-pointer'
+          onChange={() => {
+            if (selectedSkills.includes(skill.name)) {
+              setSelectedSkills(selectedSkills.filter((s) => s !== skill.name));
+            } else {
+              setSelectedSkills([...selectedSkills, skill.name]);
+            }
+          }}
+        />
+        <div className='flex-1 min-w-0'>
+          <div className='flex items-center gap-6px flex-wrap'>
+            <div className='text-13px font-medium text-t-primary'>{skill.name}</div>
+            {skill.isPending ? (
+              <span className='bg-[rgba(var(--primary-6),0.08)] text-primary-6 border border-[rgba(var(--primary-6),0.2)] text-10px px-4px py-1px rd-4px font-medium uppercase'>
+                Pending
+              </span>
+            ) : null}
+            {skill.isCustom && !skill.isPending ? (
+              <span className='bg-[rgba(242,156,27,0.08)] text-[rgb(242,156,27)] border border-[rgba(242,156,27,0.2)] text-10px px-4px py-1px rd-4px font-medium uppercase'>
+                {t('settings.skillsHub.custom', { defaultValue: 'Custom' })}
+              </span>
+            ) : null}
+          </div>
+          {skill.description ? (
+            <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{skill.description}</div>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
+  const renderRelevantHookItem = (relevantHook: RelevantAssistantHook) => {
+    const hook = relevantHook.hook;
+    const isSupportedByCurrentAgent = hook ? isHookSupportedByBackend(hook, editAgent) : true;
+    const isSelectedButIncompatible = incompatibleHookNameSet.has(relevantHook.name);
+
+    return (
+      <div key={relevantHook.name} className='flex items-start gap-8px rounded-4px p-8px hover:bg-fill-1'>
+        <Checkbox
+          checked={selectedHooks.includes(relevantHook.name)}
+          className='mt-2px cursor-pointer'
+          onChange={() => {
+            if (selectedHooks.includes(relevantHook.name)) {
+              setSelectedHooks(selectedHooks.filter((item) => item !== relevantHook.name));
+            } else {
+              setSelectedHooks([...selectedHooks, relevantHook.name]);
+            }
+          }}
+        />
+        <div className='flex-1 min-w-0'>
+          <div className='flex items-center gap-6px flex-wrap'>
+            <div className='text-13px font-medium text-t-primary'>{relevantHook.name}</div>
+            {hook?.isCustom ? (
+              <Tag size='small' color='orange'>
+                {t('settings.skillsHub.custom', { defaultValue: 'Custom' })}
+              </Tag>
+            ) : null}
+            {hook?.executionType ? (
+              <Tag size='small' color='arcoblue'>
+                {hook.executionType}
+              </Tag>
+            ) : null}
+            {hook?.category ? (
+              <Tag size='small' color={HOOK_CATEGORY_COLORS[hook.category] || 'gray'}>
+                {t(`settings.hookCategories.${hook.category}`, {
+                  defaultValue: hook.category,
+                })}
+              </Tag>
+            ) : null}
+            {hook ? (
+              (hook.runnableEvents || []).length > 0 ? (
+                <Tag size='small' color='green'>
+                  {t('settings.hookReadyNow', { defaultValue: 'Ready Now' })}
+                </Tag>
+              ) : (
+                <Tag size='small' color='gray'>
+                  {t('settings.hookStoredOnly', { defaultValue: 'Stored Only' })}
+                </Tag>
+              )
+            ) : null}
+            {hook?.version ? (
+              <Tag size='small' color='gray'>
+                v{hook.version}
+              </Tag>
+            ) : null}
+            {!isSupportedByCurrentAgent ? (
+              <Tag size='small' color='red'>
+                {t('settings.hookUnsupportedTag', { defaultValue: 'Unsupported' })}
+              </Tag>
+            ) : null}
+          </div>
+          {relevantHook.description ? (
+            <div className='mt-2px line-clamp-2 text-12px text-t-secondary'>{relevantHook.description}</div>
+          ) : null}
+          {!hook ? (
+            <div className='mt-6px text-11px text-t-tertiary'>
+              {t('settings.assistantHookMissing', {
+                defaultValue: 'This hook is selected but is not available in the local hook library.',
+              })}
+            </div>
+          ) : null}
+          {!isSupportedByCurrentAgent ? (
+            <div className='mt-6px text-11px text-danger-6'>
+              {isSelectedButIncompatible
+                ? t('settings.hookSelectedButUnsupported', {
+                    defaultValue:
+                      'This hook is selected but will not run for the current agent. Remove it before saving.',
+                  })
+                : t('settings.hookUnsupportedHint', {
+                    defaultValue: 'This hook does not support the current agent.',
+                  })}
+            </div>
+          ) : null}
+          {hook?.location ? (
+            <div className='mt-6px break-all text-11px text-t-tertiary'>
+              {t('settings.hookLocation', { defaultValue: 'Location' })}: {hook.location}
+            </div>
+          ) : null}
+          {hook?.supportedBackends && hook.supportedBackends.length > 0 ? (
+            <div className='mt-6px flex flex-wrap gap-4px'>
+              <span className='text-11px text-t-tertiary'>
+                {t('settings.hookSupportedBackends', {
+                  defaultValue: 'Supported backends',
+                })}
+                :
+              </span>
+              {hook.supportedBackends.map((backend) => (
+                <Tag key={`${hook.name}-${backend}`} size='small' color='purple'>
+                  {backend}
+                </Tag>
+              ))}
+            </div>
+          ) : null}
+          {hook?.outputTargets && hook.outputTargets.length > 0 ? (
+            <div className='mt-6px flex flex-wrap gap-4px'>
+              <span className='text-11px text-t-tertiary'>
+                {t('settings.hookRoutesTo', { defaultValue: 'Routes To' })}:
+              </span>
+              {hook.outputTargets.map((target) => {
+                const presentation = HOOK_OUTPUT_TARGET_PRESENTATION[target];
+                return (
+                  <Tag key={`${hook.name}-output-${target}`} size='small' color={presentation.color}>
+                    {t(presentation.i18nKey, { defaultValue: presentation.defaultLabel })}
+                  </Tag>
+                );
+              })}
+            </div>
+          ) : null}
+          {hook?.events && hook.events.length > 0 ? (
+            <div className='mt-6px flex flex-wrap gap-4px'>
+              {hook.events.map((eventName) => (
+                <Tag key={`${hook.name}-${eventName}`} size='small' color='green'>
+                  {eventName}
+                </Tag>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        {hook?.isCustom ? (
+          <div className='flex items-center gap-4px'>
+            {canConfigureHookOutputRouting(hook) ? (
+              <Button
+                type='outline'
+                size='mini'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenHookRouting(hook);
+                }}
+              >
+                {t('settings.hookConfigure', { defaultValue: 'Configure' })}
+              </Button>
+            ) : null}
+            <Button
+              type='text'
+              size='mini'
+              icon={<Delete size={16} fill='var(--color-text-3)' />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteHookName(hook.name);
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderHookLibraryItem = (hook: HookInfo) => {
+    const isSupportedByCurrentAgent = isHookSupportedByBackend(hook, editAgent);
+    const isSelected = selectedHooks.includes(hook.name);
+    const isSelectedButIncompatible = incompatibleHookNameSet.has(hook.name);
+
+    return (
+      <div key={hook.name} className='flex items-start gap-8px rounded-4px p-8px hover:bg-fill-1'>
+        <Checkbox
+          checked={isSelected}
+          disabled={!isSupportedByCurrentAgent && !isSelected}
+          className='mt-2px cursor-pointer'
+          onChange={() => {
+            if (isSelected) {
+              setSelectedHooks(selectedHooks.filter((item) => item !== hook.name));
+            } else {
+              setSelectedHooks([...selectedHooks, hook.name]);
+            }
+          }}
+        />
+        <div className='flex-1 min-w-0'>
+          <div className='flex items-center gap-6px flex-wrap'>
+            <div className='text-13px font-medium text-t-primary'>{hook.name}</div>
+            {hook.isCustom ? (
+              <Tag size='small' color='orange'>
+                {t('settings.skillsHub.custom', { defaultValue: 'Custom' })}
+              </Tag>
+            ) : null}
+            {hook.executionType ? (
+              <Tag size='small' color='arcoblue'>
+                {hook.executionType}
+              </Tag>
+            ) : null}
+            {hook.category ? (
+              <Tag size='small' color={HOOK_CATEGORY_COLORS[hook.category] || 'gray'}>
+                {t(`settings.hookCategories.${hook.category}`, {
+                  defaultValue: hook.category,
+                })}
+              </Tag>
+            ) : null}
+            {(hook.runnableEvents || []).length > 0 ? (
+              <Tag size='small' color='green'>
+                {t('settings.hookReadyNow', { defaultValue: 'Ready Now' })}
+              </Tag>
+            ) : (
+              <Tag size='small' color='gray'>
+                {t('settings.hookStoredOnly', { defaultValue: 'Stored Only' })}
+              </Tag>
+            )}
+            {hook.version ? (
+              <Tag size='small' color='gray'>
+                v{hook.version}
+              </Tag>
+            ) : null}
+            {!isSupportedByCurrentAgent ? (
+              <Tag size='small' color='red'>
+                {t('settings.hookUnsupportedTag', { defaultValue: 'Unsupported' })}
+              </Tag>
+            ) : null}
+          </div>
+          {hook.description ? (
+            <div className='mt-2px line-clamp-2 text-12px text-t-secondary'>{hook.description}</div>
+          ) : null}
+          {!isSupportedByCurrentAgent ? (
+            <div className='mt-6px text-11px text-danger-6'>
+              {isSelectedButIncompatible
+                ? t('settings.hookSelectedButUnsupported', {
+                    defaultValue:
+                      'This hook is selected but will not run for the current agent. Remove it before saving.',
+                  })
+                : t('settings.hookUnsupportedHint', {
+                    defaultValue: 'This hook does not support the current agent.',
+                  })}
+            </div>
+          ) : null}
+          <div className='mt-6px break-all text-11px text-t-tertiary'>
+            {t('settings.hookLocation', { defaultValue: 'Location' })}: {hook.location}
+          </div>
+          {hook.tags && hook.tags.length > 0 ? (
+            <div className='mt-6px flex flex-wrap gap-4px'>
+              <span className='text-11px text-t-tertiary'>{t('settings.hookTags', { defaultValue: 'Tags' })}:</span>
+              {hook.tags.map((tag) => (
+                <Tag key={`${hook.name}-tag-${tag}`} size='small' color='gray'>
+                  {tag}
+                </Tag>
+              ))}
+            </div>
+          ) : null}
+          {hook.supportedBackends && hook.supportedBackends.length > 0 ? (
+            <div className='mt-6px flex flex-wrap gap-4px'>
+              <span className='text-11px text-t-tertiary'>
+                {t('settings.hookSupportedBackends', {
+                  defaultValue: 'Supported backends',
+                })}
+                :
+              </span>
+              {hook.supportedBackends.map((backend) => (
+                <Tag key={`${hook.name}-${backend}`} size='small' color='purple'>
+                  {backend}
+                </Tag>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        {hook.isCustom ? (
+          <div className='flex items-center gap-4px'>
+            {canConfigureHookOutputRouting(hook) ? (
+              <Button
+                type='outline'
+                size='mini'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenHookRouting(hook);
+                }}
+              >
+                {t('settings.hookConfigure', { defaultValue: 'Configure' })}
+              </Button>
+            ) : null}
+            <Button
+              type='text'
+              size='mini'
+              icon={<Delete size={16} fill='var(--color-text-3)' />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteHookName(hook.name);
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
+    );
+  };
 
   const handleOpenHookRouting = (hook: HookInfo) => {
     setConfiguringHook(hook);
@@ -477,158 +824,22 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
                 </Button>
               </div>
 
-              <Collapse defaultActiveKey={['custom-skills']}>
-                {/* Custom Skills (Pending + Imported) */}
+              <Collapse defaultActiveKey={['attached-skills']}>
                 <Collapse.Item
                   header={
                     <span className='text-13px font-medium'>
-                      {t('settings.customSkills', { defaultValue: 'Imported Skills (Library)' })}
+                      {t('settings.assistantAttachedSkills', { defaultValue: 'Attached Skills' })}
                     </span>
                   }
-                  name='custom-skills'
+                  name='attached-skills'
                   className='mb-8px'
-                  extra={
-                    <span className='text-12px text-t-secondary'>
-                      {pendingSkills.length + availableSkills.filter((skill) => skill.isCustom).length}
-                    </span>
-                  }
+                  extra={<span className='text-12px text-t-secondary'>{relevantSkills.length}</span>}
                 >
-                  <div className='space-y-4px'>
-                    {/* Pending skills (not yet imported) */}
-                    {pendingSkills.map((skill) => (
-                      <div
-                        key={`pending-${skill.name}`}
-                        className='flex items-start gap-8px p-8px hover:bg-fill-1 rounded-4px group'
-                      >
-                        <Checkbox
-                          checked={selectedSkills.includes(skill.name)}
-                          className='mt-2px cursor-pointer'
-                          onChange={() => {
-                            if (selectedSkills.includes(skill.name)) {
-                              setSelectedSkills(selectedSkills.filter((s) => s !== skill.name));
-                            } else {
-                              setSelectedSkills([...selectedSkills, skill.name]);
-                            }
-                          }}
-                        />
-                        <div className='flex-1 min-w-0'>
-                          <div className='flex items-center gap-6px'>
-                            <div className='text-13px font-medium text-t-primary'>{skill.name}</div>
-                            <span className='bg-[rgba(var(--primary-6),0.08)] text-primary-6 border border-[rgba(var(--primary-6),0.2)] text-10px px-4px py-1px rd-4px font-medium uppercase'>
-                              Pending
-                            </span>
-                          </div>
-                          {skill.description && (
-                            <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{skill.description}</div>
-                          )}
-                        </div>
-                        <Button
-                          type='text'
-                          size='mini'
-                          icon={<Delete size={16} fill='var(--color-text-3)' />}
-                          className='opacity-0 group-hover:opacity-100 transition-opacity'
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletePendingSkillName(skill.name);
-                          }}
-                        />
-                      </div>
-                    ))}
-                    {/* All imported custom skills */}
-                    {availableSkills
-                      .filter((skill) => skill.isCustom)
-                      .map((skill) => (
-                        <div
-                          key={`custom-${skill.name}`}
-                          className='flex items-start gap-8px p-8px hover:bg-fill-1 rounded-4px group'
-                        >
-                          <Checkbox
-                            checked={selectedSkills.includes(skill.name)}
-                            className='mt-2px cursor-pointer'
-                            onChange={() => {
-                              if (selectedSkills.includes(skill.name)) {
-                                setSelectedSkills(selectedSkills.filter((s) => s !== skill.name));
-                              } else {
-                                setSelectedSkills([...selectedSkills, skill.name]);
-                              }
-                            }}
-                          />
-                          <div className='flex-1 min-w-0'>
-                            <div className='flex items-center gap-6px'>
-                              <div className='text-13px font-medium text-t-primary'>{skill.name}</div>
-                              <span className='bg-[rgba(242,156,27,0.08)] text-[rgb(242,156,27)] border border-[rgba(242,156,27,0.2)] text-10px px-4px py-1px rd-4px font-medium uppercase'>
-                                {t('settings.skillsHub.custom', { defaultValue: 'Custom' })}
-                              </span>
-                            </div>
-                            {skill.description && (
-                              <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{skill.description}</div>
-                            )}
-                          </div>
-                          <Button
-                            type='text'
-                            size='mini'
-                            icon={<Delete size={16} fill='var(--color-text-3)' />}
-                            className='opacity-0 group-hover:opacity-100 transition-opacity'
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteCustomSkillName(skill.name);
-                            }}
-                          />
-                        </div>
-                      ))}
-                    {pendingSkills.length === 0 && availableSkills.filter((skill) => skill.isCustom).length === 0 && (
-                      <div className='text-center text-t-secondary text-12px py-16px'>
-                        {t('settings.noCustomSkills', { defaultValue: 'No custom skills added' })}
-                      </div>
-                    )}
-                  </div>
-                </Collapse.Item>
-
-                {/* Builtin Skills */}
-                <Collapse.Item
-                  header={
-                    <span className='text-13px font-medium'>
-                      {t('settings.builtinSkills', { defaultValue: 'Builtin Skills' })}
-                    </span>
-                  }
-                  name='builtin-skills'
-                  extra={
-                    <span className='text-12px text-t-secondary'>
-                      {availableSkills.filter((skill) => !skill.isCustom).length}
-                    </span>
-                  }
-                >
-                  {availableSkills.filter((skill) => !skill.isCustom).length > 0 ? (
-                    <div className='space-y-4px'>
-                      {availableSkills
-                        .filter((skill) => !skill.isCustom)
-                        .map((skill) => (
-                          <div key={skill.name} className='flex items-start gap-8px p-8px hover:bg-fill-1 rounded-4px'>
-                            <Checkbox
-                              checked={selectedSkills.includes(skill.name)}
-                              className='mt-2px cursor-pointer'
-                              onChange={() => {
-                                if (selectedSkills.includes(skill.name)) {
-                                  setSelectedSkills(selectedSkills.filter((s) => s !== skill.name));
-                                } else {
-                                  setSelectedSkills([...selectedSkills, skill.name]);
-                                }
-                              }}
-                            />
-                            <div className='flex-1 min-w-0'>
-                              <div className='text-13px font-medium text-t-primary'>{skill.name}</div>
-                              {skill.description && (
-                                <div className='text-12px text-t-secondary mt-2px line-clamp-2'>
-                                  {skill.description}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
+                  {relevantSkills.length > 0 ? (
+                    <div className='space-y-4px'>{relevantSkills.map((skill) => renderRelevantSkillItem(skill))}</div>
                   ) : (
                     <div className='text-center text-t-secondary text-12px py-16px'>
-                      {t('settings.noBuiltinSkills', { defaultValue: 'No builtin skills available' })}
+                      {t('settings.noAttachedSkills', { defaultValue: 'No skills attached to this assistant' })}
                     </div>
                   )}
                 </Collapse.Item>
@@ -641,6 +852,14 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
             <div className='flex items-center justify-between mb-12px'>
               <Typography.Text bold>{t('settings.assistantHooks', { defaultValue: 'Hooks' })}</Typography.Text>
               <div className='flex items-center gap-8px'>
+                <Button
+                  size='mini'
+                  type='outline'
+                  icon={<Plus size={14} />}
+                  onClick={() => setHookLibraryVisible(true)}
+                >
+                  {t('settings.addHook', { defaultValue: 'Add Hook' })}
+                </Button>
                 <Button
                   size='mini'
                   type='outline'
@@ -679,175 +898,17 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
               <Collapse.Item
                 header={
                   <span className='text-13px font-medium'>
-                    {t('settings.availableHooks', { defaultValue: 'Available Hooks' })}
+                    {t('settings.assistantAttachedHooks', { defaultValue: 'Attached Hooks' })}
                   </span>
                 }
                 name='available-hooks'
-                extra={<span className='text-12px text-t-secondary'>{availableHooks.length}</span>}
+                extra={<span className='text-12px text-t-secondary'>{relevantHooks.length}</span>}
               >
-                {availableHooks.length > 0 ? (
-                  <div className='space-y-4px'>
-                    {availableHooks.map((hook) => {
-                      const isSupportedByCurrentAgent = isHookSupportedByBackend(hook, editAgent);
-                      const isSelected = selectedHooks.includes(hook.name);
-                      const isSelectedButIncompatible = incompatibleHookNameSet.has(hook.name);
-
-                      return (
-                        <div key={hook.name} className='flex items-start gap-8px rounded-4px p-8px hover:bg-fill-1'>
-                          <Checkbox
-                            checked={isSelected}
-                            disabled={!isSupportedByCurrentAgent && !isSelected}
-                            className='mt-2px cursor-pointer'
-                            onChange={() => {
-                              if (isSelected) {
-                                setSelectedHooks(selectedHooks.filter((item) => item !== hook.name));
-                              } else {
-                                setSelectedHooks([...selectedHooks, hook.name]);
-                              }
-                            }}
-                          />
-                          <div className='flex-1 min-w-0'>
-                            <div className='flex items-center gap-6px flex-wrap'>
-                              <div className='text-13px font-medium text-t-primary'>{hook.name}</div>
-                              {hook.isCustom && (
-                                <Tag size='small' color='orange'>
-                                  {t('settings.skillsHub.custom', { defaultValue: 'Custom' })}
-                                </Tag>
-                              )}
-                              {hook.executionType && (
-                                <Tag size='small' color='arcoblue'>
-                                  {hook.executionType}
-                                </Tag>
-                              )}
-                              {hook.category && (
-                                <Tag size='small' color={HOOK_CATEGORY_COLORS[hook.category] || 'gray'}>
-                                  {t(`settings.hookCategories.${hook.category}`, {
-                                    defaultValue: hook.category,
-                                  })}
-                                </Tag>
-                              )}
-                              {(hook.runnableEvents || []).length > 0 ? (
-                                <Tag size='small' color='green'>
-                                  {t('settings.hookReadyNow', { defaultValue: 'Ready Now' })}
-                                </Tag>
-                              ) : (
-                                <Tag size='small' color='gray'>
-                                  {t('settings.hookStoredOnly', { defaultValue: 'Stored Only' })}
-                                </Tag>
-                              )}
-                              {hook.version && (
-                                <Tag size='small' color='gray'>
-                                  v{hook.version}
-                                </Tag>
-                              )}
-                              {!isSupportedByCurrentAgent && (
-                                <Tag size='small' color='red'>
-                                  {t('settings.hookUnsupportedTag', { defaultValue: 'Unsupported' })}
-                                </Tag>
-                              )}
-                            </div>
-                            {hook.description && (
-                              <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{hook.description}</div>
-                            )}
-                            {!isSupportedByCurrentAgent && (
-                              <div className='mt-6px text-11px text-danger-6'>
-                                {isSelectedButIncompatible
-                                  ? t('settings.hookSelectedButUnsupported', {
-                                      defaultValue:
-                                        'This hook is selected but will not run for the current agent. Remove it before saving.',
-                                    })
-                                  : t('settings.hookUnsupportedHint', {
-                                      defaultValue: 'This hook does not support the current agent.',
-                                    })}
-                              </div>
-                            )}
-                            <div className='mt-6px text-11px text-t-tertiary break-all'>
-                              {t('settings.hookLocation', { defaultValue: 'Location' })}: {hook.location}
-                            </div>
-                            {hook.tags && hook.tags.length > 0 && (
-                              <div className='mt-6px flex flex-wrap gap-4px'>
-                                <span className='text-11px text-t-tertiary'>
-                                  {t('settings.hookTags', { defaultValue: 'Tags' })}:
-                                </span>
-                                {hook.tags.map((tag) => (
-                                  <Tag key={`${hook.name}-tag-${tag}`} size='small' color='gray'>
-                                    {tag}
-                                  </Tag>
-                                ))}
-                              </div>
-                            )}
-                            {hook.supportedBackends && hook.supportedBackends.length > 0 && (
-                              <div className='mt-6px flex flex-wrap gap-4px'>
-                                <span className='text-11px text-t-tertiary'>
-                                  {t('settings.hookSupportedBackends', {
-                                    defaultValue: 'Supported backends',
-                                  })}
-                                  :
-                                </span>
-                                {hook.supportedBackends.map((backend) => (
-                                  <Tag key={`${hook.name}-${backend}`} size='small' color='purple'>
-                                    {backend}
-                                  </Tag>
-                                ))}
-                              </div>
-                            )}
-                            {hook.outputTargets && hook.outputTargets.length > 0 && (
-                              <div className='mt-6px flex flex-wrap gap-4px'>
-                                <span className='text-11px text-t-tertiary'>
-                                  {t('settings.hookRoutesTo', { defaultValue: 'Routes To' })}:
-                                </span>
-                                {hook.outputTargets.map((target) => {
-                                  const presentation = HOOK_OUTPUT_TARGET_PRESENTATION[target];
-                                  return (
-                                    <Tag key={`${hook.name}-output-${target}`} size='small' color={presentation.color}>
-                                      {t(presentation.i18nKey, { defaultValue: presentation.defaultLabel })}
-                                    </Tag>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            {hook.events && hook.events.length > 0 && (
-                              <div className='mt-6px flex flex-wrap gap-4px'>
-                                {hook.events.map((eventName) => (
-                                  <Tag key={`${hook.name}-${eventName}`} size='small' color='green'>
-                                    {eventName}
-                                  </Tag>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          {hook.isCustom && (
-                            <div className='flex items-center gap-4px'>
-                              {canConfigureHookOutputRouting(hook) && (
-                                <Button
-                                  type='outline'
-                                  size='mini'
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenHookRouting(hook);
-                                  }}
-                                >
-                                  {t('settings.hookConfigure', { defaultValue: 'Configure' })}
-                                </Button>
-                              )}
-                              <Button
-                                type='text'
-                                size='mini'
-                                icon={<Delete size={16} fill='var(--color-text-3)' />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteHookName(hook.name);
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                {relevantHooks.length > 0 ? (
+                  <div className='space-y-4px'>{relevantHooks.map((hook) => renderRelevantHookItem(hook))}</div>
                 ) : (
                   <div className='text-center text-t-secondary text-12px py-16px'>
-                    {t('settings.noAvailableHooks', { defaultValue: 'No hooks found in the hook directory' })}
+                    {t('settings.noAttachedHooks', { defaultValue: 'No hooks attached to this assistant' })}
                   </div>
                 )}
               </Collapse.Item>
@@ -900,6 +961,43 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
         onSave={() => void handleSaveHookRouting()}
         onDraftChange={setRoutingDraft}
       />
+      <ContextGoModal
+        visible={hookLibraryVisible}
+        onCancel={() => setHookLibraryVisible(false)}
+        header={{
+          title: t('settings.hookLibrary', { defaultValue: 'Hook Library' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={() => setHookLibraryVisible(false)} className='min-w-88px px-18px'>
+                {t('common.close', { defaultValue: 'Close' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(760px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
+      >
+        <Typography.Text type='secondary' className='mb-12px block text-12px'>
+          {t('settings.hookLibraryHint', {
+            defaultValue:
+              'Choose which hooks to attach to this assistant. Unattached hooks stay in the library but stay hidden from the main assistant details.',
+          })}
+        </Typography.Text>
+        {availableHooks.length > 0 ? (
+          <div className='max-h-[60vh] space-y-4px overflow-y-auto'>
+            {availableHooks.map((hook) => renderHookLibraryItem(hook))}
+          </div>
+        ) : (
+          <div className='py-16px text-center text-12px text-t-secondary'>
+            {t('settings.noAvailableHooks', { defaultValue: 'No hooks found in the hook directory' })}
+          </div>
+        )}
+      </ContextGoModal>
     </Drawer>
   );
 };

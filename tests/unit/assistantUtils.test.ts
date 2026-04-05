@@ -41,11 +41,15 @@ vi.mock('@/renderer/utils/platform', () => ({
 
 import type { AssistantListItem, HookInfo } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import {
+  getAssistantBadges,
+  getRelevantAssistantHooks,
+  getRelevantAssistantSkills,
   getIncompatibleHookNames,
   hasBuiltinSkills,
   isExtensionAssistant,
   isHookSupportedByBackend,
   normalizeExtensionAssistants,
+  resolveAvatarImageSrc,
   sortAssistants,
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/assistantUtils';
 
@@ -216,6 +220,118 @@ describe('isExtensionAssistant', () => {
 
   it('returns false for undefined input', () => {
     expect(isExtensionAssistant(undefined)).toBe(false);
+  });
+});
+
+describe('getAssistantBadges', () => {
+  const t = (key: string, options?: Record<string, unknown>) => {
+    if (key === 'settings.assistantWorkspaceRecommended') {
+      return (options?.defaultValue as string) || 'Workspace Recommended';
+    }
+
+    return key;
+  };
+
+  it('returns harness, domain, and workspace badges when metadata exists', () => {
+    const assistant = makeAssistant({
+      id: 'builtin-harness',
+      name: 'Harness',
+      harnessTagI18n: { 'en-US': 'Superpowers' },
+      recommendedDomainI18n: { 'en-US': 'Engineering' },
+      workspaceBootstrapHintI18n: { 'en-US': 'Link workspace first' },
+    });
+
+    expect(getAssistantBadges(assistant, 'en-US', t)).toEqual([
+      { key: 'harness', label: 'Superpowers', tone: 'blue' },
+      { key: 'domain', label: 'Engineering', tone: 'green' },
+      { key: 'workspace', label: 'Workspace Recommended', tone: 'gold' },
+    ]);
+  });
+
+  it('returns an empty array when no metadata exists', () => {
+    const assistant = makeAssistant({ id: 'builtin-plain', name: 'Plain' });
+    expect(getAssistantBadges(assistant, 'en-US', t)).toEqual([]);
+  });
+});
+
+describe('resolveAvatarImageSrc', () => {
+  it('returns mapped asset urls for builtin image identifiers', () => {
+    expect(resolveAvatarImageSrc('superpowers.svg', { 'superpowers.svg': '/mock/superpowers.svg' })).toBe(
+      '/mock/superpowers.svg'
+    );
+  });
+
+  it('resolves extension asset urls when the avatar is not in the builtin map', () => {
+    expect(resolveAvatarImageSrc('ext://icons/ecc.svg', {})).toBe('contextgo-asset://extensions/icons/ecc.svg');
+  });
+
+  it('returns undefined for emoji avatars', () => {
+    expect(resolveAvatarImageSrc('⚡', {})).toBeUndefined();
+  });
+});
+
+describe('getRelevantAssistantSkills', () => {
+  it('returns only selected skills in selection order with pending skills first-class', () => {
+    expect(
+      getRelevantAssistantSkills({
+        availableSkills: [
+          { name: 'skill-a', description: 'Builtin A', location: '/skills/a', isCustom: false },
+          { name: 'skill-b', description: 'Custom B', location: '/skills/b', isCustom: true },
+        ],
+        selectedSkills: ['skill-b', 'skill-c', 'skill-a'],
+        pendingSkills: [{ source: 'external', name: 'skill-c', description: 'Pending C', path: '/tmp/skill-c' }],
+      })
+    ).toEqual([
+      { name: 'skill-b', description: 'Custom B', isCustom: true, isPending: false },
+      { name: 'skill-c', description: 'Pending C', isCustom: true, isPending: true },
+      { name: 'skill-a', description: 'Builtin A', isCustom: false, isPending: false },
+    ]);
+  });
+
+  it('deduplicates selected skill names and keeps unknown skills visible', () => {
+    expect(
+      getRelevantAssistantSkills({
+        availableSkills: [],
+        selectedSkills: ['missing-skill', 'missing-skill'],
+        pendingSkills: [],
+      })
+    ).toEqual([{ name: 'missing-skill', description: '', isCustom: false, isPending: false }]);
+  });
+});
+
+describe('getRelevantAssistantHooks', () => {
+  it('returns only selected hooks in selection order', () => {
+    expect(
+      getRelevantAssistantHooks({
+        availableHooks: [
+          { name: 'hook-a', description: 'Builtin A', location: '/hooks/a', isCustom: false },
+          { name: 'hook-b', description: 'Custom B', location: '/hooks/b', isCustom: true },
+        ],
+        selectedHooks: ['hook-b', 'hook-a'],
+      })
+    ).toEqual([
+      {
+        name: 'hook-b',
+        description: 'Custom B',
+        isCustom: true,
+        hook: { name: 'hook-b', description: 'Custom B', location: '/hooks/b', isCustom: true },
+      },
+      {
+        name: 'hook-a',
+        description: 'Builtin A',
+        isCustom: false,
+        hook: { name: 'hook-a', description: 'Builtin A', location: '/hooks/a', isCustom: false },
+      },
+    ]);
+  });
+
+  it('deduplicates selected hooks and keeps missing hooks visible', () => {
+    expect(
+      getRelevantAssistantHooks({
+        availableHooks: [],
+        selectedHooks: ['missing-hook', 'missing-hook'],
+      })
+    ).toEqual([{ name: 'missing-hook', description: '', isCustom: false, hook: undefined }]);
   });
 });
 

@@ -19,6 +19,17 @@ import { extractCardAction, LARK_MESSAGE_LIMIT, toLarkSendParams, toUnifiedIncom
 // Event deduplication settings
 const EVENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const EVENT_CACHE_CLEANUP_INTERVAL = 60 * 1000; // 1 minute
+const DISPLAY_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+type LarkChatDisplayData = {
+  name?: string;
+  description?: string;
+  chatType?: string;
+};
+
+type LarkUserDisplayData = {
+  name?: string;
+};
 
 export class LarkPlugin extends BasePlugin {
   readonly type: PluginType = 'lark';
@@ -39,6 +50,8 @@ export class LarkPlugin extends BasePlugin {
   // Event deduplication - track processed event IDs with timestamps
   private processedEvents: Map<string, number> = new Map();
   private eventCleanupTimer: ReturnType<typeof setInterval> | null = null;
+  private chatDisplayCache: Map<string, { expiresAt: number; value: LarkChatDisplayData | null }> = new Map();
+  private userDisplayCache: Map<string, { expiresAt: number; value: LarkUserDisplayData | null }> = new Map();
 
   /**
    * Initialize the Lark client instance
@@ -146,6 +159,8 @@ export class LarkPlugin extends BasePlugin {
     this.tokenExpiresAt = 0;
     this.activeUsers.clear();
     this.processedEvents.clear();
+    this.chatDisplayCache.clear();
+    this.userDisplayCache.clear();
     this.isConnected = false;
 
     console.log('[LarkPlugin] Stopped and cleaned up');
@@ -181,6 +196,110 @@ export class LarkPlugin extends BasePlugin {
     if (receiveId.startsWith('oc_')) return 'chat_id';
     if (receiveId.startsWith('on_')) return 'union_id';
     return 'user_id';
+  }
+
+  private getUserIdType(userId: string): 'open_id' | 'union_id' | 'user_id' {
+    if (userId.startsWith('ou_')) return 'open_id';
+    if (userId.startsWith('on_')) return 'union_id';
+    return 'user_id';
+  }
+
+  private readDisplayCache<T>(cache: Map<string, { expiresAt: number; value: T | null }>, key: string): T | null | undefined {
+    const cached = cache.get(key);
+    if (!cached) {
+      return undefined;
+    }
+
+    if (cached.expiresAt <= Date.now()) {
+      cache.delete(key);
+      return undefined;
+    }
+
+    return cached.value;
+  }
+
+  private writeDisplayCache<T>(cache: Map<string, { expiresAt: number; value: T | null }>, key: string, value: T | null): T | null {
+    cache.set(key, {
+      expiresAt: Date.now() + DISPLAY_CACHE_TTL,
+      value,
+    });
+    return value;
+  }
+
+  async getChatDisplayData(chatId: string): Promise<LarkChatDisplayData | null> {
+    if (!this.client || !chatId) {
+      return null;
+    }
+
+    const cached = this.readDisplayCache(this.chatDisplayCache, chatId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    try {
+      const response = await this.client.im.chat.get({
+        path: {
+          chat_id: chatId,
+        },
+      });
+      const chat =
+        response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object'
+          ? ((response.data as { chat?: Record<string, unknown> }).chat ?? (response.data as Record<string, unknown>))
+          : undefined;
+      const name = typeof chat?.name === 'string' && chat.name.trim() ? chat.name.trim() : undefined;
+      const description =
+        typeof chat?.description === 'string' && chat.description.trim() ? chat.description.trim() : undefined;
+      const chatType =
+        typeof chat?.chat_type === 'string'
+          ? chat.chat_type
+          : typeof chat?.chat_mode === 'string'
+            ? chat.chat_mode
+            : undefined;
+
+      return this.writeDisplayCache(this.chatDisplayCache, chatId, {
+        name,
+        description,
+        chatType,
+      });
+    } catch (error) {
+      console.warn(`[LarkPlugin] Failed to load chat display data for ${chatId}:`, error);
+      return this.writeDisplayCache(this.chatDisplayCache, chatId, null);
+    }
+  }
+
+  async getUserDisplayData(userId: string): Promise<LarkUserDisplayData | null> {
+    if (!this.client || !userId) {
+      return null;
+    }
+
+    const cached = this.readDisplayCache(this.userDisplayCache, userId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    try {
+      const response = await this.client.contact.user.get({
+        path: {
+          user_id: userId,
+        },
+        params: {
+          user_id_type: this.getUserIdType(userId),
+        },
+      });
+      const user =
+        response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object'
+          ? ((response.data as { user?: Record<string, unknown> }).user ?? (response.data as Record<string, unknown>))
+          : undefined;
+      const nameCandidates = [user?.name, user?.en_name, user?.display_name];
+      const name = nameCandidates.find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim();
+
+      return this.writeDisplayCache(this.userDisplayCache, userId, {
+        name,
+      });
+    } catch (error) {
+      console.warn(`[LarkPlugin] Failed to load user display data for ${userId}:`, error);
+      return this.writeDisplayCache(this.userDisplayCache, userId, null);
+    }
   }
 
   /**

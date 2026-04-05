@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getSettingsTabsInvokeMock = vi.fn().mockResolvedValue([]);
+const useLayoutContextMock = vi.fn();
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -12,9 +13,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
-  useLayoutContext: () => ({
-    isMobile: false,
-  }),
+  useLayoutContext: () => useLayoutContextMock(),
 }));
 
 vi.mock('@/renderer/utils/platform', () => ({
@@ -48,6 +47,9 @@ describe('SettingsPageWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSettingsTabsInvokeMock.mockResolvedValue([]);
+    useLayoutContextMock.mockReturnValue({
+      isMobile: false,
+    });
   });
 
   it('renders the preview dock alongside the settings content when a preview tab is active', async () => {
@@ -73,5 +75,30 @@ describe('SettingsPageWrapper', () => {
     expect(container.querySelector('.settings-page-shell--with-preview')).toBeNull();
     expect(container.querySelector('.settings-page-preview-shell')).toBeNull();
     expect(document.body.querySelector('.settings-page-preview-shell')).not.toBeNull();
+  });
+
+  it('renders a sticky mobile top nav with the active section marked', async () => {
+    useLayoutContextMock.mockReturnValue({
+      isMobile: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/settings/runtime']}>
+        <Routes>
+          <Route
+            path='/settings/runtime'
+            element={
+              <SettingsPageWrapper>
+                <div>runtime content</div>
+              </SettingsPageWrapper>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('runtime content')).toBeInTheDocument();
+    expect(screen.getByRole('tablist', { name: 'settings.title' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Runtime' })).toHaveAttribute('aria-current', 'page');
   });
 });

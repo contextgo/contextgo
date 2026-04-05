@@ -20,6 +20,60 @@
     "profiles": "画像",
     "emptyDescription": "未找到该空间。",
     "comingSoon": "该区域正在准备中。",
+    "preparedDescription": "这个空间壳层已经为更多产品面准备好了。概览、画布和上下文已经接上真实空间数据。",
     "workbenchHint": "在工作区中打开一个线程后，就可以带着这个空间的上下文继续和 Agent 协作。"
+  },
+  "overview": {
+    "title": "空间总览",
+    "openCanvas": "打开画布",
+    "openContext": "查看上下文",
+    "openSession": "打开会话",
+    "projects": "项目",
+    "sessions": "会话",
+    "running": "运行中",
+    "projectsTitle": "这个空间下的项目",
+    "projectsDescription": "每个项目聚合一组共享实际工作边界的会话。",
+    "projectCount": "{{count}} 个项目",
+    "projectsEmpty": "这个空间里还没有接入任何项目会话。",
+    "runningTitle": "运行中的会话",
+    "runningDescription": "先看清有哪些 Agent 正在干活，再决定回到哪条线程。",
+    "runningCount": "{{count}} 个运行中",
+    "runningEmpty": "当前空间里没有正在运行的会话。",
+    "contextTitle": "共享上下文信号",
+    "contextDescription": "空间级别的长期记忆和画像已经可以直接查看。",
+    "sessionCount": "{{count}} 个会话"
+  },
+  "context": {
+    "memoryEmpty": "还没有被接受的空间记忆。",
+    "profileEmpty": "还没有激活的空间画像。"
+  },
+  "canvas": {
+    "title": "空间画布",
+    "summary": "以空间为第一视角，把项目、会话和共享上下文放到同一张工作画板上。",
+    "gestureHint": "拖动画布背景可平移，按住 Ctrl 或 Command 再滚轮可缩放。",
+    "resetView": "重置视图",
+    "emptyTitle": "还没有项目活动",
+    "emptyDescription": "先在这个空间里启动会话，这里就会自动出现按项目组织的工作画板。",
+    "project": "项目",
+    "session": "会话",
+    "memory": "上下文记忆",
+    "profile": "画像",
+    "memorySummary": "{{count}} 条已接收记忆",
+    "profileSummary": "{{count}} 条活跃画像",
+    "projectSummary": "{{sessionCount}} 个会话",
+    "projectSummaryRunning": "{{sessionCount}} 个会话 · {{runningCount}} 个运行中",
+    "openSession": "打开会话",
+    "status": {
+      "running": "运行中",
+      "ready": "就绪"
+    },
+    "backends": {
+      "gemini": "Gemini",
+      "acp": "ACP",
+      "codex": "Codex",
+      "group": "群组",
+      "openclaw-gateway": "OpenClaw",
+      "nanobot": "Nanobot"
+    }
   }
 }

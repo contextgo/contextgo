@@ -7,3 +7,4 @@
 export * from './credentialCrypto';
 export * from './actionButtons';
 export * from './agentSelection';
+export * from './imObjects';

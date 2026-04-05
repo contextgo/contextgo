@@ -15,8 +15,8 @@ import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea'
 import {
   getChannelAccountId,
   type IChannelAccount,
+  type IChannelAuthorizedTarget,
   type IChannelPluginStatus,
-  type IChannelUser,
 } from '@process/channels/types';
 import { Button, Empty, Input, InputNumber, Message, Select, Switch, Tag } from '@arco-design/web-react';
 import classNames from 'classnames';
@@ -268,7 +268,7 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
   const [extensionFieldValues, setExtensionFieldValues] = useState<ExtensionFieldValues>({});
   const [instanceNameDrafts, setInstanceNameDrafts] = useState<Record<string, string>>({});
-  const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
+  const [authorizedTargets, setAuthorizedTargets] = useState<IChannelAuthorizedTarget[]>([]);
   const [webuiStatus, setWebuiStatus] = useState<IWebUIStatus | null>(null);
   const [creationPendingChannelId, setCreationPendingChannelId] = useState<string | null>(null);
 
@@ -294,11 +294,11 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       channelAccountIdsByPlatform.set(channelAccount.platform, existing);
     }
 
-    for (const user of authorizedUsers) {
+    for (const target of authorizedTargets) {
       const resolvedChannelAccountId =
-        getChannelAccountId(user) ||
+        getChannelAccountId(target) ||
         (() => {
-          const candidates = channelAccountIdsByPlatform.get(user.platformType) ?? [];
+          const candidates = channelAccountIdsByPlatform.get(target.platformType) ?? [];
           return candidates.length === 1 ? candidates[0] : undefined;
         })();
 
@@ -310,14 +310,14 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
     }
 
     return counts;
-  }, [authorizedUsers, channelAccounts]);
+  }, [authorizedTargets, channelAccounts]);
 
   const loadChannelState = useCallback(async () => {
     try {
-      const [pluginResult, channelAccountResult, authorizedUsersResult] = await Promise.all([
+      const [pluginResult, channelAccountResult, authorizedTargetsResult] = await Promise.all([
         channel.getPluginStatus.invoke(),
         channel.getChannelAccounts.invoke(),
-        channel.getAuthorizedUsers.invoke(),
+        channel.getAuthorizedTargets.invoke(),
       ]);
 
       if (pluginResult.success && pluginResult.data) {
@@ -348,10 +348,10 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
         setChannelAccounts([]);
       }
 
-      if (authorizedUsersResult.success && authorizedUsersResult.data) {
-        setAuthorizedUsers(authorizedUsersResult.data);
+      if (authorizedTargetsResult.success && authorizedTargetsResult.data) {
+        setAuthorizedTargets(authorizedTargetsResult.data);
       } else {
-        setAuthorizedUsers([]);
+        setAuthorizedTargets([]);
       }
     } catch (error) {
       console.error('[ChannelSettings] Failed to load channel state:', error);
@@ -419,16 +419,11 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       }));
     });
 
-    const unsubscribeUserAuthorized = channel.userAuthorized.on((user) => {
-      setAuthorizedUsers((prev) => {
-        const existingIndex = prev.findIndex((item) => item.id === user.id);
-        if (existingIndex < 0) {
-          return [user, ...prev];
+    const unsubscribeUserAuthorized = channel.userAuthorized.on(() => {
+      void channel.getAuthorizedTargets.invoke().then((result) => {
+        if (result.success && result.data) {
+          setAuthorizedTargets(result.data);
         }
-
-        const next = [...prev];
-        next[existingIndex] = user;
-        return next;
       });
     });
 

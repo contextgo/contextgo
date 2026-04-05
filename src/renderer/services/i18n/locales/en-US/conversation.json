@@ -143,6 +143,7 @@
       "relay": "Assistants answer in sequence. Later assistants see earlier responses and continue by extending or challenging them."
     },
     "participantsLabel": "Participants",
+    "harnessAgentsLabel": "Harness Agents",
     "minimumParticipants": "Select at least two participants",
     "minimumParticipantsHint": "Pick 2 or more participants to start a discussion group.",
     "harnessParticipantsHint": "Harness mode requires exactly 3 participants, in Planner -> Generator -> Evaluator order.",

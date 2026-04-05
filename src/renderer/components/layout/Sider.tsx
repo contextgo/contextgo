@@ -416,6 +416,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     : cloudStatus?.user?.username
       ? `@${cloudStatus.user.username}`
       : t('settings.cloud.notConnected');
+  const showSpaceSwitcherCard = false;
   const userSecondaryText = useMemo(() => {
     if (user?.email) {
       return user.email;
@@ -503,7 +504,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       });
       await refreshSpaces();
       Message.success(t('common.spaceCreated', { name: createdSpace.name }));
-      handleNavigate(`/space/${createdSpace.id}`);
+      handleNavigate(`/space/${createdSpace.id}?view=canvas`);
     } catch (error) {
       console.error('[Sider] Failed to create space:', error);
       Message.error(error instanceof Error ? error.message : t('common.failed'));
@@ -514,7 +515,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       return;
     }
     setSpaceMenuVisible(false);
-    handleNavigate(`/space/${spaceId}`);
+    handleNavigate(`/space/${spaceId}?view=canvas`);
   };
   const handleOpenSpaceView = (view: SpaceShellView) => {
     const targetSpaceId = activeSpaceRouteId || currentSpaceId;
@@ -950,53 +951,55 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         )}
       </div>
       <div className='sider-footer mt-auto shrink-0 pt-10px'>
-        <div className='sider-space-switcher-wrap mb-8px'>
-          {isSpaceRoute ? (
-            <button
-              type='button'
-              className={classNames('sider-space-trigger', isMobile && 'sider-footer-btn-mobile')}
-              onClick={() => handleNavigate('/guid')}
-            >
-              <span className='sider-space-trigger__avatar'>
-                <Left theme='outline' size='16' fill='#fff' className='app-icon' />
-              </span>
-              <span className='min-w-0 flex-1 text-left'>
-                <span className='block truncate text-14px font-600 text-t-primary'>{t('common.returnToWorkbench')}</span>
-                <span className='block truncate text-12px text-t-secondary'>{currentSpaceName}</span>
-              </span>
-            </button>
-          ) : (
-            <Dropdown
-              droplist={spaceMenu}
-              trigger='click'
-              position='tl'
-              popupVisible={spaceMenuVisible}
-              onVisibleChange={setSpaceMenuVisible}
-              triggerProps={spaceMenuDropdownTriggerProps}
-            >
+        {showSpaceSwitcherCard ? (
+          <div className='sider-space-switcher-wrap mb-8px'>
+            {isSpaceRoute ? (
               <button
                 type='button'
                 className={classNames('sider-space-trigger', isMobile && 'sider-footer-btn-mobile')}
-                aria-expanded={spaceMenuVisible}
+                onClick={() => handleNavigate('/guid')}
               >
-                <span className='sider-space-trigger__avatar'>{currentSpaceInitial}</span>
-                <span className='min-w-0 flex-1 text-left'>
-                  <span className='block truncate text-14px font-600 text-t-primary'>{currentSpaceName}</span>
-                  <span className='block truncate text-12px text-t-secondary'>{currentSpaceSecondaryText}</span>
+                <span className='sider-space-trigger__avatar'>
+                  <Left theme='outline' size='16' fill='#fff' className='app-icon' />
                 </span>
-                <Down
-                  theme='outline'
-                  size='16'
-                  fill={iconColors.secondary}
-                  className={classNames(
-                    'sider-user-trigger__chevron',
-                    spaceMenuVisible && 'sider-user-trigger__chevron--open'
-                  )}
-                />
+                <span className='min-w-0 flex-1 text-left'>
+                  <span className='block truncate text-14px font-600 text-t-primary'>{t('common.returnToWorkbench')}</span>
+                  <span className='block truncate text-12px text-t-secondary'>{currentSpaceName}</span>
+                </span>
               </button>
-            </Dropdown>
-          )}
-        </div>
+            ) : (
+              <Dropdown
+                droplist={spaceMenu}
+                trigger='click'
+                position='tl'
+                popupVisible={spaceMenuVisible}
+                onVisibleChange={setSpaceMenuVisible}
+                triggerProps={spaceMenuDropdownTriggerProps}
+              >
+                <button
+                  type='button'
+                  className={classNames('sider-space-trigger', isMobile && 'sider-footer-btn-mobile')}
+                  aria-expanded={spaceMenuVisible}
+                >
+                  <span className='sider-space-trigger__avatar'>{currentSpaceInitial}</span>
+                  <span className='min-w-0 flex-1 text-left'>
+                    <span className='block truncate text-14px font-600 text-t-primary'>{currentSpaceName}</span>
+                    <span className='block truncate text-12px text-t-secondary'>{currentSpaceSecondaryText}</span>
+                  </span>
+                  <Down
+                    theme='outline'
+                    size='16'
+                    fill={iconColors.secondary}
+                    className={classNames(
+                      'sider-user-trigger__chevron',
+                      spaceMenuVisible && 'sider-user-trigger__chevron--open'
+                    )}
+                  />
+                </button>
+              </Dropdown>
+            )}
+          </div>
+        ) : null}
         <div className='sider-user-card-wrap'>
           <Dropdown
             droplist={userMenu}

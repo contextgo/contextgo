@@ -4,6 +4,9 @@ export type AssistantPreset = {
   id: string;
   avatar: string;
   presetAgentType?: PresetAgentType;
+  harnessTagI18n?: Record<string, string>;
+  recommendedDomainI18n?: Record<string, string>;
+  workspaceBootstrapHintI18n?: Record<string, string>;
   /**
    * Directory containing all resources for this preset (relative to project root).
    * If set, both ruleFiles and skillFiles will be resolved from this directory.
@@ -349,6 +352,96 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
         'Create a project plan for migrating to a new framework',
       ],
       'zh-CN': ['规划一个包含里程碑的全面重构任务', '将功能实现拆分为可执行的步骤', '创建迁移到新框架的项目计划'],
+    },
+  },
+  {
+    id: 'superpowers',
+    avatar: 'superpowers.svg',
+    presetAgentType: 'codex',
+    resourceDir: 'src/process/resources/assistant/engineering/superpowers',
+    ruleFiles: {
+      'en-US': 'superpowers.md',
+      'zh-CN': 'superpowers.zh-CN.md',
+    },
+    defaultEnabledSkills: [...ENGINEERING_WORKBENCH_SKILLS],
+    defaultEnabledHooks: [...ENGINEERING_DEFAULT_HOOKS],
+    harnessTagI18n: {
+      'en-US': 'Superpowers',
+      'zh-CN': 'Superpowers',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Engineering',
+      'zh-CN': '研发',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US': 'Link a workspace before starting. Best for repository-based engineering delivery.',
+      'zh-CN': '开始前建议先关联工作空间，更适合基于仓库的研发交付。',
+    },
+    nameI18n: {
+      'en-US': 'Superpowers Harness',
+      'zh-CN': 'Superpowers Harness',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Engineering harness assistant inspired by Superpowers. Guides spec, planning, TDD, review, and final verification around a linked workspace.',
+      'zh-CN': '受 Superpowers 启发的工程 Harness 助手，围绕已关联工作空间推进规格、规划、TDD、评审和最终验证。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Attach this repository and drive it with a strict spec -> plan -> TDD -> review workflow',
+        'Set up an engineering harness for this repo before implementation starts',
+        'Use a workspace-first development process with explicit planning and verification',
+      ],
+      'zh-CN': [
+        '先关联这个仓库，再按 spec -> plan -> TDD -> review 的严格流程推进',
+        '在开始实现前，先为这个仓库建立工程 harness',
+        '用先绑定工作空间、再规划和验证的研发流程来推进这个任务',
+      ],
+    },
+  },
+  {
+    id: 'everything-in-claude-code',
+    avatar: 'everything-claude-code.svg',
+    presetAgentType: 'claude',
+    resourceDir: 'src/process/resources/assistant/engineering/everything-in-claude-code',
+    ruleFiles: {
+      'en-US': 'everything-in-claude-code.md',
+      'zh-CN': 'everything-in-claude-code.zh-CN.md',
+    },
+    defaultEnabledSkills: [...ENGINEERING_WORKBENCH_SKILLS],
+    defaultEnabledHooks: [...ENGINEERING_DEFAULT_HOOKS],
+    harnessTagI18n: {
+      'en-US': 'Everything Claude Code',
+      'zh-CN': 'Everything Claude Code',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Engineering',
+      'zh-CN': '研发',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US': 'Link a workspace before starting. Best for repository-focused Claude Code style delivery.',
+      'zh-CN': '开始前建议先关联工作空间，更适合 Claude Code 风格的仓库研发交付。',
+    },
+    nameI18n: {
+      'en-US': 'Everything Claude Code Harness',
+      'zh-CN': 'Everything Claude Code Harness',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Engineering harness assistant inspired by Everything in Claude Code. Optimized for role-based engineering loops, review gates, and workspace-backed delivery.',
+      'zh-CN': '受 Everything in Claude Code 启发的工程 Harness 助手，强调角色分工、评审门禁和基于工作空间的持续交付。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Link my repo and run a role-specialized engineering workflow before coding',
+        'Prepare a Claude Code style engineering harness for this workspace',
+        'Use a workspace-backed planning, build, review, and verification loop for this project',
+      ],
+      'zh-CN': [
+        '先关联仓库，再按角色分工的工程流程推进编码工作',
+        '为这个工作空间准备 Claude Code 风格的工程 harness',
+        '用基于工作空间的 planning、build、review、verification 流程推进这个项目',
+      ],
     },
   },
   {

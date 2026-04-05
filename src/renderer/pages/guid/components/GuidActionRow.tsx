@@ -36,7 +36,7 @@ type GuidActionRowProps = {
 
   // Preset agent tag
   isPresetAgent: boolean;
-  selectedAgentInfo: AvailableAgent | undefined;
+  selectedAssistantInfo: AvailableAgent | undefined;
   customAgents: AcpBackendConfig[];
   localeKey: string;
   onClosePresetTag: () => void;
@@ -57,7 +57,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
   selectedMode,
   onModeSelect,
   isPresetAgent,
-  selectedAgentInfo,
+  selectedAssistantInfo,
   customAgents,
   localeKey,
   onClosePresetTag,
@@ -188,68 +188,76 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
   );
 
   return (
-    <div className={styles.actionRow}>
-      <div className={styles.actionTools}>
-        <div className={styles.actionEntry}>
-          <Dropdown trigger='hover' onVisibleChange={setIsPlusDropdownOpen} droplist={menuContent}>
-            <span className='flex items-center gap-4px cursor-pointer lh-[1]'>
-              <Button
-                type='text'
-                shape='circle'
-                className={isPlusDropdownOpen ? styles.plusButtonRotate : ''}
-                icon={<Plus theme='outline' size='14' strokeWidth={2} fill={iconColors.primary} />}
-                loading={uploading}
-                disabled={uploading}
-              ></Button>
-              {files.length > 0 && (
-                <Tooltip
-                  className={'!max-w-max'}
-                  content={<span className='whitespace-break-spaces'>{getCleanFileNames(files).join('\n')}</span>}
-                >
-                  <span className='text-t-primary'>File({files.length})</span>
-                </Tooltip>
-              )}
-            </span>
-          </Dropdown>
-          {isWebUI && (
-            <input
-              ref={fileInputRef}
-              type='file'
-              multiple
-              style={{ display: 'none' }}
-              onChange={handleLocalFileChange}
-            />
-          )}
+    <div className={styles.actionRow} data-testid='guid-action-row'>
+      <div className={styles.actionTools} data-testid='guid-action-tools'>
+        <div className={styles.actionControls} data-testid='guid-action-controls'>
+          <div className={styles.actionEntry}>
+            <Dropdown
+              trigger={isMobile ? 'click' : 'hover'}
+              onVisibleChange={setIsPlusDropdownOpen}
+              droplist={menuContent}
+            >
+              <span className='flex items-center gap-4px cursor-pointer lh-[1]'>
+                <Button
+                  type='text'
+                  shape='circle'
+                  className={isPlusDropdownOpen ? styles.plusButtonRotate : ''}
+                  icon={<Plus theme='outline' size='14' strokeWidth={2} fill={iconColors.primary} />}
+                  loading={uploading}
+                  disabled={uploading}
+                ></Button>
+                {files.length > 0 && (
+                  <Tooltip
+                    className={'!max-w-max'}
+                    content={<span className='whitespace-break-spaces'>{getCleanFileNames(files).join('\n')}</span>}
+                  >
+                    <span className='text-t-primary'>File({files.length})</span>
+                  </Tooltip>
+                )}
+              </span>
+            </Dropdown>
+            {isWebUI && (
+              <input
+                ref={fileInputRef}
+                type='file'
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleLocalFileChange}
+              />
+            )}
+          </div>
+
+          <div
+            className={`${styles.actionConfigGroup} ${configOptionCount > 1 ? styles.actionConfigGroupWithDivider : ''}`}
+          >
+            {modelSelectorNode}
+
+            {showModeSwitch && (
+              <AgentModeSelector
+                backend={modeBackend}
+                compact
+                initialMode={selectedMode}
+                onModeSelect={onModeSelect}
+                compactLabelOverride={permissionLabel}
+                compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
+                modeLabelFormatter={getModeDisplayLabel}
+              />
+            )}
+          </div>
         </div>
 
-        <div
-          className={`${styles.actionConfigGroup} ${configOptionCount > 1 ? styles.actionConfigGroupWithDivider : ''}`}
-        >
-          {modelSelectorNode}
-
-          {showModeSwitch && (
-            <AgentModeSelector
-              backend={modeBackend}
-              compact
-              initialMode={selectedMode}
-              onModeSelect={onModeSelect}
-              compactLabelOverride={permissionLabel}
-              compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
-              modeLabelFormatter={getModeDisplayLabel}
+        {isPresetAgent && selectedAssistantInfo && (
+          <div className={styles.actionMeta} data-testid='guid-action-meta'>
+            <PresetAgentTag
+              agentInfo={selectedAssistantInfo}
+              customAgents={customAgents}
+              localeKey={localeKey}
+              onClose={onClosePresetTag}
             />
-          )}
-        </div>
-
-        {isPresetAgent && selectedAgentInfo && (
-          <PresetAgentTag
-            agentInfo={selectedAgentInfo}
-            customAgents={customAgents}
-            localeKey={localeKey}
-            onClose={onClosePresetTag}
-          />
+          </div>
         )}
       </div>
-      <div className={styles.actionSubmit}>
+      <div className={styles.actionSubmit} data-testid='guid-action-submit'>
         <Button
           shape='circle'
           type='primary'

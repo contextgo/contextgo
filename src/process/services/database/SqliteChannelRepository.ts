@@ -9,6 +9,7 @@ import type {
   IChannelBinding,
   IChannelPluginConfig,
   IChannelPairingRequest,
+  IChannelAuthorizedTarget,
   IChannelUser,
   IChannelSession,
   IConnectorInstance,
@@ -42,6 +43,15 @@ export class SqliteChannelRepository implements IChannelRepository {
     const result = db.getChannelUsers();
     if (!result.success || !result.data) {
       throw new Error(result.error ?? 'Failed to get channel users');
+    }
+    return result.data;
+  }
+
+  async getChannelAuthorizedTargets(): Promise<IChannelAuthorizedTarget[]> {
+    const db = await getDatabase();
+    const result = db.getChannelAuthorizedTargets();
+    if (!result.success || !result.data) {
+      throw new Error(result.error ?? 'Failed to get authorized targets');
     }
     return result.data;
   }

@@ -2,7 +2,12 @@ import { Alert, Button, Message, Space, Tag } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { acpConversation, shell } from '@/common/adapter/ipcBridge';
-import { ACP_BACKENDS_ALL, type AcpBackend } from '@/common/types/acpTypes';
+import {
+  ACP_BACKENDS_ALL,
+  isManagedRuntimeInstallableBackend,
+  type AcpBackend,
+  type ManagedRuntimeInstallEvent,
+} from '@/common/types/acpTypes';
 import type { ExternalSessionProvider, ExternalSessionSummary } from '@/common/types/externalSessions';
 import { useFilePreviewOpener } from '@/renderer/hooks/file/useFilePreviewOpener';
 import { PRODUCT_VISIBLE_RUNTIME_BACKENDS } from '@/renderer/utils/model/availableAgents';
@@ -14,6 +19,14 @@ type RuntimeHealthState = {
   status: 'idle' | 'checking' | 'ready' | 'error';
   latency?: number;
   message?: string;
+};
+
+type RuntimeInstallState = {
+  stage: ManagedRuntimeInstallEvent['stage'];
+  command: string;
+  log: string;
+  message?: string;
+  exitCode?: number | null;
 };
 
 type RuntimeConfigLocation = {
@@ -31,7 +44,6 @@ type AvailableRuntimeAgent = {
 type RuntimeMeta = {
   backend: ManagedRuntimeBackend;
   docsUrl?: string;
-  installCommand?: string;
   sessionProvider?: ExternalSessionProvider;
   descriptionKey: string;
   descriptionDefault: string;
@@ -80,7 +92,6 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   gemini: {
     backend: 'gemini',
     docsUrl: 'https://github.com/google-gemini/gemini-cli',
-    installCommand: 'npm install -g @google/gemini-cli',
     sessionProvider: 'gemini',
     descriptionKey: 'settings.runtimeManager.runtime.gemini.description',
     descriptionDefault: 'Google Gemini CLI runtime.',
@@ -88,7 +99,6 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   claude: {
     backend: 'claude',
     docsUrl: 'https://docs.anthropic.com/en/docs/claude-code/quickstart',
-    installCommand: 'npm install -g @anthropic-ai/claude-code',
     sessionProvider: 'claude',
     descriptionKey: 'settings.runtimeManager.runtime.claude.description',
     descriptionDefault: 'Anthropic Claude Code CLI runtime.',
@@ -96,7 +106,6 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   codex: {
     backend: 'codex',
     docsUrl: 'https://github.com/openai/codex',
-    installCommand: 'npm install -g @openai/codex',
     sessionProvider: 'codex',
     descriptionKey: 'settings.runtimeManager.runtime.codex.description',
     descriptionDefault: 'OpenAI Codex CLI runtime for local coding sessions.',
@@ -104,7 +113,6 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   opencode: {
     backend: 'opencode',
     docsUrl: 'https://opencode.ai',
-    installCommand: 'npm install -g @opencode-ai/cli',
     sessionProvider: 'opencode',
     descriptionKey: 'settings.runtimeManager.runtime.opencode.description',
     descriptionDefault: 'OpenCode CLI runtime.',
@@ -112,7 +120,6 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   'openclaw-gateway': {
     backend: 'openclaw-gateway',
     docsUrl: 'https://github.com/openclaw/openclaw',
-    installCommand: 'npm install -g openclaw',
     sessionProvider: 'openclaw-gateway',
     descriptionKey: 'settings.runtimeManager.runtime.openclaw-gateway.description',
     descriptionDefault: 'OpenClaw gateway runtime.',
@@ -120,10 +127,37 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   nanobot: {
     backend: 'nanobot',
     docsUrl: 'https://github.com/HKUDS/nanobot',
-    installCommand: 'python3 -m pip install -U nanobot-ai',
     descriptionKey: 'settings.runtimeManager.runtime.nanobot.description',
     descriptionDefault: 'Nanobot CLI runtime.',
   },
+};
+
+const getInstallStageLabel = (
+  stage: ManagedRuntimeInstallEvent['stage'],
+  t: ReturnType<typeof useTranslation>['t']
+): string => {
+  switch (stage) {
+    case 'starting':
+      return t('settings.runtimeManager.installStage.starting', {
+        defaultValue: 'Preparing install',
+      });
+    case 'running':
+      return t('settings.runtimeManager.installStage.running', {
+        defaultValue: 'Installing',
+      });
+    case 'refreshing':
+      return t('settings.runtimeManager.installStage.refreshing', {
+        defaultValue: 'Refreshing detection',
+      });
+    case 'completed':
+      return t('settings.runtimeManager.installStage.completed', {
+        defaultValue: 'Install completed',
+      });
+    case 'failed':
+      return t('settings.runtimeManager.installStage.failed', {
+        defaultValue: 'Install failed',
+      });
+  }
 };
 
 const CustomAcpAgent: React.FC = () => {
@@ -134,6 +168,7 @@ const CustomAcpAgent: React.FC = () => {
   const [availableAgents, setAvailableAgents] = useState<AvailableRuntimeAgent[]>([]);
   const [externalSessions, setExternalSessions] = useState<ExternalSessionSummary[]>([]);
   const [healthState, setHealthState] = useState<Partial<Record<ManagedRuntimeBackend, RuntimeHealthState>>>({});
+  const [installState, setInstallState] = useState<Partial<Record<ManagedRuntimeBackend, RuntimeInstallState>>>({});
   const [loading, setLoading] = useState(false);
   const [installingBackend, setInstallingBackend] = useState<ManagedRuntimeBackend | null>(null);
   const [configActionState, setConfigActionState] = useState<Partial<Record<ManagedRuntimeBackend, 'open' | 'reveal'>>>(
@@ -208,6 +243,35 @@ const CustomAcpAgent: React.FC = () => {
 
   useEffect(() => {
     void loadRuntimeState();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = acpConversation.managedRuntimeInstallEvent.on((event) => {
+      if (!MANAGED_RUNTIME_BACKENDS.includes(event.backend as ManagedRuntimeBackend)) {
+        return;
+      }
+
+      setInstallState((current) => {
+        const backend = event.backend as ManagedRuntimeBackend;
+        const previous = current[backend];
+        const nextLog = `${previous?.log || ''}${event.chunk || ''}`;
+
+        return {
+          ...current,
+          [backend]: {
+            stage: event.stage,
+            command: event.command,
+            log: nextLog,
+            message: event.message,
+            exitCode: event.exitCode,
+          },
+        };
+      });
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const externalSessionCountByProvider = useMemo(() => {
@@ -389,6 +453,14 @@ const CustomAcpAgent: React.FC = () => {
   const handleInstallRuntime = useCallback(
     async (backend: ManagedRuntimeBackend) => {
       setInstallingBackend(backend);
+      setInstallState((current) => ({
+        ...current,
+        [backend]: {
+          stage: 'starting',
+          command: '',
+          log: '',
+        },
+      }));
 
       try {
         const result = await acpConversation.installManagedRuntime.invoke({ backend });
@@ -492,6 +564,8 @@ const CustomAcpAgent: React.FC = () => {
     const guideLogo = getAgentLogo(backend);
     const supportsConfig = CONFIGURABLE_RUNTIME_BACKENDS.has(backend);
     const configAction = configActionState[backend];
+    const installProgress = installState[backend];
+    const supportsManagedInstall = isManagedRuntimeInstallableBackend(backend);
 
     const statusText =
       health.status === 'ready'
@@ -509,9 +583,9 @@ const CustomAcpAgent: React.FC = () => {
             : t('settings.runtimeManager.status.missing', {
                 defaultValue: 'Not Installed',
               });
-    const showInstallAction = isMissing && Boolean(meta.installCommand);
+    const showInstallAction = isMissing && supportsManagedInstall;
     const showHealthAction = !isMissing;
-    const emphasizeGuideAction = isMissing && !meta.installCommand && Boolean(meta.docsUrl);
+    const emphasizeGuideAction = isMissing && !supportsManagedInstall && Boolean(meta.docsUrl);
     const showAuthRequiredTag =
       backendConfig.authRequired && health.status === 'error' && hasRuntimeAuthIssue(health.message);
     const pathSummary =
@@ -640,6 +714,51 @@ const CustomAcpAgent: React.FC = () => {
                 {': '}
                 <span className='break-all font-mono text-t-primary'>{pathSummary}</span>
               </div>
+            </div>
+          ) : null}
+
+          {installProgress ? (
+            <div className='space-y-8px rounded-14px bg-fill-1 px-12px py-10px'>
+              <div className='flex flex-wrap items-center justify-between gap-8px'>
+                <div className='text-12px font-600 text-t-primary'>
+                  {t('settings.runtimeManager.installProgressTitle', {
+                    defaultValue: 'Install progress',
+                  })}
+                </div>
+                <Tag color={installProgress.stage === 'failed' ? 'red' : installProgress.stage === 'completed' ? 'green' : 'arcoblue'}>
+                  {getInstallStageLabel(installProgress.stage, t)}
+                </Tag>
+              </div>
+
+              {installProgress.command ? (
+                <div className='text-12px leading-5 text-t-secondary'>
+                  {t('settings.runtimeManager.installCommandLabel', {
+                    defaultValue: 'Recommended install command',
+                  })}
+                  {': '}
+                  <span className='break-all font-mono text-t-primary'>{installProgress.command}</span>
+                </div>
+              ) : null}
+
+              {installProgress.message ? (
+                <div className='text-12px leading-5 text-t-secondary'>{installProgress.message}</div>
+              ) : null}
+
+              {typeof installProgress.exitCode === 'number' ? (
+                <div className='text-12px leading-5 text-t-secondary'>
+                  {t('settings.runtimeManager.installExitCode', {
+                    defaultValue: 'Exit code',
+                  })}
+                  {`: ${installProgress.exitCode}`}
+                </div>
+              ) : null}
+
+              <pre className='max-h-220px overflow-auto whitespace-pre-wrap break-words rounded-12px bg-[var(--color-bg-1)] p-10px text-11px leading-5 text-t-secondary'>
+                {installProgress.log ||
+                  t('settings.runtimeManager.installWaitingLog', {
+                    defaultValue: 'Waiting for installer output...',
+                  })}
+              </pre>
             </div>
           ) : null}
         </div>

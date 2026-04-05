@@ -177,6 +177,13 @@ vi.mock('@/common', () => ({
   },
 }));
 
+vi.mock('@/renderer/hooks/context/LayoutContext', async () => {
+  const actual = await vi.importActual<typeof import('@/renderer/hooks/context/LayoutContext')>(
+    '@/renderer/hooks/context/LayoutContext'
+  );
+  return actual;
+});
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
@@ -268,6 +275,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 import ConnectorsPage from '@/renderer/pages/connectors';
+import { LayoutContext, type LayoutContextValue } from '@/renderer/hooks/context/LayoutContext';
 import { CONNECTORS } from '@/renderer/pages/connectors/connectors';
 
 const LocationProbe: React.FC = () => {
@@ -401,6 +409,34 @@ describe('ConnectorsPage', () => {
     fireEvent.click(categoryToggle);
     expect(screen.getByTestId('location-probe')).toHaveTextContent('/connectors/contextgo-clipboard');
     expect(clipboardButton).not.toBeVisible();
+  });
+
+  it('shows a compact mobile catalog instead of the desktop sidebar split view', async () => {
+    const mobileLayoutValue: LayoutContextValue = {
+      isMobile: true,
+      siderCollapsed: false,
+      setSiderCollapsed: vi.fn(),
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/connectors/google-drive']}>
+        <LayoutContext.Provider value={mobileLayoutValue}>
+          <Routes>
+            <Route path='/connectors' element={<ConnectorsPage />} />
+            <Route path='/connectors/:connectorId' element={<ConnectorsPage />} />
+          </Routes>
+        </LayoutContext.Provider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connector-mobile-catalog')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Connector catalog')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /ContextGo Family/i })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Overview' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Configure' })).toBeVisible();
   });
 
   it('marks unsupported connectors clearly and disables configuration', async () => {

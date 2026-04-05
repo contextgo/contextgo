@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
 import type { TChatConversation, TProviderWithModel } from '@/common/config/storage';
 import type { AcpBackendAll } from '@/common/types/acpTypes';
 import { uuid } from '@/common/utils';
@@ -162,6 +163,9 @@ type ResolveRouteParams = {
   threadId?: string;
   remoteChatType?: string;
   displayName?: string;
+  containerId?: string;
+  containerType?: string;
+  containerTitle?: string;
   forceNewConversation?: boolean;
   overrideAgentType?: ChannelAgentType;
 };
@@ -192,11 +196,26 @@ function backendToAgentType(backend: string): ChannelAgentType {
   return convType as ChannelAgentType;
 }
 
-async function resolveProviderModel(preferred?: { id: string; useModel: string }): Promise<TProviderWithModel> {
+function buildGoogleAuthGeminiModel(preferred: NonNullable<IAgentProfile['modelRef']>): TProviderWithModel {
+  return {
+    id: preferred.id || GOOGLE_AUTH_PROVIDER_ID,
+    platform: 'gemini-with-google-auth',
+    name: preferred.name || 'Gemini',
+    baseUrl: preferred.baseUrl ?? '',
+    apiKey: '',
+    useModel: preferred.useModel,
+  };
+}
+
+async function resolveProviderModel(preferred?: IAgentProfile['modelRef']): Promise<TProviderWithModel> {
   const providers = await ProcessConfig.get('model.config');
   const providerList = Array.isArray(providers) ? providers : [];
 
   if (preferred) {
+    if (preferred.id === GOOGLE_AUTH_PROVIDER_ID || preferred.platform === 'gemini-with-google-auth') {
+      return buildGoogleAuthGeminiModel(preferred);
+    }
+
     const matched = providerList.find(
       (provider) => provider.id === preferred.id && provider.model?.includes(preferred.useModel)
     );
@@ -205,6 +224,18 @@ async function resolveProviderModel(preferred?: { id: string; useModel: string }
         ...matched,
         useModel: preferred.useModel,
       } as TProviderWithModel;
+    }
+
+    if (preferred.platform) {
+      const matchedByPlatform = providerList.find(
+        (provider) => provider.platform === preferred.platform && provider.model?.includes(preferred.useModel)
+      );
+      if (matchedByPlatform) {
+        return {
+          ...matchedByPlatform,
+          useModel: preferred.useModel,
+        } as TProviderWithModel;
+      }
     }
   }
 
@@ -328,7 +359,10 @@ export class ChannelRouteResolver {
       params.displayName,
       params.peerScope,
       params.parentChatId,
-      params.threadId
+      params.threadId,
+      params.containerId,
+      params.containerType,
+      params.containerTitle
     );
 
     const binding = await this.resolveBinding({
@@ -454,6 +488,44 @@ export class ChannelRouteResolver {
       });
     }
 
+    const publishedAudienceBinding = db.getChannelBindingsForScope(connector.id, 'remote_chat', chatId);
+    if (publishedAudienceBinding.success && publishedAudienceBinding.data.length > 0) {
+      return this.createPublishedAudienceProjection({
+        connector,
+        platformUserId,
+        platform,
+        chatId,
+        platformChatId: resolvedPlatformChatId,
+        displayName,
+      });
+    }
+
+    if (resolvedPlatformChatId !== chatId) {
+      const parentAudienceBinding = db.getChannelBindingsForScope(connector.id, 'remote_chat', resolvedPlatformChatId);
+      if (parentAudienceBinding.success && parentAudienceBinding.data.length > 0) {
+        return this.createPublishedAudienceProjection({
+          connector,
+          platformUserId,
+          platform,
+          chatId,
+          platformChatId: resolvedPlatformChatId,
+          displayName,
+        });
+      }
+    }
+
+    const connectorDefaultBinding = db.getChannelBindingsForScope(connector.id, 'connector_default');
+    if (connectorDefaultBinding.success && connectorDefaultBinding.data.length > 0) {
+      return this.createPublishedAudienceProjection({
+        connector,
+        platformUserId,
+        platform,
+        chatId,
+        platformChatId: resolvedPlatformChatId,
+        displayName,
+      });
+    }
+
     const legacyBootstrapUser = await this.bootstrapLegacyDirectAuthorization({
       connector,
       platformUserId,
@@ -471,6 +543,30 @@ export class ChannelRouteResolver {
     }
 
     throw new Error('User not authorized');
+  }
+
+  private createPublishedAudienceProjection(params: {
+    connector: IConnectorInstance;
+    platformUserId: string;
+    platform: PluginType;
+    chatId: string;
+    platformChatId: string;
+    displayName?: string;
+  }): IChannelUser {
+    return toProjectedChannelUser({
+      remoteIdentityId: buildStableId(
+        'remote_identity_published',
+        params.connector.id,
+        params.chatId,
+        params.platformUserId,
+        params.platformChatId
+      ),
+      platformUserId: params.platformUserId,
+      platformType: params.platform,
+      displayName: params.displayName,
+      authorizedAt: Date.now(),
+      lastActive: Date.now(),
+    });
   }
 
   private async bootstrapLegacyDirectAuthorization(params: {
@@ -570,7 +666,10 @@ export class ChannelRouteResolver {
     displayName?: string,
     peerScope?: 'chat' | 'thread',
     parentChatId?: string,
-    threadId?: string
+    threadId?: string,
+    containerId?: string,
+    containerType?: string,
+    containerTitle?: string
   ): Promise<IRemoteIdentity> {
     const db = await getDatabase();
     const now = Date.now();
@@ -602,6 +701,12 @@ export class ChannelRouteResolver {
         displayName: displayName ?? byChat.data.displayName,
         lastActive: now,
         legacyUserId: byChat.data.legacyUserId,
+        metadata: {
+          ...(byChat.data.metadata ?? {}),
+          ...(containerId ? { containerId } : {}),
+          ...(containerType ? { containerType } : {}),
+          ...(containerTitle ? { containerTitle } : {}),
+        },
       };
       db.upsertRemoteIdentity(nextIdentity);
       return nextIdentity;
@@ -634,6 +739,9 @@ export class ChannelRouteResolver {
         legacyUserId: byPlatformChat.data.legacyUserId,
         metadata: {
           ...byPlatformChat.data.metadata,
+          ...(containerId ? { containerId } : {}),
+          ...(containerType ? { containerType } : {}),
+          ...(containerTitle ? { containerTitle } : {}),
           source: 'channel-runtime-peer',
           parentIdentityId: byPlatformChat.data.id,
         },
@@ -657,6 +765,9 @@ export class ChannelRouteResolver {
       lastActive: now,
       legacyUserId: channelUser.id.startsWith('assistant_user_') ? channelUser.id : undefined,
       metadata: {
+        ...(containerId ? { containerId } : {}),
+        ...(containerType ? { containerType } : {}),
+        ...(containerTitle ? { containerTitle } : {}),
         source: 'channel-runtime',
       },
     };

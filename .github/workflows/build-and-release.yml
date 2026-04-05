@@ -889,8 +889,6 @@ jobs:
             release-assets/**/*.json
             release-assets/**/*.yml
             release-assets/**/*.md
-            build-artifacts/**/*.ipa
-            build-artifacts/**/*.xcarchive.zip
           draft: false
           make_latest: true
           prerelease: ${{ contains(steps.version.outputs.tag_name, 'beta') || contains(steps.version.outputs.tag_name, 'alpha') || contains(steps.version.outputs.tag_name, 'rc') }}

@@ -188,7 +188,8 @@ export class PairingService {
     platformType: PluginType,
     chatId?: string,
     pluginId?: string,
-    platformChatId?: string
+    platformChatId?: string,
+    remoteChatType?: string
   ): Promise<boolean> {
     const db = await getDatabase();
 
@@ -210,7 +211,26 @@ export class PairingService {
         const inferredChatType = inferRemoteChatType({
           chatId: platformChatId ?? chatId,
           platformUserId,
+          remoteChatType,
         });
+
+        const publishedBindingResult = db.getChannelBindingsForScope(connector.id, 'remote_chat', chatId);
+        if (publishedBindingResult.success && publishedBindingResult.data.length > 0) {
+          return true;
+        }
+
+        if (platformChatId && platformChatId !== chatId) {
+          const parentBindingResult = db.getChannelBindingsForScope(connector.id, 'remote_chat', platformChatId);
+          if (parentBindingResult.success && parentBindingResult.data.length > 0) {
+            return true;
+          }
+        }
+
+        const connectorDefaultBindingResult = db.getChannelBindingsForScope(connector.id, 'connector_default');
+        if (connectorDefaultBindingResult.success && connectorDefaultBindingResult.data.length > 0) {
+          return true;
+        }
+
         if (inferredChatType === 'group') {
           return false;
         }
