@@ -44,6 +44,16 @@ type PublicationIntent = {
   agentName?: string;
 };
 
+const PUBLICATION_INTENT_QUERY_KEYS: Array<keyof PublicationIntent> = [
+  'agentProfileId',
+  'conversationId',
+  'conversationName',
+  'backend',
+  'customAgentId',
+  'workspace',
+  'agentName',
+];
+
 function buildPublicationIntent(conversation: TChatConversation): PublicationIntent | null {
   if (conversation.type === 'group' || conversation.type === 'nanobot') {
     return null;
@@ -77,6 +87,20 @@ function buildPublicationIntent(conversation: TChatConversation): PublicationInt
   };
 }
 
+function buildPublicationIntentSearch(publicationIntent: PublicationIntent): string {
+  const searchParams = new URLSearchParams();
+
+  for (const key of PUBLICATION_INTENT_QUERY_KEYS) {
+    const value = publicationIntent[key];
+    if (value && value.trim()) {
+      searchParams.set(key, value);
+    }
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+}
+
 const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -97,17 +121,20 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
         throw new Error(result.msg || t('conversation.header.publishPrepareFailed'));
       }
 
+      const nextPublicationIntent = {
+        ...publicationIntent,
+        agentProfileId: result.data.id,
+      };
+
       void navigate(
         {
           pathname: '/settings/agent-publish',
+          search: buildPublicationIntentSearch(nextPublicationIntent),
         },
         {
           state: {
             agentPublishFocus: 'publication',
-            publicationIntent: {
-              ...publicationIntent,
-              agentProfileId: result.data.id,
-            },
+            publicationIntent: nextPublicationIntent,
           },
         }
       );

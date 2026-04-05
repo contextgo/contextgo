@@ -18,6 +18,7 @@ import type { ChildProcess } from 'child_process';
 import { spawn, execFile } from 'child_process';
 
 type ExecResult = { stdout: string; stderr: string };
+type ExecChunkListener = (chunk: string) => void;
 
 /**
  * Kill a child process and its descendants.
@@ -42,6 +43,8 @@ function killChild(child: ChildProcess, isWindows: boolean): void {
 interface SafeExecOptions {
   timeout?: number;
   env?: NodeJS.ProcessEnv;
+  onStdoutChunk?: ExecChunkListener;
+  onStderrChunk?: ExecChunkListener;
 }
 
 /**
@@ -67,10 +70,14 @@ export function safeExec(command: string, options: SafeExecOptions = {}): Promis
     let settled = false;
 
     child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString();
+      const text = chunk.toString();
+      stdout += text;
+      options.onStdoutChunk?.(text);
     });
     child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      stderr += text;
+      options.onStderrChunk?.(text);
     });
 
     const timer = options.timeout
@@ -130,10 +137,14 @@ export function safeExecFile(file: string, args: string[], options: SafeExecOpti
     let settled = false;
 
     child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString();
+      const text = chunk.toString();
+      stdout += text;
+      options.onStdoutChunk?.(text);
     });
     child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      stderr += text;
+      options.onStderrChunk?.(text);
     });
 
     const timer = options.timeout

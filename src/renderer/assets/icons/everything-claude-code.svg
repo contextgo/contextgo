@@ -1,0 +1,27 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="32" fill="#111924" />
+  <rect x="10" y="10" width="108" height="108" rx="26" fill="url(#eccSurface)" />
+  <rect x="26" y="28" width="76" height="72" rx="20" fill="#FFF7E2" />
+  <path d="M49 49H79" stroke="#243145" stroke-width="8" stroke-linecap="round" />
+  <path d="M49 64H79" stroke="#243145" stroke-width="8" stroke-linecap="round" />
+  <path d="M49 79H67" stroke="#243145" stroke-width="8" stroke-linecap="round" />
+  <path
+    d="M88 96L82.458 87.706C82.169 87.2731 81.6834 87.0117 81.1632 87.0117H46.8368C46.3166 87.0117 45.831 87.2731 45.542 87.706L40 96"
+    stroke="#FFD56A"
+    stroke-width="8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="91" cy="38" r="10" fill="#FFC557" />
+  <path d="M91 23V17" stroke="#FFE7A7" stroke-width="4" stroke-linecap="round" />
+  <path d="M91 59V53" stroke="#FFE7A7" stroke-width="4" stroke-linecap="round" />
+  <path d="M106 38H112" stroke="#FFE7A7" stroke-width="4" stroke-linecap="round" />
+  <path d="M70 38H76" stroke="#FFE7A7" stroke-width="4" stroke-linecap="round" />
+  <defs>
+    <linearGradient id="eccSurface" x1="18" y1="18" x2="110" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1B2B3B" />
+      <stop offset="0.58" stop-color="#214D5C" />
+      <stop offset="1" stop-color="#2A6F73" />
+    </linearGradient>
+  </defs>
+</svg>

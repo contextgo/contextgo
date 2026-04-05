@@ -10,6 +10,8 @@ struct ContextGoApp: App {
       ContentView()
         .environmentObject(connectionStore)
         .environmentObject(oauthSessionController)
+        .statusBar(hidden: false)
+        .preferredColorScheme(.light)
         .onOpenURL { url in
           connectionStore.handleIncomingURL(url)
         }

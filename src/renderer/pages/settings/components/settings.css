@@ -158,15 +158,28 @@
 
 /* Settings mobile top nav */
 @media (max-width: 767px) {
+  .settings-mobile-top-nav-shell {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    margin: -4px -4px 14px;
+    padding-top: 4px;
+    background: linear-gradient(180deg, var(--bg-1) 0%, color-mix(in srgb, var(--bg-1) 94%, transparent) 78%, transparent 100%);
+    backdrop-filter: blur(10px);
+  }
+
   .settings-mobile-top-nav {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    padding-bottom: 10px;
-    margin-bottom: 12px;
+    padding:
+      4px
+      calc(12px + env(safe-area-inset-right, 0px))
+      12px
+      calc(12px + env(safe-area-inset-left, 0px));
   }
 
   .settings-mobile-top-nav::-webkit-scrollbar {
@@ -175,23 +188,29 @@
 
   .settings-mobile-top-nav__item {
     flex: 0 0 auto;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    border: 1px solid color-mix(in srgb, var(--border-base) 86%, transparent) !important;
+    background: color-mix(in srgb, var(--bg-1) 90%, var(--fill-2) 10%) !important;
+    color: var(--text-secondary) !important;
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  }
+
+  .settings-mobile-top-nav__item :global(.arco-btn-content) {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    height: 36px;
-    padding: 0 12px;
-    border-radius: 999px;
-    border: 1px solid var(--border-base);
-    background: var(--bg-1);
-    color: var(--text-secondary);
-    font-size: 14px;
-    line-height: 20px;
   }
 
   .settings-mobile-top-nav__item--active {
-    background: var(--bg-active);
-    color: var(--text-primary);
-    border-color: var(--border-base);
+    background: color-mix(in srgb, var(--bg-active) 72%, var(--bg-1) 28%) !important;
+    color: var(--text-primary) !important;
+    border-color: color-mix(in srgb, var(--text-primary) 10%, var(--border-base) 90%) !important;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--text-primary) 8%, transparent);
   }
 
   .settings-mobile-top-nav__icon {
@@ -203,7 +222,9 @@
 
   .settings-mobile-top-nav__label {
     white-space: nowrap;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
   }
 }
 

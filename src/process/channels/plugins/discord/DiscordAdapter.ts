@@ -39,6 +39,7 @@ function buildDiscordPeer(source: DiscordPeerSource): IUnifiedPeer {
   const isThread = typeof source.channel?.isThread === 'function' ? source.channel.isThread() : false;
   const isDirectMessage =
     typeof source.channel?.isDMBased === 'function' ? source.channel.isDMBased() : !source.guildId;
+  const containerId = source.guildId || undefined;
 
   if (isThread && channelId && parentId) {
     return {
@@ -48,6 +49,8 @@ function buildDiscordPeer(source: DiscordPeerSource): IUnifiedPeer {
       threadId: channelId,
       scope: 'thread',
       chatType: 'thread',
+      containerId,
+      containerType: containerId ? 'server' : undefined,
     };
   }
 
@@ -56,6 +59,8 @@ function buildDiscordPeer(source: DiscordPeerSource): IUnifiedPeer {
     platformChatId: channelId,
     scope: 'chat',
     chatType: isDirectMessage ? 'dm' : 'group',
+    containerId,
+    containerType: containerId ? 'server' : undefined,
   };
 }
 

@@ -28,6 +28,7 @@ type SlackMessageEvent = {
   subtype?: string;
   bot_id?: string;
   thread_ts?: string;
+  team?: string;
 };
 
 type SlackActionPayload = {
@@ -142,6 +143,8 @@ function buildTextContent(text: string): IUnifiedMessageContent {
 }
 
 function buildSlackPeer(event: SlackMessageEvent): IUnifiedPeer {
+  const containerId = event.team || undefined;
+
   if (event.thread_ts && event.thread_ts !== event.ts) {
     return {
       key: `${event.channel}:thread:${event.thread_ts}`,
@@ -150,6 +153,8 @@ function buildSlackPeer(event: SlackMessageEvent): IUnifiedPeer {
       threadId: event.thread_ts,
       scope: 'thread',
       chatType: 'thread',
+      containerId,
+      containerType: containerId ? 'space' : undefined,
     };
   }
 
@@ -158,6 +163,8 @@ function buildSlackPeer(event: SlackMessageEvent): IUnifiedPeer {
     platformChatId: event.channel || '',
     scope: 'chat',
     chatType: event.channel_type,
+    containerId,
+    containerType: containerId ? 'space' : undefined,
   };
 }
 

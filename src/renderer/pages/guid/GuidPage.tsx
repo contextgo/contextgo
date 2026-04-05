@@ -16,6 +16,7 @@ import GuidInputCard from './components/GuidInputCard';
 import GuidModelSelector from './components/GuidModelSelector';
 import MentionDropdown, { MentionSelectorBadge } from './components/MentionDropdown';
 import QuickActionButtons from './components/QuickActionButtons';
+import { resolveDisplayedAgentPillKey } from './utils/resolveDisplayedAgentPillKey';
 import { useGuidAgentSelection } from './hooks/useGuidAgentSelection';
 import { useGuidInput } from './hooks/useGuidInput';
 import { useGuidMention } from './hooks/useGuidMention';
@@ -75,20 +76,16 @@ const GuidPage: React.FC = () => {
     selectedAgent: agentSelection.selectedAgent,
     selectedAgentKey: agentSelection.selectedAgentKey,
     selectedAgentInfo: agentSelection.selectedAgentInfo,
-    isPresetAgent: agentSelection.isPresetAgent,
+    selectedAssistantInfo: agentSelection.selectedAssistantInfo,
     selectedMode: agentSelection.selectedMode,
     selectedAcpModel: agentSelection.selectedAcpModel,
     currentModel: modelSelection.currentModel,
 
     // Agent helpers
     findAgentByKey: agentSelection.findAgentByKey,
-    getEffectiveAgentType: agentSelection.getEffectiveAgentType,
     resolvePresetRulesAndSkills: agentSelection.resolvePresetRulesAndSkills,
     resolveEnabledSkills: agentSelection.resolveEnabledSkills,
     resolveEnabledHooks: agentSelection.resolveEnabledHooks,
-    isMainAgentAvailable: agentSelection.isMainAgentAvailable,
-    getAvailableFallbackAgent: agentSelection.getAvailableFallbackAgent,
-    currentEffectiveAgentInfo: agentSelection.currentEffectiveAgentInfo,
     isGoogleAuth: modelSelection.isGoogleAuth,
 
     // Mention state reset
@@ -215,14 +212,14 @@ const GuidPage: React.FC = () => {
 
   const handleSelectAssistant = useCallback(
     (assistantId: string) => {
-      agentSelection.setSelectedAgentKey(assistantId);
+      agentSelection.setSelectedAssistantKey(assistantId);
       mention.setMentionOpen(false);
       mention.setMentionQuery(null);
       mention.setMentionSelectorOpen(false);
       mention.setMentionActiveIndex(0);
     },
     [
-      agentSelection.setSelectedAgentKey,
+      agentSelection.setSelectedAssistantKey,
       mention.setMentionOpen,
       mention.setMentionQuery,
       mention.setMentionSelectorOpen,
@@ -234,11 +231,11 @@ const GuidPage: React.FC = () => {
   const typewriterPlaceholder = useTypewriterPlaceholder(t('conversation.welcome.placeholder'));
 
   // Determine if model selector should be in Gemini mode
-  const isGeminiMode =
-    (agentSelection.selectedAgent === 'gemini' && !agentSelection.isPresetAgent) ||
-    (agentSelection.isPresetAgent &&
-      agentSelection.currentEffectiveAgentInfo.agentType === 'gemini' &&
-      agentSelection.currentEffectiveAgentInfo.isAvailable);
+  const isGeminiMode = agentSelection.selectedAgent === 'gemini';
+
+  const displayedAgentPillKey = resolveDisplayedAgentPillKey({
+    selectedAgentKey: agentSelection.selectedAgentKey,
+  });
 
   // Build the mention dropdown node
   const mentionDropdownNode = (
@@ -276,17 +273,13 @@ const GuidPage: React.FC = () => {
       selectedMode={agentSelection.selectedMode}
       onModeSelect={agentSelection.setSelectedMode}
       isPresetAgent={agentSelection.isPresetAgent}
-      selectedAgentInfo={agentSelection.selectedAgentInfo}
+      selectedAssistantInfo={agentSelection.selectedAssistantInfo}
       customAgents={agentSelection.customAgents}
       localeKey={localeKey}
-      onClosePresetTag={() => agentSelection.setSelectedAgentKey('gemini')}
+      onClosePresetTag={() => agentSelection.setSelectedAssistantKey(null)}
       loading={guidInput.loading}
       isButtonDisabled={send.isButtonDisabled}
-      onSend={() => {
-        send.handleSend().catch((error) => {
-          console.error('Failed to send message:', error);
-        });
-      }}
+      onSend={send.sendMessageHandler}
     />
   );
 
@@ -308,7 +301,7 @@ const GuidPage: React.FC = () => {
           ) : agentSelection.availableAgents.length > 0 ? (
             <AgentPillBar
               availableAgents={agentSelection.availableAgents}
-              selectedAgentKey={agentSelection.selectedAgentKey}
+              selectedAgentKey={displayedAgentPillKey}
               getAgentKey={agentSelection.getAgentKey}
               onSelectAgent={handleSelectAgentFromPillBar}
             />
@@ -354,7 +347,7 @@ const GuidPage: React.FC = () => {
           ) : (
             <AssistantSelectionArea
               isPresetAgent={agentSelection.isPresetAgent}
-              selectedAgentInfo={agentSelection.selectedAgentInfo}
+              selectedAssistantInfo={agentSelection.selectedAssistantInfo}
               customAgents={agentSelection.customAgents}
               localeKey={localeKey}
               currentEffectiveAgentInfo={agentSelection.currentEffectiveAgentInfo}

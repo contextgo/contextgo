@@ -33,6 +33,7 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     authorizeRemoteUser: makeChannel('authorizeRemoteUser'),
     startWeixinLogin: makeChannel('startWeixinLogin'),
     getAuthorizedUsers: makeChannel('getAuthorizedUsers'),
+    getAuthorizedTargets: makeChannel('getAuthorizedTargets'),
     revokeUser: makeChannel('revokeUser'),
     getActiveSessions: makeChannel('getActiveSessions'),
     getActiveSessionCatalog: makeChannel('getActiveSessionCatalog'),
@@ -62,12 +63,16 @@ const mockEnablePlugin = vi.fn(async () => ({ success: true }));
 const mockDisablePlugin = vi.fn(async () => ({ success: true }));
 const mockTestPlugin = vi.fn(async () => ({ success: true }));
 const mockSyncChannelSettings = vi.fn(async () => ({ success: true }));
+const mockGetPlugin = vi.fn();
 vi.mock('@process/channels/core/ChannelManager', () => ({
   getChannelManager: vi.fn(() => ({
     enablePlugin: mockEnablePlugin,
     disablePlugin: mockDisablePlugin,
     testPlugin: mockTestPlugin,
     syncChannelSettings: mockSyncChannelSettings,
+    getPluginManager: vi.fn(() => ({
+      getPlugin: mockGetPlugin,
+    })),
   })),
 }));
 
@@ -128,6 +133,8 @@ const mockGetRemoteIdentities = vi.fn(() => ({ success: true, data: [] }));
 const mockDeleteChannelUser = vi.fn(() => ({ success: true, data: true }));
 const mockDbDeleteConnectorInstance = vi.fn(() => ({ success: true, data: true }));
 const mockRunInTransaction = vi.fn((fn: () => unknown) => ({ success: true, data: fn() }));
+const mockGetAllExternalSessions = vi.fn(() => ({ success: true, data: [] }));
+const mockGetAllChannelControlLeases = vi.fn(() => ({ success: true, data: [] }));
 vi.mock('@process/services/database', () => ({
   getDatabase: vi.fn(async () => ({
     getRemoteIdentities: mockGetRemoteIdentities,
@@ -135,6 +142,8 @@ vi.mock('@process/services/database', () => ({
     deleteChannelPlugin: mockDeleteChannelPlugin,
     deleteConnectorInstance: mockDbDeleteConnectorInstance,
     runInTransaction: mockRunInTransaction,
+    getAllExternalSessions: mockGetAllExternalSessions,
+    getAllChannelControlLeases: mockGetAllChannelControlLeases,
   })),
 }));
 
@@ -145,6 +154,7 @@ import type {
   IRemoteIdentity,
   IChannelBinding,
   IChannelPluginConfig,
+  IChannelAuthorizedTarget,
   IChannelUser,
   IChannelPairingRequest,
   IChannelSession,
@@ -156,6 +166,7 @@ function makeRepo(overrides?: Partial<IChannelRepository>): IChannelRepository {
     getChannelPlugins: vi.fn(() => []),
     getPendingPairingRequests: vi.fn(() => []),
     getChannelUsers: vi.fn(() => []),
+    getChannelAuthorizedTargets: vi.fn(() => []),
     deleteChannelUser: vi.fn(),
     getChannelSessions: vi.fn(() => []),
     getConnectorInstances: vi.fn(() => []),
@@ -190,10 +201,14 @@ describe('channelBridge', () => {
     mockGetLoadedExtensions.mockReturnValue([]);
     mockGetChannelPluginMeta.mockReturnValue(undefined);
     mockGetChannelPlugins.mockReturnValue(new Map());
+    mockGetPlugin.mockReset();
+    mockGetPlugin.mockReturnValue(undefined);
     mockGetRemoteIdentities.mockReturnValue({ success: true, data: [] });
     mockDeleteChannelUser.mockReturnValue({ success: true, data: true });
     mockDbDeleteConnectorInstance.mockReturnValue({ success: true, data: true });
     mockRunInTransaction.mockImplementation((fn: () => unknown) => ({ success: true, data: fn() }));
+    mockGetAllExternalSessions.mockReturnValue({ success: true, data: [] });
+    mockGetAllChannelControlLeases.mockReturnValue({ success: true, data: [] });
 
     repo = makeRepo();
     initChannelBridge(repo);
@@ -269,6 +284,40 @@ describe('channelBridge', () => {
 
       expect(result.success).toBe(false);
       expect(result.msg).toBe('query failed');
+    });
+  });
+
+  // --- getAuthorizedTargets ---
+
+  describe('getAuthorizedTargets', () => {
+    it('returns targets from repo', async () => {
+      const target: IChannelAuthorizedTarget = {
+        id: 't1',
+        connectorId: 'telegram_default',
+        platformType: 'telegram',
+        targetId: 'user:tg-123',
+        targetType: 'direct',
+        remoteUserId: 'tg-123',
+        platformChatId: 'tg-123',
+        authorizedAt: 1000,
+      };
+      vi.mocked(repo.getChannelAuthorizedTargets).mockReturnValue([target]);
+
+      const result = await handlers['getAuthorizedTargets']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([target]);
+    });
+
+    it('returns error when repo throws', async () => {
+      vi.mocked(repo.getChannelAuthorizedTargets).mockImplementation(() => {
+        throw new Error('target query failed');
+      });
+
+      const result = await handlers['getAuthorizedTargets']();
+
+      expect(result.success).toBe(false);
+      expect(result.msg).toBe('target query failed');
     });
   });
 
@@ -370,6 +419,141 @@ describe('channelBridge', () => {
 
       expect(result.success).toBe(false);
       expect(result.msg).toBe('sessions unavailable');
+    });
+  });
+
+  describe('getActiveSessionCatalog', () => {
+    it('returns platform-native object metadata for active sessions', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-discord',
+        platform: 'discord',
+        name: 'Discord Ops',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const session: IChannelSession = {
+        id: 'external-session-1',
+        userId: 'remote-discord-thread-1',
+        agentType: 'codex',
+        conversationId: 'conversation-1',
+        workspace: '/tmp/discord-ops',
+        createdAt: 1000,
+        lastActivity: 2500,
+      };
+      const identity: IRemoteIdentity = {
+        id: 'remote-discord-thread-1',
+        connectorId: 'connector-discord',
+        remoteUserId: 'discord-user-1',
+        remoteChatId: 'discord://guild-1/channel-22/thread-77',
+        platformChatId: 'channel-22',
+        remoteChatType: 'thread',
+        peerScope: 'thread',
+        parentChatId: 'discord://guild-1/channel-22',
+        threadId: '77',
+        displayName: 'Incident Thread',
+        authorizedAt: 1000,
+        lastActive: 2500,
+        metadata: {
+          containerId: 'guild-1',
+          containerType: 'server',
+          containerTitle: 'Ops Guild',
+        },
+      };
+
+      vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([identity]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([]);
+
+      const result = await handlers['getActiveSessionCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          id: 'external-session-1',
+          connectorId: 'connector-discord',
+          objectKey: 'discord://guild-1/channel-22/thread-77',
+          objectKind: 'thread',
+          objectTitle: 'Incident Thread',
+          parentObjectKey: 'discord://guild-1/channel-22',
+          parentObjectKind: 'channel',
+        }),
+      ]);
+    });
+
+    it('uses Feishu parent chat names for topic objects in active session details', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-lark-topic',
+        platform: 'lark',
+        name: 'Feishu Ops',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        legacyPluginId: 'lark-runtime-topic',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const session: IChannelSession = {
+        id: 'external-session-topic-1',
+        userId: 'remote-lark-topic-1',
+        agentType: 'codex',
+        conversationId: 'conversation-topic-1',
+        workspace: '/tmp/feishu-topic',
+        createdAt: 1000,
+        lastActivity: 2600,
+      };
+      const identity: IRemoteIdentity = {
+        id: 'remote-lark-topic-1',
+        connectorId: 'connector-lark-topic',
+        remoteUserId: 'ou_topic_user_1',
+        remoteChatId: 'oc_group_1:thread:om_topic_root_1',
+        platformChatId: 'oc_group_1',
+        parentChatId: 'oc_group_1',
+        threadId: 'om_topic_root_1',
+        remoteChatType: 'topic',
+        peerScope: 'thread',
+        displayName: 'User 144e25',
+        authorizedAt: 1000,
+        lastActive: 2600,
+      };
+
+      mockGetPlugin.mockReturnValue({
+        getChatDisplayData: vi.fn(async () => ({
+          name: 'Core Ops Group',
+          description: 'Incident command room',
+          chatType: 'group',
+        })),
+        getUserDisplayData: vi.fn(async () => ({
+          name: 'Alice Chen',
+        })),
+      });
+
+      vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([identity]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([]);
+
+      const result = await handlers['getActiveSessionCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          id: 'external-session-topic-1',
+          connectorId: 'connector-lark-topic',
+          audienceTitle: 'Topic om_topic_root_1',
+          objectKey: 'oc_group_1:thread:om_topic_root_1',
+          objectKind: 'topic',
+          objectTitle: 'Topic om_topic_root_1',
+          objectSubtitle: 'In Core Ops Group',
+          parentObjectKey: 'oc_group_1',
+          parentObjectTitle: 'Core Ops Group',
+          parentObjectKind: 'group',
+        }),
+      ]);
+      expect(mockGetPlugin).toHaveBeenCalledWith('lark-runtime-topic');
     });
   });
 
@@ -506,9 +690,277 @@ describe('channelBridge', () => {
             subtitle: 'peer group:alpha:thread:9 · parent group:alpha · thread 9',
             parentChatId: 'group:alpha',
             threadId: '9',
+            objectKey: 'group:alpha:thread:9',
+            objectKind: 'thread',
+            objectTitle: 'Ops Topic',
+            parentObjectKey: 'group:alpha',
+            parentObjectKind: 'chat',
           }),
         ]),
       });
+    });
+
+    it('classifies Feishu topic audiences as topics with readable subtitles', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-lark',
+        platform: 'lark',
+        name: 'Feishu',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-topic-1',
+        connectorId: 'connector-lark',
+        remoteUserId: 'ou_user_1',
+        remoteChatId: 'oc_group_1:thread:om_topic_root_1',
+        platformChatId: 'oc_group_1',
+        parentChatId: 'oc_group_1',
+        threadId: 'om_topic_root_1',
+        remoteChatType: 'topic',
+        peerScope: 'thread',
+        displayName: 'Ops Topic',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: 'oc_group_1:thread:om_topic_root_1',
+            remoteChatType: 'topic',
+            title: 'Ops Topic',
+            subtitle: undefined,
+            objectKind: 'topic',
+            parentChatId: 'oc_group_1',
+            threadId: 'om_topic_root_1',
+          }),
+        ])
+      );
+    });
+
+    it('dedupes direct-chat audiences for Feishu so one DM only shows once', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-lark-dm',
+        platform: 'lark',
+        name: 'Feishu',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-lark-dm-1',
+        connectorId: 'connector-lark-dm',
+        remoteUserId: 'ou_user_dm_1',
+        remoteChatId: 'oc_dm_1',
+        platformChatId: 'oc_dm_1',
+        remoteChatType: 'p2p',
+        peerScope: 'chat',
+        displayName: 'Feishu DM',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual([
+        expect.objectContaining({
+          connectorId: 'connector-lark-dm',
+          scopeType: 'remote_user',
+          key: 'ou_user_dm_1',
+          title: 'Feishu DM',
+          remoteChatType: 'p2p',
+        }),
+      ]);
+    });
+
+    it('prefers real Feishu names for direct chats and group chats when the plugin can resolve them', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-lark-rich',
+        platform: 'lark',
+        name: 'Feishu',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        legacyPluginId: 'lark-runtime-rich',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentities: IRemoteIdentity[] = [
+        {
+          id: 'remote-lark-group-1',
+          connectorId: 'connector-lark-rich',
+          remoteUserId: 'ou_user_group_1',
+          remoteChatId: 'oc_group_1',
+          platformChatId: 'oc_group_1',
+          remoteChatType: 'group',
+          peerScope: 'chat',
+          displayName: 'User 144e25',
+          authorizedAt: 1000,
+          lastActive: 2200,
+        },
+        {
+          id: 'remote-lark-dm-rich-1',
+          connectorId: 'connector-lark-rich',
+          remoteUserId: 'ou_user_dm_rich_1',
+          remoteChatId: 'oc_dm_rich_1',
+          platformChatId: 'oc_dm_rich_1',
+          remoteChatType: 'p2p',
+          peerScope: 'chat',
+          displayName: 'User 92ab11',
+          authorizedAt: 1000,
+          lastActive: 2400,
+        },
+      ];
+
+      mockGetPlugin.mockReturnValue({
+        getChatDisplayData: vi.fn(async (chatId: string) => {
+          if (chatId === 'oc_group_1') {
+            return { name: 'Core Ops Group', description: 'Incident command room', chatType: 'group' };
+          }
+          return null;
+        }),
+        getUserDisplayData: vi.fn(async (userId: string) => {
+          if (userId === 'ou_user_dm_rich_1') {
+            return { name: 'Alice Chen' };
+          }
+          return null;
+        }),
+      });
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue(remoteIdentities);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            connectorId: 'connector-lark-rich',
+            key: 'oc_group_1',
+            scopeType: 'remote_chat',
+            title: 'Core Ops Group',
+            subtitle: 'Incident command room',
+            objectTitle: 'Core Ops Group',
+            objectSubtitle: 'Incident command room',
+          }),
+          expect.objectContaining({
+            connectorId: 'connector-lark-rich',
+            key: 'ou_user_dm_rich_1',
+            scopeType: 'remote_user',
+            title: 'Alice Chen',
+            displayName: 'Alice Chen',
+            subtitle: undefined,
+          }),
+        ])
+      );
+      expect(mockGetPlugin).toHaveBeenCalledWith('lark-runtime-rich');
+    });
+
+    it('keeps unresolved Feishu topic objects user-facing instead of exposing raw peer identifiers', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-lark-unresolved-topic',
+        platform: 'lark',
+        name: 'Feishu',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-lark-unresolved-topic-1',
+        connectorId: 'connector-lark-unresolved-topic',
+        remoteUserId: 'ou_user_1',
+        remoteChatId: 'oc_group_1:thread:om_topic_root_1',
+        platformChatId: 'oc_group_1',
+        parentChatId: 'oc_group_1',
+        threadId: 'om_topic_root_1',
+        remoteChatType: 'thread',
+        peerScope: 'thread',
+        displayName: 'User 144e25',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            connectorId: 'connector-lark-unresolved-topic',
+            key: 'oc_group_1:thread:om_topic_root_1',
+            title: 'Topic',
+            subtitle: undefined,
+            objectKind: 'topic',
+            objectTitle: 'Topic om_topic_root_1',
+          }),
+        ])
+      );
+    });
+
+    it('dedupes Discord direct-message audiences so one DM only shows once', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-discord-dm',
+        platform: 'discord',
+        name: 'Discord',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-discord-dm-1',
+        connectorId: 'connector-discord-dm',
+        remoteUserId: 'discord-user-1',
+        remoteChatId: '1357924680',
+        platformChatId: '1357924680',
+        remoteChatType: 'dm',
+        peerScope: 'chat',
+        displayName: 'Discord DM',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual([
+        expect.objectContaining({
+          connectorId: 'connector-discord-dm',
+          scopeType: 'remote_user',
+          key: 'discord-user-1',
+          title: 'Discord DM',
+          remoteChatType: 'dm',
+        }),
+      ]);
     });
 
     it('dedupes WeChat personal audiences so one paired account shows one discovered target', async () => {
@@ -551,7 +1003,7 @@ describe('channelBridge', () => {
       ]);
     });
 
-    it('only returns configured, enabled, and paired connectors', async () => {
+    it('returns configured and enabled connectors even before any audience is discovered', async () => {
       const readyConnector: IConnectorInstance = {
         id: 'connector-ready',
         platform: 'telegram',
@@ -583,16 +1035,8 @@ describe('channelBridge', () => {
         updatedAt: 1000,
       };
 
-      const pairedIdentity: IRemoteIdentity = {
-        id: 'remote-ready',
-        connectorId: 'connector-ready',
-        remoteUserId: 'user-1',
-        remoteChatId: 'user:1',
-        authorizedAt: 1000,
-      };
-
       vi.mocked(repo.getConnectorInstances).mockReturnValue([readyConnector, draftConnector, disabledConnector]);
-      vi.mocked(repo.getRemoteIdentities).mockReturnValue([pairedIdentity]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([]);
 
       const result = await handlers['getBindingCatalog']();
 
@@ -600,6 +1044,7 @@ describe('channelBridge', () => {
       expect(result.data).toEqual(
         expect.objectContaining({
           connectors: [readyConnector],
+          channelAccounts: [readyConnector],
         })
       );
     });

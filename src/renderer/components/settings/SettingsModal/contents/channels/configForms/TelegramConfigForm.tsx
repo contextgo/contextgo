@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from '@process/channels/types';
+import type { IChannelAuthorizedTarget, IChannelPairingRequest, IChannelPluginStatus } from '@process/channels/types';
 import { channel } from '@/common/adapter/ipcBridge';
 import { Button, Empty, Input, Message, Spin, Tooltip } from '@arco-design/web-react';
-import { CheckOne, CloseOne, Copy, Delete, Refresh } from '@icon-park/react';
+import { CheckOne, CloseOne, Copy, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AuthorizedTargetList } from './AuthorizedTargets';
 import { FormPreferenceRow, FormSectionHeader, formLayoutStyles } from './FormLayout';
 
 interface TelegramConfigFormProps {
@@ -36,7 +37,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
   const [pairingLoading, setPairingLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
-  const [authorizedUsers, setAuthorizedUsers] = useState<IChannelUser[]>([]);
+  const [authorizedTargets, setAuthorizedTargets] = useState<IChannelAuthorizedTarget[]>([]);
 
   // Load pending pairings
   const loadPendingPairings = useCallback(async () => {
@@ -57,20 +58,20 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
     }
   }, [channelAccountId]);
 
-  // Load authorized users
-  const loadAuthorizedUsers = useCallback(async () => {
+  // Load authorized targets
+  const loadAuthorizedTargets = useCallback(async () => {
     setUsersLoading(true);
     try {
-      const result = await channel.getAuthorizedUsers.invoke();
+      const result = await channel.getAuthorizedTargets.invoke();
       if (result.success && result.data) {
-        setAuthorizedUsers(
+        setAuthorizedTargets(
           result.data.filter(
             (u) => u.platformType === 'telegram' && (!u.connectorId || u.connectorId === channelAccountId)
           )
         );
       }
     } catch (error) {
-      console.error('[ChannelSettings] Failed to load authorized users:', error);
+      console.error('[ChannelSettings] Failed to load authorized targets:', error);
     } finally {
       setUsersLoading(false);
     }
@@ -79,8 +80,8 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
   // Initial load
   useEffect(() => {
     void loadPendingPairings();
-    void loadAuthorizedUsers();
-  }, [loadPendingPairings, loadAuthorizedUsers]);
+    void loadAuthorizedTargets();
+  }, [loadPendingPairings, loadAuthorizedTargets]);
 
   // Listen for pairing requests
   useEffect(() => {
@@ -99,16 +100,14 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
   // Listen for user authorization
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'telegram' || (user.connectorId && user.connectorId !== channelAccountId)) return;
-      setAuthorizedUsers((prev) => {
-        const exists = prev.some((u) => u.id === user.id);
-        if (exists) return prev;
-        return [user, ...prev];
-      });
-      setPendingPairings((prev) => prev.filter((p) => p.platformUserId !== user.platformUserId));
+      if (user.platformType !== 'telegram' || (user.connectorId && user.connectorId !== channelAccountId)) {
+        return;
+      }
+      void loadAuthorizedTargets();
+      setPendingPairings((prev) => prev.filter((item) => item.platformUserId !== user.platformUserId));
     });
     return () => unsubscribe();
-  }, [channelAccountId]);
+  }, [channelAccountId, loadAuthorizedTargets]);
 
   const refreshChannelStatus = async () => {
     const statusResult = await channel.getPluginStatus.invoke();
@@ -187,7 +186,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
       if (result.success) {
         Message.success(t('settings.assistant.pairingApproved', 'Pairing approved'));
         await loadPendingPairings();
-        await loadAuthorizedUsers();
+        await loadAuthorizedTargets();
       } else {
         Message.error(result.msg || t('settings.assistant.approveFailed', 'Failed to approve pairing'));
       }
@@ -216,10 +215,10 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
     try {
       const result = await channel.revokeUser.invoke({ userId });
       if (result.success) {
-        Message.success(t('settings.assistant.userRevoked', 'User access revoked'));
-        await loadAuthorizedUsers();
+        Message.success(t('settings.assistant.userRevoked', 'Target authorization revoked'));
+        await loadAuthorizedTargets();
       } else {
-        Message.error(result.msg || t('settings.assistant.revokeFailed', 'Failed to revoke user'));
+        Message.error(result.msg || t('settings.assistant.revokeFailed', 'Failed to revoke authorization'));
       }
     } catch (error: any) {
       Message.error(error.message);
@@ -253,11 +252,11 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
         )}
       >
         <div className={formLayoutStyles.inlineRow}>
-          {authorizedUsers.length > 0 ? (
+          {authorizedTargets.length > 0 ? (
             <Tooltip
               content={t(
                 'settings.assistant.tokenLocked',
-                'Please close the Channel and delete all authorized users before modifying the configuration'
+                'Please close the Channel and delete all authorized targets before modifying the configuration'
               )}
             >
               <span>
@@ -265,11 +264,11 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
                   value={telegramToken}
                   onChange={handleTokenChange}
                   placeholder={
-                    authorizedUsers.length > 0 || pluginStatus?.hasToken ? '••••••••••••••••' : '123456:ABC-DEF...'
+                    authorizedTargets.length > 0 || pluginStatus?.hasToken ? '••••••••••••••••' : '123456:ABC-DEF...'
                   }
                   className={formLayoutStyles.controlInput}
                   visibilityToggle
-                  disabled={authorizedUsers.length > 0}
+                  disabled={authorizedTargets.length > 0}
                 />
               </span>
             </Tooltip>
@@ -278,18 +277,18 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
               value={telegramToken}
               onChange={handleTokenChange}
               placeholder={
-                authorizedUsers.length > 0 || pluginStatus?.hasToken ? '••••••••••••••••' : '123456:ABC-DEF...'
+                authorizedTargets.length > 0 || pluginStatus?.hasToken ? '••••••••••••••••' : '123456:ABC-DEF...'
               }
               className={formLayoutStyles.controlInput}
               visibilityToggle
-              disabled={authorizedUsers.length > 0}
+              disabled={authorizedTargets.length > 0}
             />
           )}
-          {authorizedUsers.length > 0 ? (
+          {authorizedTargets.length > 0 ? (
             <Tooltip
               content={t(
                 'settings.assistant.tokenLocked',
-                'Please close the Channel and delete all authorized users before modifying the configuration'
+                'Please close the Channel and delete all authorized targets before modifying the configuration'
               )}
             >
               <span>
@@ -297,7 +296,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
                   type='outline'
                   loading={testLoading}
                   onClick={handleTestConnection}
-                  disabled={authorizedUsers.length > 0}
+                  disabled={authorizedTargets.length > 0}
                 >
                   {t('settings.assistant.testConnection', 'Test')}
                 </Button>
@@ -308,7 +307,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
               type='outline'
               loading={testLoading}
               onClick={handleTestConnection}
-              disabled={authorizedUsers.length > 0}
+              disabled={authorizedTargets.length > 0}
             >
               {t('settings.assistant.testConnection', 'Test')}
             </Button>
@@ -316,8 +315,8 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
         </div>
       </FormPreferenceRow>
 
-      {/* Next Steps Guide - show when bot is enabled and no authorized users yet */}
-      {pluginStatus?.enabled && pluginStatus?.connected && authorizedUsers.length === 0 && (
+      {/* Next Steps Guide - show when bot is enabled and no authorized targets yet */}
+      {pluginStatus?.enabled && pluginStatus?.connected && authorizedTargets.length === 0 && (
         <div className='bg-blue-50 dark:bg-blue-900/20 rd-12px p-16px border border-blue-200 dark:border-blue-800'>
           <FormSectionHeader title={t('settings.assistant.nextSteps', 'Next Steps')} />
           <div className='text-14px text-t-secondary space-y-8px'>
@@ -348,8 +347,8 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
         </div>
       )}
 
-      {/* Pending Pairings - show when bot is enabled and no authorized users yet */}
-      {pluginStatus?.enabled && authorizedUsers.length === 0 && (
+      {/* Pending Pairings - show when bot is enabled and no authorized targets yet */}
+      {pluginStatus?.enabled && authorizedTargets.length === 0 && (
         <div className={formLayoutStyles.sectionCard}>
           <FormSectionHeader
             title={t('settings.assistant.pendingPairings', 'Pending Pairing Requests')}
@@ -421,57 +420,14 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
         </div>
       )}
 
-      {/* Authorized Users - show when there are authorized users */}
-      {authorizedUsers.length > 0 && (
-        <div className={formLayoutStyles.sectionCard}>
-          <FormSectionHeader
-            title={t('settings.assistant.authorizedUsers', 'Authorized Users')}
-            action={
-              <Button
-                size='mini'
-                type='text'
-                icon={<Refresh size={14} />}
-                loading={usersLoading}
-                onClick={loadAuthorizedUsers}
-              >
-                {t('common.refresh', 'Refresh')}
-              </Button>
-            }
-          />
-
-          {usersLoading ? (
-            <div className='flex justify-center py-24px'>
-              <Spin />
-            </div>
-          ) : authorizedUsers.length === 0 ? (
-            <Empty description={t('settings.assistant.noAuthorizedUsers', 'No authorized users yet')} />
-          ) : (
-            <div className={formLayoutStyles.statusList}>
-              {authorizedUsers.map((user) => (
-                <div key={user.id} className={formLayoutStyles.statusItem}>
-                  <div className={formLayoutStyles.statusItemMain}>
-                    <div className='text-14px font-500 text-t-primary'>{user.displayName || 'Unknown User'}</div>
-                    <div className={formLayoutStyles.metaText}>
-                      {t('settings.assistant.platform', 'Platform')}: {user.platformType}
-                      <span className='mx-8px'>|</span>
-                      {t('settings.assistant.authorizedAt', 'Authorized')}: {formatTime(user.authorizedAt)}
-                    </div>
-                  </div>
-                  <Tooltip content={t('settings.assistant.revokeAccess', 'Revoke access')}>
-                    <Button
-                      type='text'
-                      status='danger'
-                      size='small'
-                      icon={<Delete size={16} />}
-                      onClick={() => handleRevokeUser(user.id)}
-                    />
-                  </Tooltip>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <AuthorizedTargetList
+        loading={usersLoading}
+        targets={authorizedTargets}
+        onRefresh={() => void loadAuthorizedTargets()}
+        onRevoke={(targetId) => void handleRevokeUser(targetId)}
+        t={t}
+        hideWhenEmpty
+      />
     </div>
   );
 };

@@ -74,6 +74,9 @@ export const buildBuiltinAssistants = (): AcpBackendConfig[] => {
       presetAgentType: preset.presetAgentType || 'gemini',
       enabledSkills: preset.defaultEnabledSkills,
       enabledHooks: preset.defaultEnabledHooks,
+      harnessTagI18n: preset.harnessTagI18n,
+      recommendedDomainI18n: preset.recommendedDomainI18n,
+      workspaceBootstrapHintI18n: preset.workspaceBootstrapHintI18n,
       promptsI18n: preset.promptsI18n,
     };
   });

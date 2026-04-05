@@ -79,6 +79,7 @@ import type {
   IChannelBinding,
   IChannelControlLease,
   IChannelPluginConfig,
+  IChannelAuthorizedTarget,
   IChannelUser,
   IChannelSession,
   IChannelRun,
@@ -2863,6 +2864,77 @@ export class AionUIDatabase {
       );
 
       return { success: true, data: users };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  getChannelAuthorizedTargets(): IQueryResult<IChannelAuthorizedTarget[]> {
+    try {
+      const projectedRows = this.db
+        .prepare(
+          `
+            SELECT
+              ri.id,
+              ri.connector_id,
+              ci.platform AS platform_type,
+              ri.remote_chat_id,
+              ri.remote_chat_type,
+              ri.parent_chat_id,
+              ri.thread_id,
+              ri.remote_user_id,
+              ri.platform_chat_id,
+              ri.display_name,
+              ri.authorized_at,
+              ri.last_active,
+              es.id AS session_id
+            FROM remote_identities ri
+            INNER JOIN connector_instances ci ON ci.id = ri.connector_id
+            LEFT JOIN external_sessions es ON es.remote_identity_id = ri.id
+            ORDER BY COALESCE(ri.last_active, ri.authorized_at) DESC, ri.authorized_at DESC
+          `
+        )
+        .all() as Array<{
+        id: string;
+        connector_id: string;
+        platform_type: string;
+        remote_chat_id: string;
+        remote_chat_type: string | null;
+        parent_chat_id: string | null;
+        thread_id: string | null;
+        remote_user_id: string | null;
+        platform_chat_id: string | null;
+        display_name: string | null;
+        authorized_at: number;
+        last_active: number | null;
+        session_id: string | null;
+      }>;
+
+      const targets: IChannelAuthorizedTarget[] = projectedRows.map((row) => {
+        const threadMarker = ':thread:';
+        const markerIndex = row.remote_chat_id.indexOf(threadMarker);
+        const parsedParentTargetId = markerIndex >= 0 ? row.remote_chat_id.slice(0, markerIndex) || undefined : undefined;
+        const parsedThreadId =
+          markerIndex >= 0 ? row.remote_chat_id.slice(markerIndex + threadMarker.length) || undefined : undefined;
+
+        return {
+          id: row.id,
+          connectorId: row.connector_id,
+          platformType: row.platform_type as PluginType,
+          targetId: row.remote_chat_id,
+          displayName: row.display_name ?? undefined,
+          targetType: row.remote_chat_type ?? undefined,
+          parentTargetId: row.parent_chat_id ?? parsedParentTargetId,
+          threadId: row.thread_id ?? parsedThreadId,
+          remoteUserId: row.remote_user_id ?? undefined,
+          platformChatId: row.platform_chat_id ?? undefined,
+          authorizedAt: row.authorized_at,
+          lastActive: row.last_active ?? undefined,
+          sessionId: row.session_id ?? undefined,
+        };
+      });
+
+      return { success: true, data: targets };
     } catch (error: any) {
       return { success: false, error: error.message, data: [] };
     }

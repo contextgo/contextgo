@@ -64,7 +64,18 @@ typings/
 
 # dotenv environment variables file
 .env
+.env.*
 .env.test
+
+# Signing materials and local release secrets
+*.p12
+*.mobileprovision
+*.keystore
+*.jks
+*.p8
+*.pem
+*.key
+AuthKey_*.p8
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

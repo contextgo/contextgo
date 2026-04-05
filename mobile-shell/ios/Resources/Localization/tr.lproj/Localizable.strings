@@ -17,6 +17,8 @@
 "browser.reload" = "Yenile";
 "browser.changeHost" = "Ana bilgisayarı değiştir";
 "browser.connection.title" = "Bağlantı";
+"browser.devices" = "Cihazlar";
+"browser.exit" = "Remote'tan çık";
 "home.subtitle" = "Masaüstü cihazlarını, uzak oturumları ve yükleme akışını tek resmi mobil girişten açın.";
 "home.feature.devices" = "Çevrimiçi masaüstü cihazlarını anında görün.";
 "home.feature.files" = "Telefon dosyalarını masaüstü ana makineye geri gönderin.";

@@ -19,6 +19,7 @@ const configStorageGetMock = vi.fn();
 const mutateMock = vi.fn().mockResolvedValue(undefined);
 const messageSuccessMock = vi.fn();
 const messageErrorMock = vi.fn();
+let managedRuntimeInstallEventListener: ((event: any) => void) | null = null;
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -36,6 +37,14 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
       invoke: (...args: unknown[]) => getManagedRuntimeConfigLocationInvokeMock(...args),
     },
     refreshDetectedAgents: { invoke: (...args: unknown[]) => refreshDetectedAgentsInvokeMock(...args) },
+    managedRuntimeInstallEvent: {
+      on: (listener: (event: any) => void) => {
+        managedRuntimeInstallEventListener = listener;
+        return () => {
+          managedRuntimeInstallEventListener = null;
+        };
+      },
+    },
   },
   shell: {
     openExternal: { invoke: (...args: unknown[]) => openExternalInvokeMock(...args) },
@@ -171,6 +180,7 @@ const renderRuntimeSettings = () =>
 describe('Runtime Settings page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    managedRuntimeInstallEventListener = null;
     getAvailableAgentsInvokeMock.mockResolvedValue({
       success: true,
       data: [
@@ -349,5 +359,42 @@ describe('Runtime Settings page', () => {
     await waitFor(() => {
       expect(installManagedRuntimeInvokeMock).toHaveBeenCalled();
     });
+  });
+
+  it('renders install progress logs from managed runtime events', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Install locally' })[0]);
+
+    expect(managedRuntimeInstallEventListener).toBeTruthy();
+
+    managedRuntimeInstallEventListener?.({
+      backend: 'opencode',
+      command: 'npm install -g @opencode-ai/cli',
+      stage: 'running',
+      chunk: 'downloading package\n',
+    });
+
+    managedRuntimeInstallEventListener?.({
+      backend: 'opencode',
+      command: 'npm install -g @opencode-ai/cli',
+      stage: 'refreshing',
+      message: 'Refreshing runtime detection for opencode',
+    });
+
+    await screen.findByText('Install progress');
+    expect(screen.getByText('Refreshing runtime detection for opencode')).toBeInTheDocument();
+    expect(screen.getByText(/downloading package/i)).toBeInTheDocument();
+  });
+
+  it('does not show install action for unmanaged runtimes', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+
+    const geminiCard = screen.getByTestId('runtime-card-gemini');
+    expect(within(geminiCard).queryByRole('button', { name: 'Install locally' })).not.toBeInTheDocument();
+    expect(within(geminiCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
   });
 });

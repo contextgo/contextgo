@@ -46,3 +46,13 @@ export const resolveHarnessDefaultSelectionKeys = (
     .slice(0, count)
     .map((participant) => participant.selectionKey);
 };
+
+export const filterHarnessSelectableParticipants = <T extends HarnessSelectableParticipant>(participants: T[]): T[] => {
+  return participants.filter(
+    (participant) =>
+      participant.type === 'preset-assistant' &&
+      HARNESS_DEFAULT_PRESET_ASSISTANT_IDS.includes(
+        participant.participantKey as (typeof HARNESS_DEFAULT_PRESET_ASSISTANT_IDS)[number]
+      )
+  );
+};

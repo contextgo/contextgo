@@ -75,7 +75,7 @@ const MigrationModal: React.FC<MigrationModalProps> = ({
         style={{ width: 'min(560px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <div className='py-8px'>
+        <div className='w-full py-8px'>
           {/* Current workspace info */}
           <div className='mb-16px text-14px text-t-secondary'>
             {t('conversation.workspace.migration.currentWorkspaceLabel')}
@@ -136,7 +136,7 @@ const MigrationModal: React.FC<MigrationModalProps> = ({
         style={{ width: 'min(520px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px' }}
       >
-        <div className='py-8px'>
+        <div className='w-full py-8px'>
           <div className='mb-16px flex items-center gap-12px rounded-18px border border-b-base bg-fill-1 p-16px shadow-[0_12px_30px_rgba(15,23,42,0.04)]'>
             <div className='flex h-40px w-40px items-center justify-center rounded-full bg-primary-light-1'>
               <AlarmClock theme='outline' size='22' fill='rgb(var(--primary-6))' />

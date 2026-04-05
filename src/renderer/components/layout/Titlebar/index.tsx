@@ -20,7 +20,7 @@ import WindowControls from '../WindowControls';
 import { WORKSPACE_STATE_EVENT, dispatchWorkspaceToggleEvent } from '@renderer/utils/workspace/workspaceEvents';
 import type { WorkspaceStateDetail } from '@renderer/utils/workspace/workspaceEvents';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
-import { isElectronDesktop, isMacOS } from '@/renderer/utils/platform';
+import { isElectronDesktop, isMacOS, isMobileShellWebView } from '@/renderer/utils/platform';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
@@ -49,6 +49,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const lastNonSettingsPathRef = useRef('/guid');
   const isDesktopRuntime = isElectronDesktop();
   const isMacRuntime = isDesktopRuntime && isMacOS();
+  const isMobileShellRuntime = !isDesktopRuntime && isMobileShellWebView();
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab, openTabs } = useConversationTabs();
 
@@ -181,6 +182,92 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     }
   }, [isSettingsRoute, location.pathname, location.search, location.hash]);
 
+  const mobileRouteTitle = useMemo(() => {
+    if (!layout?.isMobile) {
+      return '';
+    }
+
+    const path = location.pathname;
+
+    if (path === '/guid' || path === '/' || path === '/login') {
+      return t('login.brand', { defaultValue: 'ContextGo' });
+    }
+
+    if (path.startsWith('/conversation/')) {
+      return t('conversation.entry.conversation');
+    }
+
+    if (path === '/search/conversations') {
+      return t('conversation.historySearch.title');
+    }
+
+    if (path.startsWith('/connectors')) {
+      return t('settings.connectors.title');
+    }
+
+    if (path === '/hooks') {
+      return t('settings.hooksPage');
+    }
+
+    if (path === '/agents' || path.startsWith('/settings/agent')) {
+      return t('settings.assistants');
+    }
+
+    if (path === '/skills-hub' || path.startsWith('/settings/skills-hub')) {
+      return t('settings.skillsHub.title');
+    }
+
+    if (path.startsWith('/settings/cron')) {
+      return t('cron.scheduledTasks');
+    }
+
+    if (path.startsWith('/settings/tools')) {
+      return t('settings.tools');
+    }
+
+    if (path.startsWith('/settings/commands')) {
+      return t('settings.commands.title');
+    }
+
+    if (path.startsWith('/settings/webui')) {
+      return t('settings.webui');
+    }
+
+    if (path.startsWith('/settings/runtime')) {
+      return t('settings.runtimeManager.title', { defaultValue: 'Runtime' });
+    }
+
+    if (path.startsWith('/settings/channels') || path.startsWith('/settings/agent-entry')) {
+      return t('settings.agentEntry');
+    }
+
+    if (path.startsWith('/settings/agent-publish') || path.startsWith('/settings/active-sessions')) {
+      return t('settings.activeSessions');
+    }
+
+    if (path.startsWith('/settings/system') || path.startsWith('/settings/display')) {
+      return t('settings.system');
+    }
+
+    if (path.startsWith('/settings/about')) {
+      return t('settings.about');
+    }
+
+    if (path.startsWith('/settings/ext/')) {
+      return t('settings.title');
+    }
+
+    if (path.startsWith('/settings')) {
+      return t('settings.title');
+    }
+
+    if (path.startsWith('/space/')) {
+      return t('common.space');
+    }
+
+    return t('login.brand', { defaultValue: 'ContextGo' });
+  }, [layout?.isMobile, location.pathname, t]);
+
   useEffect(() => {
     if (!layout?.isMobile) {
       setMobileCenterTitle('');
@@ -190,29 +277,35 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     const match = location.pathname.match(/^\/conversation\/([^/]+)/);
     const conversationId = match?.[1];
     if (!conversationId) {
-      setMobileCenterTitle('');
+      setMobileCenterTitle(mobileRouteTitle);
       return;
     }
 
     let cancelled = false;
+    setMobileCenterTitle(mobileRouteTitle);
     void ipcBridge.conversation.get
       .invoke({ id: conversationId })
       .then((conversation) => {
         if (cancelled) return;
-        setMobileCenterTitle(conversation?.name || '');
+        setMobileCenterTitle(conversation?.name || mobileRouteTitle);
       })
       .catch(() => {
         if (cancelled) return;
-        setMobileCenterTitle('');
+        setMobileCenterTitle(mobileRouteTitle);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [layout?.isMobile, location.pathname]);
+  }, [layout?.isMobile, location.pathname, mobileRouteTitle]);
 
   useEffect(() => {
     if (!layout?.isMobile) {
+      setMobileCenterOffset(0);
+      return;
+    }
+
+    if (isMobileShellRuntime) {
       setMobileCenterOffset(0);
       return;
     }
@@ -236,11 +329,18 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     if (toolbarRef.current) observer.observe(toolbarRef.current);
 
     return () => observer.disconnect();
-  }, [layout?.isMobile, showBackToChatButton, showNewConversationButton, showWorkspaceButton, mobileCenterTitle]);
+  }, [
+    isMobileShellRuntime,
+    layout?.isMobile,
+    showBackToChatButton,
+    showNewConversationButton,
+    showWorkspaceButton,
+    mobileCenterTitle,
+  ]);
 
   const mobileCenterStyle = layout?.isMobile
     ? ({
-        '--app-titlebar-mobile-center-offset': `${workspaceAvailable ? mobileCenterOffset : 0}px`,
+        '--app-titlebar-mobile-center-offset': `${mobileCenterOffset}px`,
       } as React.CSSProperties)
     : undefined;
   const showDesktopToolbar = showWorkspaceButton || showWindowControls;
@@ -272,14 +372,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       paddingLeft: reserveMacTrafficLights ? '72px' : '8px',
       paddingRight: '8px',
     };
-  }, [
-    isFullScreen,
-    isMacRuntime,
-    layout?.isMobile,
-    leftPaneWidth,
-    shouldDockDesktopLeftToPane,
-    showSiderToggle,
-  ]);
+  }, [isFullScreen, isMacRuntime, layout?.isMobile, leftPaneWidth, shouldDockDesktopLeftToPane, showSiderToggle]);
 
   const desktopLeftControls = (
     <div
@@ -345,7 +438,12 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
         {isDesktopRuntime ? <div className='app-titlebar__top-drag-strip' aria-hidden='true' /> : null}
         {desktopLeftControls}
         {showDesktopRightSection && (
-          <div className={classNames('app-titlebar__desktop-right', showDesktopConversationTabs && 'app-titlebar__desktop-right--conversation')}>
+          <div
+            className={classNames(
+              'app-titlebar__desktop-right',
+              showDesktopConversationTabs && 'app-titlebar__desktop-right--conversation'
+            )}
+          >
             {showDesktopConversationTabs ? (
               <div className='app-titlebar__desktop-content app-titlebar__desktop-content--conversation'>
                 <div id='app-titlebar-chat-slot' className='h-full min-w-0' />
@@ -415,7 +513,8 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
         ref={containerRef}
         style={mobileCenterStyle}
         className={classNames('flex items-center gap-8px app-titlebar bg-2 border-b border-[var(--border-base)]', {
-          'app-titlebar--mobile': layout?.isMobile,
+          'app-titlebar--mobile': layout?.isMobile && !isMobileShellRuntime,
+          'app-titlebar--mobile-shell': layout?.isMobile && isMobileShellRuntime,
           'app-titlebar--mobile-conversation': layout?.isMobile && workspaceAvailable,
           'app-titlebar--desktop': isDesktopRuntime,
           'app-titlebar--mac': isMacRuntime,

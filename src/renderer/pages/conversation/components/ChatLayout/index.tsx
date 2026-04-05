@@ -220,32 +220,34 @@ const ChatLayout: React.FC<{
 
   const mobileHeaderBlock = (
     <>
-      {layout?.isMobile && <ConversationTabs />}
-      <ArcoLayout.Header
-        className={classNames(
-          'min-h-44px flex items-center justify-between px-16px pt-8px pb-10px gap-16px !bg-1 chat-layout-header chat-layout-header--glass overflow-hidden',
-          layout?.isMobile && 'chat-layout-header--mobile-unified'
-        )}
-      >
-        <div className='shrink-0'>{props.headerLeft}</div>
-        <FlexFullContainer
-          className='h-full min-w-0'
-          containerClassName='flex items-center gap-16px'
-        ></FlexFullContainer>
-        <div className='flex items-center gap-12px shrink-0'>
-          {props.headerExtra}
-          {isWindowsRuntime && workspaceEnabled && (
-            <button
-              type='button'
-              className='workspace-header__toggle'
-              aria-label='Toggle workspace'
-              onClick={() => dispatchWorkspaceToggleEvent()}
-            >
-              {rightSiderCollapsed ? <ExpandRight size={16} /> : <ExpandLeft size={16} />}
-            </button>
+      {layout?.isMobile && <ConversationTabs showHeaderActions={false} />}
+      {(props.headerLeft || props.headerExtra || (isWindowsRuntime && workspaceEnabled)) && (
+        <ArcoLayout.Header
+          className={classNames(
+            'min-h-44px flex items-center justify-between px-16px pt-8px pb-10px gap-16px !bg-1 chat-layout-header chat-layout-header--glass overflow-hidden',
+            layout?.isMobile && 'chat-layout-header--mobile-unified'
           )}
-        </div>
-      </ArcoLayout.Header>
+        >
+          <div className='shrink-0'>{props.headerLeft}</div>
+          <FlexFullContainer
+            className='h-full min-w-0'
+            containerClassName='flex items-center gap-16px'
+          ></FlexFullContainer>
+          <div className='flex items-center gap-12px shrink-0'>
+            {props.headerExtra}
+            {isWindowsRuntime && workspaceEnabled && (
+              <button
+                type='button'
+                className='workspace-header__toggle'
+                aria-label='Toggle workspace'
+                onClick={() => dispatchWorkspaceToggleEvent()}
+              >
+                {rightSiderCollapsed ? <ExpandRight size={16} /> : <ExpandLeft size={16} />}
+              </button>
+            )}
+          </div>
+        </ArcoLayout.Header>
+      )}
     </>
   );
 

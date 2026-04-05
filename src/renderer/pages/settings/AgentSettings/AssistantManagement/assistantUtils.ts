@@ -1,6 +1,14 @@
 import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
-import type { AssistantListItem, HookInfo } from './types';
+import type {
+  AssistantBadge,
+  AssistantListItem,
+  HookInfo,
+  PendingSkill,
+  RelevantAssistantHook,
+  RelevantAssistantSkill,
+  SkillInfo,
+} from './types';
 
 /**
  * Check if a builtin assistant has skills config (defaultEnabledSkills or skillFiles).
@@ -107,6 +115,106 @@ export const normalizeExtensionAssistants = (extensionAssistants: Record<string,
 export const isExtensionAssistant = (assistant: AssistantListItem | null | undefined): boolean => {
   if (!assistant) return false;
   return assistant._source === 'extension' || assistant.id.startsWith('ext-');
+};
+
+export const getAssistantBadges = (
+  assistant: AssistantListItem,
+  localeKey: string,
+  t: (key: string, options?: Record<string, unknown>) => string
+): AssistantBadge[] => {
+  const badges: AssistantBadge[] = [];
+
+  const harnessLabel = assistant.harnessTagI18n?.[localeKey] || assistant.harnessTagI18n?.['en-US'];
+  if (harnessLabel) {
+    badges.push({ key: 'harness', label: harnessLabel, tone: 'blue' });
+  }
+
+  const domainLabel = assistant.recommendedDomainI18n?.[localeKey] || assistant.recommendedDomainI18n?.['en-US'];
+  if (domainLabel) {
+    badges.push({ key: 'domain', label: domainLabel, tone: 'green' });
+  }
+
+  const workspaceHint =
+    assistant.workspaceBootstrapHintI18n?.[localeKey] || assistant.workspaceBootstrapHintI18n?.['en-US'];
+  if (workspaceHint) {
+    badges.push({
+      key: 'workspace',
+      label: t('settings.assistantWorkspaceRecommended', { defaultValue: 'Workspace Recommended' }),
+      tone: 'gold',
+    });
+  }
+
+  return badges;
+};
+
+export const getRelevantAssistantSkills = ({
+  availableSkills,
+  selectedSkills,
+  pendingSkills,
+}: {
+  availableSkills: SkillInfo[];
+  selectedSkills: string[];
+  pendingSkills: PendingSkill[];
+}): RelevantAssistantSkill[] => {
+  const selectedSkillNames = Array.from(new Set(selectedSkills));
+
+  return selectedSkillNames.map((name) => {
+    const pendingSkill = pendingSkills.find((skill) => skill.name === name);
+    if (pendingSkill) {
+      return {
+        name,
+        description: pendingSkill.description,
+        isCustom: true,
+        isPending: true,
+      };
+    }
+
+    const existingSkill = availableSkills.find((skill) => skill.name === name);
+    if (existingSkill) {
+      return {
+        name,
+        description: existingSkill.description,
+        isCustom: existingSkill.isCustom,
+        isPending: false,
+      };
+    }
+
+    return {
+      name,
+      description: '',
+      isCustom: false,
+      isPending: false,
+    };
+  });
+};
+
+export const getRelevantAssistantHooks = ({
+  availableHooks,
+  selectedHooks,
+}: {
+  availableHooks: HookInfo[];
+  selectedHooks: string[];
+}): RelevantAssistantHook[] => {
+  const selectedHookNames = Array.from(new Set(selectedHooks));
+
+  return selectedHookNames.map((name) => {
+    const existingHook = availableHooks.find((hook) => hook.name === name);
+    if (existingHook) {
+      return {
+        name,
+        description: existingHook.description,
+        isCustom: existingHook.isCustom,
+        hook: existingHook,
+      };
+    }
+
+    return {
+      name,
+      description: '',
+      isCustom: false,
+      hook: undefined,
+    };
+  });
 };
 
 /**

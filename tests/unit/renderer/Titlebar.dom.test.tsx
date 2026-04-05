@@ -9,12 +9,18 @@ const navigateMock = vi.fn();
 const isFullScreenInvokeMock = vi.fn();
 const fullScreenChangedOnMock = vi.fn(() => vi.fn());
 const useConversationTabsMock = vi.fn();
+let isElectronDesktopMock = true;
+let isMacOSMock = true;
+let isMobileShellWebViewMock = false;
 
 vi.mock('@/common', () => ({
   ipcBridge: {
     windowControls: {
       isFullScreen: { invoke: (...args: unknown[]) => isFullScreenInvokeMock(...args) },
       fullScreenChanged: { on: (...args: unknown[]) => fullScreenChangedOnMock(...args) },
+    },
+    conversation: {
+      get: { invoke: vi.fn(async () => ({ name: 'Conversation Name' })) },
     },
   },
 }));
@@ -26,8 +32,9 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/renderer/utils/platform', () => ({
-  isElectronDesktop: () => true,
-  isMacOS: () => true,
+  isElectronDesktop: () => isElectronDesktopMock,
+  isMacOS: () => isMacOSMock,
+  isMobileShellWebView: () => isMobileShellWebViewMock,
 }));
 
 vi.mock('@renderer/pages/conversation/hooks/useConversationAgents', () => ({
@@ -48,7 +55,6 @@ vi.mock('@renderer/pages/conversation/platforms/group/CreateGroupModal', () => (
 vi.mock('@renderer/utils/emitter', () => ({
   emitter: { emit: vi.fn() },
 }));
-
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -105,6 +111,9 @@ const renderTitlebar = (
 describe('Titlebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isElectronDesktopMock = true;
+    isMacOSMock = true;
+    isMobileShellWebViewMock = false;
     isFullScreenInvokeMock.mockResolvedValue(false);
     useConversationTabsMock.mockReturnValue({
       activeTab: null,
@@ -189,6 +198,62 @@ describe('Titlebar', () => {
     expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
     expect(container.querySelector('.app-titlebar__desktop-content--conversation')).toBeTruthy();
     expect(container.querySelector('#app-titlebar-chat-slot')).toBeTruthy();
+  });
+
+  it('shows a route title on mobile connector pages', async () => {
+    renderTitlebar('/connectors/google-drive', {
+      layoutValue: {
+        isMobile: true,
+      },
+    });
+
+    expect(await screen.findByText('settings.connectors.title')).toBeInTheDocument();
+  });
+
+  it('shows a settings section title on mobile runtime pages', async () => {
+    renderTitlebar('/settings/runtime', {
+      layoutValue: {
+        isMobile: true,
+      },
+    });
+
+    expect(await screen.findByText('Runtime')).toBeInTheDocument();
+  });
+
+  it('keeps the mobile shell titlebar visible on non-workspace pages', async () => {
+    isElectronDesktopMock = false;
+    isMacOSMock = false;
+    isMobileShellWebViewMock = true;
+
+    const { container } = renderTitlebar('/connectors/google-drive', {
+      layoutValue: {
+        isMobile: true,
+      },
+    });
+
+    expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+    expect(screen.getByText('settings.connectors.title')).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar--mobile')).toBeNull();
+    expect(container.querySelector('.app-titlebar--mobile-shell')).toBeTruthy();
+    expect((container.firstChild as HTMLDivElement | null)?.style.getPropertyValue('--app-titlebar-mobile-center-offset')).toBe('0px');
+  });
+
+  it('keeps conversation actions visible inside the mobile shell', async () => {
+    isElectronDesktopMock = false;
+    isMacOSMock = false;
+    isMobileShellWebViewMock = true;
+
+    renderTitlebar('/conversation/conv-1', {
+      layoutValue: {
+        isMobile: true,
+      },
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+    });
+
+    expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'conversation.entry.create' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Expand workspace' })).toBeInTheDocument();
   });
 
   it('does not reserve mac traffic-light width while fullscreen is active', async () => {

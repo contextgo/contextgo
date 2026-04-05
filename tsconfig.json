@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES6",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "allowJs": true,
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -17,10 +21,48 @@
     "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@process/*": ["./src/process/*"],
-      "@renderer/*": ["./src/renderer/*"],
-      "@worker/*": ["./src/process/worker/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@process/*": [
+        "./src/process/*"
+      ],
+      "@renderer/*": [
+        "./src/renderer/*"
+      ],
+      "@worker/*": [
+        "./src/process/worker/*"
+      ],
+      "@blocksuite/affine/shared/services": [
+        "./src/renderer/pages/space/affine/vendor/affineSharedServicesShim.d.ts"
+      ],
+      "@blocksuite/affine/std/gfx": [
+        "./src/renderer/pages/space/affine/vendor/affineStdGfxShim.d.ts"
+      ],
+      "@blocksuite/affine/store": [
+        "./src/renderer/pages/space/affine/vendor/affineStoreShim.d.ts"
+      ],
+      "@blocksuite/affine/store/test": [
+        "./src/renderer/pages/space/affine/vendor/affineStoreTestShim.d.ts"
+      ],
+      "@blocksuite/affine/ext-loader": [
+        "./src/renderer/pages/space/affine/vendor/affineExtLoaderShim.d.ts"
+      ],
+      "@blocksuite/affine/extensions/store": [
+        "./src/renderer/pages/space/affine/vendor/affineExtensionsStoreShim.d.ts"
+      ],
+      "@blocksuite/affine/extensions/view": [
+        "./src/renderer/pages/space/affine/vendor/affineExtensionsViewShim.d.ts"
+      ],
+      "@blocksuite/affine/effects": [
+        "./src/renderer/pages/space/affine/vendor/affineEffectsShim.d.ts"
+      ],
+      "@blocksuite/affine/global/lit": [
+        "./src/renderer/pages/space/affine/vendor/affineGlobalLitShim.d.ts"
+      ],
+      "@blocksuite/affine/std": [
+        "./src/renderer/pages/space/affine/vendor/affineStdShim.d.ts"
+      ]
     }
   },
   "include": [

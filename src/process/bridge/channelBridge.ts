@@ -7,6 +7,7 @@
 import { channel } from '@/common/adapter/ipcBridge';
 import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '@/common/config/builtinChannels';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
+import { describeRemoteIdentityObject } from '@process/channels/utils';
 import { getChannelContinuationService } from '@process/channels/core/ChannelContinuationService';
 import { getChannelPublicationService } from '@process/channels/core/ChannelPublicationService';
 import { getPairingService } from '@process/channels/pairing/PairingService';
@@ -17,6 +18,7 @@ import * as path from 'path';
 import type {
   IChannelActiveSessionEntry,
   IChannelAudienceEntry,
+  IChannelAuthorizedTarget,
   IChannelBinding,
   IChannelPluginStatus,
   IChannelSession,
@@ -57,7 +59,14 @@ function looksLikeTechnicalIdentifier(value?: string): boolean {
     return false;
   }
 
-  return value.includes('://') || value.startsWith('user:') || value.startsWith('group:') || value.includes(':thread:');
+  return (
+    value.includes('://') ||
+    value.startsWith('user:') ||
+    value.startsWith('group:') ||
+    value.includes(':thread:') ||
+    /^(?:ou_|oc_|on_|om_)/.test(value) ||
+    value.endsWith('@im.wechat')
+  );
 }
 
 function toReadableIdentifier(value?: string): string | undefined {
@@ -83,7 +92,21 @@ function toReadableIdentifier(value?: string): string | undefined {
     return segments.at(-1) || undefined;
   }
 
+  if (/^(?:ou_|oc_|on_|om_)/.test(value) || value.endsWith('@im.wechat')) {
+    return undefined;
+  }
+
   return value;
+}
+
+function isDirectChatType(remoteChatType?: string): boolean {
+  const normalizedChatType = remoteChatType?.toLowerCase();
+  return (
+    normalizedChatType === 'direct' ||
+    normalizedChatType === 'dm' ||
+    normalizedChatType === 'private' ||
+    normalizedChatType === 'p2p'
+  );
 }
 
 function inferAudienceKind(params: {
@@ -122,10 +145,7 @@ function inferAudienceKind(params: {
     return 'Group';
   }
   if (
-    normalizedChatType === 'direct' ||
-    normalizedChatType === 'dm' ||
-    normalizedChatType === 'private' ||
-    normalizedChatType === 'p2p' ||
+    isDirectChatType(normalizedChatType) ||
     normalizedKey.startsWith('user:') ||
     normalizedKey.includes('/user/') ||
     normalizedKey.includes('/friend/') ||
@@ -156,6 +176,10 @@ function buildAudienceTitle(params: {
     params.remoteUserId ||
     toReadableIdentifier(params.remoteChatId) ||
     params.remoteChatId;
+
+  if (!preferredId || looksLikeTechnicalIdentifier(preferredId)) {
+    return params.kind;
+  }
 
   return `${params.kind} ${preferredId}`;
 }
@@ -201,34 +225,257 @@ function buildAudienceSubtitle(params: {
   return parts.length > 0 ? parts.join(' · ') : params.kind;
 }
 
-function buildRemoteChatAudience(identity: IRemoteIdentity): IChannelAudienceEntry {
+function getLarkRemoteDisplayName(identity: IRemoteIdentity): string | undefined {
+  const candidate = identity.displayName?.trim();
+  if (candidate && !looksLikeTechnicalIdentifier(candidate) && !candidate.startsWith('User ')) {
+    return candidate;
+  }
+
+  if (isLarkChildObject(identity)) {
+    return undefined;
+  }
+
+  const userDisplayName =
+    typeof identity.metadata?.userDisplayName === 'string' ? identity.metadata.userDisplayName.trim() : '';
+  if (userDisplayName) {
+    return userDisplayName;
+  }
+
+  const chatName = typeof identity.metadata?.chatName === 'string' ? identity.metadata.chatName.trim() : '';
+  if (chatName) {
+    return chatName;
+  }
+
+  return undefined;
+}
+
+function getLarkObjectSubtitle(identity: IRemoteIdentity): string | undefined {
+  const subtitle = typeof identity.metadata?.objectSubtitle === 'string' ? identity.metadata.objectSubtitle.trim() : '';
+  if (subtitle) {
+    return subtitle;
+  }
+
+  const description =
+    typeof identity.metadata?.chatDescription === 'string' ? identity.metadata.chatDescription.trim() : '';
+  if (description) {
+    return description;
+  }
+
+  return undefined;
+}
+
+function getFriendlyDisplayName(identity: IRemoteIdentity, connector?: IConnectorInstance): string | undefined {
+  if (connector?.platform === 'lark') {
+    return getLarkRemoteDisplayName(identity);
+  }
+
+  const candidate = identity.displayName?.trim();
+  if (candidate && !looksLikeTechnicalIdentifier(candidate)) {
+    return candidate;
+  }
+
+  return undefined;
+}
+
+function getFriendlySubtitle(identity: IRemoteIdentity, connector?: IConnectorInstance): string | undefined {
+  if (connector?.platform === 'lark') {
+    return getLarkObjectSubtitle(identity);
+  }
+
+  return undefined;
+}
+
+type LarkDisplayResolver = {
+  getChatDisplayData: (chatId: string) => Promise<{ name?: string; description?: string; chatType?: string } | null>;
+  getUserDisplayData: (userId: string) => Promise<{ name?: string } | null>;
+};
+
+function isLarkDisplayResolver(value: unknown): value is LarkDisplayResolver {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  return (
+    'getChatDisplayData' in value &&
+    typeof (value as { getChatDisplayData?: unknown }).getChatDisplayData === 'function' &&
+    'getUserDisplayData' in value &&
+    typeof (value as { getUserDisplayData?: unknown }).getUserDisplayData === 'function'
+  );
+}
+
+function hasReadableDisplayName(value?: string): value is string {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.trim();
+  return Boolean(normalized) && !looksLikeTechnicalIdentifier(normalized) && !normalized.startsWith('User ');
+}
+
+function isLarkChildObject(identity: IRemoteIdentity): boolean {
+  return (
+    identity.remoteChatType === 'topic' ||
+    identity.remoteChatType === 'thread' ||
+    identity.peerScope === 'thread' ||
+    Boolean(identity.threadId)
+  );
+}
+
+async function enrichLarkIdentityForDisplay(
+  identity: IRemoteIdentity,
+  resolver: LarkDisplayResolver
+): Promise<IRemoteIdentity> {
+  const metadata = identity.metadata ?? {};
+  const childObject = isLarkChildObject(identity);
+  const transportChatId = identity.platformChatId ?? identity.parentChatId ?? identity.remoteChatId;
+  const loadChatDisplay = Boolean(
+    transportChatId && (!isDirectChatType(identity.remoteChatType) || childObject)
+  );
+
+  const [chatDisplay, userDisplay] = await Promise.all([
+    loadChatDisplay && transportChatId
+      ? resolver.getChatDisplayData(transportChatId).catch((_error): null => null)
+      : null,
+    identity.remoteUserId
+      ? resolver.getUserDisplayData(identity.remoteUserId).catch((_error): null => null)
+      : null,
+  ]);
+
+  const chatName =
+    chatDisplay?.name?.trim() ||
+    (typeof metadata.chatName === 'string' && metadata.chatName.trim() ? metadata.chatName.trim() : undefined);
+  const chatDescription =
+    chatDisplay?.description?.trim() ||
+    (typeof metadata.chatDescription === 'string' && metadata.chatDescription.trim()
+      ? metadata.chatDescription.trim()
+      : undefined);
+  const userDisplayName =
+    userDisplay?.name?.trim() ||
+    (typeof metadata.userDisplayName === 'string' && metadata.userDisplayName.trim()
+      ? metadata.userDisplayName.trim()
+      : undefined);
+  const currentDisplayName = hasReadableDisplayName(identity.displayName) ? identity.displayName.trim() : undefined;
+
+  let displayName = currentDisplayName;
+  if (isDirectChatType(identity.remoteChatType)) {
+    displayName = userDisplayName ?? currentDisplayName;
+  } else if (!childObject) {
+    displayName = chatName ?? currentDisplayName;
+  }
+
+  const objectSubtitle =
+    typeof metadata.objectSubtitle === 'string' && metadata.objectSubtitle.trim()
+      ? metadata.objectSubtitle.trim()
+      : childObject
+        ? chatName
+          ? `In ${chatName}`
+          : undefined
+        : chatDescription;
+
+  return {
+    ...identity,
+    displayName,
+    remoteChatType: identity.remoteChatType ?? chatDisplay?.chatType,
+    metadata: {
+      ...metadata,
+      ...(chatName ? { chatName } : {}),
+      ...(chatDescription ? { chatDescription } : {}),
+      ...(userDisplayName ? { userDisplayName } : {}),
+      ...(childObject && chatName ? { parentTitle: chatName } : {}),
+      ...(objectSubtitle ? { objectSubtitle } : {}),
+    },
+  };
+}
+
+async function enrichRemoteIdentitiesForDisplay(
+  remoteIdentities: IRemoteIdentity[],
+  connectors: IConnectorInstance[]
+): Promise<IRemoteIdentity[]> {
+  if (remoteIdentities.length === 0 || connectors.length === 0) {
+    return remoteIdentities;
+  }
+
+  const pluginManager = getChannelManager().getPluginManager?.();
+  if (!pluginManager) {
+    return remoteIdentities;
+  }
+
+  const connectorMap = new Map(connectors.map((connector) => [connector.id, connector] as const));
+  const larkPlugins = new Map<string, LarkDisplayResolver>();
+
+  return Promise.all(
+    remoteIdentities.map(async (identity) => {
+      const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
+      if (!connector || connector.platform !== 'lark') {
+        return identity;
+      }
+
+      const runtimeId = connector.legacyPluginId ?? connector.id;
+      let resolver = larkPlugins.get(runtimeId);
+      if (!resolver) {
+        const plugin = pluginManager.getPlugin(runtimeId);
+        if (!isLarkDisplayResolver(plugin)) {
+          return identity;
+        }
+        resolver = plugin;
+        larkPlugins.set(runtimeId, resolver);
+      }
+
+      return enrichLarkIdentityForDisplay(identity, resolver);
+    })
+  );
+}
+
+function buildRemoteChatAudience(identity: IRemoteIdentity, connectorMap: Map<string, IConnectorInstance>): IChannelAudienceEntry {
   const threadParts = toThreadParts(identity.remoteChatId);
   const parentChatId = identity.parentChatId ?? threadParts.parentChatId;
   const threadId = identity.threadId ?? threadParts.threadId;
   const peerScope = identity.peerScope ?? (threadId ? 'thread' : 'chat');
   const chatType = identity.remoteChatType ?? (peerScope === 'thread' ? 'thread' : undefined);
-  const kind = inferAudienceKind({
-    scopeType: 'remote_chat',
-    remoteChatType: chatType,
-    peerScope,
-    key: identity.remoteChatId,
-  });
+  const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
+  const kind =
+    connector?.platform === 'lark' && (chatType === 'topic' || chatType === 'thread' || peerScope === 'thread')
+      ? 'Topic'
+      : inferAudienceKind({
+          scopeType: 'remote_chat',
+          remoteChatType: chatType,
+          peerScope,
+          key: identity.remoteChatId,
+        });
+  const friendlyDisplayName = getFriendlyDisplayName(identity, connector);
+  const friendlySubtitle = getFriendlySubtitle(identity, connector);
   const title = buildAudienceTitle({
     kind,
-    displayName: identity.displayName,
+    displayName: friendlyDisplayName,
     remoteUserId: identity.remoteUserId,
     platformChatId: identity.platformChatId,
     remoteChatId: identity.remoteChatId,
     threadId,
   });
-  const subtitle = buildAudienceSubtitle({
-    kind,
-    remoteUserId: identity.remoteUserId,
-    remoteChatId: identity.remoteChatId,
-    platformChatId: identity.platformChatId,
-    parentChatId,
-    threadId,
-  });
+  const subtitle =
+    connector?.platform === 'lark'
+      ? friendlySubtitle
+      : friendlySubtitle ??
+        buildAudienceSubtitle({
+          kind,
+          remoteUserId: identity.remoteUserId,
+          remoteChatId: identity.remoteChatId,
+          platformChatId: identity.platformChatId,
+          parentChatId,
+          threadId,
+        });
+  const objectDescriptor = connector
+    ? describeRemoteIdentityObject(
+        {
+          ...identity,
+          parentChatId,
+          threadId,
+          peerScope,
+          remoteChatType: chatType,
+        },
+        connector.platform
+      )
+    : undefined;
 
   return {
     key: identity.remoteChatId,
@@ -243,14 +490,24 @@ function buildRemoteChatAudience(identity: IRemoteIdentity): IChannelAudienceEnt
     peerScope,
     parentChatId,
     threadId,
-    displayName: identity.displayName,
+    displayName: friendlyDisplayName ?? identity.displayName,
+    objectKey: objectDescriptor?.key,
+    objectKind: objectDescriptor?.kind,
+    objectTitle: objectDescriptor?.title,
+    objectSubtitle: objectDescriptor?.subtitle,
+    parentObjectKey: objectDescriptor?.parentKey,
+    parentObjectTitle: objectDescriptor?.parentTitle,
+    parentObjectKind: objectDescriptor?.parentKind,
     title,
     subtitle,
     lastActive: identity.lastActive,
   };
 }
 
-function buildRemoteUserAudiences(identities: IRemoteIdentity[]): IChannelAudienceEntry[] {
+function buildRemoteUserAudiences(
+  identities: IRemoteIdentity[],
+  connectorMap: Map<string, IConnectorInstance>
+): IChannelAudienceEntry[] {
   const uniqueByUser = new Map<string, IRemoteIdentity>();
 
   for (const identity of identities) {
@@ -279,6 +536,11 @@ function buildRemoteUserAudiences(identities: IRemoteIdentity[]): IChannelAudien
       key: identity.remoteUserId!,
     });
 
+    const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
+    const friendlyDisplayName = getFriendlyDisplayName(identity, connector);
+    const friendlySubtitle = getFriendlySubtitle(identity, connector);
+    const objectDescriptor = connector ? describeRemoteIdentityObject(identity, connector.platform) : undefined;
+
     return {
       key: identity.remoteUserId!,
       connectorId: identity.connectorId,
@@ -290,20 +552,31 @@ function buildRemoteUserAudiences(identities: IRemoteIdentity[]): IChannelAudien
       platformChatId: identity.platformChatId,
       remoteChatType: identity.remoteChatType,
       peerScope: identity.peerScope,
-      displayName: identity.displayName,
+      displayName: friendlyDisplayName ?? identity.displayName,
+      objectKey: objectDescriptor?.key,
+      objectKind: objectDescriptor?.kind,
+      objectTitle: objectDescriptor?.title,
+      objectSubtitle: objectDescriptor?.subtitle,
+      parentObjectKey: objectDescriptor?.parentKey,
+      parentObjectTitle: objectDescriptor?.parentTitle,
+      parentObjectKind: objectDescriptor?.parentKind,
       title: buildAudienceTitle({
         kind,
-        displayName: identity.displayName,
+        displayName: friendlyDisplayName,
         remoteUserId: identity.remoteUserId,
         platformChatId: identity.platformChatId,
         remoteChatId: identity.remoteChatId || identity.remoteUserId!,
       }),
-      subtitle: buildAudienceSubtitle({
-        kind,
-        remoteUserId: identity.remoteUserId,
-        remoteChatId: identity.remoteChatId,
-        platformChatId: identity.platformChatId,
-      }),
+      subtitle:
+        connector?.platform === 'lark'
+          ? friendlySubtitle
+          : friendlySubtitle ??
+            buildAudienceSubtitle({
+              kind,
+              remoteUserId: identity.remoteUserId,
+              remoteChatId: identity.remoteChatId,
+              platformChatId: identity.platformChatId,
+            }),
       lastActive: identity.lastActive,
     };
   });
@@ -313,22 +586,23 @@ function buildAudienceEntries(
   remoteIdentities: IRemoteIdentity[],
   connectors: IConnectorInstance[]
 ): IChannelAudienceEntry[] {
-  const remoteChatAudiences = remoteIdentities.map(buildRemoteChatAudience);
-  const remoteUserAudiences = buildRemoteUserAudiences(remoteIdentities);
-  const connectorMap = new Map(connectors.map((connector) => [connector.id, connector]));
+  const connectorMap = new Map(connectors.map((connector) => [connector.id, connector] as const));
+  const remoteChatAudiences = remoteIdentities.map((identity) => buildRemoteChatAudience(identity, connectorMap));
+  const remoteUserAudiences = buildRemoteUserAudiences(remoteIdentities, connectorMap);
   const remoteUserAudienceKeys = new Set(
     remoteUserAudiences
       .filter((audience) => audience.remoteUserId)
       .map((audience) => `${getChannelAccountId(audience)}::${audience.remoteUserId}`)
   );
-  const dedupedRemoteChatAudiences = remoteChatAudiences.filter((audience) => {
+  const visibleRemoteChatAudiences = remoteChatAudiences.filter((audience) => {
     if (!audience.remoteUserId) {
       return true;
     }
 
+    const audienceOwnerKey = `${getChannelAccountId(audience)}::${audience.remoteUserId}`;
     const connector = connectorMap.get(getChannelAccountId(audience) ?? '');
-    if (connector?.platform !== 'weixin') {
-      return true;
+    if (connector?.platform === 'weixin' || isDirectChatType(audience.remoteChatType)) {
+      return !remoteUserAudienceKeys.has(audienceOwnerKey);
     }
 
     const kind = inferAudienceKind({
@@ -341,10 +615,10 @@ function buildAudienceEntries(
       return true;
     }
 
-    return !remoteUserAudienceKeys.has(`${getChannelAccountId(audience)}::${audience.remoteUserId}`);
+    return !remoteUserAudienceKeys.has(audienceOwnerKey);
   });
 
-  return [...remoteUserAudiences, ...dedupedRemoteChatAudiences].toSorted(
+  return [...remoteUserAudiences, ...visibleRemoteChatAudiences].toSorted(
     (left, right) => (right.lastActive ?? 0) - (left.lastActive ?? 0)
   );
 }
@@ -357,18 +631,24 @@ function buildActiveSessionEntries(params: {
   externalSessions: IExternalSession[];
   controlLeases: import('@process/channels/types').IChannelControlLease[];
 }): IChannelActiveSessionEntry[] {
-  const remoteIdentityMap = new Map(params.remoteIdentities.map((identity) => [identity.id, identity]));
-  const connectorMap = new Map(params.connectors.map((connector) => [connector.id, connector]));
-  const bindingMap = new Map(params.bindings.map((binding) => [binding.id, binding]));
-  const externalSessionMap = new Map(params.externalSessions.map((session) => [session.id, session]));
-  const controlLeaseMap = new Map(params.controlLeases.map((lease) => [lease.externalSessionId, lease]));
+  const remoteIdentityMap = new Map(params.remoteIdentities.map((identity) => [identity.id, identity] as const));
+  const connectorMap = new Map(params.connectors.map((connector) => [connector.id, connector] as const));
+  const bindingMap = new Map(params.bindings.map((binding) => [binding.id, binding] as const));
+  const externalSessionMap = new Map(params.externalSessions.map((session) => [session.id, session] as const));
+  const controlLeaseMap = new Map(params.controlLeases.map((lease) => [lease.externalSessionId, lease] as const));
 
   return params.sessions.map((session) => {
     const remoteIdentity = remoteIdentityMap.get(session.userId);
-    const connector = remoteIdentity ? connectorMap.get(getChannelAccountId(remoteIdentity) ?? '') : undefined;
+    const connector = remoteIdentity
+      ? connectorMap.get(getChannelAccountId(remoteIdentity) ?? remoteIdentity.connectorId)
+      : undefined;
     const externalSession = externalSessionMap.get(session.id);
     const binding = externalSession?.bindingId ? bindingMap.get(externalSession.bindingId) : undefined;
     const controlLease = controlLeaseMap.get(session.id);
+    const friendlyAudienceTitle =
+      remoteIdentity && connector ? getFriendlyDisplayName(remoteIdentity, connector) : undefined;
+    const objectDescriptor =
+      remoteIdentity && connector ? describeRemoteIdentityObject(remoteIdentity, connector.platform) : undefined;
 
     return {
       id: session.id,
@@ -379,8 +659,21 @@ function buildActiveSessionEntries(params: {
       connectorPlatform: connector?.platform,
       channelAccountPlatform: connector?.platform,
       remoteIdentityId: remoteIdentity?.id,
-      audienceTitle: remoteIdentity?.displayName || remoteIdentity?.remoteChatId || session.chatId || session.id,
+      audienceTitle:
+        friendlyAudienceTitle ||
+        objectDescriptor?.title ||
+        remoteIdentity?.displayName ||
+        remoteIdentity?.remoteChatId ||
+        session.chatId ||
+        session.id,
       audienceKey: remoteIdentity?.remoteChatId || session.chatId,
+      objectKey: objectDescriptor?.key,
+      objectKind: objectDescriptor?.kind,
+      objectTitle: objectDescriptor?.title,
+      objectSubtitle: objectDescriptor?.subtitle,
+      parentObjectKey: objectDescriptor?.parentKey,
+      parentObjectTitle: objectDescriptor?.parentTitle,
+      parentObjectKind: objectDescriptor?.parentKind,
       conversationId: session.conversationId,
       workspace: session.workspace,
       agentType: session.agentType,
@@ -762,6 +1055,19 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   });
 
   /**
+   * Get all authorized targets
+   */
+  channel.getAuthorizedTargets.provider(async () => {
+    try {
+      const data = await channelRepo.getChannelAuthorizedTargets();
+      return { success: true, data };
+    } catch (error) {
+      console.error('[ChannelBridge] getAuthorizedTargets error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  /**
    * Revoke user authorization
    */
   channel.revokeUser.provider(async ({ userId }) => {
@@ -808,12 +1114,14 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       if (!controlLeasesResult.success || !controlLeasesResult.data) {
         throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
       }
+      const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(remoteIdentities, connectors);
+
       return {
         success: true,
         data: buildActiveSessionEntries({
           sessions,
           connectors,
-          remoteIdentities,
+          remoteIdentities: enrichedRemoteIdentities,
           bindings,
           externalSessions: externalSessionsResult.data,
           controlLeases: controlLeasesResult.data,
@@ -966,12 +1274,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         channelRepo.getChannelBindings(channelAccountId),
         channelRepo.getRemoteIdentities(channelAccountId),
       ]);
-      const pairedConnectorIds = new Set(
-        remoteIdentities.map((identity) => getChannelAccountId(identity)).filter((id): id is string => Boolean(id))
-      );
-      const connectors = allConnectors.filter(
-        (connector) => (connector.configured ?? false) && connector.enabled && pairedConnectorIds.has(connector.id)
-      );
+      const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
+      const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(identitiesWithAccountId, allConnectors);
+      const connectors = allConnectors.filter((connector) => (connector.configured ?? false) && connector.enabled);
       return {
         success: true,
         data: {
@@ -979,10 +1284,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           channelAccounts: connectors,
           agentProfiles,
           bindings: bindings.map((binding) => withChannelAccountId(binding)),
-          audiences: buildAudienceEntries(
-            remoteIdentities.map((identity) => withChannelAccountId(identity)),
-            allConnectors
-          ),
+          audiences: buildAudienceEntries(enrichedRemoteIdentities, allConnectors),
         },
       };
     } catch (error) {

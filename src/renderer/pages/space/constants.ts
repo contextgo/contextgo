@@ -1,6 +1,6 @@
 import type { SpaceShellView } from './types';
 
-export const DEFAULT_SPACE_SHELL_VIEW: SpaceShellView = 'overview';
+export const DEFAULT_SPACE_SHELL_VIEW: SpaceShellView = 'canvas';
 
 export const SPACE_SHELL_VIEW_KEYS = [
   'overview',

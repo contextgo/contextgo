@@ -25,6 +25,7 @@ import { FolderOpen, Robot } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  filterHarnessSelectableParticipants,
   HARNESS_DEFAULT_PRESET_ASSISTANT_IDS,
   resolveHarnessDefaultSelectionKeys,
 } from './createDiscussionGroupModalHelpers';
@@ -196,7 +197,7 @@ const CreateDiscussionGroupModal: React.FC<{
     });
   }, [cliAgents]);
 
-  const sections = useMemo<ParticipantSection[]>(() => {
+  const allSections = useMemo<ParticipantSection[]>(() => {
     return [
       {
         key: 'preset-assistants',
@@ -210,6 +211,25 @@ const CreateDiscussionGroupModal: React.FC<{
       },
     ].filter((section) => section.items.length > 0);
   }, [cliParticipantOptions, presetParticipantOptions, t]);
+
+  const sections = useMemo<ParticipantSection[]>(() => {
+    if (collaborationMode !== 'planner-generator-evaluator') {
+      return allSections;
+    }
+
+    const harnessPresetItems = filterHarnessSelectableParticipants(presetParticipantOptions);
+    if (harnessPresetItems.length === 0) {
+      return [];
+    }
+
+    return [
+      {
+        key: 'preset-assistants',
+        title: t('conversation.group.harnessAgentsLabel'),
+        items: harnessPresetItems,
+      },
+    ];
+  }, [allSections, collaborationMode, presetParticipantOptions, t]);
 
   const availableParticipants = useMemo(() => {
     return sections.flatMap((section) => section.items);

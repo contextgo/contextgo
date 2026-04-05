@@ -8,7 +8,13 @@ import type { IConfirmation } from '@/common/chat/chatLib';
 import { bridge } from '@office-ai/platform';
 import type { OpenDialogOptions } from 'electron';
 import type { McpSource } from '../../process/services/mcpServices/McpProtocol';
-import type { AcpBackend, AcpBackendAll, AcpModelInfo, PresetAgentType } from '../types/acpTypes';
+import type {
+  AcpBackend,
+  AcpBackendAll,
+  AcpModelInfo,
+  ManagedRuntimeInstallEvent,
+  PresetAgentType,
+} from '../types/acpTypes';
 import type { HookInfo, HookOutputRoutingConfig } from '../types/hookTypes';
 import type { ExternalSessionSummary, ImportExternalSessionParams } from '../types/externalSessions';
 import type { SlashCommandItem } from '../chat/slash/types';
@@ -928,6 +934,7 @@ export const acpConversation = {
   checkEnv: bridge.buildProvider<{ env: Record<string, string> }, void>('acp.check.env'),
   refreshCustomAgents: bridge.buildProvider<IBridgeResponse, void>('acp.refresh-custom-agents'),
   refreshDetectedAgents: bridge.buildProvider<IBridgeResponse, void>('acp.refresh-detected-agents'),
+  managedRuntimeInstallEvent: bridge.buildEmitter<ManagedRuntimeInstallEvent>('acp.managed-runtime-install-event'),
   installManagedRuntime: bridge.buildProvider<
     IBridgeResponse<{ backend: AcpBackend; command: string; stdout?: string; stderr?: string }>,
     { backend: AcpBackend }
@@ -1724,6 +1731,7 @@ import type {
   IChannelPairingRequest,
   IChannelPluginStatus,
   IChannelSession,
+  IChannelAuthorizedTarget,
   IChannelUser,
   IChannelAccount,
   IConnectorInstance,
@@ -1765,6 +1773,9 @@ export const channel = {
 
   // User Management
   getAuthorizedUsers: bridge.buildProvider<IBridgeResponse<IChannelUser[]>, void>('channel.get-authorized-users'),
+  getAuthorizedTargets: bridge.buildProvider<IBridgeResponse<IChannelAuthorizedTarget[]>, void>(
+    'channel.get-authorized-targets'
+  ),
   revokeUser: bridge.buildProvider<IBridgeResponse, { userId: string }>('channel.revoke-user'),
 
   // Session Management (MVP: read-only view)

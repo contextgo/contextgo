@@ -42,7 +42,7 @@ type UseGuidMentionOptions = {
 };
 
 /**
- * Hook that manages the @ mention system for agent selection.
+ * Hook that manages the @ mention runtime selector.
  */
 export const useGuidMention = ({
   availableAgents,
@@ -60,9 +60,12 @@ export const useGuidMention = ({
   const mentionMenuRef = useRef<HTMLDivElement>(null);
   const mentionMatchRegex = useMemo(() => /(?:^|\s)@([^\s@]*)$/, []);
 
+  const runtimeAgents = useMemo(() => {
+    return (availableAgents || []).filter((agent) => agent.backend !== 'custom' || agent.isExtension);
+  }, [availableAgents]);
+
   const mentionOptions = useMemo(() => {
-    const agents = availableAgents || [];
-    return agents.map((agent) => {
+    return runtimeAgents.map((agent) => {
       const key = getAgentKey(agent);
       const label = agent.name || agent.backend;
       const avatarValue =
@@ -95,7 +98,7 @@ export const useGuidMention = ({
         isExtension: agent.isExtension,
       };
     });
-  }, [availableAgents, customAgentAvatarMap]);
+  }, [customAgentAvatarMap, runtimeAgents]);
 
   const filteredMentionOptions = useMemo(() => {
     if (!mentionQuery) return mentionOptions;
@@ -121,7 +124,7 @@ export const useGuidMention = ({
       setMentionQuery(null);
       setMentionActiveIndex(0);
     },
-    [stripMentionToken, setSelectedAgentKey, setInput]
+    [setInput, setSelectedAgentKey, stripMentionToken]
   );
 
   const selectedAgentLabel = selectedAgentInfo?.name || selectedAgentKey;
@@ -131,7 +134,6 @@ export const useGuidMention = ({
   const mentionMenuSelectedKey =
     mentionOpen || mentionSelectorOpen ? mentionMenuActiveOption?.key || selectedAgentKey : selectedAgentKey;
 
-  // Reset active index on open/query change
   useEffect(() => {
     if (mentionOpen) {
       setMentionActiveIndex(0);
@@ -143,7 +145,6 @@ export const useGuidMention = ({
     }
   }, [filteredMentionOptions, mentionOpen, mentionQuery, mentionSelectorOpen, selectedAgentKey]);
 
-  // Scroll active mention item into view
   useEffect(() => {
     if (!mentionOpen && !mentionSelectorOpen) return;
     const container = mentionMenuRef.current;

@@ -8,6 +8,13 @@ final class WebViewStore: NSObject, ObservableObject {
   private static let officialRemoteHost = "remote.contextgo.io"
 
   let webView: WKWebView
+  @Published private(set) var isPageLoading = false
+  @Published private(set) var hasCommittedNavigation = false
+
+  var shouldShowLaunchOverlay: Bool {
+    isPageLoading && !hasCommittedNavigation
+  }
+
   private let loginSessionStore: LoginSessionStore
 
   private var openPanelCompletionHandler: (([URL]?) -> Void)?
@@ -24,6 +31,9 @@ final class WebViewStore: NSObject, ObservableObject {
     let webView = WKWebView(frame: .zero, configuration: configuration)
     webView.allowsBackForwardNavigationGestures = true
     webView.scrollView.contentInsetAdjustmentBehavior = .never
+    webView.isOpaque = false
+    webView.backgroundColor = .clear
+    webView.scrollView.backgroundColor = .clear
     self.webView = webView
     self.loginSessionStore = LoginSessionStore(cookieStore: webView.configuration.websiteDataStore.httpCookieStore)
 
@@ -39,6 +49,8 @@ final class WebViewStore: NSObject, ObservableObject {
     }
 
     requestedURL = url.absoluteString
+    isPageLoading = true
+    hasCommittedNavigation = false
 
     var request = URLRequest(
       url: url,
@@ -63,6 +75,11 @@ final class WebViewStore: NSObject, ObservableObject {
         print("[MobileShell] Failed to consume login code:", error)
         return "consume_failed"
       }
+    }
+
+    if Self.isOfficialRemoteDevicesURL(payload.targetURL) {
+      print("[MobileShell] Login attached successfully. Staying on native device list.")
+      return nil
     }
 
     load(url: payload.targetURL, force: true, headers: bootstrapHeaders)
@@ -102,6 +119,17 @@ final class WebViewStore: NSObject, ObservableObject {
     }
 
     return rootViewController
+  }
+
+  private static func isOfficialRemoteDevicesURL(_ url: URL) -> Bool {
+    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+          components.host?.lowercased() == officialRemoteHost
+    else {
+      return false
+    }
+
+    let normalizedPath = components.path.isEmpty ? "/" : components.path.lowercased()
+    return normalizedPath == "/remote/devices"
   }
 
   private func shouldRouteThroughSystemBrowser(_ url: URL) -> Bool {
@@ -155,6 +183,33 @@ final class WebViewStore: NSObject, ObservableObject {
 }
 
 extension WebViewStore: WKNavigationDelegate {
+  func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+    isPageLoading = true
+    hasCommittedNavigation = false
+  }
+
+  func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+    hasCommittedNavigation = true
+  }
+
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    hasCommittedNavigation = true
+    isPageLoading = false
+  }
+
+  func webView(
+    _ webView: WKWebView,
+    didFailProvisionalNavigation navigation: WKNavigation!,
+    withError error: Error
+  ) {
+    hasCommittedNavigation = false
+    isPageLoading = false
+  }
+
+  func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+    isPageLoading = false
+  }
+
   func webView(
     _ webView: WKWebView,
     decidePolicyFor navigationAction: WKNavigationAction,

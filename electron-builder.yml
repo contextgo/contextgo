@@ -68,6 +68,17 @@ files:
   - '!**/node_modules/*/{docs,documentation,doc}'
   # Exclude system files
   - '!**/{.DS_Store,.git,.gitignore,.gitattributes}'
+  # Exclude local env/config and signing material from packaged artifacts
+  - '!**/.env'
+  - '!**/.env.*'
+  - '!**/*.p12'
+  - '!**/*.mobileprovision'
+  - '!**/*.keystore'
+  - '!**/*.jks'
+  - '!**/*.p8'
+  - '!**/*.pem'
+  - '!**/*.key'
+  - '!**/{contextgo-config.txt,contextgo-chat.txt,contextgo-chat-message.txt,contextgo.db,db.sqlite}'
   - '!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}'
   - '!**/{appveyor.yml,.travis.yml,circle.yml}'
   - '!**/{npm-debug.log,yarn.lock,.yarn-metadata.json,yarn-error.log}'

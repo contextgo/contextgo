@@ -5,6 +5,7 @@
  */
 
 import { Tag, Spin } from '@arco-design/web-react';
+import MarkdownView from '@/renderer/components/Markdown';
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { useTranslation } from 'react-i18next';
@@ -41,6 +42,15 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
   running = false,
   onStop: _onStop,
 }) => {
+  const summarizedDescription = useMemo(() => {
+    const normalized = thought.description.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    return normalized.length > 140 ? `${normalized.slice(0, 137)}...` : normalized;
+  }, [thought.description]);
+
   const { theme } = useThemeContext();
   const { t } = useTranslation();
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -48,7 +58,7 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
 
   // 计时器 Timer for elapsed time
   useEffect(() => {
-    if (!running && !thought?.subject) {
+    if (!running) {
       setElapsedTime(0);
       return;
     }
@@ -87,13 +97,12 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
       ? 'px-10px py-10px rd-20px text-14px lh-20px text-t-primary'
       : 'px-10px py-10px rd-20px text-14px pb-40px lh-20px text-t-primary';
 
-  // 如果没有 thought 且不在运行中，不显示
-  if (!thought?.subject && !running) {
+  if (!running) {
     return null;
   }
 
   // 运行中但没有 thought 时显示默认处理状态
-  if (running && !thought?.subject) {
+  if (!thought?.subject) {
     return (
       <div className={`${containerClassName} flex items-center gap-8px`} style={containerStyle}>
         <Spin size={14} />
@@ -105,20 +114,25 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
     );
   }
 
-  // Check if description is different from subject (avoid showing duplicate content)
   const showDescription = thought.description && thought.description !== thought.subject;
 
   return (
     <div className={containerClassName} style={containerStyle}>
-      <div className='flex items-center gap-8px'>
-        {running && <Spin size={14} />}
-        <Tag color='arcoblue' size='small'>
+      <div className='flex items-start gap-8px'>
+        <div className='mt-2px shrink-0'>
+          <Spin size={14} />
+        </div>
+        <Tag color='arcoblue' size='small' className='mt-1px shrink-0'>
           {thought.subject}
         </Tag>
-        {showDescription && <span className='flex-1 truncate'>{thought.description}</span>}
-        {running && (
-          <span className='text-t-tertiary text-12px whitespace-nowrap'>({formatElapsedTime(elapsedTime)})</span>
-        )}
+        {showDescription ? (
+          <div className='min-w-0 flex-1 overflow-hidden'>
+            <MarkdownView className='text-13px text-t-primary [&_.markdown-shadow-body_p]:m-0 [&_.markdown-shadow-body_strong]:font-600'>
+              {summarizedDescription}
+            </MarkdownView>
+          </div>
+        ) : null}
+        <span className='shrink-0 text-t-tertiary text-12px whitespace-nowrap'>({formatElapsedTime(elapsedTime)})</span>
       </div>
     </div>
   );

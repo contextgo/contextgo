@@ -397,6 +397,58 @@
   -webkit-line-clamp: 2;
 }
 
+.selectorMetaHint {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.discoveryGroupCard {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--fill-1) 84%, var(--bg-1) 16%);
+}
+
+.discoveryGroupHeader {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.discoveryGroupToggle {
+  flex-shrink: 0;
+  border-radius: 999px;
+}
+
+.discoveryGroupChildren {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.discoveryChildButton {
+  margin: 0;
+}
+
+.discoveryChildButtonInner {
+  padding: 12px;
+  border-style: dashed;
+  background: color-mix(in srgb, var(--bg-1) 92%, var(--fill-1) 8%);
+  box-shadow: none;
+}
 
 .selectorStats {
   min-width: 0;
@@ -545,6 +597,16 @@
   -webkit-line-clamp: 2;
 }
 
+.bindingMetaHint {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .bindingProfileCard {
   min-width: 0;
   display: flex;
@@ -684,6 +746,13 @@
   }
 
   .bindingPrimaryAction {
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .discoveryGroupHeader,
+  .discoveryGroupToggle {
     width: 100%;
   }
 }

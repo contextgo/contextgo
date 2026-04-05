@@ -137,6 +137,7 @@
       "relay": "參與者依序發言，後面的助手會看到前面助手的觀點，並繼續補充、反駁或推進討論。"
     },
     "participantsLabel": "參與者",
+    "harnessAgentsLabel": "Harness 助手",
     "minimumParticipants": "請至少選擇兩位參與者",
     "minimumParticipantsHint": "至少選擇 2 位參與者後才能建立討論群組。",
     "harnessParticipantsHint": "協作流水線模式要求剛好 3 位參與者，順序依次為規劃者 -> 生成者 -> 評估者。",

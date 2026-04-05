@@ -218,6 +218,101 @@
   background: color-mix(in srgb, var(--color-primary-light-1) 68%, var(--bg-1) 32%);
 }
 
+.shellMobile {
+  grid-template-columns: minmax(0, 1fr);
+  height: auto;
+  min-height: 100%;
+}
+
+.mobileCatalog {
+  display: grid;
+  gap: 14px;
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid var(--border-base);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-2) 96%, var(--fill-2) 4%),
+    color-mix(in srgb, var(--bg-1) 96%, var(--fill-1) 4%)
+  );
+}
+
+.mobileCatalogHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobileCatalogHeaderCopy,
+.mobileCatalogActiveMeta {
+  min-width: 0;
+}
+
+.mobileCatalogEyebrow {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mobileCatalogTitle {
+  margin: 6px 0 0;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.mobileCatalogCount {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.mobileCatalogDescription {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.mobileCatalogSelectWrap {
+  min-width: 0;
+}
+
+.mobileCatalogSelect {
+  width: 100%;
+}
+
+.mobileCatalogActive {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-1) 4%);
+}
+
+.mobileCatalogActiveName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mobileCatalogActiveDomain {
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 .connectorMeta {
   min-width: 0;
   flex: 1;
@@ -337,6 +432,7 @@
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 .chipWrap {
@@ -499,6 +595,19 @@
     border-bottom: 1px solid var(--border-base);
   }
 
+  .mobileCatalog {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .mobileCatalogHeader {
+    align-items: flex-start;
+  }
+
+  .mobileCatalogTitle {
+    font-size: 20px;
+  }
+
   .detail {
     padding: 16px;
   }
@@ -506,10 +615,67 @@
   .detailHero {
     padding: 18px;
     flex-direction: column;
+    gap: 14px;
+  }
+
+  .detailTabs {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .detailTabButton {
+    flex: 1 1 100%;
+    min-width: 0;
   }
 
   .detailGrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailCard {
+    padding: 16px;
+  }
+
+  .detailTitle {
+    font-size: 24px;
+  }
+
+  .detailSubtitle {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .connectorNameRow,
+  .clipboardListMetaRow,
+  .supportSourceMetaRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .mobileCatalogActive {
+    align-items: flex-start;
+  }
+
+  .clipboardActionRow {
+    flex-direction: column;
+  }
+
+  .clipboardActionRow :global(.arco-btn) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .clipboardControlRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .clipboardControlRowColumn {
+    width: 100%;
+  }
+
+  .supportSourceMetaRow {
+    flex-wrap: wrap;
   }
 }
 
@@ -530,6 +696,7 @@
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .clipboardNote {
@@ -546,6 +713,10 @@
   margin-top: 14px;
 }
 
+.clipboardActionRow > * {
+  min-width: 0;
+}
+
 .clipboardControlList {
   display: grid;
   gap: 12px;
@@ -558,6 +729,10 @@
   gap: 12px;
   color: var(--text-primary);
   font-size: 13px;
+}
+
+.clipboardControlRow > span {
+  min-width: 0;
 }
 
 .clipboardList {
@@ -594,6 +769,14 @@
   gap: 6px;
   color: var(--text-primary);
   font-size: 13px;
+}
+
+.clipboardControlRow :global(.arco-input-number),
+.clipboardControlRow :global(.arco-input-wrapper),
+.clipboardControlRowColumn :global(.arco-input-wrapper),
+.clipboardControlRowColumn :global(.arco-textarea-wrapper),
+.clipboardControlRowColumn :global(.arco-input-number) {
+  width: 100%;
 }
 
 .detailTabs {
@@ -653,6 +836,7 @@
 
 .supportSourceItem {
   width: 100%;
+  height: auto;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
   border-radius: 14px;
@@ -663,6 +847,13 @@
     background-color 0.2s ease;
 }
 
+.supportSourceItem :global(.arco-btn-content) {
+  width: 100%;
+  display: grid;
+  justify-items: start;
+  gap: 0;
+}
+
 .supportSourceItem:hover {
   border-color: color-mix(in srgb, rgb(var(--primary-6)) 28%, var(--border-base) 72%);
   background: color-mix(in srgb, var(--color-primary-light-1) 40%, var(--bg-1) 60%);
@@ -671,12 +862,15 @@
 .supportSourceMetaRow {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 8px;
   margin-bottom: 8px;
 }
 
 .supportSourceLabel {
+  min-width: 0;
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }

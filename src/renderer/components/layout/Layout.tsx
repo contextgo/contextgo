@@ -20,7 +20,7 @@ import { useMultiAgentDetection } from '@renderer/hooks/agent/useMultiAgentDetec
 import { processCustomCss } from '@renderer/utils/theme/customCssProcessor';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useConversationShortcuts } from '@renderer/hooks/ui/useConversationShortcuts';
-import { isElectronDesktop } from '@renderer/utils/platform';
+import { isElectronDesktop, isMobileShellWebView } from '@renderer/utils/platform';
 import { computeCssSyncDecision, resolveCssByActiveTheme } from '@renderer/utils/theme/themeCssSync';
 import '@renderer/styles/layout.css';
 
@@ -30,6 +30,15 @@ const DEFAULT_SIDER_WIDTH = 250;
 const MOBILE_SIDER_WIDTH_RATIO = 0.67;
 const MOBILE_SIDER_MIN_WIDTH = 260;
 const MOBILE_SIDER_MAX_WIDTH = 420;
+const MOBILE_SIDER_EDGE_SWIPE_ZONE = 28;
+const MOBILE_SIDER_GESTURE_TRIGGER_RATIO = 0.35;
+const MOBILE_SIDER_GESTURE_MIN_DISTANCE = 72;
+
+type MobileSiderGesture = {
+  mode: 'opening' | 'closing';
+  startX: number;
+  startY: number;
+};
 
 const detectMobileViewportOrTouch = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -66,10 +75,14 @@ const Layout: React.FC<{
   const location = useLocation();
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isConversationDetailRoute = location.pathname.startsWith('/conversation/');
+  const isMobileShellRuntime = !isElectronDesktop() && isMobileShellWebView();
   const workspaceAvailable = isConversationDetailRoute;
   const collapsedRef = useRef(collapsed);
   const lastCssRef = useRef('');
   const lastUiCssUpdateAtRef = useRef(0);
+  const mobileSiderGestureRef = useRef<MobileSiderGesture | null>(null);
+  const [mobileSiderTranslateX, setMobileSiderTranslateX] = useState<number | null>(null);
+  const [isDraggingMobileSider, setIsDraggingMobileSider] = useState(false);
 
   const loadAndHealCustomCss = useCallback(async () => {
     try {
@@ -321,6 +334,12 @@ const Layout: React.FC<{
   const showPrimarySider = true;
   const desktopExpandedSiderWidth = siderWidth;
   const desktopCollapsedSiderWidth = 0;
+  const resolvedMobileSiderTranslateX = isMobile
+    ? mobileSiderTranslateX ?? (collapsed ? -siderWidth : 0)
+    : 0;
+  const mobileSiderOpenProgress = isMobile
+    ? Math.min(1, Math.max(0, (resolvedMobileSiderTranslateX + siderWidth) / siderWidth))
+    : 1;
   const leftOffset = isMobile
     ? 0
     : showPrimarySider
@@ -332,6 +351,119 @@ const Layout: React.FC<{
   useEffect(() => {
     collapsedRef.current = collapsed;
   }, [collapsed]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      mobileSiderGestureRef.current = null;
+      setIsDraggingMobileSider(false);
+      setMobileSiderTranslateX(null);
+      return;
+    }
+
+    setMobileSiderTranslateX(null);
+    setIsDraggingMobileSider(false);
+  }, [collapsed, isMobile, siderWidth]);
+
+  const resetMobileSiderGesture = useCallback(() => {
+    mobileSiderGestureRef.current = null;
+    setIsDraggingMobileSider(false);
+    setMobileSiderTranslateX(null);
+  }, []);
+
+  const handleMobileSiderTouchStart = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      if (!isMobile || !showPrimarySider || event.touches.length !== 1 || isMobileShellRuntime) {
+        return;
+      }
+
+      const touch = event.touches[0];
+      const startX = touch.clientX;
+      const startY = touch.clientY;
+
+      if (collapsed) {
+        if (startX > MOBILE_SIDER_EDGE_SWIPE_ZONE) {
+          return;
+        }
+
+        mobileSiderGestureRef.current = {
+          mode: 'opening',
+          startX,
+          startY,
+        };
+        setIsDraggingMobileSider(true);
+        setMobileSiderTranslateX(-siderWidth);
+        return;
+      }
+
+      if (startX > siderWidth) {
+        return;
+      }
+
+      mobileSiderGestureRef.current = {
+        mode: 'closing',
+        startX,
+        startY,
+      };
+      setIsDraggingMobileSider(true);
+      setMobileSiderTranslateX(0);
+    },
+    [collapsed, isMobile, isMobileShellRuntime, showPrimarySider, siderWidth]
+  );
+
+  const handleMobileSiderTouchMove = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      const gesture = mobileSiderGestureRef.current;
+      if (!gesture || event.touches.length !== 1) {
+        return;
+      }
+
+      const touch = event.touches[0];
+      const deltaX = touch.clientX - gesture.startX;
+      const deltaY = touch.clientY - gesture.startY;
+
+      if (Math.abs(deltaY) > Math.abs(deltaX) + 12) {
+        resetMobileSiderGesture();
+        return;
+      }
+
+      if (gesture.mode === 'opening') {
+        const nextTranslateX = Math.min(0, Math.max(-siderWidth, -siderWidth + Math.max(0, deltaX)));
+        setMobileSiderTranslateX(nextTranslateX);
+        return;
+      }
+
+      const nextTranslateX = Math.max(-siderWidth, Math.min(0, Math.min(0, deltaX)));
+      setMobileSiderTranslateX(nextTranslateX);
+    },
+    [resetMobileSiderGesture, siderWidth]
+  );
+
+  const handleMobileSiderTouchEnd = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      const gesture = mobileSiderGestureRef.current;
+      if (!gesture) {
+        return;
+      }
+
+      const touch = event.changedTouches[0];
+      const deltaX = touch.clientX - gesture.startX;
+      const triggerDistance = Math.max(MOBILE_SIDER_GESTURE_MIN_DISTANCE, siderWidth * MOBILE_SIDER_GESTURE_TRIGGER_RATIO);
+
+      if (gesture.mode === 'opening') {
+        setCollapsed(deltaX >= triggerDistance ? false : true);
+      } else {
+        setCollapsed(deltaX <= -triggerDistance ? true : false);
+      }
+
+      resetMobileSiderGesture();
+    },
+    [resetMobileSiderGesture, siderWidth]
+  );
+
+  const handleMobileSiderTouchCancel = useCallback(() => {
+    resetMobileSiderGesture();
+  }, [resetMobileSiderGesture]);
+
   return (
     <LayoutContext.Provider
       value={{
@@ -340,14 +472,30 @@ const Layout: React.FC<{
         setSiderCollapsed: setCollapsed,
       }}
     >
-      <div className='app-shell relative flex flex-col size-full min-h-0' style={appShellStyle}>
+      <div
+        className='app-shell relative flex flex-col size-full min-h-0'
+        style={appShellStyle}
+        onTouchStart={handleMobileSiderTouchStart}
+        onTouchMove={handleMobileSiderTouchMove}
+        onTouchEnd={handleMobileSiderTouchEnd}
+        onTouchCancel={handleMobileSiderTouchCancel}
+      >
         <Titlebar
           workspaceAvailable={workspaceAvailable}
           leftPaneWidth={collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth}
         />
         {/* 移动端左侧边栏蒙板 / Mobile left sider backdrop */}
-        {isMobile && showPrimarySider && !collapsed && (
-          <div className='fixed inset-0 bg-black/30 z-90' onClick={() => setCollapsed(true)} aria-hidden='true' />
+        {isMobile && showPrimarySider && (!collapsed || isDraggingMobileSider) && (
+          <div
+            className='fixed inset-0 bg-black/30 z-90'
+            style={{
+              opacity: mobileSiderOpenProgress,
+              pointerEvents: collapsed ? 'none' : 'auto',
+              transition: isDraggingMobileSider ? 'none' : 'opacity 0.22s ease',
+            }}
+            onClick={() => setCollapsed(true)}
+            aria-hidden='true'
+          />
         )}
 
         <ArcoLayout className={'size-full layout flex-1 min-h-0'}>
@@ -365,9 +513,10 @@ const Layout: React.FC<{
                       position: 'fixed',
                       left: 0,
                       zIndex: 100,
-                      transform: collapsed ? 'translateX(-100%)' : 'translateX(0)',
-                      transition: 'none',
-                      pointerEvents: collapsed ? 'none' : 'auto',
+                      transform: `translateX(${resolvedMobileSiderTranslateX}px)`,
+                      transition: isDraggingMobileSider ? 'none' : 'transform 0.22s ease',
+                      pointerEvents: collapsed && !isDraggingMobileSider ? 'none' : 'auto',
+                      willChange: 'transform',
                     }
                   : undefined
               }

@@ -312,6 +312,7 @@
       "relay": "Yardımcılar sırayla yanıt verir. Sonraki yardımcılar önceki cevapları görerek tartışmayı genişletir, sürdürür veya itiraz eder."
     },
     "participantsLabel": "Katılımcılar",
+    "harnessAgentsLabel": "Harness Agent'lari",
     "minimumParticipants": "En az iki katılımcı seçin",
     "minimumParticipantsHint": "Bir tartışma grubu başlatmak için 2 veya daha fazla katılımcı seçin.",
     "harnessParticipantsHint": "Harness modu tam olarak 3 katılımcı gerektirir ve sıra Planlayıcı -> Üretici -> Değerlendirici şeklindedir.",

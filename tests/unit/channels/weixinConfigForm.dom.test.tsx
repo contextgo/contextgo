@@ -12,7 +12,7 @@ import { cleanup } from '@testing-library/react';
 const mockEnablePlugin = vi.fn(async () => ({ success: true }));
 const mockGetPluginStatus = vi.fn(async () => ({ success: true, data: [] }));
 const mockGetPendingPairings = vi.fn(async () => ({ success: true, data: [] }));
-const mockGetAuthorizedUsers = vi.fn(async () => ({ success: true, data: [] }));
+const mockGetAuthorizedTargets = vi.fn(async () => ({ success: true, data: [] }));
 const mockAuthorizeRemoteUser = vi.fn(async () => ({ success: true }));
 
 vi.mock('react-i18next', () => ({
@@ -30,7 +30,7 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     enablePlugin: { invoke: (...args: unknown[]) => mockEnablePlugin(...args) },
     getPluginStatus: { invoke: (...args: unknown[]) => mockGetPluginStatus(...args) },
     getPendingPairings: { invoke: (...args: unknown[]) => mockGetPendingPairings(...args) },
-    getAuthorizedUsers: { invoke: (...args: unknown[]) => mockGetAuthorizedUsers(...args) },
+    getAuthorizedTargets: { invoke: (...args: unknown[]) => mockGetAuthorizedTargets(...args) },
     approvePairing: { invoke: vi.fn(async () => ({ success: true })) },
     authorizeRemoteUser: { invoke: (...args: unknown[]) => mockAuthorizeRemoteUser(...args) },
     startWeixinLogin: { invoke: (...args: unknown[]) => mockStartWeixinLogin(...args) },
@@ -82,7 +82,7 @@ describe('WeixinConfigForm', () => {
     mockWeixinLoginQrOn.mockReturnValue(vi.fn());
     mockWeixinLoginScannedOn.mockReturnValue(vi.fn());
     mockGetPendingPairings.mockResolvedValue({ success: true, data: [] });
-    mockGetAuthorizedUsers.mockResolvedValue({ success: true, data: [] });
+    mockGetAuthorizedTargets.mockResolvedValue({ success: true, data: [] });
     mockGetPluginStatus.mockResolvedValue({ success: true, data: [] });
     mockEnablePlugin.mockResolvedValue({ success: true });
     mockAuthorizeRemoteUser.mockResolvedValue({ success: true });
@@ -188,7 +188,6 @@ describe('WeixinConfigForm', () => {
     expect(screen.getByText('已扫码，等待确认并完成授权...')).toBeInTheDocument();
   });
 
-
   it('auto-authorizes the scanned wechat user after login succeeds', async () => {
     mockStartWeixinLogin.mockResolvedValue({
       success: true,
@@ -221,7 +220,6 @@ describe('WeixinConfigForm', () => {
       },
     });
   });
-
 
   it('rolls back enablement when the scanned wechat user is missing', async () => {
     mockStartWeixinLogin.mockResolvedValue({

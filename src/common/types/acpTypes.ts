@@ -297,6 +297,15 @@ export interface AcpBackendConfig {
   /** 是否为内置助手（不可编辑/删除）/ Whether this is a built-in assistant (cannot be edited/deleted) */
   isBuiltin?: boolean;
 
+  /** Harness label shown on assistant cards / 助手卡片上显示的 Harness 标签 */
+  harnessTagI18n?: Record<string, string>;
+
+  /** Recommended domain label shown on assistant cards / 助手卡片上显示的推荐领域标签 */
+  recommendedDomainI18n?: Record<string, string>;
+
+  /** Workspace bootstrap hint for engineering assistants / 面向工程助手的工作空间引导提示 */
+  workspaceBootstrapHintI18n?: Record<string, string>;
+
   /**
    * 此助手启用的 skills 列表（仅 isPreset=true 时生效）
    * 如果未指定或为空数组，将加载所有可用 skills
@@ -510,9 +519,39 @@ export const ACP_ENABLED_BACKENDS: Record<string, AcpBackendConfig> = Object.fro
 export type AcpBackend = keyof typeof ACP_BACKENDS_ALL;
 export type AcpBackendId = AcpBackend; // 向后兼容 / Backward compatibility
 
+export const MANAGED_RUNTIME_INSTALLABLE_BACKENDS = [
+  'claude',
+  'codex',
+  'opencode',
+  'qwen',
+  'codebuddy',
+  'openclaw-gateway',
+  'nanobot',
+] as const satisfies readonly AcpBackend[];
+
+export type ManagedRuntimeInstallStage = 'starting' | 'running' | 'refreshing' | 'completed' | 'failed';
+
+export type ManagedRuntimeInstallEvent = {
+  backend: AcpBackend;
+  command: string;
+  stage: ManagedRuntimeInstallStage;
+  stream?: 'stdout' | 'stderr';
+  chunk?: string;
+  stdout?: string;
+  stderr?: string;
+  exitCode?: number | null;
+  message?: string;
+};
+
 // 工具函数 / Utility functions
 export function isValidAcpBackend(backend: string): backend is AcpBackend {
   return backend in ACP_ENABLED_BACKENDS;
+}
+
+export function isManagedRuntimeInstallableBackend(backend: AcpBackend): boolean {
+  return MANAGED_RUNTIME_INSTALLABLE_BACKENDS.includes(
+    backend as (typeof MANAGED_RUNTIME_INSTALLABLE_BACKENDS)[number]
+  );
 }
 
 export function getAcpBackendConfig(backend: AcpBackend): AcpBackendConfig {

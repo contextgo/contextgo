@@ -5,6 +5,9 @@ vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tm
 const handlers: Record<string, (...args: any[]) => any> = {};
 const hoisted = vi.hoisted(() => ({
   conversationListChangedEmit: vi.fn(),
+  managedRuntimeInstallEventEmit: vi.fn(),
+  openClawAgentStart: vi.fn(async () => {}),
+  openClawAgentStop: vi.fn(async () => {}),
   codexStart: vi.fn(async () => {}),
   codexWaitForServerReady: vi.fn(async () => {}),
   codexPing: vi.fn(async () => true),
@@ -41,6 +44,11 @@ vi.mock('../../src/common', () => ({
       refreshCustomAgents: makeChannel('refreshCustomAgents'),
       refreshDetectedAgents: makeChannel('refreshDetectedAgents'),
       installManagedRuntime: makeChannel('installManagedRuntime'),
+      managedRuntimeInstallEvent: {
+        provider: vi.fn(),
+        emit: hoisted.managedRuntimeInstallEventEmit,
+        invoke: vi.fn(),
+      },
       getManagedRuntimeConfigLocation: makeChannel('getManagedRuntimeConfigLocation'),
       checkAgentHealth: makeChannel('checkAgentHealth'),
       getMode: makeChannel('getMode'),
@@ -74,6 +82,15 @@ const listConfiguredOpenClawAgentsMock = vi.fn(() => []);
 
 vi.mock('../../src/process/agent/openclaw/openclawConfig', () => ({
   listConfiguredOpenClawAgents: (...args: unknown[]) => listConfiguredOpenClawAgentsMock(...args),
+}));
+
+vi.mock('../../src/process/agent/openclaw', () => ({
+  OpenClawAgent: vi.fn(function MockOpenClawAgent() {
+    return {
+      start: hoisted.openClawAgentStart,
+      stop: hoisted.openClawAgentStop,
+    };
+  }),
 }));
 
 vi.mock('../../src/process/agent/acp/AcpConnection', () => ({
@@ -183,6 +200,11 @@ describe('acpConversationBridge', () => {
     safeExecMock.mockResolvedValue({ stdout: '', stderr: '' });
     safeExecFileMock.mockReset();
     safeExecFileMock.mockResolvedValue({ stdout: '', stderr: '' });
+    hoisted.managedRuntimeInstallEventEmit.mockReset();
+    hoisted.openClawAgentStart.mockReset();
+    hoisted.openClawAgentStart.mockResolvedValue(undefined);
+    hoisted.openClawAgentStop.mockReset();
+    hoisted.openClawAgentStop.mockResolvedValue(undefined);
     hoisted.codexStart.mockReset();
     hoisted.codexStart.mockResolvedValue(undefined);
     hoisted.codexWaitForServerReady.mockReset();
@@ -271,11 +293,37 @@ describe('acpConversationBridge', () => {
   it('runs the managed install command and refreshes runtime detection', async () => {
     const result = await handlers['installManagedRuntime']({ backend: 'codex' });
 
-    expect(safeExecMock).toHaveBeenCalledWith('npm install -g @openai/codex', {
-      timeout: 15 * 60 * 1000,
-      env: { PATH: '/usr/bin' },
-    });
+    expect(safeExecMock).toHaveBeenCalledWith(
+      'npm install -g @openai/codex',
+      expect.objectContaining({
+        timeout: 15 * 60 * 1000,
+        env: { PATH: '/usr/bin' },
+      })
+    );
     expect(vi.mocked(acpDetector.refreshDetectedAgents)).toHaveBeenCalled();
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'codex',
+      command: 'npm install -g @openai/codex',
+      stage: 'starting',
+      message: 'Starting install for codex',
+    });
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'codex',
+      command: 'npm install -g @openai/codex',
+      stage: 'refreshing',
+      stdout: '',
+      stderr: '',
+      message: 'Refreshing runtime detection for codex',
+    });
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'codex',
+      command: 'npm install -g @openai/codex',
+      stage: 'completed',
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+      message: 'Install completed for codex',
+    });
     expect(result).toEqual({
       success: true,
       data: {
@@ -283,6 +331,176 @@ describe('acpConversationBridge', () => {
         command: 'npm install -g @openai/codex',
         stdout: '',
         stderr: '',
+      },
+    });
+  });
+
+  it('streams stdout and stderr chunks during managed install', async () => {
+    safeExecMock.mockImplementation(async (_command: string, options?: { onStdoutChunk?: (chunk: string) => void; onStderrChunk?: (chunk: string) => void }) => {
+      options?.onStdoutChunk?.('fetching\n');
+      options?.onStderrChunk?.('warning\n');
+      return { stdout: 'fetching\n', stderr: 'warning\n' };
+    });
+
+    await handlers['installManagedRuntime']({ backend: 'codex' });
+
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'codex',
+      command: 'npm install -g @openai/codex',
+      stage: 'running',
+      stream: 'stdout',
+      chunk: 'fetching\n',
+    });
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'codex',
+      command: 'npm install -g @openai/codex',
+      stage: 'running',
+      stream: 'stderr',
+      chunk: 'warning\n',
+    });
+  });
+
+  it('bootstraps OpenClaw after managed install so the runtime is actually usable', async () => {
+    safeExecMock.mockImplementation(async (command: string, options?: { onStdoutChunk?: (chunk: string) => void }) => {
+      if (command === 'npm install -g openclaw') {
+        options?.onStdoutChunk?.('installing openclaw\n');
+      }
+
+      return {
+        stdout: `${command}\n`,
+        stderr: '',
+      };
+    });
+
+    const result = await handlers['installManagedRuntime']({ backend: 'openclaw-gateway' });
+
+    expect(safeExecMock).toHaveBeenCalledWith(
+      'npm install -g openclaw',
+      expect.objectContaining({
+        timeout: 15 * 60 * 1000,
+        env: { PATH: '/usr/bin' },
+      })
+    );
+    expect(safeExecMock).toHaveBeenCalledWith(
+      `openclaw config set gateway.auth.mode '"token"' --strict-json`,
+      expect.objectContaining({ timeout: 60_000, env: { PATH: '/usr/bin' } })
+    );
+    expect(safeExecMock).toHaveBeenCalledWith(
+      `openclaw config set gateway.mode '"local"' --strict-json`,
+      expect.objectContaining({ timeout: 60_000, env: { PATH: '/usr/bin' } })
+    );
+    expect(safeExecMock).toHaveBeenCalledWith(
+      `openclaw config set gateway.bind '"loopback"' --strict-json`,
+      expect.objectContaining({ timeout: 60_000, env: { PATH: '/usr/bin' } })
+    );
+    expect(safeExecMock).toHaveBeenCalledWith(
+      'openclaw config set gateway.port 18789 --strict-json',
+      expect.objectContaining({ timeout: 60_000, env: { PATH: '/usr/bin' } })
+    );
+    expect(hoisted.openClawAgentStart).toHaveBeenCalledTimes(1);
+    expect(hoisted.openClawAgentStop).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(acpDetector.refreshDetectedAgents)).toHaveBeenCalled();
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'openclaw-gateway',
+      command: 'npm install -g openclaw',
+      stage: 'running',
+      message: 'Bootstrapping local OpenClaw gateway configuration.',
+    });
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'openclaw-gateway',
+      command: 'npm install -g openclaw',
+      stage: 'completed',
+      stdout: expect.stringContaining('openclaw config set gateway.mode'),
+      stderr: '',
+      exitCode: 0,
+      message: 'Install completed for openclaw-gateway',
+    });
+    expect(result).toEqual({
+      success: true,
+      data: {
+        backend: 'openclaw-gateway',
+        command: 'npm install -g openclaw',
+        stdout: expect.stringContaining('openclaw config set gateway.port 18789 --strict-json'),
+        stderr: '',
+      },
+    });
+  });
+
+  it('fails fast when managed install is not supported for the backend', async () => {
+    const result = await handlers['installManagedRuntime']({ backend: 'gemini' });
+
+    expect(safeExecMock).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      success: false,
+      msg: 'No managed install command is configured for gemini',
+    });
+  });
+
+  it('emits a failed install event when the managed install command errors', async () => {
+    safeExecMock.mockRejectedValue(
+      Object.assign(new Error('Command failed with exit code 1'), {
+        stdout: 'partial stdout',
+        stderr: 'fatal error',
+        code: 1,
+      })
+    );
+
+    const result = await handlers['installManagedRuntime']({ backend: 'codex' });
+
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'codex',
+      command: 'npm install -g @openai/codex',
+      stage: 'failed',
+      stdout: 'partial stdout',
+      stderr: 'fatal error',
+      exitCode: 1,
+      message: 'fatal error',
+    });
+    expect(result).toEqual({
+      success: false,
+      msg: 'fatal error',
+      data: {
+        backend: 'codex',
+        command: 'npm install -g @openai/codex',
+        stdout: 'partial stdout',
+        stderr: 'fatal error',
+      },
+    });
+  });
+
+  it('surfaces OpenClaw bootstrap failures after the package install succeeds', async () => {
+    safeExecMock.mockImplementation(async (command: string) => {
+      if (command === `openclaw config set gateway.mode '"local"' --strict-json`) {
+        throw Object.assign(new Error('Command failed with exit code 1'), {
+          stdout: 'partial stdout',
+          stderr: 'bootstrap failed',
+          code: 1,
+        });
+      }
+
+      return { stdout: `${command}\n`, stderr: '' };
+    });
+
+    const result = await handlers['installManagedRuntime']({ backend: 'openclaw-gateway' });
+
+    expect(hoisted.openClawAgentStart).not.toHaveBeenCalled();
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'openclaw-gateway',
+      command: 'npm install -g openclaw',
+      stage: 'failed',
+      stdout: 'partial stdout',
+      stderr: 'bootstrap failed',
+      exitCode: 1,
+      message: 'bootstrap failed',
+    });
+    expect(result).toEqual({
+      success: false,
+      msg: 'bootstrap failed',
+      data: {
+        backend: 'openclaw-gateway',
+        command: 'npm install -g openclaw',
+        stdout: 'partial stdout',
+        stderr: 'bootstrap failed',
       },
     });
   });

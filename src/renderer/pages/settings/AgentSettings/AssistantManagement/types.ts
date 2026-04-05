@@ -133,6 +133,20 @@ export type PendingSkill =
       archive?: SkillMarketArchive;
     };
 
+export type RelevantAssistantSkill = {
+  name: string;
+  description: string;
+  isCustom: boolean;
+  isPending: boolean;
+};
+
+export type RelevantAssistantHook = {
+  name: string;
+  description?: string;
+  isCustom: boolean;
+  hook?: HookInfo;
+};
+
 export type AssistantManagementProps = {
   message: ReturnType<typeof Message.useMessage>[0];
 };
@@ -141,4 +155,10 @@ export type AssistantListItem = AcpBackendConfig & {
   _source?: string;
   _extensionName?: string;
   _kind?: string;
+};
+
+export type AssistantBadge = {
+  key: string;
+  label: string;
+  tone: 'blue' | 'green' | 'gold';
 };

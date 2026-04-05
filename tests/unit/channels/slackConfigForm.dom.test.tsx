@@ -44,7 +44,7 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     getPluginStatus: { invoke: mockGetPluginStatus },
     syncChannelSettings: { invoke: vi.fn(async () => ({ success: true })) },
     getPendingPairings: { invoke: vi.fn(async () => ({ success: true, data: [] })) },
-    getAuthorizedUsers: { invoke: vi.fn(async () => ({ success: true, data: [] })) },
+    getAuthorizedTargets: { invoke: vi.fn(async () => ({ success: true, data: [] })) },
     pairingRequested: { on: vi.fn(() => vi.fn()) },
     userAuthorized: { on: vi.fn(() => vi.fn()) },
     approvePairing: { invoke: vi.fn(async () => ({ success: true })) },

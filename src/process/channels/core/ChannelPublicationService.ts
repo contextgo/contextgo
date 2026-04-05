@@ -45,8 +45,16 @@ function extractConversationWorkspace(conversation: TChatConversation): string |
   return typeof extra?.workspace === 'string' && extra.workspace ? extra.workspace : undefined;
 }
 
-function extractConversationModelRef(conversation: TChatConversation): { id: string; useModel: string } | undefined {
-  const conversationModel = (conversation as unknown as { model?: { id?: unknown; useModel?: unknown } }).model;
+function extractConversationModelRef(conversation: TChatConversation): IAgentProfile['modelRef'] {
+  const conversationModel = (conversation as unknown as {
+    model?: {
+      id?: unknown;
+      useModel?: unknown;
+      platform?: unknown;
+      name?: unknown;
+      baseUrl?: unknown;
+    };
+  }).model;
   if (
     conversationModel &&
     typeof conversationModel === 'object' &&
@@ -58,6 +66,11 @@ function extractConversationModelRef(conversation: TChatConversation): { id: str
     return {
       id: conversationModel.id,
       useModel: conversationModel.useModel,
+      ...(typeof conversationModel.platform === 'string' && conversationModel.platform
+        ? { platform: conversationModel.platform }
+        : {}),
+      ...(typeof conversationModel.name === 'string' && conversationModel.name ? { name: conversationModel.name } : {}),
+      ...(typeof conversationModel.baseUrl === 'string' ? { baseUrl: conversationModel.baseUrl } : {}),
     };
   }
   return undefined;

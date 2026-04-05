@@ -41,6 +41,14 @@ export const isLinux = (): boolean => {
   return typeof navigator !== 'undefined' && /linux/i.test(navigator.userAgent);
 };
 
+/**
+ * Check if running inside the iOS mobile shell WKWebView.
+ * 检测是否运行在 iOS mobile shell 的 WKWebView 中
+ */
+export const isMobileShellWebView = (): boolean => {
+  return typeof navigator !== 'undefined' && /ContextGoMobileShell/i.test(navigator.userAgent);
+};
+
 const ASSET_PROTOCOL_PREFIX = 'contextgo-asset://asset/';
 
 const shouldKeepAssetProtocolInElectron = (): boolean => {

@@ -20,6 +20,60 @@
     "profiles": "畫像",
     "emptyDescription": "找不到該空間。",
     "comingSoon": "此區域正在準備中。",
+    "preparedDescription": "這個空間殼層已經為更多產品面準備好了。概覽、畫布與上下文都已接上真實空間資料。",
     "workbenchHint": "在工作台中開啟一個執行緒後，就能帶著這個空間的上下文繼續和 Agent 協作。"
+  },
+  "overview": {
+    "title": "空間總覽",
+    "openCanvas": "打開畫布",
+    "openContext": "查看上下文",
+    "openSession": "打開會話",
+    "projects": "專案",
+    "sessions": "會話",
+    "running": "執行中",
+    "projectsTitle": "這個空間下的專案",
+    "projectsDescription": "每個專案會聚合一組共享實際工作邊界的會話。",
+    "projectCount": "{{count}} 個專案",
+    "projectsEmpty": "這個空間裡還沒有接入任何專案會話。",
+    "runningTitle": "執行中的會話",
+    "runningDescription": "先看清有哪些 Agent 正在工作，再決定回到哪一條執行緒。",
+    "runningCount": "{{count}} 個執行中",
+    "runningEmpty": "目前空間裡沒有正在執行的會話。",
+    "contextTitle": "共享上下文訊號",
+    "contextDescription": "空間層級的長期記憶與畫像已經可以直接查看。",
+    "sessionCount": "{{count}} 個會話"
+  },
+  "context": {
+    "memoryEmpty": "還沒有被接受的空間記憶。",
+    "profileEmpty": "還沒有啟用的空間畫像。"
+  },
+  "canvas": {
+    "title": "空間畫布",
+    "summary": "以空間為第一視角，把專案、會話與共享上下文放到同一張工作畫板上。",
+    "gestureHint": "拖動畫布背景可平移，按住 Ctrl 或 Command 再滾輪可縮放。",
+    "resetView": "重設視圖",
+    "emptyTitle": "還沒有專案活動",
+    "emptyDescription": "先在這個空間裡啟動會話，這裡就會自動出現依專案組織的工作畫板。",
+    "project": "專案",
+    "session": "會話",
+    "memory": "上下文記憶",
+    "profile": "畫像",
+    "memorySummary": "{{count}} 條已接收記憶",
+    "profileSummary": "{{count}} 條活躍畫像",
+    "projectSummary": "{{sessionCount}} 個會話",
+    "projectSummaryRunning": "{{sessionCount}} 個會話 · {{runningCount}} 個執行中",
+    "openSession": "打開會話",
+    "status": {
+      "running": "執行中",
+      "ready": "就緒"
+    },
+    "backends": {
+      "gemini": "Gemini",
+      "acp": "ACP",
+      "codex": "Codex",
+      "group": "群組",
+      "openclaw-gateway": "OpenClaw",
+      "nanobot": "Nanobot"
+    }
   }
 }

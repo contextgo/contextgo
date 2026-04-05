@@ -15,6 +15,7 @@ final class ConnectionStore: ObservableObject {
   @Published var targetURL: URL?
   @Published private(set) var loginCompletionRevision = 0
   @Published private(set) var loginErrorCode: String?
+  @Published private(set) var homeRefreshRevision = 0
 
   private let defaultsKey = "contextgo.shell.ios.targetURL"
   private var pendingLoginPayload: LoginCompletionPayload?
@@ -53,6 +54,7 @@ final class ConnectionStore: ObservableObject {
     landingRoute = .home
     targetURL = nil
     awaitingAuthenticationHandoff = false
+    homeRefreshRevision += 1
     UserDefaults.standard.removeObject(forKey: defaultsKey)
   }
 
@@ -74,6 +76,7 @@ final class ConnectionStore: ObservableObject {
     pendingLoginPayload = nil
     loginErrorCode = errorCode
     awaitingAuthenticationHandoff = false
+    homeRefreshRevision += 1
     UserDefaults.standard.removeObject(forKey: defaultsKey)
   }
 
@@ -106,6 +109,14 @@ final class ConnectionStore: ObservableObject {
   }
 
   func completeIncomingPayload(_ payload: LoginCompletionPayload) {
+    if Self.isOfficialRemoteDevicesURL(payload.targetURL) {
+      landingRoute = .home
+      targetURL = nil
+      homeRefreshRevision += 1
+      UserDefaults.standard.removeObject(forKey: defaultsKey)
+      return
+    }
+
     applyTarget(payload.targetURL)
   }
 
@@ -289,6 +300,17 @@ final class ConnectionStore: ObservableObject {
 
   private static func officialDeviceURL(for deviceID: String) -> URL? {
     URL(string: officialRemoteBaseURL + "/device/\(deviceID)")
+  }
+
+  private static func isOfficialRemoteDevicesURL(_ url: URL) -> Bool {
+    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+          components.host?.lowercased() == "remote.contextgo.io"
+    else {
+      return false
+    }
+
+    let normalizedPath = components.path.isEmpty ? "/" : components.path.lowercased()
+    return normalizedPath == "/remote/devices"
   }
 }
 

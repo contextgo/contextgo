@@ -11,6 +11,7 @@ import { buildAcpModelInfo, summarizeAcpModelInfo } from '@process/agent/acp/mod
 import { CodexConnection, getCodexConfigPath } from '@process/agent/codex/connection/CodexConnection';
 import { USER_SETTINGS_PATH } from '@process/agent/gemini/cli/settings';
 import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
+import { OpenClawAgent } from '@process/agent/openclaw';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { refreshTrayMenu } from '@process/utils/tray';
 import type { IConversationService } from '@process/services/IConversationService';
@@ -21,7 +22,13 @@ import { GeminiAgentManager } from '@process/task/GeminiAgentManager';
 import { mcpService } from '@/process/services/mcpServices/McpService';
 import { mainLog, mainWarn } from '@/process/utils/mainLogger';
 import { ipcBridge } from '@/common';
-import { ACP_BACKENDS_ALL, type AcpBackend } from '@/common/types/acpTypes';
+import {
+  ACP_BACKENDS_ALL,
+  MANAGED_RUNTIME_INSTALLABLE_BACKENDS,
+  isManagedRuntimeInstallableBackend,
+  type AcpBackend,
+  type ManagedRuntimeInstallEvent,
+} from '@/common/types/acpTypes';
 import { ExternalSessionDiscoveryService } from './services/ExternalSessionDiscoveryService';
 import * as os from 'os';
 import fs from 'node:fs';
@@ -42,7 +49,7 @@ type RuntimeAwareDetectedAgent = ReturnType<typeof acpDetector.getDetectedAgents
   resolvedCliPath?: string;
 };
 
-const MANAGED_RUNTIME_INSTALL_COMMANDS: Partial<Record<AcpBackend, string>> = {
+const MANAGED_RUNTIME_INSTALL_COMMANDS: Record<(typeof MANAGED_RUNTIME_INSTALLABLE_BACKENDS)[number], string> = {
   claude: 'npm install -g @anthropic-ai/claude-code',
   codex: 'npm install -g @openai/codex',
   opencode: 'npm install -g @opencode-ai/cli',
@@ -55,6 +62,88 @@ const MANAGED_RUNTIME_INSTALL_COMMANDS: Partial<Record<AcpBackend, string>> = {
 const OPENCLAW_DEFAULT_STATE_DIR = path.join(os.homedir(), '.openclaw');
 const OPENCLAW_LEGACY_STATE_DIRS = ['.clawdbot', '.moltbot', '.moldbot'].map((dir) => path.join(os.homedir(), dir));
 const OPENCLAW_CONFIG_FILENAMES = ['openclaw.json', 'clawdbot.json', 'moltbot.json', 'moldbot.json'];
+
+const emitManagedRuntimeInstallEvent = (event: ManagedRuntimeInstallEvent): void => {
+  ipcBridge.acpConversation.managedRuntimeInstallEvent.emit(event);
+};
+
+async function bootstrapManagedOpenClawRuntime(command: string): Promise<{ stdout: string; stderr: string }> {
+  const env = getEnhancedEnv();
+  const installResult = await safeExec(command, {
+    timeout: 15 * 60 * 1000,
+    env,
+    onStdoutChunk: (chunk) => {
+      emitManagedRuntimeInstallEvent({
+        backend: 'openclaw-gateway',
+        command,
+        stage: 'running',
+        stream: 'stdout',
+        chunk,
+      });
+    },
+    onStderrChunk: (chunk) => {
+      emitManagedRuntimeInstallEvent({
+        backend: 'openclaw-gateway',
+        command,
+        stage: 'running',
+        stream: 'stderr',
+        chunk,
+      });
+    },
+  });
+
+  const bootstrapCommands = [
+    `openclaw config set gateway.auth.mode '"token"' --strict-json`,
+    `openclaw config set gateway.mode '"local"' --strict-json`,
+    `openclaw config set gateway.bind '"loopback"' --strict-json`,
+    'openclaw config set gateway.port 18789 --strict-json',
+  ];
+
+  let stdout = installResult.stdout;
+  let stderr = installResult.stderr;
+
+  for (const bootstrapCommand of bootstrapCommands) {
+    const result = await safeExec(bootstrapCommand, {
+      timeout: 60_000,
+      env,
+    });
+    stdout += result.stdout;
+    stderr += result.stderr;
+  }
+
+  emitManagedRuntimeInstallEvent({
+    backend: 'openclaw-gateway',
+    command,
+    stage: 'running',
+    message: 'Bootstrapping local OpenClaw gateway configuration.',
+  });
+
+  const healthProbeAgent = new OpenClawAgent({
+    id: `openclaw-install-check-${Date.now()}`,
+    workingDir: os.tmpdir(),
+    gateway: {
+      cliPath: 'openclaw',
+      port: 18789,
+    },
+    onStreamEvent: () => {},
+  });
+
+  try {
+    await healthProbeAgent.start();
+  } finally {
+    await healthProbeAgent.stop().catch(() => {});
+  }
+
+  return { stdout, stderr };
+}
+
+function getManagedRuntimeInstallCommand(backend: AcpBackend): string | null {
+  if (!isManagedRuntimeInstallableBackend(backend)) {
+    return null;
+  }
+
+  return MANAGED_RUNTIME_INSTALL_COMMANDS[backend as (typeof MANAGED_RUNTIME_INSTALLABLE_BACKENDS)[number]];
+}
 
 async function getCodexAuthStatus(cliPath?: string): Promise<{
   loginStatus: string;
@@ -447,7 +536,7 @@ export function initAcpConversationBridge(
   });
 
   ipcBridge.acpConversation.installManagedRuntime.provider(async ({ backend }) => {
-    const command = MANAGED_RUNTIME_INSTALL_COMMANDS[backend];
+    const command = getManagedRuntimeInstallCommand(backend);
     if (!command) {
       return {
         success: false,
@@ -455,13 +544,60 @@ export function initAcpConversationBridge(
       };
     }
 
+    emitManagedRuntimeInstallEvent({
+      backend,
+      command,
+      stage: 'starting',
+      message: `Starting install for ${backend}`,
+    });
+
     try {
-      const result = await safeExec(command, {
-        timeout: 15 * 60 * 1000,
-        env: getEnhancedEnv(),
+      const result =
+        backend === 'openclaw-gateway'
+          ? await bootstrapManagedOpenClawRuntime(command)
+          : await safeExec(command, {
+              timeout: 15 * 60 * 1000,
+              env: getEnhancedEnv(),
+              onStdoutChunk: (chunk) => {
+                emitManagedRuntimeInstallEvent({
+                  backend,
+                  command,
+                  stage: 'running',
+                  stream: 'stdout',
+                  chunk,
+                });
+              },
+              onStderrChunk: (chunk) => {
+                emitManagedRuntimeInstallEvent({
+                  backend,
+                  command,
+                  stage: 'running',
+                  stream: 'stderr',
+                  chunk,
+                });
+              },
+            });
+
+      emitManagedRuntimeInstallEvent({
+        backend,
+        command,
+        stage: 'refreshing',
+        stdout: result.stdout,
+        stderr: result.stderr,
+        message: `Refreshing runtime detection for ${backend}`,
       });
 
       await acpDetector.refreshDetectedAgents();
+
+      emitManagedRuntimeInstallEvent({
+        backend,
+        command,
+        stage: 'completed',
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: 0,
+        message: `Install completed for ${backend}`,
+      });
 
       return {
         success: true,
@@ -476,6 +612,17 @@ export function initAcpConversationBridge(
       const stdout = typeof error === 'object' && error && 'stdout' in error ? String(error.stdout || '') : '';
       const stderr = typeof error === 'object' && error && 'stderr' in error ? String(error.stderr || '') : '';
       const errorMsg = error instanceof Error ? error.message : String(error);
+      const exitCode = typeof error === 'object' && error && 'code' in error ? Number(error.code) : null;
+
+      emitManagedRuntimeInstallEvent({
+        backend,
+        command,
+        stage: 'failed',
+        stdout,
+        stderr,
+        exitCode: Number.isFinite(exitCode) ? exitCode : null,
+        message: stderr.trim() || stdout.trim() || errorMsg,
+      });
 
       return {
         success: false,

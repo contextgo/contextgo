@@ -6,10 +6,11 @@ import classNames from 'classnames';
 import { useSettingsViewMode } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 import type { AssistantListItem } from './types';
 import AssistantAvatar from './AssistantAvatar';
-import { Button, Collapse, Switch } from '@arco-design/web-react';
+import { Button, Collapse, Switch, Tag, Tooltip } from '@arco-design/web-react';
 import { Plus, SettingOne } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { getAssistantBadges } from './assistantUtils';
 import styles from '../AgentSettingsPage.module.css';
 
 type AssistantListPanelProps = {
@@ -47,6 +48,9 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
         {assistants.map((assistant) => {
           const assistantIsExtension = isExtensionAssistant(assistant);
           const isActive = activeAssistantId === assistant.id;
+          const badges = getAssistantBadges(assistant, localeKey, t);
+          const workspaceHint =
+            assistant.workspaceBootstrapHintI18n?.[localeKey] || assistant.workspaceBootstrapHintI18n?.['en-US'];
           return (
             <div
               key={assistant.id}
@@ -59,11 +63,27 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
               <div className={styles.assistantCardMain}>
                 <AssistantAvatar assistant={assistant} size={isPageMode ? 34 : 28} avatarImageMap={avatarImageMap} />
                 <div className={styles.assistantMeta}>
-                  <span className={styles.assistantName}>{assistant.nameI18n?.[localeKey] || assistant.name}</span>
+                  <div className={styles.assistantTitleRow}>
+                    <span className={styles.assistantName}>{assistant.nameI18n?.[localeKey] || assistant.name}</span>
+                    {badges.length > 0 && (
+                      <div className={styles.assistantBadgeRow}>
+                        {badges.map((badge) => (
+                          <Tag key={badge.key} size='small' color={badge.tone} className={styles.assistantBadgeTag}>
+                            {badge.label}
+                          </Tag>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {(assistant.descriptionI18n?.[localeKey] || assistant.description) && (
                     <div className={styles.assistantDescription}>
                       {assistant.descriptionI18n?.[localeKey] || assistant.description}
                     </div>
+                  )}
+                  {workspaceHint && (
+                    <Tooltip content={workspaceHint}>
+                      <div className={styles.assistantWorkspaceHint}>{workspaceHint}</div>
+                    </Tooltip>
                   )}
                 </div>
               </div>

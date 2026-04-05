@@ -1,5 +1,6 @@
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
+import { Button } from '@arco-design/web-react';
 import { createPortal } from 'react-dom';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { SettingsViewModeProvider } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
@@ -15,6 +16,7 @@ import {
   Info,
   Puzzle,
   System,
+  Terminal,
   Toolkit,
 } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
@@ -65,6 +67,12 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
         label: t('settings.tools'),
         icon: <Toolkit theme='outline' size='16' className='app-icon' />,
         path: 'tools',
+      },
+      {
+        id: 'runtime',
+        label: t('settings.runtimeManager.title', { defaultValue: 'Runtime' }),
+        icon: <Terminal theme='outline' size='16' className='app-icon' />,
+        path: 'runtime',
       },
       {
         id: 'commands',
@@ -189,25 +197,30 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
         <div className='settings-page-shell'>
           <div className='settings-page-main'>
             {isMobile && (
-              <div className='settings-mobile-top-nav'>
-                {menuItems.map((item) => {
-                  const active = pathname.includes(`/settings/${item.path}`);
-                  return (
-                    <button
-                      key={item.path}
-                      type='button'
-                      className={classNames('settings-mobile-top-nav__item', {
-                        'settings-mobile-top-nav__item--active': active,
-                      })}
-                      onClick={() => {
-                        void navigate(`/settings/${item.path}`, { replace: true });
-                      }}
-                    >
-                      <span className='settings-mobile-top-nav__icon app-icon-slot'>{item.icon}</span>
-                      <span className='settings-mobile-top-nav__label'>{item.label}</span>
-                    </button>
-                  );
-                })}
+              <div className='settings-mobile-top-nav-shell'>
+                <div className='settings-mobile-top-nav' role='tablist' aria-label={t('settings.title')}>
+                  {menuItems.map((item) => {
+                    const active = pathname.includes(`/settings/${item.path}`);
+                    return (
+                      <Button
+                        key={item.path}
+                        type='text'
+                        role='tab'
+                        aria-selected={active}
+                        aria-current={active ? 'page' : undefined}
+                        className={classNames('settings-mobile-top-nav__item', {
+                          'settings-mobile-top-nav__item--active': active,
+                        })}
+                        onClick={() => {
+                          void navigate(`/settings/${item.path}`, { replace: true });
+                        }}
+                      >
+                        <span className='settings-mobile-top-nav__icon app-icon-slot'>{item.icon}</span>
+                        <span className='settings-mobile-top-nav__label'>{item.label}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
               </div>
             )}
             <div className={contentClass}>{children}</div>

@@ -22,6 +22,25 @@ for file in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml re
   fi
 done
 
+while IFS= read -r suspicious; do
+  fail "release output contains forbidden secret/config artifact: $(basename "$suspicious")"
+done < <(find "$OUTPUT_DIR" -type f \( \
+  -name '.env' -o \
+  -name '.env.*' -o \
+  -name '*.p12' -o \
+  -name '*.mobileprovision' -o \
+  -name '*.keystore' -o \
+  -name '*.jks' -o \
+  -name '*.p8' -o \
+  -name '*.pem' -o \
+  -name '*.key' -o \
+  -name 'contextgo-config.txt' -o \
+  -name 'contextgo-chat.txt' -o \
+  -name 'contextgo-chat-message.txt' -o \
+  -name 'contextgo.db' -o \
+  -name 'db.sqlite' \
+\) | sort)
+
 extract_ref_file() {
   local metadata_file="$1"
   local ref

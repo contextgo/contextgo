@@ -17,6 +17,8 @@
 "browser.reload" = "再読み込み";
 "browser.changeHost" = "接続先を変更";
 "browser.connection.title" = "接続";
+"browser.devices" = "デバイス一覧";
+"browser.exit" = "Remoteを終了";
 "home.subtitle" = "公式モバイル入口から、デスクトップ端末、リモートセッション、アップロード導線をまとめて開きます。";
 "home.feature.devices" = "オンライン中のデスクトップ端末をすぐ確認できます。";
 "home.feature.files" = "スマホのファイルをデスクトップホストへ送れます。";

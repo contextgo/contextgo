@@ -114,6 +114,8 @@ function buildTelegramPeer(params: {
       threadId,
       scope: 'thread',
       chatType: 'thread',
+      containerId: params.chatId,
+      containerType: params.chatType === 'channel' ? 'channel' : 'group',
     };
   }
 

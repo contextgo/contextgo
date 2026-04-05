@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -273,5 +273,35 @@ describe('SendBox layout mode with pretext', () => {
 
     expect(textarea.style.minHeight).toBe('80px');
     expect(textarea.style.whiteSpace).toBe('pre-wrap');
+  });
+
+  it('stacks bottom controls on mobile when multi-line mode is active', () => {
+    mockUseLayoutContext.mockReturnValue({ isMobile: true });
+
+    const { container } = render(
+      <SendBox
+        value={'Already wrapped\ncontent'}
+        onChange={vi.fn()}
+        onSend={vi.fn().mockResolvedValue(undefined)}
+        tools={<div>tool-group</div>}
+        sendButtonPrefix={<div>context-usage</div>}
+      />
+    );
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea).toBeTruthy();
+    expect(screen.getByText('tool-group')).toBeInTheDocument();
+    expect(screen.getByText('context-usage')).toBeInTheDocument();
+
+    const controlsBlock = screen.getByText('tool-group').closest('div[class*=flex-col]');
+    expect(controlsBlock?.className).toContain('flex-col');
+
+    const mobileTools = screen.getByText('tool-group').parentElement;
+    expect(mobileTools?.className).toContain('sendbox-tools-scroll-mobile');
+    expect(mobileTools?.className).toContain('w-full');
+
+    const actionsRow = screen.getByText('context-usage').parentElement;
+    expect(actionsRow?.className).toContain('w-full');
+    expect(actionsRow?.className).toContain('justify-end');
   });
 });

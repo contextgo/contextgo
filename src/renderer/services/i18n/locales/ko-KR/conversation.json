@@ -137,6 +137,7 @@
       "relay": "어시스턴트가 순서대로 답변하며, 뒤에 오는 어시스턴트는 앞선 의견을 보고 이어서 보완하거나 반박합니다."
     },
     "participantsLabel": "참여자",
+    "harnessAgentsLabel": "Harness 에이전트",
     "minimumParticipants": "최소 두 명의 참여자를 선택하세요",
     "minimumParticipantsHint": "토론 그룹을 만들려면 2명 이상의 참여자를 선택해야 합니다.",
     "harnessParticipantsHint": "Harness 모드에는 정확히 3명의 참여자가 필요하며 순서는 Planner -> Generator -> Evaluator 입니다.",

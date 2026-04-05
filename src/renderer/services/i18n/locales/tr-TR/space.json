@@ -20,6 +20,60 @@
     "profiles": "Profiller",
     "emptyDescription": "Alan bulunamadi.",
     "comingSoon": "Bu bolum hazirlaniyor.",
+    "preparedDescription": "Bu alan kabugu daha fazla urun yuzeyi icin hazir. Genel bakis, tuval ve baglam artik gercek alan verisine bagli.",
     "workbenchHint": "Workbench icinde bir is parcacigi acarak bu alanin baglamiyla Agent'larla calismaya devam edebilirsiniz."
+  },
+  "overview": {
+    "title": "Alan Genel Bakis",
+    "openCanvas": "Tuvali Ac",
+    "openContext": "Baglami Ac",
+    "openSession": "Oturumu Ac",
+    "projects": "Projeler",
+    "sessions": "Oturumlar",
+    "running": "Calisan",
+    "projectsTitle": "Bu alandaki projeler",
+    "projectsDescription": "Her proje, ayni pratik calisma sinirini paylasan oturumlari bir araya getirir.",
+    "projectCount": "{{count}} proje",
+    "projectsEmpty": "Bu alana henuz baglanmis proje oturumu yok.",
+    "runningTitle": "Calisan oturumlar",
+    "runningDescription": "Tek bir is parcacigina donmeden once hangi Agent'larin aktif oldugunu gorun.",
+    "runningCount": "{{count}} calisan",
+    "runningEmpty": "Bu alanda su anda calisan oturum yok.",
+    "contextTitle": "Paylasilan baglam sinyalleri",
+    "contextDescription": "Alan seviyesindeki uzun vadeli bellek ve profiller artik dogrudan gorulebiliyor.",
+    "sessionCount": "{{count}} oturum"
+  },
+  "context": {
+    "memoryEmpty": "Henuz kabul edilmis alan bellegi yok.",
+    "profileEmpty": "Henuz aktif alan profili yok."
+  },
+  "canvas": {
+    "title": "Alan Tuvali",
+    "summary": "Projeleri, oturumlari ve paylasilan baglami alan odakli tek bir calisma tahtasinda birlestirir.",
+    "gestureHint": "Kaydirmak icin arka plani surukleyin. Yakinlastirmak icin Ctrl veya Command + tekerlek kullanin.",
+    "resetView": "Gorunumu Sifirla",
+    "emptyTitle": "Henuz proje hareketi yok",
+    "emptyDescription": "Bu alan icinde bir oturum baslatin; proje odakli tahta burada gorunecek.",
+    "project": "Proje",
+    "session": "Oturum",
+    "memory": "Baglam Bellegi",
+    "profile": "Profiller",
+    "memorySummary": "{{count}} kabul edilmis bellek",
+    "profileSummary": "{{count}} aktif profil",
+    "projectSummary": "{{sessionCount}} oturum",
+    "projectSummaryRunning": "{{sessionCount}} oturum · {{runningCount}} calisan",
+    "openSession": "Oturumu Ac",
+    "status": {
+      "running": "Calisiyor",
+      "ready": "Hazir"
+    },
+    "backends": {
+      "gemini": "Gemini",
+      "acp": "ACP",
+      "codex": "Codex",
+      "group": "Grup",
+      "openclaw-gateway": "OpenClaw",
+      "nanobot": "Nanobot"
+    }
   }
 }

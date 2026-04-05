@@ -446,7 +446,7 @@ const SendBox: React.FC<{
     <div className={className}>
       <div
         ref={containerRef}
-        className={`relative p-16px border-3 b bg-dialog-fill-0 b-solid rd-20px flex flex-col ${slashController.isOpen ? 'overflow-visible' : 'overflow-hidden'} ${isFileDragging ? 'b-dashed' : ''}`}
+        className={`relative border-3 b bg-dialog-fill-0 b-solid flex flex-col ${isMobile ? 'p-12px rd-18px' : 'p-16px rd-20px'} ${slashController.isOpen ? 'overflow-visible' : 'overflow-hidden'} ${isFileDragging ? 'b-dashed' : ''}`}
         style={{
           transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
           ...(isFileDragging
@@ -563,9 +563,9 @@ const SendBox: React.FC<{
           )}
         </div>
         {!isSingleLine && (
-          <div className='flex items-center justify-between gap-2 w-full'>
-            <div className={isMobile ? 'sendbox-tools sendbox-tools-scroll-mobile' : 'sendbox-tools'}>{tools}</div>
-            <div className='flex items-center gap-2'>
+          <div className={isMobile ? 'flex flex-col gap-10px w-full' : 'flex items-center justify-between gap-2 w-full'}>
+            <div className={isMobile ? 'sendbox-tools sendbox-tools-scroll-mobile w-full' : 'sendbox-tools'}>{tools}</div>
+            <div className={isMobile ? 'flex items-center justify-end gap-8px w-full' : 'flex items-center gap-2'}>
               {sendButtonPrefix}
               {isLoading || loading ? (
                 <Button

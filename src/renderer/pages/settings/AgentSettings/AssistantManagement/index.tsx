@@ -18,7 +18,7 @@
  * prompt content are read-only.
  * Extension assistants are fully read-only.
  */
-import coworkSvg from '@/renderer/assets/icons/cowork.svg';
+import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import {
   useAssistantBackends,
   useAssistantEditor,
@@ -37,13 +37,7 @@ import SkillConfirmModals from './SkillConfirmModals';
 import React, { useMemo } from 'react';
 
 const AssistantManagement: React.FC<AssistantManagementProps> = ({ message }) => {
-  const avatarImageMap: Record<string, string> = useMemo(
-    () => ({
-      'cowork.svg': coworkSvg,
-      '\u{1F6E0}\u{FE0F}': coworkSvg,
-    }),
-    []
-  );
+  const avatarImageMap: Record<string, string> = useMemo(() => CUSTOM_AVATAR_IMAGE_MAP, []);
 
   // Compose hooks
   const {
