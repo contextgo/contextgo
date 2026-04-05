@@ -87,7 +87,6 @@ vi.mock('@renderer/pages/settings/components/SettingsSider', () => ({
   default: () => <div data-testid='settings-sider' />,
 }));
 
-
 vi.mock('@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover', () => ({
   default: ({ buttonLabel, buttonClassName }: { buttonLabel: string; buttonClassName?: string }) => (
     <button type='button' className={buttonClassName}>

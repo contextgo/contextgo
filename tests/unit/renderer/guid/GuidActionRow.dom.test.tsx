@@ -89,7 +89,9 @@ vi.mock('@arco-design/web-react', () => ({
     {
       Item: ({ children }: React.PropsWithChildren<{ key?: string }>) => <div>{children}</div>,
       ItemGroup: ({ children }: React.PropsWithChildren<{ title?: string }>) => <div>{children}</div>,
-      SubMenu: ({ children }: React.PropsWithChildren<{ key?: string; title?: React.ReactNode }>) => <div>{children}</div>,
+      SubMenu: ({ children }: React.PropsWithChildren<{ key?: string; title?: React.ReactNode }>) => (
+        <div>{children}</div>
+      ),
     }
   ),
   Message: {
@@ -144,13 +146,7 @@ describe('GuidActionRow mobile layout', () => {
   });
 
   it('renders preset agent metadata in a secondary row instead of mixing it into the control cluster', () => {
-    render(
-      <GuidActionRow
-        {...baseProps}
-        isPresetAgent
-        selectedAssistantInfo={presetAgentInfo}
-      />
-    );
+    render(<GuidActionRow {...baseProps} isPresetAgent selectedAssistantInfo={presetAgentInfo} />);
 
     const tools = screen.getByTestId('guid-action-tools');
     const meta = screen.getByTestId('guid-action-meta');
