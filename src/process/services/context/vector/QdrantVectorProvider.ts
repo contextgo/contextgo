@@ -42,7 +42,7 @@ export class QdrantVectorProvider implements VectorIndexProvider {
             spaceId: document.spaceId,
             threadId: document.threadId ?? null,
             tier: document.tier,
-            ...(document.metadata ?? {}),
+            ...document.metadata,
           },
         })),
       }),
@@ -126,7 +126,7 @@ export class QdrantVectorProvider implements VectorIndexProvider {
       headers: {
         'content-type': 'application/json',
         ...(this.config.apiKey ? { 'api-key': this.config.apiKey } : {}),
-        ...(init.headers ?? {}),
+        ...init.headers,
       },
     });
 

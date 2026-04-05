@@ -45,6 +45,8 @@ describe('DiscordAdapter', () => {
       platformChatId: 'channel-1',
       scope: 'chat',
       chatType: 'group',
+      containerId: 'guild-1',
+      containerType: 'server',
     });
     expect(message?.content.text).toBe('hello there');
   });
@@ -85,6 +87,8 @@ describe('DiscordAdapter', () => {
       threadId: 'thread-1',
       scope: 'thread',
       chatType: 'thread',
+      containerId: 'guild-1',
+      containerType: 'server',
     });
     expect(message?.replyToMessageId).toBe('origin-1');
   });

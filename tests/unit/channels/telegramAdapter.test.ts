@@ -38,6 +38,8 @@ describe('toUnifiedIncomingMessage', () => {
       threadId: '9',
       scope: 'thread',
       chatType: 'thread',
+      containerId: '-100123456',
+      containerType: 'group',
     });
   });
 

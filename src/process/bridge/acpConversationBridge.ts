@@ -24,9 +24,9 @@ import { mainLog, mainWarn } from '@/process/utils/mainLogger';
 import { ipcBridge } from '@/common';
 import {
   ACP_BACKENDS_ALL,
-  MANAGED_RUNTIME_INSTALLABLE_BACKENDS,
   isManagedRuntimeInstallableBackend,
   type AcpBackend,
+  type MANAGED_RUNTIME_INSTALLABLE_BACKENDS,
   type ManagedRuntimeInstallEvent,
 } from '@/common/types/acpTypes';
 import { ExternalSessionDiscoveryService } from './services/ExternalSessionDiscoveryService';

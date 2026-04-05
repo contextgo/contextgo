@@ -30,7 +30,7 @@ export class OpenAICompatibleEmbeddingProvider implements EmbeddingProvider {
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${this.config.apiKey}`,
-        ...(this.config.headers ?? {}),
+        ...this.config.headers,
       },
       body: JSON.stringify({
         model: this.config.model,

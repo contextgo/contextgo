@@ -702,7 +702,7 @@ export class ChannelRouteResolver {
         lastActive: now,
         legacyUserId: byChat.data.legacyUserId,
         metadata: {
-          ...(byChat.data.metadata ?? {}),
+          ...byChat.data.metadata,
           ...(containerId ? { containerId } : {}),
           ...(containerType ? { containerType } : {}),
           ...(containerTitle ? { containerTitle } : {}),

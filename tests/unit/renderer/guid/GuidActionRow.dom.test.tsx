@@ -111,7 +111,7 @@ const baseProps = {
   selectedMode: 'default',
   onModeSelect: vi.fn(),
   isPresetAgent: false,
-  selectedAgentInfo: undefined,
+  selectedAssistantInfo: undefined,
   customAgents: [],
   localeKey: 'en-US',
   onClosePresetTag: vi.fn(),
@@ -145,11 +145,11 @@ describe('GuidActionRow mobile layout', () => {
 
   it('renders preset agent metadata in a secondary row instead of mixing it into the control cluster', () => {
     render(
-        <GuidActionRow
-          {...baseProps}
-          isPresetAgent
-          selectedAgentInfo={presetAgentInfo}
-        />
+      <GuidActionRow
+        {...baseProps}
+        isPresetAgent
+        selectedAssistantInfo={presetAgentInfo}
+      />
     );
 
     const tools = screen.getByTestId('guid-action-tools');

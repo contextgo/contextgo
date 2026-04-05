@@ -49,7 +49,7 @@ function buildPairingMetadata(
   peerContext: PairingPeerContext | undefined
 ): Record<string, unknown> {
   return {
-    ...(existing ?? {}),
+    ...existing,
     ...(peerContext?.platformChatId ? { platformChatId: peerContext.platformChatId } : {}),
     ...(peerContext?.scope ? { peerScope: peerContext.scope } : {}),
     ...(peerContext?.parentChatId ? { parentChatId: peerContext.parentChatId } : {}),
@@ -360,7 +360,7 @@ export class PairingService {
               displayName: params.displayName ?? existingIdentity.data.displayName,
               lastActive: Date.now(),
               metadata: {
-                ...(existingIdentity.data.metadata ?? {}),
+                ...existingIdentity.data.metadata,
                 ...resolvedMetadata,
               },
             }
