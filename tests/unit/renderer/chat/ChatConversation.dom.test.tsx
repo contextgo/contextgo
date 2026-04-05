@@ -154,12 +154,9 @@ vi.mock('@arco-design/web-react', () => ({
     </button>
   ),
   Dropdown: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-  Menu: Object.assign(
-    ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-    {
-      Item: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-    }
-  ),
+  Menu: Object.assign(({ children }: { children?: React.ReactNode }) => <div>{children}</div>, {
+    Item: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  }),
   Message: {
     error: vi.fn(),
   },

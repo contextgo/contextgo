@@ -334,9 +334,7 @@ const Layout: React.FC<{
   const showPrimarySider = true;
   const desktopExpandedSiderWidth = siderWidth;
   const desktopCollapsedSiderWidth = 0;
-  const resolvedMobileSiderTranslateX = isMobile
-    ? mobileSiderTranslateX ?? (collapsed ? -siderWidth : 0)
-    : 0;
+  const resolvedMobileSiderTranslateX = isMobile ? (mobileSiderTranslateX ?? (collapsed ? -siderWidth : 0)) : 0;
   const mobileSiderOpenProgress = isMobile
     ? Math.min(1, Math.max(0, (resolvedMobileSiderTranslateX + siderWidth) / siderWidth))
     : 1;
@@ -447,7 +445,10 @@ const Layout: React.FC<{
 
       const touch = event.changedTouches[0];
       const deltaX = touch.clientX - gesture.startX;
-      const triggerDistance = Math.max(MOBILE_SIDER_GESTURE_MIN_DISTANCE, siderWidth * MOBILE_SIDER_GESTURE_TRIGGER_RATIO);
+      const triggerDistance = Math.max(
+        MOBILE_SIDER_GESTURE_MIN_DISTANCE,
+        siderWidth * MOBILE_SIDER_GESTURE_TRIGGER_RATIO
+      );
 
       if (gesture.mode === 'opening') {
         setCollapsed(deltaX >= triggerDistance ? false : true);

@@ -109,7 +109,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<import('@/common/types/cloud').CloudStatus | null>(null);
   const [cloudLoading, setCloudLoading] = useState(false);
-  const [authLoadingProvider, setAuthLoadingProvider] = useState<import('@/common/types/cloud').CloudAuthProviderId | null>(null);
+  const [authLoadingProvider, setAuthLoadingProvider] = useState<
+    import('@/common/types/cloud').CloudAuthProviderId | null
+  >(null);
   const [cloudActionLoading, setCloudActionLoading] = useState<'infermesh' | 'logout' | null>(null);
   const [spaces, setSpaces] = useState<TSpace[]>([]);
   const [defaultSpace, setDefaultSpace] = useState<TSpace | null>(null);
@@ -410,7 +412,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   ];
   const currentThemeLabel = themeOptions.find((option) => option.value === theme)?.label || t('settings.theme');
   const userDisplayName = user?.displayName || user?.username || desktopUsername || t('common.localUser');
-  const cloudUserDisplayName = cloudStatus?.user?.displayName || cloudStatus?.user?.username || t('settings.cloud.title');
+  const cloudUserDisplayName =
+    cloudStatus?.user?.displayName || cloudStatus?.user?.username || t('settings.cloud.title');
   const cloudUserSubtitle = cloudStatus?.user?.email
     ? cloudStatus.user.email
     : cloudStatus?.user?.username
@@ -640,7 +643,11 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         <div className='sider-user-menu__cloud-card'>
           <span className='sider-user-menu__cloud-avatar'>
             {cloudStatus?.user?.avatarUrl ? (
-              <img src={cloudStatus.user.avatarUrl} alt={cloudUserDisplayName} className='sider-user-menu__cloud-avatar-image' />
+              <img
+                src={cloudStatus.user.avatarUrl}
+                alt={cloudUserDisplayName}
+                className='sider-user-menu__cloud-avatar-image'
+              />
             ) : (
               cloudInitial
             )}
@@ -675,17 +682,13 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           <Menu.Item key='cloud:github'>
             {renderUserMenuLabel(
               <LinkCloud theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
-              authLoadingProvider === 'github'
-                ? t('common.processing')
-                : t('settings.cloud.loginWithGithub')
+              authLoadingProvider === 'github' ? t('common.processing') : t('settings.cloud.loginWithGithub')
             )}
           </Menu.Item>
           <Menu.Item key='cloud:google'>
             {renderUserMenuLabel(
               <LinkCloud theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
-              authLoadingProvider === 'google'
-                ? t('common.processing')
-                : t('settings.cloud.loginWithGoogle')
+              authLoadingProvider === 'google' ? t('common.processing') : t('settings.cloud.loginWithGoogle')
             )}
           </Menu.Item>
           <Menu.Item key='cloud:infermesh'>
@@ -805,10 +808,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                   <button
                     key={view.key}
                     type='button'
-                    className={classNames(
-                      actionRowClassName,
-                      activeSpaceView === view.key && actionRowActiveClassName
-                    )}
+                    className={classNames(actionRowClassName, activeSpaceView === view.key && actionRowActiveClassName)}
                     onClick={() => handleOpenSpaceView(view.key)}
                   >
                     <span className='sider-space-view-marker'>
@@ -963,7 +963,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                   <Left theme='outline' size='16' fill='#fff' className='app-icon' />
                 </span>
                 <span className='min-w-0 flex-1 text-left'>
-                  <span className='block truncate text-14px font-600 text-t-primary'>{t('common.returnToWorkbench')}</span>
+                  <span className='block truncate text-14px font-600 text-t-primary'>
+                    {t('common.returnToWorkbench')}
+                  </span>
                   <span className='block truncate text-12px text-t-secondary'>{currentSpaceName}</span>
                 </span>
               </button>

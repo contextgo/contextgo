@@ -127,12 +127,16 @@ describe('Packaged i18n build integrity', () => {
   const hasRendererDir = fs.existsSync(rendererDir);
   const runOrSkip = appAsarPath && hasRendererDir ? it : it.skip;
 
-  runOrSkip('should include all renderer build files in app.asar', () => {
-    const expectedFiles = getExpectedRendererFiles();
-    const asarEntries = getAsarEntries(appAsarPath as string);
+  runOrSkip(
+    'should include all renderer build files in app.asar',
+    () => {
+      const expectedFiles = getExpectedRendererFiles();
+      const asarEntries = getAsarEntries(appAsarPath as string);
 
-    const missing = expectedFiles.filter((file) => !asarEntries.has(file));
+      const missing = expectedFiles.filter((file) => !asarEntries.has(file));
 
-    expect(missing).toEqual([]);
-  }, 30000);
+      expect(missing).toEqual([]);
+    },
+    30000
+  );
 });

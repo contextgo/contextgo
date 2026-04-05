@@ -235,7 +235,9 @@ describe('Titlebar', () => {
     expect(screen.getByText('settings.connectors.title')).toBeInTheDocument();
     expect(container.querySelector('.app-titlebar--mobile')).toBeNull();
     expect(container.querySelector('.app-titlebar--mobile-shell')).toBeTruthy();
-    expect((container.firstChild as HTMLDivElement | null)?.style.getPropertyValue('--app-titlebar-mobile-center-offset')).toBe('0px');
+    expect(
+      (container.firstChild as HTMLDivElement | null)?.style.getPropertyValue('--app-titlebar-mobile-center-offset')
+    ).toBe('0px');
   });
 
   it('keeps conversation actions visible inside the mobile shell', async () => {

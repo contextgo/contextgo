@@ -4,7 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { CodexToolCallUpdate, IMessageAcpToolCall, IMessageCodexToolCall, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
+import type {
+  CodexToolCallUpdate,
+  IMessageAcpToolCall,
+  IMessageCodexToolCall,
+  IMessageToolGroup,
+  TMessage,
+} from '@/common/chat/chatLib';
 import { shouldSuppressAgentLifecyclePersistedMessage } from '@/common/chat/chatLib';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { iconColors } from '@/renderer/styles/colors';

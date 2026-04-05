@@ -66,7 +66,8 @@ export const useFilePreviewOpener = () => {
         const resolvedFileName = fileName || metadata?.name || getFallbackFileName(resolvedPath);
         const { contentType, editable, language } = getFileTypeInfo(resolvedFileName);
         const isMissingFile = metadata?.size === -1 && metadata?.lastModified === 0;
-        const canCreateDraftPreview = /\.[^./\\]+$/.test(resolvedFileName) && !['pdf', 'ppt', 'word', 'excel', 'image'].includes(contentType);
+        const canCreateDraftPreview =
+          /\.[^./\\]+$/.test(resolvedFileName) && !['pdf', 'ppt', 'word', 'excel', 'image'].includes(contentType);
 
         if (isMissingFile && !canCreateDraftPreview) {
           return false;
@@ -96,4 +97,3 @@ export const useFilePreviewOpener = () => {
     loading: resolving || previewLoading,
   };
 };
-

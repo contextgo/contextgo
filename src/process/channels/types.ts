@@ -199,7 +199,16 @@ export interface IRemoteIdentity {
   legacyUserId?: string;
 }
 
-export type ChannelObjectKind = 'person' | 'dm' | 'group' | 'channel' | 'topic' | 'thread' | 'server' | 'space' | 'chat';
+export type ChannelObjectKind =
+  | 'person'
+  | 'dm'
+  | 'group'
+  | 'channel'
+  | 'topic'
+  | 'thread'
+  | 'server'
+  | 'space'
+  | 'chat';
 export type ChannelObjectParentKind = Exclude<ChannelObjectKind, 'person' | 'dm'>;
 
 /**

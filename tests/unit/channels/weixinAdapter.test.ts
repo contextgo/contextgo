@@ -7,7 +7,10 @@
 import { describe, expect, it } from 'vitest';
 import type { WeixinChatRequest } from '@process/channels/plugins/weixin/WeixinMonitor';
 import { toUnifiedIncomingMessage, stripHtml } from '@process/channels/plugins/weixin/WeixinAdapter';
-import { buildDingTalkPeer, toUnifiedIncomingMessage as toUnifiedDingTalkMessage } from '@process/channels/plugins/dingtalk/DingTalkAdapter';
+import {
+  buildDingTalkPeer,
+  toUnifiedIncomingMessage as toUnifiedDingTalkMessage,
+} from '@process/channels/plugins/dingtalk/DingTalkAdapter';
 
 describe('toUnifiedIncomingMessage', () => {
   const baseRequest: WeixinChatRequest = {
@@ -145,7 +148,6 @@ describe('stripHtml', () => {
     expect(stripHtml('')).toBe('');
   });
 });
-
 
 describe('DingTalkAdapter', () => {
   it('maps private conversations to user-scoped peers', () => {

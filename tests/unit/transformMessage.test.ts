@@ -5,7 +5,11 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { isAgentConnectionErrorText, shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
+import {
+  isAgentConnectionErrorText,
+  shouldSuppressAgentLifecycleStreamMessage,
+  transformMessage,
+} from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 
 const makeMessage = (type: string, data: unknown = 'test'): IResponseMessage => ({

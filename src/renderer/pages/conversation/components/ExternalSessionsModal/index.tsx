@@ -180,7 +180,10 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
     [activeFilter, filteredSessions, openclawAgents]
   );
 
-  const openclawAgentIds = useMemo(() => openclawSessionGroups.map((group) => group.agent.agentId), [openclawSessionGroups]);
+  const openclawAgentIds = useMemo(
+    () => openclawSessionGroups.map((group) => group.agent.agentId),
+    [openclawSessionGroups]
+  );
   const openclawAgentIdsKey = openclawAgentIds.join('|');
   const openclawNonEmptyAgentIds = useMemo(
     () => openclawSessionGroups.filter((group) => group.sessions.length > 0).map((group) => group.agent.agentId),

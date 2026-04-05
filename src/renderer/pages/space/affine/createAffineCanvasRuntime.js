@@ -3,7 +3,7 @@ let blockSuiteRuntimePromise = null;
 let extensionManagers = null;
 let editorEffectsReady = false;
 
-const createEditorContainerClass = runtime => {
+const createEditorContainerClass = (runtime) => {
   const { SignalWatcher, WithDisposable } = runtime.globalLit;
   const { ThemeProvider } = runtime.services;
   const { BlockStdScope, ShadowlessElement } = runtime.std;
@@ -187,14 +187,9 @@ const createEditorContainerClass = runtime => {
             data-theme=${mode === 'page' ? appTheme : edgelessTheme}
             class=${mode === 'page' ? 'affine-page-viewport' : 'affine-edgeless-viewport'}
           >
-            ${when(
-              mode === 'page',
-              () => html`<doc-title .doc=${this.doc}></doc-title>`
-            )}
+            ${when(mode === 'page', () => html`<doc-title .doc=${this.doc}></doc-title>`)}
             <div
-              class=${mode === 'page'
-                ? 'page-editor playground-page-editor-container'
-                : 'edgeless-editor-container'}
+              class=${mode === 'page' ? 'page-editor playground-page-editor-container' : 'edgeless-editor-container'}
             >
               ${this._editorTemplate.value}
             </div>
@@ -230,7 +225,22 @@ const loadBlockSuiteRuntime = async () => {
     import('lit/directives/keyed.js'),
     import('lit/directives/when.js'),
   ]).then(
-    ([, services, extLoader, storeExtensions, viewExtensions, globalLit, std, gfx, store, storeTest, signals, lit, keyedDirective, whenDirective]) => ({
+    ([
+      ,
+      services,
+      extLoader,
+      storeExtensions,
+      viewExtensions,
+      globalLit,
+      std,
+      gfx,
+      store,
+      storeTest,
+      signals,
+      lit,
+      keyedDirective,
+      whenDirective,
+    ]) => ({
       extLoader,
       gfx,
       globalLit,
@@ -250,7 +260,7 @@ const loadBlockSuiteRuntime = async () => {
   return blockSuiteRuntimePromise;
 };
 
-const getExtensionManagers = runtime => {
+const getExtensionManagers = (runtime) => {
   if (extensionManagers) {
     return extensionManagers;
   }
@@ -265,7 +275,7 @@ const getExtensionManagers = runtime => {
   return extensionManagers;
 };
 
-const ensureEditorRegistered = runtime => {
+const ensureEditorRegistered = (runtime) => {
   if (editorEffectsReady) {
     return;
   }
@@ -288,14 +298,14 @@ const createParagraphBlock = (store, Text, parentId, paragraph) => {
   );
 };
 
-const resolveNoteHeight = item => {
+const resolveNoteHeight = (item) => {
   return Math.max(item.height, 112 + Math.max(0, item.blocks.length - 1) * 28);
 };
 
 const findSelectionItem = (map, selectedIds, selectedElements) => {
   const elementIds = selectedElements
-    .map(element => Reflect.get(element, 'id'))
-    .filter(value => typeof value === 'string');
+    .map((element) => Reflect.get(element, 'id'))
+    .filter((value) => typeof value === 'string');
 
   for (const id of [...selectedIds, ...elementIds]) {
     const item = map.get(id);
@@ -307,16 +317,16 @@ const findSelectionItem = (map, selectedIds, selectedElements) => {
   return null;
 };
 
-const waitForEditorReady = async editor => {
+const waitForEditorReady = async (editor) => {
   await editor.updateComplete;
-  await new Promise(resolve => {
+  await new Promise((resolve) => {
     requestAnimationFrame(() => {
       requestAnimationFrame(resolve);
     });
   });
 };
 
-export const createAffineCanvasRuntime = async projection => {
+export const createAffineCanvasRuntime = async (projection) => {
   const runtime = await loadBlockSuiteRuntime();
   const { Text } = runtime.store;
   const { TestWorkspace } = runtime.storeTest;
@@ -340,7 +350,7 @@ export const createAffineCanvasRuntime = async projection => {
 
     doc.addBlock('affine:surface', {}, rootId);
 
-    projection.items.forEach(item => {
+    projection.items.forEach((item) => {
       const noteId = doc.addBlock(
         'affine:note',
         {
@@ -350,7 +360,7 @@ export const createAffineCanvasRuntime = async projection => {
       );
       blockToItem.set(noteId, item);
 
-      item.blocks.forEach(paragraph => {
+      item.blocks.forEach((paragraph) => {
         const paragraphId = createParagraphBlock(doc, Text, noteId, paragraph);
         blockToItem.set(paragraphId, item);
       });
@@ -384,7 +394,7 @@ export const createAffineCanvasRuntime = async projection => {
       getGfx().fitToScreen();
     },
     ready: () => waitForEditorReady(editor),
-    subscribeSelection: onSelectionChange => {
+    subscribeSelection: (onSelectionChange) => {
       const gfx = getGfx();
       const syncSelection = () => {
         onSelectionChange(findSelectionItem(blockToItem, gfx.selection.selectedIds, gfx.selection.selectedElements));

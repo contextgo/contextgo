@@ -239,23 +239,46 @@ function inferKind(input: ChannelObjectInput): ChannelObjectKind {
   if (normalizedType === 'topic' || normalizedKey.includes('/topic/')) {
     return 'topic';
   }
-  if (normalizedType === 'thread' || input.peerScope === 'thread' || normalizedKey.includes('/thread/') || normalizedKey.includes(':thread:')) {
+  if (
+    normalizedType === 'thread' ||
+    input.peerScope === 'thread' ||
+    normalizedKey.includes('/thread/') ||
+    normalizedKey.includes(':thread:')
+  ) {
     return 'thread';
   }
   if (normalizedType === 'channel' || normalizedKey.includes('/channel/')) {
     return 'channel';
   }
-  if (normalizedType === 'group' || normalizedType === 'supergroup' || normalizedKey.startsWith('group:') || normalizedKey.includes('/group/')) {
+  if (
+    normalizedType === 'group' ||
+    normalizedType === 'supergroup' ||
+    normalizedKey.startsWith('group:') ||
+    normalizedKey.includes('/group/')
+  ) {
     return 'group';
   }
-  if (normalizedType === 'direct' || normalizedType === 'dm' || normalizedType === 'private' || normalizedType === 'p2p' || normalizedKey.startsWith('user:') || normalizedKey.includes('/user/') || normalizedKey.includes('/friend/') || normalizedKey.includes('/dm/')) {
+  if (
+    normalizedType === 'direct' ||
+    normalizedType === 'dm' ||
+    normalizedType === 'private' ||
+    normalizedType === 'p2p' ||
+    normalizedKey.startsWith('user:') ||
+    normalizedKey.includes('/user/') ||
+    normalizedKey.includes('/friend/') ||
+    normalizedKey.includes('/dm/')
+  ) {
     return input.platform === 'weixin' ? 'person' : 'dm';
   }
 
   return 'chat';
 }
 
-function inferParentKind(platform: PluginType, kind: ChannelObjectKind, input: ChannelObjectInput): ChannelObjectParentKind | undefined {
+function inferParentKind(
+  platform: PluginType,
+  kind: ChannelObjectKind,
+  input: ChannelObjectInput
+): ChannelObjectParentKind | undefined {
   if ((kind === 'channel' || kind === 'server' || kind === 'space') && input.containerType === 'space') {
     return 'space';
   }
@@ -377,6 +400,7 @@ export function describeRemoteIdentityObject(identity: IRemoteIdentity, platform
     threadId: identity.threadId,
     containerId: typeof identity.metadata?.containerId === 'string' ? identity.metadata.containerId : undefined,
     containerType: typeof identity.metadata?.containerType === 'string' ? identity.metadata.containerType : undefined,
-    containerTitle: typeof identity.metadata?.containerTitle === 'string' ? identity.metadata.containerTitle : undefined,
+    containerTitle:
+      typeof identity.metadata?.containerTitle === 'string' ? identity.metadata.containerTitle : undefined,
   });
 }

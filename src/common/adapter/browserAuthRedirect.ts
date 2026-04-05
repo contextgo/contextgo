@@ -62,7 +62,9 @@ export function resolveHostedRemoteDisconnect(
   if (code === 4404) {
     return {
       type: 'redirect',
-      path: buildHostedRemoteNoticeRedirectPath(normalizedReason.includes('offline') ? 'device_offline' : 'device_not_found'),
+      path: buildHostedRemoteNoticeRedirectPath(
+        normalizedReason.includes('offline') ? 'device_offline' : 'device_not_found'
+      ),
     };
   }
 
@@ -71,7 +73,9 @@ export function resolveHostedRemoteDisconnect(
   }
 
   if (normalizedReason.includes('session replaced')) {
-    return isContextGoHostname(new URL(currentHref).hostname) ? { type: 'reconnect' } : { type: 'redirect', path: buildHostedRemoteNoticeRedirectPath('session_replaced') };
+    return isContextGoHostname(new URL(currentHref).hostname)
+      ? { type: 'reconnect' }
+      : { type: 'redirect', path: buildHostedRemoteNoticeRedirectPath('session_replaced') };
   }
 
   if (normalizedReason.includes('restart')) {

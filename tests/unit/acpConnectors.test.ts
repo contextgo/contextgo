@@ -275,8 +275,14 @@ describe('connectCodex - Windows diagnostics', () => {
 
     await connectCodexWithFreshMocks('/tmp/codex', { setup, cleanup });
 
-    expect(mainWarnMock).not.toHaveBeenCalledWith('[ACP codex]', 'Failed to read codex login status', expect.anything());
-    expect(mainLogMock).toHaveBeenCalledWith('[ACP codex]', 'Runtime diagnostics',
+    expect(mainWarnMock).not.toHaveBeenCalledWith(
+      '[ACP codex]',
+      'Failed to read codex login status',
+      expect.anything()
+    );
+    expect(mainLogMock).toHaveBeenCalledWith(
+      '[ACP codex]',
+      'Runtime diagnostics',
       expect.objectContaining({
         loginStatus: 'Logged in using an API key - sk-test',
         hasChatGptSession: false,

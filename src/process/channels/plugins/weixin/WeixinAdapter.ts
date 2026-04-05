@@ -10,7 +10,11 @@ import type { IUnifiedIncomingMessage, IUnifiedPeer } from '../../types';
 // ==================== Inbound ====================
 
 function resolveWeixinChatType(conversationId: string): string {
-  if (conversationId.endsWith('@chatroom') || conversationId.startsWith('group_') || conversationId.startsWith('room_')) {
+  if (
+    conversationId.endsWith('@chatroom') ||
+    conversationId.startsWith('group_') ||
+    conversationId.startsWith('room_')
+  ) {
     return 'group';
   }
 

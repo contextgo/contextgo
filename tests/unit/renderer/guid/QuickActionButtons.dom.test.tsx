@@ -39,15 +39,17 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
       (
-        {
+        ({
           'settings.cloud.loading': 'Checking cloud account status...',
           'settings.webui.officialRemoteTitle': 'Official Remote',
           'settings.webui.officialRemoteSignedOut': 'Official Remote is not connected yet.',
           'settings.webui.officialRemoteDeviceReady': 'This device is linked and ready for Official Remote.',
-          'settings.webui.officialRemoteDevicePending': 'Cloud session is active. ContextGo is linking this device for Official Remote.',
+          'settings.webui.officialRemoteDevicePending':
+            'Cloud session is active. ContextGo is linking this device for Official Remote.',
           'settings.webui.officialRemotePreparing': 'ContextGo is preparing this desktop for Official Remote.',
           'settings.webui.officialRemoteConnecting': 'ContextGo is reconnecting this desktop to Official Remote.',
-          'settings.webui.officialRemoteNeedsRelogin': 'Official Remote needs a fresh cloud login before this desktop can reconnect.',
+          'settings.webui.officialRemoteNeedsRelogin':
+            'Official Remote needs a fresh cloud login before this desktop can reconnect.',
           'settings.webui.officialRemoteUnavailable': 'Official Remote is not ready on this desktop yet.',
           'settings.webui.officialRemoteStatusShort.checking': 'Checking',
           'settings.webui.officialRemoteStatusShort.signedOut': 'Not connected',
@@ -68,7 +70,7 @@ vi.mock('react-i18next', () => ({
           'guid.externalSessions.emptyStateShort': 'None yet',
           'guid.externalSessions.readyCount': `${String(options?.count ?? '0')} sessions ready`,
           'guid.externalSessions.readyCountShort': `${String(options?.count ?? '0')} ready`,
-        } as Record<string, string>
+        }) as Record<string, string>
       )[key] ?? String(options?.defaultValue ?? key),
   }),
 }));

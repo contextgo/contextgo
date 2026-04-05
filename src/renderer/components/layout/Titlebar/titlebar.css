@@ -36,10 +36,7 @@
 .app-titlebar--mobile {
   height: calc(58px + env(safe-area-inset-top, 0px));
   min-height: calc(58px + env(safe-area-inset-top, 0px));
-  padding:
-    calc(6px + env(safe-area-inset-top, 0px))
-    calc(10px + env(safe-area-inset-right, 0px))
-    0
+  padding: calc(6px + env(safe-area-inset-top, 0px)) calc(10px + env(safe-area-inset-right, 0px)) 0
     calc(10px + env(safe-area-inset-left, 0px));
 }
 

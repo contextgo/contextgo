@@ -6,7 +6,17 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingConversationMessages } from '@/renderer/pages/conversation/hooks/usePendingConversationMessages';
 
-const dispatchMock = vi.fn<(_: { id: string; content: string; attachments: string[]; mode: 'queue' | 'steer'; status: 'pending' | 'dispatching'; createdAt: number }) => Promise<void>>();
+const dispatchMock =
+  vi.fn<
+    (_: {
+      id: string;
+      content: string;
+      attachments: string[];
+      mode: 'queue' | 'steer';
+      status: 'pending' | 'dispatching';
+      createdAt: number;
+    }) => Promise<void>
+  >();
 
 const Harness: React.FC<{ canSendNow?: boolean }> = ({ canSendNow = true }) => {
   const { pendingMessages, enqueuePendingMessage } = usePendingConversationMessages({
@@ -20,7 +30,15 @@ const Harness: React.FC<{ canSendNow?: boolean }> = ({ canSendNow = true }) => {
     enqueuePendingMessage('queue', 'hello world', []);
   }, [enqueuePendingMessage]);
 
-  return <div>{pendingMessages.map((message) => <div key={message.id}>{message.status}:{message.content}</div>)}</div>;
+  return (
+    <div>
+      {pendingMessages.map((message) => (
+        <div key={message.id}>
+          {message.status}:{message.content}
+        </div>
+      ))}
+    </div>
+  );
 };
 
 describe('usePendingConversationMessages dispatch lifecycle', () => {

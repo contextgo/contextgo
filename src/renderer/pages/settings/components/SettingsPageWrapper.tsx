@@ -173,7 +173,10 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
     className
   );
 
-  const contentClass = classNames('settings-page-content secondary-page-inner mx-auto w-full md:max-w-[min(1440px,calc(100vw-144px))]', contentClassName);
+  const contentClass = classNames(
+    'settings-page-content secondary-page-inner mx-auto w-full md:max-w-[min(1440px,calc(100vw-144px))]',
+    contentClassName
+  );
   const showPreviewDock = !isMobile && isPreviewOpen && Boolean(activeTab);
   const previewDock =
     showPreviewDock && typeof document !== 'undefined'

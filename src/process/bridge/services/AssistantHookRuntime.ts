@@ -485,8 +485,11 @@ export class AssistantHookRuntime {
 
   private async resolveHookDir(conversation: TChatConversation, hookName: string): Promise<string | null> {
     const workspaceHookDir = getWorkspaceHookDir(getConversationWorkspace(conversation), hookName);
-    const candidates = [workspaceHookDir, path.join(getHooksDir(), hookName), path.join(getBuiltinHooksCopyDir(), hookName)]
-      .filter((candidate): candidate is string => typeof candidate === 'string');
+    const candidates = [
+      workspaceHookDir,
+      path.join(getHooksDir(), hookName),
+      path.join(getBuiltinHooksCopyDir(), hookName),
+    ].filter((candidate): candidate is string => typeof candidate === 'string');
     const results = await Promise.allSettled(
       candidates.map(async (candidate) => fs.access(candidate).then(() => candidate))
     );

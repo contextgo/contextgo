@@ -294,5 +294,4 @@ describe('ConversationBrowserContextButton', () => {
       lastUsedAt: expect.any(Number),
     });
   });
-
 });

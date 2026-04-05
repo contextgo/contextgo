@@ -26,35 +26,36 @@ const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const { percentage, percentageLabel, displayTotal, displayLimit, displayRemaining, isWarning, isDanger } = useMemo(() => {
-    if (!tokenUsage) {
+  const { percentage, percentageLabel, displayTotal, displayLimit, displayRemaining, isWarning, isDanger } =
+    useMemo(() => {
+      if (!tokenUsage) {
+        return {
+          percentage: 0,
+          percentageLabel: '0.0%',
+          displayTotal: '0',
+          displayLimit: formatTokenCount(contextLimit, true),
+          displayRemaining: formatTokenCount(contextLimit, true),
+          isWarning: false,
+          isDanger: false,
+        };
+      }
+
+      const total = Math.max(tokenUsage.totalTokens, 0);
+      const safeLimit = Math.max(contextLimit, 1);
+      const rawPercentage = (total / safeLimit) * 100;
+      const boundedPercentage = Math.min(rawPercentage, 100);
+      const remaining = Math.max(safeLimit - total, 0);
+
       return {
-        percentage: 0,
-        percentageLabel: '0.0%',
-        displayTotal: '0',
-        displayLimit: formatTokenCount(contextLimit, true),
-        displayRemaining: formatTokenCount(contextLimit, true),
-        isWarning: false,
-        isDanger: false,
+        percentage: boundedPercentage,
+        percentageLabel: `${rawPercentage.toFixed(1)}%`,
+        displayTotal: formatTokenCount(total),
+        displayLimit: formatTokenCount(safeLimit, true),
+        displayRemaining: formatTokenCount(remaining, true),
+        isWarning: rawPercentage > 70,
+        isDanger: rawPercentage > 90,
       };
-    }
-
-    const total = Math.max(tokenUsage.totalTokens, 0);
-    const safeLimit = Math.max(contextLimit, 1);
-    const rawPercentage = (total / safeLimit) * 100;
-    const boundedPercentage = Math.min(rawPercentage, 100);
-    const remaining = Math.max(safeLimit - total, 0);
-
-    return {
-      percentage: boundedPercentage,
-      percentageLabel: `${rawPercentage.toFixed(1)}%`,
-      displayTotal: formatTokenCount(total),
-      displayLimit: formatTokenCount(safeLimit, true),
-      displayRemaining: formatTokenCount(remaining, true),
-      isWarning: rawPercentage > 70,
-      isDanger: rawPercentage > 90,
-    };
-  }, [tokenUsage, contextLimit]);
+    }, [tokenUsage, contextLimit]);
 
   if (!tokenUsage) {
     return null;

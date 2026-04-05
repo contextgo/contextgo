@@ -135,19 +135,23 @@ describe('Built WebUI favicon integrity', () => {
   const appAsarPath = resolvedEnvAsar || resolveDefaultAppAsarPath();
   const runOrSkip = hasFreshRendererBuild ? it : it.skip;
 
-  runOrSkip('should include the built favicon asset referenced by renderer index.html', () => {
-    const faviconHref = extractFaviconHref(rendererIndexPath);
+  runOrSkip(
+    'should include the built favicon asset referenced by renderer index.html',
+    () => {
+      const faviconHref = extractFaviconHref(rendererIndexPath);
 
-    expect(faviconHref).toMatch(/^\.\/assets\/.+\.(png|ico|svg)$/);
+      expect(faviconHref).toMatch(/^\.\/assets\/.+\.(png|ico|svg)$/);
 
-    const assetRelativePath = toPosixPath(path.join('out/renderer', faviconHref.replace(/^\.\//, '')));
-    const assetAbsolutePath = path.resolve(path.dirname(rendererIndexPath), faviconHref);
+      const assetRelativePath = toPosixPath(path.join('out/renderer', faviconHref.replace(/^\.\//, '')));
+      const assetAbsolutePath = path.resolve(path.dirname(rendererIndexPath), faviconHref);
 
-    expect(fs.existsSync(assetAbsolutePath)).toBe(true);
+      expect(fs.existsSync(assetAbsolutePath)).toBe(true);
 
-    if (appAsarPath) {
-      const asarEntries = getAsarEntries(appAsarPath);
-      expect(asarEntries.has(assetRelativePath)).toBe(true);
-    }
-  }, 30000);
+      if (appAsarPath) {
+        const asarEntries = getAsarEntries(appAsarPath);
+        expect(asarEntries.has(assetRelativePath)).toBe(true);
+      }
+    },
+    30000
+  );
 });

@@ -257,13 +257,17 @@ function configureMacSigningEnv() {
 
     console.log(`🔐 Using explicit macOS signing identity: ${explicitIdentity}`);
     if (/Apple Development:/i.test(explicitIdentity)) {
-      console.log('⚠️  Apple Development identity is only suitable for local validation. Public releases should use Developer ID Application.');
+      console.log(
+        '⚠️  Apple Development identity is only suitable for local validation. Public releases should use Developer ID Application.'
+      );
     }
     return;
   }
 
   process.env.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
-  console.log('🔐 No explicit macOS signing identity configured; disabled keychain auto-discovery for deterministic packaging.');
+  console.log(
+    '🔐 No explicit macOS signing identity configured; disabled keychain auto-discovery for deterministic packaging.'
+  );
   console.log('   To produce a public macOS release, set CSC_NAME/IDENTITY to a Developer ID Application certificate.');
 }
 

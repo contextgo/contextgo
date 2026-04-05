@@ -107,10 +107,13 @@ const authSessionFetch = vi.fn(async (url: string, init?: RequestInit) => {
   }
 
   if (url.endsWith('/api/integrations/infermesh/handoff')) {
-    return new Response(JSON.stringify({ success: true, url: 'https://infermesh.org/api/oauth/contextgo/handoff?token=test-handoff' }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ success: true, url: 'https://infermesh.org/api/oauth/contextgo/handoff?token=test-handoff' }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 
   throw new Error(`Unexpected fetch URL: ${url} ${init?.method ?? 'GET'}`);
@@ -146,7 +149,7 @@ function createMockServer(): MockServer {
       }
       onceListeners.set(
         event,
-        listeners.filter(listener => listener !== callback)
+        listeners.filter((listener) => listener !== callback)
       );
     },
     on: (event: string, callback: (error: Error) => void) => {
@@ -167,7 +170,7 @@ vi.mock('node:http', async () => {
   const actual = await vi.importActual<typeof import('node:http')>('node:http');
   return {
     ...actual,
-    createServer: vi.fn(handler => {
+    createServer: vi.fn((handler) => {
       serverRequestHandler = handler as (request: MockRequest, response: MockResponse) => void;
       return createMockServer();
     }),
@@ -469,9 +472,7 @@ describe('CloudService desktop loopback login', () => {
 
     await cloudService.openInfermesh();
 
-    expect(shellOpenExternal).toHaveBeenCalledWith(
-      'https://infermesh.org/login?provider=oidc&auto=1&source=contextgo'
-    );
+    expect(shellOpenExternal).toHaveBeenCalledWith('https://infermesh.org/login?provider=oidc&auto=1&source=contextgo');
   });
 
   it('waits for official remote readiness after ensuring the desktop browser entry', async () => {

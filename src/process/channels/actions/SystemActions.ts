@@ -284,7 +284,9 @@ export const handleAgentShow: ActionHandler = async (context) => {
   }
 
   const savedConfig = (await ProcessConfig.get(builtinChannel.agentConfigKey)) as SavedChannelAgentConfig | undefined;
-  const savedKey = savedConfig?.customAgentId ? `${savedConfig.backend}:${savedConfig.customAgentId}` : savedConfig?.backend;
+  const savedKey = savedConfig?.customAgentId
+    ? `${savedConfig.backend}:${savedConfig.customAgentId}`
+    : savedConfig?.backend;
   const detectedAgent = savedKey ? resolveDetectedChannelAgent(savedKey) : null;
   const backend = detectedAgent?.backend ?? savedConfig?.backend ?? 'gemini';
   const displayName = detectedAgent?.name ?? savedConfig?.name ?? backend;

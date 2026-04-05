@@ -1015,9 +1015,7 @@ export function rowToChannelControlLease(row: IChannelControlLeaseRow): IChannel
     sourceExternalSessionId: row.source_external_session_id ?? undefined,
     sourceConversationId: row.source_conversation_id ?? undefined,
     continuationMode:
-      row.continuation_mode === 'resume' || row.continuation_mode === 'new_thread'
-        ? row.continuation_mode
-        : undefined,
+      row.continuation_mode === 'resume' || row.continuation_mode === 'new_thread' ? row.continuation_mode : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     releasedAt: row.released_at ?? undefined,

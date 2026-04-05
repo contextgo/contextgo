@@ -107,9 +107,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     const presetAssistantInfo = selectedAssistantInfo?.isPreset ? selectedAssistantInfo : undefined;
     const isPresetAssistant = Boolean(presetAssistantInfo);
 
-    const { rules: presetRules } = isPresetAssistant
-      ? await resolvePresetRulesAndSkills(presetAssistantInfo)
-      : {};
+    const { rules: presetRules } = isPresetAssistant ? await resolvePresetRulesAndSkills(presetAssistantInfo) : {};
     const enabledSkills = isPresetAssistant ? resolveEnabledSkills(presetAssistantInfo) : undefined;
     const enabledHooks = isPresetAssistant ? resolveEnabledHooks(presetAssistantInfo) : undefined;
     const presetAssistantId = isPresetAssistant ? presetAssistantInfo?.customAgentId : undefined;

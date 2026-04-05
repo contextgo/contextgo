@@ -267,7 +267,9 @@ function resolveObjectEditorState(
     };
   }
 
-  const existingBinding = object.bindings.find((binding) => binding.scopeType !== 'connector_default' && binding.scopeKey);
+  const existingBinding = object.bindings.find(
+    (binding) => binding.scopeType !== 'connector_default' && binding.scopeKey
+  );
   if (!existingBinding?.scopeKey) {
     return {
       editingBindingId: '',
@@ -607,8 +609,8 @@ const PublicationBindingPanel: React.FC = () => {
       setDurableEditor({
         editingBindingId: binding.id,
         scopeType: binding.scopeType as DurableBindingScopeType,
-        selectedAudienceKey: discovered ? binding.scopeKey ?? '' : '',
-        manualScopeKey: discovered ? '' : binding.scopeKey ?? '',
+        selectedAudienceKey: discovered ? (binding.scopeKey ?? '') : '',
+        manualScopeKey: discovered ? '' : (binding.scopeKey ?? ''),
         agentProfileId: binding.agentProfileId,
       });
     },
@@ -747,7 +749,8 @@ const PublicationBindingPanel: React.FC = () => {
                           </div>
                           <div className={styles.selectorStats}>
                             <Tag className={styles.pillTag}>
-                              {t('settings.channels.publication.summaryPublished')}: {accountObjects.filter((item) => item.bindings.length > 0).length}
+                              {t('settings.channels.publication.summaryPublished')}:{' '}
+                              {accountObjects.filter((item) => item.bindings.length > 0).length}
                             </Tag>
                             <Tag className={styles.pillTag}>
                               {t('settings.channels.publication.summaryObjects')}: {accountObjects.length}
@@ -828,7 +831,9 @@ const PublicationBindingPanel: React.FC = () => {
                                   </span>
                                   <Tag className={styles.pillTag}>{objectKindLabel}</Tag>
                                   {object.bindings.length > 0 ? (
-                                    <Tag className={styles.metricTag}>{t('settings.channels.publication.durableTag')}</Tag>
+                                    <Tag className={styles.metricTag}>
+                                      {t('settings.channels.publication.durableTag')}
+                                    </Tag>
                                   ) : null}
                                 </div>
                                 {object.subtitle && object.subtitle !== object.title ? (
@@ -1062,10 +1067,12 @@ const PublicationBindingPanel: React.FC = () => {
                                         {session.conversationId || session.id}
                                       </div>
                                       <div className={styles.bindingConversationLabel}>
-                                        {t('settings.channels.publication.sessionWorkspaceLabel')}: {session.workspace || '-'}
+                                        {t('settings.channels.publication.sessionWorkspaceLabel')}:{' '}
+                                        {session.workspace || '-'}
                                       </div>
                                       <div className={styles.bindingConversationLabel}>
-                                        {t('settings.channels.publication.sessionLastActiveLabel')}: {lastActiveLabel || '-'}
+                                        {t('settings.channels.publication.sessionLastActiveLabel')}:{' '}
+                                        {lastActiveLabel || '-'}
                                       </div>
                                       <div className={styles.bindingConversationLabel}>
                                         {t('settings.channels.publication.sessionAgentTypeLabel')}: {session.agentType}
