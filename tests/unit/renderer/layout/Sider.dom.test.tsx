@@ -215,14 +215,15 @@ describe('Sider', () => {
   it('shows the space card above the user card in workbench routes', async () => {
     renderSider('/guid');
 
-    expect(await screen.findByText('My Space')).toBeInTheDocument();
-    expect(screen.getByText('common.space')).toBeInTheDocument();
+    expect(screen.queryByText('My Space')).not.toBeInTheDocument();
+    expect(screen.queryByText('common.space')).not.toBeInTheDocument();
   });
 
   it('switches the space card into a return-to-workbench action inside space routes', async () => {
     renderSider('/space/space-1');
 
-    expect(await screen.findByRole('button', { name: /common\.returnToWorkbench/i })).toBeInTheDocument();
+    expect(await screen.findByText('My Space')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /common\.returnToWorkbench/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'space.views.overview' })).toBeInTheDocument();
   });
 

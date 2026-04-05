@@ -1,7 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Apple, ArrowUpRight, Download, Laptop, LucideIcon, Monitor, ShieldCheck, Smartphone } from 'lucide-react';
+import { Apple, ArrowUpRight, Download, Laptop, Monitor, ShieldCheck, Smartphone } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Dictionary } from '@/app/types';
 import type { DownloadEntry, ReleaseSnapshot } from '@/lib/releases';

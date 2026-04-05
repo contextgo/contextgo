@@ -243,7 +243,7 @@ describe('WebuiModalContent', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'electronAPI', {
       value: {
-        ...(window.electronAPI ?? {}),
+        ...window.electronAPI,
         shellOpenExternal: (...args: unknown[]) => shellOpenExternalMock(...args),
       },
       configurable: true,

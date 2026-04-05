@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Dictionary } from '@/app/types';
+import type { Dictionary } from '@/app/types';
 
 export default function Footer({ dict, lang }: { dict: Dictionary['footer']; lang: string }) {
   return (

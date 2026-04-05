@@ -1,3 +1,3 @@
-import { en } from '@/dictionaries/en';
+import type { en } from '@/dictionaries/en';
 
 export type Dictionary = typeof en;

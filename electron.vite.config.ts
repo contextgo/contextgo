@@ -46,7 +46,7 @@ const findNearestNodeModulesRoot = (id?: string) => {
     return null;
   }
 
-  const match = stripQuery(id).match(/^(.*[\/]node_modules)(?:[\/].*)$/);
+  const match = stripQuery(id).match(/^(.*[/]node_modules)(?:[/].*)$/);
   return match?.[1] ?? null;
 };
 

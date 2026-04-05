@@ -4,8 +4,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-import { Dictionary } from '@/app/types';
 import { Github } from 'lucide-react';
+import type { Dictionary } from '@/app/types';
 import ThemeToggle from '@/components/ThemeToggle';
 
 const DEFAULT_GITHUB_URL = 'https://github.com/contextgo';

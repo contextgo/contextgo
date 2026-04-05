@@ -4,9 +4,10 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Database, Edit3, Share2, Shield, LucideIcon } from 'lucide-react';
+import { ArrowRight, Database, Edit3, Share2, Shield } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import ContextParticles from '@/components/ContextParticles';
-import { Dictionary } from '@/app/types';
+import type { Dictionary } from '@/app/types';
 import type { ContentCard } from '@/lib/site-content';
 
 export default function HomeClient({
