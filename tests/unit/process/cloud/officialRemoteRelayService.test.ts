@@ -80,9 +80,7 @@ vi.mock('node:os', async () => {
   return {
     ...actual,
     networkInterfaces: () => ({
-      en0: [
-        { address: '192.168.1.8', family: 'IPv4', internal: false },
-      ],
+      en0: [{ address: '192.168.1.8', family: 'IPv4', internal: false }],
     }),
   };
 });
@@ -105,8 +103,6 @@ function flushPromises(): Promise<void> {
     .then(() => undefined)
     .then(() => undefined);
 }
-
-
 
 describe('OfficialRemoteBrowserRelay', () => {
   const originalFetch = global.fetch;
@@ -335,12 +331,15 @@ describe('OfficialRemoteTunnelService', () => {
 
     socketInstances[0].open();
     await flushPromises();
-    socketInstances[0].emit('message', JSON.stringify({
-      type: 'hello',
-      deviceId: 'device-1',
-      connectedAt: '2026-04-02T00:00:00Z',
-      transport: 'cloud-relay',
-    }));
+    socketInstances[0].emit(
+      'message',
+      JSON.stringify({
+        type: 'hello',
+        deviceId: 'device-1',
+        connectedAt: '2026-04-02T00:00:00Z',
+        transport: 'cloud-relay',
+      })
+    );
 
     expect(service.getState()).toMatchObject({
       desired: true,

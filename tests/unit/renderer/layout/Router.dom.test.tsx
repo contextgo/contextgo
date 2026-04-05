@@ -80,7 +80,6 @@ vi.mock('@renderer/pages/cron/GlobalCronSettings', () => ({
   default: () => <div>cron</div>,
 }));
 
-
 vi.mock('@renderer/pages/settings/AgentSettings', () => ({
   default: () => <div>agent-settings</div>,
 }));

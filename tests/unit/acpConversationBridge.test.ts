@@ -336,11 +336,16 @@ describe('acpConversationBridge', () => {
   });
 
   it('streams stdout and stderr chunks during managed install', async () => {
-    safeExecMock.mockImplementation(async (_command: string, options?: { onStdoutChunk?: (chunk: string) => void; onStderrChunk?: (chunk: string) => void }) => {
-      options?.onStdoutChunk?.('fetching\n');
-      options?.onStderrChunk?.('warning\n');
-      return { stdout: 'fetching\n', stderr: 'warning\n' };
-    });
+    safeExecMock.mockImplementation(
+      async (
+        _command: string,
+        options?: { onStdoutChunk?: (chunk: string) => void; onStderrChunk?: (chunk: string) => void }
+      ) => {
+        options?.onStdoutChunk?.('fetching\n');
+        options?.onStderrChunk?.('warning\n');
+        return { stdout: 'fetching\n', stderr: 'warning\n' };
+      }
+    );
 
     await handlers['installManagedRuntime']({ backend: 'codex' });
 

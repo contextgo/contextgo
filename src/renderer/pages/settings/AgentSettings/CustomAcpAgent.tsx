@@ -725,7 +725,15 @@ const CustomAcpAgent: React.FC = () => {
                     defaultValue: 'Install progress',
                   })}
                 </div>
-                <Tag color={installProgress.stage === 'failed' ? 'red' : installProgress.stage === 'completed' ? 'green' : 'arcoblue'}>
+                <Tag
+                  color={
+                    installProgress.stage === 'failed'
+                      ? 'red'
+                      : installProgress.stage === 'completed'
+                        ? 'green'
+                        : 'arcoblue'
+                  }
+                >
                   {getInstallStageLabel(installProgress.stage, t)}
                 </Tag>
               </div>

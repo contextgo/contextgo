@@ -287,7 +287,9 @@ export class PluginManager {
     const connector =
       connectorResult.success && connectorResult.data
         ? connectorResult.data
-        : (directConnectorResult.success ? (directConnectorResult.data ?? undefined) : undefined);
+        : directConnectorResult.success
+          ? (directConnectorResult.data ?? undefined)
+          : undefined;
     const baseStatus = this.buildPluginStatus(config);
     const resolvedType = connector?.platform ?? baseStatus.type;
 

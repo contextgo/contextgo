@@ -187,14 +187,26 @@ vi.mock('@arco-design/web-react', () => ({
     error: (...args: unknown[]) => messageErrorMock(...args),
   },
   Select: Object.assign(
-    ({ children, value, onChange }: { children?: React.ReactNode; value?: string; onChange?: (value: string) => void }) => (
+    ({
+      children,
+      value,
+      onChange,
+    }: {
+      children?: React.ReactNode;
+      value?: string;
+      onChange?: (value: string) => void;
+    }) => (
       <select value={value} onChange={(event) => onChange?.(event.target.value)}>
         {children}
       </select>
     ),
     {
-      Option: ({ children, value }: { children?: React.ReactNode; value: string }) => <option value={value}>{children}</option>,
-      OptGroup: ({ children, label }: { children?: React.ReactNode; label: string }) => <optgroup label={label}>{children}</optgroup>,
+      Option: ({ children, value }: { children?: React.ReactNode; value: string }) => (
+        <option value={value}>{children}</option>
+      ),
+      OptGroup: ({ children, label }: { children?: React.ReactNode; label: string }) => (
+        <optgroup label={label}>{children}</optgroup>
+      ),
     }
   ),
   Spin: ({ loading }: { loading?: boolean }) => (loading ? <div>loading</div> : null),

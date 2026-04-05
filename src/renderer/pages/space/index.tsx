@@ -251,7 +251,11 @@ const SpacePage: React.FC = () => {
                         <div className='mt-10px truncate text-12px text-t-secondary'>{project.workingDirectory}</div>
                       ) : null}
                       {latestSession ? (
-                        <Button className='mt-14px !px-0' type='text' onClick={() => openConversation(latestSession.id)}>
+                        <Button
+                          className='mt-14px !px-0'
+                          type='text'
+                          onClick={() => openConversation(latestSession.id)}
+                        >
                           {t('space.overview.openSession')}
                         </Button>
                       ) : null}

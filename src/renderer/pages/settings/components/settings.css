@@ -164,7 +164,12 @@
     z-index: 4;
     margin: -4px -4px 14px;
     padding-top: 4px;
-    background: linear-gradient(180deg, var(--bg-1) 0%, color-mix(in srgb, var(--bg-1) 94%, transparent) 78%, transparent 100%);
+    background: linear-gradient(
+      180deg,
+      var(--bg-1) 0%,
+      color-mix(in srgb, var(--bg-1) 94%, transparent) 78%,
+      transparent 100%
+    );
     backdrop-filter: blur(10px);
   }
 
@@ -175,11 +180,7 @@
     overflow-y: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    padding:
-      4px
-      calc(12px + env(safe-area-inset-right, 0px))
-      12px
-      calc(12px + env(safe-area-inset-left, 0px));
+    padding: 4px calc(12px + env(safe-area-inset-right, 0px)) 12px calc(12px + env(safe-area-inset-left, 0px));
   }
 
   .settings-mobile-top-nav::-webkit-scrollbar {

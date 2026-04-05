@@ -29,7 +29,7 @@ const AffineCanvasSurface: React.FC<AffineCanvasSurfaceProps> = ({
   const [surfaceReady, setSurfaceReady] = useState(false);
 
   const hasProjectActivity = useMemo(
-    () => projection.items.some(item => item.kind === 'project' || item.kind === 'session'),
+    () => projection.items.some((item) => item.kind === 'project' || item.kind === 'session'),
     [projection.items]
   );
 

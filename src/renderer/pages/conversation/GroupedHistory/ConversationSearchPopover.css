@@ -398,7 +398,6 @@ body[arco-theme='dark'] .conversation-search-page {
   box-shadow: none;
 }
 
-
 @media (max-width: 767px) {
   .conversation-search-page.secondary-page-frame {
     padding-top: 10px;
@@ -443,11 +442,7 @@ body[arco-theme='dark'] .conversation-search-page {
 
 @media (max-width: 767px) {
   .conversation-search-page.secondary-page-frame {
-    padding:
-      10px
-      calc(12px + env(safe-area-inset-right, 0px))
-      16px
-      calc(12px + env(safe-area-inset-left, 0px));
+    padding: 10px calc(12px + env(safe-area-inset-right, 0px)) 16px calc(12px + env(safe-area-inset-left, 0px));
   }
 
   .conversation-search-page__shell {

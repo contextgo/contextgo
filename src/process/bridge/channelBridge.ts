@@ -328,17 +328,13 @@ async function enrichLarkIdentityForDisplay(
   const metadata = identity.metadata ?? {};
   const childObject = isLarkChildObject(identity);
   const transportChatId = identity.platformChatId ?? identity.parentChatId ?? identity.remoteChatId;
-  const loadChatDisplay = Boolean(
-    transportChatId && (!isDirectChatType(identity.remoteChatType) || childObject)
-  );
+  const loadChatDisplay = Boolean(transportChatId && (!isDirectChatType(identity.remoteChatType) || childObject));
 
   const [chatDisplay, userDisplay] = await Promise.all([
     loadChatDisplay && transportChatId
       ? resolver.getChatDisplayData(transportChatId).catch((_error): null => null)
       : null,
-    identity.remoteUserId
-      ? resolver.getUserDisplayData(identity.remoteUserId).catch((_error): null => null)
-      : null,
+    identity.remoteUserId ? resolver.getUserDisplayData(identity.remoteUserId).catch((_error): null => null) : null,
   ]);
 
   const chatName =
@@ -426,7 +422,10 @@ async function enrichRemoteIdentitiesForDisplay(
   );
 }
 
-function buildRemoteChatAudience(identity: IRemoteIdentity, connectorMap: Map<string, IConnectorInstance>): IChannelAudienceEntry {
+function buildRemoteChatAudience(
+  identity: IRemoteIdentity,
+  connectorMap: Map<string, IConnectorInstance>
+): IChannelAudienceEntry {
   const threadParts = toThreadParts(identity.remoteChatId);
   const parentChatId = identity.parentChatId ?? threadParts.parentChatId;
   const threadId = identity.threadId ?? threadParts.threadId;
@@ -455,7 +454,7 @@ function buildRemoteChatAudience(identity: IRemoteIdentity, connectorMap: Map<st
   const subtitle =
     connector?.platform === 'lark'
       ? friendlySubtitle
-      : friendlySubtitle ??
+      : (friendlySubtitle ??
         buildAudienceSubtitle({
           kind,
           remoteUserId: identity.remoteUserId,
@@ -463,7 +462,7 @@ function buildRemoteChatAudience(identity: IRemoteIdentity, connectorMap: Map<st
           platformChatId: identity.platformChatId,
           parentChatId,
           threadId,
-        });
+        }));
   const objectDescriptor = connector
     ? describeRemoteIdentityObject(
         {
@@ -570,13 +569,13 @@ function buildRemoteUserAudiences(
       subtitle:
         connector?.platform === 'lark'
           ? friendlySubtitle
-          : friendlySubtitle ??
+          : (friendlySubtitle ??
             buildAudienceSubtitle({
               kind,
               remoteUserId: identity.remoteUserId,
               remoteChatId: identity.remoteChatId,
               platformChatId: identity.platformChatId,
-            }),
+            })),
       lastActive: identity.lastActive,
     };
   });

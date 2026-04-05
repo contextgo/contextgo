@@ -11,7 +11,8 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { count?: number }) => {
       if (key === 'conversation.pendingMessages.title') return `待发送 ${options?.count ?? 0}`;
-      if (key === 'conversation.pendingMessages.shortcuts') return 'Tab 入队 · Cmd/Ctrl+Enter 引导 · Option/Alt+↑ 取回最近一条';
+      if (key === 'conversation.pendingMessages.shortcuts')
+        return 'Tab 入队 · Cmd/Ctrl+Enter 引导 · Option/Alt+↑ 取回最近一条';
       if (key === 'conversation.pendingMessages.edit') return '重新编辑';
       if (key === 'conversation.pendingMessages.attachments') return `${options?.count ?? 0} 个文件`;
       if (key === 'conversation.pendingMessages.mode.queue') return '队列';

@@ -50,10 +50,7 @@ type BuildCloudDesktopOAuthStartUrlOptions = {
   loopbackCallbackUrl?: string;
 };
 
-function buildCloudDesktopLoginReturnUrl(
-  provider: CloudAuthProviderId,
-  loopbackCallbackUrl?: string
-): string {
+function buildCloudDesktopLoginReturnUrl(provider: CloudAuthProviderId, loopbackCallbackUrl?: string): string {
   const url = new URL(CLOUD_DESKTOP_LOGIN_COMPLETE_PATH, CONTEXTGO_AUTH_BASE_URL);
   url.searchParams.set('provider', provider);
 

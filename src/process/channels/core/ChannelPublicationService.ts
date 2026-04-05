@@ -46,15 +46,17 @@ function extractConversationWorkspace(conversation: TChatConversation): string |
 }
 
 function extractConversationModelRef(conversation: TChatConversation): IAgentProfile['modelRef'] {
-  const conversationModel = (conversation as unknown as {
-    model?: {
-      id?: unknown;
-      useModel?: unknown;
-      platform?: unknown;
-      name?: unknown;
-      baseUrl?: unknown;
-    };
-  }).model;
+  const conversationModel = (
+    conversation as unknown as {
+      model?: {
+        id?: unknown;
+        useModel?: unknown;
+        platform?: unknown;
+        name?: unknown;
+        baseUrl?: unknown;
+      };
+    }
+  ).model;
   if (
     conversationModel &&
     typeof conversationModel === 'object' &&

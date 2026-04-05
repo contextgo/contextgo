@@ -111,10 +111,9 @@ const ToolCodexMapper = (message: IMessageCodexToolCall): ToolItem | undefined =
 
   const command = 'command' in data && Array.isArray(data.command) ? data.command.join(' ') : undefined;
   const query = 'query' in data && typeof data.query === 'string' ? data.query : undefined;
-  const invocation = 'invocation' in data && data.invocation && typeof data.invocation === 'object' ? data.invocation : null;
-  const toolName = invocation
-    ? invocation.tool || invocation.name || invocation.method || undefined
-    : undefined;
+  const invocation =
+    'invocation' in data && data.invocation && typeof data.invocation === 'object' ? data.invocation : null;
+  const toolName = invocation ? invocation.tool || invocation.name || invocation.method || undefined : undefined;
 
   const desc = update.description || command || query || toolName || update.kind;
 
@@ -204,9 +203,9 @@ const ToolItemDetail: React.FC<{ item: ToolItem }> = ({ item }) => {
   );
 };
 
-const MessageToolGroupSummary: React.FC<{ messages: Array<IMessageToolGroup | IMessageAcpToolCall | IMessageCodexToolCall> }> = ({
-  messages,
-}) => {
+const MessageToolGroupSummary: React.FC<{
+  messages: Array<IMessageToolGroup | IMessageAcpToolCall | IMessageCodexToolCall>;
+}> = ({ messages }) => {
   const [showMore, setShowMore] = useState(() => {
     if (!messages.length) return false;
     return messages.some(

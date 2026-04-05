@@ -973,7 +973,8 @@ const SUPPORTED_CONNECTOR_IDS = new Set([
 
 export const CONNECTORS: ConnectorDefinition[] = RAW_CONNECTORS.map((connector) => ({
   ...connector,
-  supportStatus: connector.supportStatus ?? (SUPPORTED_CONNECTOR_IDS.has(connector.id) ? 'supported' : 'notSupportedYet'),
+  supportStatus:
+    connector.supportStatus ?? (SUPPORTED_CONNECTOR_IDS.has(connector.id) ? 'supported' : 'notSupportedYet'),
   localLogo: CONNECTOR_LOCAL_LOGOS[connector.id] || connector.localLogo,
 }));
 

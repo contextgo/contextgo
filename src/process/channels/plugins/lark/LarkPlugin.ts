@@ -204,7 +204,10 @@ export class LarkPlugin extends BasePlugin {
     return 'user_id';
   }
 
-  private readDisplayCache<T>(cache: Map<string, { expiresAt: number; value: T | null }>, key: string): T | null | undefined {
+  private readDisplayCache<T>(
+    cache: Map<string, { expiresAt: number; value: T | null }>,
+    key: string
+  ): T | null | undefined {
     const cached = cache.get(key);
     if (!cached) {
       return undefined;
@@ -218,7 +221,11 @@ export class LarkPlugin extends BasePlugin {
     return cached.value;
   }
 
-  private writeDisplayCache<T>(cache: Map<string, { expiresAt: number; value: T | null }>, key: string, value: T | null): T | null {
+  private writeDisplayCache<T>(
+    cache: Map<string, { expiresAt: number; value: T | null }>,
+    key: string,
+    value: T | null
+  ): T | null {
     cache.set(key, {
       expiresAt: Date.now() + DISPLAY_CACHE_TTL,
       value,
@@ -243,7 +250,11 @@ export class LarkPlugin extends BasePlugin {
         },
       });
       const chat =
-        response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object'
+        response &&
+        typeof response === 'object' &&
+        'data' in response &&
+        response.data &&
+        typeof response.data === 'object'
           ? ((response.data as { chat?: Record<string, unknown> }).chat ?? (response.data as Record<string, unknown>))
           : undefined;
       const name = typeof chat?.name === 'string' && chat.name.trim() ? chat.name.trim() : undefined;
@@ -287,11 +298,17 @@ export class LarkPlugin extends BasePlugin {
         },
       });
       const user =
-        response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object'
+        response &&
+        typeof response === 'object' &&
+        'data' in response &&
+        response.data &&
+        typeof response.data === 'object'
           ? ((response.data as { user?: Record<string, unknown> }).user ?? (response.data as Record<string, unknown>))
           : undefined;
       const nameCandidates = [user?.name, user?.en_name, user?.display_name];
-      const name = nameCandidates.find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim();
+      const name = nameCandidates
+        .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        ?.trim();
 
       return this.writeDisplayCache(this.userDisplayCache, userId, {
         name,

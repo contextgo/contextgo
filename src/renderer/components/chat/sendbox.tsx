@@ -563,8 +563,12 @@ const SendBox: React.FC<{
           )}
         </div>
         {!isSingleLine && (
-          <div className={isMobile ? 'flex flex-col gap-10px w-full' : 'flex items-center justify-between gap-2 w-full'}>
-            <div className={isMobile ? 'sendbox-tools sendbox-tools-scroll-mobile w-full' : 'sendbox-tools'}>{tools}</div>
+          <div
+            className={isMobile ? 'flex flex-col gap-10px w-full' : 'flex items-center justify-between gap-2 w-full'}
+          >
+            <div className={isMobile ? 'sendbox-tools sendbox-tools-scroll-mobile w-full' : 'sendbox-tools'}>
+              {tools}
+            </div>
             <div className={isMobile ? 'flex items-center justify-end gap-8px w-full' : 'flex items-center gap-2'}>
               {sendButtonPrefix}
               {isLoading || loading ? (

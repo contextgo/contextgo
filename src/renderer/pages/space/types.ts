@@ -1,8 +1,1 @@
-export type SpaceShellView =
-  | 'overview'
-  | 'docs'
-  | 'canvas'
-  | 'context'
-  | 'runs'
-  | 'members'
-  | 'settings';
+export type SpaceShellView = 'overview' | 'docs' | 'canvas' | 'context' | 'runs' | 'members' | 'settings';

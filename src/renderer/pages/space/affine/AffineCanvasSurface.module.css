@@ -6,11 +6,7 @@
   border: 1px solid var(--border-base);
   border-radius: 20px;
   background:
-    radial-gradient(
-      circle at top left,
-      color-mix(in srgb, rgb(var(--primary-6)) 8%, var(--bg-1) 92%),
-      transparent 28%
-    ),
+    radial-gradient(circle at top left, color-mix(in srgb, rgb(var(--primary-6)) 8%, var(--bg-1) 92%), transparent 28%),
     linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%), var(--bg-1));
 }
 

@@ -112,7 +112,7 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
       try {
         const result = await acpConversation.listExternalSessions.invoke({ forceRefresh });
         if (!alive) return;
-        const nextCount = result?.success ? result.data?.sessions?.length ?? 0 : 0;
+        const nextCount = result?.success ? (result.data?.sessions?.length ?? 0) : 0;
         setExternalSessionCount(nextCount);
         setExternalSessionsQuickStatus(result?.success ? (nextCount > 0 ? 'ready' : 'empty') : 'error');
         externalSessionsCache = { count: nextCount, at: Date.now() };
@@ -313,7 +313,8 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
             </div>
           </div>
           <span className='opacity-0 max-w-0 overflow-hidden text-14px text-[var(--color-text-2)] group-hover:opacity-100 group-hover:max-w-160px transition-all duration-360 ease-in-out'>
-            {t('settings.webui.officialRemoteTitle', { defaultValue: 'Official Remote' })} · {officialRemoteQuickStatusLabel}
+            {t('settings.webui.officialRemoteTitle', { defaultValue: 'Official Remote' })} ·{' '}
+            {officialRemoteQuickStatusLabel}
           </span>
         </div>
         <div
@@ -331,7 +332,8 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
             className='flex-shrink-0 transition-colors duration-300'
           />
           <span className='opacity-0 max-w-0 overflow-hidden text-14px text-[var(--color-text-2)] group-hover:opacity-100 group-hover:max-w-260px transition-all duration-360 ease-in-out'>
-            {t('guid.externalSessions.title', { defaultValue: 'Continue external sessions' })} · {externalSessionsStatusLabel}
+            {t('guid.externalSessions.title', { defaultValue: 'Continue external sessions' })} ·{' '}
+            {externalSessionsStatusLabel}
           </span>
         </div>
       </div>

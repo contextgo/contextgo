@@ -396,11 +396,7 @@ export function buildPublicationObjects(params: {
   });
 }
 
-export function getPublicationObjectKindLabel(
-  platform: PluginType,
-  kind: ChannelObjectKind,
-  t: TranslationFn
-): string {
+export function getPublicationObjectKindLabel(platform: PluginType, kind: ChannelObjectKind, t: TranslationFn): string {
   const platformKey = `settings.channels.publication.objectKind.${platform}.${kind}`;
   const platformLabel = t(platformKey);
   if (platformLabel !== platformKey) {

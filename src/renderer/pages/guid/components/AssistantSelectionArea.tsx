@@ -46,8 +46,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
 
   if (isPresetAgent && selectedAssistantInfo) {
     const selectedAssistant = customAgents.find((assistant) => assistant.id === selectedAssistantInfo.customAgentId);
-    const harnessLabel =
-      selectedAssistant?.harnessTagI18n?.[localeKey] || selectedAssistant?.harnessTagI18n?.['en-US'];
+    const harnessLabel = selectedAssistant?.harnessTagI18n?.[localeKey] || selectedAssistant?.harnessTagI18n?.['en-US'];
     const workspaceHint =
       selectedAssistant?.workspaceBootstrapHintI18n?.[localeKey] ||
       selectedAssistant?.workspaceBootstrapHintI18n?.['en-US'];
@@ -161,7 +160,9 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
 
   return (
     <div className={`mt-16px w-full ${styles.assistantSection}`}>
-      <div className={`${styles.assistantPresetGrid} flex flex-wrap gap-8px ${isMobile ? 'justify-start' : 'justify-center'}`}>
+      <div
+        className={`${styles.assistantPresetGrid} flex flex-wrap gap-8px ${isMobile ? 'justify-start' : 'justify-center'}`}
+      >
         {customAgents
           .filter((assistant) => assistant.isPreset && assistant.enabled !== false)
           .toSorted((a, b) => {
@@ -176,8 +177,8 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
             const avatarImage = mappedAvatar || resolvedAvatar;
             const isImageAvatar = Boolean(
               avatarImage &&
-                (/\.(svg|png|jpe?g|webp|gif)$/i.test(avatarImage) ||
-                  /^(https?:|contextgo-asset:\/\/|file:\/\/|data:)/i.test(avatarImage))
+              (/\.(svg|png|jpe?g|webp|gif)$/i.test(avatarImage) ||
+                /^(https?:|contextgo-asset:\/\/|file:\/\/|data:)/i.test(avatarImage))
             );
             return (
               <Button
@@ -197,9 +198,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
                 ) : (
                   <Robot theme='outline' size={16} />
                 )}
-                <span className={styles.assistantPresetLabel}>
-                  {assistant.nameI18n?.[localeKey] || assistant.name}
-                </span>
+                <span className={styles.assistantPresetLabel}>{assistant.nameI18n?.[localeKey] || assistant.name}</span>
               </Button>
             );
           })}
@@ -211,7 +210,9 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
         >
           <Plus theme='outline' size={14} className='line-height-0 text-[var(--color-text-3)]' />
           {isMobile ? (
-            <span className={styles.assistantManageLabel}>{t('settings.assistants', { defaultValue: 'AI Agent' })}</span>
+            <span className={styles.assistantManageLabel}>
+              {t('settings.assistants', { defaultValue: 'AI Agent' })}
+            </span>
           ) : null}
         </Button>
       </div>

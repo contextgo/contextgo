@@ -496,7 +496,9 @@
         <div class="eyebrow">Context Engine Report</div>
         <h1>ContextGo 长期上下文引擎架构约束报告</h1>
         <p class="lead">
-          这份报告把当前讨论固化成一个清晰的长期方向：<code>ContextGo</code> 的核心不是把聊天历史做长，也不是把工作目录做成渐进式披露的文件树，而是以 <code>Space</code> 为逻辑边界，构建一个可形成、可演化、可治理、可协作的 <code>Context Engine</code>。
+          这份报告把当前讨论固化成一个清晰的长期方向：<code>ContextGo</code>
+          的核心不是把聊天历史做长，也不是把工作目录做成渐进式披露的文件树，而是以
+          <code>Space</code> 为逻辑边界，构建一个可形成、可演化、可治理、可协作的 <code>Context Engine</code>。
         </p>
 
         <div class="hero-grid">
@@ -506,7 +508,10 @@
               <li><code>context window</code> 是执行窗口，不是记忆本体。</li>
               <li><code>RAG</code> 只覆盖 retrieval 的一部分，不是完整记忆系统。</li>
               <li>工作目录只能提供 runtime material，不能承担长期上下文主身份。</li>
-              <li><code>Space</code> 必须高于 <code>Conversation</code>、<code>Thread</code>、<code>Mount</code> 和单次执行。</li>
+              <li>
+                <code>Space</code> 必须高于 <code>Conversation</code>、<code>Thread</code>、<code>Mount</code>
+                和单次执行。
+              </li>
             </ul>
           </article>
           <article class="hero-card">
@@ -538,11 +543,16 @@
         <section id="thesis">
           <h2>1. 核心结论</h2>
           <p>
-            <code>ContextGo</code> 下一阶段不应继续围绕“单个工作目录下的 agent 协作”做线性扩展，而应把已有的 agent runtime、connector、IM channel、automation 能力上提到 <code>Space-first</code> 的结构中，由一个独立的 <code>Context Engine</code> 负责长期上下文沉淀与每次执行的 <code>Context Pack</code> 组装。
+            <code>ContextGo</code> 下一阶段不应继续围绕“单个工作目录下的 agent 协作”做线性扩展，而应把已有的 agent
+            runtime、connector、IM channel、automation 能力上提到 <code>Space-first</code> 的结构中，由一个独立的
+            <code>Context Engine</code> 负责长期上下文沉淀与每次执行的 <code>Context Pack</code> 组装。
           </p>
 
           <div class="quote">
-            <code>Space</code> 是长期逻辑空间，<code>Context Engine</code> 是空间之下的记忆与上下文子系统，<code>Context Pack</code> 是一次执行真正送进模型窗口的可解释载荷。
+            <code>Space</code> 是长期逻辑空间，<code>Context Engine</code> 是空间之下的记忆与上下文子系统，<code
+              >Context Pack</code
+            >
+            是一次执行真正送进模型窗口的可解释载荷。
           </div>
 
           <div class="grid">
@@ -561,7 +571,10 @@
                 <li>记忆系统必须分层，不同层使用不同索引结构。</li>
                 <li>记忆必须具备 formation、promotion、compaction、forgetting、review。</li>
                 <li>高价值记忆要有 provenance、scope 和人机协作介入点。</li>
-                <li><code>Space</code>、<code>Thread</code>、<code>Mount</code>、<code>Context Pack</code> 必须语义稳定，不再漂移。</li>
+                <li>
+                  <code>Space</code>、<code>Thread</code>、<code>Mount</code>、<code>Context Pack</code>
+                  必须语义稳定，不再漂移。
+                </li>
               </ul>
             </article>
           </div>
@@ -570,18 +583,40 @@
         <section id="references">
           <h2>2. 参考资料</h2>
           <p>
-            这部分把当前架构判断所依赖的核心参考集中到一处，并提供可切换视图。目标不是堆链接，而是明确每个参考分别回答什么问题，以及它们在 <code>ContextGo</code> 中处于哪一层。
+            这部分把当前架构判断所依赖的核心参考集中到一处，并提供可切换视图。目标不是堆链接，而是明确每个参考分别回答什么问题，以及它们在
+            <code>ContextGo</code> 中处于哪一层。
           </p>
 
           <div class="reference-tabs" data-tabs>
             <div class="tab-list" role="tablist" aria-label="参考资料切换">
-              <button class="tab-button" role="tab" id="tab-paper" aria-controls="panel-paper" aria-selected="true" data-tab-target="panel-paper">
+              <button
+                class="tab-button"
+                role="tab"
+                id="tab-paper"
+                aria-controls="panel-paper"
+                aria-selected="true"
+                data-tab-target="panel-paper"
+              >
                 参考论文
               </button>
-              <button class="tab-button" role="tab" id="tab-projects" aria-controls="panel-projects" aria-selected="false" data-tab-target="panel-projects">
+              <button
+                class="tab-button"
+                role="tab"
+                id="tab-projects"
+                aria-controls="panel-projects"
+                aria-selected="false"
+                data-tab-target="panel-projects"
+              >
                 参考项目
               </button>
-              <button class="tab-button" role="tab" id="tab-translation" aria-controls="panel-translation" aria-selected="false" data-tab-target="panel-translation">
+              <button
+                class="tab-button"
+                role="tab"
+                id="tab-translation"
+                aria-controls="panel-translation"
+                aria-selected="false"
+                data-tab-target="panel-translation"
+              >
                 论文核心翻译
               </button>
             </div>
@@ -591,14 +626,20 @@
                 <article class="card">
                   <h3>Memory in the Age of AI Agents</h3>
                   <p>
-                    这篇综述论文最重要的价值，不在于提出一个单点算法，而在于把 agent memory 从“聊天历史更长一点”或“接一个 RAG”里解耦出来，作为一类独立系统能力来讨论。
+                    这篇综述论文最重要的价值，不在于提出一个单点算法，而在于把 agent memory
+                    从“聊天历史更长一点”或“接一个 RAG”里解耦出来，作为一类独立系统能力来讨论。
                   </p>
                   <div>
-                    <a class="reference-link" href="https://arxiv.org/abs/2512.13564" target="_blank" rel="noreferrer">arXiv 摘要</a>
-                    <a class="reference-link" href="https://arxiv.org/pdf/2512.13564" target="_blank" rel="noreferrer">PDF 原文</a>
+                    <a class="reference-link" href="https://arxiv.org/abs/2512.13564" target="_blank" rel="noreferrer"
+                      >arXiv 摘要</a
+                    >
+                    <a class="reference-link" href="https://arxiv.org/pdf/2512.13564" target="_blank" rel="noreferrer"
+                      >PDF 原文</a
+                    >
                   </div>
                   <p class="reference-note">
-                    报告中采用的核心框架即来自该论文：<code>forms</code>、<code>functions</code>、<code>dynamics</code> 三个维度共同定义 memory system。
+                    报告中采用的核心框架即来自该论文：<code>forms</code>、<code>functions</code>、<code>dynamics</code>
+                    三个维度共同定义 memory system。
                   </p>
                 </article>
                 <article class="card">
@@ -617,23 +658,41 @@
                 <article class="card">
                   <h3>Supermemory</h3>
                   <p>
-                    用来参考 <code>memory engine / context service</code> 的对象建模、统一入口和长期记忆思路，而不是反过来定义 <code>Space</code> 本体。
+                    用来参考
+                    <code>memory engine / context service</code> 的对象建模、统一入口和长期记忆思路，而不是反过来定义
+                    <code>Space</code> 本体。
                   </p>
-                  <a class="reference-link" href="https://github.com/supermemoryai/supermemory" target="_blank" rel="noreferrer">GitHub 仓库</a>
+                  <a
+                    class="reference-link"
+                    href="https://github.com/supermemoryai/supermemory"
+                    target="_blank"
+                    rel="noreferrer"
+                    >GitHub 仓库</a
+                  >
                 </article>
                 <article class="card">
                   <h3>AFFiNE</h3>
                   <p>
-                    用来吸收 local-first、doc/canvas 融合、块模型、协作表面和人类友好的知识工作台能力，但不能直接充当 <code>Context Engine</code>。
+                    用来吸收 local-first、doc/canvas 融合、块模型、协作表面和人类友好的知识工作台能力，但不能直接充当
+                    <code>Context Engine</code>。
                   </p>
-                  <a class="reference-link" href="https://github.com/toeverything/AFFiNE" target="_blank" rel="noreferrer">GitHub 仓库</a>
+                  <a
+                    class="reference-link"
+                    href="https://github.com/toeverything/AFFiNE"
+                    target="_blank"
+                    rel="noreferrer"
+                    >GitHub 仓库</a
+                  >
                 </article>
                 <article class="card">
                   <h3>Obsidian</h3>
                   <p>
-                    用来参考文件式知识组织、图视图、Canvas 与人类笔记工作流，但它属于 <code>Context Surface</code> 范畴，不是上下文引擎本身。
+                    用来参考文件式知识组织、图视图、Canvas 与人类笔记工作流，但它属于
+                    <code>Context Surface</code> 范畴，不是上下文引擎本身。
                   </p>
-                  <a class="reference-link" href="https://help.obsidian.md/developers" target="_blank" rel="noreferrer">开发者入口</a>
+                  <a class="reference-link" href="https://help.obsidian.md/developers" target="_blank" rel="noreferrer"
+                    >开发者入口</a
+                  >
                 </article>
                 <article class="card">
                   <h3>角色对照</h3>
@@ -641,7 +700,10 @@
                     <li>论文定义问题空间。</li>
                     <li><code>Supermemory</code> 提供引擎层参考。</li>
                     <li><code>AFFiNE</code> 与 <code>Obsidian</code> 提供人类表面和知识组织层参考。</li>
-                    <li><code>ContextGo</code> 负责把这些吸收成自己的 <code>Space + Context Engine + Execution Runtime</code>。</li>
+                    <li>
+                      <code>ContextGo</code> 负责把这些吸收成自己的
+                      <code>Space + Context Engine + Execution Runtime</code>。
+                    </li>
                   </ul>
                 </article>
               </div>
@@ -651,7 +713,8 @@
               <div class="translation-block">
                 <h3>核心翻译 1：为什么记忆不能等于 RAG</h3>
                 <p>
-                  论文的核心意思可以翻成一句更工程化的话：Agent 的记忆不是简单把外部文本检索回来，它是一套让系统能形成状态、积累经验、保留工作上下文，并在之后任务里被有选择地取回和更新的机制。
+                  论文的核心意思可以翻成一句更工程化的话：Agent
+                  的记忆不是简单把外部文本检索回来，它是一套让系统能形成状态、积累经验、保留工作上下文，并在之后任务里被有选择地取回和更新的机制。
                 </p>
               </div>
 
@@ -690,24 +753,36 @@
             </div>
             <div class="layer">
               <strong>Layer 2 · Execution Layer</strong>
-              <span><code>Thread / Conversation / Agent Run / IM Session / Cron / Hooks / Runtime Workspace</code>。负责任务执行，不定义长期记忆。</span>
+              <span
+                ><code>Thread / Conversation / Agent Run / IM Session / Cron / Hooks / Runtime Workspace</code
+                >。负责任务执行，不定义长期记忆。</span
+              >
             </div>
             <div class="layer">
               <strong>Layer 3 · Ingestion Layer</strong>
-              <span>统一吸纳 connector、工作目录文件、IM 消息、用户编辑、Agent 产物，把它们转换成标准化上下文对象。</span>
+              <span
+                >统一吸纳 connector、工作目录文件、IM 消息、用户编辑、Agent 产物，把它们转换成标准化上下文对象。</span
+              >
             </div>
             <div class="layer">
               <strong>Layer 4 · Context Engine Layer</strong>
-              <span><code>document -&gt; chunk -&gt; memory -&gt; profile -&gt; retrieval -&gt; context pack</code>。这是长期记忆、生命周期和装配中枢。</span>
+              <span
+                ><code>document -&gt; chunk -&gt; memory -&gt; profile -&gt; retrieval -&gt; context pack</code
+                >。这是长期记忆、生命周期和装配中枢。</span
+              >
             </div>
             <div class="layer">
               <strong>Layer 5 · Human Surface Layer</strong>
-              <span><code>Space Docs / Space Canvas / Members / Memory Review / Context Graph</code>。负责让人理解、编辑、审批和协作。</span>
+              <span
+                ><code>Space Docs / Space Canvas / Members / Memory Review / Context Graph</code
+                >。负责让人理解、编辑、审批和协作。</span
+              >
             </div>
           </div>
 
           <div class="diagram">
-            <pre>ContextGo Space
+            <pre>
+ContextGo Space
 ├── Human Surface
 │   ├── Space Docs
 │   ├── Space Canvas
@@ -723,24 +798,36 @@
     ├── Agent Run / Hooks / Cron
     ├── Connector Binding
     ├── IM Channels
-    └── Runtime Workspace / Mount</pre>
+    └── Runtime Workspace / Mount</pre
+            >
           </div>
         </section>
 
         <section id="docs-map">
           <h2>4. 关联文档地图</h2>
           <p>
-            这份 HTML 报告是总报告，不替代仓库内已经存在的设计稿。它的职责是把长期主约束写死，并给出一条稳定的阅读入口。下面这些文档继续承担各自的专题说明。
+            这份 HTML
+            报告是总报告，不替代仓库内已经存在的设计稿。它的职责是把长期主约束写死，并给出一条稳定的阅读入口。下面这些文档继续承担各自的专题说明。
           </p>
 
           <div class="doc-map">
             <article class="doc-map-item">
               <h3>总边界与定位</h3>
               <ul>
-                <li><a href="./docs/charter.md">charter.md</a>：定义 Context Engine 模块目标、非职责和第一阶段成功标准。</li>
-                <li><a href="./docs/reference-landscape.md">reference-landscape.md</a>：串联论文、Supermemory、AFFiNE 三类外部参考。</li>
-                <li><a href="../../docs/tech/space-model.md">space-model.md</a>：定义 Space-first 的产品主模型和术语边界。</li>
-                <li><a href="../../docs/tech/repo-topology.md">repo-topology.md</a>：定义主产品仓库与 sibling connector 仓库的长期边界。</li>
+                <li>
+                  <a href="./docs/charter.md">charter.md</a>：定义 Context Engine 模块目标、非职责和第一阶段成功标准。
+                </li>
+                <li>
+                  <a href="./docs/reference-landscape.md">reference-landscape.md</a>：串联论文、Supermemory、AFFiNE
+                  三类外部参考。
+                </li>
+                <li>
+                  <a href="../../docs/tech/space-model.md">space-model.md</a>：定义 Space-first 的产品主模型和术语边界。
+                </li>
+                <li>
+                  <a href="../../docs/tech/repo-topology.md">repo-topology.md</a>：定义主产品仓库与 sibling connector
+                  仓库的长期边界。
+                </li>
               </ul>
             </article>
 
@@ -757,10 +844,22 @@
             <article class="doc-map-item">
               <h3>外部能力吸收</h3>
               <ul>
-                <li><a href="./docs/supermemory-context-os-fit.md">supermemory-context-os-fit.md</a>：为什么 Supermemory 更适合作为 memory engine 参考，而不是 Space 本体。</li>
-                <li><a href="./docs/affine-space-provider.md">affine-space-provider.md</a>：现有文档名仍保留，但应按“能力吸收”而不是“外部主语”来理解。</li>
-                <li><a href="./docs/workbench-space-canvas-interaction.md">workbench-space-canvas-interaction.md</a>：Canvas/Space 表面的交互约束。</li>
-                <li><a href="./docs/affine-block-payload-mapping.md">affine-block-payload-mapping.md</a>：内容结构与块级数据映射。</li>
+                <li>
+                  <a href="./docs/supermemory-context-os-fit.md">supermemory-context-os-fit.md</a>：为什么 Supermemory
+                  更适合作为 memory engine 参考，而不是 Space 本体。
+                </li>
+                <li>
+                  <a href="./docs/affine-space-provider.md">affine-space-provider.md</a
+                  >：现有文档名仍保留，但应按“能力吸收”而不是“外部主语”来理解。
+                </li>
+                <li>
+                  <a href="./docs/workbench-space-canvas-interaction.md">workbench-space-canvas-interaction.md</a
+                  >：Canvas/Space 表面的交互约束。
+                </li>
+                <li>
+                  <a href="./docs/affine-block-payload-mapping.md">affine-block-payload-mapping.md</a
+                  >：内容结构与块级数据映射。
+                </li>
               </ul>
             </article>
           </div>
@@ -769,7 +868,11 @@
         <section id="governance">
           <h2>5. 长期治理边界</h2>
           <p>
-            这套约束不是“等以后实现多了再统一”的文档，而是现在就应该启动的一轮治理。因为项目已经同时拥有 <code>Agent runtime</code>、<code>Space</code>、<code>Context Engine</code>、<code>Connector</code>、<code>IM channel</code>、<code>Docs/Canvas</code> 这些高耦合方向，如果不尽早固定边界，后续每新增一个能力都会把系统再拉向不同的心智模型。
+            这套约束不是“等以后实现多了再统一”的文档，而是现在就应该启动的一轮治理。因为项目已经同时拥有
+            <code>Agent runtime</code>、<code>Space</code>、<code>Context Engine</code>、<code>Connector</code>、<code
+              >IM channel</code
+            >、<code>Docs/Canvas</code>
+            这些高耦合方向，如果不尽早固定边界，后续每新增一个能力都会把系统再拉向不同的心智模型。
           </p>
 
           <div class="quote">
@@ -783,7 +886,9 @@
                 <li><strong>Space vs Conversation</strong>：顶层主语必须是 <code>Space</code>，不是会话。</li>
                 <li><strong>Context Engine vs Surface</strong>：文档、白板、图谱是表面，不是引擎。</li>
                 <li><strong>Context Engine vs Runtime</strong>：记忆与装配属于引擎，执行循环属于 runtime。</li>
-                <li><strong>Connector Repo vs Product</strong>：独立 connector 项目负责接入控制面，主产品负责产品化吸收。</li>
+                <li>
+                  <strong>Connector Repo vs Product</strong>：独立 connector 项目负责接入控制面，主产品负责产品化吸收。
+                </li>
                 <li><strong>Human Governance vs Auto Loop</strong>：审批、权限、审计不能藏进 runtime 私有协议里。</li>
               </ul>
             </article>
@@ -803,7 +908,9 @@
             <article class="card">
               <h3>当前就该启动的治理动作</h3>
               <ol>
-                <li>冻结术语表：`Space`、`Thread`、`Mount`、`ConnectorBinding`、`ContextPack`、`Runtime Workspace`。</li>
+                <li>
+                  冻结术语表：`Space`、`Thread`、`Mount`、`ConnectorBinding`、`ContextPack`、`Runtime Workspace`。
+                </li>
                 <li>冻结责任矩阵：每个模块都必须回答“这是不是我的职责”。</li>
                 <li>冻结 connector 边界：哪些是 productized，哪些继续在独立项目孵化。</li>
                 <li>冻结 runtime 边界：支持多 runtime，但不承诺私有能力完全等价。</li>
@@ -825,7 +932,9 @@
         <section id="runtime-connectors">
           <h2>6. 多 Runtime 与 Connector 项目边界</h2>
           <p>
-            长期支持多种 Agent runtime 是合理的，但不能把产品做成“所有 runtime 的私有协议适配层”。同样，connector 也不能既是外部仓库的内部实现细节，又是主产品未定义边界的万能模块。稳定做法是：<code>ContextGo</code> 持有产品级执行契约，connector 项目负责能力孵化与接入控制面。
+            长期支持多种 Agent runtime 是合理的，但不能把产品做成“所有 runtime 的私有协议适配层”。同样，connector
+            也不能既是外部仓库的内部实现细节，又是主产品未定义边界的万能模块。稳定做法是：<code>ContextGo</code>
+            持有产品级执行契约，connector 项目负责能力孵化与接入控制面。
           </p>
 
           <div class="grid">
@@ -833,7 +942,10 @@
               <h3>多 Runtime 的长期原则</h3>
               <ul>
                 <li>支持多 runtime，但不追求所有私有能力完全等价。</li>
-                <li><code>skill</code>、<code>hook</code>、<code>multi-agent</code> 的产品语义必须由 <code>ContextGo</code> 定义。</li>
+                <li>
+                  <code>skill</code>、<code>hook</code>、<code>multi-agent</code> 的产品语义必须由
+                  <code>ContextGo</code> 定义。
+                </li>
                 <li>runtime adapter 负责把稳定契约翻译成具体 runtime 能力，而不是反过来定义产品主模型。</li>
                 <li>多 agent 的编排定义权在 <code>ContextGo</code>，不是交给某个 runtime 的私有子 agent 协议。</li>
               </ul>
@@ -841,7 +953,10 @@
             <article class="card">
               <h3>Connector 项目的长期原则</h3>
               <ul>
-                <li>sibling <code>../connector</code> 仓库负责 connector capability incubation 与 connector control plane。</li>
+                <li>
+                  sibling <code>../connector</code> 仓库负责 connector capability incubation 与 connector control
+                  plane。
+                </li>
                 <li>它负责 <code>datasource / profile / runtime / secret</code> 与外部系统接入形态。</li>
                 <li>主产品负责 productization、Space 归属、审批治理、Context Engine 接线与 UI/remote surface。</li>
                 <li>一旦 connector 成为产品能力，其稳定 contract 必须先在主产品仓库中被定义。</li>
@@ -854,7 +969,10 @@
               <h3>Connector 不是 snapshot pipeline</h3>
               <ul>
                 <li><code>snapshot</code> 只是 connector 的一种产物，不是 connector 本体。</li>
-                <li>agent-first connector 的 canonical form 更接近 <code>CLI / MCP / API / managed runtime</code> 这样的 execution surface。</li>
+                <li>
+                  agent-first connector 的 canonical form 更接近 <code>CLI / MCP / API / managed runtime</code> 这样的
+                  execution surface。
+                </li>
                 <li>进入 <code>Context Engine</code> 的是其中可沉淀、可检索、可抽象的部分。</li>
                 <li>进入 <code>Execution Runtime</code> 的是其中可调用、可观察、可审批的 action surface。</li>
               </ul>
@@ -862,8 +980,14 @@
             <article class="card">
               <h3>建议的稳定 contract</h3>
               <ul>
-                <li><strong>Runtime contract</strong>：Run lifecycle、context injection、tool surface、artifact IO、capability declaration。</li>
-                <li><strong>Connector contract</strong>：context outputs、execution capabilities、runtime handles、health/validation、writeback results。</li>
+                <li>
+                  <strong>Runtime contract</strong>：Run lifecycle、context injection、tool surface、artifact
+                  IO、capability declaration。
+                </li>
+                <li>
+                  <strong>Connector contract</strong>：context outputs、execution capabilities、runtime
+                  handles、health/validation、writeback results。
+                </li>
                 <li><strong>治理约束</strong>：approval broker、audit log、scope isolation 由主产品持有。</li>
               </ul>
             </article>
@@ -873,7 +997,10 @@
         <section id="objects">
           <h2>7. 核心对象模型</h2>
           <p>
-            产品层对象和引擎层对象必须分开定义。前者负责归属、协作、执行与审批，后者负责沉淀、压缩、检索与组装。<code>Context Engine</code> 服务于 <code>Space</code>，不能反向定义 <code>Space</code>。
+            产品层对象和引擎层对象必须分开定义。前者负责归属、协作、执行与审批，后者负责沉淀、压缩、检索与组装。<code
+              >Context Engine</code
+            >
+            服务于 <code>Space</code>，不能反向定义 <code>Space</code>。
           </p>
 
           <div class="grid">
@@ -903,10 +1030,12 @@
           </div>
 
           <div class="diagram">
-            <pre>Space
+            <pre>
+Space
   -> Thread / SourceItem / Artifact / ConnectorBinding / Member
     -> SourceRecord / DocumentSnapshot / Chunk / MemoryCandidate / MemoryEntry / ProfileSegment
-      -> RetrievalPlan / ContextPack</pre>
+      -> RetrievalPlan / ContextPack</pre
+            >
           </div>
 
           <div class="pill-row">
@@ -920,7 +1049,8 @@
         <section id="lifecycle">
           <h2>8. 记忆生命周期与索引策略</h2>
           <p>
-            一个完整的 memory system 不是“向量库 + 若干 prompt”，而是一套会形成、升级、压缩、遗忘、审查和再装配的运行机制。不同记忆层应采用不同存储与索引结构。
+            一个完整的 memory system 不是“向量库 + 若干
+            prompt”，而是一套会形成、升级、压缩、遗忘、审查和再装配的运行机制。不同记忆层应采用不同存储与索引结构。
           </p>
 
           <div class="grid">
@@ -941,15 +1071,21 @@
                 <li><strong>Lexical Index</strong>：关键词、精确字段、命名实体过滤。</li>
                 <li><strong>Vector Index</strong>：语义近邻和 chunk / doc 召回。</li>
                 <li><strong>Structured Index</strong>：偏好、约束、决策、身份等 typed memory。</li>
-                <li><strong>Graph Edges</strong>：<code>supports / updates / derives / contradicts / belongs_to</code>。</li>
+                <li>
+                  <strong>Graph Edges</strong>：<code>supports / updates / derives / contradicts / belongs_to</code>。
+                </li>
                 <li><strong>Temporal Index</strong>：recency、活跃 thread、最近变化。</li>
-                <li><strong>Scope Index</strong>：<code>space / thread / connector / source kind / member</code> 范围过滤。</li>
+                <li>
+                  <strong>Scope Index</strong>：<code>space / thread / connector / source kind / member</code>
+                  范围过滤。
+                </li>
               </ul>
             </article>
           </div>
 
           <div class="diagram">
-            <pre>Source / Interaction / Artifact
+            <pre>
+Source / Interaction / Artifact
         ↓
 Normalization + Provenance
         ↓
@@ -961,14 +1097,17 @@ MemoryEntry + ProfileSegment
         ↓
 Retrieval + Ranking + Budgeting
         ↓
-ContextPack → Agent Context Window</pre>
+ContextPack → Agent Context Window</pre
+            >
           </div>
         </section>
 
         <section id="affine">
           <h2>9. AFFiNE 的正确吸收方式</h2>
           <p>
-            <code>AFFiNE</code> 的价值在于 local-first、doc/canvas 融合、块级内容模型、协同存储与人类友好的工作台交互。要吸收的是这些能力，而不是把 <code>AFFiNE</code> 当成外围 provider 或直接让它定义 <code>ContextGo</code> 的顶层产品边界。
+            <code>AFFiNE</code> 的价值在于 local-first、doc/canvas
+            融合、块级内容模型、协同存储与人类友好的工作台交互。要吸收的是这些能力，而不是把
+            <code>AFFiNE</code> 当成外围 provider 或直接让它定义 <code>ContextGo</code> 的顶层产品边界。
           </p>
 
           <div class="grid">
@@ -1000,13 +1139,17 @@ ContextPack → Agent Context Window</pre>
             <article class="card">
               <h3>吸收后的定位</h3>
               <p>
-                <code>AFFiNE</code> 更适合作为 <code>Space Surface substrate</code> 与 <code>local-first collaboration substrate</code> 的能力来源，进入 <code>Space Docs</code>、<code>Space Canvas</code>、内容组织与协作表面。
+                <code>AFFiNE</code> 更适合作为 <code>Space Surface substrate</code> 与
+                <code>local-first collaboration substrate</code> 的能力来源，进入 <code>Space Docs</code>、<code
+                  >Space Canvas</code
+                >、内容组织与协作表面。
               </p>
             </article>
             <article class="card">
               <h3>最终边界</h3>
               <p>
-                <code>ContextGo</code> 继续定义顶层 <code>Space</code>、长期上下文引擎、execution runtime 与 connector / channel 体系；<code>AFFiNE</code> 贡献的是人类表面与内容底座，而不是系统主语。
+                <code>ContextGo</code> 继续定义顶层 <code>Space</code>、长期上下文引擎、execution runtime 与 connector /
+                channel 体系；<code>AFFiNE</code> 贡献的是人类表面与内容底座，而不是系统主语。
               </p>
             </article>
           </div>
@@ -1015,7 +1158,9 @@ ContextPack → Agent Context Window</pre>
         <section id="roadmap">
           <h2>10. 分阶段实施路线</h2>
           <p>
-            为避免继续在 <code>workspace / conversation / space / context</code> 四套心智模型中来回漂移，建议先锁边界，再补 ingestion 和 context pack 中枢，最后再做更强的图谱和协作表面。
+            为避免继续在
+            <code>workspace / conversation / space / context</code> 四套心智模型中来回漂移，建议先锁边界，再补 ingestion
+            和 context pack 中枢，最后再做更强的图谱和协作表面。
           </p>
 
           <div class="timeline">
@@ -1024,7 +1169,11 @@ ContextPack → Agent Context Window</pre>
               <div>
                 <p>冻结术语和责任边界。</p>
                 <ul>
-                  <li>统一 <code>Space / Thread / Mount / Runtime Workspace / SourceItem / Artifact / ContextPack</code> 的定义。</li>
+                  <li>
+                    统一
+                    <code>Space / Thread / Mount / Runtime Workspace / SourceItem / Artifact / ContextPack</code>
+                    的定义。
+                  </li>
                   <li>明确 <code>Conversation</code> 在迁移期只是 <code>Thread</code> 的近似承载。</li>
                 </ul>
               </div>
@@ -1054,7 +1203,9 @@ ContextPack → Agent Context Window</pre>
               <div>
                 <p>把 <code>Context Pack</code> 组装做成系统中枢。</p>
                 <ul>
-                  <li>区分 thread state、active space context、retrieved memory、profile、evidence、runtime context。</li>
+                  <li>
+                    区分 thread state、active space context、retrieved memory、profile、evidence、runtime context。
+                  </li>
                   <li>让每次 Agent 执行都可解释、可裁剪、可审查。</li>
                 </ul>
               </div>
@@ -1084,7 +1235,12 @@ ContextPack → Agent Context Window</pre>
       </main>
 
       <footer>
-        本报告用于固定 <code>ContextGo</code> 的长期上下文引擎方向：<code>Space-first</code>、<code>Context Engine</code> 独立化、<code>Context Pack</code> 产品化，以及对 <code>AFFiNE</code> 与 <code>Supermemory</code> 的能力吸收边界。它不是代码实现说明，而是下一阶段所有数据模型、UI 表面与 runtime 接线的共同约束。
+        本报告用于固定 <code>ContextGo</code> 的长期上下文引擎方向：<code>Space-first</code>、<code
+          >Context Engine</code
+        >
+        独立化、<code>Context Pack</code> 产品化，以及对 <code>AFFiNE</code> 与
+        <code>Supermemory</code> 的能力吸收边界。它不是代码实现说明，而是下一阶段所有数据模型、UI 表面与 runtime
+        接线的共同约束。
       </footer>
     </div>
 

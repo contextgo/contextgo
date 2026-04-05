@@ -19,7 +19,6 @@ import type {
 export const DISCORD_MESSAGE_LIMIT = 2000;
 export const DISCORD_BUTTON_LABEL_LIMIT = 80;
 
-
 type DiscordChannelLike = {
   id?: string;
   parentId?: string | null;

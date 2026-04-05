@@ -37,7 +37,7 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
 vi.mock('@process/channels/core/ChannelRouteResolver', () => ({
   getChannelRouteResolver: vi.fn(() => ({
     resolveChannelAccount: mockResolveConnectorInstance,
-      resolveConnectorInstance: mockResolveConnectorInstance,
+    resolveConnectorInstance: mockResolveConnectorInstance,
   })),
   inferRemoteChatType: mockInferRemoteChatType,
 }));
@@ -233,7 +233,6 @@ describe('PairingService', () => {
     expect(authorized).toBe(false);
   });
 
-
   it('accepts authorization through parent platform chat for thread peers', async () => {
     const service = createService();
     mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({
@@ -342,7 +341,6 @@ describe('PairingService', () => {
 
     expect(authorized).toBe(true);
   });
-
 
   it('authorizes a remote user directly without creating a pending pairing code', async () => {
     const service = createService();

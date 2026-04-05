@@ -2913,7 +2913,8 @@ export class AionUIDatabase {
       const targets: IChannelAuthorizedTarget[] = projectedRows.map((row) => {
         const threadMarker = ':thread:';
         const markerIndex = row.remote_chat_id.indexOf(threadMarker);
-        const parsedParentTargetId = markerIndex >= 0 ? row.remote_chat_id.slice(0, markerIndex) || undefined : undefined;
+        const parsedParentTargetId =
+          markerIndex >= 0 ? row.remote_chat_id.slice(0, markerIndex) || undefined : undefined;
         const parsedThreadId =
           markerIndex >= 0 ? row.remote_chat_id.slice(markerIndex + threadMarker.length) || undefined : undefined;
 

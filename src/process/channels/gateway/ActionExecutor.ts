@@ -295,7 +295,10 @@ function extractRemoteChatType(message: IUnifiedIncomingMessage): string | undef
   return undefined;
 }
 
-function applyThreadRouting(message: IUnifiedIncomingMessage, outgoing: IUnifiedOutgoingMessage): IUnifiedOutgoingMessage {
+function applyThreadRouting(
+  message: IUnifiedIncomingMessage,
+  outgoing: IUnifiedOutgoingMessage
+): IUnifiedOutgoingMessage {
   const peer = message.peer;
   if (!peer || peer.scope !== 'thread') {
     return outgoing;

@@ -74,7 +74,10 @@ async function runLoginFlow(callbacks: LoginCallbacks, signal: AbortSignal): Pro
   callbacks.onError(new Error('QR code expired too many times'));
 }
 
-type PollResult = 'expired' | 'aborted' | { accountId: string; botToken: string; baseUrl: string; scannerUserId?: string };
+type PollResult =
+  | 'expired'
+  | 'aborted'
+  | { accountId: string; botToken: string; baseUrl: string; scannerUserId?: string };
 
 async function pollQRStatus(qrcode: string, callbacks: LoginCallbacks, signal: AbortSignal): Promise<PollResult> {
   while (!signal.aborted) {

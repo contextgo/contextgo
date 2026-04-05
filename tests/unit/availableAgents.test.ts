@@ -60,7 +60,14 @@ describe('availableAgents helpers', () => {
 
   it('builds preset assistants from enabled assistant config entries', () => {
     const assistants: AcpBackendConfig[] = [
-      { id: 'builtin-cowork', name: 'Cowork', isPreset: true, enabled: true, avatar: 'cowork', presetAgentType: 'gemini' },
+      {
+        id: 'builtin-cowork',
+        name: 'Cowork',
+        isPreset: true,
+        enabled: true,
+        avatar: 'cowork',
+        presetAgentType: 'gemini',
+      },
       {
         id: 'builtin-reviewer',
         name: 'Reviewer',

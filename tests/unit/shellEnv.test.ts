@@ -129,7 +129,9 @@ describe('getEnhancedEnv', () => {
     if (process.platform === 'win32') return;
 
     vi.doMock('child_process', () => ({
-      execFileSync: vi.fn().mockReturnValue('PATH=/shell/bin\nHOME=/Users/shell-user\nXDG_CONFIG_HOME=/Users/shell-user/.config\n'),
+      execFileSync: vi
+        .fn()
+        .mockReturnValue('PATH=/shell/bin\nHOME=/Users/shell-user\nXDG_CONFIG_HOME=/Users/shell-user/.config\n'),
       execFile: vi.fn(),
     }));
 

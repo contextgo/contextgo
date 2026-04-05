@@ -834,9 +834,7 @@ const WebuiModalContent: React.FC = () => {
                 {'  '}
                 <button
                   className='text-primary hover:underline cursor-pointer bg-transparent border-none p-0 text-12px'
-                  onClick={() =>
-                    void openExternalUrl(getPublicDocsUrl(i18n.language, PUBLIC_DOC_SLUGS.remoteAccess))
-                  }
+                  onClick={() => void openExternalUrl(getPublicDocsUrl(i18n.language, PUBLIC_DOC_SLUGS.remoteAccess))}
                 >
                   {t('settings.webui.viewGuide')}
                 </button>
