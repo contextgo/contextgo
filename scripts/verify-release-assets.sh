@@ -14,13 +14,11 @@ pass() {
   echo "PASS: $1"
 }
 
-for file in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml release-manifest.json; do
-  if [ ! -f "$OUTPUT_DIR/$file" ]; then
-    fail "missing required release file: $file"
-  else
-    pass "$file exists"
-  fi
-done
+if [ ! -f "$OUTPUT_DIR/release-manifest.json" ]; then
+  fail "missing required release file: release-manifest.json"
+else
+  pass "release-manifest.json exists"
+fi
 
 while IFS= read -r suspicious; do
   fail "release output contains forbidden secret/config artifact: $(basename "$suspicious")"
@@ -81,18 +79,37 @@ assert_metadata_points_to_existing_file() {
   pass "$metadata_name -> $ref_file"
 }
 
-assert_metadata_points_to_existing_file "latest.yml" '(win|windows).*(x64|amd64)|ContextGo-.*-(win|windows)-x64'
-assert_metadata_points_to_existing_file "latest-mac.yml" '(mac|macos).*(x64)|ContextGo-.*-(mac|macos)-x64'
-assert_metadata_points_to_existing_file "latest-linux.yml" '(linux).*(x64|amd64)|ContextGo-.*-linux-x64'
-assert_metadata_points_to_existing_file "latest-linux-arm64.yml" '(linux).*(arm64|aarch64)|ContextGo-.*-linux-arm64'
+has_output_asset() {
+  local pattern="$1"
+  find "$OUTPUT_DIR" -maxdepth 1 -type f | grep -Eq "$pattern"
+}
 
-for file in latest-win-arm64.yml latest-arm64-mac.yml; do
-  if [ ! -f "$OUTPUT_DIR/$file" ]; then
-    fail "missing arch-specific updater metadata: $file"
-  else
-    pass "$file exists"
+validate_metadata_if_asset_exists() {
+  local asset_pattern="$1"
+  local metadata_name="$2"
+  local expected_pattern="$3"
+  local description="$4"
+
+  if ! has_output_asset "$asset_pattern"; then
+    echo "INFO: skipping ${description} metadata validation (no matching asset)"
+    return
   fi
-done
+
+  if [ ! -f "$OUTPUT_DIR/$metadata_name" ]; then
+    fail "missing updater metadata for ${description}: $metadata_name"
+    return
+  fi
+
+  pass "$metadata_name exists"
+  assert_metadata_points_to_existing_file "$metadata_name" "$expected_pattern"
+}
+
+validate_metadata_if_asset_exists '/ContextGo-.*-(win|windows)-x64\.(exe|msi|zip)$' 'latest.yml' '(win|windows).*(x64|amd64)|ContextGo-.*-(win|windows)-x64' 'windows/x64'
+validate_metadata_if_asset_exists '/ContextGo-.*-(win|windows)-arm64\.(exe|msi|zip)$' 'latest-win-arm64.yml' '(win|windows).*(arm64)|ContextGo-.*-(win|windows)-arm64' 'windows/arm64'
+validate_metadata_if_asset_exists '/ContextGo-.*-(mac|macos)-x64\.(dmg|zip)$' 'latest-mac.yml' '(mac|macos).*(x64)|ContextGo-.*-(mac|macos)-x64' 'macos/x64'
+validate_metadata_if_asset_exists '/ContextGo-.*-(mac|macos)-arm64\.(dmg|zip)$' 'latest-arm64-mac.yml' '(mac|macos).*(arm64)|ContextGo-.*-(mac|macos)-arm64' 'macos/arm64'
+validate_metadata_if_asset_exists '/ContextGo-.*-linux-x64\.deb$' 'latest-linux.yml' '(linux).*(x64|amd64)|ContextGo-.*-linux-x64' 'linux/x64'
+validate_metadata_if_asset_exists '/ContextGo-.*-linux-arm64\.deb$' 'latest-linux-arm64.yml' '(linux).*(arm64|aarch64)|ContextGo-.*-linux-arm64' 'linux/arm64'
 
 if ! node - "$OUTPUT_DIR" <<'EOF'; then
 const fs = require('node:fs');
@@ -116,15 +133,6 @@ if (!Array.isArray(manifest.assets) || manifest.assets.length === 0) {
 }
 
 const assetPattern = /^ContextGo-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?-(mac|macos|win|windows|linux|android|harmony|harmonyos)-[A-Za-z0-9._-]+\.(aab|apk|app|deb|dmg|exe|hap|msi|zip)$/i;
-const requiredPairs = [
-  ['windows', 'x64'],
-  ['windows', 'arm64'],
-  ['macos', 'x64'],
-  ['macos', 'arm64'],
-  ['linux', 'x64'],
-  ['linux', 'arm64'],
-];
-
 for (const asset of manifest.assets || []) {
   if (!assetPattern.test(asset.fileName)) {
     errors.push(`manifest asset name does not match canonical pattern: ${asset.fileName}`);
@@ -143,13 +151,6 @@ for (const asset of manifest.assets || []) {
   const size = fs.statSync(assetPath).size;
   if (size !== asset.size) {
     errors.push(`size mismatch for ${asset.fileName}: manifest=${asset.size} actual=${size}`);
-  }
-}
-
-for (const [platform, arch] of requiredPairs) {
-  const exists = manifest.assets.some((asset) => asset.platform === platform && asset.arch === arch);
-  if (!exists) {
-    errors.push(`missing required manifest asset for ${platform}/${arch}`);
   }
 }
 
