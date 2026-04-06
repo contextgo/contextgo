@@ -240,6 +240,7 @@ describe('tray module', () => {
 
   describe('refreshTrayMenu', () => {
     it('should rebuild context menu when tray exists', async () => {
+      await import('@/common/electronSafe');
       const { createOrUpdateTray, refreshTrayMenu } = await import('@process/utils/tray');
 
       createOrUpdateTray();
@@ -255,6 +256,7 @@ describe('tray module', () => {
     });
 
     it('should be a no-op when no tray exists', async () => {
+      await import('@/common/electronSafe');
       const { refreshTrayMenu } = await import('@process/utils/tray');
 
       // Flush any pending micro-tasks from previous tests, then clear
