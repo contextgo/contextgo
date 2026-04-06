@@ -39,14 +39,16 @@ function iconParkPlugin() {
 const blockSuiteImportPattern = /^@blocksuite\/([^/]+)(\/.*)?$/;
 const blockSuitePackageExportsCache = new Map<string, Map<string, string>>();
 
-const stripQuery = (id: string) => id.split('?')[0];
+const normalizeModuleId = (id: string) => id.replaceAll('\\', '/');
+
+const stripQuery = (id: string) => normalizeModuleId(id).split('?')[0];
 
 const findNearestNodeModulesRoot = (id?: string) => {
   if (!id) {
     return null;
   }
 
-  const match = stripQuery(id).match(/^(.*[/]node_modules)(?:[/].*)$/);
+  const match = stripQuery(id).match(/^(.*\/node_modules)(?:\/.*)$/);
   return match?.[1] ?? null;
 };
 
@@ -164,13 +166,20 @@ const preactSignalsCorePackagePath = findBunPackageDir('@blocksuite+global@', '@
 
 const extendShimPath = resolve('src/common/utils/shims/extend.js');
 const extendShimSource = readFileSync(extendShimPath, 'utf8');
-const isExtendModule = (id: string) =>
-  id.includes('/node_modules/.bun/extend@') && id.endsWith('/node_modules/extend/index.js');
+const isExtendModule = (id: string) => {
+  const normalizedId = stripQuery(id);
+
+  return normalizedId.includes('/node_modules/.bun/extend@') && normalizedId.endsWith('/node_modules/extend/index.js');
+};
 
 const shouldTranspileBlockSuiteModule = (id: string) => {
-  if (!id.includes('node_modules')) return false;
+  const normalizedId = stripQuery(id);
 
-  return id.includes('/node_modules/.bun/@blocksuite+') || id.includes('/node_modules/@blocksuite/');
+  if (!normalizedId.includes('/node_modules/')) return false;
+
+  return (
+    normalizedId.includes('/node_modules/.bun/@blocksuite+') || normalizedId.includes('/node_modules/@blocksuite/')
+  );
 };
 
 function blockSuiteSyntaxCompatPlugin() {
