@@ -50,9 +50,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          WORKSPACE="${GITHUB_WORKSPACE}"
-          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
-          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+          RAW_WORKSPACE="${GITHUB_WORKSPACE}"
+          RAW_ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          RAW_EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+
+          normalize_path() {
+            if [ "${RUNNER_OS:-}" = "Windows" ]; then
+              cygpath -u "$1"
+            else
+              printf '%s\n' "$1"
+            fi
+          }
+
+          WORKSPACE="$(normalize_path "${RAW_WORKSPACE}")"
+          ARCHIVE="$(normalize_path "${RAW_ARCHIVE}")"
+          EXTRACT_DIR="$(normalize_path "${RAW_EXTRACT_DIR}")"
 
           find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           rm -rf "${EXTRACT_DIR}"
@@ -129,9 +141,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          WORKSPACE="${GITHUB_WORKSPACE}"
-          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
-          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+          RAW_WORKSPACE="${GITHUB_WORKSPACE}"
+          RAW_ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          RAW_EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+
+          normalize_path() {
+            if [ "${RUNNER_OS:-}" = "Windows" ]; then
+              cygpath -u "$1"
+            else
+              printf '%s\n' "$1"
+            fi
+          }
+
+          WORKSPACE="$(normalize_path "${RAW_WORKSPACE}")"
+          ARCHIVE="$(normalize_path "${RAW_ARCHIVE}")"
+          EXTRACT_DIR="$(normalize_path "${RAW_EXTRACT_DIR}")"
 
           find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           rm -rf "${EXTRACT_DIR}"
