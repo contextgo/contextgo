@@ -1634,20 +1634,21 @@ def should_rewrite_remote_html(path: str, headers: dict[str, str]) -> bool:
 def rewrite_remote_html_source(source: str, device_id: str) -> str:
     base_href = f"{REMOTE_DEVICE_PATH_PREFIX}/{quote(device_id, safe='')}/"
     base_tag = f'<base href="{base_href}">'
+    rewritten = source.replace('./assets/', '/assets/')
 
-    if "<base " in source.lower():
-        return source
+    if "<base " in rewritten.lower():
+        return rewritten
 
-    lower_source = source.lower()
+    lower_source = rewritten.lower()
     head_close = lower_source.find("</head>")
     if head_close >= 0:
-        return f"{source[:head_close]}  {base_tag}\n{source[head_close:]}"
+        return f"{rewritten[:head_close]}  {base_tag}\n{rewritten[head_close:]}"
 
     body_open = lower_source.find("<body")
     if body_open >= 0:
-        return f"{source[:body_open]}{base_tag}\n{source[body_open:]}"
+        return f"{rewritten[:body_open]}{base_tag}\n{rewritten[body_open:]}"
 
-    return f"{base_tag}\n{source}"
+    return f"{base_tag}\n{rewritten}"
 
 
 def rewrite_vite_client_source(source: str, device_id: str) -> str:
