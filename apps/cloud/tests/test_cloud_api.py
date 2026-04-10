@@ -842,6 +842,76 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertNotIn('/assets/app.js', response.text)
         self.assertNotIn('http://192.168.1.8:25809/', response.text)
 
+    def test_remote_app_page_rewrites_production_asset_paths_for_authenticated_user(self) -> None:
+        self._create_browser_session()
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+            device_ws.send_json(
+                {
+                    "type": "hello",
+                    "browserEntry": {
+                        "url": "official-remote://relay-ready",
+                        "ready": True,
+                    },
+                }
+            )
+
+            response_holder: dict[str, object] = {}
+
+            def fetch_remote_page() -> None:
+                response_holder["response"] = self.client.get(
+                    f"/device/{device['id']}",
+                    follow_redirects=False,
+                    headers={"host": "remote.contextgo.io"},
+                )
+
+            request_thread = threading.Thread(target=fetch_remote_page)
+            request_thread.start()
+
+            relay_request = device_ws.receive_json()
+            self.assertEqual(relay_request["type"], "http_request")
+            self.assertEqual(relay_request["request"]["method"], "GET")
+            self.assertEqual(relay_request["request"]["path"], "/")
+
+            device_ws.send_json(
+                {
+                    "type": "http_response",
+                    "requestId": relay_request["requestId"],
+                    "response": {
+                        "statusCode": 200,
+                        "headers": {
+                            "content-type": "text/html; charset=utf-8",
+                        },
+                        "bodyBase64": base64.b64encode(
+                            b'<!doctype html><html><head><script type="module" src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css"></head><body><div id="root">Desktop Remote</div></body></html>'
+                        ).decode("ascii"),
+                        "setCookies": [],
+                    },
+                }
+            )
+            request_thread.join(timeout=3)
+
+        response = response_holder.get("response")
+        self.assertIsNotNone(response)
+        assert response is not None
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Desktop Remote", response.text)
+        self.assertIn("/assets/app.js", response.text)
+        self.assertIn("/assets/app.css", response.text)
+        self.assertIn(f'<base href="/device/{device["id"]}/">', response.text)
+        self.assertNotIn("./assets/app.js", response.text)
+        self.assertNotIn("./assets/app.css", response.text)
+        self.assertNotIn(f"/device/{device['id']}/assets/app.js", response.text)
+        self.assertNotIn(f"/device/{device['id']}/assets/app.css", response.text)
+
     def test_remote_runtime_requests_are_relayed_to_active_device(self) -> None:
         self._create_browser_session()
         registration = self._register_device(device_name="Studio", platform="macos")
