@@ -1,0 +1,17 @@
+---
+eyebrow: 发布运维
+title: 发布运维应该统一收口到 contextgo-releases
+summary: 当官网、下载中心和桌面端更新都读取同一个 release 仓库时，产品版本事实来源才会真正清晰。
+readingTime: 5 分钟
+publishedAt: 2026-03-30
+---
+
+## 一个 release 仓库可以减少歧义
+
+如果官网、GitHub Release 产物和桌面端更新分别指向不同地方，用户很难判断哪一个才是真实版本。release 仓库的价值就在于成为唯一的产品版本事实来源。
+
+这样 contextgo.io 可以从与桌面端更新检查相同的来源读取下载信息。
+
+## 什么内容应该放进 release 仓库
+
+二进制安装包、校验值、manifest 和 release notes 摘要属于 release 仓库。长文档、博客和官网内容不应该混进去，它们应该继续留在站点侧。

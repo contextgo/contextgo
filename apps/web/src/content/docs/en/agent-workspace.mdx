@@ -1,0 +1,28 @@
+---
+eyebrow: Agent
+title: Agent entry, assistants, and the working model inside ContextGo
+summary: Understand what the agent entry is for, how assistant management differs from agent entry, and why those concepts should not be collapsed into one vague settings bucket.
+readingTime: 7 min
+updatedAt: 2026-03-30
+category: features
+---
+
+## Agent entry is the execution-facing surface
+
+The agent entry should be treated as the place where users pick or launch the active working mode. It is the operational surface for starting work, not just a catalog of saved assistant definitions.
+
+If the UI mixes agent entry, remote access, and assistant management under one ambiguous label, users cannot tell whether they are choosing a runtime, choosing a workflow, or editing a preset.
+
+## Assistants are managed definitions, not the whole runtime story
+
+Assistant management belongs to the configuration layer. It defines reusable presets, capabilities, instructions, or runtime associations. That is different from the main working surface where the user chooses how to execute the next task.
+
+This distinction matters even more when multiple runtimes are installed, because the runtime layer, the assistant layer, and the active execution surface should remain separate in the information architecture.
+
+- Agent entry: start work
+- Assistant management: configure reusable definitions
+- Runtime management: install and repair execution backends
+
+## Recommended information architecture
+
+For users, the cleanest mental model is usually: work with agents from the main surface, manage assistants in configuration, and manage runtimes in a dedicated runtime area. This keeps product structure coherent as more providers and workflows are added.

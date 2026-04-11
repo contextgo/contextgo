@@ -42,7 +42,7 @@ describe('releaseDocs', () => {
         );
       }
 
-      if (url.endsWith('/docs/1.2.3/en.json')) {
+      if (url.endsWith('/docs/1.2.3/en/index.json')) {
         return new Response(
           JSON.stringify({
             schemaVersion: 1,
@@ -64,28 +64,31 @@ describe('releaseDocs', () => {
                   title: 'Quick start',
                   summary: 'Summary',
                   readingTime: '5 min',
-                  sections: [{ heading: 'Start', paragraphs: ['Body'] }],
+                  updatedAt: '2026-04-01',
                 },
               ],
             },
-            labels: {
-              updated: 'Updated',
-              published: 'Published',
-              readingTime: 'Reading time',
-              backToDocs: 'Back to docs',
-              backToBlog: 'Back to blog',
-              latestRelease: 'Latest release',
-              releaseSource: 'Release source',
-              openDownloadCenter: 'Open download center',
-              openReleasePage: 'Open release page',
-              articleSidebarTitle: 'ContextGo',
-              articleSidebarBody: 'Sidebar',
-              docsSource: 'Docs source',
-              docsSourceRelease: 'Release docs v{{version}}',
-              docsSourceFallback: 'Draft docs fallback',
-              openReleaseRepository: 'Open release repository',
-              openVersionedDocs: 'Open versioned docs',
-              releaseHistory: 'Release history',
+          }),
+          { status: 200 }
+        );
+      }
+
+      if (url.endsWith('/docs/1.2.3/en/quick-start/article.json')) {
+        return new Response(
+          JSON.stringify({
+            schemaVersion: 1,
+            version: '1.2.3',
+            locale: 'en',
+            exportedAt: '2026-04-01T00:00:00.000Z',
+            article: {
+              slug: 'quick-start',
+              category: 'guides',
+              eyebrow: 'Quick Start',
+              title: 'Quick start',
+              summary: 'Summary',
+              readingTime: '5 min',
+              updatedAt: '2026-04-01',
+              html: '<h2 id="start">Start</h2><p>Body</p>',
             },
           }),
           { status: 200 }
@@ -102,7 +105,12 @@ describe('releaseDocs', () => {
     expect(resolved.source).toBe('release-repo');
     expect(resolved.bundle.version).toBe('1.2.3');
     expect(getReleaseDocGroups(resolved)).toHaveLength(1);
-    expect(getReleaseDocEntry(resolved, 'quick-start')?.title).toBe('Quick start');
+    await expect(getReleaseDocEntry(resolved, 'quick-start')).resolves.toEqual(
+      expect.objectContaining({
+        title: 'Quick start',
+        html: '<h2 id="start">Start</h2><p>Body</p>',
+      })
+    );
   });
 
   it('falls back to in-repo docs when release docs are unavailable', async () => {
@@ -113,6 +121,6 @@ describe('releaseDocs', () => {
     expect(resolved.source).toBe('site-fallback');
     expect(resolved.bundle.version).toBe('draft');
     expect(resolved.bundle.docs.entries.length).toBeGreaterThan(0);
-    expect(getReleaseDocEntry(resolved, 'quick-start')).not.toBeNull();
+    await expect(getReleaseDocEntry(resolved, 'quick-start')).resolves.not.toBeNull();
   });
 });

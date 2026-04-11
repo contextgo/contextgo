@@ -1,0 +1,28 @@
+---
+eyebrow: Cloud Account
+title: What the ContextGo cloud account syncs
+summary: Clarify what the cloud layer is for, what gets linked to the account, and why it should not be confused with full cloud execution.
+readingTime: 6 min
+updatedAt: 2026-03-30
+category: operations
+---
+
+## Identity, not full migration
+
+The cloud account exists to bind a user identity to one or more desktop devices and to support multi-device discovery. It is the control plane, not the execution plane.
+
+In practical terms, cloud sign-in helps ContextGo know which desktop devices belong to you, whether a browser session is valid, and whether a mobile or web client can enumerate the same device list.
+
+## What can sync across devices
+
+The current cloud layer is suited for lightweight state such as language preference, device registration, and remote capability metadata. It should not be described as syncing the entire desktop workspace.
+
+As the product matures, more lightweight preferences can move into the cloud account without changing the core principle that local execution stays on the desktop.
+
+- Language preference
+- Signed-in browser session state
+- Device registration and remote capability state
+
+## What does not automatically move to the cloud
+
+Workspace files, local runtimes, active host processes, and host-side WebUI state still live on the desktop machine. If a user expects a full cloud-hosted clone of the desktop, the product positioning needs to be explicit that this is not the default model.

@@ -1,19 +1,24 @@
 import { notFound } from 'next/navigation';
 import ContentArticlePage from '@/components/content/ContentArticlePage';
-import { getBlogEntry, getSiteContent } from '@/lib/site-content';
+import { getReleaseBlogEntry, getResolvedReleaseBlog } from '@/lib/releaseBlog';
+import { getResolvedReleaseDocs } from '@/lib/releaseDocs';
+import { getSiteContent } from '@/lib/site-content';
 
 export const runtime = 'edge';
 
 export default async function BlogArticlePage({ params }: { params: Promise<{ lang: string; slug: string }> }) {
   const { lang, slug } = await params;
   const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
-  const article = getBlogEntry(validLang, slug);
+  const [resolvedBlog, resolvedDocs, siteContent] = await Promise.all([
+    getResolvedReleaseBlog(validLang),
+    getResolvedReleaseDocs(validLang),
+    Promise.resolve(getSiteContent(validLang)),
+  ]);
+  const article = await getReleaseBlogEntry(resolvedBlog, slug);
 
   if (!article) {
     notFound();
   }
-
-  const siteContent = getSiteContent(validLang);
 
   return (
     <ContentArticlePage
@@ -26,7 +31,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ la
       ]}
       primaryAction={{
         href: `/${validLang}/docs`,
-        label: siteContent.docs.title,
+        label: resolvedDocs.bundle.docs.title,
       }}
       secondaryAction={{
         href: `/${validLang}/changelog`,

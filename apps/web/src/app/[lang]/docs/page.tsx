@@ -1,4 +1,5 @@
 import { getReleaseDocGroups, getReleaseDocsRepositoryUrl, getResolvedReleaseDocs } from '@/lib/releaseDocs';
+import { getSiteContent } from '@/lib/site-content';
 import DocsIndexPage from '@/components/content/DocsIndexPage';
 
 export const runtime = 'edge';
@@ -6,7 +7,7 @@ export const runtime = 'edge';
 export default async function DocsPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
-  const resolved = await getResolvedReleaseDocs(validLang);
+  const [resolved, siteContent] = await Promise.all([getResolvedReleaseDocs(validLang), Promise.resolve(getSiteContent(validLang))]);
 
   return (
     <DocsIndexPage
@@ -21,10 +22,10 @@ export default async function DocsPage({ params }: { params: Promise<{ lang: str
       source={resolved.source}
       versions={resolved.index.versions}
       repositoryUrl={getReleaseDocsRepositoryUrl()}
-      sourceLabel={resolved.bundle.labels.docsSource}
-      sourceReleaseLabel={resolved.bundle.labels.docsSourceRelease}
-      sourceFallbackLabel={resolved.bundle.labels.docsSourceFallback}
-      openRepositoryLabel={resolved.bundle.labels.openReleaseRepository}
+      sourceLabel={siteContent.labels.docsSource}
+      sourceReleaseLabel={siteContent.labels.docsSourceRelease}
+      sourceFallbackLabel={siteContent.labels.docsSourceFallback}
+      openRepositoryLabel={siteContent.labels.openReleaseRepository}
     />
   );
 }

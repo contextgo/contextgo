@@ -1,0 +1,38 @@
+{
+  "badge": "文档中心",
+  "title": "ContextGo 文档",
+  "description": "面向客户的产品文档，覆盖初始化、Agent、Hooks、定时任务、技能市场、远程访问和发布运维。",
+  "featuredLabel": "文档结构",
+  "featuredDescription": "ContextGo 文档分成三层：Guides 讲如何开始，Features 讲产品具体能力，Operations 讲远程访问、云身份和发布运维如何真正工作。",
+  "categories": [
+    {
+      "id": "guides",
+      "title": "Guides",
+      "description": "先从这里理解产品模型、安装链路，以及第一次上手时应该怎么建立起可工作的环境。"
+    },
+    {
+      "id": "features",
+      "title": "Features",
+      "description": "这一层说明用户真正会操作的能力面：Agents、Hooks、定时任务、Runtimes、Connectors 和技能市场。"
+    },
+    {
+      "id": "operations",
+      "title": "Operations",
+      "description": "这一层说明云账号、远程访问、发布运维和排障路径。"
+    }
+  ],
+  "order": [
+    "quick-start",
+    "product-model",
+    "agent-workspace",
+    "agent-collaboration",
+    "hooks-overview",
+    "scheduled-tasks",
+    "skill-market",
+    "runtime-management",
+    "connectors-and-channels",
+    "remote-access",
+    "cloud-account",
+    "updates-and-troubleshooting"
+  ]
+}

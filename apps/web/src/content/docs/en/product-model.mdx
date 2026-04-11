@@ -1,0 +1,28 @@
+---
+eyebrow: Product Model
+title: Understand the ContextGo product model before you scale usage
+summary: Clarify the relationship between desktop host, mobile shell, cloud account, WebUI, and the release repository before onboarding more devices or teammates.
+readingTime: 6 min
+updatedAt: 2026-03-30
+category: guides
+---
+
+## ContextGo is not just a chat UI
+
+The product starts from context infrastructure, not from a standalone chat surface. Connectors, agents, hooks, scheduled tasks, and channel publishing all exist to keep context and execution close to the real workflow.
+
+That is why the documentation center cannot stop at install steps. Users also need a clear explanation of what runs where and how the feature surfaces relate to one another.
+
+## Desktop host, cloud control plane, mobile client
+
+The desktop app remains the execution host. The cloud account links identity and devices. Mobile and browser clients operate as control surfaces that discover and connect back to those hosts.
+
+Release operations stay separate again: contextgo/contextgo-releases is the product-release source of truth for installable artifacts, checksums, and release history.
+
+- Desktop owns execution
+- Cloud owns identity and device discovery
+- Release repository owns artifact truth
+
+## How to read the rest of the docs
+
+Read Guides first if you are onboarding. Read Features when you are configuring agents, hooks, scheduled tasks, or the skill market. Read Operations when you are enabling remote access, investigating device status, or preparing releases.

@@ -1,0 +1,24 @@
+---
+eyebrow: Collaboration
+title: Harness mode and agent collaboration workflows
+summary: Explain how local harness mode coexists with remote workflows, and why agent collaboration is a first-class working style rather than an implementation detail.
+readingTime: 7 min
+updatedAt: 2026-03-30
+category: features
+---
+
+## Harness mode is a real product workflow
+
+Local harness mode should be kept as a supported collaboration model, not treated as a temporary development artifact. It gives users an immediate way to structure multi-agent work around the local machine they already trust.
+
+That is especially valuable for users who need an out-of-the-box collaboration pattern before they have a full remote orchestration or cloud-hosted workflow in place.
+
+## How it fits with remote workflows
+
+Remote workflow support does not replace harness mode. The right product story is coexistence: local harness mode for direct, device-local coordination, and remote workflow support for distributed or browser-mediated control paths.
+
+Once this is documented clearly, users stop reading the two modes as competing architectures. They become two ways to coordinate the same host-centric execution model.
+
+## What users need to know operationally
+
+Collaboration mode documentation should answer which machine executes work, where files live, how runtime availability is checked, and what remote clients can or cannot do compared with the local desktop host.

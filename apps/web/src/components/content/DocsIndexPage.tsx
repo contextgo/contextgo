@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import PageHero from './PageHero';
-import type { DocGroup } from '@/lib/site-content';
+import type { DocGroup } from '@/lib/public-content/types';
 
 export default function DocsIndexPage({
   badge,
@@ -75,7 +75,7 @@ export default function DocsIndexPage({
                 {versions.map((entry) => (
                   <a
                     key={entry.version}
-                    href={`${repositoryUrl}/tree/main/docs/${entry.version}`}
+                    href={`${repositoryUrl}/tree/main/site/docs/${entry.version}`}
                     target='_blank'
                     rel='noopener noreferrer'
                     className='theme-surface-secondary theme-border theme-text-secondary rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:theme-text-primary'

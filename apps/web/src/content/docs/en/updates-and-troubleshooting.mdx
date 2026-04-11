@@ -1,0 +1,29 @@
+---
+eyebrow: Updates
+title: Updates, releases, and common troubleshooting paths
+summary: Document how in-app updates relate to the website download center and release repository, and give users a single operational troubleshooting entry point.
+readingTime: 7 min
+updatedAt: 2026-03-30
+category: operations
+---
+
+## One version source should serve everything
+
+Users should be able to trust that the desktop updater, the website download center, and the GitHub release page are describing the same version truth. That is the reason contextgo/contextgo-releases exists as a dedicated release repository.
+
+If the website says one thing and the in-app updater says another, the release pipeline is not coherent enough yet.
+
+## Common failure categories
+
+The troubleshooting entry should cover the real user-facing failures: browser login does not complete, remote status is unavailable, device binding does not refresh, update checks flash an error, or a runtime is installed but still unusable.
+
+This kind of page is especially important because users do not care which internal subsystem failed. They care about the operational symptom they can see.
+
+- Login and browser-session failures
+- Device status and remote availability failures
+- Runtime detection and authentication failures
+- Update and release-distribution failures
+
+## What this page should always tell the user
+
+A good troubleshooting page tells the user what the symptom means, what the likely cause categories are, and what to check next in the least destructive order.

@@ -851,10 +851,15 @@ jobs:
         shell: bash
         run: bash scripts/verify-release-assets.sh release-assets
 
-      - name: Setup Node.js for release docs sync
+      - name: Setup Node.js for public site content sync
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Install website dependencies for public content export
+        shell: bash
+        run: npm ci
+        working-directory: apps/web
 
       - name: Generate public release notes
         shell: bash
@@ -893,7 +898,7 @@ jobs:
           make_latest: true
           prerelease: ${{ contains(steps.version.outputs.tag_name, 'beta') || contains(steps.version.outputs.tag_name, 'alpha') || contains(steps.version.outputs.tag_name, 'rc') }}
 
-      - name: Sync versioned docs to public release repository
+      - name: Sync public site content to public release repository
         shell: bash
         env:
           PUBLISH_TOKEN: ${{ secrets.GH_TOKEN != '' && secrets.GH_TOKEN || github.token }}
@@ -908,20 +913,20 @@ jobs:
           rm -rf "${TARGET_DIR}"
           git clone "${AUTH_REMOTE}" "${TARGET_DIR}"
 
-          npx --yes tsx scripts/release/export-release-docs.ts \
+          node scripts/release/export-release-site-content.mjs \
             --target "${TARGET_DIR}" \
             --version "${RELEASE_TAG}" \
             --source-ref "${SOURCE_REF}"
 
           cd "${TARGET_DIR}"
 
-          if [ -z "$(git status --porcelain -- docs)" ]; then
-            echo "No docs changes to publish."
+          if [ -z "$(git status --porcelain -- README.md docs site)" ]; then
+            echo "No release repository content changes to publish."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs
-          git commit -m "docs(release): sync versioned docs for ${RELEASE_TAG}"
+          git add README.md docs site
+          git commit -m "docs(release): sync public release repository content for ${RELEASE_TAG}"
           git push origin HEAD:main
