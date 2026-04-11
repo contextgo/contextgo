@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ContentArticle } from '@/lib/site-content';
+import type { PublicArticle } from '@/lib/public-content/types';
 
 type MetaItem = {
   label: string;
@@ -20,7 +20,7 @@ export default function ContentArticlePage({
   repositoryUrl,
   openVersionedDocsLabel,
 }: {
-  article: ContentArticle;
+  article: PublicArticle;
   backHref: string;
   backLabel: string;
   meta: MetaItem[];
@@ -58,25 +58,10 @@ export default function ContentArticlePage({
 
         <div className='mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]'>
           <article className='theme-surface-secondary theme-shadow-card theme-border rounded-[28px] border px-7 py-7 md:px-9 md:py-9'>
-            <div className='space-y-10'>
-              {article.sections.map((section) => (
-                <section key={section.heading}>
-                  <h2 className='theme-text-primary text-2xl font-semibold tracking-tight'>{section.heading}</h2>
-                  <div className='theme-text-secondary mt-4 space-y-4 text-base leading-8'>
-                    {section.paragraphs.map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
-                    ))}
-                  </div>
-                  {section.bullets?.length ? (
-                    <ul className='theme-text-secondary mt-5 list-disc space-y-2 pl-5 text-sm leading-7'>
-                      {section.bullets.map((bullet) => (
-                        <li key={bullet}>{bullet}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </section>
-              ))}
-            </div>
+            <div
+              className='content-markdown theme-text-secondary text-base leading-8'
+              dangerouslySetInnerHTML={{ __html: article.html }}
+            />
           </article>
 
           <aside className='space-y-5'>

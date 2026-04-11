@@ -1,0 +1,30 @@
+---
+eyebrow: Quick Start
+title: Set up ContextGo on your first desktop
+summary: Install the desktop app, sign in, bind the current device, and confirm the local host is ready for mobile and browser access.
+readingTime: 5 min
+updatedAt: 2026-03-30
+category: guides
+---
+
+## Install the desktop host first
+
+ContextGo starts from the desktop app because the desktop machine is the real execution host. It owns the local workspace, the WebUI runtime, and the remote-access bridge.
+
+For direct installs, use the download center on contextgo.io. The website reads release artifacts from contextgo/contextgo-releases, so the download page and in-app update flow point at the same version source.
+
+## Sign in and bind the device
+
+Use the cloud-account entry in the desktop app to sign in with GitHub or Google. Once the browser flow completes, ContextGo registers the current desktop as a cloud-linked device.
+
+The cloud account does not move execution into the cloud. It links identity, device registration, and lightweight sync metadata so your devices can find each other.
+
+- Desktop remains the host
+- Cloud account links identity and devices
+- Mobile and web discover devices through the cloud layer
+
+## Confirm the local host is healthy
+
+After sign-in, confirm the WebUI can be opened locally and the device appears as active. If you plan to use remote access, make sure the remote status is provisioned or otherwise explicitly enabled for your environment.
+
+If a corporate environment blocks helper processes or networking tools, test on another machine before assuming the product model is wrong. The most common failures here are local policy, endpoint protection, or missing permissions.

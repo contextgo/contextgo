@@ -1,0 +1,17 @@
+---
+eyebrow: Remote Product
+title: 'Desktop host, mobile client: keep the product model explicit'
+summary: Remote access only feels coherent when users understand that the desktop machine remains the host and the mobile shell stays a remote client.
+readingTime: 5 min
+publishedAt: 2026-03-30
+---
+
+## Avoid describing mobile as a second execution host
+
+The mobile shell is valuable because it lets users access their desktop-hosted workspace from elsewhere. That value disappears if the product story implies a full second runtime running locally on the phone.
+
+For uploads, control flows, and WebUI rendering, the right mental model is still remote access to the desktop host.
+
+## Why this matters for roadmap decisions
+
+Once the product model is clear, cloud features, tunnel design, and relay architecture become easier to explain. The control plane can evolve without pretending the compute plane has moved into the cloud or onto the handset.

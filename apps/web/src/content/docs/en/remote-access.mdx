@@ -1,0 +1,30 @@
+---
+eyebrow: Remote Access
+title: How remote access works in ContextGo
+summary: Understand the desktop-host model, why remote access depends on a stable device-side connection, and what users should expect on mobile.
+readingTime: 7 min
+updatedAt: 2026-03-30
+category: operations
+---
+
+## Desktop is the source of truth
+
+ContextGo remote access is not a separate cloud-hosted copy of your app. The desktop machine keeps running the real workspace, tools, files, and WebUI session.
+
+Mobile and browser clients connect back to that desktop host through the remote layer. This is why a device can appear online, unavailable, or not provisioned depending on the state of the host and the remote bridge.
+
+## Why a stable device-side connection matters
+
+A public remote page only works when the desktop host has an active outbound connection to the official cloud relay. The hosted experience depends on the device keeping that authenticated relay session alive.
+
+The underlying transport can evolve, but the product principle does not change: the device side still has to remain connected and authenticated before the remote page becomes usable.
+
+- Desktop host publishes availability
+- Cloud account maps devices to the signed-in user
+- Remote page becomes useful only when the host is reachable
+
+## What mobile actually runs
+
+The mobile shell is a remote control surface. It reuses the existing WebUI and host-side workflows instead of replacing the desktop host with a separate mobile-native execution model.
+
+That means uploads, runtime execution, and local workspace access still terminate on the desktop side. Mobile acts as the control surface, not the primary compute environment.

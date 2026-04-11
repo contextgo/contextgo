@@ -1,0 +1,12 @@
+{
+  "badge": "Blog",
+  "title": "Product Notes and Operational Writing",
+  "description": "Use the blog for product rationale, architecture decisions, and release-operational changes that matter to users or admins.",
+  "featuredLabel": "Editorial direction",
+  "featuredDescription": "ContextGo blog content should answer three questions clearly: what changed, why it matters, and how it affects real workflows.",
+  "order": [
+    "context-before-agents",
+    "release-operations-source-of-truth",
+    "desktop-host-mobile-client"
+  ]
+}

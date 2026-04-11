@@ -203,3 +203,104 @@ body {
 html[data-theme='dark'] .theme-logo {
   filter: brightness(0) invert(1);
 }
+
+.content-markdown {
+  color: var(--text-secondary);
+}
+
+.content-markdown > :first-child {
+  margin-top: 0;
+}
+
+.content-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.content-markdown h2,
+.content-markdown h3,
+.content-markdown h4 {
+  color: var(--text-primary);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.content-markdown h2 {
+  font-size: 1.75rem;
+}
+
+.content-markdown h3 {
+  font-size: 1.35rem;
+}
+
+.content-markdown h4 {
+  font-size: 1.1rem;
+}
+
+.content-markdown p,
+.content-markdown ul,
+.content-markdown ol,
+.content-markdown blockquote,
+.content-markdown pre {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.content-markdown ul,
+.content-markdown ol {
+  padding-left: 1.5rem;
+}
+
+.content-markdown ul {
+  list-style: disc;
+}
+
+.content-markdown ol {
+  list-style: decimal;
+}
+
+.content-markdown li + li {
+  margin-top: 0.4rem;
+}
+
+.content-markdown a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 0.2em;
+}
+
+.content-markdown strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.content-markdown blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 1rem;
+  color: var(--text-primary);
+}
+
+.content-markdown code {
+  border: 1px solid var(--border-primary);
+  background-color: var(--surface-tertiary);
+  border-radius: 0.5rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.92em;
+}
+
+.content-markdown pre {
+  border: 1px solid var(--border-primary);
+  background-color: var(--surface-tertiary);
+  border-radius: 1rem;
+  overflow-x: auto;
+  padding: 1rem 1.1rem;
+}
+
+.content-markdown pre code {
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}

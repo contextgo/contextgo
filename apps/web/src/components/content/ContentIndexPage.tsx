@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ContentArticle } from '@/lib/site-content';
+import type { PublicArticleMeta } from '@/lib/public-content/types';
 import PageHero from './PageHero';
 
 export default function ContentIndexPage({
@@ -17,7 +17,7 @@ export default function ContentIndexPage({
   description: string;
   featuredLabel: string;
   featuredDescription: string;
-  entries: ContentArticle[];
+  entries: PublicArticleMeta[];
   lang: string;
   basePath: '/docs' | '/blog';
 }) {

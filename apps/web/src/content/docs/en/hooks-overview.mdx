@@ -1,0 +1,28 @@
+---
+eyebrow: Hooks
+title: Use hooks to extend workflows at the right moment
+summary: Hooks are the product mechanism for inserting controlled behavior around execution events. Users need a clear trigger model, not just a configuration form.
+readingTime: 6 min
+updatedAt: 2026-03-30
+category: features
+---
+
+## What a hook is in product terms
+
+A hook is a controlled extension point in the workflow. It lets ContextGo run additional logic around a meaningful event instead of forcing users to manually repeat the same coordination step every time.
+
+This can include validation, formatting, notifications, routing, or post-processing, depending on what surfaces the product exposes.
+
+## Document triggers before implementation details
+
+Users first need to understand when a hook can run: before work starts, after output arrives, when a publish action happens, or when a task reaches a state transition. Without that model, hook configuration looks arbitrary.
+
+Once the trigger model is clear, the rest of the document can explain inputs, outputs, and safety boundaries.
+
+- What event triggers the hook
+- What context the hook receives
+- What side effects the hook is allowed to produce
+
+## Why hooks matter for ContextGo
+
+Hooks are a bridge between context-aware work and repeatable automation. They make it possible to keep human review in the loop while still standardizing the repetitive parts of a workflow.

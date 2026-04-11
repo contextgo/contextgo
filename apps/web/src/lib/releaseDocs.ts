@@ -1,26 +1,43 @@
 import 'server-only';
 
+import { draftDocsCollections } from './public-content/generated/docs';
 import {
+  PUBLIC_CONTENT_SCHEMA_VERSION,
   type DocGroup,
-  type ReleaseDocsBundle,
+  type PublicArticle,
+  type ReleaseDocsArticlePayload,
   type ReleaseDocsIndex,
   type ReleaseDocsLatest,
+  type ReleaseDocsSectionPayload,
   type ReleaseDocsVersion,
   type ResolvedReleaseDocs,
   type SiteLocale,
-} from './site-content/types';
-import { getSiteLabels } from './site-content/common';
-import { getDocsSection } from './site-content/docs';
+} from './public-content/types';
 
 const DEFAULT_RELEASE_REPOSITORY = 'contextgo/contextgo-releases';
-const DEFAULT_DOCS_BRANCH = 'main';
-const DOCS_SCHEMA_VERSION = 1;
+const DEFAULT_CONTENT_BRANCH = 'main';
 const CACHE_REVALIDATE_SECONDS = 300;
 
 const getReleaseDocsRepository = (): string => process.env.CONTEXTGO_RELEASE_REPO || DEFAULT_RELEASE_REPOSITORY;
 
-const getReleaseDocsBaseUrl = (): string =>
-  `https://raw.githubusercontent.com/${getReleaseDocsRepository()}/${DEFAULT_DOCS_BRANCH}/docs`;
+const getReleaseSiteBaseUrl = (): string =>
+  `https://raw.githubusercontent.com/${getReleaseDocsRepository()}/${DEFAULT_CONTENT_BRANCH}/site`;
+
+const fetchReleaseJson = async <T>(url: string): Promise<T | null> => {
+  const response = await fetch(url, {
+    next: { revalidate: CACHE_REVALIDATE_SECONDS },
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Release docs request failed: ${response.status} ${response.statusText}`);
+  }
+
+  return (await response.json()) as T;
+};
 
 const isValidReleaseDocsLatest = (value: unknown): value is ReleaseDocsLatest => {
   if (!value || typeof value !== 'object') {
@@ -28,7 +45,7 @@ const isValidReleaseDocsLatest = (value: unknown): value is ReleaseDocsLatest =>
   }
 
   const candidate = value as Partial<ReleaseDocsLatest>;
-  return candidate.schemaVersion === DOCS_SCHEMA_VERSION && typeof candidate.version === 'string';
+  return candidate.schemaVersion === PUBLIC_CONTENT_SCHEMA_VERSION && typeof candidate.version === 'string';
 };
 
 const isValidReleaseDocsVersion = (value: unknown): value is ReleaseDocsVersion => {
@@ -47,7 +64,7 @@ const isValidReleaseDocsIndex = (value: unknown): value is ReleaseDocsIndex => {
 
   const candidate = value as Partial<ReleaseDocsIndex>;
   return (
-    candidate.schemaVersion === DOCS_SCHEMA_VERSION &&
+    candidate.schemaVersion === PUBLIC_CONTENT_SCHEMA_VERSION &&
     typeof candidate.latestVersion === 'string' &&
     typeof candidate.exportedAt === 'string' &&
     Array.isArray(candidate.versions) &&
@@ -55,41 +72,55 @@ const isValidReleaseDocsIndex = (value: unknown): value is ReleaseDocsIndex => {
   );
 };
 
-const isValidReleaseDocsBundle = (value: unknown): value is ReleaseDocsBundle => {
+const isValidArticle = (value: unknown): value is PublicArticle => {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
-  const candidate = value as Partial<ReleaseDocsBundle>;
+  const candidate = value as Partial<PublicArticle>;
   return (
-    candidate.schemaVersion === DOCS_SCHEMA_VERSION &&
+    typeof candidate.slug === 'string' &&
+    typeof candidate.title === 'string' &&
+    typeof candidate.summary === 'string' &&
+    typeof candidate.readingTime === 'string' &&
+    typeof candidate.html === 'string'
+  );
+};
+
+const isValidReleaseDocsSectionPayload = (value: unknown): value is ReleaseDocsSectionPayload => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<ReleaseDocsSectionPayload>;
+  return (
+    candidate.schemaVersion === PUBLIC_CONTENT_SCHEMA_VERSION &&
     typeof candidate.version === 'string' &&
     (candidate.locale === 'en' || candidate.locale === 'zh') &&
     typeof candidate.exportedAt === 'string' &&
     Boolean(candidate.docs) &&
     Array.isArray(candidate.docs?.entries) &&
-    Boolean(candidate.labels)
+    Array.isArray(candidate.docs?.categories)
   );
 };
 
-const fetchReleaseDocsJson = async <T>(url: string): Promise<T | null> => {
-  const response = await fetch(url, {
-    next: { revalidate: CACHE_REVALIDATE_SECONDS },
-  });
-
-  if (response.status === 404) {
-    return null;
+const isValidReleaseDocsArticlePayload = (value: unknown): value is ReleaseDocsArticlePayload => {
+  if (!value || typeof value !== 'object') {
+    return false;
   }
 
-  if (!response.ok) {
-    throw new Error(`Release docs request failed: ${response.status} ${response.statusText}`);
-  }
-
-  return (await response.json()) as T;
+  const candidate = value as Partial<ReleaseDocsArticlePayload>;
+  return (
+    candidate.schemaVersion === PUBLIC_CONTENT_SCHEMA_VERSION &&
+    typeof candidate.version === 'string' &&
+    (candidate.locale === 'en' || candidate.locale === 'zh') &&
+    typeof candidate.exportedAt === 'string' &&
+    isValidArticle(candidate.article)
+  );
 };
 
 const createFallbackDocsIndex = (version: string): ReleaseDocsIndex => ({
-  schemaVersion: DOCS_SCHEMA_VERSION,
+  schemaVersion: PUBLIC_CONTENT_SCHEMA_VERSION,
   latestVersion: version,
   exportedAt: new Date(0).toISOString(),
   versions: [
@@ -100,39 +131,38 @@ const createFallbackDocsIndex = (version: string): ReleaseDocsIndex => ({
   ],
 });
 
-const createFallbackDocsBundle = (locale: SiteLocale): ReleaseDocsBundle => ({
-  schemaVersion: DOCS_SCHEMA_VERSION,
-  version: 'draft',
-  locale,
-  exportedAt: new Date(0).toISOString(),
-  docs: getDocsSection(locale),
-  labels: getSiteLabels(locale),
-});
-
 export const createFallbackReleaseDocs = (locale: SiteLocale): ResolvedReleaseDocs => {
-  const bundle = createFallbackDocsBundle(locale);
+  const collection = draftDocsCollections[locale];
   return {
     source: 'site-fallback',
-    bundle,
-    index: createFallbackDocsIndex(bundle.version),
+    bundle: {
+      schemaVersion: collection.schemaVersion,
+      version: collection.version,
+      locale: collection.locale,
+      exportedAt: collection.exportedAt,
+      sourceRef: collection.sourceRef,
+      docs: collection.docs,
+    },
+    index: createFallbackDocsIndex(collection.version),
+    articles: collection.articles,
   };
 };
 
 export const getResolvedReleaseDocs = async (locale: SiteLocale): Promise<ResolvedReleaseDocs> => {
   try {
-    const baseUrl = getReleaseDocsBaseUrl();
-    const latest = await fetchReleaseDocsJson<ReleaseDocsLatest>(`${baseUrl}/latest.json`);
+    const baseUrl = getReleaseSiteBaseUrl();
+    const latest = await fetchReleaseJson<ReleaseDocsLatest>(`${baseUrl}/docs/latest.json`);
 
     if (!latest || !isValidReleaseDocsLatest(latest)) {
       return createFallbackReleaseDocs(locale);
     }
 
     const [index, bundle] = await Promise.all([
-      fetchReleaseDocsJson<ReleaseDocsIndex>(`${baseUrl}/versions.json`),
-      fetchReleaseDocsJson<ReleaseDocsBundle>(`${baseUrl}/${latest.version}/${locale}.json`),
+      fetchReleaseJson<ReleaseDocsIndex>(`${baseUrl}/docs/versions.json`),
+      fetchReleaseJson<ReleaseDocsSectionPayload>(`${baseUrl}/docs/${latest.version}/${locale}/index.json`),
     ]);
 
-    if (!bundle || !isValidReleaseDocsBundle(bundle)) {
+    if (!bundle || !isValidReleaseDocsSectionPayload(bundle)) {
       return createFallbackReleaseDocs(locale);
     }
 
@@ -140,6 +170,7 @@ export const getResolvedReleaseDocs = async (locale: SiteLocale): Promise<Resolv
       source: 'release-repo',
       bundle,
       index: index && isValidReleaseDocsIndex(index) ? index : createFallbackDocsIndex(latest.version),
+      articles: {},
     };
   } catch (error) {
     console.error('[web] Failed to fetch release docs:', error);
@@ -154,8 +185,24 @@ export const getReleaseDocGroups = (resolved: ResolvedReleaseDocs): DocGroup[] =
   }));
 };
 
-export const getReleaseDocEntry = (resolved: ResolvedReleaseDocs, slug: string) => {
-  return resolved.bundle.docs.entries.find((entry) => entry.slug === slug) ?? null;
+export const getReleaseDocEntry = async (resolved: ResolvedReleaseDocs, slug: string): Promise<PublicArticle | null> => {
+  if (resolved.source === 'site-fallback') {
+    return resolved.articles[slug] ?? null;
+  }
+
+  try {
+    const articlePayload = await fetchReleaseJson<ReleaseDocsArticlePayload>(
+      `${getReleaseSiteBaseUrl()}/docs/${resolved.bundle.version}/${resolved.bundle.locale}/${slug}/article.json`
+    );
+
+    if (articlePayload && isValidReleaseDocsArticlePayload(articlePayload)) {
+      return articlePayload.article;
+    }
+  } catch (error) {
+    console.error('[web] Failed to fetch release doc article:', error);
+  }
+
+  return draftDocsCollections[resolved.bundle.locale].articles[slug] ?? null;
 };
 
 export const getReleaseDocsRepositoryUrl = (): string => `https://github.com/${getReleaseDocsRepository()}`;

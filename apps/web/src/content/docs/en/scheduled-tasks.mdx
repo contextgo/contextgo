@@ -1,0 +1,24 @@
+---
+eyebrow: Scheduled Tasks
+title: Scheduled tasks and cron-driven automation
+summary: Explain how periodic execution works, what kinds of automation belong in scheduled tasks, and what users should watch for in long-running operations.
+readingTime: 6 min
+updatedAt: 2026-03-30
+category: features
+---
+
+## Scheduled tasks are recurring workflows
+
+A scheduled task should be described as a recurring workflow with defined timing, execution context, and output behavior. The point is not just to fire a timer, but to repeatedly run a meaningful context-aware action.
+
+Examples include recurring sync, periodic review, automated publish preparation, or routine context extraction from connected systems.
+
+## Document execution boundaries clearly
+
+Users need to know what host executes the task, whether the machine must stay online, and which runtime or credentials the task depends on. Without that information, cron-like configuration becomes unreliable in real usage.
+
+Scheduled tasks should also document how failures are surfaced and whether a missed run is retried, skipped, or queued.
+
+## Best-fit use cases
+
+The strongest use cases are routine, repeatable operations that benefit from context but do not require a human to sit and click through the same sequence every day.
