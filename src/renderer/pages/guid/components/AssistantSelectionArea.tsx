@@ -26,6 +26,14 @@ type AssistantSelectionAreaProps = {
   onFocusInput: () => void;
 };
 
+const GUID_PREFERRED_ASSISTANT_ORDER = ['superpowers', 'everything-in-claude-code'] as const;
+
+const resolveAssistantPriority = (assistantId: string): number => {
+  const normalizedId = assistantId.replace(/^builtin-/, '');
+  const index = GUID_PREFERRED_ASSISTANT_ORDER.indexOf(normalizedId as (typeof GUID_PREFERRED_ASSISTANT_ORDER)[number]);
+  return index >= 0 ? index : Number.MAX_SAFE_INTEGER;
+};
+
 const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
   isPresetAgent,
   selectedAssistantInfo,
@@ -166,9 +174,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
         {customAgents
           .filter((assistant) => assistant.isPreset && assistant.enabled !== false)
           .toSorted((a, b) => {
-            if (a.id === 'cowork') return -1;
-            if (b.id === 'cowork') return 1;
-            return 0;
+            return resolveAssistantPriority(a.id) - resolveAssistantPriority(b.id);
           })
           .map((assistant) => {
             const avatarValue = assistant.avatar?.trim();

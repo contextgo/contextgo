@@ -50,64 +50,20 @@ import type {
   AutoUpdateStatus,
 } from '../update/updateTypes';
 import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
-import type {
-  ClipboardCollectResult,
-  ClipboardConnectorConfig,
-  ClipboardConnectorRuntimeStatus,
-  ClipboardConnectorSnapshot,
-  ClipboardDailySummary,
-  ClipboardStoredEvent,
-} from '../types/connectors/clipboard';
-import type { FeishuConnectorConfig, FeishuConnectorRuntimeStatus } from '../types/connectors/feishu';
-import type {
-  BrowserActivityConnectorStatus,
-  BrowserActivityEntry,
-  BrowserActivityIngestInput,
-  BrowserActivityIngestResult,
-} from '../types/connectors/browserActivity';
-import type {
-  GoogleDriveAuthRequest,
-  GoogleDriveAuthResult,
-  GoogleDriveConnectorConfig,
-  GoogleDriveConnectorRuntimeStatus,
-  GoogleDriveFile,
-  GoogleDriveStoredFile,
-  GoogleDriveSyncResult,
-} from '../types/connectors/googleDrive';
-import type {
-  GoogleDoc,
-  GoogleDocsConnectorConfig,
-  GoogleDocsConnectorRuntimeStatus,
-  GoogleDocsStoredDocument,
-  GoogleDocsSyncResult,
-} from '../types/connectors/googleDocs';
-import type {
-  GoogleSheet,
-  GoogleSheetsConnectorConfig,
-  GoogleSheetsConnectorRuntimeStatus,
-  GoogleSheetsStoredSpreadsheet,
-  GoogleSheetsSyncResult,
-} from '../types/connectors/googleSheets';
-import type {
-  GmailConnectorConfig,
-  GmailConnectorRuntimeStatus,
-  GmailMessage,
-  GmailStoredMessage,
-  GmailSyncResult,
-} from '../types/connectors/gmail';
-import type {
-  GoogleCalendarConnectorConfig,
-  GoogleCalendarConnectorRuntimeStatus,
-  GoogleCalendarEntry,
-  GoogleCalendarStoredEntry,
-  GoogleCalendarSyncResult,
-} from '../types/connectors/googleCalendar';
+import type { ExternalConnectorCatalogDetails } from '../types/connectors/externalConnectorCatalog';
 
 export const shell = {
   openFile: bridge.buildProvider<void, string>('open-file'), // 使用系统默认程序打开文件
   showItemInFolder: bridge.buildProvider<void, string>('show-item-in-folder'), // 打开文件夹
   openExternal: bridge.buildProvider<void, string>('open-external'), // 使用系统默认程序打开外部链接
   revealPath: bridge.buildProvider<{ resolvedPath: string; exists: boolean }, string>('reveal-path'), // 定位文件或目录
+};
+
+export const externalConnectorCatalog = {
+  getDetails: bridge.buildProvider<
+    IBridgeResponse<ExternalConnectorCatalogDetails>,
+    { connector: string }
+  >('external-connector-catalog.get-details'),
 };
 
 export const space = {
@@ -320,180 +276,6 @@ export interface IUpdateBrowserContextAssetParams {
   lastUsedAt?: number;
   metadata?: Record<string, string | number | boolean | null>;
 }
-
-export const browserActivityConnector = {
-  ingest: bridge.buildProvider<IBridgeResponse<BrowserActivityIngestResult>, BrowserActivityIngestInput>(
-    'browser-activity-connector.ingest'
-  ),
-  listRecent: bridge.buildProvider<IBridgeResponse<BrowserActivityEntry[]>, { spaceId: string; limit?: number }>(
-    'browser-activity-connector.list-recent'
-  ),
-  getStatus: bridge.buildProvider<IBridgeResponse<BrowserActivityConnectorStatus>, { spaceId: string }>(
-    'browser-activity-connector.get-status'
-  ),
-};
-
-export const clipboardConnector = {
-  getConfig: bridge.buildProvider<IBridgeResponse<ClipboardConnectorConfig>, void>('clipboard-connector.get-config'),
-  setConfig: bridge.buildProvider<
-    IBridgeResponse<ClipboardConnectorConfig>,
-    { config: Partial<ClipboardConnectorConfig> }
-  >('clipboard-connector.set-config'),
-  getStatus: bridge.buildProvider<IBridgeResponse<ClipboardConnectorRuntimeStatus>, void>(
-    'clipboard-connector.get-status'
-  ),
-  start: bridge.buildProvider<IBridgeResponse<ClipboardConnectorRuntimeStatus>, void>('clipboard-connector.start'),
-  stop: bridge.buildProvider<IBridgeResponse<ClipboardConnectorRuntimeStatus>, void>('clipboard-connector.stop'),
-  sampleNow: bridge.buildProvider<IBridgeResponse<ClipboardConnectorSnapshot | null>, void>(
-    'clipboard-connector.sample-now'
-  ),
-  statusChanged: bridge.buildEmitter<ClipboardConnectorRuntimeStatus>('clipboard-connector.status-changed'),
-  listRecentEvents: bridge.buildProvider<IBridgeResponse<ClipboardStoredEvent[]>, { limit?: number }>(
-    'clipboard-connector.list-recent-events'
-  ),
-  listSummaries: bridge.buildProvider<IBridgeResponse<ClipboardDailySummary[]>, { limit?: number }>(
-    'clipboard-connector.list-summaries'
-  ),
-  collectNow: bridge.buildProvider<IBridgeResponse<ClipboardCollectResult>, { summaryDate?: string }>(
-    'clipboard-connector.collect-now'
-  ),
-};
-
-export const feishuConnector = {
-  getConfig: bridge.buildProvider<IBridgeResponse<FeishuConnectorConfig>, void>('feishu-connector.get-config'),
-  setConfig: bridge.buildProvider<IBridgeResponse<FeishuConnectorConfig>, { config: Partial<FeishuConnectorConfig> }>(
-    'feishu-connector.set-config'
-  ),
-  getStatus: bridge.buildProvider<IBridgeResponse<FeishuConnectorRuntimeStatus>, void>('feishu-connector.get-status'),
-  start: bridge.buildProvider<IBridgeResponse<FeishuConnectorRuntimeStatus>, void>('feishu-connector.start'),
-  stop: bridge.buildProvider<IBridgeResponse<FeishuConnectorRuntimeStatus>, void>('feishu-connector.stop'),
-  statusChanged: bridge.buildEmitter<FeishuConnectorRuntimeStatus>('feishu-connector.status-changed'),
-};
-
-export const googleSheetsConnector = {
-  getConfig: bridge.buildProvider<IBridgeResponse<GoogleSheetsConnectorConfig>, void>(
-    'google-sheets-connector.get-config'
-  ),
-  setConfig: bridge.buildProvider<
-    IBridgeResponse<GoogleSheetsConnectorConfig>,
-    { config: Partial<GoogleSheetsConnectorConfig> }
-  >('google-sheets-connector.set-config'),
-  getStatus: bridge.buildProvider<IBridgeResponse<GoogleSheetsConnectorRuntimeStatus>, void>(
-    'google-sheets-connector.get-status'
-  ),
-  start: bridge.buildProvider<IBridgeResponse<GoogleSheetsConnectorRuntimeStatus>, void>(
-    'google-sheets-connector.start'
-  ),
-  stop: bridge.buildProvider<IBridgeResponse<GoogleSheetsConnectorRuntimeStatus>, void>('google-sheets-connector.stop'),
-  listSheets: bridge.buildProvider<IBridgeResponse<GoogleSheet[]>, { limit?: number }>(
-    'google-sheets-connector.list-sheets'
-  ),
-  syncNow: bridge.buildProvider<IBridgeResponse<GoogleSheetsSyncResult>, { limit?: number }>(
-    'google-sheets-connector.sync-now'
-  ),
-  listStoredSheets: bridge.buildProvider<IBridgeResponse<GoogleSheetsStoredSpreadsheet[]>, { limit?: number }>(
-    'google-sheets-connector.list-stored-sheets'
-  ),
-  statusChanged: bridge.buildEmitter<GoogleSheetsConnectorRuntimeStatus>('google-sheets-connector.status-changed'),
-};
-
-export const gmailConnector = {
-  getConfig: bridge.buildProvider<IBridgeResponse<GmailConnectorConfig>, void>('gmail-connector.get-config'),
-  setConfig: bridge.buildProvider<IBridgeResponse<GmailConnectorConfig>, { config: Partial<GmailConnectorConfig> }>(
-    'gmail-connector.set-config'
-  ),
-  getStatus: bridge.buildProvider<IBridgeResponse<GmailConnectorRuntimeStatus>, void>('gmail-connector.get-status'),
-  start: bridge.buildProvider<IBridgeResponse<GmailConnectorRuntimeStatus>, void>('gmail-connector.start'),
-  stop: bridge.buildProvider<IBridgeResponse<GmailConnectorRuntimeStatus>, void>('gmail-connector.stop'),
-  listMessages: bridge.buildProvider<IBridgeResponse<GmailMessage[]>, { limit?: number }>(
-    'gmail-connector.list-messages'
-  ),
-  syncNow: bridge.buildProvider<IBridgeResponse<GmailSyncResult>, { limit?: number }>('gmail-connector.sync-now'),
-  listStoredMessages: bridge.buildProvider<IBridgeResponse<GmailStoredMessage[]>, { limit?: number }>(
-    'gmail-connector.list-stored-messages'
-  ),
-  statusChanged: bridge.buildEmitter<GmailConnectorRuntimeStatus>('gmail-connector.status-changed'),
-};
-
-export const googleCalendarConnector = {
-  getConfig: bridge.buildProvider<IBridgeResponse<GoogleCalendarConnectorConfig>, void>(
-    'google-calendar-connector.get-config'
-  ),
-  setConfig: bridge.buildProvider<
-    IBridgeResponse<GoogleCalendarConnectorConfig>,
-    { config: Partial<GoogleCalendarConnectorConfig> }
-  >('google-calendar-connector.set-config'),
-  getStatus: bridge.buildProvider<IBridgeResponse<GoogleCalendarConnectorRuntimeStatus>, void>(
-    'google-calendar-connector.get-status'
-  ),
-  start: bridge.buildProvider<IBridgeResponse<GoogleCalendarConnectorRuntimeStatus>, void>(
-    'google-calendar-connector.start'
-  ),
-  stop: bridge.buildProvider<IBridgeResponse<GoogleCalendarConnectorRuntimeStatus>, void>(
-    'google-calendar-connector.stop'
-  ),
-  listCalendars: bridge.buildProvider<IBridgeResponse<GoogleCalendarEntry[]>, void>(
-    'google-calendar-connector.list-calendars'
-  ),
-  syncNow: bridge.buildProvider<IBridgeResponse<GoogleCalendarSyncResult>, void>('google-calendar-connector.sync-now'),
-  listStoredCalendars: bridge.buildProvider<IBridgeResponse<GoogleCalendarStoredEntry[]>, { limit?: number }>(
-    'google-calendar-connector.list-stored-calendars'
-  ),
-  statusChanged: bridge.buildEmitter<GoogleCalendarConnectorRuntimeStatus>('google-calendar-connector.status-changed'),
-};
-
-export const googleDocsConnector = {
-  getConfig: bridge.buildProvider<IBridgeResponse<GoogleDocsConnectorConfig>, void>('google-docs-connector.get-config'),
-  setConfig: bridge.buildProvider<
-    IBridgeResponse<GoogleDocsConnectorConfig>,
-    { config: Partial<GoogleDocsConnectorConfig> }
-  >('google-docs-connector.set-config'),
-  getStatus: bridge.buildProvider<IBridgeResponse<GoogleDocsConnectorRuntimeStatus>, void>(
-    'google-docs-connector.get-status'
-  ),
-  start: bridge.buildProvider<IBridgeResponse<GoogleDocsConnectorRuntimeStatus>, void>('google-docs-connector.start'),
-  stop: bridge.buildProvider<IBridgeResponse<GoogleDocsConnectorRuntimeStatus>, void>('google-docs-connector.stop'),
-  listDocs: bridge.buildProvider<IBridgeResponse<GoogleDoc[]>, { limit?: number }>('google-docs-connector.list-docs'),
-  syncNow: bridge.buildProvider<IBridgeResponse<GoogleDocsSyncResult>, { limit?: number }>(
-    'google-docs-connector.sync-now'
-  ),
-  listStoredDocs: bridge.buildProvider<IBridgeResponse<GoogleDocsStoredDocument[]>, { limit?: number }>(
-    'google-docs-connector.list-stored-docs'
-  ),
-  statusChanged: bridge.buildEmitter<GoogleDocsConnectorRuntimeStatus>('google-docs-connector.status-changed'),
-};
-
-export const googleDriveConnector = {
-  getConfig: bridge.buildProvider<IBridgeResponse<GoogleDriveConnectorConfig>, void>(
-    'google-drive-connector.get-config'
-  ),
-  setConfig: bridge.buildProvider<
-    IBridgeResponse<GoogleDriveConnectorConfig>,
-    { config: Partial<GoogleDriveConnectorConfig> }
-  >('google-drive-connector.set-config'),
-  getStatus: bridge.buildProvider<IBridgeResponse<GoogleDriveConnectorRuntimeStatus>, void>(
-    'google-drive-connector.get-status'
-  ),
-  start: bridge.buildProvider<IBridgeResponse<GoogleDriveConnectorRuntimeStatus>, void>('google-drive-connector.start'),
-  stop: bridge.buildProvider<IBridgeResponse<GoogleDriveConnectorRuntimeStatus>, void>('google-drive-connector.stop'),
-  statusChanged: bridge.buildEmitter<GoogleDriveConnectorRuntimeStatus>('google-drive-connector.status-changed'),
-  createAuthRequest: bridge.buildProvider<IBridgeResponse<GoogleDriveAuthRequest>, void>(
-    'google-drive-connector.create-auth-request'
-  ),
-  completeAuth: bridge.buildProvider<
-    IBridgeResponse<GoogleDriveAuthResult>,
-    { callbackUrl?: string; code?: string; state?: string }
-  >('google-drive-connector.complete-auth'),
-  listFiles: bridge.buildProvider<IBridgeResponse<GoogleDriveFile[]>, { limit?: number }>(
-    'google-drive-connector.list-files'
-  ),
-  syncNow: bridge.buildProvider<IBridgeResponse<GoogleDriveSyncResult>, { limit?: number }>(
-    'google-drive-connector.sync-now'
-  ),
-  listStoredFiles: bridge.buildProvider<IBridgeResponse<GoogleDriveStoredFile[]>, { limit?: number }>(
-    'google-drive-connector.list-stored-files'
-  ),
-};
 
 export const browserContext = {
   listBySpace: bridge.buildProvider<

@@ -6,10 +6,88 @@ import WebKit
 @MainActor
 final class WebViewStore: NSObject, ObservableObject {
   private static let officialRemoteHost = "remote.contextgo.io"
+  private static let themeColorMessageHandlerName = "contextGoThemeColor"
+  private static let defaultChromeColorHex = "#f7f8fb"
+
+  private static var themeColorObserverScript: String {
+    """
+    (() => {
+      if (window.__contextGoThemeColorObserverInstalled) {
+        return;
+      }
+
+      window.__contextGoThemeColorObserverInstalled = true;
+      const handler = window.webkit?.messageHandlers?.\(themeColorMessageHandlerName);
+      if (!handler) {
+        return;
+      }
+
+      let queued = false;
+      const postThemeColor = () => {
+        queued = false;
+        const themeColor = document.querySelector('meta[name="theme-color"]')?.content?.trim() ?? '';
+        handler.postMessage(themeColor);
+      };
+
+      const schedulePostThemeColor = () => {
+        if (queued) {
+          return;
+        }
+
+        queued = true;
+        window.setTimeout(postThemeColor, 0);
+      };
+
+      const hookHistoryMethod = (methodName) => {
+        const original = history[methodName];
+        if (typeof original !== 'function') {
+          return;
+        }
+
+        history[methodName] = function() {
+          const result = original.apply(this, arguments);
+          schedulePostThemeColor();
+          return result;
+        };
+      };
+
+      hookHistoryMethod('pushState');
+      hookHistoryMethod('replaceState');
+
+      const startObserving = () => {
+        if (!document.head) {
+          return;
+        }
+
+        new MutationObserver(schedulePostThemeColor).observe(document.head, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['content'],
+        });
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          startObserving();
+          schedulePostThemeColor();
+        }, { once: true });
+      } else {
+        startObserving();
+        schedulePostThemeColor();
+      }
+
+      window.addEventListener('popstate', schedulePostThemeColor);
+      window.addEventListener('hashchange', schedulePostThemeColor);
+      window.addEventListener('load', schedulePostThemeColor);
+    })();
+    """
+  }
 
   let webView: WKWebView
   @Published private(set) var isPageLoading = false
   @Published private(set) var hasCommittedNavigation = false
+  @Published private(set) var chromeColor = UIColor(contextGoHex: WebViewStore.defaultChromeColorHex) ?? .systemBackground
 
   var shouldShowLaunchOverlay: Bool {
     isPageLoading && !hasCommittedNavigation
@@ -39,6 +117,10 @@ final class WebViewStore: NSObject, ObservableObject {
 
     super.init()
 
+    webView.configuration.userContentController.add(self, name: Self.themeColorMessageHandlerName)
+    webView.configuration.userContentController.addUserScript(
+      WKUserScript(source: Self.themeColorObserverScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+    )
     webView.navigationDelegate = self
     webView.uiDelegate = self
   }
@@ -101,6 +183,17 @@ final class WebViewStore: NSObject, ObservableObject {
   func goBack() {
     guard webView.canGoBack else { return }
     webView.goBack()
+  }
+
+  private func updateChromeColor(_ cssColor: String?) {
+    guard let normalizedColor = cssColor?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !normalizedColor.isEmpty,
+          let parsedColor = UIColor(contextGoHex: normalizedColor)
+    else {
+      return
+    }
+
+    chromeColor = parsedColor
   }
 
   private func topViewController(startingFrom rootViewController: UIViewController?) -> UIViewController? {
@@ -264,6 +357,18 @@ extension WebViewStore: WKNavigationDelegate {
   }
 }
 
+extension WebViewStore: WKScriptMessageHandler {
+  func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+    guard message.name == Self.themeColorMessageHandlerName,
+          let cssColor = message.body as? String
+    else {
+      return
+    }
+
+    updateChromeColor(cssColor)
+  }
+}
+
 extension WebViewStore: WKUIDelegate {
   @available(iOS 18.4, *)
   func webView(
@@ -298,5 +403,32 @@ extension WebViewStore: UIDocumentPickerDelegate {
   func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
     openPanelCompletionHandler?(nil)
     openPanelCompletionHandler = nil
+  }
+}
+
+private extension UIColor {
+  convenience init?(contextGoHex hex: String) {
+    let normalized = hex
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+      .replacingOccurrences(of: "#", with: "")
+
+    let expandedHex: String
+    switch normalized.count {
+    case 3:
+      expandedHex = normalized.map { "\($0)\($0)" }.joined()
+    case 6:
+      expandedHex = normalized
+    default:
+      return nil
+    }
+
+    guard let hexValue = Int(expandedHex, radix: 16) else {
+      return nil
+    }
+
+    let red = CGFloat((hexValue >> 16) & 0xFF) / 255
+    let green = CGFloat((hexValue >> 8) & 0xFF) / 255
+    let blue = CGFloat(hexValue & 0xFF) / 255
+    self.init(red: red, green: green, blue: blue, alpha: 1)
   }
 }

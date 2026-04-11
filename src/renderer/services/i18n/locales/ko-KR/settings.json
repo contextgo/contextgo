@@ -1310,16 +1310,9 @@
     "officialSite": "공식 사이트",
     "resources": "지원 리소스",
     "auth": "인증 방식",
-    "overviewTab": "개요",
-    "configureTab": "설정",
-    "detailTabsAriaLabel": "커넥터 상세 탭",
     "openWebsite": "공식 사이트 열기",
-    "note": "여기에서 전체 설정을 제공하는 것은 이미 지원되는 connector뿐입니다. 나머지 항목은 구현 전까지 카탈로그 항목으로만 표시됩니다.",
+    "note": "커넥터 페이지는 connector 프로젝트의 네이티브 기능 카탈로그를 표시합니다. ContextGo는 여기서 기능 상태를 보여주고 수집 후 출력을 소비합니다.",
     "summaryTemplate": "{{name}}는 {{category}}에 속하며, 이후 AI 워크플로의 컨텍스트 데이터로 연결될 수 있습니다.",
-    "configureAvailableDesc": "이 connector는 이미 ContextGo에 연결되어 있으며, 이 페이지에서 바로 설정하고 사용할 수 있습니다.",
-    "configureUnavailableTitle": "아직 설정할 수 없습니다",
-    "configureUnavailableDesc": "이 connector는 현재 카탈로그 항목만 존재합니다. ContextGo는 아직 사용할 수 있는 설정 및 동기화 흐름을 제공하지 않습니다.",
-    "onlySupportedCanConfigure": "여기서는 지원되는 connector만 설정할 수 있습니다.",
     "stagePriority": "우선",
     "stagePlanned": "예정",
     "supportStatus": {
@@ -1411,7 +1404,28 @@
       "empty": "아직 수집된 브라우저 활동이 없습니다.",
       "sourceExtension": "확장 프로그램",
       "sourceManual": "수동"
-    }
+    },
+    "externalCatalog": {
+      "platformAccess": "플랫폼 접속 경계",
+      "runtimeBoundary": "런타임 경계",
+      "nativeSurface": "네이티브 능력 면",
+      "commandEntrypoints": "명령 진입점",
+      "noneYet": "아직 없습니다.",
+      "workflows": "구현된 워크플로",
+      "workflowSurface": "표면: {{surface}}",
+      "workflowStatus": {
+        "ready": "사용 가능",
+        "partial": "부분 구현",
+        "planned": "예정"
+      },
+      "nativeObjects": "네이티브 객체",
+      "entrypoints": "진입 명령",
+      "writesStore": "스토어에 기록",
+      "noStoreWrite": "스토어 기록 없음",
+      "unavailableTitle": "connector 상세를 불러올 수 없습니다"
+    },
+    "catalogPlaceholderDesc": "이 connector는 현재 카탈로그 자리표시자만 존재합니다. ContextGo는 아직 이 런타임이나 수집 출력을 소비하지 않습니다.",
+    "catalogExternalDesc": "이 connector는 독립된 connector 프로젝트가 관리합니다. ContextGo는 여기서 기능 카탈로그를 읽고 수집 후 출력을 소비합니다."
   },
   "cloud": {
     "title": "ContextGo 클라우드 계정",

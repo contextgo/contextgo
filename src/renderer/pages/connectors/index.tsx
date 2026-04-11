@@ -1,4 +1,5 @@
 import { ipcBridge } from '@/common';
+import type { ExternalConnectorCatalogDetails } from '@/common/types/connectors/externalConnectorCatalog';
 import ContextGoSelect from '@/renderer/components/base/ContextGoSelect';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { Button, Tag } from '@arco-design/web-react';
@@ -7,19 +8,13 @@ import classNames from 'classnames';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import ClipboardConnectorPanel from './panels/ClipboardConnectorPanel';
-import BrowserActivityConnectorPanel from './panels/BrowserActivityConnectorPanel';
-import FeishuConnectorPanel from './panels/FeishuConnectorPanel';
-import GoogleDriveConnectorPanel from './panels/GoogleDriveConnectorPanel';
-import GoogleDocsConnectorPanel from './panels/GoogleDocsConnectorPanel';
-import GoogleWorkspaceFamilyPanel from './panels/GoogleWorkspaceFamilyPanel';
+import ConnectorCapabilityPanel from './ConnectorCapabilityPanel';
 import ConnectorLogo from './ConnectorLogo';
 import { CONNECTOR_CATEGORY_ORDER, CONNECTOR_MAP, CONNECTORS } from './connectors';
 import styles from './ConnectorsPage.module.css';
 import type {
   ConnectorAuthType,
   ConnectorCategory,
-  ConnectorExperienceTab,
   ConnectorResource,
   ConnectorStage,
   ConnectorSupportStatus,
@@ -78,7 +73,8 @@ const ConnectorsPage: React.FC = () => {
   const isMobile = layout?.isMobile ?? false;
   const [collapsedCategories, setCollapsedCategories] =
     useState<Record<ConnectorCategory, boolean>>(createInitialCollapsedState);
-  const [activeTab, setActiveTab] = useState<ConnectorExperienceTab>('overview');
+  const [externalCatalogDetails, setExternalCatalogDetails] = useState<ExternalConnectorCatalogDetails | null>(null);
+  const [externalCatalogError, setExternalCatalogError] = useState<string>('');
 
   const groupedConnectors = useMemo(
     () =>
@@ -110,7 +106,6 @@ const ConnectorsPage: React.FC = () => {
       return;
     }
 
-    setActiveTab('overview');
     setCollapsedCategories((previous) => {
       if (!previous[resolvedConnector.category]) {
         return previous;
@@ -120,6 +115,46 @@ const ConnectorsPage: React.FC = () => {
         [resolvedConnector.category]: false,
       };
     });
+  }, [resolvedConnector]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!resolvedConnector?.externalCatalogConnector) {
+      setExternalCatalogDetails(null);
+      setExternalCatalogError('');
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setExternalCatalogDetails(null);
+    setExternalCatalogError('');
+    ipcBridge.externalConnectorCatalog.getDetails
+      .invoke({ connector: resolvedConnector.externalCatalogConnector })
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        if (result.success && result.data) {
+          setExternalCatalogDetails(result.data);
+          setExternalCatalogError('');
+          return;
+        }
+        setExternalCatalogDetails(null);
+        setExternalCatalogError(result.msg || '');
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        setExternalCatalogDetails(null);
+        setExternalCatalogError(error instanceof Error ? error.message : String(error));
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [resolvedConnector]);
 
   if (!resolvedConnector) {
@@ -134,6 +169,10 @@ const ConnectorsPage: React.FC = () => {
     });
   const isSupported = resolvedConnector.supportStatus === 'supported';
   const supportSources = resolvedConnector.supportSources || [];
+
+  const supportDescription = resolvedConnector.externalCatalogConnector
+    ? t('settings.connectors.catalogExternalDesc')
+    : t('settings.connectors.catalogPlaceholderDesc');
 
   const mobileCatalog = isMobile ? (
     <section className={styles.mobileCatalog} data-testid='connector-mobile-catalog'>
@@ -179,29 +218,6 @@ const ConnectorsPage: React.FC = () => {
       </div>
     </section>
   ) : null;
-
-  const renderConfigurePanel = (): React.ReactNode => {
-    if (!isSupported) {
-      return (
-        <div className={styles.unsupportedState} data-testid='connector-config-unavailable'>
-          <Tag color='gray'>{t(getSupportStatusKey(resolvedConnector.supportStatus))}</Tag>
-          <h3 className={styles.unsupportedStateTitle}>{t('settings.connectors.configureUnavailableTitle')}</h3>
-          <p className={styles.unsupportedStateText}>{t('settings.connectors.configureUnavailableDesc')}</p>
-        </div>
-      );
-    }
-
-    return (
-      <>
-        <ClipboardConnectorPanel connectorId={resolvedConnector.id} />
-        <BrowserActivityConnectorPanel connectorId={resolvedConnector.id} />
-        <FeishuConnectorPanel connectorId={resolvedConnector.id} />
-        <GoogleDriveConnectorPanel connectorId={resolvedConnector.id} />
-        <GoogleDocsConnectorPanel connectorId={resolvedConnector.id} />
-        <GoogleWorkspaceFamilyPanel connectorId={resolvedConnector.id} />
-      </>
-    );
-  };
 
   return (
     <div className='secondary-page-frame'>
@@ -306,120 +322,95 @@ const ConnectorsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div
-                className={styles.detailTabs}
-                role='tablist'
-                aria-label={t('settings.connectors.detailTabsAriaLabel')}
-              >
-                <Button
-                  type={activeTab === 'overview' ? 'primary' : 'outline'}
-                  className={styles.detailTabButton}
-                  onClick={() => setActiveTab('overview')}
-                >
-                  {t('settings.connectors.overviewTab')}
-                </Button>
-                <Button
-                  type={activeTab === 'configure' ? 'primary' : 'outline'}
-                  className={styles.detailTabButton}
-                  disabled={!isSupported}
-                  onClick={() => setActiveTab('configure')}
-                >
-                  {t('settings.connectors.configureTab')}
-                </Button>
-              </div>
-
-              {!isSupported ? (
-                <div className={styles.unsupportedHint}>{t('settings.connectors.onlySupportedCanConfigure')}</div>
-              ) : null}
-
-              {activeTab === 'overview' ? (
-                <div className={styles.detailGrid}>
-                  <div className={styles.detailCard}>
-                    <h3 className={styles.detailCardTitle}>{t('settings.connectors.support')}</h3>
-                    <div className={styles.supportSummary}>
-                      <Tag color={isSupported ? 'green' : 'gray'}>
-                        {t(getSupportStatusKey(resolvedConnector.supportStatus))}
-                      </Tag>
-                      <div className={styles.detailCardText}>
-                        {isSupported
-                          ? t('settings.connectors.configureAvailableDesc')
-                          : t('settings.connectors.configureUnavailableDesc')}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.detailCard}>
-                    <h3 className={styles.detailCardTitle}>{t('settings.connectors.resources')}</h3>
-                    <div className={styles.chipWrap}>
-                      {resolvedConnector.resources.map((resource) => (
-                        <Tag key={resource} size='small' color='arcoblue'>
-                          {t(getResourceKey(resource))}
-                        </Tag>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className={styles.detailCard}>
-                    <h3 className={styles.detailCardTitle}>{t('settings.connectors.auth')}</h3>
-                    <div className={styles.detailCardText}>{t(getAuthKey(resolvedConnector.authType))}</div>
-                  </div>
-
-                  <div className={styles.detailCard}>
-                    <h3 className={styles.detailCardTitle}>{t('settings.connectors.officialSite')}</h3>
-                    <div className={styles.detailCardText}>{resolvedConnector.websiteUrl}</div>
-                  </div>
-
-                  <div className={styles.detailCard}>
-                    <h3 className={styles.detailCardTitle}>{t('common.website')}</h3>
-                    <Button
-                      type='outline'
-                      icon={<Send theme='outline' size='14' />}
-                      onClick={() => {
-                        void ipcBridge.shell.openExternal.invoke(resolvedConnector.websiteUrl);
-                      }}
-                    >
-                      {t('settings.connectors.openWebsite')}
-                    </Button>
-                  </div>
-
-                  <div className={styles.detailCard}>
-                    <h3 className={styles.detailCardTitle}>{t('settings.connectors.implementation')}</h3>
-                    <div className={styles.detailCardText}>
-                      {t(getImplementationOwnerKey(resolvedConnector.implementationOwner))}
-                    </div>
-                  </div>
-
-                  <div className={styles.detailCard}>
-                    <h3 className={styles.detailCardTitle}>{t('settings.connectors.supportSources')}</h3>
-                    <div className={styles.supportSourceList}>
-                      {supportSources.length === 0 ? (
-                        <div className={styles.detailCardText}>{t('settings.connectors.noSupportSources')}</div>
-                      ) : (
-                        supportSources.map((source) => (
-                          <Button
-                            key={`${source.kind}-${source.url}`}
-                            type='text'
-                            className={styles.supportSourceItem}
-                            onClick={() => {
-                              void ipcBridge.shell.openExternal.invoke(source.url);
-                            }}
-                          >
-                            <div className={styles.supportSourceMetaRow}>
-                              <Tag size='small' color='arcoblue'>
-                                {t(getSupportKindKey(source.kind))}
-                              </Tag>
-                              <span className={styles.supportSourceLabel}>{source.label}</span>
-                            </div>
-                            <div className={styles.detailCardText}>{source.description}</div>
-                          </Button>
-                        ))
-                      )}
-                    </div>
+              <div className={styles.detailGrid}>
+                <div className={styles.detailCard}>
+                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.support')}</h3>
+                  <div className={styles.supportSummary}>
+                    <Tag color={isSupported ? 'green' : 'gray'}>
+                      {t(getSupportStatusKey(resolvedConnector.supportStatus))}
+                    </Tag>
+                    <div className={styles.detailCardText}>{supportDescription}</div>
                   </div>
                 </div>
-              ) : (
-                renderConfigurePanel()
-              )}
+
+                <div className={styles.detailCard}>
+                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.resources')}</h3>
+                  <div className={styles.chipWrap}>
+                    {resolvedConnector.resources.map((resource) => (
+                      <Tag key={resource} size='small' color='arcoblue'>
+                        {t(getResourceKey(resource))}
+                      </Tag>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={styles.detailCard}>
+                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.auth')}</h3>
+                  <div className={styles.detailCardText}>{t(getAuthKey(resolvedConnector.authType))}</div>
+                </div>
+
+                <div className={styles.detailCard}>
+                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.officialSite')}</h3>
+                  <div className={styles.detailCardText}>{resolvedConnector.websiteUrl}</div>
+                </div>
+
+                <div className={styles.detailCard}>
+                  <h3 className={styles.detailCardTitle}>{t('common.website')}</h3>
+                  <Button
+                    type='outline'
+                    icon={<Send theme='outline' size='14' />}
+                    onClick={() => {
+                      void ipcBridge.shell.openExternal.invoke(resolvedConnector.websiteUrl);
+                    }}
+                  >
+                    {t('settings.connectors.openWebsite')}
+                  </Button>
+                </div>
+
+                <div className={styles.detailCard}>
+                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.implementation')}</h3>
+                  <div className={styles.detailCardText}>
+                    {t(getImplementationOwnerKey(resolvedConnector.implementationOwner))}
+                  </div>
+                </div>
+
+                <div className={styles.detailCard}>
+                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.supportSources')}</h3>
+                  <div className={styles.supportSourceList}>
+                    {supportSources.length === 0 ? (
+                      <div className={styles.detailCardText}>{t('settings.connectors.noSupportSources')}</div>
+                    ) : (
+                      supportSources.map((source) => (
+                        <Button
+                          key={`${source.kind}-${source.url}`}
+                          type='text'
+                          className={styles.supportSourceItem}
+                          onClick={() => {
+                            void ipcBridge.shell.openExternal.invoke(source.url);
+                          }}
+                        >
+                          <div className={styles.supportSourceMetaRow}>
+                            <Tag size='small' color='arcoblue'>
+                              {t(getSupportKindKey(source.kind))}
+                            </Tag>
+                            <span className={styles.supportSourceLabel}>{source.label}</span>
+                          </div>
+                          <div className={styles.detailCardText}>{source.description}</div>
+                        </Button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {externalCatalogDetails ? <ConnectorCapabilityPanel details={externalCatalogDetails} /> : null}
+
+                {externalCatalogError ? (
+                  <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+                    <h3 className={styles.detailCardTitle}>{t('settings.connectors.externalCatalog.unavailableTitle')}</h3>
+                    <div className={styles.detailCardText}>{externalCatalogError}</div>
+                  </div>
+                ) : null}
+              </div>
 
               <div className={styles.footerNote}>
                 <ConnectionPoint theme='outline' size='16' className='mr-8px inline-block align-text-bottom' />

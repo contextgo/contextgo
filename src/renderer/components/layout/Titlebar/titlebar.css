@@ -36,14 +36,14 @@
 .app-titlebar--mobile {
   height: calc(52px + env(safe-area-inset-top, 0px));
   min-height: calc(52px + env(safe-area-inset-top, 0px));
-  padding: calc(4px + env(safe-area-inset-top, 0px)) calc(10px + env(safe-area-inset-right, 0px)) 0
-    calc(10px + env(safe-area-inset-left, 0px));
+  padding: calc(6px + env(safe-area-inset-top, 0px)) calc(12px + env(safe-area-inset-right, 0px)) 0
+    calc(12px + env(safe-area-inset-left, 0px));
 }
 
 .app-titlebar--mobile-shell {
   height: 52px;
   min-height: 52px;
-  padding: 4px 10px 0;
+  padding: 6px 12px 0;
 }
 
 .app-titlebar--mobile-home {
@@ -61,6 +61,12 @@
 .app-titlebar--mobile-conversation {
   background: #f6f8fb !important;
   border-bottom: 1px solid color-mix(in srgb, var(--bg-2) 72%, var(--border-base)) !important;
+}
+
+.app-titlebar--mobile-secondary {
+  background: color-mix(in srgb, var(--bg-1) 95%, var(--fill-2) 5%) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent) !important;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--bg-3) 32%, transparent);
 }
 
 .app-titlebar__top-drag-strip {
@@ -93,19 +99,47 @@
   pointer-events: none;
 }
 
+.app-titlebar__brand--leading {
+  justify-content: flex-start;
+  text-align: left;
+}
+
 .app-titlebar--mobile .app-titlebar__brand {
   position: absolute;
-  left: 50%;
-  transform: translateX(calc(-50% + var(--app-titlebar-mobile-center-offset, 0px)));
-  max-width: calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 200px);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: none;
+  max-width: none;
+  padding-left: calc(104px + env(safe-area-inset-left, 0px));
+  padding-right: calc(104px + env(safe-area-inset-right, 0px));
 }
 
 .app-titlebar--mobile-shell .app-titlebar__brand {
-  max-width: calc(100% - 208px);
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-width: none;
+  padding-left: calc(104px + env(safe-area-inset-left, 0px));
+  padding-right: calc(104px + env(safe-area-inset-right, 0px));
+}
+
+.app-titlebar--mobile .app-titlebar__brand--leading,
+.app-titlebar--mobile-shell .app-titlebar__brand--leading {
+  padding-left: calc(60px + env(safe-area-inset-left, 0px));
+  padding-right: calc(60px + env(safe-area-inset-right, 0px));
+}
+
+.app-titlebar--mobile-conversation .app-titlebar__brand--leading {
+  padding-left: calc(60px + env(safe-area-inset-left, 0px));
+  padding-right: calc(104px + env(safe-area-inset-right, 0px));
 }
 
 .app-titlebar--mobile-shell .app-titlebar__brand-text {
-  max-width: min(36vw, 140px);
+  max-width: 100%;
 }
 
 .app-titlebar__brand-text {
@@ -124,12 +158,12 @@
 .app-titlebar--mobile .app-titlebar__toolbar,
 .app-titlebar--mobile-shell .app-titlebar__menu,
 .app-titlebar--mobile-shell .app-titlebar__toolbar {
-  min-height: 40px;
+  min-height: 44px;
 }
 
 .app-titlebar--mobile .app-titlebar__menu,
 .app-titlebar--mobile-shell .app-titlebar__menu {
-  gap: 2px;
+  gap: 4px;
 }
 
 .app-titlebar--mobile .app-titlebar__toolbar > *,
@@ -141,7 +175,9 @@
 
 .app-titlebar--mobile .app-titlebar__brand-text,
 .app-titlebar--mobile-shell .app-titlebar__brand-text {
-  font-size: 15px;
+  font-size: 16px;
+  line-height: 1.1;
+  max-width: 100%;
 }
 
 .app-titlebar__menu {
@@ -272,13 +308,14 @@
 }
 
 .app-titlebar__button--mobile {
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px;
-  border-radius: 10px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: 12px;
   line-height: 1;
   align-self: center;
+  touch-action: manipulation;
 }
 
 .app-titlebar__button--mobile svg {
@@ -296,6 +333,12 @@
 [data-theme='dark'] .app-titlebar--mobile-conversation {
   background: #1c2129 !important;
   border-bottom-color: color-mix(in srgb, var(--bg-2) 72%, var(--border-base)) !important;
+}
+
+[data-theme='dark'] .app-titlebar--mobile-secondary {
+  background: color-mix(in srgb, var(--bg-1) 92%, var(--fill-2) 8%) !important;
+  border-bottom-color: color-mix(in srgb, var(--border-base) 76%, transparent) !important;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--bg-3) 18%, transparent);
 }
 
 .app-window-controls {

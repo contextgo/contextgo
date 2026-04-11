@@ -8,8 +8,6 @@ private enum RemoteBrand {
   static let shellChrome = Color(red: 0.890, green: 0.937, blue: 0.992)
   static let shellChromeTop = Color(red: 0.741, green: 0.851, blue: 0.992)
   static let shellChromeBottom = Color(red: 0.882, green: 0.937, blue: 0.992)
-  static let browserChromeTop = Color(red: 0.973, green: 0.978, blue: 0.988)
-  static let browserChromeBottom = Color(red: 0.961, green: 0.969, blue: 0.980)
 
   static let orbStrong = Color.black.opacity(0.06)
   static let orbSoft = Color(red: 0.545, green: 0.584, blue: 0.655).opacity(0.16)
@@ -1080,12 +1078,7 @@ private struct ShellBrowserView: View {
   var body: some View {
     GeometryReader { geometry in
       ZStack(alignment: .top) {
-        LinearGradient(
-          colors: [RemoteBrand.browserChromeTop, RemoteBrand.browserChromeBottom],
-          startPoint: .top,
-          endPoint: .bottom
-        )
-        .ignoresSafeArea()
+        browserChromeColor.ignoresSafeArea()
 
         ShellWebView(store: webViewStore, url: targetURL)
           .ignoresSafeArea(.container, edges: .bottom)
@@ -1102,13 +1095,11 @@ private struct ShellBrowserView: View {
         }
       }
     }
-    .background(
-      LinearGradient(
-        colors: [RemoteBrand.browserChromeTop, RemoteBrand.browserChromeBottom],
-        startPoint: .top,
-        endPoint: .bottom
-      )
-    )
+    .background(browserChromeColor)
+  }
+
+  private var browserChromeColor: Color {
+    Color(uiColor: webViewStore.chromeColor)
   }
 
   private var launchOverlayMessage: String {
@@ -1142,12 +1133,7 @@ private struct ShellBrowserView: View {
 
   private func shellLaunchOverlay(topInset: CGFloat) -> some View {
     ZStack(alignment: .top) {
-      LinearGradient(
-        colors: [RemoteBrand.browserChromeTop, RemoteBrand.browserChromeBottom],
-        startPoint: .top,
-        endPoint: .bottom
-      )
-      .ignoresSafeArea()
+      browserChromeColor.ignoresSafeArea()
 
       VStack(spacing: 20) {
         Spacer(minLength: max(topInset, 0) + 48)

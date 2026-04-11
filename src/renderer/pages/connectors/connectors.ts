@@ -4,23 +4,40 @@ import { CONNECTOR_LOCAL_LOGOS } from './localLogos';
 type RawConnectorDefinition = Omit<ConnectorDefinition, 'localLogo' | 'supportStatus'> & {
   localLogo?: string;
   supportStatus?: ConnectorDefinition['supportStatus'];
+  externalCatalogConnector?: string;
 };
 
 const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
   'contextgo-clipboard': [
     {
-      kind: 'contextgo-native',
-      label: 'ContextGo Managed Runtime',
-      url: 'https://contextgo.io',
+      kind: 'official-runtime',
+      label: 'cgo activity clipboard',
+      url: 'https://github.com/contextgo/connector',
       description:
-        'Clipboard is productized inside ContextGo through a managed observer wrapper and local store/collect flow.',
+        'Connector CLI activity runtime for clipboard observation, config, and collect workflows.',
     },
     {
       kind: 'connector-repo',
       label: 'Connector Repository',
       url: 'https://github.com/contextgo/connector',
       description:
-        'The sibling connector repository provides the upstream clipboard observer and activity-model reference implementation.',
+        'The standalone connector project owns the clipboard runtime, activity store, and collect pipeline.',
+    },
+  ],
+  'contextgo-browser-extension': [
+    {
+      kind: 'official-runtime',
+      label: 'cgo activity browser-extension',
+      url: 'https://github.com/contextgo/connector',
+      description:
+        'Connector CLI activity runtime for browser extension ingest, health checks, and collect workflows.',
+    },
+    {
+      kind: 'connector-repo',
+      label: 'Connector Repository',
+      url: 'https://github.com/contextgo/connector',
+      description:
+        'The standalone connector project owns the browser extension runtime, packaging, ingest contract, and protocol evolution.',
     },
   ],
   lark: [
@@ -32,111 +49,116 @@ const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
     },
     {
       kind: 'official-runtime',
-      label: 'lark-openapi-mcp',
-      url: 'https://github.com/larksuite/lark-openapi-mcp',
-      description: 'Official open-source runtime project used as the managed Feishu sidecar direction.',
+      label: 'lark-cli',
+      url: 'https://github.com/larksuite/cli',
+      description: 'Official CLI used for Feishu/Lark app configuration, authentication, and API command workflows.',
+    },
+    {
+      kind: 'connector-repo',
+      label: 'Connector Repository',
+      url: 'https://github.com/contextgo/connector',
+      description:
+        'The standalone connector project owns the Feishu runtime wrapper, space-scoped runtime state, and official CLI passthrough contract.',
     },
   ],
   'google-drive': [
     {
       kind: 'official-docs',
-      label: 'Drive API Go Quickstart',
-      url: 'https://developers.google.com/workspace/drive/api/quickstart/go',
-      description: 'Official Google Drive API quickstart for Go, which defines the baseline OAuth and API flow.',
+      label: 'Google Workspace CLI Docs',
+      url: 'https://developers.google.com/workspace',
+      description: 'Official Google Workspace platform documentation for Drive and adjacent product surfaces.',
     },
     {
-      kind: 'official-sdk',
-      label: 'google-api-go-client',
-      url: 'https://github.com/googleapis/google-api-go-client',
-      description:
-        'Official Google APIs for Go client repository, which is the planned SDK base for the Drive sidecar.',
+      kind: 'official-runtime',
+      label: 'Connector CLI',
+      url: 'https://github.com/contextgo/connector',
+      description: 'Connector-project owned runtime boundary for future Google Drive native CLI and collect workflows.',
     },
     {
-      kind: 'contextgo-native',
-      label: 'ContextGo Go Stub',
-      url: 'https://contextgo.io',
-      description:
-        'ContextGo currently ships a managed Go sidecar stub contract before the full Drive OAuth/files.list workflow is implemented.',
+      kind: 'connector-repo',
+      label: 'Connector Repository',
+      url: 'https://github.com/contextgo/connector',
+      description: 'The standalone connector project owns the Google Drive runtime migration and native capability surface.',
     },
   ],
   'google-docs': [
     {
       kind: 'official-docs',
-      label: 'Docs API Reference',
-      url: 'https://developers.google.com/workspace/docs/api/reference/rest',
-      description: 'Official Google Docs API reference for document structure and read operations.',
+      label: 'Google Workspace CLI Docs',
+      url: 'https://developers.google.com/workspace',
+      description: 'Official Google Workspace platform documentation for Docs and adjacent product surfaces.',
     },
     {
-      kind: 'official-sdk',
-      label: 'google-api-go-client',
-      url: 'https://github.com/googleapis/google-api-go-client',
-      description: 'Official Go client family that the Google Workspace sidecars build around.',
+      kind: 'official-runtime',
+      label: 'Connector CLI',
+      url: 'https://github.com/contextgo/connector',
+      description: 'Connector-project owned runtime boundary for future Google Docs native CLI and collect workflows.',
     },
     {
-      kind: 'contextgo-native',
-      label: 'ContextGo Google Workspace Sidecar',
-      url: 'https://contextgo.io',
-      description: 'ContextGo reuses the Google Workspace token cache and sidecar contract to mount Google Docs.',
+      kind: 'connector-repo',
+      label: 'Connector Repository',
+      url: 'https://github.com/contextgo/connector',
+      description: 'The standalone connector project owns the Google Docs runtime migration and native capability surface.',
     },
   ],
   'google-sheets': [
     {
       kind: 'official-docs',
-      label: 'Sheets API Reference',
-      url: 'https://developers.google.com/workspace/sheets/api/reference/rest',
-      description: 'Official Google Sheets API reference and OAuth guidance.',
+      label: 'Google Workspace CLI Docs',
+      url: 'https://developers.google.com/workspace',
+      description: 'Official Google Workspace platform documentation for Sheets and adjacent product surfaces.',
     },
     {
-      kind: 'official-sdk',
-      label: 'google-api-go-client',
-      url: 'https://github.com/googleapis/google-api-go-client',
-      description: 'Official Go client base reused by the Workspace sidecars.',
+      kind: 'official-runtime',
+      label: 'Connector CLI',
+      url: 'https://github.com/contextgo/connector',
+      description: 'Connector-project owned runtime boundary for future Google Sheets native CLI and collect workflows.',
     },
     {
-      kind: 'contextgo-native',
-      label: 'ContextGo Workspace Sidecar',
-      url: 'https://contextgo.io',
-      description: 'ContextGo mounts Google Sheets on top of the shared Workspace token cache.',
+      kind: 'connector-repo',
+      label: 'Connector Repository',
+      url: 'https://github.com/contextgo/connector',
+      description: 'The standalone connector project owns the Google Sheets runtime migration and native capability surface.',
     },
   ],
   gmail: [
     {
       kind: 'official-docs',
-      label: 'Gmail API Reference',
-      url: 'https://developers.google.com/gmail/api/reference/rest',
-      description: 'Official Gmail API reference for labels and mailbox metadata.',
+      label: 'Google Workspace CLI Docs',
+      url: 'https://developers.google.com/workspace',
+      description: 'Official Google Workspace platform documentation for Gmail and adjacent product surfaces.',
     },
     {
-      kind: 'official-sdk',
-      label: 'google-api-go-client',
-      url: 'https://github.com/googleapis/google-api-go-client',
-      description: 'Official Go client base reused by the Workspace sidecars.',
+      kind: 'official-runtime',
+      label: 'Connector CLI',
+      url: 'https://github.com/contextgo/connector',
+      description: 'Connector-project owned runtime boundary for future Gmail native CLI and collect workflows.',
     },
     {
-      kind: 'contextgo-native',
-      label: 'ContextGo Workspace Sidecar',
-      url: 'https://contextgo.io',
-      description: 'ContextGo mounts Gmail on top of the shared Workspace token cache.',
+      kind: 'connector-repo',
+      label: 'Connector Repository',
+      url: 'https://github.com/contextgo/connector',
+      description: 'The standalone connector project owns the Gmail runtime migration and native capability surface.',
     },
   ],
   'google-calendar': [
     {
       kind: 'official-docs',
-      label: 'Calendar API Reference',
-      url: 'https://developers.google.com/workspace/calendar/api/v3/reference',
-      description: 'Official Google Calendar API reference for calendar list and event metadata.',
+      label: 'Google Workspace CLI Docs',
+      url: 'https://developers.google.com/workspace',
+      description: 'Official Google Workspace platform documentation for Calendar and adjacent product surfaces.',
     },
     {
-      kind: 'official-sdk',
-      label: 'google-api-go-client',
-      url: 'https://github.com/googleapis/google-api-go-client',
-      description: 'Official Go client base reused by the Workspace sidecars.',
+      kind: 'official-runtime',
+      label: 'Connector CLI',
+      url: 'https://github.com/contextgo/connector',
+      description: 'Connector-project owned runtime boundary for future Google Calendar native CLI and collect workflows.',
     },
     {
-      kind: 'contextgo-native',
-      label: 'ContextGo Workspace Sidecar',
-      url: 'https://contextgo.io',
-      description: 'ContextGo mounts Google Calendar on top of the shared Workspace token cache.',
+      kind: 'connector-repo',
+      label: 'Connector Repository',
+      url: 'https://github.com/contextgo/connector',
+      description: 'The standalone connector project owns the Google Calendar runtime migration and native capability surface.',
     },
   ],
 };
@@ -164,8 +186,9 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     authType: 'native',
     stage: 'priority',
     summary:
-      'Space-owned clipboard activity connector with a managed observer, local event store, and collect workflow.',
-    implementationOwner: 'hybrid',
+      'Clipboard runtime now lives in the standalone connector project, which owns observation, retention, and collect workflows.',
+    implementationOwner: 'connector-repo',
+    externalCatalogConnector: 'clipboard',
     supportSources: CONNECTOR_SUPPORT_SOURCES['contextgo-clipboard'],
   },
   {
@@ -178,24 +201,10 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     authType: 'extension',
     stage: 'priority',
     summary:
-      'Browser extension activity can be ingested into Context Engine as source-aware web context and queued for connector digest jobs.',
-    implementationOwner: 'hybrid',
-    supportSources: [
-      {
-        kind: 'contextgo-native',
-        label: 'ContextGo Context Engine',
-        url: 'https://contextgo.io',
-        description:
-          'ContextGo owns ingestion, source indexing, connector digest jobs, and system run visibility for browser activity.',
-      },
-      {
-        kind: 'connector-repo',
-        label: 'Connector Repository',
-        url: 'https://github.com/contextgo/connector',
-        description:
-          'The independent connector project remains the place to evolve the browser extension runtime and packaging contract.',
-      },
-    ],
+      'The browser extension runtime lives in the standalone connector project, and ContextGo only consumes its host-side outputs after ingestion.',
+    implementationOwner: 'connector-repo',
+    externalCatalogConnector: 'browser-extension',
+    supportSources: CONNECTOR_SUPPORT_SOURCES['contextgo-browser-extension'],
   },
   {
     id: 'chrome-history',
@@ -237,8 +246,9 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     authType: 'oauth',
     stage: 'priority',
     summary:
-      'Managed Google Drive connector built around the official Drive API Go route and a ContextGo Go sidecar contract.',
-    implementationOwner: 'hybrid',
+      'Google Drive should now be modeled as a connector-project owned native boundary, not as a ContextGo inline sidecar.',
+    implementationOwner: 'connector-repo',
+    externalCatalogConnector: 'google-drive',
     supportSources: CONNECTOR_SUPPORT_SOURCES['google-drive'],
   },
   {
@@ -251,8 +261,9 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     authType: 'oauth',
     stage: 'priority',
     summary:
-      'Managed Google Docs connector that reuses Google Workspace OAuth and a Go sidecar to list and sync Docs documents.',
-    implementationOwner: 'hybrid',
+      'Google Docs should now be modeled as a connector-project owned native boundary, not as a ContextGo inline sidecar.',
+    implementationOwner: 'connector-repo',
+    externalCatalogConnector: 'google-docs',
     supportSources: CONNECTOR_SUPPORT_SOURCES['google-docs'],
   },
   {
@@ -264,8 +275,10 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     resources: ['sheets', 'docs'],
     authType: 'oauth',
     stage: 'priority',
-    summary: 'Managed Google Sheets connector that reuses Workspace OAuth and a shared Go sidecar contract.',
-    implementationOwner: 'hybrid',
+    summary:
+      'Google Sheets should now be modeled as a connector-project owned native boundary, not as a ContextGo inline sidecar.',
+    implementationOwner: 'connector-repo',
+    externalCatalogConnector: 'google-sheets',
     supportSources: CONNECTOR_SUPPORT_SOURCES['google-sheets'],
   },
   {
@@ -277,8 +290,10 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     resources: ['calendar'],
     authType: 'oauth',
     stage: 'priority',
-    summary: 'Managed Google Calendar connector that reuses Workspace OAuth and a shared Go sidecar contract.',
-    implementationOwner: 'hybrid',
+    summary:
+      'Google Calendar should now be modeled as a connector-project owned native boundary, not as a ContextGo inline sidecar.',
+    implementationOwner: 'connector-repo',
+    externalCatalogConnector: 'google-calendar',
     supportSources: CONNECTOR_SUPPORT_SOURCES['google-calendar'],
   },
   {
@@ -290,8 +305,10 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     resources: ['email'],
     authType: 'oauth',
     stage: 'priority',
-    summary: 'Managed Gmail connector that reuses Workspace OAuth and a shared Go sidecar contract.',
-    implementationOwner: 'hybrid',
+    summary:
+      'Gmail should now be modeled as a connector-project owned native boundary, not as a ContextGo inline sidecar.',
+    implementationOwner: 'connector-repo',
+    externalCatalogConnector: 'gmail',
     supportSources: CONNECTOR_SUPPORT_SOURCES.gmail,
   },
   {
@@ -344,8 +361,9 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     authType: 'oauth',
     stage: 'priority',
     summary:
-      'Managed Feishu OpenAPI connector that uses official Open Platform docs and the official lark-openapi-mcp runtime path.',
-    implementationOwner: 'official',
+      'The Feishu connector runtime lives in the standalone connector project, which wraps the official lark-cli and keeps runtime/auth state outside the ContextGo app.',
+    implementationOwner: 'connector-repo',
+    externalCatalogConnector: 'feishu',
     supportSources: CONNECTOR_SUPPORT_SOURCES.lark,
   },
   {
@@ -437,6 +455,30 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     resources: ['repositories', 'issues', 'docs'],
     authType: 'pat',
     stage: 'priority',
+    summary:
+      'The GitHub connector runtime lives in the standalone connector project, which wraps the official gh CLI and exposes source and workflow readiness back to ContextGo.',
+    implementationOwner: 'connector-repo',
+    externalCatalogConnector: 'github',
+    supportSources: [
+      {
+        kind: 'official-docs',
+        label: 'GitHub CLI Manual',
+        url: 'https://cli.github.com/manual/',
+        description: 'Official gh CLI reference for auth, api passthrough, and repository-oriented command workflows.',
+      },
+      {
+        kind: 'official-runtime',
+        label: 'gh CLI',
+        url: 'https://github.com/cli/cli',
+        description: 'Official GitHub CLI used by the connector project for auth state and API passthrough.',
+      },
+      {
+        kind: 'connector-repo',
+        label: 'Connector Repository',
+        url: 'https://github.com/contextgo/connector',
+        description: 'The standalone connector project owns the GitHub runtime wrapper, source registry, and collect/store readiness model.',
+      },
+    ],
   },
   {
     id: 'gitlab',
@@ -989,6 +1031,19 @@ const SUPPORTED_CONNECTOR_IDS = new Set([
   'gmail',
   'google-calendar',
   'lark',
+  'github',
+  'obsidian',
+  'notion',
+  'arxiv',
+  'reddit',
+  'rss',
+  'x',
+  'xiaohongshu',
+  'douyin',
+  'tiktok',
+  'youtube',
+  'wechat',
+  'tianyancha',
 ]);
 
 export const CONNECTORS: ConnectorDefinition[] = RAW_CONNECTORS.map((connector) => ({

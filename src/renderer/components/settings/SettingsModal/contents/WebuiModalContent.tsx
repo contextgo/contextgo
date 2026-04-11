@@ -85,7 +85,6 @@ const WebuiModalContent: React.FC = () => {
   const [cloudStatus, setCloudStatus] = useState<CloudStatus | null>(null);
   const [cloudLoading, setCloudLoading] = useState(true);
   const [cloudAuthLoadingProvider, setCloudAuthLoadingProvider] = useState<CloudAuthProviderId | null>(null);
-  const [officialRemotePreparing, setOfficialRemotePreparing] = useState(false);
   const webuiEnabled = status?.localAccessEnabled ?? false;
   const allowRemotePreference = status?.localAccessAllowRemote ?? false;
 
@@ -650,41 +649,16 @@ const WebuiModalContent: React.FC = () => {
     [t]
   );
 
-  const handlePrepareOfficialRemote = useCallback(async () => {
-    setOfficialRemotePreparing(true);
-    try {
-      const result = await cloud.ensureOfficialRemoteReady.invoke();
-      if (result.success && result.data) {
-        setCloudStatus(result.data);
-        return result.data;
-      }
-
-      throw new Error(result.msg || t('settings.cloud.actionFailed'));
-    } catch (error) {
-      console.error('[WebuiModal] Failed to prepare Official Remote:', error);
-      Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
-      return null;
-    } finally {
-      setOfficialRemotePreparing(false);
-    }
-  }, [t]);
-
   const officialRemoteUrl = buildOfficialDeviceListUrl(cloudStatus?.authBaseUrl);
 
   const handleOpenOfficialRemote = useCallback(async () => {
-    const latestStatus = officialRemoteReady ? cloudStatus : await handlePrepareOfficialRemote();
-    if (!latestStatus?.officialRemoteReady) {
-      Message.error(officialRemoteStatusText);
-      return;
-    }
-
     try {
       await openExternalUrl(officialRemoteUrl);
     } catch (error) {
       console.error('[WebuiModal] Failed to open Official Remote:', error);
       Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
     }
-  }, [cloudStatus, handlePrepareOfficialRemote, officialRemoteReady, officialRemoteStatusText, officialRemoteUrl, t]);
+  }, [officialRemoteUrl, t]);
 
   const webuiPanel = (
     <ContextGoScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
@@ -748,8 +722,6 @@ const WebuiModalContent: React.FC = () => {
                   <Button
                     type='primary'
                     onClick={() => void handleOpenOfficialRemote()}
-                    loading={officialRemotePreparing}
-                    title={!officialRemoteReady ? officialRemoteStatusText : undefined}
                   >
                     {t('settings.webui.openOfficialRemote')}
                   </Button>

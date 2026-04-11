@@ -1303,16 +1303,9 @@
     "officialSite": "Official Site",
     "resources": "Supported Resources",
     "auth": "Authentication",
-    "overviewTab": "Overview",
-    "configureTab": "Configure",
-    "detailTabsAriaLabel": "Connector detail tabs",
     "openWebsite": "Open Website",
-    "note": "Only supported connectors expose full configuration here. Planned connectors remain visible as catalog entries until implementation lands.",
+    "note": "Connector pages reflect the connector project's native capability catalog. ContextGo renders capability status here and consumes outputs after ingestion.",
     "summaryTemplate": "{{name}} belongs to {{category}} and can later be linked as contextual data for AI workflows.",
-    "configureAvailableDesc": "This connector is already wired into ContextGo and can be configured and used from this page.",
-    "configureUnavailableTitle": "Configuration is not available yet",
-    "configureUnavailableDesc": "This connector is still listed as a catalog item only. ContextGo does not provide a usable configuration and sync workflow for it yet.",
-    "onlySupportedCanConfigure": "Only supported connectors can be configured here.",
     "stagePriority": "Priority",
     "stagePlanned": "Planned",
     "supportStatus": {
@@ -1404,7 +1397,28 @@
       "native": "Local Permission",
       "extension": "Extension Pairing",
       "none": "No Auth"
-    }
+    },
+    "externalCatalog": {
+      "platformAccess": "Platform Access",
+      "runtimeBoundary": "Runtime Boundary",
+      "nativeSurface": "Native Surface",
+      "commandEntrypoints": "Command Entrypoints",
+      "noneYet": "None yet.",
+      "workflows": "Implemented Workflows",
+      "workflowSurface": "Surface: {{surface}}",
+      "workflowStatus": {
+        "ready": "Ready",
+        "partial": "Partial",
+        "planned": "Planned"
+      },
+      "nativeObjects": "Native Objects",
+      "entrypoints": "Entrypoints",
+      "writesStore": "Writes Store",
+      "noStoreWrite": "No Store Write",
+      "unavailableTitle": "Connector details are unavailable"
+    },
+    "catalogPlaceholderDesc": "This connector is currently a catalog placeholder. ContextGo does not consume any runtime or collected outputs for it yet.",
+    "catalogExternalDesc": "This connector is managed by the standalone connector project. ContextGo reads its capability catalog here and consumes outputs after ingestion."
   },
   "cloud": {
     "title": "ContextGo Account",

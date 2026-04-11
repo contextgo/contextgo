@@ -22,7 +22,7 @@ describe('availableAgents helpers', () => {
     { backend: 'qwen', name: 'Qwen Code', cliPath: '/usr/local/bin/qwen' },
     { backend: 'opencode', name: 'OpenCode', cliPath: '/usr/local/bin/opencode' },
     { backend: 'custom', name: 'Custom Agent', customAgentId: 'custom-1' },
-    { backend: 'custom', name: 'Preset Assistant', customAgentId: 'builtin-writer', isPreset: true },
+    { backend: 'custom', name: 'Preset Assistant', customAgentId: 'builtin-superpowers', isPreset: true },
     { backend: 'codex', name: 'Code Review Assistant', isPreset: true, customAgentId: 'preset-1' },
   ];
 
@@ -37,7 +37,7 @@ describe('availableAgents helpers', () => {
       { backend: 'claude', name: 'Claude Code', cliPath: '/usr/local/bin/claude' },
       { backend: 'opencode', name: 'OpenCode', cliPath: '/usr/local/bin/opencode' },
       { backend: 'custom', name: 'Custom Agent', customAgentId: 'custom-1' },
-      { backend: 'custom', name: 'Preset Assistant', customAgentId: 'builtin-writer', isPreset: true },
+      { backend: 'custom', name: 'Preset Assistant', customAgentId: 'builtin-superpowers', isPreset: true },
       { backend: 'codex', name: 'Code Review Assistant', isPreset: true, customAgentId: 'preset-1' },
     ]);
   });
@@ -52,7 +52,7 @@ describe('availableAgents helpers', () => {
         { backend: 'custom', name: 'Custom Agent', customAgentId: 'custom-1' },
       ],
       presetAssistants: [
-        { backend: 'custom', name: 'Preset Assistant', customAgentId: 'builtin-writer', isPreset: true },
+        { backend: 'custom', name: 'Preset Assistant', customAgentId: 'builtin-superpowers', isPreset: true },
         { backend: 'codex', name: 'Code Review Assistant', isPreset: true, customAgentId: 'preset-1' },
       ],
     });
@@ -61,12 +61,12 @@ describe('availableAgents helpers', () => {
   it('builds preset assistants from enabled assistant config entries', () => {
     const assistants: AcpBackendConfig[] = [
       {
-        id: 'builtin-cowork',
-        name: 'Cowork',
+        id: 'builtin-superpowers',
+        name: 'Superpowers Harness',
         isPreset: true,
         enabled: true,
-        avatar: 'cowork',
-        presetAgentType: 'gemini',
+        avatar: 'superpowers.svg',
+        presetAgentType: 'codex',
       },
       {
         id: 'builtin-reviewer',
@@ -83,11 +83,11 @@ describe('availableAgents helpers', () => {
     expect(buildConversationPresetAssistants(assistants, 'zh-CN')).toEqual([
       {
         backend: 'custom',
-        name: 'Cowork',
-        customAgentId: 'builtin-cowork',
+        name: 'Superpowers Harness',
+        customAgentId: 'builtin-superpowers',
         isPreset: true,
-        avatar: 'cowork',
-        presetAgentType: 'gemini',
+        avatar: 'superpowers.svg',
+        presetAgentType: 'codex',
       },
       {
         backend: 'custom',

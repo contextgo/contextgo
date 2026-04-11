@@ -8,23 +8,9 @@ import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import { ASSISTANT_PRESETS } from './assistantPresets';
 import { CONTEXT_ENGINE_SYSTEM_ASSISTANTS } from './systemAssistants';
 
-const BUILTIN_ASSISTANT_PREFIX = 'builtin-';
+export const BUILTIN_ASSISTANT_PREFIX = 'builtin-';
 
-const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
-  'pptx-generator',
-  'cowork',
-  'workflow-planner',
-  'workflow-writer',
-  'workflow-evaluator',
-  'engineering-workbench',
-  'engineering-planner',
-  'engineering-reviewer',
-  'openclaw-setup',
-  'star-office-helper',
-  'story-roleplay',
-  'moltbook',
-  'beautiful-mermaid',
-]);
+export const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set(['superpowers', 'everything-in-claude-code']);
 
 export const findBuiltinAssistantPreset = (assistantId: string) => {
   if (!assistantId.startsWith(BUILTIN_ASSISTANT_PREFIX)) {

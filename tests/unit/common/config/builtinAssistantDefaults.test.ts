@@ -11,81 +11,50 @@ import {
   resolveBuiltinAssistantEnabledHooks,
   resolveBuiltinAssistantEnabledSkills,
 } from '@/common/config/presets/builtinAssistantDefaults';
+import {
+  ENGINEERING_DEFAULT_HOOKS,
+  ENGINEERING_WORKBENCH_SKILLS,
+} from '@/common/config/presets/assistantPresets';
 import { describe, expect, it } from 'vitest';
 
 describe('builtinAssistantDefaults', () => {
-  it('builds builtin assistants with first-batch default hooks', () => {
+  it('builds only the two supported product builtin assistants', () => {
     const assistants = buildBuiltinAssistants();
 
-    expect(assistants.find((assistant) => assistant.id === 'builtin-workflow-planner')?.enabledHooks).toEqual([
-      'repo-context-bootstrap',
-      'plan-before-coding',
-      'secret-guard',
-      'tool-safety-guard',
-      'continuity-handoff',
+    expect(assistants).toHaveLength(2);
+    expect(assistants.map((assistant) => assistant.id)).toEqual([
+      'builtin-superpowers',
+      'builtin-everything-in-claude-code',
     ]);
-    expect(assistants.find((assistant) => assistant.id === 'builtin-workflow-writer')?.enabledHooks).toEqual([
-      'repo-context-bootstrap',
-      'plan-before-coding',
-      'secret-guard',
-      'tool-safety-guard',
-      'quality-gate',
-      'tdd-guard',
-      'continuity-handoff',
-    ]);
-    expect(assistants.find((assistant) => assistant.id === 'builtin-workflow-evaluator')?.enabledHooks).toEqual([
-      'repo-context-bootstrap',
-      'secret-guard',
-      'tool-safety-guard',
-      'quality-gate',
-      'continuity-handoff',
-    ]);
-    expect(assistants.find((assistant) => assistant.id === 'builtin-cowork')?.enabledHooks).toEqual([
-      'repo-context-bootstrap',
-      'plan-before-coding',
-      'secret-guard',
-      'tool-safety-guard',
-      'quality-gate',
-      'continuity-handoff',
-    ]);
-    expect(assistants.find((assistant) => assistant.id === 'builtin-planning-with-files')?.enabledHooks).toEqual([
-      'repo-context-bootstrap',
-      'plan-before-coding',
-      'secret-guard',
-      'tool-safety-guard',
-      'quality-gate',
-      'continuity-handoff',
-    ]);
-    expect(assistants.find((assistant) => assistant.id === 'builtin-pptx-generator')?.enabledHooks).toEqual([
-      'prompt-clarifier',
-      'secret-guard',
-    ]);
-    expect(assistants.find((assistant) => assistant.id === 'builtin-engineering-workbench')?.enabledHooks).toEqual([
-      'repo-context-bootstrap',
-      'plan-before-coding',
-      'secret-guard',
-      'tool-safety-guard',
-      'quality-gate',
-      'tdd-guard',
-      'continuity-handoff',
-    ]);
-    expect(assistants.find((assistant) => assistant.id === 'builtin-moltbook')?.enabledHooks).toBeUndefined();
-    expect(assistants.find((assistant) => assistant.id === 'builtin-superpowers')?.harnessTagI18n).toEqual({
-      'en-US': 'Superpowers',
-      'zh-CN': 'Superpowers',
-    });
-    expect(
-      assistants.find((assistant) => assistant.id === 'builtin-everything-in-claude-code')?.recommendedDomainI18n
-    ).toEqual({
-      'en-US': 'Engineering',
-      'zh-CN': '研发',
-    });
+    expect(assistants.find((assistant) => assistant.id === 'builtin-superpowers')).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: [...ENGINEERING_DEFAULT_HOOKS],
+        enabledSkills: [...ENGINEERING_WORKBENCH_SKILLS],
+        harnessTagI18n: {
+          'en-US': 'Superpowers',
+          'zh-CN': 'Superpowers',
+        },
+      })
+    );
+    expect(assistants.find((assistant) => assistant.id === 'builtin-everything-in-claude-code')).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'claude',
+        recommendedDomainI18n: {
+          'en-US': 'Engineering',
+          'zh-CN': '研发',
+        },
+      })
+    );
   });
 
-  it('marks product and system builtin assistants with explicit tiers', () => {
-    const assistants = buildBuiltinAssistants();
-    const workflowPlanner = assistants.find((assistant) => assistant.id === 'builtin-workflow-planner');
-    const pdfToPpt = assistants.find((assistant) => assistant.id === 'builtin-pdf-to-ppt');
+  it('marks system assistants with explicit system metadata', () => {
     const systemAssistants = buildContextEngineSystemAssistants();
     const sessionCompactor = systemAssistants.find(
       (assistant) => assistant.id === 'system-context-engine-session-compactor'
@@ -94,18 +63,6 @@ describe('builtinAssistantDefaults', () => {
       (assistant) => assistant.id === 'system-context-engine-project-promoter'
     );
 
-    expect(workflowPlanner).toEqual(
-      expect.objectContaining({
-        builtinTier: 'product',
-        builtinVisibility: 'featured',
-      })
-    );
-    expect(pdfToPpt).toEqual(
-      expect.objectContaining({
-        builtinTier: 'product',
-        builtinVisibility: 'settings',
-      })
-    );
     expect(systemAssistants).toHaveLength(5);
     expect(sessionCompactor).toEqual(
       expect.objectContaining({
@@ -119,16 +76,6 @@ describe('builtinAssistantDefaults', () => {
           role: 'system-maintenance',
           jobType: 'session_compaction',
         }),
-        toolPolicy: expect.objectContaining({
-          allowVaultRead: true,
-          allowVaultWrite: true,
-        }),
-        memoryPolicy: expect.objectContaining({
-          mode: 'context-engine-managed',
-        }),
-        delegationPolicy: expect.objectContaining({
-          mode: 'system-builtin',
-        }),
       })
     );
     expect(projectPromoter).toEqual(
@@ -139,61 +86,31 @@ describe('builtinAssistantDefaults', () => {
         systemRole: 'context-engine-project-promoter',
         executionBoundary: 'space-vault-root',
         triggerKinds: ['derived', 'manual'],
-        promptProfile: expect.objectContaining({
-          jobType: 'project_promotion',
-        }),
       })
     );
   });
 
   it('falls back to preset defaults only when enabled hooks are missing', () => {
-    expect(resolveBuiltinAssistantEnabledHooks('builtin-cowork', undefined)).toEqual([
-      'repo-context-bootstrap',
-      'plan-before-coding',
-      'secret-guard',
-      'tool-safety-guard',
-      'quality-gate',
-      'continuity-handoff',
-    ]);
-    expect(resolveBuiltinAssistantEnabledHooks('builtin-cowork', [])).toEqual([]);
+    expect(resolveBuiltinAssistantEnabledHooks('builtin-superpowers', undefined)).toEqual([...ENGINEERING_DEFAULT_HOOKS]);
+    expect(resolveBuiltinAssistantEnabledHooks('builtin-superpowers', [])).toEqual([]);
     expect(resolveBuiltinAssistantEnabledHooks('custom-agent', undefined)).toBeUndefined();
   });
 
   it('falls back to preset defaults only when enabled skills are missing', () => {
-    expect(resolveBuiltinAssistantEnabledSkills('builtin-workflow-planner', undefined)).toEqual([
-      'engineering-planning',
-      'verification-loop',
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-superpowers', undefined)).toEqual([
+      ...ENGINEERING_WORKBENCH_SKILLS,
     ]);
-    expect(resolveBuiltinAssistantEnabledSkills('builtin-workflow-writer', undefined)).toEqual([
-      'tdd-workflow',
-      'verification-loop',
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-everything-in-claude-code', undefined)).toEqual([
+      ...ENGINEERING_WORKBENCH_SKILLS,
     ]);
-    expect(resolveBuiltinAssistantEnabledSkills('builtin-workflow-evaluator', undefined)).toEqual([
-      'code-review-workflow',
-      'security-review',
-      'verification-loop',
-    ]);
-    expect(resolveBuiltinAssistantEnabledSkills('builtin-cowork', undefined)).toEqual([
-      'skill-creator',
-      'pptx',
-      'docx',
-      'pdf',
-      'xlsx',
-    ]);
-    expect(resolveBuiltinAssistantEnabledSkills('builtin-engineering-reviewer', undefined)).toEqual([
-      'code-review-workflow',
-      'security-review',
-      'verification-loop',
-      'tooling-mcp-playbook',
-    ]);
-    expect(resolveBuiltinAssistantEnabledSkills('builtin-cowork', [])).toEqual([]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-superpowers', [])).toEqual([]);
     expect(resolveBuiltinAssistantEnabledSkills('custom-agent', undefined)).toBeUndefined();
   });
 
   it('preserves explicit hook and skill overrides on builtin assistants', () => {
     const assistant = {
-      id: 'builtin-cowork',
-      name: 'Cowork',
+      id: 'builtin-superpowers',
+      name: 'Superpowers Harness',
       enabledHooks: [],
       enabledSkills: [],
     } as AcpBackendConfig;

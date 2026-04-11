@@ -43,7 +43,7 @@ describe('createConversationParams', () => {
     loadPresetAssistantResources.mockResolvedValue({
       rules: 'preset rules',
       skills: '',
-      enabledSkills: ['moltbook'],
+      enabledSkills: ['verification-loop'],
       enabledHooks: ['quality-gate'],
     });
     configGet.mockResolvedValue([
@@ -62,7 +62,7 @@ describe('createConversationParams', () => {
       {
         backend: 'custom',
         name: 'Preset Assistant',
-        customAgentId: 'builtin-cowork',
+        customAgentId: 'preset-gemini-assistant',
         isPreset: true,
         presetAgentType: 'gemini',
       },
@@ -72,11 +72,11 @@ describe('createConversationParams', () => {
 
     expect(resolveLocaleKey('tr')).toBe('tr-TR');
     expect(loadPresetAssistantResources).toHaveBeenCalledWith({
-      customAgentId: 'builtin-cowork',
+      customAgentId: 'preset-gemini-assistant',
       localeKey: 'tr-TR',
     });
     expect(params.extra.presetRules).toBe('preset rules');
-    expect(params.extra.enabledSkills).toEqual(['moltbook']);
+    expect(params.extra.enabledSkills).toEqual(['verification-loop']);
     expect(params.extra.enabledHooks).toEqual(['quality-gate']);
     expect(params.model.useModel).toBe('gpt-4.1');
   });
@@ -131,7 +131,7 @@ describe('createConversationParams', () => {
       {
         backend: 'custom',
         name: 'Preset Assistant',
-        customAgentId: 'builtin-cowork',
+        customAgentId: 'preset-gemini-assistant',
         isPreset: true,
         presetAgentType: 'gemini',
       },
@@ -163,10 +163,10 @@ describe('createConversationParams', () => {
       participants: [
         {
           type: 'preset-assistant',
-          participantKey: 'builtin-cowork',
-          name: 'Cowork',
+          participantKey: 'builtin-superpowers',
+          name: 'Superpowers Harness',
           description: 'Preset assistant',
-          presetAgentType: 'codebuddy',
+          presetAgentType: 'codex',
         },
         {
           type: 'cli-agent',
@@ -187,14 +187,14 @@ describe('createConversationParams', () => {
     expect(params.extra.participants).toHaveLength(2);
     expect(params.extra.participants?.[0]).toMatchObject({
       participantType: 'preset-assistant',
-      participantKey: 'builtin-cowork',
-      assistantId: 'builtin-cowork',
-      name: 'Cowork',
+      participantKey: 'builtin-superpowers',
+      assistantId: 'builtin-superpowers',
+      name: 'Superpowers Harness',
     });
     expect(params.extra.participants?.[0].conversation).toMatchObject({
       type: 'acp',
       extra: {
-        backend: 'codebuddy',
+        backend: 'codex',
         presetContext: 'preset rules',
         enabledSkills: ['quality-gate'],
         enabledHooks: ['plan-before-coding'],
@@ -367,10 +367,10 @@ describe('createConversationParams', () => {
       participants: [
         {
           type: 'preset-assistant',
-          participantKey: 'builtin-cowork',
+          participantKey: 'builtin-superpowers',
           name: 'Planner',
           description: 'Preset planner',
-          presetAgentType: 'codebuddy',
+          presetAgentType: 'codex',
           role: 'planner',
         },
         {

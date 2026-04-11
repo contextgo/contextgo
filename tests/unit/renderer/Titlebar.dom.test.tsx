@@ -209,13 +209,14 @@ describe('Titlebar', () => {
   });
 
   it('shows a route title on mobile connector pages', async () => {
-    renderTitlebar('/connectors/google-drive', {
+    const { container } = renderTitlebar('/connectors/google-drive', {
       layoutValue: {
         isMobile: true,
       },
     });
 
     expect(await screen.findByText('settings.connectors.title')).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar__brand--leading')).toBeTruthy();
   });
 
   it('uses the dedicated mobile home chrome on the guid page', async () => {
@@ -228,6 +229,8 @@ describe('Titlebar', () => {
     expect(await screen.findByText('ContextGo')).toBeInTheDocument();
     expect(container.querySelector('.app-titlebar--mobile-home')).toBeTruthy();
     expect(container.querySelector('.app-titlebar--mobile-conversation')).toBeNull();
+    expect(container.querySelector('.app-titlebar--mobile-secondary')).toBeNull();
+    expect(container.querySelector('.app-titlebar__brand--leading')).toBeNull();
   });
 
   it('shows a settings section title on mobile runtime pages', async () => {
@@ -239,9 +242,9 @@ describe('Titlebar', () => {
 
     expect(await screen.findByText('Runtime')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'settings.mobileNavigation' })).toBeInTheDocument();
-    expect(
-      (container.firstChild as HTMLDivElement | null)?.style.getPropertyValue('--app-titlebar-mobile-center-offset')
-    ).toBe('0px');
+    expect(container.querySelector('.app-titlebar--mobile-settings')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar--mobile-secondary')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar__brand--leading')).toBeTruthy();
   });
 
   it('keeps the mobile shell titlebar visible on non-workspace pages', async () => {
@@ -259,9 +262,28 @@ describe('Titlebar', () => {
     expect(screen.getByText('settings.connectors.title')).toBeInTheDocument();
     expect(container.querySelector('.app-titlebar--mobile')).toBeNull();
     expect(container.querySelector('.app-titlebar--mobile-shell')).toBeTruthy();
-    expect(
-      (container.firstChild as HTMLDivElement | null)?.style.getPropertyValue('--app-titlebar-mobile-center-offset')
-    ).toBe('0px');
+    expect(container.querySelector('.app-titlebar--mobile-secondary')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar__brand--leading')).toBeTruthy();
+  });
+
+  it.each([
+    ['/agents', 'settings.assistants'],
+    ['/hooks', 'settings.hooksPage'],
+    ['/skills-hub', 'settings.skillsHub.title'],
+    ['/search/conversations', 'conversation.historySearch.title'],
+    ['/settings/schedule', 'schedule.scheduledTasks'],
+    ['/settings/commands', 'settings.commands.title'],
+    ['/settings/system-runs', 'settings.systemRuns'],
+  ])('left-aligns mobile route titles for %s', async (path, titleKey) => {
+    const { container } = renderTitlebar(path, {
+      layoutValue: {
+        isMobile: true,
+      },
+    });
+
+    expect(await screen.findByText(titleKey)).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar--mobile-secondary')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar__brand--leading')).toBeTruthy();
   });
 
   it('keeps conversation actions visible inside the mobile shell', async () => {
@@ -312,6 +334,8 @@ describe('Titlebar', () => {
 
     expect(await screen.findByText('Conversation Name')).toBeInTheDocument();
     expect(container.querySelector('.app-titlebar--mobile-conversation')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar--mobile-secondary')).toBeNull();
+    expect(container.querySelector('.app-titlebar__brand--leading')).toBeTruthy();
   });
 
   it('does not reserve mac traffic-light width while fullscreen is active', async () => {

@@ -26,7 +26,7 @@ export interface PresetAssistantInfo {
  * 处理向后兼容：
  * - presetAssistantId: 新格式 'builtin-xxx'
  * - customAgentId: ACP 会话的旧格式
- * - enabledSkills: Gemini Cowork 会话的旧格式
+ * - enabledSkills: Gemini 旧会话的遗留字段
  */
 function resolvePresetId(conversation: TChatConversation): string | null {
   const extra = conversation.extra as {
@@ -36,8 +36,6 @@ function resolvePresetId(conversation: TChatConversation): string | null {
   };
   const presetAssistantId = typeof extra?.presetAssistantId === 'string' ? extra.presetAssistantId.trim() : '';
   const customAgentId = typeof extra?.customAgentId === 'string' ? extra.customAgentId.trim() : '';
-  const enabledSkills = Array.isArray(extra?.enabledSkills) ? extra.enabledSkills : [];
-
   // 1. 优先使用 presetAssistantId（新会话）
   // Priority: use presetAssistantId (new conversations)
   if (presetAssistantId) {
@@ -50,14 +48,6 @@ function resolvePresetId(conversation: TChatConversation): string | null {
   if (customAgentId) {
     const resolved = customAgentId.replace('builtin-', '');
     return resolved;
-  }
-
-  // 3. 向后兼容：enabledSkills 存在说明是 Cowork 会话（Gemini 旧会话）
-  // Backward compatible: enabledSkills means Cowork conversation (Gemini old conversations)
-  // 只有在既没有 presetAssistantId 也没有 customAgentId 时才使用此逻辑
-  // Only use this logic when both presetAssistantId and customAgentId are absent (including empty strings)
-  if (conversation.type === 'gemini' && !presetAssistantId && !customAgentId && enabledSkills.length > 0) {
-    return 'cowork';
   }
 
   return null;

@@ -1308,16 +1308,9 @@
     "officialSite": "Resmi Site",
     "resources": "Desteklenen Kaynaklar",
     "auth": "Kimlik Dogrulama",
-    "overviewTab": "Genel Bakis",
-    "configureTab": "Yapilandir",
-    "detailTabsAriaLabel": "Connector detay sekmeleri",
     "openWebsite": "Siteyi Ac",
-    "note": "Burada tam yapilandirma yalnizca desteklenen connector'lar icin aciktir. Diger planlananlar simdilik sadece katalog girdisi olarak gorunur.",
+    "note": "Connector sayfasi, connector projesinin yerel yetenek katalogunu gosterir. ContextGo burada yetenek durumunu gosterir ve ice aktarma sonrasinda ciktilari tuketir.",
     "summaryTemplate": "{{name}}, {{category}} grubuna aittir ve daha sonra AI is akislari icin baglamsal veri kaynagi olarak baglanabilir.",
-    "configureAvailableDesc": "Bu connector zaten ContextGo'ya baglandi; bu sayfadan yapilandirip kullanabilirsiniz.",
-    "configureUnavailableTitle": "Yapilandirma henuz kullanilabilir degil",
-    "configureUnavailableDesc": "Bu connector su an yalnizca katalog girdisi olarak listeleniyor. ContextGo bunun icin henuz kullanilabilir bir yapilandirma ve senkronizasyon akisi sunmuyor.",
-    "onlySupportedCanConfigure": "Burada yalnizca desteklenen connector'lar yapilandirilabilir.",
     "stagePriority": "Oncelikli",
     "stagePlanned": "Planlandi",
     "supportStatus": {
@@ -1409,7 +1402,28 @@
       "empty": "Henuz tarayici etkinligi ice alinmadi.",
       "sourceExtension": "Eklenti",
       "sourceManual": "Elle"
-    }
+    },
+    "externalCatalog": {
+      "platformAccess": "Platform Erisim Siniri",
+      "runtimeBoundary": "Calisma Zamani Siniri",
+      "nativeSurface": "Yerel Yetenek Yuzeyi",
+      "commandEntrypoints": "Komut Girisleri",
+      "noneYet": "Henuz yok.",
+      "workflows": "Uygulanan Is Akislari",
+      "workflowSurface": "Yuzey: {{surface}}",
+      "workflowStatus": {
+        "ready": "Hazir",
+        "partial": "Kismi",
+        "planned": "Planlandi"
+      },
+      "nativeObjects": "Yerel Nesneler",
+      "entrypoints": "Giris Komutlari",
+      "writesStore": "Depoya Yazar",
+      "noStoreWrite": "Depoya Yazmaz",
+      "unavailableTitle": "connector detaylari alinamiyor"
+    },
+    "catalogPlaceholderDesc": "Bu connector su an yalnizca katalog yer tutucusudur. ContextGo henuz bunun calisma zamani veya toplanmis ciktisini tuketmez.",
+    "catalogExternalDesc": "Bu connector bagimsiz connector projesi tarafindan yonetilir. ContextGo burada yetenek katalogunu okur ve ice aktarma sonrasinda ciktisini tuketir."
   },
   "cloud": {
     "title": "ContextGo Bulut Hesabi",

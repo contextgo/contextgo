@@ -12,14 +12,15 @@ vi.mock('electron', () => ({ app: { getPath: vi.fn(() => '/tmp'), isPackaged: fa
 vi.mock('../../src/process/utils/initStorage', () => ({ ProcessChat: { get: vi.fn(async () => []) } }));
 vi.mock('../../src/process/services/context/scheduleServiceSingleton', () => ({
   scheduleService: {
-    listJobsByConversation: vi.fn(async () => []),
-    removeJob: vi.fn(async () => {}),
-    updateJob: vi.fn(async () => {}),
+    listConversationSchedules: vi.fn(async () => []),
+    removeSchedule: vi.fn(async () => {}),
+    updateSchedule: vi.fn(async () => {}),
   },
 }));
 
 vi.mock('../../src/process/bridge/services/workspaceAutomation', () => ({
   copyWorkspaceAutomationHooks: vi.fn(async () => {}),
+  ensureHarnessWorkspaceAutomationForConversation: vi.fn(async () => {}),
 }));
 vi.mock('@process/utils/initAgent', () => ({
   createGeminiAgent: vi.fn(async () => ({ id: 'gen-id', type: 'gemini', name: 'test', extra: {} })),
@@ -72,7 +73,10 @@ function makeSpaceService(overrides: Partial<ISpaceService> = {}): ISpaceService
 }
 
 import { ConversationServiceImpl } from '../../src/process/services/ConversationServiceImpl';
-import { copyWorkspaceAutomationHooks } from '../../src/process/bridge/services/workspaceAutomation';
+import {
+  copyWorkspaceAutomationHooks,
+  ensureHarnessWorkspaceAutomationForConversation,
+} from '../../src/process/bridge/services/workspaceAutomation';
 
 describe('ConversationServiceImpl.getConversation', () => {
   it('returns conversation from repo', async () => {
@@ -173,10 +177,16 @@ describe('ConversationServiceImpl.createWithMigration', () => {
     const svc = new ConversationServiceImpl(repo);
 
     const { scheduleService } = await import('../../src/process/services/context/scheduleServiceSingleton');
-    vi.mocked(scheduleService.listJobsByConversation).mockResolvedValue([
+    vi.mocked(scheduleService.listConversationSchedules).mockResolvedValue([
       {
         id: 'job-1',
-        metadata: {
+        scope: {
+          conversationId: 'src',
+          threadId: 'src',
+          label: 'Source',
+        },
+        target: {
+          kind: 'send_query',
           conversationId: 'src',
           conversationTitle: 'Source',
           workspacePath: '/source-ws',
@@ -195,10 +205,14 @@ describe('ConversationServiceImpl.createWithMigration', () => {
     });
 
     expect(copyWorkspaceAutomationHooks).toHaveBeenCalledWith('/source-ws', '/target-ws');
-    expect(scheduleService.updateJob).toHaveBeenCalledWith(
+    expect(scheduleService.updateSchedule).toHaveBeenCalledWith(
       'job-1',
       expect.objectContaining({
-        metadata: expect.objectContaining({
+        scope: expect.objectContaining({
+          conversationId: 'new',
+          label: 'Migrated',
+        }),
+        target: expect.objectContaining({
           conversationId: 'new',
           conversationTitle: 'Migrated',
           workspacePath: '/target-ws',
@@ -251,6 +265,32 @@ describe('ConversationServiceImpl.createConversation', () => {
     expect(result.type).toBe('acp');
     expect(result.extra.spaceId).toBe('space-default');
     expect(repo.createConversation).toHaveBeenCalledWith(expect.objectContaining({ type: 'acp' }));
+  });
+
+  it('bootstraps workspace automation for builtin harness assistants', async () => {
+    const repo = makeRepo();
+    const spaceService = makeSpaceService();
+    const svc = new ConversationServiceImpl(repo, spaceService);
+
+    await svc.createConversation({
+      type: 'acp',
+      model: { provider: 'openai', model: 'gpt-5' } as any,
+      extra: {
+        workspace: '/ws',
+        backend: 'codex',
+        presetAssistantId: 'builtin-superpowers',
+      } as any,
+    });
+
+    expect(ensureHarnessWorkspaceAutomationForConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'acp',
+        extra: expect.objectContaining({
+          workspace: '/ws',
+          presetAssistantId: 'builtin-superpowers',
+        }),
+      })
+    );
   });
 
   it('keeps an explicit spaceId without creating a default space', async () => {
@@ -322,6 +362,18 @@ describe('ConversationServiceImpl.createConversation', () => {
       expect.objectContaining({
         extra: expect.objectContaining({
           spaceId: 'space-default',
+        }),
+      })
+    );
+    expect(ensureHarnessWorkspaceAutomationForConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'group',
+        extra: expect.objectContaining({
+          participants: expect.arrayContaining([
+            expect.objectContaining({
+              participantKey: 'codex:planner',
+            }),
+          ]),
         }),
       })
     );

@@ -324,7 +324,7 @@ describe('WebuiModalContent', () => {
     expect(within(modal).getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
   });
 
-  it('opens Official Remote once desktop relay readiness is available', async () => {
+  it('opens the hosted device list directly without triggering an official remote ensure step', async () => {
     cloudGetStatusInvoke.mockResolvedValueOnce({
       success: true,
       data: {
@@ -346,11 +346,11 @@ describe('WebuiModalContent', () => {
           updatedAt: '2026-04-01T00:00:00Z',
         },
         deviceTokenAvailable: true,
-        officialRemoteReady: true,
+        officialRemoteReady: false,
         officialRemote: {
           desired: true,
-          running: true,
-          browserEntryReady: true,
+          running: false,
+          browserEntryReady: false,
           transport: 'cloud-relay',
         },
         providers: ['github', 'google'],
@@ -369,6 +369,7 @@ describe('WebuiModalContent', () => {
     await waitFor(() => {
       expect(openExternalUrlMock).toHaveBeenCalledWith('https://auth.contextgo.io/remote/devices');
     });
+    expect(cloudEnsureOfficialRemoteReadyInvoke).not.toHaveBeenCalled();
     expect(shellOpenExternalMock).not.toHaveBeenCalled();
     expect(openExternalInvoke).not.toHaveBeenCalled();
   });

@@ -1296,16 +1296,9 @@
     "officialSite": "官网",
     "resources": "可连接资源",
     "auth": "认证方式",
-    "overviewTab": "概览",
-    "configureTab": "配置",
-    "detailTabsAriaLabel": "连接器详情标签",
     "openWebsite": "打开官网",
-    "note": "只有已支持的 connector 才会在这里开放完整配置。其余规划项目前仅作为目录条目展示。",
+    "note": "连接器页面展示的是 connector 项目的原生能力目录。ContextGo 在这里呈现能力状态，并在摄入后消费其输出。",
     "summaryTemplate": "{{name}} 属于「{{category}}」，后续可作为 AI 工作流的上下文数据入口。",
-    "configureAvailableDesc": "这个 connector 已经接入 ContextGo，可以直接在这里完成配置和使用。",
-    "configureUnavailableTitle": "暂时还不能配置",
-    "configureUnavailableDesc": "这个 connector 目前还只是目录占位。ContextGo 还没有为它提供可用的配置和同步流程。",
-    "onlySupportedCanConfigure": "只有已支持的 connector 才能在这里配置。",
     "stagePriority": "优先接入",
     "stagePlanned": "规划中",
     "supportStatus": {
@@ -1397,7 +1390,28 @@
       "native": "本地权限",
       "extension": "扩展配对",
       "none": "无需授权"
-    }
+    },
+    "externalCatalog": {
+      "platformAccess": "平台接入边界",
+      "runtimeBoundary": "运行时边界",
+      "nativeSurface": "原生能力面",
+      "commandEntrypoints": "命令入口",
+      "noneYet": "暂未提供。",
+      "workflows": "已实现工作流",
+      "workflowSurface": "能力面：{{surface}}",
+      "workflowStatus": {
+        "ready": "已可用",
+        "partial": "部分完成",
+        "planned": "规划中"
+      },
+      "nativeObjects": "原生对象",
+      "entrypoints": "入口命令",
+      "writesStore": "会写入存储",
+      "noStoreWrite": "暂不写入存储",
+      "unavailableTitle": "暂时无法读取 connector 详情"
+    },
+    "catalogPlaceholderDesc": "这个 connector 目前还只是目录占位。ContextGo 还没有消费它的运行时或采集输出。",
+    "catalogExternalDesc": "这个 connector 由独立的 connector 项目管理。ContextGo 在这里读取它的能力目录，并在摄入后消费其输出。"
   },
   "cloud": {
     "title": "ContextGo 云账号",

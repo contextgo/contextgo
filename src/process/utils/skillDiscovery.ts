@@ -58,6 +58,37 @@ const readSkillDirectory = async (dirPath: string, fallbackName: string): Promis
   }
 };
 
+const readSkillsFromNestedPack = async (dirPath: string): Promise<SkillDirectoryInfo[]> => {
+  const nestedSkillsDir = path.join(dirPath, 'skills');
+
+  try {
+    await fs.access(nestedSkillsDir);
+  } catch {
+    return [];
+  }
+
+  const nestedEntries = await fs.readdir(nestedSkillsDir, { withFileTypes: true });
+  const skills: SkillDirectoryInfo[] = [];
+
+  for (const nestedEntry of nestedEntries) {
+    if (!nestedEntry.isDirectory() && !nestedEntry.isSymbolicLink()) continue;
+
+    const nestedSkillPath = path.join(nestedSkillsDir, nestedEntry.name);
+    const directNestedSkill = await readSkillDirectory(nestedSkillPath, nestedEntry.name);
+    if (directNestedSkill) {
+      skills.push(directNestedSkill);
+      continue;
+    }
+
+    const nestedPackSkills = await readSkillsFromNestedPack(nestedSkillPath);
+    if (nestedPackSkills.length > 0) {
+      skills.push(...nestedPackSkills);
+    }
+  }
+
+  return skills;
+};
+
 export async function discoverSkillDirectories(
   rootDir: string,
   options: DiscoverSkillDirectoriesOptions = {}
@@ -84,22 +115,7 @@ export async function discoverSkillDirectories(
       continue;
     }
 
-    const nestedSkillsDir = path.join(entryPath, 'skills');
-    try {
-      await fs.access(nestedSkillsDir);
-      const nestedEntries = await fs.readdir(nestedSkillsDir, { withFileTypes: true });
-
-      for (const nestedEntry of nestedEntries) {
-        if (!nestedEntry.isDirectory() && !nestedEntry.isSymbolicLink()) continue;
-
-        const nestedSkill = await readSkillDirectory(path.join(nestedSkillsDir, nestedEntry.name), nestedEntry.name);
-        if (nestedSkill) {
-          skills.push(nestedSkill);
-        }
-      }
-    } catch {
-      // Skill pack without nested skills directory.
-    }
+    skills.push(...(await readSkillsFromNestedPack(entryPath)));
   }
 
   return skills;

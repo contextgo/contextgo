@@ -12,38 +12,29 @@ three boundaries explicit before runtime work expands:
 Current first-wave coverage:
 
 - `ContextGo Browser`
-- `ContextGo Clipboard` — managed runtime wrapper scaffolded with config, status, and manual sampling
-- `Feishu OpenAPI`
+- `ContextGo Clipboard` — connector-project owned activity runtime consumed through external capability catalog
+- `Feishu Connector` — runtime ownership has moved to the standalone `connector` project and should no longer be implemented inside this folder
 - `Google Workspace` family (`Drive`, `Docs`, `Sheets`, `Gmail`, `Calendar`)
 
-## Clipboard Sidecar Notes
+## Connector Boundary Notes
 
-`ContextGo Clipboard` now includes a managed observer wrapper. By default it looks for the sibling
-`../connector` repository and launches `python3 -m infohub.activity_clipboard_observer`.
+`ContextGo Clipboard`, `Feishu / Lark`, and the `Google Workspace` family should all now be treated
+as external connector runtimes owned by the standalone `connector` project.
 
-Optional overrides:
+Current expected boundary:
 
-- `CONTEXTGO_CONNECTOR_REPO_DIR`
-- `CONTEXTGO_CONNECTOR_PYTHON`
+- `cgo connectors show <connector> --json` is the product-facing source of truth for capability display
+- connector-owned runtime/auth/config state lives outside this folder
+- ContextGo consumes connector outputs and routes them into Context Engine, Space memory, and downstream product surfaces
 
-## Feishu OpenAPI Sidecar Notes
+## Feishu Connector Notes
 
-`Feishu / Lark` is modeled as a managed external runtime around the official
-`larksuite/lark-openapi-mcp` package (`@larksuiteoapi/lark-mcp`).
+`Feishu / Lark` should now be treated as an external connector runtime owned by the standalone
+`connector` project. ContextGo should only model the product boundary, datasource ownership, and
+Context Engine integration points.
 
-Current wrapper behavior:
+Current expected boundary:
 
-- stores app credentials in ContextGo config
-- launches the package through `npx` / `npm exec`
-- treats the runtime as a desktop-managed sidecar instead of an IM channel plugin
-
-## Google Drive Sidecar Notes
-
-`Google Drive` is currently modeled as a managed Go-based sidecar contract around the official
-Google Drive API Go client.
-
-Current wrapper behavior:
-
-- stores OAuth client credentials in ContextGo config
-- expects a Go runtime or explicit sidecar command override
-- defaults to `go run .` with `cwd=resources/native/google-drive-sidecar-go` for the current stub contract
+- `cgo feishu ...` owns runtime setup, official CLI wrapping, and auth state
+- ContextGo does not ship or launch a Feishu sidecar from this folder anymore
+- future product integration should consume connector-project outputs rather than rebuilding Feishu runtime code here

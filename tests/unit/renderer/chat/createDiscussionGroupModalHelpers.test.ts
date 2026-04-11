@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { resolveHarnessDefaultSelectionKeys } from '@/renderer/pages/conversation/platforms/group/createDiscussionGroupModalHelpers';
 
-const PLANNER_ID = 'builtin-workflow-planner';
-const WRITER_ID = 'builtin-workflow-writer';
-const EVALUATOR_ID = 'builtin-workflow-evaluator';
+const SUPERPOWERS_ID = 'builtin-superpowers';
+const CLAUDE_CODE_ID = 'builtin-everything-in-claude-code';
 
 describe('createDiscussionGroupModalHelpers', () => {
-  it('prefers the built-in planner, writer, and evaluator trio for harness mode', () => {
+  it('prefers the two supported built-in harness assistants first', () => {
     const selectionKeys = resolveHarnessDefaultSelectionKeys([
       {
         type: 'cli-agent',
@@ -15,34 +14,29 @@ describe('createDiscussionGroupModalHelpers', () => {
       },
       {
         type: 'preset-assistant',
-        participantKey: EVALUATOR_ID,
-        selectionKey: `preset-assistant:${EVALUATOR_ID}`,
+        participantKey: CLAUDE_CODE_ID,
+        selectionKey: `preset-assistant:${CLAUDE_CODE_ID}`,
       },
       {
         type: 'preset-assistant',
-        participantKey: PLANNER_ID,
-        selectionKey: `preset-assistant:${PLANNER_ID}`,
-      },
-      {
-        type: 'preset-assistant',
-        participantKey: WRITER_ID,
-        selectionKey: `preset-assistant:${WRITER_ID}`,
+        participantKey: SUPERPOWERS_ID,
+        selectionKey: `preset-assistant:${SUPERPOWERS_ID}`,
       },
     ]);
 
     expect(selectionKeys).toEqual([
-      `preset-assistant:${PLANNER_ID}`,
-      `preset-assistant:${WRITER_ID}`,
-      `preset-assistant:${EVALUATOR_ID}`,
+      `preset-assistant:${SUPERPOWERS_ID}`,
+      `preset-assistant:${CLAUDE_CODE_ID}`,
+      'cli-agent:codex:/usr/local/bin/codex:Codex CLI',
     ]);
   });
 
-  it('falls back to the remaining available participants when a built-in harness role is missing', () => {
+  it('falls back to the remaining available participants when one built-in harness assistant is missing', () => {
     const selectionKeys = resolveHarnessDefaultSelectionKeys([
       {
         type: 'preset-assistant',
-        participantKey: PLANNER_ID,
-        selectionKey: `preset-assistant:${PLANNER_ID}`,
+        participantKey: SUPERPOWERS_ID,
+        selectionKey: `preset-assistant:${SUPERPOWERS_ID}`,
       },
       {
         type: 'cli-agent',
@@ -51,20 +45,15 @@ describe('createDiscussionGroupModalHelpers', () => {
       },
       {
         type: 'preset-assistant',
-        participantKey: EVALUATOR_ID,
-        selectionKey: `preset-assistant:${EVALUATOR_ID}`,
-      },
-      {
-        type: 'preset-assistant',
-        participantKey: 'builtin-cowork',
-        selectionKey: 'preset-assistant:builtin-cowork',
+        participantKey: 'builtin-custom-reviewer',
+        selectionKey: 'preset-assistant:builtin-custom-reviewer',
       },
     ]);
 
     expect(selectionKeys).toEqual([
-      `preset-assistant:${PLANNER_ID}`,
-      `preset-assistant:${EVALUATOR_ID}`,
+      `preset-assistant:${SUPERPOWERS_ID}`,
       'cli-agent:codex:/usr/local/bin/codex:Codex CLI',
+      'preset-assistant:builtin-custom-reviewer',
     ]);
   });
 });
