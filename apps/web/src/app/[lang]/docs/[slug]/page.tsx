@@ -1,6 +1,12 @@
 import { notFound } from 'next/navigation';
-import ContentArticlePage from '@/components/content/ContentArticlePage';
-import { getReleaseDocEntry, getReleaseDocsRepositoryUrl, getResolvedReleaseDocs } from '@/lib/releaseDocs';
+import DocsArticlePage from '@/components/content/DocsArticlePage';
+import {
+  getAdjacentReleaseDocEntries,
+  getReleaseDocEntry,
+  getReleaseDocGroups,
+  getReleaseDocsRepositoryUrl,
+  getResolvedReleaseDocs,
+} from '@/lib/releaseDocs';
 import { getSiteContent } from '@/lib/site-content';
 
 export const runtime = 'edge';
@@ -18,10 +24,27 @@ export default async function DocArticlePage({ params }: { params: Promise<{ lan
     notFound();
   }
 
+  const repositoryUrl = `${getReleaseDocsRepositoryUrl()}/tree/main/site/docs/${resolved.bundle.version}`;
+  const sourceValue =
+    resolved.source === 'release-repo'
+      ? siteContent.labels.docsSourceRelease.replace('{{version}}', resolved.bundle.version)
+      : siteContent.labels.docsSourceFallback;
+  const adjacentEntries = getAdjacentReleaseDocEntries(resolved, slug);
+
   return (
-    <ContentArticlePage
+    <DocsArticlePage
       article={article}
-      backHref={`/${validLang}/docs`}
+      docsTitle={resolved.bundle.docs.title}
+      overviewHref={`/${validLang}/docs`}
+      overviewLabel={siteContent.labels.docsOverview}
+      groups={getReleaseDocGroups(resolved)}
+      activeSlug={slug}
+      sourceLabel={siteContent.labels.docsSource}
+      sourceValue={sourceValue}
+      versionLabel={siteContent.labels.docsVersionLabel}
+      version={resolved.bundle.version}
+      repositoryUrl={repositoryUrl}
+      openRepositoryLabel={siteContent.labels.openReleaseRepository}
       backLabel={siteContent.labels.backToDocs}
       meta={[
         { label: siteContent.labels.updated, value: article.updatedAt || '-' },
@@ -35,12 +58,11 @@ export default async function DocArticlePage({ params }: { params: Promise<{ lan
         href: `/${validLang}/changelog`,
         label: siteContent.labels.releaseHistory,
       }}
-      sidebarTitle={siteContent.labels.articleSidebarTitle}
-      sidebarBody={siteContent.labels.articleSidebarBody}
-      version={resolved.bundle.version}
-      versionLabel={siteContent.labels.docsVersionLabel}
-      repositoryUrl={`${getReleaseDocsRepositoryUrl()}/tree/main/site/docs/${resolved.bundle.version}`}
       openVersionedDocsLabel={siteContent.labels.openVersionedDocs}
+      previousEntry={adjacentEntries.previous}
+      nextEntry={adjacentEntries.next}
+      previousPageLabel={siteContent.labels.previousPage}
+      nextPageLabel={siteContent.labels.nextPage}
     />
   );
 }

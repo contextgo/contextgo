@@ -35,6 +35,7 @@ export type SiteLabels = {
   readingTime: string;
   backToDocs: string;
   backToBlog: string;
+  docsOverview: string;
   latestRelease: string;
   releaseSource: string;
   openDownloadCenter: string;
@@ -48,6 +49,8 @@ export type SiteLabels = {
   openVersionedDocs: string;
   releaseHistory: string;
   docsVersionLabel: string;
+  previousPage: string;
+  nextPage: string;
 };
 
 export type SiteContentBundle = {

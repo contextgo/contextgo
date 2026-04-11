@@ -1,28 +1,31 @@
 ---
 eyebrow: Cloud Account
-title: What the ContextGo cloud account syncs
-summary: Clarify what the cloud layer is for, what gets linked to the account, and why it should not be confused with full cloud execution.
+title: Manage cloud account and device binding
+summary: Use the cloud account for sign-in, device registration, and lightweight account-linked state without treating it as a full cloud execution environment.
 readingTime: 6 min
-updatedAt: 2026-03-30
+updatedAt: 2026-04-12
 category: operations
 ---
 
-## Identity, not full migration
+## What the cloud account is used for
 
-The cloud account exists to bind a user identity to one or more desktop devices and to support multi-device discovery. It is the control plane, not the execution plane.
+The cloud account is used for:
 
-In practical terms, cloud sign-in helps ContextGo know which desktop devices belong to you, whether a browser session is valid, and whether a mobile or web client can enumerate the same device list.
+- account sign-in
+- desktop device registration
+- device discovery from browser or mobile clients
+- lightweight account-linked preferences and metadata
 
-## What can sync across devices
+The cloud account is not the primary execution environment for your workspace.
 
-The current cloud layer is suited for lightweight state such as language preference, device registration, and remote capability metadata. It should not be described as syncing the entire desktop workspace.
+## What can sync
 
-As the product matures, more lightweight preferences can move into the cloud account without changing the core principle that local execution stays on the desktop.
+Examples of account-linked state include language preference, device registration, browser session state, and remote capability metadata.
 
-- Language preference
-- Signed-in browser session state
-- Device registration and remote capability state
+## What remains local
 
-## What does not automatically move to the cloud
+Workspace files, installed runtimes, active host processes, and local WebUI state remain on the desktop host unless an explicit product flow moves them elsewhere.
 
-Workspace files, local runtimes, active host processes, and host-side WebUI state still live on the desktop machine. If a user expects a full cloud-hosted clone of the desktop, the product positioning needs to be explicit that this is not the default model.
+## Device management
+
+When troubleshooting account state, confirm which devices are currently registered and which account is active on each client. Most remote-access issues are easier to diagnose after verifying device binding first.

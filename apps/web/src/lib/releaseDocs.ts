@@ -5,6 +5,7 @@ import {
   PUBLIC_CONTENT_SCHEMA_VERSION,
   type DocGroup,
   type PublicArticle,
+  type PublicArticleMeta,
   type ReleaseDocsArticlePayload,
   type ReleaseDocsIndex,
   type ReleaseDocsLatest,
@@ -183,6 +184,29 @@ export const getReleaseDocGroups = (resolved: ResolvedReleaseDocs): DocGroup[] =
     ...category,
     entries: resolved.bundle.docs.entries.filter((entry) => entry.category === category.id),
   }));
+};
+
+export const getOrderedReleaseDocEntries = (resolved: ResolvedReleaseDocs): PublicArticleMeta[] =>
+  getReleaseDocGroups(resolved).flatMap((group) => group.entries);
+
+export const getAdjacentReleaseDocEntries = (
+  resolved: ResolvedReleaseDocs,
+  slug: string
+): { previous: PublicArticleMeta | null; next: PublicArticleMeta | null } => {
+  const orderedEntries = getOrderedReleaseDocEntries(resolved);
+  const currentIndex = orderedEntries.findIndex((entry) => entry.slug === slug);
+
+  if (currentIndex === -1) {
+    return {
+      previous: null,
+      next: null,
+    };
+  }
+
+  return {
+    previous: currentIndex > 0 ? orderedEntries[currentIndex - 1] : null,
+    next: currentIndex < orderedEntries.length - 1 ? orderedEntries[currentIndex + 1] : null,
+  };
 };
 
 export const getReleaseDocEntry = async (resolved: ResolvedReleaseDocs, slug: string): Promise<PublicArticle | null> => {

@@ -1,28 +1,38 @@
 ---
 eyebrow: Agent
-title: Agent 入口、Assistants 管理与工作模型
-summary: 理解 Agent 入口是干什么的、Assistants 管理和它有什么区别，以及为什么这些概念不应该混在一个模糊设置里。
+title: 使用 Agent、Assistants 与运行时
+summary: 在 Agent 页面开始工作，在 Assistants 中维护可复用定义，并把运行时管理与任务入口区分开来。
 readingTime: 7 分钟
-updatedAt: 2026-03-30
+updatedAt: 2026-04-12
 category: features
 ---
 
-## Agent 入口是面向执行的工作面
+## Agent 页面
 
-Agent 入口应该被视为用户选择或启动当前工作模式的地方。它是执行面，不应该只是一个保存配置的列表页。
+Agent 页面用于开始任务、选择当前工作方式，以及确认本次任务使用的 Assistant 和运行时。这里应该是日常工作的入口页。
 
-如果界面把 Agent 入口、远程访问和 Assistants 管理全部混在一起，用户就很难分辨自己现在是在选工作方式、选 Runtime，还是在改预设。
+这个页面至少要让用户看清三件事：
 
-## Assistants 是配置层，不是全部工作面
+- 当前任务使用哪个 Assistant
+- 当前任务由哪个运行时执行
+- 当前环境是否已经具备执行条件
 
-Assistants 管理属于配置层，负责保存可复用的定义、能力、指令或 Runtime 绑定。它和真正开始执行工作的主界面是不同层次。
+## Assistants
 
-特别是在支持多个 Runtime 之后，这个区分会更加重要，因为 Runtime 层、Assistant 层和当前执行层必须保持分离。
+Assistants 是可复用定义。一个 Assistant 可以包含指令、能力、常用工具和推荐运行时等配置。创建、修改或删除这些定义，应在 Assistants 管理区域完成。
 
-- Agent 入口：开始工作
-- Assistants 管理：维护可复用定义
-- Runtime 管理：安装与修复执行后端
+修改 Assistant 不应直接改变本机的运行时安装状态。它属于配置管理，不属于运行时运维。
 
-## 推荐的信息架构
+## 运行时
 
-对用户来说，最清晰的模型通常是：在主工作面里使用 Agent，在配置区管理 Assistants，在独立 Runtime 区管理底层执行后端。这样随着 provider 和工作流增多，信息架构才不会变形。
+运行时管理应放在独立区域，用于安装、修复、检测和校验受支持的 CLI。
+
+如果某个运行时已经安装，但还缺少 provider 登录或 API 配置，应继续显示为“未就绪”，不要和“已安装”混为一谈。
+
+## 推荐使用顺序
+
+新设备上建议按这个顺序准备：
+
+1. 先确认运行时已安装并通过基本检查。
+2. 再创建或选择一个 Assistant。
+3. 最后回到 Agent 页面开始任务。

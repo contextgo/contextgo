@@ -1,24 +1,36 @@
 ---
 eyebrow: Collaboration
-title: Harness mode and agent collaboration workflows
-summary: Explain how local harness mode coexists with remote workflows, and why agent collaboration is a first-class working style rather than an implementation detail.
+title: Use harness mode and remote agent collaboration
+summary: Understand when work stays on the local desktop, when remote clients can participate, and what to verify before starting a collaborative session.
 readingTime: 7 min
-updatedAt: 2026-03-30
+updatedAt: 2026-04-12
 category: features
 ---
 
-## Harness mode is a real product workflow
+## Local collaboration
 
-Local harness mode should be kept as a supported collaboration model, not treated as a temporary development artifact. It gives users an immediate way to structure multi-agent work around the local machine they already trust.
+Harness mode is the local collaboration model. Use it when the desktop host is the main workspace and you want multiple agent roles or coordinated task flows on that machine.
 
-That is especially valuable for users who need an out-of-the-box collaboration pattern before they have a full remote orchestration or cloud-hosted workflow in place.
+This mode is useful when local files, local tools, or installed runtimes are required for the task.
 
-## How it fits with remote workflows
+## Remote collaboration
 
-Remote workflow support does not replace harness mode. The right product story is coexistence: local harness mode for direct, device-local coordination, and remote workflow support for distributed or browser-mediated control paths.
+Remote access extends the same host-based model. A browser or mobile client can connect to the desktop host, review status, and continue work without moving the workspace off the device.
 
-Once this is documented clearly, users stop reading the two modes as competing architectures. They become two ways to coordinate the same host-centric execution model.
+Remote collaboration depends on the host remaining online and authenticated. If the host is unavailable, the remote client cannot continue the session independently.
 
-## What users need to know operationally
+## What to verify before starting
 
-Collaboration mode documentation should answer which machine executes work, where files live, how runtime availability is checked, and what remote clients can or cannot do compared with the local desktop host.
+Before starting a collaborative workflow, confirm the following:
+
+- The desktop host has the required files and runtimes.
+- Any assistants used by the workflow are already configured.
+- Remote access is enabled if browser or mobile clients will participate.
+
+## Operational limits
+
+Keep these boundaries in mind:
+
+- Task execution still happens on the desktop host.
+- Files remain in the host workspace unless you move them explicitly.
+- Runtime failures on the host affect both local and remote sessions.

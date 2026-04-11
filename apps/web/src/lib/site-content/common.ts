@@ -113,6 +113,7 @@ const labelsContent: Record<SiteLocale, SiteLabels> = {
     readingTime: 'Reading time',
     backToDocs: 'Back to docs',
     backToBlog: 'Back to blog',
+    docsOverview: 'Overview',
     latestRelease: 'Latest release',
     releaseSource: 'Release source',
     openDownloadCenter: 'Open download center',
@@ -127,6 +128,8 @@ const labelsContent: Record<SiteLocale, SiteLabels> = {
     openVersionedDocs: 'Open versioned docs',
     releaseHistory: 'Release history',
     docsVersionLabel: 'Docs version',
+    previousPage: 'Previous',
+    nextPage: 'Next',
   },
   zh: {
     updated: '更新于',
@@ -134,6 +137,7 @@ const labelsContent: Record<SiteLocale, SiteLabels> = {
     readingTime: '阅读时长',
     backToDocs: '返回文档',
     backToBlog: '返回博客',
+    docsOverview: '概览',
     latestRelease: '最新版本',
     releaseSource: '版本来源',
     openDownloadCenter: '打开下载中心',
@@ -147,6 +151,8 @@ const labelsContent: Record<SiteLocale, SiteLabels> = {
     openVersionedDocs: '打开版本文档',
     releaseHistory: '版本历史',
     docsVersionLabel: '文档版本',
+    previousPage: '上一篇',
+    nextPage: '下一篇',
   },
 };
 

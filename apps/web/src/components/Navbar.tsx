@@ -13,13 +13,14 @@ const DEFAULT_GITHUB_URL = 'https://github.com/contextgo';
 export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lang: string }) {
   const pathname = usePathname();
   const githubUrl = process.env.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || DEFAULT_GITHUB_URL;
+  const isActivePath = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
 
   const linkClass = (href: string, emphasized = false) => {
     if (emphasized) {
       return 'theme-button-primary rounded-full px-4 py-2 text-sm font-medium transition-colors';
     }
 
-    const isActive = pathname === href || pathname?.startsWith(`${href}/`);
+    const isActive = isActivePath(href);
     return isActive
       ? 'text-sm font-medium theme-text-primary transition-colors'
       : 'text-sm font-medium theme-text-secondary hover:theme-text-primary transition-colors';
@@ -62,7 +63,11 @@ export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lan
             </Link>
             <Link
               href={`/${lang}/docs`}
-              className='theme-button-secondary rounded-full px-4 py-2 text-sm font-medium transition-colors'
+              className={
+                isActivePath(`/${lang}/docs`)
+                  ? 'theme-button-secondary rounded-full px-4 py-2 text-sm font-medium transition-colors'
+                  : linkClass(`/${lang}/docs`)
+              }
             >
               {dict.docs}
             </Link>

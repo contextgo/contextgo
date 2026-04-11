@@ -1,24 +1,34 @@
 ---
 eyebrow: Connectors
-title: Connectors, channels, and publishing paths
-summary: Explain how sources and channels fit into ContextGo, and why connectors are part of the product core rather than optional integrations.
+title: Use connectors and channels
+summary: Connect external sources to the desktop host, route outputs to delivery channels, and document the access requirements for each integration.
 readingTime: 6 min
-updatedAt: 2026-03-30
+updatedAt: 2026-04-12
 category: features
 ---
 
-## Connectors are the intake layer
+## Connectors
 
-Connectors are how ContextGo sees the real working context. Files, docs, drives, chats, and structured systems all enter through this layer before agents, hooks, or scheduled tasks can do useful work.
+Connectors bring external context into ContextGo. A connector can provide files, documents, shared drives, chat content, or structured system data to the desktop host.
 
-That is why connector documentation should not read like a simple list of integrations. It should explain how connected sources become reusable context across multiple workflows.
+For each connector, document:
 
-## Channels are where work gets routed outward
+- the source system
+- the access method and required permissions
+- the scope of content exposed to agents or automation
 
-Channels represent the outward side of the workflow: publishing, team communication, or delivery surfaces. In many cases, the same context that was ingested through connectors later exits through one or more channels.
+## Channels
 
-This makes connectors and channels two ends of the same product story: context comes in, gets shaped, and then moves to the place where action happens.
+Channels send output to a destination such as a publishing target, notification path, or delivery surface. A workflow may use one or more channels after content has been processed locally.
 
-## What users need to understand
+## Typical flow
 
-Users should know which systems are supported, what level of access is needed, and how connected context feeds agents, scheduled tasks, remote sessions, or publication flows.
+The common pattern is:
+
+1. Connect a source system.
+2. Use the imported context in an agent task, hook, or scheduled task.
+3. Deliver the result through a configured channel.
+
+## Access guidance
+
+Grant the minimum permissions required for the intended workflow. If a connector or channel requires elevated access, record that requirement before enabling it on production devices.
