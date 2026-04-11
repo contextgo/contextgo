@@ -242,7 +242,27 @@ jobs:
         run: npm run build
         working-directory: ${{ github.workspace }}/apps/web
 
+      - name: Prepare Vercel build output
+        env:
+          NPM_CONFIG_LEGACY_PEER_DEPS: 'true'
+        run: |
+          set -euo pipefail
+
+          mkdir -p "${GITHUB_WORKSPACE}/.vercel"
+
+          cat > "${GITHUB_WORKSPACE}/.vercel/project.json" <<'EOF'
+          {"projectId":"_","orgId":"_","settings":{"framework":"nextjs","rootDirectory":"apps/web"}}
+          EOF
+
+          npx -y vercel@50.44.0 build --yes
+
+          rm -rf "${GITHUB_WORKSPACE}/apps/web/.vercel/output"
+          mkdir -p "${GITHUB_WORKSPACE}/apps/web/.vercel"
+          cp -R "${GITHUB_WORKSPACE}/.vercel/output" "${GITHUB_WORKSPACE}/apps/web/.vercel/output"
+
       - name: Build Cloudflare Pages output
+        env:
+          NPM_CONFIG_LEGACY_PEER_DEPS: 'true'
         run: npx @cloudflare/next-on-pages --skip-build
         working-directory: ${{ github.workspace }}/apps/web
 
