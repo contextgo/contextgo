@@ -18,13 +18,13 @@ import type {
 import type { HookInfo, HookOutputRoutingConfig } from '../types/hookTypes';
 import type { ExternalSessionSummary, ImportExternalSessionParams } from '../types/externalSessions';
 import type { SlashCommandItem } from '../chat/slash/types';
+import type { ManagedSlashCommandRecord } from '../chat/slash/library';
 import type {
   BrowserContextConsentStatus,
   BrowserContextStorageMode,
   IMcpServer,
   IProvider,
   TChatConversation,
-  TSpace,
   TBrowserContextAsset,
   TProviderWithModel,
   ICssTheme,
@@ -37,8 +37,7 @@ import type {
   GroupOrchestration,
   GroupParticipantRole,
   WorkflowGroupRunState,
-  SpaceMember,
-  SpacePermissionsPolicy,
+  TSpace,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
 import type { CloudAuthProviderId, CloudStatus } from '../types/cloud';
@@ -60,6 +59,12 @@ import type {
   ClipboardStoredEvent,
 } from '../types/connectors/clipboard';
 import type { FeishuConnectorConfig, FeishuConnectorRuntimeStatus } from '../types/connectors/feishu';
+import type {
+  BrowserActivityConnectorStatus,
+  BrowserActivityEntry,
+  BrowserActivityIngestInput,
+  BrowserActivityIngestResult,
+} from '../types/connectors/browserActivity';
 import type {
   GoogleDriveAuthRequest,
   GoogleDriveAuthResult,
@@ -106,18 +111,18 @@ export const shell = {
 };
 
 export const space = {
-  list: bridge.buildProvider<TSpace[], void>('space.list'),
-  get: bridge.buildProvider<TSpace | undefined, { id: string }>('space.get'),
   ensureDefault: bridge.buildProvider<TSpace, void>('space.ensure-default'),
+  list: bridge.buildProvider<TSpace[], void>('space.list'),
   create: bridge.buildProvider<TSpace, { name: string; description?: string }>('space.create'),
-  update: bridge.buildProvider<
-    TSpace | undefined,
-    { id: string; updates: Partial<Pick<TSpace, 'name' | 'description' | 'members' | 'permissionsPolicy'>> }
-  >('space.update'),
-  getContext: bridge.buildProvider<
-    { memories: IContextMemoryView[]; profiles: IContextProfileView[] },
-    { spaceId: string }
-  >('space.get-context'),
+  openVault: bridge.buildProvider<
+    {
+      opened: boolean;
+      fallback: 'obsidian-uri' | 'folder' | 'none';
+      target: string;
+      obsidianInstalled: boolean;
+    },
+    { id: string }
+  >('space.open-vault'),
 };
 
 //通用会话能力
@@ -128,7 +133,7 @@ export const conversation = {
     {
       conversation: TChatConversation;
       sourceConversationId?: string;
-      migrateCron?: boolean;
+      migrateSchedule?: boolean;
       sourceWorkspace?: string;
     }
   >('create-conversation-with-conversation'), // Create new conversation from history (supports migration) / 通过历史会话创建新对话（支持迁移）
@@ -145,8 +150,8 @@ export const conversation = {
   stop: bridge.buildProvider<IBridgeResponse<{}>, { conversation_id: string }>('chat.stop.stream'), // 停止会话
   sendMessage: bridge.buildProvider<IBridgeResponse<{}>, ISendMessageParams>('chat.send.message'), // 发送消息（统一接口）
   getSlashCommands: bridge.buildProvider<
-    IBridgeResponse<{ commands: SlashCommandItem[] }>,
-    { conversation_id: string }
+    IBridgeResponse<{ commands: SlashCommandItem[]; managedLibrary: ManagedSlashCommandRecord[] }>,
+    { conversation_id: string; includeRuntimeCommands?: boolean }
   >('conversation.get-slash-commands'),
   confirmMessage: bridge.buildProvider<IBridgeResponse, IConfirmMessageParams>('conversation.confirm.message'), // 通用确认消息
   responseStream: bridge.buildEmitter<IResponseMessage>('chat.response.stream'), // 接收消息（统一接口）
@@ -315,6 +320,18 @@ export interface IUpdateBrowserContextAssetParams {
   lastUsedAt?: number;
   metadata?: Record<string, string | number | boolean | null>;
 }
+
+export const browserActivityConnector = {
+  ingest: bridge.buildProvider<IBridgeResponse<BrowserActivityIngestResult>, BrowserActivityIngestInput>(
+    'browser-activity-connector.ingest'
+  ),
+  listRecent: bridge.buildProvider<IBridgeResponse<BrowserActivityEntry[]>, { spaceId: string; limit?: number }>(
+    'browser-activity-connector.list-recent'
+  ),
+  getStatus: bridge.buildProvider<IBridgeResponse<BrowserActivityConnectorStatus>, { spaceId: string }>(
+    'browser-activity-connector.get-status'
+  ),
+};
 
 export const clipboardConnector = {
   getConfig: bridge.buildProvider<IBridgeResponse<ClipboardConnectorConfig>, void>('clipboard-connector.get-config'),
@@ -1147,9 +1164,11 @@ export const systemSettings = {
   setCloseToTray: bridge.buildProvider<void, { enabled: boolean }>('system-settings:set-close-to-tray'),
   getNotificationEnabled: bridge.buildProvider<boolean, void>('system-settings:get-notification-enabled'),
   setNotificationEnabled: bridge.buildProvider<void, { enabled: boolean }>('system-settings:set-notification-enabled'),
-  getCronNotificationEnabled: bridge.buildProvider<boolean, void>('system-settings:get-cron-notification-enabled'),
-  setCronNotificationEnabled: bridge.buildProvider<void, { enabled: boolean }>(
-    'system-settings:set-cron-notification-enabled'
+  getScheduleNotificationEnabled: bridge.buildProvider<boolean, void>(
+    'system-settings:get-schedule-notification-enabled'
+  ),
+  setScheduleNotificationEnabled: bridge.buildProvider<void, { enabled: boolean }>(
+    'system-settings:set-schedule-notification-enabled'
   ),
   changeLanguage: bridge.buildProvider<void, { language: string }>('system-settings:change-language'),
   // Broadcast language change to all renderers (desktop + WebUI) for real-time sync
@@ -1260,48 +1279,80 @@ export const webui = {
   ),
 };
 
-// Cron job management API / 定时任务管理接口
-export const cron = {
-  // Query
-  listJobs: bridge.buildProvider<ICronJob[], void>('cron.list-jobs'),
-  listJobsByConversation: bridge.buildProvider<ICronJob[], { conversationId: string }>(
-    'cron.list-jobs-by-conversation'
+// Context schedule management API / 上下文调度管理接口
+export const schedule = {
+  listSchedules: bridge.buildProvider<IContextSchedule[], void>('schedule.list-schedules'),
+  listConversationSchedules: bridge.buildProvider<IContextSchedule[], { conversationId: string }>(
+    'schedule.list-conversation-schedules'
   ),
-  getJob: bridge.buildProvider<ICronJob | null, { jobId: string }>('cron.get-job'),
-  // CRUD
-  addJob: bridge.buildProvider<ICronJob, ICreateCronJobParams>('cron.add-job'),
-  updateJob: bridge.buildProvider<ICronJob, { jobId: string; updates: Partial<ICronJob> }>('cron.update-job'),
-  removeJob: bridge.buildProvider<void, { jobId: string }>('cron.remove-job'),
-  // Events
-  onJobCreated: bridge.buildEmitter<ICronJob>('cron.job-created'),
-  onJobUpdated: bridge.buildEmitter<ICronJob>('cron.job-updated'),
-  onJobRemoved: bridge.buildEmitter<{ jobId: string }>('cron.job-removed'),
-  onJobExecuted: bridge.buildEmitter<{ jobId: string; status: 'ok' | 'error' | 'skipped' | 'missed'; error?: string }>(
-    'cron.job-executed'
+  getSchedule: bridge.buildProvider<IContextSchedule | null, { scheduleId: string }>('schedule.get-schedule'),
+  createConversationSchedule: bridge.buildProvider<IContextSchedule, ICreateConversationScheduleParams>(
+    'schedule.create-conversation-schedule'
   ),
+  createContextSchedule: bridge.buildProvider<IContextSchedule, ICreateContextScheduleParams>(
+    'schedule.create-context-schedule'
+  ),
+  updateSchedule: bridge.buildProvider<IContextSchedule, { scheduleId: string; updates: Partial<IContextSchedule> }>(
+    'schedule.update-schedule'
+  ),
+  runScheduleNow: bridge.buildProvider<IContextSchedule, { scheduleId: string }>('schedule.run-schedule-now'),
+  removeSchedule: bridge.buildProvider<void, { scheduleId: string }>('schedule.remove-schedule'),
+  onScheduleCreated: bridge.buildEmitter<IContextSchedule>('schedule.created'),
+  onScheduleUpdated: bridge.buildEmitter<IContextSchedule>('schedule.updated'),
+  onScheduleRemoved: bridge.buildEmitter<{ scheduleId: string }>('schedule.removed'),
+  onScheduleExecuted: bridge.buildEmitter<{
+    scheduleId: string;
+    status: 'ok' | 'error' | 'skipped' | 'missed';
+    error?: string;
+  }>('schedule.executed'),
 };
 
-// Cron job types for IPC
-export type ICronSchedule =
+// Context schedule types for IPC
+export type IScheduleSpec =
   | { kind: 'at'; atMs: number; description: string }
   | { kind: 'every'; everyMs: number; description: string }
   | { kind: 'cron'; expr: string; tz?: string; description: string };
 
-export interface ICronJob {
+export interface IContextSchedule {
   id: string;
   name: string;
   enabled: boolean;
-  schedule: ICronSchedule;
-  target: { payload: { kind: 'message'; text: string } };
-  metadata: {
-    conversationId: string;
-    conversationTitle?: string;
-    workspacePath?: string;
-    agentType: AcpBackendAll;
-    createdBy: 'user' | 'agent';
-    createdAt: number;
-    updatedAt: number;
+  owner: 'user' | 'context-engine';
+  createdBy: 'user' | 'agent' | 'system';
+  schedule: IScheduleSpec;
+  scope: {
+    kind: 'conversation' | 'project' | 'space';
+    spaceId: string;
+    conversationId?: string;
+    threadId?: string;
+    projectSlug?: string;
+    label?: string;
   };
+  target:
+    | {
+        kind: 'send_query';
+        conversationId: string;
+        message: string;
+        agentType: AcpBackendAll;
+        conversationTitle?: string;
+        workspacePath?: string;
+        yoloMode?: boolean;
+      }
+    | {
+        kind: 'context_job';
+        triggerId?: string;
+        jobType:
+          | 'session_compaction'
+          | 'session_pattern_detection'
+          | 'project_promotion'
+          | 'space_memory_distillation'
+          | 'connector_digest';
+        reason: string;
+        priority?: 'low' | 'medium' | 'high';
+        payload?: Readonly<Record<string, unknown>>;
+        triggerEvent?: string;
+        triggerLabel?: string;
+      };
   state: {
     nextRunAtMs?: number;
     lastRunAtMs?: number;
@@ -1311,17 +1362,27 @@ export interface ICronJob {
     retryCount: number;
     maxRetries: number;
   };
+  createdAt: number;
+  updatedAt: number;
 }
 
-export interface ICreateCronJobParams {
+export interface ICreateConversationScheduleParams {
   name: string;
-  schedule: ICronSchedule;
+  schedule: IScheduleSpec;
   message: string;
   conversationId: string;
   conversationTitle?: string;
   workspacePath?: string;
   agentType: AcpBackendAll;
   createdBy: 'user' | 'agent';
+  spaceId?: string;
+}
+
+export interface ICreateContextScheduleParams extends Omit<
+  IContextSchedule,
+  'id' | 'createdAt' | 'updatedAt' | 'state'
+> {
+  state?: Partial<IContextSchedule['state']>;
 }
 
 interface ISendMessageParams {
@@ -1662,6 +1723,45 @@ export interface IExtensionAgentActivityItem {
   lastActiveAt: number;
   lastStatus?: string;
   currentTask?: string;
+  runType?: 'interactive' | 'maintenance';
+  systemManaged?: boolean;
+  assistantId?: string;
+  systemOwner?: string;
+  systemRole?: string;
+  scopeLabel?: string;
+  maintenanceKind?: string;
+  artifactRelativePath?: string;
+  artifactTitle?: string;
+  recentEvents: IExtensionAgentActivityEvent[];
+}
+
+export interface IExtensionSystemRunItem {
+  id: string;
+  rootRunId: string;
+  backend: string;
+  agentProfileId: string;
+  agentName: string;
+  state: AgentActivityState;
+  runtimeStatus: 'pending' | 'running' | 'finished' | 'unknown';
+  lastActiveAt: number;
+  lastStatus?: string;
+  currentTask?: string;
+  systemManaged?: boolean;
+  assistantId?: string;
+  systemOwner?: string;
+  systemRole?: string;
+  scopeLabel?: string;
+  maintenanceKind?: string;
+  artifactRelativePath?: string;
+  artifactTitle?: string;
+  threadId?: string;
+  projectSlug?: string;
+  reason?: string;
+  source?: string;
+  triggerLabel?: string;
+  triggerEvent?: string;
+  executionBoundaryPath?: string;
+  executionBoundaryLabel?: string;
   recentEvents: IExtensionAgentActivityEvent[];
 }
 
@@ -1670,6 +1770,7 @@ export interface IExtensionAgentActivitySnapshot {
   totalConversations: number;
   runningConversations: number;
   agents: IExtensionAgentActivityItem[];
+  systemRuns: IExtensionSystemRunItem[];
 }
 
 export const extensions = {

@@ -26,11 +26,11 @@ type LazyRouteLoader = () => Promise<{ default: React.ComponentType }>;
 const loadConversation = () => import('@renderer/pages/conversation');
 const loadConnectorsPage = () => import('@renderer/pages/connectors');
 const loadGuid = () => import('@renderer/pages/guid');
-const loadSpacePage = () => import('@renderer/pages/space');
-const loadGlobalCronSettings = () => import('@renderer/pages/cron/GlobalCronSettings');
+const loadGlobalScheduleSettings = () => import('@renderer/pages/schedule/GlobalScheduleSettings');
 const loadAgentSettings = () => import('@renderer/pages/settings/AgentSettings');
 const loadAgentEntrySettings = () => import('@renderer/pages/settings/AgentSettings/AgentEntrySettings');
 const loadHooksManagement = () => import('@renderer/pages/settings/AgentSettings/HooksManagement');
+const loadSystemRunsPage = () => import('@renderer/pages/settings/AgentSettings/SystemRunsPage');
 const loadSkillsHubSettings = () => import('@renderer/pages/settings/SkillsHubSettings');
 const loadGeminiSettings = () => import('@renderer/pages/settings/GeminiSettings');
 const loadModeSettings = () => import('@renderer/pages/settings/ModeSettings');
@@ -275,7 +275,6 @@ const RoutedPanels: React.FC<{
           path='/connectors/:connectorId'
           element={withRouteFallback(loadConnectorsPage, '/connectors/:connectorId')}
         />
-        <Route path='/space/:spaceId' element={withRouteFallback(loadSpacePage, '/space/:spaceId')} />
         <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
         <Route path='/conversation/:id' element={withRouteFallback(loadConversation, '/conversation/:id')} />
         <Route path='/agents' element={withRouteFallback(loadAgentSettings, '/agents')} />
@@ -284,7 +283,7 @@ const RoutedPanels: React.FC<{
         <Route path='/settings/model' element={withRouteFallback(loadModeSettings, '/settings/model')} />
         <Route path='/settings/agent' element={withRouteFallback(loadAgentSettings, '/settings/agent')} />
         <Route path='/settings/hooks' element={<Navigate to='/hooks' replace />} />
-        <Route path='/settings/cron' element={withRouteFallback(loadGlobalCronSettings, '/settings/cron')} />
+        <Route path='/settings/schedule' element={withRouteFallback(loadGlobalScheduleSettings, '/settings/schedule')} />
         <Route path='/settings/skills-hub' element={withRouteFallback(loadSkillsHubSettings, '/settings/skills-hub')} />
         <Route path='/settings/display' element={<Navigate to='/settings/system' replace />} />
         <Route path='/settings/webui' element={withRouteFallback(loadWebuiSettings, '/settings/webui')} />
@@ -299,6 +298,7 @@ const RoutedPanels: React.FC<{
           path='/settings/agent-entry'
           element={withRouteFallback(loadAgentEntrySettings, '/settings/agent-entry')}
         />
+        <Route path='/settings/system-runs' element={withRouteFallback(loadSystemRunsPage, '/settings/system-runs')} />
         <Route path='/settings/system' element={withRouteFallback(loadSystemSettings, '/settings/system')} />
         <Route path='/settings/about' element={withRouteFallback(loadSystemSettings, '/settings/about')} />
         <Route path='/settings/tools' element={withRouteFallback(loadToolsSettings, '/settings/tools')} />

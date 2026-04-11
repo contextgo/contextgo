@@ -385,6 +385,28 @@ const SendBox: React.FC<{
   };
 
   // Reusable send button component
+  const stopButtonStyle = {
+    color: 'rgb(var(--danger-6))',
+    backgroundColor: 'rgba(var(--danger-6), 0.12)',
+    borderColor: 'rgba(var(--danger-6), 0.24)',
+  };
+
+  const stopButton = onStop ? (
+    <Button
+      shape='circle'
+      type='secondary'
+      className='bg-animate'
+      style={stopButtonStyle}
+      aria-label={t('conversation.group.workflow.decision.stop')}
+      icon={<div className='mx-auto size-12px rounded-[2px] bg-current bg-animate'></div>}
+      onClick={stopHandler}
+    ></Button>
+  ) : (
+    <div className='flex h-32px w-32px items-center justify-center rounded-full bg-fill-2'>
+      <div className='size-12px rounded-[2px] bg-6 bg-animate'></div>
+    </div>
+  );
+
   const sendButton = (
     <Button
       shape='circle'
@@ -507,7 +529,7 @@ const SendBox: React.FC<{
         >
           {isSingleLine && (
             <div className={isMobile ? 'sendbox-tools sendbox-tools-scroll-mobile' : 'flex-shrink-0 sendbox-tools'}>
-              {tools}
+              {isMobile ? <div className='sendbox-tools-scroll-mobile-track'>{tools}</div> : tools}
             </div>
           )}
           <Input.TextArea
@@ -548,40 +570,36 @@ const SendBox: React.FC<{
           {isSingleLine && (
             <div className='flex items-center gap-2'>
               {sendButtonPrefix}
-              {isLoading || loading ? (
-                <Button
-                  shape='circle'
-                  type='secondary'
-                  className='bg-animate'
-                  icon={<div className='mx-auto size-12px bg-6'></div>}
-                  onClick={stopHandler}
-                ></Button>
-              ) : (
-                sendButton
-              )}
+              {isLoading || loading ? stopButton : sendButton}
             </div>
           )}
         </div>
         {!isSingleLine && (
           <div
-            className={isMobile ? 'flex flex-col gap-10px w-full' : 'flex items-center justify-between gap-2 w-full'}
+            className={
+              isMobile
+                ? 'flex w-full min-w-0 items-end justify-between gap-8px overflow-hidden'
+                : 'flex items-center justify-between gap-2 w-full'
+            }
           >
-            <div className={isMobile ? 'sendbox-tools sendbox-tools-scroll-mobile w-full' : 'sendbox-tools'}>
-              {tools}
-            </div>
-            <div className={isMobile ? 'flex items-center justify-end gap-8px w-full' : 'flex items-center gap-2'}>
+            {isMobile ? (
+              <div className='sendbox-tools-mobile-shell flex-1 self-end'>
+                <div className='sendbox-tools sendbox-tools-scroll-mobile sendbox-tools-scroll-mobile-bottom'>
+                  <div className='sendbox-tools-scroll-mobile-track'>{tools}</div>
+                </div>
+              </div>
+            ) : (
+              <div className='sendbox-tools'>{tools}</div>
+            )}
+            <div
+              className={
+                isMobile
+                  ? 'sendbox-mobile-actions flex shrink-0 items-end justify-end gap-8px self-end'
+                  : 'flex items-center gap-2'
+              }
+            >
               {sendButtonPrefix}
-              {isLoading || loading ? (
-                <Button
-                  shape='circle'
-                  type='secondary'
-                  className='bg-animate'
-                  icon={<div className='mx-auto size-12px bg-6'></div>}
-                  onClick={stopHandler}
-                ></Button>
-              ) : (
-                sendButton
-              )}
+              {isLoading || loading ? stopButton : sendButton}
             </div>
           </div>
         )}

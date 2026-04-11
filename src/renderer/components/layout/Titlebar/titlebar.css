@@ -34,21 +34,33 @@
 }
 
 .app-titlebar--mobile {
-  height: calc(58px + env(safe-area-inset-top, 0px));
-  min-height: calc(58px + env(safe-area-inset-top, 0px));
-  padding: calc(6px + env(safe-area-inset-top, 0px)) calc(10px + env(safe-area-inset-right, 0px)) 0
+  height: calc(52px + env(safe-area-inset-top, 0px));
+  min-height: calc(52px + env(safe-area-inset-top, 0px));
+  padding: calc(4px + env(safe-area-inset-top, 0px)) calc(10px + env(safe-area-inset-right, 0px)) 0
     calc(10px + env(safe-area-inset-left, 0px));
 }
 
 .app-titlebar--mobile-shell {
-  height: 58px;
-  min-height: 58px;
-  padding: 6px 10px 0;
+  height: 52px;
+  min-height: 52px;
+  padding: 4px 10px 0;
+}
+
+.app-titlebar--mobile-home {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(232, 241, 255, 0.96) 0%,
+      rgba(244, 248, 255, 0.92) 62%,
+      rgba(247, 249, 253, 0.88) 100%
+    ),
+    var(--bg-1) !important;
+  border-bottom: 1px solid color-mix(in srgb, rgb(var(--primary-6)) 10%, var(--border-base)) !important;
 }
 
 .app-titlebar--mobile-conversation {
-  background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%) !important;
-  border-bottom: none !important;
+  background: #f6f8fb !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--bg-2) 72%, var(--border-base)) !important;
 }
 
 .app-titlebar__top-drag-strip {
@@ -89,7 +101,11 @@
 }
 
 .app-titlebar--mobile-shell .app-titlebar__brand {
-  max-width: calc(100% - 200px);
+  max-width: calc(100% - 208px);
+}
+
+.app-titlebar--mobile-shell .app-titlebar__brand-text {
+  max-width: min(36vw, 140px);
 }
 
 .app-titlebar__brand-text {
@@ -102,6 +118,30 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 42vw;
+}
+
+.app-titlebar--mobile .app-titlebar__menu,
+.app-titlebar--mobile .app-titlebar__toolbar,
+.app-titlebar--mobile-shell .app-titlebar__menu,
+.app-titlebar--mobile-shell .app-titlebar__toolbar {
+  min-height: 40px;
+}
+
+.app-titlebar--mobile .app-titlebar__menu,
+.app-titlebar--mobile-shell .app-titlebar__menu {
+  gap: 2px;
+}
+
+.app-titlebar--mobile .app-titlebar__toolbar > *,
+.app-titlebar--mobile-shell .app-titlebar__toolbar > * {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-titlebar--mobile .app-titlebar__brand-text,
+.app-titlebar--mobile-shell .app-titlebar__brand-text {
+  font-size: 15px;
 }
 
 .app-titlebar__menu {
@@ -232,14 +272,30 @@
 }
 
 .app-titlebar__button--mobile {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  line-height: 1;
+  align-self: center;
 }
 
 .app-titlebar__button--mobile svg {
-  width: 24px !important;
-  height: 24px !important;
+  width: 22px !important;
+  height: 22px !important;
+}
+
+[data-theme='dark'] .app-titlebar--mobile-home {
+  background:
+    linear-gradient(180deg, rgba(27, 35, 49, 0.98) 0%, rgba(23, 29, 40, 0.94) 62%, rgba(19, 23, 31, 0.92) 100%),
+    var(--bg-1) !important;
+  border-bottom-color: color-mix(in srgb, rgb(var(--primary-6)) 18%, var(--border-base)) !important;
+}
+
+[data-theme='dark'] .app-titlebar--mobile-conversation {
+  background: #1c2129 !important;
+  border-bottom-color: color-mix(in srgb, var(--bg-2) 72%, var(--border-base)) !important;
 }
 
 .app-window-controls {

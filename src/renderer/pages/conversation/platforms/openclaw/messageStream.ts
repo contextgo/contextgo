@@ -37,7 +37,7 @@ export const shouldSuppressOpenClawStreamMessage = (message: OpenClawMessageLike
 };
 
 export const isOpenClawActivityMessageType = (message: Pick<IResponseMessage, 'type'>): boolean => {
-  return message.type === 'thought' || message.type === 'content' || message.type === 'acp_permission';
+  return message.type === 'thought' || message.type === 'content' || message.type === 'acp_permission' || message.type === 'plan';
 };
 
 export const shouldSuppressOpenClawPersistedMessage = (message: TMessage): boolean => {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getConversationWorkspacePath,
   getLastDirectoryName,
+  getWorkspaceAutomationPaths,
   getWorkspaceDisplayName,
   isTemporaryWorkspace,
 } from '@/renderer/utils/workspace/workspace';
@@ -21,5 +23,50 @@ describe('workspace utils', () => {
 
   it('extracts the last directory name from Windows-style paths', () => {
     expect(getLastDirectoryName('D:\\workspace\\feature-demo')).toBe('feature-demo');
+  });
+
+  it('builds automation file paths for Unix-style workspaces', () => {
+    expect(getWorkspaceAutomationPaths('/Users/demo/project')).toEqual({
+      rootDir: '/Users/demo/project/.contextgo',
+      hooksDir: '/Users/demo/project/.contextgo/hooks',
+      commandsFile: '/Users/demo/project/.contextgo/commands.json',
+      schedulesFile: '/Users/demo/project/.contextgo/schedules.json',
+    });
+  });
+
+  it('builds automation file paths for Windows-style workspaces', () => {
+    expect(getWorkspaceAutomationPaths('D:\\workspace\\project')).toEqual({
+      rootDir: 'D:\\workspace\\project\\.contextgo',
+      hooksDir: 'D:\\workspace\\project\\.contextgo\\hooks',
+      commandsFile: 'D:\\workspace\\project\\.contextgo\\commands.json',
+      schedulesFile: 'D:\\workspace\\project\\.contextgo\\schedules.json',
+    });
+  });
+
+  it('resolves the workspace path from conversation extras', () => {
+    expect(
+      getConversationWorkspacePath({
+        id: 'conv-1',
+        type: 'gemini',
+        name: 'Conversation',
+        extra: {
+          workspace: '/workspace/demo',
+        },
+      } as never)
+    ).toBe('/workspace/demo');
+  });
+
+  it('prefers workingDirectory over legacy workspace when resolving conversation paths', () => {
+    expect(
+      getConversationWorkspacePath({
+        id: 'conv-2',
+        type: 'gemini',
+        name: 'Conversation',
+        extra: {
+          workspace: '/workspace/legacy',
+          workingDirectory: '/workspace/current',
+        },
+      } as never)
+    ).toBe('/workspace/current');
   });
 });

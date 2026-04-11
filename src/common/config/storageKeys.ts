@@ -31,6 +31,9 @@ export const STORAGE_KEYS = {
 
   /** Language preference / 语言偏好 */
   LANGUAGE: 'contextgo_language',
+
+  /** Selected Space identifier / 当前选中的 Space ID */
+  SELECTED_SPACE_ID: 'contextgo_selected_space_id',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

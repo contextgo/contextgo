@@ -62,12 +62,6 @@
   "refresh": "重新整理",
   "refreshSuccess": "已重新整理",
   "processing": "處理中...",
-  "space": "空間",
-  "mySpace": "我的空間",
-  "newSpace": "新增空間",
-  "switchSpace": "切換空間",
-  "spaceCreated": "已建立 {{name}}",
-  "returnToWorkbench": "返回工作台",
   "name": "名稱",
   "rendererCrash": {
     "title": "當前頁面在完成渲染前發生了崩潰",

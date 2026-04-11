@@ -7,6 +7,7 @@ import {
   Communication,
   ConnectionPoint,
   Info,
+  Robot,
   LinkCloud,
   Puzzle,
   System,
@@ -19,21 +20,21 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tooltip } from '@arco-design/web-react';
 import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
+import { matchesSettingsNavPath, normalizeSettingsAnchor } from './settingsNavigation';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
 const BUILTIN_TAB_IDS = [
-  'cron',
+  'schedule',
   'tools',
   'runtime',
   'commands',
   'webui',
   'channels',
   'activeSessions',
+  'systemRuns',
   'system',
   'about',
 ] as const;
-
-const normalizeSettingsAnchor = (anchor: string): string => (anchor === 'display' ? 'system' : anchor);
 
 type SiderItem = {
   id: string;
@@ -112,11 +113,11 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const menus: SiderItem[] = useMemo(() => {
     // Build builtin items
     const builtinMap: Record<string, SiderItem> = {
-      cron: {
-        id: 'cron',
-        label: t('cron.scheduledTasks'),
+      schedule: {
+        id: 'schedule',
+        label: t('schedule.scheduledTasks'),
         icon: <AlarmClock />,
-        path: 'cron',
+        path: 'schedule',
       },
       tools: { id: 'tools', label: t('settings.tools'), icon: <Toolkit />, path: 'tools' },
       runtime: {
@@ -143,6 +144,12 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         label: t('settings.activeSessions'),
         icon: <ConnectionPoint />,
         path: 'agent-publish',
+      },
+      systemRuns: {
+        id: 'systemRuns',
+        label: t('settings.systemRuns'),
+        icon: <Robot />,
+        path: 'system-runs',
       },
       system: { id: 'system', label: t('settings.system'), icon: <System />, path: 'system' },
       about: { id: 'about', label: t('settings.about'), icon: <Info />, path: 'about' },
@@ -217,7 +224,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
       )}
     >
       {menus.map((item) => {
-        const isSelected = pathname.includes(item.path);
+        const isSelected = matchesSettingsNavPath(pathname, item.path);
         const itemNode = (
           <div
             data-settings-id={item.id}

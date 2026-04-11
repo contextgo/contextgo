@@ -6,7 +6,7 @@
 
 const CONTEXTGO_ROOT_HOST = 'contextgo.io';
 const CONTEXTGO_HOST_SUFFIX = `.${CONTEXTGO_ROOT_HOST}`;
-const REMOTE_DEVICES_PATH = '/remote/devices';
+const OFFICIAL_REMOTE_DEVICE_LIST_PATH = '/remote/devices';
 
 export type HostedRemoteDisconnectNotice =
   | 'device_not_found'
@@ -21,8 +21,23 @@ function isContextGoHostname(hostname: string): boolean {
 
 export function extractRemoteDeviceId(currentHref: string): string | null {
   const currentUrl = new URL(currentHref);
-  const match = currentUrl.pathname.match(/^\/device\/([^/]+)$/);
+  const match = currentUrl.pathname.match(/^\/device\/([^/]+)\/?$/);
   return match ? decodeURIComponent(match[1]) : null;
+}
+
+export function buildBrowserBridgeSocketUrl(currentHref: string, defaultPort: number): string {
+  const currentUrl = new URL(currentHref);
+  const protocol = currentUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+  const originHost = currentUrl.host || `${currentUrl.hostname}:${defaultPort}`;
+  const remoteDeviceId = extractRemoteDeviceId(currentHref);
+
+  if (!remoteDeviceId) {
+    return `${protocol}//${originHost}`;
+  }
+
+  const socketUrl = new URL('/api/remote/client-connect', `${protocol}//${originHost}`);
+  socketUrl.searchParams.set('device_id', remoteDeviceId);
+  return socketUrl.toString();
 }
 
 export function buildBrowserLoginRedirectPath(currentHref: string): string {
@@ -41,7 +56,7 @@ export function buildBrowserLoginRedirectPath(currentHref: string): string {
 }
 
 export function buildHostedRemoteNoticeRedirectPath(notice: HostedRemoteDisconnectNotice): string {
-  return `${REMOTE_DEVICES_PATH}?remoteNotice=${encodeURIComponent(notice)}`;
+  return `${OFFICIAL_REMOTE_DEVICE_LIST_PATH}?remoteNotice=${encodeURIComponent(notice)}`;
 }
 
 export type HostedRemoteDisconnectResolution =

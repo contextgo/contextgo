@@ -46,12 +46,55 @@
   color: var(--text-primary) !important;
 }
 
+/* Shared sendbox tool button geometry */
+.sendbox-tool-button,
+.sendbox-tool-button:hover,
+.sendbox-tool-button:active,
+.sendbox-tool-button:focus,
+.sendbox-tool-button:focus-visible {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+}
+
+.sendbox-tool-button .arco-btn-icon,
+.sendbox-tool-button .arco-btn-content {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+.sendbox-tool-button .arco-icon,
+.sendbox-tool-button .arco-icon-hover,
+.sendbox-tool-button svg {
+  display: block;
+}
+
+.sendbox-tool-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sendbox-tool-pill-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
 /* Mobile: allow horizontal scrolling for sendbox tools (model/permission pills) */
 @media (max-width: 767px) {
   .sendbox-tools-scroll-mobile {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    display: block;
     min-width: 0;
     max-width: calc(100vw - 140px);
     overflow-x: auto;
@@ -62,6 +105,18 @@
     touch-action: pan-x;
   }
 
+  .sendbox-tools-scroll-mobile-track {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: 100%;
+    width: max-content;
+  }
+
+  .sendbox-tools-scroll-mobile-track > * {
+    flex-shrink: 0;
+  }
+
   .sendbox-tools-scroll-mobile::-webkit-scrollbar {
     display: none;
   }
@@ -70,5 +125,63 @@
   .sendbox-input--mobile {
     font-size: 16px !important;
     line-height: 24px !important;
+  }
+
+  .sendbox-tools-scroll-mobile .sendbox-tool-button,
+  .sendbox-tools-scroll-mobile .sendbox-tool-button:hover,
+  .sendbox-tools-scroll-mobile .sendbox-tool-button:active,
+  .sendbox-tools-scroll-mobile .sendbox-tool-button:focus,
+  .sendbox-tools-scroll-mobile .sendbox-tool-button:focus-visible,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill:hover,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill:active,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill:focus,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill:focus-visible {
+    align-self: flex-end;
+    margin-bottom: 0 !important;
+    vertical-align: bottom;
+  }
+
+  .sendbox-tools-scroll-mobile .sendbox-tool-cluster {
+    align-items: flex-end;
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .sendbox-tools-scroll-mobile .sendbox-tool-pill-row {
+    align-items: center;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .sendbox-tools-mobile-shell {
+    display: flex;
+    align-items: flex-end;
+    min-width: 0;
+    min-height: 32px;
+    height: 32px;
+    overflow: hidden;
+  }
+
+  .sendbox-tools-scroll-mobile-bottom {
+    width: 100%;
+    max-width: 100%;
+    min-height: 32px;
+    height: 32px;
+    overflow-y: hidden;
+  }
+
+  .sendbox-tools-scroll-mobile-bottom .sendbox-tools-scroll-mobile-track {
+    min-height: 32px;
+    height: 32px;
+  }
+
+  .sendbox-mobile-actions {
+    min-height: 32px;
+  }
+
+  .sendbox-mobile-actions .context-usage-indicator {
+    width: 32px !important;
+    height: 32px !important;
   }
 }

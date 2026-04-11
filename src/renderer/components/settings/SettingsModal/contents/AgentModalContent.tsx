@@ -16,7 +16,7 @@ const AgentModalContent: React.FC = () => {
   const isPageMode = viewMode === 'page';
 
   return (
-    <div className='flex flex-col h-full w-full'>
+    <div className='flex h-full w-full flex-col gap-16px'>
       {agentMessageContext}
 
       <ContextGoScrollArea className='flex-1 min-h-0 pb-16px scrollbar-hide' disableOverflow={isPageMode}>

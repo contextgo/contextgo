@@ -17,8 +17,8 @@ vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
   useLayoutContext: () => ({ isMobile: false }),
 }));
 
-vi.mock('@/renderer/pages/cron', () => ({
-  CronJobIndicator: () => null,
+vi.mock('@/renderer/pages/schedule', () => ({
+  ScheduleJobIndicator: () => null,
 }));
 
 vi.mock('react-i18next', () => ({

@@ -330,6 +330,40 @@
     "sessionHooksSaved": "Session hooks updated",
     "sessionHooksSaveFailed": "Failed to save session hooks",
     "sessionHooksLoadFailed": "Failed to load hooks",
+    "automation": {
+      "action": "Automation",
+      "description": "Project automation lives in this workspace under .contextgo.",
+      "modalTitle": "Project Automation",
+      "modalDescription": "Edit project-scoped commands and schedules directly here. Changes save into this workspace under .contextgo.",
+      "openFolder": "Open .contextgo Folder",
+      "openCommandsFile": "Reveal commands.json",
+      "openSchedulesFile": "Reveal schedules.json",
+      "commandsTitle": "Project Commands",
+      "commandsDescription": "These slash commands are saved for this project and override global managed commands inside the current workspace.",
+      "commandsUsageHint": "If commands.json does not exist yet, the editor starts from the current effective managed commands for this conversation.",
+      "commandsPathHint": "Saved to: {{path}}",
+      "schedulesTitle": "Project Schedule",
+      "schedulesDescription": "Create or edit the conversation schedule that is persisted in this project's .contextgo/schedules.json file.",
+      "schedulesPathHint": "Saved to: {{path}}",
+      "scheduleEmpty": "No project schedule exists yet for this conversation. Create one here and it will be written into .contextgo/schedules.json.",
+      "scheduleReadonlyHint": "This schedule currently uses the \"{{kind}}\" type. The direct editor can still change message and enabled state, but schedule timing is read-only here.",
+      "scheduleEditor": {
+        "namePlaceholder": "Enter task name",
+        "cronExpressionLabel": "Cron Expression",
+        "cronExpressionPlaceholder": "For example: 0 9 * * MON-FRI",
+        "descriptionLabel": "Schedule Description",
+        "descriptionPlaceholder": "For example: Every weekday at 09:00",
+        "validation": {
+          "nameRequired": "Please enter a schedule name",
+          "messageRequired": "Please enter the scheduled message",
+          "cronRequired": "Please enter a cron expression",
+          "descriptionRequired": "Please enter a schedule description"
+        }
+      },
+      "exportCommands": "Export Current Commands",
+      "exportCommandsSuccess": "Exported current commands to .contextgo/commands.json",
+      "exportCommandsFailed": "Failed to export commands to the project automation folder"
+    },
     "contextMenu": {
       "open": "Open",
       "openLocation": "Show in folder",
@@ -445,6 +479,19 @@
     "runtimeDisconnected": "The agent runtime stopped unexpectedly. Send again to restart it.",
     "activeTools": "{{count}} active tool",
     "activeTools_other": "{{count}} active tools",
+    "runtimePlan": {
+      "title": "Plan",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "progressLabel": "{{completed}} / {{total}} completed",
+      "pendingSummary": "{{count}} steps pending",
+      "completedSummary": "{{count}} steps completed",
+      "status": {
+        "pending": "Pending",
+        "in_progress": "In progress",
+        "completed": "Completed"
+      }
+    },
     "phase": {
       "preparing": "Preparing",
       "reasoning": "Reasoning",

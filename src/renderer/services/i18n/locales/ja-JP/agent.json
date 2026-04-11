@@ -34,5 +34,94 @@
     "openMarkdown": "Markdown を開く",
     "showInFolder": "フォルダで表示",
     "sidecarActionFailed": "エクスポートされた sidecar 出力を開けませんでした。"
+  },
+  "contextEngine": {
+    "title": "コンテキストエンジン",
+    "description": "システム管理のメンテナンス Agent がセッション文脈を継続的に圧縮し、安定したプロジェクト知識を昇格します。",
+    "systemManaged": "システム管理",
+    "loading": "メンテナンス状況を読み込み中...",
+    "loadFailed": "メンテナンス状況の読み込みに失敗しました。",
+    "activeCount": "{{count}} 件のメンテナンス実行中",
+    "idleCount": "{{count}} 件のメンテナンス Agent が待機中",
+    "empty": "最初のメンテナンス実行を待っています。",
+    "taskFallback": "要約はまだありません",
+    "scope": "スコープ: {{scope}}",
+    "latestEvent": "最新イベント: {{event}}",
+    "updatedAt": "更新: {{time}}",
+    "openConsole": "実行コンソールを開く",
+    "active": "実行中",
+    "idle": "監視中",
+    "state": {
+      "error": "エラー",
+      "executing": "実行中",
+      "idle": "待機中",
+      "researching": "調査中",
+      "syncing": "同期中",
+      "writing": "書き込み中"
+    },
+    "groupActiveCount": "{{count}} 件の実行中タスク",
+    "groupWatchingCount": "{{count}} 件の監視中 Agent",
+    "artifactTitle": "ドキュメント: {{title}}",
+    "artifactPath": "パス: {{path}}",
+    "groups": {
+      "session_compaction": "セッション圧縮",
+      "project_promotion": "プロジェクト昇格",
+      "other": "その他のメンテナンス"
+    },
+    "operationLog": {
+      "signal": {
+        "user_interrupt": {
+          "title": "実行は完了前に停止されました",
+          "summary": "現在の実行は手動で停止されました。"
+        },
+        "repeated_request": {
+          "title": "同じ依頼が繰り返されました"
+        },
+        "strategy_shift": {
+          "title": "セッション中に進め方が変わりました"
+        },
+        "tool_failure_cluster": {
+          "title": "ツール失敗がまとまって発生しました"
+        },
+        "memory_candidate_created": {
+          "title": "確認待ちの知見を抽出しました"
+        },
+        "memory_candidate_promoted": {
+          "title": "安定した知見を保存しました"
+        },
+        "context_window_prepared": {
+          "title": "このターンのコンテキストを準備しました",
+          "summary": "このターンを続けるために必要なコンテキストを整理しました。",
+          "recentSignals": "直近のコンテキスト記録を {{count}} 件取り込みました。"
+        }
+      },
+      "job": {
+        "session_compaction": {
+          "queued": "セッション文脈の更新を待機列に追加しました",
+          "completed": "セッション文脈を更新しました",
+          "failed": "セッション文脈の更新に失敗しました"
+        },
+        "session_pattern_detection": {
+          "queued": "セッションパターンの解析を待機列に追加しました",
+          "completed": "セッションパターンの解析が完了しました",
+          "failed": "セッションパターンの解析に失敗しました"
+        },
+        "project_promotion": {
+          "queued": "プロジェクト知識の更新を待機列に追加しました",
+          "completed": "プロジェクト知識を更新しました",
+          "failed": "プロジェクト知識の更新に失敗しました"
+        },
+        "space_memory_distillation": {
+          "queued": "スペース記憶の蒸留を待機列に追加しました",
+          "completed": "スペース記憶の蒸留が完了しました",
+          "failed": "スペース記憶の蒸留に失敗しました"
+        },
+        "connector_digest": {
+          "queued": "コネクタ要約の生成を待機列に追加しました",
+          "completed": "コネクタ要約の生成が完了しました",
+          "failed": "コネクタ要約の生成に失敗しました"
+        }
+      }
+    }
   }
 }

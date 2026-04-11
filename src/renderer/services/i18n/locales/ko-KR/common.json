@@ -62,12 +62,6 @@
   "refresh": "새로고침",
   "refreshSuccess": "새로고침됨",
   "processing": "처리 중...",
-  "space": "스페이스",
-  "mySpace": "내 스페이스",
-  "newSpace": "새 스페이스",
-  "switchSpace": "스페이스 전환",
-  "spaceCreated": "{{name}} 생성됨",
-  "returnToWorkbench": "워크벤치로 돌아가기",
   "name": "이름",
   "rendererCrash": {
     "title": "이 페이지가 렌더링을 완료하기 전에 중단되었습니다",

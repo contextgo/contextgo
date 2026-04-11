@@ -103,6 +103,7 @@ import type {
   SourceRecord,
 } from '../../../../packages/context-engine/src/domain';
 import type { ContextOperation } from '../../../../packages/context-engine/src/operations';
+import type { ContextSchedule } from '@process/services/context/events/schedule/types';
 import {
   getChannelBindingTarget,
   resolveChannelConvType,
@@ -142,6 +143,60 @@ type VoiceInputStatsRow = {
   total_recording_duration_ms: number | null;
   total_transcribed_character_count: number | null;
 };
+
+type ContextScheduleRow = {
+  id: string;
+  name: string;
+  enabled: number;
+  owner: ContextSchedule['owner'];
+  created_by: ContextSchedule['createdBy'];
+  scope_kind: ContextSchedule['scope']['kind'];
+  space_id: string;
+  conversation_id: string | null;
+  target_kind: ContextSchedule['target']['kind'];
+  schedule_json: string;
+  scope_json: string;
+  target_json: string;
+  state_json: string;
+  created_at: number;
+  updated_at: number;
+};
+
+function rowToContextSchedule(row: ContextScheduleRow): ContextSchedule {
+  return {
+    id: row.id,
+    name: row.name,
+    enabled: row.enabled === 1,
+    owner: row.owner,
+    createdBy: row.created_by,
+    schedule: JSON.parse(row.schedule_json) as ContextSchedule['schedule'],
+    scope: JSON.parse(row.scope_json) as ContextSchedule['scope'],
+    target: JSON.parse(row.target_json) as ContextSchedule['target'],
+    state: JSON.parse(row.state_json) as ContextSchedule['state'],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function contextScheduleToRow(schedule: ContextSchedule): ContextScheduleRow {
+  return {
+    id: schedule.id,
+    name: schedule.name,
+    enabled: schedule.enabled ? 1 : 0,
+    owner: schedule.owner,
+    created_by: schedule.createdBy,
+    scope_kind: schedule.scope.kind,
+    space_id: schedule.scope.spaceId,
+    conversation_id: schedule.scope.conversationId ?? null,
+    target_kind: schedule.target.kind,
+    schedule_json: JSON.stringify(schedule.schedule),
+    scope_json: JSON.stringify(schedule.scope),
+    target_json: JSON.stringify(schedule.target),
+    state_json: JSON.stringify(schedule.state),
+    created_at: schedule.createdAt,
+    updated_at: schedule.updatedAt,
+  };
+}
 
 const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, (match) => `\\${match}`);
 
@@ -842,6 +897,116 @@ export class AionUIDatabase {
     }
   }
 
+  getContextSchedule(scheduleId: string): IQueryResult<ContextSchedule | null> {
+    try {
+      const row = this.db.prepare('SELECT * FROM context_schedules WHERE id = ?').get(scheduleId) as
+        | ContextScheduleRow
+        | undefined;
+      return { success: true, data: row ? rowToContextSchedule(row) : null };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: null };
+    }
+  }
+
+  listContextSchedules(): IQueryResult<ContextSchedule[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM context_schedules ORDER BY updated_at DESC, id DESC')
+        .all() as ContextScheduleRow[];
+      return { success: true, data: rows.map(rowToContextSchedule) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  listEnabledContextSchedules(): IQueryResult<ContextSchedule[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM context_schedules WHERE enabled = 1 ORDER BY updated_at DESC, id DESC')
+        .all() as ContextScheduleRow[];
+      return { success: true, data: rows.map(rowToContextSchedule) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  listContextSchedulesByConversation(conversationId: string): IQueryResult<ContextSchedule[]> {
+    try {
+      const rows = this.db
+        .prepare('SELECT * FROM context_schedules WHERE conversation_id = ? ORDER BY updated_at DESC, id DESC')
+        .all(conversationId) as ContextScheduleRow[];
+      return { success: true, data: rows.map(rowToContextSchedule) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  saveContextSchedule(schedule: ContextSchedule): IQueryResult<ContextSchedule> {
+    try {
+      const row = contextScheduleToRow(schedule);
+      this.db
+        .prepare(`
+          INSERT INTO context_schedules (
+            id, name, enabled, owner, created_by, scope_kind, space_id, conversation_id,
+            target_kind, schedule_json, scope_json, target_json, state_json, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            enabled = excluded.enabled,
+            owner = excluded.owner,
+            created_by = excluded.created_by,
+            scope_kind = excluded.scope_kind,
+            space_id = excluded.space_id,
+            conversation_id = excluded.conversation_id,
+            target_kind = excluded.target_kind,
+            schedule_json = excluded.schedule_json,
+            scope_json = excluded.scope_json,
+            target_json = excluded.target_json,
+            state_json = excluded.state_json,
+            created_at = excluded.created_at,
+            updated_at = excluded.updated_at
+        `)
+        .run(
+          row.id,
+          row.name,
+          row.enabled,
+          row.owner,
+          row.created_by,
+          row.scope_kind,
+          row.space_id,
+          row.conversation_id,
+          row.target_kind,
+          row.schedule_json,
+          row.scope_json,
+          row.target_json,
+          row.state_json,
+          row.created_at,
+          row.updated_at
+        );
+      return { success: true, data: schedule };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  removeContextSchedule(scheduleId: string): IQueryResult<boolean> {
+    try {
+      const result = this.db.prepare('DELETE FROM context_schedules WHERE id = ?').run(scheduleId);
+      return { success: true, data: result.changes > 0 };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: false };
+    }
+  }
+
+  removeContextSchedulesByConversation(conversationId: string): IQueryResult<number> {
+    try {
+      const result = this.db.prepare('DELETE FROM context_schedules WHERE conversation_id = ?').run(conversationId);
+      return { success: true, data: result.changes };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: 0 };
+    }
+  }
+
   getContextSource(sourceId: string): IQueryResult<SourceRecord | null> {
     try {
       const row = this.db.prepare('SELECT * FROM context_sources WHERE id = ?').get(sourceId) as
@@ -972,6 +1137,15 @@ export class AionUIDatabase {
       return { success: true, data: rows.map(rowToContextChunk) };
     } catch (error: any) {
       return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  deleteContextChunksByDocument(documentId: string): IQueryResult<number> {
+    try {
+      const result = this.db.prepare('DELETE FROM context_chunks WHERE document_id = ?').run(documentId);
+      return { success: true, data: result.changes };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: 0 };
     }
   }
 
@@ -2702,6 +2876,44 @@ export class AionUIDatabase {
    * Channel Run operations
    * ==================
    */
+
+  listChannelRuns(options?: {
+    backend?: string;
+    statuses?: readonly IChannelRun['status'][];
+    limit?: number;
+  }): IQueryResult<IChannelRun[]> {
+    try {
+      const clauses: string[] = [];
+      const params: Array<string | number> = [];
+
+      if (options?.backend) {
+        clauses.push('backend = ?');
+        params.push(options.backend);
+      }
+
+      if (options?.statuses?.length) {
+        const placeholders = options.statuses.map(() => '?').join(', ');
+        clauses.push(`status IN (${placeholders})`);
+        params.push(...options.statuses);
+      }
+
+      let query = 'SELECT * FROM runs';
+      if (clauses.length > 0) {
+        query += ` WHERE ${clauses.join(' AND ')}`;
+      }
+      query += ' ORDER BY started_at DESC';
+
+      if (typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0) {
+        query += ' LIMIT ?';
+        params.push(Math.floor(options.limit));
+      }
+
+      const rows = this.db.prepare(query).all(...params) as IChannelRunRow[];
+      return { success: true, data: rows.map(rowToChannelRun) };
+    } catch (error: any) {
+      return { success: false, error: error.message, data: [] };
+    }
+  }
 
   getChannelRun(runId: string): IQueryResult<IChannelRun | null> {
     try {

@@ -19,7 +19,7 @@ import { createHash } from 'node:crypto';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { getDatabase } from '@process/services/database';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
-import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
+import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 import BaseAgentManager from '@process/task/BaseAgentManager';
 import { IpcAgentEventEmitter } from '@process/task/IpcAgentEventEmitter';
 
@@ -337,7 +337,7 @@ class OpenClawAgentManager extends BaseAgentManager<OpenClawAgentManagerData> {
 
     // Handle finish event
     if (msg.type === 'finish') {
-      cronBusyGuard.setProcessing(this.conversation_id, false);
+      scheduleConversationGuard.setProcessing(this.conversation_id, false);
     }
 
     // Emit signal events to frontend
@@ -586,7 +586,7 @@ class OpenClawAgentManager extends BaseAgentManager<OpenClawAgentManagerData> {
   }
 
   async sendMessage(data: { content: string; agentContent?: string; files?: string[]; msg_id?: string }) {
-    cronBusyGuard.setProcessing(this.conversation_id, true);
+    scheduleConversationGuard.setProcessing(this.conversation_id, true);
     // Set status to running when message is being processed
     this.status = 'running';
     try {
@@ -615,7 +615,7 @@ class OpenClawAgentManager extends BaseAgentManager<OpenClawAgentManagerData> {
 
       return result;
     } catch (error) {
-      cronBusyGuard.setProcessing(this.conversation_id, false);
+      scheduleConversationGuard.setProcessing(this.conversation_id, false);
       this.status = 'finished';
 
       const errorMsg = error instanceof Error ? error.message : String(error);

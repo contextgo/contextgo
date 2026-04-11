@@ -4,6 +4,7 @@
   "conversationInProgress": "현재 대화가 진행 중입니다...",
   "confirm": "확인",
   "canceledExecution": "실행 취소됨",
+  "interrupted": "사용자에 의해 중단되었습니다.",
   "openLinkFailed": "링크 열기 실패",
   "imageGenerationModelDetected": "이미지 모델이 감지되어 이미지 도구가 자동으로 활성화되었습니다. 기본 모델: {{platform}}:{{model}}",
   "auto_handling_permissions": "권한 요청 자동 처리: {{request}}",
@@ -28,6 +29,27 @@
   "noOptionsAvailable": "사용 가능한 옵션 없음",
   "processing": "처리 중...",
   "responseSentSuccessfully": "응답 전송 성공",
+  "fileOperation": {
+    "written": "파일 작성 완료",
+    "read": "파일 읽기 완료",
+    "deleted": "파일 삭제 완료",
+    "operation": "파일 작업",
+    "summary": {
+      "read": "파일 {{count}}개 읽음",
+      "read_other": "파일 {{count}}개 읽음",
+      "written": "파일 {{count}}개 수정",
+      "written_other": "파일 {{count}}개 수정",
+      "deleted": "파일 {{count}}개 삭제",
+      "deleted_other": "파일 {{count}}개 삭제",
+      "operation": "파일 작업 {{count}}개 실행",
+      "operation_other": "파일 작업 {{count}}개 실행"
+    }
+  },
+  "stepSummary": {
+    "viewSteps": "단계 보기",
+    "tools": "도구 {{count}}개",
+    "tools_other": "도구 {{count}}개"
+  },
   "confirmation": {
     "applyChange": "이 변경 사항을 적용하시겠습니까?",
     "allowExecution": "실행을 허용하시겠습니까?",

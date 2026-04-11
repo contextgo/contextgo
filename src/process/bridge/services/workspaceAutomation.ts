@@ -6,6 +6,8 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
+import { normalizeManagedSlashCommandLibrary } from '@/common/chat/slash/library';
 import { copyDirectoryRecursively } from '@process/utils';
 
 export const resolveWorkspacePath = (workspace?: string): string | undefined => {
@@ -18,6 +20,10 @@ export const resolveWorkspacePath = (workspace?: string): string | undefined => 
 
 export const WORKSPACE_AUTOMATION_DIR = '.contextgo';
 export const WORKSPACE_HOOKS_DIR = path.join(WORKSPACE_AUTOMATION_DIR, 'hooks');
+export const WORKSPACE_COMMANDS_FILE = path.join(WORKSPACE_AUTOMATION_DIR, 'commands.json');
+export const WORKSPACE_SCHEDULES_FILE = path.join(WORKSPACE_AUTOMATION_DIR, 'schedules.json');
+export const WORKSPACE_RUNTIME_DIR = path.join(WORKSPACE_AUTOMATION_DIR, 'runtime');
+export const WORKSPACE_SCHEDULE_RUNTIME_DIR = path.join(WORKSPACE_RUNTIME_DIR, 'schedules');
 
 export const getWorkspaceHooksDir = (workspace?: string): string | null => {
   const resolvedWorkspace = resolveWorkspacePath(workspace);
@@ -26,6 +32,66 @@ export const getWorkspaceHooksDir = (workspace?: string): string | null => {
   }
 
   return path.join(resolvedWorkspace, WORKSPACE_HOOKS_DIR);
+};
+
+export const getWorkspaceCommandsFile = (workspace?: string): string | null => {
+  const resolvedWorkspace = resolveWorkspacePath(workspace);
+  if (!resolvedWorkspace) {
+    return null;
+  }
+
+  return path.join(resolvedWorkspace, WORKSPACE_COMMANDS_FILE);
+};
+
+export const getWorkspaceSchedulesFile = (workspace?: string): string | null => {
+  const resolvedWorkspace = resolveWorkspacePath(workspace);
+  if (!resolvedWorkspace) {
+    return null;
+  }
+
+  return path.join(resolvedWorkspace, WORKSPACE_SCHEDULES_FILE);
+};
+
+export const getWorkspaceRuntimeDir = (workspace?: string): string | null => {
+  const resolvedWorkspace = resolveWorkspacePath(workspace);
+  if (!resolvedWorkspace) {
+    return null;
+  }
+
+  return path.join(resolvedWorkspace, WORKSPACE_RUNTIME_DIR);
+};
+
+export const getWorkspaceScheduleRuntimeDir = (workspace: string | undefined, scheduleId: string): string | null => {
+  const runtimeDir = getWorkspaceRuntimeDir(workspace);
+  if (!runtimeDir) {
+    return null;
+  }
+
+  return path.join(runtimeDir, 'schedules', scheduleId);
+};
+
+export const getWorkspaceScheduleRuntimeStateFile = (
+  workspace: string | undefined,
+  scheduleId: string
+): string | null => {
+  const scheduleRuntimeDir = getWorkspaceScheduleRuntimeDir(workspace, scheduleId);
+  if (!scheduleRuntimeDir) {
+    return null;
+  }
+
+  return path.join(scheduleRuntimeDir, 'state.json');
+};
+
+export const getWorkspaceScheduleRuntimeHistoryFile = (
+  workspace: string | undefined,
+  scheduleId: string
+): string | null => {
+  const scheduleRuntimeDir = getWorkspaceScheduleRuntimeDir(workspace, scheduleId);
+  if (!scheduleRuntimeDir) {
+    return null;
+  }
+
+  return path.join(scheduleRuntimeDir, 'history.jsonl');
 };
 
 export const getWorkspaceHookDir = (workspace: string | undefined, hookName: string): string | null => {
@@ -79,4 +145,32 @@ export const copyWorkspaceAutomationHooks = async (
     overwrite: true,
     removeStale: true,
   });
+};
+
+async function readWorkspaceAutomationJson<T>(filePath: string | null): Promise<T | null> {
+  if (!filePath) {
+    return null;
+  }
+
+  try {
+    const raw = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    if (code === 'ENOENT') {
+      return null;
+    }
+
+    console.warn('[workspaceAutomation] Failed to read workspace automation file:', filePath, error);
+    return null;
+  }
+}
+
+export const readWorkspaceCommandLibrary = async (workspace?: string): Promise<ManagedSlashCommandRecord[] | null> => {
+  const content = await readWorkspaceAutomationJson<unknown>(getWorkspaceCommandsFile(workspace));
+  if (content === null) {
+    return null;
+  }
+
+  return normalizeManagedSlashCommandLibrary(content);
 };

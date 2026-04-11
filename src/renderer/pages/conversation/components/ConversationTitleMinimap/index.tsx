@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import styles from './ConversationTitleMinimap.module.css';
 import type { ConversationTitleMinimapProps } from './minimapTypes';
 import { HEADER_HEIGHT, PANEL_MIN_WIDTH } from './minimapTypes';
-import { isIndexMatch, renderHighlightedText } from './minimapUtils';
+import { isIndexMatch, renderHighlightedText, sanitizeTurnPreviewItems } from './minimapUtils';
 import { useMinimapPanel } from './useMinimapPanel';
 
 const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({ conversationId }) => {
@@ -44,6 +44,9 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({ con
     handleSearchInputCompositionEnd,
   } = useMinimapPanel(conversationId);
 
+  const safeItems = useMemo(() => sanitizeTurnPreviewItems(items), [items]);
+  const safeFilteredItems = useMemo(() => sanitizeTurnPreviewItems(filteredItems), [filteredItems]);
+
   const contentNode = useMemo(() => {
     const frameStyle: React.CSSProperties = {
       width: '100%',
@@ -62,15 +65,15 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({ con
         className={classNames('conversation-minimap-count shrink-0 text-12px font-semibold leading-none', styles.count)}
         style={{
           color: normalizedKeyword
-            ? filteredItems.length > 0
+            ? safeFilteredItems.length > 0
               ? 'rgb(var(--primary-6))'
               : 'var(--color-danger)'
             : 'var(--color-text-2)',
         }}
       >
         {normalizedKeyword
-          ? `${filteredItems.length}/${items.length}`
-          : t('conversation.minimap.count', { count: items.length })}
+          ? `${safeFilteredItems.length}/${safeItems.length}`
+          : t('conversation.minimap.count', { count: safeItems.length })}
       </span>
     );
 
@@ -123,7 +126,7 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({ con
       );
     }
 
-    if (!items.length) {
+    if (!safeItems.length) {
       return (
         <div className='conversation-minimap-panel' style={frameStyle}>
           {titleNode}
@@ -134,7 +137,7 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({ con
       );
     }
 
-    if (!filteredItems.length) {
+    if (!safeFilteredItems.length) {
       return (
         <div className='conversation-minimap-panel' style={frameStyle}>
           {titleNode}
@@ -157,7 +160,7 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({ con
             style={{ paddingRight: '14px', scrollbarGutter: 'stable' }}
           >
             <div className='conversation-minimap-list flex flex-col gap-6px'>
-              {filteredItems.map((item, idx) => (
+              {safeFilteredItems.map((item, idx) => (
                 <button
                   key={`${item.index}-${item.messageId || item.msgId || 'unknown'}`}
                   type='button'
@@ -208,9 +211,9 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({ con
     );
   }, [
     activeResultIndex,
-    filteredItems,
+    safeFilteredItems,
     isSearchMode,
-    items.length,
+    safeItems.length,
     jumpToItem,
     loading,
     normalizedKeyword,

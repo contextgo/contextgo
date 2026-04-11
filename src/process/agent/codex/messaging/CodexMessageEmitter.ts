@@ -38,6 +38,11 @@ export interface ICodexMessageEmitter {
   sendMessageToAgent?(content: string): Promise<void>;
 
   /**
+   * Replace the latest assistant text content after backend-side command stripping.
+   */
+  updateFinalAssistantContent?(msgId: string, content: string): void;
+
+  /**
    * Schedule after_response hook emission once the final assistant message has settled.
    */
   scheduleAfterResponseHooks?(): void;

@@ -330,6 +330,40 @@
     "sessionHooksSaved": "会话 Hooks 已更新",
     "sessionHooksSaveFailed": "保存会话 Hooks 失败",
     "sessionHooksLoadFailed": "加载 Hooks 失败",
+    "automation": {
+      "action": "自动化",
+      "description": "这个项目的自动化配置位于工作区下的 .contextgo 目录。",
+      "modalTitle": "项目自动化",
+      "modalDescription": "可以直接在这里编辑项目级 commands 和定时任务。修改会保存到当前工作区下的 .contextgo 中。",
+      "openFolder": "打开 .contextgo 文件夹",
+      "openCommandsFile": "定位 commands.json",
+      "openSchedulesFile": "定位 schedules.json",
+      "commandsTitle": "项目 Commands",
+      "commandsDescription": "这里维护的是项目级 slash commands，会在当前工作区内覆盖全局 managed commands。",
+      "commandsUsageHint": "如果 commands.json 还不存在，编辑器会先以当前会话实际生效的 managed commands 作为初始内容。",
+      "commandsPathHint": "保存路径：{{path}}",
+      "schedulesTitle": "项目定时任务",
+      "schedulesDescription": "直接创建或编辑当前会话的项目级定时任务，内容会持久化到这个项目的 .contextgo/schedules.json。",
+      "schedulesPathHint": "保存路径：{{path}}",
+      "scheduleEmpty": "当前会话还没有项目级定时任务。你可以直接在这里创建，它会写入 .contextgo/schedules.json。",
+      "scheduleReadonlyHint": "这个定时任务当前使用的是“{{kind}}”类型。这里仍可修改消息和启停状态，但调度时间暂时只读。",
+      "scheduleEditor": {
+        "namePlaceholder": "输入任务名称",
+        "cronExpressionLabel": "Cron 表达式",
+        "cronExpressionPlaceholder": "例如：0 9 * * MON-FRI",
+        "descriptionLabel": "调度说明",
+        "descriptionPlaceholder": "例如：每个工作日 09:00",
+        "validation": {
+          "nameRequired": "请输入任务名称",
+          "messageRequired": "请输入定时消息",
+          "cronRequired": "请输入 Cron 表达式",
+          "descriptionRequired": "请输入调度说明"
+        }
+      },
+      "exportCommands": "导出当前 Commands",
+      "exportCommandsSuccess": "已导出当前 commands 到 .contextgo/commands.json",
+      "exportCommandsFailed": "导出 commands 到项目自动化目录失败"
+    },
     "contextMenu": {
       "open": "打开",
       "openLocation": "打开文件所在目录",
@@ -453,6 +487,19 @@
       "completed": "已完成",
       "error": "出错"
     },
-    "activeTools_other": "{{count}} 个工具运行中"
+    "activeTools_other": "{{count}} 个工具运行中",
+    "runtimePlan": {
+      "title": "计划",
+      "expand": "展开",
+      "collapse": "收起",
+      "progressLabel": "已完成 {{completed}} / {{total}}",
+      "pendingSummary": "还有 {{count}} 个步骤待完成",
+      "completedSummary": "{{count}} 个步骤已完成",
+      "status": {
+        "pending": "待处理",
+        "in_progress": "进行中",
+        "completed": "已完成"
+      }
+    }
   }
 }

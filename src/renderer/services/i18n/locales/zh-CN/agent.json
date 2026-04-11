@@ -34,5 +34,94 @@
     "openMarkdown": "打开 Markdown",
     "showInFolder": "显示所在目录",
     "sidecarActionFailed": "打开导出的 sidecar 输出失败。"
+  },
+  "contextEngine": {
+    "title": "上下文引擎",
+    "description": "系统托管的维护 Agent 会持续压缩会话上下文，并把稳定项目知识推进到项目层。",
+    "systemManaged": "系统托管",
+    "loading": "正在加载维护任务...",
+    "loadFailed": "加载维护任务失败。",
+    "activeCount": "{{count}} 个维护任务运行中",
+    "idleCount": "{{count}} 个维护 Agent 正在观察",
+    "empty": "等待第一条维护任务出现。",
+    "taskFallback": "暂无摘要",
+    "groupActiveCount": "{{count}} 个任务运行中",
+    "groupWatchingCount": "{{count}} 个 Agent 正在观察",
+    "scope": "作用域：{{scope}}",
+    "artifactTitle": "文档：{{title}}",
+    "artifactPath": "路径：{{path}}",
+    "latestEvent": "最新事件：{{event}}",
+    "updatedAt": "更新时间：{{time}}",
+    "openConsole": "查看运行台",
+    "active": "运行中",
+    "idle": "观察中",
+    "groups": {
+      "session_compaction": "会话压缩",
+      "project_promotion": "项目提升",
+      "other": "其他维护任务"
+    },
+    "state": {
+      "error": "异常",
+      "executing": "执行中",
+      "idle": "空闲",
+      "researching": "检索中",
+      "syncing": "同步中",
+      "writing": "写入中"
+    },
+    "operationLog": {
+      "signal": {
+        "user_interrupt": {
+          "title": "运行已中断",
+          "summary": "本次运行已被手动停止。"
+        },
+        "repeated_request": {
+          "title": "任务再次被提起"
+        },
+        "strategy_shift": {
+          "title": "本轮思路发生变化"
+        },
+        "tool_failure_cluster": {
+          "title": "工具失败开始集中出现"
+        },
+        "memory_candidate_created": {
+          "title": "提炼出待确认经验"
+        },
+        "memory_candidate_promoted": {
+          "title": "沉淀了一条稳定经验"
+        },
+        "context_window_prepared": {
+          "title": "已准备本轮上下文",
+          "summary": "已整理继续当前任务所需的上下文。",
+          "recentSignals": "已纳入 {{count}} 条近期上下文记录。"
+        }
+      },
+      "job": {
+        "session_compaction": {
+          "queued": "已排队更新会话上下文",
+          "completed": "已更新会话上下文",
+          "failed": "会话上下文更新失败"
+        },
+        "session_pattern_detection": {
+          "queued": "已排队扫描会话模式",
+          "completed": "已完成会话模式扫描",
+          "failed": "会话模式扫描失败"
+        },
+        "project_promotion": {
+          "queued": "已排队更新项目知识",
+          "completed": "已更新项目知识",
+          "failed": "项目知识更新失败"
+        },
+        "space_memory_distillation": {
+          "queued": "已排队提炼空间记忆",
+          "completed": "已完成空间记忆提炼",
+          "failed": "空间记忆提炼失败"
+        },
+        "connector_digest": {
+          "queued": "已排队整理连接器摘要",
+          "completed": "已完成连接器摘要整理",
+          "failed": "连接器摘要整理失败"
+        }
+      }
+    }
   }
 }

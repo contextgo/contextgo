@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createDefaultManagedSlashCommandLibrary,
+  mergeManagedSlashCommandLibraries,
   normalizeManagedSlashCommandLibrary,
   resolveManagedSlashCommands,
   toSlashCommandItems,
@@ -117,6 +118,81 @@ describe('managed slash command library', () => {
       kind: 'template',
       source: 'custom',
       template: 'Verify release readiness.',
+    });
+  });
+
+  it('lets workspace overrides replace global builtin and custom command definitions', () => {
+    const merged = mergeManagedSlashCommandLibraries(
+      [
+        {
+          type: 'builtin',
+          id: 'plan',
+          enabled: false,
+          nameOverride: 'plan-global',
+        },
+        {
+          type: 'custom',
+          id: 'custom-global',
+          enabled: true,
+          name: 'triage',
+          description: 'Global triage',
+          template: 'Use the global template.',
+        },
+      ],
+      [
+        {
+          type: 'builtin',
+          id: 'plan',
+          enabled: true,
+          nameOverride: 'plan-local',
+        },
+        {
+          type: 'custom',
+          id: 'custom-local',
+          enabled: true,
+          name: 'triage',
+          description: 'Workspace triage',
+          template: 'Use the workspace template.',
+        },
+      ]
+    );
+
+    expect(merged[0]).toEqual({
+      type: 'builtin',
+      id: 'plan',
+      enabled: true,
+      nameOverride: 'plan-local',
+    });
+    expect(merged.find((record) => record.type === 'custom' && record.name === 'triage')).toEqual({
+      type: 'custom',
+      id: 'custom-local',
+      enabled: true,
+      name: 'triage',
+      description: 'Workspace triage',
+      template: 'Use the workspace template.',
+    });
+  });
+
+  it('keeps builtin names reserved when merging global and workspace libraries', () => {
+    const merged = mergeManagedSlashCommandLibraries(
+      undefined,
+      [
+        {
+          type: 'custom',
+          id: 'custom-plan',
+          enabled: true,
+          name: 'plan',
+          description: 'Conflicts with builtin',
+          template: 'Should be ignored.',
+        },
+      ]
+    );
+
+    expect(merged.some((record) => record.type === 'custom' && record.name === 'plan')).toBe(false);
+    expect(merged.find((record) => record.type === 'builtin' && record.id === 'plan')).toEqual({
+      type: 'builtin',
+      id: 'plan',
+      enabled: true,
     });
   });
 });

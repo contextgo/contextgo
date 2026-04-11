@@ -4,9 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Button, Spin, Tag } from '@arco-design/web-react';
-import MarkdownView from '@/renderer/components/Markdown';
-import { Down, Up } from '@icon-park/react';
+import { Spin } from '@arco-design/web-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AgentRunPhase, AgentRunTrace } from './types';
@@ -16,14 +14,16 @@ interface AgentRunStatusProps {
   running?: boolean;
 }
 
-const PHASE_TAG_COLOR: Record<AgentRunPhase, 'gray' | 'arcoblue' | 'orangered' | 'green'> = {
-  preparing: 'gray',
-  reasoning: 'arcoblue',
-  tool_running: 'arcoblue',
-  waiting_permission: 'orangered',
-  composing: 'arcoblue',
-  completed: 'green',
-  error: 'orangered',
+const LONG_RUNNING_SECONDS = 60;
+
+const PHASE_ACCENT_COLOR: Record<AgentRunPhase, string> = {
+  preparing: 'var(--brand)',
+  reasoning: 'rgb(var(--primary-6))',
+  tool_running: 'rgb(var(--primary-6))',
+  waiting_permission: 'rgb(var(--warning-6))',
+  composing: 'rgb(var(--primary-6))',
+  completed: 'rgb(var(--success-6))',
+  error: 'rgb(var(--danger-6))',
 };
 
 const PHASE_I18N_KEY: Record<AgentRunPhase, string> = {
@@ -36,12 +36,15 @@ const PHASE_I18N_KEY: Record<AgentRunPhase, string> = {
   error: 'conversation.runStatus.phase.error',
 };
 
-const formatElapsedTime = (startTime?: number, endTime?: number): string => {
+const getElapsedSeconds = (startTime?: number, endTime?: number): number => {
   if (!startTime) {
-    return '0s';
+    return 0;
   }
 
-  const seconds = Math.max(0, Math.floor(((endTime ?? Date.now()) - startTime) / 1000));
+  return Math.max(0, Math.floor(((endTime ?? Date.now()) - startTime) / 1000));
+};
+
+const formatElapsedTime = (seconds: number): string => {
   if (seconds < 60) {
     return `${seconds}s`;
   }
@@ -51,56 +54,27 @@ const formatElapsedTime = (startTime?: number, endTime?: number): string => {
   return `${minutes}m ${remainingSeconds}s`;
 };
 
-const formatStartedAt = (timestamp?: number): string => {
-  if (!timestamp) {
-    return '--';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(new Date(timestamp));
-};
-
-const summarizeThought = (text: string): string => {
-  const normalized = text.replace(/\s+/g, ' ').trim();
+const summarizeText = (value?: string): string => {
+  const normalized = value?.replace(/\s+/g, ' ').trim() ?? '';
   if (!normalized) {
     return '';
   }
 
-  return normalized.length > 140 ? `${normalized.slice(0, 137)}...` : normalized;
-};
-
-const getFriendlyErrorSummary = (errorMessage: string, t: (key: string) => string): string => {
-  const normalized = errorMessage.trim();
-
-  if (/^ACP process exited unexpectedly \(code: .* signal: .*\)$/i.test(normalized)) {
-    return t('conversation.runStatus.runtimeDisconnected');
-  }
-
-  if (/^Codex process exited unexpectedly \(code: .* signal: .*\)$/i.test(normalized)) {
-    return t('conversation.runStatus.runtimeDisconnected');
-  }
-
-  return errorMessage;
+  return normalized.length > 110 ? `${normalized.slice(0, 107)}...` : normalized;
 };
 
 const AgentRunStatus: React.FC<AgentRunStatusProps> = ({ trace, running = false }) => {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
-  const [elapsed, setElapsed] = useState('0s');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
     if (!trace?.startedAt) {
-      setElapsed('0s');
+      setElapsedSeconds(0);
       return;
     }
 
     const updateElapsed = () => {
-      setElapsed(formatElapsedTime(trace.startedAt, trace.endedAt));
+      setElapsedSeconds(getElapsedSeconds(trace.startedAt, trace.endedAt));
     };
 
     updateElapsed();
@@ -113,137 +87,95 @@ const AgentRunStatus: React.FC<AgentRunStatusProps> = ({ trace, running = false 
     return () => clearInterval(timer);
   }, [trace?.endedAt, trace?.startedAt]);
 
-  const summaryText = useMemo(() => {
+  const phaseAccent = trace ? PHASE_ACCENT_COLOR[trace.phase] : 'rgb(var(--primary-6))';
+  const phaseLabel = trace ? t(PHASE_I18N_KEY[trace.phase]) : '';
+  const elapsed = formatElapsedTime(elapsedSeconds);
+  const isLongRunning = elapsedSeconds >= LONG_RUNNING_SECONDS;
+  const compactSummary = useMemo(() => {
     if (!trace) {
       return '';
     }
 
-    const thoughtSummary = summarizeThought(trace.liveThoughtText);
+    const thoughtSummary = summarizeText(trace.liveThoughtText);
     if (thoughtSummary) {
       return thoughtSummary;
     }
 
-    if (trace.activeToolCount > 0) {
-      return t('conversation.runStatus.activeTools', { count: trace.activeToolCount });
+    if (trace.phase === 'tool_running' && trace.activeToolCount > 0) {
+      return t('conversation.runStatus.activeTools', {
+        count: trace.activeToolCount,
+        defaultValue: '{{count}} tools running',
+      });
     }
 
-    if (trace.errorMessage) {
-      return getFriendlyErrorSummary(trace.errorMessage, t);
+    const errorSummary = summarizeText(trace.errorMessage);
+    if (errorSummary) {
+      return errorSummary;
     }
-    return '';
+
+    const taskSummary = summarizeText(trace.rawTask);
+    if (taskSummary) {
+      return taskSummary;
+    }
+
+    return t('conversation.chat.processing');
   }, [t, trace]);
+
+  const containerStyle = useMemo(
+    () => ({
+      borderColor: `color-mix(in srgb, ${phaseAccent} 14%, var(--color-border-2) 86%)`,
+      background: `linear-gradient(135deg, color-mix(in srgb, ${phaseAccent} 7%, var(--color-bg-1) 93%) 0%, color-mix(in srgb, var(--color-fill-1) 88%, var(--color-bg-1) 12%) 100%)`,
+      boxShadow: `0 6px 18px color-mix(in srgb, ${phaseAccent} 6%, transparent)`,
+    }),
+    [phaseAccent]
+  );
+
+  const iconShellStyle = useMemo(
+    () => ({
+      borderColor: `color-mix(in srgb, ${phaseAccent} 16%, transparent)`,
+      background: `color-mix(in srgb, ${phaseAccent} 9%, var(--color-bg-1) 91%)`,
+      boxShadow: `inset 0 1px 0 color-mix(in srgb, white 20%, transparent)`,
+    }),
+    [phaseAccent]
+  );
 
   if (!trace || !running) {
     return null;
   }
 
-  const runtimeStats = [
-    { label: t('conversation.runStatus.backend'), value: trace.backend || t('conversation.runStatus.unknown') },
-    { label: t('conversation.runStatus.model'), value: trace.modelId || t('conversation.runStatus.unknown') },
-    { label: t('conversation.runStatus.mode'), value: trace.sessionMode || t('conversation.runStatus.unknown') },
-    { label: t('conversation.runStatus.startedAt'), value: formatStartedAt(trace.startedAt) },
-    { label: t('conversation.runStatus.elapsed'), value: elapsed },
-  ];
-
   const showSpinner = running && trace.phase !== 'completed' && trace.phase !== 'error';
 
   return (
-    <div className='mb-8px rounded-16px border border-border-2 bg-fill-1 px-12px py-10px shadow-sm'>
-      <div className='flex items-start gap-10px'>
-        <div className='mt-2px flex h-18px w-18px items-center justify-center'>
+    <div
+      className='mb-8px overflow-hidden rounded-16px border px-12px py-8px backdrop-blur-[12px]'
+      style={containerStyle}
+    >
+      <div className='flex items-center gap-10px'>
+        <div
+          className='flex h-30px w-30px shrink-0 items-center justify-center rounded-full border'
+          style={iconShellStyle}
+        >
           {showSpinner ? (
             <Spin size={14} />
           ) : (
-            <span
-              className={`h-8px w-8px rounded-full ${
-                trace.phase === 'error'
-                  ? 'bg-[rgb(var(--danger-6))]'
-                  : trace.phase === 'completed'
-                    ? 'bg-[rgb(var(--success-6))]'
-                    : 'bg-[rgb(var(--primary-6))]'
-              }`}
-            />
+            <span className='h-7px w-7px rounded-full' style={{ backgroundColor: phaseAccent }} />
           )}
         </div>
 
-        <div className='min-w-0 flex-1'>
-          <div className='flex flex-wrap items-center gap-6px'>
-            <Tag color={PHASE_TAG_COLOR[trace.phase]} size='small'>
-              {t(PHASE_I18N_KEY[trace.phase])}
-            </Tag>
-            {trace.backend ? (
-              <Tag bordered color='gray' size='small'>
-                {trace.backend}
-              </Tag>
-            ) : null}
-            {trace.activeToolCount > 0 ? (
-              <span className='text-11px text-t-secondary'>
-                {t('conversation.runStatus.activeTools', { count: trace.activeToolCount })}
-              </span>
-            ) : null}
-            <span className='ml-auto text-12px whitespace-nowrap text-t-tertiary'>{elapsed}</span>
-            <Button
-              size='mini'
-              type='text'
-              icon={expanded ? <Up theme='outline' size={12} /> : <Down theme='outline' size={12} />}
-              onClick={() => setExpanded((current) => !current)}
-            >
-              {expanded ? t('conversation.runStatus.hideDetails') : t('conversation.runStatus.showDetails')}
-            </Button>
+        <div className='min-w-0 flex flex-1 items-center gap-8px overflow-hidden'>
+          <span className='shrink-0 text-13px font-600 leading-18px text-t-primary'>{phaseLabel}</span>
+          <span className='h-3px w-3px shrink-0 rounded-full bg-fill-3' />
+          <div className='min-w-0 flex-1 truncate text-12px leading-18px text-t-secondary' title={compactSummary}>
+            {compactSummary}
           </div>
-
-          {summaryText ? (
-            <MarkdownView className='mt-6px text-13px text-t-primary [&_.markdown-shadow-body_p]:m-0 [&_.markdown-shadow-body_strong]:font-600'>
-              {summaryText}
-            </MarkdownView>
-          ) : null}
+          <span
+            className='shrink-0 text-11px font-700 leading-18px text-t-primary'
+            style={isLongRunning ? { color: 'rgb(var(--warning-6))' } : undefined}
+          >
+            {elapsed}
+          </span>
         </div>
       </div>
-
-      {expanded ? (
-        <div className='mt-10px flex flex-col gap-10px border-t border-border-2 pt-10px'>
-          <div className='flex flex-col gap-6px'>
-            <div className='text-11px font-500 uppercase tracking-[0.08em] text-t-tertiary'>
-              {t('conversation.runStatus.rawTask')}
-            </div>
-            <div className='max-h-180px overflow-auto rounded-12px bg-fill-2 px-10px py-8px text-12px text-t-primary whitespace-pre-wrap break-words'>
-              {trace.rawTask || '--'}
-            </div>
-          </div>
-
-          <div className='flex flex-col gap-6px'>
-            <div className='text-11px font-500 uppercase tracking-[0.08em] text-t-tertiary'>
-              {t('conversation.runStatus.liveThought')}
-            </div>
-            <MarkdownView className='max-h-220px overflow-auto rounded-12px bg-fill-2 px-10px py-8px text-12px text-t-primary [&_.markdown-shadow-body_p]:m-0 [&_.markdown-shadow-body_strong]:font-600'>
-              {trace.liveThoughtText || t('conversation.runStatus.noThoughtYet')}
-            </MarkdownView>
-          </div>
-
-          <div className='flex flex-col gap-6px'>
-            <div className='text-11px font-500 uppercase tracking-[0.08em] text-t-tertiary'>
-              {t('conversation.runStatus.runtimeStats')}
-            </div>
-            <div className='grid gap-8px rounded-12px bg-fill-2 px-10px py-8px sm:grid-cols-2'>
-              {runtimeStats.map((item) => (
-                <div key={item.label} className='min-w-0'>
-                  <div className='text-11px text-t-tertiary'>{item.label}</div>
-                  <div className='truncate text-12px text-t-primary'>{item.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {trace.errorMessage ? (
-            <div className='flex flex-col gap-6px'>
-              <div className='text-11px font-500 uppercase tracking-[0.08em] text-t-tertiary'>{t('common.error')}</div>
-              <div className='rounded-12px bg-fill-2 px-10px py-8px text-12px text-[rgb(var(--danger-6))] whitespace-pre-wrap break-words'>
-                {trace.errorMessage}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 };

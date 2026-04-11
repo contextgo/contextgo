@@ -65,6 +65,7 @@ const isTerminalAgentStatus = (data: unknown): boolean => {
 const isTerminalStreamMessage = (message: { type: string; data: unknown }): boolean => {
   return (
     message.type === 'finish' ||
+    message.type === 'interrupted' ||
     message.type === 'error' ||
     (message.type === 'agent_status' && isTerminalAgentStatus(message.data))
   );

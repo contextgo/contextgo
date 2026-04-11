@@ -64,6 +64,13 @@ class SqliteChunkStore implements ChunkStore {
     return result.success ? (result.data ?? []) : [];
   }
 
+  async deleteByDocument(documentId: string) {
+    const result = (await getDatabase()).deleteContextChunksByDocument(documentId);
+    if (!result.success) {
+      throw new Error(result.error ?? 'Failed to delete context chunks');
+    }
+  }
+
   async saveMany(chunks: Parameters<ChunkStore['saveMany']>[0]) {
     const result = (await getDatabase()).saveContextChunks(chunks);
     if (!result.success) {

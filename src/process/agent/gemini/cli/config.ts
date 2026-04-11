@@ -119,7 +119,7 @@ export async function loadCliConfig({
   if (skillsDir && enabledSkills && enabledSkills.length > 0) {
     try {
       // Load skills from both top-level and _builtin/ subdirectory
-      // loadSkillsFromDir only scans direct children, so _builtin/cron is not found by default
+      // loadSkillsFromDir only scans direct children, so _builtin/schedule is not found by default
       const topLevelSkills = await loadSkillsFromDir(skillsDir);
       const builtinDir = path.join(skillsDir, '_builtin');
       let builtinDirSkills: SkillDefinition[] = [];

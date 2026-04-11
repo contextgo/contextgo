@@ -11,7 +11,7 @@ import { SqliteConversationRepository } from '@process/services/database/SqliteC
 import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSpaceRepository';
 import { ConversationServiceImpl } from '@process/services/ConversationServiceImpl';
 import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
-import { cronService } from '@process/services/cron/cronServiceSingleton';
+import { scheduleService } from '@process/services/context/scheduleServiceSingleton';
 import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
 
 logger.config({ print: true });
@@ -30,7 +30,7 @@ initAllBridges({
   spaceService,
 });
 
-// Initialize cron service (load jobs from database and start timers)
-void cronService.init().catch((error) => {
-  console.error('[initBridge] Failed to initialize CronService:', error);
+// Initialize the unified context schedule service (restores timers and conversation schedules).
+void scheduleService.init().catch((error: unknown) => {
+  console.error('[initBridge] Failed to initialize ContextScheduleService:', error);
 });

@@ -33,6 +33,9 @@ describe('ContextUsageIndicator', () => {
     render(<ContextUsageIndicator tokenUsage={{ totalTokens: 51200 }} contextLimit={128000} />);
 
     expect(screen.getByLabelText('Context usage 40.0%')).toBeInTheDocument();
+    expect(screen.getByTestId('context-usage-center-label')).toHaveTextContent('60%');
+    expect(screen.getByTestId('context-usage-center-value')).toHaveTextContent('60');
+    expect(screen.getByTestId('context-usage-center-suffix')).toHaveTextContent('%');
     expect(screen.getByText('Context usage 40.0%')).toBeInTheDocument();
     expect(screen.getByText('Used')).toBeInTheDocument();
     expect(screen.getByText('51.2K')).toBeInTheDocument();
@@ -46,11 +49,20 @@ describe('ContextUsageIndicator', () => {
     const { container } = render(<ContextUsageIndicator tokenUsage={{ totalTokens: 1500 }} contextLimit={1000} />);
 
     expect(screen.getByLabelText('Context usage 150.0%')).toBeInTheDocument();
+    expect(screen.getByTestId('context-usage-center-label')).toHaveTextContent('0%');
 
     const circles = container.querySelectorAll('circle');
     const progressCircle = circles[1];
     expect(progressCircle).toBeTruthy();
     expect(progressCircle?.getAttribute('stroke-dashoffset')).toBe('0');
+  });
+
+  it('keeps the center value and suffix visually separated for three-digit values', () => {
+    render(<ContextUsageIndicator tokenUsage={{ totalTokens: 0 }} contextLimit={1000} />);
+
+    expect(screen.getByTestId('context-usage-center-label')).toHaveTextContent('100%');
+    expect(screen.getByTestId('context-usage-center-value')).toHaveTextContent('100');
+    expect(screen.getByTestId('context-usage-center-suffix')).toHaveTextContent('%');
   });
 
   it('formats token counts compactly', () => {

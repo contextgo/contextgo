@@ -32,6 +32,7 @@ import type { PromotionCandidate, PromotionDecision, PromotionPolicy } from './p
 import type { VectorIndexProvider, VectorSearchHit } from './vectorIndex';
 
 export type IngestSourceInput = {
+  sourceId?: SourceRecordId;
   spaceId: SpaceId;
   threadId?: ThreadId;
   artifactId?: ArtifactId;
@@ -70,6 +71,7 @@ export type RetrievedChunk = {
 export type RetrieveContextInput = {
   spaceId: SpaceId;
   threadId?: ThreadId;
+  projectSlug?: string;
   query: string;
   budgetTokens: number;
   memoryLimit?: number;
@@ -95,7 +97,8 @@ export type AssembleContextPackInput = {
   retrieval: RetrieveContextResult;
   budgetTokens: number;
   threadSummary?: string;
-  mountSummary?: string;
+  mountedSections?: ContextPack['sections'];
+  mountedProfiles?: readonly ProfileSegment[];
   pinnedInstructions?: readonly string[];
 };
 
@@ -142,6 +145,7 @@ export type DocumentSnapshotStore = {
 
 export type ChunkStore = {
   listByDocument(documentId: DocumentSnapshotId): Promise<readonly ChunkRecord[]>;
+  deleteByDocument(documentId: DocumentSnapshotId): Promise<void>;
   saveMany(chunks: readonly ChunkRecord[]): Promise<void>;
 };
 

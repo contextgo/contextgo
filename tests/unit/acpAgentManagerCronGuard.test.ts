@@ -5,7 +5,7 @@
  */
 
 /**
- * Tests that AcpAgentManager (real class) clears cronBusyGuard and resets
+ * Tests that AcpAgentManager (real class) clears scheduleConversationGuard and resets
  * status when agent.sendMessage() returns {success: false}, covering the two
  * new branches added in AcpAgentManager.sendMessage (first-message path and
  * subsequent-message path).
@@ -16,8 +16,8 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
 const { mockSetProcessing } = vi.hoisted(() => ({ mockSetProcessing: vi.fn() }));
 
-vi.mock('@process/services/cron/CronBusyGuard', () => ({
-  cronBusyGuard: { setProcessing: mockSetProcessing },
+vi.mock('@process/services/context/events/schedule/ScheduleConversationGuard', () => ({
+  scheduleConversationGuard: { setProcessing: mockSetProcessing },
 }));
 vi.mock('@process/utils/mainLogger', () => ({
   mainLog: vi.fn(),
@@ -81,10 +81,8 @@ vi.mock('@process/task/BaseAgentManager', () => ({
 }));
 
 vi.mock('@process/task/IpcAgentEventEmitter', () => ({ IpcAgentEventEmitter: class {} }));
-vi.mock('@process/task/CronCommandDetector', () => ({ hasCronCommands: vi.fn(() => false) }));
 vi.mock('@process/task/MessageMiddleware', () => ({
   extractTextFromMessage: vi.fn(() => ''),
-  processCronInMessage: vi.fn((x: any) => x),
 }));
 vi.mock('@process/task/ThinkTagDetector', () => ({ stripThinkTags: vi.fn((x: any) => x) }));
 vi.mock('@process/utils/initAgent', () => ({ hasNativeSkillSupport: vi.fn(() => false) }));
@@ -121,14 +119,14 @@ function makeManager(conversationId = 'conv-test') {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe('AcpAgentManager.sendMessage — real class cronBusyGuard cleanup', () => {
+describe('AcpAgentManager.sendMessage — real class scheduleConversationGuard cleanup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   // ── First-message path (lines 645-648 in AcpAgentManager.ts) ──────────────
 
-  it('clears cronBusyGuard when first-path agent.sendMessage returns {success:false}', async () => {
+  it('clears scheduleConversationGuard when first-path agent.sendMessage returns {success:false}', async () => {
     const { manager, mockAgent } = makeManager('conv-1');
     mockAgent.sendMessage.mockResolvedValue({ success: false, error: { type: 'TIMEOUT' } });
 
@@ -160,7 +158,7 @@ describe('AcpAgentManager.sendMessage — real class cronBusyGuard cleanup', () 
   // ── Subsequent-message path (lines 657-660 in AcpAgentManager.ts) ─────────
   // Triggered when isFirstMessage is false and msg_id is absent (e.g. internal/cron calls)
 
-  it('clears cronBusyGuard when second-path agent.sendMessage returns {success:false}', async () => {
+  it('clears scheduleConversationGuard when second-path agent.sendMessage returns {success:false}', async () => {
     const { manager, mockAgent } = makeManager('conv-4');
     mockAgent.sendMessage.mockResolvedValue({ success: false, error: { type: 'TIMEOUT' } });
 
@@ -192,7 +190,7 @@ describe('AcpAgentManager.sendMessage — real class cronBusyGuard cleanup', () 
 
   // ── Thrown-exception path (catch block) ───────────────────────────────────
 
-  it('clears cronBusyGuard when agent.sendMessage throws', async () => {
+  it('clears scheduleConversationGuard when agent.sendMessage throws', async () => {
     const { manager, mockAgent } = makeManager('conv-7');
     mockAgent.sendMessage.mockRejectedValue(new Error('unexpected crash'));
 

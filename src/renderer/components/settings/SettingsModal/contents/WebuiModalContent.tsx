@@ -44,7 +44,7 @@ const QRCodeSVGLazy = React.lazy(async () => {
   return { default: mod.QRCodeSVG };
 });
 
-const buildOfficialRemoteUrl = (authBaseUrl?: string): string => {
+const buildOfficialDeviceListUrl = (authBaseUrl?: string): string => {
   const normalizedBaseUrl = authBaseUrl?.trim().replace(/\/+$/, '') || CONTEXTGO_AUTH_BASE_URL.replace(/\/+$/, '');
   return `${normalizedBaseUrl}/remote/devices`;
 };
@@ -669,7 +669,7 @@ const WebuiModalContent: React.FC = () => {
     }
   }, [t]);
 
-  const officialRemoteUrl = buildOfficialRemoteUrl(cloudStatus?.authBaseUrl);
+  const officialRemoteUrl = buildOfficialDeviceListUrl(cloudStatus?.authBaseUrl);
 
   const handleOpenOfficialRemote = useCallback(async () => {
     const latestStatus = officialRemoteReady ? cloudStatus : await handlePrepareOfficialRemote();

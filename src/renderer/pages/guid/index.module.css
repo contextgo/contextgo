@@ -15,6 +15,7 @@
   border-radius: 22px;
 }
 
+
 .guidMentionDropdown {
   width: 100%;
   max-width: min(420px, calc(100vw - 48px));

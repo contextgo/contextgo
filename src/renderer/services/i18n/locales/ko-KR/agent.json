@@ -34,5 +34,94 @@
     "openMarkdown": "Markdown 열기",
     "showInFolder": "폴더에서 보기",
     "sidecarActionFailed": "내보낸 sidecar 출력을 열지 못했습니다."
+  },
+  "contextEngine": {
+    "title": "컨텍스트 엔진",
+    "description": "시스템 관리 유지보수 Agent가 세션 컨텍스트를 계속 압축하고 안정적인 프로젝트 지식을 프로젝트 계층으로 승격합니다.",
+    "systemManaged": "시스템 관리",
+    "loading": "유지보수 활동을 불러오는 중...",
+    "loadFailed": "유지보수 활동을 불러오지 못했습니다.",
+    "activeCount": "{{count}}개의 유지보수 작업 실행 중",
+    "idleCount": "{{count}}개의 유지보수 Agent가 대기 중",
+    "empty": "첫 유지보수 실행을 기다리는 중입니다.",
+    "taskFallback": "아직 요약이 없습니다",
+    "scope": "범위: {{scope}}",
+    "latestEvent": "최근 이벤트: {{event}}",
+    "updatedAt": "업데이트: {{time}}",
+    "openConsole": "실행 콘솔 열기",
+    "active": "실행 중",
+    "idle": "대기 중",
+    "state": {
+      "error": "오류",
+      "executing": "실행 중",
+      "idle": "유휴",
+      "researching": "탐색 중",
+      "syncing": "동기화 중",
+      "writing": "작성 중"
+    },
+    "groupActiveCount": "{{count}}개의 작업 실행 중",
+    "groupWatchingCount": "{{count}}개의 Agent가 대기 중",
+    "artifactTitle": "문서: {{title}}",
+    "artifactPath": "경로: {{path}}",
+    "groups": {
+      "session_compaction": "세션 압축",
+      "project_promotion": "프로젝트 승격",
+      "other": "기타 유지보수"
+    },
+    "operationLog": {
+      "signal": {
+        "user_interrupt": {
+          "title": "실행이 완료 전에 중단되었습니다",
+          "summary": "현재 실행이 수동으로 중단되었습니다."
+        },
+        "repeated_request": {
+          "title": "같은 요청이 다시 제기되었습니다"
+        },
+        "strategy_shift": {
+          "title": "세션 중 접근 방식이 바뀌었습니다"
+        },
+        "tool_failure_cluster": {
+          "title": "도구 실패가 집중되기 시작했습니다"
+        },
+        "memory_candidate_created": {
+          "title": "검토할 인사이트를 추렸습니다"
+        },
+        "memory_candidate_promoted": {
+          "title": "안정적인 인사이트를 저장했습니다"
+        },
+        "context_window_prepared": {
+          "title": "이번 턴에 필요한 컨텍스트를 준비했습니다",
+          "summary": "현재 작업을 이어가기 위한 컨텍스트를 정리했습니다.",
+          "recentSignals": "최근 컨텍스트 기록 {{count}}개를 포함했습니다."
+        }
+      },
+      "job": {
+        "session_compaction": {
+          "queued": "세션 컨텍스트 업데이트를 대기열에 추가했습니다",
+          "completed": "세션 컨텍스트를 업데이트했습니다",
+          "failed": "세션 컨텍스트 업데이트에 실패했습니다"
+        },
+        "session_pattern_detection": {
+          "queued": "세션 패턴 분석을 대기열에 추가했습니다",
+          "completed": "세션 패턴 분석이 완료되었습니다",
+          "failed": "세션 패턴 분석에 실패했습니다"
+        },
+        "project_promotion": {
+          "queued": "프로젝트 지식 업데이트를 대기열에 추가했습니다",
+          "completed": "프로젝트 지식을 업데이트했습니다",
+          "failed": "프로젝트 지식 업데이트에 실패했습니다"
+        },
+        "space_memory_distillation": {
+          "queued": "스페이스 메모리 정제를 대기열에 추가했습니다",
+          "completed": "스페이스 메모리 정제가 완료되었습니다",
+          "failed": "스페이스 메모리 정제에 실패했습니다"
+        },
+        "connector_digest": {
+          "queued": "커넥터 다이제스트 생성을 대기열에 추가했습니다",
+          "completed": "커넥터 다이제스트 생성이 완료되었습니다",
+          "failed": "커넥터 다이제스트 생성에 실패했습니다"
+        }
+      }
+    }
   }
 }

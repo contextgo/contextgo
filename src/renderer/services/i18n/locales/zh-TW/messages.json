@@ -4,6 +4,7 @@
   "conversationInProgress": "目前正在進行對話...",
   "confirm": "確認",
   "canceledExecution": "已取消執行",
+  "interrupted": "已由使用者中斷",
   "openLinkFailed": "無法開啟連結",
   "imageGenerationModelDetected": "檢測到圖片模型，已自動開啟圖片工具，設置為默認模型：{{platform}}:{{model}}",
   "auto_handling_permissions": "自動處理權限請求：{{request}}",
@@ -28,6 +29,27 @@
   "noOptionsAvailable": "沒有可用選項",
   "processing": "處理中...",
   "responseSentSuccessfully": "回覆已成功送出",
+  "fileOperation": {
+    "written": "已寫入檔案",
+    "read": "已讀取檔案",
+    "deleted": "已刪除檔案",
+    "operation": "檔案操作",
+    "summary": {
+      "read": "讀取 {{count}} 個檔案",
+      "read_other": "讀取 {{count}} 個檔案",
+      "written": "修改 {{count}} 個檔案",
+      "written_other": "修改 {{count}} 個檔案",
+      "deleted": "刪除 {{count}} 個檔案",
+      "deleted_other": "刪除 {{count}} 個檔案",
+      "operation": "執行 {{count}} 個檔案操作",
+      "operation_other": "執行 {{count}} 個檔案操作"
+    }
+  },
+  "stepSummary": {
+    "viewSteps": "查看步驟",
+    "tools": "{{count}} 個工具",
+    "tools_other": "{{count}} 個工具"
+  },
   "confirmation": {
     "applyChange": "應用此更改？",
     "allowExecution": "允許執行？",

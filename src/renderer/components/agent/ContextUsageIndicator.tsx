@@ -26,36 +26,50 @@ const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const { percentage, percentageLabel, displayTotal, displayLimit, displayRemaining, isWarning, isDanger } =
-    useMemo(() => {
-      if (!tokenUsage) {
-        return {
-          percentage: 0,
-          percentageLabel: '0.0%',
-          displayTotal: '0',
-          displayLimit: formatTokenCount(contextLimit, true),
-          displayRemaining: formatTokenCount(contextLimit, true),
-          isWarning: false,
-          isDanger: false,
-        };
-      }
-
-      const total = Math.max(tokenUsage.totalTokens, 0);
-      const safeLimit = Math.max(contextLimit, 1);
-      const rawPercentage = (total / safeLimit) * 100;
-      const boundedPercentage = Math.min(rawPercentage, 100);
-      const remaining = Math.max(safeLimit - total, 0);
-
+  const {
+    percentage,
+    percentageLabel,
+    remainingPercentageValue,
+    remainingPercentageLabel,
+    displayTotal,
+    displayLimit,
+    displayRemaining,
+    isWarning,
+    isDanger,
+  } = useMemo(() => {
+    if (!tokenUsage) {
       return {
-        percentage: boundedPercentage,
-        percentageLabel: `${rawPercentage.toFixed(1)}%`,
-        displayTotal: formatTokenCount(total),
-        displayLimit: formatTokenCount(safeLimit, true),
-        displayRemaining: formatTokenCount(remaining, true),
-        isWarning: rawPercentage > 70,
-        isDanger: rawPercentage > 90,
+        percentage: 0,
+        percentageLabel: '0.0%',
+        remainingPercentageValue: 100,
+        remainingPercentageLabel: '100%',
+        displayTotal: '0',
+        displayLimit: formatTokenCount(contextLimit, true),
+        displayRemaining: formatTokenCount(contextLimit, true),
+        isWarning: false,
+        isDanger: false,
       };
-    }, [tokenUsage, contextLimit]);
+    }
+
+    const total = Math.max(tokenUsage.totalTokens, 0);
+    const safeLimit = Math.max(contextLimit, 1);
+    const rawPercentage = (total / safeLimit) * 100;
+    const boundedPercentage = Math.min(rawPercentage, 100);
+    const remaining = Math.max(safeLimit - total, 0);
+    const remainingPercentage = Math.max(0, 100 - rawPercentage);
+
+    return {
+      percentage: boundedPercentage,
+      percentageLabel: `${rawPercentage.toFixed(1)}%`,
+      remainingPercentageValue: Math.round(remainingPercentage),
+      remainingPercentageLabel: `${Math.round(remainingPercentage)}%`,
+      displayTotal: formatTokenCount(total),
+      displayLimit: formatTokenCount(safeLimit, true),
+      displayRemaining: formatTokenCount(remaining, true),
+      isWarning: rawPercentage > 70,
+      isDanger: rawPercentage > 90,
+    };
+  }, [tokenUsage, contextLimit]);
 
   if (!tokenUsage) {
     return null;
@@ -63,6 +77,13 @@ const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
 
   const strokeWidth = 2.5;
   const radius = (size - strokeWidth) / 2;
+  const remainingDigits = String(remainingPercentageValue).length;
+  const centerValueFontSize = Math.max(
+    7,
+    Math.round(size * (remainingDigits >= 3 ? 0.26 : remainingDigits === 2 ? 0.3 : 0.32))
+  );
+  const centerSuffixFontSize = Math.max(5, Math.round(size * 0.18));
+  const centerSuffixOffset = Math.max(1, Math.round(size * 0.05));
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
@@ -101,7 +122,7 @@ const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
       triggerProps={{ popupStyle: { padding: 0, background: 'transparent', boxShadow: 'none', borderRadius: 16 } }}
     >
       <div
-        className={`context-usage-indicator cursor-pointer flex items-center justify-center ${className}`}
+        className={`context-usage-indicator relative cursor-pointer flex items-center justify-center ${className}`}
         style={{ width: size, height: size }}
         aria-label={t('conversation.contextUsage.title', { percentage: percentageLabel })}
       >
@@ -127,6 +148,39 @@ const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
             style={{ transition: 'stroke-dashoffset 0.3s ease, stroke 0.3s ease' }}
           />
         </svg>
+        <span
+          data-testid='context-usage-center-label'
+          aria-hidden='true'
+          className='pointer-events-none absolute inset-0 flex items-center justify-center select-none'
+          style={{
+            color: getStrokeColor(),
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          <span className='flex items-start justify-center gap-0.5px font-700 leading-none'>
+            <span
+              data-testid='context-usage-center-value'
+              style={{
+                fontSize: centerValueFontSize,
+                letterSpacing: '-0.03em',
+                lineHeight: 1,
+              }}
+            >
+              {remainingPercentageValue}
+            </span>
+            <span
+              data-testid='context-usage-center-suffix'
+              className='opacity-80'
+              style={{
+                fontSize: centerSuffixFontSize,
+                lineHeight: 1,
+                transform: `translateY(${centerSuffixOffset}px)`,
+              }}
+            >
+              %
+            </span>
+          </span>
+        </span>
       </div>
     </Popover>
   );

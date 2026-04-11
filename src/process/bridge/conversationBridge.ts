@@ -7,12 +7,20 @@
 import type { CodexAgentManager } from '@process/agent/codex';
 import { GeminiAgent, GeminiApprovalStore } from '@process/agent/gemini';
 import type { ICreateConversationParams, IDiscussionGroupCreateParams } from '@/common/adapter/ipcBridge';
+import type { IResponseMessage } from '@/common/adapter/ipcBridge';
+import {
+  mergeManagedSlashCommandLibraries,
+  normalizeManagedSlashCommandLibrary,
+  type ManagedSlashCommandRecord,
+} from '@/common/chat/slash/library';
+import { transformMessage } from '@/common/chat/chatLib';
 import type { TChatConversation } from '@/common/config/storage';
 import type { IAgentManager } from '@process/task/IAgentManager';
 import type { IConversationService } from '@process/services/IConversationService';
 import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
 import { ipcBridge } from '@/common';
-import { getSkillsDir, getBuiltinSkillsCopyDir, getSystemDir, ProcessChat } from '@process/utils/initStorage';
+import { uuid } from '@/common/utils';
+import { getSkillsDir, getBuiltinSkillsCopyDir, getSystemDir, ProcessChat, ProcessConfig } from '@process/utils/initStorage';
 import type AcpAgentManager from '../task/AcpAgentManager';
 import type { GeminiAgentManager } from '../task/GeminiAgentManager';
 import type OpenClawAgentManager from '../task/OpenClawAgentManager';
@@ -21,17 +29,42 @@ import { refreshTrayMenu } from '@process/utils/tray';
 import { copyFilesToDirectory, readDirectoryRecursive } from '@process/utils';
 import { computeOpenClawIdentityHash } from '@process/utils/openclawUtils';
 import { getDatabase } from '@process/services/database';
+import i18n from '@process/services/i18n';
 import { getExternalSessionControlState } from '@process/channels/types';
 import { migrateConversationToDatabase } from './migrationUtils';
 import { AssistantHookRuntime } from './services/AssistantHookRuntime';
 import { GroupConversationService } from './services/group/GroupConversationService';
+import { readWorkspaceCommandLibrary, resolveWorkspacePath } from './services/workspaceAutomation';
 import { contextService, contextRuntimeService } from '@process/services/context/contextServiceSingleton';
+import { addMessage } from '@process/utils/message';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
     await refreshTrayMenu();
   } catch (error) {
     console.warn('[conversationBridge] Failed to refresh tray menu:', error);
+  }
+};
+
+const emitConversationInterrupted = (conversation: Pick<TChatConversation, 'id' | 'type'>): void => {
+  const interruptedMessage: IResponseMessage = {
+    type: 'interrupted',
+    conversation_id: conversation.id,
+    msg_id: uuid(),
+    data: i18n.t('messages.interrupted', {
+      defaultValue: 'Interrupted by user.',
+    }),
+  };
+
+  const transformedMessage = transformMessage(interruptedMessage);
+  if (transformedMessage) {
+    addMessage(conversation.id, transformedMessage);
+  }
+
+  ipcBridge.conversation.responseStream.emit(interruptedMessage);
+
+  if (conversation.type === 'openclaw-gateway') {
+    ipcBridge.openclawConversation.responseStream.emit(interruptedMessage);
   }
 };
 
@@ -42,6 +75,21 @@ function toContextMemoryCandidateView(
     ...candidate,
     promotionRationale: [...candidate.promotionRationale],
   };
+}
+
+function getConversationWorkspacePath(conversation?: TChatConversation): string | undefined {
+  const extra = conversation?.extra as Record<string, unknown> | undefined;
+  const workingDirectory = typeof extra?.workingDirectory === 'string' ? extra.workingDirectory : undefined;
+  const workspace = typeof extra?.workspace === 'string' ? extra.workspace : undefined;
+  return resolveWorkspacePath(workingDirectory || workspace);
+}
+
+async function resolveManagedSlashCommandLibrary(
+  conversation?: TChatConversation
+): Promise<ManagedSlashCommandRecord[]> {
+  const globalLibrary = normalizeManagedSlashCommandLibrary(await ProcessConfig.get('command.library'));
+  const workspaceLibrary = await readWorkspaceCommandLibrary(getConversationWorkspacePath(conversation));
+  return mergeManagedSlashCommandLibraries(globalLibrary, workspaceLibrary ?? undefined);
 }
 
 export function initConversationBridge(
@@ -354,12 +402,12 @@ export function initConversationBridge(
   });
 
   ipcBridge.conversation.createWithConversation.provider(
-    async ({ conversation, sourceConversationId, migrateCron, sourceWorkspace }) => {
+    async ({ conversation, sourceConversationId, migrateSchedule, sourceWorkspace }) => {
       try {
         const result = await conversationService.createWithMigration({
           conversation,
           sourceConversationId,
-          migrateCron,
+          migrateSchedule,
           sourceWorkspace,
         });
         await contextRuntimeService.registerConversation(result);
@@ -408,6 +456,10 @@ export function initConversationBridge(
         await groupConversationService.deleteConversation(conversation);
       } else {
         await conversationService.deleteConversation(id);
+      }
+      if (conversation) {
+        const remainingConversations = await conversationService.listAllConversations();
+        await contextRuntimeService.removeConversationContext(conversation, remainingConversations);
       }
       if (conversation) {
         emitConversationListChanged(conversation, 'deleted');
@@ -559,31 +611,37 @@ export function initConversationBridge(
       return { success: true };
     }
 
+    if (conversation) {
+      await contextRuntimeService.recordConversationStopped(conversation, 'user-stop');
+      emitConversationInterrupted(conversation);
+    }
+
     const task = workerTaskManager.getTask(conversation_id);
     if (!task) return { success: true, msg: 'conversation not found' };
     await task.stop();
     return { success: true };
   });
 
-  ipcBridge.conversation.getSlashCommands.provider(async ({ conversation_id }) => {
+  ipcBridge.conversation.getSlashCommands.provider(async ({ conversation_id, includeRuntimeCommands = true }) => {
     try {
       const conversation = await conversationService.getConversation(conversation_id);
+      const managedLibrary = await resolveManagedSlashCommandLibrary(conversation);
       if (!conversation) {
-        return { success: true, data: { commands: [] } };
+        return { success: true, data: { commands: [], managedLibrary } };
       }
 
-      if (conversation.type !== 'acp') {
-        return { success: true, data: { commands: [] } };
+      if (!includeRuntimeCommands || conversation.type !== 'acp') {
+        return { success: true, data: { commands: [], managedLibrary } };
       }
 
       // Use getTask (cache-only) to avoid spawning a worker process on read-only queries
       const task = workerTaskManager.getTask(conversation_id) as unknown as AcpAgentManager | undefined;
       if (!task || task.type !== 'acp') {
-        return { success: true, data: { commands: [] } };
+        return { success: true, data: { commands: [], managedLibrary } };
       }
 
       const commands = await task.loadAcpSlashCommands();
-      return { success: true, data: { commands } };
+      return { success: true, data: { commands, managedLibrary } };
     } catch (error) {
       return {
         success: false,

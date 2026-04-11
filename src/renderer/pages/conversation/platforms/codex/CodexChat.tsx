@@ -7,8 +7,7 @@
 import { ConversationProvider } from '@/renderer/hooks/context/ConversationContext';
 import FlexFullContainer from '@renderer/components/layout/FlexFullContainer';
 import MessageList from '@renderer/pages/conversation/Messages/MessageList';
-import { MessageListProvider, useMessageLstCache } from '@renderer/pages/conversation/Messages/hooks';
-import HOC from '@renderer/utils/ui/HOC';
+import { ConversationMessageStateProvider } from '@renderer/pages/conversation/Messages/hooks';
 import React, { useEffect } from 'react';
 import LocalImageView from '@renderer/components/media/LocalImageView';
 import ConversationChatConfirm from '../../components/ConversationChatConfirm';
@@ -22,23 +21,24 @@ const CodexChat: React.FC<{
   conversation_id: string;
   workspace: string;
 }> = ({ conversation_id, workspace }) => {
-  useMessageLstCache(conversation_id);
   const updateLocalImage = LocalImageView.useUpdateLocalImage();
   useEffect(() => {
     updateLocalImage({ root: workspace });
   }, [workspace]);
   return (
-    <ConversationProvider value={{ conversationId: conversation_id, workspace, type: 'codex' }}>
-      <div className='flex-1 flex flex-col px-20px min-h-0'>
-        <FlexFullContainer>
-          <MessageList className='flex-1'></MessageList>
-        </FlexFullContainer>
-        <ConversationChatConfirm conversation_id={conversation_id}>
-          <CodexSendBox conversation_id={conversation_id} />
-        </ConversationChatConfirm>
-      </div>
-    </ConversationProvider>
+    <ConversationMessageStateProvider conversationId={conversation_id}>
+      <ConversationProvider value={{ conversationId: conversation_id, workspace, type: 'codex' }}>
+        <div className='flex-1 flex flex-col px-12px md:px-20px min-h-0'>
+          <FlexFullContainer>
+            <MessageList className='flex-1'></MessageList>
+          </FlexFullContainer>
+          <ConversationChatConfirm conversation_id={conversation_id}>
+            <CodexSendBox conversation_id={conversation_id} />
+          </ConversationChatConfirm>
+        </div>
+      </ConversationProvider>
+    </ConversationMessageStateProvider>
   );
 };
 
-export default HOC(MessageListProvider)(CodexChat);
+export default CodexChat;

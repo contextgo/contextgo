@@ -40,7 +40,7 @@ const WorkspacePanelHeader: React.FC<WorkspaceHeaderProps> = ({
           {collapsed ? <ExpandRight size={16} /> : <ExpandLeft size={16} />}
         </button>
       )}
-      <div className='flex-1 truncate'>{children}</div>
+      <div className='workspace-panel-header__content flex flex-1 items-center min-w-0 h-full'>{children}</div>
       {showToggle && togglePlacement === 'right' && (
         <button type='button' className='workspace-header__toggle' aria-label='Toggle workspace' onClick={onToggle}>
           {collapsed ? <ExpandRight size={16} /> : <ExpandLeft size={16} />}

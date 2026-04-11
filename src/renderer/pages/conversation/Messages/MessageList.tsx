@@ -4,13 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type {
-  CodexToolCallUpdate,
-  IMessageAcpToolCall,
-  IMessageCodexToolCall,
-  IMessageToolGroup,
-  TMessage,
-} from '@/common/chat/chatLib';
+import type { CodexToolCallUpdate, TMessage } from '@/common/chat/chatLib';
 import { shouldSuppressAgentLifecyclePersistedMessage } from '@/common/chat/chatLib';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { iconColors } from '@/renderer/styles/colors';
@@ -35,23 +29,20 @@ import MessagePlan from './components/MessagePlan';
 import MessageTips from './components/MessageTips';
 import MessageToolCall from './components/MessageToolCall';
 import MessageToolGroup from './components/MessageToolGroup';
-import MessageToolGroupSummary from './components/MessageToolGroupSummary';
+import MessageToolGroupSummary, { type StepSummaryEntry } from './components/MessageToolGroupSummary';
 import MessageText from './components/MessagetText';
+import { parseFileOperationMessage } from './components/MessagetText';
 import type { WriteFileResult } from './types';
 import { useAutoScroll } from './useAutoScroll';
 import { shouldSuppressOpenClawPersistedMessage } from '../platforms/openclaw/messageStream';
+import { getInitialConversationBottomItemIndex } from './scrollState';
 
 type TurnDiffContent = Extract<CodexToolCallUpdate, { subtype: 'turn_diff' }>;
 
 type IMessageVO =
   | TMessage
   | { type: 'file_summary'; id: string; diffs: FileChangeInfo[]; sourceMessageIds: string[] }
-  | {
-      type: 'tool_summary';
-      id: string;
-      messages: Array<IMessageToolGroup | IMessageAcpToolCall | IMessageCodexToolCall>;
-      sourceMessageIds: string[];
-    };
+  | { type: 'step_summary'; id: string; steps: StepSummaryEntry[]; sourceMessageIds: string[] };
 
 type ConversationLocationState = {
   targetMessageId?: string;
@@ -59,10 +50,7 @@ type ConversationLocationState = {
 };
 
 const getProcessedItemSourceMessageIds = (item: IMessageVO): string[] => {
-  if ('type' in item && item.type === 'tool_summary') {
-    return item.sourceMessageIds;
-  }
-  if ('type' in item && item.type === 'file_summary') {
+  if ('type' in item && (item.type === 'file_summary' || item.type === 'step_summary')) {
     return item.sourceMessageIds;
   }
   return 'id' in item ? [item.id] : [];
@@ -98,7 +86,7 @@ const MessageItem: React.FC<{ message: TMessage; highlighted?: boolean }> = Reac
       <div
         id={`message-${message.id}`}
         className={classNames(
-          'min-w-0 flex items-start message-item [&>div]:max-w-full px-8px m-t-10px max-w-full md:max-w-780px mx-auto',
+          'min-w-0 flex items-start message-item [&>div]:max-w-full px-4px md:px-8px m-t-10px max-w-full md:max-w-780px mx-auto',
           message.type,
           {
             'justify-center': message.position === 'center',
@@ -172,6 +160,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
   const location = useLocation();
   const locationState = (location.state || {}) as ConversationLocationState;
   const targetMessageId = locationState.targetMessageId;
+  const conversationId = conversationContext?.conversationId;
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | undefined>();
   const handledTargetKeyRef = useRef<string>('');
 
@@ -184,38 +173,54 @@ const MessageList: React.FC<{ className?: string }> = () => {
       conversationContext?.type === 'openclaw-gateway';
     let diffsChanges: FileChangeInfo[] = [];
     let diffsSourceMessageIds: string[] = [];
-    let toolList: Array<IMessageToolGroup | IMessageAcpToolCall | IMessageCodexToolCall> = [];
-    let toolSourceMessageIds: string[] = [];
+    let stepEntries: StepSummaryEntry[] = [];
+    let stepSourceMessageIds: string[] = [];
 
-    const pushFileDffChanges = (changes: FileChangeInfo, sourceMessageId: string) => {
+    const flushDiffChanges = () => {
       if (!diffsChanges.length) {
-        diffsSourceMessageIds = [];
-        result.push({
-          type: 'file_summary',
-          id: `summary-${sourceMessageId}`,
-          diffs: diffsChanges,
-          sourceMessageIds: diffsSourceMessageIds,
-        });
+        return;
       }
-      diffsChanges.push(changes);
-      diffsSourceMessageIds.push(sourceMessageId);
-      toolList = [];
-      toolSourceMessageIds = [];
-    };
-    const pushToolList = (message: IMessageToolGroup | IMessageAcpToolCall | IMessageCodexToolCall) => {
-      if (!toolList.length) {
-        toolSourceMessageIds = [];
-        result.push({
-          type: 'tool_summary',
-          id: `tool-summary-${message.id}`,
-          messages: toolList,
-          sourceMessageIds: toolSourceMessageIds,
-        });
-      }
-      toolList.push(message);
-      toolSourceMessageIds.push(message.id);
+
+      result.push({
+        type: 'file_summary',
+        id: `summary-${diffsSourceMessageIds[0]}`,
+        diffs: diffsChanges,
+        sourceMessageIds: diffsSourceMessageIds,
+      });
       diffsChanges = [];
       diffsSourceMessageIds = [];
+    };
+
+    const flushStepSummary = () => {
+      if (!stepEntries.length) {
+        return;
+      }
+
+      result.push({
+        type: 'step_summary',
+        id: `step-summary-${stepSourceMessageIds[0]}`,
+        steps: stepEntries,
+        sourceMessageIds: stepSourceMessageIds,
+      });
+      stepEntries = [];
+      stepSourceMessageIds = [];
+    };
+
+    const pushFileDiffChanges = (changes: FileChangeInfo, sourceMessageId: string) => {
+      flushStepSummary();
+      diffsChanges.push(changes);
+      diffsSourceMessageIds.push(sourceMessageId);
+    };
+
+    const pushStepEntry = (step: StepSummaryEntry, sourceMessageId: string) => {
+      flushDiffChanges();
+      stepEntries.push(step);
+      stepSourceMessageIds.push(sourceMessageId);
+    };
+
+    const flushSummaries = () => {
+      flushDiffChanges();
+      flushStepSummary();
     };
 
     for (let i = 0, len = list.length; i < len; i++) {
@@ -228,8 +233,22 @@ const MessageList: React.FC<{ className?: string }> = () => {
       }
       // Skip available_commands messages
       if (message.type === 'available_commands') continue;
+      if (message.type === 'text') {
+        const fileOperation = parseFileOperationMessage(message.content.content);
+        if (fileOperation && message.position === 'left') {
+          pushStepEntry(
+            {
+              type: 'file_operation',
+              id: `file-operation-${message.id}`,
+              operation: fileOperation,
+            },
+            message.id
+          );
+          continue;
+        }
+      }
       if (message.type === 'codex_tool_call' && message.content.subtype === 'turn_diff') {
-        pushFileDffChanges(parseDiff((message.content as TurnDiffContent).data.unified_diff), message.id);
+        pushFileDiffChanges(parseDiff((message.content as TurnDiffContent).data.unified_diff), message.id);
         continue;
       }
       if (message.type === 'tool_group') {
@@ -244,23 +263,22 @@ const MessageList: React.FC<{ className?: string }> = () => {
             )
             .map((item) => item.resultDisplay as WriteFileResult);
           if (writeFileResults.length && writeFileResults[0].fileDiff) {
-            pushFileDffChanges(parseDiff(writeFileResults[0].fileDiff, writeFileResults[0].fileName), message.id);
+            pushFileDiffChanges(parseDiff(writeFileResults[0].fileDiff, writeFileResults[0].fileName), message.id);
             continue;
           }
         }
-        pushToolList(message);
+        pushStepEntry({ type: 'tool', id: `tool-step-${message.id}`, message }, message.id);
         continue;
       }
       if (message.type === 'acp_tool_call' || message.type === 'codex_tool_call') {
-        pushToolList(message);
+        pushStepEntry({ type: 'tool', id: `tool-step-${message.id}`, message }, message.id);
         continue;
       }
-      toolList = [];
-      toolSourceMessageIds = [];
-      diffsChanges = [];
-      diffsSourceMessageIds = [];
+      flushSummaries();
       result.push(message);
     }
+
+    flushSummaries();
     return result;
   }, [conversationContext?.type, list]);
 
@@ -277,6 +295,12 @@ const MessageList: React.FC<{ className?: string }> = () => {
     messages: list,
     itemCount: processedList.length,
   });
+
+  const initialTopMostItemIndex = getInitialConversationBottomItemIndex(
+    conversationId,
+    processedList.length,
+    targetMessageId
+  );
 
   useEffect(() => {
     if (!targetMessageId || processedList.length === 0 || !virtuosoRef.current) {
@@ -321,7 +345,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
       const targetIndex = processedList.findIndex((item) => {
         if (
           (item as { type?: string }).type === 'file_summary' ||
-          (item as { type?: string }).type === 'tool_summary'
+          (item as { type?: string }).type === 'step_summary'
         ) {
           return false;
         }
@@ -356,16 +380,20 @@ const MessageList: React.FC<{ className?: string }> = () => {
 
   const renderItem = (_index: number, item: (typeof processedList)[0]) => {
     const highlighted = matchesTargetMessage(item, highlightedMessageId);
-    if ('type' in item && ['file_summary', 'tool_summary'].includes(item.type)) {
+    if ('type' in item && ['file_summary', 'step_summary'].includes(item.type)) {
+      const summaryClassName =
+        'min-w-0 flex items-start message-item [&>div]:max-w-full px-4px md:px-8px m-t-10px max-w-full md:max-w-780px mx-auto justify-start ' +
+        item.type;
+
       return (
         <div
           key={item.id}
           id={`message-${getProcessedItemAnchorId(item)}`}
-          className={'min-w-0 message-item px-8px m-t-10px max-w-full md:max-w-780px mx-auto ' + item.type}
+          className={summaryClassName}
           style={highlighted ? highlightStyle : undefined}
         >
           {item.type === 'file_summary' && <MessageFileChanges diffsChanges={item.diffs} />}
-          {item.type === 'tool_summary' && <MessageToolGroupSummary messages={item.messages}></MessageToolGroupSummary>}
+          {item.type === 'step_summary' && <MessageToolGroupSummary steps={item.steps}></MessageToolGroupSummary>}
         </div>
       );
     }
@@ -381,7 +409,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
             ref={virtuosoRef}
             className='flex-1 h-full pb-10px box-border'
             data={processedList}
-            initialTopMostItemIndex={processedList.length - 1}
+            {...(initialTopMostItemIndex === null ? {} : { initialTopMostItemIndex })}
             atBottomThreshold={100}
             increaseViewportBy={200}
             itemContent={renderItem}

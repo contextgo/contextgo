@@ -177,6 +177,25 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     resources: ['browserHistory', 'webPages'],
     authType: 'extension',
     stage: 'priority',
+    summary:
+      'Browser extension activity can be ingested into Context Engine as source-aware web context and queued for connector digest jobs.',
+    implementationOwner: 'hybrid',
+    supportSources: [
+      {
+        kind: 'contextgo-native',
+        label: 'ContextGo Context Engine',
+        url: 'https://contextgo.io',
+        description:
+          'ContextGo owns ingestion, source indexing, connector digest jobs, and system run visibility for browser activity.',
+      },
+      {
+        kind: 'connector-repo',
+        label: 'Connector Repository',
+        url: 'https://github.com/contextgo/connector',
+        description:
+          'The independent connector project remains the place to evolve the browser extension runtime and packaging contract.',
+      },
+    ],
   },
   {
     id: 'chrome-history',
@@ -963,6 +982,7 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
 
 const SUPPORTED_CONNECTOR_IDS = new Set([
   'contextgo-clipboard',
+  'contextgo-browser-extension',
   'google-drive',
   'google-docs',
   'google-sheets',

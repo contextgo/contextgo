@@ -178,6 +178,7 @@ export function initExtensionsBridge(repo: IConversationRepository, taskManager:
         totalConversations: 0,
         runningConversations: 0,
         agents: [],
+        systemRuns: [],
       };
     }
   });

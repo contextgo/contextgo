@@ -24,6 +24,13 @@ function makeSource(id: string, title: string): SourceRecord {
   };
 }
 
+function makeProjectTaggedSource(id: string, title: string, projectSlug: string): SourceRecord {
+  return {
+    ...makeSource(id, title),
+    tags: ['engineering', `project:${projectSlug}`],
+  };
+}
+
 function makeMemory(overrides: Partial<MemoryEntry> & Pick<MemoryEntry, 'id' | 'summary'>): MemoryEntry {
   return {
     id: overrides.id,
@@ -264,5 +271,188 @@ describe('ContextEngineService', () => {
     expect(result.memories[0]?.vectorHits?.[0]?.kind).toBe('memory');
     expect(result.chunks[0]?.chunk.id).toBe('chunk-1');
     expect(result.sources.map((item) => item.id)).toContain('source-1');
+  });
+
+  it('boosts same-project vector hits when projectSlug is provided', async () => {
+    const vectorIndex = new InMemoryVectorIndexProvider();
+    await vectorIndex.upsert([
+      {
+        id: 'vec-chunk-project-a',
+        entityId: 'chunk-project-a',
+        kind: 'chunk',
+        spaceId: SPACE_ID,
+        tier: 'source',
+        text: 'release checklist and rollout guardrails',
+        metadata: {
+          projectSlug: 'project-a',
+        },
+      },
+      {
+        id: 'vec-chunk-project-b',
+        entityId: 'chunk-project-b',
+        kind: 'chunk',
+        spaceId: SPACE_ID,
+        tier: 'source',
+        text: 'release checklist and rollout guardrails',
+        metadata: {
+          projectSlug: 'project-b',
+        },
+      },
+    ]);
+
+    const dependencies = createInMemoryContextEngineDependencies({
+      vectorIndex,
+      sources: [
+        makeProjectTaggedSource('source-project-a', 'Project A Guide', 'project-a'),
+        makeProjectTaggedSource('source-project-b', 'Project B Guide', 'project-b'),
+      ],
+      documents: [
+        {
+          id: 'doc-project-a',
+          spaceId: SPACE_ID,
+          sourceId: 'source-project-a',
+          mimeType: 'text/markdown',
+          storageUri: 'file:///tmp/project-a.md',
+          checksum: 'doc-project-a-hash',
+          tokenCount: 80,
+          status: 'active',
+          createdAt: '2026-03-30T00:00:00.000Z',
+        },
+        {
+          id: 'doc-project-b',
+          spaceId: SPACE_ID,
+          sourceId: 'source-project-b',
+          mimeType: 'text/markdown',
+          storageUri: 'file:///tmp/project-b.md',
+          checksum: 'doc-project-b-hash',
+          tokenCount: 80,
+          status: 'active',
+          createdAt: '2026-03-30T00:00:00.000Z',
+        },
+      ],
+      chunks: [
+        makeChunk({
+          id: 'chunk-project-a',
+          documentId: 'doc-project-a',
+          text: 'Project A release checklist and rollout guardrails.',
+        }),
+        makeChunk({
+          id: 'chunk-project-b',
+          documentId: 'doc-project-b',
+          text: 'Project B release checklist and rollout guardrails.',
+        }),
+      ],
+    });
+    const service = new ContextEngineService(dependencies);
+
+    const result = await service.retrieve({
+      spaceId: SPACE_ID,
+      query: 'release checklist guardrails',
+      budgetTokens: 400,
+      includeChunks: true,
+      searchMode: 'vector',
+      projectSlug: 'project-a',
+    });
+
+    expect(result.chunks[0]?.chunk.id).toBe('chunk-project-a');
+  });
+
+  it('keeps mounted sections at the top of the assembled pack', async () => {
+    const dependencies = createInMemoryContextEngineDependencies();
+    const service = new ContextEngineService(dependencies);
+
+    const result = await service.assemble({
+      spaceId: SPACE_ID,
+      threadId: 'thread-1',
+      retrieval: {
+        memories: [],
+        chunks: [],
+        profiles: [],
+        sources: [],
+        totalEstimatedTokens: 0,
+      },
+      budgetTokens: 120,
+      mountedSections: [
+        {
+          kind: 'profile',
+          id: 'mounted-project',
+          summary: 'Project wiki says to keep diffs minimal.',
+          tokenCount: 12,
+          priority: 94,
+        },
+      ],
+      mountedProfiles: [
+        makeProfile({
+          id: 'profile-compact-1',
+          summary: 'Session compaction summary for current thread.',
+        }),
+      ],
+    });
+
+    expect(result.pack.sections[0]).toEqual(
+      expect.objectContaining({
+        id: 'mounted-project',
+        kind: 'profile',
+      })
+    );
+  });
+
+  it('skips archived sources and their chunks during retrieval', async () => {
+    const dependencies = createInMemoryContextEngineDependencies({
+      sources: [
+        makeSource('source-active', 'Active project guide'),
+        {
+          ...makeSource('source-archived', 'Archived project guide'),
+          status: 'archived',
+        },
+      ],
+      documents: [
+        {
+          id: 'doc-active',
+          spaceId: SPACE_ID,
+          sourceId: 'source-active',
+          mimeType: 'text/markdown',
+          storageUri: 'file:///tmp/active.md',
+          checksum: 'doc-active-hash',
+          tokenCount: 40,
+          status: 'active',
+          createdAt: '2026-03-30T00:00:00.000Z',
+        },
+        {
+          id: 'doc-archived',
+          spaceId: SPACE_ID,
+          sourceId: 'source-archived',
+          mimeType: 'text/markdown',
+          storageUri: 'file:///tmp/archived.md',
+          checksum: 'doc-archived-hash',
+          tokenCount: 40,
+          status: 'active',
+          createdAt: '2026-03-30T00:00:00.000Z',
+        },
+      ],
+      chunks: [
+        makeChunk({
+          id: 'chunk-active',
+          documentId: 'doc-active',
+          text: 'Keep the deployment notes current.',
+        }),
+        makeChunk({
+          id: 'chunk-archived',
+          documentId: 'doc-archived',
+          text: 'Legacy release checklist that should no longer surface.',
+        }),
+      ],
+    });
+    const service = new ContextEngineService(dependencies);
+
+    const result = await service.retrieve({
+      spaceId: SPACE_ID,
+      query: 'legacy release checklist',
+      budgetTokens: 400,
+      includeChunks: true,
+    });
+
+    expect(result.sources.map((item) => item.id)).not.toContain('source-archived');
+    expect(result.chunks.map((item) => item.chunk.id)).toEqual([]);
   });
 });

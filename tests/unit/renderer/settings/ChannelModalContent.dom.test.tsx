@@ -358,6 +358,42 @@ describe('ChannelModalContent', () => {
     expect(screen.queryByRole('button', { name: /Default/i })).not.toBeInTheDocument();
   });
 
+  it('hides legacy-only builtin statuses that do not have a backing channel account', async () => {
+    mockGetPluginStatusInvoke.mockResolvedValueOnce({
+      success: true,
+      data: [
+        {
+          id: 'weixin_default',
+          type: 'weixin',
+          name: 'Weixin Bot',
+          enabled: true,
+          connected: true,
+          status: 'running',
+          activeUsers: 0,
+          hasToken: true,
+        },
+      ],
+    });
+    mockGetChannelAccountsInvoke.mockResolvedValueOnce({
+      success: true,
+      data: [],
+    });
+
+    renderChannelsPage();
+
+    await waitFor(() => {
+      expect(mockGetPluginStatusInvoke).toHaveBeenCalled();
+      expect(mockGetChannelAccountsInvoke).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: /WeChat/i })[0]);
+
+    expect(screen.getByText('No instances yet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add and pair' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Weixin Bot/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('weixin form')).toBeNull();
+  });
+
   it('renders builtin channel logos for the selected family and instance cards', async () => {
     renderChannelsPage();
 

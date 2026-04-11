@@ -5,6 +5,7 @@ import { uuid } from '@/common/utils';
 import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import SendBox from '@/renderer/components/chat/sendbox';
 import AgentRunStatus from '@/renderer/components/chat/AgentRunStatus';
+import RuntimePlanCard from '@/renderer/components/chat/RuntimePlanCard';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useSendBoxFiles';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
@@ -93,6 +94,7 @@ const AcpSendBox: React.FC<{
     tokenUsage,
     contextLimit,
     runTrace,
+    runtimePlanEntries,
     beginRun,
   } = useAcpMessage(conversation_id);
   const { t } = useTranslation();
@@ -305,6 +307,7 @@ const AcpSendBox: React.FC<{
 
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
+      <RuntimePlanCard entries={runtimePlanEntries} running={running || aiProcessing} />
       <AgentRunStatus trace={runTrace} running={running || aiProcessing} />
 
       <SendBox
@@ -312,30 +315,36 @@ const AcpSendBox: React.FC<{
         onChange={setContent}
         loading={running || aiProcessing}
         disabled={false}
-        placeholder={t('acp.sendbox.placeholder', {
-          backend: agentName || backend,
-          defaultValue: `Send message to {{backend}}...`,
-        })}
-        onStop={handleStop}
+        placeholder={
+          running || aiProcessing
+            ? t('conversation.chat.processing')
+            : t('acp.sendbox.placeholder', {
+                backend: agentName || backend,
+                defaultValue: `Send message to {{backend}}...`,
+              })
+        }
         className='z-10'
+        onStop={handleStop}
         onFilesAdded={handleFilesAdded}
         supportedExts={allSupportedExts}
         defaultMultiLine={true}
         lockMultiLine={true}
         tools={
-          <div className='flex items-center gap-4px'>
+          <div className='sendbox-tool-cluster'>
             <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
-            <AgentModeSelector
-              backend={backend}
-              conversationId={conversation_id}
-              compact
-              initialMode={sessionMode}
-              compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
-              modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
-              compactLabelPrefix={t('agentMode.permission')}
-              hideCompactLabelPrefixOnMobile
-            />
-            <AcpConfigSelector conversationId={conversation_id} backend={backend} />
+            <div className='sendbox-tool-pill-row'>
+              <AgentModeSelector
+                backend={backend}
+                conversationId={conversation_id}
+                compact
+                initialMode={sessionMode}
+                compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
+                modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
+                compactLabelPrefix={t('agentMode.permission')}
+                hideCompactLabelPrefixOnMobile
+              />
+              <AcpConfigSelector conversationId={conversation_id} backend={backend} />
+            </div>
           </div>
         }
         prefix={

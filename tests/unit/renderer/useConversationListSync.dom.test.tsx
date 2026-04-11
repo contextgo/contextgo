@@ -116,6 +116,40 @@ describe('useConversationListSync', () => {
     expect(result.current.isConversationGenerating('openclaw-conv-1')).toBe(false);
   });
 
+  it('clears generating state when an interrupted event arrives', async () => {
+    const { useConversationListSync } =
+      await import('@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync');
+    const { result } = renderHook(() => useConversationListSync());
+
+    await waitFor(() => {
+      expect(result.current.conversations).toHaveLength(1);
+    });
+
+    act(() => {
+      responseStreamListeners.forEach((listener) =>
+        listener({
+          conversation_id: 'openclaw-conv-1',
+          type: 'content',
+          data: 'hello',
+        })
+      );
+    });
+
+    expect(result.current.isConversationGenerating('openclaw-conv-1')).toBe(true);
+
+    act(() => {
+      responseStreamListeners.forEach((listener) =>
+        listener({
+          conversation_id: 'openclaw-conv-1',
+          type: 'interrupted',
+          data: 'Interrupted by user.',
+        })
+      );
+    });
+
+    expect(result.current.isConversationGenerating('openclaw-conv-1')).toBe(false);
+  });
+
   it('does not keep OpenClaw conversations generating during bootstrap agent statuses', async () => {
     const { useConversationListSync } =
       await import('@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync');

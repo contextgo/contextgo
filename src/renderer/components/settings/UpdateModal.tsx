@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import classNames from 'classnames';
 import { Button, Progress, Message } from '@arco-design/web-react';
 import { CheckOne, Download, FolderOpen, Refresh, CloseOne, Install } from '@icon-park/react';
 import { ipcBridge } from '@/common';
@@ -12,10 +13,13 @@ import ContextGoModal from '@/renderer/components/base/ContextGoModal';
 import MarkdownView from '@/renderer/components/Markdown';
 import type { UpdateDownloadProgressEvent, UpdateReleaseInfo, AutoUpdateStatus } from '@/common/update/updateTypes';
 import { useTranslation } from 'react-i18next';
+import '@/renderer/pages/settings/components/settings.css';
 
 type UpdateStatus = 'checking' | 'upToDate' | 'available' | 'downloading' | 'downloaded' | 'success' | 'error';
 
 type UpdateInfo = UpdateReleaseInfo;
+
+const UPDATE_MODAL_HEADER_CLASS = 'px-24px pt-20px';
 
 const UpdateModal: React.FC = () => {
   const { t } = useTranslation();
@@ -490,7 +494,9 @@ const UpdateModal: React.FC = () => {
     <ContextGoModal
       visible={visible}
       onCancel={handleClose}
-      className={isAvailableView ? 'update-modal update-modal--available' : 'update-modal'}
+      className={classNames('settings-sub-modal', 'update-modal', {
+        'update-modal--available': isAvailableView,
+      })}
       size={isAvailableView ? 'medium' : 'small'}
       style={
         isAvailableView
@@ -506,6 +512,7 @@ const UpdateModal: React.FC = () => {
       header={{
         title: t('update.modalTitle'),
         showClose: true,
+        className: UPDATE_MODAL_HEADER_CLASS,
       }}
       footer={{ render: () => null }}
       contentStyle={{

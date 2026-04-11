@@ -9,10 +9,11 @@ import type { TMessage } from '@/common/chat/chatLib';
 import type { CodexEventMsg } from '@/common/types/codex/types';
 import type { ICodexMessageEmitter } from '@process/agent/codex/messaging/CodexMessageEmitter';
 import { ERROR_CODES, globalErrorService } from '@process/agent/codex/core/ErrorService';
-import { hasCronCommands } from '@process/task/CronCommandDetector';
-import { processCronInMessage } from '@process/task/MessageMiddleware';
-import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
-import { ipcBridge } from '@/common';
+import {
+  executeAssistantScheduleCommands,
+  stripAssistantControlCommands,
+} from '@process/services/context/events/schedule/AssistantScheduleCommandService';
+import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 
 export class CodexMessageProcessor {
   private currentLoadingId: string | null = null;
@@ -42,7 +43,7 @@ export class CodexMessageProcessor {
 
     // Mark conversation as no longer processing
     // This is the reliable completion point for Codex message flow
-    cronBusyGuard.setProcessing(this.conversation_id, false);
+    scheduleConversationGuard.setProcessing(this.conversation_id, false);
 
     this.messageEmitter.emitAndPersistMessage(
       {
@@ -68,8 +69,14 @@ export class CodexMessageProcessor {
     } else if (msg.type === 'agent_reasoning') {
       deltaText = msg.text ?? '';
     }
-    // AGENT_REASONING_SECTION_BREAK 不添加内容，只是重置当前reasoning
-    this.currentReason = this.currentReason + deltaText;
+    // Keep the runtime thought card in overwrite mode: show the latest reasoning chunk
+    // instead of cumulatively appending the whole reasoning transcript into the UI.
+    // 保持运行态 thought 为覆盖模式：展示最新一段 reasoning，而不是把整段推理累计到 UI。
+    if (!deltaText) {
+      return;
+    }
+
+    this.currentReason = deltaText;
     this.messageEmitter.emitAndPersistMessage(
       {
         type: 'thought',
@@ -97,7 +104,7 @@ export class CodexMessageProcessor {
     this.messageEmitter.emitAndPersistMessage(deltaMessage, false);
   }
 
-  processFinalMessage(msg: Extract<CodexEventMsg, { type: 'agent_message' }>) {
+  async processFinalMessage(msg: Extract<CodexEventMsg, { type: 'agent_message' }>) {
     // Final message: only persist to database, do NOT emit to frontend
     // Frontend has already shown the content via deltas
 
@@ -108,39 +115,31 @@ export class CodexMessageProcessor {
       position: 'left' as const,
       conversation_id: this.conversation_id,
       content: { content: msg.message },
-      status: 'finish', // Mark as finished for cron detection
+      status: 'finish', // Mark as finished for schedule detection
       createdAt: Date.now(),
     };
 
     // Use messageEmitter to persist, maintaining architecture separation
     this.messageEmitter.persistMessage(transformedMessage);
 
-    // Process cron commands in final message
-    // This is the reliable point to detect cron commands since we have the complete message text
-    const messageText = msg.message || '';
+    const scheduleCommandResult = await executeAssistantScheduleCommands({
+      content: msg.message,
+      conversationId: this.conversation_id,
+      agentType: 'codex',
+    });
 
-    if (hasCronCommands(messageText)) {
-      // Collect system responses to send back to AI
-      const collectedResponses: string[] = [];
-      void processCronInMessage(this.conversation_id, 'codex', transformedMessage, (sysMsg) => {
-        collectedResponses.push(sysMsg);
-        // Also emit to frontend for display
-        ipcBridge.codexConversation.responseStream.emit({
-          type: 'system',
-          conversation_id: this.conversation_id,
-          msg_id: uuid(),
-          data: sysMsg,
-        });
-      }).then(() => {
-        // Send collected responses back to AI agent so it can continue
-        if (collectedResponses.length > 0 && this.messageEmitter.sendMessageToAgent) {
-          const feedbackMessage = `[System Response]\n${collectedResponses.join('\n')}`;
-          void this.messageEmitter.sendMessageToAgent(feedbackMessage);
-          return;
-        }
+    const cleanedContent = stripAssistantControlCommands(msg.message);
+    if (cleanedContent !== msg.message) {
+      this.messageEmitter.updateFinalAssistantContent?.(
+        transformedMessage.msg_id || transformedMessage.id,
+        cleanedContent
+      );
+    }
 
-        this.messageEmitter.scheduleAfterResponseHooks?.();
-      });
+    if (scheduleCommandResult.systemResponses.length > 0) {
+      await this.messageEmitter.sendMessageToAgent?.(
+        `[System Response]\n${scheduleCommandResult.systemResponses.join('\n')}`
+      );
       return;
     }
 

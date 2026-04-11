@@ -7,11 +7,32 @@ const openPreviewMock = vi.fn();
 const acpModelSelectorMock = vi.fn(() => <div data-testid='acp-model-selector' />);
 const navigateMock = vi.fn();
 const mockPrepareConversationPublicationInvoke = vi.fn();
+const mockGetAssociateConversationInvoke = vi.fn();
+const emitterEmitMock = vi.fn();
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   channel: {
     prepareConversationPublication: {
       invoke: (...args: unknown[]) => mockPrepareConversationPublicationInvoke(...args),
+    },
+  },
+}));
+
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    conversation: {
+      getAssociateConversation: {
+        invoke: (...args: unknown[]) => mockGetAssociateConversationInvoke(...args),
+      },
+      get: {
+        invoke: vi.fn(),
+      },
+      update: {
+        invoke: vi.fn(),
+      },
+      createWithConversation: {
+        invoke: vi.fn(),
+      },
     },
   },
 }));
@@ -32,6 +53,12 @@ vi.mock('@/renderer/pages/conversation/Preview', () => ({
   }),
 }));
 
+vi.mock('@/renderer/utils/emitter', () => ({
+  emitter: {
+    emit: (...args: unknown[]) => emitterEmitMock(...args),
+  },
+}));
+
 vi.mock('@/renderer/hooks/agent/usePresetAssistantInfo', () => ({
   usePresetAssistantInfo: (conversation?: TChatConversation) => ({
     info: conversation
@@ -45,10 +72,16 @@ vi.mock('@/renderer/hooks/agent/usePresetAssistantInfo', () => ({
   }),
 }));
 
-vi.mock('@/renderer/pages/cron', () => ({
-  CronJobManager: ({ conversation }: { conversation: TChatConversation }) => (
-    <div data-testid='cron-job-manager'>{conversation.id}</div>
+vi.mock('@/renderer/pages/schedule', () => ({
+  ScheduleJobManager: ({ conversation }: { conversation: TChatConversation }) => (
+    <div data-testid='schedule-job-manager'>{conversation.id}</div>
   ),
+}));
+
+vi.mock('@/renderer/pages/schedule/components/ProjectAutomationModal', () => ({
+  __esModule: true,
+  default: ({ visible, conversation }: { visible: boolean; conversation: TChatConversation; onClose: () => void }) =>
+    visible ? <div data-testid='project-automation-modal'>{conversation.id}</div> : null,
 }));
 
 vi.mock('@/renderer/pages/conversation/components/ChatLayout', () => ({
@@ -148,7 +181,13 @@ vi.mock('@/renderer/pages/conversation/platforms/ConversationBrowserContextButto
 }));
 
 vi.mock('@arco-design/web-react', () => ({
-  Button: ({ children, onClick, disabled, loading, ...props }: any) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    loading,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & { loading?: boolean }) => (
     <button type='button' onClick={onClick} disabled={disabled || loading} {...props}>
       {children}
     </button>
@@ -157,13 +196,27 @@ vi.mock('@arco-design/web-react', () => ({
   Menu: Object.assign(({ children }: { children?: React.ReactNode }) => <div>{children}</div>, {
     Item: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   }),
+  Popover: ({ children, content }: { children?: React.ReactNode; content?: React.ReactNode }) => (
+    <>
+      {children}
+      {content}
+    </>
+  ),
   Message: {
     error: vi.fn(),
+    success: vi.fn(),
   },
   Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   Typography: {
     Ellipsis: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
   },
+}));
+
+vi.mock('@icon-park/react', () => ({
+  ConnectionPoint: () => <span data-testid='icon-connection-point' />,
+  FolderOpen: () => <span data-testid='icon-folder-open' />,
+  History: () => <span data-testid='icon-history' />,
+  SettingTwo: () => <span data-testid='icon-setting-two' />,
 }));
 
 import ChatConversation from '@/renderer/pages/conversation/components/ChatConversation';
@@ -187,6 +240,7 @@ const createConversation = (type: TChatConversation['type'], id: string): TChatC
 describe('ChatConversation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetAssociateConversationInvoke.mockResolvedValue([]);
     mockPrepareConversationPublicationInvoke.mockResolvedValue({
       success: true,
       data: {
@@ -304,6 +358,36 @@ describe('ChatConversation', () => {
           },
         }
       );
+    });
+  });
+
+  it('opens the session hooks drawer entry for workspace-backed conversations', () => {
+    const conversation = createConversation('acp', 'acp-hooks-1');
+
+    render(<ChatConversation conversation={conversation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.sessionHooksOpen' }));
+
+    expect(emitterEmitMock).toHaveBeenCalledWith('conversation.session-hooks.open', 'acp-hooks-1');
+  });
+
+  it('renders the project automation entry for workspace-backed conversations', () => {
+    const conversation = createConversation('acp', 'acp-automation-1');
+
+    render(<ChatConversation conversation={conversation} />);
+
+    expect(screen.getByRole('button', { name: 'conversation.workspace.automation.action' })).toBeInTheDocument();
+  });
+
+  it('opens the project automation modal from the header entry', async () => {
+    const conversation = createConversation('acp', 'acp-automation-open');
+
+    render(<ChatConversation conversation={conversation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.automation.action' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-automation-modal')).toHaveTextContent('acp-automation-open');
     });
   });
 });

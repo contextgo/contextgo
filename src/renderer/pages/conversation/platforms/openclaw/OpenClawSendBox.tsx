@@ -6,6 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import type { TMessage } from '@/common/chat/chatLib';
+import type { RuntimePlanEntry } from '@/renderer/components/chat/runtimePlanTypes';
 import { transformMessage } from '@/common/chat/chatLib';
 import { uuid } from '@/common/utils';
 import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
@@ -21,6 +22,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
 import ThoughtDisplay, { type ThoughtData } from '@/renderer/components/chat/ThoughtDisplay';
+import RuntimePlanCard from '@/renderer/components/chat/RuntimePlanCard';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
@@ -29,6 +31,8 @@ import {
   type PendingConversationMessage,
   type PendingConversationMessageMode,
 } from '@/renderer/pages/conversation/hooks/usePendingConversationMessages';
+import { readConversationUiState } from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
+import { useConversationUiStateRestore } from '@/renderer/pages/conversation/hooks/useConversationUiStateRestore';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import FileAttachButton from '@/renderer/components/media/FileAttachButton';
@@ -128,6 +132,30 @@ const validateRuntimeMismatch = async (conversationId: string): Promise<boolean>
 const EMPTY_AT_PATH: Array<string | FileOrFolderItem> = [];
 const EMPTY_UPLOAD_FILES: string[] = [];
 
+type OpenClawUiStateSnapshot = {
+  aiProcessing: boolean;
+  openclawStatus: OpenClawGatewayStatus | null;
+  hasActiveToolCalls: boolean;
+  sawToolActivityInTurn: boolean;
+  thought: ThoughtData;
+  runtimePlanEntries: RuntimePlanEntry[];
+};
+
+const OPENCLAW_UI_STATE_SCOPE = 'openclaw';
+
+const createDefaultOpenClawUiState = (): OpenClawUiStateSnapshot => ({
+  aiProcessing: false,
+  openclawStatus: null,
+  hasActiveToolCalls: false,
+  sawToolActivityInTurn: false,
+  thought: { subject: '', description: '' },
+  runtimePlanEntries: [],
+});
+
+const toRuntimePlanEntries = (
+  entries: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed' }> = []
+): RuntimePlanEntry[] => entries.map((entry) => ({ content: entry.content, status: entry.status }));
+
 const getOpenClawStatusTone = (status: OpenClawGatewayStatus | null): 'arcoblue' | 'green' | 'gray' | 'orangered' => {
   switch (status) {
     case 'connected':
@@ -144,6 +172,11 @@ const getOpenClawStatusTone = (status: OpenClawGatewayStatus | null): 'arcoblue'
 };
 
 const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
+  const initialUiState = readConversationUiState(
+    OPENCLAW_UI_STATE_SCOPE,
+    conversation_id,
+    createDefaultOpenClawUiState()
+  );
   const [workspacePath, setWorkspacePath] = useState('');
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
@@ -151,18 +184,16 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
   const addOrUpdateMessage = useAddOrUpdateMessage();
   const { setSendBoxHandler } = usePreviewContext();
 
-  const [aiProcessing, setAiProcessing] = useState(false);
-  const [openclawStatus, setOpenClawStatus] = useState<OpenClawGatewayStatus | null>(null);
-  const [hasActiveToolCalls, setHasActiveToolCalls] = useState(false);
-  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(false);
-  const [thought, setThought] = useState<ThoughtData>({
-    description: '',
-    subject: '',
-  });
+  const [aiProcessing, setAiProcessing] = useState(initialUiState.aiProcessing);
+  const [openclawStatus, setOpenClawStatus] = useState<OpenClawGatewayStatus | null>(initialUiState.openclawStatus);
+  const [runtimePlanEntries, setRuntimePlanEntries] = useState<RuntimePlanEntry[]>(initialUiState.runtimePlanEntries);
+  const [hasActiveToolCalls, setHasActiveToolCalls] = useState(initialUiState.hasActiveToolCalls);
+  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(initialUiState.sawToolActivityInTurn);
+  const [thought, setThought] = useState<ThoughtData>(initialUiState.thought);
 
   // Use ref to sync state for immediate access in event handlers
   // 使用 ref 同步状态，以便在事件处理程序中立即访问
-  const aiProcessingRef = useRef(aiProcessing);
+  const aiProcessingRef = useRef(initialUiState.aiProcessing);
 
   // Track whether current turn has content output
   // Only reset aiProcessing when finish arrives after content (not after tool calls)
@@ -246,6 +277,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
     setHasActiveToolCalls(false);
     setSawToolActivityInTurn(false);
     setThought({ subject: '', description: '' });
+    setRuntimePlanEntries([]);
     hasContentInTurnRef.current = false;
   }, [clearPendingFinishReset]);
 
@@ -256,6 +288,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
       setAiProcessing(false);
       aiProcessingRef.current = false;
       setThought({ subject: '', description: '' });
+      setRuntimePlanEntries([]);
       hasContentInTurnRef.current = false;
     }, OPENCLAW_FINISH_SETTLE_MS);
   }, [clearPendingFinishReset]);
@@ -284,30 +317,44 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
   const setContentRef = useLatestRef(setContent);
   const atPathRef = useLatestRef(atPath);
   const immediateSendRef = useRef<((text: string) => Promise<void>) | null>(null);
-  // Reset state when conversation changes and restore actual running status
-  useEffect(() => {
-    setOpenClawStatus(null);
-    clearPendingFinishReset();
-    setThought({ subject: '', description: '' });
-    hasContentInTurnRef.current = false;
-    activeToolCallIdsRef.current = new Set();
-    setHasActiveToolCalls(false);
-    setSawToolActivityInTurn(false);
 
-    // Check actual conversation status from backend before resetting aiProcessing
-    // to avoid flicker when switching to a running conversation
-    // 先获取后端状态再重置 aiProcessing，避免切换到运行中的会话时闪烁
-    void ipcBridge.conversation.get.invoke({ id: conversation_id }).then((res) => {
-      if (!res) {
-        setAiProcessing(false);
-        aiProcessingRef.current = false;
-        return;
-      }
-      const isRunning = res.status === 'running';
+  useConversationUiStateRestore({
+    scope: OPENCLAW_UI_STATE_SCOPE,
+    conversationId: conversation_id,
+    state: {
+      aiProcessing,
+      openclawStatus,
+      hasActiveToolCalls,
+      sawToolActivityInTurn,
+      thought,
+      runtimePlanEntries,
+    },
+    createDefaultState: createDefaultOpenClawUiState,
+    applyCachedState: (cachedState) => {
+      setOpenClawStatus(cachedState.openclawStatus);
+      setAiProcessing(cachedState.aiProcessing);
+      aiProcessingRef.current = cachedState.aiProcessing;
+      setThought(cachedState.thought);
+      setRuntimePlanEntries(cachedState.runtimePlanEntries);
+      setHasActiveToolCalls(cachedState.hasActiveToolCalls);
+      setSawToolActivityInTurn(cachedState.sawToolActivityInTurn);
+    },
+    resetTransientState: () => {
+      clearPendingFinishReset();
+      hasContentInTurnRef.current = false;
+      activeToolCallIdsRef.current = new Set();
+    },
+    syncBackendState: (isRunning) => {
       setAiProcessing(isRunning);
       aiProcessingRef.current = isRunning;
-    });
+      if (!isRunning) {
+        setRuntimePlanEntries([]);
+      }
+    },
+  });
 
+  useEffect(() => {
+    
     // Eagerly initialize the OpenClaw agent and recover its connection status.
     // The agent may have already emitted 'session_active' before this listener was set up
     // (race condition: agent starts in constructor during conversation.create, before navigation).
@@ -322,7 +369,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
       .catch(() => {
         // Agent not ready or conversation not found – ignore
       });
-  }, [clearPendingFinishReset, conversation_id]);
+  }, [conversation_id]);
 
   useEffect(() => {
     const handler = (text: string) => {
@@ -373,6 +420,26 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
             }
           }
           break;
+        case 'interrupted': {
+          resetProcessingState();
+          const transformedMessage = transformMessage(message);
+          if (transformedMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
+          break;
+        }
+        case 'plan': {
+          const planEntries = toRuntimePlanEntries(
+            (message.data as { entries?: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed' }> })
+              ?.entries ?? []
+          );
+          setRuntimePlanEntries(planEntries);
+          const transformedMessage = transformMessage(message);
+          if (transformedMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
+          break;
+        }
         case 'acp_tool_call': {
           hasContentInTurnRef.current = true;
           const update = (message.data as { update?: { toolCallId?: string; status?: string } })?.update;
@@ -472,6 +539,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         createdAt: Date.now(),
       };
       addOrUpdateMessage(userMessage, true);
+      setRuntimePlanEntries([]);
       showProcessing();
       starOfficeInstallInFlightRef.current = true;
       ipcBridge.openclawConversation.sendMessage
@@ -533,6 +601,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         createdAt: Date.now(),
       };
       addOrUpdateMessage(userMessage, true);
+      setRuntimePlanEntries([]);
       showProcessing();
       try {
         await ipcBridge.openclawConversation.sendMessage.invoke({
@@ -693,6 +762,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         if (!runtimeOk) return;
 
         sessionStorage.setItem(processedKey, 'true');
+        setRuntimePlanEntries([]);
         showProcessing();
         const { input, files = [] } = JSON.parse(stored) as { input: string; files?: string[] };
         const msg_id = `initial_${conversation_id}_${Date.now()}`;
@@ -750,6 +820,7 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
 
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
+      <RuntimePlanCard entries={runtimePlanEntries} running={aiProcessing} />
       <ThoughtDisplay thought={thought} running={aiProcessing} onStop={handleStop} style='compact' />
       {openClawStatusLabel ? (
         <div className='mb-8px flex items-center justify-end'>

@@ -113,10 +113,10 @@ interface IMessage<T extends TMessageType, Content extends Record<string, any>> 
   status?: 'finish' | 'pending' | 'error' | 'work';
 }
 
-export type CronMessageMeta = {
-  source: 'cron';
-  cronJobId: string;
-  cronJobName: string;
+export type ScheduleMessageMeta = {
+  source: 'schedule';
+  scheduleJobId: string;
+  scheduleJobName: string;
   triggeredAt: number;
 };
 
@@ -124,7 +124,7 @@ export type IMessageText = IMessage<
   'text',
   {
     content: string;
-    cronMeta?: CronMessageMeta;
+    scheduleMeta?: ScheduleMessageMeta;
     groupMeta?: MessageGroupMeta;
   }
 >;
@@ -413,6 +413,19 @@ export interface IConfirmation<Option extends any = any> {
  * */
 export const transformMessage = (message: IResponseMessage): TMessage => {
   switch (message.type) {
+    case 'interrupted': {
+      return {
+        id: uuid(),
+        type: 'tips',
+        msg_id: message.msg_id,
+        position: 'center',
+        conversation_id: message.conversation_id,
+        content: {
+          content: typeof message.data === 'string' && message.data.trim() ? message.data : 'Interrupted by user.',
+          type: 'warning',
+        },
+      };
+    }
     case 'error': {
       return {
         id: uuid(),
@@ -469,8 +482,8 @@ export const transformMessage = (message: IResponseMessage): TMessage => {
         conversation_id: message.conversation_id,
         content: isRichData
           ? {
-              content: (data as { content: string; cronMeta?: CronMessageMeta; groupMeta?: MessageGroupMeta }).content,
-              cronMeta: (data as { cronMeta?: CronMessageMeta }).cronMeta,
+              content: (data as { content: string; scheduleMeta?: ScheduleMessageMeta; groupMeta?: MessageGroupMeta }).content,
+              scheduleMeta: (data as { scheduleMeta?: ScheduleMessageMeta }).scheduleMeta,
               groupMeta: (data as { groupMeta?: MessageGroupMeta }).groupMeta,
             }
           : { content: data as string },
@@ -561,7 +574,7 @@ export const transformMessage = (message: IResponseMessage): TMessage => {
     case 'start':
     case 'finish':
     case 'thought':
-    case 'system': // Cron system responses, ignored
+    case 'system': // Schedule system responses, ignored
     case 'acp_model_info': // Model info updates, handled by AcpModelSelector
     case 'codex_model_info': // Codex model info updates, handled by AcpModelSelector
     case 'acp_context_usage': // Context usage updates, handled by AcpSendBox

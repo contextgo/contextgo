@@ -20,7 +20,11 @@ vi.mock('@/common', () => ({
       fullScreenChanged: { on: (...args: unknown[]) => fullScreenChangedOnMock(...args) },
     },
     conversation: {
-      get: { invoke: vi.fn(async () => ({ name: 'Conversation Name' })) },
+      get: {
+        invoke: vi.fn(async ({ id }: { id: string }) => ({
+          name: id === 'conv-long' ? 'A very long conversation title for mobile shell' : 'Conversation Name',
+        })),
+      },
     },
   },
 }));
@@ -35,6 +39,10 @@ vi.mock('@/renderer/utils/platform', () => ({
   isElectronDesktop: () => isElectronDesktopMock,
   isMacOS: () => isMacOSMock,
   isMobileShellWebView: () => isMobileShellWebViewMock,
+}));
+
+vi.mock('@/renderer/hooks/context/useSelectedSpace', () => ({
+  useSelectedSpaceId: () => 'space-selected',
 }));
 
 vi.mock('@renderer/pages/conversation/hooks/useConversationAgents', () => ({
@@ -210,14 +218,30 @@ describe('Titlebar', () => {
     expect(await screen.findByText('settings.connectors.title')).toBeInTheDocument();
   });
 
+  it('uses the dedicated mobile home chrome on the guid page', async () => {
+    const { container } = renderTitlebar('/guid', {
+      layoutValue: {
+        isMobile: true,
+      },
+    });
+
+    expect(await screen.findByText('ContextGo')).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar--mobile-home')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar--mobile-conversation')).toBeNull();
+  });
+
   it('shows a settings section title on mobile runtime pages', async () => {
-    renderTitlebar('/settings/runtime', {
+    const { container } = renderTitlebar('/settings/runtime', {
       layoutValue: {
         isMobile: true,
       },
     });
 
     expect(await screen.findByText('Runtime')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'settings.mobileNavigation' })).toBeInTheDocument();
+    expect(
+      (container.firstChild as HTMLDivElement | null)?.style.getPropertyValue('--app-titlebar-mobile-center-offset')
+    ).toBe('0px');
   });
 
   it('keeps the mobile shell titlebar visible on non-workspace pages', async () => {
@@ -256,6 +280,38 @@ describe('Titlebar', () => {
     expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'conversation.entry.create' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Expand workspace' })).toBeInTheDocument();
+  });
+
+  it('truncates long conversation titles inside the mobile shell header', async () => {
+    isElectronDesktopMock = false;
+    isMacOSMock = false;
+    isMobileShellWebViewMock = true;
+
+    const { container } = renderTitlebar('/conversation/conv-long', {
+      layoutValue: {
+        isMobile: true,
+      },
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-long')],
+    });
+
+    const title = await screen.findByText('A very long c…');
+
+    expect(title).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar--mobile-shell .app-titlebar__brand-text')).toBeTruthy();
+  });
+
+  it('uses the dedicated mobile conversation chrome on workspace routes', async () => {
+    const { container } = renderTitlebar('/conversation/conv-1', {
+      layoutValue: {
+        isMobile: true,
+      },
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+    });
+
+    expect(await screen.findByText('Conversation Name')).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar--mobile-conversation')).toBeTruthy();
   });
 
   it('does not reserve mac traffic-light width while fullscreen is active', async () => {

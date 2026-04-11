@@ -28,7 +28,14 @@
       "gemini": "Gemini",
       "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
-    }
+    },
+    "loadingShort": "スキャン中",
+    "loadFailedShort": "スキャン失敗",
+    "readyCount": "{{count}} 件のセッションを引き継げます",
+    "readyCountShort": "{{count}} 件待機中",
+    "emptyStateShort": "まだありません",
+    "open": "開く",
+    "emptyState": "まだ引き継げる外部 Session はありません。"
   },
   "openclaw": {
     "defaultAgent": "デフォルト"
@@ -42,5 +49,40 @@
     "statusTesting": "Testing latency...",
     "statusUnreachable": "Unreachable",
     "statusAvailable": "Available"
+  },
+  "vault": {
+    "title": "Space Vault を開く",
+    "description": "選択中の Space に紐づく ContextGo 管理の Obsidian Vault を開きます。",
+    "affordance": "Vault を開く",
+    "statusReady": "Obsidian または Finder で開く",
+    "openSuccess": "Space Vault を開きました。",
+    "openFailed": "Space Vault を開けませんでした。",
+    "obsidianMissing": "Obsidian が見つかりませんでした。Vault フォルダを開き、ダウンロードページもブラウザで開きました。"
+  },
+  "space": {
+    "loading": "Space を読み込み中...",
+    "empty": "選択中の Space はありません",
+    "newSpace": "新しい Space",
+    "selectorTitle": "Space を切り替える",
+    "createTitle": "Space を作成",
+    "createAction": "Space を作成",
+    "namePlaceholder": "Space 名",
+    "descriptionPlaceholder": "説明（任意）",
+    "nameRequired": "Space 名を入力してください。",
+    "createSuccess": "Space {{name}} を作成しました。",
+    "createFailed": "Space を作成できませんでした。",
+    "switchSuccess": "{{name}} に切り替えました。",
+    "switchFailed": "Space を切り替えられませんでした。"
+  },
+  "contextEngine": {
+    "title": "Context Engine",
+    "systemManaged": "システム管理",
+    "loading": "メンテナンスアクティビティを読み込んでいます...",
+    "loadFailed": "メンテナンスアクティビティの読み込みに失敗しました。",
+    "activeCount": "{{count}} 件のメンテナンス実行中",
+    "idleCount": "{{count}} 件のメンテナンス Agent が待機中",
+    "empty": "最初のメンテナンス実行を待機しています。",
+    "defaultTask": "まだ要約がありません",
+    "scope": "スコープ: {{scope}}"
   }
 }

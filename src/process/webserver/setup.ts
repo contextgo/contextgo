@@ -88,7 +88,7 @@ export function setupBasicMiddleware(app: Express): void {
     csrf(
       CSRF_SECRET,
       ['POST', 'PUT', 'DELETE', 'PATCH'], // Protected methods
-      ['/login', '/api/auth/qr-login', '/api/upload'], // Excluded: login form, QR login, and file upload (uses API token auth)
+      ['/login', '/api/auth/qr-login', '/api/upload', '/api/connectors/browser-activity/ingest'], // Excluded: login form, QR login, file upload, and local browser activity ingest
       [] // No service worker URLs
     )
   );
@@ -119,6 +119,8 @@ function normalizeOrigin(origin: string): string | null {
 
 function getConfiguredOrigins(port: number, allowRemote: boolean): Set<string> {
   const baseOrigins = new Set<string>([`http://localhost:${port}`, `http://127.0.0.1:${port}`]);
+  baseOrigins.add('chrome-extension://*');
+  baseOrigins.add('moz-extension://*');
 
   // 允许远程访问时，自动添加所有网络接口 IP（LAN、VPN、Tailscale 等）
   // When remote access is enabled, add all network interface IPs (LAN, VPN, Tailscale, etc.)
@@ -163,6 +165,11 @@ export function setupCors(app: Express, port: number, allowRemote: boolean): voi
         }
 
         if (origin === 'null') {
+          callback(null, true);
+          return;
+        }
+
+        if (origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')) {
           callback(null, true);
           return;
         }

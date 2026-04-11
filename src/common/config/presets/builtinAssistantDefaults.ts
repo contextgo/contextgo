@@ -6,6 +6,7 @@
 
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import { ASSISTANT_PRESETS } from './assistantPresets';
+import { CONTEXT_ENGINE_SYSTEM_ASSISTANTS } from './systemAssistants';
 
 const BUILTIN_ASSISTANT_PREFIX = 'builtin-';
 
@@ -60,6 +61,7 @@ export const buildBuiltinAssistants = (): AcpBackendConfig[] => {
   return ASSISTANT_PRESETS.map((preset) => {
     const nameI18n = preset.nameI18n ?? { 'en-US': preset.id };
     const descriptionI18n = preset.descriptionI18n ?? { 'en-US': '' };
+    const enabledByDefault = DEFAULT_ENABLED_BUILTIN_PRESET_IDS.has(preset.id);
 
     return {
       id: `${BUILTIN_ASSISTANT_PREFIX}${preset.id}`,
@@ -68,9 +70,11 @@ export const buildBuiltinAssistants = (): AcpBackendConfig[] => {
       description: descriptionI18n['en-US'] ?? '',
       descriptionI18n,
       avatar: preset.avatar,
-      enabled: DEFAULT_ENABLED_BUILTIN_PRESET_IDS.has(preset.id),
+      enabled: enabledByDefault,
       isPreset: true,
       isBuiltin: true,
+      builtinTier: 'product',
+      builtinVisibility: enabledByDefault ? 'featured' : 'settings',
       presetAgentType: preset.presetAgentType || 'gemini',
       enabledSkills: preset.defaultEnabledSkills,
       enabledHooks: preset.defaultEnabledHooks,
@@ -80,4 +84,27 @@ export const buildBuiltinAssistants = (): AcpBackendConfig[] => {
       promptsI18n: preset.promptsI18n,
     };
   });
+};
+
+export const buildContextEngineSystemAssistants = (): AcpBackendConfig[] => {
+  return CONTEXT_ENGINE_SYSTEM_ASSISTANTS.map((assistant) => ({
+    id: assistant.id,
+    name: assistant.nameI18n['en-US'] ?? assistant.id,
+    nameI18n: assistant.nameI18n,
+    description: assistant.descriptionI18n['en-US'] ?? '',
+    descriptionI18n: assistant.descriptionI18n,
+    enabled: true,
+    isPreset: false,
+    isBuiltin: true,
+    builtinTier: 'system',
+    builtinVisibility: 'featured',
+    systemOwner: assistant.owner,
+    systemRole: assistant.systemRole,
+    executionBoundary: assistant.runtimeSpec.executionBoundary,
+    triggerKinds: [...assistant.runtimeSpec.triggerKinds],
+    promptProfile: { ...assistant.runtimeSpec.promptProfile },
+    toolPolicy: { ...assistant.runtimeSpec.toolPolicy },
+    memoryPolicy: { ...assistant.runtimeSpec.memoryPolicy },
+    delegationPolicy: { ...assistant.runtimeSpec.delegationPolicy },
+  }));
 };

@@ -418,7 +418,7 @@ export class CloudService {
   }
 
   public handleSystemResume(): void {
-    void this.officialRemoteTunnelService.reconcile('system-resume');
+    void this.restoreOfficialRemoteAfterResume();
   }
 
   public async shutdown(): Promise<void> {
@@ -873,25 +873,37 @@ export class CloudService {
     await app.whenReady();
 
     let initialStatus = await this.getStatus();
-    if (initialStatus.authenticated) {
-      if (!initialStatus.deviceTokenAvailable) {
-        try {
-          initialStatus = await this.ensureSignedInDesktopDeviceBinding(initialStatus);
-        } catch (error) {
-          console.warn('[Cloud] Failed to auto-register signed-in desktop device:', error);
-        }
-      } else {
-        try {
-          await ensureDesktopWebUIForOfficialRemote();
-          initialStatus = await this.getStatus();
-        } catch (error) {
-          console.warn('[Cloud] Failed to auto-prepare Official Remote browser entry on startup:', error);
-        }
+    if (initialStatus.deviceTokenAvailable) {
+      await this.ensureOfficialRemoteRuntimeForStoredBinding('startup');
+      initialStatus = await this.getStatus();
+    } else if (initialStatus.authenticated) {
+      try {
+        initialStatus = await this.ensureSignedInDesktopDeviceBinding(initialStatus);
+      } catch (error) {
+        console.warn('[Cloud] Failed to auto-register signed-in desktop device:', error);
       }
     }
 
     await this.emitStatusChanged(initialStatus);
     await this.officialRemoteTunnelService.reconcile('cloud-init');
+  }
+
+  private async restoreOfficialRemoteAfterResume(): Promise<void> {
+    await this.ensureOfficialRemoteRuntimeForStoredBinding('system resume');
+    await this.officialRemoteTunnelService.reconcile('system-resume');
+  }
+
+  private async ensureOfficialRemoteRuntimeForStoredBinding(reason: string): Promise<void> {
+    const deviceToken = await ProcessConfig.get(CLOUD_DEVICE_TOKEN_KEY);
+    const hasStoredDeviceToken = typeof deviceToken === 'string' && deviceToken.trim() !== '';
+
+    if (!hasStoredDeviceToken) {
+      return;
+    }
+
+    await ensureDesktopWebUIForOfficialRemote().catch((error: unknown) => {
+      console.warn(`[Cloud] Failed to auto-prepare Official Remote browser entry on ${reason}:`, error);
+    });
   }
 
   private async getAuthSession(): Promise<Session> {

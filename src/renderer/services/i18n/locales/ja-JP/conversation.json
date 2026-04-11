@@ -330,6 +330,40 @@
     "sessionHooksSaved": "セッション Hooks を更新しました",
     "sessionHooksSaveFailed": "セッション Hooks の保存に失敗しました",
     "sessionHooksLoadFailed": "Hooks の読み込みに失敗しました",
+    "automation": {
+      "action": "Automation",
+      "description": "このプロジェクトの automation 設定はワークスペース内の .contextgo にあります。",
+      "modalTitle": "Project Automation",
+      "modalDescription": "プロジェクト単位の commands とスケジュールをここで直接編集できます。変更内容はこのワークスペースの .contextgo に保存されます。",
+      "openFolder": ".contextgo フォルダーを開く",
+      "openCommandsFile": "commands.json を表示",
+      "openSchedulesFile": "schedules.json を表示",
+      "commandsTitle": "Project Commands",
+      "commandsDescription": "ここで編集した slash commands はこのプロジェクトに保存され、現在のワークスペース内ではグローバル managed commands より優先されます。",
+      "commandsUsageHint": "commands.json がまだ存在しない場合、この会話で現在有効な managed commands から編集を開始します。",
+      "commandsPathHint": "保存先: {{path}}",
+      "schedulesTitle": "Project Schedule",
+      "schedulesDescription": "この会話のプロジェクトスケジュールを直接作成または編集します。内容はこのプロジェクトの .contextgo/schedules.json に保存されます。",
+      "schedulesPathHint": "保存先: {{path}}",
+      "scheduleEmpty": "この会話にはまだプロジェクトスケジュールがありません。ここで作成すると .contextgo/schedules.json に保存されます。",
+      "scheduleReadonlyHint": "このスケジュールは現在「{{kind}}」タイプです。ここではメッセージと有効状態は変更できますが、実行タイミングは読み取り専用です。",
+      "scheduleEditor": {
+        "namePlaceholder": "タスク名を入力",
+        "cronExpressionLabel": "Cron 式",
+        "cronExpressionPlaceholder": "例: 0 9 * * MON-FRI",
+        "descriptionLabel": "スケジュール説明",
+        "descriptionPlaceholder": "例: 平日の 09:00",
+        "validation": {
+          "nameRequired": "スケジュール名を入力してください",
+          "messageRequired": "定期メッセージを入力してください",
+          "cronRequired": "Cron 式を入力してください",
+          "descriptionRequired": "スケジュール説明を入力してください"
+        }
+      },
+      "exportCommands": "現在の Commands を書き出す",
+      "exportCommandsSuccess": "現在の commands を .contextgo/commands.json に書き出しました",
+      "exportCommandsFailed": "commands をプロジェクト automation フォルダーへ書き出せませんでした"
+    },
     "contextMenu": {
       "open": "開く",
       "openLocation": "ファイルの場所を開く",
@@ -445,6 +479,19 @@
     "noThoughtYet": "思考ストリームはまだありません",
     "runtimeDisconnected": "エージェント実行環境が予期せず停止しました。再送信して再開してください。",
     "activeTools": "{{count}} 個のツールを実行中",
+    "runtimePlan": {
+      "title": "Plan",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "progressLabel": "{{completed}} / {{total}} completed",
+      "pendingSummary": "{{count}} steps pending",
+      "completedSummary": "{{count}} steps completed",
+      "status": {
+        "pending": "Pending",
+        "in_progress": "In progress",
+        "completed": "Completed"
+      }
+    },
     "phase": {
       "preparing": "準備中",
       "reasoning": "思考中",

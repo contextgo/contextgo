@@ -3,27 +3,50 @@ import { transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { TChatConversation, TokenUsageData } from '@/common/config/storage';
 import type { ThoughtData } from '@/renderer/components/chat/ThoughtDisplay';
+import { readConversationUiState, writeConversationUiState } from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+type GeminiUiStateSnapshot = {
+  streamRunning: boolean;
+  hasActiveTools: boolean;
+  waitingResponse: boolean;
+  sawToolActivityInTurn: boolean;
+  thought: ThoughtData;
+  tokenUsage: TokenUsageData | null;
+};
+
+const GEMINI_UI_STATE_SCOPE = 'gemini';
+
+const createDefaultGeminiUiState = (): GeminiUiStateSnapshot => ({
+    streamRunning: false,
+    hasActiveTools: false,
+    waitingResponse: false,
+    sawToolActivityInTurn: false,
+    thought: { subject: '', description: '' },
+    tokenUsage: null,
+  });
+
 export const useGeminiMessage = (conversation_id: string, onError?: (message: IResponseMessage) => void) => {
   const addOrUpdateMessage = useAddOrUpdateMessage();
-  const [streamRunning, setStreamRunning] = useState(false); // API 流是否在运行
-  const [hasActiveTools, setHasActiveTools] = useState(false); // 是否有工具在执行或等待确认
-  const [waitingResponse, setWaitingResponse] = useState(false); // 等待后端响应（发送消息后到收到 start 之前）
-  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(false);
-  const [thought, setThought] = useState<ThoughtData>({
-    description: '',
-    subject: '',
-  });
-  const [tokenUsage, setTokenUsage] = useState<TokenUsageData | null>(null);
+  const initialUiState = readConversationUiState(
+    GEMINI_UI_STATE_SCOPE,
+    conversation_id,
+    createDefaultGeminiUiState()
+  );
+  const [streamRunning, setStreamRunning] = useState(initialUiState.streamRunning); // API 流是否在运行
+  const [hasActiveTools, setHasActiveTools] = useState(initialUiState.hasActiveTools); // 是否有工具在执行或等待确认
+  const [waitingResponse, setWaitingResponse] = useState(initialUiState.waitingResponse); // 等待后端响应（发送消息后到收到 start 之前）
+  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(initialUiState.sawToolActivityInTurn);
+  const [thought, setThought] = useState<ThoughtData>(initialUiState.thought);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsageData | null>(initialUiState.tokenUsage);
   // Current active message ID to filter out events from old requests (prevents aborted request events from interfering with new ones)
   const activeMsgIdRef = useRef<string | null>(null);
 
   // Use refs to avoid useEffect re-subscription when these states change
-  const hasActiveToolsRef = useRef(hasActiveTools);
-  const streamRunningRef = useRef(streamRunning);
-  const waitingResponseRef = useRef(waitingResponse);
+  const hasActiveToolsRef = useRef(initialUiState.hasActiveTools);
+  const streamRunningRef = useRef(initialUiState.streamRunning);
+  const waitingResponseRef = useRef(initialUiState.waitingResponse);
 
   // Track whether current turn has content output
   // Only reset waitingResponse when finish arrives after content (not after tool calls)
@@ -92,6 +115,17 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
     };
   }, []);
 
+  useEffect(() => {
+    writeConversationUiState(GEMINI_UI_STATE_SCOPE, conversation_id, {
+      streamRunning,
+      hasActiveTools,
+      waitingResponse,
+      sawToolActivityInTurn,
+      thought,
+      tokenUsage,
+    });
+  }, [conversation_id, hasActiveTools, sawToolActivityInTurn, streamRunning, thought, tokenUsage, waitingResponse]);
+
   // Combined running state: waiting for response OR stream is running OR tools are active
   const running = waitingResponse || streamRunning || hasActiveTools;
 
@@ -151,6 +185,20 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
             }
           }
           break;
+        case 'interrupted': {
+          setStreamRunning(false);
+          streamRunningRef.current = false;
+          setWaitingResponse(false);
+          waitingResponseRef.current = false;
+          setHasActiveTools(false);
+          hasActiveToolsRef.current = false;
+          setThought({ subject: '', description: '' });
+          hasContentInTurnRef.current = false;
+          setSawToolActivityInTurn(false);
+          sawToolActivityInTurnRef.current = false;
+          addOrUpdateMessage(transformMessage(message));
+          break;
+        }
         case 'tool_group':
           {
             // Mark that current turn has content output
@@ -294,9 +342,24 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
   }, [conversation_id, addOrUpdateMessage, onError]);
 
   useEffect(() => {
-    setThought({ subject: '', description: '' });
-    setTokenUsage(null);
     hasContentInTurnRef.current = false;
+
+    const cachedState = readConversationUiState(
+      GEMINI_UI_STATE_SCOPE,
+      conversation_id,
+      createDefaultGeminiUiState()
+    );
+
+    setStreamRunning(cachedState.streamRunning);
+    streamRunningRef.current = cachedState.streamRunning;
+    setHasActiveTools(cachedState.hasActiveTools);
+    hasActiveToolsRef.current = cachedState.hasActiveTools;
+    setWaitingResponse(cachedState.waitingResponse);
+    waitingResponseRef.current = cachedState.waitingResponse;
+    setSawToolActivityInTurn(cachedState.sawToolActivityInTurn);
+    sawToolActivityInTurnRef.current = cachedState.sawToolActivityInTurn;
+    setThought(cachedState.thought);
+    setTokenUsage(cachedState.tokenUsage);
 
     // Check actual conversation status from backend before resetting all running states
     // to avoid flicker when switching to a running conversation

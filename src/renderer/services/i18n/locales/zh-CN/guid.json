@@ -33,7 +33,9 @@
       "gemini": "Gemini",
       "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
-    }
+    },
+    "readyCount": "{{count}} 个待接管 Session",
+    "open": "打开"
   },
   "openclaw": {
     "defaultAgent": "默认"
@@ -47,5 +49,40 @@
     "statusTesting": "正在测试延迟...",
     "statusUnreachable": "不可达",
     "statusAvailable": "可用"
+  },
+  "vault": {
+    "title": "打开空间 Vault",
+    "description": "打开 ContextGo 为当前选中空间管理的 Obsidian Vault。",
+    "affordance": "打开 Vault",
+    "statusReady": "在 Obsidian 或 Finder 中打开",
+    "openSuccess": "已打开空间 Vault。",
+    "openFailed": "打开空间 Vault 失败。",
+    "obsidianMissing": "未检测到 Obsidian，已打开 Vault 文件夹，并在浏览器中打开下载页。"
+  },
+  "space": {
+    "loading": "正在加载空间...",
+    "empty": "尚未选择空间",
+    "newSpace": "新建空间",
+    "selectorTitle": "切换空间",
+    "createTitle": "新建空间",
+    "createAction": "创建空间",
+    "namePlaceholder": "空间名称",
+    "descriptionPlaceholder": "空间描述（可选）",
+    "nameRequired": "请输入空间名称。",
+    "createSuccess": "已创建空间 {{name}}。",
+    "createFailed": "创建空间失败。",
+    "switchSuccess": "已切换到 {{name}}。",
+    "switchFailed": "切换空间失败。"
+  },
+  "contextEngine": {
+    "title": "Context Engine",
+    "systemManaged": "系统托管",
+    "loading": "正在加载上下文维护任务...",
+    "loadFailed": "加载上下文维护任务失败。",
+    "activeCount": "{{count}} 个维护任务运行中",
+    "idleCount": "{{count}} 个维护 Agent 待命中",
+    "empty": "等待首次上下文维护任务。",
+    "defaultTask": "暂未生成摘要",
+    "scope": "范围：{{scope}}"
   }
 }

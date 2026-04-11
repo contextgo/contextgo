@@ -8,7 +8,7 @@ import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { emitter } from '@/renderer/utils/emitter';
-import { useCronJobs } from '@/renderer/pages/cron/useCronJobs';
+import { useScheduleJobs } from '@/renderer/pages/schedule/useScheduleJobs';
 import type { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -44,10 +44,10 @@ export function useWorkspaceMigration({
   const [showDirectorySelector, setShowDirectorySelector] = useState(false);
   const [selectedTargetPath, setSelectedTargetPath] = useState('');
   const [migrationLoading, setMigrationLoading] = useState(false);
-  const [showCronMigrationPrompt, setShowCronMigrationPrompt] = useState(false);
+  const [showScheduleMigrationPrompt, setShowScheduleMigrationPrompt] = useState(false);
 
   // Cron jobs hook
-  const { jobs, loading: cronLoading } = useCronJobs(conversation_id);
+  const { jobs, loading: scheduleLoading } = useScheduleJobs(conversation_id);
 
   const handleOpenMigrationModal = useCallback(() => {
     setShowMigrationModal(true);
@@ -89,7 +89,7 @@ export function useWorkspaceMigration({
   }, [messageApi, t]);
 
   const executeMigration = useCallback(
-    async (migrateCron: boolean) => {
+    async (migrateSchedule: boolean) => {
       const targetWorkspace = selectedTargetPath.trim();
       setMigrationLoading(true);
 
@@ -138,7 +138,7 @@ export function useWorkspaceMigration({
           };
 
           setShowMigrationModal(false);
-          setShowCronMigrationPrompt(false);
+          setShowScheduleMigrationPrompt(false);
           setSelectedTargetPath('');
           setMigrationLoading(false);
 
@@ -166,13 +166,13 @@ export function useWorkspaceMigration({
         await ipcBridge.conversation.createWithConversation.invoke({
           conversation: newConversation,
           sourceConversationId: conversation_id,
-          migrateCron,
+          migrateSchedule,
           sourceWorkspace: workspace,
         });
 
         // Close modal and reset state
         setShowMigrationModal(false);
-        setShowCronMigrationPrompt(false);
+        setShowScheduleMigrationPrompt(false);
         setSelectedTargetPath('');
         setMigrationLoading(false);
 
@@ -207,24 +207,24 @@ export function useWorkspaceMigration({
     }
 
     // Check if jobs are still loading
-    if (cronLoading) {
+    if (scheduleLoading) {
       messageApi.info(t('common.loading'));
       return;
     }
 
     // Check for cron jobs before migrating
     if (jobs.length > 0) {
-      setShowCronMigrationPrompt(true);
+      setShowScheduleMigrationPrompt(true);
       return;
     }
 
     await executeMigration(false);
-  }, [jobs, cronLoading, isTemporaryWorkspace, selectedTargetPath, workspace, t, messageApi, executeMigration]);
+  }, [jobs, scheduleLoading, isTemporaryWorkspace, selectedTargetPath, workspace, t, messageApi, executeMigration]);
 
   const handleCloseMigrationModal = useCallback(() => {
     if (!migrationLoading) {
       setShowMigrationModal(false);
-      setShowCronMigrationPrompt(false);
+      setShowScheduleMigrationPrompt(false);
       setSelectedTargetPath('');
     }
   }, [migrationLoading]);
@@ -235,7 +235,7 @@ export function useWorkspaceMigration({
     showDirectorySelector,
     selectedTargetPath,
     migrationLoading,
-    showCronMigrationPrompt,
+    showScheduleMigrationPrompt,
 
     // Handlers
     handleOpenMigrationModal,

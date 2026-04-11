@@ -8,10 +8,12 @@ import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import { useSelectedSpaceId } from '@/renderer/hooks/context/useSelectedSpace';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { emitter } from '@/renderer/utils/emitter';
 import { cleanupSiderTooltips } from '@/renderer/utils/ui/siderTooltip';
+import { isMobileShellWebView } from '@/renderer/utils/platform';
 import { updateWorkspaceTime } from '@/renderer/utils/workspace/workspaceHistory';
 import { Dropdown, Menu, Message } from '@arco-design/web-react';
 import { Close, MessageOne, Plus, Robot } from '@icon-park/react';
@@ -48,6 +50,7 @@ export type ConversationTabDensity = 'full' | 'compact' | 'icon';
 
 type TabDensityOptions = {
   isMobile: boolean;
+  isMobileShell: boolean;
   openTabsCount: number;
   containerWidth: number;
   showHeaderActions: boolean;
@@ -61,7 +64,7 @@ const resolveConversationTabAvailableWidth = ({
   openTabsCount,
   containerWidth,
   showHeaderActions,
-}: Omit<TabDensityOptions, 'isMobile'>) => {
+}: Omit<TabDensityOptions, 'isMobile' | 'isMobileShell'>) => {
   const reservedWidth = showHeaderActions ? TAB_ACTIONS_RESERVED_WIDTH : 0;
   const totalGapWidth = Math.max(openTabsCount - 1, 0) * DESKTOP_TAB_GAP;
   return Math.max(containerWidth - reservedWidth - totalGapWidth, 0);
@@ -69,10 +72,28 @@ const resolveConversationTabAvailableWidth = ({
 
 export const resolveConversationTabDensity = ({
   isMobile,
+  isMobileShell,
   openTabsCount,
   containerWidth,
   showHeaderActions,
 }: TabDensityOptions): ConversationTabDensity => {
+  if (isMobileShell) {
+    if (containerWidth > 0) {
+      const availableWidth = resolveConversationTabAvailableWidth({
+        openTabsCount,
+        containerWidth,
+        showHeaderActions,
+      });
+      const widthPerTab = availableWidth / Math.max(openTabsCount, 1);
+
+      if (widthPerTab <= 44) {
+        return 'icon';
+      }
+    }
+
+    return 'compact';
+  }
+
   if (isMobile || openTabsCount <= 1) {
     return 'full';
   }
@@ -112,7 +133,7 @@ export const resolveConversationTabWidth = ({
   containerWidth,
   openTabsCount,
   showHeaderActions,
-}: Omit<TabDensityOptions, 'isMobile'> & { density: ConversationTabDensity }): number | undefined => {
+}: Omit<TabDensityOptions, 'isMobile' | 'isMobileShell'> & { density: ConversationTabDensity }): number | undefined => {
   if (containerWidth <= 0) {
     if (density === 'icon') {
       return ICON_ONLY_TAB_MAX_WIDTH;
@@ -342,6 +363,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
   const { t, i18n } = useTranslation();
   const { cliAgents, presetAssistants, isLoading } = useConversationAgents();
   const [groupModalVisible, setGroupModalVisible] = useState(false);
+  const selectedSpaceId = useSelectedSpaceId();
   const defaultConversationName = t('conversation.welcome.newConversation');
   const currentWorkspaceTab = openTabs.find((tab) => tab.id === activeTabId);
 
@@ -365,7 +387,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
             Message.error(t('conversation.createFailed'));
             return;
           }
-          params = await buildCliAgentParams(agent, workspace);
+          params = await buildCliAgentParams(agent, workspace, selectedSpaceId ?? undefined);
         } else if (key.startsWith('preset:')) {
           const assistantId = key.slice(7);
           const agent = presetAssistants.find((a) => a.customAgentId === assistantId);
@@ -373,7 +395,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
             Message.error(t('conversation.createFailed'));
             return;
           }
-          params = await buildPresetAssistantParams(agent, workspace, i18n.language);
+          params = await buildPresetAssistantParams(agent, workspace, i18n.language, selectedSpaceId ?? undefined);
         } else {
           return;
         }
@@ -391,7 +413,18 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
         Message.error(t('conversation.createFailed'));
       }
     },
-    [activeTabId, cliAgents, defaultConversationName, i18n.language, navigate, openTab, openTabs, presetAssistants, t]
+    [
+      activeTabId,
+      cliAgents,
+      defaultConversationName,
+      i18n.language,
+      navigate,
+      openTab,
+      openTabs,
+      presetAssistants,
+      selectedSpaceId,
+      t,
+    ]
   );
 
   const handleOpenGroupModal = useCallback(() => {
@@ -492,6 +525,7 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
       <CreateGroupModal
         visible={groupModalVisible}
         workspace={currentWorkspaceTab?.workspace}
+        spaceId={selectedSpaceId ?? undefined}
         cliAgents={cliAgents}
         presetAssistants={presetAssistants}
         onCancel={() => setGroupModalVisible(false)}
@@ -513,9 +547,13 @@ export const ConversationHeaderActions: React.FC<ConversationHeaderActionsProps>
  * 显示所有打开的会话 tabs，支持切换、关闭和新建会话
  * Displays all open conversation tabs, supports switching, closing, and creating new conversations
  */
-const ConversationTabs: React.FC<{ showHeaderActions?: boolean }> = ({ showHeaderActions = true }) => {
+const ConversationTabs: React.FC<{ showHeaderActions?: boolean; mobileEmbedded?: boolean }> = ({
+  showHeaderActions = true,
+  mobileEmbedded = false,
+}) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
+  const isMobileShellRuntime = isMobile && isMobileShellWebView();
   const {
     openTabs,
     activeTabId,
@@ -661,14 +699,20 @@ const ConversationTabs: React.FC<{ showHeaderActions?: boolean }> = ({ showHeade
     return null;
   }
 
+  const tabsBackground = mobileEmbedded ? 'transparent' : CONVERSATION_TAB_STRIP_BG;
   const tabsRootClassName = isMobile
-    ? 'relative w-full min-w-0 shrink-0 bg-1 min-h-42px px-8px py-4px'
+    ? mobileEmbedded
+      ? 'relative flex min-w-0 flex-1 shrink items-center bg-transparent px-0 py-0'
+      : 'relative w-full min-w-0 shrink-0 bg-1 min-h-42px px-8px py-4px'
     : 'relative flex h-full w-full min-w-0 max-w-full items-center overflow-hidden px-6px';
   const tabsInnerClassName = isMobile
-    ? 'relative flex h-32px w-full min-w-0 items-center gap-6px'
+    ? mobileEmbedded
+      ? 'relative flex h-34px w-full min-w-0 items-center gap-6px'
+      : 'relative flex h-32px w-full min-w-0 items-center gap-6px'
     : 'relative flex h-full w-full min-w-0 max-w-full items-center gap-6px overflow-hidden';
   const tabDensity = resolveConversationTabDensity({
     isMobile,
+    isMobileShell: isMobileShellRuntime,
     openTabsCount: openTabs.length,
     containerWidth: tabsContainerWidth,
     showHeaderActions,
@@ -681,7 +725,7 @@ const ConversationTabs: React.FC<{ showHeaderActions?: boolean }> = ({ showHeade
   });
 
   return (
-    <div className={tabsRootClassName} style={isMobile ? undefined : { background: CONVERSATION_TAB_STRIP_BG }}>
+    <div className={tabsRootClassName} style={{ background: tabsBackground }}>
       <div className={tabsInnerClassName}>
         {/* Tabs 滚动区域 */}
         <div
@@ -695,7 +739,7 @@ const ConversationTabs: React.FC<{ showHeaderActions?: boolean }> = ({ showHeade
               isActive={tab.id === activeTabId}
               isMobile={isMobile}
               density={tabDensity}
-              width={isMobile ? undefined : tabWidth}
+              width={isMobile && !isMobileShellRuntime ? undefined : tabWidth}
               contextMenu={getContextMenu(tab.id)}
               onSwitch={handleSwitchTab}
               onClose={handleCloseTab}
@@ -708,7 +752,7 @@ const ConversationTabs: React.FC<{ showHeaderActions?: boolean }> = ({ showHeade
         {showLeftFade && (
           <div
             className='pointer-events-none absolute left-0 top-0 bottom-0 w-32px'
-            style={{ background: `linear-gradient(90deg, ${CONVERSATION_TAB_STRIP_BG} 16%, transparent 100%)` }}
+            style={{ background: `linear-gradient(90deg, ${tabsBackground} 16%, transparent 100%)` }}
           />
         )}
 
@@ -716,7 +760,7 @@ const ConversationTabs: React.FC<{ showHeaderActions?: boolean }> = ({ showHeade
         {showRightFade && (
           <div
             className={`pointer-events-none absolute top-0 bottom-0 w-32px ${showHeaderActions ? 'right-56px' : 'right-0'}`}
-            style={{ background: `linear-gradient(270deg, ${CONVERSATION_TAB_STRIP_BG} 16%, transparent 100%)` }}
+            style={{ background: `linear-gradient(270deg, ${tabsBackground} 16%, transparent 100%)` }}
           />
         )}
       </div>

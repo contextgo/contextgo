@@ -89,6 +89,20 @@ describe('WeixinConfigForm', () => {
   });
 
   it('resets to login state when switching to another wechat instance without token', async () => {
+    mockGetAuthorizedTargets.mockResolvedValueOnce({
+      success: true,
+      data: [
+        {
+          id: 'target-1',
+          connectorId: 'weixin_primary',
+          platformType: 'weixin',
+          targetId: 'wx-user-1',
+          displayName: 'wx user',
+          authorizedAt: 1000,
+        },
+      ],
+    });
+
     const { rerender } = render(
       <WeixinConfigForm
         pluginId='weixin_primary'
@@ -106,7 +120,9 @@ describe('WeixinConfigForm', () => {
       />
     );
 
-    expect(screen.getByText('已完成授权，可直接使用')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('已完成授权，可直接使用')).toBeInTheDocument();
+    });
 
     rerender(<WeixinConfigForm pluginId='weixin_secondary' pluginStatus={null} onStatusChange={vi.fn()} />);
 
@@ -243,7 +259,7 @@ describe('WeixinConfigForm', () => {
     expect(mockAuthorizeRemoteUser).not.toHaveBeenCalled();
   });
 
-  it('shows already-connected state when pluginStatus.hasToken is true', () => {
+  it('shows signed-in state instead of ready state when token exists without authorized targets', () => {
     render(
       <WeixinConfigForm
         pluginId='weixin_default'
@@ -261,7 +277,48 @@ describe('WeixinConfigForm', () => {
       />
     );
 
-    expect(screen.getByText('已完成授权，可直接使用')).toBeInTheDocument();
+    expect(screen.getByText('微信渠道已连接')).toBeInTheDocument();
+    expect(screen.getByText('Next Steps')).toBeInTheDocument();
+    expect(screen.queryByText('已完成授权，可直接使用')).toBeNull();
     expect(screen.queryByRole('button', { name: '扫码登录并完成授权' })).toBeNull();
+  });
+
+  it('shows ready state only after authorized targets exist', async () => {
+    mockGetAuthorizedTargets.mockResolvedValueOnce({
+      success: true,
+      data: [
+        {
+          id: 'target-1',
+          connectorId: 'weixin_default',
+          platformType: 'weixin',
+          targetId: 'wx-user-1',
+          displayName: 'wx user',
+          authorizedAt: 1000,
+        },
+      ],
+    });
+
+    render(
+      <WeixinConfigForm
+        pluginId='weixin_default'
+        pluginStatus={{
+          id: 'weixin_default',
+          type: 'weixin',
+          enabled: true,
+          connected: true,
+          hasToken: true,
+          name: 'WeChat',
+          status: 'running',
+          activeUsers: 0,
+        }}
+        onStatusChange={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('已完成授权，可直接使用')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('微信渠道已连接')).toBeNull();
+    expect(screen.queryByText('Next Steps')).toBeNull();
   });
 });

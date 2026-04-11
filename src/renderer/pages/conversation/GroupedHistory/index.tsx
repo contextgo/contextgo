@@ -9,7 +9,7 @@ import { Button, Empty, Input } from '@arco-design/web-react';
 import { ContextGoModal } from '@/renderer/components/base';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import DirectorySelectionModal from '@/renderer/components/settings/DirectorySelectionModal';
-import { useCronJobsMap } from '@/renderer/pages/cron';
+import { useScheduleJobsMap } from '@/renderer/pages/schedule';
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Down, FolderOpen } from '@icon-park/react';
@@ -39,7 +39,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
 }) => {
   const { id } = useParams();
   const { t } = useTranslation();
-  const { getJobStatus, markAsRead, setActiveConversation } = useCronJobsMap();
+  const { getJobStatus, markAsRead, setActiveConversation } = useScheduleJobsMap();
 
   useEffect(() => {
     if (id) {

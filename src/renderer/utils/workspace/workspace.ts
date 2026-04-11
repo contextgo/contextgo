@@ -19,6 +19,16 @@ import type { TChatConversation } from '@/common/config/storage';
 const TEMP_WORKSPACE_REGEX = /-temp-\d+$/i;
 
 const splitPathSegments = (targetPath: string): string[] => targetPath.split(/[\\/]+/).filter(Boolean);
+const WORKSPACE_AUTOMATION_DIR = '.contextgo';
+const WORKSPACE_COMMANDS_FILE_NAME = 'commands.json';
+const WORKSPACE_SCHEDULES_FILE_NAME = 'schedules.json';
+
+const joinWorkspacePath = (basePath: string, childPath: string): string => {
+  const separator = basePath.includes('\\') ? '\\' : '/';
+  const sanitizedBasePath = basePath.replace(/[\\/]+$/, '');
+  const sanitizedChildPath = childPath.replace(/^[\\/]+/, '');
+  return `${sanitizedBasePath}${separator}${sanitizedChildPath}`;
+};
 
 /**
  * Check if a workspace path is a temporary workspace
@@ -74,6 +84,29 @@ export const getLastDirectoryName = (path: string): string => {
 };
 
 export const getConversationWorkspacePath = (conversation: TChatConversation): string | undefined => {
+  const workingDirectory = conversation.extra?.workingDirectory;
+  if (typeof workingDirectory === 'string' && workingDirectory.trim()) {
+    return workingDirectory;
+  }
+
   const workspace = conversation.extra?.workspace;
   return typeof workspace === 'string' && workspace.trim() ? workspace : undefined;
+};
+
+export type WorkspaceAutomationPaths = {
+  rootDir: string;
+  hooksDir: string;
+  commandsFile: string;
+  schedulesFile: string;
+};
+
+export const getWorkspaceAutomationPaths = (workspacePath: string): WorkspaceAutomationPaths => {
+  const rootDir = joinWorkspacePath(workspacePath, WORKSPACE_AUTOMATION_DIR);
+
+  return {
+    rootDir,
+    hooksDir: joinWorkspacePath(rootDir, 'hooks'),
+    commandsFile: joinWorkspacePath(rootDir, WORKSPACE_COMMANDS_FILE_NAME),
+    schedulesFile: joinWorkspacePath(rootDir, WORKSPACE_SCHEDULES_FILE_NAME),
+  };
 };

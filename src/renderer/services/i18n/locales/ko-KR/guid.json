@@ -28,7 +28,14 @@
       "gemini": "Gemini",
       "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
-    }
+    },
+    "loadingShort": "스캔 중",
+    "loadFailedShort": "스캔 실패",
+    "readyCount": "{{count}}개의 세션을 이어받을 수 있습니다",
+    "readyCountShort": "{{count}}개 대기 중",
+    "emptyStateShort": "없음",
+    "open": "열기",
+    "emptyState": "아직 이어받을 외부 Session 이 없습니다."
   },
   "openclaw": {
     "defaultAgent": "기본값"
@@ -42,5 +49,40 @@
     "statusTesting": "Testing latency...",
     "statusUnreachable": "Unreachable",
     "statusAvailable": "Available"
+  },
+  "vault": {
+    "title": "Space Vault 열기",
+    "description": "현재 선택한 Space에 연결된 ContextGo 관리 Obsidian Vault를 엽니다.",
+    "affordance": "Vault 열기",
+    "statusReady": "Obsidian 또는 Finder에서 열기",
+    "openSuccess": "Space Vault를 열었습니다.",
+    "openFailed": "Space Vault를 열지 못했습니다.",
+    "obsidianMissing": "Obsidian이 감지되지 않아 Vault 폴더와 다운로드 페이지를 함께 열었습니다."
+  },
+  "space": {
+    "loading": "Space를 불러오는 중...",
+    "empty": "선택된 Space가 없습니다",
+    "newSpace": "새 Space",
+    "selectorTitle": "Space 전환",
+    "createTitle": "Space 만들기",
+    "createAction": "Space 만들기",
+    "namePlaceholder": "Space 이름",
+    "descriptionPlaceholder": "설명(선택 사항)",
+    "nameRequired": "Space 이름을 입력해 주세요.",
+    "createSuccess": "{{name}} Space를 만들었습니다.",
+    "createFailed": "Space를 만들지 못했습니다.",
+    "switchSuccess": "{{name}}로 전환했습니다.",
+    "switchFailed": "Space를 전환하지 못했습니다."
+  },
+  "contextEngine": {
+    "title": "Context Engine",
+    "systemManaged": "시스템 관리",
+    "loading": "유지보수 활동을 불러오는 중...",
+    "loadFailed": "유지보수 활동을 불러오지 못했습니다.",
+    "activeCount": "{{count}}개의 유지보수 실행 중",
+    "idleCount": "{{count}}개의 유지보수 Agent 대기 중",
+    "empty": "첫 유지보수 실행을 기다리는 중입니다.",
+    "defaultTask": "아직 요약이 없습니다",
+    "scope": "범위: {{scope}}"
   }
 }

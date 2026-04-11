@@ -123,6 +123,8 @@ export class ChannelMessageService {
       return;
     }
 
+    const shouldResolveAfterMessage = event.type === 'interrupted';
+
     // 转换消息
     // Transform message
     const message = transformMessage(event);
@@ -145,6 +147,11 @@ export class ChannelMessageService {
       stream.callback(msg, isInsert);
     });
     this.messageListMap.set(conversationId, messageList.slice(-20));
+
+    if (shouldResolveAfterMessage) {
+      this.activeStreams.delete(conversationId);
+      stream.resolve(stream.msgId);
+    }
   }
 
   /**

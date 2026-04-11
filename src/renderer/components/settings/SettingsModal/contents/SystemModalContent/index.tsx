@@ -39,7 +39,7 @@ const SystemModalContent: React.FC = () => {
 
   const [closeToTray, setCloseToTray] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
-  const [cronNotificationEnabled, setCronNotificationEnabled] = useState(false);
+  const [scheduleNotificationEnabled, setScheduleNotificationEnabled] = useState(false);
   const [promptTimeout, setPromptTimeout] = useState<number>(300);
 
   useEffect(() => {
@@ -57,9 +57,9 @@ const SystemModalContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    ipcBridge.systemSettings.getCronNotificationEnabled
+    ipcBridge.systemSettings.getScheduleNotificationEnabled
       .invoke()
-      .then((enabled) => setCronNotificationEnabled(enabled))
+      .then((enabled) => setScheduleNotificationEnabled(enabled))
       .catch(() => {});
   }, []);
 
@@ -86,9 +86,9 @@ const SystemModalContent: React.FC = () => {
   }, []);
 
   const handleCronNotificationEnabledChange = useCallback((checked: boolean) => {
-    setCronNotificationEnabled(checked);
-    ipcBridge.systemSettings.setCronNotificationEnabled.invoke({ enabled: checked }).catch(() => {
-      setCronNotificationEnabled(!checked);
+    setScheduleNotificationEnabled(checked);
+    ipcBridge.systemSettings.setScheduleNotificationEnabled.invoke({ enabled: checked }).catch(() => {
+      setScheduleNotificationEnabled(!checked);
     });
   }, []);
 
@@ -226,9 +226,9 @@ const SystemModalContent: React.FC = () => {
                 }
               >
                 <div>
-                  <PreferenceRow label={t('settings.cronNotificationEnabled')}>
+                  <PreferenceRow label={t('settings.scheduleNotificationEnabled')}>
                     <Switch
-                      checked={cronNotificationEnabled}
+                      checked={scheduleNotificationEnabled}
                       disabled={!notificationEnabled}
                       onChange={handleCronNotificationEnabledChange}
                     />

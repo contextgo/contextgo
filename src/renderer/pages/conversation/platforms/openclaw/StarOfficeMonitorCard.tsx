@@ -324,7 +324,7 @@ const StarOfficeMonitorCard: React.FC<StarOfficeMonitorCardProps> = ({ conversat
     <Button
       type='text'
       size='small'
-      className='app-header-pill-button cron-job-manager-button chat-header-cron-pill !h-auto !w-auto !min-w-0'
+      className='app-header-pill-button schedule-job-manager-button chat-header-schedule-pill !h-auto !w-auto !min-w-0'
       onClick={() => {
         if (detecting) return;
         handlePrimaryClick();

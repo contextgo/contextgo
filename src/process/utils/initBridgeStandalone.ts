@@ -41,10 +41,11 @@ import {
 } from '@process/bridge/googleWorkspaceFamilyBridges';
 import { initModelBridge } from '@process/bridge/modelBridge';
 import { initPreviewHistoryBridge } from '@process/bridge/previewHistoryBridge';
+import { initSpaceBridge } from '@process/bridge/spaceBridge';
 import { initStarOfficeBridge } from '@process/bridge/starOfficeBridge';
 import { initApplicationBridgeCore } from '@process/bridge/applicationBridgeCore';
 import { initShellBridgeStandalone } from '@process/bridge/shellBridgeStandalone';
-import { initCronBridge } from '@process/bridge/cronBridge';
+import { initScheduleBridge } from '@process/bridge/scheduleBridge';
 import { initFsBridge } from '@process/bridge/fsBridge';
 import { initMcpBridge } from '@process/bridge/mcpBridge';
 import { initNotificationBridge } from '@process/bridge/notificationBridge';
@@ -82,11 +83,12 @@ export async function initBridgeStandalone(): Promise<void> {
   initModelBridge();
   initPreviewHistoryBridge();
   initDocumentBridge();
+  initSpaceBridge(spaceService);
   initChannelBridge(channelRepo);
   initDatabaseBridge(repo);
   initExtensionsBridge(repo, workerTaskManager);
   initSystemSettingsBridge();
-  initCronBridge();
+  initScheduleBridge();
   initMcpBridge();
   initNotificationBridge();
   initTaskBridge(workerTaskManager);

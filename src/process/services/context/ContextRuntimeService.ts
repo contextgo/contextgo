@@ -7,9 +7,21 @@
 import type { TChatConversation } from '@/common/config/storage';
 import { getDatabase } from '@process/services/database';
 import type { ContextPack, MemoryCandidateEntry, MemoryEntry } from '../../../../packages/context-engine/src/index';
-import type { ContextTier, MemoryKind } from '../../../../packages/context-engine/src/domain';
+import type { ContextTier, MemoryKind, ProfileSegment } from '../../../../packages/context-engine/src/domain';
 import type { TMessage } from '@/common/chat/chatLib';
 import type { ContextServiceImpl } from './ContextServiceImpl';
+import {
+  createSessionCompactionProfileKey,
+  type ProjectPromotionCandidate,
+  type SessionCompactionSnapshot,
+  type SessionSignal,
+} from './contextDomain';
+import type { ContextEventBus } from './events/ContextEventBus';
+import { SpaceVaultContextSyncService, createWorkspaceProjectSlug } from '@process/services/space/SpaceVaultContextSyncService';
+import { ProjectContextMirrorService, type ProjectContextSnapshot } from '@process/services/space/ProjectContextMirrorService';
+import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
+import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSpaceRepository';
+import { isSpaceVaultProviderRef } from '@process/services/space/vaultBinding';
 
 export type PendingCandidateReviewNotification = {
   conversationId: string;
@@ -130,6 +142,33 @@ function splitCandidateLines(content: string): string[] {
     .slice(0, 3);
 }
 
+function inlineSummary(value: string, limit = 120): string {
+  const normalized = normalizeText(value).replace(/\s+/g, ' ');
+  if (normalized.length <= limit) {
+    return normalized;
+  }
+  return `${normalized.slice(0, limit).trimEnd()}...`;
+}
+
+function buildContextPackCheckpointBody(pack: ContextPack): string | undefined {
+  if (pack.sections.length === 0) {
+    return undefined;
+  }
+
+  return pack.sections
+    .slice(0, 4)
+    .map((section) => `- ${section.kind}: ${inlineSummary(section.summary)}`)
+    .join('\n');
+}
+
+function buildCandidateCheckpointBody(title: string, summaries: readonly string[]): string | undefined {
+  if (summaries.length === 0) {
+    return undefined;
+  }
+
+  return [title, '', ...summaries.slice(0, 4).map((summary) => `- ${inlineSummary(summary)}`)].join('\n');
+}
+
 function inferMemoryTier(kind: MemoryKind): Exclude<ContextTier, 'source'> {
   switch (kind) {
     case 'workflow':
@@ -221,14 +260,108 @@ function extractAssistantMemoryCandidates(content: string): MemoryCandidateDraft
   return candidates;
 }
 
+function buildSignal(kind: SessionSignal['kind'], summary: string, occurredAt: number): SessionSignal {
+  return {
+    kind,
+    summary,
+    score: 0.8,
+    occurredAt: new Date(occurredAt).toISOString(),
+  };
+}
+
+function buildSessionSnapshot(input: {
+  pendingTurn?: PendingTurn;
+  assistantText?: string;
+  interruptionReason?: string;
+  signals?: readonly SessionSignal[];
+}): SessionCompactionSnapshot {
+  return {
+    userTurns: input.pendingTurn ? 1 : 0,
+    assistantReplies: input.assistantText ? 1 : 0,
+    interruptions: input.interruptionReason ? 1 : 0,
+    lastUserGoal: input.pendingTurn ? inlineSummary(input.pendingTurn.userInput) : undefined,
+    lastAssistantOutcome: input.assistantText ? inlineSummary(input.assistantText) : undefined,
+    recentSignals: input.signals || [],
+  };
+}
+
+function resolveConversationProjectSlug(conversation: TChatConversation): string | undefined {
+  const workspacePath = conversation.extra?.workingDirectory || conversation.extra?.workspace;
+  return workspacePath?.trim() ? createWorkspaceProjectSlug(workspacePath) : undefined;
+}
+
+function buildProjectPromotionCandidate(
+  projectSlug: string | undefined,
+  promotedSummaries: readonly string[],
+  threadId: string
+): ProjectPromotionCandidate | undefined {
+  if (!projectSlug || promotedSummaries.length === 0) {
+    return undefined;
+  }
+
+  return {
+    projectSlug,
+    summary: promotedSummaries[0],
+    detail: promotedSummaries.slice(1).join('\n') || undefined,
+    sourceThreadIds: [threadId],
+    confidence: 0.88,
+  };
+}
+
 export class ContextRuntimeService {
   constructor(
     private readonly contextService: ContextServiceImpl,
-    private readonly notifyPendingReview: (notification: PendingCandidateReviewNotification) => void = () => {}
+    private readonly notifyPendingReview: (notification: PendingCandidateReviewNotification) => void = () => {},
+    private readonly vaultSyncService: Pick<
+      SpaceVaultContextSyncService,
+      | 'ensureConversationContext'
+      | 'appendUserTurnStarted'
+      | 'appendAssistantTurnCompleted'
+      | 'appendConversationStopped'
+      | 'appendContextCheckpoint'
+      | 'readSessionWorkingSetSection'
+      | 'removeConversationContext'
+    > = new SpaceVaultContextSyncService(),
+    private readonly eventBus?: Pick<ContextEventBus, 'emit'>,
+    private readonly projectContextMirrorService = new ProjectContextMirrorService(contextService),
+    private readonly spaceService: Pick<SpaceServiceImpl, 'getSpace'> = new SpaceServiceImpl(new SqliteSpaceRepository())
   ) {}
 
   private readonly pendingTurns = new Map<string, PendingTurn>();
   private readonly completedAssistantMessages = new Set<string>();
+
+  private async loadProjectContextSnapshot(
+    conversation: TChatConversation,
+    spaceId: string
+  ): Promise<ProjectContextSnapshot | undefined> {
+    const providerRef = (await this.spaceService.getSpace(spaceId))?.providerRef;
+    if (!isSpaceVaultProviderRef(providerRef)) {
+      return undefined;
+    }
+
+    return this.projectContextMirrorService.syncProjectContext({
+      conversation,
+      spaceId,
+      vaultPath: providerRef.vaultPath,
+    });
+  }
+
+  private async getSessionCompactionMountedProfiles(
+    spaceId: string,
+    threadId: string
+  ): Promise<ProfileSegment[]> {
+    const profiles = await this.contextService.listProfiles({
+      spaceId,
+      keyPrefix: createSessionCompactionProfileKey(threadId),
+      state: 'active',
+    });
+    const profile = [...profiles].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+    if (!profile?.summary.trim()) {
+      return [];
+    }
+
+    return [profile];
+  }
 
   async registerConversation(conversation: TChatConversation): Promise<void> {
     const spaceId = conversation.extra?.spaceId;
@@ -247,6 +380,8 @@ export class ContextRuntimeService {
         workingDirectory: conversation.extra?.workingDirectory,
       },
     });
+
+    await this.vaultSyncService.ensureConversationContext({ conversation });
   }
 
   async prepareOutgoingTurn(input: PrepareOutgoingTurnInput): Promise<PrepareOutgoingTurnResult> {
@@ -254,6 +389,13 @@ export class ContextRuntimeService {
     if (!spaceId) {
       return { agentInput: input.agentInput, agentContent: input.agentContent };
     }
+
+    const preparedAt = Date.now();
+    const projectSlug = resolveConversationProjectSlug(input.conversation);
+    const projectSnapshot = await this.loadProjectContextSnapshot(input.conversation, spaceId);
+    const sessionWorkingSetSection = await this.vaultSyncService.readSessionWorkingSetSection({
+      conversation: input.conversation,
+    });
 
     const db = await getDatabase();
     const recentMessages = db.getConversationMessages(
@@ -265,6 +407,7 @@ export class ContextRuntimeService {
     const retrieval = await this.contextService.retrieve({
       spaceId,
       threadId: input.conversation.id,
+      projectSlug,
       query: input.userInput,
       budgetTokens: CONTEXT_BUDGET_TOKENS,
       memoryLimit: 6,
@@ -281,6 +424,11 @@ export class ContextRuntimeService {
       retrieval,
       budgetTokens: CONTEXT_BUDGET_TOKENS,
       threadSummary: buildThreadSummary([...recentMessages].reverse()),
+      mountedSections: [
+        ...(sessionWorkingSetSection ? [sessionWorkingSetSection] : []),
+        ...this.projectContextMirrorService.buildMountedSections(projectSnapshot),
+      ],
+      mountedProfiles: await this.getSessionCompactionMountedProfiles(spaceId, input.conversation.id),
       pinnedInstructions: ['Prefer space-consistent answers and reuse approved workflows when relevant.'],
     });
 
@@ -311,7 +459,40 @@ export class ContextRuntimeService {
       userInput: input.userInput,
       userSourceId: userSourceResult.source.id,
       msgId: input.msgId,
-      preparedAt: Date.now(),
+      preparedAt,
+    });
+
+    await this.vaultSyncService.appendUserTurnStarted({
+      conversation: input.conversation,
+      userInput: input.userInput,
+      preparedAt,
+      msgId: input.msgId,
+    });
+
+    await this.vaultSyncService.appendContextCheckpoint({
+      conversation: input.conversation,
+      timestamp: preparedAt,
+      title: 'Context Window Prepared',
+      bullets: [
+        `Context pack: \`${assembled.pack.id}\``,
+        `Sections: ${assembled.pack.sections.length}`,
+        `Memory refs: ${assembled.pack.provenance.memoryIds.length}`,
+        `Source refs: ${assembled.pack.provenance.sourceIds.length}`,
+        `Profile refs: ${assembled.pack.provenance.profileIds.length}`,
+        `Omitted entities: ${assembled.omittedEntityIds.length}`,
+      ],
+      body: buildContextPackCheckpointBody(assembled.pack),
+    });
+
+    await this.eventBus?.emit('context.window.prepared', {
+      spaceId,
+      threadId: input.conversation.id,
+      projectSlug,
+      preparedAt,
+      snapshot: buildSessionSnapshot({
+        pendingTurn: this.pendingTurns.get(input.conversation.id),
+        signals: [buildSignal('context_window_prepared', 'Context window prepared for the current turn.', preparedAt)],
+      }),
     });
 
     return {
@@ -368,6 +549,7 @@ export class ContextRuntimeService {
     const conversation = conversationResult.data;
     const spaceId = conversation.extra.spaceId;
     const pendingTurn = this.pendingTurns.get(conversationId);
+    const completedAt = Date.now();
     const assistantSource = await this.contextService.ingestSource({
       spaceId,
       threadId: conversationId,
@@ -388,12 +570,23 @@ export class ContextRuntimeService {
       storageUri: `contextgo://conversation/${conversationId}/assistant/${assistantMessageId ?? assistantSource.source.id}`,
     });
 
+    await this.vaultSyncService.appendAssistantTurnCompleted({
+      conversation,
+      assistantText: text,
+      completedAt,
+      assistantMessageId,
+      preparedAt: pendingTurn?.preparedAt,
+    });
+
     const drafts = [
       ...(pendingTurn ? extractUserMemoryCandidates(pendingTurn.userInput) : []),
       ...extractAssistantMemoryCandidates(text),
     ];
 
     const pendingReviewCandidates: MemoryCandidateEntry[] = [];
+    const promotedSummaries: string[] = [];
+    const reviewSummaries: string[] = [];
+    const rejectedSummaries: string[] = [];
 
     for (const draft of drafts) {
       const sourceIds = pendingTurn
@@ -477,6 +670,7 @@ export class ContextRuntimeService {
             threadId: conversationId,
           }
         );
+        promotedSummaries.push(candidate.summary);
         continue;
       }
 
@@ -487,6 +681,7 @@ export class ContextRuntimeService {
           threadId: conversationId,
         });
         pendingReviewCandidates.push(candidate);
+        reviewSummaries.push(candidate.summary);
         continue;
       }
 
@@ -504,7 +699,49 @@ export class ContextRuntimeService {
           threadId: conversationId,
         }
       );
+      rejectedSummaries.push(candidate.summary);
     }
+
+    if (drafts.length > 0) {
+      const bodySections = [
+        buildCandidateCheckpointBody('Promoted', promotedSummaries),
+        buildCandidateCheckpointBody('Pending Review', reviewSummaries),
+        buildCandidateCheckpointBody('Filtered Out', rejectedSummaries),
+      ].filter((value): value is string => Boolean(value));
+
+      await this.vaultSyncService.appendContextCheckpoint({
+        conversation,
+        timestamp: completedAt,
+        title: 'Context Signals Extracted',
+        bullets: [
+          `Drafts: ${drafts.length}`,
+          `Promoted: ${promotedSummaries.length}`,
+          `Pending review: ${reviewSummaries.length}`,
+          `Filtered out: ${rejectedSummaries.length}`,
+        ],
+        body: bodySections.join('\n\n') || undefined,
+      });
+    }
+
+    await this.eventBus?.emit('session.turn.completed', {
+      spaceId,
+      threadId: conversationId,
+      projectSlug: resolveConversationProjectSlug(conversation),
+      completedAt,
+      snapshot: buildSessionSnapshot({
+        pendingTurn,
+        assistantText: text,
+        signals: [
+          ...(promotedSummaries.length > 0
+            ? [buildSignal('memory_candidate_promoted', promotedSummaries[0], completedAt)]
+            : []),
+          ...(reviewSummaries.length > 0
+            ? [buildSignal('memory_candidate_created', reviewSummaries[0], completedAt)]
+            : []),
+        ],
+      }),
+      promotionCandidate: buildProjectPromotionCandidate(resolveConversationProjectSlug(conversation), promotedSummaries, conversationId),
+    });
 
     if (pendingReviewCandidates.length > 0) {
       this.notifyPendingReview({
@@ -515,5 +752,45 @@ export class ContextRuntimeService {
     }
 
     this.pendingTurns.delete(conversationId);
+  }
+
+  async recordConversationStopped(conversation: TChatConversation, reason: string): Promise<void> {
+    const pendingTurn = this.pendingTurns.get(conversation.id);
+    if (!conversation.extra?.spaceId || !pendingTurn) {
+      return;
+    }
+
+    const stoppedAt = Date.now();
+    await this.vaultSyncService.appendConversationStopped({
+      conversation,
+      stoppedAt,
+      reason,
+      preparedAt: pendingTurn.preparedAt,
+    });
+
+    await this.eventBus?.emit('session.interrupted', {
+      spaceId: conversation.extra.spaceId,
+      threadId: conversation.id,
+      projectSlug: resolveConversationProjectSlug(conversation),
+      interruptedAt: stoppedAt,
+      snapshot: buildSessionSnapshot({
+        pendingTurn,
+        interruptionReason: reason,
+        signals: [buildSignal('user_interrupt', `Session interrupted: ${reason}`, stoppedAt)],
+      }),
+    });
+
+    this.pendingTurns.delete(conversation.id);
+  }
+
+  async removeConversationContext(
+    conversation: TChatConversation,
+    remainingConversations: readonly TChatConversation[]
+  ): Promise<void> {
+    await this.vaultSyncService.removeConversationContext({
+      conversation,
+      remainingConversations,
+    });
+    this.pendingTurns.delete(conversation.id);
   }
 }

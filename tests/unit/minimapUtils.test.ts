@@ -5,6 +5,7 @@ import { MAX_LINE_LEN } from '@/renderer/pages/conversation/components/Conversat
 import {
   buildSearchSnippet,
   buildTurnPreview,
+  sanitizeTurnPreviewItems,
 } from '@/renderer/pages/conversation/components/ConversationTitleMinimap/minimapUtils';
 
 // Helper to create a text message with sensible defaults
@@ -126,6 +127,51 @@ describe('buildTurnPreview', () => {
 
     expect(turns).toHaveLength(1);
     expect(turns[0].answer).toBe('First answer');
+  });
+
+  it('skips nullish and malformed messages without dropping valid turns', () => {
+    const msgs = [
+      undefined,
+      null,
+      {
+        id: 'broken-right',
+        conversation_id: 'conv-1',
+        type: 'text',
+        content: { content: 42 },
+        position: 'right',
+      },
+      textMsg('Valid question', 'right', { id: 'u1', msg_id: 'mu1' }),
+      {
+        id: 'broken-left',
+        conversation_id: 'conv-1',
+        type: 'text',
+        content: null,
+        position: 'left',
+      },
+      textMsg('Valid answer', 'left', { id: 'a1', msg_id: 'ma1' }),
+    ] as unknown as TMessage[];
+
+    const turns = buildTurnPreview(msgs);
+
+    expect(turns).toHaveLength(1);
+    expect(turns[0].questionRaw).toBe('Valid question');
+    expect(turns[0].answerRaw).toBe('Valid answer');
+  });
+});
+
+describe('sanitizeTurnPreviewItems', () => {
+  it('drops malformed preview entries before rendering', () => {
+    const sanitized = sanitizeTurnPreviewItems([
+      undefined,
+      { index: 1, question: 'Q1', answer: '', questionRaw: 'Q1', answerRaw: '' },
+      { index: '2', question: 'Q2', answer: '', questionRaw: 'Q2', answerRaw: '' },
+      { index: 3, question: 'Q3', answer: 'A3', questionRaw: 'Q3', answerRaw: 'A3', msgId: 'm3' },
+    ]);
+
+    expect(sanitized).toEqual([
+      { index: 1, question: 'Q1', answer: '', questionRaw: 'Q1', answerRaw: '' },
+      { index: 3, question: 'Q3', answer: 'A3', questionRaw: 'Q3', answerRaw: 'A3', msgId: 'm3' },
+    ]);
   });
 });
 

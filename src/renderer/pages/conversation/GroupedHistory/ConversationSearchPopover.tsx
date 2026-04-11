@@ -10,7 +10,7 @@ import type { IMessageSearchItem } from '@/common/types/database';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { useConversationHistoryContext } from '@/renderer/hooks/context/ConversationHistoryContext';
 import { useOptionalConversationTabs } from '@/renderer/pages/conversation/hooks/ConversationTabsContext';
-import { useCronJobsMap } from '@/renderer/pages/cron';
+import { useScheduleJobsMap } from '@/renderer/pages/schedule';
 import { getActivityTime } from '@/renderer/utils/chat/timeline';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { blockMobileInputFocus, blurActiveElement } from '@/renderer/utils/ui/focus';
@@ -156,7 +156,7 @@ const ConversationSearchPanel: React.FC<ConversationSearchPanelProps> = ({
   const navigate = useNavigate();
   const conversationTabs = useOptionalConversationTabs();
   const { conversations } = useConversationHistoryContext();
-  const { markAsRead } = useCronJobsMap();
+  const { markAsRead } = useScheduleJobsMap();
   const [keyword, setKeyword] = useState('');
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [items, setItems] = useState<IMessageSearchItem[]>([]);

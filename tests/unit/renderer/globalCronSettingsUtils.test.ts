@@ -1,34 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import type { ICronJob } from '@/common/adapter/ipcBridge';
+import type { IContextSchedule } from '@/common/adapter/ipcBridge';
 import {
-  filterGlobalCronJobs,
-  getGlobalCronJobStatus,
-  summarizeGlobalCronJobs,
-} from '@/renderer/pages/cron/globalCronSettingsUtils';
+  filterGlobalScheduleJobs,
+  getGlobalScheduleJobStatus,
+  summarizeGlobalScheduleJobs,
+} from '@/renderer/pages/schedule/globalScheduleSettingsUtils';
 
-const createJob = (overrides: Partial<ICronJob> = {}): ICronJob =>
+const createJob = (overrides: Partial<IContextSchedule> = {}): IContextSchedule =>
   ({
     id: 'job-1',
     name: 'Daily summary',
     enabled: true,
+    owner: 'user',
+    createdBy: 'user',
     schedule: {
       kind: 'cron',
       expr: '0 9 * * *',
       description: 'Every day at 09:00',
     },
-    target: {
-      payload: {
-        kind: 'message',
-        text: 'Summarize the latest agent platform updates',
-      },
+    scope: {
+      kind: 'conversation',
+      spaceId: 'space-1',
+      conversationId: 'conv-1',
+      label: 'Workspace Alpha',
     },
-    metadata: {
+    target: {
       conversationId: 'conv-1',
       conversationTitle: 'Workspace Alpha',
       agentType: 'claude',
-      createdBy: 'user',
-      createdAt: 1,
-      updatedAt: 1,
+      kind: 'send_query',
+      message: 'Summarize the latest agent platform updates',
     },
     state: {
       runCount: 0,
@@ -36,13 +37,15 @@ const createJob = (overrides: Partial<ICronJob> = {}): ICronJob =>
       maxRetries: 3,
       ...overrides.state,
     },
+    createdAt: 1,
+    updatedAt: 1,
     ...overrides,
-  }) as ICronJob;
+  }) as IContextSchedule;
 
-describe('getGlobalCronJobStatus', () => {
+describe('getGlobalScheduleJobStatus', () => {
   it('returns paused when a job is disabled even if the last run failed', () => {
     expect(
-      getGlobalCronJobStatus(
+      getGlobalScheduleJobStatus(
         createJob({
           enabled: false,
           state: {
@@ -58,7 +61,7 @@ describe('getGlobalCronJobStatus', () => {
 
   it('returns error for enabled jobs with a failed last run', () => {
     expect(
-      getGlobalCronJobStatus(
+      getGlobalScheduleJobStatus(
         createJob({
           state: {
             lastStatus: 'error',
@@ -73,7 +76,7 @@ describe('getGlobalCronJobStatus', () => {
 
   it('returns active for enabled jobs without an error state', () => {
     expect(
-      getGlobalCronJobStatus(
+      getGlobalScheduleJobStatus(
         createJob({
           state: {
             lastStatus: 'ok',
@@ -87,38 +90,42 @@ describe('getGlobalCronJobStatus', () => {
   });
 });
 
-describe('filterGlobalCronJobs', () => {
+describe('filterGlobalScheduleJobs', () => {
   const jobs = [
     createJob(),
     createJob({
       id: 'job-2',
       name: 'Paused review',
       enabled: false,
-      metadata: {
+      scope: {
+        kind: 'conversation',
+        spaceId: 'space-1',
+        conversationId: 'conv-2',
+        label: 'Ops Project',
+      },
+      target: {
+        kind: 'send_query',
         conversationId: 'conv-2',
         conversationTitle: 'Ops Project',
         agentType: 'codex',
-        createdBy: 'user',
-        createdAt: 1,
-        updatedAt: 1,
-      },
-      target: {
-        payload: {
-          kind: 'message',
-          text: 'Review pending fixes',
-        },
+        message: 'Review pending fixes',
       },
     }),
     createJob({
       id: 'job-3',
       name: 'Broken report',
-      metadata: {
+      scope: {
+        kind: 'conversation',
+        spaceId: 'space-1',
+        conversationId: 'conv-3',
+        label: 'Gemini Workspace',
+      },
+      target: {
+        kind: 'send_query',
         conversationId: 'conv-3',
         conversationTitle: 'Gemini Workspace',
         agentType: 'gemini',
-        createdBy: 'user',
-        createdAt: 1,
-        updatedAt: 1,
+        message: 'Summarize the latest agent platform updates',
       },
       state: {
         lastStatus: 'error',
@@ -131,28 +138,28 @@ describe('filterGlobalCronJobs', () => {
   ];
 
   it('returns all jobs when the query is empty and status is all', () => {
-    expect(filterGlobalCronJobs(jobs, '', 'all')).toEqual(jobs);
+    expect(filterGlobalScheduleJobs(jobs, '', 'all')).toEqual(jobs);
   });
 
   it('filters by derived status', () => {
-    expect(filterGlobalCronJobs(jobs, '', 'paused').map((job) => job.id)).toEqual(['job-2']);
-    expect(filterGlobalCronJobs(jobs, '', 'error').map((job) => job.id)).toEqual(['job-3']);
-    expect(filterGlobalCronJobs(jobs, '', 'active').map((job) => job.id)).toEqual(['job-1']);
+    expect(filterGlobalScheduleJobs(jobs, '', 'paused').map((job) => job.id)).toEqual(['job-2']);
+    expect(filterGlobalScheduleJobs(jobs, '', 'error').map((job) => job.id)).toEqual(['job-3']);
+    expect(filterGlobalScheduleJobs(jobs, '', 'active').map((job) => job.id)).toEqual(['job-1']);
   });
 
   it('matches against name, message, conversation info, agent type, and last error', () => {
-    expect(filterGlobalCronJobs(jobs, 'review', 'all').map((job) => job.id)).toEqual(['job-2']);
-    expect(filterGlobalCronJobs(jobs, 'workspace alpha', 'all').map((job) => job.id)).toEqual(['job-1']);
-    expect(filterGlobalCronJobs(jobs, 'gemini', 'all').map((job) => job.id)).toEqual(['job-3']);
-    expect(filterGlobalCronJobs(jobs, 'disconnected', 'all').map((job) => job.id)).toEqual(['job-3']);
+    expect(filterGlobalScheduleJobs(jobs, 'review', 'all').map((job) => job.id)).toEqual(['job-2']);
+    expect(filterGlobalScheduleJobs(jobs, 'workspace alpha', 'all').map((job) => job.id)).toEqual(['job-1']);
+    expect(filterGlobalScheduleJobs(jobs, 'gemini', 'all').map((job) => job.id)).toEqual(['job-3']);
+    expect(filterGlobalScheduleJobs(jobs, 'disconnected', 'all').map((job) => job.id)).toEqual(['job-3']);
   });
 
   it('returns an empty list when no jobs match the current query', () => {
-    expect(filterGlobalCronJobs(jobs, 'missing', 'all')).toEqual([]);
+    expect(filterGlobalScheduleJobs(jobs, 'missing', 'all')).toEqual([]);
   });
 });
 
-describe('summarizeGlobalCronJobs', () => {
+describe('summarizeGlobalScheduleJobs', () => {
   it('counts jobs across active, paused, and error buckets', () => {
     const jobs = [
       createJob(),
@@ -168,7 +175,7 @@ describe('summarizeGlobalCronJobs', () => {
       }),
     ];
 
-    expect(summarizeGlobalCronJobs(jobs)).toEqual({
+    expect(summarizeGlobalScheduleJobs(jobs)).toEqual({
       total: 3,
       active: 1,
       paused: 1,
@@ -177,7 +184,7 @@ describe('summarizeGlobalCronJobs', () => {
   });
 
   it('returns zero counts for an empty list', () => {
-    expect(summarizeGlobalCronJobs([])).toEqual({
+    expect(summarizeGlobalScheduleJobs([])).toEqual({
       total: 0,
       active: 0,
       paused: 0,

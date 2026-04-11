@@ -12,7 +12,7 @@ import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSp
 import type { ISpaceService } from '@process/services/space/ISpaceService';
 import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
 import { uuid } from '@/common/utils';
-import { cronService } from './cron/cronServiceSingleton';
+import { scheduleService } from './context/scheduleServiceSingleton';
 import { copyWorkspaceAutomationHooks } from '@process/bridge/services/workspaceAutomation';
 import path from 'node:path';
 import {
@@ -64,6 +64,33 @@ const normalizeConversationExtraCompatibility = <TExtra extends Record<string, u
   return normalizedExtra;
 };
 
+const applySpaceBindingToGroupChildren = (
+  participants: CreateConversationParams['extra']['participants'],
+  spaceId: string
+): CreateConversationParams['extra']['participants'] => {
+  if (!Array.isArray(participants)) {
+    return participants;
+  }
+
+  return participants.map((participant) => {
+    if (!participant || typeof participant !== 'object' || !('conversation' in participant)) {
+      return participant;
+    }
+
+    const conversation = participant.conversation;
+    return {
+      ...participant,
+      conversation: {
+        ...conversation,
+        extra: normalizeConversationExtraCompatibility({
+          ...conversation.extra,
+          spaceId,
+        }),
+      },
+    };
+  });
+};
+
 /**
  * Concrete implementation of IConversationService.
  * Delegates persistence to an injected IConversationRepository.
@@ -109,12 +136,12 @@ export class ConversationServiceImpl implements IConversationService {
 
   async deleteConversation(id: string): Promise<void> {
     try {
-      const jobs = await cronService.listJobsByConversation(id);
-      for (const job of jobs) {
-        await cronService.removeJob(job.id);
+      const schedules = await scheduleService.listConversationSchedules(id);
+      for (const schedule of schedules) {
+        await scheduleService.removeSchedule(schedule.id);
       }
     } catch (err) {
-      console.warn('[ConversationServiceImpl] Failed to cleanup cron jobs:', err);
+      console.warn('[ConversationServiceImpl] Failed to cleanup conversation schedules:', err);
     }
     await this.repo.deleteConversation(id);
   }
@@ -139,7 +166,7 @@ export class ConversationServiceImpl implements IConversationService {
   }
 
   async createWithMigration(params: MigrateConversationParams): Promise<TChatConversation> {
-    const { conversation, sourceConversationId, migrateCron, sourceWorkspace } = params;
+    const { conversation, sourceConversationId, migrateSchedule, sourceWorkspace } = params;
     const normalizedConversation = conversation.extra
       ? ({
           ...conversation,
@@ -186,14 +213,24 @@ export class ConversationServiceImpl implements IConversationService {
         console.warn('[ConversationServiceImpl] Failed to copy workspace hooks during migration:', err);
       }
 
-      // Migrate or delete cron jobs associated with source conversation
+      // Migrate or delete conversation schedules associated with source conversation
       try {
-        const jobs = await cronService.listJobsByConversation(sourceConversationId);
-        if (migrateCron) {
-          for (const job of jobs) {
-            await cronService.updateJob(job.id, {
-              metadata: {
-                ...job.metadata,
+        const schedules = await scheduleService.listConversationSchedules(sourceConversationId);
+        if (migrateSchedule) {
+          for (const schedule of schedules) {
+            if (schedule.target.kind !== 'send_query') {
+              continue;
+            }
+
+            await scheduleService.updateSchedule(schedule.id, {
+              scope: {
+                ...schedule.scope,
+                conversationId: conv.id,
+                threadId: conv.id,
+                label: conv.name,
+              },
+              target: {
+                ...schedule.target,
                 conversationId: conv.id,
                 conversationTitle: conv.name,
                 workspacePath: targetWorkspace,
@@ -201,12 +238,12 @@ export class ConversationServiceImpl implements IConversationService {
             });
           }
         } else {
-          for (const job of jobs) {
-            await cronService.removeJob(job.id);
+          for (const schedule of schedules) {
+            await scheduleService.removeSchedule(schedule.id);
           }
         }
       } catch (err) {
-        console.error('[ConversationServiceImpl] Failed to handle cron jobs during migration:', err);
+        console.error('[ConversationServiceImpl] Failed to handle schedules during migration:', err);
       }
 
       // Integrity check: only delete source if message counts match
@@ -232,6 +269,7 @@ export class ConversationServiceImpl implements IConversationService {
       extra: normalizeConversationExtraCompatibility({
         ...params.extra,
         spaceId: resolvedSpaceId,
+        participants: applySpaceBindingToGroupChildren(params.extra.participants, resolvedSpaceId),
       }) as CreateConversationParams['extra'],
     };
     let conversation: TChatConversation;

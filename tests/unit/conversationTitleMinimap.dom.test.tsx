@@ -137,6 +137,17 @@ describe('ConversationTitleMinimap', () => {
     });
   });
 
+  it('renders valid turns even when the message payload contains malformed entries', async () => {
+    minimapMocks.getConversationMessages.mockResolvedValue([undefined, ...mockMessages]);
+
+    const input = await openSearchInput();
+
+    expect(input).not.toHaveAttribute('readonly');
+    expect(await screen.findByText('#1')).toBeInTheDocument();
+    expect(screen.getByText(/Q:\s*How are you\?/)).toBeInTheDocument();
+    expect(screen.getByText(/A:\s*Doing well\./)).toBeInTheDocument();
+  });
+
   it('closes the minimap after an outside click finishes IME composition', async () => {
     const input = await openSearchInput();
 

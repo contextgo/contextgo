@@ -1,5 +1,72 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const PROJECT_SLUG = 'workspace-b9e43543';
+
+const mockSpaceService = {
+  getSpace: vi.fn(async () => ({
+    id: 'space-1',
+    providerRef: {
+      kind: 'obsidian-vault',
+      vaultPath: '/tmp/vault',
+      vaultName: 'My-Space-space-1',
+      landingNotePath: 'Home.md',
+    },
+  })),
+};
+
+const mockProjectContextMirrorService = {
+  syncProjectContext: vi.fn(async () => ({
+    projectSlug: PROJECT_SLUG,
+    projectDocs: [
+      {
+        projectSlug: PROJECT_SLUG,
+        title: 'workspace',
+        relativePath: 'Projects/workspace/workspace.md',
+        absolutePath: '/tmp/vault/Projects/workspace/workspace.md',
+        content: '# workspace\n\nPrefer minimal diffs.',
+        tags: ['project', 'wiki'],
+      },
+    ],
+    sourceDocs: [
+      {
+        projectSlug: PROJECT_SLUG,
+        title: 'agents',
+        relativePath: 'Projects/workspace/Sources/AGENTS.md',
+        absolutePath: '/tmp/vault/Projects/workspace/Sources/AGENTS.md',
+        content: '# AGENTS\n\nStart from AGENTS.md.',
+        tags: ['project', 'source'],
+      },
+    ],
+  })),
+  buildMountedSections: vi.fn(
+    (snapshot?: {
+      projectDocs?: Array<{ title: string; content: string; relativePath: string }>;
+      sourceDocs?: Array<{ title: string; content: string; relativePath: string }>;
+    }) => {
+      if (!snapshot) {
+        return [];
+      }
+
+      return [
+        ...(snapshot.projectDocs ?? []).map((doc, index) => ({
+          kind: 'profile' as const,
+          id: `profile:${doc.relativePath}`,
+          summary: `${doc.title}\n${doc.content}`,
+          priority: 94 - index,
+          tokenCount: 24,
+        })),
+        ...(snapshot.sourceDocs ?? []).map((doc, index) => ({
+          kind: 'source' as const,
+          id: `source:${doc.relativePath}`,
+          summary: `${doc.title}\n${doc.content}`,
+          priority: 72 - index,
+          tokenCount: 24,
+        })),
+      ];
+    }
+  ),
+};
+
 const mockDb = {
   getConversationMessages: vi.fn(),
   getConversation: vi.fn(),
@@ -14,6 +81,17 @@ const mockContextService = {
   evaluatePromotion: vi.fn(),
   saveMemoryCandidate: vi.fn(),
   saveMemory: vi.fn(),
+  listProfiles: vi.fn(),
+};
+
+const mockVaultSyncService = {
+  ensureConversationContext: vi.fn(),
+  appendUserTurnStarted: vi.fn(),
+  appendAssistantTurnCompleted: vi.fn(),
+  appendConversationStopped: vi.fn(),
+  appendContextCheckpoint: vi.fn(),
+  readSessionWorkingSetSection: vi.fn(),
+  removeConversationContext: vi.fn(),
 };
 
 vi.mock('@process/services/database', () => ({
@@ -129,10 +207,19 @@ describe('ContextRuntimeService', () => {
     });
     mockContextService.saveMemoryCandidate.mockResolvedValue(undefined);
     mockContextService.saveMemory.mockResolvedValue(undefined);
+    mockContextService.listProfiles.mockResolvedValue([]);
+    mockVaultSyncService.readSessionWorkingSetSection.mockResolvedValue(undefined);
   });
 
   it('registers a bound thread operation when a conversation has a space', async () => {
-    const service = new ContextRuntimeService(mockContextService as any);
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
 
     await service.registerConversation(makeConversation());
 
@@ -144,10 +231,43 @@ describe('ContextRuntimeService', () => {
         entityId: 'conv-1',
       })
     );
+    expect(mockVaultSyncService.ensureConversationContext).toHaveBeenCalledWith({ conversation: makeConversation() });
+  });
+
+  it('removes vault context when a conversation is deleted', async () => {
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
+    const conversation = makeConversation();
+    const remainingConversations = [
+      {
+        ...makeConversation(),
+        id: 'conv-2',
+      },
+    ];
+
+    await service.removeConversationContext(conversation as any, remainingConversations as any);
+
+    expect(mockVaultSyncService.removeConversationContext).toHaveBeenCalledWith({
+      conversation,
+      remainingConversations,
+    });
   });
 
   it('assembles and injects a context pack before user request content', async () => {
-    const service = new ContextRuntimeService(mockContextService as any);
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
     const recentMessages = [
       {
         id: 'm-1',
@@ -169,7 +289,18 @@ describe('ContextRuntimeService', () => {
     });
 
     expect(mockContextService.retrieve).toHaveBeenCalledWith(
-      expect.objectContaining({ spaceId: 'space-1', threadId: 'conv-1' })
+      expect.objectContaining({ spaceId: 'space-1', threadId: 'conv-1', projectSlug: PROJECT_SLUG })
+    );
+    expect(mockProjectContextMirrorService.syncProjectContext).toHaveBeenCalledWith(
+      expect.objectContaining({ spaceId: 'space-1', vaultPath: '/tmp/vault' })
+    );
+    expect(mockContextService.assemble).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mountedSections: expect.arrayContaining([
+          expect.objectContaining({ kind: 'profile', id: 'profile:Projects/workspace/workspace.md' }),
+          expect.objectContaining({ kind: 'source', id: 'source:Projects/workspace/Sources/AGENTS.md' }),
+        ]),
+      })
     );
     expect(mockContextService.ingestSource).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'conversation-message', title: 'User message', checksum: 'msg-1' })
@@ -177,13 +308,114 @@ describe('ContextRuntimeService', () => {
     expect(mockContextService.indexTextDocument).toHaveBeenCalledWith(
       expect.objectContaining({ sourceId: 'source-1', tier: 'working' })
     );
+    expect(mockVaultSyncService.appendUserTurnStarted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversation: expect.objectContaining({ id: 'conv-1' }),
+        userInput: 'We prefer release changes to stay minimal and verifiable.',
+        msgId: 'msg-1',
+      })
+    );
+    expect(mockVaultSyncService.appendContextCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversation: expect.objectContaining({ id: 'conv-1' }),
+        title: 'Context Window Prepared',
+      })
+    );
     expect(result.agentContent).toContain('[ContextGo Runtime Context]');
     expect(result.agentContent).toContain('[User Request]');
     expect(result.agentInput).toContain('read-only background data');
   });
 
+  it('mounts session working set into outgoing context when available', async () => {
+    mockVaultSyncService.readSessionWorkingSetSection.mockResolvedValue({
+      kind: 'profile',
+      id: 'session-working-set:conv-1',
+      summary: 'Current Task\nShip the release with minimal, verifiable changes.',
+      priority: 96,
+      tokenCount: 18,
+    });
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
+
+    await service.prepareOutgoingTurn({
+      conversation: makeConversation(),
+      userInput: 'Use the latest release context.',
+      agentInput: 'Use the latest release context.',
+      agentContent: '[User Request]\nUse the latest release context.',
+      msgId: 'msg-working-set',
+    });
+
+    expect(mockContextService.assemble).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mountedSections: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'session-working-set:conv-1',
+            summary: 'Current Task\nShip the release with minimal, verifiable changes.',
+          }),
+        ]),
+      })
+    );
+  });
+
+  it('mounts session compaction summary into outgoing context when available', async () => {
+    mockContextService.listProfiles.mockResolvedValue([
+      {
+        id: 'profile-compact-1',
+        spaceId: 'space-1',
+        key: 'session.compaction.conv-1',
+        summary: 'Compacted session summary for the active release thread.',
+        memoryIds: ['memory-1'],
+        confidence: 0.88,
+        state: 'active',
+        createdAt: '2026-04-08T00:00:00.000Z',
+        updatedAt: '2026-04-08T00:10:00.000Z',
+      },
+    ]);
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
+
+    await service.prepareOutgoingTurn({
+      conversation: makeConversation(),
+      userInput: 'Use the latest release context.',
+      agentInput: 'Use the latest release context.',
+      agentContent: '[User Request]\nUse the latest release context.',
+      msgId: 'msg-compact',
+    });
+
+    expect(mockContextService.assemble).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mountedProfiles: [
+          expect.objectContaining({
+            id: 'profile-compact-1',
+            key: 'session.compaction.conv-1',
+            summary: 'Compacted session summary for the active release thread.',
+          }),
+        ],
+      })
+    );
+  });
+
   it('auto-promotes strong candidates into durable memories', async () => {
-    const service = new ContextRuntimeService(mockContextService as any);
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
     await service.prepareOutgoingTurn({
       conversation: makeConversation(),
       userInput: 'We prefer test-first debugging and we must avoid large diffs.',
@@ -204,6 +436,18 @@ describe('ContextRuntimeService', () => {
     expect(mockContextService.indexTextDocument).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Assistant response', tier: 'working' })
     );
+    expect(mockVaultSyncService.appendAssistantTurnCompleted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversation: expect.objectContaining({ id: 'conv-1' }),
+        assistantMessageId: 'assistant-1',
+      })
+    );
+    expect(mockVaultSyncService.appendContextCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversation: expect.objectContaining({ id: 'conv-1' }),
+        title: 'Context Signals Extracted',
+      })
+    );
     expect(mockContextService.saveMemoryCandidate).toHaveBeenCalled();
     expect(mockContextService.saveMemory).toHaveBeenCalled();
     const savedSummaries = mockContextService.saveMemory.mock.calls.map((call) => call[0].summary);
@@ -217,7 +461,14 @@ describe('ContextRuntimeService', () => {
       shouldPromote: false,
       rationale: ['keep-as-candidate'],
     });
-    const service = new ContextRuntimeService(mockContextService as any, notifyPendingReview);
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      notifyPendingReview,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
     await service.prepareOutgoingTurn({
       conversation: makeConversation(),
       userInput: 'We should not change the release checklist without review.',
@@ -239,6 +490,35 @@ describe('ContextRuntimeService', () => {
     );
     expect(notifyPendingReview).toHaveBeenCalledWith(
       expect.objectContaining({ conversationId: 'conv-1', spaceId: 'space-1' })
+    );
+  });
+
+  it('records a stop event when a prepared turn is interrupted', async () => {
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
+    const conversation = makeConversation();
+
+    await service.prepareOutgoingTurn({
+      conversation,
+      userInput: 'Stop this turn if it hangs.',
+      agentInput: 'Stop this turn if it hangs.',
+      agentContent: 'Stop this turn if it hangs.',
+      msgId: 'msg-stop',
+    });
+
+    await service.recordConversationStopped(conversation as any, 'user-stop');
+
+    expect(mockVaultSyncService.appendConversationStopped).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversation: expect.objectContaining({ id: 'conv-1' }),
+        reason: 'user-stop',
+      })
     );
   });
 });

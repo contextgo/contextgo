@@ -105,6 +105,8 @@ export interface IConfigStorageRefer {
   // guid 页面上次选择的 agent 类型 / Last selected agent type on guid page
   'guid.lastSelectedAgent'?: string;
   'guid.lastSelectedAssistant'?: string | null;
+  // 当前默认选中的 Space，用于新建会话时继承 / Persisted selected Space for new conversation flows
+  'space.selectedId'?: string;
   // 迁移标记：修复老版本中助手 enabled 默认值问题 / Migration flag: fix assistant enabled default value issue
   'migration.assistantEnabledFixed'?: boolean;
   // 迁移标记：为 cowork 助手添加默认启用的 skills / Migration flag: add default enabled skills for cowork assistant
@@ -123,7 +125,7 @@ export interface IConfigStorageRefer {
   // 任务完成时显示系统通知 / Show system notification when task completes
   'system.notificationEnabled'?: boolean;
   // 定时任务完成时显示系统通知 / Show system notification when scheduled task completes
-  'system.cronNotificationEnabled'?: boolean;
+  'system.scheduleNotificationEnabled'?: boolean;
   // Global voice input configuration / 全局语音输入配置
   'voiceInput.config'?: VoiceInputConfig;
   // ContextGo cloud account cached user profile / ContextGo 云端账号缓存用户信息
@@ -337,7 +339,7 @@ export type ConversationSpaceBinding = {
   browserContextAssetId?: string;
 };
 
-export type SpaceEngine = 'affine' | (string & {});
+export type SpaceEngine = 'vault' | (string & {});
 
 export type BrowserContextAssetKind = 'managed' | 'imported-profile' | 'takeover-link';
 
@@ -396,12 +398,24 @@ export type SpaceCapability =
 
 export type SpaceProviderPermissionRole = 'owner' | 'admin' | 'editor' | 'viewer';
 
-export type SpaceProviderRef = {
+export type SpaceVaultLaunchStrategy = 'obsidian-app' | 'obsidian-uri' | 'system-default';
+
+export type SpaceVaultProviderRef = {
+  kind: 'obsidian-vault';
+  vaultPath: string;
+  vaultName: string;
+  landingNotePath?: string;
+  launchStrategy?: SpaceVaultLaunchStrategy;
+};
+
+export type SpaceLegacyProviderRef = {
   engine: SpaceEngine;
   workspaceId: string;
   homeBoardId?: string;
   homeDocId?: string;
 };
+
+export type SpaceProviderRef = SpaceVaultProviderRef | SpaceLegacyProviderRef;
 
 export type SpaceMember = {
   id: string;
@@ -418,7 +432,7 @@ export type SpacePermissionsPolicy = {
   roleCapabilities?: Record<SpaceMemberRole, SpaceCapability[]>;
   durableMemoryRoles?: SpaceMemberRole[];
   criticalMemoryReviewRoles?: SpaceMemberRole[];
-  providerRoleBindings?: Record<SpaceMemberRole, { affine: SpaceProviderPermissionRole }>;
+  providerRoleBindings?: Record<SpaceMemberRole, Record<string, SpaceProviderPermissionRole>>;
 };
 
 export type ConversationWorkspaceCompat = {

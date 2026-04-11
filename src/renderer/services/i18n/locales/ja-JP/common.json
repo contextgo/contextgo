@@ -62,12 +62,6 @@
   "refresh": "更新",
   "refreshSuccess": "更新しました",
   "processing": "処理中...",
-  "space": "スペース",
-  "mySpace": "マイスペース",
-  "newSpace": "新しいスペース",
-  "switchSpace": "スペースを切り替え",
-  "spaceCreated": "{{name}} を作成しました",
-  "returnToWorkbench": "ワークベンチに戻る",
   "name": "名前",
   "rendererCrash": {
     "title": "このページは描画の完了前にクラッシュしました",

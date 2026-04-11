@@ -30,10 +30,13 @@ const createConversationService = (conversations: TChatConversation[]): IConvers
 });
 
 describe('ExternalSessionDiscoveryService', () => {
+  const importedConversationCallback = vi.fn();
   let tempDir: string;
 
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-external-sessions-'));
+    importedConversationCallback.mockReset();
+    importedConversationCallback.mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
@@ -409,6 +412,25 @@ describe('ExternalSessionDiscoveryService', () => {
     database.close();
     return dbPath;
   };
+
+  it('invokes the imported conversation callback after importing an external session', async () => {
+    await seedCodexStateDb();
+    const service = new ExternalSessionDiscoveryService(createConversationService([]), {
+      codexHomeDir: tempDir,
+      availableBackends: new Set<AcpBackendAll>(['codex']),
+      onConversationImported: importedConversationCallback,
+    });
+
+    const conversation = await service.importSession({ provider: 'codex', sessionId: 'session-1' });
+
+    expect(conversation).toEqual(expect.objectContaining({ id: 'imported-conversation' }));
+    expect(importedConversationCallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'imported-conversation',
+        extra: expect.objectContaining({ workspace: '/tmp/project-alpha' }),
+      })
+    );
+  });
 
   it('lists unmanaged Codex sessions from the latest local state database', async () => {
     await seedCodexStateDb();

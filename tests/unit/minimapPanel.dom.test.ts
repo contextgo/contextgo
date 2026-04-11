@@ -118,6 +118,25 @@ describe('useMinimapPanel', () => {
 
   // -- filteredItems ------------------------------------------------------------
 
+  it('filteredItems should ignore malformed message records and keep valid turns', async () => {
+    const messages = [undefined, ...makeFakeMessages([{ question: 'Healthy turn', answer: 'Still rendered' }])] as const;
+    mocks.getConversationMessages.mockResolvedValue(messages);
+
+    const { result } = renderHook(() => useMinimapPanel('conv-1'));
+
+    await act(async () => {
+      result.current.togglePanel();
+    });
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0].questionRaw).toBe('Healthy turn');
+    expect(result.current.filteredItems).toHaveLength(1);
+  });
+
   it('filteredItems should return all items when searchKeyword is empty', async () => {
     const messages = makeFakeMessages([
       { question: 'Hello world', answer: 'Hi there' },

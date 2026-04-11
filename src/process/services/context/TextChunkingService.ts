@@ -46,10 +46,12 @@ function splitParagraphs(content: string): string[] {
 }
 
 function splitLongParagraph(paragraph: string): string[] {
-  return paragraph
-    .split(/(?<=[.!?。！？])\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const matches = paragraph.match(/[^.!?。！？]+[.!?。！？]?/g);
+  if (!matches) {
+    return [];
+  }
+
+  return matches.map((part) => part.trim()).filter(Boolean);
 }
 
 function hashContent(value: string): string {

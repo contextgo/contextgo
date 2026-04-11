@@ -94,7 +94,7 @@ export async function setupAssistantWorkspace(
 
     for (const skillName of options.enabledSkills) {
       // Skip builtin skills (auto-injected via SkillManager / virtual extension)
-      if (skillName === 'cron') continue;
+      if (skillName === 'schedule') continue;
 
       // Try bundled skills first, then user skills. Both roots support nested skill packs.
       const builtinCandidate = await resolveSkillDirectory(getBuiltinSkillsCopyDir(), skillName, {

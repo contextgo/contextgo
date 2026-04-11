@@ -40,6 +40,21 @@ vi.mock('@arco-design/web-react', () => ({
 import ThoughtDisplay from '@/renderer/components/chat/ThoughtDisplay';
 
 describe('ThoughtDisplay', () => {
+  it('renders a compact processing row when the run is active without a thought subject', () => {
+    render(
+      <ThoughtDisplay
+        running
+        thought={{
+          subject: '',
+          description: '',
+        }}
+      />
+    );
+
+    expect(screen.getByText('conversation.chat.processing')).toBeInTheDocument();
+    expect(screen.getByText('spin')).toBeInTheDocument();
+  });
+
   it('renders markdown formatting in live thought descriptions while running', () => {
     render(
       <ThoughtDisplay

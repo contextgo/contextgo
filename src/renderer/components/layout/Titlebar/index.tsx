@@ -20,18 +20,31 @@ import WindowControls from '../WindowControls';
 import { WORKSPACE_STATE_EVENT, dispatchWorkspaceToggleEvent } from '@renderer/utils/workspace/workspaceEvents';
 import type { WorkspaceStateDetail } from '@renderer/utils/workspace/workspaceEvents';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import { useSelectedSpaceId } from '@/renderer/hooks/context/useSelectedSpace';
 import { isElectronDesktop, isMacOS, isMobileShellWebView } from '@/renderer/utils/platform';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import { iconColors } from '@renderer/styles/colors';
+import { dispatchSettingsNavDrawerEvent } from '@/renderer/pages/settings/components/settingsNavigation';
 import './titlebar.css';
 
 interface TitlebarProps {
   workspaceAvailable: boolean;
   leftPaneWidth: number;
 }
+
+const MOBILE_SHELL_CONVERSATION_TITLE_MAX_LENGTH = 14;
+
+const formatMobileShellConversationTitle = (title: string): string => {
+  const normalizedTitle = title.trim();
+  if (normalizedTitle.length <= MOBILE_SHELL_CONVERSATION_TITLE_MAX_LENGTH) {
+    return normalizedTitle;
+  }
+
+  return `${normalizedTitle.slice(0, MOBILE_SHELL_CONVERSATION_TITLE_MAX_LENGTH - 1).trimEnd()}…`;
+};
 
 const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }) => {
   const { t } = useTranslation();
@@ -52,6 +65,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const isMobileShellRuntime = !isDesktopRuntime && isMobileShellWebView();
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab, openTabs } = useConversationTabs();
+  const selectedSpaceId = useSelectedSpaceId();
 
   // 监听工作空间折叠状态，保持按钮图标一致 / Sync workspace collapsed state for toggle button
   useEffect(() => {
@@ -114,15 +128,19 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const newEntryTooltip = t('conversation.entry.create');
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const isSettingsRoute = location.pathname.startsWith('/settings');
+  const isGuidRoute = location.pathname === '/guid' || location.pathname === '/';
   const showDesktopConversationTabs = !layout?.isMobile && workspaceAvailable && openTabs.length > 0;
   const iconSize = layout?.isMobile ? 24 : 18;
   // 统一在标题栏左侧展示主侧栏开关 / Always expose sidebar toggle on titlebar left side
   const showSiderToggle = Boolean(layout?.setSiderCollapsed) && !(layout?.isMobile && isSettingsRoute);
   const showBackToChatButton = Boolean(layout?.isMobile && isSettingsRoute);
+  const showSettingsNavButton = Boolean(layout?.isMobile && isSettingsRoute);
   const showNewConversationButton = Boolean(layout?.isMobile && workspaceAvailable);
+  const isMobileConversationRoute = Boolean(layout?.isMobile && location.pathname.startsWith('/conversation/'));
   const siderTooltip = layout?.siderCollapsed
     ? t('common.expandMore', { defaultValue: 'Expand sidebar' })
     : t('common.collapse', { defaultValue: 'Collapse sidebar' });
+  const settingsNavTooltip = t('settings.mobileNavigation');
 
   const handleSiderToggle = () => {
     if (!showSiderToggle || !layout?.setSiderCollapsed) return;
@@ -217,8 +235,8 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       return t('settings.skillsHub.title');
     }
 
-    if (path.startsWith('/settings/cron')) {
-      return t('cron.scheduledTasks');
+    if (path.startsWith('/settings/schedule')) {
+      return t('schedule.scheduledTasks');
     }
 
     if (path.startsWith('/settings/tools')) {
@@ -245,6 +263,10 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       return t('settings.activeSessions');
     }
 
+    if (path.startsWith('/settings/system-runs')) {
+      return t('settings.systemRuns');
+    }
+
     if (path.startsWith('/settings/system') || path.startsWith('/settings/display')) {
       return t('settings.system');
     }
@@ -259,10 +281,6 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
 
     if (path.startsWith('/settings')) {
       return t('settings.title');
-    }
-
-    if (path.startsWith('/space/')) {
-      return t('common.space');
     }
 
     return t('login.brand', { defaultValue: 'ContextGo' });
@@ -310,6 +328,11 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       return;
     }
 
+    if (isSettingsRoute) {
+      setMobileCenterOffset(0);
+      return;
+    }
+
     const updateOffset = () => {
       const leftWidth = menuRef.current?.offsetWidth || 0;
       const rightWidth = toolbarRef.current?.offsetWidth || 0;
@@ -331,12 +354,22 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     return () => observer.disconnect();
   }, [
     isMobileShellRuntime,
+    isSettingsRoute,
     layout?.isMobile,
     showBackToChatButton,
     showNewConversationButton,
+    showSettingsNavButton,
     showWorkspaceButton,
     mobileCenterTitle,
   ]);
+
+  const mobileCenterDisplayTitle = useMemo(() => {
+    if (isMobileShellRuntime && isMobileConversationRoute) {
+      return formatMobileShellConversationTitle(mobileCenterTitle);
+    }
+
+    return mobileCenterTitle;
+  }, [isMobileConversationRoute, isMobileShellRuntime, mobileCenterTitle]);
 
   const mobileCenterStyle = layout?.isMobile
     ? ({
@@ -515,6 +548,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
         className={classNames('flex items-center gap-8px app-titlebar bg-2 border-b border-[var(--border-base)]', {
           'app-titlebar--mobile': layout?.isMobile && !isMobileShellRuntime,
           'app-titlebar--mobile-shell': layout?.isMobile && isMobileShellRuntime,
+          'app-titlebar--mobile-home': layout?.isMobile && isGuidRoute,
           'app-titlebar--mobile-conversation': layout?.isMobile && workspaceAvailable,
           'app-titlebar--desktop': isDesktopRuntime,
           'app-titlebar--mac': isMacRuntime,
@@ -547,11 +581,21 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
           )}
         </div>
         <div className='app-titlebar__brand' aria-label={mobileCenterTitle} title={mobileCenterTitle}>
-          {layout?.isMobile && mobileCenterTitle ? (
-            <span className='app-titlebar__brand-text'>{mobileCenterTitle}</span>
+          {layout?.isMobile && mobileCenterDisplayTitle ? (
+            <span className='app-titlebar__brand-text'>{mobileCenterDisplayTitle}</span>
           ) : null}
         </div>
         <div ref={toolbarRef} className='app-titlebar__toolbar'>
+          {showSettingsNavButton && (
+            <button
+              type='button'
+              className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
+              onClick={() => dispatchSettingsNavDrawerEvent({ open: true })}
+              aria-label={settingsNavTooltip}
+            >
+              <MenuUnfold theme='outline' size={iconSize} fill='currentColor' />
+            </button>
+          )}
           {showNewConversationButton && (
             <Dropdown droplist={createEntryMenu} trigger='click' position='bl'>
               <button
@@ -583,6 +627,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       <CreateGroupModal
         visible={groupModalVisible}
         workspace={activeWorkspace}
+        spaceId={selectedSpaceId ?? undefined}
         cliAgents={cliAgents}
         presetAssistants={presetAssistants}
         onCancel={() => setGroupModalVisible(false)}

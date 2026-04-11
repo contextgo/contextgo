@@ -43,9 +43,9 @@ vi.mock('@/common', () => ({
   },
 }));
 
-vi.mock('@/renderer/pages/cron', () => ({
-  CronJobIndicator: () => null,
-  useCronJobsMap: () => ({
+vi.mock('@/renderer/pages/schedule', () => ({
+  ScheduleJobIndicator: () => null,
+  useScheduleJobsMap: () => ({
     getJobStatus: getJobStatusMock,
     markAsRead: markAsReadMock,
   }),

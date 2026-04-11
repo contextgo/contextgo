@@ -62,12 +62,6 @@
   "refresh": "Yenile",
   "refreshSuccess": "Yenilendi",
   "processing": "İşleniyor...",
-  "space": "Alan",
-  "mySpace": "Alanım",
-  "newSpace": "Yeni Alan",
-  "switchSpace": "Alan Değiştir",
-  "spaceCreated": "{{name}} oluşturuldu",
-  "returnToWorkbench": "Çalışma Alanına Dön",
   "name": "Ad",
   "rendererCrash": {
     "title": "Bu sayfa oluşturma tamamlanmadan çöktü",

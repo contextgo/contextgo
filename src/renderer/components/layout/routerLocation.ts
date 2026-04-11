@@ -149,6 +149,13 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
       () => import('@renderer/pages/settings/components/SettingsSider'),
     ],
   },
+  {
+    match: (routePath) => routePath === '/settings/system-runs',
+    loaders: [
+      () => import('@renderer/pages/settings/AgentSettings/SystemRunsPage'),
+      () => import('@renderer/pages/settings/components/SettingsSider'),
+    ],
+  },
 ];
 
 const preloadSettled = new Set<string>();

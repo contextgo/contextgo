@@ -366,6 +366,27 @@ export function initSchema(db: ISqliteDriver): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_cron_jobs_next_run ON cron_jobs(next_run_at) WHERE enabled = 1');
   db.exec('CREATE INDEX IF NOT EXISTS idx_cron_jobs_agent_type ON cron_jobs(agent_type)');
 
+  db.exec(`CREATE TABLE IF NOT EXISTS context_schedules (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    owner TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    scope_kind TEXT NOT NULL,
+    space_id TEXT NOT NULL,
+    conversation_id TEXT,
+    target_kind TEXT NOT NULL,
+    schedule_json TEXT NOT NULL,
+    scope_json TEXT NOT NULL,
+    target_json TEXT NOT NULL,
+    state_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_schedules_enabled ON context_schedules(enabled, updated_at DESC)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_schedules_conversation ON context_schedules(conversation_id, updated_at DESC)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_context_schedules_space ON context_schedules(space_id, updated_at DESC)');
+
   db.exec(`CREATE TABLE IF NOT EXISTS connector_instances (
     id TEXT PRIMARY KEY,
     platform TEXT NOT NULL,

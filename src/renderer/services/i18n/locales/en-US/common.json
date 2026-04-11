@@ -62,12 +62,6 @@
   "refresh": "Refresh",
   "refreshSuccess": "Refreshed",
   "processing": "Processing...",
-  "space": "Space",
-  "mySpace": "My Space",
-  "newSpace": "New Space",
-  "switchSpace": "Switch Space",
-  "spaceCreated": "Created {{name}}",
-  "returnToWorkbench": "Return to Workbench",
   "name": "Name",
   "rendererCrash": {
     "title": "This page crashed before it finished rendering.",

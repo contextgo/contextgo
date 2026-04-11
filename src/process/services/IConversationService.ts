@@ -32,7 +32,7 @@ export type RuntimeConversationCreateParams = CreateConversationParams & {
 export interface MigrateConversationParams {
   conversation: TChatConversation;
   sourceConversationId?: string;
-  migrateCron?: boolean;
+  migrateSchedule?: boolean;
   sourceWorkspace?: string;
 }
 

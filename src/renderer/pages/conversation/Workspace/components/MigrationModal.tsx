@@ -23,7 +23,7 @@ type MigrationModalProps = {
   migrationLoading: boolean;
   handleMigrationConfirm: () => void;
   // Cron migration modal
-  showCronMigrationPrompt: boolean;
+  showScheduleMigrationPrompt: boolean;
   executeMigration: (withCron: boolean) => void;
   // Directory selection modal (WebUI)
   showDirectorySelector: boolean;
@@ -49,7 +49,7 @@ const MigrationModal: React.FC<MigrationModalProps> = ({
   selectedTargetPath,
   migrationLoading,
   handleMigrationConfirm,
-  showCronMigrationPrompt,
+  showScheduleMigrationPrompt,
   executeMigration,
   showDirectorySelector,
   handleSelectDirectoryFromModal,
@@ -124,9 +124,9 @@ const MigrationModal: React.FC<MigrationModalProps> = ({
 
       {/* Cron Migration Modal */}
       <ContextGoModal
-        visible={showCronMigrationPrompt}
+        visible={showScheduleMigrationPrompt}
         onCancel={handleCloseMigrationModal}
-        className='cron-migration-modal'
+        className='schedule-migration-modal'
         header={{
           title: t('conversation.workspace.migration.cronMigrationTitle'),
           showClose: true,

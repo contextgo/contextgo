@@ -28,7 +28,14 @@
       "gemini": "Gemini",
       "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
-    }
+    },
+    "loadingShort": "Taranıyor",
+    "loadFailedShort": "Tarama başarısız",
+    "readyCount": "{{count}} oturum hazır",
+    "readyCountShort": "{{count}} hazır",
+    "emptyStateShort": "Yok",
+    "open": "Aç",
+    "emptyState": "Henüz devralınacak harici Session yok."
   },
   "openclaw": {
     "defaultAgent": "Varsayılan"
@@ -42,5 +49,40 @@
     "statusTesting": "Testing latency...",
     "statusUnreachable": "Unreachable",
     "statusAvailable": "Available"
+  },
+  "vault": {
+    "title": "Space Vault Aç",
+    "description": "Seçili alan için ContextGo tarafından yönetilen Obsidian vaultunu aç.",
+    "affordance": "Vault Aç",
+    "statusReady": "Obsidian veya Finder’da aç",
+    "openSuccess": "Space vault açıldı.",
+    "openFailed": "Space vault açılamadı.",
+    "obsidianMissing": "Obsidian algılanmadı. Vault klasoru ve indirme sayfası sizin için açıldı."
+  },
+  "space": {
+    "loading": "Space'ler yükleniyor...",
+    "empty": "Seçili bir Space yok",
+    "newSpace": "Yeni Space",
+    "selectorTitle": "Space değiştir",
+    "createTitle": "Space Oluştur",
+    "createAction": "Space Oluştur",
+    "namePlaceholder": "Space adı",
+    "descriptionPlaceholder": "Açıklama (isteğe bağlı)",
+    "nameRequired": "Space adı gerekli.",
+    "createSuccess": "{{name}} oluşturuldu.",
+    "createFailed": "Space oluşturulamadı.",
+    "switchSuccess": "{{name}} seçildi.",
+    "switchFailed": "Space değiştirilemedi."
+  },
+  "contextEngine": {
+    "title": "Context Engine",
+    "systemManaged": "Sistem yönetimli",
+    "loading": "Bakım etkinliği yükleniyor...",
+    "loadFailed": "Bakım etkinliği yüklenemedi.",
+    "activeCount": "{{count}} bakım çalışması etkin",
+    "idleCount": "{{count}} bakım Agent izliyor",
+    "empty": "İlk bakım çalışması bekleniyor.",
+    "defaultTask": "Henüz özet yok",
+    "scope": "Kapsam: {{scope}}"
   }
 }

@@ -75,6 +75,10 @@ const toFileUrl = (absPath: string): string => {
   return `file://${encodeURI(normalized)}`;
 };
 
+const hasCustomScheme = (url: string): boolean => {
+  return /^[a-z][a-z0-9+.-]*:/i.test(url) && !/^https?:/i.test(url);
+};
+
 /**
  * Resolve an extension asset URL for the current environment.
  * - In Electron dev / any HTTP(S)-served renderer: keep `contextgo-asset://` because direct `file://` is blocked.
@@ -133,6 +137,11 @@ export const openExternalUrl = async (url: string): Promise<void> => {
     const { ipcBridge } = await import('@/common');
     await ipcBridge.shell.openExternal.invoke(url);
   } else {
+    if (hasCustomScheme(url)) {
+      window.location.href = url;
+      return;
+    }
+
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 };

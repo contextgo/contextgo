@@ -254,6 +254,39 @@ describe('channelBridge', () => {
         ])
       );
     });
+
+    it('does not surface builtin legacy plugin rows as real instances without connector accounts', async () => {
+      vi.mocked(repo.getChannelPlugins).mockReturnValue([
+        {
+          ...makePlugin('weixin'),
+          id: 'weixin_default',
+          name: 'Weixin Bot',
+          enabled: true,
+          status: 'running',
+          credentials: {
+            accountId: 'wx-account',
+            botToken: 'wx-token',
+          },
+        },
+      ]);
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([]);
+
+      const result = await handlers['getPluginStatus']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'weixin_default',
+            type: 'weixin',
+            enabled: false,
+            connected: false,
+            status: 'stopped',
+            hasToken: false,
+          }),
+        ])
+      );
+    });
   });
 
   // --- getAuthorizedUsers ---

@@ -111,7 +111,7 @@ class BaseAgentManager<Data, ConfirmationOption extends any = any>
 
   /**
    * Ensure yoloMode (auto-approve) is enabled for this agent.
-   * Used by CronService to enable yoloMode on existing agents without killing them.
+   * Used by ScheduleService to enable yoloMode on existing agents without killing them.
    * Returns true if yoloMode is already active or was successfully enabled.
    * Subclasses should override to implement agent-specific yoloMode logic.
    */

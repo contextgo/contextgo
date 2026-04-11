@@ -7,6 +7,7 @@
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import {
   buildBuiltinAssistants,
+  buildContextEngineSystemAssistants,
   resolveBuiltinAssistantEnabledHooks,
   resolveBuiltinAssistantEnabledSkills,
 } from '@/common/config/presets/builtinAssistantDefaults';
@@ -79,6 +80,70 @@ describe('builtinAssistantDefaults', () => {
       'en-US': 'Engineering',
       'zh-CN': '研发',
     });
+  });
+
+  it('marks product and system builtin assistants with explicit tiers', () => {
+    const assistants = buildBuiltinAssistants();
+    const workflowPlanner = assistants.find((assistant) => assistant.id === 'builtin-workflow-planner');
+    const pdfToPpt = assistants.find((assistant) => assistant.id === 'builtin-pdf-to-ppt');
+    const systemAssistants = buildContextEngineSystemAssistants();
+    const sessionCompactor = systemAssistants.find(
+      (assistant) => assistant.id === 'system-context-engine-session-compactor'
+    );
+    const projectPromoter = systemAssistants.find(
+      (assistant) => assistant.id === 'system-context-engine-project-promoter'
+    );
+
+    expect(workflowPlanner).toEqual(
+      expect.objectContaining({
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+      })
+    );
+    expect(pdfToPpt).toEqual(
+      expect.objectContaining({
+        builtinTier: 'product',
+        builtinVisibility: 'settings',
+      })
+    );
+    expect(systemAssistants).toHaveLength(5);
+    expect(sessionCompactor).toEqual(
+      expect.objectContaining({
+        builtinTier: 'system',
+        builtinVisibility: 'featured',
+        systemOwner: 'context-engine',
+        systemRole: 'context-engine-session-compactor',
+        executionBoundary: 'space-vault-root',
+        triggerKinds: ['hook', 'lifecycle', 'manual'],
+        promptProfile: expect.objectContaining({
+          role: 'system-maintenance',
+          jobType: 'session_compaction',
+        }),
+        toolPolicy: expect.objectContaining({
+          allowVaultRead: true,
+          allowVaultWrite: true,
+        }),
+        memoryPolicy: expect.objectContaining({
+          mode: 'context-engine-managed',
+        }),
+        delegationPolicy: expect.objectContaining({
+          mode: 'system-builtin',
+        }),
+      })
+    );
+    expect(projectPromoter).toEqual(
+      expect.objectContaining({
+        builtinTier: 'system',
+        builtinVisibility: 'featured',
+        systemOwner: 'context-engine',
+        systemRole: 'context-engine-project-promoter',
+        executionBoundary: 'space-vault-root',
+        triggerKinds: ['derived', 'manual'],
+        promptProfile: expect.objectContaining({
+          jobType: 'project_promotion',
+        }),
+      })
+    );
   });
 
   it('falls back to preset defaults only when enabled hooks are missing', () => {
