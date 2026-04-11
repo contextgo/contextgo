@@ -182,6 +182,9 @@ for (const locale of publicContentLocales) {
   await Promise.all([
     fs.rm(docsLocaleDir, { recursive: true, force: true }),
     fs.rm(blogLocaleDir, { recursive: true, force: true }),
+  ]);
+
+  await Promise.all([
     writeJson(path.join(docsLocaleDir, 'index.json'), docsIndexPayload),
     writeJson(path.join(blogLocaleDir, 'index.json'), blogIndexPayload),
   ]);
