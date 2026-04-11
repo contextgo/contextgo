@@ -51,6 +51,21 @@ Three process types — never mix their APIs:
 Cross-process communication must go through the IPC bridge (`src/preload.ts`).
 See [docs/tech/architecture.md](docs/tech/architecture.md) for details.
 
+### Context Engine Index
+
+When changing the Context Engine, session/project/space memory modeling, vault sync, context jobs, event-driven context flows, or connector digestion, read these first:
+
+- [docs/tech/context-engine-event-architecture.md](docs/tech/context-engine-event-architecture.md)
+- [packages/context-engine/docs/domain-model.md](packages/context-engine/docs/domain-model.md)
+- [packages/context-engine/docs/reference-landscape.md](packages/context-engine/docs/reference-landscape.md)
+
+Current implementation anchor points:
+
+- `src/process/services/context/ContextRuntimeService.ts`
+- `src/process/services/context/ContextJobOrchestrator.ts`
+- `src/process/services/context/contextDomain.ts`
+- `src/process/services/space/SpaceVaultContextSyncService.ts`
+
 ### Space Product Boundary
 
 When changing `Space`, canvas/doc editing, collaboration surfaces, members/roles, or context governance:

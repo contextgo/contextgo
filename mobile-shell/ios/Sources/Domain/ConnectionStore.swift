@@ -32,15 +32,6 @@ final class ConnectionStore: ObservableObject {
     awaitingAuthenticationHandoff = false
   }
 
-  func connectToOfficialRemote(persist: Bool = true) {
-    guard let resolvedURL = Self.officialRemoteDevicesURL else {
-      return
-    }
-
-    landingRoute = .remote
-    applyTarget(resolvedURL, persist: persist)
-  }
-
   func connectToOfficialDevice(deviceID: String, persist: Bool = true) {
     guard let resolvedURL = Self.officialDeviceURL(for: deviceID) else {
       return
@@ -335,10 +326,6 @@ struct OfficialHomeSnapshot {
 
   var liveSessionCount: Int {
     devices.filter(\.isLiveSession).count
-  }
-
-  var previewDevices: [OfficialRemoteDevice] {
-    Array(devices.prefix(3))
   }
 }
 

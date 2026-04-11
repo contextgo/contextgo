@@ -393,7 +393,7 @@ const HooksManagement: React.FC = () => {
                 <p className={styles.pageDescription}>
                   {t('settings.hooksPageDescription', {
                     defaultValue:
-                      'Manage system-provided and imported hooks here. The builtin library organizes reusable patterns for prompt clarity, safety, quality gates, session continuity, and operator-friendly delivery. Hooks currently run through prompt transformation before the user prompt is sent.',
+                      'Manage system-provided and imported hooks here. The builtin library organizes reusable patterns for prompt clarity, safety, quality gates, session continuity, and operator-friendly delivery. Runtime support is currently available for prompt-transform hooks on before_user_prompt and native-projection hooks on after_response.',
                   })}
                 </p>
               </div>

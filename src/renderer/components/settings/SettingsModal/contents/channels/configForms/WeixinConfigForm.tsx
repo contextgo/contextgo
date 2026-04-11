@@ -38,6 +38,9 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
   const [pendingPairings, setPendingPairings] = useState<IChannelPairingRequest[]>([]);
   const [authorizedTargets, setAuthorizedTargets] = useState<IChannelAuthorizedTarget[]>([]);
 
+  const hasAuthorizedTargets = authorizedTargets.length > 0;
+  const hasSignedInWeixin = loginState === 'connected' || Boolean(pluginStatus?.hasToken);
+
   const getIdentityLabel = useCallback(
     (identity: { displayName?: string; platformUserId?: string; platformType?: string }) => {
       const displayName = identity.displayName?.trim();
@@ -271,7 +274,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
   };
 
   const renderLoginArea = () => {
-    if (loginState === 'connected' || pluginStatus?.hasToken) {
+    if (hasAuthorizedTargets) {
       return (
         <div className={formLayoutStyles.inlineRow}>
           <CheckOne theme='filled' size={16} className='text-green-500' />
@@ -279,6 +282,15 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
           {pluginStatus?.botUsername ? (
             <span className='text-12px text-t-tertiary'>({pluginStatus.botUsername})</span>
           ) : null}
+        </div>
+      );
+    }
+
+    if (hasSignedInWeixin) {
+      return (
+        <div className={formLayoutStyles.inlineRow}>
+          <CheckOne theme='filled' size={16} className='text-green-500' />
+          <span className='text-14px text-t-primary'>{t('settings.weixin.pluginEnabled', '微信渠道已连接')}</span>
         </div>
       );
     }
@@ -345,7 +357,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
         {renderLoginArea()}
       </FormPreferenceRow>
 
-      {pluginStatus?.connected && authorizedTargets.length === 0 ? (
+      {hasSignedInWeixin && !hasAuthorizedTargets ? (
         <div className='bg-blue-50 dark:bg-blue-900/20 rd-12px p-16px border border-blue-200 dark:border-blue-800'>
           <FormSectionHeader title={t('settings.assistant.nextSteps', 'Next Steps')} />
           <div className='text-14px text-t-secondary space-y-8px'>

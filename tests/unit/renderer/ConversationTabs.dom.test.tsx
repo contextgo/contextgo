@@ -22,6 +22,7 @@ const openclawResponseStreamOnMock = vi.fn(() => vi.fn());
 const openclawGetRuntimeInvokeMock = vi.fn();
 const getModelConfigInvokeMock = vi.fn();
 const messageErrorMock = vi.fn();
+let isMobileShellWebViewMock = false;
 let acpResponseStreamHandler: ((message: { conversation_id?: string; type: string; data?: unknown }) => void) | null =
   null;
 const chatConversationMock = vi.fn(({ conversation }: { conversation: { name: string } }) => (
@@ -104,6 +105,10 @@ vi.mock('@/renderer/utils/ui/siderTooltip', () => ({
 
 vi.mock('@/renderer/utils/workspace/workspaceHistory', () => ({
   updateWorkspaceTime: vi.fn(),
+}));
+
+vi.mock('@/renderer/utils/platform', () => ({
+  isMobileShellWebView: () => isMobileShellWebViewMock,
 }));
 
 vi.mock('@/renderer/pages/guid/constants', () => ({
@@ -248,6 +253,7 @@ import GeminiModelSelector from '@/renderer/pages/conversation/platforms/gemini/
 describe('ConversationTabs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isMobileShellWebViewMock = false;
     navigateMock.mockReset();
     useParamsMock.mockReturnValue({ id: 'conv-1' });
     useSWRMock.mockImplementation((key: unknown) => {
@@ -392,10 +398,57 @@ describe('ConversationTabs', () => {
     expect(root?.className).toContain('py-4px');
   });
 
+  it('uses an embedded mobile wrapper when tabs share the row with chat controls', () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: true });
+
+    const { container } = render(<ConversationTabs showHeaderActions={false} mobileEmbedded />);
+    const root = container.firstElementChild;
+    const inner = root?.firstElementChild;
+
+    expect(root?.className).toContain('flex-1');
+    expect(root?.className).toContain('bg-transparent');
+    expect(root?.className).toContain('py-0');
+    expect(inner?.className).toContain('h-34px');
+    expect(root).toHaveStyle({ background: 'transparent' });
+  });
+
+  it('uses compact fixed-width tabs inside the mobile shell', () => {
+    isMobileShellWebViewMock = true;
+    useLayoutContextMock.mockReturnValue({ isMobile: true });
+
+    const { container } = render(<ConversationTabs showHeaderActions={false} />);
+    const tab = container.querySelector('[aria-label="OpenClaw Session"]') as HTMLDivElement | null;
+
+    expect(tab?.dataset.density).toBe('compact');
+    expect(tab?.style.width).toBe('88px');
+  });
+
+  it('keeps mobile shell density compact until the header becomes extremely cramped', () => {
+    expect(
+      resolveConversationTabDensity({
+        isMobile: true,
+        isMobileShell: true,
+        openTabsCount: 4,
+        containerWidth: 0,
+        showHeaderActions: false,
+      })
+    ).toBe('compact');
+    expect(
+      resolveConversationTabDensity({
+        isMobile: true,
+        isMobileShell: true,
+        openTabsCount: 5,
+        containerWidth: 180,
+        showHeaderActions: false,
+      })
+    ).toBe('icon');
+  });
+
   it('switches to icon density when desktop tabs become crowded', () => {
     expect(
       resolveConversationTabDensity({
         isMobile: false,
+        isMobileShell: false,
         openTabsCount: 12,
         containerWidth: 0,
         showHeaderActions: true,
@@ -407,6 +460,7 @@ describe('ConversationTabs', () => {
     expect(
       resolveConversationTabDensity({
         isMobile: false,
+        isMobileShell: false,
         openTabsCount: 7,
         containerWidth: 220,
         showHeaderActions: false,
@@ -415,6 +469,7 @@ describe('ConversationTabs', () => {
     expect(
       resolveConversationTabDensity({
         isMobile: false,
+        isMobileShell: false,
         openTabsCount: 7,
         containerWidth: 920,
         showHeaderActions: false,

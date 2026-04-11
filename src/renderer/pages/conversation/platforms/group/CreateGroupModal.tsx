@@ -175,11 +175,12 @@ const ParticipantAvatar: React.FC<{ participant: ParticipantOption }> = ({ parti
 const CreateGroupModal: React.FC<{
   visible: boolean;
   workspace: string;
+  spaceId?: string;
   cliAgents: AvailableAgent[];
   presetAssistants: AvailableAgent[];
   onCancel: () => void;
   onCreated: (conversation: TChatConversation) => void;
-}> = ({ visible, workspace, cliAgents, presetAssistants, onCancel, onCreated }) => {
+}> = ({ visible, workspace, spaceId, cliAgents, presetAssistants, onCancel, onCreated }) => {
   const { t, i18n } = useTranslation();
   const { assistants, localeKey } = useAssistantList();
   const workflowTemplates = useMemo(() => listWorkflowGroupTemplateDefinitions(), []);
@@ -371,6 +372,7 @@ const CreateGroupModal: React.FC<{
       try {
         const params = await buildWorkflowGroupParams({
           name: groupName.trim() || t('conversation.group.defaultName'),
+          spaceId,
           workspace: selectedWorkspace.trim() || undefined,
           language: i18n.language,
           template: workflowTemplate,
@@ -401,6 +403,7 @@ const CreateGroupModal: React.FC<{
     try {
       const params = await buildDiscussionGroupParams({
         name: groupName.trim() || t('conversation.group.defaultName'),
+        spaceId,
         workspace: selectedWorkspace.trim() || undefined,
         language: i18n.language,
         mode,

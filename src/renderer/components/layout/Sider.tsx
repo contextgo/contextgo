@@ -1,53 +1,48 @@
 import { ipcBridge } from '@/common';
-import type { TSpace } from '@/common/config/storage';
+import type { SpaceProviderRef, SpaceVaultProviderRef } from '@/common/config/storage';
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { changeLanguage } from '@/renderer/services/i18n';
 import type { Theme } from '@/renderer/hooks/system/useTheme';
-import { SPACE_SHELL_VIEWS, resolveSpaceShellView } from '@renderer/pages/space/constants';
 import {
-  BookOpen,
   Computer,
   ConnectionPoint,
   Down,
   Earth,
-  Left,
   LinkCloud,
   Lightning,
+  FolderOpen,
   Moon,
-  NotebookAndPen,
-  Peoples,
   Plus,
   Puzzle,
-  Radar,
+  Right,
   Robot,
   RobotOne,
-  Right,
   SettingTwo,
   Sun,
-  TableReport,
   Theme as ThemeIcon,
-  Time,
 } from '@icon-park/react';
-import { Dropdown, Menu, Message } from '@arco-design/web-react';
+import { Button, Dropdown, Input, Menu, Message } from '@arco-design/web-react';
 import classNames from 'classnames';
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
+import InfermeshLogo from '@renderer/assets/logos/brand/infermesh.png';
+import InfermeshMenuLogo from '@renderer/assets/logos/brand/infermesh-menu.png';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
-import type { SpaceShellView } from '@renderer/pages/space/types';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
+import { useSelectedSpace } from '@renderer/hooks/context/useSelectedSpace';
 import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
-import { isElectronDesktop, isMacOS } from '@renderer/utils/platform';
-import { openExternalUrl } from '@renderer/utils/platform';
+import { isElectronDesktop, isMacOS, isMobileShellWebView, openExternalUrl } from '@renderer/utils/platform';
 import { preloadRoutePath } from './routerLocation';
+import { ContextGoModal } from '../base';
 
 const WorkspaceGroupedHistory = React.lazy(() => import('@renderer/pages/conversation/GroupedHistory'));
 const SettingsSider = React.lazy(() => import('@renderer/pages/settings/components/SettingsSider'));
@@ -66,18 +61,6 @@ const LANGUAGE_OPTIONS = [
   { value: 'en-US', label: 'English' },
 ] as const;
 
-const MAX_RECENT_SPACES = 5;
-
-const SPACE_VIEW_ICON_MAP = {
-  overview: TableReport,
-  docs: BookOpen,
-  canvas: NotebookAndPen,
-  context: Radar,
-  runs: Time,
-  members: Peoples,
-  settings: SettingTwo,
-} as const;
-
 const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: string) => (
   <div className='sider-user-menu__row'>
     <span className='sider-user-menu__icon'>{icon}</span>
@@ -86,16 +69,26 @@ const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: strin
   </div>
 );
 
-const buildOfficialRemoteUrl = (authBaseUrl?: string): string => {
+const buildOfficialDeviceListUrl = (authBaseUrl?: string): string => {
   const normalizedBaseUrl = authBaseUrl?.trim().replace(/\/+$/, '') || 'https://remote.contextgo.io';
   return `${normalizedBaseUrl}/remote/devices`;
+};
+
+const isObsidianVaultProviderRef = (providerRef?: SpaceProviderRef): providerRef is SpaceVaultProviderRef => {
+  return providerRef != null && 'kind' in providerRef && providerRef.kind === 'obsidian-vault';
+};
+
+const buildObsidianVaultUri = (providerRef: SpaceVaultProviderRef): string => {
+  const encodedVaultName = encodeURIComponent(providerRef.vaultName);
+  const encodedFile = providerRef.landingNotePath ? `&file=${encodeURIComponent(providerRef.landingNotePath)}` : '';
+  return `obsidian://open?vault=${encodedVaultName}${encodedFile}`;
 };
 
 const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const location = useLocation();
-  const { pathname, search } = location;
+  const { pathname } = location;
 
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useThemeContext();
@@ -103,28 +96,34 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { closePreview } = usePreviewContext();
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
+  const [spaceModalVisible, setSpaceModalVisible] = useState(false);
+  const [newSpaceName, setNewSpaceName] = useState('');
+  const [newSpaceDescription, setNewSpaceDescription] = useState('');
   const [desktopUsername, setDesktopUsername] = useState('');
   const [userMenuVisible, setUserMenuVisible] = useState(false);
-  const [spaceMenuVisible, setSpaceMenuVisible] = useState(false);
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
+  const [openingSpaceVault, setOpeningSpaceVault] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<import('@/common/types/cloud').CloudStatus | null>(null);
   const [cloudLoading, setCloudLoading] = useState(false);
   const [authLoadingProvider, setAuthLoadingProvider] = useState<
     import('@/common/types/cloud').CloudAuthProviderId | null
   >(null);
   const [cloudActionLoading, setCloudActionLoading] = useState<'infermesh' | 'logout' | null>(null);
-  const [spaces, setSpaces] = useState<TSpace[]>([]);
-  const [defaultSpace, setDefaultSpace] = useState<TSpace | null>(null);
   const isSettings = pathname.startsWith('/settings');
   const isConversationRoute = pathname.startsWith('/conversation/');
-  const spaceRouteMatch = pathname.match(/^\/space\/([^/]+)/);
-  const activeSpaceRouteId = spaceRouteMatch?.[1];
-  const isSpaceRoute = Boolean(activeSpaceRouteId);
   const isDesktopRuntime = isElectronDesktop();
   const showDesktopChromeOverlayInset = !isMobile && !isConversationRoute && (!isDesktopRuntime || isMacOS());
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab } = useConversationTabs();
   const { user } = useAuth();
+  const {
+    spaces,
+    selectedSpace,
+    isLoading: spacesLoading,
+    isCreating: creatingSpace,
+    selectSpace,
+    createSpace,
+  } = useSelectedSpace();
 
   const refreshCloudStatus = async (): Promise<import('@/common/types/cloud').CloudStatus | null> => {
     setCloudLoading(true);
@@ -141,19 +140,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     }
 
     return null;
-  };
-
-  const refreshSpaces = async (): Promise<void> => {
-    try {
-      const [listedSpaces, ensuredDefaultSpace] = await Promise.all([
-        ipcBridge.space.list.invoke(),
-        ipcBridge.space.ensureDefault.invoke(),
-      ]);
-      setSpaces(listedSpaces);
-      setDefaultSpace(ensuredDefaultSpace);
-    } catch (error) {
-      console.error('[Sider] Failed to load spaces:', error);
-    }
   };
 
   const handleNavigate = (target: string) => {
@@ -203,6 +189,97 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const handleOpenSettings = () => {
     setUserMenuVisible(false);
     handleNavigate('/settings/system');
+  };
+
+  const handleOpenSpaceVault = async () => {
+    if (openingSpaceVault) {
+      return;
+    }
+
+    setOpeningSpaceVault(true);
+    try {
+      const targetSpace = selectedSpace ?? (await ipcBridge.space.ensureDefault.invoke());
+      if (!selectedSpace?.id) {
+        await selectSpace(targetSpace.id);
+      }
+
+      if (isMobileShellWebView() && isObsidianVaultProviderRef(targetSpace.providerRef)) {
+        await openExternalUrl(buildObsidianVaultUri(targetSpace.providerRef));
+        return;
+      }
+
+      const result = await ipcBridge.space.openVault.invoke({ id: targetSpace.id });
+      if (!result.obsidianInstalled) {
+        await openExternalUrl('https://obsidian.md/download');
+        Message.warning(t('guid.vault.obsidianMissing'));
+        return;
+      }
+      Message.success(t('guid.vault.openSuccess'));
+    } catch (error) {
+      console.error('[Sider] Failed to open space vault:', error);
+      Message.error(error instanceof Error ? error.message : t('guid.vault.openFailed'));
+    } finally {
+      setOpeningSpaceVault(false);
+    }
+  };
+
+  const handleSwitchSpace = async (spaceId: string) => {
+    const nextSpace = spaces.find((space) => space.id === spaceId);
+    if (!nextSpace) {
+      return;
+    }
+
+    try {
+      await selectSpace(spaceId);
+      Message.success(
+        t('guid.space.switchSuccess', {
+          name: nextSpace.name,
+        })
+      );
+    } catch (error) {
+      console.error('[Sider] Failed to switch space:', error);
+      Message.error(error instanceof Error ? error.message : t('guid.space.switchFailed'));
+    }
+  };
+
+  const handleOpenCreateSpaceModal = () => {
+    setSpaceModalVisible(true);
+  };
+
+  const handleCloseCreateSpaceModal = () => {
+    if (creatingSpace) {
+      return;
+    }
+
+    setSpaceModalVisible(false);
+    setNewSpaceName('');
+    setNewSpaceDescription('');
+  };
+
+  const handleCreateSpace = async () => {
+    const trimmedName = newSpaceName.trim();
+    const trimmedDescription = newSpaceDescription.trim();
+
+    if (!trimmedName) {
+      Message.warning(t('guid.space.nameRequired'));
+      return;
+    }
+
+    try {
+      const createdSpace = await createSpace({
+        name: trimmedName,
+        description: trimmedDescription || undefined,
+      });
+      Message.success(
+        t('guid.space.createSuccess', {
+          name: createdSpace.name,
+        })
+      );
+      handleCloseCreateSpaceModal();
+    } catch (error) {
+      console.error('[Sider] Failed to create space:', error);
+      Message.error(error instanceof Error ? error.message : t('guid.space.createFailed'));
+    }
   };
 
   const handleToggleDevTools = () => {
@@ -273,7 +350,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
 
   useEffect(() => {
     setUserMenuVisible(false);
-    setSpaceMenuVisible(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -290,11 +366,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    void refreshSpaces();
-  }, []);
-
   const handleCloudLogin = async (provider: import('@/common/types/cloud').CloudAuthProviderId) => {
     setAuthLoadingProvider(provider);
     try {
@@ -365,7 +436,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
 
   const handleOpenCloudPortal = async () => {
     try {
-      await openExternalUrl(buildOfficialRemoteUrl(cloudStatus?.authBaseUrl));
+      await openExternalUrl(buildOfficialDeviceListUrl(cloudStatus?.authBaseUrl));
     } catch (error) {
       console.error('[Sider] Failed to open cloud portal:', error);
       Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
@@ -381,27 +452,10 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   };
   const tooltipEnabled = collapsed && !isMobile;
   const activeWorkspace = activeTab?.workspace || '';
-  const activeConversationSpaceId =
-    typeof activeTab?.extra?.spaceId === 'string' && activeTab.extra.spaceId.trim().length > 0
-      ? activeTab.extra.spaceId
-      : undefined;
-  const currentSpaceId = activeSpaceRouteId || activeConversationSpaceId || defaultSpace?.id || spaces[0]?.id;
-  const currentSpace =
-    spaces.find((space) => space.id === currentSpaceId) ||
-    (defaultSpace?.id === currentSpaceId ? defaultSpace : null) ||
-    defaultSpace ||
-    spaces[0] ||
-    null;
-  const recentSpaces = useMemo(() => {
-    const ordered = currentSpace ? [currentSpace, ...spaces.filter((space) => space.id !== currentSpace.id)] : spaces;
-    return ordered.slice(0, MAX_RECENT_SPACES);
-  }, [currentSpace, spaces]);
-  const activeSpaceView = resolveSpaceShellView(new URLSearchParams(search).get('view'));
   const actionRowClassName = classNames(
     'sider-entry-row flex w-full min-w-0 items-center gap-10px rounded-10px px-12px py-9px text-left transition-colors',
     isMobile && 'sider-action-btn-mobile'
   );
-  const actionRowActiveClassName = 'sider-entry-row--active';
   const currentLanguageLabel =
     LANGUAGE_OPTIONS.find((option) => option.value === i18n.language)?.label ||
     LANGUAGE_OPTIONS.find((option) => option.value === 'en-US')?.label ||
@@ -419,7 +473,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     : cloudStatus?.user?.username
       ? `@${cloudStatus.user.username}`
       : t('settings.cloud.notConnected');
-  const showSpaceSwitcherCard = false;
   const userSecondaryText = useMemo(() => {
     if (user?.email) {
       return user.email;
@@ -433,16 +486,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   }, [currentLanguageLabel, currentThemeLabel, user?.email, user?.username]);
   const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
   const cloudInitial = cloudUserDisplayName.trim().charAt(0).toUpperCase() || 'C';
-  const currentSpaceName = currentSpace?.name || t('common.mySpace');
-  const currentSpaceSecondaryText = currentSpace?.description || t('common.space');
-  const currentSpaceInitial = currentSpaceName.trim().charAt(0).toUpperCase() || 'S';
   const createEntryDropdownTriggerProps = {
-    autoAlignPopupWidth: true,
-    autoFitPosition: true,
-    className: 'sider-create-menu-popup',
-    duration: 0,
-  };
-  const spaceMenuDropdownTriggerProps = {
     autoAlignPopupWidth: true,
     autoFitPosition: true,
     className: 'sider-create-menu-popup',
@@ -466,6 +510,74 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       overflowY: 'auto' as const,
     },
   };
+  const spaceMenuTriggerProps = {
+    autoFitPosition: true,
+    className: 'sider-user-submenu-popup',
+    duration: 0,
+    popupStyle: {
+      maxHeight: 'min(360px, calc(100vh - 24px))',
+      overflowY: 'auto' as const,
+    },
+  };
+  const selectedSpaceName = selectedSpace?.name || (spacesLoading ? t('guid.space.loading') : t('guid.space.empty'));
+  const selectedSpaceMeta = spacesLoading
+    ? t('guid.space.loading')
+    : selectedSpace
+      ? t('guid.space.selectorTitle')
+      : t('guid.space.empty');
+  const spaceMenu = (
+    <Menu
+      className='sider-user-menu'
+      onClickMenuItem={(key) => {
+        if (key === 'space:open-vault') {
+          void handleOpenSpaceVault();
+          return;
+        }
+
+        if (key === 'space:create') {
+          handleOpenCreateSpaceModal();
+          return;
+        }
+
+        if (typeof key === 'string' && key.startsWith('space:')) {
+          void handleSwitchSpace(key.slice('space:'.length));
+        }
+      }}
+    >
+      <Menu.Item key='space:open-vault'>
+        <div className='sider-user-menu__row'>
+          <span className='sider-user-menu__icon'>
+            <FolderOpen theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />
+          </span>
+          <span className='sider-user-menu__row-text'>
+            {openingSpaceVault ? t('common.processing') : t('guid.vault.affordance')}
+          </span>
+        </div>
+      </Menu.Item>
+      {spaces.map((space) => (
+        <Menu.Item
+          key={`space:${space.id}`}
+          className={classNames(space.id === selectedSpace?.id && 'sider-user-menu__item--active')}
+        >
+          <div className='sider-user-menu__row'>
+            <span className='sider-user-menu__icon'>
+              <FolderOpen theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />
+            </span>
+            <span className='sider-user-menu__row-text'>{space.name}</span>
+            {space.isDefault ? <span className='sider-user-menu__row-value'>{t('common.default')}</span> : null}
+          </div>
+        </Menu.Item>
+      ))}
+      <Menu.Item key='space:create'>
+        <div className='sider-user-menu__row'>
+          <span className='sider-user-menu__icon'>
+            <Plus theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />
+          </span>
+          <span className='sider-user-menu__row-text'>{t('guid.space.newSpace')}</span>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
   const createEntryMenu = (
     <Menu
       className='sider-create-menu'
@@ -496,89 +608,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           <span className='min-w-0 truncate'>{t('conversation.entry.group')}</span>
         </div>
       </Menu.Item>
-    </Menu>
-  );
-  const handleCreateSpace = async () => {
-    setSpaceMenuVisible(false);
-    try {
-      const suffix = spaces.length > 0 ? ` ${spaces.length + 1}` : '';
-      const createdSpace = await ipcBridge.space.create.invoke({
-        name: `${t('common.newSpace')}${suffix}`,
-      });
-      await refreshSpaces();
-      Message.success(t('common.spaceCreated', { name: createdSpace.name }));
-      handleNavigate(`/space/${createdSpace.id}?view=canvas`);
-    } catch (error) {
-      console.error('[Sider] Failed to create space:', error);
-      Message.error(error instanceof Error ? error.message : t('common.failed'));
-    }
-  };
-  const handleOpenSpace = (spaceId?: string) => {
-    if (!spaceId) {
-      return;
-    }
-    setSpaceMenuVisible(false);
-    handleNavigate(`/space/${spaceId}?view=canvas`);
-  };
-  const handleOpenSpaceView = (view: SpaceShellView) => {
-    const targetSpaceId = activeSpaceRouteId || currentSpaceId;
-    if (!targetSpaceId) {
-      return;
-    }
-    handleNavigate(`/space/${targetSpaceId}?view=${view}`);
-  };
-  const spaceMenu = (
-    <Menu
-      className='sider-create-menu'
-      onClickMenuItem={(key) => {
-        if (key === 'enter-current') {
-          handleOpenSpace(currentSpaceId);
-          return;
-        }
-
-        if (key === 'create-space') {
-          void handleCreateSpace();
-          return;
-        }
-
-        if (typeof key === 'string' && key.startsWith('space:')) {
-          handleOpenSpace(key.slice('space:'.length));
-        }
-      }}
-    >
-      <Menu.Item key='enter-current'>
-        {renderUserMenuLabel(
-          <Right theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
-          t('space.sidebar.enterCurrent')
-        )}
-      </Menu.Item>
-      <Menu.Item key='create-space'>
-        {renderUserMenuLabel(
-          <Plus theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
-          t('common.newSpace')
-        )}
-      </Menu.Item>
-      {recentSpaces.length > 0 ? (
-        <Menu.Item key='recent-header' disabled>
-          <div className='sider-user-menu__row'>
-            <span className='sider-user-menu__row-text'>{t('space.sidebar.recentSpaces')}</span>
-          </div>
-        </Menu.Item>
-      ) : null}
-      {recentSpaces.map((space) => (
-        <Menu.Item
-          key={`space:${space.id}`}
-          className={classNames(space.id === currentSpaceId && 'sider-user-menu__item--active')}
-        >
-          {renderUserMenuLabel(
-            <span className='sider-user-menu__icon'>
-              <span className='sider-space-view-marker'>{space.name.trim().charAt(0).toUpperCase() || 'S'}</span>
-            </span>,
-            space.name,
-            space.isDefault ? t('common.default') : undefined
-          )}
-        </Menu.Item>
-      ))}
     </Menu>
   );
   const userMenu = (
@@ -672,7 +701,12 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         <>
           <Menu.Item key='cloud:infermesh'>
             {renderUserMenuLabel(
-              <Right theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
+              <img
+                src={InfermeshMenuLogo}
+                alt=''
+                aria-hidden='true'
+                className='h-16px w-16px shrink-0 rounded-6px object-contain'
+              />,
               t('settings.cloud.openInfermesh')
             )}
           </Menu.Item>
@@ -693,7 +727,12 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           </Menu.Item>
           <Menu.Item key='cloud:infermesh'>
             {renderUserMenuLabel(
-              <Right theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
+              <img
+                src={InfermeshMenuLogo}
+                alt=''
+                aria-hidden='true'
+                className='h-16px w-16px shrink-0 rounded-6px object-contain'
+              />,
               cloudActionLoading === 'infermesh' ? t('common.processing') : t('settings.cloud.openInfermesh')
             )}
           </Menu.Item>
@@ -787,39 +826,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               <SettingsSider collapsed={collapsed} tooltipEnabled={tooltipEnabled}></SettingsSider>
             </div>
           </Suspense>
-        ) : isSpaceRoute ? (
-          <div
-            className={classNames(
-              'size-full w-full min-w-0 flex flex-col sider-main-section',
-              showDesktopChromeOverlayInset && 'sider-main-section--desktop-chrome-offset'
-            )}
-          >
-            <div className='sider-space-nav-head'>
-              <div className='sider-space-nav-inline'>
-                <span className='sider-space-nav-title'>{currentSpaceName}</span>
-                <span className='sider-space-nav-kicker'>{t('common.space')}</span>
-              </div>
-            </div>
-            <div className='flex flex-col gap-6px'>
-              {SPACE_SHELL_VIEWS.map((view) => {
-                const ViewIcon = SPACE_VIEW_ICON_MAP[view.key];
-
-                return (
-                  <button
-                    key={view.key}
-                    type='button'
-                    className={classNames(actionRowClassName, activeSpaceView === view.key && actionRowActiveClassName)}
-                    onClick={() => handleOpenSpaceView(view.key)}
-                  >
-                    <span className='sider-space-view-marker'>
-                      <ViewIcon theme='outline' size='12' fill='currentColor' className='app-icon' />
-                    </span>
-                    <span className='min-w-0 truncate text-14px font-600 text-t-primary'>{t(view.labelKey)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         ) : (
           <div
             className={classNames(
@@ -860,7 +866,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               />
               <button
                 type='button'
-                className={classNames(actionRowClassName, pathname === '/hooks' && actionRowActiveClassName)}
+                className={classNames(actionRowClassName, pathname === '/hooks' && 'sider-entry-row--active')}
                 onClick={() => handleNavigate('/hooks')}
                 onMouseEnter={() => handlePreloadRoute('/hooks')}
                 onFocus={() => handlePreloadRoute('/hooks')}
@@ -879,7 +885,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 type='button'
                 className={classNames(
                   actionRowClassName,
-                  pathname.startsWith('/connectors') && actionRowActiveClassName
+                  pathname.startsWith('/connectors') && 'sider-entry-row--active'
                 )}
                 onClick={() => handleNavigate('/connectors')}
                 onMouseEnter={() => handlePreloadRoute('/connectors')}
@@ -897,7 +903,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               </button>
               <button
                 type='button'
-                className={classNames(actionRowClassName, pathname === '/skills-hub' && actionRowActiveClassName)}
+                className={classNames(actionRowClassName, pathname === '/skills-hub' && 'sider-entry-row--active')}
                 onClick={() => handleNavigate('/skills-hub')}
                 onMouseEnter={() => handlePreloadRoute('/skills-hub')}
                 onFocus={() => handlePreloadRoute('/skills-hub')}
@@ -914,7 +920,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               </button>
               <button
                 type='button'
-                className={classNames(actionRowClassName, pathname === '/agents' && actionRowActiveClassName)}
+                className={classNames(actionRowClassName, pathname === '/agents' && 'sider-entry-row--active')}
                 onClick={() => handleNavigate('/agents')}
                 onMouseEnter={() => handlePreloadRoute('/agents')}
                 onFocus={() => handlePreloadRoute('/agents')}
@@ -934,6 +940,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
             <CreateGroupModal
               visible={groupModalVisible}
               workspace={activeWorkspace}
+              spaceId={selectedSpace?.id}
               cliAgents={cliAgents}
               presetAssistants={presetAssistants}
               onCancel={() => setGroupModalVisible(false)}
@@ -951,57 +958,86 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         )}
       </div>
       <div className='sider-footer mt-auto shrink-0 pt-10px'>
-        {showSpaceSwitcherCard ? (
-          <div className='sider-space-switcher-wrap mb-8px'>
-            {isSpaceRoute ? (
-              <button
-                type='button'
-                className={classNames('sider-space-trigger', isMobile && 'sider-footer-btn-mobile')}
-                onClick={() => handleNavigate('/guid')}
-              >
-                <span className='sider-space-trigger__avatar'>
-                  <Left theme='outline' size='16' fill='#fff' className='app-icon' />
-                </span>
-                <span className='min-w-0 flex-1 text-left'>
-                  <span className='block truncate text-14px font-600 text-t-primary'>
-                    {t('common.returnToWorkbench')}
-                  </span>
-                  <span className='block truncate text-12px text-t-secondary'>{currentSpaceName}</span>
-                </span>
-              </button>
-            ) : (
-              <Dropdown
-                droplist={spaceMenu}
-                trigger='click'
-                position='tl'
-                popupVisible={spaceMenuVisible}
-                onVisibleChange={setSpaceMenuVisible}
-                triggerProps={spaceMenuDropdownTriggerProps}
-              >
-                <button
-                  type='button'
-                  className={classNames('sider-space-trigger', isMobile && 'sider-footer-btn-mobile')}
-                  aria-expanded={spaceMenuVisible}
-                >
-                  <span className='sider-space-trigger__avatar'>{currentSpaceInitial}</span>
-                  <span className='min-w-0 flex-1 text-left'>
-                    <span className='block truncate text-14px font-600 text-t-primary'>{currentSpaceName}</span>
-                    <span className='block truncate text-12px text-t-secondary'>{currentSpaceSecondaryText}</span>
-                  </span>
-                  <Down
+        <div className='sider-space-card-wrap'>
+          <Dropdown droplist={spaceMenu} trigger='click' position='tl' triggerProps={spaceMenuTriggerProps}>
+            <button
+              type='button'
+              className={classNames('sider-space-card', isMobile && 'sider-footer-btn-mobile')}
+              aria-label={t('guid.space.selectorTitle')}
+              aria-haspopup='menu'
+            >
+              <span className='sider-space-card__summary'>
+                <span className='sider-space-card__icon'>
+                  <FolderOpen
                     theme='outline'
-                    size='16'
-                    fill={iconColors.secondary}
-                    className={classNames(
-                      'sider-user-trigger__chevron',
-                      spaceMenuVisible && 'sider-user-trigger__chevron--open'
-                    )}
+                    size='18'
+                    fill={iconColors.primary}
+                    className='app-icon block shrink-0 leading-none'
                   />
-                </button>
-              </Dropdown>
-            )}
+                </span>
+                <span className='sider-space-card__content'>
+                  <span className='sider-space-card__title'>{selectedSpaceName}</span>
+                  <span className='sider-space-card__meta'>{selectedSpaceMeta}</span>
+                </span>
+              </span>
+              <span className='sider-space-card__action'>
+                <Down
+                  theme='outline'
+                  size='16'
+                  fill={iconColors.secondary}
+                  className='app-icon block shrink-0 leading-none'
+                />
+              </span>
+            </button>
+          </Dropdown>
+        </div>
+        <ContextGoModal
+          visible={spaceModalVisible}
+          onCancel={handleCloseCreateSpaceModal}
+          className='create-space-modal'
+          header={{
+            title: t('guid.space.createTitle'),
+            showClose: true,
+            className: 'px-20px pt-16px',
+          }}
+          footer={{
+            className: 'px-20px pb-16px',
+            render: () => (
+              <div className='flex justify-end gap-10px pt-4px'>
+                <Button onClick={handleCloseCreateSpaceModal} disabled={creatingSpace}>
+                  {t('common.cancel')}
+                </Button>
+                <Button type='primary' loading={creatingSpace} onClick={() => void handleCreateSpace()}>
+                  {t('guid.space.createAction')}
+                </Button>
+              </div>
+            ),
+          }}
+          style={{ width: '420px' }}
+          contentStyle={{ padding: '0' }}
+        >
+          <div className='sider-space-modal__body'>
+            <div className='sider-space-modal__panel'>
+              <div className='sider-space-modal__field'>
+                <Input
+                  value={newSpaceName}
+                  onChange={setNewSpaceName}
+                  placeholder={t('guid.space.namePlaceholder')}
+                  maxLength={120}
+                />
+              </div>
+              <div className='sider-space-modal__field'>
+                <Input.TextArea
+                  value={newSpaceDescription}
+                  onChange={setNewSpaceDescription}
+                  placeholder={t('guid.space.descriptionPlaceholder')}
+                  maxLength={240}
+                  autoSize={{ minRows: 3, maxRows: 5 }}
+                />
+              </div>
+            </div>
           </div>
-        ) : null}
+        </ContextGoModal>
         <div className='sider-user-card-wrap'>
           <Dropdown
             droplist={userMenu}

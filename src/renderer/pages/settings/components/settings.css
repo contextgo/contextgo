@@ -156,76 +156,37 @@
   overflow: hidden;
 }
 
-/* Settings mobile top nav */
+/* Settings mobile navigation drawer */
 @media (max-width: 767px) {
-  .settings-mobile-top-nav-shell {
-    position: sticky;
-    top: 0;
-    z-index: 4;
-    margin: -4px -4px 14px;
-    padding-top: 4px;
-    background: linear-gradient(
-      180deg,
-      var(--bg-1) 0%,
-      color-mix(in srgb, var(--bg-1) 94%, transparent) 78%,
-      transparent 100%
-    );
-    backdrop-filter: blur(10px);
+  .settings-mobile-nav-drawer :global(.arco-drawer-content) {
+    background: var(--bg-1);
   }
 
-  .settings-mobile-top-nav {
+  .settings-mobile-nav-drawer :global(.arco-drawer-header) {
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding-left: 16px;
+    padding-right: 16px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+  }
+
+  .settings-mobile-nav-drawer :global(.arco-drawer-title) {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .settings-mobile-nav-drawer :global(.arco-drawer-body) {
+    padding: 12px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+  }
+
+  .settings-mobile-nav-drawer__body {
     display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    padding: 4px calc(12px + env(safe-area-inset-right, 0px)) 12px calc(12px + env(safe-area-inset-left, 0px));
+    min-height: 0;
+    height: 100%;
   }
 
-  .settings-mobile-top-nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .settings-mobile-top-nav__item {
-    flex: 0 0 auto;
-    display: inline-flex !important;
-    align-items: center;
-    gap: 6px;
-    min-height: 38px !important;
-    padding: 0 14px !important;
-    border-radius: 999px !important;
-    border: 1px solid color-mix(in srgb, var(--border-base) 86%, transparent) !important;
-    background: color-mix(in srgb, var(--bg-1) 90%, var(--fill-2) 10%) !important;
-    color: var(--text-secondary) !important;
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--text-primary) 5%, transparent);
-  }
-
-  .settings-mobile-top-nav__item :global(.arco-btn-content) {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .settings-mobile-top-nav__item--active {
-    background: color-mix(in srgb, var(--bg-active) 72%, var(--bg-1) 28%) !important;
-    color: var(--text-primary) !important;
-    border-color: color-mix(in srgb, var(--text-primary) 10%, var(--border-base) 90%) !important;
-    box-shadow: 0 10px 24px color-mix(in srgb, var(--text-primary) 8%, transparent);
-  }
-
-  .settings-mobile-top-nav__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 0;
-  }
-
-  .settings-mobile-top-nav__label {
-    white-space: nowrap;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
+  .settings-mobile-nav-drawer__body .settings-sider {
+    gap: 4px;
   }
 }
 

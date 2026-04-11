@@ -104,6 +104,10 @@ describe('Layout mobile sider gestures', () => {
 
     const appShell = container.querySelector('.app-shell') as HTMLDivElement | null;
     expect(appShell).toBeTruthy();
+    expect(appShell?.className).toContain('app-shell--mobile-conversation');
+
+    const themeColorMeta = document.querySelector("meta[name='theme-color']") as HTMLMetaElement | null;
+    expect(themeColorMeta?.content).toBe('#f6f8fb');
 
     const sider = container.querySelector('.layout-sider') as HTMLDivElement | null;
     expect(sider).toBeTruthy();

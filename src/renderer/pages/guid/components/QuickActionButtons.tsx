@@ -21,7 +21,6 @@ type QuickActionButtonsProps = {
 };
 
 type ExternalSessionsQuickStatus = 'checking' | 'ready' | 'empty' | 'error';
-
 const CLOUD_STATUS_CACHE_TTL_MS = 3000;
 const EXTERNAL_SESSIONS_CACHE_TTL_MS = 5000;
 
@@ -83,7 +82,7 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
 
     void loadCloudStatus();
 
-    const unsubscribe = cloud.statusChanged.on((nextStatus) => {
+    const unsubscribe = cloud.statusChanged.on(nextStatus => {
       setCloudStatus(nextStatus);
       setCloudStatusLoading(false);
       cloudStatusCache = { status: nextStatus, at: Date.now() };
@@ -206,7 +205,6 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
         : officialRemoteSetupInProgress || officialRemoteRelayConnecting || officialRemoteNeedsLink
           ? 'rgb(var(--primary-6))'
           : 'var(--color-text-4)';
-
   const externalSessionsStatusLabel =
     externalSessionsQuickStatus === 'ready'
       ? t('guid.externalSessions.readyCount', {
@@ -244,7 +242,7 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
   const externalSessionsAffordanceLabel =
     externalSessionsQuickStatus === 'ready'
       ? t('guid.externalSessions.import', { defaultValue: 'Take over' })
-      : t('conversation.history.contextMenu.open', { defaultValue: 'Open' });
+      : t('guid.externalSessions.open', { defaultValue: 'Open' });
   const externalSessionsIconColor =
     externalSessionsQuickStatus === 'ready'
       ? 'rgb(var(--success-6))'
@@ -253,7 +251,6 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
         : externalSessionsQuickStatus === 'error'
           ? 'rgb(var(--warning-6))'
           : 'var(--color-text-3)';
-
   if (isMobile) {
     return (
       <div className={styles.guidQuickActionsMobile}>
@@ -269,7 +266,7 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
               <span className={styles.guidQuickActionMeta}>{officialRemoteMobileStatusLabel}</span>
             </span>
             <span className={styles.guidQuickActionAffordance}>
-              {t('conversation.history.contextMenu.open', { defaultValue: 'Open' })}
+              {t('guid.externalSessions.open', { defaultValue: 'Open' })}
             </span>
           </Button>
           <Button type='text' className={styles.guidQuickActionCard} onClick={onOpenExternalSessions}>

@@ -645,12 +645,12 @@ const handleAppReady = async (): Promise<void> => {
     } catch {
       // Console write may fail with EIO when PTY is broken after sleep
     }
-    import('@process/services/cron/cronServiceSingleton')
-      .then(({ cronService }) => {
-        void cronService.handleSystemResume();
+    import('@process/services/context/contextServiceSingleton')
+      .then(({ contextScheduleService }) => {
+        void contextScheduleService.handleSystemResume();
       })
       .catch(() => {
-        // Cron recovery is best-effort after system resume
+        // Schedule recovery is best-effort after system resume
       });
 
     getCloudService().handleSystemResume();

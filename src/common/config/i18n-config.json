@@ -1,7 +1,14 @@
 {
   "referenceLanguage": "en-US",
   "fallbackLanguage": "en-US",
-  "supportedLanguages": ["zh-CN", "en-US", "ja-JP", "zh-TW", "ko-KR", "tr-TR"],
+  "supportedLanguages": [
+    "zh-CN",
+    "en-US",
+    "ja-JP",
+    "zh-TW",
+    "ko-KR",
+    "tr-TR"
+  ],
   "modules": [
     "common",
     "agentMode",
@@ -17,10 +24,9 @@
     "codex",
     "tools",
     "gemini",
-    "cron",
+    "schedule",
     "starOffice",
     "guid",
-    "agent",
-    "space"
+    "agent"
   ]
 }

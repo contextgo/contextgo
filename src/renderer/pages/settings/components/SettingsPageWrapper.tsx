@@ -1,30 +1,16 @@
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
-import { Button } from '@arco-design/web-react';
+import { Drawer } from '@arco-design/web-react';
 import { createPortal } from 'react-dom';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { SettingsViewModeProvider } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
-import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
-import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
-import {
-  AlarmClock,
-  Command,
-  Communication,
-  ConnectionPoint,
-  Earth,
-  Info,
-  Puzzle,
-  System,
-  Terminal,
-  Toolkit,
-} from '@icon-park/react';
+import { isElectronDesktop } from '@/renderer/utils/platform';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
+import { useLocation } from 'react-router-dom';
+import SettingsSider from './SettingsSider';
 import './settings.css';
-
-const normalizeSettingsAnchor = (anchor: string): string => (anchor === 'display' ? 'system' : anchor);
+import { SETTINGS_NAV_DRAWER_EVENT } from './settingsNavigation';
 
 interface SettingsPageWrapperProps {
   children: React.ReactNode;
@@ -35,138 +21,36 @@ interface SettingsPageWrapperProps {
 const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, className, contentClassName }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
-  const navigate = useNavigate();
   const { pathname } = useLocation();
   const { t } = useTranslation();
   const isDesktop = isElectronDesktop();
   const { isOpen: isPreviewOpen, activeTab } = usePreviewContext();
-
-  const [extensionTabs, setExtensionTabs] = useState<IExtensionSettingsTab[]>([]);
+  const [mobileNavVisible, setMobileNavVisible] = useState(false);
 
   useEffect(() => {
-    void extensionsIpc.getSettingsTabs
-      .invoke()
-      .then((tabs) => setExtensionTabs(tabs ?? []))
-      .catch((err) => console.error('[SettingsPageWrapper] Failed to load extension tabs:', err));
-  }, []);
-
-  const { resolveExtTabName } = useExtI18n();
-
-  type NavItem = { label: string; icon: React.ReactElement; path: string; id: string };
-
-  const menuItems = React.useMemo(() => {
-    const builtins: NavItem[] = [
-      {
-        id: 'cron',
-        label: t('cron.scheduledTasks'),
-        icon: <AlarmClock theme='outline' size='16' className='app-icon' />,
-        path: 'cron',
-      },
-      {
-        id: 'tools',
-        label: t('settings.tools'),
-        icon: <Toolkit theme='outline' size='16' className='app-icon' />,
-        path: 'tools',
-      },
-      {
-        id: 'runtime',
-        label: t('settings.runtimeManager.title', { defaultValue: 'Runtime' }),
-        icon: <Terminal theme='outline' size='16' className='app-icon' />,
-        path: 'runtime',
-      },
-      {
-        id: 'commands',
-        label: t('settings.commands.title'),
-        icon: <Command theme='outline' size='16' className='app-icon' />,
-        path: 'commands',
-      },
-      {
-        id: 'webui',
-        label: t('settings.webui'),
-        icon: isDesktop ? (
-          <Earth theme='outline' size='16' className='app-icon' />
-        ) : (
-          <Communication theme='outline' size='16' className='app-icon' />
-        ),
-        path: 'webui',
-      },
-      {
-        id: 'channels',
-        label: t('settings.agentEntry'),
-        icon: <Communication theme='outline' size='16' className='app-icon' />,
-        path: 'channels',
-      },
-      {
-        id: 'activeSessions',
-        label: t('settings.activeSessions'),
-        icon: <ConnectionPoint theme='outline' size='16' className='app-icon' />,
-        path: 'agent-publish',
-      },
-      {
-        id: 'system',
-        label: t('settings.system'),
-        icon: <System theme='outline' size='16' className='app-icon' />,
-        path: 'system',
-      },
-      {
-        id: 'about',
-        label: t('settings.about'),
-        icon: <Info theme='outline' size='16' className='app-icon' />,
-        path: 'about',
-      },
-    ];
-
-    // Insert extension tabs before system (unanchored default) or at anchor position
-    const result = [...builtins];
-    const unanchored: IExtensionSettingsTab[] = [];
-    const beforeMap = new Map<string, IExtensionSettingsTab[]>();
-    const afterMap = new Map<string, IExtensionSettingsTab[]>();
-
-    for (const tab of extensionTabs) {
-      if (!tab.position) {
-        unanchored.push(tab);
-        continue;
-      }
-      const anchor = normalizeSettingsAnchor(tab.position.anchor);
-      const map = tab.position.placement === 'before' ? beforeMap : afterMap;
-      let list = map.get(anchor);
-      if (!list) {
-        list = [];
-        map.set(anchor, list);
-      }
-      list.push(tab);
+    if (!isMobile || typeof window === 'undefined') {
+      setMobileNavVisible(false);
+      return;
     }
 
-    const toNavItem = (tab: IExtensionSettingsTab): NavItem => {
-      const resolvedIcon = resolveExtensionAssetUrl(tab.icon) || tab.icon;
-      return {
-        id: tab.id,
-        label: resolveExtTabName(tab),
-        icon: resolvedIcon ? (
-          <img src={resolvedIcon} alt='' className='h-16px w-16px object-contain' />
-        ) : (
-          <Puzzle theme='outline' size='16' className='app-icon' />
-        ),
-        path: `ext/${tab.id}`,
-      };
+    const handleOpen = (event: Event) => {
+      const customEvent = event as CustomEvent<{ open?: boolean }>;
+      setMobileNavVisible(customEvent.detail?.open !== false);
     };
 
-    for (let i = result.length - 1; i >= 0; i--) {
-      const id = result[i].id;
-      const afters = afterMap.get(id);
-      if (afters) result.splice(i + 1, 0, ...afters.map(toNavItem));
-      const befores = beforeMap.get(id);
-      if (befores) result.splice(i, 0, ...befores.map(toNavItem));
+    window.addEventListener(SETTINGS_NAV_DRAWER_EVENT, handleOpen as EventListener);
+    return () => {
+      window.removeEventListener(SETTINGS_NAV_DRAWER_EVENT, handleOpen as EventListener);
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      return;
     }
 
-    if (unanchored.length > 0) {
-      const sysIdx = result.findIndex((item) => item.id === 'system');
-      const idx = sysIdx >= 0 ? sysIdx : result.length;
-      result.splice(idx, 0, ...unanchored.map(toNavItem));
-    }
-
-    return result;
-  }, [isDesktop, t, extensionTabs, resolveExtTabName]);
+    setMobileNavVisible(false);
+  }, [isMobile, pathname]);
 
   const containerClass = classNames(
     'settings-page-wrapper secondary-page-frame w-full min-h-full box-border overflow-y-auto',
@@ -199,37 +83,26 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
       <div className={containerClass}>
         <div className='settings-page-shell'>
           <div className='settings-page-main'>
-            {isMobile && (
-              <div className='settings-mobile-top-nav-shell'>
-                <div className='settings-mobile-top-nav' role='tablist' aria-label={t('settings.title')}>
-                  {menuItems.map((item) => {
-                    const active = pathname.includes(`/settings/${item.path}`);
-                    return (
-                      <Button
-                        key={item.path}
-                        type='text'
-                        role='tab'
-                        aria-selected={active}
-                        aria-current={active ? 'page' : undefined}
-                        className={classNames('settings-mobile-top-nav__item', {
-                          'settings-mobile-top-nav__item--active': active,
-                        })}
-                        onClick={() => {
-                          void navigate(`/settings/${item.path}`, { replace: true });
-                        }}
-                      >
-                        <span className='settings-mobile-top-nav__icon app-icon-slot'>{item.icon}</span>
-                        <span className='settings-mobile-top-nav__label'>{item.label}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
             <div className={contentClass}>{children}</div>
           </div>
         </div>
       </div>
+      {isMobile ? (
+        <Drawer
+          visible={mobileNavVisible}
+          placement='left'
+          width={280}
+          footer={null}
+          title={t('settings.title')}
+          className='settings-mobile-nav-drawer'
+          onCancel={() => setMobileNavVisible(false)}
+          unmountOnExit
+        >
+          <div className='settings-mobile-nav-drawer__body'>
+            <SettingsSider />
+          </div>
+        </Drawer>
+      ) : null}
       {previewDock}
     </SettingsViewModeProvider>
   );

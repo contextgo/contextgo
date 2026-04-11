@@ -2,10 +2,14 @@ import SwiftUI
 import UIKit
 
 private enum RemoteBrand {
-  static let pageGradientTop = Color.white
-  static let pageGradientMid = Color(red: 0.965, green: 0.973, blue: 0.980)
-  static let pageGradientBottom = Color(red: 0.957, green: 0.961, blue: 0.969)
-  static let shellChrome = Color(red: 0.969, green: 0.973, blue: 0.980)
+  static let pageGradientTop = Color(red: 0.769, green: 0.871, blue: 0.996)
+  static let pageGradientMid = Color(red: 0.902, green: 0.949, blue: 0.996)
+  static let pageGradientBottom = Color(red: 0.957, green: 0.969, blue: 0.988)
+  static let shellChrome = Color(red: 0.890, green: 0.937, blue: 0.992)
+  static let shellChromeTop = Color(red: 0.741, green: 0.851, blue: 0.992)
+  static let shellChromeBottom = Color(red: 0.882, green: 0.937, blue: 0.992)
+  static let browserChromeTop = Color(red: 0.973, green: 0.978, blue: 0.988)
+  static let browserChromeBottom = Color(red: 0.961, green: 0.969, blue: 0.980)
 
   static let orbStrong = Color.black.opacity(0.06)
   static let orbSoft = Color(red: 0.545, green: 0.584, blue: 0.655).opacity(0.16)
@@ -113,21 +117,31 @@ private struct HomeView: View {
 
       ScrollView(showsIndicators: false) {
         VStack(alignment: .leading, spacing: 18) {
-          headerBar
+          heroView
 
           if let loginErrorBanner {
             loginRecoveryBanner(title: loginErrorBanner.title, detail: loginErrorBanner.detail)
           }
 
           if homeSnapshot.isAuthenticated {
+            statusBoard
+
             if let user = homeSnapshot.user {
-              signedInSummary(user: user)
+              accountPanel(user: user)
             }
 
-            devicesPanel
+            recentDevicesPanel
           } else {
-            signedOutPanel
+            highlightsView
+            previewPanel
+            ctaPanel
           }
+
+          Text(String(localized: "home.footnote"))
+            .font(.system(size: 12, weight: .medium, design: .rounded))
+            .foregroundStyle(RemoteBrand.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 4)
         }
         .padding(.horizontal, 18)
         .padding(.top, 18)
@@ -171,168 +185,25 @@ private struct HomeView: View {
     }
   }
 
-  private var headerBar: some View {
-    HStack(alignment: .center, spacing: 14) {
-      brandLockup
-
-      Spacer(minLength: 0)
-
-      if isRefreshingSnapshot {
-        ProgressView()
-          .controlSize(.small)
-          .tint(RemoteBrand.accent)
-      }
-    }
-    .padding(.top, 4)
-  }
-
-  private func signedInSummary(user: OfficialUser) -> some View {
-    VStack(alignment: .leading, spacing: 18) {
-      HStack(alignment: .center, spacing: 14) {
-        avatarView(for: user)
-
-        VStack(alignment: .leading, spacing: 4) {
-          Text(user.preferredName)
-            .font(.system(size: 24, weight: .black, design: .rounded))
-            .foregroundStyle(RemoteBrand.textPrimary)
-            .lineLimit(2)
-
-          if let secondaryLine = user.secondaryLine {
-            Text(secondaryLine)
-              .font(.system(size: 14, weight: .medium, design: .rounded))
-              .foregroundStyle(RemoteBrand.textSecondary)
-              .lineLimit(2)
-          }
-        }
-
-        Spacer(minLength: 0)
-      }
-
-      ViewThatFits {
-        HStack(spacing: 12) {
-          summaryBadge(title: String(localized: "home.metric.devices"), value: homeSnapshot.deviceCount.formatted())
-          summaryBadge(title: String(localized: "home.metric.ready"), value: homeSnapshot.readyDeviceCount.formatted())
-          summaryBadge(title: String(localized: "home.metric.live"), value: homeSnapshot.liveSessionCount.formatted())
-        }
-
-        VStack(spacing: 12) {
-          summaryBadge(title: String(localized: "home.metric.devices"), value: homeSnapshot.deviceCount.formatted())
-          summaryBadge(title: String(localized: "home.metric.ready"), value: homeSnapshot.readyDeviceCount.formatted())
-          summaryBadge(title: String(localized: "home.metric.live"), value: homeSnapshot.liveSessionCount.formatted())
-        }
-      }
-    }
-    .padding(22)
-    .background(RemoteBrand.cardBackground)
-    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-    .overlay(
-      RoundedRectangle(cornerRadius: 28, style: .continuous)
-        .stroke(RemoteBrand.cardBorder, lineWidth: 1)
-    )
-  }
-
-  private var devicesPanel: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text(String(localized: "home.metric.devices"))
-        .font(.system(size: 18, weight: .bold, design: .rounded))
-        .foregroundStyle(RemoteBrand.textPrimary)
-
-      if homeSnapshot.devices.isEmpty {
-        emptyDevicesView
-      } else {
-        VStack(spacing: 12) {
-          ForEach(homeSnapshot.devices) { device in
-            deviceRow(device)
-          }
-        }
-      }
-    }
-    .padding(22)
-    .background(RemoteBrand.cardBackground)
-    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-    .overlay(
-      RoundedRectangle(cornerRadius: 28, style: .continuous)
-        .stroke(RemoteBrand.cardBorder, lineWidth: 1)
-    )
-  }
-
-  private var signedOutPanel: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text(String(localized: "home.headline"))
-        .font(.system(size: 28, weight: .black, design: .rounded))
-        .foregroundStyle(RemoteBrand.textPrimary)
-        .fixedSize(horizontal: false, vertical: true)
-
-      Text(String(localized: "home.openRemoteHint"))
-        .font(.system(size: 15, weight: .medium, design: .rounded))
-        .foregroundStyle(RemoteBrand.textSecondary)
-        .lineSpacing(4)
-        .fixedSize(horizontal: false, vertical: true)
-
-      Button(action: {
-        Task {
-          await openOfficialRemote()
-        }
-      }) {
-        HStack(spacing: 10) {
-          if isCheckingSession {
-            ProgressView()
-              .tint(.white)
-          } else {
-            Image(systemName: "person.crop.circle.badge.checkmark")
-          }
-
-          Text(String(localized: "home.openRemote"))
-          Spacer(minLength: 0)
-          Image(systemName: "arrow.right")
-        }
-        .font(.system(size: 16, weight: .bold, design: .rounded))
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity)
-        .background(RemoteBrand.accentMuted)
-        .foregroundStyle(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-      }
-      .buttonStyle(.plain)
-      .disabled(isCheckingSession)
-    }
-    .padding(22)
-    .background(RemoteBrand.cardBackground)
-    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-    .overlay(
-      RoundedRectangle(cornerRadius: 28, style: .continuous)
-        .stroke(RemoteBrand.cardBorder, lineWidth: 1)
-    )
-  }
-
-  private func summaryBadge(title: String, value: String) -> some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Text(value)
-        .font(.system(size: 22, weight: .black, design: .rounded))
-        .foregroundStyle(RemoteBrand.textPrimary)
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
-
-      Text(title)
-        .font(.system(size: 12, weight: .bold, design: .rounded))
-        .foregroundStyle(RemoteBrand.textSecondary)
-        .fixedSize(horizontal: false, vertical: true)
-    }
-    .padding(14)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(RemoteBrand.mutedSurface)
-    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-  }
-
   private var backgroundView: some View {
-    ZStack {
+    ZStack(alignment: .top) {
       LinearGradient(
         colors: [RemoteBrand.pageGradientTop, RemoteBrand.pageGradientMid, RemoteBrand.pageGradientBottom],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
       )
       .ignoresSafeArea()
+
+      Rectangle()
+        .fill(
+          LinearGradient(
+            colors: [RemoteBrand.shellChromeTop, RemoteBrand.pageGradientMid],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+        )
+        .frame(height: 164)
+        .ignoresSafeArea(edges: .top)
 
       Circle()
         .fill(RemoteBrand.orbStrong)
@@ -514,25 +385,6 @@ private struct HomeView: View {
         .font(.system(size: 14, weight: .medium, design: .rounded))
         .foregroundStyle(RemoteBrand.textSecondary)
         .fixedSize(horizontal: false, vertical: true)
-
-      Button(action: {
-        connectionStore.connectToOfficialRemote()
-      }) {
-        HStack(spacing: 10) {
-          Image(systemName: "rectangle.stack.badge.play")
-          Text(String(localized: "home.account.action"))
-          Spacer(minLength: 0)
-          Image(systemName: "arrow.right")
-        }
-        .font(.system(size: 16, weight: .bold, design: .rounded))
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity)
-        .background(RemoteBrand.accentMuted)
-        .foregroundStyle(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-      }
-      .buttonStyle(.plain)
     }
     .padding(22)
     .background(RemoteBrand.cardBackground)
@@ -545,44 +397,24 @@ private struct HomeView: View {
 
   private var recentDevicesPanel: some View {
     VStack(alignment: .leading, spacing: 18) {
-      VStack(alignment: .leading, spacing: 4) {
-        Text(String(localized: "home.recent.title"))
-          .font(.system(size: 18, weight: .bold, design: .rounded))
-          .foregroundStyle(RemoteBrand.textPrimary)
+      Text(String(localized: "home.recent.title"))
+        .font(.system(size: 18, weight: .bold, design: .rounded))
+        .foregroundStyle(RemoteBrand.textPrimary)
 
-        Text(String(localized: "home.recent.subtitle"))
-          .font(.system(size: 14, weight: .medium, design: .rounded))
-          .foregroundStyle(RemoteBrand.textSecondary)
-          .fixedSize(horizontal: false, vertical: true)
-      }
+      Text(String(localized: "home.recent.subtitle"))
+        .font(.system(size: 14, weight: .medium, design: .rounded))
+        .foregroundStyle(RemoteBrand.textSecondary)
+        .fixedSize(horizontal: false, vertical: true)
 
-      if homeSnapshot.previewDevices.isEmpty {
+      if homeSnapshot.devices.isEmpty {
         emptyDevicesView
       } else {
         VStack(spacing: 12) {
-          ForEach(homeSnapshot.previewDevices) { device in
+          ForEach(homeSnapshot.devices) { device in
             deviceRow(device)
           }
         }
       }
-
-      Button(action: {
-        connectionStore.connectToOfficialRemote()
-      }) {
-        HStack(spacing: 10) {
-          Text(String(localized: "home.recent.action"))
-          Spacer(minLength: 0)
-          Image(systemName: "arrow.right")
-        }
-        .font(.system(size: 15, weight: .bold, design: .rounded))
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity)
-        .background(RemoteBrand.subtleSurface)
-        .foregroundStyle(RemoteBrand.accentMuted)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-      }
-      .buttonStyle(.plain)
     }
     .padding(22)
     .background(RemoteBrand.cardBackground)
@@ -1248,8 +1080,12 @@ private struct ShellBrowserView: View {
   var body: some View {
     GeometryReader { geometry in
       ZStack(alignment: .top) {
-        RemoteBrand.shellChrome
-          .ignoresSafeArea()
+        LinearGradient(
+          colors: [RemoteBrand.browserChromeTop, RemoteBrand.browserChromeBottom],
+          startPoint: .top,
+          endPoint: .bottom
+        )
+        .ignoresSafeArea()
 
         ShellWebView(store: webViewStore, url: targetURL)
           .ignoresSafeArea(.container, edges: .bottom)
@@ -1266,7 +1102,22 @@ private struct ShellBrowserView: View {
         }
       }
     }
-    .background(RemoteBrand.shellChrome)
+    .background(
+      LinearGradient(
+        colors: [RemoteBrand.browserChromeTop, RemoteBrand.browserChromeBottom],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+    )
+  }
+
+  private var launchOverlayMessage: String {
+    let normalizedPath = targetURL.path.lowercased()
+    if normalizedPath == "/remote/devices" {
+      return String(localized: "browser.loading.devices")
+    }
+
+    return String(localized: "browser.loading.desktop")
   }
 
   private var edgeBackGestureStrip: some View {
@@ -1291,8 +1142,12 @@ private struct ShellBrowserView: View {
 
   private func shellLaunchOverlay(topInset: CGFloat) -> some View {
     ZStack(alignment: .top) {
-      RemoteBrand.shellChrome
-        .ignoresSafeArea()
+      LinearGradient(
+        colors: [RemoteBrand.browserChromeTop, RemoteBrand.browserChromeBottom],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .ignoresSafeArea()
 
       VStack(spacing: 20) {
         Spacer(minLength: max(topInset, 0) + 48)
@@ -1304,7 +1159,7 @@ private struct ShellBrowserView: View {
             .controlSize(.regular)
             .tint(RemoteBrand.accent)
 
-          Text(String(localized: "home.openRemoteHint"))
+          Text(launchOverlayMessage)
             .font(.system(size: 14, weight: .medium, design: .rounded))
             .foregroundStyle(RemoteBrand.textSecondary)
             .multilineTextAlignment(.center)

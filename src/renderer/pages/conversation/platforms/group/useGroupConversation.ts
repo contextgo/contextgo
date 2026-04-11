@@ -7,12 +7,19 @@
 import { ipcBridge } from '@/common';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { transformMessage } from '@/common/chat/chatLib';
+import { readConversationUiState } from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
+import { useConversationUiStateRestore } from '@/renderer/pages/conversation/hooks/useConversationUiStateRestore';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+
+const GROUP_UI_STATE_SCOPE = 'group';
+const createDefaultGroupUiState = () => ({ running: false });
 
 export const useGroupConversation = (conversationId: string) => {
   const addOrUpdateMessage = useAddOrUpdateMessage();
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState(
+    readConversationUiState(GROUP_UI_STATE_SCOPE, conversationId, createDefaultGroupUiState()).running
+  );
 
   const handleResponseMessage = useCallback(
     (message: IResponseMessage) => {
@@ -38,15 +45,22 @@ export const useGroupConversation = (conversationId: string) => {
     [addOrUpdateMessage, conversationId]
   );
 
-  useEffect(() => {
+  useConversationUiStateRestore({
+    scope: GROUP_UI_STATE_SCOPE,
+    conversationId,
+    state: { running },
+    createDefaultState: createDefaultGroupUiState,
+    applyCachedState: (cachedState) => {
+      setRunning(cachedState.running);
+    },
+    syncBackendState: (isRunning) => {
+      setRunning(isRunning);
+    },
+  });
+
+  React.useEffect(() => {
     return ipcBridge.conversation.responseStream.on(handleResponseMessage);
   }, [handleResponseMessage]);
-
-  useEffect(() => {
-    void ipcBridge.conversation.get.invoke({ id: conversationId }).then((conversation) => {
-      setRunning(conversation?.status === 'running');
-    });
-  }, [conversationId]);
 
   return {
     running,

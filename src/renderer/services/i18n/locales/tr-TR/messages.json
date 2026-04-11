@@ -4,6 +4,7 @@
   "conversationInProgress": "Bir görüşme şu anda devam ediyor...",
   "confirm": "Onayla",
   "canceledExecution": "Yürütme iptal edildi",
+  "interrupted": "Kullanıcı tarafından durduruldu.",
   "openLinkFailed": "Bağlantı açılamadı",
   "imageGenerationModelDetected": "Görüntü modeli algılandı, görüntü aracı otomatik olarak etkinleştirildi. Varsayılan model: {{platform}}:{{model}}",
   "auto_handling_permissions": "Otomatik izin isteği işleme: {{request}}",
@@ -28,6 +29,27 @@
   "noOptionsAvailable": "Seçenek yok",
   "processing": "İşleniyor...",
   "responseSentSuccessfully": "Yanıt başarıyla gönderildi",
+  "fileOperation": {
+    "written": "Dosya yazıldı",
+    "read": "Dosya okundu",
+    "deleted": "Dosya silindi",
+    "operation": "Dosya işlemi",
+    "summary": {
+      "read": "{{count}} dosya okundu",
+      "read_other": "{{count}} dosya okundu",
+      "written": "{{count}} dosya değiştirildi",
+      "written_other": "{{count}} dosya değiştirildi",
+      "deleted": "{{count}} dosya silindi",
+      "deleted_other": "{{count}} dosya silindi",
+      "operation": "{{count}} dosya işlemi çalıştırıldı",
+      "operation_other": "{{count}} dosya işlemi çalıştırıldı"
+    }
+  },
+  "stepSummary": {
+    "viewSteps": "Adımları Gör",
+    "tools": "{{count}} araç",
+    "tools_other": "{{count}} araç"
+  },
   "confirmation": {
     "applyChange": "Bu değişikliği uygula?",
     "allowExecution": "Yürütmeye izin ver?",

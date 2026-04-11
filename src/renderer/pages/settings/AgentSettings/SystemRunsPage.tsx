@@ -1,0 +1,332 @@
+/**
+ * @license
+ * Copyright 2025 ContextGo (contextgo.io)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { Button, Empty, Tag, Typography } from '@arco-design/web-react';
+import { Right, Robot } from '@icon-park/react';
+import classNames from 'classnames';
+import type { IExtensionSystemRunItem } from '@/common/adapter/ipcBridge';
+import {
+  CONTEXT_ENGINE_SYSTEM_ASSISTANTS,
+  findContextEngineSystemAssistantByRole,
+} from '@/common/config/presets/systemAssistants';
+import { useContextEngineActivity } from '@/renderer/hooks/agent/useContextEngineActivity';
+import SettingsPageWrapper from '../components/SettingsPageWrapper';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import styles from './AgentSettingsPage.module.css';
+
+const STATUS_TAG_COLOR = {
+  active: 'green',
+  checking: 'arcoblue',
+  error: 'orangered',
+  idle: 'gray',
+} as const;
+
+const RUN_STATE_TAG_COLOR = {
+  error: 'orangered',
+  executing: 'arcoblue',
+  idle: 'gray',
+  researching: 'arcoblue',
+  syncing: 'arcoblue',
+  writing: 'green',
+} as const;
+
+const SYSTEM_AGENT_STATUS_TAG_COLOR = {
+  active: 'green',
+  idle: 'gray',
+  planned: 'gold',
+} as const;
+
+function formatUpdateTime(timestamp: number): string {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(timestamp));
+}
+
+function resolveRunTitle(run: IExtensionSystemRunItem, localeKey: string): string {
+  const assistant = findContextEngineSystemAssistantByRole(run.systemRole);
+  return assistant?.nameI18n[localeKey] || assistant?.nameI18n['en-US'] || run.agentName;
+}
+
+function resolveTriggerKindLabel(kind: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+  return t(`settings.systemAgentTriggerKinds.${kind}`, {
+    defaultValue: kind,
+  });
+}
+
+function resolveExecutionBoundaryLabel(
+  boundary: string | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
+  if (!boundary) {
+    return '--';
+  }
+
+  return t(`settings.systemAgentExecutionBoundaries.${boundary}`, {
+    defaultValue: boundary,
+  });
+}
+
+const SystemRunsPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const { status, systemRuns, activeMaintenanceCount, lastCheckedAt } = useContextEngineActivity();
+  const lastCheckedLabel = lastCheckedAt ? formatUpdateTime(lastCheckedAt) : '--';
+
+  return (
+    <SettingsPageWrapper>
+      <div className='flex flex-col gap-16px'>
+        <section className='rounded-24px border border-border-2 bg-fill-1 p-20px shadow-sm'>
+          <div className='flex flex-wrap items-start justify-between gap-16px'>
+            <div className={styles.systemRunsHeroMain}>
+              <div className={styles.systemRunsHeroIcon}>
+                <Robot theme='outline' size={20} fill='rgb(var(--primary-6))' strokeWidth={3} />
+              </div>
+              <div className='min-w-0 flex-1'>
+                <div className={styles.systemRunsHeroTitleRow}>
+                  <div className={styles.systemRunsHeroTitle}>
+                    {t('settings.systemRuns', { defaultValue: 'System Runs' })}
+                  </div>
+                  <Tag color={STATUS_TAG_COLOR[status]} size='small'>
+                    {status === 'active'
+                      ? t('agent.contextEngine.active', { defaultValue: 'Active' })
+                      : status === 'checking'
+                        ? t('common.loading', { defaultValue: 'Loading' })
+                        : status === 'error'
+                          ? t('common.error', { defaultValue: 'Error' })
+                          : t('agent.contextEngine.idle', { defaultValue: 'Watching' })}
+                  </Tag>
+                  <Tag size='small'>
+                    {t('settings.systemRunsCount', {
+                      count: systemRuns.length,
+                      defaultValue: `${systemRuns.length} runs`,
+                    })}
+                  </Tag>
+                </div>
+                <Typography.Paragraph className={styles.systemRunsHeroDescription}>
+                  {t('settings.systemRunsDesc', {
+                    defaultValue:
+                      'Read-only console for Context Engine sessions and runs. Trigger routing, execution boundary, and artifacts are surfaced here.',
+                  })}
+                </Typography.Paragraph>
+              </div>
+            </div>
+            <div className={styles.systemRunsSummaryCard + ' rounded-18px border border-border-2 bg-fill-2 px-16px py-12px text-right'}>
+              <div className='text-12px text-t-secondary'>
+                {t('settings.systemRunsActiveNow', { defaultValue: 'Active now' })}
+              </div>
+              <div className='mt-4px text-24px font-700 leading-none text-t-primary'>{activeMaintenanceCount}</div>
+            </div>
+          </div>
+        </section>
+
+        {systemRuns.length === 0 ? (
+          <>
+            <section className='rounded-24px border border-dashed border-border-2 bg-fill-1 p-32px'>
+              <Empty description={t('settings.systemRunsEmptyTitle', { defaultValue: 'No run history yet.' })} />
+              <Typography.Paragraph className={styles.systemRunsEmptyDescription}>
+                {t('settings.systemRunsEmptyDescription', {
+                  defaultValue:
+                    'Context Engine is already watching this workspace. Historical records will appear here after the first maintenance trigger completes.',
+                })}
+              </Typography.Paragraph>
+            </section>
+
+            <section className={styles.surface}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <div className={styles.sectionTitle}>
+                    {t('settings.systemRunsDefinitionsTitle', { defaultValue: 'Registered system agents' })}
+                  </div>
+                  <div className={styles.sectionDescription}>
+                    {t('settings.systemRunsDefinitionsDescription', {
+                      defaultValue:
+                        'Definitions stay visible before the first run. Trigger conditions and execution boundaries are listed here, while historical records only appear after execution.',
+                    })}
+                  </div>
+                </div>
+                <span className={styles.sectionMeta}>{CONTEXT_ENGINE_SYSTEM_ASSISTANTS.length}</span>
+              </div>
+
+              <div className={styles.systemAgentSummary}>
+                {t('settings.systemRunsLastChecked', {
+                  time: lastCheckedLabel,
+                  defaultValue: `Last checked: ${lastCheckedLabel}`,
+                })}
+              </div>
+
+              <div className={styles.assistantList}>
+                {CONTEXT_ENGINE_SYSTEM_ASSISTANTS.map((assistant) => {
+                  const name = assistant.nameI18n[i18n.language] || assistant.nameI18n['en-US'] || assistant.id;
+                  const description =
+                    assistant.descriptionI18n[i18n.language] || assistant.descriptionI18n['en-US'] || assistant.id;
+                  const triggerKinds = assistant.runtimeSpec.triggerKinds.map((kind) => resolveTriggerKindLabel(kind, t));
+                  const boundaryLabel = resolveExecutionBoundaryLabel(assistant.runtimeSpec.executionBoundary, t);
+                  const isPlanned = assistant.deliveryStatus === 'planned';
+                  const runtimeStatusTone = isPlanned
+                    ? SYSTEM_AGENT_STATUS_TAG_COLOR.planned
+                    : SYSTEM_AGENT_STATUS_TAG_COLOR.idle;
+                  const runtimeStatusLabel = isPlanned
+                    ? t('settings.systemAssistantPlanned', { defaultValue: 'Planned' })
+                    : t('agent.contextEngine.idle', { defaultValue: 'Watching' });
+
+                  return (
+                    <div key={assistant.id} className={classNames(styles.assistantCard, styles.systemAssistantCard)}>
+                      <div className={styles.assistantCardMain}>
+                        <div className={styles.systemRunsDefinitionIcon}>
+                          <Robot theme='outline' size={18} strokeWidth={3} />
+                        </div>
+                        <div className={styles.assistantMeta}>
+                          <div className={styles.assistantTitleRow}>
+                            <span className={styles.assistantName}>{name}</span>
+                            <div className={styles.assistantBadgeRow}>
+                              <Tag size='small' color='arcoblue' className={styles.assistantBadgeTag}>
+                                {t('agent.contextEngine.systemManaged', { defaultValue: 'System-managed' })}
+                              </Tag>
+                              <Tag
+                                size='small'
+                                color={assistant.deliveryStatus === 'live' ? 'green' : 'gold'}
+                                className={styles.assistantBadgeTag}
+                              >
+                                {assistant.deliveryStatus === 'live'
+                                  ? t('settings.systemAssistantLive', { defaultValue: 'Live' })
+                                  : t('settings.systemAssistantPlanned', { defaultValue: 'Planned' })}
+                              </Tag>
+                              <Tag size='small' color={runtimeStatusTone} className={styles.assistantBadgeTag}>
+                                {runtimeStatusLabel}
+                              </Tag>
+                            </div>
+                          </div>
+                          <div className={styles.assistantDescription}>{description}</div>
+                          <div className={styles.systemAgentMetaList}>
+                            <div className={styles.systemAgentMetaItem}>
+                              {t('settings.systemRunsTrigger', {
+                                trigger: triggerKinds.join(' · '),
+                                defaultValue: `Trigger: ${triggerKinds.join(' · ')}`,
+                              })}
+                            </div>
+                            <div className={styles.systemAgentMetaItem}>
+                              {t('settings.systemRunsBoundary', {
+                                path: boundaryLabel,
+                                defaultValue: `Boundary: ${boundaryLabel}`,
+                              })}
+                            </div>
+                            <div className={styles.systemAgentMetaItem}>
+                              {t('settings.systemRunsLastChecked', {
+                                time: lastCheckedLabel,
+                                defaultValue: `Last checked: ${lastCheckedLabel}`,
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </>
+        ) : (
+          <section className='grid gap-12px'>
+            {systemRuns.map((run) => (
+              <article key={run.id} className='rounded-20px border border-border-2 bg-fill-1 p-16px shadow-sm'>
+                <div className='flex flex-wrap items-start justify-between gap-12px'>
+                  <div className='min-w-0 flex-1'>
+                    <div className='flex flex-wrap items-center gap-8px'>
+                      <div className='truncate text-14px font-600 leading-6 text-t-primary'>
+                        {resolveRunTitle(run, i18n.language)}
+                      </div>
+                      <Tag color={RUN_STATE_TAG_COLOR[run.state]} size='small'>
+                        {t(`agent.contextEngine.state.${run.state}`, { defaultValue: run.state })}
+                      </Tag>
+                      {run.maintenanceKind ? <Tag size='small'>{run.maintenanceKind}</Tag> : null}
+                    </div>
+                    <div className='mt-6px text-13px leading-6 text-t-primary'>
+                      {run.currentTask || t('agent.contextEngine.taskFallback', { defaultValue: 'No summary yet' })}
+                    </div>
+                  </div>
+                  <div className='text-12px text-t-secondary'>
+                    {t('agent.contextEngine.updatedAt', {
+                      time: formatUpdateTime(run.lastActiveAt),
+                      defaultValue: `Updated ${formatUpdateTime(run.lastActiveAt)}`,
+                    })}
+                  </div>
+                </div>
+
+                <div className={'mt-12px rounded-16px bg-fill-2 p-12px text-12px leading-5 text-t-secondary ' + styles.systemRunsDetails}>
+                  {run.scopeLabel ? (
+                    <div className={styles.systemRunsDetailText}>
+                      {t('agent.contextEngine.scope', { scope: run.scopeLabel })}
+                    </div>
+                  ) : null}
+                  {run.executionBoundaryPath ? (
+                    <div className={styles.systemRunsDetailText}>
+                      {t('settings.systemRunsBoundary', {
+                        path: run.executionBoundaryPath,
+                        defaultValue: `Boundary: ${run.executionBoundaryPath}`,
+                      })}
+                    </div>
+                  ) : null}
+                  {run.triggerLabel || run.triggerEvent ? (
+                    <div className={styles.systemRunsDetailText}>
+                      {t('settings.systemRunsTrigger', {
+                        trigger: run.triggerLabel || run.triggerEvent || '--',
+                        defaultValue: `Trigger: ${run.triggerLabel || run.triggerEvent || '--'}`,
+                      })}
+                    </div>
+                  ) : null}
+                  {run.reason ? (
+                    <div className={styles.systemRunsDetailText}>
+                      {t('settings.systemRunsReason', {
+                        reason: run.reason,
+                        defaultValue: `Reason: ${run.reason}`,
+                      })}
+                    </div>
+                  ) : null}
+                  {run.artifactTitle ? (
+                    <div className={styles.systemRunsDetailText}>
+                      {t('agent.contextEngine.artifactTitle', { title: run.artifactTitle })}
+                    </div>
+                  ) : null}
+                  {run.artifactRelativePath ? (
+                    <div className={styles.systemRunsDetailText}>
+                      {t('agent.contextEngine.artifactPath', { path: run.artifactRelativePath })}
+                    </div>
+                  ) : null}
+                </div>
+
+                {run.recentEvents.length > 0 ? (
+                  <div className='mt-12px grid gap-6px'>
+                    {run.recentEvents.slice(0, 4).map((event, index) => (
+                      <div key={`${run.id}-${index}-${event.at}`} className={'text-12px leading-5 text-t-secondary ' + styles.systemRunsEventRow}>
+                        <span className={styles.systemRunsEventIcon}>
+                          <Right theme='outline' size={12} />
+                        </span>
+                        <span className={styles.systemRunsEventText}>{event.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </section>
+        )}
+
+        <div className='flex justify-end'>
+          <Button type='outline' onClick={() => void navigate('/guid')}>
+            {t('common.back', { defaultValue: 'Back to Chat' })}
+          </Button>
+        </div>
+      </div>
+    </SettingsPageWrapper>
+  );
+};
+
+export default SystemRunsPage;

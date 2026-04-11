@@ -114,6 +114,14 @@ const BUILTIN_MANAGED_SLASH_COMMAND_ID_SET = new Set<BuiltinManagedSlashCommandI
   BUILTIN_MANAGED_SLASH_COMMANDS.map((command) => command.id)
 );
 
+function createDefaultBuiltinRecord(id: BuiltinManagedSlashCommandId): BuiltinManagedSlashCommandRecord {
+  return {
+    type: 'builtin',
+    id,
+    enabled: true,
+  };
+}
+
 function sanitizeOptionalText(value: unknown): string | undefined {
   if (typeof value !== 'string') {
     return undefined;
@@ -188,11 +196,7 @@ function normalizeCustomManagedSlashCommandRecord(value: unknown): CustomManaged
 }
 
 export function createDefaultManagedSlashCommandLibrary(): ManagedSlashCommandRecord[] {
-  return BUILTIN_MANAGED_SLASH_COMMANDS.map((command) => ({
-    type: 'builtin',
-    id: command.id,
-    enabled: true,
-  }));
+  return BUILTIN_MANAGED_SLASH_COMMANDS.map((command) => createDefaultBuiltinRecord(command.id));
 }
 
 export function normalizeManagedSlashCommandLibrary(value: unknown): ManagedSlashCommandRecord[] {
@@ -237,12 +241,7 @@ export function normalizeManagedSlashCommandLibrary(value: unknown): ManagedSlas
   }
 
   const builtinValues: BuiltinManagedSlashCommandRecord[] = BUILTIN_MANAGED_SLASH_COMMANDS.map(
-    (command) =>
-      builtinRecords.get(command.id) ?? {
-        type: 'builtin',
-        id: command.id,
-        enabled: true,
-      }
+    (command) => builtinRecords.get(command.id) ?? createDefaultBuiltinRecord(command.id)
   );
 
   return [...builtinValues, ...customRecords];
@@ -287,6 +286,67 @@ export function resolveManagedSlashCommands(
       template: record.template,
     };
   });
+}
+
+function getBuiltinCommandName(record: BuiltinManagedSlashCommandRecord): string {
+  return record.nameOverride ?? getBuiltinManagedSlashCommandDefinition(record.id).name;
+}
+
+export function mergeManagedSlashCommandLibraries(
+  baseLibrary: ManagedSlashCommandRecord[] | undefined,
+  overrideLibrary: ManagedSlashCommandRecord[] | undefined
+): ManagedSlashCommandRecord[] {
+  const normalizedBase = normalizeManagedSlashCommandLibrary(baseLibrary);
+  const normalizedOverride = normalizeManagedSlashCommandLibrary(overrideLibrary);
+  const builtinMap = new Map<BuiltinManagedSlashCommandId, BuiltinManagedSlashCommandRecord>();
+
+  for (const record of normalizedBase) {
+    if (record.type === 'builtin') {
+      builtinMap.set(record.id, record);
+    }
+  }
+
+  for (const record of normalizedOverride) {
+    if (record.type === 'builtin') {
+      builtinMap.set(record.id, record);
+    }
+  }
+
+  const mergedBuiltinRecords = BUILTIN_MANAGED_SLASH_COMMANDS.map(
+    (definition) => builtinMap.get(definition.id) ?? createDefaultBuiltinRecord(definition.id)
+  );
+  const reservedNames = new Set(mergedBuiltinRecords.map((record) => getBuiltinCommandName(record).toLowerCase()));
+  const mergedCustomRecords: CustomManagedSlashCommandRecord[] = [];
+
+  const upsertCustomRecord = (record: CustomManagedSlashCommandRecord) => {
+    const normalizedName = record.name.toLowerCase();
+    if (reservedNames.has(normalizedName)) {
+      return;
+    }
+
+    const existingIndex = mergedCustomRecords.findIndex(
+      (candidate) => candidate.id === record.id || candidate.name.toLowerCase() === normalizedName
+    );
+    if (existingIndex >= 0) {
+      mergedCustomRecords.splice(existingIndex, 1);
+    }
+
+    mergedCustomRecords.push(record);
+  };
+
+  for (const record of normalizedBase) {
+    if (record.type === 'custom') {
+      upsertCustomRecord(record);
+    }
+  }
+
+  for (const record of normalizedOverride) {
+    if (record.type === 'custom') {
+      upsertCustomRecord(record);
+    }
+  }
+
+  return [...mergedBuiltinRecords, ...mergedCustomRecords];
 }
 
 export function toSlashCommandItems(commands: ResolvedManagedSlashCommand[]): SlashCommandItem[] {

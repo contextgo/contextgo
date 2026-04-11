@@ -120,10 +120,10 @@ vi.mock('@/common', () => ({
     systemSettings: {
       getCloseToTray: { invoke: (...args: any[]) => mockGetCloseToTray(...args) },
       getNotificationEnabled: { invoke: (...args: any[]) => mockGetNotificationEnabled(...args) },
-      getCronNotificationEnabled: { invoke: (...args: any[]) => mockGetCronNotificationEnabled(...args) },
+      getScheduleNotificationEnabled: { invoke: (...args: any[]) => mockGetCronNotificationEnabled(...args) },
       setCloseToTray: { invoke: (...args: any[]) => mockSetCloseToTray(...args) },
       setNotificationEnabled: { invoke: (...args: any[]) => mockSetNotificationEnabled(...args) },
-      setCronNotificationEnabled: { invoke: (...args: any[]) => mockSetCronNotificationEnabled(...args) },
+      setScheduleNotificationEnabled: { invoke: (...args: any[]) => mockSetCronNotificationEnabled(...args) },
     },
     dialog: {
       showOpen: { invoke: (...args: any[]) => mockShowOpen(...args) },

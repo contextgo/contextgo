@@ -42,6 +42,7 @@ const AssistantManagement: React.FC<AssistantManagementProps> = ({ message }) =>
   // Compose hooks
   const {
     assistants,
+    systemAssistants,
     activeAssistantId,
     setActiveAssistantId,
     activeAssistant,
@@ -90,6 +91,7 @@ const AssistantManagement: React.FC<AssistantManagementProps> = ({ message }) =>
     <div>
       <AssistantListPanel
         assistants={assistants}
+        systemAssistants={systemAssistants}
         activeAssistantId={activeAssistantId}
         localeKey={localeKey}
         avatarImageMap={avatarImageMap}

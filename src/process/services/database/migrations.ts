@@ -47,6 +47,7 @@ const migration_v1: IMigration = {
     db.exec('DROP TABLE IF EXISTS conversations');
     db.exec('DROP TABLE IF EXISTS context_operations');
     db.exec('DROP TABLE IF EXISTS context_profiles');
+    db.exec('DROP TABLE IF EXISTS context_schedules');
     db.exec('DROP TABLE IF EXISTS context_memory_candidates');
     db.exec('DROP TABLE IF EXISTS context_memories');
     db.exec('DROP TABLE IF EXISTS context_chunks');

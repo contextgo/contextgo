@@ -19,7 +19,14 @@ import {
   PANEL_OFFSET,
   PANEL_VISIBLE_ITEM_CAP,
 } from './minimapTypes';
-import { buildTurnPreview, getPanelWidth, isIndexMatch, normalizeText, readPopoverVisualStyle } from './minimapUtils';
+import {
+  buildTurnPreview,
+  getPanelWidth,
+  isIndexMatch,
+  normalizeText,
+  readPopoverVisualStyle,
+  sanitizeTurnPreviewItems,
+} from './minimapUtils';
 
 // Return type for the useMinimapPanel hook
 type UseMinimapPanelReturn = {
@@ -118,7 +125,8 @@ export const useMinimapPanel = (conversationId?: string): UseMinimapPanelReturn 
         page: 0,
         pageSize: 10000,
       });
-      setItems(buildTurnPreview(messages || []));
+      const previewItems = buildTurnPreview(Array.isArray(messages) ? messages : []);
+      setItems(sanitizeTurnPreviewItems(previewItems));
     } catch (error) {
       console.error('[ConversationTitleMinimap] Failed to load conversation messages:', error);
       setItems([]);
@@ -130,24 +138,26 @@ export const useMinimapPanel = (conversationId?: string): UseMinimapPanelReturn 
   // Derived values
   const normalizedKeyword = useMemo(() => normalizeText(searchKeyword).toLowerCase(), [searchKeyword]);
 
+  const sanitizedItems = useMemo(() => sanitizeTurnPreviewItems(items), [items]);
+
   const filteredItems = useMemo(() => {
-    if (!normalizedKeyword) return items;
-    return items.filter((item) => {
+    if (!normalizedKeyword) return sanitizedItems;
+    return sanitizedItems.filter((item) => {
       return (
         item.questionRaw.toLowerCase().includes(normalizedKeyword) ||
         item.answerRaw.toLowerCase().includes(normalizedKeyword) ||
         isIndexMatch(item.index, normalizedKeyword)
       );
     });
-  }, [items, normalizedKeyword]);
+  }, [normalizedKeyword, sanitizedItems]);
 
   const panelHeight = useMemo(() => {
     if (loading) return PANEL_MIN_HEIGHT;
-    if (!items.length || !filteredItems.length) return PANEL_MIN_HEIGHT;
+    if (!sanitizedItems.length || !filteredItems.length) return PANEL_MIN_HEIGHT;
     const visibleRows = Math.min(filteredItems.length, PANEL_VISIBLE_ITEM_CAP);
     const computed = HEADER_HEIGHT + 12 + visibleRows * ITEM_ROW_ESTIMATED_HEIGHT;
     return Math.max(PANEL_MIN_HEIGHT, Math.min(PANEL_HEIGHT, computed));
-  }, [filteredItems.length, items.length, loading]);
+  }, [filteredItems.length, loading, sanitizedItems.length]);
 
   // Panel positioning
   const updatePanelLayout = useCallback((height = PANEL_HEIGHT) => {
@@ -369,7 +379,7 @@ export const useMinimapPanel = (conversationId?: string): UseMinimapPanelReturn 
   return {
     visible,
     loading,
-    items,
+    items: sanitizedItems,
     searchKeyword,
     isSearchMode,
     activeResultIndex,

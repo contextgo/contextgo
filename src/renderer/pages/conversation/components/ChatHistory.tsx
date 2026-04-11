@@ -7,7 +7,7 @@
 import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
-import { CronJobIndicator, useCronJobsMap } from '@/renderer/pages/cron';
+import { ScheduleJobIndicator, useScheduleJobsMap } from '@/renderer/pages/schedule';
 import { addEventListener, emitter } from '@/renderer/utils/emitter';
 import { blockMobileInputFocus, blurActiveElement } from '@/renderer/utils/ui/focus';
 import { cleanupSiderTooltips, getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
@@ -77,7 +77,7 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
   const { id } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getJobStatus, markAsRead } = useCronJobsMap();
+  const { getJobStatus, markAsRead } = useScheduleJobsMap();
   const siderTooltipProps = getSiderTooltipProps(collapsed && !isMobile);
 
   useScrollIntoView(id);
@@ -280,7 +280,7 @@ const ChatHistory: React.FC<{ onSessionClick?: () => void; collapsed?: boolean }
                   </span>
                 </div>
                 <span className='flex-shrink-0'>
-                  <CronJobIndicator status={cronStatus} size={14} />
+                  <ScheduleJobIndicator status={cronStatus} size={14} />
                 </span>
               </div>
             )}

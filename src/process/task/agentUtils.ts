@@ -127,7 +127,7 @@ Each skill has a SKILL.md file containing detailed instructions.
 To use a skill, read its SKILL.md file when needed.
 
 For example:
-- Builtin "cron" skill: ${builtinSkillsDir}/cron/SKILL.md
+- Builtin "schedule" skill: ${builtinSkillsDir}/schedule/SKILL.md
 - Bundled "pptx" skill: ${builtinSkillsCopyDir}/pptx/SKILL.md`;
 
       instructions.push(skillsInstruction);

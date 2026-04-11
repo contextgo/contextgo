@@ -5,6 +5,7 @@
  */
 
 import { cloud } from '@/common/adapter/ipcBridge';
+import InfermeshLogo from '@/renderer/assets/logos/brand/infermesh.png';
 import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
 import { Alert, Avatar, Button, Message, Space, Spin, Tag, Typography } from '@arco-design/web-react';
 import { CheckOne, LinkCloud, Right } from '@icon-park/react';
@@ -194,7 +195,7 @@ const CloudSyncSection: React.FC = () => {
           <Space wrap size={8}>
             <Button
               type='primary'
-              icon={<Right theme='outline' size={14} className='app-icon' />}
+              icon={<img src={InfermeshLogo} alt='' aria-hidden='true' className='h-14px w-14px rounded-4px object-contain' />}
               onClick={() => void handleOpenInfermesh()}
             >
               {t('settings.cloud.openInfermesh')}
@@ -225,7 +226,7 @@ const CloudSyncSection: React.FC = () => {
             ))}
             <Button
               type='secondary'
-              icon={<Right theme='outline' size={14} className='app-icon' />}
+              icon={<img src={InfermeshLogo} alt='' aria-hidden='true' className='h-14px w-14px rounded-4px object-contain' />}
               onClick={() => void handleOpenInfermesh()}
             >
               {t('settings.cloud.openInfermesh')}

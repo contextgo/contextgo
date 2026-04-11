@@ -5,7 +5,6 @@ import {
   toSlashCommandItems,
 } from '@/common/chat/slash/library';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
-import { ConfigStorage } from '@/common/config/storage';
 import { ipcBridge } from '@/common';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +54,7 @@ export function useSlashCommands(conversationId: string, options: UseSlashComman
   const { t, i18n } = useTranslation();
   const canUseCachedCommands = isSlashCommandListEnabled({ conversationType, codexStatus });
   const requestIdRef = useRef(0);
+  const [libraryRefreshToken, setLibraryRefreshToken] = useState(0);
   const [remoteCommands, setRemoteCommands] = useState<SlashCommandItem[]>(() => {
     if (!canUseCachedCommands) {
       return [];
@@ -64,41 +64,14 @@ export function useSlashCommands(conversationId: string, options: UseSlashComman
   const [managedCommands, setManagedCommands] = useState<SlashCommandItem[]>([]);
 
   useEffect(() => {
-    let isDisposed = false;
-
-    const loadManagedCommands = async () => {
-      try {
-        const storedLibrary = await ConfigStorage.get('command.library');
-        const normalizedLibrary = normalizeManagedSlashCommandLibrary(storedLibrary);
-        const resolvedCommands = resolveManagedSlashCommands(normalizedLibrary, (key, defaultValue) =>
-          t(key, { defaultValue })
-        );
-
-        if (JSON.stringify(storedLibrary) !== JSON.stringify(normalizedLibrary)) {
-          await ConfigStorage.set('command.library', normalizedLibrary);
-        }
-
-        if (!isDisposed) {
-          setManagedCommands(toSlashCommandItems(resolvedCommands));
-        }
-      } catch (error) {
-        if (!isDisposed) {
-          console.error('[useSlashCommands] Failed to load managed commands:', error);
-          setManagedCommands([]);
-        }
-      }
-    };
-
-    void loadManagedCommands();
     const unsubscribe = addEventListener('commands.library.updated', () => {
-      void loadManagedCommands();
+      setLibraryRefreshToken((value) => value + 1);
     });
 
     return () => {
-      isDisposed = true;
       unsubscribe();
     };
-  }, [i18n.language]);
+  }, []);
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
@@ -106,44 +79,59 @@ export function useSlashCommands(conversationId: string, options: UseSlashComman
 
     if (!conversationId) {
       setRemoteCommands([]);
-      return;
-    }
-
-    if (!canUseCachedCommands) {
-      setRemoteCommands([]);
+      setManagedCommands([]);
       return;
     }
 
     const cached = getCachedCommands(conversationId);
     if (canUseCachedCommands && cached) {
       setRemoteCommands(cached);
+    } else if (!canUseCachedCommands) {
+      setRemoteCommands([]);
     }
 
     void ipcBridge.conversation.getSlashCommands
-      .invoke({ conversation_id: conversationId })
+      .invoke({ conversation_id: conversationId, includeRuntimeCommands: canUseCachedCommands })
       .then((response) => {
         if (isCancelled || requestId !== requestIdRef.current) {
           return;
         }
+
+        const managedLibrary = normalizeManagedSlashCommandLibrary(response.data?.managedLibrary);
+        const resolvedManagedCommands = resolveManagedSlashCommands(managedLibrary, (key, defaultValue) =>
+          t(key, { defaultValue })
+        );
+        setManagedCommands(toSlashCommandItems(resolvedManagedCommands));
+
         if (!response.success || !response.data?.commands) {
-          setRemoteCommands([]);
+          if (canUseCachedCommands) {
+            setRemoteCommands([]);
+          }
           return;
         }
-        setCachedCommands(conversationId, response.data.commands);
-        setRemoteCommands(response.data.commands);
+
+        if (canUseCachedCommands) {
+          setCachedCommands(conversationId, response.data.commands);
+          setRemoteCommands(response.data.commands);
+        } else {
+          setRemoteCommands([]);
+        }
       })
       .catch((error) => {
         if (isCancelled || requestId !== requestIdRef.current) {
           return;
         }
         console.error('[useSlashCommands] Failed to load slash commands:', error);
-        setRemoteCommands([]);
+        setManagedCommands([]);
+        if (canUseCachedCommands) {
+          setRemoteCommands([]);
+        }
       });
 
     return () => {
       isCancelled = true;
     };
-  }, [conversationId, canUseCachedCommands, codexStatus, conversationType, agentStatus]);
+  }, [agentStatus, canUseCachedCommands, codexStatus, conversationId, conversationType, i18n.language, libraryRefreshToken, t]);
 
   return useMemo(() => {
     const mergedCommands = new Map<string, SlashCommandItem>();

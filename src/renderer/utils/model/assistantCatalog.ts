@@ -1,19 +1,36 @@
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
-import { buildBuiltinAssistants } from '@/common/config/presets/builtinAssistantDefaults';
+import {
+  buildBuiltinAssistants,
+  buildContextEngineSystemAssistants,
+} from '@/common/config/presets/builtinAssistantDefaults';
 
-export function mergeAssistantsWithBuiltinFallback(
+export type ResolvedAssistantCatalog = {
+  productAssistants: AcpBackendConfig[];
+  systemAssistants: AcpBackendConfig[];
+};
+
+export function buildResolvedAssistantCatalog(
   assistants: AcpBackendConfig[] | null | undefined
-): AcpBackendConfig[] {
+): ResolvedAssistantCatalog {
   const currentAssistants = Array.isArray(assistants) ? assistants : [];
-  const mergedAssistants = [...currentAssistants];
+  const productAssistants = [...currentAssistants];
   const existingIds = new Set(currentAssistants.map((assistant) => assistant.id));
 
   for (const builtinAssistant of buildBuiltinAssistants()) {
     if (existingIds.has(builtinAssistant.id)) {
       continue;
     }
-    mergedAssistants.push(builtinAssistant);
+    productAssistants.push(builtinAssistant);
   }
 
-  return mergedAssistants;
+  return {
+    productAssistants,
+    systemAssistants: buildContextEngineSystemAssistants(),
+  };
+}
+
+export function mergeAssistantsWithBuiltinFallback(
+  assistants: AcpBackendConfig[] | null | undefined
+): AcpBackendConfig[] {
+  return buildResolvedAssistantCatalog(assistants).productAssistants;
 }

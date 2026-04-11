@@ -27,6 +27,14 @@ describe('transformMessage', () => {
     expect(result!.content).toEqual({ content: 'something went wrong', type: 'error' });
   });
 
+  it('transforms interrupted messages into warning tips', () => {
+    const result = transformMessage(makeMessage('interrupted', 'Interrupted by user.'));
+    expect(result).toBeDefined();
+    expect(result!.type).toBe('tips');
+    expect(result!.position).toBe('center');
+    expect(result!.content).toEqual({ content: 'Interrupted by user.', type: 'warning' });
+  });
+
   it('transforms content messages into text', () => {
     const result = transformMessage(makeMessage('content', 'hello'));
     expect(result).toBeDefined();

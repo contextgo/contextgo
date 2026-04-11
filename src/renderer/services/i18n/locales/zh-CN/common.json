@@ -62,12 +62,6 @@
   "refresh": "刷新",
   "refreshSuccess": "已刷新",
   "processing": "处理中...",
-  "space": "空间",
-  "mySpace": "我的空间",
-  "newSpace": "新建空间",
-  "switchSpace": "切换空间",
-  "spaceCreated": "已创建 {{name}}",
-  "returnToWorkbench": "返回工作台",
   "name": "名称",
   "rendererCrash": {
     "title": "当前页面在完成渲染前发生了崩溃",

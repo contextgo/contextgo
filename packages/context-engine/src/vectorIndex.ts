@@ -28,6 +28,7 @@ export type VectorSearchInput = {
   kinds?: readonly VectorIndexEntityKind[];
   tiers?: readonly VectorIndexTier[];
   threadId?: ThreadId;
+  projectSlug?: string;
 };
 
 export type VectorSearchHit = {

@@ -144,6 +144,14 @@ function scoreChunkLexical(chunk: ChunkRecord, queryTerms: readonly string[]): n
   return queryTerms.filter((term) => haystack.includes(term)).length * 12;
 }
 
+function scoreProjectAffinity(metadata: Readonly<Record<string, string | number | boolean>> | undefined, projectSlug: string | undefined): number {
+  if (!projectSlug || !metadata) {
+    return 0;
+  }
+
+  return metadata.projectSlug === projectSlug ? 18 : 0;
+}
+
 function dedupe<T>(items: readonly T[]): T[] {
   return [...new Set(items)];
 }
@@ -198,7 +206,7 @@ export class ContextEngineService implements IContextService {
   async ingestSource(input: IngestSourceInput): Promise<IngestSourceResult> {
     const now = input.createdAt ?? ISO_NOW();
     const source: SourceRecord = {
-      id: createId('source'),
+      id: input.sourceId ?? createId('source'),
       spaceId: input.spaceId,
       threadId: input.threadId,
       artifactId: input.artifactId,
@@ -269,6 +277,8 @@ export class ContextEngineService implements IContextService {
       input.includeSources === false ? Promise.resolve([]) : this.deps.sources.listBySpace(input.spaceId),
       includeChunks ? this.deps.documents.listBySpace(input.spaceId) : Promise.resolve([]),
     ]);
+    const activeSources = allSources.filter((source) => source.status === 'active');
+    const activeSourceIds = new Set(activeSources.map((source) => source.id));
 
     const memoryTierFilter = input.memoryTiers ? new Set(input.memoryTiers) : null;
     const eligibleMemories = allMemories.filter((memory) =>
@@ -289,6 +299,9 @@ export class ContextEngineService implements IContextService {
     const documentByChunkId = new Map<string, DocumentSnapshot>();
     if (includeChunks) {
       for (const document of documents) {
+        if (!activeSourceIds.has(document.sourceId)) {
+          continue;
+        }
         const chunks = await this.deps.chunks.listByDocument(document.id);
         for (const chunk of chunks) {
           chunkById.set(chunk.id, chunk);
@@ -320,6 +333,7 @@ export class ContextEngineService implements IContextService {
         ? await this.deps.vectorIndex.search({
             spaceId: input.spaceId,
             threadId: input.threadId,
+            projectSlug: input.projectSlug,
             query: input.query,
             topK: Math.max(input.memoryLimit ?? 8, input.chunkLimit ?? 6, 8),
             kinds: includeChunks ? ['memory', 'chunk'] : ['memory'],
@@ -349,7 +363,11 @@ export class ContextEngineService implements IContextService {
         continue;
       }
       const topVectorScore = vector[0]?.score ?? 0;
-      const score = (lexical?.score ?? 0) + Math.round(topVectorScore * 40);
+      const projectAffinityScore = Math.max(
+        scoreProjectAffinity(memoryVectorHits.get(memory.id)?.[0]?.metadata, input.projectSlug),
+        scoreProjectAffinity(vector[0]?.metadata, input.projectSlug)
+      );
+      const score = (lexical?.score ?? 0) + Math.round(topVectorScore * 40) + projectAffinityScore;
       fusedMemories.set(memory.id, {
         memory,
         score,
@@ -372,10 +390,11 @@ export class ContextEngineService implements IContextService {
           continue;
         }
         const topVectorScore = vector[0]?.score ?? 0;
+        const projectAffinityScore = scoreProjectAffinity(vector[0]?.metadata, input.projectSlug);
         fusedChunks.set(chunk.id, {
           chunk,
           documentId: chunk.documentId,
-          score: (lexical?.score ?? 0) + Math.round(topVectorScore * 35),
+          score: (lexical?.score ?? 0) + Math.round(topVectorScore * 35) + projectAffinityScore,
           matchedBy: lexical?.matchedBy ?? [],
           vectorHits: vector,
         });
@@ -390,7 +409,7 @@ export class ContextEngineService implements IContextService {
     for (const chunkHit of chunks) {
       const document = documentByChunkId.get(chunkHit.chunk.id);
       if (document) {
-        const source = allSources.find((item) => item.id === document.sourceId);
+        const source = activeSources.find((item) => item.id === document.sourceId);
         if (source) {
           relatedSourceIds.add(source.id);
         }
@@ -398,7 +417,7 @@ export class ContextEngineService implements IContextService {
     }
 
     const sourceTerms = new Set(queryTerms);
-    const sources = allSources.filter((source) => {
+    const sources = activeSources.filter((source) => {
       if (relatedSourceIds.has(source.id)) {
         return true;
       }
@@ -436,8 +455,11 @@ export class ContextEngineService implements IContextService {
     if (input.threadSummary) {
       sections.push(buildSection('thread-state', input.threadSummary, 100, `thread-${input.threadId ?? 'space'}`));
     }
-    if (input.mountSummary) {
-      sections.push(buildSection('thread-state', input.mountSummary, 96, `mount-${input.threadId ?? 'space'}`));
+    for (const mountedSection of input.mountedSections ?? []) {
+      sections.push({ ...mountedSection });
+    }
+    for (const profile of input.mountedProfiles ?? []) {
+      sections.push(buildSection('compaction', profile.summary, 88 + Math.round(profile.confidence * 4), `compaction-${profile.id}`));
     }
     for (const [index, instruction] of (input.pinnedInstructions ?? []).entries()) {
       sections.push(buildSection('instruction', instruction, 110 - index, `instruction-${index}`));

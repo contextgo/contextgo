@@ -34,7 +34,6 @@ const listExternalSessionsInvokeMock = vi.fn(async () => ({
     sessions: [{ sessionId: 's-1' }, { sessionId: 's-2' }],
   },
 }));
-
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
@@ -59,7 +58,6 @@ vi.mock('react-i18next', () => ({
           'settings.webui.officialRemoteStatusShort.preparing': 'Preparing',
           'settings.webui.officialRemoteStatusShort.connecting': 'Connecting',
           'settings.webui.officialRemoteStatusShort.unavailable': 'Unavailable',
-          'conversation.history.contextMenu.open': 'Open',
           'guid.externalSessions.title': 'Continue external sessions',
           'guid.externalSessions.loading': 'Scanning external sessions...',
           'guid.externalSessions.loadingShort': 'Scanning',
@@ -134,13 +132,11 @@ describe('QuickActionButtons', () => {
     await waitFor(() => {
       expect(screen.getByText('Ready')).toBeInTheDocument();
     });
-
     expect(screen.getByText('Official Remote')).toBeInTheDocument();
     expect(screen.getByText('Continue external sessions')).toBeInTheDocument();
     expect(screen.getByText('2 ready')).toBeInTheDocument();
     expect(screen.getByText('Take over')).toBeInTheDocument();
     expect(screen.getByText('Open')).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole('button', { name: /Official Remote/i }));
     expect(navigateMock).toHaveBeenCalledWith('/settings/webui');
 

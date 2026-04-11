@@ -12,7 +12,7 @@ import { CodexSessionManager } from '@process/agent/codex/handlers/CodexSessionM
 import type { ICodexMessageEmitter } from '@process/agent/codex/messaging/CodexMessageEmitter';
 import { channelEventBus } from '@process/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
-import type { CronMessageMeta, IConfirmation, TMessage } from '@/common/chat/chatLib';
+import type { ScheduleMessageMeta, IConfirmation, TMessage } from '@/common/chat/chatLib';
 import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import type { CodexAgentManagerData } from '@/common/types/codex/types';
 import { DEFAULT_CODEX_MODELS, DEFAULT_CODEX_MODEL_ID } from '@/common/types/codex/codexModels';
@@ -23,7 +23,8 @@ import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
-import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
+import { stripAssistantControlCommands } from '@process/services/context/events/schedule/AssistantScheduleCommandService';
+import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { getDatabase } from '@process/services/database';
 import { ProcessConfig } from '@process/utils/initStorage';
@@ -117,8 +118,8 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
       }
 
       // Read codex.config for global yoloMode setting
-      // yoloMode priority: data.yoloMode (from CronService) > config setting
-      // yoloMode 优先级：data.yoloMode（来自 CronService）> 配置设置
+      // yoloMode priority: data.yoloMode (from ScheduleService) > config setting
+      // yoloMode 优先级：data.yoloMode（来自 ScheduleService）> 配置设置
       const codexConfig = await ProcessConfig.get('codex.config');
       const legacyYoloMode = data.yoloMode ?? codexConfig?.yoloMode;
 
@@ -238,9 +239,9 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     agentContent?: string;
     files?: string[];
     msg_id?: string;
-    cronMeta?: CronMessageMeta;
+    scheduleMeta?: ScheduleMessageMeta;
   }) {
-    cronBusyGuard.setProcessing(this.conversation_id, true);
+    scheduleConversationGuard.setProcessing(this.conversation_id, true);
     // Set status to running when message is being processed
     this.status = 'running';
     try {
@@ -260,21 +261,21 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
           conversation_id: this.conversation_id,
           content: {
             content: data.content,
-            ...(data.cronMeta && { cronMeta: data.cronMeta }),
+            ...(data.scheduleMeta && { scheduleMeta: data.scheduleMeta }),
           },
           createdAt: Date.now(),
         };
         addMessage(this.conversation_id, userMessage);
-        // Emit user_content IPC for cron messages so the frontend can display them
+        // Emit user_content IPC for scheduled messages so the frontend can display them
         // even if the component mounts after the DB save but before the DB load completes.
-        if (data.cronMeta) {
+        if (data.scheduleMeta) {
           const userResponseMessage: IResponseMessage = {
             type: 'user_content',
             conversation_id: this.conversation_id,
             msg_id: data.msg_id,
             data: {
               content: userMessage.content.content,
-              cronMeta: data.cronMeta,
+              scheduleMeta: data.scheduleMeta,
             },
           };
           ipcBridge.codexConversation.responseStream.emit(userResponseMessage);
@@ -308,7 +309,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
         return result;
       }
     } catch (e) {
-      cronBusyGuard.setProcessing(this.conversation_id, false);
+      scheduleConversationGuard.setProcessing(this.conversation_id, false);
       this.status = 'finished';
       // 对于某些错误类型，避免重复错误消息处理
       // 这些错误通常已经通过 MCP 连接的事件流处理过了
@@ -643,7 +644,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
         } else {
           addMessage(this.conversation_id, tMessage);
         }
-        // Note: Cron command detection is handled in CodexMessageProcessor.processFinalMessage
+        // Note: Schedule command detection is handled in CodexMessageProcessor.processFinalMessage
         // where we have the complete agent_message text
       }
     }
@@ -711,13 +712,28 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
 
   /**
    * Send message back to AI agent (for system response feedback)
-   * Used by CodexMessageProcessor to send cron command results back to AI
+   * Used by CodexMessageProcessor to send schedule command results back to AI
    */
   async sendMessageToAgent(content: string): Promise<void> {
-    await this.sendMessage({
-      content,
-      msg_id: uuid(),
-    });
+    await this.bootstrap;
+    this.status = 'running';
+    await this.agent.sendPrompt(content);
+  }
+
+  updateFinalAssistantContent(msgId: string, content: string): void {
+    const cleanedContent = stripAssistantControlCommands(content);
+    const correctedMessage: IResponseMessage = {
+      type: 'content',
+      conversation_id: this.conversation_id,
+      msg_id: msgId,
+      data: cleanedContent,
+    };
+    const transformedMessage = transformMessage(correctedMessage);
+    if (transformedMessage) {
+      addOrUpdateMessage(this.conversation_id, transformedMessage);
+    }
+    ipcBridge.codexConversation.responseStream.emit(correctedMessage);
+    channelEventBus.emitAgentMessage(this.conversation_id, correctedMessage);
   }
 
   // ===== ApprovalStore integration (ICodexMessageEmitter) =====

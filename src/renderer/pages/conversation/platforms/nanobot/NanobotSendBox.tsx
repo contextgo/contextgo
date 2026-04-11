@@ -12,6 +12,8 @@ import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import SendBox from '@/renderer/components/chat/sendbox';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile } from '@/renderer/hooks/chat/useSendBoxFiles';
+import { readConversationUiState } from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
+import { useConversationUiStateRestore } from '@/renderer/pages/conversation/hooks/useConversationUiStateRestore';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
 import { allSupportedExts, type FileMetadata } from '@/renderer/services/FileService';
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
@@ -52,7 +54,24 @@ const useNanobotSendBoxDraft = getSendBoxDraftHook('nanobot', {
 const EMPTY_AT_PATH: Array<string | FileOrFolderItem> = [];
 const EMPTY_UPLOAD_FILES: string[] = [];
 
+type NanobotUiStateSnapshot = {
+  aiProcessing: boolean;
+  thought: ThoughtData;
+};
+
+const NANOBOT_UI_STATE_SCOPE = 'nanobot';
+
+const createDefaultNanobotUiState = (): NanobotUiStateSnapshot => ({
+  aiProcessing: false,
+  thought: { subject: '', description: '' },
+});
+
 const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
+  const initialUiState = readConversationUiState(
+    NANOBOT_UI_STATE_SCOPE,
+    conversation_id,
+    createDefaultNanobotUiState()
+  );
   const [workspacePath, setWorkspacePath] = useState('');
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
@@ -60,11 +79,8 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
   const addOrUpdateMessage = useAddOrUpdateMessage();
   const { setSendBoxHandler } = usePreviewContext();
 
-  const [aiProcessing, setAiProcessing] = useState(false);
-  const [thought, setThought] = useState<ThoughtData>({
-    description: '',
-    subject: '',
-  });
+  const [aiProcessing, setAiProcessing] = useState(initialUiState.aiProcessing);
+  const [thought, setThought] = useState<ThoughtData>(initialUiState.thought);
 
   // Throttle thought updates to reduce render frequency
   const thoughtThrottleRef = useRef<{
@@ -137,10 +153,19 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
   const setContentRef = useLatestRef(setContent);
   const atPathRef = useLatestRef(atPath);
 
-  useEffect(() => {
-    setAiProcessing(false);
-    setThought({ subject: '', description: '' });
-  }, [conversation_id]);
+  useConversationUiStateRestore({
+    scope: NANOBOT_UI_STATE_SCOPE,
+    conversationId: conversation_id,
+    state: {
+      aiProcessing,
+      thought,
+    },
+    createDefaultState: createDefaultNanobotUiState,
+    applyCachedState: (cachedState) => {
+      setAiProcessing(cachedState.aiProcessing);
+      setThought(cachedState.thought);
+    },
+  });
 
   useEffect(() => {
     const handler = (text: string) => {
@@ -170,6 +195,15 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
         case 'finish': {
           setThought({ subject: '', description: '' });
           setAiProcessing(false);
+          break;
+        }
+        case 'interrupted': {
+          setThought({ subject: '', description: '' });
+          setAiProcessing(false);
+          const transformedMessage = transformMessage(message);
+          if (transformedMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
           break;
         }
         case 'content':

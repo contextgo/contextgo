@@ -13,13 +13,14 @@ import type { ISpaceService } from '@process/services/space/ISpaceService';
 import { initAcpConversationBridge } from './acpConversationBridge';
 import { initApplicationBridge } from './applicationBridge';
 import { initAuthBridge } from './authBridge';
+import { initBrowserActivityConnectorBridge } from './browserActivityConnectorBridge';
 import { initBedrockBridge } from './bedrockBridge';
 import { initBrowserContextBridge } from './browserContextBridge';
 import { initClipboardConnectorBridge } from './clipboardConnectorBridge';
 import { initChannelBridge } from './channelBridge';
 import { initCloudBridge } from './cloudBridge';
 import { initConversationBridge } from './conversationBridge';
-import { initCronBridge } from './cronBridge';
+import { initScheduleBridge } from './scheduleBridge';
 import { initDatabaseBridge } from './databaseBridge';
 import { initDialogBridge } from './dialogBridge';
 import { initDocumentBridge } from './documentBridge';
@@ -74,6 +75,7 @@ export function initAllBridges(deps: BridgeDependencies): void {
   initGeminiBridge();
   initBedrockBridge();
   initBrowserContextBridge();
+  initBrowserActivityConnectorBridge();
   initFeishuConnectorBridge();
   initGoogleDriveConnectorBridge();
   initGoogleDocsConnectorBridge();
@@ -94,7 +96,7 @@ export function initAllBridges(deps: BridgeDependencies): void {
   initChannelBridge(deps.channelRepo);
   initDatabaseBridge(deps.conversationRepo);
   initExtensionsBridge(deps.conversationRepo, deps.workerTaskManager);
-  initCronBridge();
+  initScheduleBridge();
   initSystemSettingsBridge();
   initNotificationBridge();
   initTaskBridge(deps.workerTaskManager);
@@ -121,11 +123,12 @@ export {
   initAuthBridge,
   initBedrockBridge,
   initBrowserContextBridge,
+  initBrowserActivityConnectorBridge,
   initClipboardConnectorBridge,
   initChannelBridge,
   initCloudBridge,
   initConversationBridge,
-  initCronBridge,
+  initScheduleBridge,
   initDatabaseBridge,
   initDialogBridge,
   initDocumentBridge,

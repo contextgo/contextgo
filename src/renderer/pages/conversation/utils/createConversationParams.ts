@@ -199,7 +199,8 @@ export function getConversationTypeForPreset(presetAgentType: string): ICreateCo
  */
 export async function buildCliAgentParams(
   agent: AvailableAgent,
-  workspace: string
+  workspace: string,
+  spaceId?: string
 ): Promise<ICreateConversationParams> {
   const { backend, name: agentName, cliPath } = agent;
   const resolvedWorkspace = backend === 'openclaw-gateway' ? agent.workspace || workspace : workspace;
@@ -207,6 +208,7 @@ export async function buildCliAgentParams(
   const type = getConversationTypeForBackend(backend);
 
   const extra: ICreateConversationParams['extra'] = {
+    spaceId,
     workspace: resolvedWorkspace,
     customWorkspace: true,
   };
@@ -243,7 +245,8 @@ export async function buildCliAgentParams(
 export async function buildPresetAssistantParams(
   agent: AvailableAgent,
   workspace: string,
-  language: string
+  language: string,
+  spaceId?: string
 ): Promise<ICreateConversationParams> {
   const { customAgentId, presetAgentType = 'gemini' } = agent;
   const localeKey = resolveLocaleKey(language);
@@ -260,6 +263,7 @@ export async function buildPresetAssistantParams(
   const type = getConversationTypeForPreset(presetAgentType);
 
   const extra: ICreateConversationParams['extra'] = {
+    spaceId,
     workspace,
     customWorkspace: true,
     enabledSkills,
@@ -294,6 +298,7 @@ export const createGroupPlaceholderModel = (): TProviderWithModel => {
 export const createDiscussionGroupPlaceholderModel = createGroupPlaceholderModel;
 
 const buildGroupParticipants = async (options: {
+  spaceId?: string;
   workspace?: string;
   language: string;
   participants: GroupParticipantInput[];
@@ -315,11 +320,13 @@ const buildGroupParticipants = async (options: {
                 presetAgentType: participant.presetAgentType,
               },
               normalizedWorkspace || '',
-              options.language
+              options.language,
+              options.spaceId
             )) as IAssistantConversationCreateParams)
           : ((await buildCliAgentParams(
               participant.agent,
-              normalizedWorkspace || ''
+              normalizedWorkspace || '',
+              options.spaceId
             )) as IAssistantConversationCreateParams);
 
       return {
@@ -347,6 +354,7 @@ const buildGroupParticipants = async (options: {
 
 export async function buildDiscussionGroupParams(options: {
   name: string;
+  spaceId?: string;
   workspace?: string;
   language: string;
   mode: DiscussionGroupMode;
@@ -357,6 +365,7 @@ export async function buildDiscussionGroupParams(options: {
   const customWorkspace = Boolean(options.workspace?.trim());
   const normalizedWorkspace = options.workspace?.trim() || undefined;
   const participants = await buildGroupParticipants({
+    spaceId: options.spaceId,
     workspace: options.workspace,
     language: options.language,
     participants: options.participants,
@@ -372,6 +381,7 @@ export async function buildDiscussionGroupParams(options: {
     model: createGroupPlaceholderModel(),
     name: options.name,
     extra: {
+      spaceId: options.spaceId,
       workspace: normalizedWorkspace,
       customWorkspace,
       participants,
@@ -387,6 +397,7 @@ export async function buildDiscussionGroupParams(options: {
 
 export async function buildWorkflowGroupParams(options: {
   name: string;
+  spaceId?: string;
   workspace?: string;
   language: string;
   template?: WorkflowGroupTemplate;
@@ -401,6 +412,7 @@ export async function buildWorkflowGroupParams(options: {
   const template = normalizeWorkflowGroupTemplate(options.template || DEFAULT_WORKFLOW_GROUP_TEMPLATE);
   const templateDefinition = getWorkflowGroupTemplateDefinition(template);
   const participants = await buildGroupParticipants({
+    spaceId: options.spaceId,
     workspace: options.workspace,
     language: options.language,
     participants: options.participants,
@@ -411,6 +423,7 @@ export async function buildWorkflowGroupParams(options: {
     model: createGroupPlaceholderModel(),
     name: options.name,
     extra: {
+      spaceId: options.spaceId,
       workspace: normalizedWorkspace,
       customWorkspace,
       participants,

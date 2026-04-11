@@ -33,7 +33,7 @@ vi.mock('@process/services/i18n', () => ({
   i18nReady: Promise.resolve(),
 }));
 
-vi.mock('@process/services/cron/cronServiceSingleton', () => ({
+vi.mock('@process/services/context/scheduleServiceSingleton', () => ({
   cronService: {
     addJob: vi.fn(),
     listJobsByConversation: vi.fn(async () => []),
@@ -228,6 +228,59 @@ describe('ChannelMessageService', () => {
 
     agentMessageListener?.({ type: 'finish', conversation_id: 'conv-media', data: null });
     await expect(promise).resolves.toMatch(/^channel_msg_/);
+  });
+
+  it('resolves an active stream when an interrupted event arrives', async () => {
+    const sendMessage = vi.fn(async () => undefined);
+    const onStream = vi.fn();
+    const service = new ChannelMessageService({
+      taskManager: {
+        getTask: vi.fn(() => undefined),
+        getOrBuildTask: vi.fn(async () => ({
+          type: 'gemini',
+          sendMessage,
+        })),
+      },
+      getDatabase: async () =>
+        ({
+          getConversation: vi.fn(() => ({
+            success: true,
+            data: {
+              id: 'conv-stop',
+              type: 'gemini',
+              source: 'telegram',
+              extra: {},
+            },
+          })),
+        }) as unknown as Awaited<ReturnType<typeof import('../../../src/process/services/database').getDatabase>>,
+      hookRuntime: {
+        applyBeforeUserPrompt: vi.fn(async () => ({
+          content: 'hooked stop',
+          appliedHooks: [],
+        })),
+      },
+    });
+
+    const promise = service.sendMessage('session-1', 'conv-stop', 'stop me', onStream);
+    await vi.waitFor(() => {
+      expect(sendMessage).toHaveBeenCalled();
+    });
+
+    agentMessageListener?.({
+      type: 'interrupted',
+      conversation_id: 'conv-stop',
+      msg_id: 'stop-msg',
+      data: 'Interrupted by user.',
+    });
+
+    await expect(promise).resolves.toMatch(/^channel_msg_/);
+    expect(onStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tips',
+        content: expect.objectContaining({ content: 'Interrupted by user.', type: 'warning' }),
+      }),
+      true
+    );
   });
 
   it('enables yolo mode for Discord channel conversations', async () => {

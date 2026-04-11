@@ -27,11 +27,59 @@
   background: linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 68%, transparent) 0%, transparent 100%);
 }
 
+@media (max-width: 767px) {
+  .chat-layout-mobile-top-chrome {
+    position: relative;
+    z-index: 2;
+    background: #f6f8fb;
+    border-bottom: 1px solid color-mix(in srgb, var(--bg-2) 72%, var(--border-base));
+  }
+
+  .chat-layout-mobile-context-row {
+    min-width: 0;
+    padding: 4px 12px 8px;
+  }
+
+  .chat-layout-mobile-toolbar {
+    width: 100%;
+  }
+
+  .chat-layout-mobile-toolbar-scroll {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chat-layout-mobile-toolbar-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chat-layout-mobile-toolbar-item {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+}
+
 @supports ((-webkit-backdrop-filter: blur(6px)) or (backdrop-filter: blur(6px))) {
   .chat-layout-header--glass {
     -webkit-backdrop-filter: saturate(110%) blur(6px);
     backdrop-filter: saturate(110%) blur(6px);
   }
+}
+
+.workspace-panel-header__content {
+  display: flex;
+  align-items: center;
 }
 
 @media (prefers-reduced-motion: reduce), (max-width: 768px) {
@@ -43,6 +91,11 @@
 
   .chat-layout-header--glass::after {
     display: none;
+  }
+
+  [data-theme='dark'] .chat-layout-mobile-top-chrome {
+    background: #1c2129;
+    border-bottom-color: color-mix(in srgb, var(--bg-2) 72%, var(--border-base));
   }
 }
 
@@ -71,7 +124,7 @@
     box-shadow: none !important;
   }
 
-  .chat-header-cron-pill {
+  .chat-header-schedule-pill {
     margin-right: 4px;
   }
 }

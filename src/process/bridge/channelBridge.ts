@@ -779,15 +779,20 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
 
       for (const plugin of dbPlugins) {
         const connector = connectorMap.get(plugin.id) ?? connectorByRuntimeId.get(plugin.id);
-        const statusId = connector?.id ?? plugin.id;
         const pluginType = connector?.platform ?? plugin.type;
         const isExtension = !isBuiltinChannelType(pluginType);
         const configured =
           connector?.configured ?? hasPluginCredentials(pluginType, connector?.credentials ?? plugin.credentials);
 
+        if (!isExtension && !connector) {
+          continue;
+        }
+
         if (isExtension && !enabledExtChannelTypes.has(pluginType)) {
           continue;
         }
+
+        const statusId = connector?.id ?? plugin.id;
 
         statusMap.set(statusId, {
           id: statusId,

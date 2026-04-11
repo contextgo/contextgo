@@ -17,6 +17,7 @@ import { ExtensionRegistry } from '@process/extensions';
 import { CONTEXTGO_TIMESTAMP_SEPARATOR } from '@/common/config/constants';
 import directoryApi from '../directoryApi';
 import { apiRateLimiter } from '../middleware/security';
+import { registerBrowserActivityRoutes } from './browserActivityRoutes';
 
 /** Max upload size in bytes (30MB per Issue #1233) */
 const MAX_UPLOAD_SIZE = 30 * 1024 * 1024;
@@ -259,6 +260,8 @@ export function registerApiRoutes(app: Express): void {
   const validateApiAccess = TokenMiddleware.validateToken({
     responseType: 'json',
   });
+
+  registerBrowserActivityRoutes(app);
 
   /**
    * 目录 API - Directory API

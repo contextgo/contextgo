@@ -152,6 +152,7 @@ vi.mock('../../src/process/utils/shellEnv', () => ({
 }));
 
 const listSessionsMock = vi.fn(async () => []);
+const registerConversationMock = vi.fn(async () => {});
 const importSessionMock = vi.fn(async () => ({
   id: 'imported-conversation',
   type: 'acp',
@@ -213,6 +214,8 @@ describe('acpConversationBridge', () => {
     hoisted.codexPing.mockResolvedValue(true);
     hoisted.codexStop.mockReset();
     hoisted.codexStop.mockResolvedValue(undefined);
+    registerConversationMock.mockReset();
+    registerConversationMock.mockResolvedValue(undefined);
     processConfigGetMock.mockImplementation(async (key: string) => {
       if (key === 'acp.config') return {};
       if (key === 'codex.config') return {};
@@ -228,7 +231,9 @@ describe('acpConversationBridge', () => {
       createWithMigration: vi.fn(),
       listAllConversations: vi.fn(),
     };
-    initAcpConversationBridge(taskManager, conversationService);
+    initAcpConversationBridge(taskManager, conversationService, {
+      registerConversation: registerConversationMock,
+    } as any);
   });
 
   // --- getMode ---
@@ -283,6 +288,7 @@ describe('acpConversationBridge', () => {
 
     expect(importSessionMock).toHaveBeenCalledWith({ provider: 'codex', sessionId: 'session-1' });
     expect(result.success).toBe(true);
+    expect(registerConversationMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'imported-conversation' }));
     expect(hoisted.conversationListChangedEmit).toHaveBeenCalledWith({
       conversationId: 'imported-conversation',
       action: 'created',

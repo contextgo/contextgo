@@ -10,7 +10,7 @@ import PwaPullToRefresh from '@/renderer/components/layout/PwaPullToRefresh';
 import Titlebar from '@/renderer/components/layout/Titlebar';
 import { Layout as ArcoLayout } from '@arco-design/web-react';
 import classNames from 'classnames';
-import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutContext } from '@renderer/hooks/context/LayoutContext';
 import { useDeepLink } from '@renderer/hooks/system/useDeepLink';
@@ -34,6 +34,8 @@ const MOBILE_SIDER_EDGE_SWIPE_ZONE = 28;
 const MOBILE_SIDER_GESTURE_TRIGGER_RATIO = 0.35;
 const MOBILE_SIDER_GESTURE_MIN_DISTANCE = 72;
 
+type MobileTopChromeMode = 'home' | 'conversation' | 'default';
+
 type MobileSiderGesture = {
   mode: 'opening' | 'closing';
   startX: number;
@@ -53,6 +55,30 @@ const detectMobileViewportOrTouch = (): boolean => {
   const byMedia = window.matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches;
   const byTouchPoints = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
   return byWidth || (smallScreen && (byMedia || byTouchPoints));
+};
+
+const resolveMobileTopChromeMode = (pathname: string): MobileTopChromeMode => {
+  if (pathname === '/guid' || pathname === '/') {
+    return 'home';
+  }
+
+  if (pathname.startsWith('/conversation/')) {
+    return 'conversation';
+  }
+
+  return 'default';
+};
+
+const resolveMobileThemeColor = (mode: MobileTopChromeMode, isDarkTheme: boolean): string => {
+  if (mode === 'home') {
+    return isDarkTheme ? '#1b2331' : '#e8f1ff';
+  }
+
+  if (mode === 'conversation') {
+    return isDarkTheme ? '#1c2129' : '#f6f8fb';
+  }
+
+  return isDarkTheme ? '#161b22' : '#f7f8fb';
 };
 
 const Layout: React.FC<{
@@ -77,6 +103,7 @@ const Layout: React.FC<{
   const isConversationDetailRoute = location.pathname.startsWith('/conversation/');
   const isMobileShellRuntime = !isElectronDesktop() && isMobileShellWebView();
   const workspaceAvailable = isConversationDetailRoute;
+  const mobileTopChromeMode = useMemo(() => resolveMobileTopChromeMode(location.pathname), [location.pathname]);
   const collapsedRef = useRef(collapsed);
   const lastCssRef = useRef('');
   const lastUiCssUpdateAtRef = useRef(0);
@@ -246,6 +273,24 @@ const Layout: React.FC<{
 
     setCollapsed(false);
   }, [isMobile, isSettingsRoute]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+    const themeColor = resolveMobileThemeColor(isMobile ? mobileTopChromeMode : 'default', isDarkTheme);
+    let themeColorMeta = document.querySelector<HTMLMetaElement>("meta[name='theme-color']");
+
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.name = 'theme-color';
+      document.head.appendChild(themeColorMeta);
+    }
+
+    themeColorMeta.content = themeColor;
+  }, [isMobile, mobileTopChromeMode]);
 
   // 清理侧栏 Tooltip 残留节点，避免移动端路由切换后浮层卡在左上角
   useEffect(() => {
@@ -474,7 +519,10 @@ const Layout: React.FC<{
       }}
     >
       <div
-        className='app-shell relative flex flex-col size-full min-h-0'
+        className={classNames(
+          'app-shell relative flex flex-col size-full min-h-0',
+          isMobile && `app-shell--mobile-${mobileTopChromeMode}`
+        )}
         style={appShellStyle}
         onTouchStart={handleMobileSiderTouchStart}
         onTouchMove={handleMobileSiderTouchMove}
@@ -541,7 +589,10 @@ const Layout: React.FC<{
           ) : null}
 
           <ArcoLayout.Content
-            className={'bg-1 layout-content flex flex-col min-h-0'}
+            className={classNames(
+              'bg-1 layout-content flex flex-col min-h-0',
+              isMobile && `layout-content--mobile-${mobileTopChromeMode}`
+            )}
             onClick={() => {
               if (isMobile && showPrimarySider && !collapsed) setCollapsed(true);
             }}

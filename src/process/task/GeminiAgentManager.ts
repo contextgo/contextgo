@@ -6,7 +6,7 @@
 
 import { channelEventBus } from '@process/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
-import type { CronMessageMeta, IMessageText, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
+import type { ScheduleMessageMeta, IMessageText, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
 import { transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
@@ -21,14 +21,17 @@ import { GeminiApprovalStore } from '../agent/gemini/GeminiApprovalStore';
 import { ToolConfirmationOutcome } from '../agent/gemini/cli/tools/tools';
 import { getDatabase } from '@process/services/database';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
-import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
+import {
+  executeAssistantScheduleCommands,
+  stripAssistantControlCommands,
+} from '@process/services/context/events/schedule/AssistantScheduleCommandService';
+import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { handlePreviewOpenEvent } from '@process/utils/previewUtils';
 import BaseAgentManager from './BaseAgentManager';
 import { IpcAgentEventEmitter } from './IpcAgentEventEmitter';
 import { mainLog, mainWarn, mainError } from '@process/utils/mainLogger';
-import { hasCronCommands } from './CronCommandDetector';
-import { extractTextFromMessage, processCronInMessage } from './MessageMiddleware';
+import { extractTextFromMessage } from './MessageMiddleware';
 import { stripThinkTags } from './ThinkTagDetector';
 import * as fs from 'node:fs';
 
@@ -102,7 +105,45 @@ export class GeminiAgentManager extends BaseAgentManager<
     });
   }
 
-  /** Force yolo mode (for cron jobs) / 强制 yolo 模式（用于定时任务） */
+  private async continueWithSystemResponse(content: string): Promise<void> {
+    await this.bootstrap;
+    this.status = 'running';
+    await super.sendMessage({
+      input: content,
+      msg_id: uuid(),
+    });
+  }
+
+  private rewriteAssistantMessageContent(message: TMessage, nextContent: string): void {
+    const originalContent = extractTextFromMessage(message);
+    if (originalContent === nextContent) {
+      return;
+    }
+
+    const updatedMessage = {
+      ...message,
+      content:
+        typeof message.content === 'object' && message.content !== null && 'content' in message.content
+          ? {
+              ...message.content,
+              content: nextContent,
+            }
+          : message.content,
+    } as TMessage;
+
+    addOrUpdateMessage(this.conversation_id, updatedMessage, 'gemini');
+
+    const correctedMessage: IResponseMessage = {
+      type: 'content',
+      conversation_id: this.conversation_id,
+      msg_id: message.msg_id || message.id,
+      data: nextContent,
+    };
+    ipcBridge.geminiConversation.responseStream.emit(correctedMessage);
+    channelEventBus.emitAgentMessage(this.conversation_id, correctedMessage);
+  }
+
+  /** Force yolo mode (for scheduled jobs) / 强制 yolo 模式（用于定时任务） */
   private forceYoloMode?: boolean;
 
   /** Current session mode for approval behavior / 当前会话模式（影响审批行为） */
@@ -122,7 +163,7 @@ export class GeminiAgentManager extends BaseAgentManager<
       contextContent?: string; // 向后兼容 / Backward compatible
       /** 启用的 skills 列表 / Enabled skills list */
       enabledSkills?: string[];
-      /** Force yolo mode (for cron jobs) / 强制 yolo 模式（用于定时任务） */
+      /** Force yolo mode (for scheduled jobs) / 强制 yolo 模式（用于定时任务） */
       yoloMode?: boolean;
       /** Persisted session mode for resume support / 持久化的会话模式，用于恢复 */
       sessionMode?: string;
@@ -320,7 +361,7 @@ export class GeminiAgentManager extends BaseAgentManager<
     agentInput?: string;
     msg_id: string;
     files?: string[];
-    cronMeta?: CronMessageMeta;
+    scheduleMeta?: ScheduleMessageMeta;
   }) {
     const message: TMessage = {
       id: data.msg_id,
@@ -329,7 +370,7 @@ export class GeminiAgentManager extends BaseAgentManager<
       conversation_id: this.conversation_id,
       content: {
         content: data.input,
-        ...(data.cronMeta && { cronMeta: data.cronMeta }),
+        ...(data.scheduleMeta && { scheduleMeta: data.scheduleMeta }),
       },
     };
     addMessage(this.conversation_id, message);
@@ -341,15 +382,15 @@ export class GeminiAgentManager extends BaseAgentManager<
     } catch {
       // Conversation might not exist in DB yet
     }
-    // Emit user_content IPC for cron messages so the frontend can display them
+    // Emit user_content IPC for scheduled messages so the frontend can display them
     // even if the component mounts after the DB save but before the DB load completes.
     // Normal user-initiated messages are added locally by the frontend, so only cron needs this.
-    if (data.cronMeta) {
+    if (data.scheduleMeta) {
       const userResponseMessage: IResponseMessage = {
         type: 'user_content',
         conversation_id: this.conversation_id,
         msg_id: data.msg_id,
-        data: { content: message.content.content, cronMeta: data.cronMeta },
+        data: { content: message.content.content, scheduleMeta: data.scheduleMeta },
       };
       ipcBridge.geminiConversation.responseStream.emit(userResponseMessage);
     }
@@ -360,11 +401,11 @@ export class GeminiAgentManager extends BaseAgentManager<
     // 若变更则终止旧 worker 并使用最新配置重新初始化
     await this.refreshWorkerIfMcpChanged();
     this.status = 'pending';
-    cronBusyGuard.setProcessing(this.conversation_id, true);
+    scheduleConversationGuard.setProcessing(this.conversation_id, true);
 
     const result = await this.bootstrap
       .catch((e) => {
-        cronBusyGuard.setProcessing(this.conversation_id, false);
+        scheduleConversationGuard.setProcessing(this.conversation_id, false);
         this.emit('gemini.message', {
           type: 'error',
           data: e.message || JSON.stringify(e),
@@ -383,7 +424,7 @@ export class GeminiAgentManager extends BaseAgentManager<
         })
       )
       .finally(() => {
-        cronBusyGuard.setProcessing(this.conversation_id, false);
+        scheduleConversationGuard.setProcessing(this.conversation_id, false);
       });
     return result;
   }
@@ -621,7 +662,7 @@ export class GeminiAgentManager extends BaseAgentManager<
       }
 
       if (data.type === 'finish') {
-        // When stream finishes, check for cron commands in the accumulated message
+        // When stream finishes, check for schedule commands in the accumulated message
         // Use longer delay and retry logic to ensure message is persisted
         this.checkCronWithRetry(0);
       }
@@ -678,7 +719,7 @@ export class GeminiAgentManager extends BaseAgentManager<
   }
 
   /**
-   * Retry checking for cron commands with increasing delays
+   * Retry checking for schedule commands with increasing delays
    * Max 3 retries: 1s, 2s, 3s
    * @param attempt - current attempt number
    * @param checkAfterTimestamp - only process messages created after this timestamp
@@ -705,10 +746,10 @@ export class GeminiAgentManager extends BaseAgentManager<
   }
 
   /**
-   * Check for cron commands when stream finishes
+   * Check for schedule commands when stream finishes
    * Gets recent assistant messages from database and processes them
    * @param afterTimestamp - Only process messages created after this timestamp
-   * Returns true if assistant messages were found (regardless of cron commands)
+   * Returns true if assistant messages were found (regardless of schedule commands)
    */
   private async checkCronCommandsOnFinish(afterTimestamp: number): Promise<boolean> {
     try {
@@ -720,7 +761,7 @@ export class GeminiAgentManager extends BaseAgentManager<
         return false;
       }
 
-      // Check recent assistant messages for cron commands (position: left means assistant)
+      // Check recent assistant messages for schedule commands (position: left means assistant)
       // Filter by timestamp to avoid re-processing old messages
       const assistantMsgs = result.data.filter((m) => m.position === 'left' && (m.createdAt ?? 0) > afterTimestamp);
 
@@ -757,29 +798,27 @@ export class GeminiAgentManager extends BaseAgentManager<
         }
       }
 
-      // Detect cron commands
-      if (textContent && hasCronCommands(textContent)) {
-        // Create a message with finish status for middleware
-        const msgWithStatus = { ...latestMsg, status: 'finish' as const };
-        await processCronInMessage(this.conversation_id, 'gemini', msgWithStatus, (sysMsg) => {
-          collectedResponses.push(sysMsg);
-          // Also emit to frontend for display
-          ipcBridge.geminiConversation.responseStream.emit({
-            type: 'system',
-            conversation_id: this.conversation_id,
-            msg_id: uuid(),
-            data: sysMsg,
-          });
+      if (textContent) {
+        const scheduleCommandResult = await executeAssistantScheduleCommands({
+          content: textContent,
+          conversationId: this.conversation_id,
+          agentType: 'gemini',
         });
+
+        if (scheduleCommandResult.hasCommands) {
+          collectedResponses.push(...scheduleCommandResult.systemResponses);
+        }
+
+        const cleanedContent = stripAssistantControlCommands(textContent);
+        if (cleanedContent !== textContent) {
+          this.rewriteAssistantMessageContent(latestMsg, cleanedContent);
+        }
       }
 
       // Send collected responses back to AI agent so it can continue
       if (collectedResponses.length > 0) {
         const feedbackMessage = `[System Response]\n${collectedResponses.join('\n')}`;
-        await this.sendMessage({
-          input: feedbackMessage,
-          msg_id: uuid(),
-        });
+        await this.continueWithSystemResponse(feedbackMessage);
       } else {
         await this.emitAfterResponseHooks().catch((error) => {
           mainWarn('[GeminiAgentManager]', 'Failed to emit after_response hooks', error);

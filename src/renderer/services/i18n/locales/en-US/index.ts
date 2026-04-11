@@ -17,11 +17,10 @@ import acp from './acp.json';
 import codex from './codex.json';
 import tools from './tools.json';
 import gemini from './gemini.json';
-import cron from './cron.json';
+import schedule from './schedule.json';
 import starOffice from './starOffice.json';
 import guid from './guid.json';
 import agent from './agent.json';
-import space from './space.json';
 
 export default {
   common,
@@ -38,9 +37,8 @@ export default {
   codex,
   tools,
   gemini,
-  cron,
+  schedule,
   starOffice,
   guid,
   agent,
-  space,
 };

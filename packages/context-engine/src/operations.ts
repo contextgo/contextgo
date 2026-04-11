@@ -22,7 +22,10 @@ export type ContextOperationType =
   | 'profile.compacted'
   | 'profile.archived'
   | 'context.assembled'
-  | 'sync.checkpointed';
+  | 'sync.checkpointed'
+  | 'session.signal_detected'
+  | 'context.job_queued'
+  | 'context.job_completed';
 
 export type ContextActorKind = 'user' | 'assistant' | 'system' | 'replica';
 

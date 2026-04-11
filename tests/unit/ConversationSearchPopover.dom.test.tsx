@@ -45,8 +45,8 @@ vi.mock('../../src/renderer/pages/conversation/hooks/ConversationTabsContext', (
   }),
 }));
 
-vi.mock('../../src/renderer/pages/cron', () => ({
-  useCronJobsMap: () => ({
+vi.mock('../../src/renderer/pages/schedule', () => ({
+  useScheduleJobsMap: () => ({
     markAsRead: markAsReadMock,
   }),
 }));

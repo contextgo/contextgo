@@ -10,7 +10,15 @@ vi.mock('electron', () => ({
   app: { isPackaged: false, getPath: vi.fn(() => '/tmp') },
 }));
 
+vi.mock('../../src/process/services/database', () => ({
+  getDatabase: vi.fn(async () => ({
+    listChannelRuns: vi.fn(() => ({ success: true, data: [] })),
+    getAgentProfile: vi.fn(() => ({ success: true, data: null })),
+  })),
+}));
+
 import { ActivitySnapshotBuilder } from '../../src/process/bridge/services/ActivitySnapshotBuilder';
+import { getDatabase } from '../../src/process/services/database';
 import type { IConversationRepository } from '../../src/process/services/database/IConversationRepository';
 import type { IWorkerTaskManager } from '../../src/process/task/IWorkerTaskManager';
 import type { TChatConversation } from '../../src/common/config/storage';
@@ -70,6 +78,10 @@ describe('ActivitySnapshotBuilder', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getDatabase).mockResolvedValue({
+      listChannelRuns: vi.fn(() => ({ success: true, data: [] })),
+      getAgentProfile: vi.fn(() => ({ success: true, data: null })),
+    } as never);
     repo = makeRepo();
     taskManager = makeTaskManager();
   });
@@ -199,6 +211,73 @@ describe('ActivitySnapshotBuilder', () => {
 
     const agent = snapshot.agents[0];
     expect(agent?.state).toBe('error');
+  });
+
+  it('merges context engine maintenance runs into the snapshot', async () => {
+    vi.mocked(repo.getUserConversations).mockResolvedValue({
+      data: [],
+      total: 0,
+      hasMore: false,
+    });
+
+    vi.mocked(getDatabase).mockResolvedValue({
+      listChannelRuns: vi.fn(() => ({
+        success: true,
+        data: [
+          {
+            id: 'run-1',
+            rootRunId: 'run-1',
+            agentProfileId: 'profile-1',
+            backend: 'context-engine',
+            conversationId: 'thread-1',
+            status: 'running',
+            startedAt: Date.now(),
+            metadata: {
+              systemManaged: true,
+              assistantId: 'system-context-engine-session-compactor',
+              systemOwner: 'context-engine',
+              systemRole: 'context-engine-session-compactor',
+              jobType: 'session_compaction',
+              currentTask: 'Compressing repeated session signals',
+              scopeLabel: 'workspace-alpha',
+              artifactRelativePath: 'Sessions/thread-1.md',
+              artifactTitle: 'Release Session',
+              events: [
+                {
+                  kind: 'status',
+                  text: 'Running session compaction',
+                  at: Date.now(),
+                },
+              ],
+            },
+          },
+        ],
+      })),
+      getAgentProfile: vi.fn(() => ({
+        success: true,
+        data: { name: 'Context Engine · Session Compactor' },
+      })),
+    } as never);
+
+    const snapshot = await new ActivitySnapshotBuilder(repo, taskManager).build();
+
+    expect(snapshot.agents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          backend: 'context-engine',
+          runType: 'maintenance',
+          systemManaged: true,
+          assistantId: 'system-context-engine-session-compactor',
+          systemOwner: 'context-engine',
+          systemRole: 'context-engine-session-compactor',
+          scopeLabel: 'workspace-alpha',
+          maintenanceKind: 'session_compaction',
+          artifactRelativePath: 'Sessions/thread-1.md',
+          artifactTitle: 'Release Session',
+          currentTask: 'Compressing repeated session signals',
+        }),
+      ])
+    );
   });
 
   it('returns empty agents array when no conversations exist', async () => {

@@ -2,6 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tmp') } }));
 
+const {
+  processConfigGetMock,
+  processConfigSetMock,
+  readWorkspaceCommandLibraryMock,
+} = vi.hoisted(() => ({
+  processConfigGetMock: vi.fn(async () => undefined),
+  processConfigSetMock: vi.fn(async () => undefined),
+  readWorkspaceCommandLibraryMock: vi.fn(async () => null),
+}));
+
 // Capture provider handlers so tests can invoke them directly
 const handlers: Record<string, (...args: unknown[]) => unknown> = {};
 function makeChannel(name: string) {
@@ -68,10 +78,15 @@ vi.mock('@process/services/database', () => ({
 
 vi.mock('@process/utils/initStorage', () => ({
   ProcessChat: { get: vi.fn(async () => []) },
-  ProcessConfig: { get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) },
+  ProcessConfig: { get: processConfigGetMock, set: processConfigSetMock },
   getSkillsDir: vi.fn(() => '/skills'),
   getBuiltinSkillsCopyDir: vi.fn(() => '/builtin-skills'),
   getSystemDir: vi.fn(() => ({ cacheDir: '/cache' })),
+}));
+
+vi.mock('@process/bridge/services/workspaceAutomation', () => ({
+  readWorkspaceCommandLibrary: (...args: unknown[]) => readWorkspaceCommandLibraryMock(...args),
+  resolveWorkspacePath: (workspace?: string) => workspace,
 }));
 
 vi.mock('@process/bridge/migrationUtils', () => ({
@@ -152,6 +167,9 @@ describe('conversationBridge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    processConfigGetMock.mockResolvedValue(undefined);
+    processConfigSetMock.mockResolvedValue(undefined);
+    readWorkspaceCommandLibraryMock.mockResolvedValue(null);
     applyBeforeUserPromptMock.mockResolvedValue({
       content: 'hooked prompt',
       appliedHooks: ['guard'],
@@ -228,7 +246,7 @@ describe('conversationBridge', () => {
       const result = await handlers['createWithConversation']({
         conversation,
         sourceConversationId: undefined,
-        migrateCron: false,
+        migrateSchedule: false,
       });
 
       expect(result).toEqual(conversation);
@@ -244,14 +262,14 @@ describe('conversationBridge', () => {
       await handlers['createWithConversation']({
         conversation,
         sourceConversationId: 'source-id',
-        migrateCron: true,
+        migrateSchedule: true,
         sourceWorkspace: '/source/workspace',
       });
 
       expect(service.createWithMigration).toHaveBeenCalledWith({
         conversation,
         sourceConversationId: 'source-id',
-        migrateCron: true,
+        migrateSchedule: true,
         sourceWorkspace: '/source/workspace',
       });
     });
@@ -358,6 +376,88 @@ describe('conversationBridge', () => {
       await expect(handler({ conversation_id: 'failing-id' })).resolves.toBeUndefined();
 
       expect(taskManager.getOrBuildTask).toHaveBeenCalledWith('failing-id');
+    });
+  });
+
+  describe('getSlashCommands', () => {
+    it('returns merged managed libraries even when runtime commands are skipped', async () => {
+      vi.mocked(service.getConversation).mockResolvedValue(makeConversation('c1', '/workspace'));
+      processConfigGetMock.mockResolvedValue([
+        {
+          type: 'builtin',
+          id: 'plan',
+          enabled: false,
+          nameOverride: 'global-plan',
+        },
+      ]);
+      readWorkspaceCommandLibraryMock.mockResolvedValue([
+        {
+          type: 'builtin',
+          id: 'plan',
+          enabled: true,
+          nameOverride: 'workspace-plan',
+        },
+        {
+          type: 'custom',
+          id: 'workspace-triage',
+          enabled: true,
+          name: 'triage',
+          description: 'Workspace triage',
+          template: 'Use workspace triage.',
+        },
+      ]);
+
+      const handler = handlers['getSlashCommands'];
+      const result = (await handler({
+        conversation_id: 'c1',
+        includeRuntimeCommands: false,
+      })) as {
+        success: boolean;
+        data: { commands: Array<{ name: string }>; managedLibrary: Array<Record<string, unknown>> };
+      };
+
+      expect(result.success).toBe(true);
+      expect(result.data.commands).toEqual([]);
+      expect(result.data.managedLibrary[0]).toEqual({
+        type: 'builtin',
+        id: 'plan',
+        enabled: true,
+        nameOverride: 'workspace-plan',
+      });
+      expect(result.data.managedLibrary).toContainEqual({
+        type: 'custom',
+        id: 'workspace-triage',
+        enabled: true,
+        name: 'triage',
+        description: 'Workspace triage',
+        template: 'Use workspace triage.',
+      });
+      expect(readWorkspaceCommandLibraryMock).toHaveBeenCalledWith('/workspace');
+    });
+
+    it('includes ACP runtime commands when requested', async () => {
+      const loadAcpSlashCommands = vi.fn(async () => [{ name: 'remote', description: 'Remote command' }]);
+      vi.mocked(service.getConversation).mockResolvedValue({
+        id: 'acp-1',
+        type: 'acp',
+        name: 'ACP',
+        extra: { workspace: '/workspace' },
+      } as unknown as TChatConversation);
+      vi.mocked(taskManager.getTask).mockReturnValue({
+        type: 'acp',
+        loadAcpSlashCommands,
+      } as unknown as ReturnType<IWorkerTaskManager['getTask']>);
+
+      const handler = handlers['getSlashCommands'];
+      const result = (await handler({ conversation_id: 'acp-1' })) as {
+        success: boolean;
+        data: { commands: Array<{ name: string }>; managedLibrary: Array<Record<string, unknown>> };
+      };
+
+      expect(result.success).toBe(true);
+      expect(loadAcpSlashCommands).toHaveBeenCalled();
+      expect(result.data.commands).toEqual([{ name: 'remote', description: 'Remote command' }]);
+      expect(Array.isArray(result.data.managedLibrary)).toBe(true);
     });
   });
 });

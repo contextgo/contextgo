@@ -4,6 +4,7 @@
   "conversationInProgress": "当前正在进行对话中...",
   "confirm": "确认",
   "canceledExecution": "已取消执行",
+  "interrupted": "已由用户中断",
   "openLinkFailed": "打开链接失败",
   "imageGenerationModelDetected": "检测到图片模型，已自动开启图片工具，设置为默认模型：{{platform}}:{{model}}",
   "auto_handling_permissions": "自动处理权限请求：{{request}}",
@@ -28,6 +29,27 @@
   "noOptionsAvailable": "无可用选项",
   "processing": "处理中...",
   "responseSentSuccessfully": "响应已成功发送",
+  "fileOperation": {
+    "written": "已写入文件",
+    "read": "已读取文件",
+    "deleted": "已删除文件",
+    "operation": "文件操作",
+    "summary": {
+      "read": "读取 {{count}} 个文件",
+      "read_other": "读取 {{count}} 个文件",
+      "written": "修改 {{count}} 个文件",
+      "written_other": "修改 {{count}} 个文件",
+      "deleted": "删除 {{count}} 个文件",
+      "deleted_other": "删除 {{count}} 个文件",
+      "operation": "执行 {{count}} 个文件操作",
+      "operation_other": "执行 {{count}} 个文件操作"
+    }
+  },
+  "stepSummary": {
+    "viewSteps": "查看步骤",
+    "tools": "{{count}} 个工具",
+    "tools_other": "{{count}} 个工具"
+  },
   "confirmation": {
     "applyChange": "应用此更改？",
     "allowExecution": "允许执行？",

@@ -204,6 +204,7 @@ type ExternalSessionDiscoveryOptions = {
   geminiHomeDir?: string;
   opencodeDbPath?: string;
   availableBackends?: Set<AcpBackendAll>;
+  onConversationImported?: (conversation: TChatConversation) => Promise<void> | void;
 };
 
 type CodexStateDbInfo = {
@@ -316,20 +317,29 @@ export class ExternalSessionDiscoveryService {
       return existingConversation;
     }
 
+    let conversation: TChatConversation;
     switch (provider) {
       case 'claude':
-        return this.importClaudeSession(sessionId);
+        conversation = await this.importClaudeSession(sessionId);
+        break;
       case 'codex':
-        return this.importCodexSession(sessionId);
+        conversation = await this.importCodexSession(sessionId);
+        break;
       case 'gemini':
-        return this.importGeminiSession(sessionId);
+        conversation = await this.importGeminiSession(sessionId);
+        break;
       case 'opencode':
-        return this.importOpencodeSession(sessionId);
+        conversation = await this.importOpencodeSession(sessionId);
+        break;
       case 'openclaw-gateway':
-        return this.importOpenClawSession(sessionId);
+        conversation = await this.importOpenClawSession(sessionId);
+        break;
       default:
         throw new Error(`External session provider is not supported yet: ${provider}`);
     }
+
+    await this.options.onConversationImported?.(conversation);
+    return conversation;
   }
 
   private async importClaudeSession(sessionId: string): Promise<TChatConversation> {

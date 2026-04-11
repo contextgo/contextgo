@@ -35,6 +35,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { safeExec, safeExecFile } from '@process/utils/safeExec';
 import { getEnhancedEnv } from '@process/utils/shellEnv';
+import { contextRuntimeService } from '@process/services/context/contextServiceSingleton';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
@@ -378,7 +379,8 @@ async function getRuntimeAwareDetectedAgents(): Promise<RuntimeAwareDetectedAgen
 
 export function initAcpConversationBridge(
   workerTaskManager: IWorkerTaskManager,
-  conversationService: IConversationService
+  conversationService: IConversationService,
+  contextRuntime: Pick<typeof contextRuntimeService, 'registerConversation'> = contextRuntimeService
 ): void {
   const getExternalSessionDiscovery = () =>
     new ExternalSessionDiscoveryService(conversationService, {
@@ -469,6 +471,7 @@ export function initAcpConversationBridge(
   ipcBridge.acpConversation.importExternalSession.provider(async (params) => {
     try {
       const conversation = await getExternalSessionDiscovery().importSession(params);
+      await contextRuntime.registerConversation(conversation);
       ipcBridge.conversation.listChanged.emit({
         conversationId: conversation.id,
         action: 'created',

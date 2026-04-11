@@ -3,9 +3,13 @@ import type { TMessage } from '@/common/chat/chatLib';
 import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import { uuid } from '@/common/utils';
 import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
+import RuntimePlanCard from '@/renderer/components/chat/RuntimePlanCard';
 import SendBox from '@/renderer/components/chat/sendbox';
+import type { RuntimePlanEntry } from '@/renderer/components/chat/runtimePlanTypes';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile } from '@/renderer/hooks/chat/useSendBoxFiles';
+import { readConversationUiState } from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
+import { useConversationUiStateRestore } from '@/renderer/pages/conversation/hooks/useConversationUiStateRestore';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
 import { allSupportedExts, type FileMetadata } from '@/renderer/services/FileService';
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
@@ -50,26 +54,51 @@ const useCodexSendBoxDraft = getSendBoxDraftHook('codex', {
 const EMPTY_AT_PATH: Array<string | FileOrFolderItem> = [];
 const EMPTY_UPLOAD_FILES: string[] = [];
 
+type CodexUiStateSnapshot = {
+  running: boolean;
+  aiProcessing: boolean;
+  codexStatus: string | null;
+  hasActiveToolCalls: boolean;
+  sawToolActivityInTurn: boolean;
+  thought: ThoughtData;
+  runtimePlanEntries: RuntimePlanEntry[];
+};
+
+const CODEX_UI_STATE_SCOPE = 'codex';
+
+const createDefaultCodexUiState = (): CodexUiStateSnapshot => ({
+  running: false,
+  aiProcessing: false,
+  codexStatus: null,
+  hasActiveToolCalls: false,
+  sawToolActivityInTurn: false,
+  thought: { subject: '', description: '' },
+  runtimePlanEntries: [],
+});
+
+const toRuntimePlanEntries = (
+  entries: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed' }> = []
+): RuntimePlanEntry[] => entries.map((entry) => ({ content: entry.content, status: entry.status }));
+
 const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
+  const initialUiState = readConversationUiState(CODEX_UI_STATE_SCOPE, conversation_id, createDefaultCodexUiState());
   const [workspacePath, setWorkspacePath] = useState('');
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
   const addOrUpdateMessage = useAddOrUpdateMessage();
   const { setSendBoxHandler } = usePreviewContext();
 
-  const [running, setRunning] = useState(false);
-  const [aiProcessing, setAiProcessing] = useState(false); // New loading state for AI response
-  const [codexStatus, setCodexStatus] = useState<string | null>(null);
-  const [hasActiveToolCalls, setHasActiveToolCalls] = useState(false);
-  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(false);
+  const [running, setRunning] = useState(initialUiState.running);
+  const [aiProcessing, setAiProcessing] = useState(initialUiState.aiProcessing); // New loading state for AI response
+  const [codexStatus, setCodexStatus] = useState<string | null>(initialUiState.codexStatus);
+  const [hasActiveToolCalls, setHasActiveToolCalls] = useState(initialUiState.hasActiveToolCalls);
+  const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(initialUiState.sawToolActivityInTurn);
+  const [runtimePlanEntries, setRuntimePlanEntries] = useState<RuntimePlanEntry[]>(initialUiState.runtimePlanEntries);
   const slashCommands = useSlashCommands(conversation_id, {
     conversationType: 'codex',
     codexStatus,
   });
-  const [thought, setThought] = useState<ThoughtData>({
-    description: '',
-    subject: '',
-  });
+  const [thought, setThought] = useState<ThoughtData>(initialUiState.thought);
 
   // Track whether current turn has content output
   // Only reset aiProcessing when finish arrives after content (not after tool calls)
@@ -151,25 +180,40 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
   const setContentRef = useLatestRef(setContent);
   const atPathRef = useLatestRef(atPath);
 
-  // Reset state when conversation changes and restore actual running status
-  useEffect(() => {
-    setRunning(false);
-    setAiProcessing(false);
-    setCodexStatus(null);
-    setThought({ subject: '', description: '' });
-    hasContentInTurnRef.current = false;
-    activeToolCallIdsRef.current = new Set();
-    setHasActiveToolCalls(false);
-    setSawToolActivityInTurn(false);
-
-    // Check actual conversation status from backend
-    void ipcBridge.conversation.get.invoke({ id: conversation_id }).then((res) => {
-      if (!res) return;
-      if (res.status === 'running') {
+  useConversationUiStateRestore({
+    scope: CODEX_UI_STATE_SCOPE,
+    conversationId: conversation_id,
+    state: {
+      running,
+      aiProcessing,
+      codexStatus,
+      hasActiveToolCalls,
+      sawToolActivityInTurn,
+      thought,
+      runtimePlanEntries,
+    },
+    createDefaultState: createDefaultCodexUiState,
+    applyCachedState: (cachedState) => {
+      setRunning(cachedState.running);
+      setAiProcessing(cachedState.aiProcessing);
+      setCodexStatus(cachedState.codexStatus);
+      setThought(cachedState.thought);
+      setHasActiveToolCalls(cachedState.hasActiveToolCalls);
+      setSawToolActivityInTurn(cachedState.sawToolActivityInTurn);
+      setRuntimePlanEntries(cachedState.runtimePlanEntries);
+    },
+    resetTransientState: () => {
+      hasContentInTurnRef.current = false;
+      activeToolCallIdsRef.current = new Set();
+    },
+    syncBackendState: (isRunning) => {
+      if (isRunning) {
         setAiProcessing(true);
+      } else {
+        setRuntimePlanEntries([]);
       }
-    });
-  }, [conversation_id]);
+    },
+  });
 
   // 注册预览面板添加到发送框的 handler
   // Register handler for adding text from preview panel to sendbox
@@ -205,6 +249,18 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
         case 'thought':
           throttledSetThought(message.data as ThoughtData);
           break;
+        case 'plan': {
+          const planEntries = toRuntimePlanEntries(
+            (message.data as { entries?: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed' }> })
+              ?.entries ?? []
+          );
+          setRuntimePlanEntries(planEntries);
+          const transformedMessage = transformMessage(message);
+          if (transformedMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
+          break;
+        }
         case 'codex_model_info':
           // Handled by AcpModelSelector, ignore here
           break;
@@ -217,6 +273,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
             setRunning(false);
             setAiProcessing(false);
             setThought({ subject: '', description: '' });
+            setRuntimePlanEntries([]);
           }
           // Reset flag for next turn
           hasContentInTurnRef.current = false;
@@ -224,6 +281,21 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
           setHasActiveToolCalls(false);
           setSawToolActivityInTurn(false);
           break;
+        case 'interrupted': {
+          setRunning(false);
+          setAiProcessing(false);
+          setThought({ subject: '', description: '' });
+          setRuntimePlanEntries([]);
+          hasContentInTurnRef.current = false;
+          activeToolCallIdsRef.current = new Set();
+          setHasActiveToolCalls(false);
+          setSawToolActivityInTurn(false);
+          const transformedMessage = transformMessage(message);
+          if (transformedMessage && !shouldSuppressLifecycleMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
+          break;
+        }
         case 'content':
         case 'codex_permission': {
           // Mark that current turn has content output
@@ -264,6 +336,9 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
         case 'agent_status': {
           const statusData = message.data as { status: string; message: string };
           setCodexStatus(statusData.status);
+          if (statusData.status === 'disconnected' || statusData.status === 'error') {
+            setRuntimePlanEntries([]);
+          }
           const transformedMessage = transformMessage(message);
           if (transformedMessage && !shouldSuppressLifecycleMessage) {
             addOrUpdateMessage(transformedMessage);
@@ -333,6 +408,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
       };
       addOrUpdateMessage(userMessage, true);
       setAiProcessing(true);
+      setRuntimePlanEntries([]);
       try {
         await ipcBridge.codexConversation.sendMessage.invoke({
           input: displayMessage,
@@ -466,6 +542,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
       try {
         // Set waiting state when processing initial message
         setAiProcessing(true);
+        setRuntimePlanEntries([]);
 
         const { input, files = [] } = JSON.parse(stored) as { input: string; files?: string[] };
         // 使用固定的msg_id，基于conversation_id确保唯一性
@@ -528,12 +605,14 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
       setRunning(false);
       setAiProcessing(false);
       setThought({ subject: '', description: '' });
+      setRuntimePlanEntries([]);
       hasContentInTurnRef.current = false;
     }
   };
 
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
+      <RuntimePlanCard entries={runtimePlanEntries} running={aiProcessing || running} />
       <ThoughtDisplay thought={thought} running={aiProcessing || running} onStop={handleStop} />
 
       <SendBox
@@ -556,18 +635,20 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
         defaultMultiLine={true}
         lockMultiLine={true}
         tools={
-          <div className='flex items-center gap-4px'>
+          <div className='sendbox-tool-cluster'>
             <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
-            <AgentModeSelector
-              backend='codex'
-              conversationId={conversation_id}
-              compact
-              compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
-              modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
-              compactLabelPrefix={t('agentMode.permission')}
-              hideCompactLabelPrefixOnMobile
-            />
-            <AcpConfigSelector conversationId={conversation_id} backend='codex' />
+            <div className='sendbox-tool-pill-row'>
+              <AgentModeSelector
+                backend='codex'
+                conversationId={conversation_id}
+                compact
+                compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
+                modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
+                compactLabelPrefix={t('agentMode.permission')}
+                hideCompactLabelPrefixOnMobile
+              />
+              <AcpConfigSelector conversationId={conversation_id} backend='codex' />
+            </div>
           </div>
         }
         prefix={

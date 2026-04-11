@@ -275,7 +275,26 @@ describe('SendBox layout mode with pretext', () => {
     expect(textarea.style.whiteSpace).toBe('pre-wrap');
   });
 
-  it('stacks bottom controls on mobile when multi-line mode is active', () => {
+  it('uses the composer stop button as the only danger action while loading', () => {
+    render(
+      <SendBox
+        value=''
+        onChange={vi.fn()}
+        onSend={vi.fn().mockResolvedValue(undefined)}
+        onStop={vi.fn().mockResolvedValue(undefined)}
+        loading
+      />
+    );
+
+    const stopButton = screen.getByRole('button', { name: 'conversation.group.workflow.decision.stop' });
+    const stopStyle = stopButton.getAttribute('style') ?? '';
+
+    expect(stopStyle).toContain('rgb(var(--danger-6))');
+    expect(stopStyle).toContain('rgba(var(--danger-6), 0.12)');
+    expect(stopStyle).toContain('rgba(var(--danger-6), 0.24)');
+  });
+
+  it('keeps bottom controls in a single aligned row on mobile multi-line mode', () => {
     mockUseLayoutContext.mockReturnValue({ isMobile: true });
 
     const { container } = render(
@@ -293,15 +312,60 @@ describe('SendBox layout mode with pretext', () => {
     expect(screen.getByText('tool-group')).toBeInTheDocument();
     expect(screen.getByText('context-usage')).toBeInTheDocument();
 
-    const controlsBlock = screen.getByText('tool-group').closest('div[class*=flex-col]');
-    expect(controlsBlock?.className).toContain('flex-col');
+    const controlsBlock = screen.getByText('tool-group').closest('div[class*=justify-between]');
+    expect(controlsBlock?.className).toContain('items-end');
 
-    const mobileTools = screen.getByText('tool-group').parentElement;
+    const mobileToolsTrack = screen.getByText('tool-group').parentElement;
+    const mobileTools = mobileToolsTrack?.parentElement;
+    const mobileToolsShell = mobileTools?.parentElement;
     expect(mobileTools?.className).toContain('sendbox-tools-scroll-mobile');
-    expect(mobileTools?.className).toContain('w-full');
+    expect(mobileTools?.className).toContain('sendbox-tools-scroll-mobile-bottom');
+    expect(mobileToolsTrack?.className).toContain('sendbox-tools-scroll-mobile-track');
+    expect(mobileToolsShell?.className).toContain('sendbox-tools-mobile-shell');
+    expect(mobileToolsShell?.className).toContain('flex-1');
 
     const actionsRow = screen.getByText('context-usage').parentElement;
-    expect(actionsRow?.className).toContain('w-full');
-    expect(actionsRow?.className).toContain('justify-end');
+    expect(actionsRow?.className).toContain('sendbox-mobile-actions');
+    expect(actionsRow?.className).toContain('items-end');
+  });
+
+  it('keeps mobile tool rows bottom-aligned when mixing icon buttons and pills', () => {
+    mockUseLayoutContext.mockReturnValue({ isMobile: true });
+
+    const { container } = render(
+      <SendBox
+        value={'Already wrapped\ncontent'}
+        onChange={vi.fn()}
+        onSend={vi.fn().mockResolvedValue(undefined)}
+        tools={
+          <div className='sendbox-tool-cluster'>
+            <button type='button' className='sendbox-tool-button'>
+              plus
+            </button>
+            <div className='sendbox-tool-pill-row'>
+              <button type='button' className='sendbox-model-btn agent-mode-compact-pill'>
+                permission
+              </button>
+            </div>
+          </div>
+        }
+      />
+    );
+
+    const mobileTools = container.querySelector('.sendbox-tools-scroll-mobile') as HTMLDivElement | null;
+    const mobileToolsTrack = container.querySelector('.sendbox-tools-scroll-mobile-track') as HTMLDivElement | null;
+    const mobileToolsShell = container.querySelector('.sendbox-tools-mobile-shell') as HTMLDivElement | null;
+    const toolCluster = container.querySelector('.sendbox-tool-cluster') as HTMLDivElement | null;
+    const pillRow = container.querySelector('.sendbox-tool-pill-row') as HTMLDivElement | null;
+
+    expect(mobileTools).toBeTruthy();
+    expect(mobileToolsTrack).toBeTruthy();
+    expect(mobileToolsShell).toBeTruthy();
+    expect(mobileTools?.className).toContain('sendbox-tools-scroll-mobile');
+    expect(mobileTools?.className).toContain('sendbox-tools-scroll-mobile-bottom');
+    expect(mobileToolsTrack?.className).toContain('sendbox-tools-scroll-mobile-track');
+    expect(mobileToolsShell?.className).toContain('sendbox-tools-mobile-shell');
+    expect(toolCluster?.className).toContain('sendbox-tool-cluster');
+    expect(pillRow?.className).toContain('sendbox-tool-pill-row');
   });
 });

@@ -189,6 +189,40 @@
     "sessionHooksSaved": "Oturum Hooks güncellendi",
     "sessionHooksSaveFailed": "Oturum Hooks kaydedilemedi",
     "sessionHooksLoadFailed": "Hooks yüklenemedi",
+    "automation": {
+      "action": "Automation",
+      "description": "Bu projenin automation yapılandırması çalışma alanındaki .contextgo altında bulunur.",
+      "modalTitle": "Project Automation",
+      "modalDescription": "Proje kapsamindaki commands ve schedule ayarlarini buradan dogrudan duzenleyin. Degisiklikler bu calisma alanindaki .contextgo altina kaydedilir.",
+      "openFolder": ".contextgo Klasörünü Aç",
+      "openCommandsFile": "commands.json dosyasını göster",
+      "openSchedulesFile": "schedules.json dosyasını göster",
+      "commandsTitle": "Project Commands",
+      "commandsDescription": "Buradaki slash commands bu projeye kaydedilir ve mevcut calisma alaninda global managed commands ayarlarini ezer.",
+      "commandsUsageHint": "commands.json henuz yoksa editor bu konusma icin gecerli olan mevcut managed commands ayarlarini baslangic olarak kullanir.",
+      "commandsPathHint": "Kayit yolu: {{path}}",
+      "schedulesTitle": "Project Schedule",
+      "schedulesDescription": "Bu konusmanin proje schedule ayarini dogrudan olusturun veya duzenleyin. Icerik bu projenin .contextgo/schedules.json dosyasina kaydedilir.",
+      "schedulesPathHint": "Kayit yolu: {{path}}",
+      "scheduleEmpty": "Bu konusma icin henuz proje schedule kaydi yok. Buradan olusturursaniz .contextgo/schedules.json dosyasina yazilir.",
+      "scheduleReadonlyHint": "Bu schedule su anda \"{{kind}}\" tipini kullaniyor. Burada mesaj ve etkin durumu degistirilebilir, ancak zamanlama salt okunurdur.",
+      "scheduleEditor": {
+        "namePlaceholder": "Gorev adini girin",
+        "cronExpressionLabel": "Cron ifadesi",
+        "cronExpressionPlaceholder": "Ornek: 0 9 * * MON-FRI",
+        "descriptionLabel": "Zamanlama aciklamasi",
+        "descriptionPlaceholder": "Ornek: Her hafta ici 09:00",
+        "validation": {
+          "nameRequired": "Lutfen bir schedule adi girin",
+          "messageRequired": "Lutfen zamanlanmis mesaji girin",
+          "cronRequired": "Lutfen bir cron ifadesi girin",
+          "descriptionRequired": "Lutfen bir zamanlama aciklamasi girin"
+        }
+      },
+      "exportCommands": "Geçerli Commands'ı dışa aktar",
+      "exportCommandsSuccess": "Geçerli commands .contextgo/commands.json dosyasına aktarıldı",
+      "exportCommandsFailed": "commands proje automation klasörüne aktarılamadı"
+    },
     "contextMenu": {
       "open": "Aç",
       "openLocation": "Klasörde göster",
@@ -448,6 +482,19 @@
     "runtimeDisconnected": "Ajan çalışma zamanı beklenmedik şekilde durdu. Yeniden başlatmak için tekrar gönderin.",
     "activeTools": "{{count}} etkin araç",
     "activeTools_other": "{{count}} etkin araç",
+    "runtimePlan": {
+      "title": "Plan",
+      "expand": "Genişlet",
+      "collapse": "Daralt",
+      "progressLabel": "{{completed}} / {{total}} tamamlandı",
+      "pendingSummary": "{{count}} adım bekliyor",
+      "completedSummary": "{{count}} adım tamamlandı",
+      "status": {
+        "pending": "Bekliyor",
+        "in_progress": "Sürüyor",
+        "completed": "Tamamlandı"
+      }
+    },
     "phase": {
       "preparing": "Hazırlanıyor",
       "reasoning": "Düşünüyor",

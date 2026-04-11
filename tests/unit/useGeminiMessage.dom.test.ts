@@ -6,6 +6,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
+const addOrUpdateMessageMock = vi.fn();
+
 // Capture IPC listener set up by the hook
 let capturedResponseListener: ((message: unknown) => void) | null = null;
 const mockGetInvoke = vi.fn().mockResolvedValue(null);
@@ -37,8 +39,8 @@ vi.mock('@/common/chat/chatLib', () => ({
   transformMessage: vi.fn((msg: unknown) => msg),
 }));
 
-vi.mock('@/renderer/messages/hooks', () => ({
-  useAddOrUpdateMessage: vi.fn(() => vi.fn()),
+vi.mock('@/renderer/pages/conversation/Messages/hooks', () => ({
+  useAddOrUpdateMessage: vi.fn(() => addOrUpdateMessageMock),
 }));
 
 // Mock renderer dependencies required for GeminiSendBox.tsx module to load
@@ -149,6 +151,7 @@ describe('useGeminiMessage', () => {
   beforeEach(() => {
     capturedResponseListener = null;
     mockGetInvoke.mockResolvedValue(null);
+    addOrUpdateMessageMock.mockReset();
     vi.useFakeTimers();
   });
 
@@ -275,5 +278,57 @@ describe('useGeminiMessage', () => {
     });
 
     expect(result.current.thought.subject).toBe('');
+  });
+
+  it('restores cached running state immediately when remounting the same conversation', async () => {
+    const conversationId = 'test-conv-cache';
+    const first = renderHook(() => useGeminiMessage(conversationId));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      first.result.current.setWaitingResponse(true);
+    });
+
+    expect(first.result.current.running).toBe(true);
+
+    first.unmount();
+
+    const second = renderHook(() => useGeminiMessage(conversationId));
+
+    expect(second.result.current.running).toBe(true);
+  });
+
+  it('clears running state and forwards an interrupted message', async () => {
+    const { result } = renderHook(() => useGeminiMessage(CONVERSATION_ID));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      result.current.setWaitingResponse(true);
+    });
+
+    expect(result.current.running).toBe(true);
+
+    act(() => {
+      capturedResponseListener?.({
+        type: 'interrupted',
+        conversation_id: CONVERSATION_ID,
+        msg_id: 'msg-stop',
+        data: 'Interrupted by user.',
+      });
+    });
+
+    expect(result.current.running).toBe(false);
+    expect(addOrUpdateMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'interrupted',
+        data: 'Interrupted by user.',
+      })
+    );
   });
 });

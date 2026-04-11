@@ -9,11 +9,13 @@ import type { IProvider, TChatConversation, TProviderWithModel } from '@/common/
 import { channel } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
 import addChatIcon from '@/renderer/assets/icons/add-chat.svg';
-import { CronJobManager } from '@/renderer/pages/cron';
+import { ScheduleJobManager } from '@/renderer/pages/schedule';
+import ProjectAutomationModal from '@/renderer/pages/schedule/components/ProjectAutomationModal';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { iconColors } from '@/renderer/styles/colors';
+import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
 import { Button, Dropdown, Menu, Message, Tooltip, Typography } from '@arco-design/web-react';
-import { ConnectionPoint, History } from '@icon-park/react';
+import { ConnectionPoint, FolderOpen, History, SettingTwo } from '@icon-park/react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -154,19 +156,82 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
       <Button
         type='text'
         size='small'
-        className='chat-header-publish-pill !h-auto !w-auto !min-w-0 !px-0 !py-0'
+        className='app-header-pill-button chat-header-publish-pill !h-auto !w-auto !min-w-0'
         loading={loading}
         aria-label={t('conversation.header.publishAgentEntry')}
         onClick={() => void handlePublishAgent()}
       >
-        <span className='inline-flex items-center gap-6px rounded-full px-8px py-2px bg-2'>
-          <ConnectionPoint theme='outline' size={16} fill={iconColors.primary} />
+        <span className='app-header-pill'>
+          <span className='app-header-pill__icon'>
+            <ConnectionPoint theme='outline' size={16} fill={iconColors.primary} />
+          </span>
           <span className='hidden md:inline text-12px text-t-primary'>
             {t('conversation.header.publishAgentEntry')}
           </span>
         </span>
       </Button>
     </Tooltip>
+  );
+};
+
+const SessionHooksEntryButton: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tooltip content={t('conversation.workspace.sessionHooksOpen')}>
+      <Button
+        type='text'
+        size='small'
+        className='app-header-pill-button chat-header-publish-pill !h-auto !w-auto !min-w-0'
+        aria-label={t('conversation.workspace.sessionHooksOpen')}
+        onClick={() => emitter.emit('conversation.session-hooks.open', conversation.id)}
+      >
+        <span className='app-header-pill'>
+          <span className='app-header-pill__icon'>
+            <SettingTwo theme='outline' size={16} fill={iconColors.primary} />
+          </span>
+          <span className='hidden md:inline text-12px text-t-primary'>
+            {t('conversation.workspace.sessionHooksAction')}
+          </span>
+        </span>
+      </Button>
+    </Tooltip>
+  );
+};
+
+const ProjectAutomationEntryButton: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
+  const { t } = useTranslation();
+  const workspacePath = getConversationWorkspacePath(conversation);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  if (!workspacePath) {
+    return null;
+  }
+
+  return (
+    <>
+      <Button
+        type='text'
+        size='small'
+        className='app-header-pill-button chat-header-publish-pill !h-auto !w-auto !min-w-0'
+        aria-label={t('conversation.workspace.automation.action')}
+        onClick={() => setModalVisible(true)}
+      >
+        <span className='app-header-pill'>
+          <span className='app-header-pill__icon'>
+            <FolderOpen theme='outline' size={16} fill={iconColors.primary} />
+          </span>
+          <span className='hidden md:inline text-12px text-t-primary'>
+            {t('conversation.workspace.automation.action')}
+          </span>
+        </span>
+      </Button>
+      <ProjectAutomationModal
+        visible={modalVisible}
+        conversation={conversation}
+        onClose={() => setModalVisible(false)}
+      />
+    </>
   );
 };
 
@@ -294,8 +359,18 @@ const GeminiConversationPanel: React.FC<{ conversation: GeminiConversation; slid
         <div className='shrink-0'>
           <PublishAgentEntryButton conversation={conversation} />
         </div>
+        {workspaceEnabled ? (
+          <div className='shrink-0'>
+            <ProjectAutomationEntryButton conversation={conversation} />
+          </div>
+        ) : null}
+        {workspaceEnabled ? (
+          <div className='shrink-0'>
+            <SessionHooksEntryButton conversation={conversation} />
+          </div>
+        ) : null}
         <div className='shrink-0'>
-          <CronJobManager conversation={conversation} />
+          <ScheduleJobManager conversation={conversation} />
         </div>
       </div>
     ),
@@ -440,6 +515,16 @@ const ChatConversation: React.FC<{
             <PublishAgentEntryButton conversation={conversation} />
           </div>
         ) : null}
+        {conversation && workspaceEnabled ? (
+          <div className='shrink-0'>
+            <ProjectAutomationEntryButton conversation={conversation} />
+          </div>
+        ) : null}
+        {conversation && workspaceEnabled ? (
+          <div className='shrink-0'>
+            <SessionHooksEntryButton conversation={conversation} />
+          </div>
+        ) : null}
         {conversation
           ? renderConversationHeaderAddons({
               conversation,
@@ -450,7 +535,7 @@ const ChatConversation: React.FC<{
           : null}
         {conversation ? (
           <div className='shrink-0'>
-            <CronJobManager conversation={conversation} />
+            <ScheduleJobManager conversation={conversation} />
           </div>
         ) : null}
       </div>

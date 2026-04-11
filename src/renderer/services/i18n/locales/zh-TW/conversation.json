@@ -330,6 +330,40 @@
     "sessionHooksSaved": "會話 Hooks 已更新",
     "sessionHooksSaveFailed": "儲存會話 Hooks 失敗",
     "sessionHooksLoadFailed": "載入 Hooks 失敗",
+    "automation": {
+      "action": "自動化",
+      "description": "這個專案的自動化設定位於工作區下的 .contextgo 目錄。",
+      "modalTitle": "專案自動化",
+      "modalDescription": "可以直接在這裡編輯專案級 commands 和定時任務。修改會儲存到目前工作區下的 .contextgo 中。",
+      "openFolder": "開啟 .contextgo 資料夾",
+      "openCommandsFile": "定位 commands.json",
+      "openSchedulesFile": "定位 schedules.json",
+      "commandsTitle": "專案 Commands",
+      "commandsDescription": "這裡維護的是專案級 slash commands，會在目前工作區內覆蓋全域 managed commands。",
+      "commandsUsageHint": "如果 commands.json 還不存在，編輯器會先以目前會話實際生效的 managed commands 作為初始內容。",
+      "commandsPathHint": "儲存路徑：{{path}}",
+      "schedulesTitle": "專案定時任務",
+      "schedulesDescription": "直接建立或編輯目前會話的專案級定時任務，內容會持久化到這個專案的 .contextgo/schedules.json。",
+      "schedulesPathHint": "儲存路徑：{{path}}",
+      "scheduleEmpty": "目前會話還沒有專案級定時任務。你可以直接在這裡建立，它會寫入 .contextgo/schedules.json。",
+      "scheduleReadonlyHint": "這個定時任務目前使用的是「{{kind}}」類型。這裡仍可修改訊息和啟停狀態，但排程時間暫時唯讀。",
+      "scheduleEditor": {
+        "namePlaceholder": "輸入任務名稱",
+        "cronExpressionLabel": "Cron 表達式",
+        "cronExpressionPlaceholder": "例如：0 9 * * MON-FRI",
+        "descriptionLabel": "排程說明",
+        "descriptionPlaceholder": "例如：每個工作日 09:00",
+        "validation": {
+          "nameRequired": "請輸入任務名稱",
+          "messageRequired": "請輸入定時訊息",
+          "cronRequired": "請輸入 Cron 表達式",
+          "descriptionRequired": "請輸入排程說明"
+        }
+      },
+      "exportCommands": "匯出目前 Commands",
+      "exportCommandsSuccess": "已將目前 commands 匯出到 .contextgo/commands.json",
+      "exportCommandsFailed": "匯出 commands 到專案自動化目錄失敗"
+    },
     "contextMenu": {
       "open": "開啟",
       "openLocation": "開啟檔案所在資料夾",
@@ -445,6 +479,19 @@
     "noThoughtYet": "尚未收到思考流",
     "runtimeDisconnected": "Agent 執行階段意外中斷，請重新送出以恢復。",
     "activeTools": "{{count}} 個工具執行中",
+    "runtimePlan": {
+      "title": "計畫",
+      "expand": "展開",
+      "collapse": "收起",
+      "progressLabel": "已完成 {{completed}} / {{total}}",
+      "pendingSummary": "還有 {{count}} 個步驟待完成",
+      "completedSummary": "{{count}} 個步驟已完成",
+      "status": {
+        "pending": "待處理",
+        "in_progress": "進行中",
+        "completed": "已完成"
+      }
+    },
     "phase": {
       "preparing": "準備中",
       "reasoning": "思考中",

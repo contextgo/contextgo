@@ -1,9 +1,11 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SETTINGS_NAV_DRAWER_EVENT } from '@/renderer/pages/settings/components/settingsNavigation';
 
 const getSettingsTabsInvokeMock = vi.fn().mockResolvedValue([]);
+const extensionsStateChangedOnMock = vi.fn(() => vi.fn());
 const useLayoutContextMock = vi.fn();
 
 vi.mock('react-i18next', () => ({
@@ -24,6 +26,7 @@ vi.mock('@/renderer/utils/platform', () => ({
 vi.mock('@/common/adapter/ipcBridge', () => ({
   extensions: {
     getSettingsTabs: { invoke: (...args: unknown[]) => getSettingsTabsInvokeMock(...args) },
+    stateChanged: { on: (...args: unknown[]) => extensionsStateChangedOnMock(...args) },
   },
 }));
 
@@ -47,6 +50,7 @@ describe('SettingsPageWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSettingsTabsInvokeMock.mockResolvedValue([]);
+    extensionsStateChangedOnMock.mockReturnValue(vi.fn());
     useLayoutContextMock.mockReturnValue({
       isMobile: false,
     });
@@ -77,7 +81,37 @@ describe('SettingsPageWrapper', () => {
     expect(document.body.querySelector('.settings-page-preview-shell')).not.toBeNull();
   });
 
-  it('renders a sticky mobile top nav with the active section marked', async () => {
+  it('does not mark system as active on the system runs route', async () => {
+    useLayoutContextMock.mockReturnValue({
+      isMobile: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/settings/system-runs']}>
+        <Routes>
+          <Route
+            path='/settings/system-runs'
+            element={
+              <SettingsPageWrapper>
+                <div>system runs content</div>
+              </SettingsPageWrapper>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('system runs content')).toBeInTheDocument();
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent(SETTINGS_NAV_DRAWER_EVENT, { detail: { open: true } }));
+    });
+
+    const activeItem = await screen.findByText('settings.systemRuns');
+    expect(activeItem.closest('[data-settings-path="system-runs"]')).toHaveClass('!bg-aou-2');
+    expect(screen.getByText('settings.system').closest('[data-settings-path="system"]')).not.toHaveClass('!bg-aou-2');
+  });
+
+  it('opens a mobile settings drawer instead of rendering a top tab list', async () => {
     useLayoutContextMock.mockReturnValue({
       isMobile: true,
     });
@@ -98,7 +132,13 @@ describe('SettingsPageWrapper', () => {
     );
 
     expect(await screen.findByText('runtime content')).toBeInTheDocument();
-    expect(screen.getByRole('tablist', { name: 'settings.title' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Runtime' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('tablist', { name: 'settings.title' })).toBeNull();
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent(SETTINGS_NAV_DRAWER_EVENT, { detail: { open: true } }));
+    });
+
+    expect(await screen.findByText('Runtime')).toBeInTheDocument();
+    expect(document.body.querySelector('.settings-mobile-nav-drawer')).not.toBeNull();
   });
 });

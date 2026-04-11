@@ -45,7 +45,7 @@ export class CodexEventHandler {
 
     // agent_message 是完整消息，用于最终持久化（但不发送到前端，避免重复显示）
     if (type === 'agent_message') {
-      this.messageProcessor.processFinalMessage(msg);
+      void this.messageProcessor.processFinalMessage(msg);
       return;
     }
     if (type === 'session_configured') {

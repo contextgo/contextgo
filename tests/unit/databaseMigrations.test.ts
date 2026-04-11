@@ -114,6 +114,7 @@ describe('database migrations', () => {
       'context_memory_candidates',
       'context_operations',
       'context_profiles',
+      'context_schedules',
       'context_sources',
       'conversations',
       'cron_jobs',

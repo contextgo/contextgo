@@ -171,6 +171,10 @@ CLOUD_I18N = {
         "remote.title": "ContextGo Remote",
         "remote.signedInAs": "Signed in as {name} · {email}",
         "remote.description": "Choose a desktop device that currently has a live cloud relay connection. ContextGo Cloud only helps sign in, discover devices, and relay transport; the browser opens the desktop-hosted WebUI itself.",
+        "remote.metric.devices": "Desktops",
+        "remote.metric.ready": "Ready now",
+        "remote.metric.live": "Live sessions",
+        "remote.mobile.continue": "Continue on this desktop",
         "remote.refreshDevices": "Refresh devices",
         "remote.signOut": "Sign out",
         "remote.openInApp": "Open in app",
@@ -233,6 +237,10 @@ CLOUD_I18N = {
         "remote.title": "ContextGo 远程访问",
         "remote.signedInAs": "当前登录为 {name} · {email}",
         "remote.description": "选择一个当前已连接云中继的桌面设备。ContextGo Cloud 只负责登录、设备发现和中继；浏览器里打开的仍然是桌面端自己提供的 WebUI。",
+        "remote.metric.devices": "桌面设备",
+        "remote.metric.ready": "可立即打开",
+        "remote.metric.live": "进行中的会话",
+        "remote.mobile.continue": "继续进入这个桌面",
         "remote.refreshDevices": "刷新设备",
         "remote.signOut": "退出登录",
         "remote.openInApp": "在应用中打开",
@@ -295,6 +303,10 @@ CLOUD_I18N = {
         "remote.title": "ContextGo 遠端存取",
         "remote.signedInAs": "目前登入為 {name} · {email}",
         "remote.description": "選擇一台目前已連上雲端中繼的桌面裝置。已註冊的裝置會保留在清單中，但只有已連上中繼的機器才能開啟託管遠端工作階段。",
+        "remote.metric.devices": "桌面裝置",
+        "remote.metric.ready": "可立即開啟",
+        "remote.metric.live": "進行中的工作階段",
+        "remote.mobile.continue": "繼續進入這台桌面",
         "remote.refreshDevices": "重新整理裝置",
         "remote.signOut": "登出",
         "remote.openInApp": "在應用程式中開啟",
@@ -357,6 +369,10 @@ CLOUD_I18N = {
         "remote.title": "ContextGo Remote",
         "remote.signedInAs": "{name} · {email} としてサインイン中",
         "remote.description": "現在クラウドリレーに接続しているデスクトップ デバイスを選択してください。登録済みデバイスは一覧に残りますが、ホスト型リモートセッションを開けるのはリレー接続中の端末だけです。",
+        "remote.metric.devices": "デスクトップ",
+        "remote.metric.ready": "今すぐ開ける",
+        "remote.metric.live": "進行中セッション",
+        "remote.mobile.continue": "このデスクトップを続ける",
         "remote.refreshDevices": "デバイスを更新",
         "remote.signOut": "サインアウト",
         "remote.openInApp": "アプリで開く",
@@ -419,6 +435,10 @@ CLOUD_I18N = {
         "remote.title": "ContextGo Remote",
         "remote.signedInAs": "{name} · {email} 계정으로 로그인됨",
         "remote.description": "현재 클라우드 릴레이에 연결된 데스크톱 기기를 선택하세요. 등록된 기기는 목록에 계속 남지만, 릴레이에 연결된 기기만 호스팅 원격 세션을 열 수 있습니다.",
+        "remote.metric.devices": "데스크톱",
+        "remote.metric.ready": "즉시 열기 가능",
+        "remote.metric.live": "진행 중 세션",
+        "remote.mobile.continue": "이 데스크톱으로 계속",
         "remote.refreshDevices": "기기 새로고침",
         "remote.signOut": "로그아웃",
         "remote.openInApp": "앱에서 열기",
@@ -481,6 +501,10 @@ CLOUD_I18N = {
         "remote.title": "ContextGo Remote",
         "remote.signedInAs": "{name} · {email} olarak oturum açıldı",
         "remote.description": "Şu anda bulut rölesine bağlı olan bir masaüstü cihaz seçin. Kayıtlı cihazlar listede kalır, ancak yalnızca röleye bağlı makineler barındırılan uzak oturumu açabilir.",
+        "remote.metric.devices": "Masaüstleri",
+        "remote.metric.ready": "Hemen hazır",
+        "remote.metric.live": "Canlı oturumlar",
+        "remote.mobile.continue": "Bu masaüstünde devam et",
         "remote.refreshDevices": "Cihazları yenile",
         "remote.signOut": "Çıkış yap",
         "remote.openInApp": "Uygulamada aç",
@@ -1780,44 +1804,89 @@ def describe_remote_device_availability(language: str, device_payload: dict[str,
         "actionHref": None,
     }
 
-def render_remote_devices_page(
-    request: Request,
-    user: User,
-    devices: list[dict[str, object]],
+def remote_device_sort_priority(device_payload: dict[str, object]) -> int:
+    remote_status = device_payload.get("remoteStatus")
+    remote_data = remote_status if isinstance(remote_status, dict) else {}
+    connected = remote_data.get("connected") is True
+    client_connected = remote_data.get("clientConnected") is True
+    browser_entry_ready = remote_data.get("browserEntryReady") is True
+
+    if connected and browser_entry_ready and not client_connected:
+        return 3
+
+    if connected and browser_entry_ready and client_connected:
+        return 2
+
+    if connected:
+        return 1
+
+    return 0
+
+
+
+def remote_device_sort_timestamp(device_payload: dict[str, object]) -> float:
+    raw_timestamp = device_payload.get("updatedAt") or device_payload.get("lastSeenAt")
+    if not isinstance(raw_timestamp, str):
+        return 0.0
+
+    normalized = raw_timestamp.strip()
+    if not normalized:
+        return 0.0
+
+    try:
+        return datetime.fromisoformat(normalized.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0.0
+
+
+
+def sort_remote_devices_for_display(devices: list[dict[str, object]]) -> list[dict[str, object]]:
+    return sorted(
+        devices,
+        key=lambda device: (
+            -remote_device_sort_priority(device),
+            -remote_device_sort_timestamp(device),
+            str(device.get("deviceName") or "").lower(),
+        ),
+    )
+
+
+
+def build_remote_device_card_markup(
+    language: str,
+    device: dict[str, object],
+    availability: dict[str, object],
     remote_origin: str,
-    notice: Optional[dict[str, str]] = None,
+    *,
+    mobile_shell_request: bool,
+    featured: bool = False,
 ) -> str:
-    language = detect_request_language(request, user)
-    mobile_shell_request = is_mobile_shell_request(request)
-    cards = []
-    for device in devices:
-        availability = describe_remote_device_availability(language, device)
-        action_markup = ""
-        if availability["actionHref"]:
-            relative_target_url = str(availability["actionHref"])
-            absolute_target_url = f"{remote_origin}{relative_target_url}"
-            mobile_shell_url = build_mobile_shell_open_url(absolute_target_url)
-            action_markup = f'<a class="primary" href="{escape(relative_target_url)}">{escape(str(availability["actionLabel"]))}</a>'
-            if not mobile_shell_request:
-                action_markup += f'<a class="secondary" href="{escape(mobile_shell_url)}">{escape(cloud_text(language, "remote.openInApp"))}</a>'
-        else:
-            action_markup = f'<span class="secondary disabled" aria-disabled="true">{escape(cloud_text(language, "remote.action.unavailable"))}</span>'
+    action_markup = ""
+    if availability["actionHref"]:
+        relative_target_url = str(availability["actionHref"])
+        absolute_target_url = f"{remote_origin}{relative_target_url}"
+        mobile_shell_url = build_mobile_shell_open_url(absolute_target_url)
+        action_markup = f'<a class="primary" href="{escape(relative_target_url)}">{escape(str(availability["actionLabel"]))}</a>'
+        if not mobile_shell_request:
+            action_markup += f'<a class="secondary" href="{escape(mobile_shell_url)}">{escape(cloud_text(language, "remote.openInApp"))}</a>'
+    else:
+        action_markup = f'<span class="secondary disabled" aria-disabled="true">{escape(cloud_text(language, "remote.action.unavailable"))}</span>'
 
-        connected_at = ""
-        remote_status = device.get("remoteStatus")
-        remote_data = remote_status if isinstance(remote_status, dict) else {}
-        if isinstance(remote_data.get("connectedAt"), str) and remote_data["connectedAt"]:
-            connected_at = f'<p class="meta">{escape(cloud_text(language, "remote.relayConnectedAt", timestamp=str(remote_data["connectedAt"])))}</p>'
-        elif isinstance(device.get("lastSeenAt"), str) and device["lastSeenAt"]:
-            connected_at = f'<p class="meta">{escape(cloud_text(language, "remote.lastSeenAt", timestamp=str(device["lastSeenAt"])))}</p>'
+    connected_at = ""
+    remote_status = device.get("remoteStatus")
+    remote_data = remote_status if isinstance(remote_status, dict) else {}
+    if isinstance(remote_data.get("connectedAt"), str) and remote_data["connectedAt"]:
+        connected_at = f'<p class="meta">{escape(cloud_text(language, "remote.relayConnectedAt", timestamp=str(remote_data["connectedAt"])))}</p>'
+    elif isinstance(device.get("lastSeenAt"), str) and device["lastSeenAt"]:
+        connected_at = f'<p class="meta">{escape(cloud_text(language, "remote.lastSeenAt", timestamp=str(device["lastSeenAt"])))}</p>'
 
-        device_name = str(device.get("deviceName") or cloud_text(language, "remote.unnamedDevice"))
-        platform = str(device.get("platform", "unknown"))
-        status = str(device.get("status", "unknown"))
-        subtitle = cloud_text(language, "remote.deviceSubtitle", platform=platform, status=status)
-        cards.append(
-            f"""
-            <article class="device-card">
+    device_name = str(device.get("deviceName") or cloud_text(language, "remote.unnamedDevice"))
+    platform = str(device.get("platform", "unknown"))
+    status = str(device.get("status", "unknown"))
+    subtitle = cloud_text(language, "remote.deviceSubtitle", platform=platform, status=status)
+    featured_class = " featured" if featured else ""
+    return f"""
+            <article class="device-card{featured_class}">
               <div class="device-header">
                 <div>
                   <h2>{escape(device_name)}</h2>
@@ -1833,19 +1902,71 @@ def render_remote_devices_page(
               </div>
             </article>
             """
+
+
+
+def render_remote_devices_page(
+    request: Request,
+    user: User,
+    devices: list[dict[str, object]],
+    remote_origin: str,
+    notice: Optional[dict[str, str]] = None,
+) -> str:
+    language = detect_request_language(request, user)
+    mobile_shell_request = is_mobile_shell_request(request)
+    ordered_devices = sort_remote_devices_for_display(devices)
+    active_device_id = read_active_remote_device_id(request) if mobile_shell_request else None
+
+    device_entries: list[dict[str, object]] = []
+    for device in ordered_devices:
+        availability = describe_remote_device_availability(language, device)
+        device_entries.append({"device": device, "availability": availability})
+
+    featured_entry: Optional[dict[str, object]] = None
+    if mobile_shell_request:
+        openable_entries = [entry for entry in device_entries if entry["availability"]["actionHref"]]
+        if active_device_id:
+            featured_entry = next(
+                (
+                    entry
+                    for entry in openable_entries
+                    if str(entry["device"].get("id") or "") == active_device_id
+                ),
+                None,
+            )
+        if featured_entry is None and openable_entries:
+            featured_entry = openable_entries[0]
+
+    card_markup_items = []
+    featured_device_id = str(featured_entry["device"].get("id") or "") if featured_entry else None
+    for entry in device_entries:
+        device_id = str(entry["device"].get("id") or "")
+        if mobile_shell_request and featured_device_id and device_id == featured_device_id:
+            continue
+
+        card_markup_items.append(
+            build_remote_device_card_markup(
+                language,
+                entry["device"],
+                entry["availability"],
+                remote_origin,
+                mobile_shell_request=mobile_shell_request,
+            )
         )
 
-    devices_markup = "\n".join(cards)
-    if not devices_markup:
-        devices_markup = f"""
-        <section class="empty-state">
-          <h2>{escape(cloud_text(language, "remote.emptyTitle"))}</h2>
-          <p>{escape(cloud_text(language, "remote.emptyDetail"))}</p>
+    cards_markup = "\n".join(card_markup_items)
+    featured_markup = ""
+    if featured_entry is not None:
+        featured_markup = f"""
+        <section class="continue-section">
+          <h2>{escape(cloud_text(language, "remote.mobile.continue"))}</h2>
+          {build_remote_device_card_markup(language, featured_entry["device"], featured_entry["availability"], remote_origin, mobile_shell_request=mobile_shell_request, featured=True)}
         </section>
         """
 
-    account_name = escape(user.display_name)
+    account_name = escape(str(user.display_name or user.username or user.email))
     account_email = escape(user.email)
+    account_username = escape(str(user.username or user.email))
     notice_markup = ""
     if notice is not None:
         notice_markup = f"""
@@ -1860,6 +1981,85 @@ def render_remote_devices_page(
     description = cloud_text(language, "remote.description")
     refresh_label = cloud_text(language, "remote.refreshDevices")
     sign_out_label = cloud_text(language, "remote.signOut")
+    ready_count = sum(1 for entry in device_entries if entry["availability"]["connected"] and not entry["availability"]["clientConnected"])
+    live_count = sum(1 for entry in device_entries if entry["availability"]["clientConnected"])
+    metrics_markup = f"""
+        <div class="stats-grid">
+          <article class="stat-pill">
+            <span class="stat-value">{len(device_entries)}</span>
+            <span class="stat-label">{escape(cloud_text(language, "remote.metric.devices"))}</span>
+          </article>
+          <article class="stat-pill">
+            <span class="stat-value">{ready_count}</span>
+            <span class="stat-label">{escape(cloud_text(language, "remote.metric.ready"))}</span>
+          </article>
+          <article class="stat-pill">
+            <span class="stat-value">{live_count}</span>
+            <span class="stat-label">{escape(cloud_text(language, "remote.metric.live"))}</span>
+          </article>
+        </div>
+    """
+
+    if mobile_shell_request:
+        header_markup = f"""
+        <section class="mobile-shell-hero">
+          <div class="hero-copy">
+            <p class="signed-in">{escape(signed_in_as)}</p>
+            <h1>{escape(title)}</h1>
+            <p>{escape(description)}</p>
+          </div>
+          {metrics_markup}
+          <div class="account-card mobile-toolbar-card">
+            <p><strong>{account_name}</strong></p>
+            <p class="account-meta">@{account_username}</p>
+            <div class="toolbar">
+              <a class="secondary" href="{REMOTE_DEVICES_PATH}">{escape(refresh_label)}</a>
+              <form method="post" action="/api/auth/logout?next={escape(REMOTE_DEVICES_PATH)}">
+                <button class="secondary" type="submit">{escape(sign_out_label)}</button>
+              </form>
+            </div>
+          </div>
+          {featured_markup}
+        </section>
+        """
+    else:
+        header_markup = f"""
+        <section class="topbar">
+          <div>
+            <h1>{escape(title)}</h1>
+            <p>{escape(signed_in_as)}</p>
+            <p>{escape(description)}</p>
+          </div>
+          <div class="account-card">
+            <p><strong>{account_name}</strong></p>
+            <p class="account-meta">{account_email}</p>
+            <div class="toolbar">
+              <a class="secondary" href="{REMOTE_DEVICES_PATH}">{escape(refresh_label)}</a>
+              <form method="post" action="/api/auth/logout?next={escape(REMOTE_DEVICES_PATH)}">
+                <button class="secondary" type="submit">{escape(sign_out_label)}</button>
+              </form>
+            </div>
+          </div>
+        </section>
+        """
+
+    devices_markup = ""
+    if cards_markup:
+        container_class = "device-stack" if mobile_shell_request else "grid"
+        devices_markup = f"""
+        <section class="{container_class}">
+          {cards_markup}
+        </section>
+        """
+    elif featured_entry is None:
+        devices_markup = f"""
+        <section class="empty-state">
+          <h2>{escape(cloud_text(language, "remote.emptyTitle"))}</h2>
+          <p>{escape(cloud_text(language, "remote.emptyDetail"))}</p>
+        </section>
+        """
+
+    body_class = "mobile-shell" if mobile_shell_request else ""
     return f"""<!doctype html>
 <html lang="{escape(language)}">
 <head>
@@ -1900,11 +2100,11 @@ def render_remote_devices_page(
       gap: 16px;
       margin-bottom: 28px;
     }}
-    .topbar h1 {{
+    .topbar h1, .mobile-shell-hero h1 {{
       margin: 0;
       font-size: 34px;
     }}
-    .topbar p {{
+    .topbar p, .mobile-shell-hero p {{
       margin: 8px 0 0;
       color: #475569;
       line-height: 1.6;
@@ -1937,6 +2137,10 @@ def render_remote_devices_page(
       gap: 16px;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     }}
+    .device-stack {{
+      display: grid;
+      gap: 16px;
+    }}
     .notice {{
       margin-bottom: 16px;
       padding: 16px 18px;
@@ -1962,12 +2166,61 @@ def render_remote_devices_page(
       background: #f8fbff;
       border-color: rgba(37, 99, 235, 0.12);
     }}
-    .device-card, .empty-state {{
+    .device-card, .empty-state, .mobile-shell-hero {{
       background: rgba(255, 255, 255, 0.9);
       border: 1px solid rgba(15, 23, 42, 0.08);
       border-radius: 24px;
       box-shadow: 0 20px 56px rgba(15, 23, 42, 0.08);
       padding: 24px;
+    }}
+    .mobile-shell-hero {{
+      display: grid;
+      gap: 18px;
+      margin-bottom: 20px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(244, 248, 255, 0.98) 100%);
+    }}
+    .mobile-shell-hero .signed-in {{
+      margin: 0 0 10px;
+      color: #334155;
+      font-weight: 700;
+    }}
+    .stats-grid {{
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }}
+    .stat-pill {{
+      display: grid;
+      gap: 4px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 18px;
+    }}
+    .stat-value {{
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+      color: #0f172a;
+    }}
+    .stat-label {{
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+      letter-spacing: 0.01em;
+    }}
+    .continue-section {{
+      display: grid;
+      gap: 14px;
+    }}
+    .continue-section h2 {{
+      margin: 0;
+      font-size: 18px;
+    }}
+    .device-card.featured {{
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(239, 246, 255, 0.95) 100%);
+      border-color: rgba(37, 99, 235, 0.12);
+      box-shadow: 0 22px 60px rgba(37, 99, 235, 0.10);
     }}
     .device-header {{
       display: flex;
@@ -2052,6 +2305,24 @@ def render_remote_devices_page(
     form {{
       margin: 0;
     }}
+    body.mobile-shell .wrap {{
+      width: min(760px, calc(100% - 24px));
+    }}
+    body.mobile-shell .toolbar {{
+      width: 100%;
+      flex-wrap: wrap;
+    }}
+    body.mobile-shell .toolbar a.secondary,
+    body.mobile-shell .toolbar button.secondary {{
+      flex: 1 1 160px;
+    }}
+    body.mobile-shell .actions {{
+      flex-direction: column;
+    }}
+    body.mobile-shell .actions > * {{
+      width: 100%;
+      flex-basis: auto;
+    }}
     @media (max-width: 768px) {{
       .wrap {{
         width: 100%;
@@ -2061,7 +2332,7 @@ def render_remote_devices_page(
       .topbar, .device-header {{
         flex-direction: column;
       }}
-      .topbar h1 {{
+      .topbar h1, .mobile-shell-hero h1 {{
         font-size: 28px;
       }}
       .account-card {{
@@ -2080,7 +2351,7 @@ def render_remote_devices_page(
       .grid {{
         grid-template-columns: 1fr;
       }}
-      .device-card, .empty-state {{
+      .device-card, .empty-state, .mobile-shell-hero {{
         border-radius: 20px;
         padding: 20px;
       }}
@@ -2097,32 +2368,17 @@ def render_remote_devices_page(
         width: 100%;
         flex-basis: auto;
       }}
+      .stats-grid {{
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }}
     }}
   </style>
 </head>
-<body>
+<body class="{body_class}">
   <main class="wrap">
-    <section class="topbar">
-      <div>
-        <h1>{escape(title)}</h1>
-        <p>{escape(signed_in_as)}</p>
-        <p>{escape(description)}</p>
-      </div>
-      <div class="account-card">
-        <p><strong>{account_name}</strong></p>
-        <p class="account-meta">@{escape(user.username)}</p>
-        <div class="toolbar">
-          <a class="secondary" href="{REMOTE_DEVICES_PATH}">{escape(refresh_label)}</a>
-          <form method="post" action="/api/auth/logout?next={escape(REMOTE_DEVICES_PATH)}">
-            <button class="secondary" type="submit">{escape(sign_out_label)}</button>
-          </form>
-        </div>
-      </div>
-    </section>
+    {header_markup}
     {notice_markup}
-    <section class="grid">
-      {devices_markup}
-    </section>
+    {devices_markup}
   </main>
 </body>
 </html>"""

@@ -33,7 +33,9 @@
       "gemini": "Gemini",
       "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
-    }
+    },
+    "readyCount": "{{count}} sessions ready",
+    "open": "Open"
   },
   "openclaw": {
     "defaultAgent": "Default"
@@ -47,5 +49,40 @@
     "statusTesting": "Testing latency...",
     "statusUnreachable": "Unreachable",
     "statusAvailable": "Available"
+  },
+  "vault": {
+    "title": "Open Space Vault",
+    "description": "Open the ContextGo-managed Obsidian vault for the selected space.",
+    "affordance": "Open Vault",
+    "statusReady": "Open in Obsidian or Finder",
+    "openSuccess": "Space vault opened.",
+    "openFailed": "Failed to open the space vault.",
+    "obsidianMissing": "Obsidian was not detected. The vault folder and download page have been opened for you."
+  },
+  "space": {
+    "loading": "Loading spaces...",
+    "empty": "No space selected",
+    "newSpace": "New Space",
+    "selectorTitle": "Switch space",
+    "createTitle": "Create Space",
+    "createAction": "Create Space",
+    "namePlaceholder": "Space name",
+    "descriptionPlaceholder": "Description (optional)",
+    "nameRequired": "Space name is required.",
+    "createSuccess": "Created space {{name}}.",
+    "createFailed": "Failed to create space.",
+    "switchSuccess": "Switched to {{name}}.",
+    "switchFailed": "Failed to switch space."
+  },
+  "contextEngine": {
+    "title": "Context Engine",
+    "systemManaged": "System-managed",
+    "loading": "Loading maintenance activity...",
+    "loadFailed": "Failed to load maintenance activity.",
+    "activeCount": "{{count}} maintenance run active",
+    "idleCount": "{{count}} maintenance agent watching",
+    "empty": "Waiting for the first maintenance run.",
+    "defaultTask": "No summary yet",
+    "scope": "Scope: {{scope}}"
   }
 }

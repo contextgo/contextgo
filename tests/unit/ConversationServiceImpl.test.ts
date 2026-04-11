@@ -10,8 +10,8 @@ import type { ISpaceService } from '../../src/process/services/space/ISpaceServi
 
 vi.mock('electron', () => ({ app: { getPath: vi.fn(() => '/tmp'), isPackaged: false } }));
 vi.mock('../../src/process/utils/initStorage', () => ({ ProcessChat: { get: vi.fn(async () => []) } }));
-vi.mock('../../src/process/services/cron/cronServiceSingleton', () => ({
-  cronService: {
+vi.mock('../../src/process/services/context/scheduleServiceSingleton', () => ({
+  scheduleService: {
     listJobsByConversation: vi.fn(async () => []),
     removeJob: vi.fn(async () => {}),
     updateJob: vi.fn(async () => {}),
@@ -27,6 +27,15 @@ vi.mock('@process/utils/initAgent', () => ({
   createCodexAgent: vi.fn(async () => ({ id: 'codex-id', type: 'codex', name: 'test', extra: {} })),
   createOpenClawAgent: vi.fn(async () => ({ id: 'claw-id', type: 'openclaw-gateway', name: 'test', extra: {} })),
   createNanobotAgent: vi.fn(async () => ({ id: 'nano-id', type: 'nanobot', name: 'test', extra: {} })),
+  createGroupConversation: vi.fn(async (params) => ({
+    id: 'group-id',
+    type: 'group',
+    name: params.name ?? 'group',
+    extra: {
+      participants: params.participants,
+      spaceId: params.spaceId,
+    },
+  })),
 }));
 
 function makeRepo(overrides: Partial<IConversationRepository> = {}): IConversationRepository {
@@ -47,14 +56,13 @@ function makeRepo(overrides: Partial<IConversationRepository> = {}): IConversati
 function makeSpaceService(overrides: Partial<ISpaceService> = {}): ISpaceService {
   return {
     getSpace: vi.fn(),
-    listSpaces: vi.fn(async () => []),
-    createSpace: vi.fn(),
+    openSpaceVault: vi.fn(async () => ({ opened: true, fallback: 'none', target: '/tmp/vault' })),
     renameSpace: vi.fn(),
     archiveSpace: vi.fn(),
     ensureDefaultSpace: vi.fn(async () => ({
       id: 'space-default',
       name: 'My Space',
-      engine: 'affine',
+      engine: 'vault',
       isDefault: true,
       createTime: 1,
       modifyTime: 1,
@@ -164,8 +172,8 @@ describe('ConversationServiceImpl.createWithMigration', () => {
     });
     const svc = new ConversationServiceImpl(repo);
 
-    const { cronService } = await import('../../src/process/services/cron/cronServiceSingleton');
-    vi.mocked(cronService.listJobsByConversation).mockResolvedValue([
+    const { scheduleService } = await import('../../src/process/services/context/scheduleServiceSingleton');
+    vi.mocked(scheduleService.listJobsByConversation).mockResolvedValue([
       {
         id: 'job-1',
         metadata: {
@@ -183,11 +191,11 @@ describe('ConversationServiceImpl.createWithMigration', () => {
         extra: { workspace: '/target-ws' },
       } as any,
       sourceConversationId: 'src',
-      migrateCron: true,
+      migrateSchedule: true,
     });
 
     expect(copyWorkspaceAutomationHooks).toHaveBeenCalledWith('/source-ws', '/target-ws');
-    expect(cronService.updateJob).toHaveBeenCalledWith(
+    expect(scheduleService.updateJob).toHaveBeenCalledWith(
       'job-1',
       expect.objectContaining({
         metadata: expect.objectContaining({
@@ -261,6 +269,62 @@ describe('ConversationServiceImpl.createConversation', () => {
 
     expect(result.extra.spaceId).toBe('space-explicit');
     expect(spaceService.ensureDefaultSpace).not.toHaveBeenCalled();
+  });
+
+  it('binds group child conversations to the resolved space', async () => {
+    const repo = makeRepo();
+    const spaceService = makeSpaceService();
+    const svc = new ConversationServiceImpl(repo, spaceService);
+    const { createGroupConversation } = await import('../../src/process/utils/initAgent');
+
+    await svc.createConversation({
+      type: 'group',
+      model: { provider: 'group', model: 'group' } as any,
+      name: 'Team Group',
+      extra: {
+        workspace: '/ws',
+        participants: [
+          {
+            id: 'participant-1',
+            participantType: 'cli-agent',
+            participantKey: 'codex:planner',
+            name: 'Planner',
+            conversation: {
+              type: 'acp',
+              name: 'Planner',
+              model: {} as any,
+              extra: {
+                backend: 'codex',
+                workspace: '/ws',
+              },
+            },
+          },
+        ],
+      } as any,
+    });
+
+    expect(spaceService.ensureDefaultSpace).toHaveBeenCalledTimes(1);
+    expect(createGroupConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spaceId: 'space-default',
+        participants: [
+          expect.objectContaining({
+            conversation: expect.objectContaining({
+              extra: expect.objectContaining({
+                spaceId: 'space-default',
+              }),
+            }),
+          }),
+        ],
+      })
+    );
+    expect(repo.createConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extra: expect.objectContaining({
+          spaceId: 'space-default',
+        }),
+      })
+    );
   });
 
   it('throws for unknown conversation type', async () => {

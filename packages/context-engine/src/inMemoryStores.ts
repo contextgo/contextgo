@@ -72,6 +72,13 @@ export function createInMemoryContextEngineDependencies(
           .filter((item) => item.documentId === documentId)
           .sort((left, right) => left.sequence - right.sequence);
       },
+      async deleteByDocument(documentId) {
+        for (const [id, chunk] of chunks.entries()) {
+          if (chunk.documentId === documentId) {
+            chunks.delete(id);
+          }
+        }
+      },
       async saveMany(items) {
         for (const item of items) {
           chunks.set(item.id, item);

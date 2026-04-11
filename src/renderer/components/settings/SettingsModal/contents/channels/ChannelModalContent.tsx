@@ -161,6 +161,17 @@ function isImplicitBuiltinInstance(
   );
 }
 
+function isVisibleChannelInstance(
+  status: IChannelPluginStatus,
+  channelAccountsById: Map<string, IChannelAccount>
+): boolean {
+  if (status.isExtension) {
+    return true;
+  }
+
+  return channelAccountsById.has(status.id);
+}
+
 function sortPluginStatuses(a: IChannelPluginStatus, b: IChannelPluginStatus, familyId: string): number {
   const defaultId = getBuiltinChannel(familyId)?.pluginId;
   if (a.id === defaultId && b.id !== defaultId) {
@@ -723,7 +734,9 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
         .filter((status) => status.type === familyId)
         .toSorted((a, b) => sortPluginStatuses(a, b, familyId));
       const visibleStatuses = familyStatuses.filter(
-        (status) => !isImplicitBuiltinInstance(status, channelAccountsById)
+        (status) =>
+          !isImplicitBuiltinInstance(status, channelAccountsById) &&
+          isVisibleChannelInstance(status, channelAccountsById)
       );
       const fallbackStatus = familyStatuses[0];
       const title = isBuiltinChannelType(familyId)

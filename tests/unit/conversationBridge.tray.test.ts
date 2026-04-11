@@ -11,6 +11,10 @@ type Provider = (payload?: unknown) => Promise<unknown>;
 let handlers: Record<string, Provider> = {};
 
 const mockRefreshTrayMenu = vi.fn(async () => {});
+const mockContextRuntimeService = {
+  registerConversation: vi.fn(async () => {}),
+  removeConversationContext: vi.fn(async () => {}),
+};
 
 const createCommand = (key: string) => ({
   provider: vi.fn((fn: Provider) => {
@@ -113,6 +117,11 @@ const registerMocks = () => {
     computeOpenClawIdentityHash: vi.fn(async () => 'identity-hash'),
   }));
 
+  vi.doMock('@process/services/context/contextServiceSingleton', () => ({
+    contextService: {},
+    contextRuntimeService: mockContextRuntimeService,
+  }));
+
   vi.doMock('@process/bridge/migrationUtils', () => ({
     migrateConversationToDatabase: vi.fn(),
   }));
@@ -155,6 +164,10 @@ describe('conversationBridge tray sync', () => {
     expect(result).toBe(true);
     expect(mockWorkerTaskManager.kill).toHaveBeenCalledWith('conv-1');
     expect(mockConversationService.deleteConversation).toHaveBeenCalledWith('conv-1');
+    expect(mockContextRuntimeService.removeConversationContext).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'conv-1' }),
+      []
+    );
     expect(mockRefreshTrayMenu).toHaveBeenCalledOnce();
   });
 

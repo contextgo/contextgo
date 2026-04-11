@@ -20,6 +20,19 @@
  */
 export type PresetAgentType = 'gemini' | 'claude' | 'codex' | 'codebuddy' | 'opencode' | 'qwen';
 
+export type BuiltinAssistantTier = 'product' | 'system';
+
+export type BuiltinAssistantVisibility = 'featured' | 'settings' | 'internal';
+
+export type BuiltinAssistantSystemOwner = 'context-engine';
+
+export type BuiltinAssistantSystemRole =
+  | 'context-engine-session-compactor'
+  | 'context-engine-session-pattern-detector'
+  | 'context-engine-project-promoter'
+  | 'context-engine-space-memory-distiller'
+  | 'context-engine-connector-digester';
+
 /**
  * 使用 ACP 协议的预设 Agent 类型（需要通过 ACP 后端路由）
  * Preset agent types that use ACP protocol (need to be routed through ACP backend)
@@ -296,6 +309,36 @@ export interface AcpBackendConfig {
 
   /** 是否为内置助手（不可编辑/删除）/ Whether this is a built-in assistant (cannot be edited/deleted) */
   isBuiltin?: boolean;
+
+  /** Builtin assistant tier / 内置助手层级（产品助手或系统维护助手） */
+  builtinTier?: BuiltinAssistantTier;
+
+  /** Builtin assistant visibility / 内置助手默认可见级别 */
+  builtinVisibility?: BuiltinAssistantVisibility;
+
+  /** Builtin system owner / 系统内置助手所属系统 */
+  systemOwner?: BuiltinAssistantSystemOwner;
+
+  /** Builtin system role / 系统内置助手职责标识 */
+  systemRole?: BuiltinAssistantSystemRole;
+
+  /** System execution boundary for runnable builtin assistants / 系统内置助手的执行边界 */
+  executionBoundary?: string;
+
+  /** Trigger kinds supported by this runnable assistant / 此可运行助手支持的触发类型 */
+  triggerKinds?: string[];
+
+  /** Prompt profile passed into runtime projection / 注入运行时投影的 prompt profile */
+  promptProfile?: Record<string, unknown>;
+
+  /** Tool policy passed into runtime projection / 注入运行时投影的工具策略 */
+  toolPolicy?: Record<string, unknown>;
+
+  /** Memory policy passed into runtime projection / 注入运行时投影的记忆策略 */
+  memoryPolicy?: Record<string, unknown>;
+
+  /** Delegation policy passed into runtime projection / 注入运行时投影的委托策略 */
+  delegationPolicy?: Record<string, unknown>;
 
   /** Harness label shown on assistant cards / 助手卡片上显示的 Harness 标签 */
   harnessTagI18n?: Record<string, string>;

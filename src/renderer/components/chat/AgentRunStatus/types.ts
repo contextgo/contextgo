@@ -1,3 +1,5 @@
+import type { RuntimePlanEntry } from '../runtimePlanTypes';
+
 export type AgentRunPhase =
   | 'preparing'
   | 'reasoning'
@@ -17,5 +19,6 @@ export type AgentRunTrace = {
   phase: AgentRunPhase;
   liveThoughtText: string;
   activeToolCount: number;
+  planEntries?: RuntimePlanEntry[];
   errorMessage?: string;
 };

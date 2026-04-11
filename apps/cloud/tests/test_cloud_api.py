@@ -677,6 +677,70 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertNotIn("Open in app", response.text)
         self.assertNotIn("contextgo-remote://open?target=", response.text)
 
+    def test_mobile_shell_remote_devices_page_surfaces_continue_section_and_metrics(self) -> None:
+        ready_registration = self._register_device(device_name="Studio", platform="macos")
+        live_registration = self._register_device(device_name="MacBook Pro", platform="macos")
+        offline_registration = self._register_device(device_name="Office PC", platform="windows")
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {ready_registration['token']}"},
+        ) as ready_ws, self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {live_registration['token']}"},
+        ) as live_ws:
+            ready_hello = ready_ws.receive_json()
+            self.assertEqual(ready_hello["type"], "hello")
+            live_hello = live_ws.receive_json()
+            self.assertEqual(live_hello["type"], "hello")
+
+            ready_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.8:25809/", "ready": True}})
+            live_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.9:25809/", "ready": True}})
+
+            with self.client.websocket_connect(f"/api/remote/client-connect?device_id={live_registration['device']['id']}") as client_ws:
+                client_status = live_ws.receive_json()
+                self.assertEqual(client_status["type"], "client_status")
+                self.assertTrue(client_status["connected"])
+
+                self.client.cookies.set(
+                    self.app_module.REMOTE_ACTIVE_DEVICE_COOKIE,
+                    ready_registration["device"]["id"],
+                )
+                response = self.client.get(
+                    "/remote/devices",
+                    headers={
+                        "host": "remote.contextgo.io",
+                        "user-agent": "Mozilla/5.0 ContextGoMobileShell/1.0",
+                    },
+                )
+
+                client_ws.send_json({"name": "pong", "data": {"timestamp": 1}})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('class="mobile-shell"', response.text)
+        self.assertIn("Continue on this desktop", response.text)
+        self.assertIn(
+            f'<section class="continue-section">',
+            response.text,
+        )
+        self.assertIn(f'/device/{ready_registration["device"]["id"]}', response.text)
+        self.assertIn("Desktops", response.text)
+        self.assertIn("Ready now", response.text)
+        self.assertIn("Live sessions", response.text)
+        self.assertIn(
+            f'<span class="stat-value">3</span>',
+            response.text,
+        )
+        self.assertIn(
+            f'<span class="stat-value">1</span>',
+            response.text,
+        )
+        self.assertIn("Office PC", response.text)
+        self.assertNotIn("Open in app", response.text)
+        self.assertNotIn("contextgo-remote://open?target=", response.text)
+        self.assertLess(response.text.index("MacBook Pro"), response.text.index("Office PC"))
+        self.assertEqual(response.text.count(ready_registration["device"]["deviceName"]), 1)
+
     def test_mobile_shell_login_complete_redirects_back_to_shell_target(self) -> None:
         self._create_browser_session()
 

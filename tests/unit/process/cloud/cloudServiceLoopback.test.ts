@@ -274,6 +274,13 @@ vi.mock('@/process/services/cloud/OfficialRemoteTunnelService', () => ({
   getOfficialRemoteTunnelService: () => officialRemoteTunnelServiceMock,
 }));
 
+async function flushAsyncWork(): Promise<void> {
+  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('CloudService desktop loopback login', () => {
   beforeEach(() => {
     processConfigState.clear();
@@ -351,6 +358,55 @@ describe('CloudService desktop loopback login', () => {
       params,
     });
   }
+
+  it('prepares official remote runtime on startup when a stored device token exists before browser session refresh recovers', async () => {
+    const defaultFetch = authSessionFetch.getMockImplementation();
+
+    authSessionFetch.mockImplementationOnce(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/auth/session')) {
+        return new Response(JSON.stringify({ authenticated: false, user: null }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!defaultFetch) {
+        throw new Error(`Unexpected fetch URL: ${url} ${init?.method ?? 'GET'}`);
+      }
+
+      return defaultFetch(url, init);
+    });
+
+    processConfigState.set('cloud.user', fetchSessionUserResponse.user);
+    processConfigState.set('cloud.device', {
+      id: 'device-1',
+      userId: 'user-1',
+      deviceName: 'ContextGo on dev-host',
+      platform: 'macos',
+      status: 'active',
+      createdAt: '2026-04-01T00:00:00Z',
+      updatedAt: '2026-04-01T00:00:00Z',
+    });
+    processConfigState.set('cloud.deviceToken', 'ctxdev_token');
+
+    const cloudService = await importCloudService();
+    cloudService.initialize();
+    await flushAsyncWork();
+
+    expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalledTimes(1);
+    expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('cloud-init');
+  });
+
+  it('re-ensures official remote runtime after system resume when a stored device token exists', async () => {
+    processConfigState.set('cloud.deviceToken', 'ctxdev_token');
+
+    const cloudService = await importCloudService();
+    cloudService.handleSystemResume();
+    await flushAsyncWork();
+
+    expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalledTimes(1);
+    expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('system-resume');
+  });
 
   it('opens browser login with loopback callback and consumes returned code', async () => {
     const cloudService = await importCloudService();

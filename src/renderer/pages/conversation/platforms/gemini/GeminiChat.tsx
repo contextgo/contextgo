@@ -8,7 +8,7 @@ import type { ConversationContextValue } from '@/renderer/hooks/context/Conversa
 import { ConversationProvider } from '@/renderer/hooks/context/ConversationContext';
 import FlexFullContainer from '@renderer/components/layout/FlexFullContainer';
 import MessageList from '@renderer/pages/conversation/Messages/MessageList';
-import { MessageListProvider, useMessageLstCache } from '@renderer/pages/conversation/Messages/hooks';
+import { ConversationMessageStateProvider } from '@renderer/pages/conversation/Messages/hooks';
 import HOC from '@renderer/utils/ui/HOC';
 import React, { useEffect, useMemo } from 'react';
 import LocalImageView from '@renderer/components/media/LocalImageView';
@@ -23,7 +23,6 @@ const GeminiChat: React.FC<{
   workspace: string;
   modelSelection: GeminiModelSelection;
 }> = ({ conversation_id, workspace, modelSelection }) => {
-  useMessageLstCache(conversation_id);
   const updateLocalImage = LocalImageView.useUpdateLocalImage();
   useEffect(() => {
     updateLocalImage({ root: workspace });
@@ -33,17 +32,19 @@ const GeminiChat: React.FC<{
   }, [conversation_id, workspace]);
 
   return (
-    <ConversationProvider value={conversationValue}>
-      <div className='flex-1 flex flex-col px-20px min-h-0'>
-        <FlexFullContainer>
-          <MessageList className='flex-1'></MessageList>
-        </FlexFullContainer>
-        <ConversationChatConfirm conversation_id={conversation_id}>
-          <GeminiSendBox conversation_id={conversation_id} modelSelection={modelSelection}></GeminiSendBox>
-        </ConversationChatConfirm>
-      </div>
-    </ConversationProvider>
+    <ConversationMessageStateProvider conversationId={conversation_id}>
+      <ConversationProvider value={conversationValue}>
+        <div className='flex-1 flex flex-col px-12px md:px-20px min-h-0'>
+          <FlexFullContainer>
+            <MessageList className='flex-1'></MessageList>
+          </FlexFullContainer>
+          <ConversationChatConfirm conversation_id={conversation_id}>
+            <GeminiSendBox conversation_id={conversation_id} modelSelection={modelSelection}></GeminiSendBox>
+          </ConversationChatConfirm>
+        </div>
+      </ConversationProvider>
+    </ConversationMessageStateProvider>
   );
 };
 
-export default HOC.Wrapper(MessageListProvider, LocalImageView.Provider)(GeminiChat);
+export default HOC.Wrapper(LocalImageView.Provider)(GeminiChat);

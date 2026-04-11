@@ -11,6 +11,7 @@ import { ToolRegistry } from '@/common/types/codex/utils';
 import type { ICodexMessageEmitter } from '@process/agent/codex/messaging/CodexMessageEmitter';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { NavigationInterceptor } from '@/common/chat/navigation';
+import { extractCodexRuntimePlanEntries, isCodexRuntimePlanTool } from './runtimePlan';
 
 /**
  * Metadata for exec approval requests (for ApprovalStore)
@@ -195,6 +196,8 @@ export class CodexToolHandlers {
     const callId = (msg as unknown as { call_id?: string }).call_id || `mcp_${toolName}_${uuid()}`;
     const title = this.formatMcpInvocation(inv);
 
+    this.emitRuntimePlanUpdate(toolName, inv.arguments);
+
     // Intercept chrome-devtools navigation tools using unified NavigationInterceptor
     // 使用统一的 NavigationInterceptor 拦截 chrome-devtools 导航工具
     const interceptionResult = NavigationInterceptor.intercept(
@@ -232,6 +235,11 @@ export class CodexToolHandlers {
     const callId = `mcp_${toolName}_${uuid()}`;
     const title = this.formatMcpInvocation(inv);
     const result = msg.result;
+
+    this.emitRuntimePlanUpdate(toolName, {
+      arguments: inv.arguments,
+      result,
+    });
 
     // 类型安全的错误检查，使用 in 操作符进行类型保护
     const isError = (() => {
@@ -325,6 +333,27 @@ export class CodexToolHandlers {
     if (['success', 'error', 'canceled'].includes(update.status || '')) {
       this.activeToolCalls.delete(callId);
     }
+  }
+
+  private emitRuntimePlanUpdate(toolName: string | null | undefined, payload: unknown) {
+    if (!isCodexRuntimePlanTool(toolName)) {
+      return;
+    }
+
+    const entries = extractCodexRuntimePlanEntries(payload);
+    if (!entries.length) {
+      return;
+    }
+
+    this.messageEmitter.emitAndPersistMessage({
+      type: 'plan',
+      msg_id: `codex_runtime_plan_${this.conversation_id}`,
+      conversation_id: this.conversation_id,
+      data: {
+        sessionId: this.conversation_id,
+        entries,
+      },
+    });
   }
 
   // Turn diff handler

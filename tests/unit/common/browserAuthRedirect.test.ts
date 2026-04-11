@@ -1,11 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildBrowserBridgeSocketUrl,
   buildBrowserLoginRedirectPath,
   buildHostedRemoteNoticeRedirectPath,
   extractRemoteDeviceId,
   resolveHostedRemoteDisconnect,
   resolveHostedRemoteDisconnectRedirectPath,
 } from '@/common/adapter/browserAuthRedirect';
+
+describe('buildBrowserBridgeSocketUrl', () => {
+  it('uses explicit remote client relay endpoint for hosted remote pages', () => {
+    expect(buildBrowserBridgeSocketUrl('https://remote.contextgo.io/device/device-1#/conversation/abc', 25809)).toBe(
+      'wss://remote.contextgo.io/api/remote/client-connect?device_id=device-1'
+    );
+  });
+
+  it('keeps local webui connections on the root websocket endpoint', () => {
+    expect(buildBrowserBridgeSocketUrl('http://127.0.0.1:25809/#/conversation/abc', 25809)).toBe(
+      'ws://127.0.0.1:25809'
+    );
+  });
+
+  it('accepts hosted remote device paths with a trailing slash when composing the socket url', () => {
+    expect(buildBrowserBridgeSocketUrl('https://remote.contextgo.io/device/device-1/', 25809)).toBe(
+      'wss://remote.contextgo.io/api/remote/client-connect?device_id=device-1'
+    );
+  });
+});
 
 describe('buildBrowserLoginRedirectPath', () => {
   it('preserves canonical device routes on contextgo hosts', () => {
@@ -26,6 +47,11 @@ describe('buildBrowserLoginRedirectPath', () => {
 describe('extractRemoteDeviceId', () => {
   it('reads device id from canonical device paths', () => {
     expect(extractRemoteDeviceId('https://remote.contextgo.io/device/device-1#/conversation/abc')).toBe('device-1');
+  });
+
+  it('accepts hosted remote device paths with a trailing slash', () => {
+    expect(extractRemoteDeviceId('https://remote.contextgo.io/device/device-1/')).toBe('device-1');
+    expect(extractRemoteDeviceId('https://remote.contextgo.io/device/device-1/#/guid')).toBe('device-1');
   });
 
   it('returns null when the current URL is not a device session page', () => {

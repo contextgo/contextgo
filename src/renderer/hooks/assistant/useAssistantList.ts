@@ -6,7 +6,7 @@ import {
   normalizeExtensionAssistants,
   sortAssistants as sortAssistantsUtil,
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/assistantUtils';
-import { mergeAssistantsWithBuiltinFallback } from '@/renderer/utils/model/assistantCatalog';
+import { buildResolvedAssistantCatalog } from '@/renderer/utils/model/assistantCatalog';
 import type { AssistantListItem } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import useSWR from 'swr';
 export const useAssistantList = () => {
   const { i18n } = useTranslation();
   const [assistants, setAssistants] = useState<AssistantListItem[]>([]);
+  const [systemAssistants, setSystemAssistants] = useState<AssistantListItem[]>([]);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
   const localeKey = resolveLocaleKey(i18n.language);
 
@@ -44,7 +45,10 @@ export const useAssistantList = () => {
       // Read stored assistants from config (includes builtin and user-defined)
       const localAgents: AssistantListItem[] = (await ConfigStorage.get('acp.customAgents')) || [];
 
-      const mergedAgents = mergeAssistantsWithBuiltinFallback(localAgents) as AssistantListItem[];
+      const catalog = buildResolvedAssistantCatalog(localAgents);
+      const mergedAgents = catalog.productAssistants as AssistantListItem[];
+      const resolvedSystemAssistants = catalog.systemAssistants as AssistantListItem[];
+
       for (const extAssistant of normalizedExtAssistants) {
         if (!mergedAgents.some((agent) => agent.id === extAssistant.id)) {
           mergedAgents.push(extAssistant);
@@ -54,6 +58,7 @@ export const useAssistantList = () => {
       const sortedAssistants = sortAssistants(mergedAgents);
 
       setAssistants(sortedAssistants);
+      setSystemAssistants(resolvedSystemAssistants);
       setActiveAssistantId((prev) => {
         if (prev && sortedAssistants.some((assistant) => assistant.id === prev)) return prev;
         return sortedAssistants[0]?.id || null;
@@ -73,6 +78,7 @@ export const useAssistantList = () => {
   return {
     assistants,
     setAssistants,
+    systemAssistants,
     activeAssistantId,
     setActiveAssistantId,
     activeAssistant,

@@ -10,11 +10,13 @@ import { vs, vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import katex from 'katex';
 
 import { copyText } from '@/renderer/utils/ui/clipboard';
-import { Message } from '@arco-design/web-react';
+import { Button, Message, Tooltip } from '@arco-design/web-react';
 import { Copy, Down, Up } from '@icon-park/react';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatCode, getDiffLineStyle, logicRender } from './markdownUtils';
+
+export type CodeBlockVariant = 'default' | 'result-card';
 
 type CodeBlockProps = {
   children: string;
@@ -22,17 +24,25 @@ type CodeBlockProps = {
   node?: unknown;
   hiddenCodeCopyButton?: boolean;
   codeStyle?: React.CSSProperties;
+  codeVariant?: CodeBlockVariant;
   [key: string]: unknown;
+};
+
+const LANGUAGE_PATTERN = /language-([\w#+-]+)/;
+const PREVIEW_LINE_LIMIT = 6;
+
+const getLanguageLabel = (language: string): string => {
+  return language.replace(/^[.]+/, '').toUpperCase();
 };
 
 function CodeBlock(props: CodeBlockProps) {
   const { t } = useTranslation();
-  const [fold, setFlow] = useState(true);
+  const [fold, setFold] = useState(true);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     const updateTheme = () => {
       const theme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
       setCurrentTheme(theme);
@@ -47,191 +57,262 @@ function CodeBlock(props: CodeBlockProps) {
     return () => observer.disconnect();
   }, []);
 
-  return useMemo(() => {
-    const {
-      children,
-      className,
-      node: _node,
-      hiddenCodeCopyButton: _hiddenCodeCopyButton,
-      codeStyle: _codeStyle,
-      ...rest
-    } = props;
-    const match = /language-(\w+)/.exec(className || '');
-    const language = match?.[1] || 'text';
-    const codeTheme = currentTheme === 'dark' ? vs2015 : vs;
+  const {
+    children,
+    className,
+    node: _node,
+    hiddenCodeCopyButton = false,
+    codeStyle,
+    codeVariant = 'default',
+    ...rest
+  } = props;
+  const match = LANGUAGE_PATTERN.exec(className || '');
+  const language = (match?.[1] || 'text').toLowerCase();
 
-    // Render latex/math code blocks as KaTeX display math
-    // Skip full LaTeX documents (with \documentclass, \begin{document}, etc.) — KaTeX only handles math
-    if (language === 'latex' || language === 'math' || language === 'tex') {
-      const latexSource = String(children).replace(/\n$/, '');
-      const isFullDocument = /\\(documentclass|begin\{document\}|usepackage)\b/.test(latexSource);
-      if (!isFullDocument) {
-        try {
-          const html = katex.renderToString(latexSource, {
-            displayMode: true,
-            throwOnError: false,
-          });
-          return <div className='katex-display' dangerouslySetInnerHTML={{ __html: html }} />;
-        } catch {
-          // Fall through to render as code block if KaTeX fails
-        }
+  if (language === 'latex' || language === 'math' || language === 'tex') {
+    const latexSource = String(children).replace(/\n$/, '');
+    const isFullDocument = /\\(documentclass|begin\{document\}|usepackage)\b/.test(latexSource);
+    if (!isFullDocument) {
+      try {
+        const html = katex.renderToString(latexSource, {
+          displayMode: true,
+          throwOnError: false,
+        });
+        return <div className='katex-display' dangerouslySetInnerHTML={{ __html: html }} />;
+      } catch {
+        // Fall through to render as code block if KaTeX fails.
       }
     }
+  }
 
-    if (!String(children).includes('\n')) {
-      return (
-        <code
-          {...rest}
-          className={className}
-          style={{
-            fontWeight: 'bold',
-          }}
-        >
-          {children}
-        </code>
-      );
-    }
-
-    const isDiff = language === 'diff';
-    const formattedContent = formatCode(children);
-    const diffLines = isDiff ? formattedContent.split('\n') : [];
-
+  if (!String(children).includes('\n')) {
     return (
-      <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', ...props.codeStyle }}>
-        <div
-          style={{
-            border: '1px solid var(--bg-3)',
-            borderRadius: '0.3rem',
-            overflow: 'hidden',
-            overflowX: 'auto',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: 'var(--bg-2)',
-              borderTopLeftRadius: '0.3rem',
-              borderTopRightRadius: '0.3rem',
-              borderBottomLeftRadius: fold ? '0.3rem' : '0',
-              borderBottomRightRadius: fold ? '0.3rem' : '0',
-              padding: '6px 10px',
-              borderBottom: !fold ? '1px solid var(--bg-3)' : undefined,
-            }}
-          >
-            <span
-              style={{
-                textDecoration: 'none',
-                color: 'var(--text-secondary)',
-                fontSize: '12px',
-                lineHeight: '20px',
-              }}
-            >
-              {'<' + language.toLocaleLowerCase() + '>'}
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {/* Copy code button */}
-              <Copy
-                theme='outline'
-                size='18'
-                style={{ cursor: 'pointer' }}
-                fill='var(--text-secondary)'
-                onClick={() => {
-                  void copyText(formatCode(children))
-                    .then(() => {
-                      Message.success(t('common.copySuccess'));
-                    })
-                    .catch(() => {
-                      Message.error(t('common.copyFailed'));
-                    });
-                }}
-              />
-              {/* Fold/unfold button */}
-              {logicRender(
-                !fold,
-                <Up
-                  theme='outline'
-                  size='20'
-                  style={{ cursor: 'pointer' }}
-                  fill='var(--text-secondary)'
-                  onClick={() => setFlow(true)}
-                />,
-                <Down
-                  theme='outline'
-                  size='20'
-                  style={{ cursor: 'pointer' }}
-                  fill='var(--text-secondary)'
-                  onClick={() => setFlow(false)}
-                />
+      <code
+        {...rest}
+        className={className}
+        style={{
+          fontWeight: 'bold',
+        }}
+      >
+        {children}
+      </code>
+    );
+  }
+
+  const isDiff = language === 'diff';
+  const codeTheme = currentTheme === 'dark' ? vs2015 : vs;
+  const formattedContent = useMemo(() => formatCode(children), [children]);
+  const codeLines = useMemo(() => formattedContent.split('\n'), [formattedContent]);
+  const diffLines = useMemo(() => (isDiff ? codeLines : []), [codeLines, isDiff]);
+  const previewContent = useMemo(() => {
+    const previewLines = codeLines.slice(0, PREVIEW_LINE_LIMIT);
+    return previewLines.join('\n') + (codeLines.length > PREVIEW_LINE_LIMIT ? '\n...' : '');
+  }, [codeLines]);
+
+  const handleCopy = () => {
+    void copyText(formattedContent)
+      .then(() => {
+        Message.success(t('common.copySuccess'));
+      })
+      .catch(() => {
+        Message.error(t('common.copyFailed'));
+      });
+  };
+
+  const renderSyntaxHighlighter = (customStyle: React.CSSProperties) => {
+    return (
+      <SyntaxHighlighter
+        language={language}
+        style={codeTheme}
+        PreTag='div'
+        wrapLines={isDiff}
+        lineProps={
+          isDiff
+            ? (lineNumber: number) => ({
+                style: {
+                  display: 'block',
+                  ...getDiffLineStyle(diffLines[lineNumber - 1] || '', currentTheme === 'dark'),
+                },
+              })
+            : undefined
+        }
+        customStyle={customStyle}
+        codeTagProps={{
+          style: {
+            color: 'var(--text-primary)',
+          },
+        }}
+      >
+        {formattedContent}
+      </SyntaxHighlighter>
+    );
+  };
+
+  if (codeVariant === 'result-card') {
+    return (
+      <div className='w-full min-w-0 max-w-full' style={codeStyle}>
+        <div className='w-full overflow-hidden rd-12px border border-arco-1 bg-fill-1'>
+          <div className='flex items-center justify-between gap-8px border-b border-arco-1 bg-fill-2 px-12px py-10px'>
+            <div className='min-w-0 flex items-center gap-8px flex-wrap'>
+              <span className='inline-flex h-22px items-center rd-999px bg-primary-light-1 px-8px text-11px font-600 uppercase text-primary'>
+                {t('preview.code')}
+              </span>
+              <span className='text-12px font-600 uppercase text-t-primary'>{getLanguageLabel(language)}</span>
+            </div>
+            <div className='shrink-0 flex items-center gap-2px'>
+              {!hiddenCodeCopyButton && (
+                <Tooltip content={t('common.copy')}>
+                  <Button
+                    size='mini'
+                    type='text'
+                    icon={<Copy theme='outline' size='16' fill='currentColor' className='app-icon' />}
+                    onClick={handleCopy}
+                    aria-label={t('common.copy')}
+                    className='!text-t-secondary hover:!text-t-primary'
+                  />
+                </Tooltip>
               )}
+              <Button
+                size='mini'
+                type='text'
+                onClick={() => setFold(!fold)}
+                className='!px-8px !text-t-secondary hover:!text-t-primary'
+              >
+                {fold ? t('common.expandMore') : t('common.collapse')}
+              </Button>
             </div>
           </div>
-          {logicRender(
-            !fold,
-            <>
-              <SyntaxHighlighter
-                children={formattedContent}
-                language={language}
-                style={codeTheme}
-                PreTag='div'
-                wrapLines={isDiff}
-                lineProps={
-                  isDiff
-                    ? (lineNumber: number) => ({
-                        style: {
-                          display: 'block',
-                          ...getDiffLineStyle(diffLines[lineNumber - 1] || '', currentTheme === 'dark'),
-                        },
-                      })
-                    : undefined
-                }
-                customStyle={{
+          {fold ? (
+            <div className='px-12px py-12px'>
+              <pre className='m-0 overflow-hidden rd-8px bg-base px-12px py-10px font-mono text-12px leading-18px text-t-primary whitespace-pre-wrap break-words'>
+                {previewContent}
+              </pre>
+            </div>
+          ) : (
+            <div className='px-12px py-12px'>
+              <div className='overflow-hidden rd-8px bg-base'>
+                {renderSyntaxHighlighter({
                   marginTop: '0',
                   margin: '0',
-                  borderTopLeftRadius: '0',
-                  borderTopRightRadius: '0',
-                  borderBottomLeftRadius: '0',
-                  borderBottomRightRadius: '0',
                   border: 'none',
                   background: 'transparent',
                   color: 'var(--text-primary)',
                   overflowX: 'auto',
                   maxWidth: '100%',
-                }}
-                codeTagProps={{
-                  style: {
-                    color: 'var(--text-primary)',
-                  },
-                }}
-              />
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  alignItems: 'center',
-                  backgroundColor: 'var(--bg-2)',
-                  borderBottomLeftRadius: '0.3rem',
-                  borderBottomRightRadius: '0.3rem',
-                  padding: '6px 10px',
-                  borderTop: '1px solid var(--bg-3)',
-                }}
-              >
-                <Up
-                  theme='outline'
-                  size='20'
-                  style={{ cursor: 'pointer' }}
-                  fill='var(--text-secondary)'
-                  onClick={() => setFlow(true)}
-                  title={t('common.collapse', 'Collapse')}
-                />
+                })}
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
     );
-  }, [props, currentTheme, fold, t]);
+  }
+
+  return (
+    <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', ...codeStyle }}>
+      <div
+        style={{
+          border: '1px solid var(--bg-3)',
+          borderRadius: '0.3rem',
+          overflow: 'hidden',
+          overflowX: 'auto',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: 'var(--bg-2)',
+            borderTopLeftRadius: '0.3rem',
+            borderTopRightRadius: '0.3rem',
+            borderBottomLeftRadius: fold ? '0.3rem' : '0',
+            borderBottomRightRadius: fold ? '0.3rem' : '0',
+            padding: '6px 10px',
+            borderBottom: !fold ? '1px solid var(--bg-3)' : undefined,
+          }}
+        >
+          <span
+            style={{
+              textDecoration: 'none',
+              color: 'var(--text-secondary)',
+              fontSize: '12px',
+              lineHeight: '20px',
+            }}
+          >
+            {'<' + language + '>'}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {!hiddenCodeCopyButton && (
+              <Copy
+                theme='outline'
+                size='18'
+                style={{ cursor: 'pointer' }}
+                fill='var(--text-secondary)'
+                onClick={handleCopy}
+              />
+            )}
+            {logicRender(
+              !fold,
+              <Up
+                theme='outline'
+                size='20'
+                style={{ cursor: 'pointer' }}
+                fill='var(--text-secondary)'
+                onClick={() => setFold(true)}
+              />,
+              <Down
+                theme='outline'
+                size='20'
+                style={{ cursor: 'pointer' }}
+                fill='var(--text-secondary)'
+                onClick={() => setFold(false)}
+              />
+            )}
+          </div>
+        </div>
+        {logicRender(
+          !fold,
+          <>
+            {renderSyntaxHighlighter({
+              marginTop: '0',
+              margin: '0',
+              borderTopLeftRadius: '0',
+              borderTopRightRadius: '0',
+              borderBottomLeftRadius: '0',
+              borderBottomRightRadius: '0',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-primary)',
+              overflowX: 'auto',
+              maxWidth: '100%',
+            })}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                backgroundColor: 'var(--bg-2)',
+                borderBottomLeftRadius: '0.3rem',
+                borderBottomRightRadius: '0.3rem',
+                padding: '6px 10px',
+                borderTop: '1px solid var(--bg-3)',
+              }}
+            >
+              <Up
+                theme='outline'
+                size='20'
+                style={{ cursor: 'pointer' }}
+                fill='var(--text-secondary)'
+                onClick={() => setFold(true)}
+                title={t('common.collapse', 'Collapse')}
+              />
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default CodeBlock;

@@ -80,8 +80,8 @@ export const getPanelWidth = () => {
   return Math.max(Math.min(PANEL_MIN_WIDTH, viewportCap), target);
 };
 
-export const isTextMessage = (message: TMessage): message is IMessageText => {
-  return message.type === 'text' && typeof message.content?.content === 'string';
+export const isTextMessage = (message: TMessage | null | undefined): message is IMessageText => {
+  return Boolean(message) && message.type === 'text' && typeof message.content?.content === 'string';
 };
 
 export const normalizeText = (value: string) => value.replace(/\s+/g, ' ').trim();
@@ -154,7 +154,25 @@ export const isIndexMatch = (index: number, keyword: string) => {
   return buildIndexSearchTokens(index).some((token) => token.toLowerCase().includes(normalized));
 };
 
-export const buildTurnPreview = (messages: TMessage[]): TurnPreviewItem[] => {
+export const isTurnPreviewItem = (item: unknown): item is TurnPreviewItem => {
+  if (!item || typeof item !== 'object') return false;
+
+  const candidate = item as Partial<TurnPreviewItem>;
+  return (
+    typeof candidate.index === 'number' &&
+    Number.isFinite(candidate.index) &&
+    typeof candidate.question === 'string' &&
+    typeof candidate.answer === 'string' &&
+    typeof candidate.questionRaw === 'string' &&
+    typeof candidate.answerRaw === 'string' &&
+    (candidate.messageId === undefined || typeof candidate.messageId === 'string') &&
+    (candidate.msgId === undefined || typeof candidate.msgId === 'string')
+  );
+};
+
+export const sanitizeTurnPreviewItems = (items: unknown[]): TurnPreviewItem[] => items.filter(isTurnPreviewItem);
+
+export const buildTurnPreview = (messages: Array<TMessage | null | undefined>): TurnPreviewItem[] => {
   const turns: TurnPreviewItem[] = [];
   let turnIndex = 0;
   let currentTurn: TurnPreviewItem | null = null;

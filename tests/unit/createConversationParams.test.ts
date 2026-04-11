@@ -156,6 +156,7 @@ describe('createConversationParams', () => {
 
     const params = await buildDiscussionGroupParams({
       name: 'Mixed Group',
+      spaceId: 'space-team',
       workspace: '/tmp/workspace',
       language: 'en-US',
       mode: 'debate',
@@ -182,6 +183,7 @@ describe('createConversationParams', () => {
     });
 
     expect(params.type).toBe('group');
+    expect(params.extra.spaceId).toBe('space-team');
     expect(params.extra.participants).toHaveLength(2);
     expect(params.extra.participants?.[0]).toMatchObject({
       participantType: 'preset-assistant',
@@ -196,6 +198,7 @@ describe('createConversationParams', () => {
         presetContext: 'preset rules',
         enabledSkills: ['quality-gate'],
         enabledHooks: ['plan-before-coding'],
+        spaceId: 'space-team',
       },
     });
     expect(params.extra.participants?.[1]).toMatchObject({
@@ -210,6 +213,7 @@ describe('createConversationParams', () => {
       extra: {
         backend: 'codex',
         cliPath: '/usr/local/bin/codex',
+        spaceId: 'space-team',
       },
     });
   });
@@ -223,7 +227,8 @@ describe('createConversationParams', () => {
         openclawAgentId: 'reviewer',
         workspace: '/Users/test/.openclaw/workspace-reviewer',
       },
-      '/tmp/ignored-workspace'
+      '/tmp/ignored-workspace',
+      'space-review'
     );
 
     expect(params).toMatchObject({
@@ -235,6 +240,7 @@ describe('createConversationParams', () => {
         openclawAgentId: 'reviewer',
         workspace: '/Users/test/.openclaw/workspace-reviewer',
         customWorkspace: true,
+        spaceId: 'space-review',
       },
     });
   });

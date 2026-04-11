@@ -1,34 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockHasCronCommands = vi.fn();
-const mockProcessCronInMessage = vi.fn();
-const mockEmit = vi.fn();
 const mockSetProcessing = vi.fn();
 
 vi.mock('@/common/utils', () => ({
   uuid: vi.fn(() => 'mock-uuid'),
 }));
 
-vi.mock('@/common', () => ({
-  ipcBridge: {
-    codexConversation: {
-      responseStream: {
-        emit: mockEmit,
-      },
-    },
-  },
-}));
-
-vi.mock('@process/task/CronCommandDetector', () => ({
-  hasCronCommands: mockHasCronCommands,
-}));
-
-vi.mock('@process/task/MessageMiddleware', () => ({
-  processCronInMessage: mockProcessCronInMessage,
-}));
-
-vi.mock('@process/services/cron/CronBusyGuard', () => ({
-  cronBusyGuard: {
+vi.mock('@process/services/context/events/schedule/ScheduleConversationGuard', () => ({
+  scheduleConversationGuard: {
     setProcessing: mockSetProcessing,
   },
 }));
@@ -36,15 +15,10 @@ vi.mock('@process/services/cron/CronBusyGuard', () => ({
 describe('CodexMessageProcessor', () => {
   beforeEach(() => {
     vi.resetModules();
-    mockHasCronCommands.mockReset();
-    mockProcessCronInMessage.mockReset();
-    mockEmit.mockReset();
     mockSetProcessing.mockReset();
   });
 
   it('schedules after_response hooks when the final message does not continue via system feedback', async () => {
-    mockHasCronCommands.mockReturnValue(false);
-
     const { CodexMessageProcessor } = await import('../../src/process/agent/codex/messaging/CodexMessageProcessor');
     const emitter = {
       emitAndPersistMessage: vi.fn(),
@@ -70,31 +44,52 @@ describe('CodexMessageProcessor', () => {
     expect(emitter.scheduleAfterResponseHooks).toHaveBeenCalledTimes(1);
   });
 
-  it('does not schedule after_response hooks when cron feedback continues the turn', async () => {
-    mockHasCronCommands.mockReturnValue(true);
-    mockProcessCronInMessage.mockImplementation(async (_conversationId, _backend, _message, onSystemMessage) => {
-      onSystemMessage('cron-result');
-    });
-
+  it('overwrites thought payloads with the latest reasoning chunk instead of accumulating them', async () => {
     const { CodexMessageProcessor } = await import('../../src/process/agent/codex/messaging/CodexMessageProcessor');
     const emitter = {
       emitAndPersistMessage: vi.fn(),
       persistMessage: vi.fn(),
       addConfirmation: vi.fn(),
-      scheduleAfterResponseHooks: vi.fn(),
-      sendMessageToAgent: vi.fn(),
     };
 
-    const processor = new CodexMessageProcessor('conv-2', emitter as any);
+    const processor = new CodexMessageProcessor('conv-thought', emitter as any);
     processor.processTaskStart();
-    processor.processFinalMessage({
-      type: 'agent_message',
-      message: 'Final answer with cron commands',
-    } as any);
-    await Promise.resolve();
-    await Promise.resolve();
 
-    expect(emitter.sendMessageToAgent).toHaveBeenCalledWith('[System Response]\ncron-result');
-    expect(emitter.scheduleAfterResponseHooks).not.toHaveBeenCalled();
+    processor.handleReasoningMessage({
+      type: 'agent_reasoning_delta',
+      delta: '第一段思考：先检查上下文结构。',
+    } as any);
+
+    processor.handleReasoningMessage({
+      type: 'agent_reasoning_delta',
+      delta: '第二段思考：直接覆盖当前展示，不累计旧段落。',
+    } as any);
+
+    expect(emitter.emitAndPersistMessage).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        type: 'thought',
+        conversation_id: 'conv-thought',
+        data: {
+          subject: 'Thinking',
+          description: '第一段思考：先检查上下文结构。',
+        },
+      }),
+      false
+    );
+
+    expect(emitter.emitAndPersistMessage).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        type: 'thought',
+        conversation_id: 'conv-thought',
+        data: {
+          subject: 'Thinking',
+          description: '第二段思考：直接覆盖当前展示，不累计旧段落。',
+        },
+      }),
+      false
+    );
   });
+
 });

@@ -321,12 +321,12 @@ describe('initAgent — skill support', () => {
       expect(symlinkCalls[0].source).toBe('/mock/user/skills/custom-skill');
     });
 
-    it('should skip cron skill (auto-injected via SkillManager)', async () => {
+    it('should skip schedule skill (auto-injected via SkillManager)', async () => {
       statResults['/mock/user/skills/pptx'] = true;
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
-        enabledSkills: ['cron', 'pptx'],
+        enabledSkills: ['schedule', 'pptx'],
       });
 
       expect(symlinkCalls).toHaveLength(1);

@@ -12,7 +12,7 @@ import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
-import { cronBusyGuard } from '@process/services/cron/CronBusyGuard';
+import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 import BaseAgentManager from '@process/task/BaseAgentManager';
 import { IpcAgentEventEmitter } from '@process/task/IpcAgentEventEmitter';
 
@@ -80,7 +80,7 @@ class NanoBotAgentManager extends BaseAgentManager<NanoBotAgentManagerData> {
 
     // Handle finish event
     if (msg.type === 'finish') {
-      cronBusyGuard.setProcessing(this.conversation_id, false);
+      scheduleConversationGuard.setProcessing(this.conversation_id, false);
       this.scheduleAfterResponseHooks();
     }
 
@@ -101,7 +101,7 @@ class NanoBotAgentManager extends BaseAgentManager<NanoBotAgentManagerData> {
   }
 
   async sendMessage(data: { content: string; agentContent?: string; files?: string[]; msg_id?: string }) {
-    cronBusyGuard.setProcessing(this.conversation_id, true);
+    scheduleConversationGuard.setProcessing(this.conversation_id, true);
     try {
       await this.bootstrap;
 
@@ -124,14 +124,14 @@ class NanoBotAgentManager extends BaseAgentManager<NanoBotAgentManagerData> {
       // frontend can display the user message. Response and finish events
       // are emitted asynchronously via handleStreamEvent/handleSignalEvent.
       this.agent.sendMessage({ content: data.agentContent || data.content }).catch((error) => {
-        cronBusyGuard.setProcessing(this.conversation_id, false);
+        scheduleConversationGuard.setProcessing(this.conversation_id, false);
         const errorMsg = error instanceof Error ? error.message : String(error);
         this.emitErrorMessage(`Failed to send message: ${errorMsg}`);
       });
 
       return { success: true, data: null as null };
     } catch (error) {
-      cronBusyGuard.setProcessing(this.conversation_id, false);
+      scheduleConversationGuard.setProcessing(this.conversation_id, false);
 
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.emitErrorMessage(`Failed to send message: ${errorMsg}`);

@@ -76,8 +76,8 @@ vi.mock('@renderer/pages/connectors', () => ({
   default: () => <div>connectors</div>,
 }));
 
-vi.mock('@renderer/pages/cron/GlobalCronSettings', () => ({
-  default: () => <div>cron</div>,
+vi.mock('@renderer/pages/schedule/GlobalScheduleSettings', () => ({
+  default: () => <div>schedule</div>,
 }));
 
 vi.mock('@renderer/pages/settings/AgentSettings', () => ({

@@ -57,6 +57,7 @@ export type GuidSendDeps = {
   navigate: NavigateFunction;
   closeAllTabs: () => void;
   openTab: (conversation: TChatConversation) => void;
+  selectedSpaceId?: string | null;
   t: TFunction;
 };
 
@@ -97,6 +98,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     navigate,
     closeAllTabs,
     openTab,
+    selectedSpaceId,
     t,
   } = deps;
 
@@ -140,6 +142,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             enabledSkills,
             enabledHooks,
             presetAssistantId,
+            spaceId: selectedSpaceId ?? undefined,
             sessionMode: selectedMode,
           },
         });
@@ -204,6 +207,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             enabledSkills,
             enabledHooks,
             presetAssistantId,
+            spaceId: selectedSpaceId ?? undefined,
           },
         });
 
@@ -250,6 +254,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             enabledSkills,
             enabledHooks,
             presetAssistantId,
+            spaceId: selectedSpaceId ?? undefined,
           },
         });
 
@@ -327,6 +332,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           enabledSkills,
           enabledHooks,
           presetAssistantId,
+          spaceId: selectedSpaceId ?? undefined,
           sessionMode: selectedMode,
           currentModelId: selectedAcpModel || undefined,
         },
@@ -382,6 +388,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     navigate,
     closeAllTabs,
     openTab,
+    selectedSpaceId,
     t,
   ]);
 

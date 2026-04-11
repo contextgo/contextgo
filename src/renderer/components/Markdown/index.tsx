@@ -21,7 +21,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { convertLatexDelimiters } from '@renderer/utils/chat/latexDelimiters';
 import LocalImageView from '@renderer/components/media/LocalImageView';
-import CodeBlock from './CodeBlock';
+import CodeBlock, { type CodeBlockVariant } from './CodeBlock';
 import ShadowView from './ShadowView';
 
 type MarkdownViewProps = {
@@ -30,6 +30,7 @@ type MarkdownViewProps = {
   codeStyle?: React.CSSProperties;
   className?: string;
   onRef?: (el?: HTMLDivElement | null) => void;
+  codeVariant?: CodeBlockVariant;
   /** Enable raw HTML rendering in markdown content. Use with caution — only for trusted sources. */
   allowHtml?: boolean;
 };
@@ -39,6 +40,7 @@ const MarkdownView: React.FC<MarkdownViewProps> = ({
   codeStyle,
   className,
   onRef,
+  codeVariant,
   allowHtml,
   children: childrenProp,
 }) => {
@@ -79,7 +81,12 @@ const MarkdownView: React.FC<MarkdownViewProps> = ({
                 );
               },
               code: (props: Record<string, unknown>) =>
-                CodeBlock({ ...(props as Parameters<typeof CodeBlock>[0]), codeStyle, hiddenCodeCopyButton }),
+                CodeBlock({
+                  ...(props as Parameters<typeof CodeBlock>[0]),
+                  codeStyle,
+                  hiddenCodeCopyButton,
+                  codeVariant,
+                }),
               a: ({ node: _node, ...props }) => (
                 <a
                   {...props}

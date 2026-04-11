@@ -8,6 +8,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ClipboardConnectorPanel from './panels/ClipboardConnectorPanel';
+import BrowserActivityConnectorPanel from './panels/BrowserActivityConnectorPanel';
 import FeishuConnectorPanel from './panels/FeishuConnectorPanel';
 import GoogleDriveConnectorPanel from './panels/GoogleDriveConnectorPanel';
 import GoogleDocsConnectorPanel from './panels/GoogleDocsConnectorPanel';
@@ -193,6 +194,7 @@ const ConnectorsPage: React.FC = () => {
     return (
       <>
         <ClipboardConnectorPanel connectorId={resolvedConnector.id} />
+        <BrowserActivityConnectorPanel connectorId={resolvedConnector.id} />
         <FeishuConnectorPanel connectorId={resolvedConnector.id} />
         <GoogleDriveConnectorPanel connectorId={resolvedConnector.id} />
         <GoogleDocsConnectorPanel connectorId={resolvedConnector.id} />

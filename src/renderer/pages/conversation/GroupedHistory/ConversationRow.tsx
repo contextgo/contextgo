@@ -7,7 +7,7 @@
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
-import { CronJobIndicator } from '@/renderer/pages/cron';
+import { ScheduleJobIndicator } from '@/renderer/pages/schedule';
 import { cleanupSiderTooltips } from '@/renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
@@ -60,7 +60,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
 
   const renderLeadingIcon = () => {
     if (cronStatus !== 'none') {
-      return <CronJobIndicator status={cronStatus} size={20} className='flex-shrink-0' />;
+      return <ScheduleJobIndicator status={cronStatus} size={20} className='flex-shrink-0' />;
     }
 
     if (assistantInfo) {

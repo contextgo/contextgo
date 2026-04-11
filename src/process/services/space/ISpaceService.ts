@@ -4,13 +4,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { SpaceEngine, TSpace } from '@/common/config/storage';
+import type { TSpace } from '@/common/config/storage';
 
 export interface ISpaceService {
   getSpace(id: string): Promise<TSpace | undefined>;
   listSpaces(): Promise<TSpace[]>;
-  createSpace(name: string, engine: SpaceEngine, description?: string): Promise<TSpace>;
+  createSpace(name: string, description?: string): Promise<TSpace>;
   updateSpace(id: string, updates: Partial<TSpace>): Promise<TSpace | undefined>;
+  openSpaceVault(id: string): Promise<{
+    opened: boolean;
+    fallback: 'obsidian-uri' | 'folder' | 'none';
+    target: string;
+    obsidianInstalled: boolean;
+  }>;
   renameSpace(id: string, name: string): Promise<void>;
   archiveSpace(id: string): Promise<void>;
   ensureDefaultSpace(): Promise<TSpace>;

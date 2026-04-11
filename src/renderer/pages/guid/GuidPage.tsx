@@ -23,6 +23,7 @@ import { useGuidMention } from './hooks/useGuidMention';
 import { useGuidModelSelection } from './hooks/useGuidModelSelection';
 import { useGuidSend } from './hooks/useGuidSend';
 import { useTypewriterPlaceholder } from './hooks/useTypewriterPlaceholder';
+import { useSelectedSpaceId } from '@/renderer/hooks/context/useSelectedSpace';
 import { ConfigProvider, Message } from '@arco-design/web-react';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +36,7 @@ const GuidPage: React.FC = () => {
   const location = useLocation();
   const guidContainerRef = useRef<HTMLDivElement>(null);
   const { closeAllTabs, openTab } = useConversationTabs();
+  const selectedSpaceId = useSelectedSpaceId();
   const [messageApi, messageContext] = Message.useMessage();
   const [externalSessionsVisible, setExternalSessionsVisible] = useState(false);
   const { activeBorderColor, inactiveBorderColor, activeShadow } = useInputFocusRing();
@@ -98,6 +100,7 @@ const GuidPage: React.FC = () => {
     navigate,
     closeAllTabs,
     openTab,
+    selectedSpaceId,
     t,
   });
 
