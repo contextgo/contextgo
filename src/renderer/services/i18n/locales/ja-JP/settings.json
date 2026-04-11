@@ -1310,16 +1310,9 @@
     "officialSite": "公式サイト",
     "resources": "対応リソース",
     "auth": "認証方式",
-    "overviewTab": "概要",
-    "configureTab": "設定",
-    "detailTabsAriaLabel": "コネクター詳細タブ",
     "openWebsite": "公式サイトを開く",
-    "note": "ここで完全な設定を公開するのは、すでに対応済みの connector のみです。未実装のものはカタログ項目としてだけ表示されます。",
+    "note": "コネクターページには connector プロジェクトのネイティブ能力カタログを表示します。ContextGo はここで能力状態を表示し、取り込み後の出力を利用します。",
     "summaryTemplate": "{{name}} は {{category}} に属し、将来的に AI ワークフローのコンテキストデータとして連携できます。",
-    "configureAvailableDesc": "この connector はすでに ContextGo に接続されており、このページから設定して利用できます。",
-    "configureUnavailableTitle": "まだ設定できません",
-    "configureUnavailableDesc": "この connector は現時点ではカタログ項目のみです。ContextGo ではまだ利用可能な設定や同期フローを提供していません。",
-    "onlySupportedCanConfigure": "ここで設定できるのは、対応済みの connector のみです。",
     "stagePriority": "優先",
     "stagePlanned": "予定",
     "supportStatus": {
@@ -1411,7 +1404,28 @@
       "empty": "まだブラウザ活動は取り込まれていません。",
       "sourceExtension": "拡張機能",
       "sourceManual": "手動"
-    }
+    },
+    "externalCatalog": {
+      "platformAccess": "プラットフォーム接続境界",
+      "runtimeBoundary": "ランタイム境界",
+      "nativeSurface": "ネイティブ能力面",
+      "commandEntrypoints": "コマンド入口",
+      "noneYet": "まだありません。",
+      "workflows": "実装済みワークフロー",
+      "workflowSurface": "能力面: {{surface}}",
+      "workflowStatus": {
+        "ready": "利用可能",
+        "partial": "一部実装",
+        "planned": "予定"
+      },
+      "nativeObjects": "ネイティブオブジェクト",
+      "entrypoints": "入口コマンド",
+      "writesStore": "ストアへ書き込み",
+      "noStoreWrite": "ストア書き込みなし",
+      "unavailableTitle": "connector 詳細を読み込めません"
+    },
+    "catalogPlaceholderDesc": "この connector は現時点ではカタログ上のプレースホルダーです。ContextGo はまだこの実行環境や収集済み出力を利用しません。",
+    "catalogExternalDesc": "この connector は独立した connector プロジェクトで管理されます。ContextGo はここで能力カタログを読み取り、取り込み後の出力を利用します。"
   },
   "cloud": {
     "title": "ContextGo クラウドアカウント",

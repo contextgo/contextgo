@@ -9,6 +9,10 @@ import {
   loadPresetAssistantResources,
   type PresetAssistantResourceDeps,
 } from '../../src/renderer/utils/model/presetAssistantResources';
+import {
+  ENGINEERING_DEFAULT_HOOKS,
+  ENGINEERING_WORKBENCH_SKILLS,
+} from '../../src/common/config/presets/assistantPresets';
 
 function createDeps(overrides: Partial<PresetAssistantResourceDeps> = {}): PresetAssistantResourceDeps {
   return {
@@ -78,13 +82,13 @@ describe('loadPresetAssistantResources', () => {
       }),
       readBuiltinRule: vi.fn(async () => 'builtin rules'),
       readBuiltinSkill: vi.fn(async () => 'builtin skills'),
-      getEnabledSkills: vi.fn(async () => ['moltbook']),
+      getEnabledSkills: vi.fn(async () => ['verification-loop']),
       getEnabledHooks: vi.fn(async () => ['before_user_prompt']),
     });
 
     const result = await loadPresetAssistantResources(
       {
-        customAgentId: 'builtin-cowork',
+        customAgentId: 'builtin-superpowers',
         localeKey: 'zh-CN',
         fallbackRules: 'fallback rules',
       },
@@ -93,12 +97,12 @@ describe('loadPresetAssistantResources', () => {
 
     expect(result).toEqual({
       rules: 'builtin rules',
-      skills: 'builtin skills',
-      enabledSkills: ['moltbook'],
+      skills: '',
+      enabledSkills: ['verification-loop'],
       enabledHooks: ['before_user_prompt'],
     });
     expect(deps.readBuiltinRule).toHaveBeenCalledOnce();
-    expect(deps.readBuiltinSkill).toHaveBeenCalledOnce();
+    expect(deps.readBuiltinSkill).not.toHaveBeenCalled();
     expect(deps.warn).toHaveBeenCalledTimes(2);
   });
 
@@ -113,7 +117,7 @@ describe('loadPresetAssistantResources', () => {
     await expect(
       loadPresetAssistantResources(
         {
-          customAgentId: 'builtin-cowork',
+          customAgentId: 'builtin-superpowers',
           localeKey: 'en-US',
           fallbackRules: 'fallback rules',
         },
@@ -121,16 +125,9 @@ describe('loadPresetAssistantResources', () => {
       )
     ).resolves.toEqual({
       rules: 'builtin rules',
-      skills: 'builtin skills',
-      enabledSkills: ['skill-creator', 'pptx', 'docx', 'pdf', 'xlsx'],
-      enabledHooks: [
-        'repo-context-bootstrap',
-        'plan-before-coding',
-        'secret-guard',
-        'tool-safety-guard',
-        'quality-gate',
-        'continuity-handoff',
-      ],
+      skills: '',
+      enabledSkills: [...ENGINEERING_WORKBENCH_SKILLS],
+      enabledHooks: [...ENGINEERING_DEFAULT_HOOKS],
     });
   });
 });

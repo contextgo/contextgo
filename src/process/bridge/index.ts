@@ -13,10 +13,8 @@ import type { ISpaceService } from '@process/services/space/ISpaceService';
 import { initAcpConversationBridge } from './acpConversationBridge';
 import { initApplicationBridge } from './applicationBridge';
 import { initAuthBridge } from './authBridge';
-import { initBrowserActivityConnectorBridge } from './browserActivityConnectorBridge';
 import { initBedrockBridge } from './bedrockBridge';
 import { initBrowserContextBridge } from './browserContextBridge';
-import { initClipboardConnectorBridge } from './clipboardConnectorBridge';
 import { initChannelBridge } from './channelBridge';
 import { initCloudBridge } from './cloudBridge';
 import { initConversationBridge } from './conversationBridge';
@@ -28,13 +26,6 @@ import { initFileWatchBridge } from './fileWatchBridge';
 import { initFsBridge } from './fsBridge';
 import { initGeminiBridge } from './geminiBridge';
 import { initGeminiConversationBridge } from './geminiConversationBridge';
-import { initGoogleDriveConnectorBridge } from './googleDriveConnectorBridge';
-import { initGoogleDocsConnectorBridge } from './googleDocsConnectorBridge';
-import {
-  initGoogleSheetsConnectorBridge,
-  initGmailConnectorBridge,
-  initGoogleCalendarConnectorBridge,
-} from './googleWorkspaceFamilyBridges';
 import { initMcpBridge } from './mcpBridge';
 import { initModelBridge } from './modelBridge';
 import { initPreviewHistoryBridge } from './previewHistoryBridge';
@@ -48,7 +39,7 @@ import { initSystemSettingsBridge } from './systemSettingsBridge';
 import { initWindowControlsBridge } from './windowControlsBridge';
 import { initNotificationBridge } from './notificationBridge';
 import { initExtensionsBridge } from './extensionsBridge';
-import { initFeishuConnectorBridge } from './feishuConnectorBridge';
+import { initExternalConnectorCatalogBridge } from './externalConnectorCatalogBridge';
 import { initWeixinLoginBridge } from './weixinLoginBridge';
 
 export interface BridgeDependencies {
@@ -75,14 +66,7 @@ export function initAllBridges(deps: BridgeDependencies): void {
   initGeminiBridge();
   initBedrockBridge();
   initBrowserContextBridge();
-  initBrowserActivityConnectorBridge();
-  initFeishuConnectorBridge();
-  initGoogleDriveConnectorBridge();
-  initGoogleDocsConnectorBridge();
-  initGoogleSheetsConnectorBridge();
-  initGmailConnectorBridge();
-  initGoogleCalendarConnectorBridge();
-  initClipboardConnectorBridge();
+  initExternalConnectorCatalogBridge();
   initAcpConversationBridge(deps.workerTaskManager, deps.conversationService);
   initAuthBridge();
   initModelBridge();
@@ -123,8 +107,6 @@ export {
   initAuthBridge,
   initBedrockBridge,
   initBrowserContextBridge,
-  initBrowserActivityConnectorBridge,
-  initClipboardConnectorBridge,
   initChannelBridge,
   initCloudBridge,
   initConversationBridge,
@@ -133,12 +115,10 @@ export {
   initDialogBridge,
   initDocumentBridge,
   initExtensionsBridge,
-  initFeishuConnectorBridge,
+  initExternalConnectorCatalogBridge,
   initFsBridge,
   initGeminiBridge,
   initGeminiConversationBridge,
-  initGoogleDriveConnectorBridge,
-  initGoogleDocsConnectorBridge,
   initMcpBridge,
   initModelBridge,
   initNotificationBridge,

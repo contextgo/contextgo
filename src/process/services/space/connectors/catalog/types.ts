@@ -18,7 +18,7 @@ export type SpaceConnectorFamilyId = 'contextgo-native' | 'activity' | 'feishu' 
 
 export type SpaceConnectorKind = 'managed-runtime' | 'activity' | 'official-cli' | 'official-sdk';
 
-export type SpaceConnectorRuntimeOwner = 'contextgo-desktop' | 'contextgo-managed-sidecar';
+export type SpaceConnectorRuntimeOwner = 'contextgo-desktop' | 'contextgo-managed-sidecar' | 'connector-project';
 
 export type SpaceConnectorLaunchSurface = 'conversation-entry' | 'space-background' | 'managed-external-runtime';
 
@@ -74,9 +74,15 @@ export type SpaceConnectorExecutionMode =
   | 'native-contextgo'
   | 'python-sidecar'
   | 'external-binary-sidecar'
-  | 'go-sidecar';
+  | 'go-sidecar'
+  | 'connector-cli';
 
-export type SpaceConnectorInstallSource = 'bundled' | 'sibling-repo' | 'official-release' | 'source-build';
+export type SpaceConnectorInstallSource =
+  | 'bundled'
+  | 'sibling-repo'
+  | 'official-release'
+  | 'source-build'
+  | 'connector-project';
 
 export type SpaceConnectorHostProcess = 'desktop-main' | 'desktop-sidecar';
 

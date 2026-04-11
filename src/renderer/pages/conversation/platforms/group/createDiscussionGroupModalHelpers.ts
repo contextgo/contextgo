@@ -5,9 +5,8 @@
  */
 
 export const HARNESS_DEFAULT_PRESET_ASSISTANT_IDS = [
-  'builtin-workflow-planner',
-  'builtin-workflow-writer',
-  'builtin-workflow-evaluator',
+  'builtin-superpowers',
+  'builtin-everything-in-claude-code',
 ] as const;
 
 export type HarnessSelectableParticipant = {

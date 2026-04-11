@@ -9,8 +9,8 @@ describe('createDiscussionGroupModalHelpers', () => {
   const participants = [
     {
       type: 'preset-assistant' as const,
-      participantKey: 'builtin-workflow-evaluator',
-      selectionKey: 'preset:builtin-workflow-evaluator',
+      participantKey: 'builtin-everything-in-claude-code',
+      selectionKey: 'preset:builtin-everything-in-claude-code',
     },
     {
       type: 'cli-agent' as const,
@@ -19,44 +19,31 @@ describe('createDiscussionGroupModalHelpers', () => {
     },
     {
       type: 'preset-assistant' as const,
-      participantKey: 'builtin-workflow-planner',
-      selectionKey: 'preset:builtin-workflow-planner',
-    },
-    {
-      type: 'preset-assistant' as const,
       participantKey: 'builtin-superpowers',
       selectionKey: 'preset:builtin-superpowers',
-    },
-    {
-      type: 'preset-assistant' as const,
-      participantKey: 'builtin-workflow-writer',
-      selectionKey: 'preset:builtin-workflow-writer',
     },
   ];
 
   it('orders preferred harness assistants before unrelated participants', () => {
     expect(orderHarnessSelectableParticipants(participants).map((item) => item.participantKey)).toEqual([
-      'builtin-workflow-planner',
-      'builtin-workflow-writer',
-      'builtin-workflow-evaluator',
-      'codex:codex:Codex',
       'builtin-superpowers',
+      'builtin-everything-in-claude-code',
+      'codex:codex:Codex',
     ]);
   });
 
   it('filters harness participants down to the required preset assistants only', () => {
     expect(filterHarnessSelectableParticipants(participants).map((item) => item.participantKey)).toEqual([
-      'builtin-workflow-evaluator',
-      'builtin-workflow-planner',
-      'builtin-workflow-writer',
+      'builtin-everything-in-claude-code',
+      'builtin-superpowers',
     ]);
   });
 
-  it('resolves the default harness selection keys in planner writer evaluator order', () => {
+  it('resolves the default harness selection keys in supported assistant order', () => {
     expect(resolveHarnessDefaultSelectionKeys(participants)).toEqual([
-      'preset:builtin-workflow-planner',
-      'preset:builtin-workflow-writer',
-      'preset:builtin-workflow-evaluator',
+      'preset:builtin-superpowers',
+      'preset:builtin-everything-in-claude-code',
+      'cli:codex:codex:Codex',
     ]);
   });
 });

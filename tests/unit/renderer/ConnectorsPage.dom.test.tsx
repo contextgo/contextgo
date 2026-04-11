@@ -5,133 +5,242 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const bridgeMocks = vi.hoisted(() => ({
   openExternalInvoke: vi.fn(),
-  clipboardGetStatusInvoke: vi.fn(async () => ({
-    success: true,
-    data: { lifecycle: 'running', available: true, eventCount: 3, summaryCount: 1, note: 'observer running' },
-  })),
-  clipboardGetConfigInvoke: vi.fn(async () => ({
-    success: true,
-    data: { enabled: true, retainFullText: false, pollIntervalMs: 800, maxTextBytes: 32768 },
-  })),
-  clipboardListRecentInvoke: vi.fn(async () => ({
-    success: true,
-    data: [
-      {
-        id: 'evt-1',
-        contentType: 'plain_text',
-        textPreview: 'hello contextgo',
-        capturedAt: '2026-03-30T10:00:00.000Z',
+  externalConnectorCatalogGetDetailsInvoke: vi.fn(async ({ connector }: { connector: string }) => {
+    const detailsByConnector = {
+      clipboard: {
+        connector: 'clipboard',
+        kind: 'activity',
+        enabled: true,
+        summary: 'Clipboard activity runtime via connector CLI',
+        runtime_dir: '/tmp/contextgo/connector/clipboard',
+        config_path: '/tmp/contextgo/connector/clipboard/config.yaml',
+        platform_access: 'Native desktop clipboard observation through the connector CLI activity runtime.',
+        runtime_boundary: 'Connector runtime lives in the sibling repository and owns observer config, logs, and retention state.',
+        native_surface: ['clipboard events', 'daily summaries', 'observer config'],
+        implemented_workflows: [
+          {
+            id: 'clipboard.runtime',
+            label: 'Clipboard observer runtime',
+            surface: 'runtime',
+            status: 'ready',
+            native_objects: ['observer config', 'capture loop'],
+            entrypoints: ['cgo activity clipboard observe'],
+            writes_store: false,
+            notes: ['Clipboard runtime is fully owned by the connector project.'],
+          },
+        ],
+        notes: [],
+        runtime: {},
       },
-    ],
-  })),
-  clipboardListSummariesInvoke: vi.fn(async () => ({
-    success: true,
-    data: [
-      {
-        id: 'sum-1',
-        summaryDate: '2026-03-30',
-        eventCount: 3,
-        uniqueHashCount: 2,
-        topDomains: [],
-        generatedAt: '2026-03-30T11:00:00.000Z',
-        source: 'contextgo-collect',
+      'browser-extension': {
+        connector: 'browser-extension',
+        kind: 'activity',
+        enabled: true,
+        summary: 'Browser extension ingest runtime via connector CLI',
+        runtime_dir: '/tmp/contextgo/connector/browser-extension',
+        config_path: '/tmp/contextgo/connector/browser-extension/config.yaml',
+        platform_access: 'Browser extension event ingest plus host forwarding health checks.',
+        runtime_boundary: 'Connector runtime owns extension pairing, ingest state, and browser activity retention before ContextGo consumes the outputs.',
+        native_surface: ['browser visits', 'tab sessions', 'daily summaries'],
+        implemented_workflows: [
+          {
+            id: 'browser-extension.collect',
+            label: 'Extension ingest runtime',
+            surface: 'collect',
+            status: 'ready',
+            native_objects: ['browser visits', 'tab sessions'],
+            entrypoints: ['cgo collect browser-extension'],
+            writes_store: true,
+            notes: ['The browser extension remains connector-project owned.'],
+          },
+        ],
+        notes: [],
+        runtime: {},
       },
-    ],
-  })),
-  clipboardSetConfigInvoke: vi.fn(async ({ config }: { config: unknown }) => ({ success: true, data: config })),
-  clipboardStartInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'running' } })),
-  clipboardStopInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'stopped' } })),
-  clipboardSampleInvoke: vi.fn(async () => ({ success: true, data: { id: 'sample' } })),
-  clipboardCollectInvoke: vi.fn(async () => ({
-    success: true,
-    data: { eventCount: 3, summaryCount: 1, importedEvents: 0, summary: { id: 'sum-1' } },
-  })),
-  feishuGetStatusInvoke: vi.fn(async () => ({
-    success: true,
-    data: { lifecycle: 'stopped', available: true, hasCredentials: true, note: 'feishu ready', command: 'npx' },
-  })),
-  feishuGetConfigInvoke: vi.fn(async () => ({
-    success: true,
-    data: {
-      enabled: true,
-      appId: 'cli_xxx',
-      appSecret: 'secret',
-      apiDomain: 'open.feishu.cn',
-      useOAuth: false,
-      command: '@larksuiteoapi/lark-mcp',
-      args: [],
-    },
-  })),
-  feishuSetConfigInvoke: vi.fn(async ({ config }: { config: unknown }) => ({ success: true, data: config })),
-  feishuStartInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'running' } })),
-  feishuStopInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'stopped' } })),
-  googleDriveGetStatusInvoke: vi.fn(async () => ({
-    success: true,
-    data: {
-      lifecycle: 'stopped',
-      available: true,
-      hasCredentials: true,
-      hasRefreshToken: true,
-      tokenExpiry: '2026-03-31T00:00:00.000Z',
-      note: 'google drive ready',
-      command: 'go',
-      fileCount: 1,
-      storeDir: '/tmp/contextgo-google-drive',
-    },
-  })),
-  googleDriveGetConfigInvoke: vi.fn(async () => ({
-    success: true,
-    data: {
-      enabled: true,
-      clientId: 'google-client-id.apps.googleusercontent.com',
-      clientSecret: 'secret',
-      scopes: ['https://www.googleapis.com/auth/drive.metadata.readonly'],
-      command: 'go',
-      args: ['run', '.'],
-    },
-  })),
-  googleDriveSetConfigInvoke: vi.fn(async ({ config }: { config: unknown }) => ({ success: true, data: config })),
-  googleDriveStartInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'running' } })),
-  googleDriveStopInvoke: vi.fn(async () => ({ success: true, data: { lifecycle: 'stopped' } })),
-  googleDriveCreateAuthRequestInvoke: vi.fn(async () => ({
-    success: true,
-    data: { authUrl: 'https://accounts.google.com/o/oauth2/v2/auth', state: 'state-1' },
-  })),
-  googleDriveCompleteAuthInvoke: vi.fn(async () => ({
-    success: true,
-    data: { tokenCachePath: '/tmp/google-drive-token.json', scopeCount: 1 },
-  })),
-  googleDriveListFilesInvoke: vi.fn(async () => ({
-    success: true,
-    data: [
-      {
-        id: 'file-1',
-        name: 'Roadmap',
-        mimeType: 'application/vnd.google-apps.document',
-        modifiedTime: '2026-03-30T10:00:00.000Z',
-        ownerNames: ['Code Friday'],
-        sizeBytes: 1024,
+      'google-drive': {
+        connector: 'google-drive',
+        kind: 'official-cli',
+        enabled: true,
+        summary: 'Google Drive runtime boundary in connector CLI',
+        runtime_dir: '/tmp/contextgo/connector/google-drive',
+        config_path: '/tmp/contextgo/connector/google-drive/config.yaml',
+        platform_access: 'Official Google-native runtime surface managed by the connector project.',
+        runtime_boundary: 'ContextGo only consumes the connector-owned Google Drive capability model and downstream outputs.',
+        native_surface: ['files', 'folders', 'drive metadata'],
+        implemented_workflows: [
+          {
+            id: 'google-drive.runtime',
+            label: 'Drive CLI passthrough boundary',
+            surface: 'runtime',
+            status: 'planned',
+            native_objects: ['files', 'folders'],
+            entrypoints: [],
+            writes_store: false,
+            notes: ['Google runtime migration is still landing in the connector project.'],
+          },
+        ],
+        notes: [],
+        runtime: {},
       },
-    ],
-  })),
-  googleDriveSyncNowInvoke: vi.fn(async () => ({
-    success: true,
-    data: { storedCount: 1, syncedAt: '2026-03-30T11:00:00.000Z', storeDir: '/tmp/contextgo-google-drive' },
-  })),
-  googleDriveListStoredFilesInvoke: vi.fn(async () => ({
-    success: true,
-    data: [
-      {
-        recordId: 'rec-1',
-        fileId: 'file-1',
-        name: 'Roadmap',
-        mimeType: 'application/vnd.google-apps.document',
-        ownerNames: ['Code Friday'],
-        sizeBytes: 1024,
-        syncedAt: '2026-03-30T11:00:00.000Z',
+      'google-docs': {
+        connector: 'google-docs',
+        kind: 'official-cli',
+        enabled: true,
+        summary: 'Google Docs runtime boundary in connector CLI',
+        runtime_dir: '/tmp/contextgo/connector/google-docs',
+        config_path: '/tmp/contextgo/connector/google-docs/config.yaml',
+        platform_access: 'Official Google-native runtime surface managed by the connector project.',
+        runtime_boundary: 'ContextGo only consumes the connector-owned Google Docs capability model and downstream outputs.',
+        native_surface: ['documents', 'document structure'],
+        implemented_workflows: [
+          {
+            id: 'google-docs.runtime',
+            label: 'Docs CLI passthrough boundary',
+            surface: 'runtime',
+            status: 'planned',
+            native_objects: ['documents'],
+            entrypoints: [],
+            writes_store: false,
+            notes: [],
+          },
+        ],
+        notes: [],
+        runtime: {},
       },
-    ],
-  })),
+      'google-sheets': {
+        connector: 'google-sheets',
+        kind: 'official-cli',
+        enabled: true,
+        summary: 'Google Sheets runtime boundary in connector CLI',
+        runtime_dir: '/tmp/contextgo/connector/google-sheets',
+        config_path: '/tmp/contextgo/connector/google-sheets/config.yaml',
+        platform_access: 'Official Google-native runtime surface managed by the connector project.',
+        runtime_boundary: 'ContextGo only consumes the connector-owned Google Sheets capability model and downstream outputs.',
+        native_surface: ['spreadsheets', 'worksheets', 'ranges'],
+        implemented_workflows: [
+          {
+            id: 'google-sheets.runtime',
+            label: 'Sheets CLI passthrough boundary',
+            surface: 'runtime',
+            status: 'planned',
+            native_objects: ['spreadsheets'],
+            entrypoints: [],
+            writes_store: false,
+            notes: [],
+          },
+        ],
+        notes: [],
+        runtime: {},
+      },
+      gmail: {
+        connector: 'gmail',
+        kind: 'official-cli',
+        enabled: true,
+        summary: 'Gmail runtime boundary in connector CLI',
+        runtime_dir: '/tmp/contextgo/connector/gmail',
+        config_path: '/tmp/contextgo/connector/gmail/config.yaml',
+        platform_access: 'Official Google-native runtime surface managed by the connector project.',
+        runtime_boundary: 'ContextGo only consumes the connector-owned Gmail capability model and downstream outputs.',
+        native_surface: ['mailboxes', 'messages', 'labels'],
+        implemented_workflows: [
+          {
+            id: 'gmail.runtime',
+            label: 'Gmail CLI passthrough boundary',
+            surface: 'runtime',
+            status: 'planned',
+            native_objects: ['mailboxes', 'messages'],
+            entrypoints: [],
+            writes_store: false,
+            notes: [],
+          },
+        ],
+        notes: [],
+        runtime: {},
+      },
+      'google-calendar': {
+        connector: 'google-calendar',
+        kind: 'official-cli',
+        enabled: true,
+        summary: 'Google Calendar runtime boundary in connector CLI',
+        runtime_dir: '/tmp/contextgo/connector/google-calendar',
+        config_path: '/tmp/contextgo/connector/google-calendar/config.yaml',
+        platform_access: 'Official Google-native runtime surface managed by the connector project.',
+        runtime_boundary: 'ContextGo only consumes the connector-owned Google Calendar capability model and downstream outputs.',
+        native_surface: ['calendars', 'events'],
+        implemented_workflows: [
+          {
+            id: 'google-calendar.runtime',
+            label: 'Calendar CLI passthrough boundary',
+            surface: 'runtime',
+            status: 'planned',
+            native_objects: ['calendars', 'events'],
+            entrypoints: [],
+            writes_store: false,
+            notes: [],
+          },
+        ],
+        notes: [],
+        runtime: {},
+      },
+      feishu: {
+        connector: 'feishu',
+        kind: 'connector',
+        enabled: true,
+        summary: 'Feishu connector via lark-cli',
+        runtime_dir: '/tmp/contextgo/connector/feishu',
+        config_path: '/tmp/contextgo/connector/feishu/config.json',
+        platform_access: 'Official Feishu Open Platform through lark-cli.',
+        runtime_boundary: 'Connector runtime lives in the sibling connector repository and keeps its own auth state.',
+        native_surface: ['messages', 'docs', 'calendar'],
+        implemented_workflows: [
+          {
+            id: 'feishu.collect.messages',
+            label: 'Collect chat messages',
+            surface: 'collect',
+            status: 'ready',
+            native_objects: ['chats', 'messages'],
+            entrypoints: ['cgo connectors feishu collect'],
+            writes_store: true,
+            notes: ['Writes normalized Feishu assets into connector storage.'],
+          },
+        ],
+        notes: [],
+        runtime: {},
+      },
+      github: {
+        connector: 'github',
+        kind: 'connector',
+        enabled: true,
+        summary: 'GitHub connector via gh CLI',
+        runtime_dir: '/tmp/contextgo/connector/github',
+        config_path: '/tmp/contextgo/connector/github/config.json',
+        platform_access: 'Official GitHub API through gh CLI.',
+        runtime_boundary: 'Connector runtime lives in the sibling connector repository and reuses gh auth state.',
+        native_surface: ['repositories', 'issues', 'pull requests'],
+        implemented_workflows: [
+          {
+            id: 'github.collect.repositories',
+            label: 'Collect repository source',
+            surface: 'collect',
+            status: 'ready',
+            native_objects: ['repositories', 'issues'],
+            entrypoints: ['cgo connectors github collect', 'gh repo view'],
+            writes_store: true,
+            notes: ['Writes collected GitHub assets into connector storage.'],
+          },
+        ],
+        notes: [],
+        runtime: {},
+      },
+    } as const;
+
+    const details = detailsByConnector[connector as keyof typeof detailsByConnector];
+    if (details) {
+      return { success: true, data: details };
+    }
+
+    return { success: false, msg: `Unknown connector: ${connector}` };
+  }),
 }));
 
 vi.mock('@/common', () => ({
@@ -141,38 +250,8 @@ vi.mock('@/common', () => ({
         invoke: (...args: unknown[]) => bridgeMocks.openExternalInvoke(...args),
       },
     },
-    clipboardConnector: {
-      getStatus: { invoke: bridgeMocks.clipboardGetStatusInvoke },
-      getConfig: { invoke: bridgeMocks.clipboardGetConfigInvoke },
-      listRecentEvents: { invoke: bridgeMocks.clipboardListRecentInvoke },
-      listSummaries: { invoke: bridgeMocks.clipboardListSummariesInvoke },
-      setConfig: { invoke: bridgeMocks.clipboardSetConfigInvoke },
-      start: { invoke: bridgeMocks.clipboardStartInvoke },
-      stop: { invoke: bridgeMocks.clipboardStopInvoke },
-      sampleNow: { invoke: bridgeMocks.clipboardSampleInvoke },
-      collectNow: { invoke: bridgeMocks.clipboardCollectInvoke },
-      statusChanged: { on: vi.fn(() => () => void 0) },
-    },
-    feishuConnector: {
-      getStatus: { invoke: bridgeMocks.feishuGetStatusInvoke },
-      getConfig: { invoke: bridgeMocks.feishuGetConfigInvoke },
-      setConfig: { invoke: bridgeMocks.feishuSetConfigInvoke },
-      start: { invoke: bridgeMocks.feishuStartInvoke },
-      stop: { invoke: bridgeMocks.feishuStopInvoke },
-      statusChanged: { on: vi.fn(() => () => void 0) },
-    },
-    googleDriveConnector: {
-      getStatus: { invoke: bridgeMocks.googleDriveGetStatusInvoke },
-      getConfig: { invoke: bridgeMocks.googleDriveGetConfigInvoke },
-      setConfig: { invoke: bridgeMocks.googleDriveSetConfigInvoke },
-      start: { invoke: bridgeMocks.googleDriveStartInvoke },
-      stop: { invoke: bridgeMocks.googleDriveStopInvoke },
-      createAuthRequest: { invoke: bridgeMocks.googleDriveCreateAuthRequestInvoke },
-      completeAuth: { invoke: bridgeMocks.googleDriveCompleteAuthInvoke },
-      listFiles: { invoke: bridgeMocks.googleDriveListFilesInvoke },
-      syncNow: { invoke: bridgeMocks.googleDriveSyncNowInvoke },
-      listStoredFiles: { invoke: bridgeMocks.googleDriveListStoredFilesInvoke },
-      statusChanged: { on: vi.fn(() => () => void 0) },
+    externalConnectorCatalog: {
+      getDetails: { invoke: bridgeMocks.externalConnectorCatalogGetDetailsInvoke },
     },
   },
 }));
@@ -195,6 +274,10 @@ vi.mock('react-i18next', () => ({
         return `${options?.name ?? ''} / ${options?.category ?? ''}`;
       }
 
+      if (key === 'settings.connectors.externalCatalog.workflowSurface') {
+        return `Surface: ${String(options?.surface ?? '')}`;
+      }
+
       const labels: Record<string, string> = {
         'settings.connectors.title': 'Connector',
         'settings.connectors.description': 'Connector catalog',
@@ -202,16 +285,25 @@ vi.mock('react-i18next', () => ({
         'settings.connectors.support': 'Support Status',
         'settings.connectors.resources': 'Resources',
         'settings.connectors.auth': 'Authentication',
-        'settings.connectors.overviewTab': 'Overview',
-        'settings.connectors.configureTab': 'Configure',
-        'settings.connectors.detailTabsAriaLabel': 'Connector detail tabs',
         'settings.connectors.officialSite': 'Official Site',
         'settings.connectors.openWebsite': 'Open Website',
         'settings.connectors.note': 'Connector note',
-        'settings.connectors.configureAvailableDesc': 'Config is available.',
-        'settings.connectors.configureUnavailableTitle': 'Configuration is not available yet',
-        'settings.connectors.configureUnavailableDesc': 'This connector is still catalog only.',
-        'settings.connectors.onlySupportedCanConfigure': 'Only supported connectors can be configured here.',
+        'settings.connectors.catalogPlaceholderDesc': 'This connector is still catalog only.',
+        'settings.connectors.catalogExternalDesc': 'This connector is managed outside the app.',
+        'settings.connectors.externalCatalog.platformAccess': 'Platform Access',
+        'settings.connectors.externalCatalog.runtimeBoundary': 'Runtime Boundary',
+        'settings.connectors.externalCatalog.nativeSurface': 'Native Surface',
+        'settings.connectors.externalCatalog.commandEntrypoints': 'Command Entrypoints',
+        'settings.connectors.externalCatalog.noneYet': 'None yet',
+        'settings.connectors.externalCatalog.workflows': 'Workflows',
+        'settings.connectors.externalCatalog.nativeObjects': 'Native Objects',
+        'settings.connectors.externalCatalog.entrypoints': 'Entrypoints',
+        'settings.connectors.externalCatalog.writesStore': 'Writes Store',
+        'settings.connectors.externalCatalog.noStoreWrite': 'No Store Write',
+        'settings.connectors.externalCatalog.unavailableTitle': 'Connector details unavailable',
+        'settings.connectors.externalCatalog.workflowStatus.ready': 'Ready',
+        'settings.connectors.externalCatalog.workflowStatus.partial': 'Partial',
+        'settings.connectors.externalCatalog.workflowStatus.planned': 'Planned',
         'settings.connectors.stagePriority': 'Priority',
         'settings.connectors.stagePlanned': 'Planned',
         'settings.connectors.supportStatus.supported': 'Supported',
@@ -324,7 +416,7 @@ describe('ConnectorsPage', () => {
     expect(bridgeMocks.openExternalInvoke).toHaveBeenCalledWith('https://drive.google.com');
   });
 
-  it('renders overview/config tabs and support sources for the clipboard connector', async () => {
+  it('renders connector-owned catalog details for the clipboard connector', async () => {
     render(
       <MemoryRouter initialEntries={['/connectors/contextgo-clipboard']}>
         <Routes>
@@ -335,21 +427,50 @@ describe('ConnectorsPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'ContextGo Clipboard' })).toBeInTheDocument();
     });
 
     expect(screen.getByText('Support Sources')).toBeInTheDocument();
     expect(screen.getByText('Connector Repository')).toBeInTheDocument();
     expect(screen.getAllByText('Supported').length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
+    expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByTestId('clipboard-connector-panel')).toBeInTheDocument();
+      expect(screen.getByText('Clipboard observer runtime')).toBeInTheDocument();
     });
+
+    expect(screen.getByText('Native desktop clipboard observation through the connector CLI activity runtime.')).toBeInTheDocument();
+    expect(screen.getAllByText('cgo activity clipboard observe').length).toBeGreaterThan(0);
+    expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'clipboard' });
   });
 
-  it('renders the Feishu sidecar panel on the Lark connector page after switching tabs', async () => {
+  it('shows externally managed connectors as catalog entries without an in-app configure tab', async () => {
+    render(
+      <MemoryRouter initialEntries={['/connectors/contextgo-browser-extension']}>
+        <Routes>
+          <Route path='/connectors' element={<ConnectorsPage />} />
+          <Route path='/connectors/:connectorId' element={<ConnectorsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'ContextGo Browser Extension' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
+    expect(screen.getByText('This connector is managed outside the app.')).toBeInTheDocument();
+    expect(screen.getByText('Connector Repository')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('Extension ingest runtime')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText('cgo collect browser-extension').length).toBeGreaterThan(0);
+    expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'browser-extension' });
+  });
+
+  it('loads the external capability panel for Feishu from the connector catalog bridge', async () => {
     render(
       <MemoryRouter initialEntries={['/connectors/lark']}>
         <Routes>
@@ -359,17 +480,21 @@ describe('ConnectorsPage', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
-
     await waitFor(() => {
-      expect(screen.getByTestId('feishu-connector-panel')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Feishu / Lark' })).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Feishu OpenAPI Runtime')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('cli_xxx')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Official Feishu Open Platform through lark-cli.')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
+    expect(screen.getByText('Collect chat messages')).toBeInTheDocument();
+    expect(screen.getAllByText('cgo connectors feishu collect').length).toBeGreaterThan(0);
+    expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'feishu' });
   });
 
-  it('renders the Google Drive sidecar panel on the google-drive connector page after switching tabs', async () => {
+  it('renders Google Drive as a connector-catalog driven capability page', async () => {
     render(
       <MemoryRouter initialEntries={['/connectors/google-drive']}>
         <Routes>
@@ -379,16 +504,14 @@ describe('ConnectorsPage', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
-
     await waitFor(() => {
-      expect(screen.getByTestId('google-drive-connector-panel')).toBeInTheDocument();
+      expect(screen.getByText('Drive CLI passthrough boundary')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Google Drive Runtime')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('google-client-id.apps.googleusercontent.com')).toBeInTheDocument();
-    expect(screen.getByText('Drive Files (Stored)')).toBeInTheDocument();
-    expect(screen.getAllByText('Roadmap').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
+    expect(screen.getByText('Official Google-native runtime surface managed by the connector project.')).toBeInTheDocument();
+    expect(screen.getAllByText('None yet').length).toBeGreaterThan(0);
+    expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'google-drive' });
   });
 
   it('keeps the connector list stable when category sections collapse', async () => {
@@ -435,11 +558,11 @@ describe('ConnectorsPage', () => {
 
     expect(screen.getByText('Connector catalog')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /ContextGo Family/i })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Overview' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Configure' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Google Drive' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
   });
 
-  it('marks unsupported connectors clearly and disables configuration', async () => {
+  it('loads the external capability panel for GitHub from the connector catalog bridge', async () => {
     render(
       <MemoryRouter initialEntries={['/connectors/github']}>
         <Routes>
@@ -453,10 +576,13 @@ describe('ConnectorsPage', () => {
       expect(screen.getByRole('heading', { name: 'GitHub' })).toBeInTheDocument();
     });
 
-    expect(screen.getAllByText('Not Supported Yet').length).toBeGreaterThan(0);
-    expect(screen.getByText('Only supported connectors can be configured here.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Configure' })).toBeDisabled();
-    expect(screen.queryByTestId('google-drive-connector-panel')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('clipboard-connector-panel')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Official GitHub API through gh CLI.')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
+    expect(screen.getByText('Collect repository source')).toBeInTheDocument();
+    expect(screen.getAllByText('gh repo view').length).toBeGreaterThan(0);
+    expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'github' });
   });
 });

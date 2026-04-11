@@ -51,14 +51,10 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [mobileCenterTitle, setMobileCenterTitle] = useState('');
-  const [mobileCenterOffset, setMobileCenterOffset] = useState(0);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
   const layout = useLayoutContext();
   const location = useLocation();
   const navigate = useNavigate();
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const toolbarRef = useRef<HTMLDivElement | null>(null);
   const lastNonSettingsPathRef = useRef('/guid');
   const isDesktopRuntime = isElectronDesktop();
   const isMacRuntime = isDesktopRuntime && isMacOS();
@@ -286,6 +282,22 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     return t('login.brand', { defaultValue: 'ContextGo' });
   }, [layout?.isMobile, location.pathname, t]);
 
+  const shouldLeftAlignMobileTitle = Boolean(
+    layout?.isMobile &&
+      mobileRouteTitle &&
+      location.pathname !== '/guid' &&
+      location.pathname !== '/' &&
+      location.pathname !== '/login'
+  );
+  const shouldUseSecondaryMobileChrome = Boolean(
+    layout?.isMobile &&
+      mobileRouteTitle &&
+      location.pathname !== '/guid' &&
+      location.pathname !== '/' &&
+      location.pathname !== '/login' &&
+      !isMobileConversationRoute
+  );
+
   useEffect(() => {
     if (!layout?.isMobile) {
       setMobileCenterTitle('');
@@ -317,52 +329,6 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     };
   }, [layout?.isMobile, location.pathname, mobileRouteTitle]);
 
-  useEffect(() => {
-    if (!layout?.isMobile) {
-      setMobileCenterOffset(0);
-      return;
-    }
-
-    if (isMobileShellRuntime) {
-      setMobileCenterOffset(0);
-      return;
-    }
-
-    if (isSettingsRoute) {
-      setMobileCenterOffset(0);
-      return;
-    }
-
-    const updateOffset = () => {
-      const leftWidth = menuRef.current?.offsetWidth || 0;
-      const rightWidth = toolbarRef.current?.offsetWidth || 0;
-      setMobileCenterOffset((leftWidth - rightWidth) / 2);
-    };
-
-    updateOffset();
-
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateOffset);
-      return () => window.removeEventListener('resize', updateOffset);
-    }
-
-    const observer = new ResizeObserver(() => updateOffset());
-    if (containerRef.current) observer.observe(containerRef.current);
-    if (menuRef.current) observer.observe(menuRef.current);
-    if (toolbarRef.current) observer.observe(toolbarRef.current);
-
-    return () => observer.disconnect();
-  }, [
-    isMobileShellRuntime,
-    isSettingsRoute,
-    layout?.isMobile,
-    showBackToChatButton,
-    showNewConversationButton,
-    showSettingsNavButton,
-    showWorkspaceButton,
-    mobileCenterTitle,
-  ]);
-
   const mobileCenterDisplayTitle = useMemo(() => {
     if (isMobileShellRuntime && isMobileConversationRoute) {
       return formatMobileShellConversationTitle(mobileCenterTitle);
@@ -371,11 +337,6 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     return mobileCenterTitle;
   }, [isMobileConversationRoute, isMobileShellRuntime, mobileCenterTitle]);
 
-  const mobileCenterStyle = layout?.isMobile
-    ? ({
-        '--app-titlebar-mobile-center-offset': `${mobileCenterOffset}px`,
-      } as React.CSSProperties)
-    : undefined;
   const showDesktopToolbar = showWorkspaceButton || showWindowControls;
   const showDesktopRightSection = showDesktopConversationTabs || showDesktopToolbar;
   const showDesktopChromeOnlyLayout = !layout?.isMobile && !showDesktopConversationTabs && !showDesktopToolbar;
@@ -486,7 +447,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
               <div className='app-titlebar__drag-spacer' aria-hidden='true' />
             ) : null}
             {showDesktopToolbar && (
-              <div ref={toolbarRef} className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
+              <div className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
                 <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />
                 {showWorkspaceButton && (
                   <button
@@ -543,18 +504,18 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   return (
     <>
       <div
-        ref={containerRef}
-        style={mobileCenterStyle}
         className={classNames('flex items-center gap-8px app-titlebar bg-2 border-b border-[var(--border-base)]', {
           'app-titlebar--mobile': layout?.isMobile && !isMobileShellRuntime,
           'app-titlebar--mobile-shell': layout?.isMobile && isMobileShellRuntime,
           'app-titlebar--mobile-home': layout?.isMobile && isGuidRoute,
+          'app-titlebar--mobile-secondary': shouldUseSecondaryMobileChrome,
+          'app-titlebar--mobile-settings': layout?.isMobile && isSettingsRoute,
           'app-titlebar--mobile-conversation': layout?.isMobile && workspaceAvailable,
           'app-titlebar--desktop': isDesktopRuntime,
           'app-titlebar--mac': isMacRuntime,
         })}
       >
-        <div ref={menuRef} className='app-titlebar__menu'>
+        <div className='app-titlebar__menu'>
           {showBackToChatButton && (
             <button
               type='button'
@@ -580,12 +541,16 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
             </button>
           )}
         </div>
-        <div className='app-titlebar__brand' aria-label={mobileCenterTitle} title={mobileCenterTitle}>
+        <div
+          className={classNames('app-titlebar__brand', shouldLeftAlignMobileTitle && 'app-titlebar__brand--leading')}
+          aria-label={mobileCenterTitle}
+          title={mobileCenterTitle}
+        >
           {layout?.isMobile && mobileCenterDisplayTitle ? (
             <span className='app-titlebar__brand-text'>{mobileCenterDisplayTitle}</span>
           ) : null}
         </div>
-        <div ref={toolbarRef} className='app-titlebar__toolbar'>
+        <div className='app-titlebar__toolbar'>
           {showSettingsNavButton && (
             <button
               type='button'

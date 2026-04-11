@@ -43,6 +43,7 @@ function killChild(child: ChildProcess, isWindows: boolean): void {
 interface SafeExecOptions {
   timeout?: number;
   env?: NodeJS.ProcessEnv;
+  cwd?: string;
   onStdoutChunk?: ExecChunkListener;
   onStderrChunk?: ExecChunkListener;
 }
@@ -62,6 +63,7 @@ export function safeExec(command: string, options: SafeExecOptions = {}): Promis
       detached: !isWindows,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: options.env,
+      cwd: options.cwd,
       windowsHide: true,
     });
 
@@ -129,6 +131,7 @@ export function safeExecFile(file: string, args: string[], options: SafeExecOpti
       detached: !isWindows,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: options.env,
+      cwd: options.cwd,
       windowsHide: true,
     });
 

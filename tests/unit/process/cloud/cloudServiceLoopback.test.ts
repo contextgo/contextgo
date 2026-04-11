@@ -393,8 +393,9 @@ describe('CloudService desktop loopback login', () => {
     cloudService.initialize();
     await flushAsyncWork();
 
-    expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalledTimes(1);
+    expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalledTimes(2);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('cloud-init');
+    expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
   });
 
   it('re-ensures official remote runtime after system resume when a stored device token exists', async () => {
@@ -406,6 +407,72 @@ describe('CloudService desktop loopback login', () => {
 
     expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalledTimes(1);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('system-resume');
+  });
+
+  it('auto-ensures official remote readiness on startup when the desktop is already signed in', async () => {
+    officialRemoteTunnelServiceMock.reconcile.mockImplementation(async (reason: string) => {
+      if (reason === 'official-remote-ensure-ready') {
+        Object.assign(officialRemoteTunnelState, {
+          desired: true,
+          running: true,
+          browserEntryReady: true,
+          needsAttention: false,
+        });
+      }
+    });
+
+    const cloudService = await importCloudService();
+    cloudService.initialize();
+    await flushAsyncWork();
+
+    expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('cloud-init');
+    expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
+  });
+
+  it('auto-recovers the desktop device binding after the cloud session refresh succeeds later', async () => {
+    const defaultFetch = authSessionFetch.getMockImplementation();
+
+    authSessionFetch.mockImplementationOnce(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/auth/session')) {
+        return new Response(JSON.stringify({ authenticated: false, user: null }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!defaultFetch) {
+        throw new Error(`Unexpected fetch URL: ${url} ${init?.method ?? 'GET'}`);
+      }
+
+      return defaultFetch(url, init);
+    });
+
+    officialRemoteTunnelServiceMock.reconcile.mockImplementation(async (reason: string) => {
+      if (reason === 'official-remote-ensure-ready') {
+        Object.assign(officialRemoteTunnelState, {
+          desired: true,
+          running: true,
+          browserEntryReady: true,
+          needsAttention: false,
+        });
+      }
+    });
+
+    processConfigState.set('cloud.user', fetchSessionUserResponse.user);
+
+    const cloudService = await importCloudService();
+    cloudService.initialize();
+    await flushAsyncWork();
+
+    expect(processConfigState.get('cloud.deviceToken')).toBeUndefined();
+
+    await cloudService.getStatus();
+    await flushAsyncWork();
+
+    const recoveredStatus = await cloudService.getStatus();
+
+    expect(recoveredStatus.deviceTokenAvailable).toBe(true);
+    expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
   });
 
   it('opens browser login with loopback callback and consumes returned code', async () => {

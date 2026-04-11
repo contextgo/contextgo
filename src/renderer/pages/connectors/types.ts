@@ -40,6 +40,7 @@ export type ConnectorDefinition = {
   summary?: string;
   implementationOwner?: 'official' | 'contextgo' | 'connector-repo' | 'hybrid';
   supportSources?: ConnectorSupportSource[];
+  externalCatalogConnector?: string;
   id: string;
   name: string;
   websiteUrl: string;
@@ -65,5 +66,3 @@ export type ConnectorSupportSource = {
   url: string;
   description: string;
 };
-
-export type ConnectorExperienceTab = 'overview' | 'configure';

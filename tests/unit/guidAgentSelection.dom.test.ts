@@ -85,13 +85,13 @@ vi.mock('../../src/renderer/utils/model/agentModes', () => ({
 
 import { useGuidAgentSelection } from '../../src/renderer/pages/guid/hooks/useGuidAgentSelection';
 
-const PRESET_AGENT_ID = 'cowork';
+const PRESET_AGENT_ID = 'builtin-superpowers';
 
 const AVAILABLE_AGENTS: AvailableAgent[] = [
   { backend: 'gemini', name: 'Gemini' },
   { backend: 'claude', name: 'Claude' },
   { backend: 'codex', name: 'Codex' },
-  { backend: 'custom', name: 'Cowork Assistant', customAgentId: PRESET_AGENT_ID, isPreset: true },
+  { backend: 'custom', name: 'Superpowers Harness', customAgentId: PRESET_AGENT_ID, isPreset: true },
 ];
 
 const OPENCLAW_AGENTS: AvailableAgent[] = [
@@ -112,10 +112,10 @@ const OPENCLAW_AGENTS: AvailableAgent[] = [
 const CUSTOM_AGENTS: AcpBackendConfig[] = [
   {
     id: PRESET_AGENT_ID,
-    name: 'Cowork Assistant',
+    name: 'Superpowers Harness',
     isPreset: true,
     enabled: true,
-    presetAgentType: 'claude',
+    presetAgentType: 'codex',
   } as AcpBackendConfig,
 ];
 
@@ -269,8 +269,8 @@ describe('useGuidAgentSelection', () => {
       expect(result.current.selectedAssistantKey).toBe(`custom:${PRESET_AGENT_ID}`);
     });
 
-    expect(result.current.selectedAgentKey).toBe('claude');
-    expect(result.current.selectedAgent).toBe('claude');
+    expect(result.current.selectedAgentKey).toBe('codex');
+    expect(result.current.selectedAgent).toBe('codex');
     expect(result.current.isPresetAgent).toBe(true);
   });
 

@@ -435,6 +435,87 @@
   overflow-wrap: anywhere;
 }
 
+.detailCardWide {
+  grid-column: 1 / -1;
+}
+
+.commandList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.commandPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-2) 92%, var(--fill-1) 8%);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.workflowList {
+  display: grid;
+  gap: 12px;
+}
+
+.workflowCard {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-2) 94%, var(--fill-1) 6%);
+}
+
+.workflowHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflowTitle {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.workflowMeta {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.workflowSection {
+  display: grid;
+  gap: 8px;
+}
+
+.workflowSectionLabel {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workflowFooter {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.workflowNotes {
+  display: grid;
+  gap: 6px;
+}
+
 .chipWrap {
   display: flex;
   flex-wrap: wrap;

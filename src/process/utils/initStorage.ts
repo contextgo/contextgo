@@ -11,7 +11,10 @@ import { getPlatformServices } from '@/common/platform';
 import { application } from '@/common/adapter/ipcBridge';
 import type { TMessage } from '@/common/chat/chatLib';
 import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
-import { buildBuiltinAssistants } from '@/common/config/presets/builtinAssistantDefaults';
+import {
+  buildBuiltinAssistants,
+  DEFAULT_ENABLED_BUILTIN_PRESET_IDS,
+} from '@/common/config/presets/builtinAssistantDefaults';
 import type {
   IChatConversationRefer,
   IConfigStorageRefer,
@@ -709,13 +712,7 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
     // 从预设配置中读取默认启用的技能列表（不包含 schedule，因为它是内置 skill，自动注入）
     // Read default enabled skills from preset config (excluding schedule, which is builtin and auto-injected)
     const defaultEnabledSkills = preset.defaultEnabledSkills;
-    const enabledByDefault =
-      preset.id === 'cowork' ||
-      preset.id === 'openclaw-setup' ||
-      preset.id === 'star-office-helper' ||
-      preset.id === 'story-roleplay' ||
-      preset.id === 'moltbook' ||
-      preset.id === 'beautiful-mermaid';
+    const enabledByDefault = DEFAULT_ENABLED_BUILTIN_PRESET_IDS.has(preset.id);
 
     assistants.push({
       id: `builtin-${preset.id}`,
@@ -726,12 +723,12 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
       avatar: preset.avatar,
       // context 不再存储在配置中，而是从文件读取
       // context is no longer stored in config, read from files instead
-      // Cowork 默认启用 / Cowork enabled by default
+      // 按当前产品内置清单决定默认启用状态 / Default enabled state follows the current product builtin catalog
       enabled: enabledByDefault,
       isPreset: true,
       isBuiltin: true,
       presetAgentType: preset.presetAgentType || 'gemini',
-      // Cowork 默认启用所有内置技能 / Cowork enables all builtin skills by default
+      // 使用 preset 中声明的默认技能 / Use default skills declared by the preset
       enabledSkills: defaultEnabledSkills,
       // 复制快捷提示词 / Copy quick prompts
       promptsI18n: preset.promptsI18n,
@@ -1064,8 +1061,12 @@ const initStorage = async () => {
 
     // 更新或添加内置助手配置
     // Update or add built-in assistant configurations
-    const updatedAgents = [...existingAgents];
-    let hasChanges = false;
+    const builtinAssistantIds = new Set(builtinAssistants.map((assistant) => assistant.id));
+    const updatedAgents = existingAgents.filter(
+      (agent: AcpBackendConfig) =>
+        !(agent.isBuiltin && agent.id.startsWith('builtin-') && !builtinAssistantIds.has(agent.id))
+    );
+    let hasChanges = updatedAgents.length !== existingAgents.length;
 
     for (const builtin of builtinAssistants) {
       const index = updatedAgents.findIndex((a: AcpBackendConfig) => a.id === builtin.id);

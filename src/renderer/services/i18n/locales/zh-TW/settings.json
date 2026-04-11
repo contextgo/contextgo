@@ -1310,16 +1310,9 @@
     "officialSite": "官網",
     "resources": "可連接資源",
     "auth": "驗證方式",
-    "overviewTab": "概覽",
-    "configureTab": "設定",
-    "detailTabsAriaLabel": "連接器詳情分頁",
     "openWebsite": "打開官網",
-    "note": "只有已支援的 connector 會在這裡開放完整設定。其餘規劃項目前僅作為目錄條目展示。",
+    "note": "連接器頁面展示的是 connector 專案的原生能力目錄。ContextGo 在這裡呈現能力狀態，並在匯入後消費其輸出。",
     "summaryTemplate": "{{name}} 屬於「{{category}}」，後續可作為 AI 工作流的上下文資料入口。",
-    "configureAvailableDesc": "這個 connector 已經接入 ContextGo，可以直接在這裡完成設定與使用。",
-    "configureUnavailableTitle": "暫時還不能設定",
-    "configureUnavailableDesc": "這個 connector 目前還只是目錄佔位。ContextGo 尚未為它提供可用的設定與同步流程。",
-    "onlySupportedCanConfigure": "只有已支援的 connector 才能在這裡設定。",
     "stagePriority": "優先接入",
     "stagePlanned": "規劃中",
     "supportStatus": {
@@ -1411,7 +1404,28 @@
       "empty": "尚未匯入任何瀏覽活動。",
       "sourceExtension": "擴充回報",
       "sourceManual": "手動補錄"
-    }
+    },
+    "externalCatalog": {
+      "platformAccess": "平台接入邊界",
+      "runtimeBoundary": "執行階段邊界",
+      "nativeSurface": "原生能力面",
+      "commandEntrypoints": "命令入口",
+      "noneYet": "暫未提供。",
+      "workflows": "已實作工作流",
+      "workflowSurface": "能力面：{{surface}}",
+      "workflowStatus": {
+        "ready": "已可用",
+        "partial": "部分完成",
+        "planned": "規劃中"
+      },
+      "nativeObjects": "原生物件",
+      "entrypoints": "入口命令",
+      "writesStore": "會寫入儲存",
+      "noStoreWrite": "暫不寫入儲存",
+      "unavailableTitle": "暫時無法讀取 connector 詳情"
+    },
+    "catalogPlaceholderDesc": "這個 connector 目前仍只是目錄佔位。ContextGo 尚未消費它的執行階段或採集輸出。",
+    "catalogExternalDesc": "這個 connector 由獨立的 connector 專案管理。ContextGo 在這裡讀取它的能力目錄，並在匯入後消費其輸出。"
   },
   "cloud": {
     "title": "ContextGo 雲端帳號",

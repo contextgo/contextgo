@@ -29,7 +29,7 @@ describe('CodexMessageProcessor', () => {
 
     const processor = new CodexMessageProcessor('conv-1', emitter as any);
     processor.processTaskStart();
-    processor.processFinalMessage({
+    await processor.processFinalMessage({
       type: 'agent_message',
       message: 'Final answer',
     } as any);

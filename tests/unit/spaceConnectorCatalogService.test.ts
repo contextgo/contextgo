@@ -48,7 +48,7 @@ describe('Space connector fusion services', () => {
     );
   });
 
-  it('marks clipboard as an activity connector incubated from the connector repository', () => {
+  it('models clipboard as a connector-project owned activity runtime', () => {
     const service = new SpaceConnectorCatalogService();
     const connector = service.getConnector('contextgo-clipboard');
 
@@ -56,25 +56,32 @@ describe('Space connector fusion services', () => {
       familyId: 'activity',
       kind: 'activity',
       upstreamSource: 'connector-repo',
-      runtimeOwner: 'contextgo-managed-sidecar',
-      storeTarget: 'activity-events',
+      runtimeOwner: 'connector-project',
+      storeTarget: 'connector-store',
+      launchSurface: 'managed-external-runtime',
     });
   });
 
-  it('models Feishu as a managed official CLI runtime instead of an IM channel plugin', () => {
+  it('models Feishu as a connector-project managed runtime instead of a ContextGo-owned sidecar', () => {
     const service = new SpaceConnectorCatalogService();
     const connector = service.getConnector('feishu-openapi');
 
     expect(connector).toMatchObject({
       familyId: 'feishu',
       kind: 'official-cli',
+      runtimeOwner: 'connector-project',
+      upstreamSource: 'connector-repo',
       launchSurface: 'managed-external-runtime',
       profileStrategy: 'oauth-user',
     });
     expect(connector?.dependencies).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'lark-openapi-mcp',
+          name: 'cgo',
+          required: true,
+        }),
+        expect.objectContaining({
+          name: 'lark-cli',
           required: true,
         }),
       ])
@@ -106,20 +113,21 @@ describe('Space connector fusion services', () => {
     });
 
     expect(service.buildExecutionPlan('contextgo-clipboard')).toMatchObject({
-      executionMode: 'python-sidecar',
-      installSource: 'sibling-repo',
+      executionMode: 'connector-cli',
+      installSource: 'connector-project',
       hostProcess: 'desktop-sidecar',
+      needsUserProvisioning: true,
     });
 
     expect(service.buildExecutionPlan('feishu-openapi')).toMatchObject({
-      executionMode: 'external-binary-sidecar',
-      installSource: 'official-release',
+      executionMode: 'connector-cli',
+      installSource: 'connector-project',
       needsUserProvisioning: true,
     });
 
     expect(service.buildExecutionPlan('google-drive')).toMatchObject({
-      executionMode: 'go-sidecar',
-      installSource: 'source-build',
+      executionMode: 'connector-cli',
+      installSource: 'connector-project',
       needsUserProvisioning: true,
     });
   });

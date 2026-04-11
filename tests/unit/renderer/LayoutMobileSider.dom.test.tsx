@@ -134,4 +134,21 @@ describe('Layout mobile sider gestures', () => {
     expect(sider?.style.transform).toContain('-261px');
     expect(screen.getByTestId('mobile-sider')).toBeInTheDocument();
   });
+
+  it('uses the settings mobile chrome mode for settings routes', async () => {
+    const { default: Layout } = await import('@/renderer/components/layout/Layout');
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/settings/runtime']}>
+        <Layout sider={<div data-testid='mobile-sider'>Sider Content</div>} />
+      </MemoryRouter>
+    );
+
+    const appShell = container.querySelector('.app-shell') as HTMLDivElement | null;
+    expect(appShell).toBeTruthy();
+    expect(appShell?.className).toContain('app-shell--mobile-settings');
+
+    const themeColorMeta = document.querySelector("meta[name='theme-color']") as HTMLMetaElement | null;
+    expect(themeColorMeta?.content).toBe('#f7f8fb');
+  });
 });

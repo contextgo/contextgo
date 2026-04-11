@@ -221,6 +221,11 @@ export class CloudService {
   private authSession: Session | null = null;
   private loginInProgress = false;
   private initialized = false;
+  private startupCloudBootstrapCompleted = false;
+  private autoEnsureOfficialRemoteInFlight = false;
+  private autoEnsureOfficialRemoteQueued = false;
+  private officialRemoteEnsureInFlight = false;
+  private lastMissingBindingAutoEnsureAt = 0;
   private readonly officialRemoteTunnelService = getOfficialRemoteTunnelService();
 
   private constructor() {}
@@ -274,7 +279,7 @@ export class CloudService {
     const officialRemoteReady =
       Boolean(deviceToken) && officialRemote.running === true && officialRemote.browserEntryReady === true;
 
-    return {
+    const nextStatus: CloudStatus = {
       authenticated: Boolean(sessionUser),
       browserSessionExpired: !sessionUser && Boolean(effectiveUser),
       user: effectiveUser,
@@ -286,6 +291,9 @@ export class CloudService {
       authBaseUrl: CLOUD_AUTH_BASE_URL,
       apiBaseUrl: CLOUD_API_BASE_URL,
     };
+
+    this.maybeAutoRecoverSignedInDesktopBinding(nextStatus);
+    return nextStatus;
   }
 
   public async startLogin(provider: CloudAuthProviderId): Promise<CloudStatus> {
@@ -341,21 +349,26 @@ export class CloudService {
   }
 
   public async ensureOfficialRemoteReady(): Promise<CloudStatus> {
-    const status = await this.getStatus();
-    if (!status.authenticated) {
-      throw new Error('Cloud browser session is not authenticated');
+    this.officialRemoteEnsureInFlight = true;
+    try {
+      const status = await this.getStatus();
+      if (!status.authenticated) {
+        throw new Error('Cloud browser session is not authenticated');
+      }
+
+      if (!status.deviceTokenAvailable) {
+        await this.ensureDeviceRegistration(true);
+      }
+
+      await ensureDesktopWebUIForOfficialRemote();
+      await this.officialRemoteTunnelService.reconcile('official-remote-ensure-ready');
+
+      const nextStatus = await this.waitForOfficialRemoteReady();
+      await this.emitStatusChanged(nextStatus);
+      return nextStatus;
+    } finally {
+      this.officialRemoteEnsureInFlight = false;
     }
-
-    if (!status.deviceTokenAvailable) {
-      await this.ensureDeviceRegistration(true);
-    }
-
-    await ensureDesktopWebUIForOfficialRemote();
-    await this.officialRemoteTunnelService.reconcile('official-remote-ensure-ready');
-
-    const nextStatus = await this.waitForOfficialRemoteReady();
-    await this.emitStatusChanged(nextStatus);
-    return nextStatus;
   }
 
   public async openInfermesh(): Promise<CloudStatus> {
@@ -849,6 +862,59 @@ export class CloudService {
     ipcBridge.cloud.statusChanged.emit(nextStatus);
   }
 
+  private shouldAutoEnsureOfficialRemote(status: CloudStatus): boolean {
+    return Boolean(status.authenticated && !status.browserSessionExpired && !status.officialRemoteReady && !status.officialRemote?.needsAttention);
+  }
+
+  private maybeAutoRecoverSignedInDesktopBinding(status: CloudStatus): void {
+    if (!this.startupCloudBootstrapCompleted || this.loginInProgress || this.officialRemoteEnsureInFlight) {
+      return;
+    }
+
+    if (this.autoEnsureOfficialRemoteInFlight || status.deviceTokenAvailable || !status.authenticated) {
+      return;
+    }
+
+    if (status.officialRemote?.needsAttention) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastMissingBindingAutoEnsureAt < 10_000) {
+      return;
+    }
+
+    this.lastMissingBindingAutoEnsureAt = now;
+    this.queueAutoEnsureOfficialRemoteReady('status-refresh', status);
+  }
+
+  private queueAutoEnsureOfficialRemoteReady(reason: string, status?: CloudStatus): void {
+    if (this.autoEnsureOfficialRemoteInFlight) {
+      this.autoEnsureOfficialRemoteQueued = true;
+      return;
+    }
+
+    this.autoEnsureOfficialRemoteInFlight = true;
+    void (async () => {
+      try {
+        const latestStatus = status ?? (await this.getStatus());
+        if (!this.shouldAutoEnsureOfficialRemote(latestStatus)) {
+          return;
+        }
+
+        await this.ensureOfficialRemoteReady();
+      } catch (error) {
+        console.warn(`[Cloud] Failed to auto-ensure Official Remote readiness on ${reason}:`, error);
+      } finally {
+        this.autoEnsureOfficialRemoteInFlight = false;
+        if (this.autoEnsureOfficialRemoteQueued) {
+          this.autoEnsureOfficialRemoteQueued = false;
+          this.queueAutoEnsureOfficialRemoteReady(`${reason}:queued`);
+        }
+      }
+    })();
+  }
+
   private async waitForOfficialRemoteReady(): Promise<CloudStatus> {
     const deadline = Date.now() + OFFICIAL_REMOTE_READY_TIMEOUT_MS;
     let lastStatus = await this.getStatus();
@@ -870,22 +936,27 @@ export class CloudService {
   }
 
   private async initializeAfterReady(): Promise<void> {
-    await app.whenReady();
+    try {
+      await app.whenReady();
 
-    let initialStatus = await this.getStatus();
-    if (initialStatus.deviceTokenAvailable) {
-      await this.ensureOfficialRemoteRuntimeForStoredBinding('startup');
-      initialStatus = await this.getStatus();
-    } else if (initialStatus.authenticated) {
-      try {
-        initialStatus = await this.ensureSignedInDesktopDeviceBinding(initialStatus);
-      } catch (error) {
-        console.warn('[Cloud] Failed to auto-register signed-in desktop device:', error);
+      let initialStatus = await this.getStatus();
+      if (initialStatus.deviceTokenAvailable) {
+        await this.ensureOfficialRemoteRuntimeForStoredBinding('startup');
+        initialStatus = await this.getStatus();
+      } else if (initialStatus.authenticated) {
+        try {
+          initialStatus = await this.ensureSignedInDesktopDeviceBinding(initialStatus);
+        } catch (error) {
+          console.warn('[Cloud] Failed to auto-register signed-in desktop device:', error);
+        }
       }
-    }
 
-    await this.emitStatusChanged(initialStatus);
-    await this.officialRemoteTunnelService.reconcile('cloud-init');
+      await this.emitStatusChanged(initialStatus);
+      await this.officialRemoteTunnelService.reconcile('cloud-init');
+      this.queueAutoEnsureOfficialRemoteReady('startup', initialStatus);
+    } finally {
+      this.startupCloudBootstrapCompleted = true;
+    }
   }
 
   private async restoreOfficialRemoteAfterResume(): Promise<void> {

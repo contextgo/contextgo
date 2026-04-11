@@ -7,13 +7,6 @@
 import type { AcpBackend, AcpBackendAll, AcpBackendConfig } from '@/common/types/acpTypes';
 import type { CloudDevice, CloudUser } from '@/common/types/cloud';
 import type { VoiceInputConfig } from '@/common/types/voiceInput';
-import type { ClipboardConnectorConfig } from '@/common/types/connectors/clipboard';
-import type { FeishuConnectorConfig } from '@/common/types/connectors/feishu';
-import type { GoogleDriveConnectorConfig } from '@/common/types/connectors/googleDrive';
-import type { GoogleDocsConnectorConfig } from '@/common/types/connectors/googleDocs';
-import type { GoogleSheetsConnectorConfig } from '@/common/types/connectors/googleSheets';
-import type { GmailConnectorConfig } from '@/common/types/connectors/gmail';
-import type { GoogleCalendarConnectorConfig } from '@/common/types/connectors/googleCalendar';
 import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import { storage } from '@office-ai/platform';
 
@@ -143,13 +136,6 @@ export interface IConfigStorageRefer {
   'command.library'?: ManagedSlashCommandRecord[];
   // Skills Market: whether the bundled builtin skill is enabled
   'skillsMarket.enabled'?: boolean;
-  'connector.clipboard.config'?: ClipboardConnectorConfig;
-  'connector.feishu.openapi.config'?: FeishuConnectorConfig;
-  'connector.googleDrive.config'?: GoogleDriveConnectorConfig;
-  'connector.googleDocs.config'?: GoogleDocsConnectorConfig;
-  'connector.googleSheets.config'?: GoogleSheetsConnectorConfig;
-  'connector.gmail.config'?: GmailConnectorConfig;
-  'connector.googleCalendar.config'?: GoogleCalendarConnectorConfig;
   // Space-scoped browser context assets used by agent-browser
   'browser.context.assets'?: TBrowserContextAsset[];
 }

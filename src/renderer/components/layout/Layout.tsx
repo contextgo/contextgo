@@ -34,7 +34,7 @@ const MOBILE_SIDER_EDGE_SWIPE_ZONE = 28;
 const MOBILE_SIDER_GESTURE_TRIGGER_RATIO = 0.35;
 const MOBILE_SIDER_GESTURE_MIN_DISTANCE = 72;
 
-type MobileTopChromeMode = 'home' | 'conversation' | 'default';
+type MobileTopChromeMode = 'home' | 'conversation' | 'settings' | 'default';
 
 type MobileSiderGesture = {
   mode: 'opening' | 'closing';
@@ -62,6 +62,10 @@ const resolveMobileTopChromeMode = (pathname: string): MobileTopChromeMode => {
     return 'home';
   }
 
+  if (pathname.startsWith('/settings')) {
+    return 'settings';
+  }
+
   if (pathname.startsWith('/conversation/')) {
     return 'conversation';
   }
@@ -76,6 +80,10 @@ const resolveMobileThemeColor = (mode: MobileTopChromeMode, isDarkTheme: boolean
 
   if (mode === 'conversation') {
     return isDarkTheme ? '#1c2129' : '#f6f8fb';
+  }
+
+  if (mode === 'settings') {
+    return isDarkTheme ? '#161b22' : '#f7f8fb';
   }
 
   return isDarkTheme ? '#161b22' : '#f7f8fb';

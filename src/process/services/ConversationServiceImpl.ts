@@ -13,7 +13,10 @@ import type { ISpaceService } from '@process/services/space/ISpaceService';
 import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
 import { uuid } from '@/common/utils';
 import { scheduleService } from './context/scheduleServiceSingleton';
-import { copyWorkspaceAutomationHooks } from '@process/bridge/services/workspaceAutomation';
+import {
+  copyWorkspaceAutomationHooks,
+  ensureHarnessWorkspaceAutomationForConversation,
+} from '@process/bridge/services/workspaceAutomation';
 import path from 'node:path';
 import {
   createGeminiAgent,
@@ -371,6 +374,13 @@ export class ConversationServiceImpl implements IConversationService {
     } as TChatConversation;
 
     await this.repo.createConversation(finalConversation);
+
+    try {
+      await ensureHarnessWorkspaceAutomationForConversation(finalConversation);
+    } catch (error) {
+      console.warn('[ConversationServiceImpl] Failed to bootstrap harness workspace automation:', error);
+    }
+
     return finalConversation;
   }
 }

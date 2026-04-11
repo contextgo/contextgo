@@ -30,24 +30,23 @@ export class SpaceConnectorRuntimeService {
       case 'contextgo-clipboard':
         return {
           connectorId,
-          executionMode: 'python-sidecar',
-          installSource: 'sibling-repo',
+          executionMode: 'connector-cli',
+          installSource: 'connector-project',
           hostProcess: 'desktop-sidecar',
-          needsUserProvisioning: false,
-          commandHint:
-            'Wrap connector.infohub.activity_clipboard_runtime behind ClipboardConnectorService and a managed desktop observer process.',
+          needsUserProvisioning: true,
+          commandHint: 'Use `cgo activity clipboard ...` and `cgo collect clipboard` as the connector-owned clipboard runtime boundary.',
           notes:
-            'Keep retention, consent, and pause controls in ContextGo while incubating the runtime from the sibling repository.',
+            'ContextGo should consume connector-owned clipboard activity outputs instead of hosting a product-inline observer runtime.',
         };
       case 'feishu-openapi':
         return {
           connectorId,
-          executionMode: 'external-binary-sidecar',
-          installSource: 'official-release',
+          executionMode: 'connector-cli',
+          installSource: 'connector-project',
           hostProcess: 'desktop-sidecar',
           needsUserProvisioning: true,
-          commandHint: 'Install and manage lark-openapi-mcp as a ContextGo-owned sidecar runtime.',
-          notes: 'Datasource auth stays in ContextGo, but API execution can run through the official external runtime.',
+          commandHint: 'Use `cgo feishu runtime`, `cgo feishu auth`, and `cgo feishu exec` to manage the official lark-cli wrapper outside ContextGo.',
+          notes: 'ContextGo should consume connector-project outputs for Feishu instead of shipping its own runtime wrapper.',
         };
       case 'google-drive':
       case 'google-docs':
@@ -56,13 +55,13 @@ export class SpaceConnectorRuntimeService {
       case 'google-calendar':
         return {
           connectorId,
-          executionMode: 'go-sidecar',
-          installSource: 'source-build',
+          executionMode: 'connector-cli',
+          installSource: 'connector-project',
           hostProcess: 'desktop-sidecar',
           needsUserProvisioning: true,
-          commandHint: 'Build a small ContextGo-managed Go runtime around the official google-api-go-client packages.',
+          commandHint: 'Use `cgo connectors show <connector> --json` plus connector-owned runtime/auth commands as the Google-family execution boundary.',
           notes:
-            'Share OAuth state across the Google Workspace family, but keep datasource scoping and collect results in ContextGo.',
+            'Google-family runtime ownership should live entirely in the connector project, and ContextGo should only consume capability metadata and collected outputs.',
         };
     }
   }
