@@ -1,30 +1,55 @@
 ---
 eyebrow: Quick Start
 title: Set up ContextGo on your first desktop
-summary: Install the desktop app, sign in, bind the current device, and confirm the local host is ready for mobile and browser access.
+summary: Install the desktop app, sign in, register the current device, and confirm that the local host is ready for browser or mobile access.
 readingTime: 5 min
-updatedAt: 2026-03-30
+updatedAt: 2026-04-12
 category: guides
 ---
 
-## Install the desktop host first
+## Before you begin
 
-ContextGo starts from the desktop app because the desktop machine is the real execution host. It owns the local workspace, the WebUI runtime, and the remote-access bridge.
+ContextGo runs on a desktop host. Install and complete setup on the desktop app first. Browser and mobile access connect back to that host later.
 
-For direct installs, use the download center on contextgo.io. The website reads release artifacts from contextgo/contextgo-releases, so the download page and in-app update flow point at the same version source.
+Before starting setup, confirm the following:
 
-## Sign in and bind the device
+- You can install software on the current desktop.
+- The desktop can open a browser window for sign-in.
+- The network allows ContextGo to reach its account and update services.
 
-Use the cloud-account entry in the desktop app to sign in with GitHub or Google. Once the browser flow completes, ContextGo registers the current desktop as a cloud-linked device.
+## 1. Install the desktop app
 
-The cloud account does not move execution into the cloud. It links identity, device registration, and lightweight sync metadata so your devices can find each other.
+Open the download page on `contextgo.io` and install the desktop build for your platform. The website download page and the in-app updater both read release artifacts from `contextgo/contextgo-releases`.
 
-- Desktop remains the host
-- Cloud account links identity and devices
-- Mobile and web discover devices through the cloud layer
+After installation, launch the app and allow the initial local services to start. On first run, ContextGo prepares the local workspace, the WebUI runtime, and the device-side components used for remote access.
 
-## Confirm the local host is healthy
+## 2. Sign in to a cloud account
 
-After sign-in, confirm the WebUI can be opened locally and the device appears as active. If you plan to use remote access, make sure the remote status is provisioned or otherwise explicitly enabled for your environment.
+Use the cloud account entry in the desktop app to sign in with GitHub or Google. When the browser flow completes, the current desktop is registered to your account.
 
-If a corporate environment blocks helper processes or networking tools, test on another machine before assuming the product model is wrong. The most common failures here are local policy, endpoint protection, or missing permissions.
+The cloud account is used for identity, device registration, and lightweight account state. It does not move your workspace or runtime execution into the cloud.
+
+## 3. Verify the current desktop
+
+After sign-in, confirm the following in the desktop app:
+
+- The current device appears in the signed-in account.
+- Local WebUI opens successfully.
+- Device status is shown as available or active.
+
+If you plan to use browser or mobile access, also confirm that remote access is enabled for the current device.
+
+## 4. Test remote access if needed
+
+If remote access is part of your workflow, open the hosted web entry after the desktop host is online. The remote page only works when the registered desktop keeps its outbound connection available.
+
+On mobile, use the remote session as a control surface for the desktop host. Files, runtimes, and local tools still run on the desktop.
+
+## If setup does not complete
+
+Check the following in order:
+
+1. Confirm the desktop app can open the browser sign-in page.
+2. Confirm the account flow returns to ContextGo without an error.
+3. Confirm endpoint security or corporate policy is not blocking helper processes or network access.
+4. Retry the setup on a different machine if the current environment is heavily managed.

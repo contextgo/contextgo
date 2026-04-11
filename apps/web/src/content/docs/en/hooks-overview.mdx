@@ -1,28 +1,36 @@
 ---
 eyebrow: Hooks
-title: Use hooks to extend workflows at the right moment
-summary: Hooks are the product mechanism for inserting controlled behavior around execution events. Users need a clear trigger model, not just a configuration form.
+title: Configure hooks for workflow events
+summary: Define when a hook runs, what context it receives, and how to roll out hook behavior without disrupting the main task flow.
 readingTime: 6 min
-updatedAt: 2026-03-30
+updatedAt: 2026-04-12
 category: features
 ---
 
-## What a hook is in product terms
+## What a hook does
 
-A hook is a controlled extension point in the workflow. It lets ContextGo run additional logic around a meaningful event instead of forcing users to manually repeat the same coordination step every time.
+A hook runs additional logic when a defined workflow event occurs. Common uses include validation, formatting, routing, notification, and post-processing.
 
-This can include validation, formatting, notifications, routing, or post-processing, depending on what surfaces the product exposes.
+Use hooks when the same follow-up step needs to happen consistently around a task or publish action.
 
-## Document triggers before implementation details
+## Trigger points
 
-Users first need to understand when a hook can run: before work starts, after output arrives, when a publish action happens, or when a task reaches a state transition. Without that model, hook configuration looks arbitrary.
+Document the trigger point before configuring a hook. A hook should make it clear whether it runs:
 
-Once the trigger model is clear, the rest of the document can explain inputs, outputs, and safety boundaries.
+- before a task starts
+- after output is produced
+- when a publish action is requested
+- when a task changes state
 
-- What event triggers the hook
-- What context the hook receives
-- What side effects the hook is allowed to produce
+## Hook inputs and outputs
 
-## Why hooks matter for ContextGo
+For each hook, record the following:
 
-Hooks are a bridge between context-aware work and repeatable automation. They make it possible to keep human review in the loop while still standardizing the repetitive parts of a workflow.
+- The event that triggers it
+- The context it can read
+- The side effects it is allowed to produce
+- The failure behavior when the hook does not complete
+
+## Rollout guidance
+
+Start with hooks that are easy to verify and easy to disable. Review logs or outputs after each change. For production workflows, avoid large hook chains until each step has been tested independently.

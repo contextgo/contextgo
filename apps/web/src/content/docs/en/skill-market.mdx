@@ -1,28 +1,32 @@
 ---
 eyebrow: Skill Market
-title: Skill Market and reusable capability packages
-summary: Show users how the skill market expands what ContextGo can do, how to think about local versus downloadable skills, and how installation should stay trustworthy.
+title: Install and manage skills
+summary: Review the source of each skill, understand what it adds to the product, and keep installation, updates, and removal predictable.
 readingTime: 6 min
-updatedAt: 2026-03-30
+updatedAt: 2026-04-12
 category: features
 ---
 
-## Skills extend workflow capability
+## Skill sources
 
-The skill market is not just an add-on gallery. It is the mechanism that lets ContextGo adopt domain-specific workflows, instructions, or packaged capabilities without forcing every feature into the main product binary.
+Skills can be built in, stored locally, or downloaded from a published source. Before installation, the product should show which type you are installing.
 
-That keeps the platform extensible while still presenting a coherent user experience.
+Use that source label to decide whether the skill can be trusted in the current environment.
 
-## Installation trust matters
+## What a skill can add
 
-Users need to understand whether a skill is built-in, local, or downloaded. They should also know whether a skill only adds prompts and instructions, or whether it brings code, scripts, or network-facing behavior with it.
+A skill can add prompts, instructions, configuration, scripts, or other packaged behavior. The install screen should make it clear what files are added and whether any executable content is included.
 
-Good documentation makes it clear what is being installed, where it lives, and how to remove or update it safely.
+Before enabling a downloaded skill, review:
 
-- Built-in skill versus downloaded skill
-- What files or behavior a skill introduces
-- How updates and removals are handled
+- the publisher or source
+- the files or actions introduced by the package
+- whether the skill requires network access or external tools
 
-## Why this is core to the product
+## Update and removal
 
-A strong skill market turns ContextGo from a fixed feature set into a product that can adapt to new domains without turning the main interface into a cluttered platform switchboard.
+Keep skill lifecycle operations explicit. Users should be able to see the installed version, apply an update, or remove the skill without affecting unrelated product configuration.
+
+## Recommended administration
+
+For managed environments, install new skills on a test machine first. After review, roll them out to production devices that use the same runtime and security policy.

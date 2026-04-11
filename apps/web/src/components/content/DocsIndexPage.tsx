@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import PageHero from './PageHero';
 import type { DocGroup } from '@/lib/public-content/types';
+import DocsShell from './DocsShell';
 
 export default function DocsIndexPage({
   badge,
@@ -17,7 +17,9 @@ export default function DocsIndexPage({
   sourceLabel,
   sourceReleaseLabel,
   sourceFallbackLabel,
+  versionLabel,
   openRepositoryLabel,
+  overviewLabel,
 }: {
   badge: string;
   title: string;
@@ -33,89 +35,93 @@ export default function DocsIndexPage({
   sourceLabel: string;
   sourceReleaseLabel: string;
   sourceFallbackLabel: string;
+  versionLabel: string;
   openRepositoryLabel: string;
+  overviewLabel: string;
 }) {
-  return (
-    <>
-      <PageHero badge={badge} title={title} description={description} />
+  const sourceValue = source === 'release-repo' ? sourceReleaseLabel.replace('{{version}}', version) : sourceFallbackLabel;
 
-      <section className='theme-page-muted px-4 py-18'>
-        <div className='container-custom'>
-          <div className='theme-card-gradient theme-shadow-soft theme-border rounded-[30px] border p-7 md:p-8'>
-            <div className='flex flex-col gap-5 md:flex-row md:items-start md:justify-between'>
-              <div>
-                <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>
-                  {featuredLabel}
-                </div>
-                <h2 className='theme-text-primary mt-4 text-3xl font-semibold tracking-tight md:text-4xl'>{title}</h2>
-                <p className='theme-text-secondary mt-4 max-w-3xl text-sm leading-7 md:text-base'>
-                  {featuredDescription}
-                </p>
-              </div>
-              <div className='theme-surface-secondary theme-border flex min-w-[240px] flex-col gap-3 rounded-[22px] border p-4'>
-                <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.18em]'>
-                  {sourceLabel}
-                </div>
-                <div className='theme-text-primary text-sm font-semibold'>
-                  {source === 'release-repo' ? sourceReleaseLabel.replace('{{version}}', version) : sourceFallbackLabel}
-                </div>
-                <a
-                  href={repositoryUrl}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='theme-text-primary text-sm font-medium underline-offset-4 hover:underline'
-                >
-                  {openRepositoryLabel}
-                </a>
+  return (
+    <DocsShell
+      docsTitle={title}
+      overviewHref={`/${lang}/docs`}
+      overviewLabel={overviewLabel}
+      groups={groups}
+      sourceLabel={sourceLabel}
+      sourceValue={sourceValue}
+      versionLabel={versionLabel}
+      version={version}
+      repositoryUrl={repositoryUrl}
+      openRepositoryLabel={openRepositoryLabel}
+    >
+      <div className='space-y-6'>
+        <div className='theme-panel-gradient theme-shadow-soft theme-border rounded-[32px] border px-7 py-8 md:px-9 md:py-10'>
+          <div className='theme-surface-secondary theme-border theme-text-tertiary inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em]'>
+            {badge}
+          </div>
+          <h1 className='theme-text-primary mt-5 max-w-4xl text-4xl font-semibold tracking-[-0.04em] md:text-5xl'>
+            {title}
+          </h1>
+          <p className='theme-text-secondary mt-4 max-w-3xl text-base leading-8 md:text-lg'>{description}</p>
+          <div className='theme-border mt-6 h-px w-full theme-divider-gradient' />
+          <div className='mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]'>
+            <div>
+              <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>{featuredLabel}</div>
+              <p className='theme-text-secondary mt-3 max-w-3xl text-sm leading-7 md:text-base'>{featuredDescription}</p>
+            </div>
+            <div className='theme-surface-secondary theme-border rounded-[22px] border p-4'>
+              <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.18em]'>{sourceLabel}</div>
+              <div className='theme-text-primary mt-2 text-sm font-semibold'>{sourceValue}</div>
+              <div className='theme-text-secondary mt-1 text-sm'>
+                {versionLabel}: v{version}
               </div>
             </div>
-
-            {versions.length > 0 ? (
-              <div className='mt-6 flex flex-wrap gap-2'>
-                {versions.map((entry) => (
-                  <a
-                    key={entry.version}
-                    href={`${repositoryUrl}/tree/main/site/docs/${entry.version}`}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='theme-surface-secondary theme-border theme-text-secondary rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:theme-text-primary'
-                  >
-                    v{entry.version}
-                  </a>
-                ))}
-              </div>
-            ) : null}
           </div>
+          {versions.length > 0 ? (
+            <div className='mt-6 flex flex-wrap gap-2'>
+              {versions.map((entry) => (
+                <a
+                  key={entry.version}
+                  href={`${repositoryUrl}/tree/main/site/docs/${entry.version}`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='theme-surface-secondary theme-border theme-text-secondary rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:theme-text-primary'
+                >
+                  v{entry.version}
+                </a>
+              ))}
+            </div>
+          ) : null}
         </div>
-      </section>
 
-      <section className='theme-page px-4 pb-24'>
-        <div className='container-custom space-y-10'>
+        <div className='space-y-6'>
           {groups.map((group) => (
-            <section key={group.id}>
-              <div className='mb-5'>
-                <div>
-                  <h3 className='theme-text-primary text-3xl font-semibold tracking-tight'>{group.title}</h3>
-                  <p className='theme-text-secondary mt-2 max-w-3xl text-sm leading-7'>{group.description}</p>
-                </div>
+            <section key={group.id} className='theme-surface-secondary theme-shadow-card theme-border rounded-[30px] border px-6 py-6 md:px-7'>
+              <div>
+                <h2 className='theme-text-primary text-2xl font-semibold tracking-tight md:text-3xl'>{group.title}</h2>
+                <p className='theme-text-secondary mt-3 max-w-3xl text-sm leading-7'>{group.description}</p>
               </div>
 
-              <div className='grid gap-5 lg:grid-cols-2'>
+              <div className='mt-6 grid gap-4'>
                 {group.entries.map((entry) => (
                   <Link
                     key={entry.slug}
                     href={`/${lang}/docs/${entry.slug}`}
-                    className='theme-surface-secondary theme-shadow-card theme-border block rounded-[28px] border px-6 py-6 transition-transform duration-200 hover:-translate-y-1'
+                    className='theme-surface-tertiary theme-border block rounded-[24px] border px-5 py-5 transition-transform duration-200 hover:-translate-y-1'
                   >
-                    <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>
-                      {entry.eyebrow}
-                    </div>
-                    <h4 className='theme-text-primary mt-3 text-2xl font-semibold tracking-tight'>{entry.title}</h4>
-                    <p className='theme-text-secondary mt-3 text-sm leading-7'>{entry.summary}</p>
-                    <div className='theme-text-tertiary mt-5 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em]'>
-                      {entry.updatedAt ? <span>{entry.updatedAt}</span> : null}
-                      {entry.publishedAt ? <span>{entry.publishedAt}</span> : null}
-                      <span>{entry.readingTime}</span>
+                    <div className='grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start'>
+                      <div>
+                        <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>
+                          {entry.eyebrow}
+                        </div>
+                        <h3 className='theme-text-primary mt-3 text-xl font-semibold tracking-tight md:text-2xl'>{entry.title}</h3>
+                        <p className='theme-text-secondary mt-3 text-sm leading-7'>{entry.summary}</p>
+                      </div>
+                      <div className='theme-text-tertiary flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] lg:max-w-[180px] lg:justify-end'>
+                        {entry.updatedAt ? <span>{entry.updatedAt}</span> : null}
+                        {entry.publishedAt ? <span>{entry.publishedAt}</span> : null}
+                        <span>{entry.readingTime}</span>
+                      </div>
                     </div>
                   </Link>
                 ))}
@@ -123,7 +129,7 @@ export default function DocsIndexPage({
             </section>
           ))}
         </div>
-      </section>
-    </>
+      </div>
+    </DocsShell>
   );
 }

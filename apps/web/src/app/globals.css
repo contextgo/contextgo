@@ -222,6 +222,7 @@ html[data-theme='dark'] .theme-logo {
   color: var(--text-primary);
   font-weight: 600;
   letter-spacing: -0.02em;
+  scroll-margin-top: 6rem;
   margin-top: 2.5rem;
   margin-bottom: 1rem;
 }

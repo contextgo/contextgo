@@ -1,29 +1,42 @@
 ---
 eyebrow: Updates
-title: Updates, releases, and common troubleshooting paths
-summary: Document how in-app updates relate to the website download center and release repository, and give users a single operational troubleshooting entry point.
+title: Check updates and troubleshoot common failures
+summary: Keep the website, the in-app updater, and the release repository aligned, then diagnose login, device, runtime, and update problems from one place.
 readingTime: 7 min
-updatedAt: 2026-03-30
+updatedAt: 2026-04-12
 category: operations
 ---
 
-## One version source should serve everything
+## Release source of truth
 
-Users should be able to trust that the desktop updater, the website download center, and the GitHub release page are describing the same version truth. That is the reason contextgo/contextgo-releases exists as a dedicated release repository.
+Public releases are published to `contextgo/contextgo-releases`. The website download page and the desktop updater should both point to that same release source.
 
-If the website says one thing and the in-app updater says another, the release pipeline is not coherent enough yet.
+If the website version and the in-app update version do not match, treat that as a release pipeline issue first.
 
-## Common failure categories
+## Recommended troubleshooting order
 
-The troubleshooting entry should cover the real user-facing failures: browser login does not complete, remote status is unavailable, device binding does not refresh, update checks flash an error, or a runtime is installed but still unusable.
+Use the least destructive checks first:
 
-This kind of page is especially important because users do not care which internal subsystem failed. They care about the operational symptom they can see.
+1. Confirm account sign-in and browser callback behavior.
+2. Confirm the expected device is registered and online.
+3. Confirm remote access status if the issue appears in the browser or mobile client.
+4. Confirm runtime detection and provider authentication.
+5. Confirm the release version shown by the website and updater.
 
-- Login and browser-session failures
-- Device status and remote availability failures
-- Runtime detection and authentication failures
-- Update and release-distribution failures
+## Common issue groups
 
-## What this page should always tell the user
+Use this page as the entry point for the following symptoms:
 
-A good troubleshooting page tells the user what the symptom means, what the likely cause categories are, and what to check next in the least destructive order.
+- browser sign-in does not complete
+- device binding does not refresh
+- remote access shows unavailable
+- a runtime is installed but cannot run work
+- update checks fail or show an unexpected version
+
+## When to compare versions
+
+Compare release versions when:
+
+- the website offers one installer version and the desktop app shows another
+- a user reports an update that cannot be downloaded
+- a published release is missing from the download page

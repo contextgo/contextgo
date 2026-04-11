@@ -1,24 +1,24 @@
 {
   "badge": "Documentation",
   "title": "ContextGo Docs",
-  "description": "Customer-facing documentation for setup, agents, hooks, scheduled tasks, skill market, remote access, and release operations.",
-  "featuredLabel": "Documentation structure",
-  "featuredDescription": "ContextGo docs split into three layers: Guides explain how to start, Features explain what the product can do, and Operations explain how remote access, cloud identity, and release workflows actually work.",
+  "description": "Official product documentation for installation, agent workflows, automation, remote access, and release operations.",
+  "featuredLabel": "Documentation layout",
+  "featuredDescription": "Use Guides for initial setup, Features for day-to-day product capabilities, and Operations for account, remote access, updates, and troubleshooting.",
   "categories": [
     {
       "id": "guides",
       "title": "Guides",
-      "description": "Start here to understand the product model, install flow, and how users should approach the first working setup."
+      "description": "Read these pages before first use. They cover installation, account sign-in, device registration, and the basic product model."
     },
     {
       "id": "features",
       "title": "Features",
-      "description": "These docs explain the functional surfaces users actually operate: agents, hooks, schedules, runtimes, connectors, and the skill market."
+      "description": "These pages document the working surfaces in the product, including agents, hooks, scheduled tasks, runtimes, connectors, and skills."
     },
     {
       "id": "operations",
       "title": "Operations",
-      "description": "These docs define cloud account behavior, remote-access mechanics, release operations, and troubleshooting guidance."
+      "description": "These pages cover cloud account behavior, remote access, software updates, release sources, and common troubleshooting steps."
     }
   ],
   "order": [

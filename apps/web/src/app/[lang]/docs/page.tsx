@@ -25,7 +25,9 @@ export default async function DocsPage({ params }: { params: Promise<{ lang: str
       sourceLabel={siteContent.labels.docsSource}
       sourceReleaseLabel={siteContent.labels.docsSourceRelease}
       sourceFallbackLabel={siteContent.labels.docsSourceFallback}
+      versionLabel={siteContent.labels.docsVersionLabel}
       openRepositoryLabel={siteContent.labels.openReleaseRepository}
+      overviewLabel={siteContent.labels.docsOverview}
     />
   );
 }
