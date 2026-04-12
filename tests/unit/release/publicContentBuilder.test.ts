@@ -87,7 +87,7 @@ describe('buildPublicContentCollections', () => {
 
     expect(built.docs.en.collection.docs.entries).toHaveLength(12);
     expect(built.blog.zh.collection.blog.entries).toHaveLength(3);
-    expect(built.docs.en.collection.articles['quick-start'].html).toContain('id="install-the-desktop-host-first"');
+    expect(built.docs.en.collection.articles['quick-start'].html).toContain('id="before-you-begin"');
     expect(built.blog.en.collection.articles['context-before-agents'].html).toContain('Why this product does not start');
   });
 

@@ -120,6 +120,7 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('@icon-park/react', () => ({
   ArrowUp: () => React.createElement('span', {}, 'ArrowUp'),
+  CloseOne: () => React.createElement('span', {}, 'CloseOne'),
   CloseSmall: () => React.createElement('span', {}, 'CloseSmall'),
 }));
 
