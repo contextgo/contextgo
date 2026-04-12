@@ -38,7 +38,6 @@ import { initApplicationBridgeCore } from '@process/bridge/applicationBridgeCore
 import { initShellBridgeStandalone } from '@process/bridge/shellBridgeStandalone';
 import { initScheduleBridge } from '@process/bridge/scheduleBridge';
 import { initFsBridge } from '@process/bridge/fsBridge';
-import { initMcpBridge } from '@process/bridge/mcpBridge';
 import { initNotificationBridge } from '@process/bridge/notificationBridge';
 import { initSystemSettingsBridge } from '@process/bridge/systemSettingsBridge';
 import { initTaskBridge } from '@process/bridge/taskBridge';
@@ -73,7 +72,6 @@ export async function initBridgeStandalone(): Promise<void> {
   initExtensionsBridge(repo, workerTaskManager);
   initSystemSettingsBridge();
   initScheduleBridge();
-  initMcpBridge();
   initNotificationBridge();
   initTaskBridge(workerTaskManager);
   initStarOfficeBridge();

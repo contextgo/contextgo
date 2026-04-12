@@ -132,6 +132,7 @@ function createManager(
   overrides: {
     backend?: string;
     customWorkspace?: boolean;
+    nativeWorkspaceBootstrap?: boolean;
     presetContext?: string;
     enabledSkills?: string[];
   } = {}
@@ -141,6 +142,7 @@ function createManager(
     backend: overrides.backend ?? 'claude',
     workspace: '/tmp/test-workspace',
     customWorkspace: overrides.customWorkspace,
+    nativeWorkspaceBootstrap: overrides.nativeWorkspaceBootstrap,
     presetContext: overrides.presetContext,
     enabledSkills: overrides.enabledSkills,
   };
@@ -203,6 +205,24 @@ describe('AcpAgentManager — first-message skill injection', () => {
       presetContext: 'You are helpful.',
       enabledSkills: ['pptx'],
     });
+  });
+
+  it('uses native skills for supported backend when customWorkspace bootstrap is enabled', async () => {
+    const manager = createManager({
+      backend: 'claude',
+      customWorkspace: true,
+      nativeWorkspaceBootstrap: true,
+      presetContext: 'You are helpful.',
+      enabledSkills: ['pptx'],
+    });
+
+    await sendFirstMessage(manager);
+
+    expect(mockPrepareFirstMessage).not.toHaveBeenCalled();
+    const sentContent = mockAgentSendMessage.mock.calls[0][0].content as string;
+    expect(sentContent).toContain('[Assistant Rules');
+    expect(sentContent).toContain('You are helpful.');
+    expect(sentContent).toContain('[User Request]');
   });
 
   it('falls back to prompt injection for unsupported backend regardless of customWorkspace', async () => {

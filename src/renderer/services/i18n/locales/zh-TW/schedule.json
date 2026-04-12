@@ -248,5 +248,18 @@
     "conversationNotFound": "未找到對話",
     "scheduledTimePassed": "定時時間已過",
     "conversationBusy": "對話繁忙，在 {{count}} 次嘗試後跳過"
+  },
+  "chat": {
+    "createTitle": "已建立定時任務",
+    "createDescription": "這個對話的定時任務已建立完成。",
+    "listTitle": "目前定時任務",
+    "listDescription": "這個對話目前有 {{count}} 個定時任務。",
+    "deleteTitle": "已刪除定時任務",
+    "deleteDescription": "這個對話的定時任務已刪除。",
+    "errorTitle": "定時任務處理失敗",
+    "errorDescription": "這次定時任務操作未成功完成。",
+    "empty": "目前對話還沒有定時任務。",
+    "deletedId": "已刪除任務 ID",
+    "taskId": "任務 ID"
   }
 }

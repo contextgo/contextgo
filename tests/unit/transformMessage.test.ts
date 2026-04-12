@@ -89,6 +89,25 @@ describe('transformMessage', () => {
     });
   });
 
+  it('transforms schedule_event messages into structured chat messages', () => {
+    const result = transformMessage(
+      makeMessage('schedule_event', {
+        source: 'assistant-skill',
+        action: 'delete',
+        scheduleId: 'schedule-1',
+      })
+    );
+
+    expect(result).toBeDefined();
+    expect(result!.type).toBe('schedule_event');
+    expect(result!.position).toBe('left');
+    expect(result!.content).toEqual({
+      source: 'assistant-skill',
+      action: 'delete',
+      scheduleId: 'schedule-1',
+    });
+  });
+
   it('returns undefined for transient message types', () => {
     for (const type of ['start', 'finish', 'thought', 'system', 'acp_model_info', 'request_trace']) {
       expect(transformMessage(makeMessage(type))).toBeUndefined();

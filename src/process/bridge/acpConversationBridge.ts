@@ -19,7 +19,6 @@ import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
 import AcpAgentManager from '@process/task/AcpAgentManager';
 import CodexAgentManager from '@process/task/CodexAgentManager';
 import { GeminiAgentManager } from '@process/task/GeminiAgentManager';
-import { mcpService } from '@/process/services/mcpServices/McpService';
 import { mainLog, mainWarn } from '@/process/utils/mainLogger';
 import { ipcBridge } from '@/common';
 import {
@@ -414,7 +413,6 @@ export function initAcpConversationBridge(
   });
 
   // 新的ACP检测接口 - 基于全局标记位
-  // Enrich with MCP transport support info so the frontend can show accurate counts
   ipcBridge.acpConversation.getAvailableAgents.provider(async () => {
     try {
       const runtimeAwareAgents = await getRuntimeAwareDetectedAgents();
@@ -439,12 +437,7 @@ export function initAcpConversationBridge(
         );
       });
 
-      const enriched = agents.map((agent) =>
-        Object.assign({}, agent, {
-          supportedTransports: mcpService.getSupportedTransportsForAgent(agent),
-        })
-      );
-      return { success: true, data: enriched };
+      return { success: true, data: agents };
     } catch (error) {
       return {
         success: false,

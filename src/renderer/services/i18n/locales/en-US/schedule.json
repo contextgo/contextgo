@@ -239,5 +239,18 @@
     "conversationNotFound": "Conversation not found",
     "scheduledTimePassed": "Scheduled time has passed",
     "conversationBusy": "Conversation busy after {{count}} retries"
+  },
+  "chat": {
+    "createTitle": "Scheduled Task Created",
+    "createDescription": "The scheduled task has been created for this conversation.",
+    "listTitle": "Conversation Scheduled Tasks",
+    "listDescription": "{{count}} task(s) are currently attached to this conversation.",
+    "deleteTitle": "Scheduled Task Deleted",
+    "deleteDescription": "The scheduled task has been removed from this conversation.",
+    "errorTitle": "Scheduled Task Failed",
+    "errorDescription": "The scheduling request could not be completed.",
+    "empty": "No scheduled tasks yet for this conversation.",
+    "deletedId": "Deleted ID",
+    "taskId": "Task ID"
   }
 }

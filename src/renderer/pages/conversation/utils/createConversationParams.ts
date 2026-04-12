@@ -266,6 +266,7 @@ export async function buildPresetAssistantParams(
     spaceId,
     workspace,
     customWorkspace: true,
+    nativeWorkspaceBootstrap: Boolean(workspace.trim()),
     enabledSkills,
     enabledHooks,
     presetAssistantId: customAgentId,

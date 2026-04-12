@@ -15,7 +15,6 @@ export const ROUTES = {
     gemini: '#/settings/gemini',
     model: '#/settings/model',
     agent: '#/settings/agent',
-    tools: '#/settings/tools',
     webui: '#/settings/webui',
     system: '#/settings/system',
     about: '#/settings/about',

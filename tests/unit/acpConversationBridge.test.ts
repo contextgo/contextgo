@@ -12,6 +12,7 @@ const hoisted = vi.hoisted(() => ({
   codexWaitForServerReady: vi.fn(async () => {}),
   codexPing: vi.fn(async () => true),
   codexStop: vi.fn(async () => {}),
+  processConfigGetMock: vi.fn(async () => undefined),
 }));
 
 function makeChannel(name: string) {
@@ -70,11 +71,9 @@ vi.mock('../../src/process/agent/acp/AcpDetector', () => ({
   },
 }));
 
-const processConfigGetMock = vi.fn(async () => undefined);
-
 vi.mock('../../src/process/utils/initStorage', () => ({
   ProcessConfig: {
-    get: (...args: unknown[]) => processConfigGetMock(...args),
+    get: (...args: unknown[]) => hoisted.processConfigGetMock(...args),
   },
 }));
 
@@ -124,10 +123,6 @@ vi.mock('../../src/process/agent/codex/connection/CodexConnection', () => ({
 vi.mock('../../src/process/task/AcpAgentManager', () => ({ default: class AcpAgentManager {} }));
 vi.mock('../../src/process/task/CodexAgentManager', () => ({ default: class CodexAgentManager {} }));
 vi.mock('../../src/process/task/GeminiAgentManager', () => ({ GeminiAgentManager: class GeminiAgentManager {} }));
-
-vi.mock('../../src/process/services/mcpServices/McpService', () => ({
-  mcpService: { getSupportedTransportsForAgent: vi.fn(() => []) },
-}));
 
 vi.mock('../../src/process/utils/mainLogger', () => ({
   mainLog: vi.fn(),
@@ -216,7 +211,7 @@ describe('acpConversationBridge', () => {
     hoisted.codexStop.mockResolvedValue(undefined);
     registerConversationMock.mockReset();
     registerConversationMock.mockResolvedValue(undefined);
-    processConfigGetMock.mockImplementation(async (key: string) => {
+    hoisted.processConfigGetMock.mockImplementation(async (key: string) => {
       if (key === 'acp.config') return {};
       if (key === 'codex.config') return {};
       return undefined;
@@ -546,7 +541,6 @@ describe('acpConversationBridge', () => {
         name: 'Gemini',
         cliPath: 'gemini',
         runtimeSource: 'builtin',
-        supportedTransports: [],
       }),
       expect.objectContaining({
         backend: 'openclaw-gateway',
@@ -556,7 +550,6 @@ describe('acpConversationBridge', () => {
         openclawAgentId: 'main',
         workspace: '/Users/test/.openclaw/workspace',
         isDefault: true,
-        supportedTransports: [],
       }),
       expect.objectContaining({
         backend: 'openclaw-gateway',
@@ -567,14 +560,13 @@ describe('acpConversationBridge', () => {
         workspace: '/Users/test/.openclaw/workspace-reviewer',
         avatar: '🦞',
         isDefault: false,
-        supportedTransports: [],
       }),
     ]);
   });
 
   it('merges configured runtime paths into available agents when PATH detection misses them', async () => {
     vi.mocked(acpDetector.getDetectedAgents).mockReturnValue([{ backend: 'gemini', name: 'Gemini' }] as any);
-    processConfigGetMock.mockImplementation(async (key: string) => {
+    hoisted.processConfigGetMock.mockImplementation(async (key: string) => {
       if (key === 'acp.config') {
         return {
           claude: {
@@ -599,7 +591,6 @@ describe('acpConversationBridge', () => {
         name: 'Gemini',
         cliPath: 'gemini',
         runtimeSource: 'builtin',
-        supportedTransports: [],
       }),
       expect.objectContaining({
         backend: 'claude',
@@ -607,7 +598,6 @@ describe('acpConversationBridge', () => {
         cliPath: '/Applications/Claude Code.app/Contents/MacOS/claude',
         resolvedCliPath: '/Applications/Claude Code.app/Contents/MacOS/claude',
         runtimeSource: 'configured',
-        supportedTransports: [],
       }),
       expect.objectContaining({
         backend: 'codex',
@@ -616,7 +606,6 @@ describe('acpConversationBridge', () => {
         resolvedCliPath: '/opt/codex/bin/codex',
         acpArgs: [],
         runtimeSource: 'configured',
-        supportedTransports: [],
       }),
     ]);
   });
@@ -651,14 +640,13 @@ describe('acpConversationBridge', () => {
         name: 'Gemini',
         cliPath: 'gemini',
         runtimeSource: 'builtin',
-        supportedTransports: [],
       })
     );
     expect(result.data[0]?.resolvedCliPath).toBe('/opt/homebrew/bin/gemini');
   });
 
   it('detectCliPath prefers the configured runtime path for built-in backends', async () => {
-    processConfigGetMock.mockImplementation(async (key: string) => {
+    hoisted.processConfigGetMock.mockImplementation(async (key: string) => {
       if (key === 'acp.config') return {};
       if (key === 'codex.config') {
         return {

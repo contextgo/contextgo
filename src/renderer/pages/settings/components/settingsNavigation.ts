@@ -10,7 +10,17 @@ type SettingsNavDrawerEventDetail = {
   open?: boolean;
 };
 
-export const normalizeSettingsAnchor = (anchor: string): string => (anchor === 'display' ? 'system' : anchor);
+export const normalizeSettingsAnchor = (anchor: string): string => {
+  if (anchor === 'display') {
+    return 'system';
+  }
+
+  if (anchor === 'tools') {
+    return 'runtime';
+  }
+
+  return anchor;
+};
 
 export function matchesSettingsNavPath(pathname: string, itemPath: string): boolean {
   const directPath = '/settings/' + itemPath;

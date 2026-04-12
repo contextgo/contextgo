@@ -14,7 +14,7 @@ import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils/ui/focus';
 import { getTextLayoutStyle, measureTextLineCount } from '@/renderer/utils/chat/textLayout';
 import { Button, Input, Message, Tag } from '@arco-design/web-react';
-import { ArrowUp, CloseSmall } from '@icon-park/react';
+import { ArrowUp, CloseOne, CloseSmall } from '@icon-park/react';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -398,7 +398,7 @@ const SendBox: React.FC<{
       className='bg-animate'
       style={stopButtonStyle}
       aria-label={t('conversation.group.workflow.decision.stop')}
-      icon={<div className='mx-auto size-12px rounded-[2px] bg-current bg-animate'></div>}
+      icon={<CloseOne theme='filled' size='12' fill='currentColor' className='bg-animate' />}
       onClick={stopHandler}
     ></Button>
   ) : (

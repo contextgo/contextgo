@@ -11,21 +11,33 @@ import {
   resolveBuiltinAssistantEnabledHooks,
   resolveBuiltinAssistantEnabledSkills,
 } from '@/common/config/presets/builtinAssistantDefaults';
-import {
-  ENGINEERING_DEFAULT_HOOKS,
-  ENGINEERING_WORKBENCH_SKILLS,
-} from '@/common/config/presets/assistantPresets';
+import { ENGINEERING_DEFAULT_HOOKS, ENGINEERING_WORKBENCH_SKILLS } from '@/common/config/presets/assistantPresets';
 import { describe, expect, it } from 'vitest';
 
 describe('builtinAssistantDefaults', () => {
-  it('builds only the two supported product builtin assistants', () => {
+  it('builds product builtin assistants with featured defaults', () => {
     const assistants = buildBuiltinAssistants();
 
-    expect(assistants).toHaveLength(2);
+    expect(assistants).toHaveLength(3);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
+      'builtin-morph-ppt',
       'builtin-superpowers',
       'builtin-everything-in-claude-code',
     ]);
+    expect(assistants.find((assistant) => assistant.id === 'builtin-morph-ppt')).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: ['morph-ppt'],
+        recommendedDomainI18n: {
+          'en-US': 'Presentations',
+          'zh-CN': '演示文稿',
+        },
+      })
+    );
     expect(assistants.find((assistant) => assistant.id === 'builtin-superpowers')).toEqual(
       expect.objectContaining({
         enabled: true,
@@ -91,12 +103,15 @@ describe('builtinAssistantDefaults', () => {
   });
 
   it('falls back to preset defaults only when enabled hooks are missing', () => {
-    expect(resolveBuiltinAssistantEnabledHooks('builtin-superpowers', undefined)).toEqual([...ENGINEERING_DEFAULT_HOOKS]);
+    expect(resolveBuiltinAssistantEnabledHooks('builtin-superpowers', undefined)).toEqual([
+      ...ENGINEERING_DEFAULT_HOOKS,
+    ]);
     expect(resolveBuiltinAssistantEnabledHooks('builtin-superpowers', [])).toEqual([]);
     expect(resolveBuiltinAssistantEnabledHooks('custom-agent', undefined)).toBeUndefined();
   });
 
   it('falls back to preset defaults only when enabled skills are missing', () => {
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-morph-ppt', undefined)).toEqual(['morph-ppt']);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-superpowers', undefined)).toEqual([
       ...ENGINEERING_WORKBENCH_SKILLS,
     ]);

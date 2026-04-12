@@ -10,7 +10,11 @@ import { CONTEXT_ENGINE_SYSTEM_ASSISTANTS } from './systemAssistants';
 
 export const BUILTIN_ASSISTANT_PREFIX = 'builtin-';
 
-export const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set(['superpowers', 'everything-in-claude-code']);
+export const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
+  'morph-ppt',
+  'superpowers',
+  'everything-in-claude-code',
+]);
 
 export const findBuiltinAssistantPreset = (assistantId: string) => {
   if (!assistantId.startsWith(BUILTIN_ASSISTANT_PREFIX)) {

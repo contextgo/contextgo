@@ -118,9 +118,9 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
     ],
   },
   {
-    match: (routePath) => routePath === '/settings/tools' || routePath === '/settings/commands',
+    match: (routePath) => routePath === '/settings/commands',
     loaders: [
-      () => import('@renderer/pages/settings/ToolsSettings'),
+      () => import('@renderer/pages/settings/ToolsSettings/CommandSettings'),
       () => import('@renderer/pages/settings/components/SettingsSider'),
     ],
   },

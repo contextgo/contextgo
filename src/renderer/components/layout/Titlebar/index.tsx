@@ -235,10 +235,6 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       return t('schedule.scheduledTasks');
     }
 
-    if (path.startsWith('/settings/tools')) {
-      return t('settings.tools');
-    }
-
     if (path.startsWith('/settings/commands')) {
       return t('settings.commands.title');
     }

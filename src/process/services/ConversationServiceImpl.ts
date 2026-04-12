@@ -291,6 +291,7 @@ export class ConversationServiceImpl implements IConversationService {
           normalizedParams.extra.enabledSkills as string[] | undefined,
           normalizedParams.extra.enabledHooks as string[] | undefined,
           normalizedParams.extra.presetAssistantId,
+          normalizedParams.extra.nativeWorkspaceBootstrap === true,
           normalizedParams.extra.sessionMode,
           normalizedParams.extra.isHealthCheck,
           normalizedParams.extra.spaceId,

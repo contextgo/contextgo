@@ -206,6 +206,64 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
   });
   const incompatibleHookNameSet = new Set(getIncompatibleHookNames(availableHooks, selectedHooks, editAgent));
 
+  const renderSkillDependencyTags = (skill: RelevantAssistantSkill) => {
+    const visibleHints = (skill.dependencyHints || []).filter(
+      (hint) => hint.source !== 'openai' || editAgent === 'codex'
+    );
+    if (visibleHints.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className='mt-6px flex flex-wrap gap-6px'>
+        {visibleHints.map((hint) => {
+          const color =
+            hint.status === 'ready'
+              ? 'green'
+              : hint.status === 'missing'
+                ? 'red'
+                : hint.kind === 'mcp'
+                  ? 'arcoblue'
+                  : 'gray';
+          const labelPrefix =
+            hint.kind === 'env'
+              ? hint.status === 'missing'
+                ? t('settings.skillDependencyEnvMissing', { defaultValue: 'Env Missing' })
+                : t('settings.skillDependencyEnvReady', { defaultValue: 'Env Ready' })
+              : hint.kind === 'command'
+                ? hint.status === 'missing'
+                  ? t('settings.skillDependencyCommandMissing', { defaultValue: 'Command Missing' })
+                  : t('settings.skillDependencyCommandReady', { defaultValue: 'Command Ready' })
+                : hint.kind === 'mcp'
+                  ? t('settings.skillDependencyCodexTool', { defaultValue: 'Codex Tool' })
+                  : t('settings.skillDependencyCompatibility', { defaultValue: 'Compatibility' });
+
+          return (
+            <Tag key={`${hint.source}:${hint.kind}:${hint.label}`} size='small' color={color}>
+              {`${labelPrefix}: ${hint.label}`}
+            </Tag>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderSkillCompatibilityNotes = (skill: RelevantAssistantSkill) => {
+    if (!skill.compatibility || skill.compatibility.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className='mt-6px flex flex-col gap-4px'>
+        {skill.compatibility.slice(0, 2).map((note) => (
+          <div key={note} className='text-11px leading-relaxed text-t-tertiary'>
+            {note}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderRelevantSkillItem = (skill: RelevantAssistantSkill) => {
     return (
       <div key={skill.name} className='flex items-start gap-8px p-8px hover:bg-fill-1 rounded-4px'>
@@ -237,6 +295,8 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
           {skill.description ? (
             <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{skill.description}</div>
           ) : null}
+          {renderSkillDependencyTags(skill)}
+          {renderSkillCompatibilityNotes(skill)}
         </div>
       </div>
     );

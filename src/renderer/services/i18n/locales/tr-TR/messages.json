@@ -6,7 +6,6 @@
   "canceledExecution": "Yürütme iptal edildi",
   "interrupted": "Kullanıcı tarafından durduruldu.",
   "openLinkFailed": "Bağlantı açılamadı",
-  "imageGenerationModelDetected": "Görüntü modeli algılandı, görüntü aracı otomatik olarak etkinleştirildi. Varsayılan model: {{platform}}:{{model}}",
   "auto_handling_permissions": "Otomatik izin isteği işleme: {{request}}",
   "copy": "Kopyala",
   "copySuccess": "Başarıyla kopyalandı",

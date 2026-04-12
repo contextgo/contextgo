@@ -8,7 +8,6 @@ import type { ICssTheme } from '@/common/config/storage';
 import type { LoadedExtension, ExtensionState } from './types';
 import { ExtensionLoader } from './ExtensionLoader';
 import { resolveAcpAdapters } from './resolvers/AcpAdapterResolver';
-import { resolveMcpServers } from './resolvers/McpServerResolver';
 import { resolveAssistants, resolveAgents } from './resolvers/AssistantResolver';
 import { resolveSkills } from './resolvers/SkillResolver';
 import { resolveThemes } from './resolvers/ThemeResolver';
@@ -38,7 +37,6 @@ export class ExtensionRegistry {
 
   // Resolved caches
   private _acpAdapters: Record<string, unknown>[] = [];
-  private _mcpServers: Record<string, unknown>[] = [];
   private _assistants: Record<string, unknown>[] = [];
   private _agents: Record<string, unknown>[] = [];
   private _skills: Array<{ name: string; description: string; location: string }> = [];
@@ -163,7 +161,6 @@ export class ExtensionRegistry {
         `[Extensions] Registry initialized in ${elapsed}ms: ` +
           `${this.extensions.length} extension(s), ` +
           `${this._acpAdapters.length} adapter(s), ` +
-          `${this._mcpServers.length} MCP server(s), ` +
           `${this._assistants.length} assistant(s), ` +
           `${this._agents.length} agent(s), ` +
           `${this._skills.length} skill(s), ` +
@@ -315,7 +312,6 @@ export class ExtensionRegistry {
 
     // Synchronous resolvers
     this._acpAdapters = resolveAcpAdapters(enabledExtensions);
-    this._mcpServers = resolveMcpServers(enabledExtensions);
     this._skills = resolveSkills(enabledExtensions);
     this._themes = resolveThemes(enabledExtensions);
     this._channelPlugins = resolveChannelPlugins(enabledExtensions) as Map<
@@ -346,11 +342,6 @@ export class ExtensionRegistry {
   /** Get all extension-contributed ACP adapters */
   getAcpAdapters(): Record<string, unknown>[] {
     return this._acpAdapters;
-  }
-
-  /** Get all extension-contributed MCP servers */
-  getMcpServers(): Record<string, unknown>[] {
-    return this._mcpServers;
   }
 
   /** Get all extension-contributed assistants */

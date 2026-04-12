@@ -226,16 +226,21 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['pptx'],
       });
 
-      expect(mkdirCalls).toContain('/tmp/workspace/.claude/skills');
-      expect(symlinkCalls).toHaveLength(1);
-      expect(symlinkCalls[0]).toEqual({
+      expect(mkdirCalls).toContain('/tmp/workspace/.contextgo/skills');
+      expect(mkdirCalls).toContain('/tmp/workspace/.claude');
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.claude/skills',
+        type: 'junction',
+      });
+      expect(symlinkCalls).toContainEqual({
         source: skillSource,
-        target: '/tmp/workspace/.claude/skills/pptx',
+        target: '/tmp/workspace/.contextgo/skills/pptx',
         type: 'junction',
       });
     });
 
-    it('should create symlink in .codex/skills for codex backend', async () => {
+    it('should project codex skills from .contextgo/skills', async () => {
       statResults['/mock/user/skills/pdf'] = true;
 
       await setupAssistantWorkspace('/tmp/workspace', {
@@ -243,11 +248,19 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['pdf'],
       });
 
-      expect(mkdirCalls).toContain('/tmp/workspace/.codex/skills');
-      expect(symlinkCalls[0].target).toBe('/tmp/workspace/.codex/skills/pdf');
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.codex/skills',
+        type: 'junction',
+      });
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/user/skills/pdf',
+        target: '/tmp/workspace/.contextgo/skills/pdf',
+        type: 'junction',
+      });
     });
 
-    it('should create symlink in .codebuddy/skills for codebuddy', async () => {
+    it('should create runtime projection in .codebuddy/skills for codebuddy', async () => {
       statResults['/mock/user/skills/pdf'] = true;
 
       await setupAssistantWorkspace('/tmp/workspace', {
@@ -255,10 +268,14 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['pdf'],
       });
 
-      expect(symlinkCalls[0].target).toBe('/tmp/workspace/.codebuddy/skills/pdf');
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.codebuddy/skills',
+        type: 'junction',
+      });
     });
 
-    it('should create symlink in .factory/skills for droid backend', async () => {
+    it('should create runtime projection in .factory/skills for droid backend', async () => {
       statResults['/mock/user/skills/deploy'] = true;
 
       await setupAssistantWorkspace('/tmp/workspace', {
@@ -266,7 +283,11 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['deploy'],
       });
 
-      expect(symlinkCalls[0].target).toBe('/tmp/workspace/.factory/skills/deploy');
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.factory/skills',
+        type: 'junction',
+      });
     });
 
     it('should use junction type for symlinks (Windows compatibility)', async () => {
@@ -289,7 +310,11 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['pptx'],
       });
 
-      expect(symlinkCalls[0].source).toBe('/mock/builtin-skills/pptx');
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/builtin-skills/pptx',
+        target: '/tmp/workspace/.contextgo/skills/pptx',
+        type: 'junction',
+      });
     });
 
     it('should resolve bundled skills from nested skill packs', async () => {
@@ -302,9 +327,9 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['engineering-planning'],
       });
 
-      expect(symlinkCalls[0]).toEqual({
+      expect(symlinkCalls).toContainEqual({
         source: '/mock/builtin-skills/engineering-pack/skills/engineering-planning',
-        target: '/tmp/workspace/.claude/skills/engineering-planning',
+        target: '/tmp/workspace/.contextgo/skills/engineering-planning',
         type: 'junction',
       });
     });
@@ -318,7 +343,11 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['custom-skill'],
       });
 
-      expect(symlinkCalls[0].source).toBe('/mock/user/skills/custom-skill');
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/user/skills/custom-skill',
+        target: '/tmp/workspace/.contextgo/skills/custom-skill',
+        type: 'junction',
+      });
     });
 
     it('should skip schedule skill (auto-injected via SkillManager)', async () => {
@@ -329,13 +358,17 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['schedule', 'pptx'],
       });
 
-      expect(symlinkCalls).toHaveLength(1);
-      expect(symlinkCalls[0].target).toContain('pptx');
+      expect(symlinkCalls).toHaveLength(2);
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/user/skills/pptx',
+        target: '/tmp/workspace/.contextgo/skills/pptx',
+        type: 'junction',
+      });
     });
 
-    it('should skip symlink when target already exists', async () => {
+    it('should skip managed skill symlink when target already exists', async () => {
       const skillSource = '/mock/user/skills/pptx';
-      const skillTarget = '/tmp/workspace/.claude/skills/pptx';
+      const skillTarget = '/tmp/workspace/.contextgo/skills/pptx';
       statResults[skillSource] = true;
       lstatResults[skillTarget] = true;
 
@@ -344,7 +377,12 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['pptx'],
       });
 
-      expect(symlinkCalls).toHaveLength(0);
+      expect(symlinkCalls).toHaveLength(1);
+      expect(symlinkCalls[0]).toEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.claude/skills',
+        type: 'junction',
+      });
     });
 
     it('should warn when source skill directory does not exist', async () => {
@@ -355,7 +393,12 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['nonexistent-skill'],
       });
 
-      expect(symlinkCalls).toHaveLength(0);
+      expect(symlinkCalls).toHaveLength(1);
+      expect(symlinkCalls[0]).toEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.claude/skills',
+        type: 'junction',
+      });
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('nonexistent-skill'));
       consoleSpy.mockRestore();
     });
@@ -370,7 +413,12 @@ describe('initAgent — skill support', () => {
       });
 
       // backend 'codex' takes priority -> .codex/skills
-      expect(mkdirCalls).toContain('/tmp/workspace/.codex/skills');
+      expect(mkdirCalls).toContain('/tmp/workspace/.codex');
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.codex/skills',
+        type: 'junction',
+      });
     });
 
     it('should handle multiple enabled skills', async () => {
@@ -383,11 +431,63 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['pptx', 'pdf', 'docx'],
       });
 
-      expect(symlinkCalls).toHaveLength(3);
+      expect(symlinkCalls).toHaveLength(4);
+    });
+
+    it('should project runtime entries per skill when native skills dir already exists as a real directory', async () => {
+      statResults['/mock/user/skills/pptx'] = true;
+      lstatResults['/tmp/workspace/.claude/skills'] = true;
+
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'claude',
+        enabledSkills: ['pptx'],
+      });
+
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/user/skills/pptx',
+        target: '/tmp/workspace/.contextgo/skills/pptx',
+        type: 'junction',
+      });
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills/pptx',
+        target: '/tmp/workspace/.claude/skills/pptx',
+        type: 'junction',
+      });
     });
   });
 
   describe('createAcpAgent', () => {
+    it('bootstraps native skills in user-selected workspaces when explicitly enabled', async () => {
+      statResults['/mock/user/skills/pdf'] = true;
+
+      const conversation = await createAcpAgent({
+        type: 'acp',
+        name: 'Codex Harness',
+        model: {} as never,
+        extra: {
+          backend: 'codex',
+          workspace: '/tmp/project-workspace',
+          customWorkspace: true,
+          nativeWorkspaceBootstrap: true,
+          enabledSkills: ['pdf'],
+        },
+      });
+
+      expect(conversation.extra.workspace).toBe('/tmp/project-workspace');
+      expect(conversation.extra.customWorkspace).toBe(true);
+      expect(mkdirCalls).toContain('/tmp/project-workspace/.contextgo/skills');
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/project-workspace/.contextgo/skills',
+        target: '/tmp/project-workspace/.codex/skills',
+        type: 'junction',
+      });
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/user/skills/pdf',
+        target: '/tmp/project-workspace/.contextgo/skills/pdf',
+        type: 'junction',
+      });
+    });
+
     it('preserves discussion-group metadata on child conversations', async () => {
       const conversation = await createAcpAgent({
         extra: {

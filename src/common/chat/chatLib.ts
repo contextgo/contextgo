@@ -18,6 +18,7 @@ import type {
   WebSearchEndData,
 } from '@/common/types/codex/types/eventData';
 import type { AcpBackend, AcpPermissionRequest, PlanUpdate, ToolCallUpdate } from '@/common/types/acpTypes';
+import type { ScheduleEventPayload } from '@/common/types/schedule/events';
 import type { IResponseMessage } from '../adapter/ipcBridge';
 import type { MessageGroupMeta } from '../config/storage';
 import { uuid } from '../utils';
@@ -77,6 +78,7 @@ type TMessageType =
   | 'codex_permission'
   | 'codex_tool_call'
   | 'plan'
+  | 'schedule_event'
   | 'available_commands';
 
 interface IMessage<T extends TMessageType, Content extends Record<string, any>> {
@@ -313,6 +315,8 @@ export type IMessagePlan = IMessage<
   }
 >;
 
+export type IMessageScheduleEvent = IMessage<'schedule_event', ScheduleEventPayload>;
+
 // Available commands from ACP agents (Claude, etc.)
 export type AvailableCommand = {
   name: string;
@@ -339,6 +343,7 @@ export type TMessage =
   | IMessageCodexPermission
   | IMessageCodexToolCall
   | IMessagePlan
+  | IMessageScheduleEvent
   | IMessageAvailableCommands;
 
 const AGENT_CONNECTION_ERROR_PATTERNS = [
@@ -568,6 +573,16 @@ export const transformMessage = (message: IResponseMessage): TMessage => {
         content: message.data as any,
       };
     }
+    case 'schedule_event': {
+      return {
+        id: uuid(),
+        type: 'schedule_event',
+        msg_id: message.msg_id,
+        position: 'left',
+        conversation_id: message.conversation_id,
+        content: message.data as ScheduleEventPayload,
+      };
+    }
     // Disabled: available_commands messages are too noisy and distracting in the chat UI
     case 'available_commands':
       break;
@@ -712,6 +727,16 @@ export const composeMessage = (
     }
     return pushMessage(message);
     // If no existing plan found, add new one
+  }
+
+  if (message.type === 'schedule_event') {
+    for (let i = 0, len = list.length; i < len; i++) {
+      const msg = list[i];
+      if (msg.type === 'schedule_event' && msg.msg_id === message.msg_id) {
+        return updateMessage(i, { ...msg, content: message.content });
+      }
+    }
+    return pushMessage(message);
   }
 
   if (last.msg_id !== message.msg_id || last.type !== message.type) {

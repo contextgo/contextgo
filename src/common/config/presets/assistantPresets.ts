@@ -63,6 +63,47 @@ export const ENGINEERING_WORKBENCH_SKILLS = [
 
 export const ASSISTANT_PRESETS: AssistantPreset[] = [
   {
+    id: 'morph-ppt',
+    avatar: 'morph-ppt.svg',
+    presetAgentType: 'codex',
+    resourceDir: 'src/process/resources/assistant/morph-ppt',
+    ruleFiles: {
+      'en-US': 'morph-ppt.md',
+      'zh-CN': 'morph-ppt.zh-CN.md',
+    },
+    defaultEnabledSkills: ['morph-ppt'],
+    recommendedDomainI18n: {
+      'en-US': 'Presentations',
+      'zh-CN': '演示文稿',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace if you want generated PPTX files, briefs, and build scripts saved into the project folder.',
+      'zh-CN': '如果希望把生成的 PPTX、brief 和构建脚本直接落到项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Morph PPT',
+      'zh-CN': 'Morph PPT',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A specialist assistant for building polished PowerPoint decks with Morph animations, structured storytelling, and reproducible build scripts.',
+      'zh-CN': '一个专门产出带 Morph 动画、叙事结构清晰且可复现构建脚本的 PPT 专项助手。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Create a Morph-animated presentation for this product launch narrative',
+        'Turn this report into a polished PPT deck with strong motion and story flow',
+        'Plan the deck first, then generate the PPTX and build script for this topic',
+      ],
+      'zh-CN': [
+        '围绕这个产品发布主题做一套带 Morph 动画的演示文稿',
+        '把这份报告做成一套叙事感强、动态效果好的 PPT',
+        '先规划整套 deck，再生成这次主题的 PPTX 和构建脚本',
+      ],
+    },
+  },
+  {
     id: 'superpowers',
     avatar: 'superpowers.svg',
     presetAgentType: 'codex',

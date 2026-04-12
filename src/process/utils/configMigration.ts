@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import os from 'os';
 import path from 'path';
-import type { IConfigStorageRefer, IMcpServer } from '@/common/config/storage';
+import type { IConfigStorageRefer } from '@/common/config/storage';
 
 // Keys allowed to migrate from Electron config to server config.
 // UI-only keys (theme, language, webui.desktop.*) and caches (acp.cachedModels)
@@ -10,8 +10,6 @@ export const MIGRATABLE_KEYS: ReadonlyArray<keyof IConfigStorageRefer> = [
   'model.config',
   'gemini.config',
   'acp.config',
-  'tools.imageGenerationModel',
-  'mcp.config',
   'acp.customAgents',
 ] as const;
 
@@ -83,14 +81,6 @@ export function decodeConfigFile(filePath: string): Partial<IConfigStorageRefer>
 }
 
 /**
- * Filter mcp.config: remove builtin entries (their command paths are machine-local
- * and are recreated by ensureBuiltinMcpServers on every startup anyway).
- */
-function filterMcpConfig(servers: IMcpServer[]): IMcpServer[] {
-  return servers.filter((s) => !s.builtin);
-}
-
-/**
  * Auto-migration: on first server startup, copy whitelisted keys from the
  * Electron desktop config file (if present) to the server config store.
  * Uses a migration flag to run only once.
@@ -120,15 +110,6 @@ export async function migrateFromElectronConfig(configStore: ConfigStore): Promi
 
       const existing = await configStore.get(key).catch((): undefined => undefined);
       if (existing !== undefined && existing !== null) continue;
-
-      // Special handling: filter builtin MCP entries
-      if (key === 'mcp.config' && Array.isArray(sourceValue)) {
-        const filtered = filterMcpConfig(sourceValue as IMcpServer[]);
-        if (filtered.length > 0) {
-          await configStore.set(key, filtered as IConfigStorageRefer[typeof key]);
-        }
-        continue;
-      }
 
       await configStore.set(key, sourceValue as IConfigStorageRefer[typeof key]);
     }
@@ -173,15 +154,6 @@ export async function importConfigFromFile(
       if (!overwrite) {
         const existing = await configStore.get(key).catch((): undefined => undefined);
         if (existing !== undefined && existing !== null) continue;
-      }
-
-      // Special handling: filter builtin MCP entries
-      if (key === 'mcp.config' && Array.isArray(sourceValue)) {
-        const filtered = filterMcpConfig(sourceValue as IMcpServer[]);
-        if (filtered.length > 0) {
-          await configStore.set(key, filtered as IConfigStorageRefer[typeof key]);
-        }
-        continue;
       }
 
       await configStore.set(key, sourceValue as IConfigStorageRefer[typeof key]);

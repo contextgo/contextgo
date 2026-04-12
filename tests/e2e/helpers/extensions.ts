@@ -4,7 +4,6 @@ import { invokeBridge } from './bridge';
 export type ExtensionSnapshot = {
   loadedExtensions: Array<{ name: string; displayName: string; version: string }>;
   acpAdapters: Array<{ id: string; name: string; connectionType?: string }>;
-  mcpServers: Array<{ id?: string; name: string }>;
   assistants: Array<{ id: string; name: string; _source?: string }>;
   agents: Array<{ id: string; name: string; _source?: string; _kind?: string }>;
   skills: Array<{ name: string; description?: string; location: string }>;
@@ -48,7 +47,6 @@ export async function getExtensionSnapshot(page: Page): Promise<ExtensionSnapsho
   const [
     loadedExtensions,
     acpAdapters,
-    mcpServers,
     assistants,
     agents,
     skills,
@@ -58,7 +56,6 @@ export async function getExtensionSnapshot(page: Page): Promise<ExtensionSnapsho
   ] = await Promise.all([
     invokeBridge(page, 'extensions.get-loaded-extensions'),
     invokeBridge(page, 'extensions.get-acp-adapters'),
-    invokeBridge(page, 'extensions.get-mcp-servers'),
     invokeBridge(page, 'extensions.get-assistants'),
     invokeBridge(page, 'extensions.get-agents'),
     invokeBridge(page, 'extensions.get-skills'),
@@ -70,7 +67,6 @@ export async function getExtensionSnapshot(page: Page): Promise<ExtensionSnapsho
   return {
     loadedExtensions: unwrapArray(loadedExtensions),
     acpAdapters: unwrapArray(acpAdapters),
-    mcpServers: unwrapArray(mcpServers),
     assistants: unwrapArray(assistants),
     agents: unwrapArray(agents),
     skills: unwrapArray(skills),

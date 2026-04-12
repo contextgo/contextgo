@@ -113,6 +113,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     const enabledSkills = isPresetAssistant ? resolveEnabledSkills(presetAssistantInfo) : undefined;
     const enabledHooks = isPresetAssistant ? resolveEnabledHooks(presetAssistantInfo) : undefined;
     const presetAssistantId = isPresetAssistant ? presetAssistantInfo?.customAgentId : undefined;
+    const nativeWorkspaceBootstrap = isPresetAssistant && isCustomWorkspace;
 
     // Gemini path
     if (selectedAgent === 'gemini') {
@@ -142,6 +143,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             enabledSkills,
             enabledHooks,
             presetAssistantId,
+            nativeWorkspaceBootstrap,
             spaceId: selectedSpaceId ?? undefined,
             sessionMode: selectedMode,
           },
@@ -207,6 +209,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             enabledSkills,
             enabledHooks,
             presetAssistantId,
+            nativeWorkspaceBootstrap,
             spaceId: selectedSpaceId ?? undefined,
           },
         });
@@ -254,6 +257,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             enabledSkills,
             enabledHooks,
             presetAssistantId,
+            nativeWorkspaceBootstrap,
             spaceId: selectedSpaceId ?? undefined,
           },
         });
@@ -332,6 +336,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           enabledSkills,
           enabledHooks,
           presetAssistantId,
+          nativeWorkspaceBootstrap,
           spaceId: selectedSpaceId ?? undefined,
           sessionMode: selectedMode,
           currentModelId: selectedAcpModel || undefined,

@@ -6,7 +6,6 @@
  *  - Agent pill bar on guid page renders available agents
  *  - Switching between agent backends
  *  - Agent mode selection within a backend
- *  - MCP tools page loads
  */
 import { test, expect } from '../fixtures';
 import {
@@ -17,7 +16,6 @@ import {
   takeScreenshot,
   AGENT_PILL,
   AGENT_PILL_SELECTED,
-  settingsSiderItemById,
 } from '../helpers';
 
 test.describe('ACP Agent', () => {
@@ -84,13 +82,6 @@ test.describe('ACP Agent', () => {
     await goToGuid(page);
     await expect(page.locator(AGENT_PILL).first()).toBeVisible({ timeout: 8_000 });
     await takeScreenshot(page, 'agent-pill-bar');
-  });
-
-  test('MCP tools page has server management UI', async ({ page }) => {
-    await goToSettings(page, 'tools');
-    await expectUrlContains(page, 'tools');
-    await expect(page.locator(settingsSiderItemById('tools')).first()).toBeVisible({ timeout: 8_000 });
-    await expectBodyContainsAny(page, ['MCP', 'mcp', 'Server', 'server', '工具', '配置', '添加', 'Add']);
   });
 
   test('can query available agents via IPC', async ({ page, electronApp }) => {

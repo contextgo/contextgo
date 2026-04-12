@@ -77,7 +77,7 @@ ContextGo vem com um motor de Agent AI completo. Diferente de ferramentas que ex
 
 - **Sem ferramentas CLI para instalar** — o motor Agent está integrado
 - **Sem configuração complexa** — faça login com Google ou cole qualquer chave API
-- **Capacidades completas do Agent** — leitura/escrita de arquivos, busca na web, geração de imagens, ferramentas MCP
+- **Capacidades completas do Agent** — leitura/escrita de arquivos, busca na web, fluxos de automação
 - **Assistentes prontos para usar** — 11+ assistentes profissionais integrados (Cowork, Gerador PPTX, PDF para PPT, Jogo 3D, UI/UX Pro Max e mais) prontos para usar imediatamente
 
 <p align="center">
@@ -99,7 +99,7 @@ Se você já usa Claude Code, Codex ou Qwen Code, ContextGo os detecta automatic
 - **Detecção automática** — reconhece automaticamente as ferramentas CLI instaladas
 - **Interface unificada** — uma plataforma Cowork para todos os seus AI Agents
 - **Sessões paralelas** — execute múltiplos Agents simultaneamente com contexto independente
-- **Gerenciamento unificado MCP** — configure as ferramentas MCP (Model Context Protocol) uma vez, sincronize automaticamente com todos os Agents — não precisa configurar cada Agent separadamente
+- **Espaço de colaboração unificado** — gerencie Agents integrados e CLI externos em um só lugar com sessões e contexto consistentes
 
 ---
 
@@ -518,7 +518,6 @@ R: Todos os dados são armazenados localmente em um banco de dados SQLite. Nada 
 - [📖 Guia de instalação completo](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-start) — Passos detalhados do download à configuração
 - [⚙️ Guia de configuração LLM](https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power) — Configuração de modelos AI multiplataforma
 - [🤖 Configuração do modo Multi-Agent](https://github.com/contextgo/contextgo/blob/main/readme.md#multi-agent-mode--already-have-cli-agents-bring-them-in) — Integrar Agents AI de terminal
-- [🔌 Configuração de ferramentas MCP](https://github.com/contextgo/contextgo/tree/main/docs) — Configuração do servidor Model Context Protocol
 - [🌐 Guia de configuração WebUI](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md) — Tutorial completo de configuração e instalação do WebUI
 
 **🎯 Casos de uso**

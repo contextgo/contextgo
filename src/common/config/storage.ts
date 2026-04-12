@@ -62,8 +62,6 @@ export interface IConfigStorageRefer {
   // Cached model lists per ACP backend for Guid page pre-selection
   'acp.cachedModels'?: Record<string, import('@/common/types/acpTypes').AcpModelInfo>;
   'model.config': IProvider[];
-  'mcp.config': IMcpServer[];
-  'mcp.agentInstallStatus': Record<string, string[]>;
   language: string;
   theme: string;
   colorScheme: string;
@@ -89,10 +87,6 @@ export interface IConfigStorageRefer {
   'assistant.lark.agent'?: { backend: string; name?: string; customAgentId?: string; presetAgentType?: string };
   'assistant.dingtalk.agent'?: { backend: string; name?: string; customAgentId?: string; presetAgentType?: string };
   'assistant.weixin.agent'?: { backend: string; name?: string; customAgentId?: string; presetAgentType?: string };
-  'tools.imageGenerationModel': TProviderWithModel & {
-    /** @deprecated Image generation is now controlled via built-in MCP server toggle */
-    switch?: boolean;
-  };
   // 是否在粘贴文件到工作区时询问确认（true = 不再询问）
   'workspace.pasteConfirm'?: boolean;
   // guid 页面上次选择的 agent 类型 / Last selected agent type on guid page
@@ -426,6 +420,8 @@ export type ConversationWorkspaceCompat = {
   workspace?: string;
   /** @deprecated Prefer mountId or workingDirectory. Kept for compatibility with existing runtime flows. */
   customWorkspace?: boolean;
+  /** Allow runtime-specific workspace bootstrap even when the workspace is user-selected. */
+  nativeWorkspaceBootstrap?: boolean;
 };
 
 export type ConversationRequiredWorkspaceCompat = {
@@ -433,6 +429,8 @@ export type ConversationRequiredWorkspaceCompat = {
   workspace: string;
   /** @deprecated Prefer mountId or workingDirectory. Kept only for compatibility with existing runtime flows. */
   customWorkspace?: boolean;
+  /** Allow runtime-specific workspace bootstrap even when the workspace is user-selected. */
+  nativeWorkspaceBootstrap?: boolean;
 };
 
 // Token 使用统计数据类型
@@ -676,7 +674,6 @@ export type ModelType =
   | 'text' // 文本对话
   | 'vision' // 视觉理解
   | 'function_calling' // 工具调用
-  | 'image_generation' // 图像生成
   | 'web_search' // 网络搜索
   | 'reasoning' // 推理模型
   | 'embedding' // 嵌入模型
@@ -805,9 +802,6 @@ export interface IMcpServer {
   /** Built-in MCP server managed by ContextGo (hide edit/delete in UI) */
   builtin?: boolean;
 }
-
-/** Stable ID for the built-in image generation MCP server */
-export const BUILTIN_IMAGE_GEN_ID = 'builtin-image-gen';
 
 export interface IMcpTool {
   name: string;

@@ -24,6 +24,7 @@ import {
   executeAssistantScheduleCommands,
   stripAssistantControlCommands,
 } from '@process/services/context/events/schedule/AssistantScheduleCommandService';
+import { emitScheduleEventMessage } from '@process/services/context/events/schedule/ScheduleEventMessageEmitter';
 import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 import { mainLog, mainWarn, mainError } from '@process/utils/mainLogger';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
@@ -42,6 +43,7 @@ interface AcpAgentManagerData {
   backend: AcpBackend;
   cliPath?: string;
   customWorkspace?: boolean;
+  nativeWorkspaceBootstrap?: boolean;
   conversation_id: string;
   customAgentId?: string; // 用于标识特定自定义代理的 UUID / UUID for identifying specific custom agent
   /** Display name for the agent (from extension or custom config) / Agent 显示名称（来自扩展或自定义配置） */
@@ -538,6 +540,18 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
                 agentType: this.options.backend,
               });
 
+              scheduleCommandResult.events.forEach((event) => {
+                emitScheduleEventMessage({
+                  conversationId: this.conversation_id,
+                  msgId: uuid(),
+                  event,
+                  emit: (message) => {
+                    ipcBridge.acpConversation.responseStream.emit(message);
+                    channelEventBus.emitAgentMessage(this.conversation_id, message);
+                  },
+                });
+              });
+
               const cleanedContent = stripAssistantControlCommands(finishedMsgContent);
               if (finishedMsgId && cleanedContent !== finishedMsgContent) {
                 await this.rewriteLatestAssistantMessage(finishedMsgId, cleanedContent);
@@ -691,12 +705,12 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         // 首条消息时注入预设规则和 skills
         // Inject preset rules and skills on first message
         //
-        // Symlinks 仅在临时工作空间创建；自定义工作空间跳过 symlink 以避免污染用户目录。
-        // Symlinks are only created for temp workspaces; custom workspaces skip symlinks.
-        // 因此自定义工作空间或不支持原生 skill 发现的 backend 都需要通过 prompt 注入 skills。
-        // So custom workspaces or backends without native skill discovery need prompt injection.
+        // 默认仅在临时工作空间使用原生 skills；显式 bootstrap 的用户工作空间也走原生发现。
+        // Native skills are the default for temp workspaces and opt-in user workspaces that were bootstrapped.
         if (this.isFirstMessage) {
-          const useNativeSkills = hasNativeSkillSupport(this.options.backend) && !this.options.customWorkspace;
+          const useNativeSkills =
+            hasNativeSkillSupport(this.options.backend) &&
+            (!this.options.customWorkspace || this.options.nativeWorkspaceBootstrap === true);
           if (useNativeSkills) {
             // Native skill discovery via workspace symlinks — only inject preset rules
             if (this.options.presetContext) {

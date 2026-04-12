@@ -206,12 +206,23 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
       hasContentInTurnRef.current = false;
       activeToolCallIdsRef.current = new Set();
     },
-    syncBackendState: (isRunning) => {
+    syncBackendState: (isRunning, hasCachedState) => {
       if (isRunning) {
-        setAiProcessing(true);
-      } else {
-        setRuntimePlanEntries([]);
+        if (!hasCachedState) {
+          setRunning(true);
+          setAiProcessing(true);
+        }
+        return;
       }
+
+      setRunning(false);
+      setAiProcessing(false);
+      setThought({ subject: '', description: '' });
+      setRuntimePlanEntries([]);
+      setHasActiveToolCalls(false);
+      setSawToolActivityInTurn(false);
+      hasContentInTurnRef.current = false;
+      activeToolCallIdsRef.current = new Set();
     },
   });
 

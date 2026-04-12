@@ -113,17 +113,6 @@ export function initExtensionsBridge(repo: IConversationRepository, taskManager:
     }
   });
 
-  // Get all extension-contributed MCP servers
-  ipcBridge.extensions.getMcpServers.provider(async () => {
-    try {
-      const registry = ExtensionRegistry.getInstance();
-      return registry.getMcpServers();
-    } catch (error) {
-      console.error('[Extensions] Failed to get MCP servers:', error);
-      return [];
-    }
-  });
-
   // Get all extension-contributed skills
   ipcBridge.extensions.getSkills.provider(async () => {
     try {

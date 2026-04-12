@@ -329,7 +329,7 @@ describe('fsBridge skills functionality', () => {
       const builtinBase = path.resolve('/mock/userData/builtin-skills');
       const userBase = path.resolve('/mock/userData/config/skills');
 
-      const yamlFrontmatterBuiltin = `---\nname: BuiltinTest\ndescription: 'A builtin test skill'\n---\n# Markdown content`;
+      const yamlFrontmatterBuiltin = `---\nname: BuiltinTest\ndescription: >-\n  A builtin test skill\n  with folded description text\ncompatibility:\n  - "Requires environment variable \`TEST_API_KEY\`."\n  - "Requires command-line tool \`python3\`."\n---\n# Markdown content`;
       const yamlFrontmatterCustom = `---\nname: CustomTest\ndescription: "A custom test skill"\n---\n`;
       const yamlFrontmatterDuplicate = `---\nname: BuiltinTest\ndescription: "Shadowed custom skill"\n---\n`;
 
@@ -339,7 +339,17 @@ describe('fsBridge skills functionality', () => {
         content: yamlFrontmatterBuiltin,
         isDirectory: false,
       };
+      mockFsStore[path.join(builtinBase, 'test-skill-1', 'agents')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'test-skill-1', 'agents', 'openai.yaml')] = {
+        content:
+          'interface:\n  display_name: "Builtin Test"\n  short_description: "Builtin test skill"\n  default_prompt: "Use $builtin-test."\n\ndependencies:\n  tools:\n    - type: "mcp"\n      value: "github"\n      description: "GitHub MCP server"\n      transport: "streamable_http"\n      url: "https://api.githubcopilot.com/mcp/"\n\npolicy:\n  allow_implicit_invocation: true\n',
+        isDirectory: false,
+      };
       mockFsStore[path.join(builtinBase, '_builtin')] = { isDirectory: true }; // Should be skipped
+      mockFsStore[path.resolve('/mock/bin')] = { isDirectory: true };
+      mockFsStore[path.resolve('/mock/bin/python3')] = { content: '', isDirectory: false };
+      process.env.PATH = '/mock/bin';
+      process.env.TEST_API_KEY = 'configured';
 
       mockFsStore[userBase] = { isDirectory: true };
       mockFsStore[path.join(userBase, 'custom-skill')] = { isDirectory: true };
@@ -363,7 +373,54 @@ describe('fsBridge skills functionality', () => {
       const builtin = result.find((s: any) => s.name === 'BuiltinTest');
       expect(builtin).toBeDefined();
       expect(builtin.isCustom).toBe(false); // Keeps builtin status even though duplicate exists in user dir
-      expect(builtin.description).toBe('A builtin test skill');
+      expect(builtin.description).toBe('A builtin test skill with folded description text');
+      expect(builtin.compatibility).toEqual([
+        'Requires environment variable `TEST_API_KEY`.',
+        'Requires command-line tool `python3`.',
+      ]);
+      expect(builtin.openAIConfig).toEqual({
+        interface: {
+          displayName: 'Builtin Test',
+          shortDescription: 'Builtin test skill',
+          defaultPrompt: 'Use $builtin-test.',
+        },
+        dependencies: {
+          tools: [
+            {
+              type: 'mcp',
+              value: 'github',
+              description: 'GitHub MCP server',
+              transport: 'streamable_http',
+              url: 'https://api.githubcopilot.com/mcp/',
+            },
+          ],
+        },
+        policy: {
+          allowImplicitInvocation: true,
+        },
+      });
+      expect(builtin.dependencyHints).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'env',
+            label: 'TEST_API_KEY',
+            status: 'ready',
+            source: 'compatibility',
+          }),
+          expect.objectContaining({
+            kind: 'command',
+            label: 'python3',
+            status: 'ready',
+            source: 'compatibility',
+          }),
+          expect.objectContaining({
+            kind: 'mcp',
+            label: 'github',
+            status: 'info',
+            source: 'openai',
+          }),
+        ])
+      );
 
       const custom = result.find((s: any) => s.name === 'CustomTest');
       expect(custom).toBeDefined();

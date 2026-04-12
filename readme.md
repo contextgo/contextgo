@@ -77,7 +77,7 @@ ContextGo ships with a complete AI agent engine. Unlike tools that require you t
 
 - **No CLI tools to install** — the agent engine is built in
 - **No complex setup** — sign in with Google or paste any API key
-- **Full agent capabilities** — file read/write, web search, image generation, MCP tools
+- **Full agent capabilities** — file read/write, web search, automation workflows
 - **Ready-to-use assistants** — 11+ built-in professional assistants (Cowork, PPTX Generator, PDF to PPT, 3D Game, UI/UX Pro Max, and more) ready to use immediately
 
 <p align="center">
@@ -99,7 +99,7 @@ If you already use Claude Code, Codex, or Qwen Code, ContextGo auto-detects them
 - **Auto Detection** — automatically recognizes installed CLI tools
 - **Unified Interface** — one Cowork platform for all your AI agents
 - **Parallel Sessions** — run multiple agents simultaneously with independent context
-- **MCP Unified Management** — configure MCP (Model Context Protocol) tools once, automatically sync to all agents — no need to configure each agent separately
+- **Unified collaboration workspace** — manage built-in and external CLI agents in one place with consistent sessions and context
 
 ---
 
@@ -115,7 +115,7 @@ Other AI apps give you a chatbox with your API key. **ContextGo gives you a full
 | Ollama / LM Studio (local)              | Local model Cowork Agent     |
 | NewAPI Gateway                          | Unified access to 20+ models |
 
-Same agent capabilities — file read/write, web search, image generation, tool use — regardless of which model powers it. ContextGo supports **20+ AI platforms** including cloud services and local deployments.
+Same agent capabilities — file read/write, web search, tool use — regardless of which model powers it. ContextGo supports **20+ AI platforms** including cloud services and local deployments.
 
 <p align="center">
   <img src="./resources/llm_newapi.png" alt="Multi-Model Support" width="800">
@@ -320,33 +320,6 @@ _Deeply analyze Excel data, automatically beautify reports, and generate insight
 
 </details>
 
----
-
-### **AI Image Generation & Editing**
-
-_Intelligent image generation, editing, and recognition, powered by Gemini_
-
-<p align="center">
-
-  <img src="./resources/Image_Generation.gif" alt="AI Image Generation" width="800">
-</p>
-
-<details>
-<summary><strong>🔍 View Image Generation Features ▶️</strong></summary>
-
-<br>
-
-- **Text-to-Image** — Generate images from natural language descriptions
-- **Image Editing** — Modify and enhance existing images
-- **Image Recognition** — Analyze and describe image content
-- **Batch Processing** — Generate multiple images at once
-
-</details>
-
-> [Image generation model configuration guide](https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing)
-
----
-
 ### **Document Generation — PPT, Word, Markdown**
 
 _Automatically generate professional documents — presentations, reports, and more — with AI agents._
@@ -437,7 +410,7 @@ A: <strong>No.</strong> ContextGo has a built-in AI agent that works immediately
 
 <details>
 <summary><strong>Q: What can I do with ContextGo?</strong></summary>
-A: ContextGo is your <strong>private Cowork workspace</strong>. The built-in agent can batch organize folders, process Excel data, generate documents, search the web, and generate images. With Multi-Agent Mode, you can also leverage Claude Code, Codex, and other powerful CLI agents through the same interface.
+A: ContextGo is your <strong>private Cowork workspace</strong>. The built-in agent can batch organize folders, process Excel data, generate documents, and search the web. With Multi-Agent Mode, you can also leverage Claude Code, Codex, and other powerful CLI agents through the same interface.
 </details>
 
 <details>
@@ -518,7 +491,6 @@ A: All data is stored locally in a SQLite database. Nothing is uploaded to any s
 - [📖 Complete Installation Guide](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-start) — Detailed steps from download to configuration
 - [⚙️ LLM Configuration Guide](https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power) — Multi-platform AI model configuration
 - [🤖 Multi-Agent Mode Setup](https://github.com/contextgo/contextgo/blob/main/readme.md#multi-agent-mode--already-have-cli-agents-bring-them-in) — Integrate terminal AI agents
-- [🔌 MCP Tool Configuration](https://github.com/contextgo/contextgo/tree/main/docs) — Model Context Protocol server setup
 - [🌐 WebUI Configuration Guide](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md) — Complete WebUI setup and configuration tutorial
 
 **🎯 Use Cases**

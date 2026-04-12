@@ -34,7 +34,13 @@ import {
   getBuiltinHooksCopyDir,
 } from '@process/utils/initStorage';
 import { readDirectoryRecursive } from '@process/utils';
-import { discoverSkillDirectories, resolveSkillDirectory } from '@process/utils/skillDiscovery';
+import {
+  buildSkillDependencyHints,
+  discoverSkillDirectories,
+  parseSkillFrontmatter,
+  readSkillOpenAIConfig,
+  resolveSkillDirectory,
+} from '@process/utils/skillDiscovery';
 
 const execFileAsync = promisify(execFile);
 const SKILLS_MARKET_SKILL_DIR = 'contextgo-skills';
@@ -995,6 +1001,33 @@ export function initFsBridge(): void {
       const skills: Array<{
         name: string;
         description: string;
+        compatibility: string[];
+        dependencyHints: Array<{
+          kind: 'env' | 'command' | 'network' | 'mcp' | 'note';
+          label: string;
+          status: 'ready' | 'missing' | 'info';
+          source: 'compatibility' | 'openai';
+          detail?: string;
+        }>;
+        openAIConfig?: {
+          interface?: {
+            displayName?: string;
+            shortDescription?: string;
+            defaultPrompt?: string;
+          };
+          policy?: {
+            allowImplicitInvocation?: boolean;
+          };
+          dependencies?: {
+            tools: Array<{
+              type: string;
+              value: string;
+              description?: string;
+              transport?: string;
+              url?: string;
+            }>;
+          };
+        };
         location: string;
         isCustom: boolean;
       }> = [];
@@ -1006,9 +1039,18 @@ export function initFsBridge(): void {
         });
 
         for (const skill of discoveredSkills) {
+          const openAIConfig = await readSkillOpenAIConfig(skill.dirPath);
+          const dependencyHints = await buildSkillDependencyHints({
+            compatibility: skill.compatibility,
+            openAIConfig,
+          });
+
           skills.push({
             name: skill.name,
             description: skill.description,
+            compatibility: skill.compatibility,
+            dependencyHints,
+            openAIConfig,
             location: path.join(skill.dirPath, 'SKILL.md'),
             isCustom: isCustomDir,
           });
@@ -1028,7 +1070,42 @@ export function initFsBridge(): void {
       const userCount = skills.length - userCountBefore;
 
       // Deduplicate: if a custom skill has the same name as a builtin, keep builtin
-      const skillMap = new Map<string, { name: string; description: string; location: string; isCustom: boolean }>();
+      const skillMap = new Map<
+        string,
+        {
+          name: string;
+          description: string;
+          compatibility: string[];
+          dependencyHints: Array<{
+            kind: 'env' | 'command' | 'network' | 'mcp' | 'note';
+            label: string;
+            status: 'ready' | 'missing' | 'info';
+            source: 'compatibility' | 'openai';
+            detail?: string;
+          }>;
+          openAIConfig?: {
+            interface?: {
+              displayName?: string;
+              shortDescription?: string;
+              defaultPrompt?: string;
+            };
+            policy?: {
+              allowImplicitInvocation?: boolean;
+            };
+            dependencies?: {
+              tools: Array<{
+                type: string;
+                value: string;
+                description?: string;
+                transport?: string;
+                url?: string;
+              }>;
+            };
+          };
+          location: string;
+          isCustom: boolean;
+        }
+      >();
       for (const skill of skills) {
         const existing = skillMap.get(skill.name);
         if (!existing || !skill.isCustom) {
@@ -1347,27 +1424,13 @@ export function initFsBridge(): void {
 
       // 读取 SKILL.md 获取 skill 信息 / Read SKILL.md to get skill info
       const content = await fs.readFile(skillMdPath, 'utf-8');
-      const frontMatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-      let skillName = path.basename(skillPath); // 默认使用目录名 / Default to directory name
-      let skillDescription = '';
-
-      if (frontMatterMatch) {
-        const yaml = frontMatterMatch[1];
-        const nameMatch = yaml.match(/^name:\s*(.+)$/m);
-        const descMatch = yaml.match(/^description:\s*['"]?(.+?)['"]?$/m);
-        if (nameMatch) {
-          skillName = nameMatch[1].trim();
-        }
-        if (descMatch) {
-          skillDescription = descMatch[1].trim();
-        }
-      }
+      const parsed = parseSkillFrontmatter(content, path.basename(skillPath));
 
       return {
         success: true,
         data: {
-          name: skillName,
-          description: skillDescription,
+          name: parsed.name,
+          description: parsed.description,
         },
         msg: 'Skill info loaded successfully',
       };

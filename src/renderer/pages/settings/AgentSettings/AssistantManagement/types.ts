@@ -2,10 +2,43 @@ import type { Message } from '@arco-design/web-react';
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import type { HookInfo as SharedHookInfo } from '@/common/types/hookTypes';
 
+export type SkillDependencyHint = {
+  kind: 'env' | 'command' | 'network' | 'mcp' | 'note';
+  label: string;
+  status: 'ready' | 'missing' | 'info';
+  source: 'compatibility' | 'openai';
+  detail?: string;
+};
+
+export type SkillOpenAIToolDependency = {
+  type: string;
+  value: string;
+  description?: string;
+  transport?: string;
+  url?: string;
+};
+
+export type SkillOpenAIConfig = {
+  interface?: {
+    displayName?: string;
+    shortDescription?: string;
+    defaultPrompt?: string;
+  };
+  policy?: {
+    allowImplicitInvocation?: boolean;
+  };
+  dependencies?: {
+    tools: SkillOpenAIToolDependency[];
+  };
+};
+
 // Skill info type
 export type SkillInfo = {
   name: string;
   description: string;
+  compatibility?: string[];
+  dependencyHints?: SkillDependencyHint[];
+  openAIConfig?: SkillOpenAIConfig;
   location: string;
   isCustom: boolean;
 };
@@ -136,6 +169,9 @@ export type PendingSkill =
 export type RelevantAssistantSkill = {
   name: string;
   description: string;
+  compatibility?: string[];
+  dependencyHints?: SkillDependencyHint[];
+  openAIConfig?: SkillOpenAIConfig;
   isCustom: boolean;
   isPending: boolean;
 };

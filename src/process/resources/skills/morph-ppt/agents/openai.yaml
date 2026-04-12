@@ -1,0 +1,7 @@
+interface:
+  display_name: 'Morph PPT'
+  short_description: 'Plan and generate Morph-animated PowerPoint decks'
+  default_prompt: 'Use $morph-ppt to plan, script, and generate a polished Morph-animated PowerPoint deck for this topic.'
+
+policy:
+  allow_implicit_invocation: true

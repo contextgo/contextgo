@@ -5,6 +5,7 @@
  */
 
 import type { AcpBackendAll } from '@/common/types/acpTypes';
+import type { ScheduleEventPayload } from '@/common/types/schedule/events';
 import { scheduleService } from '@process/services/context/scheduleServiceSingleton';
 import type { IContextSchedule } from '@/common/adapter/ipcBridge';
 
@@ -36,6 +37,7 @@ export type AssistantScheduleCommandResult = {
   cleanedContent: string;
   hasCommands: boolean;
   systemResponses: string[];
+  events: ScheduleEventPayload[];
 };
 
 function normalizeCommandSpacing(content: string): string {
@@ -142,11 +144,18 @@ async function executeScheduleCommand(
   command: ScheduleCommand,
   conversationId: string,
   agentType: AcpBackendAll
-): Promise<string> {
+): Promise<{ systemResponse: string; event: ScheduleEventPayload }> {
   switch (command.type) {
     case 'list': {
       const schedules = await scheduleService.listConversationSchedules(conversationId);
-      return formatScheduleListResult(schedules);
+      return {
+        systemResponse: formatScheduleListResult(schedules),
+        event: {
+          source: 'assistant-skill',
+          action: 'list',
+          schedules,
+        },
+      };
     }
     case 'delete': {
       const schedule = await scheduleService.getSchedule(command.scheduleId);
@@ -163,7 +172,14 @@ async function executeScheduleCommand(
       }
 
       await scheduleService.removeSchedule(command.scheduleId);
-      return formatScheduleDeleteResult(command.scheduleId);
+      return {
+        systemResponse: formatScheduleDeleteResult(command.scheduleId),
+        event: {
+          source: 'assistant-skill',
+          action: 'delete',
+          scheduleId: command.scheduleId,
+        },
+      };
     }
     case 'create': {
       if (!command.name || !command.scheduleExpr || !command.scheduleDescription || !command.message) {
@@ -183,7 +199,15 @@ async function executeScheduleCommand(
         createdBy: 'agent',
       });
 
-      return formatScheduleCreateResult(schedule);
+      return {
+        systemResponse: formatScheduleCreateResult(schedule),
+        event: {
+          source: 'assistant-skill',
+          action: 'create',
+          schedule,
+          scheduleId: schedule.id,
+        },
+      };
     }
   }
 }
@@ -215,19 +239,29 @@ export async function executeAssistantScheduleCommands(params: {
       cleanedContent: stripAssistantControlCommands(content),
       hasCommands: false,
       systemResponses: [],
+      events: [],
     };
   }
 
   const systemResponses: string[] = [];
+  const events: ScheduleEventPayload[] = [];
 
   for (const command of commands) {
     try {
       // Commands are executed in appearance order to preserve the assistant's intended workflow.
       // eslint-disable-next-line no-await-in-loop
       const result = await executeScheduleCommand(command, conversationId, agentType);
-      systemResponses.push(result);
+      systemResponses.push(result.systemResponse);
+      events.push(result.event);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       systemResponses.push(formatScheduleCommandError(error));
+      events.push({
+        source: 'assistant-skill',
+        action: 'error',
+        scheduleId: command.type === 'delete' ? command.scheduleId : undefined,
+        error: message,
+      });
     }
   }
 
@@ -235,5 +269,6 @@ export async function executeAssistantScheduleCommands(params: {
     cleanedContent: stripAssistantControlCommands(content),
     hasCommands: true,
     systemResponses,
+    events,
   };
 }

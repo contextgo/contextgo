@@ -57,6 +57,14 @@ describe('getElectronConfigCandidatePaths', () => {
   });
 });
 
+describe('MIGRATABLE_KEYS', () => {
+  it('does not include removed MCP or image generation config keys', async () => {
+    const { MIGRATABLE_KEYS } = await import('../../../../src/process/utils/configMigration');
+    expect(MIGRATABLE_KEYS).not.toContain('mcp.config');
+    expect(MIGRATABLE_KEYS).not.toContain('tools.imageGenerationModel');
+  });
+});
+
 describe('migrateFromElectronConfig', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -97,39 +105,6 @@ describe('migrateFromElectronConfig', () => {
     const { migrateFromElectronConfig } = await import('../../../../src/process/utils/configMigration');
     await migrateFromElectronConfig(configStore as any);
     expect(configStore.set).not.toHaveBeenCalled();
-  });
-
-  it('skips mcp.config write when all entries are builtin, but still sets flag', async () => {
-    const sourceData = {
-      'mcp.config': [
-        {
-          id: 'builtin-img',
-          name: 'img',
-          builtin: true,
-          enabled: false,
-          transport: { type: 'stdio', command: 'node', args: ['/path.js'] },
-          createdAt: 1,
-          updatedAt: 1,
-        },
-      ],
-    };
-    const encodedSource = Buffer.from(encodeURIComponent(JSON.stringify(sourceData))).toString('base64');
-    const store: Record<string, unknown> = {};
-    const configStore = {
-      get: vi.fn(async (key: string) => store[key]),
-      set: vi.fn(async (key: string, value: unknown) => {
-        store[key] = value;
-        return value;
-      }),
-    };
-    vi.doMock('fs', () => ({
-      existsSync: vi.fn().mockReturnValue(true),
-      readFileSync: vi.fn().mockReturnValue(encodedSource),
-    }));
-    const { migrateFromElectronConfig } = await import('../../../../src/process/utils/configMigration');
-    await migrateFromElectronConfig(configStore as any);
-    expect(configStore.set).not.toHaveBeenCalledWith('mcp.config', expect.anything());
-    expect(configStore.set).toHaveBeenCalledWith('migration.electronConfigImported', true);
   });
 
   it('does not set migration flag when source file decodes to {}', async () => {
@@ -206,53 +181,6 @@ describe('migrateFromElectronConfig', () => {
     // flag is still set even though no keys were actually written
     expect(configStore.set).toHaveBeenCalledWith('migration.electronConfigImported', true);
   });
-
-  it('filters builtin:true entries from mcp.config', async () => {
-    const sourceData = {
-      'mcp.config': [
-        {
-          id: 'builtin-img',
-          name: 'img-gen',
-          builtin: true,
-          enabled: false,
-          transport: { type: 'stdio', command: 'node', args: ['/abs/path.js'] },
-          createdAt: 1,
-          updatedAt: 1,
-        },
-        {
-          id: 'user-mcp',
-          name: 'my-server',
-          builtin: false,
-          enabled: true,
-          transport: { type: 'stdio', command: 'npx', args: ['some-mcp'] },
-          createdAt: 1,
-          updatedAt: 1,
-        },
-      ],
-    };
-    const encodedSource = Buffer.from(encodeURIComponent(JSON.stringify(sourceData))).toString('base64');
-
-    const store: Record<string, unknown> = {};
-    const configStore = {
-      get: vi.fn(async (key: string) => store[key]),
-      set: vi.fn(async (key: string, value: unknown) => {
-        store[key] = value;
-        return value;
-      }),
-    };
-    vi.doMock('fs', () => ({
-      existsSync: vi.fn().mockReturnValue(true),
-      readFileSync: vi.fn().mockReturnValue(encodedSource),
-    }));
-    const { migrateFromElectronConfig } = await import('../../../../src/process/utils/configMigration');
-    await migrateFromElectronConfig(configStore as any);
-
-    const writtenMcp = (configStore.set as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([k]) => k === 'mcp.config'
-    )?.[1] as unknown[];
-    expect(writtenMcp).toHaveLength(1);
-    expect((writtenMcp[0] as any).id).toBe('user-mcp');
-  });
 });
 
 describe('importConfigFromFile', () => {
@@ -317,51 +245,6 @@ describe('importConfigFromFile', () => {
     const { importConfigFromFile } = await import('../../../../src/process/utils/configMigration');
     await importConfigFromFile('/path/contextgo-config.txt', true, configStore as any);
     expect(configStore.set).toHaveBeenCalledWith('model.config', sourceData['model.config']);
-  });
-
-  it('always filters builtin:true from mcp.config regardless of overwrite', async () => {
-    const sourceData = {
-      'mcp.config': [
-        {
-          id: 'builtin',
-          builtin: true,
-          name: 'b',
-          enabled: false,
-          transport: { type: 'stdio', command: 'node', args: [] },
-          createdAt: 1,
-          updatedAt: 1,
-        },
-        {
-          id: 'user',
-          builtin: false,
-          name: 'u',
-          enabled: true,
-          transport: { type: 'stdio', command: 'npx', args: ['mcp'] },
-          createdAt: 1,
-          updatedAt: 1,
-        },
-      ],
-    };
-    const encodedSource = Buffer.from(encodeURIComponent(JSON.stringify(sourceData))).toString('base64');
-    const store: Record<string, unknown> = {};
-    const configStore = {
-      get: vi.fn(async (key: string) => store[key]),
-      set: vi.fn(async (key: string, value: unknown) => {
-        store[key] = value;
-        return value;
-      }),
-    };
-    vi.doMock('fs', () => ({
-      existsSync: vi.fn().mockReturnValue(true),
-      readFileSync: vi.fn().mockReturnValue(encodedSource),
-    }));
-    const { importConfigFromFile } = await import('../../../../src/process/utils/configMigration');
-    await importConfigFromFile('/path/contextgo-config.txt', true, configStore as any);
-    const written = (configStore.set as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([k]) => k === 'mcp.config'
-    )?.[1] as unknown[];
-    expect(written).toHaveLength(1);
-    expect((written[0] as any).id).toBe('user');
   });
 
   it('resolves relative path and warns', async () => {

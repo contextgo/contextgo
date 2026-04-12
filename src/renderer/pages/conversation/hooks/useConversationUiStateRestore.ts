@@ -1,5 +1,9 @@
 import { ipcBridge } from '@/common';
-import { readConversationUiState, writeConversationUiState } from './conversationUiStateCache';
+import {
+  hasConversationUiState,
+  readConversationUiState,
+  writeConversationUiState,
+} from './conversationUiStateCache';
 import { useEffect } from 'react';
 
 type UseConversationUiStateRestoreOptions<TState> = {
@@ -9,7 +13,7 @@ type UseConversationUiStateRestoreOptions<TState> = {
   createDefaultState: () => TState;
   applyCachedState: (state: TState) => void;
   resetTransientState?: () => void;
-  syncBackendState?: (isRunning: boolean) => void;
+  syncBackendState?: (isRunning: boolean, hasCachedState: boolean) => void;
 };
 
 export const useConversationUiStateRestore = <TState>(options: UseConversationUiStateRestoreOptions<TState>): void => {
@@ -21,6 +25,7 @@ export const useConversationUiStateRestore = <TState>(options: UseConversationUi
   }, [conversationId, scope, state]);
 
   useEffect(() => {
+    const hasCachedState = hasConversationUiState(scope, conversationId);
     const cachedState = readConversationUiState(scope, conversationId, createDefaultState());
     applyCachedState(cachedState);
     resetTransientState?.();
@@ -30,7 +35,7 @@ export const useConversationUiStateRestore = <TState>(options: UseConversationUi
     }
 
     void ipcBridge.conversation.get.invoke({ id: conversationId }).then((conversation) => {
-      syncBackendState(conversation?.status === 'running');
+      syncBackendState(conversation?.status === 'running', hasCachedState);
     });
   }, [applyCachedState, conversationId, createDefaultState, resetTransientState, scope, syncBackendState]);
 };
