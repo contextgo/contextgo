@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockSetProcessing = vi.fn();
+const mockExecuteAssistantSkillMarketCommands = vi.fn();
 
 vi.mock('@/common/platform', () => ({
   getPlatformServices: () => ({
@@ -49,10 +50,19 @@ vi.mock('@process/services/context/events/schedule/ScheduleEventMessageEmitter',
   emitScheduleEventMessage: vi.fn(),
 }));
 
+vi.mock('@process/services/context/events/AssistantSkillMarketCommandService', () => ({
+  executeAssistantSkillMarketCommands: (...args: unknown[]) => mockExecuteAssistantSkillMarketCommands(...args),
+}));
+
 describe('CodexMessageProcessor', () => {
   beforeEach(() => {
     vi.resetModules();
     mockSetProcessing.mockReset();
+    mockExecuteAssistantSkillMarketCommands.mockResolvedValue({
+      cleanedContent: '',
+      hasCommands: false,
+      systemResponses: [],
+    });
   });
 
   it('schedules after_response hooks when the final message does not continue via system feedback', async () => {
@@ -126,6 +136,45 @@ describe('CodexMessageProcessor', () => {
       }),
       false
     );
+  });
+
+  it('continues with system feedback after a skill market command instead of exposing raw protocol text', async () => {
+    mockExecuteAssistantSkillMarketCommands.mockResolvedValue({
+      cleanedContent: '我先帮你找找',
+      hasCommands: true,
+      systemResponses: ['[SkillMarket Result]\nFound 1 matching skill(s).'],
+    });
+
+    const { CodexMessageProcessor } = await import('../../src/process/agent/codex/messaging/CodexMessageProcessor');
+    const emitter = {
+      emitAndPersistMessage: vi.fn(),
+      persistMessage: vi.fn(),
+      addConfirmation: vi.fn(),
+      scheduleAfterResponseHooks: vi.fn(),
+      updateFinalAssistantContent: vi.fn(),
+      sendMessageToAgent: vi.fn(),
+    };
+
+    const processor = new CodexMessageProcessor('conv-skillmarket', emitter as any);
+    processor.processTaskStart();
+
+    processor.processMessageDelta({
+      type: 'agent_message_delta',
+      delta: '我先帮你找找\n[SKILLMARKET_SEARCH]\nquery: browser history\n',
+    } as any);
+    processor.processMessageDelta({
+      type: 'agent_message_delta',
+      delta: 'view: curated\n[/SKILLMARKET_SEARCH]\n',
+    } as any);
+
+    await processor.processFinalMessage({
+      type: 'agent_message',
+      message: '我先帮你找找\n[SKILLMARKET_SEARCH]\nquery: browser history\nview: curated\n[/SKILLMARKET_SEARCH]',
+    } as any);
+
+    expect(emitter.persistMessage).toHaveBeenCalledWith(expect.objectContaining({ content: { content: '我先帮你找找' } }));
+    expect(emitter.sendMessageToAgent).toHaveBeenCalledWith('[System Response]\n[SkillMarket Result]\nFound 1 matching skill(s).');
+    expect(emitter.scheduleAfterResponseHooks).not.toHaveBeenCalled();
   });
 
   it('overwrites thought payloads with the latest reasoning chunk instead of accumulating them', async () => {

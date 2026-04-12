@@ -7,6 +7,7 @@
 import { acpConversation, cloud } from '@/common/adapter/ipcBridge';
 import type { CloudStatus } from '@/common/types/cloud';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import { OFFICIAL_REMOTE_DEVICES_ROUTE } from '@/renderer/utils/officialRemote';
 import { Button } from '@arco-design/web-react';
 import { Download, Earth } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -82,7 +83,7 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
 
     void loadCloudStatus();
 
-    const unsubscribe = cloud.statusChanged.on(nextStatus => {
+    const unsubscribe = cloud.statusChanged.on((nextStatus) => {
       setCloudStatus(nextStatus);
       setCloudStatusLoading(false);
       cloudStatusCache = { status: nextStatus, at: Date.now() };
@@ -146,7 +147,7 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
   );
 
   const handleOpenWebUI = useCallback(() => {
-    void navigate('/settings/webui');
+    void navigate(OFFICIAL_REMOTE_DEVICES_ROUTE);
   }, [navigate]);
 
   const officialRemoteStatus = cloudStatus?.officialRemote;

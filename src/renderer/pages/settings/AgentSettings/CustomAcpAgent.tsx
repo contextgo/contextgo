@@ -86,7 +86,7 @@ const hasRuntimeAuthIssue = (message?: string): boolean => {
 };
 
 const MANAGED_RUNTIME_BACKENDS: readonly ManagedRuntimeBackend[] = PRODUCT_VISIBLE_RUNTIME_BACKENDS;
-const CONFIGURABLE_RUNTIME_BACKENDS = new Set<ManagedRuntimeBackend>(['gemini', 'claude', 'codex', 'openclaw-gateway']);
+const CONFIGURABLE_RUNTIME_BACKENDS = new Set<ManagedRuntimeBackend>(['gemini', 'claude', 'codex']);
 
 const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   gemini: {
@@ -116,19 +116,6 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
     sessionProvider: 'opencode',
     descriptionKey: 'settings.runtimeManager.runtime.opencode.description',
     descriptionDefault: 'OpenCode CLI runtime.',
-  },
-  'openclaw-gateway': {
-    backend: 'openclaw-gateway',
-    docsUrl: 'https://github.com/openclaw/openclaw',
-    sessionProvider: 'openclaw-gateway',
-    descriptionKey: 'settings.runtimeManager.runtime.openclaw-gateway.description',
-    descriptionDefault: 'OpenClaw gateway runtime.',
-  },
-  nanobot: {
-    backend: 'nanobot',
-    docsUrl: 'https://github.com/HKUDS/nanobot',
-    descriptionKey: 'settings.runtimeManager.runtime.nanobot.description',
-    descriptionDefault: 'Nanobot CLI runtime.',
   },
 };
 

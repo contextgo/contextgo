@@ -53,10 +53,6 @@ const MANAGED_RUNTIME_INSTALL_COMMANDS: Record<(typeof MANAGED_RUNTIME_INSTALLAB
   claude: 'npm install -g @anthropic-ai/claude-code',
   codex: 'npm install -g @openai/codex',
   opencode: 'npm install -g @opencode-ai/cli',
-  qwen: 'npm install -g @qwen-code/qwen-code@latest',
-  codebuddy: 'npm install -g @tencent-ai/codebuddy-code',
-  'openclaw-gateway': 'npm install -g openclaw',
-  nanobot: 'python3 -m pip install -U nanobot-ai',
 };
 
 const OPENCLAW_DEFAULT_STATE_DIR = path.join(os.homedir(), '.openclaw');

@@ -15,6 +15,8 @@ interface WorkspaceCollapseProps {
   onToggle: () => void;
   /** 折叠面板的标题 */
   header: React.ReactNode;
+  /** 头部右侧操作 */
+  headerActions?: React.ReactNode;
   /** 折叠面板的内容 */
   children: React.ReactNode;
   /** 额外的类名 */
@@ -30,6 +32,7 @@ const WorkspaceCollapse: React.FC<WorkspaceCollapseProps> = ({
   expanded,
   onToggle,
   header,
+  headerActions,
   children,
   className,
   siderCollapsed = false,
@@ -42,7 +45,7 @@ const WorkspaceCollapse: React.FC<WorkspaceCollapseProps> = ({
       {/* 折叠头部 - 侧栏折叠时隐藏 */}
       {!siderCollapsed && (
         <div
-          className='flex w-full min-w-0 items-center gap-8px h-32px cursor-pointer hover:bg-hover rd-4px transition-colors px-8px py-4px'
+          className='group flex h-32px w-full min-w-0 cursor-pointer items-center gap-8px rounded-4px px-8px py-4px transition-colors hover:bg-hover'
           onClick={onToggle}
         >
           {/* 展开/收起箭头 */}
@@ -56,6 +59,12 @@ const WorkspaceCollapse: React.FC<WorkspaceCollapseProps> = ({
 
           {/* 标题内容 */}
           <div className='ml-6px flex-1 min-w-0 overflow-hidden'>{header}</div>
+
+          {headerActions ? (
+            <div className='ml-0 max-w-0 shrink-0 overflow-hidden opacity-0 transition-[max-width,opacity,margin] duration-150 group-hover:ml-8px group-hover:max-w-48px group-hover:opacity-100 group-focus-within:ml-8px group-focus-within:max-w-48px group-focus-within:opacity-100'>
+              {headerActions}
+            </div>
+          ) : null}
         </div>
       )}
 

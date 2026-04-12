@@ -44,6 +44,13 @@
       "operation_other": "执行 {{count}} 个文件操作"
     }
   },
+  "jsonCard": {
+    "parameters": "参数",
+    "rawJson": "原始 JSON",
+    "model": "模型",
+    "prompt": "提示词",
+    "size": "尺寸"
+  },
   "stepSummary": {
     "viewSteps": "查看步骤",
     "tools": "{{count}} 个工具",

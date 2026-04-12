@@ -8,6 +8,7 @@ const importHookWithSymlinkMock = vi.fn();
 const deleteHookMock = vi.fn();
 const installBuiltinHookMock = vi.fn();
 const updateHookManifestMock = vi.fn();
+const readSkillContentMock = vi.fn();
 const showOpenMock = vi.fn();
 const openFileMock = vi.fn();
 const showItemInFolderMock = vi.fn();
@@ -29,6 +30,7 @@ vi.mock('@/common', () => ({
       deleteHook: { invoke: (...args: unknown[]) => deleteHookMock(...args) },
       installBuiltinHook: { invoke: (...args: unknown[]) => installBuiltinHookMock(...args) },
       updateHookManifest: { invoke: (...args: unknown[]) => updateHookManifestMock(...args) },
+      readSkillContent: { invoke: (...args: unknown[]) => readSkillContentMock(...args) },
     },
     dialog: {
       showOpen: { invoke: (...args: unknown[]) => showOpenMock(...args) },
@@ -459,6 +461,75 @@ describe('HooksManagement', () => {
     await waitFor(() => {
       expect(screen.getByText('continuity-handoff')).toBeInTheDocument();
     });
+  });
+});
+
+describe('AssistantEditDrawer skill preview', () => {
+  it('loads full skill content into the preview modal from assistant details', async () => {
+    readSkillContentMock.mockResolvedValue({
+      success: true,
+      data: {
+        content: '---\nname: skill-a\ndescription: Test skill\n---\n\n# Skill A',
+      },
+    });
+
+    render(
+      <AssistantEditDrawer
+        editVisible={true}
+        setEditVisible={vi.fn()}
+        isCreating={true}
+        editName='Assistant'
+        setEditName={vi.fn()}
+        editDescription=''
+        setEditDescription={vi.fn()}
+        editAvatar='🤖'
+        setEditAvatar={vi.fn()}
+        editAvatarImage={undefined}
+        editAgent='codex'
+        setEditAgent={vi.fn()}
+        editContext=''
+        setEditContext={vi.fn()}
+        promptViewMode='edit'
+        setPromptViewMode={vi.fn()}
+        availableSkills={[{ name: 'skill-a', description: 'Builtin A', location: '/skills/a/SKILL.md', isCustom: false }]}
+        availableHooks={[]}
+        selectedSkills={['skill-a']}
+        setSelectedSkills={vi.fn()}
+        selectedHooks={[]}
+        setSelectedHooks={vi.fn()}
+        hooksLoading={false}
+        hooksDir='/hooks'
+        handleRefreshHooks={vi.fn().mockResolvedValue([])}
+        handleImportHook={vi.fn().mockResolvedValue(undefined)}
+        handleOpenHooksDir={vi.fn().mockResolvedValue(undefined)}
+        deleteHookName={null}
+        setDeleteHookName={vi.fn()}
+        handleDeleteHookConfirm={vi.fn().mockResolvedValue(undefined)}
+        pendingSkills={[]}
+        customSkills={[]}
+        setDeletePendingSkillName={vi.fn()}
+        setDeleteCustomSkillName={vi.fn()}
+        setSkillsModalVisible={vi.fn()}
+        activeAssistant={null}
+        activeAssistantId={null}
+        isReadonlyAssistant={false}
+        isExtensionAssistant={() => false}
+        availableBackends={new Set(['codex'])}
+        extensionAcpAdapters={[]}
+        handleSave={vi.fn()}
+        handleDeleteClick={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    await waitFor(() => {
+      expect(readSkillContentMock).toHaveBeenCalledWith({ skillPath: '/skills/a/SKILL.md' });
+    });
+
+    expect(screen.getByText('Skill Preview')).toBeInTheDocument();
+    expect(screen.getAllByText('skill-a')).toHaveLength(2);
+    expect(screen.getByText(/# Skill A/)).toBeInTheDocument();
   });
 });
 

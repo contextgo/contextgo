@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
 import {
   ArrowCircleLeft,
+  Earth,
   ExpandLeft,
   ExpandRight,
   Left,
@@ -20,6 +21,7 @@ import WindowControls from '../WindowControls';
 import { WORKSPACE_STATE_EVENT, dispatchWorkspaceToggleEvent } from '@renderer/utils/workspace/workspaceEvents';
 import type { WorkspaceStateDetail } from '@renderer/utils/workspace/workspaceEvents';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import { useRemoteAccessContext } from '@/renderer/hooks/context/RemoteAccessContext';
 import { useSelectedSpaceId } from '@/renderer/hooks/context/useSelectedSpace';
 import { isElectronDesktop, isMacOS, isMobileShellWebView } from '@/renderer/utils/platform';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
@@ -59,6 +61,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const isDesktopRuntime = isElectronDesktop();
   const isMacRuntime = isDesktopRuntime && isMacOS();
   const isMobileShellRuntime = !isDesktopRuntime && isMobileShellWebView();
+  const remoteAccess = useRemoteAccessContext();
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab, openTabs } = useConversationTabs();
   const selectedSpaceId = useSelectedSpaceId();
@@ -219,7 +222,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       return t('settings.connectors.title');
     }
 
-    if (path === '/hooks') {
+    if (path === '/hooks' || path.startsWith('/settings/hooks')) {
       return t('settings.hooksPage');
     }
 
@@ -280,18 +283,18 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
 
   const shouldLeftAlignMobileTitle = Boolean(
     layout?.isMobile &&
-      mobileRouteTitle &&
-      location.pathname !== '/guid' &&
-      location.pathname !== '/' &&
-      location.pathname !== '/login'
+    mobileRouteTitle &&
+    location.pathname !== '/guid' &&
+    location.pathname !== '/' &&
+    location.pathname !== '/login'
   );
   const shouldUseSecondaryMobileChrome = Boolean(
     layout?.isMobile &&
-      mobileRouteTitle &&
-      location.pathname !== '/guid' &&
-      location.pathname !== '/' &&
-      location.pathname !== '/login' &&
-      !isMobileConversationRoute
+    mobileRouteTitle &&
+    location.pathname !== '/guid' &&
+    location.pathname !== '/' &&
+    location.pathname !== '/login' &&
+    !isMobileConversationRoute
   );
 
   useEffect(() => {
@@ -337,6 +340,8 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const showDesktopRightSection = showDesktopConversationTabs || showDesktopToolbar;
   const showDesktopChromeOnlyLayout = !layout?.isMobile && !showDesktopConversationTabs && !showDesktopToolbar;
   const shouldDockDesktopLeftToPane = !layout?.isMobile && leftPaneWidth > 0;
+  const isRemoteDeviceActive = remoteAccess?.target.mode === 'remote-device';
+  const isRemoteShellActive = Boolean(remoteAccess && remoteAccess.target.mode !== 'local');
 
   const desktopLeftSectionStyle: React.CSSProperties = useMemo(() => {
     if (layout?.isMobile) {
@@ -445,6 +450,30 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
             {showDesktopToolbar && (
               <div className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
                 <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />
+                {isRemoteShellActive ? (
+                  <button
+                    type='button'
+                    className='app-header-pill-button'
+                    onClick={() => {
+                      if (remoteAccess?.target.mode === 'remote-device') {
+                        remoteAccess.resetToDeviceList();
+                      }
+                      void navigate('/remote/devices');
+                    }}
+                    aria-label={t('settings.webui.remoteDevicesNav', { defaultValue: 'Remote Devices' })}
+                  >
+                    <span className='app-header-pill app-header-pill--status'>
+                      <span className='app-header-pill__icon'>
+                        <Earth theme='outline' size='14' fill={iconColors.primary} />
+                      </span>
+                      <span className='truncate'>
+                        {isRemoteDeviceActive
+                          ? t('settings.webui.officialRemoteTitle', { defaultValue: 'Official Remote' })
+                          : t('settings.webui.remoteDevicesNav', { defaultValue: 'Remote Devices' })}
+                      </span>
+                    </span>
+                  </button>
+                ) : null}
                 {showWorkspaceButton && (
                   <button
                     type='button'

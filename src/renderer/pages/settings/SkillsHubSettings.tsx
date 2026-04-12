@@ -69,14 +69,19 @@ const SkillsHubSettings: React.FC = () => {
   const [deleteSkillName, setDeleteSkillName] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  const visibleSkills = useMemo(
+    () => availableSkills.filter((skill) => !skill.hiddenFromSkillsLibrary),
+    [availableSkills]
+  );
+
   const filteredSkills = useMemo(() => {
-    if (!searchQuery.trim()) return availableSkills;
+    if (!searchQuery.trim()) return visibleSkills;
     const lowerQuery = searchQuery.toLowerCase();
-    return availableSkills.filter(
+    return visibleSkills.filter(
       (s) =>
         s.name.toLowerCase().includes(lowerQuery) || (s.description && s.description.toLowerCase().includes(lowerQuery))
     );
-  }, [availableSkills, searchQuery]);
+  }, [visibleSkills, searchQuery]);
 
   const renderSkillDependencyTags = useCallback(
     (skill: SkillInfo) => {
@@ -143,7 +148,7 @@ const SkillsHubSettings: React.FC = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const skills = await ipcBridge.fs.listAvailableSkills.invoke();
+      const skills = await ipcBridge.fs.listAvailableSkills.invoke({});
       setAvailableSkills(skills);
 
       const external = await ipcBridge.fs.detectAndCountExternalSkills.invoke();
@@ -974,7 +979,7 @@ const SkillsHubSettings: React.FC = () => {
                     {t('settings.skillsHub.mySkillsTitle', { defaultValue: 'My Skills' })}
                   </span>
                   <span className='bg-[rgba(var(--primary-6),0.08)] text-primary-6 text-12px px-10px py-2px rd-[100px] font-medium ml-4px'>
-                    {availableSkills.length}
+                    {visibleSkills.length}
                   </span>
                   <button
                     className='outline-none border-none bg-transparent cursor-pointer p-6px text-t-tertiary hover:text-primary-6 transition-colors rd-full hover:bg-fill-2 ml-4px'
@@ -1024,7 +1029,17 @@ const SkillsHubSettings: React.FC = () => {
                 </div>
               )}
 
-              {availableSkills.length > 0 ? (
+              {availableSkills.length > visibleSkills.length ? (
+                <div className='mb-16px text-12px text-t-tertiary'>
+                  {t('settings.skillsHub.hiddenBuiltinPackNotice', {
+                    count: availableSkills.length - visibleSkills.length,
+                    defaultValue:
+                      '{{count}} built-in packaged skills are attached to preset assistants and are hidden from the standalone skill library.',
+                  })}
+                </div>
+              ) : null}
+
+              {visibleSkills.length > 0 ? (
                 <div className='w-full flex flex-col gap-6px relative z-10'>
                   {filteredSkills.map((skill) => (
                     <div

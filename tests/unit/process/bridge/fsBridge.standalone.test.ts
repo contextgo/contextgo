@@ -32,6 +32,10 @@ vi.mock('@process/utils/initStorage', () => ({
   getAssistantsDir: () => '/mock/assistants',
 }));
 
+vi.mock('@process/bridge/services/workspaceAutomation', () => ({
+  getWorkspaceHooksDir: () => null,
+}));
+
 // Mock common ipcBridge
 vi.mock('@/common', () => ({
   ipcBridge: {
@@ -66,6 +70,7 @@ vi.mock('@/common', () => ({
       getHookPaths: { provider: vi.fn() },
       updateHookManifest: { provider: vi.fn() },
       readSkillInfo: { provider: vi.fn() },
+      readSkillContent: { provider: vi.fn() },
       importSkill: { provider: vi.fn() },
       scanForSkills: { provider: vi.fn() },
       detectCommonSkillPaths: { provider: vi.fn() },

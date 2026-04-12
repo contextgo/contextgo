@@ -42,6 +42,7 @@ vi.mock('@/renderer/utils/platform', () => ({
 import type { AssistantListItem, HookInfo } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import {
   getAssistantBadges,
+  getBuiltinAssistantPreset,
   getRelevantAssistantHooks,
   getRelevantAssistantSkills,
   getIncompatibleHookNames,
@@ -276,7 +277,14 @@ describe('getRelevantAssistantSkills', () => {
       getRelevantAssistantSkills({
         availableSkills: [
           { name: 'skill-a', description: 'Builtin A', location: '/skills/a', isCustom: false },
-          { name: 'skill-b', description: 'Custom B', location: '/skills/b', isCustom: true },
+          {
+            name: 'skill-b',
+            description: 'Custom B',
+            location: '/skills/b',
+            isCustom: true,
+            hiddenFromSkillsLibrary: true,
+            packageOwnerPresetIds: ['superpowers'],
+          },
         ],
         selectedSkills: ['skill-b', 'skill-c', 'skill-a'],
         pendingSkills: [{ source: 'external', name: 'skill-c', description: 'Pending C', path: '/tmp/skill-c' }],
@@ -288,8 +296,11 @@ describe('getRelevantAssistantSkills', () => {
         compatibility: undefined,
         dependencyHints: undefined,
         openAIConfig: undefined,
+        location: '/skills/b',
         isCustom: true,
         isPending: false,
+        packageOwnerPresetIds: ['superpowers'],
+        hiddenFromSkillsLibrary: true,
       },
       {
         name: 'skill-c',
@@ -303,8 +314,11 @@ describe('getRelevantAssistantSkills', () => {
         compatibility: undefined,
         dependencyHints: undefined,
         openAIConfig: undefined,
+        location: '/skills/a',
         isCustom: false,
         isPending: false,
+        packageOwnerPresetIds: undefined,
+        hiddenFromSkillsLibrary: undefined,
       },
     ]);
   });
@@ -323,8 +337,11 @@ describe('getRelevantAssistantSkills', () => {
         compatibility: undefined,
         dependencyHints: undefined,
         openAIConfig: undefined,
+        location: undefined,
         isCustom: false,
         isPending: false,
+        packageOwnerPresetIds: undefined,
+        hiddenFromSkillsLibrary: undefined,
       },
     ]);
   });
@@ -369,6 +386,16 @@ describe('getRelevantAssistantHooks', () => {
 // ---------------------------------------------------------------------------
 // hasBuiltinSkills
 // ---------------------------------------------------------------------------
+describe('getBuiltinAssistantPreset', () => {
+  it('returns preset metadata for builtin assistant ids', () => {
+    expect(getBuiltinAssistantPreset('builtin-alpha')).toMatchObject({ id: 'alpha' });
+  });
+
+  it('returns undefined for non-builtin ids', () => {
+    expect(getBuiltinAssistantPreset('custom-assistant')).toBeUndefined();
+  });
+});
+
 describe('hasBuiltinSkills', () => {
   it('returns true for a builtin assistant with defaultEnabledSkills', () => {
     // "alpha" in the mocked presets has defaultEnabledSkills: ['skill-a']

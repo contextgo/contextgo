@@ -15,6 +15,7 @@ vi.mock('@process/services/context/scheduleServiceSingleton', () => ({
 }));
 
 import {
+  AssistantControlCommandStreamFilter,
   executeAssistantScheduleCommands,
   stripAssistantControlCommands,
 } from '@/process/services/context/events/schedule/AssistantScheduleCommandService';
@@ -30,6 +31,38 @@ describe('AssistantScheduleCommandService', () => {
         'Before\n[SCHEDULE_CREATE]\nname: Daily\nschedule: 0 9 * * *\nschedule_description: Every day\nmessage: ping\n[/SCHEDULE_CREATE]\nAfter'
       )
     ).toBe('Before\n\nAfter');
+  });
+
+  it('also strips skill market control blocks from assistant-visible content', () => {
+    expect(
+      stripAssistantControlCommands('先搜索\n[SKILLMARKET_SEARCH]\nquery: browser context\n[/SKILLMARKET_SEARCH]\n再回复')
+    ).toBe('先搜索\n\n再回复');
+  });
+
+  it('filters streamed schedule create blocks before they reach the UI', () => {
+    const filter = new AssistantControlCommandStreamFilter();
+
+    expect(filter.push('先执行这个操作：\n[SCHED')).toBe('先执行这个操作：\n');
+    expect(filter.push('ULE_CREATE]\nname: Daily\nschedule: 0 9 * * *\n')).toBe('');
+    expect(filter.push('schedule_description: Every day\nmessage: ping\n[/SCHEDULE_CREATE]\n完成。')).toBe('\n完成。');
+  });
+
+  it('filters streamed single-line control tags without removing normal bracket text', () => {
+    const filter = new AssistantControlCommandStreamFilter();
+
+    expect(filter.push('[LOAD_SKILL: schedule]')).toBe('');
+    expect(filter.push('正常文本 [not-a-command] 保留')).toBe('正常文本 [not-a-command] 保留');
+    expect(filter.push('[SCHEDULE_DELETE: schedule-1]')).toBe('');
+    expect(filter.push('[SCHEDULE_LIST]')).toBe('');
+  });
+
+  it('filters streamed skill market blocks before they reach the UI', () => {
+    const filter = new AssistantControlCommandStreamFilter();
+
+    expect(filter.push('先找找\n[SKILLMAR')).toBe('先找找\n');
+    expect(filter.push('KET_SEARCH]\nquery: browser skill\n')).toBe('');
+    expect(filter.push('view: curated\n[/SKILLMARKET_SEARCH]\n给你结果')).toBe('\n给你结果');
+    expect(filter.push('[SKILLMARKET_INSTALL]\nskill_id: browser-skill\n[/SKILLMARKET_INSTALL]')).toBe('');
   });
 
   it('lists existing conversation schedules and emits a list event', async () => {

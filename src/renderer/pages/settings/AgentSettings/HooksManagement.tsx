@@ -51,7 +51,7 @@ const HooksManagement: React.FC = () => {
   const loadHooks = useCallback(async () => {
     try {
       const [hooks, paths] = await Promise.all([
-        ipcBridge.fs.listAvailableHooks.invoke(),
+        ipcBridge.fs.listAvailableHooks.invoke({}),
         ipcBridge.fs.getHookPaths.invoke(),
       ]);
       setAvailableHooks(hooks);

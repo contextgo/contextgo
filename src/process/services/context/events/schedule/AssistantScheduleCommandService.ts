@@ -12,7 +12,22 @@ import type { IContextSchedule } from '@/common/adapter/ipcBridge';
 const SCHEDULE_LIST_PATTERN = /\[SCHEDULE_LIST\]/gi;
 const SCHEDULE_DELETE_PATTERN = /\[SCHEDULE_DELETE:\s*([^\]]+?)\s*\]/gi;
 const SCHEDULE_CREATE_BLOCK_PATTERN = /\[SCHEDULE_CREATE\]([\s\S]*?)\[\/SCHEDULE_CREATE\]/gi;
+const SKILLMARKET_SEARCH_BLOCK_PATTERN = /\[SKILLMARKET_SEARCH\]([\s\S]*?)\[\/SKILLMARKET_SEARCH\]/gi;
+const SKILLMARKET_INSTALL_BLOCK_PATTERN = /\[SKILLMARKET_INSTALL\]([\s\S]*?)\[\/SKILLMARKET_INSTALL\]/gi;
 const LOAD_SKILL_PATTERN = /\[LOAD_SKILL:\s*[^\]]+\]/gi;
+const SCHEDULE_CREATE_OPEN_TAG = '[SCHEDULE_CREATE]';
+const SCHEDULE_CREATE_CLOSE_TAG = '[/SCHEDULE_CREATE]';
+const SKILLMARKET_SEARCH_OPEN_TAG = '[SKILLMARKET_SEARCH]';
+const SKILLMARKET_SEARCH_CLOSE_TAG = '[/SKILLMARKET_SEARCH]';
+const SKILLMARKET_INSTALL_OPEN_TAG = '[SKILLMARKET_INSTALL]';
+const SKILLMARKET_INSTALL_CLOSE_TAG = '[/SKILLMARKET_INSTALL]';
+const SCHEDULE_LIST_TAG = '[SCHEDULE_LIST]';
+const SCHEDULE_DELETE_PREFIX = '[SCHEDULE_DELETE:';
+const LOAD_SKILL_PREFIX = '[LOAD_SKILL:';
+
+const isCompleteScheduleDeleteTag = (value: string): boolean => /^\[SCHEDULE_DELETE:\s*[^\]]+?\s*\]$/i.test(value);
+
+const isCompleteLoadSkillTag = (value: string): boolean => /^\[LOAD_SKILL:\s*[^\]]+\]$/i.test(value);
 
 type ScheduleCommand =
   | {
@@ -39,6 +54,185 @@ export type AssistantScheduleCommandResult = {
   systemResponses: string[];
   events: ScheduleEventPayload[];
 };
+
+export class AssistantControlCommandStreamFilter {
+  private pending = '';
+  private insideScheduleCreateBlock = false;
+  private insideSkillMarketSearchBlock = false;
+  private insideSkillMarketInstallBlock = false;
+
+  push(chunk: string): string {
+    if (!chunk) {
+      return '';
+    }
+
+    this.pending += chunk;
+    let output = '';
+
+    while (this.pending.length > 0) {
+      if (this.insideSkillMarketSearchBlock) {
+        const closeIndex = this.pending.indexOf(SKILLMARKET_SEARCH_CLOSE_TAG);
+        if (closeIndex === -1) {
+          this.pending = '';
+          break;
+        }
+
+        this.pending = this.pending.slice(closeIndex + SKILLMARKET_SEARCH_CLOSE_TAG.length);
+        this.insideSkillMarketSearchBlock = false;
+        continue;
+      }
+
+      if (this.insideSkillMarketInstallBlock) {
+        const closeIndex = this.pending.indexOf(SKILLMARKET_INSTALL_CLOSE_TAG);
+        if (closeIndex === -1) {
+          this.pending = '';
+          break;
+        }
+
+        this.pending = this.pending.slice(closeIndex + SKILLMARKET_INSTALL_CLOSE_TAG.length);
+        this.insideSkillMarketInstallBlock = false;
+        continue;
+      }
+
+      if (this.insideScheduleCreateBlock) {
+        const closeIndex = this.pending.indexOf(SCHEDULE_CREATE_CLOSE_TAG);
+        if (closeIndex === -1) {
+          this.pending = '';
+          break;
+        }
+
+        this.pending = this.pending.slice(closeIndex + SCHEDULE_CREATE_CLOSE_TAG.length);
+        this.insideScheduleCreateBlock = false;
+        continue;
+      }
+
+      const markerIndex = this.pending.indexOf('[');
+      if (markerIndex === -1) {
+        output += this.pending;
+        this.pending = '';
+        break;
+      }
+
+      if (markerIndex > 0) {
+        output += this.pending.slice(0, markerIndex);
+        this.pending = this.pending.slice(markerIndex);
+      }
+
+      if (!this.pending) {
+        break;
+      }
+
+      if (this.pending.startsWith(SCHEDULE_CREATE_OPEN_TAG)) {
+        this.pending = this.pending.slice(SCHEDULE_CREATE_OPEN_TAG.length);
+        this.insideScheduleCreateBlock = true;
+        continue;
+      }
+
+      if (SCHEDULE_CREATE_OPEN_TAG.startsWith(this.pending)) {
+        break;
+      }
+
+      if (this.pending.startsWith(SKILLMARKET_SEARCH_OPEN_TAG)) {
+        this.pending = this.pending.slice(SKILLMARKET_SEARCH_OPEN_TAG.length);
+        this.insideSkillMarketSearchBlock = true;
+        continue;
+      }
+
+      if (SKILLMARKET_SEARCH_OPEN_TAG.startsWith(this.pending)) {
+        break;
+      }
+
+      if (this.pending.startsWith(SKILLMARKET_INSTALL_OPEN_TAG)) {
+        this.pending = this.pending.slice(SKILLMARKET_INSTALL_OPEN_TAG.length);
+        this.insideSkillMarketInstallBlock = true;
+        continue;
+      }
+
+      if (SKILLMARKET_INSTALL_OPEN_TAG.startsWith(this.pending)) {
+        break;
+      }
+
+      if (this.pending.startsWith(SCHEDULE_LIST_TAG)) {
+        this.pending = this.pending.slice(SCHEDULE_LIST_TAG.length);
+        continue;
+      }
+
+      if (SCHEDULE_LIST_TAG.startsWith(this.pending)) {
+        break;
+      }
+
+      if (this.pending.startsWith(SCHEDULE_DELETE_PREFIX)) {
+        const endIndex = this.pending.indexOf(']');
+        if (endIndex === -1) {
+          break;
+        }
+
+        const candidate = this.pending.slice(0, endIndex + 1);
+        if (isCompleteScheduleDeleteTag(candidate)) {
+          this.pending = this.pending.slice(endIndex + 1);
+          continue;
+        }
+      }
+
+      if (SCHEDULE_DELETE_PREFIX.startsWith(this.pending)) {
+        break;
+      }
+
+      if (this.pending.startsWith(LOAD_SKILL_PREFIX)) {
+        const endIndex = this.pending.indexOf(']');
+        if (endIndex === -1) {
+          break;
+        }
+
+        const candidate = this.pending.slice(0, endIndex + 1);
+        if (isCompleteLoadSkillTag(candidate)) {
+          this.pending = this.pending.slice(endIndex + 1);
+          continue;
+        }
+      }
+
+      if (LOAD_SKILL_PREFIX.startsWith(this.pending)) {
+        break;
+      }
+
+      output += this.pending[0];
+      this.pending = this.pending.slice(1);
+    }
+
+    return output;
+  }
+
+  flush(): string {
+    if (this.insideSkillMarketSearchBlock) {
+      this.pending = '';
+      this.insideSkillMarketSearchBlock = false;
+      return '';
+    }
+
+    if (this.insideSkillMarketInstallBlock) {
+      this.pending = '';
+      this.insideSkillMarketInstallBlock = false;
+      return '';
+    }
+
+    if (this.insideScheduleCreateBlock) {
+      this.pending = '';
+      this.insideScheduleCreateBlock = false;
+      return '';
+    }
+
+    const output = this.pending;
+    this.pending = '';
+    return output;
+  }
+
+  reset(): void {
+    this.pending = '';
+    this.insideScheduleCreateBlock = false;
+    this.insideSkillMarketSearchBlock = false;
+    this.insideSkillMarketInstallBlock = false;
+  }
+}
 
 function normalizeCommandSpacing(content: string): string {
   return content.replace(/\n{3,}/g, '\n\n').trim();
@@ -220,6 +414,8 @@ export function stripAssistantControlCommands(content: string): string {
   const cleaned = content
     .replace(LOAD_SKILL_PATTERN, '')
     .replace(SCHEDULE_CREATE_BLOCK_PATTERN, '')
+    .replace(SKILLMARKET_SEARCH_BLOCK_PATTERN, '')
+    .replace(SKILLMARKET_INSTALL_BLOCK_PATTERN, '')
     .replace(SCHEDULE_DELETE_PATTERN, '')
     .replace(SCHEDULE_LIST_PATTERN, '');
 

@@ -44,6 +44,13 @@
       "operation_other": "{{count}} 件のファイル操作を実行"
     }
   },
+  "jsonCard": {
+    "parameters": "パラメータ",
+    "rawJson": "生の JSON",
+    "model": "モデル",
+    "prompt": "プロンプト",
+    "size": "サイズ"
+  },
   "stepSummary": {
     "viewSteps": "手順を表示",
     "tools": "ツール {{count}} 件",

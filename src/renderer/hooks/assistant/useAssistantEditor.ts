@@ -3,6 +3,7 @@ import { ConfigStorage } from '@/common/config/storage';
 import type { Message } from '@arco-design/web-react';
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import {
+  getBuiltinAssistantPreset,
   getIncompatibleHookNames,
   hasBuiltinSkills,
   isExtensionAssistant as isExtensionAssistantUtil,
@@ -125,7 +126,7 @@ export const useAssistantEditor = ({
       const [context, skills, hooksList] = await Promise.all([
         loadAssistantContext(assistant.id),
         loadAssistantSkills(assistant.id),
-        ipcBridge.fs.listAvailableHooks.invoke(),
+        ipcBridge.fs.listAvailableHooks.invoke({}),
       ]);
       setEditContext(context);
       setEditSkills(skills);
@@ -133,8 +134,14 @@ export const useAssistantEditor = ({
 
       // Load skills list for builtin assistants with skillFiles and all custom assistants
       if (hasBuiltinSkills(assistant.id) || !assistant.isBuiltin) {
-        const skillsList = await ipcBridge.fs.listAvailableSkills.invoke();
-        setAvailableSkills(skillsList);
+        const preset = getBuiltinAssistantPreset(assistant.id);
+        const skillsList = await ipcBridge.fs.listAvailableSkills.invoke({ presetAssistantId: assistant.id });
+        const packageOwnedSkillNames = new Set(preset?.defaultEnabledSkills || []);
+        const visibleSkills =
+          assistant.isBuiltin && preset?.hideDefaultSkillsFromLibrary
+            ? skillsList.filter((skill) => !packageOwnedSkillNames.has(skill.name))
+            : skillsList;
+        setAvailableSkills(visibleSkills);
         setSelectedSkills(assistant.enabledSkills || []);
         setSelectedHooks(assistant.enabledHooks || []);
         setCustomSkills(assistant.customSkillNames || []);
@@ -174,8 +181,8 @@ export const useAssistantEditor = ({
     // Load available skills and hooks list
     try {
       const [skillsList, hooksList] = await Promise.all([
-        ipcBridge.fs.listAvailableSkills.invoke(),
-        ipcBridge.fs.listAvailableHooks.invoke(),
+        ipcBridge.fs.listAvailableSkills.invoke({}),
+        ipcBridge.fs.listAvailableHooks.invoke({}),
       ]);
       setAvailableSkills(skillsList);
       setAvailableHooks(hooksList);
@@ -201,14 +208,14 @@ export const useAssistantEditor = ({
     try {
       const [skillsList, hooksList, context, skills] = isExtensionAssistantUtil(assistant)
         ? await Promise.all([
-            ipcBridge.fs.listAvailableSkills.invoke(),
-            ipcBridge.fs.listAvailableHooks.invoke(),
+            ipcBridge.fs.listAvailableSkills.invoke({}),
+            ipcBridge.fs.listAvailableHooks.invoke({}),
             Promise.resolve(assistant.context || ''),
             Promise.resolve(''),
           ])
         : await Promise.all([
-            ipcBridge.fs.listAvailableSkills.invoke(),
-            ipcBridge.fs.listAvailableHooks.invoke(),
+            ipcBridge.fs.listAvailableSkills.invoke({}),
+            ipcBridge.fs.listAvailableHooks.invoke({}),
             loadAssistantContext(assistant.id),
             loadAssistantSkills(assistant.id),
           ]);
@@ -318,7 +325,7 @@ export const useAssistantEditor = ({
           }
 
           // Reload skills list after successful import
-          const skillsList = await ipcBridge.fs.listAvailableSkills.invoke();
+          const skillsList = await ipcBridge.fs.listAvailableSkills.invoke({});
           setAvailableSkills(skillsList);
         }
       }

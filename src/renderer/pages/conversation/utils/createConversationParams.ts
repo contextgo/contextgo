@@ -172,22 +172,12 @@ export async function getDefaultGeminiModel(): Promise<TProviderWithModel> {
  * Codex uses ACP path (type: 'acp' + extra.backend = 'codex').
  */
 export function getConversationTypeForBackend(backend: string): ICreateConversationParams['type'] {
-  switch (backend) {
-    case 'gemini':
-      return 'gemini';
-    case 'openclaw-gateway':
-    case 'openclaw':
-      return 'openclaw-gateway';
-    case 'nanobot':
-      return 'nanobot';
-    default:
-      return 'acp';
-  }
+  return backend === 'gemini' ? 'gemini' : 'acp';
 }
 
 /**
  * Determine the conversation type from a preset assistant's presetAgentType.
- * ACP-routed types include claude, codebuddy, opencode, qwen, codex.
+ * ACP-routed types include claude, opencode, and codex.
  */
 export function getConversationTypeForPreset(presetAgentType: string): ICreateConversationParams['type'] {
   return presetAgentType && presetAgentType !== 'gemini' ? 'acp' : 'gemini';
@@ -203,7 +193,7 @@ export async function buildCliAgentParams(
   spaceId?: string
 ): Promise<ICreateConversationParams> {
   const { backend, name: agentName, cliPath } = agent;
-  const resolvedWorkspace = backend === 'openclaw-gateway' ? agent.workspace || workspace : workspace;
+  const resolvedWorkspace = workspace;
 
   const type = getConversationTypeForBackend(backend);
 
@@ -211,16 +201,14 @@ export async function buildCliAgentParams(
     spaceId,
     workspace: resolvedWorkspace,
     customWorkspace: true,
+    nativeWorkspaceBootstrap: Boolean(resolvedWorkspace.trim()),
   };
 
-  if (type === 'acp' || type === 'openclaw-gateway') {
+  if (type === 'acp') {
     extra.backend = backend as AcpBackendAll;
     extra.agentName = agentName;
     if (cliPath) {
       extra.cliPath = cliPath;
-    }
-    if (backend === 'openclaw-gateway') {
-      extra.openclawAgentId = agent.openclawAgentId;
     }
   }
 

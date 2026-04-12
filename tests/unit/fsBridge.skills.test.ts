@@ -167,6 +167,11 @@ describe('fsBridge skills functionality', () => {
       ProcessEnv: { set: vi.fn() },
     }));
 
+    vi.doMock('@process/bridge/services/workspaceAutomation', () => ({
+      getWorkspaceHooksDir: (workspacePath?: string) =>
+        workspacePath ? path.resolve(workspacePath, '.contextgo/hooks') : null,
+    }));
+
     vi.doMock('@process/task/AcpSkillManager', () => ({
       AcpSkillManager: {
         resetInstance: vi.fn(),
@@ -231,6 +236,7 @@ describe('fsBridge skills functionality', () => {
             getHookPaths: createCommandMock('get-hook-paths'),
             updateHookManifest: createCommandMock('update-hook-manifest'),
             readSkillInfo: createCommandMock('read-skill-info'),
+            readSkillContent: createCommandMock('read-skill-content'),
             importSkill: createCommandMock('import-skill'),
             scanForSkills: createCommandMock('scan-for-skills'),
             detectCommonSkillPaths: createCommandMock('detect-common-skill-paths'),
@@ -323,6 +329,38 @@ describe('fsBridge skills functionality', () => {
     });
   });
 
+  describe('readSkillContent', () => {
+    it('returns the full SKILL.md body when given a skill directory', async () => {
+      const skillDir = path.resolve('/mock/userData/config/skills/my-skill');
+      const skillContent = '---\nname: my-skill\ndescription: test\n---\n\n# Hello';
+
+      mockFsStore[skillDir] = { isDirectory: true };
+      mockFsStore[path.join(skillDir, 'SKILL.md')] = {
+        content: skillContent,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('readSkillContent');
+      const result = await handler({ skillPath: skillDir });
+
+      expect(result).toEqual({
+        success: true,
+        data: { content: skillContent },
+        msg: 'Skill content loaded successfully',
+      });
+    });
+
+    it('returns a failure response when SKILL.md is missing', async () => {
+      const handler = await getProvider('readSkillContent');
+      const result = await handler({ skillPath: '/mock/userData/config/skills/missing-skill' });
+
+      expect(result).toEqual({
+        success: false,
+        msg: 'SKILL.md file not found in the selected directory',
+      });
+    });
+  });
+
   describe('listAvailableSkills', () => {
     it('should correctly parse SKILL.md and distinguish builtin vs custom', async () => {
       // Setup filesystem mock state
@@ -365,7 +403,7 @@ describe('fsBridge skills functionality', () => {
       };
 
       const handler = await getProvider('listAvailableSkills');
-      const result = await handler();
+      const result = await handler({ presetAssistantId: 'builtin-superpowers' });
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBe(2);
@@ -373,6 +411,8 @@ describe('fsBridge skills functionality', () => {
       const builtin = result.find((s: any) => s.name === 'BuiltinTest');
       expect(builtin).toBeDefined();
       expect(builtin.isCustom).toBe(false); // Keeps builtin status even though duplicate exists in user dir
+      expect(builtin.packageOwnerPresetIds).toBeUndefined();
+      expect(builtin.hiddenFromSkillsLibrary).toBe(false);
       expect(builtin.description).toBe('A builtin test skill with folded description text');
       expect(builtin.compatibility).toEqual([
         'Requires environment variable `TEST_API_KEY`.',
@@ -427,6 +467,49 @@ describe('fsBridge skills functionality', () => {
       expect(custom.isCustom).toBe(true);
     });
 
+    it('marks preset-owned builtin skills as packaged and hidden when requested by a builtin preset', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'engineering-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'workflow-foundations-pack')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'workflow-foundations-pack', 'skills')] = {
+        isDirectory: true,
+      };
+      mockFsStore[
+        path.join(builtinBase, 'engineering-pack', 'skills', 'workflow-foundations-pack', 'skills', 'using-superpowers')
+      ] = {
+        isDirectory: true,
+      };
+      mockFsStore[
+        path.join(
+          builtinBase,
+          'engineering-pack',
+          'skills',
+          'workflow-foundations-pack',
+          'skills',
+          'using-superpowers',
+          'SKILL.md'
+        )
+      ] = {
+        content: `---\nname: using-superpowers\ndescription: "Preset-owned builtin skill"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-superpowers' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'using-superpowers');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['superpowers'],
+        hiddenFromSkillsLibrary: true,
+      });
+    });
+
     it('discovers nested skill packs for builtin and user skills', async () => {
       const builtinBase = path.resolve('/mock/userData/builtin-skills');
       const userBase = path.resolve('/mock/userData/config/skills');
@@ -434,11 +517,36 @@ describe('fsBridge skills functionality', () => {
       mockFsStore[builtinBase] = { isDirectory: true };
       mockFsStore[path.join(builtinBase, 'engineering-pack')] = { isDirectory: true };
       mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills')] = { isDirectory: true };
-      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'engineering-planning')] = {
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'workflow-execution-pack')] = {
         isDirectory: true,
       };
-      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'engineering-planning', 'SKILL.md')] = {
-        content: `---\nname: engineering-planning\ndescription: "Nested builtin skill"\n---\n`,
+      mockFsStore[path.join(builtinBase, 'engineering-pack', 'skills', 'workflow-execution-pack', 'skills')] = {
+        isDirectory: true,
+      };
+      mockFsStore[
+        path.join(
+          builtinBase,
+          'engineering-pack',
+          'skills',
+          'workflow-execution-pack',
+          'skills',
+          'test-driven-development'
+        )
+      ] = {
+        isDirectory: true,
+      };
+      mockFsStore[
+        path.join(
+          builtinBase,
+          'engineering-pack',
+          'skills',
+          'workflow-execution-pack',
+          'skills',
+          'test-driven-development',
+          'SKILL.md'
+        )
+      ] = {
+        content: `---\nname: test-driven-development\ndescription: "Nested builtin skill"\n---\n`,
         isDirectory: false,
       };
 
@@ -457,7 +565,7 @@ describe('fsBridge skills functionality', () => {
       expect(result).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            name: 'engineering-planning',
+            name: 'test-driven-development',
             description: 'Nested builtin skill',
             isCustom: false,
           }),
@@ -541,6 +649,47 @@ describe('fsBridge skills functionality', () => {
         name: 'result-summary',
         outputTargets: ['chat-message'],
         runnableEvents: ['after_response'],
+      });
+    });
+
+    it('prefers workspace-local hooks when a workspace path is provided', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-hooks');
+      const workspaceBase = path.resolve('/workspace/demo/.contextgo/hooks');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'quality-gate')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'quality-gate', 'manifest.json')] = {
+        content: JSON.stringify({
+          name: 'quality-gate',
+          description: 'Builtin quality gate',
+          executionType: 'prompt-transform',
+          events: ['before_user_prompt'],
+        }),
+        isDirectory: false,
+      };
+
+      mockFsStore[workspaceBase] = { isDirectory: true };
+      mockFsStore[path.join(workspaceBase, 'quality-gate')] = { isDirectory: true };
+      mockFsStore[path.join(workspaceBase, 'quality-gate', 'manifest.json')] = {
+        content: JSON.stringify({
+          name: 'quality-gate',
+          description: 'Workspace override',
+          executionType: 'prompt-transform',
+          events: ['before_user_prompt'],
+        }),
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableHooks');
+      const result = await handler({ workspacePath: '/workspace/demo' });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        name: 'quality-gate',
+        description: 'Workspace override',
+        location: path.join(workspaceBase, 'quality-gate'),
+        isCustom: true,
+        isBuiltinInstalled: true,
       });
     });
 

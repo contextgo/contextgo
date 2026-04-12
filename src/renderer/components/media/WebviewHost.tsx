@@ -26,6 +26,8 @@ export interface WebviewHostProps {
   style?: React.CSSProperties;
   /** Called when the page finishes loading */
   onDidFinishLoad?: () => void;
+  /** Called when the active URL changes */
+  onUrlChange?: (url: string) => void;
   /** Called when the page fails to load */
   onDidFailLoad?: (errorCode: number, errorDescription: string) => void;
   /** Block raw asset document navigations for embedded app/document surfaces */
@@ -53,6 +55,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   className,
   style,
   onDidFinishLoad,
+  onUrlChange,
   onDidFailLoad,
   blockSuspiciousDocumentNavigation = false,
 }) => {
@@ -110,6 +113,10 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
     autoFitPendingRef.current = isStarOfficeUrl(guardedUrl);
     lastStableUrlRef.current = guardedUrl;
   }, [guardedUrl, isStarOfficeUrl, url]);
+
+  useEffect(() => {
+    onUrlChange?.(currentUrl);
+  }, [currentUrl, onUrlChange]);
 
   useEffect(() => {
     const webviewEl = webviewRef.current;

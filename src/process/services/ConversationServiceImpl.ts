@@ -14,6 +14,7 @@ import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
 import { uuid } from '@/common/utils';
 import { scheduleService } from './context/scheduleServiceSingleton';
 import {
+  copyWorkspaceAutomationCommands,
   copyWorkspaceAutomationHooks,
   ensureHarnessWorkspaceAutomationForConversation,
 } from '@process/bridge/services/workspaceAutomation';
@@ -22,6 +23,7 @@ import {
   createGeminiAgent,
   createAcpAgent,
   createCodexAgent,
+  ensureConversationWorkspaceBootstrap,
   createOpenClawAgent,
   createNanobotAgent,
   createGroupConversation,
@@ -104,6 +106,24 @@ export class ConversationServiceImpl implements IConversationService {
     private readonly spaceService: ISpaceService = new SpaceServiceImpl(new SqliteSpaceRepository())
   ) {}
 
+  private async ensureWorkspaceAutomationForConversation(conversation?: TChatConversation): Promise<void> {
+    if (!conversation) {
+      return;
+    }
+
+    try {
+      await ensureHarnessWorkspaceAutomationForConversation(conversation);
+    } catch (error) {
+      console.warn('[ConversationServiceImpl] Failed to bootstrap harness workspace automation:', error);
+    }
+
+    try {
+      await ensureConversationWorkspaceBootstrap(conversation);
+    } catch (error) {
+      console.warn('[ConversationServiceImpl] Failed to bootstrap native workspace automation:', error);
+    }
+  }
+
   private async attachDefaultSpaceIfMissing(
     conversation: TChatConversation | undefined
   ): Promise<TChatConversation | undefined> {
@@ -151,6 +171,7 @@ export class ConversationServiceImpl implements IConversationService {
 
   async updateConversation(id: string, updates: Partial<TChatConversation>, mergeExtra?: boolean): Promise<void> {
     let finalUpdates = updates;
+    let automationConversation: TChatConversation | undefined;
     if (mergeExtra && updates.extra) {
       const existing = await this.repo.getConversation(id);
       if (existing) {
@@ -158,14 +179,29 @@ export class ConversationServiceImpl implements IConversationService {
           ...updates,
           extra: normalizeConversationExtraCompatibility({ ...existing.extra, ...updates.extra }),
         } as Partial<TChatConversation>;
+        automationConversation = {
+          ...existing,
+          ...finalUpdates,
+        } as TChatConversation;
       }
     } else if (updates.extra) {
       finalUpdates = {
         ...updates,
         extra: normalizeConversationExtraCompatibility(updates.extra),
       } as Partial<TChatConversation>;
+      const existing = await this.repo.getConversation(id);
+      if (existing) {
+        automationConversation = {
+          ...existing,
+          ...finalUpdates,
+        } as TChatConversation;
+      }
     }
     await this.repo.updateConversation(id, finalUpdates);
+
+    if (automationConversation && finalUpdates.extra) {
+      await this.ensureWorkspaceAutomationForConversation(automationConversation);
+    }
   }
 
   async createWithMigration(params: MigrateConversationParams): Promise<TChatConversation> {
@@ -176,12 +212,27 @@ export class ConversationServiceImpl implements IConversationService {
           extra: normalizeConversationExtraCompatibility(conversation.extra),
         } as TChatConversation)
       : conversation;
-    const conv: TChatConversation = {
+    const targetWorkspace = resolveConversationWorkspace(normalizedConversation);
+    const conv = {
       ...normalizedConversation,
       createTime: normalizedConversation.createTime ?? Date.now(),
       modifyTime: normalizedConversation.modifyTime ?? Date.now(),
-    };
-    const targetWorkspace = resolveConversationWorkspace(conv);
+      ...(normalizedConversation.extra
+        ? {
+            extra: normalizeConversationExtraCompatibility({
+              ...normalizedConversation.extra,
+              ...(targetWorkspace
+                ? {
+                    workspace: targetWorkspace,
+                    workingDirectory: targetWorkspace,
+                    customWorkspace: true,
+                    nativeWorkspaceBootstrap: true,
+                  }
+                : {}),
+            }),
+          }
+        : {}),
+    } as TChatConversation;
     let resolvedSourceWorkspace = sourceWorkspace?.trim() ? path.resolve(sourceWorkspace) : undefined;
 
     if (sourceConversationId && !resolvedSourceWorkspace) {
@@ -208,6 +259,12 @@ export class ConversationServiceImpl implements IConversationService {
         }
         hasMore = more;
         page++;
+      }
+
+      try {
+        await copyWorkspaceAutomationCommands(resolvedSourceWorkspace, targetWorkspace);
+      } catch (err) {
+        console.warn('[ConversationServiceImpl] Failed to copy workspace commands during migration:', err);
       }
 
       try {
@@ -261,6 +318,8 @@ export class ConversationServiceImpl implements IConversationService {
         });
       }
     }
+
+    await this.ensureWorkspaceAutomationForConversation(conv);
 
     return conv;
   }
@@ -376,11 +435,7 @@ export class ConversationServiceImpl implements IConversationService {
 
     await this.repo.createConversation(finalConversation);
 
-    try {
-      await ensureHarnessWorkspaceAutomationForConversation(finalConversation);
-    } catch (error) {
-      console.warn('[ConversationServiceImpl] Failed to bootstrap harness workspace automation:', error);
-    }
+    await this.ensureWorkspaceAutomationForConversation(finalConversation);
 
     return finalConversation;
   }

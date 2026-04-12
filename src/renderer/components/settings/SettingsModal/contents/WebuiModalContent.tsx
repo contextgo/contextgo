@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { CONTEXTGO_AUTH_BASE_URL, WEBUI_DEFAULT_PORT } from '@/common/config/constants';
+import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import { cloud, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
 import { getPublicDocsUrl, PUBLIC_DOC_SLUGS } from '@/common/update/publicUrls';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { SettingsSubModal } from '@/renderer/components/settings';
+import { OFFICIAL_REMOTE_DEVICES_ROUTE, buildOfficialDeviceListUrl } from '@/renderer/utils/officialRemote';
 import { openExternalUrl } from '@/renderer/utils/platform';
 import { Button, Form, Input, Message, Switch, Tooltip } from '@arco-design/web-react';
 import { CheckOne, Copy, Earth, EditTwo, LinkCloud, Refresh } from '@icon-park/react';
@@ -43,11 +44,6 @@ const QRCodeSVGLazy = React.lazy(async () => {
   const mod = await import('qrcode.react');
   return { default: mod.QRCodeSVG };
 });
-
-const buildOfficialDeviceListUrl = (authBaseUrl?: string): string => {
-  const normalizedBaseUrl = authBaseUrl?.trim().replace(/\/+$/, '') || CONTEXTGO_AUTH_BASE_URL.replace(/\/+$/, '');
-  return `${normalizedBaseUrl}/remote/devices`;
-};
 
 const CLOUD_REMOTE_PROVIDERS: CloudAuthProviderId[] = ['github', 'google'];
 
@@ -653,12 +649,14 @@ const WebuiModalContent: React.FC = () => {
 
   const handleOpenOfficialRemote = useCallback(async () => {
     try {
-      await openExternalUrl(officialRemoteUrl);
+      if (typeof window !== 'undefined') {
+        window.location.hash = `#${OFFICIAL_REMOTE_DEVICES_ROUTE}`;
+      }
     } catch (error) {
       console.error('[WebuiModal] Failed to open Official Remote:', error);
       Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
     }
-  }, [officialRemoteUrl, t]);
+  }, [t]);
 
   const webuiPanel = (
     <ContextGoScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
@@ -719,10 +717,7 @@ const WebuiModalContent: React.FC = () => {
                 <div className='text-12px text-t-tertiary'>{t('settings.webui.officialRemoteRuntimeHint')}</div>
                 <div className='text-12px text-t-secondary'>{officialRemoteStatusText}</div>
                 <div className='flex flex-wrap gap-8px'>
-                  <Button
-                    type='primary'
-                    onClick={() => void handleOpenOfficialRemote()}
-                  >
+                  <Button type='primary' onClick={() => void handleOpenOfficialRemote()}>
                     {t('settings.webui.openOfficialRemote')}
                   </Button>
                 </div>

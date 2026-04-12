@@ -21,11 +21,13 @@ import { ToolConfirmationOutcome } from '../agent/gemini/cli/tools/tools';
 import { getDatabase } from '@process/services/database';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
 import {
+  AssistantControlCommandStreamFilter,
   executeAssistantScheduleCommands,
   stripAssistantControlCommands,
 } from '@process/services/context/events/schedule/AssistantScheduleCommandService';
 import { emitScheduleEventMessage } from '@process/services/context/events/schedule/ScheduleEventMessageEmitter';
 import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
+import { executeAssistantSkillMarketCommands } from '@process/services/context/events/AssistantSkillMarketCommandService';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { handlePreviewOpenEvent } from '@process/utils/previewUtils';
 import BaseAgentManager from './BaseAgentManager';
@@ -65,6 +67,7 @@ export class GeminiAgentManager extends BaseAgentManager<
   /** Session-level approval store for "always allow" memory */
   readonly approvalStore = new GeminiApprovalStore();
   private readonly hookRuntime = new AssistantHookRuntime();
+  private readonly controlCommandStreamFilter = new AssistantControlCommandStreamFilter();
 
   private async injectHistoryFromDatabase(): Promise<void> {
     try {
@@ -126,6 +129,23 @@ export class GeminiAgentManager extends BaseAgentManager<
     };
     ipcBridge.geminiConversation.responseStream.emit(correctedMessage);
     channelEventBus.emitAgentMessage(this.conversation_id, correctedMessage);
+  }
+
+  private filterControlCommandsFromMessage(message: IResponseMessage): IResponseMessage | null {
+    if (message.type !== 'content' || typeof message.data !== 'string') {
+      return message;
+    }
+
+    const filteredContent = this.controlCommandStreamFilter.push(message.data);
+    if (!filteredContent) {
+      return null;
+    }
+
+    return {
+      ...message,
+      conversation_id: this.conversation_id,
+      data: filteredContent,
+    };
   }
 
   /** Force yolo mode (for scheduled jobs) / 强制 yolo 模式（用于定时任务） */
@@ -516,9 +536,12 @@ export class GeminiAgentManager extends BaseAgentManager<
       if (data.type === 'finish') {
         // When stream finishes, check for schedule commands in the accumulated message
         // Use longer delay and retry logic to ensure message is persisted
+        this.controlCommandStreamFilter.flush();
+        this.controlCommandStreamFilter.reset();
         this.checkCronWithRetry(0);
       }
       if (data.type === 'start') {
+        this.controlCommandStreamFilter.reset();
         this.status = 'running';
         const traceData = {
           agentType: 'gemini' as const,
@@ -544,6 +567,7 @@ export class GeminiAgentManager extends BaseAgentManager<
       }
 
       data.conversation_id = this.conversation_id;
+      const controlFilteredMessage = this.filterControlCommandsFromMessage(data as IResponseMessage);
       // Transform and persist message (skip transient UI state messages)
       // 跳过 thought, finished 等不需要持久化的消息类型
       // Skip transient UI state messages that don't need persistence
@@ -561,12 +585,16 @@ export class GeminiAgentManager extends BaseAgentManager<
 
       // Filter think tags from streaming content before emitting to UI
       // 在发送到 UI 前过滤流式内容中的 think 标签
-      const filteredData = this.filterThinkTagsFromMessage(data);
-      ipcBridge.geminiConversation.responseStream.emit(filteredData);
+      const filteredData = controlFilteredMessage ? this.filterThinkTagsFromMessage(controlFilteredMessage) : null;
+      if (filteredData) {
+        ipcBridge.geminiConversation.responseStream.emit(filteredData);
+      }
 
       // 发送到 Channel 全局事件总线（用于 Telegram 等外部平台）
       // Emit to Channel global event bus (for Telegram and other external platforms)
-      channelEventBus.emitAgentMessage(this.conversation_id, filteredData);
+      if (filteredData) {
+        channelEventBus.emitAgentMessage(this.conversation_id, filteredData);
+      }
     });
   }
 
@@ -671,6 +699,14 @@ export class GeminiAgentManager extends BaseAgentManager<
 
         if (scheduleCommandResult.hasCommands) {
           collectedResponses.push(...scheduleCommandResult.systemResponses);
+        }
+
+        const skillMarketCommandResult = await executeAssistantSkillMarketCommands({
+          content: textContent,
+        });
+
+        if (skillMarketCommandResult.hasCommands) {
+          collectedResponses.push(...skillMarketCommandResult.systemResponses);
         }
 
         const cleanedContent = stripAssistantControlCommands(textContent);

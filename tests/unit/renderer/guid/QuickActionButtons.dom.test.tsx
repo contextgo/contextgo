@@ -138,7 +138,7 @@ describe('QuickActionButtons', () => {
     expect(screen.getByText('Take over')).toBeInTheDocument();
     expect(screen.getByText('Open')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Official Remote/i }));
-    expect(navigateMock).toHaveBeenCalledWith('/settings/webui');
+    expect(navigateMock).toHaveBeenCalledWith('/remote/devices');
 
     fireEvent.click(screen.getByRole('button', { name: /Continue external sessions/i }));
     expect(openExternalSessionsMock).toHaveBeenCalledTimes(1);

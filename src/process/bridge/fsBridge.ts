@@ -24,6 +24,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import JSZip from 'jszip';
 import { ipcBridge } from '@/common';
+import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
+import { getWorkspaceHooksDir } from '@process/bridge/services/workspaceAutomation';
 import { skillMarketService } from '@process/bridge/services/skillmarket/SkillMarketService';
 import {
   getSystemDir,
@@ -996,8 +998,18 @@ export function initFsBridge(): void {
   });
 
   // 获取可用 skills 列表 / List available skills from both builtin and user directories
-  ipcBridge.fs.listAvailableSkills.provider(async () => {
+  ipcBridge.fs.listAvailableSkills.provider(async (payload: { presetAssistantId?: string }) => {
     try {
+      const presetAssistantId =
+        payload && typeof payload === 'object' && 'presetAssistantId' in payload
+          ? payload.presetAssistantId
+          : undefined;
+      const presetId =
+        typeof presetAssistantId === 'string' && presetAssistantId.startsWith('builtin-')
+          ? presetAssistantId.slice('builtin-'.length)
+          : undefined;
+      const preset = presetId ? ASSISTANT_PRESETS.find((item) => item.id === presetId) : undefined;
+      const packageOwnedSkillNames = new Set(preset?.packagedSkillNames || preset?.defaultEnabledSkills || []);
       const skills: Array<{
         name: string;
         description: string;
@@ -1030,6 +1042,8 @@ export function initFsBridge(): void {
         };
         location: string;
         isCustom: boolean;
+        packageOwnerPresetIds?: string[];
+        hiddenFromSkillsLibrary?: boolean;
       }> = [];
 
       // 辅助函数：从目录读取 skills
@@ -1053,6 +1067,10 @@ export function initFsBridge(): void {
             openAIConfig,
             location: path.join(skill.dirPath, 'SKILL.md'),
             isCustom: isCustomDir,
+            packageOwnerPresetIds:
+              !isCustomDir && packageOwnedSkillNames.has(skill.name) && presetId ? [presetId] : undefined,
+            hiddenFromSkillsLibrary:
+              !isCustomDir && packageOwnedSkillNames.has(skill.name) && preset?.hideDefaultSkillsFromLibrary === true,
           });
         }
       };
@@ -1104,6 +1122,8 @@ export function initFsBridge(): void {
           };
           location: string;
           isCustom: boolean;
+          packageOwnerPresetIds?: string[];
+          hiddenFromSkillsLibrary?: boolean;
         }
       >();
       for (const skill of skills) {
@@ -1123,7 +1143,7 @@ export function initFsBridge(): void {
     }
   });
 
-  ipcBridge.fs.listAvailableHooks.provider(async () => {
+  ipcBridge.fs.listAvailableHooks.provider(async (payload?: { workspacePath?: string }) => {
     try {
       const hooks = new Map<string, HookInfo>();
 
@@ -1158,6 +1178,10 @@ export function initFsBridge(): void {
 
       await readHooksFromDir(getBuiltinHooksCopyDir(), false);
       await readHooksFromDir(getHooksDir(), true);
+      const workspaceHooksDir = getWorkspaceHooksDir(payload?.workspacePath);
+      if (workspaceHooksDir) {
+        await readHooksFromDir(workspaceHooksDir, true);
+      }
 
       return Array.from(hooks.values()).toSorted((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
@@ -1439,6 +1463,34 @@ export function initFsBridge(): void {
       return {
         success: false,
         msg: `Failed to read skill info: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
+  ipcBridge.fs.readSkillContent.provider(async ({ skillPath }) => {
+    try {
+      const skillMdPath = path.basename(skillPath) === 'SKILL.md' ? skillPath : path.join(skillPath, 'SKILL.md');
+
+      try {
+        await fs.access(skillMdPath);
+      } catch {
+        return {
+          success: false,
+          msg: 'SKILL.md file not found in the selected directory',
+        };
+      }
+
+      const content = await fs.readFile(skillMdPath, 'utf-8');
+      return {
+        success: true,
+        data: { content },
+        msg: 'Skill content loaded successfully',
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to read skill content:', error);
+      return {
+        success: false,
+        msg: `Failed to read skill content: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   });
@@ -2101,7 +2153,7 @@ async function readBundledSkillsMarketMd(): Promise<string> {
     throw new Error('Bundled Skills Market SKILL.md not found');
   } catch (error) {
     console.warn('[fsBridge] Failed to read bundled Skills Market SKILL.md:', error);
-    return `---\nname: contextgo-skills\ndescription: "Access the ContextGo Skills Market — discover and download AI agent skills."\n---\n\n# ContextGo Skills Market\n\nFetch full instructions:\n\n\`\`\`bash\nmkdir -p ~/.config/contextgo-skills\ncurl -s https://www.skillmarket.com.cn/SKILL.md > ~/.config/contextgo-skills/SKILL.md\n\`\`\`\n\nThen read and follow the instructions in that file.\n`;
+    return `---\nname: skillmarket\ndescription: "Use ContextGo SkillMarket as a public skill registry. Search, recommend, and install reusable agent skills from the public catalog."\n---\n\n# ContextGo SkillMarket\n\nContextGo SkillMarket is a public skill registry backed by:\n\n- https://skillmarket.com.cn\n- https://skillmarket.com.cn/config.js\n\nUse it when the user wants to find or install an existing reusable skill.\n\nSearch command:\n[SKILLMARKET_SEARCH]\nquery: user intent\nview: curated\nindustry_id: optional\nlimit: 5\n[/SKILLMARKET_SEARCH]\n\nInstall command:\n[SKILLMARKET_INSTALL]\nskill_id: exact skill id from search result\nsource: optional\nrelative_path: optional\nlabel: optional\n[/SKILLMARKET_INSTALL]\n\nDefault workflow:\n\n1. Search the curated catalog first for broad tasks.\n2. Expand to the full catalog for specialized tasks.\n3. Recommend a short list with fit and rationale.\n4. If the user asks to install, use the built-in install path.\n\nDo not require login for normal public search and installation flows.\nDo not redirect the user to fetch another remote SKILL.md manually.\n`;
   }
 }
 

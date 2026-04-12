@@ -12,7 +12,11 @@ import {
   AssistantHookOutputRouter,
   type AfterResponseHookDelivery,
 } from '@process/bridge/services/AssistantHookOutputRouter';
-import { getWorkspaceHookDir, resolveWorkspacePath } from '@process/bridge/services/workspaceAutomation';
+import {
+  getWorkspaceHookDir,
+  readWorkspaceHookSelection,
+  resolveWorkspacePath,
+} from '@process/bridge/services/workspaceAutomation';
 import { getDatabase } from '@process/services/database';
 import { getBuiltinHooksCopyDir, getHooksDir } from '@process/utils/initStorage';
 import fs from 'fs/promises';
@@ -81,7 +85,7 @@ const getConversationWorkspace = (conversation: TChatConversation): string | und
   return resolveWorkspacePath(workingDirectory || workspace);
 };
 
-const getEnabledHooks = (conversation: TChatConversation): string[] => {
+const getConversationEnabledHooks = (conversation: TChatConversation): string[] => {
   const enabledHooks = getConversationExtra(conversation).enabledHooks;
   if (!Array.isArray(enabledHooks)) return [];
 
@@ -190,7 +194,7 @@ export class AssistantHookRuntime {
   private readonly outputRouter = new AssistantHookOutputRouter();
 
   async applyBeforeUserPrompt(conversation: TChatConversation, input: string): Promise<HookRuntimeResult> {
-    const enabledHooks = [...new Set(getEnabledHooks(conversation))];
+    const enabledHooks = [...new Set(await this.getEnabledHooks(conversation))];
     if (enabledHooks.length === 0) {
       return { content: input, appliedHooks: [] };
     }
@@ -217,7 +221,7 @@ export class AssistantHookRuntime {
       return { deliveries: [], appliedHooks: [] };
     }
 
-    const enabledHooks = [...new Set(getEnabledHooks(conversation))];
+    const enabledHooks = [...new Set(await this.getEnabledHooks(conversation))];
     if (enabledHooks.length === 0) {
       return { deliveries: [], appliedHooks: [] };
     }
@@ -259,6 +263,15 @@ export class AssistantHookRuntime {
       emittedHooks: routed.deliveredHooks,
       sourceMessageId: result.sourceMessageId,
     };
+  }
+
+  private async getEnabledHooks(conversation: TChatConversation): Promise<string[]> {
+    const workspaceHooks = await readWorkspaceHookSelection(getConversationWorkspace(conversation));
+    if (workspaceHooks !== null) {
+      return workspaceHooks;
+    }
+
+    return getConversationEnabledHooks(conversation);
   }
 
   private async applyPromptTransformHook(

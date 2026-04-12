@@ -13,6 +13,10 @@ import classNames from 'classnames';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutContext } from '@renderer/hooks/context/LayoutContext';
+import {
+  createDefaultRemoteAccessTarget,
+  RemoteAccessContext,
+} from '@renderer/hooks/context/RemoteAccessContext';
 import { useDeepLink } from '@renderer/hooks/system/useDeepLink';
 import { useNotificationClick } from '@renderer/hooks/system/useNotificationClick';
 import { useDirectorySelection } from '@renderer/hooks/file/useDirectorySelection';
@@ -118,6 +122,7 @@ const Layout: React.FC<{
   const mobileSiderGestureRef = useRef<MobileSiderGesture | null>(null);
   const [mobileSiderTranslateX, setMobileSiderTranslateX] = useState<number | null>(null);
   const [isDraggingMobileSider, setIsDraggingMobileSider] = useState(false);
+  const [remoteAccessTarget, setRemoteAccessTarget] = useState(createDefaultRemoteAccessTarget);
 
   const loadAndHealCustomCss = useCallback(async () => {
     try {
@@ -518,25 +523,46 @@ const Layout: React.FC<{
     resetMobileSiderGesture();
   }, [resetMobileSiderGesture]);
 
+  const resetRemoteAccessTarget = useCallback(() => {
+    setRemoteAccessTarget((previous) => {
+      if (!previous.entryUrl) {
+        return createDefaultRemoteAccessTarget();
+      }
+
+      return {
+        mode: 'device-list',
+        currentUrl: previous.entryUrl,
+        entryUrl: previous.entryUrl,
+      };
+    });
+  }, []);
+
   return (
-    <LayoutContext.Provider
+    <RemoteAccessContext.Provider
       value={{
-        isMobile,
-        siderCollapsed: collapsed,
-        setSiderCollapsed: setCollapsed,
+        target: remoteAccessTarget,
+        setTarget: setRemoteAccessTarget,
+        resetToDeviceList: resetRemoteAccessTarget,
       }}
     >
-      <div
-        className={classNames(
-          'app-shell relative flex flex-col size-full min-h-0',
-          isMobile && `app-shell--mobile-${mobileTopChromeMode}`
-        )}
-        style={appShellStyle}
-        onTouchStart={handleMobileSiderTouchStart}
-        onTouchMove={handleMobileSiderTouchMove}
-        onTouchEnd={handleMobileSiderTouchEnd}
-        onTouchCancel={handleMobileSiderTouchCancel}
+      <LayoutContext.Provider
+        value={{
+          isMobile,
+          siderCollapsed: collapsed,
+          setSiderCollapsed: setCollapsed,
+        }}
       >
+        <div
+          className={classNames(
+            'app-shell relative flex flex-col size-full min-h-0',
+            isMobile && `app-shell--mobile-${mobileTopChromeMode}`
+          )}
+          style={appShellStyle}
+          onTouchStart={handleMobileSiderTouchStart}
+          onTouchMove={handleMobileSiderTouchMove}
+          onTouchEnd={handleMobileSiderTouchEnd}
+          onTouchCancel={handleMobileSiderTouchCancel}
+        >
         <Titlebar
           workspaceAvailable={workspaceAvailable}
           leftPaneWidth={collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth}
@@ -621,8 +647,9 @@ const Layout: React.FC<{
             </Suspense>
           </ArcoLayout.Content>
         </ArcoLayout>
-      </div>
-    </LayoutContext.Provider>
+        </div>
+      </LayoutContext.Provider>
+    </RemoteAccessContext.Provider>
   );
 };
 

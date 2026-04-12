@@ -87,8 +87,15 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
     loaders: [() => import('@renderer/pages/guid')],
   },
   {
-    match: (routePath) => routePath === '/hooks',
-    loaders: [() => import('@renderer/pages/settings/AgentSettings/HooksManagement')],
+    match: (routePath) => routePath === '/remote/devices',
+    loaders: [() => import('@renderer/pages/RemoteDevicesPage')],
+  },
+  {
+    match: (routePath) => routePath === '/hooks' || routePath === '/settings/hooks',
+    loaders: [
+      () => import('@renderer/pages/settings/AgentSettings/HooksManagement'),
+      () => import('@renderer/pages/settings/components/SettingsSider'),
+    ],
   },
   {
     match: (routePath) => routePath === '/connectors' || routePath.startsWith('/connectors/'),
@@ -189,7 +196,7 @@ export function preloadRoutePath(routePath: string): void {
 
 export function warmCriticalRendererRoutes(): void {
   const warm = () => {
-    ['/guid', '/settings/system', '/connectors', '/hooks'].forEach((routePath) => {
+    ['/guid', '/settings/system', '/connectors', '/settings/hooks'].forEach((routePath) => {
       preloadRoutePath(routePath);
     });
   };

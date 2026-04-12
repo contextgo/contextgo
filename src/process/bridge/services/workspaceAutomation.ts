@@ -6,9 +6,14 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { getPlatformServices } from '@/common/platform';
 import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
-import { createDefaultManagedSlashCommandLibrary, normalizeManagedSlashCommandLibrary } from '@/common/chat/slash/library';
+import {
+  createDefaultManagedSlashCommandLibrary,
+  normalizeManagedSlashCommandLibrary,
+} from '@/common/chat/slash/library';
 import type { TChatConversation } from '@/common/config/storage';
+import type { AssistantPreset } from '@/common/config/presets/assistantPresets';
 import { findBuiltinAssistantPreset } from '@/common/config/presets/builtinAssistantDefaults';
 import { copyDirectoryRecursively } from '@process/utils';
 import { getBuiltinHooksCopyDir } from '@process/utils/initStorage';
@@ -23,14 +28,13 @@ export const resolveWorkspacePath = (workspace?: string): string | undefined => 
 
 export const WORKSPACE_AUTOMATION_DIR = '.contextgo';
 export const WORKSPACE_HOOKS_DIR = path.join(WORKSPACE_AUTOMATION_DIR, 'hooks');
+export const WORKSPACE_HOOKS_FILE = path.join(WORKSPACE_AUTOMATION_DIR, 'hooks.json');
 export const WORKSPACE_COMMANDS_FILE = path.join(WORKSPACE_AUTOMATION_DIR, 'commands.json');
 export const WORKSPACE_SCHEDULES_FILE = path.join(WORKSPACE_AUTOMATION_DIR, 'schedules.json');
 export const WORKSPACE_RUNTIME_DIR = path.join(WORKSPACE_AUTOMATION_DIR, 'runtime');
 export const WORKSPACE_SCHEDULE_RUNTIME_DIR = path.join(WORKSPACE_RUNTIME_DIR, 'schedules');
 
-const HARNESS_WORKSPACE_ASSISTANT_IDS = new Set(['builtin-superpowers', 'builtin-everything-in-claude-code']);
-
-const HARNESS_WORKSPACE_COMMANDS: ManagedSlashCommandRecord[] = [
+const CONTEXTGO_HARNESS_COMMANDS: ManagedSlashCommandRecord[] = [
   ...createDefaultManagedSlashCommandLibrary(),
   {
     type: 'custom',
@@ -115,6 +119,119 @@ const HARNESS_WORKSPACE_COMMANDS: ManagedSlashCommandRecord[] = [
   },
 ];
 
+const CLAUDE_ECC_LEGACY_COMMANDS: ManagedSlashCommandRecord[] = [
+  ...createDefaultManagedSlashCommandLibrary(),
+  {
+    type: 'custom',
+    id: 'ecc-quality-gate',
+    enabled: true,
+    name: 'quality-gate',
+    description: 'Run the ECC quality pipeline on demand for a file or project scope.',
+    template:
+      'Use the `verification-loop` skill for this request and apply the ECC quality-gate workflow to the relevant path or repository scope before reporting blockers.',
+  },
+  {
+    type: 'custom',
+    id: 'ecc-checkpoint',
+    enabled: true,
+    name: 'checkpoint',
+    description: 'Capture a concise project checkpoint before continuing the next iteration.',
+    template:
+      'Use the `strategic-compact` skill for this request. Summarize the current checkpoint, open decisions, verification state, and the next execution slice before proceeding.',
+  },
+  {
+    type: 'custom',
+    id: 'ecc-resume-session',
+    enabled: true,
+    name: 'resume-session',
+    description: 'Resume an ECC workflow with the right context, risks, and next actions.',
+    template:
+      'Use the `strategic-compact` and `codebase-onboarding` skills for this request. Reconstruct the relevant workspace context, active constraints, and next actions before doing new work.',
+  },
+];
+
+type WorkspaceAutomationProfileConfig = {
+  commands?: ManagedSlashCommandRecord[];
+  hookNames?: string[];
+  sourceRoot?: string;
+  sourceHooksSubdir?: string;
+  sourceCommandsSubdir?: string;
+  sourceScriptsSubdir?: string;
+  claudePluginRootEnvName?: string;
+  claudePluginRootValue?: string;
+};
+
+const normalizeWorkspaceHookNames = (content: unknown): string[] => {
+  const enabledHooks = Array.isArray(content)
+    ? content
+    : content && typeof content === 'object' && 'enabledHooks' in content
+      ? (content as { enabledHooks?: unknown }).enabledHooks
+      : undefined;
+
+  if (!Array.isArray(enabledHooks)) {
+    return [];
+  }
+
+  return [
+    ...new Set(
+      enabledHooks
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter(Boolean)
+    ),
+  ];
+};
+
+const resolveBundledResourceDir = (resourceDir: string): string => {
+  const platform = getPlatformServices().paths;
+  const appPath = platform.getAppPath() || process.cwd();
+  const resourcesPrefix = 'src/process/resources/';
+
+  if (platform.isPackaged()) {
+    const prodPath = resourceDir.startsWith(resourcesPrefix) ? resourceDir.slice(resourcesPrefix.length) : resourceDir;
+    return path.join(appPath, prodPath);
+  }
+
+  return path.join(appPath, resourceDir);
+};
+
+const resolveWorkspaceAutomationProfileConfig = (preset: AssistantPreset): WorkspaceAutomationProfileConfig | null => {
+  switch (preset.workspaceAutomationProfile) {
+    case 'contextgo-harness':
+      return {
+        commands: CONTEXTGO_HARNESS_COMMANDS,
+        hookNames: preset.defaultEnabledHooks ? [...preset.defaultEnabledHooks] : [],
+      };
+    case 'claude-ecc': {
+      if (!preset.resourceDir) {
+        return null;
+      }
+
+      const resourceRoot = resolveBundledResourceDir(preset.resourceDir);
+      return {
+        commands: CLAUDE_ECC_LEGACY_COMMANDS,
+        sourceRoot: resourceRoot,
+        sourceHooksSubdir: 'hooks',
+        sourceCommandsSubdir: 'commands',
+        sourceScriptsSubdir: 'scripts',
+        claudePluginRootEnvName: 'CLAUDE_PLUGIN_ROOT',
+        claudePluginRootValue: resourceRoot,
+      };
+    }
+    default:
+      return null;
+  }
+};
+
+const getWorkspaceAutomationProfile = (assistantId: string): WorkspaceAutomationProfileConfig | null => {
+  const preset = findBuiltinAssistantPreset(assistantId);
+  if (!preset) {
+    return null;
+  }
+
+  return resolveWorkspaceAutomationProfileConfig(preset);
+};
+
 export const getWorkspaceHooksDir = (workspace?: string): string | null => {
   const resolvedWorkspace = resolveWorkspacePath(workspace);
   if (!resolvedWorkspace) {
@@ -131,6 +248,15 @@ export const getWorkspaceCommandsFile = (workspace?: string): string | null => {
   }
 
   return path.join(resolvedWorkspace, WORKSPACE_COMMANDS_FILE);
+};
+
+export const getWorkspaceHooksFile = (workspace?: string): string | null => {
+  const resolvedWorkspace = resolveWorkspacePath(workspace);
+  if (!resolvedWorkspace) {
+    return null;
+  }
+
+  return path.join(resolvedWorkspace, WORKSPACE_HOOKS_FILE);
 };
 
 export const getWorkspaceSchedulesFile = (workspace?: string): string | null => {
@@ -200,7 +326,7 @@ const resolveConversationWorkspace = (conversation?: Pick<TChatConversation, 'ex
   return resolveWorkspacePath(workingDirectory || workspace);
 };
 
-const collectHarnessAssistantIds = (conversation?: Pick<TChatConversation, 'type' | 'extra'>): string[] => {
+const collectWorkspaceAutomationAssistantIds = (conversation?: Pick<TChatConversation, 'type' | 'extra'>): string[] => {
   if (!conversation) {
     return [];
   }
@@ -220,42 +346,38 @@ const collectHarnessAssistantIds = (conversation?: Pick<TChatConversation, 'type
       }
     | undefined;
 
-  if (typeof extra?.presetAssistantId === 'string' && HARNESS_WORKSPACE_ASSISTANT_IDS.has(extra.presetAssistantId)) {
-    assistantIds.add(extra.presetAssistantId);
-  }
+  const pushAssistantId = (assistantId: unknown) => {
+    if (typeof assistantId !== 'string') {
+      return;
+    }
+
+    if (getWorkspaceAutomationProfile(assistantId)) {
+      assistantIds.add(assistantId);
+    }
+  };
+
+  pushAssistantId(extra?.presetAssistantId);
 
   if (!Array.isArray(extra?.participants)) {
     return [...assistantIds];
   }
 
   for (const participant of extra.participants) {
-    if (typeof participant?.assistantId === 'string' && HARNESS_WORKSPACE_ASSISTANT_IDS.has(participant.assistantId)) {
-      assistantIds.add(participant.assistantId);
-    }
-
-    const nestedAssistantId = participant?.conversation?.extra?.presetAssistantId;
-    if (typeof nestedAssistantId === 'string' && HARNESS_WORKSPACE_ASSISTANT_IDS.has(nestedAssistantId)) {
-      assistantIds.add(nestedAssistantId);
-    }
+    pushAssistantId(participant?.assistantId);
+    pushAssistantId(participant?.conversation?.extra?.presetAssistantId);
   }
 
   return [...assistantIds];
 };
 
-const resolveHarnessHookDirs = async (assistantIds: string[]): Promise<Array<{ name: string; dir: string }>> => {
-  if (assistantIds.length === 0) {
+const resolveContextgoHarnessHookDirs = async (hookNames: string[]): Promise<Array<{ name: string; dir: string }>> => {
+  if (hookNames.length === 0) {
     return [];
   }
 
   const builtinHooksDir = getBuiltinHooksCopyDir();
-  const hookNames = new Set<string>();
-
-  for (const assistantId of assistantIds) {
-    const preset = findBuiltinAssistantPreset(assistantId);
-    preset?.defaultEnabledHooks?.forEach((hookName) => hookNames.add(hookName));
-  }
-
   const hookDirs: Array<{ name: string; dir: string }> = [];
+
   for (const hookName of hookNames) {
     const hookDir = path.join(builtinHooksDir, hookName);
     try {
@@ -294,6 +416,32 @@ const ensureHooksIntoWorkspace = async (
   }
 };
 
+const ensureWorkspaceHookSelection = async (workspace: string | undefined, hookNames: string[]): Promise<void> => {
+  const hooksFile = getWorkspaceHooksFile(workspace);
+  const normalizedHookNames = normalizeWorkspaceHookNames(hookNames);
+  if (!hooksFile || normalizedHookNames.length === 0) {
+    return;
+  }
+
+  try {
+    await fs.access(hooksFile);
+    return;
+  } catch {
+    await fs.mkdir(path.dirname(hooksFile), { recursive: true });
+    await fs.writeFile(
+      hooksFile,
+      JSON.stringify(
+        {
+          enabledHooks: normalizedHookNames,
+        },
+        null,
+        2
+      ) + '\n',
+      'utf-8'
+    );
+  }
+};
+
 const ensureWorkspaceCommandLibrary = async (
   workspace: string | undefined,
   library: ManagedSlashCommandRecord[]
@@ -308,7 +456,131 @@ const ensureWorkspaceCommandLibrary = async (
     return;
   } catch {
     await fs.mkdir(path.dirname(commandsFile), { recursive: true });
-    await fs.writeFile(commandsFile, `${JSON.stringify(normalizeManagedSlashCommandLibrary(library), null, 2)}\n`, 'utf-8');
+    await fs.writeFile(
+      commandsFile,
+      JSON.stringify(normalizeManagedSlashCommandLibrary(library), null, 2) + '\n',
+      'utf-8'
+    );
+  }
+};
+
+const ensureDirectoryCopyIntoWorkspace = async (
+  workspace: string | undefined,
+  sourceDir: string | null,
+  targetRelativeDir: string
+): Promise<void> => {
+  if (!workspace || !sourceDir) {
+    return;
+  }
+
+  try {
+    await fs.access(sourceDir);
+  } catch {
+    return;
+  }
+
+  const targetDir = path.join(workspace, targetRelativeDir);
+  try {
+    await fs.access(targetDir);
+    return;
+  } catch {
+    await fs.mkdir(path.dirname(targetDir), { recursive: true });
+    await copyDirectoryRecursively(sourceDir, targetDir, {
+      overwrite: false,
+      removeStale: false,
+    });
+  }
+};
+
+const ensureWorkspaceEnvFileEntries = async (
+  workspace: string | undefined,
+  entries: Record<string, string>
+): Promise<void> => {
+  if (!workspace || Object.keys(entries).length === 0) {
+    return;
+  }
+
+  const envFilePath = path.join(workspace, '.claude', 'settings.local.json');
+  let existing: Record<string, unknown> = {};
+
+  try {
+    const raw = await fs.readFile(envFilePath, 'utf-8');
+    existing = JSON.parse(raw) as Record<string, unknown>;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    if (code !== 'ENOENT') {
+      console.warn('[workspaceAutomation] Failed to read workspace env file:', envFilePath, error);
+      return;
+    }
+  }
+
+  const env = typeof existing.env === 'object' && existing.env ? { ...(existing.env as Record<string, unknown>) } : {};
+  let changed = false;
+
+  for (const [key, value] of Object.entries(entries)) {
+    if (env[key] === value) {
+      continue;
+    }
+    env[key] = value;
+    changed = true;
+  }
+
+  if (!changed && existing.env) {
+    return;
+  }
+
+  const next = {
+    ...existing,
+    env,
+  };
+
+  await fs.mkdir(path.dirname(envFilePath), { recursive: true });
+  await fs.writeFile(envFilePath, JSON.stringify(next, null, 2) + '\n', 'utf-8');
+};
+
+const ensureWorkspaceAutomationProfile = async (workspace: string | undefined, assistantId: string): Promise<void> => {
+  const profile = getWorkspaceAutomationProfile(assistantId);
+  if (!profile || !workspace) {
+    return;
+  }
+
+  if (profile.commands) {
+    await ensureWorkspaceCommandLibrary(workspace, profile.commands);
+  }
+
+  if (profile.hookNames) {
+    await ensureHooksIntoWorkspace(workspace, await resolveContextgoHarnessHookDirs(profile.hookNames));
+    await ensureWorkspaceHookSelection(workspace, profile.hookNames);
+  }
+
+  if (profile.sourceRoot && profile.sourceHooksSubdir) {
+    await ensureDirectoryCopyIntoWorkspace(
+      workspace,
+      path.join(profile.sourceRoot, profile.sourceHooksSubdir),
+      '.claude/hooks'
+    );
+  }
+
+  if (profile.sourceRoot && profile.sourceCommandsSubdir) {
+    await ensureDirectoryCopyIntoWorkspace(
+      workspace,
+      path.join(profile.sourceRoot, profile.sourceCommandsSubdir),
+      '.claude/commands'
+    );
+  }
+
+  if (profile.sourceRoot && profile.sourceScriptsSubdir) {
+    await ensureDirectoryCopyIntoWorkspace(
+      workspace,
+      path.join(profile.sourceRoot, profile.sourceScriptsSubdir),
+      '.claude/scripts'
+    );
+  }
+
+  if (profile.claudePluginRootEnvName && profile.claudePluginRootValue) {
+    await ensureWorkspaceEnvFileEntries(workspace, {
+      [profile.claudePluginRootEnvName]: profile.claudePluginRootValue,
+    });
   }
 };
 
@@ -338,28 +610,73 @@ export const copyWorkspaceAutomationHooks = async (
 ): Promise<void> => {
   const sourceHooksDir = getWorkspaceHooksDir(sourceWorkspace);
   const targetHooksDir = getWorkspaceHooksDir(targetWorkspace);
+  const sourceHooksFile = getWorkspaceHooksFile(sourceWorkspace);
+  const targetHooksFile = getWorkspaceHooksFile(targetWorkspace);
 
-  if (!sourceHooksDir || !targetHooksDir || sourceHooksDir === targetHooksDir) {
+  const shouldCopyHookDir =
+    typeof sourceHooksDir === 'string' && typeof targetHooksDir === 'string' && sourceHooksDir !== targetHooksDir;
+  const shouldCopyHookConfig =
+    typeof sourceHooksFile === 'string' && typeof targetHooksFile === 'string' && sourceHooksFile !== targetHooksFile;
+
+  if (!shouldCopyHookDir && !shouldCopyHookConfig) {
+    return;
+  }
+
+  if (shouldCopyHookDir) {
+    try {
+      await fs.access(sourceHooksDir);
+      await fs.mkdir(targetHooksDir, { recursive: true });
+      await copyDirectoryRecursively(sourceHooksDir, targetHooksDir, {
+        overwrite: true,
+        removeStale: true,
+      });
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException | undefined)?.code;
+      if (code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+
+  if (shouldCopyHookConfig) {
+    try {
+      await fs.access(sourceHooksFile);
+      await fs.mkdir(path.dirname(targetHooksFile), { recursive: true });
+      await fs.copyFile(sourceHooksFile, targetHooksFile);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException | undefined)?.code;
+      if (code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+};
+
+export const copyWorkspaceAutomationCommands = async (
+  sourceWorkspace: string | undefined,
+  targetWorkspace: string | undefined
+): Promise<void> => {
+  const sourceCommandsFile = getWorkspaceCommandsFile(sourceWorkspace);
+  const targetCommandsFile = getWorkspaceCommandsFile(targetWorkspace);
+
+  if (!sourceCommandsFile || !targetCommandsFile || sourceCommandsFile === targetCommandsFile) {
     return;
   }
 
   try {
-    await fs.access(sourceHooksDir);
+    await fs.access(sourceCommandsFile);
   } catch {
     return;
   }
 
-  await fs.mkdir(targetHooksDir, { recursive: true });
-  await copyDirectoryRecursively(sourceHooksDir, targetHooksDir, {
-    overwrite: true,
-    removeStale: true,
-  });
+  await fs.mkdir(path.dirname(targetCommandsFile), { recursive: true });
+  await fs.copyFile(sourceCommandsFile, targetCommandsFile);
 };
 
 export const ensureHarnessWorkspaceAutomationForConversation = async (
   conversation?: Pick<TChatConversation, 'type' | 'extra'>
 ): Promise<void> => {
-  const assistantIds = collectHarnessAssistantIds(conversation);
+  const assistantIds = collectWorkspaceAutomationAssistantIds(conversation);
   if (assistantIds.length === 0) {
     return;
   }
@@ -369,8 +686,9 @@ export const ensureHarnessWorkspaceAutomationForConversation = async (
     return;
   }
 
-  await ensureWorkspaceCommandLibrary(workspace, HARNESS_WORKSPACE_COMMANDS);
-  await ensureHooksIntoWorkspace(workspace, await resolveHarnessHookDirs(assistantIds));
+  for (const assistantId of assistantIds) {
+    await ensureWorkspaceAutomationProfile(workspace, assistantId);
+  }
 };
 
 async function readWorkspaceAutomationJson<T>(filePath: string | null): Promise<T | null> {
@@ -399,4 +717,25 @@ export const readWorkspaceCommandLibrary = async (workspace?: string): Promise<M
   }
 
   return normalizeManagedSlashCommandLibrary(content);
+};
+
+export const readWorkspaceHookSelection = async (workspace?: string): Promise<string[] | null> => {
+  const hooksFile = getWorkspaceHooksFile(workspace);
+  if (!hooksFile) {
+    return null;
+  }
+
+  try {
+    const raw = await fs.readFile(hooksFile, 'utf-8');
+    return normalizeWorkspaceHookNames(JSON.parse(raw) as unknown);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    const message = error instanceof Error ? error.message : String(error);
+    if (code === 'ENOENT' || /ENOENT|no such file or directory/i.test(message)) {
+      return null;
+    }
+
+    console.warn('[workspaceAutomation] Failed to read workspace hook selection:', hooksFile, error);
+    return [];
+  }
 };
