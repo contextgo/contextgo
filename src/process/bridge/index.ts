@@ -26,7 +26,6 @@ import { initFileWatchBridge } from './fileWatchBridge';
 import { initFsBridge } from './fsBridge';
 import { initGeminiBridge } from './geminiBridge';
 import { initGeminiConversationBridge } from './geminiConversationBridge';
-import { initMcpBridge } from './mcpBridge';
 import { initModelBridge } from './modelBridge';
 import { initPreviewHistoryBridge } from './previewHistoryBridge';
 import { initShellBridge } from './shellBridge';
@@ -70,7 +69,6 @@ export function initAllBridges(deps: BridgeDependencies): void {
   initAcpConversationBridge(deps.workerTaskManager, deps.conversationService);
   initAuthBridge();
   initModelBridge();
-  initMcpBridge();
   initPreviewHistoryBridge();
   initDocumentBridge();
   initSpaceBridge(deps.spaceService);
@@ -119,7 +117,6 @@ export {
   initFsBridge,
   initGeminiBridge,
   initGeminiConversationBridge,
-  initMcpBridge,
   initModelBridge,
   initNotificationBridge,
   initPreviewHistoryBridge,

@@ -1,6 +1,7 @@
 import { ipcBridge } from '@/common';
 import { SettingsSubModal } from '@/renderer/components/settings';
 import type {
+  SkillInfo,
   SkillMarketBundle,
   SkillMarketIndustry,
   SkillMarketItem,
@@ -12,14 +13,6 @@ import { Delete, FolderOpen, Info, Search, Plus, Refresh } from '@icon-park/reac
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import SettingsPageWrapper from './components/SettingsPageWrapper';
-
-// Skill 信息类型 / Skill info type
-interface SkillInfo {
-  name: string;
-  description: string;
-  location: string;
-  isCustom: boolean;
-}
 
 // 外部来源类型 / External source type
 interface ExternalSource {
@@ -84,6 +77,68 @@ const SkillsHubSettings: React.FC = () => {
         s.name.toLowerCase().includes(lowerQuery) || (s.description && s.description.toLowerCase().includes(lowerQuery))
     );
   }, [availableSkills, searchQuery]);
+
+  const renderSkillDependencyTags = useCallback(
+    (skill: SkillInfo) => {
+      if (!skill.dependencyHints || skill.dependencyHints.length === 0) {
+        return null;
+      }
+
+      return (
+        <div className='mt-6px flex flex-wrap gap-6px'>
+          {skill.dependencyHints.map((hint) => {
+            const toneClass =
+              hint.status === 'ready'
+                ? 'bg-[rgba(var(--green-6),0.08)] text-green-6 border border-[rgba(var(--green-6),0.2)]'
+                : hint.status === 'missing'
+                  ? 'bg-[rgba(var(--red-6),0.08)] text-red-6 border border-[rgba(var(--red-6),0.2)]'
+                  : hint.kind === 'mcp'
+                    ? 'bg-[rgba(var(--blue-6),0.08)] text-blue-6 border border-[rgba(var(--blue-6),0.2)]'
+                    : 'bg-fill-2 text-t-secondary border border-border-1';
+            const labelPrefix =
+              hint.kind === 'env'
+                ? hint.status === 'missing'
+                  ? t('settings.skillDependencyEnvMissing', { defaultValue: 'Env Missing' })
+                  : t('settings.skillDependencyEnvReady', { defaultValue: 'Env Ready' })
+                : hint.kind === 'command'
+                  ? hint.status === 'missing'
+                    ? t('settings.skillDependencyCommandMissing', { defaultValue: 'Command Missing' })
+                    : t('settings.skillDependencyCommandReady', { defaultValue: 'Command Ready' })
+                  : hint.kind === 'mcp'
+                    ? t('settings.skillDependencyCodexTool', { defaultValue: 'Codex Tool' })
+                    : t('settings.skillDependencyCompatibility', { defaultValue: 'Compatibility' });
+
+            return (
+              <span
+                key={`${hint.source}:${hint.kind}:${hint.label}`}
+                className={`text-11px px-6px py-1px rd-4px font-medium ${toneClass}`}
+                title={hint.detail || hint.label}
+              >
+                {`${labelPrefix}: ${hint.label}`}
+              </span>
+            );
+          })}
+        </div>
+      );
+    },
+    [t]
+  );
+
+  const renderSkillCompatibilityNotes = useCallback((skill: SkillInfo) => {
+    if (!skill.compatibility || skill.compatibility.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className='mt-6px flex flex-col gap-4px'>
+        {skill.compatibility.slice(0, 2).map((note) => (
+          <div key={note} className='text-11px leading-relaxed text-t-tertiary' title={note}>
+            {note}
+          </div>
+        ))}
+      </div>
+    );
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -1005,6 +1060,8 @@ const SkillsHubSettings: React.FC = () => {
                             {skill.description}
                           </p>
                         )}
+                        {renderSkillDependencyTags(skill)}
+                        {renderSkillCompatibilityNotes(skill)}
                       </div>
 
                       <div className='shrink-0 sm:self-center flex items-center justify-end gap-6px mt-12px sm:mt-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity pl-4px'>

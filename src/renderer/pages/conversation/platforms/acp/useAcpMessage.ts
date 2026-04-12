@@ -12,7 +12,11 @@ import type { AgentRunTrace } from '@/renderer/components/chat/AgentRunStatus/ty
 import type { RuntimePlanEntry } from '@/renderer/components/chat/runtimePlanTypes';
 import type { ThoughtData } from '@/renderer/components/chat/ThoughtDisplay';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
-import { readConversationUiState, writeConversationUiState } from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
+import {
+  hasConversationUiState,
+  readConversationUiState,
+  writeConversationUiState,
+} from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseAcpMessageReturn = {
@@ -555,6 +559,7 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
     pendingTaskRef.current = '';
     thoughtTextRef.current = '';
 
+    const hasCachedState = hasConversationUiState(ACP_UI_STATE_SCOPE, conversation_id);
     const cachedState = readConversationUiState(ACP_UI_STATE_SCOPE, conversation_id, createDefaultAcpUiState());
 
     setRunning(cachedState.running);
@@ -580,11 +585,20 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
       }
 
       const isRunning = res.status === 'running';
-      setRunning(isRunning);
-      runningRef.current = isRunning;
-      setAiProcessing(isRunning);
-      aiProcessingRef.current = isRunning;
-      if (!isRunning) {
+      if (isRunning) {
+        if (!hasCachedState) {
+          setRunning(true);
+          runningRef.current = true;
+          setAiProcessing(true);
+          aiProcessingRef.current = true;
+        }
+      } else {
+        setRunning(false);
+        runningRef.current = false;
+        setAiProcessing(false);
+        aiProcessingRef.current = false;
+        setThought({ subject: '', description: '' });
+        setRunTrace(null);
         setRuntimePlanEntries([]);
       }
       activeToolCallIdsRef.current = new Set();

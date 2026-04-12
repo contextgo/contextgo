@@ -13,6 +13,7 @@ import {
   executeAssistantScheduleCommands,
   stripAssistantControlCommands,
 } from '@process/services/context/events/schedule/AssistantScheduleCommandService';
+import { emitScheduleEventMessage } from '@process/services/context/events/schedule/ScheduleEventMessageEmitter';
 import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 
 export class CodexMessageProcessor {
@@ -126,6 +127,17 @@ export class CodexMessageProcessor {
       content: msg.message,
       conversationId: this.conversation_id,
       agentType: 'codex',
+    });
+
+    scheduleCommandResult.events.forEach((event) => {
+      emitScheduleEventMessage({
+        conversationId: this.conversation_id,
+        msgId: uuid(),
+        event,
+        emit: (message) => {
+          this.messageEmitter.emitAndPersistMessage(message, false);
+        },
+      });
     });
 
     const cleanedContent = stripAssistantControlCommands(msg.message);

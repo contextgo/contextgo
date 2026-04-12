@@ -9,9 +9,8 @@ import { ipcBridge } from '@/common';
 import type { ScheduleMessageMeta, IMessageText, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
 import { transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
-import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
+import type { TProviderWithModel } from '@/common/config/storage';
 import { ProcessConfig, getSkillsDir } from '@process/utils/initStorage';
-import { ExtensionRegistry } from '@process/extensions';
 import { buildSystemInstructionsWithSkillsIndex } from './agentUtils';
 import { detectSkillLoadRequest, AcpSkillManager, buildSkillContentText } from './AcpSkillManager';
 import { uuid } from '@/common/utils';
@@ -25,33 +24,22 @@ import {
   executeAssistantScheduleCommands,
   stripAssistantControlCommands,
 } from '@process/services/context/events/schedule/AssistantScheduleCommandService';
+import { emitScheduleEventMessage } from '@process/services/context/events/schedule/ScheduleEventMessageEmitter';
 import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 import { handlePreviewOpenEvent } from '@process/utils/previewUtils';
 import BaseAgentManager from './BaseAgentManager';
 import { IpcAgentEventEmitter } from './IpcAgentEventEmitter';
-import { mainLog, mainWarn, mainError } from '@process/utils/mainLogger';
+import { mainWarn, mainError } from '@process/utils/mainLogger';
 import { extractTextFromMessage } from './MessageMiddleware';
 import { stripThinkTags } from './ThinkTagDetector';
 import * as fs from 'node:fs';
-
-// gemini agent管理器类
-type UiMcpServerConfig = {
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  url?: string;
-  type?: 'sse' | 'http';
-  headers?: Record<string, string>;
-  description?: string;
-};
 
 export class GeminiAgentManager extends BaseAgentManager<
   {
     workspace: string;
     model: TProviderWithModel;
     webSearchEngine?: 'google' | 'default';
-    mcpServers?: Record<string, UiMcpServerConfig>;
     contextFileName?: string;
     // 系统规则 / System rules
     presetRules?: string;
@@ -73,9 +61,6 @@ export class GeminiAgentManager extends BaseAgentManager<
   contextContent?: string;
   enabledSkills?: string[];
   private bootstrap: Promise<void>;
-
-  /** Fingerprint of MCP config used by the current worker, for change detection */
-  private mcpFingerprint: string = '';
 
   /** Session-level approval store for "always allow" memory */
   readonly approvalStore = new GeminiApprovalStore();
@@ -187,11 +172,10 @@ export class GeminiAgentManager extends BaseAgentManager<
 
   /**
    * Create bootstrap promise that initializes the worker with current config.
-   * Extracted to allow re-bootstrapping when MCP config changes.
    */
   private createBootstrap(): Promise<void> {
-    return Promise.all([ProcessConfig.get('gemini.config'), this.getMcpServers()])
-      .then(async ([config, mcpServers]) => {
+    return ProcessConfig.get('gemini.config')
+      .then(async (config) => {
         let projectId: string | undefined;
         const authType = getProviderAuthType(this.model);
         const needsGoogleOAuth = authType === AuthType.LOGIN_WITH_GOOGLE || authType === AuthType.USE_VERTEX_AI;
@@ -238,7 +222,6 @@ export class GeminiAgentManager extends BaseAgentManager<
           workspace: this.workspace,
           model: this.model,
           webSearchEngine: this.webSearchEngine,
-          mcpServers,
           contextFileName: this.contextFileName,
           // presetRules are no longer injected here — they are in GEMINI.md
           // Keep for backward compatibility with existing conversations
@@ -255,105 +238,6 @@ export class GeminiAgentManager extends BaseAgentManager<
       .then(async () => {
         await this.injectHistoryFromDatabase();
       });
-  }
-
-  /**
-   * Compute a fingerprint of ALL MCP servers for change detection.
-   * Includes name, enabled, status and transport key for every server so that
-   * any add / remove / toggle / reconnect / config-change is detected —
-   * even when a server is deleted and re-added with the same name.
-   */
-  private static computeMcpFingerprint(mcpServers: IMcpServer[] | undefined | null): string {
-    if (!mcpServers || !Array.isArray(mcpServers)) return '[]';
-    const entries = mcpServers
-      .map((s: IMcpServer) => {
-        // Include transport identity so config changes (e.g. different command/url) are detected
-        const transportKey =
-          s.transport.type === 'stdio'
-            ? `${s.transport.command}|${(s.transport.args || []).join(',')}`
-            : 'url' in s.transport
-              ? s.transport.url
-              : '';
-        return { n: s.name, e: s.enabled, st: s.status, t: transportKey };
-      })
-      .toSorted((a, b) => a.n.localeCompare(b.n));
-    return JSON.stringify(entries);
-  }
-
-  private async getMcpServers(): Promise<Record<string, UiMcpServerConfig>> {
-    try {
-      const mcpServers = await ProcessConfig.get('mcp.config');
-      const allServers: IMcpServer[] = Array.isArray(mcpServers) ? mcpServers : [];
-
-      // Merge extension-contributed MCP servers
-      // 合并扩展贡献的 MCP servers
-      try {
-        const registry = ExtensionRegistry.getInstance();
-        const extServers = registry.getMcpServers();
-        for (const extServer of extServers) {
-          const transport = extServer.transport as IMcpServer['transport'];
-          if (!transport) continue;
-          // Only include enabled extension servers (they don't have status since they're declarative)
-          if (extServer.enabled === false) continue;
-          allServers.push({
-            id: String(extServer.id || ''),
-            name: String(extServer.name || ''),
-            description: extServer.description as string | undefined,
-            enabled: true,
-            transport,
-            status: 'connected', // Extension MCP servers are treated as available
-            createdAt: (extServer.createdAt as number) || Date.now(),
-            updatedAt: (extServer.updatedAt as number) || Date.now(),
-            originalJson: String(extServer.originalJson || '{}'),
-          });
-        }
-      } catch (extError) {
-        console.warn('[GeminiAgentManager] Failed to load extension MCP servers:', extError);
-      }
-
-      if (allServers.length === 0) {
-        this.mcpFingerprint = '[]';
-        return {};
-      }
-
-      // Store fingerprint for later change detection
-      // 保存指纹用于后续变更检测
-      this.mcpFingerprint = GeminiAgentManager.computeMcpFingerprint(allServers);
-
-      // 转换为 aioncli-core 期望的格式
-      // MCPServerConfig supports: stdio (command/args/env), sse/http (url/type/headers)
-      const mcpConfig: Record<string, UiMcpServerConfig> = {};
-      allServers
-        .filter((server: IMcpServer) => server.enabled && server.status === 'connected') // 只使用启用且连接成功的服务器
-        .forEach((server: IMcpServer) => {
-          if (server.transport.type === 'stdio') {
-            mcpConfig[server.name] = {
-              command: server.transport.command,
-              args: server.transport.args || [],
-              env: server.transport.env || {},
-              description: server.description,
-            };
-          } else if (
-            server.transport.type === 'sse' ||
-            server.transport.type === 'http' ||
-            server.transport.type === 'streamable_http'
-          ) {
-            // aioncli-core MCPServerConfig.type only accepts "sse" | "http"
-            const type = server.transport.type === 'streamable_http' ? 'http' : server.transport.type;
-            mcpConfig[server.name] = {
-              url: server.transport.url,
-              type,
-              headers: server.transport.headers || {},
-              description: server.description,
-            };
-          }
-        });
-
-      return mcpConfig;
-    } catch (error) {
-      this.mcpFingerprint = '[]';
-      return {};
-    }
   }
 
   async sendMessage(data: {
@@ -395,11 +279,6 @@ export class GeminiAgentManager extends BaseAgentManager<
       ipcBridge.geminiConversation.responseStream.emit(userResponseMessage);
     }
 
-    // Check if MCP config has changed since worker was initialized
-    // If changed, kill old worker and re-bootstrap with fresh config
-    // 检查 MCP 配置是否在 worker 初始化后发生变更
-    // 若变更则终止旧 worker 并使用最新配置重新初始化
-    await this.refreshWorkerIfMcpChanged();
     this.status = 'pending';
     scheduleConversationGuard.setProcessing(this.conversation_id, true);
 
@@ -427,33 +306,6 @@ export class GeminiAgentManager extends BaseAgentManager<
         scheduleConversationGuard.setProcessing(this.conversation_id, false);
       });
     return result;
-  }
-
-  /**
-   * Re-bootstrap the worker if MCP config has changed since last initialization.
-   * This ensures deleted/disabled MCP servers are no longer callable.
-   */
-  private async refreshWorkerIfMcpChanged(): Promise<void> {
-    try {
-      const mcpServers = await ProcessConfig.get('mcp.config');
-      const currentFingerprint = GeminiAgentManager.computeMcpFingerprint(mcpServers);
-
-      if (currentFingerprint !== this.mcpFingerprint) {
-        mainLog(
-          '[GeminiAgentManager]',
-          `MCP config changed (${this.mcpFingerprint} -> ${currentFingerprint}), re-bootstrapping worker...`
-        );
-        // Kill old worker process and its child processes (MCP server connections)
-        this.kill();
-        // Re-bootstrap with fresh config (getMcpServers will update the fingerprint)
-        this.bootstrap = this.createBootstrap();
-        await this.bootstrap;
-        mainLog('[GeminiAgentManager]', 'Worker re-bootstrapped with updated MCP config');
-      }
-    } catch (error) {
-      mainWarn('[GeminiAgentManager]', 'Failed to check MCP config changes', error);
-      // Don't block message sending on MCP check failure
-    }
   }
 
   private getConfirmationButtons = (
@@ -803,6 +655,18 @@ export class GeminiAgentManager extends BaseAgentManager<
           content: textContent,
           conversationId: this.conversation_id,
           agentType: 'gemini',
+        });
+
+        scheduleCommandResult.events.forEach((event) => {
+          emitScheduleEventMessage({
+            conversationId: this.conversation_id,
+            msgId: uuid(),
+            event,
+            emit: (message) => {
+              ipcBridge.geminiConversation.responseStream.emit(message);
+              channelEventBus.emitAgentMessage(this.conversation_id, message);
+            },
+          });
         });
 
         if (scheduleCommandResult.hasCommands) {

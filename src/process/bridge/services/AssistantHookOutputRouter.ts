@@ -5,12 +5,10 @@
  */
 
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
-import type { IMessageTipsAction } from '@/common/chat/chatLib';
 import type { HookManifest, HookOutputTarget } from '@/common/types/hookTypes';
 import { getHookOutputTargets } from '@/common/types/hookTypes';
 import { uuid } from '@/common/utils';
 import { showNotification } from '@process/bridge/notificationBridge';
-import i18n from '@process/services/i18n';
 import { getSystemDir } from '@process/utils/initStorage';
 import { addMessage } from '@process/utils/message';
 import fs from 'fs/promises';
@@ -81,10 +79,6 @@ const stripMarkdown = (content: string): string => {
     .trim();
 };
 
-const escapeHtml = (content: string): string => {
-  return content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-};
-
 const isPathWithinRoot = (rootDir: string, targetDir: string): boolean => {
   const relativePath = path.relative(rootDir, targetDir);
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
@@ -130,10 +124,9 @@ export class AssistantHookOutputRouter {
       if (targets.includes('sidecar-file')) {
         try {
           // eslint-disable-next-line no-await-in-loop
-          const sidecarPaths = await this.writeSidecarFiles(delivery);
+          await this.writeSidecarFiles(delivery);
           result.sidecarHooks.push(delivery.hookName);
           delivered = true;
-          this.emitSidecarExportTip(delivery, sidecarPaths, onEmit);
         } catch (error) {
           console.warn('[AssistantHookOutputRouter] Failed sidecar-file delivery:', delivery.hookName, error);
         }
@@ -168,74 +161,6 @@ export class AssistantHookOutputRouter {
       conversation_id: delivery.metadata.conversationId,
       msg_id: msgId,
       data: { content: delivery.content },
-    });
-  }
-
-  private emitSidecarExportTip(
-    delivery: AfterResponseHookDelivery,
-    sidecarPaths: SidecarOutputPaths,
-    onEmit: (message: IResponseMessage) => void
-  ): void {
-    const msgId = uuid();
-    const actions: IMessageTipsAction[] = [
-      {
-        label: i18n.t('agent.hooks.openMarkdown', {
-          defaultValue: 'Open Markdown',
-        }),
-        action: 'open-file',
-        path: sidecarPaths.markdownPath,
-      },
-      {
-        label: i18n.t('agent.hooks.showInFolder', {
-          defaultValue: 'Show In Folder',
-        }),
-        action: 'show-item-in-folder',
-        path: sidecarPaths.markdownPath,
-      },
-    ];
-    const content = [
-      `${escapeHtml(
-        i18n.t('agent.hooks.sidecarExported', {
-          hookName: delivery.hookName,
-          defaultValue: 'Sidecar files exported for {{hookName}}.',
-        })
-      )}`,
-      `${escapeHtml(
-        i18n.t('agent.hooks.markdownPath', {
-          defaultValue: 'Markdown',
-        })
-      )}: <code>${escapeHtml(sidecarPaths.markdownPath)}</code>`,
-      `${escapeHtml(
-        i18n.t('agent.hooks.metadataPath', {
-          defaultValue: 'Metadata',
-        })
-      )}: <code>${escapeHtml(sidecarPaths.jsonPath)}</code>`,
-    ].join('<br/>');
-
-    addMessage(delivery.metadata.conversationId, {
-      id: msgId,
-      msg_id: msgId,
-      type: 'tips',
-      position: 'center',
-      conversation_id: delivery.metadata.conversationId,
-      content: {
-        content,
-        type: 'success',
-        actions,
-      },
-      createdAt: Date.now(),
-      status: 'finish',
-    });
-
-    onEmit({
-      type: 'tips',
-      conversation_id: delivery.metadata.conversationId,
-      msg_id: msgId,
-      data: {
-        content,
-        type: 'success',
-        actions,
-      },
     });
   }
 

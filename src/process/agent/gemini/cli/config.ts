@@ -24,13 +24,6 @@ import path from 'node:path';
 import type { Settings } from './settings';
 import { annotateActiveExtensions } from './extension';
 
-// Simple console logger for now - replace with actual logger if available
-const logger = {
-  debug: (...args: unknown[]) => console.debug('[DEBUG]', ...args),
-  warn: (...args: unknown[]) => console.warn('[WARN]', ...args),
-  error: (...args: unknown[]) => console.error('[ERROR]', ...args),
-};
-
 export interface CliArgs {
   model: string | undefined;
   sandbox: boolean | string | undefined;
@@ -72,7 +65,6 @@ export interface LoadCliConfigOptions {
   model?: string;
   conversationToolConfig: ConversationToolConfig;
   yoloMode?: boolean;
-  mcpServers?: Record<string, unknown>;
   /** 内置 skills 目录路径 / Builtin skills directory path */
   skillsDir?: string;
   /** 启用的 skills 列表，用于过滤加载的 skills / Enabled skills list for filtering loaded skills */
@@ -88,7 +80,6 @@ export async function loadCliConfig({
   model,
   conversationToolConfig,
   yoloMode,
-  mcpServers,
   skillsDir,
   enabledSkills,
 }: LoadCliConfigOptions): Promise<Config> {
@@ -201,61 +192,9 @@ export async function loadCliConfig({
     settings.memoryDiscoveryMaxDirs
   );
 
-  let mcpServersConfig = mergeMcpServers(settings, activeExtensions, mcpServers);
-
   // 使用对话级别的工具配置
   const toolConfig = conversationToolConfig.getConfig();
-
   const excludeTools = mergeExcludeTools(settings, activeExtensions).concat(toolConfig.excludeTools);
-  const blockedMcpServers: Array<{ name: string; extensionName: string }> = [];
-
-  if (!argv.allowedMcpServerNames) {
-    if (settings.allowMCPServers) {
-      const allowedNames = new Set(settings.allowMCPServers.filter(Boolean));
-      if (allowedNames.size > 0) {
-        mcpServersConfig = Object.fromEntries(
-          Object.entries(mcpServersConfig).filter(([key]) => allowedNames.has(key))
-        );
-      }
-    }
-
-    if (settings.excludeMCPServers) {
-      const excludedNames = new Set(settings.excludeMCPServers.filter(Boolean));
-      if (excludedNames.size > 0) {
-        mcpServersConfig = Object.fromEntries(
-          Object.entries(mcpServersConfig).filter(([key]) => !excludedNames.has(key))
-        );
-      }
-    }
-  }
-
-  if (argv.allowedMcpServerNames) {
-    const allowedNames = new Set(argv.allowedMcpServerNames.filter(Boolean));
-    if (allowedNames.size > 0) {
-      mcpServersConfig = Object.fromEntries(
-        Object.entries(mcpServersConfig).filter(([key, server]) => {
-          const isAllowed = allowedNames.has(key);
-          if (!isAllowed) {
-            // aioncli-core v0.18.4: 使用 server.extension?.name 替代 server.extensionName / use server.extension?.name instead of server.extensionName
-            blockedMcpServers.push({
-              name: key,
-              extensionName: server.extension?.name || '',
-            });
-          }
-          return isAllowed;
-        })
-      );
-    } else {
-      blockedMcpServers.push(
-        ...Object.entries(mcpServersConfig).map(([key, server]) => ({
-          name: key,
-          // aioncli-core v0.18.4: 使用 server.extension?.name 替代 server.extensionName / use server.extension?.name instead of server.extensionName
-          extensionName: server.extension?.name || '',
-        }))
-      );
-      mcpServersConfig = {};
-    }
-  }
 
   // extensionLoader 已在上方创建，复用于 Config 初始化
   // extensionLoader was created above, reuse for Config initialization
@@ -273,8 +212,8 @@ export async function loadCliConfig({
     excludeTools,
     toolDiscoveryCommand: settings.toolDiscoveryCommand,
     toolCallCommand: settings.toolCallCommand,
-    mcpServerCommand: settings.mcpServerCommand,
-    mcpServers: mcpServersConfig,
+    mcpServerCommand: undefined,
+    mcpServers: {},
     userMemory: memoryContent,
     geminiMdFileCount: fileCount,
     approvalMode: argv.yolo || false ? ApprovalMode.YOLO : ApprovalMode.DEFAULT,
@@ -325,39 +264,6 @@ export async function loadCliConfig({
 
   return config;
 }
-
-function mergeMcpServers(settings: Settings, extensions: GeminiCLIExtension[], uiMcpServers?: Record<string, unknown>) {
-  const mcpServers = { ...settings.mcpServers };
-
-  // 添加来自 extensions 的 MCP 服务器
-  // Add MCP servers from extensions
-  for (const extension of extensions) {
-    Object.entries(extension.mcpServers || {}).forEach(([key, server]) => {
-      if (mcpServers[key]) {
-        logger.warn(`Skipping extension MCP config for server with key "${key}" as it already exists.`);
-        return;
-      }
-      mcpServers[key] = {
-        ...server,
-        extension,
-      };
-    });
-  }
-
-  // 添加来自 UI 配置的 MCP 服务器（优先级最高）
-  if (uiMcpServers) {
-    Object.entries(uiMcpServers).forEach(([key, server]) => {
-      if (mcpServers[key]) {
-        logger.warn(`Overriding existing MCP config for server with key "${key}" with UI configuration.`);
-      }
-      mcpServers[key] = server;
-      console.log(`[MCP] Added UI-configured server: ${key}`);
-    });
-  }
-
-  return mcpServers;
-}
-
 function mergeExcludeTools(settings: Settings, extensions: GeminiCLIExtension[]): string[] {
   const allExcludeTools = new Set(settings.excludeTools || []);
   for (const extension of extensions) {

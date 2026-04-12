@@ -77,7 +77,7 @@ ContextGo 自带完整的 AI Agent。不像其他工具需要你手动安装各�
 
 - **无需安装 CLI 工具** — Agent 引擎已内置
 - **无需复杂配置** — 使用 Google 登录或粘贴任意 API 密钥
-- **完整的 Agent 能力** — 文件读写、网络搜索、图像生成、MCP 工具
+- **完整的 Agent 能力** — 文件读写、网络搜索、自动化执行
 - **现成的专业助手** — 内置 11+ 个专业助手（Cowork、PPTX 生成器、PDF 转 PPT、3D 游戏、UI/UX Pro Max 等），拿来就能用
 
 <p align="center">
@@ -101,7 +101,7 @@ ContextGo 自带完整的 AI Agent。不像其他工具需要你手动安装各�
 - **自动检测** — 自动识别已安装的 CLI 工具
 - **统一界面** — 一个 Cowork 平台管理所有 AI Agent
 - **并行会话** — 同时运行多个 Agent，各自独立上下文
-- **MCP 统一管理** — 配置一次 MCP（模型上下文协议）工具，自动同步到所有 Agent — 无需为每个 Agent 单独配置
+- **统一协作工作台** — 在同一个界面里管理内置 Agent 和外部 CLI Agent，共享一致的会话与上下文体验
 
 ---
 
@@ -117,7 +117,7 @@ ContextGo 自带完整的 AI Agent。不像其他工具需要你手动安装各�
 | Ollama / LM Studio（本地）               | 本地模型 Cowork Agent      |
 | NewAPI 网关                              | 统一访问 20+ 模型          |
 
-不管用哪个模型，Agent 的能力都一样强大——文件读写、网络搜索、图像生成、工具调用，一个不少。ContextGo 支持 **20+ 个 AI 平台**，云端本地都能用。
+不管用哪个模型，Agent 的能力都一样强大——文件读写、网络搜索、工具调用，一个不少。ContextGo 支持 **20+ 个 AI 平台**，云端本地都能用。
 
 <p align="center">
   <img src="./resources/llm_newapi.png" alt="Multi-Model Support" width="800">
@@ -322,33 +322,6 @@ _深度分析 Excel 数据，自动美化报告，生成洞察 — 这些复杂�
 
 </details>
 
----
-
-### **AI 图像生成与编辑**
-
-_想生成图片、编辑图片、识别图片？Gemini 驱动的 AI 图像功能，样样都行_
-
-<p align="center">
-
-  <img src="./resources/Image_Generation.gif" alt="AI Image Generation" width="800">
-</p>
-
-<details>
-<summary><strong>🔍 查看图像生成功能 ▶️</strong></summary>
-
-<br>
-
-- **文本到图像** — 从自然语言描述生成图像
-- **图像编辑** — 修改和增强现有图像
-- **图像识别** — 分析和描述图像内容
-- **批量处理** — 一次生成多张图像
-
-</details>
-
-> [图像生成模型配置指南](https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing)
-
----
-
 ### **文档生成 — PPT、Word、Markdown 都能搞定**
 
 _演示文稿、报告、文档 — 这些专业文档，AI Agent 都能自动生成。_
@@ -520,14 +493,12 @@ ContextGo 是一个**免费开源的 Multi-AI Agent 桌面应用**。相比只�
 - [📖 完整安装指南](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-start) — 从下载到配置，一步步教你
 - [⚙️ LLM 配置指南](https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power) — 多平台 AI 模型怎么配置
 - [🤖 多 Agent 模式设置](https://github.com/contextgo/contextgo/blob/main/readme.md#multi-agent-mode--already-have-cli-agents-bring-them-in) — 把终端 AI Agent 集成进来
-- [🔌 MCP 工具配置](https://github.com/contextgo/contextgo/tree/main/docs) — 模型上下文协议服务器设置
 - [🌐 WebUI 配置指南](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md) — WebUI 完整设置教程
 
 **🎯 使用场景**
 
 - [📁 文件管理](https://github.com/contextgo/contextgo/blob/main/readme.md#smart-file-management--automated-file-operations) — 让 AI 帮你整理文件
 - [📊 Excel 处理](https://github.com/contextgo/contextgo/blob/main/readme.md#excel-data-processing--ai-powered-analysis) — AI 驱动的数据处理
-- [🎨 图像生成](https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing) — AI 图像生成
 - [📚 更多使用场景](https://github.com/contextgo/contextgo/blob/main/readme.md#cowork-in-action)
 
 **❓ 支持与帮助**

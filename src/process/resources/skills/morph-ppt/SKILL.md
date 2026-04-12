@@ -1,6 +1,10 @@
 ---
 name: morph-ppt
 description: Generate Morph-animated PPTs with officecli
+compatibility:
+  - 'Requires command-line tools `officecli` and `python3`.'
+  - 'Requires a writable workspace directory for the generated PPTX, build script, and brief.'
+  - 'Works best in Codex-compatible environments that can execute local scripts.'
 ---
 
 # Morph

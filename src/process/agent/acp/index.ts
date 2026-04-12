@@ -5,7 +5,6 @@
  */
 
 import { AcpAdapter } from '@process/agent/acp/AcpAdapter';
-import type { IMcpServer } from '@/common/config/storage';
 import { extractAtPaths, parseAllAtCommands, reconstructQuery } from '@/common/chat/atCommandParser';
 import type { TMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
@@ -39,11 +38,6 @@ import {
   QWEN_YOLO_SESSION_MODE,
 } from './constants';
 import { buildAcpModelInfo, summarizeAcpModelInfo } from './modelInfo';
-import {
-  buildBuiltinAcpSessionMcpServers,
-  parseAcpMcpCapabilities,
-  type AcpSessionMcpServer,
-} from './mcpSessionConfig';
 import { getClaudeModel } from './utils';
 
 /** Enable ACP performance diagnostics via ACP_PERF=1 */
@@ -1398,7 +1392,6 @@ export class AcpAgent {
    */
   private async createOrResumeSession(): Promise<void> {
     const resumeSessionId = this.extra.acpSessionId;
-    const mcpServers = await this.loadBuiltinSessionMcpServers();
 
     // If we have a stored session ID, attempt to resume it.
     // Resume can fail when the ACP bridge package changed (e.g. claude-code-acp → claude-agent-acp)
@@ -1417,7 +1410,6 @@ export class AcpAgent {
           response = await this.connection.newSession(this.extra.workspace, {
             resumeSessionId,
             forkSession: false,
-            mcpServers,
           });
         }
         if (response.sessionId && response.sessionId !== resumeSessionId) {
@@ -1434,38 +1426,10 @@ export class AcpAgent {
     }
 
     // No stored session or resume failed — create a brand new session
-    const response = await this.connection.newSession(this.extra.workspace, { mcpServers });
+    const response = await this.connection.newSession(this.extra.workspace);
     if (response.sessionId) {
       this.extra.acpSessionId = response.sessionId;
       this.onSessionIdUpdate?.(response.sessionId);
-    }
-  }
-
-  private async loadBuiltinSessionMcpServers(): Promise<AcpSessionMcpServer[]> {
-    try {
-      const mcpConfig = await ProcessConfig.get('mcp.config');
-      if (!Array.isArray(mcpConfig) || mcpConfig.length === 0) {
-        return [];
-      }
-
-      const capabilities = parseAcpMcpCapabilities(this.connection.getInitializeResponse());
-      const sessionMcpServers = buildBuiltinAcpSessionMcpServers(mcpConfig as IMcpServer[], capabilities);
-
-      if (sessionMcpServers.length > 0) {
-        mainLog(
-          `[ACP ${this.extra.backend}]`,
-          `Injecting ${sessionMcpServers.length} built-in MCP server(s) into session/new`,
-          sessionMcpServers.map((server) => `${server.name}:${server.type}`)
-        );
-      }
-
-      return sessionMcpServers;
-    } catch (error) {
-      console.warn(
-        `[ACP ${this.extra.backend}] Failed to load built-in MCP config for session/new:`,
-        error instanceof Error ? error.message : String(error)
-      );
-      return [];
     }
   }
 

@@ -104,6 +104,7 @@ describe('createConversationParams', () => {
     expect(params.type).toBe('acp');
     expect(params.extra.presetContext).toBe('acp preset rules');
     expect(params.extra.backend).toBe('codebuddy');
+    expect(params.extra.nativeWorkspaceBootstrap).toBe(true);
     expect(params.extra.enabledHooks).toEqual(['plan-before-coding']);
   });
 
@@ -199,6 +200,7 @@ describe('createConversationParams', () => {
         enabledSkills: ['quality-gate'],
         enabledHooks: ['plan-before-coding'],
         spaceId: 'space-team',
+        nativeWorkspaceBootstrap: true,
       },
     });
     expect(params.extra.participants?.[1]).toMatchObject({

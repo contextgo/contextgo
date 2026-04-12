@@ -248,5 +248,18 @@
     "conversationNotFound": "Konuşma bulunamadı",
     "scheduledTimePassed": "Zamanlanmış saat geçti",
     "conversationBusy": "Konuşma meşgul, {{count}} denemeden sonra atlandı"
+  },
+  "chat": {
+    "createTitle": "Zamanlanmış görev oluşturuldu",
+    "createDescription": "Bu konuşma için zamanlanmış görev oluşturuldu.",
+    "listTitle": "Konuşma zamanlanmış görevleri",
+    "listDescription": "Bu konuşmaya şu anda {{count}} görev bağlı.",
+    "deleteTitle": "Zamanlanmış görev silindi",
+    "deleteDescription": "Zamanlanmış görev bu konuşmadan kaldırıldı.",
+    "errorTitle": "Zamanlanmış görev başarısız oldu",
+    "errorDescription": "Zamanlama isteği tamamlanamadı.",
+    "empty": "Bu konuşma için henüz zamanlanmış görev yok.",
+    "deletedId": "Silinen Kimlik",
+    "taskId": "Görev Kimliği"
   }
 }

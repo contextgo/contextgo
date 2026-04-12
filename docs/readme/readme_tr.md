@@ -77,7 +77,7 @@ ContextGo tam bir AI Agent motoru ile birlikte gelir. CLI Agent'ları ayrı olar
 
 - **Kurulacak CLI araçları yok** — Agent motoru yerleşiktir
 - **Karmaşık kurulum yok** — Google ile giriş yapın veya herhangi bir API anahtarı yapıştırın
-- **Tam Agent yetenekleri** — dosya okuma/yazma, web arama, görüntü oluşturma, MCP araçları
+- **Tam Agent yetenekleri** — dosya okuma/yazma, web arama, otomasyon iş akışları
 - **Kullanıma hazır asistanlar** — 11+ yerleşik profesyonel asistan (Cowork, PPTX Oluşturucu, PDF'den PPT'ye, 3D Oyun, UI/UX Pro Max ve daha fazlası) hemen kullanıma hazır
 
 <p align="center">
@@ -99,7 +99,7 @@ Zaten Claude Code, Codex veya Qwen Code kullanıyorsanız, ContextGo bunları ot
 - **Otomatik Algılama** — kurulu CLI araçlarını otomatik olarak tanır
 - **Birleşik Arayüz** — tüm AI Agent'larınız için tek bir Cowork platformu
 - **Paralel Oturumlar** — bağımsız bağlam ile birden fazla Agent'ı aynı anda çalıştırın
-- **MCP Birleşik Yönetimi** — MCP (Model Context Protocol) araçlarını bir kez yapılandırın, tüm Agent'lara otomatik olarak senkronize edilir — her Agent'ı ayrı ayrı yapılandırmanıza gerek yok
+- **Birleşik işbirliği çalışma alanı** — yerleşik ve harici CLI Agent'larını tek yerde, tutarlı oturumlar ve bağlamla yönetin
 
 ---
 
@@ -518,7 +518,6 @@ C: Tüm veriler yerel olarak bir SQLite veritabanında saklanır. Hiçbir şey h
 - [📖 Tam Kurulum Kılavuzu](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-start) — İndirmeden yapılandırmaya kadar detaylı adımlar
 - [⚙️ LLM Yapılandırma Kılavuzu](https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power) — Çoklu platform AI model yapılandırması
 - [🤖 Çoklu Agent Modu Kurulumu](https://github.com/contextgo/contextgo/blob/main/readme.md#multi-agent-mode--already-have-cli-agents-bring-them-in) — Terminal AI Agent'larını entegre edin
-- [🔌 MCP Araç Yapılandırması](https://github.com/contextgo/contextgo/tree/main/docs) — Model Context Protocol sunucu kurulumu
 - [🌐 WebUI Yapılandırma Kılavuzu](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md) — Tam WebUI kurulum ve yapılandırma öğreticisi
 
 **🎯 Kullanım Senaryoları**

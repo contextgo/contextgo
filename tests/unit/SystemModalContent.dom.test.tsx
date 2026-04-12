@@ -572,19 +572,6 @@ describe('SystemModalContent', () => {
       });
     });
 
-    it('should display MCP config with correct port', async () => {
-      render(<SystemModalContent />);
-
-      await waitFor(() => {
-        expect(screen.getByText('settings.cdp.mcpConfig')).toBeInTheDocument();
-      });
-
-      // Check MCP config contains the port
-      const preElement = screen.getByText(/chrome-devtools-mcp@0\.16\.0/);
-      expect(preElement).toBeInTheDocument();
-      expect(preElement.textContent).toContain('--browser-url=http://127.0.0.1:9230');
-    });
-
     it('should open CDP URL in browser', async () => {
       mockOpenExternal.mockResolvedValue(undefined);
 

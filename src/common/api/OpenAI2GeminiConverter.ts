@@ -226,12 +226,12 @@ export class OpenAI2GeminiConverter implements ProtocolConverter<
       index: 0,
       message: {
         role: 'assistant',
-        content: content || 'Image generated successfully.',
+        content: content || 'Response generated successfully.',
       },
       finish_reason: this.mapFinishReason(candidate.finishReason),
     };
 
-    // Add images array if there are generated images (for img-gen.ts compatibility)
+    // Preserve inline image data when the upstream response includes rendered images.
     if (images.length > 0) {
       choice.message.images = images;
     }

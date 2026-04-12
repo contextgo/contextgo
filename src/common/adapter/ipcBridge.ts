@@ -7,7 +7,6 @@
 import type { IConfirmation } from '@/common/chat/chatLib';
 import { bridge } from '@office-ai/platform';
 import type { OpenDialogOptions } from 'electron';
-import type { McpSource } from '../../process/services/mcpServices/McpProtocol';
 import type {
   AcpBackend,
   AcpBackendAll,
@@ -22,7 +21,6 @@ import type { ManagedSlashCommandRecord } from '../chat/slash/library';
 import type {
   BrowserContextConsentStatus,
   BrowserContextStorageMode,
-  IMcpServer,
   IProvider,
   TChatConversation,
   TBrowserContextAsset,
@@ -60,10 +58,9 @@ export const shell = {
 };
 
 export const externalConnectorCatalog = {
-  getDetails: bridge.buildProvider<
-    IBridgeResponse<ExternalConnectorCatalogDetails>,
-    { connector: string }
-  >('external-connector-catalog.get-details'),
+  getDetails: bridge.buildProvider<IBridgeResponse<ExternalConnectorCatalogDetails>, { connector: string }>(
+    'external-connector-catalog.get-details'
+  ),
 };
 
 export const space = {
@@ -395,7 +392,39 @@ export const fs = {
   deleteAssistantSkill: bridge.buildProvider<boolean, { assistantId: string }>('delete-assistant-skill'), // 删除助手技能文件
   // 获取可用 skills 列表 / List available skills from skills directory
   listAvailableSkills: bridge.buildProvider<
-    Array<{ name: string; description: string; location: string; isCustom: boolean }>,
+    Array<{
+      name: string;
+      description: string;
+      compatibility?: string[];
+      dependencyHints?: Array<{
+        kind: 'env' | 'command' | 'network' | 'mcp' | 'note';
+        label: string;
+        status: 'ready' | 'missing' | 'info';
+        source: 'compatibility' | 'openai';
+        detail?: string;
+      }>;
+      openAIConfig?: {
+        interface?: {
+          displayName?: string;
+          shortDescription?: string;
+          defaultPrompt?: string;
+        };
+        policy?: {
+          allowImplicitInvocation?: boolean;
+        };
+        dependencies?: {
+          tools: Array<{
+            type: string;
+            value: string;
+            description?: string;
+            transport?: string;
+            url?: string;
+          }>;
+        };
+      };
+      location: string;
+      isCustom: boolean;
+    }>,
     void
   >('list-available-skills'),
   // 获取可用 hooks 列表 / List available hooks from hooks directory
@@ -786,44 +815,6 @@ export const acpConversation = {
   >('acp.set-config-option'),
 };
 
-// MCP 服务相关接口
-export const mcpService = {
-  getAgentMcpConfigs: bridge.buildProvider<
-    IBridgeResponse<Array<{ source: McpSource; servers: IMcpServer[] }>>,
-    Array<{ backend: AcpBackend; name: string; cliPath?: string }>
-  >('mcp.get-agent-configs'),
-  testMcpConnection: bridge.buildProvider<
-    IBridgeResponse<{
-      success: boolean;
-      tools?: Array<{ name: string; description?: string }>;
-      error?: string;
-      needsAuth?: boolean;
-      authMethod?: 'oauth' | 'basic';
-      wwwAuthenticate?: string;
-    }>,
-    IMcpServer
-  >('mcp.test-connection'),
-  syncMcpToAgents: bridge.buildProvider<
-    IBridgeResponse<{ success: boolean; results: Array<{ agent: string; success: boolean; error?: string }> }>,
-    { mcpServers: IMcpServer[]; agents: Array<{ backend: AcpBackend; name: string; cliPath?: string }> }
-  >('mcp.sync-to-agents'),
-  removeMcpFromAgents: bridge.buildProvider<
-    IBridgeResponse<{ success: boolean; results: Array<{ agent: string; success: boolean; error?: string }> }>,
-    { mcpServerName: string; agents: Array<{ backend: AcpBackend; name: string; cliPath?: string }> }
-  >('mcp.remove-from-agents'),
-  // OAuth 相关接口
-  checkOAuthStatus: bridge.buildProvider<
-    IBridgeResponse<{ isAuthenticated: boolean; needsLogin: boolean; error?: string }>,
-    IMcpServer
-  >('mcp.check-oauth-status'),
-  loginMcpOAuth: bridge.buildProvider<
-    IBridgeResponse<{ success: boolean; error?: string }>,
-    { server: IMcpServer; config?: any }
-  >('mcp.login-oauth'),
-  logoutMcpOAuth: bridge.buildProvider<IBridgeResponse, string>('mcp.logout-oauth'),
-  getAuthenticatedServers: bridge.buildProvider<IBridgeResponse<string[]>, void>('mcp.get-authenticated-servers'),
-};
-
 // Codex 对话相关接口 - 复用统一的conversation接口
 export const codexConversation = {
   sendMessage: conversation.sendMessage,
@@ -1199,6 +1190,8 @@ export interface ICreateConversationExtra {
   workspace?: ConversationWorkspaceCompat['workspace'];
   /** @deprecated Prefer mountId or workingDirectory. Kept for compatibility with existing runtime flows. */
   customWorkspace?: ConversationWorkspaceCompat['customWorkspace'];
+  /** Allow runtime-specific workspace bootstrap even when the workspace is user-selected. */
+  nativeWorkspaceBootstrap?: boolean;
   defaultFiles?: string[];
   backend?: AcpBackendAll;
   cliPath?: string;
@@ -1566,8 +1559,6 @@ export const extensions = {
   getAgents: bridge.buildProvider<Record<string, unknown>[], void>('extensions.get-agents'),
   /** Get all extension-contributed ACP adapters */
   getAcpAdapters: bridge.buildProvider<Record<string, unknown>[], void>('extensions.get-acp-adapters'),
-  /** Get all extension-contributed MCP servers */
-  getMcpServers: bridge.buildProvider<Record<string, unknown>[], void>('extensions.get-mcp-servers'),
   /** Get all extension-contributed skills */
   getSkills: bridge.buildProvider<Array<{ name: string; description: string; location: string }>, void>(
     'extensions.get-skills'

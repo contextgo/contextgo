@@ -1,37 +1,11 @@
 #!/usr/bin/env node
 /**
- * Build builtin MCP server scripts as fully self-contained CJS bundles.
- *
- * electron-vite's externalizeDepsPlugin leaves all npm packages as require()
- * calls, which works for Electron's main process (ASAR virtual FS patches
- * require()) but fails when an external `node` process runs the script from
- * app.asar.unpacked — there is no ASAR support there.
- *
- * This script uses esbuild's programmatic API (instead of CLI flags) to avoid
- * shell-quoting issues with special characters in --define values.
+ * Placeholder build step kept for compatibility with existing package scripts.
+ * ContextGo no longer bundles built-in MCP server entry points here.
  */
 
-const esbuild = require('esbuild');
-const path = require('path');
-
-const ROOT = path.resolve(__dirname, '..');
-
 async function main() {
-  await esbuild.build({
-    entryPoints: [path.join(ROOT, 'src/process/resources/builtinMcp/imageGenServer.ts')],
-    bundle: true,
-    platform: 'node',
-    format: 'cjs',
-    outfile: path.join(ROOT, 'out/main/builtin-mcp-image-gen.js'),
-    external: ['electron'],
-    tsconfig: path.join(ROOT, 'tsconfig.json'),
-    loader: { '.wasm': 'empty' }, // tree-sitter wasm files not needed by image gen
-    define: {
-      // @office-ai/aioncli-core uses import.meta.url for version detection.
-      // Provide a valid file: URL so fileURLToPath() does not throw at startup.
-      'import.meta.url': JSON.stringify('file:///C:/placeholder'),
-    },
-  });
+  console.log('No built-in MCP servers to bundle.');
 }
 
 main().catch((err) => {

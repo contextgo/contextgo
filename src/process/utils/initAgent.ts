@@ -47,15 +47,41 @@ const AGENT_SKILLS_DIRS: Record<string, string[]> = {
   // opencode, auggie, copilot, nanobot, qoder
 };
 
+const WORKSPACE_MANAGED_SKILLS_DIR = path.join('.contextgo', 'skills');
+
+const getWorkspaceManagedSkillsDir = (workspace: string): string => path.join(workspace, WORKSPACE_MANAGED_SKILLS_DIR);
+
+type RuntimeSkillsProjectionMode = 'shared-dir' | 'per-skill';
+
+const ensureRuntimeSkillsProjection = async (
+  workspace: string,
+  runtimeSkillsRelDir: string,
+  managedSkillsDir: string
+): Promise<RuntimeSkillsProjectionMode> => {
+  const runtimeSkillsDir = path.join(workspace, runtimeSkillsRelDir);
+  const runtimeRootDir = path.dirname(runtimeSkillsDir);
+
+  await fs.mkdir(runtimeRootDir, { recursive: true });
+
+  try {
+    const stat = await fs.lstat(runtimeSkillsDir);
+    return typeof stat.isSymbolicLink === 'function' && stat.isSymbolicLink() ? 'shared-dir' : 'per-skill';
+  } catch {
+    await fs.symlink(managedSkillsDir, runtimeSkillsDir, 'junction');
+    console.log(`[setupAssistantWorkspace] Linked runtime skills dir: ${runtimeSkillsDir} -> ${managedSkillsDir}`);
+    return 'shared-dir';
+  }
+};
+
 /**
- * 为 assistant 设置原生 workspace 结构（skill symlinks）
- * Set up native workspace structure for assistant (skill symlinks only)
+ * 为 assistant 设置 workspace skill 结构
+ * Set up workspace skill structure for assistant
  *
- * 将启用的 skills symlink 到 CLI 原生 skills 目录，让各 CLI 自动发现
- * Symlink enabled skills into CLI-native skills directories for auto-discovery
+ * `.contextgo/skills` 是项目内统一管理入口，CLI 原生目录只做投影
+ * `.contextgo/skills` is the project-level source of truth, native CLI dirs are projections only
  *
- * 只在 temp workspace（非用户指定）时执行，避免污染用户项目目录
- * Only runs for temp workspaces (not user-specified) to avoid polluting user project dirs
+ * 默认仅在 temp workspace 执行；显式启用 nativeWorkspaceBootstrap 时也会初始化用户项目目录
+ * By default this only runs for temp workspaces; nativeWorkspaceBootstrap can opt in for user workspaces
  *
  * 注意：Rules/人格设定通过 system prompt 注入，不写 context file
  * Note: Rules/personality are injected via system prompt, NOT written to context files
@@ -87,34 +113,51 @@ export async function setupAssistantWorkspace(
   if (!skillsDirs) return;
 
   const userSkillsDir = getSkillsDir();
+  const managedSkillsDir = getWorkspaceManagedSkillsDir(workspace);
 
+  await fs.mkdir(managedSkillsDir, { recursive: true });
+
+  const projectionModes = new Map<string, RuntimeSkillsProjectionMode>();
   for (const skillsRelDir of skillsDirs) {
-    const targetSkillsDir = path.join(workspace, skillsRelDir);
-    await fs.mkdir(targetSkillsDir, { recursive: true });
+    projectionModes.set(skillsRelDir, await ensureRuntimeSkillsProjection(workspace, skillsRelDir, managedSkillsDir));
+  }
 
-    for (const skillName of options.enabledSkills) {
-      // Skip builtin skills (auto-injected via SkillManager / virtual extension)
-      if (skillName === 'schedule') continue;
+  for (const skillName of options.enabledSkills) {
+    // Skip builtin skills (auto-injected via SkillManager / virtual extension)
+    if (skillName === 'schedule') continue;
 
-      // Try bundled skills first, then user skills. Both roots support nested skill packs.
-      const builtinCandidate = await resolveSkillDirectory(getBuiltinSkillsCopyDir(), skillName, {
-        excludeTopLevelNames: ['_builtin'],
-      });
-      const userCandidate = await resolveSkillDirectory(userSkillsDir, skillName);
-      const sourceSkillDir = builtinCandidate?.dirPath || userCandidate?.dirPath || path.join(userSkillsDir, skillName);
-      const targetSkillDir = path.join(targetSkillsDir, skillName);
+    // Try bundled skills first, then user skills. Both roots support nested skill packs.
+    const builtinCandidate = await resolveSkillDirectory(getBuiltinSkillsCopyDir(), skillName, {
+      excludeTopLevelNames: ['_builtin'],
+    });
+    const userCandidate = await resolveSkillDirectory(userSkillsDir, skillName);
+    const sourceSkillDir = builtinCandidate?.dirPath || userCandidate?.dirPath || path.join(userSkillsDir, skillName);
+    const managedSkillDir = path.join(managedSkillsDir, skillName);
 
+    try {
+      await fs.stat(sourceSkillDir);
       try {
-        await fs.stat(sourceSkillDir);
-        try {
-          await fs.lstat(targetSkillDir);
-          // Already exists, skip
-        } catch {
-          await fs.symlink(sourceSkillDir, targetSkillDir, 'junction');
-          console.log(`[setupAssistantWorkspace] Symlinked skill: ${skillName} -> ${targetSkillDir}`);
-        }
+        await fs.lstat(managedSkillDir);
       } catch {
-        console.warn(`[setupAssistantWorkspace] Skill directory not found: ${sourceSkillDir}`);
+        await fs.symlink(sourceSkillDir, managedSkillDir, 'junction');
+        console.log(`[setupAssistantWorkspace] Managed skill: ${skillName} -> ${managedSkillDir}`);
+      }
+    } catch {
+      console.warn(`[setupAssistantWorkspace] Skill directory not found: ${sourceSkillDir}`);
+      continue;
+    }
+
+    for (const skillsRelDir of skillsDirs) {
+      if (projectionModes.get(skillsRelDir) !== 'per-skill') {
+        continue;
+      }
+
+      const runtimeSkillDir = path.join(workspace, skillsRelDir, skillName);
+      try {
+        await fs.lstat(runtimeSkillDir);
+      } catch {
+        await fs.symlink(managedSkillDir, runtimeSkillDir, 'junction');
+        console.log(`[setupAssistantWorkspace] Projected skill: ${skillName} -> ${runtimeSkillDir}`);
       }
     }
   }
@@ -181,6 +224,7 @@ export const createGeminiAgent = async (
   enabledSkills?: string[],
   enabledHooks?: string[],
   presetAssistantId?: string,
+  nativeWorkspaceBootstrap?: boolean,
   sessionMode?: string,
   isHealthCheck?: boolean,
   spaceId?: string,
@@ -194,9 +238,11 @@ export const createGeminiAgent = async (
     customWorkspace
   );
 
-  // 对 temp workspace 设置 skill symlinks（原生 SkillManager 自动发现）
-  // Set up skill symlinks for native SkillManager discovery
-  if (!finalCustomWorkspace) {
+  const shouldSetupNativeWorkspace = !finalCustomWorkspace || nativeWorkspaceBootstrap === true;
+
+  // 对 temp workspace 或显式允许 bootstrap 的用户 workspace 设置原生 skills 目录
+  // Set up native skills directories for temp workspaces or explicitly bootstrapped user workspaces
+  if (shouldSetupNativeWorkspace) {
     await setupAssistantWorkspace(newWorkspace, {
       agentType: 'gemini',
       enabledSkills,
@@ -224,6 +270,7 @@ export const createGeminiAgent = async (
         // 预设助手 ID，用于在会话面板显示助手名称和头像
         // Preset assistant ID for displaying name and avatar in conversation panel
         presetAssistantId,
+        nativeWorkspaceBootstrap,
         // Initial session mode from Guid page mode selector
         sessionMode,
         // Explicit marker for temporary health-check conversations
@@ -295,8 +342,10 @@ export const createAcpAgent = async (options: ICreateConversationParams): Promis
     extra.customWorkspace
   );
 
-  // 对 temp workspace 设置 skill symlinks（原生发现）
-  if (!customWorkspace) {
+  const shouldSetupNativeWorkspace = !customWorkspace || extra.nativeWorkspaceBootstrap === true;
+
+  // 对 temp workspace 或显式允许 bootstrap 的用户 workspace 设置原生 skills 目录
+  if (shouldSetupNativeWorkspace) {
     await setupAssistantWorkspace(workspace, {
       backend: extra.backend,
       enabledSkills: extra.enabledSkills,
@@ -318,6 +367,7 @@ export const createAcpAgent = async (options: ICreateConversationParams): Promis
       // 预设助手 ID，用于在会话面板显示助手名称和头像
       // Preset assistant ID for displaying name and avatar in conversation panel
       presetAssistantId: extra.presetAssistantId,
+      nativeWorkspaceBootstrap: extra.nativeWorkspaceBootstrap === true,
       // Initial session mode selected on Guid page (from AgentModeSelector)
       sessionMode: extra.sessionMode,
       // Pre-selected model from Guid page (cached model list)
@@ -347,8 +397,10 @@ export const createCodexAgent = async (options: ICreateConversationParams): Prom
     extra.customWorkspace
   );
 
-  // 对 temp workspace 设置 skill symlinks
-  if (!customWorkspace) {
+  const shouldSetupNativeWorkspace = !customWorkspace || extra.nativeWorkspaceBootstrap === true;
+
+  // 对 temp workspace 或显式允许 bootstrap 的用户 workspace 设置原生 skills 目录
+  if (shouldSetupNativeWorkspace) {
     await setupAssistantWorkspace(workspace, {
       agentType: 'codex',
       enabledSkills: extra.enabledSkills,
@@ -367,6 +419,7 @@ export const createCodexAgent = async (options: ICreateConversationParams): Prom
       // 预设助手 ID，用于在会话面板显示助手名称和头像
       // Preset assistant ID for displaying name and avatar in conversation panel
       presetAssistantId: extra.presetAssistantId,
+      nativeWorkspaceBootstrap: extra.nativeWorkspaceBootstrap === true,
       // Initial session mode selected on Guid page (from AgentModeSelector)
       sessionMode: extra.sessionMode,
       // User-selected Codex model from Guid page
@@ -390,8 +443,10 @@ export const createNanobotAgent = async (options: ICreateConversationParams): Pr
     extra.customWorkspace
   );
 
-  // 对 temp workspace 设置 skill symlinks
-  if (!customWorkspace) {
+  const shouldSetupNativeWorkspace = !customWorkspace || extra.nativeWorkspaceBootstrap === true;
+
+  // 对 temp workspace 或显式允许 bootstrap 的用户 workspace 设置原生 skills 目录
+  if (shouldSetupNativeWorkspace) {
     await setupAssistantWorkspace(workspace, {
       agentType: 'nanobot',
       enabledSkills: extra.enabledSkills,
@@ -404,6 +459,7 @@ export const createNanobotAgent = async (options: ICreateConversationParams): Pr
       enabledSkills: extra.enabledSkills,
       enabledHooks: extra.enabledHooks,
       presetAssistantId: extra.presetAssistantId,
+      nativeWorkspaceBootstrap: extra.nativeWorkspaceBootstrap === true,
     }) as Extract<TChatConversation, { type: 'nanobot' }>['extra'],
     createTime: Date.now(),
     modifyTime: Date.now(),
@@ -421,8 +477,10 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
     extra.customWorkspace
   );
 
-  // 对 temp workspace 设置 skill symlinks
-  if (!customWorkspace) {
+  const shouldSetupNativeWorkspace = !customWorkspace || extra.nativeWorkspaceBootstrap === true;
+
+  // 对 temp workspace 或显式允许 bootstrap 的用户 workspace 设置原生 skills 目录
+  if (shouldSetupNativeWorkspace) {
     await setupAssistantWorkspace(workspace, {
       enabledSkills: extra.enabledSkills,
     });
@@ -458,6 +516,7 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
       enabledHooks: extra.enabledHooks,
       // Preset assistant ID for displaying name and avatar in conversation panel
       presetAssistantId: extra.presetAssistantId,
+      nativeWorkspaceBootstrap: extra.nativeWorkspaceBootstrap === true,
     }) as Extract<TChatConversation, { type: 'openclaw-gateway' }>['extra'],
     createTime: Date.now(),
     modifyTime: Date.now(),

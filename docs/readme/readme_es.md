@@ -77,7 +77,7 @@ ContextGo viene con un motor de Agent AI completo. A diferencia de las herramien
 
 - **No hay herramientas CLI que instalar** — el motor Agent está integrado
 - **Sin configuración compleja** — inicia sesión con Google o pega cualquier clave API
-- **Capacidades completas del Agent** — lectura/escritura de archivos, búsqueda web, generación de imágenes, herramientas MCP
+- **Capacidades completas del Agent** — lectura/escritura de archivos, búsqueda web, flujos de trabajo de automatización
 - **Asistentes listos para usar** — 11+ asistentes profesionales integrados (Cowork, Generador PPTX, PDF a PPT, Juego 3D, UI/UX Pro Max y más) listos para usar de inmediato
 
 <p align="center">
@@ -99,7 +99,7 @@ Si ya usas Claude Code, Codex o Qwen Code, ContextGo los detecta automáticament
 - **Detección automática** — reconoce automáticamente las herramientas CLI instaladas
 - **Interfaz unificada** — una plataforma Cowork para todos tus AI Agents
 - **Sesiones paralelas** — ejecuta múltiples Agents simultáneamente con contexto independiente
-- **Gestión unificada MCP** — configura las herramientas MCP (Model Context Protocol) una vez, se sincronizan automáticamente con todos los Agents — no necesitas configurar cada Agent por separado
+- **Espacio de trabajo colaborativo unificado** — gestiona Agents integrados y CLI externos en un solo lugar con sesiones y contexto consistentes
 
 ---
 
@@ -518,7 +518,6 @@ R: Todos los datos se almacenan localmente en una base de datos SQLite. No se su
 - [📖 Guía de instalación completa](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-start) — Pasos detallados desde la descarga hasta la configuración
 - [⚙️ Guía de configuración LLM](https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power) — Configuración de modelos AI multiplataforma
 - [🤖 Configuración del modo Multi-Agent](https://github.com/contextgo/contextgo/blob/main/readme.md#multi-agent-mode--already-have-cli-agents-bring-them-in) — Integrar Agents AI de terminal
-- [🔌 Configuración de herramientas MCP](https://github.com/contextgo/contextgo/tree/main/docs) — Configuración del servidor Model Context Protocol
 - [🌐 Guía de configuración WebUI](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md) — Tutorial completo de configuración y configuración de WebUI
 
 **🎯 Casos de uso**

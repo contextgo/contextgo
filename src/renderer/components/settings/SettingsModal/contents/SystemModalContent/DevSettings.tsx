@@ -92,26 +92,6 @@ const DevSettings: React.FC = () => {
     }
   };
 
-  const copyMcpConfig = () => {
-    if (status?.port) {
-      const config = `{
-  "mcpServers": {
-    "chrome-devtools": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "chrome-devtools-mcp@0.16.0",
-        "--browser-url=http://127.0.0.1:${status.port}"
-      ]
-    }
-  }
-}`;
-      void navigator.clipboard.writeText(config).then(() => {
-        Message.success(t('common.copySuccess'));
-      });
-    }
-  };
-
   // Only show in development mode
   if (!isLoading && status?.isDevMode === false) {
     return null;
@@ -160,34 +140,6 @@ const DevSettings: React.FC = () => {
                   onClick={copyCdpUrl}
                 />
               </Tooltip>
-            </div>
-            <div className='space-y-4px'>
-              <div className='text-12px text-t-tertiary'>{t('settings.cdp.mcpConfig')}</div>
-              <div className='flex items-start gap-8px py-8px px-12px bg-[var(--fill-1)] rounded-8px'>
-                <pre className='flex-1 text-11px text-t-secondary font-mono overflow-x-auto whitespace-pre-wrap break-all m-0 leading-relaxed'>
-                  {`{
-  "mcpServers": {
-    "chrome-devtools": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "chrome-devtools-mcp@0.16.0",
-        "--browser-url=http://127.0.0.1:${status.port}"
-      ]
-    }
-  }
-}`}
-                </pre>
-                <Tooltip content={t('settings.cdp.copyMcpConfig')}>
-                  <Button
-                    type='text'
-                    size='small'
-                    icon={<span className='i-carbon:copy text-16px' />}
-                    onClick={copyMcpConfig}
-                  />
-                </Tooltip>
-              </div>
-              <div className='text-11px text-t-tertiary'>{t('settings.cdp.mcpConfigHint')}</div>
             </div>
           </div>
         )}

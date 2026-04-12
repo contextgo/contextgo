@@ -248,5 +248,18 @@
     "conversationNotFound": "未找到会话",
     "scheduledTimePassed": "定时时间已过",
     "conversationBusy": "会话繁忙，在 {{count}} 次尝试后跳过"
+  },
+  "chat": {
+    "createTitle": "已创建定时任务",
+    "createDescription": "这个会话的定时任务已经创建完成。",
+    "listTitle": "当前定时任务",
+    "listDescription": "这个会话当前有 {{count}} 个定时任务。",
+    "deleteTitle": "已删除定时任务",
+    "deleteDescription": "这个会话的定时任务已经删除。",
+    "errorTitle": "定时任务处理失败",
+    "errorDescription": "这次定时任务操作没有执行成功。",
+    "empty": "当前会话还没有定时任务。",
+    "deletedId": "已删除任务 ID",
+    "taskId": "任务 ID"
   }
 }

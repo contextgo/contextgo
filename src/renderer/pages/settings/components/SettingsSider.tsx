@@ -12,7 +12,6 @@ import {
   Puzzle,
   System,
   Terminal,
-  Toolkit,
 } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,7 +24,6 @@ import { matchesSettingsNavPath, normalizeSettingsAnchor } from './settingsNavig
 /** Builtin settings tab IDs in display order (must match router paths). */
 const BUILTIN_TAB_IDS = [
   'schedule',
-  'tools',
   'runtime',
   'commands',
   'webui',
@@ -119,7 +117,6 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         icon: <AlarmClock />,
         path: 'schedule',
       },
-      tools: { id: 'tools', label: t('settings.tools'), icon: <Toolkit />, path: 'tools' },
       runtime: {
         id: 'runtime',
         label: t('settings.runtimeManager.title', { defaultValue: 'Runtime' }),

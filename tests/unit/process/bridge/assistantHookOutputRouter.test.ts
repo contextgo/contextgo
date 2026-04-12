@@ -185,51 +185,8 @@ describe('AssistantHookOutputRouter', () => {
       notificationHooks: ['continuity-handoff'],
       sidecarHooks: ['continuity-handoff'],
     });
-    expect(mockAddMessage).toHaveBeenCalledWith(
-      'conv-2',
-      expect.objectContaining({
-        conversation_id: 'conv-2',
-        type: 'tips',
-        position: 'center',
-        content: expect.objectContaining({
-          type: 'success',
-          content: expect.stringContaining('/mock/system-workdir/hook-outputs/conv-2/continuity-handoff/latest.md'),
-          actions: [
-            {
-              label: 'Open Markdown',
-              action: 'open-file',
-              path: '/mock/system-workdir/hook-outputs/conv-2/continuity-handoff/latest.md',
-            },
-            {
-              label: 'Show In Folder',
-              action: 'show-item-in-folder',
-              path: '/mock/system-workdir/hook-outputs/conv-2/continuity-handoff/latest.md',
-            },
-          ],
-        }),
-      })
-    );
-    expect(onEmit).toHaveBeenCalledWith({
-      type: 'tips',
-      conversation_id: 'conv-2',
-      msg_id: 'router-message-id',
-      data: expect.objectContaining({
-        type: 'success',
-        content: expect.stringContaining('/mock/system-workdir/hook-outputs/conv-2/continuity-handoff/latest.json'),
-        actions: [
-          {
-            label: 'Open Markdown',
-            action: 'open-file',
-            path: '/mock/system-workdir/hook-outputs/conv-2/continuity-handoff/latest.md',
-          },
-          {
-            label: 'Show In Folder',
-            action: 'show-item-in-folder',
-            path: '/mock/system-workdir/hook-outputs/conv-2/continuity-handoff/latest.md',
-          },
-        ],
-      }),
-    });
+    expect(mockAddMessage).not.toHaveBeenCalled();
+    expect(onEmit).not.toHaveBeenCalled();
     expect(mockShowNotification).toHaveBeenCalledWith({
       title: 'Release Workspace completed',
       body: 'Release note draft is ready.',

@@ -35,7 +35,6 @@ const loadSkillsHubSettings = () => import('@renderer/pages/settings/SkillsHubSe
 const loadGeminiSettings = () => import('@renderer/pages/settings/GeminiSettings');
 const loadModeSettings = () => import('@renderer/pages/settings/ModeSettings');
 const loadSystemSettings = () => import('@renderer/pages/settings/SystemSettings');
-const loadToolsSettings = () => import('@renderer/pages/settings/ToolsSettings');
 const loadCommandSettings = () => import('@renderer/pages/settings/ToolsSettings/CommandSettings');
 const loadWebuiSettings = () => import('@renderer/pages/settings/WebuiSettings');
 const loadExtensionSettingsPage = () => import('@renderer/pages/settings/ExtensionSettingsPage');
@@ -301,7 +300,6 @@ const RoutedPanels: React.FC<{
         <Route path='/settings/system-runs' element={withRouteFallback(loadSystemRunsPage, '/settings/system-runs')} />
         <Route path='/settings/system' element={withRouteFallback(loadSystemSettings, '/settings/system')} />
         <Route path='/settings/about' element={withRouteFallback(loadSystemSettings, '/settings/about')} />
-        <Route path='/settings/tools' element={withRouteFallback(loadToolsSettings, '/settings/tools')} />
         <Route path='/settings/commands' element={withRouteFallback(loadCommandSettings, '/settings/commands')} />
         <Route
           path='/settings/ext/:tabId'

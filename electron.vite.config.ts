@@ -102,8 +102,6 @@ export default defineConfig(({ mode }) => {
             codex: resolve('src/process/worker/codex.ts'),
             'openclaw-gateway': resolve('src/process/worker/openclaw-gateway.ts'),
             nanobot: resolve('src/process/worker/nanobot.ts'),
-            // Built-in MCP server entry points
-            'builtin-mcp-image-gen': resolve('src/process/resources/builtinMcp/imageGenServer.ts'),
           },
           external: ['iohook-macos'],
           onwarn(warning, warn) {

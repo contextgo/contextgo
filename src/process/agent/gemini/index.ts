@@ -84,7 +84,6 @@ interface GeminiAgent2Options {
   webSearchEngine?: 'google' | 'default';
   yoloMode?: boolean;
   GOOGLE_CLOUD_PROJECT?: string;
-  mcpServers?: Record<string, unknown>;
   contextFileName?: string;
   onStreamEvent: (event: { type: string; data: unknown; msg_id: string }) => void;
   // 系统规则，在初始化时注入到 userMemory / System rules, injected into userMemory at initialization
@@ -104,7 +103,6 @@ export class GeminiAgent {
   private webSearchEngine: 'google' | 'default' | null = null;
   private yoloMode: boolean = false;
   private googleCloudProject: string | null = null;
-  private mcpServers: Record<string, unknown> = {};
   private geminiClient: GeminiClient | null = null;
   private authType: AuthType | null = null;
   private scheduler: CoreToolScheduler | null = null;
@@ -136,7 +134,6 @@ export class GeminiAgent {
     this.webSearchEngine = options.webSearchEngine || 'default';
     this.yoloMode = options.yoloMode || false;
     this.googleCloudProject = options.GOOGLE_CLOUD_PROJECT;
-    this.mcpServers = options.mcpServers || {};
     this.contextFileName = options.contextFileName;
     // 使用统一的工具函数获取认证类型
     this.authType = getProviderAuthType(options.model);
@@ -310,7 +307,6 @@ export class GeminiAgent {
       model: this.model.useModel,
       conversationToolConfig: this.toolConfig,
       yoloMode,
-      mcpServers: this.mcpServers,
       skillsDir: this.skillsDir,
       enabledSkills: this.enabledSkills,
     });

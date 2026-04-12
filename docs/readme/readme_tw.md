@@ -77,7 +77,7 @@ ContextGo 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安
 
 - **無需安裝 CLI 工具** — Agent 引擎已內建
 - **無需複雜配置** — 使用 Google 登入或貼上任意 API 金鑰
-- **完整的 Agent 能力** — 檔案讀寫、網路搜尋、圖像生成、MCP 工具
+- **完整的 Agent 能力** — 檔案讀寫、網路搜尋、自動化執行
 - **現成的專業助手** — 內建 11+ 個專業助手（Cowork、PPTX 產生器、PDF 轉 PPT、3D 遊戲、UI/UX Pro Max 等），拿來就能用
 
 <p align="center">
@@ -99,7 +99,7 @@ ContextGo 自帶完整的 AI Agent 引擎。不像其他工具需要您手動安
 - **自動偵測** — 自動識別已安裝的 CLI 工具
 - **統一介面** — 一個 Cowork 平台管理所有 AI Agent
 - **並行會話** — 同時執行多個 Agent，各自獨立上下文
-- **MCP 統一管理** — 配置一次 MCP（模型上下文協定）工具，自動同步到所有 Agent — 無需為每個 Agent 單獨配置
+- **統一協作工作台** — 在同一個介面裡管理內建 Agent 和外部 CLI Agent，共享一致的會話與上下文體驗
 
 ---
 
@@ -518,7 +518,6 @@ ContextGo 是一個**免費開源的 Multi-AI Agent 桌面應用**。相比只�
 - [📖 完整安裝指南](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-start) — 從下載到配置，一步步教您
 - [⚙️ LLM 配置指南](https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power) — 多平台 AI 模型怎麼配置
 - [🤖 多 Agent 模式設定](https://github.com/contextgo/contextgo/blob/main/readme.md#multi-agent-mode--already-have-cli-agents-bring-them-in) — 把終端 AI Agent 整合進來
-- [🔌 MCP 工具配置](https://github.com/contextgo/contextgo/tree/main/docs) — 模型上下文協定伺服器設定
 - [🌐 WebUI 配置指南](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md) — WebUI 完整設定教學
 
 **🎯 使用場景**

@@ -77,7 +77,7 @@ ContextGo には完全な AI Agent エンジンが内蔵されています。CLI
 
 - **CLI ツールのインストール不要** — Agent エンジンが内蔵されています
 - **複雑な設定不要** — Google でサインインするか、任意の API キーを貼り付けるだけ
-- **完全な Agent 機能** — ファイル読み書き、ウェブ検索、画像生成、MCP ツール
+- **完全な Agent 機能** — ファイル読み書き、ウェブ検索、自動化ワークフロー
 - **すぐに使えるアシスタント** — 11+ 個の内蔵プロフェッショナルアシスタント（Cowork、PPTX ジェネレーター、PDF から PPT、3D ゲーム、UI/UX Pro Max など）がすぐに使えます
 
 <p align="center">
@@ -99,7 +99,7 @@ ContextGo には完全な AI Agent エンジンが内蔵されています。CLI
 - **自動検出** — インストール済みの CLI ツールを自動認識
 - **統一インターフェース** — すべての AI Agent を管理する一つの Cowork プラットフォーム
 - **並列セッション** — 独立したコンテキストで複数の Agent を同時実行
-- **MCP 統一管理** — MCP（Model Context Protocol）ツールを一度設定すれば、すべての Agent に自動同期——各 Agent を個別に設定する必要はありません
+- **統一コラボレーションワークスペース** — 内蔵 Agent と外部 CLI Agent を一つの場所で管理し、一貫したセッションとコンテキストを共有
 
 ---
 
@@ -518,7 +518,6 @@ A: すべてのデータはローカルの SQLite データベースに保存さ
 - [📖 完全インストールガイド](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-start) — ダウンロードから設定までの詳細な手順
 - [⚙️ LLM 設定ガイド](https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power) — マルチプラットフォーム AI モデル設定
 - [🤖 マルチ Agent モード設定](https://github.com/contextgo/contextgo/blob/main/readme.md#multi-agent-mode--already-have-cli-agents-bring-them-in) — ターミナル AI Agent を統合
-- [🔌 MCP ツール設定](https://github.com/contextgo/contextgo/tree/main/docs) — Model Context Protocol サーバー設定
 - [🌐 WebUI 設定ガイド](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md) — 完全な WebUI セットアップと設定チュートリアル
 
 **🎯 使用例**

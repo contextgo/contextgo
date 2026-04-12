@@ -282,9 +282,30 @@ describe('getRelevantAssistantSkills', () => {
         pendingSkills: [{ source: 'external', name: 'skill-c', description: 'Pending C', path: '/tmp/skill-c' }],
       })
     ).toEqual([
-      { name: 'skill-b', description: 'Custom B', isCustom: true, isPending: false },
-      { name: 'skill-c', description: 'Pending C', isCustom: true, isPending: true },
-      { name: 'skill-a', description: 'Builtin A', isCustom: false, isPending: false },
+      {
+        name: 'skill-b',
+        description: 'Custom B',
+        compatibility: undefined,
+        dependencyHints: undefined,
+        openAIConfig: undefined,
+        isCustom: true,
+        isPending: false,
+      },
+      {
+        name: 'skill-c',
+        description: 'Pending C',
+        isCustom: true,
+        isPending: true,
+      },
+      {
+        name: 'skill-a',
+        description: 'Builtin A',
+        compatibility: undefined,
+        dependencyHints: undefined,
+        openAIConfig: undefined,
+        isCustom: false,
+        isPending: false,
+      },
     ]);
   });
 
@@ -295,7 +316,17 @@ describe('getRelevantAssistantSkills', () => {
         selectedSkills: ['missing-skill', 'missing-skill'],
         pendingSkills: [],
       })
-    ).toEqual([{ name: 'missing-skill', description: '', isCustom: false, isPending: false }]);
+    ).toEqual([
+      {
+        name: 'missing-skill',
+        description: '',
+        compatibility: undefined,
+        dependencyHints: undefined,
+        openAIConfig: undefined,
+        isCustom: false,
+        isPending: false,
+      },
+    ]);
   });
 });
 

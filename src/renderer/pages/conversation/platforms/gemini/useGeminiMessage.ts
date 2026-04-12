@@ -3,7 +3,11 @@ import { transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { TChatConversation, TokenUsageData } from '@/common/config/storage';
 import type { ThoughtData } from '@/renderer/components/chat/ThoughtDisplay';
-import { readConversationUiState, writeConversationUiState } from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
+import {
+  hasConversationUiState,
+  readConversationUiState,
+  writeConversationUiState,
+} from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -344,6 +348,7 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
   useEffect(() => {
     hasContentInTurnRef.current = false;
 
+    const hasCachedState = hasConversationUiState(GEMINI_UI_STATE_SCOPE, conversation_id);
     const cachedState = readConversationUiState(
       GEMINI_UI_STATE_SCOPE,
       conversation_id,
@@ -376,13 +381,23 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
         return;
       }
       const isRunning = res.status === 'running';
-      setStreamRunning(isRunning);
-      streamRunningRef.current = isRunning;
+      if (isRunning) {
+        if (!hasCachedState) {
+          setStreamRunning(true);
+          streamRunningRef.current = true;
+          setWaitingResponse(true);
+          waitingResponseRef.current = true;
+        }
+      } else {
+        setStreamRunning(false);
+        streamRunningRef.current = false;
+        setWaitingResponse(false);
+        waitingResponseRef.current = false;
+        setThought({ subject: '', description: '' });
+      }
       // Reset tool states - they will be restored by incoming messages if still active
       setHasActiveTools(false);
       hasActiveToolsRef.current = false;
-      setWaitingResponse(isRunning);
-      waitingResponseRef.current = isRunning;
       setSawToolActivityInTurn(false);
       sawToolActivityInTurnRef.current = false;
       // Load persisted token usage stats

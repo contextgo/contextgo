@@ -74,7 +74,6 @@ test.describe.serial('Extension: Empty Directory / No Extensions', () => {
     const [
       loadedExtensions,
       acpAdapters,
-      mcpServers,
       assistants,
       agents,
       skills,
@@ -84,7 +83,6 @@ test.describe.serial('Extension: Empty Directory / No Extensions', () => {
     ] = await Promise.all([
       invokeBridge(page, 'extensions.get-loaded-extensions'),
       invokeBridge(page, 'extensions.get-acp-adapters'),
-      invokeBridge(page, 'extensions.get-mcp-servers'),
       invokeBridge(page, 'extensions.get-assistants'),
       invokeBridge(page, 'extensions.get-agents'),
       invokeBridge(page, 'extensions.get-skills'),
@@ -95,7 +93,6 @@ test.describe.serial('Extension: Empty Directory / No Extensions', () => {
 
     expect(loadedExtensions).toEqual([]);
     expect(acpAdapters).toEqual([]);
-    expect(mcpServers).toEqual([]);
     expect(assistants).toEqual([]);
     expect(agents).toEqual([]);
     expect(skills).toEqual([]);

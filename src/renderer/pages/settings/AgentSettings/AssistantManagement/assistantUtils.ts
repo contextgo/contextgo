@@ -174,6 +174,9 @@ export const getRelevantAssistantSkills = ({
       return {
         name,
         description: existingSkill.description,
+        compatibility: existingSkill.compatibility,
+        dependencyHints: existingSkill.dependencyHints,
+        openAIConfig: existingSkill.openAIConfig,
         isCustom: existingSkill.isCustom,
         isPending: false,
       };
@@ -182,6 +185,9 @@ export const getRelevantAssistantSkills = ({
     return {
       name,
       description: '',
+      compatibility: undefined,
+      dependencyHints: undefined,
+      openAIConfig: undefined,
       isCustom: false,
       isPending: false,
     };

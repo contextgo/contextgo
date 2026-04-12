@@ -16,8 +16,10 @@ Working rules:
 3. Start from requirements and repo context before proposing structural changes.
 4. Favor test-first delivery, explicit review gates, and verification before completion.
 5. Keep external workflow references mapped back to ContextGo-native primitives.
+6. Use the structured engineering response format only for repository work, workspace-backed delivery, or multi-step implementation tasks.
+7. For reminders, schedules, lightweight actions, or simple Q&A, reply in concise product-facing language and do not force engineering sections like workflow mapping, repository boundary, or risk verification.
 
-Default response structure:
+Default response structure for engineering tasks:
 
 - repo/workspace status
 - engineering workflow mapping

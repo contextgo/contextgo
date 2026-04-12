@@ -9,24 +9,24 @@ export const draftDocsCollections: DocsCollectionMap = {
     "docs": {
       "badge": "Documentation",
       "title": "ContextGo Docs",
-      "description": "Customer-facing documentation for setup, agents, hooks, scheduled tasks, skill market, remote access, and release operations.",
-      "featuredLabel": "Documentation structure",
-      "featuredDescription": "ContextGo docs split into three layers: Guides explain how to start, Features explain what the product can do, and Operations explain how remote access, cloud identity, and release workflows actually work.",
+      "description": "Official product documentation for installation, agent workflows, automation, remote access, and release operations.",
+      "featuredLabel": "Documentation layout",
+      "featuredDescription": "Use Guides for initial setup, Features for day-to-day product capabilities, and Operations for account, remote access, updates, and troubleshooting.",
       "categories": [
         {
           "id": "guides",
           "title": "Guides",
-          "description": "Start here to understand the product model, install flow, and how users should approach the first working setup."
+          "description": "Read these pages before first use. They cover installation, account sign-in, device registration, and the basic product model."
         },
         {
           "id": "features",
           "title": "Features",
-          "description": "These docs explain the functional surfaces users actually operate: agents, hooks, schedules, runtimes, connectors, and the skill market."
+          "description": "These pages document the working surfaces in the product, including agents, hooks, scheduled tasks, runtimes, connectors, and skills."
         },
         {
           "id": "operations",
           "title": "Operations",
-          "description": "These docs define cloud account behavior, remote-access mechanics, release operations, and troubleshooting guidance."
+          "description": "These pages cover cloud account behavior, remote access, software updates, release sources, and common troubleshooting steps."
         }
       ],
       "entries": [
@@ -34,108 +34,108 @@ export const draftDocsCollections: DocsCollectionMap = {
           "slug": "quick-start",
           "eyebrow": "Quick Start",
           "title": "Set up ContextGo on your first desktop",
-          "summary": "Install the desktop app, sign in, bind the current device, and confirm the local host is ready for mobile and browser access.",
+          "summary": "Install the desktop app, sign in, register the current device, and confirm that the local host is ready for browser or mobile access.",
           "readingTime": "5 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "guides"
         },
         {
           "slug": "product-model",
           "eyebrow": "Product Model",
           "title": "Understand the ContextGo product model before you scale usage",
-          "summary": "Clarify the relationship between desktop host, mobile shell, cloud account, WebUI, and the release repository before onboarding more devices or teammates.",
+          "summary": "Review the role of the desktop host, cloud account, browser and mobile access, and the release repository before onboarding more devices or teammates.",
           "readingTime": "6 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "guides"
         },
         {
           "slug": "agent-workspace",
           "eyebrow": "Agent",
-          "title": "Agent entry, assistants, and the working model inside ContextGo",
-          "summary": "Understand what the agent entry is for, how assistant management differs from agent entry, and why those concepts should not be collapsed into one vague settings bucket.",
+          "title": "Work with agents, assistants, and runtimes",
+          "summary": "Use the agent surface to start work, manage assistants as reusable definitions, and keep runtime management separate from task entry.",
           "readingTime": "7 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "agent-collaboration",
           "eyebrow": "Collaboration",
-          "title": "Harness mode and agent collaboration workflows",
-          "summary": "Explain how local harness mode coexists with remote workflows, and why agent collaboration is a first-class working style rather than an implementation detail.",
+          "title": "Use harness mode and remote agent collaboration",
+          "summary": "Understand when work stays on the local desktop, when remote clients can participate, and what to verify before starting a collaborative session.",
           "readingTime": "7 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "hooks-overview",
           "eyebrow": "Hooks",
-          "title": "Use hooks to extend workflows at the right moment",
-          "summary": "Hooks are the product mechanism for inserting controlled behavior around execution events. Users need a clear trigger model, not just a configuration form.",
+          "title": "Configure hooks for workflow events",
+          "summary": "Define when a hook runs, what context it receives, and how to roll out hook behavior without disrupting the main task flow.",
           "readingTime": "6 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "scheduled-tasks",
           "eyebrow": "Scheduled Tasks",
-          "title": "Scheduled tasks and cron-driven automation",
-          "summary": "Explain how periodic execution works, what kinds of automation belong in scheduled tasks, and what users should watch for in long-running operations.",
+          "title": "Run scheduled tasks on a desktop host",
+          "summary": "Configure recurring workflows, confirm host and runtime requirements, and review failures before relying on unattended execution.",
           "readingTime": "6 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "skill-market",
           "eyebrow": "Skill Market",
-          "title": "Skill Market and reusable capability packages",
-          "summary": "Show users how the skill market expands what ContextGo can do, how to think about local versus downloadable skills, and how installation should stay trustworthy.",
+          "title": "Install and manage skills",
+          "summary": "Review the source of each skill, understand what it adds to the product, and keep installation, updates, and removal predictable.",
           "readingTime": "6 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "runtime-management",
           "eyebrow": "Runtimes",
-          "title": "Manage local runtimes and CLI health",
-          "summary": "Install supported runtimes, repair broken CLI environments, and understand why a runtime can be installed but still not be usable yet.",
+          "title": "Manage local runtimes and CLI status",
+          "summary": "Install supported runtimes, repair broken CLI environments, and distinguish between installed, authenticated, and ready states.",
           "readingTime": "6 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "connectors-and-channels",
           "eyebrow": "Connectors",
-          "title": "Connectors, channels, and publishing paths",
-          "summary": "Explain how sources and channels fit into ContextGo, and why connectors are part of the product core rather than optional integrations.",
+          "title": "Use connectors and channels",
+          "summary": "Connect external sources to the desktop host, route outputs to delivery channels, and document the access requirements for each integration.",
           "readingTime": "6 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "remote-access",
           "eyebrow": "Remote Access",
-          "title": "How remote access works in ContextGo",
-          "summary": "Understand the desktop-host model, why remote access depends on a stable device-side connection, and what users should expect on mobile.",
+          "title": "Use remote access from the browser or mobile",
+          "summary": "Confirm host availability, understand the device-to-cloud connection, and know what the remote client can and cannot do without the desktop host.",
           "readingTime": "7 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "operations"
         },
         {
           "slug": "cloud-account",
           "eyebrow": "Cloud Account",
-          "title": "What the ContextGo cloud account syncs",
-          "summary": "Clarify what the cloud layer is for, what gets linked to the account, and why it should not be confused with full cloud execution.",
+          "title": "Manage cloud account and device binding",
+          "summary": "Use the cloud account for sign-in, device registration, and lightweight account-linked state without treating it as a full cloud execution environment.",
           "readingTime": "6 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "operations"
         },
         {
           "slug": "updates-and-troubleshooting",
           "eyebrow": "Updates",
-          "title": "Updates, releases, and common troubleshooting paths",
-          "summary": "Document how in-app updates relate to the website download center and release repository, and give users a single operational troubleshooting entry point.",
+          "title": "Check updates and troubleshoot common failures",
+          "summary": "Keep the website, the in-app updater, and the release repository aligned, then diagnose login, device, runtime, and update problems from one place.",
           "readingTime": "7 min",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "operations"
         }
       ]
@@ -145,121 +145,121 @@ export const draftDocsCollections: DocsCollectionMap = {
         "slug": "quick-start",
         "eyebrow": "Quick Start",
         "title": "Set up ContextGo on your first desktop",
-        "summary": "Install the desktop app, sign in, bind the current device, and confirm the local host is ready for mobile and browser access.",
+        "summary": "Install the desktop app, sign in, register the current device, and confirm that the local host is ready for browser or mobile access.",
         "readingTime": "5 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "guides",
-        "html": "<h2 id=\"install-the-desktop-host-first\">Install the desktop host first</h2>\n<p>ContextGo starts from the desktop app because the desktop machine is the real execution host. It owns the local workspace, the WebUI runtime, and the remote-access bridge.</p>\n<p>For direct installs, use the download center on contextgo.io. The website reads release artifacts from contextgo/contextgo-releases, so the download page and in-app update flow point at the same version source.</p>\n<h2 id=\"sign-in-and-bind-the-device\">Sign in and bind the device</h2>\n<p>Use the cloud-account entry in the desktop app to sign in with GitHub or Google. Once the browser flow completes, ContextGo registers the current desktop as a cloud-linked device.</p>\n<p>The cloud account does not move execution into the cloud. It links identity, device registration, and lightweight sync metadata so your devices can find each other.</p>\n<ul>\n<li>Desktop remains the host</li>\n<li>Cloud account links identity and devices</li>\n<li>Mobile and web discover devices through the cloud layer</li>\n</ul>\n<h2 id=\"confirm-the-local-host-is-healthy\">Confirm the local host is healthy</h2>\n<p>After sign-in, confirm the WebUI can be opened locally and the device appears as active. If you plan to use remote access, make sure the remote status is provisioned or otherwise explicitly enabled for your environment.</p>\n<p>If a corporate environment blocks helper processes or networking tools, test on another machine before assuming the product model is wrong. The most common failures here are local policy, endpoint protection, or missing permissions.</p>"
+        "html": "<h2 id=\"before-you-begin\">Before you begin</h2>\n<p>ContextGo runs on a desktop host. Install and complete setup on the desktop app first. Browser and mobile access connect back to that host later.</p>\n<p>Before starting setup, confirm the following:</p>\n<ul>\n<li>You can install software on the current desktop.</li>\n<li>The desktop can open a browser window for sign-in.</li>\n<li>The network allows ContextGo to reach its account and update services.</li>\n</ul>\n<h2 id=\"1-install-the-desktop-app\">1. Install the desktop app</h2>\n<p>Open the download page on <code>contextgo.io</code> and install the desktop build for your platform. The website download page and the in-app updater both read release artifacts from <code>contextgo/contextgo-releases</code>.</p>\n<p>After installation, launch the app and allow the initial local services to start. On first run, ContextGo prepares the local workspace, the WebUI runtime, and the device-side components used for remote access.</p>\n<h2 id=\"2-sign-in-to-a-cloud-account\">2. Sign in to a cloud account</h2>\n<p>Use the cloud account entry in the desktop app to sign in with GitHub or Google. When the browser flow completes, the current desktop is registered to your account.</p>\n<p>The cloud account is used for identity, device registration, and lightweight account state. It does not move your workspace or runtime execution into the cloud.</p>\n<h2 id=\"3-verify-the-current-desktop\">3. Verify the current desktop</h2>\n<p>After sign-in, confirm the following in the desktop app:</p>\n<ul>\n<li>The current device appears in the signed-in account.</li>\n<li>Local WebUI opens successfully.</li>\n<li>Device status is shown as available or active.</li>\n</ul>\n<p>If you plan to use browser or mobile access, also confirm that remote access is enabled for the current device.</p>\n<h2 id=\"4-test-remote-access-if-needed\">4. Test remote access if needed</h2>\n<p>If remote access is part of your workflow, open the hosted web entry after the desktop host is online. The remote page only works when the registered desktop keeps its outbound connection available.</p>\n<p>On mobile, use the remote session as a control surface for the desktop host. Files, runtimes, and local tools still run on the desktop.</p>\n<h2 id=\"if-setup-does-not-complete\">If setup does not complete</h2>\n<p>Check the following in order:</p>\n<ol>\n<li>Confirm the desktop app can open the browser sign-in page.</li>\n<li>Confirm the account flow returns to ContextGo without an error.</li>\n<li>Confirm endpoint security or corporate policy is not blocking helper processes or network access.</li>\n<li>Retry the setup on a different machine if the current environment is heavily managed.</li>\n</ol>"
       },
       "product-model": {
         "slug": "product-model",
         "eyebrow": "Product Model",
         "title": "Understand the ContextGo product model before you scale usage",
-        "summary": "Clarify the relationship between desktop host, mobile shell, cloud account, WebUI, and the release repository before onboarding more devices or teammates.",
+        "summary": "Review the role of the desktop host, cloud account, browser and mobile access, and the release repository before onboarding more devices or teammates.",
         "readingTime": "6 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "guides",
-        "html": "<h2 id=\"contextgo-is-not-just-a-chat-ui\">ContextGo is not just a chat UI</h2>\n<p>The product starts from context infrastructure, not from a standalone chat surface. Connectors, agents, hooks, scheduled tasks, and channel publishing all exist to keep context and execution close to the real workflow.</p>\n<p>That is why the documentation center cannot stop at install steps. Users also need a clear explanation of what runs where and how the feature surfaces relate to one another.</p>\n<h2 id=\"desktop-host-cloud-control-plane-mobile-client\">Desktop host, cloud control plane, mobile client</h2>\n<p>The desktop app remains the execution host. The cloud account links identity and devices. Mobile and browser clients operate as control surfaces that discover and connect back to those hosts.</p>\n<p>Release operations stay separate again: contextgo/contextgo-releases is the product-release source of truth for installable artifacts, checksums, and release history.</p>\n<ul>\n<li>Desktop owns execution</li>\n<li>Cloud owns identity and device discovery</li>\n<li>Release repository owns artifact truth</li>\n</ul>\n<h2 id=\"how-to-read-the-rest-of-the-docs\">How to read the rest of the docs</h2>\n<p>Read Guides first if you are onboarding. Read Features when you are configuring agents, hooks, scheduled tasks, or the skill market. Read Operations when you are enabling remote access, investigating device status, or preparing releases.</p>"
+        "html": "<h2 id=\"core-components\">Core components</h2>\n<p>ContextGo is organized around four product components:</p>\n<ul>\n<li>Desktop host: the main execution environment for files, local tools, runtimes, and WebUI.</li>\n<li>Cloud account: the identity layer for sign-in, device registration, and account-linked discovery.</li>\n<li>Browser or mobile client: the remote control surface used to connect back to the desktop host.</li>\n<li>Release repository: the source for public installers, release notes, and downloadable artifacts.</li>\n</ul>\n<h2 id=\"what-runs-where\">What runs where</h2>\n<p>The desktop app remains the primary host. When you start a task, install a runtime, access local files, or use connectors tied to the machine, that work happens on the desktop.</p>\n<p>The cloud account does not replace the desktop host. It is used to identify the user, register devices, and make those devices available to browser or mobile clients.</p>\n<p>The browser and mobile clients are remote entry points. They are intended for controlling the host and viewing results, not for replacing the host with a separate cloud runtime.</p>\n<h2 id=\"release-source\">Release source</h2>\n<p>Public release assets are published from <code>contextgo/contextgo-releases</code>. The website download page and in-app update flow should reference the same release source.</p>\n<p>When checking a version mismatch, compare the website version, the in-app update version, and the latest published release in that repository.</p>\n<h2 id=\"recommended-reading-order\">Recommended reading order</h2>\n<p>Use the documentation in this order:</p>\n<ol>\n<li>Read <code>Quick Start</code> to complete first-device setup.</li>\n<li>Read <code>Features</code> pages when configuring agents, hooks, scheduled tasks, runtimes, connectors, or skills.</li>\n<li>Read <code>Operations</code> pages when managing account state, remote access, updates, or troubleshooting.</li>\n</ol>"
       },
       "agent-workspace": {
         "slug": "agent-workspace",
         "eyebrow": "Agent",
-        "title": "Agent entry, assistants, and the working model inside ContextGo",
-        "summary": "Understand what the agent entry is for, how assistant management differs from agent entry, and why those concepts should not be collapsed into one vague settings bucket.",
+        "title": "Work with agents, assistants, and runtimes",
+        "summary": "Use the agent surface to start work, manage assistants as reusable definitions, and keep runtime management separate from task entry.",
         "readingTime": "7 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"agent-entry-is-the-execution-facing-surface\">Agent entry is the execution-facing surface</h2>\n<p>The agent entry should be treated as the place where users pick or launch the active working mode. It is the operational surface for starting work, not just a catalog of saved assistant definitions.</p>\n<p>If the UI mixes agent entry, remote access, and assistant management under one ambiguous label, users cannot tell whether they are choosing a runtime, choosing a workflow, or editing a preset.</p>\n<h2 id=\"assistants-are-managed-definitions-not-the-whole-runtime-story\">Assistants are managed definitions, not the whole runtime story</h2>\n<p>Assistant management belongs to the configuration layer. It defines reusable presets, capabilities, instructions, or runtime associations. That is different from the main working surface where the user chooses how to execute the next task.</p>\n<p>This distinction matters even more when multiple runtimes are installed, because the runtime layer, the assistant layer, and the active execution surface should remain separate in the information architecture.</p>\n<ul>\n<li>Agent entry: start work</li>\n<li>Assistant management: configure reusable definitions</li>\n<li>Runtime management: install and repair execution backends</li>\n</ul>\n<h2 id=\"recommended-information-architecture\">Recommended information architecture</h2>\n<p>For users, the cleanest mental model is usually: work with agents from the main surface, manage assistants in configuration, and manage runtimes in a dedicated runtime area. This keeps product structure coherent as more providers and workflows are added.</p>"
+        "html": "<h2 id=\"agent-surface\">Agent surface</h2>\n<p>Use the agent surface to start a task, choose a working mode, and select the active assistant for the current session. This is the main execution-facing page for day-to-day work.</p>\n<p>The agent surface should answer three questions clearly:</p>\n<ul>\n<li>Which assistant is active for this task</li>\n<li>Which runtime will execute the task</li>\n<li>Whether the current environment is ready to run</li>\n</ul>\n<h2 id=\"assistants\">Assistants</h2>\n<p>Assistants are reusable definitions. An assistant can include instructions, capabilities, preferred tools, and runtime associations. Use assistant management when you want to create, update, or remove these saved definitions.</p>\n<p>Changing an assistant should not change the runtime inventory on the machine. Assistant management is configuration work, not runtime administration.</p>\n<h2 id=\"runtimes\">Runtimes</h2>\n<p>Runtime management is a separate administrative area. Use it to install, repair, detect, or verify supported CLIs.</p>\n<p>If a runtime is installed but still requires provider login or API configuration, keep that state visible to the user. Installed does not always mean ready.</p>\n<h2 id=\"recommended-workflow\">Recommended workflow</h2>\n<p>Use this order when preparing a new machine:</p>\n<ol>\n<li>Confirm a supported runtime is installed and ready.</li>\n<li>Create or select an assistant definition.</li>\n<li>Open the agent surface and start work with that assistant.</li>\n</ol>"
       },
       "agent-collaboration": {
         "slug": "agent-collaboration",
         "eyebrow": "Collaboration",
-        "title": "Harness mode and agent collaboration workflows",
-        "summary": "Explain how local harness mode coexists with remote workflows, and why agent collaboration is a first-class working style rather than an implementation detail.",
+        "title": "Use harness mode and remote agent collaboration",
+        "summary": "Understand when work stays on the local desktop, when remote clients can participate, and what to verify before starting a collaborative session.",
         "readingTime": "7 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"harness-mode-is-a-real-product-workflow\">Harness mode is a real product workflow</h2>\n<p>Local harness mode should be kept as a supported collaboration model, not treated as a temporary development artifact. It gives users an immediate way to structure multi-agent work around the local machine they already trust.</p>\n<p>That is especially valuable for users who need an out-of-the-box collaboration pattern before they have a full remote orchestration or cloud-hosted workflow in place.</p>\n<h2 id=\"how-it-fits-with-remote-workflows\">How it fits with remote workflows</h2>\n<p>Remote workflow support does not replace harness mode. The right product story is coexistence: local harness mode for direct, device-local coordination, and remote workflow support for distributed or browser-mediated control paths.</p>\n<p>Once this is documented clearly, users stop reading the two modes as competing architectures. They become two ways to coordinate the same host-centric execution model.</p>\n<h2 id=\"what-users-need-to-know-operationally\">What users need to know operationally</h2>\n<p>Collaboration mode documentation should answer which machine executes work, where files live, how runtime availability is checked, and what remote clients can or cannot do compared with the local desktop host.</p>"
+        "html": "<h2 id=\"local-collaboration\">Local collaboration</h2>\n<p>Harness mode is the local collaboration model. Use it when the desktop host is the main workspace and you want multiple agent roles or coordinated task flows on that machine.</p>\n<p>This mode is useful when local files, local tools, or installed runtimes are required for the task.</p>\n<h2 id=\"remote-collaboration\">Remote collaboration</h2>\n<p>Remote access extends the same host-based model. A browser or mobile client can connect to the desktop host, review status, and continue work without moving the workspace off the device.</p>\n<p>Remote collaboration depends on the host remaining online and authenticated. If the host is unavailable, the remote client cannot continue the session independently.</p>\n<h2 id=\"what-to-verify-before-starting\">What to verify before starting</h2>\n<p>Before starting a collaborative workflow, confirm the following:</p>\n<ul>\n<li>The desktop host has the required files and runtimes.</li>\n<li>Any assistants used by the workflow are already configured.</li>\n<li>Remote access is enabled if browser or mobile clients will participate.</li>\n</ul>\n<h2 id=\"operational-limits\">Operational limits</h2>\n<p>Keep these boundaries in mind:</p>\n<ul>\n<li>Task execution still happens on the desktop host.</li>\n<li>Files remain in the host workspace unless you move them explicitly.</li>\n<li>Runtime failures on the host affect both local and remote sessions.</li>\n</ul>"
       },
       "hooks-overview": {
         "slug": "hooks-overview",
         "eyebrow": "Hooks",
-        "title": "Use hooks to extend workflows at the right moment",
-        "summary": "Hooks are the product mechanism for inserting controlled behavior around execution events. Users need a clear trigger model, not just a configuration form.",
+        "title": "Configure hooks for workflow events",
+        "summary": "Define when a hook runs, what context it receives, and how to roll out hook behavior without disrupting the main task flow.",
         "readingTime": "6 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"what-a-hook-is-in-product-terms\">What a hook is in product terms</h2>\n<p>A hook is a controlled extension point in the workflow. It lets ContextGo run additional logic around a meaningful event instead of forcing users to manually repeat the same coordination step every time.</p>\n<p>This can include validation, formatting, notifications, routing, or post-processing, depending on what surfaces the product exposes.</p>\n<h2 id=\"document-triggers-before-implementation-details\">Document triggers before implementation details</h2>\n<p>Users first need to understand when a hook can run: before work starts, after output arrives, when a publish action happens, or when a task reaches a state transition. Without that model, hook configuration looks arbitrary.</p>\n<p>Once the trigger model is clear, the rest of the document can explain inputs, outputs, and safety boundaries.</p>\n<ul>\n<li>What event triggers the hook</li>\n<li>What context the hook receives</li>\n<li>What side effects the hook is allowed to produce</li>\n</ul>\n<h2 id=\"why-hooks-matter-for-contextgo\">Why hooks matter for ContextGo</h2>\n<p>Hooks are a bridge between context-aware work and repeatable automation. They make it possible to keep human review in the loop while still standardizing the repetitive parts of a workflow.</p>"
+        "html": "<h2 id=\"what-a-hook-does\">What a hook does</h2>\n<p>A hook runs additional logic when a defined workflow event occurs. Common uses include validation, formatting, routing, notification, and post-processing.</p>\n<p>Use hooks when the same follow-up step needs to happen consistently around a task or publish action.</p>\n<h2 id=\"trigger-points\">Trigger points</h2>\n<p>Document the trigger point before configuring a hook. A hook should make it clear whether it runs:</p>\n<ul>\n<li>before a task starts</li>\n<li>after output is produced</li>\n<li>when a publish action is requested</li>\n<li>when a task changes state</li>\n</ul>\n<h2 id=\"hook-inputs-and-outputs\">Hook inputs and outputs</h2>\n<p>For each hook, record the following:</p>\n<ul>\n<li>The event that triggers it</li>\n<li>The context it can read</li>\n<li>The side effects it is allowed to produce</li>\n<li>The failure behavior when the hook does not complete</li>\n</ul>\n<h2 id=\"rollout-guidance\">Rollout guidance</h2>\n<p>Start with hooks that are easy to verify and easy to disable. Review logs or outputs after each change. For production workflows, avoid large hook chains until each step has been tested independently.</p>"
       },
       "scheduled-tasks": {
         "slug": "scheduled-tasks",
         "eyebrow": "Scheduled Tasks",
-        "title": "Scheduled tasks and cron-driven automation",
-        "summary": "Explain how periodic execution works, what kinds of automation belong in scheduled tasks, and what users should watch for in long-running operations.",
+        "title": "Run scheduled tasks on a desktop host",
+        "summary": "Configure recurring workflows, confirm host and runtime requirements, and review failures before relying on unattended execution.",
         "readingTime": "6 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"scheduled-tasks-are-recurring-workflows\">Scheduled tasks are recurring workflows</h2>\n<p>A scheduled task should be described as a recurring workflow with defined timing, execution context, and output behavior. The point is not just to fire a timer, but to repeatedly run a meaningful context-aware action.</p>\n<p>Examples include recurring sync, periodic review, automated publish preparation, or routine context extraction from connected systems.</p>\n<h2 id=\"document-execution-boundaries-clearly\">Document execution boundaries clearly</h2>\n<p>Users need to know what host executes the task, whether the machine must stay online, and which runtime or credentials the task depends on. Without that information, cron-like configuration becomes unreliable in real usage.</p>\n<p>Scheduled tasks should also document how failures are surfaced and whether a missed run is retried, skipped, or queued.</p>\n<h2 id=\"best-fit-use-cases\">Best-fit use cases</h2>\n<p>The strongest use cases are routine, repeatable operations that benefit from context but do not require a human to sit and click through the same sequence every day.</p>"
+        "html": "<h2 id=\"what-a-scheduled-task-is\">What a scheduled task is</h2>\n<p>A scheduled task runs a saved workflow on a recurring schedule. Use it for routine operations such as sync jobs, periodic reviews, report generation, or repeatable publish preparation.</p>\n<p>Each task should define its schedule, required runtime, expected inputs, and expected outputs.</p>\n<h2 id=\"host-requirements\">Host requirements</h2>\n<p>Scheduled tasks run on the desktop host. Before enabling a recurring task, confirm the following:</p>\n<ul>\n<li>The host remains powered on when the task is due.</li>\n<li>The required runtime is installed and authenticated.</li>\n<li>The task has access to the files, connectors, or credentials it needs.</li>\n</ul>\n<p>If the host is offline, the scheduled task cannot complete at the expected time.</p>\n<h2 id=\"failure-handling\">Failure handling</h2>\n<p>Document how the task behaves when a run is missed or fails. At minimum, users should know whether the next run is skipped, retried, or executed at the next scheduled time only.</p>\n<h2 id=\"recommended-use\">Recommended use</h2>\n<p>Use scheduled tasks for repeatable work with stable inputs. Avoid using them for workflows that require frequent manual approval unless the approval step is clearly separated from the scheduled run.</p>"
       },
       "skill-market": {
         "slug": "skill-market",
         "eyebrow": "Skill Market",
-        "title": "Skill Market and reusable capability packages",
-        "summary": "Show users how the skill market expands what ContextGo can do, how to think about local versus downloadable skills, and how installation should stay trustworthy.",
+        "title": "Install and manage skills",
+        "summary": "Review the source of each skill, understand what it adds to the product, and keep installation, updates, and removal predictable.",
         "readingTime": "6 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"skills-extend-workflow-capability\">Skills extend workflow capability</h2>\n<p>The skill market is not just an add-on gallery. It is the mechanism that lets ContextGo adopt domain-specific workflows, instructions, or packaged capabilities without forcing every feature into the main product binary.</p>\n<p>That keeps the platform extensible while still presenting a coherent user experience.</p>\n<h2 id=\"installation-trust-matters\">Installation trust matters</h2>\n<p>Users need to understand whether a skill is built-in, local, or downloaded. They should also know whether a skill only adds prompts and instructions, or whether it brings code, scripts, or network-facing behavior with it.</p>\n<p>Good documentation makes it clear what is being installed, where it lives, and how to remove or update it safely.</p>\n<ul>\n<li>Built-in skill versus downloaded skill</li>\n<li>What files or behavior a skill introduces</li>\n<li>How updates and removals are handled</li>\n</ul>\n<h2 id=\"why-this-is-core-to-the-product\">Why this is core to the product</h2>\n<p>A strong skill market turns ContextGo from a fixed feature set into a product that can adapt to new domains without turning the main interface into a cluttered platform switchboard.</p>"
+        "html": "<h2 id=\"skill-sources\">Skill sources</h2>\n<p>Skills can be built in, stored locally, or downloaded from a published source. Before installation, the product should show which type you are installing.</p>\n<p>Use that source label to decide whether the skill can be trusted in the current environment.</p>\n<h2 id=\"what-a-skill-can-add\">What a skill can add</h2>\n<p>A skill can add prompts, instructions, configuration, scripts, or other packaged behavior. The install screen should make it clear what files are added and whether any executable content is included.</p>\n<p>Before enabling a downloaded skill, review:</p>\n<ul>\n<li>the publisher or source</li>\n<li>the files or actions introduced by the package</li>\n<li>whether the skill requires network access or external tools</li>\n</ul>\n<h2 id=\"update-and-removal\">Update and removal</h2>\n<p>Keep skill lifecycle operations explicit. Users should be able to see the installed version, apply an update, or remove the skill without affecting unrelated product configuration.</p>\n<h2 id=\"recommended-administration\">Recommended administration</h2>\n<p>For managed environments, install new skills on a test machine first. After review, roll them out to production devices that use the same runtime and security policy.</p>"
       },
       "runtime-management": {
         "slug": "runtime-management",
         "eyebrow": "Runtimes",
-        "title": "Manage local runtimes and CLI health",
-        "summary": "Install supported runtimes, repair broken CLI environments, and understand why a runtime can be installed but still not be usable yet.",
+        "title": "Manage local runtimes and CLI status",
+        "summary": "Install supported runtimes, repair broken CLI environments, and distinguish between installed, authenticated, and ready states.",
         "readingTime": "6 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"installed-is-not-the-same-as-ready\">Installed is not the same as ready</h2>\n<p>ContextGo can install or repair supported local runtimes, but a successful install only means the CLI exists on the machine. Some runtimes still need provider login or API configuration before they can actually run work.</p>\n<p>The product should continue to keep these states separate in the UI so users do not read a green install result as a guarantee that every runtime is fully authenticated and ready.</p>\n<h2 id=\"repair-flows-should-be-conservative\">Repair flows should be conservative</h2>\n<p>A repair action is meant to restore the expected CLI installation path, clear obviously broken local caches, and then re-run detection. It should not silently rewrite unrelated user tools or global configuration beyond the runtime it owns.</p>\n<p>If your team supports multiple runtimes, keep the runtime manager explicit about which providers are supported and which ones still need user action after installation.</p>\n<h2 id=\"recommended-operational-model\">Recommended operational model</h2>\n<p>Treat runtime installation as a product convenience layer on top of official vendor CLIs. This keeps ContextGo responsible for discovery, install orchestration, repair, and status display, while leaving provider authentication in the official path that users already trust.</p>"
+        "html": "<h2 id=\"runtime-states\">Runtime states</h2>\n<p>Treat runtime status as a sequence of states:</p>\n<ul>\n<li>Not installed</li>\n<li>Installed</li>\n<li>Authenticated or configured</li>\n<li>Ready</li>\n</ul>\n<p>An installed runtime may still be unusable until provider login or API configuration has been completed.</p>\n<h2 id=\"install-and-repair\">Install and repair</h2>\n<p>Use runtime management to install supported CLIs, re-run detection, and repair a broken installation path. Repair should stay limited to the runtime being managed.</p>\n<p>Do not treat repair as a general cleanup tool for the whole machine. It should not overwrite unrelated developer tools or global configuration.</p>\n<h2 id=\"readiness-checklist\">Readiness checklist</h2>\n<p>Before starting work with a runtime, confirm:</p>\n<ul>\n<li>the CLI is detected</li>\n<li>required provider login is complete</li>\n<li>required API keys or configuration are available</li>\n<li>the runtime can pass a basic health check</li>\n</ul>\n<h2 id=\"administrative-note\">Administrative note</h2>\n<p>ContextGo manages discovery, installation, repair, and status display. Provider authentication should still follow the official workflow for that provider.</p>"
       },
       "connectors-and-channels": {
         "slug": "connectors-and-channels",
         "eyebrow": "Connectors",
-        "title": "Connectors, channels, and publishing paths",
-        "summary": "Explain how sources and channels fit into ContextGo, and why connectors are part of the product core rather than optional integrations.",
+        "title": "Use connectors and channels",
+        "summary": "Connect external sources to the desktop host, route outputs to delivery channels, and document the access requirements for each integration.",
         "readingTime": "6 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"connectors-are-the-intake-layer\">Connectors are the intake layer</h2>\n<p>Connectors are how ContextGo sees the real working context. Files, docs, drives, chats, and structured systems all enter through this layer before agents, hooks, or scheduled tasks can do useful work.</p>\n<p>That is why connector documentation should not read like a simple list of integrations. It should explain how connected sources become reusable context across multiple workflows.</p>\n<h2 id=\"channels-are-where-work-gets-routed-outward\">Channels are where work gets routed outward</h2>\n<p>Channels represent the outward side of the workflow: publishing, team communication, or delivery surfaces. In many cases, the same context that was ingested through connectors later exits through one or more channels.</p>\n<p>This makes connectors and channels two ends of the same product story: context comes in, gets shaped, and then moves to the place where action happens.</p>\n<h2 id=\"what-users-need-to-understand\">What users need to understand</h2>\n<p>Users should know which systems are supported, what level of access is needed, and how connected context feeds agents, scheduled tasks, remote sessions, or publication flows.</p>"
+        "html": "<h2 id=\"connectors\">Connectors</h2>\n<p>Connectors bring external context into ContextGo. A connector can provide files, documents, shared drives, chat content, or structured system data to the desktop host.</p>\n<p>For each connector, document:</p>\n<ul>\n<li>the source system</li>\n<li>the access method and required permissions</li>\n<li>the scope of content exposed to agents or automation</li>\n</ul>\n<h2 id=\"channels\">Channels</h2>\n<p>Channels send output to a destination such as a publishing target, notification path, or delivery surface. A workflow may use one or more channels after content has been processed locally.</p>\n<h2 id=\"typical-flow\">Typical flow</h2>\n<p>The common pattern is:</p>\n<ol>\n<li>Connect a source system.</li>\n<li>Use the imported context in an agent task, hook, or scheduled task.</li>\n<li>Deliver the result through a configured channel.</li>\n</ol>\n<h2 id=\"access-guidance\">Access guidance</h2>\n<p>Grant the minimum permissions required for the intended workflow. If a connector or channel requires elevated access, record that requirement before enabling it on production devices.</p>"
       },
       "remote-access": {
         "slug": "remote-access",
         "eyebrow": "Remote Access",
-        "title": "How remote access works in ContextGo",
-        "summary": "Understand the desktop-host model, why remote access depends on a stable device-side connection, and what users should expect on mobile.",
+        "title": "Use remote access from the browser or mobile",
+        "summary": "Confirm host availability, understand the device-to-cloud connection, and know what the remote client can and cannot do without the desktop host.",
         "readingTime": "7 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "operations",
-        "html": "<h2 id=\"desktop-is-the-source-of-truth\">Desktop is the source of truth</h2>\n<p>ContextGo remote access is not a separate cloud-hosted copy of your app. The desktop machine keeps running the real workspace, tools, files, and WebUI session.</p>\n<p>Mobile and browser clients connect back to that desktop host through the remote layer. This is why a device can appear online, unavailable, or not provisioned depending on the state of the host and the remote bridge.</p>\n<h2 id=\"why-a-stable-device-side-connection-matters\">Why a stable device-side connection matters</h2>\n<p>A public remote page only works when the desktop host has an active outbound connection to the official cloud relay. The hosted experience depends on the device keeping that authenticated relay session alive.</p>\n<p>The underlying transport can evolve, but the product principle does not change: the device side still has to remain connected and authenticated before the remote page becomes usable.</p>\n<ul>\n<li>Desktop host publishes availability</li>\n<li>Cloud account maps devices to the signed-in user</li>\n<li>Remote page becomes useful only when the host is reachable</li>\n</ul>\n<h2 id=\"what-mobile-actually-runs\">What mobile actually runs</h2>\n<p>The mobile shell is a remote control surface. It reuses the existing WebUI and host-side workflows instead of replacing the desktop host with a separate mobile-native execution model.</p>\n<p>That means uploads, runtime execution, and local workspace access still terminate on the desktop side. Mobile acts as the control surface, not the primary compute environment.</p>"
+        "html": "<h2 id=\"host-requirements\">Host requirements</h2>\n<p>Remote access depends on a registered desktop host. The desktop keeps the real workspace, files, local tools, runtimes, and active WebUI session.</p>\n<p>Before opening a remote session, confirm:</p>\n<ul>\n<li>the desktop is signed in</li>\n<li>the device is registered to the current account</li>\n<li>remote access is enabled or provisioned</li>\n<li>the host has an active network connection</li>\n</ul>\n<h2 id=\"connection-model\">Connection model</h2>\n<p>The remote client does not run a separate hosted copy of ContextGo. It connects through the account and relay layer back to the desktop host.</p>\n<p>If the host loses connectivity or exits the session, the remote client cannot continue the task independently.</p>\n<h2 id=\"mobile-behavior\">Mobile behavior</h2>\n<p>The mobile app or mobile browser session is a control surface for the host. Uploads, file access, runtime execution, and connector access still resolve on the desktop side.</p>\n<h2 id=\"if-remote-access-is-unavailable\">If remote access is unavailable</h2>\n<p>Check the following in order:</p>\n<ol>\n<li>Confirm the correct account is signed in.</li>\n<li>Confirm the desktop device is shown in the device list.</li>\n<li>Confirm the host is online and has not lost its outbound connection.</li>\n<li>Confirm local security or network policy is not blocking the device-side connection.</li>\n</ol>"
       },
       "cloud-account": {
         "slug": "cloud-account",
         "eyebrow": "Cloud Account",
-        "title": "What the ContextGo cloud account syncs",
-        "summary": "Clarify what the cloud layer is for, what gets linked to the account, and why it should not be confused with full cloud execution.",
+        "title": "Manage cloud account and device binding",
+        "summary": "Use the cloud account for sign-in, device registration, and lightweight account-linked state without treating it as a full cloud execution environment.",
         "readingTime": "6 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "operations",
-        "html": "<h2 id=\"identity-not-full-migration\">Identity, not full migration</h2>\n<p>The cloud account exists to bind a user identity to one or more desktop devices and to support multi-device discovery. It is the control plane, not the execution plane.</p>\n<p>In practical terms, cloud sign-in helps ContextGo know which desktop devices belong to you, whether a browser session is valid, and whether a mobile or web client can enumerate the same device list.</p>\n<h2 id=\"what-can-sync-across-devices\">What can sync across devices</h2>\n<p>The current cloud layer is suited for lightweight state such as language preference, device registration, and remote capability metadata. It should not be described as syncing the entire desktop workspace.</p>\n<p>As the product matures, more lightweight preferences can move into the cloud account without changing the core principle that local execution stays on the desktop.</p>\n<ul>\n<li>Language preference</li>\n<li>Signed-in browser session state</li>\n<li>Device registration and remote capability state</li>\n</ul>\n<h2 id=\"what-does-not-automatically-move-to-the-cloud\">What does not automatically move to the cloud</h2>\n<p>Workspace files, local runtimes, active host processes, and host-side WebUI state still live on the desktop machine. If a user expects a full cloud-hosted clone of the desktop, the product positioning needs to be explicit that this is not the default model.</p>"
+        "html": "<h2 id=\"what-the-cloud-account-is-used-for\">What the cloud account is used for</h2>\n<p>The cloud account is used for:</p>\n<ul>\n<li>account sign-in</li>\n<li>desktop device registration</li>\n<li>device discovery from browser or mobile clients</li>\n<li>lightweight account-linked preferences and metadata</li>\n</ul>\n<p>The cloud account is not the primary execution environment for your workspace.</p>\n<h2 id=\"what-can-sync\">What can sync</h2>\n<p>Examples of account-linked state include language preference, device registration, browser session state, and remote capability metadata.</p>\n<h2 id=\"what-remains-local\">What remains local</h2>\n<p>Workspace files, installed runtimes, active host processes, and local WebUI state remain on the desktop host unless an explicit product flow moves them elsewhere.</p>\n<h2 id=\"device-management\">Device management</h2>\n<p>When troubleshooting account state, confirm which devices are currently registered and which account is active on each client. Most remote-access issues are easier to diagnose after verifying device binding first.</p>"
       },
       "updates-and-troubleshooting": {
         "slug": "updates-and-troubleshooting",
         "eyebrow": "Updates",
-        "title": "Updates, releases, and common troubleshooting paths",
-        "summary": "Document how in-app updates relate to the website download center and release repository, and give users a single operational troubleshooting entry point.",
+        "title": "Check updates and troubleshoot common failures",
+        "summary": "Keep the website, the in-app updater, and the release repository aligned, then diagnose login, device, runtime, and update problems from one place.",
         "readingTime": "7 min",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "operations",
-        "html": "<h2 id=\"one-version-source-should-serve-everything\">One version source should serve everything</h2>\n<p>Users should be able to trust that the desktop updater, the website download center, and the GitHub release page are describing the same version truth. That is the reason contextgo/contextgo-releases exists as a dedicated release repository.</p>\n<p>If the website says one thing and the in-app updater says another, the release pipeline is not coherent enough yet.</p>\n<h2 id=\"common-failure-categories\">Common failure categories</h2>\n<p>The troubleshooting entry should cover the real user-facing failures: browser login does not complete, remote status is unavailable, device binding does not refresh, update checks flash an error, or a runtime is installed but still unusable.</p>\n<p>This kind of page is especially important because users do not care which internal subsystem failed. They care about the operational symptom they can see.</p>\n<ul>\n<li>Login and browser-session failures</li>\n<li>Device status and remote availability failures</li>\n<li>Runtime detection and authentication failures</li>\n<li>Update and release-distribution failures</li>\n</ul>\n<h2 id=\"what-this-page-should-always-tell-the-user\">What this page should always tell the user</h2>\n<p>A good troubleshooting page tells the user what the symptom means, what the likely cause categories are, and what to check next in the least destructive order.</p>"
+        "html": "<h2 id=\"release-source-of-truth\">Release source of truth</h2>\n<p>Public releases are published to <code>contextgo/contextgo-releases</code>. The website download page and the desktop updater should both point to that same release source.</p>\n<p>If the website version and the in-app update version do not match, treat that as a release pipeline issue first.</p>\n<h2 id=\"recommended-troubleshooting-order\">Recommended troubleshooting order</h2>\n<p>Use the least destructive checks first:</p>\n<ol>\n<li>Confirm account sign-in and browser callback behavior.</li>\n<li>Confirm the expected device is registered and online.</li>\n<li>Confirm remote access status if the issue appears in the browser or mobile client.</li>\n<li>Confirm runtime detection and provider authentication.</li>\n<li>Confirm the release version shown by the website and updater.</li>\n</ol>\n<h2 id=\"common-issue-groups\">Common issue groups</h2>\n<p>Use this page as the entry point for the following symptoms:</p>\n<ul>\n<li>browser sign-in does not complete</li>\n<li>device binding does not refresh</li>\n<li>remote access shows unavailable</li>\n<li>a runtime is installed but cannot run work</li>\n<li>update checks fail or show an unexpected version</li>\n</ul>\n<h2 id=\"when-to-compare-versions\">When to compare versions</h2>\n<p>Compare release versions when:</p>\n<ul>\n<li>the website offers one installer version and the desktop app shows another</li>\n<li>a user reports an update that cannot be downloaded</li>\n<li>a published release is missing from the download page</li>\n</ul>"
       }
     }
   },
@@ -271,24 +271,24 @@ export const draftDocsCollections: DocsCollectionMap = {
     "docs": {
       "badge": "文档中心",
       "title": "ContextGo 文档",
-      "description": "面向客户的产品文档，覆盖初始化、Agent、Hooks、定时任务、技能市场、远程访问和发布运维。",
+      "description": "ContextGo 官方产品文档，覆盖安装、Agent 工作流、自动化、远程访问与版本运维。",
       "featuredLabel": "文档结构",
-      "featuredDescription": "ContextGo 文档分成三层：Guides 讲如何开始，Features 讲产品具体能力，Operations 讲远程访问、云身份和发布运维如何真正工作。",
+      "featuredDescription": "Guides 用于完成初始配置，Features 用于查阅日常功能，Operations 用于处理账号、远程访问、更新和排障。",
       "categories": [
         {
           "id": "guides",
           "title": "Guides",
-          "description": "先从这里理解产品模型、安装链路，以及第一次上手时应该怎么建立起可工作的环境。"
+          "description": "首次使用前先阅读这里，完成安装、登录、设备注册，并理解基础产品模型。"
         },
         {
           "id": "features",
           "title": "Features",
-          "description": "这一层说明用户真正会操作的能力面：Agents、Hooks、定时任务、Runtimes、Connectors 和技能市场。"
+          "description": "这一层说明日常会操作的功能，包括 Agents、Hooks、定时任务、运行时、Connectors 和技能。"
         },
         {
           "id": "operations",
           "title": "Operations",
-          "description": "这一层说明云账号、远程访问、发布运维和排障路径。"
+          "description": "这一层说明云账号、远程访问、软件更新、版本来源和常见排障步骤。"
         }
       ],
       "entries": [
@@ -296,108 +296,108 @@ export const draftDocsCollections: DocsCollectionMap = {
           "slug": "quick-start",
           "eyebrow": "快速开始",
           "title": "在第一台桌面设备上完成 ContextGo 初始化",
-          "summary": "安装桌面端、登录云账号、绑定当前设备，并确认本地主机已经为移动端和浏览器访问准备完成。",
+          "summary": "安装桌面端、登录账号、注册当前设备，并确认这台主机已经可以提供本地或远程访问。",
           "readingTime": "5 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "guides"
         },
         {
           "slug": "product-model",
           "eyebrow": "产品模型",
           "title": "先理解 ContextGo 的产品模型，再扩大使用范围",
-          "summary": "先厘清桌面主机、移动壳、云账号、WebUI 和 release 仓库之间的关系，再去扩展更多设备和团队使用。",
+          "summary": "在接入更多设备或团队成员之前，先明确桌面主机、云账号、浏览器/移动端入口和发布仓库各自承担的职责。",
           "readingTime": "6 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "guides"
         },
         {
           "slug": "agent-workspace",
           "eyebrow": "Agent",
-          "title": "Agent 入口、Assistants 管理与工作模型",
-          "summary": "理解 Agent 入口是干什么的、Assistants 管理和它有什么区别，以及为什么这些概念不应该混在一个模糊设置里。",
+          "title": "使用 Agent、Assistants 与运行时",
+          "summary": "在 Agent 页面开始工作，在 Assistants 中维护可复用定义，并把运行时管理与任务入口区分开来。",
           "readingTime": "7 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "agent-collaboration",
           "eyebrow": "协作模式",
-          "title": "Harness 模式与 Agent 协作工作流",
-          "summary": "解释本地 harness 模式如何与远端 workflow 共存，以及为什么 Agent 协作模式是产品的一等工作方式。",
+          "title": "使用 Harness 模式和远程协作",
+          "summary": "明确哪些协作发生在本地桌面端，哪些场景可以通过远程入口接入，以及开始协作前应检查什么。",
           "readingTime": "7 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "hooks-overview",
           "eyebrow": "Hooks",
-          "title": "在合适的时机用 Hooks 扩展工作流",
-          "summary": "Hooks 是在执行事件附近插入受控行为的机制。用户需要看到清晰的触发模型，而不是一个孤立配置表单。",
+          "title": "为工作流事件配置 Hooks",
+          "summary": "先明确 Hook 在什么事件上触发，再定义它能读取什么上下文、能执行哪些动作，以及如何安全上线。",
           "readingTime": "6 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "scheduled-tasks",
           "eyebrow": "定时任务",
-          "title": "定时任务与 Cron 驱动自动化",
-          "summary": "解释周期执行是如何工作的、哪些自动化适合放进定时任务，以及长时间运行场景下用户应该关注什么。",
+          "title": "在桌面主机上运行定时任务",
+          "summary": "为周期性工作流设置计划时间，确认主机和运行时条件，并在投入长期使用前检查失败处理方式。",
           "readingTime": "6 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "skill-market",
           "eyebrow": "技能市场",
-          "title": "技能市场与可复用能力包",
-          "summary": "让用户理解技能市场如何扩展 ContextGo、如何看待本地 skill 与下载 skill，以及安装信任边界应该怎么讲。",
+          "title": "安装和管理技能",
+          "summary": "先确认技能来源，再了解它会向产品增加什么能力，并把安装、更新和移除过程保持在可控范围内。",
           "readingTime": "6 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "runtime-management",
           "eyebrow": "运行时",
-          "title": "本地运行时与 CLI 健康管理",
-          "summary": "安装支持的运行时、修复损坏的 CLI 环境，并理解为什么“已安装”并不等于“已可用”。",
+          "title": "管理本地运行时与 CLI 状态",
+          "summary": "安装和修复受支持的运行时，并把“已安装”“已认证”“已就绪”这些状态明确区分开。",
           "readingTime": "6 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "connectors-and-channels",
           "eyebrow": "Connectors",
-          "title": "Connectors、渠道与发布路径",
-          "summary": "解释来源接入和渠道发布如何构成同一条产品链路，以及为什么 Connectors 不只是可选集成。",
+          "title": "使用 Connectors 与渠道",
+          "summary": "把外部来源接入桌面主机，再把处理结果投递到目标渠道，并为每种集成记录清楚权限要求。",
           "readingTime": "6 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "features"
         },
         {
           "slug": "remote-access",
           "eyebrow": "远程访问",
-          "title": "ContextGo 的远程访问到底是怎么工作的",
-          "summary": "理解桌面主机模型、为什么远程访问依赖设备侧稳定连接，以及移动端应该向用户呈现什么预期。",
+          "title": "在浏览器或移动端使用远程访问",
+          "summary": "先确认桌面主机可用，再理解设备到云层的连接方式，并明确远程客户端在没有主机时无法独立工作。",
           "readingTime": "7 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "operations"
         },
         {
           "slug": "cloud-account",
           "eyebrow": "云账号",
-          "title": "ContextGo 云账号到底同步了什么",
-          "summary": "澄清云层的职责、账号会绑定哪些状态，以及为什么它不应该被描述成完整的云执行环境。",
+          "title": "管理云账号与设备绑定",
+          "summary": "使用云账号完成登录、设备注册和轻量状态同步，但不要把它理解成完整的云端执行环境。",
           "readingTime": "6 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "operations"
         },
         {
           "slug": "updates-and-troubleshooting",
           "eyebrow": "更新与排障",
-          "title": "更新、版本发布与常见排障入口",
-          "summary": "把桌面端内更新、官网下载页和 release 仓库之间的关系讲清楚，并给用户一个统一的运维排障入口。",
+          "title": "检查更新并处理常见故障",
+          "summary": "让官网、应用内更新和发布仓库保持一致，并从同一个入口排查登录、设备、运行时和更新问题。",
           "readingTime": "7 分钟",
-          "updatedAt": "2026-03-30",
+          "updatedAt": "2026-04-12",
           "category": "operations"
         }
       ]
@@ -407,121 +407,121 @@ export const draftDocsCollections: DocsCollectionMap = {
         "slug": "quick-start",
         "eyebrow": "快速开始",
         "title": "在第一台桌面设备上完成 ContextGo 初始化",
-        "summary": "安装桌面端、登录云账号、绑定当前设备，并确认本地主机已经为移动端和浏览器访问准备完成。",
+        "summary": "安装桌面端、登录账号、注册当前设备，并确认这台主机已经可以提供本地或远程访问。",
         "readingTime": "5 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "guides",
-        "html": "<h2 id=\"先安装桌面主机\">先安装桌面主机</h2>\n<p>ContextGo 的起点是桌面端，因为桌面设备才是真正的执行主机。它持有本地工作区、WebUI 运行时和远程访问桥接能力。</p>\n<p>直链安装包应从 contextgo.io 下载中心进入。网站读取的是 contextgo/contextgo-releases 里的版本产物，因此下载页和桌面端内的更新链路应该指向同一份版本事实来源。</p>\n<h2 id=\"登录并绑定设备\">登录并绑定设备</h2>\n<p>通过桌面端里的云账号入口，使用 GitHub 或 Google 登录。浏览器流程完成后，ContextGo 会把当前桌面设备注册成云端账号下的一台设备。</p>\n<p>云账号并不是把执行搬到云端，而是把身份、设备注册和轻量同步状态绑定起来，让多台设备能够相互发现。</p>\n<ul>\n<li>桌面端仍然是执行主机</li>\n<li>云账号负责身份与设备绑定</li>\n<li>移动端和网页通过云层发现同一批设备</li>\n</ul>\n<h2 id=\"确认本地主机状态正常\">确认本地主机状态正常</h2>\n<p>登录之后，先确认 WebUI 能在本地打开，设备状态显示为 active。如果你要用远程访问，再继续确认 remote 状态已经 provisioned，或者至少在你的环境中被显式启用。</p>\n<p>如果企业环境会拦截辅助进程或网络工具，先换设备验证，不要第一时间怀疑产品模型本身。这里最常见的问题仍然是本地安全策略、终端防护或缺少权限。</p>"
+        "html": "<h2 id=\"开始前请先确认\">开始前请先确认</h2>\n<p>ContextGo 以桌面端作为主机。浏览器端和移动端只是连接入口，真正的工作区、文件和运行时仍然在桌面设备上。</p>\n<p>开始安装前，先确认以下条件：</p>\n<ul>\n<li>当前桌面设备允许安装应用。</li>\n<li>可以正常打开浏览器完成登录。</li>\n<li>当前网络没有拦截 ContextGo 的登录或更新请求。</li>\n</ul>\n<h2 id=\"1-安装桌面端\">1. 安装桌面端</h2>\n<p>从 <code>contextgo.io</code> 下载对应平台的桌面安装包并完成安装。官网的下载页和应用内更新都应读取 <code>contextgo/contextgo-releases</code> 中的发布产物。</p>\n<p>首次启动时，应用会准备本地工作区、WebUI 运行环境，以及远程访问所需的设备侧服务。</p>\n<h2 id=\"2-登录云账号\">2. 登录云账号</h2>\n<p>在桌面端中通过 GitHub 或 Google 登录。浏览器回跳完成后，当前设备会注册到你的 ContextGo 账号下。</p>\n<p>这个账号主要用于身份识别、设备注册和轻量状态同步，不负责托管你的本地工作区或运行时。</p>\n<h2 id=\"3-检查当前设备状态\">3. 检查当前设备状态</h2>\n<p>登录完成后，确认以下项目正常：</p>\n<ul>\n<li>当前设备出现在账号设备列表中。</li>\n<li>本地 WebUI 可以正常打开。</li>\n<li>设备状态显示为可用或在线。</li>\n</ul>\n<p>如果后续要从浏览器或移动端访问，还要继续确认远程访问已经启用。</p>\n<h2 id=\"4-按需测试远程访问\">4. 按需测试远程访问</h2>\n<p>如果你的使用方式包含远程访问，请在桌面主机保持在线的情况下打开网页入口进行测试。只有桌面主机保持连接，远程页面才可用。</p>\n<p>移动端访问也是同一套主机模型。上传、文件访问和运行时执行，最终仍然落在桌面设备上。</p>\n<h2 id=\"初始化失败时怎么检查\">初始化失败时怎么检查</h2>\n<p>建议按这个顺序排查：</p>\n<ol>\n<li>确认桌面端能正常拉起浏览器登录页。</li>\n<li>确认浏览器登录完成后能正确回到 ContextGo。</li>\n<li>检查本机安全策略、终端防护或企业网络策略是否拦截辅助进程或网络请求。</li>\n<li>如当前设备环境受限较多，换一台普通网络环境的机器重新验证。</li>\n</ol>"
       },
       "product-model": {
         "slug": "product-model",
         "eyebrow": "产品模型",
         "title": "先理解 ContextGo 的产品模型，再扩大使用范围",
-        "summary": "先厘清桌面主机、移动壳、云账号、WebUI 和 release 仓库之间的关系，再去扩展更多设备和团队使用。",
+        "summary": "在接入更多设备或团队成员之前，先明确桌面主机、云账号、浏览器/移动端入口和发布仓库各自承担的职责。",
         "readingTime": "6 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "guides",
-        "html": "<h2 id=\"contextgo-不只是一个聊天界面\">ContextGo 不只是一个聊天界面</h2>\n<p>这个产品的起点是上下文基础设施，而不是一个孤立聊天框。Connectors、Agent、Hooks、定时任务和渠道发布，都是为了让上下文和执行继续贴近真实工作流。</p>\n<p>因此文档中心不能只停留在安装步骤，也必须把“功能是怎么互相配合的”讲清楚。</p>\n<h2 id=\"桌面主机云控制平面移动客户端\">桌面主机、云控制平面、移动客户端</h2>\n<p>桌面端仍然是执行主机。云账号负责身份与设备发现。移动端和浏览器端是控制面，用来发现并连接这些主机。</p>\n<p>版本运维又是另一条线：contextgo/contextgo-releases 是安装包、校验值和版本历史的事实来源。</p>\n<ul>\n<li>桌面端负责执行</li>\n<li>云端负责身份与设备发现</li>\n<li>release 仓库负责产物事实来源</li>\n</ul>\n<h2 id=\"后面的文档怎么读\">后面的文档怎么读</h2>\n<p>如果你是第一次上手，先读 Guides。如果你要配置 Agent、Hooks、定时任务或技能市场，读 Features。如果你在做远程访问、设备排查或发版运维，读 Operations。</p>"
+        "html": "<h2 id=\"核心组成\">核心组成</h2>\n<p>ContextGo 由四个部分组成：</p>\n<ul>\n<li>桌面主机：负责文件、工具、运行时和本地 WebUI。</li>\n<li>云账号：负责登录、设备注册和账号关联状态。</li>\n<li>浏览器/移动端：用于连接桌面主机的远程入口。</li>\n<li>发布仓库：用于公开安装包、版本记录和下载产物。</li>\n</ul>\n<h2 id=\"各部分分别做什么\">各部分分别做什么</h2>\n<p>真正执行任务的是桌面端。无论是本地文件访问、运行时调用，还是依赖本机环境的连接器，都发生在桌面主机上。</p>\n<p>云账号不负责替代桌面端执行，它主要负责把设备和账号关联起来，并让网页端或移动端能够找到这些设备。</p>\n<p>浏览器端和移动端是访问入口，不是独立的云端运行环境。</p>\n<h2 id=\"版本来源\">版本来源</h2>\n<p>公开发布的安装包统一来自 <code>contextgo/contextgo-releases</code>。官网下载页和应用内更新应该引用同一份版本来源。</p>\n<p>如果你发现官网版本和应用内更新版本不一致，应先按发布链路问题处理。</p>\n<h2 id=\"建议阅读顺序\">建议阅读顺序</h2>\n<p>建议按下面的顺序阅读文档：</p>\n<ol>\n<li>先读 <code>快速开始</code>，完成第一台设备配置。</li>\n<li>再读 <code>Features</code>，配置 Agent、Hooks、定时任务、运行时、Connectors 或技能。</li>\n<li>最后读 <code>Operations</code>，处理账号、远程访问、更新和排障。</li>\n</ol>"
       },
       "agent-workspace": {
         "slug": "agent-workspace",
         "eyebrow": "Agent",
-        "title": "Agent 入口、Assistants 管理与工作模型",
-        "summary": "理解 Agent 入口是干什么的、Assistants 管理和它有什么区别，以及为什么这些概念不应该混在一个模糊设置里。",
+        "title": "使用 Agent、Assistants 与运行时",
+        "summary": "在 Agent 页面开始工作，在 Assistants 中维护可复用定义，并把运行时管理与任务入口区分开来。",
         "readingTime": "7 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"agent-入口是面向执行的工作面\">Agent 入口是面向执行的工作面</h2>\n<p>Agent 入口应该被视为用户选择或启动当前工作模式的地方。它是执行面，不应该只是一个保存配置的列表页。</p>\n<p>如果界面把 Agent 入口、远程访问和 Assistants 管理全部混在一起，用户就很难分辨自己现在是在选工作方式、选 Runtime，还是在改预设。</p>\n<h2 id=\"assistants-是配置层不是全部工作面\">Assistants 是配置层，不是全部工作面</h2>\n<p>Assistants 管理属于配置层，负责保存可复用的定义、能力、指令或 Runtime 绑定。它和真正开始执行工作的主界面是不同层次。</p>\n<p>特别是在支持多个 Runtime 之后，这个区分会更加重要，因为 Runtime 层、Assistant 层和当前执行层必须保持分离。</p>\n<ul>\n<li>Agent 入口：开始工作</li>\n<li>Assistants 管理：维护可复用定义</li>\n<li>Runtime 管理：安装与修复执行后端</li>\n</ul>\n<h2 id=\"推荐的信息架构\">推荐的信息架构</h2>\n<p>对用户来说，最清晰的模型通常是：在主工作面里使用 Agent，在配置区管理 Assistants，在独立 Runtime 区管理底层执行后端。这样随着 provider 和工作流增多，信息架构才不会变形。</p>"
+        "html": "<h2 id=\"agent-页面\">Agent 页面</h2>\n<p>Agent 页面用于开始任务、选择当前工作方式，以及确认本次任务使用的 Assistant 和运行时。这里应该是日常工作的入口页。</p>\n<p>这个页面至少要让用户看清三件事：</p>\n<ul>\n<li>当前任务使用哪个 Assistant</li>\n<li>当前任务由哪个运行时执行</li>\n<li>当前环境是否已经具备执行条件</li>\n</ul>\n<h2 id=\"assistants\">Assistants</h2>\n<p>Assistants 是可复用定义。一个 Assistant 可以包含指令、能力、常用工具和推荐运行时等配置。创建、修改或删除这些定义，应在 Assistants 管理区域完成。</p>\n<p>修改 Assistant 不应直接改变本机的运行时安装状态。它属于配置管理，不属于运行时运维。</p>\n<h2 id=\"运行时\">运行时</h2>\n<p>运行时管理应放在独立区域，用于安装、修复、检测和校验受支持的 CLI。</p>\n<p>如果某个运行时已经安装，但还缺少 provider 登录或 API 配置，应继续显示为“未就绪”，不要和“已安装”混为一谈。</p>\n<h2 id=\"推荐使用顺序\">推荐使用顺序</h2>\n<p>新设备上建议按这个顺序准备：</p>\n<ol>\n<li>先确认运行时已安装并通过基本检查。</li>\n<li>再创建或选择一个 Assistant。</li>\n<li>最后回到 Agent 页面开始任务。</li>\n</ol>"
       },
       "agent-collaboration": {
         "slug": "agent-collaboration",
         "eyebrow": "协作模式",
-        "title": "Harness 模式与 Agent 协作工作流",
-        "summary": "解释本地 harness 模式如何与远端 workflow 共存，以及为什么 Agent 协作模式是产品的一等工作方式。",
+        "title": "使用 Harness 模式和远程协作",
+        "summary": "明确哪些协作发生在本地桌面端，哪些场景可以通过远程入口接入，以及开始协作前应检查什么。",
         "readingTime": "7 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"harness-模式是一种真实的产品工作流\">Harness 模式是一种真实的产品工作流</h2>\n<p>本地 harness 模式不应该被当成临时开发技巧，而应该被保留成受支持的协作模型。它让用户在自己已经信任的本机环境里，快速进入多 Agent 协作。</p>\n<p>这对还没有完整远端编排环境的用户尤其重要，因为它提供了一种开箱即用的协作实践。</p>\n<h2 id=\"它如何和远端-workflow-共存\">它如何和远端 workflow 共存</h2>\n<p>远端 workflow 并不是用来替代 harness 模式的。正确的产品叙事是兼容共存：本地 harness 负责设备内直接协作，远端 workflow 负责分布式或浏览器侧控制链路。</p>\n<p>一旦文档把这点说清楚，用户就不会把两者误读成冲突的技术路线，而会理解成同一套主机模型上的两种协作方式。</p>\n<h2 id=\"用户最需要知道什么\">用户最需要知道什么</h2>\n<p>协作模式文档必须回答：哪台机器在执行、文件在哪里、Runtime 怎么检测、远端客户端相对本地主机有哪些能力边界。</p>"
+        "html": "<h2 id=\"本地协作\">本地协作</h2>\n<p>Harness 模式用于桌面主机上的本地协作。适合需要多个 Agent 角色、但又依赖本机文件、工具或运行时的工作流。</p>\n<p>如果主要工作内容都在当前桌面设备上，这通常是最直接的协作方式。</p>\n<h2 id=\"远程协作\">远程协作</h2>\n<p>远程访问是在同一套主机模型上增加浏览器端或移动端入口。它可以查看状态、继续任务或参与控制，但不会把工作区从桌面端迁走。</p>\n<p>如果桌面主机离线或失去连接，远程客户端也无法单独继续执行。</p>\n<h2 id=\"开始协作前的检查项\">开始协作前的检查项</h2>\n<p>开始协作前，建议先确认：</p>\n<ul>\n<li>桌面主机已经具备所需文件和运行时。</li>\n<li>本次使用的 Assistant 已经配置完成。</li>\n<li>如果需要远程参与，远程访问功能已经启用。</li>\n</ul>\n<h2 id=\"使用边界\">使用边界</h2>\n<p>使用协作模式时，默认遵循以下边界：</p>\n<ul>\n<li>真正执行任务的是桌面主机。</li>\n<li>文件默认留在主机工作区内。</li>\n<li>主机运行时异常会同时影响本地和远程会话。</li>\n</ul>"
       },
       "hooks-overview": {
         "slug": "hooks-overview",
         "eyebrow": "Hooks",
-        "title": "在合适的时机用 Hooks 扩展工作流",
-        "summary": "Hooks 是在执行事件附近插入受控行为的机制。用户需要看到清晰的触发模型，而不是一个孤立配置表单。",
+        "title": "为工作流事件配置 Hooks",
+        "summary": "先明确 Hook 在什么事件上触发，再定义它能读取什么上下文、能执行哪些动作，以及如何安全上线。",
         "readingTime": "6 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"从产品角度看-hook-是什么\">从产品角度看 Hook 是什么</h2>\n<p>Hook 是工作流中的一个受控扩展点。它让 ContextGo 能在关键事件附近自动执行额外逻辑，而不是让用户每次重复做同样的协调动作。</p>\n<p>它可以承担校验、格式整理、通知、路由或后处理，具体取决于产品暴露了哪些触发点。</p>\n<h2 id=\"先讲触发模型再讲实现细节\">先讲触发模型，再讲实现细节</h2>\n<p>用户首先需要知道 Hook 会在什么时候运行，例如开始前、输出后、发布动作发生时，或任务状态切换时。没有这个模型，Hook 配置就会显得很随机。</p>\n<p>触发模型清楚之后，再去解释输入、输出和安全边界，用户才容易真正理解。</p>\n<ul>\n<li>什么事件会触发 Hook</li>\n<li>Hook 会收到哪些上下文</li>\n<li>Hook 被允许产生什么副作用</li>\n</ul>\n<h2 id=\"为什么它对-contextgo-很重要\">为什么它对 ContextGo 很重要</h2>\n<p>Hooks 把上下文工作和可重复自动化连接起来，让产品既能保留人工审阅，又能把重复步骤标准化。</p>"
+        "html": "<h2 id=\"hook-的作用\">Hook 的作用</h2>\n<p>Hook 用于在指定工作流事件发生时自动执行额外步骤。常见用途包括校验、格式整理、通知、路由和后处理。</p>\n<p>如果某个动作会在每次任务前后重复出现，就适合优先考虑用 Hook 处理。</p>\n<h2 id=\"触发点\">触发点</h2>\n<p>配置 Hook 前，应先明确它是在以下哪类事件上触发：</p>\n<ul>\n<li>任务开始前</li>\n<li>任务输出生成后</li>\n<li>执行发布动作时</li>\n<li>任务状态变化时</li>\n</ul>\n<h2 id=\"输入与输出\">输入与输出</h2>\n<p>每个 Hook 至少要定义清楚以下内容：</p>\n<ul>\n<li>由什么事件触发</li>\n<li>可以读取哪些上下文</li>\n<li>允许产生哪些副作用</li>\n<li>失败后如何处理</li>\n</ul>\n<h2 id=\"上线建议\">上线建议</h2>\n<p>先从容易验证、容易关闭的 Hook 开始。每次修改后先检查输出和日志，再逐步接入更长的自动化链路。正式环境中，不建议一次性启用过多串联 Hook。</p>"
       },
       "scheduled-tasks": {
         "slug": "scheduled-tasks",
         "eyebrow": "定时任务",
-        "title": "定时任务与 Cron 驱动自动化",
-        "summary": "解释周期执行是如何工作的、哪些自动化适合放进定时任务，以及长时间运行场景下用户应该关注什么。",
+        "title": "在桌面主机上运行定时任务",
+        "summary": "为周期性工作流设置计划时间，确认主机和运行时条件，并在投入长期使用前检查失败处理方式。",
         "readingTime": "6 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"定时任务是周期性工作流\">定时任务是周期性工作流</h2>\n<p>定时任务应该被描述成有固定时间、执行上下文和输出行为的周期性工作流，而不只是“触发一个定时器”。</p>\n<p>典型场景包括周期同步、定期审阅、自动生成发布准备内容，或者从已接入系统里按节奏抽取上下文。</p>\n<h2 id=\"执行边界必须说明白\">执行边界必须说明白</h2>\n<p>用户需要知道是哪台主机在执行任务、机器是否必须在线，以及它依赖哪套 Runtime 或凭证。没有这些说明，Cron 配置在真实环境里很容易变得不可靠。</p>\n<p>定时任务还需要说明失败如何呈现，以及漏跑之后是重试、跳过，还是排队等待下一次机会。</p>\n<h2 id=\"最适合的使用方式\">最适合的使用方式</h2>\n<p>它最适合那些规律性强、可重复、需要上下文但不需要人每天手工点一遍的工作。</p>"
+        "html": "<h2 id=\"什么是定时任务\">什么是定时任务</h2>\n<p>定时任务用于按固定周期执行一条已保存的工作流。适合放入周期同步、定期审阅、报表生成或重复性的发布准备任务。</p>\n<p>每个任务都应明确计划时间、所需运行时、输入来源和预期输出。</p>\n<h2 id=\"主机要求\">主机要求</h2>\n<p>定时任务运行在桌面主机上。启用前请先确认：</p>\n<ul>\n<li>到点时主机保持开机。</li>\n<li>所需运行时已经安装并完成认证。</li>\n<li>任务使用的文件、连接器和凭证在主机上可用。</li>\n</ul>\n<p>如果主机离线，任务无法按计划执行。</p>\n<h2 id=\"失败处理\">失败处理</h2>\n<p>要提前说明任务漏跑或执行失败后的行为。至少应让用户知道，下次是重试、跳过，还是仅等待下一次计划时间。</p>\n<h2 id=\"推荐用法\">推荐用法</h2>\n<p>定时任务适合输入稳定、步骤固定的工作。对于频繁依赖人工确认的流程，应把人工审批步骤和定时执行部分拆开配置。</p>"
       },
       "skill-market": {
         "slug": "skill-market",
         "eyebrow": "技能市场",
-        "title": "技能市场与可复用能力包",
-        "summary": "让用户理解技能市场如何扩展 ContextGo、如何看待本地 skill 与下载 skill，以及安装信任边界应该怎么讲。",
+        "title": "安装和管理技能",
+        "summary": "先确认技能来源，再了解它会向产品增加什么能力，并把安装、更新和移除过程保持在可控范围内。",
         "readingTime": "6 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"skill-在产品里承担什么角色\">Skill 在产品里承担什么角色</h2>\n<p>技能市场不只是一个附加组件列表，而是让 ContextGo 在不把所有能力都塞进主二进制的情况下，继续吸收领域化工作流和能力包的机制。</p>\n<p>这让平台保持可扩展，同时还能保留统一体验。</p>\n<h2 id=\"安装信任边界很重要\">安装信任边界很重要</h2>\n<p>用户需要知道当前 skill 是内置的、本地的，还是下载的；也需要知道它只是补充提示词和说明，还是会带来脚本、代码或联网行为。</p>\n<p>好的文档应该把“安装了什么、它放在哪里、如何更新和移除”讲清楚。</p>\n<ul>\n<li>内置 skill 与下载 skill 的区别</li>\n<li>skill 会引入哪些文件或行为</li>\n<li>如何更新和卸载</li>\n</ul>\n<h2 id=\"为什么这是核心能力\">为什么这是核心能力</h2>\n<p>一个好的技能市场会让 ContextGo 从固定功能集合变成可持续适配新领域的平台，而不是把主界面堆成一个杂乱开关板。</p>"
+        "html": "<h2 id=\"技能来源\">技能来源</h2>\n<p>技能可以来自内置内容、本地目录，或可下载的发布源。安装前应先看清当前技能属于哪一种来源。</p>\n<p>来源信息决定了你如何评估它是否适合当前环境。</p>\n<h2 id=\"技能会增加什么\">技能会增加什么</h2>\n<p>一个技能可能增加提示词、说明、配置、脚本，或其他打包行为。安装界面应明确说明会新增哪些文件，以及是否包含可执行内容。</p>\n<p>启用下载技能前，建议先检查：</p>\n<ul>\n<li>发布来源或发布者</li>\n<li>技能会引入哪些文件或动作</li>\n<li>是否依赖联网能力或外部工具</li>\n</ul>\n<h2 id=\"更新与移除\">更新与移除</h2>\n<p>技能生命周期操作应保持清晰。用户应能查看当前版本、执行更新，并在不影响其他配置的前提下移除该技能。</p>\n<h2 id=\"管理建议\">管理建议</h2>\n<p>在受控环境中，建议先在测试设备上安装并验证新技能，确认行为符合预期后，再部署到正式使用的主机。</p>"
       },
       "runtime-management": {
         "slug": "runtime-management",
         "eyebrow": "运行时",
-        "title": "本地运行时与 CLI 健康管理",
-        "summary": "安装支持的运行时、修复损坏的 CLI 环境，并理解为什么“已安装”并不等于“已可用”。",
+        "title": "管理本地运行时与 CLI 状态",
+        "summary": "安装和修复受支持的运行时，并把“已安装”“已认证”“已就绪”这些状态明确区分开。",
         "readingTime": "6 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"安装成功不等于立即可用\">安装成功不等于立即可用</h2>\n<p>ContextGo 可以帮助用户安装或修复本地运行时，但安装成功只代表 CLI 已经在机器上存在。有些 runtime 仍然需要用户完成官方登录或 API 配置，才能真正开始工作。</p>\n<p>产品界面应该继续把这两类状态分开显示，避免用户把“安装完成”误读成“已经完成认证并可立即运行”。</p>\n<h2 id=\"修复动作应该足够克制\">修复动作应该足够克制</h2>\n<p>修复的目标应该是恢复受支持 CLI 的安装路径、清理明显损坏的本地缓存，并重新执行检测。它不应该静默篡改用户无关的全局工具链或其他配置。</p>\n<p>如果产品支持多种 runtime，就应该明确告诉用户哪些 provider 已接入自动安装，哪些 provider 仍然需要额外手工动作。</p>\n<h2 id=\"推荐的运维模型\">推荐的运维模型</h2>\n<p>把 runtime 安装层视为官方 CLI 之上的产品便利能力。这样 ContextGo 负责发现、安装编排、修复和状态展示，而 provider 认证仍然走用户已经熟悉的官方路径。</p>"
+        "html": "<h2 id=\"运行时状态\">运行时状态</h2>\n<p>建议把运行时状态分为以下几类：</p>\n<ul>\n<li>未安装</li>\n<li>已安装</li>\n<li>已认证或已配置</li>\n<li>已就绪</li>\n</ul>\n<p>已安装并不一定代表可以立即执行任务。有些运行时仍然需要完成 provider 登录或 API 配置。</p>\n<h2 id=\"安装与修复\">安装与修复</h2>\n<p>运行时管理用于安装受支持的 CLI、重新检测状态，以及修复已损坏的安装路径。修复动作应只作用于当前运行时。</p>\n<p>不要把修复动作当作整机清理工具。它不应覆盖无关的开发工具或全局配置。</p>\n<h2 id=\"就绪检查\">就绪检查</h2>\n<p>正式开始任务前，建议至少确认：</p>\n<ul>\n<li>CLI 已被正确识别</li>\n<li>provider 登录已完成</li>\n<li>所需 API Key 或配置可用</li>\n<li>运行时能通过一次基础健康检查</li>\n</ul>\n<h2 id=\"管理说明\">管理说明</h2>\n<p>ContextGo 负责发现、安装、修复和状态展示。provider 认证仍建议沿用对应官方流程。</p>"
       },
       "connectors-and-channels": {
         "slug": "connectors-and-channels",
         "eyebrow": "Connectors",
-        "title": "Connectors、渠道与发布路径",
-        "summary": "解释来源接入和渠道发布如何构成同一条产品链路，以及为什么 Connectors 不只是可选集成。",
+        "title": "使用 Connectors 与渠道",
+        "summary": "把外部来源接入桌面主机，再把处理结果投递到目标渠道，并为每种集成记录清楚权限要求。",
         "readingTime": "6 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "features",
-        "html": "<h2 id=\"connectors-是输入层\">Connectors 是输入层</h2>\n<p>Connectors 是 ContextGo 看到真实工作上下文的入口。文件、文档、云盘、聊天和结构化系统，都先通过这一层进入，后面的 Agent、Hooks 和定时任务才能真正有用。</p>\n<p>所以 connector 文档不应该只是“支持了哪些集成”的列表，而应该解释接入后的上下文会如何被复用。</p>\n<h2 id=\"渠道是输出层\">渠道是输出层</h2>\n<p>渠道代表上下文流出去的方向，例如发布、团队沟通或投递面。很多时候，前面接入的上下文，最终会通过一个或多个渠道继续流向下一步工作。</p>\n<p>这让 Connectors 和渠道形成同一条产品叙事：上下文先接进来，再被整理，再流向行动发生的地方。</p>\n<h2 id=\"用户最需要知道什么\">用户最需要知道什么</h2>\n<p>用户应该知道支持哪些系统、接入需要什么权限，以及接入后的上下文如何流向 Agent、定时任务、远程会话或发布流程。</p>"
+        "html": "<h2 id=\"connectors\">Connectors</h2>\n<p>Connectors 用于把外部上下文引入 ContextGo。来源可以是文件、文档、共享盘、聊天内容或结构化系统数据。</p>\n<p>为每个 Connector 建议至少记录：</p>\n<ul>\n<li>来源系统是什么</li>\n<li>采用什么接入方式</li>\n<li>需要哪些权限</li>\n<li>接入后会向 Agent 或自动化暴露哪些内容</li>\n</ul>\n<h2 id=\"渠道\">渠道</h2>\n<p>渠道用于把结果发送到目标位置，例如发布面、通知路径或交付系统。一条工作流可以在本地处理完内容后，再通过一个或多个渠道输出。</p>\n<h2 id=\"典型链路\">典型链路</h2>\n<p>常见链路如下：</p>\n<ol>\n<li>接入来源系统。</li>\n<li>在 Agent、Hook 或定时任务中使用这些上下文。</li>\n<li>通过配置好的渠道输出结果。</li>\n</ol>\n<h2 id=\"权限建议\">权限建议</h2>\n<p>只授予当前工作流必需的最小权限。如果某个 Connector 或渠道需要高权限访问，启用前应先完成权限评估。</p>"
       },
       "remote-access": {
         "slug": "remote-access",
         "eyebrow": "远程访问",
-        "title": "ContextGo 的远程访问到底是怎么工作的",
-        "summary": "理解桌面主机模型、为什么远程访问依赖设备侧稳定连接，以及移动端应该向用户呈现什么预期。",
+        "title": "在浏览器或移动端使用远程访问",
+        "summary": "先确认桌面主机可用，再理解设备到云层的连接方式，并明确远程客户端在没有主机时无法独立工作。",
         "readingTime": "7 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "operations",
-        "html": "<h2 id=\"桌面端才是事实主机\">桌面端才是事实主机</h2>\n<p>ContextGo 的远程访问不是在云端重新起一份应用副本。真正的工作区、工具、文件和 WebUI 会话仍然运行在桌面设备上。</p>\n<p>移动端和浏览器端只是通过远程层连接回桌面主机。所以设备才会出现 online、unavailable 或 not provisioned 这类状态，取决于主机和远程桥接的健康度。</p>\n<h2 id=\"为什么设备侧稳定连接很重要\">为什么设备侧稳定连接很重要</h2>\n<p>公开 remote 入口只有在桌面主机对官方 cloud relay 建立稳定的出站连接之后才有意义。官方云层负责登录、设备发现和中继控制；浏览器真正进入的仍应是桌面端自己暴露的 WebUI。</p>\n<p>底层传输可以继续演进，但产品原则不会变。无论实现细节如何，设备侧都必须持续在线并完成认证，remote 页面才真正可用。</p>\n<ul>\n<li>桌面主机负责发布可用性</li>\n<li>云账号负责把设备映射到用户</li>\n<li>只有主机可达时，remote 页面才真正可用</li>\n</ul>\n<h2 id=\"移动端真正运行的是什么\">移动端真正运行的是什么</h2>\n<p>移动壳的定位是远程控制面。它复用现有 WebUI 和主机侧流程，而不是把桌面执行模型替换成一套新的手机本地执行模型。</p>\n<p>这意味着上传、运行时执行和本地工作区访问，最终还是落在桌面端。移动端是使用面，不是主计算面。</p>"
+        "html": "<h2 id=\"主机要求\">主机要求</h2>\n<p>远程访问依赖一台已注册的桌面主机。真正的工作区、文件、本地工具、运行时和 WebUI 会话都保留在桌面设备上。</p>\n<p>在打开远程入口前，请先确认：</p>\n<ul>\n<li>桌面端已经登录账号</li>\n<li>当前设备已经完成注册</li>\n<li>远程访问已经启用或 provisioned</li>\n<li>主机保持联网状态</li>\n</ul>\n<h2 id=\"连接方式\">连接方式</h2>\n<p>远程客户端并不会启动一套独立托管在云端的 ContextGo，它只是通过账号和中继层回连桌面主机。</p>\n<p>如果桌面主机掉线、退出会话或失去连接，远程客户端也无法继续单独执行任务。</p>\n<h2 id=\"移动端行为\">移动端行为</h2>\n<p>移动端应用或手机浏览器页面，本质上都是桌面主机的控制面。上传、文件访问、运行时执行和 Connector 调用，最终仍落在桌面侧。</p>\n<h2 id=\"无法连接时怎么查\">无法连接时怎么查</h2>\n<p>建议按下面顺序检查：</p>\n<ol>\n<li>确认当前登录的是正确账号。</li>\n<li>确认目标桌面设备仍显示在设备列表中。</li>\n<li>确认主机在线且没有丢失出站连接。</li>\n<li>检查本地安全策略或网络策略是否阻断了设备侧连接。</li>\n</ol>"
       },
       "cloud-account": {
         "slug": "cloud-account",
         "eyebrow": "云账号",
-        "title": "ContextGo 云账号到底同步了什么",
-        "summary": "澄清云层的职责、账号会绑定哪些状态，以及为什么它不应该被描述成完整的云执行环境。",
+        "title": "管理云账号与设备绑定",
+        "summary": "使用云账号完成登录、设备注册和轻量状态同步，但不要把它理解成完整的云端执行环境。",
         "readingTime": "6 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "operations",
-        "html": "<h2 id=\"绑定身份不是整体迁云\">绑定身份，不是整体迁云</h2>\n<p>云账号的职责是把一个用户身份和一台或多台桌面设备绑定起来，并支持多端发现。这是控制平面，不是执行平面。</p>\n<p>落到产品上，云登录让 ContextGo 能知道哪些桌面设备属于你、浏览器会话是否还有效，以及移动端或网页是否应该展示同一份设备列表。</p>\n<h2 id=\"什么状态适合跨设备同步\">什么状态适合跨设备同步</h2>\n<p>当前云层更适合承载轻量状态，例如语言偏好、设备注册和远程能力元数据。不应该把它表述成“完整同步整台桌面工作区”。</p>\n<p>随着产品演进，可以继续把更多轻量偏好放进云账号，但不应该改变“执行仍留在桌面端”的核心原则。</p>\n<ul>\n<li>语言偏好</li>\n<li>浏览器登录会话状态</li>\n<li>设备注册与远程能力状态</li>\n</ul>\n<h2 id=\"什么不会自动上云\">什么不会自动上云</h2>\n<p>工作区文件、本地 runtime、主机进程和主机侧 WebUI 状态，默认仍然留在桌面设备上。如果用户期待的是一份完整托管在云端的桌面副本，产品表述必须明确这不是默认模型。</p>"
+        "html": "<h2 id=\"云账号的用途\">云账号的用途</h2>\n<p>云账号主要用于：</p>\n<ul>\n<li>登录账号</li>\n<li>注册桌面设备</li>\n<li>在浏览器端或移动端发现这些设备</li>\n<li>保存账号关联的轻量状态</li>\n</ul>\n<p>云账号不是工作区的主要执行环境。</p>\n<h2 id=\"会同步什么\">会同步什么</h2>\n<p>可同步的通常是语言偏好、设备注册信息、浏览器登录会话和远程能力元数据等轻量状态。</p>\n<h2 id=\"什么仍然保留在本地\">什么仍然保留在本地</h2>\n<p>工作区文件、已安装运行时、主机进程和本地 WebUI 状态，默认仍保留在桌面主机上，除非产品提供了明确的迁移流程。</p>\n<h2 id=\"设备管理\">设备管理</h2>\n<p>排查账号相关问题时，先确认当前账号下注册了哪些设备，以及每个客户端现在登录的是哪个账号。很多远程访问问题，先核对设备绑定会更容易定位。</p>"
       },
       "updates-and-troubleshooting": {
         "slug": "updates-and-troubleshooting",
         "eyebrow": "更新与排障",
-        "title": "更新、版本发布与常见排障入口",
-        "summary": "把桌面端内更新、官网下载页和 release 仓库之间的关系讲清楚，并给用户一个统一的运维排障入口。",
+        "title": "检查更新并处理常见故障",
+        "summary": "让官网、应用内更新和发布仓库保持一致，并从同一个入口排查登录、设备、运行时和更新问题。",
         "readingTime": "7 分钟",
-        "updatedAt": "2026-03-30",
+        "updatedAt": "2026-04-12",
         "category": "operations",
-        "html": "<h2 id=\"一份版本来源服务所有更新入口\">一份版本来源，服务所有更新入口</h2>\n<p>用户应该能够相信桌面端更新、官网下载页和 GitHub 版本页说的是同一件事。这就是 contextgo/contextgo-releases 存在的原因，它是安装产物的事实来源。</p>\n<p>如果官网显示一套版本、桌面端里又显示另一套，就说明发布链路还没有真正收口。</p>\n<h2 id=\"最常见的故障类别\">最常见的故障类别</h2>\n<p>这个排障入口应该覆盖用户真正能感知到的问题：浏览器登录没完成、remote 状态 unavailable、设备绑定没刷新、更新检查中途闪失败，或者 Runtime 已安装但仍不可用。</p>\n<p>用户并不关心内部到底是哪一个子系统报错，他们只关心眼前的运维症状。</p>\n<ul>\n<li>登录和浏览器会话问题</li>\n<li>设备状态与远程访问问题</li>\n<li>Runtime 检测与认证问题</li>\n<li>更新与版本分发问题</li>\n</ul>\n<h2 id=\"这类页面必须提供什么\">这类页面必须提供什么</h2>\n<p>好的排障文档必须告诉用户：这个现象意味着什么、最可能的原因类别有哪些、下一步应该按什么最不具破坏性的顺序检查。</p>"
+        "html": "<h2 id=\"统一版本来源\">统一版本来源</h2>\n<p>公开发布统一来自 <code>contextgo/contextgo-releases</code>。官网下载页和桌面端内的更新入口都应指向同一份发布来源。</p>\n<p>如果官网版本和应用内显示的更新版本不一致，应先按发布链路异常处理。</p>\n<h2 id=\"建议排查顺序\">建议排查顺序</h2>\n<p>建议优先按影响范围最小的顺序检查：</p>\n<ol>\n<li>先确认账号登录和浏览器回跳是否正常。</li>\n<li>再确认目标设备是否已注册且在线。</li>\n<li>如问题出现在网页端或移动端，再检查远程访问状态。</li>\n<li>再检查运行时识别和 provider 认证。</li>\n<li>最后核对官网版本、应用内版本和发布仓库版本是否一致。</li>\n</ol>\n<h2 id=\"常见问题类型\">常见问题类型</h2>\n<p>这个页面适合作为以下问题的统一入口：</p>\n<ul>\n<li>浏览器登录没有完成</li>\n<li>设备绑定没有刷新</li>\n<li>远程访问显示 unavailable</li>\n<li>运行时已安装但无法执行</li>\n<li>更新检查失败或版本异常</li>\n</ul>\n<h2 id=\"什么时候要核对版本\">什么时候要核对版本</h2>\n<p>出现以下情况时，建议直接对比版本来源：</p>\n<ul>\n<li>官网下载页显示一个版本，应用内更新显示另一个版本</li>\n<li>用户反馈有更新提示，但安装包无法下载</li>\n<li>发布仓库里已有版本，但官网还没有展示出来</li>\n</ul>"
       }
     }
   }

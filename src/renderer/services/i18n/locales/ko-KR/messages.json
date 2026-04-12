@@ -6,7 +6,6 @@
   "canceledExecution": "실행 취소됨",
   "interrupted": "사용자에 의해 중단되었습니다.",
   "openLinkFailed": "링크 열기 실패",
-  "imageGenerationModelDetected": "이미지 모델이 감지되어 이미지 도구가 자동으로 활성화되었습니다. 기본 모델: {{platform}}:{{model}}",
   "auto_handling_permissions": "권한 요청 자동 처리: {{request}}",
   "copy": "복사",
   "copySuccess": "성공적으로 복사됨",

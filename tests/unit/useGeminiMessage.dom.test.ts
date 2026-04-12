@@ -301,6 +301,36 @@ describe('useGeminiMessage', () => {
     expect(second.result.current.running).toBe(true);
   });
 
+  it('does not revive a locally stopped run from stale backend running status on remount', async () => {
+    const conversationId = 'test-conv-stopped';
+    const first = renderHook(() => useGeminiMessage(conversationId));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      first.result.current.setWaitingResponse(true);
+    });
+
+    act(() => {
+      first.result.current.resetState();
+    });
+
+    expect(first.result.current.running).toBe(false);
+
+    first.unmount();
+    mockGetInvoke.mockResolvedValueOnce({ status: 'running', type: 'gemini', extra: {} });
+
+    const second = renderHook(() => useGeminiMessage(conversationId));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(second.result.current.running).toBe(false);
+  });
+
   it('clears running state and forwards an interrupted message', async () => {
     const { result } = renderHook(() => useGeminiMessage(CONVERSATION_ID));
 

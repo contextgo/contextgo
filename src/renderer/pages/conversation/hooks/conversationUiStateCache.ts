@@ -12,6 +12,14 @@ const getConversationUiStateScope = (scope: string): Map<string, unknown> => {
   return nextScope;
 };
 
+export const hasConversationUiState = (scope: string, conversationId: string): boolean => {
+  if (!conversationId) {
+    return false;
+  }
+
+  return getConversationUiStateScope(scope).has(conversationId);
+};
+
 export const readConversationUiState = <T>(scope: string, conversationId: string, fallback: T): T => {
   if (!conversationId) {
     return fallback;

@@ -248,5 +248,18 @@
     "conversationNotFound": "会話が見つかりません",
     "scheduledTimePassed": "予定時刻が過ぎました",
     "conversationBusy": "会話がビジーです。{{count}} 回の試行後にスキップしました"
+  },
+  "chat": {
+    "createTitle": "スケジュールタスクを作成しました",
+    "createDescription": "この会話にスケジュールタスクを作成しました。",
+    "listTitle": "この会話のスケジュールタスク",
+    "listDescription": "この会話には現在 {{count}} 件のタスクがあります。",
+    "deleteTitle": "スケジュールタスクを削除しました",
+    "deleteDescription": "この会話からスケジュールタスクを削除しました。",
+    "errorTitle": "スケジュール処理に失敗しました",
+    "errorDescription": "スケジュール要求を完了できませんでした。",
+    "empty": "この会話にはまだスケジュールタスクがありません。",
+    "deletedId": "削除した ID",
+    "taskId": "タスク ID"
   }
 }

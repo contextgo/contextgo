@@ -1,0 +1,7 @@
+interface:
+  display_name: "Infographic Image"
+  short_description: "把长文、主题或说明生成中文信息图 prompt 并直接出图"
+  default_prompt: "Use $infographic-image to turn a topic, article, report, or meeting note into a Chinese infographic-style image prompt and optionally render the final image."
+
+policy:
+  allow_implicit_invocation: true

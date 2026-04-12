@@ -65,20 +65,6 @@ test.describe('Extension: Settings Tabs Discovery', () => {
 });
 
 test.describe('Extension: Settings Tabs Position Anchoring', () => {
-  test('tab with anchor "tools/after" appears after Tools in sidebar', async ({ page }) => {
-    await goToSettings(page, 'tools');
-    await waitForExtensionSettingsTabs(page);
-
-    const siderItemIds = await getSiderItemIds(page);
-
-    const toolsIdx = siderItemIds.indexOf('tools');
-    const e2eIdx = siderItemIds.indexOf(EXT_E2E_SETTINGS_ID);
-
-    expect(toolsIdx).toBeGreaterThanOrEqual(0);
-    expect(e2eIdx).toBeGreaterThanOrEqual(0);
-    expect(e2eIdx).toBeGreaterThan(toolsIdx);
-  });
-
   test('tab with anchor "about/before" appears before About in sidebar', async ({ page }) => {
     await goToSettings(page, 'about');
     await waitForExtensionSettingsTabs(page);
@@ -133,12 +119,6 @@ test.describe('Extension: Settings Tabs Navigation', () => {
   });
 
   test('switching between extension and builtin tabs does not crash', async ({ page }) => {
-    await goToExtensionSettings(page, EXT_E2E_SETTINGS_ID);
-    await waitForSettle(page);
-
-    await goToSettings(page, 'tools');
-    await waitForSettle(page);
-
     await goToExtensionSettings(page, EXT_E2E_SETTINGS_ID);
     await waitForSettle(page);
 

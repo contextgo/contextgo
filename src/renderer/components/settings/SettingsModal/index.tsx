@@ -23,7 +23,6 @@ import {
   LinkCloud,
   Puzzle,
   Terminal,
-  Toolkit,
 } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -36,7 +35,6 @@ import GeminiModalContent from './contents/GeminiModalContent';
 import ModelModalContent from './contents/ModelModalContent';
 import RuntimeManagement from '@/renderer/pages/settings/AgentSettings/CustomAcpAgent';
 import SystemModalContent from './contents/SystemModalContent';
-import ToolsModalContent from './contents/ToolsModalContent';
 import WebuiModalContent from './contents/WebuiModalContent';
 import { SettingsViewModeProvider } from './settingsViewContext';
 import '@/renderer/pages/settings/components/settings.css';
@@ -75,14 +73,10 @@ export type BuiltinSettingTab =
   | 'model'
   | 'agent'
   | 'runtime'
-  | 'tools'
   | 'webui'
   | 'agentEntry'
   | 'channels'
   | 'activeSessions'
-  | 'tools'
-  | 'webui'
-  | 'agentEntry'
   | 'system'
   | 'about';
 
@@ -236,11 +230,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
         icon: <LinkCloud theme='outline' size='20' fill={iconColors.secondary} />,
       },
       {
-        key: 'tools',
-        label: t('settings.tools'),
-        icon: <Toolkit theme='outline' size='20' fill={iconColors.secondary} />,
-      },
-      {
         key: 'runtime',
         label: t('settings.runtimeManager.title', { defaultValue: 'Runtime' }),
         icon: <Terminal theme='outline' size='20' fill={iconColors.secondary} />,
@@ -356,8 +345,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
         return <ModelModalContent />;
       case 'agent':
         return <AgentModalContent />;
-      case 'tools':
-        return <ToolsModalContent />;
       case 'runtime':
         return <RuntimeManagement />;
       case 'webui':

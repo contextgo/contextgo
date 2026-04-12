@@ -4,7 +4,7 @@ import { matchesSettingsNavPath, normalizeSettingsAnchor } from '@/renderer/page
 describe('settingsNavigation', () => {
   it('normalizes legacy display anchor to system', () => {
     expect(normalizeSettingsAnchor('display')).toBe('system');
-    expect(normalizeSettingsAnchor('tools')).toBe('tools');
+    expect(normalizeSettingsAnchor('tools')).toBe('runtime');
   });
 
   it('matches exact settings routes without prefix collisions', () => {

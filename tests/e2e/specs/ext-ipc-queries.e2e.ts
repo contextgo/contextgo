@@ -40,25 +40,6 @@ test.describe('Extension IPC: ACP Adapters', () => {
   });
 });
 
-// ── MCP Servers ──────────────────────────────────────────────────────────────
-
-test.describe('Extension IPC: MCP Servers', () => {
-  test('returns servers from multiple extensions', async ({ page }) => {
-    const snapshot = await getExtensionSnapshot(page);
-    const names = snapshot.mcpServers.map((s) => s.name);
-
-    expect(names).toContain('e2e-echo-server');
-    expect(names).toContain('hello-echo-mcp');
-  });
-
-  test('each server has a name', async ({ page }) => {
-    const snapshot = await getExtensionSnapshot(page);
-    for (const server of snapshot.mcpServers) {
-      expect(server.name).toBeTruthy();
-    }
-  });
-});
-
 // ── Assistants ───────────────────────────────────────────────────────────────
 
 test.describe('Extension IPC: Assistants', () => {
@@ -252,7 +233,6 @@ test.describe('Extension IPC: Performance', () => {
     const queries = [
       'extensions.get-loaded-extensions',
       'extensions.get-acp-adapters',
-      'extensions.get-mcp-servers',
       'extensions.get-assistants',
       'extensions.get-agents',
       'extensions.get-skills',

@@ -248,5 +248,18 @@
     "conversationNotFound": "대화를 찾을 수 없음",
     "scheduledTimePassed": "예약 시간이 지났습니다",
     "conversationBusy": "대화가 사용 중이며 {{count}}번 시도 후 건너뜁니다"
+  },
+  "chat": {
+    "createTitle": "예약 작업을 만들었습니다",
+    "createDescription": "이 대화에 예약 작업이 생성되었습니다.",
+    "listTitle": "이 대화의 예약 작업",
+    "listDescription": "이 대화에는 현재 {{count}}개의 작업이 연결되어 있습니다.",
+    "deleteTitle": "예약 작업을 삭제했습니다",
+    "deleteDescription": "이 대화에서 예약 작업이 제거되었습니다.",
+    "errorTitle": "예약 작업 처리 실패",
+    "errorDescription": "예약 요청을 완료하지 못했습니다.",
+    "empty": "이 대화에는 아직 예약 작업이 없습니다.",
+    "deletedId": "삭제된 ID",
+    "taskId": "작업 ID"
   }
 }

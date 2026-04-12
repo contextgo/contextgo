@@ -225,9 +225,6 @@ asarUnpack:
   # skills/ and assistant/ no longer need asarUnpack:
   # initStorage copies them from asar to config/builtin-skills/ and config/assistants/
   # at startup, so all runtime reads go through the user directory, not asar.
-  # Builtin MCP server scripts must be unpacked so external node processes can execute them
-  - 'out/main/builtin-mcp-image-gen.js'
-
 # Compression level: normal for faster builds, maximum for smallest size
 # Note: electron-builder doesn't support YAML template syntax for env vars
 # The build script sets ELECTRON_BUILDER_COMPRESSION_LEVEL env var which takes precedence
