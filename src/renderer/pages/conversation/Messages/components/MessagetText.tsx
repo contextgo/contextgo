@@ -60,17 +60,68 @@ export type ParsedFileOperationMessage = {
   method?: string;
 };
 
+type JsonRecord = Record<string, unknown>;
+
+type JsonDisplaySection = {
+  summaryFields: Array<{ key: string; label: string; value: string }>;
+  detailFields: Array<{ key: string; label: string; value: unknown; isProminent: boolean }>;
+};
+
+const JSON_SUMMARY_FIELD_KEYS = ['model', 'size'] as const;
+const JSON_PROMINENT_FIELD_KEYS = new Set([
+  'prompt',
+  'negativePrompt',
+  'negative_prompt',
+  'instructions',
+  'description',
+]);
+
+const isJsonRecord = (value: unknown): value is JsonRecord => {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+};
+
+const formatJsonFieldKey = (key: string): string => {
+  return key
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const stringifyJsonFieldValue = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+    return String(value);
+  }
+
+  return JSON.stringify(value, null, 2);
+};
+
+const getJsonFieldLabel = (key: string, t: TFunction<'translation', undefined>): string => {
+  switch (key) {
+    case 'model':
+      return t('messages.jsonCard.model');
+    case 'prompt':
+      return t('messages.jsonCard.prompt');
+    case 'size':
+      return t('messages.jsonCard.size');
+    default:
+      return formatJsonFieldKey(key);
+  }
+};
+
 export const parseFileOperationMessage = (content: string): ParsedFileOperationMessage | null => {
   const trimmedContent = content.trim();
   const previewMatch = /\n\n```([\w#+-]+)?\n([\s\S]*?)\n```\s*$/.exec(trimmedContent);
   const previewLanguage = previewMatch?.[1]?.trim().toLowerCase();
   const preview = previewMatch?.[2];
-  const headerText = previewMatch
-    ? trimmedContent.slice(0, previewMatch.index).trimEnd()
-    : trimmedContent;
-  const headerMatch = /^(?:\S+\s+)?(?:\*\*)?File (written|read|deleted|operation):(?:\*\*)?\s*`([^`]+)`(?:\s*\(([^)]+)\))?\s*$/.exec(
-    headerText
-  );
+  const headerText = previewMatch ? trimmedContent.slice(0, previewMatch.index).trimEnd() : trimmedContent;
+  const headerMatch =
+    /^(?:\S+\s+)?(?:\*\*)?File (written|read|deleted|operation):(?:\*\*)?\s*`([^`]+)`(?:\s*\(([^)]+)\))?\s*$/.exec(
+      headerText
+    );
 
   if (!headerMatch) {
     return null;
@@ -110,13 +161,14 @@ const useFormatContent = (content: string) => {
   return useMemo(() => {
     try {
       const json = JSON.parse(content);
-      const isJson = typeof json === 'object';
+      const isJson = json !== null && typeof json === 'object';
       return {
         json: isJson,
+        jsonObject: isJsonRecord(json),
         data: isJson ? json : content,
       };
     } catch {
-      return { data: content };
+      return { data: content, json: false, jsonObject: false };
     }
   }, [content]);
 };
@@ -133,12 +185,48 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   }, [message.content.content]);
 
   const { text, files } = parseFileMarker(contentToRender);
-  const { data, json } = useFormatContent(text);
+  const { data, json, jsonObject } = useFormatContent(text);
   const { t } = useTranslation();
   const [showCopyAlert, setShowCopyAlert] = useState(false);
   const isUserMessage = message.position === 'right';
   const hasTextBody = json || Boolean(text.trim());
   const fileOperation = useMemo(() => parseFileOperationMessage(text), [text]);
+  const jsonObjectSections = useMemo<JsonDisplaySection | null>(() => {
+    if (!jsonObject || !isJsonRecord(data)) {
+      return null;
+    }
+
+    const entries = Object.entries(data);
+    const summaryFields = JSON_SUMMARY_FIELD_KEYS.flatMap((key) => {
+      const value = data[key];
+      if (value === undefined || typeof value === 'object') {
+        return [];
+      }
+
+      return [
+        {
+          key,
+          label: getJsonFieldLabel(key, t),
+          value: stringifyJsonFieldValue(value),
+        },
+      ];
+    });
+
+    const detailFields = entries
+      .filter(([key]) => !summaryFields.some((field) => field.key === key))
+      .map(([key, value]) => ({
+        key,
+        label: getJsonFieldLabel(key, t),
+        value,
+        isProminent: JSON_PROMINENT_FIELD_KEYS.has(key),
+      }));
+
+    return {
+      summaryFields,
+      detailFields,
+    };
+  }, [data, jsonObject, t]);
+  const rawJsonText = useMemo(() => (json ? JSON.stringify(data, null, 2) : ''), [data, json]);
 
   // 过滤空内容，避免渲染空DOM
   if (!message.content.content || (typeof message.content.content === 'string' && !message.content.content.trim())) {
@@ -300,7 +388,10 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                   </div>
                   <div className='min-w-0 flex-1'>
                     <div className='flex min-w-0 flex-wrap items-center gap-8px'>
-                      <span className='text-13px font-600 leading-18px' style={{ color: fileOperationTone.accentColor }}>
+                      <span
+                        className='text-13px font-600 leading-18px'
+                        style={{ color: fileOperationTone.accentColor }}
+                      >
                         {fileOperationTone.title}
                       </span>
                       {fileOperation.method && (
@@ -349,13 +440,19 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                               <div
                                 className='inline-flex min-w-0 items-center gap-6px rounded-t-9px border border-b-0 px-10px py-6px'
                                 style={{
-                                  borderColor: 'color-mix(in srgb, var(--color-border-2) 86%, rgb(var(--success-6)) 14%)',
+                                  borderColor:
+                                    'color-mix(in srgb, var(--color-border-2) 86%, rgb(var(--success-6)) 14%)',
                                   background:
                                     'linear-gradient(180deg, color-mix(in srgb, var(--color-bg-1) 96%, white 4%) 0%, color-mix(in srgb, var(--color-fill-1) 90%, var(--color-bg-1) 10%) 100%)',
                                   boxShadow: 'inset 0 1px 0 color-mix(in srgb, white 42%, transparent)',
                                 }}
                               >
-                                <Write theme='outline' size='13' fill='rgb(var(--success-6))' className='app-icon shrink-0' />
+                                <Write
+                                  theme='outline'
+                                  size='13'
+                                  fill='rgb(var(--success-6))'
+                                  className='app-icon shrink-0'
+                                />
                                 <span className='min-w-0 truncate font-mono text-11px font-600 leading-16px text-t-primary'>
                                   {fileOperationFileName}
                                 </span>
@@ -382,7 +479,8 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                                   <div
                                     className='select-none border-r px-8px py-1px text-right font-mono text-11px leading-20px text-t-tertiary'
                                     style={{
-                                      borderColor: 'color-mix(in srgb, var(--color-border-2) 92%, rgb(var(--success-6)) 8%)',
+                                      borderColor:
+                                        'color-mix(in srgb, var(--color-border-2) 92%, rgb(var(--success-6)) 8%)',
                                       background: 'color-mix(in srgb, var(--color-fill-1) 86%, var(--color-bg-1) 14%)',
                                     }}
                                   >
@@ -391,7 +489,8 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                                   <div
                                     className='select-none border-r py-1px text-center font-mono text-10px leading-20px text-[rgb(var(--success-6))]'
                                     style={{
-                                      borderColor: 'color-mix(in srgb, var(--color-border-2) 92%, rgb(var(--success-6)) 8%)',
+                                      borderColor:
+                                        'color-mix(in srgb, var(--color-border-2) 92%, rgb(var(--success-6)) 8%)',
                                       background: 'color-mix(in srgb, rgb(var(--success-6)) 6%, var(--color-bg-1) 94%)',
                                     }}
                                   >
@@ -400,7 +499,8 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                                   <div
                                     className='min-w-0 px-12px py-1px font-mono text-12px leading-20px text-t-primary whitespace-pre'
                                     style={{
-                                      background: 'color-mix(in srgb, rgb(var(--success-6)) 13%, var(--color-bg-1) 87%)',
+                                      background:
+                                        'color-mix(in srgb, rgb(var(--success-6)) 13%, var(--color-bg-1) 87%)',
                                     }}
                                   >
                                     {line || ' '}
@@ -422,13 +522,103 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                     </div>
                   ))}
               </div>
+            ) : jsonObject && jsonObjectSections && isResultCardMessage ? (
+              <div
+                className='min-w-0 rounded-16px border border-solid bg-bg-1 p-14px'
+                style={{
+                  borderColor: 'color-mix(in srgb, var(--color-border-2) 82%, transparent)',
+                  boxShadow: '0 8px 24px color-mix(in srgb, var(--color-text-1) 5%, transparent)',
+                }}
+              >
+                <div className='flex min-w-0 items-center justify-between gap-12px'>
+                  <div className='flex min-w-0 items-center gap-8px'>
+                    <span className='inline-flex h-22px items-center rounded-full bg-primary-light-1 px-8px text-11px font-600 uppercase text-primary'>
+                      JSON
+                    </span>
+                    <span className='truncate text-13px font-600 leading-18px text-t-primary'>
+                      {t('messages.jsonCard.parameters')}
+                    </span>
+                  </div>
+                  <span className='shrink-0 rounded-full bg-bg-2 px-8px py-2px font-mono text-11px leading-16px text-t-secondary'>
+                    {Object.keys(data).length}
+                  </span>
+                </div>
+
+                {jsonObjectSections.summaryFields.length > 0 && (
+                  <div className='mt-12px grid gap-8px md:grid-cols-2'>
+                    {jsonObjectSections.summaryFields.map((field) => (
+                      <div
+                        key={field.key}
+                        className='rounded-12px border border-solid px-12px py-10px'
+                        style={{
+                          borderColor: 'color-mix(in srgb, var(--color-border-2) 86%, transparent)',
+                          background:
+                            'linear-gradient(180deg, color-mix(in srgb, var(--color-bg-1) 97%, white 3%) 0%, color-mix(in srgb, var(--color-fill-1) 92%, var(--color-bg-1) 8%) 100%)',
+                        }}
+                      >
+                        <div className='text-11px font-600 leading-16px text-t-secondary uppercase'>{field.label}</div>
+                        <div className='mt-4px break-all text-14px font-600 leading-20px text-t-primary'>
+                          {field.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {jsonObjectSections.detailFields.length > 0 && (
+                  <div className='mt-12px flex flex-col gap-10px'>
+                    {jsonObjectSections.detailFields.map((field) => (
+                      <div
+                        key={field.key}
+                        className='rounded-12px border border-solid px-12px py-12px'
+                        style={{
+                          borderColor: 'color-mix(in srgb, var(--color-border-2) 88%, transparent)',
+                          background: 'color-mix(in srgb, var(--color-fill-1) 62%, var(--color-bg-1) 38%)',
+                        }}
+                      >
+                        <div className='flex min-w-0 items-center justify-between gap-8px'>
+                          <span className='min-w-0 truncate text-12px font-600 leading-18px text-t-primary'>
+                            {field.label}
+                          </span>
+                          <span className='shrink-0 rounded-full bg-bg-1 px-8px py-2px font-mono text-10px leading-14px text-t-tertiary'>
+                            {field.key}
+                          </span>
+                        </div>
+                        <div
+                          className={classNames('mt-8px text-13px leading-20px text-t-primary break-words', {
+                            'rounded-10px bg-bg-1 px-10px py-10px whitespace-pre-wrap': field.isProminent,
+                            'font-mono text-12px whitespace-pre-wrap rounded-10px bg-bg-1 px-10px py-10px':
+                              typeof field.value !== 'string',
+                          })}
+                        >
+                          {typeof field.value === 'string' ? field.value : stringifyJsonFieldValue(field.value)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div
+                  className='mt-14px border-t border-solid pt-12px'
+                  style={{ borderColor: 'color-mix(in srgb, var(--color-border-2) 90%, transparent)' }}
+                >
+                  <div className='mb-8px text-12px font-600 leading-18px text-t-secondary'>
+                    {t('messages.jsonCard.rawJson')}
+                  </div>
+                  <CollapsibleContent maxHeight={220} defaultCollapsed={true}>
+                    <pre className='m-0 overflow-auto rounded-12px bg-bg-2 px-12px py-12px font-mono text-12px leading-18px text-t-primary whitespace-pre-wrap break-words'>
+                      {rawJsonText}
+                    </pre>
+                  </CollapsibleContent>
+                </div>
+              </div>
             ) : json ? (
               /* JSON 内容使用折叠组件 Use CollapsibleContent for JSON content */
               <CollapsibleContent maxHeight={200} defaultCollapsed={true}>
                 <MarkdownView
                   codeStyle={{ marginTop: 4, marginBlock: 4 }}
                   codeVariant={isResultCardMessage ? 'result-card' : undefined}
-                >{`\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``}</MarkdownView>
+                >{`\`\`\`json\n${rawJsonText}\n\`\`\``}</MarkdownView>
               </CollapsibleContent>
             ) : (
               <MarkdownView

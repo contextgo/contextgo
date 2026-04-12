@@ -44,6 +44,13 @@
       "operation_other": "Ran {{count}} file operations"
     }
   },
+  "jsonCard": {
+    "parameters": "Parameters",
+    "rawJson": "Raw JSON",
+    "model": "Model",
+    "prompt": "Prompt",
+    "size": "Size"
+  },
   "stepSummary": {
     "viewSteps": "View Steps",
     "tools": "{{count}} tool",

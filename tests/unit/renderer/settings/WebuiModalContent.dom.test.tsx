@@ -367,9 +367,10 @@ describe('WebuiModalContent', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open Official Remote' }));
 
     await waitFor(() => {
-      expect(openExternalUrlMock).toHaveBeenCalledWith('https://auth.contextgo.io/remote/devices');
+      expect(window.location.hash).toBe('#/remote/devices');
     });
     expect(cloudEnsureOfficialRemoteReadyInvoke).not.toHaveBeenCalled();
+    expect(openExternalUrlMock).not.toHaveBeenCalled();
     expect(shellOpenExternalMock).not.toHaveBeenCalled();
     expect(openExternalInvoke).not.toHaveBeenCalled();
   });

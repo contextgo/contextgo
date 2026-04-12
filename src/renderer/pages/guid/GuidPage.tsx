@@ -215,14 +215,32 @@ const GuidPage: React.FC = () => {
 
   const handleSelectAssistant = useCallback(
     (assistantId: string) => {
+      const assistantInfo = agentSelection.findAgentByKey(assistantId);
+      const preferredRuntime = agentSelection.resolvePresetAgentType(assistantInfo);
+      const hasPreferredRuntime = agentSelection.availableAgents?.some(
+        (agent) => agentSelection.getAgentKey(agent) === preferredRuntime
+      );
+      const fallbackRuntime = agentSelection.getAvailableFallbackAgent();
+
       agentSelection.setSelectedAssistantKey(assistantId);
+      if (hasPreferredRuntime) {
+        agentSelection.setSelectedAgentKey(preferredRuntime);
+      } else if (fallbackRuntime) {
+        agentSelection.setSelectedAgentKey(fallbackRuntime);
+      }
       mention.setMentionOpen(false);
       mention.setMentionQuery(null);
       mention.setMentionSelectorOpen(false);
       mention.setMentionActiveIndex(0);
     },
     [
+      agentSelection.availableAgents,
+      agentSelection.findAgentByKey,
+      agentSelection.getAgentKey,
+      agentSelection.getAvailableFallbackAgent,
+      agentSelection.resolvePresetAgentType,
       agentSelection.setSelectedAssistantKey,
+      agentSelection.setSelectedAgentKey,
       mention.setMentionOpen,
       mention.setMentionQuery,
       mention.setMentionSelectorOpen,

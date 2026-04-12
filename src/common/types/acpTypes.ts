@@ -18,7 +18,7 @@
  * 预设助手的主 Agent 类型，用于决定创建哪种类型的对话
  * The primary agent type for preset assistants, used to determine which conversation type to create.
  */
-export type PresetAgentType = 'gemini' | 'claude' | 'codex' | 'codebuddy' | 'opencode' | 'qwen';
+export type PresetAgentType = 'gemini' | 'claude' | 'codex' | 'opencode';
 
 export type BuiltinAssistantTier = 'product' | 'system';
 
@@ -42,10 +42,8 @@ export type BuiltinAssistantSystemRole =
  */
 export const ACP_ROUTED_PRESET_TYPES: readonly PresetAgentType[] = [
   'claude',
-  'codebuddy',
   'opencode',
   'codex',
-  'qwen',
 ] as const;
 
 export const CODEX_ACP_BRIDGE_VERSION = '0.9.5';
@@ -164,10 +162,10 @@ export const POTENTIAL_ACP_CLIS: PotentialAcpCli[] = new Proxy([] as PotentialAc
 
 /**
  * ACP 后端 Agent 配置
- * 用于内置后端（claude, gemini, qwen）和用户自定义 Agent
+ * 用于内置后端（claude, gemini, codex, opencode）和用户自定义 Agent
  *
  * Configuration for an ACP backend agent.
- * Used for both built-in backends (claude, gemini, qwen) and custom user agents.
+ * Used for both built-in backends (claude, gemini, codex, opencode) and custom user agents.
  */
 export interface AcpBackendConfig {
   /** 后端唯一标识符 / Unique identifier for the backend (e.g., 'claude', 'gemini', 'custom') */
@@ -252,14 +250,12 @@ export interface AcpBackendConfig {
    * 启用 ACP 模式时的参数
    * 不同 CLI 使用不同约定：
    *   - ['--experimental-acp'] 用于 claude（未指定时的默认值）
-   *   - ['--acp'] 用于 qwen, auggie
-   *   - ['acp'] 用于 goose（子命令）
+   *   - ['acp'] 用于 opencode（子命令）
    *
    * Arguments to enable ACP mode when spawning the CLI.
    * Different CLIs use different conventions:
    *   - ['--experimental-acp'] for claude (default if not specified)
-   *   - ['--acp'] for qwen, auggie
-   *   - ['acp'] for goose (subcommand)
+   *   - ['acp'] for opencode (subcommand)
    * If not specified, defaults to ['--experimental-acp'].
    */
   acpArgs?: string[];
@@ -401,7 +397,7 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
     name: 'Google CLI',
     cliCommand: 'gemini',
     authRequired: true,
-    enabled: false,
+    enabled: true,
     supportsStreaming: true,
   },
   qwen: {
@@ -410,27 +406,27 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
     cliCommand: 'qwen',
     defaultCliPath: 'npx @qwen-code/qwen-code',
     authRequired: true,
-    enabled: true, // ✅ 已验证支持：Qwen CLI v0.0.10+ 支持 --acp
+    enabled: false,
     supportsStreaming: true,
-    acpArgs: ['--acp'], // Use --acp instead of deprecated --experimental-acp
+    acpArgs: ['--acp'],
   },
   iflow: {
     id: 'iflow',
     name: 'iFlow CLI',
     cliCommand: 'iflow',
     authRequired: true,
-    enabled: true,
+    enabled: false,
     supportsStreaming: false,
   },
   codex: {
     id: 'codex',
     name: 'Codex',
-    cliCommand: 'codex', // Detect local codex CLI (codex-acp bridge invokes it)
+    cliCommand: 'codex',
     defaultCliPath: `npx ${CODEX_ACP_NPX_PACKAGE}`,
-    authRequired: true, // Needs OPENAI_API_KEY or ChatGPT auth
-    enabled: true, // ✅ Codex via codex-acp ACP bridge
+    authRequired: true,
+    enabled: true,
     supportsStreaming: false,
-    acpArgs: [], // codex-acp is ACP by default, no flag needed
+    acpArgs: [],
   },
   codebuddy: {
     id: 'codebuddy',
@@ -438,53 +434,52 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
     cliCommand: 'codebuddy',
     defaultCliPath: `npx ${CODEBUDDY_ACP_NPX_PACKAGE}`,
     authRequired: true,
-    enabled: true, // ✅ Tencent CodeBuddy Code CLI，使用 `codebuddy --acp` 启动
+    enabled: false,
     supportsStreaming: false,
-    acpArgs: ['--acp'], // codebuddy 使用 --acp flag
+    acpArgs: ['--acp'],
   },
   goose: {
     id: 'goose',
     name: 'Goose',
     cliCommand: 'goose',
     authRequired: false,
-    enabled: true, // ✅ Block's Goose CLI，使用 `goose acp` 启动
+    enabled: false,
     supportsStreaming: false,
-    acpArgs: ['acp'], // goose 使用子命令而非 flag
+    acpArgs: ['acp'],
   },
   auggie: {
     id: 'auggie',
     name: 'Augment Code',
     cliCommand: 'auggie',
     authRequired: false,
-    enabled: true, // ✅ Augment Code CLI，使用 `auggie --acp` 启动
+    enabled: false,
     supportsStreaming: false,
-    acpArgs: ['--acp'], // auggie 使用 --acp flag
+    acpArgs: ['--acp'],
   },
   kimi: {
     id: 'kimi',
     name: 'Kimi CLI',
     cliCommand: 'kimi',
     authRequired: false,
-    enabled: true, // ✅ Kimi CLI (Moonshot)，使用 `kimi acp` 启动
+    enabled: false,
     supportsStreaming: false,
-    acpArgs: ['acp'], // kimi 使用 acp 子命令
+    acpArgs: ['acp'],
   },
   opencode: {
     id: 'opencode',
     name: 'OpenCode',
     cliCommand: 'opencode',
     authRequired: false,
-    enabled: true, // ✅ OpenCode CLI，使用 `opencode acp` 启动
+    enabled: true,
     supportsStreaming: false,
-    acpArgs: ['acp'], // opencode 使用 acp 子命令
+    acpArgs: ['acp'],
   },
   droid: {
     id: 'droid',
     name: 'Factory Droid',
     cliCommand: 'droid',
-    // Droid uses FACTORY_API_KEY from environment, not an interactive auth flow.
     authRequired: false,
-    enabled: true, // ✅ Factory docs: `droid exec --output-format acp` (JetBrains/Zed ACP integration)
+    enabled: false,
     supportsStreaming: false,
     acpArgs: ['exec', '--output-format', 'acp'],
   },
@@ -493,25 +488,25 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
     name: 'GitHub Copilot',
     cliCommand: 'copilot',
     authRequired: false,
-    enabled: true, // ✅ GitHub Copilot CLI，使用 `copilot --acp --stdio` 启动
+    enabled: false,
     supportsStreaming: false,
-    acpArgs: ['--acp', '--stdio'], // copilot 使用 --acp --stdio 启动 ACP mode
+    acpArgs: ['--acp', '--stdio'],
   },
   qoder: {
     id: 'qoder',
     name: 'Qoder CLI',
     cliCommand: 'qodercli',
     authRequired: false,
-    enabled: true, // ✅ Qoder CLI，使用 `qodercli --acp` 启动
+    enabled: false,
     supportsStreaming: false,
-    acpArgs: ['--acp'], // qoder 使用 --acp flag
+    acpArgs: ['--acp'],
   },
   vibe: {
     id: 'vibe',
     name: 'Mistral Vibe',
     cliCommand: 'vibe-acp',
     authRequired: false,
-    enabled: true, // ✅ Mistral Vibe CLI，使用 `vibe-acp` 启动
+    enabled: false,
     supportsStreaming: false,
     acpArgs: [],
   },
@@ -520,33 +515,31 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
     name: 'OpenClaw',
     cliCommand: 'openclaw',
     authRequired: false,
-    enabled: true, // ✅ OpenClaw Gateway WebSocket mode
+    enabled: false,
     supportsStreaming: true,
-    acpArgs: ['gateway'], // openclaw gateway command (for detection)
+    acpArgs: ['gateway'],
   },
   nanobot: {
     id: 'nanobot',
     name: 'Nano Bot',
     cliCommand: 'nanobot',
     authRequired: false,
-    enabled: true,
+    enabled: false,
     supportsStreaming: false,
   },
   cursor: {
     id: 'cursor',
     name: 'Cursor Agent',
-    // Note: Cursor CLI uses the generic command name "agent". Detection relies on `which agent`
-    // which may match other tools. Users should ensure the Cursor CLI is the `agent` on their PATH.
     cliCommand: 'agent',
-    authRequired: true, // Requires active Cursor subscription
-    enabled: true, // ✅ Cursor AI Agent CLI, launched via `agent acp`
+    authRequired: true,
+    enabled: false,
     supportsStreaming: false,
-    acpArgs: ['acp'], // Cursor uses `agent acp` subcommand
+    acpArgs: ['acp'],
   },
   custom: {
     id: 'custom',
     name: 'Custom Agent',
-    cliCommand: undefined, // User-configured via settings
+    cliCommand: undefined,
     authRequired: false,
     enabled: true,
     supportsStreaming: false,
@@ -562,15 +555,7 @@ export const ACP_ENABLED_BACKENDS: Record<string, AcpBackendConfig> = Object.fro
 export type AcpBackend = keyof typeof ACP_BACKENDS_ALL;
 export type AcpBackendId = AcpBackend; // 向后兼容 / Backward compatibility
 
-export const MANAGED_RUNTIME_INSTALLABLE_BACKENDS = [
-  'claude',
-  'codex',
-  'opencode',
-  'qwen',
-  'codebuddy',
-  'openclaw-gateway',
-  'nanobot',
-] as const satisfies readonly AcpBackend[];
+export const MANAGED_RUNTIME_INSTALLABLE_BACKENDS = ['claude', 'codex', 'opencode'] as const satisfies readonly AcpBackend[];
 
 export type ManagedRuntimeInstallStage = 'starting' | 'running' | 'refreshing' | 'completed' | 'failed';
 

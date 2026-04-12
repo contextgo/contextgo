@@ -115,9 +115,7 @@ describe('builtinAssistantDefaults', () => {
     expect(resolveBuiltinAssistantEnabledSkills('builtin-superpowers', undefined)).toEqual([
       ...ENGINEERING_WORKBENCH_SKILLS,
     ]);
-    expect(resolveBuiltinAssistantEnabledSkills('builtin-everything-in-claude-code', undefined)).toEqual([
-      ...ENGINEERING_WORKBENCH_SKILLS,
-    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-everything-in-claude-code', undefined)).toBeUndefined();
     expect(resolveBuiltinAssistantEnabledSkills('builtin-superpowers', [])).toEqual([]);
     expect(resolveBuiltinAssistantEnabledSkills('custom-agent', undefined)).toBeUndefined();
   });

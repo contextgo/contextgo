@@ -424,11 +424,13 @@ export const fs = {
       };
       location: string;
       isCustom: boolean;
+      packageOwnerPresetIds?: string[];
+      hiddenFromSkillsLibrary?: boolean;
     }>,
-    void
+    { presetAssistantId?: string }
   >('list-available-skills'),
   // 获取可用 hooks 列表 / List available hooks from hooks directory
-  listAvailableHooks: bridge.buildProvider<HookInfo[], void>('list-available-hooks'),
+  listAvailableHooks: bridge.buildProvider<HookInfo[], { workspacePath?: string }>('list-available-hooks'),
   // 符号链接方式导入 hook / Import hook via symlink
   importHookWithSymlink: bridge.buildProvider<IBridgeResponse<{ hookName: string }>, { hookPath: string }>(
     'import-hook-with-symlink'
@@ -449,6 +451,10 @@ export const fs = {
   // 读取 skill 信息（不导入）/ Read skill info without importing
   readSkillInfo: bridge.buildProvider<IBridgeResponse<{ name: string; description: string }>, { skillPath: string }>(
     'read-skill-info'
+  ),
+  // 读取完整 SKILL.md 内容 / Read full SKILL.md content
+  readSkillContent: bridge.buildProvider<IBridgeResponse<{ content: string }>, { skillPath: string }>(
+    'read-skill-content'
   ),
   // 导入 skill 目录 / Import skill directory
   importSkill: bridge.buildProvider<IBridgeResponse<{ skillName: string }>, { skillPath: string }>('import-skill'),

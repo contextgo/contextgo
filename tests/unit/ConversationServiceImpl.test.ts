@@ -19,6 +19,7 @@ vi.mock('../../src/process/services/context/scheduleServiceSingleton', () => ({
 }));
 
 vi.mock('../../src/process/bridge/services/workspaceAutomation', () => ({
+  copyWorkspaceAutomationCommands: vi.fn(async () => {}),
   copyWorkspaceAutomationHooks: vi.fn(async () => {}),
   ensureHarnessWorkspaceAutomationForConversation: vi.fn(async () => {}),
 }));
@@ -28,6 +29,7 @@ vi.mock('@process/utils/initAgent', () => ({
   createCodexAgent: vi.fn(async () => ({ id: 'codex-id', type: 'codex', name: 'test', extra: {} })),
   createOpenClawAgent: vi.fn(async () => ({ id: 'claw-id', type: 'openclaw-gateway', name: 'test', extra: {} })),
   createNanobotAgent: vi.fn(async () => ({ id: 'nano-id', type: 'nanobot', name: 'test', extra: {} })),
+  ensureConversationWorkspaceBootstrap: vi.fn(async () => {}),
   createGroupConversation: vi.fn(async (params) => ({
     id: 'group-id',
     type: 'group',
@@ -74,9 +76,11 @@ function makeSpaceService(overrides: Partial<ISpaceService> = {}): ISpaceService
 
 import { ConversationServiceImpl } from '../../src/process/services/ConversationServiceImpl';
 import {
+  copyWorkspaceAutomationCommands,
   copyWorkspaceAutomationHooks,
   ensureHarnessWorkspaceAutomationForConversation,
 } from '../../src/process/bridge/services/workspaceAutomation';
+import { ensureConversationWorkspaceBootstrap } from '../../src/process/utils/initAgent';
 
 describe('ConversationServiceImpl.getConversation', () => {
   it('returns conversation from repo', async () => {
@@ -148,6 +152,62 @@ describe('ConversationServiceImpl.updateConversation', () => {
       })
     );
   });
+
+  it('re-bootstraps workspace automation when extra updates include a new workspace', async () => {
+    const existing = {
+      id: 'c1',
+      type: 'acp',
+      extra: {
+        workspace: '/tmp/original',
+        backend: 'codex',
+      },
+    } as any;
+    const repo = makeRepo({ getConversation: vi.fn(() => existing) });
+    const svc = new ConversationServiceImpl(repo);
+
+    await svc.updateConversation(
+      'c1',
+      {
+        extra: {
+          workspace: '/tmp/project',
+          customWorkspace: true,
+          nativeWorkspaceBootstrap: true,
+        },
+      } as any,
+      true
+    );
+
+    expect(repo.updateConversation).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        extra: expect.objectContaining({
+          workspace: '/tmp/project',
+          workingDirectory: '/tmp/project',
+          customWorkspace: true,
+          nativeWorkspaceBootstrap: true,
+          backend: 'codex',
+        }),
+      })
+    );
+    expect(ensureHarnessWorkspaceAutomationForConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'c1',
+        extra: expect.objectContaining({
+          workspace: '/tmp/project',
+          nativeWorkspaceBootstrap: true,
+        }),
+      })
+    );
+    expect(ensureConversationWorkspaceBootstrap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'c1',
+        extra: expect.objectContaining({
+          workspace: '/tmp/project',
+          nativeWorkspaceBootstrap: true,
+        }),
+      })
+    );
+  });
 });
 
 describe('ConversationServiceImpl.createWithMigration', () => {
@@ -163,7 +223,7 @@ describe('ConversationServiceImpl.createWithMigration', () => {
     expect(repo.createConversation).toHaveBeenCalledWith(expect.objectContaining({ id: 'new' }));
   });
 
-  it('copies workspace hooks and updates cron workspace metadata during migration', async () => {
+  it('copies workspace automation and updates cron workspace metadata during migration', async () => {
     const repo = makeRepo({
       getConversation: vi.fn(
         () =>
@@ -204,6 +264,7 @@ describe('ConversationServiceImpl.createWithMigration', () => {
       migrateSchedule: true,
     });
 
+    expect(copyWorkspaceAutomationCommands).toHaveBeenCalledWith('/source-ws', '/target-ws');
     expect(copyWorkspaceAutomationHooks).toHaveBeenCalledWith('/source-ws', '/target-ws');
     expect(scheduleService.updateSchedule).toHaveBeenCalledWith(
       'job-1',
@@ -216,6 +277,27 @@ describe('ConversationServiceImpl.createWithMigration', () => {
           conversationId: 'new',
           conversationTitle: 'Migrated',
           workspacePath: '/target-ws',
+        }),
+      })
+    );
+    expect(ensureConversationWorkspaceBootstrap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'new',
+        extra: expect.objectContaining({
+          workspace: '/target-ws',
+          workingDirectory: '/target-ws',
+          customWorkspace: true,
+          nativeWorkspaceBootstrap: true,
+        }),
+      })
+    );
+    expect(repo.createConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extra: expect.objectContaining({
+          workspace: '/target-ws',
+          workingDirectory: '/target-ws',
+          customWorkspace: true,
+          nativeWorkspaceBootstrap: true,
         }),
       })
     );
@@ -283,6 +365,15 @@ describe('ConversationServiceImpl.createConversation', () => {
     });
 
     expect(ensureHarnessWorkspaceAutomationForConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'acp',
+        extra: expect.objectContaining({
+          workspace: '/ws',
+          presetAssistantId: 'builtin-superpowers',
+        }),
+      })
+    );
+    expect(ensureConversationWorkspaceBootstrap).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'acp',
         extra: expect.objectContaining({

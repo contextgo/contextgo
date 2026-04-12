@@ -13,12 +13,14 @@ import type {
   WorkflowGroupRunState,
 } from '@/common/config/storage';
 import type { PresetAgentType } from '@/common/types/acpTypes';
+import { findBuiltinAssistantPreset } from '@/common/config/presets/builtinAssistantDefaults';
+import { getPlatformServices } from '@/common/platform';
 import { uuid } from '@/common/utils';
 import fs from 'fs/promises';
 import path from 'path';
-import { getSkillsDir, getBuiltinSkillsCopyDir, getSystemDir } from './initStorage';
+import { getAutoSkillsDir, getSkillsDir, getBuiltinSkillsCopyDir, getSystemDir } from './initStorage';
 import { computeOpenClawIdentityHash } from './openclawUtils';
-import { resolveSkillDirectory } from './skillDiscovery';
+import { discoverSkillDirectories, resolveSkillDirectory } from './skillDiscovery';
 
 /**
  * Agent 类型/backend 到原生 skills 目录的映射
@@ -53,6 +55,19 @@ const getWorkspaceManagedSkillsDir = (workspace: string): string => path.join(wo
 
 type RuntimeSkillsProjectionMode = 'shared-dir' | 'per-skill';
 
+const resolveBundledPresetResourceDir = (resourceDir: string): string => {
+  const platform = getPlatformServices().paths;
+  const appPath = platform.getAppPath() || process.cwd();
+  const resourcesPrefix = 'src/process/resources/';
+
+  if (platform.isPackaged()) {
+    const prodPath = resourceDir.startsWith(resourcesPrefix) ? resourceDir.slice(resourcesPrefix.length) : resourceDir;
+    return path.join(appPath, prodPath);
+  }
+
+  return path.join(appPath, resourceDir);
+};
+
 const ensureRuntimeSkillsProjection = async (
   workspace: string,
   runtimeSkillsRelDir: string,
@@ -70,6 +85,73 @@ const ensureRuntimeSkillsProjection = async (
     await fs.symlink(managedSkillsDir, runtimeSkillsDir, 'junction');
     console.log(`[setupAssistantWorkspace] Linked runtime skills dir: ${runtimeSkillsDir} -> ${managedSkillsDir}`);
     return 'shared-dir';
+  }
+};
+
+const ensureManagedSkillLink = async (
+  sourceSkillDir: string,
+  managedSkillDir: string,
+  skillName: string
+): Promise<boolean> => {
+  try {
+    await fs.stat(sourceSkillDir);
+  } catch {
+    console.warn(`[setupAssistantWorkspace] Skill directory not found: ${sourceSkillDir}`);
+    return false;
+  }
+
+  try {
+    await fs.lstat(managedSkillDir);
+  } catch {
+    await fs.symlink(sourceSkillDir, managedSkillDir, 'junction');
+    console.log(`[setupAssistantWorkspace] Managed skill: ${skillName} -> ${managedSkillDir}`);
+  }
+
+  return true;
+};
+
+const ensureRuntimeSkillProjection = async (
+  workspace: string,
+  runtimeSkillsRelDir: string,
+  managedSkillDir: string,
+  skillName: string,
+  projectionMode: RuntimeSkillsProjectionMode
+): Promise<void> => {
+  if (projectionMode !== 'per-skill') {
+    return;
+  }
+
+  const runtimeSkillDir = path.join(workspace, runtimeSkillsRelDir, skillName);
+  try {
+    await fs.lstat(runtimeSkillDir);
+  } catch {
+    await fs.symlink(managedSkillDir, runtimeSkillDir, 'junction');
+    console.log(`[setupAssistantWorkspace] Projected skill: ${skillName} -> ${runtimeSkillDir}`);
+  }
+};
+
+const ensureWorkspaceSkill = async (
+  workspace: string,
+  skillName: string,
+  sourceSkillDir: string,
+  managedSkillsDir: string,
+  skillsDirs: string[],
+  projectionModes: Map<string, RuntimeSkillsProjectionMode>
+): Promise<void> => {
+  const managedSkillDir = path.join(managedSkillsDir, skillName);
+  const linked = await ensureManagedSkillLink(sourceSkillDir, managedSkillDir, skillName);
+  if (!linked) {
+    return;
+  }
+
+  for (const skillsRelDir of skillsDirs) {
+    await ensureRuntimeSkillProjection(
+      workspace,
+      skillsRelDir,
+      managedSkillDir,
+      skillName,
+      projectionModes.get(skillsRelDir) ?? 'shared-dir'
+    );
   }
 };
 
@@ -100,10 +182,9 @@ export async function setupAssistantWorkspace(
     agentType?: PresetAgentType | string;
     backend?: string;
     enabledSkills?: string[];
+    presetAssistantId?: string;
   }
 ): Promise<void> {
-  if (!options.enabledSkills || options.enabledSkills.length === 0) return;
-
   // Determine skills directories based on agent type or backend
   const key = options.backend || options.agentType || '';
   const skillsDirs = AGENT_SKILLS_DIRS[key];
@@ -113,6 +194,7 @@ export async function setupAssistantWorkspace(
   if (!skillsDirs) return;
 
   const userSkillsDir = getSkillsDir();
+  const autoSkillsDir = getAutoSkillsDir();
   const managedSkillsDir = getWorkspaceManagedSkillsDir(workspace);
 
   await fs.mkdir(managedSkillsDir, { recursive: true });
@@ -122,44 +204,112 @@ export async function setupAssistantWorkspace(
     projectionModes.set(skillsRelDir, await ensureRuntimeSkillsProjection(workspace, skillsRelDir, managedSkillsDir));
   }
 
-  for (const skillName of options.enabledSkills) {
-    // Skip builtin skills (auto-injected via SkillManager / virtual extension)
-    if (skillName === 'schedule') continue;
+  const skillSources = new Map<string, string>();
+  const autoSkillEntries = await fs
+    .readdir(autoSkillsDir, { withFileTypes: true })
+    .catch((): Array<{ name: string; isDirectory: () => boolean }> => []);
+  for (const entry of autoSkillEntries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    skillSources.set(entry.name, path.join(autoSkillsDir, entry.name));
+  }
+
+  const preset = options.presetAssistantId ? findBuiltinAssistantPreset(options.presetAssistantId) : undefined;
+  const presetSkillsRoot =
+    preset?.resourceDir && options.backend === 'claude'
+      ? path.join(resolveBundledPresetResourceDir(preset.resourceDir), 'skills')
+      : undefined;
+
+  if (presetSkillsRoot) {
+    const presetSkills: Awaited<ReturnType<typeof discoverSkillDirectories>> = await discoverSkillDirectories(
+      presetSkillsRoot
+    ).catch((): Awaited<ReturnType<typeof discoverSkillDirectories>> => []);
+    for (const skill of presetSkills) {
+      skillSources.set(skill.name, skill.dirPath);
+    }
+  }
+
+  for (const skillName of options.enabledSkills ?? []) {
+    if (skillSources.has(skillName)) {
+      continue;
+    }
 
     // Try bundled skills first, then user skills. Both roots support nested skill packs.
     const builtinCandidate = await resolveSkillDirectory(getBuiltinSkillsCopyDir(), skillName, {
       excludeTopLevelNames: ['_builtin'],
     });
     const userCandidate = await resolveSkillDirectory(userSkillsDir, skillName);
-    const sourceSkillDir = builtinCandidate?.dirPath || userCandidate?.dirPath || path.join(userSkillsDir, skillName);
-    const managedSkillDir = path.join(managedSkillsDir, skillName);
+    skillSources.set(skillName, builtinCandidate?.dirPath || userCandidate?.dirPath || path.join(userSkillsDir, skillName));
+  }
 
-    try {
-      await fs.stat(sourceSkillDir);
-      try {
-        await fs.lstat(managedSkillDir);
-      } catch {
-        await fs.symlink(sourceSkillDir, managedSkillDir, 'junction');
-        console.log(`[setupAssistantWorkspace] Managed skill: ${skillName} -> ${managedSkillDir}`);
-      }
-    } catch {
-      console.warn(`[setupAssistantWorkspace] Skill directory not found: ${sourceSkillDir}`);
-      continue;
-    }
+  for (const [skillName, sourceSkillDir] of skillSources) {
+    await ensureWorkspaceSkill(workspace, skillName, sourceSkillDir, managedSkillsDir, skillsDirs, projectionModes);
+  }
+}
 
-    for (const skillsRelDir of skillsDirs) {
-      if (projectionModes.get(skillsRelDir) !== 'per-skill') {
-        continue;
+export async function ensureConversationWorkspaceBootstrap(conversation: TChatConversation): Promise<void> {
+  const extra = conversation.extra as
+    | {
+        workspace?: string;
+        workingDirectory?: string;
+        customWorkspace?: boolean;
+        nativeWorkspaceBootstrap?: boolean;
+        enabledSkills?: string[];
+        backend?: string;
+        presetAssistantId?: string;
       }
+    | undefined;
 
-      const runtimeSkillDir = path.join(workspace, skillsRelDir, skillName);
-      try {
-        await fs.lstat(runtimeSkillDir);
-      } catch {
-        await fs.symlink(managedSkillDir, runtimeSkillDir, 'junction');
-        console.log(`[setupAssistantWorkspace] Projected skill: ${skillName} -> ${runtimeSkillDir}`);
-      }
-    }
+  const workspace = extra?.workingDirectory || extra?.workspace;
+  if (!workspace) {
+    return;
+  }
+
+  const shouldSetupNativeWorkspace = !extra?.customWorkspace || extra?.nativeWorkspaceBootstrap === true;
+  if (!shouldSetupNativeWorkspace) {
+    return;
+  }
+
+  switch (conversation.type) {
+    case 'gemini':
+      await setupAssistantWorkspace(workspace, {
+        agentType: 'gemini',
+        enabledSkills: extra?.enabledSkills,
+        presetAssistantId: extra?.presetAssistantId,
+      });
+      return;
+    case 'acp':
+      await setupAssistantWorkspace(workspace, {
+        backend: extra?.backend,
+        enabledSkills: extra?.enabledSkills,
+        presetAssistantId: extra?.presetAssistantId,
+      });
+      return;
+    case 'codex':
+      await setupAssistantWorkspace(workspace, {
+        agentType: 'codex',
+        enabledSkills: extra?.enabledSkills,
+        presetAssistantId: extra?.presetAssistantId,
+      });
+      return;
+    case 'nanobot':
+      await setupAssistantWorkspace(workspace, {
+        agentType: 'nanobot',
+        enabledSkills: extra?.enabledSkills,
+        presetAssistantId: extra?.presetAssistantId,
+      });
+      return;
+    case 'openclaw-gateway':
+      await setupAssistantWorkspace(workspace, {
+        backend: extra?.backend,
+        enabledSkills: extra?.enabledSkills,
+        presetAssistantId: extra?.presetAssistantId,
+      });
+      return;
+    default:
+      return;
   }
 }
 
@@ -246,6 +396,7 @@ export const createGeminiAgent = async (
     await setupAssistantWorkspace(newWorkspace, {
       agentType: 'gemini',
       enabledSkills,
+      presetAssistantId,
     });
   }
 
@@ -349,6 +500,7 @@ export const createAcpAgent = async (options: ICreateConversationParams): Promis
     await setupAssistantWorkspace(workspace, {
       backend: extra.backend,
       enabledSkills: extra.enabledSkills,
+      presetAssistantId: extra.presetAssistantId,
     });
   }
 
@@ -404,6 +556,7 @@ export const createCodexAgent = async (options: ICreateConversationParams): Prom
     await setupAssistantWorkspace(workspace, {
       agentType: 'codex',
       enabledSkills: extra.enabledSkills,
+      presetAssistantId: extra.presetAssistantId,
     });
   }
 
@@ -450,6 +603,7 @@ export const createNanobotAgent = async (options: ICreateConversationParams): Pr
     await setupAssistantWorkspace(workspace, {
       agentType: 'nanobot',
       enabledSkills: extra.enabledSkills,
+      presetAssistantId: extra.presetAssistantId,
     });
   }
 
@@ -483,6 +637,7 @@ export const createOpenClawAgent = async (options: ICreateConversationParams): P
   if (shouldSetupNativeWorkspace) {
     await setupAssistantWorkspace(workspace, {
       enabledSkills: extra.enabledSkills,
+      presetAssistantId: extra.presetAssistantId,
     });
   }
 

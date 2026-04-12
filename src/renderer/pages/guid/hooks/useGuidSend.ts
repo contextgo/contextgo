@@ -68,7 +68,7 @@ export type GuidSendResult = {
 };
 
 /**
- * Hook that manages the send logic for all conversation types (gemini/openclaw/nanobot/acp).
+ * Hook that manages the send logic for Gemini and ACP conversation creation.
  */
 export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
   const {
@@ -173,119 +173,6 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         void navigate(`/conversation/${conversation.id}`);
       } catch (error: unknown) {
         console.error('Failed to create Gemini conversation:', error);
-        throw error;
-      }
-      return;
-    }
-
-    // OpenClaw Gateway path
-    if (selectedAgent === 'openclaw-gateway') {
-      const openclawRuntimeInfo = runtimeAgentInfo || findAgentByKey(selectedAgentKey);
-      const openclawWorkspace = openclawRuntimeInfo?.workspace || finalWorkspace;
-      const openclawUsesFixedWorkspace = Boolean(openclawRuntimeInfo?.workspace);
-
-      try {
-        const conversation = await ipcBridge.conversation.create.invoke({
-          type: 'openclaw-gateway',
-          name: input,
-          model: currentModel!,
-          extra: {
-            defaultFiles: files,
-            workspace: openclawWorkspace,
-            customWorkspace: isCustomWorkspace || openclawUsesFixedWorkspace,
-            backend: openclawRuntimeInfo?.backend,
-            cliPath: openclawRuntimeInfo?.cliPath,
-            agentName: openclawRuntimeInfo?.name,
-            openclawAgentId: openclawRuntimeInfo?.openclawAgentId,
-            runtimeValidation: {
-              expectedWorkspace: openclawWorkspace,
-              expectedBackend: openclawRuntimeInfo?.backend,
-              expectedAgentName: openclawRuntimeInfo?.name,
-              expectedOpenClawAgentId: openclawRuntimeInfo?.openclawAgentId,
-              expectedCliPath: openclawRuntimeInfo?.cliPath,
-              expectedModel: currentModel?.useModel,
-              switchedAt: Date.now(),
-            },
-            enabledSkills,
-            enabledHooks,
-            presetAssistantId,
-            nativeWorkspaceBootstrap,
-            spaceId: selectedSpaceId ?? undefined,
-          },
-        });
-
-        if (!conversation || !conversation.id) {
-          alert('Failed to create OpenClaw conversation. Please ensure the OpenClaw Gateway is running.');
-          return;
-        }
-
-        if (isCustomWorkspace) {
-          closeAllTabs();
-          updateWorkspaceTime(finalWorkspace);
-          openTab(conversation);
-        }
-
-        emitter.emit('chat.history.refresh');
-
-        const initialMessage = {
-          input,
-          files: files.length > 0 ? files : undefined,
-        };
-        sessionStorage.setItem(`openclaw_initial_message_${conversation.id}`, JSON.stringify(initialMessage));
-
-        ipcBridge.conversation.warmup.invoke({ conversation_id: conversation.id }).catch(() => {});
-        await navigate(`/conversation/${conversation.id}`);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        alert(`Failed to create OpenClaw conversation: ${errorMessage}`);
-        throw error;
-      }
-      return;
-    }
-
-    // Nanobot path
-    if (selectedAgent === 'nanobot') {
-      try {
-        const conversation = await ipcBridge.conversation.create.invoke({
-          type: 'nanobot',
-          name: input,
-          model: currentModel!,
-          extra: {
-            defaultFiles: files,
-            workspace: finalWorkspace,
-            customWorkspace: isCustomWorkspace,
-            enabledSkills,
-            enabledHooks,
-            presetAssistantId,
-            nativeWorkspaceBootstrap,
-            spaceId: selectedSpaceId ?? undefined,
-          },
-        });
-
-        if (!conversation || !conversation.id) {
-          alert('Failed to create Nanobot conversation. Please ensure nanobot is installed.');
-          return;
-        }
-
-        if (isCustomWorkspace) {
-          closeAllTabs();
-          updateWorkspaceTime(finalWorkspace);
-          openTab(conversation);
-        }
-
-        emitter.emit('chat.history.refresh');
-
-        const initialMessage = {
-          input,
-          files: files.length > 0 ? files : undefined,
-        };
-        sessionStorage.setItem(`nanobot_initial_message_${conversation.id}`, JSON.stringify(initialMessage));
-
-        ipcBridge.conversation.warmup.invoke({ conversation_id: conversation.id }).catch(() => {});
-        await navigate(`/conversation/${conversation.id}`);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        alert(`Failed to create Nanobot conversation: ${errorMessage}`);
         throw error;
       }
       return;

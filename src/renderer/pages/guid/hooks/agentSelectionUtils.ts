@@ -63,9 +63,5 @@ export const getAgentKey = (agent: {
     return `custom:${agent.customAgentId}`;
   }
 
-  if (agent.backend === 'openclaw-gateway' && agent.openclawAgentId) {
-    return `openclaw-gateway:${agent.openclawAgentId}`;
-  }
-
   return agent.backend;
 };

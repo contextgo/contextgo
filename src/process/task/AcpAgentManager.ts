@@ -21,11 +21,13 @@ import { ProcessConfig } from '@process/utils/initStorage';
 import { addMessage, addOrUpdateMessage, nextTickToLocalFinish } from '@process/utils/message';
 import { handlePreviewOpenEvent } from '@process/utils/previewUtils';
 import {
+  AssistantControlCommandStreamFilter,
   executeAssistantScheduleCommands,
   stripAssistantControlCommands,
 } from '@process/services/context/events/schedule/AssistantScheduleCommandService';
 import { emitScheduleEventMessage } from '@process/services/context/events/schedule/ScheduleEventMessageEmitter';
 import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
+import { executeAssistantSkillMarketCommands } from '@process/services/context/events/AssistantSkillMarketCommandService';
 import { mainLog, mainWarn, mainError } from '@process/utils/mainLogger';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
 /** Enable ACP performance diagnostics via ACP_PERF=1 */
@@ -88,6 +90,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
   private readonly bufferedStreamTextMessages = new Map<string, BufferedStreamTextMessage>();
   private existingMessageStatePromise: Promise<void> | null = null;
   private readonly hookRuntime = new AssistantHookRuntime();
+  private readonly controlCommandStreamFilter = new AssistantControlCommandStreamFilter();
 
   constructor(data: AcpAgentManagerData) {
     super('acp', data, new IpcAgentEventEmitter());
@@ -206,6 +209,23 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
     };
     ipcBridge.acpConversation.responseStream.emit(correctedMessage);
     channelEventBus.emitAgentMessage(this.conversation_id, correctedMessage);
+  }
+
+  private filterControlCommandsFromMessage(message: IResponseMessage): IResponseMessage | null {
+    if (message.type !== 'content' || typeof message.data !== 'string') {
+      return message;
+    }
+
+    const filteredContent = this.controlCommandStreamFilter.push(message.data);
+    if (!filteredContent) {
+      return null;
+    }
+
+    return {
+      ...message,
+      conversation_id: this.conversation_id,
+      data: filteredContent,
+    };
   }
 
   private async ensureFirstMessageState(): Promise<void> {
@@ -430,9 +450,11 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
             this.saveContextUsage(usageData);
           }
 
+          const controlFilteredMessage = this.filterControlCommandsFromMessage(message as IResponseMessage);
+
           if (message.type !== 'thought' && message.type !== 'acp_model_info' && message.type !== 'acp_context_usage') {
             const transformStart = Date.now();
-            const tMessage = transformMessage(message as IResponseMessage);
+            const tMessage = controlFilteredMessage ? transformMessage(controlFilteredMessage) : null;
             const transformDuration = Date.now() - transformStart;
 
             if (tMessage && !shouldSuppressAgentLifecycleStreamMessage(message as IResponseMessage)) {
@@ -452,39 +474,43 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
                     `[ACP-PERF] stream: transform ${transformDuration}ms, db ${dbDuration}ms type=${message.type}`
                   );
               }
+            }
+          }
 
-              // Track streaming content for schedule detection when turn ends
-              // ACP sends content in chunks, we accumulate here for later detection
-              if (isStreamTextChunk) {
-                const textContent = extractTextFromMessage(tMessage);
-                if (tMessage.msg_id !== this.currentMsgId) {
-                  // New message, reset accumulator
-                  this.currentMsgId = tMessage.msg_id || null;
-                  this.currentMsgContent = textContent;
-                } else {
-                  // Same message, accumulate content
-                  this.currentMsgContent += textContent;
-                }
-              }
+          // Track raw streaming content for schedule detection when turn ends.
+          // This must use the unfiltered ACP content so schedule commands can still execute.
+          if (message.type === 'content' && typeof message.data === 'string') {
+            const msgId = message.msg_id || null;
+            if (msgId !== this.currentMsgId) {
+              this.currentMsgId = msgId;
+              this.currentMsgContent = message.data;
+            } else {
+              this.currentMsgContent += message.data;
             }
           }
 
           // Filter think tags from streaming content before emitting to UI
           // 在发送到 UI 之前过滤流式内容中的 think 标签
           const filterStart = Date.now();
-          const filteredMessage = this.filterThinkTagsFromMessage(message as IResponseMessage);
+          const filteredMessage = controlFilteredMessage
+            ? this.filterThinkTagsFromMessage(controlFilteredMessage)
+            : null;
           const filterDuration = Date.now() - filterStart;
 
           const emitStart = Date.now();
-          ipcBridge.acpConversation.responseStream.emit(filteredMessage);
+          if (filteredMessage) {
+            ipcBridge.acpConversation.responseStream.emit(filteredMessage);
+          }
           const emitDuration = Date.now() - emitStart;
 
           // Also emit to Channel global event bus (Telegram/Lark streaming)
           // 同时发送到 Channel 全局事件总线（用于 Telegram/Lark 等外部平台）
-          channelEventBus.emitAgentMessage(this.conversation_id, {
-            ...filteredMessage,
-            conversation_id: this.conversation_id,
-          });
+          if (filteredMessage) {
+            channelEventBus.emitAgentMessage(this.conversation_id, {
+              ...filteredMessage,
+              conversation_id: this.conversation_id,
+            });
+          }
 
           const totalDuration = Date.now() - pipelineStart;
           if (totalDuration > 10) {
@@ -552,21 +578,30 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
                 });
               });
 
+              const skillMarketCommandResult = await executeAssistantSkillMarketCommands({
+                content: finishedMsgContent,
+              });
+
               const cleanedContent = stripAssistantControlCommands(finishedMsgContent);
+              this.controlCommandStreamFilter.flush();
               if (finishedMsgId && cleanedContent !== finishedMsgContent) {
                 await this.rewriteLatestAssistantMessage(finishedMsgId, cleanedContent);
               }
 
-              if (scheduleCommandResult.hasCommands && scheduleCommandResult.systemResponses.length > 0) {
+              const systemResponses = [
+                ...scheduleCommandResult.systemResponses,
+                ...skillMarketCommandResult.systemResponses,
+              ];
+
+              if (systemResponses.length > 0) {
                 shouldContinueAfterFinish = true;
-                await this.continueWithSystemResponse(
-                  `[System Response]\n${scheduleCommandResult.systemResponses.join('\n')}`
-                );
+                await this.continueWithSystemResponse(`[System Response]\n${systemResponses.join('\n')}`);
               }
             }
 
             this.currentMsgId = null;
             this.currentMsgContent = '';
+            this.controlCommandStreamFilter.reset();
           }
 
           ipcBridge.acpConversation.responseStream.emit(v);

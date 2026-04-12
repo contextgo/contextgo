@@ -165,6 +165,9 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
   const [routingDraft, setRoutingDraft] = useState<HookOutputRoutingDraft | null>(null);
   const [savingHookRouting, setSavingHookRouting] = useState(false);
   const [hookLibraryVisible, setHookLibraryVisible] = useState(false);
+  const [previewingSkill, setPreviewingSkill] = useState<RelevantAssistantSkill | null>(null);
+  const [skillPreviewContent, setSkillPreviewContent] = useState('');
+  const [skillPreviewLoading, setSkillPreviewLoading] = useState(false);
 
   // Auto focus textarea when drawer opens in edit mode
   useEffect(() => {
@@ -264,9 +267,51 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
     );
   };
 
+  const handleCloseSkillPreview = () => {
+    if (skillPreviewLoading) {
+      return;
+    }
+
+    setPreviewingSkill(null);
+    setSkillPreviewContent('');
+  };
+
+  const handleOpenSkillPreview = async (skill: RelevantAssistantSkill) => {
+    if (skill.isPending || !skill.location) {
+      return;
+    }
+
+    setPreviewingSkill(skill);
+    setSkillPreviewContent('');
+    setSkillPreviewLoading(true);
+
+    try {
+      const result = await ipcBridge.fs.readSkillContent.invoke({ skillPath: skill.location });
+      if (!result.success || !result.data?.content) {
+        setPreviewingSkill(null);
+        Modal.error({
+          title:
+            result.msg ||
+            t('settings.assistantSkillPreviewFailed', { defaultValue: 'Failed to load skill content.' }),
+        });
+        return;
+      }
+
+      setSkillPreviewContent(result.data.content);
+    } catch (error) {
+      console.error('Failed to preview skill content:', error);
+      setPreviewingSkill(null);
+      Modal.error({
+        title: t('settings.assistantSkillPreviewFailed', { defaultValue: 'Failed to load skill content.' }),
+      });
+    } finally {
+      setSkillPreviewLoading(false);
+    }
+  };
+
   const renderRelevantSkillItem = (skill: RelevantAssistantSkill) => {
     return (
-      <div key={skill.name} className='flex items-start gap-8px p-8px hover:bg-fill-1 rounded-4px'>
+      <div key={skill.name} className='flex items-start gap-8px rounded-4px p-8px hover:bg-fill-1'>
         <Checkbox
           checked={selectedSkills.includes(skill.name)}
           className='mt-2px cursor-pointer'
@@ -281,6 +326,11 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
         <div className='flex-1 min-w-0'>
           <div className='flex items-center gap-6px flex-wrap'>
             <div className='text-13px font-medium text-t-primary'>{skill.name}</div>
+            {skill.hiddenFromSkillsLibrary ? (
+              <Tag size='small' color='arcoblue'>
+                {t('settings.assistantSkillPackageTag', { defaultValue: 'Packaged' })}
+              </Tag>
+            ) : null}
             {skill.isPending ? (
               <span className='bg-[rgba(var(--primary-6),0.08)] text-primary-6 border border-[rgba(var(--primary-6),0.2)] text-10px px-4px py-1px rd-4px font-medium uppercase'>
                 Pending
@@ -295,9 +345,35 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
           {skill.description ? (
             <div className='text-12px text-t-secondary mt-2px line-clamp-2'>{skill.description}</div>
           ) : null}
+          {skill.hiddenFromSkillsLibrary ? (
+            <div className='mt-6px text-11px text-t-tertiary'>
+              {t('settings.assistantSkillPackHint', {
+                defaultValue: 'This skill is bundled into the built-in harness pack and is not exposed as a standalone library item.',
+              })}
+            </div>
+          ) : null}
+          {skill.isPending ? (
+            <div className='mt-6px text-11px text-t-tertiary'>
+              {t('settings.assistantSkillPreviewUnavailableHint', {
+                defaultValue: 'This skill is not available in the local library yet.',
+              })}
+            </div>
+          ) : null}
           {renderSkillDependencyTags(skill)}
           {renderSkillCompatibilityNotes(skill)}
         </div>
+        {!skill.isPending && skill.location ? (
+          <Button
+            type='text'
+            size='mini'
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleOpenSkillPreview(skill);
+            }}
+          >
+            {t('settings.assistantSkillPreview', { defaultValue: 'Preview' })}
+          </Button>
+        ) : null}
       </div>
     );
   };
@@ -873,15 +949,17 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
             <div className='flex-shrink-0 mt-16px'>
               <div className='flex items-center justify-between mb-12px'>
                 <Typography.Text bold>{t('settings.assistantSkills', { defaultValue: 'Skills' })}</Typography.Text>
-                <Button
-                  size='small'
-                  type='outline'
-                  icon={<Plus size={14} />}
-                  onClick={() => setSkillsModalVisible(true)}
-                  className='rounded-[100px]'
-                >
-                  {t('settings.addSkills', { defaultValue: 'Add Skills' })}
-                </Button>
+                {activeAssistant?.isBuiltin ? null : (
+                  <Button
+                    size='small'
+                    type='outline'
+                    icon={<Plus size={14} />}
+                    onClick={() => setSkillsModalVisible(true)}
+                    className='rounded-[100px]'
+                  >
+                    {t('settings.addSkills', { defaultValue: 'Add Skills' })}
+                  </Button>
+                )}
               </div>
 
               <Collapse defaultActiveKey={['attached-skills']}>
@@ -976,6 +1054,40 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
           </div>
         </div>
       </div>
+      <ContextGoModal
+        visible={previewingSkill !== null}
+        onCancel={handleCloseSkillPreview}
+        header={{
+          title: t('settings.assistantSkillPreviewTitle', { defaultValue: 'Skill Preview' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={handleCloseSkillPreview} className='min-w-88px px-18px' disabled={skillPreviewLoading}>
+                {t('common.close', { defaultValue: 'Close' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(760px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
+      >
+        {previewingSkill ? (
+          <div className='mb-12px'>
+            <Typography.Text bold>{previewingSkill.name}</Typography.Text>
+          </div>
+        ) : null}
+        {skillPreviewLoading ? (
+          <div className='py-24px text-center text-12px text-t-secondary'>
+            {t('common.loading', { defaultValue: 'Please wait...' })}
+          </div>
+        ) : (
+          <MarkdownView hiddenCodeCopyButton>{skillPreviewContent}</MarkdownView>
+        )}
+      </ContextGoModal>
       <ContextGoModal
         visible={deleteHookName !== null}
         onCancel={() => setDeleteHookName(null)}

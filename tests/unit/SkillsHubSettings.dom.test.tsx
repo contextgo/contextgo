@@ -160,6 +160,14 @@ describe('SkillsHubSettings Component', () => {
     mockListAvailableSkills.mockResolvedValue([
       { name: 'MySkill1', description: 'desc1', location: '/path1', isCustom: true },
       { name: 'Builtin1', description: 'desc2', location: '/path2', isCustom: false },
+      {
+        name: 'HarnessSkill',
+        description: 'hidden pack skill',
+        location: '/path3',
+        isCustom: false,
+        hiddenFromSkillsLibrary: true,
+        packageOwnerPresetIds: ['superpowers'],
+      },
     ]);
 
     mockDetectAndCountExternalSkills.mockResolvedValue({
@@ -211,9 +219,13 @@ describe('SkillsHubSettings Component', () => {
     expect(screen.getByText('ExtSkill1')).toBeInTheDocument();
     expect(screen.getByText('MySkill1')).toBeInTheDocument();
     expect(screen.getByText('Builtin1')).toBeInTheDocument();
+    expect(screen.queryByText('HarnessSkill')).not.toBeInTheDocument();
     expect(screen.getByText('Custom')).toBeInTheDocument();
     expect(screen.getByText('Built-in')).toBeInTheDocument();
     expect(screen.getByText('/user/skills')).toBeInTheDocument();
+    expect(
+      screen.getByText('{{count}} built-in packaged skills are attached to preset assistants and are hidden from the standalone skill library.')
+    ).toBeInTheDocument();
   });
 
   it('should filter skills correctly by search query', async () => {
@@ -238,6 +250,7 @@ describe('SkillsHubSettings Component', () => {
     await waitFor(() => {
       expect(screen.queryByText('MySkill1')).not.toBeInTheDocument();
       expect(screen.getByText('Builtin1')).toBeInTheDocument();
+    expect(screen.queryByText('HarnessSkill')).not.toBeInTheDocument();
     });
   });
 

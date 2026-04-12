@@ -102,7 +102,14 @@ describe('MessageText', () => {
   });
 
   it('renders file operation messages as a structured card instead of markdown', () => {
-    render(<MessageText message={createMessage('📝 **File written:** `/tmp/MessageMiddleware.ts`\n\n```ts\nconst a = 1;\nconst b = 2;\n```', 'left')} />);
+    render(
+      <MessageText
+        message={createMessage(
+          '📝 **File written:** `/tmp/MessageMiddleware.ts`\n\n```ts\nconst a = 1;\nconst b = 2;\n```',
+          'left'
+        )}
+      />
+    );
 
     expect(screen.getByText('messages.fileOperation.written')).toBeInTheDocument();
     expect(screen.getAllByText('MessageMiddleware.ts').length).toBeGreaterThan(0);
@@ -114,5 +121,38 @@ describe('MessageText', () => {
     expect(screen.getByText('const a = 1;')).toBeInTheDocument();
     expect(screen.getByText('const b = 2;')).toBeInTheDocument();
     expect(markdownSpy).not.toHaveBeenCalled();
+  });
+
+  it('renders assistant JSON objects as a structured parameter card with raw JSON fallback', () => {
+    render(
+      <MessageText
+        message={createMessage(
+          JSON.stringify({
+            model: 'gemini-3-pro-image-preview',
+            prompt: '一只橘猫坐在红色沙发上，电影感光影，高清细节',
+            size: '1:1',
+          }),
+          'left'
+        )}
+      />
+    );
+
+    expect(screen.getByText('messages.jsonCard.parameters')).toBeInTheDocument();
+    expect(screen.getByText('messages.jsonCard.model')).toBeInTheDocument();
+    expect(screen.getByText('messages.jsonCard.prompt')).toBeInTheDocument();
+    expect(screen.getByText('messages.jsonCard.size')).toBeInTheDocument();
+    expect(screen.getByText('gemini-3-pro-image-preview')).toBeInTheDocument();
+    expect(screen.getAllByText('一只橘猫坐在红色沙发上，电影感光影，高清细节').length).toBeGreaterThan(0);
+    expect(screen.getByText('1:1')).toBeInTheDocument();
+    expect(screen.getByText('messages.jsonCard.rawJson')).toBeInTheDocument();
+    expect(screen.getByText(/"model": "gemini-3-pro-image-preview"/)).toBeInTheDocument();
+    expect(markdownSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps assistant JSON arrays on the markdown code path', () => {
+    render(<MessageText message={createMessage(JSON.stringify([{ model: 'gemini-3-pro-image-preview' }]), 'left')} />);
+
+    expect(markdownSpy).toHaveBeenCalledWith(expect.objectContaining({ codeVariant: 'result-card' }));
+    expect(screen.queryByText('messages.jsonCard.parameters')).not.toBeInTheDocument();
   });
 });

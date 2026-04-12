@@ -138,6 +138,93 @@ describe('AssistantHookRuntime', () => {
     });
   });
 
+  it('prefers workspace hook selection over conversation extra when hooks.json exists', async () => {
+    mockAccess.mockImplementation(async (filePath: string) => {
+      if (normalizePath(filePath) === '/mock/hooks/quality-gate') return;
+      throw new Error(`ENOENT ${filePath}`);
+    });
+
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      const normalizedPath = normalizePath(filePath);
+      if (normalizedPath === '/workspace/project/.contextgo/hooks.json') {
+        return JSON.stringify({
+          enabledHooks: ['quality-gate'],
+        });
+      }
+      if (normalizedPath === '/mock/hooks/quality-gate/manifest.json') {
+        return JSON.stringify({
+          name: 'quality-gate',
+          executionType: 'prompt-transform',
+          events: ['before_user_prompt'],
+        });
+      }
+      if (normalizedPath === '/mock/hooks/quality-gate/before_user_prompt.md') {
+        return 'Workspace selection hook\n\n{{userPrompt}}';
+      }
+      throw new Error(`ENOENT ${filePath}`);
+    });
+
+    const { AssistantHookRuntime } = await import('../../src/process/bridge/services/AssistantHookRuntime');
+    const runtime = new AssistantHookRuntime();
+
+    const result = await runtime.applyBeforeUserPrompt(
+      {
+        id: 'conv-hooks-file',
+        type: 'acp',
+        name: 'Workspace Conversation',
+        createTime: Date.now(),
+        modifyTime: Date.now(),
+        extra: {
+          backend: 'claude',
+          workspace: '/workspace/project',
+          enabledHooks: ['plan-before-coding'],
+        },
+      } as any,
+      'Respect project hook selection'
+    );
+
+    expect(result).toEqual({
+      content: 'Workspace selection hook\n\nRespect project hook selection',
+      appliedHooks: ['quality-gate'],
+    });
+  });
+
+  it('treats an empty workspace hook selection as authoritative and does not fall back to conversation extra', async () => {
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      const normalizedPath = normalizePath(filePath);
+      if (normalizedPath === '/workspace/project/.contextgo/hooks.json') {
+        return JSON.stringify({
+          enabledHooks: [],
+        });
+      }
+      throw new Error(`ENOENT ${filePath}`);
+    });
+
+    const { AssistantHookRuntime } = await import('../../src/process/bridge/services/AssistantHookRuntime');
+    const runtime = new AssistantHookRuntime();
+
+    const result = await runtime.applyBeforeUserPrompt(
+      {
+        id: 'conv-empty-hooks-file',
+        type: 'acp',
+        name: 'Workspace Conversation',
+        createTime: Date.now(),
+        modifyTime: Date.now(),
+        extra: {
+          backend: 'claude',
+          workspace: '/workspace/project',
+          enabledHooks: ['quality-gate'],
+        },
+      } as any,
+      'Do not use mirrored hooks'
+    );
+
+    expect(result).toEqual({
+      content: 'Do not use mirrored hooks',
+      appliedHooks: [],
+    });
+  });
+
   it('falls back to builtin hooks when the user hooks directory does not contain the hook', async () => {
     mockAccess.mockImplementation(async (filePath: string) => {
       if (normalizePath(filePath) === '/mock/builtin-hooks/plan-before-coding') return;

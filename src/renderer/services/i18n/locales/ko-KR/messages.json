@@ -44,6 +44,13 @@
       "operation_other": "파일 작업 {{count}}개 실행"
     }
   },
+  "jsonCard": {
+    "parameters": "파라미터",
+    "rawJson": "원본 JSON",
+    "model": "모델",
+    "prompt": "프롬프트",
+    "size": "크기"
+  },
   "stepSummary": {
     "viewSteps": "단계 보기",
     "tools": "도구 {{count}}개",

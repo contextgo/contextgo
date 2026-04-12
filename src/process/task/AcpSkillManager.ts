@@ -412,6 +412,9 @@ export function buildSkillsIndexText(skills: SkillIndex[]): string {
 The following skills are available. When you need detailed instructions for a specific skill,
 you can request it by outputting: [LOAD_SKILL: skill-name]
 
+If the user asks to find, recommend, or install a reusable skill, load the builtin "skillmarket"
+skill and use its SKILLMARKET_SEARCH / SKILLMARKET_INSTALL command protocol.
+
 ${lines.join('\n')}`;
 }
 

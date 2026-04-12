@@ -134,6 +134,7 @@ export function useWorkspaceMigration({
               ...currentConversation.extra,
               workspace: targetWorkspace,
               customWorkspace: true,
+              nativeWorkspaceBootstrap: true,
             },
           };
 
@@ -160,6 +161,7 @@ export function useWorkspaceMigration({
             ...currentConversation.extra,
             workspace: targetWorkspace,
             customWorkspace: true,
+            nativeWorkspaceBootstrap: true,
           },
         } as typeof currentConversation;
 

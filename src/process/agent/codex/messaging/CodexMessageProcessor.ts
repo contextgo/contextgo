@@ -10,17 +10,20 @@ import type { CodexEventMsg } from '@/common/types/codex/types';
 import type { ICodexMessageEmitter } from '@process/agent/codex/messaging/CodexMessageEmitter';
 import { ERROR_CODES, globalErrorService } from '@process/agent/codex/core/ErrorService';
 import {
+  AssistantControlCommandStreamFilter,
   executeAssistantScheduleCommands,
   stripAssistantControlCommands,
 } from '@process/services/context/events/schedule/AssistantScheduleCommandService';
 import { emitScheduleEventMessage } from '@process/services/context/events/schedule/ScheduleEventMessageEmitter';
 import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
+import { executeAssistantSkillMarketCommands } from '@process/services/context/events/AssistantSkillMarketCommandService';
 
 export class CodexMessageProcessor {
   private currentLoadingId: string | null = null;
   private deltaTimeout: NodeJS.Timeout | null = null;
   private reasoningMsgId: string | null = null;
   private currentReason: string = '';
+  private readonly controlCommandStreamFilter = new AssistantControlCommandStreamFilter();
 
   constructor(
     private conversation_id: string,
@@ -31,6 +34,7 @@ export class CodexMessageProcessor {
     this.currentLoadingId = uuid();
     this.reasoningMsgId = uuid();
     this.currentReason = '';
+    this.controlCommandStreamFilter.reset();
   }
 
   processReasonSectionBreak() {
@@ -41,6 +45,7 @@ export class CodexMessageProcessor {
     this.currentLoadingId = null;
     this.reasoningMsgId = null;
     this.currentReason = '';
+    this.controlCommandStreamFilter.reset();
 
     // Mark conversation as no longer processing
     // This is the reliable completion point for Codex message flow
@@ -94,11 +99,16 @@ export class CodexMessageProcessor {
 
   processMessageDelta(msg: Extract<CodexEventMsg, { type: 'agent_message_delta' }>) {
     const rawDelta = msg.delta;
+    const filteredDelta = this.controlCommandStreamFilter.push(rawDelta);
+    if (!filteredDelta) {
+      return;
+    }
+
     const deltaMessage = {
       type: 'content' as const,
       conversation_id: this.conversation_id,
       msg_id: this.currentLoadingId,
-      data: rawDelta,
+      data: filteredDelta,
     };
     // Delta messages: only emit to frontend for streaming display, do NOT persist
     // Frontend will accumulate deltas in memory for real-time UI updates
@@ -109,19 +119,9 @@ export class CodexMessageProcessor {
     // Final message: only persist to database, do NOT emit to frontend
     // Frontend has already shown the content via deltas
 
-    const transformedMessage: TMessage = {
-      id: this.currentLoadingId || uuid(),
-      msg_id: this.currentLoadingId,
-      type: 'text' as const,
-      position: 'left' as const,
-      conversation_id: this.conversation_id,
-      content: { content: msg.message },
-      status: 'finish', // Mark as finished for schedule detection
-      createdAt: Date.now(),
-    };
-
-    // Use messageEmitter to persist, maintaining architecture separation
-    this.messageEmitter.persistMessage(transformedMessage);
+    const cleanedContent = stripAssistantControlCommands(msg.message);
+    this.controlCommandStreamFilter.flush();
+    const finalVisibleContent = cleanedContent;
 
     const scheduleCommandResult = await executeAssistantScheduleCommands({
       content: msg.message,
@@ -140,18 +140,36 @@ export class CodexMessageProcessor {
       });
     });
 
-    const cleanedContent = stripAssistantControlCommands(msg.message);
-    if (cleanedContent !== msg.message) {
-      this.messageEmitter.updateFinalAssistantContent?.(
-        transformedMessage.msg_id || transformedMessage.id,
-        cleanedContent
-      );
+    if (finalVisibleContent) {
+      const transformedMessage: TMessage = {
+        id: this.currentLoadingId || uuid(),
+        msg_id: this.currentLoadingId,
+        type: 'text' as const,
+        position: 'left' as const,
+        conversation_id: this.conversation_id,
+        content: { content: finalVisibleContent },
+        status: 'finish',
+        createdAt: Date.now(),
+      };
+
+      this.messageEmitter.persistMessage(transformedMessage);
+
+      if (finalVisibleContent !== msg.message) {
+        this.messageEmitter.updateFinalAssistantContent?.(
+          transformedMessage.msg_id || transformedMessage.id,
+          finalVisibleContent
+        );
+      }
     }
 
-    if (scheduleCommandResult.systemResponses.length > 0) {
-      await this.messageEmitter.sendMessageToAgent?.(
-        `[System Response]\n${scheduleCommandResult.systemResponses.join('\n')}`
-      );
+    const skillMarketCommandResult = await executeAssistantSkillMarketCommands({
+      content: msg.message,
+    });
+
+    const systemResponses = [...scheduleCommandResult.systemResponses, ...skillMarketCommandResult.systemResponses];
+
+    if (systemResponses.length > 0) {
+      await this.messageEmitter.sendMessageToAgent?.(`[System Response]\n${systemResponses.join('\n')}`);
       return;
     }
 

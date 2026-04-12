@@ -41,6 +41,8 @@ export type SkillInfo = {
   openAIConfig?: SkillOpenAIConfig;
   location: string;
   isCustom: boolean;
+  packageOwnerPresetIds?: string[];
+  hiddenFromSkillsLibrary?: boolean;
 };
 
 export type HookInfo = SharedHookInfo;
@@ -172,8 +174,11 @@ export type RelevantAssistantSkill = {
   compatibility?: string[];
   dependencyHints?: SkillDependencyHint[];
   openAIConfig?: SkillOpenAIConfig;
+  location?: string;
   isCustom: boolean;
   isPending: boolean;
+  packageOwnerPresetIds?: string[];
+  hiddenFromSkillsLibrary?: boolean;
 };
 
 export type RelevantAssistantHook = {

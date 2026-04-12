@@ -175,8 +175,11 @@
 
 .app-titlebar--mobile .app-titlebar__brand-text,
 .app-titlebar--mobile-shell .app-titlebar__brand-text {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font-size: 16px;
-  line-height: 1.1;
+  line-height: 1;
   max-width: 100%;
 }
 

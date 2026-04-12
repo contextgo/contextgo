@@ -82,7 +82,7 @@ describe('loadPresetAssistantResources', () => {
       }),
       readBuiltinRule: vi.fn(async () => 'builtin rules'),
       readBuiltinSkill: vi.fn(async () => 'builtin skills'),
-      getEnabledSkills: vi.fn(async () => ['verification-loop']),
+      getEnabledSkills: vi.fn(async () => ['verification-before-completion']),
       getEnabledHooks: vi.fn(async () => ['before_user_prompt']),
     });
 
@@ -98,7 +98,7 @@ describe('loadPresetAssistantResources', () => {
     expect(result).toEqual({
       rules: 'builtin rules',
       skills: '',
-      enabledSkills: ['verification-loop'],
+      enabledSkills: ['verification-before-completion'],
       enabledHooks: ['before_user_prompt'],
     });
     expect(deps.readBuiltinRule).toHaveBeenCalledOnce();

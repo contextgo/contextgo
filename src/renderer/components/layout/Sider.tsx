@@ -27,11 +27,11 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
-import InfermeshLogo from '@renderer/assets/logos/brand/infermesh.png';
 import InfermeshMenuLogo from '@renderer/assets/logos/brand/infermesh-menu.png';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
+import { useRemoteAccessContext } from '@renderer/hooks/context/RemoteAccessContext';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
 import { useSelectedSpace } from '@renderer/hooks/context/useSelectedSpace';
@@ -41,6 +41,7 @@ import { useConversationTabs } from '@renderer/pages/conversation/hooks/Conversa
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import { isElectronDesktop, isMacOS, isMobileShellWebView, openExternalUrl } from '@renderer/utils/platform';
+import { OFFICIAL_REMOTE_DEVICES_ROUTE } from '@renderer/utils/officialRemote';
 import { preloadRoutePath } from './routerLocation';
 import { ContextGoModal } from '../base';
 
@@ -69,11 +70,6 @@ const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: strin
   </div>
 );
 
-const buildOfficialDeviceListUrl = (authBaseUrl?: string): string => {
-  const normalizedBaseUrl = authBaseUrl?.trim().replace(/\/+$/, '') || 'https://remote.contextgo.io';
-  return `${normalizedBaseUrl}/remote/devices`;
-};
-
 const isObsidianVaultProviderRef = (providerRef?: SpaceProviderRef): providerRef is SpaceVaultProviderRef => {
   return providerRef != null && 'kind' in providerRef && providerRef.kind === 'obsidian-vault';
 };
@@ -91,6 +87,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { pathname } = location;
 
   const { t, i18n } = useTranslation();
+  const remoteAccess = useRemoteAccessContext();
   const { theme, setTheme } = useThemeContext();
   const navigate = useNavigate();
   const { closePreview } = usePreviewContext();
@@ -112,6 +109,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const isSettings = pathname.startsWith('/settings');
   const isConversationRoute = pathname.startsWith('/conversation/');
   const isDesktopRuntime = isElectronDesktop();
+  const isRemoteDeviceActive = remoteAccess?.target.mode === 'remote-device';
   const showDesktopChromeOverlayInset = !isMobile && !isConversationRoute && (!isDesktopRuntime || isMacOS());
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab } = useConversationTabs();
@@ -435,12 +433,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   };
 
   const handleOpenCloudPortal = async () => {
-    try {
-      await openExternalUrl(buildOfficialDeviceListUrl(cloudStatus?.authBaseUrl));
-    } catch (error) {
-      console.error('[Sider] Failed to open cloud portal:', error);
-      Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
-    }
+    setUserMenuVisible(false);
+    handleNavigate(OFFICIAL_REMOTE_DEVICES_ROUTE);
   };
 
   const workspaceHistoryProps = {
@@ -866,19 +860,29 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               />
               <button
                 type='button'
-                className={classNames(actionRowClassName, pathname === '/hooks' && 'sider-entry-row--active')}
-                onClick={() => handleNavigate('/hooks')}
-                onMouseEnter={() => handlePreloadRoute('/hooks')}
-                onFocus={() => handlePreloadRoute('/hooks')}
+                className={classNames(
+                  actionRowClassName,
+                  pathname === OFFICIAL_REMOTE_DEVICES_ROUTE && 'sider-entry-row--active'
+                )}
+                onClick={() => {
+                  if (remoteAccess?.target.mode === 'remote-device') {
+                    remoteAccess.resetToDeviceList();
+                  }
+                  handleNavigate(OFFICIAL_REMOTE_DEVICES_ROUTE);
+                }}
+                onMouseEnter={() => handlePreloadRoute(OFFICIAL_REMOTE_DEVICES_ROUTE)}
+                onFocus={() => handlePreloadRoute(OFFICIAL_REMOTE_DEVICES_ROUTE)}
               >
-                <Puzzle
+                <Earth
                   theme='outline'
                   size='20'
                   fill={iconColors.primary}
                   className='app-icon block shrink-0 leading-none'
                 />
                 <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
-                  {t('settings.hooksPage', { defaultValue: 'Hooks' })}
+                  {isRemoteDeviceActive
+                    ? t('settings.webui.officialRemoteTitle', { defaultValue: 'Official Remote' })
+                    : t('settings.webui.remoteDevicesNav', { defaultValue: 'Remote Devices' })}
                 </span>
               </button>
               <button
@@ -916,6 +920,23 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 />
                 <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
                   {t('settings.skillsHub.title')}
+                </span>
+              </button>
+              <button
+                type='button'
+                className={classNames(actionRowClassName, pathname === '/hooks' && 'sider-entry-row--active')}
+                onClick={() => handleNavigate('/hooks')}
+                onMouseEnter={() => handlePreloadRoute('/hooks')}
+                onFocus={() => handlePreloadRoute('/hooks')}
+              >
+                <Puzzle
+                  theme='outline'
+                  size='20'
+                  fill={iconColors.primary}
+                  className='app-icon block shrink-0 leading-none'
+                />
+                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
+                  {t('settings.hooksPage', { defaultValue: 'Hooks' })}
                 </span>
               </button>
               <button

@@ -72,6 +72,10 @@ vi.mock('@renderer/pages/guid', () => ({
   default: () => <div>guid</div>,
 }));
 
+vi.mock('@renderer/pages/RemoteDevicesPage', () => ({
+  default: () => <div>remote-devices</div>,
+}));
+
 vi.mock('@renderer/pages/connectors', () => ({
   default: () => <div>connectors</div>,
 }));
@@ -174,5 +178,13 @@ describe('Router route switching', () => {
     });
     expect(mountStats.mounts).toBe(1);
     expect(mountStats.unmounts).toBe(0);
+  });
+
+  it('renders the embedded remote devices page on the official remote route', async () => {
+    window.history.replaceState({}, '', '/#/remote/devices');
+
+    renderRouter();
+
+    expect(await screen.findByText('remote-devices')).toBeInTheDocument();
   });
 });

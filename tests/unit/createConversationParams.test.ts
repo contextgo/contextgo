@@ -43,7 +43,7 @@ describe('createConversationParams', () => {
     loadPresetAssistantResources.mockResolvedValue({
       rules: 'preset rules',
       skills: '',
-      enabledSkills: ['verification-loop'],
+      enabledSkills: ['verification-before-completion'],
       enabledHooks: ['quality-gate'],
     });
     configGet.mockResolvedValue([
@@ -76,7 +76,7 @@ describe('createConversationParams', () => {
       localeKey: 'tr-TR',
     });
     expect(params.extra.presetRules).toBe('preset rules');
-    expect(params.extra.enabledSkills).toEqual(['verification-loop']);
+    expect(params.extra.enabledSkills).toEqual(['verification-before-completion']);
     expect(params.extra.enabledHooks).toEqual(['quality-gate']);
     expect(params.model.useModel).toBe('gpt-4.1');
   });
@@ -242,7 +242,33 @@ describe('createConversationParams', () => {
         openclawAgentId: 'reviewer',
         workspace: '/Users/test/.openclaw/workspace-reviewer',
         customWorkspace: true,
+        nativeWorkspaceBootstrap: true,
         spaceId: 'space-review',
+      },
+    });
+  });
+
+  it('marks standard CLI workspaces for native bootstrap so auto skills can be projected', async () => {
+    const params = await buildCliAgentParams(
+      {
+        backend: 'codex',
+        name: 'Codex CLI',
+        cliPath: '/usr/local/bin/codex',
+      },
+      '/tmp/project-workspace',
+      'space-dev'
+    );
+
+    expect(params).toMatchObject({
+      type: 'acp',
+      name: 'Codex CLI',
+      extra: {
+        backend: 'codex',
+        cliPath: '/usr/local/bin/codex',
+        workspace: '/tmp/project-workspace',
+        customWorkspace: true,
+        nativeWorkspaceBootstrap: true,
+        spaceId: 'space-dev',
       },
     });
   });

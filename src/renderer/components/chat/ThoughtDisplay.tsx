@@ -6,7 +6,6 @@
 
 import { Button, Tag, Spin } from '@arco-design/web-react';
 import MarkdownView from '@/renderer/components/Markdown';
-import { CloseOne } from '@icon-park/react';
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -138,7 +137,7 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
           type='text'
           className='!h-24px !min-w-24px !rounded-full !px-0 !text-[rgb(var(--danger-6))] hover:!bg-[rgba(var(--danger-6),0.12)] hover:!text-[rgb(var(--danger-6))]'
           aria-label={t('conversation.group.workflow.decision.stop')}
-          icon={<CloseOne theme='filled' size='10' fill='currentColor' />}
+          icon={<div className='mx-auto h-8px w-8px rounded-[2px] bg-current' />}
           onClick={onStop}
         />
       ) : null}

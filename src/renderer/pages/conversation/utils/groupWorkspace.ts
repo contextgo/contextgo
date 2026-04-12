@@ -31,6 +31,7 @@ const buildWorkspaceUpdatedConversation = (conversation: TChatConversation, work
       ...conversation.extra,
       workspace,
       customWorkspace: true,
+      nativeWorkspaceBootstrap: true,
     },
   } as TChatConversation;
 };
@@ -45,6 +46,7 @@ const updateConversationWorkspace = async (
       extra: {
         workspace,
         customWorkspace: true,
+        nativeWorkspaceBootstrap: true,
       } as Partial<TChatConversation['extra']>,
     } as Partial<TChatConversation>,
     mergeExtra: true,

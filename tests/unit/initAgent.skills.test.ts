@@ -118,6 +118,7 @@ vi.mock('fs', () => ({
 }));
 
 vi.mock('@process/utils/initStorage', () => ({
+  getAutoSkillsDir: vi.fn(() => '/mock/builtin-skills/_builtin'),
   getSkillsDir: vi.fn(() => '/mock/user/skills'),
   getBuiltinSkillsCopyDir: vi.fn(() => '/mock/builtin-skills'),
   getSystemDir: vi.fn(() => '/mock/system'),
@@ -192,20 +193,42 @@ describe('initAgent — skill support', () => {
   });
 
   describe('setupAssistantWorkspace', () => {
-    it('should skip when enabledSkills is empty', async () => {
+    it('should still project builtin auto skills when enabledSkills is empty', async () => {
+      existsSyncResults['/mock/builtin-skills/_builtin'] = true;
+      statResults['/mock/builtin-skills/_builtin/schedule'] = true;
+
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
         enabledSkills: [],
       });
-      expect(mkdirCalls).toHaveLength(0);
-      expect(symlinkCalls).toHaveLength(0);
+
+      expect(mkdirCalls).toContain('/tmp/workspace/.contextgo/skills');
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.claude/skills',
+        type: 'junction',
+      });
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/builtin-skills/_builtin/schedule',
+        target: '/tmp/workspace/.contextgo/skills/schedule',
+        type: 'junction',
+      });
     });
 
-    it('should skip when enabledSkills is undefined', async () => {
+    it('should still project builtin auto skills when enabledSkills is undefined', async () => {
+      existsSyncResults['/mock/builtin-skills/_builtin'] = true;
+      statResults['/mock/builtin-skills/_builtin/schedule'] = true;
+
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
       });
-      expect(mkdirCalls).toHaveLength(0);
+
+      expect(mkdirCalls).toContain('/tmp/workspace/.contextgo/skills');
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/builtin-skills/_builtin/schedule',
+        target: '/tmp/workspace/.contextgo/skills/schedule',
+        type: 'junction',
+      });
     });
 
     it('should skip symlink setup for unsupported backend', async () => {
@@ -320,16 +343,18 @@ describe('initAgent — skill support', () => {
     it('should resolve bundled skills from nested skill packs', async () => {
       existsSyncResults['/mock/builtin-skills/engineering-pack'] = true;
       existsSyncResults['/mock/builtin-skills/engineering-pack/skills'] = true;
-      statResults['/mock/builtin-skills/engineering-pack/skills/engineering-planning'] = true;
+      existsSyncResults['/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack'] = true;
+      existsSyncResults['/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills'] = true;
+      statResults['/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development'] = true;
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
-        enabledSkills: ['engineering-planning'],
+        enabledSkills: ['test-driven-development'],
       });
 
       expect(symlinkCalls).toContainEqual({
-        source: '/mock/builtin-skills/engineering-pack/skills/engineering-planning',
-        target: '/tmp/workspace/.contextgo/skills/engineering-planning',
+        source: '/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development',
+        target: '/tmp/workspace/.contextgo/skills/test-driven-development',
         type: 'junction',
       });
     });
@@ -350,7 +375,10 @@ describe('initAgent — skill support', () => {
       });
     });
 
-    it('should skip schedule skill (auto-injected via SkillManager)', async () => {
+    it('should project builtin auto skills like schedule into native workspaces', async () => {
+      existsSyncResults['/mock/builtin-skills/_builtin'] = true;
+      statResults['/mock/builtin-skills/_builtin/schedule'] = true;
+      statResults['/mock/builtin-skills/_builtin/contextgo-skills'] = true;
       statResults['/mock/user/skills/pptx'] = true;
 
       await setupAssistantWorkspace('/tmp/workspace', {
@@ -358,7 +386,16 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['schedule', 'pptx'],
       });
 
-      expect(symlinkCalls).toHaveLength(2);
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/builtin-skills/_builtin/schedule',
+        target: '/tmp/workspace/.contextgo/skills/schedule',
+        type: 'junction',
+      });
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/builtin-skills/_builtin/contextgo-skills',
+        target: '/tmp/workspace/.contextgo/skills/contextgo-skills',
+        type: 'junction',
+      });
       expect(symlinkCalls).toContainEqual({
         source: '/mock/user/skills/pptx',
         target: '/tmp/workspace/.contextgo/skills/pptx',

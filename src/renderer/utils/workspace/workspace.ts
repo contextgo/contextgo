@@ -20,6 +20,7 @@ const TEMP_WORKSPACE_REGEX = /-temp-\d+$/i;
 
 const splitPathSegments = (targetPath: string): string[] => targetPath.split(/[\\/]+/).filter(Boolean);
 const WORKSPACE_AUTOMATION_DIR = '.contextgo';
+const WORKSPACE_HOOKS_FILE_NAME = 'hooks.json';
 const WORKSPACE_COMMANDS_FILE_NAME = 'commands.json';
 const WORKSPACE_SCHEDULES_FILE_NAME = 'schedules.json';
 
@@ -96,6 +97,7 @@ export const getConversationWorkspacePath = (conversation: TChatConversation): s
 export type WorkspaceAutomationPaths = {
   rootDir: string;
   hooksDir: string;
+  hooksFile: string;
   commandsFile: string;
   schedulesFile: string;
 };
@@ -106,6 +108,7 @@ export const getWorkspaceAutomationPaths = (workspacePath: string): WorkspaceAut
   return {
     rootDir,
     hooksDir: joinWorkspacePath(rootDir, 'hooks'),
+    hooksFile: joinWorkspacePath(rootDir, WORKSPACE_HOOKS_FILE_NAME),
     commandsFile: joinWorkspacePath(rootDir, WORKSPACE_COMMANDS_FILE_NAME),
     schedulesFile: joinWorkspacePath(rootDir, WORKSPACE_SCHEDULES_FILE_NAME),
   };

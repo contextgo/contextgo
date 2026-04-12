@@ -19,9 +19,13 @@ vi.mock('@process/utils/initStorage', () => ({
 }));
 
 import {
+  copyWorkspaceAutomationHooks,
+  copyWorkspaceAutomationCommands,
   ensureHarnessWorkspaceAutomationForConversation,
   getWorkspaceCommandsFile,
   getWorkspaceHookDir,
+  getWorkspaceHooksFile,
+  readWorkspaceHookSelection,
 } from '../../../../src/process/bridge/services/workspaceAutomation';
 
 const seedBuiltinHooks = async (rootDir: string): Promise<void> => {
@@ -102,9 +106,10 @@ describe('workspaceAutomation harness bootstrap', () => {
     await expect(fs.readFile(path.join(qualityGateDir!, 'before_user_prompt.md'), 'utf-8')).resolves.toContain(
       'quality-gate'
     );
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toEqual(ENGINEERING_DEFAULT_HOOKS);
   });
 
-  it('bootstraps group workspaces when a harness assistant appears in the participant set', async () => {
+  it('bootstraps ECC workspace automation when the assistant appears in a group participant set', async () => {
     const workspaceDir = path.join(tempRoot, 'workspace-group');
     await fs.mkdir(workspaceDir, { recursive: true });
 
@@ -125,12 +130,19 @@ describe('workspaceAutomation harness bootstrap', () => {
       },
     } as any);
 
-    await expect(fs.readFile(getWorkspaceCommandsFile(workspaceDir)!, 'utf-8')).resolves.toContain('harness-brainstorm');
+    await expect(fs.readFile(getWorkspaceCommandsFile(workspaceDir)!, 'utf-8')).resolves.toContain('ecc-quality-gate');
+    await expect(fs.readFile(path.join(workspaceDir, '.claude', 'hooks', 'hooks.json'), 'utf-8')).resolves.toContain(
+      'CLAUDE_PLUGIN_ROOT'
+    );
+    await expect(fs.readFile(path.join(workspaceDir, '.claude', 'settings.local.json'), 'utf-8')).resolves.toContain(
+      'CLAUDE_PLUGIN_ROOT'
+    );
   });
 
   it('does not overwrite existing project commands or hook copies', async () => {
     const workspaceDir = path.join(tempRoot, 'workspace-customized');
     const commandsFile = getWorkspaceCommandsFile(workspaceDir)!;
+    const hooksFile = getWorkspaceHooksFile(workspaceDir)!;
     const qualityGateDir = getWorkspaceHookDir(workspaceDir, 'quality-gate')!;
     const qualityGatePrompt = path.join(qualityGateDir, 'before_user_prompt.md');
 
@@ -155,6 +167,17 @@ describe('workspaceAutomation harness bootstrap', () => {
     );
     await fs.mkdir(qualityGateDir, { recursive: true });
     await fs.writeFile(qualityGatePrompt, 'workspace-customized\n', 'utf-8');
+    await fs.writeFile(
+      hooksFile,
+      `${JSON.stringify(
+        {
+          enabledHooks: ['custom-review-hook'],
+        },
+        null,
+        2
+      )}\n`,
+      'utf-8'
+    );
 
     await ensureHarnessWorkspaceAutomationForConversation({
       type: 'acp',
@@ -167,11 +190,68 @@ describe('workspaceAutomation harness bootstrap', () => {
     await expect(fs.readFile(commandsFile, 'utf-8')).resolves.toContain('"keep-me"');
     await expect(fs.readFile(commandsFile, 'utf-8')).resolves.not.toContain('harness-brainstorm');
     await expect(fs.readFile(qualityGatePrompt, 'utf-8')).resolves.toBe('workspace-customized\n');
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toEqual(['custom-review-hook']);
 
     const planHookDir = getWorkspaceHookDir(workspaceDir, 'plan-before-coding');
     expect(planHookDir).not.toBeNull();
     await expect(fs.readFile(path.join(planHookDir!, 'before_user_prompt.md'), 'utf-8')).resolves.toContain(
       'plan-before-coding'
     );
+  });
+
+  it('copies workspace commands during temp-to-project migration', async () => {
+    const sourceWorkspace = path.join(tempRoot, 'workspace-source');
+    const targetWorkspace = path.join(tempRoot, 'workspace-target');
+    const sourceCommandsFile = getWorkspaceCommandsFile(sourceWorkspace)!;
+    const targetCommandsFile = getWorkspaceCommandsFile(targetWorkspace)!;
+
+    await fs.mkdir(path.dirname(sourceCommandsFile), { recursive: true });
+    await fs.writeFile(
+      sourceCommandsFile,
+      `${JSON.stringify(
+        [
+          {
+            type: 'custom',
+            id: 'copied-command',
+            enabled: true,
+            name: 'copied-command',
+            description: 'Copied from temp workspace',
+            template: 'echo copied',
+          },
+        ],
+        null,
+        2
+      )}\n`,
+      'utf-8'
+    );
+
+    await copyWorkspaceAutomationCommands(sourceWorkspace, targetWorkspace);
+
+    await expect(fs.readFile(targetCommandsFile, 'utf-8')).resolves.toContain('"copied-command"');
+  });
+
+  it('copies workspace hook selection during temp-to-project migration even when no hook directories were customized', async () => {
+    const sourceWorkspace = path.join(tempRoot, 'workspace-source-hooks');
+    const targetWorkspace = path.join(tempRoot, 'workspace-target-hooks');
+    const sourceHooksFile = getWorkspaceHooksFile(sourceWorkspace)!;
+    const targetHooksFile = getWorkspaceHooksFile(targetWorkspace)!;
+
+    await fs.mkdir(path.dirname(sourceHooksFile), { recursive: true });
+    await fs.writeFile(
+      sourceHooksFile,
+      `${JSON.stringify(
+        {
+          enabledHooks: ['quality-gate', 'plan-before-coding'],
+        },
+        null,
+        2
+      )}\n`,
+      'utf-8'
+    );
+
+    await copyWorkspaceAutomationHooks(sourceWorkspace, targetWorkspace);
+
+    await expect(fs.readFile(targetHooksFile, 'utf-8')).resolves.toContain('"quality-gate"');
+    await expect(readWorkspaceHookSelection(targetWorkspace)).resolves.toEqual(['quality-gate', 'plan-before-coding']);
   });
 });

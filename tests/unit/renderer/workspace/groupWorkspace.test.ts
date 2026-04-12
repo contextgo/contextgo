@@ -130,6 +130,7 @@ describe('groupWorkspace', () => {
         extra: {
           workspace: '/Users/bytedance/project/demo',
           customWorkspace: true,
+          nativeWorkspaceBootstrap: true,
         },
       },
       mergeExtra: true,
@@ -140,6 +141,7 @@ describe('groupWorkspace', () => {
         extra: {
           workspace: '/Users/bytedance/project/demo',
           customWorkspace: true,
+          nativeWorkspaceBootstrap: true,
         },
       },
       mergeExtra: true,
@@ -150,6 +152,7 @@ describe('groupWorkspace', () => {
         extra: {
           workspace: '/Users/bytedance/project/demo',
           customWorkspace: true,
+          nativeWorkspaceBootstrap: true,
         },
       },
       mergeExtra: true,

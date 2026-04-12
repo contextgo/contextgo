@@ -20,6 +20,7 @@ import {
 } from './routerLocation';
 import Layout from './Layout';
 import Sider from './Sider';
+import { OFFICIAL_REMOTE_DEVICES_ROUTE } from '@renderer/utils/officialRemote';
 
 type LazyRouteLoader = () => Promise<{ default: React.ComponentType }>;
 
@@ -27,6 +28,7 @@ const loadConversation = () => import('@renderer/pages/conversation');
 const loadConnectorsPage = () => import('@renderer/pages/connectors');
 const loadGuid = () => import('@renderer/pages/guid');
 const loadGlobalScheduleSettings = () => import('@renderer/pages/schedule/GlobalScheduleSettings');
+const loadRemoteDevicesPage = () => import('@renderer/pages/RemoteDevicesPage');
 const loadAgentSettings = () => import('@renderer/pages/settings/AgentSettings');
 const loadAgentEntrySettings = () => import('@renderer/pages/settings/AgentSettings/AgentEntrySettings');
 const loadHooksManagement = () => import('@renderer/pages/settings/AgentSettings/HooksManagement');
@@ -268,7 +270,11 @@ const RoutedPanels: React.FC<{
       <Route element={<ProtectedLayout status={status} />}>
         <Route index element={<StartupConversationRedirect />} />
         <Route path='/guid' element={withRouteFallback(loadGuid, '/guid')} />
-        <Route path='/hooks' element={withRouteFallback(loadHooksManagement, '/hooks')} />
+        <Route
+          path={OFFICIAL_REMOTE_DEVICES_ROUTE}
+          element={withRouteFallback(loadRemoteDevicesPage, OFFICIAL_REMOTE_DEVICES_ROUTE)}
+        />
+        <Route path='/hooks' element={<Navigate to='/settings/hooks' replace />} />
         <Route path='/connectors' element={withRouteFallback(loadConnectorsPage, '/connectors')} />
         <Route
           path='/connectors/:connectorId'
@@ -281,8 +287,11 @@ const RoutedPanels: React.FC<{
         <Route path='/settings/gemini' element={withRouteFallback(loadGeminiSettings, '/settings/gemini')} />
         <Route path='/settings/model' element={withRouteFallback(loadModeSettings, '/settings/model')} />
         <Route path='/settings/agent' element={withRouteFallback(loadAgentSettings, '/settings/agent')} />
-        <Route path='/settings/hooks' element={<Navigate to='/hooks' replace />} />
-        <Route path='/settings/schedule' element={withRouteFallback(loadGlobalScheduleSettings, '/settings/schedule')} />
+        <Route path='/settings/hooks' element={withRouteFallback(loadHooksManagement, '/settings/hooks')} />
+        <Route
+          path='/settings/schedule'
+          element={withRouteFallback(loadGlobalScheduleSettings, '/settings/schedule')}
+        />
         <Route path='/settings/skills-hub' element={withRouteFallback(loadSkillsHubSettings, '/settings/skills-hub')} />
         <Route path='/settings/display' element={<Navigate to='/settings/system' replace />} />
         <Route path='/settings/webui' element={withRouteFallback(loadWebuiSettings, '/settings/webui')} />

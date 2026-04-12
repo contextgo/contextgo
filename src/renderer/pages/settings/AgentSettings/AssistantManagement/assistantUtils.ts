@@ -13,10 +13,15 @@ import type {
 /**
  * Check if a builtin assistant has skills config (defaultEnabledSkills or skillFiles).
  */
+export const getBuiltinAssistantPreset = (assistantId: string) => {
+  if (!assistantId.startsWith('builtin-')) return undefined;
+  const presetId = assistantId.replace('builtin-', '');
+  return ASSISTANT_PRESETS.find((p) => p.id === presetId);
+};
+
 export const hasBuiltinSkills = (assistantId: string): boolean => {
   if (!assistantId.startsWith('builtin-')) return false;
-  const presetId = assistantId.replace('builtin-', '');
-  const preset = ASSISTANT_PRESETS.find((p) => p.id === presetId);
+  const preset = getBuiltinAssistantPreset(assistantId);
   if (!preset) return false;
   const hasDefaultSkills = preset.defaultEnabledSkills && preset.defaultEnabledSkills.length > 0;
   const hasSkillFiles = preset.skillFiles && Object.keys(preset.skillFiles).length > 0;
@@ -177,8 +182,11 @@ export const getRelevantAssistantSkills = ({
         compatibility: existingSkill.compatibility,
         dependencyHints: existingSkill.dependencyHints,
         openAIConfig: existingSkill.openAIConfig,
+        location: existingSkill.location,
         isCustom: existingSkill.isCustom,
         isPending: false,
+        packageOwnerPresetIds: existingSkill.packageOwnerPresetIds,
+        hiddenFromSkillsLibrary: existingSkill.hiddenFromSkillsLibrary,
       };
     }
 
@@ -188,8 +196,11 @@ export const getRelevantAssistantSkills = ({
       compatibility: undefined,
       dependencyHints: undefined,
       openAIConfig: undefined,
+      location: undefined,
       isCustom: false,
       isPending: false,
+      packageOwnerPresetIds: undefined,
+      hiddenFromSkillsLibrary: undefined,
     };
   });
 };

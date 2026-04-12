@@ -9,14 +9,7 @@ import type { AvailableAgent } from './agentTypes';
 
 export const AVAILABLE_AGENTS_SWR_KEY = 'acp.agents.available';
 
-export const PRODUCT_VISIBLE_RUNTIME_BACKENDS = [
-  'gemini',
-  'claude',
-  'codex',
-  'opencode',
-  'openclaw-gateway',
-  'nanobot',
-] as const;
+export const PRODUCT_VISIBLE_RUNTIME_BACKENDS = ['gemini', 'claude', 'codex', 'opencode'] as const;
 
 export const PRODUCT_VISIBLE_PRESET_AGENT_TYPES = ['gemini', 'claude', 'codex', 'opencode'] as const;
 

@@ -44,6 +44,7 @@
   ],
   "exclude": [
     "src/process/services/database/drivers/BunSqliteDriver.ts",
-    "src/process/services/database/drivers/BunSqliteDriver.bun.test.ts"
+    "src/process/services/database/drivers/BunSqliteDriver.bun.test.ts",
+    "src/process/resources/**/rules/assets/**/*.tsx"
   ]
 }

@@ -28,7 +28,7 @@ export const useAssistantHooks = ({
     setHooksLoading(true);
     try {
       const [hooks, paths] = await Promise.all([
-        ipcBridge.fs.listAvailableHooks.invoke(),
+        ipcBridge.fs.listAvailableHooks.invoke({}),
         ipcBridge.fs.getHookPaths.invoke(),
       ]);
       setAvailableHooks(hooks);

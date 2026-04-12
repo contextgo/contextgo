@@ -1,4 +1,4 @@
-import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
+import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import {
@@ -7,9 +7,9 @@ import {
   Communication,
   ConnectionPoint,
   Info,
+  Puzzle,
   Robot,
   LinkCloud,
-  Puzzle,
   System,
   Terminal,
 } from '@icon-park/react';
@@ -26,6 +26,7 @@ const BUILTIN_TAB_IDS = [
   'schedule',
   'runtime',
   'commands',
+  'hooks',
   'webui',
   'channels',
   'activeSessions',
@@ -124,6 +125,12 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         path: 'runtime',
       },
       commands: { id: 'commands', label: t('settings.commands.title'), icon: <Command />, path: 'commands' },
+      hooks: {
+        id: 'hooks',
+        label: t('settings.hooksPage', { defaultValue: 'Hooks' }),
+        icon: <Puzzle />,
+        path: 'hooks',
+      },
       webui: {
         id: 'webui',
         label: t('settings.webui'),

@@ -417,6 +417,7 @@ describe('Sider', () => {
     const { container } = renderSider('/skills-hub');
 
     expect(await screen.findByText('conversation.entry.create')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remote Devices' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Hooks' })).toBeInTheDocument();
     expect(container.querySelector('.sider-main-section--desktop-chrome-offset')).toBeTruthy();
   });
@@ -434,6 +435,15 @@ describe('Sider', () => {
 
     expect(hooksButton).toBeInTheDocument();
     expect(hooksButton.className).toContain('sider-entry-row--active');
+    expect(container.querySelector('.sider-main-section--desktop-chrome-offset')).toBeTruthy();
+  });
+
+  it('marks remote devices as a first-level active feature entry on the remote devices route', async () => {
+    const { container } = renderSider('/remote/devices');
+    const remoteDevicesButton = await screen.findByRole('button', { name: 'Remote Devices' });
+
+    expect(remoteDevicesButton).toBeInTheDocument();
+    expect(remoteDevicesButton.className).toContain('sider-entry-row--active');
     expect(container.querySelector('.sider-main-section--desktop-chrome-offset')).toBeTruthy();
   });
 

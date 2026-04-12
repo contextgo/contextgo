@@ -48,6 +48,7 @@ export const useWorkspaceSelector = (conversationId: string, eventPrefix: Worksp
           ...conversation.extra,
           workspace: workspacePath,
           customWorkspace: true,
+          nativeWorkspaceBootstrap: true,
         },
       };
 
