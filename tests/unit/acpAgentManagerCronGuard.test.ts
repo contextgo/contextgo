@@ -26,6 +26,7 @@ vi.mock('@process/utils/mainLogger', () => ({
 }));
 vi.mock('@process/utils/initStorage', () => ({
   ProcessConfig: { getConfig: vi.fn(() => ({})), get: vi.fn() },
+  getSkillsDir: vi.fn(() => '/tmp/skills'),
 }));
 vi.mock('@/common', () => ({
   ipcBridge: { acpConversation: { responseStream: { emit: vi.fn() } } },

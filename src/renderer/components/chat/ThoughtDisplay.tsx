@@ -5,6 +5,7 @@
  */
 
 import { Button, Tag, Spin } from '@arco-design/web-react';
+import { SquareSmall } from '@icon-park/react';
 import MarkdownView from '@/renderer/components/Markdown';
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,12 +32,7 @@ const formatElapsedTime = (seconds: number): string => {
   return `${minutes}m ${remainingSeconds}s`;
 };
 
-const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
-  thought,
-  style = 'default',
-  running = false,
-  onStop,
-}) => {
+const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({ thought, style = 'default', running = false, onStop }) => {
   const summarizedDescription = useMemo(() => {
     const normalized = thought.description.replace(/\s+/g, ' ').trim();
     if (!normalized) {
@@ -137,7 +133,7 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
           type='text'
           className='!h-24px !min-w-24px !rounded-full !px-0 !text-[rgb(var(--danger-6))] hover:!bg-[rgba(var(--danger-6),0.12)] hover:!text-[rgb(var(--danger-6))]'
           aria-label={t('conversation.group.workflow.decision.stop')}
-          icon={<div className='mx-auto h-8px w-8px rounded-[2px] bg-current' />}
+          icon={<SquareSmall theme='filled' size='8' fill='currentColor' strokeWidth={3} />}
           onClick={onStop}
         />
       ) : null}

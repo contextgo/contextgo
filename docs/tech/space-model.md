@@ -137,6 +137,7 @@ Space -> Project -> Thread -> Agent execution
 
 - 持久上下文归属
 - connector 归属
+- channel / publication 归属
 - thread / task 默认边界
 - 长期文档、画板、artifact、source item 组织
 
@@ -153,6 +154,66 @@ Space -> Project -> Thread -> Agent execution
 
 - `Space` 可以只对应一个项目
 - 也可以高于单个项目，承载跨项目共享上下文
+
+### Connector
+
+`Connector` 是外部产品访问与操作边界。
+
+它回答的问题是：
+
+- agent 通过什么受管执行面访问外部产品
+- 这个产品能力由哪个控制面负责安装、鉴权、调用和状态管理
+- 这些访问结果如何沉淀进 space context
+
+在当前方向里：
+
+- `connector` 由 `cgo` 统一承载
+- `connector` 代表外部产品能力边界，而不是产品内 UI 模块
+- `connector` 可以对应官方 CLI、官方 SDK、官方 API、MCP 或受管本地 runtime
+- `connector` 的运行态、鉴权态、collect/store 流程应优先由 `cgo` 管理
+
+例子：
+
+- `github`
+- `notion`
+- `obsidian`
+- `google-drive`
+- `clipboard`
+- `browser-extension`
+
+因此必须明确：
+
+- `connector` 不是 IM 发布渠道
+- `connector` 也不是 coding runtime
+- `connector` 更不是某个 skill 本身
+
+### Channel / Publication
+
+`Channel` / `Publication` 是 Agent 对外发布与交互的渠道边界。
+
+它回答的问题是：
+
+- agent 把消息发到哪里
+- 远端用户通过哪个 IM 渠道与 agent 互动
+- 哪个 audience / peer / chat 绑定到哪个 published agent
+
+它属于产品内消息分发与远端交互模型，而不属于 connector 模型。
+
+例子：
+
+- Slack bot publication
+- Telegram bot publication
+- Discord bot publication
+- Weixin bot publication
+- Lark bot publication
+- DingTalk bot publication
+
+因此：
+
+- `channel / publication` 是输出面 / 交互面
+- `connector` 是输入面 / 操作面
+- 两者都可能属于某个 `Space`
+- 但它们不是同一个对象，也不应共用同一套产品术语
 
 ### Project
 
@@ -257,6 +318,45 @@ Space -> Project -> Thread -> Agent execution
 - 某个 agent runtime 启动时实际绑定的 cwd
 - 某次执行使用的本地目录
 - 某个临时目录、仓库目录、导出目录或素材目录
+
+### Coding Runtime
+
+`Coding Runtime` 是 agent 实际运行所在的编码执行器。
+
+它回答的问题是：
+
+- 当前这次 agent 执行跑在什么 CLI / runtime 上
+- 哪个 runtime 负责读取 native skills、执行工具调用、产生日志与会话
+
+当前明确支持的 coding runtime 是：
+
+- `opencode`
+- `claudecode`
+- `gemini`
+- `codex`
+
+其中：
+
+- 产品层会把 repo-local skill 投影到这些 runtime 能识别的目录
+- runtime 负责真正加载 skill
+- runtime 本身不等于 connector
+
+### Skill
+
+`Skill` 是 agent 的使用说明与操作引导，不是 connector 的执行主体。
+
+它回答的问题是：
+
+- agent 应该如何调用某个 connector
+- 某类任务应该遵循什么操作顺序
+- runtime 已经可用的工具、CLI 和约束应该怎样被正确使用
+
+在当前模型里：
+
+- 项目内 repo-local skill 放在 `.connector/skills`
+- skill 通过 workspace bootstrap 投影到 coding runtime 的 native skill 目录
+- skill 负责教 agent 怎么用 connector
+- `cgo` 负责真正执行 connector 命令和管理 connector 运行态
 
 它和 `Mount` 的关系应该是：
 

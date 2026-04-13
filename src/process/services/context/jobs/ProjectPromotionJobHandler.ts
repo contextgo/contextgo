@@ -32,9 +32,7 @@ function getCandidate(job: ContextJob): ProjectPromotionCandidate | undefined {
 }
 
 export class ProjectPromotionJobHandler {
-  constructor(
-    private readonly vaultSyncService: SupportedVaultSyncService = new SpaceVaultContextSyncService()
-  ) {}
+  constructor(private readonly vaultSyncService: SupportedVaultSyncService = new SpaceVaultContextSyncService()) {}
 
   async run(job: ContextJob): Promise<ProjectPromotionArtifact | undefined> {
     if (job.type !== 'project_promotion') {

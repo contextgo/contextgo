@@ -10,9 +10,7 @@ import type { ConnectorDigestArtifact, ContextJob } from '../contextDomain';
 type SupportedVaultSyncService = Pick<SpaceVaultContextSyncService, 'writeConnectorDigest'>;
 
 export class ConnectorDigestJobHandler {
-  constructor(
-    private readonly vaultSyncService: SupportedVaultSyncService = new SpaceVaultContextSyncService()
-  ) {}
+  constructor(private readonly vaultSyncService: SupportedVaultSyncService = new SpaceVaultContextSyncService()) {}
 
   async run(job: ContextJob): Promise<ConnectorDigestArtifact | undefined> {
     if (job.type !== 'connector_digest' && job.type !== 'session_pattern_detection') {

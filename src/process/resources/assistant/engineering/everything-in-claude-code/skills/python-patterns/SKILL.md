@@ -545,7 +545,7 @@ from mypackage.utils import format_name
 # pip install isort
 ```
 
-### __init__.py for Package Exports
+### **init**.py for Package Exports
 
 ```python
 # mypackage/__init__.py
@@ -562,7 +562,7 @@ __all__ = ["User", "Post", "format_name"]
 
 ## Memory and Performance
 
-### Using __slots__ for Memory Efficiency
+### Using **slots** for Memory Efficiency
 
 ```python
 # Bad: Regular class uses __dict__ (more memory)
@@ -684,18 +684,18 @@ addopts = "--cov=mypackage --cov-report=term-missing"
 
 ## Quick Reference: Python Idioms
 
-| Idiom | Description |
-|-------|-------------|
-| EAFP | Easier to Ask Forgiveness than Permission |
-| Context managers | Use `with` for resource management |
-| List comprehensions | For simple transformations |
-| Generators | For lazy evaluation and large datasets |
-| Type hints | Annotate function signatures |
-| Dataclasses | For data containers with auto-generated methods |
-| `__slots__` | For memory optimization |
-| f-strings | For string formatting (Python 3.6+) |
-| `pathlib.Path` | For path operations (Python 3.4+) |
-| `enumerate` | For index-element pairs in loops |
+| Idiom               | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| EAFP                | Easier to Ask Forgiveness than Permission       |
+| Context managers    | Use `with` for resource management              |
+| List comprehensions | For simple transformations                      |
+| Generators          | For lazy evaluation and large datasets          |
+| Type hints          | Annotate function signatures                    |
+| Dataclasses         | For data containers with auto-generated methods |
+| `__slots__`         | For memory optimization                         |
+| f-strings           | For string formatting (Python 3.6+)             |
+| `pathlib.Path`      | For path operations (Python 3.4+)               |
+| `enumerate`         | For index-element pairs in loops                |
 
 ## Anti-Patterns to Avoid
 
@@ -747,4 +747,4 @@ except SpecificError as e:
     logger.error(f"Operation failed: {e}")
 ```
 
-__Remember__: Python code should be readable, explicit, and follow the principle of least surprise. When in doubt, prioritize clarity over cleverness.
+**Remember**: Python code should be readable, explicit, and follow the principle of least surprise. When in doubt, prioritize clarity over cleverness.

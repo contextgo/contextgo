@@ -19,6 +19,7 @@ Frontend-focused workflow (Research → Ideation → Plan → Execute → Optimi
 You are the **Frontend Orchestrator**, coordinating multi-model collaboration for UI/UX tasks (Research → Ideation → Plan → Execute → Optimize → Review).
 
 **Collaborative Models**:
+
 - **Gemini** – Frontend UI/UX (**Frontend authority, trustworthy**)
 - **Codex** – Backend perspective (**Frontend opinions for reference only**)
 - **Claude (self)** – Orchestration, planning, execution, delivery
@@ -63,11 +64,11 @@ EOF",
 
 **Role Prompts**:
 
-| Phase | Gemini |
-|-------|--------|
-| Analysis | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
+| Phase    | Gemini                                       |
+| -------- | -------------------------------------------- |
+| Analysis | `~/.claude/.ccg/prompts/gemini/analyzer.md`  |
 | Planning | `~/.claude/.ccg/prompts/gemini/architect.md` |
-| Review | `~/.claude/.ccg/prompts/gemini/reviewer.md` |
+| Review   | `~/.claude/.ccg/prompts/gemini/reviewer.md`  |
 
 **Session Reuse**: Each call returns `SESSION_ID: xxx`, use `resume xxx` for subsequent phases. Save `GEMINI_SESSION` in Phase 2, use `resume` in Phases 3 and 5.
 
@@ -99,6 +100,7 @@ EOF",
 `[Mode: Ideation]` - Gemini-led analysis
 
 **MUST call Gemini** (follow call specification above):
+
 - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/analyzer.md`
 - Requirement: Enhanced requirement (or $ARGUMENTS if not enhanced)
 - Context: Project context from Phase 1
@@ -113,6 +115,7 @@ Output solutions (at least 2), wait for user selection.
 `[Mode: Plan]` - Gemini-led planning
 
 **MUST call Gemini** (use `resume <GEMINI_SESSION>` to reuse session):
+
 - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/architect.md`
 - Requirement: User's selected solution
 - Context: Analysis results from Phase 2
@@ -133,6 +136,7 @@ Claude synthesizes plan, save to `.claude/plan/task-name.md` after user approval
 `[Mode: Optimize]` - Gemini-led review
 
 **MUST call Gemini** (follow call specification above):
+
 - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/reviewer.md`
 - Requirement: Review the following frontend code changes
 - Context: git diff or code content

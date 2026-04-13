@@ -64,7 +64,15 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({ openFileSelector, o
 
   // Electron desktop: simple button, no dropdown needed
   if (isElectronDesktop()) {
-    return <Button className='sendbox-tool-button' type='secondary' shape='circle' icon={plusIcon} onClick={openFileSelector} />;
+    return (
+      <Button
+        className='sendbox-tool-button'
+        type='secondary'
+        shape='circle'
+        icon={plusIcon}
+        onClick={openFileSelector}
+      />
+    );
   }
 
   // WebUI: dropdown with two options

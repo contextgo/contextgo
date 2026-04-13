@@ -39,14 +39,26 @@ vi.mock('../../src/common/config/presets/assistantPresets', () => ({
       id: 'test-preset',
       avatar: '🧪',
       presetAgentType: 'gemini',
-      ruleFiles: { 'en-US': 'test-preset.md' },
-      skillFiles: { 'en-US': 'test-preset-skill.md' },
-      defaultEnabledSkills: ['preset-skill'],
-      defaultEnabledHooks: ['prompt-clarifier'],
       nameI18n: { 'en-US': 'Test Preset' },
       descriptionI18n: { 'en-US': 'A test preset' },
     },
   ],
+}));
+
+vi.mock('../../src/common/config/presets/bundledAgentPackageRegistry', () => ({
+  getBundledAgentPackageRulesFiles: vi.fn((assistantId: string) =>
+    assistantId === 'builtin-test-preset' ? { 'en-US': 'test-preset.md' } : undefined
+  ),
+  getBundledAgentPackageDefaultEnabledSkillNames: vi.fn((assistantId: string) =>
+    assistantId === 'builtin-test-preset' ? ['preset-skill'] : undefined
+  ),
+  getBundledAgentPackageDefaultEnabledHookNames: vi.fn((assistantId: string) =>
+    assistantId === 'builtin-test-preset' ? ['prompt-clarifier'] : undefined
+  ),
+  getBundledAgentPackageWorkspaceSkillBootstrapStrategy: vi.fn(() => undefined),
+  getBundledAgentPackageOwnedSkillNames: vi.fn(() => undefined),
+  getBundledAgentPackageHideOwnedSkillsFromLibrary: vi.fn(() => undefined),
+  hasBundledAgentPackageSkillsPayload: vi.fn((assistantId: string) => assistantId === 'builtin-test-preset'),
 }));
 
 import { useAgentAvailability } from '../../src/renderer/pages/guid/hooks/useAgentAvailability';

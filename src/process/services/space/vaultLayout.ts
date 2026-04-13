@@ -24,6 +24,12 @@ export const PROJECT_SESSION_STATE_DIR_NAME = 'sessions';
 export const PROJECT_GRAPH_FILE_NAME = 'Project Graph.canvas';
 export const PROJECT_INSIGHTS_FILE_NAME = 'Project Insights.md';
 export const PROJECT_BASELINE_FILE_NAME = 'baseline.md';
+export const PROJECT_CAPABILITIES_FILE_NAME = 'Capabilities.md';
+export const PROJECT_CAPABILITIES_DIR_NAME = 'capabilities';
+export const PROJECT_CAPABILITY_SKILLS_DIR_NAME = 'skills';
+export const PROJECT_CAPABILITY_HOOKS_DIR_NAME = 'hooks';
+export const PROJECT_CAPABILITY_COMMANDS_DIR_NAME = 'commands';
+export const PROJECT_CAPABILITY_SCHEDULES_DIR_NAME = 'schedules';
 export const SESSION_WORKING_SET_FILE_NAME = 'working-set.md';
 
 export type ConversationDocumentPaths = {
@@ -61,6 +67,31 @@ export const getProjectInsightsRelativePath = (projectFolderName: string): strin
 
 export const getProjectBaselineRelativePath = (projectFolderName: string): string => {
   return path.posix.join(PROJECTS_DIR, projectFolderName, PROJECT_CONTEXT_DIR, PROJECT_BASELINE_FILE_NAME);
+};
+
+export const getProjectCapabilitiesRelativePath = (projectFolderName: string): string => {
+  return path.posix.join(PROJECTS_DIR, projectFolderName, PROJECT_CONTEXT_DIR, PROJECT_CAPABILITIES_FILE_NAME);
+};
+
+export const getProjectCapabilityItemsRelativeDir = (projectFolderName: string, capabilityDirName: string): string => {
+  return path.posix.join(
+    PROJECTS_DIR,
+    projectFolderName,
+    PROJECT_CONTEXT_DIR,
+    PROJECT_CAPABILITIES_DIR_NAME,
+    capabilityDirName
+  );
+};
+
+export const getProjectCapabilityItemRelativePath = (
+  projectFolderName: string,
+  capabilityDirName: string,
+  itemName: string
+): string => {
+  return path.posix.join(
+    getProjectCapabilityItemsRelativeDir(projectFolderName, capabilityDirName),
+    `${sanitizeVaultPathSegment(itemName)}.md`
+  );
 };
 
 export const getProjectSessionsRelativeDir = (projectFolderName: string): string => {

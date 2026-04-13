@@ -313,8 +313,6 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         if (legacyYoloMode && this.currentMode === 'default' && !data.sessionMode) {
           const yoloModeValues: Record<string, string> = {
             claude: 'bypassPermissions',
-            qwen: 'yolo',
-            iflow: 'yolo',
             codex: 'yolo',
           };
           this.currentMode = yoloModeValues[data.backend] || 'yolo';
@@ -331,7 +329,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         // the user's explicit mode choice. data.yoloMode (scheduled jobs) always takes priority.
         yoloMode = data.yoloMode ?? this.isYoloMode(this.currentMode);
 
-        // Get acpArgs from backend config (for goose, auggie, opencode, etc.)
+        // Get acpArgs from backend config when the runtime provides custom ACP launch args.
         const backendConfig = ACP_BACKENDS_ALL[data.backend];
         if (backendConfig?.acpArgs) {
           customArgs = backendConfig.acpArgs;
@@ -1244,7 +1242,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
 
   /**
    * Cache model list to storage for Guid page pre-selection.
-   * Keyed by backend name (e.g., 'claude', 'qwen').
+   * Keyed by backend name (for example 'claude' or 'codex').
    */
   private async cacheModelList(modelInfo: AcpModelInfo): Promise<void> {
     try {

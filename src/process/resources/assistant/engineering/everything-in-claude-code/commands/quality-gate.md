@@ -24,6 +24,7 @@ This command mirrors hook behavior but is operator-invoked.
 ## Arguments
 
 $ARGUMENTS:
+
 - `[path|.]` optional target path
 - `--fix` optional
 - `--strict` optional

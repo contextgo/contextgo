@@ -46,9 +46,7 @@ function normalizeLine(value: string | undefined): string | undefined {
 }
 
 function uniqueStrings(values: readonly (string | undefined)[]): string[] {
-  const normalized = values
-    .map(value => normalizeLine(value))
-    .filter((value): value is string => Boolean(value));
+  const normalized = values.map((value) => normalizeLine(value)).filter((value): value is string => Boolean(value));
   return Array.from(new Set(normalized));
 }
 
@@ -71,7 +69,7 @@ function buildFallbackSummary(input: CompactionSummaryInput): StructuredCompacti
   const stableStrategies = uniqueStrings(input.promotedSummaries).slice(0, SUMMARY_MODEL_MAX_ITEMS);
   const pendingConstraints = uniqueStrings(input.pendingSummaries).slice(0, SUMMARY_MODEL_MAX_ITEMS);
   const failureModes = uniqueStrings([
-    ...input.signalKinds.map(signalKind => mapSignalToFailureMode(signalKind)),
+    ...input.signalKinds.map((signalKind) => mapSignalToFailureMode(signalKind)),
     input.snapshot.lastAssistantOutcome && /fail|error|blocked|retry|timeout/i.test(input.snapshot.lastAssistantOutcome)
       ? `Recent assistant outcome indicates execution friction: ${input.snapshot.lastAssistantOutcome}`
       : undefined,
@@ -91,7 +89,7 @@ function selectProvider(providers: readonly IProvider[]): TProviderWithModel | u
       continue;
     }
 
-    const enabledModels = (provider.model || []).filter(model => provider.modelEnabled?.[model] !== false);
+    const enabledModels = (provider.model || []).filter((model) => provider.modelEnabled?.[model] !== false);
     const useModel = enabledModels[0];
     if (!useModel) {
       continue;
@@ -129,7 +127,7 @@ function readChatContent(response: ChatCompletionLike): string | undefined {
 
   if (Array.isArray(content)) {
     const textParts = content
-      .map(part => {
+      .map((part) => {
         if (typeof part === 'string') {
           return part;
         }
@@ -196,14 +194,18 @@ function buildPrompt(input: CompactionSummaryInput): string {
 }
 
 export class ContextCompactionSummarizer {
-  constructor(private readonly providerLoader: () => Promise<TProviderWithModel | undefined> = async () => {
-    const providers = (await ProcessConfig.get('model.config')) as IProvider[] | undefined;
-    return selectProvider(Array.isArray(providers) ? providers : []);
-  }) {}
+  constructor(
+    private readonly providerLoader: () => Promise<TProviderWithModel | undefined> = async () => {
+      const providers = (await ProcessConfig.get('model.config')) as IProvider[] | undefined;
+      return selectProvider(Array.isArray(providers) ? providers : []);
+    }
+  ) {}
 
   async summarize(input: CompactionSummaryInput): Promise<StructuredCompactionSummary> {
     const fallback = buildFallbackSummary(input);
-    const provider: TProviderWithModel | undefined = await this.providerLoader().catch((): TProviderWithModel | undefined => undefined);
+    const provider: TProviderWithModel | undefined = await this.providerLoader().catch(
+      (): TProviderWithModel | undefined => undefined
+    );
     if (!provider) {
       return fallback;
     }
@@ -236,7 +238,8 @@ export class ContextCompactionSummarizer {
         currentTask: parsed.currentTask || fallback.currentTask,
         stableStrategies: parsed.stableStrategies.length > 0 ? parsed.stableStrategies : fallback.stableStrategies,
         failureModes: parsed.failureModes.length > 0 ? parsed.failureModes : fallback.failureModes,
-        pendingConstraints: parsed.pendingConstraints.length > 0 ? parsed.pendingConstraints : fallback.pendingConstraints,
+        pendingConstraints:
+          parsed.pendingConstraints.length > 0 ? parsed.pendingConstraints : fallback.pendingConstraints,
       };
     } catch {
       return fallback;

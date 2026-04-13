@@ -18,6 +18,7 @@ An interactive, step-by-step installation wizard for the Everything Claude Code 
 ## Prerequisites
 
 This skill must be accessible to Claude Code before activation. Two ways to bootstrap:
+
 1. **Via Plugin**: `/plugin install everything-claude-code` — the plugin loads this skill automatically
 2. **Manual**: Copy only this skill to `~/.claude/skills/configure-ecc/SKILL.md`, then activate by saying "configure ecc"
 
@@ -51,11 +52,13 @@ Options:
 ```
 
 Store the choice as `INSTALL_LEVEL`. Set the target directory:
+
 - User-level: `TARGET=~/.claude`
 - Project-level: `TARGET=.claude` (relative to current project root)
 - Both: `TARGET_USER=~/.claude`, `TARGET_PROJECT=.claude`
 
 Create the target directories if they don't exist:
+
 ```bash
 mkdir -p $TARGET/skills $TARGET/rules
 ```
@@ -69,6 +72,7 @@ mkdir -p $TARGET/skills $TARGET/rules
 Default to **Core (recommended for new users)** — copy `.agents/skills/*` plus `skills/search-first/` for research-first workflows. This bundle covers engineering, evals, verification, security, strategic compaction, frontend design, and Anthropic cross-functional skills (article-writing, content-engine, market-research, frontend-slides).
 
 Use `AskUserQuestion` (single select):
+
 ```
 Question: "Install core skills only, or include niche/framework packs?"
 Options:
@@ -103,98 +107,99 @@ For each selected category, print the full list of skills below and ask the user
 
 **Category: Framework & Language (21 skills)**
 
-| Skill | Description |
-|-------|-------------|
-| `backend-patterns` | Backend architecture, API design, server-side best practices for Node.js/Express/Next.js |
-| `coding-standards` | Universal coding standards for TypeScript, JavaScript, React, Node.js |
-| `django-patterns` | Django architecture, REST API with DRF, ORM, caching, signals, middleware |
-| `django-security` | Django security: auth, CSRF, SQL injection, XSS prevention |
-| `django-tdd` | Django testing with pytest-django, factory_boy, mocking, coverage |
-| `django-verification` | Django verification loop: migrations, linting, tests, security scans |
-| `laravel-patterns` | Laravel architecture patterns: routing, controllers, Eloquent, queues, caching |
-| `laravel-security` | Laravel security: auth, policies, CSRF, mass assignment, rate limiting |
-| `laravel-tdd` | Laravel testing with PHPUnit and Pest, factories, fakes, coverage |
-| `laravel-verification` | Laravel verification: linting, static analysis, tests, security scans |
-| `frontend-patterns` | React, Next.js, state management, performance, UI patterns |
-| `frontend-slides` | Zero-dependency HTML presentations, style previews, and PPTX-to-web conversion |
-| `golang-patterns` | Idiomatic Go patterns, conventions for robust Go applications |
-| `golang-testing` | Go testing: table-driven tests, subtests, benchmarks, fuzzing |
-| `java-coding-standards` | Java coding standards for Spring Boot: naming, immutability, Optional, streams |
-| `python-patterns` | Pythonic idioms, PEP 8, type hints, best practices |
-| `python-testing` | Python testing with pytest, TDD, fixtures, mocking, parametrization |
-| `springboot-patterns` | Spring Boot architecture, REST API, layered services, caching, async |
-| `springboot-security` | Spring Security: authn/authz, validation, CSRF, secrets, rate limiting |
-| `springboot-tdd` | Spring Boot TDD with JUnit 5, Mockito, MockMvc, Testcontainers |
-| `springboot-verification` | Spring Boot verification: build, static analysis, tests, security scans |
+| Skill                     | Description                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `backend-patterns`        | Backend architecture, API design, server-side best practices for Node.js/Express/Next.js |
+| `coding-standards`        | Universal coding standards for TypeScript, JavaScript, React, Node.js                    |
+| `django-patterns`         | Django architecture, REST API with DRF, ORM, caching, signals, middleware                |
+| `django-security`         | Django security: auth, CSRF, SQL injection, XSS prevention                               |
+| `django-tdd`              | Django testing with pytest-django, factory_boy, mocking, coverage                        |
+| `django-verification`     | Django verification loop: migrations, linting, tests, security scans                     |
+| `laravel-patterns`        | Laravel architecture patterns: routing, controllers, Eloquent, queues, caching           |
+| `laravel-security`        | Laravel security: auth, policies, CSRF, mass assignment, rate limiting                   |
+| `laravel-tdd`             | Laravel testing with PHPUnit and Pest, factories, fakes, coverage                        |
+| `laravel-verification`    | Laravel verification: linting, static analysis, tests, security scans                    |
+| `frontend-patterns`       | React, Next.js, state management, performance, UI patterns                               |
+| `frontend-slides`         | Zero-dependency HTML presentations, style previews, and PPTX-to-web conversion           |
+| `golang-patterns`         | Idiomatic Go patterns, conventions for robust Go applications                            |
+| `golang-testing`          | Go testing: table-driven tests, subtests, benchmarks, fuzzing                            |
+| `java-coding-standards`   | Java coding standards for Spring Boot: naming, immutability, Optional, streams           |
+| `python-patterns`         | Pythonic idioms, PEP 8, type hints, best practices                                       |
+| `python-testing`          | Python testing with pytest, TDD, fixtures, mocking, parametrization                      |
+| `springboot-patterns`     | Spring Boot architecture, REST API, layered services, caching, async                     |
+| `springboot-security`     | Spring Security: authn/authz, validation, CSRF, secrets, rate limiting                   |
+| `springboot-tdd`          | Spring Boot TDD with JUnit 5, Mockito, MockMvc, Testcontainers                           |
+| `springboot-verification` | Spring Boot verification: build, static analysis, tests, security scans                  |
 
 **Category: Database (3 skills)**
 
-| Skill | Description |
-|-------|-------------|
-| `clickhouse-io` | ClickHouse patterns, query optimization, analytics, data engineering |
-| `jpa-patterns` | JPA/Hibernate entity design, relationships, query optimization, transactions |
-| `postgres-patterns` | PostgreSQL query optimization, schema design, indexing, security |
+| Skill               | Description                                                                  |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `clickhouse-io`     | ClickHouse patterns, query optimization, analytics, data engineering         |
+| `jpa-patterns`      | JPA/Hibernate entity design, relationships, query optimization, transactions |
+| `postgres-patterns` | PostgreSQL query optimization, schema design, indexing, security             |
 
 **Category: Workflow & Quality (8 skills)**
 
-| Skill | Description |
-|-------|-------------|
-| `continuous-learning` | Auto-extract reusable patterns from sessions as learned skills |
+| Skill                    | Description                                                                                                     |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `continuous-learning`    | Auto-extract reusable patterns from sessions as learned skills                                                  |
 | `continuous-learning-v2` | Instinct-based learning with confidence scoring, evolves into skills, agents, and optional legacy command shims |
-| `eval-harness` | Formal evaluation framework for eval-driven development (EDD) |
-| `iterative-retrieval` | Progressive context refinement for subagent context problem |
-| `security-review` | Security checklist: auth, input, secrets, API, payment features |
-| `strategic-compact` | Suggests manual context compaction at logical intervals |
-| `tdd-workflow` | Enforces TDD with 80%+ coverage: unit, integration, E2E |
-| `verification-loop` | Verification and quality loop patterns |
+| `eval-harness`           | Formal evaluation framework for eval-driven development (EDD)                                                   |
+| `iterative-retrieval`    | Progressive context refinement for subagent context problem                                                     |
+| `security-review`        | Security checklist: auth, input, secrets, API, payment features                                                 |
+| `strategic-compact`      | Suggests manual context compaction at logical intervals                                                         |
+| `tdd-workflow`           | Enforces TDD with 80%+ coverage: unit, integration, E2E                                                         |
+| `verification-loop`      | Verification and quality loop patterns                                                                          |
 
 **Category: Business & Content (5 skills)**
 
-| Skill | Description |
-|-------|-------------|
-| `article-writing` | Long-form writing in a supplied voice using notes, examples, or source docs |
-| `content-engine` | Multi-platform social content, scripts, and repurposing workflows |
-| `market-research` | Source-attributed market, competitor, fund, and technology research |
-| `investor-materials` | Pitch decks, one-pagers, investor memos, and financial models |
-| `investor-outreach` | Personalized investor cold emails, warm intros, and follow-ups |
+| Skill                | Description                                                                 |
+| -------------------- | --------------------------------------------------------------------------- |
+| `article-writing`    | Long-form writing in a supplied voice using notes, examples, or source docs |
+| `content-engine`     | Multi-platform social content, scripts, and repurposing workflows           |
+| `market-research`    | Source-attributed market, competitor, fund, and technology research         |
+| `investor-materials` | Pitch decks, one-pagers, investor memos, and financial models               |
+| `investor-outreach`  | Personalized investor cold emails, warm intros, and follow-ups              |
 
 **Category: Research & APIs (3 skills)**
 
-| Skill | Description |
-|-------|-------------|
-| `deep-research` | Multi-source deep research using firecrawl and exa MCPs with cited reports |
-| `exa-search` | Neural search via Exa MCP for web, code, company, and people research |
-| `claude-api` | Anthropic Claude API patterns: Messages, streaming, tool use, vision, batches, Agent SDK |
+| Skill           | Description                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| `deep-research` | Multi-source deep research using firecrawl and exa MCPs with cited reports               |
+| `exa-search`    | Neural search via Exa MCP for web, code, company, and people research                    |
+| `claude-api`    | Anthropic Claude API patterns: Messages, streaming, tool use, vision, batches, Agent SDK |
 
 **Category: Social & Content Distribution (2 skills)**
 
-| Skill | Description |
-|-------|-------------|
-| `x-api` | X/Twitter API integration for posting, threads, search, and analytics |
-| `crosspost` | Multi-platform content distribution with platform-native adaptation |
+| Skill       | Description                                                           |
+| ----------- | --------------------------------------------------------------------- |
+| `x-api`     | X/Twitter API integration for posting, threads, search, and analytics |
+| `crosspost` | Multi-platform content distribution with platform-native adaptation   |
 
 **Category: Media Generation (2 skills)**
 
-| Skill | Description |
-|-------|-------------|
-| `fal-ai-media` | Unified AI media generation (image, video, audio) via fal.ai MCP |
+| Skill           | Description                                                                     |
+| --------------- | ------------------------------------------------------------------------------- |
+| `fal-ai-media`  | Unified AI media generation (image, video, audio) via fal.ai MCP                |
 | `video-editing` | AI-assisted video editing for cutting, structuring, and augmenting real footage |
 
 **Category: Orchestration (1 skill)**
 
-| Skill | Description |
-|-------|-------------|
+| Skill            | Description                                                      |
+| ---------------- | ---------------------------------------------------------------- |
 | `dmux-workflows` | Multi-agent orchestration using dmux for parallel agent sessions |
 
 **Standalone**
 
-| Skill | Description |
-|-------|-------------|
+| Skill                        | Description                                   |
+| ---------------------------- | --------------------------------------------- |
 | `project-guidelines-example` | Template for creating project-specific skills |
 
 ### 2d: Execute Installation
 
 For each selected skill, copy the entire skill directory:
+
 ```bash
 cp -r $ECC_ROOT/skills/<skill-name> $TARGET/skills/
 ```
@@ -217,6 +222,7 @@ Options:
 ```
 
 Execute installation:
+
 ```bash
 # Common rules (flat copy into rules/)
 cp -r $ECC_ROOT/rules/common/* $TARGET/rules/
@@ -228,6 +234,7 @@ cp -r $ECC_ROOT/rules/golang/* $TARGET/rules/        # if selected
 ```
 
 **Important**: If the user selects any language-specific rules but NOT common rules, warn them:
+
 > "Language-specific rules extend the common rules. Installing without common rules may result in incomplete coverage. Install common rules too?"
 
 ---
@@ -239,6 +246,7 @@ After installation, perform these automated checks:
 ### 4a: Verify File Existence
 
 List all installed files and confirm they exist at the target location:
+
 ```bash
 ls -la $TARGET/skills/
 ls -la $TARGET/rules/
@@ -247,6 +255,7 @@ ls -la $TARGET/rules/
 ### 4b: Check Path References
 
 Scan all installed `.md` files for path references:
+
 ```bash
 grep -rn "~/.claude/" $TARGET/skills/ $TARGET/rules/
 grep -rn "../common/" $TARGET/rules/
@@ -254,6 +263,7 @@ grep -rn "skills/" $TARGET/skills/
 ```
 
 **For project-level installs**, flag any references to `~/.claude/` paths:
+
 - If a skill references `~/.claude/settings.json` — this is usually fine (settings are always user-level)
 - If a skill references `~/.claude/skills/` or `~/.claude/rules/` — this may be broken if installed only at project level
 - If a skill references another skill by name — check that the referenced skill was also installed
@@ -261,6 +271,7 @@ grep -rn "skills/" $TARGET/skills/
 ### 4c: Check Cross-References Between Skills
 
 Some skills reference others. Verify these dependencies:
+
 - `django-tdd` may reference `django-patterns`
 - `laravel-tdd` may reference `laravel-patterns`
 - `springboot-tdd` may reference `springboot-patterns`
@@ -276,6 +287,7 @@ Some skills reference others. Verify these dependencies:
 ### 4d: Report Issues
 
 For each issue found, report:
+
 1. **File**: The file containing the problematic reference
 2. **Line**: The line number
 3. **Issue**: What's wrong (e.g., "references ~/.claude/skills/python-patterns but python-patterns was not installed")
@@ -297,6 +309,7 @@ Options:
 ```
 
 ### If optimizing skills:
+
 1. Read each installed SKILL.md
 2. Ask the user what their project's tech stack is (if not already known)
 3. For each skill, suggest removals of irrelevant sections
@@ -304,6 +317,7 @@ Options:
 5. Fix any path issues found in Step 4
 
 ### If optimizing rules:
+
 1. Read each installed rule .md file
 2. Ask the user about their preferences:
    - Test coverage target (default 80%)
@@ -354,14 +368,17 @@ Then print a summary report:
 ## Troubleshooting
 
 ### "Skills not being picked up by Claude Code"
+
 - Verify the skill directory contains a `SKILL.md` file (not just loose .md files)
 - For user-level: check `~/.claude/skills/<skill-name>/SKILL.md` exists
 - For project-level: check `.claude/skills/<skill-name>/SKILL.md` exists
 
 ### "Rules not working"
+
 - Rules are flat files, not in subdirectories: `$TARGET/rules/coding-style.md` (correct) vs `$TARGET/rules/common/coding-style.md` (incorrect for flat install)
 - Restart Claude Code after installing rules
 
 ### "Path reference errors after project-level install"
+
 - Some skills assume `~/.claude/` paths. Run Step 4 verification to find and fix these.
 - For `continuous-learning-v2`, the `~/.claude/homunculus/` directory is always user-level — this is expected and not an error.

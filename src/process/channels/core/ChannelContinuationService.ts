@@ -5,6 +5,7 @@
  */
 
 import { uuid } from '@/common/utils';
+import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
 import type { ContextGoUIDatabase } from '@process/services/database';
 import { getDatabase } from '@process/services/database';
 import type { IAgentManager } from '@process/task/IAgentManager';
@@ -12,6 +13,7 @@ import { workerTaskManager } from '@process/task/workerTaskManagerSingleton';
 import crypto from 'crypto';
 import { inferRemoteChatType } from './ChannelRouteResolver';
 import { buildConversationPublicationProfile } from './ChannelPublicationService';
+import { ProjectChannelPublicationService } from './ProjectChannelPublicationService';
 import {
   type IChannelControlLease,
   resolveChannelConvType,
@@ -50,6 +52,12 @@ const DEFAULT_CONTINUATION_MODE: ChannelContinuationMode = 'resume';
 const DEFAULT_CONFLICT_POLICY: NonNullable<IChannelContinuationRequest['conflictPolicy']> = 'reject';
 const DEFAULT_CONTINUATION_PRIORITY = 120;
 const DEFAULT_CONTROL_MODE: ChannelControlMode = 'im_owner';
+const projectChannelPublicationService = new ProjectChannelPublicationService();
+
+async function getConversationPublicationCatalog() {
+  const conversations = await conversationServiceSingleton.listAllConversations();
+  return projectChannelPublicationService.readCatalogForConversations(conversations);
+}
 
 function assertQuerySuccess<T>(result: QueryResult<T>, fallback: string): T {
   if (!result.success) {
@@ -109,7 +117,7 @@ export class ChannelContinuationService {
       throw new Error('Target chat is not paired yet');
     }
 
-    const source = this.resolveSourceContext(db, params);
+    const source = await this.resolveSourceContext(db, params);
     await this.enforceConflictPolicy(source.sourceConversationId, conflictPolicy);
 
     const now = Date.now();
@@ -547,7 +555,10 @@ export class ChannelContinuationService {
     };
   }
 
-  private resolveSourceContext(db: ContextGoUIDatabase, params: IChannelContinuationRequest): SourceContext {
+  private async resolveSourceContext(
+    db: ContextGoUIDatabase,
+    params: IChannelContinuationRequest
+  ): Promise<SourceContext> {
     if (!params.sourceExternalSessionId && !params.sourceConversationId) {
       throw new Error('sourceExternalSessionId or sourceConversationId is required');
     }
@@ -576,9 +587,9 @@ export class ChannelContinuationService {
     }
 
     if (sourceExternalSession) {
-      const sourceAgentProfile = assertQuerySuccess(
-        db.getAgentProfile(sourceExternalSession.agentProfileId),
-        'Failed to load source agent profile'
+      const publicationCatalog = await getConversationPublicationCatalog();
+      const sourceAgentProfile = publicationCatalog.agentProfiles.find(
+        (profile) => profile.id === sourceExternalSession.agentProfileId
       );
       if (!sourceAgentProfile) {
         throw new Error(`Source agent profile ${sourceExternalSession.agentProfileId} not found`);
@@ -600,19 +611,11 @@ export class ChannelContinuationService {
     );
     return {
       sourceConversationId,
-      sourceAgentProfile: buildConversationPublicationProfile(db, conversation),
+      sourceAgentProfile: await buildConversationPublicationProfile(projectChannelPublicationService, conversation),
     };
   }
 
-  private ensureSourceAgentProfile(db: ContextGoUIDatabase, source: SourceContext): IAgentProfile {
-    const existing = assertQuerySuccess(
-      db.getAgentProfile(source.sourceAgentProfile.id),
-      'Failed to query agent profile'
-    );
-    if (existing) {
-      return existing;
-    }
-    assertQuerySuccess(db.upsertAgentProfile(source.sourceAgentProfile), 'Failed to upsert source agent profile');
+  private ensureSourceAgentProfile(_db: ContextGoUIDatabase, source: SourceContext): IAgentProfile {
     return source.sourceAgentProfile;
   }
 

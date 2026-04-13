@@ -1,68 +1,67 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createDefaultManagedSlashCommandLibrary,
-  mergeManagedSlashCommandLibraries,
+  createManagedSlashCommandFromBuiltin,
   normalizeManagedSlashCommandLibrary,
   resolveManagedSlashCommands,
   toSlashCommandItems,
 } from '@/common/chat/slash/library';
 
 describe('managed slash command library', () => {
-  it('returns the builtin command set when storage is empty', () => {
+  it('returns an empty project command list when storage is empty', () => {
     const library = normalizeManagedSlashCommandLibrary(undefined);
 
-    expect(library).toEqual(createDefaultManagedSlashCommandLibrary());
+    expect(library).toEqual([]);
   });
 
-  it('keeps builtin records, removes invalid entries, and preserves valid custom commands', () => {
+  it('keeps only valid project command records and removes duplicate names', () => {
     const library = normalizeManagedSlashCommandLibrary([
       {
-        type: 'builtin',
-        id: 'plan',
+        id: 'project-plan',
         enabled: false,
-        nameOverride: '/strategy',
+        name: '/plan',
+        description: 'Write the implementation plan first',
+        template: 'Plan the work before coding.',
       },
       {
-        type: 'custom',
-        id: 'custom-1',
+        id: 'project-triage',
         enabled: true,
         name: '/triage',
         description: 'Review the issue first',
         template: 'Triage this issue before coding.',
       },
       {
-        type: 'custom',
-        id: 'custom-2',
+        id: 'duplicate-triage',
         enabled: true,
         name: 'triage',
         description: 'duplicate name',
         template: 'duplicate',
       },
       {
-        type: 'custom',
-        id: 'custom-3',
+        id: 'invalid-name',
         enabled: true,
         name: 'bad name!',
         description: 'invalid',
         template: 'invalid',
       },
+      {
+        id: 'missing-template',
+        enabled: true,
+        name: 'ship',
+        description: 'missing template',
+        template: '   ',
+      },
     ]);
 
     expect(library).toEqual([
       {
-        type: 'builtin',
-        id: 'plan',
+        id: 'project-plan',
         enabled: false,
-        nameOverride: 'strategy',
+        name: 'plan',
+        description: 'Write the implementation plan first',
+        template: 'Plan the work before coding.',
       },
-      { type: 'builtin', id: 'tdd', enabled: true },
-      { type: 'builtin', id: 'code-review', enabled: true },
-      { type: 'builtin', id: 'security', enabled: true },
-      { type: 'builtin', id: 'verify', enabled: true },
-      { type: 'builtin', id: 'orchestrate', enabled: true },
       {
-        type: 'custom',
-        id: 'custom-1',
+        id: 'project-triage',
         enabled: true,
         name: 'triage',
         description: 'Review the issue first',
@@ -71,128 +70,71 @@ describe('managed slash command library', () => {
     ]);
   });
 
-  it('resolves builtin translations, local overrides, and slash menu items', () => {
+  it('resolves project commands directly and converts only enabled ones into slash menu items', () => {
     const library = normalizeManagedSlashCommandLibrary([
       {
-        type: 'builtin',
-        id: 'plan',
+        id: 'project-verify',
         enabled: true,
-        nameOverride: 'blueprint',
-        descriptionOverride: 'Local plan description',
-        templateOverride: 'Local plan template',
+        name: 'verify',
+        description: 'Check release readiness',
+        template: 'Verify release readiness.',
       },
       {
-        type: 'custom',
-        id: 'custom-verify',
-        enabled: true,
-        name: 'ship-check',
-        description: 'Check ship readiness',
-        template: 'Verify release readiness.',
+        id: 'project-debug',
+        enabled: false,
+        name: 'debug-root-cause',
+        description: 'Investigate the root cause first',
+        template: 'Find the root cause before changing code.',
       },
     ]);
 
     const resolved = resolveManagedSlashCommands(library, (key, defaultValue) => `${key}:${defaultValue}`);
     const items = toSlashCommandItems(resolved);
 
-    expect(resolved[0]).toMatchObject({
-      id: 'plan',
-      type: 'builtin',
-      name: 'blueprint',
-      description: 'Local plan description',
-      template: 'Local plan template',
-    });
-    expect(resolved.find((command) => command.id === 'tdd')).toMatchObject({
-      type: 'builtin',
-      name: 'tdd',
-    });
-    expect(items).toContainEqual({
-      name: 'blueprint',
-      description: 'Local plan description',
-      kind: 'template',
-      source: 'custom',
-      template: 'Local plan template',
-    });
-    expect(items).toContainEqual({
-      name: 'ship-check',
-      description: 'Check ship readiness',
-      kind: 'template',
-      source: 'custom',
-      template: 'Verify release readiness.',
-    });
+    expect(resolved).toEqual([
+      {
+        id: 'project-verify',
+        enabled: true,
+        name: 'verify',
+        description: 'Check release readiness',
+        template: 'Verify release readiness.',
+      },
+      {
+        id: 'project-debug',
+        enabled: false,
+        name: 'debug-root-cause',
+        description: 'Investigate the root cause first',
+        template: 'Find the root cause before changing code.',
+      },
+    ]);
+    expect(items).toEqual([
+      {
+        name: 'verify',
+        description: 'Check release readiness',
+        kind: 'template',
+        source: 'custom',
+        template: 'Verify release readiness.',
+      },
+    ]);
   });
 
-  it('lets workspace overrides replace global builtin and custom command definitions', () => {
-    const merged = mergeManagedSlashCommandLibraries(
-      [
-        {
-          type: 'builtin',
-          id: 'plan',
-          enabled: false,
-          nameOverride: 'plan-global',
-        },
-        {
-          type: 'custom',
-          id: 'custom-global',
-          enabled: true,
-          name: 'triage',
-          description: 'Global triage',
-          template: 'Use the global template.',
-        },
-      ],
-      [
-        {
-          type: 'builtin',
-          id: 'plan',
-          enabled: true,
-          nameOverride: 'plan-local',
-        },
-        {
-          type: 'custom',
-          id: 'custom-local',
-          enabled: true,
-          name: 'triage',
-          description: 'Workspace triage',
-          template: 'Use the workspace template.',
-        },
-      ]
+  it('materializes builtin command templates into plain project commands', () => {
+    const command = createManagedSlashCommandFromBuiltin(
+      {
+        builtinId: 'plan',
+        name: 'release-plan',
+      },
+      (key, defaultValue) => `${key}:${defaultValue}`
     );
 
-    expect(merged[0]).toEqual({
-      type: 'builtin',
+    expect(command).toEqual({
       id: 'plan',
       enabled: true,
-      nameOverride: 'plan-local',
-    });
-    expect(merged.find((record) => record.type === 'custom' && record.name === 'triage')).toEqual({
-      type: 'custom',
-      id: 'custom-local',
-      enabled: true,
-      name: 'triage',
-      description: 'Workspace triage',
-      template: 'Use the workspace template.',
-    });
-  });
-
-  it('keeps builtin names reserved when merging global and workspace libraries', () => {
-    const merged = mergeManagedSlashCommandLibraries(
-      undefined,
-      [
-        {
-          type: 'custom',
-          id: 'custom-plan',
-          enabled: true,
-          name: 'plan',
-          description: 'Conflicts with builtin',
-          template: 'Should be ignored.',
-        },
-      ]
-    );
-
-    expect(merged.some((record) => record.type === 'custom' && record.name === 'plan')).toBe(false);
-    expect(merged.find((record) => record.type === 'builtin' && record.id === 'plan')).toEqual({
-      type: 'builtin',
-      id: 'plan',
-      enabled: true,
+      name: 'release-plan',
+      description:
+        'settings.commands.presets.plan.description:Restate the task, identify risks, and produce a step-by-step plan before coding.',
+      template:
+        'settings.commands.presets.plan.template:Restate the task, identify the main constraints and risks, then propose a clear step-by-step implementation plan. Do not modify files yet. Wait for confirmation before executing.',
     });
   });
 });

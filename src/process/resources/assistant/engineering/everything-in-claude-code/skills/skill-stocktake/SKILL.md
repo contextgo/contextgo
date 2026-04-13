@@ -1,5 +1,5 @@
 ---
-description: "Use when auditing Claude skills and commands for quality. Supports Quick Scan (changed skills only) and Full Stocktake modes with sequential subagent batch evaluation."
+description: 'Use when auditing Claude skills and commands for quality. Supports Quick Scan (changed skills only) and Full Stocktake modes with sequential subagent batch evaluation.'
 origin: ECC
 ---
 
@@ -11,9 +11,9 @@ Slash command (`/skill-stocktake`) that audits all Claude skills and commands us
 
 The command targets the following paths **relative to the directory where it is invoked**:
 
-| Path | Description |
-|------|-------------|
-| `~/.claude/skills/` | Global skills (all projects) |
+| Path                    | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `~/.claude/skills/`     | Global skills (all projects)                   |
 | `{cwd}/.claude/skills/` | Project-level skills (if the directory exists) |
 
 **At the start of Phase 1, the command explicitly lists which paths were found and scanned.**
@@ -31,9 +31,9 @@ If the project has no `.claude/skills/` directory, only global skills and comman
 
 ## Modes
 
-| Mode | Trigger | Duration |
-|------|---------|---------|
-| Quick Scan | `results.json` exists (default) | 5–10 min |
+| Mode           | Trigger                                           | Duration  |
+| -------------- | ------------------------------------------------- | --------- |
+| Quick Scan     | `results.json` exists (default)                   | 5–10 min  |
 | Full Stocktake | `results.json` absent, or `/skill-stocktake full` | 20–30 min |
 
 **Results cache:** `~/.claude/skills/skill-stocktake/results.json`
@@ -44,14 +44,14 @@ Re-evaluate only skills that have changed since the last run (5–10 min).
 
 1. Read `~/.claude/skills/skill-stocktake/results.json`
 2. Run: `bash ~/.claude/skills/skill-stocktake/scripts/quick-diff.sh \
-         ~/.claude/skills/skill-stocktake/results.json`
+~/.claude/skills/skill-stocktake/results.json`
    (Project dir is auto-detected from `$PWD/.claude/skills`; pass it explicitly only if needed)
 3. If output is `[]`: report "No changes since last run." and stop
 4. Re-evaluate only those changed files using the same Phase 2 criteria
 5. Carry forward unchanged skills from previous results
 6. Output only the diff
 7. Run: `bash ~/.claude/skills/skill-stocktake/scripts/save-results.sh \
-         ~/.claude/skills/skill-stocktake/results.json <<< "$EVAL_RESULTS"`
+~/.claude/skills/skill-stocktake/results.json <<< "$EVAL_RESULTS"`
 
 ## Full Stocktake Flow
 
@@ -70,7 +70,7 @@ Scanning:
 ```
 
 | Skill | 7d use | 30d use | Description |
-|-------|--------|---------|-------------|
+| ----- | ------ | ------- | ----------- |
 
 ### Phase 2 — Quality Evaluation
 
@@ -113,21 +113,23 @@ Each skill is evaluated against this checklist:
 
 Verdict criteria:
 
-| Verdict | Meaning |
-|---------|---------|
-| Keep | Useful and current |
-| Improve | Worth keeping, but specific improvements needed |
-| Update | Referenced technology is outdated (verify with WebSearch) |
-| Retire | Low quality, stale, or cost-asymmetric |
+| Verdict        | Meaning                                                       |
+| -------------- | ------------------------------------------------------------- |
+| Keep           | Useful and current                                            |
+| Improve        | Worth keeping, but specific improvements needed               |
+| Update         | Referenced technology is outdated (verify with WebSearch)     |
+| Retire         | Low quality, stale, or cost-asymmetric                        |
 | Merge into [X] | Substantial overlap with another skill; name the merge target |
 
 Evaluation is **holistic AI judgment** — not a numeric rubric. Guiding dimensions:
+
 - **Actionability**: code examples, commands, or steps that let you act immediately
 - **Scope fit**: name, trigger, and content are aligned; not too broad or narrow
 - **Uniqueness**: value not replaceable by MEMORY.md / CLAUDE.md / another skill
 - **Currency**: technical references work in the current environment
 
 **Reason quality requirements** — the `reason` field must be self-contained and decision-enabling:
+
 - Do NOT write "unchanged" alone — always restate the core evidence
 - For **Retire**: state (1) what specific defect was found, (2) what covers the same need instead
   - Bad: `"Superseded"`
@@ -145,7 +147,7 @@ Evaluation is **holistic AI judgment** — not a numeric rubric. Guiding dimensi
 ### Phase 3 — Summary Table
 
 | Skill | 7d use | Verdict | Reason |
-|-------|--------|---------|--------|
+| ----- | ------ | ------- | ------ |
 
 ### Phase 4 — Consolidation
 

@@ -5,17 +5,12 @@ export type ContextEngineAssistantJobType =
   | 'session_pattern_detection'
   | 'project_promotion'
   | 'space_memory_distillation'
-  | 'connector_digest';
+  | 'connector_digest'
+  | 'project_capability_curation';
 
 export type ContextEngineAssistantDeliveryStatus = 'live' | 'planned';
 
-export type ContextEngineAssistantTriggerKind =
-  | 'hook'
-  | 'lifecycle'
-  | 'timer'
-  | 'connector'
-  | 'manual'
-  | 'derived';
+export type ContextEngineAssistantTriggerKind = 'hook' | 'lifecycle' | 'timer' | 'connector' | 'manual' | 'derived';
 
 export type ContextEngineExecutionBoundaryKind = 'space-vault-root';
 
@@ -189,6 +184,29 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
       jobType: 'connector_digest',
       goal: 'Digest connector updates into source-aware context records anchored in the current space vault.',
       triggerKinds: ['connector', 'timer', 'manual'],
+      writesMemory: true,
+      writesArtifacts: true,
+    }),
+  },
+  {
+    id: 'system-context-engine-project-capability-curator',
+    owner: 'context-engine',
+    systemRole: 'context-engine-project-capability-curator',
+    jobType: 'project_capability_curation',
+    profileId: 'agent_profile_context_engine_project_capability_curator',
+    deliveryStatus: 'live',
+    nameI18n: {
+      'en-US': 'Project Capability Curator',
+      'zh-CN': '项目能力整理员',
+    },
+    descriptionI18n: {
+      'en-US': 'Keeps project-local skills, hooks, schedules, and commands mirrored into the vault as first-class context objects.',
+      'zh-CN': '把项目本地的 skills、hooks、定时任务和 commands 镜像进 vault，形成一等上下文对象。',
+    },
+    runtimeSpec: createRuntimeSpec({
+      jobType: 'project_capability_curation',
+      goal: 'Mirror the project-local capability surface into the same space vault for browsing, graphing, and later evolution.',
+      triggerKinds: ['hook', 'timer', 'manual', 'derived'],
       writesMemory: true,
       writesArtifacts: true,
     }),

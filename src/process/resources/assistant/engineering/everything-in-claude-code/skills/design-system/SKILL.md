@@ -67,16 +67,19 @@ Identifies generic AI-generated design patterns:
 ## Examples
 
 **Generate for a SaaS app:**
+
 ```
 /design-system generate --style minimal --palette earth-tones
 ```
 
 **Audit existing UI:**
+
 ```
 /design-system audit --url http://localhost:3000 --pages / /pricing /docs
 ```
 
 **Check for AI slop:**
+
 ```
 /design-system slop-check
 ```

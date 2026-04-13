@@ -60,6 +60,6 @@ For capture session workflow, see [capture.md](capture.md).
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
+| Script                   | Description                                       |
+| ------------------------ | ------------------------------------------------- |
 | `scripts/ws_listener.py` | WebSocket event listener for real-time AI results |

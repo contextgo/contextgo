@@ -10,30 +10,20 @@
  * All places that need to display agent icons should use this utility instead of maintaining separate lists
  */
 
-import AuggieLogo from '@/renderer/assets/logos/brand/auggie.svg';
 import AnthropicLogo from '@/renderer/assets/logos/ai-major/anthropic.svg';
 import BaiduLogo from '@/renderer/assets/logos/ai-china/baidu.svg';
 import ClaudeLogo from '@/renderer/assets/logos/ai-major/claude.svg';
-import CursorLogo from '@/renderer/assets/logos/tools/coding/cursor.png';
-import CodeBuddyLogo from '@/renderer/assets/logos/tools/coding/codebuddy.svg';
 import CodexLogo from '@/renderer/assets/logos/tools/coding/codex.svg';
 import DeepSeekLogo from '@/renderer/assets/logos/ai-major/deepseek.svg';
-import DroidLogo from '@/renderer/assets/logos/brand/droid.svg';
 import GeminiLogo from '@/renderer/assets/logos/ai-major/gemini.svg';
-import GitHubLogo from '@/renderer/assets/logos/tools/github.svg';
-import GooseLogo from '@/renderer/assets/logos/tools/goose.svg';
-import IflowLogo from '@/renderer/assets/logos/tools/iflow.svg';
 import KimiLogo from '@/renderer/assets/logos/ai-china/kimi.svg';
 import LingyiLogo from '@/renderer/assets/logos/ai-china/lingyiwanwu.svg';
 import MistralLogo from '@/renderer/assets/logos/ai-major/mistral.svg';
 import MiniMaxLogo from '@/renderer/assets/logos/ai-china/minimax.png';
-import NanobotLogo from '@/renderer/assets/logos/tools/nanobot.svg';
-import OpenClawLogo from '@/renderer/assets/logos/tools/openclaw.svg';
 import OpenAILogo from '@/renderer/assets/logos/ai-major/openai.svg';
 import OpenRouterLogo from '@/renderer/assets/logos/ai-cloud/openrouter.svg';
 import OpenCodeLogoDark from '@/renderer/assets/logos/tools/coding/opencode-dark.svg';
 import OpenCodeLogoLight from '@/renderer/assets/logos/tools/coding/opencode-light.svg';
-import QoderLogo from '@/renderer/assets/logos/tools/coding/qoder.png';
 import QwenLogo from '@/renderer/assets/logos/ai-china/qwen.svg';
 import SiliconFlowLogo from '@/renderer/assets/logos/ai-cloud/siliconflow.png';
 import StepFunLogo from '@/renderer/assets/logos/ai-china/stepfun.svg';
@@ -46,8 +36,8 @@ import ZhipuLogo from '@/renderer/assets/logos/ai-china/zhipu.svg';
  * Agent Logo 映射表
  * Agent Logo mapping table
  *
- * 注意：key 使用小写，支持多种变体（如 openclaw-gateway 和 openclaw）
- * Note: keys are lowercase, supports multiple variants (e.g., openclaw-gateway and openclaw)
+ * 注意：key 使用小写
+ * Note: keys are lowercase
  */
 const AGENT_LOGO_MAP = {
   claude: ClaudeLogo,
@@ -66,21 +56,10 @@ const AGENT_LOGO_MAP = {
   volcengine: VolcengineLogo,
   stepfun: StepFunLogo,
   lingyiwanwu: LingyiLogo,
-  iflow: IflowLogo,
   codex: CodexLogo,
-  codebuddy: CodeBuddyLogo,
-  droid: DroidLogo,
-  goose: GooseLogo,
-  auggie: AuggieLogo,
   kimi: KimiLogo,
   opencode: OpenCodeLogoLight,
-  copilot: GitHubLogo,
-  openclaw: OpenClawLogo,
-  'openclaw-gateway': OpenClawLogo,
   vibe: MistralLogo,
-  nanobot: NanobotLogo,
-  qoder: QoderLogo,
-  cursor: CursorLogo,
 } as const satisfies Record<string, string>;
 
 function isDarkTheme(): boolean {

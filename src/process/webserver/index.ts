@@ -252,6 +252,8 @@ export interface WebServerInstance {
  * @returns 服务器实例 / Server instance
  */
 export async function startWebServerWithInstance(port: number, allowRemote = false): Promise<WebServerInstance> {
+  console.info(`[WebUI] startWebServerWithInstance requested (port=${port}, allowRemote=${allowRemote})`);
+
   // 设置服务器配置 / Set server configuration
   SERVER_CONFIG.setServerConfig(port, allowRemote);
 
@@ -286,7 +288,9 @@ export async function startWebServerWithInstance(port: number, allowRemote = fal
   // Listen on 0.0.0.0 (all interfaces) or 127.0.0.1 (local only) based on allowRemote
   const host = allowRemote ? SERVER_CONFIG.REMOTE_HOST : SERVER_CONFIG.DEFAULT_HOST;
   return new Promise((resolve, reject) => {
+    console.info(`[WebUI] Attempting to listen on ${host}:${port}`);
     server.listen(port, host, () => {
+      console.info(`[WebUI] Listen callback fired for ${host}:${port}`);
       const localUrl = `http://localhost:${port}`;
       const serverIP = getServerIP();
       const displayUrl = serverIP ? `http://${serverIP}:${port}` : localUrl;
@@ -315,6 +319,7 @@ export async function startWebServerWithInstance(port: number, allowRemote = fal
     });
 
     server.on('error', (err: NodeJS.ErrnoException) => {
+      console.error(`[WebUI] Listen error on ${host}:${port}:`, err);
       if (err.code === 'EADDRINUSE') {
         console.error(`❌ Port ${port} is already in use / 端口 ${port} 已被占用`);
       } else {

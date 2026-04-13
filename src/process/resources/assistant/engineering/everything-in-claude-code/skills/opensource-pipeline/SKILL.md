@@ -17,13 +17,13 @@ Safely open-source any project through a 3-stage pipeline: **Fork** (strip secre
 
 ## Commands
 
-| Command | Action |
-|---------|--------|
-| `/opensource fork PROJECT` | Full pipeline: fork + sanitize + package |
-| `/opensource verify PROJECT` | Run sanitizer on existing repo |
-| `/opensource package PROJECT` | Generate CLAUDE.md + setup.sh + README |
-| `/opensource list` | Show all staged projects |
-| `/opensource status PROJECT` | Show reports for a staged project |
+| Command                       | Action                                   |
+| ----------------------------- | ---------------------------------------- |
+| `/opensource fork PROJECT`    | Full pipeline: fork + sanitize + package |
+| `/opensource verify PROJECT`  | Run sanitizer on existing repo           |
+| `/opensource package PROJECT` | Generate CLAUDE.md + setup.sh + README   |
+| `/opensource list`            | Show all staged projects                 |
+| `/opensource status PROJECT`  | Show reports for a staged project        |
 
 ## Protocol
 
@@ -41,6 +41,7 @@ STAGING_PATH="$HOME/opensource-staging/${PROJECT_NAME}"
 ```
 
 Ask the user:
+
 1. "Which project?" (if not found)
 2. "License? (MIT / Apache-2.0 / GPL-3.0 / BSD-3-Clause)"
 3. "GitHub org or username?" (default: detect via `gh api user -q .login`)
@@ -111,6 +112,7 @@ Generate SANITIZATION_REPORT.md inside {STAGING_PATH}/ with PASS/FAIL verdict.
 Wait for completion. Read `{STAGING_PATH}/SANITIZATION_REPORT.md`.
 
 **If FAIL:** Show findings to user. Ask: "Fix these and re-scan, or abort?"
+
 - If fix: Apply fixes, re-run sanitizer (maximum 3 retry attempts — after 3 FAILs, present all findings and ask user to fix manually)
 - If abort: Clean up staging directory
 
@@ -147,6 +149,7 @@ Generate:
 #### Step 6: Final Review
 
 Present to user:
+
 ```
 Open-Source Fork Ready: {PROJECT_NAME}
 

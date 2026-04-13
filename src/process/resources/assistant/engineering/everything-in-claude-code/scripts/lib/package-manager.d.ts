@@ -77,7 +77,10 @@ export function setPreferredPackageManager(pmName: PackageManagerName): { packag
  * Saves to <projectDir>/.claude/package-manager.json.
  * @throws If pmName is not a known package manager
  */
-export function setProjectPackageManager(pmName: PackageManagerName, projectDir?: string): { packageManager: string; setAt: string };
+export function setProjectPackageManager(
+  pmName: PackageManagerName,
+  projectDir?: string
+): { packageManager: string; setAt: string };
 
 /**
  * Get package managers installed on the system.

@@ -41,16 +41,15 @@ function findPowerShell() {
   if (!isWSL) return null;
 
   const candidates = [
-    'pwsh.exe',        // WSL interop resolves from Windows PATH
-    'powershell.exe',  // WSL interop for Windows PowerShell
-    '/mnt/c/Program Files/PowerShell/7/pwsh.exe',      // PowerShell 7 (default install)
+    'pwsh.exe', // WSL interop resolves from Windows PATH
+    'powershell.exe', // WSL interop for Windows PowerShell
+    '/mnt/c/Program Files/PowerShell/7/pwsh.exe', // PowerShell 7 (default install)
     '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe', // Windows PowerShell
   ];
 
   for (const path of candidates) {
     try {
-      const result = spawnSync(path, ['-Command', 'exit 0'],
-        { stdio: ['ignore', 'pipe', 'ignore'], timeout: 3000 });
+      const result = spawnSync(path, ['-Command', 'exit 0'], { stdio: ['ignore', 'pipe', 'ignore'], timeout: 3000 });
       if (result.status === 0) {
         return path;
       }
@@ -70,8 +69,7 @@ function notifyWindows(pwshPath, title, body) {
   const safeBody = body.replace(/'/g, "''");
   const safeTitle = title.replace(/'/g, "''");
   const command = `Import-Module BurntToast; New-BurntToastNotification -Text '${safeTitle}', '${safeBody}'`;
-  const result = spawnSync(pwshPath, ['-Command', command],
-    { stdio: ['ignore', 'pipe', 'pipe'], timeout: 5000 });
+  const result = spawnSync(pwshPath, ['-Command', command], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 5000 });
   if (result.status === 0) {
     return { success: true, reason: null };
   }
@@ -88,14 +86,12 @@ function extractSummary(message) {
 
   const firstLine = message
     .split('\n')
-    .map(l => l.trim())
-    .find(l => l.length > 0);
+    .map((l) => l.trim())
+    .find((l) => l.length > 0);
 
   if (!firstLine) return 'Done';
 
-  return firstLine.length > MAX_BODY_LENGTH
-    ? `${firstLine.slice(0, MAX_BODY_LENGTH)}...`
-    : firstLine;
+  return firstLine.length > MAX_BODY_LENGTH ? `${firstLine.slice(0, MAX_BODY_LENGTH)}...` : firstLine;
 }
 
 /**
@@ -156,7 +152,7 @@ if (require.main === module) {
   let data = '';
 
   process.stdin.setEncoding('utf8');
-  process.stdin.on('data', chunk => {
+  process.stdin.on('data', (chunk) => {
     if (data.length < MAX_STDIN) {
       data += chunk.substring(0, MAX_STDIN - data.length);
     }

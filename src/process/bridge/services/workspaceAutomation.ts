@@ -6,15 +6,20 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { getPlatformServices } from '@/common/platform';
 import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import {
+  createManagedSlashCommandFromBuiltin,
   createDefaultManagedSlashCommandLibrary,
+  type BuiltinManagedSlashCommandId,
   normalizeManagedSlashCommandLibrary,
 } from '@/common/chat/slash/library';
 import type { TChatConversation } from '@/common/config/storage';
-import type { AssistantPreset } from '@/common/config/presets/assistantPresets';
 import { findBuiltinAssistantPreset } from '@/common/config/presets/builtinAssistantDefaults';
+import {
+  getBundledAgentPackageDefaultEnabledHookNames,
+  getBundledAgentPackageWorkspaceAutomationProfile,
+} from '@/common/config/presets/bundledAgentPackageRegistry';
+import i18n from '@process/services/i18n';
 import { copyDirectoryRecursively } from '@process/utils';
 import { getBuiltinHooksCopyDir } from '@process/utils/initStorage';
 
@@ -34,8 +39,62 @@ export const WORKSPACE_SCHEDULES_FILE = path.join(WORKSPACE_AUTOMATION_DIR, 'sch
 export const WORKSPACE_RUNTIME_DIR = path.join(WORKSPACE_AUTOMATION_DIR, 'runtime');
 export const WORKSPACE_SCHEDULE_RUNTIME_DIR = path.join(WORKSPACE_RUNTIME_DIR, 'schedules');
 
-const CONTEXTGO_HARNESS_COMMANDS: ManagedSlashCommandRecord[] = [
-  ...createDefaultManagedSlashCommandLibrary(),
+type WorkspaceBuiltinCommandSeed = {
+  type: 'builtin';
+  id: BuiltinManagedSlashCommandId;
+  enabled: boolean;
+  descriptionOverride?: string;
+  templateOverride?: string;
+};
+
+type WorkspaceLegacyCustomCommandSeed = {
+  type: 'custom';
+  id: string;
+  enabled: boolean;
+  name: string;
+  description: string;
+  template: string;
+};
+
+type WorkspaceCommandSeed = ManagedSlashCommandRecord | WorkspaceBuiltinCommandSeed | WorkspaceLegacyCustomCommandSeed;
+
+const resolveBuiltinText = (key: string, defaultValue: string): string => i18n.t(key, { defaultValue });
+
+function materializeWorkspaceCommandSeed(seed: WorkspaceCommandSeed): ManagedSlashCommandRecord {
+  if ('type' in seed && seed.type === 'builtin') {
+    return createManagedSlashCommandFromBuiltin(
+      {
+        builtinId: seed.id,
+        enabled: seed.enabled,
+        description: seed.descriptionOverride,
+        template: seed.templateOverride,
+      },
+      resolveBuiltinText
+    );
+  }
+
+  if ('type' in seed && seed.type === 'custom') {
+    return {
+      id: seed.id,
+      enabled: seed.enabled,
+      name: seed.name,
+      description: seed.description,
+      template: seed.template,
+    };
+  }
+
+  return seed;
+}
+
+function materializeWorkspaceCommandLibrary(seeds: readonly WorkspaceCommandSeed[]): ManagedSlashCommandRecord[] {
+  return normalizeManagedSlashCommandLibrary(seeds.map(materializeWorkspaceCommandSeed));
+}
+
+const DEFAULT_ENGINEERING_COMMANDS: ManagedSlashCommandRecord[] =
+  createDefaultManagedSlashCommandLibrary(resolveBuiltinText);
+
+const CONTEXTGO_HARNESS_COMMANDS: ManagedSlashCommandRecord[] = materializeWorkspaceCommandLibrary([
+  ...DEFAULT_ENGINEERING_COMMANDS,
   {
     type: 'custom',
     id: 'harness-brainstorm',
@@ -117,10 +176,10 @@ const CONTEXTGO_HARNESS_COMMANDS: ManagedSlashCommandRecord[] = [
     template:
       'Use the `finishing-a-development-branch` skill for this request. Verify the final state first, then present the next-step options clearly and execute only the workflow the user chooses.',
   },
-];
+]);
 
-const CLAUDE_ECC_LEGACY_COMMANDS: ManagedSlashCommandRecord[] = [
-  ...createDefaultManagedSlashCommandLibrary(),
+const CLAUDE_ECC_LEGACY_COMMANDS: ManagedSlashCommandRecord[] = materializeWorkspaceCommandLibrary([
+  ...DEFAULT_ENGINEERING_COMMANDS,
   {
     type: 'custom',
     id: 'ecc-quality-gate',
@@ -148,17 +207,578 @@ const CLAUDE_ECC_LEGACY_COMMANDS: ManagedSlashCommandRecord[] = [
     template:
       'Use the `strategic-compact` and `codebase-onboarding` skills for this request. Reconstruct the relevant workspace context, active constraints, and next actions before doing new work.',
   },
-];
+]);
+
+const STARTUP_STRATEGIST_COMMANDS: ManagedSlashCommandRecord[] = materializeWorkspaceCommandLibrary([
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride: 'Frame the startup question, stage, target customer, and decision to be made before drafting.',
+    templateOverride:
+      'Restate the startup task, identify the product stage, target customer, decision horizon, and known evidence, then separate facts from assumptions and propose the shortest credible strategy workflow before drafting.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify customer evidence, market assumptions, tradeoffs, and metric logic before presenting a strategy.',
+    templateOverride:
+      'Verify the current startup strategy output end to end. Re-check customer evidence, problem severity, segment choice, market assumptions, tradeoffs, defensibility, metric logic, and unresolved unknowns. Summarize what is grounded, what is inferred, and what still needs validation.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'startup-stress-idea',
+    enabled: true,
+    name: 'stress-idea',
+    description:
+      'Pressure-test a startup idea through customer pain, market logic, strategic choices, and failure risks.',
+    template:
+      'Use the `startup-founder-problem-framing`, `startup-strategic-diagnosis`, and `startup-startup-canvas` skills for this request. Start from the customer problem and current alternatives, test whether the timing and segment are credible, surface the biggest strategic risks and weak assumptions, then end with a blunt readout of what must be true for this idea to work.',
+  },
+  {
+    type: 'custom',
+    id: 'startup-design-canvas',
+    enabled: true,
+    name: 'design-canvas',
+    description: 'Create a startup canvas that separates strategic choices from the business model.',
+    template:
+      'Use the `startup-startup-canvas` skill for this request. Draft a startup canvas that makes the vision, segment choice, value proposition, tradeoffs, growth motion, required capabilities, defensibility, cost structure, and revenue streams explicit. Keep strategy and business model connected but separate.',
+  },
+  {
+    type: 'custom',
+    id: 'startup-scan-market',
+    enabled: true,
+    name: 'scan-market',
+    description: 'Assess market timing, alternatives, SWOT, and strategic pressure points for a startup concept.',
+    template:
+      'Use the `startup-strategic-diagnosis` and `startup-founder-problem-framing` skills for this request. Map the current alternatives, market timing, and SWOT picture for the idea, identify the most important external threats and internal weaknesses, and end with the strategic implications for focus, sequencing, and validation.',
+  },
+  {
+    type: 'custom',
+    id: 'startup-define-icp',
+    enabled: true,
+    name: 'define-icp',
+    description: 'Define the beachhead customer with JTBD, buying context, needs, and disqualification rules.',
+    template:
+      'Use the `startup-ideal-customer-profile` and `startup-founder-problem-framing` skills for this request. Define the primary beachhead segment, document firmographic or role-based signals, explain the JTBD and buying context, identify the strongest needs and pain points, and make disqualification criteria explicit instead of pretending everyone is a fit.',
+  },
+  {
+    type: 'custom',
+    id: 'startup-shape-value-prop',
+    enabled: true,
+    name: 'shape-value-prop',
+    description: 'Turn a target segment and problem into a sharp value proposition and positioning statement.',
+    template:
+      'Use the `startup-value-proposition`, `startup-founder-problem-framing`, and `startup-ideal-customer-profile` skills for this request. Build the value proposition through who, why, what before, how, what after, and alternatives, then finish with a concise positioning statement and the proof points still missing.',
+  },
+  {
+    type: 'custom',
+    id: 'startup-plan-gtm',
+    enabled: true,
+    name: 'plan-gtm',
+    description: 'Build a startup go-to-market plan around the beachhead segment, message, channels, and early proof.',
+    template:
+      'Use the `startup-go-to-market-strategy`, `startup-ideal-customer-profile`, and `startup-value-proposition` skills for this request. Start from the beachhead segment, turn the value proposition into channel-ready messaging, choose the smallest credible distribution motion, define launch milestones and proof assets, and end with a 90-day GTM plan plus the metrics that will tell us if the motion is working.',
+  },
+  {
+    type: 'custom',
+    id: 'startup-set-north-star',
+    enabled: true,
+    name: 'set-north-star',
+    description: 'Choose a North Star metric and input metrics that reflect real customer value.',
+    template:
+      'Use the `startup-north-star-metric` and `startup-go-to-market-strategy` skills for this request. Classify the business model first, recommend a single North Star metric that reflects customer value, define 3-5 input metrics the team can actually move, and explain how the metric system should influence product and GTM decisions.',
+  },
+  {
+    type: 'custom',
+    id: 'startup-write-founder-brief',
+    enabled: true,
+    name: 'write-founder-brief',
+    description:
+      'Synthesize the current startup strategy into a founder-ready brief with choices, risks, and next tests.',
+    template:
+      'Use the `startup-founder-brief`, `startup-startup-canvas`, `startup-strategic-diagnosis`, and `startup-go-to-market-strategy` skills for this request. Turn the current evidence into a tight founder brief that states the thesis, target segment, value proposition, growth motion, key metrics, strategic risks, and the next validation tests in a format that is usable for a cofounder, operator, or investor conversation.',
+  },
+]);
+
+const DESIGN_DIRECTOR_COMMANDS: ManagedSlashCommandRecord[] = materializeWorkspaceCommandLibrary([
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the design problem, product surface, audience, and current visual constraints before prescribing style.',
+    templateOverride:
+      'Restate the design task, identify whether this is a landing page, product surface, or design-system problem, separate hard constraints from taste preferences, and propose the shortest credible design workflow before drafting.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify hierarchy, layout logic, consistency, accessibility, and implementation readiness before sign-off.',
+    templateOverride:
+      'Verify the current design output end to end. Re-check hierarchy, spacing logic, contrast, interaction consistency, responsiveness, component-system fit, and whether the guidance is actually implementable. Summarize what is resolved, what is still subjective, and what still blocks confident implementation.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'design-pick-style',
+    enabled: true,
+    name: 'pick-style',
+    description: 'Choose the right visual archetype before drifting into generic UI output.',
+    template:
+      'Use the `design-style-archetype-selection` skill for this request. Classify the product, audience, trust level, and desired emotional tone first, recommend the strongest visual archetype plus one fallback, explain why the recommendation fits, and call out the anti-patterns that would make the UI feel generic or mismatched.',
+  },
+  {
+    type: 'custom',
+    id: 'design-draft-system',
+    enabled: true,
+    name: 'draft-design-system',
+    description: 'Turn product context and references into a project-level DESIGN.md or design brief.',
+    template:
+      'Use the `design-style-archetype-selection` and `design-system-distillation` skills for this request. Choose the visual direction first, then distill it into a project-level design system that covers atmosphere, colors, typography, component language, layout rules, motion, and explicit do-not-do rules. Keep the output implementation-aware instead of brand-mood poetry.',
+  },
+  {
+    type: 'custom',
+    id: 'design-art-direct-page',
+    enabled: true,
+    name: 'art-direct-page',
+    description: 'Art-direct a landing page or product surface with the right page lens and component discipline.',
+    template:
+      'Use the `design-system-distillation` skill plus either `design-landing-page-art-direction` or `design-product-surface-art-direction`, depending on the page type. Clarify the page goal first, choose the correct page lens, then produce a page-level art direction covering narrative or workflow structure, layout rhythm, hero or shell strategy, component priorities, motion, and the few design risks that could still derail implementation.',
+  },
+  {
+    type: 'custom',
+    id: 'design-critique-ui',
+    enabled: true,
+    name: 'critique-ui',
+    description: 'Critique an existing UI with concrete findings and design-system-level fixes.',
+    template:
+      'Use the `design-ui-critique-and-polish` and `design-system-adaptation` skills for this request. Review the current UI critically, prioritize the most consequential visual and interaction issues, explain the underlying system problems instead of giving taste-only feedback, and end with a concrete polish plan that can actually be implemented.',
+  },
+  {
+    type: 'custom',
+    id: 'design-review-screenshot',
+    enabled: true,
+    name: 'review-screenshot',
+    description:
+      'Review screenshots with a first-scan read, severity-ranked findings, and minimal high-value redesign moves.',
+    template:
+      'Use the `design-screenshot-critique` and `design-ui-critique-and-polish` skills for this request. Start from what the screenshot communicates in the first five seconds, identify the highest-severity hierarchy, density, action-ranking, or consistency issues, explain the system causes, and finish with the smallest high-value redesign moves plus what should remain stable.',
+  },
+  {
+    type: 'custom',
+    id: 'design-absorb-figma-reference',
+    enabled: true,
+    name: 'absorb-figma-reference',
+    description:
+      'Translate the right Figma signals into first-party design rules without turning the result into a brand copy.',
+    template:
+      'Use the `design-figma-reference-absorption`, `design-system-adaptation`, and `design-system-distillation` skills for this request. Clarify why Figma is the reference, extract the structural signals that matter, separate what should be borrowed from what should stay out, and translate the result into first-party palette, type, component, layout, and motion rules with explicit no-copy guardrails.',
+  },
+  {
+    type: 'custom',
+    id: 'design-adapt-system',
+    enabled: true,
+    name: 'adapt-system',
+    description: 'Translate a reference aesthetic into an existing design system without breaking product consistency.',
+    template:
+      'Use the `design-system-adaptation` and `design-system-distillation` skills for this request. Start from the existing design system or component constraints, identify what must stay stable, translate the desired reference style into compatible tokens and patterns, and make the preserved boundaries explicit so the result feels intentional instead of like a superficial skin.',
+  },
+  {
+    type: 'custom',
+    id: 'design-spec-component',
+    enabled: true,
+    name: 'spec-component',
+    description:
+      'Write a component-level visual spec with anatomy, variants, states, composition rules, and acceptance checks.',
+    template:
+      'Use the `design-component-visual-spec` and `design-handoff-brief` skills for this request. Define the component role first, then write a component-level visual spec covering anatomy, variants, spacing, typography, surface logic, interactive states, composition rules, guardrails, and acceptance checks so a frontend implementer can build it without guessing.',
+  },
+  {
+    type: 'custom',
+    id: 'design-write-handoff',
+    enabled: true,
+    name: 'write-handoff',
+    description: 'Turn the chosen design direction into an implementation-ready handoff for frontend work.',
+    template:
+      'Use the `design-handoff-brief` skill together with any relevant design-direction skills already established for this request. Convert the chosen visual direction into a handoff that includes page goals, layout structure, tokens, component rules, responsive behavior, motion guidance, and acceptance checks that a frontend implementer can follow without guessing.',
+  },
+]);
+
+const PM_WORKBENCH_COMMANDS: ManagedSlashCommandRecord[] = materializeWorkspaceCommandLibrary([
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride: 'Frame the PM task, assumptions, and artifact path before drafting.',
+    templateOverride:
+      'Restate the product management task, separate facts from assumptions, identify the target artifact or decision, and propose a short execution plan before drafting anything.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'pm-discover',
+    enabled: true,
+    name: 'discover',
+    description: 'Run evidence-led product discovery from outcome framing to next experiments.',
+    template:
+      'Use the `pm-discovery-process` and `pm-opportunity-solution-tree` skills for this request. Start from the desired outcome, separate evidence from assumptions, frame 2-4 real opportunities, and finish with a concrete discovery plan that includes the best next interviews, evidence gaps, and experiments.',
+  },
+  {
+    type: 'custom',
+    id: 'pm-strategy',
+    enabled: true,
+    name: 'strategy',
+    description: 'Build product strategy from market context through opportunity choice and roadmap direction.',
+    template:
+      'Use the `pm-product-strategy`, `pm-opportunity-solution-tree`, `pm-roadmap-planning`, and `pm-company-research` skills for this request. Clarify the target market and customer, lock the strategic problem or opportunity, identify the core choices and tradeoffs, and finish with a strategy narrative plus roadmap direction. Keep strategy separate from detailed execution backlog.',
+  },
+  {
+    type: 'custom',
+    id: 'pm-write-prd',
+    enabled: true,
+    name: 'write-prd',
+    description: 'Turn discovery context into a product requirements document with clear scope and success criteria.',
+    template:
+      'Use the `pm-prd-development` skill for this request. Convert the available context into a PRD with problem framing, target users, strategic context, solution outline, metrics, requirements, out-of-scope boundaries, dependencies, risks, and open questions. Make missing evidence explicit instead of faking certainty.',
+  },
+  {
+    type: 'custom',
+    id: 'pm-plan-roadmap',
+    enabled: true,
+    name: 'plan-roadmap',
+    description: 'Build an outcome-driven roadmap with sequencing, dependencies, and confidence levels.',
+    template:
+      'Use the `pm-roadmap-planning` and `pm-prioritization-advisor` skills for this request. Turn goals, problems, and candidate initiatives into a roadmap that explains why each initiative exists, how the work is sequenced, what is now versus next versus later, and which tradeoffs remain unresolved.',
+  },
+  {
+    type: 'custom',
+    id: 'pm-prioritize',
+    enabled: true,
+    name: 'prioritize',
+    description: 'Choose the right prioritization lens and rank initiatives with defensible tradeoffs.',
+    template:
+      'Use the `pm-prioritization-advisor` and `pm-feature-investment-advisor` skills for this request. Recommend the right prioritization framework for the current stage, score or compare the options with visible assumptions, and end with a ranked recommendation, rationale, and the decisions that still need evidence.',
+  },
+]);
+
+const OFFICE_ANALYST_COMMANDS: ManagedSlashCommandRecord[] = materializeWorkspaceCommandLibrary([
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride: 'Frame the office task, inputs, output format, and source-of-truth assumptions before acting.',
+    templateOverride:
+      'Restate the office analysis task, identify the input files and their likely roles, separate facts from assumptions, and propose the shortest reliable path before editing files or drafting the final answer.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify figures, source consistency, document integrity, and unresolved risks before delivery.',
+    templateOverride:
+      'Verify the current office deliverable end to end. Re-check figures, source consistency, formula integrity, formatting expectations, and unresolved assumptions. Summarize what is confirmed, what is inferred, and what still needs manual review.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'office-analyze-sheet',
+    enabled: true,
+    name: 'analyze-sheet',
+    description: 'Analyze a spreadsheet with template awareness, formula safety, and concise findings.',
+    template:
+      'Use the `office-spreadsheet-analysis`, `office-duckdb-read-file`, and `xlsx` skills for this request. Inspect the workbook structure first, preserve existing conventions, analyze the important sheets, surface anomalies and trends, and switch to DuckDB-style file querying when multiple sheets or large exports make SQL-style analysis more reliable.',
+  },
+  {
+    type: 'custom',
+    id: 'office-query-files',
+    enabled: true,
+    name: 'query-files',
+    description: 'Run SQL-style analysis across local data files such as CSV, Parquet, JSON, and Excel.',
+    template:
+      'Use the `office-duckdb-query`, `office-duckdb-read-file`, and `office-duckdb-install` skills for this request. Prefer DuckDB-friendly SQL over ad-hoc scripting, read files directly when possible, keep large result sets bounded, and explain the business meaning of the final query results.',
+  },
+  {
+    type: 'custom',
+    id: 'office-join-files',
+    enabled: true,
+    name: 'join-files',
+    description:
+      'Join multiple office data files with grain checks, coverage diagnostics, and business-facing conclusions.',
+    template:
+      'Use the `office-cross-file-join-analysis`, `office-duckdb-query`, `office-duckdb-read-file`, and `office-duckdb-install` skills for this request. Inspect each file first, identify the real row grain and trustworthy join keys, validate duplicates or grain mismatches before joining, then run bounded DuckDB-friendly SQL and explain both the match coverage and the business meaning of the result.',
+  },
+  {
+    type: 'custom',
+    id: 'office-profile-data',
+    enabled: true,
+    name: 'profile-data',
+    description: 'Profile a data file quickly to understand schema, row count, and what to query next.',
+    template:
+      'Use the `office-duckdb-read-file` and `office-duckdb-install` skills for this request. Inspect the file with DuckDB-style reading first, summarize the schema and row count, surface notable patterns or data quality risks, and propose the next SQL-style questions worth asking.',
+  },
+  {
+    type: 'custom',
+    id: 'office-summarize-docs',
+    enabled: true,
+    name: 'summarize-docs',
+    description: 'Extract signal from PDFs and DOCX files, then return a decision-friendly summary.',
+    template:
+      'Use the `office-document-operations`, `office-briefing`, `pdf`, and `docx` skills for this request. Choose the right extraction path for each document, keep tracked changes or table structure in mind, and produce a concise summary with decisions, risks, and open questions.',
+  },
+  {
+    type: 'custom',
+    id: 'office-reconcile-sources',
+    enabled: true,
+    name: 'reconcile-sources',
+    description: 'Cross-check numbers and statements across spreadsheets, PDFs, and memos before reporting out.',
+    template:
+      'Use the `office-source-reconciliation`, `xlsx`, `pdf`, and `docx` skills for this request. Identify the likely source of truth for each figure, compare overlapping numbers or statements across files, flag mismatches explicitly, and end with a clean reconciled view or a clear list of unresolved conflicts.',
+  },
+  {
+    type: 'custom',
+    id: 'office-drilldown-report',
+    enabled: true,
+    name: 'drilldown-report',
+    description: 'Start from a KPI or management summary, then drill into the main drivers, segments, and anomalies.',
+    template:
+      'Use the `office-report-drilldown`, `office-duckdb-query`, and `office-source-reconciliation` skills for this request. Start from the headline metric or report claim, lock the period and metric definition, drill into the strongest segment cuts with bounded SQL-style analysis, rank the main contributors, and explain what likely moved versus what still needs stronger root-cause confirmation.',
+  },
+  {
+    type: 'custom',
+    id: 'office-write-report',
+    enabled: true,
+    name: 'write-report',
+    description: 'Turn office analysis into a polished memo, summary, or report without losing traceability.',
+    template:
+      'Use the `office-report-drafting`, `office-briefing`, and `docx` skills for this request. Convert the current findings into a polished report with a crisp executive summary, evidence-backed sections, explicit assumptions, and clean next-step recommendations. If the user needs an editable document, optimize for a DOCX-friendly structure.',
+  },
+  {
+    type: 'custom',
+    id: 'office-query-pdf-tables',
+    enabled: true,
+    name: 'query-pdf-tables',
+    description: 'Extract tables from PDFs, assess extraction quality, then analyze them with DuckDB-style queries.',
+    template:
+      'Use the `office-pdf-table-query`, `office-document-operations`, `office-duckdb-read-file`, `office-duckdb-query`, and `pdf` skills for this request. Inspect whether the PDF tables are extractable first, call out OCR or table-boundary risks, normalize the extracted structure carefully, then run bounded DuckDB-friendly SQL and summarize the findings with explicit reliability caveats.',
+  },
+]);
+
+const FINANCE_ANALYST_COMMANDS: ManagedSlashCommandRecord[] = materializeWorkspaceCommandLibrary([
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the finance task, periods, source files, and confidence risks before modeling or writing.',
+    templateOverride:
+      'Restate the finance task, identify the source files and reporting periods involved, separate reported facts from assumptions, and propose the shortest reliable path before modeling, querying files, or drafting a conclusion.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify periods, formulas, source consistency, assumptions, and unresolved confidence gaps before delivery.',
+    templateOverride:
+      'Verify the current finance deliverable end to end. Re-check periods, units, formulas, statement consistency, assumptions, valuation sensitivities, and unresolved data-quality gaps. Summarize what is confirmed, what is assumed, and what still limits confidence.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'finance-analyze-financials',
+    enabled: true,
+    name: 'analyze-financials',
+    description: 'Read financial statements together, then explain health, risk, and what needs follow-up.',
+    template:
+      'Use the `finance-financial-statement-analysis`, `finance-ratio-benchmarking`, `office-duckdb-read-file`, and `xlsx` skills for this request. Inspect the available statements first, read income statement, balance sheet, and cash flow together, benchmark the most important ratios with context, and finish with a clear explanation of financial health, main risks, and the highest-value follow-up question.',
+  },
+  {
+    type: 'custom',
+    id: 'finance-explain-variance',
+    enabled: true,
+    name: 'explain-variance',
+    description: 'Explain actual versus budget or prior-period movement with materiality and driver logic.',
+    template:
+      'Use the `finance-budget-variance-analysis`, `office-duckdb-query`, and `office-source-reconciliation` skills for this request. Lock the comparison basis and materiality threshold first, isolate the few variances that matter most, explain the likely drivers, and end with a management-ready readout of what moved, what is noise, and what needs reforecasting or operating follow-up.',
+  },
+  {
+    type: 'custom',
+    id: 'finance-build-dcf',
+    enabled: true,
+    name: 'build-dcf',
+    description: 'Turn financial inputs into a valuation range with scenarios, sensitivity, and confidence discipline.',
+    template:
+      'Use the `finance-dcf-valuation`, `finance-financial-statement-analysis`, `finance-ratio-benchmarking`, and `office-duckdb-query` skills for this request. Run a data-quality gate first, build explicit bull/base/bear assumptions, produce a bounded DCF-style fair-value view with sensitivity checks and relative-value sanity checks, then state the confidence level, key gaps, and margin-of-safety framing without pretending the output is a single certain answer.',
+  },
+  {
+    type: 'custom',
+    id: 'finance-compare-companies',
+    enabled: true,
+    name: 'compare-companies',
+    description:
+      'Compare multiple companies with a consistent ratio, quality, and valuation frame instead of ad-hoc scorecards.',
+    template:
+      'Use the `finance-comparable-valuation`, `finance-ratio-benchmarking`, `finance-financial-statement-analysis`, and `office-duckdb-query` skills for this request. Normalize the comparison frame first, compare the companies on profitability, leverage, growth quality, and valuation using consistent periods and metrics, then explain the tradeoffs clearly instead of forcing a fake single-winner score.',
+  },
+  {
+    type: 'custom',
+    id: 'finance-screen-investment',
+    enabled: true,
+    name: 'screen-investment',
+    description: 'Screen one or more businesses against valuation, quality, and risk gates before deeper diligence.',
+    template:
+      'Use the `finance-investment-screening`, `finance-ratio-benchmarking`, `finance-dcf-valuation`, and `office-duckdb-query` skills for this request. Set the screening criteria explicitly first, run valuation, quality, and risk gates against the available inputs, classify each candidate as attractive, watchlist, or caution, and say which missing data still blocks stronger conviction.',
+  },
+  {
+    type: 'custom',
+    id: 'finance-forecast-business',
+    enabled: true,
+    name: 'forecast-business',
+    description: 'Build a base, bull, and bear operating forecast from explicit business drivers.',
+    template:
+      'Use the `finance-forecast-scenario-planning`, `finance-budget-variance-analysis`, `office-duckdb-query`, and `xlsx` skills for this request. Identify the real operating drivers first, build a defensible base case, stress it into bull and bear cases with explicit assumption changes, and summarize the revenue, margin, or cash implications together with the most fragile parts of the forecast.',
+  },
+  {
+    type: 'custom',
+    id: 'finance-benchmark-saas',
+    enabled: true,
+    name: 'benchmark-saas',
+    description: 'Turn raw SaaS operating numbers into a benchmarked health report with prioritized fixes.',
+    template:
+      'Use the `finance-saas-metrics` and `office-duckdb-query` skills for this request. Work with partial inputs if necessary, identify the company stage and segment, calculate the most important SaaS health metrics, benchmark them with context, and end with the two or three issues that deserve immediate action plus one metric that should anchor the next 90 days.',
+  },
+  {
+    type: 'custom',
+    id: 'finance-stress-test-thesis',
+    enabled: true,
+    name: 'stress-test-thesis',
+    description:
+      'Pressure-test an investment or operating thesis by attacking assumptions, invalidation points, and downside paths.',
+    template:
+      'Use the `finance-thesis-stress-test`, `finance-dcf-valuation`, `finance-financial-statement-analysis`, and `finance-investment-memo` skills for this request. Restate the current thesis first, identify the assumptions doing the most work, attack them from downside, execution, balance-sheet, and cycle perspectives, and end with explicit invalidation conditions, monitoring triggers, and what would actually increase conviction.',
+  },
+  {
+    type: 'custom',
+    id: 'finance-write-investment-memo',
+    enabled: true,
+    name: 'write-investment-memo',
+    description: 'Convert current finance analysis into a structured investment memo or management brief.',
+    template:
+      'Use the `finance-investment-memo`, `finance-dcf-valuation`, `finance-ratio-benchmarking`, `office-source-reconciliation`, `docx`, and `pdf` skills for this request. Turn the current analysis into a disciplined memo with executive summary, data used, thesis, valuation or performance view, risk register, confidence level, and explicit gaps. Keep facts, assumptions, and inference visibly separate.',
+  },
+]);
 
 type WorkspaceAutomationProfileConfig = {
-  commands?: ManagedSlashCommandRecord[];
+  commands?: WorkspaceCommandSeed[];
   hookNames?: string[];
-  sourceRoot?: string;
-  sourceHooksSubdir?: string;
-  sourceCommandsSubdir?: string;
-  sourceScriptsSubdir?: string;
-  claudePluginRootEnvName?: string;
-  claudePluginRootValue?: string;
+  schedules?: { conversationSchedules: [] };
 };
 
 const normalizeWorkspaceHookNames = (content: unknown): string[] => {
@@ -182,42 +802,46 @@ const normalizeWorkspaceHookNames = (content: unknown): string[] => {
   ];
 };
 
-const resolveBundledResourceDir = (resourceDir: string): string => {
-  const platform = getPlatformServices().paths;
-  const appPath = platform.getAppPath() || process.cwd();
-  const resourcesPrefix = 'src/process/resources/';
+const resolveWorkspaceAutomationProfileConfig = (assistantId: string): WorkspaceAutomationProfileConfig | null => {
+  const workspaceAutomationProfile = getBundledAgentPackageWorkspaceAutomationProfile(assistantId);
 
-  if (platform.isPackaged()) {
-    const prodPath = resourceDir.startsWith(resourcesPrefix) ? resourceDir.slice(resourcesPrefix.length) : resourceDir;
-    return path.join(appPath, prodPath);
-  }
-
-  return path.join(appPath, resourceDir);
-};
-
-const resolveWorkspaceAutomationProfileConfig = (preset: AssistantPreset): WorkspaceAutomationProfileConfig | null => {
-  switch (preset.workspaceAutomationProfile) {
+  switch (workspaceAutomationProfile) {
     case 'contextgo-harness':
       return {
         commands: CONTEXTGO_HARNESS_COMMANDS,
-        hookNames: preset.defaultEnabledHooks ? [...preset.defaultEnabledHooks] : [],
+        hookNames: getBundledAgentPackageDefaultEnabledHookNames(assistantId) ?? [],
+        schedules: { conversationSchedules: [] },
       };
-    case 'claude-ecc': {
-      if (!preset.resourceDir) {
-        return null;
-      }
-
-      const resourceRoot = resolveBundledResourceDir(preset.resourceDir);
+    case 'everything-claude-code':
       return {
         commands: CLAUDE_ECC_LEGACY_COMMANDS,
-        sourceRoot: resourceRoot,
-        sourceHooksSubdir: 'hooks',
-        sourceCommandsSubdir: 'commands',
-        sourceScriptsSubdir: 'scripts',
-        claudePluginRootEnvName: 'CLAUDE_PLUGIN_ROOT',
-        claudePluginRootValue: resourceRoot,
+        schedules: { conversationSchedules: [] },
       };
-    }
+    case 'startup-strategist':
+      return {
+        commands: STARTUP_STRATEGIST_COMMANDS,
+        schedules: { conversationSchedules: [] },
+      };
+    case 'design-director':
+      return {
+        commands: DESIGN_DIRECTOR_COMMANDS,
+        schedules: { conversationSchedules: [] },
+      };
+    case 'pm-workbench':
+      return {
+        commands: PM_WORKBENCH_COMMANDS,
+        schedules: { conversationSchedules: [] },
+      };
+    case 'office-analyst':
+      return {
+        commands: OFFICE_ANALYST_COMMANDS,
+        schedules: { conversationSchedules: [] },
+      };
+    case 'finance-analyst':
+      return {
+        commands: FINANCE_ANALYST_COMMANDS,
+        schedules: { conversationSchedules: [] },
+      };
     default:
       return null;
   }
@@ -229,7 +853,7 @@ const getWorkspaceAutomationProfile = (assistantId: string): WorkspaceAutomation
     return null;
   }
 
-  return resolveWorkspaceAutomationProfileConfig(preset);
+  return resolveWorkspaceAutomationProfileConfig(assistantId);
 };
 
 export const getWorkspaceHooksDir = (workspace?: string): string | null => {
@@ -444,7 +1068,7 @@ const ensureWorkspaceHookSelection = async (workspace: string | undefined, hookN
 
 const ensureWorkspaceCommandLibrary = async (
   workspace: string | undefined,
-  library: ManagedSlashCommandRecord[]
+  library: WorkspaceCommandSeed[]
 ): Promise<void> => {
   const commandsFile = getWorkspaceCommandsFile(workspace);
   if (!commandsFile) {
@@ -458,84 +1082,28 @@ const ensureWorkspaceCommandLibrary = async (
     await fs.mkdir(path.dirname(commandsFile), { recursive: true });
     await fs.writeFile(
       commandsFile,
-      JSON.stringify(normalizeManagedSlashCommandLibrary(library), null, 2) + '\n',
+      JSON.stringify(materializeWorkspaceCommandLibrary(library), null, 2) + '\n',
       'utf-8'
     );
   }
 };
 
-const ensureDirectoryCopyIntoWorkspace = async (
+const ensureWorkspaceSchedulesSeed = async (
   workspace: string | undefined,
-  sourceDir: string | null,
-  targetRelativeDir: string
+  schedules: { conversationSchedules: [] }
 ): Promise<void> => {
-  if (!workspace || !sourceDir) {
+  const schedulesFile = getWorkspaceSchedulesFile(workspace);
+  if (!schedulesFile) {
     return;
   }
 
   try {
-    await fs.access(sourceDir);
-  } catch {
-    return;
-  }
-
-  const targetDir = path.join(workspace, targetRelativeDir);
-  try {
-    await fs.access(targetDir);
+    await fs.access(schedulesFile);
     return;
   } catch {
-    await fs.mkdir(path.dirname(targetDir), { recursive: true });
-    await copyDirectoryRecursively(sourceDir, targetDir, {
-      overwrite: false,
-      removeStale: false,
-    });
+    await fs.mkdir(path.dirname(schedulesFile), { recursive: true });
+    await fs.writeFile(schedulesFile, JSON.stringify(schedules, null, 2) + '\n', 'utf-8');
   }
-};
-
-const ensureWorkspaceEnvFileEntries = async (
-  workspace: string | undefined,
-  entries: Record<string, string>
-): Promise<void> => {
-  if (!workspace || Object.keys(entries).length === 0) {
-    return;
-  }
-
-  const envFilePath = path.join(workspace, '.claude', 'settings.local.json');
-  let existing: Record<string, unknown> = {};
-
-  try {
-    const raw = await fs.readFile(envFilePath, 'utf-8');
-    existing = JSON.parse(raw) as Record<string, unknown>;
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException | undefined)?.code;
-    if (code !== 'ENOENT') {
-      console.warn('[workspaceAutomation] Failed to read workspace env file:', envFilePath, error);
-      return;
-    }
-  }
-
-  const env = typeof existing.env === 'object' && existing.env ? { ...(existing.env as Record<string, unknown>) } : {};
-  let changed = false;
-
-  for (const [key, value] of Object.entries(entries)) {
-    if (env[key] === value) {
-      continue;
-    }
-    env[key] = value;
-    changed = true;
-  }
-
-  if (!changed && existing.env) {
-    return;
-  }
-
-  const next = {
-    ...existing,
-    env,
-  };
-
-  await fs.mkdir(path.dirname(envFilePath), { recursive: true });
-  await fs.writeFile(envFilePath, JSON.stringify(next, null, 2) + '\n', 'utf-8');
 };
 
 const ensureWorkspaceAutomationProfile = async (workspace: string | undefined, assistantId: string): Promise<void> => {
@@ -553,34 +1121,8 @@ const ensureWorkspaceAutomationProfile = async (workspace: string | undefined, a
     await ensureWorkspaceHookSelection(workspace, profile.hookNames);
   }
 
-  if (profile.sourceRoot && profile.sourceHooksSubdir) {
-    await ensureDirectoryCopyIntoWorkspace(
-      workspace,
-      path.join(profile.sourceRoot, profile.sourceHooksSubdir),
-      '.claude/hooks'
-    );
-  }
-
-  if (profile.sourceRoot && profile.sourceCommandsSubdir) {
-    await ensureDirectoryCopyIntoWorkspace(
-      workspace,
-      path.join(profile.sourceRoot, profile.sourceCommandsSubdir),
-      '.claude/commands'
-    );
-  }
-
-  if (profile.sourceRoot && profile.sourceScriptsSubdir) {
-    await ensureDirectoryCopyIntoWorkspace(
-      workspace,
-      path.join(profile.sourceRoot, profile.sourceScriptsSubdir),
-      '.claude/scripts'
-    );
-  }
-
-  if (profile.claudePluginRootEnvName && profile.claudePluginRootValue) {
-    await ensureWorkspaceEnvFileEntries(workspace, {
-      [profile.claudePluginRootEnvName]: profile.claudePluginRootValue,
-    });
+  if (profile.schedules) {
+    await ensureWorkspaceSchedulesSeed(workspace, profile.schedules);
   }
 };
 

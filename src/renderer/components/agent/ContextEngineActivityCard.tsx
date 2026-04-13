@@ -221,9 +221,7 @@ const ContextEngineActivityCard: React.FC = () => {
                   <div className='truncate text-13px font-600 leading-6 text-t-primary'>
                     {getMaintenanceGroupLabel(group.key)}
                   </div>
-                  <div className='mt-2px text-12px leading-5 text-t-secondary'>
-                    {getMaintenanceGroupSummary(group)}
-                  </div>
+                  <div className='mt-2px text-12px leading-5 text-t-secondary'>{getMaintenanceGroupSummary(group)}</div>
                 </div>
                 <Tag size='small'>{group.agents.length}</Tag>
               </div>

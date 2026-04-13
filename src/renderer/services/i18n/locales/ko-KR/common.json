@@ -57,6 +57,8 @@
   "goToSettings": "설정으로 이동",
   "goBack": "뒤로",
   "forward": "앞으로",
+  "devBadge": "DEV",
+  "devBuild": "개발 빌드",
   "localUser": "로컬 사용자",
   "more": "더보기",
   "refresh": "새로고침",

@@ -32,6 +32,7 @@ Before generating, read `STYLE_PRESETS.md` for the viewport-safe CSS base, densi
 ### 1. Detect Mode
 
 Choose one path:
+
 - **New presentation**: user has a topic, notes, or full draft
 - **PPT conversion**: user has `.ppt` or `.pptx`
 - **Enhancement**: user already has HTML slides and wants improvements
@@ -39,6 +40,7 @@ Choose one path:
 ### 2. Discover Content
 
 Ask only the minimum needed:
+
 - purpose: pitch, teaching, conference talk, internal update
 - length: short (5-10), medium (10-20), long (20+)
 - content state: finished copy, rough notes, topic only
@@ -52,6 +54,7 @@ Default to visual exploration.
 If the user already knows the desired preset, skip previews and use it directly.
 
 Otherwise:
+
 1. Ask what feeling the deck should create: impressed, energized, focused, inspired.
 2. Generate **3 single-slide preview files** in `.ecc-design/slide-previews/`.
 3. Each preview must be self-contained, show typography/color/motion clearly, and stay under roughly 100 lines of slide content.
@@ -62,12 +65,14 @@ Use the preset guide in `STYLE_PRESETS.md` when mapping mood to style.
 ### 4. Build the Presentation
 
 Output either:
+
 - `presentation.html`
 - `[presentation-name].html`
 
 Use an `assets/` folder only when the deck contains extracted or user-supplied images.
 
 Required structure:
+
 - semantic slide sections
 - a viewport-safe CSS base from `STYLE_PRESETS.md`
 - CSS custom properties for theme values
@@ -80,6 +85,7 @@ Required structure:
 Treat this as a hard gate.
 
 Rules:
+
 - every `.slide` must use `height: 100vh; height: 100dvh; overflow: hidden;`
 - all type and spacing must scale with `clamp()`
 - when content does not fit, split into multiple slides
@@ -91,6 +97,7 @@ Use the density limits and mandatory CSS block in `STYLE_PRESETS.md`.
 ### 6. Validate
 
 Check the finished deck at these sizes:
+
 - 1920x1080
 - 1280x720
 - 768x1024
@@ -102,11 +109,13 @@ If browser automation is available, use it to verify no slide overflows and that
 ### 7. Deliver
 
 At handoff:
+
 - delete temporary preview files unless the user wants to keep them
 - open the deck with the platform-appropriate opener when useful
 - summarize file path, preset used, slide count, and easy theme customization points
 
 Use the correct opener for the current OS:
+
 - macOS: `open file.html`
 - Linux: `xdg-open file.html`
 - Windows: `start "" file.html`
@@ -114,6 +123,7 @@ Use the correct opener for the current OS:
 ## PPT / PPTX Conversion
 
 For PowerPoint conversion:
+
 1. Prefer `python3` with `python-pptx` to extract text, images, and notes.
 2. If `python-pptx` is unavailable, ask whether to install it or fall back to a manual/export-based workflow.
 3. Preserve slide order, speaker notes, and extracted assets.
@@ -133,6 +143,7 @@ Keep conversion cross-platform. Do not rely on macOS-only tools when Python can 
 ### JavaScript
 
 Include:
+
 - keyboard navigation
 - touch / swipe navigation
 - mouse wheel navigation
@@ -150,14 +161,14 @@ Include:
 
 Use these maxima unless the user explicitly asks for denser slides and readability still holds:
 
-| Slide type | Limit |
-|------------|-------|
-| Title | 1 heading + 1 subtitle + optional tagline |
-| Content | 1 heading + 4-6 bullets or 2 short paragraphs |
-| Feature grid | 6 cards max |
-| Code | 8-10 lines max |
-| Quote | 1 quote + attribution |
-| Image | 1 image constrained by viewport |
+| Slide type   | Limit                                         |
+| ------------ | --------------------------------------------- |
+| Title        | 1 heading + 1 subtitle + optional tagline     |
+| Content      | 1 heading + 4-6 bullets or 2 short paragraphs |
+| Feature grid | 6 cards max                                   |
+| Code         | 8-10 lines max                                |
+| Quote        | 1 quote + attribution                         |
+| Image        | 1 image constrained by viewport               |
 
 ## Anti-Patterns
 

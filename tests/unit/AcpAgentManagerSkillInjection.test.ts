@@ -49,6 +49,9 @@ vi.mock('@process/services/database', () => ({
 
 vi.mock('@process/utils/initStorage', () => ({
   ProcessConfig: { get: vi.fn(async () => null), set: vi.fn(async () => {}) },
+  getSkillsDir: vi.fn(() => '/mock/user/skills'),
+  getBuiltinSkillsCopyDir: vi.fn(() => '/mock/builtin-skills'),
+  getAutoSkillsDir: vi.fn(() => '/mock/builtin-skills/_builtin'),
 }));
 
 vi.mock('@process/utils/message', () => ({
@@ -96,6 +99,7 @@ vi.mock('@process/utils/initAgent', () => ({
       'claude',
       'codebuddy',
       'codex',
+      'opencode',
       'qwen',
       'iflow',
       'goose',
@@ -225,7 +229,7 @@ describe('AcpAgentManager — first-message skill injection', () => {
     expect(sentContent).toContain('[User Request]');
   });
 
-  it('falls back to prompt injection for unsupported backend regardless of customWorkspace', async () => {
+  it('uses native skills for opencode when workspace bootstrap is available', async () => {
     const manager = createManager({
       backend: 'opencode',
       customWorkspace: false,
@@ -235,10 +239,11 @@ describe('AcpAgentManager — first-message skill injection', () => {
 
     await sendFirstMessage(manager);
 
-    expect(mockPrepareFirstMessage).toHaveBeenCalledWith('Hello', {
-      presetContext: 'Some rules',
-      enabledSkills: ['pdf'],
-    });
+    expect(mockPrepareFirstMessage).not.toHaveBeenCalled();
+    const sentContent = mockAgentSendMessage.mock.calls[0][0].content as string;
+    expect(sentContent).toContain('[Assistant Rules');
+    expect(sentContent).toContain('Some rules');
+    expect(sentContent).toContain('[User Request]');
   });
 
   it('skips presetContext injection when presetContext is undefined (native path)', async () => {

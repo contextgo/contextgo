@@ -445,6 +445,84 @@ describe('SpaceVaultContextSyncService', () => {
     expect(projectContent).toContain('[[Projects/workspace/Project Insights|workspace Insights]]');
   });
 
+  it('refreshes project capability docs on demand for a bound project', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'agents'), {
+      recursive: true,
+    });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'SKILL.md'),
+      ['---', 'name: Release Guard', 'description: Keep rollout changes narrow.', '---', '', '# Release Guard'].join(
+        '\n'
+      ),
+      'utf8'
+    );
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'agents', 'openai.yaml'),
+      ['policy:', '  allow_implicit_invocation: true', ''].join('\n'),
+      'utf8'
+    );
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+
+    const artifact = await service.curateProjectCapabilities({
+      spaceId: space.id,
+      projectSlug: createWorkspaceProjectSlug(workspacePath),
+      summary: 'Refresh local project capabilities into the vault.',
+      timestamp: '2026-04-08T08:00:00.000Z',
+    });
+
+    expect(artifact).toEqual(
+      expect.objectContaining({
+        projectSlug: createWorkspaceProjectSlug(workspacePath),
+        noteTitle: 'workspace Capabilities',
+        relativePath: 'Projects/workspace/_context/Capabilities.md',
+        summary: 'Refresh local project capabilities into the vault.',
+      })
+    );
+
+    const capabilitiesContent = await fs.readFile(
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'Capabilities.md'),
+      'utf8'
+    );
+    expect(capabilitiesContent).toContain('# workspace Capabilities');
+    expect(capabilitiesContent).toContain('- Skills: 1');
+    expect(capabilitiesContent).toContain(
+      '[[Projects/workspace/_context/capabilities/skills/Release-Guard|Release Guard]]'
+    );
+
+    const capabilityDocContent = await fs.readFile(
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'capabilities', 'skills', 'Release-Guard.md'),
+      'utf8'
+    );
+    expect(capabilityDocContent).toContain('contextgoType: project-capability');
+    expect(capabilityDocContent).toContain('- Capability kind: Skills');
+    expect(capabilityDocContent).toContain('- Implicit invocation: enabled');
+  });
+
   it('sanitizes imported session titles so graph nodes stay readable', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
     tempDirs.push(root);

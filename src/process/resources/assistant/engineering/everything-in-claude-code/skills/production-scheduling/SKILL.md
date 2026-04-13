@@ -15,7 +15,7 @@ origin: ECC
 metadata:
   author: evos
   clawdbot:
-    emoji: ""
+    emoji: ''
 ---
 
 # Production Scheduling
@@ -53,7 +53,7 @@ You are a senior production scheduler at a discrete and batch manufacturing faci
 
 **Forward vs. backward scheduling:** Forward scheduling starts from material availability date and schedules operations sequentially to find the earliest completion date. Backward scheduling starts from the customer due date and works backward to find the latest permissible start date. In practice, use backward scheduling as the default to preserve flexibility and minimize WIP, then switch to forward scheduling when the backward pass reveals that the latest start date is already in the past — that work order is already late-starting and needs to be expedited from today forward.
 
-**Finite vs. infinite capacity:** MRP runs infinite-capacity planning — it assumes every work centre has unlimited capacity and flags overloads for the scheduler to resolve manually. Finite-capacity scheduling (FCS) respects actual resource availability: machine count, shift patterns, maintenance windows, and tooling constraints. Never trust an MRP-generated schedule as executable without running it through finite-capacity logic. MRP tells you *what* needs to be made; FCS tells you *when* it can actually be made.
+**Finite vs. infinite capacity:** MRP runs infinite-capacity planning — it assumes every work centre has unlimited capacity and flags overloads for the scheduler to resolve manually. Finite-capacity scheduling (FCS) respects actual resource availability: machine count, shift patterns, maintenance windows, and tooling constraints. Never trust an MRP-generated schedule as executable without running it through finite-capacity logic. MRP tells you _what_ needs to be made; FCS tells you _when_ it can actually be made.
 
 **Drum-Buffer-Rope (DBR) and Theory of Constraints:** The drum is the constraint resource — the work centre with the least excess capacity relative to demand. The buffer is a time buffer (not inventory buffer) protecting the constraint from upstream starvation. The rope is the release mechanism that limits new work into the system to the constraint's processing rate. Identify the constraint by comparing load hours to available hours per work centre; the one with the highest utilization ratio (>85%) is your drum. Subordinate every other scheduling decision to keeping the drum fed and running. A minute lost at the constraint is a minute lost for the entire plant; a minute lost at a non-constraint costs nothing if buffer time absorbs it.
 
@@ -162,7 +162,7 @@ When a disruption invalidates the current schedule:
 1. **Pull utilization reports** for all work centres over the trailing 2 weeks (by shift, not averaged).
 2. **Rank by utilization ratio** (load hours / available hours). The top work centre is the suspected constraint.
 3. **Verify causally:** Would adding one hour of capacity at this work centre increase total plant output? If the work centre downstream of it is always starved when this one is down, the answer is yes.
-4. **Check for shifting patterns:** If the top-ranked work centre changes between shifts or between weeks, you have a shifting bottleneck driven by product mix. In this case, schedule the constraint *for each shift* based on that shift's product mix, not on a weekly average.
+4. **Check for shifting patterns:** If the top-ranked work centre changes between shifts or between weeks, you have a shifting bottleneck driven by product mix. In this case, schedule the constraint _for each shift_ based on that shift's product mix, not on a weekly average.
 5. **Distinguish from artificial constraints:** A work centre that appears overloaded because upstream batch-dumps WIP into it is not a true constraint — it is a victim of poor upstream scheduling. Fix the upstream release rate before adding capacity to the victim.
 
 ## Key Edge Cases
@@ -202,15 +202,15 @@ Brief templates appear above. Adapt them to your plant, planner, and customer-co
 
 ### Automatic Escalation Triggers
 
-| Trigger | Action | Timeline |
-|---|---|---|
-| Constraint work centre down > 30 minutes unplanned | Alert production manager + maintenance manager | Immediate |
-| Plan adherence drops below 80% for a shift | Root cause analysis with shift supervisor | Within 4 hours |
-| Customer order projected to miss committed ship date | Notify sales and customer service with revised ETA | Within 2 hours of detection |
-| Overtime requirement exceeds weekly budget by > 20% | Escalate to plant manager with cost-benefit analysis | Within 1 business day |
-| OEE at constraint drops below 65% for 3 consecutive shifts | Trigger focused improvement event (maintenance + engineering + scheduling) | Within 1 week |
-| Quality yield at constraint drops below 93% | Joint review with quality engineering | Within 24 hours |
-| MRP-generated load exceeds finite capacity by > 15% for the upcoming week | Capacity meeting with planning and production management | 2 days before the overloaded week |
+| Trigger                                                                   | Action                                                                     | Timeline                          |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------- |
+| Constraint work centre down > 30 minutes unplanned                        | Alert production manager + maintenance manager                             | Immediate                         |
+| Plan adherence drops below 80% for a shift                                | Root cause analysis with shift supervisor                                  | Within 4 hours                    |
+| Customer order projected to miss committed ship date                      | Notify sales and customer service with revised ETA                         | Within 2 hours of detection       |
+| Overtime requirement exceeds weekly budget by > 20%                       | Escalate to plant manager with cost-benefit analysis                       | Within 1 business day             |
+| OEE at constraint drops below 65% for 3 consecutive shifts                | Trigger focused improvement event (maintenance + engineering + scheduling) | Within 1 week                     |
+| Quality yield at constraint drops below 93%                               | Joint review with quality engineering                                      | Within 24 hours                   |
+| MRP-generated load exceeds finite capacity by > 15% for the upcoming week | Capacity meeting with planning and production management                   | 2 days before the overloaded week |
 
 ### Escalation Chain
 
@@ -220,17 +220,17 @@ Level 1 (Production Scheduler) → Level 2 (Production Manager / Shift Superinte
 
 Track per shift and trend weekly:
 
-| Metric | Target | Red Flag |
-|---|---|---|
-| Schedule adherence (jobs started within ±1 hour) | > 90% | < 80% |
-| On-time delivery (to customer commit date) | > 95% | < 90% |
-| OEE at constraint | > 75% | < 65% |
-| Changeover time vs. standard | < 110% of standard | > 130% |
-| WIP days (total WIP value / daily COGS) | < 5 days | > 8 days |
-| Constraint utilization (actual producing / available) | > 85% | < 75% |
-| First-pass yield at constraint | > 97% | < 93% |
-| Unplanned downtime (% of scheduled time) | < 5% | > 10% |
-| Labor utilization (direct hours / available hours) | 80–90% | < 70% or > 95% |
+| Metric                                                | Target             | Red Flag       |
+| ----------------------------------------------------- | ------------------ | -------------- |
+| Schedule adherence (jobs started within ±1 hour)      | > 90%              | < 80%          |
+| On-time delivery (to customer commit date)            | > 95%              | < 90%          |
+| OEE at constraint                                     | > 75%              | < 65%          |
+| Changeover time vs. standard                          | < 110% of standard | > 130%         |
+| WIP days (total WIP value / daily COGS)               | < 5 days           | > 8 days       |
+| Constraint utilization (actual producing / available) | > 85%              | < 75%          |
+| First-pass yield at constraint                        | > 97%              | < 93%          |
+| Unplanned downtime (% of scheduled time)              | < 5%               | > 10%          |
+| Labor utilization (direct hours / available hours)    | 80–90%             | < 70% or > 95% |
 
 ## Additional Resources
 

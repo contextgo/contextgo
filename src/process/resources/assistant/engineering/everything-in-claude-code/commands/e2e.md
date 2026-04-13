@@ -18,46 +18,50 @@ Use this only if you still invoke `/e2e`. The maintained workflow lives in `skil
 ## Delegation
 
 Apply the `e2e-testing` skill.
+
 - Generate or update Playwright coverage for the requested user flow.
 - Run only the relevant tests unless the user explicitly asked for the entire suite.
 - Capture the usual artifacts and report failures, flake risk, and next fixes without duplicating the full skill body here.
-    await marketsPage.searchMarkets('xyznonexistentmarket123456')
+  await marketsPage.searchMarkets('xyznonexistentmarket123456')
 
-    // Verify empty state
-    await expect(page.locator('[data-testid="no-results"]')).toBeVisible()
-    await expect(page.locator('[data-testid="no-results"]')).toContainText(
-      /no.*results|no.*markets/i
-    )
+      // Verify empty state
+      await expect(page.locator('[data-testid="no-results"]')).toBeVisible()
+      await expect(page.locator('[data-testid="no-results"]')).toContainText(
+        /no.*results|no.*markets/i
+      )
 
-    const marketCount = await marketsPage.marketCards.count()
-    expect(marketCount).toBe(0)
+      const marketCount = await marketsPage.marketCards.count()
+      expect(marketCount).toBe(0)
+
   })
 
   test('can clear search and see all markets again', async ({ page }) => {
-    const marketsPage = new MarketsPage(page)
-    await marketsPage.goto()
+  const marketsPage = new MarketsPage(page)
+  await marketsPage.goto()
 
-    // Initial market count
-    const initialCount = await marketsPage.marketCards.count()
+      // Initial market count
+      const initialCount = await marketsPage.marketCards.count()
 
-    // Perform search
-    await marketsPage.searchMarkets('trump')
-    await page.waitForLoadState('networkidle')
+      // Perform search
+      await marketsPage.searchMarkets('trump')
+      await page.waitForLoadState('networkidle')
 
-    // Verify filtered results
-    const filteredCount = await marketsPage.marketCards.count()
-    expect(filteredCount).toBeLessThan(initialCount)
+      // Verify filtered results
+      const filteredCount = await marketsPage.marketCards.count()
+      expect(filteredCount).toBeLessThan(initialCount)
 
-    // Clear search
-    await marketsPage.searchInput.clear()
-    await page.waitForLoadState('networkidle')
+      // Clear search
+      await marketsPage.searchInput.clear()
+      await page.waitForLoadState('networkidle')
 
-    // Verify all markets shown again
-    const finalCount = await marketsPage.marketCards.count()
-    expect(finalCount).toBe(initialCount)
+      // Verify all markets shown again
+      const finalCount = await marketsPage.marketCards.count()
+      expect(finalCount).toBe(initialCount)
+
   })
-})
-```
+  })
+
+````
 
 ## Running Tests
 
@@ -77,7 +81,7 @@ Artifacts generated:
 - artifacts/search-results.png
 - artifacts/market-details.png
 - playwright-report/index.html
-```
+````
 
 ## Test Report
 
@@ -103,7 +107,8 @@ View report: npx playwright show-report
 ```
 
 PASS: E2E test suite ready for CI/CD integration!
-```
+
+````
 
 ## Test Artifacts
 
@@ -131,7 +136,7 @@ npx playwright show-trace artifacts/trace-abc123.zip
 
 # Screenshots are saved in artifacts/ directory
 open artifacts/search-results.png
-```
+````
 
 ## Flaky Test Detection
 
@@ -157,6 +162,7 @@ Quarantine recommendation: Mark as test.fixme() until fixed
 ## Browser Configuration
 
 Tests run on multiple browsers by default:
+
 - PASS: Chromium (Desktop Chrome)
 - PASS: Firefox (Desktop)
 - PASS: WebKit (Desktop Safari)
@@ -189,6 +195,7 @@ Add to your CI pipeline:
 For PMX, prioritize these E2E tests:
 
 **CRITICAL (Must Always Pass):**
+
 1. User can connect wallet
 2. User can browse markets
 3. User can search markets (semantic search)
@@ -198,6 +205,7 @@ For PMX, prioritize these E2E tests:
 7. User can withdraw funds
 
 **IMPORTANT:**
+
 1. Market creation flow
 2. User profile updates
 3. Real-time price updates
@@ -208,6 +216,7 @@ For PMX, prioritize these E2E tests:
 ## Best Practices
 
 **DO:**
+
 - PASS: Use Page Object Model for maintainability
 - PASS: Use data-testid attributes for selectors
 - PASS: Wait for API responses, not arbitrary timeouts
@@ -216,6 +225,7 @@ For PMX, prioritize these E2E tests:
 - PASS: Review artifacts when tests fail
 
 **DON'T:**
+
 - FAIL: Use brittle selectors (CSS classes can change)
 - FAIL: Test implementation details
 - FAIL: Run tests against production
@@ -226,6 +236,7 @@ For PMX, prioritize these E2E tests:
 ## Important Notes
 
 **CRITICAL for PMX:**
+
 - E2E tests involving real money MUST run on testnet/staging only
 - Never run trading tests against production
 - Set `test.skip(process.env.NODE_ENV === 'production')` for financial tests

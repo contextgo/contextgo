@@ -2,7 +2,7 @@
  * Channels – enable / disable toggle tests.
  *
  * Covers:
- *  - Navigating to the channels settings (webui tab → channels sub-tab)
+ *  - Navigating to the direct channels settings page
  *  - Channel list renders with known channels
  *  - Toggle switches are visible for active channels
  *  - Only not-yet-supported channels have disabled toggles

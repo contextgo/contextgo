@@ -2,7 +2,7 @@
 name: healthcare-cdss-patterns
 description: Clinical Decision Support System (CDSS) development patterns. Drug interaction checking, dose validation, clinical scoring (NEWS2, qSOFA), alert severity classification, and integration into EMR workflows.
 origin: Health1 Super Speciality Hospitals — contributed by Dr. Keyur Patel
-version: "1.0.0"
+version: '1.0.0'
 ---
 
 # Healthcare CDSS Development Patterns
@@ -44,33 +44,36 @@ EMR UI (displays alerts inline, blocks if critical)
 
 ```typescript
 interface DrugInteractionPair {
-  drugA: string;           // generic name
-  drugB: string;           // generic name
+  drugA: string; // generic name
+  drugB: string; // generic name
   severity: 'critical' | 'major' | 'minor';
   mechanism: string;
   clinicalEffect: string;
   recommendation: string;
 }
 
-function checkInteractions(
-  newDrug: string,
-  currentMedications: string[],
-  allergyList: string[]
-): InteractionAlert[] {
+function checkInteractions(newDrug: string, currentMedications: string[], allergyList: string[]): InteractionAlert[] {
   if (!newDrug) return [];
   const alerts: InteractionAlert[] = [];
   for (const current of currentMedications) {
     const interaction = findInteraction(newDrug, current);
     if (interaction) {
-      alerts.push({ severity: interaction.severity, pair: [newDrug, current],
-        message: interaction.clinicalEffect, recommendation: interaction.recommendation });
+      alerts.push({
+        severity: interaction.severity,
+        pair: [newDrug, current],
+        message: interaction.clinicalEffect,
+        recommendation: interaction.recommendation,
+      });
     }
   }
   for (const allergy of allergyList) {
     if (isCrossReactive(newDrug, allergy)) {
-      alerts.push({ severity: 'critical', pair: [newDrug, allergy],
+      alerts.push({
+        severity: 'critical',
+        pair: [newDrug, allergy],
         message: `Cross-reactivity with documented allergy: ${allergy}`,
-        recommendation: 'Do not prescribe without allergy consultation' });
+        recommendation: 'Do not prescribe without allergy consultation',
+      });
     }
   }
   return alerts.sort((a, b) => severityOrder(a.severity) - severityOrder(b.severity));
@@ -104,14 +107,22 @@ function validateDose(
   // SAFETY: if rules require weight but weight missing, BLOCK (not pass)
   if (rules.weightBased) {
     if (!patientWeight || patientWeight <= 0) {
-      return { valid: false, message: `Weight required for ${drug} (mg/kg drug)`,
-        suggestedRange: null, factors: ['weight_missing'] };
+      return {
+        valid: false,
+        message: `Weight required for ${drug} (mg/kg drug)`,
+        suggestedRange: null,
+        factors: ['weight_missing'],
+      };
     }
     factors.push('weight');
     const maxDose = rules.maxPerKg * patientWeight;
     if (dose > maxDose) {
-      return { valid: false, message: `Dose exceeds max for ${patientWeight}kg`,
-        suggestedRange: { min: rules.minPerKg * patientWeight, max: maxDose, unit: rules.unit }, factors };
+      return {
+        valid: false,
+        message: `Dose exceeds max for ${patientWeight}kg`,
+        suggestedRange: { min: rules.minPerKg * patientWeight, max: maxDose, unit: rules.unit },
+        factors,
+      };
     }
   }
 
@@ -120,8 +131,12 @@ function validateDose(
     factors.push('age');
     const ageMax = rules.getAgeAdjustedMax(patientAge);
     if (dose > ageMax) {
-      return { valid: false, message: `Exceeds age-adjusted max for ${patientAge}yr`,
-        suggestedRange: { min: rules.typicalMin, max: ageMax, unit: rules.unit }, factors };
+      return {
+        valid: false,
+        message: `Exceeds age-adjusted max for ${patientAge}yr`,
+        suggestedRange: { min: rules.typicalMin, max: ageMax, unit: rules.unit },
+        factors,
+      };
     }
   }
 
@@ -130,19 +145,30 @@ function validateDose(
     factors.push('renal');
     const renalMax = rules.getRenalAdjustedMax(renalFunction);
     if (dose > renalMax) {
-      return { valid: false, message: `Exceeds renal-adjusted max for eGFR ${renalFunction}`,
-        suggestedRange: { min: rules.typicalMin, max: renalMax, unit: rules.unit }, factors };
+      return {
+        valid: false,
+        message: `Exceeds renal-adjusted max for eGFR ${renalFunction}`,
+        suggestedRange: { min: rules.typicalMin, max: renalMax, unit: rules.unit },
+        factors,
+      };
     }
   }
 
   // Absolute max
   if (dose > rules.absoluteMax) {
-    return { valid: false, message: `Exceeds absolute max ${rules.absoluteMax}${rules.unit}`,
+    return {
+      valid: false,
+      message: `Exceeds absolute max ${rules.absoluteMax}${rules.unit}`,
       suggestedRange: { min: rules.typicalMin, max: rules.absoluteMax, unit: rules.unit },
-      factors: [...factors, 'absolute_max'] };
+      factors: [...factors, 'absolute_max'],
+    };
   }
-  return { valid: true, message: 'Within range',
-    suggestedRange: { min: rules.typicalMin, max: rules.typicalMax, unit: rules.unit }, factors };
+  return {
+    valid: true,
+    message: 'Within range',
+    suggestedRange: { min: rules.typicalMin, max: rules.typicalMax, unit: rules.unit },
+    factors,
+  };
 }
 ```
 
@@ -150,12 +176,16 @@ function validateDose(
 
 ```typescript
 interface NEWS2Input {
-  respiratoryRate: number; oxygenSaturation: number; supplementalOxygen: boolean;
-  temperature: number; systolicBP: number; heartRate: number;
+  respiratoryRate: number;
+  oxygenSaturation: number;
+  supplementalOxygen: boolean;
+  temperature: number;
+  systolicBP: number;
+  heartRate: number;
   consciousness: 'alert' | 'voice' | 'pain' | 'unresponsive';
 }
 interface NEWS2Result {
-  total: number;           // 0-20
+  total: number; // 0-20
   risk: 'low' | 'low-medium' | 'medium' | 'high';
   components: Record<string, number>;
   escalation: string;
@@ -166,11 +196,11 @@ Scoring tables must match the Royal College of Physicians specification exactly.
 
 ### Alert Severity and UI Behavior
 
-| Severity | UI Behavior | Clinician Action Required |
-|----------|-------------|--------------------------|
+| Severity | UI Behavior                               | Clinician Action Required                |
+| -------- | ----------------------------------------- | ---------------------------------------- |
 | Critical | Block action. Non-dismissable modal. Red. | Must document override reason to proceed |
-| Major | Warning banner inline. Orange. | Must acknowledge before proceeding |
-| Minor | Info note inline. Yellow. | Awareness only, no action required |
+| Major    | Warning banner inline. Orange.            | Must acknowledge before proceeding       |
+| Minor    | Info note inline. Yellow.                 | Awareness only, no action required       |
 
 Critical alerts must NEVER be auto-dismissed or implemented as toast notifications. Override reasons must be stored in the audit trail.
 
@@ -238,8 +268,13 @@ const noWeight = validateDose('gentamicin', 300, 'iv');
 
 ```typescript
 const result = calculateNEWS2({
-  respiratoryRate: 24, oxygenSaturation: 93, supplementalOxygen: true,
-  temperature: 38.5, systolicBP: 100, heartRate: 110, consciousness: 'voice'
+  respiratoryRate: 24,
+  oxygenSaturation: 93,
+  supplementalOxygen: true,
+  temperature: 38.5,
+  systolicBP: 100,
+  heartRate: 110,
+  consciousness: 'voice',
 });
 // { total: 13, risk: 'high', escalation: 'Urgent clinical review. Consider ICU.' }
 ```

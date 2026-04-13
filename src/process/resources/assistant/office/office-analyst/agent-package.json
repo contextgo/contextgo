@@ -1,0 +1,112 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "office-analyst",
+  "assistantPresetId": "builtin-office-analyst",
+  "displayName": "Office Analyst",
+  "runtimeNeutral": true,
+  "payloads": {
+    "rules": {
+      "logicalId": "rules",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "."
+        }
+      ],
+      "files": {
+        "en-US": "office-analyst.md",
+        "zh-CN": "office-analyst.zh-CN.md"
+      },
+      "installSurface": "assistant-rules-cache",
+      "runtimeProjection": "none"
+    },
+    "docs": {
+      "logicalId": "docs",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "docs"
+        }
+      ],
+      "installSurface": "package-docs",
+      "runtimeProjection": "none"
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/office-analyst-pack"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/xlsx"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/docx"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/pdf"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "xlsx",
+        "docx",
+        "pdf",
+        "office-spreadsheet-analysis",
+        "office-document-operations",
+        "office-source-reconciliation",
+        "office-briefing",
+        "office-report-drafting",
+        "office-duckdb-query",
+        "office-duckdb-read-file",
+        "office-duckdb-install",
+        "office-cross-file-join-analysis",
+        "office-report-drilldown",
+        "office-pdf-table-query"
+      ],
+      "packagedSkillNames": [
+        "office-spreadsheet-analysis",
+        "office-document-operations",
+        "office-source-reconciliation",
+        "office-briefing",
+        "office-report-drafting",
+        "office-duckdb-query",
+        "office-duckdb-read-file",
+        "office-duckdb-install",
+        "office-cross-file-join-analysis",
+        "office-report-drilldown",
+        "office-pdf-table-query"
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "office-analyst"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "office-analyst"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "office-analyst"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "office-analyst"
+    }
+  }
+}

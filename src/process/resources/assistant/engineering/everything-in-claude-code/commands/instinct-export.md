@@ -7,6 +7,7 @@ command: /instinct-export
 # Instinct Export Command
 
 Exports instincts to a shareable format. Perfect for:
+
 - Sharing with teammates
 - Transferring to a new machine
 - Contributing to project conventions
@@ -43,7 +44,7 @@ Creates a YAML file:
 
 ---
 id: prefer-functional-style
-trigger: "when writing new functions"
+trigger: 'when writing new functions'
 confidence: 0.8
 domain: code-style
 source: session-observation
@@ -51,7 +52,6 @@ scope: project
 project_id: a1b2c3d4e5f6
 project_name: my-app
 ---
-
 # Prefer Functional Style
 
 ## Action

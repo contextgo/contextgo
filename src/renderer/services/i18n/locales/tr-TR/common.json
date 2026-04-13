@@ -57,6 +57,8 @@
   "goToSettings": "Ayarlara Git",
   "goBack": "Geri",
   "forward": "İleri",
+  "devBadge": "DEV",
+  "devBuild": "Geliştirme yapısı",
   "localUser": "Yerel Kullanıcı",
   "more": "Daha Fazla",
   "refresh": "Yenile",

@@ -33,6 +33,7 @@ Get an API key at [fal.ai](https://fal.ai).
 ## MCP Tools
 
 The fal.ai MCP provides these tools:
+
 - `search` — Find available models by keyword
 - `find` — Get model details and parameters
 - `generate` — Run a model with parameters
@@ -48,6 +49,7 @@ The fal.ai MCP provides these tools:
 ## Image Generation
 
 ### Nano Banana 2 (Fast)
+
 Best for: quick iterations, drafts, text-to-image, image editing.
 
 ```
@@ -63,6 +65,7 @@ generate(
 ```
 
 ### Nano Banana Pro (High Fidelity)
+
 Best for: production images, realism, typography, detailed prompts.
 
 ```
@@ -79,15 +82,16 @@ generate(
 
 ### Common Image Parameters
 
-| Param | Type | Options | Notes |
-|-------|------|---------|-------|
-| `prompt` | string | required | Describe what you want |
-| `image_size` | string | `square`, `portrait_4_3`, `landscape_16_9`, `portrait_16_9`, `landscape_4_3` | Aspect ratio |
-| `num_images` | number | 1-4 | How many to generate |
-| `seed` | number | any integer | Reproducibility |
-| `guidance_scale` | number | 1-20 | How closely to follow the prompt (higher = more literal) |
+| Param            | Type   | Options                                                                      | Notes                                                    |
+| ---------------- | ------ | ---------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `prompt`         | string | required                                                                     | Describe what you want                                   |
+| `image_size`     | string | `square`, `portrait_4_3`, `landscape_16_9`, `portrait_16_9`, `landscape_4_3` | Aspect ratio                                             |
+| `num_images`     | number | 1-4                                                                          | How many to generate                                     |
+| `seed`           | number | any integer                                                                  | Reproducibility                                          |
+| `guidance_scale` | number | 1-20                                                                         | How closely to follow the prompt (higher = more literal) |
 
 ### Image Editing
+
 Use Nano Banana 2 with an input image for inpainting, outpainting, or style transfer:
 
 ```
@@ -110,6 +114,7 @@ generate(
 ## Video Generation
 
 ### Seedance 1.0 Pro (ByteDance)
+
 Best for: text-to-video, image-to-video with high motion quality.
 
 ```
@@ -125,6 +130,7 @@ generate(
 ```
 
 ### Kling Video v3 Pro
+
 Best for: text/image-to-video with native audio generation.
 
 ```
@@ -139,6 +145,7 @@ generate(
 ```
 
 ### Veo 3 (Google DeepMind)
+
 Best for: video with generated sound, high visual quality.
 
 ```
@@ -152,6 +159,7 @@ generate(
 ```
 
 ### Image-to-Video
+
 Start from an existing image:
 
 ```
@@ -167,19 +175,20 @@ generate(
 
 ### Video Parameters
 
-| Param | Type | Options | Notes |
-|-------|------|---------|-------|
-| `prompt` | string | required | Describe the video |
-| `duration` | string | `"5s"`, `"10s"` | Video length |
-| `aspect_ratio` | string | `"16:9"`, `"9:16"`, `"1:1"` | Frame ratio |
-| `seed` | number | any integer | Reproducibility |
-| `image_url` | string | URL | Source image for image-to-video |
+| Param          | Type   | Options                     | Notes                           |
+| -------------- | ------ | --------------------------- | ------------------------------- |
+| `prompt`       | string | required                    | Describe the video              |
+| `duration`     | string | `"5s"`, `"10s"`             | Video length                    |
+| `aspect_ratio` | string | `"16:9"`, `"9:16"`, `"1:1"` | Frame ratio                     |
+| `seed`         | number | any integer                 | Reproducibility                 |
+| `image_url`    | string | URL                         | Source image for image-to-video |
 
 ---
 
 ## Audio Generation
 
 ### CSM-1B (Conversational Speech)
+
 Text-to-speech with natural, conversational quality.
 
 ```
@@ -193,6 +202,7 @@ generate(
 ```
 
 ### ThinkSound (Video-to-Audio)
+
 Generate matching audio from video content.
 
 ```
@@ -206,6 +216,7 @@ generate(
 ```
 
 ### ElevenLabs (via API, no MCP)
+
 For professional voice synthesis, use ElevenLabs directly:
 
 ```python
@@ -229,6 +240,7 @@ with open("output.mp3", "wb") as f:
 ```
 
 ### VideoDB Generative Audio
+
 If VideoDB is configured, use its generative audio:
 
 ```python

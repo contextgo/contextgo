@@ -260,20 +260,6 @@ export function getScheduleDirectCreateContext(
         workspacePath: conversation.extra.workingDirectory || conversation.extra.workspace,
         agentType: 'codex',
       };
-    case 'openclaw-gateway':
-      return {
-        conversationId: conversation.id,
-        conversationTitle: conversation.name,
-        workspacePath: conversation.extra.workingDirectory || conversation.extra.workspace,
-        agentType: conversation.extra.backend || 'openclaw-gateway',
-      };
-    case 'nanobot':
-      return {
-        conversationId: conversation.id,
-        conversationTitle: conversation.name,
-        workspacePath: conversation.extra.workingDirectory || conversation.extra.workspace,
-        agentType: 'nanobot',
-      };
     default:
       return null;
   }

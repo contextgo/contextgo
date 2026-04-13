@@ -1,0 +1,95 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "design-director",
+  "assistantPresetId": "builtin-design-director",
+  "displayName": "Design Director",
+  "runtimeNeutral": true,
+  "payloads": {
+    "rules": {
+      "logicalId": "rules",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "."
+        }
+      ],
+      "files": {
+        "en-US": "design-director.md",
+        "zh-CN": "design-director.zh-CN.md"
+      },
+      "installSurface": "assistant-rules-cache",
+      "runtimeProjection": "none"
+    },
+    "docs": {
+      "logicalId": "docs",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "docs"
+        }
+      ],
+      "installSurface": "package-docs",
+      "runtimeProjection": "none"
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/design-director-pack"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "design-style-archetype-selection",
+        "design-system-distillation",
+        "design-landing-page-art-direction",
+        "design-product-surface-art-direction",
+        "design-ui-critique-and-polish",
+        "design-screenshot-critique",
+        "design-figma-reference-absorption",
+        "design-system-adaptation",
+        "design-component-visual-spec",
+        "design-handoff-brief"
+      ],
+      "packagedSkillNames": [
+        "design-style-archetype-selection",
+        "design-system-distillation",
+        "design-landing-page-art-direction",
+        "design-product-surface-art-direction",
+        "design-ui-critique-and-polish",
+        "design-screenshot-critique",
+        "design-figma-reference-absorption",
+        "design-system-adaptation",
+        "design-component-visual-spec",
+        "design-handoff-brief"
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "design-director"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "design-director"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "design-director"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "design-director"
+    }
+  }
+}

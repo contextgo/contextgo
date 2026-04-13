@@ -33,9 +33,6 @@ import { AcpConnection } from './AcpConnection';
 import { AcpApprovalStore, createAcpApprovalKey } from './ApprovalStore';
 import {
   CLAUDE_YOLO_SESSION_MODE,
-  CODEBUDDY_YOLO_SESSION_MODE,
-  IFLOW_YOLO_SESSION_MODE,
-  QWEN_YOLO_SESSION_MODE,
 } from './constants';
 import { buildAcpModelInfo, summarizeAcpModelInfo } from './modelInfo';
 import { getClaudeModel } from './utils';
@@ -307,9 +304,6 @@ export class AcpAgent {
       if (this.extra.yoloMode) {
         const yoloModeMap: Partial<Record<AcpBackend, string>> = {
           claude: CLAUDE_YOLO_SESSION_MODE,
-          codebuddy: CODEBUDDY_YOLO_SESSION_MODE,
-          qwen: QWEN_YOLO_SESSION_MODE,
-          iflow: IFLOW_YOLO_SESSION_MODE,
         };
         const sessionMode = yoloModeMap[this.extra.backend];
         if (sessionMode) {
@@ -403,7 +397,6 @@ export class AcpAgent {
     if (this.connection.isConnected && this.connection.hasActiveSession) {
       const yoloModeMap: Partial<Record<AcpBackend, string>> = {
         claude: CLAUDE_YOLO_SESSION_MODE,
-        qwen: QWEN_YOLO_SESSION_MODE,
       };
       const sessionMode = yoloModeMap[this.extra.backend];
       if (sessionMode) {
@@ -650,20 +643,6 @@ export class AcpAgent {
       return { success: true, data: null };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      // Special handling for Internal error
-      if (errorMsg.includes('Internal error')) {
-        if (this.extra.backend === 'qwen') {
-          const enhancedMsg =
-            `Qwen ACP Internal Error: This usually means authentication failed or ` +
-            `the Qwen CLI has compatibility issues. Please try: 1) Restart the application ` +
-            `2) Use 'npx @qwen-code/qwen-code' instead of global qwen 3) Check if you have valid Qwen credentials.`;
-          this.emitErrorMessage(enhancedMsg);
-          return {
-            success: false,
-            error: createAcpError(AcpErrorType.AUTHENTICATION_FAILED, enhancedMsg, false),
-          };
-        }
-      }
       // Classify error types based on message content
       let errorType: AcpErrorType = AcpErrorType.UNKNOWN;
       let retryable = false;
@@ -1469,12 +1448,12 @@ export class AcpAgent {
       let args: string[];
 
       if (this.extra.cliPath.startsWith('npx ')) {
-        // For "npx @qwen-code/qwen-code" or "npx @anthropic-ai/claude-code"
+        // For npx-based launchers such as "npx @anthropic-ai/claude-code"
         const parts = this.extra.cliPath.split(' ');
         command = resolveNpxPath(cleanEnv);
         args = [...parts.slice(1), loginArg];
       } else {
-        // For regular paths like '/usr/local/bin/qwen' or '/usr/local/bin/claude'
+        // For regular paths like '/usr/local/bin/claude'
         command = this.extra.cliPath;
         args = [loginArg];
       }
@@ -1503,11 +1482,6 @@ export class AcpAgent {
     }
   }
 
-  private async ensureQwenAuth(): Promise<void> {
-    if (this.extra.backend !== 'qwen') return;
-    await this.ensureBackendAuth('qwen', 'login');
-  }
-
   private async ensureClaudeAuth(): Promise<void> {
     if (this.extra.backend !== 'claude') return;
     await this.ensureBackendAuth('claude', '/login');
@@ -1534,12 +1508,9 @@ export class AcpAgent {
       }
 
       // 条件化预热：仅在需要鉴权时尝试调用后端CLI登录以刷新token
-      if (this.extra.backend === 'qwen') {
-        await this.ensureQwenAuth();
-      } else if (this.extra.backend === 'claude') {
+      if (this.extra.backend === 'claude') {
         await this.ensureClaudeAuth();
       }
-      // Note: CodeBuddy does not have a CLI login command; auth is handled by the CLI itself
 
       // 预热后重试创建session（同时尝试恢复会话）
       // Retry creating/resuming session after warmup

@@ -51,7 +51,10 @@ function run(rawInput) {
 
         // Biome: `check --write` = format + lint in one pass
         // Prettier: `--write` = format only
-        const args = formatter === 'biome' ? [...resolved.prefix, 'check', '--write', resolvedFilePath] : [...resolved.prefix, '--write', resolvedFilePath];
+        const args =
+          formatter === 'biome'
+            ? [...resolved.prefix, 'check', '--write', resolvedFilePath]
+            : [...resolved.prefix, '--write', resolvedFilePath];
 
         if (process.platform === 'win32' && resolved.bin.endsWith('.cmd')) {
           // Windows: .cmd files require shell to execute. Guard against
@@ -63,7 +66,7 @@ function run(rawInput) {
             cwd: projectRoot,
             shell: true,
             stdio: 'pipe',
-            timeout: 15000
+            timeout: 15000,
           });
           if (result.error) throw result.error;
           if (typeof result.status === 'number' && result.status !== 0) {
@@ -73,7 +76,7 @@ function run(rawInput) {
           execFileSync(resolved.bin, args, {
             cwd: projectRoot,
             stdio: ['pipe', 'pipe', 'pipe'],
-            timeout: 15000
+            timeout: 15000,
           });
         }
       } catch {
@@ -92,7 +95,7 @@ if (require.main === module) {
   let data = '';
   process.stdin.setEncoding('utf8');
 
-  process.stdin.on('data', chunk => {
+  process.stdin.on('data', (chunk) => {
     if (data.length < MAX_STDIN) {
       const remaining = MAX_STDIN - data.length;
       data += chunk.substring(0, remaining);

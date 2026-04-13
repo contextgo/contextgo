@@ -15,7 +15,8 @@ const bridgeMocks = vi.hoisted(() => ({
         runtime_dir: '/tmp/contextgo/connector/clipboard',
         config_path: '/tmp/contextgo/connector/clipboard/config.yaml',
         platform_access: 'Native desktop clipboard observation through the connector CLI activity runtime.',
-        runtime_boundary: 'Connector runtime lives in the sibling repository and owns observer config, logs, and retention state.',
+        runtime_boundary:
+          'Connector runtime lives in the sibling repository and owns observer config, logs, and retention state.',
         native_surface: ['clipboard events', 'daily summaries', 'observer config'],
         implemented_workflows: [
           {
@@ -40,7 +41,8 @@ const bridgeMocks = vi.hoisted(() => ({
         runtime_dir: '/tmp/contextgo/connector/browser-extension',
         config_path: '/tmp/contextgo/connector/browser-extension/config.yaml',
         platform_access: 'Browser extension event ingest plus host forwarding health checks.',
-        runtime_boundary: 'Connector runtime owns extension pairing, ingest state, and browser activity retention before ContextGo consumes the outputs.',
+        runtime_boundary:
+          'Connector runtime owns extension pairing, ingest state, and browser activity retention before ContextGo consumes the outputs.',
         native_surface: ['browser visits', 'tab sessions', 'daily summaries'],
         implemented_workflows: [
           {
@@ -65,7 +67,8 @@ const bridgeMocks = vi.hoisted(() => ({
         runtime_dir: '/tmp/contextgo/connector/google-drive',
         config_path: '/tmp/contextgo/connector/google-drive/config.yaml',
         platform_access: 'Official Google-native runtime surface managed by the connector project.',
-        runtime_boundary: 'ContextGo only consumes the connector-owned Google Drive capability model and downstream outputs.',
+        runtime_boundary:
+          'ContextGo only consumes the connector-owned Google Drive capability model and downstream outputs.',
         native_surface: ['files', 'folders', 'drive metadata'],
         implemented_workflows: [
           {
@@ -90,7 +93,8 @@ const bridgeMocks = vi.hoisted(() => ({
         runtime_dir: '/tmp/contextgo/connector/google-docs',
         config_path: '/tmp/contextgo/connector/google-docs/config.yaml',
         platform_access: 'Official Google-native runtime surface managed by the connector project.',
-        runtime_boundary: 'ContextGo only consumes the connector-owned Google Docs capability model and downstream outputs.',
+        runtime_boundary:
+          'ContextGo only consumes the connector-owned Google Docs capability model and downstream outputs.',
         native_surface: ['documents', 'document structure'],
         implemented_workflows: [
           {
@@ -115,7 +119,8 @@ const bridgeMocks = vi.hoisted(() => ({
         runtime_dir: '/tmp/contextgo/connector/google-sheets',
         config_path: '/tmp/contextgo/connector/google-sheets/config.yaml',
         platform_access: 'Official Google-native runtime surface managed by the connector project.',
-        runtime_boundary: 'ContextGo only consumes the connector-owned Google Sheets capability model and downstream outputs.',
+        runtime_boundary:
+          'ContextGo only consumes the connector-owned Google Sheets capability model and downstream outputs.',
         native_surface: ['spreadsheets', 'worksheets', 'ranges'],
         implemented_workflows: [
           {
@@ -165,7 +170,8 @@ const bridgeMocks = vi.hoisted(() => ({
         runtime_dir: '/tmp/contextgo/connector/google-calendar',
         config_path: '/tmp/contextgo/connector/google-calendar/config.yaml',
         platform_access: 'Official Google-native runtime surface managed by the connector project.',
-        runtime_boundary: 'ContextGo only consumes the connector-owned Google Calendar capability model and downstream outputs.',
+        runtime_boundary:
+          'ContextGo only consumes the connector-owned Google Calendar capability model and downstream outputs.',
         native_surface: ['calendars', 'events'],
         implemented_workflows: [
           {
@@ -204,6 +210,50 @@ const bridgeMocks = vi.hoisted(() => ({
             notes: ['Writes normalized Feishu assets into connector storage.'],
           },
         ],
+        capabilities: {
+          version: 1,
+          extraction_mode: 'hybrid',
+          discovery_commands: ['lark schema', 'lark docs --help', 'lark calendar --help'],
+          notes: ['Capability schema combines CLI self-description and curated annotations.'],
+          groups: [
+            {
+              id: 'docs',
+              label: 'Docs',
+              summary: 'Document authoring, reading, and search.',
+              native_objects: ['documents', 'blocks'],
+              discovery_commands: ['lark docs --help'],
+              sources: [{ kind: 'official-cli-help', ref: 'lark docs --help' }],
+              actions: [
+                {
+                  id: 'docs.read',
+                  label: 'Read and search documents',
+                  summary: 'Inspect document content and find relevant docs.',
+                  entrypoints: ['lark docs ...'],
+                  auth_modes: ['user', 'bot'],
+                  sources: [{ kind: 'official-cli-help', ref: 'lark docs --help' }],
+                },
+              ],
+            },
+            {
+              id: 'calendar',
+              label: 'Calendar',
+              summary: 'Schedule planning, event management, and attendee coordination.',
+              native_objects: ['calendars', 'events', 'attendees'],
+              discovery_commands: ['lark calendar --help'],
+              sources: [{ kind: 'official-cli-help', ref: 'lark calendar --help' }],
+              actions: [
+                {
+                  id: 'calendar.manage',
+                  label: 'Create and update events',
+                  summary: 'Create meetings, adjust schedules, and manage attendees.',
+                  entrypoints: ['lark calendar ...'],
+                  auth_modes: ['user', 'bot'],
+                  sources: [{ kind: 'official-cli-help', ref: 'lark calendar --help' }],
+                },
+              ],
+            },
+          ],
+        },
         notes: [],
         runtime: {},
       },
@@ -275,7 +325,7 @@ vi.mock('react-i18next', () => ({
       }
 
       if (key === 'settings.connectors.externalCatalog.workflowSurface') {
-        return `Surface: ${String(options?.surface ?? '')}`;
+        return `Integration Type: ${String(options?.surface ?? '')}`;
       }
 
       const labels: Record<string, string> = {
@@ -289,18 +339,39 @@ vi.mock('react-i18next', () => ({
         'settings.connectors.openWebsite': 'Open Website',
         'settings.connectors.note': 'Connector note',
         'settings.connectors.catalogPlaceholderDesc': 'This connector is still catalog only.',
-        'settings.connectors.catalogExternalDesc': 'This connector is managed outside the app.',
+        'settings.connectors.catalogExternalDesc':
+          'This connector is currently integrated through an external connector runtime. Its capabilities are shown here and can be used by ContextGo after integration.',
         'settings.connectors.externalCatalog.platformAccess': 'Platform Access',
         'settings.connectors.externalCatalog.runtimeBoundary': 'Runtime Boundary',
         'settings.connectors.externalCatalog.nativeSurface': 'Native Surface',
         'settings.connectors.externalCatalog.commandEntrypoints': 'Command Entrypoints',
+        'settings.connectors.externalCatalog.capabilities': 'Capability Tree',
+        'settings.connectors.externalCatalog.capabilitySummary':
+          "Explore the content and actions available across the upstream product's native capability groups.",
+        'settings.connectors.externalCatalog.capabilityGroups': 'Capability Groups',
+        'settings.connectors.externalCatalog.discoveryCommands': 'Discovery Commands',
+        'settings.connectors.externalCatalog.extractionMode': 'Extraction Mode',
+        'settings.connectors.externalCatalog.actions': 'Actions',
+        'settings.connectors.externalCatalog.authModesTitle': 'Auth Modes',
         'settings.connectors.externalCatalog.noneYet': 'None yet',
         'settings.connectors.externalCatalog.workflows': 'Workflows',
         'settings.connectors.externalCatalog.nativeObjects': 'Native Objects',
         'settings.connectors.externalCatalog.entrypoints': 'Entrypoints',
-        'settings.connectors.externalCatalog.writesStore': 'Writes Store',
-        'settings.connectors.externalCatalog.noStoreWrite': 'No Store Write',
+        'settings.connectors.externalCatalog.writesStore': 'Results persist automatically',
+        'settings.connectors.externalCatalog.noStoreWrite': 'Results do not persist yet',
         'settings.connectors.externalCatalog.unavailableTitle': 'Connector details unavailable',
+        'settings.connectors.externalCatalog.extractionModes.manual-curation': 'Manual Curation',
+        'settings.connectors.externalCatalog.extractionModes.help-derived': 'Help Derived',
+        'settings.connectors.externalCatalog.extractionModes.schema-derived': 'Schema Derived',
+        'settings.connectors.externalCatalog.extractionModes.hybrid': 'Hybrid',
+        'settings.connectors.externalCatalog.authModes.user': 'User Authorization',
+        'settings.connectors.externalCatalog.authModes.bot': 'Bot / App Authorization',
+        'settings.connectors.externalCatalog.authModes.service': 'Service Context',
+        'settings.connectors.externalCatalog.workflowSurfaces.runtime': 'Runtime integration',
+        'settings.connectors.externalCatalog.workflowSurfaces.source': 'Source integration',
+        'settings.connectors.externalCatalog.workflowSurfaces.collect': 'Content collection',
+        'settings.connectors.externalCatalog.workflowSurfaces.fetch': 'Data fetch',
+        'settings.connectors.externalCatalog.workflowSurfaces.activity': 'Activity integration',
         'settings.connectors.externalCatalog.workflowStatus.ready': 'Ready',
         'settings.connectors.externalCatalog.workflowStatus.partial': 'Partial',
         'settings.connectors.externalCatalog.workflowStatus.planned': 'Planned',
@@ -308,14 +379,39 @@ vi.mock('react-i18next', () => ({
         'settings.connectors.stagePlanned': 'Planned',
         'settings.connectors.supportStatus.supported': 'Supported',
         'settings.connectors.supportStatus.notSupportedYet': 'Not Supported Yet',
-        'settings.connectors.implementation': 'Implementation',
-        'settings.connectors.implementationOwners.official': 'Official support',
+        'settings.connectors.implementation': 'Integration Mode',
+        'settings.connectors.implementationOwners.official': 'Official integration',
         'settings.connectors.implementationOwners.contextgo': 'ContextGo native',
-        'settings.connectors.implementationOwners.connectorRepo': 'Connector repository',
-        'settings.connectors.implementationOwners.hybrid': 'Hybrid support',
-        'settings.connectors.implementationOwners.default': 'Connector support',
+        'settings.connectors.implementationOwners.connectorRepo': 'External connector runtime',
+        'settings.connectors.implementationOwners.hybrid': 'Hybrid integration',
+        'settings.connectors.implementationOwners.default': 'Connector integration',
         'settings.connectors.supportSources': 'Support Sources',
         'settings.connectors.noSupportSources': 'No linked support sources yet.',
+        'settings.connectors.sectionTitles.overview': 'Connection Overview',
+        'settings.connectors.sectionTitles.nativeCapabilitySurface': 'Accessible Capabilities',
+        'settings.connectors.sectionTitles.contextgoReadiness': 'Available Now',
+        'settings.connectors.sectionTitles.sourcesAndBoundary': 'More Information',
+        'settings.connectors.sectionDescriptions.overview':
+          'See what this connector can connect to and how it is currently integrated.',
+        'settings.connectors.sectionDescriptions.nativeCapabilitySurface':
+          "Browse the content and actions currently available across the upstream product's capability groups.",
+        'settings.connectors.sectionDescriptions.contextgoReadiness':
+          'This section shows what is already usable inside ContextGo today.',
+        'settings.connectors.sectionDescriptions.sourcesAndBoundary':
+          'Review official docs, integration notes, and technical details.',
+        'settings.connectors.summaryStats.capabilityGroups': 'Capability Groups',
+        'settings.connectors.summaryStats.actions': 'Available Actions',
+        'settings.connectors.summaryStats.readyWorkflows': 'Ready Workflows',
+        'settings.connectors.summaryStats.primaryRuntime': 'Primary Runtime',
+        'settings.connectors.groupNavigator': 'Review each capability group and the actions currently available in it.',
+        'settings.connectors.workflowCatalog.feishu.officialCliRuntime.label': 'Official CLI integration',
+        'settings.connectors.workflowCatalog.feishu.officialCliRuntime.notes.0':
+          'Configuration, login, and command passthrough are already available through the official CLI.',
+        'settings.connectors.workflowCatalog.feishu.officialCliRuntime.notes.1':
+          'Structured collection for Feishu docs, messages, sheets, and related objects is still being built.',
+        'settings.connectors.workflowCatalog.feishu.officialCliRuntime.nativeObjects.0': 'App configuration',
+        'settings.connectors.workflowCatalog.feishu.officialCliRuntime.nativeObjects.1': 'User auth session',
+        'settings.connectors.workflowCatalog.feishu.officialCliRuntime.nativeObjects.2': 'General CLI command access',
         'settings.connectors.supportKinds.officialDocs': 'Official Docs',
         'settings.connectors.supportKinds.officialRuntime': 'Official Runtime',
         'settings.connectors.supportKinds.officialSdk': 'Official SDK',
@@ -439,7 +535,9 @@ describe('ConnectorsPage', () => {
       expect(screen.getByText('Clipboard observer runtime')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Native desktop clipboard observation through the connector CLI activity runtime.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Native desktop clipboard observation through the connector CLI activity runtime.')
+    ).toBeInTheDocument();
     expect(screen.getAllByText('cgo activity clipboard observe').length).toBeGreaterThan(0);
     expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'clipboard' });
   });
@@ -459,7 +557,11 @@ describe('ConnectorsPage', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
-    expect(screen.getByText('This connector is managed outside the app.')).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        'This connector is currently integrated through an external connector runtime. Its capabilities are shown here and can be used by ContextGo after integration.'
+      ).length
+    ).toBeGreaterThan(0);
     expect(screen.getByText('Connector Repository')).toBeInTheDocument();
 
     await waitFor(() => {
@@ -467,7 +569,9 @@ describe('ConnectorsPage', () => {
     });
 
     expect(screen.getAllByText('cgo collect browser-extension').length).toBeGreaterThan(0);
-    expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'browser-extension' });
+    expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({
+      connector: 'browser-extension',
+    });
   });
 
   it('loads the external capability panel for Feishu from the connector catalog bridge', async () => {
@@ -491,6 +595,21 @@ describe('ConnectorsPage', () => {
     expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
     expect(screen.getByText('Collect chat messages')).toBeInTheDocument();
     expect(screen.getAllByText('cgo connectors feishu collect').length).toBeGreaterThan(0);
+    expect(screen.getByText('Connection Overview')).toBeInTheDocument();
+    expect(screen.getByText('Accessible Capabilities')).toBeInTheDocument();
+    expect(screen.getByText('Available Now')).toBeInTheDocument();
+    expect(screen.getByText('More Information')).toBeInTheDocument();
+    expect(screen.getAllByText('Capability Groups').length).toBeGreaterThan(0);
+    expect(screen.getByText('Available Actions')).toBeInTheDocument();
+    expect(screen.getByText('Primary Runtime')).toBeInTheDocument();
+    expect(screen.getAllByText('Docs').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Calendar').length).toBeGreaterThan(0);
+    expect(screen.getByText('Read and search documents')).toBeInTheDocument();
+    expect(screen.getByText('Create and update events')).toBeInTheDocument();
+    expect(screen.getAllByText('User Authorization').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Bot / App Authorization').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('lark docs --help').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('lark calendar --help').length).toBeGreaterThan(0);
     expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'feishu' });
   });
 
@@ -509,7 +628,9 @@ describe('ConnectorsPage', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
-    expect(screen.getByText('Official Google-native runtime surface managed by the connector project.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Official Google-native runtime surface managed by the connector project.')
+    ).toBeInTheDocument();
     expect(screen.getAllByText('None yet').length).toBeGreaterThan(0);
     expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'google-drive' });
   });

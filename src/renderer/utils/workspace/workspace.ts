@@ -96,6 +96,7 @@ export const getConversationWorkspacePath = (conversation: TChatConversation): s
 
 export type WorkspaceAutomationPaths = {
   rootDir: string;
+  skillsDir: string;
   hooksDir: string;
   hooksFile: string;
   commandsFile: string;
@@ -107,6 +108,7 @@ export const getWorkspaceAutomationPaths = (workspacePath: string): WorkspaceAut
 
   return {
     rootDir,
+    skillsDir: joinWorkspacePath(rootDir, 'skills'),
     hooksDir: joinWorkspacePath(rootDir, 'hooks'),
     hooksFile: joinWorkspacePath(rootDir, WORKSPACE_HOOKS_FILE_NAME),
     commandsFile: joinWorkspacePath(rootDir, WORKSPACE_COMMANDS_FILE_NAME),

@@ -6,7 +6,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert } = vi.hoisted(() => {
+const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert, mockListAllConversations, mockReadCatalogForConversations } = vi.hoisted(() => {
   const state = {
     connector: {
       id: 'connector-wechat',
@@ -42,7 +42,7 @@ const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert } = vi.
     sourceAgentProfile: {
       id: 'agent_profile_source',
       name: 'Source Agent',
-      backend: 'openclaw-gateway',
+      backend: 'codex',
       modelRef: {
         id: 'model-provider-1',
         useModel: 'gpt-4.1',
@@ -61,8 +61,9 @@ const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert } = vi.
       createTime: 100,
       modifyTime: 100,
       name: 'Source Conversation',
-      type: 'openclaw-gateway',
+      type: 'acp',
       extra: {
+        backend: 'codex',
         workspace: '/workspace/source',
       },
       model: {
@@ -154,6 +155,8 @@ const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert } = vi.
   return {
     mockGetDatabase: vi.fn(async () => db),
     mockGetTask: vi.fn(),
+    mockListAllConversations: vi.fn(),
+    mockReadCatalogForConversations: vi.fn(),
     dbState: state,
     failExternalSessionUpsert: {
       get: () => shouldFailExternalSessionUpsert,
@@ -166,6 +169,30 @@ const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert } = vi.
 
 vi.mock('@process/services/database', () => ({
   getDatabase: mockGetDatabase,
+}));
+
+vi.mock('@/process/services/conversationServiceSingleton', () => ({
+  conversationServiceSingleton: {
+    listAllConversations: mockListAllConversations,
+  },
+}));
+
+vi.mock('@process/channels/core/ProjectChannelPublicationService', () => ({
+  ProjectChannelPublicationService: class {
+    readCatalogForConversations = mockReadCatalogForConversations;
+
+    resolveConversationWorkspace(conversation: { extra?: Record<string, unknown> }) {
+      return typeof conversation.extra?.workspace === 'string' ? conversation.extra.workspace : undefined;
+    }
+
+    async getAgentProfileByPublishedConversation() {
+      return null;
+    }
+
+    async getAgentProfile(_workspace: string, profileId: string) {
+      return profileId === dbState.sourceAgentProfile.id ? dbState.sourceAgentProfile : null;
+    }
+  },
 }));
 
 vi.mock('@process/task/workerTaskManagerSingleton', () => ({
@@ -184,6 +211,14 @@ describe('ChannelContinuationService', () => {
     dbState.mirroredSessions = [];
     failExternalSessionUpsert.set(false);
     mockGetTask.mockReturnValue(undefined);
+    mockListAllConversations.mockResolvedValue([]);
+    mockReadCatalogForConversations.mockResolvedValue({
+      workspaces: [],
+      agentProfiles: [dbState.sourceAgentProfile],
+      bindings: [],
+      agentProfileWorkspaceById: { [dbState.sourceAgentProfile.id]: dbState.sourceAgentProfile.workspaceRef },
+      bindingWorkspaceById: {},
+    });
   });
 
   it('creates remote_chat continuation binding and mirrors target session in resume mode', async () => {

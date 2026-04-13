@@ -20,7 +20,7 @@ import type { ContextOperation } from './operations';
 import { InMemoryVectorIndexProvider, type VectorIndexProvider } from './vectorIndex';
 
 function sortByCreatedAt<T extends { createdAt: string }>(items: Iterable<T>): T[] {
-  return [...items].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  return [...items].toSorted((left, right) => left.createdAt.localeCompare(right.createdAt));
 }
 
 export function createInMemoryContextEngineDependencies(
@@ -70,7 +70,7 @@ export function createInMemoryContextEngineDependencies(
       async listByDocument(documentId) {
         return [...chunks.values()]
           .filter((item) => item.documentId === documentId)
-          .sort((left, right) => left.sequence - right.sequence);
+          .toSorted((left, right) => left.sequence - right.sequence);
       },
       async deleteByDocument(documentId) {
         for (const [id, chunk] of chunks.entries()) {

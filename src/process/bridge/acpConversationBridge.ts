@@ -8,10 +8,12 @@ import { acpDetector } from '@process/agent/acp/AcpDetector';
 import { AcpConnection } from '@process/agent/acp/AcpConnection';
 import { getClaudeSettingsPath } from '@process/agent/acp/utils';
 import { buildAcpModelInfo, summarizeAcpModelInfo } from '@process/agent/acp/modelInfo';
-import { CodexConnection, getCodexConfigPath } from '@process/agent/codex/connection/CodexConnection';
+import {
+  CodexConnection,
+  getCodexAuthPath,
+  getCodexConfigPath,
+} from '@process/agent/codex/connection/CodexConnection';
 import { USER_SETTINGS_PATH } from '@process/agent/gemini/cli/settings';
-import { listConfiguredOpenClawAgents } from '@process/agent/openclaw/openclawConfig';
-import { OpenClawAgent } from '@process/agent/openclaw';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { refreshTrayMenu } from '@process/utils/tray';
 import type { IConversationService } from '@process/services/IConversationService';
@@ -26,6 +28,7 @@ import {
   isManagedRuntimeInstallableBackend,
   type AcpBackend,
   type MANAGED_RUNTIME_INSTALLABLE_BACKENDS,
+  type ManagedRuntimeConfigEntry,
   type ManagedRuntimeInstallEvent,
 } from '@/common/types/acpTypes';
 import { ExternalSessionDiscoveryService } from './services/ExternalSessionDiscoveryService';
@@ -55,83 +58,10 @@ const MANAGED_RUNTIME_INSTALL_COMMANDS: Record<(typeof MANAGED_RUNTIME_INSTALLAB
   opencode: 'npm install -g @opencode-ai/cli',
 };
 
-const OPENCLAW_DEFAULT_STATE_DIR = path.join(os.homedir(), '.openclaw');
-const OPENCLAW_LEGACY_STATE_DIRS = ['.clawdbot', '.moltbot', '.moldbot'].map((dir) => path.join(os.homedir(), dir));
-const OPENCLAW_CONFIG_FILENAMES = ['openclaw.json', 'clawdbot.json', 'moltbot.json', 'moldbot.json'];
-
 const emitManagedRuntimeInstallEvent = (event: ManagedRuntimeInstallEvent): void => {
   ipcBridge.acpConversation.managedRuntimeInstallEvent.emit(event);
 };
 
-async function bootstrapManagedOpenClawRuntime(command: string): Promise<{ stdout: string; stderr: string }> {
-  const env = getEnhancedEnv();
-  const installResult = await safeExec(command, {
-    timeout: 15 * 60 * 1000,
-    env,
-    onStdoutChunk: (chunk) => {
-      emitManagedRuntimeInstallEvent({
-        backend: 'openclaw-gateway',
-        command,
-        stage: 'running',
-        stream: 'stdout',
-        chunk,
-      });
-    },
-    onStderrChunk: (chunk) => {
-      emitManagedRuntimeInstallEvent({
-        backend: 'openclaw-gateway',
-        command,
-        stage: 'running',
-        stream: 'stderr',
-        chunk,
-      });
-    },
-  });
-
-  const bootstrapCommands = [
-    `openclaw config set gateway.auth.mode '"token"' --strict-json`,
-    `openclaw config set gateway.mode '"local"' --strict-json`,
-    `openclaw config set gateway.bind '"loopback"' --strict-json`,
-    'openclaw config set gateway.port 18789 --strict-json',
-  ];
-
-  let stdout = installResult.stdout;
-  let stderr = installResult.stderr;
-
-  for (const bootstrapCommand of bootstrapCommands) {
-    const result = await safeExec(bootstrapCommand, {
-      timeout: 60_000,
-      env,
-    });
-    stdout += result.stdout;
-    stderr += result.stderr;
-  }
-
-  emitManagedRuntimeInstallEvent({
-    backend: 'openclaw-gateway',
-    command,
-    stage: 'running',
-    message: 'Bootstrapping local OpenClaw gateway configuration.',
-  });
-
-  const healthProbeAgent = new OpenClawAgent({
-    id: `openclaw-install-check-${Date.now()}`,
-    workingDir: os.tmpdir(),
-    gateway: {
-      cliPath: 'openclaw',
-      port: 18789,
-    },
-    onStreamEvent: () => {},
-  });
-
-  try {
-    await healthProbeAgent.start();
-  } finally {
-    await healthProbeAgent.stop().catch(() => {});
-  }
-
-  return { stdout, stderr };
-}
 
 function getManagedRuntimeInstallCommand(backend: AcpBackend): string | null {
   if (!isManagedRuntimeInstallableBackend(backend)) {
@@ -257,52 +187,33 @@ async function resolveRuntimeDisplayPath(cliPath?: string): Promise<string | und
   }
 }
 
-function resolveOpenClawStateDir(): string {
-  const override = process.env.OPENCLAW_STATE_DIR?.trim() || process.env.CLAWDBOT_STATE_DIR?.trim();
-  if (override) {
-    return resolveUserPath(override);
-  }
-
-  if (fs.existsSync(OPENCLAW_DEFAULT_STATE_DIR)) {
-    return OPENCLAW_DEFAULT_STATE_DIR;
-  }
-
-  const legacyDir = OPENCLAW_LEGACY_STATE_DIRS.find((candidate) => {
-    try {
-      return fs.existsSync(candidate);
-    } catch {
-      return false;
-    }
-  });
-
-  return legacyDir || OPENCLAW_DEFAULT_STATE_DIR;
-}
-
-function resolveOpenClawConfigPath(): string {
-  const override = process.env.OPENCLAW_CONFIG_PATH?.trim() || process.env.CLAWDBOT_CONFIG_PATH?.trim();
-  if (override) {
-    return resolveUserPath(override);
-  }
-
-  const stateDir = resolveOpenClawStateDir();
-  const candidates = OPENCLAW_CONFIG_FILENAMES.map((name) => path.join(stateDir, name));
-  const existingCandidate = candidates.find((candidate) => fs.existsSync(candidate));
-
-  return existingCandidate || candidates[0];
-}
-
-function resolveManagedRuntimeConfigPath(backend: AcpBackend): string | null {
+function resolveManagedRuntimeConfigEntries(backend: AcpBackend): ManagedRuntimeConfigEntry[] {
   switch (backend) {
     case 'gemini':
-      return USER_SETTINGS_PATH;
+      return [{ kind: 'config', path: USER_SETTINGS_PATH, exists: fs.existsSync(USER_SETTINGS_PATH) }];
     case 'claude':
-      return getClaudeSettingsPath();
+      return [
+        {
+          kind: 'config',
+          path: getClaudeSettingsPath(),
+          exists: fs.existsSync(getClaudeSettingsPath()),
+        },
+      ];
     case 'codex':
-      return getCodexConfigPath();
-    case 'openclaw-gateway':
-      return resolveOpenClawConfigPath();
+      return [
+        {
+          kind: 'config',
+          path: getCodexConfigPath(),
+          exists: fs.existsSync(getCodexConfigPath()),
+        },
+        {
+          kind: 'auth',
+          path: getCodexAuthPath(),
+          exists: fs.existsSync(getCodexAuthPath()),
+        },
+      ];
     default:
-      return null;
+      return [];
   }
 }
 
@@ -346,10 +257,7 @@ async function getRuntimeAwareDetectedAgents(): Promise<RuntimeAwareDetectedAgen
   for (const [backend, config] of Object.entries(ACP_BACKENDS_ALL)) {
     const typedBackend = backend as AcpBackend;
     if (
-      typedBackend === 'gemini' ||
-      typedBackend === 'custom' ||
-      typedBackend === 'openclaw-gateway' ||
-      typedBackend === 'nanobot'
+      typedBackend === 'gemini' || typedBackend === 'custom'
     ) {
       continue;
     }
@@ -411,28 +319,7 @@ export function initAcpConversationBridge(
   // 新的ACP检测接口 - 基于全局标记位
   ipcBridge.acpConversation.getAvailableAgents.provider(async () => {
     try {
-      const runtimeAwareAgents = await getRuntimeAwareDetectedAgents();
-      const agents = runtimeAwareAgents.flatMap((agent) => {
-        if (agent.backend !== 'openclaw-gateway') {
-          return [agent];
-        }
-
-        const openclawAgents = listConfiguredOpenClawAgents();
-        if (openclawAgents.length === 0) {
-          return [agent];
-        }
-
-        return openclawAgents.map((openclawAgent) =>
-          Object.assign({}, agent, {
-            name: openclawAgent.name,
-            avatar: openclawAgent.avatar,
-            openclawAgentId: openclawAgent.agentId,
-            isDefault: openclawAgent.isDefault,
-            workspace: openclawAgent.workspace,
-          })
-        );
-      });
-
+      const agents = await getRuntimeAwareDetectedAgents();
       return { success: true, data: agents };
     } catch (error) {
       return {
@@ -506,8 +393,8 @@ export function initAcpConversationBridge(
 
   ipcBridge.acpConversation.getManagedRuntimeConfigLocation.provider(async ({ backend }) => {
     try {
-      const configPath = resolveManagedRuntimeConfigPath(backend);
-      if (!configPath) {
+      const entries = resolveManagedRuntimeConfigEntries(backend);
+      if (entries.length === 0) {
         return { success: true, data: null };
       }
 
@@ -515,8 +402,7 @@ export function initAcpConversationBridge(
         success: true,
         data: {
           backend,
-          configPath,
-          exists: fs.existsSync(configPath),
+          entries,
         },
       };
     } catch (error) {
@@ -544,31 +430,28 @@ export function initAcpConversationBridge(
     });
 
     try {
-      const result =
-        backend === 'openclaw-gateway'
-          ? await bootstrapManagedOpenClawRuntime(command)
-          : await safeExec(command, {
-              timeout: 15 * 60 * 1000,
-              env: getEnhancedEnv(),
-              onStdoutChunk: (chunk) => {
-                emitManagedRuntimeInstallEvent({
-                  backend,
-                  command,
-                  stage: 'running',
-                  stream: 'stdout',
-                  chunk,
-                });
-              },
-              onStderrChunk: (chunk) => {
-                emitManagedRuntimeInstallEvent({
-                  backend,
-                  command,
-                  stage: 'running',
-                  stream: 'stderr',
-                  chunk,
-                });
-              },
-            });
+      const result = await safeExec(command, {
+        timeout: 15 * 60 * 1000,
+        env: getEnhancedEnv(),
+        onStdoutChunk: (chunk) => {
+          emitManagedRuntimeInstallEvent({
+            backend,
+            command,
+            stage: 'running',
+            stream: 'stdout',
+            chunk,
+          });
+        },
+        onStderrChunk: (chunk) => {
+          emitManagedRuntimeInstallEvent({
+            backend,
+            command,
+            stage: 'running',
+            stream: 'stderr',
+            chunk,
+          });
+        },
+      });
 
       emitManagedRuntimeInstallEvent({
         backend,
@@ -638,8 +521,8 @@ export function initAcpConversationBridge(
     const agents = await getRuntimeAwareDetectedAgents();
     const agent = agents.find((a) => a.backend === backend);
 
-    // Skip CLI check for claude/codebuddy (uses npx) and codex (has its own detection)
-    if (!agent?.cliPath && backend !== 'claude' && backend !== 'codebuddy' && backend !== 'codex') {
+    // Skip CLI check for claude (uses npx) and codex (has its own detection).
+    if (!agent?.cliPath && backend !== 'claude' && backend !== 'codex') {
       return {
         success: false,
         msg: `${backend} CLI not found`,
@@ -708,7 +591,7 @@ export function initAcpConversationBridge(
       }
     }
 
-    // Step 3: For ACP-based agents (claude, gemini, qwen, etc.)
+    // Step 3: For ACP-based agents (claude, gemini, codex, opencode, etc.)
     const connection = new AcpConnection();
 
     try {
@@ -802,7 +685,7 @@ export function initAcpConversationBridge(
     const agents = await getRuntimeAwareDetectedAgents();
     const agent = agents.find((item) => item.backend === backend);
 
-    if (!agent?.cliPath && backend !== 'claude' && backend !== 'codebuddy' && backend !== 'codex') {
+    if (!agent?.cliPath && backend !== 'claude' && backend !== 'codex') {
       return {
         success: false,
         msg: `${backend} CLI not found`,
@@ -862,8 +745,8 @@ export function initAcpConversationBridge(
     }
   });
 
-  // Set session mode for ACP/Gemini agents (claude, qwen, gemini, etc.)
-  // 设置 ACP/Gemini 代理的会话模式（claude、qwen、gemini 等）
+  // Set session mode for ACP/Gemini agents.
+  // 设置 ACP/Gemini 代理的会话模式。
   ipcBridge.acpConversation.setMode.provider(async ({ conversationId, mode }) => {
     try {
       const task = await workerTaskManager.getOrBuildTask(conversationId);

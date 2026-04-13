@@ -334,18 +334,18 @@ model = torch.compile(model, mode="reduce-overhead")
 
 ## Quick Reference: PyTorch Idioms
 
-| Idiom | Description |
-|-------|-------------|
-| `model.train()` / `model.eval()` | Always set mode before train/eval |
-| `torch.no_grad()` | Disable gradients for inference |
-| `optimizer.zero_grad(set_to_none=True)` | More efficient gradient clearing |
-| `.to(device)` | Device-agnostic tensor/model placement |
-| `torch.amp.autocast` | Mixed precision for 2x speed |
-| `pin_memory=True` | Faster CPU→GPU data transfer |
-| `torch.compile` | JIT compilation for speed (2.0+) |
-| `weights_only=True` | Secure model loading |
-| `torch.manual_seed` | Reproducible experiments |
-| `gradient_checkpointing` | Trade compute for memory |
+| Idiom                                   | Description                            |
+| --------------------------------------- | -------------------------------------- |
+| `model.train()` / `model.eval()`        | Always set mode before train/eval      |
+| `torch.no_grad()`                       | Disable gradients for inference        |
+| `optimizer.zero_grad(set_to_none=True)` | More efficient gradient clearing       |
+| `.to(device)`                           | Device-agnostic tensor/model placement |
+| `torch.amp.autocast`                    | Mixed precision for 2x speed           |
+| `pin_memory=True`                       | Faster CPU→GPU data transfer           |
+| `torch.compile`                         | JIT compilation for speed (2.0+)       |
+| `weights_only=True`                     | Secure model loading                   |
+| `torch.manual_seed`                     | Reproducible experiments               |
+| `gradient_checkpointing`                | Trade compute for memory               |
 
 ## Anti-Patterns to Avoid
 
@@ -393,4 +393,4 @@ torch.save(model, "model.pt")  # Saves entire model (fragile, not portable)
 torch.save(model.state_dict(), "model.pt")
 ```
 
-__Remember__: PyTorch code should be device-agnostic, reproducible, and memory-conscious. When in doubt, profile with `torch.profiler` and check GPU memory with `torch.cuda.memory_summary()`.
+**Remember**: PyTorch code should be device-agnostic, reproducible, and memory-conscious. When in doubt, profile with `torch.profiler` and check GPU memory with `torch.cuda.memory_summary()`.

@@ -594,6 +594,7 @@
   "webui.officialRemoteRuntimeHint": "官方 Remote 会自动准备桌面运行时，这样托管设备列表首页就能直接打开这台桌面；不需要你手动开启下方的本地 / 自托管访问。",
   "webui.openOfficialRemote": "打开设备列表",
   "webui.remoteDevicesNav": "远程设备",
+  "webui.switchDevice": "切换设备",
   "webui.officialRemoteSignedOut": "官方设备列表尚未连接。",
   "webui.officialRemoteHint": "在这里登录一次即可。ContextGo 会自动绑定当前设备，让它出现在托管设备列表首页。",
   "webui.featureChannelsTitle": "Messaging Control",
@@ -731,13 +732,17 @@
   "channels.extension.noConfig": "无需额外配置。",
   "channels.extension.selectPlaceholder": "请选择",
   "channels.extension.defaultDesc": "扩展渠道插件",
-  "channels.publication.connectorLabel": "1. 选择可用渠道账号",
+  "channels.publication.connectorLabel": "渠道实例",
   "channels.publication.connectorPlaceholder": "选择一个渠道账号",
   "channels.publication.connectorHint": "当前通过 {{platform}} / {{name}} 管理发布目标。",
   "channels.publication.connectorRequired": "请先选择一个可用渠道账号",
   "channels.publication.agentRequired": "请选择要正式发布的 Agent",
   "channels.publication.agentPlaceholder": "选择要正式发布的 Agent",
+  "channels.publication.agentSelectorLabel": "Agent",
   "channels.publication.audiencePlaceholder": "选择一个已发现的目标",
+  "channels.publication.publishObjectLabel": "发布对象",
+  "channels.publication.publishObjectPlaceholder": "选择一个发布对象",
+  "channels.publication.publishObjectRequired": "请先选择一个发布对象",
   "channels.publication.scopeKeyRequired": "请选择目标，或手动填写目标 key",
   "channels.publication.scopeKeyRemoteUserPlaceholder": "远端用户 key，例如：user_123456",
   "channels.publication.scopeKeyRemoteChatPlaceholder": "Audience key，例如：group:alpha 或 -100123456:thread:9",
@@ -745,10 +750,10 @@
   "channels.publication.manualScopeToggle": "手动填写目标 key",
   "channels.publication.durableTitle": "长期发布",
   "channels.publication.durableDescription": "适合稳定对外可用的 Agent 入口。配好之后，这个用户、群、频道或话题都能持续找到同一个发布入口。",
-  "channels.publication.saveDurable": "保存长期发布",
-  "channels.publication.updateDurable": "更新长期发布",
+  "channels.publication.saveDurable": "发布 Agent",
+  "channels.publication.updateDurable": "更新发布",
   "channels.publication.saveFailed": "保存发布绑定失败",
-  "channels.publication.durableSaved": "长期发布已保存",
+  "channels.publication.durableSaved": "Agent 发布已保存",
   "channels.publication.deleteFailed": "删除发布绑定失败",
   "channels.publication.deleted": "已删除发布绑定",
   "channels.publication.existingTitle": "已生效的发布规则",
@@ -757,8 +762,8 @@
   "channels.publication.emptyDurable": "还没有长期入口",
   "channels.publication.noConnector": "当前还没有可用渠道账号。先去 IM渠道账号 完成配置，并启用一个实例。",
   "channels.publication.goToAccounts": "前往 IM渠道账号",
-  "channels.publication.editingDurable": "正在编辑长期发布",
-  "channels.publication.durableTag": "长期",
+  "channels.publication.editingDurable": "正在编辑发布",
+  "channels.publication.durableTag": "已发布",
   "channels.publication.enabled": "已启用",
   "channels.publication.disabled": "已禁用",
   "channels.publication.connectorDefaultAudience": "整个渠道账号的默认入口",
@@ -770,12 +775,12 @@
   "channels.publication.scope.remote_user": "某个用户 / 私聊",
   "channels.publication.scope.remote_chat": "某个群 / 频道 / 话题",
   "channels.publication.scope.temporary_override": "当前会话接管",
-  "channels.publication.intentTitle": "准备把这个 Agent 发布为长期入口",
-  "channels.publication.intentDescription": "这里发布的是某个工作空间 / 运行时下的可复用 Agent。来源会话只用于追溯，不是被发布的对象。",
-  "channels.publication.intentProfile": "Agent 配置",
+  "channels.publication.intentTitle": "发布这个 Agent",
+  "channels.publication.intentDescription": "这个页面管理当前 Agent 发布到哪里，来源会话只用于追溯。",
+  "channels.publication.intentProfile": "Agent",
   "channels.publication.intentConversation": "派生来源",
-  "channels.publication.intentBackend": "Agent 类型 / 运行时",
-  "channels.publication.intentWorkspace": "所属工作空间",
+  "channels.publication.intentBackend": "运行时",
+  "channels.publication.intentWorkspace": "项目",
   "channels.publication.intentSelectedHint": "当前会话已经沉淀成一个可复用 Agent，并已在下面为你预选好。",
   "channels.publication.connectorGuide": "这里只显示已经可用的渠道账号。先选账号，再决定要长期发布到哪里。",
   "channels.publication.connectorGuide.weixin": "微信通常更接近单人单入口场景，建议先从“整个渠道账号”或“某个用户”开始。",
@@ -995,8 +1000,6 @@
     "installCommandLabel": "推荐安装命令",
     "installCommandCopied": "安装命令已复制。",
     "loginCommandCopied": "登录命令已复制。",
-    "customSectionTitle": "自定义接入",
-    "customSectionDescription": "如果你想接入不在内置列表里的命令行工具，可以在这里手动添加，让 ContextGo 也能启动它。",
     "summary": {
       "ready": "已经检查通过，可以直接使用。",
       "detected": "已经在本机检测到，建议再做一次可用性检查。",
@@ -1017,50 +1020,17 @@
       "idle": "未检查"
     },
     "runtime": {
+      "gemini": {
+        "description": "Google Gemini 命令行工具。"
+      },
       "claude": {
         "description": "Anthropic Claude Code 命令行工具。"
       },
       "codex": {
         "description": "OpenAI Codex 命令行工具，适合本地编码与改项目。"
       },
-      "nanobot": {
-        "description": "Nanobot CLI 运行时。"
-      },
-      "qwen": {
-        "description": "阿里 Qwen Code 命令行工具。"
-      },
-      "codebuddy": {
-        "description": "腾讯 CodeBuddy Code 命令行工具。"
-      },
       "opencode": {
         "description": "OpenCode 命令行工具。"
-      },
-      "goose": {
-        "description": "Block Goose 命令行工具。"
-      },
-      "auggie": {
-        "description": "Augment Code 命令行工具。"
-      },
-      "kimi": {
-        "description": "Kimi 命令行工具。"
-      },
-      "iflow": {
-        "description": "iFlow 命令行工具。"
-      },
-      "droid": {
-        "description": "Factory Droid 命令行工具。"
-      },
-      "copilot": {
-        "description": "GitHub Copilot 命令行工具。"
-      },
-      "qoder": {
-        "description": "Qoder 命令行工具。"
-      },
-      "vibe": {
-        "description": "Mistral Vibe 命令行工具。"
-      },
-      "cursor": {
-        "description": "Cursor Agent 命令行工具。"
       }
     },
     "revealPathFailed": "打开系统文件管理器失败。",
@@ -1299,7 +1269,7 @@
     "resources": "可连接资源",
     "auth": "认证方式",
     "openWebsite": "打开官网",
-    "note": "连接器页面展示的是 connector 项目的原生能力目录。ContextGo 在这里呈现能力状态，并在摄入后消费其输出。",
+    "note": "页面会区分“可访问能力”和“当前可用能力”，帮助你判断这个连接器现在能做什么。",
     "summaryTemplate": "{{name}} 属于「{{category}}」，后续可作为 AI 工作流的上下文数据入口。",
     "stagePriority": "优先接入",
     "stagePlanned": "规划中",
@@ -1307,13 +1277,13 @@
       "supported": "已支持",
       "notSupportedYet": "暂未支持"
     },
-    "implementation": "实现方式",
+    "implementation": "接入方式",
     "implementationOwners": {
-      "official": "官方支持",
+      "official": "官方接入",
       "contextgo": "ContextGo 原生",
-      "connectorRepo": "连接器仓库",
-      "hybrid": "混合支持",
-      "default": "连接器支持"
+      "connectorRepo": "外部连接器运行时",
+      "hybrid": "混合接入",
+      "default": "连接器接入"
     },
     "supportSources": "支持来源",
     "noSupportSources": "暂时还没有关联的支持来源。",
@@ -1325,6 +1295,25 @@
       "connectorRepo": "连接器仓库",
       "default": "支持来源"
     },
+    "sectionTitles": {
+      "overview": "连接概览",
+      "nativeCapabilitySurface": "可访问能力",
+      "contextgoReadiness": "当前可用能力",
+      "sourcesAndBoundary": "更多信息"
+    },
+    "sectionDescriptions": {
+      "overview": "查看这个连接器能连接哪些外部内容，以及当前采用什么接入方式。",
+      "nativeCapabilitySurface": "按产品能力分组查看当前可访问的内容和操作。",
+      "contextgoReadiness": "这里展示在 ContextGo 中已经实际可用的能力。",
+      "sourcesAndBoundary": "查看官方文档、接入说明和技术信息。"
+    },
+    "summaryStats": {
+      "capabilityGroups": "能力分组",
+      "actions": "可用操作",
+      "readyWorkflows": "已就绪工作流",
+      "primaryRuntime": "主运行时"
+    },
+    "groupNavigator": "查看每个能力分组以及当前可用的操作。",
     "categories": {
       "contextgo": "ContextGo 家族",
       "googleWorkspace": "Google Workspace",
@@ -1394,13 +1383,38 @@
       "none": "无需授权"
     },
     "externalCatalog": {
-      "platformAccess": "平台接入边界",
-      "runtimeBoundary": "运行时边界",
-      "nativeSurface": "原生能力面",
-      "commandEntrypoints": "命令入口",
+      "platformAccess": "当前接入方式",
+      "runtimeBoundary": "运行说明",
+      "nativeSurface": "覆盖能力",
+      "commandEntrypoints": "CLI 命令",
+      "capabilities": "能力树",
+      "capabilitySummary": "按外部产品的原生能力分组展示当前可访问的内容和操作。",
+      "capabilityGroups": "能力分组",
+      "discoveryCommands": "发现命令",
+      "extractionMode": "提取模式",
+      "actions": "动作",
+      "authModesTitle": "授权模式",
+      "extractionModes": {
+        "manual-curation": "手工整理",
+        "help-derived": "帮助推导",
+        "schema-derived": "Schema 导出",
+        "hybrid": "混合模式"
+      },
+      "authModes": {
+        "user": "用户授权",
+        "bot": "机器人 / 应用授权",
+        "service": "服务上下文"
+      },
       "noneYet": "暂未提供。",
       "workflows": "已实现工作流",
-      "workflowSurface": "能力面：{{surface}}",
+      "workflowSurface": "接入类型：{{surface}}",
+      "workflowSurfaces": {
+        "runtime": "运行时接入",
+        "source": "来源接入",
+        "collect": "内容采集",
+        "fetch": "数据获取",
+        "activity": "活动接入"
+      },
       "workflowStatus": {
         "ready": "已可用",
         "partial": "部分完成",
@@ -1408,12 +1422,24 @@
       },
       "nativeObjects": "原生对象",
       "entrypoints": "入口命令",
-      "writesStore": "会写入存储",
-      "noStoreWrite": "暂不写入存储",
+      "writesStore": "会自动沉淀结果",
+      "noStoreWrite": "暂不自动沉淀结果",
       "unavailableTitle": "暂时无法读取 connector 详情"
     },
     "catalogPlaceholderDesc": "这个 connector 目前还只是目录占位。ContextGo 还没有消费它的运行时或采集输出。",
-    "catalogExternalDesc": "这个 connector 由独立的 connector 项目管理。ContextGo 在这里读取它的能力目录，并在摄入后消费其输出。"
+    "catalogExternalDesc": "当前通过外部连接器运行时接入，能力会在这里展示，并可在接入后供 ContextGo 使用。",
+    "workflowCatalog": {
+      "feishu": {
+        "officialCliRuntime": {
+          "label": "官方 CLI 接入",
+          "notes": [
+            "当前已经支持官方 CLI 的配置、登录和命令透传。",
+            "面向飞书文档、消息、表格等对象的结构化采集能力仍在建设中。"
+          ],
+          "nativeObjects": ["应用配置", "用户授权会话", "通用 CLI 命令调用"]
+        }
+      }
+    }
   },
   "cloud": {
     "title": "ContextGo 云账号",
@@ -1440,19 +1466,16 @@
   },
   "commands": {
     "title": "Commands",
-    "description": "集中管理可复用的 slash 命令模板。它们会直接展开到输入框里，因此可以跨不同 Agent 稳定复用。",
-    "usageHint": "在任意聊天输入框中输入 /，就可以打开命令菜单并快速套用一条已配置的模板。",
+    "description": "Commands 现在按工作空间维度管理。请在项目的 workspace automation 面板里维护命令，而不是在全局设置里维护一套全局命令库。",
+    "usageHint": "打开一个已经绑定 workspace 的会话，然后在其中编辑 Commands，命令会保存到该项目的 `.contextgo/commands.json`。",
+    "emptyState": "系统不再使用全局命令库。",
     "add": "添加命令",
-    "restoreDefaults": "恢复默认命令",
-    "restoreSuccess": "默认命令已恢复",
-    "restoreFailed": "恢复默认命令失败",
-    "recommendedTitle": "推荐工作流命令",
-    "recommendedDescription": "内置了规划、TDD、评审、安全、验证、编排这六类高频工程命令。",
+    "restoreDefaults": "恢复项目命令",
+    "restoreSuccess": "项目命令已恢复",
+    "restoreFailed": "恢复项目命令失败",
     "customTitle": "自定义命令",
     "customDescription": "为任意助手添加你自己的可复用工作流提示模板。",
-    "emptyCustom": "还没有自定义命令。",
-    "builtinTag": "内置",
-    "customTag": "自定义",
+    "emptyCustom": "还没有项目命令。",
     "templateLabel": "模板内容",
     "editTitle": "编辑命令 {{name}}",
     "createTitle": "创建命令",
@@ -1461,11 +1484,10 @@
     "descriptionLabel": "描述",
     "descriptionPlaceholder": "说明这个命令适合在什么场景下使用",
     "templatePlaceholder": "输入选中该命令后要插入到聊天输入框中的提示模板",
-    "builtinOverrideHint": "{{name}} 是内置命令。保存后会记录你的本地覆盖配置，同时保留默认预设。",
     "loadFailed": "加载命令库失败",
     "saveFailed": "保存命令失败",
     "deleteFailed": "删除命令失败",
-    "deleteConfirm": "确定要删除这条自定义命令吗？",
+    "deleteConfirm": "确定要删除这条命令吗？",
     "validation": {
       "invalidName": "命令名只能使用字母、数字、连字符和下划线",
       "duplicateName": "命令名 /{{name}} 已存在",
@@ -1551,11 +1573,21 @@
   "channels.publication.openConversation": "查看对话",
   "channels.publication.addTargetTitle": "新增发布",
   "channels.publication.addTargetDescription": "先选目标，再把上面的 Agent 长期发布到这里。之后这个目标的新消息，会进入这个 Agent。",
+  "channels.publication.addObjectButton": "添加发布对象",
+  "channels.publication.addObjectTitle": "添加发布对象",
+  "channels.publication.addObjectDescription": "先选渠道实例，再把这个 Agent 发布到一个平台原生 IM 对象。",
   "channels.publication.summaryObjects": "对象",
   "channels.publication.summarySessions": "会话",
   "channels.publication.objectListTitle": "已发布对象",
-  "channels.publication.objectListDescription": "查看这个渠道账号下已经发现或已经发布的 IM 原生对象。",
+  "channels.publication.objectListDescription": "这里只显示已经绑定到这个 Agent 的发布对象。",
+  "channels.publication.emptyPublishedObjects": "这个 Agent 还没有发布到任何 IM 对象",
   "channels.publication.emptyObjects": "还没有发现任何 IM 对象",
+  "channels.publication.agentSummaryTitle": "当前 Agent",
+  "channels.publication.agentSummaryDescription": "管理这个 Agent 通过可复用 IM 渠道实例发布到哪些地方。",
+  "channels.publication.channelAccountInstanceLabel": "渠道实例",
+  "channels.publication.sessionStatusLabel": "当前项目会话",
+  "channels.publication.currentSessionActive": "当前活跃",
+  "channels.publication.noActiveSession": "还没有活跃会话",
   "channels.publication.objectDetailTitle": "对象详情",
   "channels.publication.objectDetailDescription": "查看这个 IM 对象的发布规则与关联会话。",
   "channels.publication.objectParentLabel": "上级对象",
@@ -1565,7 +1597,7 @@
   "channels.publication.objectSessionsTitle": "关联会话",
   "channels.publication.objectSessionsDescription": "查看这个对象下已经产生的会话。",
   "channels.publication.objectSessionsEmpty": "这个对象还没有关联会话",
-  "channels.publication.sessionWorkspaceLabel": "工作区",
+  "channels.publication.sessionWorkspaceLabel": "项目",
   "channels.publication.sessionLastActiveLabel": "最后活跃",
   "channels.publication.sessionAgentTypeLabel": "Agent 类型",
   "channels.publication.objectKind.common.person": "个人",
@@ -1597,7 +1629,23 @@
   "channels.publication.objectKind.telegram.thread": "话题",
   "channels.publication.objectKind.dingtalk.dm": "私聊",
   "channels.publication.objectKind.dingtalk.group": "群聊",
-  "assistantsPageDescription": "在一个目录里统一管理可直接使用的助手，以及由 Context Engine 自动驱动的系统 Agent。",
+  "assistantsPageDescription": "在这里完成 Agent 的创建与编辑，同时查看由 Context Engine 托管的系统 Agent。",
+  "assistantsWorkbenchPublish": "发布 Agent",
+  "assistantsWorkbenchOpenSkillMarket": "进入技能市场",
+  "assistantsWorkbenchProductAgents": "可用 Agent",
+  "assistantsWorkbenchProductAgentsHint": "当前工作台可直接使用的产品级 Agent。",
+  "assistantsWorkbenchSystemAgents": "系统 Agent",
+  "assistantsWorkbenchSystemAgentsHint": "由 Context Engine 在后台托管运行。",
+  "assistantsWorkbenchActiveRuns": "运行中任务",
+  "assistantsWorkbenchActiveRunsHint": "当前仍在执行的系统维护任务。",
+  "assistantsWorkbenchSectionTitle": "Agent 工作台",
+  "assistantsWorkbenchSectionDescription": "把 Agent 的创建、扩展技能与发布收口到一个页面里，减少来回跳转。",
+  "assistantsWorkbenchCreateTitle": "创建或编辑 Agent",
+  "assistantsWorkbenchCreateText": "先新建 Agent，再从下方列表打开已有 Agent，继续调整规则、Hook 和可用运行时。",
+  "assistantsWorkbenchSkillsTitle": "选择技能",
+  "assistantsWorkbenchSkillsText": "技能绑定仍然发生在 Agent 详情里；当你需要安装新能力时，再从这里进入技能市场。",
+  "assistantsWorkbenchPublishTitle": "发布",
+  "assistantsWorkbenchPublishText": "当工作流稳定后，把当前工作区绑定到发布渠道，形成可对外使用的 Agent 入口。",
   "systemAgents": "系统 Agent",
   "systemAgentsDescription": "这些 Agent 会在后台由引擎自动触发，用来压缩会话上下文并把稳定知识推进到项目层。",
   "systemAgentViewRuns": "查看运行",
@@ -1616,5 +1664,14 @@
   "systemRunsEmptyDescription": "Context Engine 已经在观察当前工作区。首次维护任务真正触发并完成后，历史记录会显示在这里。",
   "systemRunsDefinitionsTitle": "已注册的系统 Agent",
   "systemRunsDefinitionsDescription": "首次运行之前，这里先展示系统 Agent 定义、触发条件和执行边界；真正执行后的历史记录会单独出现在下方。",
-  "systemRunsLastChecked": "上次检查时间：{{time}}"
+  "systemRunsLastChecked": "上次检查时间：{{time}}",
+  "webui.switchDeviceDescription": "直接在当前产品壳内切换到另一台已连接桌面设备，不需要先进入单独的设备列表页面。",
+  "webui.switchDeviceEmpty": "暂时没有可直接打开的桌面设备。请先在其他设备上启动 ContextGo，并保持 Official Remote 在线。",
+  "webui.switchDeviceCurrent": "当前设备",
+  "webui.switchDeviceLastSeen": "最近在线 {{time}}",
+  "webui.switchDeviceOpen": "打开设备",
+  "webui.deviceModeLocal": "本地主机",
+  "webui.deviceModeRemote": "远程桌面",
+  "webui.switchDeviceUnknown": "当前设备",
+  "webui.backToLocal": "返回本地"
 }

@@ -17,6 +17,7 @@ This command invokes the **cpp-build-resolver** agent to incrementally fix C++ b
 ## When to Use
 
 Use `/cpp-build` when:
+
 - `cmake --build build` fails with errors
 - Linker errors (undefined references, multiple definitions)
 - Template instantiation failures
@@ -39,7 +40,7 @@ cppcheck --enable=all src/
 
 ## Example Session
 
-```text
+````text
 User: /cpp-build
 
 Agent:
@@ -52,7 +53,7 @@ $ cmake --build build
 src/service/user.cpp:25:15: error: use of undeclared identifier 'UserRepository'
 src/handler/api.cpp:42:9: error: no matching function for call to 'process'
 src/handler/api.cpp:58:1: error: non-void function does not return a value
-```
+````
 
 Errors found: 3
 
@@ -122,14 +123,15 @@ All tests passed.
 
 ## Summary
 
-| Metric | Count |
-|--------|-------|
-| Build errors fixed | 3 |
-| Linker errors fixed | 0 |
-| Files modified | 2 |
-| Remaining issues | 0 |
+| Metric              | Count |
+| ------------------- | ----- |
+| Build errors fixed  | 3     |
+| Linker errors fixed | 0     |
+| Files modified      | 2     |
+| Remaining issues    | 0     |
 
 Build Status: PASS: SUCCESS
+
 ```
 
 ## Common Errors Fixed
@@ -171,3 +173,4 @@ The agent will stop and report if:
 
 - Agent: `agents/cpp-build-resolver.md`
 - Skill: `skills/cpp-coding-standards/`
+```

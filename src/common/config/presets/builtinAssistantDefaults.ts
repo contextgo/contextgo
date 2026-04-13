@@ -6,12 +6,23 @@
 
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import { ASSISTANT_PRESETS } from './assistantPresets';
+import {
+  getBundledAgentPackageDefaultEnabledHookNames,
+  getBundledAgentPackageDefaultEnabledSkillNames,
+  getBundledAgentPackageOwnedSkillNames,
+  getBundledAgentPackageWorkspaceSkillBootstrapStrategy,
+} from './bundledAgentPackageRegistry';
 import { CONTEXT_ENGINE_SYSTEM_ASSISTANTS } from './systemAssistants';
 
 export const BUILTIN_ASSISTANT_PREFIX = 'builtin-';
 
 export const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
   'morph-ppt',
+  'design-director',
+  'startup-strategist',
+  'office-analyst',
+  'finance-analyst',
+  'pm-workbench',
   'superpowers',
   'everything-in-claude-code',
 ]);
@@ -33,7 +44,7 @@ export const resolveBuiltinAssistantEnabledSkills = (
     return enabledSkills;
   }
 
-  return findBuiltinAssistantPreset(assistantId)?.defaultEnabledSkills;
+  return getBundledAgentPackageDefaultEnabledSkillNames(assistantId);
 };
 
 export const resolveBuiltinAssistantEnabledHooks = (
@@ -44,7 +55,29 @@ export const resolveBuiltinAssistantEnabledHooks = (
     return enabledHooks;
   }
 
-  return findBuiltinAssistantPreset(assistantId)?.defaultEnabledHooks;
+  return getBundledAgentPackageDefaultEnabledHookNames(assistantId);
+};
+
+export const resolveBuiltinAssistantWorkspaceSkillNames = (
+  assistantId: string,
+  enabledSkills: string[] | undefined
+): string[] | undefined => {
+  if (enabledSkills !== undefined) {
+    return enabledSkills;
+  }
+
+  const preset = findBuiltinAssistantPreset(assistantId);
+  if (!preset) {
+    return enabledSkills;
+  }
+
+  const bootstrapStrategy = getBundledAgentPackageWorkspaceSkillBootstrapStrategy(assistantId);
+
+  if (bootstrapStrategy === 'packaged-skills') {
+    return getBundledAgentPackageOwnedSkillNames(assistantId);
+  }
+
+  return getBundledAgentPackageDefaultEnabledSkillNames(assistantId);
 };
 
 export const buildBuiltinAssistants = (): AcpBackendConfig[] => {
@@ -66,8 +99,8 @@ export const buildBuiltinAssistants = (): AcpBackendConfig[] => {
       builtinTier: 'product',
       builtinVisibility: enabledByDefault ? 'featured' : 'settings',
       presetAgentType: preset.presetAgentType || 'gemini',
-      enabledSkills: preset.defaultEnabledSkills,
-      enabledHooks: preset.defaultEnabledHooks,
+      enabledSkills: getBundledAgentPackageDefaultEnabledSkillNames(`${BUILTIN_ASSISTANT_PREFIX}${preset.id}`),
+      enabledHooks: getBundledAgentPackageDefaultEnabledHookNames(`${BUILTIN_ASSISTANT_PREFIX}${preset.id}`),
       harnessTagI18n: preset.harnessTagI18n,
       recommendedDomainI18n: preset.recommendedDomainI18n,
       workspaceBootstrapHintI18n: preset.workspaceBootstrapHintI18n,

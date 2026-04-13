@@ -22,9 +22,7 @@ const os = require('os');
  * @returns {string} Resolved ECC root path
  */
 function resolveEccRoot(options = {}) {
-  const envRoot = options.envRoot !== undefined
-    ? options.envRoot
-    : (process.env.CLAUDE_PLUGIN_ROOT || '');
+  const envRoot = options.envRoot !== undefined ? options.envRoot : process.env.CLAUDE_PLUGIN_ROOT || '';
 
   if (envRoot && envRoot.trim()) {
     return envRoot.trim();
@@ -44,7 +42,7 @@ function resolveEccRoot(options = {}) {
   const legacyPluginRoots = [
     path.join(claudeDir, 'plugins', 'everything-claude-code'),
     path.join(claudeDir, 'plugins', 'everything-claude-code@everything-claude-code'),
-    path.join(claudeDir, 'plugins', 'marketplace', 'everything-claude-code')
+    path.join(claudeDir, 'plugins', 'marketplace', 'everything-claude-code'),
   ];
 
   for (const candidate of legacyPluginRoots) {

@@ -15,8 +15,6 @@ import { SqliteConversationRepository } from '@process/services/database/SqliteC
 import { GeminiAgentManager } from './GeminiAgentManager';
 import AcpAgentManager from './AcpAgentManager';
 import { CodexAgentManager } from '@process/agent/codex';
-import OpenClawAgentManager from './OpenClawAgentManager';
-import NanoBotAgentManager from './NanoBotAgentManager';
 
 const agentFactory = new AgentFactory();
 
@@ -47,24 +45,5 @@ agentFactory.register('codex', (conv, opts) => {
     sessionMode: c.extra.sessionMode,
   }) as unknown as ReturnType<typeof agentFactory.create>;
 });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-agentFactory.register('openclaw-gateway', (conv, opts) => {
-  const c = conv as any;
-  return new OpenClawAgentManager({
-    ...c.extra,
-    conversation_id: c.id,
-    yoloMode: opts?.yoloMode,
-  }) as unknown as ReturnType<typeof agentFactory.create>;
-});
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-agentFactory.register('nanobot', (conv, opts) => {
-  const c = conv as any;
-  return new NanoBotAgentManager({
-    ...c.extra,
-    conversation_id: c.id,
-    yoloMode: opts?.yoloMode,
-  }) as unknown as ReturnType<typeof agentFactory.create>;
-});
-
 const conversationRepo = new SqliteConversationRepository();
 export const workerTaskManager = new WorkerTaskManager(agentFactory, conversationRepo);

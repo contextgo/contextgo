@@ -11,6 +11,7 @@ const cloudEnsureOfficialRemoteReadyInvoke = vi.fn();
 const openExternalInvoke = vi.fn();
 const webuiUpdatePreferencesInvoke = vi.fn();
 const shellOpenExternalMock = vi.fn();
+const dispatchOfficialRemoteSwitcherEventMock = vi.fn();
 
 const translations: Record<string, string> = {
   'common.cancel': 'Cancel',
@@ -21,7 +22,6 @@ const translations: Record<string, string> = {
   'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this device.',
   'settings.webui.officialRemoteRuntimeHint':
     'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.',
-  'settings.webui.openOfficialRemote': 'Open Official Remote',
   'settings.webui.editUsernameTooltip': 'Edit username',
   'settings.webui.resetPasswordTooltip': 'Set new password',
   'settings.webui.setNewUsername': 'Set new username',
@@ -55,6 +55,10 @@ vi.mock('react-i18next', () => ({
 }));
 
 const openExternalUrlMock = vi.fn();
+
+vi.mock('@/renderer/utils/officialRemote', () => ({
+  dispatchOfficialRemoteSwitcherEvent: (...args: unknown[]) => dispatchOfficialRemoteSwitcherEventMock(...args),
+}));
 
 vi.mock('@/renderer/utils/platform', async () => {
   const actual = await vi.importActual<typeof import('@/renderer/utils/platform')>('@/renderer/utils/platform');
@@ -324,7 +328,7 @@ describe('WebuiModalContent', () => {
     expect(within(modal).getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
   });
 
-  it('opens the hosted device list directly without triggering an official remote ensure step', async () => {
+  it('opens the native device switcher without navigating into an embedded remote page', async () => {
     cloudGetStatusInvoke.mockResolvedValueOnce({
       success: true,
       data: {
@@ -364,11 +368,12 @@ describe('WebuiModalContent', () => {
 
     render(<WebuiModalContent />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Open Official Remote' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'settings.webui.switchDevice' }));
 
     await waitFor(() => {
-      expect(window.location.hash).toBe('#/remote/devices');
+      expect(dispatchOfficialRemoteSwitcherEventMock).toHaveBeenCalledWith({ source: 'settings-webui' });
     });
+    expect(window.location.hash).toBe('');
     expect(cloudEnsureOfficialRemoteReadyInvoke).not.toHaveBeenCalled();
     expect(openExternalUrlMock).not.toHaveBeenCalled();
     expect(shellOpenExternalMock).not.toHaveBeenCalled();

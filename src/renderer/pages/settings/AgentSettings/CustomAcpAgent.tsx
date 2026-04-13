@@ -6,6 +6,7 @@ import {
   ACP_BACKENDS_ALL,
   isManagedRuntimeInstallableBackend,
   type AcpBackend,
+  type ManagedRuntimeConfigEntry,
   type ManagedRuntimeInstallEvent,
 } from '@/common/types/acpTypes';
 import type { ExternalSessionProvider, ExternalSessionSummary } from '@/common/types/externalSessions';
@@ -30,7 +31,12 @@ type RuntimeInstallState = {
 };
 
 type RuntimeConfigLocation = {
-  configPath: string;
+  entries: ManagedRuntimeConfigEntry[];
+};
+
+type LegacyRuntimeConfigLocation = {
+  configPath?: string;
+  exists?: boolean;
 };
 
 type AvailableRuntimeAgent = {
@@ -117,6 +123,98 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
     descriptionKey: 'settings.runtimeManager.runtime.opencode.description',
     descriptionDefault: 'OpenCode CLI runtime.',
   },
+};
+
+const dedupePaths = (paths: string[]): string[] => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const path of paths) {
+    const trimmed = path.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      continue;
+    }
+
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+
+  return result;
+};
+
+const getPathDirectory = (filePath: string): string | null => {
+  const trimmed = filePath.trim().replace(/[\\/]+$/, '');
+  if (!trimmed) {
+    return null;
+  }
+
+  const separatorIndex = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+  if (separatorIndex < 0) {
+    return null;
+  }
+
+  if (separatorIndex === 0) {
+    return trimmed.slice(0, 1);
+  }
+
+  return trimmed.slice(0, separatorIndex);
+};
+
+const getRuntimeConfigPaths = (location: RuntimeConfigLocation | null): string[] =>
+  dedupePaths(location?.entries?.map((entry) => entry.path) ?? []);
+
+const normalizeRuntimeConfigLocation = (value: unknown): RuntimeConfigLocation | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const typedValue = value as { entries?: unknown } & LegacyRuntimeConfigLocation;
+  if (Array.isArray(typedValue.entries)) {
+    return {
+      entries: typedValue.entries
+        .filter((entry): entry is ManagedRuntimeConfigEntry => {
+          if (!entry || typeof entry !== 'object') {
+            return false;
+          }
+
+          const candidate = entry as Partial<ManagedRuntimeConfigEntry>;
+          return typeof candidate.path === 'string';
+        })
+        .map((entry) => ({
+          kind: entry.kind ?? 'other',
+          path: entry.path,
+          exists: entry.exists === true,
+        })),
+    };
+  }
+
+  if (typeof typedValue.configPath === 'string' && typedValue.configPath.trim()) {
+    return {
+      entries: [
+        {
+          kind: 'config',
+          path: typedValue.configPath,
+          exists: typedValue.exists === true,
+        },
+      ],
+    };
+  }
+
+  return null;
+};
+
+const getRuntimeConfigRevealPath = (location: RuntimeConfigLocation | null): string | null => {
+  const configPaths = getRuntimeConfigPaths(location);
+  if (configPaths.length === 0) {
+    return null;
+  }
+
+  const directories = dedupePaths(configPaths.map((path) => getPathDirectory(path) || '').filter(Boolean));
+  if (directories.length === 1) {
+    return directories[0] ?? null;
+  }
+
+  return configPaths[0] ?? null;
 };
 
 const getInstallStageLabel = (
@@ -305,7 +403,7 @@ const CustomAcpAgent: React.FC = () => {
           isMissing,
         };
       })
-      .sort((left, right) => {
+      .toSorted((left, right) => {
         if (left.isMissing !== right.isMissing) {
           return left.isMissing ? 1 : -1;
         }
@@ -337,13 +435,7 @@ const CustomAcpAgent: React.FC = () => {
         );
       }
 
-      if (!result.data) {
-        return null;
-      }
-
-      return {
-        configPath: result.data.configPath,
-      };
+      return normalizeRuntimeConfigLocation(result.data);
     },
     [t]
   );
@@ -367,7 +459,8 @@ const CustomAcpAgent: React.FC = () => {
 
       try {
         const configLocation = await getRuntimeConfigLocation(backend);
-        if (!configLocation?.configPath) {
+        const configPaths = getRuntimeConfigPaths(configLocation);
+        if (configPaths.length === 0) {
           throw new Error(
             t('settings.runtimeManager.openConfigFailed', {
               defaultValue: 'Failed to open the runtime config location.',
@@ -375,9 +468,11 @@ const CustomAcpAgent: React.FC = () => {
           );
         }
 
-        const opened = await openFilePreview({ path: configLocation.configPath });
-        if (!opened) {
-          await shell.openFile.invoke(configLocation.configPath);
+        for (const configPath of configPaths) {
+          const opened = await openFilePreview({ path: configPath });
+          if (!opened) {
+            await shell.openFile.invoke(configPath);
+          }
         }
       } catch (error) {
         console.error('[RuntimeSettings] Failed to open runtime config:', error);
@@ -408,7 +503,8 @@ const CustomAcpAgent: React.FC = () => {
 
       try {
         const configLocation = await getRuntimeConfigLocation(backend);
-        if (!configLocation?.configPath) {
+        const revealPath = getRuntimeConfigRevealPath(configLocation);
+        if (!revealPath) {
           throw new Error(
             t('settings.runtimeManager.revealPathFailed', {
               defaultValue: 'Failed to open the path in the system file manager.',
@@ -416,7 +512,7 @@ const CustomAcpAgent: React.FC = () => {
           );
         }
 
-        await shell.revealPath.invoke(configLocation.configPath);
+        await shell.revealPath.invoke(revealPath);
       } catch (error) {
         console.error('[RuntimeSettings] Failed to reveal runtime config path:', error);
         message.error(

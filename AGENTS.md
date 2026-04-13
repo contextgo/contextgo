@@ -118,6 +118,25 @@ Read these before changing release behavior:
 - [docs/tech/mobile-remote-control.md](docs/tech/mobile-remote-control.md)
 - [docs/tech/mobile-shell-readiness.md](docs/tech/mobile-shell-readiness.md)
 
+### Agent Package Model
+
+When changing built-in assistants, assistant resource bundles, workspace bootstrap behavior, or future assistant import flows, treat the following as the default product model:
+
+- a built-in assistant is a bundled **Agent Package**, not a runtime-owned preset
+- Agent Packages are runtime-neutral capability bundles
+- every bundled package root should carry an `agent-package.json` manifest with stable payload mappings
+- `AGENTS.md` and package `docs/` define the human-facing package contract using progressive disclosure
+- `skills`, `hooks`, `commands`, and `schedules` are package capabilities, but only skills are projected into runtime-native directories
+- workspace installation must materialize package state under `.contextgo/`
+- runtime-native directories such as `.codex/skills` or `.claude/skills` are projections only, not the source of truth
+- `hooks`, `commands`, and `schedules` are ContextGo-native automation and must not be modeled as Claude-only or runtime-only workspace structures
+- when absorbing external assistant packs, translate them into this runtime-neutral package model instead of preserving third-party workspace semantics as the product boundary
+
+Read these before changing the model:
+
+- [docs/tech/agent-package-architecture.md](docs/tech/agent-package-architecture.md)
+- [docs/conventions/runtime-support.md](docs/conventions/runtime-support.md)
+
 ## Testing
 
 **Framework**: Vitest 4 (`vitest.config.ts`). Run `bun run test` before every commit. Coverage target ≥ 80%.

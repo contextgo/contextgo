@@ -27,6 +27,7 @@ Write investor communication that is short, concrete, and easy to act on.
 ## Hard Bans
 
 Delete and rewrite any of these:
+
 - "I'd love to connect"
 - "excited to share"
 - generic thesis praise without a real tie-in
@@ -46,6 +47,7 @@ Delete and rewrite any of these:
 ## Personalization Sources
 
 Reference one or more of:
+
 - relevant portfolio companies
 - a public thesis, talk, post, or article
 - a mutual connection
@@ -56,6 +58,7 @@ If that context is missing, state that the draft still needs personalization ins
 ## Follow-Up Cadence
 
 Default:
+
 - day 0: initial outbound
 - day 4 or 5: short follow-up with one new data point
 - day 10 to 12: final follow-up with a clean close
@@ -65,6 +68,7 @@ Do not keep nudging after that unless the user wants a longer sequence.
 ## Warm Intro Requests
 
 Make life easy for the connector:
+
 - explain why the intro is a fit
 - include a forwardable blurb
 - keep the forwardable blurb under 100 words
@@ -72,6 +76,7 @@ Make life easy for the connector:
 ## Post-Meeting Updates
 
 Include:
+
 - the specific thing discussed
 - the answer or update promised
 - one new proof point if available
@@ -80,6 +85,7 @@ Include:
 ## Quality Gate
 
 Before delivering:
+
 - the message is genuinely personalized
 - the ask is explicit
 - the proof point is concrete

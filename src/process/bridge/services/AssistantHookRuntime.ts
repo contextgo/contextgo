@@ -6,7 +6,7 @@
 
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { IMessageText, TMessage } from '@/common/chat/chatLib';
-import type { TChatConversation } from '@/common/config/storage';
+import { getConversationRuntimeBackend, type TChatConversation } from '@/common/config/storage';
 import type { HookManifest } from '@/common/types/hookTypes';
 import {
   AssistantHookOutputRouter,
@@ -100,18 +100,7 @@ const isSafeHookName = (hookName: string): boolean => {
   return trimmed.length > 0 && path.basename(trimmed) === trimmed;
 };
 
-const resolveBackend = (conversation: TChatConversation): string => {
-  const extra = getConversationExtra(conversation);
-
-  switch (conversation.type) {
-    case 'acp':
-      return typeof extra.backend === 'string' ? extra.backend : 'acp';
-    case 'openclaw-gateway':
-      return typeof extra.backend === 'string' ? extra.backend : 'openclaw-gateway';
-    default:
-      return conversation.type;
-  }
-};
+const resolveBackend = (conversation: TChatConversation): string => getConversationRuntimeBackend(conversation);
 
 const isTextMessage = (message: TMessage): message is IMessageText => message.type === 'text';
 

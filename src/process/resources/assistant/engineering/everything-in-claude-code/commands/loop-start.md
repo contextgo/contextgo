@@ -28,5 +28,6 @@ Start a managed autonomous loop pattern with safety defaults.
 ## Arguments
 
 $ARGUMENTS:
+
 - `<pattern>` optional (`sequential|continuous-pr|rfc-dag|infinite`)
 - `--mode safe|fast` optional

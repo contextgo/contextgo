@@ -5,30 +5,21 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
-import type { ContextGoUIDatabase } from '@process/services/database';
-import { getDatabase } from '@process/services/database';
+import { conversationServiceSingleton } from '@process/services/conversationServiceSingleton';
 import crypto from 'crypto';
 import type { IAgentProfile } from '../types';
+import { ProjectChannelPublicationService } from './ProjectChannelPublicationService';
 
 type PublicationDependencies = {
-  getDatabase: typeof getDatabase;
+  getConversation: typeof conversationServiceSingleton.getConversation;
+  publicationStore: Pick<
+    ProjectChannelPublicationService,
+    'resolveConversationWorkspace' | 'getAgentProfileByPublishedConversation' | 'getAgentProfile' | 'upsertAgentProfile'
+  >;
 };
-
-type QueryResult<T> = {
-  success: boolean;
-  error?: string;
-  data?: T;
-};
-
-function assertQuerySuccess<T>(result: QueryResult<T>, fallback: string): T {
-  if (!result.success) {
-    throw new Error(result.error || fallback);
-  }
-  return result.data as T;
-}
 
 function mapConversationBackend(conversation: TChatConversation): string {
-  if (conversation.type === 'gemini' || conversation.type === 'codex' || conversation.type === 'openclaw-gateway') {
+  if (conversation.type === 'gemini' || conversation.type === 'codex') {
     return conversation.type;
   }
 
@@ -78,40 +69,46 @@ function extractConversationModelRef(conversation: TChatConversation): IAgentPro
   return undefined;
 }
 
-function buildPublicationProfileId(conversationId: string): string {
+export function buildPublicationProfileId(conversationId: string): string {
   const profileHash = crypto.createHash('sha256').update(conversationId).digest('hex').slice(0, 16);
   return `agent_profile_publication_${profileHash}`;
 }
 
-function resolveExistingPublicationProfile(db: ContextGoUIDatabase, conversationId: string): IAgentProfile | null {
-  const byPublishedConversation = assertQuerySuccess(
-    db.getAgentProfileByPublishedConversation(conversationId),
-    `Failed to query publication profile for conversation ${conversationId}`
+async function resolveExistingPublicationProfile(
+  publicationStore: Pick<
+    ProjectChannelPublicationService,
+    'getAgentProfileByPublishedConversation' | 'getAgentProfile'
+  >,
+  workspace: string,
+  conversationId: string
+): Promise<IAgentProfile | null> {
+  const byPublishedConversation = await publicationStore.getAgentProfileByPublishedConversation(
+    workspace,
+    conversationId
   );
   if (byPublishedConversation) {
     return byPublishedConversation;
   }
 
-  const publicationProfileId = buildPublicationProfileId(conversationId);
-  const publicationProfile = assertQuerySuccess(
-    db.getAgentProfile(publicationProfileId),
-    `Failed to query publication profile ${publicationProfileId}`
-  );
-  if (publicationProfile) {
-    return publicationProfile;
-  }
-
-  return null;
+  return publicationStore.getAgentProfile(workspace, buildPublicationProfileId(conversationId));
 }
 
-export function buildConversationPublicationProfile(
-  db: ContextGoUIDatabase,
-  conversation: TChatConversation,
-  existing: IAgentProfile | null = resolveExistingPublicationProfile(db, conversation.id)
-): IAgentProfile {
+export async function buildConversationPublicationProfile(
+  publicationStore: Pick<
+    ProjectChannelPublicationService,
+    'resolveConversationWorkspace' | 'getAgentProfileByPublishedConversation' | 'getAgentProfile'
+  >,
+  conversation: TChatConversation
+): Promise<IAgentProfile> {
+  const workspace = publicationStore.resolveConversationWorkspace(conversation);
+  if (!workspace) {
+    throw new Error('Conversation workspace is required before publishing an Agent to IM channels');
+  }
+
+  const existing = await resolveExistingPublicationProfile(publicationStore, workspace, conversation.id);
   const backend = mapConversationBackend(conversation);
   const modelRef = extractConversationModelRef(conversation);
-  const workspaceRef = extractConversationWorkspace(conversation);
+  const workspaceRef = extractConversationWorkspace(conversation) ?? workspace;
   const now = Date.now();
   const extra = conversation.extra as Record<string, unknown> | undefined;
 
@@ -137,25 +134,27 @@ export function buildConversationPublicationProfile(
   };
 }
 
-export function ensureConversationPublicationProfile(
-  db: ContextGoUIDatabase,
-  conversation: TChatConversation
-): IAgentProfile {
-  const profile = buildConversationPublicationProfile(db, conversation);
-  assertQuerySuccess(db.upsertAgentProfile(profile), `Failed to upsert publication profile ${profile.id}`);
-  return profile;
-}
-
 export class ChannelPublicationService {
-  constructor(private readonly deps: PublicationDependencies = { getDatabase }) {}
+  constructor(
+    private readonly deps: PublicationDependencies = {
+      getConversation: conversationServiceSingleton.getConversation.bind(conversationServiceSingleton),
+      publicationStore: new ProjectChannelPublicationService(),
+    }
+  ) {}
 
   async prepareConversationPublication(conversationId: string): Promise<IAgentProfile> {
-    const db = await this.deps.getDatabase();
-    const conversation = assertQuerySuccess(
-      db.getConversation(conversationId),
-      `Failed to load source conversation ${conversationId}`
-    );
-    return ensureConversationPublicationProfile(db, conversation);
+    const conversation = await this.deps.getConversation(conversationId);
+    if (!conversation) {
+      throw new Error(`Failed to load source conversation ${conversationId}`);
+    }
+
+    const profile = await buildConversationPublicationProfile(this.deps.publicationStore, conversation);
+    const workspace = this.deps.publicationStore.resolveConversationWorkspace(conversation);
+    if (!workspace) {
+      throw new Error('Conversation workspace is required before publishing an Agent to IM channels');
+    }
+
+    return this.deps.publicationStore.upsertAgentProfile(workspace, profile);
   }
 
   async prepareConversationAgentProfile(conversationId: string): Promise<IAgentProfile> {

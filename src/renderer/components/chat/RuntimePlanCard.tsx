@@ -25,7 +25,8 @@ const STATUS_TONE: Record<RuntimePlanEntry['status'], 'gray' | 'arcoblue' | 'gre
 
 const STATUS_DOT_CLASSNAME: Record<RuntimePlanEntry['status'], string> = {
   pending: 'bg-fill-4',
-  in_progress: 'bg-[rgb(var(--primary-6))] shadow-[0_0_0_4px_color-mix(in_srgb,_rgb(var(--primary-6))_12%,_transparent)]',
+  in_progress:
+    'bg-[rgb(var(--primary-6))] shadow-[0_0_0_4px_color-mix(in_srgb,_rgb(var(--primary-6))_12%,_transparent)]',
   completed: 'bg-[rgb(var(--success-6))]',
 };
 
@@ -150,7 +151,10 @@ const RuntimePlanCard: React.FC<RuntimePlanCardProps> = ({
         <div className='mt-10px flex flex-col gap-8px border-t border-[color:var(--color-border-2)] pt-10px'>
           <div>
             <div className='flex items-center gap-8px'>
-              <div className='min-w-0 flex-1 truncate text-12px font-500 leading-18px text-t-primary' title={summaryText}>
+              <div
+                className='min-w-0 flex-1 truncate text-12px font-500 leading-18px text-t-primary'
+                title={summaryText}
+              >
                 {summaryText}
               </div>
               <span className='shrink-0 text-11px font-600 text-t-secondary'>{percent}%</span>
@@ -171,7 +175,9 @@ const RuntimePlanCard: React.FC<RuntimePlanCardProps> = ({
             >
               <span className={`mt-4px h-7px w-7px shrink-0 rounded-full ${STATUS_DOT_CLASSNAME[entry.status]}`} />
               <div className='min-w-0 flex-1'>
-                <div className={`text-12px leading-18px ${entry.status === 'in_progress' ? 'font-600 text-t-primary' : 'text-t-primary'}`}>
+                <div
+                  className={`text-12px leading-18px ${entry.status === 'in_progress' ? 'font-600 text-t-primary' : 'text-t-primary'}`}
+                >
                   {entry.content}
                 </div>
               </div>

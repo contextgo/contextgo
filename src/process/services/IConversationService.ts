@@ -8,7 +8,7 @@
 
 import type { ConversationSource, TChatConversation, TProviderWithModel } from '@/common/config/storage';
 import type { ICreateConversationExtra, ConversationType, NonGroupConversationType } from '@/common/adapter/ipcBridge';
-import type { AcpBackendAll } from '@/common/types/acpTypes';
+import type { AcpBackend } from '@/common/types/acpTypes';
 
 export interface CreateConversationParams {
   type: ConversationType;
@@ -18,14 +18,14 @@ export interface CreateConversationParams {
   source?: ConversationSource;
   channelChatId?: string;
   extra: ICreateConversationExtra & {
-    backend?: AcpBackendAll;
+    backend?: AcpBackend;
   };
 }
 
 export type RuntimeConversationCreateParams = CreateConversationParams & {
   type: NonGroupConversationType;
   extra: ICreateConversationExtra & {
-    backend?: AcpBackendAll;
+    backend?: AcpBackend;
   };
 };
 

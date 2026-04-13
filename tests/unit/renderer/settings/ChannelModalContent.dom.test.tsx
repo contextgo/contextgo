@@ -66,7 +66,7 @@ const translations: Record<string, string> = {
   'settings.assistant.connected': 'Connected',
   'settings.assistant.disconnected': 'Disconnected',
   'settings.activeSessions': 'Agent Publish',
-  'settings.activeSessionsDesc': 'Choose a usable channel account, then set stable long-term publication rules.',
+  'settings.activeSessionsDesc': 'Review the current Agent and publish it into platform-native IM objects.',
 };
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
@@ -287,9 +287,7 @@ describe('ChannelModalContent', () => {
 
     expect(screen.getByText('publication panel')).toBeInTheDocument();
     expect(screen.getByText('Agent Publish')).toBeInTheDocument();
-    expect(
-      screen.getByText('Choose a usable channel account, then set stable long-term publication rules.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Review the current Agent and publish it into platform-native IM objects.')).toBeInTheDocument();
   });
 
   it('renders a connector-style two-column channel layout and switches the right detail pane', async () => {

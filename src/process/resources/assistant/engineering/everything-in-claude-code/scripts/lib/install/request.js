@@ -5,7 +5,7 @@ const { validateInstallModuleIds } = require('../install-manifests');
 const LEGACY_INSTALL_TARGETS = ['claude', 'cursor', 'antigravity'];
 
 function dedupeStrings(values) {
-  return [...new Set((Array.isArray(values) ? values : []).map(value => String(value).trim()).filter(Boolean))];
+  return [...new Set((Array.isArray(values) ? values : []).map((value) => String(value).trim()).filter(Boolean))];
 }
 
 function parseInstallArgs(argv) {
@@ -68,9 +68,7 @@ function parseInstallArgs(argv) {
 }
 
 function normalizeInstallRequest(options = {}) {
-  const config = options.config && typeof options.config === 'object'
-    ? options.config
-    : null;
+  const config = options.config && typeof options.config === 'object' ? options.config : null;
   const profileId = options.profileId || config?.profileId || null;
   const moduleIds = validateInstallModuleIds(
     dedupeStrings([...(config?.moduleIds || []), ...(options.moduleIds || [])])
@@ -83,10 +81,12 @@ function normalizeInstallRequest(options = {}) {
     ...(config?.excludeComponentIds || []),
     ...(options.excludeComponentIds || []),
   ]);
-  const legacyLanguages = dedupeStrings(dedupeStrings([
-    ...(Array.isArray(options.legacyLanguages) ? options.legacyLanguages : []),
-    ...(Array.isArray(options.languages) ? options.languages : []),
-  ]).map(language => language.toLowerCase()));
+  const legacyLanguages = dedupeStrings(
+    dedupeStrings([
+      ...(Array.isArray(options.legacyLanguages) ? options.legacyLanguages : []),
+      ...(Array.isArray(options.languages) ? options.languages : []),
+    ]).map((language) => language.toLowerCase())
+  );
   const target = options.target || config?.target || 'claude';
   const hasManifestBaseSelection = Boolean(profileId) || moduleIds.length > 0 || includeComponentIds.length > 0;
   const usingManifestMode = hasManifestBaseSelection || excludeComponentIds.length > 0;

@@ -143,7 +143,5 @@ if (fs.existsSync(script)) {
   process.exit(Number.isInteger(result.status) ? result.status : 0);
 }
 
-process.stderr.write(
-  '[SessionStart] WARNING: could not resolve ECC plugin root; skipping session-start hook\n'
-);
+process.stderr.write('[SessionStart] WARNING: could not resolve ECC plugin root; skipping session-start hook\n');
 process.stdout.write(raw);

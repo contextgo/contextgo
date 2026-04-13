@@ -71,6 +71,7 @@ This is the same dynamic as GANs (Generative Adversarial Networks): the Generato
 **Role:** Product manager — expands a brief prompt into a full product specification.
 
 **Key behaviors:**
+
 - Takes a one-line prompt and produces a 16-feature, multi-sprint specification
 - Defines user stories, technical requirements, and visual design direction
 - Is deliberately **ambitious** — conservative planning leads to underwhelming results
@@ -83,6 +84,7 @@ This is the same dynamic as GANs (Generative Adversarial Networks): the Generato
 **Role:** Developer — implements features according to the spec.
 
 **Key behaviors:**
+
 - Works in structured sprints (or continuous mode with newer models)
 - Negotiates a "sprint contract" with the Evaluator before writing code
 - Uses full-stack tooling: React, FastAPI/Express, databases, CSS
@@ -96,6 +98,7 @@ This is the same dynamic as GANs (Generative Adversarial Networks): the Generato
 **Role:** QA engineer — tests the live running application, not just code.
 
 **Key behaviors:**
+
 - Uses **Playwright MCP** to interact with the live application
 - Clicks through features, fills forms, tests API endpoints
 - Scores against four criteria (configurable):
@@ -116,24 +119,28 @@ The default four criteria, each scored 1-10:
 ## Evaluation Rubric
 
 ### Design Quality (weight: 0.3)
+
 - 1-3: Generic, template-like, "AI slop" aesthetics
 - 4-6: Competent but unremarkable, follows conventions
 - 7-8: Distinctive, cohesive visual identity
 - 9-10: Could pass for a professional designer's work
 
 ### Originality (weight: 0.2)
+
 - 1-3: Default colors, stock layouts, no personality
 - 4-6: Some custom choices, mostly standard patterns
 - 7-8: Clear creative vision, unique approach
 - 9-10: Surprising, delightful, genuinely novel
 
 ### Craft (weight: 0.3)
+
 - 1-3: Broken layouts, missing states, no animations
 - 4-6: Works but feels rough, inconsistent spacing
 - 7-8: Polished, smooth transitions, responsive
 - 9-10: Pixel-perfect, delightful micro-interactions
 
 ### Functionality (weight: 0.2)
+
 - 1-3: Core features broken or missing
 - 4-6: Happy path works, edge cases fail
 - 7-8: All features work, good error handling
@@ -142,7 +149,7 @@ The default four criteria, each scored 1-10:
 
 ### Scoring
 
-- **Weighted score** = sum of (criterion_score * weight)
+- **Weighted score** = sum of (criterion_score \* weight)
 - **Pass threshold** = 7.0 (configurable)
 - **Max iterations** = 15 (configurable, typically 5-15 sufficient)
 
@@ -197,18 +204,21 @@ claude -p --model opus "You are a Generator. Read spec.md and feedback-001.md. A
 The harness should simplify as models improve. Following Anthropic's evolution:
 
 ### Stage 1 — Weaker Models (Sonnet-class)
+
 - Full sprint decomposition required
 - Context resets between sprints (avoid context anxiety)
 - 2-agent minimum: Initializer + Coding Agent
 - Heavy scaffolding compensates for model limitations
 
 ### Stage 2 — Capable Models (Opus 4.5-class)
+
 - Full 3-agent harness: Planner + Generator + Evaluator
 - Sprint contracts before each implementation phase
 - 10-sprint decomposition for complex apps
 - Context resets still useful but less critical
 
 ### Stage 3 — Frontier Models (Opus 4.6-class)
+
 - Simplified harness: single planning pass, continuous generation
 - Evaluation reduced to single end-pass (model is smarter)
 - No sprint structure needed
@@ -220,27 +230,27 @@ The harness should simplify as models improve. Following Anthropic's evolution:
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GAN_MAX_ITERATIONS` | `15` | Maximum generator-evaluator cycles |
-| `GAN_PASS_THRESHOLD` | `7.0` | Weighted score to pass (1-10) |
-| `GAN_PLANNER_MODEL` | `opus` | Model for planning agent |
-| `GAN_GENERATOR_MODEL` | `opus` | Model for generator agent |
-| `GAN_EVALUATOR_MODEL` | `opus` | Model for evaluator agent |
-| `GAN_EVAL_CRITERIA` | `design,originality,craft,functionality` | Comma-separated criteria |
-| `GAN_DEV_SERVER_PORT` | `3000` | Port for the live app |
-| `GAN_DEV_SERVER_CMD` | `npm run dev` | Command to start dev server |
-| `GAN_PROJECT_DIR` | `.` | Project working directory |
-| `GAN_SKIP_PLANNER` | `false` | Skip planner, use spec directly |
-| `GAN_EVAL_MODE` | `playwright` | `playwright`, `screenshot`, or `code-only` |
+| Variable              | Default                                  | Description                                |
+| --------------------- | ---------------------------------------- | ------------------------------------------ |
+| `GAN_MAX_ITERATIONS`  | `15`                                     | Maximum generator-evaluator cycles         |
+| `GAN_PASS_THRESHOLD`  | `7.0`                                    | Weighted score to pass (1-10)              |
+| `GAN_PLANNER_MODEL`   | `opus`                                   | Model for planning agent                   |
+| `GAN_GENERATOR_MODEL` | `opus`                                   | Model for generator agent                  |
+| `GAN_EVALUATOR_MODEL` | `opus`                                   | Model for evaluator agent                  |
+| `GAN_EVAL_CRITERIA`   | `design,originality,craft,functionality` | Comma-separated criteria                   |
+| `GAN_DEV_SERVER_PORT` | `3000`                                   | Port for the live app                      |
+| `GAN_DEV_SERVER_CMD`  | `npm run dev`                            | Command to start dev server                |
+| `GAN_PROJECT_DIR`     | `.`                                      | Project working directory                  |
+| `GAN_SKIP_PLANNER`    | `false`                                  | Skip planner, use spec directly            |
+| `GAN_EVAL_MODE`       | `playwright`                             | `playwright`, `screenshot`, or `code-only` |
 
 ### Evaluation Modes
 
-| Mode | Tools | Best For |
-|------|-------|----------|
-| `playwright` | Browser MCP + live interaction | Full-stack apps with UI |
-| `screenshot` | Screenshot + visual analysis | Static sites, design-only |
-| `code-only` | Tests + linting + build | APIs, libraries, CLI tools |
+| Mode         | Tools                          | Best For                   |
+| ------------ | ------------------------------ | -------------------------- |
+| `playwright` | Browser MCP + live interaction | Full-stack apps with UI    |
+| `screenshot` | Screenshot + visual analysis   | Static sites, design-only  |
+| `code-only`  | Tests + linting + build        | APIs, libraries, CLI tools |
 
 ## Anti-Patterns
 
@@ -260,13 +270,13 @@ The harness should simplify as models improve. Following Anthropic's evolution:
 
 Based on Anthropic's published results:
 
-| Metric | Solo Agent | GAN Harness | Improvement |
-|--------|-----------|-------------|-------------|
-| Time | 20 min | 4-6 hours | 12-18x longer |
-| Cost | $9 | $125-200 | 14-22x more |
-| Quality | Barely functional | Production-ready | Phase change |
-| Core features | Broken | All working | N/A |
-| Design | Generic AI slop | Distinctive, polished | N/A |
+| Metric        | Solo Agent        | GAN Harness           | Improvement   |
+| ------------- | ----------------- | --------------------- | ------------- |
+| Time          | 20 min            | 4-6 hours             | 12-18x longer |
+| Cost          | $9                | $125-200              | 14-22x more   |
+| Quality       | Barely functional | Production-ready      | Phase change  |
+| Core features | Broken            | All working           | N/A           |
+| Design        | Generic AI slop   | Distinctive, polished | N/A           |
 
 **The tradeoff is clear:** ~20x more time and cost for a qualitative leap in output quality. This is for projects where quality matters.
 

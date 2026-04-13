@@ -4,13 +4,8 @@ const path = require('path');
 
 const { resolveInstallPlan, loadInstallManifests } = require('./install-manifests');
 const { readInstallState, writeInstallState } = require('./install-state');
-const {
-  createManifestInstallPlan,
-} = require('./install-executor');
-const {
-  getInstallTargetAdapter,
-  listInstallTargetAdapters,
-} = require('./install-targets/registry');
+const { createManifestInstallPlan } = require('./install-executor');
+const { getInstallTargetAdapter, listInstallTargetAdapters } = require('./install-targets/registry');
 
 const DEFAULT_REPO_ROOT = path.join(__dirname, '../..');
 
@@ -25,7 +20,7 @@ function readPackageVersion(repoRoot) {
 
 function normalizeTargets(targets) {
   if (!Array.isArray(targets) || targets.length === 0) {
-    return listInstallTargetAdapters().map(adapter => adapter.target);
+    return listInstallTargetAdapters().map((adapter) => adapter.target);
   }
 
   const normalizedTargets = [];
@@ -52,7 +47,7 @@ function compareStringArrays(left, right) {
 
 function getManagedOperations(state) {
   return Array.isArray(state && state.operations)
-    ? state.operations.filter(operation => operation.ownership === 'managed')
+    ? state.operations.filter((operation) => operation.ownership === 'managed')
     : [];
 }
 
@@ -107,7 +102,13 @@ function parseJsonLikeValue(value, label) {
     }
   }
 
-  if (value === null || Array.isArray(value) || isPlainObject(value) || typeof value === 'number' || typeof value === 'boolean') {
+  if (
+    value === null ||
+    Array.isArray(value) ||
+    isPlainObject(value) ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return cloneJsonValue(value);
   }
 
@@ -115,13 +116,7 @@ function parseJsonLikeValue(value, label) {
 }
 
 function getOperationTextContent(operation) {
-  const candidateKeys = [
-    'renderedContent',
-    'content',
-    'managedContent',
-    'expectedContent',
-    'templateOutput',
-  ];
+  const candidateKeys = ['renderedContent', 'content', 'managedContent', 'expectedContent', 'templateOutput'];
 
   for (const key of candidateKeys) {
     if (typeof operation[key] === 'string') {
@@ -133,13 +128,7 @@ function getOperationTextContent(operation) {
 }
 
 function getOperationJsonPayload(operation) {
-  const candidateKeys = [
-    'mergePayload',
-    'managedPayload',
-    'payload',
-    'value',
-    'expectedValue',
-  ];
+  const candidateKeys = ['mergePayload', 'managedPayload', 'payload', 'value', 'expectedValue'];
 
   for (const key of candidateKeys) {
     if (operation[key] !== undefined) {
@@ -151,11 +140,7 @@ function getOperationJsonPayload(operation) {
 }
 
 function getOperationPreviousContent(operation) {
-  const candidateKeys = [
-    'previousContent',
-    'originalContent',
-    'backupContent',
-  ];
+  const candidateKeys = ['previousContent', 'originalContent', 'backupContent'];
 
   for (const key of candidateKeys) {
     if (typeof operation[key] === 'string') {
@@ -167,11 +152,7 @@ function getOperationPreviousContent(operation) {
 }
 
 function getOperationPreviousJson(operation) {
-  const candidateKeys = [
-    'previousValue',
-    'previousJson',
-    'originalValue',
-  ];
+  const candidateKeys = ['previousValue', 'previousJson', 'originalValue'];
 
   for (const key of candidateKeys) {
     if (operation[key] !== undefined) {
@@ -216,10 +197,10 @@ function jsonContainsSubset(actualValue, expectedValue) {
       return false;
     }
 
-    return Object.entries(expectedValue).every(([key, value]) => (
-      Object.prototype.hasOwnProperty.call(actualValue, key)
-      && jsonContainsSubset(actualValue[key], value)
-    ));
+    return Object.entries(expectedValue).every(
+      ([key, value]) =>
+        Object.prototype.hasOwnProperty.call(actualValue, key) && jsonContainsSubset(actualValue[key], value)
+    );
   }
 
   if (Array.isArray(expectedValue)) {
@@ -280,7 +261,7 @@ function deepRemoveJsonSubset(currentValue, managedValue) {
 }
 
 function hydrateRecordedOperations(repoRoot, operations) {
-  return operations.map(operation => {
+  return operations.map((operation) => {
     if (operation.kind !== 'copy-file') {
       return { ...operation };
     }
@@ -295,7 +276,7 @@ function hydrateRecordedOperations(repoRoot, operations) {
 function buildRecordedStatePreview(state, context, operations) {
   return {
     ...state,
-    operations: operations.map(operation => ({ ...operation })),
+    operations: operations.map((operation) => ({ ...operation })),
     source: {
       ...state.source,
       repoVersion: context.packageVersion,
@@ -306,7 +287,7 @@ function buildRecordedStatePreview(state, context, operations) {
 }
 
 function shouldRepairFromRecordedOperations(state) {
-  return getManagedOperations(state).some(operation => operation.kind !== 'copy-file');
+  return getManagedOperations(state).some((operation) => operation.kind !== 'copy-file');
 }
 
 function executeRepairOperation(repoRoot, operation) {
@@ -338,9 +319,7 @@ function executeRepairOperation(repoRoot, operation) {
       throw new Error(`Missing merge payload for repair: ${operation.destinationPath}`);
     }
 
-    const currentValue = fs.existsSync(operation.destinationPath)
-      ? readJsonFile(operation.destinationPath)
-      : {};
+    const currentValue = fs.existsSync(operation.destinationPath) ? readJsonFile(operation.destinationPath) : {};
     const mergedValue = deepMergeJson(currentValue, payload);
 
     ensureParentDir(operation.destinationPath);
@@ -620,24 +599,27 @@ function inspectManagedOperation(repoRoot, operation) {
 }
 
 function summarizeManagedOperationHealth(repoRoot, operations) {
-  return operations.reduce((summary, operation) => {
-    const inspection = inspectManagedOperation(repoRoot, operation);
-    if (inspection.status === 'missing') {
-      summary.missing.push(inspection);
-    } else if (inspection.status === 'drifted') {
-      summary.drifted.push(inspection);
-    } else if (inspection.status === 'missing-source') {
-      summary.missingSource.push(inspection);
-    } else if (inspection.status === 'unverified' || inspection.status === 'invalid-destination') {
-      summary.unverified.push(inspection);
+  return operations.reduce(
+    (summary, operation) => {
+      const inspection = inspectManagedOperation(repoRoot, operation);
+      if (inspection.status === 'missing') {
+        summary.missing.push(inspection);
+      } else if (inspection.status === 'drifted') {
+        summary.drifted.push(inspection);
+      } else if (inspection.status === 'missing-source') {
+        summary.missingSource.push(inspection);
+      } else if (inspection.status === 'unverified' || inspection.status === 'invalid-destination') {
+        summary.unverified.push(inspection);
+      }
+      return summary;
+    },
+    {
+      missing: [],
+      drifted: [],
+      missingSource: [],
+      unverified: [],
     }
-    return summary;
-  }, {
-    missing: [],
-    drifted: [],
-    missingSource: [],
-    unverified: [],
-  });
+  );
 }
 
 function buildDiscoveryRecord(adapter, context) {
@@ -702,7 +684,7 @@ function discoverInstalledStates(options = {}) {
   };
   const targets = normalizeTargets(options.targets);
 
-  return targets.map(target => {
+  return targets.map((target) => {
     const adapter = getInstallTargetAdapter(target);
     return buildDiscoveryRecord(adapter, context);
   });
@@ -718,11 +700,11 @@ function buildIssue(severity, code, message, extra = {}) {
 }
 
 function determineStatus(issues) {
-  if (issues.some(issue => issue.severity === 'error')) {
+  if (issues.some((issue) => issue.severity === 'error')) {
     return 'error';
   }
 
-  if (issues.some(issue => issue.severity === 'warning')) {
+  if (issues.some((issue) => issue.severity === 'warning')) {
     return 'warning';
   }
 
@@ -751,35 +733,35 @@ function analyzeRecord(record, context) {
   }
 
   if (!fs.existsSync(state.target.root)) {
-    issues.push(buildIssue(
-      'error',
-      'missing-target-root',
-      `Target root does not exist: ${state.target.root}`
-    ));
+    issues.push(buildIssue('error', 'missing-target-root', `Target root does not exist: ${state.target.root}`));
   }
 
   if (state.target.root !== record.targetRoot) {
-    issues.push(buildIssue(
-      'warning',
-      'target-root-mismatch',
-      `Recorded target root differs from current target root (${record.targetRoot})`,
-      {
-        recordedTargetRoot: state.target.root,
-        currentTargetRoot: record.targetRoot,
-      }
-    ));
+    issues.push(
+      buildIssue(
+        'warning',
+        'target-root-mismatch',
+        `Recorded target root differs from current target root (${record.targetRoot})`,
+        {
+          recordedTargetRoot: state.target.root,
+          currentTargetRoot: record.targetRoot,
+        }
+      )
+    );
   }
 
   if (state.target.installStatePath !== record.installStatePath) {
-    issues.push(buildIssue(
-      'warning',
-      'install-state-path-mismatch',
-      `Recorded install-state path differs from current path (${record.installStatePath})`,
-      {
-        recordedInstallStatePath: state.target.installStatePath,
-        currentInstallStatePath: record.installStatePath,
-      }
-    ));
+    issues.push(
+      buildIssue(
+        'warning',
+        'install-state-path-mismatch',
+        `Recorded install-state path differs from current path (${record.installStatePath})`,
+        {
+          recordedInstallStatePath: state.target.installStatePath,
+          currentInstallStatePath: record.installStatePath,
+        }
+      )
+    );
   }
 
   const managedOperations = getManagedOperations(state);
@@ -787,67 +769,70 @@ function analyzeRecord(record, context) {
   const missingManagedOperations = operationHealth.missing;
 
   if (missingManagedOperations.length > 0) {
-    issues.push(buildIssue(
-      'error',
-      'missing-managed-files',
-      `${missingManagedOperations.length} managed file(s) are missing`,
-      {
-        paths: missingManagedOperations.map(entry => entry.destinationPath),
-      }
-    ));
+    issues.push(
+      buildIssue('error', 'missing-managed-files', `${missingManagedOperations.length} managed file(s) are missing`, {
+        paths: missingManagedOperations.map((entry) => entry.destinationPath),
+      })
+    );
   }
 
   if (operationHealth.drifted.length > 0) {
-    issues.push(buildIssue(
-      'warning',
-      'drifted-managed-files',
-      `${operationHealth.drifted.length} managed file(s) differ from the source repo`,
-      {
-        paths: operationHealth.drifted.map(entry => entry.destinationPath),
-      }
-    ));
+    issues.push(
+      buildIssue(
+        'warning',
+        'drifted-managed-files',
+        `${operationHealth.drifted.length} managed file(s) differ from the source repo`,
+        {
+          paths: operationHealth.drifted.map((entry) => entry.destinationPath),
+        }
+      )
+    );
   }
 
   if (operationHealth.missingSource.length > 0) {
-    issues.push(buildIssue(
-      'error',
-      'missing-source-files',
-      `${operationHealth.missingSource.length} source file(s) referenced by install-state are missing`,
-      {
-        paths: operationHealth.missingSource.map(entry => entry.sourcePath).filter(Boolean),
-      }
-    ));
+    issues.push(
+      buildIssue(
+        'error',
+        'missing-source-files',
+        `${operationHealth.missingSource.length} source file(s) referenced by install-state are missing`,
+        {
+          paths: operationHealth.missingSource.map((entry) => entry.sourcePath).filter(Boolean),
+        }
+      )
+    );
   }
 
   if (operationHealth.unverified.length > 0) {
-    issues.push(buildIssue(
-      'warning',
-      'unverified-managed-operations',
-      `${operationHealth.unverified.length} managed operation(s) could not be content-verified`,
-      {
-        paths: operationHealth.unverified.map(entry => entry.destinationPath).filter(Boolean),
-      }
-    ));
+    issues.push(
+      buildIssue(
+        'warning',
+        'unverified-managed-operations',
+        `${operationHealth.unverified.length} managed operation(s) could not be content-verified`,
+        {
+          paths: operationHealth.unverified.map((entry) => entry.destinationPath).filter(Boolean),
+        }
+      )
+    );
   }
 
   if (state.source.manifestVersion !== context.manifestVersion) {
-    issues.push(buildIssue(
-      'warning',
-      'manifest-version-mismatch',
-      `Recorded manifest version ${state.source.manifestVersion} differs from current manifest version ${context.manifestVersion}`
-    ));
+    issues.push(
+      buildIssue(
+        'warning',
+        'manifest-version-mismatch',
+        `Recorded manifest version ${state.source.manifestVersion} differs from current manifest version ${context.manifestVersion}`
+      )
+    );
   }
 
-  if (
-    context.packageVersion
-    && state.source.repoVersion
-    && state.source.repoVersion !== context.packageVersion
-  ) {
-    issues.push(buildIssue(
-      'warning',
-      'repo-version-mismatch',
-      `Recorded repo version ${state.source.repoVersion} differs from current repo version ${context.packageVersion}`
-    ));
+  if (context.packageVersion && state.source.repoVersion && state.source.repoVersion !== context.packageVersion) {
+    issues.push(
+      buildIssue(
+        'warning',
+        'repo-version-mismatch',
+        `Recorded repo version ${state.source.repoVersion} differs from current repo version ${context.packageVersion}`
+      )
+    );
   }
 
   if (!state.request.legacyMode) {
@@ -864,27 +849,20 @@ function analyzeRecord(record, context) {
       });
 
       if (
-        !compareStringArrays(desiredPlan.selectedModuleIds, state.resolution.selectedModules)
-        || !compareStringArrays(desiredPlan.skippedModuleIds, state.resolution.skippedModules)
+        !compareStringArrays(desiredPlan.selectedModuleIds, state.resolution.selectedModules) ||
+        !compareStringArrays(desiredPlan.skippedModuleIds, state.resolution.skippedModules)
       ) {
-        issues.push(buildIssue(
-          'warning',
-          'resolution-drift',
-          'Current manifest resolution differs from recorded install-state',
-          {
+        issues.push(
+          buildIssue('warning', 'resolution-drift', 'Current manifest resolution differs from recorded install-state', {
             expectedSelectedModules: desiredPlan.selectedModuleIds,
             recordedSelectedModules: state.resolution.selectedModules,
             expectedSkippedModules: desiredPlan.skippedModuleIds,
             recordedSkippedModules: state.resolution.skippedModules,
-          }
-        ));
+          })
+        );
       }
     } catch (error) {
-      issues.push(buildIssue(
-        'error',
-        'resolution-unavailable',
-        error.message
-      ));
+      issues.push(buildIssue('error', 'resolution-unavailable', error.message));
     }
   }
 
@@ -902,7 +880,7 @@ function buildDoctorReport(options = {}) {
     homeDir: options.homeDir,
     projectRoot: options.projectRoot,
     targets: options.targets,
-  }).filter(record => record.exists);
+  }).filter((record) => record.exists);
   const context = {
     repoRoot,
     homeDir: options.homeDir || process.env.HOME || os.homedir(),
@@ -910,23 +888,26 @@ function buildDoctorReport(options = {}) {
     manifestVersion: manifests.modulesVersion,
     packageVersion: readPackageVersion(repoRoot),
   };
-  const results = records.map(record => analyzeRecord(record, context));
-  const summary = results.reduce((accumulator, result) => {
-    const errorCount = result.issues.filter(issue => issue.severity === 'error').length;
-    const warningCount = result.issues.filter(issue => issue.severity === 'warning').length;
+  const results = records.map((record) => analyzeRecord(record, context));
+  const summary = results.reduce(
+    (accumulator, result) => {
+      const errorCount = result.issues.filter((issue) => issue.severity === 'error').length;
+      const warningCount = result.issues.filter((issue) => issue.severity === 'warning').length;
 
-    return {
-      checkedCount: accumulator.checkedCount + 1,
-      okCount: accumulator.okCount + (result.status === 'ok' ? 1 : 0),
-      errorCount: accumulator.errorCount + errorCount,
-      warningCount: accumulator.warningCount + warningCount,
-    };
-  }, {
-    checkedCount: 0,
-    okCount: 0,
-    errorCount: 0,
-    warningCount: 0,
-  });
+      return {
+        checkedCount: accumulator.checkedCount + 1,
+        okCount: accumulator.okCount + (result.status === 'ok' ? 1 : 0),
+        errorCount: accumulator.errorCount + errorCount,
+        warningCount: accumulator.warningCount + warningCount,
+      };
+    },
+    {
+      checkedCount: 0,
+      okCount: 0,
+      errorCount: 0,
+      warningCount: 0,
+    }
+  );
 
   return {
     generatedAt: new Date().toISOString(),
@@ -955,9 +936,7 @@ function createRepairPlanFromRecord(record, context) {
       installRoot: state.target.root,
       installStatePath: state.target.installStatePath,
       warnings: [],
-      languages: Array.isArray(state.request.legacyLanguages)
-        ? [...state.request.legacyLanguages]
-        : [],
+      languages: Array.isArray(state.request.legacyLanguages) ? [...state.request.legacyLanguages] : [],
       operations,
       statePreview,
     };
@@ -998,9 +977,9 @@ function repairInstalledStates(options = {}) {
     homeDir: context.homeDir,
     projectRoot: context.projectRoot,
     targets: options.targets,
-  }).filter(record => record.exists);
+  }).filter((record) => record.exists);
 
-  const results = records.map(record => {
+  const results = records.map((record) => {
     if (record.error) {
       return {
         adapter: record.adapter,
@@ -1023,15 +1002,15 @@ function repairInstalledStates(options = {}) {
           installStatePath: record.installStatePath,
           repairedPaths: [],
           plannedRepairs: [],
-          error: `Missing source file(s): ${operationHealth.missingSource.map(entry => entry.sourcePath).join(', ')}`,
+          error: `Missing source file(s): ${operationHealth.missingSource.map((entry) => entry.sourcePath).join(', ')}`,
         };
       }
 
       const repairOperations = [
-        ...operationHealth.missing.map(entry => ({ ...entry.operation })),
-        ...operationHealth.drifted.map(entry => ({ ...entry.operation })),
+        ...operationHealth.missing.map((entry) => ({ ...entry.operation })),
+        ...operationHealth.drifted.map((entry) => ({ ...entry.operation })),
       ];
-      const plannedRepairs = repairOperations.map(operation => operation.destinationPath);
+      const plannedRepairs = repairOperations.map((operation) => operation.destinationPath);
 
       if (options.dryRun) {
         return {
@@ -1075,17 +1054,20 @@ function repairInstalledStates(options = {}) {
     }
   });
 
-  const summary = results.reduce((accumulator, result) => ({
-    checkedCount: accumulator.checkedCount + 1,
-    repairedCount: accumulator.repairedCount + (result.status === 'repaired' ? 1 : 0),
-    plannedRepairCount: accumulator.plannedRepairCount + (result.status === 'planned' ? 1 : 0),
-    errorCount: accumulator.errorCount + (result.status === 'error' ? 1 : 0),
-  }), {
-    checkedCount: 0,
-    repairedCount: 0,
-    plannedRepairCount: 0,
-    errorCount: 0,
-  });
+  const summary = results.reduce(
+    (accumulator, result) => ({
+      checkedCount: accumulator.checkedCount + 1,
+      repairedCount: accumulator.repairedCount + (result.status === 'repaired' ? 1 : 0),
+      plannedRepairCount: accumulator.plannedRepairCount + (result.status === 'planned' ? 1 : 0),
+      errorCount: accumulator.errorCount + (result.status === 'error' ? 1 : 0),
+    }),
+    {
+      checkedCount: 0,
+      repairedCount: 0,
+      plannedRepairCount: 0,
+      errorCount: 0,
+    }
+  );
 
   return {
     dryRun: Boolean(options.dryRun),
@@ -1100,9 +1082,9 @@ function cleanupEmptyParentDirs(filePath, stopAt) {
   const normalizedStopAt = path.resolve(stopAt);
 
   while (
-    currentPath
-    && path.resolve(currentPath).startsWith(normalizedStopAt)
-    && path.resolve(currentPath) !== normalizedStopAt
+    currentPath &&
+    path.resolve(currentPath).startsWith(normalizedStopAt) &&
+    path.resolve(currentPath) !== normalizedStopAt
   ) {
     if (!fs.existsSync(currentPath)) {
       currentPath = path.dirname(currentPath);
@@ -1124,9 +1106,9 @@ function uninstallInstalledStates(options = {}) {
     homeDir: options.homeDir,
     projectRoot: options.projectRoot,
     targets: options.targets,
-  }).filter(record => record.exists);
+  }).filter((record) => record.exists);
 
-  const results = records.map(record => {
+  const results = records.map((record) => {
     if (record.error || !record.state) {
       return {
         adapter: record.adapter,
@@ -1139,10 +1121,12 @@ function uninstallInstalledStates(options = {}) {
     }
 
     const state = record.state;
-    const plannedRemovals = Array.from(new Set([
-      ...getManagedOperations(state).map(operation => operation.destinationPath),
-      state.target.installStatePath,
-    ]));
+    const plannedRemovals = Array.from(
+      new Set([
+        ...getManagedOperations(state).map((operation) => operation.destinationPath),
+        state.target.installStatePath,
+      ])
+    );
 
     if (options.dryRun) {
       return {
@@ -1196,17 +1180,20 @@ function uninstallInstalledStates(options = {}) {
     }
   });
 
-  const summary = results.reduce((accumulator, result) => ({
-    checkedCount: accumulator.checkedCount + 1,
-    uninstalledCount: accumulator.uninstalledCount + (result.status === 'uninstalled' ? 1 : 0),
-    plannedRemovalCount: accumulator.plannedRemovalCount + (result.status === 'planned' ? 1 : 0),
-    errorCount: accumulator.errorCount + (result.status === 'error' ? 1 : 0),
-  }), {
-    checkedCount: 0,
-    uninstalledCount: 0,
-    plannedRemovalCount: 0,
-    errorCount: 0,
-  });
+  const summary = results.reduce(
+    (accumulator, result) => ({
+      checkedCount: accumulator.checkedCount + 1,
+      uninstalledCount: accumulator.uninstalledCount + (result.status === 'uninstalled' ? 1 : 0),
+      plannedRemovalCount: accumulator.plannedRemovalCount + (result.status === 'planned' ? 1 : 0),
+      errorCount: accumulator.errorCount + (result.status === 'error' ? 1 : 0),
+    }),
+    {
+      checkedCount: 0,
+      uninstalledCount: 0,
+      plannedRemovalCount: 0,
+      errorCount: 0,
+    }
+  );
 
   return {
     dryRun: Boolean(options.dryRun),

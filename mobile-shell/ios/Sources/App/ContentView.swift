@@ -106,6 +106,7 @@ private struct HomeView: View {
   @State private var isCheckingSession = false
   @State private var isRefreshingSnapshot = true
   @State private var isPresentingProviderSheet = false
+  @State private var hasAppliedInitialAutoOpen = false
   @State private var availableProviders: [AuthProvider] = AuthProvider.allCases
   @State private var homeSnapshot = OfficialHomeSnapshot.unauthenticated
 
@@ -122,24 +123,14 @@ private struct HomeView: View {
           }
 
           if homeSnapshot.isAuthenticated {
-            statusBoard
-
             if let user = homeSnapshot.user {
               accountPanel(user: user)
             }
 
             recentDevicesPanel
           } else {
-            highlightsView
-            previewPanel
             ctaPanel
           }
-
-          Text(String(localized: "home.footnote"))
-            .font(.system(size: 12, weight: .medium, design: .rounded))
-            .foregroundStyle(RemoteBrand.textTertiary)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 4)
         }
         .padding(.horizontal, 18)
         .padding(.top, 18)
@@ -163,6 +154,7 @@ private struct HomeView: View {
       }
     }
     .onChange(of: connectionStore.homeRefreshRevision) { _ in
+      hasAppliedInitialAutoOpen = false
       Task {
         await refreshHomeSnapshot(showSpinner: true)
       }
@@ -250,19 +242,16 @@ private struct HomeView: View {
       }
 
       Text(heroHeadline)
-        .font(.system(size: 40, weight: .black, design: .rounded))
+        .font(.system(size: 30, weight: .black, design: .rounded))
         .foregroundStyle(RemoteBrand.textPrimary)
         .fixedSize(horizontal: false, vertical: true)
 
       Text(heroSubtitle)
-        .font(.system(size: 16, weight: .medium, design: .rounded))
+        .font(.system(size: 14, weight: .medium, design: .rounded))
         .foregroundStyle(RemoteBrand.textSecondary)
-        .lineSpacing(4)
         .fixedSize(horizontal: false, vertical: true)
-
-      featureSection
     }
-    .padding(24)
+    .padding(22)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(
       LinearGradient(
@@ -277,80 +266,6 @@ private struct HomeView: View {
         .stroke(RemoteBrand.cardBorder.opacity(0.9), lineWidth: 1)
     )
     .shadow(color: Color.black.opacity(0.08), radius: 30, x: 0, y: 18)
-  }
-
-  private var featureSection: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      ViewThatFits {
-        HStack(spacing: 10) {
-          featurePill(icon: "desktopcomputer", text: String(localized: "home.feature.devices"))
-          featurePill(icon: "arrow.up.doc", text: String(localized: "home.feature.files"))
-        }
-
-        VStack(alignment: .leading, spacing: 10) {
-          featurePill(icon: "desktopcomputer", text: String(localized: "home.feature.devices"))
-          featurePill(icon: "arrow.up.doc", text: String(localized: "home.feature.files"))
-        }
-      }
-
-      ViewThatFits {
-        HStack(spacing: 10) {
-          featurePill(icon: "bolt.horizontal.circle", text: String(localized: "home.feature.sessions"))
-          featurePill(icon: "lock.shield", text: String(localized: "home.feature.auth"))
-        }
-
-        VStack(alignment: .leading, spacing: 10) {
-          featurePill(icon: "bolt.horizontal.circle", text: String(localized: "home.feature.sessions"))
-          featurePill(icon: "lock.shield", text: String(localized: "home.feature.auth"))
-        }
-      }
-    }
-  }
-
-  private var statusBoard: some View {
-    ViewThatFits {
-      HStack(spacing: 12) {
-        summaryMetricCard(
-          value: homeSnapshot.deviceCount.formatted(),
-          title: String(localized: "home.metric.devices"),
-          tint: RemoteBrand.accent,
-          symbol: "display.2"
-        )
-        summaryMetricCard(
-          value: homeSnapshot.readyDeviceCount.formatted(),
-          title: String(localized: "home.metric.ready"),
-          tint: RemoteBrand.accentMuted,
-          symbol: "dot.radiowaves.left.and.right"
-        )
-        summaryMetricCard(
-          value: homeSnapshot.liveSessionCount.formatted(),
-          title: String(localized: "home.metric.live"),
-          tint: RemoteBrand.accentSoft,
-          symbol: "waveform.path.ecg.rectangle"
-        )
-      }
-
-      VStack(spacing: 12) {
-        summaryMetricCard(
-          value: homeSnapshot.deviceCount.formatted(),
-          title: String(localized: "home.metric.devices"),
-          tint: RemoteBrand.accent,
-          symbol: "display.2"
-        )
-        summaryMetricCard(
-          value: homeSnapshot.readyDeviceCount.formatted(),
-          title: String(localized: "home.metric.ready"),
-          tint: RemoteBrand.accentMuted,
-          symbol: "dot.radiowaves.left.and.right"
-        )
-        summaryMetricCard(
-          value: homeSnapshot.liveSessionCount.formatted(),
-          title: String(localized: "home.metric.live"),
-          tint: RemoteBrand.accentSoft,
-          symbol: "waveform.path.ecg.rectangle"
-        )
-      }
-    }
   }
 
   private func accountPanel(user: OfficialUser) -> some View {
@@ -438,54 +353,6 @@ private struct HomeView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(RemoteBrand.mutedSurface)
     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-  }
-
-  private var highlightsView: some View {
-    VStack(spacing: 14) {
-      homeMetricCard(
-        title: String(localized: "home.card.devices.title"),
-        detail: String(localized: "home.card.devices.detail"),
-        symbol: "display.2"
-      )
-      homeMetricCard(
-        title: String(localized: "home.card.uploads.title"),
-        detail: String(localized: "home.card.uploads.detail"),
-        symbol: "square.and.arrow.up.badge.clock"
-      )
-      homeMetricCard(
-        title: String(localized: "home.card.sessions.title"),
-        detail: String(localized: "home.card.sessions.detail"),
-        symbol: "link.circle"
-      )
-    }
-  }
-
-  private var previewPanel: some View {
-    VStack(alignment: .leading, spacing: 18) {
-      Text(String(localized: "home.preview.title"))
-        .font(.system(size: 16, weight: .bold, design: .rounded))
-        .foregroundStyle(RemoteBrand.textPrimary)
-
-      VStack(spacing: 14) {
-        previewRow(
-          title: String(localized: "home.preview.devices.title"),
-          detail: String(localized: "home.preview.devices.detail"),
-          accent: RemoteBrand.accent
-        )
-        previewRow(
-          title: String(localized: "home.preview.open.title"),
-          detail: String(localized: "home.preview.open.detail"),
-          accent: RemoteBrand.accentSoft
-        )
-      }
-    }
-    .padding(22)
-    .background(RemoteBrand.cardBackgroundSoft)
-    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-    .overlay(
-      RoundedRectangle(cornerRadius: 28, style: .continuous)
-        .stroke(RemoteBrand.cardBorder, lineWidth: 1)
-    )
   }
 
   private var ctaPanel: some View {
@@ -594,6 +461,17 @@ private struct HomeView: View {
     let snapshot = await connectionStore.fetchOfficialHomeSnapshot()
     homeSnapshot = snapshot
     isRefreshingSnapshot = false
+
+    if snapshot.isAuthenticated, !hasAppliedInitialAutoOpen {
+      hasAppliedInitialAutoOpen = true
+
+      switch connectionStore.deviceLaunchDecision(for: snapshot) {
+      case .stayOnHome:
+        break
+      case .openDevice(let device):
+        connectionStore.connectToOfficialDevice(deviceID: device.id, persist: false)
+      }
+    }
   }
 
   private func openOfficialRemote() async {
@@ -664,112 +542,6 @@ private struct HomeView: View {
       RoundedRectangle(cornerRadius: 26, style: .continuous)
         .stroke(RemoteBrand.cardBorder, lineWidth: 1)
     )
-  }
-
-  private func featurePill(icon: String, text: String) -> some View {
-    HStack(spacing: 8) {
-      Image(systemName: icon)
-      Text(text)
-        .lineLimit(2)
-        .multilineTextAlignment(.leading)
-    }
-    .font(.system(size: 13, weight: .semibold, design: .rounded))
-    .padding(.horizontal, 12)
-    .padding(.vertical, 10)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(RemoteBrand.subtleSurface)
-    .foregroundStyle(RemoteBrand.accentMuted)
-    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-  }
-
-  private func summaryMetricCard(value: String, title: String, tint: Color, symbol: String) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Image(systemName: symbol)
-        .font(.system(size: 18, weight: .semibold))
-        .foregroundStyle(tint)
-        .frame(width: 38, height: 38)
-        .background(tint.opacity(0.10))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-      Text(value)
-        .font(.system(size: 28, weight: .black, design: .rounded))
-        .foregroundStyle(RemoteBrand.textPrimary)
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
-
-      Text(title)
-        .font(.system(size: 12, weight: .bold, design: .rounded))
-        .foregroundStyle(RemoteBrand.textSecondary)
-        .fixedSize(horizontal: false, vertical: true)
-    }
-    .padding(18)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(RemoteBrand.cardBackground)
-    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-    .overlay(
-      RoundedRectangle(cornerRadius: 24, style: .continuous)
-        .stroke(RemoteBrand.cardBorder, lineWidth: 1)
-    )
-  }
-
-  private func homeMetricCard(title: String, detail: String, symbol: String) -> some View {
-    HStack(alignment: .top, spacing: 14) {
-      Image(systemName: symbol)
-        .font(.system(size: 20, weight: .semibold))
-        .foregroundStyle(RemoteBrand.accent)
-        .frame(width: 42, height: 42)
-        .background(RemoteBrand.subtleSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-      VStack(alignment: .leading, spacing: 6) {
-        Text(title)
-          .font(.system(size: 17, weight: .bold, design: .rounded))
-          .foregroundStyle(RemoteBrand.textPrimary)
-
-        Text(detail)
-          .font(.system(size: 14, weight: .medium, design: .rounded))
-          .foregroundStyle(RemoteBrand.textSecondary)
-          .fixedSize(horizontal: false, vertical: true)
-      }
-
-      Spacer(minLength: 0)
-    }
-    .padding(20)
-    .background(RemoteBrand.cardBackgroundSoft)
-    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-    .overlay(
-      RoundedRectangle(cornerRadius: 24, style: .continuous)
-        .stroke(RemoteBrand.cardBorder, lineWidth: 1)
-    )
-  }
-
-  private func previewRow(title: String, detail: String, accent: Color) -> some View {
-    HStack(spacing: 14) {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .fill(accent.opacity(0.10))
-        .frame(width: 54, height: 54)
-        .overlay(
-          Image(systemName: "sparkles.rectangle.stack")
-            .font(.system(size: 22, weight: .semibold))
-            .foregroundStyle(accent)
-        )
-
-      VStack(alignment: .leading, spacing: 4) {
-        Text(title)
-          .font(.system(size: 15, weight: .bold, design: .rounded))
-          .foregroundStyle(RemoteBrand.textPrimary)
-
-        Text(detail)
-          .font(.system(size: 13, weight: .medium, design: .rounded))
-          .foregroundStyle(RemoteBrand.textSecondary)
-          .fixedSize(horizontal: false, vertical: true)
-      }
-
-      Spacer(minLength: 0)
-    }
-    .padding(16)
-    .background(RemoteBrand.mutedSurface)
-    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
   }
 
   private func avatarView(for user: OfficialUser) -> some View {
@@ -1108,7 +880,7 @@ private struct ShellBrowserView: View {
       return String(localized: "browser.loading.devices")
     }
 
-    return String(localized: "browser.loading.desktop")
+    return ""
   }
 
   private var edgeBackGestureStrip: some View {
@@ -1135,22 +907,24 @@ private struct ShellBrowserView: View {
     ZStack(alignment: .top) {
       browserChromeColor.ignoresSafeArea()
 
-      VStack(spacing: 20) {
-        Spacer(minLength: max(topInset, 0) + 48)
+        VStack(spacing: 20) {
+          Spacer(minLength: max(topInset, 0) + 48)
 
-        BrandLockupView()
+          BrandLockupView()
 
-        VStack(spacing: 10) {
-          ProgressView()
-            .controlSize(.regular)
-            .tint(RemoteBrand.accent)
+          VStack(spacing: launchOverlayMessage.isEmpty ? 0 : 10) {
+            ProgressView()
+              .controlSize(.regular)
+              .tint(RemoteBrand.accent)
 
-          Text(launchOverlayMessage)
-            .font(.system(size: 14, weight: .medium, design: .rounded))
-            .foregroundStyle(RemoteBrand.textSecondary)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 32)
-        }
+            if !launchOverlayMessage.isEmpty {
+              Text(launchOverlayMessage)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(RemoteBrand.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            }
+          }
 
         Spacer()
       }

@@ -12,29 +12,30 @@ Use [scripts/ws_listener.py](../scripts/ws_listener.py) to connect and dump even
 
 ### Event Channels
 
-| Channel | Source | Content |
-|---------|--------|---------|
-| `capture_session` | Session lifecycle | Status changes |
-| `transcript` | `start_transcript()` | Speech-to-text |
-| `visual_index` / `scene_index` | `index_visuals()` | Visual analysis |
-| `audio_index` | `index_audio()` | Audio analysis |
-| `alert` | `create_alert()` | Alert notifications |
+| Channel                        | Source               | Content             |
+| ------------------------------ | -------------------- | ------------------- |
+| `capture_session`              | Session lifecycle    | Status changes      |
+| `transcript`                   | `start_transcript()` | Speech-to-text      |
+| `visual_index` / `scene_index` | `index_visuals()`    | Visual analysis     |
+| `audio_index`                  | `index_audio()`      | Audio analysis      |
+| `alert`                        | `create_alert()`     | Alert notifications |
 
 ### Session Lifecycle Events
 
-| Event | Status | Key Data |
-|-------|--------|----------|
-| `capture_session.created` | `created` | — |
-| `capture_session.starting` | `starting` | — |
-| `capture_session.active` | `active` | `rtstreams[]` |
-| `capture_session.stopping` | `stopping` | — |
-| `capture_session.stopped` | `stopped` | — |
+| Event                      | Status     | Key Data                                        |
+| -------------------------- | ---------- | ----------------------------------------------- |
+| `capture_session.created`  | `created`  | —                                               |
+| `capture_session.starting` | `starting` | —                                               |
+| `capture_session.active`   | `active`   | `rtstreams[]`                                   |
+| `capture_session.stopping` | `stopping` | —                                               |
+| `capture_session.stopped`  | `stopped`  | —                                               |
 | `capture_session.exported` | `exported` | `exported_video_id`, `stream_url`, `player_url` |
-| `capture_session.failed` | `failed` | `error` |
+| `capture_session.failed`   | `failed`   | `error`                                         |
 
 ### Event Structures
 
 **Transcript event:**
+
 ```json
 {
   "channel": "transcript",
@@ -50,6 +51,7 @@ Use [scripts/ws_listener.py](../scripts/ws_listener.py) to connect and dump even
 ```
 
 **Visual index event:**
+
 ```json
 {
   "channel": "visual_index",
@@ -64,6 +66,7 @@ Use [scripts/ws_listener.py](../scripts/ws_listener.py) to connect and dump even
 ```
 
 **Audio index event:**
+
 ```json
 {
   "channel": "audio_index",
@@ -78,6 +81,7 @@ Use [scripts/ws_listener.py](../scripts/ws_listener.py) to connect and dump even
 ```
 
 **Session active event:**
+
 ```json
 {
   "event": "capture_session.active",
@@ -94,6 +98,7 @@ Use [scripts/ws_listener.py](../scripts/ws_listener.py) to connect and dump even
 ```
 
 **Session exported event:**
+
 ```json
 {
   "event": "capture_session.exported",
@@ -136,28 +141,32 @@ VIDEODB_EVENTS_DIR=/path/to/output python scripts/ws_listener.py --clear &
 The script outputs `WS_ID=<connection_id>` on the first line, then listens indefinitely.
 
 **Get the ws_id:**
+
 ```bash
 cat "${VIDEODB_EVENTS_DIR:-$HOME/.local/state/videodb}/videodb_ws_id"
 ```
 
 **Stop the listener:**
+
 ```bash
 kill "$(cat "${VIDEODB_EVENTS_DIR:-$HOME/.local/state/videodb}/videodb_ws_pid")"
 ```
 
 **Functions that accept `ws_connection_id`:**
 
-| Function | Purpose |
-|----------|---------|
-| `conn.create_capture_session()` | Session lifecycle events |
-| RTStream methods | See [rtstream-reference.md](rtstream-reference.md) |
+| Function                        | Purpose                                            |
+| ------------------------------- | -------------------------------------------------- |
+| `conn.create_capture_session()` | Session lifecycle events                           |
+| RTStream methods                | See [rtstream-reference.md](rtstream-reference.md) |
 
 **Output files** (in output directory, default `${XDG_STATE_HOME:-$HOME/.local/state}/videodb`):
+
 - `videodb_ws_id` - WebSocket connection ID
 - `videodb_events.jsonl` - All events
 - `videodb_ws_pid` - Process ID for easy termination
 
 **Features:**
+
 - `--clear` flag to clear events file on start (use for new sessions)
 - Auto-reconnect with exponential backoff on connection drops
 - Graceful shutdown on SIGINT/SIGTERM
@@ -211,10 +220,10 @@ ws = await ws_wrapper.connect()
 ws_id = ws.connection_id
 ```
 
-| Property / Method | Type | Description |
-|-------------------|------|-------------|
-| `ws.connection_id` | `str` | Unique connection ID (pass to AI pipeline methods) |
-| `ws.receive()` | `AsyncIterator[dict]` | Async iterator yielding real-time messages |
+| Property / Method  | Type                  | Description                                        |
+| ------------------ | --------------------- | -------------------------------------------------- |
+| `ws.connection_id` | `str`                 | Unique connection ID (pass to AI pipeline methods) |
+| `ws.receive()`     | `AsyncIterator[dict]` | Async iterator yielding real-time messages         |
 
 ---
 
@@ -222,11 +231,11 @@ ws_id = ws.connection_id
 
 ### Connection Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `conn.create_capture_session(end_user_id, collection_id, ws_connection_id, metadata)` | `CaptureSession` | Create a new capture session |
-| `conn.get_capture_session(capture_session_id)` | `CaptureSession` | Retrieve an existing capture session |
-| `conn.generate_client_token()` | `str` | Generate a client-side authentication token |
+| Method                                                                                | Returns          | Description                                 |
+| ------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------- |
+| `conn.create_capture_session(end_user_id, collection_id, ws_connection_id, metadata)` | `CaptureSession` | Create a new capture session                |
+| `conn.get_capture_session(capture_session_id)`                                        | `CaptureSession` | Retrieve an existing capture session        |
+| `conn.generate_client_token()`                                                        | `str`            | Generate a client-side authentication token |
 
 ### Create a Capture Session
 
@@ -248,14 +257,14 @@ print(f"Session ID: {session.id}")
 
 ### CaptureSession Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Property     | Type  | Description               |
+| ------------ | ----- | ------------------------- |
 | `session.id` | `str` | Unique capture session ID |
 
 ### CaptureSession Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
+| Method                       | Returns          | Description                                                     |
+| ---------------------------- | ---------------- | --------------------------------------------------------------- |
 | `session.get_rtstream(type)` | `list[RTStream]` | Get RTStreams by type: `"mic"`, `"screen"`, or `"system_audio"` |
 
 ### Generate a Client Token
@@ -278,13 +287,13 @@ client = CaptureClient(client_token=token)
 
 ### CaptureClient Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `await client.request_permission(type)` | `None` | Request device permission (`"microphone"`, `"screen_capture"`) |
-| `await client.list_channels()` | `Channels` | Discover available audio/video channels |
-| `await client.start_capture_session(capture_session_id, channels, primary_video_channel_id)` | `None` | Start streaming selected channels |
-| `await client.stop_capture()` | `None` | Gracefully stop the capture session |
-| `await client.shutdown()` | `None` | Clean up client resources |
+| Method                                                                                       | Returns    | Description                                                    |
+| -------------------------------------------------------------------------------------------- | ---------- | -------------------------------------------------------------- |
+| `await client.request_permission(type)`                                                      | `None`     | Request device permission (`"microphone"`, `"screen_capture"`) |
+| `await client.list_channels()`                                                               | `Channels` | Discover available audio/video channels                        |
+| `await client.start_capture_session(capture_session_id, channels, primary_video_channel_id)` | `None`     | Start streaming selected channels                              |
+| `await client.stop_capture()`                                                                | `None`     | Gracefully stop the capture session                            |
+| `await client.shutdown()`                                                                    | `None`     | Clean up client resources                                      |
 
 ### Request Permissions
 
@@ -329,26 +338,26 @@ system_audio = channels.system_audio.default
 
 ### Channel Groups
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `channels.mics` | `ChannelGroup` | Available microphones |
-| `channels.displays` | `ChannelGroup` | Available screen displays |
+| Property                | Type           | Description                    |
+| ----------------------- | -------------- | ------------------------------ |
+| `channels.mics`         | `ChannelGroup` | Available microphones          |
+| `channels.displays`     | `ChannelGroup` | Available screen displays      |
 | `channels.system_audio` | `ChannelGroup` | Available system audio sources |
 
 ### ChannelGroup Methods & Properties
 
-| Member | Type | Description |
-|--------|------|-------------|
-| `group.default` | `Channel` | Default channel in the group (or `None`) |
-| `group.all()` | `list[Channel]` | All channels in the group |
+| Member          | Type            | Description                              |
+| --------------- | --------------- | ---------------------------------------- |
+| `group.default` | `Channel`       | Default channel in the group (or `None`) |
+| `group.all()`   | `list[Channel]` | All channels in the group                |
 
 ### Channel Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `ch.id` | `str` | Unique channel ID |
-| `ch.type` | `str` | Channel type (`"mic"`, `"display"`, `"system_audio"`) |
-| `ch.name` | `str` | Human-readable channel name |
+| Property   | Type   | Description                                              |
+| ---------- | ------ | -------------------------------------------------------- |
+| `ch.id`    | `str`  | Unique channel ID                                        |
+| `ch.type`  | `str`  | Channel type (`"mic"`, `"display"`, `"system_audio"`)    |
+| `ch.name`  | `str`  | Human-readable channel name                              |
 | `ch.store` | `bool` | Whether to persist the recording (set to `True` to save) |
 
 Without `store = True`, streams are processed in real-time but not saved.

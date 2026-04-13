@@ -174,6 +174,7 @@ resp = oauth.post(
 ## Rate Limits
 
 X API rate limits vary by endpoint, auth method, and account tier, and they change over time. Always:
+
 - Check the current X developer docs before hardcoding assumptions
 - Read `x-rate-limit-remaining` and `x-rate-limit-reset` headers at runtime
 - Back off automatically instead of relying on static tables in code
@@ -214,6 +215,7 @@ else:
 ## Integration with Content Engine
 
 Use `brand-voice` plus `content-engine` to generate platform-native content, then post via X API:
+
 1. Pull recent original posts when voice matching matters
 2. Build or reuse a `VOICE PROFILE`
 3. Generate content with `content-engine` in X-native format

@@ -36,6 +36,7 @@ If your Exa server exposes additional tools, verify their exact names before dep
 ## Core Tools
 
 ### web_search_exa
+
 General web search for current information, news, or facts.
 
 ```
@@ -44,15 +45,16 @@ web_search_exa(query: "latest AI developments 2026", numResults: 5)
 
 **Parameters:**
 
-| Param | Type | Default | Notes |
-|-------|------|---------|-------|
-| `query` | string | required | Search query |
-| `numResults` | number | 8 | Number of results |
-| `type` | string | `auto` | Search mode |
-| `livecrawl` | string | `fallback` | Prefer live crawling when needed |
-| `category` | string | none | Optional focus such as `company` or `research paper` |
+| Param        | Type   | Default    | Notes                                                |
+| ------------ | ------ | ---------- | ---------------------------------------------------- |
+| `query`      | string | required   | Search query                                         |
+| `numResults` | number | 8          | Number of results                                    |
+| `type`       | string | `auto`     | Search mode                                          |
+| `livecrawl`  | string | `fallback` | Prefer live crawling when needed                     |
+| `category`   | string | none       | Optional focus such as `company` or `research paper` |
 
 ### get_code_context_exa
+
 Find code examples and documentation from GitHub, Stack Overflow, and docs sites.
 
 ```
@@ -61,30 +63,34 @@ get_code_context_exa(query: "Python asyncio patterns", tokensNum: 3000)
 
 **Parameters:**
 
-| Param | Type | Default | Notes |
-|-------|------|---------|-------|
-| `query` | string | required | Code or API search query |
-| `tokensNum` | number | 5000 | Content tokens (1000-50000) |
+| Param       | Type   | Default  | Notes                       |
+| ----------- | ------ | -------- | --------------------------- |
+| `query`     | string | required | Code or API search query    |
+| `tokensNum` | number | 5000     | Content tokens (1000-50000) |
 
 ## Usage Patterns
 
 ### Quick Lookup
+
 ```
 web_search_exa(query: "Node.js 22 new features", numResults: 3)
 ```
 
 ### Code Research
+
 ```
 get_code_context_exa(query: "Rust error handling patterns Result type", tokensNum: 3000)
 ```
 
 ### Company or People Research
+
 ```
 web_search_exa(query: "Vercel funding valuation 2026", numResults: 3, category: "company")
 web_search_exa(query: "site:linkedin.com/in AI safety researchers Anthropic", numResults: 5)
 ```
 
 ### Technical Deep Dive
+
 ```
 web_search_exa(query: "WebAssembly component model status and adoption", numResults: 5)
 get_code_context_exa(query: "WebAssembly component model examples", tokensNum: 4000)

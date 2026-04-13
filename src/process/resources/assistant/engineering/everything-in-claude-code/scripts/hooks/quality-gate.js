@@ -35,7 +35,7 @@ function exec(command, args, cwd = process.cwd()) {
     cwd,
     encoding: 'utf8',
     env: process.env,
-    timeout: 15000
+    timeout: 15000,
   });
 }
 
@@ -152,7 +152,7 @@ function run(rawInput) {
 if (require.main === module) {
   let raw = '';
   process.stdin.setEncoding('utf8');
-  process.stdin.on('data', chunk => {
+  process.stdin.on('data', (chunk) => {
     if (raw.length < MAX_STDIN) {
       const remaining = MAX_STDIN - raw.length;
       raw += chunk.substring(0, remaining);

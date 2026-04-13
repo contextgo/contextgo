@@ -118,7 +118,12 @@ export interface ReplaceInFileOptions {
  * Replace text in a file (cross-platform sed alternative).
  * @returns true if the file was found and updated, false if file not found
  */
-export function replaceInFile(filePath: string, search: string | RegExp, replace: string, options?: ReplaceInFileOptions): boolean;
+export function replaceInFile(
+  filePath: string,
+  search: string | RegExp,
+  replace: string,
+  options?: ReplaceInFileOptions
+): boolean;
 
 /**
  * Count occurrences of a pattern in a file.

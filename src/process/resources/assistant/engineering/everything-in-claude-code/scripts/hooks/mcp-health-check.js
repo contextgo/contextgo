@@ -31,7 +31,10 @@ const FAILURE_PATTERNS = [
   { code: 403, pattern: /\b403\b|forbidden|permission denied/i },
   { code: 429, pattern: /\b429\b|rate limit|too many requests/i },
   { code: 503, pattern: /\b503\b|service unavailable|overloaded|temporarily unavailable/i },
-  { code: 'transport', pattern: /ECONNREFUSED|ENOTFOUND|EAI_AGAIN|timed? out|socket hang up|connection (?:failed|lost|reset|closed)/i }
+  {
+    code: 'transport',
+    pattern: /ECONNREFUSED|ENOTFOUND|EAI_AGAIN|timed? out|socket hang up|connection (?:failed|lost|reset|closed)/i,
+  },
 ];
 
 function envNumber(name, fallback) {
@@ -48,11 +51,10 @@ function stateFilePath() {
 
 function configPaths() {
   if (process.env.ECC_MCP_CONFIG_PATH) {
-    return process.env.ECC_MCP_CONFIG_PATH
-      .split(path.delimiter)
-      .map(entry => entry.trim())
+    return process.env.ECC_MCP_CONFIG_PATH.split(path.delimiter)
+      .map((entry) => entry.trim())
       .filter(Boolean)
-      .map(entry => path.resolve(entry));
+      .map((entry) => path.resolve(entry));
   }
 
   const cwd = process.cwd();
@@ -62,7 +64,7 @@ function configPaths() {
     path.join(cwd, '.claude.json'),
     path.join(cwd, '.claude', 'settings.json'),
     path.join(home, '.claude.json'),
-    path.join(home, '.claude', 'settings.json')
+    path.join(home, '.claude', 'settings.json'),
   ];
 }
 
@@ -97,11 +99,11 @@ function saveState(filePath, state) {
 }
 
 function readRawStdin() {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     let raw = '';
     let truncated = /^(1|true|yes)$/i.test(String(process.env.ECC_HOOK_INPUT_TRUNCATED || ''));
     process.stdin.setEncoding('utf8');
-    process.stdin.on('data', chunk => {
+    process.stdin.on('data', (chunk) => {
       if (raw.length < MAX_STDIN) {
         const remaining = MAX_STDIN - raw.length;
         raw += chunk.substring(0, remaining);
@@ -127,22 +129,19 @@ function safeParse(raw) {
 
 function extractMcpTarget(input) {
   const toolName = String(input.tool_name || input.name || '');
-  const explicitServer = input.server
-    || input.mcp_server
-    || input.tool_input?.server
-    || input.tool_input?.mcp_server
-    || input.tool_input?.connector
-    || null;
-  const explicitTool = input.tool
-    || input.mcp_tool
-    || input.tool_input?.tool
-    || input.tool_input?.mcp_tool
-    || null;
+  const explicitServer =
+    input.server ||
+    input.mcp_server ||
+    input.tool_input?.server ||
+    input.tool_input?.mcp_server ||
+    input.tool_input?.connector ||
+    null;
+  const explicitTool = input.tool || input.mcp_tool || input.tool_input?.tool || input.tool_input?.mcp_tool || null;
 
   if (explicitServer) {
     return {
       server: String(explicitServer),
-      tool: explicitTool ? String(explicitTool) : toolName
+      tool: explicitTool ? String(explicitTool) : toolName,
     };
   }
 
@@ -157,7 +156,7 @@ function extractMcpTarget(input) {
 
   return {
     server: segments[0],
-    tool: segments.slice(1).join('__')
+    tool: segments.slice(1).join('__'),
   };
 }
 
@@ -169,21 +168,19 @@ function extractMcpTargetFromRaw(raw) {
   return extractMcpTarget({
     tool_name: toolNameMatch ? toolNameMatch[1] : '',
     server: serverMatch ? serverMatch[1] : undefined,
-    tool: toolMatch ? toolMatch[1] : undefined
+    tool: toolMatch ? toolMatch[1] : undefined,
   });
 }
 
 function resolveServerConfig(serverName) {
   for (const filePath of configPaths()) {
     const data = readJsonFile(filePath);
-    const server = data?.mcpServers?.[serverName]
-      || data?.mcp_servers?.[serverName]
-      || null;
+    const server = data?.mcpServers?.[serverName] || data?.mcp_servers?.[serverName] || null;
 
     if (server && typeof server === 'object' && !Array.isArray(server)) {
       return {
         config: server,
-        source: filePath
+        source: filePath,
       };
     }
   }
@@ -201,7 +198,7 @@ function markHealthy(state, serverName, now, details = {}) {
     lastFailureCode: null,
     nextRetryAt: now,
     lastRestoredAt: now,
-    ...details
+    ...details,
   };
 }
 
@@ -209,7 +206,7 @@ function markUnhealthy(state, serverName, now, failureCode, errorMessage) {
   const previous = state.servers[serverName] || {};
   const failureCount = Number(previous.failureCount || 0) + 1;
   const backoffBase = envNumber('ECC_MCP_HEALTH_BACKOFF_MS', DEFAULT_BACKOFF_MS);
-  const nextRetryDelay = Math.min(backoffBase * (2 ** Math.max(failureCount - 1, 0)), MAX_BACKOFF_MS);
+  const nextRetryDelay = Math.min(backoffBase * 2 ** Math.max(failureCount - 1, 0), MAX_BACKOFF_MS);
 
   state.servers[serverName] = {
     status: 'unhealthy',
@@ -219,7 +216,7 @@ function markUnhealthy(state, serverName, now, failureCode, errorMessage) {
     lastError: errorMessage || null,
     lastFailureCode: failureCode || null,
     nextRetryAt: now + nextRetryDelay,
-    lastRestoredAt: previous.lastRestoredAt || null
+    lastRestoredAt: previous.lastRestoredAt || null,
   };
 }
 
@@ -232,7 +229,7 @@ function failureSummary(input) {
     typeof output === 'string' ? output : '',
     typeof output?.output === 'string' ? output.output : '',
     typeof output?.stderr === 'string' ? output.stderr : '',
-    typeof input.tool_input?.error === 'string' ? input.tool_input.error : ''
+    typeof input.tool_input?.error === 'string' ? input.tool_input.error : '',
   ].filter(Boolean);
 
   return pieces.join('\n');
@@ -249,7 +246,7 @@ function detectFailureCode(text) {
 }
 
 function requestHttp(urlString, headers, timeoutMs) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     let settled = false;
     let timedOut = false;
 
@@ -262,14 +259,14 @@ function requestHttp(urlString, headers, timeoutMs) {
         method: 'GET',
         headers,
       },
-      res => {
+      (res) => {
         if (settled) return;
         settled = true;
         res.resume();
         resolve({
           ok: HEALTHY_HTTP_CODES.has(res.statusCode),
           statusCode: res.statusCode,
-          reason: `HTTP ${res.statusCode}`
+          reason: `HTTP ${res.statusCode}`,
         });
       }
     );
@@ -279,13 +276,13 @@ function requestHttp(urlString, headers, timeoutMs) {
       req.destroy(new Error('timeout'));
     });
 
-    req.on('error', error => {
+    req.on('error', (error) => {
       if (settled) return;
       settled = true;
       resolve({
         ok: false,
         statusCode: null,
-        reason: timedOut ? 'request timed out' : error.message
+        reason: timedOut ? 'request timed out' : error.message,
       });
     });
 
@@ -294,13 +291,13 @@ function requestHttp(urlString, headers, timeoutMs) {
 }
 
 function probeCommandServer(serverName, config) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const command = config.command;
-    const args = Array.isArray(config.args) ? config.args.map(arg => String(arg)) : [];
+    const args = Array.isArray(config.args) ? config.args.map((arg) => String(arg)) : [];
     const timeoutMs = envNumber('ECC_MCP_HEALTH_TIMEOUT_MS', DEFAULT_TIMEOUT_MS);
     const mergedEnv = {
       ...process.env,
-      ...(config.env && typeof config.env === 'object' && !Array.isArray(config.env) ? config.env : {})
+      ...(config.env && typeof config.env === 'object' && !Array.isArray(config.env) ? config.env : {}),
     };
 
     let stderr = '';
@@ -317,29 +314,29 @@ function probeCommandServer(serverName, config) {
       child = spawn(command, args, {
         env: mergedEnv,
         cwd: process.cwd(),
-        stdio: ['pipe', 'ignore', 'pipe']
+        stdio: ['pipe', 'ignore', 'pipe'],
       });
     } catch (error) {
       finish({
         ok: false,
         statusCode: null,
-        reason: error.message
+        reason: error.message,
       });
       return;
     }
 
-    child.stderr.on('data', chunk => {
+    child.stderr.on('data', (chunk) => {
       if (stderr.length < 4000) {
         const remaining = 4000 - stderr.length;
         stderr += String(chunk).slice(0, remaining);
       }
     });
 
-    child.on('error', error => {
+    child.on('error', (error) => {
       finish({
         ok: false,
         statusCode: null,
-        reason: error.message
+        reason: error.message,
       });
     });
 
@@ -347,7 +344,7 @@ function probeCommandServer(serverName, config) {
       finish({
         ok: false,
         statusCode: code,
-        reason: stderr.trim() || `process exited before handshake (${signal || code || 'unknown'})`
+        reason: stderr.trim() || `process exited before handshake (${signal || code || 'unknown'})`,
       });
     });
 
@@ -369,7 +366,7 @@ function probeCommandServer(serverName, config) {
       finish({
         ok: true,
         statusCode: null,
-        reason: `${serverName} accepted a new stdio process`
+        reason: `${serverName} accepted a new stdio process`,
       });
     }, timeoutMs);
 
@@ -383,13 +380,17 @@ async function probeServer(serverName, resolvedConfig) {
   const config = resolvedConfig.config;
 
   if (config.type === 'http' || config.url) {
-    const result = await requestHttp(config.url, config.headers || {}, envNumber('ECC_MCP_HEALTH_TIMEOUT_MS', DEFAULT_TIMEOUT_MS));
+    const result = await requestHttp(
+      config.url,
+      config.headers || {},
+      envNumber('ECC_MCP_HEALTH_TIMEOUT_MS', DEFAULT_TIMEOUT_MS)
+    );
 
     return {
       ok: result.ok,
       failureCode: RECONNECT_STATUS_CODES.has(result.statusCode) ? result.statusCode : null,
       reason: result.reason,
-      source: resolvedConfig.source
+      source: resolvedConfig.source,
     };
   }
 
@@ -400,7 +401,7 @@ async function probeServer(serverName, resolvedConfig) {
       ok: result.ok,
       failureCode: RECONNECT_STATUS_CODES.has(result.statusCode) ? result.statusCode : null,
       reason: result.reason,
-      source: resolvedConfig.source
+      source: resolvedConfig.source,
     };
   }
 
@@ -408,20 +409,20 @@ async function probeServer(serverName, resolvedConfig) {
     ok: false,
     failureCode: null,
     reason: 'unsupported MCP server config',
-    source: resolvedConfig.source
+    source: resolvedConfig.source,
   };
 }
 
 function reconnectCommand(serverName) {
-  const key = `ECC_MCP_RECONNECT_${String(serverName).toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+  const key = `ECC_MCP_RECONNECT_${String(serverName)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '_')}`;
   const command = process.env[key] || process.env.ECC_MCP_RECONNECT_COMMAND || '';
   if (!command.trim()) {
     return null;
   }
 
-  return command.includes('{server}')
-    ? command.replace(/\{server\}/g, serverName)
-    : command;
+  return command.includes('{server}') ? command.replace(/\{server\}/g, serverName) : command;
 }
 
 function attemptReconnect(serverName) {
@@ -435,7 +436,7 @@ function attemptReconnect(serverName) {
     env: process.env,
     cwd: process.cwd(),
     encoding: 'utf8',
-    timeout: envNumber('ECC_MCP_RECONNECT_TIMEOUT_MS', DEFAULT_TIMEOUT_MS)
+    timeout: envNumber('ECC_MCP_RECONNECT_TIMEOUT_MS', DEFAULT_TIMEOUT_MS),
   });
 
   if (result.error) {
@@ -446,7 +447,7 @@ function attemptReconnect(serverName) {
     return {
       attempted: true,
       success: false,
-      reason: (result.stderr || result.stdout || `reconnect exited ${result.status}`).trim()
+      reason: (result.stderr || result.stdout || `reconnect exited ${result.status}`).trim(),
     };
   }
 
@@ -505,7 +506,7 @@ async function handlePreToolUse(rawInput, input, target, statePathValue, now) {
       if (reprobe.ok) {
         markHealthy(state, target.server, now, {
           source: resolvedConfig.source,
-          restoredBy: 'reconnect-command'
+          restoredBy: 'reconnect-command',
         });
         saveState(statePathValue, state);
         logs.push(`[MCPHealthCheck] ${target.server} connection restored after reconnect`);
@@ -541,7 +542,9 @@ async function handlePostToolUseFailure(rawInput, input, target, statePathValue,
   markUnhealthy(state, target.server, now, failureCode, summary.slice(0, 500));
   saveState(statePathValue, state);
 
-  logs.push(`[MCPHealthCheck] ${target.server} reported ${failureCode}; marking server unhealthy and attempting reconnect`);
+  logs.push(
+    `[MCPHealthCheck] ${target.server} reported ${failureCode}; marking server unhealthy and attempting reconnect`
+  );
 
   const reconnect = attemptReconnect(target.server);
   if (!reconnect.attempted) {
@@ -556,20 +559,24 @@ async function handlePostToolUseFailure(rawInput, input, target, statePathValue,
 
   const resolvedConfig = resolveServerConfig(target.server);
   if (!resolvedConfig) {
-    logs.push(`[MCPHealthCheck] ${target.server} reconnect completed but no config was available for a follow-up probe`);
+    logs.push(
+      `[MCPHealthCheck] ${target.server} reconnect completed but no config was available for a follow-up probe`
+    );
     return { rawInput, exitCode: 0, logs };
   }
 
   const reprobe = await probeServer(target.server, resolvedConfig);
   if (!reprobe.ok) {
-    logs.push(`[MCPHealthCheck] ${target.server} reconnect command ran, but health probe still failed: ${reprobe.reason}`);
+    logs.push(
+      `[MCPHealthCheck] ${target.server} reconnect command ran, but health probe still failed: ${reprobe.reason}`
+    );
     return { rawInput, exitCode: 0, logs };
   }
 
   const refreshed = loadState(statePathValue);
   markHealthy(refreshed, target.server, now, {
     source: resolvedConfig.source,
-    restoredBy: 'post-failure-reconnect'
+    restoredBy: 'post-failure-reconnect',
   });
   saveState(statePathValue, refreshed);
   logs.push(`[MCPHealthCheck] ${target.server} connection restored`);
@@ -592,7 +599,7 @@ async function main() {
     const logs = [
       shouldFailOpen()
         ? `[MCPHealthCheck] Hook input exceeded ${limit} bytes while checking ${target.server}; allowing ${target.tool || 'tool'} because fail-open mode is enabled`
-        : `[MCPHealthCheck] Hook input exceeded ${limit} bytes while checking ${target.server}; blocking ${target.tool || 'tool'} to avoid bypassing MCP health checks`
+        : `[MCPHealthCheck] Hook input exceeded ${limit} bytes while checking ${target.server}; blocking ${target.tool || 'tool'} to avoid bypassing MCP health checks`,
     ];
     emitLogs(logs);
     process.stdout.write(rawInput);
@@ -604,16 +611,17 @@ async function main() {
   const now = Date.now();
   const statePathValue = stateFilePath();
 
-  const result = eventName === 'PostToolUseFailure'
-    ? await handlePostToolUseFailure(rawInput, input, target, statePathValue, now)
-    : await handlePreToolUse(rawInput, input, target, statePathValue, now);
+  const result =
+    eventName === 'PostToolUseFailure'
+      ? await handlePostToolUseFailure(rawInput, input, target, statePathValue, now)
+      : await handlePreToolUse(rawInput, input, target, statePathValue, now);
 
   emitLogs(result.logs);
   process.stdout.write(result.rawInput);
   process.exit(result.exitCode);
 }
 
-main().catch(error => {
+main().catch((error) => {
   process.stderr.write(`[MCPHealthCheck] Unexpected error: ${error.message}\n`);
   process.exit(0);
 });

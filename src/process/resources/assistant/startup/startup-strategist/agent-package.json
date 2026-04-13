@@ -1,0 +1,91 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "startup-strategist",
+  "assistantPresetId": "builtin-startup-strategist",
+  "displayName": "Startup Strategist",
+  "runtimeNeutral": true,
+  "payloads": {
+    "rules": {
+      "logicalId": "rules",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "."
+        }
+      ],
+      "files": {
+        "en-US": "startup-strategist.md",
+        "zh-CN": "startup-strategist.zh-CN.md"
+      },
+      "installSurface": "assistant-rules-cache",
+      "runtimeProjection": "none"
+    },
+    "docs": {
+      "logicalId": "docs",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "docs"
+        }
+      ],
+      "installSurface": "package-docs",
+      "runtimeProjection": "none"
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/startup-strategist-pack"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "startup-founder-problem-framing",
+        "startup-startup-canvas",
+        "startup-value-proposition",
+        "startup-ideal-customer-profile",
+        "startup-strategic-diagnosis",
+        "startup-go-to-market-strategy",
+        "startup-north-star-metric",
+        "startup-founder-brief"
+      ],
+      "packagedSkillNames": [
+        "startup-founder-problem-framing",
+        "startup-startup-canvas",
+        "startup-value-proposition",
+        "startup-ideal-customer-profile",
+        "startup-strategic-diagnosis",
+        "startup-go-to-market-strategy",
+        "startup-north-star-metric",
+        "startup-founder-brief"
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "startup-strategist"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "startup-strategist"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "startup-strategist"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "startup-strategist"
+    }
+  }
+}

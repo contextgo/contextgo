@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { AcpBackend, AcpBackendAll, AcpBackendConfig } from '@/common/types/acpTypes';
+import type { AcpBackend, AcpBackendConfig } from '@/common/types/acpTypes';
 import type { CloudDevice, CloudUser } from '@/common/types/cloud';
 import type { VoiceInputConfig } from '@/common/types/voiceInput';
 import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
@@ -433,6 +433,10 @@ export type ConversationRequiredWorkspaceCompat = {
   nativeWorkspaceBootstrap?: boolean;
 };
 
+export type ProductNonGroupConversationType = 'gemini' | 'acp' | 'codex';
+export type PersistedNonGroupConversationType = ProductNonGroupConversationType;
+export type PersistedConversationType = PersistedNonGroupConversationType | 'group';
+
 // Token 使用统计数据类型
 export interface TokenUsageData {
   totalTokens: number;
@@ -509,6 +513,19 @@ export type TChatConversation =
             currentModelId?: string;
             /** Marks a conversation imported from an external CLI session / 标记该会话由外部 CLI session 导入 */
             externalSessionImported?: boolean;
+            /** Workspace inspection result captured when taking over an external session / 接管外部 session 时记录的工作空间检查结果 */
+            externalWorkspaceInspection?: {
+              hasContextgoDir?: boolean;
+              hasAgentsMd?: boolean;
+              capabilityCounts?: {
+                skill?: number;
+                hook?: number;
+                command?: number;
+                schedule?: number;
+              };
+              hasProjectCapabilitySurface?: boolean;
+              hasProjectContextSurface?: boolean;
+            };
             /** Skip the first workspace tree hydration until user explicitly requests it / 首次进入时延迟加载工作空间树 */
             deferInitialWorkspaceLoad?: boolean;
             /** Explicit marker for temporary health-check conversations */
@@ -553,100 +570,6 @@ export type TChatConversation =
       >,
       'model'
     >
-  | Omit<
-      IChatConversation<
-        'openclaw-gateway',
-        ConversationSpaceBinding &
-          ConversationWorkspaceCompat & {
-            backend?: AcpBackendAll;
-            agentName?: string;
-            openclawAgentId?: string;
-            /** Gateway configuration */
-            gateway?: {
-              host?: string;
-              port?: number;
-              token?: string;
-              password?: string;
-              useExternalGateway?: boolean;
-              cliPath?: string;
-            };
-            /** Session key for resume */
-            sessionKey?: string;
-            /** Whether this conversation was imported from an external OpenClaw session */
-            externalSessionImported?: boolean;
-            /** Whether workspace hydration should be deferred on first open */
-            deferInitialWorkspaceLoad?: boolean;
-            /** Best-effort history reconcile metadata for imported OpenClaw sessions */
-            externalHistorySync?: {
-              provider?: 'openclaw-gateway';
-              lastSyncedAt?: number;
-              lastHistoryMessageAt?: number;
-              lastSessionKey?: string;
-              lastInsertedCount?: number;
-            };
-            /** Runtime validation snapshot used for post-switch strong checks */
-            runtimeValidation?: {
-              expectedSpaceId?: string;
-              expectedMountId?: string;
-              expectedWorkingDirectory?: string;
-              expectedWorkspace?: string;
-              expectedBackend?: string;
-              expectedAgentName?: string;
-              expectedOpenClawAgentId?: string;
-              expectedCliPath?: string;
-              expectedModel?: string;
-              expectedIdentityHash?: string | null;
-              switchedAt?: number;
-            };
-            /** 启用的 skills 列表 / Enabled skills list */
-            enabledSkills?: string[];
-            /** 启用的 hooks 列表 / Enabled hooks list */
-            enabledHooks?: string[];
-            /** 预设助手 ID / Preset assistant ID */
-            presetAssistantId?: string;
-            /** 是否置顶会话 / Whether this conversation is pinned */
-            pinned?: boolean;
-            /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
-            pinnedAt?: number;
-            /** 是否已归档会话 / Whether this conversation is archived */
-            archived?: boolean;
-            /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
-            archivedAt?: number;
-            /** Explicit marker for temporary health-check conversations */
-            isHealthCheck?: boolean;
-            /** Group child conversation metadata */
-            groupMeta?: ConversationGroupMeta;
-          }
-      >,
-      'model'
-    >
-  | Omit<
-      IChatConversation<
-        'nanobot',
-        ConversationSpaceBinding &
-          ConversationWorkspaceCompat & {
-            /** 启用的 skills 列表 / Enabled skills list */
-            enabledSkills?: string[];
-            /** 启用的 hooks 列表 / Enabled hooks list */
-            enabledHooks?: string[];
-            /** 预设助手 ID / Preset assistant ID */
-            presetAssistantId?: string;
-            /** 是否置顶会话 / Whether this conversation is pinned */
-            pinned?: boolean;
-            /** 置顶时间戳（毫秒）/ Pin timestamp in milliseconds */
-            pinnedAt?: number;
-            /** 是否已归档会话 / Whether this conversation is archived */
-            archived?: boolean;
-            /** 归档时间戳（毫秒）/ Archive timestamp in milliseconds */
-            archivedAt?: number;
-            /** Explicit marker for temporary health-check conversations */
-            isHealthCheck?: boolean;
-            /** Group child conversation metadata */
-            groupMeta?: ConversationGroupMeta;
-          }
-      >,
-      'model'
-    >
   | IChatConversation<
       'group',
       ConversationSpaceBinding &
@@ -665,6 +588,22 @@ export type TChatConversation =
           archivedAt?: number;
         }
     >;
+
+type ConversationRuntimeLike = Pick<TChatConversation, 'type' | 'extra'>;
+
+/**
+ * Resolve the effective runtime backend for a conversation.
+ */
+export const getConversationRuntimeBackend = (conversation: ConversationRuntimeLike): string => {
+  switch (conversation.type) {
+    case 'acp': {
+      const backend = (conversation.extra as { backend?: unknown } | undefined)?.backend;
+      return typeof backend === 'string' && backend.trim() ? backend : 'acp';
+    }
+    default:
+      return conversation.type;
+  }
+};
 
 export type IChatConversationRefer = {
   'chat.history': TChatConversation[];

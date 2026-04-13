@@ -13,6 +13,9 @@
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  scrollbar-width: none;
   border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
   border-radius: 999px;
   padding: 6px;
@@ -24,25 +27,32 @@
     0 14px 32px color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
+.filterRail::-webkit-scrollbar {
+  display: none;
+}
+
 .filterTabs {
-  width: 100%;
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
 }
 
 .filterTabs :global(.arco-tabs-header) {
   display: flex;
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
   gap: 8px;
 }
 
 .filterTabs :global(.arco-tabs-header-wrapper) {
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
   justify-content: flex-start;
 }
 
 .filterTabs :global(.arco-tabs-header-scroll) {
-  min-width: 0;
-  max-width: 100%;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
 }
 
 .filterTabs :global(.arco-tabs-header-nav-rounded) {
@@ -91,6 +101,22 @@
 
 .filterTabs :global(.arco-tabs-content) {
   display: none;
+}
+
+@media (max-width: 560px) {
+  .filterRail {
+    border-radius: 20px;
+    padding: 8px;
+  }
+
+  .filterTabs :global(.arco-tabs-header-nav-rounded) {
+    gap: 6px;
+  }
+
+  .filterTabs :global(.arco-tabs-header-nav-rounded .arco-tabs-header-title) {
+    min-height: 34px;
+    padding: 0 12px;
+  }
 }
 
 .sessionsList {
@@ -144,6 +170,27 @@
   white-space: nowrap;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.sessionSignalRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sessionSignal {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-1) 74%, var(--bg-1) 26%);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1;
 }
 
 .groupList {

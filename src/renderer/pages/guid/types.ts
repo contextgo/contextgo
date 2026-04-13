@@ -6,6 +6,14 @@
 
 import type { AcpBackend, AcpBackendConfig, AcpModelInfo, PresetAgentType } from '@/common/types/acpTypes';
 
+export type GuidLocationState = {
+  workspace?: string;
+  preferredAgentKey?: string;
+  preferredAssistantKey?: string | null;
+  preferredMode?: string;
+  preferredAcpModelId?: string | null;
+};
+
 /**
  * Available agent entry returned by the backend.
  */
@@ -14,7 +22,6 @@ export type AvailableAgent = {
   name: string;
   cliPath?: string;
   customAgentId?: string;
-  openclawAgentId?: string;
   isDefault?: boolean;
   isPreset?: boolean;
   context?: string;

@@ -172,8 +172,12 @@ describe('CodexMessageProcessor', () => {
       message: '我先帮你找找\n[SKILLMARKET_SEARCH]\nquery: browser history\nview: curated\n[/SKILLMARKET_SEARCH]',
     } as any);
 
-    expect(emitter.persistMessage).toHaveBeenCalledWith(expect.objectContaining({ content: { content: '我先帮你找找' } }));
-    expect(emitter.sendMessageToAgent).toHaveBeenCalledWith('[System Response]\n[SkillMarket Result]\nFound 1 matching skill(s).');
+    expect(emitter.persistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ content: { content: '我先帮你找找' } })
+    );
+    expect(emitter.sendMessageToAgent).toHaveBeenCalledWith(
+      '[System Response]\n[SkillMarket Result]\nFound 1 matching skill(s).'
+    );
     expect(emitter.scheduleAfterResponseHooks).not.toHaveBeenCalled();
   });
 

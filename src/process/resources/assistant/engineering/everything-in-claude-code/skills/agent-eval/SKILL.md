@@ -39,9 +39,9 @@ judge:
   - type: pytest
     command: pytest tests/test_http_client.py -v
   - type: grep
-    pattern: "exponential_backoff|retry"
+    pattern: 'exponential_backoff|retry'
     files: src/http_client.py
-commit: "abc1234"  # pin to specific commit for reproducibility
+commit: 'abc1234' # pin to specific commit for reproducibility
 ```
 
 ### Git Worktree Isolation
@@ -50,11 +50,11 @@ Each agent run gets its own git worktree — no Docker required. This provides r
 
 ### Metrics Collected
 
-| Metric | What It Measures |
-|--------|-----------------|
-| Pass rate | Did the agent produce code that passes the judge? |
-| Cost | API spend per task (when available) |
-| Time | Wall-clock seconds to completion |
+| Metric      | What It Measures                                  |
+| ----------- | ------------------------------------------------- |
+| Pass rate   | Did the agent produce code that passes the judge? |
+| Cost        | API spend per task (when available)               |
+| Time        | Wall-clock seconds to completion                  |
 | Consistency | Pass rate across repeated runs (e.g., 3/3 = 100%) |
 
 ## Workflow
@@ -77,6 +77,7 @@ agent-eval run --task tasks/add-retry-logic.yaml --agent claude-code --agent aid
 ```
 
 Each run:
+
 1. Creates a fresh git worktree from the specified commit
 2. Hands the prompt to the agent
 3. Runs the judge criteria
@@ -117,7 +118,7 @@ judge:
 ```yaml
 judge:
   - type: grep
-    pattern: "class.*Retry"
+    pattern: 'class.*Retry'
     files: src/**/*.py
 ```
 

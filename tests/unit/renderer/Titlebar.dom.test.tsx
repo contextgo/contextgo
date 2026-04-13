@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,13 @@ const navigateMock = vi.fn();
 const isFullScreenInvokeMock = vi.fn();
 const fullScreenChangedOnMock = vi.fn(() => vi.fn());
 const useConversationTabsMock = vi.fn();
+const remoteAccessTargetRef = {
+  current: {
+    mode: 'local',
+    currentUrl: '',
+    entryUrl: '',
+  } as { mode: 'local' | 'device-list' | 'remote-device'; currentUrl: string; entryUrl: string },
+};
 let isElectronDesktopMock = true;
 let isMacOSMock = true;
 let isMobileShellWebViewMock = false;
@@ -22,7 +29,12 @@ vi.mock('@/common', () => ({
     conversation: {
       get: {
         invoke: vi.fn(async ({ id }: { id: string }) => ({
-          name: id === 'conv-long' ? 'A very long conversation title for mobile shell' : 'Conversation Name',
+          name:
+            id === 'conv-long'
+              ? 'A very long conversation title for mobile shell'
+              : id === 'conv-dirty'
+                ? '准备中\ncodex\n5s\n\n这个运行中的时候输入框上方这个样式是否可以优化一下，看起来太技术风格了'
+                : 'Conversation Name',
         })),
       },
     },
@@ -45,6 +57,14 @@ vi.mock('@/renderer/hooks/context/useSelectedSpace', () => ({
   useSelectedSpaceId: () => 'space-selected',
 }));
 
+vi.mock('@/renderer/hooks/context/RemoteAccessContext', () => ({
+  useRemoteAccessContext: () => ({
+    target: remoteAccessTargetRef.current,
+    setTarget: vi.fn(),
+    resetToDeviceList: vi.fn(),
+  }),
+}));
+
 vi.mock('@renderer/pages/conversation/hooks/useConversationAgents', () => ({
   useConversationAgents: () => ({
     cliAgents: [],
@@ -58,6 +78,11 @@ vi.mock('@renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
 
 vi.mock('@renderer/pages/conversation/platforms/group/CreateGroupModal', () => ({
   default: () => null,
+}));
+
+vi.mock('@/renderer/components/layout/WindowControls', () => ({
+  __esModule: true,
+  default: () => <div data-testid='window-controls' />,
 }));
 
 vi.mock('@renderer/utils/emitter', () => ({
@@ -119,6 +144,11 @@ const renderTitlebar = (
 describe('Titlebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    remoteAccessTargetRef.current = {
+      mode: 'local',
+      currentUrl: '',
+      entryUrl: '',
+    };
     isElectronDesktopMock = true;
     isMacOSMock = true;
     isMobileShellWebViewMock = false;
@@ -183,6 +213,37 @@ describe('Titlebar', () => {
     expect(container.querySelector('.app-titlebar__desktop-right')).toBeNull();
   });
 
+  it('keeps remote device shells free of docked sidebar spacing', async () => {
+    const { container } = renderTitlebar('/conversation/conv-1', {
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+    });
+
+    const desktopLeft = container.querySelector('.app-titlebar__desktop-left') as HTMLDivElement | null;
+    expect(desktopLeft).toBeTruthy();
+    expect(desktopLeft?.style.width).toBe('250px');
+
+    render(
+      <MemoryRouter initialEntries={['/conversation/conv-1']}>
+        <LayoutContext.Provider
+          value={{
+            isMobile: false,
+            siderCollapsed: false,
+            setSiderCollapsed: setSiderCollapsedMock,
+          }}
+        >
+          <Titlebar workspaceAvailable={true} leftPaneWidth={0} />
+        </LayoutContext.Provider>
+      </MemoryRouter>
+    );
+
+    const allDesktopLeft = document.querySelectorAll('.app-titlebar__desktop-left');
+    const latestDesktopLeft = allDesktopLeft.item(allDesktopLeft.length - 1) as HTMLDivElement | null;
+    expect(latestDesktopLeft).toBeTruthy();
+    expect(latestDesktopLeft?.style.width).toBe('');
+    expect(latestDesktopLeft?.className).not.toContain('app-titlebar__desktop-left--docked');
+  });
+
   it('renders desktop conversation content as soon as the first tab is open', async () => {
     const { container } = renderTitlebar('/conversation/conv-1', {
       workspaceAvailable: true,
@@ -206,6 +267,102 @@ describe('Titlebar', () => {
     expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
     expect(container.querySelector('.app-titlebar__desktop-content--conversation')).toBeTruthy();
     expect(container.querySelector('#app-titlebar-chat-slot')).toBeTruthy();
+  });
+
+  it('keeps the workspace toggle inside the desktop titlebar on non-mac runtimes', async () => {
+    isMacOSMock = false;
+
+    const { container } = renderTitlebar('/conversation/conv-1', {
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+    });
+
+    expect(await screen.findByRole('button', { name: 'Expand workspace' })).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar__toolbar')).toBeTruthy();
+  });
+
+  it('shows a development badge on desktop builds', async () => {
+    const { container } = renderTitlebar('/guid');
+
+    expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+    expect(screen.getByLabelText('common.devBuild')).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar__build-badge')?.textContent).toBe('common.devBadge');
+    expect(screen.getByLabelText('settings.webui.deviceModeLocal')).toBeInTheDocument();
+  });
+
+  it('renders desktop runtime status badges in a detached bottom-right dock instead of the left controls', async () => {
+    const { container } = renderTitlebar('/guid');
+
+    expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar__desktop-left .app-titlebar__build-badge')).toBeNull();
+    expect(container.querySelector('.app-titlebar__desktop-left .app-titlebar__mode-badge')).toBeNull();
+
+    const statusDock = container.querySelector('.app-titlebar__status-dock');
+    expect(statusDock).toBeTruthy();
+    expect(statusDock?.querySelector('.app-titlebar__build-badge')).toBeTruthy();
+    expect(statusDock?.querySelector('.app-titlebar__mode-badge')).toBeTruthy();
+  });
+
+  it('switches the desktop runtime badge to remote devices when the device picker is active', async () => {
+    remoteAccessTargetRef.current = {
+      mode: 'device-list',
+      currentUrl: 'https://remote.contextgo.io/remote/devices?view=list',
+      entryUrl: 'https://remote.contextgo.io/remote/devices',
+    };
+
+    renderTitlebar('/remote/devices?view=list');
+
+    expect(await screen.findByLabelText('settings.webui.remoteDevicesNav')).toBeInTheDocument();
+  });
+
+  it('uses the remote mode badge as a hoverable back-to-local control for remote device shells', async () => {
+    remoteAccessTargetRef.current = {
+      mode: 'remote-device',
+      currentUrl: 'https://remote.contextgo.io/device/device-1',
+      entryUrl: 'https://remote.contextgo.io/remote/devices',
+    };
+
+    const { container } = renderTitlebar('/remote/devices?deviceId=device-1');
+
+    expect(await screen.findByLabelText('settings.webui.deviceModeRemote')).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar__floating-host-chrome')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar__desktop-left')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Collapse sidebar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.goBack' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.forward' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Expand workspace' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Collapse workspace' })).not.toBeInTheDocument();
+
+    const remoteBadge = screen.getByRole('button', { name: 'settings.webui.deviceModeRemote' });
+    fireEvent.mouseEnter(remoteBadge);
+
+    const backToLocalButton = screen.getByRole('button', { name: 'settings.webui.backToLocal' });
+    expect(backToLocalButton).toBeInTheDocument();
+
+    fireEvent.click(backToLocalButton);
+
+    expect(navigateMock).toHaveBeenCalledWith('/guid');
+  });
+
+  it('keeps remote device shells in floating chrome-only mode even when local workspace tabs still exist', async () => {
+    remoteAccessTargetRef.current = {
+      mode: 'remote-device',
+      currentUrl: 'https://remote.contextgo.io/device/device-1',
+      entryUrl: 'https://remote.contextgo.io/remote/devices',
+    };
+
+    const { container } = renderTitlebar('/remote/devices?deviceId=device-1', {
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+    });
+
+    expect(await screen.findByLabelText('settings.webui.deviceModeRemote')).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar--desktop-chrome-only')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar__floating-host-chrome')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar__desktop-left')).toBeNull();
+    expect(container.querySelector('.app-titlebar__desktop-right')).toBeNull();
+    expect(container.querySelector('.app-titlebar__toolbar')).toBeNull();
+    expect(container.querySelector('#app-titlebar-chat-slot')).toBeNull();
   });
 
   it('shows a route title on mobile connector pages', async () => {
@@ -272,7 +429,6 @@ describe('Titlebar', () => {
     ['/skills-hub', 'settings.skillsHub.title'],
     ['/search/conversations', 'conversation.historySearch.title'],
     ['/settings/schedule', 'schedule.scheduledTasks'],
-    ['/settings/commands', 'settings.commands.title'],
     ['/settings/system-runs', 'settings.systemRuns'],
   ])('left-aligns mobile route titles for %s', async (path, titleKey) => {
     const { container } = renderTitlebar(path, {
@@ -336,6 +492,21 @@ describe('Titlebar', () => {
     expect(container.querySelector('.app-titlebar--mobile-conversation')).toBeTruthy();
     expect(container.querySelector('.app-titlebar--mobile-secondary')).toBeNull();
     expect(container.querySelector('.app-titlebar__brand--leading')).toBeTruthy();
+  });
+
+  it('normalizes technical multiline conversation titles in the mobile header', async () => {
+    const { container } = renderTitlebar('/conversation/conv-dirty', {
+      layoutValue: {
+        isMobile: true,
+      },
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-dirty')],
+    });
+
+    expect(await screen.findByText('这个运行中的时候输入框上方这个样式是否可以优化一下，看起来太技术风格了')).toBeInTheDocument();
+
+    const brand = container.querySelector('.app-titlebar__brand') as HTMLDivElement | null;
+    expect(brand?.getAttribute('title')).toBe('这个运行中的时候输入框上方这个样式是否可以优化一下，看起来太技术风格了');
   });
 
   it('does not reserve mac traffic-light width while fullscreen is active', async () => {

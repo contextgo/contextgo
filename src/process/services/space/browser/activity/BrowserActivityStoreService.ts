@@ -98,7 +98,7 @@ export class BrowserActivityStoreService {
   }
 
   private async writeEvents(events: readonly BrowserActivityEntry[]): Promise<void> {
-    const sorted = [...events].sort((left, right) => right.visitedAt.localeCompare(left.visitedAt));
+    const sorted = [...events].toSorted((left, right) => right.visitedAt.localeCompare(left.visitedAt));
     await writeJsonFile(await this.getEventsPath(), sorted);
   }
 

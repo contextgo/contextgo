@@ -101,7 +101,7 @@ export class InMemoryVectorIndexProvider implements VectorIndexProvider {
         metadata: document.metadata,
       }))
       .filter((hit) => hit.score > 0)
-      .sort((left, right) => right.score - left.score)
+      .toSorted((left, right) => right.score - left.score)
       .slice(0, input.topK);
   }
 }

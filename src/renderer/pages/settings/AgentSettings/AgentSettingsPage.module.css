@@ -65,6 +65,13 @@
   line-height: 1.7;
 }
 
+.heroDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
 .surface {
   padding: 20px;
   border: 1px solid color-mix(in srgb, var(--border-base) 80%, transparent);
@@ -184,6 +191,48 @@
   gap: 12px;
 }
 
+.workbenchGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.workbenchCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-2) 90%, var(--fill-1) 10%),
+    color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%)
+  );
+}
+
+.workbenchCardTitle {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.workbenchCardDescription {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.workbenchCardActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
 .statCard {
   min-width: 0;
   padding: 18px;
@@ -208,6 +257,13 @@
   font-size: 28px;
   font-weight: 700;
   line-height: 1.1;
+}
+
+.statDescription {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .searchBlock {

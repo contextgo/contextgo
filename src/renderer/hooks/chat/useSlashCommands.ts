@@ -131,7 +131,16 @@ export function useSlashCommands(conversationId: string, options: UseSlashComman
     return () => {
       isCancelled = true;
     };
-  }, [agentStatus, canUseCachedCommands, codexStatus, conversationId, conversationType, i18n.language, libraryRefreshToken, t]);
+  }, [
+    agentStatus,
+    canUseCachedCommands,
+    codexStatus,
+    conversationId,
+    conversationType,
+    i18n.language,
+    libraryRefreshToken,
+    t,
+  ]);
 
   return useMemo(() => {
     const mergedCommands = new Map<string, SlashCommandItem>();

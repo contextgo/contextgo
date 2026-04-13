@@ -78,10 +78,7 @@ vi.mock('../../src/common/utils', () => ({
 }));
 
 vi.mock('../../src/common/config/presets/assistantPresets', () => ({
-  ASSISTANT_PRESETS: [
-    { id: 'default', defaultEnabledSkills: [], skillFiles: {} },
-    { id: 'coder', defaultEnabledSkills: ['code'], skillFiles: {} },
-  ],
+  ASSISTANT_PRESETS: [{ id: 'default' }, { id: 'coder' }],
 }));
 
 vi.mock('../../src/renderer/utils/platform', () => ({

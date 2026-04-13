@@ -18,6 +18,7 @@ This command enforces test-driven development methodology for Kotlin code using 
 ## When to Use
 
 Use `/kotlin-test` when:
+
 - Implementing new Kotlin functions or classes
 - Adding test coverage to existing Kotlin code
 - Fixing bugs (write failing test first)
@@ -276,16 +277,17 @@ open build/reports/kover/html/index.html
 
 ## Coverage Targets
 
-| Code Type | Target |
-|-----------|--------|
-| Critical business logic | 100% |
-| Public APIs | 90%+ |
-| General code | 80%+ |
-| Generated code | Exclude |
+| Code Type               | Target  |
+| ----------------------- | ------- |
+| Critical business logic | 100%    |
+| Public APIs             | 90%+    |
+| General code            | 80%+    |
+| Generated code          | Exclude |
 
 ## TDD Best Practices
 
 **DO:**
+
 - Write test FIRST, before any implementation
 - Run tests after each change
 - Use Kotest matchers for expressive assertions
@@ -294,6 +296,7 @@ open build/reports/kover/html/index.html
 - Include edge cases (empty, null, max values)
 
 **DON'T:**
+
 - Write implementation before tests
 - Skip the RED phase
 - Test private functions directly

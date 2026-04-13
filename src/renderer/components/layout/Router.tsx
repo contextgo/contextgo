@@ -12,6 +12,7 @@ import {
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { isMobileShellWebView, isElectronDesktop } from '@renderer/utils/platform';
 import {
   getLastStableHashRoute,
   normalizeHashRouteShellHref,
@@ -20,7 +21,11 @@ import {
 } from './routerLocation';
 import Layout from './Layout';
 import Sider from './Sider';
-import { OFFICIAL_REMOTE_DEVICES_ROUTE } from '@renderer/utils/officialRemote';
+import {
+  OFFICIAL_REMOTE_DEVICES_ROUTE,
+  resolveAuthenticatedStartupPath,
+  shouldPreferOfficialRemoteShell,
+} from '@renderer/utils/officialRemote';
 
 type LazyRouteLoader = () => Promise<{ default: React.ComponentType }>;
 
@@ -37,8 +42,6 @@ const loadSkillsHubSettings = () => import('@renderer/pages/settings/SkillsHubSe
 const loadGeminiSettings = () => import('@renderer/pages/settings/GeminiSettings');
 const loadModeSettings = () => import('@renderer/pages/settings/ModeSettings');
 const loadSystemSettings = () => import('@renderer/pages/settings/SystemSettings');
-const loadCommandSettings = () => import('@renderer/pages/settings/ToolsSettings/CommandSettings');
-const loadWebuiSettings = () => import('@renderer/pages/settings/WebuiSettings');
 const loadExtensionSettingsPage = () => import('@renderer/pages/settings/ExtensionSettingsPage');
 const loadLoginPage = () => import('@renderer/pages/login');
 const loadComponentsShowcase = () => import('@renderer/pages/TestShowcase');
@@ -247,13 +250,23 @@ const ProtectedLayout: React.FC<{
 
 const StartupConversationRedirect: React.FC = () => {
   const { openTabs, activeTabId } = useConversationTabs();
-  const hasPersistedActiveTab = Boolean(activeTabId && openTabs.some((tab) => tab.id === activeTabId));
+  const startupPath = useMemo(() => {
+    const preferOfficialRemoteShell =
+      typeof window !== 'undefined' &&
+      shouldPreferOfficialRemoteShell({
+        currentHref: window.location.href,
+        isDesktopRuntime: isElectronDesktop(),
+        isMobileShellRuntime: isMobileShellWebView(),
+      });
 
-  if (hasPersistedActiveTab && activeTabId) {
-    return <Navigate to={`/conversation/${activeTabId}`} replace />;
-  }
+    return resolveAuthenticatedStartupPath({
+      activeTabId,
+      openTabIds: openTabs.map((tab) => tab.id),
+      preferOfficialRemoteShell,
+    });
+  }, [activeTabId, openTabs]);
 
-  return <Navigate to='/guid' replace />;
+  return <Navigate to={startupPath} replace />;
 };
 
 const RoutedPanels: React.FC<{
@@ -294,7 +307,7 @@ const RoutedPanels: React.FC<{
         />
         <Route path='/settings/skills-hub' element={withRouteFallback(loadSkillsHubSettings, '/settings/skills-hub')} />
         <Route path='/settings/display' element={<Navigate to='/settings/system' replace />} />
-        <Route path='/settings/webui' element={withRouteFallback(loadWebuiSettings, '/settings/webui')} />
+        <Route path='/settings/webui' element={<Navigate to='/settings/system' replace />} />
         <Route path='/settings/runtime' element={withRouteFallback(loadAgentEntrySettings, '/settings/runtime')} />
         <Route path='/settings/channels' element={withRouteFallback(loadAgentEntrySettings, '/settings/channels')} />
         <Route
@@ -309,7 +322,7 @@ const RoutedPanels: React.FC<{
         <Route path='/settings/system-runs' element={withRouteFallback(loadSystemRunsPage, '/settings/system-runs')} />
         <Route path='/settings/system' element={withRouteFallback(loadSystemSettings, '/settings/system')} />
         <Route path='/settings/about' element={withRouteFallback(loadSystemSettings, '/settings/about')} />
-        <Route path='/settings/commands' element={withRouteFallback(loadCommandSettings, '/settings/commands')} />
+        <Route path='/settings/commands' element={<Navigate to='/settings/system' replace />} />
         <Route
           path='/settings/ext/:tabId'
           element={withRouteFallback(loadExtensionSettingsPage, '/settings/ext/:tabId')}

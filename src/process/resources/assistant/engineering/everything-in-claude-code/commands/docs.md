@@ -18,6 +18,7 @@ Use this only if you still reach for `/docs`. The maintained workflow lives in `
 ## Delegation
 
 Apply the `documentation-lookup` skill.
+
 - If the library or the question is missing, ask for the missing part.
 - Use live documentation through Context7 instead of training data.
 - Return only the current answer and the minimum code/example surface needed.

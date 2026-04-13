@@ -11,9 +11,9 @@ const SUPPORTED_SOURCE_PREFIXES = ['rules', 'commands', 'agents', 'skills', '.ag
 
 function supportsAntigravitySourcePath(sourceRelativePath) {
   const normalizedPath = normalizeRelativePath(sourceRelativePath);
-  return SUPPORTED_SOURCE_PREFIXES.some(prefix => (
-    normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`)
-  ));
+  return SUPPORTED_SOURCE_PREFIXES.some(
+    (prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`)
+  );
 }
 
 module.exports = createInstallTargetAdapter({
@@ -27,14 +27,8 @@ module.exports = createInstallTargetAdapter({
     return paths.length > 0;
   },
   planOperations(input, adapter) {
-    const modules = Array.isArray(input.modules)
-      ? input.modules
-      : (input.module ? [input.module] : []);
-    const {
-      repoRoot,
-      projectRoot,
-      homeDir,
-    } = input;
+    const modules = Array.isArray(input.modules) ? input.modules : input.module ? [input.module] : [];
+    const { repoRoot, projectRoot, homeDir } = input;
     const planningInput = {
       repoRoot,
       projectRoot,
@@ -42,11 +36,9 @@ module.exports = createInstallTargetAdapter({
     };
     const targetRoot = adapter.resolveRoot(planningInput);
 
-    return modules.flatMap(module => {
+    return modules.flatMap((module) => {
       const paths = Array.isArray(module.paths) ? module.paths : [];
-      return paths
-        .filter(supportsAntigravitySourcePath)
-        .flatMap(sourceRelativePath => {
+      return paths.filter(supportsAntigravitySourcePath).flatMap((sourceRelativePath) => {
         if (sourceRelativePath === 'rules') {
           return createFlatRuleOperations({
             moduleId: module.id,
@@ -78,8 +70,8 @@ module.exports = createInstallTargetAdapter({
           ];
         }
 
-          return [adapter.createScaffoldOperation(module.id, sourceRelativePath, planningInput)];
-        });
+        return [adapter.createScaffoldOperation(module.id, sourceRelativePath, planningInput)];
+      });
     });
   },
 });

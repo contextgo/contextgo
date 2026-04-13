@@ -11,10 +11,10 @@ import katex from 'katex';
 
 import { copyText } from '@/renderer/utils/ui/clipboard';
 import { Button, Message, Tooltip } from '@arco-design/web-react';
-import { Copy, Down, Up } from '@icon-park/react';
+import { Copy } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatCode, getDiffLineStyle, logicRender } from './markdownUtils';
+import { formatCode, getDiffLineStyle } from './markdownUtils';
 
 export type CodeBlockVariant = 'default' | 'result-card';
 
@@ -66,15 +66,17 @@ function CodeBlock(props: CodeBlockProps) {
     codeVariant = 'default',
     ...rest
   } = props;
+  const rawContent = String(children);
   const match = LANGUAGE_PATTERN.exec(className || '');
   const language = (match?.[1] || 'text').toLowerCase();
+  const normalizedContent = rawContent.replace(/\n$/, '');
+  const isSingleLineCodeBlock = rawContent.includes('\n') && !normalizedContent.includes('\n');
 
   if (language === 'latex' || language === 'math' || language === 'tex') {
-    const latexSource = String(children).replace(/\n$/, '');
-    const isFullDocument = /\\(documentclass|begin\{document\}|usepackage)\b/.test(latexSource);
+    const isFullDocument = /\\(documentclass|begin\{document\}|usepackage)\b/.test(normalizedContent);
     if (!isFullDocument) {
       try {
-        const html = katex.renderToString(latexSource, {
+        const html = katex.renderToString(normalizedContent, {
           displayMode: true,
           throwOnError: false,
         });
@@ -85,7 +87,7 @@ function CodeBlock(props: CodeBlockProps) {
     }
   }
 
-  if (!String(children).includes('\n')) {
+  if (!rawContent.includes('\n')) {
     return (
       <code
         {...rest}
@@ -96,6 +98,23 @@ function CodeBlock(props: CodeBlockProps) {
       >
         {children}
       </code>
+    );
+  }
+
+  const isResultCard = codeVariant === 'result-card';
+  const containerClassName = className
+    ? [className, isResultCard ? '' : 'not-prose'].filter(Boolean).join(' ')
+    : isResultCard
+      ? undefined
+      : 'not-prose';
+
+  if (isSingleLineCodeBlock) {
+    return (
+      <div className={containerClassName} style={{ width: '100%', minWidth: 0, maxWidth: '100%', ...codeStyle }}>
+        <pre className='m-0 w-full overflow-auto rd-12px border border-arco-1 bg-fill-1 px-12px py-10px font-mono text-12px leading-18px text-t-primary whitespace-pre-wrap break-words'>
+          {normalizedContent}
+        </pre>
+      </div>
     );
   }
 
@@ -148,167 +167,64 @@ function CodeBlock(props: CodeBlockProps) {
     );
   };
 
-  if (codeVariant === 'result-card') {
-    return (
-      <div className='w-full min-w-0 max-w-full' style={codeStyle}>
-        <div className='w-full overflow-hidden rd-12px border border-arco-1 bg-fill-1'>
-          <div className='flex items-center justify-between gap-8px border-b border-arco-1 bg-fill-2 px-12px py-10px'>
-            <div className='min-w-0 flex items-center gap-8px flex-wrap'>
-              <span className='inline-flex h-22px items-center rd-999px bg-primary-light-1 px-8px text-11px font-600 uppercase text-primary'>
-                {t('preview.code')}
-              </span>
-              <span className='text-12px font-600 uppercase text-t-primary'>{getLanguageLabel(language)}</span>
-            </div>
-            <div className='shrink-0 flex items-center gap-2px'>
-              {!hiddenCodeCopyButton && (
-                <Tooltip content={t('common.copy')}>
-                  <Button
-                    size='mini'
-                    type='text'
-                    icon={<Copy theme='outline' size='16' fill='currentColor' className='app-icon' />}
-                    onClick={handleCopy}
-                    aria-label={t('common.copy')}
-                    className='!text-t-secondary hover:!text-t-primary'
-                  />
-                </Tooltip>
-              )}
-              <Button
-                size='mini'
-                type='text'
-                onClick={() => setFold(!fold)}
-                className='!px-8px !text-t-secondary hover:!text-t-primary'
-              >
-                {fold ? t('common.expandMore') : t('common.collapse')}
-              </Button>
-            </div>
-          </div>
-          {fold ? (
-            <div className='px-12px py-12px'>
-              <pre className='m-0 overflow-hidden rd-8px bg-base px-12px py-10px font-mono text-12px leading-18px text-t-primary whitespace-pre-wrap break-words'>
-                {previewContent}
-              </pre>
-            </div>
-          ) : (
-            <div className='px-12px py-12px'>
-              <div className='overflow-hidden rd-8px bg-base'>
-                {renderSyntaxHighlighter({
-                  marginTop: '0',
-                  margin: '0',
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--text-primary)',
-                  overflowX: 'auto',
-                  maxWidth: '100%',
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ width: '100%', minWidth: 0, maxWidth: '100%', ...codeStyle }}>
+    <div className={containerClassName} style={{ width: '100%', minWidth: 0, maxWidth: '100%', ...codeStyle }}>
       <div
+        className='w-full overflow-hidden rd-12px border border-arco-1 bg-fill-1'
         style={{
-          border: '1px solid var(--bg-3)',
-          borderRadius: '0.3rem',
-          overflow: 'hidden',
-          overflowX: 'auto',
+          boxShadow: isResultCard ? undefined : '0 4px 18px color-mix(in srgb, var(--color-text-1) 4%, transparent)',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: 'var(--bg-2)',
-            borderTopLeftRadius: '0.3rem',
-            borderTopRightRadius: '0.3rem',
-            borderBottomLeftRadius: fold ? '0.3rem' : '0',
-            borderBottomRightRadius: fold ? '0.3rem' : '0',
-            padding: '6px 10px',
-            borderBottom: !fold ? '1px solid var(--bg-3)' : undefined,
-          }}
-        >
-          <span
-            style={{
-              textDecoration: 'none',
-              color: 'var(--text-secondary)',
-              fontSize: '12px',
-              lineHeight: '20px',
-            }}
-          >
-            {'<' + language + '>'}
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className='flex items-center justify-between gap-8px border-b border-arco-1 bg-fill-2 px-12px py-10px'>
+          <div className='min-w-0 flex items-center gap-8px flex-wrap'>
+            <span className='inline-flex h-22px items-center rd-999px bg-primary-light-1 px-8px text-11px font-600 uppercase text-primary'>
+              {t('preview.code')}
+            </span>
+            <span className='text-12px font-600 uppercase text-t-primary'>{getLanguageLabel(language)}</span>
+          </div>
+          <div className='shrink-0 flex items-center gap-2px'>
             {!hiddenCodeCopyButton && (
-              <Copy
-                theme='outline'
-                size='18'
-                style={{ cursor: 'pointer' }}
-                fill='var(--text-secondary)'
-                onClick={handleCopy}
-              />
+              <Tooltip content={t('common.copy')}>
+                <Button
+                  size='mini'
+                  type='text'
+                  icon={<Copy theme='outline' size='16' fill='currentColor' className='app-icon' />}
+                  onClick={handleCopy}
+                  aria-label={t('common.copy')}
+                  className='!text-t-secondary hover:!text-t-primary'
+                />
+              </Tooltip>
             )}
-            {logicRender(
-              !fold,
-              <Up
-                theme='outline'
-                size='20'
-                style={{ cursor: 'pointer' }}
-                fill='var(--text-secondary)'
-                onClick={() => setFold(true)}
-              />,
-              <Down
-                theme='outline'
-                size='20'
-                style={{ cursor: 'pointer' }}
-                fill='var(--text-secondary)'
-                onClick={() => setFold(false)}
-              />
-            )}
+            <Button
+              size='mini'
+              type='text'
+              onClick={() => setFold(!fold)}
+              className='!px-8px !text-t-secondary hover:!text-t-primary'
+            >
+              {fold ? t('common.expandMore') : t('common.collapse')}
+            </Button>
           </div>
         </div>
-        {logicRender(
-          !fold,
-          <>
-            {renderSyntaxHighlighter({
-              marginTop: '0',
-              margin: '0',
-              borderTopLeftRadius: '0',
-              borderTopRightRadius: '0',
-              borderBottomLeftRadius: '0',
-              borderBottomRightRadius: '0',
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-primary)',
-              overflowX: 'auto',
-              maxWidth: '100%',
-            })}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                alignItems: 'center',
-                backgroundColor: 'var(--bg-2)',
-                borderBottomLeftRadius: '0.3rem',
-                borderBottomRightRadius: '0.3rem',
-                padding: '6px 10px',
-                borderTop: '1px solid var(--bg-3)',
-              }}
-            >
-              <Up
-                theme='outline'
-                size='20'
-                style={{ cursor: 'pointer' }}
-                fill='var(--text-secondary)'
-                onClick={() => setFold(true)}
-                title={t('common.collapse', 'Collapse')}
-              />
+        {fold ? (
+          <div className='px-12px py-12px'>
+            <pre className='m-0 overflow-hidden rd-8px bg-base px-12px py-10px font-mono text-12px leading-18px text-t-primary whitespace-pre-wrap break-words'>
+              {previewContent}
+            </pre>
+          </div>
+        ) : (
+          <div className='px-12px py-12px'>
+            <div className='overflow-hidden rd-8px bg-base'>
+              {renderSyntaxHighlighter({
+                marginTop: '0',
+                margin: '0',
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-primary)',
+                overflowX: 'auto',
+                maxWidth: '100%',
+              })}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

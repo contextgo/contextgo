@@ -21,6 +21,7 @@ Build investor-facing materials that are consistent, credible, and easy to defen
 All investor materials must agree with each other.
 
 Create or confirm a single source of truth before writing:
+
 - traction metrics
 - pricing and revenue assumptions
 - raise size and instrument
@@ -41,7 +42,9 @@ If conflicting numbers appear, stop and resolve them before drafting.
 ## Asset Guidance
 
 ### Pitch Deck
+
 Recommended flow:
+
 1. company + wedge
 2. problem
 3. solution
@@ -58,6 +61,7 @@ Recommended flow:
 If the user wants a web-native deck, pair this skill with `frontend-slides`.
 
 ### One-Pager / Memo
+
 - state what the company does in one clean sentence
 - show why now
 - include traction and proof points early
@@ -65,7 +69,9 @@ If the user wants a web-native deck, pair this skill with `frontend-slides`.
 - keep claims easy to verify
 
 ### Financial Model
+
 Include:
+
 - explicit assumptions
 - bear / base / bull cases when useful
 - clean layer-by-layer revenue logic
@@ -73,6 +79,7 @@ Include:
 - sensitivity analysis where the decision hinges on assumptions
 
 ### Accelerator Applications
+
 - answer the exact question asked
 - prioritize traction, insight, and team advantage
 - avoid puffery
@@ -89,6 +96,7 @@ Include:
 ## Quality Gate
 
 Before delivering:
+
 - every number matches the current source of truth
 - use of funds and revenue layers sum correctly
 - assumptions are visible, not buried

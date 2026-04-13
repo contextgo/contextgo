@@ -8,24 +8,21 @@
   "sendFailed": "发送消息失败，请重试。",
   "sendFailedWithReason": "发送消息失败：{{reason}}",
   "externalSessions": {
-    "title": "接管外部 Session",
+    "title": "接管外部会话",
     "description": "在 ContextGo 之外启动、且尚未被接管的 CLI 会话会出现在这里。",
     "filters": {
       "all": "全部"
     },
-    "openclawAgents": {
-      "all": "全部 Agent"
-    },
     "refresh": "刷新",
-    "loading": "正在扫描外部 Session...",
+    "loading": "正在扫描外部会话...",
     "loadingShort": "扫描中",
     "updatedAt": "最近更新于 {{time}}",
     "import": "接管使用",
-    "loadFailed": "扫描外部 Session 失败。",
+    "loadFailed": "扫描外部会话失败。",
     "loadFailedShort": "扫描失败",
-    "importFailed": "接管所选外部 Session 失败。",
+    "importFailed": "接管所选外部会话失败。",
     "readyCountShort": "{{count}} 个待接管",
-    "emptyState": "暂无待接管的外部 Session。",
+    "emptyState": "暂无待接管的外部会话。",
     "emptyStateShort": "暂无待接管",
     "providers": {
       "claude": "Claude",
@@ -34,7 +31,7 @@
       "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
     },
-    "readyCount": "{{count}} 个待接管 Session",
+    "readyCount": "{{count}} 个待接管会话",
     "open": "打开"
   },
   "openclaw": {

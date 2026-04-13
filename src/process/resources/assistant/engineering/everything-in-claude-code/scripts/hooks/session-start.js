@@ -18,7 +18,7 @@ const {
   ensureDir,
   readFile,
   stripAnsi,
-  log
+  log,
 } = require('../lib/utils');
 const { getPackageManager, getSelectionPrompt } = require('../lib/package-manager');
 const { listAliases } = require('../lib/session-aliases');
@@ -60,17 +60,18 @@ function dedupeRecentSessions(searchDirs) {
       const existing = recentSessionsByName.get(basename);
 
       if (
-        !existing
-        || current.mtime > existing.mtime
-        || (current.mtime === existing.mtime && current.dirIndex < existing.dirIndex)
+        !existing ||
+        current.mtime > existing.mtime ||
+        (current.mtime === existing.mtime && current.dirIndex < existing.dirIndex)
       ) {
         recentSessionsByName.set(basename, current);
       }
     }
   }
 
-  return Array.from(recentSessionsByName.values())
-    .sort((left, right) => right.mtime - left.mtime || left.dirIndex - right.dirIndex);
+  return Array.from(recentSessionsByName.values()).sort(
+    (left, right) => right.mtime - left.mtime || left.dirIndex - right.dirIndex
+  );
 }
 
 /**
@@ -201,7 +202,7 @@ async function main() {
   const aliases = listAliases({ limit: 5 });
 
   if (aliases.length > 0) {
-    const aliasNames = aliases.map(a => a.name).join(', ');
+    const aliasNames = aliases.map((a) => a.name).join(', ');
     log(`[SessionStart] ${aliases.length} session alias(es) available: ${aliasNames}`);
     log(`[SessionStart] Use /sessions load <alias> to continue a previous session`);
   }
@@ -241,8 +242,8 @@ function writeSessionStartPayload(additionalContext) {
     const payload = JSON.stringify({
       hookSpecificOutput: {
         hookEventName: 'SessionStart',
-        additionalContext
-      }
+        additionalContext,
+      },
     });
 
     const handleError = (err) => {
@@ -269,7 +270,7 @@ function writeSessionStartPayload(additionalContext) {
   });
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('[SessionStart] Error:', err.message);
   process.exitCode = 0; // Don't block on errors
 });

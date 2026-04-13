@@ -36,7 +36,7 @@ Navigate to each page in the flow and dump its interactive elements:
 // Run this for each page in the flow BEFORE writing the demo script
 const fields = await page.evaluate(() => {
   const els = [];
-  document.querySelectorAll('input, select, textarea, button, [contenteditable]').forEach(el => {
+  document.querySelectorAll('input, select, textarea, button, [contenteditable]').forEach((el) => {
     if (el.offsetParent !== null) {
       els.push({
         tag: el.tagName,
@@ -104,8 +104,8 @@ async function ensureVisible(page, locator, label) {
     console.error(msg);
     const found = await page.evaluate(() => {
       return Array.from(document.querySelectorAll('button, input, select, textarea, a'))
-        .filter(el => el.offsetParent !== null)
-        .map(el => `${el.tagName}[${el.type || ''}] "${el.textContent?.trim().substring(0, 30)}"`)
+        .filter((el) => el.offsetParent !== null)
+        .map((el) => `${el.tagName}[${el.type || ''}] "${el.textContent?.trim().substring(0, 30)}"`)
         .join('\n  ');
     });
     console.error('  Visible elements:\n  ' + found);
@@ -132,7 +132,7 @@ const steps = [
 
 let allOk = true;
 for (const step of steps) {
-  if (!await ensureVisible(page, step.selector, step.label)) {
+  if (!(await ensureVisible(page, step.selector, step.label))) {
     allOk = false;
   }
 }
@@ -378,7 +378,7 @@ const REHEARSAL = process.argv.includes('--rehearse');
 
   const context = await browser.newContext({
     recordVideo: { dir: VIDEO_DIR, size: { width: 1280, height: 720 } },
-    viewport: { width: 1280, height: 720 }
+    viewport: { width: 1280, height: 720 },
   });
   const page = await context.newPage();
 

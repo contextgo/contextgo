@@ -16,7 +16,7 @@ const {
   findFiles,
   ensureDir,
   appendFile,
-  log
+  log,
 } = require('../lib/utils');
 
 async function main() {
@@ -42,7 +42,7 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('[PreCompact] Error:', err.message);
   process.exit(0);
 });

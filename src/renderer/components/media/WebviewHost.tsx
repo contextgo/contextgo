@@ -32,6 +32,8 @@ export interface WebviewHostProps {
   onDidFailLoad?: (errorCode: number, errorDescription: string) => void;
   /** Block raw asset document navigations for embedded app/document surfaces */
   blockSuspiciousDocumentNavigation?: boolean;
+  /** CSS injected into the embedded page after load, useful for host-controlled chrome suppression */
+  injectedCss?: string;
 }
 
 const MIN_ZOOM_FACTOR = 0.75;
@@ -58,6 +60,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   onUrlChange,
   onDidFailLoad,
   blockSuspiciousDocumentNavigation = false,
+  injectedCss,
 }) => {
   const isElectron = typeof window !== 'undefined' && Boolean((window as { electronAPI?: unknown }).electronAPI);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -94,6 +97,34 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
   }, []);
 
   const isStarOffice = isStarOfficeUrl(currentUrl);
+
+  const injectCssIntoEmbeddedDocument = useCallback(() => {
+    if (!isElectron || !injectedCss?.trim()) {
+      return;
+    }
+
+    void webviewRef.current
+      ?.executeJavaScript(
+        `
+          (() => {
+            try {
+              const styleId = '__contextgo_webview_host_injected_css__';
+              let style = document.getElementById(styleId);
+              if (!style) {
+                style = document.createElement('style');
+                style.id = styleId;
+                document.head.appendChild(style);
+              }
+              style.textContent = ${JSON.stringify(injectedCss)};
+              return true;
+            } catch {
+              return false;
+            }
+          })();
+        `
+      )
+      .catch(() => {});
+  }, [injectedCss, isElectron]);
 
   // Reset when props.url changes
   useEffect(() => {
@@ -298,6 +329,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
     const handleDomReady = () => {
       setWebviewReady(true);
       injectClickInterceptor();
+      injectCssIntoEmbeddedDocument();
 
       // Inject viewport meta for responsive pages
       webviewEl
@@ -393,6 +425,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
 
     const handleDidFinishLoad = () => {
       setIsLoading(false);
+      injectCssIntoEmbeddedDocument();
       onDidFinishLoad?.();
     };
 
@@ -430,6 +463,7 @@ const WebviewHost: React.FC<WebviewHostProps> = ({
     onDidFailLoad,
     isStarOfficeUrl,
     isElectron,
+    injectCssIntoEmbeddedDocument,
   ]);
 
   // Resize observer for content area

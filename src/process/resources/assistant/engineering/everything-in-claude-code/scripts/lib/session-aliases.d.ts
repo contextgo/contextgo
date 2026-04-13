@@ -127,7 +127,9 @@ export function resolveSessionAlias(aliasOrId: string): string;
 export function updateAliasTitle(alias: string, title: string | null): AliasResult;
 
 /** Get all aliases that point to a specific session path */
-export function getAliasesForSession(sessionPath: string): Array<{ name: string; createdAt: string; title: string | null }>;
+export function getAliasesForSession(
+  sessionPath: string
+): Array<{ name: string; createdAt: string; title: string | null }>;
 
 /**
  * Remove aliases whose sessions no longer exist.

@@ -12,12 +12,12 @@ Analyze the codebase structure and generate token-lean architecture documentatio
 
 Create or update codemaps in `docs/CODEMAPS/` (or `.reports/codemaps/`):
 
-| File | Contents |
-|------|----------|
-| `architecture.md` | High-level system diagram, service boundaries, data flow |
-| `backend.md` | API routes, middleware chain, service → repository mapping |
-| `frontend.md` | Page tree, component hierarchy, state management flow |
-| `data.md` | Database tables, relationships, migration history |
+| File              | Contents                                                      |
+| ----------------- | ------------------------------------------------------------- |
+| `architecture.md` | High-level system diagram, service boundaries, data flow      |
+| `backend.md`      | API routes, middleware chain, service → repository mapping    |
+| `frontend.md`     | Page tree, component hierarchy, state management flow         |
+| `data.md`         | Database tables, relationships, migration history             |
 | `dependencies.md` | External services, third-party integrations, shared libraries |
 
 ### Codemap Format
@@ -28,14 +28,17 @@ Each codemap should be token-lean — optimized for AI context consumption:
 # Backend Architecture
 
 ## Routes
+
 POST /api/users → UserController.create → UserService.create → UserRepo.insert
-GET  /api/users/:id → UserController.get → UserService.findById → UserRepo.findById
+GET /api/users/:id → UserController.get → UserService.findById → UserRepo.findById
 
 ## Key Files
+
 src/services/user.ts (business logic, 120 lines)
 src/repos/user.ts (database access, 80 lines)
 
 ## Dependencies
+
 - PostgreSQL (primary data store)
 - Redis (session cache, rate limiting)
 - Stripe (payment processing)
@@ -58,6 +61,7 @@ Add a freshness header to each codemap:
 ## Step 5: Save Analysis Report
 
 Write a summary to `.reports/codemap-diff.txt`:
+
 - Files added/removed/modified since last scan
 - New dependencies detected
 - Architecture changes (new routes, new services, etc.)

@@ -18,6 +18,7 @@ This command enforces test-driven development methodology for Go code using idio
 ## When to Use
 
 Use `/go-test` when:
+
 - Implementing new Go functions
 - Adding test coverage to existing code
 - Fixing bugs (write failing test first)
@@ -172,6 +173,7 @@ ok      project/validator    0.003s
 ## Test Patterns
 
 ### Table-Driven Tests
+
 ```go
 tests := []struct {
     name     string
@@ -192,6 +194,7 @@ for _, tt := range tests {
 ```
 
 ### Parallel Tests
+
 ```go
 for _, tt := range tests {
     tt := tt // Capture
@@ -203,6 +206,7 @@ for _, tt := range tests {
 ```
 
 ### Test Helpers
+
 ```go
 func setupTestDB(t *testing.T) *sql.DB {
     t.Helper()
@@ -233,16 +237,17 @@ go test -race -cover ./...
 
 ## Coverage Targets
 
-| Code Type | Target |
-|-----------|--------|
-| Critical business logic | 100% |
-| Public APIs | 90%+ |
-| General code | 80%+ |
-| Generated code | Exclude |
+| Code Type               | Target  |
+| ----------------------- | ------- |
+| Critical business logic | 100%    |
+| Public APIs             | 90%+    |
+| General code            | 80%+    |
+| Generated code          | Exclude |
 
 ## TDD Best Practices
 
 **DO:**
+
 - Write test FIRST, before any implementation
 - Run tests after each change
 - Use table-driven tests for comprehensive coverage
@@ -250,6 +255,7 @@ go test -race -cover ./...
 - Include edge cases (empty, nil, max values)
 
 **DON'T:**
+
 - Write implementation before tests
 - Skip the RED phase
 - Test private functions directly

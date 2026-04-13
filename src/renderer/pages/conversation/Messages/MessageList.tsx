@@ -35,8 +35,8 @@ import MessageText from './components/MessagetText';
 import { parseFileOperationMessage } from './components/MessagetText';
 import type { WriteFileResult } from './types';
 import { useAutoScroll } from './useAutoScroll';
-import { shouldSuppressOpenClawPersistedMessage } from '../platforms/openclaw/messageStream';
 import { getInitialConversationBottomItemIndex } from './scrollState';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 
 type TurnDiffContent = Extract<CodexToolCallUpdate, { subtype: 'turn_diff' }>;
 
@@ -140,25 +140,11 @@ const MessageItem: React.FC<{ message: TMessage; highlighted?: boolean }> = Reac
     prev.highlighted === next.highlighted
 );
 
-const StableVirtuosoScroller = React.forwardRef<HTMLDivElement, React.ComponentProps<'div'>>(
-  ({ style, ...props }, ref) => (
-    <div
-      {...props}
-      ref={ref}
-      style={{
-        ...style,
-        overscrollBehavior: 'contain',
-        overflowAnchor: 'none',
-      }}
-    />
-  )
-);
-
-StableVirtuosoScroller.displayName = 'StableVirtuosoScroller';
-
 const MessageList: React.FC<{ className?: string }> = () => {
   const list = useMessageList();
   const conversationContext = useConversationContextSafe();
+  const layout = useLayoutContext();
+  const isMobile = layout?.isMobile ?? false;
   const { t } = useTranslation();
   const location = useLocation();
   const locationState = (location.state || {}) as ConversationLocationState;
@@ -166,14 +152,34 @@ const MessageList: React.FC<{ className?: string }> = () => {
   const conversationId = conversationContext?.conversationId;
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | undefined>();
   const handledTargetKeyRef = useRef<string>('');
+  const stableVirtuosoScroller = useMemo(() => {
+    const StableVirtuosoScroller = React.forwardRef<HTMLDivElement, React.ComponentProps<'div'>>(
+      ({ style, ...props }, ref) => (
+        <div
+          {...props}
+          ref={ref}
+          style={{
+            ...style,
+            overflowX: 'hidden',
+            overscrollBehavior: 'contain',
+            overscrollBehaviorX: 'none',
+            overflowAnchor: 'none',
+            ...(isMobile ? { touchAction: 'pan-y' } : null),
+          }}
+        />
+      )
+    );
+
+    StableVirtuosoScroller.displayName = 'StableVirtuosoScroller';
+    return StableVirtuosoScroller;
+  }, [isMobile]);
 
   // Pre-process message list to group Codex turn_diff messages
   const processedList = useMemo(() => {
     const result: Array<IMessageVO> = [];
     const shouldSuppressLifecycleMessages =
       conversationContext?.type === 'acp' ||
-      conversationContext?.type === 'codex' ||
-      conversationContext?.type === 'openclaw-gateway';
+      conversationContext?.type === 'codex';
     let diffsChanges: FileChangeInfo[] = [];
     let diffsSourceMessageIds: string[] = [];
     let stepEntries: StepSummaryEntry[] = [];
@@ -228,10 +234,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
 
     for (let i = 0, len = list.length; i < len; i++) {
       const message = list[i];
-      if (
-        (shouldSuppressLifecycleMessages && shouldSuppressAgentLifecyclePersistedMessage(message)) ||
-        (conversationContext?.type === 'openclaw-gateway' && shouldSuppressOpenClawPersistedMessage(message))
-      ) {
+      if (shouldSuppressLifecycleMessages && shouldSuppressAgentLifecyclePersistedMessage(message)) {
         continue;
       }
       // Skip available_commands messages
@@ -404,13 +407,13 @@ const MessageList: React.FC<{ className?: string }> = () => {
   };
 
   return (
-    <div className='relative flex-1 h-full'>
+    <div className='relative flex-1 h-full min-w-0 overflow-x-hidden'>
       {/* Use PreviewGroup to wrap all messages for cross-message image preview */}
       <Image.PreviewGroup actionsLayout={['zoomIn', 'zoomOut', 'originalSize', 'rotateLeft', 'rotateRight']}>
         <ImagePreviewContext.Provider value={{ inPreviewGroup: true }}>
           <Virtuoso
             ref={virtuosoRef}
-            className='flex-1 h-full pb-10px box-border'
+            className='flex-1 h-full min-w-0 pb-10px box-border'
             data={processedList}
             {...(initialTopMostItemIndex === null ? {} : { initialTopMostItemIndex })}
             atBottomThreshold={100}
@@ -420,7 +423,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
             onScroll={handleScroll}
             atBottomStateChange={handleAtBottomStateChange}
             components={{
-              Scroller: StableVirtuosoScroller,
+              Scroller: stableVirtuosoScroller,
               Header: () => <div className='h-10px' />,
               Footer: () => <div className='h-20px' />,
             }}

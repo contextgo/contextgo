@@ -1,5 +1,5 @@
 ---
-description: "Extract reusable patterns from the session, self-evaluate quality before saving, and determine the right save location (Global vs Project)."
+description: 'Extract reusable patterns from the session, self-evaluate quality before saving, and determine the right save location (Global vs Project).'
 ---
 
 # /learn-eval - Extract, Evaluate, then Save
@@ -31,7 +31,7 @@ Look for:
 ```markdown
 ---
 name: pattern-name
-description: "Under 130 characters"
+description: 'Under 130 characters'
 user-invocable: false
 origin: auto-extracted
 ---
@@ -42,12 +42,15 @@ origin: auto-extracted
 **Context:** [Brief description of when this applies]
 
 ## Problem
+
 [What problem this solves - be specific]
 
 ## Solution
+
 [The pattern/technique/workaround - with code examples]
 
 ## When to Use
+
 [Trigger conditions]
 ```
 
@@ -56,7 +59,6 @@ origin: auto-extracted
    ### 5a. Required checklist (verify by actually reading files)
 
    Execute **all** of the following before evaluating the draft:
-
    - [ ] Grep `~/.claude/skills/` and relevant project `.claude/skills/` files by keyword to check for content overlap
    - [ ] Check MEMORY.md (both project and global) for overlap
    - [ ] Consider whether appending to an existing skill would suffice
@@ -66,12 +68,12 @@ origin: auto-extracted
 
    Synthesize the checklist results and draft quality, then choose **one** of the following:
 
-   | Verdict | Meaning | Next Action |
-   |---------|---------|-------------|
-   | **Save** | Unique, specific, well-scoped | Proceed to Step 6 |
-   | **Improve then Save** | Valuable but needs refinement | List improvements → revise → re-evaluate (once) |
-   | **Absorb into [X]** | Should be appended to an existing skill | Show target skill and additions → Step 6 |
-   | **Drop** | Trivial, redundant, or too abstract | Explain reasoning and stop |
+   | Verdict               | Meaning                                 | Next Action                                     |
+   | --------------------- | --------------------------------------- | ----------------------------------------------- |
+   | **Save**              | Unique, specific, well-scoped           | Proceed to Step 6                               |
+   | **Improve then Save** | Valuable but needs refinement           | List improvements → revise → re-evaluate (once) |
+   | **Absorb into [X]**   | Should be appended to an existing skill | Show target skill and additions → Step 6        |
+   | **Drop**              | Trivial, redundant, or too abstract     | Explain reasoning and stop                      |
 
 **Guideline dimensions** (informing the verdict, not scored):
 

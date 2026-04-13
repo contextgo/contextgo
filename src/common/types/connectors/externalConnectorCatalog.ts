@@ -13,6 +13,46 @@ export type ExternalConnectorWorkflow = {
   notes: string[];
 };
 
+export type ExternalConnectorCapabilitySourceKind =
+  | 'official-cli-help'
+  | 'official-cli-schema'
+  | 'official-docs'
+  | 'manual-curation';
+
+export type ExternalConnectorCapabilitySource = {
+  kind: ExternalConnectorCapabilitySourceKind;
+  ref: string;
+  note?: string;
+};
+
+export type ExternalConnectorCapabilityAction = {
+  id: string;
+  label: string;
+  summary: string;
+  entrypoints: string[];
+  auth_modes: string[];
+  notes?: string[];
+  sources: ExternalConnectorCapabilitySource[];
+};
+
+export type ExternalConnectorCapabilityGroup = {
+  id: string;
+  label: string;
+  summary: string;
+  native_objects: string[];
+  discovery_commands: string[];
+  actions: ExternalConnectorCapabilityAction[];
+  sources: ExternalConnectorCapabilitySource[];
+};
+
+export type ExternalConnectorCapabilitySchema = {
+  version: number;
+  extraction_mode: 'manual-curation' | 'help-derived' | 'schema-derived' | 'hybrid';
+  discovery_commands: string[];
+  notes: string[];
+  groups: ExternalConnectorCapabilityGroup[];
+};
+
 export type ExternalConnectorCatalogDetails = {
   connector: string;
   kind: string;
@@ -24,6 +64,7 @@ export type ExternalConnectorCatalogDetails = {
   runtime_boundary: string;
   native_surface: string[];
   implemented_workflows: ExternalConnectorWorkflow[];
+  capabilities?: ExternalConnectorCapabilitySchema;
   notes: string[];
   runtime: Record<string, unknown>;
 };

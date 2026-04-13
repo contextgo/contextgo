@@ -1,0 +1,93 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "pm-workbench",
+  "assistantPresetId": "builtin-pm-workbench",
+  "displayName": "PM Workbench",
+  "runtimeNeutral": true,
+  "payloads": {
+    "rules": {
+      "logicalId": "rules",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "."
+        }
+      ],
+      "files": {
+        "en-US": "pm-workbench.md",
+        "zh-CN": "pm-workbench.zh-CN.md"
+      },
+      "installSurface": "assistant-rules-cache",
+      "runtimeProjection": "none"
+    },
+    "docs": {
+      "logicalId": "docs",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "docs"
+        }
+      ],
+      "installSurface": "package-docs",
+      "runtimeProjection": "none"
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/pm-workbench-pack"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "pm-product-strategy",
+        "pm-discovery-process",
+        "pm-opportunity-solution-tree",
+        "pm-prd-development",
+        "pm-roadmap-planning",
+        "pm-prioritization-advisor",
+        "pm-feature-investment-advisor",
+        "pm-user-story-mapping",
+        "pm-company-research"
+      ],
+      "packagedSkillNames": [
+        "pm-product-strategy",
+        "pm-discovery-process",
+        "pm-opportunity-solution-tree",
+        "pm-prd-development",
+        "pm-roadmap-planning",
+        "pm-prioritization-advisor",
+        "pm-feature-investment-advisor",
+        "pm-user-story-mapping",
+        "pm-company-research"
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "pm-workbench"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "pm-workbench"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "pm-workbench"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "pm-workbench"
+    }
+  }
+}

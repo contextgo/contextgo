@@ -64,7 +64,9 @@ This project straddles two ecosystems. Each follows its own convention:
 >
 > **YES** → PascalCase. **NO** → lowercase.
 >
-> **Exception**: Platform directories (`acp/`, `codex/`, `gemini/`, `nanobot/`, `openclaw/`) always use lowercase, even inside renderer, to match `src/process/agent/`.
+> **Exception**: Platform directories (`acp/`, `codex/`, `gemini/`) always use lowercase, even inside renderer, to match `src/process/agent/`.
+>
+> Legacy compatibility directories such as `nanobot/` and `openclaw/` may still exist in older slices of the codebase. Do not use them for new product work.
 
 ### Renderer examples
 
@@ -304,10 +306,12 @@ PageName/                  # PascalCase
 
 Inside a page module (e.g., `pages/conversation/`), three types of subdirectories exist:
 
-| Type                                                  | Convention | Examples                                             |
-| ----------------------------------------------------- | ---------- | ---------------------------------------------------- |
-| **Categorical** (standard role)                       | lowercase  | `components/`, `hooks/`, `context/`, `utils/`        |
-| **Feature module** (business feature)                 | PascalCase | `GroupedHistory/`, `Workspace/`, `Preview/`          |
-| **Platform directory** (mirrors `src/process/agent/`) | lowercase  | `acp/`, `codex/`, `gemini/`, `nanobot/`, `openclaw/` |
+| Type                                                  | Convention | Examples                                      |
+| ----------------------------------------------------- | ---------- | --------------------------------------------- |
+| **Categorical** (standard role)                       | lowercase  | `components/`, `hooks/`, `context/`, `utils/` |
+| **Feature module** (business feature)                 | PascalCase | `GroupedHistory/`, `Workspace/`, `Preview/`   |
+| **Platform directory** (mirrors `src/process/agent/`) | lowercase  | `acp/`, `codex/`, `gemini/`                   |
 
 Platform directories are an exception to PascalCase. They use lowercase for cross-process naming consistency with `src/process/agent/<platform>/`.
+
+Legacy runtime directories such as `nanobot/` and `openclaw/` are compatibility leftovers and should not be expanded for new features.

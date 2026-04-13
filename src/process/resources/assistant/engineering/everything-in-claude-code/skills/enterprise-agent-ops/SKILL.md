@@ -34,6 +34,7 @@ Use this skill for cloud-hosted or continuously running agent systems that need 
 ## Incident Pattern
 
 When failure spikes:
+
 1. freeze new rollout
 2. capture representative traces
 3. isolate failing route
@@ -44,6 +45,7 @@ When failure spikes:
 ## Deployment Integrations
 
 This skill pairs with:
+
 - PM2 workflows
 - systemd services
 - container orchestrators

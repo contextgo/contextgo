@@ -218,6 +218,22 @@ function resolveButtonStyle(action: IActionButton): 'primary' | 'danger' | undef
   return undefined;
 }
 
+function toSlackButton(button: IActionButton, index: number): Button {
+  const style = resolveButtonStyle(button);
+
+  return {
+    type: 'button',
+    text: {
+      type: 'plain_text',
+      text: button.label,
+      emoji: true,
+    },
+    action_id: `${SLACK_ACTION_ID_PREFIX}:${index}:${button.action}`,
+    value: serializeActionValue(button.action, button.params),
+    ...(style ? { style } : {}),
+  } satisfies Button;
+}
+
 export function toSlackBlocks(message: IUnifiedOutgoingMessage): (Block | KnownBlock)[] | undefined {
   const blocks: Array<Block | KnownBlock> = [];
   const mrkdwnText = convertHtmlToSlackMrkdwn(message.text || '');
@@ -235,20 +251,7 @@ export function toSlackBlocks(message: IUnifiedOutgoingMessage): (Block | KnownB
   const buttonRows = message.buttons || message.keyboard;
   if (buttonRows?.length) {
     for (const row of buttonRows) {
-      const elements: Button[] = row.map((button, index) => {
-        const style = resolveButtonStyle(button);
-        return {
-          type: 'button',
-          text: {
-            type: 'plain_text',
-            text: button.label,
-            emoji: true,
-          },
-          action_id: `${SLACK_ACTION_ID_PREFIX}:${index}:${button.action}`,
-          value: serializeActionValue(button.action, button.params),
-          ...(style ? { style } : {}),
-        };
-      });
+      const elements: Button[] = row.map((button, index) => toSlackButton(button, index));
 
       blocks.push({
         type: 'actions',

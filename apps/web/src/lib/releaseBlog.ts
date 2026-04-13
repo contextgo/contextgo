@@ -96,7 +96,9 @@ export const createFallbackReleaseBlog = (locale: SiteLocale): ResolvedReleaseBl
 
 export const getResolvedReleaseBlog = async (locale: SiteLocale): Promise<ResolvedReleaseBlog> => {
   try {
-    const bundle = await fetchReleaseJson<ReleaseBlogSectionPayload>(`${getReleaseSiteBaseUrl()}/blog/${locale}/index.json`);
+    const bundle = await fetchReleaseJson<ReleaseBlogSectionPayload>(
+      `${getReleaseSiteBaseUrl()}/blog/${locale}/index.json`
+    );
 
     if (!bundle || !isValidReleaseBlogSectionPayload(bundle)) {
       return createFallbackReleaseBlog(locale);
@@ -113,7 +115,10 @@ export const getResolvedReleaseBlog = async (locale: SiteLocale): Promise<Resolv
   }
 };
 
-export const getReleaseBlogEntry = async (resolved: ResolvedReleaseBlog, slug: string): Promise<PublicArticle | null> => {
+export const getReleaseBlogEntry = async (
+  resolved: ResolvedReleaseBlog,
+  slug: string
+): Promise<PublicArticle | null> => {
   if (resolved.source === 'site-fallback') {
     return resolved.articles[slug] ?? null;
   }

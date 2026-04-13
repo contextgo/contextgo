@@ -7,6 +7,8 @@
 import coworkSvg from '@/renderer/assets/icons/cowork.svg';
 import everythingClaudeCodeSvg from '@/renderer/assets/icons/everything-claude-code.svg';
 import morphPptSvg from '@/renderer/assets/icons/morph-ppt.svg';
+import officeAnalystSvg from '@/renderer/assets/icons/office-analyst.svg';
+import pmWorkbenchSvg from '@/renderer/assets/icons/pm-workbench.svg';
 import superpowersSvg from '@/renderer/assets/icons/superpowers.svg';
 
 /**
@@ -16,6 +18,8 @@ export const CUSTOM_AVATAR_IMAGE_MAP: Record<string, string> = {
   'cowork.svg': coworkSvg,
   'everything-claude-code.svg': everythingClaudeCodeSvg,
   'morph-ppt.svg': morphPptSvg,
+  'office-analyst.svg': officeAnalystSvg,
+  'pm-workbench.svg': pmWorkbenchSvg,
   'superpowers.svg': superpowersSvg,
   '\u{1F6E0}\u{FE0F}': coworkSvg,
 };

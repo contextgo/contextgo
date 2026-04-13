@@ -1,0 +1,11 @@
+{
+  "enabledHooks": [
+    "repo-context-bootstrap",
+    "plan-before-coding",
+    "secret-guard",
+    "tool-safety-guard",
+    "quality-gate",
+    "tdd-guard",
+    "continuity-handoff"
+  ]
+}

@@ -14,7 +14,13 @@ import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
 import {
   buildBuiltinAssistants,
   DEFAULT_ENABLED_BUILTIN_PRESET_IDS,
+  resolveBuiltinAssistantEnabledHooks,
+  resolveBuiltinAssistantEnabledSkills,
 } from '@/common/config/presets/builtinAssistantDefaults';
+import {
+  getBundledAgentPackageRulesFiles,
+  resolveBundledAgentPackageSourceRelativeRoots,
+} from '@/common/config/presets/bundledAgentPackageRegistry';
 import type {
   IChatConversationRefer,
   IConfigStorageRefer,
@@ -511,10 +517,6 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
     return candidates[0];
   };
 
-  const presetsNeedDefaultRulesDir = ASSISTANT_PRESETS.some(
-    (preset) => !preset.resourceDir && Object.keys(preset.ruleFiles).length > 0
-  );
-  const rulesDir = presetsNeedDefaultRulesDir ? resolveBuiltinDir('rules') : '';
   // resolveBuiltinDir("src/process/resources/skills") works for packaged Electron
   // (viteStaticCopy outputs to skills/ which matches after stripping the prefix),
   // but in standalone server mode the actual path differs.
@@ -594,18 +596,20 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 
   for (const preset of ASSISTANT_PRESETS) {
     const assistantId = `builtin-${preset.id}`;
-
-    // 如果设置了 resourceDir，使用该目录；否则使用默认的 rules/ 目录
-    // If resourceDir is set, use that directory; otherwise use default rules/ directory
-    const presetRulesDir = preset.resourceDir ? resolveBuiltinDir(preset.resourceDir) : rulesDir;
-    const presetSkillsDir = preset.resourceDir ? resolveBuiltinDir(preset.resourceDir) : builtinSkillsDir;
+    const manifestRuleFiles = getBundledAgentPackageRulesFiles(assistantId);
+    const manifestRuleRoots = resolveBundledAgentPackageSourceRelativeRoots(assistantId, 'rules');
+    const presetRulesDirs = manifestRuleRoots.map((relativeRoot) => resolveBuiltinDir(relativeRoot));
+    const ruleFiles = manifestRuleFiles ?? {};
 
     // 复制规则文件 / Copy rule files
-    const hasRuleFiles = Object.keys(preset.ruleFiles).length > 0;
+    const hasRuleFiles = Object.keys(ruleFiles).length > 0;
     if (hasRuleFiles) {
-      for (const [locale, ruleFile] of Object.entries(preset.ruleFiles)) {
+      for (const [locale, ruleFile] of Object.entries(ruleFiles)) {
         try {
-          const sourceRulesPath = path.join(presetRulesDir, ruleFile);
+          const sourceRulesPath =
+            presetRulesDirs
+              .map((rulesDirPath) => path.join(rulesDirPath, ruleFile))
+              .find((candidate) => existsSync(candidate)) || path.join(presetRulesDirs[0], ruleFile);
           // 目标文件名格式：{assistantId}.{locale}.md
           // Target file name format: {assistantId}.{locale}.md
           const targetFileName = `${assistantId}.${locale}.md`;
@@ -630,8 +634,8 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
         }
       }
     } else {
-      // 如果助手没有 ruleFiles 配置，删除旧的 rules 缓存文件
-      // If assistant has no ruleFiles config, delete old rules cache files
+      // 如果包没有 rules payload，删除旧的 rules 缓存文件
+      // If the package has no rules payload, delete old rules cache files
       const rulesFilePattern = new RegExp(`^${assistantId}\\..*\\.md$`);
       try {
         const files = readdirSync(assistantsDir);
@@ -647,50 +651,19 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
     }
 
     // 复制技能文件 / Copy skill files (if preset has skills)
-    if (preset.skillFiles) {
-      for (const [locale, skillFile] of Object.entries(preset.skillFiles)) {
-        try {
-          const sourceSkillsPath = path.join(presetSkillsDir, skillFile);
-          // 目标文件名格式：{assistantId}-skills.{locale}.md
-          // Target file name format: {assistantId}-skills.{locale}.md
-          const targetFileName = `${assistantId}-skills.${locale}.md`;
-          const targetPath = path.join(assistantsDir, targetFileName);
-
-          // 检查源文件是否存在 / Check if source file exists
-          if (!existsSync(sourceSkillsPath)) {
-            console.warn(`[ContextGo] Source skill file not found: ${sourceSkillsPath}`);
-            continue;
-          }
-
-          // 内置助手技能文件始终强制覆盖，确保用户获得最新版本
-          // Always overwrite builtin assistant skill files to ensure users get the latest version
-          let content = await fs.readFile(sourceSkillsPath, 'utf-8');
-          // 替换相对路径为绝对路径，确保 AI 能找到正确的脚本位置
-          // Replace relative paths with absolute paths so AI can find scripts correctly
-          content = content.replace(/skills\//g, userSkillsDir + '/');
-          await fs.writeFile(targetPath, content, 'utf-8');
-        } catch (error) {
-          // 忽略缺失的技能文件 / Ignore missing skill files
-          console.warn(`[ContextGo] Failed to copy skill file ${skillFile}:`, error);
+    // skill markdown cache is no longer part of bundled preset bootstrap.
+    // Always remove any legacy builtin assistant skill cache files.
+    const skillsFilePattern = new RegExp(`^${assistantId}-skills\\..*\\.md$`);
+    try {
+      const files = readdirSync(assistantsDir);
+      for (const file of files) {
+        if (skillsFilePattern.test(file)) {
+          const filePath = path.join(assistantsDir, file);
+          await fs.unlink(filePath);
         }
       }
-    } else {
-      // 如果助手没有 skillFiles 配置，删除旧的 skills 缓存文件
-      // If assistant has no skillFiles config, delete old skills cache files
-      // 这样可以确保迁移到 SkillManager 后不会读取到旧的 presetSkills
-      // This ensures old presetSkills won't be read after migrating to SkillManager
-      const skillsFilePattern = new RegExp(`^${assistantId}-skills\\..*\\.md$`);
-      try {
-        const files = readdirSync(assistantsDir);
-        for (const file of files) {
-          if (skillsFilePattern.test(file)) {
-            const filePath = path.join(assistantsDir, file);
-            await fs.unlink(filePath);
-          }
-        }
-      } catch (error) {
-        // 忽略删除失败 / Ignore deletion failure
-      }
+    } catch (error) {
+      // 忽略删除失败 / Ignore deletion failure
     }
   }
 };
@@ -705,7 +678,8 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
   for (const preset of ASSISTANT_PRESETS) {
     // 从预设配置中读取默认启用的技能列表（不包含 schedule，因为它是内置 skill，自动注入）
     // Read default enabled skills from preset config (excluding schedule, which is builtin and auto-injected)
-    const defaultEnabledSkills = preset.defaultEnabledSkills;
+    const defaultEnabledSkills = resolveBuiltinAssistantEnabledSkills(`builtin-${preset.id}`, undefined);
+    const defaultEnabledHooks = resolveBuiltinAssistantEnabledHooks(`builtin-${preset.id}`, undefined);
     const enabledByDefault = DEFAULT_ENABLED_BUILTIN_PRESET_IDS.has(preset.id);
 
     assistants.push({
@@ -724,6 +698,7 @@ const getBuiltinAssistants = (): AcpBackendConfig[] => {
       presetAgentType: preset.presetAgentType || 'gemini',
       // 使用 preset 中声明的默认技能 / Use default skills declared by the preset
       enabledSkills: defaultEnabledSkills,
+      enabledHooks: defaultEnabledHooks,
       // 复制快捷提示词 / Copy quick prompts
       promptsI18n: preset.promptsI18n,
     });
@@ -931,8 +906,8 @@ const initStorage = async () => {
         // presetAgentType is user-controlled, use builtin default if not set
         const resolvedPresetAgentType = existing.presetAgentType ?? builtin.presetAgentType;
 
-        // 为有 defaultEnabledSkills 配置的内置助手添加默认技能（仅在迁移时且用户未设置 enabledSkills 时）
-        // Add default enabled skills for builtin assistants with defaultEnabledSkills (only during migration and if user hasn't set enabledSkills)
+        // 为内置助手添加 manifest 默认技能（仅在迁移时且用户未设置 enabledSkills 时）
+        // Add manifest default skills for builtin assistants (only during migration and if user hasn't set enabledSkills)
         let resolvedEnabledSkills = existing.enabledSkills;
         const needsSkillsMigration =
           needsBuiltinSkillsMigration && builtin.enabledSkills && existing.enabledSkills === undefined;
@@ -940,8 +915,8 @@ const initStorage = async () => {
           resolvedEnabledSkills = builtin.enabledSkills;
         }
 
-        // 为有 defaultEnabledHooks 配置的内置助手添加默认 hooks（仅在迁移时且用户未设置 enabledHooks 时）
-        // Add default enabled hooks for builtin assistants with defaultEnabledHooks (only during migration and if user hasn't set enabledHooks)
+        // 为内置助手添加 manifest 默认 hooks（仅在迁移时且用户未设置 enabledHooks 时）
+        // Add manifest default hooks for builtin assistants (only during migration and if user hasn't set enabledHooks)
         let resolvedEnabledHooks = existing.enabledHooks;
         const needsHooksMigration =
           needsBuiltinHooksMigration && builtin.enabledHooks && existing.enabledHooks === undefined;

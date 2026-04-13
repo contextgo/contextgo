@@ -28,6 +28,7 @@ import { ConfigProvider, Message } from '@arco-design/web-react';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import type { GuidLocationState } from './types';
 import styles from './index.module.css';
 
 const GuidPage: React.FC = () => {
@@ -37,10 +38,11 @@ const GuidPage: React.FC = () => {
   const guidContainerRef = useRef<HTMLDivElement>(null);
   const { closeAllTabs, openTab } = useConversationTabs();
   const selectedSpaceId = useSelectedSpaceId();
-  const [messageApi, messageContext] = Message.useMessage();
+  const [_messageApi, messageContext] = Message.useMessage();
   const [externalSessionsVisible, setExternalSessionsVisible] = useState(false);
   const { activeBorderColor, inactiveBorderColor, activeShadow } = useInputFocusRing();
   const localeKey = resolveLocaleKey(i18n.language);
+  const locationState = location.state as GuidLocationState | null;
 
   // --- Hooks ---
   const modelSelection = useGuidModelSelection();
@@ -49,10 +51,11 @@ const GuidPage: React.FC = () => {
     modelList: modelSelection.modelList,
     isGoogleAuth: modelSelection.isGoogleAuth,
     localeKey,
+    locationState,
   });
 
   const guidInput = useGuidInput({
-    locationState: location.state as { workspace?: string } | null,
+    locationState,
   });
 
   const mention = useGuidMention({

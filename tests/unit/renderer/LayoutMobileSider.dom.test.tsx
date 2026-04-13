@@ -60,12 +60,34 @@ vi.mock('@renderer/utils/ui/siderTooltip', () => ({
   cleanupSiderTooltips: vi.fn(),
 }));
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => String(options?.defaultValue ?? key),
+  }),
+}));
+
 vi.mock('@/renderer/components/layout/PwaPullToRefresh', () => ({
   default: () => null,
 }));
 
 vi.mock('@/renderer/components/layout/Titlebar', () => ({
   default: () => <div data-testid='titlebar' />,
+}));
+
+vi.mock('@/renderer/components/layout/WindowControls', () => ({
+  __esModule: true,
+  default: () => <div data-testid='window-controls' />,
+}));
+
+vi.mock('@/renderer/hooks/context/RemoteAccessContext', () => ({
+  createDefaultRemoteAccessTarget: () => ({
+    mode: 'local',
+    currentUrl: '',
+    entryUrl: '',
+  }),
+  RemoteAccessContext: {
+    Provider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  },
 }));
 
 describe('Layout mobile sider gestures', () => {
@@ -150,5 +172,50 @@ describe('Layout mobile sider gestures', () => {
 
     const themeColorMeta = document.querySelector("meta[name='theme-color']") as HTMLMetaElement | null;
     expect(themeColorMeta?.content).toBe('#f7f8fb');
+  });
+
+  it('hides the desktop sider but keeps the native titlebar when rendering a remote device shell on desktop', async () => {
+    vi.resetModules();
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+
+    vi.doMock('@renderer/utils/platform', () => ({
+      isElectronDesktop: () => true,
+      isMacOS: () => false,
+      isMobileShellWebView: () => false,
+    }));
+
+    vi.doMock('@/renderer/components/layout/Titlebar', () => ({
+      default: () => <div data-testid='titlebar'>Desktop Titlebar</div>,
+    }));
+
+    vi.doMock('@/renderer/hooks/context/RemoteAccessContext', () => ({
+      createDefaultRemoteAccessTarget: () => ({
+        mode: 'remote-device',
+        currentUrl: 'https://remote.contextgo.io/device/device-1',
+        entryUrl: 'https://remote.contextgo.io/remote/devices',
+      }),
+      RemoteAccessContext: {
+        Provider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+      },
+    }));
+
+    const { default: Layout } = await import('@/renderer/components/layout/Layout');
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/conversation/test-conversation']}>
+        <Layout sider={<div data-testid='desktop-sider'>Sider Content</div>} />
+      </MemoryRouter>
+    );
+
+    expect(container.querySelector('.layout-sider')).toBeNull();
+    expect(screen.queryByTestId('desktop-sider')).not.toBeInTheDocument();
+    expect(screen.getByTestId('titlebar')).toBeInTheDocument();
+    expect(container.querySelector('.desktop-remote-session-bar')).toBeNull();
+    expect(dispatchEventSpy).not.toHaveBeenCalled();
   });
 });

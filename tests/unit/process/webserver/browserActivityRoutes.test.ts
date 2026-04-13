@@ -64,7 +64,8 @@ describe('browserActivityRoutes', () => {
       chunkCount: 2,
     });
 
-    const { registerBrowserActivityRoutes } = await import('../../../../src/process/webserver/routes/browserActivityRoutes');
+    const { registerBrowserActivityRoutes } =
+      await import('../../../../src/process/webserver/routes/browserActivityRoutes');
     const app = express();
     app.use(express.json());
     registerBrowserActivityRoutes(app);

@@ -17,6 +17,7 @@ This command invokes the **rust-build-resolver** agent to incrementally fix Rust
 ## When to Use
 
 Use `/rust-build` when:
+
 - `cargo build` or `cargo check` fails with errors
 - `cargo clippy` reports warnings
 - Borrow checker or lifetime errors block compilation
@@ -149,15 +150,15 @@ Build Status: SUCCESS
 
 ## Common Errors Fixed
 
-| Error | Typical Fix |
-|-------|-------------|
-| `cannot borrow as mutable` | Restructure to end immutable borrow first; clone only if justified |
-| `does not live long enough` | Use owned type or add lifetime annotation |
-| `cannot move out of` | Restructure to take ownership; clone only as last resort |
-| `mismatched types` | Add `.into()`, `as`, or explicit conversion |
-| `trait X not implemented` | Add `#[derive(Trait)]` or implement manually |
-| `unresolved import` | Add to Cargo.toml or fix `use` path |
-| `cannot find value` | Add import or fix path |
+| Error                       | Typical Fix                                                        |
+| --------------------------- | ------------------------------------------------------------------ |
+| `cannot borrow as mutable`  | Restructure to end immutable borrow first; clone only if justified |
+| `does not live long enough` | Use owned type or add lifetime annotation                          |
+| `cannot move out of`        | Restructure to take ownership; clone only as last resort           |
+| `mismatched types`          | Add `.into()`, `as`, or explicit conversion                        |
+| `trait X not implemented`   | Add `#[derive(Trait)]` or implement manually                       |
+| `unresolved import`         | Add to Cargo.toml or fix `use` path                                |
+| `cannot find value`         | Add import or fix path                                             |
 
 ## Fix Strategy
 
@@ -170,6 +171,7 @@ Build Status: SUCCESS
 ## Stop Conditions
 
 The agent will stop and report if:
+
 - Same error persists after 3 attempts
 - Fix introduces more errors
 - Requires architectural changes

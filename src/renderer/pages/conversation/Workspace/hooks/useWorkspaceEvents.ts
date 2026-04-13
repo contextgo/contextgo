@@ -12,7 +12,7 @@ import type { ContextMenuState } from '../types';
 
 interface UseWorkspaceEventsOptions {
   conversation_id: string;
-  eventPrefix: 'gemini' | 'acp' | 'codex' | 'group' | 'openclaw-gateway';
+  eventPrefix: 'gemini' | 'acp' | 'codex' | 'group';
   autoLoadOnMount?: boolean;
 
   // Dependencies from useWorkspaceTree
@@ -140,21 +140,14 @@ export function useWorkspaceEvents(options: UseWorkspaceEventsOptions) {
         throttledRefresh();
       }
     };
-    const handleOpenClawResponse = (data: { type: string }) => {
-      if (data.type === 'acp_tool_call' || data.type === 'tool_group') {
-        throttledRefresh();
-      }
-    };
     const unsubscribeGemini = ipcBridge.geminiConversation.responseStream.on(handleGeminiResponse);
     const unsubscribeAcp = ipcBridge.acpConversation.responseStream.on(handleAcpResponse);
     const unsubscribeCodex = ipcBridge.codexConversation.responseStream.on(handleCodexResponse);
-    const unsubscribeOpenClaw = ipcBridge.openclawConversation.responseStream.on(handleOpenClawResponse);
 
     return () => {
       unsubscribeGemini();
       unsubscribeAcp();
       unsubscribeCodex();
-      unsubscribeOpenClaw();
     };
   }, [conversation_id, eventPrefix, throttledRefresh]);
 

@@ -23,21 +23,17 @@ type GeminiUiStateSnapshot = {
 const GEMINI_UI_STATE_SCOPE = 'gemini';
 
 const createDefaultGeminiUiState = (): GeminiUiStateSnapshot => ({
-    streamRunning: false,
-    hasActiveTools: false,
-    waitingResponse: false,
-    sawToolActivityInTurn: false,
-    thought: { subject: '', description: '' },
-    tokenUsage: null,
-  });
+  streamRunning: false,
+  hasActiveTools: false,
+  waitingResponse: false,
+  sawToolActivityInTurn: false,
+  thought: { subject: '', description: '' },
+  tokenUsage: null,
+});
 
 export const useGeminiMessage = (conversation_id: string, onError?: (message: IResponseMessage) => void) => {
   const addOrUpdateMessage = useAddOrUpdateMessage();
-  const initialUiState = readConversationUiState(
-    GEMINI_UI_STATE_SCOPE,
-    conversation_id,
-    createDefaultGeminiUiState()
-  );
+  const initialUiState = readConversationUiState(GEMINI_UI_STATE_SCOPE, conversation_id, createDefaultGeminiUiState());
   const [streamRunning, setStreamRunning] = useState(initialUiState.streamRunning); // API 流是否在运行
   const [hasActiveTools, setHasActiveTools] = useState(initialUiState.hasActiveTools); // 是否有工具在执行或等待确认
   const [waitingResponse, setWaitingResponse] = useState(initialUiState.waitingResponse); // 等待后端响应（发送消息后到收到 start 之前）
@@ -349,11 +345,7 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
     hasContentInTurnRef.current = false;
 
     const hasCachedState = hasConversationUiState(GEMINI_UI_STATE_SCOPE, conversation_id);
-    const cachedState = readConversationUiState(
-      GEMINI_UI_STATE_SCOPE,
-      conversation_id,
-      createDefaultGeminiUiState()
-    );
+    const cachedState = readConversationUiState(GEMINI_UI_STATE_SCOPE, conversation_id, createDefaultGeminiUiState());
 
     setStreamRunning(cachedState.streamRunning);
     streamRunningRef.current = cachedState.streamRunning;

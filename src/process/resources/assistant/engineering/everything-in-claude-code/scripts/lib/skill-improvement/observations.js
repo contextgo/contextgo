@@ -33,41 +33,39 @@ function createObservationId() {
 function createSkillObservation(input) {
   const task = ensureString(input.task, 'task');
   const skillId = ensureString(input.skill && input.skill.id, 'skill.id');
-  const skillPath = typeof input.skill.path === 'string' && input.skill.path.trim().length > 0
-    ? input.skill.path.trim()
-    : null;
+  const skillPath =
+    typeof input.skill.path === 'string' && input.skill.path.trim().length > 0 ? input.skill.path.trim() : null;
   const success = Boolean(input.success);
   const error = input.error === null || input.error === undefined ? null : String(input.error);
   const feedback = input.feedback === null || input.feedback === undefined ? null : String(input.feedback);
-  const variant = typeof input.variant === 'string' && input.variant.trim().length > 0
-    ? input.variant.trim()
-    : 'baseline';
+  const variant =
+    typeof input.variant === 'string' && input.variant.trim().length > 0 ? input.variant.trim() : 'baseline';
 
   return {
     schemaVersion: OBSERVATION_SCHEMA_VERSION,
-    observationId: typeof input.observationId === 'string' && input.observationId.length > 0
-      ? input.observationId
-      : createObservationId(),
-    timestamp: typeof input.timestamp === 'string' && input.timestamp.length > 0
-      ? input.timestamp
-      : new Date().toISOString(),
+    observationId:
+      typeof input.observationId === 'string' && input.observationId.length > 0
+        ? input.observationId
+        : createObservationId(),
+    timestamp:
+      typeof input.timestamp === 'string' && input.timestamp.length > 0 ? input.timestamp : new Date().toISOString(),
     task,
     skill: {
       id: skillId,
-      path: skillPath
+      path: skillPath,
     },
     outcome: {
       success,
       status: success ? 'success' : 'failure',
       error,
-      feedback
+      feedback,
     },
     run: {
       variant,
       amendmentId: input.amendmentId || null,
       sessionId: input.sessionId || null,
-      source: input.source || 'manual'
-    }
+      source: input.source || 'manual',
+    },
   };
 }
 
@@ -84,17 +82,18 @@ function readSkillObservations(options = {}) {
     return [];
   }
 
-  return fs.readFileSync(observationPath, 'utf8')
+  return fs
+    .readFileSync(observationPath, 'utf8')
     .split(/\r?\n/)
     .filter(Boolean)
-    .map(line => {
+    .map((line) => {
       try {
         return JSON.parse(line);
       } catch {
         return null;
       }
     })
-    .filter(record => record && record.schemaVersion === OBSERVATION_SCHEMA_VERSION);
+    .filter((record) => record && record.schemaVersion === OBSERVATION_SCHEMA_VERSION);
 }
 
 module.exports = {
@@ -104,5 +103,5 @@ module.exports = {
   getSkillObservationsPath,
   getSkillTelemetryRoot,
   readSkillObservations,
-  resolveProjectRoot
+  resolveProjectRoot,
 };

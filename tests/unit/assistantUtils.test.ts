@@ -5,23 +5,18 @@ function createMockPresets() {
     {
       id: 'alpha',
       avatar: 'A',
-      ruleFiles: { 'en-US': 'alpha.md' },
-      defaultEnabledSkills: ['skill-a'],
       nameI18n: { 'en-US': 'Alpha' },
       descriptionI18n: { 'en-US': 'Alpha assistant' },
     },
     {
       id: 'beta',
       avatar: 'B',
-      ruleFiles: { 'en-US': 'beta.md' },
-      skillFiles: { 'en-US': 'beta-skills.md' },
       nameI18n: { 'en-US': 'Beta' },
       descriptionI18n: { 'en-US': 'Beta assistant' },
     },
     {
       id: 'gamma',
       avatar: 'G',
-      ruleFiles: { 'en-US': 'gamma.md' },
       nameI18n: { 'en-US': 'Gamma' },
       descriptionI18n: { 'en-US': 'Gamma assistant' },
     },
@@ -30,6 +25,18 @@ function createMockPresets() {
 
 vi.mock('@/common/config/presets/assistantPresets', () => ({
   ASSISTANT_PRESETS: createMockPresets(),
+}));
+
+vi.mock('@/common/config/presets/bundledAgentPackageRegistry', () => ({
+  getBundledAgentPackageHideOwnedSkillsFromLibrary: vi.fn(() => undefined),
+  getBundledAgentPackageOwnedSkillNames: vi.fn((assistantId: string) => {
+    if (assistantId === 'builtin-alpha') return ['skill-a'];
+    if (assistantId === 'builtin-beta') return ['skill-b'];
+    return undefined;
+  }),
+  hasBundledAgentPackageSkillsPayload: vi.fn(
+    (assistantId: string) => assistantId === 'builtin-alpha' || assistantId === 'builtin-beta'
+  ),
 }));
 
 vi.mock('@/renderer/utils/platform', () => ({
@@ -397,18 +404,15 @@ describe('getBuiltinAssistantPreset', () => {
 });
 
 describe('hasBuiltinSkills', () => {
-  it('returns true for a builtin assistant with defaultEnabledSkills', () => {
-    // "alpha" in the mocked presets has defaultEnabledSkills: ['skill-a']
+  it('returns true for a builtin assistant with a bundled skills payload', () => {
     expect(hasBuiltinSkills('builtin-alpha')).toBe(true);
   });
 
-  it('returns true for a builtin assistant with skillFiles', () => {
-    // "beta" in the mocked presets has skillFiles: { 'en-US': 'beta-skills.md' }
+  it('returns true for another builtin assistant with a bundled skills payload', () => {
     expect(hasBuiltinSkills('builtin-beta')).toBe(true);
   });
 
-  it('returns false for a builtin assistant without skills or skillFiles', () => {
-    // "gamma" in the mocked presets has neither defaultEnabledSkills nor skillFiles
+  it('returns false for a builtin assistant without a bundled skills payload', () => {
     expect(hasBuiltinSkills('builtin-gamma')).toBeFalsy();
   });
 

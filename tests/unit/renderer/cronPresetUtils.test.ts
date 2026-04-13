@@ -210,9 +210,9 @@ describe('getScheduleDirectCreateContext', () => {
     expect(
       getScheduleDirectCreateContext(
         createConversation({
-          type: 'openclaw-gateway',
+          type: 'acp',
           extra: {
-            backend: 'qwen',
+            backend: 'codex',
             workspace: '/tmp/workspace-alpha',
           },
         })
@@ -221,7 +221,7 @@ describe('getScheduleDirectCreateContext', () => {
       conversationId: 'conv-1',
       conversationTitle: 'Workspace Alpha',
       workspacePath: '/tmp/workspace-alpha',
-      agentType: 'qwen',
+      agentType: 'codex',
     });
   });
 

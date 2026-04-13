@@ -210,9 +210,10 @@ describe('useAcpMessage', () => {
 
   it('restores cached running state immediately when remounting the same conversation', async () => {
     mockGetConversation.mockImplementation(
-      () => new Promise(() => {
-        // Keep backend status unresolved so the hook must rely on the in-memory snapshot first.
-      })
+      () =>
+        new Promise(() => {
+          // Keep backend status unresolved so the hook must rely on the in-memory snapshot first.
+        })
     );
 
     const first = renderHook(() => useAcpMessage(CONVERSATION_ID));

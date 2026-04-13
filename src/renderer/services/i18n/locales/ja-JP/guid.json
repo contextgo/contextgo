@@ -13,9 +13,6 @@
     "filters": {
       "all": "すべて"
     },
-    "openclawAgents": {
-      "all": "すべての Agent"
-    },
     "refresh": "更新",
     "loading": "外部 Session をスキャンしています...",
     "updatedAt": "最終更新 {{time}}",

@@ -187,4 +187,13 @@ describe('Router route switching', () => {
 
     expect(await screen.findByText('remote-devices')).toBeInTheDocument();
   });
+
+  it('redirects the removed webui settings route to system settings', async () => {
+    window.history.replaceState({}, '', '/#/settings/webui');
+
+    renderRouter();
+
+    expect(await screen.findByText('system-settings')).toBeInTheDocument();
+    expect(screen.queryByText('webui-settings')).not.toBeInTheDocument();
+  });
 });

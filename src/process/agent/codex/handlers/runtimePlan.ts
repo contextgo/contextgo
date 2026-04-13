@@ -55,7 +55,10 @@ const normalizeStatus = (source: Record<string, unknown>): CodexRuntimePlanEntry
       continue;
     }
 
-    const normalized = rawStatus.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const normalized = rawStatus
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, '_');
     if (normalized in STATUS_ALIASES) {
       return STATUS_ALIASES[normalized];
     }

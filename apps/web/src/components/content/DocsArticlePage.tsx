@@ -34,7 +34,9 @@ const NavCard = ({
     >
       {label}
     </div>
-    <div className={`theme-text-primary mt-3 text-xl font-semibold tracking-tight ${align === 'right' ? 'text-right' : ''}`}>
+    <div
+      className={`theme-text-primary mt-3 text-xl font-semibold tracking-tight ${align === 'right' ? 'text-right' : ''}`}
+    >
       {entry.title}
     </div>
     <p className={`theme-text-secondary mt-2 text-sm leading-7 ${align === 'right' ? 'text-right' : ''}`}>
@@ -107,7 +109,9 @@ export default function DocsArticlePage({
           <Link href={overviewHref} className='theme-text-tertiary text-sm font-medium hover:theme-text-primary'>
             {backLabel}
           </Link>
-          <div className='theme-text-tertiary mt-5 text-xs font-semibold uppercase tracking-[0.22em]'>{article.eyebrow}</div>
+          <div className='theme-text-tertiary mt-5 text-xs font-semibold uppercase tracking-[0.22em]'>
+            {article.eyebrow}
+          </div>
           <h1 className='theme-text-primary mt-3 max-w-4xl text-4xl font-semibold tracking-[-0.04em] md:text-5xl'>
             {article.title}
           </h1>
@@ -154,7 +158,10 @@ export default function DocsArticlePage({
         </div>
 
         <article className='theme-surface-secondary theme-shadow-card theme-border rounded-[30px] border px-7 py-7 md:px-9 md:py-9'>
-          <div className='content-markdown theme-text-secondary text-base leading-8' dangerouslySetInnerHTML={{ __html: article.html }} />
+          <div
+            className='content-markdown theme-text-secondary text-base leading-8'
+            dangerouslySetInnerHTML={{ __html: article.html }}
+          />
         </article>
 
         {previousEntry || nextEntry ? (
@@ -164,7 +171,9 @@ export default function DocsArticlePage({
             ) : (
               <div />
             )}
-            {nextEntry ? <NavCard entry={nextEntry} label={nextPageLabel} align='right' hrefPrefix={overviewHref} /> : null}
+            {nextEntry ? (
+              <NavCard entry={nextEntry} label={nextPageLabel} align='right' hrefPrefix={overviewHref} />
+            ) : null}
           </div>
         ) : null}
       </div>

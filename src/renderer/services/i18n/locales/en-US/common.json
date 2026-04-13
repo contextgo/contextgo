@@ -57,6 +57,8 @@
   "goToSettings": "Go to Settings",
   "goBack": "Back",
   "forward": "Forward",
+  "devBadge": "DEV",
+  "devBuild": "Development build",
   "localUser": "Local User",
   "more": "More",
   "refresh": "Refresh",

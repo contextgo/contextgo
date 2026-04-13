@@ -17,6 +17,7 @@ A background agent that analyzes observations from Claude Code sessions to detec
 ## Input
 
 Reads observations from the **project-scoped** observations file:
+
 - Project: `~/.claude/homunculus/projects/<project-hash>/observations.jsonl`
 - Global fallback: `~/.claude/homunculus/observations.jsonl`
 
@@ -32,7 +33,9 @@ Reads observations from the **project-scoped** observations file:
 Look for these patterns in observations:
 
 ### 1. User Corrections
+
 When a user's follow-up message corrects Claude's previous action:
+
 - "No, use X instead of Y"
 - "Actually, I meant..."
 - Immediate undo/redo patterns
@@ -40,7 +43,9 @@ When a user's follow-up message corrects Claude's previous action:
 → Create instinct: "When doing X, prefer Y"
 
 ### 2. Error Resolutions
+
 When an error is followed by a fix:
+
 - Tool output contains error
 - Next few tool calls fix it
 - Same error type resolved similarly multiple times
@@ -48,7 +53,9 @@ When an error is followed by a fix:
 → Create instinct: "When encountering error X, try Y"
 
 ### 3. Repeated Workflows
+
 When the same sequence of tools is used multiple times:
+
 - Same tool sequence with similar inputs
 - File patterns that change together
 - Time-clustered operations
@@ -56,7 +63,9 @@ When the same sequence of tools is used multiple times:
 → Create workflow instinct: "When doing X, follow steps Y, Z, W"
 
 ### 4. Tool Preferences
+
 When certain tools are consistently preferred:
+
 - Always uses Grep before Edit
 - Prefers Read over Bash cat
 - Uses specific Bash commands for certain tasks
@@ -66,6 +75,7 @@ When certain tools are consistently preferred:
 ## Output
 
 Creates/updates instincts in the **project-scoped** instincts directory:
+
 - Project: `~/.claude/homunculus/projects/<project-hash>/instincts/personal/`
 - Global: `~/.claude/homunculus/instincts/personal/` (for universal patterns)
 
@@ -121,28 +131,30 @@ Validate and sanitize all user input before processing.
 
 When creating instincts, determine scope based on these heuristics:
 
-| Pattern Type | Scope | Examples |
-|-------------|-------|---------|
-| Language/framework conventions | **project** | "Use React hooks", "Follow Django REST patterns" |
-| File structure preferences | **project** | "Tests in `__tests__`/", "Components in src/components/" |
-| Code style | **project** | "Use functional style", "Prefer dataclasses" |
-| Error handling strategies | **project** (usually) | "Use Result type for errors" |
-| Security practices | **global** | "Validate user input", "Sanitize SQL" |
-| General best practices | **global** | "Write tests first", "Always handle errors" |
-| Tool workflow preferences | **global** | "Grep before Edit", "Read before Write" |
-| Git practices | **global** | "Conventional commits", "Small focused commits" |
+| Pattern Type                   | Scope                 | Examples                                                 |
+| ------------------------------ | --------------------- | -------------------------------------------------------- |
+| Language/framework conventions | **project**           | "Use React hooks", "Follow Django REST patterns"         |
+| File structure preferences     | **project**           | "Tests in `__tests__`/", "Components in src/components/" |
+| Code style                     | **project**           | "Use functional style", "Prefer dataclasses"             |
+| Error handling strategies      | **project** (usually) | "Use Result type for errors"                             |
+| Security practices             | **global**            | "Validate user input", "Sanitize SQL"                    |
+| General best practices         | **global**            | "Write tests first", "Always handle errors"              |
+| Tool workflow preferences      | **global**            | "Grep before Edit", "Read before Write"                  |
+| Git practices                  | **global**            | "Conventional commits", "Small focused commits"          |
 
 **When in doubt, default to `scope: project`** — it's safer to be project-specific and promote later than to contaminate the global space.
 
 ## Confidence Calculation
 
 Initial confidence based on observation frequency:
+
 - 1-2 observations: 0.3 (tentative)
 - 3-5 observations: 0.5 (moderate)
 - 6-10 observations: 0.7 (strong)
 - 11+ observations: 0.85 (very strong)
 
 Confidence adjusts over time:
+
 - +0.05 for each confirming observation
 - -0.1 for each contradicting observation
 - -0.02 per week without observation (decay)
@@ -150,6 +162,7 @@ Confidence adjusts over time:
 ## Instinct Promotion (Project → Global)
 
 An instinct should be promoted from project-scoped to global when:
+
 1. The **same pattern** (by id or similar trigger) exists in **2+ different projects**
 2. Each instance has confidence **>= 0.8**
 3. The domain is in the global-friendly list (security, general-best-practices, workflow)
@@ -169,6 +182,7 @@ Promotion is handled by the `instinct-cli.py promote` command or the `/evolve` a
 ## Example Analysis Session
 
 Given observations:
+
 ```jsonl
 {"event":"tool_start","tool":"Grep","input":"pattern: useState","project_id":"a1b2c3","project_name":"my-app"}
 {"event":"tool_complete","tool":"Grep","output":"Found in 3 files","project_id":"a1b2c3","project_name":"my-app"}
@@ -178,6 +192,7 @@ Given observations:
 ```
 
 Analysis:
+
 - Detected workflow: Grep → Read → Edit
 - Frequency: Seen 5 times this session
 - **Scope decision**: This is a general workflow pattern (not project-specific) → **global**
@@ -191,6 +206,7 @@ Analysis:
 ## Integration with Skill Creator
 
 When instincts are imported from Skill Creator (repo analysis), they have:
+
 - `source: "repo-analysis"`
 - `source_repo: "https://github.com/..."`
 - `scope: "project"` (since they come from a specific repo)

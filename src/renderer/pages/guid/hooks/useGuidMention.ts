@@ -80,9 +80,6 @@ export const useGuidMention = ({
       if (agent.customAgentId) {
         tokens.add(agent.customAgentId.toLowerCase());
       }
-      if (agent.openclawAgentId) {
-        tokens.add(agent.openclawAgentId.toLowerCase());
-      }
       const mappedAvatarImage = avatar ? CUSTOM_AVATAR_IMAGE_MAP[avatar] : undefined;
       const avatarImage =
         mappedAvatarImage || (avatar && /^(https?:|file:|data:|contextgo-asset:|\/)/.test(avatar) ? avatar : undefined);

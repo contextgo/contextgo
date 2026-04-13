@@ -15,7 +15,7 @@ origin: ECC
 metadata:
   author: evos
   clawdbot:
-    emoji: ""
+    emoji: ''
 ---
 
 # Returns & Reverse Logistics
@@ -116,32 +116,32 @@ Warranty claims are distinct from returns and follow a different workflow:
 
 ### Disposition Routing by Category and Condition
 
-| Category | Grade A | Grade B | Grade C | Grade D |
-|---|---|---|---|---|
-| Consumer Electronics | Restock (test first) | Open box / Renewed | Refurb if ROI > 40%, else liquidate | Parts harvest or e-waste |
-| Apparel | Restock if tags on | Repackage / outlet | Liquidate by weight | Textile recycling |
-| Home & Furniture | Restock | Open box with discount | Liquidate (local, avoid shipping) | Donate or destroy |
-| Health & Beauty | Restock if sealed | Destroy (regulation) | Destroy | Destroy |
-| Books & Media | Restock | Restock (discount) | Liquidate | Recycle |
-| Sporting Goods | Restock | Open box | Refurb if cost < 25% value | Parts or donate |
-| Toys & Games | Restock if sealed | Open box | Liquidate | Donate (if safety-compliant) |
+| Category             | Grade A              | Grade B                | Grade C                             | Grade D                      |
+| -------------------- | -------------------- | ---------------------- | ----------------------------------- | ---------------------------- |
+| Consumer Electronics | Restock (test first) | Open box / Renewed     | Refurb if ROI > 40%, else liquidate | Parts harvest or e-waste     |
+| Apparel              | Restock if tags on   | Repackage / outlet     | Liquidate by weight                 | Textile recycling            |
+| Home & Furniture     | Restock              | Open box with discount | Liquidate (local, avoid shipping)   | Donate or destroy            |
+| Health & Beauty      | Restock if sealed    | Destroy (regulation)   | Destroy                             | Destroy                      |
+| Books & Media        | Restock              | Restock (discount)     | Liquidate                           | Recycle                      |
+| Sporting Goods       | Restock              | Open box               | Refurb if cost < 25% value          | Parts or donate              |
+| Toys & Games         | Restock if sealed    | Open box               | Liquidate                           | Donate (if safety-compliant) |
 
 ### Fraud Scoring Model
 
 Score each return 0-100. Flag for review at 65+, hold refund at 80+:
 
-| Signal | Points | Notes |
-|---|---|---|
-| Return rate > 30% (rolling 12 mo) | +15 | Adjusted for category norms |
-| Item returned within 48 hours of delivery | +5 | Could be legitimate bracket shopping |
-| High-value electronics, serial number mismatch | +40 | Near-certain swap fraud |
-| Return reason changed between initiation and receipt | +10 | Inconsistency flag |
-| Multiple returns same week | +10 | Cumulative with rate signal |
-| Return from address different from shipping address | +10 | Gift returns excluded |
-| Product weight differs > 5% from expected | +25 | Swap or missing components |
-| Customer account < 30 days old | +10 | New account risk |
-| No-receipt return | +15 | Higher risk of receipt fraud |
-| Item in category with high shrink rate | +5 | Electronics, cosmetics, designer apparel |
+| Signal                                               | Points | Notes                                    |
+| ---------------------------------------------------- | ------ | ---------------------------------------- |
+| Return rate > 30% (rolling 12 mo)                    | +15    | Adjusted for category norms              |
+| Item returned within 48 hours of delivery            | +5     | Could be legitimate bracket shopping     |
+| High-value electronics, serial number mismatch       | +40    | Near-certain swap fraud                  |
+| Return reason changed between initiation and receipt | +10    | Inconsistency flag                       |
+| Multiple returns same week                           | +10    | Cumulative with rate signal              |
+| Return from address different from shipping address  | +10    | Gift returns excluded                    |
+| Product weight differs > 5% from expected            | +25    | Swap or missing components               |
+| Customer account < 30 days old                       | +10    | New account risk                         |
+| No-receipt return                                    | +15    | Higher risk of receipt fraud             |
+| Item in category with high shrink rate               | +5     | Electronics, cosmetics, designer apparel |
 
 ### Vendor Recovery ROI
 
@@ -206,16 +206,16 @@ Brief templates appear below. Adapt them to your fraud, CX, and reverse-logistic
 
 ### Automatic Escalation Triggers
 
-| Trigger | Action | Timeline |
-|---|---|---|
-| Return value > $5,000 (single item) | Supervisor approval required before refund | Before processing |
-| Fraud score ≥ 80 | Hold refund, route to fraud review team | Immediately |
-| Customer has filed chargeback simultaneously | Halt return processing, coordinate with payments team | Within 1 hour |
-| Product identified as recalled | Route to recall coordinator, do not process as standard return | Immediately |
-| Vendor defect rate exceeds 5% for SKU | Notify merchandise and vendor management | Within 24 hours |
-| Third policy exception request from same customer in 12 months | Manager review before granting | Before processing |
-| Suspected counterfeit in return stream | Pull from processing, photograph, notify LP and brand protection | Immediately |
-| Return involves regulated product (pharma, hazmat, medical device) | Route to compliance team | Immediately |
+| Trigger                                                            | Action                                                           | Timeline          |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------- | ----------------- |
+| Return value > $5,000 (single item)                                | Supervisor approval required before refund                       | Before processing |
+| Fraud score ≥ 80                                                   | Hold refund, route to fraud review team                          | Immediately       |
+| Customer has filed chargeback simultaneously                       | Halt return processing, coordinate with payments team            | Within 1 hour     |
+| Product identified as recalled                                     | Route to recall coordinator, do not process as standard return   | Immediately       |
+| Vendor defect rate exceeds 5% for SKU                              | Notify merchandise and vendor management                         | Within 24 hours   |
+| Third policy exception request from same customer in 12 months     | Manager review before granting                                   | Before processing |
+| Suspected counterfeit in return stream                             | Pull from processing, photograph, notify LP and brand protection | Immediately       |
+| Return involves regulated product (pharma, hazmat, medical device) | Route to compliance team                                         | Immediately       |
 
 ### Escalation Chain
 
@@ -223,16 +223,16 @@ Level 1 (Returns Associate) → Level 2 (Team Lead, 2 hours) → Level 3 (Return
 
 ## Performance Indicators
 
-| Metric | Target | Red Flag |
-|---|---|---|
-| Return processing time (receipt to refund) | < 48 hours | > 96 hours |
-| Inspection accuracy (grade agreement on audit) | > 95% | < 88% |
-| Restock rate (% of returns restocked as new/open box) | > 45% | < 30% |
-| Fraud detection rate (confirmed fraud caught) | > 80% | < 60% |
-| False positive rate (legitimate returns flagged) | < 3% | > 8% |
-| Vendor recovery rate ($ recovered / $ eligible) | > 70% | < 45% |
-| Customer satisfaction (post-return CSAT) | > 4.2/5.0 | < 3.5/5.0 |
-| Cost per return processed | < $8.00 | > $15.00 |
+| Metric                                                | Target     | Red Flag   |
+| ----------------------------------------------------- | ---------- | ---------- |
+| Return processing time (receipt to refund)            | < 48 hours | > 96 hours |
+| Inspection accuracy (grade agreement on audit)        | > 95%      | < 88%      |
+| Restock rate (% of returns restocked as new/open box) | > 45%      | < 30%      |
+| Fraud detection rate (confirmed fraud caught)         | > 80%      | < 60%      |
+| False positive rate (legitimate returns flagged)      | < 3%       | > 8%       |
+| Vendor recovery rate ($ recovered / $ eligible)       | > 70%      | < 45%      |
+| Customer satisfaction (post-return CSAT)              | > 4.2/5.0  | < 3.5/5.0  |
+| Cost per return processed                             | < $8.00    | > $15.00   |
 
 ## Additional Resources
 

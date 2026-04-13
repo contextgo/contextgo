@@ -21,14 +21,14 @@ Modern SwiftUI patterns for building declarative, performant user interfaces on 
 
 Choose the simplest wrapper that fits:
 
-| Wrapper | Use Case |
-|---------|----------|
-| `@State` | View-local value types (toggles, form fields, sheet presentation) |
-| `@Binding` | Two-way reference to parent's `@State` |
-| `@Observable` class + `@State` | Owned model with multiple properties |
-| `@Observable` class (no wrapper) | Read-only reference passed from parent |
-| `@Bindable` | Two-way binding to an `@Observable` property |
-| `@Environment` | Shared dependencies injected via `.environment()` |
+| Wrapper                          | Use Case                                                          |
+| -------------------------------- | ----------------------------------------------------------------- |
+| `@State`                         | View-local value types (toggles, form fields, sheet presentation) |
+| `@Binding`                       | Two-way reference to parent's `@State`                            |
+| `@Observable` class + `@State`   | Owned model with multiple properties                              |
+| `@Observable` class (no wrapper) | Read-only reference passed from parent                            |
+| `@Bindable`                      | Two-way binding to an `@Observable` property                      |
+| `@Environment`                   | Shared dependencies injected via `.environment()`                 |
 
 ### @Observable ViewModel
 

@@ -16,7 +16,7 @@ import styles from '../index.module.css';
 type AgentPillBarProps = {
   availableAgents: AvailableAgent[];
   selectedAgentKey: string;
-  getAgentKey: (agent: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string }) => string;
+  getAgentKey: (agent: { backend: AcpBackend; customAgentId?: string }) => string;
   onSelectAgent: (key: string) => void;
 };
 
@@ -44,7 +44,8 @@ const AgentPillBar: React.FC<AgentPillBarProps> = ({
                 <Button
                   key={getAgentKey(agent)}
                   type='text'
-                  className={`${styles.agentPillChip} ${isSelected ? styles.agentPillChipActive : ''}`}
+                  aria-label={agent.name}
+                  className={`${styles.agentPillChip} ${isSelected ? styles.agentPillChipActive : styles.agentPillChipCompact}`}
                   onClick={() => onSelectAgent(getAgentKey(agent))}
                 >
                   {logoSrc ? (
@@ -58,7 +59,7 @@ const AgentPillBar: React.FC<AgentPillBarProps> = ({
                   ) : (
                     <Robot theme='outline' size={18} fill='currentColor' style={{ flexShrink: 0 }} />
                   )}
-                  <span className={styles.agentPillChipLabel}>{agent.name}</span>
+                  {isSelected ? <span className={styles.agentPillChipLabel}>{agent.name}</span> : null}
                 </Button>
               );
             })}

@@ -27,6 +27,7 @@ Build platform-native content without flattening the author's real voice into pl
 ## Source-First Workflow
 
 Before drafting, identify the source set:
+
 - published articles
 - notes or internal memos
 - product demos
@@ -47,6 +48,7 @@ Run `brand-voice` first when:
 - the content is launch, outreach, or reputation-sensitive
 
 At minimum, produce a compact `VOICE PROFILE` covering:
+
 - rhythm
 - compression
 - capitalization
@@ -60,6 +62,7 @@ Do not start drafting until the voice profile is clear enough to enforce.
 ## Affaan / ECC Voice Reference
 
 When the user wants Affaan / ECC voice specifically, default to this unless newer examples clearly override it:
+
 - direct, compressed, concrete
 - strong preference for specific claims, numbers, mechanisms, and receipts
 - parentheticals used to qualify, narrow, or over-clarify, not to do corny bits
@@ -71,6 +74,7 @@ When the user wants Affaan / ECC voice specifically, default to this unless newe
 ## Hard Bans
 
 Delete and rewrite any of these:
+
 - "In today's rapidly evolving landscape"
 - "game-changer", "revolutionary", "cutting-edge"
 - "no fluff"
@@ -130,6 +134,7 @@ Delete and rewrite any of these:
 ## Deliverables
 
 When asked for a campaign, return:
+
 - a short voice profile if voice matching matters
 - the core angle
 - platform-native drafts
@@ -139,6 +144,7 @@ When asked for a campaign, return:
 ## Quality Gate
 
 Before delivering:
+
 - every draft sounds like the intended author, not the platform stereotype
 - every draft contains a real claim, proof point, or concrete observation
 - no generic hype language remains

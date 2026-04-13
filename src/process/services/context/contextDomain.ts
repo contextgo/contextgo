@@ -9,7 +9,8 @@ export type ContextJobType =
   | 'session_pattern_detection'
   | 'project_promotion'
   | 'space_memory_distillation'
-  | 'connector_digest';
+  | 'connector_digest'
+  | 'project_capability_curation';
 
 export type ContextJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -144,14 +145,28 @@ export type ConnectorDigestArtifact = ContextRunArtifact & {
   spaceId: string;
 };
 
+export type ProjectCapabilityCurationArtifact = {
+  projectSlug: string;
+  noteTitle: string;
+  relativePath: string;
+  summary: string;
+};
+
 export type ContextJobArtifact =
   | SessionCompactionArtifact
   | ProjectPromotionArtifact
   | SpaceMemoryDistillationArtifact
-  | ConnectorDigestArtifact;
+  | ConnectorDigestArtifact
+  | ProjectCapabilityCurationArtifact;
 
 function sanitizeCompactionKeySegment(value: string): string {
-  return value.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'session';
+  return (
+    value
+      .trim()
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'session'
+  );
 }
 
 export function createSessionCompactionProfileKey(threadId: string): string {
@@ -162,12 +177,7 @@ export function createSessionCompactionProfileId(threadId: string): string {
   return `profile-session-compaction-${sanitizeCompactionKeySegment(threadId)}`;
 }
 
-export type ConnectorSourceKind =
-  | 'im-thread'
-  | 'knowledge-doc'
-  | 'calendar-event'
-  | 'repo-activity'
-  | 'web-resource';
+export type ConnectorSourceKind = 'im-thread' | 'knowledge-doc' | 'calendar-event' | 'repo-activity' | 'web-resource';
 
 export type ConnectorSource = {
   connectorId: string;
