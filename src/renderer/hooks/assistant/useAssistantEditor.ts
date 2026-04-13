@@ -3,10 +3,11 @@ import { ConfigStorage } from '@/common/config/storage';
 import type { Message } from '@arco-design/web-react';
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import {
-  getBuiltinAssistantPreset,
+  getBuiltinPackageOwnedSkillNames,
   getIncompatibleHookNames,
   hasBuiltinSkills,
   isExtensionAssistant as isExtensionAssistantUtil,
+  shouldHideBuiltinPackageOwnedSkills,
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/assistantUtils';
 import type {
   AssistantListItem,
@@ -132,13 +133,12 @@ export const useAssistantEditor = ({
       setEditSkills(skills);
       setAvailableHooks(hooksList);
 
-      // Load skills list for builtin assistants with skillFiles and all custom assistants
+      // Load skills list for builtin assistants with bundled skills payloads and all custom assistants
       if (hasBuiltinSkills(assistant.id) || !assistant.isBuiltin) {
-        const preset = getBuiltinAssistantPreset(assistant.id);
         const skillsList = await ipcBridge.fs.listAvailableSkills.invoke({ presetAssistantId: assistant.id });
-        const packageOwnedSkillNames = new Set(preset?.defaultEnabledSkills || []);
+        const packageOwnedSkillNames = new Set(getBuiltinPackageOwnedSkillNames(assistant.id));
         const visibleSkills =
-          assistant.isBuiltin && preset?.hideDefaultSkillsFromLibrary
+          assistant.isBuiltin && shouldHideBuiltinPackageOwnedSkills(assistant.id)
             ? skillsList.filter((skill) => !packageOwnedSkillNames.has(skill.name))
             : skillsList;
         setAvailableSkills(visibleSkills);

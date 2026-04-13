@@ -1,0 +1,119 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "finance-analyst",
+  "assistantPresetId": "builtin-finance-analyst",
+  "displayName": "Finance Analyst",
+  "runtimeNeutral": true,
+  "payloads": {
+    "rules": {
+      "logicalId": "rules",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "."
+        }
+      ],
+      "files": {
+        "en-US": "finance-analyst.md",
+        "zh-CN": "finance-analyst.zh-CN.md"
+      },
+      "installSurface": "assistant-rules-cache",
+      "runtimeProjection": "none"
+    },
+    "docs": {
+      "logicalId": "docs",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "docs"
+        }
+      ],
+      "installSurface": "package-docs",
+      "runtimeProjection": "none"
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/finance-analyst-pack"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/office-analyst-pack"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "removed-office-skill"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "removed-office-skill"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "removed-office-skill"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "xlsx",
+        "docx",
+        "pdf",
+        "office-document-operations",
+        "office-duckdb-read-file",
+        "office-duckdb-query",
+        "office-duckdb-install",
+        "office-source-reconciliation",
+        "finance-financial-statement-analysis",
+        "finance-ratio-benchmarking",
+        "finance-budget-variance-analysis",
+        "finance-dcf-valuation",
+        "finance-forecast-scenario-planning",
+        "finance-saas-metrics",
+        "finance-investment-memo",
+        "finance-comparable-valuation",
+        "finance-investment-screening",
+        "finance-thesis-stress-test"
+      ],
+      "packagedSkillNames": [
+        "finance-financial-statement-analysis",
+        "finance-ratio-benchmarking",
+        "finance-budget-variance-analysis",
+        "finance-dcf-valuation",
+        "finance-forecast-scenario-planning",
+        "finance-saas-metrics",
+        "finance-investment-memo",
+        "finance-comparable-valuation",
+        "finance-investment-screening",
+        "finance-thesis-stress-test"
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "finance-analyst"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "finance-analyst"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "finance-analyst"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "finance-analyst"
+    }
+  }
+}

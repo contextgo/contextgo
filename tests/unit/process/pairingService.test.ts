@@ -6,12 +6,14 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { pairingRequestedEmit, userAuthorizedEmit, mockResolveConnectorInstance, mockInferRemoteChatType, mockDb } =
+const { pairingRequestedEmit, userAuthorizedEmit, mockResolveConnectorInstance, mockInferRemoteChatType, mockDb, mockListAllConversations, mockReadCatalogForConversations } =
   vi.hoisted(() => ({
     pairingRequestedEmit: vi.fn(),
     userAuthorizedEmit: vi.fn(),
     mockResolveConnectorInstance: vi.fn(),
     mockInferRemoteChatType: vi.fn(),
+    mockListAllConversations: vi.fn(),
+    mockReadCatalogForConversations: vi.fn(),
     mockDb: {
       getConnectorInstances: vi.fn(),
       getPendingPairingRequests: vi.fn(),
@@ -44,6 +46,18 @@ vi.mock('@process/channels/core/ChannelRouteResolver', () => ({
 
 vi.mock('@process/services/database', () => ({
   getDatabase: vi.fn(async () => mockDb),
+}));
+
+vi.mock('@/process/services/conversationServiceSingleton', () => ({
+  conversationServiceSingleton: {
+    listAllConversations: mockListAllConversations,
+  },
+}));
+
+vi.mock('@process/channels/core/ProjectChannelPublicationService', () => ({
+  ProjectChannelPublicationService: class {
+    readCatalogForConversations = mockReadCatalogForConversations;
+  },
 }));
 
 import { PairingService } from '@process/channels/pairing/PairingService';
@@ -79,7 +93,14 @@ describe('PairingService', () => {
     mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({ success: true, data: null });
     mockDb.getLegacyChannelUserByPlatform.mockReturnValue({ success: true, data: null });
     mockDb.getChannelUsers.mockReturnValue({ success: true, data: [] });
-    mockDb.getChannelBindingsForScope = vi.fn().mockReturnValue({ success: true, data: [] });
+    mockListAllConversations.mockResolvedValue([]);
+    mockReadCatalogForConversations.mockResolvedValue({
+      workspaces: [],
+      agentProfiles: [],
+      bindings: [],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
+    });
     mockDb.upsertRemoteIdentity.mockReturnValue({ success: true, data: true });
     mockDb.ensureChannelUserMirror.mockReturnValue({
       success: true,
@@ -263,31 +284,27 @@ describe('PairingService', () => {
   it('treats a published topic audience as authorized even before pairing identity exists', async () => {
     const service = createService();
     mockInferRemoteChatType.mockReturnValue('group');
-    mockDb.getChannelBindingsForScope.mockImplementation(
-      (_connectorId: string, scopeType: string, scopeKey?: string) => {
-        if (scopeType === 'remote_chat' && scopeKey === 'oc_topic_1:thread:om_topic_root_1') {
-          return {
-            success: true,
-            data: [
-              {
-                id: 'binding-topic',
-                connectorId: 'connector-b',
-                scopeType: 'remote_chat',
-                scopeKey,
-                agentProfileId: 'agent-topic',
-                priority: 0,
-                enabled: true,
-                temporary: false,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-              },
-            ],
-          };
-        }
-
-        return { success: true, data: [] };
-      }
-    );
+    mockReadCatalogForConversations.mockResolvedValueOnce({
+      workspaces: [],
+      agentProfiles: [],
+      bindings: [
+        {
+          id: 'binding-topic',
+          connectorId: 'connector-b',
+          channelAccountId: 'connector-b',
+          scopeType: 'remote_chat',
+          scopeKey: 'oc_topic_1:thread:om_topic_root_1',
+          agentProfileId: 'agent-topic',
+          priority: 0,
+          enabled: true,
+          temporary: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
+    });
 
     const authorized = await service.isUserAuthorized(
       'ou_user_1',
@@ -304,31 +321,27 @@ describe('PairingService', () => {
   it('treats a published parent group audience as authorization for child topics', async () => {
     const service = createService();
     mockInferRemoteChatType.mockReturnValue('group');
-    mockDb.getChannelBindingsForScope.mockImplementation(
-      (_connectorId: string, scopeType: string, scopeKey?: string) => {
-        if (scopeType === 'remote_chat' && scopeKey === 'oc_group_1') {
-          return {
-            success: true,
-            data: [
-              {
-                id: 'binding-group',
-                connectorId: 'connector-b',
-                scopeType: 'remote_chat',
-                scopeKey,
-                agentProfileId: 'agent-group',
-                priority: 0,
-                enabled: true,
-                temporary: false,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-              },
-            ],
-          };
-        }
-
-        return { success: true, data: [] };
-      }
-    );
+    mockReadCatalogForConversations.mockResolvedValueOnce({
+      workspaces: [],
+      agentProfiles: [],
+      bindings: [
+        {
+          id: 'binding-group',
+          connectorId: 'connector-b',
+          channelAccountId: 'connector-b',
+          scopeType: 'remote_chat',
+          scopeKey: 'oc_group_1',
+          agentProfileId: 'agent-group',
+          priority: 0,
+          enabled: true,
+          temporary: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
+    });
 
     const authorized = await service.isUserAuthorized(
       'ou_user_1',

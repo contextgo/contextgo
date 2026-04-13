@@ -57,6 +57,8 @@
   "goToSettings": "前往设置",
   "goBack": "后退",
   "forward": "前进",
+  "devBadge": "DEV",
+  "devBuild": "开发版本",
   "localUser": "本机用户",
   "more": "更多",
   "refresh": "刷新",

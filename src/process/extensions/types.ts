@@ -135,7 +135,11 @@ export const ExtFieldSchema = z.object({
 
 // ============ ACP Adapter Schema ============
 
-export const PRESET_AGENT_TYPES = ['gemini', 'claude', 'codex', 'codebuddy', 'opencode'] as const;
+/**
+ * Product-supported preset agent types.
+ * Legacy preset ids are still accepted by the schema via the free-form string branch below.
+ */
+export const PRESET_AGENT_TYPES = ['gemini', 'claude', 'codex', 'opencode'] as const;
 
 export const ExtAcpAdapterSchema = z
   .object({

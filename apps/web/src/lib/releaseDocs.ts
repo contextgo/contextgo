@@ -209,7 +209,10 @@ export const getAdjacentReleaseDocEntries = (
   };
 };
 
-export const getReleaseDocEntry = async (resolved: ResolvedReleaseDocs, slug: string): Promise<PublicArticle | null> => {
+export const getReleaseDocEntry = async (
+  resolved: ResolvedReleaseDocs,
+  slug: string
+): Promise<PublicArticle | null> => {
   if (resolved.source === 'site-fallback') {
     return resolved.articles[slug] ?? null;
   }

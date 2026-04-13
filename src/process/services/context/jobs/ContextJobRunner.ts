@@ -29,7 +29,8 @@ export class ContextJobRunner {
     private readonly projectPromotionHandler: JobHandler,
     private readonly spaceMemoryDistillationHandler?: JobHandler,
     private readonly connectorDigestHandler?: JobHandler,
-    private readonly sessionPatternDetectionHandler?: JobHandler
+    private readonly sessionPatternDetectionHandler?: JobHandler,
+    private readonly projectCapabilityCurationHandler?: JobHandler
   ) {}
 
   async kick(): Promise<void> {
@@ -39,14 +40,14 @@ export class ContextJobRunner {
 
     this.running = true;
     try {
-      let job = this.queue.dequeue(candidate => this.supports(candidate));
+      let job = this.queue.dequeue((candidate) => this.supports(candidate));
       while (job) {
         await this.runJob(job);
-        job = this.queue.dequeue(candidate => this.supports(candidate));
+        job = this.queue.dequeue((candidate) => this.supports(candidate));
       }
     } finally {
       this.running = false;
-      if (this.queue.hasJobs(candidate => this.supports(candidate))) {
+      if (this.queue.hasJobs((candidate) => this.supports(candidate))) {
         void this.kick();
       }
     }
@@ -58,7 +59,8 @@ export class ContextJobRunner {
       job.type === 'project_promotion' ||
       job.type === 'space_memory_distillation' ||
       job.type === 'connector_digest' ||
-      job.type === 'session_pattern_detection'
+      job.type === 'session_pattern_detection' ||
+      job.type === 'project_capability_curation'
     );
   }
 
@@ -77,6 +79,9 @@ export class ContextJobRunner {
     }
     if (job.type === 'session_pattern_detection') {
       return this.sessionPatternDetectionHandler ?? this.connectorDigestHandler;
+    }
+    if (job.type === 'project_capability_curation') {
+      return this.projectCapabilityCurationHandler;
     }
     return undefined;
   }

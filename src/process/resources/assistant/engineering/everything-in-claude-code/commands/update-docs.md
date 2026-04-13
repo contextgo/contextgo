@@ -4,13 +4,13 @@ Sync documentation with the codebase, generating from source-of-truth files.
 
 ## Step 1: Identify Sources of Truth
 
-| Source | Generates |
-|--------|-----------|
-| `package.json` scripts | Available commands reference |
-| `.env.example` | Environment variable documentation |
-| `openapi.yaml` / route files | API endpoint reference |
-| Source code exports | Public API documentation |
-| `Dockerfile` / `docker-compose.yml` | Infrastructure setup docs |
+| Source                              | Generates                          |
+| ----------------------------------- | ---------------------------------- |
+| `package.json` scripts              | Available commands reference       |
+| `.env.example`                      | Environment variable documentation |
+| `openapi.yaml` / route files        | API endpoint reference             |
+| Source code exports                 | Public API documentation           |
+| `Dockerfile` / `docker-compose.yml` | Infrastructure setup docs          |
 
 ## Step 2: Generate Script Reference
 
@@ -19,11 +19,11 @@ Sync documentation with the codebase, generating from source-of-truth files.
 3. Generate a reference table:
 
 ```markdown
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Production build with type checking |
-| `npm test` | Run test suite with coverage |
+| Command         | Description                              |
+| --------------- | ---------------------------------------- |
+| `npm run dev`   | Start development server with hot reload |
+| `npm run build` | Production build with type checking      |
+| `npm test`      | Run test suite with coverage             |
 ```
 
 ## Step 3: Generate Environment Documentation
@@ -34,15 +34,16 @@ Sync documentation with the codebase, generating from source-of-truth files.
 4. Document expected format and valid values
 
 ```markdown
-| Variable | Required | Description | Example |
-|----------|----------|-------------|---------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string | `postgres://user:pass@host:5432/db` |
-| `LOG_LEVEL` | No | Logging verbosity (default: info) | `debug`, `info`, `warn`, `error` |
+| Variable       | Required | Description                       | Example                             |
+| -------------- | -------- | --------------------------------- | ----------------------------------- |
+| `DATABASE_URL` | Yes      | PostgreSQL connection string      | `postgres://user:pass@host:5432/db` |
+| `LOG_LEVEL`    | No       | Logging verbosity (default: info) | `debug`, `info`, `warn`, `error`    |
 ```
 
 ## Step 4: Update Contributing Guide
 
 Generate or update `docs/CONTRIBUTING.md` with:
+
 - Development environment setup (prerequisites, install steps)
 - Available scripts and their purposes
 - Testing procedures (how to run, how to write new tests)
@@ -52,6 +53,7 @@ Generate or update `docs/CONTRIBUTING.md` with:
 ## Step 5: Update Runbook
 
 Generate or update `docs/RUNBOOK.md` with:
+
 - Deployment procedures (step-by-step)
 - Health check endpoints and monitoring
 - Common issues and their fixes

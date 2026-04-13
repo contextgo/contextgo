@@ -9,7 +9,7 @@ All animations MUST be driven by the `useCurrentFrame()` hook.
 Write animations in seconds and multiply them by the `fps` value from `useVideoConfig()`.
 
 ```tsx
-import { useCurrentFrame } from "remotion";
+import { useCurrentFrame } from 'remotion';
 
 export const FadeIn = () => {
   const frame = useCurrentFrame();
@@ -19,9 +19,7 @@ export const FadeIn = () => {
     extrapolateRight: 'clamp',
   });
 
-  return (
-    <div style={{ opacity }}>Hello World!</div>
-  );
+  return <div style={{ opacity }}>Hello World!</div>;
 };
 ```
 

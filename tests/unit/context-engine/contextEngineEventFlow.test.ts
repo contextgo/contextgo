@@ -32,6 +32,8 @@ vi.mock('@process/services/i18n', () => ({
           'Prepared the context needed to continue this turn.',
         'agent.contextEngine.operationLog.job.session_compaction.queued': 'Session context update queued',
         'agent.contextEngine.operationLog.job.session_compaction.completed': 'Session context updated',
+        'agent.contextEngine.operationLog.job.project_capability_curation.queued': 'Project capability curation queued',
+        'agent.contextEngine.operationLog.job.project_capability_curation.completed': 'Project capability curation completed',
         'common.error': 'Error',
       };
 
@@ -586,6 +588,135 @@ describe('context engine event flow', () => {
       expect.objectContaining({
         projectSlug: 'workspace-abcd1234',
         threadId: 'thread-1',
+      })
+    );
+  });
+
+  it('queues and runs project capability curation jobs for project-scoped triggers', async () => {
+    const bus = new ContextEventBus();
+    const emittedJobs: ContextJob[] = [];
+    const router = new ContextTriggerRouter(bus, {
+      resolve: vi.fn(async () => ({ kind: 'space-vault-root', spaceId: 'space-1', vaultRoot: '/vault/space-1' })),
+    } as never);
+
+    router.register();
+    bus.on('context.job.queued', async (event) => {
+      emittedJobs.push(event.payload.job);
+    });
+
+    const queued = await router.queueManualJob({
+      triggerId: 'manual.project-capability-curation',
+      spaceId: 'space-1',
+      projectSlug: 'workspace-abcd1234',
+      reason: 'Refresh project capability mirror.',
+      payload: {
+        summary: 'Refresh project capability mirror.',
+      },
+      firedAt: '2026-04-08T00:05:00.000Z',
+    });
+
+    expect(queued).toEqual(
+      expect.objectContaining({
+        type: 'project_capability_curation',
+        projectSlug: 'workspace-abcd1234',
+        source: 'manual',
+        reason: 'Refresh project capability mirror.',
+      })
+    );
+    expect(emittedJobs.at(-1)).toEqual(queued);
+
+    const queue = new ContextJobQueue();
+    queue.enqueue(queued!);
+
+    const seen: string[] = [];
+    bus.on('context.job.started', async (event) => {
+      seen.push(`${event.payload.job.type}:started`);
+    });
+    bus.on('context.job.completed', async (event) => {
+      seen.push(`${event.payload.job.type}:${event.payload.status}`);
+    });
+
+    const runner = new ContextJobRunner(
+      queue,
+      bus,
+      {
+        run: vi.fn(async () => undefined),
+      } as never,
+      {
+        run: vi.fn(async () => undefined),
+      } as never,
+      undefined,
+      undefined,
+      undefined,
+      {
+        run: vi.fn(async () => ({
+          projectSlug: 'workspace-abcd1234',
+          noteTitle: 'workspace Capabilities',
+          relativePath: 'Projects/workspace/_context/Capabilities.md',
+          summary: 'Refreshed project capability mirror.',
+        })),
+      } as never
+    );
+
+    await runner.kick();
+
+    expect(seen).toContain('project_capability_curation:started');
+    expect(seen).toContain('project_capability_curation:completed');
+  });
+
+  it('writes operation logs for project capability curation jobs', async () => {
+    const bus = new ContextEventBus();
+    const vaultSyncService = {
+      appendOperationLogEntry: vi.fn(async () => undefined),
+    };
+
+    registerOperationLogVaultProjector(bus, vaultSyncService as never);
+
+    await bus.emit('context.job.queued', {
+      job: {
+        ...makeJob({
+          id: 'job-capability-1',
+          type: 'project_capability_curation',
+          reason: 'Refresh project capability mirror.',
+          projectSlug: 'workspace-abcd1234',
+          payload: { summary: 'Refresh project capability mirror.' },
+        }),
+      },
+    });
+    await bus.emit('context.job.completed', {
+      job: {
+        ...makeJob({
+          id: 'job-capability-1',
+          type: 'project_capability_curation',
+          status: 'completed',
+          reason: 'Refresh project capability mirror.',
+          projectSlug: 'workspace-abcd1234',
+          payload: { summary: 'Refresh project capability mirror.' },
+          completedAt: '2026-04-08T00:06:00.000Z',
+        }),
+      },
+      status: 'completed',
+      completedAt: '2026-04-08T00:06:00.000Z',
+      artifact: {
+        projectSlug: 'workspace-abcd1234',
+        noteTitle: 'workspace Capabilities',
+        relativePath: 'Projects/workspace/_context/Capabilities.md',
+        summary: 'Refreshed project capability mirror.',
+      },
+    });
+
+    expect(vaultSyncService.appendOperationLogEntry).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        title: 'Project capability curation queued',
+        bullets: ['Refresh project capability mirror.'],
+      })
+    );
+    expect(vaultSyncService.appendOperationLogEntry).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        title: 'Project capability curation completed',
+        bullets: ['Refreshed project capability mirror.'],
       })
     );
   });

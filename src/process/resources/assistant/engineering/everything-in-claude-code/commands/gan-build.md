@@ -1,4 +1,5 @@
 Parse the following from $ARGUMENTS:
+
 1. `brief` — the user's one-line description of what to build
 2. `--max-iterations N` — (optional, default 15) maximum generator-evaluator cycles
 3. `--pass-threshold N` — (optional, default 7.0) weighted score to pass
@@ -10,19 +11,23 @@ Parse the following from $ARGUMENTS:
 This command orchestrates a three-agent build loop inspired by Anthropic's March 2026 harness design paper.
 
 ### Phase 0: Setup
+
 1. Create `gan-harness/` directory in project root
 2. Create subdirectories: `gan-harness/feedback/`, `gan-harness/screenshots/`
 3. Initialize git if not already initialized
 4. Log start time and configuration
 
 ### Phase 1: Planning (Planner Agent)
+
 Unless `--skip-planner` is set:
+
 1. Launch the `gan-planner` agent via Task tool with the user's brief
 2. Wait for it to produce `gan-harness/spec.md` and `gan-harness/eval-rubric.md`
 3. Display the spec summary to the user
 4. Proceed to Phase 2
 
 ### Phase 2: Generator-Evaluator Loop
+
 ```
 iteration = 1
 while iteration <= max_iterations:
@@ -62,6 +67,7 @@ while iteration <= max_iterations:
 ```
 
 ### Phase 3: Summary
+
 1. Read all feedback files
 2. Display final scores and iteration history
 3. Show score progression: `iteration 1: 4.2 → iteration 2: 5.8 → ... → iteration N: 7.5`
@@ -79,16 +85,19 @@ while iteration <= max_iterations:
 **Final Score:** X.X / 10
 
 ### Score Progression
+
 | Iter | Design | Originality | Craft | Functionality | Total |
-|------|--------|-------------|-------|---------------|-------|
-| 1 | ... | ... | ... | ... | X.X |
-| 2 | ... | ... | ... | ... | X.X |
-| N | ... | ... | ... | ... | X.X |
+| ---- | ------ | ----------- | ----- | ------------- | ----- |
+| 1    | ...    | ...         | ...   | ...           | X.X   |
+| 2    | ...    | ...         | ...   | ...           | X.X   |
+| N    | ...    | ...         | ...   | ...           | X.X   |
 
 ### Remaining Issues
+
 - [Any issues from final evaluation]
 
 ### Files Created
+
 - gan-harness/spec.md
 - gan-harness/eval-rubric.md
 - gan-harness/feedback/feedback-001.md through feedback-NNN.md

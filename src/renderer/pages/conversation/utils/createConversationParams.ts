@@ -30,7 +30,7 @@ import type {
   WorkflowGroupTemplate,
   DiscussionGroupMode,
 } from '@/common/config/storage';
-import type { AcpBackend, AcpBackendAll } from '@/common/types/acpTypes';
+import type { AcpBackend } from '@/common/types/acpTypes';
 import { resolveLocaleKey, uuid } from '@/common/utils';
 import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
 import { loadPresetAssistantResources } from '@/renderer/utils/model/presetAssistantResources';
@@ -169,7 +169,7 @@ export async function getDefaultGeminiModel(): Promise<TProviderWithModel> {
 
 /**
  * Determine the conversation type from a CLI agent's backend.
- * Codex uses ACP path (type: 'acp' + extra.backend = 'codex').
+ * Current creation flows only emit product conversation types.
  */
 export function getConversationTypeForBackend(backend: string): ICreateConversationParams['type'] {
   return backend === 'gemini' ? 'gemini' : 'acp';
@@ -193,7 +193,9 @@ export async function buildCliAgentParams(
   spaceId?: string
 ): Promise<ICreateConversationParams> {
   const { backend, name: agentName, cliPath } = agent;
-  const resolvedWorkspace = workspace;
+  const requestedWorkspace = workspace.trim();
+  const agentWorkspace = typeof agent.workspace === 'string' ? agent.workspace.trim() : '';
+  const resolvedWorkspace = requestedWorkspace || agentWorkspace;
 
   const type = getConversationTypeForBackend(backend);
 
@@ -205,7 +207,7 @@ export async function buildCliAgentParams(
   };
 
   if (type === 'acp') {
-    extra.backend = backend as AcpBackendAll;
+    extra.backend = backend;
     extra.agentName = agentName;
     if (cliPath) {
       extra.cliPath = cliPath;

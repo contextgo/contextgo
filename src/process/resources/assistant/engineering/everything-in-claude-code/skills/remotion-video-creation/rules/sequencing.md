@@ -24,7 +24,7 @@ This will by default wrap the component in an absolute fill element.
 If the items should not be wrapped, use the `layout` prop:
 
 ```tsx
-<Sequence layout="none">
+<Sequence layout='none'>
   <Title />
 </Sequence>
 ```
@@ -45,7 +45,7 @@ Always premount any `<Sequence>`!
 Use `<Series>` when elements should play one after another without overlap.
 
 ```tsx
-import {Series} from 'remotion';
+import { Series } from 'remotion';
 
 <Series>
   <Series.Sequence durationInFrames={45}>
@@ -96,10 +96,10 @@ Sequences can be nested for complex timing:
 ```tsx
 <Sequence from={0} durationInFrames={120}>
   <Background />
-  <Sequence from={15} durationInFrames={90} layout="none">
+  <Sequence from={15} durationInFrames={90} layout='none'>
     <Title />
   </Sequence>
-  <Sequence from={45} durationInFrames={60} layout="none">
+  <Sequence from={45} durationInFrames={60} layout='none'>
     <Subtitle />
   </Sequence>
 </Sequence>

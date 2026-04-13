@@ -29,4 +29,3 @@ export const RemoteAccessContext = React.createContext<RemoteAccessContextValue 
 export function useRemoteAccessContext(): RemoteAccessContextValue | null {
   return React.useContext(RemoteAccessContext);
 }
-

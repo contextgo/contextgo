@@ -27,13 +27,13 @@ Given a list of scored prospects and the user's social accounts, find mutual con
 
 ## Mutual Ranking Factors
 
-| Factor | Weight | Assessment |
-|--------|--------|------------|
-| Connections to targets | 40% | How many of the scored prospects does this mutual know? |
-| Mutual's role/influence | 20% | Decision maker, investor, or connector? |
-| Location match | 15% | Same city as user or target? |
-| Industry alignment | 15% | Works in the target vertical? |
-| Identifiability | 10% | Has clear X handle, LinkedIn, email? |
+| Factor                  | Weight | Assessment                                              |
+| ----------------------- | ------ | ------------------------------------------------------- |
+| Connections to targets  | 40%    | How many of the scored prospects does this mutual know? |
+| Mutual's role/influence | 20%    | Decision maker, investor, or connector?                 |
+| Location match          | 15%    | Same city as user or target?                            |
+| Industry alignment      | 15%    | Works in the target vertical?                           |
+| Identifiability         | 10%    | Has clear X handle, LinkedIn, email?                    |
 
 ## Warm Path Types
 

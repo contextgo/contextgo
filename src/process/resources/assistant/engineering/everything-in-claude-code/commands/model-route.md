@@ -22,5 +22,6 @@ Recommend the best model tier for the current task by complexity and budget.
 ## Arguments
 
 $ARGUMENTS:
+
 - `[task-description]` optional free-text
 - `--budget low|med|high` optional

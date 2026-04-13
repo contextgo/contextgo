@@ -37,12 +37,14 @@ Automatically translate visa application documents from images to professional E
 ## Output
 
 Creates `<filename>_Translated.pdf` with:
+
 - **Page 1**: Original document image (centered, A4 size)
 - **Page 2**: Professional English translation
 
 ## Requirements
 
 ### Python Libraries
+
 ```bash
 pip install pillow reportlab
 ```
@@ -50,16 +52,19 @@ pip install pillow reportlab
 ### OCR (one of the following)
 
 **macOS (recommended)**:
+
 ```bash
 pip install pyobjc-framework-Vision pyobjc-framework-Quartz
 ```
 
 **Cross-platform**:
+
 ```bash
 pip install easyocr
 ```
 
 **Tesseract**:
+
 ```bash
 brew install tesseract tesseract-lang
 pip install pytesseract

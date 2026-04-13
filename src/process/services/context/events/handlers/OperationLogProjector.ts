@@ -4,11 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type {
-  ContextJobArtifact,
-  ProjectPromotionArtifact,
-  SessionCompactionArtifact,
-} from '../../contextDomain';
+import type { ContextJobArtifact, ProjectPromotionArtifact, SessionCompactionArtifact } from '../../contextDomain';
 import type { ContextServiceImpl } from '../../ContextServiceImpl';
 import type { ContextEventBus } from '../ContextEventBus';
 
@@ -16,15 +12,11 @@ function createId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function isSessionCompactionArtifact(
-  artifact: ContextJobArtifact | undefined
-): artifact is SessionCompactionArtifact {
+function isSessionCompactionArtifact(artifact: ContextJobArtifact | undefined): artifact is SessionCompactionArtifact {
   return Boolean(artifact && 'profileKey' in artifact);
 }
 
-function isProjectPromotionArtifact(
-  artifact: ContextJobArtifact | undefined
-): artifact is ProjectPromotionArtifact {
+function isProjectPromotionArtifact(artifact: ContextJobArtifact | undefined): artifact is ProjectPromotionArtifact {
   return Boolean(artifact && 'relativePath' in artifact);
 }
 
@@ -32,7 +24,7 @@ export function registerOperationLogProjector(
   bus: ContextEventBus,
   contextService: Pick<ContextServiceImpl, 'appendSystemOperation'>
 ): void {
-  bus.on('session.signal.detected', async event => {
+  bus.on('session.signal.detected', async (event) => {
     await contextService.appendSystemOperation({
       spaceId: event.payload.spaceId,
       threadId: event.payload.threadId,
@@ -48,7 +40,7 @@ export function registerOperationLogProjector(
     });
   });
 
-  bus.on('connector.source.ingested', async event => {
+  bus.on('connector.source.ingested', async (event) => {
     await contextService.appendSystemOperation({
       spaceId: event.payload.spaceId,
       threadId: event.payload.threadId,
@@ -64,7 +56,7 @@ export function registerOperationLogProjector(
     });
   });
 
-  bus.on('context.job.queued', async event => {
+  bus.on('context.job.queued', async (event) => {
     await contextService.appendSystemOperation({
       spaceId: event.payload.job.spaceId,
       threadId: event.payload.job.threadId,
@@ -80,7 +72,7 @@ export function registerOperationLogProjector(
     });
   });
 
-  bus.on('context.job.completed', async event => {
+  bus.on('context.job.completed', async (event) => {
     const artifact = event.payload.artifact;
     await contextService.appendSystemOperation({
       spaceId: event.payload.job.spaceId,

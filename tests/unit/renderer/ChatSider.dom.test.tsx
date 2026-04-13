@@ -69,13 +69,13 @@ describe('ChatSider', () => {
     );
   });
 
-  it('renders the workspace panel for OpenClaw conversations', () => {
+  it('renders the workspace panel for ACP conversations', () => {
     render(
       <ChatSider
         conversation={{
-          id: 'openclaw-1',
-          type: 'openclaw-gateway',
-          name: 'OpenClaw Session',
+          id: 'acp-1',
+          type: 'acp',
+          name: 'Claude Session',
           model: {
             platform: 'openai',
             name: 'Test Model',
@@ -84,22 +84,20 @@ describe('ChatSider', () => {
           createTime: 1,
           modifyTime: 1,
           extra: {
-            workspace: '/tmp/openclaw-workspace',
+            workspace: '/tmp/acp-workspace',
             customWorkspace: false,
-            backend: 'openclaw-gateway',
+            backend: 'claude',
           },
         }}
       />
     );
 
-    expect(screen.getByTestId('chat-workspace')).toHaveTextContent(
-      'openclaw-1:/tmp/openclaw-workspace:openclaw-gateway'
-    );
+    expect(screen.getByTestId('chat-workspace')).toHaveTextContent('acp-1:/tmp/acp-workspace:acp');
     expect(chatWorkspaceMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
-        conversation_id: 'openclaw-1',
-        workspace: '/tmp/openclaw-workspace',
-        eventPrefix: 'openclaw-gateway',
+        conversation_id: 'acp-1',
+        workspace: '/tmp/acp-workspace',
+        eventPrefix: 'acp',
       })
     );
   });

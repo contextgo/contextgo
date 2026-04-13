@@ -35,7 +35,7 @@ function proposeSkillAmendment(skillId, records, options = {}) {
   const report = buildSkillHealthReport(records, {
     ...options,
     skillId,
-    minFailureCount: options.minFailureCount || 1
+    minFailureCount: options.minFailureCount || 1,
   });
   const [health] = report.skills;
 
@@ -44,11 +44,11 @@ function proposeSkillAmendment(skillId, records, options = {}) {
       schemaVersion: AMENDMENT_SCHEMA_VERSION,
       skill: {
         id: skillId,
-        path: null
+        path: null,
       },
       status: 'insufficient-evidence',
       rationale: ['No failed observations were available for this skill.'],
-      patch: null
+      patch: null,
     };
   }
 
@@ -61,7 +61,7 @@ function proposeSkillAmendment(skillId, records, options = {}) {
     status: 'proposed',
     skill: {
       id: skillId,
-      path: health.skill.path || null
+      path: health.skill.path || null,
     },
     evidence: {
       totalRuns: health.totalRuns,
@@ -69,21 +69,21 @@ function proposeSkillAmendment(skillId, records, options = {}) {
       successRate: health.successRate,
       recurringErrors: health.recurringErrors,
       recurringTasks: health.recurringTasks,
-      recurringFeedback: health.recurringFeedback
+      recurringFeedback: health.recurringFeedback,
     },
     rationale: [
       'Proposals are generated from repeated failed runs rather than a single anecdotal error.',
-      'The suggested patch is additive so the original SKILL.md intent remains auditable.'
+      'The suggested patch is additive so the original SKILL.md intent remains auditable.',
     ],
     patch: {
       format: 'markdown-fragment',
       targetPath: health.skill.path || `skills/${skillId}/SKILL.md`,
-      preview
-    }
+      preview,
+    },
   };
 }
 
 module.exports = {
   AMENDMENT_SCHEMA_VERSION,
-  proposeSkillAmendment
+  proposeSkillAmendment,
 };

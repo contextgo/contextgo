@@ -18,63 +18,63 @@ const LANGUAGE_RULES = [
   {
     type: 'python',
     markers: ['requirements.txt', 'pyproject.toml', 'setup.py', 'setup.cfg', 'Pipfile', 'poetry.lock'],
-    extensions: ['.py']
+    extensions: ['.py'],
   },
   {
     type: 'typescript',
     markers: ['tsconfig.json', 'tsconfig.build.json'],
-    extensions: ['.ts', '.tsx']
+    extensions: ['.ts', '.tsx'],
   },
   {
     type: 'javascript',
     markers: ['package.json', 'jsconfig.json'],
-    extensions: ['.js', '.jsx', '.mjs']
+    extensions: ['.js', '.jsx', '.mjs'],
   },
   {
     type: 'golang',
     markers: ['go.mod', 'go.sum'],
-    extensions: ['.go']
+    extensions: ['.go'],
   },
   {
     type: 'rust',
     markers: ['Cargo.toml', 'Cargo.lock'],
-    extensions: ['.rs']
+    extensions: ['.rs'],
   },
   {
     type: 'ruby',
     markers: ['Gemfile', 'Gemfile.lock', 'Rakefile'],
-    extensions: ['.rb']
+    extensions: ['.rb'],
   },
   {
     type: 'java',
     markers: ['pom.xml', 'build.gradle', 'build.gradle.kts'],
-    extensions: ['.java']
+    extensions: ['.java'],
   },
   {
     type: 'csharp',
     markers: [],
-    extensions: ['.cs', '.csproj', '.sln']
+    extensions: ['.cs', '.csproj', '.sln'],
   },
   {
     type: 'swift',
     markers: ['Package.swift'],
-    extensions: ['.swift']
+    extensions: ['.swift'],
   },
   {
     type: 'kotlin',
     markers: [],
-    extensions: ['.kt', '.kts']
+    extensions: ['.kt', '.kts'],
   },
   {
     type: 'elixir',
     markers: ['mix.exs'],
-    extensions: ['.ex', '.exs']
+    extensions: ['.ex', '.exs'],
   },
   {
     type: 'php',
     markers: ['composer.json', 'composer.lock'],
-    extensions: ['.php']
-  }
+    extensions: ['.php'],
+  },
 ];
 
 /**
@@ -88,7 +88,12 @@ const FRAMEWORK_RULES = [
   { framework: 'flask', language: 'python', markers: [], packageKeys: ['flask'] },
 
   // JavaScript/TypeScript frameworks
-  { framework: 'nextjs', language: 'typescript', markers: ['next.config.js', 'next.config.mjs', 'next.config.ts'], packageKeys: ['next'] },
+  {
+    framework: 'nextjs',
+    language: 'typescript',
+    markers: ['next.config.js', 'next.config.mjs', 'next.config.ts'],
+    packageKeys: ['next'],
+  },
   { framework: 'react', language: 'typescript', markers: [], packageKeys: ['react'] },
   { framework: 'vue', language: 'typescript', markers: ['vue.config.js'], packageKeys: ['vue'] },
   { framework: 'angular', language: 'typescript', markers: ['angular.json'], packageKeys: ['@angular/core'] },
@@ -96,7 +101,12 @@ const FRAMEWORK_RULES = [
   { framework: 'express', language: 'javascript', markers: [], packageKeys: ['express'] },
   { framework: 'nestjs', language: 'typescript', markers: ['nest-cli.json'], packageKeys: ['@nestjs/core'] },
   { framework: 'remix', language: 'typescript', markers: [], packageKeys: ['@remix-run/node', '@remix-run/react'] },
-  { framework: 'astro', language: 'typescript', markers: ['astro.config.mjs', 'astro.config.ts'], packageKeys: ['astro'] },
+  {
+    framework: 'astro',
+    language: 'typescript',
+    markers: ['astro.config.mjs', 'astro.config.ts'],
+    packageKeys: ['astro'],
+  },
   { framework: 'nuxt', language: 'typescript', markers: ['nuxt.config.js', 'nuxt.config.ts'], packageKeys: ['nuxt'] },
   { framework: 'electron', language: 'typescript', markers: [], packageKeys: ['electron'] },
 
@@ -119,7 +129,7 @@ const FRAMEWORK_RULES = [
   { framework: 'symfony', language: 'php', markers: ['symfony.lock'], packageKeys: ['symfony/framework-bundle'] },
 
   // Elixir frameworks
-  { framework: 'phoenix', language: 'elixir', markers: [], packageKeys: ['phoenix'] }
+  { framework: 'phoenix', language: 'elixir', markers: [], packageKeys: ['phoenix'] },
 ];
 
 /**
@@ -145,7 +155,7 @@ function fileExists(projectDir, filePath) {
 function hasFileWithExtension(projectDir, extensions) {
   try {
     const entries = fs.readdirSync(projectDir, { withFileTypes: true });
-    return entries.some(entry => {
+    return entries.some((entry) => {
       if (!entry.isFile()) return false;
       const ext = path.extname(entry.name);
       return extensions.includes(ext);
@@ -184,7 +194,7 @@ function getPythonDeps(projectDir) {
     const reqPath = path.join(projectDir, 'requirements.txt');
     if (fs.existsSync(reqPath)) {
       const content = fs.readFileSync(reqPath, 'utf8');
-      content.split('\n').forEach(line => {
+      content.split('\n').forEach((line) => {
         const trimmed = line.trim();
         if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('-')) {
           const name = trimmed
@@ -207,7 +217,7 @@ function getPythonDeps(projectDir) {
       const depMatches = content.match(/dependencies\s*=\s*\[([\s\S]*?)\]/);
       if (depMatches) {
         const block = depMatches[1];
-        block.match(/"([^"]+)"/g)?.forEach(m => {
+        block.match(/"([^"]+)"/g)?.forEach((m) => {
           const name = m
             .replace(/"/g, '')
             .split(/[>=<![;]/)[0]
@@ -237,7 +247,7 @@ function getGoDeps(projectDir) {
     const deps = [];
     const requireBlock = content.match(/require\s*\(([\s\S]*?)\)/);
     if (requireBlock) {
-      requireBlock[1].split('\n').forEach(line => {
+      requireBlock[1].split('\n').forEach((line) => {
         const trimmed = line.trim();
         if (trimmed && !trimmed.startsWith('//')) {
           const parts = trimmed.split(/\s+/);
@@ -265,8 +275,8 @@ function getRustDeps(projectDir) {
     // Match [dependencies] and [dev-dependencies] sections
     const sections = content.match(/\[(dev-)?dependencies\]([\s\S]*?)(?=\n\[|$)/g);
     if (sections) {
-      sections.forEach(section => {
-        section.split('\n').forEach(line => {
+      sections.forEach((section) => {
+        section.split('\n').forEach((line) => {
           const match = line.match(/^([a-zA-Z0-9_-]+)\s*=/);
           if (match && !line.startsWith('[')) {
             deps.push(match[1]);
@@ -309,7 +319,7 @@ function getElixirDeps(projectDir) {
     const deps = [];
     const matches = content.match(/\{:(\w+)/g);
     if (matches) {
-      matches.forEach(m => deps.push(m.replace('{:', '')));
+      matches.forEach((m) => deps.push(m.replace('{:', '')));
     }
     return deps;
   } catch {
@@ -329,7 +339,7 @@ function detectProjectType(projectDir) {
 
   // Step 1: Detect languages
   for (const rule of LANGUAGE_RULES) {
-    const hasMarker = rule.markers.some(m => fileExists(projectDir, m));
+    const hasMarker = rule.markers.some((m) => fileExists(projectDir, m));
     const hasExt = rule.extensions.length > 0 && hasFileWithExtension(projectDir, rule.extensions);
 
     if (hasMarker || hasExt) {
@@ -353,7 +363,7 @@ function detectProjectType(projectDir) {
 
   for (const rule of FRAMEWORK_RULES) {
     // Check marker files
-    const hasMarker = rule.markers.some(m => fileExists(projectDir, m));
+    const hasMarker = rule.markers.some((m) => fileExists(projectDir, m));
 
     // Check package dependencies
     let hasDep = false;
@@ -380,7 +390,7 @@ function detectProjectType(projectDir) {
           depList = elixirDeps;
           break;
       }
-      hasDep = rule.packageKeys.some(key => depList.some(dep => dep.toLowerCase().includes(key.toLowerCase())));
+      hasDep = rule.packageKeys.some((key) => depList.some((dep) => dep.toLowerCase().includes(key.toLowerCase())));
     }
 
     if (hasMarker || hasDep) {
@@ -398,9 +408,23 @@ function detectProjectType(projectDir) {
 
   // Determine if fullstack (both frontend and backend languages)
   const frontendSignals = ['react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'astro', 'remix'];
-  const backendSignals = ['django', 'fastapi', 'flask', 'express', 'nestjs', 'rails', 'spring', 'laravel', 'phoenix', 'gin', 'echo', 'actix', 'axum'];
-  const hasFrontend = frameworks.some(f => frontendSignals.includes(f));
-  const hasBackend = frameworks.some(f => backendSignals.includes(f));
+  const backendSignals = [
+    'django',
+    'fastapi',
+    'flask',
+    'express',
+    'nestjs',
+    'rails',
+    'spring',
+    'laravel',
+    'phoenix',
+    'gin',
+    'echo',
+    'actix',
+    'axum',
+  ];
+  const hasFrontend = frameworks.some((f) => frontendSignals.includes(f));
+  const hasBackend = frameworks.some((f) => backendSignals.includes(f));
 
   if (hasFrontend && hasBackend) {
     primary = 'fullstack';
@@ -410,7 +434,7 @@ function detectProjectType(projectDir) {
     languages,
     frameworks,
     primary,
-    projectDir
+    projectDir,
   };
 }
 
@@ -424,5 +448,5 @@ module.exports = {
   getGoDeps,
   getRustDeps,
   getComposerDeps,
-  getElixirDeps
+  getElixirDeps,
 };

@@ -15,6 +15,7 @@ Example response:
 {"write_test": [0, 1], "run_test_red": [2], "write_impl": [3, 4]}
 
 Rules:
+
 - Match based on the MEANING of the tool call, not just keywords
 - A Write to "test_calculator.py" is a test file write, even if the content is implementation-like
 - A Write to "calculator.py" is an implementation write, even if it contains test helpers

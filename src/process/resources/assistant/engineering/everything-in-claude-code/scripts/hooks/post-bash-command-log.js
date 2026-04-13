@@ -11,11 +11,11 @@ let raw = '';
 const MODE_CONFIG = {
   audit: {
     fileName: 'bash-commands.log',
-    format: command => `[${new Date().toISOString()}] ${command}`,
+    format: (command) => `[${new Date().toISOString()}] ${command}`,
   },
   cost: {
     fileName: 'cost-tracker.log',
-    format: command => `[${new Date().toISOString()}] tool=Bash command=${command}`,
+    format: (command) => `[${new Date().toISOString()}] tool=Bash command=${command}`,
   },
 };
 
@@ -42,7 +42,7 @@ function main() {
   const config = MODE_CONFIG[process.argv[2]];
 
   process.stdin.setEncoding('utf8');
-  process.stdin.on('data', chunk => {
+  process.stdin.on('data', (chunk) => {
     if (raw.length < MAX_STDIN) {
       const remaining = MAX_STDIN - raw.length;
       raw += chunk.substring(0, remaining);

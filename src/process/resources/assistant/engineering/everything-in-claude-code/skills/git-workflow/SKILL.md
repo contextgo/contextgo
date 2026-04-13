@@ -32,6 +32,7 @@ main (protected, always deployable)
 ```
 
 **Rules:**
+
 - `main` is always deployable
 - Create feature branches from `main`
 - Open Pull Request when ready for review
@@ -51,6 +52,7 @@ main (trunk)
 ```
 
 **Rules:**
+
 - Everyone commits to `main` or very short-lived branches
 - Feature flags hide incomplete work
 - CI must pass before merge
@@ -74,6 +76,7 @@ main (production releases)
 ```
 
 **Rules:**
+
 - `main` contains production-ready code only
 - `develop` is the integration branch
 - Feature branches from `develop`, merge back to `develop`
@@ -82,11 +85,11 @@ main (production releases)
 
 ### When to Use Which
 
-| Strategy | Team Size | Release Cadence | Best For |
-|----------|-----------|-----------------|----------|
-| GitHub Flow | Any | Continuous | SaaS, web apps, startups |
-| Trunk-Based | 5+ experienced | Multiple/day | High-velocity teams, feature flags |
-| GitFlow | 10+ | Scheduled | Enterprise, regulated industries |
+| Strategy    | Team Size      | Release Cadence | Best For                           |
+| ----------- | -------------- | --------------- | ---------------------------------- |
+| GitHub Flow | Any            | Continuous      | SaaS, web apps, startups           |
+| Trunk-Based | 5+ experienced | Multiple/day    | High-velocity teams, feature flags |
+| GitFlow     | 10+            | Scheduled       | Enterprise, regulated industries   |
 
 ## Commit Messages
 
@@ -102,18 +105,18 @@ main (production releases)
 
 ### Types
 
-| Type | Use For | Example |
-|------|---------|---------|
-| `feat` | New feature | `feat(auth): add OAuth2 login` |
-| `fix` | Bug fix | `fix(api): handle null response in user endpoint` |
-| `docs` | Documentation | `docs(readme): update installation instructions` |
-| `style` | Formatting, no code change | `style: fix indentation in login component` |
-| `refactor` | Code refactoring | `refactor(db): extract connection pool to module` |
-| `test` | Adding/updating tests | `test(auth): add unit tests for token validation` |
-| `chore` | Maintenance tasks | `chore(deps): update dependencies` |
-| `perf` | Performance improvement | `perf(query): add index to users table` |
-| `ci` | CI/CD changes | `ci: add PostgreSQL service to test workflow` |
-| `revert` | Revert previous commit | `revert: revert "feat(auth): add OAuth2 login"` |
+| Type       | Use For                    | Example                                           |
+| ---------- | -------------------------- | ------------------------------------------------- |
+| `feat`     | New feature                | `feat(auth): add OAuth2 login`                    |
+| `fix`      | Bug fix                    | `fix(api): handle null response in user endpoint` |
+| `docs`     | Documentation              | `docs(readme): update installation instructions`  |
+| `style`    | Formatting, no code change | `style: fix indentation in login component`       |
+| `refactor` | Code refactoring           | `refactor(db): extract connection pool to module` |
+| `test`     | Adding/updating tests      | `test(auth): add unit tests for token validation` |
+| `chore`    | Maintenance tasks          | `chore(deps): update dependencies`                |
+| `perf`     | Performance improvement    | `perf(query): add index to users table`           |
+| `ci`       | CI/CD changes              | `ci: add PostgreSQL service to test workflow`     |
+| `revert`   | Revert previous commit     | `revert: revert "feat(auth): add OAuth2 login"`   |
 
 ### Good vs Bad Examples
 
@@ -166,6 +169,7 @@ git merge feature/user-auth
 ```
 
 **Use when:**
+
 - Merging feature branches into `main`
 - You want to preserve exact history
 - Multiple people worked on the branch
@@ -184,6 +188,7 @@ git rebase main
 ```
 
 **Use when:**
+
 - Updating your local feature branch with latest `main`
 - You want a linear, clean history
 - The branch is local-only (not pushed)
@@ -697,19 +702,19 @@ git add node_modules/
 
 ## Quick Reference
 
-| Task | Command |
-|------|---------|
-| Create branch | `git checkout -b feature/name` |
-| Switch branch | `git checkout branch-name` |
-| Delete branch | `git branch -d branch-name` |
-| Merge branch | `git merge branch-name` |
-| Rebase branch | `git rebase main` |
-| View history | `git log --oneline --graph` |
-| View changes | `git diff` |
-| Stage changes | `git add .` or `git add -p` |
-| Commit | `git commit -m "message"` |
-| Push | `git push origin branch-name` |
-| Pull | `git pull origin branch-name` |
-| Stash | `git stash push -m "message"` |
-| Undo last commit | `git reset --soft HEAD~1` |
-| Revert commit | `git revert HEAD` |
+| Task             | Command                        |
+| ---------------- | ------------------------------ |
+| Create branch    | `git checkout -b feature/name` |
+| Switch branch    | `git checkout branch-name`     |
+| Delete branch    | `git branch -d branch-name`    |
+| Merge branch     | `git merge branch-name`        |
+| Rebase branch    | `git rebase main`              |
+| View history     | `git log --oneline --graph`    |
+| View changes     | `git diff`                     |
+| Stage changes    | `git add .` or `git add -p`    |
+| Commit           | `git commit -m "message"`      |
+| Push             | `git push origin branch-name`  |
+| Pull             | `git pull origin branch-name`  |
+| Stash            | `git stash push -m "message"`  |
+| Undo last commit | `git reset --soft HEAD~1`      |
+| Revert commit    | `git revert HEAD`              |

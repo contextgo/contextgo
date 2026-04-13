@@ -564,6 +564,100 @@ class CloudApiTestCase(unittest.TestCase):
         self.assertEqual(payload["devices"][0]["id"], device["id"])
         self.assertFalse(payload["devices"][0]["remoteStatus"]["connected"])
         self.assertEqual(payload["devices"][0]["remoteStatus"]["transport"], "cloud-relay")
+        self.assertEqual(payload["selection"]["openableDeviceCount"], 0)
+        self.assertIsNone(payload["selection"]["preferredDeviceId"])
+        self.assertIsNone(payload["selection"]["autoOpenDeviceId"])
+
+    def test_remote_devices_api_surfaces_auto_open_selection_for_single_ready_device(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+            device_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.8:25809/", "ready": True}})
+
+            payload = self.client.get("/api/remote/devices").json()
+
+        self.assertEqual(payload["selection"]["openableDeviceCount"], 1)
+        self.assertEqual(payload["selection"]["preferredDeviceId"], device["id"])
+        self.assertEqual(payload["selection"]["preferredSource"], "single_available")
+        self.assertEqual(payload["selection"]["autoOpenDeviceId"], device["id"])
+        self.assertEqual(payload["selection"]["autoOpenReason"], "single_available")
+
+    def test_remote_devices_page_auto_opens_last_active_device_when_available(self) -> None:
+        ready_registration = self._register_device(device_name="Studio", platform="macos")
+        second_registration = self._register_device(device_name="MacBook Pro", platform="macos")
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {ready_registration['token']}"},
+        ) as ready_ws, self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {second_registration['token']}"},
+        ) as second_ws:
+            ready_hello = ready_ws.receive_json()
+            self.assertEqual(ready_hello["type"], "hello")
+            second_hello = second_ws.receive_json()
+            self.assertEqual(second_hello["type"], "hello")
+
+            ready_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.8:25809/", "ready": True}})
+            second_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.9:25809/", "ready": True}})
+
+            self.client.cookies.set(
+                self.app_module.REMOTE_ACTIVE_DEVICE_COOKIE,
+                second_registration["device"]["id"],
+            )
+            response = self.client.get("/remote/devices", follow_redirects=False, headers={"host": "remote.contextgo.io"})
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(
+            response.headers["location"],
+            f"https://remote.contextgo.io/device/{second_registration['device']['id']}",
+        )
+
+    def test_remote_devices_page_auto_opens_single_ready_device_by_default(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+            device_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.8:25809/", "ready": True}})
+
+            response = self.client.get("/remote/devices", follow_redirects=False, headers={"host": "remote.contextgo.io"})
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], f"https://remote.contextgo.io/device/{device['id']}")
+
+    def test_remote_devices_page_can_force_switcher_view(self) -> None:
+        registration = self._register_device(device_name="Studio", platform="macos")
+        device = registration["device"]
+        device_token = registration["token"]
+
+        with self.client.websocket_connect(
+            "/api/remote/device-connect",
+            headers={"authorization": f"Bearer {device_token}"},
+        ) as device_ws:
+            hello = device_ws.receive_json()
+            self.assertEqual(hello["type"], "hello")
+            device_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.8:25809/", "ready": True}})
+
+            response = self.client.get(
+                "/remote/devices?view=list",
+                headers={"host": "remote.contextgo.io"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(f'/device/{device["id"]}', response.text)
 
     def test_remote_devices_hide_webui_bindings(self) -> None:
         self._create_browser_session()
@@ -665,7 +759,7 @@ class CloudApiTestCase(unittest.TestCase):
             device_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.8:25809/", "ready": True}})
 
             response = self.client.get(
-                "/remote/devices",
+                "/remote/devices?view=list",
                 headers={
                     "host": "remote.contextgo.io",
                     "user-agent": "Mozilla/5.0 ContextGoMobileShell/1.0",
@@ -707,7 +801,7 @@ class CloudApiTestCase(unittest.TestCase):
                     ready_registration["device"]["id"],
                 )
                 response = self.client.get(
-                    "/remote/devices",
+                    "/remote/devices?view=list",
                     headers={
                         "host": "remote.contextgo.io",
                         "user-agent": "Mozilla/5.0 ContextGoMobileShell/1.0",
@@ -794,7 +888,7 @@ class CloudApiTestCase(unittest.TestCase):
             self.assertEqual(hello["type"], "hello")
             device_ws.send_json({"type": "hello", "browserEntry": {"url": "http://192.168.1.8:25809/", "ready": True}})
 
-            available_response = self.client.get("/remote/devices", headers={"host": "remote.contextgo.io"})
+            available_response = self.client.get("/remote/devices?view=list", headers={"host": "remote.contextgo.io"})
             self.assertEqual(available_response.status_code, 200)
             self.assertIn("Available", available_response.text)
             self.assertIn("Desktop is online and ready through ContextGo Cloud relay.", available_response.text)
@@ -806,7 +900,7 @@ class CloudApiTestCase(unittest.TestCase):
                 self.assertEqual(client_status["type"], "client_status")
                 self.assertTrue(client_status["connected"])
 
-                busy_response = self.client.get("/remote/devices", headers={"host": "remote.contextgo.io"})
+                busy_response = self.client.get("/remote/devices?view=list", headers={"host": "remote.contextgo.io"})
                 self.assertEqual(busy_response.status_code, 200)
                 self.assertIn("Live session", busy_response.text)
                 self.assertIn(

@@ -182,18 +182,21 @@ function summarizeInstallHealth(installations) {
     };
   }
 
-  const summary = installations.reduce((result, installation) => {
-    if (installation.status === 'healthy') {
-      result.healthyCount += 1;
-    } else {
-      result.warningCount += 1;
+  const summary = installations.reduce(
+    (result, installation) => {
+      if (installation.status === 'healthy') {
+        result.healthyCount += 1;
+      } else {
+        result.warningCount += 1;
+      }
+      return result;
+    },
+    {
+      totalCount: installations.length,
+      healthyCount: 0,
+      warningCount: 0,
     }
-    return result;
-  }, {
-    totalCount: installations.length,
-    healthyCount: 0,
-    warningCount: 0,
-  });
+  );
 
   return {
     status: summary.warningCount > 0 ? 'warning' : 'healthy',
@@ -248,9 +251,7 @@ function normalizeDecisionInput(decision) {
     sessionId: decision.sessionId,
     title: decision.title,
     rationale: decision.rationale,
-    alternatives: decision.alternatives === undefined || decision.alternatives === null
-      ? []
-      : decision.alternatives,
+    alternatives: decision.alternatives === undefined || decision.alternatives === null ? [] : decision.alternatives,
     supersedes: decision.supersedes ?? null,
     status: decision.status,
     createdAt: decision.createdAt || new Date().toISOString(),
@@ -262,12 +263,9 @@ function normalizeInstallStateInput(installState) {
     targetId: installState.targetId,
     targetRoot: installState.targetRoot,
     profile: installState.profile ?? null,
-    modules: installState.modules === undefined || installState.modules === null
-      ? []
-      : installState.modules,
-    operations: installState.operations === undefined || installState.operations === null
-      ? []
-      : installState.operations,
+    modules: installState.modules === undefined || installState.modules === null ? [] : installState.modules,
+    operations:
+      installState.operations === undefined || installState.operations === null ? [] : installState.operations,
     installedAt: installState.installedAt || new Date().toISOString(),
     sourceVersion: installState.sourceVersion ?? null,
   };
@@ -551,7 +549,7 @@ function createQueryApi(db) {
     }
 
     const workers = Array.isArray(session.snapshot && session.snapshot.workers)
-      ? session.snapshot.workers.map(worker => ({ ...worker }))
+      ? session.snapshot.workers.map((worker) => ({ ...worker }))
       : [];
 
     return {

@@ -16,11 +16,11 @@ const { isHookEnabled } = require('../lib/hook-flags');
 const MAX_STDIN = 1024 * 1024;
 
 function readStdinRaw() {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     let raw = '';
     let truncated = false;
     process.stdin.setEncoding('utf8');
-    process.stdin.on('data', chunk => {
+    process.stdin.on('data', (chunk) => {
       if (raw.length < MAX_STDIN) {
         const remaining = MAX_STDIN - raw.length;
         raw += chunk.substring(0, remaining);
@@ -153,10 +153,10 @@ async function main() {
     env: {
       ...process.env,
       ECC_HOOK_INPUT_TRUNCATED: truncated ? '1' : '0',
-      ECC_HOOK_INPUT_MAX_BYTES: String(MAX_STDIN)
+      ECC_HOOK_INPUT_MAX_BYTES: String(MAX_STDIN),
     },
     cwd: process.cwd(),
-    timeout: 30000
+    timeout: 30000,
   });
 
   writeLegacySpawnOutput(raw, result);
@@ -175,7 +175,7 @@ async function main() {
   process.exit(Number.isInteger(result.status) ? result.status : 0);
 }
 
-main().catch(err => {
+main().catch((err) => {
   process.stderr.write(`[Hook] run-with-flags error: ${err.message}\n`);
   process.exit(0);
 });

@@ -13,10 +13,7 @@ const {
 const { getInstallTargetAdapter } = require('./install-targets/registry');
 
 const LANGUAGE_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
-const EXCLUDED_GENERATED_SOURCE_SUFFIXES = [
-  '/ecc-install-state.json',
-  '/ecc/install-state.json',
-];
+const EXCLUDED_GENERATED_SOURCE_SUFFIXES = ['/ecc-install-state.json', '/ecc/install-state.json'];
 
 function getSourceRoot() {
   return path.join(__dirname, '../..');
@@ -24,9 +21,7 @@ function getSourceRoot() {
 
 function getPackageVersion(sourceRoot) {
   try {
-    const packageJson = JSON.parse(
-      fs.readFileSync(path.join(sourceRoot, 'package.json'), 'utf8')
-    );
+    const packageJson = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'package.json'), 'utf8'));
     return packageJson.version || null;
   } catch (_error) {
     return null;
@@ -62,32 +57,29 @@ function readDirectoryNames(dirPath) {
     return [];
   }
 
-  return fs.readdirSync(dirPath, { withFileTypes: true })
-    .filter(entry => entry.isDirectory())
-    .map(entry => entry.name)
+  return fs
+    .readdirSync(dirPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
     .sort();
 }
 
 function listAvailableLanguages(sourceRoot = getSourceRoot()) {
-  return [...new Set([
-    ...listLegacyCompatibilityLanguages(),
-    ...readDirectoryNames(path.join(sourceRoot, 'rules'))
-      .filter(name => name !== 'common'),
-  ])].sort();
+  return [
+    ...new Set([
+      ...listLegacyCompatibilityLanguages(),
+      ...readDirectoryNames(path.join(sourceRoot, 'rules')).filter((name) => name !== 'common'),
+    ]),
+  ].sort();
 }
 
 function validateLegacyTarget(target) {
   if (!LEGACY_INSTALL_TARGETS.includes(target)) {
-    throw new Error(
-      `Unknown install target: ${target}. Expected one of ${LEGACY_INSTALL_TARGETS.join(', ')}`
-    );
+    throw new Error(`Unknown install target: ${target}. Expected one of ${LEGACY_INSTALL_TARGETS.join(', ')}`);
   }
 }
 
-const IGNORED_DIRECTORY_NAMES = new Set([
-  'node_modules',
-  '.git',
-]);
+const IGNORED_DIRECTORY_NAMES = new Set(['node_modules', '.git']);
 
 function listFilesRecursive(dirPath) {
   if (!fs.existsSync(dirPath)) {
@@ -117,7 +109,7 @@ function listFilesRecursive(dirPath) {
 
 function isGeneratedRuntimeSourcePath(sourceRelativePath) {
   const normalizedPath = String(sourceRelativePath || '').replace(/\\/g, '/');
-  return EXCLUDED_GENERATED_SOURCE_SUFFIXES.some(suffix => normalizedPath.endsWith(suffix));
+  return EXCLUDED_GENERATED_SOURCE_SUFFIXES.some((suffix) => normalizedPath.endsWith(suffix));
 }
 
 function createStatePreview(options) {
@@ -155,13 +147,15 @@ function addRecursiveCopyOperations(operations, options) {
     const sourceRelativePath = path.join(options.sourceRelativeDir, relativeFile);
     const sourcePath = path.join(options.sourceRoot, sourceRelativePath);
     const destinationPath = path.join(options.destinationDir, relativeFile);
-    operations.push(buildCopyFileOperation({
-      moduleId: options.moduleId,
-      sourcePath,
-      sourceRelativePath,
-      destinationPath,
-      strategy: options.strategy || 'preserve-relative-path',
-    }));
+    operations.push(
+      buildCopyFileOperation({
+        moduleId: options.moduleId,
+        sourcePath,
+        sourceRelativePath,
+        destinationPath,
+        strategy: options.strategy || 'preserve-relative-path',
+      })
+    );
   }
 
   return relativeFiles.length;
@@ -173,13 +167,15 @@ function addFileCopyOperation(operations, options) {
     return false;
   }
 
-  operations.push(buildCopyFileOperation({
-    moduleId: options.moduleId,
-    sourcePath,
-    sourceRelativePath: options.sourceRelativePath,
-    destinationPath: options.destinationPath,
-    strategy: options.strategy || 'preserve-relative-path',
-  }));
+  operations.push(
+    buildCopyFileOperation({
+      moduleId: options.moduleId,
+      sourcePath,
+      sourceRelativePath: options.sourceRelativePath,
+      destinationPath: options.destinationPath,
+      strategy: options.strategy || 'preserve-relative-path',
+    })
+  );
 
   return true;
 }
@@ -190,26 +186,26 @@ function addMatchingRuleOperations(operations, options) {
     return 0;
   }
 
-  const files = fs.readdirSync(sourceDir, { withFileTypes: true })
-    .filter(entry => entry.isFile() && options.matcher(entry.name))
-    .map(entry => entry.name)
+  const files = fs
+    .readdirSync(sourceDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && options.matcher(entry.name))
+    .map((entry) => entry.name)
     .sort();
 
   for (const fileName of files) {
     const sourceRelativePath = path.join(options.sourceRelativeDir, fileName);
     const sourcePath = path.join(options.sourceRoot, sourceRelativePath);
-    const destinationPath = path.join(
-      options.destinationDir,
-      options.rename ? options.rename(fileName) : fileName
-    );
+    const destinationPath = path.join(options.destinationDir, options.rename ? options.rename(fileName) : fileName);
 
-    operations.push(buildCopyFileOperation({
-      moduleId: options.moduleId,
-      sourcePath,
-      sourceRelativePath,
-      destinationPath,
-      strategy: options.strategy || 'flatten-copy',
-    }));
+    operations.push(
+      buildCopyFileOperation({
+        moduleId: options.moduleId,
+        sourcePath,
+        sourceRelativePath,
+        destinationPath,
+        strategy: options.strategy || 'flatten-copy',
+      })
+    );
   }
 
   return files.length;
@@ -228,9 +224,7 @@ function planClaudeLegacyInstall(context) {
   const warnings = [];
 
   if (isDirectoryNonEmpty(rulesDir)) {
-    warnings.push(
-      `Destination ${rulesDir}/ already exists and files may be overwritten`
-    );
+    warnings.push(`Destination ${rulesDir}/ already exists and files may be overwritten`);
   }
 
   addRecursiveCopyOperations(operations, {
@@ -242,9 +236,7 @@ function planClaudeLegacyInstall(context) {
 
   for (const language of context.languages) {
     if (!LANGUAGE_NAME_PATTERN.test(language)) {
-      warnings.push(
-        `Invalid language name '${language}'. Only alphanumeric, dash, and underscore are allowed`
-      );
+      warnings.push(`Invalid language name '${language}'. Only alphanumeric, dash, and underscore are allowed`);
       continue;
     }
 
@@ -287,14 +279,12 @@ function planCursorLegacyInstall(context) {
     sourceRoot: context.sourceRoot,
     sourceRelativeDir: path.join('.cursor', 'rules'),
     destinationDir: path.join(targetRoot, 'rules'),
-    matcher: fileName => /^common-.*\.md$/.test(fileName),
+    matcher: (fileName) => /^common-.*\.md$/.test(fileName),
   });
 
   for (const language of context.languages) {
     if (!LANGUAGE_NAME_PATTERN.test(language)) {
-      warnings.push(
-        `Invalid language name '${language}'. Only alphanumeric, dash, and underscore are allowed`
-      );
+      warnings.push(`Invalid language name '${language}'. Only alphanumeric, dash, and underscore are allowed`);
       continue;
     }
 
@@ -303,7 +293,7 @@ function planCursorLegacyInstall(context) {
       sourceRoot: context.sourceRoot,
       sourceRelativeDir: path.join('.cursor', 'rules'),
       destinationDir: path.join(targetRoot, 'rules'),
-      matcher: fileName => fileName.startsWith(`${language}-`) && fileName.endsWith('.md'),
+      matcher: (fileName) => fileName.startsWith(`${language}-`) && fileName.endsWith('.md'),
     });
 
     if (matches === 0) {
@@ -370,9 +360,7 @@ function planAntigravityLegacyInstall(context) {
   const warnings = [];
 
   if (isDirectoryNonEmpty(path.join(targetRoot, 'rules'))) {
-    warnings.push(
-      `Destination ${path.join(targetRoot, 'rules')}/ already exists and files may be overwritten`
-    );
+    warnings.push(`Destination ${path.join(targetRoot, 'rules')}/ already exists and files may be overwritten`);
   }
 
   addMatchingRuleOperations(operations, {
@@ -380,15 +368,13 @@ function planAntigravityLegacyInstall(context) {
     sourceRoot: context.sourceRoot,
     sourceRelativeDir: path.join('rules', 'common'),
     destinationDir: path.join(targetRoot, 'rules'),
-    matcher: fileName => fileName.endsWith('.md'),
-    rename: fileName => `common-${fileName}`,
+    matcher: (fileName) => fileName.endsWith('.md'),
+    rename: (fileName) => `common-${fileName}`,
   });
 
   for (const language of context.languages) {
     if (!LANGUAGE_NAME_PATTERN.test(language)) {
-      warnings.push(
-        `Invalid language name '${language}'. Only alphanumeric, dash, and underscore are allowed`
-      );
+      warnings.push(`Invalid language name '${language}'. Only alphanumeric, dash, and underscore are allowed`);
       continue;
     }
 
@@ -403,8 +389,8 @@ function planAntigravityLegacyInstall(context) {
       sourceRoot: context.sourceRoot,
       sourceRelativeDir: path.join('rules', language),
       destinationDir: path.join(targetRoot, 'rules'),
-      matcher: fileName => fileName.endsWith('.md'),
-      rename: fileName => `${language}-${fileName}`,
+      matcher: (fileName) => fileName.endsWith('.md'),
+      rename: (fileName) => `${language}-${fileName}`,
     });
   }
 
@@ -551,20 +537,22 @@ function materializeScaffoldOperation(sourceRoot, operation) {
 
   const stat = fs.statSync(sourcePath);
   if (stat.isFile()) {
-    return [buildCopyFileOperation({
-      moduleId: operation.moduleId,
-      sourcePath,
-      sourceRelativePath: operation.sourceRelativePath,
-      destinationPath: operation.destinationPath,
-      strategy: operation.strategy,
-    })];
+    return [
+      buildCopyFileOperation({
+        moduleId: operation.moduleId,
+        sourcePath,
+        sourceRelativePath: operation.sourceRelativePath,
+        destinationPath: operation.destinationPath,
+        strategy: operation.strategy,
+      }),
+    ];
   }
 
-  const relativeFiles = listFilesRecursive(sourcePath).filter(relativeFile => {
+  const relativeFiles = listFilesRecursive(sourcePath).filter((relativeFile) => {
     const sourceRelativePath = path.join(operation.sourceRelativePath, relativeFile);
     return !isGeneratedRuntimeSourcePath(sourceRelativePath);
   });
-  return relativeFiles.map(relativeFile => {
+  return relativeFiles.map((relativeFile) => {
     const sourceRelativePath = path.join(operation.sourceRelativePath, relativeFile);
     return buildCopyFileOperation({
       moduleId: operation.moduleId,
@@ -580,21 +568,25 @@ function createManifestInstallPlan(options = {}) {
   const sourceRoot = options.sourceRoot || getSourceRoot();
   const projectRoot = options.projectRoot || process.cwd();
   const target = options.target || 'claude';
-  const legacyLanguages = Array.isArray(options.legacyLanguages)
-    ? [...options.legacyLanguages]
-    : [];
+  const legacyLanguages = Array.isArray(options.legacyLanguages) ? [...options.legacyLanguages] : [];
   const requestProfileId = Object.hasOwn(options, 'requestProfileId')
     ? options.requestProfileId
-    : (options.profileId || null);
+    : options.profileId || null;
   const requestModuleIds = Object.hasOwn(options, 'requestModuleIds')
     ? [...options.requestModuleIds]
-    : (Array.isArray(options.moduleIds) ? [...options.moduleIds] : []);
+    : Array.isArray(options.moduleIds)
+      ? [...options.moduleIds]
+      : [];
   const requestIncludeComponentIds = Object.hasOwn(options, 'requestIncludeComponentIds')
     ? [...options.requestIncludeComponentIds]
-    : (Array.isArray(options.includeComponentIds) ? [...options.includeComponentIds] : []);
+    : Array.isArray(options.includeComponentIds)
+      ? [...options.includeComponentIds]
+      : [];
   const requestExcludeComponentIds = Object.hasOwn(options, 'requestExcludeComponentIds')
     ? [...options.requestExcludeComponentIds]
-    : (Array.isArray(options.excludeComponentIds) ? [...options.excludeComponentIds] : []);
+    : Array.isArray(options.excludeComponentIds)
+      ? [...options.excludeComponentIds]
+      : [];
   const plan = resolveInstallPlan({
     repoRoot: sourceRoot,
     projectRoot,
@@ -606,7 +598,7 @@ function createManifestInstallPlan(options = {}) {
     target,
   });
   const adapter = getInstallTargetAdapter(target);
-  const operations = plan.operations.flatMap(operation => materializeScaffoldOperation(sourceRoot, operation));
+  const operations = plan.operations.flatMap((operation) => materializeScaffoldOperation(sourceRoot, operation));
   const source = {
     repoVersion: getPackageVersion(sourceRoot),
     repoCommit: getRepoCommit(sourceRoot),

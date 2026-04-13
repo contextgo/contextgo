@@ -12,7 +12,14 @@ import { getAgentModes } from '@/renderer/utils/model/agentModes';
 import { filterAvailableAgentsForUi } from '@/renderer/utils/model/availableAgents';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
-import type { AcpBackend, AcpBackendConfig, AcpModelInfo, AvailableAgent, EffectiveAgentInfo } from '../types';
+import type {
+  AcpBackend,
+  AcpBackendConfig,
+  AcpModelInfo,
+  AvailableAgent,
+  EffectiveAgentInfo,
+  GuidLocationState,
+} from '../types';
 import {
   getBackendFromAgentKey,
   getAgentKey as getAgentKeyUtil,
@@ -41,27 +48,27 @@ export type GuidAgentSelectionResult = {
   setSelectedAcpModel: React.Dispatch<React.SetStateAction<string | null>>;
   currentAcpCachedModelInfo: AcpModelInfo | null;
   currentEffectiveAgentInfo: EffectiveAgentInfo;
-  getAgentKey: (agent: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string }) => string;
+  getAgentKey: (agent: { backend: AcpBackend; customAgentId?: string }) => string;
   findAgentByKey: (key: string) => AvailableAgent | undefined;
   resolvePresetRulesAndSkills: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string; context?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string; context?: string } | undefined
   ) => Promise<{ rules?: string; skills?: string }>;
   resolvePresetContext: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string; context?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string; context?: string } | undefined
   ) => Promise<string | undefined>;
   resolvePresetAgentType: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
   ) => string;
   resolveEnabledSkills: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
   ) => string[] | undefined;
   resolveEnabledHooks: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
   ) => string[] | undefined;
   isMainAgentAvailable: (agentType: string) => boolean;
   getAvailableFallbackAgent: () => string | null;
   getEffectiveAgentType: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
   ) => EffectiveAgentInfo;
   refreshCustomAgents: () => Promise<void>;
   customAgentAvatarMap: Map<string, string | undefined>;
@@ -71,6 +78,7 @@ type UseGuidAgentSelectionOptions = {
   modelList: IProvider[];
   isGoogleAuth: boolean;
   localeKey: string;
+  locationState?: GuidLocationState | null;
 };
 
 /**
@@ -80,6 +88,7 @@ export const useGuidAgentSelection = ({
   modelList,
   isGoogleAuth,
   localeKey,
+  locationState = null,
 }: UseGuidAgentSelectionOptions): GuidAgentSelectionResult => {
   const [selectedAgentKey, _setSelectedAgentKey] = useState<string>('gemini');
   const [selectedAssistantKeyState, _setSelectedAssistantKeyState] = useState<string | null>(null);
@@ -89,6 +98,27 @@ export const useGuidAgentSelection = ({
   const probedModelBackendsRef = useRef(new Set<string>());
   const [acpCachedModels, setAcpCachedModels] = useState<Record<string, AcpModelInfo>>({});
   const [selectedAcpModel, _setSelectedAcpModel] = useState<string | null>(null);
+  const locationPreferredModeRef = useRef<string | null>(locationState?.preferredMode ?? null);
+  const locationPreferredModelRef = useRef<string | null>(locationState?.preferredAcpModelId ?? null);
+
+  const normalizedLocationSelection = useMemo(
+    () => ({
+      preferredAgentKey: typeof locationState?.preferredAgentKey === 'string' ? locationState.preferredAgentKey : null,
+      preferredAssistantKey:
+        typeof locationState?.preferredAssistantKey === 'string' ? locationState.preferredAssistantKey : null,
+    }),
+    [locationState?.preferredAgentKey, locationState?.preferredAssistantKey]
+  );
+
+  useEffect(() => {
+    locationPreferredModeRef.current =
+      typeof locationState?.preferredMode === 'string' ? locationState.preferredMode : null;
+  }, [locationState?.preferredMode]);
+
+  useEffect(() => {
+    locationPreferredModelRef.current =
+      typeof locationState?.preferredAcpModelId === 'string' ? locationState.preferredAcpModelId : null;
+  }, [locationState?.preferredAcpModelId]);
 
   const setSelectedAgentKey = useCallback((key: string) => {
     _setSelectedAgentKey(key);
@@ -229,6 +259,15 @@ export const useGuidAgentSelection = ({
 
         let nextRuntimeKey: string | null = null;
         if (
+          normalizedLocationSelection.preferredAgentKey &&
+          !normalizedLocationSelection.preferredAgentKey.startsWith('custom:') &&
+          availableAgents.some((agent) => getAgentKey(agent) === normalizedLocationSelection.preferredAgentKey)
+        ) {
+          nextRuntimeKey = normalizedLocationSelection.preferredAgentKey;
+        }
+
+        if (
+          !nextRuntimeKey &&
           savedAgentKey &&
           !savedAgentKey.startsWith('custom:') &&
           availableAgents.some((agent) => getAgentKey(agent) === savedAgentKey)
@@ -237,7 +276,8 @@ export const useGuidAgentSelection = ({
         }
 
         const legacyAssistantKey = savedAgentKey?.startsWith('custom:') ? savedAgentKey : null;
-        const candidateAssistantKey = savedAssistantKey || legacyAssistantKey;
+        const candidateAssistantKey =
+          normalizedLocationSelection.preferredAssistantKey || savedAssistantKey || legacyAssistantKey;
         let nextAssistantKey: string | null = null;
 
         if (candidateAssistantKey?.startsWith('custom:')) {
@@ -267,7 +307,14 @@ export const useGuidAgentSelection = ({
     return () => {
       cancelled = true;
     };
-  }, [availableAgents, findAgentByKey, getAvailableFallbackAgent, resolvePresetAgentType]);
+  }, [
+    availableAgents,
+    findAgentByKey,
+    getAvailableFallbackAgent,
+    normalizedLocationSelection.preferredAgentKey,
+    normalizedLocationSelection.preferredAssistantKey,
+    resolvePresetAgentType,
+  ]);
 
   useEffect(() => {
     let isActive = true;
@@ -349,6 +396,16 @@ export const useGuidAgentSelection = ({
       return;
     }
 
+    const locationPreferredModelId = locationPreferredModelRef.current;
+    const matchesLocationRuntime =
+      !normalizedLocationSelection.preferredAgentKey ||
+      normalizedLocationSelection.preferredAgentKey === selectedAgentKey;
+    if (locationPreferredModelId && matchesLocationRuntime) {
+      _setSelectedAcpModel(locationPreferredModelId);
+      locationPreferredModelRef.current = null;
+      return;
+    }
+
     let cancelled = false;
 
     void ConfigStorage.get('acp.config')
@@ -373,7 +430,7 @@ export const useGuidAgentSelection = ({
     return () => {
       cancelled = true;
     };
-  }, [acpCachedModels, selectedAgentInfo, selectedAgentKey]);
+  }, [acpCachedModels, normalizedLocationSelection.preferredAgentKey, selectedAgentInfo, selectedAgentKey]);
 
   useEffect(() => {
     _setSelectedMode('default');
@@ -381,6 +438,16 @@ export const useGuidAgentSelection = ({
     const configKey = selectedAgentInfo?.backend ?? getBackendFromAgentKey(selectedAgentKey);
     selectedAgentRef.current = configKey;
     if (!configKey || configKey === 'custom') return;
+
+    const locationPreferredMode = locationPreferredModeRef.current;
+    const matchesLocationRuntime =
+      !normalizedLocationSelection.preferredAgentKey ||
+      normalizedLocationSelection.preferredAgentKey === selectedAgentKey;
+    if (locationPreferredMode && matchesLocationRuntime) {
+      _setSelectedMode(locationPreferredMode);
+      locationPreferredModeRef.current = null;
+      return;
+    }
 
     let cancelled = false;
 
@@ -415,8 +482,6 @@ export const useGuidAgentSelection = ({
             claude: 'bypassPermissions',
             gemini: 'yolo',
             codex: 'yolo',
-            iflow: 'yolo',
-            qwen: 'yolo',
           };
           _setSelectedMode(yoloValues[configKey] || 'yolo');
         }
@@ -430,7 +495,7 @@ export const useGuidAgentSelection = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedAgentInfo, selectedAgentKey]);
+  }, [normalizedLocationSelection.preferredAgentKey, selectedAgentInfo, selectedAgentKey]);
 
   const currentAcpCachedModelInfo = useMemo(() => {
     const backend = selectedAgentInfo?.backend ?? getBackendFromAgentKey(selectedAgentKey);

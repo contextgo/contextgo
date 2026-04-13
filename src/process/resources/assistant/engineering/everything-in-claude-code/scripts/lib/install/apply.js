@@ -30,15 +30,12 @@ function replacePluginRootPlaceholders(value, pluginRoot) {
   }
 
   if (Array.isArray(value)) {
-    return value.map(item => replacePluginRootPlaceholders(item, pluginRoot));
+    return value.map((item) => replacePluginRootPlaceholders(item, pluginRoot));
   }
 
   if (value && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value).map(([key, nestedValue]) => [
-        key,
-        replacePluginRootPlaceholders(nestedValue, pluginRoot),
-      ])
+      Object.entries(value).map(([key, nestedValue]) => [key, replacePluginRootPlaceholders(nestedValue, pluginRoot)])
     );
   }
 
@@ -56,12 +53,14 @@ function buildLegacyHookSignature(entry, pluginRoot) {
     return null;
   }
 
-  const hookSignature = normalizedEntry.hooks.map(hook => JSON.stringify({
-    type: hook && typeof hook === 'object' ? hook.type : undefined,
-    command: hook && typeof hook === 'object' ? hook.command : undefined,
-    timeout: hook && typeof hook === 'object' ? hook.timeout : undefined,
-    async: hook && typeof hook === 'object' ? hook.async : undefined,
-  }));
+  const hookSignature = normalizedEntry.hooks.map((hook) =>
+    JSON.stringify({
+      type: hook && typeof hook === 'object' ? hook.type : undefined,
+      command: hook && typeof hook === 'object' ? hook.command : undefined,
+      timeout: hook && typeof hook === 'object' ? hook.timeout : undefined,
+      async: hook && typeof hook === 'object' ? hook.async : undefined,
+    })
+  );
 
   return JSON.stringify({
     matcher: normalizedEntry.matcher,
@@ -106,7 +105,7 @@ function mergeHookEntries(existingEntries, incomingEntries, pluginRoot) {
     }
 
     const aliases = getHookEntryAliases(entry, pluginRoot);
-    if (aliases.some(alias => seenEntries.has(alias))) {
+    if (aliases.some((alias) => seenEntries.has(alias))) {
       continue;
     }
 
@@ -120,7 +119,7 @@ function mergeHookEntries(existingEntries, incomingEntries, pluginRoot) {
 }
 
 function findHooksSourcePath(plan, hooksDestinationPath) {
-  const operation = plan.operations.find(item => item.destinationPath === hooksDestinationPath);
+  const operation = plan.operations.find((item) => item.destinationPath === hooksDestinationPath);
   return operation ? operation.sourcePath : null;
 }
 
@@ -148,9 +147,8 @@ function buildMergedSettings(plan) {
     settings = readJsonObject(settingsPath, 'existing settings');
   }
 
-  const existingHooks = settings.hooks && typeof settings.hooks === 'object' && !Array.isArray(settings.hooks)
-    ? settings.hooks
-    : {};
+  const existingHooks =
+    settings.hooks && typeof settings.hooks === 'object' && !Array.isArray(settings.hooks) ? settings.hooks : {};
   const mergedHooks = { ...existingHooks };
 
   for (const [eventName, incomingEntries] of Object.entries(incomingHooks)) {

@@ -124,7 +124,12 @@ function buildCurrentTask(
   artifact: ContextJobArtifact | undefined,
   existingMetadata: MaintenanceRunMetadata
 ): string {
-  if (artifact && 'currentTask' in artifact && typeof artifact.currentTask === 'string' && artifact.currentTask.trim()) {
+  if (
+    artifact &&
+    'currentTask' in artifact &&
+    typeof artifact.currentTask === 'string' &&
+    artifact.currentTask.trim()
+  ) {
     return artifact.currentTask;
   }
 
@@ -228,7 +233,7 @@ export function registerContextJobRunProjector(
   bus: ContextEventBus,
   vaultSyncService: Pick<SpaceVaultContextSyncService, 'writeContextRunArtifact'> = new SpaceVaultContextSyncService()
 ): void {
-  bus.on('context.job.queued', async event => {
+  bus.on('context.job.queued', async (event) => {
     await upsertRun({
       job: event.payload.job,
       status: 'pending',
@@ -237,7 +242,7 @@ export function registerContextJobRunProjector(
     });
   });
 
-  bus.on('context.job.started', async event => {
+  bus.on('context.job.started', async (event) => {
     await upsertRun({
       job: event.payload.job,
       status: 'running',
@@ -246,7 +251,7 @@ export function registerContextJobRunProjector(
     });
   });
 
-  bus.on('context.job.completed', async event => {
+  bus.on('context.job.completed', async (event) => {
     const completedAt = parseTimestamp(event.payload.completedAt);
     await upsertRun({
       job: event.payload.job,
@@ -259,7 +264,7 @@ export function registerContextJobRunProjector(
     });
   });
 
-  bus.on('context.job.completed', async event => {
+  bus.on('context.job.completed', async (event) => {
     if (event.payload.status !== 'completed') {
       return;
     }
@@ -272,9 +277,7 @@ export function registerContextJobRunProjector(
     }
 
     const detail =
-      artifact && 'detail' in artifact && typeof artifact.detail === 'string'
-        ? artifact.detail
-        : event.payload.error;
+      artifact && 'detail' in artifact && typeof artifact.detail === 'string' ? artifact.detail : event.payload.error;
     const persistedArtifact = await vaultSyncService.writeContextRunArtifact({
       spaceId: event.payload.job.spaceId,
       runId: event.payload.job.id,

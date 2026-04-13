@@ -81,13 +81,13 @@ Do not just list names. For each comparison, answer:
 
 For every real gap, recommend the correct ECC-native shape:
 
-| Gap Type | Preferred ECC Shape |
-|----------|---------------------|
-| Repeatable operator workflow | Skill |
-| Automatic enforcement or side-effect | Hook |
-| Specialized delegated role | Agent |
-| External tool bridge | MCP server or connector |
-| Install/bootstrap guidance | Setup or audit skill |
+| Gap Type                             | Preferred ECC Shape     |
+| ------------------------------------ | ----------------------- |
+| Repeatable operator workflow         | Skill                   |
+| Automatic enforcement or side-effect | Hook                    |
+| Specialized delegated role           | Agent                   |
+| External tool bridge                 | MCP server or connector |
+| Install/bootstrap guidance           | Setup or audit skill    |
 
 Default to user-facing skills that orchestrate existing tools when the need is operational rather than infrastructural.
 

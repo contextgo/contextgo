@@ -17,20 +17,20 @@ conn = videodb.connect(
 
 ### Connection Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `conn.get_collection(collection_id="default")` | `Collection` | Get collection (default if no ID) |
-| `conn.get_collections()` | `list[Collection]` | List all collections |
-| `conn.create_collection(name, description, is_public=False)` | `Collection` | Create new collection |
-| `conn.update_collection(id, name, description)` | `Collection` | Update a collection |
-| `conn.check_usage()` | `dict` | Get account usage stats |
-| `conn.upload(source, media_type, name, ...)` | `Video\|Audio\|Image` | Upload to default collection |
-| `conn.record_meeting(meeting_url, bot_name, ...)` | `Meeting` | Record a meeting |
-| `conn.create_capture_session(...)` | `CaptureSession` | Create a capture session (see [capture-reference.md](capture-reference.md)) |
-| `conn.youtube_search(query, result_threshold, duration)` | `list[dict]` | Search YouTube |
-| `conn.transcode(source, callback_url, mode, ...)` | `str` | Transcode video (returns job ID) |
-| `conn.get_transcode_details(job_id)` | `dict` | Get transcode job status and details |
-| `conn.connect_websocket(collection_id)` | `WebSocketConnection` | Connect to WebSocket (see [capture-reference.md](capture-reference.md)) |
+| Method                                                       | Returns               | Description                                                                 |
+| ------------------------------------------------------------ | --------------------- | --------------------------------------------------------------------------- |
+| `conn.get_collection(collection_id="default")`               | `Collection`          | Get collection (default if no ID)                                           |
+| `conn.get_collections()`                                     | `list[Collection]`    | List all collections                                                        |
+| `conn.create_collection(name, description, is_public=False)` | `Collection`          | Create new collection                                                       |
+| `conn.update_collection(id, name, description)`              | `Collection`          | Update a collection                                                         |
+| `conn.check_usage()`                                         | `dict`                | Get account usage stats                                                     |
+| `conn.upload(source, media_type, name, ...)`                 | `Video\|Audio\|Image` | Upload to default collection                                                |
+| `conn.record_meeting(meeting_url, bot_name, ...)`            | `Meeting`             | Record a meeting                                                            |
+| `conn.create_capture_session(...)`                           | `CaptureSession`      | Create a capture session (see [capture-reference.md](capture-reference.md)) |
+| `conn.youtube_search(query, result_threshold, duration)`     | `list[dict]`          | Search YouTube                                                              |
+| `conn.transcode(source, callback_url, mode, ...)`            | `str`                 | Transcode video (returns job ID)                                            |
+| `conn.get_transcode_details(job_id)`                         | `dict`                | Get transcode job status and details                                        |
+| `conn.connect_websocket(collection_id)`                      | `WebSocketConnection` | Connect to WebSocket (see [capture-reference.md](capture-reference.md))     |
 
 ### Transcode
 
@@ -50,13 +50,13 @@ job_id = conn.transcode(
 
 #### transcode Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `source` | `str` | required | URL of the video to transcode (preferably a downloadable URL) |
-| `callback_url` | `str` | required | URL to receive the callback when transcoding completes |
-| `mode` | `TranscodeMode` | `TranscodeMode.economy` | Transcoding speed: `economy` or `lightning` |
-| `video_config` | `VideoConfig` | `VideoConfig()` | Video encoding settings |
-| `audio_config` | `AudioConfig` | `AudioConfig()` | Audio encoding settings |
+| Parameter      | Type            | Default                 | Description                                                   |
+| -------------- | --------------- | ----------------------- | ------------------------------------------------------------- |
+| `source`       | `str`           | required                | URL of the video to transcode (preferably a downloadable URL) |
+| `callback_url` | `str`           | required                | URL to receive the callback when transcoding completes        |
+| `mode`         | `TranscodeMode` | `TranscodeMode.economy` | Transcoding speed: `economy` or `lightning`                   |
+| `video_config` | `VideoConfig`   | `VideoConfig()`         | Video encoding settings                                       |
+| `audio_config` | `AudioConfig`   | `AudioConfig()`         | Audio encoding settings                                       |
 
 Returns a job ID (`str`). Use `conn.get_transcode_details(job_id)` to check job status.
 
@@ -78,13 +78,13 @@ config = VideoConfig(
 )
 ```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `resolution` | `int\|None` | `None` | Target resolution height in pixels |
-| `quality` | `int` | `23` | Encoding quality (lower = higher quality) |
-| `framerate` | `int\|None` | `None` | Target framerate |
-| `aspect_ratio` | `str\|None` | `None` | Target aspect ratio (e.g. `"16:9"`, `"9:16"`) |
-| `resize_mode` | `str` | `ResizeMode.crop` | Resize strategy: `crop`, `fit`, or `pad` |
+| Field          | Type        | Default           | Description                                   |
+| -------------- | ----------- | ----------------- | --------------------------------------------- |
+| `resolution`   | `int\|None` | `None`            | Target resolution height in pixels            |
+| `quality`      | `int`       | `23`              | Encoding quality (lower = higher quality)     |
+| `framerate`    | `int\|None` | `None`            | Target framerate                              |
+| `aspect_ratio` | `str\|None` | `None`            | Target aspect ratio (e.g. `"16:9"`, `"9:16"`) |
+| `resize_mode`  | `str`       | `ResizeMode.crop` | Resize strategy: `crop`, `fit`, or `pad`      |
 
 #### AudioConfig
 
@@ -94,8 +94,8 @@ from videodb import AudioConfig
 config = AudioConfig(mute=False)
 ```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| Field  | Type   | Default | Description          |
+| ------ | ------ | ------- | -------------------- |
 | `mute` | `bool` | `False` | Mute the audio track |
 
 ## Collections
@@ -106,33 +106,33 @@ coll = conn.get_collection()
 
 ### Collection Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `coll.get_videos()` | `list[Video]` | List all videos |
-| `coll.get_video(video_id)` | `Video` | Get specific video |
-| `coll.get_audios()` | `list[Audio]` | List all audios |
-| `coll.get_audio(audio_id)` | `Audio` | Get specific audio |
-| `coll.get_images()` | `list[Image]` | List all images |
-| `coll.get_image(image_id)` | `Image` | Get specific image |
-| `coll.upload(url=None, file_path=None, media_type=None, name=None)` | `Video\|Audio\|Image` | Upload media |
-| `coll.search(query, search_type, index_type, score_threshold, namespace, scene_index_id, ...)` | `SearchResult` | Search across collection (semantic only; keyword and scene search raise `NotImplementedError`) |
-| `coll.generate_image(prompt, aspect_ratio="1:1")` | `Image` | Generate image with AI |
-| `coll.generate_video(prompt, duration=5)` | `Video` | Generate video with AI |
-| `coll.generate_music(prompt, duration=5)` | `Audio` | Generate music with AI |
-| `coll.generate_sound_effect(prompt, duration=2)` | `Audio` | Generate sound effect |
-| `coll.generate_voice(text, voice_name="Default")` | `Audio` | Generate speech from text |
-| `coll.generate_text(prompt, model_name="basic", response_type="text")` | `dict` | LLM text generation — access result via `["output"]` |
-| `coll.dub_video(video_id, language_code)` | `Video` | Dub video into another language |
-| `coll.record_meeting(meeting_url, bot_name, ...)` | `Meeting` | Record a live meeting |
-| `coll.create_capture_session(...)` | `CaptureSession` | Create a capture session (see [capture-reference.md](capture-reference.md)) |
-| `coll.get_capture_session(...)` | `CaptureSession` | Retrieve capture session (see [capture-reference.md](capture-reference.md)) |
-| `coll.connect_rtstream(url, name, ...)` | `RTStream` | Connect to a live stream (see [rtstream-reference.md](rtstream-reference.md)) |
-| `coll.make_public()` | `None` | Make collection public |
-| `coll.make_private()` | `None` | Make collection private |
-| `coll.delete_video(video_id)` | `None` | Delete a video |
-| `coll.delete_audio(audio_id)` | `None` | Delete an audio |
-| `coll.delete_image(image_id)` | `None` | Delete an image |
-| `coll.delete()` | `None` | Delete the collection |
+| Method                                                                                         | Returns               | Description                                                                                    |
+| ---------------------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
+| `coll.get_videos()`                                                                            | `list[Video]`         | List all videos                                                                                |
+| `coll.get_video(video_id)`                                                                     | `Video`               | Get specific video                                                                             |
+| `coll.get_audios()`                                                                            | `list[Audio]`         | List all audios                                                                                |
+| `coll.get_audio(audio_id)`                                                                     | `Audio`               | Get specific audio                                                                             |
+| `coll.get_images()`                                                                            | `list[Image]`         | List all images                                                                                |
+| `coll.get_image(image_id)`                                                                     | `Image`               | Get specific image                                                                             |
+| `coll.upload(url=None, file_path=None, media_type=None, name=None)`                            | `Video\|Audio\|Image` | Upload media                                                                                   |
+| `coll.search(query, search_type, index_type, score_threshold, namespace, scene_index_id, ...)` | `SearchResult`        | Search across collection (semantic only; keyword and scene search raise `NotImplementedError`) |
+| `coll.generate_image(prompt, aspect_ratio="1:1")`                                              | `Image`               | Generate image with AI                                                                         |
+| `coll.generate_video(prompt, duration=5)`                                                      | `Video`               | Generate video with AI                                                                         |
+| `coll.generate_music(prompt, duration=5)`                                                      | `Audio`               | Generate music with AI                                                                         |
+| `coll.generate_sound_effect(prompt, duration=2)`                                               | `Audio`               | Generate sound effect                                                                          |
+| `coll.generate_voice(text, voice_name="Default")`                                              | `Audio`               | Generate speech from text                                                                      |
+| `coll.generate_text(prompt, model_name="basic", response_type="text")`                         | `dict`                | LLM text generation — access result via `["output"]`                                           |
+| `coll.dub_video(video_id, language_code)`                                                      | `Video`               | Dub video into another language                                                                |
+| `coll.record_meeting(meeting_url, bot_name, ...)`                                              | `Meeting`             | Record a live meeting                                                                          |
+| `coll.create_capture_session(...)`                                                             | `CaptureSession`      | Create a capture session (see [capture-reference.md](capture-reference.md))                    |
+| `coll.get_capture_session(...)`                                                                | `CaptureSession`      | Retrieve capture session (see [capture-reference.md](capture-reference.md))                    |
+| `coll.connect_rtstream(url, name, ...)`                                                        | `RTStream`            | Connect to a live stream (see [rtstream-reference.md](rtstream-reference.md))                  |
+| `coll.make_public()`                                                                           | `None`                | Make collection public                                                                         |
+| `coll.make_private()`                                                                          | `None`                | Make collection private                                                                        |
+| `coll.delete_video(video_id)`                                                                  | `None`                | Delete a video                                                                                 |
+| `coll.delete_audio(audio_id)`                                                                  | `None`                | Delete an audio                                                                                |
+| `coll.delete_image(image_id)`                                                                  | `None`                | Delete an image                                                                                |
+| `coll.delete()`                                                                                | `None`                | Delete the collection                                                                          |
 
 ### Upload Parameters
 
@@ -155,41 +155,41 @@ video = coll.get_video(video_id)
 
 ### Video Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `video.id` | `str` | Unique video ID |
-| `video.collection_id` | `str` | Parent collection ID |
-| `video.name` | `str` | Video name |
-| `video.description` | `str` | Video description |
-| `video.length` | `float` | Duration in seconds |
-| `video.stream_url` | `str` | Default stream URL |
-| `video.player_url` | `str` | Player embed URL |
-| `video.thumbnail_url` | `str` | Thumbnail URL |
+| Property              | Type    | Description          |
+| --------------------- | ------- | -------------------- |
+| `video.id`            | `str`   | Unique video ID      |
+| `video.collection_id` | `str`   | Parent collection ID |
+| `video.name`          | `str`   | Video name           |
+| `video.description`   | `str`   | Video description    |
+| `video.length`        | `float` | Duration in seconds  |
+| `video.stream_url`    | `str`   | Default stream URL   |
+| `video.player_url`    | `str`   | Player embed URL     |
+| `video.thumbnail_url` | `str`   | Thumbnail URL        |
 
 ### Video Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `video.generate_stream(timeline=None)` | `str` | Generate stream URL (optional timeline of `[(start, end)]` tuples) |
-| `video.play()` | `str` | Open stream in browser, returns player URL |
-| `video.index_spoken_words(language_code=None, force=False)` | `None` | Index speech for search. Use `force=True` to skip if already indexed. |
-| `video.index_scenes(extraction_type, prompt, extraction_config, metadata, model_name, name, scenes, callback_url)` | `str` | Index visual scenes (returns scene_index_id) |
-| `video.index_visuals(prompt, batch_config, ...)` | `str` | Index visuals (returns scene_index_id) |
-| `video.index_audio(prompt, model_name, ...)` | `str` | Index audio with LLM (returns scene_index_id) |
-| `video.get_transcript(start=None, end=None)` | `list[dict]` | Get timestamped transcript |
-| `video.get_transcript_text(start=None, end=None)` | `str` | Get full transcript text |
-| `video.generate_transcript(force=None)` | `dict` | Generate transcript |
-| `video.translate_transcript(language, additional_notes)` | `list[dict]` | Translate transcript |
-| `video.search(query, search_type, index_type, filter, **kwargs)` | `SearchResult` | Search within video |
-| `video.add_subtitle(style=SubtitleStyle())` | `str` | Add subtitles (returns stream URL) |
-| `video.generate_thumbnail(time=None)` | `str\|Image` | Generate thumbnail |
-| `video.get_thumbnails()` | `list[Image]` | Get all thumbnails |
-| `video.extract_scenes(extraction_type, extraction_config)` | `SceneCollection` | Extract scenes |
-| `video.reframe(start, end, target, mode, callback_url)` | `Video\|None` | Reframe video aspect ratio |
-| `video.clip(prompt, content_type, model_name)` | `str` | Generate clip from prompt (returns stream URL) |
-| `video.insert_video(video, timestamp)` | `str` | Insert video at timestamp |
-| `video.download(name=None)` | `dict` | Download the video |
-| `video.delete()` | `None` | Delete the video |
+| Method                                                                                                             | Returns           | Description                                                           |
+| ------------------------------------------------------------------------------------------------------------------ | ----------------- | --------------------------------------------------------------------- |
+| `video.generate_stream(timeline=None)`                                                                             | `str`             | Generate stream URL (optional timeline of `[(start, end)]` tuples)    |
+| `video.play()`                                                                                                     | `str`             | Open stream in browser, returns player URL                            |
+| `video.index_spoken_words(language_code=None, force=False)`                                                        | `None`            | Index speech for search. Use `force=True` to skip if already indexed. |
+| `video.index_scenes(extraction_type, prompt, extraction_config, metadata, model_name, name, scenes, callback_url)` | `str`             | Index visual scenes (returns scene_index_id)                          |
+| `video.index_visuals(prompt, batch_config, ...)`                                                                   | `str`             | Index visuals (returns scene_index_id)                                |
+| `video.index_audio(prompt, model_name, ...)`                                                                       | `str`             | Index audio with LLM (returns scene_index_id)                         |
+| `video.get_transcript(start=None, end=None)`                                                                       | `list[dict]`      | Get timestamped transcript                                            |
+| `video.get_transcript_text(start=None, end=None)`                                                                  | `str`             | Get full transcript text                                              |
+| `video.generate_transcript(force=None)`                                                                            | `dict`            | Generate transcript                                                   |
+| `video.translate_transcript(language, additional_notes)`                                                           | `list[dict]`      | Translate transcript                                                  |
+| `video.search(query, search_type, index_type, filter, **kwargs)`                                                   | `SearchResult`    | Search within video                                                   |
+| `video.add_subtitle(style=SubtitleStyle())`                                                                        | `str`             | Add subtitles (returns stream URL)                                    |
+| `video.generate_thumbnail(time=None)`                                                                              | `str\|Image`      | Generate thumbnail                                                    |
+| `video.get_thumbnails()`                                                                                           | `list[Image]`     | Get all thumbnails                                                    |
+| `video.extract_scenes(extraction_type, extraction_config)`                                                         | `SceneCollection` | Extract scenes                                                        |
+| `video.reframe(start, end, target, mode, callback_url)`                                                            | `Video\|None`     | Reframe video aspect ratio                                            |
+| `video.clip(prompt, content_type, model_name)`                                                                     | `str`             | Generate clip from prompt (returns stream URL)                        |
+| `video.insert_video(video, timestamp)`                                                                             | `str`             | Insert video at timestamp                                             |
+| `video.download(name=None)`                                                                                        | `dict`            | Download the video                                                    |
+| `video.delete()`                                                                                                   | `None`            | Delete the video                                                      |
 
 ### Reframe
 
@@ -212,13 +212,13 @@ reframed = video.reframe(start=0, end=60, target={"width": 1080, "height": 1080}
 
 #### reframe Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `start` | `float\|None` | `None` | Start time in seconds (None = beginning) |
-| `end` | `float\|None` | `None` | End time in seconds (None = end of video) |
-| `target` | `str\|dict` | `"vertical"` | Preset string (`"vertical"`, `"square"`, `"landscape"`) or `{"width": int, "height": int}` |
-| `mode` | `str` | `ReframeMode.smart` | `"simple"` (centre crop) or `"smart"` (object tracking) |
-| `callback_url` | `str\|None` | `None` | Webhook URL for async notification |
+| Parameter      | Type          | Default             | Description                                                                                |
+| -------------- | ------------- | ------------------- | ------------------------------------------------------------------------------------------ |
+| `start`        | `float\|None` | `None`              | Start time in seconds (None = beginning)                                                   |
+| `end`          | `float\|None` | `None`              | End time in seconds (None = end of video)                                                  |
+| `target`       | `str\|dict`   | `"vertical"`        | Preset string (`"vertical"`, `"square"`, `"landscape"`) or `{"width": int, "height": int}` |
+| `mode`         | `str`         | `ReframeMode.smart` | `"simple"` (centre crop) or `"smart"` (object tracking)                                    |
+| `callback_url` | `str\|None`   | `None`              | Webhook URL for async notification                                                         |
 
 Returns a `Video` object when no `callback_url` is provided, `None` otherwise.
 
@@ -230,22 +230,22 @@ audio = coll.get_audio(audio_id)
 
 ### Audio Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `audio.id` | `str` | Unique audio ID |
-| `audio.collection_id` | `str` | Parent collection ID |
-| `audio.name` | `str` | Audio name |
-| `audio.length` | `float` | Duration in seconds |
+| Property              | Type    | Description          |
+| --------------------- | ------- | -------------------- |
+| `audio.id`            | `str`   | Unique audio ID      |
+| `audio.collection_id` | `str`   | Parent collection ID |
+| `audio.name`          | `str`   | Audio name           |
+| `audio.length`        | `float` | Duration in seconds  |
 
 ### Audio Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `audio.generate_url()` | `str` | Generate signed URL for playback |
-| `audio.get_transcript(start=None, end=None)` | `list[dict]` | Get timestamped transcript |
-| `audio.get_transcript_text(start=None, end=None)` | `str` | Get full transcript text |
-| `audio.generate_transcript(force=None)` | `dict` | Generate transcript |
-| `audio.delete()` | `None` | Delete the audio |
+| Method                                            | Returns      | Description                      |
+| ------------------------------------------------- | ------------ | -------------------------------- |
+| `audio.generate_url()`                            | `str`        | Generate signed URL for playback |
+| `audio.get_transcript(start=None, end=None)`      | `list[dict]` | Get timestamped transcript       |
+| `audio.get_transcript_text(start=None, end=None)` | `str`        | Get full transcript text         |
+| `audio.generate_transcript(force=None)`           | `dict`       | Generate transcript              |
+| `audio.delete()`                                  | `None`       | Delete the audio                 |
 
 ## Image Object
 
@@ -255,19 +255,19 @@ image = coll.get_image(image_id)
 
 ### Image Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `image.id` | `str` | Unique image ID |
-| `image.collection_id` | `str` | Parent collection ID |
-| `image.name` | `str` | Image name |
-| `image.url` | `str\|None` | Image URL (may be `None` for generated images — use `generate_url()` instead) |
+| Property              | Type        | Description                                                                   |
+| --------------------- | ----------- | ----------------------------------------------------------------------------- |
+| `image.id`            | `str`       | Unique image ID                                                               |
+| `image.collection_id` | `str`       | Parent collection ID                                                          |
+| `image.name`          | `str`       | Image name                                                                    |
+| `image.url`           | `str\|None` | Image URL (may be `None` for generated images — use `generate_url()` instead) |
 
 ### Image Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `image.generate_url()` | `str` | Generate signed URL |
-| `image.delete()` | `None` | Delete the image |
+| Method                 | Returns | Description         |
+| ---------------------- | ------- | ------------------- |
+| `image.generate_url()` | `str`   | Generate signed URL |
+| `image.delete()`       | `None`  | Delete the image    |
 
 ## Timeline & Editor
 
@@ -279,11 +279,11 @@ from videodb.timeline import Timeline
 timeline = Timeline(conn)
 ```
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `timeline.add_inline(asset)` | `None` | Add `VideoAsset` sequentially on main track |
-| `timeline.add_overlay(start, asset)` | `None` | Overlay `AudioAsset`, `ImageAsset`, or `TextAsset` at timestamp |
-| `timeline.generate_stream()` | `str` | Compile and get stream URL |
+| Method                               | Returns | Description                                                     |
+| ------------------------------------ | ------- | --------------------------------------------------------------- |
+| `timeline.add_inline(asset)`         | `None`  | Add `VideoAsset` sequentially on main track                     |
+| `timeline.add_overlay(start, asset)` | `None`  | Overlay `AudioAsset`, `ImageAsset`, or `TextAsset` at timestamp |
+| `timeline.generate_stream()`         | `str`   | Compile and get stream URL                                      |
 
 ### Asset Types
 
@@ -391,28 +391,28 @@ For scene search, use `search_type=SearchType.semantic` with `index_type=IndexTy
 results = video.search("query", search_type=SearchType.semantic)
 ```
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `results.get_shots()` | `list[Shot]` | Get list of matching segments |
-| `results.compile()` | `str` | Compile all shots into a stream URL |
-| `results.play()` | `str` | Open compiled stream in browser |
+| Method                | Returns      | Description                         |
+| --------------------- | ------------ | ----------------------------------- |
+| `results.get_shots()` | `list[Shot]` | Get list of matching segments       |
+| `results.compile()`   | `str`        | Compile all shots into a stream URL |
+| `results.play()`      | `str`        | Open compiled stream in browser     |
 
 ### Shot Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `shot.video_id` | `str` | Source video ID |
-| `shot.video_length` | `float` | Source video duration |
-| `shot.video_title` | `str` | Source video title |
-| `shot.start` | `float` | Start time (seconds) |
-| `shot.end` | `float` | End time (seconds) |
-| `shot.text` | `str` | Matched text content |
+| Property            | Type    | Description            |
+| ------------------- | ------- | ---------------------- |
+| `shot.video_id`     | `str`   | Source video ID        |
+| `shot.video_length` | `float` | Source video duration  |
+| `shot.video_title`  | `str`   | Source video title     |
+| `shot.start`        | `float` | Start time (seconds)   |
+| `shot.end`          | `float` | End time (seconds)     |
+| `shot.text`         | `str`   | Matched text content   |
 | `shot.search_score` | `float` | Search relevance score |
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `shot.generate_stream()` | `str` | Stream this specific shot |
-| `shot.play()` | `str` | Open shot stream in browser |
+| Method                   | Returns | Description                 |
+| ------------------------ | ------- | --------------------------- |
+| `shot.generate_stream()` | `str`   | Stream this specific shot   |
+| `shot.play()`            | `str`   | Open shot stream in browser |
 
 ## Meeting Object
 
@@ -428,25 +428,25 @@ meeting = coll.record_meeting(
 
 ### Meeting Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `meeting.id` | `str` | Unique meeting ID |
-| `meeting.collection_id` | `str` | Parent collection ID |
-| `meeting.status` | `str` | Current status |
-| `meeting.video_id` | `str` | Recorded video ID (after completion) |
-| `meeting.bot_name` | `str` | Bot name |
-| `meeting.meeting_title` | `str` | Meeting title |
-| `meeting.meeting_url` | `str` | Meeting URL |
-| `meeting.speaker_timeline` | `dict` | Speaker timeline data |
-| `meeting.is_active` | `bool` | True if initializing or processing |
-| `meeting.is_completed` | `bool` | True if done |
+| Property                   | Type   | Description                          |
+| -------------------------- | ------ | ------------------------------------ |
+| `meeting.id`               | `str`  | Unique meeting ID                    |
+| `meeting.collection_id`    | `str`  | Parent collection ID                 |
+| `meeting.status`           | `str`  | Current status                       |
+| `meeting.video_id`         | `str`  | Recorded video ID (after completion) |
+| `meeting.bot_name`         | `str`  | Bot name                             |
+| `meeting.meeting_title`    | `str`  | Meeting title                        |
+| `meeting.meeting_url`      | `str`  | Meeting URL                          |
+| `meeting.speaker_timeline` | `dict` | Speaker timeline data                |
+| `meeting.is_active`        | `bool` | True if initializing or processing   |
+| `meeting.is_completed`     | `bool` | True if done                         |
 
 ### Meeting Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `meeting.refresh()` | `Meeting` | Refresh data from server |
-| `meeting.wait_for_status(target_status, timeout=14400, interval=120)` | `bool` | Poll until status reached |
+| Method                                                                | Returns   | Description               |
+| --------------------------------------------------------------------- | --------- | ------------------------- |
+| `meeting.refresh()`                                                   | `Meeting` | Refresh data from server  |
+| `meeting.wait_for_status(target_status, timeout=14400, interval=120)` | `bool`    | Poll until status reached |
 
 ## RTStream & Capture
 
@@ -541,10 +541,10 @@ from videodb.exceptions import (
 )
 ```
 
-| Exception | Common Cause |
-|-----------|-------------|
-| `AuthenticationError` | Missing or invalid `VIDEO_DB_API_KEY` |
+| Exception             | Common Cause                                    |
+| --------------------- | ----------------------------------------------- |
+| `AuthenticationError` | Missing or invalid `VIDEO_DB_API_KEY`           |
 | `InvalidRequestError` | Invalid URL, unsupported format, bad parameters |
-| `RequestTimeoutError` | Server took too long to respond |
-| `SearchError` | Searching before indexing, invalid search type |
-| `VideodbError` | Server errors, network issues, generic failures |
+| `RequestTimeoutError` | Server took too long to respond                 |
+| `SearchError`         | Searching before indexing, invalid search type  |
+| `VideodbError`        | Server errors, network issues, generic failures |

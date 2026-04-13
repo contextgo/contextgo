@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tmp') } }));
@@ -75,6 +76,7 @@ vi.mock('../../src/process/utils/initStorage', () => ({
   ProcessConfig: {
     get: (...args: unknown[]) => hoisted.processConfigGetMock(...args),
   },
+  getSkillsDir: vi.fn(() => '/tmp/skills'),
 }));
 
 const listConfiguredOpenClawAgentsMock = vi.fn(() => []);
@@ -118,6 +120,8 @@ vi.mock('../../src/process/agent/codex/connection/CodexConnection', () => ({
       stop: hoisted.codexStop,
     };
   }),
+  getCodexConfigPath: vi.fn(() => '/Users/tester/.codex/config.toml'),
+  getCodexAuthPath: vi.fn(() => '/Users/tester/.codex/auth.json'),
 }));
 
 vi.mock('../../src/process/task/AcpAgentManager', () => ({ default: class AcpAgentManager {} }));
@@ -278,6 +282,35 @@ describe('acpConversationBridge', () => {
     });
   });
 
+  it('returns the Codex runtime config entries as a list', async () => {
+    const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
+      return targetPath === '/Users/tester/.codex/config.toml';
+    });
+
+    const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'codex' });
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        backend: 'codex',
+        entries: [
+          {
+            kind: 'config',
+            path: '/Users/tester/.codex/config.toml',
+            exists: true,
+          },
+          {
+            kind: 'auth',
+            path: '/Users/tester/.codex/auth.json',
+            exists: false,
+          },
+        ],
+      },
+    });
+
+    existsSyncSpy.mockRestore();
+  });
+
   it('imports an external session and emits a conversation list update', async () => {
     const result = await handlers['importExternalSession']({ provider: 'codex', sessionId: 'session-1' });
 
@@ -366,69 +399,15 @@ describe('acpConversationBridge', () => {
     });
   });
 
-  it('bootstraps OpenClaw after managed install so the runtime is actually usable', async () => {
-    safeExecMock.mockImplementation(async (command: string, options?: { onStdoutChunk?: (chunk: string) => void }) => {
-      if (command === 'npm install -g openclaw') {
-        options?.onStdoutChunk?.('installing openclaw\n');
-      }
-
-      return {
-        stdout: `${command}\n`,
-        stderr: '',
-      };
-    });
-
+  it('does not managed-install legacy openclaw runtime anymore', async () => {
     const result = await handlers['installManagedRuntime']({ backend: 'openclaw-gateway' });
 
-    expect(safeExecMock).toHaveBeenCalledWith(
-      'npm install -g openclaw',
-      expect.objectContaining({
-        timeout: 15 * 60 * 1000,
-        env: { PATH: '/usr/bin' },
-      })
-    );
-    expect(safeExecMock).toHaveBeenCalledWith(
-      `openclaw config set gateway.auth.mode '"token"' --strict-json`,
-      expect.objectContaining({ timeout: 60_000, env: { PATH: '/usr/bin' } })
-    );
-    expect(safeExecMock).toHaveBeenCalledWith(
-      `openclaw config set gateway.mode '"local"' --strict-json`,
-      expect.objectContaining({ timeout: 60_000, env: { PATH: '/usr/bin' } })
-    );
-    expect(safeExecMock).toHaveBeenCalledWith(
-      `openclaw config set gateway.bind '"loopback"' --strict-json`,
-      expect.objectContaining({ timeout: 60_000, env: { PATH: '/usr/bin' } })
-    );
-    expect(safeExecMock).toHaveBeenCalledWith(
-      'openclaw config set gateway.port 18789 --strict-json',
-      expect.objectContaining({ timeout: 60_000, env: { PATH: '/usr/bin' } })
-    );
-    expect(hoisted.openClawAgentStart).toHaveBeenCalledTimes(1);
-    expect(hoisted.openClawAgentStop).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(acpDetector.refreshDetectedAgents)).toHaveBeenCalled();
-    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
-      backend: 'openclaw-gateway',
-      command: 'npm install -g openclaw',
-      stage: 'running',
-      message: 'Bootstrapping local OpenClaw gateway configuration.',
-    });
-    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
-      backend: 'openclaw-gateway',
-      command: 'npm install -g openclaw',
-      stage: 'completed',
-      stdout: expect.stringContaining('openclaw config set gateway.mode'),
-      stderr: '',
-      exitCode: 0,
-      message: 'Install completed for openclaw-gateway',
-    });
+    expect(safeExecMock).not.toHaveBeenCalled();
+    expect(hoisted.openClawAgentStart).not.toHaveBeenCalled();
+    expect(hoisted.managedRuntimeInstallEventEmit).not.toHaveBeenCalled();
     expect(result).toEqual({
-      success: true,
-      data: {
-        backend: 'openclaw-gateway',
-        command: 'npm install -g openclaw',
-        stdout: expect.stringContaining('openclaw config set gateway.port 18789 --strict-json'),
-        stderr: '',
-      },
+      success: false,
+      msg: 'No managed install command is configured for openclaw-gateway',
     });
   });
 
@@ -474,95 +453,6 @@ describe('acpConversationBridge', () => {
     });
   });
 
-  it('surfaces OpenClaw bootstrap failures after the package install succeeds', async () => {
-    safeExecMock.mockImplementation(async (command: string) => {
-      if (command === `openclaw config set gateway.mode '"local"' --strict-json`) {
-        throw Object.assign(new Error('Command failed with exit code 1'), {
-          stdout: 'partial stdout',
-          stderr: 'bootstrap failed',
-          code: 1,
-        });
-      }
-
-      return { stdout: `${command}\n`, stderr: '' };
-    });
-
-    const result = await handlers['installManagedRuntime']({ backend: 'openclaw-gateway' });
-
-    expect(hoisted.openClawAgentStart).not.toHaveBeenCalled();
-    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
-      backend: 'openclaw-gateway',
-      command: 'npm install -g openclaw',
-      stage: 'failed',
-      stdout: 'partial stdout',
-      stderr: 'bootstrap failed',
-      exitCode: 1,
-      message: 'bootstrap failed',
-    });
-    expect(result).toEqual({
-      success: false,
-      msg: 'bootstrap failed',
-      data: {
-        backend: 'openclaw-gateway',
-        command: 'npm install -g openclaw',
-        stdout: 'partial stdout',
-        stderr: 'bootstrap failed',
-      },
-    });
-  });
-
-  it('expands OpenClaw into native agent entries when config defines multiple agents', async () => {
-    vi.mocked(acpDetector.getDetectedAgents).mockReturnValue([
-      { backend: 'gemini', name: 'Gemini' },
-      { backend: 'openclaw-gateway', name: 'OpenClaw', cliPath: 'openclaw' },
-    ] as any);
-    listConfiguredOpenClawAgentsMock.mockReturnValue([
-      {
-        agentId: 'main',
-        name: 'OpenClaw',
-        workspace: '/Users/test/.openclaw/workspace',
-        isDefault: true,
-      },
-      {
-        agentId: 'reviewer',
-        name: 'Reviewer (reviewer)',
-        workspace: '/Users/test/.openclaw/workspace-reviewer',
-        avatar: '🦞',
-        isDefault: false,
-      },
-    ]);
-
-    const result = await handlers['getAvailableAgents']();
-
-    expect(result.success).toBe(true);
-    expect(result.data).toEqual([
-      expect.objectContaining({
-        backend: 'gemini',
-        name: 'Gemini',
-        cliPath: 'gemini',
-        runtimeSource: 'builtin',
-      }),
-      expect.objectContaining({
-        backend: 'openclaw-gateway',
-        name: 'OpenClaw',
-        cliPath: 'openclaw',
-        runtimeSource: 'detected',
-        openclawAgentId: 'main',
-        workspace: '/Users/test/.openclaw/workspace',
-        isDefault: true,
-      }),
-      expect.objectContaining({
-        backend: 'openclaw-gateway',
-        name: 'Reviewer (reviewer)',
-        cliPath: 'openclaw',
-        runtimeSource: 'detected',
-        openclawAgentId: 'reviewer',
-        workspace: '/Users/test/.openclaw/workspace-reviewer',
-        avatar: '🦞',
-        isDefault: false,
-      }),
-    ]);
-  });
 
   it('merges configured runtime paths into available agents when PATH detection misses them', async () => {
     vi.mocked(acpDetector.getDetectedAgents).mockReturnValue([{ backend: 'gemini', name: 'Gemini' }] as any);

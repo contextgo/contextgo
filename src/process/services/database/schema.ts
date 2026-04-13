@@ -229,12 +229,12 @@ export function initSchema(db: ISqliteDriver): void {
   );
   db.exec('CREATE INDEX IF NOT EXISTS idx_context_operations_space_type ON context_operations(space_id, type)');
 
-  // Conversations table (会话表 - 存储TChatConversation)
+  // Conversations table (会话表 - 存储 TChatConversation)
   db.exec(`CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     name TEXT NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex', 'openclaw-gateway', 'nanobot', 'group')),
+    type TEXT NOT NULL CHECK(type IN ('gemini', 'acp', 'codex', 'group')),
     extra TEXT NOT NULL,
     model TEXT,
     status TEXT CHECK(status IN ('pending', 'running', 'finished')),
@@ -384,7 +384,9 @@ export function initSchema(db: ISqliteDriver): void {
     updated_at INTEGER NOT NULL
   )`);
   db.exec('CREATE INDEX IF NOT EXISTS idx_context_schedules_enabled ON context_schedules(enabled, updated_at DESC)');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_context_schedules_conversation ON context_schedules(conversation_id, updated_at DESC)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_context_schedules_conversation ON context_schedules(conversation_id, updated_at DESC)'
+  );
   db.exec('CREATE INDEX IF NOT EXISTS idx_context_schedules_space ON context_schedules(space_id, updated_at DESC)');
 
   db.exec(`CREATE TABLE IF NOT EXISTS connector_instances (

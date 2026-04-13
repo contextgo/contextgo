@@ -9,13 +9,12 @@ import type { IProvider, TChatConversation, TProviderWithModel } from '@/common/
 import { channel } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
 import addChatIcon from '@/renderer/assets/icons/add-chat.svg';
-import { ScheduleJobManager } from '@/renderer/pages/schedule';
 import ProjectAutomationModal from '@/renderer/pages/schedule/components/ProjectAutomationModal';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { iconColors } from '@/renderer/styles/colors';
 import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
 import { Button, Dropdown, Menu, Message, Tooltip, Typography } from '@arco-design/web-react';
-import { ConnectionPoint, FolderOpen, History, SettingTwo } from '@icon-park/react';
+import { ConnectionPoint, History, SettingTwo } from '@icon-park/react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -25,8 +24,6 @@ import AcpChat from '../platforms/acp/AcpChat';
 import ChatLayout from './ChatLayout';
 import ChatSider from './ChatSider';
 import CodexChat from '../platforms/codex/CodexChat';
-import NanobotChat from '../platforms/nanobot/NanobotChat';
-import OpenClawChat from '../platforms/openclaw/OpenClawChat';
 import GeminiChat from '../platforms/gemini/GeminiChat';
 import GroupChat from '../platforms/group/GroupChat';
 import AcpModelSelector from '@/renderer/components/agent/AcpModelSelector';
@@ -57,11 +54,11 @@ const PUBLICATION_INTENT_QUERY_KEYS: Array<keyof PublicationIntent> = [
 ];
 
 function buildPublicationIntent(conversation: TChatConversation): PublicationIntent | null {
-  if (conversation.type === 'group' || conversation.type === 'nanobot') {
+  if (conversation.type === 'group') {
     return null;
   }
 
-  if (conversation.type === 'gemini' || conversation.type === 'codex' || conversation.type === 'openclaw-gateway') {
+  if (conversation.type === 'gemini' || conversation.type === 'codex') {
     return {
       conversationId: conversation.id,
       conversationName: conversation.name,
@@ -174,58 +171,40 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
   );
 };
 
-const SessionHooksEntryButton: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Tooltip content={t('conversation.workspace.sessionHooksOpen')}>
-      <Button
-        type='text'
-        size='small'
-        className='app-header-pill-button chat-header-publish-pill !h-auto !w-auto !min-w-0'
-        aria-label={t('conversation.workspace.sessionHooksOpen')}
-        onClick={() => emitter.emit('conversation.session-hooks.open', conversation.id)}
-      >
-        <span className='app-header-pill'>
-          <span className='app-header-pill__icon'>
-            <SettingTwo theme='outline' size={16} fill={iconColors.primary} />
-          </span>
-          <span className='hidden md:inline text-12px text-t-primary'>
-            {t('conversation.workspace.sessionHooksAction')}
-          </span>
-        </span>
-      </Button>
-    </Tooltip>
-  );
-};
-
 const ProjectAutomationEntryButton: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
   const { t } = useTranslation();
   const workspacePath = getConversationWorkspacePath(conversation);
+  const supportsAutomation =
+    Boolean(workspacePath) ||
+    conversation.type === 'gemini' ||
+    conversation.type === 'acp' ||
+    conversation.type === 'codex';
   const [modalVisible, setModalVisible] = useState(false);
 
-  if (!workspacePath) {
+  if (!supportsAutomation) {
     return null;
   }
 
   return (
     <>
-      <Button
-        type='text'
-        size='small'
-        className='app-header-pill-button chat-header-publish-pill !h-auto !w-auto !min-w-0'
-        aria-label={t('conversation.workspace.automation.action')}
-        onClick={() => setModalVisible(true)}
-      >
-        <span className='app-header-pill'>
-          <span className='app-header-pill__icon'>
-            <FolderOpen theme='outline' size={16} fill={iconColors.primary} />
+      <Tooltip content={t('conversation.workspace.automation.action')}>
+        <Button
+          type='text'
+          size='small'
+          className='app-header-pill-button chat-header-publish-pill !h-auto !w-auto !min-w-0'
+          aria-label={t('conversation.workspace.automation.action')}
+          onClick={() => setModalVisible(true)}
+        >
+          <span className='app-header-pill'>
+            <span className='app-header-pill__icon'>
+              <SettingTwo theme='outline' size={16} fill={iconColors.primary} />
+            </span>
+            <span className='hidden md:inline text-12px text-t-primary'>
+              {t('conversation.workspace.automation.action')}
+            </span>
           </span>
-          <span className='hidden md:inline text-12px text-t-primary'>
-            {t('conversation.workspace.automation.action')}
-          </span>
-        </span>
-      </Button>
+        </Button>
+      </Tooltip>
       <ProjectAutomationModal
         visible={modalVisible}
         conversation={conversation}
@@ -359,18 +338,8 @@ const GeminiConversationPanel: React.FC<{ conversation: GeminiConversation; slid
         <div className='shrink-0'>
           <PublishAgentEntryButton conversation={conversation} />
         </div>
-        {workspaceEnabled ? (
-          <div className='shrink-0'>
-            <ProjectAutomationEntryButton conversation={conversation} />
-          </div>
-        ) : null}
-        {workspaceEnabled ? (
-          <div className='shrink-0'>
-            <SessionHooksEntryButton conversation={conversation} />
-          </div>
-        ) : null}
         <div className='shrink-0'>
-          <ScheduleJobManager conversation={conversation} />
+          <ProjectAutomationEntryButton conversation={conversation} />
         </div>
       </div>
     ),
@@ -435,22 +404,6 @@ const ChatConversation: React.FC<{
             workspace={conversation.extra?.workspace}
           />
         );
-      case 'openclaw-gateway':
-        return (
-          <OpenClawChat
-            key={conversation.id}
-            conversation_id={conversation.id}
-            workspace={conversation.extra?.workspace}
-          />
-        );
-      case 'nanobot':
-        return (
-          <NanobotChat
-            key={conversation.id}
-            conversation_id={conversation.id}
-            workspace={conversation.extra?.workspace}
-          />
-        );
       case 'group':
         return <GroupChat key={conversation.id} conversation={conversation} />;
       default:
@@ -493,17 +446,6 @@ const ChatConversation: React.FC<{
         />
       );
     }
-    if (conversation.type === 'openclaw-gateway') {
-      const extra = conversation.extra as { runtimeValidation?: { expectedModel?: string } };
-      return (
-        <AcpModelSelector
-          key={`${conversation.id}:openclaw-gateway`}
-          conversationId={conversation.id}
-          backend='openclaw-gateway'
-          initialModelId={extra.runtimeValidation?.expectedModel}
-        />
-      );
-    }
     return <GeminiModelSelector disabled={true} />;
   }, [conversation, isGeminiConversation, isGroupConversation]);
 
@@ -515,14 +457,9 @@ const ChatConversation: React.FC<{
             <PublishAgentEntryButton conversation={conversation} />
           </div>
         ) : null}
-        {conversation && workspaceEnabled ? (
+        {conversation ? (
           <div className='shrink-0'>
             <ProjectAutomationEntryButton conversation={conversation} />
-          </div>
-        ) : null}
-        {conversation && workspaceEnabled ? (
-          <div className='shrink-0'>
-            <SessionHooksEntryButton conversation={conversation} />
           </div>
         ) : null}
         {conversation
@@ -533,11 +470,6 @@ const ChatConversation: React.FC<{
               },
             })
           : null}
-        {conversation ? (
-          <div className='shrink-0'>
-            <ScheduleJobManager conversation={conversation} />
-          </div>
-        ) : null}
       </div>
     ),
     [conversation, openPreview]
@@ -569,11 +501,7 @@ const ChatConversation: React.FC<{
                 ? conversation?.extra?.backend
                 : conversation?.type === 'codex'
                   ? 'codex'
-                  : conversation?.type === 'openclaw-gateway'
-                    ? 'openclaw-gateway'
-                    : conversation?.type === 'nanobot'
-                      ? 'nanobot'
-                      : undefined,
+                  : undefined,
             agentName: (conversation?.extra as { agentName?: string })?.agentName,
           };
 

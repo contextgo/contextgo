@@ -84,7 +84,7 @@ function run(inputOrRaw, options = {}) {
       stderr:
         `BLOCKED: Hook input exceeded ${options.maxStdin || MAX_STDIN} bytes. ` +
         'Refusing to bypass config-protection on a truncated payload. ' +
-        'Retry with a smaller edit or disable the config-protection hook temporarily.'
+        'Retry with a smaller edit or disable the config-protection hook temporarily.',
     };
   }
 
@@ -112,7 +112,7 @@ module.exports = { run };
 // Stdin fallback for spawnSync execution
 let truncated = /^(1|true|yes)$/i.test(String(process.env.ECC_HOOK_INPUT_TRUNCATED || ''));
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', chunk => {
+process.stdin.on('data', (chunk) => {
   if (raw.length < MAX_STDIN) {
     const remaining = MAX_STDIN - raw.length;
     raw += chunk.substring(0, remaining);

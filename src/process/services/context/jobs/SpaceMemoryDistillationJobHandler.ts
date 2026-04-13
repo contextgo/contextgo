@@ -10,9 +10,7 @@ import type { ContextJob, SpaceMemoryDistillationArtifact } from '../contextDoma
 type SupportedVaultSyncService = Pick<SpaceVaultContextSyncService, 'writeSpaceMemoryDistillation'>;
 
 export class SpaceMemoryDistillationJobHandler {
-  constructor(
-    private readonly vaultSyncService: SupportedVaultSyncService = new SpaceVaultContextSyncService()
-  ) {}
+  constructor(private readonly vaultSyncService: SupportedVaultSyncService = new SpaceVaultContextSyncService()) {}
 
   async run(job: ContextJob): Promise<SpaceMemoryDistillationArtifact | undefined> {
     if (job.type !== 'space_memory_distillation') {

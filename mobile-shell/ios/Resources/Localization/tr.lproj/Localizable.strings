@@ -55,10 +55,8 @@
 "home.metric.live" = "Canlı oturumlar";
 "home.account.title" = "Resmi hesap";
 "home.account.detail" = "Bu mobil kabuk zaten barındırılan hesap oturumuna bağlı. Başka bir liste sayfasına geçmeden aşağıdaki hazır masaüstlerinden birini doğrudan açabilirsiniz.";
-"home.account.action" = "Tüm cihazları aç";
 "home.recent.title" = "Masaüstleriniz";
 "home.recent.subtitle" = "Giriş yapılmış ana sayfa artık resmi hesabınıza bağlı tüm masaüstlerini gösterir.";
-"home.recent.action" = "Tam cihaz listesini gör";
 "home.recent.empty.title" = "Henüz kayıtlı masaüstü yok";
 "home.recent.empty.detail" = "Masaüstü uygulamasını çevrimiçi tutun ve ContextGo Cloud oturumunu açık bırakın. Cihazlarınız burada otomatik olarak görünür.";
 "home.device.status.available" = "Açmaya hazır";

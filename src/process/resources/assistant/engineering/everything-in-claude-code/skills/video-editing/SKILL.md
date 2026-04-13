@@ -37,6 +37,7 @@ Each layer has a specific job. Do not skip layers. Do not try to make one tool d
 ## Layer 1: Capture (Screen Studio / Raw Footage)
 
 Collect the source material:
+
 - **Screen Studio**: polished screen recordings for app demos, coding sessions, browser workflows
 - **Raw camera footage**: vlog footage, interviews, event recordings
 - **Desktop capture via VideoDB**: session recording with real-time context (see `videodb` skill)
@@ -46,6 +47,7 @@ Output: raw files ready for organization.
 ## Layer 2: Organization (Claude / Codex)
 
 Use Claude Code or Codex to:
+
 - **Transcribe and label**: generate transcript, identify topics and themes
 - **Plan structure**: decide what stays, what gets cut, what order works
 - **Identify dead sections**: find pauses, tangents, repeated takes
@@ -121,7 +123,7 @@ Remotion turns editing problems into composable code. Use it for things that tra
 ### Basic Remotion composition
 
 ```tsx
-import { AbsoluteFill, Sequence, Video, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Sequence, Video, useCurrentFrame } from 'remotion';
 
 export const VlogComposition: React.FC = () => {
   const frame = useCurrentFrame();
@@ -130,20 +132,24 @@ export const VlogComposition: React.FC = () => {
     <AbsoluteFill>
       {/* Main footage */}
       <Sequence from={0} durationInFrames={300}>
-        <Video src="/segments/intro.mp4" />
+        <Video src='/segments/intro.mp4' />
       </Sequence>
 
       {/* Title overlay */}
       <Sequence from={30} durationInFrames={90}>
-        <AbsoluteFill style={{
-          justifyContent: "center",
-          alignItems: "center",
-        }}>
-          <h1 style={{
-            fontSize: 72,
-            color: "white",
-            textShadow: "2px 2px 8px rgba(0,0,0,0.8)",
-          }}>
+        <AbsoluteFill
+          style={{
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <h1
+            style={{
+              fontSize: 72,
+              color: 'white',
+              textShadow: '2px 2px 8px rgba(0,0,0,0.8)',
+            }}
+          >
             The AI Editing Stack
           </h1>
         </AbsoluteFill>
@@ -151,7 +157,7 @@ export const VlogComposition: React.FC = () => {
 
       {/* Next segment */}
       <Sequence from={300} durationInFrames={450}>
-        <Video src="/segments/demo.mp4" />
+        <Video src='/segments/demo.mp4' />
       </Sequence>
     </AbsoluteFill>
   );
@@ -195,6 +201,7 @@ with open("voiceover.mp3", "wb") as f:
 ### Music and SFX with fal.ai
 
 Use the `fal-ai-media` skill for:
+
 - Background music generation
 - Sound effects (ThinkSound model for video-to-audio)
 - Transition sounds
@@ -202,6 +209,7 @@ Use the `fal-ai-media` skill for:
 ### Generated visuals with fal.ai
 
 Use for insert shots, thumbnails, or b-roll that doesn't exist:
+
 ```
 generate(app_id: "fal-ai/nano-banana-pro", input_data: {
   "prompt": "professional thumbnail for tech vlog, dark background, code on screen",
@@ -212,6 +220,7 @@ generate(app_id: "fal-ai/nano-banana-pro", input_data: {
 ### VideoDB generative audio
 
 If VideoDB is configured:
+
 ```python
 voiceover = coll.generate_voice(text="Narration here", voice="alloy")
 music = coll.generate_music(prompt="lo-fi background for coding vlog", duration=120)
@@ -221,6 +230,7 @@ sfx = coll.generate_sound_effect(prompt="subtle whoosh transition")
 ## Layer 6: Final Polish (Descript / CapCut)
 
 The last layer is human. Use a traditional editor for:
+
 - **Pacing**: adjust cuts that feel too fast or slow
 - **Captions**: auto-generated, then manually cleaned
 - **Color grading**: basic correction and mood
@@ -233,12 +243,12 @@ This is where taste lives. AI clears the repetitive work. You make the final cal
 
 Different platforms need different aspect ratios:
 
-| Platform | Aspect Ratio | Resolution |
-|----------|-------------|------------|
-| YouTube | 16:9 | 1920x1080 |
-| TikTok / Reels | 9:16 | 1080x1920 |
-| Instagram Feed | 1:1 | 1080x1080 |
-| X / Twitter | 16:9 or 1:1 | 1280x720 or 720x720 |
+| Platform       | Aspect Ratio | Resolution          |
+| -------------- | ------------ | ------------------- |
+| YouTube        | 16:9         | 1920x1080           |
+| TikTok / Reels | 9:16         | 1080x1920           |
+| Instagram Feed | 1:1          | 1080x1080           |
+| X / Twitter    | 16:9 or 1:1  | 1280x720 or 720x720 |
 
 ### Reframe with FFmpeg
 
@@ -278,6 +288,7 @@ ffmpeg -i input.mp4 -af silencedetect=noise=-30dB:d=2 -f null - 2>&1 | grep sile
 ### Highlight extraction
 
 Use Claude to analyze transcript + scene timestamps:
+
 ```
 "Given this transcript with timestamps and these scene change points,
 identify the 5 most engaging 30-second clips for social media."
@@ -285,14 +296,14 @@ identify the 5 most engaging 30-second clips for social media."
 
 ## What Each Tool Does Best
 
-| Tool | Strength | Weakness |
-|------|----------|----------|
-| Claude / Codex | Organization, planning, code generation | Not the creative taste layer |
-| FFmpeg | Deterministic cuts, batch processing, format conversion | No visual editing UI |
-| Remotion | Programmable overlays, composable scenes, reusable templates | Learning curve for non-devs |
-| Screen Studio | Polished screen recordings immediately | Only screen capture |
-| ElevenLabs | Voice, narration, music, SFX | Not the center of the workflow |
-| Descript / CapCut | Final pacing, captions, polish | Manual, not automatable |
+| Tool              | Strength                                                     | Weakness                       |
+| ----------------- | ------------------------------------------------------------ | ------------------------------ |
+| Claude / Codex    | Organization, planning, code generation                      | Not the creative taste layer   |
+| FFmpeg            | Deterministic cuts, batch processing, format conversion      | No visual editing UI           |
+| Remotion          | Programmable overlays, composable scenes, reusable templates | Learning curve for non-devs    |
+| Screen Studio     | Polished screen recordings immediately                       | Only screen capture            |
+| ElevenLabs        | Voice, narration, music, SFX                                 | Not the center of the workflow |
+| Descript / CapCut | Final pacing, captions, polish                               | Manual, not automatable        |
 
 ## Key Principles
 

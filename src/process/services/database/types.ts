@@ -5,7 +5,13 @@
  */
 
 // 复用现有的业务类型定义
-import type { ConversationSource, TChatConversation, IConfigStorageRefer, TSpace } from '@/common/config/storage';
+import type {
+  ConversationSource,
+  IConfigStorageRefer,
+  PersistedConversationType,
+  TChatConversation,
+  TSpace,
+} from '@/common/config/storage';
 import type { TMessage } from '@/common/chat/chatLib';
 import type {
   ChannelBindingScopeType,
@@ -95,7 +101,7 @@ export interface IConversationRow {
   id: string;
   user_id: string;
   name: string;
-  type: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'group';
+  type: PersistedConversationType;
   extra: string; // JSON string of extra data
   model?: string; // JSON string of TProviderWithModel (gemini type has this)
   status?: 'pending' | 'running' | 'finished';
@@ -335,24 +341,6 @@ export function rowToConversation(row: IConversationRow): TChatConversation {
     return {
       ...base,
       type: 'codex' as const,
-      extra: JSON.parse(row.extra),
-    } as TChatConversation;
-  }
-
-  // OpenClaw Gateway type
-  if (row.type === 'openclaw-gateway') {
-    return {
-      ...base,
-      type: 'openclaw-gateway' as const,
-      extra: JSON.parse(row.extra),
-    } as TChatConversation;
-  }
-
-  // Nanobot type
-  if (row.type === 'nanobot') {
-    return {
-      ...base,
-      type: 'nanobot' as const,
       extra: JSON.parse(row.extra),
     } as TChatConversation;
   }

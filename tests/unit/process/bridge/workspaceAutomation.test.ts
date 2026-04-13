@@ -8,15 +8,21 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ENGINEERING_DEFAULT_HOOKS } from '../../../../src/common/config/presets/assistantPresets';
+import { getBundledAgentPackageDefaultEnabledHookNames } from '../../../../src/common/config/presets/bundledAgentPackageRegistry';
+
+const ENGINEERING_DEFAULT_HOOKS = getBundledAgentPackageDefaultEnabledHookNames('builtin-superpowers')!;
 
 const mockState = {
   builtinHooksDir: '',
 };
 
-vi.mock('@process/utils/initStorage', () => ({
-  getBuiltinHooksCopyDir: () => mockState.builtinHooksDir,
-}));
+vi.mock('@process/utils/initStorage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@process/utils/initStorage')>();
+  return {
+    ...actual,
+    getBuiltinHooksCopyDir: () => mockState.builtinHooksDir,
+  };
+});
 
 import {
   copyWorkspaceAutomationHooks,
@@ -25,8 +31,17 @@ import {
   getWorkspaceCommandsFile,
   getWorkspaceHookDir,
   getWorkspaceHooksFile,
+  getWorkspaceSchedulesFile,
   readWorkspaceHookSelection,
 } from '../../../../src/process/bridge/services/workspaceAutomation';
+
+type ProjectCommandRecord = {
+  id: string;
+  enabled: boolean;
+  name: string;
+  description: string;
+  template: string;
+};
 
 const seedBuiltinHooks = async (rootDir: string): Promise<void> => {
   for (const hookName of ENGINEERING_DEFAULT_HOOKS) {
@@ -51,6 +66,10 @@ const seedBuiltinHooks = async (rootDir: string): Promise<void> => {
     );
     await fs.writeFile(path.join(hookDir, templateFile), `# ${hookName}\n`, 'utf-8');
   }
+};
+
+const readCommandLibrary = async (workspaceDir: string): Promise<ProjectCommandRecord[]> => {
+  return JSON.parse(await fs.readFile(getWorkspaceCommandsFile(workspaceDir)!, 'utf-8')) as ProjectCommandRecord[];
 };
 
 describe('workspaceAutomation harness bootstrap', () => {
@@ -81,23 +100,24 @@ describe('workspaceAutomation harness bootstrap', () => {
     const commandsFile = getWorkspaceCommandsFile(workspaceDir);
     expect(commandsFile).not.toBeNull();
 
-    const commandLibrary = JSON.parse(await fs.readFile(commandsFile!, 'utf-8')) as Array<{
-      type: string;
-      id: string;
-      name?: string;
-    }>;
+    const commandLibrary = await readCommandLibrary(workspaceDir);
     expect(commandLibrary).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: 'builtin', id: 'plan' }),
-        expect.objectContaining({ type: 'custom', id: 'harness-brainstorm', name: 'brainstorm' }),
-        expect.objectContaining({ type: 'custom', id: 'harness-write-plan', name: 'write-plan' }),
-        expect.objectContaining({ type: 'custom', id: 'harness-execute-plan', name: 'execute-plan' }),
-        expect.objectContaining({ type: 'custom', id: 'harness-worktree', name: 'worktree' }),
-        expect.objectContaining({ type: 'custom', id: 'harness-parallel', name: 'parallelize' }),
-        expect.objectContaining({ type: 'custom', id: 'harness-request-review', name: 'request-review' }),
-        expect.objectContaining({ type: 'custom', id: 'harness-apply-review', name: 'apply-review' }),
-        expect.objectContaining({ type: 'custom', id: 'harness-debug-root-cause', name: 'debug-root-cause' }),
-        expect.objectContaining({ type: 'custom', id: 'harness-finish-branch', name: 'finish-branch' }),
+        expect.objectContaining({
+          id: 'plan',
+          name: 'plan',
+          description: expect.any(String),
+          template: expect.any(String),
+        }),
+        expect.objectContaining({ id: 'harness-brainstorm', name: 'brainstorm' }),
+        expect.objectContaining({ id: 'harness-write-plan', name: 'write-plan' }),
+        expect.objectContaining({ id: 'harness-execute-plan', name: 'execute-plan' }),
+        expect.objectContaining({ id: 'harness-worktree', name: 'worktree' }),
+        expect.objectContaining({ id: 'harness-parallel', name: 'parallelize' }),
+        expect.objectContaining({ id: 'harness-request-review', name: 'request-review' }),
+        expect.objectContaining({ id: 'harness-apply-review', name: 'apply-review' }),
+        expect.objectContaining({ id: 'harness-debug-root-cause', name: 'debug-root-cause' }),
+        expect.objectContaining({ id: 'harness-finish-branch', name: 'finish-branch' }),
       ])
     );
 
@@ -131,12 +151,188 @@ describe('workspaceAutomation harness bootstrap', () => {
     } as any);
 
     await expect(fs.readFile(getWorkspaceCommandsFile(workspaceDir)!, 'utf-8')).resolves.toContain('ecc-quality-gate');
-    await expect(fs.readFile(path.join(workspaceDir, '.claude', 'hooks', 'hooks.json'), 'utf-8')).resolves.toContain(
-      'CLAUDE_PLUGIN_ROOT'
+    await expect(fs.readFile(getWorkspaceSchedulesFile(workspaceDir)!, 'utf-8')).resolves.toContain(
+      '"conversationSchedules": []'
     );
-    await expect(fs.readFile(path.join(workspaceDir, '.claude', 'settings.local.json'), 'utf-8')).resolves.toContain(
-      'CLAUDE_PLUGIN_ROOT'
+    await expect(fs.access(path.join(workspaceDir, '.claude'))).rejects.toThrow();
+  });
+
+  it('creates PM workspace commands without engineering hooks for a PM workbench conversation workspace', async () => {
+    const workspaceDir = path.join(tempRoot, 'workspace-pm');
+    await fs.mkdir(workspaceDir, { recursive: true });
+
+    await ensureHarnessWorkspaceAutomationForConversation({
+      type: 'acp',
+      extra: {
+        workspace: workspaceDir,
+        presetAssistantId: 'builtin-pm-workbench',
+      },
+    } as any);
+
+    const commandsFile = getWorkspaceCommandsFile(workspaceDir);
+    expect(commandsFile).not.toBeNull();
+
+    const commandLibrary = await readCommandLibrary(workspaceDir);
+    expect(commandLibrary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'plan', name: 'plan' }),
+        expect.objectContaining({ id: 'pm-discover', name: 'discover' }),
+        expect.objectContaining({ id: 'pm-strategy', name: 'strategy' }),
+        expect.objectContaining({ id: 'pm-write-prd', name: 'write-prd' }),
+        expect.objectContaining({ id: 'pm-plan-roadmap', name: 'plan-roadmap' }),
+        expect.objectContaining({ id: 'pm-prioritize', name: 'prioritize' }),
+      ])
     );
+
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
+  });
+
+  it('creates Startup Strategist workspace commands without engineering hooks for a startup strategist conversation workspace', async () => {
+    const workspaceDir = path.join(tempRoot, 'workspace-startup');
+    await fs.mkdir(workspaceDir, { recursive: true });
+
+    await ensureHarnessWorkspaceAutomationForConversation({
+      type: 'acp',
+      extra: {
+        workspace: workspaceDir,
+        presetAssistantId: 'builtin-startup-strategist',
+      },
+    } as any);
+
+    const commandsFile = getWorkspaceCommandsFile(workspaceDir);
+    expect(commandsFile).not.toBeNull();
+
+    const commandLibrary = await readCommandLibrary(workspaceDir);
+    expect(commandLibrary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'plan', name: 'plan' }),
+        expect.objectContaining({ id: 'verify', name: 'verify' }),
+        expect.objectContaining({ id: 'startup-stress-idea', name: 'stress-idea' }),
+        expect.objectContaining({ id: 'startup-design-canvas', name: 'design-canvas' }),
+        expect.objectContaining({ id: 'startup-scan-market', name: 'scan-market' }),
+        expect.objectContaining({ id: 'startup-define-icp', name: 'define-icp' }),
+        expect.objectContaining({ id: 'startup-shape-value-prop', name: 'shape-value-prop' }),
+        expect.objectContaining({ id: 'startup-plan-gtm', name: 'plan-gtm' }),
+        expect.objectContaining({ id: 'startup-set-north-star', name: 'set-north-star' }),
+        expect.objectContaining({
+          id: 'startup-write-founder-brief',
+          name: 'write-founder-brief',
+        }),
+      ])
+    );
+
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
+  });
+
+  it('creates Design Director workspace commands without engineering hooks for a design director conversation workspace', async () => {
+    const workspaceDir = path.join(tempRoot, 'workspace-design');
+    await fs.mkdir(workspaceDir, { recursive: true });
+
+    await ensureHarnessWorkspaceAutomationForConversation({
+      type: 'acp',
+      extra: {
+        workspace: workspaceDir,
+        presetAssistantId: 'builtin-design-director',
+      },
+    } as any);
+
+    const commandsFile = getWorkspaceCommandsFile(workspaceDir);
+    expect(commandsFile).not.toBeNull();
+
+    const commandLibrary = await readCommandLibrary(workspaceDir);
+    expect(commandLibrary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'plan', name: 'plan' }),
+        expect.objectContaining({ id: 'verify', name: 'verify' }),
+        expect.objectContaining({ id: 'design-pick-style', name: 'pick-style' }),
+        expect.objectContaining({ id: 'design-draft-system', name: 'draft-design-system' }),
+        expect.objectContaining({ id: 'design-art-direct-page', name: 'art-direct-page' }),
+        expect.objectContaining({ id: 'design-critique-ui', name: 'critique-ui' }),
+        expect.objectContaining({ id: 'design-review-screenshot', name: 'review-screenshot' }),
+        expect.objectContaining({
+          id: 'design-absorb-figma-reference',
+          name: 'absorb-figma-reference',
+        }),
+        expect.objectContaining({ id: 'design-adapt-system', name: 'adapt-system' }),
+        expect.objectContaining({ id: 'design-spec-component', name: 'spec-component' }),
+        expect.objectContaining({ id: 'design-write-handoff', name: 'write-handoff' }),
+      ])
+    );
+
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
+  });
+
+  it('creates Office Analyst workspace commands without engineering hooks for an office analyst conversation workspace', async () => {
+    const workspaceDir = path.join(tempRoot, 'workspace-office');
+    await fs.mkdir(workspaceDir, { recursive: true });
+
+    await ensureHarnessWorkspaceAutomationForConversation({
+      type: 'acp',
+      extra: {
+        workspace: workspaceDir,
+        presetAssistantId: 'builtin-office-analyst',
+      },
+    } as any);
+
+    const commandsFile = getWorkspaceCommandsFile(workspaceDir);
+    expect(commandsFile).not.toBeNull();
+
+    const commandLibrary = await readCommandLibrary(workspaceDir);
+    expect(commandLibrary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'plan', name: 'plan' }),
+        expect.objectContaining({ id: 'verify', name: 'verify' }),
+        expect.objectContaining({ id: 'office-analyze-sheet', name: 'analyze-sheet' }),
+        expect.objectContaining({ id: 'office-query-files', name: 'query-files' }),
+        expect.objectContaining({ id: 'office-join-files', name: 'join-files' }),
+        expect.objectContaining({ id: 'office-profile-data', name: 'profile-data' }),
+        expect.objectContaining({ id: 'office-summarize-docs', name: 'summarize-docs' }),
+        expect.objectContaining({ id: 'office-reconcile-sources', name: 'reconcile-sources' }),
+        expect.objectContaining({ id: 'office-drilldown-report', name: 'drilldown-report' }),
+        expect.objectContaining({ id: 'office-write-report', name: 'write-report' }),
+        expect.objectContaining({ id: 'office-query-pdf-tables', name: 'query-pdf-tables' }),
+      ])
+    );
+
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
+  });
+
+  it('creates Finance Analyst workspace commands without engineering hooks for a finance analyst conversation workspace', async () => {
+    const workspaceDir = path.join(tempRoot, 'workspace-finance');
+    await fs.mkdir(workspaceDir, { recursive: true });
+
+    await ensureHarnessWorkspaceAutomationForConversation({
+      type: 'acp',
+      extra: {
+        workspace: workspaceDir,
+        presetAssistantId: 'builtin-finance-analyst',
+      },
+    } as any);
+
+    const commandsFile = getWorkspaceCommandsFile(workspaceDir);
+    expect(commandsFile).not.toBeNull();
+
+    const commandLibrary = await readCommandLibrary(workspaceDir);
+    expect(commandLibrary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'plan', name: 'plan' }),
+        expect.objectContaining({ id: 'verify', name: 'verify' }),
+        expect.objectContaining({ id: 'finance-analyze-financials', name: 'analyze-financials' }),
+        expect.objectContaining({ id: 'finance-explain-variance', name: 'explain-variance' }),
+        expect.objectContaining({ id: 'finance-build-dcf', name: 'build-dcf' }),
+        expect.objectContaining({ id: 'finance-compare-companies', name: 'compare-companies' }),
+        expect.objectContaining({ id: 'finance-screen-investment', name: 'screen-investment' }),
+        expect.objectContaining({ id: 'finance-forecast-business', name: 'forecast-business' }),
+        expect.objectContaining({ id: 'finance-benchmark-saas', name: 'benchmark-saas' }),
+        expect.objectContaining({ id: 'finance-stress-test-thesis', name: 'stress-test-thesis' }),
+        expect.objectContaining({
+          id: 'finance-write-investment-memo',
+          name: 'write-investment-memo',
+        }),
+      ])
+    );
+
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
   });
 
   it('does not overwrite existing project commands or hook copies', async () => {
@@ -152,7 +348,6 @@ describe('workspaceAutomation harness bootstrap', () => {
       `${JSON.stringify(
         [
           {
-            type: 'custom',
             id: 'keep-me',
             enabled: true,
             name: 'keep-me',
@@ -211,7 +406,6 @@ describe('workspaceAutomation harness bootstrap', () => {
       `${JSON.stringify(
         [
           {
-            type: 'custom',
             id: 'copied-command',
             enabled: true,
             name: 'copied-command',

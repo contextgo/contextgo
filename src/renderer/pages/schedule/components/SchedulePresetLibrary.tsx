@@ -90,7 +90,9 @@ const SchedulePresetLibrary: React.FC<SchedulePresetLibraryProps> = ({
   return (
     <div className='flex flex-col gap-12px'>
       <div className='flex flex-col gap-4px'>
-        <Typography.Text className='text-14px font-semibold text-t-primary'>{t('schedule.presets.title')}</Typography.Text>
+        <Typography.Text className='text-14px font-semibold text-t-primary'>
+          {t('schedule.presets.title')}
+        </Typography.Text>
         <Typography.Text className='text-12px leading-6 text-t-secondary'>
           {t('schedule.presets.description')}
         </Typography.Text>

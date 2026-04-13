@@ -21,14 +21,14 @@ Given target verticals, roles, and locations from the user, search for the highe
 
 ## Scoring Rubric
 
-| Signal | Weight | How to Assess |
-|--------|--------|---------------|
-| Role/title alignment | 30% | Is this person a decision maker in the target space? |
-| Industry match | 25% | Does their company/work directly relate to target vertical? |
-| Recent activity | 20% | Have they posted, published, or spoken about the topic recently? |
-| Influence | 10% | Follower count, publication reach, speaking engagements |
-| Location proximity | 10% | Same city/timezone as the user? |
-| Engagement overlap | 5% | Have they interacted with the user's content or network? |
+| Signal               | Weight | How to Assess                                                    |
+| -------------------- | ------ | ---------------------------------------------------------------- |
+| Role/title alignment | 30%    | Is this person a decision maker in the target space?             |
+| Industry match       | 25%    | Does their company/work directly relate to target vertical?      |
+| Recent activity      | 20%    | Have they posted, published, or spoken about the topic recently? |
+| Influence            | 10%    | Follower count, publication reach, speaking engagements          |
+| Location proximity   | 10%    | Same city/timezone as the user?                                  |
+| Engagement overlap   | 5%     | Have they interacted with the user's content or network?         |
 
 ## Search Strategy
 

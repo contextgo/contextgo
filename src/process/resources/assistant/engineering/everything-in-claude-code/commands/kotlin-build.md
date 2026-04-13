@@ -17,6 +17,7 @@ This command invokes the **kotlin-build-resolver** agent to incrementally fix Ko
 ## When to Use
 
 Use `/kotlin-build` when:
+
 - `./gradlew build` fails with errors
 - Kotlin compiler reports errors
 - `./gradlew detekt` reports violations
@@ -136,15 +137,15 @@ Build Status: PASS: SUCCESS
 
 ## Common Errors Fixed
 
-| Error | Typical Fix |
-|-------|-------------|
-| `Unresolved reference: X` | Add import or dependency |
-| `Type mismatch` | Fix type conversion or assignment |
-| `'when' must be exhaustive` | Add missing sealed class branches |
-| `Suspend function can only be called from coroutine` | Add `suspend` modifier |
-| `Smart cast impossible` | Use local `val` or `let` |
-| `None of the following candidates is applicable` | Fix argument types |
-| `Could not resolve dependency` | Fix version or add repository |
+| Error                                                | Typical Fix                       |
+| ---------------------------------------------------- | --------------------------------- |
+| `Unresolved reference: X`                            | Add import or dependency          |
+| `Type mismatch`                                      | Fix type conversion or assignment |
+| `'when' must be exhaustive`                          | Add missing sealed class branches |
+| `Suspend function can only be called from coroutine` | Add `suspend` modifier            |
+| `Smart cast impossible`                              | Use local `val` or `let`          |
+| `None of the following candidates is applicable`     | Fix argument types                |
+| `Could not resolve dependency`                       | Fix version or add repository     |
 
 ## Fix Strategy
 
@@ -157,6 +158,7 @@ Build Status: PASS: SUCCESS
 ## Stop Conditions
 
 The agent will stop and report if:
+
 - Same error persists after 3 attempts
 - Fix introduces more errors
 - Requires architectural changes

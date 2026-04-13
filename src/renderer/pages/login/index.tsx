@@ -8,6 +8,8 @@ import { changeLanguage } from '@/renderer/services/i18n';
 import { useNavigate } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
 import { normalizeHashRouteShellHref } from '@renderer/components/layout/routerLocation';
+import { resolveAuthenticatedStartupPath, shouldPreferOfficialRemoteShell } from '@renderer/utils/officialRemote';
+import { isElectronDesktop, isMobileShellWebView } from '@renderer/utils/platform';
 import { useAuth } from '../../hooks/context/AuthContext';
 import './LoginPage.css';
 
@@ -101,6 +103,22 @@ const LoginPage: React.FC = () => {
     return isContextGoHostname(window.location.hostname);
   }, []);
 
+  const startupPath = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return '/guid';
+    }
+
+    return resolveAuthenticatedStartupPath({
+      activeTabId: null,
+      openTabIds: [],
+      preferOfficialRemoteShell: shouldPreferOfficialRemoteShell({
+        currentHref: window.location.href,
+        isDesktopRuntime: isElectronDesktop(),
+        isMobileShellRuntime: isMobileShellWebView(),
+      }),
+    });
+  }, []);
+
   useEffect(() => {
     document.body.classList.add('login-page-active');
     return () => {
@@ -143,9 +161,9 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      void navigate('/guid', { replace: true });
+      void navigate(startupPath, { replace: true });
     }
-  }, [navigate, status]);
+  }, [navigate, startupPath, status]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -311,7 +329,7 @@ const LoginPage: React.FC = () => {
         showMessage({ type: 'success', text: successText });
 
         window.setTimeout(() => {
-          void navigate('/guid', { replace: true });
+          void navigate(startupPath, { replace: true });
         }, 600);
       } else {
         const errorText = (() => {
@@ -335,7 +353,7 @@ const LoginPage: React.FC = () => {
 
       setLoading(false);
     },
-    [login, navigate, password, rememberMe, showMessage, t, username]
+    [login, navigate, password, rememberMe, showMessage, startupPath, t, username]
   );
 
   const handleCloudLogin = useCallback((provider: CloudAuthProviderId) => {

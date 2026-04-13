@@ -30,6 +30,7 @@ Ask a question mid-task and get an immediate, focused answer — then continue r
 ### Step 1: Freeze the current task state
 
 Before answering anything, mentally note:
+
 - What is the active task? (what file, feature, or problem was being worked on)
 - What step was in progress at the moment `/aside` was invoked?
 - What was about to happen next?
@@ -65,6 +66,7 @@ After delivering the answer, immediately continue the active task from the exact
 
 **No question provided (`/aside` with nothing after it):**
 Respond:
+
 ```
 ASIDE: no question provided
 
@@ -75,21 +77,25 @@ What would you like to know? (ask your question and I'll answer without losing t
 
 **Question reveals a potential problem with the current task:**
 Flag it clearly before resuming:
+
 ```
 ASIDE: [answer]
 
 WARNING: Note: This answer suggests [issue] with the current approach. Want to address this before continuing, or proceed as planned?
 ```
+
 Wait for the user's decision before resuming.
 
 **Question is actually a task redirect (not a side question):**
 If the question implies changing what is being built (e.g., `/aside actually, let's use Redis instead`), clarify:
+
 ```
 ASIDE: That sounds like a direction change, not just a side question.
 Do you want to:
   (a) Answer this as information only and keep the current plan
   (b) Pause the current task and change approach
 ```
+
 Wait for the user's answer — do not make assumptions.
 
 **Question is about the currently open file or code:**
@@ -97,6 +103,7 @@ Answer from the live context. If the file was read earlier in the session, refer
 
 **No active task (nothing in progress when `/aside` is invoked):**
 Still use the standard wrapper so the response shape stays consistent:
+
 ```
 ASIDE: [restate the question briefly]
 
@@ -107,6 +114,7 @@ ASIDE: [restate the question briefly]
 
 **Question requires a long answer:**
 Give the essential answer concisely, then offer:
+
 ```
 That's the short version. Want a deeper explanation after we finish [current task]?
 ```
@@ -116,6 +124,7 @@ Answer each one in sequence. After the last answer, resume the main task. Do not
 
 **Aside answer implies a code change is needed:**
 Note the change needed but do not make it during the aside:
+
 ```
 ASIDE: [answer]
 

@@ -27,15 +27,15 @@ Show the user a summary of what's changed (added, modified, deleted, untracked).
 
 Interpret `$ARGUMENTS` to determine what to stage:
 
-| Input | Interpretation | Git Command |
-|---|---|---|
-| *(blank / empty)* | Stage everything | `git add -A` |
-| `staged` | Use whatever is already staged | *(no git add)* |
-| `*.ts` or `*.py` etc. | Stage matching glob | `git add '*.ts'` |
-| `except tests` | Stage all, then unstage tests | `git add -A && git reset -- '**/*.test.*' '**/*.spec.*' '**/test_*' 2>/dev/null \|\| true` |
-| `only new files` | Stage untracked files only | `git ls-files --others --exclude-standard \| grep . && git ls-files --others --exclude-standard \| xargs git add` |
-| `the auth changes` | Interpret from status/diff — find auth-related files | `git add <matched files>` |
-| Specific filenames | Stage those files | `git add <files>` |
+| Input                 | Interpretation                                       | Git Command                                                                                                       |
+| --------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| _(blank / empty)_     | Stage everything                                     | `git add -A`                                                                                                      |
+| `staged`              | Use whatever is already staged                       | _(no git add)_                                                                                                    |
+| `*.ts` or `*.py` etc. | Stage matching glob                                  | `git add '*.ts'`                                                                                                  |
+| `except tests`        | Stage all, then unstage tests                        | `git add -A && git reset -- '**/*.test.*' '**/*.spec.*' '**/test_*' 2>/dev/null \|\| true`                        |
+| `only new files`      | Stage untracked files only                           | `git ls-files --others --exclude-standard \| grep . && git ls-files --others --exclude-standard \| xargs git add` |
+| `the auth changes`    | Interpret from status/diff — find auth-related files | `git add <matched files>`                                                                                         |
+| Specific filenames    | Stage those files                                    | `git add <files>`                                                                                                 |
 
 For natural language inputs (like "the auth changes"), cross-reference the `git status` output and `git diff` to identify relevant files. Show the user which files you're staging and why.
 
@@ -44,6 +44,7 @@ git add <determined files>
 ```
 
 After staging, verify:
+
 ```bash
 git diff --cached --stat
 ```
@@ -61,6 +62,7 @@ Craft a single-line commit message in imperative mood:
 ```
 
 Types:
+
 - `feat` — New feature or capability
 - `fix` — Bug fix
 - `refactor` — Code restructuring without behavior change
@@ -71,6 +73,7 @@ Types:
 - `ci` — CI/CD changes
 
 Rules:
+
 - Imperative mood ("add feature" not "added feature")
 - Lowercase after the type prefix
 - No period at the end
@@ -102,11 +105,11 @@ Next steps:
 
 ## Examples
 
-| You say | What happens |
-|---|---|
-| `/prp-commit` | Stages all, auto-generates message |
-| `/prp-commit staged` | Commits only what's already staged |
-| `/prp-commit *.ts` | Stages all TypeScript files, commits |
-| `/prp-commit except tests` | Stages everything except test files |
+| You say                              | What happens                                      |
+| ------------------------------------ | ------------------------------------------------- |
+| `/prp-commit`                        | Stages all, auto-generates message                |
+| `/prp-commit staged`                 | Commits only what's already staged                |
+| `/prp-commit *.ts`                   | Stages all TypeScript files, commits              |
+| `/prp-commit except tests`           | Stages everything except test files               |
 | `/prp-commit the database migration` | Finds DB migration files from status, stages them |
-| `/prp-commit only new files` | Stages untracked files only |
+| `/prp-commit only new files`         | Stages untracked files only                       |

@@ -52,6 +52,7 @@ Gather raw signals about the project without reading every file. Run these check
 From the reconnaissance data, identify:
 
 **Tech Stack**
+
 - Language(s) and version constraints
 - Framework(s) and major libraries
 - Database(s) and ORMs
@@ -59,6 +60,7 @@ From the reconnaissance data, identify:
 - CI/CD platform
 
 **Architecture Pattern**
+
 - Monolith, monorepo, microservices, or serverless
 - Frontend/backend split or full-stack
 - API style: REST, GraphQL, gRPC, tRPC
@@ -67,6 +69,7 @@ From the reconnaissance data, identify:
 Map the top-level directories to their purpose:
 
 <!-- Example for a React project — replace with detected directories -->
+
 ```
 src/components/  → React UI components
 src/api/         → API route handlers
@@ -78,6 +81,7 @@ scripts/         → Build and deployment scripts
 
 **Data Flow**
 Trace one request from entry to response:
+
 - Where does a request enter? (router, handler, controller)
 - How is it validated? (middleware, schemas, guards)
 - Where is business logic? (services, models, use cases)
@@ -88,17 +92,20 @@ Trace one request from entry to response:
 Identify patterns the codebase already follows:
 
 **Naming Conventions**
+
 - File naming: kebab-case, camelCase, PascalCase, snake_case
 - Component/class naming patterns
 - Test file naming: `*.test.ts`, `*.spec.ts`, `*_test.go`
 
 **Code Patterns**
+
 - Error handling style: try/catch, Result types, error codes
 - Dependency injection or direct imports
 - State management approach
 - Async patterns: callbacks, promises, async/await, channels
 
 **Git Conventions**
+
 - Branch naming from recent branches
 - Commit message style from recent commits
 - PR workflow (squash, merge, rebase)
@@ -114,42 +121,53 @@ Produce two outputs:
 # Onboarding Guide: [Project Name]
 
 ## Overview
+
 [2-3 sentences: what this project does and who it serves]
 
 ## Tech Stack
+
 <!-- Example for a Next.js project — replace with detected stack -->
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Language | TypeScript | 5.x |
-| Framework | Next.js | 14.x |
-| Database | PostgreSQL | 16 |
-| ORM | Prisma | 5.x |
-| Testing | Jest + Playwright | - |
+
+| Layer     | Technology        | Version |
+| --------- | ----------------- | ------- |
+| Language  | TypeScript        | 5.x     |
+| Framework | Next.js           | 14.x    |
+| Database  | PostgreSQL        | 16      |
+| ORM       | Prisma            | 5.x     |
+| Testing   | Jest + Playwright | -       |
 
 ## Architecture
+
 [Diagram or description of how components connect]
 
 ## Key Entry Points
+
 <!-- Example for a Next.js project — replace with detected paths -->
+
 - **API routes**: `src/app/api/` — Next.js route handlers
 - **UI pages**: `src/app/(dashboard)/` — authenticated pages
 - **Database**: `prisma/schema.prisma` — data model source of truth
 - **Config**: `next.config.ts` — build and runtime config
 
 ## Directory Map
+
 [Top-level directory → purpose mapping]
 
 ## Request Lifecycle
+
 [Trace one API request from entry to response]
 
 ## Conventions
+
 - [File naming pattern]
 - [Error handling approach]
 - [Testing patterns]
 - [Git workflow]
 
 ## Common Tasks
+
 <!-- Example for a Node.js project — replace with detected commands -->
+
 - **Run dev server**: `npm run dev`
 - **Run tests**: `npm test`
 - **Run linter**: `npm run lint`
@@ -157,14 +175,16 @@ Produce two outputs:
 - **Build for production**: `npm run build`
 
 ## Where to Look
+
 <!-- Example for a Next.js project — replace with detected paths -->
-| I want to... | Look at... |
-|--------------|-----------|
-| Add an API endpoint | `src/app/api/` |
-| Add a UI page | `src/app/(dashboard)/` |
-| Add a database table | `prisma/schema.prisma` |
-| Add a test | `tests/` matching the source path |
-| Change build config | `next.config.ts` |
+
+| I want to...         | Look at...                        |
+| -------------------- | --------------------------------- |
+| Add an API endpoint  | `src/app/api/`                    |
+| Add a UI page        | `src/app/(dashboard)/`            |
+| Add a database table | `prisma/schema.prisma`            |
+| Add a test           | `tests/` matching the source path |
+| Change build config  | `next.config.ts`                  |
 ```
 
 #### Output 2: Starter CLAUDE.md
@@ -175,26 +195,32 @@ Generate or update a project-specific CLAUDE.md based on detected conventions. I
 # Project Instructions
 
 ## Tech Stack
+
 [Detected stack summary]
 
 ## Code Style
+
 - [Detected naming conventions]
 - [Detected patterns to follow]
 
 ## Testing
+
 - Run tests: `[detected test command]`
 - Test pattern: [detected test file convention]
 - Coverage: [if configured, the coverage command]
 
 ## Build & Run
+
 - Dev: `[detected dev command]`
 - Build: `[detected build command]`
 - Lint: `[detected lint command]`
 
 ## Project Structure
+
 [Key directory → purpose map]
 
 ## Conventions
+
 - [Commit style if detectable]
 - [PR workflow if detectable]
 - [Error handling patterns]
@@ -218,16 +244,19 @@ Generate or update a project-specific CLAUDE.md based on detected conventions. I
 ## Examples
 
 ### Example 1: First time in a new repo
+
 **User**: "Onboard me to this codebase"
 **Action**: Run full 4-phase workflow → produce Onboarding Guide + Starter CLAUDE.md
 **Output**: Onboarding Guide printed directly to the conversation, plus a `CLAUDE.md` written to the project root
 
 ### Example 2: Generate CLAUDE.md for existing project
+
 **User**: "Generate a CLAUDE.md for this project"
 **Action**: Run Phases 1-3, skip Onboarding Guide, produce only CLAUDE.md
 **Output**: Project-specific `CLAUDE.md` with detected conventions
 
 ### Example 3: Enhance existing CLAUDE.md
+
 **User**: "Update the CLAUDE.md with current project conventions"
 **Action**: Read existing CLAUDE.md, run Phases 1-3, merge new findings
 **Output**: Updated `CLAUDE.md` with additions clearly marked

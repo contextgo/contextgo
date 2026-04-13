@@ -5,9 +5,11 @@
  */
 
 import { channel as channelBridge } from '@/common/adapter/ipcBridge';
+import { conversationServiceSingleton } from '@/process/services/conversationServiceSingleton';
 import { getDatabase } from '@process/services/database';
 import * as crypto from 'crypto';
 import { getChannelRouteResolver, inferRemoteChatType } from '../core/ChannelRouteResolver';
+import { ProjectChannelPublicationService } from '../core/ProjectChannelPublicationService';
 import type { IRemoteIdentity, IUnifiedPeer } from '../types';
 import type { IChannelPairingRequest, IChannelUser, PluginType } from '../types';
 
@@ -19,6 +21,13 @@ const PAIRING_CONFIG = {
   CODE_EXPIRY_MS: 10 * 60 * 1000, // 10 minutes
   CLEANUP_INTERVAL_MS: 60 * 1000, // 1 minute
 };
+
+const projectChannelPublicationService = new ProjectChannelPublicationService();
+
+async function getPublicationCatalog() {
+  const conversations = await conversationServiceSingleton.listAllConversations();
+  return projectChannelPublicationService.readCatalogForConversations(conversations);
+}
 
 type PairingPeerContext = Pick<IUnifiedPeer, 'platformChatId' | 'scope' | 'parentChatId' | 'threadId' | 'chatType'>;
 
@@ -214,21 +223,39 @@ export class PairingService {
           platformUserId,
           remoteChatType,
         });
+        const publicationCatalog = await getPublicationCatalog();
 
-        const publishedBindingResult = db.getChannelBindingsForScope(connector.id, 'remote_chat', chatId);
-        if (publishedBindingResult.success && publishedBindingResult.data.length > 0) {
+        const hasPublishedChatBinding = publicationCatalog.bindings.some(
+          (binding) =>
+            binding.channelAccountId === connector.id &&
+            binding.scopeType === 'remote_chat' &&
+            binding.scopeKey === chatId &&
+            binding.enabled
+        );
+        if (hasPublishedChatBinding) {
           return true;
         }
 
         if (platformChatId && platformChatId !== chatId) {
-          const parentBindingResult = db.getChannelBindingsForScope(connector.id, 'remote_chat', platformChatId);
-          if (parentBindingResult.success && parentBindingResult.data.length > 0) {
+          const hasPublishedParentBinding = publicationCatalog.bindings.some(
+            (binding) =>
+              binding.channelAccountId === connector.id &&
+              binding.scopeType === 'remote_chat' &&
+              binding.scopeKey === platformChatId &&
+              binding.enabled
+          );
+          if (hasPublishedParentBinding) {
             return true;
           }
         }
 
-        const connectorDefaultBindingResult = db.getChannelBindingsForScope(connector.id, 'connector_default');
-        if (connectorDefaultBindingResult.success && connectorDefaultBindingResult.data.length > 0) {
+        const hasConnectorDefaultBinding = publicationCatalog.bindings.some(
+          (binding) =>
+            binding.channelAccountId === connector.id &&
+            binding.scopeType === 'connector_default' &&
+            binding.enabled
+        );
+        if (hasConnectorDefaultBinding) {
           return true;
         }
 

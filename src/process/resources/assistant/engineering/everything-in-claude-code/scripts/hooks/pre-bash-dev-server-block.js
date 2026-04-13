@@ -5,14 +5,7 @@ const MAX_STDIN = 1024 * 1024;
 const path = require('path');
 const { splitShellSegments } = require('../lib/shell-split');
 
-const DEV_COMMAND_WORDS = new Set([
-  'npm',
-  'pnpm',
-  'yarn',
-  'bun',
-  'npx',
-  'tmux'
-]);
+const DEV_COMMAND_WORDS = new Set(['npm', 'pnpm', 'yarn', 'bun', 'npx', 'tmux']);
 const SKIPPABLE_PREFIX_WORDS = new Set(['env', 'command', 'builtin', 'exec', 'noglob', 'sudo', 'nohup']);
 const PREFIX_OPTION_VALUE_WORDS = {
   env: new Set(['-u', '-C', '-S', '--unset', '--chdir', '--split-string']),
@@ -30,8 +23,8 @@ const PREFIX_OPTION_VALUE_WORDS = {
     '--prompt',
     '--role',
     '--type',
-    '--close-from'
-  ])
+    '--close-from',
+  ]),
 };
 
 function readToken(input, startIndex) {
@@ -147,7 +140,7 @@ function getLeadingCommandWord(segment) {
 
 let raw = '';
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', chunk => {
+process.stdin.on('data', (chunk) => {
   if (raw.length < MAX_STDIN) {
     const remaining = MAX_STDIN - raw.length;
     raw += chunk.substring(0, remaining);
@@ -164,7 +157,7 @@ process.stdin.on('end', () => {
       const tmuxLauncher = /^\s*tmux\s+(new|new-session|new-window|split-window)\b/;
       const devPattern = /\b(npm\s+run\s+dev|pnpm(?:\s+run)?\s+dev|yarn\s+dev|bun\s+run\s+dev)\b/;
 
-      const hasBlockedDev = segments.some(segment => {
+      const hasBlockedDev = segments.some((segment) => {
         const commandWord = getLeadingCommandWord(segment);
         if (!commandWord || !DEV_COMMAND_WORDS.has(commandWord)) {
           return false;

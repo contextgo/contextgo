@@ -19,11 +19,13 @@ Solves the "context problem" in multi-agent workflows where subagents don't know
 ## The Problem
 
 Subagents are spawned with limited context. They don't know:
+
 - Which files contain relevant code
 - What patterns exist in the codebase
 - What terminology the project uses
 
 Standard approaches fail:
+
 - **Send everything**: Exceeds context limits
 - **Send nothing**: Agent lacks critical information
 - **Guess what's needed**: Often wrong
@@ -57,7 +59,7 @@ Initial broad query to gather candidate files:
 const initialQuery = {
   patterns: ['src/**/*.ts', 'lib/**/*.ts'],
   keywords: ['authentication', 'user', 'session'],
-  excludes: ['*.test.ts', '*.spec.ts']
+  excludes: ['*.test.ts', '*.spec.ts'],
 };
 
 // Dispatch to retrieval agent
@@ -70,16 +72,17 @@ Assess retrieved content for relevance:
 
 ```javascript
 function evaluateRelevance(files, task) {
-  return files.map(file => ({
+  return files.map((file) => ({
     path: file.path,
     relevance: scoreRelevance(file.content, task),
     reason: explainRelevance(file.content, task),
-    missingContext: identifyGaps(file.content, task)
+    missingContext: identifyGaps(file.content, task),
   }));
 }
 ```
 
 Scoring criteria:
+
 - **High (0.8-1.0)**: Directly implements target functionality
 - **Medium (0.5-0.7)**: Contains related patterns or types
 - **Low (0.2-0.4)**: Tangentially related
@@ -99,15 +102,10 @@ function refineQuery(evaluation, previousQuery) {
     keywords: [...previousQuery.keywords, ...extractKeywords(evaluation)],
 
     // Exclude confirmed irrelevant paths
-    excludes: [...previousQuery.excludes, ...evaluation
-      .filter(e => e.relevance < 0.2)
-      .map(e => e.path)
-    ],
+    excludes: [...previousQuery.excludes, ...evaluation.filter((e) => e.relevance < 0.2).map((e) => e.path)],
 
     // Target specific gaps
-    focusAreas: evaluation
-      .flatMap(e => e.missingContext)
-      .filter(unique)
+    focusAreas: evaluation.flatMap((e) => e.missingContext).filter(unique),
   };
 }
 ```
@@ -126,7 +124,7 @@ async function iterativeRetrieve(task, maxCycles = 3) {
     const evaluation = evaluateRelevance(candidates, task);
 
     // Check if we have sufficient context
-    const highRelevance = evaluation.filter(e => e.relevance >= 0.7);
+    const highRelevance = evaluation.filter((e) => e.relevance >= 0.7);
     if (highRelevance.length >= 3 && !hasCriticalGaps(evaluation)) {
       return highRelevance;
     }
@@ -189,6 +187,7 @@ Use in agent prompts:
 
 ```markdown
 When retrieving context for this task:
+
 1. Start with broad keyword search
 2. Evaluate each file's relevance (0-1 scale)
 3. Identify what context is still missing

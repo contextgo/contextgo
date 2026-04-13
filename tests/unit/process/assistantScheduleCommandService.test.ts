@@ -35,7 +35,9 @@ describe('AssistantScheduleCommandService', () => {
 
   it('also strips skill market control blocks from assistant-visible content', () => {
     expect(
-      stripAssistantControlCommands('先搜索\n[SKILLMARKET_SEARCH]\nquery: browser context\n[/SKILLMARKET_SEARCH]\n再回复')
+      stripAssistantControlCommands(
+        '先搜索\n[SKILLMARKET_SEARCH]\nquery: browser context\n[/SKILLMARKET_SEARCH]\n再回复'
+      )
     ).toBe('先搜索\n\n再回复');
   });
 

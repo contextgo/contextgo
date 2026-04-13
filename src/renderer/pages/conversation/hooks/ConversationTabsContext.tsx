@@ -18,7 +18,7 @@ export interface ConversationTab {
   /** 工作空间路径 / Workspace path */
   workspace: string;
   /** 会话类型 / Conversation type */
-  type: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'group';
+  type: 'gemini' | 'acp' | 'codex' | 'group';
   /** Persist minimal conversation extra for tab icon rendering */
   extra?: TChatConversation['extra'];
   /** Parent group conversation id when this tab belongs to a group family */

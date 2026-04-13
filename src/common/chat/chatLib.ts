@@ -214,11 +214,11 @@ export type IMessageToolGroup = IMessage<
   }>
 >;
 
-// Unified agent status message type for all ACP-based agents (Claude, Qwen, Codex, etc.)
+// Unified agent status message type for all ACP-based agents (Claude, Gemini, Codex, etc.)
 export type IMessageAgentStatus = IMessage<
   'agent_status',
   {
-    backend: AcpBackend; // Agent identifier: 'claude', 'qwen', 'codex', etc.
+    backend: AcpBackend; // Agent identifier such as 'claude', 'gemini', or 'codex'.
     status: 'connecting' | 'connected' | 'authenticated' | 'session_active' | 'disconnected' | 'error';
     /** Display name for the agent (e.g. extension-contributed adapter name) / Agent 显示名称 */
     agentName?: string;
@@ -487,7 +487,8 @@ export const transformMessage = (message: IResponseMessage): TMessage => {
         conversation_id: message.conversation_id,
         content: isRichData
           ? {
-              content: (data as { content: string; scheduleMeta?: ScheduleMessageMeta; groupMeta?: MessageGroupMeta }).content,
+              content: (data as { content: string; scheduleMeta?: ScheduleMessageMeta; groupMeta?: MessageGroupMeta })
+                .content,
               scheduleMeta: (data as { scheduleMeta?: ScheduleMessageMeta }).scheduleMeta,
               groupMeta: (data as { groupMeta?: MessageGroupMeta }).groupMeta,
             }

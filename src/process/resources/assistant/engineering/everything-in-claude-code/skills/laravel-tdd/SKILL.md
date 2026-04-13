@@ -19,9 +19,9 @@ Test-driven development for Laravel applications using PHPUnit and Pest with 80%
 
 ### Red-Green-Refactor Cycle
 
-1) Write a failing test
-2) Implement the minimal change to pass
-3) Refactor while keeping tests green
+1. Write a failing test
+2. Implement the minimal change to pass
+3. Refactor while keeping tests green
 
 ### Test Layers
 

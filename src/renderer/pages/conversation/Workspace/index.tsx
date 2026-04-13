@@ -500,7 +500,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
 
                       return (
                         <div
-                          className='flex items-center justify-between gap-6px min-w-0'
+                          className='flex w-full max-w-full items-center justify-between gap-6px min-w-0'
                           style={{ color: 'inherit' }}
                           onDoubleClick={() => {
                             if (isFile) {
@@ -513,7 +513,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
                             openNodeContextMenu(nodeData, event.clientX, event.clientY);
                           }}
                         >
-                          <span className='flex items-center gap-4px min-w-0'>
+                          <span className='flex min-w-0 flex-1 items-center gap-4px overflow-hidden'>
                             <span className='overflow-hidden text-ellipsis whitespace-nowrap'>{node.title}</span>
                             {isPasteTarget && (
                               <span className='ml-1 text-xs text-blue-700 font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded'>

@@ -1,5 +1,5 @@
 /**
- * AssistantEditDrawer — Drawer for creating/editing an assistant.
+ * AssistantEditDrawer — Dialog for creating/editing an assistant.
  * Contains name/avatar fields, agent selector, rules editor, and skills section.
  */
 import type {
@@ -24,20 +24,9 @@ import EmojiPicker from '@/renderer/components/chat/EmojiPicker';
 import { ContextGoModal } from '@/renderer/components/base';
 import MarkdownView from '@/renderer/components/Markdown';
 import { ipcBridge } from '@/common';
-import {
-  Avatar,
-  Button,
-  Checkbox,
-  Collapse,
-  Drawer,
-  Input,
-  Modal,
-  Select,
-  Tag,
-  Typography,
-} from '@arco-design/web-react';
-import { Close, Delete, FolderOpen, Plus, Refresh, Robot } from '@icon-park/react';
-import React, { useEffect, useRef, useState } from 'react';
+import { Avatar, Button, Checkbox, Collapse, Input, Modal, Select, Tag, Typography } from '@arco-design/web-react';
+import { Delete, FolderOpen, Plus, Refresh, Robot } from '@icon-park/react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   buildHookOutputRoutingConfig,
@@ -113,6 +102,210 @@ const HOOK_CATEGORY_COLORS: Record<string, 'arcoblue' | 'green' | 'red' | 'purpl
   operations: 'gray',
 };
 
+type SkillPreviewDocument = {
+  title: string;
+  description: string;
+  body: string;
+};
+
+type SkillPreviewSection = {
+  heading: string | null;
+  level: number | null;
+  lines: string[];
+};
+
+const SKILL_PREVIEW_EXCLUDED_SECTION_PATTERNS = [
+  /\btroubleshooting\b/i,
+  /\bdebug(?:ging)?\b/i,
+  /\bexample(?:s)?\b/i,
+  /\bcommands?\b/i,
+  /\binstallation\b/i,
+  /\bsetup\b/i,
+  /\breferences?\b/i,
+  /\bresources?\b/i,
+  /\bappendix\b/i,
+  /\bfaq\b/i,
+];
+
+const SKILL_PREVIEW_EXCLUDED_PARAGRAPH_PATTERNS = [
+  /^visual issues?$/,
+  /^example(?:s)?$/,
+  /^commands?$/,
+  /^debug(?:ging)?$/,
+  /^fix$/,
+  /^expected$/,
+];
+
+const normalizeSkillPreviewLabel = (value: string) => {
+  return value
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^\d+\.\s*/, '')
+    .replace(/[*_`~]/g, '')
+    .replace(/[^a-z0-9\u4e00-\u9fff\s-]+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+};
+
+const stripSkillPreviewCodeFences = (markdown: string) => {
+  return markdown.replace(/```[\s\S]*?```/g, '\n').replace(/~~~[\s\S]*?~~~/g, '\n');
+};
+
+const cleanupSkillPreviewMarkdown = (markdown: string) => {
+  return markdown
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => {
+      if (!paragraph) {
+        return false;
+      }
+
+      const plainText = normalizeSkillPreviewLabel(
+        paragraph
+          .replace(/^\s*[-*+]\s+/gm, '')
+          .replace(/^\s*\d+\.\s+/gm, '')
+          .replace(/`([^`]+)`/g, '$1')
+      );
+
+      if (!plainText) {
+        return false;
+      }
+
+      const lineCount = paragraph.split('\n').filter((line) => line.trim()).length;
+      if (lineCount === 1 && SKILL_PREVIEW_EXCLUDED_PARAGRAPH_PATTERNS.some((pattern) => pattern.test(plainText))) {
+        return false;
+      }
+
+      return true;
+    })
+    .join('\n\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
+const buildSkillPreviewBody = ({ body }: { body: string }) => {
+  const lines = body.replace(/\r\n/g, '\n').split('\n');
+  const sections: SkillPreviewSection[] = [];
+  let currentSection: SkillPreviewSection = {
+    heading: null,
+    level: null,
+    lines: [],
+  };
+
+  lines.forEach((line) => {
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      if (currentSection.lines.some((item) => item.trim())) {
+        sections.push(currentSection);
+      }
+
+      currentSection = {
+        heading: headingMatch[2].trim(),
+        level: headingMatch[1].length,
+        lines: [line],
+      };
+      return;
+    }
+
+    currentSection.lines.push(line);
+  });
+
+  if (currentSection.lines.some((line) => line.trim())) {
+    sections.push(currentSection);
+  }
+
+  const distilledSections: string[] = [];
+  let excludedParentLevel: number | null = null;
+
+  sections.forEach((section) => {
+    if (excludedParentLevel !== null) {
+      if (section.level !== null && section.level <= excludedParentLevel) {
+        excludedParentLevel = null;
+      } else {
+        return;
+      }
+    }
+
+    const normalizedHeading = section.heading ? normalizeSkillPreviewLabel(section.heading) : '';
+    if (
+      normalizedHeading &&
+      SKILL_PREVIEW_EXCLUDED_SECTION_PATTERNS.some((pattern) => pattern.test(normalizedHeading))
+    ) {
+      excludedParentLevel = section.level;
+      return;
+    }
+
+    const sectionLines = section.level === 1 ? section.lines.slice(1) : section.lines;
+    const cleanedSection = cleanupSkillPreviewMarkdown(stripSkillPreviewCodeFences(sectionLines.join('\n')));
+    if (!cleanedSection) {
+      return;
+    }
+
+    distilledSections.push(cleanedSection);
+  });
+
+  const distilledBody = distilledSections.join('\n\n').trim();
+  if (distilledBody) {
+    return distilledBody;
+  }
+
+  return cleanupSkillPreviewMarkdown(stripSkillPreviewCodeFences(body));
+};
+
+const parseSkillPreviewDocument = ({
+  content,
+  fallbackName,
+  fallbackDescription,
+}: {
+  content: string;
+  fallbackName: string;
+  fallbackDescription: string;
+}): SkillPreviewDocument => {
+  const trimmedContent = content.trim();
+  const frontmatterMatch = trimmedContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+
+  if (!frontmatterMatch) {
+    return {
+      title: fallbackName,
+      description: fallbackDescription,
+      body: buildSkillPreviewBody({ body: trimmedContent }),
+    };
+  }
+
+  let title = fallbackName;
+  let description = fallbackDescription;
+  const frontmatter = frontmatterMatch[1];
+  const body = frontmatterMatch[2].trim();
+
+  frontmatter.split(/\r?\n/).forEach((line) => {
+    const separatorIndex = line.indexOf(':');
+    if (separatorIndex <= 0) {
+      return;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line
+      .slice(separatorIndex + 1)
+      .trim()
+      .replace(/^['"]|['"]$/g, '');
+
+    if (key === 'name' && value) {
+      title = value;
+    }
+
+    if (key === 'description' && value) {
+      description = value;
+    }
+  });
+
+  return {
+    title,
+    description,
+    body: buildSkillPreviewBody({ body }),
+  };
+};
+
 const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
   editVisible,
   setEditVisible,
@@ -160,7 +353,6 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
 }) => {
   const { t } = useTranslation();
   const textareaWrapperRef = useRef<HTMLDivElement>(null);
-  const [drawerWidth, setDrawerWidth] = useState(500);
   const [configuringHook, setConfiguringHook] = useState<HookInfo | null>(null);
   const [routingDraft, setRoutingDraft] = useState<HookOutputRoutingDraft | null>(null);
   const [savingHookRouting, setSavingHookRouting] = useState(false);
@@ -180,19 +372,6 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
     }
   }, [editVisible, promptViewMode]);
 
-  // Responsive drawer width
-  useEffect(() => {
-    const updateDrawerWidth = () => {
-      if (typeof window === 'undefined') return;
-      const nextWidth = Math.min(500, Math.max(320, Math.floor(window.innerWidth - 32)));
-      setDrawerWidth(nextWidth);
-    };
-
-    updateDrawerWidth();
-    window.addEventListener('resize', updateDrawerWidth);
-    return () => window.removeEventListener('resize', updateDrawerWidth);
-  }, []);
-
   // Whether skills section should be visible
   const showSkills =
     isCreating ||
@@ -208,6 +387,29 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
     selectedHooks,
   });
   const incompatibleHookNameSet = new Set(getIncompatibleHookNames(availableHooks, selectedHooks, editAgent));
+  const attachedSkillCount = relevantSkills.length;
+  const attachedHookCount = relevantHooks.length;
+  const assistantKindLabel = activeAssistant?.isBuiltin
+    ? t('settings.assistantTypeBuiltin', { defaultValue: 'Built-in' })
+    : activeAssistant && isExtensionAssistant(activeAssistant)
+      ? t('settings.assistantTypeExtension', { defaultValue: 'Extension' })
+      : t('settings.assistantTypeCustom', { defaultValue: 'Custom' });
+  const assistantModeLabel = isCreating
+    ? t('settings.assistantModeCreate', { defaultValue: 'Creating new assistant' })
+    : isReadonlyAssistant
+      ? t('settings.assistantModeReadonly', { defaultValue: 'Read-only details' })
+      : t('settings.assistantModeEditable', { defaultValue: 'Editable details' });
+  const previewDocument = useMemo(() => {
+    if (!previewingSkill) {
+      return null;
+    }
+
+    return parseSkillPreviewDocument({
+      content: skillPreviewContent,
+      fallbackName: previewingSkill.name,
+      fallbackDescription: previewingSkill.description || '',
+    });
+  }, [previewingSkill, skillPreviewContent]);
 
   const renderSkillDependencyTags = (skill: RelevantAssistantSkill) => {
     const visibleHints = (skill.dependencyHints || []).filter(
@@ -291,8 +493,7 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
         setPreviewingSkill(null);
         Modal.error({
           title:
-            result.msg ||
-            t('settings.assistantSkillPreviewFailed', { defaultValue: 'Failed to load skill content.' }),
+            result.msg || t('settings.assistantSkillPreviewFailed', { defaultValue: 'Failed to load skill content.' }),
         });
         return;
       }
@@ -348,7 +549,8 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
           {skill.hiddenFromSkillsLibrary ? (
             <div className='mt-6px text-11px text-t-tertiary'>
               {t('settings.assistantSkillPackHint', {
-                defaultValue: 'This skill is bundled into the built-in harness pack and is not exposed as a standalone library item.',
+                defaultValue:
+                  'This skill is bundled into the built-in harness pack and is not exposed as a standalone library item.',
               })}
             </div>
           ) : null}
@@ -719,338 +921,439 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
     }
   };
 
-  return (
-    <Drawer
-      title={
-        <>
-          <span>
-            {isCreating
-              ? t('settings.createAssistant', { defaultValue: 'Create Assistant' })
-              : t('settings.editAssistant', { defaultValue: 'Assistant Details' })}
-          </span>
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditVisible(false);
-            }}
-            className='absolute right-4 top-2 cursor-pointer text-t-secondary hover:text-t-primary transition-colors p-1'
-            style={{ zIndex: 10, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-          >
-            <Close size={18} />
-          </div>
-        </>
-      }
-      closable={false}
-      visible={editVisible}
-      placement='right'
-      width={drawerWidth}
-      zIndex={1200}
-      autoFocus={false}
-      onCancel={() => {
-        setEditVisible(false);
-      }}
-      headerStyle={{ background: 'var(--color-bg-1)' }}
-      bodyStyle={{ background: 'var(--color-bg-1)' }}
-      footer={
-        <div className='flex items-center justify-between w-full'>
-          <div className='flex items-center gap-8px'>
-            <Button
-              type='primary'
-              onClick={handleSave}
-              disabled={!isCreating && isReadonlyAssistant}
-              className='w-[100px] rounded-[100px]'
-            >
-              {isCreating ? t('common.create', { defaultValue: 'Create' }) : t('common.save', { defaultValue: 'Save' })}
-            </Button>
-            <Button
-              onClick={() => {
-                setEditVisible(false);
-              }}
-              className='w-[100px] rounded-[100px] bg-fill-2'
-            >
-              {t('common.cancel', { defaultValue: 'Cancel' })}
-            </Button>
-          </div>
-          {!isCreating && !activeAssistant?.isBuiltin && !isExtensionAssistant(activeAssistant) && (
-            <Button
-              status='danger'
-              onClick={handleDeleteClick}
-              className='rounded-[100px]'
-              style={{ backgroundColor: 'rgb(var(--danger-1))' }}
-            >
-              {t('common.delete', { defaultValue: 'Delete' })}
-            </Button>
-          )}
+  const renderDialogHeader = () => (
+    <div className='flex min-w-0 items-center justify-between gap-16px'>
+      <div className='min-w-0'>
+        <div className='text-18px font-600 text-t-primary'>
+          {isCreating
+            ? t('settings.createAssistant', { defaultValue: 'Create Assistant' })
+            : t('settings.editAssistant', { defaultValue: 'Assistant Details' })}
         </div>
-      }
+        <div className='mt-4px text-12px text-t-secondary'>
+          {t('settings.assistantDetailsDialogHint', {
+            defaultValue: 'Review identity, rules, skills, and hooks in one focused workspace dialog.',
+          })}
+        </div>
+      </div>
+      <div className='flex flex-wrap items-center justify-end gap-6px'>
+        <Tag size='small' color='arcoblue'>
+          {assistantKindLabel}
+        </Tag>
+        <Tag size='small' color={isReadonlyAssistant ? 'gold' : 'green'}>
+          {assistantModeLabel}
+        </Tag>
+      </div>
+    </div>
+  );
+
+  const renderSummaryCard = () => (
+    <div className='flex h-full flex-col gap-16px bg-[color:color-mix(in_srgb,var(--color-bg-1)_92%,transparent)] p-20px'>
+      <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
+        <div className='flex items-center gap-12px'>
+          <Avatar shape='square' size={52} className='rounded-8px bg-fill-2'>
+            {editAvatarImage ? (
+              <img src={editAvatarImage} alt='' width={30} height={30} style={{ objectFit: 'contain' }} />
+            ) : editAvatar ? (
+              <span className='text-28px'>{editAvatar}</span>
+            ) : (
+              <Robot theme='outline' size={24} />
+            )}
+          </Avatar>
+          <div className='min-w-0 flex-1'>
+            <div className='truncate text-16px font-600 text-t-primary'>
+              {editName || t('settings.assistantUntitled', { defaultValue: 'Untitled assistant' })}
+            </div>
+            <div className='mt-4px text-12px text-t-secondary'>
+              {editDescription ||
+                t('settings.assistantDescriptionPlaceholder', {
+                  defaultValue: 'What can this assistant help with?',
+                })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className='grid grid-cols-2 gap-10px'>
+        <div className='rounded-14px border border-border-2 bg-bg-1 p-14px'>
+          <div className='text-11px uppercase tracking-[0.08em] text-t-tertiary'>
+            {t('settings.assistantMainAgent', { defaultValue: 'Main Agent' })}
+          </div>
+          <div className='mt-6px text-14px font-600 text-t-primary'>{editAgent || '--'}</div>
+        </div>
+        <div className='rounded-14px border border-border-2 bg-bg-1 p-14px'>
+          <div className='text-11px uppercase tracking-[0.08em] text-t-tertiary'>
+            {t('settings.assistantPromptMode', { defaultValue: 'Rules Mode' })}
+          </div>
+          <div className='mt-6px text-14px font-600 text-t-primary'>
+            {promptViewMode === 'edit'
+              ? t('settings.promptEdit', { defaultValue: 'Edit' })
+              : t('settings.promptPreview', { defaultValue: 'Preview' })}
+          </div>
+        </div>
+        <div className='rounded-14px border border-border-2 bg-bg-1 p-14px'>
+          <div className='text-11px uppercase tracking-[0.08em] text-t-tertiary'>
+            {t('settings.assistantSkills', { defaultValue: 'Skills' })}
+          </div>
+          <div className='mt-6px text-14px font-600 text-t-primary'>{attachedSkillCount}</div>
+        </div>
+        <div className='rounded-14px border border-border-2 bg-bg-1 p-14px'>
+          <div className='text-11px uppercase tracking-[0.08em] text-t-tertiary'>
+            {t('settings.assistantHooks', { defaultValue: 'Hooks' })}
+          </div>
+          <div className='mt-6px text-14px font-600 text-t-primary'>{attachedHookCount}</div>
+        </div>
+      </div>
+
+      <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
+        <div className='text-13px font-600 text-t-primary'>
+          {t('settings.assistantEditingGuideTitle', { defaultValue: 'What to review here' })}
+        </div>
+        <div className='mt-10px space-y-8px text-12px leading-relaxed text-t-secondary'>
+          <div>
+            {t('settings.assistantEditingGuideIdentity', {
+              defaultValue: 'Identity: confirm the name, avatar, runtime, and read-only constraints first.',
+            })}
+          </div>
+          <div>
+            {t('settings.assistantEditingGuideRules', {
+              defaultValue: 'Rules: edit or preview the prompt in place before changing capabilities.',
+            })}
+          </div>
+          <div>
+            {t('settings.assistantEditingGuideSkills', {
+              defaultValue:
+                'Skills and hooks: inspect attached capabilities here, then open previews or nested dialogs without leaving this modal.',
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <ContextGoModal
+      visible={editVisible}
+      onCancel={() => setEditVisible(false)}
+      header={{
+        render: renderDialogHeader,
+        showClose: true,
+        className: 'px-24px pt-20px',
+      }}
+      footer={{
+        className: 'px-24px pb-20px',
+        render: () => (
+          <div className='flex items-center justify-between gap-16px'>
+            <div className='text-12px text-t-secondary'>
+              {t('settings.assistantDialogFooterHint', {
+                defaultValue: 'All assistant details, capability previews, and nested editors stay inside this dialog.',
+              })}
+            </div>
+            <div className='flex items-center gap-8px'>
+              {!isCreating && !activeAssistant?.isBuiltin && !isExtensionAssistant(activeAssistant) ? (
+                <Button
+                  status='danger'
+                  onClick={handleDeleteClick}
+                  className='rounded-[100px]'
+                  style={{ backgroundColor: 'rgb(var(--danger-1))' }}
+                >
+                  {t('common.delete', { defaultValue: 'Delete' })}
+                </Button>
+              ) : null}
+              <Button onClick={() => setEditVisible(false)} className='w-[100px] rounded-[100px] bg-fill-2'>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button
+                type='primary'
+                onClick={handleSave}
+                disabled={!isCreating && isReadonlyAssistant}
+                className='w-[100px] rounded-[100px]'
+              >
+                {isCreating
+                  ? t('common.create', { defaultValue: 'Create' })
+                  : t('common.save', { defaultValue: 'Save' })}
+              </Button>
+            </div>
+          </div>
+        ),
+      }}
+      style={{ width: 'min(1180px, calc(100vw - 32px))' }}
+      contentStyle={{ padding: 0, overflow: 'hidden', maxHeight: 'calc(100vh - 96px)' }}
     >
-      <div className='flex flex-col h-full overflow-hidden'>
-        <div className='flex flex-col flex-1 gap-16px bg-fill-2 rounded-16px p-20px overflow-y-auto'>
-          {/* Name & Avatar */}
-          <div className='flex-shrink-0'>
-            <Typography.Text bold>
-              <span className='text-red-500'>*</span>{' '}
-              {t('settings.assistantNameAvatar', { defaultValue: 'Name & Avatar' })}
-            </Typography.Text>
-            <div className='mt-10px flex items-center gap-12px'>
-              {activeAssistant?.isBuiltin || isReadonlyAssistant ? (
-                <Avatar shape='square' size={40} className='bg-bg-1 rounded-4px'>
-                  {editAvatarImage ? (
-                    <img src={editAvatarImage} alt='' width={24} height={24} style={{ objectFit: 'contain' }} />
-                  ) : editAvatar ? (
-                    <span className='text-24px'>{editAvatar}</span>
-                  ) : (
-                    <Robot theme='outline' size={20} />
-                  )}
-                </Avatar>
-              ) : (
-                <EmojiPicker value={editAvatar} onChange={(emoji) => setEditAvatar(emoji)} placement='br'>
-                  <div className='cursor-pointer'>
-                    <Avatar shape='square' size={40} className='bg-bg-1 rounded-4px hover:bg-fill-2 transition-colors'>
-                      {editAvatarImage ? (
-                        <img src={editAvatarImage} alt='' width={24} height={24} style={{ objectFit: 'contain' }} />
-                      ) : editAvatar ? (
-                        <span className='text-24px'>{editAvatar}</span>
-                      ) : (
-                        <Robot theme='outline' size={20} />
-                      )}
-                    </Avatar>
-                  </div>
-                </EmojiPicker>
-              )}
+      <div className='flex h-[min(82vh,860px)] min-h-[560px] overflow-hidden bg-fill-2'>
+        <div className='hidden w-[320px] shrink-0 border-r border-border-2 xl:block'>{renderSummaryCard()}</div>
+        <div className='flex min-w-0 flex-1 flex-col overflow-hidden'>
+          <div className='border-b border-border-2 bg-bg-1 px-20px py-16px xl:hidden'>{renderSummaryCard()}</div>
+          <div className='flex flex-1 flex-col gap-16px overflow-y-auto p-20px'>
+            {/* Name & Avatar */}
+            <div className='flex-shrink-0'>
+              <Typography.Text bold>
+                <span className='text-red-500'>*</span>{' '}
+                {t('settings.assistantNameAvatar', { defaultValue: 'Name & Avatar' })}
+              </Typography.Text>
+              <div className='mt-10px flex items-center gap-12px'>
+                {activeAssistant?.isBuiltin || isReadonlyAssistant ? (
+                  <Avatar shape='square' size={40} className='bg-bg-1 rounded-4px'>
+                    {editAvatarImage ? (
+                      <img src={editAvatarImage} alt='' width={24} height={24} style={{ objectFit: 'contain' }} />
+                    ) : editAvatar ? (
+                      <span className='text-24px'>{editAvatar}</span>
+                    ) : (
+                      <Robot theme='outline' size={20} />
+                    )}
+                  </Avatar>
+                ) : (
+                  <EmojiPicker value={editAvatar} onChange={(emoji) => setEditAvatar(emoji)} placement='br'>
+                    <div className='cursor-pointer'>
+                      <Avatar
+                        shape='square'
+                        size={40}
+                        className='bg-bg-1 rounded-4px hover:bg-fill-2 transition-colors'
+                      >
+                        {editAvatarImage ? (
+                          <img src={editAvatarImage} alt='' width={24} height={24} style={{ objectFit: 'contain' }} />
+                        ) : editAvatar ? (
+                          <span className='text-24px'>{editAvatar}</span>
+                        ) : (
+                          <Robot theme='outline' size={20} />
+                        )}
+                      </Avatar>
+                    </div>
+                  </EmojiPicker>
+                )}
+                <Input
+                  value={editName}
+                  onChange={(value) => setEditName(value)}
+                  disabled={activeAssistant?.isBuiltin || isReadonlyAssistant}
+                  placeholder={t('settings.agentNamePlaceholder', { defaultValue: 'Enter a name for this agent' })}
+                  className='flex-1 rounded-4px bg-bg-1'
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className='flex-shrink-0'>
+              <Typography.Text bold>
+                {t('settings.assistantDescription', { defaultValue: 'Assistant Description' })}
+              </Typography.Text>
               <Input
-                value={editName}
-                onChange={(value) => setEditName(value)}
+                className='mt-10px rounded-4px bg-bg-1'
+                value={editDescription}
+                onChange={(value) => setEditDescription(value)}
                 disabled={activeAssistant?.isBuiltin || isReadonlyAssistant}
-                placeholder={t('settings.agentNamePlaceholder', { defaultValue: 'Enter a name for this agent' })}
-                className='flex-1 rounded-4px bg-bg-1'
+                placeholder={t('settings.assistantDescriptionPlaceholder', {
+                  defaultValue: 'What can this assistant help with?',
+                })}
               />
             </div>
-          </div>
 
-          {/* Description */}
-          <div className='flex-shrink-0'>
-            <Typography.Text bold>
-              {t('settings.assistantDescription', { defaultValue: 'Assistant Description' })}
-            </Typography.Text>
-            <Input
-              className='mt-10px rounded-4px bg-bg-1'
-              value={editDescription}
-              onChange={(value) => setEditDescription(value)}
-              disabled={activeAssistant?.isBuiltin || isReadonlyAssistant}
-              placeholder={t('settings.assistantDescriptionPlaceholder', {
-                defaultValue: 'What can this assistant help with?',
-              })}
-            />
-          </div>
-
-          {/* Main Agent selector */}
-          <div className='flex-shrink-0'>
-            <Typography.Text bold>{t('settings.assistantMainAgent', { defaultValue: 'Main Agent' })}</Typography.Text>
-            <Select
-              className='mt-10px w-full rounded-4px'
-              value={editAgent}
-              onChange={(value) => setEditAgent(value as string)}
-              disabled={isReadonlyAssistant}
-            >
-              {[
-                { value: 'gemini', label: 'Gemini CLI' },
-                { value: 'claude', label: 'Claude Code' },
-                { value: 'codex', label: 'Codex' },
-                { value: 'opencode', label: 'OpenCode' },
-              ]
-                .filter((opt) =>
-                  PRODUCT_VISIBLE_PRESET_AGENT_TYPES.includes(
-                    opt.value as (typeof PRODUCT_VISIBLE_PRESET_AGENT_TYPES)[number]
-                  )
-                )
-                .filter((opt) => availableBackends.has(opt.value))
-                .map((opt) => (
-                  <Select.Option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </Select.Option>
-                ))}
-              {/* Extension-contributed ACP adapters */}
-              {extensionAcpAdapters?.map((adapter) => {
-                const id = adapter.id as string;
-                const name = (adapter.name as string) || id;
-                return (
-                  <Select.Option key={id} value={id}>
-                    <span className='flex items-center gap-6px'>
-                      {name}
-                      <Tag size='small' color='arcoblue'>
-                        ext
-                      </Tag>
-                    </span>
-                  </Select.Option>
-                );
-              })}
-            </Select>
-          </div>
-
-          {/* Rules / Prompt */}
-          <div className='flex-shrink-0'>
-            <Typography.Text bold className='flex-shrink-0'>
-              {t('settings.assistantRules', { defaultValue: 'Rules' })}
-            </Typography.Text>
-            <div className='mt-10px border border-border-2 overflow-hidden rounded-4px' style={{ height: '300px' }}>
-              {!activeAssistant?.isBuiltin && !isReadonlyAssistant && (
-                <div className='flex items-center h-36px bg-fill-2 border-b border-border-2 flex-shrink-0'>
-                  <div
-                    className={`flex items-center h-full px-16px cursor-pointer transition-all text-13px font-medium ${promptViewMode === 'edit' ? 'text-primary border-b-2 border-primary bg-bg-1' : 'text-t-secondary hover:text-t-primary'}`}
-                    onClick={() => setPromptViewMode('edit')}
-                  >
-                    {t('settings.promptEdit', { defaultValue: 'Edit' })}
-                  </div>
-                  <div
-                    className={`flex items-center h-full px-16px cursor-pointer transition-all text-13px font-medium ${promptViewMode === 'preview' ? 'text-primary border-b-2 border-primary bg-bg-1' : 'text-t-secondary hover:text-t-primary'}`}
-                    onClick={() => setPromptViewMode('preview')}
-                  >
-                    {t('settings.promptPreview', { defaultValue: 'Preview' })}
-                  </div>
-                </div>
-              )}
-              <div
-                className='bg-fill-2'
-                style={{
-                  height: activeAssistant?.isBuiltin || isReadonlyAssistant ? '100%' : 'calc(100% - 36px)',
-                  overflow: 'auto',
-                }}
+            {/* Main Agent selector */}
+            <div className='flex-shrink-0'>
+              <Typography.Text bold>{t('settings.assistantMainAgent', { defaultValue: 'Main Agent' })}</Typography.Text>
+              <Select
+                className='mt-10px w-full rounded-4px'
+                value={editAgent}
+                onChange={(value) => setEditAgent(value as string)}
+                disabled={isReadonlyAssistant}
               >
-                {promptViewMode === 'edit' && !activeAssistant?.isBuiltin && !isReadonlyAssistant ? (
-                  <div ref={textareaWrapperRef} className='h-full'>
-                    <Input.TextArea
-                      value={editContext}
-                      onChange={(value) => setEditContext(value)}
-                      placeholder={t('settings.assistantRulesPlaceholder', {
-                        defaultValue: 'Enter rules in Markdown format...',
-                      })}
-                      autoSize={false}
-                      className='border-none rounded-none bg-transparent h-full resize-none'
-                    />
-                  </div>
-                ) : (
-                  <div className='p-16px'>
-                    {editContext ? (
-                      <MarkdownView hiddenCodeCopyButton>{editContext}</MarkdownView>
-                    ) : (
-                      <div className='text-t-secondary text-center py-32px'>
-                        {t('settings.promptPreviewEmpty', { defaultValue: 'No content to preview' })}
-                      </div>
-                    )}
+                {[
+                  { value: 'gemini', label: 'Gemini CLI' },
+                  { value: 'claude', label: 'Claude Code' },
+                  { value: 'codex', label: 'Codex' },
+                  { value: 'opencode', label: 'OpenCode' },
+                ]
+                  .filter((opt) =>
+                    PRODUCT_VISIBLE_PRESET_AGENT_TYPES.includes(
+                      opt.value as (typeof PRODUCT_VISIBLE_PRESET_AGENT_TYPES)[number]
+                    )
+                  )
+                  .filter((opt) => availableBackends.has(opt.value))
+                  .map((opt) => (
+                    <Select.Option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </Select.Option>
+                  ))}
+                {/* Extension-contributed ACP adapters */}
+                {extensionAcpAdapters?.map((adapter) => {
+                  const id = adapter.id as string;
+                  const name = (adapter.name as string) || id;
+                  return (
+                    <Select.Option key={id} value={id}>
+                      <span className='flex items-center gap-6px'>
+                        {name}
+                        <Tag size='small' color='arcoblue'>
+                          ext
+                        </Tag>
+                      </span>
+                    </Select.Option>
+                  );
+                })}
+              </Select>
+            </div>
+
+            {/* Rules / Prompt */}
+            <div className='flex-shrink-0'>
+              <Typography.Text bold className='flex-shrink-0'>
+                {t('settings.assistantRules', { defaultValue: 'Rules' })}
+              </Typography.Text>
+              <div className='mt-10px border border-border-2 overflow-hidden rounded-4px' style={{ height: '300px' }}>
+                {!activeAssistant?.isBuiltin && !isReadonlyAssistant && (
+                  <div className='flex items-center h-36px bg-fill-2 border-b border-border-2 flex-shrink-0'>
+                    <div
+                      className={`flex items-center h-full px-16px cursor-pointer transition-all text-13px font-medium ${promptViewMode === 'edit' ? 'text-primary border-b-2 border-primary bg-bg-1' : 'text-t-secondary hover:text-t-primary'}`}
+                      onClick={() => setPromptViewMode('edit')}
+                    >
+                      {t('settings.promptEdit', { defaultValue: 'Edit' })}
+                    </div>
+                    <div
+                      className={`flex items-center h-full px-16px cursor-pointer transition-all text-13px font-medium ${promptViewMode === 'preview' ? 'text-primary border-b-2 border-primary bg-bg-1' : 'text-t-secondary hover:text-t-primary'}`}
+                      onClick={() => setPromptViewMode('preview')}
+                    >
+                      {t('settings.promptPreview', { defaultValue: 'Preview' })}
+                    </div>
                   </div>
                 )}
+                <div
+                  className='bg-fill-2'
+                  style={{
+                    height: activeAssistant?.isBuiltin || isReadonlyAssistant ? '100%' : 'calc(100% - 36px)',
+                    overflow: 'auto',
+                  }}
+                >
+                  {promptViewMode === 'edit' && !activeAssistant?.isBuiltin && !isReadonlyAssistant ? (
+                    <div ref={textareaWrapperRef} className='h-full'>
+                      <Input.TextArea
+                        value={editContext}
+                        onChange={(value) => setEditContext(value)}
+                        placeholder={t('settings.assistantRulesPlaceholder', {
+                          defaultValue: 'Enter rules in Markdown format...',
+                        })}
+                        autoSize={false}
+                        className='border-none rounded-none bg-transparent h-full resize-none'
+                      />
+                    </div>
+                  ) : (
+                    <div className='p-16px'>
+                      {editContext ? (
+                        <MarkdownView hiddenCodeCopyButton>{editContext}</MarkdownView>
+                      ) : (
+                        <div className='text-t-secondary text-center py-32px'>
+                          {t('settings.promptPreviewEmpty', { defaultValue: 'No content to preview' })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Skills section */}
-          {showSkills && (
+            {/* Skills section */}
+            {showSkills && (
+              <div className='flex-shrink-0 mt-16px'>
+                <div className='flex items-center justify-between mb-12px'>
+                  <Typography.Text bold>{t('settings.assistantSkills', { defaultValue: 'Skills' })}</Typography.Text>
+                  {activeAssistant?.isBuiltin ? null : (
+                    <Button
+                      size='small'
+                      type='outline'
+                      icon={<Plus size={14} />}
+                      onClick={() => setSkillsModalVisible(true)}
+                      className='rounded-[100px]'
+                    >
+                      {t('settings.addSkills', { defaultValue: 'Add Skills' })}
+                    </Button>
+                  )}
+                </div>
+
+                <Collapse defaultActiveKey={['attached-skills']}>
+                  <Collapse.Item
+                    header={
+                      <span className='text-13px font-medium'>
+                        {t('settings.assistantAttachedSkills', { defaultValue: 'Attached Skills' })}
+                      </span>
+                    }
+                    name='attached-skills'
+                    className='mb-8px'
+                    extra={<span className='text-12px text-t-secondary'>{relevantSkills.length}</span>}
+                  >
+                    {relevantSkills.length > 0 ? (
+                      <div className='space-y-4px'>{relevantSkills.map((skill) => renderRelevantSkillItem(skill))}</div>
+                    ) : (
+                      <div className='text-center text-t-secondary text-12px py-16px'>
+                        {t('settings.noAttachedSkills', { defaultValue: 'No skills attached to this assistant' })}
+                      </div>
+                    )}
+                  </Collapse.Item>
+                </Collapse>
+              </div>
+            )}
+
+            {/* Hooks section */}
             <div className='flex-shrink-0 mt-16px'>
               <div className='flex items-center justify-between mb-12px'>
-                <Typography.Text bold>{t('settings.assistantSkills', { defaultValue: 'Skills' })}</Typography.Text>
-                {activeAssistant?.isBuiltin ? null : (
+                <Typography.Text bold>{t('settings.assistantHooks', { defaultValue: 'Hooks' })}</Typography.Text>
+                <div className='flex items-center gap-8px'>
                   <Button
-                    size='small'
+                    size='mini'
                     type='outline'
                     icon={<Plus size={14} />}
-                    onClick={() => setSkillsModalVisible(true)}
-                    className='rounded-[100px]'
+                    onClick={() => setHookLibraryVisible(true)}
                   >
-                    {t('settings.addSkills', { defaultValue: 'Add Skills' })}
+                    {t('settings.addHook', { defaultValue: 'Add Hook' })}
                   </Button>
-                )}
+                  <Button
+                    size='mini'
+                    type='outline'
+                    icon={<Refresh size={14} className={hooksLoading ? 'animate-spin' : ''} />}
+                    onClick={() => void handleRefreshHooks()}
+                  >
+                    {t('common.refresh', { defaultValue: 'Refresh' })}
+                  </Button>
+                  <Button size='mini' type='outline' icon={<Plus size={14} />} onClick={() => void handleImportHook()}>
+                    {t('settings.importHook', { defaultValue: 'Import Hook' })}
+                  </Button>
+                  <Button
+                    size='mini'
+                    type='outline'
+                    icon={<FolderOpen size={14} />}
+                    onClick={() => void handleOpenHooksDir()}
+                  >
+                    {t('settings.openHookFolder', { defaultValue: 'Open Folder' })}
+                  </Button>
+                </div>
+              </div>
+              <Typography.Text type='secondary' className='block text-12px'>
+                {t('settings.assistantHooksHint', {
+                  defaultValue:
+                    'ContextGo currently runs prompt-transform hooks on before_user_prompt. Builtin hooks also package reusable patterns for planning, safety, quality, continuity, and operator handoff.',
+                })}
+              </Typography.Text>
+              <div className='mt-8px rounded-8px bg-bg-1 p-10px'>
+                <Typography.Text type='secondary' className='text-12px'>
+                  {t('settings.hookStoragePath', { defaultValue: 'Hook storage path' })}
+                </Typography.Text>
+                <div className='mt-4px break-all text-12px text-t-primary'>{hooksDir || '-'}</div>
               </div>
 
-              <Collapse defaultActiveKey={['attached-skills']}>
+              <Collapse defaultActiveKey={['available-hooks']}>
                 <Collapse.Item
                   header={
                     <span className='text-13px font-medium'>
-                      {t('settings.assistantAttachedSkills', { defaultValue: 'Attached Skills' })}
+                      {t('settings.assistantAttachedHooks', { defaultValue: 'Attached Hooks' })}
                     </span>
                   }
-                  name='attached-skills'
-                  className='mb-8px'
-                  extra={<span className='text-12px text-t-secondary'>{relevantSkills.length}</span>}
+                  name='available-hooks'
+                  extra={<span className='text-12px text-t-secondary'>{relevantHooks.length}</span>}
                 >
-                  {relevantSkills.length > 0 ? (
-                    <div className='space-y-4px'>{relevantSkills.map((skill) => renderRelevantSkillItem(skill))}</div>
+                  {relevantHooks.length > 0 ? (
+                    <div className='space-y-4px'>{relevantHooks.map((hook) => renderRelevantHookItem(hook))}</div>
                   ) : (
                     <div className='text-center text-t-secondary text-12px py-16px'>
-                      {t('settings.noAttachedSkills', { defaultValue: 'No skills attached to this assistant' })}
+                      {t('settings.noAttachedHooks', { defaultValue: 'No hooks attached to this assistant' })}
                     </div>
                   )}
                 </Collapse.Item>
               </Collapse>
             </div>
-          )}
-
-          {/* Hooks section */}
-          <div className='flex-shrink-0 mt-16px'>
-            <div className='flex items-center justify-between mb-12px'>
-              <Typography.Text bold>{t('settings.assistantHooks', { defaultValue: 'Hooks' })}</Typography.Text>
-              <div className='flex items-center gap-8px'>
-                <Button
-                  size='mini'
-                  type='outline'
-                  icon={<Plus size={14} />}
-                  onClick={() => setHookLibraryVisible(true)}
-                >
-                  {t('settings.addHook', { defaultValue: 'Add Hook' })}
-                </Button>
-                <Button
-                  size='mini'
-                  type='outline'
-                  icon={<Refresh size={14} className={hooksLoading ? 'animate-spin' : ''} />}
-                  onClick={() => void handleRefreshHooks()}
-                >
-                  {t('common.refresh', { defaultValue: 'Refresh' })}
-                </Button>
-                <Button size='mini' type='outline' icon={<Plus size={14} />} onClick={() => void handleImportHook()}>
-                  {t('settings.importHook', { defaultValue: 'Import Hook' })}
-                </Button>
-                <Button
-                  size='mini'
-                  type='outline'
-                  icon={<FolderOpen size={14} />}
-                  onClick={() => void handleOpenHooksDir()}
-                >
-                  {t('settings.openHookFolder', { defaultValue: 'Open Folder' })}
-                </Button>
-              </div>
-            </div>
-            <Typography.Text type='secondary' className='block text-12px'>
-              {t('settings.assistantHooksHint', {
-                defaultValue:
-                  'ContextGo currently runs prompt-transform hooks on before_user_prompt. Builtin hooks also package reusable patterns for planning, safety, quality, continuity, and operator handoff.',
-              })}
-            </Typography.Text>
-            <div className='mt-8px rounded-8px bg-bg-1 p-10px'>
-              <Typography.Text type='secondary' className='text-12px'>
-                {t('settings.hookStoragePath', { defaultValue: 'Hook storage path' })}
-              </Typography.Text>
-              <div className='mt-4px break-all text-12px text-t-primary'>{hooksDir || '-'}</div>
-            </div>
-
-            <Collapse defaultActiveKey={['available-hooks']}>
-              <Collapse.Item
-                header={
-                  <span className='text-13px font-medium'>
-                    {t('settings.assistantAttachedHooks', { defaultValue: 'Attached Hooks' })}
-                  </span>
-                }
-                name='available-hooks'
-                extra={<span className='text-12px text-t-secondary'>{relevantHooks.length}</span>}
-              >
-                {relevantHooks.length > 0 ? (
-                  <div className='space-y-4px'>{relevantHooks.map((hook) => renderRelevantHookItem(hook))}</div>
-                ) : (
-                  <div className='text-center text-t-secondary text-12px py-16px'>
-                    {t('settings.noAttachedHooks', { defaultValue: 'No hooks attached to this assistant' })}
-                  </div>
-                )}
-              </Collapse.Item>
-            </Collapse>
           </div>
         </div>
       </div>
@@ -1075,17 +1378,59 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
         style={{ width: 'min(760px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px' }}
       >
-        {previewingSkill ? (
-          <div className='mb-12px'>
-            <Typography.Text bold>{previewingSkill.name}</Typography.Text>
-          </div>
-        ) : null}
         {skillPreviewLoading ? (
           <div className='py-24px text-center text-12px text-t-secondary'>
             {t('common.loading', { defaultValue: 'Please wait...' })}
           </div>
         ) : (
-          <MarkdownView hiddenCodeCopyButton>{skillPreviewContent}</MarkdownView>
+          <div className='space-y-12px'>
+            {previewDocument ? (
+              <div className='rounded-16px border border-border-2 bg-fill-1 p-16px'>
+                <div className='flex items-start justify-between gap-12px'>
+                  <div className='min-w-0 flex-1'>
+                    <div className='break-all text-16px font-600 text-t-primary'>{previewDocument.title}</div>
+                    {previewDocument.description ? (
+                      <div className='mt-6px text-13px leading-relaxed text-t-secondary'>
+                        {previewDocument.description}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className='flex flex-wrap justify-end gap-6px'>
+                    {previewingSkill?.hiddenFromSkillsLibrary ? (
+                      <Tag size='small' color='arcoblue'>
+                        {t('settings.assistantSkillPackageTag', { defaultValue: 'Packaged' })}
+                      </Tag>
+                    ) : null}
+                    {previewingSkill?.isCustom ? (
+                      <Tag size='small' color='orange'>
+                        {t('settings.skillsHub.custom', { defaultValue: 'Custom' })}
+                      </Tag>
+                    ) : null}
+                  </div>
+                </div>
+                {previewingSkill?.location ? (
+                  <div className='mt-10px break-all text-11px text-t-tertiary'>
+                    {t('settings.skillLocation', { defaultValue: 'Location' })}: {previewingSkill.location}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
+              <div className='mb-10px text-11px font-600 uppercase tracking-[0.08em] text-t-tertiary'>
+                {t('settings.assistantSkillPreviewBody', { defaultValue: 'Skill Body' })}
+              </div>
+              <div className='max-h-[min(58vh,620px)] overflow-y-auto'>
+                {previewDocument?.body ? (
+                  <MarkdownView hiddenCodeCopyButton>{previewDocument.body}</MarkdownView>
+                ) : (
+                  <div className='py-16px text-center text-12px text-t-secondary'>
+                    {t('settings.promptPreviewEmpty', { defaultValue: 'No content to preview' })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </ContextGoModal>
       <ContextGoModal
@@ -1170,7 +1515,7 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
           </div>
         )}
       </ContextGoModal>
-    </Drawer>
+    </ContextGoModal>
   );
 };
 

@@ -6,15 +6,15 @@ Incrementally fix build and type errors with minimal, safe changes.
 
 Identify the project's build tool and run the build:
 
-| Indicator | Build Command |
-|-----------|---------------|
-| `package.json` with `build` script | `npm run build` or `pnpm build` |
-| `tsconfig.json` (TypeScript only) | `npx tsc --noEmit` |
-| `Cargo.toml` | `cargo build 2>&1` |
-| `pom.xml` | `mvn compile` |
-| `build.gradle` | `./gradlew compileJava` |
-| `go.mod` | `go build ./...` |
-| `pyproject.toml` | `python -m compileall -q .` or `mypy .` |
+| Indicator                          | Build Command                           |
+| ---------------------------------- | --------------------------------------- |
+| `package.json` with `build` script | `npm run build` or `pnpm build`         |
+| `tsconfig.json` (TypeScript only)  | `npx tsc --noEmit`                      |
+| `Cargo.toml`                       | `cargo build 2>&1`                      |
+| `pom.xml`                          | `mvn compile`                           |
+| `build.gradle`                     | `./gradlew compileJava`                 |
+| `go.mod`                           | `go build ./...`                        |
+| `pyproject.toml`                   | `python -m compileall -q .` or `mypy .` |
 
 ## Step 2: Parse and Group Errors
 
@@ -36,6 +36,7 @@ For each error:
 ## Step 4: Guardrails
 
 Stop and ask the user if:
+
 - A fix introduces **more errors than it resolves**
 - The **same error persists after 3 attempts** (likely a deeper issue)
 - The fix requires **architectural changes** (not just a build fix)
@@ -44,6 +45,7 @@ Stop and ask the user if:
 ## Step 5: Summary
 
 Show results:
+
 - Errors fixed (with file paths)
 - Errors remaining (if any)
 - New errors introduced (should be zero)
@@ -51,12 +53,12 @@ Show results:
 
 ## Recovery Strategies
 
-| Situation | Action |
-|-----------|--------|
-| Missing module/import | Check if package is installed; suggest install command |
-| Type mismatch | Read both type definitions; fix the narrower type |
-| Circular dependency | Identify cycle with import graph; suggest extraction |
-| Version conflict | Check `package.json` / `Cargo.toml` for version constraints |
-| Build tool misconfiguration | Read config file; compare with working defaults |
+| Situation                   | Action                                                      |
+| --------------------------- | ----------------------------------------------------------- |
+| Missing module/import       | Check if package is installed; suggest install command      |
+| Type mismatch               | Read both type definitions; fix the narrower type           |
+| Circular dependency         | Identify cycle with import graph; suggest extraction        |
+| Version conflict            | Check `package.json` / `Cargo.toml` for version constraints |
+| Build tool misconfiguration | Read config file; compare with working defaults             |
 
 Fix one error at a time for safety. Prefer minimal diffs over refactoring.

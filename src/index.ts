@@ -48,6 +48,7 @@ import {
   showOrCreateMainWindow,
 } from './process/utils/mainWindowLifecycle';
 import {
+  ensureDesktopWebUIForOfficialRemote,
   loadUserWebUIConfig,
   resolveRemoteAccess,
   resolveWebUIPort,
@@ -495,6 +496,19 @@ const handleAppReady = async (): Promise<void> => {
     console.error('Failed to initialize process:', error);
     app.exit(1);
     return;
+  }
+
+  if (!isWebUIMode && !isResetPasswordMode && !isE2ETestMode) {
+    try {
+      const storedOfficialRemoteToken = await ProcessConfig.get('cloud.deviceToken');
+      if (typeof storedOfficialRemoteToken === 'string' && storedOfficialRemoteToken.trim()) {
+        await ensureDesktopWebUIForOfficialRemote().catch((error) => {
+          console.warn('[Cloud] Failed to eagerly prepare Official Remote desktop runtime at app startup:', error);
+        });
+      }
+    } catch (error) {
+      console.warn('[Cloud] Failed to inspect stored Official Remote device binding at app startup:', error);
+    }
   }
 
   if (isResetPasswordMode) {

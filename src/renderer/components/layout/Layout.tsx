@@ -13,10 +13,7 @@ import classNames from 'classnames';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutContext } from '@renderer/hooks/context/LayoutContext';
-import {
-  createDefaultRemoteAccessTarget,
-  RemoteAccessContext,
-} from '@renderer/hooks/context/RemoteAccessContext';
+import { createDefaultRemoteAccessTarget, RemoteAccessContext } from '@renderer/hooks/context/RemoteAccessContext';
 import { useDeepLink } from '@renderer/hooks/system/useDeepLink';
 import { useNotificationClick } from '@renderer/hooks/system/useNotificationClick';
 import { useDirectorySelection } from '@renderer/hooks/file/useDirectorySelection';
@@ -389,7 +386,8 @@ const Layout: React.FC<{
         Math.min(MOBILE_SIDER_MAX_WIDTH, Math.round(viewportWidth * MOBILE_SIDER_WIDTH_RATIO))
       )
     : DEFAULT_SIDER_WIDTH;
-  const showPrimarySider = true;
+  const isDesktopRemoteDeviceShell = !isMobile && remoteAccessTarget.mode === 'remote-device';
+  const showPrimarySider = !isDesktopRemoteDeviceShell;
   const desktopExpandedSiderWidth = siderWidth;
   const desktopCollapsedSiderWidth = 0;
   const resolvedMobileSiderTranslateX = isMobile ? (mobileSiderTranslateX ?? (collapsed ? -siderWidth : 0)) : 0;
@@ -563,90 +561,90 @@ const Layout: React.FC<{
           onTouchEnd={handleMobileSiderTouchEnd}
           onTouchCancel={handleMobileSiderTouchCancel}
         >
-        <Titlebar
-          workspaceAvailable={workspaceAvailable}
-          leftPaneWidth={collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth}
-        />
-        {/* 移动端左侧边栏蒙板 / Mobile left sider backdrop */}
-        {isMobile && showPrimarySider && (!collapsed || isDraggingMobileSider) && (
-          <div
-            className='fixed inset-0 bg-black/30 z-90'
-            style={{
-              opacity: mobileSiderOpenProgress,
-              pointerEvents: collapsed ? 'none' : 'auto',
-              transition: isDraggingMobileSider ? 'none' : 'opacity 0.22s ease',
-            }}
-            onClick={() => setCollapsed(true)}
-            aria-hidden='true'
+          <Titlebar
+            workspaceAvailable={workspaceAvailable}
+            leftPaneWidth={showPrimarySider ? (collapsed ? desktopCollapsedSiderWidth : desktopExpandedSiderWidth) : 0}
           />
-        )}
+          {/* 移动端左侧边栏蒙板 / Mobile left sider backdrop */}
+          {isMobile && showPrimarySider && (!collapsed || isDraggingMobileSider) && (
+            <div
+              className='fixed inset-0 bg-black/30 z-90'
+              style={{
+                opacity: mobileSiderOpenProgress,
+                pointerEvents: collapsed ? 'none' : 'auto',
+                transition: isDraggingMobileSider ? 'none' : 'opacity 0.22s ease',
+              }}
+              onClick={() => setCollapsed(true)}
+              aria-hidden='true'
+            />
+          )}
 
-        <ArcoLayout className={'size-full layout flex-1 min-h-0'}>
-          {showPrimarySider ? (
-            <ArcoLayout.Sider
-              collapsedWidth={isMobile ? 0 : desktopCollapsedSiderWidth}
-              collapsed={collapsed}
-              width={desktopExpandedSiderWidth}
-              className={classNames('!bg-2 layout-sider', {
-                collapsed: collapsed,
-              })}
+          <ArcoLayout className={'size-full layout flex-1 min-h-0'}>
+            {showPrimarySider ? (
+              <ArcoLayout.Sider
+                collapsedWidth={isMobile ? 0 : desktopCollapsedSiderWidth}
+                collapsed={collapsed}
+                width={desktopExpandedSiderWidth}
+                className={classNames('!bg-2 layout-sider', {
+                  collapsed: collapsed,
+                })}
+                style={
+                  isMobile
+                    ? {
+                        position: 'fixed',
+                        left: 0,
+                        zIndex: 100,
+                        transform: `translateX(${resolvedMobileSiderTranslateX}px)`,
+                        transition: isDraggingMobileSider ? 'none' : 'transform 0.22s ease',
+                        pointerEvents: collapsed && !isDraggingMobileSider ? 'none' : 'auto',
+                        willChange: 'transform',
+                      }
+                    : undefined
+                }
+              >
+                <ArcoLayout.Content className='layout-sider-content !flex !flex-1 !min-h-0 p-8px'>
+                  <div className='flex h-full min-h-0 min-w-0 w-full flex-1'>
+                    <div className='min-h-0 min-w-0 flex-1 w-full'>
+                      {React.isValidElement(sider)
+                        ? React.cloneElement(sider, {
+                            onSessionClick: () => {
+                              cleanupSiderTooltips();
+                              if (isMobile) setCollapsed(true);
+                            },
+                            collapsed,
+                          } as any)
+                        : sider}
+                    </div>
+                  </div>
+                </ArcoLayout.Content>
+              </ArcoLayout.Sider>
+            ) : null}
+
+            <ArcoLayout.Content
+              className={classNames(
+                'bg-1 layout-content flex flex-col min-h-0',
+                isMobile && `layout-content--mobile-${mobileTopChromeMode}`
+              )}
+              onClick={() => {
+                if (isMobile && showPrimarySider && !collapsed) setCollapsed(true);
+              }}
               style={
                 isMobile
                   ? {
-                      position: 'fixed',
-                      left: 0,
-                      zIndex: 100,
-                      transform: `translateX(${resolvedMobileSiderTranslateX}px)`,
-                      transition: isDraggingMobileSider ? 'none' : 'transform 0.22s ease',
-                      pointerEvents: collapsed && !isDraggingMobileSider ? 'none' : 'auto',
-                      willChange: 'transform',
+                      width: '100%',
                     }
                   : undefined
               }
             >
-              <ArcoLayout.Content className='layout-sider-content !flex !flex-1 !min-h-0 p-8px'>
-                <div className='flex h-full min-h-0 min-w-0 w-full flex-1'>
-                  <div className='min-h-0 min-w-0 flex-1 w-full'>
-                    {React.isValidElement(sider)
-                      ? React.cloneElement(sider, {
-                          onSessionClick: () => {
-                            cleanupSiderTooltips();
-                            if (isMobile) setCollapsed(true);
-                          },
-                          collapsed,
-                        } as any)
-                      : sider}
-                  </div>
-                </div>
-              </ArcoLayout.Content>
-            </ArcoLayout.Sider>
-          ) : null}
-
-          <ArcoLayout.Content
-            className={classNames(
-              'bg-1 layout-content flex flex-col min-h-0',
-              isMobile && `layout-content--mobile-${mobileTopChromeMode}`
-            )}
-            onClick={() => {
-              if (isMobile && showPrimarySider && !collapsed) setCollapsed(true);
-            }}
-            style={
-              isMobile
-                ? {
-                    width: '100%',
-                  }
-                : undefined
-            }
-          >
-            <Outlet />
-            {multiAgentContextHolder}
-            {directorySelectionContextHolder}
-            <PwaPullToRefresh />
-            <Suspense fallback={null}>
-              <UpdateModal />
-            </Suspense>
-          </ArcoLayout.Content>
-        </ArcoLayout>
+              <Outlet />
+              {multiAgentContextHolder}
+              {directorySelectionContextHolder}
+              <PwaPullToRefresh />
+              <Suspense fallback={null}>
+                <UpdateModal />
+              </Suspense>
+            </ArcoLayout.Content>
+          </ArcoLayout>
         </div>
       </LayoutContext.Provider>
     </RemoteAccessContext.Provider>

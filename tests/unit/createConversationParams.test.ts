@@ -81,7 +81,7 @@ describe('createConversationParams', () => {
     expect(params.model.useModel).toBe('gpt-4.1');
   });
 
-  it('maps acp preset assistants to presetContext and backend', async () => {
+  it('maps extension-like acp preset assistants to presetContext and backend', async () => {
     loadPresetAssistantResources.mockResolvedValue({
       rules: 'acp preset rules',
       skills: '',
@@ -92,10 +92,10 @@ describe('createConversationParams', () => {
     const params = await buildPresetAssistantParams(
       {
         backend: 'custom',
-        name: 'Codebuddy Assistant',
+        name: 'Extension Assistant',
         customAgentId: 'preset-1',
         isPreset: true,
-        presetAgentType: 'codebuddy',
+        presetAgentType: 'ext-buddy',
       },
       '/tmp/workspace',
       'zh'
@@ -103,7 +103,7 @@ describe('createConversationParams', () => {
 
     expect(params.type).toBe('acp');
     expect(params.extra.presetContext).toBe('acp preset rules');
-    expect(params.extra.backend).toBe('codebuddy');
+    expect(params.extra.backend).toBe('ext-buddy');
     expect(params.extra.nativeWorkspaceBootstrap).toBe(true);
     expect(params.extra.enabledHooks).toEqual(['plan-before-coding']);
   });
@@ -216,34 +216,6 @@ describe('createConversationParams', () => {
         backend: 'codex',
         cliPath: '/usr/local/bin/codex',
         spaceId: 'space-team',
-      },
-    });
-  });
-
-  it('uses OpenClaw native agent workspace and agent id for CLI conversations', async () => {
-    const params = await buildCliAgentParams(
-      {
-        backend: 'openclaw-gateway',
-        name: 'Reviewer (reviewer)',
-        cliPath: '/usr/local/bin/openclaw',
-        openclawAgentId: 'reviewer',
-        workspace: '/Users/test/.openclaw/workspace-reviewer',
-      },
-      '/tmp/ignored-workspace',
-      'space-review'
-    );
-
-    expect(params).toMatchObject({
-      type: 'openclaw-gateway',
-      name: 'Reviewer (reviewer)',
-      extra: {
-        backend: 'openclaw-gateway',
-        cliPath: '/usr/local/bin/openclaw',
-        openclawAgentId: 'reviewer',
-        workspace: '/Users/test/.openclaw/workspace-reviewer',
-        customWorkspace: true,
-        nativeWorkspaceBootstrap: true,
-        spaceId: 'space-review',
       },
     });
   });

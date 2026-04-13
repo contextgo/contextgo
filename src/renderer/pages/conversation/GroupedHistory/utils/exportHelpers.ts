@@ -6,12 +6,13 @@
 
 import type { TMessage } from '@/common/chat/chatLib';
 import type { IDirOrFile } from '@/common/adapter/ipcBridge';
-import type { TChatConversation } from '@/common/config/storage';
+import { getConversationRuntimeBackend, type TChatConversation } from '@/common/config/storage';
 
 import type { ExportZipFile } from '../types';
 
 export const INVALID_FILENAME_CHARS_RE = /[<>:"/\\|?*]/g;
 export const EXPORT_IO_TIMEOUT_MS = 15000;
+const padTimestampPart = (value: number): string => String(value).padStart(2, '0');
 
 export const sanitizeFileName = (name: string): string => {
   const cleaned = name.replace(INVALID_FILENAME_CHARS_RE, '_').trim();
@@ -25,8 +26,7 @@ export const joinFilePath = (dir: string, fileName: string): string => {
 
 export const formatTimestamp = (time = Date.now()): string => {
   const date = new Date(time);
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+  return `${date.getFullYear()}${padTimestampPart(date.getMonth() + 1)}${padTimestampPart(date.getDate())}-${padTimestampPart(date.getHours())}${padTimestampPart(date.getMinutes())}${padTimestampPart(date.getSeconds())}`;
 };
 
 export const normalizeZipPath = (value: string): string => value.replace(/\\/g, '/').replace(/^\/+/, '');
@@ -63,13 +63,7 @@ export const appendWorkspaceFilesToZip = (
 };
 
 export const getBackendKeyFromConversation = (conversation: TChatConversation): string | undefined => {
-  if (conversation.type === 'acp') {
-    return conversation.extra?.backend;
-  }
-  if (conversation.type === 'openclaw-gateway') {
-    return conversation.extra?.backend || 'openclaw-gateway';
-  }
-  return conversation.type;
+  return getConversationRuntimeBackend(conversation);
 };
 
 export const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {

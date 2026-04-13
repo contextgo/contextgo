@@ -645,13 +645,13 @@ ktor:
 
 jwt:
   secret: ${JWT_SECRET}
-  issuer: "https://example.com"
-  audience: "https://example.com/api"
-  realm: "example"
+  issuer: 'https://example.com'
+  audience: 'https://example.com/api'
+  realm: 'example'
 
 database:
   url: ${DATABASE_URL}
-  driver: "org.postgresql.Driver"
+  driver: 'org.postgresql.Driver'
   maxPoolSize: 10
 ```
 
@@ -674,16 +674,16 @@ fun Application.configureDI() {
 
 ## Quick Reference: Ktor Patterns
 
-| Pattern | Description |
-|---------|-------------|
-| `route("/path") { get { } }` | Route grouping with DSL |
-| `call.receive<T>()` | Deserialize request body |
-| `call.respond(status, body)` | Send response with status |
-| `call.parameters["id"]` | Read path parameters |
-| `call.request.queryParameters["q"]` | Read query parameters |
-| `install(Plugin) { }` | Install and configure plugin |
-| `authenticate("name") { }` | Protect routes with auth |
-| `by inject<T>()` | Koin dependency injection |
-| `testApplication { }` | Integration testing |
+| Pattern                             | Description                  |
+| ----------------------------------- | ---------------------------- |
+| `route("/path") { get { } }`        | Route grouping with DSL      |
+| `call.receive<T>()`                 | Deserialize request body     |
+| `call.respond(status, body)`        | Send response with status    |
+| `call.parameters["id"]`             | Read path parameters         |
+| `call.request.queryParameters["q"]` | Read query parameters        |
+| `install(Plugin) { }`               | Install and configure plugin |
+| `authenticate("name") { }`          | Protect routes with auth     |
+| `by inject<T>()`                    | Koin dependency injection    |
+| `testApplication { }`               | Integration testing          |
 
 **Remember**: Ktor is designed around Kotlin coroutines and DSLs. Keep routes thin, push logic to services, and use Koin for dependency injection. Test with `testApplication` for full integration coverage.

@@ -4,9 +4,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const norm = (p: string) => p.replace(/\\/g, '/');
 
 // Use vi.hoisted() so tracking variables are initialized before vi.mock factories run
-const { mkdirCalls, symlinkCalls, statResults, lstatResults, existsSyncResults, resetAll } = vi.hoisted(() => {
+const { mkdirCalls, symlinkCalls, writeFileCalls, fileContents, statResults, lstatResults, existsSyncResults, resetAll } =
+  vi.hoisted(() => {
   const mkdirCalls: string[] = [];
   const symlinkCalls: Array<{ source: string; target: string; type: string }> = [];
+  const writeFileCalls: Array<{ path: string; content: string }> = [];
+  const fileContents: Record<string, string> = {};
   const statResults: Record<string, boolean> = {};
   const lstatResults: Record<string, boolean> = {};
   const existsSyncResults: Record<string, boolean> = {};
@@ -14,13 +17,15 @@ const { mkdirCalls, symlinkCalls, statResults, lstatResults, existsSyncResults, 
   const resetAll = () => {
     mkdirCalls.length = 0;
     symlinkCalls.length = 0;
+    writeFileCalls.length = 0;
+    for (const key of Object.keys(fileContents)) delete fileContents[key];
     for (const key of Object.keys(statResults)) delete statResults[key];
     for (const key of Object.keys(lstatResults)) delete lstatResults[key];
     for (const key of Object.keys(existsSyncResults)) delete existsSyncResults[key];
   };
 
-  return { mkdirCalls, symlinkCalls, statResults, lstatResults, existsSyncResults, resetAll };
-});
+  return { mkdirCalls, symlinkCalls, writeFileCalls, fileContents, statResults, lstatResults, existsSyncResults, resetAll };
+  });
 
 vi.mock('fs/promises', () => ({
   default: {
@@ -80,6 +85,10 @@ vi.mock('fs/promises', () => ({
     }),
     readFile: vi.fn(async (p: string) => {
       const normalizedPath = norm(p);
+      if (fileContents[normalizedPath] !== undefined) {
+        return fileContents[normalizedPath];
+      }
+
       if (!normalizedPath.endsWith('/SKILL.md')) {
         throw new Error(`ENOENT: ${p}`);
       }
@@ -98,6 +107,12 @@ vi.mock('fs/promises', () => ({
 
       const skillName = normalizedPath.split('/').slice(-2, -1)[0];
       return `---\nname: ${skillName}\ndescription: mock skill\n---\n`;
+    }),
+    writeFile: vi.fn(async (p: string, content: string) => {
+      const normalizedPath = norm(p);
+      fileContents[normalizedPath] = content;
+      existsSyncResults[normalizedPath] = true;
+      writeFileCalls.push({ path: normalizedPath, content });
     }),
     stat: vi.fn(async (p: string) => {
       if (statResults[norm(p)]) return {};
@@ -136,10 +151,9 @@ describe('initAgent — skill support', () => {
   let hasNativeSkillSupport: (agentTypeOrBackend: string | undefined) => boolean;
   let setupAssistantWorkspace: (
     workspace: string,
-    options: { agentType?: string; backend?: string; enabledSkills?: string[] }
+    options: { agentType?: string; backend?: string; enabledSkills?: string[]; presetAssistantId?: string }
   ) => Promise<void>;
   let createAcpAgent: (options: unknown) => Promise<{ extra: { workspace: string; customWorkspace?: boolean } }>;
-  let createOpenClawAgent: (options: unknown) => Promise<{ extra: Record<string, unknown> }>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -151,31 +165,18 @@ describe('initAgent — skill support', () => {
     hasNativeSkillSupport = mod.hasNativeSkillSupport;
     setupAssistantWorkspace = mod.setupAssistantWorkspace;
     createAcpAgent = mod.createAcpAgent;
-    createOpenClawAgent = mod.createOpenClawAgent;
   });
 
   describe('hasNativeSkillSupport', () => {
     it('should return true for all backends with verified native skill dirs', () => {
-      const supported = [
-        'gemini',
-        'claude',
-        'codebuddy',
-        'codex',
-        'qwen',
-        'iflow',
-        'goose',
-        'droid',
-        'kimi',
-        'vibe',
-        'cursor',
-      ];
+      const supported = ['gemini', 'claude', 'codex', 'opencode'];
       for (const backend of supported) {
         expect(hasNativeSkillSupport(backend)).toBe(true);
       }
     });
 
     it('should return false for backends without native skill support', () => {
-      const unsupported = ['opencode', 'auggie', 'copilot', 'nanobot', 'qoder'];
+      const unsupported = ['auggie', 'copilot', 'nanobot', 'qoder', 'codebuddy', 'droid', 'qwen'];
       for (const backend of unsupported) {
         expect(hasNativeSkillSupport(backend)).toBe(false);
       }
@@ -231,13 +232,49 @@ describe('initAgent — skill support', () => {
       });
     });
 
-    it('should skip symlink setup for unsupported backend', async () => {
+    it('should project opencode skills from .contextgo/skills', async () => {
+      statResults['/mock/user/skills/pptx'] = true;
+
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'opencode',
         enabledSkills: ['pptx'],
       });
-      expect(mkdirCalls).toHaveLength(0);
-      expect(symlinkCalls).toHaveLength(0);
+
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.opencode/skills',
+        type: 'junction',
+      });
+      expect(symlinkCalls).toContainEqual({
+        source: '/mock/user/skills/pptx',
+        target: '/tmp/workspace/.contextgo/skills/pptx',
+        type: 'junction',
+      });
+    });
+
+    it('should bootstrap packaged preset skills into .contextgo for non-Claude runtimes', async () => {
+      const repoRoot = norm(process.cwd());
+      const presetSkillsRoot = `${repoRoot}/src/process/resources/assistant/engineering/everything-in-claude-code/skills`;
+      const packagedSkillDir = `${presetSkillsRoot}/agent-eval`;
+
+      existsSyncResults[presetSkillsRoot] = true;
+      statResults[packagedSkillDir] = true;
+
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'codex',
+        presetAssistantId: 'builtin-everything-in-claude-code',
+      });
+
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.codex/skills',
+        type: 'junction',
+      });
+      expect(symlinkCalls).toContainEqual({
+        source: packagedSkillDir,
+        target: '/tmp/workspace/.contextgo/skills/agent-eval',
+        type: 'junction',
+      });
     });
 
     it('should create symlink in correct dir for claude backend', async () => {
@@ -283,36 +320,6 @@ describe('initAgent — skill support', () => {
       });
     });
 
-    it('should create runtime projection in .codebuddy/skills for codebuddy', async () => {
-      statResults['/mock/user/skills/pdf'] = true;
-
-      await setupAssistantWorkspace('/tmp/workspace', {
-        agentType: 'codebuddy',
-        enabledSkills: ['pdf'],
-      });
-
-      expect(symlinkCalls).toContainEqual({
-        source: '/tmp/workspace/.contextgo/skills',
-        target: '/tmp/workspace/.codebuddy/skills',
-        type: 'junction',
-      });
-    });
-
-    it('should create runtime projection in .factory/skills for droid backend', async () => {
-      statResults['/mock/user/skills/deploy'] = true;
-
-      await setupAssistantWorkspace('/tmp/workspace', {
-        backend: 'droid',
-        enabledSkills: ['deploy'],
-      });
-
-      expect(symlinkCalls).toContainEqual({
-        source: '/tmp/workspace/.contextgo/skills',
-        target: '/tmp/workspace/.factory/skills',
-        type: 'junction',
-      });
-    });
-
     it('should use junction type for symlinks (Windows compatibility)', async () => {
       statResults['/mock/user/skills/test-skill'] = true;
 
@@ -345,7 +352,9 @@ describe('initAgent — skill support', () => {
       existsSyncResults['/mock/builtin-skills/engineering-pack/skills'] = true;
       existsSyncResults['/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack'] = true;
       existsSyncResults['/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills'] = true;
-      statResults['/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development'] = true;
+      statResults[
+        '/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development'
+      ] = true;
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
@@ -399,6 +408,27 @@ describe('initAgent — skill support', () => {
       expect(symlinkCalls).toContainEqual({
         source: '/mock/user/skills/pptx',
         target: '/tmp/workspace/.contextgo/skills/pptx',
+        type: 'junction',
+      });
+    });
+
+    it('should auto-project workspace connector skills into managed runtime skills', async () => {
+      existsSyncResults['/tmp/workspace/.connector/skills'] = true;
+      statResults['/tmp/workspace/.connector/skills/github-ops'] = true;
+
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'codex',
+        enabledSkills: [],
+      });
+
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.contextgo/skills',
+        target: '/tmp/workspace/.codex/skills',
+        type: 'junction',
+      });
+      expect(symlinkCalls).toContainEqual({
+        source: '/tmp/workspace/.connector/skills/github-ops',
+        target: '/tmp/workspace/.contextgo/skills/github-ops',
         type: 'junction',
       });
     });
@@ -491,6 +521,58 @@ describe('initAgent — skill support', () => {
         type: 'junction',
       });
     });
+
+    it('projects AGENTS.md into CLAUDE.md for Claude workspaces', async () => {
+      existsSyncResults['/tmp/workspace/AGENTS.md'] = true;
+      fileContents['/tmp/workspace/AGENTS.md'] = '# Project Rules\n\nUse AGENTS as source.\n';
+
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'claude',
+        enabledSkills: [],
+      });
+
+      expect(writeFileCalls).toContainEqual({
+        path: '/tmp/workspace/CLAUDE.md',
+        content:
+          '<!--\n' +
+          '  Generated by ContextGo.\n' +
+          '  Source of truth: AGENTS.md\n' +
+          '  Do not edit this file directly.\n' +
+          '-->\n\n' +
+          '# Project Rules\n\nUse AGENTS as source.\n',
+      });
+    });
+
+    it('projects AGENTS.md into GEMINI.md for Gemini workspaces', async () => {
+      existsSyncResults['/tmp/workspace/AGENTS.md'] = true;
+      fileContents['/tmp/workspace/AGENTS.md'] = '# Project Rules\n\nUse AGENTS as source.\n';
+
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'gemini',
+        enabledSkills: [],
+      });
+
+      expect(writeFileCalls).toContainEqual({
+        path: '/tmp/workspace/GEMINI.md',
+        content:
+          '<!--\n' +
+          '  Generated by ContextGo.\n' +
+          '  Source of truth: AGENTS.md\n' +
+          '  Do not edit this file directly.\n' +
+          '-->\n\n' +
+          '# Project Rules\n\nUse AGENTS as source.\n',
+      });
+    });
+
+    it('does not create native instruction files when AGENTS.md is missing', async () => {
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'claude',
+        enabledSkills: [],
+      });
+
+      expect(writeFileCalls.some((call) => call.path.endsWith('/CLAUDE.md'))).toBe(false);
+      expect(writeFileCalls.some((call) => call.path.endsWith('/GEMINI.md'))).toBe(false);
+    });
   });
 
   describe('createAcpAgent', () => {
@@ -551,35 +633,4 @@ describe('initAgent — skill support', () => {
     });
   });
 
-  describe('createOpenClawAgent', () => {
-    it('preserves native OpenClaw agent metadata on the conversation extra', async () => {
-      const conversation = await createOpenClawAgent({
-        extra: {
-          backend: 'openclaw-gateway',
-          agentName: 'Reviewer (reviewer)',
-          openclawAgentId: 'reviewer',
-          workspace: '/Users/test/.openclaw/workspace-reviewer',
-          customWorkspace: true,
-          cliPath: '/usr/local/bin/openclaw',
-        },
-      });
-
-      expect(conversation.extra).toMatchObject({
-        workspace: '/Users/test/.openclaw/workspace-reviewer',
-        customWorkspace: true,
-        agentName: 'Reviewer (reviewer)',
-        openclawAgentId: 'reviewer',
-        gateway: {
-          cliPath: '/usr/local/bin/openclaw',
-        },
-        runtimeValidation: {
-          expectedWorkspace: '/Users/test/.openclaw/workspace-reviewer',
-          expectedAgentName: 'Reviewer (reviewer)',
-          expectedOpenClawAgentId: 'reviewer',
-          expectedCliPath: '/usr/local/bin/openclaw',
-          expectedIdentityHash: 'mock-hash',
-        },
-      });
-    });
-  });
 });

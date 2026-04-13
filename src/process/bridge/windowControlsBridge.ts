@@ -15,6 +15,16 @@
 import { BrowserWindow } from 'electron';
 import { ipcBridge } from '@/common';
 
+function resolveWindowControlsTarget(): BrowserWindow | null {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  if (focusedWindow && !focusedWindow.isDestroyed()) {
+    return focusedWindow;
+  }
+
+  const fallbackWindow = BrowserWindow.getAllWindows().find((window) => !window.isDestroyed());
+  return fallbackWindow ?? null;
+}
+
 /**
  * 为指定窗口注册最大化状态监听器
  * Register maximize state listeners for a specific window
@@ -88,13 +98,13 @@ export function initWindowControlsBridge(): void {
 
   // 获取窗口是否最大化状态 / Get window maximized state
   ipcBridge.windowControls.isMaximized.provider(() => {
-    const window = BrowserWindow.getFocusedWindow();
+    const window = resolveWindowControlsTarget();
     return Promise.resolve(window?.isMaximized() ?? false);
   });
 
   // 获取窗口是否处于全屏状态 / Get window full screen state
   ipcBridge.windowControls.isFullScreen.provider(() => {
-    const window = BrowserWindow.getFocusedWindow();
+    const window = resolveWindowControlsTarget();
     return Promise.resolve(window?.isFullScreen() ?? false);
   });
 

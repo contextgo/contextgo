@@ -8,8 +8,10 @@ import { ipcBridge } from '@/common';
 import { getCloudService } from '@process/services/cloud/CloudService';
 
 export function initCloudBridge(): void {
+  console.info('[CloudBridge] Initializing cloud bridge');
   const cloudService = getCloudService();
   cloudService.initialize();
+  console.info('[CloudBridge] Cloud service initialize() dispatched');
 
   ipcBridge.cloud.getStatus.provider(async () => {
     try {
@@ -44,6 +46,20 @@ export function initCloudBridge(): void {
       return {
         success: true,
         data: await cloudService.ensureOfficialRemoteReady(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.cloud.listRemoteDevices.provider(async () => {
+    try {
+      return {
+        success: true,
+        data: await cloudService.listRemoteDevices(),
       };
     } catch (error) {
       return {

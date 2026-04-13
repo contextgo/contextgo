@@ -18,6 +18,7 @@ This command enforces test-driven development methodology for Rust code using `#
 ## When to Use
 
 Use `/rust-test` when:
+
 - Implementing new Rust functions, methods, or traits
 - Adding test coverage to existing Rust code
 - Fixing bugs (write failing test first)
@@ -272,16 +273,17 @@ cargo test --no-fail-fast
 
 ## Coverage Targets
 
-| Code Type | Target |
-|-----------|--------|
-| Critical business logic | 100% |
-| Public API | 90%+ |
-| General code | 80%+ |
+| Code Type                | Target  |
+| ------------------------ | ------- |
+| Critical business logic  | 100%    |
+| Public API               | 90%+    |
+| General code             | 80%+    |
 | Generated / FFI bindings | Exclude |
 
 ## TDD Best Practices
 
 **DO:**
+
 - Write test FIRST, before any implementation
 - Run tests after each change
 - Use `assert_eq!` over `assert!` for better error messages
@@ -290,6 +292,7 @@ cargo test --no-fail-fast
 - Include edge cases (empty, boundary, error paths)
 
 **DON'T:**
+
 - Write implementation before tests
 - Skip the RED phase
 - Use `#[should_panic]` when `Result::is_err()` works

@@ -55,10 +55,8 @@
 "home.metric.live" = "進行中的工作階段";
 "home.account.title" = "官方帳戶摘要";
 "home.account.detail" = "目前行動端已掛在你的官方帳戶工作階段上。你現在可以直接開啟下方任何已就緒的桌面，不需要再切到另一張列表頁。";
-"home.account.action" = "查看全部裝置";
 "home.recent.title" = "你的裝置";
 "home.recent.subtitle" = "登入後的首頁會直接顯示你的全部桌面裝置。";
-"home.recent.action" = "查看完整裝置列表";
 "home.recent.empty.title" = "暫時還沒有桌面裝置";
 "home.recent.empty.detail" = "保持桌面端在線並登入 ContextGo Cloud，裝置會自動出現在這裡。";
 "home.device.status.available" = "可立即開啟";

@@ -593,6 +593,7 @@
   "webui.officialRemoteDevicePending": "클라우드 세션이 활성화되어 있으며 ContextGo가 이 장치를 공식 Remote용으로 연결하고 있습니다.",
   "webui.openOfficialRemote": "기기 목록 열기",
   "webui.remoteDevicesNav": "원격 기기",
+  "webui.switchDevice": "기기 전환",
   "webui.officialRemoteSignedOut": "공식 기기 목록이 아직 연결되지 않았습니다.",
   "webui.officialRemoteHint": "여기서 한 번만 로그인하면 됩니다. ContextGo가 이 장치를 자동으로 연결해 호스팅된 기기 목록 홈에 표시합니다.",
   "webui.officialRemoteRuntimeHint": "Official Remote가 데스크톱 런타임을 자동으로 준비하므로 호스팅된 기기 목록 홈에서 이 데스크톱을 바로 열 수 있습니다. 아래의 로컬 / 셀프호스팅 접근을 수동으로 켤 필요가 없습니다.",
@@ -721,13 +722,17 @@
   "channels.extension.noConfig": "추가 설정이 필요하지 않습니다.",
   "channels.extension.selectPlaceholder": "선택하세요",
   "channels.extension.defaultDesc": "확장 채널 플러그인",
-  "channels.publication.connectorLabel": "1. Choose a usable channel account",
+  "channels.publication.connectorLabel": "채널 인스턴스",
   "channels.publication.connectorPlaceholder": "Select a channel account",
   "channels.publication.connectorHint": "Managing publication targets through {{name}} on {{platform}}.",
   "channels.publication.connectorRequired": "Please select a usable channel account first",
   "channels.publication.agentRequired": "Please select an agent profile",
   "channels.publication.agentPlaceholder": "Select an agent profile",
   "channels.publication.audiencePlaceholder": "Select an audience",
+  "channels.publication.agentSelectorLabel": "Agent",
+  "channels.publication.publishObjectLabel": "게시 대상",
+  "channels.publication.publishObjectPlaceholder": "게시 대상을 선택하세요",
+  "channels.publication.publishObjectRequired": "게시 대상을 먼저 선택하세요",
   "channels.publication.scopeKeyRequired": "Audience key is required for this binding scope",
   "channels.publication.scopeKeyRemoteUserPlaceholder": "Remote user key, for example: user_123456",
   "channels.publication.scopeKeyRemoteChatPlaceholder": "Audience key, for example: group:alpha or -100123456:thread:9",
@@ -736,12 +741,12 @@
   "channels.publication.durableDescription": "Best for a stable Agent entry that should stay available to a person, group, channel, or topic over time.",
   "channels.publication.temporaryTitle": "Temporary Override",
   "channels.publication.temporaryDescription": "Use temporary override for short-lived audience takeovers. It is cleaned up by session reset and should point to an exact audience key.",
-  "channels.publication.saveDurable": "Save durable publication",
-  "channels.publication.updateDurable": "Update durable publication",
+  "channels.publication.saveDurable": "Agent 게시",
+  "channels.publication.updateDurable": "게시 업데이트",
   "channels.publication.saveTemporary": "Save temporary override",
   "channels.publication.updateTemporary": "Update temporary override",
   "channels.publication.saveFailed": "Failed to save publication binding",
-  "channels.publication.durableSaved": "Durable publication saved",
+  "channels.publication.durableSaved": "Agent 게시를 저장했습니다",
   "channels.publication.temporarySaved": "Temporary override saved",
   "channels.publication.deleteFailed": "Failed to delete publication binding",
   "channels.publication.deleted": "Publication binding deleted",
@@ -753,9 +758,9 @@
   "channels.publication.emptyTemporary": "No temporary overrides yet",
   "channels.publication.noConnector": "사용 가능한 채널 계정이 아직 없습니다. 먼저 IM Channels에서 설정을 마치고 인스턴스 하나를 활성화하세요.",
   "channels.publication.goToAccounts": "IM Channels로 이동",
-  "channels.publication.editingDurable": "Editing durable binding",
+  "channels.publication.editingDurable": "게시를 편집 중",
   "channels.publication.editingTemporary": "Editing temporary override",
-  "channels.publication.durableTag": "Durable",
+  "channels.publication.durableTag": "게시됨",
   "channels.publication.temporaryTag": "Temporary",
   "channels.publication.enabled": "Enabled",
   "channels.publication.disabled": "Disabled",
@@ -769,12 +774,12 @@
   "channels.publication.scope.remote_chat": "Remote chat / topic",
   "channels.publication.scope.temporary_override": "Temporary override",
   "channels.publication.manualScopeToggle": "대상 key 직접 입력",
-  "channels.publication.intentTitle": "이 Agent를 장기 진입점으로 게시합니다",
-  "channels.publication.intentDescription": "여기서 게시하는 것은 특정 워크스페이스 / 런타임에 속한 재사용 가능한 Agent입니다. 원본 대화는 추적 정보일 뿐, 게시 대상 자체는 아닙니다.",
-  "channels.publication.intentProfile": "Agent 프로필",
+  "channels.publication.intentTitle": "이 Agent 게시",
+  "channels.publication.intentDescription": "이 페이지는 현재 Agent가 어디에 게시되는지 관리합니다. 원본 대화는 추적 정보로만 사용됩니다.",
+  "channels.publication.intentProfile": "Agent",
   "channels.publication.intentConversation": "파생 원본",
-  "channels.publication.intentBackend": "Agent 유형 / 런타임",
-  "channels.publication.intentWorkspace": "워크스페이스",
+  "channels.publication.intentBackend": "런타임",
+  "channels.publication.intentWorkspace": "프로젝트",
   "channels.publication.intentSelectedHint": "현재 대화는 재사용 가능한 Agent로 정리되어 아래에 미리 선택되어 있습니다.",
   "channels.publication.connectorGuide": "채널 계정은 메시지 송수신과 인증만 담당합니다. 실제 라우팅은 아래 게시 바인딩에서 결정됩니다.",
   "channels.publication.connectorGuide.weixin": "WeChat은 보통 1인 1입구에 가까우므로 채널 기본값이나 특정 사용자 한 명부터 시작하는 것이 좋습니다.",
@@ -1007,8 +1012,6 @@
     "installCommandLabel": "Recommended install command",
     "installCommandCopied": "Install command copied.",
     "loginCommandCopied": "Login command copied.",
-    "customSectionTitle": "Custom runtimes",
-    "customSectionDescription": "Add a custom command-line runtime here when you want ContextGo to launch a tool outside the built-in list.",
     "summary": {
       "ready": "The check passed and this runtime is ready to use.",
       "detected": "This runtime was found on this device. Run the availability check to confirm it can start.",
@@ -1029,50 +1032,17 @@
       "idle": "미확인"
     },
     "runtime": {
+      "gemini": {
+        "description": "Google Gemini CLI runtime."
+      },
       "claude": {
         "description": "Anthropic Claude Code CLI."
       },
       "codex": {
         "description": "OpenAI Codex CLI for local coding sessions."
       },
-      "nanobot": {
-        "description": "Nanobot CLI runtime."
-      },
-      "qwen": {
-        "description": "Qwen Code CLI."
-      },
-      "codebuddy": {
-        "description": "Tencent CodeBuddy Code CLI."
-      },
       "opencode": {
         "description": "OpenCode CLI."
-      },
-      "goose": {
-        "description": "Block Goose CLI."
-      },
-      "auggie": {
-        "description": "Augment Code CLI."
-      },
-      "kimi": {
-        "description": "Kimi CLI."
-      },
-      "iflow": {
-        "description": "iFlow CLI."
-      },
-      "droid": {
-        "description": "Factory Droid CLI."
-      },
-      "copilot": {
-        "description": "GitHub Copilot CLI."
-      },
-      "qoder": {
-        "description": "Qoder CLI."
-      },
-      "vibe": {
-        "description": "Mistral Vibe CLI."
-      },
-      "cursor": {
-        "description": "Cursor Agent CLI."
       }
     },
     "revealPathFailed": "Failed to open the path in the system file manager.",
@@ -1313,7 +1283,7 @@
     "resources": "지원 리소스",
     "auth": "인증 방식",
     "openWebsite": "공식 사이트 열기",
-    "note": "커넥터 페이지는 connector 프로젝트의 네이티브 기능 카탈로그를 표시합니다. ContextGo는 여기서 기능 상태를 보여주고 수집 후 출력을 소비합니다.",
+    "note": "이 페이지는 접근 가능한 기능과 현재 실제로 사용할 수 있는 기능을 구분해서 보여줍니다.",
     "summaryTemplate": "{{name}}는 {{category}}에 속하며, 이후 AI 워크플로의 컨텍스트 데이터로 연결될 수 있습니다.",
     "stagePriority": "우선",
     "stagePlanned": "예정",
@@ -1321,13 +1291,13 @@
       "supported": "지원됨",
       "notSupportedYet": "아직 지원 안 됨"
     },
-    "implementation": "구현 방식",
+    "implementation": "연결 방식",
     "implementationOwners": {
-      "official": "공식 지원",
+      "official": "공식 연결",
       "contextgo": "ContextGo 네이티브",
-      "connectorRepo": "커넥터 저장소",
-      "hybrid": "혼합 지원",
-      "default": "커넥터 지원"
+      "connectorRepo": "외부 커넥터 런타임",
+      "hybrid": "혼합 연결",
+      "default": "커넥터 연결"
     },
     "supportSources": "지원 근거",
     "noSupportSources": "연결된 지원 근거가 아직 없습니다.",
@@ -1339,6 +1309,25 @@
       "connectorRepo": "커넥터 저장소",
       "default": "지원"
     },
+    "sectionTitles": {
+      "overview": "연결 개요",
+      "nativeCapabilitySurface": "접근 가능한 기능",
+      "contextgoReadiness": "현재 사용 가능한 기능",
+      "sourcesAndBoundary": "추가 정보"
+    },
+    "sectionDescriptions": {
+      "overview": "이 connector로 무엇에 연결할 수 있는지와 현재 어떤 방식으로 연결되는지 확인합니다.",
+      "nativeCapabilitySurface": "제품 기능 그룹별로 현재 접근 가능한 내용과 동작을 살펴봅니다.",
+      "contextgoReadiness": "이 섹션은 지금 ContextGo 안에서 실제로 사용할 수 있는 기능만 보여줍니다.",
+      "sourcesAndBoundary": "공식 문서, 연결 설명, 기술 정보를 확인합니다."
+    },
+    "summaryStats": {
+      "capabilityGroups": "기능 그룹",
+      "actions": "사용 가능한 동작",
+      "readyWorkflows": "준비된 워크플로",
+      "primaryRuntime": "주요 런타임"
+    },
+    "groupNavigator": "각 기능 그룹과 현재 사용할 수 있는 동작을 확인합니다.",
     "categories": {
       "contextgo": "ContextGo 패밀리",
       "googleWorkspace": "Google Workspace",
@@ -1408,13 +1397,38 @@
       "sourceManual": "수동"
     },
     "externalCatalog": {
-      "platformAccess": "플랫폼 접속 경계",
-      "runtimeBoundary": "런타임 경계",
-      "nativeSurface": "네이티브 능력 면",
-      "commandEntrypoints": "명령 진입점",
+      "platformAccess": "현재 연결 방식",
+      "runtimeBoundary": "실행 안내",
+      "nativeSurface": "대상 범위",
+      "commandEntrypoints": "CLI 명령",
+      "capabilities": "기능 트리",
+      "capabilitySummary": "외부 제품의 네이티브 기능 그룹별로 현재 접근 가능한 내용과 동작을 보여줍니다.",
+      "capabilityGroups": "기능 그룹",
+      "discoveryCommands": "탐색 명령",
+      "extractionMode": "추출 모드",
+      "actions": "동작",
+      "authModesTitle": "인증 모드",
+      "extractionModes": {
+        "manual-curation": "수동 정리",
+        "help-derived": "도움말 기반",
+        "schema-derived": "스키마 기반",
+        "hybrid": "혼합"
+      },
+      "authModes": {
+        "user": "사용자 인증",
+        "bot": "봇 / 앱 인증",
+        "service": "서비스 컨텍스트"
+      },
       "noneYet": "아직 없습니다.",
       "workflows": "구현된 워크플로",
-      "workflowSurface": "표면: {{surface}}",
+      "workflowSurface": "연결 유형: {{surface}}",
+      "workflowSurfaces": {
+        "runtime": "런타임 연결",
+        "source": "소스 연결",
+        "collect": "콘텐츠 수집",
+        "fetch": "데이터 가져오기",
+        "activity": "활동 연결"
+      },
       "workflowStatus": {
         "ready": "사용 가능",
         "partial": "부분 구현",
@@ -1422,12 +1436,24 @@
       },
       "nativeObjects": "네이티브 객체",
       "entrypoints": "진입 명령",
-      "writesStore": "스토어에 기록",
-      "noStoreWrite": "스토어 기록 없음",
+      "writesStore": "결과가 자동으로 반영됩니다",
+      "noStoreWrite": "결과가 아직 자동 반영되지 않습니다",
       "unavailableTitle": "connector 상세를 불러올 수 없습니다"
     },
     "catalogPlaceholderDesc": "이 connector는 현재 카탈로그 자리표시자만 존재합니다. ContextGo는 아직 이 런타임이나 수집 출력을 소비하지 않습니다.",
-    "catalogExternalDesc": "이 connector는 독립된 connector 프로젝트가 관리합니다. ContextGo는 여기서 기능 카탈로그를 읽고 수집 후 출력을 소비합니다."
+    "catalogExternalDesc": "현재 외부 커넥터 런타임을 통해 연결되며, 기능은 여기 표시되고 연결 후 ContextGo에서 사용할 수 있습니다.",
+    "workflowCatalog": {
+      "feishu": {
+        "officialCliRuntime": {
+          "label": "공식 CLI 연결",
+          "notes": [
+            "공식 CLI를 통한 설정, 로그인, 명령 전달은 이미 사용할 수 있습니다.",
+            "Feishu 문서, 메시지, 시트 등 구조화된 수집 기능은 아직 구축 중입니다."
+          ],
+          "nativeObjects": ["앱 설정", "사용자 인증 세션", "일반 CLI 명령 접근"]
+        }
+      }
+    }
   },
   "cloud": {
     "title": "ContextGo 클라우드 계정",
@@ -1454,19 +1480,16 @@
   },
   "commands": {
     "title": "Commands",
-    "description": "재사용 가능한 slash 명령 템플릿을 한곳에서 관리합니다. 선택하면 입력창에 바로 펼쳐지므로 서로 다른 에이전트에서도 일관되게 사용할 수 있습니다.",
-    "usageHint": "아무 채팅 입력창에서 / 를 입력하면 명령 메뉴가 열리고, 설정된 템플릿을 빠르게 적용할 수 있습니다.",
+    "description": "Commands 는 이제 워크스페이스 단위로 관리됩니다. 전역 설정 라이브러리가 아니라 각 프로젝트의 workspace automation 패널에서 관리하세요.",
+    "usageHint": "workspace 에 연결된 대화를 연 뒤 그 안에서 Commands 를 수정하면 해당 프로젝트의 `.contextgo/commands.json` 에 저장됩니다.",
+    "emptyState": "전역 command 라이브러리는 더 이상 사용되지 않습니다.",
     "add": "명령 추가",
-    "restoreDefaults": "기본 명령 복원",
-    "restoreSuccess": "기본 명령을 복원했습니다",
-    "restoreFailed": "기본 명령 복원에 실패했습니다",
-    "recommendedTitle": "추천 워크플로 명령",
-    "recommendedDescription": "계획, TDD, 리뷰, 보안, 검증, 오케스트레이션을 위한 자주 쓰는 엔지니어링 명령입니다.",
+    "restoreDefaults": "프로젝트 명령 복원",
+    "restoreSuccess": "프로젝트 명령을 복원했습니다",
+    "restoreFailed": "프로젝트 명령 복원에 실패했습니다",
     "customTitle": "사용자 정의 명령",
     "customDescription": "어떤 어시스턴트에도 재사용할 수 있는 워크플로 프롬프트를 추가합니다.",
-    "emptyCustom": "아직 사용자 정의 명령이 없습니다.",
-    "builtinTag": "기본 제공",
-    "customTag": "사용자 정의",
+    "emptyCustom": "아직 프로젝트 명령이 없습니다.",
     "templateLabel": "템플릿",
     "editTitle": "명령 {{name}} 편집",
     "createTitle": "명령 만들기",
@@ -1475,11 +1498,10 @@
     "descriptionLabel": "설명",
     "descriptionPlaceholder": "이 명령을 언제 사용해야 하는지 설명하세요",
     "templatePlaceholder": "선택 시 채팅 입력창에 삽입할 프롬프트 템플릿을 입력하세요",
-    "builtinOverrideHint": "{{name}} 는 기본 제공 명령입니다. 여기서 저장하면 기본 프리셋을 유지한 채 로컬 재정의로 저장됩니다.",
     "loadFailed": "명령 라이브러리를 불러오지 못했습니다",
     "saveFailed": "명령을 저장하지 못했습니다",
     "deleteFailed": "명령을 삭제하지 못했습니다",
-    "deleteConfirm": "이 사용자 정의 명령을 삭제하시겠습니까?",
+    "deleteConfirm": "이 명령을 삭제하시겠습니까?",
     "validation": {
       "invalidName": "명령 이름은 영문, 숫자, 하이픈, 밑줄만 사용할 수 있습니다",
       "duplicateName": "명령 이름 /{{name}} 이 이미 존재합니다",
@@ -1563,11 +1585,21 @@
   "channels.publication.openConversation": "Open conversation",
   "channels.publication.addTargetTitle": "Add publication",
   "channels.publication.addTargetDescription": "먼저 대상을 고른 뒤 위의 Agent를 여기에 장기 게시합니다. 이후 이 대상의 새 메시지는 이 Agent로 라우팅됩니다.",
+  "channels.publication.addObjectButton": "게시 대상 추가",
+  "channels.publication.addObjectTitle": "게시 대상 추가",
+  "channels.publication.addObjectDescription": "먼저 채널 인스턴스를 고른 뒤, 이 Agent를 하나의 플랫폼 네이티브 IM 객체에 게시합니다.",
   "channels.publication.summaryObjects": "Objects",
   "channels.publication.summarySessions": "Sessions",
   "channels.publication.objectListTitle": "Published objects",
-  "channels.publication.objectListDescription": "Review the platform-native IM objects already discovered or published on this channel account.",
+  "channels.publication.objectListDescription": "여기에는 이 Agent에 이미 연결된 게시 대상만 표시됩니다.",
+  "channels.publication.emptyPublishedObjects": "이 Agent는 아직 어떤 IM 객체에도 게시되지 않았습니다",
   "channels.publication.emptyObjects": "No IM objects discovered yet",
+  "channels.publication.agentSummaryTitle": "현재 Agent",
+  "channels.publication.agentSummaryDescription": "재사용 가능한 IM 채널 인스턴스 전반에서 이 Agent의 게시 대상을 관리합니다.",
+  "channels.publication.channelAccountInstanceLabel": "채널 인스턴스",
+  "channels.publication.sessionStatusLabel": "현재 프로젝트 세션",
+  "channels.publication.currentSessionActive": "현재 활성",
+  "channels.publication.noActiveSession": "아직 활성 세션이 없습니다",
   "channels.publication.objectDetailTitle": "Object details",
   "channels.publication.objectDetailDescription": "Inspect this specific IM object, its publication rules, and the sessions already linked to it.",
   "channels.publication.objectParentLabel": "Parent",
@@ -1577,7 +1609,7 @@
   "channels.publication.objectSessionsTitle": "Related sessions",
   "channels.publication.objectSessionsDescription": "Sessions already associated with this IM object through the selected channel account.",
   "channels.publication.objectSessionsEmpty": "No sessions have been created for this object yet",
-  "channels.publication.sessionWorkspaceLabel": "Workspace",
+  "channels.publication.sessionWorkspaceLabel": "프로젝트",
   "channels.publication.sessionLastActiveLabel": "Last active",
   "channels.publication.sessionAgentTypeLabel": "Agent type",
   "channels.publication.objectKind.common.person": "Person",
@@ -1617,7 +1649,23 @@
   "webui.officialRemoteStatusShort.preparing": "준비 중",
   "webui.officialRemoteStatusShort.connecting": "연결 중",
   "webui.officialRemoteStatusShort.unavailable": "사용 불가",
-  "assistantsPageDescription": "직접 사용하는 어시스턴트와 Context Engine이 자동으로 구동하는 시스템 Agent를 하나의 카탈로그에서 관리합니다.",
+  "assistantsPageDescription": "여기에서 Agent 생성과 편집을 진행하면서, Context Engine 이 관리하는 시스템 Agent 도 함께 확인할 수 있습니다.",
+  "assistantsWorkbenchPublish": "Agent 게시",
+  "assistantsWorkbenchOpenSkillMarket": "Skill Market 열기",
+  "assistantsWorkbenchProductAgents": "사용 가능한 Agent",
+  "assistantsWorkbenchProductAgentsHint": "이 워크스페이스에서 바로 사용할 수 있는 사용자용 Agent입니다.",
+  "assistantsWorkbenchSystemAgents": "시스템 Agent",
+  "assistantsWorkbenchSystemAgentsHint": "Context Engine 이 백그라운드에서 관리합니다.",
+  "assistantsWorkbenchActiveRuns": "실행 중",
+  "assistantsWorkbenchActiveRunsHint": "현재 진행 중인 유지보수 실행입니다.",
+  "assistantsWorkbenchSectionTitle": "Agent 워크벤치",
+  "assistantsWorkbenchSectionDescription": "Agent 생성, 스킬 확장, 배포까지 한 페이지에 모아 화면 전환을 줄입니다.",
+  "assistantsWorkbenchCreateTitle": "Agent 생성 또는 편집",
+  "assistantsWorkbenchCreateText": "먼저 Agent 를 만들고, 아래 목록에서 기존 Agent 를 열어 규칙, Hook, 사용 가능한 런타임을 조정하세요.",
+  "assistantsWorkbenchSkillsTitle": "스킬 선택",
+  "assistantsWorkbenchSkillsText": "스킬 연결 자체는 Agent 상세에서 진행합니다. 새로운 기능이 필요할 때만 여기서 Skill Market 으로 이동하세요.",
+  "assistantsWorkbenchPublishTitle": "게시",
+  "assistantsWorkbenchPublishText": "워크플로가 안정되면 이 워크스페이스를 배포 채널에 연결해 외부에서 사용할 Agent 진입점을 준비합니다.",
   "systemAgents": "시스템 Agent",
   "systemAgentsDescription": "이 Agent들은 엔진이 백그라운드에서 자동으로 실행해 세션 컨텍스트를 압축하고 안정적인 지식을 프로젝트 계층으로 승격합니다.",
   "systemAgentViewRuns": "실행 보기",
@@ -1636,5 +1684,14 @@
   "systemRunsEmptyDescription": "Context Engine은 이미 현재 워크스페이스를 감시하고 있습니다. 첫 유지보수 트리거가 완료되면 이력이 여기에 표시됩니다.",
   "systemRunsDefinitionsTitle": "등록된 시스템 Agent",
   "systemRunsDefinitionsDescription": "첫 실행 전에도 여기서 시스템 Agent 정의, 트리거 조건, 실행 경계를 확인할 수 있습니다. 실제 실행 이력은 이후 아래에 따로 표시됩니다.",
-  "systemRunsLastChecked": "마지막 확인: {{time}}"
+  "systemRunsLastChecked": "마지막 확인: {{time}}",
+  "webui.switchDeviceDescription": "현재 제품 셸 안에서 바로 다른 연결된 데스크톱으로 전환합니다. 별도 기기 목록 페이지로 먼저 들어갈 필요가 없습니다.",
+  "webui.switchDeviceEmpty": "지금 바로 열 수 있는 데스크톱 기기가 없습니다. 다른 기기에서 ContextGo 를 실행하고 Official Remote 연결을 유지하세요.",
+  "webui.switchDeviceCurrent": "현재 기기",
+  "webui.switchDeviceLastSeen": "마지막 접속 {{time}}",
+  "webui.switchDeviceOpen": "기기 열기",
+  "webui.deviceModeLocal": "로컬 호스트",
+  "webui.deviceModeRemote": "원격 데스크톱",
+  "webui.switchDeviceUnknown": "현재 기기",
+  "webui.backToLocal": "로컬로 돌아가기"
 }

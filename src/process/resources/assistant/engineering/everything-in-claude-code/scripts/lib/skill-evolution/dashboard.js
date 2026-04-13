@@ -16,15 +16,17 @@ function sparkline(values) {
     return '';
   }
 
-  return values.map(value => {
-    if (value === null || value === undefined) {
-      return EMPTY_BLOCK;
-    }
+  return values
+    .map((value) => {
+      if (value === null || value === undefined) {
+        return EMPTY_BLOCK;
+      }
 
-    const clamped = Math.max(0, Math.min(1, value));
-    const index = Math.min(Math.round(clamped * (SPARKLINE_CHARS.length - 1)), SPARKLINE_CHARS.length - 1);
-    return SPARKLINE_CHARS[index];
-  }).join('');
+      const clamped = Math.max(0, Math.min(1, value));
+      const index = Math.min(Math.round(clamped * (SPARKLINE_CHARS.length - 1)), SPARKLINE_CHARS.length - 1);
+      return SPARKLINE_CHARS[index];
+    })
+    .join('');
 }
 
 function horizontalBar(value, max, width) {
@@ -43,9 +45,7 @@ function panelBox(title, lines, width) {
   output.push('\u250C\u2500 ' + title + ' ' + '\u2500'.repeat(Math.max(0, innerWidth - title.length - 4)) + '\u2510');
 
   for (const line of lines) {
-    const truncated = line.length > innerWidth - 2
-      ? line.slice(0, innerWidth - 2)
-      : line;
+    const truncated = line.length > innerWidth - 2 ? line.slice(0, innerWidth - 2) : line;
     output.push('\u2502 ' + truncated.padEnd(innerWidth - 2) + '\u2502');
   }
 
@@ -56,7 +56,7 @@ function panelBox(title, lines, width) {
 function bucketByDay(records, nowMs, days) {
   const buckets = [];
   for (let i = days - 1; i >= 0; i -= 1) {
-    const dayEnd = nowMs - (i * DAY_IN_MS);
+    const dayEnd = nowMs - i * DAY_IN_MS;
     const dayStart = dayEnd - DAY_IN_MS;
     const dateStr = new Date(dayEnd).toISOString().slice(0, 10);
     buckets.push({ date: dateStr, start: dayStart, end: dayEnd, records: [] });
@@ -76,11 +76,9 @@ function bucketByDay(records, nowMs, days) {
     }
   }
 
-  return buckets.map(bucket => ({
+  return buckets.map((bucket) => ({
     date: bucket.date,
-    rate: bucket.records.length > 0
-      ? health.calculateSuccessRate(bucket.records)
-      : null,
+    rate: bucket.records.length > 0 ? health.calculateSuccessRate(bucket.records) : null,
     runs: bucket.records.length,
   }));
 }
@@ -129,15 +127,12 @@ function renderSuccessRatePanel(records, skills, options = {}) {
   const recordsBySkill = groupRecordsBySkill(records);
 
   const skillData = [];
-  const skillIds = Array.from(new Set([
-    ...Array.from(recordsBySkill.keys()),
-    ...skills.map(s => s.skill_id),
-  ])).sort();
+  const skillIds = Array.from(new Set([...Array.from(recordsBySkill.keys()), ...skills.map((s) => s.skill_id)])).sort();
 
   for (const skillId of skillIds) {
     const skillRecords = recordsBySkill.get(skillId) || [];
     const dailyRates = bucketByDay(skillRecords, nowMs, days);
-    const rateValues = dailyRates.map(b => b.rate);
+    const rateValues = dailyRates.map((b) => b.rate);
     const records7d = health.filterRecordsWithinDays(skillRecords, nowMs, 7);
     const records30d = health.filterRecordsWithinDays(skillRecords, nowMs, 30);
     const current7d = health.calculateSuccessRate(records7d);
@@ -173,7 +168,7 @@ function renderSuccessRatePanel(records, skills, options = {}) {
 
 function renderFailureClusterPanel(records, options = {}) {
   const width = options.width || DEFAULT_PANEL_WIDTH;
-  const failures = records.filter(r => r.outcome === 'failure');
+  const failures = records.filter((r) => r.outcome === 'failure');
 
   const clusterMap = new Map();
   for (const record of failures) {
@@ -192,9 +187,7 @@ function renderFailureClusterPanel(records, options = {}) {
       pattern,
       count: data.count,
       skill_ids: Array.from(data.skill_ids).sort(),
-      percentage: failures.length > 0
-        ? Math.round((data.count / failures.length) * 100)
-        : 0,
+      percentage: failures.length > 0 ? Math.round((data.count / failures.length) * 100) : 0,
     }))
     .sort((a, b) => b.count - a.count || a.pattern.localeCompare(b.pattern));
 
@@ -231,9 +224,7 @@ function renderAmendmentPanel(skillsById, options = {}) {
     const log = versioning.getEvolutionLog(skill.skill_dir, 'amendments');
     for (const entry of log) {
       const status = typeof entry.status === 'string' ? entry.status : null;
-      const isPending = status
-        ? health.PENDING_AMENDMENT_STATUSES.has(status)
-        : entry.event === 'proposal';
+      const isPending = status ? health.PENDING_AMENDMENT_STATUSES.has(status) : entry.event === 'proposal';
 
       if (isPending) {
         amendments.push({
@@ -298,7 +289,7 @@ function renderVersionTimelinePanel(skillsById, options = {}) {
 
     skillVersions.push({
       skill_id: skillId,
-      versions: versions.map(v => ({
+      versions: versions.map((v) => ({
         version: v.version,
         created_at: v.created_at,
         reason: reasonByVersion.get(v.version) || null,
@@ -343,9 +334,9 @@ function renderDashboard(options = {}) {
 
   const panelRenderers = {
     'success-rate': () => renderSuccessRatePanel(records, report.skills, dashboardOptions),
-    'failures': () => renderFailureClusterPanel(records, dashboardOptions),
-    'amendments': () => renderAmendmentPanel(skillsById, dashboardOptions),
-    'versions': () => renderVersionTimelinePanel(skillsById, dashboardOptions),
+    failures: () => renderFailureClusterPanel(records, dashboardOptions),
+    amendments: () => renderAmendmentPanel(skillsById, dashboardOptions),
+    versions: () => renderVersionTimelinePanel(skillsById, dashboardOptions),
   };
 
   const selectedPanel = options.panel || null;

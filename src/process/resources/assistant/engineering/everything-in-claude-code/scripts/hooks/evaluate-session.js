@@ -14,20 +14,14 @@
 
 const path = require('path');
 const fs = require('fs');
-const {
-  getLearnedSkillsDir,
-  ensureDir,
-  readFile,
-  countInFile,
-  log
-} = require('../lib/utils');
+const { getLearnedSkillsDir, ensureDir, readFile, countInFile, log } = require('../lib/utils');
 
 // Read hook input from stdin (Claude Code provides transcript_path via stdin JSON)
 const MAX_STDIN = 1024 * 1024;
 let stdinData = '';
 process.stdin.setEncoding('utf8');
 
-process.stdin.on('data', chunk => {
+process.stdin.on('data', (chunk) => {
   if (stdinData.length < MAX_STDIN) {
     const remaining = MAX_STDIN - stdinData.length;
     stdinData += chunk.substring(0, remaining);
@@ -35,7 +29,7 @@ process.stdin.on('data', chunk => {
 });
 
 process.stdin.on('end', () => {
-  main().catch(err => {
+  main().catch((err) => {
     console.error('[ContinuousLearning] Error:', err.message);
     process.exit(0);
   });

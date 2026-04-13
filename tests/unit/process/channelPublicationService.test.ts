@@ -18,9 +18,10 @@ describe('ChannelPublicationService', () => {
   const conversation = {
     id: 'conversation-1',
     name: 'Prepared Agent',
-    type: 'openclaw-gateway',
+    type: 'acp',
     extra: {
       workspace: '/workspace/project',
+      backend: 'codex',
       customAgentId: 'assistant-custom',
       agentName: 'Prepared Agent',
     },
@@ -37,7 +38,7 @@ describe('ChannelPublicationService', () => {
   const existingProfile = {
     id: canonicalProfileId,
     name: 'Prepared Agent',
-    backend: 'openclaw-gateway',
+    backend: 'codex',
     modelRef: {
       id: 'model-provider-1',
       useModel: 'gpt-4.1',
@@ -57,8 +58,8 @@ describe('ChannelPublicationService', () => {
     updatedAt: 200,
   };
 
-  const db = {
-    getConversation: vi.fn(),
+  const publicationStore = {
+    resolveConversationWorkspace: vi.fn(),
     getAgentProfileByPublishedConversation: vi.fn(),
     getAgentProfile: vi.fn(),
     upsertAgentProfile: vi.fn(),
@@ -66,17 +67,21 @@ describe('ChannelPublicationService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    db.getConversation.mockReturnValue({ success: true, data: conversation });
-    db.getAgentProfileByPublishedConversation.mockReturnValue({ success: true, data: null });
-    db.getAgentProfile.mockReturnValue({ success: true, data: null });
-    db.upsertAgentProfile.mockReturnValue({ success: true, data: true });
+    publicationStore.resolveConversationWorkspace.mockReturnValue('/workspace/project');
+    publicationStore.getAgentProfileByPublishedConversation.mockResolvedValue(null);
+    publicationStore.getAgentProfile.mockResolvedValue(null);
+    publicationStore.upsertAgentProfile.mockImplementation(async (_workspace: string, profile: unknown) => profile);
   });
 
-  it('creates the canonical publication profile id when no publication profile exists', async () => {
-    const service = new ChannelPublicationService({ getDatabase: vi.fn(async () => db as never) });
+  it('creates the canonical publication profile id in project local config when no profile exists yet', async () => {
+    const service = new ChannelPublicationService({
+      getConversation: vi.fn(async () => conversation as never),
+      publicationStore: publicationStore as never,
+    });
     const result = await service.prepareConversationPublication(conversation.id);
 
-    expect(db.upsertAgentProfile).toHaveBeenCalledWith(
+    expect(publicationStore.upsertAgentProfile).toHaveBeenCalledWith(
+      '/workspace/project',
       expect.objectContaining({
         id: canonicalProfileId,
         publishedFromConversationId: conversation.id,
@@ -88,13 +93,17 @@ describe('ChannelPublicationService', () => {
     expect(result.id).toBe(canonicalProfileId);
   });
 
-  it('reuses the existing publication profile state when preparing the canonical publication profile', async () => {
-    db.getAgentProfileByPublishedConversation.mockReturnValueOnce({ success: true, data: existingProfile });
+  it('reuses the existing project-local publication profile state when preparing the canonical profile', async () => {
+    publicationStore.getAgentProfileByPublishedConversation.mockResolvedValueOnce(existingProfile);
 
-    const service = new ChannelPublicationService({ getDatabase: vi.fn(async () => db as never) });
+    const service = new ChannelPublicationService({
+      getConversation: vi.fn(async () => conversation as never),
+      publicationStore: publicationStore as never,
+    });
     const result = await service.prepareConversationPublication(conversation.id);
 
-    expect(db.upsertAgentProfile).toHaveBeenCalledWith(
+    expect(publicationStore.upsertAgentProfile).toHaveBeenCalledWith(
+      '/workspace/project',
       expect.objectContaining({
         id: canonicalProfileId,
         publishedFromConversationId: conversation.id,
@@ -107,8 +116,11 @@ describe('ChannelPublicationService', () => {
     expect(result.id).toBe(canonicalProfileId);
   });
 
-  it('preserves provider metadata in the publication model ref for later channel restores', async () => {
-    const service = new ChannelPublicationService({ getDatabase: vi.fn(async () => db as never) });
+  it('preserves provider metadata in the project-local publication model ref for later channel restores', async () => {
+    const service = new ChannelPublicationService({
+      getConversation: vi.fn(async () => conversation as never),
+      publicationStore: publicationStore as never,
+    });
 
     const result = await service.prepareConversationPublication(conversation.id);
 

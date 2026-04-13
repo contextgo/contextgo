@@ -52,7 +52,7 @@ describe('ensureObsidianVaultBootstrap', () => {
       'collapse-color-groups': boolean;
     };
     const rawRegistry = await fs.readFile(registryPath, 'utf8');
-    expect(rawRegistry).toContain('\"open\": true');
+    expect(rawRegistry).toContain('"open": true');
 
     const registry = JSON.parse(rawRegistry) as {
       vaults: Record<string, { path: string; ts: number; open?: boolean }>;
@@ -110,7 +110,7 @@ describe('ensureObsidianVaultBootstrap', () => {
     });
 
     const rawRegistry = await fs.readFile(registryPath, 'utf8');
-    expect(rawRegistry).toContain('\"open\": true');
+    expect(rawRegistry).toContain('"open": true');
 
     const registry = JSON.parse(rawRegistry) as {
       vaults: Record<string, { path: string; ts: number; open?: boolean }>;

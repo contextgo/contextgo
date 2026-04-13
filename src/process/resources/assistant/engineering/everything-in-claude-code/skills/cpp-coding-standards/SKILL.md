@@ -33,23 +33,23 @@ These themes recur across the entire guidelines and form the foundation:
 5. **Minimize complexity** (F.2-3, ES.5, Per.4-5): Simple code is correct code
 6. **Value semantics over pointer semantics** (C.10, R.3-5, F.20, CP.31): Prefer returning by value and scoped objects
 
-## Philosophy & Interfaces (P.*, I.*)
+## Philosophy & Interfaces (P._, I._)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **P.1** | Express ideas directly in code |
-| **P.3** | Express intent |
-| **P.4** | Ideally, a program should be statically type safe |
-| **P.5** | Prefer compile-time checking to run-time checking |
-| **P.8** | Don't leak any resources |
-| **P.10** | Prefer immutable data to mutable data |
-| **I.1** | Make interfaces explicit |
-| **I.2** | Avoid non-const global variables |
-| **I.4** | Make interfaces precisely and strongly typed |
+| Rule     | Summary                                                |
+| -------- | ------------------------------------------------------ |
+| **P.1**  | Express ideas directly in code                         |
+| **P.3**  | Express intent                                         |
+| **P.4**  | Ideally, a program should be statically type safe      |
+| **P.5**  | Prefer compile-time checking to run-time checking      |
+| **P.8**  | Don't leak any resources                               |
+| **P.10** | Prefer immutable data to mutable data                  |
+| **I.1**  | Make interfaces explicit                               |
+| **I.2**  | Avoid non-const global variables                       |
+| **I.4**  | Make interfaces precisely and strongly typed           |
 | **I.11** | Never transfer ownership by a raw pointer or reference |
-| **I.23** | Keep the number of function arguments low |
+| **I.23** | Keep the number of function arguments low              |
 
 ### DO
 
@@ -72,22 +72,22 @@ double boil(double* temp);
 int g_counter = 0;  // I.2 violation
 ```
 
-## Functions (F.*)
+## Functions (F.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **F.1** | Package meaningful operations as carefully named functions |
-| **F.2** | A function should perform a single logical operation |
-| **F.3** | Keep functions short and simple |
-| **F.4** | If a function might be evaluated at compile time, declare it `constexpr` |
-| **F.6** | If your function must not throw, declare it `noexcept` |
-| **F.8** | Prefer pure functions |
+| Rule     | Summary                                                                        |
+| -------- | ------------------------------------------------------------------------------ |
+| **F.1**  | Package meaningful operations as carefully named functions                     |
+| **F.2**  | A function should perform a single logical operation                           |
+| **F.3**  | Keep functions short and simple                                                |
+| **F.4**  | If a function might be evaluated at compile time, declare it `constexpr`       |
+| **F.6**  | If your function must not throw, declare it `noexcept`                         |
+| **F.8**  | Prefer pure functions                                                          |
 | **F.16** | For "in" parameters, pass cheaply-copied types by value and others by `const&` |
-| **F.20** | For "out" values, prefer return values to output parameters |
-| **F.21** | To return multiple "out" values, prefer returning a struct |
-| **F.43** | Never return a pointer or reference to a local object |
+| **F.20** | For "out" values, prefer return values to output parameters                    |
+| **F.21** | To return multiple "out" values, prefer returning a struct                     |
+| **F.43** | Never return a pointer or reference to a local object                          |
 
 ### Parameter Passing
 
@@ -128,21 +128,21 @@ static_assert(factorial(5) == 120);
 - Capturing by reference in lambdas passed to other threads (F.53)
 - Returning `const T` which inhibits move semantics (F.49)
 
-## Classes & Class Hierarchies (C.*)
+## Classes & Class Hierarchies (C.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **C.2** | Use `class` if invariant exists; `struct` if data members vary independently |
-| **C.9** | Minimize exposure of members |
-| **C.20** | If you can avoid defining default operations, do (Rule of Zero) |
-| **C.21** | If you define or `=delete` any copy/move/destructor, handle them all (Rule of Five) |
-| **C.35** | Base class destructor: public virtual or protected non-virtual |
-| **C.41** | A constructor should create a fully initialized object |
-| **C.46** | Declare single-argument constructors `explicit` |
-| **C.67** | A polymorphic class should suppress public copy/move |
-| **C.128** | Virtual functions: specify exactly one of `virtual`, `override`, or `final` |
+| Rule      | Summary                                                                             |
+| --------- | ----------------------------------------------------------------------------------- |
+| **C.2**   | Use `class` if invariant exists; `struct` if data members vary independently        |
+| **C.9**   | Minimize exposure of members                                                        |
+| **C.20**  | If you can avoid defining default operations, do (Rule of Zero)                     |
+| **C.21**  | If you define or `=delete` any copy/move/destructor, handle them all (Rule of Five) |
+| **C.35**  | Base class destructor: public virtual or protected non-virtual                      |
+| **C.41**  | A constructor should create a fully initialized object                              |
+| **C.46**  | Declare single-argument constructors `explicit`                                     |
+| **C.67**  | A polymorphic class should suppress public copy/move                                |
+| **C.128** | Virtual functions: specify exactly one of `virtual`, `override`, or `final`         |
 
 ### Rule of Zero
 
@@ -218,20 +218,20 @@ private:
 - Providing different default arguments for virtual function and overrider (C.140)
 - Making data members `const` or references, which suppresses move/copy (C.12)
 
-## Resource Management (R.*)
+## Resource Management (R.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **R.1** | Manage resources automatically using RAII |
-| **R.3** | A raw pointer (`T*`) is non-owning |
-| **R.5** | Prefer scoped objects; don't heap-allocate unnecessarily |
-| **R.10** | Avoid `malloc()`/`free()` |
-| **R.11** | Avoid calling `new` and `delete` explicitly |
-| **R.20** | Use `unique_ptr` or `shared_ptr` to represent ownership |
+| Rule     | Summary                                                        |
+| -------- | -------------------------------------------------------------- |
+| **R.1**  | Manage resources automatically using RAII                      |
+| **R.3**  | A raw pointer (`T*`) is non-owning                             |
+| **R.5**  | Prefer scoped objects; don't heap-allocate unnecessarily       |
+| **R.10** | Avoid `malloc()`/`free()`                                      |
+| **R.11** | Avoid calling `new` and `delete` explicitly                    |
+| **R.20** | Use `unique_ptr` or `shared_ptr` to represent ownership        |
 | **R.21** | Prefer `unique_ptr` over `shared_ptr` unless sharing ownership |
-| **R.22** | Use `make_shared()` to make `shared_ptr`s |
+| **R.22** | Use `make_shared()` to make `shared_ptr`s                      |
 
 ### Smart Pointer Usage
 
@@ -287,22 +287,22 @@ private:
 - Multiple resource allocations in a single expression (R.13 -- exception safety hazard)
 - `shared_ptr` where `unique_ptr` suffices (R.21)
 
-## Expressions & Statements (ES.*)
+## Expressions & Statements (ES.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **ES.5** | Keep scopes small |
-| **ES.20** | Always initialize an object |
-| **ES.23** | Prefer `{}` initializer syntax |
+| Rule      | Summary                                                                |
+| --------- | ---------------------------------------------------------------------- |
+| **ES.5**  | Keep scopes small                                                      |
+| **ES.20** | Always initialize an object                                            |
+| **ES.23** | Prefer `{}` initializer syntax                                         |
 | **ES.25** | Declare objects `const` or `constexpr` unless modification is intended |
-| **ES.28** | Use lambdas for complex initialization of `const` variables |
-| **ES.45** | Avoid magic constants; use symbolic constants |
-| **ES.46** | Avoid narrowing/lossy arithmetic conversions |
-| **ES.47** | Use `nullptr` rather than `0` or `NULL` |
-| **ES.48** | Avoid casts |
-| **ES.50** | Don't cast away `const` |
+| **ES.28** | Use lambdas for complex initialization of `const` variables            |
+| **ES.45** | Avoid magic constants; use symbolic constants                          |
+| **ES.46** | Avoid narrowing/lossy arithmetic conversions                           |
+| **ES.47** | Use `nullptr` rather than `0` or `NULL`                                |
+| **ES.48** | Avoid casts                                                            |
+| **ES.50** | Don't cast away `const`                                                |
 
 ### Initialization
 
@@ -332,20 +332,20 @@ const auto config = [&] {
 - Mixing signed and unsigned arithmetic (ES.100)
 - Reusing names in nested scopes (ES.12)
 
-## Error Handling (E.*)
+## Error Handling (E.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **E.1** | Develop an error-handling strategy early in a design |
-| **E.2** | Throw an exception to signal that a function can't perform its assigned task |
-| **E.6** | Use RAII to prevent leaks |
-| **E.12** | Use `noexcept` when throwing is impossible or unacceptable |
-| **E.14** | Use purpose-designed user-defined types as exceptions |
-| **E.15** | Throw by value, catch by reference |
-| **E.16** | Destructors, deallocation, and swap must never fail |
-| **E.17** | Don't try to catch every exception in every function |
+| Rule     | Summary                                                                      |
+| -------- | ---------------------------------------------------------------------------- |
+| **E.1**  | Develop an error-handling strategy early in a design                         |
+| **E.2**  | Throw an exception to signal that a function can't perform its assigned task |
+| **E.6**  | Use RAII to prevent leaks                                                    |
+| **E.12** | Use `noexcept` when throwing is impossible or unacceptable                   |
+| **E.14** | Use purpose-designed user-defined types as exceptions                        |
+| **E.15** | Throw by value, catch by reference                                           |
+| **E.16** | Destructors, deallocation, and swap must never fail                          |
+| **E.17** | Don't try to catch every exception in every function                         |
 
 ### Exception Hierarchy
 
@@ -388,17 +388,17 @@ void run() {
 - Using exceptions for flow control (E.3)
 - Error handling based on global state like `errno` (E.28)
 
-## Constants & Immutability (Con.*)
+## Constants & Immutability (Con.\*)
 
 ### All Rules
 
-| Rule | Summary |
-|------|---------|
-| **Con.1** | By default, make objects immutable |
-| **Con.2** | By default, make member functions `const` |
-| **Con.3** | By default, pass pointers and references to `const` |
+| Rule      | Summary                                                     |
+| --------- | ----------------------------------------------------------- |
+| **Con.1** | By default, make objects immutable                          |
+| **Con.2** | By default, make member functions `const`                   |
+| **Con.3** | By default, pass pointers and references to `const`         |
 | **Con.4** | Use `const` for values that don't change after construction |
-| **Con.5** | Use `constexpr` for values computable at compile time |
+| **Con.5** | Use `constexpr` for values computable at compile time       |
 
 ```cpp
 // Con.1 through Con.5: Immutability by default
@@ -428,21 +428,21 @@ constexpr double PI = 3.14159265358979;
 constexpr int MAX_SENSORS = 256;
 ```
 
-## Concurrency & Parallelism (CP.*)
+## Concurrency & Parallelism (CP.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **CP.2** | Avoid data races |
-| **CP.3** | Minimize explicit sharing of writable data |
-| **CP.4** | Think in terms of tasks, rather than threads |
-| **CP.8** | Don't use `volatile` for synchronization |
-| **CP.20** | Use RAII, never plain `lock()`/`unlock()` |
-| **CP.21** | Use `std::scoped_lock` to acquire multiple mutexes |
-| **CP.22** | Never call unknown code while holding a lock |
-| **CP.42** | Don't wait without a condition |
-| **CP.44** | Remember to name your `lock_guard`s and `unique_lock`s |
+| Rule       | Summary                                                       |
+| ---------- | ------------------------------------------------------------- |
+| **CP.2**   | Avoid data races                                              |
+| **CP.3**   | Minimize explicit sharing of writable data                    |
+| **CP.4**   | Think in terms of tasks, rather than threads                  |
+| **CP.8**   | Don't use `volatile` for synchronization                      |
+| **CP.20**  | Use RAII, never plain `lock()`/`unlock()`                     |
+| **CP.21**  | Use `std::scoped_lock` to acquire multiple mutexes            |
+| **CP.22**  | Never call unknown code while holding a lock                  |
+| **CP.42**  | Don't wait without a condition                                |
+| **CP.44**  | Remember to name your `lock_guard`s and `unique_lock`s        |
 | **CP.100** | Don't use lock-free programming unless you absolutely have to |
 
 ### Safe Locking
@@ -492,20 +492,20 @@ void transfer(Account& from, Account& to, double amount) {
 - Holding locks while calling callbacks (CP.22 -- deadlock risk)
 - Lock-free programming without deep expertise (CP.100)
 
-## Templates & Generic Programming (T.*)
+## Templates & Generic Programming (T.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **T.1** | Use templates to raise the level of abstraction |
-| **T.2** | Use templates to express algorithms for many argument types |
-| **T.10** | Specify concepts for all template arguments |
-| **T.11** | Use standard concepts whenever possible |
-| **T.13** | Prefer shorthand notation for simple concepts |
-| **T.43** | Prefer `using` over `typedef` |
-| **T.120** | Use template metaprogramming only when you really need to |
-| **T.144** | Don't specialize function templates (overload instead) |
+| Rule      | Summary                                                     |
+| --------- | ----------------------------------------------------------- |
+| **T.1**   | Use templates to raise the level of abstraction             |
+| **T.2**   | Use templates to express algorithms for many argument types |
+| **T.10**  | Specify concepts for all template arguments                 |
+| **T.11**  | Use standard concepts whenever possible                     |
+| **T.13**  | Prefer shorthand notation for simple concepts               |
+| **T.43**  | Prefer `using` over `typedef`                               |
+| **T.120** | Use template metaprogramming only when you really need to   |
+| **T.144** | Don't specialize function templates (overload instead)      |
 
 ### Concepts (C++20)
 
@@ -543,19 +543,19 @@ void save(const T& obj, const std::string& path);
 - Template metaprogramming where `constexpr` suffices (T.120)
 - `typedef` instead of `using` (T.43)
 
-## Standard Library (SL.*)
+## Standard Library (SL.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **SL.1** | Use libraries wherever possible |
-| **SL.2** | Prefer the standard library to other libraries |
-| **SL.con.1** | Prefer `std::array` or `std::vector` over C arrays |
-| **SL.con.2** | Prefer `std::vector` by default |
-| **SL.str.1** | Use `std::string` to own character sequences |
+| Rule         | Summary                                                |
+| ------------ | ------------------------------------------------------ |
+| **SL.1**     | Use libraries wherever possible                        |
+| **SL.2**     | Prefer the standard library to other libraries         |
+| **SL.con.1** | Prefer `std::array` or `std::vector` over C arrays     |
+| **SL.con.2** | Prefer `std::vector` by default                        |
+| **SL.str.1** | Use `std::string` to own character sequences           |
 | **SL.str.2** | Use `std::string_view` to refer to character sequences |
-| **SL.io.50** | Avoid `endl` (use `'\n'` -- `endl` forces a flush) |
+| **SL.io.50** | Avoid `endl` (use `'\n'` -- `endl` forces a flush)     |
 
 ```cpp
 // SL.con.1 + SL.con.2: Prefer vector/array over C arrays
@@ -571,16 +571,16 @@ std::string build_greeting(std::string_view name) {
 std::cout << "result: " << value << '\n';
 ```
 
-## Enumerations (Enum.*)
+## Enumerations (Enum.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **Enum.1** | Prefer enumerations over macros |
+| Rule       | Summary                               |
+| ---------- | ------------------------------------- |
+| **Enum.1** | Prefer enumerations over macros       |
 | **Enum.3** | Prefer `enum class` over plain `enum` |
-| **Enum.5** | Don't use ALL_CAPS for enumerators |
-| **Enum.6** | Avoid unnamed enumerations |
+| **Enum.5** | Don't use ALL_CAPS for enumerators    |
+| **Enum.6** | Avoid unnamed enumerations            |
 
 ```cpp
 // Enum.3 + Enum.5: Scoped enum, no ALL_CAPS
@@ -592,20 +592,20 @@ enum { RED, GREEN, BLUE };           // Enum.3 + Enum.5 + Enum.6 violation
 #define MAX_SIZE 100                  // Enum.1 violation -- use constexpr
 ```
 
-## Source Files & Naming (SF.*, NL.*)
+## Source Files & Naming (SF._, NL._)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **SF.1** | Use `.cpp` for code files and `.h` for interface files |
-| **SF.7** | Don't write `using namespace` at global scope in a header |
-| **SF.8** | Use `#include` guards for all `.h` files |
-| **SF.11** | Header files should be self-contained |
-| **NL.5** | Avoid encoding type information in names (no Hungarian notation) |
-| **NL.8** | Use a consistent naming style |
-| **NL.9** | Use ALL_CAPS for macro names only |
-| **NL.10** | Prefer `underscore_style` names |
+| Rule      | Summary                                                          |
+| --------- | ---------------------------------------------------------------- |
+| **SF.1**  | Use `.cpp` for code files and `.h` for interface files           |
+| **SF.7**  | Don't write `using namespace` at global scope in a header        |
+| **SF.8**  | Use `#include` guards for all `.h` files                         |
+| **SF.11** | Header files should be self-contained                            |
+| **NL.5**  | Avoid encoding type information in names (no Hungarian notation) |
+| **NL.8**  | Use a consistent naming style                                    |
+| **NL.9**  | Use ALL_CAPS for macro names only                                |
+| **NL.10** | Prefer `underscore_style` names                                  |
 
 ### Header Guard
 
@@ -662,19 +662,19 @@ private:
 - Hungarian notation like `strName`, `iCount` (NL.5)
 - ALL_CAPS for anything other than macros (NL.9)
 
-## Performance (Per.*)
+## Performance (Per.\*)
 
 ### Key Rules
 
-| Rule | Summary |
-|------|---------|
-| **Per.1** | Don't optimize without reason |
-| **Per.2** | Don't optimize prematurely |
-| **Per.6** | Don't make claims about performance without measurements |
-| **Per.7** | Design to enable optimization |
-| **Per.10** | Rely on the static type system |
-| **Per.11** | Move computation from run time to compile time |
-| **Per.19** | Access memory predictably |
+| Rule       | Summary                                                  |
+| ---------- | -------------------------------------------------------- |
+| **Per.1**  | Don't optimize without reason                            |
+| **Per.2**  | Don't optimize prematurely                               |
+| **Per.6**  | Don't make claims about performance without measurements |
+| **Per.7**  | Design to enable optimization                            |
+| **Per.10** | Rely on the static type system                           |
+| **Per.11** | Move computation from run time to compile time           |
+| **Per.19** | Access memory predictably                                |
 
 ### Guidelines
 

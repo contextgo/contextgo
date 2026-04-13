@@ -18,6 +18,7 @@ This command enforces test-driven development methodology for C++ code using Goo
 ## When to Use
 
 Use `/cpp-test` when:
+
 - Implementing new C++ functions or classes
 - Adding test coverage to existing code
 - Fixing bugs (write failing test first)
@@ -159,6 +160,7 @@ validator/email.cpp     | 100%
 ## Test Patterns
 
 ### Basic Tests
+
 ```cpp
 TEST(SuiteName, TestName) {
     EXPECT_EQ(add(2, 3), 5);
@@ -169,6 +171,7 @@ TEST(SuiteName, TestName) {
 ```
 
 ### Fixtures
+
 ```cpp
 class DatabaseTest : public ::testing::Test {
 protected:
@@ -184,6 +187,7 @@ TEST_F(DatabaseTest, InsertsRecord) {
 ```
 
 ### Parameterized Tests
+
 ```cpp
 class PrimeTest : public ::testing::TestWithParam<std::pair<int, bool>> {};
 
@@ -216,16 +220,17 @@ genhtml coverage.info --output-directory coverage_html
 
 ## Coverage Targets
 
-| Code Type | Target |
-|-----------|--------|
-| Critical business logic | 100% |
-| Public APIs | 90%+ |
-| General code | 80%+ |
-| Generated code | Exclude |
+| Code Type               | Target  |
+| ----------------------- | ------- |
+| Critical business logic | 100%    |
+| Public APIs             | 90%+    |
+| General code            | 80%+    |
+| Generated code          | Exclude |
 
 ## TDD Best Practices
 
 **DO:**
+
 - Write test FIRST, before any implementation
 - Run tests after each change
 - Use `EXPECT_*` (continues) over `ASSERT_*` (stops) when appropriate
@@ -233,6 +238,7 @@ genhtml coverage.info --output-directory coverage_html
 - Include edge cases (empty, null, max values, boundary conditions)
 
 **DON'T:**
+
 - Write implementation before tests
 - Skip the RED phase
 - Test private methods directly (test through public API)

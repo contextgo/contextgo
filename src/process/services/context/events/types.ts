@@ -76,6 +76,4 @@ export type ContextEvent<TName extends ContextEventName = ContextEventName> = {
   payload: ContextEventMap[TName];
 };
 
-export type ContextEventHandler<TName extends ContextEventName> = (
-  event: ContextEvent<TName>
-) => void | Promise<void>;
+export type ContextEventHandler<TName extends ContextEventName> = (event: ContextEvent<TName>) => void | Promise<void>;

@@ -7,6 +7,11 @@ final class ConnectionStore: ObservableObject {
     case remote
   }
 
+  enum DeviceLaunchDecision {
+    case stayOnHome
+    case openDevice(OfficialRemoteDevice)
+  }
+
   static let officialRemoteURL = "https://remote.contextgo.io/remote/devices"
   private static let officialRemoteBaseURL = "https://remote.contextgo.io"
   private static let officialAuthBaseURL = "https://auth.contextgo.io"
@@ -39,6 +44,24 @@ final class ConnectionStore: ObservableObject {
 
     landingRoute = .remote
     applyTarget(resolvedURL, persist: persist)
+  }
+
+  func deviceLaunchDecision(for snapshot: OfficialHomeSnapshot) -> DeviceLaunchDecision {
+    let openableDevices = snapshot.devices.filter(\.canOpen)
+
+    if openableDevices.isEmpty {
+      return .stayOnHome
+    }
+
+    if openableDevices.count == 1, let onlyDevice = openableDevices.first {
+      return .openDevice(onlyDevice)
+    }
+
+    if let preferredDevice = openableDevices.first(where: { $0.isPreferredCandidate }) {
+      return .openDevice(preferredDevice)
+    }
+
+    return .stayOnHome
   }
 
   func returnToHome() {
@@ -424,6 +447,10 @@ struct OfficialRemoteDevice: Decodable, Identifiable {
     }
 
     return 0
+  }
+
+  var isPreferredCandidate: Bool {
+    isAvailable || isLiveSession
   }
 
   var platformLabel: String {

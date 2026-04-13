@@ -5,26 +5,23 @@
  */
 
 import {
-  createDefaultManagedSlashCommandLibrary,
-  getBuiltinManagedSlashCommandDefinition,
   normalizeManagedSlashCommandLibrary,
   normalizeSlashCommandName,
   resolveManagedSlashCommands,
-  type BuiltinManagedSlashCommandRecord,
   type ManagedSlashCommandRecord,
   type ResolvedManagedSlashCommand,
 } from '@/common/chat/slash/library';
 import { uuid } from '@/common/utils';
+import { AutomationPanel, AutomationSectionCard } from '@/renderer/components/automation';
 import { SettingsSubModal } from '@/renderer/components/settings';
-import { Button, Empty, Input, Message, Switch, Tag, Typography } from '@arco-design/web-react';
+import { Button, Empty, Input, Message, Switch, Typography } from '@arco-design/web-react';
 import { Command, Delete, Edit, Plus, Refresh } from '@icon-park/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type CommandEditorState = {
   id?: string;
-  type: 'builtin' | 'custom';
-  builtinId?: BuiltinManagedSlashCommandRecord['id'];
+  enabled?: boolean;
   name: string;
   description: string;
   template: string;
@@ -42,7 +39,6 @@ type ManagedCommandLibraryEditorProps = {
 };
 
 const EMPTY_EDITOR_STATE: CommandEditorState = {
-  type: 'custom',
   name: '',
   description: '',
   template: '',
@@ -58,25 +54,23 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
   headerMeta,
   variant = 'page',
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [message, contextHolder] = Message.useMessage();
-  const [library, setLibrary] = useState<ManagedSlashCommandRecord[]>(createDefaultManagedSlashCommandLibrary());
+  const [library, setLibrary] = useState<ManagedSlashCommandRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [editorVisible, setEditorVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ResolvedManagedSlashCommand | null>(null);
   const [editorState, setEditorState] = useState<CommandEditorState>(EMPTY_EDITOR_STATE);
+  const initialLibraryRef = useRef<ManagedSlashCommandRecord[]>([]);
+  const loadErrorHandlerRef = useRef<() => void>(() => undefined);
 
-  const resolveText = useCallback((key: string, defaultValue: string) => t(key, { defaultValue }), [t]);
+  useEffect(() => {
+    loadErrorHandlerRef.current = () => {
+      message.error(t('settings.commands.loadFailed'));
+    };
+  }, [message, t]);
 
-  const resolvedCommands = useMemo(
-    () => resolveManagedSlashCommands(library, resolveText),
-    [i18n.language, library, resolveText]
-  );
-
-  const resolvedDefaultCommands = useMemo(
-    () => resolveManagedSlashCommands(createDefaultManagedSlashCommandLibrary(), resolveText),
-    [i18n.language, resolveText]
-  );
+  const resolvedCommands = useMemo(() => resolveManagedSlashCommands(library), [library]);
 
   const persistLibrary = useCallback(
     async (nextLibrary: ManagedSlashCommandRecord[], successKey?: string) => {
@@ -98,13 +92,15 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
       try {
         const loadedLibrary = normalizeManagedSlashCommandLibrary(await loadLibrary());
         if (!isDisposed) {
+          initialLibraryRef.current = loadedLibrary;
           setLibrary(loadedLibrary);
         }
       } catch (error) {
         console.error('[ManagedCommandLibraryEditor] Failed to load command library:', error);
         if (!isDisposed) {
-          message.error(t('settings.commands.loadFailed'));
-          setLibrary(createDefaultManagedSlashCommandLibrary());
+          initialLibraryRef.current = [];
+          setLibrary([]);
+          loadErrorHandlerRef.current();
         }
       } finally {
         if (!isDisposed) {
@@ -118,10 +114,7 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
     return () => {
       isDisposed = true;
     };
-  }, [i18n.language, loadLibrary]);
-
-  const builtinCommands = resolvedCommands.filter((command) => command.type === 'builtin');
-  const customCommands = resolvedCommands.filter((command) => command.type === 'custom');
+  }, [loadLibrary]);
 
   const updateEnabledState = useCallback(
     async (targetId: string, enabled: boolean) => {
@@ -144,8 +137,7 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
   const openEditEditor = (command: ResolvedManagedSlashCommand) => {
     setEditorState({
       id: command.id,
-      type: command.type,
-      builtinId: command.builtinId,
+      enabled: command.enabled,
       name: command.name,
       description: command.description,
       template: command.template,
@@ -195,49 +187,21 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
       return;
     }
 
-    const { name, description: nextDescription, template } = normalized;
+    const currentRecord = editorState.id ? library.find((record) => record.id === editorState.id) : undefined;
+    const nextRecord: ManagedSlashCommandRecord = {
+      id: editorState.id ?? uuid(),
+      enabled: currentRecord?.enabled ?? editorState.enabled ?? true,
+      name: normalized.name,
+      description: normalized.description,
+      template: normalized.template,
+    };
+
+    const nextLibrary = currentRecord
+      ? library.map((record) => (record.id === currentRecord.id ? nextRecord : record))
+      : [...library, nextRecord];
 
     try {
-      if (editorState.type === 'builtin' && editorState.builtinId) {
-        const defaultBuiltin = resolvedDefaultCommands.find((command) => command.builtinId === editorState.builtinId);
-        if (!defaultBuiltin) {
-          message.error(t('settings.commands.saveFailed'));
-          return;
-        }
-
-        const nextLibrary = library.map((record) => {
-          if (record.type !== 'builtin' || record.id !== editorState.builtinId) {
-            return record;
-          }
-
-          return {
-            ...record,
-            nameOverride: name === defaultBuiltin.name ? undefined : name,
-            descriptionOverride: nextDescription === defaultBuiltin.description ? undefined : nextDescription,
-            templateOverride: template === defaultBuiltin.template ? undefined : template,
-          };
-        });
-
-        await persistLibrary(nextLibrary, 'common.saveSuccess');
-        closeEditor();
-        return;
-      }
-
-      const nextRecord: ManagedSlashCommandRecord = {
-        type: 'custom',
-        id: editorState.id ?? uuid(),
-        enabled: true,
-        name,
-        description: nextDescription,
-        template,
-      };
-
-      const nextLibrary =
-        editorState.id && editorState.type === 'custom'
-          ? library.map((record) => (record.id === editorState.id ? nextRecord : record))
-          : [...library, nextRecord];
-
-      await persistLibrary(nextLibrary, editorState.id ? 'common.saveSuccess' : 'common.createSuccess');
+      await persistLibrary(nextLibrary, currentRecord ? 'common.saveSuccess' : 'common.createSuccess');
       closeEditor();
     } catch (error) {
       console.error('[ManagedCommandLibraryEditor] Failed to save command:', error);
@@ -262,7 +226,7 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
 
   const restoreDefaults = async () => {
     try {
-      await persistLibrary(createDefaultManagedSlashCommandLibrary(), 'settings.commands.restoreSuccess');
+      await persistLibrary([...initialLibraryRef.current], 'settings.commands.restoreSuccess');
     } catch (error) {
       console.error('[ManagedCommandLibraryEditor] Failed to restore defaults:', error);
       message.error(t('settings.commands.restoreFailed'));
@@ -270,8 +234,6 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
   };
 
   const renderCommandCard = (command: ResolvedManagedSlashCommand) => {
-    const isBuiltin = command.type === 'builtin';
-
     return (
       <div
         key={command.id}
@@ -279,12 +241,7 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
       >
         <div className='flex flex-wrap items-center justify-between gap-12px'>
           <div className='min-w-0 flex-1'>
-            <div className='flex flex-wrap items-center gap-8px'>
-              <Typography.Text bold>{`/${command.name}`}</Typography.Text>
-              <Tag color={isBuiltin ? 'arcoblue' : 'green'}>
-                {isBuiltin ? t('settings.commands.builtinTag') : t('settings.commands.customTag')}
-              </Tag>
-            </div>
+            <Typography.Text bold>{`/${command.name}`}</Typography.Text>
             <Typography.Paragraph className='mb-0 mt-8px text-t-secondary'>{command.description}</Typography.Paragraph>
           </div>
           <div className='flex items-center gap-8px'>
@@ -292,11 +249,9 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
             <Button type='secondary' icon={<Edit />} onClick={() => openEditEditor(command)}>
               {t('common.edit')}
             </Button>
-            {!isBuiltin ? (
-              <Button status='danger' icon={<Delete />} onClick={() => setDeleteTarget(command)}>
-                {t('common.delete')}
-              </Button>
-            ) : null}
+            <Button status='danger' icon={<Delete />} onClick={() => setDeleteTarget(command)}>
+              {t('common.delete')}
+            </Button>
           </div>
         </div>
         <div className='mt-12px rounded-12px bg-[var(--color-bg-1)] p-12px'>
@@ -309,83 +264,43 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
     );
   };
 
-  const heroSurfaceClassName =
-    variant === 'embedded'
-      ? 'rounded-16px border border-solid border-[var(--color-border-2)] bg-[var(--color-bg-1)] p-16px'
-      : 'rounded-20px border border-solid border-[var(--color-border-2)] bg-[var(--color-bg-1)] p-20px';
-
-  const sectionSurfaceClassName =
-    variant === 'embedded'
-      ? 'rounded-16px border border-solid border-[var(--color-border-2)] bg-[var(--color-bg-1)] p-16px'
-      : 'rounded-20px border border-solid border-[var(--color-border-2)] bg-[var(--color-bg-1)] p-20px';
-
   return (
     <>
       {contextHolder}
-      <div className='flex flex-col gap-16px'>
-        <div className={heroSurfaceClassName}>
-          <div className='flex flex-wrap items-start justify-between gap-16px'>
-            <div className='max-w-720px'>
-              <div className='flex items-center gap-8px'>
-                <Command theme='outline' size='20' className='text-t-primary' />
-                <Typography.Title heading={5} className='!mb-0'>
-                  {title}
-                </Typography.Title>
-              </div>
-              <Typography.Paragraph className='mb-0 mt-8px text-t-secondary'>{description}</Typography.Paragraph>
-              {usageHint ? (
-                <Typography.Paragraph className='mb-0 mt-8px text-t-secondary'>{usageHint}</Typography.Paragraph>
-              ) : null}
-              {headerMeta ? <div className='mt-12px'>{headerMeta}</div> : null}
-            </div>
-            <div className='flex flex-wrap gap-8px'>
-              <Button type='secondary' icon={<Refresh />} onClick={() => void restoreDefaults()}>
-                {t('settings.commands.restoreDefaults')}
-              </Button>
-              <Button type='primary' icon={<Plus />} onClick={openCreateEditor}>
-                {t('settings.commands.add')}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className={sectionSurfaceClassName}>
-          <div className='mb-16px flex items-center justify-between gap-12px'>
-            <div>
-              <Typography.Title heading={6} className='!mb-0'>
-                {t('settings.commands.recommendedTitle')}
-              </Typography.Title>
-              <Typography.Paragraph className='mb-0 mt-6px text-t-secondary'>
-                {t('settings.commands.recommendedDescription')}
-              </Typography.Paragraph>
-            </div>
-          </div>
-          <div className='flex flex-col gap-12px'>{builtinCommands.map((command) => renderCommandCard(command))}</div>
-        </div>
-
-        <div className={sectionSurfaceClassName}>
-          <div className='mb-16px flex items-center justify-between gap-12px'>
-            <div>
-              <Typography.Title heading={6} className='!mb-0'>
-                {t('settings.commands.customTitle')}
-              </Typography.Title>
-              <Typography.Paragraph className='mb-0 mt-6px text-t-secondary'>
-                {t('settings.commands.customDescription')}
-              </Typography.Paragraph>
-            </div>
-            <Button type='secondary' icon={<Plus />} onClick={openCreateEditor}>
+      <AutomationPanel
+        variant={variant}
+        title={title}
+        description={description}
+        icon={<Command theme='outline' size='18' className='app-icon text-t-primary' />}
+        meta={
+          <>
+            {usageHint ? (
+              <Typography.Paragraph className='mb-0 text-t-secondary'>{usageHint}</Typography.Paragraph>
+            ) : null}
+            {headerMeta ? <div className={usageHint ? 'mt-12px' : undefined}>{headerMeta}</div> : null}
+          </>
+        }
+        actions={
+          <>
+            <Button type='secondary' icon={<Refresh />} onClick={() => void restoreDefaults()}>
+              {t('settings.commands.restoreDefaults')}
+            </Button>
+            <Button type='primary' icon={<Plus />} onClick={openCreateEditor}>
               {t('settings.commands.add')}
             </Button>
-          </div>
+          </>
+        }
+      >
+        <AutomationSectionCard variant={variant}>
           {loading ? (
             <Typography.Text type='secondary'>{t('common.loading')}</Typography.Text>
-          ) : customCommands.length === 0 ? (
+          ) : resolvedCommands.length === 0 ? (
             <Empty description={t('settings.commands.emptyCustom')} />
           ) : (
-            <div className='flex flex-col gap-12px'>{customCommands.map((command) => renderCommandCard(command))}</div>
+            <div className='flex flex-col gap-12px'>{resolvedCommands.map((command) => renderCommandCard(command))}</div>
           )}
-        </div>
-      </div>
+        </AutomationSectionCard>
+      </AutomationPanel>
 
       <SettingsSubModal
         visible={editorVisible}
@@ -433,14 +348,6 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
               onChange={(value) => setEditorState((prev) => ({ ...prev, template: value }))}
             />
           </div>
-
-          {editorState.type === 'builtin' && editorState.builtinId ? (
-            <Typography.Paragraph className='mb-0 text-t-secondary'>
-              {t('settings.commands.builtinOverrideHint', {
-                name: `/${getBuiltinManagedSlashCommandDefinition(editorState.builtinId).name}`,
-              })}
-            </Typography.Paragraph>
-          ) : null}
         </div>
       </SettingsSubModal>
 

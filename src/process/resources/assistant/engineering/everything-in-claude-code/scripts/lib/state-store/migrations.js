@@ -134,7 +134,7 @@ function getAppliedMigrations(db) {
       ORDER BY version ASC
     `)
     .all()
-    .map(row => ({
+    .map((row) => ({
       version: row.version,
       name: row.name,
       appliedAt: row.applied_at,
@@ -145,7 +145,10 @@ function applyMigrations(db) {
   ensureMigrationTable(db);
 
   const appliedVersions = new Set(
-    db.prepare('SELECT version FROM schema_migrations').all().map(row => row.version)
+    db
+      .prepare('SELECT version FROM schema_migrations')
+      .all()
+      .map((row) => row.version)
   );
   const insertMigration = db.prepare(`
     INSERT INTO schema_migrations (version, name, applied_at)

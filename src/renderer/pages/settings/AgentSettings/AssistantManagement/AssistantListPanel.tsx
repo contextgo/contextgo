@@ -88,6 +88,7 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
   const { maintenanceAgents, activeMaintenanceCount, status } = useContextEngineActivity();
+  const totalAssistantCount = assistants.length + systemAssistants.length;
 
   const maintenanceAgentsByRole = useMemo(() => {
     const nextMap = new Map<string, (typeof maintenanceAgents)[number]>();
@@ -219,8 +220,8 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
           const latestEvent = activity?.recentEvents[0]?.text;
           const isActive = Boolean(
             activity &&
-              (activity.activeConversations > 0 ||
-                (activity.runtimeStatus && ACTIVE_RUNTIME_STATUSES.has(activity.runtimeStatus)))
+            (activity.activeConversations > 0 ||
+              (activity.runtimeStatus && ACTIVE_RUNTIME_STATUSES.has(activity.runtimeStatus)))
           );
           const runtimeStatusTone =
             deliveryStatus === 'planned'
@@ -235,7 +236,10 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
                 ? t('agent.contextEngine.active', { defaultValue: 'Active' })
                 : t('agent.contextEngine.idle', { defaultValue: 'Watching' });
           const showRuntimeStatusTag = deliveryStatus !== 'planned' || isActive;
-          const summary = activity?.currentTask || description || t('agent.contextEngine.taskFallback', { defaultValue: 'No summary yet' });
+          const summary =
+            activity?.currentTask ||
+            description ||
+            t('agent.contextEngine.taskFallback', { defaultValue: 'No summary yet' });
           const triggerKinds = (assistant.triggerKinds || []).map((kind) => resolveTriggerKindLabel(kind, t));
           const boundaryLabel = resolveExecutionBoundaryLabel(assistant.executionBoundary, t);
           const updatedAtLabel = formatUpdateTime(activity?.lastActiveAt);
@@ -359,9 +363,7 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
     <div className={styles.surface}>
       <div className={styles.sectionHeader}>
         <div>
-          <div className={styles.sectionTitle}>
-            {t('settings.systemAgents', { defaultValue: 'System Agents' })}
-          </div>
+          <div className={styles.sectionTitle}>{t('settings.systemAgents', { defaultValue: 'System Agents' })}</div>
           <div className={styles.sectionDescription}>
             {t('settings.systemAgentsDescription', {
               defaultValue:
@@ -394,12 +396,12 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
             <div className={styles.heroMeta}>
               <div className={styles.titleRow}>
                 <h1 className={styles.pageTitle}>{t('settings.assistants', { defaultValue: 'Assistants' })}</h1>
-                <span className={styles.countBadge}>{assistants.length + systemAssistants.length}</span>
+                <span className={styles.countBadge}>{totalAssistantCount}</span>
               </div>
               <p className={styles.pageDescription}>
                 {t('settings.assistantsPageDescription', {
                   defaultValue:
-                    'Manage direct-work assistants and system-managed Context Engine agents from one catalog.',
+                    'Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.',
                 })}
               </p>
             </div>
@@ -412,6 +414,43 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
               >
                 {t('settings.createAssistant', { defaultValue: 'Create Assistant' })}
               </Button>
+            </div>
+          </div>
+          <div className={styles.heroDetails}>
+            <div className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>
+                  {t('settings.assistantsWorkbenchProductAgents', { defaultValue: 'Product agents' })}
+                </div>
+                <div className={styles.statValue}>{assistants.length}</div>
+                <div className={styles.statDescription}>
+                  {t('settings.assistantsWorkbenchProductAgentsHint', {
+                    defaultValue: 'Direct-use agents available in this workspace.',
+                  })}
+                </div>
+              </div>
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>
+                  {t('settings.assistantsWorkbenchSystemAgents', { defaultValue: 'System agents' })}
+                </div>
+                <div className={styles.statValue}>{systemAssistants.length}</div>
+                <div className={styles.statDescription}>
+                  {t('settings.assistantsWorkbenchSystemAgentsHint', {
+                    defaultValue: 'Background agents managed by Context Engine.',
+                  })}
+                </div>
+              </div>
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>
+                  {t('settings.assistantsWorkbenchActiveRuns', { defaultValue: 'Active runs' })}
+                </div>
+                <div className={styles.statValue}>{activeMaintenanceCount}</div>
+                <div className={styles.statDescription}>
+                  {t('settings.assistantsWorkbenchActiveRunsHint', {
+                    defaultValue: 'Maintenance executions currently in progress.',
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>

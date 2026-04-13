@@ -119,7 +119,10 @@ describe('useMinimapPanel', () => {
   // -- filteredItems ------------------------------------------------------------
 
   it('filteredItems should ignore malformed message records and keep valid turns', async () => {
-    const messages = [undefined, ...makeFakeMessages([{ question: 'Healthy turn', answer: 'Still rendered' }])] as const;
+    const messages = [
+      undefined,
+      ...makeFakeMessages([{ question: 'Healthy turn', answer: 'Still rendered' }]),
+    ] as const;
     mocks.getConversationMessages.mockResolvedValue(messages);
 
     const { result } = renderHook(() => useMinimapPanel('conv-1'));

@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getWebServerInstance, setWebServerInstance } from '../bridge/webuiBridge';
 import { ProcessConfig } from './initStorage';
-import { startWebServerWithInstance } from '../webserver';
+import { startWebServerWithInstance, type WebServerInstance } from '../webserver';
 import { cleanupWebAdapter } from '../webserver/adapter';
 import { SERVER_CONFIG } from '../webserver/config/constants';
 
@@ -18,6 +18,9 @@ const WEBUI_CONFIG_FILE = 'webui.config.json';
 const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
 const DESKTOP_WEBUI_ALLOW_REMOTE_KEY = 'webui.desktop.allowRemote';
 const DESKTOP_WEBUI_PORT_KEY = 'webui.desktop.port';
+const DESKTOP_WEBUI_PRODUCTION_PORT = 25808;
+const DESKTOP_WEBUI_DEVELOPMENT_PORT = 25809;
+const OFFICIAL_REMOTE_PORT_FALLBACK_ATTEMPTS = 10;
 
 const emitWebuiRuntimeStatus = (port: number, allowRemote: boolean): void => {
   webui.statusChanged.emit({
@@ -26,6 +29,101 @@ const emitWebuiRuntimeStatus = (port: number, allowRemote: boolean): void => {
     localUrl: `http://localhost:${port}`,
     networkUrl: getNetworkUrl(port, allowRemote),
   });
+};
+
+let desktopWebuiStartupPromise: Promise<WebServerInstance> | null = null;
+
+const getDefaultDesktopWebUIPort = (): number => {
+  return app.isPackaged ? DESKTOP_WEBUI_PRODUCTION_PORT : DESKTOP_WEBUI_DEVELOPMENT_PORT;
+};
+
+const resolvePreferredDesktopWebUIPort = (value: unknown): number => {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : getDefaultDesktopWebUIPort();
+};
+
+const isPortInUseError = (error: unknown): error is NodeJS.ErrnoException => {
+  return error instanceof Error && 'code' in error && error.code === 'EADDRINUSE';
+};
+
+const buildPortCandidates = (preferredPort: number, maxAttempts: number): number[] => {
+  const candidates = [preferredPort];
+
+  for (let offset = 1; offset <= maxAttempts; offset += 1) {
+    const candidate = preferredPort + offset;
+    if (candidate > 65535) {
+      break;
+    }
+
+    candidates.push(candidate);
+  }
+
+  return candidates;
+};
+
+const startDesktopWebUIOnCandidatePorts = async (
+  candidatePorts: number[],
+  allowRemote: boolean,
+  reason: string,
+  preferredPort: number
+): Promise<WebServerInstance> => {
+  const [candidatePort, ...remainingPorts] = candidatePorts;
+
+  if (candidatePort === undefined) {
+    throw new Error(`[WebUI] Failed to start WebUI runtime for ${reason}`);
+  }
+
+  try {
+    const instance = await startWebServerWithInstance(candidatePort, allowRemote);
+    setWebServerInstance(instance);
+
+    if (candidatePort !== preferredPort) {
+      console.warn(
+        `[WebUI] Preferred port ${preferredPort} was occupied; ${reason} is using fallback port ${candidatePort}`
+      );
+    }
+
+    return instance;
+  } catch (error) {
+    if (!isPortInUseError(error) || remainingPorts.length === 0) {
+      throw error;
+    }
+
+    console.warn(`[WebUI] Port ${candidatePort} is already in use; retrying ${reason} on the next port`);
+    return startDesktopWebUIOnCandidatePorts(remainingPorts, allowRemote, reason, preferredPort);
+  }
+};
+
+const startDesktopWebUIOnce = async (
+  preferredPort: number,
+  allowRemote: boolean,
+  reason: string,
+  allowPortFallback = false
+): Promise<WebServerInstance> => {
+  const currentInstance = getWebServerInstance();
+  if (currentInstance && Number.isFinite(currentInstance.port) && currentInstance.port > 0) {
+    console.log(
+      `[WebUI] Reusing existing WebUI runtime (${reason}, port=${currentInstance.port}, allowRemote=${currentInstance.allowRemote})`
+    );
+    return currentInstance;
+  }
+
+  if (desktopWebuiStartupPromise) {
+    console.log(`[WebUI] Awaiting in-flight WebUI startup (${reason})`);
+    return desktopWebuiStartupPromise;
+  }
+
+  console.log(`[WebUI] Starting WebUI runtime (${reason}, port=${preferredPort}, allowRemote=${allowRemote})`);
+  desktopWebuiStartupPromise = (async () => {
+    const candidatePorts = allowPortFallback
+      ? buildPortCandidates(preferredPort, OFFICIAL_REMOTE_PORT_FALLBACK_ATTEMPTS)
+      : [preferredPort];
+
+    return startDesktopWebUIOnCandidatePorts(candidatePorts, allowRemote, reason, preferredPort);
+  })().finally(() => {
+    desktopWebuiStartupPromise = null;
+  });
+
+  return desktopWebuiStartupPromise;
 };
 
 const stopCurrentWebuiInstance = async (reason: string): Promise<void> => {
@@ -151,11 +249,12 @@ export const restoreDesktopWebUIFromPreferences = async (): Promise<void> => {
       ProcessConfig.get(DESKTOP_WEBUI_PORT_KEY),
     ]);
     const allowRemote = allowRemotePref === true;
-    const preferredPort = typeof portPref === 'number' && portPref > 0 ? portPref : SERVER_CONFIG.DEFAULT_PORT;
+    const preferredPort = resolvePreferredDesktopWebUIPort(portPref);
 
-    const instance = await startWebServerWithInstance(preferredPort, allowRemote);
-    setWebServerInstance(instance);
-    console.log(`[WebUI] Auto-restored from desktop preferences (port=${preferredPort}, allowRemote=${allowRemote})`);
+    const instance = await startDesktopWebUIOnce(preferredPort, allowRemote, 'desktop-preferences');
+    console.log(
+      `[WebUI] Auto-restored from desktop preferences (port=${instance.port}, allowRemote=${instance.allowRemote})`
+    );
   } catch (error) {
     console.error('[WebUI] Failed to auto-restore from desktop preferences:', error);
   }
@@ -166,16 +265,20 @@ export const ensureDesktopWebUIForOfficialRemote = async (): Promise<void> => {
     await app.whenReady();
 
     const portPref = await ProcessConfig.get(DESKTOP_WEBUI_PORT_KEY);
-    const preferredPort = typeof portPref === 'number' && portPref > 0 ? portPref : SERVER_CONFIG.DEFAULT_PORT;
+    const preferredPort = resolvePreferredDesktopWebUIPort(portPref);
     const currentInstance = getWebServerInstance();
 
+    console.log(`[WebUI] Ensuring Official Remote runtime (preferredPort=${preferredPort})`);
+
     if (currentInstance && Number.isFinite(currentInstance.port) && currentInstance.port > 0) {
+      console.log(
+        `[WebUI] Reusing existing WebUI runtime for Official Remote (port=${currentInstance.port}, allowRemote=${currentInstance.allowRemote})`
+      );
       emitWebuiRuntimeStatus(currentInstance.port, currentInstance.allowRemote);
       return;
     }
 
-    const instance = await startWebServerWithInstance(preferredPort, false);
-    setWebServerInstance(instance);
+    const instance = await startDesktopWebUIOnce(preferredPort, false, 'official-remote', true);
     await ProcessConfig.set(DESKTOP_WEBUI_PORT_KEY, instance.port);
     emitWebuiRuntimeStatus(instance.port, false);
     console.log(`[WebUI] Official Remote runtime ensured (port=${instance.port}, allowRemote=false)`);

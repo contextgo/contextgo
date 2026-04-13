@@ -31,7 +31,7 @@ const PRETTIER_CONFIGS = [
   '.prettierrc.toml',
   'prettier.config.js',
   'prettier.config.cjs',
-  'prettier.config.mjs'
+  'prettier.config.mjs',
 ];
 
 const PROJECT_ROOT_MARKERS = ['package.json', ...BIOME_CONFIGS, ...PRETTIER_CONFIGS];
@@ -42,7 +42,7 @@ const WIN_CMD_SHIMS = { npx: 'npx.cmd', pnpm: 'pnpm.cmd', yarn: 'yarn.cmd', bunx
 // ── Formatter → package name mapping ────────────────────────────────
 const FORMATTER_PACKAGES = {
   biome: { binName: 'biome', pkgName: '@biomejs/biome' },
-  prettier: { binName: 'prettier', pkgName: 'prettier' }
+  prettier: { binName: 'prettier', pkgName: 'prettier' },
 };
 
 // ── Public helpers ──────────────────────────────────────────────────
@@ -181,5 +181,5 @@ module.exports = {
   findProjectRoot,
   detectFormatter,
   resolveFormatterBin,
-  clearCaches
+  clearCaches,
 };

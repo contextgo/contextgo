@@ -19,13 +19,19 @@
 import { readFileSync, mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import {
-  readProjects, writeProjects, loadContext, saveContext,
-  today, shortId, gitSummary, nativeMemoryDir,
+  readProjects,
+  writeProjects,
+  loadContext,
+  saveContext,
+  today,
+  shortId,
+  gitSummary,
+  nativeMemoryDir,
   CURRENT_SESSION,
 } from './shared.mjs';
 
 const isInit = process.argv.includes('--init');
-const cwd    = process.env.PWD || process.cwd();
+const cwd = process.env.PWD || process.cwd();
 
 // ── Read JSON from stdin ──────────────────────────────────────────────────────
 let input;
@@ -35,8 +41,12 @@ try {
   input = JSON.parse(raw);
 } catch (e) {
   console.error(`ck save: invalid JSON on stdin — ${e.message}`);
-  console.log('Expected schema (save):  {"summary":"...","leftOff":"...","nextSteps":["..."],"decisions":[{"what":"...","why":"..."}],"blockers":["..."]}');
-  console.log('Expected schema (--init): {"name":"...","path":"...","description":"...","stack":["..."],"goal":"...","constraints":["..."]}');
+  console.log(
+    'Expected schema (save):  {"summary":"...","leftOff":"...","nextSteps":["..."],"decisions":[{"what":"...","why":"..."}],"blockers":["..."]}'
+  );
+  console.log(
+    'Expected schema (--init): {"name":"...","path":"...","description":"...","stack":["..."],"goal":"...","constraints":["..."]}'
+  );
   process.exit(1);
 }
 
@@ -54,9 +64,12 @@ if (isInit) {
   const projects = readProjects();
 
   // Derive contextDir (lowercase, spaces→dashes, deduplicate)
-  let contextDir = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  let contextDir = name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
   let suffix = 2;
-  const existingDirs = Object.values(projects).map(p => p.contextDir);
+  const existingDirs = Object.values(projects).map((p) => p.contextDir);
   while (existingDirs.includes(contextDir) && projects[projectPath]?.contextDir !== contextDir) {
     contextDir = `${contextDir.replace(/-\d+$/, '')}-${suffix++}`;
   }
@@ -67,7 +80,7 @@ if (isInit) {
     displayName: name,
     path: projectPath,
     description: description || null,
-    stack: Array.isArray(stack) ? stack : (stack ? [stack] : []),
+    stack: Array.isArray(stack) ? stack : stack ? [stack] : [],
     goal: goal || null,
     constraints: Array.isArray(constraints) ? constraints : [],
     repo: repo || null,
@@ -119,7 +132,7 @@ try {
 }
 
 // Check for duplicate (re-save of same session)
-const existingIdx = context.sessions.findIndex(s => s.id === sessionId);
+const existingIdx = context.sessions.findIndex((s) => s.id === sessionId);
 
 const { summary, leftOff, nextSteps, decisions, blockers, goal } = input;
 
@@ -132,7 +145,7 @@ const session = {
   date: today(),
   summary: summary || 'Session saved',
   leftOff: leftOff || null,
-  nextSteps: Array.isArray(nextSteps) ? nextSteps : (nextSteps ? [nextSteps] : []),
+  nextSteps: Array.isArray(nextSteps) ? nextSteps : nextSteps ? [nextSteps] : [],
   decisions: Array.isArray(decisions) ? decisions : [],
   blockers: Array.isArray(blockers) ? blockers.filter(Boolean) : [],
   ...(gitActivity ? { gitActivity } : {}),
@@ -164,14 +177,12 @@ try {
 
   const memFile = resolve(memDir, `ck_${today()}_${sessionId.slice(0, 8)}.md`);
   const decisionsBlock = session.decisions.length
-    ? session.decisions.map(d => `- **${d.what}**: ${d.why || ''}`).join('\n')
+    ? session.decisions.map((d) => `- **${d.what}**: ${d.why || ''}`).join('\n')
     : '- None this session';
   const nextBlock = session.nextSteps.length
     ? session.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')
     : '- None recorded';
-  const blockersBlock = session.blockers.length
-    ? session.blockers.map(b => `- ${b}`).join('\n')
-    : '- None';
+  const blockersBlock = session.blockers.length ? session.blockers.map((b) => `- ${b}`).join('\n') : '- None';
 
   const memContent = [
     `---`,

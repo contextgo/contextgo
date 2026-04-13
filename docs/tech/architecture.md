@@ -3,7 +3,7 @@
 相关设计文档：
 
 - `docs/tech/space-model.md`：定义目标中的 Space、Replica、Mount 模型，以及 AFFiNE 吸收方式
-- `docs/tech/mobile-remote-control.md`：定义桌面宿主 + 手机远程控制端的长期产品模型
+- `docs/tech/mobile-remote-control.md`：定义 Host Runtime + Official Remote + 多端客户端的长期产品模型
 - `docs/tech/mobile-shell-readiness.md`：记录移动壳当前适配性和验证状态
 - `docs/tech/mobile-shell-cmd.md`：记录移动壳命令入口与构建命令路径
 
@@ -18,11 +18,11 @@ ContextGo 不是单纯的 AI 聊天窗口，也不是把本地目录直接包一
 - 用户的长期工作上下文分散在会话、目录、文件、浏览器、外部系统和不同设备里
 - Agent 的执行窗口通常是短期的，每次都像从零开始
 - 本地目录对执行很重要，但并不能代表完整的长期工作语义
-- 移动端、浏览器和远程入口需要接入同一套工作系统，但不能破坏桌面主机上的本地所有权
+- 移动端、浏览器和远程入口需要接入同一套工作系统，但不能破坏宿主运行时上的本地所有权
 
 因此，ContextGo 的长期方向不是“会话驱动的聊天产品”，而是一个：
 
-- desktop-first
+- host-runtime-first
 - local-first
 - multi-agent
 - long-lived context driven
@@ -32,7 +32,7 @@ ContextGo 不是单纯的 AI 聊天窗口，也不是把本地目录直接包一
 一句话定义：
 
 ```text
-ContextGo 是一个以本地为主权基础、以长期上下文为核心、由桌面主机驱动的多 Agent 工作系统。
+ContextGo 是一个以本地为主权基础、以长期上下文为核心、由 Host Runtime 驱动的多 Agent 工作系统。
 ```
 
 ### 当前可发版产品
@@ -40,16 +40,16 @@ ContextGo 是一个以本地为主权基础、以长期上下文为核心、由�
 当前最适合对外表达的产品定义是：
 
 ```text
-ContextGo 是一个 desktop-first 的 Agent Workbench。
+ContextGo 是一个 host-runtime-first 的 Agent Workbench。
 ```
 
 它当前已经清晰成立的部分包括：
 
-- 桌面端作为真实执行宿主
+- Host Runtime 作为真实执行宿主
 - session / conversation 驱动的 Agent 工作流
 - 本地工作目录与运行时工具接入
 - WebUI / browser 访问
-- Android / iOS / HarmonyOS 远程壳接入
+- Desktop / Android / iOS / HarmonyOS 远程壳接入
 - 持续演进中的 context engine 基础设施
 
 当前不应对外过度承诺的部分包括：
@@ -75,7 +75,7 @@ Space-first 的 local-first Agent Work System。
 - `Project` 是 Space 内的工作单元
 - `Session / Thread` 是具体执行视图
 - `Context Engine` 负责长期沉淀、检索、压缩和组装上下文
-- 桌面主机负责执行，移动端和浏览器作为远程使用面接入
+- Host Runtime 负责执行，桌面、移动端和浏览器作为远程使用面接入
 
 ## Core Object Model
 
@@ -201,7 +201,9 @@ local-first 的长期规则应保持：
 
 - `Agent Workbench`
 - `Desktop host`
-- `Remote mobile access`
+- `Host runtime`
+- `Official Remote`
+- `Remote client access`
 - `Session`
 - `Working directory`
 
@@ -221,7 +223,7 @@ local-first 的长期规则应保持：
 - `Project` 应作为 `Space` 下的工作单元补齐，而不是继续让 `workspace` 兼任产品对象
 - `workingDirectory` 继续承担执行层职责，不应反向定义长期产品对象
 - `Mount` 保留为内部模型与未来能力，不强制立刻产品化
-- 移动端继续作为桌面宿主的远程使用面，不改变主机边界
+- 移动端继续作为 Host Runtime 的远程使用面，不改变主机边界
 
 ## Multi-Process Model
 

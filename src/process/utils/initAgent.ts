@@ -13,13 +13,13 @@ import type {
   WorkflowGroupRunState,
 } from '@/common/config/storage';
 import type { PresetAgentType } from '@/common/types/acpTypes';
-import { findBuiltinAssistantPreset } from '@/common/config/presets/builtinAssistantDefaults';
+import { resolveBuiltinAssistantWorkspaceSkillNames } from '@/common/config/presets/builtinAssistantDefaults';
+import { resolveBundledAgentPackageSourceRelativeRoots } from '@/common/config/presets/bundledAgentPackageRegistry';
 import { getPlatformServices } from '@/common/platform';
 import { uuid } from '@/common/utils';
 import fs from 'fs/promises';
 import path from 'path';
 import { getAutoSkillsDir, getSkillsDir, getBuiltinSkillsCopyDir, getSystemDir } from './initStorage';
-import { computeOpenClawIdentityHash } from './openclawUtils';
 import { discoverSkillDirectories, resolveSkillDirectory } from './skillDiscovery';
 
 /**
@@ -36,36 +36,37 @@ const AGENT_SKILLS_DIRS: Record<string, string[]> = {
   // Verified native skill discovery support:
   gemini: ['.gemini/skills'],
   claude: ['.claude/skills'],
-  codebuddy: ['.codebuddy/skills'],
   codex: ['.codex/skills'],
-  qwen: ['.qwen/skills'],
-  iflow: ['.iflow/skills'],
-  goose: ['.goose/skills'],
-  droid: ['.factory/skills'],
-  kimi: ['.kimi/skills'],
-  vibe: ['.vibe/skills'],
-  cursor: ['.cursor/skills'],
-  // NOT supported (fallback to prompt injection):
-  // opencode, auggie, copilot, nanobot, qoder
+  opencode: ['.opencode/skills'],
+};
+
+const AGENT_INSTRUCTION_FILES: Partial<Record<string, string>> = {
+  claude: 'CLAUDE.md',
+  gemini: 'GEMINI.md',
 };
 
 const WORKSPACE_MANAGED_SKILLS_DIR = path.join('.contextgo', 'skills');
+const WORKSPACE_CONNECTOR_SKILLS_DIR = path.join('.connector', 'skills');
 
 const getWorkspaceManagedSkillsDir = (workspace: string): string => path.join(workspace, WORKSPACE_MANAGED_SKILLS_DIR);
+const getWorkspaceConnectorSkillsDir = (workspace: string): string =>
+  path.join(workspace, WORKSPACE_CONNECTOR_SKILLS_DIR);
 
 type RuntimeSkillsProjectionMode = 'shared-dir' | 'per-skill';
 
-const resolveBundledPresetResourceDir = (resourceDir: string): string => {
+const resolveBundledResourcePath = (resourcePath: string): string => {
   const platform = getPlatformServices().paths;
   const appPath = platform.getAppPath() || process.cwd();
   const resourcesPrefix = 'src/process/resources/';
 
   if (platform.isPackaged()) {
-    const prodPath = resourceDir.startsWith(resourcesPrefix) ? resourceDir.slice(resourcesPrefix.length) : resourceDir;
+    const prodPath = resourcePath.startsWith(resourcesPrefix)
+      ? resourcePath.slice(resourcesPrefix.length)
+      : resourcePath;
     return path.join(appPath, prodPath);
   }
 
-  return path.join(appPath, resourceDir);
+  return path.join(appPath, resourcePath);
 };
 
 const ensureRuntimeSkillsProjection = async (
@@ -216,22 +217,36 @@ export async function setupAssistantWorkspace(
     skillSources.set(entry.name, path.join(autoSkillsDir, entry.name));
   }
 
-  const preset = options.presetAssistantId ? findBuiltinAssistantPreset(options.presetAssistantId) : undefined;
-  const presetSkillsRoot =
-    preset?.resourceDir && options.backend === 'claude'
-      ? path.join(resolveBundledPresetResourceDir(preset.resourceDir), 'skills')
-      : undefined;
+  const manifestSkillRoots = options.presetAssistantId
+    ? resolveBundledAgentPackageSourceRelativeRoots(options.presetAssistantId, 'skills')
+    : [];
+  const presetSkillRoots = manifestSkillRoots;
 
-  if (presetSkillsRoot) {
+  for (const presetSkillRoot of presetSkillRoots) {
+    const absoluteRoot = resolveBundledResourcePath(presetSkillRoot);
     const presetSkills: Awaited<ReturnType<typeof discoverSkillDirectories>> = await discoverSkillDirectories(
-      presetSkillsRoot
+      absoluteRoot
     ).catch((): Awaited<ReturnType<typeof discoverSkillDirectories>> => []);
     for (const skill of presetSkills) {
       skillSources.set(skill.name, skill.dirPath);
     }
   }
 
-  for (const skillName of options.enabledSkills ?? []) {
+  const workspaceBootstrapSkillNames = options.presetAssistantId
+    ? resolveBuiltinAssistantWorkspaceSkillNames(options.presetAssistantId, options.enabledSkills)
+    : options.enabledSkills;
+
+  const workspaceConnectorSkillsRoot = getWorkspaceConnectorSkillsDir(workspace);
+  const workspaceConnectorSkills = await discoverSkillDirectories(workspaceConnectorSkillsRoot).catch(
+    (): Awaited<ReturnType<typeof discoverSkillDirectories>> => []
+  );
+  for (const skill of workspaceConnectorSkills) {
+    if (!skillSources.has(skill.name)) {
+      skillSources.set(skill.name, skill.dirPath);
+    }
+  }
+
+  for (const skillName of workspaceBootstrapSkillNames ?? []) {
     if (skillSources.has(skillName)) {
       continue;
     }
@@ -241,11 +256,44 @@ export async function setupAssistantWorkspace(
       excludeTopLevelNames: ['_builtin'],
     });
     const userCandidate = await resolveSkillDirectory(userSkillsDir, skillName);
-    skillSources.set(skillName, builtinCandidate?.dirPath || userCandidate?.dirPath || path.join(userSkillsDir, skillName));
+    skillSources.set(
+      skillName,
+      builtinCandidate?.dirPath || userCandidate?.dirPath || path.join(userSkillsDir, skillName)
+    );
   }
 
   for (const [skillName, sourceSkillDir] of skillSources) {
     await ensureWorkspaceSkill(workspace, skillName, sourceSkillDir, managedSkillsDir, skillsDirs, projectionModes);
+  }
+
+  // Runtime instruction projections:
+  // - AGENTS.md is the canonical project entry file (ContextGo-owned).
+  // - CLAUDE.md / GEMINI.md are runtime-native convention files and must remain derived.
+  // We only project when AGENTS.md exists to avoid clobbering legacy workspaces that
+  // haven't adopted the canonical entry point yet.
+  const instructionFile = AGENT_INSTRUCTION_FILES[key];
+  if (instructionFile) {
+    const agentsPath = path.join(workspace, 'AGENTS.md');
+    try {
+      const agentsContent = await fs.readFile(agentsPath, 'utf-8');
+      const targetPath = path.join(workspace, instructionFile);
+
+      const header =
+        `<!--\n` +
+        `  Generated by ContextGo.\n` +
+        `  Source of truth: AGENTS.md\n` +
+        `  Do not edit this file directly.\n` +
+        `-->\n\n`;
+
+      // Always overwrite: this is a projection, not an editable source.
+      await fs.writeFile(targetPath, header + agentsContent, 'utf-8');
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException | undefined)?.code;
+      // Missing AGENTS.md is expected for some workspaces; skip projection quietly.
+      if (code !== 'ENOENT') {
+        console.warn('[setupAssistantWorkspace] Failed to project AGENTS.md instruction file:', error);
+      }
+    }
   }
 }
 
@@ -290,20 +338,6 @@ export async function ensureConversationWorkspaceBootstrap(conversation: TChatCo
     case 'codex':
       await setupAssistantWorkspace(workspace, {
         agentType: 'codex',
-        enabledSkills: extra?.enabledSkills,
-        presetAssistantId: extra?.presetAssistantId,
-      });
-      return;
-    case 'nanobot':
-      await setupAssistantWorkspace(workspace, {
-        agentType: 'nanobot',
-        enabledSkills: extra?.enabledSkills,
-        presetAssistantId: extra?.presetAssistantId,
-      });
-      return;
-    case 'openclaw-gateway':
-      await setupAssistantWorkspace(workspace, {
-        backend: extra?.backend,
         enabledSkills: extra?.enabledSkills,
         presetAssistantId: extra?.presetAssistantId,
       });
@@ -528,6 +562,10 @@ export const createAcpAgent = async (options: ICreateConversationParams): Promis
       acpSessionId: typeof extra.acpSessionId === 'string' ? extra.acpSessionId : undefined,
       acpSessionUpdatedAt: typeof extra.acpSessionUpdatedAt === 'number' ? extra.acpSessionUpdatedAt : undefined,
       externalSessionImported: extra.externalSessionImported === true,
+      externalWorkspaceInspection:
+        extra.externalWorkspaceInspection && typeof extra.externalWorkspaceInspection === 'object'
+          ? extra.externalWorkspaceInspection
+          : undefined,
       deferInitialWorkspaceLoad: extra.deferInitialWorkspaceLoad === true,
       // Explicit marker for temporary health-check conversations
       isHealthCheck: extra.isHealthCheck,
@@ -580,99 +618,6 @@ export const createCodexAgent = async (options: ICreateConversationParams): Prom
       // Explicit marker for temporary health-check conversations
       isHealthCheck: extra.isHealthCheck,
     }) as Extract<TChatConversation, { type: 'codex' }>['extra'],
-    createTime: Date.now(),
-    modifyTime: Date.now(),
-    name: workspace,
-    id: uuid(),
-  };
-};
-
-export const createNanobotAgent = async (options: ICreateConversationParams): Promise<TChatConversation> => {
-  const { extra } = options;
-  const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
-    `nanobot-temp-${Date.now()}`,
-    resolveRequestedWorkingDirectory(extra.workingDirectory, extra.workspace),
-    extra.defaultFiles,
-    extra.customWorkspace
-  );
-
-  const shouldSetupNativeWorkspace = !customWorkspace || extra.nativeWorkspaceBootstrap === true;
-
-  // 对 temp workspace 或显式允许 bootstrap 的用户 workspace 设置原生 skills 目录
-  if (shouldSetupNativeWorkspace) {
-    await setupAssistantWorkspace(workspace, {
-      agentType: 'nanobot',
-      enabledSkills: extra.enabledSkills,
-      presetAssistantId: extra.presetAssistantId,
-    });
-  }
-
-  return {
-    type: 'nanobot',
-    extra: mergeResolvedConversationExtra(extra as Record<string, unknown>, workspace, customWorkspace, {
-      enabledSkills: extra.enabledSkills,
-      enabledHooks: extra.enabledHooks,
-      presetAssistantId: extra.presetAssistantId,
-      nativeWorkspaceBootstrap: extra.nativeWorkspaceBootstrap === true,
-    }) as Extract<TChatConversation, { type: 'nanobot' }>['extra'],
-    createTime: Date.now(),
-    modifyTime: Date.now(),
-    name: workspace,
-    id: uuid(),
-  };
-};
-
-export const createOpenClawAgent = async (options: ICreateConversationParams): Promise<TChatConversation> => {
-  const { extra } = options;
-  const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
-    `openclaw-temp-${Date.now()}`,
-    resolveRequestedWorkingDirectory(extra.workingDirectory, extra.workspace),
-    extra.defaultFiles,
-    extra.customWorkspace
-  );
-
-  const shouldSetupNativeWorkspace = !customWorkspace || extra.nativeWorkspaceBootstrap === true;
-
-  // 对 temp workspace 或显式允许 bootstrap 的用户 workspace 设置原生 skills 目录
-  if (shouldSetupNativeWorkspace) {
-    await setupAssistantWorkspace(workspace, {
-      enabledSkills: extra.enabledSkills,
-      presetAssistantId: extra.presetAssistantId,
-    });
-  }
-
-  const expectedIdentityHash = await computeOpenClawIdentityHash(workspace);
-  return {
-    type: 'openclaw-gateway',
-    extra: mergeResolvedConversationExtra(extra as Record<string, unknown>, workspace, customWorkspace, {
-      backend: extra.backend,
-      agentName: extra.agentName,
-      openclawAgentId: extra.openclawAgentId,
-      gateway: {
-        cliPath: extra.cliPath,
-      },
-      runtimeValidation: {
-        expectedSpaceId: extra.runtimeValidation?.expectedSpaceId ?? extra.spaceId,
-        expectedMountId: extra.runtimeValidation?.expectedMountId ?? extra.mountId,
-        expectedWorkingDirectory: workspace,
-        expectedWorkspace: workspace,
-        expectedBackend: extra.backend,
-        expectedAgentName: extra.agentName,
-        expectedOpenClawAgentId: extra.openclawAgentId,
-        expectedCliPath: extra.cliPath,
-        expectedModel: extra.runtimeValidation?.expectedModel,
-        expectedIdentityHash,
-        switchedAt: extra.runtimeValidation?.switchedAt ?? Date.now(),
-      },
-      sessionKey: typeof extra.sessionKey === 'string' ? extra.sessionKey : undefined,
-      // Enabled skills list (loaded via SkillManager)
-      enabledSkills: extra.enabledSkills,
-      // Enabled hooks list (reserved for future HookRuntime / native projection)
-      enabledHooks: extra.enabledHooks,
-      // Preset assistant ID for displaying name and avatar in conversation panel
-      presetAssistantId: extra.presetAssistantId,
-      nativeWorkspaceBootstrap: extra.nativeWorkspaceBootstrap === true,
-    }) as Extract<TChatConversation, { type: 'openclaw-gateway' }>['extra'],
     createTime: Date.now(),
     modifyTime: Date.now(),
     name: workspace,

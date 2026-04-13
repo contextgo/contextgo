@@ -1,6 +1,6 @@
 ---
 name: click-path-audit
-description: "Trace every user-facing button/touchpoint through its full state change sequence to find bugs where functions individually work but cancel each other out, produce wrong final state, or leave the UI in an inconsistent state. Use when: systematic debugging found no bugs but users report broken buttons, or after any major refactor touching shared state stores."
+description: 'Trace every user-facing button/touchpoint through its full state change sequence to find bugs where functions individually work but cancel each other out, produce wrong final state, or leave the UI in an inconsistent state. Use when: systematic debugging found no bugs but users report broken buttons, or after any major refactor touching shared state stores.'
 origin: community
 ---
 
@@ -11,11 +11,13 @@ Find bugs that static code reading misses: state interaction side effects, race 
 ## The Problem This Solves
 
 Traditional debugging checks:
+
 - Does the function exist? (missing wiring)
 - Does it crash? (runtime errors)
 - Does it return the right type? (data flow)
 
 But it does NOT check:
+
 - **Does the final UI state match what the button label promises?**
 - **Does function B silently undo what function A just did?**
 - **Does shared state (Zustand/Redux/context) have side effects that cancel the intended action?**
@@ -60,6 +62,7 @@ For each Zustand store / React context in scope:
 This is the critical reference. The "New Email" bug was invisible without knowing that `selectThread` resets `composeMode`.
 
 **Output format:**
+
 ```
 STORE: emailStore
   setComposeMode(bool) → sets: {composeMode}
@@ -90,6 +93,7 @@ TOUCHPOINT: [Button label] in [Component:line]
 **Check each of these bug patterns:**
 
 #### Pattern 1: Sequential Undo
+
 ```
 handler() {
   setState_A(true)     // sets X = true
@@ -99,6 +103,7 @@ handler() {
 ```
 
 #### Pattern 2: Async Race
+
 ```
 handler() {
   fetchA().then(() => setState({ loading: false }))
@@ -108,6 +113,7 @@ handler() {
 ```
 
 #### Pattern 3: Stale Closure
+
 ```
 const [count, setCount] = useState(0)
 const handler = useCallback(() => {
@@ -117,6 +123,7 @@ const handler = useCallback(() => {
 ```
 
 #### Pattern 4: Missing State Transition
+
 ```
 // Button says "Save" but handler only validates, never actually saves
 // Button says "Delete" but handler sets a flag without calling the API
@@ -124,6 +131,7 @@ const handler = useCallback(() => {
 ```
 
 #### Pattern 5: Conditional Dead Path
+
 ```
 handler() {
   if (someState) {        // someState is ALWAYS false at this point
@@ -133,6 +141,7 @@ handler() {
 ```
 
 #### Pattern 6: useEffect Interference
+
 ```
 // Button sets stateX = true
 // A useEffect watches stateX and resets it to false
@@ -210,6 +219,7 @@ Agent 1 MUST complete first. Its output is input for all other agents.
 ## Example: The Bug That Inspired This Skill
 
 **ThreadList.tsx "New Email" button:**
+
 ```
 onClick={() => {
   useEmailStore.getState().setComposeMode(true)   // ✓ sets composeMode = true
@@ -218,6 +228,7 @@ onClick={() => {
 ```
 
 Store definition:
+
 ```
 selectThread: (thread) => set({
   selectedThread: thread,
@@ -233,12 +244,14 @@ selectThread: (thread) => set({
 ```
 
 **Systematic debugging missed it** because:
+
 - The button has an onClick handler (not dead)
 - Both functions exist (no missing wiring)
 - Neither function crashes (no runtime error)
 - The data types are correct (no type mismatch)
 
 **Click-path audit catches it** because:
+
 - Step 1 maps `selectThread` resets `composeMode`
 - Step 2 traces the handler: call 1 sets true, call 2 resets false
 - Verdict: Sequential Undo — final state contradicts button intent

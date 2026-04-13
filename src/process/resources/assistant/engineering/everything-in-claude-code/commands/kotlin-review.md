@@ -18,6 +18,7 @@ This command invokes the **kotlin-reviewer** agent for comprehensive Kotlin-spec
 ## When to Use
 
 Use `/kotlin-review` when:
+
 - After writing or modifying Kotlin code
 - Before committing Kotlin changes
 - Reviewing pull requests with Kotlin code
@@ -27,6 +28,7 @@ Use `/kotlin-review` when:
 ## Review Categories
 
 ### CRITICAL (Must Fix)
+
 - SQL/Command injection vulnerabilities
 - Force-unwrap `!!` without justification
 - Platform type null safety violations
@@ -35,6 +37,7 @@ Use `/kotlin-review` when:
 - Unsafe deserialization
 
 ### HIGH (Should Fix)
+
 - Mutable state where immutable suffices
 - Blocking calls inside coroutine context
 - Missing cancellation checks in long loops
@@ -43,6 +46,7 @@ Use `/kotlin-review` when:
 - Deep nesting (>4 levels)
 
 ### MEDIUM (Consider)
+
 - Non-idiomatic Kotlin (Java-style patterns)
 - Missing trailing commas
 - Scope function misuse or nesting
@@ -121,11 +125,11 @@ Recommendation: FAIL: Block merge until CRITICAL issue is fixed
 
 ## Approval Criteria
 
-| Status | Condition |
-|--------|-----------|
-| PASS: Approve | No CRITICAL or HIGH issues |
+| Status           | Condition                               |
+| ---------------- | --------------------------------------- |
+| PASS: Approve    | No CRITICAL or HIGH issues              |
 | WARNING: Warning | Only MEDIUM issues (merge with caution) |
-| FAIL: Block | CRITICAL or HIGH issues found |
+| FAIL: Block      | CRITICAL or HIGH issues found           |
 
 ## Integration with Other Commands
 

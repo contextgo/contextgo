@@ -112,7 +112,7 @@ const MessageTips: React.FC<{ message: IMessageTips }> = ({ message }) => {
         <div className={classNames('bg-message-tips rd-8px p-x-12px p-y-8px flex items-start gap-4px')}>
           {icon[type] || icon.warning}
           <div className='flex-1'>
-            <MarkdownView>{`\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``}</MarkdownView>
+            <MarkdownView codeVariant='result-card'>{`\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``}</MarkdownView>
             {renderActions()}
           </div>
         </div>

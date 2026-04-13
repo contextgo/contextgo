@@ -28,7 +28,7 @@ function formatRate(value) {
 
 function summarizeHealthReport(report) {
   const totalSkills = report.skills.length;
-  const decliningSkills = report.skills.filter(skill => skill.declining).length;
+  const decliningSkills = report.skills.filter((skill) => skill.declining).length;
   const healthySkills = totalSkills - decliningSkills;
 
   return {
@@ -43,27 +43,28 @@ function listSkillsInRoot(rootPath) {
     return [];
   }
 
-  return fs.readdirSync(rootPath, { withFileTypes: true })
-    .filter(entry => entry.isDirectory())
-    .map(entry => ({
+  return fs
+    .readdirSync(rootPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => ({
       skill_id: entry.name,
       skill_dir: path.join(rootPath, entry.name),
     }))
-    .filter(entry => fs.existsSync(path.join(entry.skill_dir, 'SKILL.md')));
+    .filter((entry) => fs.existsSync(path.join(entry.skill_dir, 'SKILL.md')));
 }
 
 function discoverSkills(options = {}) {
   const roots = provenance.getSkillRoots(options);
   const discoveredSkills = [
-    ...listSkillsInRoot(options.skillsRoot || roots.curated).map(skill => ({
+    ...listSkillsInRoot(options.skillsRoot || roots.curated).map((skill) => ({
       ...skill,
       skill_type: provenance.SKILL_TYPES.CURATED,
     })),
-    ...listSkillsInRoot(options.learnedRoot || roots.learned).map(skill => ({
+    ...listSkillsInRoot(options.learnedRoot || roots.learned).map((skill) => ({
       ...skill,
       skill_type: provenance.SKILL_TYPES.LEARNED,
     })),
-    ...listSkillsInRoot(options.importedRoot || roots.imported).map(skill => ({
+    ...listSkillsInRoot(options.importedRoot || roots.imported).map((skill) => ({
       ...skill,
       skill_type: provenance.SKILL_TYPES.IMPORTED,
     })),
@@ -82,13 +83,13 @@ function calculateSuccessRate(records) {
     return null;
   }
 
-  const successfulRecords = records.filter(record => record.outcome === 'success').length;
+  const successfulRecords = records.filter((record) => record.outcome === 'success').length;
   return roundRate(successfulRecords / records.length);
 }
 
 function filterRecordsWithinDays(records, nowMs, days) {
-  const cutoff = nowMs - (days * DAY_IN_MS);
-  return records.filter(record => {
+  const cutoff = nowMs - days * DAY_IN_MS;
+  return records.filter((record) => {
     const recordedAtMs = Date.parse(record.recorded_at);
     return !Number.isNaN(recordedAtMs) && recordedAtMs >= cutoff && recordedAtMs <= nowMs;
   });
@@ -100,7 +101,7 @@ function getFailureTrend(successRate7d, successRate30d, warnThreshold) {
   }
 
   const delta = roundRate(successRate7d - successRate30d);
-  if (delta <= (-1 * warnThreshold)) {
+  if (delta <= -1 * warnThreshold) {
     return 'worsening';
   }
 
@@ -116,15 +117,13 @@ function countPendingAmendments(skillDir) {
     return 0;
   }
 
-  return versioning.getEvolutionLog(skillDir, 'amendments')
-    .filter(entry => {
-      if (typeof entry.status === 'string') {
-        return PENDING_AMENDMENT_STATUSES.has(entry.status);
-      }
+  return versioning.getEvolutionLog(skillDir, 'amendments').filter((entry) => {
+    if (typeof entry.status === 'string') {
+      return PENDING_AMENDMENT_STATUSES.has(entry.status);
+    }
 
-      return entry.event === 'proposal';
-    })
-    .length;
+    return entry.event === 'proposal';
+  }).length;
 }
 
 function getLastRun(records) {
@@ -132,14 +131,16 @@ function getLastRun(records) {
     return null;
   }
 
-  return records
-    .map(record => ({
-      timestamp: record.recorded_at,
-      timeMs: Date.parse(record.recorded_at),
-    }))
-    .filter(entry => !Number.isNaN(entry.timeMs))
-    .sort((left, right) => left.timeMs - right.timeMs)
-    .at(-1)?.timestamp || null;
+  return (
+    records
+      .map((record) => ({
+        timestamp: record.recorded_at,
+        timeMs: Date.parse(record.recorded_at),
+      }))
+      .filter((entry) => !Number.isNaN(entry.timeMs))
+      .sort((left, right) => left.timeMs - right.timeMs)
+      .at(-1)?.timestamp || null
+  );
 }
 
 function collectSkillHealth(options = {}) {
@@ -149,9 +150,8 @@ function collectSkillHealth(options = {}) {
     throw new Error(`Invalid now timestamp: ${now}`);
   }
 
-  const warnThreshold = typeof options.warnThreshold === 'number'
-    ? options.warnThreshold
-    : Number(options.warnThreshold || 0.1);
+  const warnThreshold =
+    typeof options.warnThreshold === 'number' ? options.warnThreshold : Number(options.warnThreshold || 0.1);
   if (!Number.isFinite(warnThreshold) || warnThreshold < 0) {
     throw new Error(`Invalid warn threshold: ${options.warnThreshold}`);
   }
@@ -179,7 +179,7 @@ function collectSkillHealth(options = {}) {
 
   const skills = Array.from(skillsById.values())
     .sort((left, right) => left.skill_id.localeCompare(right.skill_id))
-    .map(skill => {
+    .map((skill) => {
       const skillRecords = recordsBySkill.get(skill.skill_id) || [];
       const records7d = filterRecordsWithinDays(skillRecords, nowMs, 7);
       const records30d = filterRecordsWithinDays(skillRecords, nowMs, 30);
@@ -218,13 +218,9 @@ function formatHealthReport(report, options = {}) {
   const summary = summarizeHealthReport(report);
 
   if (!report.skills.length) {
-    return [
-      'ECC skill health',
-      `Generated: ${report.generated_at}`,
-      '',
-      'No skill execution records found.',
-      '',
-    ].join('\n');
+    return ['ECC skill health', `Generated: ${report.generated_at}`, '', 'No skill execution records found.', ''].join(
+      '\n'
+    );
   }
 
   const lines = [
@@ -238,15 +234,17 @@ function formatHealthReport(report, options = {}) {
 
   for (const skill of report.skills) {
     const statusLabel = skill.declining ? '!' : ' ';
-    lines.push([
-      `${statusLabel}${skill.skill_id}`.padEnd(16),
-      String(skill.current_version || '-').padEnd(9),
-      formatRate(skill.success_rate_7d).padEnd(6),
-      formatRate(skill.success_rate_30d).padEnd(6),
-      skill.failure_trend.padEnd(11),
-      String(skill.pending_amendments).padEnd(9),
-      skill.last_run || '-',
-    ].join(' '));
+    lines.push(
+      [
+        `${statusLabel}${skill.skill_id}`.padEnd(16),
+        String(skill.current_version || '-').padEnd(9),
+        formatRate(skill.success_rate_7d).padEnd(6),
+        formatRate(skill.success_rate_30d).padEnd(6),
+        skill.failure_trend.padEnd(11),
+        String(skill.pending_amendments).padEnd(9),
+        skill.last_run || '-',
+      ].join(' ')
+    );
   }
 
   return `${lines.join('\n')}\n`;

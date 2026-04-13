@@ -14,7 +14,15 @@ import { hostname } from 'node:os';
 import { ipcBridge } from '@/common';
 import { INFERMESH_LOGIN_URL } from '@/common/config/constants';
 import { buildCloudDesktopOAuthStartUrl } from '@/common/utils/cloudAuth';
-import type { CloudAuthProviderId, CloudDevice, CloudStatus, CloudUser } from '@/common/types/cloud';
+import type {
+  CloudAuthProviderId,
+  CloudDevice,
+  CloudRemoteDevice,
+  CloudRemoteDeviceSelection,
+  CloudRemoteDevicesPayload,
+  CloudStatus,
+  CloudUser,
+} from '@/common/types/cloud';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { onDeepLinkReceived } from '@process/utils/deepLink';
 import type { DeepLinkPayload } from '@process/utils/deepLink';
@@ -50,6 +58,12 @@ type InfermeshHandoffPayload = {
   url?: string;
 };
 
+type RemoteDevicesResponsePayload = {
+  success?: boolean;
+  devices?: CloudRemoteDevice[];
+  selection?: CloudRemoteDeviceSelection;
+};
+
 type DesktopLoginResultWaiter = {
   promise: Promise<DeepLinkPayload>;
   cancel: () => void;
@@ -58,6 +72,100 @@ type DesktopLoginResultWaiter = {
 type DesktopLoopbackLoginResultWaiter = DesktopLoginResultWaiter & {
   callbackUrl: string;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function readOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeRemoteDeviceStatus(value: unknown): CloudRemoteDevice['remoteStatus'] {
+  const raw = isRecord(value) ? value : {};
+
+  return {
+    connected: raw.connected === true,
+    connectedAt: readOptionalString(raw.connectedAt),
+    clientConnected: raw.clientConnected === true,
+    clientConnectedAt: readOptionalString(raw.clientConnectedAt),
+    transport: readOptionalString(raw.transport),
+    browserEntryUrl: readOptionalString(raw.browserEntryUrl),
+    browserEntryReady: raw.browserEntryReady === true,
+    browserEntryReason: readOptionalString(raw.browserEntryReason),
+  };
+}
+
+function normalizeRemoteDevice(value: unknown): CloudRemoteDevice | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = readOptionalString(value.id);
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    userId: readOptionalString(value.userId) ?? '',
+    deviceName: readOptionalString(value.deviceName) ?? id,
+    platform: readOptionalString(value.platform) ?? 'unknown',
+    deviceKind: readOptionalString(value.deviceKind) ?? undefined,
+    status: readOptionalString(value.status) ?? 'unknown',
+    createdAt: readOptionalString(value.createdAt) ?? '',
+    updatedAt: readOptionalString(value.updatedAt) ?? '',
+    lastSeenAt: readOptionalString(value.lastSeenAt),
+    lastIpAddress: readOptionalString(value.lastIpAddress),
+    lastUserAgent: readOptionalString(value.lastUserAgent),
+    remoteStatus: normalizeRemoteDeviceStatus(value.remoteStatus),
+  };
+}
+
+function isOpenableRemoteDevice(device: CloudRemoteDevice): boolean {
+  return device.remoteStatus.connected === true && device.remoteStatus.browserEntryReady === true;
+}
+
+function normalizeRemoteDeviceSelection(value: unknown, devices: CloudRemoteDevice[]): CloudRemoteDeviceSelection {
+  const raw = isRecord(value) ? value : {};
+  const openableDevices = devices.filter(isOpenableRemoteDevice);
+  const fallbackPreferredDeviceId = openableDevices.length === 1 ? (openableDevices[0]?.id ?? null) : null;
+  const fallbackPreferredSource = fallbackPreferredDeviceId ? 'single_available' : null;
+  const forcePicker = raw.forcePicker === true;
+  const fallbackAutoOpenDeviceId = forcePicker ? null : fallbackPreferredDeviceId;
+  const fallbackAutoOpenReason = fallbackAutoOpenDeviceId ? fallbackPreferredSource : null;
+  const openableDeviceCount =
+    typeof raw.openableDeviceCount === 'number' ? raw.openableDeviceCount : openableDevices.length;
+
+  return {
+    preferredDeviceId: readOptionalString(raw.preferredDeviceId) ?? fallbackPreferredDeviceId,
+    preferredSource: readOptionalString(raw.preferredSource) ?? fallbackPreferredSource,
+    autoOpenDeviceId: readOptionalString(raw.autoOpenDeviceId) ?? fallbackAutoOpenDeviceId,
+    autoOpenReason: readOptionalString(raw.autoOpenReason) ?? fallbackAutoOpenReason,
+    openableDeviceCount,
+    forcePicker,
+  };
+}
+
+function normalizeRemoteDevicesPayload(payload: unknown): CloudRemoteDevicesPayload | null {
+  if (!isRecord(payload) || payload.success !== true || !Array.isArray(payload.devices)) {
+    return null;
+  }
+
+  const devices = payload.devices
+    .map((device) => normalizeRemoteDevice(device))
+    .filter((device): device is CloudRemoteDevice => device !== null);
+
+  return {
+    devices,
+    selection: normalizeRemoteDeviceSelection(payload.selection, devices),
+  };
+}
 
 class CloudRequestError extends Error {
   constructor(
@@ -225,7 +333,7 @@ export class CloudService {
   private autoEnsureOfficialRemoteInFlight = false;
   private autoEnsureOfficialRemoteQueued = false;
   private officialRemoteEnsureInFlight = false;
-  private lastMissingBindingAutoEnsureAt = 0;
+  private lastOfficialRemoteAutoEnsureAt = 0;
   private readonly officialRemoteTunnelService = getOfficialRemoteTunnelService();
 
   private constructor() {}
@@ -369,6 +477,39 @@ export class CloudService {
     } finally {
       this.officialRemoteEnsureInFlight = false;
     }
+  }
+
+  public async listRemoteDevices(): Promise<CloudRemoteDevicesPayload> {
+    const authSession = await this.getAuthSession();
+    const candidateBaseUrls = Array.from(new Set([CLOUD_API_BASE_URL, CLOUD_AUTH_BASE_URL]));
+    let lastError: Error | null = null;
+
+    for (const baseUrl of candidateBaseUrls) {
+      try {
+        const response = await authSession.fetch(`${baseUrl}/api/remote/devices`, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw await readErrorResponse(response);
+        }
+
+        const rawPayload = await parseJsonResponse<RemoteDevicesResponsePayload | Record<string, unknown>>(response);
+        const normalizedPayload = normalizeRemoteDevicesPayload(rawPayload);
+        if (normalizedPayload) {
+          return normalizedPayload;
+        }
+
+        lastError = new Error(`Remote device list returned an invalid payload from ${baseUrl}`);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+      }
+    }
+
+    throw lastError ?? new Error('Remote device list is unavailable');
   }
 
   public async openInfermesh(): Promise<CloudStatus> {
@@ -863,7 +1004,12 @@ export class CloudService {
   }
 
   private shouldAutoEnsureOfficialRemote(status: CloudStatus): boolean {
-    return Boolean(status.authenticated && !status.browserSessionExpired && !status.officialRemoteReady && !status.officialRemote?.needsAttention);
+    return Boolean(
+      status.authenticated &&
+      !status.browserSessionExpired &&
+      !status.officialRemoteReady &&
+      !status.officialRemote?.needsAttention
+    );
   }
 
   private maybeAutoRecoverSignedInDesktopBinding(status: CloudStatus): void {
@@ -871,20 +1017,20 @@ export class CloudService {
       return;
     }
 
-    if (this.autoEnsureOfficialRemoteInFlight || status.deviceTokenAvailable || !status.authenticated) {
+    if (this.autoEnsureOfficialRemoteInFlight || !status.authenticated) {
       return;
     }
 
-    if (status.officialRemote?.needsAttention) {
+    if (!this.shouldAutoEnsureOfficialRemote(status)) {
       return;
     }
 
     const now = Date.now();
-    if (now - this.lastMissingBindingAutoEnsureAt < 10_000) {
+    if (now - this.lastOfficialRemoteAutoEnsureAt < 10_000) {
       return;
     }
 
-    this.lastMissingBindingAutoEnsureAt = now;
+    this.lastOfficialRemoteAutoEnsureAt = now;
     this.queueAutoEnsureOfficialRemoteReady('status-refresh', status);
   }
 

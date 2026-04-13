@@ -66,7 +66,7 @@ const MessageToolCall: React.FC<{ message: IMessageToolCall }> = ({ message }) =
   }
   if (message.content.name === 'run_shell_command') {
     const shellSnippet = `\`\`\`shell\n${message.content.args.command}\n#${message.content.args.description}`;
-    return <MarkdownView>{shellSnippet}</MarkdownView>;
+    return <MarkdownView codeVariant='result-card'>{shellSnippet}</MarkdownView>;
   }
   if (message.content.name === 'replace') {
     return <ReplacePreview message={message} />;

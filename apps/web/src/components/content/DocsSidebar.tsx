@@ -68,9 +68,7 @@ export default function DocsSidebar({
         </nav>
 
         <div className='theme-border mt-6 border-t pt-4'>
-          <div className='theme-text-tertiary text-[11px] font-semibold uppercase tracking-[0.22em]'>
-            {sourceLabel}
-          </div>
+          <div className='theme-text-tertiary text-[11px] font-semibold uppercase tracking-[0.22em]'>{sourceLabel}</div>
           <div className='theme-text-primary mt-2 text-sm font-medium'>{sourceValue}</div>
           <div className='theme-text-secondary mt-1 text-sm'>
             {versionLabel}: v{version}

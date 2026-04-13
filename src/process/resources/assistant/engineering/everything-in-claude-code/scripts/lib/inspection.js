@@ -14,18 +14,20 @@ function normalizeFailureReason(reason) {
     return 'unknown';
   }
 
-  return reason
-    .trim()
-    .toLowerCase()
-    // Strip ISO timestamps (note: already lowercased, so t/z not T/Z)
-    .replace(/\d{4}-\d{2}-\d{2}[t ]\d{2}:\d{2}:\d{2}[.\dz]*/g, '<timestamp>')
-    // Strip UUIDs (already lowercased)
-    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<uuid>')
-    // Strip file paths
-    .replace(/\/[\w./-]+/g, '<path>')
-    // Collapse whitespace
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    reason
+      .trim()
+      .toLowerCase()
+      // Strip ISO timestamps (note: already lowercased, so t/z not T/Z)
+      .replace(/\d{4}-\d{2}-\d{2}[t ]\d{2}:\d{2}:\d{2}[.\dz]*/g, '<timestamp>')
+      // Strip UUIDs (already lowercased)
+      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<uuid>')
+      // Strip file paths
+      .replace(/\/[\w./-]+/g, '<path>')
+      // Collapse whitespace
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 /**
@@ -78,17 +80,15 @@ function detectPatterns(skillRuns, options = {}) {
       continue;
     }
 
-    const sortedRuns = [...group.runs].sort(
-      (a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')
-    );
+    const sortedRuns = [...group.runs].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
     const firstSeen = sortedRuns[sortedRuns.length - 1].createdAt || null;
     const lastSeen = sortedRuns[0].createdAt || null;
-    const sessionIds = [...new Set(sortedRuns.map(r => r.sessionId).filter(Boolean))];
-    const versions = [...new Set(sortedRuns.map(r => r.skillVersion).filter(Boolean))];
+    const sessionIds = [...new Set(sortedRuns.map((r) => r.sessionId).filter(Boolean))];
+    const versions = [...new Set(sortedRuns.map((r) => r.skillVersion).filter(Boolean))];
 
     // Collect unique raw failure reasons for this normalized group
-    const rawReasons = [...new Set(sortedRuns.map(r => r.failureReason).filter(Boolean))];
+    const rawReasons = [...new Set(sortedRuns.map((r) => r.failureReason).filter(Boolean))];
 
     patterns.push({
       skillId: group.skillId,
@@ -99,7 +99,7 @@ function detectPatterns(skillRuns, options = {}) {
       sessionIds,
       versions,
       rawReasons,
-      runIds: sortedRuns.map(r => r.id),
+      runIds: sortedRuns.map((r) => r.id),
     });
   }
 
@@ -132,7 +132,7 @@ function generateReport(patterns, options = {}) {
   }
 
   const totalFailures = patterns.reduce((sum, p) => sum + p.count, 0);
-  const affectedSkills = [...new Set(patterns.map(p => p.skillId))];
+  const affectedSkills = [...new Set(patterns.map((p) => p.skillId))];
 
   return {
     generatedAt,
@@ -140,7 +140,7 @@ function generateReport(patterns, options = {}) {
     patternCount: patterns.length,
     totalFailures,
     affectedSkills,
-    patterns: patterns.map(p => ({
+    patterns: patterns.map((p) => ({
       skillId: p.skillId,
       normalizedReason: p.normalizedReason,
       count: p.count,

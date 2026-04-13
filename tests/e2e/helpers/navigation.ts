@@ -15,7 +15,7 @@ export const ROUTES = {
     gemini: '#/settings/gemini',
     model: '#/settings/model',
     agent: '#/settings/agent',
-    webui: '#/settings/webui',
+    channels: '#/settings/channels',
     system: '#/settings/system',
     about: '#/settings/about',
   },
@@ -112,7 +112,7 @@ export async function goToExtensionSettings(page: Page, tabId: string): Promise<
 let _onChannelsTab = false;
 
 /**
- * Navigate to the channels tab inside the webui settings page.
+ * Navigate directly to the channels settings page.
  * Extracted from individual test files to eliminate duplication.
  * Uses a session-level flag to skip re-navigation when already on the tab.
  */
@@ -122,16 +122,16 @@ export async function goToChannelsTab(page: Page): Promise<void> {
     .first();
 
   // Quick check: if we're already on the channels tab, verify a channel item is still visible
-  if (_onChannelsTab && isAlreadyAt(page, ROUTES.settings.webui)) {
+  if (_onChannelsTab && isAlreadyAt(page, ROUTES.settings.channels)) {
     const stillVisible = await channelItem.isVisible().catch(() => false);
     if (stillVisible) return;
   }
 
-  await goToSettings(page, 'webui');
+  await goToSettings(page, 'channels');
 
   // Ensure route transition is actually complete before locating inner tabs
   await page
-    .waitForFunction(() => window.location.hash.startsWith('#/settings/webui'), { timeout: 12_000 })
+    .waitForFunction(() => window.location.hash.startsWith('#/settings/channels'), { timeout: 12_000 })
     .catch(() => undefined);
 
   const stableTab = page.locator(webuiTabByKey('channels')).first();
@@ -160,7 +160,7 @@ export async function goToChannelsTab(page: Page): Promise<void> {
     }
 
     // Retry once in case of slow Settings lazy-load in packaged CI runs
-    await goToSettings(page, 'webui');
+    await goToSettings(page, 'channels');
     await waitForSettle(page, 2_000);
   }
 

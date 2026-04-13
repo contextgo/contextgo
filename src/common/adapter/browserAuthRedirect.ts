@@ -4,9 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { STORAGE_KEYS } from '@/common/config/storageKeys';
+
 const CONTEXTGO_ROOT_HOST = 'contextgo.io';
 const CONTEXTGO_HOST_SUFFIX = `.${CONTEXTGO_ROOT_HOST}`;
 const OFFICIAL_REMOTE_DEVICE_LIST_PATH = '/remote/devices';
+const DEFAULT_HOSTED_DEVICE_HASH_ROUTE = '/guid';
 
 export type HostedRemoteDisconnectNotice =
   | 'device_not_found'
@@ -23,6 +26,91 @@ export function extractRemoteDeviceId(currentHref: string): string | null {
   const currentUrl = new URL(currentHref);
   const match = currentUrl.pathname.match(/^\/device\/([^/]+)\/?$/);
   return match ? decodeURIComponent(match[1]) : null;
+}
+
+const getSafeLocalStorage = (): Storage | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeHostedHashRoute = (routePath: string): string => {
+  const trimmedRoute = routePath.trim();
+  if (!trimmedRoute || trimmedRoute === '/') {
+    return DEFAULT_HOSTED_DEVICE_HASH_ROUTE;
+  }
+
+  return trimmedRoute.startsWith('/') ? trimmedRoute : `/${trimmedRoute}`;
+};
+
+const isHostedRemoteLaunchRoute = (routePath: string): boolean => {
+  const normalizedRoute = normalizeHostedHashRoute(routePath);
+  return normalizedRoute === DEFAULT_HOSTED_DEVICE_HASH_ROUTE || normalizedRoute.startsWith('/conversation/');
+};
+
+export function buildHostedRemoteDeviceRouteStorageKey(deviceId: string): string {
+  return `${STORAGE_KEYS.OFFICIAL_REMOTE_DEVICE_ROUTE_PREFIX}${deviceId.trim()}`;
+}
+
+export function readHostedRemoteDeviceRoute(
+  deviceId: string,
+  storage: Pick<Storage, 'getItem'> | null = getSafeLocalStorage()
+): string | null {
+  const normalizedDeviceId = deviceId.trim();
+  if (!normalizedDeviceId) {
+    return null;
+  }
+
+  const storedRoute = storage?.getItem(buildHostedRemoteDeviceRouteStorageKey(normalizedDeviceId))?.trim();
+  if (!storedRoute) {
+    return null;
+  }
+
+  const normalizedRoute = normalizeHostedHashRoute(storedRoute);
+  return isHostedRemoteLaunchRoute(normalizedRoute) ? normalizedRoute : null;
+}
+
+export function rememberHostedRemoteDeviceRoute(
+  deviceId: string,
+  routePath: string,
+  storage: Pick<Storage, 'setItem'> | null = getSafeLocalStorage()
+): void {
+  const normalizedDeviceId = deviceId.trim();
+  if (!normalizedDeviceId) {
+    return;
+  }
+
+  const normalizedRoute = normalizeHostedHashRoute(routePath);
+  if (!isHostedRemoteLaunchRoute(normalizedRoute)) {
+    return;
+  }
+
+  storage?.setItem(buildHostedRemoteDeviceRouteStorageKey(normalizedDeviceId), normalizedRoute);
+}
+
+export function resolveHostedRemoteBootstrapHref(
+  currentHref: string,
+  storage: Pick<Storage, 'getItem'> | null = getSafeLocalStorage()
+): string {
+  const remoteDeviceId = extractRemoteDeviceId(currentHref);
+  if (!remoteDeviceId) {
+    return currentHref;
+  }
+
+  const currentUrl = new URL(currentHref);
+  const currentHashRoute = currentUrl.hash.startsWith('#') ? currentUrl.hash.slice(1).trim() : currentUrl.hash.trim();
+  if (currentHashRoute && currentHashRoute !== '/') {
+    return currentHref;
+  }
+
+  currentUrl.hash = readHostedRemoteDeviceRoute(remoteDeviceId, storage) ?? DEFAULT_HOSTED_DEVICE_HASH_ROUTE;
+  return currentUrl.toString();
 }
 
 export function buildBrowserBridgeSocketUrl(currentHref: string, defaultPort: number): string {

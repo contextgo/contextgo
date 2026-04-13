@@ -24,7 +24,7 @@ function parseSection(content, heading) {
 
   const lines = content.split('\n');
   const headingLines = new Set([`## ${heading}`, `**${heading}**`]);
-  const startIndex = lines.findIndex(line => headingLines.has(line.trim()));
+  const startIndex = lines.findIndex((line) => headingLines.has(line.trim()));
 
   if (startIndex === -1) {
     return '';
@@ -50,9 +50,9 @@ function parseBullets(section) {
 
   return section
     .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.startsWith('- '))
-    .map(line => stripCodeTicks(line.replace(/^- /, '').trim()));
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('- '))
+    .map((line) => stripCodeTicks(line.replace(/^- /, '').trim()));
 }
 
 function parseWorkerStatus(content) {
@@ -62,7 +62,7 @@ function parseWorkerStatus(content) {
     branch: null,
     worktree: null,
     taskFile: null,
-    handoffFile: null
+    handoffFile: null,
   };
 
   if (typeof content !== 'string' || content.length === 0) {
@@ -92,7 +92,7 @@ function parseWorkerStatus(content) {
 function parseWorkerTask(content) {
   return {
     objective: parseSection(content, 'Objective'),
-    seedPaths: parseBullets(parseSection(content, 'Seeded Local Overlays'))
+    seedPaths: parseBullets(parseSection(content, 'Seeded Local Overlays')),
   };
 }
 
@@ -100,7 +100,7 @@ function parseWorkerHandoff(content) {
   return {
     summary: parseBullets(parseSection(content, 'Summary')),
     validation: parseBullets(parseSection(content, 'Validation')),
-    remainingRisks: parseBullets(parseSection(content, 'Remaining Risks'))
+    remainingRisks: parseBullets(parseSection(content, 'Remaining Risks')),
   };
 }
 
@@ -117,19 +117,19 @@ function listWorkerDirectories(coordinationDir) {
     return [];
   }
 
-  return fs.readdirSync(coordinationDir, { withFileTypes: true })
-    .filter(entry => entry.isDirectory())
-    .filter(entry => {
+  return fs
+    .readdirSync(coordinationDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .filter((entry) => {
       const workerDir = path.join(coordinationDir, entry.name);
-      return ['status.md', 'task.md', 'handoff.md']
-        .some(filename => fs.existsSync(path.join(workerDir, filename)));
+      return ['status.md', 'task.md', 'handoff.md'].some((filename) => fs.existsSync(path.join(workerDir, filename)));
     })
-    .map(entry => entry.name)
+    .map((entry) => entry.name)
     .sort();
 }
 
 function loadWorkerSnapshots(coordinationDir) {
-  return listWorkerDirectories(coordinationDir).map(workerSlug => {
+  return listWorkerDirectories(coordinationDir).map((workerSlug) => {
     const workerDir = path.join(coordinationDir, workerSlug);
     const statusPath = path.join(workerDir, 'status.md');
     const taskPath = path.join(workerDir, 'task.md');
@@ -148,8 +148,8 @@ function loadWorkerSnapshots(coordinationDir) {
       files: {
         status: statusPath,
         task: taskPath,
-        handoff: handoffPath
-      }
+        handoff: handoffPath,
+      },
     };
   });
 }
@@ -165,12 +165,12 @@ function listTmuxPanes(sessionName, options = {}) {
     '#{pane_current_path}',
     '#{pane_active}',
     '#{pane_dead}',
-    '#{pane_pid}'
+    '#{pane_pid}',
   ].join('\t');
 
   const result = spawnSyncImpl('tmux', ['list-panes', '-t', sessionName, '-F', format], {
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 
   if (result.error) {
@@ -186,20 +186,10 @@ function listTmuxPanes(sessionName, options = {}) {
 
   return (result.stdout || '')
     .split('\n')
-    .map(line => line.trim())
+    .map((line) => line.trim())
     .filter(Boolean)
-    .map(line => {
-      const [
-        paneId,
-        windowIndex,
-        paneIndex,
-        title,
-        currentCommand,
-        currentPath,
-        active,
-        dead,
-        pid
-      ] = line.split('\t');
+    .map((line) => {
+      const [paneId, windowIndex, paneIndex, title, currentCommand, currentPath, active, dead, pid] = line.split('\t');
 
       return {
         paneId,
@@ -210,7 +200,7 @@ function listTmuxPanes(sessionName, options = {}) {
         currentPath,
         active: active === '1',
         dead: dead === '1',
-        pid: pid ? Number(pid) : null
+        pid: pid ? Number(pid) : null,
       };
     });
 }
@@ -225,11 +215,11 @@ function summarizeWorkerStates(workers) {
 
 function buildSessionSnapshot({ sessionName, coordinationDir, panes }) {
   const workerSnapshots = loadWorkerSnapshots(coordinationDir);
-  const paneMap = new Map(panes.map(pane => [pane.title, pane]));
+  const paneMap = new Map(panes.map((pane) => [pane.title, pane]));
 
-  const workers = workerSnapshots.map(worker => ({
+  const workers = workerSnapshots.map((worker) => ({
     ...worker,
-    pane: paneMap.get(worker.workerSlug) || null
+    pane: paneMap.get(worker.workerSlug) || null,
   }));
 
   return {
@@ -240,7 +230,7 @@ function buildSessionSnapshot({ sessionName, coordinationDir, panes }) {
     workerCount: workers.length,
     workerStates: summarizeWorkerStates(workers),
     panes,
-    workers
+    workers,
   };
 }
 
@@ -250,15 +240,13 @@ function resolveSnapshotTarget(targetPath, cwd = process.cwd()) {
   if (fs.existsSync(absoluteTarget) && fs.statSync(absoluteTarget).isFile()) {
     const config = JSON.parse(fs.readFileSync(absoluteTarget, 'utf8'));
     const repoRoot = path.resolve(config.repoRoot || cwd);
-    const coordinationRoot = path.resolve(
-      config.coordinationRoot || path.join(repoRoot, '.orchestration')
-    );
+    const coordinationRoot = path.resolve(config.coordinationRoot || path.join(repoRoot, '.orchestration'));
 
     return {
       sessionName: config.sessionName,
       coordinationDir: path.join(coordinationRoot, config.sessionName),
       repoRoot,
-      targetType: 'plan'
+      targetType: 'plan',
     };
   }
 
@@ -266,7 +254,7 @@ function resolveSnapshotTarget(targetPath, cwd = process.cwd()) {
     sessionName: targetPath,
     coordinationDir: path.join(cwd, '.claude', 'orchestration', targetPath),
     repoRoot: cwd,
-    targetType: 'session'
+    targetType: 'session',
   };
 }
 
@@ -276,13 +264,13 @@ function collectSessionSnapshot(targetPath, cwd = process.cwd()) {
   const snapshot = buildSessionSnapshot({
     sessionName: target.sessionName,
     coordinationDir: target.coordinationDir,
-    panes
+    panes,
   });
 
   return {
     ...snapshot,
     repoRoot: target.repoRoot,
-    targetType: target.targetType
+    targetType: target.targetType,
   };
 }
 
@@ -295,5 +283,5 @@ module.exports = {
   parseWorkerHandoff,
   parseWorkerStatus,
   parseWorkerTask,
-  resolveSnapshotTarget
+  resolveSnapshotTarget,
 };

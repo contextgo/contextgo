@@ -130,6 +130,8 @@ MOBILE_SHELL_LOGIN_COMPLETE_PATH = "/mobile-shell-login-complete"
 REMOTE_DEVICES_PATH = "/remote/devices"
 REMOTE_DEVICE_PATH_PREFIX = "/device"
 REMOTE_ACTIVE_DEVICE_COOKIE = "contextgo_remote_device"
+REMOTE_DEVICE_VIEW_QUERY_KEY = "view"
+REMOTE_DEVICE_VIEW_LIST = "list"
 REMOTE_SHELL_SCHEME = "contextgo-remote"
 OIDC_AUTHORIZE_PATH = "/oauth/authorize"
 OIDC_TOKEN_PATH = "/oauth/token"
@@ -1626,6 +1628,12 @@ def clear_active_remote_device_cookie(response: Response) -> None:
     response.delete_cookie(key=REMOTE_ACTIVE_DEVICE_COOKIE, path="/")
 
 
+def should_force_remote_device_picker(request: Request) -> bool:
+    return request.query_params.get(REMOTE_DEVICE_VIEW_QUERY_KEY) == REMOTE_DEVICE_VIEW_LIST or bool(
+        request.query_params.get("remoteNotice")
+    )
+
+
 def is_remote_control_plane_path(path: str) -> bool:
     return (
         path == "/"
@@ -1851,6 +1859,49 @@ def sort_remote_devices_for_display(devices: list[dict[str, object]]) -> list[di
     )
 
 
+def can_open_remote_device(device_payload: dict[str, object]) -> bool:
+    remote_status = device_payload.get("remoteStatus")
+    remote_data = remote_status if isinstance(remote_status, dict) else {}
+    return remote_data.get("connected") is True and remote_data.get("browserEntryReady") is True
+
+
+def resolve_remote_device_selection(request: Request, devices: list[dict[str, object]]) -> dict[str, object]:
+    ordered_devices = sort_remote_devices_for_display(devices)
+    openable_devices = [device for device in ordered_devices if can_open_remote_device(device)]
+    active_device_id = read_active_remote_device_id(request)
+    force_picker = should_force_remote_device_picker(request)
+
+    preferred_device: Optional[dict[str, object]] = None
+    preferred_source: Optional[str] = None
+    if active_device_id:
+        preferred_device = next(
+            (device for device in openable_devices if str(device.get("id") or "") == active_device_id),
+            None,
+        )
+        if preferred_device is not None:
+            preferred_source = "last_active"
+
+    if preferred_device is None and len(openable_devices) == 1:
+        preferred_device = openable_devices[0]
+        preferred_source = "single_available"
+
+    preferred_device_id = str(preferred_device.get("id") or "") if preferred_device is not None else None
+    if preferred_device_id == "":
+        preferred_device_id = None
+
+    auto_open_device_id = None if force_picker else preferred_device_id
+    auto_open_reason = preferred_source if auto_open_device_id else None
+
+    return {
+        "preferredDeviceId": preferred_device_id,
+        "preferredSource": preferred_source,
+        "autoOpenDeviceId": auto_open_device_id,
+        "autoOpenReason": auto_open_reason,
+        "openableDeviceCount": len(openable_devices),
+        "forcePicker": force_picker,
+    }
+
+
 
 def build_remote_device_card_markup(
     language: str,
@@ -1915,7 +1966,8 @@ def render_remote_devices_page(
     language = detect_request_language(request, user)
     mobile_shell_request = is_mobile_shell_request(request)
     ordered_devices = sort_remote_devices_for_display(devices)
-    active_device_id = read_active_remote_device_id(request) if mobile_shell_request else None
+    selection = resolve_remote_device_selection(request, ordered_devices)
+    preferred_device_id = str(selection.get("preferredDeviceId") or "") if mobile_shell_request else ""
 
     device_entries: list[dict[str, object]] = []
     for device in ordered_devices:
@@ -1924,18 +1976,13 @@ def render_remote_devices_page(
 
     featured_entry: Optional[dict[str, object]] = None
     if mobile_shell_request:
-        openable_entries = [entry for entry in device_entries if entry["availability"]["actionHref"]]
-        if active_device_id:
+        if preferred_device_id:
             featured_entry = next(
                 (
-                    entry
-                    for entry in openable_entries
-                    if str(entry["device"].get("id") or "") == active_device_id
+                    entry for entry in device_entries if str(entry["device"].get("id") or "") == preferred_device_id
                 ),
                 None,
             )
-        if featured_entry is None and openable_entries:
-            featured_entry = openable_entries[0]
 
     card_markup_items = []
     featured_device_id = str(featured_entry["device"].get("id") or "") if featured_entry else None
@@ -2750,11 +2797,14 @@ async def remote_devices_page(request: Request) -> HTMLResponse:
         return RedirectResponse(url=build_login_url(next_path=REMOTE_DEVICES_PATH), status_code=303)
 
     devices = list_remote_devices_payload(user.id)
+    selection = resolve_remote_device_selection(request, devices)
+    auto_open_device_id = selection.get("autoOpenDeviceId")
+    if isinstance(auto_open_device_id, str) and auto_open_device_id:
+        return RedirectResponse(url=build_remote_url(build_remote_session_url(auto_open_device_id)), status_code=303)
+
     language = detect_request_language(request, user)
     remote_notice = describe_remote_notice(language, request.query_params.get("remoteNotice"))
-    response = HTMLResponse(render_remote_devices_page(request, user, devices, settings.remote_base_url, remote_notice))
-    clear_active_remote_device_cookie(response)
-    return response
+    return HTMLResponse(render_remote_devices_page(request, user, devices, settings.remote_base_url, remote_notice))
 
 
 def build_remote_app_login_redirect(request: Request) -> RedirectResponse:
@@ -3410,10 +3460,12 @@ async def api_devices(request: Request) -> JSONResponse:
 async def api_remote_devices(request: Request) -> JSONResponse:
     user = require_current_user(request)
     devices = list_remote_devices_payload(user.id)
+    selection = resolve_remote_device_selection(request, devices)
     return JSONResponse(
         {
             "success": True,
             "devices": devices,
+            "selection": selection,
         }
     )
 

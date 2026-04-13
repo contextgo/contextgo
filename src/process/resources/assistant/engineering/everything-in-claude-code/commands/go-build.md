@@ -17,6 +17,7 @@ This command invokes the **go-build-resolver** agent to incrementally fix Go bui
 ## When to Use
 
 Use `/go-build` when:
+
 - `go build ./...` fails with errors
 - `go vet ./...` reports issues
 - `golangci-lint run` shows warnings
@@ -43,7 +44,7 @@ go mod tidy -v
 
 ## Example Session
 
-```text
+````text
 User: /go-build
 
 Agent:
@@ -56,7 +57,7 @@ $ go build ./...
 internal/service/user.go:25:15: undefined: UserRepository
 internal/handler/api.go:42:9: cannot use x (type string) as type int
 internal/handler/api.go:58:2: missing return at end of function
-```
+````
 
 Errors found: 3
 
@@ -133,14 +134,15 @@ ok      project/internal/handler   0.023s
 
 ## Summary
 
-| Metric | Count |
-|--------|-------|
-| Build errors fixed | 3 |
-| Vet warnings fixed | 0 |
-| Files modified | 2 |
-| Remaining issues | 0 |
+| Metric             | Count |
+| ------------------ | ----- |
+| Build errors fixed | 3     |
+| Vet warnings fixed | 0     |
+| Files modified     | 2     |
+| Remaining issues   | 0     |
 
 Build Status: PASS: SUCCESS
+
 ```
 
 ## Common Errors Fixed
@@ -181,3 +183,4 @@ The agent will stop and report if:
 
 - Agent: `agents/go-build-resolver.md`
 - Skill: `skills/golang-patterns/`
+```

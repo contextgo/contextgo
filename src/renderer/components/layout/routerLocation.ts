@@ -118,20 +118,6 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
     ],
   },
   {
-    match: (routePath) => routePath === '/settings/webui',
-    loaders: [
-      () => import('@renderer/pages/settings/WebuiSettings'),
-      () => import('@renderer/pages/settings/components/SettingsSider'),
-    ],
-  },
-  {
-    match: (routePath) => routePath === '/settings/commands',
-    loaders: [
-      () => import('@renderer/pages/settings/ToolsSettings/CommandSettings'),
-      () => import('@renderer/pages/settings/components/SettingsSider'),
-    ],
-  },
-  {
     match: (routePath) => routePath === '/settings/gemini',
     loaders: [
       () => import('@renderer/pages/settings/GeminiSettings'),

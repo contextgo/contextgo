@@ -1,7 +1,5 @@
 import type { PresetAgentType } from '@/common/types/acpTypes';
 
-export type AssistantWorkspaceAutomationProfile = 'contextgo-harness' | 'claude-ecc';
-
 export type AssistantPreset = {
   id: string;
   avatar: string;
@@ -9,236 +7,16 @@ export type AssistantPreset = {
   harnessTagI18n?: Record<string, string>;
   recommendedDomainI18n?: Record<string, string>;
   workspaceBootstrapHintI18n?: Record<string, string>;
-  /**
-   * Directory containing all resources for this preset (relative to project root).
-   * If set, both ruleFiles and skillFiles will be resolved from this directory.
-   * Default: rules/ for rules, skills/ for skills
-   */
-  resourceDir?: string;
-  ruleFiles: Record<string, string>;
-  skillFiles?: Record<string, string>;
-  hideDefaultSkillsFromLibrary?: boolean;
-  skillPackageNameI18n?: Record<string, string>;
-  skillPackageDescriptionI18n?: Record<string, string>;
-  /**
-   * Names of bundled skills owned by this preset package.
-   * Used for library hiding and package attribution even when the preset relies on native harness bootstrap.
-   */
-  packagedSkillNames?: string[];
-  /**
-   * Default enabled skills for this assistant (skill names from skills/ directory).
-   * 此助手默认启用的技能列表（来自 skills/ 目录的技能名称）
-   */
-  defaultEnabledSkills?: string[];
-  /**
-   * Default enabled hooks for this assistant (hook names from hooks/ directory).
-   * 此助手默认启用的 hooks 列表（来自 hooks/ 目录的 hook 名称）
-   */
-  defaultEnabledHooks?: string[];
-  /**
-   * Workspace automation bootstrap profile for this assistant.
-   */
-  workspaceAutomationProfile?: AssistantWorkspaceAutomationProfile;
   nameI18n: Record<string, string>;
   descriptionI18n: Record<string, string>;
   promptsI18n?: Record<string, string[]>;
 };
-
-export const SUPERPOWERS_DEFAULT_HOOKS = [
-  'repo-context-bootstrap',
-  'plan-before-coding',
-  'secret-guard',
-  'tool-safety-guard',
-  'quality-gate',
-  'tdd-guard',
-  'continuity-handoff',
-] as const;
-
-export const SUPERPOWERS_DEFAULT_SKILLS = [
-  'using-superpowers',
-  'brainstorming',
-  'writing-plans',
-  'writing-skills',
-  'executing-plans',
-  'test-driven-development',
-  'using-git-worktrees',
-  'subagent-driven-development',
-  'dispatching-parallel-agents',
-  'finishing-a-development-branch',
-  'requesting-code-review',
-  'receiving-code-review',
-  'systematic-debugging',
-  'verification-before-completion',
-] as const;
-
-export const EVERYTHING_CLAUDE_CODE_PACKAGED_SKILLS = [
-  'agent-eval',
-  'agent-harness-construction',
-  'agent-payment-x402',
-  'agentic-engineering',
-  'ai-first-engineering',
-  'ai-regression-testing',
-  'android-clean-architecture',
-  'api-design',
-  'architecture-decision-records',
-  'article-writing',
-  'autonomous-agent-harness',
-  'autonomous-loops',
-  'backend-patterns',
-  'benchmark',
-  'blueprint',
-  'brand-voice',
-  'browser-qa',
-  'bun-runtime',
-  'canary-watch',
-  'carrier-relationship-management',
-  'ck',
-  'claude-api',
-  'claude-devfleet',
-  'click-path-audit',
-  'clickhouse-io',
-  'codebase-onboarding',
-  'coding-standards',
-  'compose-multiplatform-patterns',
-  'configure-ecc',
-  'connections-optimizer',
-  'content-engine',
-  'content-hash-cache-pattern',
-  'context-budget',
-  'continuous-agent-loop',
-  'continuous-learning',
-  'continuous-learning-v2',
-  'cost-aware-llm-pipeline',
-  'cpp-coding-standards',
-  'cpp-testing',
-  'crosspost',
-  'customer-billing-ops',
-  'customs-trade-compliance',
-  'data-scraper-agent',
-  'database-migrations',
-  'deep-research',
-  'deployment-patterns',
-  'design-system',
-  'django-patterns',
-  'django-security',
-  'django-tdd',
-  'django-verification',
-  'dmux-workflows',
-  'docker-patterns',
-  'documentation-lookup',
-  'e2e-testing',
-  'energy-procurement',
-  'enterprise-agent-ops',
-  'eval-harness',
-  'exa-search',
-  'fal-ai-media',
-  'flutter-dart-code-review',
-  'foundation-models-on-device',
-  'frontend-patterns',
-  'frontend-slides',
-  'gan-style-harness',
-  'git-workflow',
-  'golang-patterns',
-  'golang-testing',
-  'google-workspace-ops',
-  'healthcare-cdss-patterns',
-  'healthcare-emr-patterns',
-  'healthcare-eval-harness',
-  'healthcare-phi-compliance',
-  'hexagonal-architecture',
-  'inventory-demand-planning',
-  'investor-materials',
-  'investor-outreach',
-  'iterative-retrieval',
-  'java-coding-standards',
-  'jpa-patterns',
-  'kotlin-coroutines-flows',
-  'kotlin-exposed-patterns',
-  'kotlin-ktor-patterns',
-  'kotlin-patterns',
-  'kotlin-testing',
-  'laravel-patterns',
-  'laravel-plugin-discovery',
-  'laravel-security',
-  'laravel-tdd',
-  'laravel-verification',
-  'lead-intelligence',
-  'liquid-glass-design',
-  'logistics-exception-management',
-  'manim-video',
-  'market-research',
-  'mcp-server-patterns',
-  'nanoclaw-repl',
-  'nextjs-turbopack',
-  'nutrient-document-processing',
-  'nuxt4-patterns',
-  'openclaw-persona-forge',
-  'opensource-pipeline',
-  'perl-patterns',
-  'perl-security',
-  'perl-testing',
-  'plankton-code-quality',
-  'postgres-patterns',
-  'product-lens',
-  'production-scheduling',
-  'project-flow-ops',
-  'project-guidelines-example',
-  'prompt-optimizer',
-  'python-patterns',
-  'python-testing',
-  'pytorch-patterns',
-  'quality-nonconformance',
-  'ralphinho-rfc-pipeline',
-  'regex-vs-llm-structured-text',
-  'remotion-video-creation',
-  'repo-scan',
-  'returns-reverse-logistics',
-  'rules-distill',
-  'rust-patterns',
-  'rust-testing',
-  'safety-guard',
-  'santa-method',
-  'search-first',
-  'security-review',
-  'security-scan',
-  'skill-comply',
-  'skill-stocktake',
-  'social-graph-ranker',
-  'springboot-patterns',
-  'springboot-security',
-  'springboot-tdd',
-  'springboot-verification',
-  'strategic-compact',
-  'swift-actor-persistence',
-  'swift-concurrency-6-2',
-  'swift-protocol-di-testing',
-  'swiftui-patterns',
-  'tdd-workflow',
-  'team-builder',
-  'token-budget-advisor',
-  'ui-demo',
-  'verification-loop',
-  'video-editing',
-  'videodb',
-  'visa-doc-translate',
-  'workspace-surface-audit',
-  'x-api',
-] as const;
-
-export const ENGINEERING_DEFAULT_HOOKS = SUPERPOWERS_DEFAULT_HOOKS;
-export const ENGINEERING_WORKBENCH_SKILLS = SUPERPOWERS_DEFAULT_SKILLS;
 
 export const ASSISTANT_PRESETS: AssistantPreset[] = [
   {
     id: 'morph-ppt',
     avatar: 'morph-ppt.svg',
     presetAgentType: 'codex',
-    resourceDir: 'src/process/resources/assistant/morph-ppt',
-    ruleFiles: {
-      'en-US': 'morph-ppt.md',
-      'zh-CN': 'morph-ppt.zh-CN.md',
-    },
-    defaultEnabledSkills: ['morph-ppt'],
     recommendedDomainI18n: {
       'en-US': 'Presentations',
       'zh-CN': '演示文稿',
@@ -271,28 +49,214 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'startup-strategist',
+    avatar: '\u{1F680}',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Startup Strategist',
+      'zh-CN': 'Startup Strategist',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Startup Strategy',
+      'zh-CN': '创业战略',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want startup canvases, ICP notes, GTM plans, and founder briefs written back into the project folder.',
+      'zh-CN':
+        '如果希望把 startup canvas、ICP 笔记、GTM 方案和 founder brief 直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Startup Strategist',
+      'zh-CN': 'Startup Strategist',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Founder-oriented strategy assistant for pressure-testing startup ideas, choosing a beachhead segment, shaping value propositions, designing GTM, setting North Star metrics, and turning early evidence into crisp strategic decisions.',
+      'zh-CN':
+        '面向创业者与新业务探索的内置助手，用于压测 startup idea、选择 beachhead segment、打磨价值主张、设计 GTM、设定北极星指标，并把早期证据整理成清晰的战略判断。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Pressure-test this startup idea, then tell me what must be true for it to work',
+        'Build a startup canvas, ICP, and GTM for this product concept',
+        'Help me choose the beachhead segment, value proposition, and North Star metric for this startup',
+      ],
+      'zh-CN': [
+        '把这个 startup idea 真正压测一遍，告诉我它成立必须满足什么条件',
+        '围绕这个产品概念做一版 startup canvas、ICP 和 GTM 方案',
+        '帮我为这个创业项目确定 beachhead segment、价值主张和北极星指标',
+      ],
+    },
+  },
+  {
+    id: 'design-director',
+    avatar: '\u{1F3A8}',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Design Director',
+      'zh-CN': 'Design Director',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Design Direction',
+      'zh-CN': '设计方向',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want DESIGN.md drafts, page art direction briefs, critique notes, and implementation handoff files written back into the project folder.',
+      'zh-CN':
+        '如果希望把 DESIGN.md 草稿、页面 art direction brief、评审笔记和实现交付稿直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Design Director',
+      'zh-CN': 'Design Director',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A built-in design-direction assistant for choosing visual archetypes, critiquing screenshots, absorbing Figma references into first-party system rules, distilling project-level design systems, art-directing pages, and turning design intent into component-level implementation guidance.',
+      'zh-CN':
+        '面向设计方向与前端实现协作的内置助手，用于选择视觉 archetype、做截图评审、吸收 Figma 参考并内化为一方系统规则、蒸馏项目级设计系统、做页面 art direction，并把设计意图推进到组件级可执行交付。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Help me choose the right visual direction for this product before we build the UI',
+        'Turn these references and product goals into a project-level DESIGN.md and page art direction',
+        'Critique this current UI, then give me a cleaner design direction and implementation handoff',
+        'Review these screenshots, absorb the strongest Figma signals, and write a component-level visual spec',
+      ],
+      'zh-CN': [
+        '先帮我为这个产品选对视觉方向，再开始做 UI',
+        '把这些参考和产品目标蒸馏成一份项目级 DESIGN.md 和页面 art direction',
+        '评审一下当前 UI，然后给我一版更干净的设计方向和实现交付稿',
+        '把这些截图评一遍，再吸收 Figma 里最该借鉴的信号，最后写成组件级视觉规范',
+      ],
+    },
+  },
+  {
+    id: 'pm-workbench',
+    avatar: 'pm-workbench.svg',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'PM Workbench',
+      'zh-CN': 'PM Workbench',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Product Management',
+      'zh-CN': '产品管理',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want discovery notes, PRDs, prioritization tables, and roadmap artifacts written back into the project folder.',
+      'zh-CN': '如果希望把发现笔记、PRD、优先级表和路线图产物直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'PM Workbench',
+      'zh-CN': 'PM Workbench',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Product management assistant for evidence-led discovery, clear PRDs, roadmap sequencing, and pragmatic prioritization around a linked workspace.',
+      'zh-CN':
+        '面向产品经理的内置助手，围绕已关联工作空间推进证据驱动的发现、清晰的 PRD、路线图排序与务实的优先级判断。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Attach this workspace and help me run discovery, draft the PRD, and sequence a product roadmap',
+        'Pressure-test this product request before it turns into a roadmap commitment',
+        'Use a PM workbench workflow to discover, prioritize, and document this initiative',
+      ],
+      'zh-CN': [
+        '先关联这个工作空间，再帮我跑 discovery、起草 PRD，并排出产品路线图',
+        '先把这个产品需求压测清楚，再决定要不要进路线图',
+        '用 PM workbench 的工作流来完成这次需求发现、优先级判断和文档沉淀',
+      ],
+    },
+  },
+  {
+    id: 'office-analyst',
+    avatar: 'office-analyst.svg',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Office Analyst',
+      'zh-CN': 'Office Analyst',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Office Productivity',
+      'zh-CN': '办公生产力',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want cleaned spreadsheets, extracted notes, reconciled findings, and draft reports saved into the working folder.',
+      'zh-CN': '如果希望把清洗后的表格、提取笔记、对账结果和草拟报告直接保存到工作目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Office Analyst',
+      'zh-CN': 'Office Analyst',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Office productivity assistant for spreadsheet analysis, multi-file SQL-style analysis, document synthesis, source reconciliation, and polished reporting around a linked workspace.',
+      'zh-CN':
+        '面向办公生产力的内置助手，围绕已关联工作空间推进表格分析、多文件 SQL 式分析、文档提炼、多源核对和成品报告输出。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Analyze these spreadsheets and documents, then give me a clean management summary',
+        'Cross-check the numbers across this workbook, PDF, and memo before I send the report',
+        'Use an office analyst workflow to clean the data, extract the signal, and draft the final report',
+      ],
+      'zh-CN': [
+        '把这些表格和文档分析一下，然后给我一版干净的管理摘要',
+        '先把这个工作簿、PDF 和备忘录里的数字核对清楚，再输出报告',
+        '用 Office Analyst 的工作流完成数据清洗、信息提炼和最终报告草拟',
+      ],
+    },
+  },
+  {
+    id: 'finance-analyst',
+    avatar: '\u{1F4B9}',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Finance Analyst',
+      'zh-CN': 'Finance Analyst',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Finance & Planning',
+      'zh-CN': '财务与经营规划',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want financial extracts, variance views, valuation notes, and draft investment memos saved into the working folder.',
+      'zh-CN':
+        '如果希望把财务提取结果、偏差分析、估值笔记和投资备忘录草稿直接保存到工作目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Finance Analyst',
+      'zh-CN': 'Finance Analyst',
+    },
+    descriptionI18n: {
+      'en-US':
+        'Finance decision-support assistant for statement analysis, variance review, valuation work, company comparison, investment screening, thesis stress-testing, scenario planning, SaaS metrics, and executive financial reporting around a linked workspace.',
+      'zh-CN':
+        '面向财务判断与经营规划的内置助手，围绕已关联工作空间推进报表分析、偏差复盘、估值建模、公司比较、投资筛选、thesis 压测、情景预测、SaaS 指标判断和高层财务汇报。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Analyze these financial statements, explain the main risks, and tell me what needs follow-up',
+        'Build a finance analyst workflow for budget variance, valuation, and executive reporting',
+        'Use this workspace to benchmark SaaS metrics, stress-test assumptions, and draft an investment memo',
+      ],
+      'zh-CN': [
+        '把这些财务报表分析一下，解释主要风险，并告诉我下一步该深挖什么',
+        '用 Finance Analyst 的工作流完成预算偏差解释、估值判断和高层财务汇报',
+        '围绕这个 workspace 跑 SaaS 指标 benchmark、假设压测和投资备忘录草拟',
+      ],
+    },
+  },
+  {
     id: 'superpowers',
     avatar: 'superpowers.svg',
     presetAgentType: 'codex',
-    resourceDir: 'src/process/resources/assistant/engineering/superpowers',
-    ruleFiles: {
-      'en-US': 'superpowers.md',
-      'zh-CN': 'superpowers.zh-CN.md',
-    },
-    defaultEnabledSkills: [...SUPERPOWERS_DEFAULT_SKILLS],
-    packagedSkillNames: [...SUPERPOWERS_DEFAULT_SKILLS],
-    hideDefaultSkillsFromLibrary: true,
-    skillPackageNameI18n: {
-      'en-US': 'Superpowers Harness Pack',
-      'zh-CN': 'Superpowers Harness 技能包',
-    },
-    skillPackageDescriptionI18n: {
-      'en-US':
-        'Bundled engineering workflow package absorbed from the open-source Superpowers repository. It is attached as a built-in pack instead of being exposed as standalone skills.',
-      'zh-CN': '吸收自开源 Superpowers 仓库的工程工作流技能包，作为内置包挂载给助手使用，不单独暴露为可选技能。',
-    },
-    defaultEnabledHooks: [...SUPERPOWERS_DEFAULT_HOOKS],
-    workspaceAutomationProfile: 'contextgo-harness',
     harnessTagI18n: {
       'en-US': 'Superpowers',
       'zh-CN': 'Superpowers',
@@ -331,23 +295,6 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     id: 'everything-in-claude-code',
     avatar: 'everything-claude-code.svg',
     presetAgentType: 'claude',
-    resourceDir: 'src/process/resources/assistant/engineering/everything-in-claude-code',
-    ruleFiles: {
-      'en-US': 'everything-in-claude-code.md',
-      'zh-CN': 'everything-in-claude-code.zh-CN.md',
-    },
-    packagedSkillNames: [...EVERYTHING_CLAUDE_CODE_PACKAGED_SKILLS],
-    hideDefaultSkillsFromLibrary: true,
-    skillPackageNameI18n: {
-      'en-US': 'Everything Claude Code Harness Pack',
-      'zh-CN': 'Everything Claude Code Harness 技能包',
-    },
-    skillPackageDescriptionI18n: {
-      'en-US':
-        'Bundled harness package absorbed from the open-source Everything Claude Code repository, including its native skills, legacy command shims, and hook runtime payload.',
-      'zh-CN': '吸收自开源 Everything Claude Code 仓库的完整 harness 包，包含原生 skills、兼容命令 shim 和 hook 运行时载荷，作为内置包挂载给助手使用。',
-    },
-    workspaceAutomationProfile: 'claude-ecc',
     harnessTagI18n: {
       'en-US': 'Everything Claude Code',
       'zh-CN': 'Everything Claude Code',
@@ -367,7 +314,8 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     descriptionI18n: {
       'en-US':
         'Engineering harness assistant absorbed from Everything Claude Code. Ships its native skill pack, legacy slash shims, and Claude workspace hook payload as a first-class built-in preset.',
-      'zh-CN': '从 Everything Claude Code 完整吸收进来的工程 Harness 助手，内置其原生 skill 包、兼容 slash 命令和 Claude 工作区 hook 载荷。',
+      'zh-CN':
+        '从 Everything Claude Code 完整吸收进来的工程 Harness 助手，内置其原生 skill 包、兼容 slash 命令和 Claude 工作区 hook 载荷。',
     },
     promptsI18n: {
       'en-US': [

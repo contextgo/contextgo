@@ -18,6 +18,7 @@ Use this only if you still reach for `/claw` from muscle memory. The maintained 
 ## Delegation
 
 Apply the `nanoclaw-repl` skill and keep the response focused on operating or extending `scripts/claw.js`.
+
 - If the user wants to run it, use `node scripts/claw.js` or `npm run claw`.
 - If the user wants to extend it, preserve the zero-dependency and markdown-backed session model.
 - If the request is really about long-running orchestration rather than NanoClaw itself, redirect to `dmux-workflows` or `autonomous-agent-harness`.

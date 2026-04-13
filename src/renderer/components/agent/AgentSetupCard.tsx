@@ -21,31 +21,17 @@ import type { AgentCheckResult } from '@/renderer/hooks/agent/useAgentReadinessC
 
 // Agent logos
 import ClaudeLogo from '@/renderer/assets/logos/ai-major/claude.svg';
-import CodeBuddyLogo from '@/renderer/assets/logos/tools/coding/codebuddy.svg';
 import CodexLogo from '@/renderer/assets/logos/tools/coding/codex.svg';
 import OpenCodeLogo from '@/renderer/assets/logos/tools/coding/opencode.svg';
 import GeminiLogo from '@/renderer/assets/logos/ai-major/gemini.svg';
-import QwenLogo from '@/renderer/assets/logos/ai-china/qwen.svg';
-import IflowLogo from '@/renderer/assets/logos/tools/iflow.svg';
-import DroidLogo from '@/renderer/assets/logos/brand/droid.svg';
-import GooseLogo from '@/renderer/assets/logos/tools/goose.svg';
-import AuggieLogo from '@/renderer/assets/logos/brand/auggie.svg';
-import KimiLogo from '@/renderer/assets/logos/ai-china/kimi.svg';
 import { applyDefaultConversationName } from '@/renderer/pages/conversation/utils/newConversationName';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 
 const AGENT_LOGOS: Partial<Record<AcpBackendAll, string>> = {
   claude: ClaudeLogo,
-  codebuddy: CodeBuddyLogo,
   codex: CodexLogo,
   opencode: OpenCodeLogo,
   gemini: GeminiLogo,
-  qwen: QwenLogo,
-  iflow: IflowLogo,
-  droid: DroidLogo,
-  goose: GooseLogo,
-  auggie: AuggieLogo,
-  kimi: KimiLogo,
 };
 
 type AgentSetupCardProps = {

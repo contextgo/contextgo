@@ -3,7 +3,7 @@ name: videodb
 description: See, Understand, Act on video and audio. See- ingest from local files, URLs, RTSP/live feeds, or live record desktop; return realtime context and playable stream links. Understand- extract frames, build visual/semantic/temporal indexes, and search moments with timestamps and auto-clips. Act- transcode and normalize (codec, fps, resolution, aspect ratio), perform timeline edits (subtitles, text/image overlays, branding, audio overlays, dubbing, translation), generate media assets (image, audio, video), and create real time alerts for events from live streams or desktop capture.
 origin: ECC
 allowed-tools: Read Grep Glob Bash(python:*)
-argument-hint: "[task description]"
+argument-hint: '[task description]'
 ---
 
 # VideoDB Skill
@@ -13,38 +13,45 @@ argument-hint: "[task description]"
 ## When to use
 
 ### Desktop Perception
+
 - Start/stop a **desktop session** capturing **screen, mic, and system audio**
 - Stream **live context** and store **episodic session memory**
 - Run **real-time alerts/triggers** on what's spoken and what's happening on screen
 - Produce **session summaries**, a searchable timeline, and **playable evidence links**
 
 ### Video ingest + stream
+
 - Ingest a **file or URL** and return a **playable web stream link**
 - Transcode/normalize: **codec, bitrate, fps, resolution, aspect ratio**
 
 ### Index + search (timestamps + evidence)
+
 - Build **visual**, **spoken**, and **keyword** indexes
 - Search and return exact moments with **timestamps** and **playable evidence**
 - Auto-create **clips** from search results
 
 ### Timeline editing + generation
+
 - Subtitles: **generate**, **translate**, **burn-in**
 - Overlays: **text/image/branding**, motion captions
 - Audio: **background music**, **voiceover**, **dubbing**
 - Programmatic composition and exports via **timeline operations**
 
 ### Live streams (RTSP) + monitoring
+
 - Connect **RTSP/live feeds**
 - Run **real-time visual and spoken understanding** and emit **events/alerts** for monitoring workflows
 
 ## How it works
 
 ### Common inputs
+
 - Local **file path**, public **URL**, or **RTSP URL**
 - Desktop capture request: **start / stop / summarize session**
 - Desired operations: get context for understanding, transcode spec, index spec, search query, clip ranges, timeline edits, alert rules
 
 ### Common outputs
+
 - **Stream URL**
 - Search results with **timestamps** and **evidence links**
 - Generated assets: subtitles, audio, images, clips
@@ -64,6 +71,7 @@ conn = videodb.connect()
 ```
 
 This reads `VIDEO_DB_API_KEY` from:
+
 1. Environment (if already exported)
 2. Project's `.env` file in current directory
 
@@ -198,6 +206,7 @@ except InvalidRequestError as e:
 ### Timeline editing
 
 **Important:** Always validate timestamps before building a timeline:
+
 - `start` must be >= 0 (negative values are silently accepted but produce broken output)
 - `start` must be < `end`
 - `end` must be <= `video.length`
@@ -231,6 +240,7 @@ job_id = conn.transcode(
 
 **Warning:** `reframe()` is a slow server-side operation. For long videos it can take
 several minutes and may time out. Best practices:
+
 - Always limit to a short segment using `start`/`end` when possible
 - For full-length videos, use `callback_url` for async processing
 - Trim the video on a `Timeline` first, then reframe the shorter result
@@ -278,18 +288,19 @@ except InvalidRequestError as e:
 
 ### Common pitfalls
 
-| Scenario | Error message | Solution |
-|----------|--------------|----------|
-| Indexing an already-indexed video | `Spoken word index for video already exists` | Use `video.index_spoken_words(force=True)` to skip if already indexed |
-| Scene index already exists | `Scene index with id XXXX already exists` | Extract the existing `scene_index_id` from the error with `re.search(r"id\s+([a-f0-9]+)", str(e))` |
-| Search finds no matches | `InvalidRequestError: No results found` | Catch the exception and treat as empty results (`shots = []`) |
-| Reframe times out | Blocks indefinitely on long videos | Use `start`/`end` to limit segment, or pass `callback_url` for async |
-| Negative timestamps on Timeline | Silently produces broken stream | Always validate `start >= 0` before creating `VideoAsset` |
-| `generate_video()` / `create_collection()` fails | `Operation not allowed` or `maximum limit` | Plan-gated features — inform the user about plan limits |
+| Scenario                                         | Error message                                | Solution                                                                                           |
+| ------------------------------------------------ | -------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Indexing an already-indexed video                | `Spoken word index for video already exists` | Use `video.index_spoken_words(force=True)` to skip if already indexed                              |
+| Scene index already exists                       | `Scene index with id XXXX already exists`    | Extract the existing `scene_index_id` from the error with `re.search(r"id\s+([a-f0-9]+)", str(e))` |
+| Search finds no matches                          | `InvalidRequestError: No results found`      | Catch the exception and treat as empty results (`shots = []`)                                      |
+| Reframe times out                                | Blocks indefinitely on long videos           | Use `start`/`end` to limit segment, or pass `callback_url` for async                               |
+| Negative timestamps on Timeline                  | Silently produces broken stream              | Always validate `start >= 0` before creating `VideoAsset`                                          |
+| `generate_video()` / `create_collection()` fails | `Operation not allowed` or `maximum limit`   | Plan-gated features — inform the user about plan limits                                            |
 
 ## Examples
 
 ### Canonical prompts
+
 - "Start desktop capture and alert when a password field appears."
 - "Record my session and produce an actionable summary when it ends."
 - "Ingest this file and return a playable stream link."
@@ -358,15 +369,15 @@ Reference documentation is in the `reference/` directory adjacent to this SKILL.
 
 ### When to use what
 
-| Problem | VideoDB solution |
-|---------|-----------------|
-| Platform rejects video aspect ratio or resolution | `video.reframe()` or `conn.transcode()` with `VideoConfig` |
-| Need to resize video for Twitter/Instagram/TikTok | `video.reframe(target="vertical")` or `target="square"` |
-| Need to change resolution (e.g. 1080p → 720p) | `conn.transcode()` with `VideoConfig(resolution=720)` |
-| Need to overlay audio/music on video | `AudioAsset` on a `Timeline` |
-| Need to add subtitles | `video.add_subtitle()` or `CaptionAsset` |
-| Need to combine/trim clips | `VideoAsset` on a `Timeline` |
-| Need to generate voiceover, music, or SFX | `coll.generate_voice()`, `generate_music()`, `generate_sound_effect()` |
+| Problem                                           | VideoDB solution                                                       |
+| ------------------------------------------------- | ---------------------------------------------------------------------- |
+| Platform rejects video aspect ratio or resolution | `video.reframe()` or `conn.transcode()` with `VideoConfig`             |
+| Need to resize video for Twitter/Instagram/TikTok | `video.reframe(target="vertical")` or `target="square"`                |
+| Need to change resolution (e.g. 1080p → 720p)     | `conn.transcode()` with `VideoConfig(resolution=720)`                  |
+| Need to overlay audio/music on video              | `AudioAsset` on a `Timeline`                                           |
+| Need to add subtitles                             | `video.add_subtitle()` or `CaptionAsset`                               |
+| Need to combine/trim clips                        | `VideoAsset` on a `Timeline`                                           |
+| Need to generate voiceover, music, or SFX         | `coll.generate_voice()`, `generate_music()`, `generate_sound_effect()` |
 
 ## Provenance
 

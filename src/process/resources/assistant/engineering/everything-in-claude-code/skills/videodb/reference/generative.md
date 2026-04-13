@@ -30,11 +30,11 @@ print(image.generate_url())  # returns a signed download URL
 
 ### generate_image Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `prompt` | `str` | required | Text description of the image to generate |
-| `aspect_ratio` | `str` | `"1:1"` | Aspect ratio: `"1:1"`, `"9:16"`, `"16:9"`, `"4:3"`, or `"3:4"` |
-| `callback_url` | `str\|None` | `None` | URL to receive async callback |
+| Parameter      | Type        | Default  | Description                                                    |
+| -------------- | ----------- | -------- | -------------------------------------------------------------- |
+| `prompt`       | `str`       | required | Text description of the image to generate                      |
+| `aspect_ratio` | `str`       | `"1:1"`  | Aspect ratio: `"1:1"`, `"9:16"`, `"16:9"`, `"4:3"`, or `"3:4"` |
+| `callback_url` | `str\|None` | `None`   | URL to receive async callback                                  |
 
 Returns an `Image` object with `.id`, `.name`, and `.collection_id`. The `.url` property may be `None` for generated images — always use `image.generate_url()` to get a reliable signed download URL.
 
@@ -56,11 +56,11 @@ video.play()
 
 ### generate_video Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `prompt` | `str` | required | Text description of the video to generate |
-| `duration` | `int` | `5` | Duration in seconds (must be integer value, 5-8) |
-| `callback_url` | `str\|None` | `None` | URL to receive async callback |
+| Parameter      | Type        | Default  | Description                                      |
+| -------------- | ----------- | -------- | ------------------------------------------------ |
+| `prompt`       | `str`       | required | Text description of the video to generate        |
+| `duration`     | `int`       | `5`      | Duration in seconds (must be integer value, 5-8) |
+| `callback_url` | `str\|None` | `None`   | URL to receive async callback                    |
 
 Returns a `Video` object. Generated videos are automatically added to the collection and can be used in timelines, searches, and compilations like any uploaded video.
 
@@ -81,11 +81,11 @@ music = coll.generate_music(
 print(music.id)
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `prompt` | `str` | required | Text description of the music |
-| `duration` | `int` | `5` | Duration in seconds |
-| `callback_url` | `str\|None` | `None` | URL to receive async callback |
+| Parameter      | Type        | Default  | Description                   |
+| -------------- | ----------- | -------- | ----------------------------- |
+| `prompt`       | `str`       | required | Text description of the music |
+| `duration`     | `int`       | `5`      | Duration in seconds           |
+| `callback_url` | `str\|None` | `None`   | URL to receive async callback |
 
 ### Sound Effects
 
@@ -98,12 +98,12 @@ sfx = coll.generate_sound_effect(
 )
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `prompt` | `str` | required | Text description of the sound effect |
-| `duration` | `int` | `2` | Duration in seconds |
-| `config` | `dict` | `{}` | Additional configuration |
-| `callback_url` | `str\|None` | `None` | URL to receive async callback |
+| Parameter      | Type        | Default  | Description                          |
+| -------------- | ----------- | -------- | ------------------------------------ |
+| `prompt`       | `str`       | required | Text description of the sound effect |
+| `duration`     | `int`       | `2`      | Duration in seconds                  |
+| `config`       | `dict`      | `{}`     | Additional configuration             |
+| `callback_url` | `str\|None` | `None`   | URL to receive async callback        |
 
 ### Voice (Text-to-Speech)
 
@@ -116,12 +116,12 @@ voice = coll.generate_voice(
 )
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `text` | `str` | required | Text to convert to speech |
-| `voice_name` | `str` | `"Default"` | Voice to use |
-| `config` | `dict` | `{}` | Additional configuration |
-| `callback_url` | `str\|None` | `None` | URL to receive async callback |
+| Parameter      | Type        | Default     | Description                   |
+| -------------- | ----------- | ----------- | ----------------------------- |
+| `text`         | `str`       | required    | Text to convert to speech     |
+| `voice_name`   | `str`       | `"Default"` | Voice to use                  |
+| `config`       | `dict`      | `{}`        | Additional configuration      |
+| `callback_url` | `str\|None` | `None`      | URL to receive async callback |
 
 All three audio methods return an `Audio` object with `.id`, `.name`, `.length`, and `.collection_id`.
 
@@ -144,11 +144,11 @@ print(result["output"])
 
 ### generate_text Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `prompt` | `str` | required | Prompt with context for the LLM |
-| `model_name` | `str` | `"basic"` | Model tier: `"basic"`, `"pro"`, or `"ultra"` |
-| `response_type` | `str` | `"text"` | Response format: `"text"` or `"json"` |
+| Parameter       | Type  | Default   | Description                                  |
+| --------------- | ----- | --------- | -------------------------------------------- |
+| `prompt`        | `str` | required  | Prompt with context for the LLM              |
+| `model_name`    | `str` | `"basic"` | Model tier: `"basic"`, `"pro"`, or `"ultra"` |
+| `response_type` | `str` | `"text"`  | Response format: `"text"` or `"json"`        |
 
 Returns a `dict` with an `output` key. When `response_type="text"`, `output` is a `str`. When `response_type="json"`, `output` is a `dict`.
 
@@ -212,11 +212,11 @@ dubbed_video.play()
 
 ### dub_video Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `video_id` | `str` | required | ID of the video to dub |
-| `language_code` | `str` | required | Target language code (e.g., `"es"`, `"fr"`, `"de"`) |
-| `callback_url` | `str\|None` | `None` | URL to receive async callback |
+| Parameter       | Type        | Default  | Description                                         |
+| --------------- | ----------- | -------- | --------------------------------------------------- |
+| `video_id`      | `str`       | required | ID of the video to dub                              |
+| `language_code` | `str`       | required | Target language code (e.g., `"es"`, `"fr"`, `"de"`) |
+| `callback_url`  | `str\|None` | `None`   | URL to receive async callback                       |
 
 Returns a `Video` object with the dubbed content.
 

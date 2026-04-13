@@ -6,7 +6,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockDb, mockProcessConfigGet, mockCreateConversation } = vi.hoisted(() => ({
+const { mockDb, mockProcessConfigGet, mockCreateConversation, mockListAllConversations, mockReadCatalogForConversations } = vi.hoisted(() => ({
   mockDb: {
     getConnectorInstances: vi.fn(),
     getRemoteIdentityByConnectorChat: vi.fn(),
@@ -24,6 +24,8 @@ const { mockDb, mockProcessConfigGet, mockCreateConversation } = vi.hoisted(() =
   },
   mockProcessConfigGet: vi.fn(),
   mockCreateConversation: vi.fn(),
+  mockListAllConversations: vi.fn(),
+  mockReadCatalogForConversations: vi.fn(),
 }));
 
 vi.mock('@process/services/database', () => ({
@@ -39,6 +41,13 @@ vi.mock('@process/utils/initStorage', () => ({
 vi.mock('@/process/services/conversationServiceSingleton', () => ({
   conversationServiceSingleton: {
     createConversation: mockCreateConversation,
+    listAllConversations: mockListAllConversations,
+  },
+}));
+
+vi.mock('@process/channels/core/ProjectChannelPublicationService', () => ({
+  ProjectChannelPublicationService: class {
+    readCatalogForConversations = mockReadCatalogForConversations;
   },
 }));
 
@@ -99,6 +108,15 @@ describe('ChannelRouteResolver', () => {
     mockDb.updateExternalSessionActivity.mockReturnValue({ success: true, data: true });
 
     mockProcessConfigGet.mockResolvedValue(undefined);
+    mockListAllConversations.mockResolvedValue([]);
+    mockReadCatalogForConversations.mockResolvedValue({
+      workspaces: [],
+      agentProfiles: [],
+      bindings: [],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
+    });
+
     mockCreateConversation.mockResolvedValue({
       id: 'conv-1',
       type: 'gemini',
@@ -276,31 +294,27 @@ describe('ChannelRouteResolver', () => {
 
   it('creates a projected user for a published topic audience before a remote identity exists', async () => {
     const resolver = new ChannelRouteResolver();
-    mockDb.getChannelBindingsForScope.mockImplementation(
-      (_connectorId: string, scopeType: IChannelBinding['scopeType'], scopeKey?: string) => {
-        if (scopeType === 'remote_chat' && scopeKey === 'oc_group_1:thread:om_topic_root_1') {
-          return {
-            success: true,
-            data: [
-              {
-                id: 'binding-topic',
-                connectorId: connector.id,
-                scopeType: 'remote_chat',
-                scopeKey,
-                agentProfileId: 'agent-topic',
-                priority: 0,
-                enabled: true,
-                temporary: false,
-                createdAt: 1,
-                updatedAt: 1,
-              },
-            ],
-          };
-        }
-
-        return { success: true, data: [] };
-      }
-    );
+    mockReadCatalogForConversations.mockResolvedValueOnce({
+      workspaces: [],
+      agentProfiles: [],
+      bindings: [
+        {
+          id: 'binding-topic',
+          connectorId: connector.id,
+          channelAccountId: connector.id,
+          scopeType: 'remote_chat',
+          scopeKey: 'oc_group_1:thread:om_topic_root_1',
+          agentProfileId: 'agent-topic',
+          priority: 0,
+          enabled: true,
+          temporary: false,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
+    });
 
     const result = await (
       resolver as unknown as {
@@ -337,31 +351,27 @@ describe('ChannelRouteResolver', () => {
 
   it('creates a projected user for a topic when only the parent group is published', async () => {
     const resolver = new ChannelRouteResolver();
-    mockDb.getChannelBindingsForScope.mockImplementation(
-      (_connectorId: string, scopeType: IChannelBinding['scopeType'], scopeKey?: string) => {
-        if (scopeType === 'remote_chat' && scopeKey === 'oc_group_1') {
-          return {
-            success: true,
-            data: [
-              {
-                id: 'binding-group',
-                connectorId: connector.id,
-                scopeType: 'remote_chat',
-                scopeKey,
-                agentProfileId: 'agent-group',
-                priority: 0,
-                enabled: true,
-                temporary: false,
-                createdAt: 1,
-                updatedAt: 1,
-              },
-            ],
-          };
-        }
-
-        return { success: true, data: [] };
-      }
-    );
+    mockReadCatalogForConversations.mockResolvedValueOnce({
+      workspaces: [],
+      agentProfiles: [],
+      bindings: [
+        {
+          id: 'binding-group',
+          connectorId: connector.id,
+          channelAccountId: connector.id,
+          scopeType: 'remote_chat',
+          scopeKey: 'oc_group_1',
+          agentProfileId: 'agent-group',
+          priority: 0,
+          enabled: true,
+          temporary: false,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
+    });
 
     const result = await (
       resolver as unknown as {
@@ -474,17 +484,18 @@ describe('ChannelRouteResolver', () => {
       updatedAt: 1,
     };
 
-    mockDb.getChannelBindingsForScope.mockImplementation(
-      (_connectorId: string, scopeType: IChannelBinding['scopeType']) => {
-        if (scopeType === 'remote_chat') {
-          return { success: true, data: [] };
-        }
-        if (scopeType === 'remote_user') {
-          return { success: true, data: [remoteUserBinding] };
-        }
-        return { success: true, data: [] };
-      }
-    );
+    mockReadCatalogForConversations.mockResolvedValueOnce({
+      workspaces: [],
+      agentProfiles: [],
+      bindings: [
+        {
+          ...remoteUserBinding,
+          channelAccountId: connector.id,
+        },
+      ],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
+    });
 
     const result = await (
       resolver as unknown as {
@@ -508,7 +519,7 @@ describe('ChannelRouteResolver', () => {
     });
 
     expect(result.id).toBe('binding-remote-user');
-    expect(mockDb.getChannelBindingsForScope).toHaveBeenCalledWith(connector.id, 'remote_user', 'user-2');
+    expect(mockDb.getChannelBindingsForScope).toHaveBeenCalledWith(connector.id, 'temporary_override', 'user:alpha');
   });
 
   it('prefers temporary overrides over durable chat bindings', async () => {
@@ -576,17 +587,22 @@ describe('ChannelRouteResolver', () => {
   });
   it('creates a temporary override binding directly from agentProfileId', async () => {
     const resolver = new ChannelRouteResolver();
-    mockDb.getAgentProfile.mockReturnValue({
-      success: true,
-      data: {
-        id: 'agent-profile-openclaw',
-        name: 'OpenClaw Publication',
-        backend: 'openclaw-gateway',
-        version: 1,
-        archived: false,
-        createdAt: 1,
-        updatedAt: 1,
-      },
+    mockReadCatalogForConversations.mockResolvedValueOnce({
+      workspaces: [],
+      agentProfiles: [
+        {
+          id: 'agent-profile-openclaw',
+          name: 'OpenClaw Publication',
+          backend: 'openclaw-gateway',
+          version: 1,
+          archived: false,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      bindings: [],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
     });
 
     const result = await (
@@ -653,17 +669,16 @@ describe('ChannelRouteResolver', () => {
       updatedAt: 1,
     };
 
-    mockDb.getChannelBindingsForScope.mockImplementation(
-      (_connectorId: string, scopeType: IChannelBinding['scopeType']) => {
-        if (scopeType === 'temporary_override') {
-          return { success: true, data: [] };
-        }
-        if (scopeType === 'remote_chat') {
-          return { success: true, data: [disabledRemoteChatBinding] };
-        }
-        return { success: true, data: [enabledDefaultBinding] };
-      }
-    );
+    mockReadCatalogForConversations.mockResolvedValueOnce({
+      workspaces: [],
+      agentProfiles: [],
+      bindings: [
+        { ...disabledRemoteChatBinding, channelAccountId: connector.id },
+        { ...enabledDefaultBinding, channelAccountId: connector.id },
+      ],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
+    });
 
     const result = await (
       resolver as unknown as {
@@ -692,6 +707,15 @@ describe('ChannelRouteResolver', () => {
   it('reconstructs google auth gemini models when creating conversations from published agents', async () => {
     const resolver = new ChannelRouteResolver();
     mockProcessConfigGet.mockResolvedValue([]);
+    mockListAllConversations.mockResolvedValue([]);
+    mockReadCatalogForConversations.mockResolvedValue({
+      workspaces: [],
+      agentProfiles: [],
+      bindings: [],
+      agentProfileWorkspaceById: {},
+      bindingWorkspaceById: {},
+    });
+
     mockCreateConversation.mockResolvedValue({
       id: 'conv-google-auth',
       type: 'gemini',

@@ -17,7 +17,8 @@ Add this to your IDE's MCP configuration. The configuration file location depend
 | **Cursor**         | `~/.cursor/mcp.json`                                                                                                                 |
 | **VS Code**        | `~/.vscode/mcp.json`                                                                                                                 |
 | **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows) |
-| **Codebuddy**      | `~/.codebuddy/mcp.json`                                                                                                              |
+
+For other coding tools such as OpenCode, use that tool's own MCP configuration location instead of assuming the older CodeBuddy path.
 
 ```json
 {
@@ -91,7 +92,8 @@ ContextGo 支持 CDP 用于外部调试工具集成。在开发模式 (`just dev
 | **Cursor**         | `~/.cursor/mcp.json`                                                                                                                 |
 | **VS Code**        | `~/.vscode/mcp.json`                                                                                                                 |
 | **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) 或 `%APPDATA%\Claude\claude_desktop_config.json` (Windows) |
-| **Codebuddy**      | `~/.codebuddy/mcp.json`                                                                                                              |
+
+对于 OpenCode 等其他 coding 工具，请使用各自产品的 MCP 配置路径，不要再默认沿用旧的 CodeBuddy 路径。
 
 ```json
 {

@@ -49,6 +49,12 @@ export type SpaceConnectorDependency = {
   notes?: string;
 };
 
+/**
+ * Space connector descriptors model external product access capabilities only.
+ *
+ * They do NOT represent IM publication transports. Slack / Telegram / Discord /
+ * Weixin / Lark bot routing and publication live in `src/process/channels/`.
+ */
 export type SpaceConnectorDescriptor = {
   id: SpaceConnectorId;
   familyId: SpaceConnectorFamilyId;

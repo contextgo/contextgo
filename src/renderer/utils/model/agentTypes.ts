@@ -14,7 +14,6 @@ export type AvailableAgent = {
   name: string;
   cliPath?: string;
   customAgentId?: string;
-  openclawAgentId?: string;
   isDefault?: boolean;
   isPreset?: boolean;
   context?: string;

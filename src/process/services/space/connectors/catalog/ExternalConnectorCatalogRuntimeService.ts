@@ -58,7 +58,9 @@ async function resolveCgoBinary(repoDir: string): Promise<string> {
     }
   }
 
-  throw new Error('ContextGo connector CLI was not found. Set CONTEXTGO_CONNECTOR_REPO_DIR or CONTEXTGO_CONNECTOR_CGO_BINARY.');
+  throw new Error(
+    'ContextGo connector CLI was not found. Set CONTEXTGO_CONNECTOR_REPO_DIR or CONTEXTGO_CONNECTOR_CGO_BINARY.'
+  );
 }
 
 export class ExternalConnectorCatalogRuntimeService {
@@ -79,7 +81,8 @@ export class ExternalConnectorCatalogRuntimeService {
       return JSON.parse(result.stdout) as ExternalConnectorCatalogDetails;
     } catch (error) {
       throw new Error(
-        `Failed to parse connector catalog output for ${connectorName}: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to parse connector catalog output for ${connectorName}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
       );
     }
   }

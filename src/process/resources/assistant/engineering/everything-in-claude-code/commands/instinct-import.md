@@ -76,6 +76,7 @@ Import 8 new, update 1?
 ## Merge Behavior
 
 When importing an instinct with an existing ID:
+
 - Higher-confidence import becomes an update candidate
 - Equal/lower-confidence import is skipped
 - User confirms unless `--force` is used
@@ -83,12 +84,13 @@ When importing an instinct with an existing ID:
 ## Source Tracking
 
 Imported instincts are marked with:
+
 ```yaml
 source: inherited
 scope: project
-imported_from: "team-instincts.yaml"
-project_id: "a1b2c3d4e5f6"
-project_name: "my-project"
+imported_from: 'team-instincts.yaml'
+project_id: 'a1b2c3d4e5f6'
+project_name: 'my-project'
 ```
 
 ## Flags
@@ -101,6 +103,7 @@ project_name: "my-project"
 ## Output
 
 After import:
+
 ```
 PASS: Import complete!
 

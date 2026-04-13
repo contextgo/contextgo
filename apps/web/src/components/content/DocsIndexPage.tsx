@@ -39,7 +39,8 @@ export default function DocsIndexPage({
   openRepositoryLabel: string;
   overviewLabel: string;
 }) {
-  const sourceValue = source === 'release-repo' ? sourceReleaseLabel.replace('{{version}}', version) : sourceFallbackLabel;
+  const sourceValue =
+    source === 'release-repo' ? sourceReleaseLabel.replace('{{version}}', version) : sourceFallbackLabel;
 
   return (
     <DocsShell
@@ -66,8 +67,12 @@ export default function DocsIndexPage({
           <div className='theme-border mt-6 h-px w-full theme-divider-gradient' />
           <div className='mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]'>
             <div>
-              <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>{featuredLabel}</div>
-              <p className='theme-text-secondary mt-3 max-w-3xl text-sm leading-7 md:text-base'>{featuredDescription}</p>
+              <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>
+                {featuredLabel}
+              </div>
+              <p className='theme-text-secondary mt-3 max-w-3xl text-sm leading-7 md:text-base'>
+                {featuredDescription}
+              </p>
             </div>
             <div className='theme-surface-secondary theme-border rounded-[22px] border p-4'>
               <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.18em]'>{sourceLabel}</div>
@@ -96,7 +101,10 @@ export default function DocsIndexPage({
 
         <div className='space-y-6'>
           {groups.map((group) => (
-            <section key={group.id} className='theme-surface-secondary theme-shadow-card theme-border rounded-[30px] border px-6 py-6 md:px-7'>
+            <section
+              key={group.id}
+              className='theme-surface-secondary theme-shadow-card theme-border rounded-[30px] border px-6 py-6 md:px-7'
+            >
               <div>
                 <h2 className='theme-text-primary text-2xl font-semibold tracking-tight md:text-3xl'>{group.title}</h2>
                 <p className='theme-text-secondary mt-3 max-w-3xl text-sm leading-7'>{group.description}</p>
@@ -114,7 +122,9 @@ export default function DocsIndexPage({
                         <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.22em]'>
                           {entry.eyebrow}
                         </div>
-                        <h3 className='theme-text-primary mt-3 text-xl font-semibold tracking-tight md:text-2xl'>{entry.title}</h3>
+                        <h3 className='theme-text-primary mt-3 text-xl font-semibold tracking-tight md:text-2xl'>
+                          {entry.title}
+                        </h3>
                         <p className='theme-text-secondary mt-3 text-sm leading-7'>{entry.summary}</p>
                       </div>
                       <div className='theme-text-tertiary flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] lg:max-w-[180px] lg:justify-end'>

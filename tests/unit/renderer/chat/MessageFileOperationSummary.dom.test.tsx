@@ -139,8 +139,8 @@ describe('MessageToolGroupSummary', () => {
     fireEvent.click(screen.getByText('messages.stepSummary.viewSteps'));
 
     expect(screen.getByText(/ReadWorkspace/)).toBeInTheDocument();
-    expect(screen.getByText(/\"command\"/)).toBeInTheDocument();
-    expect(screen.getByText(/\"cwd\": \"\/tmp\"/)).toBeInTheDocument();
+    expect(screen.getByText(/"command"/)).toBeInTheDocument();
+    expect(screen.getByText(/"cwd": "\/tmp"/)).toBeInTheDocument();
   });
 
   it('renders edit icon markers for codex patch tool calls', () => {

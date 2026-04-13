@@ -7,7 +7,10 @@ export const runtime = 'edge';
 export default async function DocsPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
-  const [resolved, siteContent] = await Promise.all([getResolvedReleaseDocs(validLang), Promise.resolve(getSiteContent(validLang))]);
+  const [resolved, siteContent] = await Promise.all([
+    getResolvedReleaseDocs(validLang),
+    Promise.resolve(getSiteContent(validLang)),
+  ]);
 
   return (
     <DocsIndexPage

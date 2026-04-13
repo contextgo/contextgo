@@ -60,7 +60,7 @@ export class SpaceConnectorCatalogService {
         connectors,
         status: summarizeFamilyStatus(connectors),
       }))
-      .sort((left, right) => left.familyId.localeCompare(right.familyId));
+      .toSorted((left, right) => left.familyId.localeCompare(right.familyId));
   }
 
   listRuntimeOwnedByContextGo(): readonly SpaceConnectorDescriptor[] {

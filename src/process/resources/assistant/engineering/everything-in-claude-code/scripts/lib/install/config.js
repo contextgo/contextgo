@@ -29,11 +29,11 @@ function getValidator() {
 }
 
 function dedupeStrings(values) {
-  return [...new Set((Array.isArray(values) ? values : []).map(value => String(value).trim()).filter(Boolean))];
+  return [...new Set((Array.isArray(values) ? values : []).map((value) => String(value).trim()).filter(Boolean))];
 }
 
 function formatValidationErrors(errors = []) {
-  return errors.map(error => `${error.instancePath || '/'} ${error.message}`).join('; ');
+  return errors.map((error) => `${error.instancePath || '/'} ${error.message}`).join('; ');
 }
 
 function resolveInstallConfigPath(configPath, options = {}) {
@@ -42,9 +42,7 @@ function resolveInstallConfigPath(configPath, options = {}) {
   }
 
   const cwd = options.cwd || process.cwd();
-  return path.isAbsolute(configPath)
-    ? configPath
-    : path.normalize(path.join(cwd, configPath));
+  return path.isAbsolute(configPath) ? configPath : path.normalize(path.join(cwd, configPath));
 }
 
 function findDefaultInstallConfigPath(options = {}) {
@@ -64,9 +62,7 @@ function loadInstallConfig(configPath, options = {}) {
   const validator = getValidator();
 
   if (!validator(raw)) {
-    throw new Error(
-      `Invalid install config ${resolvedPath}: ${formatValidationErrors(validator.errors)}`
-    );
+    throw new Error(`Invalid install config ${resolvedPath}: ${formatValidationErrors(validator.errors)}`);
   }
 
   return {

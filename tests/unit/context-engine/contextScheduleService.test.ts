@@ -67,6 +67,8 @@ function createService(seed: ContextSchedule[] = []) {
   const workspaceConfigs = new Map<string, WorkspaceConversationScheduleRecord[]>();
   const runtimeStates = new Map<string, ContextSchedule['state']>();
   const runtimeHistory = new Map<string, WorkspaceScheduleRuntimeHistoryEvent[]>();
+  const queueTimerTrigger = vi.fn();
+  const findByKindAndJobType = vi.fn();
   const workspaceScheduleConfigStore: WorkspaceScheduleConfigStore = {
     async readConversationSchedules(workspace) {
       if (!workspace) {
@@ -121,9 +123,9 @@ function createService(seed: ContextSchedule[] = []) {
   const service = new ContextScheduleService(
     createMemoryStore(seed),
     {
-      queueTimerTrigger: vi.fn(),
+      queueTimerTrigger,
       getTriggerRegistry: () => ({
-        findByKindAndJobType: vi.fn(),
+        findByKindAndJobType,
       }),
     },
     {
@@ -150,7 +152,15 @@ function createService(seed: ContextSchedule[] = []) {
     workspaceScheduleRuntimeStore
   );
 
-  return { service, executeSchedule, workspaceConfigs, runtimeStates, runtimeHistory };
+  return {
+    service,
+    executeSchedule,
+    workspaceConfigs,
+    runtimeStates,
+    runtimeHistory,
+    queueTimerTrigger,
+    findByKindAndJobType,
+  };
 }
 
 describe('ContextScheduleService', () => {
@@ -259,6 +269,57 @@ describe('ContextScheduleService', () => {
       status: 'ok',
       error: undefined,
     });
+  });
+
+
+  it('runs project capability curation schedules through the timer trigger router', async () => {
+    const { service, queueTimerTrigger, findByKindAndJobType } = createService();
+    findByKindAndJobType.mockReturnValue({ id: 'timer.project-capability-curation' });
+
+    const schedule = await service.createContextSchedule({
+      name: 'Project capability refresh',
+      enabled: true,
+      owner: 'context-engine',
+      createdBy: 'system',
+      schedule: {
+        kind: 'cron',
+        expr: '0 * * * *',
+        description: 'Every hour',
+      },
+      scope: {
+        kind: 'project',
+        spaceId: 'space-1',
+        projectSlug: 'workspace-abcd1234',
+        threadId: 'conv-1',
+        label: 'workspace',
+      },
+      target: {
+        kind: 'context_job',
+        jobType: 'project_capability_curation',
+        reason: 'Refresh project capability mirror.',
+        payload: {
+          summary: 'Refresh project capability mirror.',
+        },
+      },
+    });
+
+    const updated = await service.runScheduleNow(schedule.id);
+
+    expect(findByKindAndJobType).toHaveBeenCalledWith('timer', 'project_capability_curation');
+    expect(queueTimerTrigger).toHaveBeenCalledWith(
+      expect.objectContaining({
+        triggerId: 'timer.project-capability-curation',
+        spaceId: 'space-1',
+        projectSlug: 'workspace-abcd1234',
+        threadId: 'conv-1',
+        reason: 'Refresh project capability mirror.',
+        payload: {
+          summary: 'Refresh project capability mirror.',
+        },
+      })
+    );
+    expect(updated.state.runCount).toBe(1);
+    expect(updated.state.lastStatus).toBe('ok');
   });
 
   it('hydrates workspace schedule declarations into the runtime store when listing conversation schedules', async () => {

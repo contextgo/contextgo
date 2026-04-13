@@ -60,13 +60,13 @@ Return a concise identity summary:
 
 Put the case into one bucket before acting:
 
-| Case | Typical action |
-|------|----------------|
-| Duplicate personal subscription | cancel extras, consider refund |
-| Real multi-seat/team intent | preserve seats, clarify billing model |
-| Failed payment / incomplete checkout | recover via portal or update payment method |
-| Missing self-serve controls | provide portal, cancellation path, or invoice access |
-| Product failure or trust break | refund, apologize, log product issue |
+| Case                                 | Typical action                                       |
+| ------------------------------------ | ---------------------------------------------------- |
+| Duplicate personal subscription      | cancel extras, consider refund                       |
+| Real multi-seat/team intent          | preserve seats, clarify billing model                |
+| Failed payment / incomplete checkout | recover via portal or update payment method          |
+| Missing self-serve controls          | provide portal, cancellation path, or invoice access |
+| Product failure or trust break       | refund, apologize, log product issue                 |
 
 ### 3. Take the safest reversible action first
 

@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ipcBridge } from '@/common';
 import type { AcpBackendAll } from '@/common/types/acpTypes';
+import { isProductVisibleRuntimeBackend } from '@/renderer/utils/model/availableAgents';
 
 export type AgentCheckResult = {
   backend: AcpBackendAll;
@@ -49,16 +50,12 @@ type UseAgentReadinessCheckOptions = {
 const AGENT_NAMES: Partial<Record<AcpBackendAll, string>> = {
   claude: 'Claude',
   codex: 'Codex',
-  codebuddy: 'CodeBuddy',
   opencode: 'OpenCode',
   gemini: 'Gemini',
-  qwen: 'Qwen Code',
-  iflow: 'iFlow',
-  droid: 'Droid',
-  goose: 'Goose',
-  auggie: 'Auggie',
-  kimi: 'Kimi',
 };
+
+const withCheckingState = (agents: AgentCheckResult[], checking: boolean): AgentCheckResult[] =>
+  agents.map((agent) => Object.assign({}, agent, { checking }));
 
 /**
  * Hook to check if the current agent is ready to use before sending messages.
@@ -145,7 +142,12 @@ export function useAgentReadinessCheck(options: UseAgentReadinessCheckOptions) {
 
       // Filter out current agent and custom agents
       const agentsToCheck = result.data
-        .filter((agent) => agent.backend !== 'custom' && agent.backend !== currentAgentBackend)
+        .filter(
+          (agent) =>
+            agent.backend !== 'custom' &&
+            agent.backend !== currentAgentBackend &&
+            isProductVisibleRuntimeBackend(agent.backend)
+        )
         .map((agent) => ({
           backend: agent.backend as AcpBackendAll,
           name: AGENT_NAMES[agent.backend as AcpBackendAll] || agent.name,
@@ -169,13 +171,9 @@ export function useAgentReadinessCheck(options: UseAgentReadinessCheckOptions) {
       }));
 
       const total = agentsToCheck.length;
-      let completed = 0;
       const results: AgentCheckResult[] = [];
-
-      // Check each agent sequentially, stop as soon as we find the first available one
-      let firstAvailableAgent: AgentCheckResult | null = null;
-
-      for (const agent of agentsToCheck) {
+      const checkAlternativeAtIndex = async (index: number): Promise<void> => {
+        const agent = agentsToCheck[index];
         const startTime = Date.now();
 
         try {
@@ -195,23 +193,18 @@ export function useAgentReadinessCheck(options: UseAgentReadinessCheckOptions) {
           results.push(checkedAgent);
 
           // If this is the first available agent, set it as bestAgent immediately
-          if (checkedAgent.available && !firstAvailableAgent) {
-            firstAvailableAgent = checkedAgent;
-
+          if (checkedAgent.available) {
             // Update state with bestAgent immediately
             setState((prev) => ({
               ...prev,
               isChecking: false, // Stop checking indicator
-              bestAgent: firstAvailableAgent,
-              availableAgents: [
-                ...results,
-                ...agentsToCheck.slice(completed + 1).map((a) => ({ ...a, checking: false })),
-              ],
+              bestAgent: checkedAgent,
+              availableAgents: [...results, ...withCheckingState(agentsToCheck.slice(index + 1), false)],
             }));
 
             // Trigger callback immediately
             if (onAgentReady) {
-              onAgentReady(firstAvailableAgent);
+              onAgentReady(checkedAgent);
             }
 
             // Stop checking other agents
@@ -226,23 +219,30 @@ export function useAgentReadinessCheck(options: UseAgentReadinessCheckOptions) {
           });
         }
 
-        completed++;
+        const completed = index + 1;
         const progress = Math.round((completed / total) * 100);
 
         setState((prev) => ({
           ...prev,
           progress,
-          availableAgents: [...results, ...agentsToCheck.slice(completed).map((a) => ({ ...a, checking: true }))],
+          availableAgents: [...results, ...withCheckingState(agentsToCheck.slice(completed), true)],
         }));
-      }
 
-      // All agents checked, none available
-      setState((prev) => ({
-        ...prev,
-        isChecking: false,
-        availableAgents: results,
-        bestAgent: null,
-      }));
+        if (completed >= total) {
+          // All agents checked, none available
+          setState((prev) => ({
+            ...prev,
+            isChecking: false,
+            availableAgents: results,
+            bestAgent: null,
+          }));
+          return;
+        }
+
+        await checkAlternativeAtIndex(completed);
+      };
+
+      await checkAlternativeAtIndex(0);
     } catch (error) {
       console.error('Failed to find alternatives:', error);
       setState((prev) => ({

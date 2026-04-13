@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
 import {
   ArrowCircleLeft,
+  Computer,
   Earth,
   ExpandLeft,
   ExpandRight,
@@ -26,6 +27,7 @@ import { useSelectedSpaceId } from '@/renderer/hooks/context/useSelectedSpace';
 import { isElectronDesktop, isMacOS, isMobileShellWebView } from '@/renderer/utils/platform';
 import { useConversationAgents } from '@renderer/pages/conversation/hooks/useConversationAgents';
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
+import { normalizeConversationTitle } from '@renderer/pages/conversation/utils/newConversationName';
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import { iconColors } from '@renderer/styles/colors';
@@ -38,9 +40,10 @@ interface TitlebarProps {
 }
 
 const MOBILE_SHELL_CONVERSATION_TITLE_MAX_LENGTH = 14;
+const IS_DEV_BUILD = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV === true;
 
 const formatMobileShellConversationTitle = (title: string): string => {
-  const normalizedTitle = title.trim();
+  const normalizedTitle = normalizeConversationTitle(title);
   if (normalizedTitle.length <= MOBILE_SHELL_CONVERSATION_TITLE_MAX_LENGTH) {
     return normalizedTitle;
   }
@@ -54,14 +57,15 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [mobileCenterTitle, setMobileCenterTitle] = useState('');
   const [groupModalVisible, setGroupModalVisible] = useState(false);
+  const [isRemoteModeBadgeHovered, setIsRemoteModeBadgeHovered] = useState(false);
   const layout = useLayoutContext();
+  const remoteAccess = useRemoteAccessContext();
   const location = useLocation();
   const navigate = useNavigate();
   const lastNonSettingsPathRef = useRef('/guid');
   const isDesktopRuntime = isElectronDesktop();
   const isMacRuntime = isDesktopRuntime && isMacOS();
   const isMobileShellRuntime = !isDesktopRuntime && isMobileShellWebView();
-  const remoteAccess = useRemoteAccessContext();
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab, openTabs } = useConversationTabs();
   const selectedSpaceId = useSelectedSpaceId();
@@ -90,19 +94,33 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     }
 
     let isMounted = true;
+    const timeoutIds: Array<ReturnType<typeof setTimeout>> = [];
 
-    ipcBridge.windowControls.isFullScreen
-      .invoke()
-      .then((state) => {
+    const syncWhenMounted = async () => {
+      try {
+        const state = await ipcBridge.windowControls.isFullScreen.invoke();
         if (isMounted) {
           setIsFullScreen(state);
         }
-      })
-      .catch(() => {
+      } catch {
         if (isMounted) {
           setIsFullScreen(false);
         }
-      });
+      }
+    };
+
+    void syncWhenMounted();
+    timeoutIds.push(setTimeout(() => void syncWhenMounted(), 180));
+    timeoutIds.push(setTimeout(() => void syncWhenMounted(), 720));
+
+    const handleWindowFocus = () => {
+      void syncWhenMounted();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void syncWhenMounted();
+      }
+    };
 
     const unsubscribe = ipcBridge.windowControls.fullScreenChanged.on(({ isFullScreen: nextIsFullScreen }) => {
       if (isMounted) {
@@ -110,16 +128,28 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       }
     });
 
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       isMounted = false;
+      timeoutIds.forEach((timeoutId) => clearTimeout(timeoutId));
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       unsubscribe();
     };
   }, [isDesktopRuntime]);
 
-  // Windows/Linux 显示自定义窗口按钮；macOS 在标题栏给工作区一个切换入口
+  // Windows/Linux 显示自定义窗口按钮；桌面端统一在标题栏提供工作区切换入口
   const showWindowControls = isDesktopRuntime && !isMacRuntime;
-  // WebUI 和 macOS 桌面都需要在标题栏放工作区开关
-  const showWorkspaceButton = workspaceAvailable && (!isDesktopRuntime || isMacRuntime);
+  const isRemoteDesktopContext =
+    remoteAccess?.target.mode === 'device-list' || remoteAccess?.target.mode === 'remote-device';
+  const isRemoteDeviceShell = remoteAccess?.target.mode === 'remote-device';
+  const showRemoteDeviceMinimalHostChrome = isRemoteDeviceShell;
+  // Remote-device mode keeps only host-level runtime status and native controls.
+  // The remote desktop already renders its own workspace/session header.
+  const showWorkspaceButton =
+    workspaceAvailable && (!layout?.isMobile || isMobileShellRuntime) && !showRemoteDeviceMinimalHostChrome;
 
   const workspaceTooltip = workspaceCollapsed
     ? t('common.expandMore', { defaultValue: 'Expand workspace' })
@@ -128,10 +158,17 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const backToChatTooltip = t('common.back', { defaultValue: 'Back to Chat' });
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isGuidRoute = location.pathname === '/guid' || location.pathname === '/';
-  const showDesktopConversationTabs = !layout?.isMobile && workspaceAvailable && openTabs.length > 0;
+  const showDesktopConversationTabs =
+    !layout?.isMobile && workspaceAvailable && openTabs.length > 0 && !showRemoteDeviceMinimalHostChrome;
   const iconSize = layout?.isMobile ? 24 : 18;
+  // Host chrome stays minimal for remote devices: mode badge + dev badge + window controls only.
+  const showDesktopNavigationButtons = !showRemoteDeviceMinimalHostChrome;
   // 统一在标题栏左侧展示主侧栏开关 / Always expose sidebar toggle on titlebar left side
-  const showSiderToggle = Boolean(layout?.setSiderCollapsed) && !(layout?.isMobile && isSettingsRoute);
+  const showSiderToggle =
+    Boolean(layout?.setSiderCollapsed) &&
+    !(layout?.isMobile && isSettingsRoute) &&
+    !isRemoteDesktopContext &&
+    !showRemoteDeviceMinimalHostChrome;
   const showBackToChatButton = Boolean(layout?.isMobile && isSettingsRoute);
   const showSettingsNavButton = Boolean(layout?.isMobile && isSettingsRoute);
   const showNewConversationButton = Boolean(layout?.isMobile && workspaceAvailable);
@@ -140,6 +177,14 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     ? t('common.expandMore', { defaultValue: 'Expand sidebar' })
     : t('common.collapse', { defaultValue: 'Collapse sidebar' });
   const settingsNavTooltip = t('settings.mobileNavigation');
+  const devBuildTooltip = t('common.devBuild');
+  const desktopRuntimeStatusText = !isRemoteDesktopContext
+    ? t('settings.webui.deviceModeLocal')
+    : isRemoteModeBadgeHovered
+      ? t('settings.webui.backToLocal')
+      : remoteAccess?.target.mode === 'device-list'
+        ? t('settings.webui.remoteDevicesNav')
+        : t('settings.webui.deviceModeRemote');
 
   const handleSiderToggle = () => {
     if (!showSiderToggle || !layout?.setSiderCollapsed) return;
@@ -151,6 +196,14 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       return;
     }
     dispatchWorkspaceToggleEvent();
+  };
+
+  const handleRemoteModeBadgeClick = () => {
+    if (!isRemoteDesktopContext) {
+      return;
+    }
+
+    void navigate('/guid');
   };
 
   const handleNavigateBack = () => {
@@ -238,14 +291,6 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       return t('schedule.scheduledTasks');
     }
 
-    if (path.startsWith('/settings/commands')) {
-      return t('settings.commands.title');
-    }
-
-    if (path.startsWith('/settings/webui')) {
-      return t('settings.webui');
-    }
-
     if (path.startsWith('/settings/runtime')) {
       return t('settings.runtimeManager.title', { defaultValue: 'Runtime' });
     }
@@ -329,19 +374,31 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   }, [layout?.isMobile, location.pathname, mobileRouteTitle]);
 
   const mobileCenterDisplayTitle = useMemo(() => {
+    const normalizedTitle = normalizeConversationTitle(mobileCenterTitle, {
+      fallbackTitle: mobileRouteTitle,
+      maxLength: 80,
+    });
+
     if (isMobileShellRuntime && isMobileConversationRoute) {
-      return formatMobileShellConversationTitle(mobileCenterTitle);
+      return formatMobileShellConversationTitle(normalizedTitle);
     }
 
-    return mobileCenterTitle;
-  }, [isMobileConversationRoute, isMobileShellRuntime, mobileCenterTitle]);
+    return normalizedTitle;
+  }, [isMobileConversationRoute, isMobileShellRuntime, mobileCenterTitle, mobileRouteTitle]);
+  const mobileCenterAccessibleTitle = useMemo(
+    () =>
+      normalizeConversationTitle(mobileCenterTitle, {
+        fallbackTitle: mobileRouteTitle,
+        maxLength: 160,
+      }),
+    [mobileCenterTitle, mobileRouteTitle]
+  );
 
   const showDesktopToolbar = showWorkspaceButton || showWindowControls;
   const showDesktopRightSection = showDesktopConversationTabs || showDesktopToolbar;
-  const showDesktopChromeOnlyLayout = !layout?.isMobile && !showDesktopConversationTabs && !showDesktopToolbar;
+  const showDesktopChromeOnlyLayout =
+    !layout?.isMobile && (showRemoteDeviceMinimalHostChrome || (!showDesktopConversationTabs && !showDesktopToolbar));
   const shouldDockDesktopLeftToPane = !layout?.isMobile && leftPaneWidth > 0;
-  const isRemoteDeviceActive = remoteAccess?.target.mode === 'remote-device';
-  const isRemoteShellActive = Boolean(remoteAccess && remoteAccess.target.mode !== 'local');
 
   const desktopLeftSectionStyle: React.CSSProperties = useMemo(() => {
     if (layout?.isMobile) {
@@ -349,7 +406,9 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     }
 
     const reserveMacTrafficLights = isMacRuntime && !isFullScreen;
-    const visibleControlCount = [showSiderToggle, true, true].filter(Boolean).length;
+    const visibleControlCount = [showSiderToggle, showDesktopNavigationButtons, showDesktopNavigationButtons].filter(
+      Boolean
+    ).length;
     const contentWidth = Math.max(visibleControlCount * 40, 56);
     const minimumWidth = reserveMacTrafficLights ? Math.max(contentWidth + 72, 120) : contentWidth + 16;
     if (!shouldDockDesktopLeftToPane) {
@@ -367,7 +426,53 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       paddingLeft: reserveMacTrafficLights ? '72px' : '8px',
       paddingRight: '8px',
     };
-  }, [isFullScreen, isMacRuntime, layout?.isMobile, leftPaneWidth, shouldDockDesktopLeftToPane, showSiderToggle]);
+  }, [
+    isFullScreen,
+    isMacRuntime,
+    layout?.isMobile,
+    leftPaneWidth,
+    shouldDockDesktopLeftToPane,
+    showDesktopNavigationButtons,
+    showSiderToggle,
+  ]);
+
+  const desktopDevBadge = IS_DEV_BUILD ? (
+    <span className='app-titlebar__build-badge' title={devBuildTooltip} aria-label={devBuildTooltip}>
+      {t('common.devBadge')}
+    </span>
+  ) : null;
+
+  const desktopModeBadge = isRemoteDesktopContext ? (
+    <button
+      type='button'
+      className={classNames(
+        'app-titlebar__mode-badge',
+        'app-titlebar__mode-badge--remote',
+        'app-titlebar__mode-badge--interactive',
+        isRemoteModeBadgeHovered && 'app-titlebar__mode-badge--hovered'
+      )}
+      title={desktopRuntimeStatusText}
+      aria-label={desktopRuntimeStatusText}
+      onClick={handleRemoteModeBadgeClick}
+      onMouseEnter={() => setIsRemoteModeBadgeHovered(true)}
+      onMouseLeave={() => setIsRemoteModeBadgeHovered(false)}
+      onBlur={() => setIsRemoteModeBadgeHovered(false)}
+    >
+      {isRemoteModeBadgeHovered ? (
+        <ArrowCircleLeft theme='outline' size={14} fill='currentColor' className='app-icon shrink-0' />
+      ) : (
+        <Earth theme='outline' size={14} fill='currentColor' className='app-icon shrink-0' />
+      )}
+    </button>
+  ) : (
+    <span
+      className={classNames('app-titlebar__mode-badge', 'app-titlebar__mode-badge--local')}
+      title={desktopRuntimeStatusText}
+      aria-label={desktopRuntimeStatusText}
+    >
+      <Computer theme='outline' size={14} fill='currentColor' className='app-icon shrink-0' />
+    </span>
+  );
 
   const desktopLeftControls = (
     <div
@@ -386,114 +491,123 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
           )}
         </button>
       )}
-      <button
-        type='button'
-        className='app-titlebar__button'
-        onClick={handleNavigateBack}
-        aria-label={t('common.goBack')}
-      >
-        <Left theme='outline' size={iconSize} fill='currentColor' />
-      </button>
-      <button
-        type='button'
-        className='app-titlebar__button'
-        onClick={handleNavigateForward}
-        aria-label={t('common.forward')}
-      >
-        <Right theme='outline' size={iconSize} fill='currentColor' />
-      </button>
+      {showDesktopNavigationButtons ? (
+        <button
+          type='button'
+          className='app-titlebar__button'
+          onClick={handleNavigateBack}
+          aria-label={t('common.goBack')}
+        >
+          <Left theme='outline' size={iconSize} fill='currentColor' />
+        </button>
+      ) : null}
+      {showDesktopNavigationButtons ? (
+        <button
+          type='button'
+          className='app-titlebar__button'
+          onClick={handleNavigateForward}
+          aria-label={t('common.forward')}
+        >
+          <Right theme='outline' size={iconSize} fill='currentColor' />
+        </button>
+      ) : null}
+    </div>
+  );
+
+  const desktopRemoteHostChrome = (
+    <div className='app-titlebar__floating-host-chrome'>
+      {showWindowControls ? <WindowControls /> : null}
+    </div>
+  );
+
+  const desktopStatusDock = (
+    <div className='app-titlebar__status-dock'>
+      {desktopDevBadge}
+      {desktopModeBadge}
     </div>
   );
 
   if (!layout?.isMobile) {
     if (showDesktopChromeOnlyLayout) {
       return (
-        <div
-          className={classNames('app-titlebar app-titlebar--desktop-chrome-only', {
-            'app-titlebar--desktop': isDesktopRuntime,
-            'app-titlebar--mac': isMacRuntime,
-          })}
-        >
-          {desktopLeftControls}
-        </div>
+        <>
+          <div
+            className={classNames('app-titlebar app-titlebar--desktop-chrome-only', {
+              'app-titlebar--desktop': isDesktopRuntime,
+              'app-titlebar--mac': isMacRuntime,
+            })}
+          >
+            {showRemoteDeviceMinimalHostChrome ? desktopRemoteHostChrome : desktopLeftControls}
+          </div>
+          {desktopStatusDock}
+        </>
       );
     }
 
     return (
-      <div
-        className={classNames(
-          'app-titlebar border-b border-[var(--border-base)]',
-          shouldDockDesktopLeftToPane ? 'bg-2' : 'bg-1',
-          {
-            'app-titlebar--desktop': isDesktopRuntime,
-            'app-titlebar--mac': isMacRuntime,
-          }
-        )}
-      >
-        {isDesktopRuntime ? <div className='app-titlebar__top-drag-strip' aria-hidden='true' /> : null}
-        {desktopLeftControls}
-        {showDesktopRightSection && (
-          <div
-            className={classNames(
-              'app-titlebar__desktop-right',
-              showDesktopConversationTabs && 'app-titlebar__desktop-right--conversation'
-            )}
-          >
-            {showDesktopConversationTabs ? (
-              <div className='app-titlebar__desktop-content app-titlebar__desktop-content--conversation'>
-                <div id='app-titlebar-chat-slot' className='h-full min-w-0' />
-                {isDesktopRuntime ? <div className='app-titlebar__drag-spacer' aria-hidden='true' /> : null}
-              </div>
-            ) : isDesktopRuntime ? (
-              <div className='app-titlebar__drag-spacer' aria-hidden='true' />
-            ) : null}
-            {showDesktopToolbar && (
-              <div className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
-                <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />
-                {isRemoteShellActive ? (
-                  <button
-                    type='button'
-                    className='app-header-pill-button'
-                    onClick={() => {
-                      if (remoteAccess?.target.mode === 'remote-device') {
-                        remoteAccess.resetToDeviceList();
-                      }
-                      void navigate('/remote/devices');
-                    }}
-                    aria-label={t('settings.webui.remoteDevicesNav', { defaultValue: 'Remote Devices' })}
-                  >
-                    <span className='app-header-pill app-header-pill--status'>
-                      <span className='app-header-pill__icon'>
-                        <Earth theme='outline' size='14' fill={iconColors.primary} />
-                      </span>
-                      <span className='truncate'>
-                        {isRemoteDeviceActive
-                          ? t('settings.webui.officialRemoteTitle', { defaultValue: 'Official Remote' })
-                          : t('settings.webui.remoteDevicesNav', { defaultValue: 'Remote Devices' })}
-                      </span>
-                    </span>
-                  </button>
-                ) : null}
-                {showWorkspaceButton && (
-                  <button
-                    type='button'
-                    className='app-titlebar__button'
-                    onClick={handleWorkspaceToggle}
-                    aria-label={workspaceTooltip}
-                  >
-                    {workspaceCollapsed ? (
-                      <ExpandRight theme='outline' size={iconSize} fill='currentColor' />
-                    ) : (
-                      <ExpandLeft theme='outline' size={iconSize} fill='currentColor' />
+      <>
+        <div
+          className={classNames(
+            'app-titlebar border-b border-[var(--border-base)]',
+            shouldDockDesktopLeftToPane ? 'bg-2' : 'bg-1',
+            {
+              'app-titlebar--desktop': isDesktopRuntime,
+              'app-titlebar--mac': isMacRuntime,
+            }
+          )}
+        >
+          {isDesktopRuntime ? <div className='app-titlebar__top-drag-strip' aria-hidden='true' /> : null}
+          {desktopLeftControls}
+          {showDesktopRightSection && (
+            <div
+              className={classNames(
+                'app-titlebar__desktop-right',
+                showDesktopConversationTabs && 'app-titlebar__desktop-right--conversation'
+              )}
+            >
+              {showDesktopConversationTabs ? (
+                <div className='app-titlebar__desktop-content app-titlebar__desktop-content--conversation'>
+                  <div id='app-titlebar-chat-slot' className='h-full min-w-0' />
+                  {isDesktopRuntime ? <div className='app-titlebar__drag-spacer' aria-hidden='true' /> : null}
+                </div>
+              ) : isDesktopRuntime ? (
+                <div className='app-titlebar__drag-spacer' aria-hidden='true' />
+              ) : null}
+              {showDesktopToolbar && (
+                <div className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
+                  <div className='app-titlebar__toolbar-actions'>
+                    <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />
+
+                    {showWorkspaceButton && (
+                      <div className='app-titlebar__toolbar-chip-slot'>
+                        <button
+                          type='button'
+                          className='app-header-pill-button app-titlebar__toolbar-chip-button'
+                          onClick={handleWorkspaceToggle}
+                          aria-label={workspaceTooltip}
+                          title={workspaceTooltip}
+                        >
+                          <span className='app-header-pill'>
+                            <span className='app-header-pill__icon'>
+                              {workspaceCollapsed ? (
+                                <ExpandRight theme='outline' size={16} fill='currentColor' />
+                              ) : (
+                                <ExpandLeft theme='outline' size={16} fill='currentColor' />
+                              )}
+                            </span>
+                          </span>
+                        </button>
+                      </div>
                     )}
-                  </button>
-                )}
-                {showWindowControls && <WindowControls />}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                  </div>
+                  {showWindowControls && <WindowControls />}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {desktopStatusDock}
+      </>
     );
   }
 
@@ -568,8 +682,8 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
         </div>
         <div
           className={classNames('app-titlebar__brand', shouldLeftAlignMobileTitle && 'app-titlebar__brand--leading')}
-          aria-label={mobileCenterTitle}
-          title={mobileCenterTitle}
+          aria-label={mobileCenterAccessibleTitle}
+          title={mobileCenterAccessibleTitle}
         >
           {layout?.isMobile && mobileCenterDisplayTitle ? (
             <span className='app-titlebar__brand-text'>{mobileCenterDisplayTitle}</span>

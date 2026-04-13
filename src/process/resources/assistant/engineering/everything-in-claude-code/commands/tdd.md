@@ -18,11 +18,13 @@ Use this only if you still invoke `/tdd`. The maintained workflow lives in `skil
 ## Delegation
 
 Apply the `tdd-workflow` skill.
+
 - Stay strict on RED -> GREEN -> REFACTOR.
 - Keep tests first, coverage explicit, and checkpoint evidence clear.
 - Use the skill as the maintained TDD body instead of duplicating the playbook here.
-})
-```
+  })
+
+````
 
 ## Step 3: Run Tests - Verify FAIL
 
@@ -34,7 +36,7 @@ FAIL lib/liquidity.test.ts
     Error: Not implemented
 
 1 test failed, 0 passed
-```
+````
 
 PASS: Tests fail as expected. Ready to implement.
 
@@ -45,27 +47,22 @@ PASS: Tests fail as expected. Ready to implement.
 export function calculateLiquidityScore(market: MarketData): number {
   // Handle zero volume edge case
   if (market.totalVolume === 0) {
-    return 0
+    return 0;
   }
 
   // Calculate component scores (0-100 scale)
-  const volumeScore = Math.min(market.totalVolume / 1000, 100)
-  const spreadScore = Math.max(100 - (market.bidAskSpread * 1000), 0)
-  const traderScore = Math.min(market.activeTraders / 10, 100)
+  const volumeScore = Math.min(market.totalVolume / 1000, 100);
+  const spreadScore = Math.max(100 - market.bidAskSpread * 1000, 0);
+  const traderScore = Math.min(market.activeTraders / 10, 100);
 
   // Recent activity bonus
-  const hoursSinceLastTrade = (Date.now() - market.lastTradeTime.getTime()) / (1000 * 60 * 60)
-  const recencyScore = Math.max(100 - (hoursSinceLastTrade * 10), 0)
+  const hoursSinceLastTrade = (Date.now() - market.lastTradeTime.getTime()) / (1000 * 60 * 60);
+  const recencyScore = Math.max(100 - hoursSinceLastTrade * 10, 0);
 
   // Weighted average
-  const score = (
-    volumeScore * 0.4 +
-    spreadScore * 0.3 +
-    traderScore * 0.2 +
-    recencyScore * 0.1
-  )
+  const score = volumeScore * 0.4 + spreadScore * 0.3 + traderScore * 0.2 + recencyScore * 0.1;
 
-  return Math.min(Math.max(score, 0), 100) // Clamp to 0-100
+  return Math.min(Math.max(score, 0), 100); // Clamp to 0-100
 }
 ```
 
@@ -93,36 +90,36 @@ const WEIGHTS = {
   SPREAD: 0.3,
   TRADERS: 0.2,
   RECENCY: 0.1,
-} as const
+} as const;
 
 const SCALE_FACTORS = {
   VOLUME: 1000,
   SPREAD: 1000,
   TRADERS: 10,
   RECENCY_PENALTY: 10,
-} as const
+} as const;
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
+  return Math.min(Math.max(value, min), max);
 }
 
 export function calculateLiquidityScore(market: MarketData): number {
-  if (market.totalVolume === 0) return 0
+  if (market.totalVolume === 0) return 0;
 
-  const volumeScore = Math.min(market.totalVolume / SCALE_FACTORS.VOLUME, 100)
-  const spreadScore = clamp(100 - (market.bidAskSpread * SCALE_FACTORS.SPREAD), 0, 100)
-  const traderScore = Math.min(market.activeTraders / SCALE_FACTORS.TRADERS, 100)
+  const volumeScore = Math.min(market.totalVolume / SCALE_FACTORS.VOLUME, 100);
+  const spreadScore = clamp(100 - market.bidAskSpread * SCALE_FACTORS.SPREAD, 0, 100);
+  const traderScore = Math.min(market.activeTraders / SCALE_FACTORS.TRADERS, 100);
 
-  const hoursSinceLastTrade = (Date.now() - market.lastTradeTime.getTime()) / (1000 * 60 * 60)
-  const recencyScore = clamp(100 - (hoursSinceLastTrade * SCALE_FACTORS.RECENCY_PENALTY), 0, 100)
+  const hoursSinceLastTrade = (Date.now() - market.lastTradeTime.getTime()) / (1000 * 60 * 60);
+  const recencyScore = clamp(100 - hoursSinceLastTrade * SCALE_FACTORS.RECENCY_PENALTY, 0, 100);
 
   const weightedScore =
     volumeScore * WEIGHTS.VOLUME +
     spreadScore * WEIGHTS.SPREAD +
     traderScore * WEIGHTS.TRADERS +
-    recencyScore * WEIGHTS.RECENCY
+    recencyScore * WEIGHTS.RECENCY;
 
-  return clamp(weightedScore, 0, 100)
+  return clamp(weightedScore, 0, 100);
 }
 ```
 
@@ -154,6 +151,7 @@ Coverage: 100% PASS: (Target: 80%)
 ```
 
 PASS: TDD session complete!
+
 ```
 
 ## TDD Best Practices
@@ -229,3 +227,4 @@ The related `tdd-workflow` skill is also bundled with ECC.
 For manual installs, the source files live at:
 - `agents/tdd-guide.md`
 - `skills/tdd-workflow/SKILL.md`
+```

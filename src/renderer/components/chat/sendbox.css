@@ -14,6 +14,14 @@
   filter: drop-shadow(0 0 0.5px currentColor);
 }
 
+.sendbox-stop-button .arco-icon > svg {
+  filter: drop-shadow(0 0 0.4px currentColor);
+}
+
+.sendbox-stop-button:disabled {
+  opacity: 1 !important;
+}
+
 /* Input placeholder color */
 ::placeholder {
   color: #a1a2aa !important;

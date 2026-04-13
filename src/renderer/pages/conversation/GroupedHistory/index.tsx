@@ -4,26 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
-import { Button, Dropdown, Empty, Input, Menu, Message } from '@arco-design/web-react';
+import { Button, Empty, Input, Message } from '@arco-design/web-react';
 import { ContextGoModal } from '@/renderer/components/base';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
-import { useSelectedSpaceId } from '@/renderer/hooks/context/useSelectedSpace';
 import DirectorySelectionModal from '@/renderer/components/settings/DirectorySelectionModal';
-import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import { useScheduleJobsMap } from '@/renderer/pages/schedule';
-import { buildCliAgentParams, buildPresetAssistantParams } from '@/renderer/pages/conversation/utils/createConversationParams';
-import { applyDefaultConversationName } from '@/renderer/pages/conversation/utils/newConversationName';
-import { useConversationAgents } from '@/renderer/pages/conversation/hooks/useConversationAgents';
-import { useConversationTabs } from '@/renderer/pages/conversation/hooks/ConversationTabsContext';
-import { emitter } from '@/renderer/utils/emitter';
-import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { iconColors } from '@/renderer/styles/colors';
-import { updateWorkspaceTime } from '@/renderer/utils/workspace/workspaceHistory';
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Down, FolderOpen, Plus, Robot } from '@icon-park/react';
+import { Down, FolderOpen, Plus } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +30,24 @@ import { useConversations } from './hooks/useConversations';
 import { useDragAndDrop } from './hooks/useDragAndDrop';
 import { useExport } from './hooks/useExport';
 import type { ConversationRowProps, WorkspaceGroupedHistoryProps } from './types';
+import { buildGuidLocationStateFromWorkspaceGroup } from './utils/groupingHelpers';
+
+const composeLeadingSlot = (...slots: Array<React.ReactNode | undefined>) => {
+  const visibleSlots = slots.filter(Boolean);
+  if (visibleSlots.length === 0) {
+    return undefined;
+  }
+
+  return <span className='flex items-center gap-4px'>{visibleSlots}</span>;
+};
+
+const renderWorkspaceMarker = () => <span className='flex h-20px w-12px shrink-0' aria-hidden='true' />;
+
+const renderGroupChildMarker = () => (
+  <span className='relative flex h-20px w-14px shrink-0 items-center' aria-hidden='true'>
+    <span className='absolute left-4px top-1/2 h-2px w-10px -translate-y-1/2 rounded-full bg-[var(--color-text-4)]/45' />
+  </span>
+);
 
 const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   onSessionClick,
@@ -50,12 +58,8 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
 }) => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { getJobStatus, markAsRead, setActiveConversation } = useScheduleJobsMap();
-  const { openTab } = useConversationTabs();
-  const { cliAgents, presetAssistants } = useConversationAgents();
-  const selectedSpaceId = useSelectedSpaceId();
-  const defaultConversationName = t('conversation.welcome.newConversation');
 
   useEffect(() => {
     if (id) {
@@ -199,116 +203,29 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     );
   };
 
-  const composeLeadingSlot = (...slots: Array<React.ReactNode | undefined>) => {
-    const visibleSlots = slots.filter(Boolean);
-    if (visibleSlots.length === 0) {
-      return undefined;
-    }
-
-    return <span className='flex items-center gap-4px'>{visibleSlots}</span>;
-  };
-
-  const renderWorkspaceMarker = () => <span className='flex h-20px w-12px shrink-0' aria-hidden='true' />;
-
   const handleCreateWorkspaceConversation = useCallback(
-    async (workspace: string, key: string) => {
-      try {
-        let params;
-
-        if (key.startsWith('cli:')) {
-          const backend = key.slice(4);
-          const agent = cliAgents.find((item) => item.backend === backend);
-          if (!agent) {
-            Message.error(t('conversation.createFailed'));
-            return;
-          }
-          params = await buildCliAgentParams(agent, workspace, selectedSpaceId ?? undefined);
-        } else if (key.startsWith('preset:')) {
-          const assistantId = key.slice(7);
-          const agent = presetAssistants.find((item) => item.customAgentId === assistantId);
-          if (!agent) {
-            Message.error(t('conversation.createFailed'));
-            return;
-          }
-          params = await buildPresetAssistantParams(agent, workspace, i18n.language, selectedSpaceId ?? undefined);
-        } else {
-          return;
-        }
-
-        const conversation = await ipcBridge.conversation.create.invoke(
-          applyDefaultConversationName(params, defaultConversationName)
-        );
-
-        updateWorkspaceTime(workspace);
-        openTab(conversation);
-        void navigate(`/conversation/${conversation.id}`);
-        emitter.emit('chat.history.refresh');
-        onSessionClick?.();
-      } catch (error) {
-        console.error('Failed to create workspace conversation:', error);
+    (conversation: TChatConversation) => {
+      const workspace = conversation.extra?.workspace;
+      if (!workspace) {
         Message.error(t('conversation.createFailed'));
+        return;
       }
+
+      const workspaceGroup = timelineSections
+        .flatMap((section) => section.items)
+        .find((item) => item.type === 'workspace' && item.workspaceGroup?.workspace === workspace)?.workspaceGroup;
+
+      if (!workspaceGroup) {
+        Message.error(t('conversation.createFailed'));
+        return;
+      }
+
+      void navigate('/guid', {
+        state: buildGuidLocationStateFromWorkspaceGroup(workspaceGroup),
+      });
+      onSessionClick?.();
     },
-    [cliAgents, defaultConversationName, i18n.language, navigate, onSessionClick, openTab, presetAssistants, selectedSpaceId, t]
-  );
-
-  const renderWorkspaceCreateMenu = useCallback(
-    (workspace: string) => (
-      <Menu
-        onClickMenuItem={(key) => {
-          void handleCreateWorkspaceConversation(workspace, key);
-        }}
-      >
-        {cliAgents.length > 0 && (
-          <Menu.ItemGroup title={t('conversation.dropdown.cliAgents')}>
-            {cliAgents.map((agent) => {
-              const logo = getAgentLogo(agent.backend);
-              return (
-                <Menu.Item key={`cli:${agent.backend}`}>
-                  <div className='flex items-center gap-8px'>
-                    {logo ? (
-                      <img src={logo} alt={agent.name} style={{ width: 16, height: 16, objectFit: 'contain' }} />
-                    ) : (
-                      <Robot size='16' />
-                    )}
-                    <span>{agent.name}</span>
-                  </div>
-                </Menu.Item>
-              );
-            })}
-          </Menu.ItemGroup>
-        )}
-        {presetAssistants.length > 0 && (
-          <Menu.ItemGroup title={t('conversation.dropdown.presetAssistants')}>
-            {presetAssistants.map((agent) => {
-              const avatarImage = agent.avatar ? CUSTOM_AVATAR_IMAGE_MAP[agent.avatar] : undefined;
-              const isEmoji = agent.avatar && !avatarImage && !agent.avatar.endsWith('.svg');
-              return (
-                <Menu.Item key={`preset:${agent.customAgentId}`}>
-                  <div className='flex items-center gap-8px'>
-                    {avatarImage ? (
-                      <img src={avatarImage} alt={agent.name} style={{ width: 16, height: 16, objectFit: 'contain' }} />
-                    ) : isEmoji ? (
-                      <span style={{ fontSize: 14, lineHeight: '16px' }}>{agent.avatar}</span>
-                    ) : (
-                      <Robot size='16' />
-                    )}
-                    <span>{agent.name}</span>
-                  </div>
-                </Menu.Item>
-              );
-            })}
-          </Menu.ItemGroup>
-        )}
-      </Menu>
-    ),
-    [cliAgents, handleCreateWorkspaceConversation, presetAssistants, t]
-  );
-
-  const renderGroupChildMarker = () => (
-    <span className='relative flex h-20px w-14px shrink-0 items-center' aria-hidden='true'>
-      <span className='absolute left-4px top-1/2 h-2px w-10px -translate-y-1/2 rounded-full bg-[var(--color-text-4)]/45' />
-    </span>
+    [navigate, onSessionClick, t, timelineSections]
   );
 
   const renderGroupChildConversations = (conversation: TChatConversation, inheritedLeadingSlot?: React.ReactNode) => {
@@ -606,19 +523,21 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                       onToggle={() => handleToggleWorkspace(group.workspace)}
                       siderCollapsed={collapsed}
                       headerActions={
-                        <Dropdown droplist={renderWorkspaceCreateMenu(group.workspace)} trigger='click' position='bl'>
-                          <button
-                            type='button'
-                            className='flex h-22px w-22px items-center justify-center rounded-6px border-none bg-transparent p-0 text-t-secondary transition-colors hover:bg-fill-2 hover:text-t-primary'
-                            aria-label={t('conversation.entry.create') + t('conversation.entry.conversation')}
-                            title={`${t('conversation.entry.create')} ${t('conversation.entry.conversation')}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                            }}
-                          >
-                            <Plus theme='outline' size='14' fill={iconColors.primary} />
-                          </button>
-                        </Dropdown>
+                        <Button
+                          type='text'
+                          size='mini'
+                          className='flex h-24px w-24px items-center justify-center rounded-6px border-none p-0 text-t-secondary hover:bg-fill-2 hover:text-t-primary'
+                          aria-label={t('conversation.entry.create') + t('conversation.entry.conversation')}
+                          title={`${t('conversation.entry.create')} ${t('conversation.entry.conversation')}`}
+                          icon={<Plus theme='outline' size='14' fill={iconColors.primary} />}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            const latestConversation = group.conversations[0];
+                            if (latestConversation) {
+                              handleCreateWorkspaceConversation(latestConversation);
+                            }
+                          }}
+                        />
                       }
                       header={
                         <div className='flex items-center gap-8px text-14px min-w-0'>

@@ -33,7 +33,16 @@ vi.mock('@/renderer/components/Markdown', () => ({
 }));
 
 vi.mock('@arco-design/web-react', () => ({
-  Button: ({ children, icon, onClick, ...props }: { children?: React.ReactNode; icon?: React.ReactNode; onClick?: () => void }) => (
+  Button: ({
+    children,
+    icon,
+    onClick,
+    ...props
+  }: {
+    children?: React.ReactNode;
+    icon?: React.ReactNode;
+    onClick?: () => void;
+  }) => (
     <button type='button' onClick={onClick} {...props}>
       {icon}
       {children}

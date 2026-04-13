@@ -17,8 +17,14 @@ import {
   type SessionSignal,
 } from './contextDomain';
 import type { ContextEventBus } from './events/ContextEventBus';
-import { SpaceVaultContextSyncService, createWorkspaceProjectSlug } from '@process/services/space/SpaceVaultContextSyncService';
-import { ProjectContextMirrorService, type ProjectContextSnapshot } from '@process/services/space/ProjectContextMirrorService';
+import {
+  SpaceVaultContextSyncService,
+  createWorkspaceProjectSlug,
+} from '@process/services/space/SpaceVaultContextSyncService';
+import {
+  ProjectContextMirrorService,
+  type ProjectContextSnapshot,
+} from '@process/services/space/ProjectContextMirrorService';
 import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
 import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSpaceRepository';
 import { isSpaceVaultProviderRef } from '@process/services/space/vaultBinding';
@@ -324,7 +330,9 @@ export class ContextRuntimeService {
     > = new SpaceVaultContextSyncService(),
     private readonly eventBus?: Pick<ContextEventBus, 'emit'>,
     private readonly projectContextMirrorService = new ProjectContextMirrorService(contextService),
-    private readonly spaceService: Pick<SpaceServiceImpl, 'getSpace'> = new SpaceServiceImpl(new SqliteSpaceRepository())
+    private readonly spaceService: Pick<SpaceServiceImpl, 'getSpace'> = new SpaceServiceImpl(
+      new SqliteSpaceRepository()
+    )
   ) {}
 
   private readonly pendingTurns = new Map<string, PendingTurn>();
@@ -346,16 +354,13 @@ export class ContextRuntimeService {
     });
   }
 
-  private async getSessionCompactionMountedProfiles(
-    spaceId: string,
-    threadId: string
-  ): Promise<ProfileSegment[]> {
+  private async getSessionCompactionMountedProfiles(spaceId: string, threadId: string): Promise<ProfileSegment[]> {
     const profiles = await this.contextService.listProfiles({
       spaceId,
       keyPrefix: createSessionCompactionProfileKey(threadId),
       state: 'active',
     });
-    const profile = [...profiles].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+    const profile = [...profiles].toSorted((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
     if (!profile?.summary.trim()) {
       return [];
     }
@@ -423,7 +428,7 @@ export class ContextRuntimeService {
       threadId: input.conversation.id,
       retrieval,
       budgetTokens: CONTEXT_BUDGET_TOKENS,
-      threadSummary: buildThreadSummary([...recentMessages].reverse()),
+      threadSummary: buildThreadSummary([...recentMessages].toReversed()),
       mountedSections: [
         ...(sessionWorkingSetSection ? [sessionWorkingSetSection] : []),
         ...this.projectContextMirrorService.buildMountedSections(projectSnapshot),
@@ -740,7 +745,11 @@ export class ContextRuntimeService {
             : []),
         ],
       }),
-      promotionCandidate: buildProjectPromotionCandidate(resolveConversationProjectSlug(conversation), promotedSummaries, conversationId),
+      promotionCandidate: buildProjectPromotionCandidate(
+        resolveConversationProjectSlug(conversation),
+        promotedSummaries,
+        conversationId
+      ),
     });
 
     if (pendingReviewCandidates.length > 0) {

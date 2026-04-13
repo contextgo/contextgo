@@ -46,14 +46,7 @@ const APPROVAL_COMMANDS = [
 ];
 
 // File patterns that indicate policy-sensitive paths
-const SENSITIVE_PATHS = [
-  /\.env(?:\.|$)/,
-  /credentials/i,
-  /secrets?\./i,
-  /\.pem$/,
-  /\.key$/,
-  /id_rsa/,
-];
+const SENSITIVE_PATHS = [/\.env(?:\.|$)/, /credentials/i, /secrets?\./i, /\.pem$/, /\.key$/, /id_rsa/];
 
 /**
  * Generate a unique event ID.
@@ -99,7 +92,7 @@ function detectApprovalRequired(command) {
 function detectSensitivePath(filePath) {
   if (!filePath || typeof filePath !== 'string') return false;
 
-  return SENSITIVE_PATHS.some(pattern => pattern.test(filePath));
+  return SENSITIVE_PATHS.some((pattern) => pattern.test(filePath));
 }
 
 function fingerprintCommand(command) {
@@ -149,9 +142,7 @@ function analyzeForGovernanceEvents(input, context = {}) {
   const hookPhase = context.hookPhase || 'unknown';
 
   // 1. Secret detection in tool input content
-  const inputText = typeof toolInput === 'object'
-    ? JSON.stringify(toolInput)
-    : String(toolInput);
+  const inputText = typeof toolInput === 'object' ? JSON.stringify(toolInput) : String(toolInput);
 
   const inputSecrets = detectSecrets(inputText);
   const outputSecrets = detectSecrets(toolOutput);
@@ -165,7 +156,7 @@ function analyzeForGovernanceEvents(input, context = {}) {
       payload: {
         toolName,
         hookPhase,
-        secretTypes: allSecrets.map(s => s.name),
+        secretTypes: allSecrets.map((s) => s.name),
         location: inputSecrets.length > 0 ? 'input' : 'output',
         severity: 'critical',
       },
@@ -189,7 +180,7 @@ function analyzeForGovernanceEvents(input, context = {}) {
           toolName,
           hookPhase,
           ...commandSummary,
-          matchedPatterns: approvalFindings.map(f => f.pattern),
+          matchedPatterns: approvalFindings.map((f) => f.pattern),
           severity: 'high',
         },
         resolvedAt: null,
@@ -299,7 +290,7 @@ if (require.main === module) {
   let raw = '';
   let truncated = /^(1|true|yes)$/i.test(String(process.env.ECC_HOOK_INPUT_TRUNCATED || ''));
   process.stdin.setEncoding('utf8');
-  process.stdin.on('data', chunk => {
+  process.stdin.on('data', (chunk) => {
     if (raw.length < MAX_STDIN) {
       const remaining = MAX_STDIN - raw.length;
       raw += chunk.substring(0, remaining);

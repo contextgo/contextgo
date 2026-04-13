@@ -23,8 +23,7 @@ const MAX_STDIN = 1024 * 1024;
 
 function getAccumFile() {
   const raw =
-    process.env.CLAUDE_SESSION_ID ||
-    crypto.createHash('sha1').update(process.cwd()).digest('hex').slice(0, 12);
+    process.env.CLAUDE_SESSION_ID || crypto.createHash('sha1').update(process.cwd()).digest('hex').slice(0, 12);
   // Strip path separators and traversal sequences so the value is safe to embed
   // directly in a filename regardless of what CLAUDE_SESSION_ID contains.
   const sessionId = raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
@@ -66,7 +65,7 @@ function run(rawInput) {
 if (require.main === module) {
   let data = '';
   process.stdin.setEncoding('utf8');
-  process.stdin.on('data', chunk => {
+  process.stdin.on('data', (chunk) => {
     if (data.length < MAX_STDIN) data += chunk.substring(0, MAX_STDIN - data.length);
   });
   process.stdin.on('end', () => {

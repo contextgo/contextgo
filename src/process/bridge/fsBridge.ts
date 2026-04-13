@@ -24,7 +24,10 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import JSZip from 'jszip';
 import { ipcBridge } from '@/common';
-import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
+import {
+  getBundledAgentPackageHideOwnedSkillsFromLibrary,
+  getBundledAgentPackageOwnedSkillNames,
+} from '@/common/config/presets/bundledAgentPackageRegistry';
 import { getWorkspaceHooksDir } from '@process/bridge/services/workspaceAutomation';
 import { skillMarketService } from '@process/bridge/services/skillmarket/SkillMarketService';
 import {
@@ -947,16 +950,6 @@ export function initFsBridge(): void {
     }
   });
 
-  // 读取内置 skills 文件 / Read built-in skills file from app resources
-  ipcBridge.fs.readBuiltinSkill.provider(async ({ fileName }) => {
-    try {
-      return await readBuiltinResource('skills', fileName);
-    } catch (error) {
-      console.error('Failed to read builtin skill:', error);
-      return '';
-    }
-  });
-
   // 读取助手规则文件 / Read assistant rule file from user directory or builtin rules
   ipcBridge.fs.readAssistantRule.provider(async ({ assistantId, locale = 'en-US' }) => {
     try {
@@ -998,18 +991,23 @@ export function initFsBridge(): void {
   });
 
   // 获取可用 skills 列表 / List available skills from both builtin and user directories
-  ipcBridge.fs.listAvailableSkills.provider(async (payload: { presetAssistantId?: string }) => {
+  ipcBridge.fs.listAvailableSkills.provider(async (payload: { presetAssistantId?: string; workspacePath?: string }) => {
     try {
       const presetAssistantId =
         payload && typeof payload === 'object' && 'presetAssistantId' in payload
           ? payload.presetAssistantId
           : undefined;
+      const workspacePath =
+        payload && typeof payload === 'object' && 'workspacePath' in payload ? payload.workspacePath : undefined;
       const presetId =
         typeof presetAssistantId === 'string' && presetAssistantId.startsWith('builtin-')
           ? presetAssistantId.slice('builtin-'.length)
           : undefined;
-      const preset = presetId ? ASSISTANT_PRESETS.find((item) => item.id === presetId) : undefined;
-      const packageOwnedSkillNames = new Set(preset?.packagedSkillNames || preset?.defaultEnabledSkills || []);
+      const packageOwnedSkillNames = new Set(
+        (presetAssistantId ? getBundledAgentPackageOwnedSkillNames(presetAssistantId) : undefined) ?? []
+      );
+      const hidePackageOwnedSkillsFromLibrary =
+        (presetAssistantId ? getBundledAgentPackageHideOwnedSkillsFromLibrary(presetAssistantId) : undefined) === true;
       const skills: Array<{
         name: string;
         description: string;
@@ -1070,7 +1068,7 @@ export function initFsBridge(): void {
             packageOwnerPresetIds:
               !isCustomDir && packageOwnedSkillNames.has(skill.name) && presetId ? [presetId] : undefined,
             hiddenFromSkillsLibrary:
-              !isCustomDir && packageOwnedSkillNames.has(skill.name) && preset?.hideDefaultSkillsFromLibrary === true,
+              !isCustomDir && packageOwnedSkillNames.has(skill.name) && hidePackageOwnedSkillsFromLibrary,
           });
         }
       };
@@ -1080,6 +1078,17 @@ export function initFsBridge(): void {
       const builtinCountBefore = skills.length;
       await readSkillsFromDir(builtinSkillsDir, false);
       const builtinCount = skills.length - builtinCountBefore;
+
+      // 读取项目本地 skills (isCustom: true, workspace source of truth)
+      const workspaceSkillsDir =
+        typeof workspacePath === 'string' && workspacePath.trim()
+          ? path.resolve(workspacePath, '.contextgo', 'skills')
+          : null;
+      const workspaceCountBefore = skills.length;
+      if (workspaceSkillsDir) {
+        await readSkillsFromDir(workspaceSkillsDir, true);
+      }
+      const workspaceCount = skills.length - workspaceCountBefore;
 
       // 读取用户自定义 skills (isCustom: true)
       const userSkillsDir = getSkillsDir();
@@ -1134,7 +1143,9 @@ export function initFsBridge(): void {
       }
       const result = Array.from(skillMap.values());
 
-      console.log(`[fsBridge] Listed ${result.length} available skills: builtin=${builtinCount}, custom=${userCount}`);
+      console.log(
+        `[fsBridge] Listed ${result.length} available skills: builtin=${builtinCount}, workspace=${workspaceCount}, custom=${userCount}`
+      );
 
       return result;
     } catch (error) {

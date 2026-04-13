@@ -46,7 +46,7 @@ function deriveSkillStatus(skillSummary, options = {}) {
 function buildSkillHealthReport(records, options = {}) {
   const filterSkillId = options.skillId || null;
   const filtered = filterSkillId
-    ? records.filter(record => record.skill && record.skill.id === filterSkillId)
+    ? records.filter((record) => record.skill && record.skill.id === filterSkillId)
     : records.slice();
 
   const grouped = filtered.reduce((accumulator, record) => {
@@ -60,13 +60,13 @@ function buildSkillHealthReport(records, options = {}) {
 
   const skills = Array.from(grouped.entries())
     .map(([skillId, skillRecords]) => {
-      const successes = skillRecords.filter(record => record.outcome && record.outcome.success).length;
+      const successes = skillRecords.filter((record) => record.outcome && record.outcome.success).length;
       const failures = skillRecords.length - successes;
       const recurringErrors = new Map();
       const recurringTasks = new Map();
       const recurringFeedback = new Map();
 
-      skillRecords.forEach(record => {
+      skillRecords.forEach((record) => {
         if (!record.outcome || record.outcome.success) {
           return;
         }
@@ -85,17 +85,20 @@ function buildSkillHealthReport(records, options = {}) {
       const summary = {
         skill: {
           id: skillId,
-          path: skillRecords[0].skill.path || null
+          path: skillRecords[0].skill.path || null,
         },
         totalRuns: skillRecords.length,
         successes,
         failures,
         successRate: skillRecords.length > 0 ? roundRate(successes / skillRecords.length) : 0,
         status: 'healthy',
-        recurringErrors: rankCounts(recurringErrors).map(entry => ({ error: entry.value, count: entry.count })),
-        recurringTasks: rankCounts(recurringTasks).map(entry => ({ task: entry.value, count: entry.count })),
-        recurringFeedback: rankCounts(recurringFeedback).map(entry => ({ feedback: entry.value, count: entry.count })),
-        variants: summarizeVariantRuns(skillRecords)
+        recurringErrors: rankCounts(recurringErrors).map((entry) => ({ error: entry.value, count: entry.count })),
+        recurringTasks: rankCounts(recurringTasks).map((entry) => ({ task: entry.value, count: entry.count })),
+        recurringFeedback: rankCounts(recurringFeedback).map((entry) => ({
+          feedback: entry.value,
+          count: entry.count,
+        })),
+        variants: summarizeVariantRuns(skillRecords),
       };
 
       summary.status = deriveSkillStatus(summary, options);
@@ -108,11 +111,11 @@ function buildSkillHealthReport(records, options = {}) {
     generatedAt: new Date().toISOString(),
     totalObservations: filtered.length,
     skillCount: skills.length,
-    skills
+    skills,
   };
 }
 
 module.exports = {
   HEALTH_SCHEMA_VERSION,
-  buildSkillHealthReport
+  buildSkillHealthReport,
 };
