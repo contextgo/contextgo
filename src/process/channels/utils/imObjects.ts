@@ -8,6 +8,7 @@ import type {
   ChannelObjectKind,
   ChannelObjectParentKind,
   IChannelAudienceEntry,
+  IChannelPublishObject,
   IRemoteIdentity,
   PluginType,
   UnifiedPeerScope,
@@ -99,7 +100,7 @@ function pickReadableChannelIdentifier(...values: Array<string | undefined>): st
   return undefined;
 }
 
-function getPlatformDefaultObjectLabel(platform: PluginType, kind: ChannelObjectKind): string {
+export function getPlatformDefaultObjectLabel(platform: PluginType, kind: ChannelObjectKind): string {
   if (platform === 'weixin') {
     switch (kind) {
       case 'person':
@@ -213,7 +214,10 @@ function inferKind(input: ChannelObjectInput): ChannelObjectKind {
     if (normalizedType === 'thread' || input.peerScope === 'thread' || Boolean(input.threadId)) {
       return 'thread';
     }
-    if (normalizedType === 'im' || normalizedType === 'mpim' || normalizedType === 'dm') {
+    if (normalizedType === 'mpim') {
+      return 'group';
+    }
+    if (normalizedType === 'im' || normalizedType === 'dm') {
       return 'dm';
     }
     if (normalizedType === 'channel' || normalizedType === 'group') {
@@ -279,11 +283,26 @@ function inferParentKind(
   kind: ChannelObjectKind,
   input: ChannelObjectInput
 ): ChannelObjectParentKind | undefined {
-  if ((kind === 'channel' || kind === 'server' || kind === 'space') && input.containerType === 'space') {
-    return 'space';
+  const containerParentKind =
+    input.containerType === 'group' ||
+    input.containerType === 'channel' ||
+    input.containerType === 'server' ||
+    input.containerType === 'space'
+      ? input.containerType
+      : undefined;
+
+  if (
+    (kind === 'channel' || kind === 'group' || kind === 'server' || kind === 'space') &&
+    (containerParentKind === 'space' || containerParentKind === 'server')
+  ) {
+    return containerParentKind;
   }
 
   if (kind === 'topic') {
+    if (containerParentKind === 'group') {
+      return 'group';
+    }
+
     return platform === 'lark' ? 'group' : 'channel';
   }
 
@@ -291,6 +310,11 @@ function inferParentKind(
     if (platform === 'discord' || platform === 'slack') {
       return 'channel';
     }
+
+    if (containerParentKind === 'channel' || containerParentKind === 'group') {
+      return containerParentKind;
+    }
+
     return 'chat';
   }
 
@@ -313,6 +337,120 @@ function shouldPreferDisplayName(input: ChannelObjectInput, kind: ChannelObjectK
   return true;
 }
 
+function inferNativeObjectId(kind: ChannelObjectKind, input: ChannelObjectInput): string {
+  if (kind === 'topic' || kind === 'thread') {
+    return input.threadId || input.remoteChatId || input.platformChatId || input.key;
+  }
+
+  if (kind === 'person' || kind === 'dm') {
+    return input.remoteUserId || input.platformChatId || input.remoteChatId || input.key;
+  }
+
+  return input.platformChatId || input.remoteChatId || input.key;
+}
+
+function inferParentNativeObjectId(kind: ChannelObjectKind, input: ChannelObjectInput): string | undefined {
+  if (kind === 'topic' || kind === 'thread') {
+    return input.parentChatId || input.platformChatId || input.containerId || undefined;
+  }
+
+  const parentKind = inferParentKind(input.platform, kind, input);
+  if ((kind === 'channel' || kind === 'group') && (parentKind === 'space' || parentKind === 'server')) {
+    return input.containerId;
+  }
+
+  return undefined;
+}
+
+export function inferChannelPublishObject(input: ChannelObjectInput): IChannelPublishObject {
+  const kind = inferKind(input);
+  const displayName = shouldPreferDisplayName(input, kind) ? input.displayName?.trim() : undefined;
+
+  return {
+    nativeObjectType: kind,
+    nativeObjectId: inferNativeObjectId(kind, input),
+    parentNativeObjectId: inferParentNativeObjectId(kind, input),
+    displayName: displayName || undefined,
+    discoverySource: 'inbound-learned',
+    metadata: {
+      ...(input.remoteChatId ? { remoteChatId: input.remoteChatId } : {}),
+      ...(input.platformChatId ? { platformChatId: input.platformChatId } : {}),
+      ...(input.parentChatId ? { parentChatId: input.parentChatId } : {}),
+      ...(input.threadId ? { threadId: input.threadId } : {}),
+    },
+  };
+}
+
+export function inferAudiencePublishObject(
+  audience: IChannelAudienceEntry,
+  platform: PluginType
+): IChannelPublishObject {
+  return inferChannelPublishObject({
+    platform,
+    scopeType: audience.scopeType,
+    key: audience.key,
+    displayName: audience.objectTitle ?? audience.displayName ?? audience.title,
+    subtitle: audience.objectSubtitle ?? audience.subtitle,
+    remoteUserId: audience.remoteUserId,
+    remoteChatId: audience.remoteChatId,
+    platformChatId: audience.platformChatId,
+    remoteChatType: audience.remoteChatType,
+    peerScope: audience.peerScope,
+    parentChatId: audience.parentChatId,
+    parentTitle: audience.parentObjectTitle,
+    threadId: audience.threadId,
+  });
+}
+
+export function inferRemoteIdentityPublishObject(
+  identity: IRemoteIdentity,
+  platform: PluginType
+): IChannelPublishObject {
+  return inferChannelPublishObject({
+    platform,
+    scopeType: identity.remoteUserId && identity.remoteUserId === identity.remoteChatId ? 'remote_user' : 'remote_chat',
+    key: identity.remoteChatId,
+    displayName: identity.displayName,
+    subtitle:
+      typeof identity.metadata?.objectSubtitle === 'string'
+        ? identity.metadata.objectSubtitle
+        : typeof identity.metadata?.chatDescription === 'string'
+          ? identity.metadata.chatDescription
+          : undefined,
+    remoteUserId: identity.remoteUserId,
+    remoteChatId: identity.remoteChatId,
+    platformChatId: identity.platformChatId,
+    remoteChatType: identity.remoteChatType,
+    peerScope: identity.peerScope,
+    parentChatId: identity.parentChatId,
+    parentTitle: typeof identity.metadata?.parentTitle === 'string' ? identity.metadata.parentTitle : undefined,
+    threadId: identity.threadId,
+    containerId: typeof identity.metadata?.containerId === 'string' ? identity.metadata.containerId : undefined,
+    containerType: typeof identity.metadata?.containerType === 'string' ? identity.metadata.containerType : undefined,
+    containerTitle:
+      typeof identity.metadata?.containerTitle === 'string' ? identity.metadata.containerTitle : undefined,
+  });
+}
+
+export function isChannelObjectFallbackTitle(params: {
+  platform: PluginType;
+  kind: ChannelObjectKind;
+  title?: string;
+  nativeObjectId?: string;
+}): boolean {
+  const normalizedTitle = params.title?.trim();
+  if (!normalizedTitle) {
+    return true;
+  }
+
+  const platformLabel = getPlatformDefaultObjectLabel(params.platform, params.kind);
+  if (normalizedTitle === platformLabel) {
+    return true;
+  }
+
+  return Boolean(params.nativeObjectId) && normalizedTitle === `${platformLabel} ${params.nativeObjectId}`;
+}
+
 export function describeChannelObject(input: ChannelObjectInput): ChannelObjectDescriptor {
   const kind = inferKind(input);
   const preferredTitle = shouldPreferDisplayName(input, kind) ? input.displayName : undefined;
@@ -326,14 +464,21 @@ export function describeChannelObject(input: ChannelObjectInput): ChannelObjectD
   const platformLabel = getPlatformDefaultObjectLabel(input.platform, kind);
   const title = preferredTitle || (fallbackId ? `${platformLabel} ${fallbackId}` : platformLabel);
   const inferredParentKind = inferParentKind(input.platform, kind, input);
-  const useContainerParent = inferredParentKind === 'server' || inferredParentKind === 'space';
+  const useContainerParent =
+    Boolean(input.containerId) &&
+    Boolean(inferredParentKind) &&
+    (input.containerType === inferredParentKind ||
+      ((input.containerType === 'group' || input.containerType === 'channel') &&
+        inferredParentKind === input.containerType));
   const parentKey = useContainerParent
     ? input.containerId
     : input.parentChatId && input.parentChatId !== input.key
       ? input.parentChatId
       : undefined;
   const parentTitle = useContainerParent
-    ? input.containerTitle || pickReadableChannelIdentifier(input.containerId)
+    ? input.containerTitle ||
+      (!input.parentTitle || looksTechnicalIdentifier(input.parentTitle) ? undefined : input.parentTitle) ||
+      pickReadableChannelIdentifier(input.containerId, input.parentChatId, input.platformChatId)
     : (!input.parentTitle || looksTechnicalIdentifier(input.parentTitle) ? undefined : input.parentTitle) ||
       pickReadableChannelIdentifier(input.parentChatId, input.platformChatId);
   const parentKind = inferredParentKind;

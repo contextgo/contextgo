@@ -7,7 +7,7 @@
 import { channel } from '@/common/adapter/ipcBridge';
 import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '@/common/config/builtinChannels';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
-import { describeRemoteIdentityObject } from '@process/channels/utils';
+import { describeRemoteIdentityObject, inferRemoteIdentityPublishObject } from '@process/channels/utils';
 import { getChannelContinuationService } from '@process/channels/core/ChannelContinuationService';
 import { getChannelPublicationService } from '@process/channels/core/ChannelPublicationService';
 import { getPairingService } from '@process/channels/pairing/PairingService';
@@ -19,6 +19,7 @@ import type {
   IChannelActiveSessionEntry,
   IChannelAudienceEntry,
   IChannelBinding,
+  IChannelPublishObjectCatalogEntry,
   IChannelPluginStatus,
   IChannelSession,
   IConnectorInstance,
@@ -29,6 +30,7 @@ import {
   findConflictingChannelBinding,
   getChannelAccountId,
   getChannelBindingPublishObjectLabel,
+  getChannelPublishObjectCatalogEntryIdentity,
   getChannelBindingSource,
   hasPluginCredentials,
   isSystemFallbackBinding,
@@ -268,6 +270,37 @@ function getLarkObjectSubtitle(identity: IRemoteIdentity): string | undefined {
   return undefined;
 }
 
+function buildPublishObjectCatalogMap(
+  publishObjects: readonly IChannelPublishObjectCatalogEntry[]
+): Map<string, IChannelPublishObjectCatalogEntry> {
+  return new Map(publishObjects.map((publishObject) => [publishObject.id, publishObject] as const));
+}
+
+function resolvePublishObjectCatalogEntry(
+  identity: IRemoteIdentity,
+  connector: IConnectorInstance,
+  publishObjectCatalog: Map<string, IChannelPublishObjectCatalogEntry>
+): IChannelPublishObjectCatalogEntry | undefined {
+  const publishObject = inferRemoteIdentityPublishObject(identity, connector.platform);
+  const identityKey = getChannelPublishObjectCatalogEntryIdentity({
+    id: '',
+    channelAccountId: connector.id,
+    nativeObjectType: publishObject.nativeObjectType,
+    nativeObjectId: publishObject.nativeObjectId,
+    parentNativeObjectId: publishObject.parentNativeObjectId,
+    displayProfile: {
+      title: '',
+      source: 'manual',
+      quality: 'fallback',
+      resolvedAt: 0,
+    },
+    createdAt: 0,
+    updatedAt: 0,
+  });
+
+  return publishObjectCatalog.get(identityKey);
+}
+
 function getFriendlyDisplayName(identity: IRemoteIdentity, connector?: IConnectorInstance): string | undefined {
   if (connector?.platform === 'lark') {
     return getLarkRemoteDisplayName(identity);
@@ -428,7 +461,8 @@ async function enrichRemoteIdentitiesForDisplay(
 
 function buildRemoteChatAudience(
   identity: IRemoteIdentity,
-  connectorMap: Map<string, IConnectorInstance>
+  connectorMap: Map<string, IConnectorInstance>,
+  publishObjectCatalog: Map<string, IChannelPublishObjectCatalogEntry>
 ): IChannelAudienceEntry {
   const threadParts = toThreadParts(identity.remoteChatId);
   const parentChatId = identity.parentChatId ?? threadParts.parentChatId;
@@ -479,6 +513,9 @@ function buildRemoteChatAudience(
         connector.platform
       )
     : undefined;
+  const resolvedPublishObject = connector
+    ? resolvePublishObjectCatalogEntry(identity, connector, publishObjectCatalog)
+    : undefined;
 
   return {
     key: identity.remoteChatId,
@@ -496,20 +533,23 @@ function buildRemoteChatAudience(
     displayName: friendlyDisplayName ?? identity.displayName,
     objectKey: objectDescriptor?.key,
     objectKind: objectDescriptor?.kind,
-    objectTitle: objectDescriptor?.title,
-    objectSubtitle: objectDescriptor?.subtitle,
+    objectTitle: resolvedPublishObject?.displayProfile.title ?? objectDescriptor?.title,
+    objectSubtitle: resolvedPublishObject?.displayProfile.subtitle ?? objectDescriptor?.subtitle,
     parentObjectKey: objectDescriptor?.parentKey,
-    parentObjectTitle: objectDescriptor?.parentTitle,
+    parentObjectTitle: resolvedPublishObject?.displayProfile.parentTitle ?? objectDescriptor?.parentTitle,
     parentObjectKind: objectDescriptor?.parentKind,
-    title,
-    subtitle,
+    objectSource: resolvedPublishObject?.displayProfile.source,
+    objectQuality: resolvedPublishObject?.displayProfile.quality,
+    title: resolvedPublishObject?.displayProfile.title ?? title,
+    subtitle: resolvedPublishObject?.displayProfile.subtitle ?? subtitle,
     lastActive: identity.lastActive,
   };
 }
 
 function buildRemoteUserAudiences(
   identities: IRemoteIdentity[],
-  connectorMap: Map<string, IConnectorInstance>
+  connectorMap: Map<string, IConnectorInstance>,
+  publishObjectCatalog: Map<string, IChannelPublishObjectCatalogEntry>
 ): IChannelAudienceEntry[] {
   const uniqueByUser = new Map<string, IRemoteIdentity>();
 
@@ -543,6 +583,9 @@ function buildRemoteUserAudiences(
     const friendlyDisplayName = getFriendlyDisplayName(identity, connector);
     const friendlySubtitle = getFriendlySubtitle(identity, connector);
     const objectDescriptor = connector ? describeRemoteIdentityObject(identity, connector.platform) : undefined;
+    const resolvedPublishObject = connector
+      ? resolvePublishObjectCatalogEntry(identity, connector, publishObjectCatalog)
+      : undefined;
 
     return {
       key: identity.remoteUserId!,
@@ -558,20 +601,25 @@ function buildRemoteUserAudiences(
       displayName: friendlyDisplayName ?? identity.displayName,
       objectKey: objectDescriptor?.key,
       objectKind: objectDescriptor?.kind,
-      objectTitle: objectDescriptor?.title,
-      objectSubtitle: objectDescriptor?.subtitle,
+      objectTitle: resolvedPublishObject?.displayProfile.title ?? objectDescriptor?.title,
+      objectSubtitle: resolvedPublishObject?.displayProfile.subtitle ?? objectDescriptor?.subtitle,
       parentObjectKey: objectDescriptor?.parentKey,
-      parentObjectTitle: objectDescriptor?.parentTitle,
+      parentObjectTitle: resolvedPublishObject?.displayProfile.parentTitle ?? objectDescriptor?.parentTitle,
       parentObjectKind: objectDescriptor?.parentKind,
-      title: buildAudienceTitle({
-        kind,
-        displayName: friendlyDisplayName,
-        remoteUserId: identity.remoteUserId,
-        platformChatId: identity.platformChatId,
-        remoteChatId: identity.remoteChatId || identity.remoteUserId!,
-      }),
+      objectSource: resolvedPublishObject?.displayProfile.source,
+      objectQuality: resolvedPublishObject?.displayProfile.quality,
+      title:
+        resolvedPublishObject?.displayProfile.title ??
+        buildAudienceTitle({
+          kind,
+          displayName: friendlyDisplayName,
+          remoteUserId: identity.remoteUserId,
+          platformChatId: identity.platformChatId,
+          remoteChatId: identity.remoteChatId || identity.remoteUserId!,
+        }),
       subtitle:
-        connector?.platform === 'lark'
+        resolvedPublishObject?.displayProfile.subtitle ??
+        (connector?.platform === 'lark'
           ? friendlySubtitle
           : (friendlySubtitle ??
             buildAudienceSubtitle({
@@ -579,7 +627,7 @@ function buildRemoteUserAudiences(
               remoteUserId: identity.remoteUserId,
               remoteChatId: identity.remoteChatId,
               platformChatId: identity.platformChatId,
-            })),
+            }))),
       lastActive: identity.lastActive,
     };
   });
@@ -587,11 +635,15 @@ function buildRemoteUserAudiences(
 
 function buildAudienceEntries(
   remoteIdentities: IRemoteIdentity[],
-  connectors: IConnectorInstance[]
+  connectors: IConnectorInstance[],
+  publishObjects: readonly IChannelPublishObjectCatalogEntry[]
 ): IChannelAudienceEntry[] {
   const connectorMap = new Map(connectors.map((connector) => [connector.id, connector] as const));
-  const remoteChatAudiences = remoteIdentities.map((identity) => buildRemoteChatAudience(identity, connectorMap));
-  const remoteUserAudiences = buildRemoteUserAudiences(remoteIdentities, connectorMap);
+  const publishObjectCatalog = buildPublishObjectCatalogMap(publishObjects);
+  const remoteChatAudiences = remoteIdentities.map((identity) =>
+    buildRemoteChatAudience(identity, connectorMap, publishObjectCatalog)
+  );
+  const remoteUserAudiences = buildRemoteUserAudiences(remoteIdentities, connectorMap, publishObjectCatalog);
   const remoteUserAudienceKeys = new Set(
     remoteUserAudiences
       .filter((audience) => audience.remoteUserId)
@@ -631,6 +683,7 @@ function buildActiveSessionEntries(params: {
   remoteIdentities: IRemoteIdentity[];
   connectors: IConnectorInstance[];
   bindings: IChannelBinding[];
+  publishObjects: IChannelPublishObjectCatalogEntry[];
   externalSessions: IExternalSession[];
   controlLeases: import('@process/channels/types').IChannelControlLease[];
 }): IChannelActiveSessionEntry[] {
@@ -639,6 +692,7 @@ function buildActiveSessionEntries(params: {
   const bindingMap = new Map(params.bindings.map((binding) => [binding.id, binding] as const));
   const externalSessionMap = new Map(params.externalSessions.map((session) => [session.id, session] as const));
   const controlLeaseMap = new Map(params.controlLeases.map((lease) => [lease.externalSessionId, lease] as const));
+  const publishObjectCatalog = buildPublishObjectCatalogMap(params.publishObjects);
 
   return params.sessions.map((session) => {
     const remoteIdentity = remoteIdentityMap.get(session.userId);
@@ -652,6 +706,10 @@ function buildActiveSessionEntries(params: {
       remoteIdentity && connector ? getFriendlyDisplayName(remoteIdentity, connector) : undefined;
     const objectDescriptor =
       remoteIdentity && connector ? describeRemoteIdentityObject(remoteIdentity, connector.platform) : undefined;
+    const resolvedPublishObject =
+      remoteIdentity && connector
+        ? resolvePublishObjectCatalogEntry(remoteIdentity, connector, publishObjectCatalog)
+        : undefined;
 
     return {
       id: session.id,
@@ -663,6 +721,7 @@ function buildActiveSessionEntries(params: {
       channelAccountPlatform: connector?.platform,
       remoteIdentityId: remoteIdentity?.id,
       audienceTitle:
+        resolvedPublishObject?.displayProfile.title ||
         friendlyAudienceTitle ||
         objectDescriptor?.title ||
         remoteIdentity?.displayName ||
@@ -672,11 +731,13 @@ function buildActiveSessionEntries(params: {
       audienceKey: remoteIdentity?.remoteChatId || session.chatId,
       objectKey: objectDescriptor?.key,
       objectKind: objectDescriptor?.kind,
-      objectTitle: objectDescriptor?.title,
-      objectSubtitle: objectDescriptor?.subtitle,
+      objectTitle: resolvedPublishObject?.displayProfile.title ?? objectDescriptor?.title,
+      objectSubtitle: resolvedPublishObject?.displayProfile.subtitle ?? objectDescriptor?.subtitle,
       parentObjectKey: objectDescriptor?.parentKey,
-      parentObjectTitle: objectDescriptor?.parentTitle,
+      parentObjectTitle: resolvedPublishObject?.displayProfile.parentTitle ?? objectDescriptor?.parentTitle,
       parentObjectKind: objectDescriptor?.parentKind,
+      objectSource: resolvedPublishObject?.displayProfile.source,
+      objectQuality: resolvedPublishObject?.displayProfile.quality,
       conversationId: session.conversationId,
       workspace: session.workspace,
       agentType: session.agentType,
@@ -704,6 +765,33 @@ function buildActiveSessionEntries(params: {
 export function initChannelBridge(channelRepo: IChannelRepository): void {
   console.log('[ChannelBridge] Initializing...');
   const projectChannelPublicationService = new ProjectChannelPublicationService();
+
+  const resolvePublicationPublishObjects = async (params: {
+    publicationCatalog: import('@process/channels/core/ProjectChannelPublicationService').ProjectChannelPublicationCatalog;
+    remoteIdentities: IRemoteIdentity[];
+    connectors: IConnectorInstance[];
+  }): Promise<IChannelPublishObjectCatalogEntry[]> => {
+    if (params.publicationCatalog.workspaces.length === 0) {
+      return [];
+    }
+
+    await Promise.all(
+      params.publicationCatalog.workspaces.map((workspace) =>
+        projectChannelPublicationService.resolvePublishObjectCatalog(workspace, {
+          bindings: params.publicationCatalog.bindings.filter(
+            (binding) => params.publicationCatalog.bindingWorkspaceById[binding.id] === workspace
+          ),
+          remoteIdentities: params.remoteIdentities,
+          channelAccounts: params.connectors,
+        })
+      )
+    );
+
+    const refreshedCatalog = await projectChannelPublicationService.readCatalogForWorkspaces(
+      params.publicationCatalog.workspaces
+    );
+    return refreshedCatalog.publishObjects;
+  };
 
   // ==================== Plugin Management ====================
 
@@ -1126,6 +1214,11 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
       }
       const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(remoteIdentities, connectors);
+      const publishObjects = await resolvePublicationPublishObjects({
+        publicationCatalog,
+        remoteIdentities: enrichedRemoteIdentities,
+        connectors,
+      });
 
       return {
         success: true,
@@ -1134,6 +1227,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           connectors,
           remoteIdentities: enrichedRemoteIdentities,
           bindings,
+          publishObjects,
           externalSessions: externalSessionsResult.data,
           controlLeases: controlLeasesResult.data,
         }),
@@ -1287,6 +1381,11 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
       const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
       const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(identitiesWithAccountId, allConnectors);
+      const publishObjects = await resolvePublicationPublishObjects({
+        publicationCatalog,
+        remoteIdentities: enrichedRemoteIdentities,
+        connectors: allConnectors,
+      });
       const connectors = allConnectors.filter((connector) => (connector.configured ?? false) && connector.enabled);
       const bindings = channelAccountId
         ? publicationCatalog.bindings.filter((binding) => getChannelAccountId(binding) === channelAccountId)
@@ -1298,7 +1397,8 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           channelAccounts: connectors,
           agentProfiles: publicationCatalog.agentProfiles,
           bindings: bindings.map((binding) => withChannelAccountId(binding)),
-          audiences: buildAudienceEntries(enrichedRemoteIdentities, allConnectors),
+          audiences: buildAudienceEntries(enrichedRemoteIdentities, allConnectors, publishObjects),
+          publishObjects,
         },
       };
     } catch (error) {
