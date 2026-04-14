@@ -1244,6 +1244,69 @@ describe('channelBridge', () => {
       expect(mockGetPlugin).toHaveBeenCalledWith('dingtalk-runtime-rich');
     });
 
+    it('marks DingTalk group objects as official-pull when the plugin resolves the group title through the official API', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-dingtalk-group-rich',
+        platform: 'dingtalk',
+        name: 'DingTalk',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        legacyPluginId: 'dingtalk-runtime-group-rich',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-dingtalk-group-1',
+        connectorId: 'connector-dingtalk-group-rich',
+        remoteUserId: 'staff-ops-1',
+        remoteChatId: 'group:cid-open-ops-1',
+        platformChatId: 'group:cid-open-ops-1',
+        remoteChatType: 'group',
+        peerScope: 'chat',
+        displayName: 'group:cid-open-ops-1',
+        authorizedAt: 1000,
+        lastActive: 2400,
+      };
+
+      mockGetPlugin.mockReturnValue({
+        getChatDisplayData: vi.fn(async (chatId: string) => {
+          if (chatId === 'group:cid-open-ops-1') {
+            return {
+              name: 'Ops Review',
+              chatType: 'group',
+              source: 'official-pull',
+            };
+          }
+          return null;
+        }),
+        getUserDisplayData: vi.fn(async () => null),
+      });
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            connectorId: 'connector-dingtalk-group-rich',
+            key: 'group:cid-open-ops-1',
+            scopeType: 'remote_chat',
+            title: 'Ops Review',
+            objectKind: 'group',
+            objectTitle: 'Ops Review',
+            objectSource: 'official-pull',
+            objectQuality: 'resolved',
+          }),
+        ])
+      );
+      expect(mockGetPlugin).toHaveBeenCalledWith('dingtalk-runtime-group-rich');
+    });
+
     it('keeps unresolved Feishu topic objects user-facing instead of exposing raw peer identifiers', async () => {
       const connector: IConnectorInstance = {
         id: 'connector-lark-unresolved-topic',

@@ -37,6 +37,8 @@ export const DINGTALK_MESSAGE_LIMIT = 4000;
  */
 export interface DingTalkStreamMessage {
   conversationId?: string;
+  openConversationId?: string;
+  conversationTitle?: string;
   atUsers?: Array<{
     dingtalkId?: string;
     staffId?: string;
@@ -111,7 +113,7 @@ export function encodeChatId(data: DingTalkStreamMessage): string {
     return `user:${data.senderStaffId || data.chatbotUserId || ''}`;
   }
   // Group chat
-  return `group:${data.conversationId || ''}`;
+  return `group:${data.openConversationId || data.conversationId || ''}`;
 }
 
 /**
