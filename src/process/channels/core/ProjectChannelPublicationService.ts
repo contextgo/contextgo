@@ -6,14 +6,31 @@
 
 import type { TChatConversation } from '@/common/config/storage';
 import { resolveWorkspacePath, WORKSPACE_AUTOMATION_DIR } from '@process/bridge/services/workspaceAutomation';
-import type { IAgentProfile, IChannelBinding } from '@process/channels/types';
-import { withChannelAccountId } from '@process/channels/types';
+import type {
+  IAgentProfile,
+  IChannelBinding,
+  IChannelPublishObjectCatalogEntry,
+  IConnectorInstance,
+  IRemoteIdentity,
+} from '@process/channels/types';
+import {
+  getChannelAccountId,
+  getChannelBindingPublishObject,
+  getChannelPublishObjectCatalogEntryIdentity,
+  withChannelAccountId,
+} from '@process/channels/types';
+import {
+  describeRemoteIdentityObject,
+  inferRemoteIdentityPublishObject,
+  isChannelObjectFallbackTitle,
+} from '@process/channels/utils';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const WORKSPACE_CHANNELS_DIR = path.join(WORKSPACE_AUTOMATION_DIR, 'channels');
 const WORKSPACE_CHANNEL_AGENT_PROFILES_FILE = path.join(WORKSPACE_CHANNELS_DIR, 'agent-profiles.json');
 const WORKSPACE_CHANNEL_BINDINGS_FILE = path.join(WORKSPACE_CHANNELS_DIR, 'bindings.json');
+const WORKSPACE_CHANNEL_PUBLISH_OBJECTS_FILE = path.join(WORKSPACE_CHANNELS_DIR, 'publish-objects.json');
 const CHANNEL_STORAGE_VERSION = 1;
 
 type AgentProfileStoreDocument = {
@@ -26,16 +43,23 @@ type ChannelBindingStoreDocument = {
   bindings: IChannelBinding[];
 };
 
+type PublishObjectCatalogStoreDocument = {
+  version: number;
+  publishObjects: IChannelPublishObjectCatalogEntry[];
+};
+
 export type ProjectChannelPublicationSnapshot = {
   workspacePath: string;
   agentProfiles: IAgentProfile[];
   bindings: IChannelBinding[];
+  publishObjects: IChannelPublishObjectCatalogEntry[];
 };
 
 export type ProjectChannelPublicationCatalog = {
   workspaces: string[];
   agentProfiles: IAgentProfile[];
   bindings: IChannelBinding[];
+  publishObjects: IChannelPublishObjectCatalogEntry[];
   agentProfileWorkspaceById: Record<string, string>;
   bindingWorkspaceById: Record<string, string>;
 };
@@ -77,13 +101,224 @@ const normalizeChannelBindings = (bindings: readonly IChannelBinding[]): IChanne
         temporary: false,
         metadata: binding.metadata ?? {},
       });
-      return {
-        ...normalized,
-        scopeKey: normalized.scopeKey?.trim() || undefined,
-      } satisfies IChannelBinding;
+      normalized.scopeKey = normalized.scopeKey?.trim() || undefined;
+      return normalized;
     })
     .toSorted((left, right) => right.priority - left.priority || left.createdAt - right.createdAt);
 };
+
+const SOURCE_PRIORITY: Record<IChannelPublishObjectCatalogEntry['displayProfile']['source'], number> = {
+  'official-pull': 4,
+  'runtime-resolved': 3,
+  'inbound-learned': 2,
+  manual: 1,
+};
+
+const QUALITY_PRIORITY: Record<IChannelPublishObjectCatalogEntry['displayProfile']['quality'], number> = {
+  resolved: 3,
+  inferred: 2,
+  fallback: 1,
+};
+
+function normalizeStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const normalized = [
+    ...new Set(
+      value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    ),
+  ];
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeCatalogSource(value: unknown): IChannelPublishObjectCatalogEntry['displayProfile']['source'] {
+  return value === 'official-pull' || value === 'runtime-resolved' || value === 'inbound-learned' || value === 'manual'
+    ? value
+    : 'manual';
+}
+
+function normalizeDisplayQuality(value: unknown): IChannelPublishObjectCatalogEntry['displayProfile']['quality'] {
+  return value === 'resolved' || value === 'inferred' || value === 'fallback' ? value : 'fallback';
+}
+
+function normalizePublishObjects(
+  publishObjects: readonly IChannelPublishObjectCatalogEntry[]
+): IChannelPublishObjectCatalogEntry[] {
+  const merged = new Map<string, IChannelPublishObjectCatalogEntry>();
+
+  for (const publishObject of publishObjects) {
+    const normalizedEntry: IChannelPublishObjectCatalogEntry = {
+      id: publishObject.id,
+      channelAccountId: publishObject.channelAccountId,
+      nativeObjectType: publishObject.nativeObjectType.trim() || 'chat',
+      nativeObjectId: publishObject.nativeObjectId.trim() || 'connector-default',
+      parentNativeObjectId: publishObject.parentNativeObjectId?.trim() || undefined,
+      displayProfile: {
+        title: publishObject.displayProfile.title.trim(),
+        subtitle: publishObject.displayProfile.subtitle?.trim() || undefined,
+        parentTitle: publishObject.displayProfile.parentTitle?.trim() || undefined,
+        source: normalizeCatalogSource(publishObject.displayProfile.source),
+        quality: normalizeDisplayQuality(publishObject.displayProfile.quality),
+        resolvedAt: publishObject.displayProfile.resolvedAt,
+      },
+      aliases: normalizeStringArray(publishObject.aliases),
+      rawFacts:
+        publishObject.rawFacts && typeof publishObject.rawFacts === 'object' && !Array.isArray(publishObject.rawFacts)
+          ? publishObject.rawFacts
+          : undefined,
+      createdAt: publishObject.createdAt,
+      updatedAt: publishObject.updatedAt,
+    };
+    normalizedEntry.id = getChannelPublishObjectCatalogEntryIdentity(normalizedEntry);
+
+    const existing = merged.get(normalizedEntry.id);
+    if (!existing) {
+      merged.set(normalizedEntry.id, normalizedEntry);
+      continue;
+    }
+
+    const existingSource = SOURCE_PRIORITY[existing.displayProfile.source];
+    const nextSource = SOURCE_PRIORITY[normalizedEntry.displayProfile.source];
+    const existingQuality = QUALITY_PRIORITY[existing.displayProfile.quality];
+    const nextQuality = QUALITY_PRIORITY[normalizedEntry.displayProfile.quality];
+    const preferred =
+      nextSource > existingSource ||
+      (nextSource === existingSource &&
+        (nextQuality > existingQuality ||
+          (nextQuality === existingQuality && normalizedEntry.updatedAt > existing.updatedAt)))
+        ? normalizedEntry
+        : existing;
+    const secondary = preferred === normalizedEntry ? existing : normalizedEntry;
+
+    merged.set(preferred.id, {
+      ...preferred,
+      displayProfile: {
+        ...preferred.displayProfile,
+        subtitle: preferred.displayProfile.subtitle ?? secondary.displayProfile.subtitle,
+        parentTitle: preferred.displayProfile.parentTitle ?? secondary.displayProfile.parentTitle,
+      },
+      aliases: normalizeStringArray([...(preferred.aliases ?? []), ...(secondary.aliases ?? [])]),
+      rawFacts: {
+        ...secondary.rawFacts,
+        ...preferred.rawFacts,
+      },
+      createdAt: Math.min(existing.createdAt, normalizedEntry.createdAt),
+      updatedAt: Math.max(existing.updatedAt, normalizedEntry.updatedAt),
+    });
+  }
+
+  return Array.from(merged.values()).toSorted(
+    (left, right) => right.updatedAt - left.updatedAt || left.id.localeCompare(right.id)
+  );
+}
+
+function mapBindingDiscoverySource(
+  binding: IChannelBinding
+): IChannelPublishObjectCatalogEntry['displayProfile']['source'] {
+  const publishObject = getChannelBindingPublishObject(binding);
+
+  if (publishObject.discoverySource === 'pulled') {
+    return 'official-pull';
+  }
+
+  if (publishObject.discoverySource === 'inbound-learned') {
+    return 'inbound-learned';
+  }
+
+  return 'manual';
+}
+
+function toBindingCatalogEntry(binding: IChannelBinding, now: number): IChannelPublishObjectCatalogEntry | null {
+  const channelAccountId = getChannelAccountId(binding);
+  if (!channelAccountId) {
+    return null;
+  }
+
+  const publishObject = getChannelBindingPublishObject(binding);
+  const metadata =
+    binding.metadata && typeof binding.metadata === 'object' && !Array.isArray(binding.metadata)
+      ? binding.metadata
+      : {};
+  const title = publishObject.displayName ?? publishObject.nativeObjectId;
+  const entry: IChannelPublishObjectCatalogEntry = {
+    id: '',
+    channelAccountId,
+    nativeObjectType: publishObject.nativeObjectType,
+    nativeObjectId: publishObject.nativeObjectId,
+    parentNativeObjectId: publishObject.parentNativeObjectId,
+    displayProfile: {
+      title,
+      subtitle: typeof metadata.objectSubtitle === 'string' ? metadata.objectSubtitle : undefined,
+      parentTitle: typeof metadata.parentObjectTitle === 'string' ? metadata.parentObjectTitle : undefined,
+      source: mapBindingDiscoverySource(binding),
+      quality:
+        title === publishObject.nativeObjectId || /^Topic\s+\S+$/u.test(title) || /^Channel\s+\S+$/u.test(title)
+          ? 'fallback'
+          : 'inferred',
+      resolvedAt: binding.updatedAt || now,
+    },
+    aliases: normalizeStringArray([binding.scopeKey]),
+    rawFacts:
+      publishObject.metadata && typeof publishObject.metadata === 'object' && !Array.isArray(publishObject.metadata)
+        ? publishObject.metadata
+        : undefined,
+    createdAt: binding.createdAt || now,
+    updatedAt: binding.updatedAt || now,
+  };
+  entry.id = getChannelPublishObjectCatalogEntryIdentity(entry);
+  return entry;
+}
+
+function toRemoteIdentityCatalogEntry(
+  identity: IRemoteIdentity,
+  connector: IConnectorInstance,
+  now: number
+): IChannelPublishObjectCatalogEntry {
+  const publishObject = inferRemoteIdentityPublishObject(identity, connector.platform);
+  const descriptor = describeRemoteIdentityObject(identity, connector.platform);
+  const source: IChannelPublishObjectCatalogEntry['displayProfile']['source'] =
+    typeof identity.metadata?.chatName === 'string' || typeof identity.metadata?.userDisplayName === 'string'
+      ? 'runtime-resolved'
+      : 'inbound-learned';
+  const title = publishObject.displayName ?? descriptor.title;
+
+  const entry: IChannelPublishObjectCatalogEntry = {
+    id: '',
+    channelAccountId: connector.id,
+    nativeObjectType: publishObject.nativeObjectType,
+    nativeObjectId: publishObject.nativeObjectId,
+    parentNativeObjectId: publishObject.parentNativeObjectId,
+    displayProfile: {
+      title,
+      subtitle: descriptor.subtitle,
+      parentTitle: descriptor.parentTitle,
+      source,
+      quality: isChannelObjectFallbackTitle({
+        platform: connector.platform,
+        kind: descriptor.kind,
+        title,
+        nativeObjectId: publishObject.nativeObjectId,
+      })
+        ? 'fallback'
+        : 'resolved',
+      resolvedAt: identity.lastActive ?? now,
+    },
+    aliases: normalizeStringArray([identity.remoteChatId, identity.platformChatId, identity.remoteUserId]),
+    rawFacts: {
+      ...publishObject.metadata,
+      ...(identity.remoteChatType ? { remoteChatType: identity.remoteChatType } : {}),
+    },
+    createdAt: identity.authorizedAt || now,
+    updatedAt: identity.lastActive ?? now,
+  };
+  entry.id = getChannelPublishObjectCatalogEntryIdentity(entry);
+  return entry;
+}
 
 const resolveConversationWorkspace = (conversation: Pick<TChatConversation, 'extra'>): string | undefined => {
   const extra = conversation.extra as Record<string, unknown> | undefined;
@@ -116,6 +351,10 @@ function resolveAgentProfilesFile(workspacePath: string): string {
 
 function resolveBindingsFile(workspacePath: string): string {
   return path.join(workspacePath, WORKSPACE_CHANNEL_BINDINGS_FILE);
+}
+
+function resolvePublishObjectsFile(workspacePath: string): string {
+  return path.join(workspacePath, WORKSPACE_CHANNEL_PUBLISH_OBJECTS_FILE);
 }
 
 function pickLatestById<T extends { id: string; updatedAt: number; createdAt: number }>(items: readonly T[]): T[] {
@@ -167,15 +406,17 @@ export class ProjectChannelPublicationService {
       return undefined;
     }
 
-    const [agentProfilesDoc, bindingsDoc] = await Promise.all([
+    const [agentProfilesDoc, bindingsDoc, publishObjectsDoc] = await Promise.all([
       readJsonDocument<AgentProfileStoreDocument>(resolveAgentProfilesFile(workspacePath)),
       readJsonDocument<ChannelBindingStoreDocument>(resolveBindingsFile(workspacePath)),
+      readJsonDocument<PublishObjectCatalogStoreDocument>(resolvePublishObjectsFile(workspacePath)),
     ]);
 
     return {
       workspacePath,
       agentProfiles: normalizeAgentProfiles(agentProfilesDoc?.agentProfiles ?? []),
       bindings: normalizeChannelBindings(bindingsDoc?.bindings ?? []),
+      publishObjects: normalizePublishObjects(publishObjectsDoc?.publishObjects ?? []),
     };
   }
 
@@ -196,6 +437,7 @@ export class ProjectChannelPublicationService {
     const bindingWorkspaceById: Record<string, string> = {};
     const allProfiles: IAgentProfile[] = [];
     const allBindings: IChannelBinding[] = [];
+    const allPublishObjects: IChannelPublishObjectCatalogEntry[] = [];
 
     for (const snapshot of resolvedSnapshots) {
       for (const profile of snapshot.agentProfiles) {
@@ -206,12 +448,14 @@ export class ProjectChannelPublicationService {
         allBindings.push(binding);
         bindingWorkspaceById[binding.id] = snapshot.workspacePath;
       }
+      allPublishObjects.push(...snapshot.publishObjects);
     }
 
     return {
       workspaces: resolvedSnapshots.map((snapshot) => snapshot.workspacePath),
       agentProfiles: pickLatestById(normalizeAgentProfiles(allProfiles)),
       bindings: pickLatestById(normalizeChannelBindings(allBindings)),
+      publishObjects: normalizePublishObjects(allPublishObjects),
       agentProfileWorkspaceById,
       bindingWorkspaceById,
     };
@@ -221,6 +465,45 @@ export class ProjectChannelPublicationService {
     conversations: readonly Pick<TChatConversation, 'extra'>[]
   ): Promise<ProjectChannelPublicationCatalog> {
     return this.readCatalogForWorkspaces(this.listConversationWorkspaces(conversations));
+  }
+
+  async resolvePublishObjectCatalog(
+    workspace: string,
+    params: {
+      bindings: readonly IChannelBinding[];
+      remoteIdentities: readonly IRemoteIdentity[];
+      channelAccounts: readonly IConnectorInstance[];
+    }
+  ): Promise<IChannelPublishObjectCatalogEntry[]> {
+    const workspacePath = resolveWorkspacePath(workspace);
+    if (!workspacePath) {
+      return [];
+    }
+
+    const snapshot = await this.readSnapshot(workspacePath);
+    const connectorMap = new Map(params.channelAccounts.map((connector) => [connector.id, connector] as const));
+    const now = Date.now();
+    const bindingEntries = params.bindings
+      .map((binding) => toBindingCatalogEntry(binding, now))
+      .filter((entry): entry is IChannelPublishObjectCatalogEntry => Boolean(entry));
+    const remoteIdentityEntries = params.remoteIdentities
+      .map((identity) => {
+        const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
+        return connector ? toRemoteIdentityCatalogEntry(identity, connector, now) : null;
+      })
+      .filter((entry): entry is IChannelPublishObjectCatalogEntry => Boolean(entry));
+    const publishObjects = normalizePublishObjects([
+      ...(snapshot?.publishObjects ?? []),
+      ...bindingEntries,
+      ...remoteIdentityEntries,
+    ]);
+
+    await writeJsonDocument(resolvePublishObjectsFile(workspacePath), {
+      version: CHANNEL_STORAGE_VERSION,
+      publishObjects,
+    } satisfies PublishObjectCatalogStoreDocument);
+
+    return publishObjects;
   }
 
   async getAgentProfile(workspace: string, profileId: string): Promise<IAgentProfile | null> {

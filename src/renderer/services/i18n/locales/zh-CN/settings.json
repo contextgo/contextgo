@@ -1639,6 +1639,7 @@
   "channels.publication.summarySessions": "会话",
   "channels.publication.objectListTitle": "已发布对象",
   "channels.publication.objectListDescription": "这里只显示已经绑定到这个 Agent 的发布对象。",
+  "channels.publication.objectQualityFallback": "待识别",
   "channels.publication.emptyPublishedObjects": "这个 Agent 还没有发布到任何 IM 对象",
   "channels.publication.emptyObjects": "还没有发现任何 IM 对象",
   "channels.publication.agentSummaryTitle": "当前 Agent",

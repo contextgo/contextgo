@@ -316,9 +316,10 @@ const PublicationBindingPanel: React.FC = () => {
         channelAccounts: catalogChannelAccounts,
         audiences: catalog.audiences,
         bindings: selectedAgentBindings,
+        publishObjects: catalog.publishObjects,
         sessions: activeSessions,
       }),
-    [activeSessions, catalog.audiences, catalogChannelAccounts, selectedAgentBindings]
+    [activeSessions, catalog.audiences, catalog.publishObjects, catalogChannelAccounts, selectedAgentBindings]
   );
 
   const publishedBindingCount = useMemo(
@@ -664,6 +665,11 @@ const PublicationBindingPanel: React.FC = () => {
                             <div className='flex flex-wrap items-center gap-6px'>
                               <Tag className={styles.pillTag}>{objectKindLabel}</Tag>
                               <Tag className={styles.metricTag}>{t('settings.channels.publication.durableTag')}</Tag>
+                              {entry.object.objectQuality === 'fallback' ? (
+                                <Tag className={styles.statusTag}>
+                                  {t('settings.channels.publication.objectQualityFallback')}
+                                </Tag>
+                              ) : null}
                               {!primaryBinding?.enabled ? (
                                 <Tag className={styles.statusTag}>{t('settings.channels.publication.disabled')}</Tag>
                               ) : null}

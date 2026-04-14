@@ -5,11 +5,14 @@
  */
 
 import type {
+  ChannelPublishObjectCatalogSource,
+  ChannelPublishObjectDisplayQuality,
   ChannelObjectKind,
   ChannelObjectParentKind,
   IChannelActiveSessionEntry,
   IChannelAudienceEntry,
   IChannelBinding,
+  IChannelPublishObjectCatalogEntry,
   PluginType,
 } from '@process/channels/types';
 
@@ -23,6 +26,8 @@ export type PublicationObjectViewModel = {
   parentKey?: string;
   parentTitle?: string;
   parentKind?: ChannelObjectParentKind;
+  objectSource?: ChannelPublishObjectCatalogSource;
+  objectQuality?: ChannelPublishObjectDisplayQuality;
   audiences: IChannelAudienceEntry[];
   bindings: IChannelBinding[];
   sessions: IChannelActiveSessionEntry[];
@@ -38,6 +43,8 @@ type PublicationObjectSeed = {
   parentKey?: string;
   parentTitle?: string;
   parentKind?: ChannelObjectParentKind;
+  objectSource?: ChannelPublishObjectCatalogSource;
+  objectQuality?: ChannelPublishObjectDisplayQuality;
   lastActivity?: number;
   audience?: IChannelAudienceEntry;
   binding?: IChannelBinding;
@@ -251,6 +258,8 @@ function resolveAudienceSeed(audience: IChannelAudienceEntry, platform: PluginTy
     parentKey: audience.parentObjectKey,
     parentTitle: audience.parentObjectTitle,
     parentKind: audience.parentObjectKind,
+    objectSource: audience.objectSource,
+    objectQuality: audience.objectQuality,
     lastActivity: audience.lastActive,
     audience,
   };
@@ -270,12 +279,18 @@ function resolveSessionSeed(session: IChannelActiveSessionEntry, platform: Plugi
     parentKey: session.parentObjectKey,
     parentTitle: session.parentObjectTitle,
     parentKind: session.parentObjectKind,
+    objectSource: session.objectSource,
+    objectQuality: session.objectQuality,
     lastActivity: session.lastActivity,
     session,
   };
 }
 
-function resolveBindingSeed(binding: IChannelBinding, platform: PluginType): PublicationObjectSeed | null {
+function resolveBindingSeed(
+  binding: IChannelBinding,
+  platform: PluginType,
+  catalogEntry?: IChannelPublishObjectCatalogEntry
+): PublicationObjectSeed | null {
   if (!binding.scopeKey || binding.scopeType === 'connector_default') {
     return null;
   }
@@ -291,7 +306,12 @@ function resolveBindingSeed(binding: IChannelBinding, platform: PluginType): Pub
   return {
     key: binding.scopeKey,
     kind,
-    title: readableScopeKey ? `${fallbackTitle} ${readableScopeKey}` : fallbackTitle,
+    title:
+      catalogEntry?.displayProfile.title ?? (readableScopeKey ? `${fallbackTitle} ${readableScopeKey}` : fallbackTitle),
+    subtitle: catalogEntry?.displayProfile.subtitle,
+    parentTitle: catalogEntry?.displayProfile.parentTitle,
+    objectSource: catalogEntry?.displayProfile.source,
+    objectQuality: catalogEntry?.displayProfile.quality ?? 'fallback',
     binding,
   };
 }
@@ -307,6 +327,8 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
       parentKey: seed.parentKey,
       parentTitle: seed.parentTitle,
       parentKind: seed.parentKind,
+      objectSource: seed.objectSource,
+      objectQuality: seed.objectQuality,
       audiences: seed.audience ? [seed.audience] : [],
       bindings: seed.binding ? [seed.binding] : [],
       sessions: seed.session ? [seed.session] : [],
@@ -327,6 +349,12 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
   }
   if (!existing.parentKind && seed.parentKind) {
     existing.parentKind = seed.parentKind;
+  }
+  if (!existing.objectSource && seed.objectSource) {
+    existing.objectSource = seed.objectSource;
+  }
+  if (!existing.objectQuality && seed.objectQuality) {
+    existing.objectQuality = seed.objectQuality;
   }
   if (seed.lastActivity && (!existing.lastActivity || seed.lastActivity > existing.lastActivity)) {
     existing.lastActivity = seed.lastActivity;
@@ -349,6 +377,7 @@ export function buildPublicationObjects(params: {
   bindings: IChannelBinding[];
   sessions: IChannelActiveSessionEntry[];
   resolveBindingAudience: (binding: IChannelBinding) => IChannelAudienceEntry | undefined;
+  resolveBindingCatalogEntry?: (binding: IChannelBinding) => IChannelPublishObjectCatalogEntry | undefined;
 }): PublicationObjectViewModel[] {
   const objectMap = new Map<string, PublicationObjectViewModel>();
 
@@ -359,7 +388,7 @@ export function buildPublicationObjects(params: {
   params.bindings.forEach((binding) => {
     const audience = params.resolveBindingAudience(binding);
     if (!audience) {
-      const bindingSeed = resolveBindingSeed(binding, params.platform);
+      const bindingSeed = resolveBindingSeed(binding, params.platform, params.resolveBindingCatalogEntry?.(binding));
       if (bindingSeed) {
         upsertObject(objectMap, bindingSeed);
       }
@@ -385,6 +414,11 @@ export function buildPublicationObjects(params: {
     const sessionOrder = right.sessions.length - left.sessions.length;
     if (sessionOrder !== 0) {
       return sessionOrder;
+    }
+
+    const qualityOrder = (left.objectQuality === 'fallback' ? 1 : 0) - (right.objectQuality === 'fallback' ? 1 : 0);
+    if (qualityOrder !== 0) {
+      return qualityOrder;
     }
 
     const activityOrder = (right.lastActivity ?? 0) - (left.lastActivity ?? 0);

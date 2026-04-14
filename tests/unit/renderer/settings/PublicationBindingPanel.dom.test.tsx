@@ -57,6 +57,7 @@ const translations: Record<string, string> = {
   'settings.channels.publication.goToAccounts': 'Go to IM Channels',
   'settings.channels.publication.durableTag': 'Published',
   'settings.channels.publication.disabled': 'Disabled',
+  'settings.channels.publication.objectQualityFallback': 'Needs identification',
   'settings.channels.publication.connectorDefaultAudience': 'Channel account default entry',
   'settings.channels.publication.loadFailed': 'Failed to load publication bindings',
   'settings.channels.publication.objectKind.common.person': 'Person',
@@ -101,6 +102,33 @@ vi.mock('react-i18next', () => ({
 
 const mockTranslate = (key: string) => translations[key] ?? key;
 
+type MockButtonProps = {
+  children?: React.ReactNode;
+  onClick?: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  icon?: React.ReactNode;
+};
+
+type MockInputProps = {
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+};
+
+type MockSelectOption = {
+  value: string;
+  label: React.ReactNode;
+};
+
+type MockSelectProps = {
+  value?: string;
+  options?: MockSelectOption[];
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  allowClear?: boolean;
+};
+
 vi.mock('@icon-park/react', () => ({
   Delete: () => <span>delete-icon</span>,
   Edit: () => <span>edit-icon</span>,
@@ -109,28 +137,28 @@ vi.mock('@icon-park/react', () => ({
 }));
 
 vi.mock('@arco-design/web-react', () => ({
-  Button: ({ children, onClick, loading, disabled, icon }: any) => (
+  Button: ({ children, onClick, loading, disabled, icon }: MockButtonProps) => (
     <button type='button' onClick={onClick} disabled={loading || disabled}>
       {icon}
       {children}
     </button>
   ),
   Empty: ({ description }: { description?: React.ReactNode }) => <div>{description}</div>,
-  Input: ({ value, onChange, placeholder }: any) => (
+  Input: ({ value, onChange, placeholder }: MockInputProps) => (
     <input value={value ?? ''} placeholder={placeholder} onChange={(event) => onChange?.(event.target.value)} />
   ),
   Message: {
     error: (...args: unknown[]) => messageError(...args),
     success: (...args: unknown[]) => messageSuccess(...args),
   },
-  Select: ({ value, options = [], onChange, placeholder, allowClear }: any) => (
+  Select: ({ value, options = [], onChange, placeholder, allowClear }: MockSelectProps) => (
     <select
       value={value ?? ''}
       aria-label={placeholder ?? 'select'}
       onChange={(event) => onChange?.(event.target.value)}
     >
       {allowClear ? <option value=''>{placeholder ?? 'empty'}</option> : null}
-      {options.map((option: any) => (
+      {options.map((option) => (
         <option key={String(option.value)} value={String(option.value)}>
           {option.label}
         </option>
@@ -255,6 +283,8 @@ const catalogResponse = {
         parentObjectKey: 'chat-topic',
         parentObjectTitle: 'Core Ops Group',
         parentObjectKind: 'group',
+        objectSource: 'inbound-learned',
+        objectQuality: 'fallback',
         lastActive: 2000,
       },
       {
@@ -303,10 +333,12 @@ const sessionCatalogResponse = {
 };
 
 function renderPanel(publicationIntent?: Record<string, unknown>, search = '') {
+  const initialEntries: React.ComponentProps<typeof MemoryRouter>['initialEntries'] = [
+    { pathname: '/', search, state: publicationIntent ? { publicationIntent } : undefined },
+  ];
+
   return render(
-    <MemoryRouter
-      initialEntries={[{ pathname: '/', search, state: publicationIntent ? { publicationIntent } : undefined } as any]}
-    >
+    <MemoryRouter initialEntries={initialEntries}>
       <PublicationBindingPanel />
     </MemoryRouter>
   );
@@ -334,6 +366,14 @@ describe('PublicationBindingPanel', () => {
     expect(screen.getByText(/Current project session:\s*Active now/i)).toBeInTheDocument();
   });
 
+  it('shows an explicit fallback badge when a published object still relies on low-confidence identity', async () => {
+    renderPanel();
+
+    await screen.findByText('Ops topic');
+
+    expect(screen.getByText('Needs identification')).toBeInTheDocument();
+  });
+
   it('preselects the agent from publication intent and starts with an empty published-object list', async () => {
     renderPanel({
       conversationId: 'conversation-2',
@@ -346,7 +386,9 @@ describe('PublicationBindingPanel', () => {
     await screen.findByText('Publish this Agent');
 
     expect(screen.getByText('Support triage')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('agent-profile-2')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByRole('combobox')[0]).toHaveValue('agent-profile-2');
+    });
     expect(screen.getByText('This Agent is not published to any IM object yet')).toBeInTheDocument();
   });
 
@@ -430,6 +472,8 @@ describe('PublicationBindingPanel', () => {
     await screen.findByText('Publish this Agent');
 
     expect(screen.getByText('Support triage')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('agent-profile-2')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByRole('combobox')[0]).toHaveValue('agent-profile-2');
+    });
   });
 });
