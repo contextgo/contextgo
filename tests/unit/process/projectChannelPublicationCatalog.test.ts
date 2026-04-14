@@ -8,8 +8,14 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { IChannelBinding, IConnectorInstance, IRemoteIdentity } from '@process/channels/types';
+import type {
+  IChannelAudienceEntry,
+  IChannelBinding,
+  IConnectorInstance,
+  IRemoteIdentity,
+} from '@process/channels/types';
 import { ProjectChannelPublicationService } from '@process/channels/core/ProjectChannelPublicationService';
+import { resolvePublishObjectCatalogEntry } from '@process/channels/utils';
 
 const tempDirs: string[] = [];
 
@@ -24,6 +30,78 @@ afterEach(async () => {
 });
 
 describe('ProjectChannelPublicationService publish object catalog', () => {
+  it('resolves a publish-object catalog entry from exact identity, audience identity, and legacy alias candidates', async () => {
+    const binding: IChannelBinding = {
+      id: 'binding-topic-legacy',
+      connectorId: 'connector-lark',
+      channelAccountId: 'connector-lark',
+      scopeType: 'remote_chat',
+      scopeKey: 'oc_group_1:thread:om_topic_root_1',
+      agentProfileId: 'agent-profile-1',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      metadata: {
+        publishObject: {
+          nativeObjectType: 'chat',
+          nativeObjectId: 'oc_group_1:thread:om_topic_root_1',
+          discoverySource: 'manual',
+        },
+      },
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+    const audience: IChannelAudienceEntry = {
+      key: 'oc_group_1:thread:om_topic_root_1',
+      connectorId: 'connector-lark',
+      channelAccountId: 'connector-lark',
+      scopeType: 'remote_chat',
+      remoteChatId: 'oc_group_1:thread:om_topic_root_1',
+      platformChatId: 'oc_group_1',
+      remoteChatType: 'topic',
+      peerScope: 'thread',
+      parentChatId: 'oc_group_1',
+      threadId: 'om_topic_root_1',
+      objectKey: 'om_topic_root_1',
+      objectKind: 'topic',
+      objectTitle: 'Ops Topic',
+      objectSubtitle: 'In Core Ops Group',
+      parentObjectKey: 'oc_group_1',
+      parentObjectTitle: 'Core Ops Group',
+      parentObjectKind: 'group',
+      title: 'Ops Topic',
+      subtitle: 'In Core Ops Group',
+      lastActive: 2000,
+    };
+
+    const publishObject = resolvePublishObjectCatalogEntry({
+      binding,
+      audience,
+      publishObjects: [
+        {
+          id: 'connector-lark::topic::om_topic_root_1::oc_group_1',
+          channelAccountId: 'connector-lark',
+          nativeObjectType: 'topic',
+          nativeObjectId: 'om_topic_root_1',
+          parentNativeObjectId: 'oc_group_1',
+          displayProfile: {
+            title: 'Ops Topic',
+            subtitle: 'In Core Ops Group',
+            parentTitle: 'Core Ops Group',
+            source: 'inbound-learned',
+            quality: 'resolved',
+            resolvedAt: 2000,
+          },
+          aliases: ['oc_group_1:thread:om_topic_root_1'],
+          createdAt: 1000,
+          updatedAt: 2000,
+        },
+      ],
+    });
+
+    expect(publishObject?.id).toBe('connector-lark::topic::om_topic_root_1::oc_group_1');
+  });
+
   it('backfills a persisted catalog entry by merging binding metadata with readable inbound identity facts', async () => {
     const workspace = await createTempWorkspace();
     const service = new ProjectChannelPublicationService();

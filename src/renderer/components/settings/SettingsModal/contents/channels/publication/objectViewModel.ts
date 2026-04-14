@@ -29,6 +29,7 @@ export type PublicationObjectViewModel = {
   parentKind?: ChannelObjectParentKind;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  publishObjectCatalogEntryId?: string;
   audiences: IChannelAudienceEntry[];
   bindings: IChannelBinding[];
   sessions: IChannelActiveSessionEntry[];
@@ -47,12 +48,26 @@ type PublicationObjectSeed = {
   parentKind?: ChannelObjectParentKind;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  publishObjectCatalogEntryId?: string;
   activeSessionPointer?: IChannelPublishObjectActiveSessionPointer;
   lastActivity?: number;
   audience?: IChannelAudienceEntry;
   binding?: IChannelBinding;
   session?: IChannelActiveSessionEntry;
 };
+
+function getObjectQualityRank(quality?: ChannelPublishObjectDisplayQuality): number {
+  if (quality === 'resolved') {
+    return 3;
+  }
+  if (quality === 'inferred') {
+    return 2;
+  }
+  if (quality === 'fallback') {
+    return 1;
+  }
+  return 0;
+}
 
 function looksTechnicalScopeKey(value: string): boolean {
   return (
@@ -263,6 +278,7 @@ function resolveAudienceSeed(audience: IChannelAudienceEntry, platform: PluginTy
     parentKind: audience.parentObjectKind,
     objectSource: audience.objectSource,
     objectQuality: audience.objectQuality,
+    publishObjectCatalogEntryId: audience.publishObjectCatalogEntryId,
     lastActivity: audience.lastActive,
     audience,
   };
@@ -284,6 +300,7 @@ function resolveSessionSeed(session: IChannelActiveSessionEntry, platform: Plugi
     parentKind: session.parentObjectKind,
     objectSource: session.objectSource,
     objectQuality: session.objectQuality,
+    publishObjectCatalogEntryId: session.publishObjectCatalogEntryId,
     lastActivity: session.lastActivity,
     session,
   };
@@ -315,6 +332,7 @@ function resolveBindingSeed(
     parentTitle: catalogEntry?.displayProfile.parentTitle,
     objectSource: catalogEntry?.displayProfile.source,
     objectQuality: catalogEntry?.displayProfile.quality ?? 'fallback',
+    publishObjectCatalogEntryId: catalogEntry?.id,
     activeSessionPointer: catalogEntry?.activeSessionPointer,
     binding,
   };
@@ -333,6 +351,7 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
       parentKind: seed.parentKind,
       objectSource: seed.objectSource,
       objectQuality: seed.objectQuality,
+      publishObjectCatalogEntryId: seed.publishObjectCatalogEntryId,
       audiences: seed.audience ? [seed.audience] : [],
       bindings: seed.binding ? [seed.binding] : [],
       sessions: seed.session ? [seed.session] : [],
@@ -344,6 +363,26 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
   }
 
   if (!existing.subtitle && seed.subtitle) {
+    existing.subtitle = seed.subtitle;
+  }
+  if (
+    seed.title &&
+    seed.title !== existing.title &&
+    (getObjectQualityRank(seed.objectQuality) > getObjectQualityRank(existing.objectQuality) ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        getObjectQualityRank(seed.objectQuality) >= getObjectQualityRank(existing.objectQuality)))
+  ) {
+    existing.title = seed.title;
+  }
+  if (
+    seed.subtitle &&
+    seed.subtitle !== existing.subtitle &&
+    (getObjectQualityRank(seed.objectQuality) > getObjectQualityRank(existing.objectQuality) ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        getObjectQualityRank(seed.objectQuality) >= getObjectQualityRank(existing.objectQuality)))
+  ) {
     existing.subtitle = seed.subtitle;
   }
   if (!existing.parentTitle && seed.parentTitle) {
@@ -360,6 +399,9 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
   }
   if (!existing.objectQuality && seed.objectQuality) {
     existing.objectQuality = seed.objectQuality;
+  }
+  if (!existing.publishObjectCatalogEntryId && seed.publishObjectCatalogEntryId) {
+    existing.publishObjectCatalogEntryId = seed.publishObjectCatalogEntryId;
   }
   if (
     seed.activeSessionPointer &&
@@ -415,6 +457,7 @@ export function buildPublicationObjects(params: {
       parentTitle: catalogEntry?.displayProfile.parentTitle ?? audience.parentObjectTitle,
       objectSource: catalogEntry?.displayProfile.source ?? audience.objectSource,
       objectQuality: catalogEntry?.displayProfile.quality ?? audience.objectQuality,
+      publishObjectCatalogEntryId: audience.publishObjectCatalogEntryId ?? catalogEntry?.id,
       activeSessionPointer: catalogEntry?.activeSessionPointer,
       binding,
     });
