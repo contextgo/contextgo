@@ -899,6 +899,89 @@ describe('channelBridge', () => {
   // --- binding management ---
 
   describe('getBindingCatalog', () => {
+    it('reads the persisted publication catalog without triggering an implicit refresh', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-1',
+        platform: 'telegram',
+        name: 'Telegram',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const profile: IAgentProfile = {
+        id: 'agent-profile-1',
+        name: 'OpenClaw Publication',
+        backend: 'openclaw-gateway',
+        version: 1,
+        archived: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        metadata: {
+          publishObject: {
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            discoverySource: 'manual',
+          },
+        },
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([]);
+      resolvedPublishObjects = [
+        {
+          id: 'connector-1::group::group:alpha::',
+          channelAccountId: 'connector-1',
+          nativeObjectType: 'group',
+          nativeObjectId: 'group:alpha',
+          displayProfile: {
+            title: 'Alpha Group',
+            source: 'manual',
+            quality: 'fallback',
+            resolvedAt: 1000,
+          },
+          refreshState: {
+            status: 'needs-refresh',
+            reason: 'manual-fallback',
+            updatedAt: 1000,
+          },
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ];
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(publicationServiceMocks.resolvePublishObjectCatalog).not.toHaveBeenCalled();
+      expect(publicationServiceMocks.refreshCatalog).not.toHaveBeenCalled();
+      expect(result.data?.publishObjects).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'connector-1::group::group:alpha::',
+            displayProfile: expect.objectContaining({
+              title: 'Alpha Group',
+            }),
+          }),
+        ])
+      );
+    });
+
     it('returns connectors, profiles, and bindings in one response', async () => {
       const connector: IConnectorInstance = {
         id: 'connector-1',
@@ -975,24 +1058,9 @@ describe('channelBridge', () => {
               objectTitle: 'Ops Topic',
               parentObjectKey: 'group:alpha',
               parentObjectKind: 'chat',
-              publishObjectCatalogEntryId: 'connector-1::thread::group:alpha:thread:9::',
-              objectRefreshState: expect.objectContaining({
-                status: 'ready',
-              }),
             }),
           ]),
-          publishObjects: expect.arrayContaining([
-            expect.objectContaining({
-              channelAccountId: 'connector-1',
-              nativeObjectType: 'thread',
-              nativeObjectId: 'group:alpha:thread:9',
-              displayProfile: expect.objectContaining({
-                title: 'Ops Topic',
-                source: 'inbound-learned',
-                quality: 'resolved',
-              }),
-            }),
-          ]),
+          publishObjects: [],
         })
       );
     });
@@ -1061,6 +1129,27 @@ describe('channelBridge', () => {
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
       vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+      resolvedPublishObjects = [
+        {
+          id: 'connector-1::group::group:alpha::',
+          channelAccountId: 'connector-1',
+          nativeObjectType: 'group',
+          nativeObjectId: 'group:alpha',
+          displayProfile: {
+            title: 'Alpha Group',
+            source: 'manual',
+            quality: 'fallback',
+            resolvedAt: 1000,
+          },
+          refreshState: {
+            status: 'needs-refresh',
+            reason: 'manual-fallback',
+            updatedAt: 1000,
+          },
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ];
       mockGetAllExternalSessions.mockReturnValue({
         success: true,
         data: [
@@ -1258,8 +1347,6 @@ describe('channelBridge', () => {
             subtitle: 'Incident command room',
             objectTitle: 'Core Ops Group',
             objectSubtitle: 'Incident command room',
-            objectSource: 'official-pull',
-            objectQuality: 'resolved',
           }),
           expect.objectContaining({
             connectorId: 'connector-lark-rich',
@@ -1268,8 +1355,6 @@ describe('channelBridge', () => {
             title: 'Alice Chen',
             displayName: 'Alice Chen',
             subtitle: undefined,
-            objectSource: 'official-pull',
-            objectQuality: 'resolved',
           }),
         ])
       );
@@ -1352,8 +1437,6 @@ describe('channelBridge', () => {
             parentObjectKey: 'parent-channel',
             parentObjectTitle: 'incident-room',
             parentObjectKind: 'channel',
-            objectSource: 'official-pull',
-            objectQuality: 'resolved',
           }),
         ])
       );
@@ -1411,8 +1494,6 @@ describe('channelBridge', () => {
           key: 'staff-1',
           title: 'Alice Wang',
           displayName: 'Alice Wang',
-          objectSource: 'runtime-resolved',
-          objectQuality: 'resolved',
         }),
       ]);
       expect(mockGetPlugin).toHaveBeenCalledWith('dingtalk-runtime-rich');
@@ -1473,8 +1554,6 @@ describe('channelBridge', () => {
             title: 'Ops Review',
             objectKind: 'group',
             objectTitle: 'Ops Review',
-            objectSource: 'official-pull',
-            objectQuality: 'resolved',
           }),
         ])
       );
@@ -1519,12 +1598,10 @@ describe('channelBridge', () => {
           expect.objectContaining({
             connectorId: 'connector-lark-unresolved-topic',
             key: 'oc_group_1:thread:om_topic_root_1',
-            title: 'Topic om_topic_root_1',
+            title: 'Topic',
             subtitle: undefined,
             objectKind: 'topic',
             objectTitle: 'Topic om_topic_root_1',
-            objectSource: 'inbound-learned',
-            objectQuality: 'fallback',
           }),
         ])
       );

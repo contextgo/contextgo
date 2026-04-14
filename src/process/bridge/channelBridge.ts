@@ -1610,18 +1610,13 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       }
       const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
       const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(identitiesWithAccountId, allConnectors);
-      const resolvedPublishObjects = await resolvePublicationPublishObjects({
-        publicationCatalog,
-        remoteIdentities: enrichedRemoteIdentities,
-        connectors: allConnectors,
-      });
       const publicationSnapshot = buildPublicationCatalogRefreshResult({
         channelAccountId,
         publicationCatalog,
         allConnectors,
         enrichedRemoteIdentities,
         sessions,
-        publishObjects: resolvedPublishObjects,
+        publishObjects: publicationCatalog.publishObjects,
         externalSessions: externalSessionsResult.data,
         controlLeases: controlLeasesResult.data,
       });

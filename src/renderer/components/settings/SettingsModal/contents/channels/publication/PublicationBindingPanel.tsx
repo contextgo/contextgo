@@ -269,37 +269,7 @@ const PublicationBindingPanel: React.FC = () => {
     [catalog.channelAccounts, catalog.connectors]
   );
 
-  const loadCatalog = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [catalogResult, sessionResult] = await Promise.all([
-        channel.getBindingCatalog.invoke({}),
-        channel.getActiveSessionCatalog.invoke(),
-      ]);
-
-      if (!catalogResult.success || !catalogResult.data) {
-        throw new Error(catalogResult.msg || t('settings.channels.publication.loadFailed'));
-      }
-      if (!sessionResult.success || !sessionResult.data) {
-        throw new Error(sessionResult.msg || t('settings.channels.publication.loadFailed'));
-      }
-
-      applyPublicationCatalogRefresh(
-        {
-          bindingCatalog: catalogResult.data,
-          activeSessions: sessionResult.data,
-        },
-        setCatalog,
-        setActiveSessions
-      );
-    } catch (error) {
-      Message.error(error instanceof Error ? error.message : t('settings.channels.publication.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  const refreshPublicationCatalog = useCallback(async () => {
+  const loadPublicationSnapshot = useCallback(async () => {
     setLoading(true);
     try {
       const result = await channel.refreshPublicationCatalog.invoke(undefined);
@@ -316,8 +286,8 @@ const PublicationBindingPanel: React.FC = () => {
   }, [t]);
 
   useEffect(() => {
-    void loadCatalog();
-  }, [loadCatalog]);
+    void loadPublicationSnapshot();
+  }, [loadPublicationSnapshot]);
 
   const profileMap = useMemo(
     () => new Map(catalog.agentProfiles.map((profile) => [profile.id, profile] as const)),
@@ -492,14 +462,14 @@ const PublicationBindingPanel: React.FC = () => {
           throw new Error(result.msg || t('settings.channels.publication.deleteFailed'));
         }
         Message.success(t('settings.channels.publication.deleted'));
-        await loadCatalog();
+        await loadPublicationSnapshot();
       } catch (error) {
         Message.error(error instanceof Error ? error.message : t('settings.channels.publication.deleteFailed'));
       } finally {
         setDeletingBindingId('');
       }
     },
-    [loadCatalog, t]
+    [loadPublicationSnapshot, t]
   );
 
   const handleSaveBinding = useCallback(async () => {
@@ -550,11 +520,11 @@ const PublicationBindingPanel: React.FC = () => {
 
       Message.success(t('settings.channels.publication.durableSaved'));
       resetEditor();
-      await loadCatalog();
+      await loadPublicationSnapshot();
     } finally {
       setSaving(false);
     }
-  }, [audienceMap, catalog.bindings, editor, loadCatalog, resetEditor, selectedAgentProfileId, t]);
+  }, [audienceMap, catalog.bindings, editor, loadPublicationSnapshot, resetEditor, selectedAgentProfileId, t]);
 
   const showCatalogLoading = loading && catalogChannelAccounts.length === 0;
   const hasChannelAccounts = catalogChannelAccounts.length > 0;
@@ -699,7 +669,7 @@ const PublicationBindingPanel: React.FC = () => {
               <div className='flex flex-wrap items-center gap-8px'>
                 <Button
                   icon={<Refresh theme='outline' size='16' />}
-                  onClick={() => void refreshPublicationCatalog()}
+                  onClick={() => void loadPublicationSnapshot()}
                   loading={loading}
                 >
                   {t('common.refresh')}
