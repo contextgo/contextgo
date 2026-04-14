@@ -3,8 +3,10 @@
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CodeBlock from '../../../../../src/renderer/components/Markdown/CodeBlock';
+
+const syntaxHighlighterMock = vi.fn();
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -41,7 +43,10 @@ vi.mock('@/renderer/utils/ui/clipboard', () => ({
 }));
 
 vi.mock('react-syntax-highlighter', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  default: (props: { children?: React.ReactNode; wrapLongLines?: boolean }) => {
+    syntaxHighlighterMock(props);
+    return <div>{props.children}</div>;
+  },
 }));
 
 vi.mock('react-syntax-highlighter/dist/esm/styles/hljs', () => ({
@@ -50,6 +55,10 @@ vi.mock('react-syntax-highlighter/dist/esm/styles/hljs', () => ({
 }));
 
 describe('CodeBlock', () => {
+  beforeEach(() => {
+    syntaxHighlighterMock.mockClear();
+  });
+
   it('renders default multi-line code blocks expanded without the collapse toggle for short snippets', () => {
     const { container } = render(<CodeBlock className='language-ts'>{'const a = 1;\nconst b = 2;'}</CodeBlock>);
 
@@ -58,7 +67,9 @@ describe('CodeBlock', () => {
     expect(screen.getByRole('button', { name: 'common.copy' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'common.expandMore' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'common.collapse' })).not.toBeInTheDocument();
-    expect(screen.getByText((content) => content.includes('const a = 1;') && content.includes('const b = 2;'))).toBeInTheDocument();
+    expect(
+      screen.getByText((content) => content.includes('const a = 1;') && content.includes('const b = 2;'))
+    ).toBeInTheDocument();
     expect(container.querySelector('.not-prose')).not.toBeNull();
     expect(screen.queryByText('<ts>')).not.toBeInTheDocument();
   });
@@ -70,7 +81,25 @@ describe('CodeBlock', () => {
 
     expect(screen.getByRole('button', { name: 'common.collapse' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'common.expandMore' })).not.toBeInTheDocument();
-    expect(screen.getByText((content) => content.includes('line 1') && content.includes('line 28'))).toBeInTheDocument();
+    expect(
+      screen.getByText((content) => content.includes('line 1') && content.includes('line 28'))
+    ).toBeInTheDocument();
+  });
+
+  it('enables soft wrapping for text code blocks so long prompt templates do not stay on a single visual line', () => {
+    render(
+      <CodeBlock className='language-text'>
+        {
+          'Restate the task, identify the main constraints and risks, then propose a clear step-by-step implementation plan.\nWrap this long line for reading.'
+        }
+      </CodeBlock>
+    );
+
+    expect(syntaxHighlighterMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        wrapLongLines: true,
+      })
+    );
   });
 
   it('keeps result-card variant on the same card structure without fallback class', () => {
@@ -107,5 +136,15 @@ describe('CodeBlock', () => {
     expect(screen.getByText('BASH')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'common.copy' })).toBeInTheDocument();
     expect(screen.getByText('npm run ops -- auth cloudflare newapi')).toBeInTheDocument();
+  });
+
+  it('does not enable soft wrapping for non-text code blocks', () => {
+    render(<CodeBlock className='language-bash'>{'echo hello\necho world'}</CodeBlock>);
+
+    expect(syntaxHighlighterMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        wrapLongLines: false,
+      })
+    );
   });
 });

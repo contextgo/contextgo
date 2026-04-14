@@ -140,6 +140,7 @@ function CodeBlock(props: CodeBlockProps) {
         style={codeTheme}
         PreTag='div'
         wrapLines={isDiff}
+        wrapLongLines={language === 'text'}
         lineProps={
           isDiff
             ? (lineNumber: number) => ({
