@@ -92,6 +92,17 @@ function buildMockPublishObjects(params: {
         quality: title === publishObject.nativeObjectId ? 'fallback' : 'inferred',
         resolvedAt: binding.updatedAt,
       },
+      refreshState:
+        title === publishObject.nativeObjectId
+          ? {
+              status: 'needs-refresh',
+              reason: 'manual-fallback',
+              updatedAt: binding.updatedAt,
+            }
+          : {
+              status: 'ready',
+              updatedAt: binding.updatedAt,
+            },
       createdAt: binding.createdAt,
       updatedAt: binding.updatedAt,
     };
@@ -135,6 +146,10 @@ function buildMockPublishObjects(params: {
           ? 'fallback'
           : 'resolved',
         resolvedAt: identity.lastActive ?? identity.authorizedAt,
+      },
+      refreshState: {
+        status: 'ready',
+        updatedAt: identity.lastActive ?? identity.authorizedAt,
       },
       createdAt: identity.authorizedAt,
       updatedAt: identity.lastActive ?? identity.authorizedAt,
@@ -719,6 +734,9 @@ describe('channelBridge', () => {
           parentObjectKey: 'discord://guild-1/channel-22',
           parentObjectKind: 'channel',
           publishObjectCatalogEntryId: 'connector-discord::thread::77::discord://guild-1/channel-22',
+          objectRefreshState: expect.objectContaining({
+            status: 'ready',
+          }),
         }),
       ]);
     });
@@ -942,6 +960,9 @@ describe('channelBridge', () => {
               parentObjectKey: 'group:alpha',
               parentObjectKind: 'chat',
               publishObjectCatalogEntryId: 'connector-1::thread::group:alpha:thread:9::',
+              objectRefreshState: expect.objectContaining({
+                status: 'ready',
+              }),
             }),
           ]),
           publishObjects: expect.arrayContaining([

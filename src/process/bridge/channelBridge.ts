@@ -646,6 +646,7 @@ function buildRemoteChatAudience(
     publishObjectCatalogEntryId: resolvedPublishObject?.id,
     objectSource: resolvedPublishObject?.displayProfile.source,
     objectQuality: resolvedPublishObject?.displayProfile.quality,
+    objectRefreshState: resolvedPublishObject?.refreshState,
     title: resolvedPublishObject?.displayProfile.title ?? title,
     subtitle: resolvedPublishObject?.displayProfile.subtitle ?? subtitle,
     lastActive: identity.lastActive,
@@ -715,6 +716,7 @@ function buildRemoteUserAudiences(
       publishObjectCatalogEntryId: resolvedPublishObject?.id,
       objectSource: resolvedPublishObject?.displayProfile.source,
       objectQuality: resolvedPublishObject?.displayProfile.quality,
+      objectRefreshState: resolvedPublishObject?.refreshState,
       title:
         resolvedPublishObject?.displayProfile.title ??
         buildAudienceTitle({
@@ -849,6 +851,7 @@ function buildActiveSessionEntries(params: {
       publishObjectCatalogEntryId: resolvedPublishObject?.id,
       objectSource: resolvedPublishObject?.displayProfile.source,
       objectQuality: resolvedPublishObject?.displayProfile.quality,
+      objectRefreshState: resolvedPublishObject?.refreshState,
       activeConversationId,
       conversationId: activeConversationId,
       workspace: session.workspace,

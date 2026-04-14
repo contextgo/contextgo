@@ -62,6 +62,7 @@ const translations: Record<string, string> = {
   'settings.channels.publication.durableTag': 'Published',
   'settings.channels.publication.disabled': 'Disabled',
   'settings.channels.publication.objectQualityFallback': 'Needs identification',
+  'settings.channels.publication.objectRefreshBackfilled': 'Backfilled',
   'settings.channels.publication.connectorDefaultAudience': 'Channel account default entry',
   'settings.channels.publication.loadFailed': 'Failed to load publication bindings',
   'settings.channels.publication.objectKind.common.person': 'Person',
@@ -544,6 +545,36 @@ describe('PublicationBindingPanel', () => {
     await screen.findByText('Ops topic');
 
     expect(screen.getByText('Needs identification')).toBeInTheDocument();
+  });
+
+  it('shows a backfilled badge when the object identity was repaired after initial fallback discovery', async () => {
+    mockGetBindingCatalogInvoke.mockResolvedValueOnce({
+      ...catalogResponse,
+      data: {
+        ...catalogResponse.data,
+        publishObjects: [
+          {
+            ...catalogResponse.data.publishObjects[0],
+            displayProfile: {
+              ...catalogResponse.data.publishObjects[0].displayProfile,
+              quality: 'resolved',
+            },
+            refreshState: {
+              status: 'ready',
+              updatedAt: Date.now() - 60 * 1000,
+              backfilledAt: Date.now() - 60 * 1000,
+            },
+          },
+        ],
+      },
+    });
+
+    renderPanel();
+
+    await screen.findByText('Ops topic');
+
+    expect(screen.getByText('Backfilled')).toBeInTheDocument();
+    expect(screen.queryByText('Needs identification')).not.toBeInTheDocument();
   });
 
   it('preselects the agent from publication intent and starts with an empty published-object list', async () => {

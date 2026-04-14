@@ -21,7 +21,11 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import styles from '../ChannelModalContent.module.css';
-import { buildAgentPublicationObjects, buildPublishObjectOptionLabel } from './agentPublicationViewModel';
+import {
+  buildAgentPublicationObjects,
+  buildPublishObjectOptionLabel,
+  type AgentPublicationObjectEntry,
+} from './agentPublicationViewModel';
 import { getPublicationObjectKindLabel } from './objectViewModel';
 import { buildBindingPayload, splitBindingsByLifetime, type DurableBindingScopeType } from './viewModel';
 
@@ -212,6 +216,23 @@ function getBindingAudience(
   }
 
   return audienceMap.get(binding.scopeKey);
+}
+
+function getObjectRefreshBadgeLabel(entry: AgentPublicationObjectEntry, t: TranslationFn): string | null {
+  const refreshState = entry.object.refreshState;
+  if (refreshState?.status === 'needs-refresh') {
+    return t('settings.channels.publication.objectQualityFallback');
+  }
+
+  if (refreshState?.status === 'ready' && refreshState.backfilledAt) {
+    return t('settings.channels.publication.objectRefreshBackfilled');
+  }
+
+  if (!refreshState && entry.object.objectQuality === 'fallback') {
+    return t('settings.channels.publication.objectQualityFallback');
+  }
+
+  return null;
 }
 
 const PublicationBindingPanel: React.FC = () => {
@@ -659,6 +680,7 @@ const PublicationBindingPanel: React.FC = () => {
                     entry.object.kind,
                     t
                   );
+                  const objectRefreshBadgeLabel = getObjectRefreshBadgeLabel(entry, t);
                   const lastActiveLabel = formatOptionalRelativeTime(entry.currentSession?.lastActivity, i18n.language);
                   const relatedSessions = entry.object.sessions.toSorted(
                     (left, right) => right.lastActivity - left.lastActivity
@@ -672,10 +694,8 @@ const PublicationBindingPanel: React.FC = () => {
                             <div className='flex flex-wrap items-center gap-6px'>
                               <Tag className={styles.pillTag}>{objectKindLabel}</Tag>
                               <Tag className={styles.metricTag}>{t('settings.channels.publication.durableTag')}</Tag>
-                              {entry.object.objectQuality === 'fallback' ? (
-                                <Tag className={styles.statusTag}>
-                                  {t('settings.channels.publication.objectQualityFallback')}
-                                </Tag>
+                              {objectRefreshBadgeLabel ? (
+                                <Tag className={styles.statusTag}>{objectRefreshBadgeLabel}</Tag>
                               ) : null}
                               {!primaryBinding?.enabled ? (
                                 <Tag className={styles.statusTag}>{t('settings.channels.publication.disabled')}</Tag>
