@@ -47,6 +47,40 @@ type PendingDiscordAction = {
 
 const DISCORD_ACTION_TTL_MS = 24 * 60 * 60 * 1000;
 const DISCORD_ACTION_ID_PREFIX = 'ctxgo:discord:action';
+const DISPLAY_CACHE_TTL = 10 * 60 * 1000;
+
+type DiscordChatDisplayData = {
+  name?: string;
+  chatType?: string;
+  parentTitle?: string;
+  containerId?: string;
+  containerType?: string;
+  containerTitle?: string;
+  source: 'official-pull';
+};
+
+type DiscordUserDisplayData = {
+  name?: string;
+  source: 'official-pull';
+};
+
+function getStringProperty(value: unknown, key: string): string | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const candidate = (value as Record<string, unknown>)[key];
+  return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : undefined;
+}
+
+function callBooleanMethod(value: unknown, key: string): boolean {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const method = (value as Record<string, unknown>)[key];
+  return typeof method === 'function' ? Boolean((method as () => unknown)()) : false;
+}
 
 async function sendChunkedMessages(
   channel: DiscordSendableChannel,
@@ -74,6 +108,8 @@ export class DiscordPlugin extends BasePlugin {
   private activeUsers = new Set<string>();
   private requireMention = true;
   private pendingActions = new Map<string, PendingDiscordAction>();
+  private chatDisplayCache = new Map<string, { expiresAt: number; value: DiscordChatDisplayData | null }>();
+  private userDisplayCache = new Map<string, { expiresAt: number; value: DiscordUserDisplayData | null }>();
 
   protected async onInitialize(config: IChannelPluginConfig): Promise<void> {
     const token = config.credentials?.token;
@@ -131,6 +167,8 @@ export class DiscordPlugin extends BasePlugin {
   protected async onStop(): Promise<void> {
     this.activeUsers.clear();
     this.pendingActions.clear();
+    this.chatDisplayCache.clear();
+    this.userDisplayCache.clear();
     this.botInfo = null;
 
     if (this.client) {
@@ -192,6 +230,137 @@ export class DiscordPlugin extends BasePlugin {
       username: this.botInfo.username,
       displayName: this.botInfo.displayName,
     };
+  }
+
+  private readDisplayCache<T>(
+    cache: Map<string, { expiresAt: number; value: T | null }>,
+    key: string
+  ): T | null | undefined {
+    const cached = cache.get(key);
+    if (!cached) {
+      return undefined;
+    }
+
+    if (cached.expiresAt <= Date.now()) {
+      cache.delete(key);
+      return undefined;
+    }
+
+    return cached.value;
+  }
+
+  private writeDisplayCache<T>(
+    cache: Map<string, { expiresAt: number; value: T | null }>,
+    key: string,
+    value: T | null
+  ): T | null {
+    cache.set(key, {
+      expiresAt: Date.now() + DISPLAY_CACHE_TTL,
+      value,
+    });
+    return value;
+  }
+
+  private getChannelChatType(channel: unknown): string | undefined {
+    if (callBooleanMethod(channel, 'isThread')) {
+      return 'thread';
+    }
+
+    if (callBooleanMethod(channel, 'isDMBased')) {
+      return 'dm';
+    }
+
+    if (getStringProperty(channel, 'guildId')) {
+      return 'channel';
+    }
+
+    return undefined;
+  }
+
+  private async resolveGuildName(guildId?: string): Promise<string | undefined> {
+    if (!this.client || !guildId) {
+      return undefined;
+    }
+
+    try {
+      const guild = await this.client.guilds.fetch(guildId);
+      return guild.name?.trim() || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async resolveParentChannelName(parentId?: string): Promise<string | undefined> {
+    if (!this.client || !parentId) {
+      return undefined;
+    }
+
+    try {
+      const parentChannel = await this.client.channels.fetch(parentId);
+      return getStringProperty(parentChannel, 'name');
+    } catch {
+      return undefined;
+    }
+  }
+
+  async getChatDisplayData(chatId: string): Promise<DiscordChatDisplayData | null> {
+    if (!this.client || !chatId) {
+      return null;
+    }
+
+    const cached = this.readDisplayCache(this.chatDisplayCache, chatId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(chatId);
+      if (!channel) {
+        return this.writeDisplayCache(this.chatDisplayCache, chatId, null);
+      }
+
+      const guildId = getStringProperty(channel, 'guildId');
+      const parentId = getStringProperty(channel, 'parentId');
+      const [parentTitle, containerTitle] = await Promise.all([
+        this.resolveParentChannelName(parentId),
+        this.resolveGuildName(guildId),
+      ]);
+
+      return this.writeDisplayCache(this.chatDisplayCache, chatId, {
+        name: getStringProperty(channel, 'name'),
+        chatType: this.getChannelChatType(channel),
+        parentTitle,
+        containerId: guildId,
+        containerType: guildId ? 'server' : undefined,
+        containerTitle,
+        source: 'official-pull',
+      });
+    } catch (error) {
+      console.warn(`[DiscordPlugin] Failed to load chat display data for ${chatId}:`, error);
+      return this.writeDisplayCache(this.chatDisplayCache, chatId, null);
+    }
+  }
+
+  async getUserDisplayData(userId: string): Promise<DiscordUserDisplayData | null> {
+    if (!this.client || !userId) {
+      return null;
+    }
+
+    const cached = this.readDisplayCache(this.userDisplayCache, userId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    try {
+      const user = await this.client.users.fetch(userId);
+      return this.writeDisplayCache(this.userDisplayCache, userId, {
+        name: user.globalName?.trim() || user.username?.trim() || undefined,
+        source: 'official-pull',
+      });
+    } catch (error) {
+      console.warn(`[DiscordPlugin] Failed to load user display data for ${userId}:`, error);
+      return this.writeDisplayCache(this.userDisplayCache, userId, null);
+    }
   }
 
   private setupHandlers(): void {

@@ -120,9 +120,11 @@ function buildMockPublishObjects(params: {
         subtitle: descriptor.subtitle,
         parentTitle: descriptor.parentTitle,
         source:
-          typeof identity.metadata?.chatName === 'string' || typeof identity.metadata?.userDisplayName === 'string'
-            ? 'runtime-resolved'
-            : 'inbound-learned',
+          identity.metadata?.displaySource === 'official-pull' || identity.metadata?.displaySource === 'runtime-resolved'
+            ? identity.metadata.displaySource
+            : typeof identity.metadata?.chatName === 'string' || typeof identity.metadata?.userDisplayName === 'string'
+              ? 'runtime-resolved'
+              : 'inbound-learned',
         quality: isChannelObjectFallbackTitle({
           platform: connector.platform,
           kind: descriptor.kind,
@@ -1082,7 +1084,7 @@ describe('channelBridge', () => {
             subtitle: 'Incident command room',
             objectTitle: 'Core Ops Group',
             objectSubtitle: 'Incident command room',
-            objectSource: 'runtime-resolved',
+            objectSource: 'official-pull',
             objectQuality: 'resolved',
           }),
           expect.objectContaining({
@@ -1092,12 +1094,154 @@ describe('channelBridge', () => {
             title: 'Alice Chen',
             displayName: 'Alice Chen',
             subtitle: undefined,
-            objectSource: 'runtime-resolved',
+            objectSource: 'official-pull',
             objectQuality: 'resolved',
           }),
         ])
       );
       expect(mockGetPlugin).toHaveBeenCalledWith('lark-runtime-rich');
+    });
+
+    it('marks Discord thread objects as official-pull when the plugin resolves thread and parent metadata', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-discord-rich',
+        platform: 'discord',
+        name: 'Discord',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        legacyPluginId: 'discord-runtime-rich',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-discord-thread-1',
+        connectorId: 'connector-discord-rich',
+        remoteUserId: 'discord-user-1',
+        remoteChatId: 'parent-channel:thread:thread-1',
+        platformChatId: 'parent-channel',
+        parentChatId: 'parent-channel',
+        threadId: 'thread-1',
+        remoteChatType: 'thread',
+        peerScope: 'thread',
+        displayName: 'Discord User 345678',
+        authorizedAt: 1000,
+        lastActive: 2200,
+        metadata: {
+          containerId: 'guild-1',
+          containerType: 'server',
+        },
+      };
+
+      mockGetPlugin.mockReturnValue({
+        getChatDisplayData: vi.fn(async (chatId: string) => {
+          if (chatId === 'thread-1') {
+            return {
+              name: 'Incident follow-up',
+              chatType: 'thread',
+              parentTitle: 'incident-room',
+              containerTitle: 'Ops Guild',
+              source: 'official-pull',
+            };
+          }
+          if (chatId === 'parent-channel') {
+            return {
+              name: 'incident-room',
+              chatType: 'channel',
+              containerTitle: 'Ops Guild',
+              source: 'official-pull',
+            };
+          }
+          return null;
+        }),
+        getUserDisplayData: vi.fn(async () => null),
+      });
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            connectorId: 'connector-discord-rich',
+            key: 'parent-channel:thread:thread-1',
+            scopeType: 'remote_chat',
+            title: 'Incident follow-up',
+            subtitle: 'In incident-room',
+            objectKind: 'thread',
+            objectTitle: 'Incident follow-up',
+            objectSubtitle: 'In incident-room',
+            parentObjectKey: 'parent-channel',
+            parentObjectTitle: 'incident-room',
+            parentObjectKind: 'channel',
+            objectSource: 'official-pull',
+            objectQuality: 'resolved',
+          }),
+        ])
+      );
+      expect(mockGetPlugin).toHaveBeenCalledWith('discord-runtime-rich');
+    });
+
+    it('uses DingTalk cached runtime display names for private chats without claiming official-pull', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-dingtalk-rich',
+        platform: 'dingtalk',
+        name: 'DingTalk',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        legacyPluginId: 'dingtalk-runtime-rich',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-dingtalk-private-1',
+        connectorId: 'connector-dingtalk-rich',
+        remoteUserId: 'staff-1',
+        remoteChatId: 'user:staff-1',
+        platformChatId: 'user:staff-1',
+        remoteChatType: 'private',
+        peerScope: 'chat',
+        displayName: 'User ff12ac',
+        authorizedAt: 1000,
+        lastActive: 2200,
+      };
+
+      mockGetPlugin.mockReturnValue({
+        getUserDisplayData: vi.fn(async (userId: string) => {
+          if (userId === 'staff-1') {
+            return {
+              name: 'Alice Wang',
+              source: 'runtime-resolved',
+            };
+          }
+          return null;
+        }),
+      });
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual([
+        expect.objectContaining({
+          connectorId: 'connector-dingtalk-rich',
+          scopeType: 'remote_user',
+          key: 'staff-1',
+          title: 'Alice Wang',
+          displayName: 'Alice Wang',
+          objectSource: 'runtime-resolved',
+          objectQuality: 'resolved',
+        }),
+      ]);
+      expect(mockGetPlugin).toHaveBeenCalledWith('dingtalk-runtime-rich');
     });
 
     it('keeps unresolved Feishu topic objects user-facing instead of exposing raw peer identifiers', async () => {

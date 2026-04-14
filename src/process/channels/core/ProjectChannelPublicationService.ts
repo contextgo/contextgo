@@ -282,9 +282,11 @@ function toRemoteIdentityCatalogEntry(
   const publishObject = inferRemoteIdentityPublishObject(identity, connector.platform);
   const descriptor = describeRemoteIdentityObject(identity, connector.platform);
   const source: IChannelPublishObjectCatalogEntry['displayProfile']['source'] =
-    typeof identity.metadata?.chatName === 'string' || typeof identity.metadata?.userDisplayName === 'string'
-      ? 'runtime-resolved'
-      : 'inbound-learned';
+    identity.metadata?.displaySource === 'official-pull' || identity.metadata?.displaySource === 'runtime-resolved'
+      ? identity.metadata.displaySource
+      : typeof identity.metadata?.chatName === 'string' || typeof identity.metadata?.userDisplayName === 'string'
+        ? 'runtime-resolved'
+        : 'inbound-learned';
   const title = publishObject.displayName ?? descriptor.title;
 
   const entry: IChannelPublishObjectCatalogEntry = {
