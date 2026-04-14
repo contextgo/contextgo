@@ -163,4 +163,23 @@ describe('group conversation grouping', () => {
       preferredAcpModelId: 'codex-latest',
     });
   });
+
+  it('groups auto-created temporary workspaces even when customWorkspace is false', () => {
+    const tempConversation = createConversation('temp-1', {
+      type: 'acp',
+      extra: {
+        backend: 'codex',
+        workspace: '/Users/bytedance/.contextgo-dev/codex-temp-1776134552686',
+        workingDirectory: '/Users/bytedance/.contextgo-dev/codex-temp-1776134552686',
+        customWorkspace: false,
+      },
+      model: {} as TChatConversation['model'],
+    } as Partial<TChatConversation>);
+
+    const groupedHistory = buildGroupedHistory([tempConversation], {}, (key) => key);
+    const workspaceItem = groupedHistory.timelineSections[0]?.items[0];
+
+    expect(workspaceItem?.type).toBe('workspace');
+    expect(workspaceItem?.workspaceGroup?.workspace).toBe('/Users/bytedance/.contextgo-dev/codex-temp-1776134552686');
+  });
 });

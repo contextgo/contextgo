@@ -18,8 +18,8 @@ The package is optimized for:
 
 ## Package Surfaces
 
-- `design-director.md` and `design-director.zh-CN.md`
-  - runtime-facing assistant rules
+- `AGENTS.md`
+  - runtime-facing rules entry document
 - `design.md` and `design.zh-CN.md`
   - longer package design rationale
 - package root
@@ -74,14 +74,14 @@ This package currently seeds commands such as:
 
 ## Authoring Rule
 
-Keep runtime persona rules in the root localized files, package-level notes in `docs/`, and executable workflows in the packaged skills.
+Keep runtime persona rules in `AGENTS.md`, package-level notes in `docs/`, and executable workflows in the packaged skills.
 
 ## Migration Status
 
 The package root already owns:
 
 - the runtime-facing assistant entry
-- the short package contract in `AGENTS.md`
+- the short packaged rules entry in `AGENTS.md`
 - the deeper package design material in `docs/`
 
 The executable skill payload is currently sourced from `src/process/resources/skills/design-director-pack`.

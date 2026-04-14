@@ -4,32 +4,61 @@
   "assistantPresetId": "builtin-startup-strategist",
   "displayName": "Startup Strategist",
   "runtimeNeutral": true,
-  "payloads": {
-    "rules": {
-      "logicalId": "rules",
-      "sources": [
-        {
-          "kind": "package-relative",
-          "root": "."
-        }
-      ],
-      "files": {
-        "en-US": "startup-strategist.md",
-        "zh-CN": "startup-strategist.zh-CN.md"
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
       },
-      "installSurface": "assistant-rules-cache",
-      "runtimeProjection": "none"
-    },
-    "docs": {
-      "logicalId": "docs",
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
       "sources": [
         {
           "kind": "package-relative",
-          "root": "docs"
+          "root": "workspace"
         }
       ],
-      "installSurface": "package-docs",
-      "runtimeProjection": "none"
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "startup idea pressure-testing and strategic diagnosis",
+        "ICP, value proposition, GTM, and North Star decisions",
+        "durable founder-facing strategy artifacts"
+      ],
+      "suggestedArtifacts": ["startup canvases", "ICP notes", "GTM plans", "founder briefs"],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/ideas/README.md",
+          "target": "docs/ideas/README.md"
+        },
+        {
+          "source": "workspace/docs/market/README.md",
+          "target": "docs/market/README.md"
+        },
+        {
+          "source": "workspace/docs/strategy/README.md",
+          "target": "docs/strategy/README.md"
+        }
+      ]
     },
     "skills": {
       "logicalId": "skills",

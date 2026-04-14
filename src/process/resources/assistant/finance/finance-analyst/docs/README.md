@@ -18,8 +18,8 @@ Finance Analyst is intended for work that needs stronger analytical discipline t
 
 ## Package Surfaces
 
-- `finance-analyst.md` and `finance-analyst.zh-CN.md`
-  - runtime-facing assistant rules
+- `AGENTS.md`
+  - runtime-facing rules entry document
 - `design.md` and `design.zh-CN.md`
   - deeper package design rationale
 - package root
@@ -61,13 +61,13 @@ This package should keep emphasizing:
 
 ## Authoring Rule
 
-Keep runtime-facing assistant rules in the localized root files, package design and governance notes in `docs/`, and executable finance workflows in packaged skills and workspace command seeds.
+Keep runtime-facing assistant rules in `AGENTS.md`, package design and governance notes in `docs/`, and executable finance workflows in packaged skills and workspace command seeds.
 
 ## Migration Status
 
 The package root already owns:
 
-- localized runtime rules
+- the runtime-facing rules entry document in `AGENTS.md`
 - package routing and package-level docs
 - the absorbed design rationale in `docs/`
 

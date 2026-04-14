@@ -7,7 +7,11 @@
 import type { TChatConversation } from '@/common/config/storage';
 import type { GuidLocationState } from '@/renderer/pages/guid/types';
 import { getActivityTime, getTimelineLabel } from '@/renderer/utils/chat/timeline';
-import { getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
+import {
+  getConversationWorkspacePath,
+  getWorkspaceDisplayName,
+  isTemporaryWorkspace,
+} from '@/renderer/utils/workspace/workspace';
 import { getWorkspaceUpdateTime } from '@/renderer/utils/workspace/workspaceHistory';
 
 import type {
@@ -104,10 +108,10 @@ export const groupConversationsByTimelineAndWorkspace = (
   const withoutWorkspaceConvs: TChatConversation[] = [];
 
   conversations.forEach((conv) => {
-    const workspace = conv.extra?.workspace;
+    const workspace = getConversationWorkspacePath(conv);
     const customWorkspace = conv.extra?.customWorkspace;
 
-    if (customWorkspace && workspace) {
+    if (workspace && (customWorkspace || isTemporaryWorkspace(workspace))) {
       if (!allWorkspaceGroups.has(workspace)) {
         allWorkspaceGroups.set(workspace, []);
       }

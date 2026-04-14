@@ -10,7 +10,7 @@ This package backs ContextGo's built-in **Morph PPT** assistant.
 
 ## Package Surfaces
 
-- runtime-facing assistant rules: `morph-ppt.md`, `morph-ppt.zh-CN.md`
+- `AGENTS.md` as the runtime-facing rules entry document
 - deeper package notes: `docs/README.md`
 - bundled execution workflow: the `morph-ppt` skill
 

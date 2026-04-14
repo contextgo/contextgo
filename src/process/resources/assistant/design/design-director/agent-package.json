@@ -4,32 +4,61 @@
   "assistantPresetId": "builtin-design-director",
   "displayName": "Design Director",
   "runtimeNeutral": true,
-  "payloads": {
-    "rules": {
-      "logicalId": "rules",
-      "sources": [
-        {
-          "kind": "package-relative",
-          "root": "."
-        }
-      ],
-      "files": {
-        "en-US": "design-director.md",
-        "zh-CN": "design-director.zh-CN.md"
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
       },
-      "installSurface": "assistant-rules-cache",
-      "runtimeProjection": "none"
-    },
-    "docs": {
-      "logicalId": "docs",
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
       "sources": [
         {
           "kind": "package-relative",
-          "root": "docs"
+          "root": "workspace"
         }
       ],
-      "installSurface": "package-docs",
-      "runtimeProjection": "none"
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "visual direction, screenshot critique, and reference absorption",
+        "project-level design system distillation",
+        "implementation-ready design handoff"
+      ],
+      "suggestedArtifacts": ["DESIGN.md drafts", "art-direction briefs", "critique notes", "handoff specs"],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/direction/README.md",
+          "target": "docs/direction/README.md"
+        },
+        {
+          "source": "workspace/docs/references/README.md",
+          "target": "docs/references/README.md"
+        },
+        {
+          "source": "workspace/docs/handoff/README.md",
+          "target": "docs/handoff/README.md"
+        }
+      ]
     },
     "skills": {
       "logicalId": "skills",

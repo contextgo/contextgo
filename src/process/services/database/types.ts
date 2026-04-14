@@ -159,6 +159,7 @@ export interface IAgentProfileRow {
   backend: string;
   model_ref: string | null;
   workspace_ref: string | null;
+  space_id: string | null;
   prompt_profile: string;
   tool_policy: string;
   memory_policy: string;
@@ -900,6 +901,7 @@ export function rowToAgentProfile(row: IAgentProfileRow): IAgentProfile {
     backend: row.backend,
     modelRef: parseJson<IAgentProfile['modelRef']>(row.model_ref, undefined),
     workspaceRef: row.workspace_ref ?? undefined,
+    spaceId: row.space_id ?? undefined,
     promptProfile: parseJson(row.prompt_profile, {}),
     toolPolicy: parseJson(row.tool_policy, {}),
     memoryPolicy: parseJson(row.memory_policy, {}),
@@ -919,6 +921,7 @@ export function agentProfileToRow(profile: IAgentProfile): IAgentProfileRow {
     backend: profile.backend,
     model_ref: profile.modelRef ? JSON.stringify(profile.modelRef) : null,
     workspace_ref: profile.workspaceRef ?? null,
+    space_id: profile.spaceId ?? null,
     prompt_profile: JSON.stringify(profile.promptProfile ?? {}),
     tool_policy: JSON.stringify(profile.toolPolicy ?? {}),
     memory_policy: JSON.stringify(profile.memoryPolicy ?? {}),

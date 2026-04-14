@@ -11,7 +11,7 @@ import { renderHook } from '@testing-library/react';
 const bridgeMocks = vi.hoisted(() => ({
   readAssistantRule: vi.fn(),
   readAssistantSkill: vi.fn(),
-  readBuiltinRule: vi.fn(),
+  readBundledAgentPackageContent: vi.fn(),
   readBuiltinSkill: vi.fn(),
 }));
 
@@ -20,7 +20,7 @@ vi.mock('../../src/common', () => ({
     fs: {
       readAssistantRule: { invoke: bridgeMocks.readAssistantRule },
       readAssistantSkill: { invoke: bridgeMocks.readAssistantSkill },
-      readBuiltinRule: { invoke: bridgeMocks.readBuiltinRule },
+      readBundledAgentPackageContent: { invoke: bridgeMocks.readBundledAgentPackageContent },
       readBuiltinSkill: { invoke: bridgeMocks.readBuiltinSkill },
     },
   },
@@ -46,9 +46,6 @@ vi.mock('../../src/common/config/presets/assistantPresets', () => ({
 }));
 
 vi.mock('../../src/common/config/presets/bundledAgentPackageRegistry', () => ({
-  getBundledAgentPackageRulesFiles: vi.fn((assistantId: string) =>
-    assistantId === 'builtin-test-preset' ? { 'en-US': 'test-preset.md' } : undefined
-  ),
   getBundledAgentPackageDefaultEnabledSkillNames: vi.fn((assistantId: string) =>
     assistantId === 'builtin-test-preset' ? ['preset-skill'] : undefined
   ),
@@ -263,7 +260,10 @@ describe('usePresetAssistantResolver', () => {
   beforeEach(() => {
     bridgeMocks.readAssistantRule.mockResolvedValue('');
     bridgeMocks.readAssistantSkill.mockResolvedValue('');
-    bridgeMocks.readBuiltinRule.mockResolvedValue('');
+    bridgeMocks.readBundledAgentPackageContent.mockResolvedValue({
+      success: true,
+      data: { agentsDocument: null },
+    });
     bridgeMocks.readBuiltinSkill.mockResolvedValue('');
   });
 

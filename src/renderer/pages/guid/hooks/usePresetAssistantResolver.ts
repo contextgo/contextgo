@@ -10,7 +10,6 @@ import {
   resolveBuiltinAssistantEnabledHooks,
   resolveBuiltinAssistantEnabledSkills,
 } from '@/common/config/presets/builtinAssistantDefaults';
-import { getBundledAgentPackageRulesFiles } from '@/common/config/presets/bundledAgentPackageRegistry';
 import type { AcpBackend, AcpBackendConfig } from '../types';
 import { useCallback } from 'react';
 
@@ -79,13 +78,14 @@ export const usePresetAssistantResolver = ({
       if (preset) {
         if (!rules) {
           try {
-            const ruleFiles = getBundledAgentPackageRulesFiles(customAgentId);
-            const ruleFile = ruleFiles?.[localeKey] || ruleFiles?.['en-US'];
-            if (ruleFile) {
-              rules = await ipcBridge.fs.readBuiltinRule.invoke({ fileName: ruleFile });
+            const result = await ipcBridge.fs.readBundledAgentPackageContent.invoke({
+              assistantId: customAgentId,
+            });
+            if (result.success) {
+              rules = result.data?.agentsDocument?.content || '';
             }
           } catch (e) {
-            console.warn(`Failed to load builtin rules for ${customAgentId}:`, e);
+            console.warn(`Failed to load bundled AGENTS.md for ${customAgentId}:`, e);
           }
         }
       }

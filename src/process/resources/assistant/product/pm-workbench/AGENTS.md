@@ -11,7 +11,7 @@ This package backs ContextGo's built-in **PM Workbench** assistant.
 
 ## Package Surfaces
 
-- runtime-facing assistant rules: `pm-workbench.md`, `pm-workbench.zh-CN.md`
+- `AGENTS.md` as the runtime-facing rules entry document
 - package notes: `docs/README.md`
 - bundled PM workflow skills and workspace command seeds
 

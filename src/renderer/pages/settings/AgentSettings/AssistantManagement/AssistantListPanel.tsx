@@ -28,6 +28,7 @@ type AssistantListPanelProps = {
   onCreate: () => void;
   onToggleEnabled: (assistant: AssistantListItem, checked: boolean) => void;
   setActiveAssistantId: (id: string) => void;
+  presentation?: 'auto' | 'embedded';
 };
 
 const ACTIVE_RUNTIME_STATUSES = new Set(['running', 'pending']);
@@ -82,11 +83,13 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
   onCreate,
   onToggleEnabled,
   setActiveAssistantId,
+  presentation = 'auto',
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
+  const isEmbeddedPresentation = presentation === 'embedded';
   const { maintenanceAgents, activeMaintenanceCount, status } = useContextEngineActivity();
   const totalAssistantCount = assistants.length + systemAssistants.length;
 
@@ -387,6 +390,15 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
       {systemListContent}
     </div>
   ) : null;
+
+  if (isEmbeddedPresentation) {
+    return (
+      <div className={styles.sectionStack}>
+        {productSection}
+        {systemSection}
+      </div>
+    );
+  }
 
   if (isPageMode) {
     return (

@@ -1,10 +1,8 @@
 import path from 'path';
 import type {
-  AgentPackageDocsPayload,
   AgentPackageHooksPayload,
   AgentPackageManifest,
   AgentPackagePayloadId,
-  AgentPackageRulesPayload,
   AgentPackageSchedulesPayload,
   AgentPackageSkillsPayload,
   AgentPackageSourceDescriptor,
@@ -113,9 +111,21 @@ export function getBundledAgentPackagePayload<K extends AgentPackagePayloadId>(
   return descriptor.manifest.payloads[payloadId] as AgentPackagePayloadMap[K] | undefined;
 }
 
-export function getBundledAgentPackageRulesFiles(assistantId: string): Record<string, string> | undefined {
-  const payload = getBundledAgentPackagePayload(assistantId, 'rules') as AgentPackageRulesPayload | undefined;
-  return payload?.files;
+export function getBundledAgentPackageEntryDocumentFile(assistantId: string): string | undefined {
+  return findBundledAgentPackageDescriptorByAssistantId(assistantId)?.manifest.entryDocument.file;
+}
+
+export function getBundledAgentPackageRuntimeEntryProjections(
+  assistantId: string
+): AgentPackageManifest['entryDocument']['runtimeEntryProjections'] | undefined {
+  const descriptor = findBundledAgentPackageDescriptorByAssistantId(assistantId);
+  return descriptor?.manifest.entryDocument.runtimeEntryProjections
+    ? [...descriptor.manifest.entryDocument.runtimeEntryProjections]
+    : undefined;
+}
+
+export function getBundledAgentPackageDocsRoot(assistantId: string): string | undefined {
+  return findBundledAgentPackageDescriptorByAssistantId(assistantId)?.manifest.docsDirectory?.root;
 }
 
 export function getBundledAgentPackageDefaultEnabledSkillNames(assistantId: string): string[] | undefined {
@@ -168,19 +178,21 @@ export function getBundledAgentPackageSkillSourceDescriptors(assistantId: string
   return payload?.sources ? [...payload.sources] : [];
 }
 
-export function getBundledAgentPackageRuleSourceDescriptors(assistantId: string): AgentPackageSourceDescriptor[] {
-  const payload = getBundledAgentPackagePayload(assistantId, 'rules') as AgentPackageRulesPayload | undefined;
-  return payload?.sources ? [...payload.sources] : [];
+export function resolveBundledAgentPackageEntryDocumentRelativePath(assistantId: string): string | undefined {
+  const descriptor = findBundledAgentPackageDescriptorByAssistantId(assistantId);
+  if (!descriptor) {
+    return undefined;
+  }
+
+  return path.posix.join(descriptor.resourceDir.replace(/\\/g, '/'), descriptor.manifest.entryDocument.file);
 }
 
 export function resolveBundledAgentPackageSourceRelativeRoots(
   assistantId: string,
-  payloadId: 'rules' | 'docs' | 'skills' | 'hooks'
+  payloadId: 'skills' | 'hooks'
 ): string[] {
   const descriptor = findBundledAgentPackageDescriptorByAssistantId(assistantId);
   const payload = descriptor?.manifest.payloads[payloadId] as
-    | AgentPackageRulesPayload
-    | AgentPackageDocsPayload
     | AgentPackageSkillsPayload
     | AgentPackageHooksPayload
     | undefined;
@@ -196,4 +208,14 @@ export function resolveBundledAgentPackageSourceRelativeRoots(
         ? path.posix.join(descriptor.resourceDir.replace(/\\/g, '/'), source.root)
         : source.root
     );
+}
+
+export function resolveBundledAgentPackageDocsRootRelativePath(assistantId: string): string | undefined {
+  const descriptor = findBundledAgentPackageDescriptorByAssistantId(assistantId);
+  const docsRoot = descriptor?.manifest.docsDirectory?.root;
+  if (!descriptor || !docsRoot) {
+    return undefined;
+  }
+
+  return path.posix.join(descriptor.resourceDir.replace(/\\/g, '/'), docsRoot);
 }

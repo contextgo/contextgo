@@ -11,12 +11,12 @@ export type AgentPackageWorkspaceAutomationProfile =
   | 'design-director';
 
 export type AgentPackageWorkspaceSkillBootstrapStrategy = 'enabled-skills' | 'packaged-skills';
+export type AgentPackageRuntimeId = 'gemini' | 'claude' | 'codex' | 'opencode';
 
 export type AgentPackageSourceKind = 'package-relative' | 'repo-relative' | 'workspace-automation-profile';
 
 export type AgentPackageInstallSurface =
-  | 'assistant-rules-cache'
-  | 'package-docs'
+  | 'workspace-root-docs'
   | '.contextgo/skills'
   | '.contextgo/commands.json'
   | '.contextgo/hooks/'
@@ -25,7 +25,7 @@ export type AgentPackageInstallSurface =
 
 export type AgentPackageRuntimeProjection = 'none' | 'native-skills-only';
 
-export type AgentPackagePayloadId = 'rules' | 'docs' | 'skills' | 'commands' | 'hooks' | 'schedules';
+export type AgentPackagePayloadId = 'workspaceScaffold' | 'skills' | 'commands' | 'hooks' | 'schedules';
 
 export type AgentPackageSourceDescriptor = {
   kind: AgentPackageSourceKind;
@@ -38,15 +38,31 @@ type AgentPackagePayloadBase = {
   runtimeProjection: AgentPackageRuntimeProjection;
 };
 
-export type AgentPackageRulesPayload = AgentPackagePayloadBase & {
-  logicalId: 'rules';
-  installSurface: 'assistant-rules-cache';
-  files: Record<string, string>;
+export type AgentPackageEntryDocument = {
+  file: string;
+  runtimeEntryProjections?: AgentPackageWorkspaceRuntimeEntryProjection[];
 };
 
-export type AgentPackageDocsPayload = AgentPackagePayloadBase & {
-  logicalId: 'docs';
-  installSurface: 'package-docs';
+export type AgentPackageDocsDirectory = {
+  root: string;
+};
+
+export type AgentPackageWorkspaceScaffoldTemplate = {
+  source: string;
+  target: string;
+};
+
+export type AgentPackageWorkspaceRuntimeEntryProjection = {
+  runtime: AgentPackageRuntimeId;
+  target: string;
+};
+
+export type AgentPackageWorkspaceScaffoldPayload = AgentPackagePayloadBase & {
+  logicalId: 'workspaceScaffold';
+  installSurface: 'workspace-root-docs';
+  focusAreas: string[];
+  suggestedArtifacts: string[];
+  templates?: AgentPackageWorkspaceScaffoldTemplate[];
 };
 
 export type AgentPackageSkillsPayload = AgentPackagePayloadBase & {
@@ -83,9 +99,10 @@ export type AgentPackageManifest = {
   assistantPresetId: string;
   displayName: string;
   runtimeNeutral: true;
+  entryDocument: AgentPackageEntryDocument;
+  docsDirectory?: AgentPackageDocsDirectory;
   payloads: {
-    rules: AgentPackageRulesPayload;
-    docs: AgentPackageDocsPayload;
+    workspaceScaffold?: AgentPackageWorkspaceScaffoldPayload;
     skills?: AgentPackageSkillsPayload;
     commands?: AgentPackageCommandsPayload;
     hooks?: AgentPackageHooksPayload;
@@ -100,8 +117,7 @@ const AGENT_PACKAGE_SOURCE_KINDS = new Set<AgentPackageSourceKind>([
 ]);
 
 const AGENT_PACKAGE_INSTALL_SURFACES = new Set<AgentPackageInstallSurface>([
-  'assistant-rules-cache',
-  'package-docs',
+  'workspace-root-docs',
   '.contextgo/skills',
   '.contextgo/commands.json',
   '.contextgo/hooks/',
@@ -125,6 +141,8 @@ const WORKSPACE_AUTOMATION_PROFILES = new Set<AgentPackageWorkspaceAutomationPro
   'finance-analyst',
   'design-director',
 ]);
+
+const AGENT_PACKAGE_RUNTIME_IDS = new Set<AgentPackageRuntimeId>(['gemini', 'claude', 'codex', 'opencode']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -155,27 +173,6 @@ function parseStringArray(value: unknown): string[] | undefined {
   return parsed.length === value.length ? parsed : undefined;
 }
 
-function parseFiles(value: unknown): Record<string, string> | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const entries = Object.entries(value);
-  if (!entries.length) {
-    return null;
-  }
-
-  const files: Record<string, string> = {};
-  for (const [locale, filePath] of entries) {
-    if (!isNonEmptyString(locale) || !isNonEmptyString(filePath)) {
-      return null;
-    }
-    files[locale] = filePath.trim();
-  }
-
-  return files;
-}
-
 function parseSources(value: unknown): AgentPackageSourceDescriptor[] | null {
   if (!Array.isArray(value) || !value.length) {
     return null;
@@ -204,6 +201,99 @@ function parseSources(value: unknown): AgentPackageSourceDescriptor[] | null {
   }
 
   return sources;
+}
+
+function parseWorkspaceScaffoldTemplates(value: unknown): AgentPackageWorkspaceScaffoldTemplate[] | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const templates: AgentPackageWorkspaceScaffoldTemplate[] = [];
+  for (const item of value) {
+    if (!isRecord(item) || !isNonEmptyString(item.source) || !isNonEmptyString(item.target)) {
+      return null;
+    }
+
+    templates.push({
+      source: item.source.trim(),
+      target: item.target.trim(),
+    });
+  }
+
+  return templates;
+}
+
+function parseWorkspaceRuntimeEntryProjections(
+  value: unknown
+): AgentPackageWorkspaceRuntimeEntryProjection[] | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const projections: AgentPackageWorkspaceRuntimeEntryProjection[] = [];
+  const seenRuntimes = new Set<AgentPackageRuntimeId>();
+
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      !isNonEmptyString(item.runtime) ||
+      !AGENT_PACKAGE_RUNTIME_IDS.has(item.runtime as AgentPackageRuntimeId) ||
+      !isNonEmptyString(item.target)
+    ) {
+      return null;
+    }
+
+    const runtime = item.runtime as AgentPackageRuntimeId;
+    if (seenRuntimes.has(runtime)) {
+      return null;
+    }
+
+    seenRuntimes.add(runtime);
+    projections.push({
+      runtime,
+      target: item.target.trim(),
+    });
+  }
+
+  return projections;
+}
+
+function parseEntryDocument(value: unknown): AgentPackageEntryDocument | null {
+  if (!isRecord(value) || !isNonEmptyString(value.file)) {
+    return null;
+  }
+
+  const runtimeEntryProjections = parseWorkspaceRuntimeEntryProjections(value.runtimeEntryProjections);
+  if (runtimeEntryProjections === null) {
+    return null;
+  }
+
+  return {
+    file: value.file.trim(),
+    runtimeEntryProjections,
+  };
+}
+
+function parseDocsDirectory(value: unknown): AgentPackageDocsDirectory | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(value) || !isNonEmptyString(value.root)) {
+    return null;
+  }
+
+  return {
+    root: value.root.trim(),
+  };
 }
 
 type ParsedPayloadBase = Pick<AgentPackagePayloadBase, 'sources' | 'runtimeProjection'>;
@@ -241,37 +331,27 @@ function parsePayloadBase(
   };
 }
 
-function parseRulesPayload(value: unknown): AgentPackageRulesPayload | null {
-  const base = parsePayloadBase(value, 'rules');
-  if (!base || base.installSurface !== 'assistant-rules-cache' || !isRecord(value)) {
+function parseWorkspaceScaffoldPayload(value: unknown): AgentPackageWorkspaceScaffoldPayload | null {
+  const base = parsePayloadBase(value, 'workspaceScaffold');
+  if (!base || base.installSurface !== 'workspace-root-docs' || !isRecord(value)) {
     return null;
   }
 
-  const files = parseFiles(value.files);
-  if (!files) {
-    return null;
-  }
-
-  return {
-    logicalId: 'rules',
-    sources: base.sources,
-    runtimeProjection: base.runtimeProjection,
-    installSurface: 'assistant-rules-cache',
-    files,
-  };
-}
-
-function parseDocsPayload(value: unknown): AgentPackageDocsPayload | null {
-  const base = parsePayloadBase(value, 'docs');
-  if (!base || base.installSurface !== 'package-docs') {
+  const focusAreas = parseStringArray(value.focusAreas);
+  const suggestedArtifacts = parseStringArray(value.suggestedArtifacts);
+  const templates = parseWorkspaceScaffoldTemplates(value.templates);
+  if (!focusAreas || !suggestedArtifacts || templates === null) {
     return null;
   }
 
   return {
-    logicalId: 'docs',
+    logicalId: 'workspaceScaffold',
     sources: base.sources,
     runtimeProjection: base.runtimeProjection,
-    installSurface: 'package-docs',
+    installSurface: 'workspace-root-docs',
+    focusAreas,
+    suggestedArtifacts,
+    templates,
   };
 }
 
@@ -395,6 +475,8 @@ export function parseAgentPackageManifest(value: unknown): AgentPackageManifest 
   const assistantPresetId = value.assistantPresetId;
   const displayName = value.displayName;
   const runtimeNeutral = value.runtimeNeutral;
+  const entryDocument = parseEntryDocument(value.entryDocument);
+  const docsDirectory = parseDocsDirectory(value.docsDirectory);
   const payloads = value.payloads;
 
   if (
@@ -403,23 +485,25 @@ export function parseAgentPackageManifest(value: unknown): AgentPackageManifest 
     !isNonEmptyString(assistantPresetId) ||
     !isNonEmptyString(displayName) ||
     runtimeNeutral !== true ||
+    !entryDocument ||
+    docsDirectory === null ||
     !isRecord(payloads)
   ) {
     return null;
   }
 
-  const rules = parseRulesPayload(payloads.rules);
-  const docs = parseDocsPayload(payloads.docs);
+  const workspaceScaffold =
+    payloads.workspaceScaffold === undefined ? undefined : parseWorkspaceScaffoldPayload(payloads.workspaceScaffold);
   const skills = payloads.skills === undefined ? undefined : parseSkillsPayload(payloads.skills);
   const commands = payloads.commands === undefined ? undefined : parseCommandsPayload(payloads.commands);
   const hooks = payloads.hooks === undefined ? undefined : parseHooksPayload(payloads.hooks);
   const schedules = payloads.schedules === undefined ? undefined : parseSchedulesPayload(payloads.schedules);
 
-  if (!rules || !docs) {
+  if (payloads.skills !== undefined && !skills) {
     return null;
   }
 
-  if (payloads.skills !== undefined && !skills) {
+  if (payloads.workspaceScaffold !== undefined && !workspaceScaffold) {
     return null;
   }
 
@@ -441,9 +525,10 @@ export function parseAgentPackageManifest(value: unknown): AgentPackageManifest 
     assistantPresetId: assistantPresetId.trim(),
     displayName: displayName.trim(),
     runtimeNeutral: true,
+    entryDocument,
+    docsDirectory,
     payloads: {
-      rules,
-      docs,
+      workspaceScaffold,
       skills,
       commands,
       hooks,

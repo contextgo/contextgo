@@ -41,7 +41,7 @@ import {
   createSettingsCard as createDingTalkSettingsCard,
   createTipsCard as createDingTalkTipsCard,
 } from '../plugins/dingtalk/DingTalkCards';
-import type { PluginType } from '../types';
+import { resolveChannelConvType, type PluginType } from '../types';
 import type { ActionHandler, IRegisteredAction } from './types';
 import { SystemActionNames, createErrorResponse, createSuccessResponse } from './types';
 
@@ -106,13 +106,8 @@ function resolveStoredPreferredModel(value: unknown): { id: string; useModel: st
 }
 
 function resolveChannelAgentSessionType(backend: string): 'gemini' | 'acp' | 'codex' {
-  if (backend === 'gemini') {
-    return 'gemini';
-  }
-  if (backend === 'codex') {
-    return 'codex';
-  }
-  return 'acp';
+  const { convType } = resolveChannelConvType(backend);
+  return convType as 'gemini' | 'acp' | 'codex';
 }
 
 function resolveChannelAgentEmoji(backend: string): string {

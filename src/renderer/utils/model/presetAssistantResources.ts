@@ -10,13 +10,15 @@ import {
   resolveBuiltinAssistantEnabledHooks,
   resolveBuiltinAssistantEnabledSkills,
 } from '@/common/config/presets/builtinAssistantDefaults';
-import { getBundledAgentPackageRulesFiles } from '@/common/config/presets/bundledAgentPackageRegistry';
 import { ConfigStorage } from '@/common/config/storage';
 
 export type PresetAssistantResourceDeps = {
   readAssistantRule: (args: { assistantId: string; locale: string }) => Promise<string>;
   readAssistantSkill: (args: { assistantId: string; locale: string }) => Promise<string>;
-  readBuiltinRule: (args: { fileName: string }) => Promise<string>;
+  readBundledAgentPackageContent: (args: { assistantId: string }) => Promise<{
+    success: boolean;
+    data?: { agentsDocument: { content: string } | null };
+  }>;
   getEnabledSkills: (customAgentId: string) => Promise<string[] | undefined>;
   getEnabledHooks: (customAgentId: string) => Promise<string[] | undefined>;
   warn: (message: string, error?: unknown) => void;
@@ -38,7 +40,7 @@ export type PresetAssistantResources = {
 const defaultDeps: PresetAssistantResourceDeps = {
   readAssistantRule: (args) => ipcBridge.fs.readAssistantRule.invoke(args),
   readAssistantSkill: (args) => ipcBridge.fs.readAssistantSkill.invoke(args),
-  readBuiltinRule: (args) => ipcBridge.fs.readBuiltinRule.invoke(args),
+  readBundledAgentPackageContent: (args) => ipcBridge.fs.readBundledAgentPackageContent.invoke(args),
   getEnabledSkills: async (customAgentId) => {
     const customAgents = ((await ConfigStorage.get('acp.customAgents')) || []) as Array<{
       id: string;
@@ -97,13 +99,12 @@ export async function loadPresetAssistantResources(
   if (preset) {
     if (!rules) {
       try {
-        const ruleFiles = getBundledAgentPackageRulesFiles(customAgentId);
-        const ruleFile = ruleFiles?.[localeKey] || ruleFiles?.['en-US'];
-        if (ruleFile) {
-          rules = (await deps.readBuiltinRule({ fileName: ruleFile })) || '';
+        const result = await deps.readBundledAgentPackageContent({ assistantId: customAgentId });
+        if (result.success) {
+          rules = result.data?.agentsDocument?.content || '';
         }
       } catch (error) {
-        deps.warn(`[presetAssistantResources] Failed to load builtin rules for ${customAgentId}`, error);
+        deps.warn(`[presetAssistantResources] Failed to load bundled AGENTS.md for ${customAgentId}`, error);
       }
     }
   }

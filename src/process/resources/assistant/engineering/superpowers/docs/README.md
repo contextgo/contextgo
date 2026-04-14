@@ -16,8 +16,8 @@ Superpowers provides the default engineering discipline package for:
 
 ## Package Surfaces
 
-- `superpowers.md` and `superpowers.zh-CN.md`
-  - runtime-facing assistant rules
+- `AGENTS.md`
+  - runtime-facing rules entry document
 - package root
   - `src/process/resources/assistant/engineering/superpowers`
 - skill source
@@ -61,7 +61,7 @@ This package should continue to:
 
 ## Authoring Rule
 
-Keep runtime-facing assistant behavior in the localized root files, package governance notes in `docs/`, and executable engineering workflows in the packaged skills and workspace automation seeds.
+Keep runtime-facing assistant behavior in `AGENTS.md`, package governance notes in `docs/`, and executable engineering workflows in the packaged skills and workspace automation seeds.
 
 ## Migration Status
 

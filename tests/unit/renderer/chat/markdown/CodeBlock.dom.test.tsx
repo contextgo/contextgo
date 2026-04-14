@@ -50,15 +50,27 @@ vi.mock('react-syntax-highlighter/dist/esm/styles/hljs', () => ({
 }));
 
 describe('CodeBlock', () => {
-  it('renders default multi-line code blocks with the unified card chrome', () => {
+  it('renders default multi-line code blocks expanded without the collapse toggle for short snippets', () => {
     const { container } = render(<CodeBlock className='language-ts'>{'const a = 1;\nconst b = 2;'}</CodeBlock>);
 
     expect(screen.getByText('preview.code')).toBeInTheDocument();
     expect(screen.getByText('TS')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'common.copy' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'common.expandMore' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.expandMore' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.collapse' })).not.toBeInTheDocument();
+    expect(screen.getByText((content) => content.includes('const a = 1;') && content.includes('const b = 2;'))).toBeInTheDocument();
     expect(container.querySelector('.not-prose')).not.toBeNull();
     expect(screen.queryByText('<ts>')).not.toBeInTheDocument();
+  });
+
+  it('keeps long multi-line code blocks expanded by default and exposes a collapse toggle', () => {
+    const longSnippet = Array.from({ length: 28 }, (_, index) => `line ${index + 1}`).join('\n');
+
+    render(<CodeBlock className='language-text'>{longSnippet}</CodeBlock>);
+
+    expect(screen.getByRole('button', { name: 'common.collapse' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.expandMore' })).not.toBeInTheDocument();
+    expect(screen.getByText((content) => content.includes('line 1') && content.includes('line 28'))).toBeInTheDocument();
   });
 
   it('keeps result-card variant on the same card structure without fallback class', () => {
@@ -73,25 +85,27 @@ describe('CodeBlock', () => {
     expect(container.querySelector('.not-prose')).toBeNull();
   });
 
-  it('renders single-line plain text blocks without the code chrome', () => {
+  it('renders single-line plain text blocks as standard code blocks when markdown treats them as fenced blocks', () => {
     render(
       <CodeBlock className='language-text'>
         {'https://newapi-admin.infermesh.org/cdn-cgi/access/cli?aud=9daf5065b09d0d7cc3e2750fa6b\n'}
       </CodeBlock>
     );
 
-    expect(screen.queryByText('preview.code')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'common.expandMore' })).not.toBeInTheDocument();
+    expect(screen.getByText('preview.code')).toBeInTheDocument();
+    expect(screen.getByText('TEXT')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'common.copy' })).toBeInTheDocument();
     expect(
       screen.getByText('https://newapi-admin.infermesh.org/cdn-cgi/access/cli?aud=9daf5065b09d0d7cc3e2750fa6b')
     ).toBeInTheDocument();
   });
 
-  it('renders single-line bash blocks without the code chrome', () => {
+  it('renders single-line bash blocks as standard code blocks when markdown treats them as fenced blocks', () => {
     render(<CodeBlock className='language-bash'>{'npm run ops -- auth cloudflare newapi\n'}</CodeBlock>);
 
-    expect(screen.queryByText('preview.code')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'common.expandMore' })).not.toBeInTheDocument();
+    expect(screen.getByText('preview.code')).toBeInTheDocument();
+    expect(screen.getByText('BASH')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'common.copy' })).toBeInTheDocument();
     expect(screen.getByText('npm run ops -- auth cloudflare newapi')).toBeInTheDocument();
   });
 });

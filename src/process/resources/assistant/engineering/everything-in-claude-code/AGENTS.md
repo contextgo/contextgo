@@ -10,7 +10,7 @@ This package backs ContextGo's built-in **Everything Claude Code Harness** assis
 
 ## Package Surfaces
 
-- runtime-facing assistant rules: `everything-in-claude-code.md`, `everything-in-claude-code.zh-CN.md`
+- `AGENTS.md` as the runtime-facing rules entry document
 - package notes: `docs/README.md`
 - absorbed skill catalog under `skills/`
 - legacy source material under `commands/`, `hooks/`, and `scripts/`

@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { Outlet, useParams } from 'react-router-dom';
+import { Outlet, useLocation, useParams } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mountStats = {
@@ -85,7 +85,17 @@ vi.mock('@renderer/pages/schedule/GlobalScheduleSettings', () => ({
 }));
 
 vi.mock('@renderer/pages/settings/AgentSettings', () => ({
-  default: () => <div>agent-settings</div>,
+  default: () => {
+    const location = useLocation();
+    return <div data-testid='agent-settings-route'>{location.pathname}</div>;
+  },
+}));
+
+vi.mock('@renderer/pages/agents', () => ({
+  default: () => {
+    const location = useLocation();
+    return <div data-testid='agents-route'>{location.pathname}</div>;
+  },
 }));
 
 vi.mock('@renderer/pages/settings/AgentSettings/AgentEntrySettings', () => ({
@@ -195,5 +205,14 @@ describe('Router route switching', () => {
 
     expect(await screen.findByText('system-settings')).toBeInTheDocument();
     expect(screen.queryByText('webui-settings')).not.toBeInTheDocument();
+  });
+
+  it('routes AI assistant workspace through the top-level agents page instead of settings', async () => {
+    window.history.replaceState({}, '', '/#/agents/new');
+
+    renderRouter();
+
+    expect(await screen.findByTestId('agents-route')).toHaveTextContent('/agents/new');
+    expect(screen.queryByTestId('agent-settings-route')).not.toBeInTheDocument();
   });
 });

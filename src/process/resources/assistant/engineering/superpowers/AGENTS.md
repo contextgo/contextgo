@@ -11,7 +11,7 @@ This package backs ContextGo's built-in **Superpowers Harness** assistant.
 
 ## Package Surfaces
 
-- runtime-facing assistant rules: `superpowers.md`, `superpowers.zh-CN.md`
+- `AGENTS.md` as the runtime-facing rules entry document
 - package notes: `docs/README.md`
 - bundled engineering workflow skills installed from the packaged skill set
 - ContextGo-native workspace automation seeded under `.contextgo/`

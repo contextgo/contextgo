@@ -345,6 +345,15 @@ export const dialog = {
     | undefined
   >('show-open'), // 打开文件/文件夹选择窗口
 };
+
+export type BundledAgentPackageDocumentPayload = {
+  id: string;
+  title: string;
+  relativePath: string;
+  sourcePath: string;
+  content: string;
+};
+
 export const fs = {
   getFilesByDir: bridge.buildProvider<Array<IDirOrFile>, { dir: string; root: string }>('get-file-by-dir'), // 获取指定文件夹下所有文件夹和文件列表
   getImageBase64: bridge.buildProvider<string, { path: string }>('get-image-base64'), // 获取图片base64
@@ -464,6 +473,13 @@ export const fs = {
   readSkillContent: bridge.buildProvider<IBridgeResponse<{ content: string }>, { skillPath: string }>(
     'read-skill-content'
   ),
+  readBundledAgentPackageContent: bridge.buildProvider<
+    IBridgeResponse<{
+      agentsDocument: BundledAgentPackageDocumentPayload | null;
+      docs: BundledAgentPackageDocumentPayload[];
+    }>,
+    { assistantId: string }
+  >('read-bundled-agent-package-content'),
   // 导入 skill 目录 / Import skill directory
   importSkill: bridge.buildProvider<IBridgeResponse<{ skillName: string }>, { skillPath: string }>('import-skill'),
   // 扫描目录下的 skills / Scan directory for skills

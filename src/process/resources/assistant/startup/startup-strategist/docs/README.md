@@ -15,8 +15,8 @@ to sharper strategic choices grounded in evidence and explicit assumptions.
 
 ## Package Surfaces
 
-- `startup-strategist.md` and `startup-strategist.zh-CN.md`
-  - runtime-facing assistant rules and behavior
+- `AGENTS.md`
+  - runtime-facing rules entry document and behavior
 - `design.md` and `design.zh-CN.md`
   - the original package design rationale and scope notes
 - package root
@@ -77,7 +77,7 @@ This package currently seeds workspace command affordances such as:
 When evolving this package:
 
 - keep `AGENTS.md` as the entry point
-- keep runtime-facing assistant rules in the localized root files
+- keep runtime-facing assistant rules in `AGENTS.md`
 - keep package rationale and deeper notes here in `docs/`
 - keep executable startup workflows inside packaged skills and workspace command seeds
 
@@ -86,7 +86,7 @@ When evolving this package:
 The package root already owns:
 
 - package entry routing
-- runtime-facing localized rules
+- the runtime-facing rules entry document in `AGENTS.md`
 - package-level design documentation
 
 The executable skill payload is still sourced from `src/process/resources/skills/startup-strategist-pack`.

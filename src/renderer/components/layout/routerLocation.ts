@@ -106,8 +106,8 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
     loaders: [() => import('@renderer/pages/settings/SkillsHubSettings')],
   },
   {
-    match: (routePath) => routePath === '/agents' || routePath === '/settings/agent',
-    loaders: [() => import('@renderer/pages/settings/AgentSettings')],
+    match: (routePath) => routePath === '/agents' || routePath.startsWith('/agents/') || routePath.startsWith('/settings/agent'),
+    loaders: [() => import('@renderer/pages/agents')],
   },
   {
     match: (routePath) =>

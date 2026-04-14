@@ -12,7 +12,7 @@ This package backs ContextGo's built-in **Office Analyst** assistant.
 
 ## Package Surfaces
 
-- runtime-facing assistant rules: `office-analyst.md`, `office-analyst.zh-CN.md`
+- `AGENTS.md` as the runtime-facing rules entry document
 - package notes: `docs/README.md`
 - bundled office workflow skills and workspace command seeds
 

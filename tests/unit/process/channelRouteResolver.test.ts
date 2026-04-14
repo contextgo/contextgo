@@ -6,12 +6,21 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockDb, mockProcessConfigGet, mockCreateConversation, mockListAllConversations, mockReadCatalogForConversations } = vi.hoisted(() => ({
+const {
+  mockDb,
+  mockProcessConfigGet,
+  mockCreateConversation,
+  mockGetConversation,
+  mockListAllConversations,
+  mockReadCatalogForConversations,
+} = vi.hoisted(() => ({
   mockDb: {
     getConnectorInstances: vi.fn(),
     getRemoteIdentityByConnectorChat: vi.fn(),
     getRemoteIdentityByConnectorPlatformChat: vi.fn(),
     getConversation: vi.fn(),
+    getExternalSessionByConnectorRemote: vi.fn(),
+    upsertExternalSession: vi.fn(),
     getLegacyChannelUserByPlatform: vi.fn(),
     ensureChannelUserMirror: vi.fn(),
     upsertRemoteIdentity: vi.fn(),
@@ -24,6 +33,7 @@ const { mockDb, mockProcessConfigGet, mockCreateConversation, mockListAllConvers
   },
   mockProcessConfigGet: vi.fn(),
   mockCreateConversation: vi.fn(),
+  mockGetConversation: vi.fn(),
   mockListAllConversations: vi.fn(),
   mockReadCatalogForConversations: vi.fn(),
 }));
@@ -41,6 +51,7 @@ vi.mock('@process/utils/initStorage', () => ({
 vi.mock('@/process/services/conversationServiceSingleton', () => ({
   conversationServiceSingleton: {
     createConversation: mockCreateConversation,
+    getConversation: mockGetConversation,
     listAllConversations: mockListAllConversations,
   },
 }));
@@ -89,6 +100,8 @@ describe('ChannelRouteResolver', () => {
         rootRunId: 'run-root-1',
       },
     });
+    mockDb.getExternalSessionByConnectorRemote.mockReturnValue({ success: true, data: null });
+    mockDb.upsertExternalSession.mockReturnValue({ success: true, data: true });
     mockDb.getLegacyChannelUserByPlatform.mockReturnValue({ success: true, data: null });
     mockDb.ensureChannelUserMirror.mockReturnValue({
       success: true,
@@ -108,6 +121,7 @@ describe('ChannelRouteResolver', () => {
     mockDb.updateExternalSessionActivity.mockReturnValue({ success: true, data: true });
 
     mockProcessConfigGet.mockResolvedValue(undefined);
+    mockGetConversation.mockResolvedValue(undefined);
     mockListAllConversations.mockResolvedValue([]);
     mockReadCatalogForConversations.mockResolvedValue({
       workspaces: [],
@@ -203,6 +217,65 @@ describe('ChannelRouteResolver', () => {
         remoteUserId: 'user-2',
         remoteChatType: 'direct',
         legacyUserId: 'assistant_user_legacy',
+      })
+    );
+  });
+
+  it('uses a stable runtime remote identity id when the same peer misses lookup repeatedly', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: null });
+    mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({ success: true, data: null });
+
+    const ensureRemoteIdentity = (
+      resolver as unknown as {
+        ensureRemoteIdentity: (
+          connector: IConnectorInstance,
+          channelUser: IChannelUser,
+          platformUserId: string,
+          chatId: string,
+          platformChatId?: string,
+          remoteChatType?: string,
+          displayName?: string,
+          peerScope?: 'chat' | 'thread',
+          parentChatId?: string,
+          threadId?: string
+        ) => Promise<IRemoteIdentity>;
+      }
+    ).ensureRemoteIdentity;
+
+    const first = await ensureRemoteIdentity(
+      connector,
+      channelUser,
+      'wx-user-1',
+      'o9cq809wakXhcmpa1ue2w_prIy0U@im.wechat',
+      'o9cq809wakXhcmpa1ue2w_prIy0U@im.wechat',
+      'private',
+      'wechat'
+    );
+
+    const second = await ensureRemoteIdentity(
+      connector,
+      channelUser,
+      'wx-user-1',
+      'o9cq809wakXhcmpa1ue2w_prIy0U@im.wechat',
+      'o9cq809wakXhcmpa1ue2w_prIy0U@im.wechat',
+      'private',
+      'wechat'
+    );
+
+    expect(first.id).toBe(second.id);
+    expect(mockDb.upsertRemoteIdentity).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        id: first.id,
+        remoteChatId: 'o9cq809wakXhcmpa1ue2w_prIy0U@im.wechat',
+      })
+    );
+    expect(mockDb.upsertRemoteIdentity).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        id: first.id,
+        remoteChatId: 'o9cq809wakXhcmpa1ue2w_prIy0U@im.wechat',
       })
     );
   });
@@ -773,6 +846,297 @@ describe('ChannelRouteResolver', () => {
         }),
       })
     );
+  });
+
+  it('restores the source space binding when creating a conversation from an older published agent profile', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockProcessConfigGet.mockResolvedValue([]);
+    mockGetConversation.mockResolvedValue({
+      id: 'conversation-source-1',
+      type: 'acp',
+      extra: {
+        spaceId: 'space-temp-1',
+        workspace: '/workspace/project',
+      },
+    });
+    mockCreateConversation.mockResolvedValue({
+      id: 'conv-restored-space',
+      type: 'gemini',
+      extra: {},
+    });
+
+    await (
+      resolver as unknown as {
+        createConversation: (
+          platform: 'telegram',
+          chatId: string,
+          agentProfile: {
+            id: string;
+            name: string;
+            backend: string;
+            workspaceRef?: string;
+            publishedFromConversationId?: string;
+            version: number;
+            archived: boolean;
+            createdAt: number;
+            updatedAt: number;
+          }
+        ) => Promise<{ id: string; type: string; extra: Record<string, never> }>;
+      }
+    ).createConversation('telegram', 'group:alpha', {
+      id: 'agent-legacy-publication',
+      name: 'Legacy Publication',
+      backend: 'gemini',
+      workspaceRef: '/workspace/project',
+      publishedFromConversationId: 'conversation-source-1',
+      version: 1,
+      archived: false,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    expect(mockGetConversation).toHaveBeenCalledWith('conversation-source-1');
+    expect(mockCreateConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extra: expect.objectContaining({
+          workspace: '/workspace/project',
+          spaceId: 'space-temp-1',
+        }),
+      })
+    );
+  });
+
+  it('creates published codex conversations as acp sessions with codex backend metadata', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockProcessConfigGet.mockResolvedValue([]);
+    mockCreateConversation.mockResolvedValue({
+      id: 'conv-published-codex',
+      type: 'acp',
+      extra: {},
+    });
+
+    await (
+      resolver as unknown as {
+        createConversation: (
+          platform: 'weixin',
+          chatId: string,
+          agentProfile: {
+            id: string;
+            name: string;
+            backend: string;
+            workspaceRef?: string;
+            promptProfile?: Record<string, unknown>;
+            modelRef?: {
+              id: string;
+              useModel: string;
+              platform?: string;
+              name?: string;
+              baseUrl?: string;
+            };
+            version: number;
+            archived: boolean;
+            createdAt: number;
+            updatedAt: number;
+          }
+        ) => Promise<{ id: string; type: string; extra: Record<string, never> }>;
+      }
+    ).createConversation('weixin', 'wx-user-1', {
+      id: 'agent-published-codex',
+      name: 'Published Codex',
+      backend: 'codex',
+      workspaceRef: '/workspace/project',
+      promptProfile: {
+        agentName: 'Published Codex',
+        customAgentId: 'assistant-codex',
+        cliPath: 'codex',
+      },
+      modelRef: {
+        id: 'provider-codex',
+        useModel: 'gpt-5.4',
+        platform: 'openai',
+        name: 'Codex',
+        baseUrl: '',
+      },
+      version: 1,
+      archived: false,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    expect(mockCreateConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'acp',
+        source: 'weixin',
+        extra: expect.objectContaining({
+          workspace: '/workspace/project',
+          backend: 'codex',
+          agentName: 'Published Codex',
+          customAgentId: 'assistant-codex',
+          cliPath: 'codex',
+          currentModelId: 'gpt-5.4',
+        }),
+      })
+    );
+  });
+
+  it('reuses an existing acp codex conversation for the same published external session', async () => {
+    const resolver = new ChannelRouteResolver();
+    mockDb.getConversation.mockReturnValue({
+      success: true,
+      data: {
+        id: 'conv-codex-acp',
+        type: 'acp',
+        extra: {
+          backend: 'codex',
+        },
+        externalSessionId: 'external_session_target',
+        rootRunId: 'run-root-codex',
+      },
+    });
+
+    const result = await (
+      resolver as unknown as {
+        ensureConversation: (params: {
+          platform: 'weixin';
+          chatId: string;
+          externalSession: {
+            id: string;
+            bindingId: string;
+            activeConversationId: string;
+          };
+          agentProfile: {
+            id: string;
+            backend: string;
+          };
+          forceNewConversation?: boolean;
+        }) => Promise<{
+          id: string;
+          type: string;
+          extra: Record<string, unknown>;
+          externalSessionId?: string;
+          rootRunId?: string;
+        }>;
+      }
+    ).ensureConversation({
+      platform: 'weixin',
+      chatId: 'wx-user-1',
+      externalSession: {
+        id: 'external_session_target',
+        bindingId: 'binding-target',
+        activeConversationId: 'conv-codex-acp',
+      },
+      agentProfile: {
+        id: 'agent-codex',
+        backend: 'codex',
+      },
+    });
+
+    expect(result.id).toBe('conv-codex-acp');
+    expect(result.type).toBe('acp');
+    expect(result.rootRunId).toBe('run-root-codex');
+    expect(mockCreateConversation).not.toHaveBeenCalled();
+  });
+
+  it('mirrors a published profile and binding into the global db before creating an external session', async () => {
+    const resolver = new ChannelRouteResolver();
+    let mirroredProfile = false;
+    let mirroredBinding = false;
+
+    mockDb.getExternalSessionByConnectorRemote.mockReturnValue({ success: true, data: null });
+    mockDb.upsertAgentProfile.mockImplementation(() => {
+      mirroredProfile = true;
+      return { success: true, data: true };
+    });
+    mockDb.upsertChannelBinding.mockImplementation(() => {
+      mirroredBinding = mirroredProfile;
+      return { success: true, data: true };
+    });
+    mockDb.upsertExternalSession.mockImplementation(() =>
+      mirroredProfile && mirroredBinding
+        ? { success: true, data: true }
+        : { success: false, error: 'FOREIGN KEY constraint failed' }
+    );
+
+    const binding: IChannelBinding = {
+      id: 'binding-published-1',
+      connectorId: connector.id,
+      channelAccountId: connector.id,
+      scopeType: 'remote_user',
+      scopeKey: 'user-1',
+      agentProfileId: 'agent-published-1',
+      priority: 0,
+      enabled: true,
+      temporary: false,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
+    const session = await (
+      resolver as unknown as {
+        ensureExternalSession: (
+          connector: IConnectorInstance,
+          remoteIdentity: IRemoteIdentity,
+          binding: IChannelBinding,
+          agentProfile: {
+            id: string;
+            name: string;
+            backend: string;
+            workspaceRef?: string;
+            version: number;
+            archived: boolean;
+            createdAt: number;
+            updatedAt: number;
+          }
+        ) => Promise<{
+          id: string;
+          connectorId: string;
+          remoteIdentityId: string;
+          bindingId?: string;
+          agentProfileId: string;
+        }>;
+      }
+    ).ensureExternalSession(
+      connector,
+      {
+        id: 'remote_identity_direct',
+        connectorId: connector.id,
+        remoteUserId: 'user-1',
+        remoteChatId: 'user:alpha',
+        remoteChatType: 'direct',
+        authorizedAt: 100,
+      },
+      binding,
+      {
+        id: 'agent-published-1',
+        name: 'Published Agent',
+        backend: 'gemini',
+        workspaceRef: '/workspace/project',
+        version: 1,
+        archived: false,
+        createdAt: 1,
+        updatedAt: 1,
+      }
+    );
+
+    expect(mockDb.upsertAgentProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'agent-published-1',
+      })
+    );
+    expect(mockDb.upsertChannelBinding).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'binding-published-1',
+        agentProfileId: 'agent-published-1',
+      })
+    );
+    expect(mockDb.upsertExternalSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bindingId: 'binding-published-1',
+        agentProfileId: 'agent-published-1',
+      })
+    );
+    expect(session.bindingId).toBe('binding-published-1');
+    expect(session.agentProfileId).toBe('agent-published-1');
   });
 
   it('transfers conversation ownership when reusing an existing conversation', async () => {

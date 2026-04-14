@@ -15,6 +15,10 @@ const getAvailableAgentsInvoke = vi.fn().mockResolvedValue({ success: true, data
 const refreshCustomAgentsInvoke = vi.fn().mockResolvedValue({});
 const detectAndCountExternalSkillsInvoke = vi.fn().mockResolvedValue({ success: true, data: [] });
 const addCustomExternalPathInvoke = vi.fn().mockResolvedValue({ success: true });
+const readAssistantRuleInvoke = vi.fn().mockResolvedValue('');
+const readAssistantSkillInvoke = vi.fn().mockResolvedValue('');
+const listAvailableSkillsInvoke = vi.fn().mockResolvedValue([]);
+const listAvailableHooksInvoke = vi.fn().mockResolvedValue([]);
 
 vi.mock('../../src/common', () => ({
   ipcBridge: {
@@ -29,6 +33,10 @@ vi.mock('../../src/common', () => ({
     fs: {
       detectAndCountExternalSkills: { invoke: (...args: unknown[]) => detectAndCountExternalSkillsInvoke(...args) },
       addCustomExternalPath: { invoke: (...args: unknown[]) => addCustomExternalPathInvoke(...args) },
+      readAssistantRule: { invoke: (...args: unknown[]) => readAssistantRuleInvoke(...args) },
+      readAssistantSkill: { invoke: (...args: unknown[]) => readAssistantSkillInvoke(...args) },
+      listAvailableSkills: { invoke: (...args: unknown[]) => listAvailableSkillsInvoke(...args) },
+      listAvailableHooks: { invoke: (...args: unknown[]) => listAvailableHooksInvoke(...args) },
     },
   },
 }));
@@ -89,8 +97,10 @@ vi.mock('../../src/renderer/utils/platform', () => ({
 
 import { useAssistantList } from '../../src/renderer/hooks/assistant/useAssistantList';
 import { useAssistantBackends } from '../../src/renderer/hooks/assistant/useAssistantBackends';
+import { useAssistantEditor } from '../../src/renderer/hooks/assistant/useAssistantEditor';
 import { useAssistantSkills } from '../../src/renderer/hooks/assistant/useAssistantSkills';
 import type {
+  AssistantListItem,
   ExternalSource,
   PendingSkill,
   SkillInfo,
@@ -115,7 +125,7 @@ describe('useAssistantList', () => {
     expect(result.current.activeAssistant).toBeNull();
   });
 
-  it('loadAssistants fetches from ConfigStorage and populates the list', async () => {
+  it('loadAssistants fetches from ConfigStorage and populates the list without auto-selecting an assistant', async () => {
     const storedAgents = [
       { id: 'builtin-coder', name: 'Coder', isPreset: true, isBuiltin: true, enabled: true },
       { id: 'builtin-default', name: 'Default', isPreset: true, isBuiltin: true, enabled: true },
@@ -132,8 +142,8 @@ describe('useAssistantList', () => {
     expect(result.current.assistants[0].id).toBe('builtin-default');
     expect(result.current.assistants[1].id).toBe('builtin-coder');
 
-    // activeAssistantId defaults to first sorted assistant
-    expect(result.current.activeAssistantId).toBe('builtin-default');
+    expect(result.current.activeAssistantId).toBeNull();
+    expect(result.current.activeAssistant).toBeNull();
   });
 
   it('activeAssistant is derived from activeAssistantId', async () => {
@@ -183,6 +193,35 @@ describe('useAssistantList', () => {
 
     // Should still be custom-1
     expect(result.current.activeAssistantId).toBe('custom-1');
+  });
+
+  it('clears activeAssistantId across reloads if the selected assistant no longer exists', async () => {
+    const storedAgents = [
+      { id: 'builtin-default', name: 'Default', isPreset: true, isBuiltin: true, enabled: true },
+      { id: 'custom-1', name: 'My Agent', isPreset: true, isBuiltin: false, enabled: true },
+    ];
+    configStorageGetMock.mockResolvedValue(storedAgents);
+
+    const { result } = renderHook(() => useAssistantList());
+
+    await waitFor(() => {
+      expect(result.current.assistants.length).toBe(3);
+    });
+
+    act(() => {
+      result.current.setActiveAssistantId('custom-1');
+    });
+
+    configStorageGetMock.mockResolvedValue([
+      { id: 'builtin-default', name: 'Default', isPreset: true, isBuiltin: true, enabled: true },
+    ]);
+
+    await act(async () => {
+      await result.current.loadAssistants();
+    });
+
+    expect(result.current.activeAssistantId).toBeNull();
+    expect(result.current.activeAssistant).toBeNull();
   });
 
   it('isExtensionAssistant detects extension-sourced assistants', async () => {
@@ -517,5 +556,79 @@ describe('useAssistantSkills', () => {
     });
 
     expect(mockMessage.warning).toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// useAssistantEditor
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('useAssistantEditor', () => {
+  const mockMessage = {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    loading: vi.fn(),
+    normal: vi.fn(),
+    clear: vi.fn(),
+  };
+
+  const builtinSuperpowersAssistant = {
+    id: 'builtin-superpowers',
+    name: 'Superpowers Harness',
+    enabled: true,
+    isPreset: true,
+    isBuiltin: true,
+    presetAgentType: 'codex',
+    enabledSkills: ['using-superpowers'],
+    enabledHooks: [],
+  } as AssistantListItem;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    readAssistantRuleInvoke.mockResolvedValue('');
+    readAssistantSkillInvoke.mockResolvedValue('');
+    listAvailableHooksInvoke.mockResolvedValue([]);
+    listAvailableSkillsInvoke.mockResolvedValue([]);
+  });
+
+  it('preserves packaged builtin skill metadata while editing builtin assistants', async () => {
+    listAvailableSkillsInvoke.mockResolvedValue([
+      {
+        name: 'using-superpowers',
+        description: 'Bootstraps mandatory skill usage.',
+        location: '/tmp/skills/using-superpowers',
+        isCustom: false,
+        hiddenFromSkillsLibrary: true,
+        packageOwnerPresetIds: ['builtin-superpowers'],
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAssistantEditor({
+        localeKey: 'en-US',
+        activeAssistant: builtinSuperpowersAssistant,
+        isReadonlyAssistant: false,
+        isExtensionAssistant: () => false,
+        setActiveAssistantId: vi.fn(),
+        loadAssistants: vi.fn(),
+        refreshAgentDetection: vi.fn(),
+        message: mockMessage as unknown as ReturnType<typeof import('@arco-design/web-react').Message.useMessage>[0],
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleEdit(builtinSuperpowersAssistant, { openEditor: false });
+    });
+
+    expect(result.current.availableSkills).toEqual([
+      expect.objectContaining({
+        name: 'using-superpowers',
+        description: 'Bootstraps mandatory skill usage.',
+        hiddenFromSkillsLibrary: true,
+      }),
+    ]);
+    expect(result.current.selectedSkills).toEqual(['using-superpowers']);
   });
 });

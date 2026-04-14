@@ -36,6 +36,11 @@ function extractConversationWorkspace(conversation: TChatConversation): string |
   return typeof extra?.workspace === 'string' && extra.workspace ? extra.workspace : undefined;
 }
 
+function extractConversationSpaceId(conversation: TChatConversation): string | undefined {
+  const extra = conversation.extra as Record<string, unknown> | undefined;
+  return typeof extra?.spaceId === 'string' && extra.spaceId ? extra.spaceId : undefined;
+}
+
 function extractConversationModelRef(conversation: TChatConversation): IAgentProfile['modelRef'] {
   const conversationModel = (
     conversation as unknown as {
@@ -109,6 +114,7 @@ export async function buildConversationPublicationProfile(
   const backend = mapConversationBackend(conversation);
   const modelRef = extractConversationModelRef(conversation);
   const workspaceRef = extractConversationWorkspace(conversation) ?? workspace;
+  const spaceId = extractConversationSpaceId(conversation);
   const now = Date.now();
   const extra = conversation.extra as Record<string, unknown> | undefined;
 
@@ -118,6 +124,7 @@ export async function buildConversationPublicationProfile(
     backend,
     modelRef,
     workspaceRef,
+    spaceId,
     promptProfile: {
       sourceConversationId: conversation.id,
       customAgentId: typeof extra?.customAgentId === 'string' ? extra.customAgentId : undefined,

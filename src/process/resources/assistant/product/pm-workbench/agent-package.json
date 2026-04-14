@@ -4,32 +4,61 @@
   "assistantPresetId": "builtin-pm-workbench",
   "displayName": "PM Workbench",
   "runtimeNeutral": true,
-  "payloads": {
-    "rules": {
-      "logicalId": "rules",
-      "sources": [
-        {
-          "kind": "package-relative",
-          "root": "."
-        }
-      ],
-      "files": {
-        "en-US": "pm-workbench.md",
-        "zh-CN": "pm-workbench.zh-CN.md"
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
       },
-      "installSurface": "assistant-rules-cache",
-      "runtimeProjection": "none"
-    },
-    "docs": {
-      "logicalId": "docs",
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
       "sources": [
         {
           "kind": "package-relative",
-          "root": "docs"
+          "root": "workspace"
         }
       ],
-      "installSurface": "package-docs",
-      "runtimeProjection": "none"
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "evidence-led product discovery and problem framing",
+        "PRD drafting, prioritization, and roadmap sequencing",
+        "durable product decision records"
+      ],
+      "suggestedArtifacts": ["discovery notes", "PRDs", "prioritization tables", "roadmap artifacts"],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/discovery/README.md",
+          "target": "docs/discovery/README.md"
+        },
+        {
+          "source": "workspace/docs/prds/README.md",
+          "target": "docs/prds/README.md"
+        },
+        {
+          "source": "workspace/docs/roadmap/README.md",
+          "target": "docs/roadmap/README.md"
+        }
+      ]
     },
     "skills": {
       "logicalId": "skills",
