@@ -513,6 +513,33 @@ export class ProjectChannelPublicationService {
     return this.readCatalogForWorkspaces(this.listConversationWorkspaces(conversations));
   }
 
+  async refreshCatalog(params: {
+    publicationCatalog: ProjectChannelPublicationCatalog;
+    remoteIdentities: readonly IRemoteIdentity[];
+    channelAccounts: readonly IConnectorInstance[];
+  }): Promise<ProjectChannelPublicationCatalog> {
+    if (params.publicationCatalog.workspaces.length === 0) {
+      return {
+        ...params.publicationCatalog,
+        publishObjects: normalizePublishObjects(params.publicationCatalog.publishObjects),
+      };
+    }
+
+    await Promise.all(
+      params.publicationCatalog.workspaces.map((workspace) =>
+        this.resolvePublishObjectCatalog(workspace, {
+          bindings: params.publicationCatalog.bindings.filter(
+            (binding) => params.publicationCatalog.bindingWorkspaceById[binding.id] === workspace
+          ),
+          remoteIdentities: params.remoteIdentities,
+          channelAccounts: params.channelAccounts,
+        })
+      )
+    );
+
+    return this.readCatalogForWorkspaces(params.publicationCatalog.workspaces);
+  }
+
   async resolvePublishObjectCatalog(
     workspace: string,
     params: {

@@ -25,6 +25,7 @@ const publicationServiceMocks = vi.hoisted(() => ({
   readCatalogForConversations: vi.fn(),
   readCatalogForWorkspaces: vi.fn(),
   resolvePublishObjectCatalog: vi.fn(),
+  refreshCatalog: vi.fn(),
   upsertChannelBinding: vi.fn(),
   deleteChannelBinding: vi.fn(),
 }));
@@ -197,6 +198,7 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     deleteChannelAccount: makeChannel('deleteChannelAccount'),
     deleteConnectorInstance: makeChannel('deleteConnectorInstance'),
     getBindingCatalog: makeChannel('getBindingCatalog'),
+    refreshPublicationCatalog: makeChannel('refreshPublicationCatalog'),
     getBindings: makeChannel('getBindings'),
     upsertBinding: makeChannel('upsertBinding'),
     deleteBinding: makeChannel('deleteBinding'),
@@ -310,6 +312,7 @@ vi.mock('@process/channels/core/ProjectChannelPublicationService', () => ({
     readCatalogForConversations = publicationServiceMocks.readCatalogForConversations;
     readCatalogForWorkspaces = publicationServiceMocks.readCatalogForWorkspaces;
     resolvePublishObjectCatalog = publicationServiceMocks.resolvePublishObjectCatalog;
+    refreshCatalog = publicationServiceMocks.refreshCatalog;
     upsertChannelBinding = publicationServiceMocks.upsertChannelBinding;
     deleteChannelBinding = publicationServiceMocks.deleteChannelBinding;
   },
@@ -388,6 +391,19 @@ describe('channelBridge', () => {
       resolvedPublishObjects = buildMockPublishObjects(params);
       return resolvedPublishObjects;
     });
+    publicationServiceMocks.refreshCatalog.mockImplementation(
+      async ({ publicationCatalog, remoteIdentities, channelAccounts }) => {
+        resolvedPublishObjects = buildMockPublishObjects({
+          bindings: publicationCatalog.bindings,
+          remoteIdentities,
+          channelAccounts,
+        });
+        return {
+          ...publicationCatalog,
+          publishObjects: resolvedPublishObjects,
+        };
+      }
+    );
     publicationServiceMocks.upsertChannelBinding.mockImplementation(
       async (_workspace: string, binding: IChannelBinding) => {
         currentRepo?.upsertChannelBinding(withChannelAccountId(binding));
@@ -1638,6 +1654,121 @@ describe('channelBridge', () => {
         expect.objectContaining({
           connectors: [readyConnector],
           channelAccounts: [readyConnector],
+        })
+      );
+    });
+  });
+
+  describe('refreshPublicationCatalog', () => {
+    it('returns an explicitly refreshed publication snapshot with binding catalog and active sessions', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-1',
+        platform: 'telegram',
+        name: 'Telegram',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const profile: IAgentProfile = {
+        id: 'agent-profile-1',
+        name: 'OpenClaw Publication',
+        backend: 'openclaw-gateway',
+        version: 1,
+        archived: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        metadata: {
+          publishObject: {
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            discoverySource: 'manual',
+          },
+        },
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-1',
+        connectorId: 'connector-1',
+        remoteUserId: 'user-1',
+        remoteChatId: 'group:alpha',
+        remoteChatType: 'group',
+        displayName: 'Alpha Group',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+      const session: IChannelSession = {
+        id: 'external-session-1',
+        userId: 'remote-1',
+        agentType: 'codex',
+        conversationId: 'conversation-stale-1',
+        workspace: '/tmp/workspace',
+        createdAt: 1000,
+        lastActivity: 2600,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+      vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+      mockGetAllExternalSessions.mockReturnValue({
+        success: true,
+        data: [
+          {
+            id: 'external-session-1',
+            connectorId: 'connector-1',
+            remoteIdentityId: 'remote-1',
+            bindingId: 'binding-1',
+            agentProfileId: 'agent-profile-1',
+            activeConversationId: 'conversation-current-1',
+            state: 'active',
+            createdAt: 1000,
+            lastActivity: 2600,
+          },
+        ],
+      });
+
+      const result = await handlers['refreshPublicationCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(publicationServiceMocks.refreshCatalog).toHaveBeenCalledOnce();
+      expect(publicationServiceMocks.resolvePublishObjectCatalog).not.toHaveBeenCalled();
+      expect(result.data).toEqual(
+        expect.objectContaining({
+          bindingCatalog: expect.objectContaining({
+            connectors: [connector],
+            bindings: [{ ...binding, channelAccountId: binding.connectorId }],
+            publishObjects: expect.arrayContaining([
+              expect.objectContaining({
+                channelAccountId: 'connector-1',
+                nativeObjectId: 'group:alpha',
+                displayProfile: expect.objectContaining({
+                  title: 'Alpha Group',
+                }),
+              }),
+            ]),
+          }),
+          activeSessions: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'external-session-1',
+              publicationBindingId: 'binding-1',
+              activeConversationId: 'conversation-current-1',
+              objectTitle: 'Alpha Group',
+            }),
+          ]),
         })
       );
     });

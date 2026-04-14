@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetBindingCatalogInvoke = vi.fn();
 const mockGetActiveSessionCatalogInvoke = vi.fn();
+const mockRefreshPublicationCatalogInvoke = vi.fn();
 const mockUpsertBindingInvoke = vi.fn();
 const mockDeleteBindingInvoke = vi.fn();
 const messageError = vi.fn();
@@ -89,6 +90,9 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     },
     getActiveSessionCatalog: {
       invoke: (...args: unknown[]) => mockGetActiveSessionCatalogInvoke(...args),
+    },
+    refreshPublicationCatalog: {
+      invoke: (...args: unknown[]) => mockRefreshPublicationCatalogInvoke(...args),
     },
     upsertBinding: {
       invoke: (...args: unknown[]) => mockUpsertBindingInvoke(...args),
@@ -382,6 +386,13 @@ describe('PublicationBindingPanel', () => {
     vi.clearAllMocks();
     mockGetBindingCatalogInvoke.mockResolvedValue(catalogResponse);
     mockGetActiveSessionCatalogInvoke.mockResolvedValue(sessionCatalogResponse);
+    mockRefreshPublicationCatalogInvoke.mockResolvedValue({
+      success: true,
+      data: {
+        bindingCatalog: catalogResponse.data,
+        activeSessions: sessionCatalogResponse.data,
+      },
+    });
     mockUpsertBindingInvoke.mockResolvedValue({ success: true });
     mockDeleteBindingInvoke.mockResolvedValue({ success: true });
   });
@@ -580,29 +591,29 @@ describe('PublicationBindingPanel', () => {
   });
 
   it('refreshes the published object list on demand and surfaces repaired identity state', async () => {
-    mockGetBindingCatalogInvoke.mockResolvedValueOnce(catalogResponse).mockResolvedValueOnce({
-      ...catalogResponse,
+    mockRefreshPublicationCatalogInvoke.mockResolvedValueOnce({
+      success: true,
       data: {
-        ...catalogResponse.data,
-        publishObjects: [
-          {
-            ...catalogResponse.data.publishObjects[0],
-            displayProfile: {
-              ...catalogResponse.data.publishObjects[0].displayProfile,
-              quality: 'resolved',
+        bindingCatalog: {
+          ...catalogResponse.data,
+          publishObjects: [
+            {
+              ...catalogResponse.data.publishObjects[0],
+              displayProfile: {
+                ...catalogResponse.data.publishObjects[0].displayProfile,
+                quality: 'resolved',
+              },
+              refreshState: {
+                status: 'ready',
+                updatedAt: Date.now(),
+                backfilledAt: Date.now(),
+              },
             },
-            refreshState: {
-              status: 'ready',
-              updatedAt: Date.now(),
-              backfilledAt: Date.now(),
-            },
-          },
-        ],
+          ],
+        },
+        activeSessions: sessionCatalogResponse.data,
       },
     });
-    mockGetActiveSessionCatalogInvoke
-      .mockResolvedValueOnce(sessionCatalogResponse)
-      .mockResolvedValueOnce(sessionCatalogResponse);
 
     renderPanel();
 
@@ -612,8 +623,7 @@ describe('PublicationBindingPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
 
     await waitFor(() => {
-      expect(mockGetBindingCatalogInvoke).toHaveBeenCalledTimes(2);
-      expect(mockGetActiveSessionCatalogInvoke).toHaveBeenCalledTimes(2);
+      expect(mockRefreshPublicationCatalogInvoke).toHaveBeenCalledTimes(1);
     });
 
     expect(screen.getByText('Backfilled')).toBeInTheDocument();

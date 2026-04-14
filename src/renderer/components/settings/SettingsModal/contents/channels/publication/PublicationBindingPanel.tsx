@@ -13,6 +13,7 @@ import {
   type IChannelAudienceEntry,
   type IChannelBinding,
   type IChannelBindingCatalog,
+  type IChannelPublicationCatalogRefreshResult,
 } from '@process/channels/types';
 import { Button, Empty, Input, Message, Select, Spin, Tag, Tooltip } from '@arco-design/web-react';
 import { Delete, Edit, Plus, Refresh, Undo } from '@icon-park/react';
@@ -58,6 +59,15 @@ const EMPTY_CATALOG: IChannelBindingCatalog = {
   bindings: [],
   audiences: [],
 };
+
+function applyPublicationCatalogRefresh(
+  snapshot: IChannelPublicationCatalogRefreshResult,
+  setCatalog: React.Dispatch<React.SetStateAction<IChannelBindingCatalog>>,
+  setActiveSessions: React.Dispatch<React.SetStateAction<IChannelActiveSessionEntry[]>>
+): void {
+  setCatalog(snapshot.bindingCatalog);
+  setActiveSessions(snapshot.activeSessions);
+}
 
 function createPublicationEditorState(): PublicationEditorState {
   return {
@@ -274,8 +284,30 @@ const PublicationBindingPanel: React.FC = () => {
         throw new Error(sessionResult.msg || t('settings.channels.publication.loadFailed'));
       }
 
-      setCatalog(catalogResult.data);
-      setActiveSessions(sessionResult.data);
+      applyPublicationCatalogRefresh(
+        {
+          bindingCatalog: catalogResult.data,
+          activeSessions: sessionResult.data,
+        },
+        setCatalog,
+        setActiveSessions
+      );
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : t('settings.channels.publication.loadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  const refreshPublicationCatalog = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await channel.refreshPublicationCatalog.invoke(undefined);
+      if (!result.success || !result.data) {
+        throw new Error(result.msg || t('settings.channels.publication.loadFailed'));
+      }
+
+      applyPublicationCatalogRefresh(result.data, setCatalog, setActiveSessions);
     } catch (error) {
       Message.error(error instanceof Error ? error.message : t('settings.channels.publication.loadFailed'));
     } finally {
@@ -667,7 +699,7 @@ const PublicationBindingPanel: React.FC = () => {
               <div className='flex flex-wrap items-center gap-8px'>
                 <Button
                   icon={<Refresh theme='outline' size='16' />}
-                  onClick={() => void loadCatalog()}
+                  onClick={() => void refreshPublicationCatalog()}
                   loading={loading}
                 >
                   {t('common.refresh')}

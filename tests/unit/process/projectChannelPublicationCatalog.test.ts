@@ -356,6 +356,91 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
     ]);
   });
 
+  it('refreshes a previously read publication catalog through an explicit service refresh entrypoint', async () => {
+    const workspace = await createTempWorkspace();
+    const service = new ProjectChannelPublicationService();
+
+    const connector: IConnectorInstance = {
+      id: 'connector-lark',
+      platform: 'lark',
+      name: 'Feishu',
+      enabled: true,
+      configured: true,
+      status: 'running',
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+    const binding: IChannelBinding = {
+      id: 'binding-topic-explicit-refresh',
+      connectorId: 'connector-lark',
+      channelAccountId: 'connector-lark',
+      scopeType: 'remote_chat',
+      scopeKey: 'oc_group_1:thread:om_topic_root_1',
+      agentProfileId: 'agent-profile-1',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      metadata: {
+        publishObject: {
+          nativeObjectType: 'topic',
+          nativeObjectId: 'om_topic_root_1',
+          parentNativeObjectId: 'oc_group_1',
+          displayName: 'Topic om_topic_root_1',
+          discoverySource: 'manual',
+        },
+      },
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+
+    await service.resolvePublishObjectCatalog(workspace, {
+      bindings: [binding],
+      remoteIdentities: [],
+      channelAccounts: [connector],
+    });
+
+    const publicationCatalog = await service.readCatalogForWorkspaces([workspace]);
+    const refreshedCatalog = await service.refreshCatalog({
+      publicationCatalog,
+      remoteIdentities: [
+        {
+          id: 'remote-topic-explicit-refresh',
+          connectorId: 'connector-lark',
+          channelAccountId: 'connector-lark',
+          remoteUserId: 'ou_user_1',
+          remoteChatId: 'oc_group_1:thread:om_topic_root_1',
+          platformChatId: 'oc_group_1',
+          parentChatId: 'oc_group_1',
+          threadId: 'om_topic_root_1',
+          remoteChatType: 'topic',
+          peerScope: 'thread',
+          displayName: 'Ops Topic',
+          authorizedAt: 1000,
+          lastActive: 3000,
+          metadata: {
+            parentTitle: 'Core Ops Group',
+            objectSubtitle: 'In Core Ops Group',
+          },
+        },
+      ],
+      channelAccounts: [connector],
+    });
+
+    expect(refreshedCatalog.publishObjects).toEqual([
+      expect.objectContaining({
+        nativeObjectId: 'om_topic_root_1',
+        displayProfile: expect.objectContaining({
+          title: 'Ops Topic',
+          quality: 'resolved',
+        }),
+        refreshState: expect.objectContaining({
+          status: 'ready',
+          backfilledAt: 3000,
+        }),
+      }),
+    ]);
+  });
+
   it('promotes plugin-resolved identities to official-pull when runtime metadata marks the display source', async () => {
     const workspace = await createTempWorkspace();
     const service = new ProjectChannelPublicationService();

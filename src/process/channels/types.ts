@@ -381,6 +381,11 @@ export type IChannelBindingCatalog = {
   publishObjects?: IChannelPublishObjectCatalogEntry[];
 };
 
+export type IChannelPublicationCatalogRefreshResult = {
+  bindingCatalog: IChannelBindingCatalog;
+  activeSessions: IChannelActiveSessionEntry[];
+};
+
 export type IChannelBindingTarget = {
   type: ChannelBindingTargetType;
   id: string;
