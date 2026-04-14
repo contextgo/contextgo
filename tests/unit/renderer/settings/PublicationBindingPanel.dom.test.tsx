@@ -356,7 +356,7 @@ describe('PublicationBindingPanel', () => {
   it('shows the selected agent summary and only that agent published objects by default', async () => {
     renderPanel();
 
-    await screen.findByText('Current Agent');
+    await screen.findByText('Ops Agent');
 
     expect(screen.getByText('Ops Agent')).toBeInTheDocument();
     expect(screen.getByText('Published objects')).toBeInTheDocument();

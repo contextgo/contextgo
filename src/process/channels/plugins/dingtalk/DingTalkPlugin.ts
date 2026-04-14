@@ -31,6 +31,7 @@ import type { DingTalkStreamMessage } from './DingTalkAdapter';
 // Event deduplication settings
 const EVENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const EVENT_CACHE_CLEANUP_INTERVAL = 60 * 1000; // 1 minute
+const DISPLAY_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // DingTalk API base URL (new version)
 const DINGTALK_API_BASE = 'https://api.dingtalk.com';
@@ -64,6 +65,17 @@ interface IAICardSession {
   inputingStarted: boolean;
 }
 
+type DingTalkChatDisplayData = {
+  name?: string;
+  chatType?: string;
+  source: 'runtime-resolved';
+};
+
+type DingTalkUserDisplayData = {
+  name?: string;
+  source: 'runtime-resolved';
+};
+
 export class DingTalkPlugin extends BasePlugin {
   readonly type: PluginType = 'dingtalk';
 
@@ -89,6 +101,8 @@ export class DingTalkPlugin extends BasePlugin {
 
   // Store sessionWebhook per chatId for fallback sending
   private webhookCache: Map<string, string> = new Map();
+  private chatDisplayCache: Map<string, { expiresAt: number; value: DingTalkChatDisplayData | null }> = new Map();
+  private userDisplayCache: Map<string, { expiresAt: number; value: DingTalkUserDisplayData | null }> = new Map();
 
   /**
    * Initialize the DingTalk client
@@ -191,6 +205,8 @@ export class DingTalkPlugin extends BasePlugin {
     this.processedEvents.clear();
     this.aiCardSessions.clear();
     this.webhookCache.clear();
+    this.chatDisplayCache.clear();
+    this.userDisplayCache.clear();
     this.isConnected = false;
 
     console.log('[DingTalkPlugin] Stopped and cleaned up');
@@ -212,6 +228,53 @@ export class DingTalkPlugin extends BasePlugin {
       id: this.clientId,
       displayName: 'ContextGo Assistant',
     };
+  }
+
+  private readDisplayCache<T>(
+    cache: Map<string, { expiresAt: number; value: T | null }>,
+    key: string
+  ): T | null | undefined {
+    const cached = cache.get(key);
+    if (!cached) {
+      return undefined;
+    }
+
+    if (cached.expiresAt <= Date.now()) {
+      cache.delete(key);
+      return undefined;
+    }
+
+    return cached.value;
+  }
+
+  private writeDisplayCache<T>(
+    cache: Map<string, { expiresAt: number; value: T | null }>,
+    key: string,
+    value: T | null
+  ): T | null {
+    cache.set(key, {
+      expiresAt: Date.now() + DISPLAY_CACHE_TTL,
+      value,
+    });
+    return value;
+  }
+
+  async getChatDisplayData(chatId: string): Promise<DingTalkChatDisplayData | null> {
+    if (!chatId) {
+      return null;
+    }
+
+    const cached = this.readDisplayCache(this.chatDisplayCache, chatId);
+    return cached === undefined ? null : cached;
+  }
+
+  async getUserDisplayData(userId: string): Promise<DingTalkUserDisplayData | null> {
+    if (!userId) {
+      return null;
+    }
+
+    const cached = this.readDisplayCache(this.userDisplayCache, userId);
+    return cached === undefined ? null : cached;
   }
 
   /**
@@ -329,11 +392,23 @@ export class DingTalkPlugin extends BasePlugin {
       // Track user
       this.activeUsers.add(userId);
 
+      if (data.senderNick?.trim()) {
+        this.writeDisplayCache(this.userDisplayCache, userId, {
+          name: data.senderNick.trim(),
+          source: 'runtime-resolved',
+        });
+      }
+
       // Cache sessionWebhook for this chat
+      const chatId = encodeChatId(data);
       if (data.sessionWebhook) {
-        const chatId = encodeChatId(data);
         this.webhookCache.set(chatId, data.sessionWebhook);
       }
+      this.writeDisplayCache(this.chatDisplayCache, chatId, {
+        name: data.conversationType === '1' ? data.senderNick?.trim() || undefined : undefined,
+        chatType: data.conversationType === '2' ? 'group' : 'private',
+        source: 'runtime-resolved',
+      });
 
       // Convert to unified message
       const unifiedMessage = toUnifiedIncomingMessage(data);

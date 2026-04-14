@@ -182,4 +182,95 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
       }),
     ]);
   });
+
+  it('promotes plugin-resolved identities to official-pull when runtime metadata marks the display source', async () => {
+    const workspace = await createTempWorkspace();
+    const service = new ProjectChannelPublicationService();
+
+    const connector: IConnectorInstance = {
+      id: 'connector-discord',
+      platform: 'discord',
+      name: 'Discord',
+      enabled: true,
+      configured: true,
+      status: 'running',
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+
+    const binding: IChannelBinding = {
+      id: 'binding-discord-thread-1',
+      connectorId: 'connector-discord',
+      channelAccountId: 'connector-discord',
+      scopeType: 'remote_chat',
+      scopeKey: 'parent-channel:thread:thread-1',
+      agentProfileId: 'agent-profile-1',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      metadata: {
+        publishObject: {
+          nativeObjectType: 'thread',
+          nativeObjectId: 'thread-1',
+          parentNativeObjectId: 'parent-channel',
+          displayName: 'Thread thread-1',
+          discoverySource: 'manual',
+        },
+      },
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+
+    await service.resolvePublishObjectCatalog(workspace, {
+      bindings: [binding],
+      remoteIdentities: [],
+      channelAccounts: [connector],
+    });
+
+    const remoteIdentity: IRemoteIdentity = {
+      id: 'remote-discord-thread-1',
+      connectorId: 'connector-discord',
+      channelAccountId: 'connector-discord',
+      remoteUserId: 'discord-user-1',
+      remoteChatId: 'parent-channel:thread:thread-1',
+      platformChatId: 'parent-channel',
+      parentChatId: 'parent-channel',
+      threadId: 'thread-1',
+      remoteChatType: 'thread',
+      peerScope: 'thread',
+      displayName: 'Incident follow-up',
+      authorizedAt: 1000,
+      lastActive: 2000,
+      metadata: {
+        parentTitle: 'incident-room',
+        objectSubtitle: 'In incident-room',
+        containerId: 'guild-1',
+        containerType: 'server',
+        containerTitle: 'Ops Guild',
+        displaySource: 'official-pull',
+      },
+    };
+
+    const entries = await service.resolvePublishObjectCatalog(workspace, {
+      bindings: [binding],
+      remoteIdentities: [remoteIdentity],
+      channelAccounts: [connector],
+    });
+
+    expect(entries).toEqual([
+      expect.objectContaining({
+        channelAccountId: 'connector-discord',
+        nativeObjectType: 'thread',
+        nativeObjectId: 'thread-1',
+        parentNativeObjectId: 'parent-channel',
+        displayProfile: expect.objectContaining({
+          title: 'Incident follow-up',
+          subtitle: 'In incident-room',
+          parentTitle: 'incident-room',
+          source: 'official-pull',
+          quality: 'resolved',
+        }),
+      }),
+    ]);
+  });
 });

@@ -237,7 +237,7 @@ function getLarkRemoteDisplayName(identity: IRemoteIdentity): string | undefined
     return candidate;
   }
 
-  if (isLarkChildObject(identity)) {
+  if (isChildRemoteObject(identity)) {
     return undefined;
   }
 
@@ -268,6 +268,11 @@ function getLarkObjectSubtitle(identity: IRemoteIdentity): string | undefined {
   }
 
   return undefined;
+}
+
+function getMetadataText(metadata: IRemoteIdentity['metadata'], key: string): string | undefined {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
 function buildPublishObjectCatalogMap(
@@ -311,7 +316,7 @@ function getFriendlyDisplayName(identity: IRemoteIdentity, connector?: IConnecto
     return candidate;
   }
 
-  return undefined;
+  return getMetadataText(identity.metadata, 'userDisplayName') ?? getMetadataText(identity.metadata, 'chatName');
 }
 
 function getFriendlySubtitle(identity: IRemoteIdentity, connector?: IConnectorInstance): string | undefined {
@@ -319,24 +324,40 @@ function getFriendlySubtitle(identity: IRemoteIdentity, connector?: IConnectorIn
     return getLarkObjectSubtitle(identity);
   }
 
-  return undefined;
+  return getMetadataText(identity.metadata, 'objectSubtitle') ?? getMetadataText(identity.metadata, 'chatDescription');
 }
 
-type LarkDisplayResolver = {
-  getChatDisplayData: (chatId: string) => Promise<{ name?: string; description?: string; chatType?: string } | null>;
-  getUserDisplayData: (userId: string) => Promise<{ name?: string } | null>;
+type RuntimeDisplaySource = Extract<IChannelPublishObjectCatalogEntry['displayProfile']['source'], 'official-pull' | 'runtime-resolved'>;
+
+type RemoteChatDisplayData = {
+  name?: string;
+  description?: string;
+  chatType?: string;
+  parentTitle?: string;
+  containerId?: string;
+  containerType?: string;
+  containerTitle?: string;
+  source?: RuntimeDisplaySource;
 };
 
-function isLarkDisplayResolver(value: unknown): value is LarkDisplayResolver {
+type RemoteUserDisplayData = {
+  name?: string;
+  source?: RuntimeDisplaySource;
+};
+
+type RemoteDisplayResolver = {
+  getChatDisplayData?: (chatId: string) => Promise<RemoteChatDisplayData | null>;
+  getUserDisplayData?: (userId: string) => Promise<RemoteUserDisplayData | null>;
+};
+
+function isRemoteDisplayResolver(value: unknown): value is RemoteDisplayResolver {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
   return (
-    'getChatDisplayData' in value &&
-    typeof (value as { getChatDisplayData?: unknown }).getChatDisplayData === 'function' &&
-    'getUserDisplayData' in value &&
-    typeof (value as { getUserDisplayData?: unknown }).getUserDisplayData === 'function'
+    ('getChatDisplayData' in value && typeof (value as { getChatDisplayData?: unknown }).getChatDisplayData === 'function') ||
+    ('getUserDisplayData' in value && typeof (value as { getUserDisplayData?: unknown }).getUserDisplayData === 'function')
   );
 }
 
@@ -349,7 +370,7 @@ function hasReadableDisplayName(value?: string): value is string {
   return Boolean(normalized) && !looksLikeTechnicalIdentifier(normalized) && !normalized.startsWith('User ');
 }
 
-function isLarkChildObject(identity: IRemoteIdentity): boolean {
+function isChildRemoteObject(identity: IRemoteIdentity): boolean {
   return (
     identity.remoteChatType === 'topic' ||
     identity.remoteChatType === 'thread' ||
@@ -358,64 +379,141 @@ function isLarkChildObject(identity: IRemoteIdentity): boolean {
   );
 }
 
-async function enrichLarkIdentityForDisplay(
+function getDefaultDisplaySource(platform: IConnectorInstance['platform']): RuntimeDisplaySource {
+  return platform === 'dingtalk' ? 'runtime-resolved' : 'official-pull';
+}
+
+function normalizeDisplaySource(
+  value: unknown,
+  platform: IConnectorInstance['platform']
+): RuntimeDisplaySource | undefined {
+  if (value === 'official-pull' || value === 'runtime-resolved') {
+    return value;
+  }
+
+  return platform === 'lark' || platform === 'discord' || platform === 'dingtalk'
+    ? getDefaultDisplaySource(platform)
+    : undefined;
+}
+
+function pickPreferredDisplaySource(
+  ...sources: Array<RuntimeDisplaySource | undefined>
+): RuntimeDisplaySource | undefined {
+  if (sources.includes('official-pull')) {
+    return 'official-pull';
+  }
+
+  if (sources.includes('runtime-resolved')) {
+    return 'runtime-resolved';
+  }
+
+  return undefined;
+}
+
+async function enrichIdentityForDisplay(
   identity: IRemoteIdentity,
-  resolver: LarkDisplayResolver
+  connector: IConnectorInstance,
+  resolver: RemoteDisplayResolver
 ): Promise<IRemoteIdentity> {
   const metadata = identity.metadata ?? {};
-  const childObject = isLarkChildObject(identity);
-  const transportChatId = identity.platformChatId ?? identity.parentChatId ?? identity.remoteChatId;
-  const loadChatDisplay = Boolean(transportChatId && (!isDirectChatType(identity.remoteChatType) || childObject));
+  const childObject = isChildRemoteObject(identity);
+  const parentChatId = identity.platformChatId ?? identity.parentChatId ?? identity.remoteChatId;
+  const objectChatId = childObject ? identity.threadId ?? identity.remoteChatId : parentChatId;
+  const loadObjectChatDisplay = Boolean(
+    objectChatId && !isDirectChatType(identity.remoteChatType) && typeof resolver.getChatDisplayData === 'function'
+  );
+  const loadParentChatDisplay = Boolean(
+    childObject &&
+      parentChatId &&
+      parentChatId !== objectChatId &&
+      typeof resolver.getChatDisplayData === 'function'
+  );
 
-  const [chatDisplay, userDisplay] = await Promise.all([
-    loadChatDisplay && transportChatId
-      ? resolver.getChatDisplayData(transportChatId).catch((_error): null => null)
+  const [objectChatDisplay, parentChatDisplay, userDisplay] = await Promise.all([
+    loadObjectChatDisplay && objectChatId
+      ? resolver.getChatDisplayData?.(objectChatId).catch((_error): null => null)
       : null,
-    identity.remoteUserId ? resolver.getUserDisplayData(identity.remoteUserId).catch((_error): null => null) : null,
+    loadParentChatDisplay && parentChatId
+      ? resolver.getChatDisplayData?.(parentChatId).catch((_error): null => null)
+      : null,
+    identity.remoteUserId && typeof resolver.getUserDisplayData === 'function'
+      ? resolver.getUserDisplayData(identity.remoteUserId).catch((_error): null => null)
+      : null,
   ]);
 
-  const chatName =
-    chatDisplay?.name?.trim() ||
-    (typeof metadata.chatName === 'string' && metadata.chatName.trim() ? metadata.chatName.trim() : undefined);
-  const chatDescription =
-    chatDisplay?.description?.trim() ||
-    (typeof metadata.chatDescription === 'string' && metadata.chatDescription.trim()
-      ? metadata.chatDescription.trim()
-      : undefined);
-  const userDisplayName =
-    userDisplay?.name?.trim() ||
-    (typeof metadata.userDisplayName === 'string' && metadata.userDisplayName.trim()
-      ? metadata.userDisplayName.trim()
-      : undefined);
+  const objectDisplaySource = pickPreferredDisplaySource(
+    normalizeDisplaySource(objectChatDisplay?.source, connector.platform),
+    loadObjectChatDisplay && objectChatDisplay ? getDefaultDisplaySource(connector.platform) : undefined
+  );
+  const parentDisplaySource = pickPreferredDisplaySource(
+    normalizeDisplaySource(parentChatDisplay?.source, connector.platform),
+    loadParentChatDisplay && parentChatDisplay ? getDefaultDisplaySource(connector.platform) : undefined
+  );
+  const userDisplaySource = pickPreferredDisplaySource(
+    normalizeDisplaySource(userDisplay?.source, connector.platform),
+    userDisplay ? getDefaultDisplaySource(connector.platform) : undefined
+  );
+  const chatName = childObject
+    ? parentChatDisplay?.name?.trim() ||
+      objectChatDisplay?.parentTitle?.trim() ||
+      getMetadataText(metadata, 'parentTitle')
+    : (connector.platform === 'lark' && childObject ? undefined : objectChatDisplay?.name?.trim()) ||
+      getMetadataText(metadata, 'chatName');
+  const chatDescription = objectChatDisplay?.description?.trim() || getMetadataText(metadata, 'chatDescription');
+  const userDisplayName = userDisplay?.name?.trim() || getMetadataText(metadata, 'userDisplayName');
   const currentDisplayName = hasReadableDisplayName(identity.displayName) ? identity.displayName.trim() : undefined;
+  const resolvedObjectName =
+    connector.platform === 'lark' && childObject ? undefined : objectChatDisplay?.name?.trim();
+  const resolvedParentTitle =
+    parentChatDisplay?.name?.trim() ||
+    objectChatDisplay?.parentTitle?.trim() ||
+    getMetadataText(metadata, 'parentTitle');
+  const resolvedObjectSubtitle =
+    getMetadataText(metadata, 'objectSubtitle') ||
+    (childObject ? (resolvedParentTitle ? `In ${resolvedParentTitle}` : undefined) : chatDescription);
+  const resolvedContainerId =
+    objectChatDisplay?.containerId?.trim() ||
+    parentChatDisplay?.containerId?.trim() ||
+    getMetadataText(metadata, 'containerId');
+  const resolvedContainerType =
+    objectChatDisplay?.containerType?.trim() ||
+    parentChatDisplay?.containerType?.trim() ||
+    getMetadataText(metadata, 'containerType');
+  const resolvedContainerTitle =
+    objectChatDisplay?.containerTitle?.trim() ||
+    parentChatDisplay?.containerTitle?.trim() ||
+    getMetadataText(metadata, 'containerTitle');
+  const resolvedDisplaySource = pickPreferredDisplaySource(
+    getMetadataText(metadata, 'displaySource') as RuntimeDisplaySource | undefined,
+    objectDisplaySource,
+    parentDisplaySource,
+    userDisplaySource
+  );
 
   let displayName = currentDisplayName;
   if (isDirectChatType(identity.remoteChatType)) {
     displayName = userDisplayName ?? currentDisplayName;
-  } else if (!childObject) {
+  } else if (childObject) {
+    displayName = resolvedObjectName ?? currentDisplayName;
+  } else {
     displayName = chatName ?? currentDisplayName;
   }
 
-  const objectSubtitle =
-    typeof metadata.objectSubtitle === 'string' && metadata.objectSubtitle.trim()
-      ? metadata.objectSubtitle.trim()
-      : childObject
-        ? chatName
-          ? `In ${chatName}`
-          : undefined
-        : chatDescription;
-
   return {
     ...identity,
-    displayName,
-    remoteChatType: identity.remoteChatType ?? chatDisplay?.chatType,
+    displayName: displayName ?? identity.displayName,
+    remoteChatType: identity.remoteChatType ?? objectChatDisplay?.chatType ?? parentChatDisplay?.chatType,
     metadata: {
       ...metadata,
       ...(chatName ? { chatName } : {}),
       ...(chatDescription ? { chatDescription } : {}),
       ...(userDisplayName ? { userDisplayName } : {}),
-      ...(childObject && chatName ? { parentTitle: chatName } : {}),
-      ...(objectSubtitle ? { objectSubtitle } : {}),
+      ...(resolvedParentTitle ? { parentTitle: resolvedParentTitle } : {}),
+      ...(resolvedObjectSubtitle ? { objectSubtitle: resolvedObjectSubtitle } : {}),
+      ...(resolvedContainerId ? { containerId: resolvedContainerId } : {}),
+      ...(resolvedContainerType ? { containerType: resolvedContainerType } : {}),
+      ...(resolvedContainerTitle ? { containerTitle: resolvedContainerTitle } : {}),
+      ...(resolvedDisplaySource ? { displaySource: resolvedDisplaySource } : {}),
     },
   };
 }
@@ -434,27 +532,27 @@ async function enrichRemoteIdentitiesForDisplay(
   }
 
   const connectorMap = new Map(connectors.map((connector) => [connector.id, connector] as const));
-  const larkPlugins = new Map<string, LarkDisplayResolver>();
+  const displayResolvers = new Map<string, RemoteDisplayResolver>();
 
   return Promise.all(
     remoteIdentities.map(async (identity) => {
       const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
-      if (!connector || connector.platform !== 'lark') {
+      if (!connector || !['lark', 'discord', 'dingtalk'].includes(connector.platform)) {
         return identity;
       }
 
       const runtimeId = connector.legacyPluginId ?? connector.id;
-      let resolver = larkPlugins.get(runtimeId);
+      let resolver = displayResolvers.get(runtimeId);
       if (!resolver) {
         const plugin = pluginManager.getPlugin(runtimeId);
-        if (!isLarkDisplayResolver(plugin)) {
+        if (!isRemoteDisplayResolver(plugin)) {
           return identity;
         }
         resolver = plugin;
-        larkPlugins.set(runtimeId, resolver);
+        displayResolvers.set(runtimeId, resolver);
       }
 
-      return enrichLarkIdentityForDisplay(identity, resolver);
+      return enrichIdentityForDisplay(identity, connector, resolver);
     })
   );
 }

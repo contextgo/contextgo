@@ -150,4 +150,73 @@ describe('imObjects platform recognition', () => {
       })
     );
   });
+
+  it('uses Discord guild container identity as the parent of a channel publish object', () => {
+    const identity: IRemoteIdentity = {
+      id: 'remote-discord-channel-1',
+      connectorId: 'connector-discord',
+      remoteUserId: 'discord-user-1',
+      remoteChatId: '1234567890',
+      platformChatId: '1234567890',
+      remoteChatType: 'group',
+      displayName: 'incident-room',
+      authorizedAt: 1000,
+      lastActive: 2000,
+      metadata: {
+        containerId: 'guild-1',
+        containerType: 'server',
+        containerTitle: 'Ops Guild',
+      },
+    };
+
+    const publishObject = inferRemoteIdentityPublishObject(identity, 'discord');
+    const descriptor = describeRemoteIdentityObject(identity, 'discord');
+
+    expect(publishObject).toEqual(
+      expect.objectContaining({
+        nativeObjectType: 'channel',
+        nativeObjectId: '1234567890',
+        parentNativeObjectId: 'guild-1',
+      })
+    );
+    expect(descriptor).toEqual(
+      expect.objectContaining({
+        kind: 'channel',
+        title: 'incident-room',
+        parentKey: 'guild-1',
+        parentKind: 'server',
+        parentTitle: 'Ops Guild',
+      })
+    );
+  });
+
+  it('uses DingTalk staff identity for private chats instead of encoded chat ids', () => {
+    const identity: IRemoteIdentity = {
+      id: 'remote-dingtalk-private-1',
+      connectorId: 'connector-dingtalk',
+      remoteUserId: 'staff-1',
+      remoteChatId: 'user:staff-1',
+      platformChatId: 'user:staff-1',
+      remoteChatType: 'private',
+      displayName: 'Alice Wang',
+      authorizedAt: 1000,
+      lastActive: 2000,
+    };
+
+    const publishObject = inferRemoteIdentityPublishObject(identity, 'dingtalk');
+    const descriptor = describeRemoteIdentityObject(identity, 'dingtalk');
+
+    expect(publishObject).toEqual(
+      expect.objectContaining({
+        nativeObjectType: 'dm',
+        nativeObjectId: 'staff-1',
+      })
+    );
+    expect(descriptor).toEqual(
+      expect.objectContaining({
+        kind: 'dm',
+        title: 'Alice Wang',
+      })
+    );
+  });
 });
