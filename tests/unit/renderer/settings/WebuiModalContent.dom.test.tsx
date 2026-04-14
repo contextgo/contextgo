@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const webuiGetStatusInvoke = vi.fn();
@@ -295,37 +295,26 @@ describe('WebuiModalContent', () => {
     openExternalUrlMock.mockResolvedValue(undefined);
   });
 
-  it('uses the shared settings sub-modal shell for username changes', async () => {
+  it('does not expose browser-entry username management controls', async () => {
     const { default: WebuiModalContent } =
       await import('@/renderer/components/settings/SettingsModal/contents/WebuiModalContent');
 
     render(<WebuiModalContent />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit username' }));
-
-    const modal = await screen.findByTestId('contextgo-modal');
-    expect(modal).toHaveClass('settings-sub-modal');
-    expect(within(modal).getByText('Set new username')).toBeInTheDocument();
-    expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    expect(within(modal).getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+    await screen.findByText('settings.webui.officialRemoteTitle');
+    expect(screen.queryByRole('button', { name: 'Edit username' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Login info')).not.toBeInTheDocument();
   });
 
-  it('uses the shared settings sub-modal shell for password changes', async () => {
+  it('does not expose browser-entry password management controls', async () => {
     const { default: WebuiModalContent } =
       await import('@/renderer/components/settings/SettingsModal/contents/WebuiModalContent');
 
     render(<WebuiModalContent />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Set new password' }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('contextgo-modal')).toHaveClass('settings-sub-modal');
-    });
-
-    const modal = screen.getByTestId('contextgo-modal');
-    expect(within(modal).getByText('Set new password')).toBeInTheDocument();
-    expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    expect(within(modal).getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+    await screen.findByText('settings.webui.officialRemoteTitle');
+    expect(screen.queryByRole('button', { name: 'Set new password' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Password')).not.toBeInTheDocument();
   });
 
   it('opens the native device switcher without navigating into an embedded remote page', async () => {

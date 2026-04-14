@@ -66,6 +66,21 @@ const officialRemoteTunnelServiceMock = {
   getState: vi.fn(() => ({ ...officialRemoteTunnelState })),
 };
 
+const hostBrowserEntryServiceMock = {
+  ensureForDemand: vi.fn(async (_demand: string, request: { preferredPort: number }) => ({
+    allowRemote: false,
+    port: request.preferredPort,
+  })),
+  getLocalBaseUrl: vi.fn(() => 'http://127.0.0.1:25809'),
+  getRuntimeStatus: vi.fn(() => ({
+    allowRemote: false,
+    demandSources: ['official-remote'],
+    port: 25809,
+    running: true,
+  })),
+  releaseDemand: vi.fn(async () => undefined),
+};
+
 const authSessionFetch = vi.fn(async (url: string, init?: RequestInit) => {
   if (url.endsWith('/api/auth/session')) {
     return new Response(JSON.stringify(fetchSessionUserResponse), {
@@ -257,6 +272,10 @@ const releaseDesktopWebUIForOfficialRemoteMock = vi.fn(async () => undefined);
 
 vi.mock('@process/utils/webuiConfig', () => ({
   ensureDesktopWebUIForOfficialRemote: ensureDesktopWebUIForOfficialRemoteMock,
+  getPreferredDesktopWebUIPort: vi.fn(async () => {
+    const storedPort = processConfigState.get('webui.desktop.port');
+    return typeof storedPort === 'number' && Number.isFinite(storedPort) && storedPort > 0 ? storedPort : 25809;
+  }),
   releaseDesktopWebUIForOfficialRemote: releaseDesktopWebUIForOfficialRemoteMock,
 }));
 
@@ -309,6 +328,10 @@ vi.mock('@/process/services/cloud/OfficialRemoteTunnelService', () => ({
   getOfficialRemoteTunnelService: () => officialRemoteTunnelServiceMock,
 }));
 
+vi.mock('@process/services/host/HostBrowserEntryService', () => ({
+  getHostBrowserEntryService: () => hostBrowserEntryServiceMock,
+}));
+
 async function flushAsyncWork(): Promise<void> {
   await Promise.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -326,6 +349,10 @@ describe('CloudService desktop loopback login', () => {
     processConfigMock.remove.mockClear();
     ensureDesktopWebUIForOfficialRemoteMock.mockClear();
     releaseDesktopWebUIForOfficialRemoteMock.mockClear();
+    hostBrowserEntryServiceMock.ensureForDemand.mockClear();
+    hostBrowserEntryServiceMock.getLocalBaseUrl.mockClear();
+    hostBrowserEntryServiceMock.getRuntimeStatus.mockClear();
+    hostBrowserEntryServiceMock.releaseDemand.mockClear();
     officialRemoteTunnelServiceMock.initialize.mockClear();
     officialRemoteTunnelServiceMock.reconcile.mockClear();
     officialRemoteTunnelServiceMock.getState.mockClear();
@@ -428,7 +455,7 @@ describe('CloudService desktop loopback login', () => {
     cloudService.initialize();
     await flushAsyncWork();
 
-    expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalledTimes(2);
+    expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalledTimes(2);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('cloud-init');
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
   });
@@ -440,7 +467,7 @@ describe('CloudService desktop loopback login', () => {
     cloudService.handleSystemResume();
     await flushAsyncWork();
 
-    expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalledTimes(1);
+    expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalledTimes(1);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('system-resume');
   });
 
@@ -567,7 +594,7 @@ describe('CloudService desktop loopback login', () => {
     await flushAsyncWork();
 
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
-    expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalled();
+    expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalled();
   });
 
   it('opens browser login with loopback callback and consumes returned code', async () => {
@@ -830,7 +857,7 @@ describe('CloudService desktop loopback login', () => {
 
     const status = await cloudService.ensureOfficialRemoteReady();
 
-    expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalledTimes(1);
+    expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalledTimes(1);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
     expect(status.officialRemoteReady).toBe(true);
   });
@@ -852,6 +879,6 @@ describe('CloudService desktop loopback login', () => {
 
     await cloudService.logout();
 
-    expect(releaseDesktopWebUIForOfficialRemoteMock).toHaveBeenCalledTimes(1);
+    expect(hostBrowserEntryServiceMock.releaseDemand).toHaveBeenCalledTimes(1);
   });
 });
