@@ -45,15 +45,13 @@ vi.mock('@/renderer/components/base/ContextGoScrollArea', () => ({
 
 vi.mock('@/renderer/components/base/ContextGoModal', () => ({
   __esModule: true,
-  default: ({
-    visible,
-    children,
-    title,
-  }: {
-    visible?: boolean;
-    children?: React.ReactNode;
-    title?: React.ReactNode;
-  }) => (visible ? <div><div>{title}</div><div>{children}</div></div> : null),
+  default: ({ visible, children, title }: { visible?: boolean; children?: React.ReactNode; title?: React.ReactNode }) =>
+    visible ? (
+      <div>
+        <div>{title}</div>
+        <div>{children}</div>
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/renderer/components/settings', () => ({
@@ -62,19 +60,13 @@ vi.mock('@/renderer/components/settings', () => ({
 
 vi.mock('@arco-design/web-react', () => ({
   Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-  Select: Object.assign(
-    ({ children }: { children?: React.ReactNode }) => <select>{children}</select>,
-    {
-      Option: ({ children }: { children?: React.ReactNode }) => <option>{children}</option>,
-      OptGroup: ({ children }: { children?: React.ReactNode }) => <optgroup>{children}</optgroup>,
-    }
-  ),
-  Tabs: Object.assign(
-    ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-    {
-      TabPane: ({ title }: { title?: React.ReactNode }) => <div>{title}</div>,
-    }
-  ),
+  Select: Object.assign(({ children }: { children?: React.ReactNode }) => <select>{children}</select>, {
+    Option: ({ children }: { children?: React.ReactNode }) => <option>{children}</option>,
+    OptGroup: ({ children }: { children?: React.ReactNode }) => <optgroup>{children}</optgroup>,
+  }),
+  Tabs: Object.assign(({ children }: { children?: React.ReactNode }) => <div>{children}</div>, {
+    TabPane: ({ title }: { title?: React.ReactNode }) => <div>{title}</div>,
+  }),
 }));
 
 vi.mock('@/renderer/components/settings/SettingsModal/contents/AboutModalContent', () => ({

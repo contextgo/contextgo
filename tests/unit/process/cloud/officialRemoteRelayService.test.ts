@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const storage = new Map<string, unknown>();
 const socketInstances: FakeWebSocket[] = [];
 const relayInstances: MockOfficialRemoteBrowserRelay[] = [];
+const hostRuntimeState = {
+  allowRemote: false,
+  demandSources: [] as Array<'local-client' | 'official-remote'>,
+  port: null as number | null,
+  running: false,
+};
 
 class FakeWebSocket extends EventEmitter {
   static CONNECTING = 0;
@@ -96,6 +102,17 @@ vi.mock('@process/utils/initStorage', () => ({
   },
 }));
 
+const hostBrowserEntryServiceMock = {
+  getLocalBaseUrl: vi.fn(() =>
+    hostRuntimeState.running && hostRuntimeState.port ? `http://127.0.0.1:${hostRuntimeState.port}` : null
+  ),
+  getRuntimeStatus: vi.fn(() => ({ ...hostRuntimeState })),
+};
+
+vi.mock('@process/services/host/HostBrowserEntryService', () => ({
+  getHostBrowserEntryService: () => hostBrowserEntryServiceMock,
+}));
+
 function flushPromises(): Promise<void> {
   return Promise.resolve()
     .then(() => undefined)
@@ -111,6 +128,10 @@ describe('OfficialRemoteBrowserRelay', () => {
   beforeEach(() => {
     storage.clear();
     socketInstances.length = 0;
+    hostRuntimeState.allowRemote = false;
+    hostRuntimeState.demandSources = [];
+    hostRuntimeState.port = null;
+    hostRuntimeState.running = false;
     vi.clearAllMocks();
   });
 
@@ -172,6 +193,10 @@ describe('OfficialRemoteTunnelService relay helpers', () => {
     storage.clear();
     socketInstances.length = 0;
     relayInstances.length = 0;
+    hostRuntimeState.allowRemote = false;
+    hostRuntimeState.demandSources = [];
+    hostRuntimeState.port = null;
+    hostRuntimeState.running = false;
     vi.clearAllMocks();
   });
 
@@ -213,6 +238,10 @@ describe('OfficialRemoteTunnelService', () => {
     storage.clear();
     socketInstances.length = 0;
     relayInstances.length = 0;
+    hostRuntimeState.allowRemote = false;
+    hostRuntimeState.demandSources = [];
+    hostRuntimeState.port = null;
+    hostRuntimeState.running = false;
     vi.clearAllMocks();
     serviceUnderTest = null;
   });
@@ -289,8 +318,9 @@ describe('OfficialRemoteTunnelService', () => {
     const { OfficialRemoteTunnelService } = await import('@/process/services/cloud/OfficialRemoteTunnelService');
 
     storage.set('cloud.deviceToken', 'ctxdev_ready');
-    storage.set('webui.desktop.enabled', true);
-    storage.set('webui.desktop.port', 25809);
+    hostRuntimeState.demandSources = ['official-remote'];
+    hostRuntimeState.port = 25809;
+    hostRuntimeState.running = true;
 
     const service = new OfficialRemoteTunnelService();
     serviceUnderTest = service;
@@ -321,8 +351,9 @@ describe('OfficialRemoteTunnelService', () => {
     const { OfficialRemoteTunnelService } = await import('@/process/services/cloud/OfficialRemoteTunnelService');
 
     storage.set('cloud.deviceToken', 'ctxdev_ready');
-    storage.set('webui.desktop.enabled', true);
-    storage.set('webui.desktop.port', 25809);
+    hostRuntimeState.demandSources = ['official-remote'];
+    hostRuntimeState.port = 25809;
+    hostRuntimeState.running = true;
 
     const service = new OfficialRemoteTunnelService();
     serviceUnderTest = service;
