@@ -5,9 +5,7 @@ permissions:
   pull-requests: write
 
 on:
-  pull_request:
-  pull_request_review_comment:
-    types: [created]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.repository }}-${{ github.event.number || github.head_ref ||
@@ -18,9 +16,11 @@ concurrency:
 jobs:
   review:
     runs-on: self-hosted
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: coderabbitai/ai-pr-reviewer@latest
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

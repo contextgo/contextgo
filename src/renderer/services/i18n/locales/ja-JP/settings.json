@@ -1651,6 +1651,7 @@
   "channels.publication.summarySessions": "Sessions",
   "channels.publication.objectListTitle": "Published objects",
   "channels.publication.objectListDescription": "ここには、この Agent にすでに紐づいている公開先だけを表示します。",
+  "channels.publication.objectQualityFallback": "Needs identification",
   "channels.publication.emptyPublishedObjects": "この Agent はまだどの IM オブジェクトにも公開されていません",
   "channels.publication.emptyObjects": "No IM objects discovered yet",
   "channels.publication.agentSummaryTitle": "現在の Agent",

@@ -1651,6 +1651,7 @@
   "channels.publication.summarySessions": "Sessions",
   "channels.publication.objectListTitle": "Published objects",
   "channels.publication.objectListDescription": "여기에는 이 Agent에 이미 연결된 게시 대상만 표시됩니다.",
+  "channels.publication.objectQualityFallback": "Needs identification",
   "channels.publication.emptyPublishedObjects": "이 Agent는 아직 어떤 IM 객체에도 게시되지 않았습니다",
   "channels.publication.emptyObjects": "No IM objects discovered yet",
   "channels.publication.agentSummaryTitle": "현재 Agent",

@@ -5,11 +5,14 @@
  */
 
 import {
+  getChannelBindingPublishObject,
+  getChannelPublishObjectCatalogEntryIdentity,
   getChannelAccountId,
   type IChannelActiveSessionEntry,
   type IChannelAccount,
   type IChannelAudienceEntry,
   type IChannelBinding,
+  type IChannelPublishObjectCatalogEntry,
 } from '@process/channels/types';
 
 import {
@@ -31,6 +34,7 @@ type BuildAgentPublicationObjectsParams = {
   channelAccounts: IChannelAccount[];
   audiences: IChannelAudienceEntry[];
   bindings: IChannelBinding[];
+  publishObjects?: IChannelPublishObjectCatalogEntry[];
   sessions: IChannelActiveSessionEntry[];
 };
 
@@ -40,7 +44,9 @@ function getRelevantSessions(
   sessions: IChannelActiveSessionEntry[]
 ): IChannelActiveSessionEntry[] {
   const bindingIds = new Set(bindings.map((binding) => binding.id));
-  const objectKeys = new Set(bindings.map((binding) => binding.scopeKey).filter((value): value is string => Boolean(value)));
+  const objectKeys = new Set(
+    bindings.map((binding) => binding.scopeKey).filter((value): value is string => Boolean(value))
+  );
 
   return sessions.filter((session) => {
     if (getChannelAccountId(session) !== channelAccountId) {
@@ -91,6 +97,33 @@ export function buildAgentPublicationObjects(
         }
 
         return audienceMap.get(binding.scopeKey);
+      },
+      resolveBindingCatalogEntry: (binding) => {
+        const channelAccountId = getChannelAccountId(binding);
+        if (!channelAccountId || !params.publishObjects) {
+          return undefined;
+        }
+
+        const publishObject = getChannelBindingPublishObject(binding);
+        return params.publishObjects.find(
+          (entry) =>
+            entry.id ===
+            getChannelPublishObjectCatalogEntryIdentity({
+              id: '',
+              channelAccountId,
+              nativeObjectType: publishObject.nativeObjectType,
+              nativeObjectId: publishObject.nativeObjectId,
+              parentNativeObjectId: publishObject.parentNativeObjectId,
+              displayProfile: {
+                title: '',
+                source: 'manual',
+                quality: 'fallback',
+                resolvedAt: 0,
+              },
+              createdAt: 0,
+              updatedAt: 0,
+            })
+        );
       },
     }).filter((object) => object.bindings.length > 0);
 

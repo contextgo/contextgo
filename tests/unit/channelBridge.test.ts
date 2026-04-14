@@ -6,8 +6,145 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BUILTIN_CHANNEL_TYPES } from '../../src/common/config/builtinChannels';
+import {
+  describeRemoteIdentityObject,
+  inferRemoteIdentityPublishObject,
+  isChannelObjectFallbackTitle,
+} from '../../src/process/channels/utils';
+import {
+  getChannelAccountId,
+  getChannelBindingPublishObject,
+  getChannelPublishObjectCatalogEntryIdentity,
+  withChannelAccountId,
+} from '../../src/process/channels/types';
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tmp') } }));
+
+const publicationServiceMocks = vi.hoisted(() => ({
+  listAllConversations: vi.fn(async () => []),
+  readCatalogForConversations: vi.fn(),
+  readCatalogForWorkspaces: vi.fn(),
+  resolvePublishObjectCatalog: vi.fn(),
+  upsertChannelBinding: vi.fn(),
+  deleteChannelBinding: vi.fn(),
+}));
+
+let currentRepo: IChannelRepository | null = null;
+let resolvedPublishObjects: Array<Record<string, unknown>> = [];
+
+function buildMockPublicationCatalog() {
+  const agentProfiles = (currentRepo?.getAgentProfiles() ?? []).map((profile) =>
+    Object.assign(
+      { promptProfile: {}, toolPolicy: {}, memoryPolicy: {}, delegationPolicy: {}, archived: false },
+      profile,
+      { workspaceRef: profile.workspaceRef ?? `/tmp/workspaces/${profile.id}` }
+    )
+  );
+  const agentProfileWorkspaceById = Object.fromEntries(
+    agentProfiles.map((profile) => [profile.id, profile.workspaceRef ?? `/tmp/workspaces/${profile.id}`] as const)
+  );
+  const bindings = (currentRepo?.getChannelBindings() ?? []).map((binding) => withChannelAccountId(binding));
+  const bindingWorkspaceById = Object.fromEntries(
+    bindings.map(
+      (binding) => [binding.id, agentProfileWorkspaceById[binding.agentProfileId] ?? '/tmp/workspaces/default'] as const
+    )
+  );
+  const workspaces = [...new Set([...Object.values(agentProfileWorkspaceById), '/tmp/workspaces/default'])];
+
+  return {
+    workspaces,
+    agentProfiles,
+    bindings,
+    publishObjects: resolvedPublishObjects,
+    agentProfileWorkspaceById,
+    bindingWorkspaceById,
+  };
+}
+
+function buildMockPublishObjects(params: {
+  bindings: readonly IChannelBinding[];
+  remoteIdentities: readonly IRemoteIdentity[];
+  channelAccounts: readonly IConnectorInstance[];
+}) {
+  const connectorMap = new Map(params.channelAccounts.map((connector) => [connector.id, connector] as const));
+  const nextEntries = new Map<string, Record<string, unknown>>();
+
+  for (const binding of params.bindings) {
+    const channelAccountId = getChannelAccountId(binding);
+    if (!channelAccountId) {
+      continue;
+    }
+
+    const publishObject = getChannelBindingPublishObject(binding);
+    const title = publishObject.displayName ?? publishObject.nativeObjectId;
+    const entry = {
+      id: '',
+      channelAccountId,
+      nativeObjectType: publishObject.nativeObjectType,
+      nativeObjectId: publishObject.nativeObjectId,
+      parentNativeObjectId: publishObject.parentNativeObjectId,
+      displayProfile: {
+        title,
+        subtitle: typeof binding.metadata?.objectSubtitle === 'string' ? binding.metadata.objectSubtitle : undefined,
+        parentTitle:
+          typeof binding.metadata?.parentObjectTitle === 'string' ? binding.metadata.parentObjectTitle : undefined,
+        source: publishObject.discoverySource === 'pulled' ? 'official-pull' : 'manual',
+        quality: title === publishObject.nativeObjectId ? 'fallback' : 'inferred',
+        resolvedAt: binding.updatedAt,
+      },
+      createdAt: binding.createdAt,
+      updatedAt: binding.updatedAt,
+    };
+    entry.id = getChannelPublishObjectCatalogEntryIdentity(entry as never);
+    nextEntries.set(entry.id, entry);
+  }
+
+  for (const identity of params.remoteIdentities) {
+    const connectorId = getChannelAccountId(identity) ?? identity.connectorId;
+    const connector = connectorMap.get(connectorId);
+    if (!connector) {
+      continue;
+    }
+
+    const publishObject = inferRemoteIdentityPublishObject(identity, connector.platform);
+    const descriptor = describeRemoteIdentityObject(identity, connector.platform);
+    const title = publishObject.displayName ?? descriptor.title;
+    const entry = {
+      id: '',
+      channelAccountId: connector.id,
+      nativeObjectType: publishObject.nativeObjectType,
+      nativeObjectId: publishObject.nativeObjectId,
+      parentNativeObjectId: publishObject.parentNativeObjectId,
+      displayProfile: {
+        title,
+        subtitle: descriptor.subtitle,
+        parentTitle: descriptor.parentTitle,
+        source:
+          identity.metadata?.displaySource === 'official-pull' ||
+          identity.metadata?.displaySource === 'runtime-resolved'
+            ? identity.metadata.displaySource
+            : typeof identity.metadata?.chatName === 'string' || typeof identity.metadata?.userDisplayName === 'string'
+              ? 'runtime-resolved'
+              : 'inbound-learned',
+        quality: isChannelObjectFallbackTitle({
+          platform: connector.platform,
+          kind: descriptor.kind,
+          title,
+          nativeObjectId: publishObject.nativeObjectId,
+        })
+          ? 'fallback'
+          : 'resolved',
+        resolvedAt: identity.lastActive ?? identity.authorizedAt,
+      },
+      createdAt: identity.authorizedAt,
+      updatedAt: identity.lastActive ?? identity.authorizedAt,
+    };
+    entry.id = getChannelPublishObjectCatalogEntryIdentity(entry as never);
+    nextEntries.set(entry.id, entry);
+  }
+
+  return Array.from(nextEntries.values());
+}
 
 // Capture provider handlers so tests can invoke them directly
 const handlers: Record<string, (...args: unknown[]) => unknown> = {};
@@ -147,6 +284,22 @@ vi.mock('@process/services/database', () => ({
   })),
 }));
 
+vi.mock('@process/services/conversationServiceSingleton', () => ({
+  conversationServiceSingleton: {
+    listAllConversations: publicationServiceMocks.listAllConversations,
+  },
+}));
+
+vi.mock('@process/channels/core/ProjectChannelPublicationService', () => ({
+  ProjectChannelPublicationService: class ProjectChannelPublicationServiceMock {
+    readCatalogForConversations = publicationServiceMocks.readCatalogForConversations;
+    readCatalogForWorkspaces = publicationServiceMocks.readCatalogForWorkspaces;
+    resolvePublishObjectCatalog = publicationServiceMocks.resolvePublishObjectCatalog;
+    upsertChannelBinding = publicationServiceMocks.upsertChannelBinding;
+    deleteChannelBinding = publicationServiceMocks.deleteChannelBinding;
+  },
+}));
+
 import { initChannelBridge } from '../../src/process/bridge/channelBridge';
 import type { IChannelRepository } from '../../src/process/services/database/IChannelRepository';
 import type {
@@ -198,6 +351,7 @@ describe('channelBridge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resolvedPublishObjects = [];
     mockGetLoadedExtensions.mockReturnValue([]);
     mockGetChannelPluginMeta.mockReturnValue(undefined);
     mockGetChannelPlugins.mockReturnValue(new Map());
@@ -211,6 +365,24 @@ describe('channelBridge', () => {
     mockGetAllChannelControlLeases.mockReturnValue({ success: true, data: [] });
 
     repo = makeRepo();
+    currentRepo = repo;
+    publicationServiceMocks.listAllConversations.mockResolvedValue([]);
+    publicationServiceMocks.readCatalogForConversations.mockImplementation(async () => buildMockPublicationCatalog());
+    publicationServiceMocks.readCatalogForWorkspaces.mockImplementation(async () => buildMockPublicationCatalog());
+    publicationServiceMocks.resolvePublishObjectCatalog.mockImplementation(async (_workspace: string, params) => {
+      resolvedPublishObjects = buildMockPublishObjects(params);
+      return resolvedPublishObjects;
+    });
+    publicationServiceMocks.upsertChannelBinding.mockImplementation(
+      async (_workspace: string, binding: IChannelBinding) => {
+        currentRepo?.upsertChannelBinding(withChannelAccountId(binding));
+        return withChannelAccountId(binding);
+      }
+    );
+    publicationServiceMocks.deleteChannelBinding.mockImplementation(async (_workspace: string, bindingId: string) => {
+      currentRepo?.deleteChannelBinding(bindingId);
+      return true;
+    });
     initChannelBridge(repo);
   });
 
@@ -710,27 +882,47 @@ describe('channelBridge', () => {
       const result = await handlers['getBindingCatalog']();
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual({
-        connectors: [connector],
-        channelAccounts: [connector],
-        agentProfiles: [profile],
-        bindings: [{ ...binding, channelAccountId: binding.connectorId }],
-        audiences: expect.arrayContaining([
-          expect.objectContaining({
-            key: 'group:alpha:thread:9',
-            scopeType: 'remote_chat',
-            title: 'Ops Topic',
-            subtitle: 'peer group:alpha:thread:9 · parent group:alpha · thread 9',
-            parentChatId: 'group:alpha',
-            threadId: '9',
-            objectKey: 'group:alpha:thread:9',
-            objectKind: 'thread',
-            objectTitle: 'Ops Topic',
-            parentObjectKey: 'group:alpha',
-            parentObjectKind: 'chat',
-          }),
-        ]),
-      });
+      expect(result.data).toEqual(
+        expect.objectContaining({
+          connectors: [connector],
+          channelAccounts: [connector],
+          agentProfiles: [
+            expect.objectContaining({
+              id: 'agent-profile-1',
+              name: 'OpenClaw Publication',
+              backend: 'openclaw-gateway',
+            }),
+          ],
+          bindings: [{ ...binding, channelAccountId: binding.connectorId }],
+          audiences: expect.arrayContaining([
+            expect.objectContaining({
+              key: 'group:alpha:thread:9',
+              scopeType: 'remote_chat',
+              title: 'Ops Topic',
+              subtitle: 'peer group:alpha:thread:9 · parent group:alpha · thread 9',
+              parentChatId: 'group:alpha',
+              threadId: '9',
+              objectKey: 'group:alpha:thread:9',
+              objectKind: 'thread',
+              objectTitle: 'Ops Topic',
+              parentObjectKey: 'group:alpha',
+              parentObjectKind: 'chat',
+            }),
+          ]),
+          publishObjects: expect.arrayContaining([
+            expect.objectContaining({
+              channelAccountId: 'connector-1',
+              nativeObjectType: 'thread',
+              nativeObjectId: 'group:alpha:thread:9',
+              displayProfile: expect.objectContaining({
+                title: 'Ops Topic',
+                source: 'inbound-learned',
+                quality: 'resolved',
+              }),
+            }),
+          ]),
+        })
+      );
     });
 
     it('classifies Feishu topic audiences as topics with readable subtitles', async () => {
@@ -893,6 +1085,8 @@ describe('channelBridge', () => {
             subtitle: 'Incident command room',
             objectTitle: 'Core Ops Group',
             objectSubtitle: 'Incident command room',
+            objectSource: 'official-pull',
+            objectQuality: 'resolved',
           }),
           expect.objectContaining({
             connectorId: 'connector-lark-rich',
@@ -901,10 +1095,217 @@ describe('channelBridge', () => {
             title: 'Alice Chen',
             displayName: 'Alice Chen',
             subtitle: undefined,
+            objectSource: 'official-pull',
+            objectQuality: 'resolved',
           }),
         ])
       );
       expect(mockGetPlugin).toHaveBeenCalledWith('lark-runtime-rich');
+    });
+
+    it('marks Discord thread objects as official-pull when the plugin resolves thread and parent metadata', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-discord-rich',
+        platform: 'discord',
+        name: 'Discord',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        legacyPluginId: 'discord-runtime-rich',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-discord-thread-1',
+        connectorId: 'connector-discord-rich',
+        remoteUserId: 'discord-user-1',
+        remoteChatId: 'parent-channel:thread:thread-1',
+        platformChatId: 'parent-channel',
+        parentChatId: 'parent-channel',
+        threadId: 'thread-1',
+        remoteChatType: 'thread',
+        peerScope: 'thread',
+        displayName: 'Discord User 345678',
+        authorizedAt: 1000,
+        lastActive: 2200,
+        metadata: {
+          containerId: 'guild-1',
+          containerType: 'server',
+        },
+      };
+
+      mockGetPlugin.mockReturnValue({
+        getChatDisplayData: vi.fn(async (chatId: string) => {
+          if (chatId === 'thread-1') {
+            return {
+              name: 'Incident follow-up',
+              chatType: 'thread',
+              parentTitle: 'incident-room',
+              containerTitle: 'Ops Guild',
+              source: 'official-pull',
+            };
+          }
+          if (chatId === 'parent-channel') {
+            return {
+              name: 'incident-room',
+              chatType: 'channel',
+              containerTitle: 'Ops Guild',
+              source: 'official-pull',
+            };
+          }
+          return null;
+        }),
+        getUserDisplayData: vi.fn(async () => null),
+      });
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            connectorId: 'connector-discord-rich',
+            key: 'parent-channel:thread:thread-1',
+            scopeType: 'remote_chat',
+            title: 'Incident follow-up',
+            subtitle: 'In incident-room',
+            objectKind: 'thread',
+            objectTitle: 'Incident follow-up',
+            objectSubtitle: 'In incident-room',
+            parentObjectKey: 'parent-channel',
+            parentObjectTitle: 'incident-room',
+            parentObjectKind: 'channel',
+            objectSource: 'official-pull',
+            objectQuality: 'resolved',
+          }),
+        ])
+      );
+      expect(mockGetPlugin).toHaveBeenCalledWith('discord-runtime-rich');
+    });
+
+    it('uses DingTalk cached runtime display names for private chats without claiming official-pull', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-dingtalk-rich',
+        platform: 'dingtalk',
+        name: 'DingTalk',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        legacyPluginId: 'dingtalk-runtime-rich',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-dingtalk-private-1',
+        connectorId: 'connector-dingtalk-rich',
+        remoteUserId: 'staff-1',
+        remoteChatId: 'user:staff-1',
+        platformChatId: 'user:staff-1',
+        remoteChatType: 'private',
+        peerScope: 'chat',
+        displayName: 'User ff12ac',
+        authorizedAt: 1000,
+        lastActive: 2200,
+      };
+
+      mockGetPlugin.mockReturnValue({
+        getUserDisplayData: vi.fn(async (userId: string) => {
+          if (userId === 'staff-1') {
+            return {
+              name: 'Alice Wang',
+              source: 'runtime-resolved',
+            };
+          }
+          return null;
+        }),
+      });
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual([
+        expect.objectContaining({
+          connectorId: 'connector-dingtalk-rich',
+          scopeType: 'remote_user',
+          key: 'staff-1',
+          title: 'Alice Wang',
+          displayName: 'Alice Wang',
+          objectSource: 'runtime-resolved',
+          objectQuality: 'resolved',
+        }),
+      ]);
+      expect(mockGetPlugin).toHaveBeenCalledWith('dingtalk-runtime-rich');
+    });
+
+    it('marks DingTalk group objects as official-pull when the plugin resolves the group title through the official API', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-dingtalk-group-rich',
+        platform: 'dingtalk',
+        name: 'DingTalk',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        legacyPluginId: 'dingtalk-runtime-group-rich',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-dingtalk-group-1',
+        connectorId: 'connector-dingtalk-group-rich',
+        remoteUserId: 'staff-ops-1',
+        remoteChatId: 'group:cid-open-ops-1',
+        platformChatId: 'group:cid-open-ops-1',
+        remoteChatType: 'group',
+        peerScope: 'chat',
+        displayName: 'group:cid-open-ops-1',
+        authorizedAt: 1000,
+        lastActive: 2400,
+      };
+
+      mockGetPlugin.mockReturnValue({
+        getChatDisplayData: vi.fn(async (chatId: string) => {
+          if (chatId === 'group:cid-open-ops-1') {
+            return {
+              name: 'Ops Review',
+              chatType: 'group',
+              source: 'official-pull',
+            };
+          }
+          return null;
+        }),
+        getUserDisplayData: vi.fn(async () => null),
+      });
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.audiences).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            connectorId: 'connector-dingtalk-group-rich',
+            key: 'group:cid-open-ops-1',
+            scopeType: 'remote_chat',
+            title: 'Ops Review',
+            objectKind: 'group',
+            objectTitle: 'Ops Review',
+            objectSource: 'official-pull',
+            objectQuality: 'resolved',
+          }),
+        ])
+      );
+      expect(mockGetPlugin).toHaveBeenCalledWith('dingtalk-runtime-group-rich');
     });
 
     it('keeps unresolved Feishu topic objects user-facing instead of exposing raw peer identifiers', async () => {
@@ -945,10 +1346,12 @@ describe('channelBridge', () => {
           expect.objectContaining({
             connectorId: 'connector-lark-unresolved-topic',
             key: 'oc_group_1:thread:om_topic_root_1',
-            title: 'Topic',
+            title: 'Topic om_topic_root_1',
             subtitle: undefined,
             objectKind: 'topic',
             objectTitle: 'Topic om_topic_root_1',
+            objectSource: 'inbound-learned',
+            objectQuality: 'fallback',
           }),
         ])
       );
@@ -1085,6 +1488,16 @@ describe('channelBridge', () => {
 
   describe('getBindings', () => {
     it('returns bindings from repo', async () => {
+      const profile: IAgentProfile = {
+        id: 'agent-1',
+        name: 'Ops Agent',
+        backend: 'codex',
+        workspaceRef: '/tmp/workspaces/agent-1',
+        version: 1,
+        archived: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
       const binding: IChannelBinding = {
         id: 'binding-1',
         connectorId: 'connector-1',
@@ -1097,11 +1510,11 @@ describe('channelBridge', () => {
         createdAt: 1000,
         updatedAt: 1000,
       };
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
 
       const result = await handlers['getBindings']({ connectorId: 'connector-1' });
 
-      expect(repo.getChannelBindings).toHaveBeenCalledWith('connector-1');
       expect(result.success).toBe(true);
       expect(result.data).toEqual([{ ...binding, channelAccountId: binding.connectorId }]);
     });
@@ -1135,6 +1548,18 @@ describe('channelBridge', () => {
 
   describe('upsertBinding', () => {
     it('upserts binding through repo', async () => {
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([
+        {
+          id: 'agent-1',
+          name: 'Ops Agent',
+          backend: 'codex',
+          workspaceRef: '/tmp/workspaces/agent-1',
+          version: 1,
+          archived: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ]);
       const binding: IChannelBinding = {
         id: 'binding-1',
         connectorId: 'connector-1',
@@ -1164,11 +1589,19 @@ describe('channelBridge', () => {
           },
         },
       });
+      expect(publicationServiceMocks.upsertChannelBinding).toHaveBeenCalledWith(
+        '/tmp/workspaces/agent-1',
+        expect.objectContaining({
+          id: 'binding-1',
+          connectorId: 'connector-1',
+          channelAccountId: 'connector-1',
+        })
+      );
       expect(result.success).toBe(true);
     });
 
     it('returns a readable conflict when another agent already owns the publish object', async () => {
-      vi.mocked(repo.getChannelBindings).mockResolvedValue([
+      vi.mocked(repo.getChannelBindings).mockReturnValue([
         {
           id: 'binding-existing',
           connectorId: 'connector-1',
@@ -1192,11 +1625,42 @@ describe('channelBridge', () => {
           updatedAt: 1000,
         },
       ]);
-      vi.mocked(repo.getAgentProfiles).mockResolvedValue([
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([
         {
           id: 'agent-1',
           name: 'Incident Agent',
           backend: 'codex',
+          workspaceRef: '/tmp/workspaces/agent-1',
+          promptProfile: {},
+          toolPolicy: {},
+          memoryPolicy: {},
+          delegationPolicy: {},
+          version: 1,
+          archived: false,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ]);
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([
+        {
+          id: 'agent-1',
+          name: 'Incident Agent',
+          backend: 'codex',
+          workspaceRef: '/tmp/workspaces/agent-1',
+          promptProfile: {},
+          toolPolicy: {},
+          memoryPolicy: {},
+          delegationPolicy: {},
+          version: 1,
+          archived: false,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+        {
+          id: 'agent-2',
+          name: 'Support Agent',
+          backend: 'codex',
+          workspaceRef: '/tmp/workspaces/agent-2',
           promptProfile: {},
           toolPolicy: {},
           memoryPolicy: {},
@@ -1239,6 +1703,18 @@ describe('channelBridge', () => {
     });
 
     it('returns error when repo throws', async () => {
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([
+        {
+          id: 'agent-1',
+          name: 'Ops Agent',
+          backend: 'codex',
+          workspaceRef: '/tmp/workspaces/agent-1',
+          version: 1,
+          archived: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ]);
       const binding: IChannelBinding = {
         id: 'binding-invalid',
         connectorId: 'connector-1',
@@ -1263,13 +1739,68 @@ describe('channelBridge', () => {
 
   describe('deleteBinding', () => {
     it('deletes binding through repo', async () => {
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([
+        {
+          id: 'agent-1',
+          name: 'Ops Agent',
+          backend: 'codex',
+          workspaceRef: '/tmp/workspaces/agent-1',
+          version: 1,
+          archived: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([
+        {
+          id: 'binding-1',
+          connectorId: 'connector-1',
+          channelAccountId: 'connector-1',
+          scopeType: 'remote_chat',
+          scopeKey: 'group:alpha',
+          agentProfileId: 'agent-1',
+          priority: 10,
+          enabled: true,
+          temporary: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ]);
       const result = await handlers['deleteBinding']({ bindingId: 'binding-1' });
 
       expect(repo.deleteChannelBinding).toHaveBeenCalledWith('binding-1');
+      expect(publicationServiceMocks.deleteChannelBinding).toHaveBeenCalledWith('/tmp/workspaces/agent-1', 'binding-1');
       expect(result.success).toBe(true);
     });
 
     it('returns error when repo throws', async () => {
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([
+        {
+          id: 'agent-1',
+          name: 'Ops Agent',
+          backend: 'codex',
+          workspaceRef: '/tmp/workspaces/agent-1',
+          version: 1,
+          archived: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([
+        {
+          id: 'binding-1',
+          connectorId: 'connector-1',
+          channelAccountId: 'connector-1',
+          scopeType: 'remote_chat',
+          scopeKey: 'group:alpha',
+          agentProfileId: 'agent-1',
+          priority: 10,
+          enabled: true,
+          temporary: false,
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ]);
       vi.mocked(repo.deleteChannelBinding).mockImplementation(() => {
         throw new Error('delete failed');
       });

@@ -1638,6 +1638,7 @@
   "channels.publication.summarySessions": "Sessions",
   "channels.publication.objectListTitle": "Published objects",
   "channels.publication.objectListDescription": "Only the publish objects already bound to this Agent are shown here.",
+  "channels.publication.objectQualityFallback": "Needs identification",
   "channels.publication.emptyPublishedObjects": "This Agent is not published to any IM object yet",
   "channels.publication.emptyObjects": "No IM objects discovered yet",
   "channels.publication.agentSummaryTitle": "Current Agent",

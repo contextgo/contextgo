@@ -250,6 +250,8 @@ export type ChannelContinuationMode = 'resume' | 'new_thread';
 export type ChannelContinuationConflictPolicy = 'reject' | 'interrupt';
 export type ChannelControlMode = 'desktop_owner' | 'im_owner' | 'im_observer';
 export type ChannelPublishObjectDiscoverySource = 'pulled' | 'inbound-learned' | 'manual';
+export type ChannelPublishObjectCatalogSource = 'official-pull' | 'runtime-resolved' | 'inbound-learned' | 'manual';
+export type ChannelPublishObjectDisplayQuality = 'resolved' | 'inferred' | 'fallback';
 
 export interface IChannelControlLease {
   externalSessionId: string;
@@ -292,6 +294,28 @@ export type IChannelPublishObject = {
   metadata?: Record<string, unknown>;
 };
 
+export type IChannelPublishObjectDisplayProfile = {
+  title: string;
+  subtitle?: string;
+  parentTitle?: string;
+  source: ChannelPublishObjectCatalogSource;
+  quality: ChannelPublishObjectDisplayQuality;
+  resolvedAt: number;
+};
+
+export type IChannelPublishObjectCatalogEntry = {
+  id: string;
+  channelAccountId: string;
+  nativeObjectType: string;
+  nativeObjectId: string;
+  parentNativeObjectId?: string;
+  displayProfile: IChannelPublishObjectDisplayProfile;
+  aliases?: string[];
+  rawFacts?: Record<string, unknown>;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type ChannelAudienceScope = 'remote_user' | 'remote_chat';
 
 export interface IChannelAudienceEntry {
@@ -316,6 +340,8 @@ export interface IChannelAudienceEntry {
   parentObjectKey?: string;
   parentObjectTitle?: string;
   parentObjectKind?: ChannelObjectParentKind;
+  objectSource?: ChannelPublishObjectCatalogSource;
+  objectQuality?: ChannelPublishObjectDisplayQuality;
   title: string;
   subtitle?: string;
   lastActive?: number;
@@ -328,6 +354,7 @@ export type IChannelBindingCatalog = {
   agentProfiles: IAgentProfile[];
   bindings: IChannelBinding[];
   audiences: IChannelAudienceEntry[];
+  publishObjects?: IChannelPublishObjectCatalogEntry[];
 };
 
 export type IChannelBindingTarget = {
@@ -558,15 +585,24 @@ export function getChannelBindingPublishObject(binding: IChannelBinding): IChann
 }
 
 export function getChannelBindingPublishObjectIdentity(binding: IChannelBinding): string {
-  const publishObject = getChannelBindingPublishObject(binding);
-  return [publishObject.nativeObjectType, publishObject.nativeObjectId, publishObject.parentNativeObjectId ?? ''].join(
-    '::'
-  );
+  return getChannelPublishObjectIdentity(getChannelBindingPublishObject(binding));
 }
 
 export function getChannelBindingPublishObjectLabel(binding: IChannelBinding): string {
   const publishObject = getChannelBindingPublishObject(binding);
   return publishObject.displayName ?? publishObject.nativeObjectId;
+}
+
+export function getChannelPublishObjectIdentity(publishObject: IChannelPublishObject): string {
+  return [publishObject.nativeObjectType, publishObject.nativeObjectId, publishObject.parentNativeObjectId ?? ''].join(
+    '::'
+  );
+}
+
+export function getChannelPublishObjectCatalogEntryIdentity(entry: IChannelPublishObjectCatalogEntry): string {
+  return [entry.channelAccountId, entry.nativeObjectType, entry.nativeObjectId, entry.parentNativeObjectId ?? ''].join(
+    '::'
+  );
 }
 
 export function withChannelBindingPublishObject(
@@ -788,6 +824,8 @@ export type IChannelActiveSessionEntry = {
   parentObjectKey?: string;
   parentObjectTitle?: string;
   parentObjectKind?: ChannelObjectParentKind;
+  objectSource?: ChannelPublishObjectCatalogSource;
+  objectQuality?: ChannelPublishObjectDisplayQuality;
   conversationId?: string;
   workspace?: string;
   agentType: ChannelAgentType;

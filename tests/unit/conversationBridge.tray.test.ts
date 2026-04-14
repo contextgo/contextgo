@@ -79,6 +79,7 @@ const registerMocks = () => {
         listMemoryCandidates: createCommand('conversation.listMemoryCandidates'),
         reviewMemoryCandidate: createCommand('conversation.reviewMemoryCandidate'),
         promoteMemoryCandidate: createCommand('conversation.promoteMemoryCandidate'),
+        getProjectCapabilitySnapshot: createCommand('conversation.getProjectCapabilitySnapshot'),
         responseStream: { emit: vi.fn() },
         listChanged: { emit: vi.fn() },
         confirmation: {

@@ -31,6 +31,7 @@ import type { DingTalkStreamMessage } from './DingTalkAdapter';
 // Event deduplication settings
 const EVENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const EVENT_CACHE_CLEANUP_INTERVAL = 60 * 1000; // 1 minute
+const DISPLAY_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // DingTalk API base URL (new version)
 const DINGTALK_API_BASE = 'https://api.dingtalk.com';
@@ -64,6 +65,65 @@ interface IAICardSession {
   inputingStarted: boolean;
 }
 
+type DingTalkChatDisplayData = {
+  name?: string;
+  chatType?: string;
+  source: 'runtime-resolved' | 'official-pull';
+};
+
+type DingTalkUserDisplayData = {
+  name?: string;
+  source: 'runtime-resolved';
+};
+
+type DingTalkGroupIdentity = {
+  conversationId?: string;
+  openConversationId?: string;
+  title?: string;
+};
+
+function getTrimmedString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function getObjectValue(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
+}
+
+function extractGroupTitle(payload: unknown): string | undefined {
+  const root = getObjectValue(payload);
+  const chatInfo = getObjectValue(root?.chat_info);
+  const result = getObjectValue(root?.result);
+  const resultChatInfo = getObjectValue(result?.chat_info);
+
+  return (
+    getTrimmedString(root?.title) ||
+    getTrimmedString(root?.name) ||
+    getTrimmedString(root?.conversationTitle) ||
+    getTrimmedString(chatInfo?.title) ||
+    getTrimmedString(chatInfo?.name) ||
+    getTrimmedString(chatInfo?.conversationTitle) ||
+    getTrimmedString(result?.title) ||
+    getTrimmedString(result?.name) ||
+    getTrimmedString(result?.conversationTitle) ||
+    getTrimmedString(resultChatInfo?.title) ||
+    getTrimmedString(resultChatInfo?.name) ||
+    getTrimmedString(resultChatInfo?.conversationTitle)
+  );
+}
+
+function extractOpenConversationId(payload: unknown): string | undefined {
+  const root = getObjectValue(payload);
+  const result = getObjectValue(root?.result);
+
+  return (
+    getTrimmedString(root?.openConversationId) ||
+    getTrimmedString(root?.open_conversation_id) ||
+    getTrimmedString(result?.openConversationId) ||
+    getTrimmedString(result?.open_conversation_id)
+  );
+}
+
 export class DingTalkPlugin extends BasePlugin {
   readonly type: PluginType = 'dingtalk';
 
@@ -89,6 +149,9 @@ export class DingTalkPlugin extends BasePlugin {
 
   // Store sessionWebhook per chatId for fallback sending
   private webhookCache: Map<string, string> = new Map();
+  private chatDisplayCache: Map<string, { expiresAt: number; value: DingTalkChatDisplayData | null }> = new Map();
+  private userDisplayCache: Map<string, { expiresAt: number; value: DingTalkUserDisplayData | null }> = new Map();
+  private groupIdentityCache: Map<string, DingTalkGroupIdentity> = new Map();
 
   /**
    * Initialize the DingTalk client
@@ -191,6 +254,9 @@ export class DingTalkPlugin extends BasePlugin {
     this.processedEvents.clear();
     this.aiCardSessions.clear();
     this.webhookCache.clear();
+    this.chatDisplayCache.clear();
+    this.userDisplayCache.clear();
+    this.groupIdentityCache.clear();
     this.isConnected = false;
 
     console.log('[DingTalkPlugin] Stopped and cleaned up');
@@ -214,6 +280,78 @@ export class DingTalkPlugin extends BasePlugin {
     };
   }
 
+  private readDisplayCache<T>(
+    cache: Map<string, { expiresAt: number; value: T | null }>,
+    key: string
+  ): T | null | undefined {
+    const cached = cache.get(key);
+    if (!cached) {
+      return undefined;
+    }
+
+    if (cached.expiresAt <= Date.now()) {
+      cache.delete(key);
+      return undefined;
+    }
+
+    return cached.value;
+  }
+
+  private writeDisplayCache<T>(
+    cache: Map<string, { expiresAt: number; value: T | null }>,
+    key: string,
+    value: T | null
+  ): T | null {
+    cache.set(key, {
+      expiresAt: Date.now() + DISPLAY_CACHE_TTL,
+      value,
+    });
+    return value;
+  }
+
+  async getChatDisplayData(chatId: string): Promise<DingTalkChatDisplayData | null> {
+    if (!chatId) {
+      return null;
+    }
+
+    const cached = this.readDisplayCache(this.chatDisplayCache, chatId);
+    const { type } = parseChatId(chatId);
+    if (type !== 'group') {
+      return cached === undefined ? null : cached;
+    }
+
+    const aliasCached = this.readCachedGroupDisplayData(chatId);
+    if (aliasCached?.source === 'official-pull') {
+      if (cached !== aliasCached) {
+        this.writeDisplayCache(this.chatDisplayCache, chatId, aliasCached);
+      }
+      return aliasCached;
+    }
+
+    const officialDisplay = await this.fetchOfficialGroupDisplayData(chatId);
+    if (officialDisplay) {
+      return officialDisplay;
+    }
+
+    if (aliasCached !== undefined) {
+      if (cached !== aliasCached) {
+        this.writeDisplayCache(this.chatDisplayCache, chatId, aliasCached);
+      }
+      return aliasCached;
+    }
+
+    return this.writeDisplayCache(this.chatDisplayCache, chatId, null);
+  }
+
+  async getUserDisplayData(userId: string): Promise<DingTalkUserDisplayData | null> {
+    if (!userId) {
+      return null;
+    }
+
+    const cached = this.readDisplayCache(this.userDisplayCache, userId);
+    return cached === undefined ? null : cached;
+  }
+
   /**
    * Send a message to a chat
    * Uses AI Card for streaming support, falls back to sessionWebhook
@@ -223,11 +361,12 @@ export class DingTalkPlugin extends BasePlugin {
 
     const { contentType, content, rawText } = toDingTalkSendParams(message);
     const { type: chatType, id } = parseChatId(chatId);
+    const resolvedChatId = chatType === 'group' ? await this.resolveGroupOpenConversationId(chatId, id) : id;
 
     // Try AI Card streaming for text/markdown messages
     if (contentType === 'markdown' && rawText !== undefined) {
       try {
-        const cardMessageId = await this.createAndDeliverAICard(chatType, id, rawText);
+        const cardMessageId = await this.createAndDeliverAICard(chatType, resolvedChatId, rawText);
         return cardMessageId;
       } catch (error) {
         console.warn('[DingTalkPlugin] AI Card failed, falling back to webhook:', error);
@@ -248,7 +387,7 @@ export class DingTalkPlugin extends BasePlugin {
 
     // Last resort: use DingTalk API to send message
     try {
-      const msgId = await this.sendViaAPI(chatType, id, contentType, content, rawText);
+      const msgId = await this.sendViaAPI(chatType, resolvedChatId, contentType, content, rawText);
       return msgId;
     } catch (error) {
       console.error('[DingTalkPlugin] API send failed:', error);
@@ -329,10 +468,43 @@ export class DingTalkPlugin extends BasePlugin {
       // Track user
       this.activeUsers.add(userId);
 
+      if (data.senderNick?.trim()) {
+        this.writeDisplayCache(this.userDisplayCache, userId, {
+          name: data.senderNick.trim(),
+          source: 'runtime-resolved',
+        });
+      }
+
       // Cache sessionWebhook for this chat
+      const chatId = encodeChatId(data);
+      const groupIdentity = this.writeGroupIdentity({
+        conversationId: getTrimmedString(data.conversationId),
+        openConversationId: getTrimmedString(data.openConversationId),
+        title: getTrimmedString(data.conversationTitle),
+      });
       if (data.sessionWebhook) {
-        const chatId = encodeChatId(data);
-        this.webhookCache.set(chatId, data.sessionWebhook);
+        if (groupIdentity && data.conversationType === '2') {
+          this.writeGroupWebhook(groupIdentity, data.sessionWebhook);
+        } else {
+          this.webhookCache.set(chatId, data.sessionWebhook);
+        }
+      }
+      const displayData = {
+        name: data.conversationType === '1' ? data.senderNick?.trim() || undefined : undefined,
+        chatType: data.conversationType === '2' ? 'group' : 'private',
+        source: 'runtime-resolved',
+      } satisfies DingTalkChatDisplayData;
+      const runtimeDisplay =
+        data.conversationType === '2'
+          ? {
+              ...displayData,
+              name: getTrimmedString(data.conversationTitle),
+            }
+          : displayData;
+      if (groupIdentity && data.conversationType === '2') {
+        this.writeGroupDisplayData(groupIdentity, runtimeDisplay);
+      } else {
+        this.writeDisplayCache(this.chatDisplayCache, chatId, runtimeDisplay);
       }
 
       // Convert to unified message
@@ -565,6 +737,7 @@ export class DingTalkPlugin extends BasePlugin {
       await this.ensureAccessToken();
       const { contentType, content, rawText } = toDingTalkSendParams(message);
       const { type: chatType, id } = parseChatId(chatId);
+      const resolvedChatId = chatType === 'group' ? await this.resolveGroupOpenConversationId(chatId, id) : id;
 
       // Try sessionWebhook first
       const webhook = this.webhookCache.get(chatId);
@@ -574,7 +747,7 @@ export class DingTalkPlugin extends BasePlugin {
       }
 
       // Fall back to DingTalk API
-      await this.sendViaAPI(chatType, id, contentType, content, rawText);
+      await this.sendViaAPI(chatType, resolvedChatId, contentType, content, rawText);
     } catch (error) {
       console.error('[DingTalkPlugin] Fallback plain message send failed:', error);
     }
@@ -653,6 +826,201 @@ export class DingTalkPlugin extends BasePlugin {
 
     const response = await this.apiRequest('POST', '/v1.0/robot/groupMessages/send', token, body);
     return response?.processQueryKey || `api_${Date.now()}`;
+  }
+
+  private readGroupIdentity(chatId: string): DingTalkGroupIdentity | null {
+    const { type, id } = parseChatId(chatId);
+    if (type !== 'group' || !id) {
+      return null;
+    }
+
+    return this.groupIdentityCache.get(chatId) ?? null;
+  }
+
+  private writeGroupIdentity(identity: DingTalkGroupIdentity): DingTalkGroupIdentity | null {
+    const conversationId = getTrimmedString(identity.conversationId);
+    const openConversationId = getTrimmedString(identity.openConversationId);
+    const title = getTrimmedString(identity.title);
+    const keys = new Set<string>();
+
+    if (conversationId) {
+      keys.add(`group:${conversationId}`);
+    }
+    if (openConversationId) {
+      keys.add(`group:${openConversationId}`);
+    }
+
+    if (keys.size === 0) {
+      return null;
+    }
+
+    let mergedIdentity: DingTalkGroupIdentity = {};
+    for (const key of keys) {
+      const cached = this.groupIdentityCache.get(key);
+      if (cached) {
+        mergedIdentity = {
+          ...mergedIdentity,
+          ...cached,
+        };
+      }
+    }
+
+    mergedIdentity = {
+      ...mergedIdentity,
+      ...(conversationId ? { conversationId } : {}),
+      ...(openConversationId ? { openConversationId } : {}),
+      ...(title ? { title } : {}),
+    };
+
+    for (const key of keys) {
+      this.groupIdentityCache.set(key, mergedIdentity);
+    }
+
+    return mergedIdentity;
+  }
+
+  private writeGroupWebhook(identity: DingTalkGroupIdentity, webhook: string): void {
+    const keys = [identity.conversationId, identity.openConversationId]
+      .map((id) => getTrimmedString(id))
+      .filter((id): id is string => Boolean(id));
+
+    for (const key of keys) {
+      this.webhookCache.set(`group:${key}`, webhook);
+    }
+  }
+
+  private writeGroupDisplayData(
+    identity: DingTalkGroupIdentity,
+    value: DingTalkChatDisplayData | null
+  ): DingTalkChatDisplayData | null {
+    const keys = [identity.conversationId, identity.openConversationId]
+      .map((id) => getTrimmedString(id))
+      .filter((id): id is string => Boolean(id));
+
+    if (keys.length === 0) {
+      return value;
+    }
+
+    for (const key of keys) {
+      this.writeDisplayCache(this.chatDisplayCache, `group:${key}`, value);
+    }
+
+    return value;
+  }
+
+  private readCachedGroupDisplayData(chatId: string): DingTalkChatDisplayData | null | undefined {
+    const directCached = this.readDisplayCache(this.chatDisplayCache, chatId);
+    const identity = this.readGroupIdentity(chatId);
+    if (!identity) {
+      return directCached;
+    }
+
+    const aliasKeys = [identity.conversationId, identity.openConversationId]
+      .map((id) => getTrimmedString(id))
+      .filter((id): id is string => Boolean(id))
+      .map((id) => `group:${id}`);
+
+    let fallback = directCached;
+    for (const key of aliasKeys) {
+      const cached = this.readDisplayCache(this.chatDisplayCache, key);
+      if (cached === undefined) {
+        continue;
+      }
+      if (cached?.source === 'official-pull') {
+        return cached;
+      }
+      if (fallback === undefined) {
+        fallback = cached;
+      }
+    }
+
+    return fallback;
+  }
+
+  private async fetchOfficialGroupDisplayData(chatId: string): Promise<DingTalkChatDisplayData | null> {
+    const { type, id } = parseChatId(chatId);
+    if (type !== 'group' || !id) {
+      return null;
+    }
+
+    const token = await this.getAccessToken();
+    const identity = this.readGroupIdentity(chatId);
+    const legacyConversationId = getTrimmedString(identity?.conversationId) || id;
+
+    try {
+      const response = await this.httpRequest(
+        'GET',
+        `https://oapi.dingtalk.com/chat/get?access_token=${encodeURIComponent(token)}&chatid=${encodeURIComponent(legacyConversationId)}`
+      );
+      const title = extractGroupTitle(response);
+      if (!title) {
+        return null;
+      }
+
+      const openConversationId =
+        getTrimmedString(identity?.openConversationId) ||
+        (await this.convertToOpenConversationId(legacyConversationId, token));
+      const mergedIdentity = this.writeGroupIdentity({
+        conversationId: legacyConversationId,
+        openConversationId,
+        title,
+      });
+      const displayData: DingTalkChatDisplayData = {
+        name: title,
+        chatType: 'group',
+        source: 'official-pull',
+      };
+
+      if (mergedIdentity) {
+        this.writeGroupDisplayData(mergedIdentity, displayData);
+      }
+      this.writeDisplayCache(this.chatDisplayCache, chatId, displayData);
+      return displayData;
+    } catch (error) {
+      console.warn('[DingTalkPlugin] Failed to pull DingTalk group display data:', error);
+      return null;
+    }
+  }
+
+  private async resolveGroupOpenConversationId(chatId: string, fallbackId: string): Promise<string> {
+    const identity = this.readGroupIdentity(chatId);
+    const cachedOpenConversationId = getTrimmedString(identity?.openConversationId);
+    if (cachedOpenConversationId) {
+      return cachedOpenConversationId;
+    }
+
+    const token = await this.getAccessToken();
+    const legacyConversationId = getTrimmedString(identity?.conversationId) || getTrimmedString(fallbackId);
+    if (!legacyConversationId) {
+      return fallbackId;
+    }
+
+    const openConversationId = await this.convertToOpenConversationId(legacyConversationId, token);
+    if (!openConversationId) {
+      return fallbackId;
+    }
+
+    this.writeGroupIdentity({
+      conversationId: legacyConversationId,
+      openConversationId,
+      title: identity?.title,
+    });
+    return openConversationId;
+  }
+
+  private async convertToOpenConversationId(chatId: string, token: string): Promise<string | undefined> {
+    try {
+      const response = await this.apiRequest(
+        'POST',
+        `/v1.0/im/chat/${encodeURIComponent(chatId)}/convertToOpenConversationId`,
+        token,
+        {}
+      );
+      return extractOpenConversationId(response);
+    } catch (error) {
+      console.warn('[DingTalkPlugin] Failed to convert DingTalk chatId to openConversationId:', error);
+      return undefined;
+    }
   }
 
   // ==================== Access Token Management ====================
