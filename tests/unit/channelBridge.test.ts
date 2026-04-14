@@ -120,7 +120,8 @@ function buildMockPublishObjects(params: {
         subtitle: descriptor.subtitle,
         parentTitle: descriptor.parentTitle,
         source:
-          identity.metadata?.displaySource === 'official-pull' || identity.metadata?.displaySource === 'runtime-resolved'
+          identity.metadata?.displaySource === 'official-pull' ||
+          identity.metadata?.displaySource === 'runtime-resolved'
             ? identity.metadata.displaySource
             : typeof identity.metadata?.chatName === 'string' || typeof identity.metadata?.userDisplayName === 'string'
               ? 'runtime-resolved'

@@ -28,6 +28,7 @@ describe('workspace utils', () => {
   it('builds automation file paths for Unix-style workspaces', () => {
     expect(getWorkspaceAutomationPaths('/Users/demo/project')).toEqual({
       rootDir: '/Users/demo/project/.contextgo',
+      skillsDir: '/Users/demo/project/.contextgo/skills',
       hooksDir: '/Users/demo/project/.contextgo/hooks',
       hooksFile: '/Users/demo/project/.contextgo/hooks.json',
       commandsFile: '/Users/demo/project/.contextgo/commands.json',
@@ -38,6 +39,7 @@ describe('workspace utils', () => {
   it('builds automation file paths for Windows-style workspaces', () => {
     expect(getWorkspaceAutomationPaths('D:\\workspace\\project')).toEqual({
       rootDir: 'D:\\workspace\\project\\.contextgo',
+      skillsDir: 'D:\\workspace\\project\\.contextgo\\skills',
       hooksDir: 'D:\\workspace\\project\\.contextgo\\hooks',
       hooksFile: 'D:\\workspace\\project\\.contextgo\\hooks.json',
       commandsFile: 'D:\\workspace\\project\\.contextgo\\commands.json',

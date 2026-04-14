@@ -327,7 +327,10 @@ function getFriendlySubtitle(identity: IRemoteIdentity, connector?: IConnectorIn
   return getMetadataText(identity.metadata, 'objectSubtitle') ?? getMetadataText(identity.metadata, 'chatDescription');
 }
 
-type RuntimeDisplaySource = Extract<IChannelPublishObjectCatalogEntry['displayProfile']['source'], 'official-pull' | 'runtime-resolved'>;
+type RuntimeDisplaySource = Extract<
+  IChannelPublishObjectCatalogEntry['displayProfile']['source'],
+  'official-pull' | 'runtime-resolved'
+>;
 
 type RemoteChatDisplayData = {
   name?: string;
@@ -356,8 +359,10 @@ function isRemoteDisplayResolver(value: unknown): value is RemoteDisplayResolver
   }
 
   return (
-    ('getChatDisplayData' in value && typeof (value as { getChatDisplayData?: unknown }).getChatDisplayData === 'function') ||
-    ('getUserDisplayData' in value && typeof (value as { getUserDisplayData?: unknown }).getUserDisplayData === 'function')
+    ('getChatDisplayData' in value &&
+      typeof (value as { getChatDisplayData?: unknown }).getChatDisplayData === 'function') ||
+    ('getUserDisplayData' in value &&
+      typeof (value as { getUserDisplayData?: unknown }).getUserDisplayData === 'function')
   );
 }
 
@@ -418,15 +423,12 @@ async function enrichIdentityForDisplay(
   const metadata = identity.metadata ?? {};
   const childObject = isChildRemoteObject(identity);
   const parentChatId = identity.platformChatId ?? identity.parentChatId ?? identity.remoteChatId;
-  const objectChatId = childObject ? identity.threadId ?? identity.remoteChatId : parentChatId;
+  const objectChatId = childObject ? (identity.threadId ?? identity.remoteChatId) : parentChatId;
   const loadObjectChatDisplay = Boolean(
     objectChatId && !isDirectChatType(identity.remoteChatType) && typeof resolver.getChatDisplayData === 'function'
   );
   const loadParentChatDisplay = Boolean(
-    childObject &&
-      parentChatId &&
-      parentChatId !== objectChatId &&
-      typeof resolver.getChatDisplayData === 'function'
+    childObject && parentChatId && parentChatId !== objectChatId && typeof resolver.getChatDisplayData === 'function'
   );
 
   const [objectChatDisplay, parentChatDisplay, userDisplay] = await Promise.all([
@@ -462,8 +464,7 @@ async function enrichIdentityForDisplay(
   const chatDescription = objectChatDisplay?.description?.trim() || getMetadataText(metadata, 'chatDescription');
   const userDisplayName = userDisplay?.name?.trim() || getMetadataText(metadata, 'userDisplayName');
   const currentDisplayName = hasReadableDisplayName(identity.displayName) ? identity.displayName.trim() : undefined;
-  const resolvedObjectName =
-    connector.platform === 'lark' && childObject ? undefined : objectChatDisplay?.name?.trim();
+  const resolvedObjectName = connector.platform === 'lark' && childObject ? undefined : objectChatDisplay?.name?.trim();
   const resolvedParentTitle =
     parentChatDisplay?.name?.trim() ||
     objectChatDisplay?.parentTitle?.trim() ||

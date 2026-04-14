@@ -40,12 +40,7 @@ type DingTalkPluginInternal = DingTalkPlugin & {
     body?: Record<string, unknown>,
     headers?: Record<string, string>
   ) => Promise<unknown>;
-  apiRequest: (
-    method: string,
-    path: string,
-    token: string,
-    body?: Record<string, unknown>
-  ) => Promise<unknown>;
+  apiRequest: (method: string, path: string, token: string, body?: Record<string, unknown>) => Promise<unknown>;
   resolveGroupOpenConversationId: (chatId: string, fallbackId: string) => Promise<string>;
 };
 

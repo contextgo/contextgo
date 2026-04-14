@@ -237,6 +237,7 @@ describe('fsBridge skills functionality', () => {
             updateHookManifest: createCommandMock('update-hook-manifest'),
             readSkillInfo: createCommandMock('read-skill-info'),
             readSkillContent: createCommandMock('read-skill-content'),
+            readBundledAgentPackageContent: createCommandMock('read-bundled-agent-package-content'),
             importSkill: createCommandMock('import-skill'),
             scanForSkills: createCommandMock('scan-for-skills'),
             detectCommonSkillPaths: createCommandMock('detect-common-skill-paths'),
