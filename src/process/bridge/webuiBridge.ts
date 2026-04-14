@@ -37,7 +37,7 @@ export function initWebuiBridge(): void {
   // 获取 WebUI 状态 / Get WebUI status
   webui.getStatus.provider(async () => {
     return WebuiService.handleAsync(async () => {
-      const status = await WebuiService.getStatus(getHostBrowserEntryService().getCurrentInstance());
+      const status = await WebuiService.getStatus();
       return { success: true, data: status };
     }, 'Get status');
   });
@@ -45,7 +45,7 @@ export function initWebuiBridge(): void {
   webui.updatePreferences.provider(async ({ allowRemote, port }) => {
     return WebuiService.handleAsync(async () => {
       await WebuiService.updateLocalAccessPreferences({ allowRemote, port });
-      const status = await WebuiService.getStatus(getHostBrowserEntryService().getCurrentInstance());
+      const status = await WebuiService.getStatus();
       return { success: true, data: status };
     }, 'Update preferences');
   });
@@ -67,7 +67,7 @@ export function initWebuiBridge(): void {
       });
 
       // 获取服务器信息 / Get server info
-      const status = await WebuiService.getStatus(instance);
+      const status = await WebuiService.getStatus();
       const localUrl = `http://localhost:${instance.port}`;
       const lanIP = WebuiService.getLanIP();
       const networkUrl = remote && lanIP ? `http://${lanIP}:${instance.port}` : undefined;

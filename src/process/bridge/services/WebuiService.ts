@@ -6,6 +6,7 @@
 
 import { networkInterfaces } from 'os';
 import type { IWebUIStatus } from '@/common/adapter/ipcBridge';
+import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
 import { AuthService } from '@process/webserver/auth/service/AuthService';
 import { UserRepository } from '@process/webserver/auth/repository/UserRepository';
 import { AUTH_CONFIG, SERVER_CONFIG } from '@process/webserver/config/constants';
@@ -25,6 +26,7 @@ type WebuiLocalAccessPreferences = {
  * WebUI 服务层 - 封装所有 WebUI 相关的业务逻辑
  * WebUI Service Layer - Encapsulates all WebUI-related business logic
  */
+// eslint-disable-next-line typescript-eslint/no-extraneous-class
 export class WebuiService {
   private static webServerFunctionsLoaded = false;
   private static _getInitialAdminPassword: (() => string | null) | null = null;
@@ -117,28 +119,21 @@ export class WebuiService {
    * 获取 WebUI 状态
    * Get WebUI status
    */
-  static async getStatus(
-    webServerInstance: {
-      server: import('http').Server;
-      wss: import('ws').WebSocketServer;
-      port: number;
-      allowRemote: boolean;
-    } | null
-  ): Promise<IWebUIStatus> {
+  static async getStatus(): Promise<IWebUIStatus> {
     await this.loadWebServerFunctions();
 
-    const [adminUser, localAccessEnabledPref, localAccessAllowRemotePref] = await Promise.all([
+    const [adminUser, runtimeStatus] = await Promise.all([
       UserRepository.getSystemUser(),
-      ProcessConfig.get(DESKTOP_WEBUI_ENABLED_KEY),
-      ProcessConfig.get(DESKTOP_WEBUI_ALLOW_REMOTE_KEY),
+      Promise.resolve(getHostBrowserEntryService().getRuntimeStatus()),
     ]);
-    const running = webServerInstance !== null;
-    const port = webServerInstance?.port ?? SERVER_CONFIG.DEFAULT_PORT;
-    const allowRemote = webServerInstance?.allowRemote ?? false;
+    const localClientDemand = getHostBrowserEntryService().getDemandState('local-client');
+    const running = runtimeStatus.running;
+    const port = runtimeStatus.port ?? SERVER_CONFIG.DEFAULT_PORT;
+    const allowRemote = runtimeStatus.allowRemote;
 
-    const localUrl = `http://localhost:${port}`;
+    const localUrl = runtimeStatus.localUrl ?? `http://localhost:${port}`;
     const lanIP = this.getLanIP();
-    const networkUrl = allowRemote && lanIP ? `http://${lanIP}:${port}` : undefined;
+    const networkUrl = runtimeStatus.networkUrl ?? (allowRemote && lanIP ? `http://${lanIP}:${port}` : undefined);
 
     return {
       running,
@@ -149,8 +144,8 @@ export class WebuiService {
       lanIP: lanIP ?? undefined,
       adminUsername: adminUser?.username ?? AUTH_CONFIG.DEFAULT_USER.USERNAME,
       initialPassword: this.getInitialAdminPassword() ?? undefined,
-      localAccessEnabled: localAccessEnabledPref === true,
-      localAccessAllowRemote: localAccessAllowRemotePref === true,
+      localAccessEnabled: localClientDemand.active,
+      localAccessAllowRemote: localClientDemand.allowRemote,
     };
   }
 

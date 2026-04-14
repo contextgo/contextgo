@@ -87,6 +87,17 @@ describe('HostBrowserEntryService', () => {
     expect(first.port).toBe(43123);
     expect(second.port).toBe(43123);
     expect(service.getLocalBaseUrl()).toBe('http://localhost:43123');
+    expect(service.getDemandState('local-client')).toMatchObject({
+      active: true,
+      allowRemote: false,
+      preferredPort: 25809,
+    });
+    expect(service.getDemandState('official-remote')).toMatchObject({
+      active: true,
+      allowRemote: false,
+      allowPortFallback: true,
+      preferredPort: 25809,
+    });
     expect(service.getRuntimeStatus()).toMatchObject({
       running: true,
       port: 43123,
@@ -149,6 +160,11 @@ describe('HostBrowserEntryService', () => {
     const service = new HostBrowserEntryService();
 
     expect(service.getLocalBaseUrl()).toBeNull();
+    expect(service.getDemandState('local-client')).toMatchObject({
+      active: false,
+      allowRemote: false,
+      preferredPort: null,
+    });
     expect(service.getRuntimeStatus()).toMatchObject({
       running: false,
       demandSources: [],

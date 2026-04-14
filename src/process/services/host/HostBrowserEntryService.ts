@@ -27,6 +27,13 @@ export type HostBrowserEntryRuntimeStatus = {
   demandSources: HostBrowserEntryDemand[];
 };
 
+export type HostBrowserEntryDemandState = {
+  active: boolean;
+  allowRemote: boolean;
+  preferredPort: number | null;
+  allowPortFallback: boolean;
+};
+
 const OFFICIAL_REMOTE_PORT_FALLBACK_ATTEMPTS = 10;
 
 const isPortInUseError = (error: unknown): error is NodeJS.ErrnoException => {
@@ -100,6 +107,25 @@ export class HostBrowserEntryService {
         ? getNetworkUrl(this.currentInstance.port, this.currentInstance.allowRemote)
         : undefined,
       demandSources: Array.from(this.demandRequests.keys()).toSorted((left, right) => left.localeCompare(right)),
+    };
+  }
+
+  public getDemandState(demand: HostBrowserEntryDemand): HostBrowserEntryDemandState {
+    const request = this.demandRequests.get(demand);
+    if (!request) {
+      return {
+        active: false,
+        allowRemote: false,
+        preferredPort: null,
+        allowPortFallback: false,
+      };
+    }
+
+    return {
+      active: true,
+      allowRemote: request.allowRemote,
+      preferredPort: request.preferredPort,
+      allowPortFallback: request.allowPortFallback === true,
     };
   }
 
