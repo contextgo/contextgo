@@ -303,6 +303,16 @@ export type IChannelPublishObjectDisplayProfile = {
   resolvedAt: number;
 };
 
+export type ChannelPublishObjectRefreshStatus = 'ready' | 'needs-refresh';
+export type ChannelPublishObjectRefreshReason = 'manual-fallback' | 'technical-fallback';
+
+export type IChannelPublishObjectRefreshState = {
+  status: ChannelPublishObjectRefreshStatus;
+  reason?: ChannelPublishObjectRefreshReason;
+  updatedAt: number;
+  backfilledAt?: number;
+};
+
 export type IChannelPublishObjectActiveSessionPointer = {
   externalSessionId: string;
   activeConversationId?: string;
@@ -319,6 +329,7 @@ export type IChannelPublishObjectCatalogEntry = {
   nativeObjectId: string;
   parentNativeObjectId?: string;
   displayProfile: IChannelPublishObjectDisplayProfile;
+  refreshState?: IChannelPublishObjectRefreshState;
   /** Runtime-projected pointer to the active Project Session for this publish object. */
   activeSessionPointer?: IChannelPublishObjectActiveSessionPointer;
   aliases?: string[];
