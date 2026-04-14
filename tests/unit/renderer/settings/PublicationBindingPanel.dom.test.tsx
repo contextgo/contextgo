@@ -36,6 +36,10 @@ const translations: Record<string, string> = {
   'settings.channels.publication.objectParentLabel': 'Parent',
   'settings.channels.publication.sessionWorkspaceLabel': 'Project',
   'settings.channels.publication.sessionLastActiveLabel': 'Last active',
+  'settings.channels.publication.objectSessionsTitle': 'Related sessions',
+  'settings.channels.publication.objectSessionsDescription':
+    'Sessions already associated with this IM object through the selected channel account.',
+  'settings.channels.publication.objectSessionsEmpty': 'No sessions have been created for this object yet',
   'settings.channels.publication.addObjectButton': 'Add publish object',
   'settings.channels.publication.addObjectTitle': 'Add publish object',
   'settings.channels.publication.addObjectDescription':
@@ -364,6 +368,23 @@ describe('PublicationBindingPanel', () => {
     expect(screen.queryByText('Support room')).not.toBeInTheDocument();
     expect(screen.getByText(/Channel instance:\s*Feishu Ops/i)).toBeInTheDocument();
     expect(screen.getByText(/Current project session:\s*Active now/i)).toBeInTheDocument();
+    expect(screen.getByText('Related sessions')).toBeInTheDocument();
+    expect(
+      screen.getByText('Sessions already associated with this IM object through the selected channel account.')
+    ).toBeInTheDocument();
+    expect(screen.getByText('conversation-ops-1')).toBeInTheDocument();
+  });
+
+  it('shows an empty related-session state when a published object has no active session', async () => {
+    mockGetActiveSessionCatalogInvoke.mockResolvedValueOnce({ success: true, data: [] });
+
+    renderPanel();
+
+    await screen.findByText('Ops topic');
+
+    expect(screen.getByText(/Current project session:\s*No active session yet/i)).toBeInTheDocument();
+    expect(screen.getByText('Related sessions')).toBeInTheDocument();
+    expect(screen.getByText('No sessions have been created for this object yet')).toBeInTheDocument();
   });
 
   it('shows an explicit fallback badge when a published object still relies on low-confidence identity', async () => {
