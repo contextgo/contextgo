@@ -53,6 +53,10 @@ function getRelevantSessions(
       return false;
     }
 
+    if (session.publicationBindingId && bindingIds.has(session.publicationBindingId)) {
+      return true;
+    }
+
     if (session.bindingId && bindingIds.has(session.bindingId)) {
       return true;
     }
@@ -67,6 +71,10 @@ function getRelevantSessions(
 
     return false;
   });
+}
+
+function getSessionActiveConversationId(session: IChannelActiveSessionEntry): string | undefined {
+  return session.activeConversationId ?? session.conversationId;
 }
 
 export function buildAgentPublicationObjects(
@@ -128,7 +136,9 @@ export function buildAgentPublicationObjects(
     }).filter((object) => object.bindings.length > 0);
 
     objects.forEach((object) => {
-      const currentSession = object.sessions.toSorted((left, right) => right.lastActivity - left.lastActivity)[0];
+      const currentSession = object.sessions
+        .filter((session) => Boolean(getSessionActiveConversationId(session)))
+        .toSorted((left, right) => right.lastActivity - left.lastActivity)[0];
 
       entries.push({
         key: `${channelAccount.id}:${object.key}`,

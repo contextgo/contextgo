@@ -187,6 +187,10 @@ function formatOptionalRelativeTime(timestamp: number | undefined, locale: strin
   return typeof timestamp === 'number' ? formatRelativeTime(timestamp, locale) : null;
 }
 
+function getSessionConversationPointer(session: IChannelActiveSessionEntry): string | undefined {
+  return session.activeConversationId ?? session.conversationId;
+}
+
 function getManualScopePlaceholder(scopeType: DurableBindingScopeType, t: TranslationFn): string {
   if (scopeType === 'remote_user') {
     return t('settings.channels.publication.scopeKeyRemoteUserPlaceholder');
@@ -737,9 +741,15 @@ const PublicationBindingPanel: React.FC = () => {
                                         <div className={styles.bindingConversationMeta}>
                                           <div
                                             className={styles.bindingConversationLabel}
-                                            title={session.conversationId ?? session.id}
+                                            title={
+                                              getSessionConversationPointer(session) ??
+                                              session.externalSessionId ??
+                                              session.id
+                                            }
                                           >
-                                            {session.conversationId ?? session.id}
+                                            {getSessionConversationPointer(session) ??
+                                              session.externalSessionId ??
+                                              session.id}
                                           </div>
                                           <div
                                             className={styles.bindingConversationValue}

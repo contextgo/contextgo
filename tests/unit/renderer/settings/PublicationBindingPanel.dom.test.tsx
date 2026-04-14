@@ -387,6 +387,27 @@ describe('PublicationBindingPanel', () => {
     expect(screen.getByText('No sessions have been created for this object yet')).toBeInTheDocument();
   });
 
+  it('prefers activeConversationId when rendering the current project-session pointer', async () => {
+    mockGetActiveSessionCatalogInvoke.mockResolvedValueOnce({
+      success: true,
+      data: [
+        {
+          ...sessionCatalogResponse.data[0],
+          conversationId: undefined,
+          activeConversationId: 'conversation-pointer-1',
+          publicationBindingId: 'binding-topic-1',
+          externalSessionId: 'session-1',
+        },
+      ],
+    });
+
+    renderPanel();
+
+    await screen.findByText('Ops topic');
+
+    expect(screen.getByText('conversation-pointer-1')).toBeInTheDocument();
+  });
+
   it('shows an explicit fallback badge when a published object still relies on low-confidence identity', async () => {
     renderPanel();
 

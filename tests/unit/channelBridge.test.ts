@@ -628,7 +628,7 @@ describe('channelBridge', () => {
   });
 
   describe('getActiveSessionCatalog', () => {
-    it('returns platform-native object metadata for active sessions', async () => {
+    it('returns explicit publication and active-session pointer fields for active sessions', async () => {
       const connector: IConnectorInstance = {
         id: 'connector-discord',
         platform: 'discord',
@@ -643,10 +643,22 @@ describe('channelBridge', () => {
         id: 'external-session-1',
         userId: 'remote-discord-thread-1',
         agentType: 'codex',
-        conversationId: 'conversation-1',
+        conversationId: 'conversation-stale-1',
         workspace: '/tmp/discord-ops',
         createdAt: 1000,
         lastActivity: 2500,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-discord-thread-1',
+        connectorId: 'connector-discord',
+        scopeType: 'remote_chat',
+        scopeKey: 'discord://guild-1/channel-22/thread-77',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        createdAt: 1000,
+        updatedAt: 1000,
       };
       const identity: IRemoteIdentity = {
         id: 'remote-discord-thread-1',
@@ -671,7 +683,23 @@ describe('channelBridge', () => {
       vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
       vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([identity]);
-      vi.mocked(repo.getChannelBindings).mockReturnValue([]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+      mockGetAllExternalSessions.mockReturnValue({
+        success: true,
+        data: [
+          {
+            id: 'external-session-1',
+            connectorId: 'connector-discord',
+            remoteIdentityId: 'remote-discord-thread-1',
+            bindingId: 'binding-discord-thread-1',
+            agentProfileId: 'agent-profile-1',
+            activeConversationId: 'conversation-current-1',
+            state: 'active',
+            createdAt: 1000,
+            lastActivity: 2500,
+          },
+        ],
+      });
 
       const result = await handlers['getActiveSessionCatalog']();
 
@@ -679,7 +707,12 @@ describe('channelBridge', () => {
       expect(result.data).toEqual([
         expect.objectContaining({
           id: 'external-session-1',
+          externalSessionId: 'external-session-1',
           connectorId: 'connector-discord',
+          publicationBindingId: 'binding-discord-thread-1',
+          bindingId: 'binding-discord-thread-1',
+          activeConversationId: 'conversation-current-1',
+          conversationId: 'conversation-current-1',
           objectKey: 'discord://guild-1/channel-22/thread-77',
           objectKind: 'thread',
           objectTitle: 'Incident Thread',

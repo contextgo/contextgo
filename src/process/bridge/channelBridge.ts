@@ -801,6 +801,8 @@ function buildActiveSessionEntries(params: {
     const externalSession = externalSessionMap.get(session.id);
     const binding = externalSession?.bindingId ? bindingMap.get(externalSession.bindingId) : undefined;
     const controlLease = controlLeaseMap.get(session.id);
+    const publicationBindingId = binding?.id ?? externalSession?.bindingId;
+    const activeConversationId = externalSession?.activeConversationId ?? session.conversationId;
     const friendlyAudienceTitle =
       remoteIdentity && connector ? getFriendlyDisplayName(remoteIdentity, connector) : undefined;
     const objectDescriptor =
@@ -812,6 +814,7 @@ function buildActiveSessionEntries(params: {
 
     return {
       id: session.id,
+      externalSessionId: externalSession?.id ?? session.id,
       connectorId: connector?.id,
       channelAccountId: connector?.id,
       connectorName: connector?.name,
@@ -837,12 +840,14 @@ function buildActiveSessionEntries(params: {
       parentObjectKind: objectDescriptor?.parentKind,
       objectSource: resolvedPublishObject?.displayProfile.source,
       objectQuality: resolvedPublishObject?.displayProfile.quality,
-      conversationId: session.conversationId,
+      activeConversationId,
+      conversationId: activeConversationId,
       workspace: session.workspace,
       agentType: session.agentType,
       createdAt: session.createdAt,
       lastActivity: session.lastActivity,
-      bindingId: binding?.id ?? externalSession?.bindingId,
+      publicationBindingId,
+      bindingId: publicationBindingId,
       bindingTemporary: binding?.temporary,
       bindingSource: binding ? getChannelBindingSource(binding) : undefined,
       bindingSystemFallback: binding ? isSystemFallbackBinding(binding) : undefined,
