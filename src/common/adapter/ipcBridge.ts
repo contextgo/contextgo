@@ -1647,6 +1647,7 @@ import type {
   IAgentProfile,
   IChannelBindingCatalog,
   IChannelBinding,
+  IChannelPublicationCatalogRefreshResult,
   ChannelControlMode,
   IChannelContinuationRequest,
   IChannelContinuationReleaseResult,
@@ -1735,6 +1736,10 @@ export const channel = {
     IBridgeResponse<IChannelBindingCatalog>,
     { channelAccountId?: string; connectorId?: string }
   >('channel.get-binding-catalog'),
+  refreshPublicationCatalog: bridge.buildProvider<
+    IBridgeResponse<IChannelPublicationCatalogRefreshResult>,
+    { channelAccountId?: string; connectorId?: string } | void
+  >('channel.refresh-publication-catalog'),
   getBindings: bridge.buildProvider<
     IBridgeResponse<IChannelBinding[]>,
     { channelAccountId?: string; connectorId?: string } | void
