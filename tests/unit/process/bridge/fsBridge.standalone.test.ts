@@ -71,6 +71,7 @@ vi.mock('@/common', () => ({
       updateHookManifest: { provider: vi.fn() },
       readSkillInfo: { provider: vi.fn() },
       readSkillContent: { provider: vi.fn() },
+      readBundledAgentPackageContent: { provider: vi.fn() },
       importSkill: { provider: vi.fn() },
       scanForSkills: { provider: vi.fn() },
       detectCommonSkillPaths: { provider: vi.fn() },
