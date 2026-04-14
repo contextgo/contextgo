@@ -40,6 +40,10 @@ import {
   PROTOCOL_SCHEME,
 } from './process/utils/deepLink';
 import {
+  prepareOfficialRemoteHostBrowserEntryAtStartup,
+  restoreDesktopHostBrowserEntryFromPreferences,
+} from '@process/services/host/hostBrowserEntryStartup';
+import {
   bindMainWindowReferences,
   promptMainWindowLoadFailure,
   promptMainWindowRenderProcessGone,
@@ -47,13 +51,7 @@ import {
   showAndFocusMainWindow,
   showOrCreateMainWindow,
 } from './process/utils/mainWindowLifecycle';
-import {
-  ensureDesktopWebUIForOfficialRemote,
-  loadUserWebUIConfig,
-  resolveRemoteAccess,
-  resolveWebUIPort,
-  restoreDesktopWebUIFromPreferences,
-} from './process/utils/webuiConfig';
+import { loadUserWebUIConfig, resolveRemoteAccess, resolveWebUIPort } from './process/utils/webuiConfig';
 import {
   createOrUpdateTray,
   destroyTray,
@@ -500,12 +498,9 @@ const handleAppReady = async (): Promise<void> => {
 
   if (!isWebUIMode && !isResetPasswordMode && !isE2ETestMode) {
     try {
-      const storedOfficialRemoteToken = await ProcessConfig.get('cloud.deviceToken');
-      if (typeof storedOfficialRemoteToken === 'string' && storedOfficialRemoteToken.trim()) {
-        await ensureDesktopWebUIForOfficialRemote().catch((error) => {
-          console.warn('[Cloud] Failed to eagerly prepare Official Remote desktop runtime at app startup:', error);
-        });
-      }
+      await prepareOfficialRemoteHostBrowserEntryAtStartup().catch((error) => {
+        console.warn('[Cloud] Failed to eagerly prepare Official Remote host browser entry at app startup:', error);
+      });
     } catch (error) {
       console.warn('[Cloud] Failed to inspect stored Official Remote device binding at app startup:', error);
     }
@@ -525,7 +520,7 @@ const handleAppReady = async (): Promise<void> => {
       await resetPasswordCLI(username);
 
       app.quit();
-    } catch (error) {
+    } catch {
       app.exit(1);
     }
   } else if (isWebUIMode) {
@@ -601,8 +596,8 @@ const handleAppReady = async (): Promise<void> => {
 
     if (!isE2ETestMode) {
       // 窗口创建后异步恢复 WebUI，不阻塞 UI / Restore WebUI async after window creation, non-blocking
-      restoreDesktopWebUIFromPreferences().catch((error) => {
-        console.error('[WebUI] Failed to auto-restore:', error);
+      restoreDesktopHostBrowserEntryFromPreferences().catch((error) => {
+        console.error('[HostBrowserEntry] Failed to auto-restore local client demand:', error);
       });
     }
 
