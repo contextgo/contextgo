@@ -958,6 +958,107 @@ describe('channelBridge', () => {
       );
     });
 
+    it('returns object-level active session pointers in publish object catalog entries', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-1',
+        platform: 'telegram',
+        name: 'Telegram',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const profile: IAgentProfile = {
+        id: 'agent-profile-1',
+        name: 'OpenClaw Publication',
+        backend: 'openclaw-gateway',
+        version: 1,
+        archived: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        metadata: {
+          publishObject: {
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            discoverySource: 'manual',
+          },
+        },
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-1',
+        connectorId: 'connector-1',
+        remoteUserId: 'user-1',
+        remoteChatId: 'group:alpha',
+        remoteChatType: 'group',
+        displayName: 'Alpha Group',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+      const session: IChannelSession = {
+        id: 'external-session-1',
+        userId: 'remote-1',
+        agentType: 'codex',
+        conversationId: 'conversation-stale-1',
+        workspace: '/tmp/workspace',
+        createdAt: 1000,
+        lastActivity: 2600,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+      vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+      mockGetAllExternalSessions.mockReturnValue({
+        success: true,
+        data: [
+          {
+            id: 'external-session-1',
+            connectorId: 'connector-1',
+            remoteIdentityId: 'remote-1',
+            bindingId: 'binding-1',
+            agentProfileId: 'agent-profile-1',
+            activeConversationId: 'conversation-current-1',
+            state: 'active',
+            createdAt: 1000,
+            lastActivity: 2600,
+          },
+        ],
+      });
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.publishObjects).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            channelAccountId: 'connector-1',
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            activeSessionPointer: expect.objectContaining({
+              externalSessionId: 'external-session-1',
+              activeConversationId: 'conversation-current-1',
+              publicationBindingId: 'binding-1',
+              workspace: '/tmp/workspace',
+            }),
+          }),
+        ])
+      );
+    });
+
     it('classifies Feishu topic audiences as topics with readable subtitles', async () => {
       const connector: IConnectorInstance = {
         id: 'connector-lark',

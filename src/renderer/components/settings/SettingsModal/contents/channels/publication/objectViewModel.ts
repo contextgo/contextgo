@@ -12,6 +12,7 @@ import type {
   IChannelActiveSessionEntry,
   IChannelAudienceEntry,
   IChannelBinding,
+  IChannelPublishObjectActiveSessionPointer,
   IChannelPublishObjectCatalogEntry,
   PluginType,
 } from '@process/channels/types';
@@ -32,6 +33,7 @@ export type PublicationObjectViewModel = {
   bindings: IChannelBinding[];
   sessions: IChannelActiveSessionEntry[];
   primaryAudience?: IChannelAudienceEntry;
+  activeSessionPointer?: IChannelPublishObjectActiveSessionPointer;
   lastActivity?: number;
 };
 
@@ -45,6 +47,7 @@ type PublicationObjectSeed = {
   parentKind?: ChannelObjectParentKind;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  activeSessionPointer?: IChannelPublishObjectActiveSessionPointer;
   lastActivity?: number;
   audience?: IChannelAudienceEntry;
   binding?: IChannelBinding;
@@ -312,6 +315,7 @@ function resolveBindingSeed(
     parentTitle: catalogEntry?.displayProfile.parentTitle,
     objectSource: catalogEntry?.displayProfile.source,
     objectQuality: catalogEntry?.displayProfile.quality ?? 'fallback',
+    activeSessionPointer: catalogEntry?.activeSessionPointer,
     binding,
   };
 }
@@ -333,6 +337,7 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
       bindings: seed.binding ? [seed.binding] : [],
       sessions: seed.session ? [seed.session] : [],
       primaryAudience: seed.audience,
+      activeSessionPointer: seed.activeSessionPointer,
       lastActivity: seed.lastActivity,
     });
     return;
@@ -355,6 +360,13 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
   }
   if (!existing.objectQuality && seed.objectQuality) {
     existing.objectQuality = seed.objectQuality;
+  }
+  if (
+    seed.activeSessionPointer &&
+    (!existing.activeSessionPointer ||
+      seed.activeSessionPointer.lastActivity > existing.activeSessionPointer.lastActivity)
+  ) {
+    existing.activeSessionPointer = seed.activeSessionPointer;
   }
   if (seed.lastActivity && (!existing.lastActivity || seed.lastActivity > existing.lastActivity)) {
     existing.lastActivity = seed.lastActivity;
@@ -386,9 +398,10 @@ export function buildPublicationObjects(params: {
   });
 
   params.bindings.forEach((binding) => {
+    const catalogEntry = params.resolveBindingCatalogEntry?.(binding);
     const audience = params.resolveBindingAudience(binding);
     if (!audience) {
-      const bindingSeed = resolveBindingSeed(binding, params.platform, params.resolveBindingCatalogEntry?.(binding));
+      const bindingSeed = resolveBindingSeed(binding, params.platform, catalogEntry);
       if (bindingSeed) {
         upsertObject(objectMap, bindingSeed);
       }
@@ -397,6 +410,12 @@ export function buildPublicationObjects(params: {
 
     upsertObject(objectMap, {
       ...resolveAudienceSeed(audience, params.platform),
+      title: catalogEntry?.displayProfile.title ?? audience.objectTitle ?? audience.title,
+      subtitle: catalogEntry?.displayProfile.subtitle ?? audience.objectSubtitle ?? audience.subtitle,
+      parentTitle: catalogEntry?.displayProfile.parentTitle ?? audience.parentObjectTitle,
+      objectSource: catalogEntry?.displayProfile.source ?? audience.objectSource,
+      objectQuality: catalogEntry?.displayProfile.quality ?? audience.objectQuality,
+      activeSessionPointer: catalogEntry?.activeSessionPointer,
       binding,
     });
   });
