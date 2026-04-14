@@ -14,8 +14,8 @@ PM Workbench is intended for product work that needs stronger structure than ad-
 
 ## Package Surfaces
 
-- `pm-workbench.md` and `pm-workbench.zh-CN.md`
-  - runtime-facing assistant rules
+- `AGENTS.md`
+  - runtime-facing rules entry document
 - package root
   - `src/process/resources/assistant/product/pm-workbench`
 - skill source
@@ -63,7 +63,7 @@ Keep package entry and routing in `AGENTS.md`, deeper package notes here in `doc
 
 The package root already owns:
 
-- localized runtime rules
+- the runtime-facing rules entry document in `AGENTS.md`
 - package entry routing
 - package notes under `docs/`
 

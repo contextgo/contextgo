@@ -17,10 +17,7 @@ import {
   resolveBuiltinAssistantEnabledHooks,
   resolveBuiltinAssistantEnabledSkills,
 } from '@/common/config/presets/builtinAssistantDefaults';
-import {
-  getBundledAgentPackageRulesFiles,
-  resolveBundledAgentPackageSourceRelativeRoots,
-} from '@/common/config/presets/bundledAgentPackageRegistry';
+import { resolveBundledAgentPackageEntryDocumentRelativePath } from '@/common/config/presets/bundledAgentPackageRegistry';
 import type {
   IChatConversationRefer,
   IConfigStorageRefer,
@@ -596,57 +593,32 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
 
   for (const preset of ASSISTANT_PRESETS) {
     const assistantId = `builtin-${preset.id}`;
-    const manifestRuleFiles = getBundledAgentPackageRulesFiles(assistantId);
-    const manifestRuleRoots = resolveBundledAgentPackageSourceRelativeRoots(assistantId, 'rules');
-    const presetRulesDirs = manifestRuleRoots.map((relativeRoot) => resolveBuiltinDir(relativeRoot));
-    const ruleFiles = manifestRuleFiles ?? {};
+    const entryDocumentPath = resolveBundledAgentPackageEntryDocumentRelativePath(assistantId);
+    const rulesFilePattern = new RegExp(`^${assistantId}\\..*\\.md$`);
 
-    // 复制规则文件 / Copy rule files
-    const hasRuleFiles = Object.keys(ruleFiles).length > 0;
-    if (hasRuleFiles) {
-      for (const [locale, ruleFile] of Object.entries(ruleFiles)) {
-        try {
-          const sourceRulesPath =
-            presetRulesDirs
-              .map((rulesDirPath) => path.join(rulesDirPath, ruleFile))
-              .find((candidate) => existsSync(candidate)) || path.join(presetRulesDirs[0], ruleFile);
-          // 目标文件名格式：{assistantId}.{locale}.md
-          // Target file name format: {assistantId}.{locale}.md
-          const targetFileName = `${assistantId}.${locale}.md`;
-          const targetPath = path.join(assistantsDir, targetFileName);
-
-          // 检查源文件是否存在 / Check if source file exists
-          if (!existsSync(sourceRulesPath)) {
-            console.warn(`[ContextGo] Source rule file not found: ${sourceRulesPath}`);
-            continue;
-          }
-
-          // 内置助手规则文件始终强制覆盖，确保用户获得最新版本
-          // Always overwrite builtin assistant rule files to ensure users get the latest version
-          let content = await fs.readFile(sourceRulesPath, 'utf-8');
-          // 替换相对路径为绝对路径，确保 AI 能找到正确的脚本位置
-          // Replace relative paths with absolute paths so AI can find scripts correctly
-          content = content.replace(/skills\//g, userSkillsDir + '/');
-          await fs.writeFile(targetPath, content, 'utf-8');
-        } catch (error) {
-          // 忽略缺失的语言文件 / Ignore missing locale files
-          console.warn(`[ContextGo] Failed to copy rule file ${ruleFile}:`, error);
+    try {
+      const files = readdirSync(assistantsDir);
+      for (const file of files) {
+        if (rulesFilePattern.test(file)) {
+          await fs.unlink(path.join(assistantsDir, file));
         }
       }
-    } else {
-      // 如果包没有 rules payload，删除旧的 rules 缓存文件
-      // If the package has no rules payload, delete old rules cache files
-      const rulesFilePattern = new RegExp(`^${assistantId}\\..*\\.md$`);
+    } catch {
+      // Ignore cleanup failures
+    }
+
+    if (entryDocumentPath) {
       try {
-        const files = readdirSync(assistantsDir);
-        for (const file of files) {
-          if (rulesFilePattern.test(file)) {
-            const filePath = path.join(assistantsDir, file);
-            await fs.unlink(filePath);
-          }
+        const sourceRulesPath = resolveBuiltinDir(entryDocumentPath);
+        if (!existsSync(sourceRulesPath)) {
+          console.warn(`[ContextGo] Builtin AGENTS.md not found: ${sourceRulesPath}`);
+        } else {
+          let content = await fs.readFile(sourceRulesPath, 'utf-8');
+          content = content.replace(/skills\//g, userSkillsDir + '/');
+          await fs.writeFile(path.join(assistantsDir, `${assistantId}.en-US.md`), content, 'utf-8');
         }
       } catch (error) {
-        // 忽略删除失败 / Ignore deletion failure
+        console.warn(`[ContextGo] Failed to copy bundled AGENTS.md for ${assistantId}:`, error);
       }
     }
 
@@ -662,7 +634,7 @@ const initBuiltinAssistantRules = async (): Promise<void> => {
           await fs.unlink(filePath);
         }
       }
-    } catch (error) {
+    } catch {
       // 忽略删除失败 / Ignore deletion failure
     }
   }

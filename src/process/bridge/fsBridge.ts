@@ -25,9 +25,12 @@ import { promisify } from 'node:util';
 import JSZip from 'jszip';
 import { ipcBridge } from '@/common';
 import {
+  findBundledAgentPackageDescriptorByAssistantId,
   getBundledAgentPackageHideOwnedSkillsFromLibrary,
   getBundledAgentPackageOwnedSkillNames,
 } from '@/common/config/presets/bundledAgentPackageRegistry';
+import type { AgentPackageSourceDescriptor } from '@/common/config/presets/agentPackageManifest';
+import { getPlatformServices } from '@/common/platform';
 import { getWorkspaceHooksDir } from '@process/bridge/services/workspaceAutomation';
 import { skillMarketService } from '@process/bridge/services/skillmarket/SkillMarketService';
 import {
@@ -108,6 +111,65 @@ async function resetAcpSkillManagerDiscovery() {
   const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
   AcpSkillManager.resetInstance();
 }
+
+const resolveBundledResourcePath = (resourcePath: string): string => {
+  const platform = getPlatformServices().paths;
+  const appPath = platform.getAppPath() || process.cwd();
+  const resourcesPrefix = 'src/process/resources/';
+
+  if (platform.isPackaged()) {
+    const prodPath = resourcePath.startsWith(resourcesPrefix)
+      ? resourcePath.slice(resourcesPrefix.length)
+      : resourcePath;
+    return path.join(appPath, prodPath);
+  }
+
+  return path.join(appPath, resourcePath);
+};
+
+const readMarkdownFilesRecursive = async (
+  absoluteRoot: string,
+  relativeRoot = ''
+): Promise<Array<{ relativePath: string; sourcePath: string; content: string }>> => {
+  const entries = await fs.readdir(path.join(absoluteRoot, relativeRoot), { withFileTypes: true });
+  const documents: Array<{ relativePath: string; sourcePath: string; content: string }> = [];
+
+  for (const entry of entries) {
+    const nextRelativePath = path.posix.join(relativeRoot.replace(/\\/g, '/'), entry.name);
+    const absolutePath = path.join(absoluteRoot, nextRelativePath);
+
+    if (entry.isDirectory()) {
+      documents.push(...(await readMarkdownFilesRecursive(absoluteRoot, nextRelativePath)));
+      continue;
+    }
+
+    if (!entry.isFile() || !entry.name.endsWith('.md')) {
+      continue;
+    }
+
+    documents.push({
+      relativePath: nextRelativePath,
+      sourcePath: absolutePath,
+      content: await fs.readFile(absolutePath, 'utf-8'),
+    });
+  }
+
+  return documents.toSorted((left, right) => left.relativePath.localeCompare(right.relativePath));
+};
+
+const resolveBundledAgentPackageSourceRoot = (
+  resourceDir: string,
+  source: AgentPackageSourceDescriptor
+): string | null => {
+  if (source.kind === 'workspace-automation-profile') {
+    return null;
+  }
+
+  const resourcePath =
+    source.kind === 'package-relative' ? path.posix.join(resourceDir.replace(/\\/g, '/'), source.root) : source.root;
+
+  return resolveBundledResourcePath(resourcePath);
+};
 
 /**
  * Read a builtin resource file (.md only)
@@ -1502,6 +1564,96 @@ export function initFsBridge(): void {
       return {
         success: false,
         msg: `Failed to read skill content: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
+  ipcBridge.fs.readBundledAgentPackageContent.provider(async ({ assistantId }) => {
+    try {
+      const descriptor = findBundledAgentPackageDescriptorByAssistantId(assistantId);
+
+      if (!descriptor) {
+        return {
+          success: false,
+          msg: `Bundled agent package not found for assistant: ${assistantId}`,
+        };
+      }
+
+      const agentsDocument: {
+        id: string;
+        title: string;
+        relativePath: string;
+        sourcePath: string;
+        content: string;
+      } | null = await (async () => {
+        const entryDocumentPath = resolveBundledAgentPackageSourceRoot(descriptor.resourceDir, {
+          kind: 'package-relative',
+          root: descriptor.manifest.entryDocument.file,
+        });
+
+        if (!entryDocumentPath) {
+          return null;
+        }
+
+        try {
+          const content = await fs.readFile(entryDocumentPath, 'utf-8');
+          const relativePath = descriptor.manifest.entryDocument.file.replace(/\\/g, '/');
+
+          return {
+            id: relativePath,
+            title: relativePath,
+            relativePath,
+            sourcePath: entryDocumentPath,
+            content,
+          };
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return null;
+          }
+          throw error;
+        }
+      })();
+
+      const docsRoot = descriptor.manifest.docsDirectory
+        ? resolveBundledAgentPackageSourceRoot(descriptor.resourceDir, {
+            kind: 'package-relative',
+            root: descriptor.manifest.docsDirectory.root,
+          })
+        : null;
+
+      const docs = docsRoot
+        ? await (async () => {
+            try {
+              await fs.access(docsRoot);
+              return await readMarkdownFilesRecursive(docsRoot);
+            } catch (error) {
+              if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+                return [] as Array<{ relativePath: string; sourcePath: string; content: string }>;
+              }
+              throw error;
+            }
+          })()
+        : [];
+
+      return {
+        success: true,
+        data: {
+          agentsDocument,
+          docs: docs.map((document) => ({
+            id: document.relativePath,
+            title: document.relativePath,
+            relativePath: document.relativePath,
+            sourcePath: document.sourcePath,
+            content: document.content,
+          })),
+        },
+        msg: 'Bundled agent package content loaded successfully',
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to read bundled agent package content:', error);
+      return {
+        success: false,
+        msg: `Failed to read bundled agent package content: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   });

@@ -14,8 +14,8 @@ That means:
 
 ## Package Surfaces
 
-- `everything-in-claude-code.md` and `everything-in-claude-code.zh-CN.md`
-  - runtime-facing assistant rules
+- `AGENTS.md`
+  - runtime-facing rules entry document
 - package root
   - `src/process/resources/assistant/engineering/everything-in-claude-code`
 - `skills/`
@@ -63,7 +63,7 @@ This package should keep favoring:
 
 Keep the absorbed package boundary visible:
 
-- runtime-facing assistant behavior stays in the localized root files
+- runtime-facing assistant behavior stays in `AGENTS.md`
 - package and migration notes stay in `docs/`
 - legacy absorbed source material stays in `commands/`, `hooks/`, and `scripts/`
 - executable task behavior continues to live in packaged skills

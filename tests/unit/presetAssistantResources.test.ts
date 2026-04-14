@@ -26,7 +26,10 @@ function createDeps(overrides: Partial<PresetAssistantResourceDeps> = {}): Prese
   return {
     readAssistantRule: vi.fn(async () => ''),
     readAssistantSkill: vi.fn(async () => ''),
-    readBuiltinRule: vi.fn(async () => ''),
+    readBundledAgentPackageContent: vi.fn(async () => ({
+      success: true,
+      data: { agentsDocument: null },
+    })),
     getEnabledSkills: vi.fn(async () => undefined),
     getEnabledHooks: vi.fn(async () => undefined),
     warn: vi.fn(),
@@ -87,7 +90,10 @@ describe('loadPresetAssistantResources', () => {
       readAssistantSkill: vi.fn(async () => {
         throw new Error('missing user skill');
       }),
-      readBuiltinRule: vi.fn(async () => 'builtin rules'),
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
       getEnabledSkills: vi.fn(async () => ['verification-before-completion']),
       getEnabledHooks: vi.fn(async () => ['before_user_prompt']),
     });
@@ -107,13 +113,16 @@ describe('loadPresetAssistantResources', () => {
       enabledSkills: ['verification-before-completion'],
       enabledHooks: ['before_user_prompt'],
     });
-    expect(deps.readBuiltinRule).toHaveBeenCalledOnce();
+    expect(deps.readBundledAgentPackageContent).toHaveBeenCalledOnce();
     expect(deps.warn).toHaveBeenCalledTimes(2);
   });
 
   it('falls back to builtin default skills and hooks when stored config is missing', async () => {
     const deps = createDeps({
-      readBuiltinRule: vi.fn(async () => 'builtin rules'),
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
       getEnabledSkills: vi.fn(async () => undefined),
       getEnabledHooks: vi.fn(async () => undefined),
     });
@@ -137,7 +146,10 @@ describe('loadPresetAssistantResources', () => {
 
   it('falls back to builtin PM preset default skills without hooks when stored config is missing', async () => {
     const deps = createDeps({
-      readBuiltinRule: vi.fn(async () => 'builtin rules'),
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
       getEnabledSkills: vi.fn(async () => undefined),
       getEnabledHooks: vi.fn(async () => undefined),
     });
@@ -161,7 +173,10 @@ describe('loadPresetAssistantResources', () => {
 
   it('falls back to builtin startup preset default skills without hooks when stored config is missing', async () => {
     const deps = createDeps({
-      readBuiltinRule: vi.fn(async () => 'builtin rules'),
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
       getEnabledSkills: vi.fn(async () => undefined),
       getEnabledHooks: vi.fn(async () => undefined),
     });
@@ -185,7 +200,10 @@ describe('loadPresetAssistantResources', () => {
 
   it('falls back to builtin design preset default skills without hooks when stored config is missing', async () => {
     const deps = createDeps({
-      readBuiltinRule: vi.fn(async () => 'builtin rules'),
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
       getEnabledSkills: vi.fn(async () => undefined),
       getEnabledHooks: vi.fn(async () => undefined),
     });
@@ -209,7 +227,10 @@ describe('loadPresetAssistantResources', () => {
 
   it('falls back to builtin office preset default skills without hooks when stored config is missing', async () => {
     const deps = createDeps({
-      readBuiltinRule: vi.fn(async () => 'builtin rules'),
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
       getEnabledSkills: vi.fn(async () => undefined),
       getEnabledHooks: vi.fn(async () => undefined),
     });
@@ -233,7 +254,10 @@ describe('loadPresetAssistantResources', () => {
 
   it('falls back to builtin finance preset default skills without hooks when stored config is missing', async () => {
     const deps = createDeps({
-      readBuiltinRule: vi.fn(async () => 'builtin rules'),
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
       getEnabledSkills: vi.fn(async () => undefined),
       getEnabledHooks: vi.fn(async () => undefined),
     });

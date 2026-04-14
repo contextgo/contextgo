@@ -58,7 +58,7 @@ The current detail interaction is local state, not route state. That prevents:
 
 ### Docs and `AGENTS.md` are not first-class browsing surfaces
 
-The product already treats `AGENTS.md` and `docs/` as part of the package contract, but the current assistant UI does not expose them as a clear document-reading experience.
+The product already treats `AGENTS.md` and `docs/` as first-class package surfaces, but the current assistant UI does not expose them as a clear document-reading experience.
 
 ## Product Principles
 
@@ -83,7 +83,7 @@ Canonical detail tabs come from this set:
 
 Assistant identity and runtime configuration are still needed, especially for custom assistants. They should live in the page header and an inline `Basics` inspector panel, not as another top-level waterfall page.
 
-This keeps the tab model aligned with the package contract while preserving editable assistant metadata.
+This keeps the tab model aligned with the package manifest and surfaced content while preserving editable assistant metadata.
 
 ### 4. Docs should be browsed like docs, not shown as cards
 
@@ -262,7 +262,7 @@ Reasoning:
 
 - `Skills` is the most actionable package capability surface
 - `Hooks`, `Schedules`, and `Commands` are operational capability surfaces
-- `AGENTS.md` is the package contract and orientation layer
+- `AGENTS.md` is the packaged rules-entry and orientation layer
 - `Docs` is deeper reference material
 
 If the assistant has no package-backed content in any of these tabs:
@@ -364,7 +364,7 @@ Layout:
 
 ### `AGENTS.md` tab
 
-`AGENTS.md` is not just another markdown file. It is the package contract page.
+`AGENTS.md` is not just another markdown file. It is the packaged rules-entry page.
 
 Layout:
 
@@ -385,7 +385,7 @@ Behavior:
 For assistants without `AGENTS.md`:
 
 - hide the tab if the assistant is not package-backed
-- otherwise show a package-contract empty state explaining that the package is incomplete
+- otherwise show an AGENTS.md rules-entry empty state explaining that the package does not provide a projected rules entry document
 
 ### Docs tab
 

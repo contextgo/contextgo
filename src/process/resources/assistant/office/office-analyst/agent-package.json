@@ -4,32 +4,61 @@
   "assistantPresetId": "builtin-office-analyst",
   "displayName": "Office Analyst",
   "runtimeNeutral": true,
-  "payloads": {
-    "rules": {
-      "logicalId": "rules",
-      "sources": [
-        {
-          "kind": "package-relative",
-          "root": "."
-        }
-      ],
-      "files": {
-        "en-US": "office-analyst.md",
-        "zh-CN": "office-analyst.zh-CN.md"
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
       },
-      "installSurface": "assistant-rules-cache",
-      "runtimeProjection": "none"
-    },
-    "docs": {
-      "logicalId": "docs",
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
       "sources": [
         {
           "kind": "package-relative",
-          "root": "docs"
+          "root": "workspace"
         }
       ],
-      "installSurface": "package-docs",
-      "runtimeProjection": "none"
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "spreadsheet and document analysis across multiple files",
+        "source reconciliation and cross-file validation",
+        "polished report assembly for durable reuse"
+      ],
+      "suggestedArtifacts": ["cleaned spreadsheets", "extracted notes", "reconciled findings", "draft reports"],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/sources/README.md",
+          "target": "docs/sources/README.md"
+        },
+        {
+          "source": "workspace/docs/analysis/README.md",
+          "target": "docs/analysis/README.md"
+        },
+        {
+          "source": "workspace/docs/reports/README.md",
+          "target": "docs/reports/README.md"
+        }
+      ]
     },
     "skills": {
       "logicalId": "skills",

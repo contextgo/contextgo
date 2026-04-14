@@ -30,6 +30,7 @@ type CodeBlockProps = {
 
 const LANGUAGE_PATTERN = /language-([\w#+-]+)/;
 const PREVIEW_LINE_LIMIT = 6;
+const COLLAPSIBLE_LINE_LIMIT = 24;
 
 const getLanguageLabel = (language: string): string => {
   return language.replace(/^[.]+/, '').toUpperCase();
@@ -37,7 +38,6 @@ const getLanguageLabel = (language: string): string => {
 
 function CodeBlock(props: CodeBlockProps) {
   const { t } = useTranslation();
-  const [fold, setFold] = useState(true);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -70,7 +70,6 @@ function CodeBlock(props: CodeBlockProps) {
   const match = LANGUAGE_PATTERN.exec(className || '');
   const language = (match?.[1] || 'text').toLowerCase();
   const normalizedContent = rawContent.replace(/\n$/, '');
-  const isSingleLineCodeBlock = rawContent.includes('\n') && !normalizedContent.includes('\n');
 
   if (language === 'latex' || language === 'math' || language === 'tex') {
     const isFullDocument = /\\(documentclass|begin\{document\}|usepackage)\b/.test(normalizedContent);
@@ -108,25 +107,21 @@ function CodeBlock(props: CodeBlockProps) {
       ? undefined
       : 'not-prose';
 
-  if (isSingleLineCodeBlock) {
-    return (
-      <div className={containerClassName} style={{ width: '100%', minWidth: 0, maxWidth: '100%', ...codeStyle }}>
-        <pre className='m-0 w-full overflow-auto rd-12px border border-arco-1 bg-fill-1 px-12px py-10px font-mono text-12px leading-18px text-t-primary whitespace-pre-wrap break-words'>
-          {normalizedContent}
-        </pre>
-      </div>
-    );
-  }
-
   const isDiff = language === 'diff';
   const codeTheme = currentTheme === 'dark' ? vs2015 : vs;
   const formattedContent = useMemo(() => formatCode(children), [children]);
   const codeLines = useMemo(() => formattedContent.split('\n'), [formattedContent]);
+  const isCollapsible = codeLines.length > COLLAPSIBLE_LINE_LIMIT;
+  const [fold, setFold] = useState(false);
   const diffLines = useMemo(() => (isDiff ? codeLines : []), [codeLines, isDiff]);
   const previewContent = useMemo(() => {
     const previewLines = codeLines.slice(0, PREVIEW_LINE_LIMIT);
     return previewLines.join('\n') + (codeLines.length > PREVIEW_LINE_LIMIT ? '\n...' : '');
   }, [codeLines]);
+
+  useEffect(() => {
+    setFold(false);
+  }, [formattedContent]);
 
   const handleCopy = () => {
     void copyText(formattedContent)
@@ -195,17 +190,19 @@ function CodeBlock(props: CodeBlockProps) {
                 />
               </Tooltip>
             )}
-            <Button
-              size='mini'
-              type='text'
-              onClick={() => setFold(!fold)}
-              className='!px-8px !text-t-secondary hover:!text-t-primary'
-            >
-              {fold ? t('common.expandMore') : t('common.collapse')}
-            </Button>
+            {isCollapsible ? (
+              <Button
+                size='mini'
+                type='text'
+                onClick={() => setFold(!fold)}
+                className='!px-8px !text-t-secondary hover:!text-t-primary'
+              >
+                {fold ? t('common.expandMore') : t('common.collapse')}
+              </Button>
+            ) : null}
           </div>
         </div>
-        {fold ? (
+        {isCollapsible && fold ? (
           <div className='px-12px py-12px'>
             <pre className='m-0 overflow-hidden rd-8px bg-base px-12px py-10px font-mono text-12px leading-18px text-t-primary whitespace-pre-wrap break-words'>
               {previewContent}

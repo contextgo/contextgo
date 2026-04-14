@@ -27,7 +27,7 @@ To avoid adding more flat files into `src/renderer/pages/settings/AgentSettings/
 - Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/HooksTab.tsx`
 - Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/SchedulesTab.tsx`
 - Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/CommandsTab.tsx`
-- Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/AgentsContractTab.tsx`
+- Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/AgentsEntryTab.tsx`
 - Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/DocsTab.tsx`
 
 Keep the existing modal helper components only where they still make sense, such as `AddSkillsModal`, but stop using `AssistantEditDrawer` as the main detail surface.
@@ -178,7 +178,7 @@ const DEFAULT_TAB_PRIORITY: AgentDetailTabId[] = ['skills', 'hooks', 'schedules'
 - Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/HooksTab.tsx`
 - Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/SchedulesTab.tsx`
 - Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/CommandsTab.tsx`
-- Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/AgentsContractTab.tsx`
+- Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/AgentsEntryTab.tsx`
 - Create: `src/renderer/pages/settings/AgentSettings/Workspace/detail/tabs/DocsTab.tsx`
 - Modify: `src/renderer/pages/settings/AgentSettings/AssistantManagement/AddSkillsModal.tsx`
 - Modify: `src/renderer/pages/settings/AgentSettings/HookRoutingConfigModal.tsx`

@@ -14,8 +14,8 @@ Office Analyst is designed for file-heavy office work where the user needs struc
 
 ## Package Surfaces
 
-- `office-analyst.md` and `office-analyst.zh-CN.md`
-  - runtime-facing assistant rules
+- `AGENTS.md`
+  - runtime-facing rules entry document
 - package root
   - `src/process/resources/assistant/office/office-analyst`
 - skill source
@@ -56,13 +56,13 @@ This package should keep favoring:
 
 ## Authoring Rule
 
-Keep runtime assistant behavior in the localized root files, package notes in `docs/`, and operational file-processing logic in the packaged skills.
+Keep runtime assistant behavior in `AGENTS.md`, package notes in `docs/`, and operational file-processing logic in the packaged skills.
 
 ## Migration Status
 
 The package root already owns:
 
-- localized runtime rules
+- the runtime-facing rules entry document in `AGENTS.md`
 - package entry routing
 - package notes under `docs/`
 

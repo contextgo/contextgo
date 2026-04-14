@@ -229,6 +229,7 @@ export interface IAgentProfile {
   modelRef?: Pick<TProviderWithModel, 'id' | 'useModel'> &
     Partial<Pick<TProviderWithModel, 'platform' | 'name' | 'baseUrl'>>;
   workspaceRef?: string;
+  spaceId?: string;
   promptProfile?: Record<string, unknown>;
   toolPolicy?: Record<string, unknown>;
   memoryPolicy?: Record<string, unknown>;
@@ -1016,8 +1017,8 @@ export function resolveChannelConvType(backend: string): {
   convType: string;
   convBackend?: string;
 } {
-  if (backend === 'codex') return { convType: 'codex' };
   if (backend === 'gemini') return { convType: 'gemini' };
+  if (backend === 'codex') return { convType: 'acp', convBackend: 'codex' };
   return { convType: 'acp', convBackend: backend };
 }
 

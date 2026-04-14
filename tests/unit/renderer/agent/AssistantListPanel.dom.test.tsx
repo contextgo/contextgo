@@ -157,4 +157,39 @@ describe('AssistantListPanel', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Create Assistant' })[0]);
     expect(onCreateMock).toHaveBeenCalledTimes(1);
   });
+
+  it('can render as an embedded workspace section without nesting another page hero shell', () => {
+    navigateMock.mockReset();
+    onCreateMock.mockReset();
+
+    const assistants = [
+      {
+        id: 'assistant-1',
+        name: 'Research Agent',
+        description: 'Summarize and draft',
+        enabled: true,
+      },
+    ] as unknown as AssistantListItem[];
+
+    render(
+      <AssistantListPanel
+        assistants={assistants}
+        systemAssistants={[]}
+        activeAssistantId={null}
+        localeKey='en-US'
+        avatarImageMap={{}}
+        isExtensionAssistant={() => false}
+        onEdit={vi.fn()}
+        onDuplicate={vi.fn()}
+        onCreate={onCreateMock}
+        onToggleEnabled={vi.fn()}
+        setActiveAssistantId={vi.fn()}
+        presentation='embedded'
+      />
+    );
+
+    expect(screen.getByText('Available assistants')).toBeInTheDocument();
+    expect(screen.queryByText('Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create Assistant' })).not.toBeInTheDocument();
+  });
 });

@@ -4,32 +4,39 @@
   "assistantPresetId": "builtin-morph-ppt",
   "displayName": "Morph PPT",
   "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
   "payloads": {
-    "rules": {
-      "logicalId": "rules",
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
       "sources": [
         {
           "kind": "package-relative",
           "root": "."
         }
       ],
-      "files": {
-        "en-US": "morph-ppt.md",
-        "zh-CN": "morph-ppt.zh-CN.md"
-      },
-      "installSurface": "assistant-rules-cache",
-      "runtimeProjection": "none"
-    },
-    "docs": {
-      "logicalId": "docs",
-      "sources": [
-        {
-          "kind": "package-relative",
-          "root": "docs"
-        }
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "slide narrative design and deck structure",
+        "Morph animation planning and reproducible deck generation",
+        "presentation asset organization and delivery handoff"
       ],
-      "installSurface": "package-docs",
-      "runtimeProjection": "none"
+      "suggestedArtifacts": ["deck briefs", "presentation specs", "asset inventories", "build notes"]
     },
     "skills": {
       "logicalId": "skills",

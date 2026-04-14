@@ -34,7 +34,7 @@ const loadConnectorsPage = () => import('@renderer/pages/connectors');
 const loadGuid = () => import('@renderer/pages/guid');
 const loadGlobalScheduleSettings = () => import('@renderer/pages/schedule/GlobalScheduleSettings');
 const loadRemoteDevicesPage = () => import('@renderer/pages/RemoteDevicesPage');
-const loadAgentSettings = () => import('@renderer/pages/settings/AgentSettings');
+const loadAgentsPage = () => import('@renderer/pages/agents');
 const loadAgentEntrySettings = () => import('@renderer/pages/settings/AgentSettings/AgentEntrySettings');
 const loadHooksManagement = () => import('@renderer/pages/settings/AgentSettings/HooksManagement');
 const loadSystemRunsPage = () => import('@renderer/pages/settings/AgentSettings/SystemRunsPage');
@@ -269,6 +269,13 @@ const StartupConversationRedirect: React.FC = () => {
   return <Navigate to={startupPath} replace />;
 };
 
+const LegacyAgentSettingsRedirect: React.FC = () => {
+  const location = useLocation();
+  const nextPath = location.pathname.replace(/^\/settings\/agent/, '/agents') || '/agents';
+  const nextTarget = `${nextPath}${location.search}${location.hash}`;
+  return <Navigate to={nextTarget} replace />;
+};
+
 const RoutedPanels: React.FC<{
   status: ReturnType<typeof useAuth>['status'];
 }> = ({ status }) => {
@@ -295,11 +302,11 @@ const RoutedPanels: React.FC<{
         />
         <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
         <Route path='/conversation/:id' element={withRouteFallback(loadConversation, '/conversation/:id')} />
-        <Route path='/agents' element={withRouteFallback(loadAgentSettings, '/agents')} />
+        <Route path='/agents/*' element={withRouteFallback(loadAgentsPage, '/agents/*')} />
         <Route path='/skills-hub' element={withRouteFallback(loadSkillsHubSettings, '/skills-hub')} />
         <Route path='/settings/gemini' element={withRouteFallback(loadGeminiSettings, '/settings/gemini')} />
         <Route path='/settings/model' element={withRouteFallback(loadModeSettings, '/settings/model')} />
-        <Route path='/settings/agent' element={withRouteFallback(loadAgentSettings, '/settings/agent')} />
+        <Route path='/settings/agent/*' element={<LegacyAgentSettingsRedirect />} />
         <Route path='/settings/hooks' element={withRouteFallback(loadHooksManagement, '/settings/hooks')} />
         <Route
           path='/settings/schedule'

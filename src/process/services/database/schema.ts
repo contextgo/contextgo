@@ -443,6 +443,7 @@ export function initSchema(db: ISqliteDriver): void {
     backend TEXT NOT NULL,
     model_ref TEXT,
     workspace_ref TEXT,
+    space_id TEXT,
     prompt_profile TEXT NOT NULL DEFAULT '{}',
     tool_policy TEXT NOT NULL DEFAULT '{}',
     memory_policy TEXT NOT NULL DEFAULT '{}',
@@ -454,6 +455,7 @@ export function initSchema(db: ISqliteDriver): void {
     updated_at INTEGER NOT NULL,
     FOREIGN KEY (published_from_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
   )`);
+  ensureColumn(db, 'agent_profiles', 'space_id', 'space_id TEXT');
   db.exec('CREATE INDEX IF NOT EXISTS idx_agent_profiles_backend ON agent_profiles(backend)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_agent_profiles_archived ON agent_profiles(archived)');
 

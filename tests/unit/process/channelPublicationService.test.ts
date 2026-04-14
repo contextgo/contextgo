@@ -20,6 +20,7 @@ describe('ChannelPublicationService', () => {
     name: 'Prepared Agent',
     type: 'acp',
     extra: {
+      spaceId: 'space-temp-1',
       workspace: '/workspace/project',
       backend: 'codex',
       customAgentId: 'assistant-custom',
@@ -51,6 +52,7 @@ describe('ChannelPublicationService', () => {
     toolPolicy: { allowTools: true },
     memoryPolicy: { remember: true },
     delegationPolicy: { enabled: true },
+    spaceId: 'space-temp-1',
     publishedFromConversationId: conversation.id,
     version: 3,
     archived: false,
@@ -131,5 +133,23 @@ describe('ChannelPublicationService', () => {
       name: 'Gemini',
       baseUrl: '',
     });
+  });
+
+  it('persists the source conversation space binding in the publication profile', async () => {
+    const service = new ChannelPublicationService({
+      getConversation: vi.fn(async () => conversation as never),
+      publicationStore: publicationStore as never,
+    });
+
+    const result = await service.prepareConversationPublication(conversation.id);
+
+    expect(publicationStore.upsertAgentProfile).toHaveBeenCalledWith(
+      '/workspace/project',
+      expect.objectContaining({
+        id: canonicalProfileId,
+        spaceId: 'space-temp-1',
+      })
+    );
+    expect(result.spaceId).toBe('space-temp-1');
   });
 });

@@ -11,7 +11,7 @@ This package backs ContextGo's built-in **Design Director** assistant.
 
 ## Package Surfaces
 
-- runtime-facing assistant rules: `design-director.md`, `design-director.zh-CN.md`
+- `AGENTS.md` as the runtime-facing rules entry document
 - package notes: `docs/README.md`
 - deeper design rationale: `docs/design.md`, `docs/design.zh-CN.md`
 - bundled design-direction skills and workspace command seeds

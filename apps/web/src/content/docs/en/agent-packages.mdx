@@ -121,10 +121,17 @@ Each package should also provide:
 
 Use that directory for longer references, examples, domain guidance, and other material that should not be loaded eagerly.
 
+Packages may also declare:
+
+- `workspaceScaffold`
+
+This payload represents starter project-root docs that ContextGo can seed into a linked workspace, such as `AGENTS.md` plus initial files under `docs/`, when the workspace does not already expose its own root guidance.
+
 ### Executable capability payload
 
 A package may also include:
 
+- workspace scaffold templates
 - `skills/`
 - `hooks/`
 - command seeds
@@ -140,6 +147,7 @@ Split package content across three layers:
 
 - `agent-package.json`: machine-readable payload mapping
 - `AGENTS.md`: short entry point and boundaries
+- `workspaceScaffold`: project-root starter docs written during workspace bootstrap when appropriate
 - `docs/`: deeper package documentation
 - `skills/*/SKILL.md`: task-level executable guidance
 

@@ -121,10 +121,17 @@ ContextGo 把这套安装包目录约定称为 `Agent Package v1`。
 
 这里用于放更长的领域说明、示例、注意事项和参考资料。
 
+包还可以声明：
+
+- `workspaceScaffold`
+
+这个 payload 表示安装时可写入 linked workspace 的项目根 starter docs，例如 `AGENTS.md` 和 `docs/` 下的初始文件。前提是目标 workspace 还没有自己的根说明结构。
+
 ### 可执行能力载荷
 
 一个包还可以带：
 
+- workspace scaffold templates
 - `skills/`
 - `hooks/`
 - 命令种子
@@ -140,6 +147,7 @@ ContextGo 对 Agent Package 的默认写法是渐进式披露。
 
 - `agent-package.json`：机器可读的 payload 映射
 - `AGENTS.md`：短入口，只负责定边界、给导航
+- `workspaceScaffold`：在合适时机写入 workspace 根目录的 starter docs
 - `docs/`：放更深的文档，不默认全部加载
 - `skills/*/SKILL.md`：放任务级执行说明
 

@@ -4,32 +4,65 @@
   "assistantPresetId": "builtin-superpowers",
   "displayName": "Superpowers Harness",
   "runtimeNeutral": true,
-  "payloads": {
-    "rules": {
-      "logicalId": "rules",
-      "sources": [
-        {
-          "kind": "package-relative",
-          "root": "."
-        }
-      ],
-      "files": {
-        "en-US": "superpowers.md",
-        "zh-CN": "superpowers.zh-CN.md"
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
       },
-      "installSurface": "assistant-rules-cache",
-      "runtimeProjection": "none"
-    },
-    "docs": {
-      "logicalId": "docs",
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
       "sources": [
         {
           "kind": "package-relative",
-          "root": "docs"
+          "root": "workspace"
         }
       ],
-      "installSurface": "package-docs",
-      "runtimeProjection": "none"
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "repository-based engineering delivery",
+        "spec, plan, TDD, review, debugging, and verification workflows",
+        "durable project artifacts tied to the workspace instead of ephemeral chat"
+      ],
+      "suggestedArtifacts": ["project overviews", "design specs", "implementation plans", "verification notes"],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/plans/README.md",
+          "target": "docs/plans/README.md"
+        },
+        {
+          "source": "workspace/docs/specs/README.md",
+          "target": "docs/specs/README.md"
+        },
+        {
+          "source": "workspace/docs/reviews/README.md",
+          "target": "docs/reviews/README.md"
+        },
+        {
+          "source": "workspace/docs/testing.md",
+          "target": "docs/testing.md"
+        }
+      ]
     },
     "skills": {
       "logicalId": "skills",

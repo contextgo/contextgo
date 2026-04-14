@@ -11,7 +11,7 @@ This package backs ContextGo's built-in **Startup Strategist** assistant.
 
 ## Package Surfaces
 
-- runtime-facing assistant rules: `startup-strategist.md`, `startup-strategist.zh-CN.md`
+- `AGENTS.md` as the runtime-facing rules entry document
 - package notes: `docs/README.md`
 - deeper design rationale: `docs/design.md`, `docs/design.zh-CN.md`
 - bundled startup skills and workspace commands seeded by the package

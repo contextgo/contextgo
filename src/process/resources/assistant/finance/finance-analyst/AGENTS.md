@@ -12,7 +12,7 @@ This package backs ContextGo's built-in **Finance Analyst** assistant.
 
 ## Package Surfaces
 
-- runtime-facing assistant rules: `finance-analyst.md`, `finance-analyst.zh-CN.md`
+- `AGENTS.md` as the runtime-facing rules entry document
 - package notes: `docs/README.md`
 - deeper package design rationale: `docs/design.md`, `docs/design.zh-CN.md`
 - bundled finance workflow skills and workspace command seeds

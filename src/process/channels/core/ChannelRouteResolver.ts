@@ -96,6 +96,11 @@ function shouldUseRemoteUserBinding(
   );
 }
 
+function extractConversationSpaceId(conversation?: Pick<TChatConversation, 'extra'> | null): string | undefined {
+  const extra = conversation?.extra as Record<string, unknown> | undefined;
+  return typeof extra?.spaceId === 'string' && extra.spaceId ? extra.spaceId : undefined;
+}
+
 function readBindingContinuationConfig(binding: IChannelBinding): {
   mode?: 'resume' | 'new_thread';
   resumeConversationId?: string;
@@ -181,6 +186,25 @@ function buildStableId(prefix: string, ...parts: Array<string | undefined>): str
     .digest('hex')
     .slice(0, 16);
   return `${prefix}_${hash}`;
+}
+
+function buildRuntimeRemoteIdentityId(params: {
+  connectorId: string;
+  chatId: string;
+  platformChatId: string;
+  peerScope: 'chat' | 'thread';
+  parentChatId?: string;
+  threadId?: string;
+}): string {
+  return buildStableId(
+    'remote_identity',
+    params.connectorId,
+    params.chatId,
+    params.platformChatId,
+    params.peerScope,
+    params.parentChatId,
+    params.threadId
+  );
 }
 
 function sortBindings(bindings: IChannelBinding[]): IChannelBinding[] {
@@ -772,7 +796,14 @@ export class ChannelRouteResolver {
     }
 
     const remoteIdentity: IRemoteIdentity = {
-      id: `remote_identity_${uuid()}`,
+      id: buildRuntimeRemoteIdentityId({
+        connectorId: connector.id,
+        chatId,
+        platformChatId: resolvedPlatformChatId,
+        peerScope: normalizedPeerScope,
+        parentChatId,
+        threadId,
+      }),
       connectorId: connector.id,
       remoteUserId: platformUserId,
       remoteChatId: chatId,
@@ -915,6 +946,15 @@ export class ChannelRouteResolver {
     return profile;
   }
 
+  private assertMutationResult(
+    result: { success: boolean; error?: string },
+    fallbackMessage: string
+  ): void {
+    if (!result.success) {
+      throw new Error(result.error || fallbackMessage);
+    }
+  }
+
   private async ensureExternalSession(
     connector: IConnectorInstance,
     remoteIdentity: IRemoteIdentity,
@@ -922,6 +962,9 @@ export class ChannelRouteResolver {
     agentProfile: IAgentProfile
   ): Promise<IExternalSession> {
     const db = await getDatabase();
+    this.assertMutationResult(db.upsertAgentProfile(agentProfile), `Failed to mirror agent profile ${agentProfile.id}`);
+    this.assertMutationResult(db.upsertChannelBinding(binding), `Failed to mirror channel binding ${binding.id}`);
+
     const existing = db.getExternalSessionByConnectorRemote(connector.id, remoteIdentity.id);
     if (existing.success && existing.data) {
       const nextSession: IExternalSession = {
@@ -930,7 +973,10 @@ export class ChannelRouteResolver {
         agentProfileId: agentProfile.id,
         lastActivity: Date.now(),
       };
-      db.upsertExternalSession(nextSession);
+      this.assertMutationResult(
+        db.upsertExternalSession(nextSession),
+        `Failed to persist external session ${nextSession.id}`
+      );
       return nextSession;
     }
 
@@ -947,7 +993,7 @@ export class ChannelRouteResolver {
         source: 'channel-runtime',
       },
     };
-    db.upsertExternalSession(session);
+    this.assertMutationResult(db.upsertExternalSession(session), `Failed to persist external session ${session.id}`);
     return session;
   }
 
@@ -1076,7 +1122,7 @@ export class ChannelRouteResolver {
         kind: 'root',
       },
     };
-    db.upsertChannelRun(run);
+    this.assertMutationResult(db.upsertChannelRun(run), `Failed to persist root run ${rootRunId}`);
   }
 
   private async terminateRunTree(rootRunId: string): Promise<void> {
@@ -1113,6 +1159,11 @@ export class ChannelRouteResolver {
       agentName?: string;
       cliPath?: string;
     };
+    const sourceConversation =
+      !agentProfile.spaceId && agentProfile.publishedFromConversationId
+        ? await conversationServiceSingleton.getConversation(agentProfile.publishedFromConversationId)
+        : undefined;
+    const resolvedSpaceId = agentProfile.spaceId ?? extractConversationSpaceId(sourceConversation);
 
     if (agentProfile.backend === 'gemini') {
       return conversationServiceSingleton.createConversation({
@@ -1123,19 +1174,7 @@ export class ChannelRouteResolver {
         channelChatId: chatId,
         extra: {
           workspace: agentProfile.workspaceRef,
-        },
-      });
-    }
-
-    if (agentProfile.backend === 'codex') {
-      return conversationServiceSingleton.createConversation({
-        type: 'codex',
-        model,
-        source: platform,
-        name,
-        channelChatId: chatId,
-        extra: {
-          workspace: agentProfile.workspaceRef,
+          spaceId: resolvedSpaceId,
         },
       });
     }
@@ -1148,9 +1187,12 @@ export class ChannelRouteResolver {
       channelChatId: chatId,
       extra: {
         workspace: agentProfile.workspaceRef,
+        spaceId: resolvedSpaceId,
         backend: agentProfile.backend as AcpBackendAll,
+        cliPath: promptProfile.cliPath,
         customAgentId: promptProfile.customAgentId,
         agentName: promptProfile.agentName,
+        currentModelId: agentProfile.modelRef?.useModel ?? model.useModel,
       },
     });
   }

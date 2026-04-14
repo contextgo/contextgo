@@ -61,7 +61,7 @@ export const useAssistantList = () => {
       setSystemAssistants(resolvedSystemAssistants);
       setActiveAssistantId((prev) => {
         if (prev && sortedAssistants.some((assistant) => assistant.id === prev)) return prev;
-        return sortedAssistants[0]?.id || null;
+        return null;
       });
     } catch (error) {
       console.error('Failed to load assistant presets:', error);

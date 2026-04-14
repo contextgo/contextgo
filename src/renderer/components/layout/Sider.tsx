@@ -1164,7 +1164,12 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               </button>
               <button
                 type='button'
-                className={classNames(actionRowClassName, pathname === '/agents' && 'sider-entry-row--active')}
+                className={classNames(
+                  actionRowClassName,
+                  pathname === '/agents' || pathname.startsWith('/agents/')
+                    ? 'sider-entry-row--active'
+                    : null
+                )}
                 onClick={() => handleNavigate('/agents')}
                 onMouseEnter={() => handlePreloadRoute('/agents')}
                 onFocus={() => handlePreloadRoute('/agents')}

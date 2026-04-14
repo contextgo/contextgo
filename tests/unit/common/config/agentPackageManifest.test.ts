@@ -83,12 +83,10 @@ describe('agent-package manifests', () => {
     for (const descriptor of BUNDLED_AGENT_PACKAGE_DESCRIPTORS) {
       const { manifest, resourceDir } = descriptor;
 
-      expect(manifest.payloads.rules.installSurface).toBe('assistant-rules-cache');
-      expect(manifest.payloads.docs.installSurface).toBe('package-docs');
-
-      for (const filePath of Object.values(manifest.payloads.rules.files)) {
-        expect(fs.existsSync(path.join(REPO_ROOT, resourceDir, filePath))).toBe(true);
-      }
+      expect(manifest.entryDocument.file).toBe('AGENTS.md');
+      expect(manifest.docsDirectory?.root).toBe('docs');
+      expect(manifest.payloads.workspaceScaffold).toBeDefined();
+      expect(fs.existsSync(path.join(REPO_ROOT, resourceDir, manifest.entryDocument.file))).toBe(true);
 
       for (const payload of Object.values(manifest.payloads)) {
         if (!payload) {
@@ -107,10 +105,78 @@ describe('agent-package manifests', () => {
         );
       }
 
+      if (manifest.payloads.workspaceScaffold) {
+        expect(manifest.payloads.workspaceScaffold.focusAreas.length).toBeGreaterThan(0);
+        expect(manifest.payloads.workspaceScaffold.suggestedArtifacts.length).toBeGreaterThan(0);
+        expect(manifest.entryDocument.runtimeEntryProjections?.map((projection) => projection.runtime)).toEqual([
+          'claude',
+          'gemini',
+        ]);
+
+        for (const template of manifest.payloads.workspaceScaffold.templates ?? []) {
+          expect(fs.existsSync(path.join(REPO_ROOT, resourceDir, template.source))).toBe(true);
+          expect(template.target.length).toBeGreaterThan(0);
+        }
+      }
+
       if (manifest.payloads.commands && manifest.payloads.schedules) {
         expect(manifest.payloads.commands.workspaceAutomationProfile).toBe(
           manifest.payloads.schedules.workspaceAutomationProfile
         );
+      }
+    }
+  });
+
+  it('ships richer workspace scaffold templates for the superpowers harness', () => {
+    const manifest = readManifest('src/process/resources/assistant/engineering/superpowers');
+    const scaffold = manifest.payloads.workspaceScaffold;
+
+    expect(scaffold).toBeDefined();
+    expect(scaffold?.templates?.some((template) => template.target === 'docs/testing.md')).toBe(true);
+    expect(scaffold?.templates?.some((template) => template.target === 'docs/reviews/README.md')).toBe(true);
+  });
+
+  it('ships specialized workspace scaffold templates for non-engineering builtin assistants', () => {
+    const cases = [
+      {
+        resourceDir: 'src/process/resources/assistant/startup/startup-strategist',
+        expectedTargets: ['AGENTS.md', 'docs/ideas/README.md', 'docs/market/README.md', 'docs/strategy/README.md'],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/design/design-director',
+        expectedTargets: [
+          'AGENTS.md',
+          'docs/direction/README.md',
+          'docs/references/README.md',
+          'docs/handoff/README.md',
+        ],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/product/pm-workbench',
+        expectedTargets: ['AGENTS.md', 'docs/discovery/README.md', 'docs/prds/README.md', 'docs/roadmap/README.md'],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/office/office-analyst',
+        expectedTargets: ['AGENTS.md', 'docs/sources/README.md', 'docs/analysis/README.md', 'docs/reports/README.md'],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/finance/finance-analyst',
+        expectedTargets: [
+          'AGENTS.md',
+          'docs/analysis/README.md',
+          'docs/valuation/README.md',
+          'docs/scenarios/README.md',
+        ],
+      },
+    ];
+
+    for (const testCase of cases) {
+      const manifest = readManifest(testCase.resourceDir);
+      const scaffold = manifest.payloads.workspaceScaffold;
+
+      expect(scaffold).toBeDefined();
+      for (const expectedTarget of testCase.expectedTargets) {
+        expect(scaffold?.templates?.some((template) => template.target === expectedTarget)).toBe(true);
       }
     }
   });

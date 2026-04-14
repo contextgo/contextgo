@@ -58,6 +58,7 @@ const normalizeAgentProfiles = (profiles: readonly IAgentProfile[]): IAgentProfi
     .map((profile) => ({
       ...profile,
       workspaceRef: profile.workspaceRef?.trim() || undefined,
+      spaceId: profile.spaceId?.trim() || undefined,
       promptProfile: profile.promptProfile ?? {},
       toolPolicy: profile.toolPolicy ?? {},
       memoryPolicy: profile.memoryPolicy ?? {},
@@ -245,6 +246,7 @@ export class ProjectChannelPublicationService {
     const nextProfile: IAgentProfile = {
       ...profile,
       workspaceRef: profile.workspaceRef?.trim() || workspacePath,
+      spaceId: profile.spaceId?.trim() || undefined,
       promptProfile: profile.promptProfile ?? {},
       toolPolicy: profile.toolPolicy ?? {},
       memoryPolicy: profile.memoryPolicy ?? {},
