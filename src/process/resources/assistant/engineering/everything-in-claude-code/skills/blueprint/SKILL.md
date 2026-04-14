@@ -47,6 +47,7 @@ Blueprint detects git/gh availability automatically. With git + GitHub CLI, it g
 ```
 
 Produces `plans/myapp-migrate-database-to-postgresql.md` with steps like:
+
 - Step 1: Add PostgreSQL driver and connection config
 - Step 2: Create migration scripts for each table
 - Step 3: Update repository layer to use new driver

@@ -29,6 +29,7 @@ describe('workspace utils', () => {
     expect(getWorkspaceAutomationPaths('/Users/demo/project')).toEqual({
       rootDir: '/Users/demo/project/.contextgo',
       hooksDir: '/Users/demo/project/.contextgo/hooks',
+      hooksFile: '/Users/demo/project/.contextgo/hooks.json',
       commandsFile: '/Users/demo/project/.contextgo/commands.json',
       schedulesFile: '/Users/demo/project/.contextgo/schedules.json',
     });
@@ -38,6 +39,7 @@ describe('workspace utils', () => {
     expect(getWorkspaceAutomationPaths('D:\\workspace\\project')).toEqual({
       rootDir: 'D:\\workspace\\project\\.contextgo',
       hooksDir: 'D:\\workspace\\project\\.contextgo\\hooks',
+      hooksFile: 'D:\\workspace\\project\\.contextgo\\hooks.json',
       commandsFile: 'D:\\workspace\\project\\.contextgo\\commands.json',
       schedulesFile: 'D:\\workspace\\project\\.contextgo\\schedules.json',
     });

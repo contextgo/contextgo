@@ -12,11 +12,15 @@
 const VALID_PROFILES = new Set(['minimal', 'standard', 'strict']);
 
 function normalizeId(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function getHookProfile() {
-  const raw = String(process.env.ECC_HOOK_PROFILE || 'standard').trim().toLowerCase();
+  const raw = String(process.env.ECC_HOOK_PROFILE || 'standard')
+    .trim()
+    .toLowerCase();
   return VALID_PROFILES.has(raw) ? raw : 'standard';
 }
 
@@ -27,7 +31,7 @@ function getDisabledHookIds() {
   return new Set(
     raw
       .split(',')
-      .map(v => normalizeId(v))
+      .map((v) => normalizeId(v))
       .filter(Boolean)
   );
 }
@@ -37,15 +41,19 @@ function parseProfiles(rawProfiles, fallback = ['standard', 'strict']) {
 
   if (Array.isArray(rawProfiles)) {
     const parsed = rawProfiles
-      .map(v => String(v || '').trim().toLowerCase())
-      .filter(v => VALID_PROFILES.has(v));
+      .map((v) =>
+        String(v || '')
+          .trim()
+          .toLowerCase()
+      )
+      .filter((v) => VALID_PROFILES.has(v));
     return parsed.length > 0 ? parsed : [...fallback];
   }
 
   const parsed = String(rawProfiles)
     .split(',')
-    .map(v => v.trim().toLowerCase())
-    .filter(v => VALID_PROFILES.has(v));
+    .map((v) => v.trim().toLowerCase())
+    .filter((v) => VALID_PROFILES.has(v));
 
   return parsed.length > 0 ? parsed : [...fallback];
 }

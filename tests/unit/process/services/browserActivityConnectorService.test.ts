@@ -36,13 +36,20 @@ describe('BrowserActivityConnectorService', () => {
     };
     const contextService = {
       ingestSource: vi.fn(async () => ({ source: { id: 'source-1' } })),
-      indexTextDocument: vi.fn(async () => ({ snapshot: { id: 'doc-1' }, chunks: [{ id: 'chunk-1' }, { id: 'chunk-2' }] })),
+      indexTextDocument: vi.fn(async () => ({
+        snapshot: { id: 'doc-1' },
+        chunks: [{ id: 'chunk-1' }, { id: 'chunk-2' }],
+      })),
     };
     const eventBus = {
       emit: vi.fn(async () => undefined),
     };
 
-    const service = new BrowserActivityConnectorService(storeService as never, contextService as never, eventBus as never);
+    const service = new BrowserActivityConnectorService(
+      storeService as never,
+      contextService as never,
+      eventBus as never
+    );
 
     const result = await service.ingest({
       spaceId: 'space-1',
@@ -128,7 +135,11 @@ describe('BrowserActivityConnectorService', () => {
       emit: vi.fn(),
     };
 
-    const service = new BrowserActivityConnectorService(storeService as never, contextService as never, eventBus as never);
+    const service = new BrowserActivityConnectorService(
+      storeService as never,
+      contextService as never,
+      eventBus as never
+    );
 
     await expect(
       service.ingest({

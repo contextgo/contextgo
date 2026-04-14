@@ -5,11 +5,15 @@
  */
 
 import { ipcBridge } from '@/common';
-import type { ExternalSessionProvider, ExternalSessionSummary } from '@/common/types/externalSessions';
+import type {
+  ExternalSessionProvider,
+  ExternalSessionSummary,
+  ProductVisibleExternalSessionProvider,
+} from '@/common/types/externalSessions';
 import { ContextGoModal } from '@/renderer/components/base';
 import { emitter } from '@/renderer/utils/emitter';
 import { Button, Empty, Message, Tabs, Tag, Typography } from '@arco-design/web-react';
-import { Down, Refresh, Right } from '@icon-park/react';
+import { Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -21,17 +25,28 @@ type ExternalSessionsModalProps = {
   onClose: () => void;
 };
 
-type ExternalSessionFilter = 'all' | ExternalSessionProvider;
-type OpenClawAgentSummary = {
-  agentId: string;
-  agentName: string;
-  workspace?: string;
-};
+type ExternalSessionFilter = 'all' | ProductVisibleExternalSessionProvider;
 
-const FILTER_ORDER: ExternalSessionFilter[] = ['all', 'claude', 'codex', 'gemini', 'opencode', 'openclaw-gateway'];
-const isSameAgentList = (left: string[], right: string[]): boolean =>
-  left.length === right.length && left.every((value, index) => value === right[index]);
-const normalizeOpenClawAgentId = (agentId?: string) => agentId?.trim().toLowerCase() || 'main';
+const FILTER_ORDER: ExternalSessionFilter[] = ['all', 'claude', 'codex', 'gemini', 'opencode'];
+const PRODUCT_VISIBLE_SESSION_PROVIDER_SET = new Set<ExternalSessionProvider>([
+  'claude',
+  'codex',
+  'gemini',
+  'opencode',
+]);
+
+const isProductVisibleExternalSessionProvider = (
+  provider: ExternalSessionProvider
+): provider is ProductVisibleExternalSessionProvider => PRODUCT_VISIBLE_SESSION_PROVIDER_SET.has(provider);
+
+const collectSessionSignals = (session: ExternalSessionSummary): string[] => {
+  return [session.model, session.modelProvider, session.reasoningEffort]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .filter(
+      (value, index, values) =>
+        values.findIndex((candidate) => candidate.toLowerCase() === value.toLowerCase()) === index
+    );
+};
 
 const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, onClose }) => {
   const { t } = useTranslation();
@@ -40,10 +55,7 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
   const [messageApi, messageContext] = Message.useMessage();
   const [loading, setLoading] = useState(false);
   const [sessions, setSessions] = useState<ExternalSessionSummary[]>([]);
-  const [openclawAgents, setOpenclawAgents] = useState<OpenClawAgentSummary[]>([]);
   const [activeFilter, setActiveFilter] = useState<ExternalSessionFilter>('all');
-  const [expandedOpenClawAgents, setExpandedOpenClawAgents] = useState<string[]>([]);
-  const [hasInitializedOpenClawExpansion, setHasInitializedOpenClawExpansion] = useState(false);
   const [importingSessionId, setImportingSessionId] = useState<string | null>(null);
   const loadingRef = useRef(false);
   const requestSeqRef = useRef(0);
@@ -59,49 +71,13 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
     setLoading(true);
 
     try {
-      const [sessionsResult, agentsResult] = await Promise.all([
-        ipcBridge.acpConversation.listExternalSessions.invoke({}),
-        ipcBridge.acpConversation.getAvailableAgents.invoke(),
-      ]);
+      const sessionsResult = await ipcBridge.acpConversation.listExternalSessions.invoke({});
       if (!sessionsResult?.success) {
         throw new Error(sessionsResult?.msg || 'Failed to scan external sessions');
       }
 
       if (requestSeqRef.current === requestId) {
         setSessions(sessionsResult.data?.sessions ?? []);
-        const agentMap = new Map<string, OpenClawAgentSummary>();
-
-        for (const agent of agentsResult?.success ? agentsResult.data || [] : []) {
-          if (agent.backend !== 'openclaw-gateway' || typeof agent.openclawAgentId !== 'string') {
-            continue;
-          }
-
-          const normalizedAgentId = normalizeOpenClawAgentId(agent.openclawAgentId);
-          if (!agentMap.has(normalizedAgentId)) {
-            agentMap.set(normalizedAgentId, {
-              agentId: normalizedAgentId,
-              agentName: agent.name,
-              workspace: typeof agent.workspace === 'string' ? agent.workspace : undefined,
-            });
-          }
-        }
-
-        for (const session of sessionsResult.data?.sessions ?? []) {
-          if (session.provider !== 'openclaw-gateway' || !session.openclawAgentId) {
-            continue;
-          }
-
-          const normalizedAgentId = normalizeOpenClawAgentId(session.openclawAgentId);
-          if (!agentMap.has(normalizedAgentId)) {
-            agentMap.set(normalizedAgentId, {
-              agentId: normalizedAgentId,
-              agentName: session.agentName || session.openclawAgentId,
-              workspace: session.workspace,
-            });
-          }
-        }
-
-        setOpenclawAgents(Array.from(agentMap.values()));
       }
     } catch (error) {
       console.error('Failed to load external sessions:', error);
@@ -160,101 +136,63 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
     void loadSessions();
   }, [visible]);
 
+  const visibleSessions = useMemo(
+    () => sessions.filter((session) => isProductVisibleExternalSessionProvider(session.provider)),
+    [sessions]
+  );
+
   const filteredSessions = useMemo(
-    () => (activeFilter === 'all' ? sessions : sessions.filter((session) => session.provider === activeFilter)),
-    [activeFilter, sessions]
-  );
-
-  const openclawSessionGroups = useMemo(
     () =>
-      activeFilter === 'openclaw-gateway'
-        ? openclawAgents.map((agent) => ({
-            agent,
-            sessions: filteredSessions.filter(
-              (session) =>
-                session.provider === 'openclaw-gateway' &&
-                normalizeOpenClawAgentId(session.openclawAgentId) === agent.agentId
-            ),
-          }))
-        : [],
-    [activeFilter, filteredSessions, openclawAgents]
+      activeFilter === 'all' ? visibleSessions : visibleSessions.filter((session) => session.provider === activeFilter),
+    [activeFilter, visibleSessions]
   );
 
-  const openclawAgentIds = useMemo(
-    () => openclawSessionGroups.map((group) => group.agent.agentId),
-    [openclawSessionGroups]
-  );
-  const openclawAgentIdsKey = openclawAgentIds.join('|');
-  const openclawNonEmptyAgentIds = useMemo(
-    () => openclawSessionGroups.filter((group) => group.sessions.length > 0).map((group) => group.agent.agentId),
-    [openclawSessionGroups]
-  );
-  const openclawNonEmptyAgentIdsKey = openclawNonEmptyAgentIds.join('|');
+  const renderSessionCard = (session: ExternalSessionSummary) => {
+    const sessionSignals = collectSessionSignals(session);
 
-  useEffect(() => {
-    if (activeFilter !== 'openclaw-gateway') {
-      setHasInitializedOpenClawExpansion(false);
-      return;
-    }
-
-    setExpandedOpenClawAgents((current) => {
-      const validCurrent = current.filter((agentId) => openclawAgentIds.includes(agentId));
-      const next = hasInitializedOpenClawExpansion ? validCurrent : openclawNonEmptyAgentIds;
-      return isSameAgentList(current, next) ? current : next;
-    });
-
-    if (!hasInitializedOpenClawExpansion) {
-      setHasInitializedOpenClawExpansion(true);
-    }
-  }, [
-    activeFilter,
-    hasInitializedOpenClawExpansion,
-    openclawAgentIds,
-    openclawAgentIdsKey,
-    openclawNonEmptyAgentIds,
-    openclawNonEmptyAgentIdsKey,
-  ]);
-
-  const toggleOpenClawAgentGroup = (agentId: string) => {
-    setHasInitializedOpenClawExpansion(true);
-    setExpandedOpenClawAgents((current) =>
-      current.includes(agentId) ? current.filter((item) => item !== agentId) : [...current, agentId]
+    return (
+      <div key={`${session.provider}:${session.sessionId}`} className={styles.sessionCard}>
+        <div className='min-w-0 flex-1'>
+          <div className='flex items-center gap-8px flex-wrap'>
+            <Tag size='small' color='arcoblue'>
+              {t(`guid.externalSessions.providers.${session.provider}`, {
+                defaultValue: session.provider,
+              })}
+            </Tag>
+            <span className={styles.sessionTitle}>{session.title}</span>
+          </div>
+          <div className={styles.sessionMeta}>{session.workspace}</div>
+          {sessionSignals.length > 0 ? (
+            <div className={styles.sessionSignalRow}>
+              {sessionSignals.map((signal) => (
+                <span key={signal} className={styles.sessionSignal}>
+                  {signal}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <div className={styles.sessionMeta}>
+            {t('guid.externalSessions.updatedAt', {
+              defaultValue: 'Updated {{time}}',
+              time: new Date(session.updatedAt).toLocaleString(),
+            })}
+          </div>
+        </div>
+        <Button
+          type='primary'
+          size='small'
+          loading={importingSessionId === session.sessionId}
+          onClick={() => {
+            void importSession(session);
+          }}
+        >
+          {t('guid.externalSessions.import', {
+            defaultValue: 'Take over',
+          })}
+        </Button>
+      </div>
     );
   };
-
-  const renderSessionCard = (session: ExternalSessionSummary) => (
-    <div key={`${session.provider}:${session.sessionId}`} className={styles.sessionCard}>
-      <div className='min-w-0 flex-1'>
-        <div className='flex items-center gap-8px flex-wrap'>
-          <Tag size='small' color='arcoblue'>
-            {t(`guid.externalSessions.providers.${session.provider}`, {
-              defaultValue: session.provider,
-            })}
-          </Tag>
-          <span className={styles.sessionTitle}>{session.title}</span>
-        </div>
-        <div className={styles.sessionMeta}>{session.workspace}</div>
-        <div className={styles.sessionMeta}>
-          {t('guid.externalSessions.updatedAt', {
-            defaultValue: 'Updated {{time}}',
-            time: new Date(session.updatedAt).toLocaleString(),
-          })}
-        </div>
-      </div>
-      <Button
-        type='primary'
-        size='small'
-        loading={importingSessionId === session.sessionId}
-        onClick={() => {
-          void importSession(session);
-        }}
-      >
-        {t('guid.externalSessions.import', {
-          defaultValue: 'Take over',
-        })}
-      </Button>
-    </div>
-  );
 
   return (
     <>
@@ -333,46 +271,11 @@ const ExternalSessionsModal: React.FC<ExternalSessionsModalProps> = ({ visible, 
             </Tabs>
           </div>
 
-          {loading && filteredSessions.length === 0 && sessions.length === 0 ? (
+          {loading && filteredSessions.length === 0 && visibleSessions.length === 0 ? (
             <div className='py-20px text-center text-13px text-t-secondary'>
               {t('guid.externalSessions.loading', {
                 defaultValue: 'Scanning external sessions...',
               })}
-            </div>
-          ) : activeFilter === 'openclaw-gateway' && openclawSessionGroups.length > 0 ? (
-            <div className={styles.groupList}>
-              {openclawSessionGroups.map(({ agent, sessions: agentSessions }) => (
-                <div key={agent.agentId} className='flex flex-col gap-8px'>
-                  <div
-                    className={styles.groupHeader}
-                    onClick={() => {
-                      toggleOpenClawAgentGroup(agent.agentId);
-                    }}
-                  >
-                    {expandedOpenClawAgents.includes(agent.agentId) ? (
-                      <Down size={16} className='shrink-0 text-t-secondary' />
-                    ) : (
-                      <Right size={16} className='shrink-0 text-t-secondary' />
-                    )}
-                    <span className={styles.groupTitle}>{agent.agentName}</span>
-                    <Tag size='small' color='gray'>
-                      {String(agentSessions.length)}
-                    </Tag>
-                  </div>
-                  {expandedOpenClawAgents.includes(agent.agentId) ? (
-                    <div className={styles.groupChildren}>
-                      <div className={styles.sessionMeta}>{agent.workspace || agentSessions[0]?.workspace || ''}</div>
-                      {agentSessions.length > 0 ? (
-                        <div className={styles.sessionsList}>
-                          {agentSessions.map((session) => renderSessionCard(session))}
-                        </div>
-                      ) : (
-                        <div aria-hidden='true' className={styles.emptyBranch} />
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
             </div>
           ) : filteredSessions.length > 0 ? (
             <div className={styles.sessionsList}>{filteredSessions.map((session) => renderSessionCard(session))}</div>

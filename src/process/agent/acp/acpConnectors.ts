@@ -18,7 +18,6 @@ import os from 'os';
 import path from 'path';
 import {
   CLAUDE_ACP_NPX_PACKAGE,
-  CODEBUDDY_ACP_NPX_PACKAGE,
   CODEX_ACP_BRIDGE_VERSION,
   CODEX_ACP_NPX_PACKAGE,
 } from '@/common/types/acpTypes';
@@ -134,9 +133,9 @@ export function ensureMinNodeVersion(
  * Creates spawn configuration for ACP CLI commands.
  * Exported for unit testing.
  *
- * @param cliPath - CLI command path (e.g., 'goose', 'npx @pkg/cli')
+ * @param cliPath - CLI command path (for example 'opencode' or 'npx @pkg/cli')
  * @param workingDir - Working directory for the spawned process
- * @param acpArgs - Arguments to enable ACP mode (e.g., ['acp'] for goose, ['--acp'] for auggie, ['exec','--output-format','acp'] for droid)
+ * @param acpArgs - Arguments to enable ACP mode for the target runtime
  * @param customEnv - Custom environment variables
  * @param prebuiltEnv - Pre-built env to use directly (skips internal getEnhancedEnv)
  */
@@ -166,7 +165,7 @@ export function createGenericSpawnConfig(
   } else if (isWindows) {
     // On Windows with shell: true, let cmd.exe handle the full command string.
     // This correctly supports paths with spaces (e.g., "C:\Program Files\agent.exe")
-    // and commands with inline args (e.g., "goose acp" or "node path/to/file.js").
+    // and commands with inline args (for example "opencode --experimental-acp" or "node path/to/file.js").
     //
     // chcp 65001: switch console to UTF-8 so stderr/stdout doesn't get garbled
     // (Chinese Windows defaults to CP936/GBK).
@@ -174,7 +173,7 @@ export function createGenericSpawnConfig(
     spawnCommand = `chcp 65001 >nul && "${cliPath}"`;
     spawnArgs = effectiveAcpArgs;
   } else {
-    // Unix: simple command or path. If cliPath contains spaces (e.g., "goose acp"),
+    // Unix: simple command or path. If cliPath contains spaces (for example "opencode --experimental-acp"),
     // parse into command + inline args.
     const parts = cliPath.split(/\s+/);
     spawnCommand = parts[0];
@@ -199,7 +198,7 @@ export function createGenericSpawnConfig(
 
 export type SpawnResult = { child: ChildProcess; isDetached: boolean };
 
-/** Return type for npx backend prepare functions (prepareClaude, prepareCodex, prepareCodebuddy). */
+/** Return type for npx backend prepare functions. */
 export type NpxPrepareResult = {
   cleanEnv: Record<string, string | undefined>;
   npxCommand: string;
@@ -302,26 +301,6 @@ async function prepareCodex(): Promise<NpxPrepareResult> {
 
   mainLog('[ACP codex]', 'Runtime diagnostics', diagnostics);
   return { cleanEnv, npxCommand: resolveNpxPath(cleanEnv) };
-}
-
-/** Prepare clean env + resolve npx + load MCP config for CodeBuddy. */
-async function prepareCodebuddy(): Promise<NpxPrepareResult> {
-  const cleanEnv = prepareCleanEnv();
-  ensureMinNodeVersion(cleanEnv, 20, 10, 'CodeBuddy ACP');
-
-  // Load user's MCP config if available (~/.codebuddy/mcp.json)
-  // CodeBuddy CLI in --acp mode does not auto-load mcp.json, so we pass it explicitly
-  const mcpConfigPath = path.join(os.homedir(), '.codebuddy', 'mcp.json');
-  const extraArgs: string[] = [];
-  try {
-    await fs.access(mcpConfigPath);
-    extraArgs.push('--mcp-config', mcpConfigPath);
-    mainLog('[ACP]', `Loading CodeBuddy MCP config from ${mcpConfigPath}`);
-  } catch {
-    mainWarn('[ACP]', 'No CodeBuddy MCP config found, starting without MCP servers');
-  }
-
-  return { cleanEnv, npxCommand: resolveNpxPath(cleanEnv), extraArgs };
 }
 
 /**
@@ -431,18 +410,5 @@ export function connectCodex(workingDir: string, hooks: NpxConnectHooks): Promis
     prepareFn: prepareCodex,
     workingDir,
     ...hooks,
-  });
-}
-
-/** Connect to CodeBuddy ACP via npx. */
-export function connectCodebuddy(workingDir: string, hooks: NpxConnectHooks): Promise<void> {
-  return connectNpxBackend({
-    backend: 'codebuddy',
-    npxPackage: CODEBUDDY_ACP_NPX_PACKAGE,
-    prepareFn: prepareCodebuddy,
-    workingDir,
-    ...hooks,
-    extraArgs: ['--acp'],
-    detached: process.platform !== 'win32',
   });
 }

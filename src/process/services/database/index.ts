@@ -2500,16 +2500,17 @@ export class AionUIDatabase {
       this.db
         .prepare(`
           INSERT INTO agent_profiles (
-            id, name, backend, model_ref, workspace_ref, prompt_profile, tool_policy,
+            id, name, backend, model_ref, workspace_ref, space_id, prompt_profile, tool_policy,
             memory_policy, delegation_policy, published_from_conversation_id,
             version, archived, created_at, updated_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             backend = excluded.backend,
             model_ref = excluded.model_ref,
             workspace_ref = excluded.workspace_ref,
+            space_id = excluded.space_id,
             prompt_profile = excluded.prompt_profile,
             tool_policy = excluded.tool_policy,
             memory_policy = excluded.memory_policy,
@@ -2525,6 +2526,7 @@ export class AionUIDatabase {
           row.backend,
           row.model_ref,
           row.workspace_ref,
+          row.space_id,
           row.prompt_profile,
           row.tool_policy,
           row.memory_policy,

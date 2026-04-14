@@ -76,24 +76,16 @@ export const usePresetAssistantResolver = ({
       // Fallback for builtin assistants
       const preset = findBuiltinAssistantPreset(customAgentId);
       if (preset) {
-        if (!rules && preset.ruleFiles) {
+        if (!rules) {
           try {
-            const ruleFile = preset.ruleFiles[localeKey] || preset.ruleFiles['en-US'];
-            if (ruleFile) {
-              rules = await ipcBridge.fs.readBuiltinRule.invoke({ fileName: ruleFile });
+            const result = await ipcBridge.fs.readBundledAgentPackageContent.invoke({
+              assistantId: customAgentId,
+            });
+            if (result.success) {
+              rules = result.data?.agentsDocument?.content || '';
             }
           } catch (e) {
-            console.warn(`Failed to load builtin rules for ${customAgentId}:`, e);
-          }
-        }
-        if (!skills && preset.skillFiles) {
-          try {
-            const skillFile = preset.skillFiles[localeKey] || preset.skillFiles['en-US'];
-            if (skillFile) {
-              skills = await ipcBridge.fs.readBuiltinSkill.invoke({ fileName: skillFile });
-            }
-          } catch {
-            // skills fallback failure is ok
+            console.warn(`Failed to load bundled AGENTS.md for ${customAgentId}:`, e);
           }
         }
       }

@@ -1,4 +1,9 @@
 import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
+import {
+  getBundledAgentPackageHideOwnedSkillsFromLibrary,
+  getBundledAgentPackageOwnedSkillNames,
+  hasBundledAgentPackageSkillsPayload,
+} from '@/common/config/presets/bundledAgentPackageRegistry';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import type {
   AssistantBadge,
@@ -11,7 +16,7 @@ import type {
 } from './types';
 
 /**
- * Check if a builtin assistant has skills config (defaultEnabledSkills or skillFiles).
+ * Check if a builtin assistant exposes a bundled skills payload.
  */
 export const getBuiltinAssistantPreset = (assistantId: string) => {
   if (!assistantId.startsWith('builtin-')) return undefined;
@@ -21,11 +26,15 @@ export const getBuiltinAssistantPreset = (assistantId: string) => {
 
 export const hasBuiltinSkills = (assistantId: string): boolean => {
   if (!assistantId.startsWith('builtin-')) return false;
-  const preset = getBuiltinAssistantPreset(assistantId);
-  if (!preset) return false;
-  const hasDefaultSkills = preset.defaultEnabledSkills && preset.defaultEnabledSkills.length > 0;
-  const hasSkillFiles = preset.skillFiles && Object.keys(preset.skillFiles).length > 0;
-  return Boolean(hasDefaultSkills || hasSkillFiles);
+  return hasBundledAgentPackageSkillsPayload(assistantId);
+};
+
+export const getBuiltinPackageOwnedSkillNames = (assistantId: string): string[] => {
+  return getBundledAgentPackageOwnedSkillNames(assistantId) ?? [];
+};
+
+export const shouldHideBuiltinPackageOwnedSkills = (assistantId: string): boolean => {
+  return getBundledAgentPackageHideOwnedSkillsFromLibrary(assistantId) === true;
 };
 
 /**

@@ -150,58 +150,6 @@ describe('useConversationListSync', () => {
     expect(result.current.isConversationGenerating('openclaw-conv-1')).toBe(false);
   });
 
-  it('does not keep OpenClaw conversations generating during bootstrap agent statuses', async () => {
-    const { useConversationListSync } =
-      await import('@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync');
-    const { result } = renderHook(() => useConversationListSync());
-
-    await waitFor(() => {
-      expect(result.current.conversations).toHaveLength(1);
-    });
-
-    act(() => {
-      responseStreamListeners.forEach((listener) =>
-        listener({
-          conversation_id: 'openclaw-conv-1',
-          type: 'agent_status',
-          data: {
-            backend: 'openclaw-gateway',
-            status: 'connecting',
-          },
-        })
-      );
-    });
-
-    expect(result.current.isConversationGenerating('openclaw-conv-1')).toBe(false);
-
-    act(() => {
-      responseStreamListeners.forEach((listener) =>
-        listener({
-          conversation_id: 'openclaw-conv-1',
-          type: 'content',
-          data: 'running',
-        })
-      );
-    });
-
-    expect(result.current.isConversationGenerating('openclaw-conv-1')).toBe(true);
-
-    act(() => {
-      responseStreamListeners.forEach((listener) =>
-        listener({
-          conversation_id: 'openclaw-conv-1',
-          type: 'agent_status',
-          data: {
-            backend: 'openclaw-gateway',
-            status: 'session_active',
-          },
-        })
-      );
-    });
-
-    expect(result.current.isConversationGenerating('openclaw-conv-1')).toBe(false);
-  });
-
   it('ignores model-info and codex bootstrap events when opening a conversation', async () => {
     const { useConversationListSync } =
       await import('@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync');

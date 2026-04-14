@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   buildBrowserBridgeSocketUrl,
   buildBrowserLoginRedirectPath,
+  buildHostedRemoteDeviceRouteStorageKey,
   buildHostedRemoteNoticeRedirectPath,
   extractRemoteDeviceId,
+  readHostedRemoteDeviceRoute,
+  rememberHostedRemoteDeviceRoute,
+  resolveHostedRemoteBootstrapHref,
   resolveHostedRemoteDisconnect,
   resolveHostedRemoteDisconnectRedirectPath,
 } from '@/common/adapter/browserAuthRedirect';
@@ -24,6 +28,52 @@ describe('buildBrowserBridgeSocketUrl', () => {
   it('accepts hosted remote device paths with a trailing slash when composing the socket url', () => {
     expect(buildBrowserBridgeSocketUrl('https://remote.contextgo.io/device/device-1/', 25809)).toBe(
       'wss://remote.contextgo.io/api/remote/client-connect?device_id=device-1'
+    );
+  });
+});
+
+describe('hosted remote device route persistence', () => {
+  it('stores hosted device routes under a stable device-specific key', () => {
+    expect(buildHostedRemoteDeviceRouteStorageKey('device-1')).toBe('contextgo:official-remote-device-route:device-1');
+  });
+
+  it('normalizes and restores the last route for a hosted remote device', () => {
+    const storage = new Map<string, string>();
+
+    rememberHostedRemoteDeviceRoute('device-1', 'conversation/abc', {
+      setItem: (key, value) => {
+        storage.set(key, value);
+      },
+    });
+
+    expect(
+      readHostedRemoteDeviceRoute('device-1', {
+        getItem: (key) => storage.get(key) ?? null,
+      })
+    ).toBe('/conversation/abc');
+  });
+
+  it('bootstraps device entry directly to the remembered route when the hosted page has no hash route yet', () => {
+    const storage = new Map<string, string>([['contextgo:official-remote-device-route:device-1', '/conversation/abc']]);
+
+    expect(
+      resolveHostedRemoteBootstrapHref('https://remote.contextgo.io/device/device-1', {
+        getItem: (key) => storage.get(key) ?? null,
+      })
+    ).toBe('https://remote.contextgo.io/device/device-1#/conversation/abc');
+  });
+
+  it('falls back to guid when a hosted device page has no remembered route', () => {
+    expect(
+      resolveHostedRemoteBootstrapHref('https://remote.contextgo.io/device/device-1', {
+        getItem: () => null,
+      })
+    ).toBe('https://remote.contextgo.io/device/device-1#/guid');
+  });
+
+  it('keeps the current href unchanged when the device page already has a hash route', () => {
+    expect(resolveHostedRemoteBootstrapHref('https://remote.contextgo.io/device/device-1#/conversation/abc')).toBe(
+      'https://remote.contextgo.io/device/device-1#/conversation/abc'
     );
   });
 });

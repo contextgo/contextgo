@@ -15,7 +15,7 @@ description: >-
 origin: community
 metadata:
   author: YannJY02
-  version: "1.0.0"
+  version: '1.0.0'
 ---
 
 # Prompt Optimizer
@@ -84,30 +84,30 @@ skip detection and flag "tech stack unknown" in Phase 4.
 
 Classify the user's task into one or more categories:
 
-| Category | Signal Words | Example |
-|----------|-------------|---------|
-| New Feature | build, create, add, implement, 创建, 实现, 添加 | "Build a login page" |
-| Bug Fix | fix, broken, not working, error, 修复, 报错 | "Fix the auth flow" |
-| Refactor | refactor, clean up, restructure, 重构, 整理 | "Refactor the API layer" |
-| Research | how to, what is, explore, investigate, 怎么, 如何 | "How to add SSO" |
-| Testing | test, coverage, verify, 测试, 覆盖率 | "Add tests for the cart" |
-| Review | review, audit, check, 审查, 检查 | "Review my PR" |
-| Documentation | document, update docs, 文档 | "Update the API docs" |
-| Infrastructure | deploy, CI, docker, database, 部署, 数据库 | "Set up CI/CD pipeline" |
-| Design | design, architecture, plan, 设计, 架构 | "Design the data model" |
+| Category       | Signal Words                                      | Example                  |
+| -------------- | ------------------------------------------------- | ------------------------ |
+| New Feature    | build, create, add, implement, 创建, 实现, 添加   | "Build a login page"     |
+| Bug Fix        | fix, broken, not working, error, 修复, 报错       | "Fix the auth flow"      |
+| Refactor       | refactor, clean up, restructure, 重构, 整理       | "Refactor the API layer" |
+| Research       | how to, what is, explore, investigate, 怎么, 如何 | "How to add SSO"         |
+| Testing        | test, coverage, verify, 测试, 覆盖率              | "Add tests for the cart" |
+| Review         | review, audit, check, 审查, 检查                  | "Review my PR"           |
+| Documentation  | document, update docs, 文档                       | "Update the API docs"    |
+| Infrastructure | deploy, CI, docker, database, 部署, 数据库        | "Set up CI/CD pipeline"  |
+| Design         | design, architecture, plan, 设计, 架构            | "Design the data model"  |
 
 ### Phase 2: Scope Assessment
 
 If Phase 0 detected a project, use codebase size as a signal. Otherwise, estimate
 from the prompt description alone and mark the estimate as uncertain.
 
-| Scope | Heuristic | Orchestration |
-|-------|-----------|---------------|
-| TRIVIAL | Single file, < 50 lines | Direct execution |
-| LOW | Single component or module | Single command or skill |
-| MEDIUM | Multiple components, same domain | Command chain + /verify |
-| HIGH | Cross-domain, 5+ files | /plan first, then phased execution |
-| EPIC | Multi-session, multi-PR, architectural shift | Use blueprint skill for multi-session plan |
+| Scope   | Heuristic                                    | Orchestration                              |
+| ------- | -------------------------------------------- | ------------------------------------------ |
+| TRIVIAL | Single file, < 50 lines                      | Direct execution                           |
+| LOW     | Single component or module                   | Single command or skill                    |
+| MEDIUM  | Multiple components, same domain             | Command chain + /verify                    |
+| HIGH    | Cross-domain, 5+ files                       | /plan first, then phased execution         |
+| EPIC    | Multi-session, multi-PR, architectural shift | Use blueprint skill for multi-session plan |
 
 ### Phase 3: ECC Component Matching
 
@@ -115,33 +115,33 @@ Map intent + scope + tech stack (from Phase 0) to specific ECC components.
 
 #### By Intent Type
 
-| Intent | Commands | Skills | Agents |
-|--------|----------|--------|--------|
-| New Feature | /plan, /tdd, /code-review, /verify | tdd-workflow, verification-loop | planner, tdd-guide, code-reviewer |
-| Bug Fix | /tdd, /build-fix, /verify | tdd-workflow | tdd-guide, build-error-resolver |
-| Refactor | /refactor-clean, /code-review, /verify | verification-loop | refactor-cleaner, code-reviewer |
-| Research | /plan | search-first, iterative-retrieval | — |
-| Testing | /tdd, /e2e, /test-coverage | tdd-workflow, e2e-testing | tdd-guide, e2e-runner |
-| Review | /code-review | security-review | code-reviewer, security-reviewer |
-| Documentation | /update-docs, /update-codemaps | — | doc-updater |
-| Infrastructure | /plan, /verify | docker-patterns, deployment-patterns, database-migrations | architect |
-| Design (MEDIUM-HIGH) | /plan | — | planner, architect |
-| Design (EPIC) | — | blueprint (invoke as skill) | planner, architect |
+| Intent               | Commands                               | Skills                                                    | Agents                            |
+| -------------------- | -------------------------------------- | --------------------------------------------------------- | --------------------------------- |
+| New Feature          | /plan, /tdd, /code-review, /verify     | tdd-workflow, verification-loop                           | planner, tdd-guide, code-reviewer |
+| Bug Fix              | /tdd, /build-fix, /verify              | tdd-workflow                                              | tdd-guide, build-error-resolver   |
+| Refactor             | /refactor-clean, /code-review, /verify | verification-loop                                         | refactor-cleaner, code-reviewer   |
+| Research             | /plan                                  | search-first, iterative-retrieval                         | —                                 |
+| Testing              | /tdd, /e2e, /test-coverage             | tdd-workflow, e2e-testing                                 | tdd-guide, e2e-runner             |
+| Review               | /code-review                           | security-review                                           | code-reviewer, security-reviewer  |
+| Documentation        | /update-docs, /update-codemaps         | —                                                         | doc-updater                       |
+| Infrastructure       | /plan, /verify                         | docker-patterns, deployment-patterns, database-migrations | architect                         |
+| Design (MEDIUM-HIGH) | /plan                                  | —                                                         | planner, architect                |
+| Design (EPIC)        | —                                      | blueprint (invoke as skill)                               | planner, architect                |
 
 #### By Tech Stack
 
-| Tech Stack | Skills to Add | Agent |
-|------------|--------------|-------|
-| Python / Django | django-patterns, django-tdd, django-security, django-verification, python-patterns, python-testing | python-reviewer |
-| Go | golang-patterns, golang-testing | go-reviewer, go-build-resolver |
-| Spring Boot / Java | springboot-patterns, springboot-tdd, springboot-security, springboot-verification, java-coding-standards, jpa-patterns | code-reviewer |
-| Kotlin / Android | kotlin-coroutines-flows, compose-multiplatform-patterns, android-clean-architecture | kotlin-reviewer |
-| TypeScript / React | frontend-patterns, backend-patterns, coding-standards | code-reviewer |
-| Swift / iOS | swiftui-patterns, swift-concurrency-6-2, swift-actor-persistence, swift-protocol-di-testing | code-reviewer |
-| PostgreSQL | postgres-patterns, database-migrations | database-reviewer |
-| Perl | perl-patterns, perl-testing, perl-security | code-reviewer |
-| C++ | cpp-coding-standards, cpp-testing | code-reviewer |
-| Other / Unlisted | coding-standards (universal) | code-reviewer |
+| Tech Stack         | Skills to Add                                                                                                          | Agent                          |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Python / Django    | django-patterns, django-tdd, django-security, django-verification, python-patterns, python-testing                     | python-reviewer                |
+| Go                 | golang-patterns, golang-testing                                                                                        | go-reviewer, go-build-resolver |
+| Spring Boot / Java | springboot-patterns, springboot-tdd, springboot-security, springboot-verification, java-coding-standards, jpa-patterns | code-reviewer                  |
+| Kotlin / Android   | kotlin-coroutines-flows, compose-multiplatform-patterns, android-clean-architecture                                    | kotlin-reviewer                |
+| TypeScript / React | frontend-patterns, backend-patterns, coding-standards                                                                  | code-reviewer                  |
+| Swift / iOS        | swiftui-patterns, swift-concurrency-6-2, swift-actor-persistence, swift-protocol-di-testing                            | code-reviewer                  |
+| PostgreSQL         | postgres-patterns, database-migrations                                                                                 | database-reviewer              |
+| Perl               | perl-patterns, perl-testing, perl-security                                                                             | code-reviewer                  |
+| C++                | cpp-coding-standards, cpp-testing                                                                                      | code-reviewer                  |
+| Other / Unlisted   | coding-standards (universal)                                                                                           | code-reviewer                  |
 
 ### Phase 4: Missing Context Detection
 
@@ -176,16 +176,17 @@ For MEDIUM+ tasks, always start with /plan. For EPIC tasks, use blueprint skill.
 
 **Model recommendation** (include in output):
 
-| Scope | Recommended Model | Rationale |
-|-------|------------------|-----------|
-| TRIVIAL-LOW | Sonnet 4.6 | Fast, cost-efficient for simple tasks |
-| MEDIUM | Sonnet 4.6 | Best coding model for standard work |
-| HIGH | Sonnet 4.6 (main) + Opus 4.6 (planning) | Opus for architecture, Sonnet for implementation |
-| EPIC | Opus 4.6 (blueprint) + Sonnet 4.6 (execution) | Deep reasoning for multi-session planning |
+| Scope       | Recommended Model                             | Rationale                                        |
+| ----------- | --------------------------------------------- | ------------------------------------------------ |
+| TRIVIAL-LOW | Sonnet 4.6                                    | Fast, cost-efficient for simple tasks            |
+| MEDIUM      | Sonnet 4.6                                    | Best coding model for standard work              |
+| HIGH        | Sonnet 4.6 (main) + Opus 4.6 (planning)       | Opus for architecture, Sonnet for implementation |
+| EPIC        | Opus 4.6 (blueprint) + Sonnet 4.6 (execution) | Deep reasoning for multi-session planning        |
 
 **Multi-prompt splitting** (for HIGH/EPIC scope):
 
 For tasks that exceed a single session, split into sequential prompts:
+
 - Prompt 1: Research + Plan (use search-first skill, then /plan)
 - Prompt 2-N: Implement one phase per prompt (each ends with /verify)
 - Final Prompt: Integration test + /code-review across all phases
@@ -204,26 +205,27 @@ as the user's input.
 
 **Issues:**
 
-| Issue | Impact | Suggested Fix |
-|-------|--------|---------------|
-| (problem) | (consequence) | (how to fix) |
+| Issue     | Impact        | Suggested Fix |
+| --------- | ------------- | ------------- |
+| (problem) | (consequence) | (how to fix)  |
 
 **Needs Clarification:** Numbered list of questions the user should answer.
 If Phase 0 auto-detected the answer, state it instead of asking.
 
 ### Section 2: Recommended ECC Components
 
-| Type | Component | Purpose |
-|------|-----------|---------|
-| Command | /plan | Plan architecture before coding |
-| Skill | tdd-workflow | TDD methodology guidance |
-| Agent | code-reviewer | Post-implementation review |
-| Model | Sonnet 4.6 | Recommended for this scope |
+| Type    | Component     | Purpose                         |
+| ------- | ------------- | ------------------------------- |
+| Command | /plan         | Plan architecture before coding |
+| Skill   | tdd-workflow  | TDD methodology guidance        |
+| Agent   | code-reviewer | Post-implementation review      |
+| Model   | Sonnet 4.6    | Recommended for this scope      |
 
 ### Section 3: Optimized Prompt — Full Version
 
 Present the complete optimized prompt inside a single fenced code block.
 The prompt must be self-contained and ready to copy-paste. Include:
+
 - Clear task description with context
 - Tech stack (detected or specified)
 - /command invocations at the right workflow stages
@@ -238,21 +240,21 @@ For items that reference blueprint, write: "Use the blueprint skill to..."
 
 A compact version for experienced ECC users. Vary by intent type:
 
-| Intent | Quick Pattern |
-|--------|--------------|
-| New Feature | `/plan [feature]. /tdd to implement. /code-review. /verify.` |
-| Bug Fix | `/tdd — write failing test for [bug]. Fix to green. /verify.` |
-| Refactor | `/refactor-clean [scope]. /code-review. /verify.` |
-| Research | `Use search-first skill for [topic]. /plan based on findings.` |
-| Testing | `/tdd [module]. /e2e for critical flows. /test-coverage.` |
-| Review | `/code-review. Then use security-reviewer agent.` |
-| Docs | `/update-docs. /update-codemaps.` |
-| EPIC | `Use blueprint skill for "[objective]". Execute phases with /verify gates.` |
+| Intent      | Quick Pattern                                                               |
+| ----------- | --------------------------------------------------------------------------- |
+| New Feature | `/plan [feature]. /tdd to implement. /code-review. /verify.`                |
+| Bug Fix     | `/tdd — write failing test for [bug]. Fix to green. /verify.`               |
+| Refactor    | `/refactor-clean [scope]. /code-review. /verify.`                           |
+| Research    | `Use search-first skill for [topic]. /plan based on findings.`              |
+| Testing     | `/tdd [module]. /e2e for critical flows. /test-coverage.`                   |
+| Review      | `/code-review. Then use security-reviewer agent.`                           |
+| Docs        | `/update-docs. /update-codemaps.`                                           |
+| EPIC        | `Use blueprint skill for "[objective]". Execute phases with /verify gates.` |
 
 ### Section 5: Enhancement Rationale
 
-| Enhancement | Reason |
-|-------------|--------|
+| Enhancement      | Reason           |
+| ---------------- | ---------------- |
 | (what was added) | (why it matters) |
 
 ### Footer
@@ -274,6 +276,7 @@ A compact version for experienced ECC users. Vary by intent type:
 ### Example 1: Vague Chinese Prompt (Project Detected)
 
 **User input:**
+
 ```
 帮我写一个用户登录页面
 ```
@@ -281,6 +284,7 @@ A compact version for experienced ECC users. Vary by intent type:
 **Phase 0 detects:** `package.json` with Next.js 15, TypeScript, Tailwind CSS
 
 **Optimized Prompt (Full):**
+
 ```
 使用项目现有技术栈（Next.js 15 + TypeScript + Tailwind CSS）实现用户登录页面。
 
@@ -317,6 +321,7 @@ A compact version for experienced ECC users. Vary by intent type:
 ### Example 2: Moderate English Prompt
 
 **User input:**
+
 ```
 Add a REST API endpoint for user profile updates with validation
 ```
@@ -324,6 +329,7 @@ Add a REST API endpoint for user profile updates with validation
 **Phase 0 detects:** `go.mod` with Go 1.22, Chi router
 
 **Optimized Prompt (Full):**
+
 ```
 Add a REST API endpoint for user profile updates (PATCH /api/users/:id).
 
@@ -354,11 +360,13 @@ Do not:
 ### Example 3: EPIC Project
 
 **User input:**
+
 ```
 Migrate our monolith to microservices
 ```
 
 **Optimized Prompt (Full):**
+
 ```
 Use the blueprint skill to plan: "Migrate monolith to microservices architecture"
 
@@ -387,11 +395,11 @@ Recommended: Opus 4.6 for blueprint planning, Sonnet 4.6 for phase execution.
 
 ## Related Components
 
-| Component | When to Reference |
-|-----------|------------------|
-| `configure-ecc` | User hasn't set up ECC yet |
-| `skill-stocktake` | Audit which components are installed (use instead of hardcoded catalog) |
-| `search-first` | Research phase in optimized prompts |
-| `blueprint` | EPIC-scope optimized prompts (invoke as skill, not command) |
-| `strategic-compact` | Long session context management |
-| `cost-aware-llm-pipeline` | Token optimization recommendations |
+| Component                 | When to Reference                                                       |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `configure-ecc`           | User hasn't set up ECC yet                                              |
+| `skill-stocktake`         | Audit which components are installed (use instead of hardcoded catalog) |
+| `search-first`            | Research phase in optimized prompts                                     |
+| `blueprint`               | EPIC-scope optimized prompts (invoke as skill, not command)             |
+| `strategic-compact`       | Long session context management                                         |
+| `cost-aware-llm-pipeline` | Token optimization recommendations                                      |

@@ -12,7 +12,7 @@ import type {
   IExtensionSystemRunItem,
 } from '@/common/adapter/ipcBridge';
 import type { TMessage } from '@/common/chat/chatLib';
-import type { TChatConversation } from '@/common/config/storage';
+import { getConversationRuntimeBackend, type TChatConversation } from '@/common/config/storage';
 import type { IChannelRun } from '@process/channels/types';
 import { getDatabase } from '@process/services/database';
 import type { IConversationRepository } from '@process/services/database/IConversationRepository';
@@ -89,7 +89,7 @@ const resolveAgentIdentity = (conversation: TChatConversation): { backend: strin
     return { backend: 'hidden', agentName: 'Hidden Conversation' };
   }
   if (conversation.type === 'acp') {
-    const backend = String(conversation.extra?.backend || 'acp');
+    const backend = getConversationRuntimeBackend(conversation);
     const agentName = String(conversation.extra?.agentName || backend);
     return { backend, agentName };
   }
@@ -99,15 +99,10 @@ const resolveAgentIdentity = (conversation: TChatConversation): { backend: strin
   if (conversation.type === 'gemini') {
     return { backend: 'gemini', agentName: 'Gemini' };
   }
-  if (conversation.type === 'openclaw-gateway') {
-    const backend = String(conversation.extra?.backend || 'openclaw');
-    const agentName = String(conversation.extra?.agentName || 'OpenClaw');
-    return { backend, agentName };
-  }
   if (conversation.type === 'group') {
     return { backend: 'group', agentName: 'Group' };
   }
-  return { backend: 'nanobot', agentName: 'NanoBot' };
+  return { backend: 'unknown', agentName: 'Unknown' };
 };
 
 const toEventText = (message: TMessage): { kind: 'status' | 'tool' | 'message'; text: string; at: number } | null => {
@@ -221,10 +216,7 @@ function mergeActivityItem(
   existing.recentEvents = [...existing.recentEvents, ...next.recentEvents].toSorted((a, b) => b.at - a.at).slice(0, 6);
 }
 
-async function resolveMaintenanceAgentName(
-  run: IChannelRun,
-  cache: Map<string, string>
-): Promise<string> {
+async function resolveMaintenanceAgentName(run: IChannelRun, cache: Map<string, string>): Promise<string> {
   const cached = cache.get(run.agentProfileId);
   if (cached) {
     return cached;
@@ -282,59 +274,73 @@ export class ActivitySnapshotBuilder {
 
     const byAgent = new Map<string, IExtensionAgentActivityItem>();
     const systemRuns: IExtensionSystemRunItem[] = [];
+    const conversationSnapshots = await Promise.all(
+      conversations.map(async (conversation) => {
+        const { backend, agentName } = resolveAgentIdentity(conversation);
+        const task = this.taskManager.getTask(conversation.id);
+        const runtimeStatus = normalizeRuntimeStatus(task?.status || conversation.status);
+        const recentMessagesResult = await this.repo.getMessages(conversation.id, 0, 20, 'DESC');
+        const recentMessages = recentMessagesResult.data;
+        const events = recentMessages
+          .map((m) => toEventText(m))
+          .filter(
+            (
+              e
+            ): e is {
+              kind: 'status' | 'tool' | 'message';
+              text: string;
+              at: number;
+            } => Boolean(e)
+          )
+          .slice(0, 6)
+          .map(
+            (e): IExtensionAgentActivityEvent => ({
+              conversationId: conversation.id,
+              kind: e.kind,
+              text: e.text,
+              at: e.at,
+            })
+          );
+
+        const lastStatus = recentMessages.find((m) => m.type === 'agent_status')?.content as
+          | { status?: string }
+          | undefined;
+        const state = mapStatusToState(runtimeStatus, lastStatus?.status, events);
+
+        return {
+          conversation,
+          backend,
+          agentName,
+          runtimeStatus,
+          lastStatus: lastStatus?.status,
+          state,
+          events,
+        };
+      })
+    );
+
     let runningConversations = 0;
 
-    for (const conversation of conversations) {
-      const { backend, agentName } = resolveAgentIdentity(conversation);
-      const task = this.taskManager.getTask(conversation.id);
-      const runtimeStatus = normalizeRuntimeStatus(task?.status || conversation.status);
-      if (runtimeStatus === 'running' || runtimeStatus === 'pending') {
+    for (const snapshot of conversationSnapshots) {
+      if (snapshot.runtimeStatus === 'running' || snapshot.runtimeStatus === 'pending') {
         runningConversations += 1;
       }
 
-      const recentMessagesResult = await this.repo.getMessages(conversation.id, 0, 20, 'DESC');
-      const recentMessages = recentMessagesResult.data;
-      const events = recentMessages
-        .map((m) => toEventText(m))
-        .filter(
-          (
-            e
-          ): e is {
-            kind: 'status' | 'tool' | 'message';
-            text: string;
-            at: number;
-          } => Boolean(e)
-        )
-        .slice(0, 6)
-        .map(
-          (e): IExtensionAgentActivityEvent => ({
-            conversationId: conversation.id,
-            kind: e.kind,
-            text: e.text,
-            at: e.at,
-          })
-        );
-
-      const lastStatus = recentMessages.find((m) => m.type === 'agent_status')?.content as
-        | { status?: string }
-        | undefined;
-      const state = mapStatusToState(runtimeStatus, lastStatus?.status, events);
-
-      const key = `${backend}::${agentName}`;
-      const latestEventAt = events[0]?.at || conversation.modifyTime || Date.now();
+      const key = `${snapshot.backend}::${snapshot.agentName}`;
+      const latestEventAt = snapshot.events[0]?.at || snapshot.conversation.modifyTime || Date.now();
       mergeActivityItem(byAgent, key, {
         id: key,
-        backend,
-        agentName,
-        state,
-        runtimeStatus,
+        backend: snapshot.backend,
+        agentName: snapshot.agentName,
+        state: snapshot.state,
+        runtimeStatus: snapshot.runtimeStatus,
         conversations: 1,
-        activeConversations: runtimeStatus === 'running' || runtimeStatus === 'pending' ? 1 : 0,
+        activeConversations: snapshot.runtimeStatus === 'running' || snapshot.runtimeStatus === 'pending' ? 1 : 0,
         lastActiveAt: latestEventAt,
-        lastStatus: lastStatus?.status,
-        currentTask: events[0]?.text || getDefaultTaskLabel(runtimeStatus),
+        lastStatus: snapshot.lastStatus,
+        currentTask: snapshot.events[0]?.text || getDefaultTaskLabel(snapshot.runtimeStatus),
         runType: 'interactive',
-        recentEvents: events,
+        recentEvents: snapshot.events,
       });
     }
 
@@ -345,72 +351,92 @@ export class ActivitySnapshotBuilder {
     });
     const profileNameCache = new Map<string, string>();
     const runs = runsResult.success ? runsResult.data || [] : [];
+    const maintenanceSnapshots = await Promise.all(
+      runs.map(async (run) => {
+        const metadata = readMaintenanceMetadata(run);
+        if (metadata.systemManaged !== true) {
+          return null;
+        }
 
-    for (const run of runs) {
-      const metadata = readMaintenanceMetadata(run);
-      if (metadata.systemManaged !== true) {
+        const agentName = await resolveMaintenanceAgentName(run, profileNameCache);
+        const runtimeStatus = normalizeRunRuntimeStatus(run.status);
+        const events = toMaintenanceEvents(run, metadata);
+        const lastStatus = run.status === 'error' ? 'error' : run.status;
+        const state = mapStatusToState(runtimeStatus, lastStatus, events);
+
+        return {
+          run,
+          metadata,
+          agentName,
+          runtimeStatus,
+          events,
+          state,
+        };
+      })
+    );
+
+    for (const snapshot of maintenanceSnapshots) {
+      if (!snapshot) {
         continue;
       }
 
-      const agentName = await resolveMaintenanceAgentName(run, profileNameCache);
-      const runtimeStatus = normalizeRunRuntimeStatus(run.status);
-      const events = toMaintenanceEvents(run, metadata);
-      const lastStatus = run.status === 'error' ? 'error' : run.status;
-      const state = mapStatusToState(runtimeStatus, lastStatus, events);
-      const key = `${run.backend}::${agentName}`;
-      const latestEventAt = events[0]?.at || run.endedAt || run.startedAt || Date.now();
+      const key = `${snapshot.run.backend}::${snapshot.agentName}`;
+      const latestEventAt = snapshot.events[0]?.at || snapshot.run.endedAt || snapshot.run.startedAt || Date.now();
 
       mergeActivityItem(byAgent, key, {
         id: key,
-        backend: run.backend,
-        agentName,
-        state,
-        runtimeStatus,
+        backend: snapshot.run.backend,
+        agentName: snapshot.agentName,
+        state: snapshot.state,
+        runtimeStatus: snapshot.runtimeStatus,
         conversations: 1,
-        activeConversations: runtimeStatus === 'running' || runtimeStatus === 'pending' ? 1 : 0,
+        activeConversations: snapshot.runtimeStatus === 'running' || snapshot.runtimeStatus === 'pending' ? 1 : 0,
         lastActiveAt: latestEventAt,
-        lastStatus: run.status,
-        currentTask: metadata.currentTask || events[0]?.text || getDefaultTaskLabel(runtimeStatus),
+        lastStatus: snapshot.run.status,
+        currentTask:
+          snapshot.metadata.currentTask || snapshot.events[0]?.text || getDefaultTaskLabel(snapshot.runtimeStatus),
         runType: 'maintenance',
         systemManaged: true,
-        assistantId: metadata.assistantId,
-        systemOwner: metadata.systemOwner,
-        systemRole: metadata.systemRole,
-        scopeLabel: metadata.scopeLabel,
-        maintenanceKind: metadata.jobType,
-        artifactRelativePath: metadata.artifactRelativePath,
-        artifactTitle: metadata.artifactTitle,
-        recentEvents: events,
+        assistantId: snapshot.metadata.assistantId,
+        systemOwner: snapshot.metadata.systemOwner,
+        systemRole: snapshot.metadata.systemRole,
+        scopeLabel: snapshot.metadata.scopeLabel,
+        maintenanceKind: snapshot.metadata.jobType,
+        artifactRelativePath: snapshot.metadata.artifactRelativePath,
+        artifactTitle: snapshot.metadata.artifactTitle,
+        recentEvents: snapshot.events,
       });
 
       systemRuns.push({
-        id: run.id,
-        rootRunId: run.rootRunId,
-        backend: run.backend,
-        agentProfileId: run.agentProfileId,
-        agentName,
-        state,
-        runtimeStatus,
+        id: snapshot.run.id,
+        rootRunId: snapshot.run.rootRunId,
+        backend: snapshot.run.backend,
+        agentProfileId: snapshot.run.agentProfileId,
+        agentName: snapshot.agentName,
+        state: snapshot.state,
+        runtimeStatus: snapshot.runtimeStatus,
         lastActiveAt: latestEventAt,
-        lastStatus: run.status,
-        currentTask: metadata.currentTask || events[0]?.text || getDefaultTaskLabel(runtimeStatus),
-        systemManaged: metadata.systemManaged === true,
-        assistantId: metadata.assistantId,
-        systemOwner: metadata.systemOwner,
-        systemRole: metadata.systemRole,
-        scopeLabel: metadata.scopeLabel,
-        maintenanceKind: metadata.jobType,
-        artifactRelativePath: metadata.artifactRelativePath,
-        artifactTitle: metadata.artifactTitle,
-        threadId: metadata.threadId || run.conversationId,
-        projectSlug: metadata.projectSlug,
-        reason: metadata.reason,
-        source: metadata.source,
-        triggerLabel: metadata.trigger?.label,
-        triggerEvent: metadata.trigger?.event,
-        executionBoundaryPath: metadata.executionBoundary?.vaultRoot,
-        executionBoundaryLabel: metadata.executionBoundary?.spaceName || metadata.executionBoundary?.spaceId,
-        recentEvents: events,
+        lastStatus: snapshot.run.status,
+        currentTask:
+          snapshot.metadata.currentTask || snapshot.events[0]?.text || getDefaultTaskLabel(snapshot.runtimeStatus),
+        systemManaged: snapshot.metadata.systemManaged === true,
+        assistantId: snapshot.metadata.assistantId,
+        systemOwner: snapshot.metadata.systemOwner,
+        systemRole: snapshot.metadata.systemRole,
+        scopeLabel: snapshot.metadata.scopeLabel,
+        maintenanceKind: snapshot.metadata.jobType,
+        artifactRelativePath: snapshot.metadata.artifactRelativePath,
+        artifactTitle: snapshot.metadata.artifactTitle,
+        threadId: snapshot.metadata.threadId || snapshot.run.conversationId,
+        projectSlug: snapshot.metadata.projectSlug,
+        reason: snapshot.metadata.reason,
+        source: snapshot.metadata.source,
+        triggerLabel: snapshot.metadata.trigger?.label,
+        triggerEvent: snapshot.metadata.trigger?.event,
+        executionBoundaryPath: snapshot.metadata.executionBoundary?.vaultRoot,
+        executionBoundaryLabel:
+          snapshot.metadata.executionBoundary?.spaceName || snapshot.metadata.executionBoundary?.spaceId,
+        recentEvents: snapshot.events,
       });
     }
 

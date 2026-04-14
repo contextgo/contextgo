@@ -12,6 +12,7 @@ import {
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { isMobileShellWebView, isElectronDesktop } from '@renderer/utils/platform';
 import {
   getLastStableHashRoute,
   normalizeHashRouteShellHref,
@@ -20,7 +21,11 @@ import {
 } from './routerLocation';
 import Layout from './Layout';
 import Sider from './Sider';
-import { OFFICIAL_REMOTE_DEVICES_ROUTE } from '@renderer/utils/officialRemote';
+import {
+  OFFICIAL_REMOTE_DEVICES_ROUTE,
+  resolveAuthenticatedStartupPath,
+  shouldPreferOfficialRemoteShell,
+} from '@renderer/utils/officialRemote';
 
 type LazyRouteLoader = () => Promise<{ default: React.ComponentType }>;
 
@@ -29,7 +34,7 @@ const loadConnectorsPage = () => import('@renderer/pages/connectors');
 const loadGuid = () => import('@renderer/pages/guid');
 const loadGlobalScheduleSettings = () => import('@renderer/pages/schedule/GlobalScheduleSettings');
 const loadRemoteDevicesPage = () => import('@renderer/pages/RemoteDevicesPage');
-const loadAgentSettings = () => import('@renderer/pages/settings/AgentSettings');
+const loadAgentsPage = () => import('@renderer/pages/agents');
 const loadAgentEntrySettings = () => import('@renderer/pages/settings/AgentSettings/AgentEntrySettings');
 const loadHooksManagement = () => import('@renderer/pages/settings/AgentSettings/HooksManagement');
 const loadSystemRunsPage = () => import('@renderer/pages/settings/AgentSettings/SystemRunsPage');
@@ -37,8 +42,6 @@ const loadSkillsHubSettings = () => import('@renderer/pages/settings/SkillsHubSe
 const loadGeminiSettings = () => import('@renderer/pages/settings/GeminiSettings');
 const loadModeSettings = () => import('@renderer/pages/settings/ModeSettings');
 const loadSystemSettings = () => import('@renderer/pages/settings/SystemSettings');
-const loadCommandSettings = () => import('@renderer/pages/settings/ToolsSettings/CommandSettings');
-const loadWebuiSettings = () => import('@renderer/pages/settings/WebuiSettings');
 const loadExtensionSettingsPage = () => import('@renderer/pages/settings/ExtensionSettingsPage');
 const loadLoginPage = () => import('@renderer/pages/login');
 const loadComponentsShowcase = () => import('@renderer/pages/TestShowcase');
@@ -247,13 +250,30 @@ const ProtectedLayout: React.FC<{
 
 const StartupConversationRedirect: React.FC = () => {
   const { openTabs, activeTabId } = useConversationTabs();
-  const hasPersistedActiveTab = Boolean(activeTabId && openTabs.some((tab) => tab.id === activeTabId));
+  const startupPath = useMemo(() => {
+    const preferOfficialRemoteShell =
+      typeof window !== 'undefined' &&
+      shouldPreferOfficialRemoteShell({
+        currentHref: window.location.href,
+        isDesktopRuntime: isElectronDesktop(),
+        isMobileShellRuntime: isMobileShellWebView(),
+      });
 
-  if (hasPersistedActiveTab && activeTabId) {
-    return <Navigate to={`/conversation/${activeTabId}`} replace />;
-  }
+    return resolveAuthenticatedStartupPath({
+      activeTabId,
+      openTabIds: openTabs.map((tab) => tab.id),
+      preferOfficialRemoteShell,
+    });
+  }, [activeTabId, openTabs]);
 
-  return <Navigate to='/guid' replace />;
+  return <Navigate to={startupPath} replace />;
+};
+
+const LegacyAgentSettingsRedirect: React.FC = () => {
+  const location = useLocation();
+  const nextPath = location.pathname.replace(/^\/settings\/agent/, '/agents') || '/agents';
+  const nextTarget = `${nextPath}${location.search}${location.hash}`;
+  return <Navigate to={nextTarget} replace />;
 };
 
 const RoutedPanels: React.FC<{
@@ -282,11 +302,11 @@ const RoutedPanels: React.FC<{
         />
         <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
         <Route path='/conversation/:id' element={withRouteFallback(loadConversation, '/conversation/:id')} />
-        <Route path='/agents' element={withRouteFallback(loadAgentSettings, '/agents')} />
+        <Route path='/agents/*' element={withRouteFallback(loadAgentsPage, '/agents/*')} />
         <Route path='/skills-hub' element={withRouteFallback(loadSkillsHubSettings, '/skills-hub')} />
         <Route path='/settings/gemini' element={withRouteFallback(loadGeminiSettings, '/settings/gemini')} />
         <Route path='/settings/model' element={withRouteFallback(loadModeSettings, '/settings/model')} />
-        <Route path='/settings/agent' element={withRouteFallback(loadAgentSettings, '/settings/agent')} />
+        <Route path='/settings/agent/*' element={<LegacyAgentSettingsRedirect />} />
         <Route path='/settings/hooks' element={withRouteFallback(loadHooksManagement, '/settings/hooks')} />
         <Route
           path='/settings/schedule'
@@ -294,7 +314,7 @@ const RoutedPanels: React.FC<{
         />
         <Route path='/settings/skills-hub' element={withRouteFallback(loadSkillsHubSettings, '/settings/skills-hub')} />
         <Route path='/settings/display' element={<Navigate to='/settings/system' replace />} />
-        <Route path='/settings/webui' element={withRouteFallback(loadWebuiSettings, '/settings/webui')} />
+        <Route path='/settings/webui' element={<Navigate to='/settings/system' replace />} />
         <Route path='/settings/runtime' element={withRouteFallback(loadAgentEntrySettings, '/settings/runtime')} />
         <Route path='/settings/channels' element={withRouteFallback(loadAgentEntrySettings, '/settings/channels')} />
         <Route
@@ -309,7 +329,7 @@ const RoutedPanels: React.FC<{
         <Route path='/settings/system-runs' element={withRouteFallback(loadSystemRunsPage, '/settings/system-runs')} />
         <Route path='/settings/system' element={withRouteFallback(loadSystemSettings, '/settings/system')} />
         <Route path='/settings/about' element={withRouteFallback(loadSystemSettings, '/settings/about')} />
-        <Route path='/settings/commands' element={withRouteFallback(loadCommandSettings, '/settings/commands')} />
+        <Route path='/settings/commands' element={<Navigate to='/settings/system' replace />} />
         <Route
           path='/settings/ext/:tabId'
           element={withRouteFallback(loadExtensionSettingsPage, '/settings/ext/:tabId')}

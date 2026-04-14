@@ -161,18 +161,29 @@ const ConnectorsPage: React.FC = () => {
     return null;
   }
 
-  const connectorSummary =
-    resolvedConnector.summary ||
-    t('settings.connectors.summaryTemplate', {
-      name: resolvedConnector.name,
-      category: t(getCategoryKey(resolvedConnector.category)),
-    });
+  const connectorSummary = resolvedConnector.externalCatalogConnector
+    ? t('settings.connectors.catalogExternalDesc')
+    : resolvedConnector.summary ||
+      t('settings.connectors.summaryTemplate', {
+        name: resolvedConnector.name,
+        category: t(getCategoryKey(resolvedConnector.category)),
+      });
   const isSupported = resolvedConnector.supportStatus === 'supported';
   const supportSources = resolvedConnector.supportSources || [];
+  const externalCapabilityGroups = externalCatalogDetails?.capabilities?.groups ?? [];
+  const externalWorkflows = externalCatalogDetails?.implemented_workflows ?? [];
 
   const supportDescription = resolvedConnector.externalCatalogConnector
     ? t('settings.connectors.catalogExternalDesc')
     : t('settings.connectors.catalogPlaceholderDesc');
+  const capabilityGroupCount = externalCapabilityGroups.length;
+  const capabilityActionCount = externalCapabilityGroups.reduce((sum, group) => sum + group.actions.length, 0);
+  const readyWorkflowCount = externalWorkflows.filter((workflow) => workflow.status === 'ready').length;
+  const primaryRuntimeLabel =
+    supportSources.find((source) => source.kind === 'official-runtime')?.label ||
+    supportSources[0]?.label ||
+    externalCatalogDetails?.connector ||
+    resolvedConnector.domain;
 
   const mobileCatalog = isMobile ? (
     <section className={styles.mobileCatalog} data-testid='connector-mobile-catalog'>
@@ -322,93 +333,180 @@ const ConnectorsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className={styles.detailGrid}>
-                <div className={styles.detailCard}>
-                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.support')}</h3>
-                  <div className={styles.supportSummary}>
-                    <Tag color={isSupported ? 'green' : 'gray'}>
-                      {t(getSupportStatusKey(resolvedConnector.supportStatus))}
-                    </Tag>
-                    <div className={styles.detailCardText}>{supportDescription}</div>
+              <div className={styles.detailSections}>
+                {externalCatalogDetails ? (
+                  <div className={styles.summaryStrip}>
+                    <div className={styles.summaryStatCard}>
+                      <div className={styles.summaryStatValue}>{capabilityGroupCount}</div>
+                      <div className={styles.summaryStatLabel}>
+                        {t('settings.connectors.summaryStats.capabilityGroups')}
+                      </div>
+                    </div>
+                    <div className={styles.summaryStatCard}>
+                      <div className={styles.summaryStatValue}>{capabilityActionCount}</div>
+                      <div className={styles.summaryStatLabel}>{t('settings.connectors.summaryStats.actions')}</div>
+                    </div>
+                    <div className={styles.summaryStatCard}>
+                      <div className={styles.summaryStatValue}>{readyWorkflowCount}</div>
+                      <div className={styles.summaryStatLabel}>
+                        {t('settings.connectors.summaryStats.readyWorkflows')}
+                      </div>
+                    </div>
+                    <div className={styles.summaryStatCard}>
+                      <div className={styles.summaryStatValue}>{primaryRuntimeLabel}</div>
+                      <div className={styles.summaryStatLabel}>
+                        {t('settings.connectors.summaryStats.primaryRuntime')}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
-                <div className={styles.detailCard}>
-                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.resources')}</h3>
-                  <div className={styles.chipWrap}>
-                    {resolvedConnector.resources.map((resource) => (
-                      <Tag key={resource} size='small' color='arcoblue'>
-                        {t(getResourceKey(resource))}
-                      </Tag>
-                    ))}
+                <section className={styles.detailSection}>
+                  <div className={styles.sectionHeader}>
+                    <h3 className={styles.sectionTitle}>{t('settings.connectors.sectionTitles.overview')}</h3>
+                    <p className={styles.sectionDescription}>{t('settings.connectors.sectionDescriptions.overview')}</p>
                   </div>
-                </div>
 
-                <div className={styles.detailCard}>
-                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.auth')}</h3>
-                  <div className={styles.detailCardText}>{t(getAuthKey(resolvedConnector.authType))}</div>
-                </div>
+                  <div className={styles.detailGrid}>
+                    <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.support')}</h3>
+                      <div className={styles.supportSummary}>
+                        <Tag color={isSupported ? 'green' : 'gray'}>
+                          {t(getSupportStatusKey(resolvedConnector.supportStatus))}
+                        </Tag>
+                        <div className={styles.detailCardText}>{supportDescription}</div>
+                      </div>
+                    </div>
 
-                <div className={styles.detailCard}>
-                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.officialSite')}</h3>
-                  <div className={styles.detailCardText}>{resolvedConnector.websiteUrl}</div>
-                </div>
+                    <div className={styles.detailCard}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.resources')}</h3>
+                      <div className={styles.chipWrap}>
+                        {resolvedConnector.resources.map((resource) => (
+                          <Tag key={resource} size='small' color='arcoblue'>
+                            {t(getResourceKey(resource))}
+                          </Tag>
+                        ))}
+                      </div>
+                    </div>
 
-                <div className={styles.detailCard}>
-                  <h3 className={styles.detailCardTitle}>{t('common.website')}</h3>
-                  <Button
-                    type='outline'
-                    icon={<Send theme='outline' size='14' />}
-                    onClick={() => {
-                      void ipcBridge.shell.openExternal.invoke(resolvedConnector.websiteUrl);
-                    }}
-                  >
-                    {t('settings.connectors.openWebsite')}
-                  </Button>
-                </div>
+                    <div className={styles.detailCard}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.auth')}</h3>
+                      <div className={styles.detailCardText}>{t(getAuthKey(resolvedConnector.authType))}</div>
+                    </div>
 
-                <div className={styles.detailCard}>
-                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.implementation')}</h3>
-                  <div className={styles.detailCardText}>
-                    {t(getImplementationOwnerKey(resolvedConnector.implementationOwner))}
+                    <div className={styles.detailCard}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.implementation')}</h3>
+                      <div className={styles.detailCardText}>
+                        {t(getImplementationOwnerKey(resolvedConnector.implementationOwner))}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </section>
 
-                <div className={styles.detailCard}>
-                  <h3 className={styles.detailCardTitle}>{t('settings.connectors.supportSources')}</h3>
-                  <div className={styles.supportSourceList}>
-                    {supportSources.length === 0 ? (
-                      <div className={styles.detailCardText}>{t('settings.connectors.noSupportSources')}</div>
-                    ) : (
-                      supportSources.map((source) => (
+                {externalCatalogDetails ? (
+                  <section className={styles.detailSection}>
+                    <div className={styles.sectionHeader}>
+                      <h3 className={styles.sectionTitle}>
+                        {t('settings.connectors.sectionTitles.nativeCapabilitySurface')}
+                      </h3>
+                      <p className={styles.sectionDescription}>
+                        {t('settings.connectors.sectionDescriptions.nativeCapabilitySurface')}
+                      </p>
+                    </div>
+
+                    <div className={styles.detailGrid}>
+                      <ConnectorCapabilityPanel details={externalCatalogDetails} section='capabilities' />
+                    </div>
+                  </section>
+                ) : null}
+
+                {externalCatalogDetails ? (
+                  <section className={styles.detailSection}>
+                    <div className={styles.sectionHeader}>
+                      <h3 className={styles.sectionTitle}>
+                        {t('settings.connectors.sectionTitles.contextgoReadiness')}
+                      </h3>
+                      <p className={styles.sectionDescription}>
+                        {t('settings.connectors.sectionDescriptions.contextgoReadiness')}
+                      </p>
+                    </div>
+
+                    <div className={styles.detailGrid}>
+                      <ConnectorCapabilityPanel details={externalCatalogDetails} section='workflows' />
+                    </div>
+                  </section>
+                ) : null}
+
+                <section className={styles.detailSection}>
+                  <div className={styles.sectionHeader}>
+                    <h3 className={styles.sectionTitle}>{t('settings.connectors.sectionTitles.sourcesAndBoundary')}</h3>
+                    <p className={styles.sectionDescription}>
+                      {t('settings.connectors.sectionDescriptions.sourcesAndBoundary')}
+                    </p>
+                  </div>
+
+                  <div className={styles.detailGrid}>
+                    <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.officialSite')}</h3>
+                      <div className={styles.externalLinkCard}>
+                        <div className={styles.detailCardText}>{resolvedConnector.websiteUrl}</div>
                         <Button
-                          key={`${source.kind}-${source.url}`}
-                          type='text'
-                          className={styles.supportSourceItem}
+                          type='outline'
+                          icon={<Send theme='outline' size='14' />}
                           onClick={() => {
-                            void ipcBridge.shell.openExternal.invoke(source.url);
+                            void ipcBridge.shell.openExternal.invoke(resolvedConnector.websiteUrl);
                           }}
                         >
-                          <div className={styles.supportSourceMetaRow}>
-                            <Tag size='small' color='arcoblue'>
-                              {t(getSupportKindKey(source.kind))}
-                            </Tag>
-                            <span className={styles.supportSourceLabel}>{source.label}</span>
-                          </div>
-                          <div className={styles.detailCardText}>{source.description}</div>
+                          {t('settings.connectors.openWebsite')}
                         </Button>
-                      ))
-                    )}
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                {externalCatalogDetails ? <ConnectorCapabilityPanel details={externalCatalogDetails} /> : null}
+                    <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.supportSources')}</h3>
+                      <div className={styles.supportSourceList}>
+                        {supportSources.length === 0 ? (
+                          <div className={styles.detailCardText}>{t('settings.connectors.noSupportSources')}</div>
+                        ) : (
+                          supportSources.map((source) => (
+                            <Button
+                              key={`${source.kind}-${source.url}`}
+                              type='text'
+                              className={styles.supportSourceItem}
+                              onClick={() => {
+                                void ipcBridge.shell.openExternal.invoke(source.url);
+                              }}
+                            >
+                              <div className={styles.supportSourceMetaRow}>
+                                <Tag size='small' color='arcoblue'>
+                                  {t(getSupportKindKey(source.kind))}
+                                </Tag>
+                                <span className={styles.supportSourceLabel}>{source.label}</span>
+                              </div>
+                              <div className={styles.detailCardText}>{source.description}</div>
+                            </Button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {externalCatalogDetails ? (
+                      <ConnectorCapabilityPanel details={externalCatalogDetails} section='boundary' />
+                    ) : null}
+                  </div>
+                </section>
 
                 {externalCatalogError ? (
-                  <div className={classNames(styles.detailCard, styles.detailCardWide)}>
-                    <h3 className={styles.detailCardTitle}>{t('settings.connectors.externalCatalog.unavailableTitle')}</h3>
-                    <div className={styles.detailCardText}>{externalCatalogError}</div>
-                  </div>
+                  <section className={styles.detailSection}>
+                    <div className={styles.detailGrid}>
+                      <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+                        <h3 className={styles.detailCardTitle}>
+                          {t('settings.connectors.externalCatalog.unavailableTitle')}
+                        </h3>
+                        <div className={styles.detailCardText}>{externalCatalogError}</div>
+                      </div>
+                    </div>
+                  </section>
                 ) : null}
               </div>
 

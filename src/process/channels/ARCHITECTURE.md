@@ -4,6 +4,13 @@
 
 Channels 是 ContextGo 的多平台 AI 助手框架，将 ContextGo 的 AI 能力（Gemini、Claude、Codex）通过即时通讯平台暴露给远程用户。目前支持三个平台：
 
+重要边界：
+
+- `Channels` 在本仓库里表示 IM 渠道发布与交互子系统
+- 它负责 transport、audience、publication、routing、reply
+- 它不是 `connector` 子系统
+- 外部产品访问型 `connector` 应归属 `Space Connectors` / `cgo`
+
 | 平台                 | SDK                     | 连接方式              | 消息更新                        |
 | -------------------- | ----------------------- | --------------------- | ------------------------------- |
 | **Telegram**         | grammY                  | 长轮询 (Long Polling) | 编辑消息文本                    |

@@ -127,10 +127,26 @@
     line-height: 24px !important;
   }
 
-  .chat-workspace .workspace-tree .arco-tree-node-title-wrapper {
+  .chat-workspace .chat-workspace-tree--mobile .arco-tree-node-title-wrapper {
     min-height: 34px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    vertical-align: middle;
+  }
+
+  .chat-workspace .chat-workspace-tree--mobile .arco-tree-node-title {
+    display: inline-flex;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .chat-workspace .chat-workspace-tree--mobile .arco-tree-switcher {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
   }
 
   .chat-workspace .workspace-node-more-btn {

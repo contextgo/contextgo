@@ -31,7 +31,8 @@ export type BuiltinAssistantSystemRole =
   | 'context-engine-session-pattern-detector'
   | 'context-engine-project-promoter'
   | 'context-engine-space-memory-distiller'
-  | 'context-engine-connector-digester';
+  | 'context-engine-connector-digester'
+  | 'context-engine-project-capability-curator';
 
 /**
  * 使用 ACP 协议的预设 Agent 类型（需要通过 ACP 后端路由）
@@ -40,19 +41,13 @@ export type BuiltinAssistantSystemRole =
  * 这些类型会在创建对话时使用对应的 ACP 后端，而不是 Gemini 原生对话
  * These types will use corresponding ACP backend when creating conversation, instead of native Gemini
  */
-export const ACP_ROUTED_PRESET_TYPES: readonly PresetAgentType[] = [
-  'claude',
-  'opencode',
-  'codex',
-] as const;
+export const ACP_ROUTED_PRESET_TYPES: readonly PresetAgentType[] = ['claude', 'opencode', 'codex'] as const;
 
 export const CODEX_ACP_BRIDGE_VERSION = '0.9.5';
 export const CODEX_ACP_NPX_PACKAGE = `@zed-industries/codex-acp@${CODEX_ACP_BRIDGE_VERSION}`;
 
 export const CLAUDE_ACP_BRIDGE_VERSION = '0.21.0';
 export const CLAUDE_ACP_NPX_PACKAGE = `@zed-industries/claude-agent-acp@${CLAUDE_ACP_BRIDGE_VERSION}`;
-
-export const CODEBUDDY_ACP_NPX_PACKAGE = '@tencent-ai/codebuddy-code';
 
 /**
  * 检查预设 Agent 类型是否需要通过 ACP 后端路由
@@ -62,25 +57,11 @@ export function isAcpRoutedPresetType(type: PresetAgentType | undefined): boolea
   return type !== undefined && ACP_ROUTED_PRESET_TYPES.includes(type);
 }
 
-// 全部后端类型定义 - 包括暂时不支持的 / All backend types - including temporarily unsupported ones
 export type AcpBackendAll =
   | 'claude' // Claude ACP
   | 'gemini' // Google Gemini ACP
-  | 'qwen' // Qwen Code ACP
-  | 'iflow' // iFlow CLI ACP
   | 'codex' // OpenAI Codex ACP (via codex-acp bridge)
-  | 'codebuddy' // Tencent CodeBuddy Code CLI
-  | 'droid' // Factory Droid CLI (ACP via `droid exec --output-format acp`)
-  | 'goose' // Block's Goose CLI
-  | 'auggie' // Augment Code CLI
-  | 'kimi' // Kimi CLI (Moonshot)
   | 'opencode' // OpenCode CLI
-  | 'copilot' // GitHub Copilot CLI
-  | 'qoder' // Qoder CLI
-  | 'openclaw-gateway' // OpenClaw Gateway WebSocket
-  | 'vibe' // Mistral Vibe CLI
-  | 'nanobot' // nanobot CLI
-  | 'cursor' // Cursor AI Agent CLI
   | 'custom'; // User-configured custom ACP agent
 
 /**
@@ -191,7 +172,7 @@ export interface AcpBackendConfig {
    * 仅当二进制文件名与 id 不同时需要
    *
    * CLI command name used for detection via `which` command.
-   * Example: 'goose', 'claude', 'qwen'
+   * Example: 'opencode', 'claude', 'codex'
    * Only needed if the binary name differs from id.
    */
   cliCommand?: string;
@@ -203,8 +184,8 @@ export interface AcpBackendConfig {
    * Full CLI path with optional arguments (space-separated).
    * Used when spawning the process.
    * Examples:
-   *   - 'goose' (simple binary)
-   *   - 'npx @qwen-code/qwen-code' (npx package)
+   *   - 'opencode' (simple binary)
+   *   - 'npx @zed-industries/claude-agent-acp' (npx package)
    *   - '/usr/local/bin/my-agent --verbose' (full path with args)
    * Note: '--experimental-acp' is auto-appended for non-custom backends.
    */
@@ -382,7 +363,6 @@ export interface AcpBackendConfig {
   customHookNames?: string[];
 }
 
-// 所有后端配置 - 包括暂时禁用的 / All backend configurations - including temporarily disabled ones
 export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
   claude: {
     id: 'claude',
@@ -400,24 +380,6 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
     enabled: true,
     supportsStreaming: true,
   },
-  qwen: {
-    id: 'qwen',
-    name: 'Qwen Code',
-    cliCommand: 'qwen',
-    defaultCliPath: 'npx @qwen-code/qwen-code',
-    authRequired: true,
-    enabled: false,
-    supportsStreaming: true,
-    acpArgs: ['--acp'],
-  },
-  iflow: {
-    id: 'iflow',
-    name: 'iFlow CLI',
-    cliCommand: 'iflow',
-    authRequired: true,
-    enabled: false,
-    supportsStreaming: false,
-  },
   codex: {
     id: 'codex',
     name: 'Codex',
@@ -428,111 +390,12 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
     supportsStreaming: false,
     acpArgs: [],
   },
-  codebuddy: {
-    id: 'codebuddy',
-    name: 'CodeBuddy',
-    cliCommand: 'codebuddy',
-    defaultCliPath: `npx ${CODEBUDDY_ACP_NPX_PACKAGE}`,
-    authRequired: true,
-    enabled: false,
-    supportsStreaming: false,
-    acpArgs: ['--acp'],
-  },
-  goose: {
-    id: 'goose',
-    name: 'Goose',
-    cliCommand: 'goose',
-    authRequired: false,
-    enabled: false,
-    supportsStreaming: false,
-    acpArgs: ['acp'],
-  },
-  auggie: {
-    id: 'auggie',
-    name: 'Augment Code',
-    cliCommand: 'auggie',
-    authRequired: false,
-    enabled: false,
-    supportsStreaming: false,
-    acpArgs: ['--acp'],
-  },
-  kimi: {
-    id: 'kimi',
-    name: 'Kimi CLI',
-    cliCommand: 'kimi',
-    authRequired: false,
-    enabled: false,
-    supportsStreaming: false,
-    acpArgs: ['acp'],
-  },
   opencode: {
     id: 'opencode',
     name: 'OpenCode',
     cliCommand: 'opencode',
     authRequired: false,
     enabled: true,
-    supportsStreaming: false,
-    acpArgs: ['acp'],
-  },
-  droid: {
-    id: 'droid',
-    name: 'Factory Droid',
-    cliCommand: 'droid',
-    authRequired: false,
-    enabled: false,
-    supportsStreaming: false,
-    acpArgs: ['exec', '--output-format', 'acp'],
-  },
-  copilot: {
-    id: 'copilot',
-    name: 'GitHub Copilot',
-    cliCommand: 'copilot',
-    authRequired: false,
-    enabled: false,
-    supportsStreaming: false,
-    acpArgs: ['--acp', '--stdio'],
-  },
-  qoder: {
-    id: 'qoder',
-    name: 'Qoder CLI',
-    cliCommand: 'qodercli',
-    authRequired: false,
-    enabled: false,
-    supportsStreaming: false,
-    acpArgs: ['--acp'],
-  },
-  vibe: {
-    id: 'vibe',
-    name: 'Mistral Vibe',
-    cliCommand: 'vibe-acp',
-    authRequired: false,
-    enabled: false,
-    supportsStreaming: false,
-    acpArgs: [],
-  },
-  'openclaw-gateway': {
-    id: 'openclaw-gateway',
-    name: 'OpenClaw',
-    cliCommand: 'openclaw',
-    authRequired: false,
-    enabled: false,
-    supportsStreaming: true,
-    acpArgs: ['gateway'],
-  },
-  nanobot: {
-    id: 'nanobot',
-    name: 'Nano Bot',
-    cliCommand: 'nanobot',
-    authRequired: false,
-    enabled: false,
-    supportsStreaming: false,
-  },
-  cursor: {
-    id: 'cursor',
-    name: 'Cursor Agent',
-    cliCommand: 'agent',
-    authRequired: true,
-    enabled: false,
     supportsStreaming: false,
     acpArgs: ['acp'],
   },
@@ -555,7 +418,11 @@ export const ACP_ENABLED_BACKENDS: Record<string, AcpBackendConfig> = Object.fro
 export type AcpBackend = keyof typeof ACP_BACKENDS_ALL;
 export type AcpBackendId = AcpBackend; // 向后兼容 / Backward compatibility
 
-export const MANAGED_RUNTIME_INSTALLABLE_BACKENDS = ['claude', 'codex', 'opencode'] as const satisfies readonly AcpBackend[];
+export const MANAGED_RUNTIME_INSTALLABLE_BACKENDS = [
+  'claude',
+  'codex',
+  'opencode',
+] as const satisfies readonly AcpBackend[];
 
 export type ManagedRuntimeInstallStage = 'starting' | 'running' | 'refreshing' | 'completed' | 'failed';
 
@@ -569,6 +436,14 @@ export type ManagedRuntimeInstallEvent = {
   stderr?: string;
   exitCode?: number | null;
   message?: string;
+};
+
+export type ManagedRuntimeConfigEntryKind = 'config' | 'auth' | 'other';
+
+export type ManagedRuntimeConfigEntry = {
+  kind: ManagedRuntimeConfigEntryKind;
+  path: string;
+  exists: boolean;
 };
 
 // 工具函数 / Utility functions

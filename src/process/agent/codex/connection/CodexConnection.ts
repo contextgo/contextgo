@@ -8,7 +8,7 @@ import type { ChildProcess } from 'child_process';
 import { spawn, execSync } from 'child_process';
 import { accessSync, readFileSync } from 'fs';
 import { homedir } from 'os';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import type { CodexEventParams } from '@/common/types/codex/types';
 import { loadFullShellEnvironment, mergePaths } from '@process/utils/shellEnv';
 import { globalErrorService, fromNetworkError } from '../core/ErrorService';
@@ -29,6 +29,10 @@ export function getCodexConfigPath(): string {
   }
   // macOS/Linux or Windows fallback
   return join(homedir(), '.codex', 'config.toml');
+}
+
+export function getCodexAuthPath(): string {
+  return join(dirname(getCodexConfigPath()), 'auth.json');
 }
 
 /**

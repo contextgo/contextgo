@@ -13,10 +13,12 @@ function isObject(value) {
 }
 
 function sanitizePathSegment(value) {
-  return String(value || 'unknown')
-    .trim()
-    .replace(/[^A-Za-z0-9._-]+/g, '_')
-    .replace(/^_+|_+$/g, '') || 'unknown';
+  return (
+    String(value || 'unknown')
+      .trim()
+      .replace(/[^A-Za-z0-9._-]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'unknown'
+  );
 }
 
 function parseContextSeedPaths(context) {
@@ -26,7 +28,7 @@ function parseContextSeedPaths(context) {
 
   return context
     .split('\n')
-    .map(line => line.trim())
+    .map((line) => line.trim())
     .filter(Boolean);
 }
 
@@ -49,7 +51,7 @@ function ensureBoolean(value, fieldPath) {
 }
 
 function ensureArrayOfStrings(value, fieldPath) {
-  if (!Array.isArray(value) || value.some(item => typeof item !== 'string')) {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
     throw new Error(`Canonical session snapshot requires ${fieldPath} to be an array of strings`);
   }
 }
@@ -105,7 +107,7 @@ function buildAggregates(workers) {
   return {
     workerCount: workers.length,
     states,
-    healths
+    healths,
   };
 }
 
@@ -115,9 +117,7 @@ function summarizeRawWorkerStates(snapshot) {
   }
 
   return (snapshot.workers || []).reduce((counts, worker) => {
-    const state = worker && worker.status && worker.status.state
-      ? worker.status.state
-      : 'unknown';
+    const state = worker && worker.status && worker.status.state ? worker.status.state : 'unknown';
     counts[state] = (counts[state] || 0) + 1;
     return counts;
   }, {});
@@ -142,10 +142,11 @@ function deriveDmuxSessionState(snapshot) {
     return 'failed';
   }
 
-  const completedCount = (workerStates.completed || 0)
-    + (workerStates.succeeded || 0)
-    + (workerStates.success || 0)
-    + (workerStates.done || 0);
+  const completedCount =
+    (workerStates.completed || 0) +
+    (workerStates.succeeded || 0) +
+    (workerStates.success || 0) +
+    (workerStates.done || 0);
   if (completedCount === totalWorkers) {
     return 'completed';
   }
@@ -294,23 +295,20 @@ function writeFallbackSessionRecording(snapshot, options = {}) {
   const filePath = getFallbackSessionRecordingPath(snapshot, options);
   const recordedAt = new Date().toISOString();
   const existing = readExistingRecording(filePath);
-  const snapshotChanged = !existing
-    || JSON.stringify(existing.latest) !== JSON.stringify(snapshot);
+  const snapshotChanged = !existing || JSON.stringify(existing.latest) !== JSON.stringify(snapshot);
 
   const payload = {
     schemaVersion: SESSION_RECORDING_SCHEMA_VERSION,
     adapterId: snapshot.adapterId,
     sessionId: snapshot.session.id,
-    createdAt: existing && typeof existing.createdAt === 'string'
-      ? existing.createdAt
-      : recordedAt,
+    createdAt: existing && typeof existing.createdAt === 'string' ? existing.createdAt : recordedAt,
     updatedAt: recordedAt,
     latest: snapshot,
     history: Array.isArray(existing && existing.history)
-      ? (snapshotChanged
-          ? existing.history.concat([{ recordedAt, snapshot }])
-          : existing.history)
-      : [{ recordedAt, snapshot }]
+      ? snapshotChanged
+        ? existing.history.concat([{ recordedAt, snapshot }])
+        : existing.history
+      : [{ recordedAt, snapshot }],
   };
 
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -319,7 +317,7 @@ function writeFallbackSessionRecording(snapshot, options = {}) {
   return {
     backend: 'json-file',
     path: filePath,
-    recordedAt
+    recordedAt,
   };
 }
 
@@ -333,10 +331,11 @@ function loadStateStore(options = {}) {
   try {
     return loadStateStoreImpl();
   } catch (error) {
-    const missingRequestedModule = error
-      && error.code === 'MODULE_NOT_FOUND'
-      && typeof error.message === 'string'
-      && error.message.includes('../state-store');
+    const missingRequestedModule =
+      error &&
+      error.code === 'MODULE_NOT_FOUND' &&
+      typeof error.message === 'string' &&
+      error.message.includes('../state-store');
 
     if (missingRequestedModule) {
       return null;
@@ -359,23 +358,23 @@ function resolveStateStoreWriter(stateStore) {
     { owner: stateStore, fn: stateStore.writeSessionSnapshot },
     {
       owner: stateStore.sessions,
-      fn: stateStore.sessions && stateStore.sessions.persistCanonicalSessionSnapshot
+      fn: stateStore.sessions && stateStore.sessions.persistCanonicalSessionSnapshot,
     },
     {
       owner: stateStore.sessions,
-      fn: stateStore.sessions && stateStore.sessions.recordCanonicalSessionSnapshot
+      fn: stateStore.sessions && stateStore.sessions.recordCanonicalSessionSnapshot,
     },
     {
       owner: stateStore.sessions,
-      fn: stateStore.sessions && stateStore.sessions.persistSessionSnapshot
+      fn: stateStore.sessions && stateStore.sessions.persistSessionSnapshot,
     },
     {
       owner: stateStore.sessions,
-      fn: stateStore.sessions && stateStore.sessions.recordSessionSnapshot
-    }
+      fn: stateStore.sessions && stateStore.sessions.recordSessionSnapshot,
+    },
   ];
 
-  const writer = candidates.find(candidate => typeof candidate.fn === 'function');
+  const writer = candidates.find((candidate) => typeof candidate.fn === 'function');
   return writer ? writer.fn.bind(writer.owner) : null;
 }
 
@@ -386,7 +385,7 @@ function persistCanonicalSnapshot(snapshot, options = {}) {
     return {
       backend: 'skipped',
       path: null,
-      recordedAt: null
+      recordedAt: null,
     };
   }
 
@@ -404,13 +403,13 @@ function persistCanonicalSnapshot(snapshot, options = {}) {
     writer(snapshot, {
       adapterId: snapshot.adapterId,
       schemaVersion: snapshot.schemaVersion,
-      sessionId: snapshot.session.id
+      sessionId: snapshot.session.id,
     });
 
     return {
       backend: 'state-store',
       path: null,
-      recordedAt: null
+      recordedAt: null,
     };
   }
 
@@ -418,7 +417,7 @@ function persistCanonicalSnapshot(snapshot, options = {}) {
 }
 
 function normalizeDmuxSnapshot(snapshot, sourceTarget) {
-  const workers = (snapshot.workers || []).map(worker => ({
+  const workers = (snapshot.workers || []).map((worker) => ({
     id: worker.workerSlug,
     label: worker.workerSlug,
     state: worker.status.state || 'unknown',
@@ -434,18 +433,18 @@ function normalizeDmuxSnapshot(snapshot, sourceTarget) {
     },
     intent: {
       objective: worker.task.objective || '',
-      seedPaths: Array.isArray(worker.task.seedPaths) ? worker.task.seedPaths : []
+      seedPaths: Array.isArray(worker.task.seedPaths) ? worker.task.seedPaths : [],
     },
     outputs: {
       summary: Array.isArray(worker.handoff.summary) ? worker.handoff.summary : [],
       validation: Array.isArray(worker.handoff.validation) ? worker.handoff.validation : [],
-      remainingRisks: Array.isArray(worker.handoff.remainingRisks) ? worker.handoff.remainingRisks : []
+      remainingRisks: Array.isArray(worker.handoff.remainingRisks) ? worker.handoff.remainingRisks : [],
     },
     artifacts: {
       statusFile: worker.files.status,
       taskFile: worker.files.task,
-      handoffFile: worker.files.handoff
-    }
+      handoffFile: worker.files.handoff,
+    },
   }));
 
   return validateCanonicalSnapshot({
@@ -456,10 +455,10 @@ function normalizeDmuxSnapshot(snapshot, sourceTarget) {
       kind: 'orchestrated',
       state: deriveDmuxSessionState(snapshot),
       repoRoot: snapshot.repoRoot || null,
-      sourceTarget
+      sourceTarget,
     },
     workers,
-    aggregates: buildAggregates(workers)
+    aggregates: buildAggregates(workers),
   });
 }
 
@@ -489,20 +488,18 @@ function normalizeClaudeHistorySession(session, sourceTarget) {
       dead: true,
     },
     intent: {
-      objective: metadata.inProgress && metadata.inProgress.length > 0
-        ? metadata.inProgress[0]
-        : (metadata.title || ''),
-      seedPaths: parseContextSeedPaths(metadata.context)
+      objective: metadata.inProgress && metadata.inProgress.length > 0 ? metadata.inProgress[0] : metadata.title || '',
+      seedPaths: parseContextSeedPaths(metadata.context),
     },
     outputs: {
       summary: Array.isArray(metadata.completed) ? metadata.completed : [],
       validation: [],
-      remainingRisks: metadata.notes ? [metadata.notes] : []
+      remainingRisks: metadata.notes ? [metadata.notes] : [],
     },
     artifacts: {
       sessionFile: session.sessionPath,
-      context: metadata.context || null
-    }
+      context: metadata.context || null,
+    },
   };
 
   return validateCanonicalSnapshot({
@@ -513,10 +510,10 @@ function normalizeClaudeHistorySession(session, sourceTarget) {
       kind: 'history',
       state: 'recorded',
       repoRoot: metadata.worktree || null,
-      sourceTarget
+      sourceTarget,
     },
     workers: [worker],
-    aggregates: buildAggregates([worker])
+    aggregates: buildAggregates([worker]),
   });
 }
 
@@ -527,5 +524,5 @@ module.exports = {
   normalizeClaudeHistorySession,
   normalizeDmuxSnapshot,
   persistCanonicalSnapshot,
-  validateCanonicalSnapshot
+  validateCanonicalSnapshot,
 };

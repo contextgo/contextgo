@@ -31,9 +31,11 @@ export type RuntimeScheduleCapability = {
   listConversationSchedules(conversationId: string): Promise<ContextSchedule[]>;
   updateConversationSchedule(scheduleId: string, updates: Partial<ContextSchedule>): Promise<ContextSchedule>;
   removeConversationSchedule(scheduleId: string): Promise<void>;
-  createContextSchedule(input: Omit<ContextSchedule, 'id' | 'createdAt' | 'updatedAt' | 'state'> & {
-    state?: Partial<ContextSchedule['state']>;
-  }): Promise<ContextSchedule>;
+  createContextSchedule(
+    input: Omit<ContextSchedule, 'id' | 'createdAt' | 'updatedAt' | 'state'> & {
+      state?: Partial<ContextSchedule['state']>;
+    }
+  ): Promise<ContextSchedule>;
   listContextSchedules(scope?: Partial<ScheduleCapabilityScope>): Promise<ContextSchedule[]>;
   updateContextSchedule(scheduleId: string, updates: Partial<ContextSchedule>): Promise<ContextSchedule>;
   removeContextSchedule(scheduleId: string): Promise<void>;
@@ -68,9 +70,11 @@ export class ContextRuntimeScheduleCapability implements RuntimeScheduleCapabili
     await this.scheduleService.removeSchedule(scheduleId);
   }
 
-  async createContextSchedule(input: Omit<ContextSchedule, 'id' | 'createdAt' | 'updatedAt' | 'state'> & {
-    state?: Partial<ContextSchedule['state']>;
-  }): Promise<ContextSchedule> {
+  async createContextSchedule(
+    input: Omit<ContextSchedule, 'id' | 'createdAt' | 'updatedAt' | 'state'> & {
+      state?: Partial<ContextSchedule['state']>;
+    }
+  ): Promise<ContextSchedule> {
     return this.scheduleService.createContextSchedule(input);
   }
 
@@ -80,7 +84,7 @@ export class ContextRuntimeScheduleCapability implements RuntimeScheduleCapabili
       return schedules;
     }
 
-    return schedules.filter(schedule => {
+    return schedules.filter((schedule) => {
       if (scope.spaceId && schedule.scope.spaceId !== scope.spaceId) {
         return false;
       }

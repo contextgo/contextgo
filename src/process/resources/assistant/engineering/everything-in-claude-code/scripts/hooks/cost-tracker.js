@@ -8,11 +8,7 @@
 'use strict';
 
 const path = require('path');
-const {
-  ensureDir,
-  appendFile,
-  getClaudeDir,
-} = require('../lib/utils');
+const { ensureDir, appendFile, getClaudeDir } = require('../lib/utils');
 
 const MAX_STDIN = 1024 * 1024;
 let raw = '';
@@ -25,9 +21,9 @@ function toNumber(value) {
 function estimateCost(model, inputTokens, outputTokens) {
   // Approximate per-1M-token blended rates. Conservative defaults.
   const table = {
-    'haiku': { in: 0.8, out: 4.0 },
-    'sonnet': { in: 3.0, out: 15.0 },
-    'opus': { in: 15.0, out: 75.0 },
+    haiku: { in: 0.8, out: 4.0 },
+    sonnet: { in: 3.0, out: 15.0 },
+    opus: { in: 15.0, out: 75.0 },
   };
 
   const normalized = String(model || '').toLowerCase();
@@ -40,7 +36,7 @@ function estimateCost(model, inputTokens, outputTokens) {
 }
 
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', chunk => {
+process.stdin.on('data', (chunk) => {
   if (raw.length < MAX_STDIN) {
     const remaining = MAX_STDIN - raw.length;
     raw += chunk.substring(0, remaining);

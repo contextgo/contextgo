@@ -235,6 +235,7 @@ public <T> T withRetry(Supplier<T> supplier, int maxRetries) {
 
 **Security Note**: The `X-Forwarded-For` header is untrusted by default because clients can spoof it.
 Only use forwarded headers when:
+
 1. Your app is behind a trusted reverse proxy (nginx, AWS ALB, etc.)
 2. You have registered `ForwardedHeaderFilter` as a bean
 3. You have configured `server.forward-headers-strategy=NATIVE` or `FRAMEWORK` in application properties

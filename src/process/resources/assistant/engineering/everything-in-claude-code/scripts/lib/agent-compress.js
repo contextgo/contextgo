@@ -90,11 +90,15 @@ function extractSummary(body, maxSentences = 1) {
     paragraphs.push(current.join(' '));
   }
 
-  const firstParagraph = paragraphs.find(p => p.length > 0);
+  const firstParagraph = paragraphs.find((p) => p.length > 0);
   if (!firstParagraph) return '';
 
   const sentences = firstParagraph.match(/[^.!?]+[.!?]+/g) || [firstParagraph];
-  return sentences.slice(0, maxSentences).map(s => s.trim()).join(' ').trim();
+  return sentences
+    .slice(0, maxSentences)
+    .map((s) => s.trim())
+    .join(' ')
+    .trim();
 }
 
 /**
@@ -122,10 +126,11 @@ function loadAgent(filePath) {
 function loadAgents(agentsDir) {
   if (!fs.existsSync(agentsDir)) return [];
 
-  return fs.readdirSync(agentsDir)
-    .filter(f => f.endsWith('.md'))
+  return fs
+    .readdirSync(agentsDir)
+    .filter((f) => f.endsWith('.md'))
     .sort()
-    .map(f => loadAgent(path.join(agentsDir, f)));
+    .map((f) => loadAgent(path.join(agentsDir, f)));
 }
 
 /**
@@ -185,7 +190,7 @@ function buildAgentCatalog(agentsDir, options = {}) {
   } else if (mode === 'summary') {
     compressed = agents.map(compressToSummary);
   } else {
-    compressed = agents.map(a => ({
+    compressed = agents.map((a) => ({
       name: a.name,
       description: a.description,
       tools: a.tools,

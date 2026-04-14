@@ -163,6 +163,7 @@ processedPhotos[item.id] = await processor.extractSticker(data: data, with: item
 ```
 
 To use `@concurrent`:
+
 1. Mark the containing type as `nonisolated`
 2. Add `@concurrent` to the function
 3. Add `async` if not already asynchronous
@@ -170,14 +171,14 @@ To use `@concurrent`:
 
 ## Key Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| Single-threaded by default | Most natural code is data-race free; concurrency is opt-in |
-| Async stays on calling actor | Eliminates implicit offloading that caused data-race errors |
-| Isolated conformances | MainActor types can conform to protocols without unsafe workarounds |
+| Decision                      | Rationale                                                               |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| Single-threaded by default    | Most natural code is data-race free; concurrency is opt-in              |
+| Async stays on calling actor  | Eliminates implicit offloading that caused data-race errors             |
+| Isolated conformances         | MainActor types can conform to protocols without unsafe workarounds     |
 | `@concurrent` explicit opt-in | Background execution is a deliberate performance choice, not accidental |
-| MainActor default inference | Reduces boilerplate `@MainActor` annotations for app targets |
-| Opt-in adoption | Non-breaking migration path — enable features incrementally |
+| MainActor default inference   | Reduces boilerplate `@MainActor` annotations for app targets            |
+| Opt-in adoption               | Non-breaking migration path — enable features incrementally             |
 
 ## Migration Steps
 

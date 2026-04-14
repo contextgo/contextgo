@@ -160,7 +160,5 @@ export function getClaudeModel(): string | null {
   return settings?.env?.ANTHROPIC_MODEL ?? null;
 }
 
-// --- CodeBuddy settings support ---
-// Note: CodeBuddy settings (~/.codebuddy/settings.json) contains sandbox/trust config,
-// NOT model preferences. Model selection is handled by the CLI itself.
-// MCP servers are configured in ~/.codebuddy/mcp.json
+// Runtime-specific sandbox/trust files are not used for ACP model discovery.
+// Model selection is handled by the CLI itself, and MCP server state stays runtime-owned.

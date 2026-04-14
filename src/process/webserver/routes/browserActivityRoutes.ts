@@ -107,7 +107,10 @@ function normalizeContext(req: Request, payload: BrowserExtensionEnvelope): Requ
   const clientName = normalizeClientName(req);
 
   return {
-    connectorId: connectorName === 'browser_extension' ? 'contextgo-browser-extension' : connectorName ?? 'contextgo-browser-extension',
+    connectorId:
+      connectorName === 'browser_extension'
+        ? 'contextgo-browser-extension'
+        : (connectorName ?? 'contextgo-browser-extension'),
     browserFamily,
     profileLabel,
     sessionId: normalizeSessionId(req, payload),
@@ -140,7 +143,11 @@ function buildTags(context: RequestContext, eventType: string, domain?: string):
   ].filter((value): value is string => Boolean(value));
 }
 
-function mapEventToIngestInput(event: BrowserExtensionEvent, spaceId: string, context: RequestContext): BrowserActivityIngestInput | null {
+function mapEventToIngestInput(
+  event: BrowserExtensionEvent,
+  spaceId: string,
+  context: RequestContext
+): BrowserActivityIngestInput | null {
   const url = normalizeNonEmptyString(event.url);
   if (!url) {
     return null;

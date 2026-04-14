@@ -39,7 +39,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     id: 'contextgo-clipboard',
     familyId: 'activity',
     name: 'ContextGo Clipboard',
-    summary: 'Clipboard observation is owned by the connector CLI and exposed back to ContextGo as connector-managed activity outputs.',
+    summary:
+      'Clipboard observation is owned by the connector CLI and exposed back to ContextGo as connector-managed activity outputs.',
     kind: 'activity',
     runtimeOwner: 'connector-project',
     launchSurface: 'managed-external-runtime',
@@ -104,7 +105,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     id: 'google-drive',
     familyId: 'google-workspace',
     name: 'Google Drive',
-    summary: 'Google Drive is modeled as a connector-project owned runtime boundary instead of a ContextGo inline sidecar.',
+    summary:
+      'Google Drive is modeled as a connector-project owned runtime boundary instead of a ContextGo inline sidecar.',
     kind: 'official-cli',
     runtimeOwner: 'connector-project',
     launchSurface: 'managed-external-runtime',
@@ -118,7 +120,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     contextEngineReady: true,
     ownershipBoundary:
       'Connector runtime ownership belongs to the standalone connector project, while ContextGo consumes capability metadata and downstream collect outputs.',
-    nextStep: 'Route Google Drive capability and collect state from connector CLI instead of maintaining an in-app sidecar model.',
+    nextStep:
+      'Route Google Drive capability and collect state from connector CLI instead of maintaining an in-app sidecar model.',
     dependencies: [
       {
         kind: 'binary',
@@ -137,7 +140,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     id: 'google-docs',
     familyId: 'google-workspace',
     name: 'Google Docs',
-    summary: 'Google Docs is modeled as a connector-project owned runtime boundary instead of a ContextGo inline sidecar.',
+    summary:
+      'Google Docs is modeled as a connector-project owned runtime boundary instead of a ContextGo inline sidecar.',
     kind: 'official-cli',
     runtimeOwner: 'connector-project',
     launchSurface: 'managed-external-runtime',
@@ -170,7 +174,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     id: 'google-sheets',
     familyId: 'google-workspace',
     name: 'Google Sheets',
-    summary: 'Google Sheets is modeled as a connector-project owned runtime boundary instead of a ContextGo inline sidecar.',
+    summary:
+      'Google Sheets is modeled as a connector-project owned runtime boundary instead of a ContextGo inline sidecar.',
     kind: 'official-cli',
     runtimeOwner: 'connector-project',
     launchSurface: 'managed-external-runtime',
@@ -236,7 +241,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     id: 'google-calendar',
     familyId: 'google-workspace',
     name: 'Google Calendar',
-    summary: 'Google Calendar is modeled as a connector-project owned runtime boundary instead of a ContextGo inline sidecar.',
+    summary:
+      'Google Calendar is modeled as a connector-project owned runtime boundary instead of a ContextGo inline sidecar.',
     kind: 'official-cli',
     runtimeOwner: 'connector-project',
     launchSurface: 'managed-external-runtime',
@@ -250,7 +256,8 @@ const FIRST_WAVE_CONNECTORS: readonly SpaceConnectorDescriptor[] = [
     contextEngineReady: true,
     ownershipBoundary:
       'Connector runtime ownership belongs to the standalone connector project, while ContextGo consumes capability metadata and downstream collect outputs.',
-    nextStep: 'Expose Google Calendar capability and collect state from connector CLI instead of a product-inline panel.',
+    nextStep:
+      'Expose Google Calendar capability and collect state from connector CLI instead of a product-inline panel.',
     dependencies: [
       {
         kind: 'binary',

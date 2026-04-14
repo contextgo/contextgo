@@ -24,8 +24,6 @@ import {
   createAcpAgent,
   createCodexAgent,
   ensureConversationWorkspaceBootstrap,
-  createOpenClawAgent,
-  createNanobotAgent,
   createGroupConversation,
 } from '@process/utils/initAgent';
 
@@ -365,14 +363,6 @@ export class ConversationServiceImpl implements IConversationService {
       }
       case 'codex': {
         conversation = await createCodexAgent(normalizedParams as any);
-        break;
-      }
-      case 'openclaw-gateway': {
-        conversation = await createOpenClawAgent(normalizedParams as any);
-        break;
-      }
-      case 'nanobot': {
-        conversation = await createNanobotAgent(normalizedParams as any);
         break;
       }
       case 'group': {

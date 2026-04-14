@@ -41,10 +41,7 @@ function normalizeSkillDir(skillPath) {
 
 function isWithinRoot(targetPath, rootPath) {
   const relativePath = path.relative(rootPath, targetPath);
-  return relativePath === '' || (
-    !relativePath.startsWith('..')
-    && !path.isAbsolute(relativePath)
-  );
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
 }
 
 function getSkillRoots(options = {}) {

@@ -510,6 +510,260 @@ describe('fsBridge skills functionality', () => {
       });
     });
 
+    it('marks PM pack skills as preset-owned without hiding them from the library', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'pm-workbench-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'pm-workbench-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'pm-workbench-pack', 'skills', 'pm-discovery-process')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'pm-workbench-pack', 'skills', 'pm-discovery-process', 'SKILL.md')] = {
+        content: `---\nname: pm-discovery-process\ndescription: "PM discovery workflow"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-pm-workbench' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'pm-discovery-process');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['pm-workbench'],
+        hiddenFromSkillsLibrary: false,
+      });
+    });
+
+    it('marks Startup Strategist pack skills as preset-owned without hiding them from the library', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'startup-strategist-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'startup-strategist-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'startup-strategist-pack', 'skills', 'startup-startup-canvas')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'startup-strategist-pack', 'skills', 'startup-startup-canvas', 'SKILL.md')] = {
+        content: `---\nname: startup-startup-canvas\ndescription: "Startup canvas workflow"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-startup-strategist' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'startup-startup-canvas');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['startup-strategist'],
+        hiddenFromSkillsLibrary: false,
+      });
+    });
+
+    it('marks Design Director pack skills as preset-owned without hiding them from the library', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'design-director-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'design-director-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'design-director-pack', 'skills', 'design-system-distillation')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'design-director-pack', 'skills', 'design-system-distillation', 'SKILL.md')] =
+        {
+          content: `---\nname: design-system-distillation\ndescription: "Design system workflow"\n---\n`,
+          isDirectory: false,
+        };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-design-director' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'design-system-distillation');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['design-director'],
+        hiddenFromSkillsLibrary: false,
+      });
+    });
+
+    it('marks Design Director screenshot critique skills as preset-owned without hiding them from the library', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'design-director-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'design-director-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'design-director-pack', 'skills', 'design-screenshot-critique')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'design-director-pack', 'skills', 'design-screenshot-critique', 'SKILL.md')] =
+        {
+          content: `---\nname: design-screenshot-critique\ndescription: "Screenshot critique workflow"\n---\n`,
+          isDirectory: false,
+        };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-design-director' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'design-screenshot-critique');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['design-director'],
+        hiddenFromSkillsLibrary: false,
+      });
+    });
+
+    it('marks Office Analyst pack skills as preset-owned without hiding them from the library', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack', 'skills', 'office-briefing')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack', 'skills', 'office-briefing', 'SKILL.md')] = {
+        content: `---\nname: office-briefing\ndescription: "Office briefing workflow"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-office-analyst' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'office-briefing');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['office-analyst'],
+        hiddenFromSkillsLibrary: false,
+      });
+    });
+
+    it('marks Office Analyst DuckDB skills as preset-owned without hiding them from the library', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack', 'skills', 'office-duckdb-query')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack', 'skills', 'office-duckdb-query', 'SKILL.md')] = {
+        content: `---\nname: office-duckdb-query\ndescription: "DuckDB office query workflow"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-office-analyst' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'office-duckdb-query');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['office-analyst'],
+        hiddenFromSkillsLibrary: false,
+      });
+    });
+
+    it('marks nested Office Analyst advanced analysis skills as preset-owned without hiding them from the library', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack', 'skills', 'advanced-analysis-pack')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'office-analyst-pack', 'skills', 'advanced-analysis-pack', 'skills')] = {
+        isDirectory: true,
+      };
+      mockFsStore[
+        path.join(
+          builtinBase,
+          'office-analyst-pack',
+          'skills',
+          'advanced-analysis-pack',
+          'skills',
+          'office-cross-file-join-analysis'
+        )
+      ] = {
+        isDirectory: true,
+      };
+      mockFsStore[
+        path.join(
+          builtinBase,
+          'office-analyst-pack',
+          'skills',
+          'advanced-analysis-pack',
+          'skills',
+          'office-cross-file-join-analysis',
+          'SKILL.md'
+        )
+      ] = {
+        content: `---\nname: office-cross-file-join-analysis\ndescription: "Nested office join workflow"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-office-analyst' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'office-cross-file-join-analysis');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['office-analyst'],
+        hiddenFromSkillsLibrary: false,
+      });
+    });
+
+    it('marks Finance Analyst pack skills as preset-owned without hiding them from the library', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'finance-analyst-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'finance-analyst-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'finance-analyst-pack', 'skills', 'finance-dcf-valuation')] = {
+        isDirectory: true,
+      };
+      mockFsStore[path.join(builtinBase, 'finance-analyst-pack', 'skills', 'finance-dcf-valuation', 'SKILL.md')] = {
+        content: `---\nname: finance-dcf-valuation\ndescription: "Finance valuation workflow"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-finance-analyst' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'finance-dcf-valuation');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['finance-analyst'],
+        hiddenFromSkillsLibrary: false,
+      });
+    });
+
+    it('marks Finance Analyst screening skills as preset-owned without hiding them from the library', async () => {
+      const builtinBase = path.resolve('/mock/userData/builtin-skills');
+
+      mockFsStore[builtinBase] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'finance-analyst-pack')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'finance-analyst-pack', 'skills')] = { isDirectory: true };
+      mockFsStore[path.join(builtinBase, 'finance-analyst-pack', 'skills', 'finance-investment-screening')] = {
+        isDirectory: true,
+      };
+      mockFsStore[
+        path.join(builtinBase, 'finance-analyst-pack', 'skills', 'finance-investment-screening', 'SKILL.md')
+      ] = {
+        content: `---\nname: finance-investment-screening\ndescription: "Finance screening workflow"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ presetAssistantId: 'builtin-finance-analyst' });
+      const packagedSkill = result.find((skill: any) => skill.name === 'finance-investment-screening');
+
+      expect(packagedSkill).toMatchObject({
+        isCustom: false,
+        packageOwnerPresetIds: ['finance-analyst'],
+        hiddenFromSkillsLibrary: false,
+      });
+    });
+
     it('discovers nested skill packs for builtin and user skills', async () => {
       const builtinBase = path.resolve('/mock/userData/builtin-skills');
       const userBase = path.resolve('/mock/userData/config/skills');
@@ -573,6 +827,31 @@ describe('fsBridge skills functionality', () => {
             name: 'project-playbook',
             description: 'Nested user skill',
             isCustom: true,
+          }),
+        ])
+      );
+    });
+
+    it('includes workspace project skills from .contextgo/skills when workspacePath is provided', async () => {
+      const workspaceBase = path.resolve('/mock/workspace/.contextgo/skills');
+
+      mockFsStore[workspaceBase] = { isDirectory: true };
+      mockFsStore[path.join(workspaceBase, 'project-skill')] = { isDirectory: true };
+      mockFsStore[path.join(workspaceBase, 'project-skill', 'SKILL.md')] = {
+        content: `---\nname: project-skill\ndescription: "Project-local skill"\n---\n`,
+        isDirectory: false,
+      };
+
+      const handler = await getProvider('listAvailableSkills');
+      const result = await handler({ workspacePath: '/mock/workspace' });
+
+      expect(result).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'project-skill',
+            description: 'Project-local skill',
+            isCustom: true,
+            location: path.resolve('/mock/workspace/.contextgo/skills/project-skill/SKILL.md'),
           }),
         ])
       );
@@ -1033,14 +1312,6 @@ describe('fsBridge skills functionality', () => {
     it('returns empty string when builtin rule file does not exist instead of throwing', async () => {
       const handler = await getProvider('readBuiltinRule');
       const result = await handler({ fileName: 'nonexistent-rule.md' });
-      expect(result).toBe('');
-    });
-  });
-
-  describe('readBuiltinSkill ENOENT handling', () => {
-    it('returns empty string when builtin skill file does not exist instead of throwing', async () => {
-      const handler = await getProvider('readBuiltinSkill');
-      const result = await handler({ fileName: 'nonexistent-skill.md' });
       expect(result).toBe('');
     });
   });

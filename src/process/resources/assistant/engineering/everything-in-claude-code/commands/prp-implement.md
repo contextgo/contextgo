@@ -19,15 +19,15 @@ Execute a plan file step-by-step with continuous validation. Every change is ver
 
 ### Package Manager Detection
 
-| File Exists | Package Manager | Runner |
-|---|---|---|
-| `bun.lockb` | bun | `bun run` |
-| `pnpm-lock.yaml` | pnpm | `pnpm run` |
-| `yarn.lock` | yarn | `yarn` |
-| `package-lock.json` | npm | `npm run` |
-| `pyproject.toml` or `requirements.txt` | uv / pip | `uv run` or `python -m` |
-| `Cargo.toml` | cargo | `cargo` |
-| `go.mod` | go | `go` |
+| File Exists                            | Package Manager | Runner                  |
+| -------------------------------------- | --------------- | ----------------------- |
+| `bun.lockb`                            | bun             | `bun run`               |
+| `pnpm-lock.yaml`                       | pnpm            | `pnpm run`              |
+| `yarn.lock`                            | yarn            | `yarn`                  |
+| `package-lock.json`                    | npm             | `npm run`               |
+| `pyproject.toml` or `requirements.txt` | uv / pip        | `uv run` or `python -m` |
+| `Cargo.toml`                           | cargo           | `cargo`                 |
+| `go.mod`                               | go              | `go`                    |
 
 ### Validation Scripts
 
@@ -51,6 +51,7 @@ cat "$ARGUMENTS"
 ```
 
 Extract these sections from the plan:
+
 - **Summary** — What is being built
 - **Patterns to Mirror** — Code conventions to follow
 - **Files to Change** — What to create or modify
@@ -59,6 +60,7 @@ Extract these sections from the plan:
 - **Acceptance Criteria** — Definition of done
 
 If the file doesn't exist or isn't a valid plan:
+
 ```
 Error: Plan file not found or invalid.
 Run /prp-plan <feature-description> to create a plan first.
@@ -79,12 +81,12 @@ git status --porcelain
 
 ### Branch Decision
 
-| Current State | Action |
-|---|---|
-| On feature branch | Use current branch |
-| On main, clean working tree | Create feature branch: `git checkout -b feat/{plan-name}` |
-| On main, dirty working tree | **STOP** — Ask user to stash or commit first |
-| In a git worktree for this feature | Use the worktree |
+| Current State                      | Action                                                    |
+| ---------------------------------- | --------------------------------------------------------- |
+| On feature branch                  | Use current branch                                        |
+| On main, clean working tree        | Create feature branch: `git checkout -b feat/{plan-name}` |
+| On main, dirty working tree        | **STOP** — Ask user to stash or commit first              |
+| In a git worktree for this feature | Use the worktree                                          |
 
 ### Sync Remote
 
@@ -109,10 +111,12 @@ For each task in **Step-by-Step Tasks**:
 2. **Implement** — Write the code following the pattern exactly. Apply GOTCHA warnings. Use specified IMPORTS.
 
 3. **Validate immediately** — After EVERY file change:
+
    ```bash
    # Run type-check (adjust command per project)
    [type-check command from Phase 0]
    ```
+
    If type-check fails → fix the error before moving to the next file.
 
 4. **Track progress** — Log: `[done] Task N: [task name] — complete`
@@ -120,6 +124,7 @@ For each task in **Step-by-Step Tasks**:
 ### Handling Deviations
 
 If implementation must deviate from the plan:
+
 - Note **WHAT** changed
 - Note **WHY** it changed
 - Continue with the corrected approach
@@ -220,53 +225,57 @@ Write report to `.claude/PRPs/reports/{plan-name}-report.md`:
 # Implementation Report: [Feature Name]
 
 ## Summary
+
 [What was implemented]
 
 ## Assessment vs Reality
 
-| Metric | Predicted (Plan) | Actual |
-|---|---|---|
-| Complexity | [from plan] | [actual] |
-| Confidence | [from plan] | [actual] |
-| Files Changed | [from plan] | [actual count] |
+| Metric        | Predicted (Plan) | Actual         |
+| ------------- | ---------------- | -------------- |
+| Complexity    | [from plan]      | [actual]       |
+| Confidence    | [from plan]      | [actual]       |
+| Files Changed | [from plan]      | [actual count] |
 
 ## Tasks Completed
 
-| # | Task | Status | Notes |
-|---|---|---|---|
-| 1 | [task name] | [done] Complete | |
-| 2 | [task name] | [done] Complete | Deviated — [reason] |
+| #   | Task        | Status          | Notes               |
+| --- | ----------- | --------------- | ------------------- |
+| 1   | [task name] | [done] Complete |                     |
+| 2   | [task name] | [done] Complete | Deviated — [reason] |
 
 ## Validation Results
 
-| Level | Status | Notes |
-|---|---|---|
-| Static Analysis | [done] Pass | |
-| Unit Tests | [done] Pass | N tests written |
-| Build | [done] Pass | |
-| Integration | [done] Pass | or N/A |
-| Edge Cases | [done] Pass | |
+| Level           | Status      | Notes           |
+| --------------- | ----------- | --------------- |
+| Static Analysis | [done] Pass |                 |
+| Unit Tests      | [done] Pass | N tests written |
+| Build           | [done] Pass |                 |
+| Integration     | [done] Pass | or N/A          |
+| Edge Cases      | [done] Pass |                 |
 
 ## Files Changed
 
-| File | Action | Lines |
-|---|---|---|
-| `path/to/file` | CREATED | +N |
+| File           | Action  | Lines   |
+| -------------- | ------- | ------- |
+| `path/to/file` | CREATED | +N      |
 | `path/to/file` | UPDATED | +N / -M |
 
 ## Deviations from Plan
+
 [List any deviations with WHAT and WHY, or "None"]
 
 ## Issues Encountered
+
 [List any problems and how they were resolved, or "None"]
 
 ## Tests Written
 
-| Test File | Tests | Coverage |
-|---|---|---|
+| Test File      | Tests   | Coverage       |
+| -------------- | ------- | -------------- |
 | `path/to/test` | N tests | [area covered] |
 
 ## Next Steps
+
 - [ ] Code review via `/code-review`
 - [ ] Create PR via `/prp-pr`
 ```
@@ -274,6 +283,7 @@ Write report to `.claude/PRPs/reports/{plan-name}-report.md`:
 ### Update PRD (if applicable)
 
 If this implementation was for a PRD phase:
+
 1. Update the phase status from `in-progress` to `complete`
 2. Add report path as reference
 
@@ -334,30 +344,35 @@ Report to user:
 ## Handling Failures
 
 ### Type Check Fails
+
 1. Read the error message carefully
 2. Fix the type error in the source file
 3. Re-run type-check
 4. Continue only when clean
 
 ### Tests Fail
+
 1. Identify whether the bug is in the implementation or the test
 2. Fix the root cause (usually the implementation)
 3. Re-run tests
 4. Continue only when green
 
 ### Lint Fails
+
 1. Run auto-fix first
 2. If errors remain, fix manually
 3. Re-run lint
 4. Continue only when clean
 
 ### Build Fails
+
 1. Usually a type or import issue — check error message
 2. Fix the offending file
 3. Re-run build
 4. Continue only when successful
 
 ### Integration Test Fails
+
 1. Check server started correctly
 2. Verify endpoint/route exists
 3. Check request format matches expected

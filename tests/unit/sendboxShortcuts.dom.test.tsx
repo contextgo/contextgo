@@ -109,6 +109,7 @@ vi.mock('@arco-design/web-react', () => ({
 vi.mock('@icon-park/react', () => ({
   ArrowUp: () => React.createElement('span', {}, 'ArrowUp'),
   CloseSmall: () => React.createElement('span', {}, 'CloseSmall'),
+  SquareSmall: () => React.createElement('span', {}, 'SquareSmall'),
 }));
 
 vi.mock('react-i18next', () => ({

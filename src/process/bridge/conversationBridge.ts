@@ -8,11 +8,7 @@ import type { CodexAgentManager } from '@process/agent/codex';
 import { GeminiAgent, GeminiApprovalStore } from '@process/agent/gemini';
 import type { ICreateConversationParams, IDiscussionGroupCreateParams } from '@/common/adapter/ipcBridge';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
-import {
-  mergeManagedSlashCommandLibraries,
-  normalizeManagedSlashCommandLibrary,
-  type ManagedSlashCommandRecord,
-} from '@/common/chat/slash/library';
+import { normalizeManagedSlashCommandLibrary, type ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import { transformMessage } from '@/common/chat/chatLib';
 import type { TChatConversation } from '@/common/config/storage';
 import type { IAgentManager } from '@process/task/IAgentManager';
@@ -20,14 +16,12 @@ import type { IConversationService } from '@process/services/IConversationServic
 import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
 import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
-import { getSkillsDir, getBuiltinSkillsCopyDir, getSystemDir, ProcessChat, ProcessConfig } from '@process/utils/initStorage';
+import { getSkillsDir, getBuiltinSkillsCopyDir, getSystemDir, ProcessChat } from '@process/utils/initStorage';
 import type AcpAgentManager from '../task/AcpAgentManager';
 import type { GeminiAgentManager } from '../task/GeminiAgentManager';
-import type OpenClawAgentManager from '../task/OpenClawAgentManager';
 import { prepareFirstMessage } from '../task/agentUtils';
 import { refreshTrayMenu } from '@process/utils/tray';
 import { copyFilesToDirectory, readDirectoryRecursive } from '@process/utils';
-import { computeOpenClawIdentityHash } from '@process/utils/openclawUtils';
 import { getDatabase } from '@process/services/database';
 import i18n from '@process/services/i18n';
 import { getExternalSessionControlState } from '@process/channels/types';
@@ -37,6 +31,7 @@ import { GroupConversationService } from './services/group/GroupConversationServ
 import { readWorkspaceCommandLibrary, resolveWorkspacePath } from './services/workspaceAutomation';
 import { contextService, contextRuntimeService } from '@process/services/context/contextServiceSingleton';
 import { addMessage } from '@process/utils/message';
+import { ProjectCapabilityService } from '@process/services/space/ProjectCapabilityService';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
@@ -62,10 +57,6 @@ const emitConversationInterrupted = (conversation: Pick<TChatConversation, 'id' 
   }
 
   ipcBridge.conversation.responseStream.emit(interruptedMessage);
-
-  if (conversation.type === 'openclaw-gateway') {
-    ipcBridge.openclawConversation.responseStream.emit(interruptedMessage);
-  }
 };
 
 function toContextMemoryCandidateView(
@@ -87,9 +78,13 @@ function getConversationWorkspacePath(conversation?: TChatConversation): string 
 async function resolveManagedSlashCommandLibrary(
   conversation?: TChatConversation
 ): Promise<ManagedSlashCommandRecord[]> {
-  const globalLibrary = normalizeManagedSlashCommandLibrary(await ProcessConfig.get('command.library'));
-  const workspaceLibrary = await readWorkspaceCommandLibrary(getConversationWorkspacePath(conversation));
-  return mergeManagedSlashCommandLibraries(globalLibrary, workspaceLibrary ?? undefined);
+  const workspacePath = getConversationWorkspacePath(conversation);
+  if (!workspacePath) {
+    return [];
+  }
+
+  const workspaceLibrary = await readWorkspaceCommandLibrary(workspacePath);
+  return normalizeManagedSlashCommandLibrary(workspaceLibrary ?? []);
 }
 
 export function initConversationBridge(
@@ -132,147 +127,6 @@ export function initConversationBridge(
       throw new Error('This session is currently controlled from IM. Reclaim control before sending from desktop.');
     }
   };
-
-  ipcBridge.openclawConversation.getRuntime.provider(async ({ conversation_id }) => {
-    try {
-      const conversation = await conversationService.getConversation(conversation_id);
-      if (!conversation || conversation.type !== 'openclaw-gateway') {
-        return { success: false, msg: 'OpenClaw conversation not found' };
-      }
-      const task = (await workerTaskManager.getOrBuildTask(conversation_id)) as unknown as
-        | OpenClawAgentManager
-        | undefined;
-      if (!task || task.type !== 'openclaw-gateway') {
-        return { success: false, msg: 'OpenClaw runtime not available' };
-      }
-
-      // Await bootstrap to ensure the agent is fully connected before returning runtime info.
-      // Without this, getRuntime may return isConnected=false while the agent is still connecting.
-      await task.bootstrap.catch(() => {});
-      await task.reconcileExternalHistory().catch(() => {});
-
-      const diagnostics = await task.getRuntimeDetails();
-      const identityHash = await computeOpenClawIdentityHash(diagnostics.workspace || conversation.extra?.workspace);
-      const conversationModel = (conversation as { model?: { useModel?: string; id?: string; platform?: string } })
-        .model;
-      const extra = conversation.extra as
-        | {
-            openclawAgentId?: string;
-            cliPath?: string;
-            gateway?: { cliPath?: string };
-            runtimeValidation?: {
-              expectedWorkspace?: string;
-              expectedBackend?: string;
-              expectedAgentName?: string;
-              expectedOpenClawAgentId?: string;
-              expectedCliPath?: string;
-              expectedModel?: string;
-              expectedIdentityHash?: string | null;
-              switchedAt?: number;
-            };
-          }
-        | undefined;
-      const gatewayCliPath = extra?.gateway?.cliPath;
-
-      return {
-        success: true,
-        data: {
-          conversationId: conversation_id,
-          runtime: {
-            workspace: diagnostics.workspace || conversation.extra?.workspace,
-            backend: diagnostics.backend || conversation.extra?.backend,
-            agentName: diagnostics.agentName || conversation.extra?.agentName,
-            openclawAgentId: diagnostics.openclawAgentId || extra?.openclawAgentId,
-            cliPath: diagnostics.cliPath || extra?.cliPath || gatewayCliPath,
-            modelProvider: diagnostics.modelProvider || conversationModel?.id || conversationModel?.platform || null,
-            model: diagnostics.model || extra?.runtimeValidation?.expectedModel || conversationModel?.useModel,
-            sessionKey: diagnostics.sessionKey,
-            isConnected: diagnostics.isConnected,
-            hasActiveSession: diagnostics.hasActiveSession,
-            identityHash,
-          },
-          expected: extra?.runtimeValidation,
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        msg: error instanceof Error ? error.message : String(error),
-      };
-    }
-  });
-
-  ipcBridge.openclawConversation.getModelInfo.provider(async ({ conversation_id }) => {
-    try {
-      const conversation = await conversationService.getConversation(conversation_id);
-      if (!conversation || conversation.type !== 'openclaw-gateway') {
-        return { success: false, msg: 'OpenClaw conversation not found' };
-      }
-
-      const task = (await workerTaskManager.getOrBuildTask(conversation_id)) as unknown as
-        | OpenClawAgentManager
-        | undefined;
-      if (!task || task.type !== 'openclaw-gateway') {
-        return { success: false, msg: 'OpenClaw runtime not available' };
-      }
-
-      const modelInfo = await task.getModelInfo(
-        (conversation.extra as { runtimeValidation?: { expectedModel?: string } } | undefined)?.runtimeValidation
-          ?.expectedModel
-      );
-      return {
-        success: true,
-        data: { modelInfo },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        msg: error instanceof Error ? error.message : String(error),
-      };
-    }
-  });
-
-  ipcBridge.openclawConversation.setModel.provider(async ({ conversation_id, modelId }) => {
-    try {
-      const conversation = await conversationService.getConversation(conversation_id);
-      if (!conversation || conversation.type !== 'openclaw-gateway') {
-        return { success: false, msg: 'OpenClaw conversation not found' };
-      }
-
-      const task = (await workerTaskManager.getOrBuildTask(conversation_id)) as unknown as
-        | OpenClawAgentManager
-        | undefined;
-      if (!task || task.type !== 'openclaw-gateway') {
-        return { success: false, msg: 'OpenClaw runtime not available' };
-      }
-
-      const modelInfo = await task.setModel(modelId);
-      const nextExtra = {
-        ...conversation.extra,
-        runtimeValidation: {
-          ...conversation.extra?.runtimeValidation,
-          expectedModel: modelId,
-          switchedAt: Date.now(),
-        },
-      };
-
-      await conversationService.updateConversation(conversation_id, {
-        modifyTime: Date.now(),
-        extra: nextExtra,
-      } as Partial<TChatConversation>);
-      emitConversationListChanged(conversation, 'updated');
-
-      return {
-        success: true,
-        data: { modelInfo },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        msg: error instanceof Error ? error.message : String(error),
-      };
-    }
-  });
 
   ipcBridge.conversation.create.provider(async (params: ICreateConversationParams): Promise<TChatConversation> => {
     const conversation =
@@ -570,6 +424,8 @@ export function initConversationBridge(
     }
   });
 
+  const projectCapabilityService = new ProjectCapabilityService();
+
   const buildLastAbortController = (() => {
     let lastGetWorkspaceAbortController = new AbortController();
     return () => {
@@ -620,6 +476,31 @@ export function initConversationBridge(
     if (!task) return { success: true, msg: 'conversation not found' };
     await task.stop();
     return { success: true };
+  });
+
+  ipcBridge.conversation.getProjectCapabilitySnapshot.provider(async ({ workspacePath }) => {
+    const snapshot = await projectCapabilityService.readSnapshot(workspacePath);
+    if (!snapshot) {
+      return undefined;
+    }
+
+    return {
+      workspacePath: snapshot.workspacePath,
+      automationRootRelativePath: snapshot.automationRootRelativePath,
+      counts: { ...snapshot.counts },
+      skills: snapshot.skills.map((skill) => ({
+        ...skill,
+        compatibility: [...skill.compatibility],
+      })),
+      hooks: snapshot.hooks.map((hook) => ({
+        ...hook,
+        events: [...hook.events],
+        runnableEvents: [...hook.runnableEvents],
+        outputTargets: [...hook.outputTargets],
+      })),
+      commands: snapshot.commands.map((command) => ({ ...command })),
+      schedules: snapshot.schedules.map((schedule) => ({ ...schedule })),
+    };
   });
 
   ipcBridge.conversation.getSlashCommands.provider(async ({ conversation_id, includeRuntimeCommands = true }) => {

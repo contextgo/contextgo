@@ -80,6 +80,7 @@ All modes output actionable docs, not essays. Every recommendation has a specifi
 ## Integration
 
 Pair with:
+
 - `/browser-qa` to verify the user journey audit findings
 - `/design-system audit` for visual polish assessment
 - `/canary-watch` for post-launch monitoring

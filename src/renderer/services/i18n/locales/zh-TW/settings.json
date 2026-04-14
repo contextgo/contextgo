@@ -593,6 +593,7 @@
   "webui.officialRemoteDevicePending": "雲端工作階段已存在，ContextGo 正在為目前裝置建立官方 Remote 綁定。",
   "webui.openOfficialRemote": "開啟裝置列表",
   "webui.remoteDevicesNav": "遠端裝置",
+  "webui.switchDevice": "切換裝置",
   "webui.officialRemoteSignedOut": "官方裝置列表尚未連線。",
   "webui.officialRemoteHint": "在這裡登入一次即可。ContextGo 會自動綁定目前裝置，讓它出現在代管裝置列表首頁。",
   "webui.officialRemoteRuntimeHint": "官方 Remote 會自動準備桌面執行環境，讓代管裝置列表首頁可以直接開啟這台桌面；不需要手動開啟下方的本機 / 自託管存取。",
@@ -721,13 +722,17 @@
   "channels.extension.noConfig": "不需要額外設定。",
   "channels.extension.selectPlaceholder": "請選擇",
   "channels.extension.defaultDesc": "擴充頻道外掛",
-  "channels.publication.connectorLabel": "1. 選擇可用渠道帳號",
+  "channels.publication.connectorLabel": "渠道實例",
   "channels.publication.connectorPlaceholder": "選擇一個渠道帳號",
   "channels.publication.connectorHint": "目前正在透過 {{platform}} / {{name}} 管理發佈目標。",
   "channels.publication.connectorRequired": "請先選擇一個可用渠道帳號",
   "channels.publication.agentRequired": "請選擇要正式發佈的 Agent",
   "channels.publication.agentPlaceholder": "選擇要正式發佈的 Agent",
+  "channels.publication.agentSelectorLabel": "Agent",
   "channels.publication.audiencePlaceholder": "選擇一個已發現的目標",
+  "channels.publication.publishObjectLabel": "發佈對象",
+  "channels.publication.publishObjectPlaceholder": "選擇一個發佈對象",
+  "channels.publication.publishObjectRequired": "請先選擇一個發佈對象",
   "channels.publication.scopeKeyRequired": "請選擇目標，或手動填寫目標 key",
   "channels.publication.scopeKeyRemoteUserPlaceholder": "遠端使用者 key，例如：user_123456",
   "channels.publication.scopeKeyRemoteChatPlaceholder": "Audience key，例如：group:alpha 或 -100123456:thread:9",
@@ -736,12 +741,12 @@
   "channels.publication.durableDescription": "適合穩定對外可用的 Agent 入口。配好之後，這個使用者、群組、頻道或話題都能持續找到同一個發佈入口。",
   "channels.publication.temporaryTitle": "Temporary Override",
   "channels.publication.temporaryDescription": "用於短期接管某個 audience 的 Agent。它會在 session reset 後清理，因此應始終指向精確 audience key。",
-  "channels.publication.saveDurable": "儲存 durable publication",
-  "channels.publication.updateDurable": "更新 durable publication",
+  "channels.publication.saveDurable": "發佈 Agent",
+  "channels.publication.updateDurable": "更新發佈",
   "channels.publication.saveTemporary": "儲存 temporary override",
   "channels.publication.updateTemporary": "更新 temporary override",
   "channels.publication.saveFailed": "儲存發佈綁定失敗",
-  "channels.publication.durableSaved": "已儲存 durable publication",
+  "channels.publication.durableSaved": "Agent 發佈已儲存",
   "channels.publication.temporarySaved": "已儲存 temporary override",
   "channels.publication.deleteFailed": "刪除發佈綁定失敗",
   "channels.publication.deleted": "已刪除發佈綁定",
@@ -753,9 +758,9 @@
   "channels.publication.emptyTemporary": "還沒有 temporary override",
   "channels.publication.noConnector": "目前還沒有可用渠道帳號。先去 IM渠道帳號 完成配置，並啟用一個實例。",
   "channels.publication.goToAccounts": "前往 IM渠道帳號",
-  "channels.publication.editingDurable": "正在編輯長期發佈",
+  "channels.publication.editingDurable": "正在編輯發佈",
   "channels.publication.editingTemporary": "正在編輯 temporary override",
-  "channels.publication.durableTag": "長期",
+  "channels.publication.durableTag": "已發佈",
   "channels.publication.temporaryTag": "Temporary",
   "channels.publication.enabled": "已啟用",
   "channels.publication.disabled": "已停用",
@@ -769,12 +774,12 @@
   "channels.publication.scope.remote_chat": "某個群組 / 頻道 / 話題",
   "channels.publication.scope.temporary_override": "臨時覆蓋",
   "channels.publication.manualScopeToggle": "手動填寫目標 key",
-  "channels.publication.intentTitle": "準備把這個 Agent 發佈為長期入口",
-  "channels.publication.intentDescription": "這裡發佈的是某個工作空間 / 運行時下的可復用 Agent。來源會話只用於追溯，不是被發佈的對象。",
-  "channels.publication.intentProfile": "Agent 設定",
+  "channels.publication.intentTitle": "發佈這個 Agent",
+  "channels.publication.intentDescription": "這個頁面管理目前 Agent 發佈到哪裡，來源會話只用於追溯。",
+  "channels.publication.intentProfile": "Agent",
   "channels.publication.intentConversation": "派生來源",
-  "channels.publication.intentBackend": "Agent 類型 / 運行時",
-  "channels.publication.intentWorkspace": "所屬工作空間",
+  "channels.publication.intentBackend": "運行時",
+  "channels.publication.intentWorkspace": "專案",
   "channels.publication.intentSelectedHint": "目前會話已經沉澱成一個可復用 Agent，並已在下方為你預先選好。",
   "channels.publication.connectorGuide": "這裡只顯示已經可用的渠道帳號。先選帳號，再決定要長期發佈到哪裡。",
   "channels.publication.connectorGuide.weixin": "微信通常更接近單人單入口場景，建議先從「整個渠道帳號」或「某個使用者」開始。",
@@ -981,6 +986,65 @@
   "noCliDetected": "未偵測到 CLI 工具。請先安裝支援 ACP 協定的 CLI。",
   "agentDisplayName": "顯示名稱",
   "agentNamePlaceholder": "請輸入代理名稱",
+  "assistantUntitled": "未命名 Agent",
+  "agentWorkspaceBack": "返回",
+  "agentWorkspaceEditable": "可編輯",
+  "agentWorkspaceReadOnly": "唯讀",
+  "agentWorkspaceNoDescription": "暫無描述。",
+  "agentWorkspaceCreateTitle": "建立 Agent",
+  "agentWorkspaceBasicsTitle": "Agent 基本資料",
+  "agentWorkspaceCreateDescription": "先設定 Agent 的身份、執行時與規則，再進入能力工作區。",
+  "agentWorkspaceBasicsDescription": "不離開目前詳情頁，也能調整 AI 助手的身份、執行時與規則。",
+  "agentWorkspaceSummaryHint": "補充描述，方便在工作區清單中快速辨識這個 Agent。",
+  "agentWorkspaceSkillsTab": "Skills",
+  "agentWorkspaceSkillsTabDescription": "查看這個 Agent 套件綁定或附帶的技能。",
+  "agentWorkspaceSkillsEmpty": "這個 Agent 還沒有綁定任何技能。",
+  "agentWorkspaceHooksTab": "Hooks",
+  "agentWorkspaceHooksTabDescription": "查看這個 Agent 套件目前啟用的 Hook 自動化。",
+  "agentWorkspaceHooksEmpty": "這個 Agent 還沒有綁定任何 Hook。",
+  "agentWorkspaceHooksAllBackends": "全部執行環境",
+  "agentWorkspaceHooksExecutionLabel": "執行方式",
+  "agentWorkspaceHooksEventsLabel": "觸發事件",
+  "agentWorkspaceHooksBackendsLabel": "支援執行環境",
+  "agentWorkspaceHooksLocationLabel": "清單路徑",
+  "agentWorkspaceHooksOutputTargetsLabel": "輸出目標",
+  "agentWorkspaceHooksRunnableEventsLabel": "可執行事件",
+  "agentWorkspaceHooksVersionLabel": "版本",
+  "agentWorkspaceHooksTagsLabel": "標籤",
+  "agentWorkspaceHooksConfigLabel": "設定內容",
+  "agentWorkspaceSchedulesTab": "Schedules",
+  "agentWorkspaceSchedulesTabDescription": "查看這個套件預置的 ContextGo 原生排程。",
+  "agentWorkspaceSchedulesEmpty": "這個 Agent 目前沒有可用排程。",
+  "agentWorkspaceSchedulesProfileLabel": "自動化設定檔",
+  "agentWorkspaceSchedulesSurfaceLabel": "投放面",
+  "agentWorkspaceSchedulesSurfaceValue": "會話排程種子",
+  "agentWorkspaceSchedulesDeliveryLabel": "交付方式",
+  "agentWorkspaceSchedulesDeliveryValue": "ContextGo 原生自動化",
+  "agentWorkspaceSchedulesRuntimeSurfaceLabel": "執行時目錄",
+  "agentWorkspaceSchedulesEntryCountLabel": "種子數量",
+  "agentWorkspaceSchedulesPayloadLabel": "種子載荷",
+  "agentWorkspaceSchedulesEmptySeedNote": "這個 profile 目前只預置了排程容器，還沒有打包內建的會話排程條目。",
+  "agentWorkspaceCommandsTab": "Commands",
+  "agentWorkspaceCommandsTabDescription": "查看這個套件的自動化設定預置出的工作區命令。",
+  "agentWorkspaceCommandsEmpty": "這個 Agent 目前沒有可用命令。",
+  "agentWorkspaceCommandsProfileLabel": "自動化設定檔",
+  "agentWorkspaceCommandsSurfaceLabel": "投放面",
+  "agentWorkspaceCommandsSurfaceValue": "工作區命令種子",
+  "agentWorkspaceCommandsDeliveryLabel": "交付方式",
+  "agentWorkspaceCommandsDeliveryValue": "受管自動化投影",
+  "agentWorkspaceCommandsCommandIdLabel": "命令 ID",
+  "agentWorkspaceCommandsSourceLabel": "來源",
+  "agentWorkspaceCommandsBuiltinSource": "內建命令種子",
+  "agentWorkspaceCommandsCustomSource": "套件自訂命令",
+  "agentWorkspaceCommandsStatusLabel": "狀態",
+  "agentWorkspaceCommandsEnabledValue": "已啟用",
+  "agentWorkspaceCommandsDisabledValue": "已停用",
+  "agentWorkspaceCommandsTemplateLabel": "提示詞模板",
+  "agentWorkspaceAgentsEntryEmpty": "這個套件沒有提供 AGENTS.md 規則入口文件。",
+  "agentWorkspaceAgentsEntryDescription": "AGENTS.md 是這個套件內建的規則入口文件。ContextGo 可以把它投射成 CLAUDE.md、GEMINI.md 等執行時原生入口文件。",
+  "agentWorkspaceDocsTab": "Docs",
+  "agentWorkspaceDocsTabDescription": "瀏覽這個套件的說明文件與更深入的作者指引。",
+  "agentWorkspaceDocsEmpty": "這個套件沒有附帶其他文件。",
   "simpleModeTip": "選擇已偵測到的 CLI 並自訂名稱。如需設定環境變數等更多選項，請切換到進階模式。",
   "runtimeManager": {
     "title": "執行環境",
@@ -1007,8 +1071,6 @@
     "installCommandLabel": "建議安裝命令",
     "installCommandCopied": "安裝命令已複製。",
     "loginCommandCopied": "登入命令已複製。",
-    "customSectionTitle": "自訂接入",
-    "customSectionDescription": "如果你想接入不在內建清單裡的命令列工具，可以在這裡手動新增，讓 ContextGo 也能啟動它。",
     "summary": {
       "ready": "已通過檢查，可以直接使用。",
       "detected": "已在本機偵測到，建議再做一次可用性檢查。",
@@ -1029,50 +1091,17 @@
       "idle": "未檢查"
     },
     "runtime": {
+      "gemini": {
+        "description": "Google Gemini 命令列工具。"
+      },
       "claude": {
         "description": "Anthropic Claude Code 命令列工具。"
       },
       "codex": {
         "description": "OpenAI Codex 命令列工具，適合本機編碼與修改專案。"
       },
-      "nanobot": {
-        "description": "Nanobot CLI 執行環境。"
-      },
-      "qwen": {
-        "description": "Qwen Code 命令列工具。"
-      },
-      "codebuddy": {
-        "description": "Tencent CodeBuddy Code 命令列工具。"
-      },
       "opencode": {
         "description": "OpenCode 命令列工具。"
-      },
-      "goose": {
-        "description": "Block Goose 命令列工具。"
-      },
-      "auggie": {
-        "description": "Augment Code 命令列工具。"
-      },
-      "kimi": {
-        "description": "Kimi 命令列工具。"
-      },
-      "iflow": {
-        "description": "iFlow 命令列工具。"
-      },
-      "droid": {
-        "description": "Factory Droid 命令列工具。"
-      },
-      "copilot": {
-        "description": "GitHub Copilot 命令列工具。"
-      },
-      "qoder": {
-        "description": "Qoder 命令列工具。"
-      },
-      "vibe": {
-        "description": "Mistral Vibe 命令列工具。"
-      },
-      "cursor": {
-        "description": "Cursor Agent 命令列工具。"
       }
     },
     "revealPathFailed": "開啟系統檔案管理器失敗。",
@@ -1313,7 +1342,7 @@
     "resources": "可連接資源",
     "auth": "驗證方式",
     "openWebsite": "打開官網",
-    "note": "連接器頁面展示的是 connector 專案的原生能力目錄。ContextGo 在這裡呈現能力狀態，並在匯入後消費其輸出。",
+    "note": "這個頁面會區分「可存取能力」與「目前可用能力」，幫助你快速判斷這個 connector 現在能做什麼。",
     "summaryTemplate": "{{name}} 屬於「{{category}}」，後續可作為 AI 工作流的上下文資料入口。",
     "stagePriority": "優先接入",
     "stagePlanned": "規劃中",
@@ -1321,13 +1350,13 @@
       "supported": "已支援",
       "notSupportedYet": "暫未支援"
     },
-    "implementation": "實作方式",
+    "implementation": "接入方式",
     "implementationOwners": {
-      "official": "官方支援",
+      "official": "官方接入",
       "contextgo": "ContextGo 原生",
-      "connectorRepo": "連接器倉庫",
-      "hybrid": "混合支援",
-      "default": "連接器支援"
+      "connectorRepo": "外部連接器執行階段",
+      "hybrid": "混合接入",
+      "default": "連接器接入"
     },
     "supportSources": "支援來源",
     "noSupportSources": "暫時還沒有關聯的支援來源。",
@@ -1339,6 +1368,25 @@
       "connectorRepo": "連接器倉庫",
       "default": "支援來源"
     },
+    "sectionTitles": {
+      "overview": "連接概覽",
+      "nativeCapabilitySurface": "可存取能力",
+      "contextgoReadiness": "目前可用能力",
+      "sourcesAndBoundary": "更多資訊"
+    },
+    "sectionDescriptions": {
+      "overview": "查看這個 connector 能連接哪些外部內容，以及目前採用什麼接入方式。",
+      "nativeCapabilitySurface": "依產品能力分組查看目前可存取的內容與操作。",
+      "contextgoReadiness": "這裡展示在 ContextGo 中已經實際可用的能力。",
+      "sourcesAndBoundary": "查看官方文件、接入說明與技術資訊。"
+    },
+    "summaryStats": {
+      "capabilityGroups": "能力分組",
+      "actions": "可用操作",
+      "readyWorkflows": "已就緒工作流",
+      "primaryRuntime": "主執行階段"
+    },
+    "groupNavigator": "查看每個能力分組以及目前可用的操作。",
     "categories": {
       "contextgo": "ContextGo 家族",
       "googleWorkspace": "Google Workspace",
@@ -1408,13 +1456,38 @@
       "sourceManual": "手動補錄"
     },
     "externalCatalog": {
-      "platformAccess": "平台接入邊界",
-      "runtimeBoundary": "執行階段邊界",
-      "nativeSurface": "原生能力面",
-      "commandEntrypoints": "命令入口",
+      "platformAccess": "目前接入方式",
+      "runtimeBoundary": "執行說明",
+      "nativeSurface": "覆蓋能力",
+      "commandEntrypoints": "CLI 命令",
+      "capabilities": "能力樹",
+      "capabilitySummary": "依外部產品的原生能力分組展示目前可存取的內容與操作。",
+      "capabilityGroups": "能力分組",
+      "discoveryCommands": "發現命令",
+      "extractionMode": "擷取模式",
+      "actions": "動作",
+      "authModesTitle": "授權模式",
+      "extractionModes": {
+        "manual-curation": "手動整理",
+        "help-derived": "說明推導",
+        "schema-derived": "Schema 匯出",
+        "hybrid": "混合模式"
+      },
+      "authModes": {
+        "user": "使用者授權",
+        "bot": "機器人 / 應用授權",
+        "service": "服務上下文"
+      },
       "noneYet": "暫未提供。",
       "workflows": "已實作工作流",
-      "workflowSurface": "能力面：{{surface}}",
+      "workflowSurface": "接入類型：{{surface}}",
+      "workflowSurfaces": {
+        "runtime": "執行階段接入",
+        "source": "來源接入",
+        "collect": "內容採集",
+        "fetch": "資料取得",
+        "activity": "活動接入"
+      },
       "workflowStatus": {
         "ready": "已可用",
         "partial": "部分完成",
@@ -1422,12 +1495,24 @@
       },
       "nativeObjects": "原生物件",
       "entrypoints": "入口命令",
-      "writesStore": "會寫入儲存",
-      "noStoreWrite": "暫不寫入儲存",
+      "writesStore": "會自動沉澱結果",
+      "noStoreWrite": "暫不自動沉澱結果",
       "unavailableTitle": "暫時無法讀取 connector 詳情"
     },
     "catalogPlaceholderDesc": "這個 connector 目前仍只是目錄佔位。ContextGo 尚未消費它的執行階段或採集輸出。",
-    "catalogExternalDesc": "這個 connector 由獨立的 connector 專案管理。ContextGo 在這裡讀取它的能力目錄，並在匯入後消費其輸出。"
+    "catalogExternalDesc": "目前透過外部連接器執行階段接入，能力會在這裡展示，並可在接入後供 ContextGo 使用。",
+    "workflowCatalog": {
+      "feishu": {
+        "officialCliRuntime": {
+          "label": "官方 CLI 接入",
+          "notes": [
+            "目前已支援透過官方 CLI 進行設定、登入與命令透傳。",
+            "面向飛書文件、訊息、表格等物件的結構化採集能力仍在建設中。"
+          ],
+          "nativeObjects": ["應用設定", "使用者授權工作階段", "通用 CLI 命令調用"]
+        }
+      }
+    }
   },
   "cloud": {
     "title": "ContextGo 雲端帳號",
@@ -1454,19 +1539,16 @@
   },
   "commands": {
     "title": "Commands",
-    "description": "集中管理可重複使用的 slash 命令模板。選取後會直接展開到輸入框，因此能跨不同 Agent 穩定共用。",
-    "usageHint": "在任意聊天輸入框輸入 /，即可打開命令選單並快速套用已設定的模板。",
+    "description": "Commands 現在按工作空間維度管理。請在專案的 workspace automation 面板中維護命令，而不是在全域設定中維護一套全域命令庫。",
+    "usageHint": "打開一個已綁定 workspace 的會話，然後在其中編輯 Commands，命令會儲存到該專案的 `.contextgo/commands.json`。",
+    "emptyState": "系統不再使用全域命令庫。",
     "add": "新增命令",
-    "restoreDefaults": "恢復預設命令",
-    "restoreSuccess": "已恢復預設命令",
-    "restoreFailed": "恢復預設命令失敗",
-    "recommendedTitle": "推薦工作流命令",
-    "recommendedDescription": "內建規劃、TDD、審查、安全、驗證與編排這六類高頻工程命令。",
+    "restoreDefaults": "恢復專案命令",
+    "restoreSuccess": "已恢復專案命令",
+    "restoreFailed": "恢復專案命令失敗",
     "customTitle": "自訂命令",
     "customDescription": "為任意助手新增你自己的可重複使用工作流提示模板。",
-    "emptyCustom": "尚無自訂命令。",
-    "builtinTag": "內建",
-    "customTag": "自訂",
+    "emptyCustom": "尚無專案命令。",
     "templateLabel": "模板內容",
     "editTitle": "編輯命令 {{name}}",
     "createTitle": "建立命令",
@@ -1475,11 +1557,10 @@
     "descriptionLabel": "描述",
     "descriptionPlaceholder": "說明這個命令適合在哪些情境使用",
     "templatePlaceholder": "輸入選取此命令後要插入聊天輸入框的提示模板",
-    "builtinOverrideHint": "{{name}} 是內建命令。儲存後會記錄你的本地覆寫設定，同時保留預設預設值。",
     "loadFailed": "載入命令庫失敗",
     "saveFailed": "儲存命令失敗",
     "deleteFailed": "刪除命令失敗",
-    "deleteConfirm": "確定要刪除這條自訂命令嗎？",
+    "deleteConfirm": "確定要刪除這條命令嗎？",
     "validation": {
       "invalidName": "命令名稱只能使用字母、數字、連字號與底線",
       "duplicateName": "命令名稱 /{{name}} 已存在",
@@ -1563,11 +1644,21 @@
   "channels.publication.openConversation": "查看對話",
   "channels.publication.addTargetTitle": "新增發佈",
   "channels.publication.addTargetDescription": "先選目標，再把上面的 Agent 長期發佈到這裡。之後這個目標的新訊息，都會進入這個 Agent。",
+  "channels.publication.addObjectButton": "新增發佈對象",
+  "channels.publication.addObjectTitle": "新增發佈對象",
+  "channels.publication.addObjectDescription": "先選渠道實例，再把這個 Agent 發佈到一個平台原生 IM 對象。",
   "channels.publication.summaryObjects": "對象",
   "channels.publication.summarySessions": "會話",
   "channels.publication.objectListTitle": "已發佈對象",
-  "channels.publication.objectListDescription": "查看這個渠道帳號下已發現或已發佈的 IM 原生對象。",
+  "channels.publication.objectListDescription": "這裡只顯示已經綁定到這個 Agent 的發佈對象。",
+  "channels.publication.emptyPublishedObjects": "這個 Agent 還沒有發佈到任何 IM 對象",
   "channels.publication.emptyObjects": "還沒有發現任何 IM 對象",
+  "channels.publication.agentSummaryTitle": "目前 Agent",
+  "channels.publication.agentSummaryDescription": "管理這個 Agent 透過可重用 IM 渠道實例發佈到哪些地方。",
+  "channels.publication.channelAccountInstanceLabel": "渠道實例",
+  "channels.publication.sessionStatusLabel": "目前專案會話",
+  "channels.publication.currentSessionActive": "目前活躍",
+  "channels.publication.noActiveSession": "還沒有活躍會話",
   "channels.publication.objectDetailTitle": "對象詳情",
   "channels.publication.objectDetailDescription": "查看這個 IM 對象的發佈規則與關聯會話。",
   "channels.publication.objectParentLabel": "上級對象",
@@ -1577,7 +1668,7 @@
   "channels.publication.objectSessionsTitle": "關聯會話",
   "channels.publication.objectSessionsDescription": "查看這個對象下已經產生的會話。",
   "channels.publication.objectSessionsEmpty": "這個對象還沒有關聯會話",
-  "channels.publication.sessionWorkspaceLabel": "工作區",
+  "channels.publication.sessionWorkspaceLabel": "專案",
   "channels.publication.sessionLastActiveLabel": "最後活躍",
   "channels.publication.sessionAgentTypeLabel": "Agent 類型",
   "channels.publication.objectKind.common.person": "個人",
@@ -1617,7 +1708,23 @@
   "webui.officialRemoteStatusShort.preparing": "準備中",
   "webui.officialRemoteStatusShort.connecting": "連線中",
   "webui.officialRemoteStatusShort.unavailable": "暫不可用",
-  "assistantsPageDescription": "在同一個目錄中統一管理可直接使用的助理，以及由 Context Engine 自動驅動的系統 Agent。",
+  "assistantsPageDescription": "在這裡完成 Agent 的建立與編輯，同時查看由 Context Engine 託管的系統 Agent。",
+  "assistantsWorkbenchPublish": "發佈 Agent",
+  "assistantsWorkbenchOpenSkillMarket": "進入技能市場",
+  "assistantsWorkbenchProductAgents": "可用 Agent",
+  "assistantsWorkbenchProductAgentsHint": "目前工作台可直接使用的產品級 Agent。",
+  "assistantsWorkbenchSystemAgents": "系統 Agent",
+  "assistantsWorkbenchSystemAgentsHint": "由 Context Engine 在背景託管執行。",
+  "assistantsWorkbenchActiveRuns": "執行中任務",
+  "assistantsWorkbenchActiveRunsHint": "目前仍在進行的系統維護任務。",
+  "assistantsWorkbenchSectionTitle": "Agent 工作台",
+  "assistantsWorkbenchSectionDescription": "把 Agent 的建立、擴充技能與發佈收斂到同一頁，減少來回切換。",
+  "assistantsWorkbenchCreateTitle": "建立或編輯 Agent",
+  "assistantsWorkbenchCreateText": "先建立 Agent，再從下方列表打開既有 Agent，繼續調整規則、Hook 與可用執行時。",
+  "assistantsWorkbenchSkillsTitle": "選擇技能",
+  "assistantsWorkbenchSkillsText": "技能綁定仍然發生在 Agent 詳情裡；當你需要安裝新能力時，再從這裡進入技能市場。",
+  "assistantsWorkbenchPublishTitle": "發佈",
+  "assistantsWorkbenchPublishText": "當工作流穩定後，把目前工作區綁定到發佈渠道，形成可對外使用的 Agent 入口。",
   "systemAgents": "系統 Agent",
   "systemAgentsDescription": "這些 Agent 會在背景由引擎自動觸發，用來壓縮會話上下文，並把穩定知識推進到專案層。",
   "systemAgentViewRuns": "查看執行",
@@ -1636,5 +1743,14 @@
   "systemRunsEmptyDescription": "Context Engine 已經在觀察目前工作區。首次維護任務真正觸發並完成後，歷史紀錄會顯示在這裡。",
   "systemRunsDefinitionsTitle": "已註冊的系統 Agent",
   "systemRunsDefinitionsDescription": "首次執行之前，這裡先顯示系統 Agent 定義、觸發條件與執行邊界；真正執行後的歷史紀錄會另外出現在下方。",
-  "systemRunsLastChecked": "上次檢查時間：{{time}}"
+  "systemRunsLastChecked": "上次檢查時間：{{time}}",
+  "webui.switchDeviceDescription": "直接在目前的產品殼內切換到另一台已連線桌面裝置，不需要先進入獨立的裝置列表頁。",
+  "webui.switchDeviceEmpty": "目前沒有可直接開啟的桌面裝置。請先在其他裝置上啟動 ContextGo，並保持 Official Remote 在線。",
+  "webui.switchDeviceCurrent": "目前裝置",
+  "webui.switchDeviceLastSeen": "最近上線 {{time}}",
+  "webui.switchDeviceOpen": "開啟裝置",
+  "webui.deviceModeLocal": "本地主機",
+  "webui.deviceModeRemote": "遠端桌面",
+  "webui.switchDeviceUnknown": "目前裝置",
+  "webui.backToLocal": "返回本地"
 }

@@ -5,8 +5,13 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
+import type { GuidLocationState } from '@/renderer/pages/guid/types';
 import { getActivityTime, getTimelineLabel } from '@/renderer/utils/chat/timeline';
-import { getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
+import {
+  getConversationWorkspacePath,
+  getWorkspaceDisplayName,
+  isTemporaryWorkspace,
+} from '@/renderer/utils/workspace/workspace';
 import { getWorkspaceUpdateTime } from '@/renderer/utils/workspace/workspaceHistory';
 
 import type {
@@ -46,6 +51,55 @@ export const getConversationPinnedAt = (conversation: TChatConversation): number
   return 0;
 };
 
+const resolveConversationPreferredAgentKey = (conversation: TChatConversation): string | undefined => {
+  if (conversation.type === 'gemini' || conversation.type === 'codex') {
+    return conversation.type;
+  }
+
+  if (conversation.type === 'acp') {
+    const backend = conversation.extra?.backend;
+    if (!backend) {
+      return undefined;
+    }
+
+    return backend;
+  }
+
+  return undefined;
+};
+
+const resolveConversationPreferredMode = (conversation: TChatConversation): string | undefined => {
+  const sessionMode = (conversation.extra as { sessionMode?: unknown } | undefined)?.sessionMode;
+  return typeof sessionMode === 'string' ? sessionMode : undefined;
+};
+
+const resolveConversationPreferredModelId = (conversation: TChatConversation): string | undefined => {
+  if (conversation.type === 'codex') {
+    return typeof conversation.extra?.codexModel === 'string' ? conversation.extra.codexModel : undefined;
+  }
+
+  if (conversation.type === 'acp') {
+    return typeof conversation.extra?.currentModelId === 'string' ? conversation.extra.currentModelId : undefined;
+  }
+
+  return undefined;
+};
+
+export const buildGuidLocationStateFromWorkspaceGroup = (workspaceGroup: WorkspaceGroup): GuidLocationState => {
+  const latestConversation = workspaceGroup.conversations[0];
+  const presetAssistantId = latestConversation
+    ? ((latestConversation.extra as { presetAssistantId?: string } | undefined)?.presetAssistantId ?? null)
+    : null;
+
+  return {
+    workspace: workspaceGroup.workspace,
+    preferredAgentKey: latestConversation ? resolveConversationPreferredAgentKey(latestConversation) : undefined,
+    preferredAssistantKey: presetAssistantId ? `custom:${presetAssistantId}` : null,
+    preferredMode: latestConversation ? resolveConversationPreferredMode(latestConversation) : undefined,
+    preferredAcpModelId: latestConversation ? resolveConversationPreferredModelId(latestConversation) : undefined,
+  };
+};
+
 export const groupConversationsByTimelineAndWorkspace = (
   conversations: TChatConversation[],
   t: (key: string) => string
@@ -54,10 +108,10 @@ export const groupConversationsByTimelineAndWorkspace = (
   const withoutWorkspaceConvs: TChatConversation[] = [];
 
   conversations.forEach((conv) => {
-    const workspace = conv.extra?.workspace;
+    const workspace = getConversationWorkspacePath(conv);
     const customWorkspace = conv.extra?.customWorkspace;
 
-    if (customWorkspace && workspace) {
+    if (workspace && (customWorkspace || isTemporaryWorkspace(workspace))) {
       if (!allWorkspaceGroups.has(workspace)) {
         allWorkspaceGroups.set(workspace, []);
       }
@@ -68,20 +122,6 @@ export const groupConversationsByTimelineAndWorkspace = (
   });
 
   const workspaceGroupsByTimeline = new Map<string, WorkspaceGroup[]>();
-
-  const getWorkspaceGroupDisplayName = (workspace: string, convList: TChatConversation[]) => {
-    const openclawConversation = convList.find((conversation) => conversation.type === 'openclaw-gateway');
-    const openclawAgentName =
-      openclawConversation && typeof openclawConversation.extra?.agentName === 'string'
-        ? openclawConversation.extra.agentName.trim()
-        : '';
-
-    if (openclawAgentName) {
-      return openclawAgentName;
-    }
-
-    return getWorkspaceDisplayName(workspace);
-  };
 
   allWorkspaceGroups.forEach((convList, workspace) => {
     const sortedConvs = [...convList].toSorted((a, b) => getActivityTime(b) - getActivityTime(a));
@@ -94,7 +134,7 @@ export const groupConversationsByTimelineAndWorkspace = (
 
     workspaceGroupsByTimeline.get(timeline)!.push({
       workspace,
-      displayName: getWorkspaceGroupDisplayName(workspace, sortedConvs),
+      displayName: getWorkspaceDisplayName(workspace),
       conversations: sortedConvs,
     });
   });

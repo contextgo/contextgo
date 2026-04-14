@@ -1,18 +1,7 @@
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { extensions as extensionsIpc, type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
-import {
-  AlarmClock,
-  Command,
-  Communication,
-  ConnectionPoint,
-  Info,
-  Puzzle,
-  Robot,
-  LinkCloud,
-  System,
-  Terminal,
-} from '@icon-park/react';
+import { Communication, ConnectionPoint, Info, Puzzle, Robot, System, Terminal } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,18 +11,7 @@ import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 import { matchesSettingsNavPath, normalizeSettingsAnchor } from './settingsNavigation';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
-const BUILTIN_TAB_IDS = [
-  'schedule',
-  'runtime',
-  'commands',
-  'hooks',
-  'webui',
-  'channels',
-  'activeSessions',
-  'systemRuns',
-  'system',
-  'about',
-] as const;
+const BUILTIN_TAB_IDS = ['runtime', 'channels', 'activeSessions', 'systemRuns', 'system', 'about'] as const;
 
 type SiderItem = {
   id: string;
@@ -112,30 +90,11 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const menus: SiderItem[] = useMemo(() => {
     // Build builtin items
     const builtinMap: Record<string, SiderItem> = {
-      schedule: {
-        id: 'schedule',
-        label: t('schedule.scheduledTasks'),
-        icon: <AlarmClock />,
-        path: 'schedule',
-      },
       runtime: {
         id: 'runtime',
         label: t('settings.runtimeManager.title', { defaultValue: 'Runtime' }),
         icon: <Terminal />,
         path: 'runtime',
-      },
-      commands: { id: 'commands', label: t('settings.commands.title'), icon: <Command />, path: 'commands' },
-      hooks: {
-        id: 'hooks',
-        label: t('settings.hooksPage', { defaultValue: 'Hooks' }),
-        icon: <Puzzle />,
-        path: 'hooks',
-      },
-      webui: {
-        id: 'webui',
-        label: t('settings.webui'),
-        icon: <LinkCloud />,
-        path: 'webui',
       },
       channels: {
         id: 'channels',

@@ -84,7 +84,7 @@ describe('database migrations', () => {
     driver = undefined;
   });
 
-  it('ships a single baseline migration for the first public release', () => {
+  it('ships a single baseline migration for the public schema', () => {
     expect(CURRENT_DB_VERSION).toBe(1);
     expect(getMigrationsToRun(0, 1).map((migration) => migration.version)).toEqual([1]);
     expect(getMigrationsToRun(1, 1)).toEqual([]);

@@ -593,6 +593,7 @@
   "webui.officialRemoteDevicePending": "Bulut oturumu etkin. ContextGo bu cihazı Official Remote için bağlıyor.",
   "webui.openOfficialRemote": "Cihaz Listesini Aç",
   "webui.remoteDevicesNav": "Uzak Cihazlar",
+  "webui.switchDevice": "Cihaz Değiştir",
   "webui.officialRemoteSignedOut": "Resmi cihaz listesi henüz bağlı değil.",
   "webui.officialRemoteHint": "Burada bir kez giriş yapmanız yeterli. ContextGo bu cihazı otomatik bağlar ve barındırılan cihaz listesi ana sayfasında gösterir.",
   "webui.officialRemoteRuntimeHint": "Official Remote masaüstü çalışma zamanını otomatik olarak hazırlar; böylece barındırılan cihaz listesi ana sayfası bu masaüstünü doğrudan açabilir. Aşağıdaki Yerel / Self-Hosted erişimi elle etkinleştirmeniz gerekmez.",
@@ -721,13 +722,17 @@
   "channels.extension.noConfig": "Ek yapılandırma gerekmiyor.",
   "channels.extension.selectPlaceholder": "Lütfen seçin",
   "channels.extension.defaultDesc": "Kanal uzantısı eklentisi",
-  "channels.publication.connectorLabel": "1. Choose a usable channel account",
+  "channels.publication.connectorLabel": "Kanal ornegi",
   "channels.publication.connectorPlaceholder": "Select a channel account",
   "channels.publication.connectorHint": "Managing publication targets through {{name}} on {{platform}}.",
   "channels.publication.connectorRequired": "Please select a usable channel account first",
   "channels.publication.agentRequired": "Please select an agent profile",
   "channels.publication.agentPlaceholder": "Select an agent profile",
   "channels.publication.audiencePlaceholder": "Select an audience",
+  "channels.publication.agentSelectorLabel": "Agent",
+  "channels.publication.publishObjectLabel": "Yayin nesnesi",
+  "channels.publication.publishObjectPlaceholder": "Bir yayin nesnesi sec",
+  "channels.publication.publishObjectRequired": "Once bir yayin nesnesi sec",
   "channels.publication.scopeKeyRequired": "Audience key is required for this binding scope",
   "channels.publication.scopeKeyRemoteUserPlaceholder": "Remote user key, for example: user_123456",
   "channels.publication.scopeKeyRemoteChatPlaceholder": "Audience key, for example: group:alpha or -100123456:thread:9",
@@ -736,12 +741,12 @@
   "channels.publication.durableDescription": "Best for a stable Agent entry that should stay available to a person, group, channel, or topic over time.",
   "channels.publication.temporaryTitle": "Temporary Override",
   "channels.publication.temporaryDescription": "Use temporary override for short-lived audience takeovers. It is cleaned up by session reset and should point to an exact audience key.",
-  "channels.publication.saveDurable": "Save durable publication",
-  "channels.publication.updateDurable": "Update durable publication",
+  "channels.publication.saveDurable": "Agenti yayinla",
+  "channels.publication.updateDurable": "Yayini guncelle",
   "channels.publication.saveTemporary": "Save temporary override",
   "channels.publication.updateTemporary": "Update temporary override",
   "channels.publication.saveFailed": "Failed to save publication binding",
-  "channels.publication.durableSaved": "Durable publication saved",
+  "channels.publication.durableSaved": "Agent yayini kaydedildi",
   "channels.publication.temporarySaved": "Temporary override saved",
   "channels.publication.deleteFailed": "Failed to delete publication binding",
   "channels.publication.deleted": "Publication binding deleted",
@@ -753,9 +758,9 @@
   "channels.publication.emptyTemporary": "No temporary overrides yet",
   "channels.publication.noConnector": "Henüz kullanılabilir bir kanal hesabı yok. Önce IM Channels içinde kurulumu tamamlayın ve bir örneği etkinleştirin.",
   "channels.publication.goToAccounts": "IM Channels'a git",
-  "channels.publication.editingDurable": "Editing durable binding",
+  "channels.publication.editingDurable": "Yayin duzenleniyor",
   "channels.publication.editingTemporary": "Editing temporary override",
-  "channels.publication.durableTag": "Durable",
+  "channels.publication.durableTag": "Yayinda",
   "channels.publication.temporaryTag": "Temporary",
   "channels.publication.enabled": "Enabled",
   "channels.publication.disabled": "Disabled",
@@ -769,12 +774,12 @@
   "channels.publication.scope.remote_chat": "Remote chat / topic",
   "channels.publication.scope.temporary_override": "Temporary override",
   "channels.publication.manualScopeToggle": "Hedef key değerini elle gir",
-  "channels.publication.intentTitle": "Bu Agenti kalici bir giris olarak yayinla",
-  "channels.publication.intentDescription": "Bu sayfa belirli bir calisma alani / runtime icindeki yeniden kullanilabilir bir Agenti yayinlar. Kaynak konusma yalnizca koken bilgisidir; yayinlanan sey o degildir.",
-  "channels.publication.intentProfile": "Agent profili",
+  "channels.publication.intentTitle": "Bu Agenti yayinla",
+  "channels.publication.intentDescription": "Bu sayfa gecerli Agentin nereye yayinlandigini yonetir. Kaynak konusma yalnizca koken bilgisidir.",
+  "channels.publication.intentProfile": "Agent",
   "channels.publication.intentConversation": "Turetildigi kaynak",
-  "channels.publication.intentBackend": "Agent tipi / runtime",
-  "channels.publication.intentWorkspace": "Calisma alani",
+  "channels.publication.intentBackend": "Runtime",
+  "channels.publication.intentWorkspace": "Proje",
   "channels.publication.intentSelectedHint": "Gecerli konusma yeniden kullanilabilir bir Agenta donusturuldu ve asagida onceden secildi.",
   "channels.publication.connectorGuide": "Only usable channel accounts are shown here. Choose the account first, then decide which user, group, or topic should expose the Agent.",
   "channels.publication.connectorGuide.weixin": "WeChat genelde tek kişilik tek giriş davranışına yakındır; kanal varsayılanı veya tek bir kullanıcıyla başlamak uygundur.",
@@ -981,6 +986,65 @@
   "noCliDetected": "CLI aracı bulunamadı. Lütfen önce ACP uyumlu bir CLI yükleyin.",
   "agentDisplayName": "Görünen Ad",
   "agentNamePlaceholder": "Bu ajan için bir isim girin",
+  "assistantUntitled": "Untitled Agent",
+  "agentWorkspaceBack": "Back",
+  "agentWorkspaceEditable": "Editable",
+  "agentWorkspaceReadOnly": "Read-only",
+  "agentWorkspaceNoDescription": "No description available.",
+  "agentWorkspaceCreateTitle": "Create Agent",
+  "agentWorkspaceBasicsTitle": "Agent Basics",
+  "agentWorkspaceCreateDescription": "Set the agent identity, runtime, and rules before entering the capability workspace.",
+  "agentWorkspaceBasicsDescription": "Adjust assistant identity, runtime, and rules without leaving the current detail page.",
+  "agentWorkspaceSummaryHint": "Add a description so this agent is recognizable in the workspace list.",
+  "agentWorkspaceSkillsTab": "Skills",
+  "agentWorkspaceSkillsTabDescription": "Skills bundled with or attached to this agent package.",
+  "agentWorkspaceSkillsEmpty": "No skills are attached to this agent yet.",
+  "agentWorkspaceHooksTab": "Hooks",
+  "agentWorkspaceHooksTabDescription": "Hook automations active for this agent package.",
+  "agentWorkspaceHooksEmpty": "No hooks are attached to this agent yet.",
+  "agentWorkspaceHooksAllBackends": "All runtimes",
+  "agentWorkspaceHooksExecutionLabel": "Execution",
+  "agentWorkspaceHooksEventsLabel": "Events",
+  "agentWorkspaceHooksBackendsLabel": "Backends",
+  "agentWorkspaceHooksLocationLabel": "Manifest path",
+  "agentWorkspaceHooksOutputTargetsLabel": "Output targets",
+  "agentWorkspaceHooksRunnableEventsLabel": "Runnable events",
+  "agentWorkspaceHooksVersionLabel": "Version",
+  "agentWorkspaceHooksTagsLabel": "Tags",
+  "agentWorkspaceHooksConfigLabel": "Configuration",
+  "agentWorkspaceSchedulesTab": "Schedules",
+  "agentWorkspaceSchedulesTabDescription": "ContextGo-native schedules seeded by this package.",
+  "agentWorkspaceSchedulesEmpty": "No schedules are available for this agent.",
+  "agentWorkspaceSchedulesProfileLabel": "Automation profile",
+  "agentWorkspaceSchedulesSurfaceLabel": "Surface",
+  "agentWorkspaceSchedulesSurfaceValue": "Conversation schedule seeds",
+  "agentWorkspaceSchedulesDeliveryLabel": "Delivery",
+  "agentWorkspaceSchedulesDeliveryValue": "ContextGo-native automation",
+  "agentWorkspaceSchedulesRuntimeSurfaceLabel": "Runtime surface",
+  "agentWorkspaceSchedulesEntryCountLabel": "Seed count",
+  "agentWorkspaceSchedulesPayloadLabel": "Seed payload",
+  "agentWorkspaceSchedulesEmptySeedNote": "This profile currently seeds the schedule container without bundled conversation schedule entries.",
+  "agentWorkspaceCommandsTab": "Commands",
+  "agentWorkspaceCommandsTabDescription": "Workspace commands seeded by this package automation profile.",
+  "agentWorkspaceCommandsEmpty": "No commands are available for this agent.",
+  "agentWorkspaceCommandsProfileLabel": "Automation profile",
+  "agentWorkspaceCommandsSurfaceLabel": "Surface",
+  "agentWorkspaceCommandsSurfaceValue": "Workspace command seeds",
+  "agentWorkspaceCommandsDeliveryLabel": "Delivery",
+  "agentWorkspaceCommandsDeliveryValue": "Managed automation projection",
+  "agentWorkspaceCommandsCommandIdLabel": "Command id",
+  "agentWorkspaceCommandsSourceLabel": "Source",
+  "agentWorkspaceCommandsBuiltinSource": "Builtin command seed",
+  "agentWorkspaceCommandsCustomSource": "Package custom command",
+  "agentWorkspaceCommandsStatusLabel": "Status",
+  "agentWorkspaceCommandsEnabledValue": "Enabled",
+  "agentWorkspaceCommandsDisabledValue": "Disabled",
+  "agentWorkspaceCommandsTemplateLabel": "Prompt template",
+  "agentWorkspaceAgentsEntryEmpty": "This package does not expose an AGENTS.md rules entry document.",
+  "agentWorkspaceAgentsEntryDescription": "AGENTS.md is the packaged rules entry document. ContextGo can project it into runtime-native entry files such as CLAUDE.md or GEMINI.md.",
+  "agentWorkspaceDocsTab": "Docs",
+  "agentWorkspaceDocsTabDescription": "Browse package notes and deeper authoring guidance.",
+  "agentWorkspaceDocsEmpty": "This package does not include additional docs.",
   "simpleModeTip": "Algılanan bir CLI seçin ve özel bir isim verin. Ortam değişkenleri ve diğer seçenekler için Gelişmiş moda geçin.",
   "runtimeManager": {
     "title": "Runtime Setup",
@@ -1007,8 +1071,6 @@
     "installCommandLabel": "Recommended install command",
     "installCommandCopied": "Install command copied.",
     "loginCommandCopied": "Login command copied.",
-    "customSectionTitle": "Custom runtimes",
-    "customSectionDescription": "Add a custom command-line runtime here when you want ContextGo to launch a tool outside the built-in list.",
     "summary": {
       "ready": "The check passed and this runtime is ready to use.",
       "detected": "This runtime was found on this device. Run the availability check to confirm it can start.",
@@ -1029,50 +1091,17 @@
       "idle": "Kontrol edilmedi"
     },
     "runtime": {
+      "gemini": {
+        "description": "Google Gemini CLI runtime."
+      },
       "claude": {
         "description": "Anthropic Claude Code CLI."
       },
       "codex": {
         "description": "OpenAI Codex CLI for local coding sessions."
       },
-      "nanobot": {
-        "description": "Nanobot CLI runtime."
-      },
-      "qwen": {
-        "description": "Qwen Code CLI."
-      },
-      "codebuddy": {
-        "description": "Tencent CodeBuddy Code CLI."
-      },
       "opencode": {
         "description": "OpenCode CLI."
-      },
-      "goose": {
-        "description": "Block Goose CLI."
-      },
-      "auggie": {
-        "description": "Augment Code CLI."
-      },
-      "kimi": {
-        "description": "Kimi CLI."
-      },
-      "iflow": {
-        "description": "iFlow CLI."
-      },
-      "droid": {
-        "description": "Factory Droid CLI."
-      },
-      "copilot": {
-        "description": "GitHub Copilot CLI."
-      },
-      "qoder": {
-        "description": "Qoder CLI."
-      },
-      "vibe": {
-        "description": "Mistral Vibe CLI."
-      },
-      "cursor": {
-        "description": "Cursor Agent CLI."
       }
     },
     "revealPathFailed": "Failed to open the path in the system file manager.",
@@ -1311,7 +1340,7 @@
     "resources": "Desteklenen Kaynaklar",
     "auth": "Kimlik Dogrulama",
     "openWebsite": "Siteyi Ac",
-    "note": "Connector sayfasi, connector projesinin yerel yetenek katalogunu gosterir. ContextGo burada yetenek durumunu gosterir ve ice aktarma sonrasinda ciktilari tuketir.",
+    "note": "Bu sayfa, erisilebilir yeteneklerle su anda gercekten kullanilabilen ozellikleri ayri gosterir.",
     "summaryTemplate": "{{name}}, {{category}} grubuna aittir ve daha sonra AI is akislari icin baglamsal veri kaynagi olarak baglanabilir.",
     "stagePriority": "Oncelikli",
     "stagePlanned": "Planlandi",
@@ -1319,13 +1348,13 @@
       "supported": "Destekleniyor",
       "notSupportedYet": "Henuz Desteklenmiyor"
     },
-    "implementation": "Uygulama",
+    "implementation": "Baglanti Yontemi",
     "implementationOwners": {
-      "official": "Resmi destek",
+      "official": "Resmi baglanti",
       "contextgo": "ContextGo yerel",
-      "connectorRepo": "Connector deposu",
-      "hybrid": "Karma destek",
-      "default": "Connector destegi"
+      "connectorRepo": "Harici connector runtime",
+      "hybrid": "Karma baglanti",
+      "default": "Connector baglantisi"
     },
     "supportSources": "Destek Kaynaklari",
     "noSupportSources": "Henuz bagli destek kaynagi yok.",
@@ -1337,6 +1366,25 @@
       "connectorRepo": "Connector Deposu",
       "default": "Destek"
     },
+    "sectionTitles": {
+      "overview": "Baglanti Ozeti",
+      "nativeCapabilitySurface": "Erisilebilir Yetenekler",
+      "contextgoReadiness": "Simdi Kullanilabilir",
+      "sourcesAndBoundary": "Daha Fazla Bilgi"
+    },
+    "sectionDescriptions": {
+      "overview": "Bu connector ile neye baglanabileceginizi ve su anda nasil entegre edildigini gorun.",
+      "nativeCapabilitySurface": "Urun yetenek gruplarina gore simdi erisilebilen icerik ve eylemleri inceleyin.",
+      "contextgoReadiness": "Bu bolum, ContextGo icinde bugun gercekten kullanilabilen ozellikleri gosterir.",
+      "sourcesAndBoundary": "Resmi dokumanlari, entegrasyon notlarini ve teknik bilgileri inceleyin."
+    },
+    "summaryStats": {
+      "capabilityGroups": "Yetenek Gruplari",
+      "actions": "Kullanilabilir Eylemler",
+      "readyWorkflows": "Hazir Is Akislari",
+      "primaryRuntime": "Birincil Calisma Zamani"
+    },
+    "groupNavigator": "Her yetenek grubunu ve icindeki su anda kullanilabilen eylemleri inceleyin.",
     "categories": {
       "contextgo": "ContextGo Ailesi",
       "googleWorkspace": "Google Workspace",
@@ -1406,13 +1454,38 @@
       "sourceManual": "Elle"
     },
     "externalCatalog": {
-      "platformAccess": "Platform Erisim Siniri",
-      "runtimeBoundary": "Calisma Zamani Siniri",
-      "nativeSurface": "Yerel Yetenek Yuzeyi",
-      "commandEntrypoints": "Komut Girisleri",
+      "platformAccess": "Guncel Baglanti",
+      "runtimeBoundary": "Calisma Notlari",
+      "nativeSurface": "Kapsam",
+      "commandEntrypoints": "CLI Komutlari",
+      "capabilities": "Yetenek Agaci",
+      "capabilitySummary": "Harici urunun yerel yetenek gruplarinda su anda erisilebilen icerik ve eylemleri gosterir.",
+      "capabilityGroups": "Yetenek Gruplari",
+      "discoveryCommands": "Kesif Komutlari",
+      "extractionMode": "Cikarma Modu",
+      "actions": "Eylemler",
+      "authModesTitle": "Kimlik Modlari",
+      "extractionModes": {
+        "manual-curation": "Elle Derleme",
+        "help-derived": "Yardim Cikarsamasi",
+        "schema-derived": "Semadan Turetilen",
+        "hybrid": "Hibrit"
+      },
+      "authModes": {
+        "user": "Kullanici Yetkilendirmesi",
+        "bot": "Bot / Uygulama Yetkilendirmesi",
+        "service": "Servis Baglami"
+      },
       "noneYet": "Henuz yok.",
       "workflows": "Uygulanan Is Akislari",
-      "workflowSurface": "Yuzey: {{surface}}",
+      "workflowSurface": "Baglanti Turu: {{surface}}",
+      "workflowSurfaces": {
+        "runtime": "Runtime baglantisi",
+        "source": "Kaynak baglantisi",
+        "collect": "Icerik toplama",
+        "fetch": "Veri getirme",
+        "activity": "Etkinlik baglantisi"
+      },
       "workflowStatus": {
         "ready": "Hazir",
         "partial": "Kismi",
@@ -1420,12 +1493,24 @@
       },
       "nativeObjects": "Yerel Nesneler",
       "entrypoints": "Giris Komutlari",
-      "writesStore": "Depoya Yazar",
-      "noStoreWrite": "Depoya Yazmaz",
+      "writesStore": "Sonuclar otomatik olarak kalicilasir",
+      "noStoreWrite": "Sonuclar henuz otomatik olarak kalicilasmiyor",
       "unavailableTitle": "connector detaylari alinamiyor"
     },
     "catalogPlaceholderDesc": "Bu connector su an yalnizca katalog yer tutucusudur. ContextGo henuz bunun calisma zamani veya toplanmis ciktisini tuketmez.",
-    "catalogExternalDesc": "Bu connector bagimsiz connector projesi tarafindan yonetilir. ContextGo burada yetenek katalogunu okur ve ice aktarma sonrasinda ciktisini tuketir."
+    "catalogExternalDesc": "Bu connector su anda harici bir connector runtime uzerinden baglanir. Yetenekleri burada gorulur ve entegrasyondan sonra ContextGo tarafindan kullanilabilir.",
+    "workflowCatalog": {
+      "feishu": {
+        "officialCliRuntime": {
+          "label": "Resmi CLI baglantisi",
+          "notes": [
+            "Resmi CLI uzerinden yapilandirma, giris ve komut gecisi zaten kullanilabilir.",
+            "Feishu dokumanlari, mesajlari ve tabloları icin yapilandirilmis toplama yetenekleri hala gelistiriliyor."
+          ],
+          "nativeObjects": ["Uygulama yapilandirmasi", "Kullanici yetkilendirme oturumu", "Genel CLI komut erisimi"]
+        }
+      }
+    }
   },
   "cloud": {
     "title": "ContextGo Bulut Hesabi",
@@ -1452,19 +1537,16 @@
   },
   "commands": {
     "title": "Commands",
-    "description": "Yeniden kullanilabilir slash komut sablonlarini merkezi olarak yonetin. Secildiginde dogrudan giris alanina acilir, bu nedenle farkli ajanlar arasinda tutarli calisir.",
-    "usageHint": "Herhangi bir sohbet girisinde / yazarak komut menusunu acin ve yapilandirilmis bir sablonu hizlica uygulayin.",
+    "description": "Commands artik calisma alani bazinda yonetilir. Global ayar kutuphanesi yerine her projenin workspace automation panelinden yonetin.",
+    "usageHint": "Bir workspace'e bagli sohbet acin, sonra oradaki Commands'i duzenleyin. Komutlar o projenin `.contextgo/commands.json` dosyasina kaydedilir.",
+    "emptyState": "Artik global bir command kutuphanesi kullanilmiyor.",
     "add": "Komut Ekle",
-    "restoreDefaults": "Varsayilanlari Geri Yukle",
-    "restoreSuccess": "Varsayilan komutlar geri yuklendi",
-    "restoreFailed": "Varsayilan komutlar geri yuklenemedi",
-    "recommendedTitle": "Onerilen Is Akisi Komutlari",
-    "recommendedDescription": "Planlama, TDD, inceleme, guvenlik, dogrulama ve orkestrasyon icin yerlesik muhendislik kisayollari.",
+    "restoreDefaults": "Proje Komutlarini Geri Yukle",
+    "restoreSuccess": "Proje komutlari geri yuklendi",
+    "restoreFailed": "Proje komutlari geri yuklenemedi",
     "customTitle": "Ozel Komutlar",
     "customDescription": "Herhangi bir asistan icin yeniden kullanilabilir is akisi istemleri ekleyin.",
-    "emptyCustom": "Henuz ozel komut yok.",
-    "builtinTag": "Yerlesik",
-    "customTag": "Ozel",
+    "emptyCustom": "Henuz proje komutu yok.",
     "templateLabel": "Sablon",
     "editTitle": "{{name}} Komutunu Duzenle",
     "createTitle": "Komut Olustur",
@@ -1473,11 +1555,10 @@
     "descriptionLabel": "Aciklama",
     "descriptionPlaceholder": "Bu komutun ne zaman kullanilacagini aciklayin",
     "templatePlaceholder": "Secildiginde sohbet girisine eklenecek istem sablonunu girin",
-    "builtinOverrideHint": "{{name}} yerlesik bir komuttur. Burada kaydetmek, varsayilan hazir ayari korurken yerel gecersiz kilmayi saklar.",
     "loadFailed": "Komut kutuphanesi yuklenemedi",
     "saveFailed": "Komut kaydedilemedi",
     "deleteFailed": "Komut silinemedi",
-    "deleteConfirm": "Bu ozel komutu silmek istediginizden emin misiniz?",
+    "deleteConfirm": "Bu komutu silmek istediginize emin misiniz?",
     "validation": {
       "invalidName": "Komut adi yalnizca harf, rakam, tire ve alt cizgi kullanabilir",
       "duplicateName": "/{{name}} komut adi zaten var",
@@ -1561,11 +1642,21 @@
   "channels.publication.openConversation": "Open conversation",
   "channels.publication.addTargetTitle": "Add publication",
   "channels.publication.addTargetDescription": "Once hedefi secin, sonra yukaridaki Agenti buraya uzun omurlu olarak yayinlayin. Bu hedeften gelen yeni mesajlar bu Agente yonlendirilir.",
+  "channels.publication.addObjectButton": "Yayin nesnesi ekle",
+  "channels.publication.addObjectTitle": "Yayin nesnesi ekle",
+  "channels.publication.addObjectDescription": "Once kanal ornegini secin, sonra bu Agenti tek bir platform-dogal IM nesnesine yayinlayin.",
   "channels.publication.summaryObjects": "Objects",
   "channels.publication.summarySessions": "Sessions",
   "channels.publication.objectListTitle": "Published objects",
-  "channels.publication.objectListDescription": "Review the platform-native IM objects already discovered or published on this channel account.",
+  "channels.publication.objectListDescription": "Burada yalnizca bu Agente zaten bagli olan yayin nesneleri gosterilir.",
+  "channels.publication.emptyPublishedObjects": "Bu Agent henuz hicbir IM nesnesine yayinlanmadi",
   "channels.publication.emptyObjects": "No IM objects discovered yet",
+  "channels.publication.agentSummaryTitle": "Gecerli Agent",
+  "channels.publication.agentSummaryDescription": "Bu Agentin yeniden kullanilabilir IM kanal ornekleri genelinde nereye yayinlandigini yonetin.",
+  "channels.publication.channelAccountInstanceLabel": "Kanal ornegi",
+  "channels.publication.sessionStatusLabel": "Gecerli proje oturumu",
+  "channels.publication.currentSessionActive": "Su an aktif",
+  "channels.publication.noActiveSession": "Henuz aktif oturum yok",
   "channels.publication.objectDetailTitle": "Object details",
   "channels.publication.objectDetailDescription": "Inspect this specific IM object, its publication rules, and the sessions already linked to it.",
   "channels.publication.objectParentLabel": "Parent",
@@ -1575,7 +1666,7 @@
   "channels.publication.objectSessionsTitle": "Related sessions",
   "channels.publication.objectSessionsDescription": "Sessions already associated with this IM object through the selected channel account.",
   "channels.publication.objectSessionsEmpty": "No sessions have been created for this object yet",
-  "channels.publication.sessionWorkspaceLabel": "Workspace",
+  "channels.publication.sessionWorkspaceLabel": "Proje",
   "channels.publication.sessionLastActiveLabel": "Last active",
   "channels.publication.sessionAgentTypeLabel": "Agent type",
   "channels.publication.objectKind.common.person": "Person",
@@ -1615,7 +1706,23 @@
   "webui.officialRemoteStatusShort.preparing": "Hazırlanıyor",
   "webui.officialRemoteStatusShort.connecting": "Bağlanıyor",
   "webui.officialRemoteStatusShort.unavailable": "Kullanılamıyor",
-  "assistantsPageDescription": "Doğrudan kullanılan asistanları ve Context Engine tarafından otomatik çalıştırılan sistem agent'larını tek katalogda yönetin.",
+  "assistantsPageDescription": "Agent'ları burada oluşturup düzenleyin; ayrıca Context Engine tarafından yönetilen sistem Agent'larını da görün.",
+  "assistantsWorkbenchPublish": "Agent Yayınla",
+  "assistantsWorkbenchOpenSkillMarket": "Skill Market'i Aç",
+  "assistantsWorkbenchProductAgents": "Kullanılabilir Agent'lar",
+  "assistantsWorkbenchProductAgentsHint": "Bu çalışma alanında doğrudan kullanılabilen kullanıcıya dönük Agent'lar.",
+  "assistantsWorkbenchSystemAgents": "Sistem Agent'ları",
+  "assistantsWorkbenchSystemAgentsHint": "Arka planda Context Engine tarafından yönetilir.",
+  "assistantsWorkbenchActiveRuns": "Aktif çalıştırmalar",
+  "assistantsWorkbenchActiveRunsHint": "Şu anda devam eden bakım yürütmeleri.",
+  "assistantsWorkbenchSectionTitle": "Agent Çalışma Alanı",
+  "assistantsWorkbenchSectionDescription": "Agent oluşturma, beceri genişletme ve yayımlama akışını tek sayfada toplayarak geçişleri azaltın.",
+  "assistantsWorkbenchCreateTitle": "Agent oluştur veya düzenle",
+  "assistantsWorkbenchCreateText": "Önce yeni bir Agent oluşturun; ardından aşağıdaki listeden mevcut Agent'ları açıp kuralları, Hook'ları ve kullanılabilir çalışma zamanlarını ayarlayın.",
+  "assistantsWorkbenchSkillsTitle": "Becerileri seç",
+  "assistantsWorkbenchSkillsText": "Beceri bağlama işlemi Agent ayrıntısında kalır. Yeni yetenek gerektiğinde yalnızca buradan Skill Market'e geçin.",
+  "assistantsWorkbenchPublishTitle": "Yayımla",
+  "assistantsWorkbenchPublishText": "Akış oturduğunda bu çalışma alanını teslim kanallarına bağlayın ve dış kullanıma açık bir Agent girişi hazırlayın.",
   "systemAgents": "Sistem Agent'ları",
   "systemAgentsDescription": "Bu agent'lar arka planda motor tarafından otomatik tetiklenir; oturum bağlamını sıkıştırır ve kalıcı bilgiyi proje katmanına taşır.",
   "systemAgentViewRuns": "Çalıştırmaları Gör",
@@ -1634,5 +1741,14 @@
   "systemRunsEmptyDescription": "Context Engine bu çalışma alanını zaten izliyor. İlk bakım tetikleyicisi tamamlandıktan sonra geçmiş burada görünecek.",
   "systemRunsDefinitionsTitle": "Kayıtlı sistem Agent'leri",
   "systemRunsDefinitionsDescription": "İlk çalıştırmadan önce bile sistem Agent tanımları, tetik koşulları ve yürütme sınırları burada görünür. Gerçek geçmiş kayıtları çalıştırmadan sonra aşağıda gösterilir.",
-  "systemRunsLastChecked": "Son kontrol: {{time}}"
+  "systemRunsLastChecked": "Son kontrol: {{time}}",
+  "webui.switchDeviceDescription": "Başka bir bağlı masaüstüne, ayrı bir cihaz listesi sayfasına gitmeden doğrudan mevcut ürün kabuğu içinde geçin.",
+  "webui.switchDeviceEmpty": "Şu anda doğrudan açılabilecek bir masaüstü cihaz yok. Başka bir cihazda ContextGo uygulamasını açın ve Official Remote bağlantısını açık tutun.",
+  "webui.switchDeviceCurrent": "Geçerli cihaz",
+  "webui.switchDeviceLastSeen": "Son görülme {{time}}",
+  "webui.switchDeviceOpen": "Cihazı aç",
+  "webui.deviceModeLocal": "Yerel ana makine",
+  "webui.deviceModeRemote": "Uzak masaüstü",
+  "webui.switchDeviceUnknown": "Geçerli cihaz",
+  "webui.backToLocal": "Yerele dön"
 }

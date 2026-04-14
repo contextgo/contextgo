@@ -16,9 +16,28 @@ const isLinux = process.platform === 'linux';
 const SESSION_DATA_DIR_NAME = 'session-data';
 const LEGACY_SESSIONS_DIR_NAME = 'sessions';
 const WINDOWS_RESERVED_SESSION_IDS = new Set([
-  'CON', 'PRN', 'AUX', 'NUL',
-  'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-  'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+  'CON',
+  'PRN',
+  'AUX',
+  'NUL',
+  'COM1',
+  'COM2',
+  'COM3',
+  'COM4',
+  'COM5',
+  'COM6',
+  'COM7',
+  'COM8',
+  'COM9',
+  'LPT1',
+  'LPT2',
+  'LPT3',
+  'LPT4',
+  'LPT5',
+  'LPT6',
+  'LPT7',
+  'LPT8',
+  'LPT9',
 ]);
 
 /**
@@ -142,7 +161,7 @@ function getProjectName() {
 function sanitizeSessionId(raw) {
   if (!raw || typeof raw !== 'string') return null;
 
-  const hasNonAscii = Array.from(raw).some(char => char.codePointAt(0) > 0x7f);
+  const hasNonAscii = Array.from(raw).some((char) => char.codePointAt(0) > 0x7f);
   const normalized = raw.replace(/^\.+/, '');
   const sanitized = normalized
     .replace(/[^a-zA-Z0-9_-]/g, '-')
@@ -288,7 +307,7 @@ async function readStdinJson(options = {}) {
     }, timeoutMs);
 
     process.stdin.setEncoding('utf8');
-    process.stdin.on('data', chunk => {
+    process.stdin.on('data', (chunk) => {
       if (data.length < maxSize) {
         data += chunk;
       }
@@ -399,7 +418,7 @@ function commandExists(cmd) {
 function runCommand(cmd, options = {}) {
   // Allowlist: only permit known-safe command prefixes
   const allowedPrefixes = ['git ', 'node ', 'npx ', 'which ', 'where '];
-  if (!allowedPrefixes.some(prefix => cmd.startsWith(prefix))) {
+  if (!allowedPrefixes.some((prefix) => cmd.startsWith(prefix))) {
     return { success: false, output: 'runCommand blocked: unrecognized command prefix' };
   }
 
@@ -415,7 +434,7 @@ function runCommand(cmd, options = {}) {
     const result = execSync(cmd, {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      ...options
+      ...options,
     });
     return { success: true, output: result.trim() };
   } catch (err) {
@@ -456,7 +475,7 @@ function getGitModifiedFiles(patterns = []) {
       }
     }
     if (compiled.length > 0) {
-      files = files.filter(file => compiled.some(regex => regex.test(file)));
+      files = files.filter((file) => compiled.some((regex) => regex.test(file)));
     }
   }
 
@@ -621,5 +640,5 @@ module.exports = {
   commandExists,
   runCommand,
   isGitRepo,
-  getGitModifiedFiles
+  getGitModifiedFiles,
 };

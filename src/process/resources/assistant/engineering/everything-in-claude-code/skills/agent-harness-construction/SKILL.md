@@ -11,6 +11,7 @@ Use this skill when you are improving how an agent plans, calls tools, recovers 
 ## Core Model
 
 Agent output quality is constrained by:
+
 1. Action space quality
 2. Observation quality
 3. Recovery quality
@@ -32,6 +33,7 @@ Agent output quality is constrained by:
 ## Observation Design
 
 Every tool response should include:
+
 - `status`: success|warning|error
 - `summary`: one-line result
 - `next_actions`: actionable follow-ups
@@ -40,6 +42,7 @@ Every tool response should include:
 ## Error Recovery Contract
 
 For every error path, include:
+
 - root cause hint
 - safe retry instruction
 - explicit stop condition
@@ -60,6 +63,7 @@ For every error path, include:
 ## Benchmarking
 
 Track:
+
 - completion rate
 - retries per task
 - pass@1 and pass@3

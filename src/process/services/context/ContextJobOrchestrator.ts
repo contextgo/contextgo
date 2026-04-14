@@ -25,7 +25,7 @@ function createId(prefix: string): string {
 }
 
 function countSignals(signals: readonly SessionSignal[], kind: SessionSignal['kind']): number {
-  return signals.filter(signal => signal.kind === kind).length;
+  return signals.filter((signal) => signal.kind === kind).length;
 }
 
 function choosePriority(levels: readonly ContextJobPriority[]): ContextJobPriority {
@@ -49,7 +49,11 @@ export class ContextJobOrchestrator {
     const strategyShifts = countSignals(input.snapshot.recentSignals, 'strategy_shift');
     const meaningfulActivity = input.snapshot.userTurns + input.snapshot.assistantReplies;
 
-    if (meaningfulActivity < 2 && repeatedRequests < REPEATED_REQUEST_THRESHOLD && interruptions < INTERRUPTION_PRIORITY_THRESHOLD) {
+    if (
+      meaningfulActivity < 2 &&
+      repeatedRequests < REPEATED_REQUEST_THRESHOLD &&
+      interruptions < INTERRUPTION_PRIORITY_THRESHOLD
+    ) {
       return {
         shouldQueue: false,
         priority: 'low',
@@ -144,11 +148,13 @@ export class ContextJobOrchestrator {
     });
   }
 
-  createTriggeredJob(input: Omit<ContextJob, 'id' | 'queuedAt' | 'trigger'> & {
-    triggerEvent?: string;
-    triggerLabel?: string;
-    triggeredAt?: string;
-  }): ContextJob {
+  createTriggeredJob(
+    input: Omit<ContextJob, 'id' | 'queuedAt' | 'trigger'> & {
+      triggerEvent?: string;
+      triggerLabel?: string;
+      triggeredAt?: string;
+    }
+  ): ContextJob {
     const queuedAt = new Date().toISOString();
     return {
       ...input,
@@ -167,7 +173,7 @@ export class ContextJobOrchestrator {
 }
 
 export function collectSessionSignalKinds(signals: readonly SessionSignal[]): string[] {
-  return Array.from(new Set(signals.map(signal => signal.kind))).sort((left, right) => left.localeCompare(right));
+  return Array.from(new Set(signals.map((signal) => signal.kind))).toSorted((left, right) => left.localeCompare(right));
 }
 
 export function buildPromotionCandidateFromSummary(input: {

@@ -34,7 +34,8 @@ export class SpaceConnectorRuntimeService {
           installSource: 'connector-project',
           hostProcess: 'desktop-sidecar',
           needsUserProvisioning: true,
-          commandHint: 'Use `cgo activity clipboard ...` and `cgo collect clipboard` as the connector-owned clipboard runtime boundary.',
+          commandHint:
+            'Use `cgo activity clipboard ...` and `cgo collect clipboard` as the connector-owned clipboard runtime boundary.',
           notes:
             'ContextGo should consume connector-owned clipboard activity outputs instead of hosting a product-inline observer runtime.',
         };
@@ -45,8 +46,10 @@ export class SpaceConnectorRuntimeService {
           installSource: 'connector-project',
           hostProcess: 'desktop-sidecar',
           needsUserProvisioning: true,
-          commandHint: 'Use `cgo feishu runtime`, `cgo feishu auth`, and `cgo feishu exec` to manage the official lark-cli wrapper outside ContextGo.',
-          notes: 'ContextGo should consume connector-project outputs for Feishu instead of shipping its own runtime wrapper.',
+          commandHint:
+            'Use `cgo feishu runtime`, `cgo feishu auth`, and `cgo feishu exec` to manage the official lark-cli wrapper outside ContextGo.',
+          notes:
+            'ContextGo should consume connector-project outputs for Feishu instead of shipping its own runtime wrapper.',
         };
       case 'google-drive':
       case 'google-docs':
@@ -59,7 +62,8 @@ export class SpaceConnectorRuntimeService {
           installSource: 'connector-project',
           hostProcess: 'desktop-sidecar',
           needsUserProvisioning: true,
-          commandHint: 'Use `cgo connectors show <connector> --json` plus connector-owned runtime/auth commands as the Google-family execution boundary.',
+          commandHint:
+            'Use `cgo connectors show <connector> --json` plus connector-owned runtime/auth commands as the Google-family execution boundary.',
           notes:
             'Google-family runtime ownership should live entirely in the connector project, and ContextGo should only consume capability metadata and collected outputs.',
         };

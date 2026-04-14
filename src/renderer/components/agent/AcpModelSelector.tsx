@@ -64,7 +64,7 @@ const buildCodexPreservedModelInfo = (
  */
 const AcpModelSelector: React.FC<{
   conversationId: string;
-  /** ACP backend name for loading cached models (e.g., 'claude', 'qwen') */
+  /** ACP backend name for loading cached models (e.g., 'claude', 'opencode') */
   backend?: string;
   /** Pre-selected model ID from Guid page */
   initialModelId?: string;
@@ -72,7 +72,6 @@ const AcpModelSelector: React.FC<{
   const { t } = useTranslation();
   const { isOpen: isPreviewOpen } = usePreviewContext();
   const layout = useLayoutContext();
-  const isOpenClaw = backend === 'openclaw-gateway';
   const [modelInfo, setModelInfo] = useState<AcpModelInfo | null>(null);
   const modelInfoRef = useRef(modelInfo);
   modelInfoRef.current = modelInfo;
@@ -84,10 +83,9 @@ const AcpModelSelector: React.FC<{
     let cancelled = false;
     setModelInfo(null);
     hasUserChangedModel.current = false;
-    const loadModelInfo = isOpenClaw
-      ? ipcBridge.openclawConversation.getModelInfo.invoke({ conversation_id: conversationId })
-      : ipcBridge.acpConversation.getModelInfo.invoke({ conversationId });
-    loadModelInfo
+    ipcBridge.acpConversation
+      .getModelInfo
+      .invoke({ conversationId })
       .then((result) => {
         if (cancelled) return;
         if (result.success && result.data?.modelInfo) {
@@ -142,19 +140,13 @@ const AcpModelSelector: React.FC<{
         // Silently ignore
       }
     }
-  }, [conversationId, backend, initialModelId, isOpenClaw]);
-
-  const { data: openclawRuntime } = useSWR(
-    isOpenClaw ? ['openclaw.runtime.selector', conversationId] : null,
-    ([, currentConversationId]: [string, string]) =>
-      ipcBridge.openclawConversation.getRuntime.invoke({ conversation_id: currentConversationId })
-  );
+  }, [conversationId, backend, initialModelId]);
 
   // Listen for acp_model_info / codex_model_info events from responseStream
   useEffect(() => {
     const handler = (message: IResponseMessage) => {
       if (message.conversation_id !== conversationId) return;
-      if ((message.type === 'acp_model_info' || message.type === 'openclaw_model_info') && message.data) {
+      if (message.type === 'acp_model_info' && message.data) {
         const incoming = message.data as AcpModelInfo;
         if (backend === 'codex') {
           console.log('[AcpModelSelector][codex] Stream model info:', incoming);
@@ -206,18 +198,14 @@ const AcpModelSelector: React.FC<{
         }
       }
     };
-    const stream = isOpenClaw
-      ? ipcBridge.openclawConversation.responseStream
-      : ipcBridge.acpConversation.responseStream;
-    return stream.on(handler);
-  }, [backend, conversationId, initialModelId, isOpenClaw]);
+    return ipcBridge.acpConversation.responseStream.on(handler);
+  }, [backend, conversationId, initialModelId]);
 
   const handleSelectModel = useCallback(
     (modelId: string) => {
-      const request = isOpenClaw
-        ? ipcBridge.openclawConversation.setModel.invoke({ conversation_id: conversationId, modelId })
-        : ipcBridge.acpConversation.setModel.invoke({ conversationId, modelId });
-      request
+      ipcBridge.acpConversation
+        .setModel
+        .invoke({ conversationId, modelId })
         .then((result) => {
           if (!result.success) {
             Message.error(result.msg || t('conversation.chat.modelSwitchFailed'));
@@ -234,7 +222,7 @@ const AcpModelSelector: React.FC<{
           Message.error(error instanceof Error ? error.message : t('conversation.chat.modelSwitchFailed'));
         });
     },
-    [conversationId, isOpenClaw, t]
+    [conversationId, t]
   );
 
   const compact = isPreviewOpen || layout?.isMobile;
@@ -248,34 +236,6 @@ const AcpModelSelector: React.FC<{
   // 获取模型配置数据（包含健康状态）
   const { data: modelConfig } = useSWR<IProvider[]>('model.config', () => ipcBridge.mode.getModelConfig.invoke());
   const normalizeLookupValue = React.useCallback(normalizeModelLookupValue, []);
-  const openclawFallbackModelInfo = React.useMemo(() => {
-    if (!isOpenClaw) {
-      return null;
-    }
-
-    const runtime = openclawRuntime?.success ? openclawRuntime.data : undefined;
-    const currentModelId =
-      modelInfo?.currentModelId || runtime?.runtime.model || runtime?.expected?.expectedModel || initialModelId || null;
-    if (!currentModelId) {
-      return null;
-    }
-
-    return {
-      source: 'models' as const,
-      currentModelId,
-      currentModelLabel: currentModelId,
-      availableModels: [{ id: currentModelId, label: currentModelId }],
-      switchSupported: modelInfo?.switchSupported ?? false,
-      canSwitch: false,
-    };
-  }, [
-    initialModelId,
-    isOpenClaw,
-    modelInfo?.currentModelId,
-    modelInfo?.switchSupported,
-    normalizeLookupValue,
-    openclawRuntime,
-  ]);
   const mergeAvailableModels = React.useCallback(
     (
       primaryModels: Array<{ id: string; label: string }> = [],
@@ -303,62 +263,13 @@ const AcpModelSelector: React.FC<{
     },
     [normalizeLookupValue]
   );
-  const effectiveModelInfo = React.useMemo(() => {
-    if (!isOpenClaw) {
-      return modelInfo;
-    }
-
-    if (!modelInfo) {
-      return openclawFallbackModelInfo;
-    }
-
-    const mergedAvailableModels = mergeAvailableModels(
-      modelInfo.availableModels,
-      openclawFallbackModelInfo?.availableModels
-    );
-    const currentModelId = modelInfo.currentModelId || openclawFallbackModelInfo?.currentModelId || null;
-    const mergedCurrentModel =
-      mergedAvailableModels.find((model) => normalizeLookupValue(model.id) === normalizeLookupValue(currentModelId)) ||
-      null;
-    const switchSupported =
-      modelInfo.switchSupported ??
-      openclawFallbackModelInfo?.switchSupported ??
-      modelInfo.canSwitch ??
-      openclawFallbackModelInfo?.canSwitch ??
-      false;
-
-    return {
-      ...openclawFallbackModelInfo,
-      ...modelInfo,
-      currentModelId,
-      currentModelLabel:
-        modelInfo.currentModelLabel ||
-        mergedCurrentModel?.label ||
-        openclawFallbackModelInfo?.currentModelLabel ||
-        currentModelId,
-      availableModels: mergedAvailableModels,
-      switchSupported,
-      canSwitch:
-        switchSupported &&
-        mergedAvailableModels.some((model) => normalizeLookupValue(model.id) !== normalizeLookupValue(currentModelId)),
-    };
-  }, [isOpenClaw, mergeAvailableModels, modelInfo, normalizeLookupValue, openclawFallbackModelInfo]);
+  const effectiveModelInfo = modelInfo;
   const resolveProviderConfig = React.useCallback(
     (modelId?: string | null) => {
       if (!modelConfig) return undefined;
-      if (isOpenClaw) {
-        return modelConfig.find(
-          (provider) =>
-            provider.enabled !== false &&
-            typeof modelId === 'string' &&
-            provider.modelEnabled?.[modelId] !== false &&
-            Array.isArray(provider.model) &&
-            provider.model.includes(modelId)
-        );
-      }
       return modelConfig.find((provider) => provider.platform?.includes(backend || ''));
     },
-    [backend, isOpenClaw, modelConfig]
+    [backend, modelConfig]
   );
   const effectiveCurrentModelId = effectiveModelInfo?.currentModelId;
   const effectiveCurrentModelLabel = effectiveModelInfo?.currentModelLabel;
@@ -371,15 +282,8 @@ const AcpModelSelector: React.FC<{
     fallbackLabel: t('conversation.welcome.useCliModel'),
   });
   const tooltipLabel = effectiveCurrentModelId || displayLabel || t('conversation.welcome.useCliModel');
-  const openClawDisplayName = t('guid.externalSessions.providers.openclaw-gateway');
-  const isOpenClawDisconnected =
-    isOpenClaw && openclawRuntime?.success === true && openclawRuntime.data?.runtime?.isConnected === false;
-  const canSwitchModel = Boolean(effectiveModelInfo?.canSwitch) && !isOpenClawDisconnected;
-  const readOnlyTooltipLabel = isOpenClawDisconnected
-    ? t('acp.status.disconnected', { agent: openClawDisplayName })
-    : isOpenClaw && effectiveModelInfo?.switchSupported === false
-      ? t('conversation.chat.modelSwitchNotSupported')
-      : tooltipLabel;
+  const canSwitchModel = Boolean(effectiveModelInfo?.canSwitch);
+  const readOnlyTooltipLabel = tooltipLabel;
   const currentProviderConfig = React.useMemo(
     () => resolveProviderConfig(effectiveCurrentModelId),
     [effectiveCurrentModelId, resolveProviderConfig]
@@ -433,9 +337,7 @@ const AcpModelSelector: React.FC<{
     return (
       <span
         title={
-          isOpenClawDisconnected
-            ? t('acp.status.disconnected', { agent: openClawDisplayName })
-            : t('conversation.welcome.useCliModel')
+          t('conversation.welcome.useCliModel')
         }
       >
         <Button className={headerButtonClassName} shape='round' size='small' style={{ cursor: 'default' }} disabled>

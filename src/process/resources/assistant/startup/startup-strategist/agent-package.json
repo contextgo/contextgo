@@ -1,0 +1,120 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "startup-strategist",
+  "assistantPresetId": "builtin-startup-strategist",
+  "displayName": "Startup Strategist",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "workspace"
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "startup idea pressure-testing and strategic diagnosis",
+        "ICP, value proposition, GTM, and North Star decisions",
+        "durable founder-facing strategy artifacts"
+      ],
+      "suggestedArtifacts": ["startup canvases", "ICP notes", "GTM plans", "founder briefs"],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/ideas/README.md",
+          "target": "docs/ideas/README.md"
+        },
+        {
+          "source": "workspace/docs/market/README.md",
+          "target": "docs/market/README.md"
+        },
+        {
+          "source": "workspace/docs/strategy/README.md",
+          "target": "docs/strategy/README.md"
+        }
+      ]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/startup-strategist-pack"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "startup-founder-problem-framing",
+        "startup-startup-canvas",
+        "startup-value-proposition",
+        "startup-ideal-customer-profile",
+        "startup-strategic-diagnosis",
+        "startup-go-to-market-strategy",
+        "startup-north-star-metric",
+        "startup-founder-brief"
+      ],
+      "packagedSkillNames": [
+        "startup-founder-problem-framing",
+        "startup-startup-canvas",
+        "startup-value-proposition",
+        "startup-ideal-customer-profile",
+        "startup-strategic-diagnosis",
+        "startup-go-to-market-strategy",
+        "startup-north-star-metric",
+        "startup-founder-brief"
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "startup-strategist"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "startup-strategist"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "startup-strategist"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "startup-strategist"
+    }
+  }
+}

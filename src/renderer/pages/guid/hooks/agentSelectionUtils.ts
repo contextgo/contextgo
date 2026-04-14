@@ -57,7 +57,6 @@ export async function savePreferredModelId(agentKey: string, modelId: string): P
 export const getAgentKey = (agent: {
   backend: AcpBackend;
   customAgentId?: string;
-  openclawAgentId?: string;
 }): string => {
   if (agent.backend === 'custom' && agent.customAgentId) {
     return `custom:${agent.customAgentId}`;

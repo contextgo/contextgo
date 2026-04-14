@@ -7,11 +7,7 @@ const { appendFile, ensureDir } = require('../utils');
 
 const VERSION_DIRECTORY_NAME = '.versions';
 const EVOLUTION_DIRECTORY_NAME = '.evolution';
-const EVOLUTION_LOG_TYPES = Object.freeze([
-  'observations',
-  'inspections',
-  'amendments',
-]);
+const EVOLUTION_LOG_TYPES = Object.freeze(['observations', 'inspections', 'amendments']);
 
 function normalizeSkillDir(skillPath) {
   if (!skillPath || typeof skillPath !== 'string') {
@@ -92,8 +88,9 @@ function listVersions(skillPath) {
     return [];
   }
 
-  return fs.readdirSync(versionsDir)
-    .map(fileName => {
+  return fs
+    .readdirSync(versionsDir)
+    .map((fileName) => {
       const version = parseVersionNumber(fileName);
       if (version === null) {
         return null;
@@ -137,9 +134,10 @@ function readJsonl(filePath) {
     return [];
   }
 
-  return fs.readFileSync(filePath, 'utf8')
+  return fs
+    .readFileSync(filePath, 'utf8')
     .split('\n')
-    .map(line => line.trim())
+    .map((line) => line.trim())
     .filter(Boolean)
     .reduce((rows, line) => {
       try {

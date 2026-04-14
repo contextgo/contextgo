@@ -18,6 +18,7 @@ This command invokes the **python-reviewer** agent for comprehensive Python-spec
 ## When to Use
 
 Use `/python-review` when:
+
 - After writing or modifying Python code
 - Before committing Python changes
 - Reviewing pull requests with Python code
@@ -27,6 +28,7 @@ Use `/python-review` when:
 ## Review Categories
 
 ### CRITICAL (Must Fix)
+
 - SQL/Command injection vulnerabilities
 - Unsafe eval/exec usage
 - Pickle unsafe deserialization
@@ -35,6 +37,7 @@ Use `/python-review` when:
 - Bare except clauses hiding errors
 
 ### HIGH (Should Fix)
+
 - Missing type hints on public functions
 - Mutable default arguments
 - Swallowing exceptions silently
@@ -44,6 +47,7 @@ Use `/python-review` when:
 - Race conditions without locks
 
 ### MEDIUM (Consider)
+
 - PEP 8 formatting violations
 - Missing docstrings on public functions
 - Print statements instead of logging
@@ -76,7 +80,7 @@ pytest --cov=app --cov-report=term-missing
 
 ## Example Usage
 
-```text
+````text
 User: /python-review
 
 Agent:
@@ -99,8 +103,10 @@ File: app/routes/user.py:42
 Issue: User input directly interpolated into SQL query
 ```python
 query = f"SELECT * FROM users WHERE id = {user_id}"  # Bad
-```
+````
+
 Fix: Use parameterized query
+
 ```python
 query = "SELECT * FROM users WHERE id = %s"  # Good
 cursor.execute(query, (user_id,))
@@ -109,12 +115,15 @@ cursor.execute(query, (user_id,))
 [HIGH] Mutable default argument
 File: app/services/auth.py:18
 Issue: Mutable default argument causes shared state
+
 ```python
 def process_items(items=[]):  # Bad
     items.append("new")
     return items
 ```
+
 Fix: Use None as default
+
 ```python
 def process_items(items=None):  # Good
     if items is None:
@@ -126,11 +135,14 @@ def process_items(items=None):  # Good
 [MEDIUM] Missing type hints
 File: app/services/auth.py:25
 Issue: Public function without type annotations
+
 ```python
 def get_user(user_id):  # Bad
     return db.find(user_id)
 ```
+
 Fix: Add type hints
+
 ```python
 def get_user(user_id: str) -> Optional[User]:  # Good
     return db.find(user_id)
@@ -139,18 +151,22 @@ def get_user(user_id: str) -> Optional[User]:  # Good
 [MEDIUM] Not using context manager
 File: app/routes/user.py:55
 Issue: File not closed on exception
+
 ```python
 f = open("config.json")  # Bad
 data = f.read()
 f.close()
 ```
+
 Fix: Use context manager
+
 ```python
 with open("config.json") as f:  # Good
     data = f.read()
 ```
 
 ## Summary
+
 - CRITICAL: 1
 - HIGH: 1
 - MEDIUM: 2
@@ -158,8 +174,10 @@ with open("config.json") as f:  # Good
 Recommendation: FAIL: Block merge until CRITICAL issue is fixed
 
 ## Formatting Required
+
 Run: `black app/routes/user.py app/services/auth.py`
-```
+
+````
 
 ## Approval Criteria
 
@@ -218,9 +236,10 @@ from typing import Union
 
 def calculate(x: Union[int, float], y: Union[int, float]) -> Union[int, float]:
     return x + y
-```
+````
 
 ### Use Context Managers
+
 ```python
 # Before
 f = open("file.txt")
@@ -233,6 +252,7 @@ with open("file.txt") as f:
 ```
 
 ### Use List Comprehensions
+
 ```python
 # Before
 result = []
@@ -245,6 +265,7 @@ result = [item.name for item in items if item.active]
 ```
 
 ### Fix Mutable Defaults
+
 ```python
 # Before
 def append(value, items=[]):
@@ -260,6 +281,7 @@ def append(value, items=None):
 ```
 
 ### Use f-strings (Python 3.6+)
+
 ```python
 # Before
 name = "Alice"
@@ -271,6 +293,7 @@ greeting = f"Hello, {name}!"
 ```
 
 ### Fix String Concatenation in Loops
+
 ```python
 # Before
 result = ""
@@ -285,13 +308,13 @@ result = "".join(str(item) for item in items)
 
 The reviewer notes when code uses features from newer Python versions:
 
-| Feature | Minimum Python |
-|---------|----------------|
-| Type hints | 3.5+ |
-| f-strings | 3.6+ |
-| Walrus operator (`:=`) | 3.8+ |
-| Position-only parameters | 3.8+ |
-| Match statements | 3.10+ |
-| Type unions (&#96;x &#124; None&#96;) | 3.10+ |
+| Feature                               | Minimum Python |
+| ------------------------------------- | -------------- |
+| Type hints                            | 3.5+           |
+| f-strings                             | 3.6+           |
+| Walrus operator (`:=`)                | 3.8+           |
+| Position-only parameters              | 3.8+           |
+| Match statements                      | 3.10+          |
+| Type unions (&#96;x &#124; None&#96;) | 3.10+          |
 
 Ensure your project's `pyproject.toml` or `setup.py` specifies the correct minimum Python version.

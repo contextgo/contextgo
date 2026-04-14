@@ -15,7 +15,6 @@
   border-radius: 22px;
 }
 
-
 .guidMentionDropdown {
   width: 100%;
   max-width: min(420px, calc(100vw - 48px));
@@ -212,35 +211,80 @@
 }
 
 .guidQuickActionsMobileGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  display: flex;
+  justify-content: center;
 }
 
-.guidQuickActionCard {
-  min-height: 60px !important;
-  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent) !important;
-  border-radius: 18px !important;
-  background: color-mix(in srgb, var(--bg-1) 94%, var(--fill-1) 6%) !important;
-  box-shadow: 0 12px 26px color-mix(in srgb, var(--text-primary) 6%, transparent);
-  padding: 0 14px !important;
-}
-
-.guidQuickActionCard :global(.arco-btn-content) {
+.guidQuickActionMobileStack {
   width: 100%;
+  max-width: min(100%, 320px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.guidQuickActionMobileButton {
+  width: 100% !important;
+  min-height: 48px !important;
+  padding: 0 14px !important;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-1) 4%) !important;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.guidQuickActionMobileButton :global(.arco-btn-content) {
+  width: 100%;
+  max-width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  justify-content: flex-start;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.guidQuickActionMobileButtonInner {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
-.guidQuickActionAffordance {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 700;
+.guidQuickActionMobileTitle {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.guidQuickActionMobileStatus {
+  max-width: 100%;
   color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.guidQuickActionChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  line-height: 0;
 }
 
 .guidQuickActionIcon {
@@ -254,7 +298,6 @@
 }
 
 .guidQuickActionBody {
-  flex: 1 1 auto;
   min-width: 0;
   display: grid;
   gap: 2px;
@@ -280,6 +323,8 @@
 
 .agentPillViewport {
   width: 100%;
+  display: flex;
+  justify-content: center;
   overflow-x: auto;
   overflow-y: hidden;
   margin-bottom: 20px;
@@ -293,10 +338,11 @@
 }
 
 .agentPillRail {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  min-width: max(100%, max-content);
+  width: max(100%, max-content);
   padding: 8px;
   border-radius: 20px;
   background: color-mix(in srgb, var(--bg-2) 92%, var(--fill-2) 8%);
@@ -312,6 +358,12 @@
   padding: 0 12px !important;
   border-radius: 999px !important;
   color: var(--text-secondary) !important;
+}
+
+.agentPillChipCompact {
+  justify-content: center;
+  min-width: 38px;
+  padding: 0 10px !important;
 }
 
 .agentPillChipActive {
@@ -542,10 +594,6 @@
     padding-inline: 12px;
   }
 
-  .guidQuickActionAffordance {
-    display: none;
-  }
-
   .assistantFallbackNotice {
     align-items: flex-start;
   }
@@ -556,19 +604,22 @@
   }
 
   .assistantPresetGrid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .assistantPresetButton {
-    width: 100%;
+    width: auto;
+    max-width: 100%;
     min-height: 40px !important;
     border-radius: 18px !important;
     padding: 0 14px !important;
   }
 
   .assistantManageButton {
-    width: 100%;
+    width: auto;
+    max-width: 100%;
     min-height: 40px !important;
     border-radius: 18px !important;
   }
@@ -589,9 +640,8 @@
     padding-inline: 10px;
   }
 
-  .guidQuickActionsMobileGrid,
-  .assistantPresetGrid {
-    grid-template-columns: minmax(0, 1fr);
+  .guidQuickActionMobileButton {
+    max-width: 100%;
   }
 
   .agentPillChipLabel,

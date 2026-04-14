@@ -34,13 +34,19 @@ const UNSAFE_PATH_CHARS = /[&|<>^%!\s()]/;
 
 /** Parse the accumulator text into a deduplicated array of file paths. */
 function parseAccumulator(raw) {
-  return [...new Set(raw.split('\n').map(l => l.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      raw
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+    ),
+  ];
 }
 
 function getAccumFile() {
   const raw =
-    process.env.CLAUDE_SESSION_ID ||
-    crypto.createHash('sha1').update(process.cwd()).digest('hex').slice(0, 12);
+    process.env.CLAUDE_SESSION_ID || crypto.createHash('sha1').update(process.cwd()).digest('hex').slice(0, 12);
   const sessionId = raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
   return path.join(os.tmpdir(), `ecc-edited-${sessionId}.txt`);
 }
@@ -52,7 +58,7 @@ function formatBatch(projectRoot, files, timeoutMs) {
   const resolved = resolveFormatterBin(projectRoot, formatter);
   if (!resolved) return;
 
-  const existingFiles = files.filter(f => fs.existsSync(f));
+  const existingFiles = files.filter((f) => fs.existsSync(f));
   if (existingFiles.length === 0) return;
 
   const fileArgs =
@@ -62,11 +68,16 @@ function formatBatch(projectRoot, files, timeoutMs) {
 
   try {
     if (process.platform === 'win32' && resolved.bin.endsWith('.cmd')) {
-      if (existingFiles.some(f => UNSAFE_PATH_CHARS.test(f))) {
+      if (existingFiles.some((f) => UNSAFE_PATH_CHARS.test(f))) {
         process.stderr.write('[Hook] stop-format-typecheck: skipping batch — unsafe path chars\n');
         return;
       }
-      const result = spawnSync(resolved.bin, fileArgs, { cwd: projectRoot, shell: true, stdio: 'pipe', timeout: timeoutMs });
+      const result = spawnSync(resolved.bin, fileArgs, {
+        cwd: projectRoot,
+        shell: true,
+        stdio: 'pipe',
+        timeout: timeoutMs,
+      });
       if (result.error) throw result.error;
     } else {
       execFileSync(resolved.bin, fileArgs, { cwd: projectRoot, stdio: ['pipe', 'pipe', 'pipe'], timeout: timeoutMs });
@@ -124,11 +135,16 @@ function typecheckBatch(tsConfigDir, editedFiles, timeoutMs) {
     const relPath = path.relative(tsConfigDir, filePath);
     const candidates = new Set([filePath, relPath]);
     const relevantLines = lines
-      .filter(line => { for (const c of candidates) { if (line.includes(c)) return true; } return false; })
+      .filter((line) => {
+        for (const c of candidates) {
+          if (line.includes(c)) return true;
+        }
+        return false;
+      })
       .slice(0, 10);
     if (relevantLines.length > 0) {
       process.stderr.write(`[Hook] TypeScript errors in ${path.basename(filePath)}:\n`);
-      relevantLines.forEach(line => process.stderr.write(line + '\n'));
+      relevantLines.forEach((line) => process.stderr.write(line + '\n'));
     }
   }
 }
@@ -143,7 +159,11 @@ function main() {
     return; // No accumulator — nothing edited this response
   }
 
-  try { fs.unlinkSync(accumFile); } catch { /* best-effort */ }
+  try {
+    fs.unlinkSync(accumFile);
+  } catch {
+    /* best-effort */
+  }
 
   const files = parseAccumulator(raw);
   if (files.length === 0) return;
@@ -197,7 +217,7 @@ function run(rawInput) {
 if (require.main === module) {
   let stdinData = '';
   process.stdin.setEncoding('utf8');
-  process.stdin.on('data', chunk => {
+  process.stdin.on('data', (chunk) => {
     if (stdinData.length < MAX_STDIN) stdinData += chunk.substring(0, MAX_STDIN - stdinData.length);
   });
   process.stdin.on('end', () => {

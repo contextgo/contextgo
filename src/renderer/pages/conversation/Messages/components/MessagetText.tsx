@@ -8,12 +8,13 @@ import type { IMessageText } from '@/common/chat/chatLib';
 import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import { formatWorkflowRoleLabel, isBuiltInWorkflowRole } from '@/common/config/group';
 import { iconColors } from '@/renderer/styles/colors';
-import { Alert, Message, Tooltip } from '@arco-design/web-react';
+import { Alert, Button, Message, Tooltip } from '@arco-design/web-react';
 import { Copy, DeleteOne, FileText, PreviewOpen, Write } from '@icon-park/react';
 import classNames from 'classnames';
 import type { TFunction } from 'i18next';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { copyText } from '@/renderer/utils/ui/clipboard';
 import CollapsibleContent from '@renderer/components/chat/CollapsibleContent';
 import FilePreview from '@renderer/components/media/FilePreview';
@@ -187,7 +188,11 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   const { text, files } = parseFileMarker(contentToRender);
   const { data, json, jsonObject } = useFormatContent(text);
   const { t } = useTranslation();
+  const layout = useLayoutContext();
+  const isMobile = layout?.isMobile ?? false;
   const [showCopyAlert, setShowCopyAlert] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressReadyRef = useRef(false);
   const isUserMessage = message.position === 'right';
   const hasTextBody = json || Boolean(text.trim());
   const fileOperation = useMemo(() => parseFileOperationMessage(text), [text]);
@@ -228,6 +233,15 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   }, [data, jsonObject, t]);
   const rawJsonText = useMemo(() => (json ? JSON.stringify(data, null, 2) : ''), [data, json]);
 
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current !== null) {
+        clearTimeout(longPressTimerRef.current);
+      }
+      longPressReadyRef.current = false;
+    };
+  }, []);
+
   // 过滤空内容，避免渲染空DOM
   if (!message.content.content || (typeof message.content.content === 'string' && !message.content.content.trim())) {
     return null;
@@ -246,15 +260,50 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
         Message.error(t('common.copyFailed'));
       });
   };
+  const clearLongPressCopy = () => {
+    if (longPressTimerRef.current !== null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressReadyRef.current = false;
+  };
+  const canUseLongPressCopy = isMobile && hasTextBody;
+  const showCopyButton = !isMobile && !isUserMessage && hasTextBody;
+
+  const handleLongPressStart = () => {
+    if (!canUseLongPressCopy) {
+      return;
+    }
+
+    clearLongPressCopy();
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      longPressReadyRef.current = true;
+    }, 450);
+  };
+  const handleLongPressEnd = () => {
+    if (!canUseLongPressCopy) {
+      return;
+    }
+
+    const shouldCopy = longPressReadyRef.current;
+    clearLongPressCopy();
+
+    if (shouldCopy) {
+      handleCopy();
+    }
+  };
 
   const copyButton = (
     <Tooltip content={t('common.copy', { defaultValue: 'Copy' })}>
-      <div
-        className='app-icon-button p-4px rd-4px cursor-pointer hover:bg-3 transition-colors opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto'
+      <Button
+        type='text'
+        size='mini'
+        aria-label={t('common.copy', { defaultValue: 'Copy' })}
+        icon={<Copy theme='outline' size='16' fill={iconColors.secondary} className='app-icon' />}
+        className='!min-w-24px !h-24px !p-4px !rd-4px hover:!bg-3 !transition-colors opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto'
         onClick={handleCopy}
-      >
-        <Copy theme='outline' size='16' fill={iconColors.secondary} className='app-icon' />
-      </div>
+      />
     </Tooltip>
   );
 
@@ -326,10 +375,24 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
 
     return fileOperation.preview.split('\n');
   }, [fileOperation?.preview]);
+  const bubbleClassName = classNames(
+    'relative min-w-0 max-w-full [&>p:first-child]:mt-0px [&>p:last-child]:mb-0px md:max-w-780px',
+    {
+      'pr-40px': showCopyButton,
+      'bg-aou-2 p-8px': isUserMessage || scheduleMeta,
+      'w-full': !(isUserMessage || scheduleMeta),
+    }
+  );
 
   return (
     <>
-      <div className={classNames('min-w-0 flex flex-col group', isUserMessage ? 'items-end' : 'items-start')}>
+      <div
+        className={classNames(
+          'min-w-0 max-w-full flex flex-col group',
+          isMobile && 'overflow-x-hidden',
+          isUserMessage ? 'items-end' : 'items-start'
+        )}
+      >
         {scheduleMeta && <MessageScheduleBadge meta={scheduleMeta} />}
         {groupMeta && !isUserMessage && (
           <div className='mb-6px inline-flex items-center gap-6px text-12px text-[var(--color-text-3)]'>
@@ -365,11 +428,13 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
         )}
         {hasTextBody && (
           <div
-            className={classNames('min-w-0 [&>p:first-child]:mt-0px [&>p:last-child]:mb-0px md:max-w-780px', {
-              'bg-aou-2 p-8px': isUserMessage || scheduleMeta,
-              'w-full': !(isUserMessage || scheduleMeta),
-            })}
+            className={bubbleClassName}
             style={isUserMessage || scheduleMeta ? { borderRadius: '8px 0 8px 8px' } : undefined}
+            onTouchStart={canUseLongPressCopy ? handleLongPressStart : undefined}
+            onTouchEnd={canUseLongPressCopy ? handleLongPressEnd : undefined}
+            onTouchCancel={canUseLongPressCopy ? clearLongPressCopy : undefined}
+            onTouchMove={canUseLongPressCopy ? clearLongPressCopy : undefined}
+            onContextMenu={canUseLongPressCopy ? (event) => event.preventDefault() : undefined}
           >
             {fileOperation && fileOperationTone ? (
               <div
@@ -628,16 +693,7 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                 {data}
               </MarkdownView>
             )}
-          </div>
-        )}
-        {hasTextBody && (
-          <div
-            className={classNames('h-32px flex items-center mt-4px', {
-              'justify-end': isUserMessage,
-              'justify-start': !isUserMessage,
-            })}
-          >
-            {copyButton}
+            {showCopyButton && <div className='absolute top-8px right-8px z-1'>{copyButton}</div>}
           </div>
         )}
       </div>

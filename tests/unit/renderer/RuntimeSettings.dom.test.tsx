@@ -19,7 +19,7 @@ const configStorageGetMock = vi.fn();
 const mutateMock = vi.fn().mockResolvedValue(undefined);
 const messageSuccessMock = vi.fn();
 const messageErrorMock = vi.fn();
-let managedRuntimeInstallEventListener: ((event: any) => void) | null = null;
+let managedRuntimeInstallEventListener: ((event: unknown) => void) | null = null;
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -38,7 +38,7 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     },
     refreshDetectedAgents: { invoke: (...args: unknown[]) => refreshDetectedAgentsInvokeMock(...args) },
     managedRuntimeInstallEvent: {
-      on: (listener: (event: any) => void) => {
+      on: (listener: (event: unknown) => void) => {
         managedRuntimeInstallEventListener = listener;
         return () => {
           managedRuntimeInstallEventListener = null;
@@ -213,8 +213,18 @@ describe('Runtime Settings page', () => {
       success: true,
       data: {
         backend: 'codex',
-        configPath: '/Users/tester/.codex/config.toml',
-        exists: true,
+        entries: [
+          {
+            kind: 'config',
+            path: '/Users/tester/.codex/config.toml',
+            exists: true,
+          },
+          {
+            kind: 'auth',
+            path: '/Users/tester/.codex/auth.json',
+            exists: true,
+          },
+        ],
       },
     });
     configStorageGetMock.mockImplementation(async (key: string) => {
@@ -229,7 +239,10 @@ describe('Runtime Settings page', () => {
     expect(await screen.findByText('Runtime Management')).toBeInTheDocument();
     expect(screen.getByText('Codex')).toBeInTheDocument();
     expect(screen.getByText('Claude Code')).toBeInTheDocument();
+    expect(screen.getByTestId('runtime-card-claude')).toBeInTheDocument();
     expect(screen.getByTestId('runtime-card-opencode')).toBeInTheDocument();
+    expect(screen.queryByTestId('runtime-card-openclaw-gateway')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('runtime-card-nanobot')).not.toBeInTheDocument();
     expect(screen.queryByTestId('runtime-card-qwen')).not.toBeInTheDocument();
     expect(screen.queryByTestId('runtime-card-auggie')).not.toBeInTheDocument();
 
@@ -265,11 +278,12 @@ describe('Runtime Settings page', () => {
 
     await screen.findByText('Runtime Management');
 
-    const nanobotCard = screen.getByTestId('runtime-card-nanobot');
-    expect(within(nanobotCard).queryByRole('button', { name: 'Check availability' })).not.toBeInTheDocument();
-    expect(within(nanobotCard).getByRole('button', { name: 'Install locally' })).toBeInTheDocument();
-    expect(within(nanobotCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
-    expect(within(nanobotCard).queryByText('No path is being used yet.')).not.toBeInTheDocument();
+    const claudeCard = screen.getByTestId('runtime-card-claude');
+    expect(within(claudeCard).queryByRole('button', { name: 'Check availability' })).not.toBeInTheDocument();
+    expect(within(claudeCard).getByRole('button', { name: 'Open config' })).toBeInTheDocument();
+    expect(within(claudeCard).getByRole('button', { name: 'Reveal' })).toBeInTheDocument();
+    expect(within(claudeCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
+    expect(within(claudeCard).queryByText('No path is being used yet.')).not.toBeInTheDocument();
 
     const opencodeCard = screen.getByTestId('runtime-card-opencode');
     expect(within(opencodeCard).queryByRole('button', { name: 'Check availability' })).not.toBeInTheDocument();
@@ -289,16 +303,14 @@ describe('Runtime Settings page', () => {
     expect(within(opencodeCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
   });
 
-  it('opens the updated official openclaw page', async () => {
+  it('opens the official docs for the selected runtime', async () => {
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
-    fireEvent.click(
-      within(screen.getByTestId('runtime-card-openclaw-gateway')).getByRole('button', { name: 'Official page' })
-    );
+    fireEvent.click(within(screen.getByTestId('runtime-card-opencode')).getByRole('button', { name: 'Official page' }));
 
     await waitFor(() => {
-      expect(openExternalInvokeMock).toHaveBeenCalledWith('https://github.com/openclaw/openclaw');
+      expect(openExternalInvokeMock).toHaveBeenCalledWith('https://opencode.ai');
     });
   });
 
@@ -311,13 +323,15 @@ describe('Runtime Settings page', () => {
     await waitFor(() => {
       expect(getManagedRuntimeConfigLocationInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
       expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/config.toml' });
+      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/auth.json' });
     });
 
+    expect(openFilePreviewMock).toHaveBeenCalledTimes(2);
     expect(openFileInvokeMock).not.toHaveBeenCalled();
   });
 
   it('falls back to the system opener when config preview cannot be mounted', async () => {
-    openFilePreviewMock.mockResolvedValueOnce(false);
+    openFilePreviewMock.mockResolvedValue(false);
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
@@ -325,7 +339,10 @@ describe('Runtime Settings page', () => {
 
     await waitFor(() => {
       expect(openFileInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex/config.toml');
+      expect(openFileInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex/auth.json');
     });
+
+    expect(openFileInvokeMock).toHaveBeenCalledTimes(2);
   });
 
   it('reveals the runtime config path in the system file manager', async () => {
@@ -335,7 +352,27 @@ describe('Runtime Settings page', () => {
     fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Reveal' }));
 
     await waitFor(() => {
-      expect(revealPathInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex/config.toml');
+      expect(revealPathInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex');
+    });
+  });
+
+  it('keeps opening config working when the runtime bridge still returns the legacy single-path payload', async () => {
+    getManagedRuntimeConfigLocationInvokeMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        backend: 'codex',
+        configPath: '/Users/tester/.codex/config.toml',
+        exists: true,
+      },
+    });
+
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+    fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Open config' }));
+
+    await waitFor(() => {
+      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/config.toml' });
     });
   });
 

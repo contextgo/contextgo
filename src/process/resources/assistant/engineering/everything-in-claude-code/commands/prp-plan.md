@@ -19,13 +19,13 @@ Create a detailed, self-contained implementation plan that captures all codebase
 
 Determine input type from `$ARGUMENTS`:
 
-| Input Pattern | Detection | Action |
-|---|---|---|
-| Path ending in `.prd.md` | File path to PRD | Parse PRD, find next pending phase |
-| Path to `.md` with "Implementation Phases" | PRD-like document | Parse phases, find next pending |
-| Path to any other file | Reference file | Read file for context, treat as free-form |
-| Free-form text | Feature description | Proceed directly to Phase 1 |
-| Empty / blank | No input | Ask user what feature to plan |
+| Input Pattern                              | Detection           | Action                                    |
+| ------------------------------------------ | ------------------- | ----------------------------------------- |
+| Path ending in `.prd.md`                   | File path to PRD    | Parse PRD, find next pending phase        |
+| Path to `.md` with "Implementation Phases" | PRD-like document   | Parse phases, find next pending           |
+| Path to any other file                     | Reference file      | Read file for context, treat as free-form |
+| Free-form text                             | Feature description | Proceed directly to Phase 1               |
+| Empty / blank                              | No input            | Ask user what feature to plan             |
 
 ### PRD Parsing (when input is a PRD)
 
@@ -62,6 +62,7 @@ From the input (PRD phase or free-form description), identify:
 ### User Story
 
 Format as:
+
 ```
 As a [type of user],
 I want [capability],
@@ -70,12 +71,12 @@ So that [benefit].
 
 ### Complexity Assessment
 
-| Level | Indicators | Typical Scope |
-|---|---|---|
-| **Small** | Single file, isolated change, no new dependencies | 1-3 files, <100 lines |
-| **Medium** | Multiple files, follows existing patterns, minor new concepts | 3-10 files, 100-500 lines |
-| **Large** | Cross-cutting concerns, new patterns, external integrations | 10+ files, 500+ lines |
-| **XL** | Architectural changes, new subsystems, migration needed | 20+ files, consider splitting |
+| Level      | Indicators                                                    | Typical Scope                 |
+| ---------- | ------------------------------------------------------------- | ----------------------------- |
+| **Small**  | Single file, isolated change, no new dependencies             | 1-3 files, <100 lines         |
+| **Medium** | Multiple files, follows existing patterns, minor new concepts | 3-10 files, 100-500 lines     |
+| **Large**  | Cross-cutting concerns, new patterns, external integrations   | 10+ files, 500+ lines         |
+| **XL**     | Architectural changes, new subsystems, migration needed       | 20+ files, consider splitting |
 
 ### Ambiguity Gate
 
@@ -128,11 +129,11 @@ Read relevant files to trace:
 
 Compile findings into a single reference:
 
-| Category | File:Lines | Pattern | Key Snippet |
-|---|---|---|---|
-| Naming | `src/services/userService.ts:1-5` | camelCase services, PascalCase types | `export class UserService` |
-| Error | `src/middleware/errorHandler.ts:10-25` | Custom AppError class | `throw new AppError(...)` |
-| ... | ... | ... | ... |
+| Category | File:Lines                             | Pattern                              | Key Snippet                |
+| -------- | -------------------------------------- | ------------------------------------ | -------------------------- |
+| Naming   | `src/services/userService.ts:1-5`      | camelCase services, PascalCase types | `export class UserService` |
+| Error    | `src/middleware/errorHandler.ts:10-25` | Custom AppError class                | `throw new AppError(...)`  |
+| ...      | ...                                    | ...                                  | ...                        |
 
 ---
 
@@ -163,6 +164,7 @@ If the feature uses only well-understood internal patterns, skip this phase and 
 Document the before/after user experience:
 
 **Before:**
+
 ```
 ┌─────────────────────────────┐
 │  [Current user experience]  │
@@ -172,6 +174,7 @@ Document the before/after user experience:
 ```
 
 **After:**
+
 ```
 ┌─────────────────────────────┐
 │  [New user experience]      │
@@ -183,8 +186,8 @@ Document the before/after user experience:
 ### Interaction Changes
 
 | Touchpoint | Before | After | Notes |
-|---|---|---|---|
-| ... | ... | ... | ... |
+| ---------- | ------ | ----- | ----- |
+| ...        | ...    | ...   | ...   |
 
 If the feature is purely backend/internal with no UX change, note: "Internal change — no user-facing UX transformation."
 
@@ -208,6 +211,7 @@ Define the implementation approach:
 Write the full plan document using the template below. Save to `.claude/PRPs/plans/{kebab-case-feature-name}.plan.md`.
 
 Create the directory if it doesn't exist:
+
 ```bash
 mkdir -p .claude/PRPs/plans
 ```
@@ -218,15 +222,19 @@ mkdir -p .claude/PRPs/plans
 # Plan: [Feature Name]
 
 ## Summary
+
 [2-3 sentence overview]
 
 ## User Story
+
 As a [user], I want [capability], so that [benefit].
 
 ## Problem → Solution
+
 [Current state] → [Desired state]
 
 ## Metadata
+
 - **Complexity**: [Small | Medium | Large | XL]
 - **Source PRD**: [path or "N/A"]
 - **PRD Phase**: [phase name or "N/A"]
@@ -237,14 +245,17 @@ As a [user], I want [capability], so that [benefit].
 ## UX Design
 
 ### Before
+
 [ASCII diagram or "N/A — internal change"]
 
 ### After
+
 [ASCII diagram or "N/A — internal change"]
 
 ### Interaction Changes
+
 | Touchpoint | Before | After | Notes |
-|---|---|---|---|
+| ---------- | ------ | ----- | ----- |
 
 ---
 
@@ -252,17 +263,17 @@ As a [user], I want [capability], so that [benefit].
 
 Files that MUST be read before implementing:
 
-| Priority | File | Lines | Why |
-|---|---|---|---|
-| P0 (critical) | `path/to/file` | 1-50 | Core pattern to follow |
-| P1 (important) | `path/to/file` | 10-30 | Related types |
-| P2 (reference) | `path/to/file` | all | Similar implementation |
+| Priority       | File           | Lines | Why                    |
+| -------------- | -------------- | ----- | ---------------------- |
+| P0 (critical)  | `path/to/file` | 1-50  | Core pattern to follow |
+| P1 (important) | `path/to/file` | 10-30 | Related types          |
+| P2 (reference) | `path/to/file` | all   | Similar implementation |
 
 ## External Documentation
 
 | Topic | Source | Key Takeaway |
-|---|---|---|
-| ... | ... | ... |
+| ----- | ------ | ------------ |
+| ...   | ...    | ...          |
 
 ---
 
@@ -271,26 +282,32 @@ Files that MUST be read before implementing:
 Code patterns discovered in the codebase. Follow these exactly.
 
 ### NAMING_CONVENTION
+
 // SOURCE: [file:lines]
 [actual code snippet showing the naming pattern]
 
 ### ERROR_HANDLING
+
 // SOURCE: [file:lines]
 [actual code snippet showing error handling]
 
 ### LOGGING_PATTERN
+
 // SOURCE: [file:lines]
 [actual code snippet showing logging]
 
 ### REPOSITORY_PATTERN
+
 // SOURCE: [file:lines]
 [actual code snippet showing data access]
 
 ### SERVICE_PATTERN
+
 // SOURCE: [file:lines]
 [actual code snippet showing service layer]
 
 ### TEST_STRUCTURE
+
 // SOURCE: [file:lines]
 [actual code snippet showing test setup]
 
@@ -298,10 +315,10 @@ Code patterns discovered in the codebase. Follow these exactly.
 
 ## Files to Change
 
-| File | Action | Justification |
-|---|---|---|
-| `path/to/file.ts` | CREATE | New service for feature |
-| `path/to/existing.ts` | UPDATE | Add new method |
+| File                  | Action | Justification           |
+| --------------------- | ------ | ----------------------- |
+| `path/to/file.ts`     | CREATE | New service for feature |
+| `path/to/existing.ts` | UPDATE | Add new method          |
 
 ## NOT Building
 
@@ -313,6 +330,7 @@ Code patterns discovered in the codebase. Follow these exactly.
 ## Step-by-Step Tasks
 
 ### Task 1: [Name]
+
 - **ACTION**: [What to do]
 - **IMPLEMENT**: [Specific code/logic to write]
 - **MIRROR**: [Pattern from Patterns to Mirror section to follow]
@@ -321,6 +339,7 @@ Code patterns discovered in the codebase. Follow these exactly.
 - **VALIDATE**: [How to verify this task is correct]
 
 ### Task 2: [Name]
+
 - **ACTION**: ...
 - **IMPLEMENT**: ...
 - **MIRROR**: ...
@@ -337,10 +356,11 @@ Code patterns discovered in the codebase. Follow these exactly.
 ### Unit Tests
 
 | Test | Input | Expected Output | Edge Case? |
-|---|---|---|---|
-| ... | ... | ... | ... |
+| ---- | ----- | --------------- | ---------- |
+| ...  | ...   | ...             | ...        |
 
 ### Edge Cases Checklist
+
 - [ ] Empty input
 - [ ] Maximum size input
 - [ ] Invalid types
@@ -353,46 +373,58 @@ Code patterns discovered in the codebase. Follow these exactly.
 ## Validation Commands
 
 ### Static Analysis
+
 ```bash
 # Run type checker
 [project-specific type check command]
 ```
+
 EXPECT: Zero type errors
 
 ### Unit Tests
+
 ```bash
 # Run tests for affected area
 [project-specific test command]
 ```
+
 EXPECT: All tests pass
 
 ### Full Test Suite
+
 ```bash
 # Run complete test suite
 [project-specific full test command]
 ```
+
 EXPECT: No regressions
 
 ### Database Validation (if applicable)
+
 ```bash
 # Verify schema/migrations
 [project-specific db command]
 ```
+
 EXPECT: Schema up to date
 
 ### Browser Validation (if applicable)
+
 ```bash
 # Start dev server and verify
 [project-specific dev server command]
 ```
+
 EXPECT: Feature works as designed
 
 ### Manual Validation
+
 - [ ] [Step-by-step manual verification checklist]
 
 ---
 
 ## Acceptance Criteria
+
 - [ ] All tasks completed
 - [ ] All validation commands pass
 - [ ] Tests written and passing
@@ -401,6 +433,7 @@ EXPECT: Feature works as designed
 - [ ] Matches UX design (if applicable)
 
 ## Completion Checklist
+
 - [ ] Code follows discovered patterns
 - [ ] Error handling matches codebase style
 - [ ] Logging follows codebase conventions
@@ -411,12 +444,15 @@ EXPECT: Feature works as designed
 - [ ] Self-contained — no questions needed during implementation
 
 ## Risks
+
 | Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| ... | ... | ... | ... |
+| ---- | ---------- | ------ | ---------- |
+| ...  | ...        | ...    | ...        |
 
 ## Notes
+
 [Any additional context, decisions, or observations]
+
 ```
 
 ---
@@ -427,7 +463,9 @@ EXPECT: Feature works as designed
 
 Write the generated plan to:
 ```
+
 .claude/PRPs/plans/{kebab-case-feature-name}.plan.md
+
 ```
 
 ### Update PRD (if input was a PRD)
@@ -439,6 +477,7 @@ If this plan was generated from a PRD phase:
 ### Report to User
 
 ```
+
 ## Plan Created
 
 - **File**: .claude/PRPs/plans/{kebab-case-feature-name}.plan.md
@@ -452,6 +491,7 @@ If this plan was generated from a PRD phase:
 - **Confidence Score**: [1-10] — likelihood of single-pass implementation
 
 > Next step: Run `/prp-implement .claude/PRPs/plans/{name}.plan.md` to execute this plan.
+
 ```
 
 ---
@@ -499,4 +539,5 @@ A developer unfamiliar with this codebase should be able to implement the featur
 - Run `/prp-implement <plan-path>` to execute this plan
 - Run `/plan` for quick conversational planning without artifacts
 - Run `/prp-prd` to create a PRD first if scope is unclear
+```
 ````

@@ -27,12 +27,12 @@ export function collectMaintenanceAgents(
   snapshot?: IExtensionAgentActivitySnapshot | null
 ): IExtensionAgentActivityItem[] {
   return (snapshot?.agents ?? []).filter(
-    agent => agent.runType === 'maintenance' || agent.systemManaged === true || agent.backend === 'context-engine'
+    (agent) => agent.runType === 'maintenance' || agent.systemManaged === true || agent.backend === 'context-engine'
   );
 }
 
 export function collectSystemRuns(snapshot?: IExtensionAgentActivitySnapshot | null): IExtensionSystemRunItem[] {
-  return [...(snapshot?.systemRuns ?? [])].sort((left, right) => right.lastActiveAt - left.lastActiveAt);
+  return [...(snapshot?.systemRuns ?? [])].toSorted((left, right) => right.lastActiveAt - left.lastActiveAt);
 }
 
 export function resolveContextEngineActivityStatus(
@@ -40,8 +40,8 @@ export function resolveContextEngineActivityStatus(
   systemRuns: readonly IExtensionSystemRunItem[] = []
 ): ContextEngineActivityStatus {
   return agents.some(
-    agent => agent.activeConversations > 0 || agent.runtimeStatus === 'running' || agent.runtimeStatus === 'pending'
-  ) || systemRuns.some(run => run.runtimeStatus === 'running' || run.runtimeStatus === 'pending')
+    (agent) => agent.activeConversations > 0 || agent.runtimeStatus === 'running' || agent.runtimeStatus === 'pending'
+  ) || systemRuns.some((run) => run.runtimeStatus === 'running' || run.runtimeStatus === 'pending')
     ? 'active'
     : 'idle';
 }

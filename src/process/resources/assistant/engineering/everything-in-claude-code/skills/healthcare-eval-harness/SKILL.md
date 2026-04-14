@@ -2,7 +2,7 @@
 name: healthcare-eval-harness
 description: Patient safety evaluation harness for healthcare application deployments. Automated test suites for CDSS accuracy, PHI exposure, clinical workflow integrity, and integration compliance. Blocks deployments on safety failures.
 origin: Health1 Super Speciality Hospitals — contributed by Dr. Keyur Patel
-version: "1.0.0"
+version: '1.0.0'
 ---
 
 # Healthcare Eval Harness — Patient Safety Verification
@@ -88,13 +88,13 @@ echo "Integration pass rate: ${rate}% ($passed/$total)"
 
 ### Pass/Fail Matrix
 
-| Category | Threshold | On Failure |
-|----------|-----------|------------|
-| CDSS Accuracy | 100% | **BLOCK deployment** |
-| PHI Exposure | 100% | **BLOCK deployment** |
-| Data Integrity | 100% | **BLOCK deployment** |
-| Clinical Workflow | 95%+ | WARN, allow with review |
-| Integration | 95%+ | WARN, allow with review |
+| Category          | Threshold | On Failure              |
+| ----------------- | --------- | ----------------------- |
+| CDSS Accuracy     | 100%      | **BLOCK deployment**    |
+| PHI Exposure      | 100%      | **BLOCK deployment**    |
+| Data Integrity    | 100%      | **BLOCK deployment**    |
+| Clinical Workflow | 95%+      | WARN, allow with review |
+| Integration       | 95%+      | WARN, allow with review |
 
 ### CI/CD Integration
 

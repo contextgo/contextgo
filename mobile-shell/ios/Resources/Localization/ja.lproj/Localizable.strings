@@ -55,10 +55,8 @@
 "home.metric.live" = "進行中セッション";
 "home.account.title" = "公式アカウント";
 "home.account.detail" = "このモバイルシェルはすでにホスト済みアカウントセッションに接続されています。別の一覧ページへ切り替えず、そのまま下の準備済みデスクトップを開けます。";
-"home.account.action" = "すべての端末を開く";
 "home.recent.title" = "あなたのデスクトップ";
 "home.recent.subtitle" = "サインイン後のホームには、公式アカウントに紐づくすべてのデスクトップが表示されます。";
-"home.recent.action" = "端末一覧をすべて見る";
 "home.recent.empty.title" = "まだデスクトップ端末がありません";
 "home.recent.empty.detail" = "デスクトップアプリをオンラインのまま ContextGo Cloud にサインインしてください。端末はここに自動で表示されます。";
 "home.device.status.available" = "今すぐ開けます";

@@ -168,7 +168,9 @@ const ConfirmationDetails: React.FC<{
         const bashSnippet = `\`\`\`bash\n${confirmationDetails.command}\n\`\`\``;
         return (
           <div className='w-full max-w-100% min-w-0'>
-            <MarkdownView codeStyle={{ marginTop: 4, marginBottom: 4 }}>{bashSnippet}</MarkdownView>
+            <MarkdownView codeStyle={{ marginTop: 4, marginBottom: 4 }} codeVariant='result-card'>
+              {bashSnippet}
+            </MarkdownView>
           </div>
         );
       }

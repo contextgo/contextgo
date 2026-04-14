@@ -7,6 +7,7 @@
 import { useDragUpload } from '@/renderer/hooks/file/useDragUpload';
 import { usePasteService } from '@/renderer/hooks/file/usePasteService';
 import { allSupportedExts, type FileMetadata } from '@/renderer/services/FileService';
+import type { GuidLocationState } from '../types';
 import { measureCaretTop, scrollCaretToLastLine } from '../utils/caretUtils';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -31,7 +32,7 @@ export type GuidInputResult = {
 };
 
 type UseGuidInputOptions = {
-  locationState: { workspace?: string } | null;
+  locationState: GuidLocationState | null;
 };
 
 /**

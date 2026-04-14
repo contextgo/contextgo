@@ -27,14 +27,6 @@ interface EventTypes {
   'group.selected.file.append': [Array<string | FileOrFolderItem>];
   'group.selected.file.clear': void;
   'group.workspace.refresh': void;
-  'openclaw-gateway.selected.file': [Array<string | FileOrFolderItem>];
-  'openclaw-gateway.selected.file.append': [Array<string | FileOrFolderItem>];
-  'openclaw-gateway.selected.file.clear': void;
-  'openclaw-gateway.workspace.refresh': void;
-  'nanobot.selected.file': [Array<string | FileOrFolderItem>];
-  'nanobot.selected.file.append': [Array<string | FileOrFolderItem>];
-  'nanobot.selected.file.clear': void;
-  'nanobot.workspace.refresh': void;
   'chat.history.refresh': void;
   // 会话删除事件 / Conversation deletion event
   'conversation.deleted': [string]; // conversationId

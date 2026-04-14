@@ -31,9 +31,10 @@ function extractSection(md, heading) {
 
 function parseBullets(text) {
   if (!text) return [];
-  return text.split('\n')
-    .filter(l => /^[-*\d]\s/.test(l.trim()))
-    .map(l => l.replace(/^[-*\d]+\.?\s+/, '').trim())
+  return text
+    .split('\n')
+    .filter((l) => /^[-*\d]\s/.test(l.trim()))
+    .map((l) => l.replace(/^[-*\d]+\.?\s+/, '').trim())
     .filter(Boolean);
 }
 
@@ -42,7 +43,10 @@ function parseDecisionsTable(text) {
   const rows = [];
   for (const line of text.split('\n')) {
     if (!line.startsWith('|') || line.match(/^[|\s-]+$/)) continue;
-    const cols = line.split('|').map(c => c.trim()).filter((c, i) => i > 0 && i < 4);
+    const cols = line
+      .split('|')
+      .map((c) => c.trim())
+      .filter((c, i) => i > 0 && i < 4);
     if (cols.length >= 1 && !cols[0].startsWith('Decision') && !cols[0].startsWith('_')) {
       rows.push({ what: cols[0] || '', why: cols[1] || '', date: cols[2] || '' });
     }
@@ -63,8 +67,8 @@ function parseLeftOff(text) {
   const sessionBlocks = text.split(/(?=Session \d+)/);
   if (sessionBlocks.length > 1) {
     return sessionBlocks
-      .filter(b => b.trim())
-      .map(block => {
+      .filter((b) => b.trim())
+      .map((block) => {
         const dateMatch = block.match(/\((\d{4}-\d{2}-\d{2})\)/);
         const bullets = parseBullets(block);
         return {
@@ -90,8 +94,8 @@ for (const [projectPath, info] of Object.entries(projects)) {
   const contextDir = info.contextDir;
   const contextDirPath = resolve(CONTEXTS_DIR, contextDir);
   const contextJsonPath = resolve(contextDirPath, 'context.json');
-  const contextMdPath   = resolve(contextDirPath, 'CONTEXT.md');
-  const metaPath        = resolve(contextDirPath, 'meta.json');
+  const contextMdPath = resolve(contextDirPath, 'CONTEXT.md');
+  const metaPath = resolve(contextDirPath, 'meta.json');
 
   // Already v2
   if (existsSync(contextJsonPath)) {
@@ -102,7 +106,9 @@ for (const [projectPath, info] of Object.entries(projects)) {
         skipped++;
         continue;
       }
-    } catch { /* fall through to migrate */ }
+    } catch {
+      /* fall through to migrate */
+    }
   }
 
   console.log(`\n  → Migrating: ${contextDir}`);
@@ -120,30 +126,32 @@ for (const [projectPath, info] of Object.entries(projects)) {
     }
 
     // Extract fields from CONTEXT.md
-    const description   = extractSection(contextMd, 'What This Is') || extractSection(contextMd, 'About') || null;
-    const stackRaw      = extractSection(contextMd, 'Tech Stack') || '';
-    const stack         = stackRaw.split(/[,\n]/).map(s => s.replace(/^[-*]\s+/, '').trim()).filter(Boolean);
-    const goal          = (extractSection(contextMd, 'Current Goal') || '').split('\n')[0].trim() || null;
+    const description = extractSection(contextMd, 'What This Is') || extractSection(contextMd, 'About') || null;
+    const stackRaw = extractSection(contextMd, 'Tech Stack') || '';
+    const stack = stackRaw
+      .split(/[,\n]/)
+      .map((s) => s.replace(/^[-*]\s+/, '').trim())
+      .filter(Boolean);
+    const goal = (extractSection(contextMd, 'Current Goal') || '').split('\n')[0].trim() || null;
     const constraintRaw = extractSection(contextMd, 'Do Not Do') || '';
-    const constraints   = parseBullets(constraintRaw);
-    const decisionsRaw  = extractSection(contextMd, 'Decisions Made') || '';
-    const decisions     = parseDecisionsTable(decisionsRaw);
-    const nextStepsRaw  = extractSection(contextMd, 'Next Steps') || '';
-    const nextSteps     = parseBullets(nextStepsRaw);
-    const blockersRaw   = extractSection(contextMd, 'Blockers') || '';
-    const blockers      = parseBullets(blockersRaw).filter(b => b.toLowerCase() !== 'none');
-    const leftOffRaw    = extractSection(contextMd, 'Where I Left Off') || '';
+    const constraints = parseBullets(constraintRaw);
+    const decisionsRaw = extractSection(contextMd, 'Decisions Made') || '';
+    const decisions = parseDecisionsTable(decisionsRaw);
+    const nextStepsRaw = extractSection(contextMd, 'Next Steps') || '';
+    const nextSteps = parseBullets(nextStepsRaw);
+    const blockersRaw = extractSection(contextMd, 'Blockers') || '';
+    const blockers = parseBullets(blockersRaw).filter((b) => b.toLowerCase() !== 'none');
+    const leftOffRaw = extractSection(contextMd, 'Where I Left Off') || '';
     const leftOffParsed = parseLeftOff(leftOffRaw);
 
     // Build sessions from parsed left-off blocks (may be multiple)
     const sessions = leftOffParsed.map((lo, idx) => ({
-      id: idx === leftOffParsed.length - 1 && meta.lastSessionId
-        ? meta.lastSessionId.slice(0, 8)
-        : shortId(),
+      id: idx === leftOffParsed.length - 1 && meta.lastSessionId ? meta.lastSessionId.slice(0, 8) : shortId(),
       date: lo.date || meta.lastUpdated || today(),
-      summary: idx === leftOffParsed.length - 1
-        ? (meta.lastSessionSummary || 'Migrated from v1')
-        : `Session ${idx + 1} (migrated)`,
+      summary:
+        idx === leftOffParsed.length - 1
+          ? meta.lastSessionSummary || 'Migrated from v1'
+          : `Session ${idx + 1} (migrated)`,
       leftOff: lo.leftOff,
       nextSteps: idx === leftOffParsed.length - 1 ? nextSteps : [],
       decisions: idx === leftOffParsed.length - 1 ? decisions : [],

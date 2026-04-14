@@ -11,16 +11,36 @@ import {
   resolveBuiltinAssistantEnabledHooks,
   resolveBuiltinAssistantEnabledSkills,
 } from '@/common/config/presets/builtinAssistantDefaults';
-import { ENGINEERING_DEFAULT_HOOKS, ENGINEERING_WORKBENCH_SKILLS } from '@/common/config/presets/assistantPresets';
+import {
+  getBundledAgentPackageDefaultEnabledHookNames,
+  getBundledAgentPackageDefaultEnabledSkillNames,
+} from '@/common/config/presets/bundledAgentPackageRegistry';
 import { describe, expect, it } from 'vitest';
+
+const DESIGN_DIRECTOR_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-design-director')!;
+const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-startup-strategist')!;
+const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
+const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
+const PM_WORKBENCH_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-pm-workbench')!;
+const ENGINEERING_WORKBENCH_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-superpowers')!;
+const ENGINEERING_DEFAULT_HOOKS = getBundledAgentPackageDefaultEnabledHookNames('builtin-superpowers')!;
 
 describe('builtinAssistantDefaults', () => {
   it('builds product builtin assistants with featured defaults', () => {
     const assistants = buildBuiltinAssistants();
+    const designAssistant = assistants.find((assistant) => assistant.id === 'builtin-design-director');
+    const startupAssistant = assistants.find((assistant) => assistant.id === 'builtin-startup-strategist');
+    const financeAssistant = assistants.find((assistant) => assistant.id === 'builtin-finance-analyst');
+    const officeAssistant = assistants.find((assistant) => assistant.id === 'builtin-office-analyst');
 
-    expect(assistants).toHaveLength(3);
+    expect(assistants).toHaveLength(8);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
       'builtin-morph-ppt',
+      'builtin-startup-strategist',
+      'builtin-design-director',
+      'builtin-pm-workbench',
+      'builtin-office-analyst',
+      'builtin-finance-analyst',
       'builtin-superpowers',
       'builtin-everything-in-claude-code',
     ]);
@@ -35,6 +55,133 @@ describe('builtinAssistantDefaults', () => {
         recommendedDomainI18n: {
           'en-US': 'Presentations',
           'zh-CN': '演示文稿',
+        },
+      })
+    );
+    expect(designAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...DESIGN_DIRECTOR_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Design Direction',
+          'zh-CN': '设计方向',
+        },
+        harnessTagI18n: {
+          'en-US': 'Design Director',
+          'zh-CN': 'Design Director',
+        },
+      })
+    );
+    expect(designAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'design-style-archetype-selection',
+        'design-system-distillation',
+        'design-landing-page-art-direction',
+        'design-product-surface-art-direction',
+        'design-ui-critique-and-polish',
+        'design-screenshot-critique',
+        'design-figma-reference-absorption',
+        'design-system-adaptation',
+        'design-component-visual-spec',
+        'design-handoff-brief',
+      ])
+    );
+    expect(startupAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...STARTUP_STRATEGIST_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Startup Strategy',
+          'zh-CN': '创业战略',
+        },
+        harnessTagI18n: {
+          'en-US': 'Startup Strategist',
+          'zh-CN': 'Startup Strategist',
+        },
+      })
+    );
+    expect(startupAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'startup-founder-problem-framing',
+        'startup-startup-canvas',
+        'startup-value-proposition',
+        'startup-ideal-customer-profile',
+        'startup-go-to-market-strategy',
+        'startup-north-star-metric',
+      ])
+    );
+    expect(officeAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...OFFICE_ANALYST_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Office Productivity',
+          'zh-CN': '办公生产力',
+        },
+        harnessTagI18n: {
+          'en-US': 'Office Analyst',
+          'zh-CN': 'Office Analyst',
+        },
+      })
+    );
+    expect(officeAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining(['office-cross-file-join-analysis', 'office-report-drilldown', 'office-pdf-table-query'])
+    );
+    expect(financeAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...FINANCE_ANALYST_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Finance & Planning',
+          'zh-CN': '财务与经营规划',
+        },
+        harnessTagI18n: {
+          'en-US': 'Finance Analyst',
+          'zh-CN': 'Finance Analyst',
+        },
+      })
+    );
+    expect(financeAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'finance-financial-statement-analysis',
+        'finance-dcf-valuation',
+        'finance-saas-metrics',
+        'finance-comparable-valuation',
+        'finance-investment-screening',
+        'finance-thesis-stress-test',
+      ])
+    );
+    expect(assistants.find((assistant) => assistant.id === 'builtin-pm-workbench')).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...PM_WORKBENCH_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Product Management',
+          'zh-CN': '产品管理',
+        },
+        harnessTagI18n: {
+          'en-US': 'PM Workbench',
+          'zh-CN': 'PM Workbench',
         },
       })
     );
@@ -74,8 +221,11 @@ describe('builtinAssistantDefaults', () => {
     const projectPromoter = systemAssistants.find(
       (assistant) => assistant.id === 'system-context-engine-project-promoter'
     );
+    const projectCapabilityCurator = systemAssistants.find(
+      (assistant) => assistant.id === 'system-context-engine-project-capability-curator'
+    );
 
-    expect(systemAssistants).toHaveLength(5);
+    expect(systemAssistants).toHaveLength(6);
     expect(sessionCompactor).toEqual(
       expect.objectContaining({
         builtinTier: 'system',
@@ -100,6 +250,20 @@ describe('builtinAssistantDefaults', () => {
         triggerKinds: ['derived', 'manual'],
       })
     );
+    expect(projectCapabilityCurator).toEqual(
+      expect.objectContaining({
+        builtinTier: 'system',
+        builtinVisibility: 'featured',
+        systemOwner: 'context-engine',
+        systemRole: 'context-engine-project-capability-curator',
+        executionBoundary: 'space-vault-root',
+        triggerKinds: ['hook', 'timer', 'manual', 'derived'],
+        promptProfile: expect.objectContaining({
+          role: 'system-maintenance',
+          jobType: 'project_capability_curation',
+        }),
+      })
+    );
   });
 
   it('falls back to preset defaults only when enabled hooks are missing', () => {
@@ -112,6 +276,21 @@ describe('builtinAssistantDefaults', () => {
 
   it('falls back to preset defaults only when enabled skills are missing', () => {
     expect(resolveBuiltinAssistantEnabledSkills('builtin-morph-ppt', undefined)).toEqual(['morph-ppt']);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-design-director', undefined)).toEqual([
+      ...DESIGN_DIRECTOR_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-startup-strategist', undefined)).toEqual([
+      ...STARTUP_STRATEGIST_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-office-analyst', undefined)).toEqual([
+      ...OFFICE_ANALYST_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-finance-analyst', undefined)).toEqual([
+      ...FINANCE_ANALYST_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-pm-workbench', undefined)).toEqual([
+      ...PM_WORKBENCH_DEFAULT_SKILLS,
+    ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-superpowers', undefined)).toEqual([
       ...ENGINEERING_WORKBENCH_SKILLS,
     ]);

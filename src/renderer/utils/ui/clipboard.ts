@@ -8,17 +8,7 @@
  * Copy text to clipboard with fallback for non-secure contexts (e.g. WebUI over HTTP).
  * Uses navigator.clipboard when available, otherwise falls back to document.execCommand('copy').
  */
-export const copyText = async (text: string): Promise<void> => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    throw new Error('copyText requires a browser environment');
-  }
-
-  if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  // Fallback for non-secure contexts (WebUI over HTTP)
+const copyTextWithExecCommandFallback = (text: string): void => {
   const previousActiveElement = document.activeElement as HTMLElement | null;
   const textArea = document.createElement('textarea');
   textArea.value = text;
@@ -43,4 +33,23 @@ export const copyText = async (text: string): Promise<void> => {
       previousActiveElement.focus();
     }
   }
+};
+
+export const copyText = async (text: string): Promise<void> => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    throw new Error('copyText requires a browser environment');
+  }
+
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      copyTextWithExecCommandFallback(text);
+      return;
+    }
+  }
+
+  // Fallback for non-secure contexts (WebUI over HTTP)
+  copyTextWithExecCommandFallback(text);
 };

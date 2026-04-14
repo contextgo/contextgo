@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { matchesSettingsNavPath, normalizeSettingsAnchor } from '@/renderer/pages/settings/components/settingsNavigation';
+import {
+  matchesSettingsNavPath,
+  normalizeSettingsAnchor,
+} from '@/renderer/pages/settings/components/settingsNavigation';
 
 describe('settingsNavigation', () => {
   it('normalizes legacy display anchor to system', () => {

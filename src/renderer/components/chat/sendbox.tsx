@@ -14,7 +14,7 @@ import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils/ui/focus';
 import { getTextLayoutStyle, measureTextLineCount } from '@/renderer/utils/chat/textLayout';
 import { Button, Input, Message, Tag } from '@arco-design/web-react';
-import { ArrowUp, CloseSmall } from '@icon-park/react';
+import { ArrowUp, CloseSmall, SquareSmall } from '@icon-park/react';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -385,26 +385,30 @@ const SendBox: React.FC<{
   };
 
   // Reusable send button component
-  const stopButtonStyle = {
-    color: 'rgb(var(--danger-6))',
-    backgroundColor: 'rgba(var(--danger-6), 0.12)',
-    borderColor: 'rgba(var(--danger-6), 0.24)',
-  };
+  const hasStopAction = typeof onStop === 'function';
+  const stopButtonStyle = hasStopAction
+    ? {
+        color: 'rgb(var(--danger-6))',
+        backgroundColor: 'rgba(var(--danger-6), 0.12)',
+        borderColor: 'rgba(var(--danger-6), 0.24)',
+      }
+    : {
+        color: 'var(--text-tertiary)',
+        backgroundColor: 'var(--fill-2)',
+        borderColor: 'var(--border-base)',
+      };
 
-  const stopButton = onStop ? (
+  const stopButton = (
     <Button
       shape='circle'
       type='secondary'
-      className='bg-animate'
+      disabled={!hasStopAction}
+      className='bg-animate sendbox-stop-button'
       style={stopButtonStyle}
       aria-label={t('conversation.group.workflow.decision.stop')}
-      icon={<div className='mx-auto h-10px w-10px rounded-[2px] bg-current bg-animate' />}
-      onClick={stopHandler}
+      icon={<SquareSmall theme='filled' size='10' fill='currentColor' strokeWidth={3} />}
+      onClick={hasStopAction ? () => void stopHandler() : undefined}
     ></Button>
-  ) : (
-    <div className='flex h-32px w-32px items-center justify-center rounded-full bg-fill-2'>
-      <div className='size-12px rounded-[2px] bg-6 bg-animate'></div>
-    </div>
   );
 
   const sendButton = (

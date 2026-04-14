@@ -10,7 +10,7 @@ import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
 import { getPublicDocsUrl, PUBLIC_DOC_SLUGS } from '@/common/update/publicUrls';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { SettingsSubModal } from '@/renderer/components/settings';
-import { OFFICIAL_REMOTE_DEVICES_ROUTE, buildOfficialDeviceListUrl } from '@/renderer/utils/officialRemote';
+import { dispatchOfficialRemoteSwitcherEvent } from '@/renderer/utils/officialRemote';
 import { openExternalUrl } from '@/renderer/utils/platform';
 import { Button, Form, Input, Message, Switch, Tooltip } from '@arco-design/web-react';
 import { CheckOne, Copy, Earth, EditTwo, LinkCloud, Refresh } from '@icon-park/react';
@@ -46,6 +46,10 @@ const QRCodeSVGLazy = React.lazy(async () => {
 });
 
 const CLOUD_REMOTE_PROVIDERS: CloudAuthProviderId[] = ['github', 'google'];
+const formatExpiresAt = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+};
 
 /**
  * WebUI 设置内容组件
@@ -59,7 +63,7 @@ const WebuiModalContent: React.FC = () => {
   const [status, setStatus] = useState<IWebUIStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [startLoading, setStartLoading] = useState(false);
-  const port = WEBUI_DEFAULT_PORT;
+  const port = status?.port ?? WEBUI_DEFAULT_PORT;
   const [cachedIP, setCachedIP] = useState<string | null>(null);
   const [cachedPassword, setCachedPassword] = useState<string | null>(null);
   // 标记密码是否可以明文显示（首次启动且未复制过）/ Flag for plaintext password display (first startup and not copied)
@@ -573,12 +577,6 @@ const WebuiModalContent: React.FC = () => {
     }
   }, [status?.allowRemote, status?.running]);
 
-  // 格式化过期时间 / Format expiration time
-  const formatExpiresAt = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  };
-
   // 获取实际密码 / Get actual password
   const actualPassword = status?.initialPassword || cachedPassword;
   // 获取显示的密码 / Get display password
@@ -645,15 +643,11 @@ const WebuiModalContent: React.FC = () => {
     [t]
   );
 
-  const officialRemoteUrl = buildOfficialDeviceListUrl(cloudStatus?.authBaseUrl);
-
   const handleOpenOfficialRemote = useCallback(async () => {
     try {
-      if (typeof window !== 'undefined') {
-        window.location.hash = `#${OFFICIAL_REMOTE_DEVICES_ROUTE}`;
-      }
+      dispatchOfficialRemoteSwitcherEvent({ source: 'settings-webui' });
     } catch (error) {
-      console.error('[WebuiModal] Failed to open Official Remote:', error);
+      console.error('[WebuiModal] Failed to open Official Remote switcher:', error);
       Message.error(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
     }
   }, [t]);
@@ -718,7 +712,7 @@ const WebuiModalContent: React.FC = () => {
                 <div className='text-12px text-t-secondary'>{officialRemoteStatusText}</div>
                 <div className='flex flex-wrap gap-8px'>
                   <Button type='primary' onClick={() => void handleOpenOfficialRemote()}>
-                    {t('settings.webui.openOfficialRemote')}
+                    {t('settings.webui.switchDevice')}
                   </Button>
                 </div>
               </div>

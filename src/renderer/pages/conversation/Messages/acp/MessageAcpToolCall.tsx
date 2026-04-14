@@ -67,7 +67,7 @@ const ContentView: React.FC<{ content: IMessageAcpToolCall['content']['update'][
       <div className='mt-3'>
         <div className='bg-1 p-3 rounded border overflow-hidden'>
           <div className='overflow-x-auto break-words'>
-            <MarkdownView>{content.content.text}</MarkdownView>
+            <MarkdownView codeVariant='result-card'>{content.content.text}</MarkdownView>
           </div>
         </div>
       </div>
@@ -109,7 +109,7 @@ const MessageAcpToolCall: React.FC<{ message: IMessageAcpToolCall }> = ({ messag
           {rawInput && (
             <div className='text-sm'>
               {typeof rawInput === 'string' ? (
-                <MarkdownView>{`\`\`\`\n${rawInput}\n\`\`\``}</MarkdownView>
+                <MarkdownView codeVariant='result-card'>{`\`\`\`\n${rawInput}\n\`\`\``}</MarkdownView>
               ) : (
                 <pre className='bg-1 p-2 rounded text-xs overflow-x-auto'>{JSON.stringify(rawInput, null, 2)}</pre>
               )}

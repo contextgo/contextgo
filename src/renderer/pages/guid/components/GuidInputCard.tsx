@@ -137,12 +137,7 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
           style={{ borderTop: '1px solid var(--border-base)' }}
         >
           <div className='flex items-center min-w-0 flex-1 gap-8px'>
-            <FolderOpen
-              className='app-icon flex-shrink-0'
-              theme='outline'
-              size='16'
-              fill={iconColors.secondary}
-            />
+            <FolderOpen className='app-icon flex-shrink-0' theme='outline' size='16' fill={iconColors.secondary} />
             <Tooltip content={dir} position='top' disabled={isMobile}>
               <span className='block min-w-0 whitespace-normal break-all leading-18px'>
                 {isMobile ? (

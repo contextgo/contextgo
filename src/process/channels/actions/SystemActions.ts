@@ -41,7 +41,7 @@ import {
   createSettingsCard as createDingTalkSettingsCard,
   createTipsCard as createDingTalkTipsCard,
 } from '../plugins/dingtalk/DingTalkCards';
-import type { PluginType } from '../types';
+import { resolveChannelConvType, type PluginType } from '../types';
 import type { ActionHandler, IRegisteredAction } from './types';
 import { SystemActionNames, createErrorResponse, createSuccessResponse } from './types';
 
@@ -105,17 +105,9 @@ function resolveStoredPreferredModel(value: unknown): { id: string; useModel: st
   };
 }
 
-function resolveChannelAgentSessionType(backend: string): 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' {
-  if (backend === 'gemini') {
-    return 'gemini';
-  }
-  if (backend === 'codex') {
-    return 'codex';
-  }
-  if (backend === 'openclaw-gateway') {
-    return 'openclaw-gateway';
-  }
-  return 'acp';
+function resolveChannelAgentSessionType(backend: string): 'gemini' | 'acp' | 'codex' {
+  const { convType } = resolveChannelConvType(backend);
+  return convType as 'gemini' | 'acp' | 'codex';
 }
 
 function resolveChannelAgentEmoji(backend: string): string {
@@ -127,9 +119,6 @@ function resolveChannelAgentEmoji(backend: string): string {
   }
   if (backend === 'codex') {
     return '⌘';
-  }
-  if (backend === 'openclaw-gateway') {
-    return '🦅';
   }
   return '🤖';
 }

@@ -88,9 +88,10 @@ function readJsonl(filePath) {
     return [];
   }
 
-  return fs.readFileSync(filePath, 'utf8')
+  return fs
+    .readFileSync(filePath, 'utf8')
     .split('\n')
-    .map(line => line.trim())
+    .map((line) => line.trim())
     .filter(Boolean)
     .reduce((rows, line) => {
       try {

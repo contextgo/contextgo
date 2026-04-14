@@ -48,7 +48,7 @@ function getValidator() {
 }
 
 function createFallbackValidator() {
-  const validate = state => {
+  const validate = (state) => {
     const errors = [];
     validate.errors = errors;
 
@@ -95,11 +95,16 @@ function createFallbackValidator() {
       return false;
     }
 
-    validateNoAdditionalProperties(
-      state,
-      '',
-      ['schemaVersion', 'installedAt', 'lastValidatedAt', 'target', 'request', 'resolution', 'source', 'operations']
-    );
+    validateNoAdditionalProperties(state, '', [
+      'schemaVersion',
+      'installedAt',
+      'lastValidatedAt',
+      'target',
+      'request',
+      'resolution',
+      'source',
+      'operations',
+    ]);
 
     if (state.schemaVersion !== 'ecc.install.v1') {
       pushError('/schemaVersion', 'must equal ecc.install.v1');
@@ -137,12 +142,20 @@ function createFallbackValidator() {
     if (!request || typeof request !== 'object' || Array.isArray(request)) {
       pushError('/request', 'must be object');
     } else {
-      validateNoAdditionalProperties(
-        request,
-        '/request',
-        ['profile', 'modules', 'includeComponents', 'excludeComponents', 'legacyLanguages', 'legacyMode']
-      );
-      if (!(Object.prototype.hasOwnProperty.call(request, 'profile') && (request.profile === null || typeof request.profile === 'string'))) {
+      validateNoAdditionalProperties(request, '/request', [
+        'profile',
+        'modules',
+        'includeComponents',
+        'excludeComponents',
+        'legacyLanguages',
+        'legacyMode',
+      ]);
+      if (
+        !(
+          Object.prototype.hasOwnProperty.call(request, 'profile') &&
+          (request.profile === null || typeof request.profile === 'string')
+        )
+      ) {
         pushError('/request/profile', 'must be string or null');
       }
       validateStringArray(request.modules, '/request/modules');
@@ -219,9 +232,7 @@ function createFallbackValidator() {
 }
 
 function formatValidationErrors(errors = []) {
-  return errors
-    .map(error => `${error.instancePath || '/'} ${error.message}`)
-    .join('; ');
+  return errors.map((error) => `${error.instancePath || '/'} ${error.message}`).join('; ');
 }
 
 function validateInstallState(state) {
@@ -255,24 +266,14 @@ function createInstallState(options) {
     request: {
       profile: options.request.profile || null,
       modules: Array.isArray(options.request.modules) ? [...options.request.modules] : [],
-      includeComponents: Array.isArray(options.request.includeComponents)
-        ? [...options.request.includeComponents]
-        : [],
-      excludeComponents: Array.isArray(options.request.excludeComponents)
-        ? [...options.request.excludeComponents]
-        : [],
-      legacyLanguages: Array.isArray(options.request.legacyLanguages)
-        ? [...options.request.legacyLanguages]
-        : [],
+      includeComponents: Array.isArray(options.request.includeComponents) ? [...options.request.includeComponents] : [],
+      excludeComponents: Array.isArray(options.request.excludeComponents) ? [...options.request.excludeComponents] : [],
+      legacyLanguages: Array.isArray(options.request.legacyLanguages) ? [...options.request.legacyLanguages] : [],
       legacyMode: Boolean(options.request.legacyMode),
     },
     resolution: {
-      selectedModules: Array.isArray(options.resolution.selectedModules)
-        ? [...options.resolution.selectedModules]
-        : [],
-      skippedModules: Array.isArray(options.resolution.skippedModules)
-        ? [...options.resolution.skippedModules]
-        : [],
+      selectedModules: Array.isArray(options.resolution.selectedModules) ? [...options.resolution.selectedModules] : [],
+      skippedModules: Array.isArray(options.resolution.skippedModules) ? [...options.resolution.skippedModules] : [],
     },
     source: {
       repoVersion: options.source.repoVersion || null,
@@ -280,7 +281,7 @@ function createInstallState(options) {
       manifestVersion: options.source.manifestVersion,
     },
     operations: Array.isArray(options.operations)
-      ? options.operations.map(operation => cloneJsonValue(operation))
+      ? options.operations.map((operation) => cloneJsonValue(operation))
       : [],
   };
 

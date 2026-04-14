@@ -10,6 +10,14 @@ import { isBuiltinChannelType, type BuiltinChannelType } from '@/common/config/b
 // ==================== Plugin Types ====================
 
 /**
+ * This module models the IM channel/publication subsystem.
+ *
+ * It is intentionally separate from Space connectors:
+ * - channels/publication = IM transport, audience routing, agent delivery
+ * - connectors = external product access and operation boundaries
+ */
+
+/**
  * Built-in platform types for channel plugins.
  */
 export type BuiltinPluginType = BuiltinChannelType;
@@ -180,7 +188,7 @@ export type IConnectorInstance = IChannelAccount;
 export interface IRemoteIdentity {
   id: string;
   connectorId: string;
-  /** @deprecated Use connectorId. */
+  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   remoteUserId?: string;
   /** Stable peer/audience key used for routing and session isolation. */
@@ -221,6 +229,7 @@ export interface IAgentProfile {
   modelRef?: Pick<TProviderWithModel, 'id' | 'useModel'> &
     Partial<Pick<TProviderWithModel, 'platform' | 'name' | 'baseUrl'>>;
   workspaceRef?: string;
+  spaceId?: string;
   promptProfile?: Record<string, unknown>;
   toolPolicy?: Record<string, unknown>;
   memoryPolicy?: Record<string, unknown>;
@@ -260,7 +269,7 @@ export interface IChannelControlLease {
 export interface IChannelBinding {
   id: string;
   connectorId: string;
-  /** @deprecated Use connectorId. */
+  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   scopeType: ChannelBindingScopeType;
   scopeKey?: string;
@@ -288,7 +297,7 @@ export type ChannelAudienceScope = 'remote_user' | 'remote_chat';
 export interface IChannelAudienceEntry {
   key: string;
   connectorId: string;
-  /** @deprecated Use connectorId. */
+  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   scopeType: ChannelAudienceScope;
   remoteIdentityId?: string;
@@ -368,7 +377,7 @@ export type IChannelContinuationReleaseResult = {
 export interface IExternalSession {
   id: string;
   connectorId: string;
-  /** @deprecated Use connectorId. */
+  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   remoteIdentityId: string;
   bindingId?: string;
@@ -696,7 +705,7 @@ export interface IChannelRun {
 export interface IChannelUser {
   id: string;
   connectorId?: string;
-  /** @deprecated Use connectorId. */
+  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   platformUserId: string;
   platformType: PluginType;
@@ -709,7 +718,7 @@ export interface IChannelUser {
 export interface IChannelAuthorizedTarget {
   id: string;
   connectorId?: string;
-  /** @deprecated Use connectorId. */
+  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   platformType: PluginType;
   targetId: string;
@@ -742,7 +751,7 @@ export interface IChannelUserRow {
 /**
  * Agent types supported in assistant sessions
  */
-export type ChannelAgentType = 'gemini' | 'acp' | 'codex' | 'openclaw-gateway';
+export type ChannelAgentType = 'gemini' | 'acp' | 'codex';
 
 /**
  * User session in the assistant system
@@ -761,13 +770,13 @@ export interface IChannelSession {
 export type IChannelActiveSessionEntry = {
   id: string;
   connectorId?: string;
-  /** @deprecated Use connectorId. */
+  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   connectorName?: string;
-  /** @deprecated Use connectorName. */
+  /** Preferred in new IM publication code. `connectorName` is a legacy compatibility alias. */
   channelAccountName?: string;
   connectorPlatform?: PluginType;
-  /** @deprecated Use connectorPlatform. */
+  /** Preferred in new IM publication code. `connectorPlatform` is a legacy compatibility alias. */
   channelAccountPlatform?: PluginType;
   remoteIdentityId?: string;
   audienceTitle: string;
@@ -826,7 +835,7 @@ export interface IChannelPairingRequest {
   platformUserId: string;
   platformType: PluginType;
   connectorId?: string;
-  /** @deprecated Use connectorId. */
+  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   remoteChatId?: string;
   displayName?: string;
@@ -1180,9 +1189,8 @@ export function resolveChannelConvType(backend: string): {
   convType: string;
   convBackend?: string;
 } {
-  if (backend === 'codex') return { convType: 'codex' };
   if (backend === 'gemini') return { convType: 'gemini' };
-  if (backend === 'openclaw-gateway') return { convType: 'openclaw-gateway' };
+  if (backend === 'codex') return { convType: 'acp', convBackend: 'codex' };
   return { convType: 'acp', convBackend: backend };
 }
 

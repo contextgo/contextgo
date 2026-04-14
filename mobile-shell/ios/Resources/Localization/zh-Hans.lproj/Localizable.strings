@@ -55,10 +55,8 @@
 "home.metric.live" = "进行中的会话";
 "home.account.title" = "官方账户摘要";
 "home.account.detail" = "当前移动端已经挂在你的官方账户会话上。你现在可以直接打开下面任意已就绪的桌面，不需要再切到另一张列表页。";
-"home.account.action" = "查看全部设备";
 "home.recent.title" = "你的设备";
 "home.recent.subtitle" = "登录后的首页会直接展示你的全部桌面设备。";
-"home.recent.action" = "查看完整设备列表";
 "home.recent.empty.title" = "暂时还没有桌面设备";
 "home.recent.empty.detail" = "保持桌面端在线并登录 ContextGo Cloud，设备会自动出现在这里。";
 "home.device.status.available" = "可立即打开";

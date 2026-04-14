@@ -23,12 +23,12 @@ This transcribes the audio track and builds a searchable index over the spoken c
 
 **Parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `language_code` | `str\|None` | `None` | Language code of the video |
-| `segmentation_type` | `SegmentationType` | `SegmentationType.sentence` | Segmentation type (`sentence` or `llm`) |
-| `force` | `bool` | `False` | Set to `True` to skip if already indexed (avoids "already exists" error) |
-| `callback_url` | `str\|None` | `None` | Webhook URL for async notification |
+| Parameter           | Type               | Default                     | Description                                                              |
+| ------------------- | ------------------ | --------------------------- | ------------------------------------------------------------------------ |
+| `language_code`     | `str\|None`        | `None`                      | Language code of the video                                               |
+| `segmentation_type` | `SegmentationType` | `SegmentationType.sentence` | Segmentation type (`sentence` or `llm`)                                  |
+| `force`             | `bool`             | `False`                     | Set to `True` to skip if already indexed (avoids "already exists" error) |
+| `callback_url`      | `str\|None`        | `None`                      | Webhook URL for async notification                                       |
 
 ### Scene Index
 
@@ -53,11 +53,11 @@ except Exception as e:
 
 **Extraction types:**
 
-| Type | Description | Best For |
-|------|-------------|----------|
-| `SceneExtractionType.shot_based` | Splits on visual shot boundaries | General purpose, action content |
-| `SceneExtractionType.time_based` | Splits at fixed intervals | Uniform sampling, long static content |
-| `SceneExtractionType.transcript` | Splits based on transcript segments | Speech-driven scene boundaries |
+| Type                             | Description                         | Best For                              |
+| -------------------------------- | ----------------------------------- | ------------------------------------- |
+| `SceneExtractionType.shot_based` | Splits on visual shot boundaries    | General purpose, action content       |
+| `SceneExtractionType.time_based` | Splits at fixed intervals           | Uniform sampling, long static content |
+| `SceneExtractionType.transcript` | Splits based on transcript segments | Speech-driven scene boundaries        |
 
 **Parameters for `time_based`:**
 

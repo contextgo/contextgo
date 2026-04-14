@@ -1,0 +1,148 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "finance-analyst",
+  "assistantPresetId": "builtin-finance-analyst",
+  "displayName": "Finance Analyst",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "workspace"
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "financial statement analysis and variance review",
+        "valuation, scenario planning, and benchmark work",
+        "decision-ready finance artifacts for operators and investors"
+      ],
+      "suggestedArtifacts": ["financial extracts", "variance views", "valuation notes", "investment memos"],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/analysis/README.md",
+          "target": "docs/analysis/README.md"
+        },
+        {
+          "source": "workspace/docs/valuation/README.md",
+          "target": "docs/valuation/README.md"
+        },
+        {
+          "source": "workspace/docs/scenarios/README.md",
+          "target": "docs/scenarios/README.md"
+        }
+      ]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/finance-analyst-pack"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/office-analyst-pack"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/xlsx"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/docx"
+        },
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/pdf"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "xlsx",
+        "docx",
+        "pdf",
+        "office-document-operations",
+        "office-duckdb-read-file",
+        "office-duckdb-query",
+        "office-duckdb-install",
+        "office-source-reconciliation",
+        "finance-financial-statement-analysis",
+        "finance-ratio-benchmarking",
+        "finance-budget-variance-analysis",
+        "finance-dcf-valuation",
+        "finance-forecast-scenario-planning",
+        "finance-saas-metrics",
+        "finance-investment-memo",
+        "finance-comparable-valuation",
+        "finance-investment-screening",
+        "finance-thesis-stress-test"
+      ],
+      "packagedSkillNames": [
+        "finance-financial-statement-analysis",
+        "finance-ratio-benchmarking",
+        "finance-budget-variance-analysis",
+        "finance-dcf-valuation",
+        "finance-forecast-scenario-planning",
+        "finance-saas-metrics",
+        "finance-investment-memo",
+        "finance-comparable-valuation",
+        "finance-investment-screening",
+        "finance-thesis-stress-test"
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "finance-analyst"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "finance-analyst"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "finance-analyst"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "finance-analyst"
+    }
+  }
+}

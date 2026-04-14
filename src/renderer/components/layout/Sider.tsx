@@ -1,4 +1,10 @@
 import { ipcBridge } from '@/common';
+import type {
+  CloudAuthProviderId,
+  CloudRemoteDevice,
+  CloudRemoteDevicesPayload,
+  CloudStatus,
+} from '@/common/types/cloud';
 import type { SpaceProviderRef, SpaceVaultProviderRef } from '@/common/config/storage';
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { changeLanguage } from '@/renderer/services/i18n';
@@ -9,11 +15,9 @@ import {
   Down,
   Earth,
   LinkCloud,
-  Lightning,
   FolderOpen,
   Moon,
   Plus,
-  Puzzle,
   Right,
   Robot,
   RobotOne,
@@ -41,7 +45,7 @@ import { useConversationTabs } from '@renderer/pages/conversation/hooks/Conversa
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import { isElectronDesktop, isMacOS, isMobileShellWebView, openExternalUrl } from '@renderer/utils/platform';
-import { OFFICIAL_REMOTE_DEVICES_ROUTE } from '@renderer/utils/officialRemote';
+import { buildOfficialRemoteDevicesRoute, OFFICIAL_REMOTE_SWITCHER_EVENT } from '@renderer/utils/officialRemote';
 import { preloadRoutePath } from './routerLocation';
 import { ContextGoModal } from '../base';
 
@@ -62,7 +66,28 @@ const LANGUAGE_OPTIONS = [
   { value: 'en-US', label: 'English' },
 ] as const;
 
-const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: string) => (
+const DEVICE_SWITCHER_REQUEST_TIMEOUT_MS = 6_000;
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(label + ' timed out after ' + timeoutMs + 'ms'));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
+
+const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: React.ReactNode) => (
   <div className='sider-user-menu__row'>
     <span className='sider-user-menu__icon'>{icon}</span>
     <span className='sider-user-menu__row-text'>{label}</span>
@@ -78,6 +103,122 @@ const buildObsidianVaultUri = (providerRef: SpaceVaultProviderRef): string => {
   const encodedVaultName = encodeURIComponent(providerRef.vaultName);
   const encodedFile = providerRef.landingNotePath ? `&file=${encodeURIComponent(providerRef.landingNotePath)}` : '';
   return `obsidian://open?vault=${encodedVaultName}${encodedFile}`;
+};
+
+const isOpenableRemoteDevice = (device: CloudRemoteDevice): boolean => {
+  return (
+    device.status === 'active' &&
+    device.remoteStatus.connected === true &&
+    device.remoteStatus.browserEntryReady === true
+  );
+};
+
+const isCurrentCloudDeviceReady = (cloudStatus: CloudStatus | null): boolean => {
+  return Boolean(
+    cloudStatus?.authenticated &&
+    (cloudStatus.officialRemoteReady === true ||
+      (cloudStatus.officialRemote.running === true && cloudStatus.officialRemote.browserEntryReady === true))
+  );
+};
+
+const shouldEnsureCurrentCloudDevice = (cloudStatus: CloudStatus | null): boolean => {
+  if (!cloudStatus?.authenticated || !cloudStatus.device || !cloudStatus.deviceTokenAvailable) {
+    return false;
+  }
+
+  if (cloudStatus.officialRemote?.needsAttention === true) {
+    return false;
+  }
+
+  return !isCurrentCloudDeviceReady(cloudStatus);
+};
+
+const getRemoteDeviceStatusKey = (
+  device: CloudRemoteDevice,
+  cloudStatus: CloudStatus | null,
+  isCurrentDevice = false
+): string => {
+  if (!cloudStatus?.authenticated) {
+    return 'settings.webui.officialRemoteStatusShort.signedOut';
+  }
+
+  if (isCurrentDevice) {
+    if (isCurrentCloudDeviceReady(cloudStatus)) {
+      return 'settings.webui.officialRemoteStatusShort.ready';
+    }
+
+    if (cloudStatus.officialRemote?.needsAttention) {
+      return 'settings.webui.officialRemoteStatusShort.relogin';
+    }
+
+    if (!cloudStatus.deviceTokenAvailable) {
+      return 'settings.webui.officialRemoteStatusShort.linking';
+    }
+
+    if (cloudStatus.officialRemote?.running) {
+      return 'settings.webui.officialRemoteStatusShort.preparing';
+    }
+
+    if (cloudStatus.officialRemote?.desired) {
+      return 'settings.webui.officialRemoteStatusShort.connecting';
+    }
+
+    return 'settings.webui.officialRemoteStatusShort.unavailable';
+  }
+
+  if (device.remoteStatus.clientConnected || isOpenableRemoteDevice(device)) {
+    return 'settings.webui.officialRemoteStatusShort.ready';
+  }
+
+  if (device.remoteStatus.connected) {
+    return 'settings.webui.officialRemoteStatusShort.preparing';
+  }
+
+  return 'settings.webui.officialRemoteStatusShort.unavailable';
+};
+
+const formatRemoteDeviceLastSeen = (value: string | null | undefined, language: string): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new Intl.DateTimeFormat(language, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+};
+
+const buildCurrentDeviceFallback = (
+  cloudStatus: CloudStatus | null,
+  remoteDevices: CloudRemoteDevice[]
+): CloudRemoteDevice | null => {
+  if (!cloudStatus?.device) {
+    return null;
+  }
+
+  if (remoteDevices.some((device) => device.id === cloudStatus.device?.id)) {
+    return null;
+  }
+
+  return {
+    ...cloudStatus.device,
+    remoteStatus: {
+      connected: cloudStatus.officialRemote.running === true,
+      clientConnected: cloudStatus.officialRemote.clientConnected === true,
+      transport: cloudStatus.officialRemote.transport,
+      browserEntryReady: cloudStatus.officialRemote.browserEntryReady === true,
+      browserEntryReason: cloudStatus.officialRemote.browserEntryReason,
+      browserEntryUrl: null,
+      connectedAt: null,
+      clientConnectedAt: null,
+    },
+  };
 };
 
 const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
@@ -100,16 +241,20 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const [userMenuVisible, setUserMenuVisible] = useState(false);
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const [openingSpaceVault, setOpeningSpaceVault] = useState(false);
-  const [cloudStatus, setCloudStatus] = useState<import('@/common/types/cloud').CloudStatus | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<CloudStatus | null>(null);
   const [cloudLoading, setCloudLoading] = useState(false);
-  const [authLoadingProvider, setAuthLoadingProvider] = useState<
-    import('@/common/types/cloud').CloudAuthProviderId | null
-  >(null);
+  const [authLoadingProvider, setAuthLoadingProvider] = useState<CloudAuthProviderId | null>(null);
   const [cloudActionLoading, setCloudActionLoading] = useState<'infermesh' | 'logout' | null>(null);
+  const [cloudLoginVisible, setCloudLoginVisible] = useState(false);
+  const [deviceSwitchVisible, setDeviceSwitchVisible] = useState(false);
+  const [remoteDevicesPayload, setRemoteDevicesPayload] = useState<CloudRemoteDevicesPayload | null>(null);
+  const [remoteDevicesLoading, setRemoteDevicesLoading] = useState(false);
+  const [remoteDevicesError, setRemoteDevicesError] = useState<string | null>(null);
+  const [openingRemoteDeviceId, setOpeningRemoteDeviceId] = useState<string | null>(null);
   const isSettings = pathname.startsWith('/settings');
   const isConversationRoute = pathname.startsWith('/conversation/');
   const isDesktopRuntime = isElectronDesktop();
-  const isRemoteDeviceActive = remoteAccess?.target.mode === 'remote-device';
+
   const showDesktopChromeOverlayInset = !isMobile && !isConversationRoute && (!isDesktopRuntime || isMacOS());
   const { cliAgents, presetAssistants } = useConversationAgents();
   const { activeTab, openTab } = useConversationTabs();
@@ -123,12 +268,19 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     createSpace,
   } = useSelectedSpace();
 
-  const refreshCloudStatus = async (): Promise<import('@/common/types/cloud').CloudStatus | null> => {
+  const refreshCloudStatus = async (): Promise<CloudStatus | null> => {
     setCloudLoading(true);
     try {
-      const result = await ipcBridge.cloud.getStatus.invoke();
+      const result = await withTimeout(
+        ipcBridge.cloud.getStatus.invoke(),
+        DEVICE_SWITCHER_REQUEST_TIMEOUT_MS,
+        'Cloud status'
+      );
       if (result.success && result.data) {
         setCloudStatus(result.data);
+        if (!result.data.authenticated) {
+          setRemoteDevicesPayload(null);
+        }
         return result.data;
       }
     } catch (error) {
@@ -187,6 +339,19 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const handleOpenSettings = () => {
     setUserMenuVisible(false);
     handleNavigate('/settings/system');
+  };
+
+  const handleOpenCloudLogin = () => {
+    setUserMenuVisible(false);
+    setCloudLoginVisible(true);
+  };
+
+  const handleCloseCloudLogin = () => {
+    if (authLoadingProvider) {
+      return;
+    }
+
+    setCloudLoginVisible(false);
   };
 
   const handleOpenSpaceVault = async () => {
@@ -355,6 +520,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
 
     const unsubscribe = ipcBridge.cloud.statusChanged.on((nextStatus) => {
       setCloudStatus(nextStatus);
+      if (!nextStatus.authenticated) {
+        setRemoteDevicesPayload(null);
+      }
       setCloudLoading(false);
       setAuthLoadingProvider(null);
       setCloudActionLoading(null);
@@ -364,18 +532,24 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       unsubscribe();
     };
   }, []);
-  const handleCloudLogin = async (provider: import('@/common/types/cloud').CloudAuthProviderId) => {
+  const handleCloudLogin = async (provider: CloudAuthProviderId) => {
     setAuthLoadingProvider(provider);
     try {
       const result = await ipcBridge.cloud.startLogin.invoke({ provider });
       if (result.success && result.data) {
         setCloudStatus(result.data);
+        if (deviceSwitchVisible && result.data.authenticated) {
+          void loadRemoteDevices();
+        }
         Message.success(t('settings.cloud.loginSuccess'));
         return;
       }
 
       const reconciledStatus = await refreshCloudStatus();
       if (reconciledStatus?.user) {
+        if (deviceSwitchVisible) {
+          void loadRemoteDevices();
+        }
         Message.success(t('settings.cloud.loginSuccess'));
         return;
       }
@@ -385,6 +559,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       console.error('[Sider] Cloud login failed:', error);
       const reconciledStatus = await refreshCloudStatus();
       if (reconciledStatus?.user) {
+        if (deviceSwitchVisible) {
+          void loadRemoteDevices();
+        }
         Message.success(t('settings.cloud.loginSuccess'));
         return;
       }
@@ -401,6 +578,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       const result = await ipcBridge.cloud.logout.invoke();
       if (result.success && result.data) {
         setCloudStatus(result.data);
+        setRemoteDevicesPayload(null);
         Message.success(t('settings.cloud.logoutSuccess'));
         return;
       }
@@ -432,9 +610,124 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     }
   };
 
-  const handleOpenCloudPortal = async () => {
+  const loadRemoteDevices = async (options?: {
+    preserveLoadingState?: boolean;
+  }): Promise<CloudRemoteDevicesPayload | null> => {
+    if (!options?.preserveLoadingState) {
+      setRemoteDevicesLoading(true);
+    }
+    setRemoteDevicesError(null);
+    try {
+      const result = await withTimeout(
+        ipcBridge.cloud.listRemoteDevices.invoke(),
+        DEVICE_SWITCHER_REQUEST_TIMEOUT_MS,
+        'Remote device list'
+      );
+      if (result.success && result.data) {
+        setRemoteDevicesPayload(result.data);
+        return result.data;
+      }
+
+      setRemoteDevicesError(result.msg || t('settings.cloud.actionFailed'));
+    } catch (error) {
+      console.error('[Sider] Failed to load remote devices:', error);
+      setRemoteDevicesError(error instanceof Error ? error.message : t('settings.cloud.actionFailed'));
+    } finally {
+      if (!options?.preserveLoadingState) {
+        setRemoteDevicesLoading(false);
+      }
+    }
+
+    return null;
+  };
+
+  const reconcileCurrentDeviceForSwitcher = async (status: CloudStatus | null): Promise<void> => {
+    if (!status?.authenticated || !shouldEnsureCurrentCloudDevice(status)) {
+      return;
+    }
+
+    try {
+      const ensured = await withTimeout(
+        ipcBridge.cloud.ensureOfficialRemoteReady.invoke(),
+        DEVICE_SWITCHER_REQUEST_TIMEOUT_MS,
+        'Official Remote readiness'
+      );
+      if (ensured.success && ensured.data) {
+        setCloudStatus(ensured.data);
+        return;
+      }
+
+      if (ensured.msg) {
+        console.error('[Sider] Failed to ensure Official Remote readiness:', ensured.msg);
+      }
+    } catch (error) {
+      console.error('[Sider] Failed to ensure Official Remote readiness:', error);
+    }
+  };
+
+  const prepareRemoteDevicesForSwitcher = async (status: CloudStatus | null): Promise<void> => {
+    if (!status?.authenticated) {
+      return;
+    }
+
+    setRemoteDevicesError(null);
+    const ensurePromise = reconcileCurrentDeviceForSwitcher(status);
+    await loadRemoteDevices();
+    void ensurePromise;
+  };
+
+  const handleOpenDeviceSwitcher = () => {
     setUserMenuVisible(false);
-    handleNavigate(OFFICIAL_REMOTE_DEVICES_ROUTE);
+    setDeviceSwitchVisible(true);
+    setRemoteDevicesError(null);
+
+    if (cloudStatus?.authenticated) {
+      void prepareRemoteDevicesForSwitcher(cloudStatus);
+      return;
+    }
+
+    setRemoteDevicesPayload(null);
+    void refreshCloudStatus().then((status) => {
+      if (status?.authenticated) {
+        void prepareRemoteDevicesForSwitcher(status);
+      }
+    });
+  };
+
+  const handleCloseDeviceSwitcher = () => {
+    if (openingRemoteDeviceId) {
+      return;
+    }
+
+    setDeviceSwitchVisible(false);
+    setRemoteDevicesError(null);
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleOpenOfficialRemoteSwitcher = () => {
+      handleOpenDeviceSwitcher();
+    };
+
+    window.addEventListener(OFFICIAL_REMOTE_SWITCHER_EVENT, handleOpenOfficialRemoteSwitcher);
+    return () => {
+      window.removeEventListener(OFFICIAL_REMOTE_SWITCHER_EVENT, handleOpenOfficialRemoteSwitcher);
+    };
+  }, [cloudStatus?.authenticated]);
+
+  const handleOpenRemoteDevice = (deviceId: string) => {
+    const normalizedDeviceId = deviceId.trim();
+    if (!normalizedDeviceId) {
+      return;
+    }
+
+    setOpeningRemoteDeviceId(normalizedDeviceId);
+    setDeviceSwitchVisible(false);
+    handleNavigate(buildOfficialRemoteDevicesRoute({ preferredDeviceId: normalizedDeviceId }));
+    setOpeningRemoteDeviceId(null);
   };
 
   const workspaceHistoryProps = {
@@ -460,13 +753,37 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   ];
   const currentThemeLabel = themeOptions.find((option) => option.value === theme)?.label || t('settings.theme');
   const userDisplayName = user?.displayName || user?.username || desktopUsername || t('common.localUser');
-  const cloudUserDisplayName =
-    cloudStatus?.user?.displayName || cloudStatus?.user?.username || t('settings.cloud.title');
-  const cloudUserSubtitle = cloudStatus?.user?.email
-    ? cloudStatus.user.email
-    : cloudStatus?.user?.username
-      ? `@${cloudStatus.user.username}`
-      : t('settings.cloud.notConnected');
+  const currentDeviceName = cloudStatus?.device?.deviceName || t('settings.webui.switchDeviceUnknown');
+  const remoteDevices = remoteDevicesPayload?.devices ?? [];
+  const currentDeviceFallback = useMemo(
+    () => buildCurrentDeviceFallback(cloudStatus, remoteDevices),
+    [cloudStatus, remoteDevices]
+  );
+  const switcherDevices = useMemo(
+    () => (currentDeviceFallback ? [...remoteDevices, currentDeviceFallback] : remoteDevices),
+    [currentDeviceFallback, remoteDevices]
+  );
+  const preferredRemoteDeviceId = remoteDevicesPayload?.selection.preferredDeviceId ?? null;
+  const currentCloudDeviceId = cloudStatus?.device?.id ?? null;
+  const orderedRemoteDevices = useMemo(() => {
+    return [...switcherDevices].sort((left, right) => {
+      const leftIsCurrent = currentCloudDeviceId === left.id;
+      const rightIsCurrent = currentCloudDeviceId === right.id;
+      if (leftIsCurrent !== rightIsCurrent) {
+        return leftIsCurrent ? 1 : -1;
+      }
+
+      const leftIsOpenable = isOpenableRemoteDevice(left);
+      const rightIsOpenable = isOpenableRemoteDevice(right);
+      if (leftIsOpenable !== rightIsOpenable) {
+        return leftIsOpenable ? -1 : 1;
+      }
+
+      const leftLastSeen = left.lastSeenAt ? Date.parse(left.lastSeenAt) : 0;
+      const rightLastSeen = right.lastSeenAt ? Date.parse(right.lastSeenAt) : 0;
+      return rightLastSeen - leftLastSeen;
+    });
+  }, [currentCloudDeviceId, switcherDevices]);
   const userSecondaryText = useMemo(() => {
     if (user?.email) {
       return user.email;
@@ -479,7 +796,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     return `${currentLanguageLabel} · ${currentThemeLabel}`;
   }, [currentLanguageLabel, currentThemeLabel, user?.email, user?.username]);
   const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
-  const cloudInitial = cloudUserDisplayName.trim().charAt(0).toUpperCase() || 'C';
   const createEntryDropdownTriggerProps = {
     autoAlignPopupWidth: true,
     autoFitPosition: true,
@@ -609,13 +925,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       className='sider-user-menu'
       triggerProps={userSubMenuTriggerProps}
       onClickMenuItem={(key) => {
-        if (key === 'cloud:github') {
-          void handleCloudLogin('github');
-          return;
-        }
-
-        if (key === 'cloud:google') {
-          void handleCloudLogin('google');
+        if (key === 'cloud:login') {
+          handleOpenCloudLogin();
           return;
         }
 
@@ -634,8 +945,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           return;
         }
 
-        if (key === 'cloud-status') {
-          void handleOpenCloudPortal();
+        if (key === 'device-switch') {
+          handleOpenDeviceSwitcher();
           return;
         }
 
@@ -662,34 +973,12 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         }
       }}
     >
-      <Menu.Item key='cloud-status'>
-        <div className='sider-user-menu__cloud-card'>
-          <span className='sider-user-menu__cloud-avatar'>
-            {cloudStatus?.user?.avatarUrl ? (
-              <img
-                src={cloudStatus.user.avatarUrl}
-                alt={cloudUserDisplayName}
-                className='sider-user-menu__cloud-avatar-image'
-              />
-            ) : (
-              cloudInitial
-            )}
-          </span>
-          <span className='sider-user-menu__cloud-meta'>
-            <span className='block truncate text-13px font-600 text-t-primary'>
-              {cloudStatus?.user ? cloudUserDisplayName : t('settings.cloud.title')}
-            </span>
-            <span className='block truncate text-12px text-t-secondary'>
-              {cloudLoading ? t('settings.cloud.loading') : cloudUserSubtitle}
-            </span>
-          </span>
-          <Right
-            theme='outline'
-            size='14'
-            fill={iconColors.secondary}
-            className='app-icon sider-user-menu__cloud-arrow'
-          />
-        </div>
+      <Menu.Item key='device-switch'>
+        {renderUserMenuLabel(
+          <Computer theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
+          currentDeviceName,
+          <Right theme='outline' size='14' fill={iconColors.secondary} className='app-icon shrink-0' />
+        )}
       </Menu.Item>
       {cloudStatus?.user ? (
         <>
@@ -707,16 +996,11 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         </>
       ) : (
         <>
-          <Menu.Item key='cloud:github'>
+          <Menu.Item key='cloud:login'>
             {renderUserMenuLabel(
               <LinkCloud theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
-              authLoadingProvider === 'github' ? t('common.processing') : t('settings.cloud.loginWithGithub')
-            )}
-          </Menu.Item>
-          <Menu.Item key='cloud:google'>
-            {renderUserMenuLabel(
-              <LinkCloud theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
-              authLoadingProvider === 'google' ? t('common.processing') : t('settings.cloud.loginWithGoogle')
+              t('settings.cloud.title'),
+              t('settings.cloud.notConnected')
             )}
           </Menu.Item>
           <Menu.Item key='cloud:infermesh'>
@@ -862,33 +1146,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 type='button'
                 className={classNames(
                   actionRowClassName,
-                  pathname === OFFICIAL_REMOTE_DEVICES_ROUTE && 'sider-entry-row--active'
-                )}
-                onClick={() => {
-                  if (remoteAccess?.target.mode === 'remote-device') {
-                    remoteAccess.resetToDeviceList();
-                  }
-                  handleNavigate(OFFICIAL_REMOTE_DEVICES_ROUTE);
-                }}
-                onMouseEnter={() => handlePreloadRoute(OFFICIAL_REMOTE_DEVICES_ROUTE)}
-                onFocus={() => handlePreloadRoute(OFFICIAL_REMOTE_DEVICES_ROUTE)}
-              >
-                <Earth
-                  theme='outline'
-                  size='20'
-                  fill={iconColors.primary}
-                  className='app-icon block shrink-0 leading-none'
-                />
-                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
-                  {isRemoteDeviceActive
-                    ? t('settings.webui.officialRemoteTitle', { defaultValue: 'Official Remote' })
-                    : t('settings.webui.remoteDevicesNav', { defaultValue: 'Remote Devices' })}
-                </span>
-              </button>
-              <button
-                type='button'
-                className={classNames(
-                  actionRowClassName,
                   pathname.startsWith('/connectors') && 'sider-entry-row--active'
                 )}
                 onClick={() => handleNavigate('/connectors')}
@@ -907,41 +1164,12 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               </button>
               <button
                 type='button'
-                className={classNames(actionRowClassName, pathname === '/skills-hub' && 'sider-entry-row--active')}
-                onClick={() => handleNavigate('/skills-hub')}
-                onMouseEnter={() => handlePreloadRoute('/skills-hub')}
-                onFocus={() => handlePreloadRoute('/skills-hub')}
-              >
-                <Lightning
-                  theme='outline'
-                  size='20'
-                  fill={iconColors.primary}
-                  className='app-icon block shrink-0 leading-none'
-                />
-                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
-                  {t('settings.skillsHub.title')}
-                </span>
-              </button>
-              <button
-                type='button'
-                className={classNames(actionRowClassName, pathname === '/hooks' && 'sider-entry-row--active')}
-                onClick={() => handleNavigate('/hooks')}
-                onMouseEnter={() => handlePreloadRoute('/hooks')}
-                onFocus={() => handlePreloadRoute('/hooks')}
-              >
-                <Puzzle
-                  theme='outline'
-                  size='20'
-                  fill={iconColors.primary}
-                  className='app-icon block shrink-0 leading-none'
-                />
-                <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
-                  {t('settings.hooksPage', { defaultValue: 'Hooks' })}
-                </span>
-              </button>
-              <button
-                type='button'
-                className={classNames(actionRowClassName, pathname === '/agents' && 'sider-entry-row--active')}
+                className={classNames(
+                  actionRowClassName,
+                  pathname === '/agents' || pathname.startsWith('/agents/')
+                    ? 'sider-entry-row--active'
+                    : null
+                )}
                 onClick={() => handleNavigate('/agents')}
                 onMouseEnter={() => handlePreloadRoute('/agents')}
                 onFocus={() => handlePreloadRoute('/agents')}
@@ -1012,6 +1240,193 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
             </button>
           </Dropdown>
         </div>
+        <ContextGoModal
+          visible={cloudLoginVisible}
+          onCancel={handleCloseCloudLogin}
+          className='cloud-login-modal'
+          header={{
+            title: t('settings.cloud.title'),
+            showClose: true,
+            className: 'px-20px pt-16px',
+          }}
+          footer={{
+            className: 'px-20px pb-16px',
+            render: () => (
+              <div className='flex justify-end gap-10px pt-4px'>
+                <Button onClick={handleCloseCloudLogin} disabled={Boolean(authLoadingProvider)}>
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            ),
+          }}
+          style={{ width: '420px' }}
+          contentStyle={{ padding: '0' }}
+        >
+          <div className='px-20px pb-16px'>
+            <div className='flex flex-col gap-12px py-4px'>
+              <div className='text-14px font-600 text-t-primary'>{t('settings.cloud.notConnected')}</div>
+              <div className='text-13px leading-relaxed text-t-secondary'>{t('settings.cloud.notConnectedDesc')}</div>
+              <div className='flex flex-wrap gap-10px pt-4px'>
+                <Button
+                  type='primary'
+                  loading={authLoadingProvider === 'github'}
+                  disabled={Boolean(authLoadingProvider)}
+                  onClick={() => void handleCloudLogin('github')}
+                >
+                  {t('settings.cloud.loginWithGithub')}
+                </Button>
+                <Button
+                  loading={authLoadingProvider === 'google'}
+                  disabled={Boolean(authLoadingProvider)}
+                  onClick={() => void handleCloudLogin('google')}
+                >
+                  {t('settings.cloud.loginWithGoogle')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </ContextGoModal>
+        <ContextGoModal
+          visible={deviceSwitchVisible}
+          onCancel={handleCloseDeviceSwitcher}
+          className='device-switch-modal'
+          header={{
+            title: t('settings.webui.switchDevice'),
+            showClose: true,
+            className: 'px-20px pt-16px',
+          }}
+          footer={{
+            className: 'px-20px pb-16px',
+            render: () => (
+              <div className='flex items-center justify-between gap-10px pt-4px'>
+                {cloudStatus?.authenticated ? (
+                  <Button
+                    onClick={() => void loadRemoteDevices()}
+                    disabled={remoteDevicesLoading || Boolean(openingRemoteDeviceId)}
+                  >
+                    {t('common.refresh')}
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <Button onClick={handleCloseDeviceSwitcher} disabled={Boolean(openingRemoteDeviceId)}>
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            ),
+          }}
+          style={{ width: '560px' }}
+          contentStyle={{ padding: '0' }}
+        >
+          <div className='px-20px pb-16px'>
+            {!cloudStatus?.authenticated ? (
+              <div className='flex flex-col gap-12px py-4px'>
+                <div className='text-14px font-600 text-t-primary'>{t('settings.cloud.notConnected')}</div>
+                <div className='text-13px leading-relaxed text-t-secondary'>{t('settings.cloud.notConnectedDesc')}</div>
+                <div className='flex flex-wrap gap-10px pt-4px'>
+                  <Button
+                    type='primary'
+                    loading={authLoadingProvider === 'github'}
+                    onClick={() => void handleCloudLogin('github')}
+                  >
+                    {t('settings.cloud.loginWithGithub')}
+                  </Button>
+                  <Button loading={authLoadingProvider === 'google'} onClick={() => void handleCloudLogin('google')}>
+                    {t('settings.cloud.loginWithGoogle')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className='flex flex-col gap-12px py-4px'>
+                <div className='text-13px leading-relaxed text-t-secondary'>
+                  {t('settings.webui.switchDeviceDescription')}
+                </div>
+                {remoteDevicesError ? (
+                  <div className='rounded-12px border border-danger/25 bg-danger/6 px-12px py-10px text-12px text-danger'>
+                    {remoteDevicesError}
+                  </div>
+                ) : null}
+                {remoteDevicesLoading && orderedRemoteDevices.length === 0 ? (
+                  <div className='rounded-14px border border-line bg-fill-1 px-14px py-16px text-13px text-t-secondary'>
+                    {t('settings.cloud.loading')}
+                  </div>
+                ) : null}
+                {!remoteDevicesLoading && orderedRemoteDevices.length === 0 ? (
+                  <div className='rounded-14px border border-line bg-fill-1 px-14px py-16px text-13px leading-relaxed text-t-secondary'>
+                    {t('settings.webui.switchDeviceEmpty')}
+                  </div>
+                ) : null}
+                {orderedRemoteDevices.length > 0 ? (
+                  <div className='flex flex-col gap-10px'>
+                    {orderedRemoteDevices.map((device) => {
+                      const canOpenDevice = isOpenableRemoteDevice(device);
+                      const isCurrentDevice = currentCloudDeviceId === device.id;
+                      const statusKey = getRemoteDeviceStatusKey(device, cloudStatus, isCurrentDevice);
+                      const lastSeen =
+                        formatRemoteDeviceLastSeen(device.lastSeenAt, i18n.language) ||
+                        t('settings.cloud.notAvailable');
+                      const isHighlighted = preferredRemoteDeviceId === device.id && !isCurrentDevice;
+
+                      return (
+                        <div
+                          key={device.id}
+                          className={classNames(
+                            'flex items-center gap-12px rounded-16px border px-14px py-12px transition-colors',
+                            isHighlighted
+                              ? 'border-[rgba(var(--primary-6),0.24)] bg-[rgba(var(--primary-6),0.06)]'
+                              : 'border-line bg-fill-1'
+                          )}
+                        >
+                          <div className='flex h-38px w-38px shrink-0 items-center justify-center rounded-12px bg-bg-2'>
+                            <Computer
+                              theme='outline'
+                              size='18'
+                              fill={iconColors.primary}
+                              className='app-icon shrink-0'
+                            />
+                          </div>
+                          <div className='min-w-0 flex-1'>
+                            <div className='flex flex-wrap items-center gap-8px'>
+                              <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
+                                {device.deviceName}
+                              </span>
+                              {isCurrentDevice ? (
+                                <span className='rounded-full bg-fill-2 px-8px py-2px text-11px font-600 text-t-secondary'>
+                                  {t('settings.webui.switchDeviceCurrent')}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className='mt-4px flex flex-wrap items-center gap-6px text-12px text-t-secondary'>
+                              <span className='uppercase tracking-[0.08em]'>{device.platform}</span>
+                              <span>·</span>
+                              <span>{t('settings.webui.switchDeviceLastSeen', { time: lastSeen })}</span>
+                            </div>
+                          </div>
+                          <div className='flex shrink-0 items-center gap-10px'>
+                            <span className='rounded-full bg-fill-2 px-8px py-2px text-11px font-600 text-t-secondary'>
+                              {t(statusKey)}
+                            </span>
+                            {!isCurrentDevice && canOpenDevice ? (
+                              <Button
+                                type='primary'
+                                size='small'
+                                loading={openingRemoteDeviceId === device.id}
+                                disabled={Boolean(openingRemoteDeviceId)}
+                                onClick={() => handleOpenRemoteDevice(device.id)}
+                              >
+                                {t('settings.webui.switchDeviceOpen')}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </ContextGoModal>
         <ContextGoModal
           visible={spaceModalVisible}
           onCancel={handleCloseCreateSpaceModal}
@@ -1086,7 +1501,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               </span>
               <span className='min-w-0 flex-1 text-left'>
                 <span className='block truncate text-14px font-600 text-t-primary'>{userDisplayName}</span>
-                <span className='block truncate text-12px text-t-secondary'>{userSecondaryText}</span>
+                {userSecondaryText ? (
+                  <span className='block truncate text-12px text-t-secondary'>{userSecondaryText}</span>
+                ) : null}
               </span>
               <Down
                 theme='outline'

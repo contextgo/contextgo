@@ -18,6 +18,7 @@ This command invokes the **rust-reviewer** agent for comprehensive Rust-specific
 ## When to Use
 
 Use `/rust-review` when:
+
 - After writing or modifying Rust code
 - Before committing Rust changes
 - Reviewing pull requests with Rust code
@@ -27,6 +28,7 @@ Use `/rust-review` when:
 ## Review Categories
 
 ### CRITICAL (Must Fix)
+
 - Unchecked `unwrap()`/`expect()` in production code paths
 - `unsafe` without `// SAFETY:` comment documenting invariants
 - SQL injection via string interpolation in queries
@@ -35,6 +37,7 @@ Use `/rust-review` when:
 - Use-after-free via raw pointers
 
 ### HIGH (Should Fix)
+
 - Unnecessary `.clone()` to satisfy borrow checker
 - `String` parameter where `&str` or `impl AsRef<str>` suffices
 - Blocking in async context (`std::thread::sleep`, `std::fs`)
@@ -43,6 +46,7 @@ Use `/rust-review` when:
 - Large functions (>50 lines)
 
 ### MEDIUM (Consider)
+
 - Unnecessary allocation in hot paths
 - Missing `with_capacity` when size is known
 - Suppressed clippy warnings without justification
@@ -123,11 +127,11 @@ Recommendation: Block merge until CRITICAL issue is fixed
 
 ## Approval Criteria
 
-| Status | Condition |
-|--------|-----------|
-| Approve | No CRITICAL or HIGH issues |
+| Status  | Condition                               |
+| ------- | --------------------------------------- |
+| Approve | No CRITICAL or HIGH issues              |
 | Warning | Only MEDIUM issues (merge with caution) |
-| Block | CRITICAL or HIGH issues found |
+| Block   | CRITICAL or HIGH issues found           |
 
 ## Integration with Other Commands
 

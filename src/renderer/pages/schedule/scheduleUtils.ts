@@ -37,7 +37,10 @@ export function getSchedulePrimaryText(schedule: IContextSchedule): string {
 }
 
 export function getScheduleConversationId(schedule: IContextSchedule): string | undefined {
-  return schedule.scope.conversationId ?? (schedule.target.kind === 'send_query' ? schedule.target.conversationId : undefined);
+  return (
+    schedule.scope.conversationId ??
+    (schedule.target.kind === 'send_query' ? schedule.target.conversationId : undefined)
+  );
 }
 
 export function getScheduleConversationTitle(schedule: IContextSchedule): string | undefined {

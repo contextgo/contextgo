@@ -39,6 +39,13 @@ Recommended rule:
   `../connector`
 - once a connector becomes productized, its stable contract must be documented here first
 
+Important boundary:
+
+- `connector` means external product access and operation boundary
+- `channel / publication` means IM delivery, routing, and audience interaction boundary
+- the sibling `../connector` repo owns connector control-plane execution
+- this repository owns the publication model in `src/process/channels/`
+
 ## Connector Absorption Strategy
 
 When integrating capabilities from `../connector`, prefer a staged absorption path instead of a
@@ -58,6 +65,13 @@ Absorb the control-plane model before moving implementation details:
 
 These concepts need to align with ContextGo's product architecture before individual connector
 commands are surfaced in UI or mobile/remote flows.
+
+They should remain separate from the IM publication model:
+
+- `Channel Account`
+- `Audience`
+- `Publication Binding`
+- `Published Agent`
 
 ### 2. Runtime second
 
@@ -82,8 +96,11 @@ shape once the feature is considered part of ContextGo.
 
 Do not fold context-ingestion connectors into `src/process/channels/` by default.
 
-In this repository, `channels` primarily represent conversation or remote-interaction connectors.
-The `../connector` repository mostly represents context ingestion, datasource management, runtime
+In this repository, `channels` represent the IM publication and interaction subsystem.
+They own transport accounts, audience discovery, routing, durable publication bindings, and
+remote interaction state.
+
+The `../connector` repository represents external product access, datasource management, runtime
 auth state, collect flows, and store normalization.
 
 Those are adjacent capabilities, but they are not the same module boundary.

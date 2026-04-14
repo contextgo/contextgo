@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -17,12 +17,12 @@ vi.mock('@arco-design/web-react', () => ({
     title,
   }: {
     children?: React.ReactNode;
-    onClick?: () => void;
+    onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
     icon?: React.ReactNode;
     disabled?: boolean;
     title?: string;
   }) => (
-    <button type='button' onClick={onClick} disabled={disabled} title={title}>
+    <button type='button' onClick={(event) => onClick?.(event)} disabled={disabled} title={title}>
       {icon}
       {children}
     </button>
@@ -50,8 +50,14 @@ vi.mock('@arco-design/web-react', () => ({
     </>
   ),
   Menu: Object.assign(({ children }: { children?: React.ReactNode }) => <div>{children}</div>, {
-    Item: ({ children, onClick }: { children?: React.ReactNode; onClick?: () => void }) => (
-      <button type='button' onClick={onClick}>
+    Item: ({
+      children,
+      onClick,
+    }: {
+      children?: React.ReactNode;
+      onClick?: (event: { stopPropagation: () => void }) => void;
+    }) => (
+      <button type='button' onClick={() => onClick?.({ stopPropagation: () => undefined })}>
         {children}
       </button>
     ),
@@ -91,6 +97,7 @@ const mockImportSkillWithSymlink = vi.fn();
 const mockDeleteSkill = vi.fn();
 const mockExportSkillWithSymlink = vi.fn();
 const mockAddCustomExternalPath = vi.fn();
+const mockReadSkillContent = vi.fn();
 const mockShowOpen = vi.fn();
 const mockSearchSkillMarket = vi.fn();
 const mockInstallSkillMarketSkill = vi.fn();
@@ -106,6 +113,7 @@ vi.mock('@/common', () => ({
       deleteSkill: { invoke: (...args: unknown[]) => mockDeleteSkill(...args) },
       exportSkillWithSymlink: { invoke: (...args: unknown[]) => mockExportSkillWithSymlink(...args) },
       addCustomExternalPath: { invoke: (...args: unknown[]) => mockAddCustomExternalPath(...args) },
+      readSkillContent: { invoke: (...args: unknown[]) => mockReadSkillContent(...args) },
       searchSkillMarket: { invoke: (...args: unknown[]) => mockSearchSkillMarket(...args) },
       installSkillMarketSkill: { invoke: (...args: unknown[]) => mockInstallSkillMarketSkill(...args) },
     },
@@ -145,6 +153,10 @@ vi.mock('@/renderer/components/base', () => ({
       </div>
     );
   },
+}));
+
+vi.mock('@/renderer/components/Markdown', () => ({
+  default: ({ children }: { children?: React.ReactNode }) => <div data-testid='mock-markdown'>{children}</div>,
 }));
 
 vi.mock('@/renderer/pages/settings/components/SettingsPageWrapper', () => ({
@@ -224,8 +236,24 @@ describe('SkillsHubSettings Component', () => {
     expect(screen.getByText('Built-in')).toBeInTheDocument();
     expect(screen.getByText('/user/skills')).toBeInTheDocument();
     expect(
-      screen.getByText('{{count}} built-in packaged skills are attached to preset assistants and are hidden from the standalone skill library.')
+      screen.getByText(
+        '{{count}} built-in packaged skills are attached to preset assistants and are hidden from the standalone skill library.'
+      )
     ).toBeInTheDocument();
+  });
+
+  it('should fetch local skills only once when stabilizing the active source tab', async () => {
+    render(<SkillsHubSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByText('MySkill1')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(mockListAvailableSkills).toHaveBeenCalledTimes(1);
+      expect(mockDetectAndCountExternalSkills).toHaveBeenCalledTimes(1);
+      expect(mockGetSkillPaths).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('should filter skills correctly by search query', async () => {
@@ -250,8 +278,58 @@ describe('SkillsHubSettings Component', () => {
     await waitFor(() => {
       expect(screen.queryByText('MySkill1')).not.toBeInTheDocument();
       expect(screen.getByText('Builtin1')).toBeInTheDocument();
-    expect(screen.queryByText('HarnessSkill')).not.toBeInTheDocument();
+      expect(screen.queryByText('HarnessSkill')).not.toBeInTheDocument();
     });
+  });
+
+  it('should render display metadata and preview SKILL.md content', async () => {
+    mockListAvailableSkills.mockResolvedValue([
+      {
+        name: 'release-guard',
+        description: 'fallback description',
+        location: '/skills/release-guard/SKILL.md',
+        isCustom: true,
+        openAIConfig: {
+          interface: {
+            displayName: 'Release Guard',
+            shortDescription: 'Keep release work narrow.',
+          },
+        },
+      },
+    ]);
+    mockReadSkillContent.mockResolvedValue({
+      success: true,
+      data: {
+        content: `---
+name: release-guard
+description: fallback description
+---
+
+# Release Guard
+
+Use this skill to keep release changes narrow.
+`,
+      },
+    });
+
+    render(<SkillsHubSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Release Guard')).toBeInTheDocument();
+      expect(screen.getByText('Keep release work narrow.')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Preview'));
+
+    await waitFor(() => {
+      expect(mockReadSkillContent).toHaveBeenCalledWith({ skillPath: '/skills/release-guard/SKILL.md' });
+    });
+
+    const modal = await screen.findByTestId('mock-modal');
+    expect(within(modal).getByText('/skills/release-guard/SKILL.md')).toBeInTheDocument();
+    expect(within(modal).getByText(/Use this skill to keep release changes narrow./)).toBeInTheDocument();
+    expect(within(modal).queryByText('name: release-guard')).not.toBeInTheDocument();
+    expect(within(modal).queryByText('description: fallback description')).not.toBeInTheDocument();
   });
 
   it('should import external skill successfully', async () => {
@@ -286,7 +364,7 @@ describe('SkillsHubSettings Component', () => {
     fireEvent.click(screen.getByTitle('Delete'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('mock-modal')).toBeInTheDocument();
+      expect(screen.getByText('Delete Skill')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Delete'));
@@ -307,13 +385,14 @@ describe('SkillsHubSettings Component', () => {
 
     fireEvent.click(screen.getByTestId('icon-plus').parentElement!);
 
-    const modal = await screen.findByTestId('mock-modal');
-    const textboxes = within(modal).getAllByRole('textbox');
+    const nameInput = await screen.findByPlaceholderText('e.g. My Custom Skills');
+    const textboxes = screen.getAllByRole('textbox');
+    const pathInput = textboxes[textboxes.length - 1];
 
-    fireEvent.change(textboxes[0], { target: { value: 'NewPath' } });
-    fireEvent.change(textboxes[1], { target: { value: '/foo/bar' } });
+    fireEvent.change(nameInput, { target: { value: 'NewPath' } });
+    fireEvent.change(pathInput, { target: { value: '/foo/bar' } });
 
-    fireEvent.click(within(modal).getByText('Confirm'));
+    fireEvent.click(screen.getByText('Confirm'));
 
     await waitFor(() => {
       expect(mockAddCustomExternalPath).toHaveBeenCalledWith({ name: 'NewPath', path: '/foo/bar' });

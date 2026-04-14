@@ -20,6 +20,7 @@ Given enriched prospect profiles and warm path data, draft outreach messages tha
 ### 1. Warm Intro Request (to mutual)
 
 Template structure:
+
 - Greeting (first name, casual)
 - The ask (1 sentence — can you intro me to [target])
 - Why it's relevant (1 sentence — what you're building and why target cares)
@@ -31,6 +32,7 @@ Max length: 60 words.
 ### 2. Cold Email (to target directly)
 
 Template structure:
+
 - Subject: specific, under 8 words
 - Opener: reference something specific about them (recent post, announcement, thesis)
 - Pitch: what you do and why they specifically should care (2 sentences max)
@@ -42,6 +44,7 @@ Max length: 80 words.
 ### 3. X DM (to target)
 
 Even shorter than email. 2-3 sentences max.
+
 - Reference a specific post or take of theirs
 - One line on why you're reaching out
 - Clear ask
@@ -67,6 +70,7 @@ Max length: 40 words.
 ## Personalization Sources (from enrichment data)
 
 Use these hooks in order of preference:
+
 1. Their recent post or take you genuinely agree with
 2. A mutual connection who can vouch
 3. Their company's recent milestone (funding, launch, hire)

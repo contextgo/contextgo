@@ -32,34 +32,34 @@ tests/
 ## Page Object Model (POM)
 
 ```typescript
-import { Page, Locator } from '@playwright/test'
+import { Page, Locator } from '@playwright/test';
 
 export class ItemsPage {
-  readonly page: Page
-  readonly searchInput: Locator
-  readonly itemCards: Locator
-  readonly createButton: Locator
+  readonly page: Page;
+  readonly searchInput: Locator;
+  readonly itemCards: Locator;
+  readonly createButton: Locator;
 
   constructor(page: Page) {
-    this.page = page
-    this.searchInput = page.locator('[data-testid="search-input"]')
-    this.itemCards = page.locator('[data-testid="item-card"]')
-    this.createButton = page.locator('[data-testid="create-btn"]')
+    this.page = page;
+    this.searchInput = page.locator('[data-testid="search-input"]');
+    this.itemCards = page.locator('[data-testid="item-card"]');
+    this.createButton = page.locator('[data-testid="create-btn"]');
   }
 
   async goto() {
-    await this.page.goto('/items')
-    await this.page.waitForLoadState('networkidle')
+    await this.page.goto('/items');
+    await this.page.waitForLoadState('networkidle');
   }
 
   async search(query: string) {
-    await this.searchInput.fill(query)
-    await this.page.waitForResponse(resp => resp.url().includes('/api/search'))
-    await this.page.waitForLoadState('networkidle')
+    await this.searchInput.fill(query);
+    await this.page.waitForResponse((resp) => resp.url().includes('/api/search'));
+    await this.page.waitForLoadState('networkidle');
   }
 
   async getItemCount() {
-    return await this.itemCards.count()
+    return await this.itemCards.count();
   }
 }
 ```
@@ -67,40 +67,40 @@ export class ItemsPage {
 ## Test Structure
 
 ```typescript
-import { test, expect } from '@playwright/test'
-import { ItemsPage } from '../../pages/ItemsPage'
+import { test, expect } from '@playwright/test';
+import { ItemsPage } from '../../pages/ItemsPage';
 
 test.describe('Item Search', () => {
-  let itemsPage: ItemsPage
+  let itemsPage: ItemsPage;
 
   test.beforeEach(async ({ page }) => {
-    itemsPage = new ItemsPage(page)
-    await itemsPage.goto()
-  })
+    itemsPage = new ItemsPage(page);
+    await itemsPage.goto();
+  });
 
   test('should search by keyword', async ({ page }) => {
-    await itemsPage.search('test')
+    await itemsPage.search('test');
 
-    const count = await itemsPage.getItemCount()
-    expect(count).toBeGreaterThan(0)
+    const count = await itemsPage.getItemCount();
+    expect(count).toBeGreaterThan(0);
 
-    await expect(itemsPage.itemCards.first()).toContainText(/test/i)
-    await page.screenshot({ path: 'artifacts/search-results.png' })
-  })
+    await expect(itemsPage.itemCards.first()).toContainText(/test/i);
+    await page.screenshot({ path: 'artifacts/search-results.png' });
+  });
 
   test('should handle no results', async ({ page }) => {
-    await itemsPage.search('xyznonexistent123')
+    await itemsPage.search('xyznonexistent123');
 
-    await expect(page.locator('[data-testid="no-results"]')).toBeVisible()
-    expect(await itemsPage.getItemCount()).toBe(0)
-  })
-})
+    await expect(page.locator('[data-testid="no-results"]')).toBeVisible();
+    expect(await itemsPage.getItemCount()).toBe(0);
+  });
+});
 ```
 
 ## Playwright Configuration
 
 ```typescript
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -111,7 +111,7 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
     ['junit', { outputFile: 'playwright-results.xml' }],
-    ['json', { outputFile: 'playwright-results.json' }]
+    ['json', { outputFile: 'playwright-results.json' }],
   ],
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
@@ -133,7 +133,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
-})
+});
 ```
 
 ## Flaky Test Patterns
@@ -142,14 +142,14 @@ export default defineConfig({
 
 ```typescript
 test('flaky: complex search', async ({ page }) => {
-  test.fixme(true, 'Flaky - Issue #123')
+  test.fixme(true, 'Flaky - Issue #123');
   // test code...
-})
+});
 
 test('conditional skip', async ({ page }) => {
-  test.skip(process.env.CI, 'Flaky in CI - Issue #123')
+  test.skip(process.env.CI, 'Flaky in CI - Issue #123');
   // test code...
-})
+});
 ```
 
 ### Identify Flakiness
@@ -162,32 +162,35 @@ npx playwright test tests/search.spec.ts --retries=3
 ### Common Causes & Fixes
 
 **Race conditions:**
+
 ```typescript
 // Bad: assumes element is ready
-await page.click('[data-testid="button"]')
+await page.click('[data-testid="button"]');
 
 // Good: auto-wait locator
-await page.locator('[data-testid="button"]').click()
+await page.locator('[data-testid="button"]').click();
 ```
 
 **Network timing:**
+
 ```typescript
 // Bad: arbitrary timeout
-await page.waitForTimeout(5000)
+await page.waitForTimeout(5000);
 
 // Good: wait for specific condition
-await page.waitForResponse(resp => resp.url().includes('/api/data'))
+await page.waitForResponse((resp) => resp.url().includes('/api/data'));
 ```
 
 **Animation timing:**
+
 ```typescript
 // Bad: click during animation
-await page.click('[data-testid="menu-item"]')
+await page.click('[data-testid="menu-item"]');
 
 // Good: wait for stability
-await page.locator('[data-testid="menu-item"]').waitFor({ state: 'visible' })
-await page.waitForLoadState('networkidle')
-await page.locator('[data-testid="menu-item"]').click()
+await page.locator('[data-testid="menu-item"]').waitFor({ state: 'visible' });
+await page.waitForLoadState('networkidle');
+await page.locator('[data-testid="menu-item"]').click();
 ```
 
 ## Artifact Management
@@ -195,9 +198,9 @@ await page.locator('[data-testid="menu-item"]').click()
 ### Screenshots
 
 ```typescript
-await page.screenshot({ path: 'artifacts/after-login.png' })
-await page.screenshot({ path: 'artifacts/full-page.png', fullPage: true })
-await page.locator('[data-testid="chart"]').screenshot({ path: 'artifacts/chart.png' })
+await page.screenshot({ path: 'artifacts/after-login.png' });
+await page.screenshot({ path: 'artifacts/full-page.png', fullPage: true });
+await page.locator('[data-testid="chart"]').screenshot({ path: 'artifacts/chart.png' });
 ```
 
 ### Traces
@@ -207,9 +210,9 @@ await browser.startTracing(page, {
   path: 'artifacts/trace.json',
   screenshots: true,
   snapshots: true,
-})
+});
 // ... test actions ...
-await browser.stopTracing()
+await browser.stopTracing();
 ```
 
 ### Video
@@ -260,21 +263,24 @@ jobs:
 **Status:** PASSING / FAILING
 
 ## Summary
+
 - Total: X | Passed: Y (Z%) | Failed: A | Flaky: B | Skipped: C
 
 ## Failed Tests
 
 ### test-name
+
 **File:** `tests/e2e/feature.spec.ts:45`
 **Error:** Expected element to be visible
 **Screenshot:** artifacts/failed.png
 **Recommended Fix:** [description]
 
 ## Artifacts
+
 - HTML Report: playwright-report/index.html
-- Screenshots: artifacts/*.png
-- Videos: artifacts/videos/*.webm
-- Traces: artifacts/*.zip
+- Screenshots: artifacts/\*.png
+- Videos: artifacts/videos/\*.webm
+- Traces: artifacts/\*.zip
 ```
 
 ## Wallet / Web3 Testing
@@ -286,17 +292,16 @@ test('wallet connection', async ({ page, context }) => {
     window.ethereum = {
       isMetaMask: true,
       request: async ({ method }) => {
-        if (method === 'eth_requestAccounts')
-          return ['0x1234567890123456789012345678901234567890']
-        if (method === 'eth_chainId') return '0x1'
-      }
-    }
-  })
+        if (method === 'eth_requestAccounts') return ['0x1234567890123456789012345678901234567890'];
+        if (method === 'eth_chainId') return '0x1';
+      },
+    };
+  });
 
-  await page.goto('/')
-  await page.locator('[data-testid="connect-wallet"]').click()
-  await expect(page.locator('[data-testid="wallet-address"]')).toContainText('0x1234')
-})
+  await page.goto('/');
+  await page.locator('[data-testid="connect-wallet"]').click();
+  await expect(page.locator('[data-testid="wallet-address"]')).toContainText('0x1234');
+});
 ```
 
 ## Financial / Critical Flow Testing
@@ -304,23 +309,20 @@ test('wallet connection', async ({ page, context }) => {
 ```typescript
 test('trade execution', async ({ page }) => {
   // Skip on production — real money
-  test.skip(process.env.NODE_ENV === 'production', 'Skip on production')
+  test.skip(process.env.NODE_ENV === 'production', 'Skip on production');
 
-  await page.goto('/markets/test-market')
-  await page.locator('[data-testid="position-yes"]').click()
-  await page.locator('[data-testid="trade-amount"]').fill('1.0')
+  await page.goto('/markets/test-market');
+  await page.locator('[data-testid="position-yes"]').click();
+  await page.locator('[data-testid="trade-amount"]').fill('1.0');
 
   // Verify preview
-  const preview = page.locator('[data-testid="trade-preview"]')
-  await expect(preview).toContainText('1.0')
+  const preview = page.locator('[data-testid="trade-preview"]');
+  await expect(preview).toContainText('1.0');
 
   // Confirm and wait for blockchain
-  await page.locator('[data-testid="confirm-trade"]').click()
-  await page.waitForResponse(
-    resp => resp.url().includes('/api/trade') && resp.status() === 200,
-    { timeout: 30000 }
-  )
+  await page.locator('[data-testid="confirm-trade"]').click();
+  await page.waitForResponse((resp) => resp.url().includes('/api/trade') && resp.status() === 200, { timeout: 30000 });
 
-  await expect(page.locator('[data-testid="trade-success"]')).toBeVisible()
-})
+  await expect(page.locator('[data-testid="trade-success"]')).toBeVisible();
+});
 ```

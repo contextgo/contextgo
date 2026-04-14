@@ -29,7 +29,11 @@ const output = {
 function readFile(filename) {
   const p = resolve(cwd, filename);
   if (!existsSync(p)) return null;
-  try { return readFileSync(p, 'utf8'); } catch { return null; }
+  try {
+    return readFileSync(p, 'utf8');
+  } catch {
+    return null;
+  }
 }
 
 function extractSection(md, heading) {
@@ -49,11 +53,23 @@ if (pkg) {
     // Detect stack from dependencies
     const deps = Object.keys({ ...(parsed.dependencies || {}), ...(parsed.devDependencies || {}) });
     const stackMap = {
-      next: 'Next.js', react: 'React', vue: 'Vue', svelte: 'Svelte', astro: 'Astro',
-      express: 'Express', fastify: 'Fastify', hono: 'Hono', nestjs: 'NestJS',
-      typescript: 'TypeScript', prisma: 'Prisma', drizzle: 'Drizzle',
-      '@neondatabase/serverless': 'Neon', '@upstash/redis': 'Upstash Redis',
-      '@clerk/nextjs': 'Clerk', stripe: 'Stripe', tailwindcss: 'Tailwind CSS',
+      next: 'Next.js',
+      react: 'React',
+      vue: 'Vue',
+      svelte: 'Svelte',
+      astro: 'Astro',
+      express: 'Express',
+      fastify: 'Fastify',
+      hono: 'Hono',
+      nestjs: 'NestJS',
+      typescript: 'TypeScript',
+      prisma: 'Prisma',
+      drizzle: 'Drizzle',
+      '@neondatabase/serverless': 'Neon',
+      '@upstash/redis': 'Upstash Redis',
+      '@clerk/nextjs': 'Clerk',
+      stripe: 'Stripe',
+      tailwindcss: 'Tailwind CSS',
     };
     for (const [dep, label] of Object.entries(stackMap)) {
       if (deps.includes(dep) && !output.stack.includes(label)) {
@@ -63,7 +79,9 @@ if (pkg) {
     if (deps.includes('typescript') || existsSync(resolve(cwd, 'tsconfig.json'))) {
       if (!output.stack.includes('TypeScript')) output.stack.push('TypeScript');
     }
-  } catch { /* malformed package.json */ }
+  } catch {
+    /* malformed package.json */
+  }
 }
 
 // ── go.mod ────────────────────────────────────────────────────────────────────
@@ -105,15 +123,19 @@ if (claudeMd) {
 
   const doNot = extractSection(claudeMd, 'Do Not Do');
   if (doNot) {
-    const bullets = doNot.split('\n')
-      .filter(l => /^[-*]\s+/.test(l))
-      .map(l => l.replace(/^[-*]\s+/, '').trim());
+    const bullets = doNot
+      .split('\n')
+      .filter((l) => /^[-*]\s+/.test(l))
+      .map((l) => l.replace(/^[-*]\s+/, '').trim());
     output.constraints = bullets;
   }
 
   const stack = extractSection(claudeMd, 'Tech Stack');
   if (stack && output.stack.length === 0) {
-    output.stack = stack.split(/[,\n]/).map(s => s.replace(/^[-*]\s+/, '').trim()).filter(Boolean);
+    output.stack = stack
+      .split(/[,\n]/)
+      .map((s) => s.replace(/^[-*]\s+/, '').trim())
+      .filter(Boolean);
   }
 
   // Description from first section or "What This Is"
@@ -128,7 +150,15 @@ if (readme && !output.description) {
   const lines = readme.split('\n');
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('!') && !trimmed.startsWith('>') && !trimmed.startsWith('[') && trimmed !== '---' && trimmed !== '___') {
+    if (
+      trimmed &&
+      !trimmed.startsWith('#') &&
+      !trimmed.startsWith('!') &&
+      !trimmed.startsWith('>') &&
+      !trimmed.startsWith('[') &&
+      trimmed !== '---' &&
+      trimmed !== '___'
+    ) {
       output.description = trimmed.slice(0, 120);
       break;
     }

@@ -33,10 +33,12 @@ type SupportedVaultSyncService = Pick<
 const SESSIONS_DIR = 'Sessions';
 
 function sanitizeSessionPathSegment(value: string): string {
-  return value
-    .trim()
-    .replace(/[^a-z0-9._-]+/gi, '-')
-    .replace(/^-+|-+$/g, '') || 'session';
+  return (
+    value
+      .trim()
+      .replace(/[^a-z0-9._-]+/gi, '-')
+      .replace(/^-+|-+$/g, '') || 'session'
+  );
 }
 
 function getSessionArtifactRelativePath(threadId: string): string {
@@ -52,7 +54,7 @@ function estimateTokenCount(value: string | undefined): number {
 }
 
 function uniqueStrings(values: readonly string[]): string[] {
-  return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)));
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
 function getSnapshot(job: ContextJob): SessionCompactionSnapshot {
@@ -109,13 +111,13 @@ function buildProfileSummary(input: {
   return [
     input.currentTask ? `Current task: ${input.currentTask}` : undefined,
     input.stableStrategies.length > 0
-      ? ['Stable strategies:', ...input.stableStrategies.map(item => `- ${item}`)].join('\n')
+      ? ['Stable strategies:', ...input.stableStrategies.map((item) => `- ${item}`)].join('\n')
       : undefined,
     input.failureModes.length > 0
-      ? ['Failure modes:', ...input.failureModes.map(item => `- ${item}`)].join('\n')
+      ? ['Failure modes:', ...input.failureModes.map((item) => `- ${item}`)].join('\n')
       : undefined,
     input.pendingConstraints.length > 0
-      ? ['Pending constraints:', ...input.pendingConstraints.map(item => `- ${item}`)].join('\n')
+      ? ['Pending constraints:', ...input.pendingConstraints.map((item) => `- ${item}`)].join('\n')
       : undefined,
     `Compaction pressure: ${input.pressure}`,
   ]
@@ -155,35 +157,37 @@ function buildDetail(input: {
     '### Stable Strategies',
     '',
     ...(input.stableStrategies.length > 0
-      ? input.stableStrategies.map(summary => `- ${summary}`)
+      ? input.stableStrategies.map((summary) => `- ${summary}`)
       : ['- No stable strategies extracted yet.']),
     '',
     '### Failure Modes',
     '',
     ...(input.failureModes.length > 0
-      ? input.failureModes.map(summary => `- ${summary}`)
+      ? input.failureModes.map((summary) => `- ${summary}`)
       : ['- No recurring failure modes detected yet.']),
     '',
     '### Pending Constraints',
     '',
     ...(input.pendingConstraints.length > 0
-      ? input.pendingConstraints.map(summary => `- ${summary}`)
+      ? input.pendingConstraints.map((summary) => `- ${summary}`)
       : ['- No unresolved constraints detected.']),
     '',
     '## Signals',
     '',
-    ...(input.signalKinds.length > 0 ? input.signalKinds.map(kind => `- ${kind}`) : ['- No durable session signals yet.']),
+    ...(input.signalKinds.length > 0
+      ? input.signalKinds.map((kind) => `- ${kind}`)
+      : ['- No durable session signals yet.']),
     '',
     '## Stable Takeaways',
     '',
     ...(input.promotedSummaries.length > 0
-      ? input.promotedSummaries.slice(0, 4).map(summary => `- ${summary}`)
+      ? input.promotedSummaries.slice(0, 4).map((summary) => `- ${summary}`)
       : ['- No promoted memory candidates yet.']),
     '',
     '## Pending Review',
     '',
     ...(input.pendingSummaries.length > 0
-      ? input.pendingSummaries.slice(0, 4).map(summary => `- ${summary}`)
+      ? input.pendingSummaries.slice(0, 4).map((summary) => `- ${summary}`)
       : ['- No pending review candidates.']),
     '',
     '## Compaction Decision',
@@ -217,10 +221,10 @@ function buildPromotionCandidate(input: {
   const detailParts = [
     input.currentTask ? `Current task: ${input.currentTask}` : undefined,
     input.stableStrategies.length > 1
-      ? ['Stable strategies:', ...input.stableStrategies.slice(1).map(item => `- ${item}`)].join('\n')
+      ? ['Stable strategies:', ...input.stableStrategies.slice(1).map((item) => `- ${item}`)].join('\n')
       : undefined,
     input.pendingConstraints.length > 0
-      ? ['Pending constraints:', ...input.pendingConstraints.map(item => `- ${item}`)].join('\n')
+      ? ['Pending constraints:', ...input.pendingConstraints.map((item) => `- ${item}`)].join('\n')
       : undefined,
     `Promoted signals: ${input.promotedCount}`,
     `Compaction pressure: ${input.pressure}`,
@@ -252,16 +256,21 @@ export class SessionCompactionJobHandler {
       spaceId: job.spaceId,
       threadId: job.threadId,
     });
-    const promotedCandidates = candidates.filter(candidate => candidate.state === 'promoted');
-    const approvedCandidates = candidates.filter(candidate => candidate.state === 'approved');
-    const pendingCandidates = candidates.filter(candidate => candidate.state === 'pending_review');
+    const promotedCandidates = candidates.filter((candidate) => candidate.state === 'promoted');
+    const approvedCandidates = candidates.filter((candidate) => candidate.state === 'approved');
+    const pendingCandidates = candidates.filter((candidate) => candidate.state === 'pending_review');
     const stableCandidates = [...promotedCandidates, ...approvedCandidates];
-    const promotedSummaries = uniqueStrings(stableCandidates.map(candidate => candidate.summary));
-    const pendingSummaries = uniqueStrings(pendingCandidates.map(candidate => candidate.summary));
+    const promotedSummaries = uniqueStrings(stableCandidates.map((candidate) => candidate.summary));
+    const pendingSummaries = uniqueStrings(pendingCandidates.map((candidate) => candidate.summary));
     const signalKinds = collectSessionSignalKinds(snapshot.recentSignals);
-    const normalizedCandidateSummaries = candidates.map(candidate => candidate.summary.trim().toLowerCase()).filter(Boolean);
-    const redundantMemoryCount = Math.max(0, normalizedCandidateSummaries.length - new Set(normalizedCandidateSummaries).size);
-    const distinctSourceCount = new Set(candidates.flatMap(candidate => candidate.sourceIds)).size;
+    const normalizedCandidateSummaries = candidates
+      .map((candidate) => candidate.summary.trim().toLowerCase())
+      .filter(Boolean);
+    const redundantMemoryCount = Math.max(
+      0,
+      normalizedCandidateSummaries.length - new Set(normalizedCandidateSummaries).size
+    );
+    const distinctSourceCount = new Set(candidates.flatMap((candidate) => candidate.sourceIds)).size;
     const approximateTokenCount = [
       snapshot.lastUserGoal,
       snapshot.lastAssistantOutcome,
@@ -272,7 +281,7 @@ export class SessionCompactionJobHandler {
       spaceId: job.spaceId,
       candidate: {
         topic: deriveCompactionTopic(
-          stableCandidates.map(candidate => candidate.kind),
+          stableCandidates.map((candidate) => candidate.kind),
           signalKinds
         ),
         acceptedMemoryCount: stableCandidates.length,
@@ -311,12 +320,13 @@ export class SessionCompactionJobHandler {
       decision,
     });
     const key = createSessionCompactionProfileKey(job.threadId);
-    const existingProfile = (await this.contextService.listProfiles({
-      spaceId: job.spaceId,
-      keyPrefix: key,
-      state: 'active',
-    }))
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+    const existingProfile = (
+      await this.contextService.listProfiles({
+        spaceId: job.spaceId,
+        keyPrefix: key,
+        state: 'active',
+      })
+    ).toSorted((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
     const now = new Date().toISOString();
     const profile: ProfileSegment = {
       id: existingProfile?.id ?? createSessionCompactionProfileId(job.threadId),
@@ -324,7 +334,7 @@ export class SessionCompactionJobHandler {
       key,
       summary,
       memoryIds: stableCandidates
-        .map(candidate => candidate.promotedMemoryId)
+        .map((candidate) => candidate.promotedMemoryId)
         .filter((memoryId): memoryId is string => typeof memoryId === 'string' && memoryId.length > 0),
       confidence: Math.min(
         0.96,

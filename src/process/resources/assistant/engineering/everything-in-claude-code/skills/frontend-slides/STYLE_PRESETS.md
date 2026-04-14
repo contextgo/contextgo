@@ -3,6 +3,7 @@
 Curated visual styles for `frontend-slides`.
 
 Use this file for:
+
 - the mandatory viewport-fitting CSS base
 - preset selection and mood mapping
 - CSS gotchas and validation rules
@@ -23,14 +24,14 @@ Never scroll inside a slide.
 
 ### Density Limits
 
-| Slide Type | Maximum Content |
-|------------|-----------------|
-| Title slide | 1 heading + 1 subtitle + optional tagline |
-| Content slide | 1 heading + 4-6 bullets or 2 paragraphs |
-| Feature grid | 6 cards maximum |
-| Code slide | 8-10 lines maximum |
-| Quote slide | 1 quote + attribution |
-| Image slide | 1 image, ideally under 60vh |
+| Slide Type    | Maximum Content                           |
+| ------------- | ----------------------------------------- |
+| Title slide   | 1 heading + 1 subtitle + optional tagline |
+| Content slide | 1 heading + 4-6 bullets or 2 paragraphs   |
+| Feature grid  | 6 cards maximum                           |
+| Code slide    | 8-10 lines maximum                        |
+| Quote slide   | 1 quote + attribution                     |
+| Image slide   | 1 image, ideally under 60vh               |
 
 ## Mandatory Base CSS
 
@@ -41,125 +42,135 @@ Copy this block into every generated presentation and then theme on top of it.
    VIEWPORT FITTING: MANDATORY BASE STYLES
    =========================================== */
 
-html, body {
-    height: 100%;
-    overflow-x: hidden;
+html,
+body {
+  height: 100%;
+  overflow-x: hidden;
 }
 
 html {
-    scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
 }
 
 .slide {
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-    scroll-snap-align: start;
-    display: flex;
-    flex-direction: column;
-    position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
 .slide-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    max-height: 100%;
-    overflow: hidden;
-    padding: var(--slide-padding);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-height: 100%;
+  overflow: hidden;
+  padding: var(--slide-padding);
 }
 
 :root {
-    --title-size: clamp(1.5rem, 5vw, 4rem);
-    --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
-    --h3-size: clamp(1rem, 2.5vw, 1.75rem);
-    --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
-    --small-size: clamp(0.65rem, 1vw, 0.875rem);
+  --title-size: clamp(1.5rem, 5vw, 4rem);
+  --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
+  --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+  --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
+  --small-size: clamp(0.65rem, 1vw, 0.875rem);
 
-    --slide-padding: clamp(1rem, 4vw, 4rem);
-    --content-gap: clamp(0.5rem, 2vw, 2rem);
-    --element-gap: clamp(0.25rem, 1vw, 1rem);
+  --slide-padding: clamp(1rem, 4vw, 4rem);
+  --content-gap: clamp(0.5rem, 2vw, 2rem);
+  --element-gap: clamp(0.25rem, 1vw, 1rem);
 }
 
-.card, .container, .content-box {
-    max-width: min(90vw, 1000px);
-    max-height: min(80vh, 700px);
+.card,
+.container,
+.content-box {
+  max-width: min(90vw, 1000px);
+  max-height: min(80vh, 700px);
 }
 
-.feature-list, .bullet-list {
-    gap: clamp(0.4rem, 1vh, 1rem);
+.feature-list,
+.bullet-list {
+  gap: clamp(0.4rem, 1vh, 1rem);
 }
 
-.feature-list li, .bullet-list li {
-    font-size: var(--body-size);
-    line-height: 1.4;
+.feature-list li,
+.bullet-list li {
+  font-size: var(--body-size);
+  line-height: 1.4;
 }
 
 .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
-    gap: clamp(0.5rem, 1.5vw, 1rem);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: clamp(0.5rem, 1.5vw, 1rem);
 }
 
-img, .image-container {
-    max-width: 100%;
-    max-height: min(50vh, 400px);
-    object-fit: contain;
+img,
+.image-container {
+  max-width: 100%;
+  max-height: min(50vh, 400px);
+  object-fit: contain;
 }
 
 @media (max-height: 700px) {
-    :root {
-        --slide-padding: clamp(0.75rem, 3vw, 2rem);
-        --content-gap: clamp(0.4rem, 1.5vw, 1rem);
-        --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
-        --h2-size: clamp(1rem, 3vw, 1.75rem);
-    }
+  :root {
+    --slide-padding: clamp(0.75rem, 3vw, 2rem);
+    --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+    --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+    --h2-size: clamp(1rem, 3vw, 1.75rem);
+  }
 }
 
 @media (max-height: 600px) {
-    :root {
-        --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
-        --content-gap: clamp(0.3rem, 1vw, 0.75rem);
-        --title-size: clamp(1.1rem, 4vw, 2rem);
-        --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
-    }
+  :root {
+    --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+    --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+    --title-size: clamp(1.1rem, 4vw, 2rem);
+    --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+  }
 
-    .nav-dots, .keyboard-hint, .decorative {
-        display: none;
-    }
+  .nav-dots,
+  .keyboard-hint,
+  .decorative {
+    display: none;
+  }
 }
 
 @media (max-height: 500px) {
-    :root {
-        --slide-padding: clamp(0.4rem, 2vw, 1rem);
-        --title-size: clamp(1rem, 3.5vw, 1.5rem);
-        --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
-        --body-size: clamp(0.65rem, 1vw, 0.85rem);
-    }
+  :root {
+    --slide-padding: clamp(0.4rem, 2vw, 1rem);
+    --title-size: clamp(1rem, 3.5vw, 1.5rem);
+    --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
+    --body-size: clamp(0.65rem, 1vw, 0.85rem);
+  }
 }
 
 @media (max-width: 600px) {
-    :root {
-        --title-size: clamp(1.25rem, 7vw, 2.5rem);
-    }
+  :root {
+    --title-size: clamp(1.25rem, 7vw, 2.5rem);
+  }
 
-    .grid {
-        grid-template-columns: 1fr;
-    }
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.2s !important;
-    }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.2s !important;
+  }
 
-    html {
-        scroll-behavior: auto;
-    }
+  html {
+    scroll-behavior: auto;
+  }
 }
 ```
 
@@ -175,12 +186,12 @@ img, .image-container {
 
 ## Mood to Preset Mapping
 
-| Mood | Good Presets |
-|------|--------------|
-| Impressed / Confident | Bold Signal, Electric Studio, Dark Botanical |
-| Excited / Energized | Creative Voltage, Neon Cyber, Split Pastel |
-| Calm / Focused | Notebook Tabs, Paper & Ink, Swiss Modern |
-| Inspired / Moved | Dark Botanical, Vintage Editorial, Pastel Geometry |
+| Mood                  | Good Presets                                       |
+| --------------------- | -------------------------------------------------- |
+| Impressed / Confident | Bold Signal, Electric Studio, Dark Botanical       |
+| Excited / Energized   | Creative Voltage, Neon Cyber, Split Pastel         |
+| Calm / Focused        | Notebook Tabs, Paper & Ink, Swiss Modern           |
+| Inspired / Moved      | Dark Botanical, Vintage Editorial, Pastel Geometry |
 
 ## Preset Catalog
 
@@ -286,14 +297,14 @@ If the user already knows the style they want, let them pick directly from the p
 
 ## Animation Feel Mapping
 
-| Feeling | Motion Direction |
-|---------|------------------|
-| Dramatic / Cinematic | slow fades, parallax, large scale-ins |
-| Techy / Futuristic | glow, particles, grid motion, scramble text |
-| Playful / Friendly | springy easing, rounded shapes, floating motion |
-| Professional / Corporate | subtle 200-300ms transitions, clean slides |
-| Calm / Minimal | very restrained movement, whitespace-first |
-| Editorial / Magazine | strong hierarchy, staggered text and image interplay |
+| Feeling                  | Motion Direction                                     |
+| ------------------------ | ---------------------------------------------------- |
+| Dramatic / Cinematic     | slow fades, parallax, large scale-ins                |
+| Techy / Futuristic       | glow, particles, grid motion, scramble text          |
+| Playful / Friendly       | springy easing, rounded shapes, floating motion      |
+| Professional / Corporate | subtle 200-300ms transitions, clean slides           |
+| Calm / Minimal           | very restrained movement, whitespace-first           |
+| Editorial / Magazine     | strong hierarchy, staggered text and image interplay |
 
 ## CSS Gotcha: Negating Functions
 
@@ -316,6 +327,7 @@ margin-left: calc(-1 * min(10vw, 100px));
 ## Validation Sizes
 
 Test at minimum:
+
 - Desktop: `1920x1080`, `1440x900`, `1280x720`
 - Tablet: `1024x768`, `768x1024`
 - Mobile: `375x667`, `414x896`
@@ -324,6 +336,7 @@ Test at minimum:
 ## Anti-Patterns
 
 Do not use:
+
 - purple-on-white startup templates
 - Inter / Roboto / Arial as the visual voice unless the user explicitly wants utilitarian neutrality
 - bullet walls, tiny type, or code blocks that require scrolling

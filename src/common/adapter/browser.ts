@@ -10,6 +10,9 @@ import type { ElectronBridgeAPI } from '@/common/types/electron';
 import {
   buildBrowserBridgeSocketUrl,
   buildBrowserLoginRedirectPath,
+  extractRemoteDeviceId,
+  rememberHostedRemoteDeviceRoute,
+  resolveHostedRemoteBootstrapHref,
   resolveHostedRemoteDisconnect,
 } from './browserAuthRedirect';
 
@@ -21,6 +24,11 @@ interface CustomWindow extends Window {
 }
 
 const win = window as CustomWindow;
+
+const bootstrappedWindowHref = resolveHostedRemoteBootstrapHref(window.location.href);
+if (bootstrappedWindowHref !== window.location.href) {
+  window.history.replaceState(window.history.state, '', bootstrappedWindowHref);
+}
 
 /**
  * 适配electron的API到浏览器中,建立renderer和main的通信桥梁, 与preload.ts中的注入对应
@@ -47,6 +55,7 @@ if (win.electronAPI) {
   // Web 环境 - 使用 WebSocket 通信，并在登录后自动补上已获取 Cookie 的连接
   // Web runtime bridge: ensure the socket reconnects after login so session cookie can be sent
   const socketUrl = buildBrowserBridgeSocketUrl(window.location.href, WEBUI_DEFAULT_PORT);
+  const hostedRemoteDeviceId = extractRemoteDeviceId(window.location.href);
 
   type QueuedMessage = { name: string; data: unknown };
 
@@ -270,6 +279,16 @@ if (win.electronAPI) {
   });
 
   connect();
+
+  if (hostedRemoteDeviceId) {
+    const rememberCurrentHostedRoute = () => {
+      const routePath = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+      rememberHostedRemoteDeviceRoute(hostedRemoteDeviceId, routePath);
+    };
+
+    rememberCurrentHostedRoute();
+    window.addEventListener('hashchange', rememberCurrentHostedRoute);
+  }
 
   // Expose reconnection control for login flow
   win.__websocketReconnect = () => {

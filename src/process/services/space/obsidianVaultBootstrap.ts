@@ -337,7 +337,7 @@ const registerObsidianVault = async (
   const existingEntry = registry.vaults?.[vaultId];
   const nextRegistry: ObsidianVaultRegistry = {
     vaults: {
-      ...(registry.vaults ?? {}),
+      ...registry.vaults,
       [vaultId]: {
         path: providerRef.vaultPath,
         ts: existingEntry?.ts ?? now,

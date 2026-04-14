@@ -186,13 +186,13 @@ def process_document(
 
 From a production quiz parsing pipeline (410 items):
 
-| Metric | Value |
-|--------|-------|
-| Regex success rate | 98.0% |
-| Low confidence items | 8 (2.0%) |
-| LLM calls needed | ~5 |
-| Cost savings vs all-LLM | ~95% |
-| Test coverage | 93% |
+| Metric                  | Value    |
+| ----------------------- | -------- |
+| Regex success rate      | 98.0%    |
+| Low confidence items    | 8 (2.0%) |
+| LLM calls needed        | ~5       |
+| Cost savings vs all-LLM | ~95%     |
+| Test coverage           | 93%      |
 
 ## Best Practices
 

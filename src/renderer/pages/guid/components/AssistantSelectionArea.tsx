@@ -168,9 +168,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
 
   return (
     <div className={`mt-16px w-full ${styles.assistantSection}`}>
-      <div
-        className={`${styles.assistantPresetGrid} flex flex-wrap gap-8px ${isMobile ? 'justify-start' : 'justify-center'}`}
-      >
+      <div className={`${styles.assistantPresetGrid} flex flex-wrap justify-center gap-8px`}>
         {customAgents
           .filter((assistant) => assistant.isPreset && assistant.enabled !== false)
           .toSorted((a, b) => {
@@ -212,7 +210,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
           type='text'
           className={styles.assistantManageButton}
           style={{ borderWidth: '1px', borderColor: 'color-mix(in srgb, var(--color-border-2) 70%, transparent)' }}
-          onClick={() => navigate('/settings/agent')}
+          onClick={() => navigate('/agents')}
         >
           <Plus theme='outline' size={14} className='line-height-0 text-[var(--color-text-3)]' />
           {isMobile ? (

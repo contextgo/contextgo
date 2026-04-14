@@ -20,6 +20,7 @@ Given a list of qualified prospects, pull comprehensive data from available sour
 ## Data Points to Collect
 
 ### Person
+
 - Full name, current title, company
 - X handle, LinkedIn URL, personal site
 - Recent posts (last 30 days) — topics, tone, key takes
@@ -28,6 +29,7 @@ Given a list of qualified prospects, pull comprehensive data from available sour
 - Mutual interests with user (shared follows, similar content)
 
 ### Company
+
 - Company name, size, stage
 - Funding history (last round amount, investors)
 - Recent news (product launches, pivots, hiring)
@@ -35,6 +37,7 @@ Given a list of qualified prospects, pull comprehensive data from available sour
 - Competitors and market position
 
 ### Activity Signals
+
 - Last X post date and topic
 - Recent blog posts or publications
 - Conference attendance

@@ -17,7 +17,6 @@ import {
   Communication,
   Computer,
   ConnectionPoint,
-  Earth,
   Gemini,
   Info,
   LinkCloud,
@@ -35,7 +34,6 @@ import GeminiModalContent from './contents/GeminiModalContent';
 import ModelModalContent from './contents/ModelModalContent';
 import RuntimeManagement from '@/renderer/pages/settings/AgentSettings/CustomAcpAgent';
 import SystemModalContent from './contents/SystemModalContent';
-import WebuiModalContent from './contents/WebuiModalContent';
 import { SettingsViewModeProvider } from './settingsViewContext';
 import '@/renderer/pages/settings/components/settings.css';
 
@@ -73,7 +71,6 @@ export type BuiltinSettingTab =
   | 'model'
   | 'agent'
   | 'runtime'
-  | 'webui'
   | 'agentEntry'
   | 'channels'
   | 'activeSessions'
@@ -238,11 +235,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
 
     if (isDesktop) {
       builtinItems.push({
-        key: 'webui',
-        label: t('settings.webui'),
-        icon: <Earth theme='outline' size='20' fill={iconColors.secondary} />,
-      });
-      builtinItems.push({
         key: 'channels',
         label: t('settings.agentEntry'),
         icon: <Communication theme='outline' size='20' fill={iconColors.secondary} />,
@@ -347,8 +339,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
         return <AgentModalContent />;
       case 'runtime':
         return <RuntimeManagement />;
-      case 'webui':
-        return <WebuiModalContent />;
       case 'channels':
         return <ChannelModalContent mode='channels' />;
       case 'agentEntry':

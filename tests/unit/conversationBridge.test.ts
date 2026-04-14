@@ -2,13 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tmp') } }));
 
-const {
-  processConfigGetMock,
-  processConfigSetMock,
-  readWorkspaceCommandLibraryMock,
-} = vi.hoisted(() => ({
-  processConfigGetMock: vi.fn(async () => undefined),
-  processConfigSetMock: vi.fn(async () => undefined),
+const { readWorkspaceCommandLibraryMock } = vi.hoisted(() => ({
   readWorkspaceCommandLibraryMock: vi.fn(async () => null),
 }));
 
@@ -54,6 +48,7 @@ vi.mock('@/common', () => ({
       reviewMemoryCandidate: makeChannel('reviewMemoryCandidate'),
       promoteMemoryCandidate: makeChannel('promoteMemoryCandidate'),
       getWorkspace: makeChannel('getWorkspace'),
+      getProjectCapabilitySnapshot: makeChannel('getProjectCapabilitySnapshot'),
       responseSearchWorkSpace: makeChannel('responseSearchWorkSpace'),
       confirmation: {
         confirm: makeChannel('confirmation.confirm'),
@@ -76,18 +71,25 @@ vi.mock('@process/services/database', () => ({
   getDatabase: (...args: unknown[]) => getDatabaseMock(...args),
 }));
 
-vi.mock('@process/utils/initStorage', () => ({
-  ProcessChat: { get: vi.fn(async () => []) },
-  ProcessConfig: { get: processConfigGetMock, set: processConfigSetMock },
-  getSkillsDir: vi.fn(() => '/skills'),
-  getBuiltinSkillsCopyDir: vi.fn(() => '/builtin-skills'),
-  getSystemDir: vi.fn(() => ({ cacheDir: '/cache' })),
-}));
+vi.mock('@process/utils/initStorage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@process/utils/initStorage')>();
+  return {
+    ...actual,
+    ProcessChat: { get: vi.fn(async () => []) },
+    getSkillsDir: vi.fn(() => '/skills'),
+    getBuiltinSkillsCopyDir: vi.fn(() => '/builtin-skills'),
+    getSystemDir: vi.fn(() => ({ cacheDir: '/cache' })),
+  };
+});
 
-vi.mock('@process/bridge/services/workspaceAutomation', () => ({
-  readWorkspaceCommandLibrary: (...args: unknown[]) => readWorkspaceCommandLibraryMock(...args),
-  resolveWorkspacePath: (workspace?: string) => workspace,
-}));
+vi.mock('@process/bridge/services/workspaceAutomation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@process/bridge/services/workspaceAutomation')>();
+  return {
+    ...actual,
+    readWorkspaceCommandLibrary: (...args: unknown[]) => readWorkspaceCommandLibraryMock(...args),
+    resolveWorkspacePath: (workspace?: string) => workspace,
+  };
+});
 
 vi.mock('@process/bridge/migrationUtils', () => ({
   migrateConversationToDatabase: vi.fn(async () => {}),
@@ -167,8 +169,6 @@ describe('conversationBridge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    processConfigGetMock.mockResolvedValue(undefined);
-    processConfigSetMock.mockResolvedValue(undefined);
     readWorkspaceCommandLibraryMock.mockResolvedValue(null);
     applyBeforeUserPromptMock.mockResolvedValue({
       content: 'hooked prompt',
@@ -380,25 +380,17 @@ describe('conversationBridge', () => {
   });
 
   describe('getSlashCommands', () => {
-    it('returns merged managed libraries even when runtime commands are skipped', async () => {
+    it('returns workspace-managed libraries even when runtime commands are skipped', async () => {
       vi.mocked(service.getConversation).mockResolvedValue(makeConversation('c1', '/workspace'));
-      processConfigGetMock.mockResolvedValue([
-        {
-          type: 'builtin',
-          id: 'plan',
-          enabled: false,
-          nameOverride: 'global-plan',
-        },
-      ]);
       readWorkspaceCommandLibraryMock.mockResolvedValue([
         {
-          type: 'builtin',
           id: 'plan',
           enabled: true,
-          nameOverride: 'workspace-plan',
+          name: 'workspace-plan',
+          description: 'Workspace plan',
+          template: 'Write the workspace plan first.',
         },
         {
-          type: 'custom',
           id: 'workspace-triage',
           enabled: true,
           name: 'triage',
@@ -419,13 +411,13 @@ describe('conversationBridge', () => {
       expect(result.success).toBe(true);
       expect(result.data.commands).toEqual([]);
       expect(result.data.managedLibrary[0]).toEqual({
-        type: 'builtin',
         id: 'plan',
         enabled: true,
-        nameOverride: 'workspace-plan',
+        name: 'workspace-plan',
+        description: 'Workspace plan',
+        template: 'Write the workspace plan first.',
       });
       expect(result.data.managedLibrary).toContainEqual({
-        type: 'custom',
         id: 'workspace-triage',
         enabled: true,
         name: 'triage',
@@ -433,6 +425,29 @@ describe('conversationBridge', () => {
         template: 'Use workspace triage.',
       });
       expect(readWorkspaceCommandLibraryMock).toHaveBeenCalledWith('/workspace');
+    });
+
+    it('returns no managed commands when the conversation has no workspace', async () => {
+      vi.mocked(service.getConversation).mockResolvedValue({
+        id: 'c1',
+        type: 'gemini',
+        name: 'No Workspace',
+        extra: {},
+      } as unknown as TChatConversation);
+
+      const handler = handlers['getSlashCommands'];
+      const result = (await handler({
+        conversation_id: 'c1',
+        includeRuntimeCommands: false,
+      })) as {
+        success: boolean;
+        data: { commands: Array<{ name: string }>; managedLibrary: Array<Record<string, unknown>> };
+      };
+
+      expect(result.success).toBe(true);
+      expect(result.data.commands).toEqual([]);
+      expect(result.data.managedLibrary).toEqual([]);
+      expect(readWorkspaceCommandLibraryMock).not.toHaveBeenCalled();
     });
 
     it('includes ACP runtime commands when requested', async () => {

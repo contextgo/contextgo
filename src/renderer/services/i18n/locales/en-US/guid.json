@@ -13,9 +13,6 @@
     "filters": {
       "all": "All"
     },
-    "openclawAgents": {
-      "all": "All agents"
-    },
     "refresh": "Refresh",
     "loading": "Scanning external sessions...",
     "loadingShort": "Scanning",

@@ -11,76 +11,54 @@ const messageError = vi.fn();
 const messageSuccess = vi.fn();
 
 const translations: Record<string, string> = {
-  'settings.channels.publication.connectorLabel': '1. Choose a usable channel account',
-  'settings.channels.publication.connectorGuide': 'Only usable channel accounts are shown here.',
-  'settings.channels.publication.connectorRequired': 'Please select a usable channel account first',
-  'settings.channels.publication.agentRequired': 'Please select the Agent to publish',
-  'settings.channels.publication.agentPlaceholder': 'Select the published Agent',
-  'settings.channels.publication.audiencePlaceholder': 'Select a discovered target',
-  'settings.channels.publication.scopeKeyRequired': 'Please select or enter a target key',
-  'settings.channels.publication.scopeKeyRemoteUserPlaceholder': 'Remote user key',
-  'settings.channels.publication.scopeKeyRemoteChatPlaceholder': 'Audience key',
-  'settings.channels.publication.manualKeyHint': 'Manual target keys are only for undiscovered audiences.',
-  'settings.channels.publication.manualScopeToggle': 'Enter target key manually',
-  'settings.channels.publication.saveDurable': 'Save durable publication',
-  'settings.channels.publication.updateDurable': 'Update durable publication',
-  'settings.channels.publication.saveFailed': 'Failed to save publication binding',
-  'settings.channels.publication.durableSaved': 'Durable publication saved',
-  'settings.channels.publication.deleteFailed': 'Failed to delete publication binding',
-  'settings.channels.publication.deleted': 'Publication binding deleted',
-  'settings.channels.publication.noConnector': 'No channel account is available yet.',
-  'settings.channels.publication.editingDurable': 'Editing durable binding',
-  'settings.channels.publication.durableTag': 'Long-term',
-  'settings.channels.publication.disabled': 'Disabled',
-  'settings.channels.publication.connectorDefaultAudience': 'Channel account default entry',
-  'settings.channels.publication.loadFailed': 'Failed to load publication bindings',
-  'settings.channels.publication.scope.connectorDefault': 'Entire channel account',
-  'settings.channels.publication.scope.remoteUser': 'Specific user / DM',
-  'settings.channels.publication.scope.remoteChat': 'Specific group / channel / topic',
-  'settings.channels.publication.scope.connector_default': 'Entire channel account',
-  'settings.channels.publication.scope.remote_user': 'Specific user / DM',
-  'settings.channels.publication.scope.remote_chat': 'Specific group / channel / topic',
-  'settings.channels.publication.intentTitle': 'Publish this Agent as a reusable entry',
+  'settings.channels.publication.intentTitle': 'Publish this Agent',
   'settings.channels.publication.intentDescription':
-    'This page publishes a reusable Agent from a specific workspace and runtime. The source conversation is only provenance, not the thing being published.',
-  'settings.channels.publication.intentProfile': 'Agent profile',
+    'This page manages where the current Agent is published. The source conversation is only provenance.',
+  'settings.channels.publication.intentProfile': 'Agent',
   'settings.channels.publication.intentConversation': 'Derived from',
-  'settings.channels.publication.intentBackend': 'Agent type / runtime',
-  'settings.channels.publication.intentWorkspace': 'Workspace',
-  'settings.channels.publication.connectorGuide.weixin': 'WeChat guide',
-  'settings.channels.publication.connectorGuide.multiSession': 'Multi-session guide',
-  'settings.channels.publication.targetTypeLabel': '2. Publish target type',
-  'settings.channels.publication.targetTypeHint.connectorDefault': 'Share one default Agent entry.',
-  'settings.channels.publication.targetTypeHint.remoteUser': 'One person gets one entry.',
-  'settings.channels.publication.targetTypeHint.remoteChat': 'One group or topic gets one entry.',
-  'settings.channels.publication.summaryAudiences': 'Audiences',
+  'settings.channels.publication.intentBackend': 'Runtime',
+  'settings.channels.publication.intentWorkspace': 'Project',
+  'settings.channels.publication.agentSelectorLabel': 'Agent',
+  'settings.channels.publication.agentSummaryTitle': 'Current Agent',
+  'settings.channels.publication.agentSummaryDescription':
+    'Manage where this Agent is published across reusable IM channel instances.',
   'settings.channels.publication.summaryPublished': 'Published',
   'settings.channels.publication.summaryObjects': 'Objects',
   'settings.channels.publication.summarySessions': 'Sessions',
-  'settings.channels.publication.accountOverview':
-    'Manage the long-term Agent entries on this channel account and the conversations they receive.',
   'settings.channels.publication.objectListTitle': 'Published objects',
   'settings.channels.publication.objectListDescription':
-    'Review the platform-native IM objects already discovered or published on this channel account.',
-  'settings.channels.publication.emptyObjects': 'No IM objects discovered yet',
-  'settings.channels.publication.objectDetailTitle': 'Object details',
-  'settings.channels.publication.objectDetailDescription':
-    'Inspect this specific IM object, its publication rules, and the sessions already linked to it.',
+    'Only the publish objects already bound to this Agent are shown here.',
+  'settings.channels.publication.emptyPublishedObjects': 'This Agent is not published to any IM object yet',
+  'settings.channels.publication.channelAccountInstanceLabel': 'Channel instance',
+  'settings.channels.publication.sessionStatusLabel': 'Current project session',
+  'settings.channels.publication.currentSessionActive': 'Active now',
+  'settings.channels.publication.noActiveSession': 'No active session yet',
   'settings.channels.publication.objectParentLabel': 'Parent',
-  'settings.channels.publication.objectPublishedTitle': 'Publication bindings',
-  'settings.channels.publication.objectPublishedDescription':
-    'These long-term rules publish an Agent into this specific IM object.',
-  'settings.channels.publication.objectPublishedEmpty': 'This object has no publication bindings yet',
-  'settings.channels.publication.objectSessionsTitle': 'Related sessions',
-  'settings.channels.publication.objectSessionsDescription':
-    'Sessions already associated with this IM object through the selected channel account.',
-  'settings.channels.publication.objectSessionsEmpty': 'No sessions have been created for this object yet',
-  'settings.channels.publication.sessionWorkspaceLabel': 'Workspace',
+  'settings.channels.publication.sessionWorkspaceLabel': 'Project',
   'settings.channels.publication.sessionLastActiveLabel': 'Last active',
-  'settings.channels.publication.sessionAgentTypeLabel': 'Agent type',
-  'settings.channels.publication.addTargetTitle': 'Add publication',
-  'settings.channels.publication.addTargetDescription':
-    'Pick the target first, then publish the Agent above there long-term. New messages from that target will route into this Agent.',
+  'settings.channels.publication.addObjectButton': 'Add publish object',
+  'settings.channels.publication.addObjectTitle': 'Add publish object',
+  'settings.channels.publication.addObjectDescription':
+    'Choose a channel instance first, then publish this Agent into one platform-native IM object.',
+  'settings.channels.publication.connectorLabel': 'Channel instance',
+  'settings.channels.publication.connectorPlaceholder': 'Select a channel instance',
+  'settings.channels.publication.connectorRequired': 'Please select a usable channel account first',
+  'settings.channels.publication.publishObjectLabel': 'Publish object',
+  'settings.channels.publication.publishObjectPlaceholder': 'Select a publish object',
+  'settings.channels.publication.publishObjectRequired': 'Please select a publish object first',
+  'settings.channels.publication.agentRequired': 'Please select the Agent to publish',
+  'settings.channels.publication.saveDurable': 'Publish Agent',
+  'settings.channels.publication.updateDurable': 'Update publication',
+  'settings.channels.publication.saveFailed': 'Failed to save publication binding',
+  'settings.channels.publication.durableSaved': 'Agent publication saved',
+  'settings.channels.publication.deleteFailed': 'Failed to delete publication binding',
+  'settings.channels.publication.deleted': 'Publication binding deleted',
+  'settings.channels.publication.noConnector': 'No channel account is available yet.',
+  'settings.channels.publication.goToAccounts': 'Go to IM Channels',
+  'settings.channels.publication.durableTag': 'Published',
+  'settings.channels.publication.disabled': 'Disabled',
+  'settings.channels.publication.connectorDefaultAudience': 'Channel account default entry',
+  'settings.channels.publication.loadFailed': 'Failed to load publication bindings',
   'settings.channels.publication.objectKind.common.person': 'Person',
   'settings.channels.publication.objectKind.common.dm': 'Direct chat',
   'settings.channels.publication.objectKind.common.group': 'Group',
@@ -213,7 +191,8 @@ const catalogResponse = {
       {
         id: 'agent-profile-1',
         name: 'Ops Agent',
-        backend: 'openclaw-gateway',
+        backend: 'codex',
+        workspaceRef: '/tmp/workspace',
         version: 1,
         archived: false,
         createdAt: 1000,
@@ -223,6 +202,7 @@ const catalogResponse = {
         id: 'agent-profile-2',
         name: 'Published Support Agent',
         backend: 'openclaw-gateway',
+        workspaceRef: '/tmp/support',
         publishedFromConversationId: 'conversation-2',
         version: 1,
         archived: false,
@@ -341,34 +321,20 @@ describe('PublicationBindingPanel', () => {
     mockDeleteBindingInvoke.mockResolvedValue({ success: true });
   });
 
-  it('shows object list and related sessions for the selected IM object', async () => {
+  it('shows the selected agent summary and only that agent published objects by default', async () => {
     renderPanel();
 
-    await screen.findByText('Published objects');
+    await screen.findByText('Current Agent');
 
-    expect(screen.getAllByText('Ops topic').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: /Ops topic/i }));
-
-    await waitFor(() => {
-      expect(screen.getAllByText(/Parent:\s*Core Ops Group/i).length).toBeGreaterThan(0);
-      expect(screen.getByText('Related sessions')).toBeInTheDocument();
-      expect(screen.getByText('conversation-ops-1')).toBeInTheDocument();
-      expect(screen.getByText(/Workspace:\s*\/tmp\/workspace/i)).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Slack Support/i }));
-
-    const [supportRoomButton] = await screen.findAllByRole('button', { name: /Support room/i });
-    fireEvent.click(supportRoomButton);
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Support room').length).toBeGreaterThan(0);
-      expect(screen.getByText('This object has no publication bindings yet')).toBeInTheDocument();
-      expect(screen.getByText('No sessions have been created for this object yet')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Ops Agent')).toBeInTheDocument();
+    expect(screen.getByText('Published objects')).toBeInTheDocument();
+    expect(screen.getByText('Ops topic')).toBeInTheDocument();
+    expect(screen.queryByText('Support room')).not.toBeInTheDocument();
+    expect(screen.getByText(/Channel instance:\s*Feishu Ops/i)).toBeInTheDocument();
+    expect(screen.getByText(/Current project session:\s*Active now/i)).toBeInTheDocument();
   });
 
-  it('preselects the published agent from publication intent and scopes the editor from the selected object', async () => {
+  it('preselects the agent from publication intent and starts with an empty published-object list', async () => {
     renderPanel({
       conversationId: 'conversation-2',
       conversationName: 'Support triage',
@@ -377,41 +343,39 @@ describe('PublicationBindingPanel', () => {
       agentName: 'Published Support Agent',
     });
 
-    await screen.findByText('Publish this Agent as a reusable entry');
+    await screen.findByText('Publish this Agent');
 
-    expect(screen.getByText(/Derived from:/i)).toBeInTheDocument();
     expect(screen.getByText('Support triage')).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[1]).toHaveValue('agent-profile-2');
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Ops topic/i }));
-
-    await waitFor(() => {
-      const comboboxes = screen.getAllByRole('combobox');
-      expect(comboboxes[0]).toHaveValue('remote_chat');
-      expect(comboboxes[1]).toHaveValue('feishu://topic/chat-topic/root-1');
-    });
+    expect(screen.getByDisplayValue('agent-profile-2')).toBeInTheDocument();
+    expect(screen.getByText('This Agent is not published to any IM object yet')).toBeInTheDocument();
   });
 
-  it('saves a durable publication for the selected object', async () => {
-    renderPanel();
-
-    await screen.findByText('Published objects');
-
-    fireEvent.click(screen.getByRole('button', { name: /Slack Support/i }));
-
-    const [supportRoomButton] = await screen.findAllByRole('button', { name: /Support room/i });
-    fireEvent.click(supportRoomButton);
-
-    await waitFor(() => {
-      const comboboxes = screen.getAllByRole('combobox');
-      expect(comboboxes[0]).toHaveValue('remote_chat');
-      expect(comboboxes[1]).toHaveValue('slack://ws/team/channel/support');
+  it('adds a new publication from the selected agent into a platform-native publish object', async () => {
+    renderPanel({
+      conversationId: 'conversation-2',
+      conversationName: 'Support triage',
+      backend: 'openclaw-gateway',
+      workspace: '/tmp/support',
+      agentName: 'Published Support Agent',
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Save durable publication/i }));
+    await screen.findByText('Current Agent');
+
+    fireEvent.click(screen.getByRole('button', { name: /Add publish object/i }));
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Select a channel instance' }), {
+      target: { value: 'connector-2' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Select a publish object' })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Select a publish object' }), {
+      target: { value: 'slack://ws/team/channel/support' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Publish Agent/i }));
 
     await waitFor(() => {
       expect(mockUpsertBindingInvoke).toHaveBeenCalledWith({
@@ -419,6 +383,7 @@ describe('PublicationBindingPanel', () => {
           connectorId: 'connector-2',
           scopeType: 'remote_chat',
           scopeKey: 'slack://ws/team/channel/support',
+          agentProfileId: 'agent-profile-2',
           metadata: expect.objectContaining({
             publishObject: {
               nativeObjectType: 'channel',
@@ -433,7 +398,7 @@ describe('PublicationBindingPanel', () => {
     });
   });
 
-  it('deletes an existing publication binding from the selected object', async () => {
+  it('deletes one published object from the selected agent', async () => {
     const catalogAfterDelete = {
       ...catalogResponse,
       data: {
@@ -446,17 +411,13 @@ describe('PublicationBindingPanel', () => {
 
     renderPanel();
 
-    await screen.findByText('Publication bindings');
-    expect(screen.getByText('Ops Agent')).toBeInTheDocument();
+    await screen.findByText('Ops topic');
 
     fireEvent.click(screen.getByText('delete-icon').closest('button') as HTMLButtonElement);
 
     await waitFor(() => {
+      expect(mockDeleteBindingInvoke).toHaveBeenCalledWith({ bindingId: 'binding-topic-1' });
       expect(mockGetBindingCatalogInvoke).toHaveBeenCalledTimes(2);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('This object has no publication bindings yet')).toBeInTheDocument();
     });
   });
 
@@ -466,13 +427,9 @@ describe('PublicationBindingPanel', () => {
       '?conversationId=conversation-2&conversationName=Support%20triage&backend=openclaw-gateway&workspace=%2Ftmp%2Fsupport&agentName=Published%20Support%20Agent'
     );
 
-    await screen.findByText('Publish this Agent as a reusable entry');
+    await screen.findByText('Publish this Agent');
 
-    expect(screen.getByText(/Derived from:/i)).toBeInTheDocument();
     expect(screen.getByText('Support triage')).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[1]).toHaveValue('agent-profile-2');
-    });
+    expect(screen.getByDisplayValue('agent-profile-2')).toBeInTheDocument();
   });
 });

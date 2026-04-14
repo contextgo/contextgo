@@ -31,7 +31,6 @@ import { getNpxCacheDir, getWindowsShellExecutionOptions, resolveNpxPath } from 
 import {
   ACP_PERF_LOG,
   connectClaude,
-  connectCodebuddy,
   connectCodex,
   prepareCleanEnv,
   spawnGenericBackend,
@@ -129,7 +128,7 @@ export class AcpConnection {
 
   // 通用的后端连接方法
   private async connectGenericBackend(
-    backend: Exclude<AcpBackend, 'claude' | 'codebuddy' | 'codex'>,
+    backend: Exclude<AcpBackend, 'claude' | 'codex'>,
     cliPath: string,
     workingDir: string,
     acpArgs?: string[],
@@ -140,7 +139,7 @@ export class AcpConnection {
   }
 
   /** Npx-based backends that may need npm cache recovery on version mismatch */
-  private static readonly NPX_BACKENDS: ReadonlySet<string> = new Set(['claude', 'codex', 'codebuddy']);
+  private static readonly NPX_BACKENDS: ReadonlySet<string> = new Set(['claude', 'codex']);
 
   async connect(
     backend: AcpBackend,
@@ -237,26 +236,12 @@ export class AcpConnection {
         await connectClaude(workingDir, npxHooks);
         break;
 
-      case 'codebuddy':
-        await connectCodebuddy(workingDir, npxHooks);
-        break;
-
       case 'codex':
         await connectCodex(workingDir, npxHooks);
         break;
 
       case 'gemini':
-      case 'qwen':
-      case 'iflow':
-      case 'droid':
-      case 'goose':
-      case 'auggie':
-      case 'kimi':
       case 'opencode':
-      case 'copilot':
-      case 'qoder':
-      case 'vibe':
-      case 'cursor':
         if (!cliPath) {
           throw new Error(`CLI path is required for ${backend} backend`);
         }
@@ -791,14 +776,11 @@ export class AcpConnection {
     cwd: string = process.cwd(),
     options?: { resumeSessionId?: string; forkSession?: boolean; mcpServers?: AcpSessionMcpServer[] }
   ): Promise<AcpResponse & { sessionId?: string }> {
-    // Normalize workspace-relative paths:
-    // Agents such as qwen already run with `workingDir` as their process cwd.
-    // Sending the absolute path again makes some CLIs treat it as a nested relative path.
+    // Normalize workspace-relative paths before opening a session.
     const normalizedCwd = this.normalizeCwdForAgent(cwd);
 
-    // Build _meta for Claude/CodeBuddy ACP resume support
-    // claude-agent-acp and codebuddy use _meta.claudeCode.options.resume for session resume
-    const useMetaResume = (this.backend === 'claude' || this.backend === 'codebuddy') && options?.resumeSessionId;
+    // Claude ACP uses _meta.claudeCode.options.resume for session resume.
+    const useMetaResume = this.backend === 'claude' && options?.resumeSessionId;
     const meta = useMetaResume
       ? {
           claudeCode: {
@@ -812,12 +794,10 @@ export class AcpConnection {
     const response = await this.sendRequest<AcpResponse & { sessionId?: string }>('session/new', {
       cwd: normalizedCwd,
       mcpServers: options?.mcpServers ?? [],
-      // Claude/CodeBuddy ACP uses _meta for resume
+      // Claude ACP uses _meta for resume.
       ...(meta && { _meta: meta }),
       // Generic resume parameters for other ACP backends
-      ...(this.backend !== 'claude' &&
-        this.backend !== 'codebuddy' &&
-        options?.resumeSessionId && { resumeSessionId: options.resumeSessionId }),
+      ...(this.backend !== 'claude' && options?.resumeSessionId && { resumeSessionId: options.resumeSessionId }),
       ...(options?.forkSession && { forkSession: options.forkSession }),
     });
 
@@ -895,10 +875,8 @@ export class AcpConnection {
     const defaultPath = '.';
     if (!cwd) return defaultPath;
 
-    // Some CLIs require absolute paths for cwd
-    // - Copilot: "Directory path must be absolute: ."
-    // - Codex (via codex-acp): "cwd is not absolute: ."
-    if (this.backend === 'copilot' || this.backend === 'codex') {
+    // Codex ACP requires absolute cwd.
+    if (this.backend === 'codex') {
       return path.resolve(cwd);
     }
 

@@ -11,7 +11,7 @@ import { renderHook } from '@testing-library/react';
 const bridgeMocks = vi.hoisted(() => ({
   readAssistantRule: vi.fn(),
   readAssistantSkill: vi.fn(),
-  readBuiltinRule: vi.fn(),
+  readBundledAgentPackageContent: vi.fn(),
   readBuiltinSkill: vi.fn(),
 }));
 
@@ -20,7 +20,7 @@ vi.mock('../../src/common', () => ({
     fs: {
       readAssistantRule: { invoke: bridgeMocks.readAssistantRule },
       readAssistantSkill: { invoke: bridgeMocks.readAssistantSkill },
-      readBuiltinRule: { invoke: bridgeMocks.readBuiltinRule },
+      readBundledAgentPackageContent: { invoke: bridgeMocks.readBundledAgentPackageContent },
       readBuiltinSkill: { invoke: bridgeMocks.readBuiltinSkill },
     },
   },
@@ -39,14 +39,23 @@ vi.mock('../../src/common/config/presets/assistantPresets', () => ({
       id: 'test-preset',
       avatar: '🧪',
       presetAgentType: 'gemini',
-      ruleFiles: { 'en-US': 'test-preset.md' },
-      skillFiles: { 'en-US': 'test-preset-skill.md' },
-      defaultEnabledSkills: ['preset-skill'],
-      defaultEnabledHooks: ['prompt-clarifier'],
       nameI18n: { 'en-US': 'Test Preset' },
       descriptionI18n: { 'en-US': 'A test preset' },
     },
   ],
+}));
+
+vi.mock('../../src/common/config/presets/bundledAgentPackageRegistry', () => ({
+  getBundledAgentPackageDefaultEnabledSkillNames: vi.fn((assistantId: string) =>
+    assistantId === 'builtin-test-preset' ? ['preset-skill'] : undefined
+  ),
+  getBundledAgentPackageDefaultEnabledHookNames: vi.fn((assistantId: string) =>
+    assistantId === 'builtin-test-preset' ? ['prompt-clarifier'] : undefined
+  ),
+  getBundledAgentPackageWorkspaceSkillBootstrapStrategy: vi.fn(() => undefined),
+  getBundledAgentPackageOwnedSkillNames: vi.fn(() => undefined),
+  getBundledAgentPackageHideOwnedSkillsFromLibrary: vi.fn(() => undefined),
+  hasBundledAgentPackageSkillsPayload: vi.fn((assistantId: string) => assistantId === 'builtin-test-preset'),
 }));
 
 import { useAgentAvailability } from '../../src/renderer/pages/guid/hooks/useAgentAvailability';
@@ -251,7 +260,10 @@ describe('usePresetAssistantResolver', () => {
   beforeEach(() => {
     bridgeMocks.readAssistantRule.mockResolvedValue('');
     bridgeMocks.readAssistantSkill.mockResolvedValue('');
-    bridgeMocks.readBuiltinRule.mockResolvedValue('');
+    bridgeMocks.readBundledAgentPackageContent.mockResolvedValue({
+      success: true,
+      data: { agentsDocument: null },
+    });
     bridgeMocks.readBuiltinSkill.mockResolvedValue('');
   });
 

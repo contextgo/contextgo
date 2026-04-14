@@ -8,44 +8,22 @@ import { channel } from '@/common/adapter/ipcBridge';
 import {
   getChannelAccountId,
   type IAgentProfile,
-  type IChannelActiveSessionEntry,
   type IChannelAccount,
+  type IChannelActiveSessionEntry,
   type IChannelAudienceEntry,
   type IChannelBinding,
   type IChannelBindingCatalog,
 } from '@process/channels/types';
 import { Button, Empty, Input, Message, Select, Spin, Tag, Tooltip } from '@arco-design/web-react';
 import { Delete, Edit, Plus, Undo } from '@icon-park/react';
-import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import styles from '../ChannelModalContent.module.css';
-import {
-  buildPublicationObjects,
-  getPublicationObjectKindLabel,
-  type PublicationObjectViewModel,
-} from './objectViewModel';
-import {
-  buildBindingPayload,
-  splitBindingsByLifetime,
-  type BindingDraft,
-  type DurableBindingScopeType,
-} from './viewModel';
-
-type BindingScopeOption = {
-  value: DurableBindingScopeType;
-  label: string;
-};
-
-type DurableEditorState = {
-  editingBindingId: string;
-  scopeType: DurableBindingScopeType;
-  selectedAudienceKey: string;
-  manualScopeKey: string;
-  agentProfileId: string;
-};
+import { buildAgentPublicationObjects, buildPublishObjectOptionLabel } from './agentPublicationViewModel';
+import { getPublicationObjectKindLabel } from './objectViewModel';
+import { buildBindingPayload, splitBindingsByLifetime, type DurableBindingScopeType } from './viewModel';
 
 type PublicationIntent = {
   agentProfileId?: string;
@@ -55,6 +33,16 @@ type PublicationIntent = {
   customAgentId?: string;
   workspace?: string;
   agentName?: string;
+};
+
+type PublicationEditorState = {
+  open: boolean;
+  editingBindingId: string;
+  channelAccountId: string;
+  selectedAudienceKey: string;
+  useManualScope: boolean;
+  manualScopeType: DurableBindingScopeType;
+  manualScopeKey: string;
 };
 
 type TranslationFn = ReturnType<typeof useTranslation>['t'];
@@ -67,39 +55,16 @@ const EMPTY_CATALOG: IChannelBindingCatalog = {
   audiences: [],
 };
 
-function getProfileLabel(profile: IAgentProfile): string {
-  return `${profile.name} · ${profile.backend}`;
-}
-
-function getProfileDisplayName(profile: IAgentProfile): string {
-  return profile.name || profile.id;
-}
-
-function getProfileRuntimeLabel(profile: IAgentProfile): string {
-  const modelLabel = profile.modelRef?.useModel || profile.modelRef?.name;
-  return modelLabel ? `${profile.backend} · ${modelLabel}` : profile.backend;
-}
-
-function getProfileWorkspaceLabel(profile: IAgentProfile): string {
-  return profile.workspaceRef || '-';
-}
-
-function getAudienceLabel(audience: IChannelAudienceEntry): string {
-  return audience.subtitle ? `${audience.title} · ${audience.subtitle}` : audience.title;
-}
-
-function createDurableEditorState(agentProfileId = ''): DurableEditorState {
+function createPublicationEditorState(): PublicationEditorState {
   return {
+    open: false,
     editingBindingId: '',
-    scopeType: 'connector_default',
+    channelAccountId: '',
     selectedAudienceKey: '',
+    useManualScope: false,
+    manualScopeType: 'remote_chat',
     manualScopeKey: '',
-    agentProfileId,
   };
-}
-
-function resolveScopeKey(selectedAudienceKey: string, manualScopeKey: string): string {
-  return manualScopeKey.trim() || selectedAudienceKey;
 }
 
 function getIntentField(searchParams: URLSearchParams, key: string): string | undefined {
@@ -185,106 +150,21 @@ function resolvePreferredProfileId(
   return bestProfileId;
 }
 
-function getChannelAccountGuide(platform: string, t: TranslationFn): string {
-  if (platform === 'weixin') {
-    return t('settings.channels.publication.connectorGuide.weixin');
-  }
-
-  return t('settings.channels.publication.connectorGuide.multiSession');
+function getProfileLabel(profile: IAgentProfile): string {
+  return `${profile.name} · ${profile.backend}`;
 }
 
-function getScopeHint(scopeType: DurableBindingScopeType, t: TranslationFn): string {
-  if (scopeType === 'connector_default') {
-    return t('settings.channels.publication.targetTypeHint.connectorDefault');
-  }
-
-  if (scopeType === 'remote_user') {
-    return t('settings.channels.publication.targetTypeHint.remoteUser');
-  }
-
-  return t('settings.channels.publication.targetTypeHint.remoteChat');
+function getProfileDisplayName(profile: IAgentProfile): string {
+  return profile.name || profile.id;
 }
 
-function getBindingAudience(
-  binding: IChannelBinding,
-  audienceMap: Map<string, IChannelAudienceEntry>
-): IChannelAudienceEntry | undefined {
-  if (!binding.scopeKey || binding.scopeType === 'connector_default') {
-    return undefined;
-  }
-
-  return audienceMap.get(binding.scopeKey);
+function getProfileRuntimeLabel(profile: IAgentProfile): string {
+  const modelLabel = profile.modelRef?.useModel || profile.modelRef?.name;
+  return modelLabel ? `${profile.backend} · ${modelLabel}` : profile.backend;
 }
 
-function getBindingTargetSummary(params: {
-  binding: IChannelBinding;
-  selectedObject?: PublicationObjectViewModel;
-  audienceMap: Map<string, IChannelAudienceEntry>;
-  t: TranslationFn;
-}): {
-  title: string;
-  detail?: string;
-} {
-  const audience = getBindingAudience(params.binding, params.audienceMap);
-  const title =
-    audience?.objectTitle ??
-    audience?.title ??
-    params.selectedObject?.title ??
-    params.t('settings.channels.publication.connectorDefaultAudience');
-  const detailParts: string[] = [];
-  const parentTitle = audience?.parentObjectTitle ?? params.selectedObject?.parentTitle;
-  const subtitle =
-    audience?.objectSubtitle ??
-    audience?.subtitle ??
-    (params.selectedObject?.subtitle !== params.selectedObject?.title ? params.selectedObject?.subtitle : undefined);
-
-  if (parentTitle) {
-    detailParts.push(`${params.t('settings.channels.publication.objectParentLabel')}: ${parentTitle}`);
-  }
-  if (subtitle && subtitle !== title) {
-    detailParts.push(subtitle);
-  }
-
-  return {
-    title,
-    detail: detailParts.length > 0 ? detailParts.join(' · ') : undefined,
-  };
-}
-
-function resolveObjectEditorState(
-  object: PublicationObjectViewModel,
-  audienceMap: Map<string, IChannelAudienceEntry>,
-  currentAgentProfileId: string
-): Partial<DurableEditorState> {
-  const primaryAudience = object.primaryAudience;
-  if (primaryAudience) {
-    return {
-      editingBindingId: '',
-      scopeType: primaryAudience.scopeType === 'remote_user' ? 'remote_user' : 'remote_chat',
-      selectedAudienceKey: primaryAudience.key,
-      manualScopeKey: '',
-      agentProfileId: currentAgentProfileId,
-    };
-  }
-
-  const existingBinding = object.bindings.find(
-    (binding) => binding.scopeType !== 'connector_default' && binding.scopeKey
-  );
-  if (!existingBinding?.scopeKey) {
-    return {
-      editingBindingId: '',
-      agentProfileId: currentAgentProfileId,
-    };
-  }
-
-  const discovered = audienceMap.has(existingBinding.scopeKey);
-  return {
-    editingBindingId: '',
-    scopeType: existingBinding.scopeType === 'remote_user' ? 'remote_user' : 'remote_chat',
-    selectedAudienceKey: discovered ? existingBinding.scopeKey : '',
-    manualScopeKey: discovered ? '' : existingBinding.scopeKey,
-    agentProfileId: currentAgentProfileId,
-  };
+function getProfileWorkspaceLabel(profile: IAgentProfile): string {
+  return profile.workspaceRef || '-';
 }
 
 function formatRelativeTime(timestamp: number, locale: string): string {
@@ -307,6 +187,29 @@ function formatOptionalRelativeTime(timestamp: number | undefined, locale: strin
   return typeof timestamp === 'number' ? formatRelativeTime(timestamp, locale) : null;
 }
 
+function getManualScopePlaceholder(scopeType: DurableBindingScopeType, t: TranslationFn): string {
+  if (scopeType === 'remote_user') {
+    return t('settings.channels.publication.scopeKeyRemoteUserPlaceholder');
+  }
+
+  return t('settings.channels.publication.scopeKeyRemoteChatPlaceholder');
+}
+
+function resolveAudienceScopeType(audience: IChannelAudienceEntry | undefined): DurableBindingScopeType {
+  return audience?.scopeType === 'remote_user' ? 'remote_user' : 'remote_chat';
+}
+
+function getBindingAudience(
+  binding: IChannelBinding,
+  audienceMap: Map<string, IChannelAudienceEntry>
+): IChannelAudienceEntry | undefined {
+  if (!binding.scopeKey || binding.scopeType === 'connector_default') {
+    return undefined;
+  }
+
+  return audienceMap.get(binding.scopeKey);
+}
+
 const PublicationBindingPanel: React.FC = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -314,13 +217,11 @@ const PublicationBindingPanel: React.FC = () => {
 
   const [catalog, setCatalog] = useState<IChannelBindingCatalog>(EMPTY_CATALOG);
   const [activeSessions, setActiveSessions] = useState<IChannelActiveSessionEntry[]>([]);
-  const [selectedChannelAccountId, setSelectedChannelAccountId] = useState('');
-  const [selectedObjectKey, setSelectedObjectKey] = useState('');
+  const [selectedAgentProfileId, setSelectedAgentProfileId] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingBindingId, setDeletingBindingId] = useState('');
-  const [durableEditor, setDurableEditor] = useState<DurableEditorState>(createDurableEditorState());
-  const [showDurableManualScope, setShowDurableManualScope] = useState(false);
+  const [editor, setEditor] = useState<PublicationEditorState>(createPublicationEditorState());
   const [appliedIntentKey, setAppliedIntentKey] = useState('');
 
   const publicationIntent = useMemo(
@@ -348,21 +249,8 @@ const PublicationBindingPanel: React.FC = () => {
         throw new Error(sessionResult.msg || t('settings.channels.publication.loadFailed'));
       }
 
-      const firstAgentProfileId = catalogResult.data.agentProfiles[0]?.id || '';
-      const nextChannelAccounts = catalogResult.data.channelAccounts ?? catalogResult.data.connectors;
-
       setCatalog(catalogResult.data);
       setActiveSessions(sessionResult.data);
-      setSelectedChannelAccountId((current) => {
-        if (current && nextChannelAccounts.some((channelAccount) => channelAccount.id === current)) {
-          return current;
-        }
-        return nextChannelAccounts[0]?.id ?? '';
-      });
-      setDurableEditor((editor) => ({
-        ...editor,
-        agentProfileId: editor.agentProfileId || firstAgentProfileId,
-      }));
     } catch (error) {
       Message.error(error instanceof Error ? error.message : t('settings.channels.publication.loadFailed'));
     } finally {
@@ -374,6 +262,74 @@ const PublicationBindingPanel: React.FC = () => {
     void loadCatalog();
   }, [loadCatalog]);
 
+  const profileMap = useMemo(
+    () => new Map(catalog.agentProfiles.map((profile) => [profile.id, profile] as const)),
+    [catalog.agentProfiles]
+  );
+  const preferredProfileId = useMemo(
+    () => resolvePreferredProfileId(catalog.agentProfiles, publicationIntent),
+    [catalog.agentProfiles, publicationIntent]
+  );
+
+  useEffect(() => {
+    if (catalog.agentProfiles.length === 0) {
+      setSelectedAgentProfileId('');
+      return;
+    }
+
+    setSelectedAgentProfileId((current) => {
+      if (current && profileMap.has(current)) {
+        return current;
+      }
+
+      return catalog.agentProfiles[0]?.id ?? '';
+    });
+  }, [catalog.agentProfiles, profileMap]);
+
+  useEffect(() => {
+    if (!preferredProfileId || appliedIntentKey === publicationIntentKey) {
+      return;
+    }
+
+    setSelectedAgentProfileId(preferredProfileId);
+    setEditor(createPublicationEditorState());
+    setAppliedIntentKey(publicationIntentKey);
+  }, [appliedIntentKey, preferredProfileId, publicationIntentKey]);
+
+  const selectedAgentProfile = selectedAgentProfileId ? profileMap.get(selectedAgentProfileId) : undefined;
+  const audienceMap = useMemo(
+    () => new Map(catalog.audiences.map((audience) => [audience.key, audience] as const)),
+    [catalog.audiences]
+  );
+  const allDurableBindings = useMemo(
+    () => splitBindingsByLifetime(catalog.bindings).durableBindings,
+    [catalog.bindings]
+  );
+  const selectedAgentBindings = useMemo(
+    () => allDurableBindings.filter((binding) => binding.agentProfileId === selectedAgentProfileId),
+    [allDurableBindings, selectedAgentProfileId]
+  );
+
+  const publishedObjects = useMemo(
+    () =>
+      buildAgentPublicationObjects({
+        channelAccounts: catalogChannelAccounts,
+        audiences: catalog.audiences,
+        bindings: selectedAgentBindings,
+        sessions: activeSessions,
+      }),
+    [activeSessions, catalog.audiences, catalogChannelAccounts, selectedAgentBindings]
+  );
+
+  const publishedBindingCount = useMemo(
+    () => publishedObjects.reduce((count, entry) => count + entry.object.bindings.length, 0),
+    [publishedObjects]
+  );
+  const publishedSessionCount = useMemo(
+    () => publishedObjects.reduce((count, entry) => count + entry.object.sessions.length, 0),
+    [publishedObjects]
+  );
+
   const profileOptions = useMemo(
     () =>
       catalog.agentProfiles.map((profile) => ({
@@ -383,186 +339,90 @@ const PublicationBindingPanel: React.FC = () => {
     [catalog.agentProfiles]
   );
 
-  const profileMap = useMemo(
-    () => new Map(catalog.agentProfiles.map((profile) => [profile.id, profile] as const)),
-    [catalog.agentProfiles]
-  );
-  const audienceMap = useMemo(
-    () => new Map(catalog.audiences.map((audience) => [audience.key, audience] as const)),
-    [catalog.audiences]
-  );
-
-  const preferredProfileId = useMemo(
-    () => resolvePreferredProfileId(catalog.agentProfiles, publicationIntent),
-    [catalog.agentProfiles, publicationIntent]
-  );
-  const intentProfile = useMemo(
+  const channelAccountOptions = useMemo(
     () =>
-      (preferredProfileId ? profileMap.get(preferredProfileId) : undefined) ||
-      (publicationIntent?.agentProfileId ? profileMap.get(publicationIntent.agentProfileId) : undefined),
-    [preferredProfileId, profileMap, publicationIntent?.agentProfileId]
+      catalogChannelAccounts.map((channelAccount) => ({
+        label: channelAccount.name,
+        value: channelAccount.id,
+      })),
+    [catalogChannelAccounts]
   );
 
-  const selectedChannelAccount = useMemo<IChannelAccount | undefined>(
-    () => catalogChannelAccounts.find((channelAccount) => channelAccount.id === selectedChannelAccountId),
-    [catalogChannelAccounts, selectedChannelAccountId]
+  const selectedEditorChannelAccount = useMemo<IChannelAccount | undefined>(
+    () => catalogChannelAccounts.find((channelAccount) => channelAccount.id === editor.channelAccountId),
+    [catalogChannelAccounts, editor.channelAccountId]
   );
 
-  const selectedBindings = useMemo(
-    () => catalog.bindings.filter((binding) => getChannelAccountId(binding) === selectedChannelAccountId),
-    [catalog.bindings, selectedChannelAccountId]
-  );
-  const { durableBindings } = useMemo(() => splitBindingsByLifetime(selectedBindings), [selectedBindings]);
-  const selectedAudiences = useMemo(
-    () => catalog.audiences.filter((audience) => getChannelAccountId(audience) === selectedChannelAccountId),
-    [catalog.audiences, selectedChannelAccountId]
-  );
-  const selectedSessions = useMemo(
-    () => activeSessions.filter((session) => getChannelAccountId(session) === selectedChannelAccountId),
-    [activeSessions, selectedChannelAccountId]
+  const availableAudiences = useMemo(
+    () =>
+      catalog.audiences
+        .filter((audience) => {
+          if (getChannelAccountId(audience) !== editor.channelAccountId) {
+            return false;
+          }
+
+          return audience.scopeType === 'remote_chat' || audience.scopeType === 'remote_user';
+        })
+        .toSorted((left, right) => (right.lastActive ?? 0) - (left.lastActive ?? 0)),
+    [catalog.audiences, editor.channelAccountId]
   );
 
-  const publicationObjects = useMemo(() => {
-    if (!selectedChannelAccount) {
+  const publishObjectOptions = useMemo(() => {
+    if (!selectedEditorChannelAccount) {
       return [];
     }
 
-    return buildPublicationObjects({
-      platform: selectedChannelAccount.platform,
-      audiences: selectedAudiences,
-      bindings: durableBindings.filter((binding) => binding.scopeType !== 'connector_default'),
-      sessions: selectedSessions,
-      resolveBindingAudience: (binding) => getBindingAudience(binding, audienceMap),
+    return availableAudiences.map((audience) => ({
+      label: buildPublishObjectOptionLabel({
+        channelAccount: selectedEditorChannelAccount,
+        audience,
+        t,
+      }),
+      value: audience.key,
+    }));
+  }, [availableAudiences, selectedEditorChannelAccount, t]);
+
+  useEffect(() => {
+    if (!editor.selectedAudienceKey) {
+      return;
+    }
+
+    const audienceStillExists = availableAudiences.some((audience) => audience.key === editor.selectedAudienceKey);
+    if (!audienceStillExists) {
+      setEditor((current) => ({
+        ...current,
+        selectedAudienceKey: '',
+      }));
+    }
+  }, [availableAudiences, editor.selectedAudienceKey]);
+
+  const openAddEditor = useCallback(() => {
+    setEditor({
+      ...createPublicationEditorState(),
+      open: true,
     });
-  }, [audienceMap, durableBindings, selectedAudiences, selectedChannelAccount, selectedSessions]);
+  }, []);
 
-  const selectedObject = useMemo(
-    () => publicationObjects.find((object) => object.key === selectedObjectKey),
-    [publicationObjects, selectedObjectKey]
-  );
-  const selectedPublishedCount = useMemo(
-    () => publicationObjects.filter((object) => object.bindings.length > 0).length,
-    [publicationObjects]
-  );
+  const resetEditor = useCallback(() => {
+    setEditor(createPublicationEditorState());
+  }, []);
 
-  const durableScopeOptions = useMemo<BindingScopeOption[]>(
-    () => [
-      { value: 'connector_default', label: t('settings.channels.publication.scope.connectorDefault') },
-      { value: 'remote_user', label: t('settings.channels.publication.scope.remoteUser') },
-      { value: 'remote_chat', label: t('settings.channels.publication.scope.remoteChat') },
-    ],
-    [t]
-  );
+  const handleEditBinding = useCallback(
+    (binding: IChannelBinding) => {
+      const audience = getBindingAudience(binding, audienceMap);
+      const channelAccountId = getChannelAccountId(binding) ?? '';
 
-  const durableAudienceOptions = useMemo(
-    () =>
-      selectedAudiences
-        .filter((audience) => audience.scopeType === durableEditor.scopeType)
-        .map((audience) => ({
-          label: getAudienceLabel(audience),
-          value: audience.key,
-        })),
-    [durableEditor.scopeType, selectedAudiences]
-  );
-
-  const durableScopeHint = useMemo(() => getScopeHint(durableEditor.scopeType, t), [durableEditor.scopeType, t]);
-  const channelAccountGuide = useMemo(
-    () =>
-      selectedChannelAccount
-        ? getChannelAccountGuide(selectedChannelAccount.platform, t)
-        : t('settings.channels.publication.connectorGuide'),
-    [selectedChannelAccount, t]
-  );
-
-  const resetDurableEditor = useCallback(
-    (
-      nextState?: Partial<
-        Pick<DurableEditorState, 'scopeType' | 'selectedAudienceKey' | 'manualScopeKey' | 'agentProfileId'>
-      >
-    ) => {
-      setShowDurableManualScope(Boolean(nextState?.manualScopeKey));
-      setDurableEditor({
-        ...createDurableEditorState(nextState?.agentProfileId ?? durableEditor.agentProfileId),
-        scopeType: nextState?.scopeType ?? 'connector_default',
-        selectedAudienceKey: nextState?.selectedAudienceKey ?? '',
-        manualScopeKey: nextState?.manualScopeKey ?? '',
+      setEditor({
+        open: true,
+        editingBindingId: binding.id,
+        channelAccountId,
+        selectedAudienceKey: audience ? audience.key : '',
+        useManualScope: !audience,
+        manualScopeType: binding.scopeType === 'remote_user' ? 'remote_user' : 'remote_chat',
+        manualScopeKey: audience ? '' : (binding.scopeKey ?? ''),
       });
     },
-    [durableEditor.agentProfileId]
-  );
-
-  useEffect(() => {
-    if (!selectedChannelAccountId) {
-      return;
-    }
-
-    setDurableEditor((editor) => {
-      const audienceStillValid =
-        !editor.selectedAudienceKey ||
-        selectedAudiences.some((audience) => audience.key === editor.selectedAudienceKey);
-      if (audienceStillValid) {
-        return editor;
-      }
-      return {
-        ...editor,
-        selectedAudienceKey: '',
-      };
-    });
-  }, [selectedAudiences, selectedChannelAccountId]);
-
-  useEffect(() => {
-    if (!preferredProfileId || appliedIntentKey === publicationIntentKey) {
-      return;
-    }
-
-    setDurableEditor((editor) =>
-      editor.editingBindingId ? editor : { ...editor, agentProfileId: preferredProfileId }
-    );
-    setAppliedIntentKey(publicationIntentKey);
-  }, [appliedIntentKey, preferredProfileId, publicationIntentKey]);
-
-  useEffect(() => {
-    setSelectedObjectKey((current) => {
-      if (current && publicationObjects.some((object) => object.key === current)) {
-        return current;
-      }
-
-      return publicationObjects[0]?.key ?? '';
-    });
-  }, [publicationObjects]);
-
-  const validateDraft = useCallback(
-    (draft: BindingDraft) => {
-      if (!draft.channelAccountId) {
-        throw new Error(t('settings.channels.publication.connectorRequired'));
-      }
-      if (!draft.agentProfileId) {
-        throw new Error(t('settings.channels.publication.agentRequired'));
-      }
-      if (draft.scopeType !== 'connector_default' && !draft.scopeKey.trim()) {
-        throw new Error(t('settings.channels.publication.scopeKeyRequired'));
-      }
-    },
-    [t]
-  );
-
-  const saveBinding = useCallback(
-    async (draft: BindingDraft) => {
-      validateDraft(draft);
-      setSaving(true);
-      try {
-        const binding = buildBindingPayload(catalog.bindings, draft);
-        const result = await channel.upsertBinding.invoke({ binding });
-        if (!result.success) {
-          throw new Error(result.msg || t('settings.channels.publication.saveFailed'));
-        }
-        Message.success(t('settings.channels.publication.durableSaved'));
-        await loadCatalog();
-      } finally {
-        setSaving(false);
-      }
-    },
-    [catalog.bindings, loadCatalog, t, validateDraft]
+    [audienceMap]
   );
 
   const handleDeleteBinding = useCallback(
@@ -584,94 +444,65 @@ const PublicationBindingPanel: React.FC = () => {
     [loadCatalog, t]
   );
 
-  const handleObjectSelect = useCallback(
-    (object: PublicationObjectViewModel) => {
-      setSelectedObjectKey(object.key);
-      const nextEditorState = resolveObjectEditorState(object, audienceMap, durableEditor.agentProfileId);
-      setShowDurableManualScope(Boolean(nextEditorState.manualScopeKey));
-      setDurableEditor((editor) => ({
-        ...editor,
-        ...nextEditorState,
-      }));
-    },
-    [audienceMap, durableEditor.agentProfileId]
-  );
+  const handleSaveBinding = useCallback(async () => {
+    if (!editor.channelAccountId) {
+      throw new Error(t('settings.channels.publication.connectorRequired'));
+    }
+    if (!selectedAgentProfileId) {
+      throw new Error(t('settings.channels.publication.agentRequired'));
+    }
 
-  const handleEditBinding = useCallback(
-    (binding: IChannelBinding) => {
-      const targetObject = publicationObjects.find((object) => object.bindings.some((item) => item.id === binding.id));
-      if (targetObject) {
-        setSelectedObjectKey(targetObject.key);
+    const selectedAudience = editor.selectedAudienceKey ? audienceMap.get(editor.selectedAudienceKey) : undefined;
+    const scopeType = editor.useManualScope ? editor.manualScopeType : resolveAudienceScopeType(selectedAudience);
+    const scopeKey = editor.useManualScope ? editor.manualScopeKey.trim() : editor.selectedAudienceKey;
+
+    if (!scopeKey) {
+      throw new Error(
+        editor.useManualScope
+          ? t('settings.channels.publication.scopeKeyRequired')
+          : t('settings.channels.publication.publishObjectRequired')
+      );
+    }
+
+    setSaving(true);
+    try {
+      const publishObject =
+        !editor.useManualScope && selectedAudience
+          ? {
+              nativeObjectType: selectedAudience.objectKind ?? selectedAudience.scopeType,
+              nativeObjectId: selectedAudience.objectKey ?? selectedAudience.key,
+              parentNativeObjectId: selectedAudience.parentObjectKey,
+              displayName: selectedAudience.objectTitle ?? selectedAudience.title,
+              discoverySource: 'inbound-learned' as const,
+            }
+          : undefined;
+      const binding = buildBindingPayload(catalog.bindings, {
+        channelAccountId: editor.channelAccountId,
+        scopeType,
+        scopeKey,
+        agentProfileId: selectedAgentProfileId,
+        temporary: false,
+        priority: 0,
+        publishObject,
+      });
+      const result = await channel.upsertBinding.invoke({ binding });
+      if (!result.success) {
+        throw new Error(result.msg || t('settings.channels.publication.saveFailed'));
       }
 
-      const discovered = Boolean(binding.scopeKey && audienceMap.has(binding.scopeKey));
-      setShowDurableManualScope(Boolean(binding.scopeKey && !discovered));
-      setDurableEditor({
-        editingBindingId: binding.id,
-        scopeType: binding.scopeType as DurableBindingScopeType,
-        selectedAudienceKey: discovered ? (binding.scopeKey ?? '') : '',
-        manualScopeKey: discovered ? '' : (binding.scopeKey ?? ''),
-        agentProfileId: binding.agentProfileId,
-      });
-    },
-    [audienceMap, publicationObjects]
-  );
-
-  const handleSaveDurableBinding = useCallback(async () => {
-    const resolvedScopeKey =
-      durableEditor.scopeType === 'connector_default'
-        ? ''
-        : resolveScopeKey(durableEditor.selectedAudienceKey, durableEditor.manualScopeKey);
-    const publishObject =
-      durableEditor.scopeType !== 'connector_default' && selectedObject
-        ? {
-            nativeObjectType: selectedObject.kind,
-            nativeObjectId: selectedObject.key,
-            parentNativeObjectId: selectedObject.parentKey,
-            displayName: selectedObject.title,
-            discoverySource: 'inbound-learned' as const,
-          }
-        : undefined;
-
-    await saveBinding({
-      channelAccountId: selectedChannelAccountId,
-      scopeType: durableEditor.scopeType,
-      scopeKey: resolvedScopeKey,
-      agentProfileId: durableEditor.agentProfileId,
-      temporary: false,
-      priority: 0,
-      publishObject,
-    });
-
-    resetDurableEditor({
-      scopeType: durableEditor.scopeType,
-      selectedAudienceKey: durableEditor.manualScopeKey ? '' : resolvedScopeKey,
-      manualScopeKey: durableEditor.manualScopeKey ? resolvedScopeKey : '',
-      agentProfileId: durableEditor.agentProfileId,
-    });
-  }, [
-    durableEditor.agentProfileId,
-    durableEditor.manualScopeKey,
-    durableEditor.scopeType,
-    durableEditor.selectedAudienceKey,
-    resetDurableEditor,
-    saveBinding,
-    selectedObject,
-    selectedChannelAccountId,
-  ]);
-
-  const durableScopeKeyPlaceholder = useMemo(() => {
-    if (durableEditor.scopeType === 'remote_user') {
-      return t('settings.channels.publication.scopeKeyRemoteUserPlaceholder');
+      Message.success(t('settings.channels.publication.durableSaved'));
+      resetEditor();
+      await loadCatalog();
+    } finally {
+      setSaving(false);
     }
-    if (durableEditor.scopeType === 'remote_chat') {
-      return t('settings.channels.publication.scopeKeyRemoteChatPlaceholder');
-    }
-    return '';
-  }, [durableEditor.scopeType, t]);
+  }, [audienceMap, catalog.bindings, editor, loadCatalog, resetEditor, selectedAgentProfileId, t]);
 
+  const showCatalogLoading = loading && catalogChannelAccounts.length === 0;
   const hasChannelAccounts = catalogChannelAccounts.length > 0;
-  const showCatalogLoading = loading && !hasChannelAccounts;
+  const intentProfile =
+    (preferredProfileId ? profileMap.get(preferredProfileId) : undefined) ||
+    (publicationIntent?.agentProfileId ? profileMap.get(publicationIntent.agentProfileId) : undefined);
   const intentProfileName = intentProfile
     ? getProfileDisplayName(intentProfile)
     : publicationIntent?.agentName || publicationIntent?.agentProfileId || '-';
@@ -714,506 +545,354 @@ const PublicationBindingPanel: React.FC = () => {
             </div>
           ) : null}
 
-          <div className='grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-12px items-start'>
-            <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px xl:sticky xl:top-0'>
-              <div className='space-y-4px'>
-                <div className='text-13px font-600 text-t-primary'>
-                  {t('settings.channels.publication.connectorLabel')}
+          <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-12px'>
+            <div className='space-y-4px'>
+              <div className='text-14px font-600 text-t-primary'>
+                {t('settings.channels.publication.agentSummaryTitle')}
+              </div>
+              <div className='text-12px text-t-secondary leading-relaxed'>
+                {t('settings.channels.publication.agentSummaryDescription')}
+              </div>
+            </div>
+            <div className='grid grid-cols-1 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] gap-12px items-start'>
+              <div className='space-y-6px'>
+                <div className='text-12px font-500 text-t-primary'>
+                  {t('settings.channels.publication.agentSelectorLabel')}
                 </div>
-                <div className='text-12px text-t-secondary leading-relaxed'>
-                  {t('settings.channels.publication.connectorGuide')}
+                <Select
+                  value={selectedAgentProfileId || undefined}
+                  options={profileOptions}
+                  onChange={(value) => {
+                    setSelectedAgentProfileId(String(value));
+                    resetEditor();
+                  }}
+                />
+                <div className='hidden'>
+                  <Input value={selectedAgentProfileId} onChange={() => undefined} />
                 </div>
               </div>
               <div className='space-y-8px'>
-                {catalogChannelAccounts.map((channelAccount) => {
-                  const accountSelected = channelAccount.id === selectedChannelAccountId;
-                  const accountBindings = catalog.bindings.filter(
-                    (binding) => getChannelAccountId(binding) === channelAccount.id
-                  );
-                  const { durableBindings: accountDurableBindings } = splitBindingsByLifetime(accountBindings);
-                  const accountObjects = buildPublicationObjects({
-                    platform: channelAccount.platform,
-                    audiences: catalog.audiences.filter(
-                      (audience) => getChannelAccountId(audience) === channelAccount.id
-                    ),
-                    bindings: accountDurableBindings.filter((binding) => binding.scopeType !== 'connector_default'),
-                    sessions: activeSessions.filter((session) => getChannelAccountId(session) === channelAccount.id),
-                    resolveBindingAudience: (binding) => getBindingAudience(binding, audienceMap),
-                  });
-                  const accountSessions = activeSessions.filter(
-                    (session) => getChannelAccountId(session) === channelAccount.id
-                  );
-
-                  return (
-                    <Button
-                      key={channelAccount.id}
-                      type='text'
-                      className={classNames(styles.instanceButton, accountSelected && styles.instanceButtonActive)}
-                      onClick={() => setSelectedChannelAccountId(channelAccount.id)}
-                    >
-                      <div className={styles.instanceButtonInner}>
-                        <div className={styles.selectorCardBody}>
-                          <div className={styles.selectorHeading}>
-                            <span className={styles.selectorTitle} title={channelAccount.name}>
-                              {channelAccount.name}
-                            </span>
-                            <Tag className={styles.platformTag}>{channelAccount.platform}</Tag>
-                          </div>
-                          <div className={styles.selectorStats}>
-                            <Tag className={styles.pillTag}>
-                              {t('settings.channels.publication.summaryPublished')}:{' '}
-                              {accountObjects.filter((item) => item.bindings.length > 0).length}
-                            </Tag>
-                            <Tag className={styles.pillTag}>
-                              {t('settings.channels.publication.summaryObjects')}: {accountObjects.length}
-                            </Tag>
-                            <Tag className={styles.pillTag}>
-                              {t('settings.channels.publication.summarySessions')}: {accountSessions.length}
-                            </Tag>
-                          </div>
-                        </div>
-                      </div>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className='space-y-12px'>
-              {selectedChannelAccount ? (
-                <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-12px'>
-                  <div className='space-y-4px'>
-                    <div className='flex flex-wrap items-center gap-8px'>
-                      <div className={styles.selectorTitle} title={selectedChannelAccount.name}>
-                        {selectedChannelAccount.name}
-                      </div>
-                      <Tag className={styles.platformTag}>{selectedChannelAccount.platform}</Tag>
-                    </div>
-                    <div className='text-13px text-t-primary leading-relaxed'>
-                      {t('settings.channels.publication.accountOverview')}
-                    </div>
-                    <div className='flex flex-wrap gap-8px'>
-                      <Tag className={styles.pillTag}>
-                        {t('settings.channels.publication.summaryPublished')}: {selectedPublishedCount}
-                      </Tag>
-                      <Tag className={styles.pillTag}>
-                        {t('settings.channels.publication.summaryObjects')}: {publicationObjects.length}
-                      </Tag>
-                      <Tag className={styles.pillTag}>
-                        {t('settings.channels.publication.summarySessions')}: {selectedSessions.length}
-                      </Tag>
-                    </div>
-                  </div>
-                  <div className='text-12px text-t-secondary leading-relaxed'>{channelAccountGuide}</div>
+                <div className='flex flex-wrap gap-8px'>
+                  <Tag className={styles.metricTag}>
+                    {t('settings.channels.publication.summaryPublished')}: {publishedBindingCount}
+                  </Tag>
+                  <Tag className={styles.pillTag}>
+                    {t('settings.channels.publication.summaryObjects')}: {publishedObjects.length}
+                  </Tag>
+                  <Tag className={styles.pillTag}>
+                    {t('settings.channels.publication.summarySessions')}: {publishedSessionCount}
+                  </Tag>
                 </div>
-              ) : null}
-
-              <div className='grid grid-cols-1 2xl:grid-cols-[320px_minmax(0,1fr)] gap-12px items-start'>
-                <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
-                  <div className='space-y-4px'>
-                    <div className='text-14px font-600 text-t-primary'>
-                      {t('settings.channels.publication.objectListTitle')}
-                    </div>
-                    <div className='text-12px text-t-secondary leading-relaxed'>
-                      {t('settings.channels.publication.objectListDescription')}
-                    </div>
-                  </div>
-                  {publicationObjects.length > 0 ? (
-                    <div className='space-y-8px'>
-                      {publicationObjects.map((object) => {
-                        const objectSelected = object.key === selectedObjectKey;
-                        const objectKindLabel = getPublicationObjectKindLabel(
-                          selectedChannelAccount?.platform ?? 'telegram',
-                          object.kind,
-                          t
-                        );
-
-                        return (
-                          <Button
-                            key={object.key}
-                            type='text'
-                            className={classNames(styles.instanceButton, objectSelected && styles.instanceButtonActive)}
-                            onClick={() => handleObjectSelect(object)}
-                          >
-                            <div className={styles.instanceButtonInner}>
-                              <div className={styles.selectorCardBody}>
-                                <div className={styles.selectorHeading}>
-                                  <span className={styles.selectorTitle} title={object.title}>
-                                    {object.title}
-                                  </span>
-                                  <Tag className={styles.pillTag}>{objectKindLabel}</Tag>
-                                  {object.bindings.length > 0 ? (
-                                    <Tag className={styles.metricTag}>
-                                      {t('settings.channels.publication.durableTag')}
-                                    </Tag>
-                                  ) : null}
-                                </div>
-                                {object.subtitle && object.subtitle !== object.title ? (
-                                  <div className={styles.selectorDescription} title={object.subtitle}>
-                                    {object.subtitle}
-                                  </div>
-                                ) : null}
-                                {object.parentTitle ? (
-                                  <div className={styles.selectorMetaHint}>
-                                    {t('settings.channels.publication.objectParentLabel')}: {object.parentTitle}
-                                  </div>
-                                ) : null}
-                                <div className='flex flex-wrap gap-8px'>
-                                  <Tag className={styles.pillTag}>
-                                    {t('settings.channels.publication.summaryPublished')}: {object.bindings.length}
-                                  </Tag>
-                                  <Tag className={styles.pillTag}>
-                                    {t('settings.channels.publication.summarySessions')}: {object.sessions.length}
-                                  </Tag>
-                                </div>
-                              </div>
-                            </div>
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className='min-h-160px flex items-center justify-center'>
-                      <Empty description={t('settings.channels.publication.emptyObjects')} className='w-full py-16px' />
-                    </div>
-                  )}
-                </div>
-
-                <div className='space-y-12px'>
-                  {selectedObject ? (
-                    <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-12px'>
-                      <div className='space-y-4px'>
-                        <div className='text-14px font-600 text-t-primary'>
-                          {t('settings.channels.publication.objectDetailTitle')}
-                        </div>
-                        <div className='text-12px text-t-secondary leading-relaxed'>
-                          {t('settings.channels.publication.objectDetailDescription')}
-                        </div>
+                <div className='grid grid-cols-1 md:grid-cols-3 gap-8px'>
+                  <div className={styles.bindingProfileCard}>
+                    <div className={styles.bindingProfileMeta}>
+                      <div className={styles.bindingProfileLabel}>
+                        {t('settings.channels.publication.intentProfile')}
                       </div>
-
-                      <div className={styles.bindingCard}>
-                        <div className={styles.bindingMain}>
-                          <div className={styles.bindingTitleBlock}>
-                            <div className='flex flex-wrap items-center gap-6px'>
-                              <Tag className={styles.pillTag}>
-                                {getPublicationObjectKindLabel(
-                                  selectedChannelAccount?.platform ?? 'telegram',
-                                  selectedObject.kind,
-                                  t
-                                )}
-                              </Tag>
-                              {selectedObject.parentTitle ? (
-                                <Tag className={styles.platformTag}>
-                                  {t('settings.channels.publication.objectParentLabel')}: {selectedObject.parentTitle}
-                                </Tag>
-                              ) : null}
-                            </div>
-                            <div className={styles.bindingTitleRow}>
-                              <div className={styles.bindingTitleText}>
-                                <div className={styles.selectorTitle} title={selectedObject.title}>
-                                  {selectedObject.title}
-                                </div>
-                              </div>
-                            </div>
-                            {selectedObject.subtitle && selectedObject.subtitle !== selectedObject.title ? (
-                              <div className={styles.bindingDetail}>{selectedObject.subtitle}</div>
-                            ) : null}
-                            <div className='flex flex-wrap gap-8px'>
-                              <Tag className={styles.pillTag}>
-                                {t('settings.channels.publication.summaryPublished')}: {selectedObject.bindings.length}
-                              </Tag>
-                              <Tag className={styles.pillTag}>
-                                {t('settings.channels.publication.summarySessions')}: {selectedObject.sessions.length}
-                              </Tag>
-                              <Tag className={styles.pillTag}>
-                                {t('settings.channels.publication.summaryAudiences')}: {selectedObject.audiences.length}
-                              </Tag>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className='space-y-8px'>
-                        <div className='space-y-2px'>
-                          <div className='text-13px font-600 text-t-primary'>
-                            {t('settings.channels.publication.objectPublishedTitle')}
-                          </div>
-                          <div className='text-12px text-t-secondary leading-relaxed'>
-                            {t('settings.channels.publication.objectPublishedDescription')}
-                          </div>
-                        </div>
-                        {selectedObject.bindings.length > 0 ? (
-                          <div className='space-y-8px'>
-                            {selectedObject.bindings.map((binding) => {
-                              const profile = profileMap.get(binding.agentProfileId);
-                              const bindingTarget = getBindingTargetSummary({
-                                binding,
-                                selectedObject,
-                                audienceMap,
-                                t,
-                              });
-
-                              return (
-                                <div key={binding.id} className={styles.bindingCard}>
-                                  <div className={styles.bindingMain}>
-                                    <div className={styles.bindingHeader}>
-                                      <div className={styles.bindingTitleBlock}>
-                                        <div className='flex flex-wrap items-center gap-6px'>
-                                          <Tag className={styles.pillTag}>
-                                            {t(`settings.channels.publication.scope.${binding.scopeType}`)}
-                                          </Tag>
-                                          {!binding.enabled ? (
-                                            <Tag className={styles.statusTag}>
-                                              {t('settings.channels.publication.disabled')}
-                                            </Tag>
-                                          ) : null}
-                                        </div>
-                                        <div className={styles.selectorTitle} title={bindingTarget.title}>
-                                          {bindingTarget.title}
-                                        </div>
-                                        {bindingTarget.detail ? (
-                                          <div className={styles.bindingDetail}>{bindingTarget.detail}</div>
-                                        ) : null}
-                                      </div>
-                                      <div className={styles.bindingActions}>
-                                        <Tooltip content={t('common.edit')}>
-                                          <Button
-                                            size='mini'
-                                            type='text'
-                                            shape='circle'
-                                            className={styles.bindingIconButton}
-                                            icon={<Edit theme='outline' size='16' />}
-                                            onClick={() => handleEditBinding(binding)}
-                                          />
-                                        </Tooltip>
-                                        <Tooltip content={t('common.delete')}>
-                                          <Button
-                                            size='mini'
-                                            status='danger'
-                                            type='text'
-                                            shape='circle'
-                                            className={styles.bindingIconButton}
-                                            icon={<Delete theme='outline' size='16' />}
-                                            loading={deletingBindingId === binding.id}
-                                            onClick={() => void handleDeleteBinding(binding.id)}
-                                          />
-                                        </Tooltip>
-                                      </div>
-                                    </div>
-
-                                    <div className={styles.bindingProfileCard}>
-                                      <div className='grid grid-cols-1 md:grid-cols-3 gap-8px w-full'>
-                                        <div className={styles.bindingProfileMeta}>
-                                          <div className={styles.bindingProfileLabel}>
-                                            {t('settings.channels.publication.intentProfile')}
-                                          </div>
-                                          <div
-                                            className={styles.bindingProfileValue}
-                                            title={profile ? getProfileDisplayName(profile) : binding.agentProfileId}
-                                          >
-                                            {profile ? getProfileDisplayName(profile) : binding.agentProfileId}
-                                          </div>
-                                        </div>
-                                        <div className={styles.bindingProfileMeta}>
-                                          <div className={styles.bindingProfileLabel}>
-                                            {t('settings.channels.publication.intentWorkspace')}
-                                          </div>
-                                          <div
-                                            className={styles.bindingProfileValue}
-                                            title={profile ? getProfileWorkspaceLabel(profile) : '-'}
-                                          >
-                                            {profile ? getProfileWorkspaceLabel(profile) : '-'}
-                                          </div>
-                                        </div>
-                                        <div className={styles.bindingProfileMeta}>
-                                          <div className={styles.bindingProfileLabel}>
-                                            {t('settings.channels.publication.intentBackend')}
-                                          </div>
-                                          <div
-                                            className={styles.bindingProfileValue}
-                                            title={profile ? getProfileRuntimeLabel(profile) : binding.agentProfileId}
-                                          >
-                                            {profile ? getProfileRuntimeLabel(profile) : binding.agentProfileId}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className='min-h-120px flex items-center justify-center'>
-                            <Empty
-                              description={t('settings.channels.publication.objectPublishedEmpty')}
-                              className='w-full py-16px text-center'
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className='space-y-8px'>
-                        <div className='space-y-2px'>
-                          <div className='text-13px font-600 text-t-primary'>
-                            {t('settings.channels.publication.objectSessionsTitle')}
-                          </div>
-                          <div className='text-12px text-t-secondary leading-relaxed'>
-                            {t('settings.channels.publication.objectSessionsDescription')}
-                          </div>
-                        </div>
-                        {selectedObject.sessions.length > 0 ? (
-                          <div className='space-y-8px'>
-                            {selectedObject.sessions
-                              .toSorted((left, right) => right.lastActivity - left.lastActivity)
-                              .map((session) => {
-                                const lastActiveLabel = formatOptionalRelativeTime(session.lastActivity, i18n.language);
-
-                                return (
-                                  <div key={session.id} className={styles.bindingConversationRow}>
-                                    <div className={styles.bindingConversationMeta}>
-                                      <div
-                                        className={styles.bindingConversationValue}
-                                        title={session.conversationId || session.id}
-                                      >
-                                        {session.conversationId || session.id}
-                                      </div>
-                                      <div className={styles.bindingConversationLabel}>
-                                        {t('settings.channels.publication.sessionWorkspaceLabel')}:{' '}
-                                        {session.workspace || '-'}
-                                      </div>
-                                      <div className={styles.bindingConversationLabel}>
-                                        {t('settings.channels.publication.sessionLastActiveLabel')}:{' '}
-                                        {lastActiveLabel || '-'}
-                                      </div>
-                                      <div className={styles.bindingConversationLabel}>
-                                        {t('settings.channels.publication.sessionAgentTypeLabel')}: {session.agentType}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        ) : (
-                          <div className='min-h-120px flex items-center justify-center'>
-                            <Empty
-                              description={t('settings.channels.publication.objectSessionsEmpty')}
-                              className='w-full py-16px text-center'
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className='border border-[var(--color-border-2)] rd-12px p-12px min-h-220px flex items-center justify-center'>
-                      <Empty description={t('settings.channels.publication.emptyObjects')} className='w-full py-16px' />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
-                <div className='space-y-4px'>
-                  <div className='text-14px font-600 text-t-primary'>
-                    {t('settings.channels.publication.addTargetTitle')}
-                  </div>
-                  <div className='text-12px text-t-secondary leading-relaxed'>
-                    {t('settings.channels.publication.addTargetDescription')}
-                  </div>
-                  {durableEditor.editingBindingId ? (
-                    <Tag color='arcoblue'>{t('settings.channels.publication.editingDurable')}</Tag>
-                  ) : null}
-                </div>
-                <div className='space-y-8px'>
-                  <div className='text-12px font-500 text-t-primary'>
-                    {t('settings.channels.publication.targetTypeLabel')}
-                  </div>
-                  <Select
-                    value={durableEditor.scopeType}
-                    options={durableScopeOptions}
-                    onChange={(value) =>
-                      setDurableEditor((editor) => ({
-                        ...editor,
-                        scopeType: value as DurableBindingScopeType,
-                        selectedAudienceKey: '',
-                        manualScopeKey: '',
-                      }))
-                    }
-                  />
-                  <div className='text-12px text-t-secondary leading-relaxed'>{durableScopeHint}</div>
-                  {durableEditor.scopeType !== 'connector_default' ? (
-                    <>
-                      <Select
-                        showSearch
-                        value={durableEditor.selectedAudienceKey || undefined}
-                        options={durableAudienceOptions}
-                        placeholder={t('settings.channels.publication.audiencePlaceholder')}
-                        onChange={(value) =>
-                          setDurableEditor((editor) => ({
-                            ...editor,
-                            selectedAudienceKey: String(value),
-                            manualScopeKey: '',
-                          }))
-                        }
-                        allowClear
-                      />
-                      <Button
-                        type='text'
-                        className='!justify-start !px-0'
-                        onClick={() => setShowDurableManualScope((current) => !current)}
+                      <div
+                        className={styles.bindingProfileValue}
+                        title={selectedAgentProfile ? getProfileDisplayName(selectedAgentProfile) : '-'}
                       >
-                        {t('settings.channels.publication.manualScopeToggle')}
-                      </Button>
-                      {showDurableManualScope ? (
-                        <>
-                          <Input
-                            value={durableEditor.manualScopeKey}
-                            onChange={(value) => setDurableEditor((editor) => ({ ...editor, manualScopeKey: value }))}
-                            placeholder={durableScopeKeyPlaceholder}
-                          />
-                          <div className='text-12px text-t-secondary'>
-                            {t('settings.channels.publication.manualKeyHint')}
-                          </div>
-                        </>
-                      ) : null}
-                    </>
-                  ) : null}
-                  <Select
-                    value={durableEditor.agentProfileId || undefined}
-                    options={profileOptions}
-                    placeholder={t('settings.channels.publication.agentPlaceholder')}
-                    onChange={(value) => setDurableEditor((editor) => ({ ...editor, agentProfileId: String(value) }))}
-                  />
-                  <div className='flex flex-wrap gap-8px'>
-                    <Button
-                      type='primary'
-                      icon={<Plus theme='outline' size='16' />}
-                      loading={saving}
-                      onClick={() =>
-                        void handleSaveDurableBinding().catch((error) =>
-                          Message.error(
-                            error instanceof Error ? error.message : t('settings.channels.publication.saveFailed')
-                          )
-                        )
-                      }
-                    >
-                      {durableEditor.editingBindingId
-                        ? t('settings.channels.publication.updateDurable')
-                        : t('settings.channels.publication.saveDurable')}
-                    </Button>
-                    {durableEditor.editingBindingId ? (
-                      <Button
-                        icon={<Undo theme='outline' size='16' />}
-                        onClick={() => resetDurableEditor({ agentProfileId: catalog.agentProfiles[0]?.id })}
+                        {selectedAgentProfile ? getProfileDisplayName(selectedAgentProfile) : '-'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.bindingProfileCard}>
+                    <div className={styles.bindingProfileMeta}>
+                      <div className={styles.bindingProfileLabel}>
+                        {t('settings.channels.publication.intentBackend')}
+                      </div>
+                      <div
+                        className={styles.bindingProfileValue}
+                        title={selectedAgentProfile ? getProfileRuntimeLabel(selectedAgentProfile) : '-'}
                       >
-                        {t('common.cancel')}
-                      </Button>
-                    ) : null}
+                        {selectedAgentProfile ? getProfileRuntimeLabel(selectedAgentProfile) : '-'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.bindingProfileCard}>
+                    <div className={styles.bindingProfileMeta}>
+                      <div className={styles.bindingProfileLabel}>
+                        {t('settings.channels.publication.intentWorkspace')}
+                      </div>
+                      <div
+                        className={styles.bindingProfileValue}
+                        title={selectedAgentProfile ? getProfileWorkspaceLabel(selectedAgentProfile) : '-'}
+                      >
+                        {selectedAgentProfile ? getProfileWorkspaceLabel(selectedAgentProfile) : '-'}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+
+          <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-12px'>
+            <div className='flex flex-wrap items-start justify-between gap-12px'>
+              <div className='space-y-4px'>
+                <div className='text-14px font-600 text-t-primary'>
+                  {t('settings.channels.publication.objectListTitle')}
+                </div>
+                <div className='text-12px text-t-secondary leading-relaxed'>
+                  {t('settings.channels.publication.objectListDescription')}
+                </div>
+              </div>
+              {!editor.open ? (
+                <Button type='primary' icon={<Plus theme='outline' size='16' />} onClick={openAddEditor}>
+                  {t('settings.channels.publication.addObjectButton')}
+                </Button>
+              ) : null}
+            </div>
+
+            {publishedObjects.length > 0 ? (
+              <div className='space-y-8px'>
+                {publishedObjects.map((entry) => {
+                  const primaryBinding = entry.object.bindings[0];
+                  const objectKindLabel = getPublicationObjectKindLabel(
+                    entry.channelAccount.platform,
+                    entry.object.kind,
+                    t
+                  );
+                  const lastActiveLabel = formatOptionalRelativeTime(entry.currentSession?.lastActivity, i18n.language);
+
+                  return (
+                    <div key={entry.key} className={styles.bindingCard}>
+                      <div className={styles.bindingMain}>
+                        <div className={styles.bindingHeader}>
+                          <div className={styles.bindingTitleBlock}>
+                            <div className='flex flex-wrap items-center gap-6px'>
+                              <Tag className={styles.pillTag}>{objectKindLabel}</Tag>
+                              <Tag className={styles.metricTag}>{t('settings.channels.publication.durableTag')}</Tag>
+                              {!primaryBinding?.enabled ? (
+                                <Tag className={styles.statusTag}>{t('settings.channels.publication.disabled')}</Tag>
+                              ) : null}
+                            </div>
+                            <div className={styles.bindingTitleRow}>
+                              <div className={styles.selectorTitle} title={entry.object.title}>
+                                {entry.object.title}
+                              </div>
+                            </div>
+                            {entry.object.subtitle && entry.object.subtitle !== entry.object.title ? (
+                              <div className={styles.bindingDetail}>{entry.object.subtitle}</div>
+                            ) : null}
+                            <div className='grid grid-cols-1 md:grid-cols-2 gap-6px text-12px text-t-secondary'>
+                              <div>{`${t('settings.channels.publication.channelAccountInstanceLabel')}: ${entry.channelAccount.name}`}</div>
+                              <div>
+                                {`${t('settings.channels.publication.sessionStatusLabel')}: ${
+                                  entry.currentSession
+                                    ? t('settings.channels.publication.currentSessionActive')
+                                    : t('settings.channels.publication.noActiveSession')
+                                }`}
+                              </div>
+                              {entry.object.parentTitle ? (
+                                <div>
+                                  {t('settings.channels.publication.objectParentLabel')}:
+                                  <span className='ml-6px text-t-primary'>{entry.object.parentTitle}</span>
+                                </div>
+                              ) : null}
+                              {entry.currentSession?.workspace ? (
+                                <div>
+                                  {t('settings.channels.publication.sessionWorkspaceLabel')}:
+                                  <span className='ml-6px text-t-primary break-all'>
+                                    {entry.currentSession.workspace}
+                                  </span>
+                                </div>
+                              ) : null}
+                              {lastActiveLabel ? (
+                                <div>
+                                  {t('settings.channels.publication.sessionLastActiveLabel')}:
+                                  <span className='ml-6px text-t-primary'>{lastActiveLabel}</span>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          {primaryBinding ? (
+                            <div className={styles.bindingActions}>
+                              <Tooltip content={t('common.edit')}>
+                                <Button
+                                  size='mini'
+                                  type='text'
+                                  shape='circle'
+                                  className={styles.bindingIconButton}
+                                  icon={<Edit theme='outline' size='16' />}
+                                  onClick={() => handleEditBinding(primaryBinding)}
+                                />
+                              </Tooltip>
+                              <Tooltip content={t('common.delete')}>
+                                <Button
+                                  size='mini'
+                                  status='danger'
+                                  type='text'
+                                  shape='circle'
+                                  className={styles.bindingIconButton}
+                                  icon={<Delete theme='outline' size='16' />}
+                                  loading={deletingBindingId === primaryBinding.id}
+                                  onClick={() => void handleDeleteBinding(primaryBinding.id)}
+                                />
+                              </Tooltip>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className='min-h-160px flex items-center justify-center'>
+                <Empty
+                  description={t('settings.channels.publication.emptyPublishedObjects')}
+                  className='w-full py-16px'
+                />
+              </div>
+            )}
+          </div>
+
+          {editor.open ? (
+            <div className='border border-[var(--color-border-2)] rd-12px p-12px space-y-10px'>
+              <div className='flex flex-wrap items-start justify-between gap-12px'>
+                <div className='space-y-4px'>
+                  <div className='text-14px font-600 text-t-primary'>
+                    {t('settings.channels.publication.addObjectTitle')}
+                  </div>
+                  <div className='text-12px text-t-secondary leading-relaxed'>
+                    {t('settings.channels.publication.addObjectDescription')}
+                  </div>
+                </div>
+                {editor.editingBindingId ? (
+                  <Tag className={styles.metricTag}>{t('settings.channels.publication.updateDurable')}</Tag>
+                ) : null}
+              </div>
+
+              <div className='grid grid-cols-1 xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] gap-12px'>
+                <div className='space-y-6px'>
+                  <div className='text-12px font-500 text-t-primary'>
+                    {t('settings.channels.publication.connectorLabel')}
+                  </div>
+                  <Select
+                    value={editor.channelAccountId || undefined}
+                    options={channelAccountOptions}
+                    placeholder={t('settings.channels.publication.connectorPlaceholder')}
+                    onChange={(value) =>
+                      setEditor((current) => ({
+                        ...current,
+                        channelAccountId: String(value),
+                        selectedAudienceKey: '',
+                      }))
+                    }
+                    allowClear
+                  />
+                </div>
+
+                <div className='space-y-6px'>
+                  <div className='text-12px font-500 text-t-primary'>
+                    {t('settings.channels.publication.publishObjectLabel')}
+                  </div>
+                  <Select
+                    value={editor.selectedAudienceKey || undefined}
+                    options={publishObjectOptions}
+                    placeholder={t('settings.channels.publication.publishObjectPlaceholder')}
+                    onChange={(value) =>
+                      setEditor((current) => ({
+                        ...current,
+                        selectedAudienceKey: String(value),
+                        useManualScope: false,
+                        manualScopeKey: '',
+                      }))
+                    }
+                    disabled={!editor.channelAccountId || editor.useManualScope}
+                    allowClear
+                  />
+                  <Button
+                    type='text'
+                    className='!justify-start !px-0'
+                    onClick={() =>
+                      setEditor((current) => ({
+                        ...current,
+                        useManualScope: !current.useManualScope,
+                        selectedAudienceKey: current.useManualScope ? current.selectedAudienceKey : '',
+                      }))
+                    }
+                  >
+                    {t('settings.channels.publication.manualScopeToggle')}
+                  </Button>
+                  {editor.useManualScope ? (
+                    <div className='space-y-6px'>
+                      <Select
+                        value={editor.manualScopeType}
+                        options={[
+                          {
+                            label: t('settings.channels.publication.scope.remoteUser'),
+                            value: 'remote_user',
+                          },
+                          {
+                            label: t('settings.channels.publication.scope.remoteChat'),
+                            value: 'remote_chat',
+                          },
+                        ]}
+                        onChange={(value) =>
+                          setEditor((current) => ({
+                            ...current,
+                            manualScopeType: value as DurableBindingScopeType,
+                          }))
+                        }
+                      />
+                      <Input
+                        value={editor.manualScopeKey}
+                        onChange={(value) =>
+                          setEditor((current) => ({
+                            ...current,
+                            manualScopeKey: value,
+                          }))
+                        }
+                        placeholder={getManualScopePlaceholder(editor.manualScopeType, t)}
+                      />
+                      <div className='text-12px text-t-secondary'>
+                        {t('settings.channels.publication.manualKeyHint')}
+                      </div>
+                    </div>
+                  ) : null}
+                  {!editor.useManualScope && editor.channelAccountId && publishObjectOptions.length === 0 ? (
+                    <Empty description={t('settings.channels.publication.emptyObjects')} className='w-full py-12px' />
+                  ) : null}
+                  {!editor.useManualScope && editor.selectedAudienceKey ? (
+                    <div className='text-12px text-t-secondary'>
+                      {selectedEditorChannelAccount && audienceMap.get(editor.selectedAudienceKey)
+                        ? buildPublishObjectOptionLabel({
+                            channelAccount: selectedEditorChannelAccount,
+                            audience: audienceMap.get(editor.selectedAudienceKey)!,
+                            t,
+                          })
+                        : ''}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className='flex flex-wrap gap-8px'>
+                <Button
+                  type='primary'
+                  icon={<Plus theme='outline' size='16' />}
+                  loading={saving}
+                  onClick={() =>
+                    void handleSaveBinding().catch((error) =>
+                      Message.error(
+                        error instanceof Error ? error.message : t('settings.channels.publication.saveFailed')
+                      )
+                    )
+                  }
+                >
+                  {editor.editingBindingId
+                    ? t('settings.channels.publication.updateDurable')
+                    : t('settings.channels.publication.saveDurable')}
+                </Button>
+                <Button icon={<Undo theme='outline' size='16' />} onClick={resetEditor}>
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className='min-h-[460px] flex items-center justify-center px-16px'>

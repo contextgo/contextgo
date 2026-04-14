@@ -36,6 +36,8 @@ import {
   withChannelBindingPublishObject,
 } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
+import { ProjectChannelPublicationService } from '@process/channels/core/ProjectChannelPublicationService';
+import { conversationServiceSingleton } from '@process/services/conversationServiceSingleton';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -701,6 +703,7 @@ function buildActiveSessionEntries(params: {
  */
 export function initChannelBridge(channelRepo: IChannelRepository): void {
   console.log('[ChannelBridge] Initializing...');
+  const projectChannelPublicationService = new ProjectChannelPublicationService();
 
   // ==================== Plugin Management ====================
 
@@ -1106,12 +1109,14 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   channel.getActiveSessionCatalog.provider(async () => {
     try {
       const db = await getDatabase();
-      const [sessions, connectors, remoteIdentities, bindings] = await Promise.all([
+      const [sessions, connectors, remoteIdentities, conversations] = await Promise.all([
         channelRepo.getChannelSessions(),
         channelRepo.getConnectorInstances(),
         channelRepo.getRemoteIdentities(),
-        channelRepo.getChannelBindings(),
+        conversationServiceSingleton.listAllConversations(),
       ]);
+      const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
+      const bindings = publicationCatalog.bindings;
       const externalSessionsResult = db.getAllExternalSessions();
       const controlLeasesResult = db.getAllChannelControlLeases();
       if (!externalSessionsResult.success || !externalSessionsResult.data) {
@@ -1274,21 +1279,24 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   channel.getBindingCatalog.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
     try {
       const channelAccountId = params?.channelAccountId ?? params?.connectorId;
-      const [allConnectors, agentProfiles, bindings, remoteIdentities] = await Promise.all([
+      const [allConnectors, remoteIdentities, conversations] = await Promise.all([
         listChannelAccounts(),
-        channelRepo.getAgentProfiles(),
-        channelRepo.getChannelBindings(channelAccountId),
         channelRepo.getRemoteIdentities(channelAccountId),
+        conversationServiceSingleton.listAllConversations(),
       ]);
+      const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
       const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
       const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(identitiesWithAccountId, allConnectors);
       const connectors = allConnectors.filter((connector) => (connector.configured ?? false) && connector.enabled);
+      const bindings = channelAccountId
+        ? publicationCatalog.bindings.filter((binding) => getChannelAccountId(binding) === channelAccountId)
+        : publicationCatalog.bindings;
       return {
         success: true,
         data: {
           connectors,
           channelAccounts: connectors,
-          agentProfiles,
+          agentProfiles: publicationCatalog.agentProfiles,
           bindings: bindings.map((binding) => withChannelAccountId(binding)),
           audiences: buildAudienceEntries(enrichedRemoteIdentities, allConnectors),
         },
@@ -1305,7 +1313,11 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   channel.getBindings.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
     try {
       const channelAccountId = params?.channelAccountId ?? params?.connectorId;
-      const data = await channelRepo.getChannelBindings(channelAccountId);
+      const conversations = await conversationServiceSingleton.listAllConversations();
+      const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
+      const data = channelAccountId
+        ? publicationCatalog.bindings.filter((binding) => getChannelAccountId(binding) === channelAccountId)
+        : publicationCatalog.bindings;
       return { success: true, data: data.map((binding) => withChannelAccountId(binding)) };
     } catch (error) {
       console.error('[ChannelBridge] getBindings error:', error);
@@ -1324,21 +1336,27 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         throw new Error('Channel account is required before saving a durable IM binding');
       }
 
-      const [bindings, agentProfiles] = await Promise.all([
-        channelRepo.getChannelBindings(channelAccountId),
-        channelRepo.getAgentProfiles(),
-      ]);
-      const conflictingBinding = findConflictingChannelBinding(bindings, normalizedBinding);
+      const conversations = await conversationServiceSingleton.listAllConversations();
+      const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
+      const workspace = publicationCatalog.agentProfileWorkspaceById[normalizedBinding.agentProfileId];
+      if (!workspace) {
+        throw new Error(`Agent profile ${normalizedBinding.agentProfileId} is not bound to a project workspace`);
+      }
+
+      const conflictingBinding = findConflictingChannelBinding(
+        publicationCatalog.bindings.filter((item) => getChannelAccountId(item) === channelAccountId),
+        normalizedBinding
+      );
       if (conflictingBinding && conflictingBinding.agentProfileId !== normalizedBinding.agentProfileId) {
         const conflictingAgentName =
-          agentProfiles.find((profile) => profile.id === conflictingBinding.agentProfileId)?.name ??
+          publicationCatalog.agentProfiles.find((profile) => profile.id === conflictingBinding.agentProfileId)?.name ??
           conflictingBinding.agentProfileId;
         throw new Error(
           `Publish object "${getChannelBindingPublishObjectLabel(normalizedBinding)}" is already bound to Agent "${conflictingAgentName}". Unpublish or rebind it first.`
         );
       }
 
-      await channelRepo.upsertChannelBinding(normalizedBinding);
+      await projectChannelPublicationService.upsertChannelBinding(workspace, normalizedBinding);
       return { success: true };
     } catch (error) {
       console.error('[ChannelBridge] upsertBinding error:', error);
@@ -1351,7 +1369,14 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
    */
   channel.deleteBinding.provider(async ({ bindingId }) => {
     try {
-      await channelRepo.deleteChannelBinding(bindingId);
+      const conversations = await conversationServiceSingleton.listAllConversations();
+      const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
+      const workspace = publicationCatalog.bindingWorkspaceById[bindingId];
+      if (!workspace) {
+        throw new Error(`Binding ${bindingId} is not bound to a project workspace`);
+      }
+
+      await projectChannelPublicationService.deleteChannelBinding(workspace, bindingId);
       return { success: true };
     } catch (error) {
       console.error('[ChannelBridge] deleteBinding error:', error);

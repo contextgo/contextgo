@@ -11,7 +11,7 @@ export class ContextTriggerRegistry {
   private readonly triggers = new Map<string, ContextTriggerSpec>();
 
   constructor(seed: readonly ContextTriggerSpec[] = []) {
-    seed.forEach(trigger => {
+    seed.forEach((trigger) => {
       this.register(trigger);
     });
   }

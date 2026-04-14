@@ -7,7 +7,10 @@
 import { describe, expect, it } from 'vitest';
 import type { TChatConversation } from '../../../src/common/config/storage';
 import { splitGroupChildConversations } from '../../../src/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
-import { buildGroupedHistory } from '../../../src/renderer/pages/conversation/GroupedHistory/utils/groupingHelpers';
+import {
+  buildGroupedHistory,
+  buildGuidLocationStateFromWorkspaceGroup,
+} from '../../../src/renderer/pages/conversation/GroupedHistory/utils/groupingHelpers';
 
 const createConversation = (id: string, overrides: Partial<TChatConversation> = {}): TChatConversation => ({
   createTime: 1,
@@ -111,23 +114,72 @@ describe('group conversation grouping', () => {
     );
   });
 
-  it('uses the OpenClaw agent name as the workspace group label', () => {
-    const openclawConversation = createConversation('openclaw-1', {
-      type: 'openclaw-gateway',
+  it('falls back to the workspace basename for ACP workspace labels', () => {
+    const acpConversation = createConversation('acp-1', {
+      type: 'acp',
       extra: {
-        workspace: '/Users/bytedance/.openclaw/workspace-main',
+        backend: 'claude',
+        workspace: '/Users/bytedance/project-main',
         customWorkspace: true,
-        agentName: 'OpenClaw Main',
-        openclawAgentId: 'main',
+        agentName: 'Claude Main',
       },
       model: {} as TChatConversation['model'],
     } as Partial<TChatConversation>);
 
-    const groupedHistory = buildGroupedHistory([openclawConversation], {}, (key) => key);
+    const groupedHistory = buildGroupedHistory([acpConversation], {}, (key) => key);
     const workspaceItem = groupedHistory.timelineSections[0]?.items[0];
 
     expect(workspaceItem?.type).toBe('workspace');
-    expect(workspaceItem?.workspaceGroup?.displayName).toBe('OpenClaw Main');
-    expect(workspaceItem?.workspaceGroup?.workspace).toBe('/Users/bytedance/.openclaw/workspace-main');
+    expect(workspaceItem?.workspaceGroup?.displayName).toBe('project-main');
+    expect(workspaceItem?.workspaceGroup?.workspace).toBe('/Users/bytedance/project-main');
+  });
+
+  it('builds guid defaults from the latest workspace conversation', () => {
+    const codexConversation = createConversation('codex-1', {
+      type: 'codex',
+      modifyTime: 10,
+      extra: {
+        workspace: '/workspace/project-a',
+        customWorkspace: true,
+        presetAssistantId: 'builtin-superpowers',
+        sessionMode: 'yolo',
+        codexModel: 'codex-latest',
+      },
+      model: {} as TChatConversation['model'],
+    } as Partial<TChatConversation>);
+    const olderGeminiConversation = createConversation('gemini-1', {
+      modifyTime: 1,
+    });
+
+    const groupedHistory = buildGroupedHistory([olderGeminiConversation, codexConversation], {}, (key) => key);
+    const workspaceGroup = groupedHistory.timelineSections[0]?.items[0]?.workspaceGroup;
+
+    expect(workspaceGroup).toBeDefined();
+    expect(buildGuidLocationStateFromWorkspaceGroup(workspaceGroup!)).toEqual({
+      workspace: '/workspace/project-a',
+      preferredAgentKey: 'codex',
+      preferredAssistantKey: 'custom:builtin-superpowers',
+      preferredMode: 'yolo',
+      preferredAcpModelId: 'codex-latest',
+    });
+  });
+
+  it('groups auto-created temporary workspaces even when customWorkspace is false', () => {
+    const tempConversation = createConversation('temp-1', {
+      type: 'acp',
+      extra: {
+        backend: 'codex',
+        workspace: '/Users/bytedance/.contextgo-dev/codex-temp-1776134552686',
+        workingDirectory: '/Users/bytedance/.contextgo-dev/codex-temp-1776134552686',
+        customWorkspace: false,
+      },
+      model: {} as TChatConversation['model'],
+    } as Partial<TChatConversation>);
+
+    const groupedHistory = buildGroupedHistory([tempConversation], {}, (key) => key);
+    const workspaceItem = groupedHistory.timelineSections[0]?.items[0];
+
+    expect(workspaceItem?.type).toBe('workspace');
+    expect(workspaceItem?.workspaceGroup?.workspace).toBe('/Users/bytedance/.contextgo-dev/codex-temp-1776134552686');
   });
 });

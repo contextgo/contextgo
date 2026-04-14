@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
 import type { TChatConversation, TProviderWithModel } from '@/common/config/storage';
 import { emitter } from '@/renderer/utils/emitter';
 import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
@@ -37,14 +38,12 @@ export type GuidSendDeps = {
   // Agent helpers
   findAgentByKey: (key: string) => AvailableAgent | undefined;
   resolvePresetRulesAndSkills: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string; context?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string; context?: string } | undefined
   ) => Promise<{ rules?: string; skills?: string }>;
   resolveEnabledSkills: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string } | undefined
+    agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
   ) => string[] | undefined;
-  resolveEnabledHooks: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string; openclawAgentId?: string } | undefined
-  ) => string[] | undefined;
+  resolveEnabledHooks: (agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined) => string[] | undefined;
   isGoogleAuth: boolean;
 
   // Mention state reset
@@ -103,6 +102,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
   } = deps;
 
   const handleSend = useCallback(async () => {
+    const defaultConversationName = t('conversation.welcome.newConversation');
     const isCustomWorkspace = !!dir;
     const finalWorkspace = dir || '';
     const runtimeAgentInfo = selectedAgentInfo || findAgentByKey(selectedAgentKey);
@@ -125,29 +125,29 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         baseUrl: '',
         apiKey: '',
       };
+      const createParams: ICreateConversationParams = {
+        type: 'gemini',
+        name: defaultConversationName,
+        model: placeholderModel,
+        extra: {
+          defaultFiles: files,
+          workspace: finalWorkspace,
+          customWorkspace: isCustomWorkspace,
+          webSearchEngine:
+            placeholderModel.platform === 'gemini-with-google-auth' || placeholderModel.platform === 'gemini-vertex-ai'
+              ? 'google'
+              : 'default',
+          presetRules,
+          enabledSkills,
+          enabledHooks,
+          presetAssistantId,
+          nativeWorkspaceBootstrap,
+          spaceId: selectedSpaceId ?? undefined,
+          sessionMode: selectedMode,
+        },
+      };
       try {
-        const conversation = await ipcBridge.conversation.create.invoke({
-          type: 'gemini',
-          name: input,
-          model: placeholderModel,
-          extra: {
-            defaultFiles: files,
-            workspace: finalWorkspace,
-            customWorkspace: isCustomWorkspace,
-            webSearchEngine:
-              placeholderModel.platform === 'gemini-with-google-auth' ||
-              placeholderModel.platform === 'gemini-vertex-ai'
-                ? 'google'
-                : 'default',
-            presetRules,
-            enabledSkills,
-            enabledHooks,
-            presetAssistantId,
-            nativeWorkspaceBootstrap,
-            spaceId: selectedSpaceId ?? undefined,
-            sessionMode: selectedMode,
-          },
-        });
+        const conversation = await ipcBridge.conversation.create.invoke(createParams);
 
         if (!conversation || !conversation.id) {
           throw new Error('Failed to create conversation - conversation object is null or missing id');
@@ -207,10 +207,17 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         }
       }
 
-      const conversation = await ipcBridge.conversation.create.invoke({
+      const createParams: ICreateConversationParams = {
         type: 'acp',
-        name: input,
-        model: currentModel!,
+        name: defaultConversationName,
+        model: currentModel || {
+          id: 'acp-placeholder',
+          name: acpRuntimeInfo?.name || 'ACP',
+          useModel: selectedAcpModel || 'default',
+          platform: 'custom',
+          baseUrl: '',
+          apiKey: '',
+        },
         extra: {
           defaultFiles: files,
           workspace: finalWorkspace,
@@ -228,7 +235,9 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           sessionMode: selectedMode,
           currentModelId: selectedAcpModel || undefined,
         },
-      });
+      };
+
+      const conversation = await ipcBridge.conversation.create.invoke(createParams);
 
       if (!conversation || !conversation.id) {
         console.error('Failed to create ACP conversation - conversation object is null or missing id');

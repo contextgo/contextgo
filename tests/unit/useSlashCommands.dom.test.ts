@@ -1,20 +1,17 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-  getSlashCommandsInvokeMock,
-  isSlashCommandListEnabledMock,
-  addEventListenerMock,
-  translationApi,
-} = vi.hoisted(() => ({
-  getSlashCommandsInvokeMock: vi.fn(),
-  isSlashCommandListEnabledMock: vi.fn(() => true),
-  addEventListenerMock: vi.fn(),
-  translationApi: {
-    t: (key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? key,
-    i18n: { language: 'en-US' },
-  },
-}));
+const { getSlashCommandsInvokeMock, isSlashCommandListEnabledMock, addEventListenerMock, translationApi } = vi.hoisted(
+  () => ({
+    getSlashCommandsInvokeMock: vi.fn(),
+    isSlashCommandListEnabledMock: vi.fn(() => true),
+    addEventListenerMock: vi.fn(),
+    translationApi: {
+      t: (key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? key,
+      i18n: { language: 'en-US' },
+    },
+  })
+);
 
 vi.mock('@/common', () => ({
   ipcBridge: {
@@ -54,13 +51,13 @@ describe('useSlashCommands', () => {
         commands: [{ name: 'remote-review', description: 'Remote review', kind: 'builtin', source: 'acp' }],
         managedLibrary: [
           {
-            type: 'builtin',
             id: 'plan',
             enabled: true,
-            nameOverride: 'workspace-plan',
+            name: 'workspace-plan',
+            description: 'Workspace plan',
+            template: 'Write the workspace plan first.',
           },
           {
-            type: 'custom',
             id: 'workspace-triage',
             enabled: true,
             name: 'triage',
@@ -93,10 +90,11 @@ describe('useSlashCommands', () => {
         commands: [{ name: 'remote-review', description: 'Remote review', kind: 'builtin', source: 'acp' }],
         managedLibrary: [
           {
-            type: 'builtin',
             id: 'plan',
             enabled: true,
-            nameOverride: 'workspace-plan',
+            name: 'workspace-plan',
+            description: 'Workspace plan',
+            template: 'Write the workspace plan first.',
           },
         ],
       },
@@ -128,14 +126,30 @@ describe('useSlashCommands', () => {
         success: true,
         data: {
           commands: [],
-          managedLibrary: [{ type: 'builtin', id: 'plan', enabled: true, nameOverride: 'global-plan' }],
+          managedLibrary: [
+            {
+              id: 'plan',
+              enabled: true,
+              name: 'global-plan',
+              description: 'Global plan',
+              template: 'Write the global plan first.',
+            },
+          ],
         },
       })
       .mockResolvedValueOnce({
         success: true,
         data: {
           commands: [],
-          managedLibrary: [{ type: 'builtin', id: 'plan', enabled: true, nameOverride: 'workspace-plan' }],
+          managedLibrary: [
+            {
+              id: 'plan',
+              enabled: true,
+              name: 'workspace-plan',
+              description: 'Workspace plan',
+              template: 'Write the workspace plan first.',
+            },
+          ],
         },
       });
 

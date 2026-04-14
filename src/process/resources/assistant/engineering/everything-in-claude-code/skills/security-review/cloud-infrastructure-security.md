@@ -1,5 +1,5 @@
-| name | description |
-|------|-------------|
+| name                          | description                                                                                                                                                                                                                         |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | cloud-infrastructure-security | Use this skill when deploying to cloud platforms, configuring infrastructure, managing IAM policies, setting up logging/monitoring, or implementing CI/CD pipelines. Provides cloud security checklist aligned with best practices. |
 
 # Cloud & Infrastructure Security Skill
@@ -149,16 +149,18 @@ const logSecurityEvent = async (event: SecurityEvent) => {
   await cloudwatch.putLogEvents({
     logGroupName: '/aws/security/events',
     logStreamName: 'authentication',
-    logEvents: [{
-      timestamp: Date.now(),
-      message: JSON.stringify({
-        type: event.type,
-        userId: event.userId,
-        ip: event.ip,
-        result: event.result,
-        // Never log sensitive data
-      })
-    }]
+    logEvents: [
+      {
+        timestamp: Date.now(),
+        message: JSON.stringify({
+          type: event.type,
+          userId: event.userId,
+          ip: event.ip,
+          result: event.result,
+          // Never log sensitive data
+        }),
+      },
+    ],
   });
 };
 ```
@@ -188,7 +190,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read  # Minimal permissions
+      contents: read # Minimal permissions
 
     steps:
       - uses: actions/checkout@v4
@@ -215,7 +217,7 @@ jobs:
 // package.json - Use lock files and integrity checks
 {
   "scripts": {
-    "install": "npm ci",  // Use ci for reproducible builds
+    "install": "npm ci", // Use ci for reproducible builds
     "audit": "npm audit --audit-level=moderate",
     "check": "npm outdated"
   }
@@ -251,9 +253,9 @@ export default {
 
     return new Response(response.body, {
       status: response.status,
-      headers
+      headers,
     });
-  }
+  },
 };
 ```
 

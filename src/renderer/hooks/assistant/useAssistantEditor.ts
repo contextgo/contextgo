@@ -3,7 +3,6 @@ import { ConfigStorage } from '@/common/config/storage';
 import type { Message } from '@arco-design/web-react';
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import {
-  getBuiltinAssistantPreset,
   getIncompatibleHookNames,
   hasBuiltinSkills,
   isExtensionAssistant as isExtensionAssistantUtil,
@@ -26,6 +25,14 @@ type UseAssistantEditorParams = {
   loadAssistants: () => Promise<void>;
   refreshAgentDetection: () => Promise<void>;
   message: ReturnType<typeof Message.useMessage>[0];
+};
+
+type AssistantEditorOpenOptions = {
+  openEditor?: boolean;
+};
+
+type AssistantSaveOptions = {
+  closeAfterSave?: boolean;
 };
 
 /**
@@ -96,7 +103,8 @@ export const useAssistantEditor = ({
     [localeKey]
   );
 
-  const handleEdit = async (assistant: AssistantListItem) => {
+  const handleEdit = async (assistant: AssistantListItem, options: AssistantEditorOpenOptions = {}) => {
+    const shouldOpenEditor = options.openEditor ?? true;
     setIsCreating(false);
     setActiveAssistantId(assistant.id);
     setEditName(assistant.name || '');
@@ -106,7 +114,7 @@ export const useAssistantEditor = ({
     setPendingSkills([]);
     setDeletePendingSkillName(null);
     setDeleteCustomSkillName(null);
-    setEditVisible(true);
+    setEditVisible(shouldOpenEditor);
 
     // Extension assistants show extension context directly, not local rule files
     if (isExtensionAssistantUtil(assistant)) {
@@ -132,16 +140,10 @@ export const useAssistantEditor = ({
       setEditSkills(skills);
       setAvailableHooks(hooksList);
 
-      // Load skills list for builtin assistants with skillFiles and all custom assistants
+      // Load skills list for builtin assistants with bundled skills payloads and all custom assistants
       if (hasBuiltinSkills(assistant.id) || !assistant.isBuiltin) {
-        const preset = getBuiltinAssistantPreset(assistant.id);
         const skillsList = await ipcBridge.fs.listAvailableSkills.invoke({ presetAssistantId: assistant.id });
-        const packageOwnedSkillNames = new Set(preset?.defaultEnabledSkills || []);
-        const visibleSkills =
-          assistant.isBuiltin && preset?.hideDefaultSkillsFromLibrary
-            ? skillsList.filter((skill) => !packageOwnedSkillNames.has(skill.name))
-            : skillsList;
-        setAvailableSkills(visibleSkills);
+        setAvailableSkills(skillsList);
         setSelectedSkills(assistant.enabledSkills || []);
         setSelectedHooks(assistant.enabledHooks || []);
         setCustomSkills(assistant.customSkillNames || []);
@@ -163,7 +165,8 @@ export const useAssistantEditor = ({
   };
 
   // Create assistant function
-  const handleCreate = async () => {
+  const handleCreate = async (options: AssistantEditorOpenOptions = {}) => {
+    const shouldOpenEditor = options.openEditor ?? true;
     setIsCreating(true);
     setActiveAssistantId(null);
     setEditName('');
@@ -176,7 +179,7 @@ export const useAssistantEditor = ({
     setSelectedHooks([]);
     setCustomSkills([]);
     setPromptViewMode('edit');
-    setEditVisible(true);
+    setEditVisible(shouldOpenEditor);
 
     // Load available skills and hooks list
     try {
@@ -194,7 +197,8 @@ export const useAssistantEditor = ({
   };
 
   // Duplicate assistant function
-  const handleDuplicate = async (assistant: AssistantListItem) => {
+  const handleDuplicate = async (assistant: AssistantListItem, options: AssistantEditorOpenOptions = {}) => {
+    const shouldOpenEditor = options.openEditor ?? true;
     setIsCreating(true);
     setActiveAssistantId(null);
     setEditName(`${assistant.nameI18n?.[localeKey] || assistant.name} (Copy)`);
@@ -202,7 +206,7 @@ export const useAssistantEditor = ({
     setEditAvatar(assistant.avatar || '\u{1F916}');
     setEditAgent(assistant.presetAgentType || 'gemini');
     setPromptViewMode('edit');
-    setEditVisible(true);
+    setEditVisible(shouldOpenEditor);
 
     // Load original assistant's rules and skills
     try {
@@ -239,12 +243,13 @@ export const useAssistantEditor = ({
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (options: AssistantSaveOptions = {}): Promise<string | null> => {
+    const shouldCloseAfterSave = options.closeAfterSave ?? true;
     try {
       // Validate required fields
       if (!editName.trim()) {
         message.error(t('settings.assistantNameRequired', { defaultValue: 'Assistant name is required' }));
-        return;
+        return null;
       }
 
       // Extension assistants are read-only, cannot save over them
@@ -254,7 +259,7 @@ export const useAssistantEditor = ({
             defaultValue: 'Extension assistants are read-only. You can duplicate it and edit the copy.',
           })
         );
-        return;
+        return null;
       }
 
       const incompatibleHookNames = getIncompatibleHookNames(availableHooks, selectedHooks, editAgent);
@@ -265,7 +270,7 @@ export const useAssistantEditor = ({
             defaultValue: 'Remove hooks not supported by the selected agent before saving: {{hooks}}',
           })
         );
-        return;
+        return null;
       }
 
       // Import pending skills (skip existing ones)
@@ -301,11 +306,11 @@ export const useAssistantEditor = ({
                       name: result.pendingSkill.name,
                       defaultValue: `Failed to install "${result.pendingSkill.name}" from Skill Market`,
                     })
-                  : t('settings.skillsHub.importFailed', {
-                      defaultValue: 'Failed to import skill',
-                    })
+                    : t('settings.skillsHub.importFailed', {
+                        defaultValue: 'Failed to import skill',
+                      })
               );
-              return;
+              return null;
             }
 
             if (!result.response.success) {
@@ -320,7 +325,7 @@ export const useAssistantEditor = ({
                         defaultValue: 'Failed to import skill',
                       }))
               );
-              return;
+              return null;
             }
           }
 
@@ -335,6 +340,8 @@ export const useAssistantEditor = ({
       // Calculate final customSkills: merge existing + pending
       const pendingSkillNames = pendingSkills.map((s) => s.name);
       const finalCustomSkills = Array.from(new Set([...customSkills, ...pendingSkillNames]));
+
+      let savedAssistantId: string | null = null;
 
       if (isCreating) {
         // Create new assistant
@@ -367,9 +374,10 @@ export const useAssistantEditor = ({
         setActiveAssistantId(newId);
         await loadAssistants();
         message.success(t('common.createSuccess', { defaultValue: 'Created successfully' }));
+        savedAssistantId = newId;
       } else {
         // Update existing assistant
-        if (!activeAssistant) return;
+        if (!activeAssistant) return null;
 
         const updatedAgent: AcpBackendConfig = {
           ...activeAssistant,
@@ -395,14 +403,19 @@ export const useAssistantEditor = ({
         await ConfigStorage.set('acp.customAgents', updatedAgents);
         await loadAssistants();
         message.success(t('common.saveSuccess', { defaultValue: 'Saved successfully' }));
+        savedAssistantId = activeAssistant.id;
       }
 
-      setEditVisible(false);
+      if (shouldCloseAfterSave) {
+        setEditVisible(false);
+      }
       setPendingSkills([]);
       await refreshAgentDetection();
+      return savedAssistantId;
     } catch (error) {
       console.error('Failed to save assistant:', error);
       message.error(t('common.failed', { defaultValue: 'Failed' }));
+      return null;
     }
   };
 
@@ -425,8 +438,8 @@ export const useAssistantEditor = ({
     setDeleteConfirmVisible(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!activeAssistant) return;
+  const handleDeleteConfirm = async (): Promise<string | null> => {
+    if (!activeAssistant) return null;
     try {
       // Delete rule and skill files
       await Promise.all([
@@ -445,9 +458,11 @@ export const useAssistantEditor = ({
       setEditVisible(false);
       message.success(t('common.success', { defaultValue: 'Success' }));
       await refreshAgentDetection();
+      return activeAssistant.id;
     } catch (error) {
       console.error('Failed to delete assistant:', error);
       message.error(t('common.failed', { defaultValue: 'Failed' }));
+      return null;
     }
   };
 

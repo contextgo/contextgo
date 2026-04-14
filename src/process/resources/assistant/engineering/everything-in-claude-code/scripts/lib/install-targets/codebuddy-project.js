@@ -1,9 +1,6 @@
 const path = require('path');
 
-const {
-  createFlatRuleOperations,
-  createInstallTargetAdapter,
-} = require('./helpers');
+const { createFlatRuleOperations, createInstallTargetAdapter } = require('./helpers');
 
 module.exports = createInstallTargetAdapter({
   id: 'codebuddy-project',
@@ -13,14 +10,8 @@ module.exports = createInstallTargetAdapter({
   installStatePathSegments: ['ecc-install-state.json'],
   nativeRootRelativePath: '.codebuddy',
   planOperations(input, adapter) {
-    const modules = Array.isArray(input.modules)
-      ? input.modules
-      : (input.module ? [input.module] : []);
-    const {
-      repoRoot,
-      projectRoot,
-      homeDir,
-    } = input;
+    const modules = Array.isArray(input.modules) ? input.modules : input.module ? [input.module] : [];
+    const { repoRoot, projectRoot, homeDir } = input;
     const planningInput = {
       repoRoot,
       projectRoot,
@@ -28,9 +19,9 @@ module.exports = createInstallTargetAdapter({
     };
     const targetRoot = adapter.resolveRoot(planningInput);
 
-    return modules.flatMap(module => {
+    return modules.flatMap((module) => {
       const paths = Array.isArray(module.paths) ? module.paths : [];
-      return paths.flatMap(sourceRelativePath => {
+      return paths.flatMap((sourceRelativePath) => {
         if (sourceRelativePath === 'rules') {
           return createFlatRuleOperations({
             moduleId: module.id,

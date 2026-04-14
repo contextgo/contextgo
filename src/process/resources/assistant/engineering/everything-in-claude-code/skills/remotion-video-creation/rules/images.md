@@ -12,10 +12,10 @@ metadata:
 Always use the `<Img>` component from `remotion` to display images:
 
 ```tsx
-import { Img, staticFile } from "remotion";
+import { Img, staticFile } from 'remotion';
 
 export const MyComposition = () => {
-  return <Img src={staticFile("photo.png")} />;
+  return <Img src={staticFile('photo.png')} />;
 };
 ```
 
@@ -44,9 +44,9 @@ my-video/
 ```
 
 ```tsx
-import { Img, staticFile } from "remotion";
+import { Img, staticFile } from 'remotion';
 
-<Img src={staticFile("logo.png")} />
+<Img src={staticFile('logo.png')} />;
 ```
 
 ## Remote images
@@ -54,7 +54,7 @@ import { Img, staticFile } from "remotion";
 Remote URLs can be used directly without `staticFile()`:
 
 ```tsx
-<Img src="https://example.com/image.png" />
+<Img src='https://example.com/image.png' />
 ```
 
 Ensure remote images have CORS enabled.
@@ -67,14 +67,14 @@ Use the `style` prop to control size and position:
 
 ```tsx
 <Img
-  src={staticFile("photo.png")}
+  src={staticFile('photo.png')}
   style={{
     width: 500,
     height: 300,
-    position: "absolute",
+    position: 'absolute',
     top: 100,
     left: 50,
-    objectFit: "cover",
+    objectFit: 'cover',
   }}
 />
 ```
@@ -110,18 +110,18 @@ This pattern is useful for:
 Use `getImageDimensions()` to get the dimensions of an image:
 
 ```tsx
-import { getImageDimensions, staticFile } from "remotion";
+import { getImageDimensions, staticFile } from 'remotion';
 
-const { width, height } = await getImageDimensions(staticFile("photo.png"));
+const { width, height } = await getImageDimensions(staticFile('photo.png'));
 ```
 
 This is useful for calculating aspect ratios or sizing compositions:
 
 ```tsx
-import { getImageDimensions, staticFile, CalculateMetadataFunction } from "remotion";
+import { getImageDimensions, staticFile, CalculateMetadataFunction } from 'remotion';
 
 const calculateMetadata: CalculateMetadataFunction = async () => {
-  const { width, height } = await getImageDimensions(staticFile("photo.png"));
+  const { width, height } = await getImageDimensions(staticFile('photo.png'));
   return {
     width,
     height,

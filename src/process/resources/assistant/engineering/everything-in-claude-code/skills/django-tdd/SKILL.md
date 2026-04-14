@@ -702,28 +702,28 @@ open htmlcov/index.html
 
 ### Coverage Goals
 
-| Component | Target Coverage |
-|-----------|-----------------|
-| Models | 90%+ |
-| Serializers | 85%+ |
-| Views | 80%+ |
-| Services | 90%+ |
-| Utilities | 80%+ |
-| Overall | 80%+ |
+| Component   | Target Coverage |
+| ----------- | --------------- |
+| Models      | 90%+            |
+| Serializers | 85%+            |
+| Views       | 80%+            |
+| Services    | 90%+            |
+| Utilities   | 80%+            |
+| Overall     | 80%+            |
 
 ## Quick Reference
 
-| Pattern | Usage |
-|---------|-------|
-| `@pytest.mark.django_db` | Enable database access |
-| `client` | Django test client |
-| `api_client` | DRF API client |
-| `factory.create_batch(n)` | Create multiple objects |
-| `patch('module.function')` | Mock external dependencies |
-| `override_settings` | Temporarily change settings |
-| `force_authenticate()` | Bypass authentication in tests |
-| `assertRedirects` | Check for redirects |
-| `assertTemplateUsed` | Verify template usage |
-| `mail.outbox` | Check sent emails |
+| Pattern                    | Usage                          |
+| -------------------------- | ------------------------------ |
+| `@pytest.mark.django_db`   | Enable database access         |
+| `client`                   | Django test client             |
+| `api_client`               | DRF API client                 |
+| `factory.create_batch(n)`  | Create multiple objects        |
+| `patch('module.function')` | Mock external dependencies     |
+| `override_settings`        | Temporarily change settings    |
+| `force_authenticate()`     | Bypass authentication in tests |
+| `assertRedirects`          | Check for redirects            |
+| `assertTemplateUsed`       | Verify template usage          |
+| `mail.outbox`              | Check sent emails              |
 
 Remember: Tests are documentation. Good tests explain how your code should work. Keep them simple, readable, and maintainable.

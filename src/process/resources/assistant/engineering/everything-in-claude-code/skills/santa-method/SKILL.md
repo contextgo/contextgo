@@ -1,7 +1,7 @@
 ---
 name: santa-method
-description: "Multi-agent adversarial verification with convergence loop. Two independent review agents must both pass before output ships."
-origin: "Ronald Skelton - Founder, RapportScore.ai"
+description: 'Multi-agent adversarial verification with convergence loop. Two independent review agents must both pass before output ships.'
+origin: 'Ronald Skelton - Founder, RapportScore.ai'
 ---
 
 # Santa Method
@@ -13,6 +13,7 @@ The core insight: a single agent reviewing its own output shares the same biases
 ## When to Activate
 
 Invoke this skill when:
+
 - Output will be published, deployed, or consumed by end users
 - Compliance, regulatory, or brand constraints must be enforced
 - Code ships to production without human review
@@ -126,30 +127,33 @@ review_c = Agent(prompt=REVIEWER_PROMPT.format(...), description="Santa Reviewer
 
 The rubric is the most important input. Vague rubrics produce vague reviews. Every criterion must have an objective pass/fail condition.
 
-| Criterion | Pass Condition | Failure Signal |
-|-----------|---------------|----------------|
-| Factual accuracy | All claims verifiable against source material or common knowledge | Invented statistics, wrong version numbers, nonexistent APIs |
-| Hallucination-free | No fabricated entities, quotes, URLs, or references | Links to pages that don't exist, attributed quotes with no source |
-| Completeness | Every requirement in the spec is addressed | Missing sections, skipped edge cases, incomplete coverage |
-| Compliance | Passes all project-specific constraints | Banned terms used, tone violations, regulatory non-compliance |
-| Internal consistency | No contradictions within the output | Section A says X, section B says not-X |
-| Technical correctness | Code compiles/runs, algorithms are sound | Syntax errors, logic bugs, wrong complexity claims |
+| Criterion             | Pass Condition                                                    | Failure Signal                                                    |
+| --------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Factual accuracy      | All claims verifiable against source material or common knowledge | Invented statistics, wrong version numbers, nonexistent APIs      |
+| Hallucination-free    | No fabricated entities, quotes, URLs, or references               | Links to pages that don't exist, attributed quotes with no source |
+| Completeness          | Every requirement in the spec is addressed                        | Missing sections, skipped edge cases, incomplete coverage         |
+| Compliance            | Passes all project-specific constraints                           | Banned terms used, tone violations, regulatory non-compliance     |
+| Internal consistency  | No contradictions within the output                               | Section A says X, section B says not-X                            |
+| Technical correctness | Code compiles/runs, algorithms are sound                          | Syntax errors, logic bugs, wrong complexity claims                |
 
 #### Domain-Specific Rubric Extensions
 
 **Content/Marketing:**
+
 - Brand voice adherence
 - SEO requirements met (keyword density, meta tags, structure)
 - No competitor trademark misuse
 - CTA present and correctly linked
 
 **Code:**
+
 - Type safety (no `any` leaks, proper null handling)
 - Error handling coverage
 - Security (no secrets in code, input validation, injection prevention)
 - Test coverage for new paths
 
 **Compliance-Sensitive (regulated, legal, financial):**
+
 - No outcome guarantees or unsubstantiated claims
 - Required disclaimers present
 - Approved terminology only
@@ -266,23 +270,23 @@ def santa_batch(items, rubric, sample_rate=0.15):
 
 ## Failure Modes and Mitigations
 
-| Failure Mode | Symptom | Mitigation |
-|-------------|---------|------------|
-| Infinite loop | Reviewers keep finding new issues after fixes | Max iteration cap (3). Escalate. |
-| Rubber stamping | Both reviewers pass everything | Adversarial prompt: "Your job is to find problems, not approve." |
-| Subjective drift | Reviewers flag style preferences, not errors | Tight rubric with objective pass/fail criteria only |
-| Fix regression | Fixing issue A introduces issue B | Fresh reviewers each round catch regressions |
-| Reviewer agreement bias | Both reviewers miss the same thing | Mitigated by independence, not eliminated. For critical output, add a third reviewer or human spot-check. |
-| Cost explosion | Too many iterations on large outputs | Batch sampling pattern. Budget caps per verification cycle. |
+| Failure Mode            | Symptom                                       | Mitigation                                                                                                |
+| ----------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Infinite loop           | Reviewers keep finding new issues after fixes | Max iteration cap (3). Escalate.                                                                          |
+| Rubber stamping         | Both reviewers pass everything                | Adversarial prompt: "Your job is to find problems, not approve."                                          |
+| Subjective drift        | Reviewers flag style preferences, not errors  | Tight rubric with objective pass/fail criteria only                                                       |
+| Fix regression          | Fixing issue A introduces issue B             | Fresh reviewers each round catch regressions                                                              |
+| Reviewer agreement bias | Both reviewers miss the same thing            | Mitigated by independence, not eliminated. For critical output, add a third reviewer or human spot-check. |
+| Cost explosion          | Too many iterations on large outputs          | Batch sampling pattern. Budget caps per verification cycle.                                               |
 
 ## Integration with Other Skills
 
-| Skill | Relationship |
-|-------|-------------|
-| Verification Loop | Use for deterministic checks (build, lint, test). Santa for semantic checks (accuracy, hallucinations). Run verification-loop first, Santa second. |
-| Eval Harness | Santa Method results feed eval metrics. Track pass@k across Santa runs to measure generator quality over time. |
-| Continuous Learning v2 | Santa findings become instincts. Repeated failures on the same criterion → learned behavior to avoid the pattern. |
-| Strategic Compact | Run Santa BEFORE compacting. Don't lose review context mid-verification. |
+| Skill                  | Relationship                                                                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verification Loop      | Use for deterministic checks (build, lint, test). Santa for semantic checks (accuracy, hallucinations). Run verification-loop first, Santa second. |
+| Eval Harness           | Santa Method results feed eval metrics. Track pass@k across Santa runs to measure generator quality over time.                                     |
+| Continuous Learning v2 | Santa findings become instincts. Repeated failures on the same criterion → learned behavior to avoid the pattern.                                  |
+| Strategic Compact      | Run Santa BEFORE compacting. Don't lose review context mid-verification.                                                                           |
 
 ## Metrics
 

@@ -148,11 +148,13 @@ export class ContextTriggerRouter {
         source: normalizeSource(trigger.source),
         executionBoundary,
         triggerEvent: input.triggerEvent ?? trigger.event,
-        triggerLabel: input.triggerLabel ?? createContextJobTriggerLabel({
-          source: trigger.source,
-          event: input.triggerEvent ?? trigger.event,
-          label: trigger.label,
-        }),
+        triggerLabel:
+          input.triggerLabel ??
+          createContextJobTriggerLabel({
+            source: trigger.source,
+            event: input.triggerEvent ?? trigger.event,
+            label: trigger.label,
+          }),
         triggeredAt: input.firedAt,
       });
 
@@ -175,11 +177,13 @@ export class ContextTriggerRouter {
         source: normalizeSource(trigger.source),
         executionBoundary,
         triggerEvent: input.triggerEvent ?? trigger.event,
-        triggerLabel: input.triggerLabel ?? createContextJobTriggerLabel({
-          source: trigger.source,
-          event: input.triggerEvent ?? trigger.event,
-          label: trigger.label,
-        }),
+        triggerLabel:
+          input.triggerLabel ??
+          createContextJobTriggerLabel({
+            source: trigger.source,
+            event: input.triggerEvent ?? trigger.event,
+            label: trigger.label,
+          }),
         triggeredAt: input.firedAt,
       });
 
@@ -199,11 +203,13 @@ export class ContextTriggerRouter {
       source: trigger.source,
       executionBoundary,
       triggerEvent: input.triggerEvent ?? trigger.event,
-      triggerLabel: input.triggerLabel ?? createContextJobTriggerLabel({
-        source: trigger.source,
-        event: input.triggerEvent ?? trigger.event,
-        label: trigger.label,
-      }),
+      triggerLabel:
+        input.triggerLabel ??
+        createContextJobTriggerLabel({
+          source: trigger.source,
+          event: input.triggerEvent ?? trigger.event,
+          label: trigger.label,
+        }),
       triggeredAt: input.firedAt,
       reason: input.reason ?? trigger.defaultReason,
       payload: input.payload,

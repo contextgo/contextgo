@@ -23,6 +23,9 @@ export const STORAGE_KEYS = {
   /** Conversation tabs state / 会话 tabs 状态 */
   CONVERSATION_TABS: 'contextgo_conversation_tabs',
 
+  /** Hosted remote device route prefix / 官方 Remote 设备路由前缀 */
+  OFFICIAL_REMOTE_DEVICE_ROUTE_PREFIX: 'contextgo:official-remote-device-route:',
+
   /** Sidebar collapse state / 侧边栏折叠状态 */
   SIDEBAR_COLLAPSE: 'contextgo_sider_collapsed',
 

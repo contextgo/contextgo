@@ -26,6 +26,7 @@ Write long-form content that sounds like an actual person with a point of view, 
 ## Voice Capture Workflow
 
 If the user wants a specific voice, collect one or more of:
+
 - published articles
 - newsletters
 - X posts or threads
@@ -34,6 +35,7 @@ If the user wants a specific voice, collect one or more of:
 - a style guide
 
 Then extract:
+
 - sentence length and rhythm
 - whether the writing is compressed, explanatory, sharp, or formal
 - how parentheses are used
@@ -47,6 +49,7 @@ If no voice references are given, default to a sharp operator voice: concrete, u
 ## Affaan / ECC Voice Reference
 
 When matching Affaan / ECC voice, bias toward:
+
 - direct claims over scene-setting
 - high specificity
 - parentheticals used for qualification or over-clarification, not comedy
@@ -57,6 +60,7 @@ When matching Affaan / ECC voice, bias toward:
 ## Banned Patterns
 
 Delete and rewrite any of these:
+
 - "In today's rapidly evolving landscape"
 - "game-changer", "cutting-edge", "revolutionary"
 - "no fluff"
@@ -99,6 +103,7 @@ Delete and rewrite any of these:
 ## Quality Gate
 
 Before delivering:
+
 - factual claims are backed by provided sources
 - generic AI transitions are gone
 - the voice matches the supplied examples

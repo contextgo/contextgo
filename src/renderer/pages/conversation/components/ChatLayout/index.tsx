@@ -3,7 +3,7 @@ import { useResizableSplit } from '@/renderer/hooks/ui/useResizableSplit';
 import ConversationTabs from '@/renderer/pages/conversation/components/ConversationTabs';
 import ChatTitleEditor from '@/renderer/pages/conversation/components/ChatTitleEditor';
 import MobileWorkspaceOverlay from './MobileWorkspaceOverlay';
-import WorkspacePanelHeader, { DesktopWorkspaceToggle } from './WorkspacePanelHeader';
+import WorkspacePanelHeader from './WorkspacePanelHeader';
 import { useConversationTabs } from '@/renderer/pages/conversation/hooks/ConversationTabsContext';
 import { useContainerWidth } from '@/renderer/pages/conversation/hooks/useContainerWidth';
 import { useLayoutConstraints } from '@/renderer/pages/conversation/hooks/useLayoutConstraints';
@@ -254,7 +254,9 @@ const ChatLayout: React.FC<{
       {isDesktop && desktopHeaderTarget ? createPortal(desktopHeaderContent, desktopHeaderTarget) : null}
       {isDesktop && desktopToolbarTarget && props.headerExtra
         ? createPortal(
-            <div className='flex h-full min-w-80px items-center justify-end'>{props.headerExtra}</div>,
+            <div className='app-titlebar__toolbar-portal-content flex h-full min-w-80px items-center justify-end'>
+              {props.headerExtra}
+            </div>,
             desktopToolbarTarget
           )
         : null}
@@ -353,11 +355,6 @@ const ChatLayout: React.FC<{
             siderTitle={props.siderTitle}
             sider={props.sider}
           />
-        )}
-
-        {/* Desktop expand button when workspace is collapsed */}
-        {!isMacRuntime && !isWindowsRuntime && workspaceEnabled && rightSiderCollapsed && !layout?.isMobile && (
-          <DesktopWorkspaceToggle />
         )}
       </div>
     </ArcoLayout>

@@ -106,28 +106,14 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
     loaders: [() => import('@renderer/pages/settings/SkillsHubSettings')],
   },
   {
-    match: (routePath) => routePath === '/agents' || routePath === '/settings/agent',
-    loaders: [() => import('@renderer/pages/settings/AgentSettings')],
+    match: (routePath) => routePath === '/agents' || routePath.startsWith('/agents/') || routePath.startsWith('/settings/agent'),
+    loaders: [() => import('@renderer/pages/agents')],
   },
   {
     match: (routePath) =>
       routePath === '/settings/system' || routePath === '/settings/about' || routePath === '/settings/display',
     loaders: [
       () => import('@renderer/pages/settings/SystemSettings'),
-      () => import('@renderer/pages/settings/components/SettingsSider'),
-    ],
-  },
-  {
-    match: (routePath) => routePath === '/settings/webui',
-    loaders: [
-      () => import('@renderer/pages/settings/WebuiSettings'),
-      () => import('@renderer/pages/settings/components/SettingsSider'),
-    ],
-  },
-  {
-    match: (routePath) => routePath === '/settings/commands',
-    loaders: [
-      () => import('@renderer/pages/settings/ToolsSettings/CommandSettings'),
       () => import('@renderer/pages/settings/components/SettingsSider'),
     ],
   },

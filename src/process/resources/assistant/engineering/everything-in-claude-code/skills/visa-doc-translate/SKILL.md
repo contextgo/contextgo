@@ -61,12 +61,14 @@ When the user provides an image file path, AUTOMATICALLY execute the following s
 ### OCR Methods (tried in order)
 
 1. **macOS Vision Framework** (macOS only):
+
    ```python
    import Vision
    from Foundation import NSURL
    ```
 
 2. **EasyOCR** (cross-platform):
+
    ```bash
    pip install easyocr
    ```
@@ -84,6 +86,7 @@ pip install pillow reportlab
 ```
 
 For macOS Vision framework:
+
 ```bash
 pip install pyobjc-framework-Vision pyobjc-framework-Quartz
 ```
@@ -108,6 +111,7 @@ pip install pyobjc-framework-Vision pyobjc-framework-Quartz
 ## Output Example
 
 The skill will:
+
 1. Extract text using available OCR method
 2. Translate to professional English
 3. Generate `<filename>_Translated.pdf` with:

@@ -24,7 +24,13 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import JSZip from 'jszip';
 import { ipcBridge } from '@/common';
-import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
+import {
+  findBundledAgentPackageDescriptorByAssistantId,
+  getBundledAgentPackageHideOwnedSkillsFromLibrary,
+  getBundledAgentPackageOwnedSkillNames,
+} from '@/common/config/presets/bundledAgentPackageRegistry';
+import type { AgentPackageSourceDescriptor } from '@/common/config/presets/agentPackageManifest';
+import { getPlatformServices } from '@/common/platform';
 import { getWorkspaceHooksDir } from '@process/bridge/services/workspaceAutomation';
 import { skillMarketService } from '@process/bridge/services/skillmarket/SkillMarketService';
 import {
@@ -105,6 +111,65 @@ async function resetAcpSkillManagerDiscovery() {
   const { AcpSkillManager } = await import('@process/task/AcpSkillManager');
   AcpSkillManager.resetInstance();
 }
+
+const resolveBundledResourcePath = (resourcePath: string): string => {
+  const platform = getPlatformServices().paths;
+  const appPath = platform.getAppPath() || process.cwd();
+  const resourcesPrefix = 'src/process/resources/';
+
+  if (platform.isPackaged()) {
+    const prodPath = resourcePath.startsWith(resourcesPrefix)
+      ? resourcePath.slice(resourcesPrefix.length)
+      : resourcePath;
+    return path.join(appPath, prodPath);
+  }
+
+  return path.join(appPath, resourcePath);
+};
+
+const readMarkdownFilesRecursive = async (
+  absoluteRoot: string,
+  relativeRoot = ''
+): Promise<Array<{ relativePath: string; sourcePath: string; content: string }>> => {
+  const entries = await fs.readdir(path.join(absoluteRoot, relativeRoot), { withFileTypes: true });
+  const documents: Array<{ relativePath: string; sourcePath: string; content: string }> = [];
+
+  for (const entry of entries) {
+    const nextRelativePath = path.posix.join(relativeRoot.replace(/\\/g, '/'), entry.name);
+    const absolutePath = path.join(absoluteRoot, nextRelativePath);
+
+    if (entry.isDirectory()) {
+      documents.push(...(await readMarkdownFilesRecursive(absoluteRoot, nextRelativePath)));
+      continue;
+    }
+
+    if (!entry.isFile() || !entry.name.endsWith('.md')) {
+      continue;
+    }
+
+    documents.push({
+      relativePath: nextRelativePath,
+      sourcePath: absolutePath,
+      content: await fs.readFile(absolutePath, 'utf-8'),
+    });
+  }
+
+  return documents.toSorted((left, right) => left.relativePath.localeCompare(right.relativePath));
+};
+
+const resolveBundledAgentPackageSourceRoot = (
+  resourceDir: string,
+  source: AgentPackageSourceDescriptor
+): string | null => {
+  if (source.kind === 'workspace-automation-profile') {
+    return null;
+  }
+
+  const resourcePath =
+    source.kind === 'package-relative' ? path.posix.join(resourceDir.replace(/\\/g, '/'), source.root) : source.root;
+
+  return resolveBundledResourcePath(resourcePath);
+};
 
 /**
  * Read a builtin resource file (.md only)
@@ -947,16 +1012,6 @@ export function initFsBridge(): void {
     }
   });
 
-  // 读取内置 skills 文件 / Read built-in skills file from app resources
-  ipcBridge.fs.readBuiltinSkill.provider(async ({ fileName }) => {
-    try {
-      return await readBuiltinResource('skills', fileName);
-    } catch (error) {
-      console.error('Failed to read builtin skill:', error);
-      return '';
-    }
-  });
-
   // 读取助手规则文件 / Read assistant rule file from user directory or builtin rules
   ipcBridge.fs.readAssistantRule.provider(async ({ assistantId, locale = 'en-US' }) => {
     try {
@@ -998,18 +1053,23 @@ export function initFsBridge(): void {
   });
 
   // 获取可用 skills 列表 / List available skills from both builtin and user directories
-  ipcBridge.fs.listAvailableSkills.provider(async (payload: { presetAssistantId?: string }) => {
+  ipcBridge.fs.listAvailableSkills.provider(async (payload: { presetAssistantId?: string; workspacePath?: string }) => {
     try {
       const presetAssistantId =
         payload && typeof payload === 'object' && 'presetAssistantId' in payload
           ? payload.presetAssistantId
           : undefined;
+      const workspacePath =
+        payload && typeof payload === 'object' && 'workspacePath' in payload ? payload.workspacePath : undefined;
       const presetId =
         typeof presetAssistantId === 'string' && presetAssistantId.startsWith('builtin-')
           ? presetAssistantId.slice('builtin-'.length)
           : undefined;
-      const preset = presetId ? ASSISTANT_PRESETS.find((item) => item.id === presetId) : undefined;
-      const packageOwnedSkillNames = new Set(preset?.packagedSkillNames || preset?.defaultEnabledSkills || []);
+      const packageOwnedSkillNames = new Set(
+        (presetAssistantId ? getBundledAgentPackageOwnedSkillNames(presetAssistantId) : undefined) ?? []
+      );
+      const hidePackageOwnedSkillsFromLibrary =
+        (presetAssistantId ? getBundledAgentPackageHideOwnedSkillsFromLibrary(presetAssistantId) : undefined) === true;
       const skills: Array<{
         name: string;
         description: string;
@@ -1070,7 +1130,7 @@ export function initFsBridge(): void {
             packageOwnerPresetIds:
               !isCustomDir && packageOwnedSkillNames.has(skill.name) && presetId ? [presetId] : undefined,
             hiddenFromSkillsLibrary:
-              !isCustomDir && packageOwnedSkillNames.has(skill.name) && preset?.hideDefaultSkillsFromLibrary === true,
+              !isCustomDir && packageOwnedSkillNames.has(skill.name) && hidePackageOwnedSkillsFromLibrary,
           });
         }
       };
@@ -1080,6 +1140,17 @@ export function initFsBridge(): void {
       const builtinCountBefore = skills.length;
       await readSkillsFromDir(builtinSkillsDir, false);
       const builtinCount = skills.length - builtinCountBefore;
+
+      // 读取项目本地 skills (isCustom: true, workspace source of truth)
+      const workspaceSkillsDir =
+        typeof workspacePath === 'string' && workspacePath.trim()
+          ? path.resolve(workspacePath, '.contextgo', 'skills')
+          : null;
+      const workspaceCountBefore = skills.length;
+      if (workspaceSkillsDir) {
+        await readSkillsFromDir(workspaceSkillsDir, true);
+      }
+      const workspaceCount = skills.length - workspaceCountBefore;
 
       // 读取用户自定义 skills (isCustom: true)
       const userSkillsDir = getSkillsDir();
@@ -1134,7 +1205,9 @@ export function initFsBridge(): void {
       }
       const result = Array.from(skillMap.values());
 
-      console.log(`[fsBridge] Listed ${result.length} available skills: builtin=${builtinCount}, custom=${userCount}`);
+      console.log(
+        `[fsBridge] Listed ${result.length} available skills: builtin=${builtinCount}, workspace=${workspaceCount}, custom=${userCount}`
+      );
 
       return result;
     } catch (error) {
@@ -1491,6 +1564,96 @@ export function initFsBridge(): void {
       return {
         success: false,
         msg: `Failed to read skill content: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
+  ipcBridge.fs.readBundledAgentPackageContent.provider(async ({ assistantId }) => {
+    try {
+      const descriptor = findBundledAgentPackageDescriptorByAssistantId(assistantId);
+
+      if (!descriptor) {
+        return {
+          success: false,
+          msg: `Bundled agent package not found for assistant: ${assistantId}`,
+        };
+      }
+
+      const agentsDocument: {
+        id: string;
+        title: string;
+        relativePath: string;
+        sourcePath: string;
+        content: string;
+      } | null = await (async () => {
+        const entryDocumentPath = resolveBundledAgentPackageSourceRoot(descriptor.resourceDir, {
+          kind: 'package-relative',
+          root: descriptor.manifest.entryDocument.file,
+        });
+
+        if (!entryDocumentPath) {
+          return null;
+        }
+
+        try {
+          const content = await fs.readFile(entryDocumentPath, 'utf-8');
+          const relativePath = descriptor.manifest.entryDocument.file.replace(/\\/g, '/');
+
+          return {
+            id: relativePath,
+            title: relativePath,
+            relativePath,
+            sourcePath: entryDocumentPath,
+            content,
+          };
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return null;
+          }
+          throw error;
+        }
+      })();
+
+      const docsRoot = descriptor.manifest.docsDirectory
+        ? resolveBundledAgentPackageSourceRoot(descriptor.resourceDir, {
+            kind: 'package-relative',
+            root: descriptor.manifest.docsDirectory.root,
+          })
+        : null;
+
+      const docs = docsRoot
+        ? await (async () => {
+            try {
+              await fs.access(docsRoot);
+              return await readMarkdownFilesRecursive(docsRoot);
+            } catch (error) {
+              if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+                return [] as Array<{ relativePath: string; sourcePath: string; content: string }>;
+              }
+              throw error;
+            }
+          })()
+        : [];
+
+      return {
+        success: true,
+        data: {
+          agentsDocument,
+          docs: docs.map((document) => ({
+            id: document.relativePath,
+            title: document.relativePath,
+            relativePath: document.relativePath,
+            sourcePath: document.sourcePath,
+            content: document.content,
+          })),
+        },
+        msg: 'Bundled agent package content loaded successfully',
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to read bundled agent package content:', error);
+      return {
+        success: false,
+        msg: `Failed to read bundled agent package content: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   });

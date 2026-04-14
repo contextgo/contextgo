@@ -58,7 +58,14 @@ vi.mock('@/renderer/components/base', () => ({
       return null;
     }
 
-    const headerTitle = typeof header === 'object' && header !== null && 'title' in header ? header.title : header;
+    const headerTitle =
+      typeof header === 'object' && header !== null
+        ? 'render' in header && typeof header.render === 'function'
+          ? header.render()
+          : 'title' in header
+            ? header.title
+            : null
+        : header;
     const footerNode = typeof footer === 'object' && footer !== null && 'render' in footer ? footer.render?.() : footer;
 
     return (
@@ -465,11 +472,30 @@ describe('HooksManagement', () => {
 });
 
 describe('AssistantEditDrawer skill preview', () => {
-  it('loads full skill content into the preview modal from assistant details', async () => {
+  it('loads distilled skill content into the preview modal from assistant details', async () => {
     readSkillContentMock.mockResolvedValue({
       success: true,
       data: {
-        content: '---\nname: skill-a\ndescription: Test skill\n---\n\n# Skill A',
+        content: `---
+name: skill-a
+description: Test skill
+---
+
+# Skill A
+
+## Workflow
+
+- Start from the user goal and build a short plan.
+
+## Troubleshooting
+
+### Visual issues
+
+\`\`\`bash
+# Open HTML preview to debug layout
+officecli view <file>.pptx html
+\`\`\`
+`,
       },
     });
 
@@ -491,7 +517,9 @@ describe('AssistantEditDrawer skill preview', () => {
         setEditContext={vi.fn()}
         promptViewMode='edit'
         setPromptViewMode={vi.fn()}
-        availableSkills={[{ name: 'skill-a', description: 'Builtin A', location: '/skills/a/SKILL.md', isCustom: false }]}
+        availableSkills={[
+          { name: 'skill-a', description: 'Builtin A', location: '/skills/a/SKILL.md', isCustom: false },
+        ]}
         availableHooks={[]}
         selectedSkills={['skill-a']}
         setSelectedSkills={vi.fn()}
@@ -528,8 +556,14 @@ describe('AssistantEditDrawer skill preview', () => {
     });
 
     expect(screen.getByText('Skill Preview')).toBeInTheDocument();
-    expect(screen.getAllByText('skill-a')).toHaveLength(2);
-    expect(screen.getByText(/# Skill A/)).toBeInTheDocument();
+    expect(screen.getAllByText('skill-a').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Test skill')).toBeInTheDocument();
+    expect(screen.queryByText(/# Skill A/)).not.toBeInTheDocument();
+    expect(screen.getByText(/## Workflow/)).toBeInTheDocument();
+    expect(screen.queryByText(/Troubleshooting/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Visual issues/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/officecli view <file>\.pptx html/)).not.toBeInTheDocument();
+    expect(screen.queryByText('description: Test skill')).not.toBeInTheDocument();
   });
 });
 

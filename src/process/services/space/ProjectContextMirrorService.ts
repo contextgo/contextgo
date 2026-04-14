@@ -137,7 +137,11 @@ function excerptMarkdown(content: string, limit: number): string {
   return `${normalized.slice(0, limit).trimEnd()}...`;
 }
 
-function toMountedSection(doc: ProjectContextDocument, kind: 'profile' | 'source', priority: number): ContextPackSection {
+function toMountedSection(
+  doc: ProjectContextDocument,
+  kind: 'profile' | 'source',
+  priority: number
+): ContextPackSection {
   const summary = excerptMarkdown(doc.content, MAX_SECTION_CHARS);
   const content = `${doc.title}\n${summary}`;
   return {
@@ -197,9 +201,7 @@ async function readSourceDocuments(
       continue;
     }
 
-    const entries = await fs
-      .readdir(current.absolutePath, { withFileTypes: true })
-      .catch((): Dirent[] => []);
+    const entries = await fs.readdir(current.absolutePath, { withFileTypes: true }).catch((): Dirent[] => []);
     entries.sort((left, right) => left.name.localeCompare(right.name));
 
     for (const entry of entries) {
@@ -207,9 +209,7 @@ async function readSourceDocuments(
         break;
       }
 
-      const nextRelativePath = current.relativePath
-        ? path.posix.join(current.relativePath, entry.name)
-        : entry.name;
+      const nextRelativePath = current.relativePath ? path.posix.join(current.relativePath, entry.name) : entry.name;
       const nextAbsolutePath = path.join(current.absolutePath, entry.name);
 
       if (entry.isDirectory()) {
@@ -285,7 +285,7 @@ export class ProjectContextMirrorService {
       )
     )
       .filter((doc): doc is ProjectContextDocument => Boolean(doc))
-      .sort((left, right) => {
+      .toSorted((left, right) => {
         const leftScore = left.tags.includes('baseline') ? 0 : left.relativePath === projectDocRelativePath ? 1 : 2;
         const rightScore = right.tags.includes('baseline') ? 0 : right.relativePath === projectDocRelativePath ? 1 : 2;
         if (leftScore !== rightScore) {

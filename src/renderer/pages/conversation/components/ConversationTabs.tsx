@@ -177,7 +177,7 @@ const getConversationTabBackend = (tab: ConversationTab): string | undefined => 
     return extra?.backend;
   }
 
-  if (tab.type === 'codex' || tab.type === 'openclaw-gateway' || tab.type === 'nanobot' || tab.type === 'gemini') {
+  if (tab.type === 'codex' || tab.type === 'gemini') {
     return tab.type;
   }
 

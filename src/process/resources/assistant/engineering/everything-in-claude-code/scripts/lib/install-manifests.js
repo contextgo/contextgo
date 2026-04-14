@@ -14,27 +14,9 @@ const COMPONENT_FAMILY_PREFIXES = {
   skill: 'skill:',
 };
 const LEGACY_COMPAT_BASE_MODULE_IDS_BY_TARGET = Object.freeze({
-  claude: [
-    'rules-core',
-    'agents-core',
-    'commands-core',
-    'hooks-runtime',
-    'platform-configs',
-    'workflow-quality',
-  ],
-  cursor: [
-    'rules-core',
-    'agents-core',
-    'commands-core',
-    'hooks-runtime',
-    'platform-configs',
-    'workflow-quality',
-  ],
-  antigravity: [
-    'rules-core',
-    'agents-core',
-    'commands-core',
-  ],
+  claude: ['rules-core', 'agents-core', 'commands-core', 'hooks-runtime', 'platform-configs', 'workflow-quality'],
+  cursor: ['rules-core', 'agents-core', 'commands-core', 'hooks-runtime', 'platform-configs', 'workflow-quality'],
+  antigravity: ['rules-core', 'agents-core', 'commands-core'],
 });
 const LEGACY_LANGUAGE_ALIAS_TO_CANONICAL = Object.freeze({
   cpp: 'cpp',
@@ -73,15 +55,11 @@ function readJson(filePath, label) {
 }
 
 function dedupeStrings(values) {
-  return [...new Set((Array.isArray(values) ? values : []).map(value => String(value).trim()).filter(Boolean))];
+  return [...new Set((Array.isArray(values) ? values : []).map((value) => String(value).trim()).filter(Boolean))];
 }
 
 function readOptionalStringOption(options, key) {
-  if (
-    !Object.prototype.hasOwnProperty.call(options, key)
-    || options[key] === null
-    || options[key] === undefined
-  ) {
+  if (!Object.prototype.hasOwnProperty.call(options, key) || options[key] === null || options[key] === undefined) {
     return null;
   }
 
@@ -100,27 +78,22 @@ function readModuleTargetsOrThrow(module) {
     throw new Error(`Install module ${moduleId} has invalid targets; expected an array of supported target ids`);
   }
 
-  const normalizedTargets = targets.map(target => (
-    typeof target === 'string' ? target.trim() : ''
-  ));
+  const normalizedTargets = targets.map((target) => (typeof target === 'string' ? target.trim() : ''));
 
-  if (normalizedTargets.some(target => target.length === 0)) {
+  if (normalizedTargets.some((target) => target.length === 0)) {
     throw new Error(`Install module ${moduleId} has invalid targets; expected an array of supported target ids`);
   }
 
-  const unsupportedTargets = normalizedTargets.filter(target => !SUPPORTED_INSTALL_TARGETS.includes(target));
+  const unsupportedTargets = normalizedTargets.filter((target) => !SUPPORTED_INSTALL_TARGETS.includes(target));
   if (unsupportedTargets.length > 0) {
-    throw new Error(
-      `Install module ${moduleId} has unsupported targets: ${unsupportedTargets.join(', ')}`
-    );
+    throw new Error(`Install module ${moduleId} has unsupported targets: ${unsupportedTargets.join(', ')}`);
   }
 
   return normalizedTargets;
 }
 
 function assertKnownModuleIds(moduleIds, manifests) {
-  const unknownModuleIds = dedupeStrings(moduleIds)
-    .filter(moduleId => !manifests.modulesById.has(moduleId));
+  const unknownModuleIds = dedupeStrings(moduleIds).filter((moduleId) => !manifests.modulesById.has(moduleId));
 
   if (unknownModuleIds.length === 1) {
     throw new Error(`Unknown install module: ${unknownModuleIds[0]}`);
@@ -136,9 +109,9 @@ function intersectTargets(modules) {
     return [];
   }
 
-  return SUPPORTED_INSTALL_TARGETS.filter(target => (
-    modules.every(module => Array.isArray(module.targets) && module.targets.includes(target))
-  ));
+  return SUPPORTED_INSTALL_TARGETS.filter((target) =>
+    modules.every((module) => Array.isArray(module.targets) && module.targets.includes(target))
+  );
 }
 
 function getManifestPaths(repoRoot = DEFAULT_REPO_ROOT) {
@@ -163,17 +136,15 @@ function loadInstallManifests(options = {}) {
     ? readJson(componentsPath, 'install-components.json')
     : { version: null, components: [] };
   const modules = Array.isArray(modulesData.modules) ? modulesData.modules : [];
-  const profiles = profilesData && typeof profilesData.profiles === 'object'
-    ? profilesData.profiles
-    : {};
+  const profiles = profilesData && typeof profilesData.profiles === 'object' ? profilesData.profiles : {};
   const components = Array.isArray(componentsData.components) ? componentsData.components : [];
 
   for (const module of modules) {
     readModuleTargetsOrThrow(module);
   }
 
-  const modulesById = new Map(modules.map(module => [module.id, module]));
-  const componentsById = new Map(components.map(component => [component.id, component]));
+  const modulesById = new Map(modules.map((module) => [module.id, module]));
+  const componentsById = new Map(components.map((component) => [component.id, component]));
 
   return {
     repoRoot,
@@ -202,7 +173,7 @@ function listInstallProfiles(options = {}) {
 
 function listInstallModules(options = {}) {
   const manifests = loadInstallManifests(options);
-  return manifests.modules.map(module => ({
+  return manifests.modules.map((module) => ({
     id: module.id,
     kind: module.kind,
     description: module.description,
@@ -237,18 +208,14 @@ function listInstallComponents(options = {}) {
   }
 
   if (target && !SUPPORTED_INSTALL_TARGETS.includes(target)) {
-    throw new Error(
-      `Unknown install target: ${target}. Expected one of ${SUPPORTED_INSTALL_TARGETS.join(', ')}`
-    );
+    throw new Error(`Unknown install target: ${target}. Expected one of ${SUPPORTED_INSTALL_TARGETS.join(', ')}`);
   }
 
   return manifests.components
-    .filter(component => !family || component.family === family)
-    .map(component => {
+    .filter((component) => !family || component.family === family)
+    .map((component) => {
       const moduleIds = dedupeStrings(component.modules);
-      const modules = moduleIds
-        .map(moduleId => manifests.modulesById.get(moduleId))
-        .filter(Boolean);
+      const modules = moduleIds.map((moduleId) => manifests.modulesById.get(moduleId)).filter(Boolean);
       const targets = intersectTargets(modules);
 
       return {
@@ -260,7 +227,7 @@ function listInstallComponents(options = {}) {
         targets,
       };
     })
-    .filter(component => !target || component.targets.includes(target));
+    .filter((component) => !target || component.targets.includes(target));
 }
 
 function getInstallComponent(componentId, options = {}) {
@@ -278,9 +245,9 @@ function getInstallComponent(componentId, options = {}) {
 
   const moduleIds = dedupeStrings(component.modules);
   const modules = moduleIds
-    .map(moduleId => manifests.modulesById.get(moduleId))
+    .map((moduleId) => manifests.modulesById.get(moduleId))
     .filter(Boolean)
-    .map(module => ({
+    .map((module) => ({
       id: module.id,
       kind: module.kind,
       description: module.description,
@@ -321,21 +288,19 @@ function resolveLegacyCompatibilitySelection(options = {}) {
   const target = options.target || null;
 
   if (target && !SUPPORTED_INSTALL_TARGETS.includes(target)) {
-    throw new Error(
-      `Unknown install target: ${target}. Expected one of ${SUPPORTED_INSTALL_TARGETS.join(', ')}`
-    );
+    throw new Error(`Unknown install target: ${target}. Expected one of ${SUPPORTED_INSTALL_TARGETS.join(', ')}`);
   }
 
-  const legacyLanguages = dedupeStrings(options.legacyLanguages)
-    .map(language => language.toLowerCase());
+  const legacyLanguages = dedupeStrings(options.legacyLanguages).map((language) => language.toLowerCase());
   const normalizedLegacyLanguages = dedupeStrings(legacyLanguages);
 
   if (normalizedLegacyLanguages.length === 0) {
     throw new Error('No legacy languages were provided');
   }
 
-  const unknownLegacyLanguages = normalizedLegacyLanguages
-    .filter(language => !Object.hasOwn(LEGACY_LANGUAGE_ALIAS_TO_CANONICAL, language));
+  const unknownLegacyLanguages = normalizedLegacyLanguages.filter(
+    (language) => !Object.hasOwn(LEGACY_LANGUAGE_ALIAS_TO_CANONICAL, language)
+  );
 
   if (unknownLegacyLanguages.length === 1) {
     throw new Error(
@@ -349,15 +314,16 @@ function resolveLegacyCompatibilitySelection(options = {}) {
     );
   }
 
-  const canonicalLegacyLanguages = normalizedLegacyLanguages
-    .map(language => LEGACY_LANGUAGE_ALIAS_TO_CANONICAL[language]);
-  const baseModuleIds = LEGACY_COMPAT_BASE_MODULE_IDS_BY_TARGET[target || 'claude']
-    || LEGACY_COMPAT_BASE_MODULE_IDS_BY_TARGET.claude;
+  const canonicalLegacyLanguages = normalizedLegacyLanguages.map(
+    (language) => LEGACY_LANGUAGE_ALIAS_TO_CANONICAL[language]
+  );
+  const baseModuleIds =
+    LEGACY_COMPAT_BASE_MODULE_IDS_BY_TARGET[target || 'claude'] || LEGACY_COMPAT_BASE_MODULE_IDS_BY_TARGET.claude;
   const moduleIds = dedupeStrings([
     ...baseModuleIds,
     ...(target === 'antigravity'
       ? []
-      : canonicalLegacyLanguages.flatMap(language => LEGACY_LANGUAGE_EXTRA_MODULE_IDS[language] || [])),
+      : canonicalLegacyLanguages.flatMap((language) => LEGACY_LANGUAGE_EXTRA_MODULE_IDS[language] || [])),
   ]);
 
   assertKnownModuleIds(moduleIds, manifests);
@@ -404,23 +370,21 @@ function resolveInstallPlan(options = {}) {
 
   const target = options.target || null;
   if (target && !SUPPORTED_INSTALL_TARGETS.includes(target)) {
-    throw new Error(
-      `Unknown install target: ${target}. Expected one of ${SUPPORTED_INSTALL_TARGETS.join(', ')}`
-    );
+    throw new Error(`Unknown install target: ${target}. Expected one of ${SUPPORTED_INSTALL_TARGETS.join(', ')}`);
   }
   const validatedProjectRoot = readOptionalStringOption(options, 'projectRoot');
   const validatedHomeDir = readOptionalStringOption(options, 'homeDir');
   const targetPlanningInput = target
     ? {
-      repoRoot: manifests.repoRoot,
-      projectRoot: validatedProjectRoot || manifests.repoRoot,
-      homeDir: validatedHomeDir || os.homedir(),
-    }
+        repoRoot: manifests.repoRoot,
+        projectRoot: validatedProjectRoot || manifests.repoRoot,
+        homeDir: validatedHomeDir || os.homedir(),
+      }
     : null;
   const targetAdapter = target ? getInstallTargetAdapter(target) : null;
 
   const effectiveRequestedIds = dedupeStrings(
-    requestedModuleIds.filter(moduleId => !excludedModuleOwners.has(moduleId))
+    requestedModuleIds.filter((moduleId) => !excludedModuleOwners.has(moduleId))
   );
 
   if (requestedModuleIds.length === 0) {
@@ -453,11 +417,10 @@ function resolveInstallPlan(options = {}) {
       return;
     }
 
-    const supportsTarget = !target
-      || (
-        readModuleTargetsOrThrow(module).includes(target)
-        && (!targetAdapter || targetAdapter.supportsModule(module, targetPlanningInput))
-      );
+    const supportsTarget =
+      !target ||
+      (readModuleTargetsOrThrow(module).includes(target) &&
+        (!targetAdapter || targetAdapter.supportsModule(module, targetPlanningInput)));
 
     if (!supportsTarget) {
       if (dependencyOf) {
@@ -478,11 +441,7 @@ function resolveInstallPlan(options = {}) {
 
     visitingIds.add(moduleId);
     for (const dependencyId of module.dependencies) {
-      const dependencyResolved = resolveModule(
-        dependencyId,
-        moduleId,
-        rootRequesterId || moduleId
-      );
+      const dependencyResolved = resolveModule(dependencyId, moduleId, rootRequesterId || moduleId);
       if (!dependencyResolved) {
         visitingIds.delete(moduleId);
         if (!dependencyOf) {
@@ -501,17 +460,17 @@ function resolveInstallPlan(options = {}) {
     resolveModule(moduleId, null, moduleId);
   }
 
-  const selectedModules = manifests.modules.filter(module => selectedIds.has(module.id));
-  const skippedModules = manifests.modules.filter(module => skippedTargetIds.has(module.id));
-  const excludedModules = manifests.modules.filter(module => excludedIds.has(module.id));
+  const selectedModules = manifests.modules.filter((module) => selectedIds.has(module.id));
+  const skippedModules = manifests.modules.filter((module) => skippedTargetIds.has(module.id));
+  const excludedModules = manifests.modules.filter((module) => excludedIds.has(module.id));
   const scaffoldPlan = target
     ? planInstallTargetScaffold({
-      target,
-      repoRoot: targetPlanningInput.repoRoot,
-      projectRoot: targetPlanningInput.projectRoot,
-      homeDir: targetPlanningInput.homeDir,
-      modules: selectedModules,
-    })
+        target,
+        repoRoot: targetPlanningInput.repoRoot,
+        projectRoot: targetPlanningInput.projectRoot,
+        homeDir: targetPlanningInput.homeDir,
+        modules: selectedModules,
+      })
     : null;
 
   return {
@@ -522,9 +481,9 @@ function resolveInstallPlan(options = {}) {
     explicitModuleIds,
     includedComponentIds,
     excludedComponentIds,
-    selectedModuleIds: selectedModules.map(module => module.id),
-    skippedModuleIds: skippedModules.map(module => module.id),
-    excludedModuleIds: excludedModules.map(module => module.id),
+    selectedModuleIds: selectedModules.map((module) => module.id),
+    skippedModuleIds: skippedModules.map((module) => module.id),
+    excludedModuleIds: excludedModules.map((module) => module.id),
     selectedModules,
     skippedModules,
     excludedModules,

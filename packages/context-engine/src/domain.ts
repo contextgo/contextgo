@@ -149,7 +149,14 @@ export type ProfileSegment = {
   updatedAt: Timestamp;
 };
 
-export type ContextPackSectionKind = 'thread-state' | 'source' | 'artifact' | 'memory' | 'profile' | 'instruction' | 'compaction';
+export type ContextPackSectionKind =
+  | 'thread-state'
+  | 'source'
+  | 'artifact'
+  | 'memory'
+  | 'profile'
+  | 'instruction'
+  | 'compaction';
 
 export type ContextPackSection = {
   kind: ContextPackSectionKind;

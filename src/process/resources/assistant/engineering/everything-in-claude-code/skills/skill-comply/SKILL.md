@@ -8,6 +8,7 @@ tools: Read, Bash
 # skill-comply: Automated Compliance Measurement
 
 Measures whether coding agents actually follow skills, rules, or agent definitions by:
+
 1. Auto-generating expected behavioral sequences (specs) from any .md file
 2. Auto-generating scenarios with decreasing prompt strictness (supportive → neutral → competing)
 3. Running `claude -p` and capturing tool call traces via stream-json
@@ -48,6 +49,7 @@ Measures whether a skill/rule is followed even when the prompt doesn't explicitl
 ## Report Contents
 
 Reports are self-contained and include:
+
 1. Expected behavioral sequence (auto-generated spec)
 2. Scenario prompts (what was asked at each strictness level)
 3. Compliance scores per scenario

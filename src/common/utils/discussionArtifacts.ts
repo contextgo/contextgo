@@ -127,7 +127,7 @@ export const buildHarnessRoleArtifactContent = (options: {
   const { role, entries, updatedAt } = options;
   const matchingEntries = entries
     .filter((entry) => entry.role === role)
-    .sort((left, right) => left.round - right.round);
+    .toSorted((left, right) => left.round - right.round);
 
   return [
     `# ${toRoleTitle(role)} Artifact`,
@@ -174,7 +174,7 @@ export const buildHarnessArtifactManifest = (options: {
     },
     rounds: entries
       .slice()
-      .sort((left, right) =>
+      .toSorted((left, right) =>
         left.round === right.round ? left.role.localeCompare(right.role) : left.round - right.round
       )
       .map((entry) => ({

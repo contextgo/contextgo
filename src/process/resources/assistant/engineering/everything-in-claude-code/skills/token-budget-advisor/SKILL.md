@@ -46,13 +46,13 @@ For mixed content, use the dominant content type and keep the estimate heuristic
 
 Classify the prompt, then apply the multiplier range to get the full response window:
 
-| Complexity   | Multiplier range | Example prompts                                      |
-|--------------|------------------|------------------------------------------------------|
-| Simple       | 3× – 8×          | "What is X?", yes/no, single fact                   |
-| Medium       | 8× – 20×         | "How does X work?"                                  |
-| Medium-High  | 10× – 25×        | Code request with context                           |
-| Complex      | 15× – 40×        | Multi-part analysis, comparisons, architecture      |
-| Creative     | 10× – 30×        | Stories, essays, narrative writing                  |
+| Complexity  | Multiplier range | Example prompts                                |
+| ----------- | ---------------- | ---------------------------------------------- |
+| Simple      | 3× – 8×          | "What is X?", yes/no, single fact              |
+| Medium      | 8× – 20×         | "How does X work?"                             |
+| Medium-High | 10× – 25×        | Code request with context                      |
+| Complex     | 15× – 40×        | Multi-part analysis, comparisons, architecture |
+| Creative    | 10× – 30×        | Stories, essays, narrative writing             |
 
 Response window = `input_tokens × mult_min` to `input_tokens × mult_max` (but don’t exceed your model’s configured output-token limit).
 
@@ -78,30 +78,31 @@ Precision: heuristic estimate ~85-90% accuracy (±15%).
 ```
 
 Level token estimates (within the response window):
-- 25%  → `min + (max - min) × 0.25`
-- 50%  → `min + (max - min) × 0.50`
-- 75%  → `min + (max - min) × 0.75`
+
+- 25% → `min + (max - min) × 0.25`
+- 50% → `min + (max - min) × 0.50`
+- 75% → `min + (max - min) × 0.75`
 - 100% → `max`
 
 ### Step 4 — Respond at the chosen level
 
-| Level            | Target length       | Include                                             | Omit                                              |
-|------------------|---------------------|-----------------------------------------------------|---------------------------------------------------|
-| 25% Essential    | 2-4 sentences max   | Direct answer, key conclusion                       | Context, examples, nuance, alternatives           |
-| 50% Moderate     | 1-3 paragraphs      | Answer + necessary context + 1 example              | Deep analysis, edge cases, references             |
-| 75% Detailed     | Structured response | Multiple examples, pros/cons, alternatives          | Extreme edge cases, exhaustive references         |
-| 100% Exhaustive  | No restriction      | Everything — full analysis, all code, all perspectives | Nothing                                        |
+| Level           | Target length       | Include                                                | Omit                                      |
+| --------------- | ------------------- | ------------------------------------------------------ | ----------------------------------------- |
+| 25% Essential   | 2-4 sentences max   | Direct answer, key conclusion                          | Context, examples, nuance, alternatives   |
+| 50% Moderate    | 1-3 paragraphs      | Answer + necessary context + 1 example                 | Deep analysis, edge cases, references     |
+| 75% Detailed    | Structured response | Multiple examples, pros/cons, alternatives             | Extreme edge cases, exhaustive references |
+| 100% Exhaustive | No restriction      | Everything — full analysis, all code, all perspectives | Nothing                                   |
 
 ## Shortcuts — skip the question
 
 If the user already signals a level, respond at that level immediately without asking:
 
-| What they say                                      | Level |
-|----------------------------------------------------|-------|
-| "1" / "25% depth" / "short version" / "brief answer" / "tldr"  | 25%   |
-| "2" / "50% depth" / "moderate depth" / "balanced answer"        | 50%   |
-| "3" / "75% depth" / "detailed answer" / "thorough answer"       | 75%   |
-| "4" / "100% depth" / "exhaustive answer" / "full deep dive"     | 100%  |
+| What they say                                                 | Level |
+| ------------------------------------------------------------- | ----- |
+| "1" / "25% depth" / "short version" / "brief answer" / "tldr" | 25%   |
+| "2" / "50% depth" / "moderate depth" / "balanced answer"      | 50%   |
+| "3" / "75% depth" / "detailed answer" / "thorough answer"     | 75%   |
+| "4" / "100% depth" / "exhaustive answer" / "full deep dive"   | 100%  |
 
 If the user set a level earlier in the session, **maintain it silently** for subsequent responses unless they change it.
 

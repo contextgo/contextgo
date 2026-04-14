@@ -16,27 +16,7 @@ import { SettingsSubModal } from '@/renderer/components/settings';
 import { uuid } from '@/common/utils';
 import { acpConversation } from '@/common/adapter/ipcBridge';
 import { CheckSmall } from '@icon-park/react';
-
-// CLI Logo 导入 / CLI Logo imports
-import CodeBuddyLogo from '@/renderer/assets/logos/tools/coding/codebuddy.svg';
-import GooseLogo from '@/renderer/assets/logos/tools/goose.svg';
-import AuggieLogo from '@/renderer/assets/logos/brand/auggie.svg';
-import KimiLogo from '@/renderer/assets/logos/ai-china/kimi.svg';
-import OpencodeLogo from '@/renderer/assets/logos/tools/coding/opencode.svg';
-import QoderLogo from '@/renderer/assets/logos/tools/coding/qoder.png';
-
-/**
- * 后端 Logo 映射表，用于在 CLI 卡片中显示对应的图标
- * Backend logo mapping for displaying icons in CLI selection cards
- */
-const BACKEND_LOGO_MAP: Record<string, string> = {
-  codebuddy: CodeBuddyLogo,
-  goose: GooseLogo,
-  auggie: AuggieLogo,
-  kimi: KimiLogo,
-  opencode: OpencodeLogo,
-  qoder: QoderLogo,
-};
+import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 
 interface CustomAcpAgentModalProps {
   visible: boolean;
@@ -82,8 +62,7 @@ const CustomAcpAgentModal: React.FC<CustomAcpAgentModalProps> = ({ visible, agen
     try {
       const response = await acpConversation.getAvailableAgents.invoke();
       if (response.success && response.data) {
-        // 只展示第三方独立 CLI（goose, auggie, kimi, opencode）
-        // Only show third-party standalone CLIs (goose, auggie, kimi, opencode)
+        // Keep the add flow focused on detected non-builtin ACP CLIs.
         const filteredAgents = response.data.filter((a) => {
           if (['gemini', 'custom', 'codex'].includes(a.backend)) return false;
           const backendConfig = ACP_BACKENDS_ALL[a.backend];
@@ -274,7 +253,7 @@ const CustomAcpAgentModal: React.FC<CustomAcpAgentModalProps> = ({ visible, agen
             ) : (
               <div className='grid grid-cols-2 gap-8px'>
                 {detectedAgents.map((detectedAgent) => {
-                  const logo = BACKEND_LOGO_MAP[detectedAgent.backend];
+                  const logo = getAgentLogo(detectedAgent.backend);
                   const isSelected = selectedCli === detectedAgent.cliPath;
                   return (
                     <div

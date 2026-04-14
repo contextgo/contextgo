@@ -13,15 +13,13 @@ const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
       kind: 'official-runtime',
       label: 'cgo activity clipboard',
       url: 'https://github.com/contextgo/connector',
-      description:
-        'Connector CLI activity runtime for clipboard observation, config, and collect workflows.',
+      description: 'Connector CLI activity runtime for clipboard observation, config, and collect workflows.',
     },
     {
       kind: 'connector-repo',
       label: 'Connector Repository',
       url: 'https://github.com/contextgo/connector',
-      description:
-        'The standalone connector project owns the clipboard runtime, activity store, and collect pipeline.',
+      description: 'The standalone connector project owns the clipboard runtime, activity store, and collect pipeline.',
     },
   ],
   'contextgo-browser-extension': [
@@ -29,8 +27,7 @@ const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
       kind: 'official-runtime',
       label: 'cgo activity browser-extension',
       url: 'https://github.com/contextgo/connector',
-      description:
-        'Connector CLI activity runtime for browser extension ingest, health checks, and collect workflows.',
+      description: 'Connector CLI activity runtime for browser extension ingest, health checks, and collect workflows.',
     },
     {
       kind: 'connector-repo',
@@ -78,7 +75,8 @@ const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
       kind: 'connector-repo',
       label: 'Connector Repository',
       url: 'https://github.com/contextgo/connector',
-      description: 'The standalone connector project owns the Google Drive runtime migration and native capability surface.',
+      description:
+        'The standalone connector project owns the Google Drive runtime migration and native capability surface.',
     },
   ],
   'google-docs': [
@@ -98,7 +96,8 @@ const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
       kind: 'connector-repo',
       label: 'Connector Repository',
       url: 'https://github.com/contextgo/connector',
-      description: 'The standalone connector project owns the Google Docs runtime migration and native capability surface.',
+      description:
+        'The standalone connector project owns the Google Docs runtime migration and native capability surface.',
     },
   ],
   'google-sheets': [
@@ -112,13 +111,15 @@ const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
       kind: 'official-runtime',
       label: 'Connector CLI',
       url: 'https://github.com/contextgo/connector',
-      description: 'Connector-project owned runtime boundary for future Google Sheets native CLI and collect workflows.',
+      description:
+        'Connector-project owned runtime boundary for future Google Sheets native CLI and collect workflows.',
     },
     {
       kind: 'connector-repo',
       label: 'Connector Repository',
       url: 'https://github.com/contextgo/connector',
-      description: 'The standalone connector project owns the Google Sheets runtime migration and native capability surface.',
+      description:
+        'The standalone connector project owns the Google Sheets runtime migration and native capability surface.',
     },
   ],
   gmail: [
@@ -152,13 +153,15 @@ const CONNECTOR_SUPPORT_SOURCES: Record<string, ConnectorSupportSource[]> = {
       kind: 'official-runtime',
       label: 'Connector CLI',
       url: 'https://github.com/contextgo/connector',
-      description: 'Connector-project owned runtime boundary for future Google Calendar native CLI and collect workflows.',
+      description:
+        'Connector-project owned runtime boundary for future Google Calendar native CLI and collect workflows.',
     },
     {
       kind: 'connector-repo',
       label: 'Connector Repository',
       url: 'https://github.com/contextgo/connector',
-      description: 'The standalone connector project owns the Google Calendar runtime migration and native capability surface.',
+      description:
+        'The standalone connector project owns the Google Calendar runtime migration and native capability surface.',
     },
   ],
 };
@@ -476,7 +479,8 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
         kind: 'connector-repo',
         label: 'Connector Repository',
         url: 'https://github.com/contextgo/connector',
-        description: 'The standalone connector project owns the GitHub runtime wrapper, source registry, and collect/store readiness model.',
+        description:
+          'The standalone connector project owns the GitHub runtime wrapper, source registry, and collect/store readiness model.',
       },
     ],
   },

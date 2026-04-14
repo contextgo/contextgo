@@ -63,9 +63,7 @@ function getEntityValidator(entityName) {
 }
 
 function formatValidationErrors(errors = []) {
-  return errors
-    .map(error => `${error.instancePath || '/'} ${error.message}`)
-    .join('; ');
+  return errors.map((error) => `${error.instancePath || '/'} ${error.message}`).join('; ');
 }
 
 function validateEntity(entityName, payload) {

@@ -32,16 +32,19 @@ Monitors a deployed URL for regressions. Runs in a loop until stopped or until t
 ### Watch Modes
 
 **Quick check** (default): single pass, report results
+
 ```
 /canary-watch https://myapp.com
 ```
 
 **Sustained watch**: check every N minutes for M hours
+
 ```
 /canary-watch https://myapp.com --interval 5m --duration 2h
 ```
 
 **Diff mode**: compare staging vs production
+
 ```
 /canary-watch --compare https://staging.myapp.com https://myapp.com
 ```
@@ -49,19 +52,19 @@ Monitors a deployed URL for regressions. Runs in a loop until stopped or until t
 ### Alert Thresholds
 
 ```yaml
-critical:  # immediate alert
+critical: # immediate alert
   - HTTP status != 200
   - Console error count > 5 (new errors only)
   - LCP > 4s
   - API endpoint returns 5xx
 
-warning:   # flag in report
+warning: # flag in report
   - LCP increased > 500ms from baseline
   - CLS > 0.1
   - New console warnings
   - Response time > 2x baseline
 
-info:      # log only
+info: # log only
   - Minor performance variance
   - New network requests (third-party scripts added?)
 ```
@@ -69,6 +72,7 @@ info:      # log only
 ### Notifications
 
 When a critical threshold is crossed:
+
 - Desktop notification (macOS/Linux)
 - Optional: Slack/Discord webhook
 - Log to `~/.claude/canary-watch.log`
@@ -80,13 +84,13 @@ When a critical threshold is crossed:
 
 ### Status: HEALTHY ✓
 
-| Check | Result | Baseline | Delta |
-|-------|--------|----------|-------|
-| HTTP | 200 ✓ | 200 | — |
-| Console errors | 0 ✓ | 0 | — |
-| LCP | 1.8s ✓ | 1.6s | +200ms |
-| CLS | 0.01 ✓ | 0.01 | — |
-| API /health | 145ms ✓ | 120ms | +25ms |
+| Check          | Result  | Baseline | Delta  |
+| -------------- | ------- | -------- | ------ |
+| HTTP           | 200 ✓   | 200      | —      |
+| Console errors | 0 ✓     | 0        | —      |
+| LCP            | 1.8s ✓  | 1.6s     | +200ms |
+| CLS            | 0.01 ✓  | 0.01     | —      |
+| API /health    | 145ms ✓ | 120ms    | +25ms  |
 
 ### No regressions detected. Deploy is clean.
 ```
@@ -94,6 +98,7 @@ When a critical threshold is crossed:
 ## Integration
 
 Pair with:
+
 - `/browser-qa` for pre-deploy verification
 - Hooks: add as a PostToolUse hook on `git push` to auto-check after deploys
 - CI: run in GitHub Actions after deploy step

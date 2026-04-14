@@ -44,7 +44,7 @@ test.describe('Settings Pages', () => {
     { tab: 'gemini', name: 'Gemini Settings' },
     { tab: 'model', name: 'Model Settings' },
     { tab: 'agent', name: 'Agent/ACP Settings' },
-    { tab: 'webui', name: 'WebUI Settings' },
+    { tab: 'channels', name: 'Channels Settings' },
     { tab: 'system', name: 'System Settings' },
     { tab: 'about', name: 'About Page' },
   ];

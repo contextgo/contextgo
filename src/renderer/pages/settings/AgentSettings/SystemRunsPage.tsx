@@ -118,7 +118,12 @@ const SystemRunsPage: React.FC = () => {
                 </Typography.Paragraph>
               </div>
             </div>
-            <div className={styles.systemRunsSummaryCard + ' rounded-18px border border-border-2 bg-fill-2 px-16px py-12px text-right'}>
+            <div
+              className={
+                styles.systemRunsSummaryCard +
+                ' rounded-18px border border-border-2 bg-fill-2 px-16px py-12px text-right'
+              }
+            >
               <div className='text-12px text-t-secondary'>
                 {t('settings.systemRunsActiveNow', { defaultValue: 'Active now' })}
               </div>
@@ -167,7 +172,9 @@ const SystemRunsPage: React.FC = () => {
                   const name = assistant.nameI18n[i18n.language] || assistant.nameI18n['en-US'] || assistant.id;
                   const description =
                     assistant.descriptionI18n[i18n.language] || assistant.descriptionI18n['en-US'] || assistant.id;
-                  const triggerKinds = assistant.runtimeSpec.triggerKinds.map((kind) => resolveTriggerKindLabel(kind, t));
+                  const triggerKinds = assistant.runtimeSpec.triggerKinds.map((kind) =>
+                    resolveTriggerKindLabel(kind, t)
+                  );
                   const boundaryLabel = resolveExecutionBoundaryLabel(assistant.runtimeSpec.executionBoundary, t);
                   const isPlanned = assistant.deliveryStatus === 'planned';
                   const runtimeStatusTone = isPlanned
@@ -260,7 +267,12 @@ const SystemRunsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className={'mt-12px rounded-16px bg-fill-2 p-12px text-12px leading-5 text-t-secondary ' + styles.systemRunsDetails}>
+                <div
+                  className={
+                    'mt-12px rounded-16px bg-fill-2 p-12px text-12px leading-5 text-t-secondary ' +
+                    styles.systemRunsDetails
+                  }
+                >
                   {run.scopeLabel ? (
                     <div className={styles.systemRunsDetailText}>
                       {t('agent.contextEngine.scope', { scope: run.scopeLabel })}
@@ -305,7 +317,10 @@ const SystemRunsPage: React.FC = () => {
                 {run.recentEvents.length > 0 ? (
                   <div className='mt-12px grid gap-6px'>
                     {run.recentEvents.slice(0, 4).map((event, index) => (
-                      <div key={`${run.id}-${index}-${event.at}`} className={'text-12px leading-5 text-t-secondary ' + styles.systemRunsEventRow}>
+                      <div
+                        key={`${run.id}-${index}-${event.at}`}
+                        className={'text-12px leading-5 text-t-secondary ' + styles.systemRunsEventRow}
+                      >
                         <span className={styles.systemRunsEventIcon}>
                           <Right theme='outline' size={12} />
                         </span>

@@ -19,15 +19,19 @@ import { resolve } from 'path';
 import { homedir } from 'os';
 import { spawnSync } from 'child_process';
 
-const CK_HOME         = resolve(homedir(), '.claude', 'ck');
-const PROJECTS_FILE   = resolve(CK_HOME, 'projects.json');
+const CK_HOME = resolve(homedir(), '.claude', 'ck');
+const PROJECTS_FILE = resolve(CK_HOME, 'projects.json');
 const CURRENT_SESSION = resolve(CK_HOME, 'current-session.json');
-const SKILL_FILE      = resolve(homedir(), '.claude', 'skills', 'ck', 'SKILL.md');
+const SKILL_FILE = resolve(homedir(), '.claude', 'skills', 'ck', 'SKILL.md');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function readJson(p) {
-  try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; }
+  try {
+    return JSON.parse(readFileSync(p, 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 function daysAgo(dateStr) {
@@ -47,16 +51,18 @@ function stalenessIcon(dateStr) {
 function gitLogSince(projectPath, sinceDate) {
   if (!sinceDate || !existsSync(resolve(projectPath, '.git'))) return null;
   try {
-    const result = spawnSync(
-      'git',
-      ['-C', projectPath, 'log', '--oneline', `--since=${sinceDate}`],
-      { timeout: 3000, stdio: 'pipe', encoding: 'utf8' },
-    );
+    const result = spawnSync('git', ['-C', projectPath, 'log', '--oneline', `--since=${sinceDate}`], {
+      timeout: 3000,
+      stdio: 'pipe',
+      encoding: 'utf8',
+    });
     if (result.status !== 0) return null;
     const output = result.stdout.trim();
     const commits = output.split('\n').filter(Boolean).length;
     return commits > 0 ? `${commits} commit${commits !== 1 ? 's' : ''} since last session` : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function extractClaudeMdGoal(projectPath) {
@@ -66,7 +72,9 @@ function extractClaudeMdGoal(projectPath) {
     const md = readFileSync(p, 'utf8');
     const m = md.match(/## Current Goal\n([\s\S]*?)(?=\n## |$)/);
     return m ? m[1].trim().split('\n')[0].trim() : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 // ─── Session ID from stdin ────────────────────────────────────────────────────
@@ -75,7 +83,9 @@ function readSessionId() {
   try {
     const raw = readFileSync(0, 'utf8');
     return JSON.parse(raw).session_id || null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -95,13 +105,23 @@ function main() {
 
   // Write current-session.json
   try {
-    writeFileSync(CURRENT_SESSION, JSON.stringify({
-      sessionId,
-      projectPath: cwd,
-      projectName: entry?.name || null,
-      startedAt: new Date().toISOString(),
-    }, null, 2), 'utf8');
-  } catch { /* non-fatal */ }
+    writeFileSync(
+      CURRENT_SESSION,
+      JSON.stringify(
+        {
+          sessionId,
+          projectPath: cwd,
+          projectName: entry?.name || null,
+          startedAt: new Date().toISOString(),
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+  } catch {
+    /* non-fatal */
+  }
 
   const parts = [];
   if (skill) parts.push(skill);
@@ -128,7 +148,7 @@ function main() {
       // ── Unsaved session detection ─────────────────────────────────────────
       if (prevSession?.sessionId && prevSession.sessionId !== sessionId) {
         // Check if previous session ID exists in sessions array
-        const alreadySaved = context.sessions?.some(s => s.id === prevSession.sessionId);
+        const alreadySaved = context.sessions?.some((s) => s.id === prevSession.sessionId);
         if (!alreadySaved) {
           summaryLines.push(`WARNING Last session wasn't saved — run /ck:save to capture it`);
         }
@@ -140,33 +160,31 @@ function main() {
 
       // ── Goal mismatch detection ───────────────────────────────────────────
       const claudeMdGoal = extractClaudeMdGoal(cwd);
-      if (claudeMdGoal && context.goal &&
-          claudeMdGoal.toLowerCase().trim() !== context.goal.toLowerCase().trim()) {
-        summaryLines.push(`WARNING Goal mismatch — ck: "${context.goal.slice(0, 40)}" · CLAUDE.md: "${claudeMdGoal.slice(0, 40)}"`);
+      if (claudeMdGoal && context.goal && claudeMdGoal.toLowerCase().trim() !== context.goal.toLowerCase().trim()) {
+        summaryLines.push(
+          `WARNING Goal mismatch — ck: "${context.goal.slice(0, 40)}" · CLAUDE.md: "${claudeMdGoal.slice(0, 40)}"`
+        );
         summaryLines.push(`   Run /ck:save with updated goal to sync`);
       }
 
-      parts.push([
-        `---`,
-        `## ck: ${displayName}`,
-        ``,
-        summaryLines.join('\n'),
-      ].join('\n'));
+      parts.push([`---`, `## ck: ${displayName}`, ``, summaryLines.join('\n')].join('\n'));
 
       // Instruct Claude to display compact briefing at session start
-      parts.push([
-        `---`,
-        `## ck: SESSION START`,
-        ``,
-        `IMPORTANT: Display the following as your FIRST message, verbatim:`,
-        ``,
-        '```',
-        summaryLines.join('\n'),
-        '```',
-        ``,
-        `After the block, add one line: "Ready — what are we working on?"`,
-        `If you see WARNING lines above, mention them briefly after the block.`,
-      ].join('\n'));
+      parts.push(
+        [
+          `---`,
+          `## ck: SESSION START`,
+          ``,
+          `IMPORTANT: Display the following as your FIRST message, verbatim:`,
+          ``,
+          '```',
+          summaryLines.join('\n'),
+          '```',
+          ``,
+          `After the block, add one line: "Ready — what are we working on?"`,
+          `If you see WARNING lines above, mention them briefly after the block.`,
+        ].join('\n')
+      );
 
       return parts;
     }
@@ -186,7 +204,7 @@ function main() {
     .sort((a, b) => (b.lastDate > a.lastDate ? 1 : -1))
     .slice(0, 3);
 
-  const miniRows = recent.map(p => {
+  const miniRows = recent.map((p) => {
     const icon = stalenessIcon(p.lastDate);
     const when = daysAgo(p.lastDate);
     const name = p.name.padEnd(16).slice(0, 16);
@@ -204,16 +222,18 @@ function main() {
     `Run /ck:list · /ck:resume <name> · /ck:init to register this folder`,
   ].join('\n');
 
-  parts.push([
-    `---`,
-    `## ck: SESSION START`,
-    ``,
-    `IMPORTANT: Display the following as your FIRST message, verbatim:`,
-    ``,
-    '```',
-    miniStatus,
-    '```',
-  ].join('\n'));
+  parts.push(
+    [
+      `---`,
+      `## ck: SESSION START`,
+      ``,
+      `IMPORTANT: Display the following as your FIRST message, verbatim:`,
+      ``,
+      '```',
+      miniStatus,
+      '```',
+    ].join('\n')
+  );
 
   return parts;
 }

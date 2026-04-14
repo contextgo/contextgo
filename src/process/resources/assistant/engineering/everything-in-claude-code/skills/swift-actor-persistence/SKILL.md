@@ -110,14 +110,14 @@ final class QuestionListViewModel {
 
 ## Key Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| Actor (not class + lock) | Compiler-enforced thread safety, no manual synchronization |
-| In-memory cache + file persistence | Fast reads from cache, durable writes to disk |
-| Synchronous init loading | Avoids async initialization complexity |
-| Dictionary keyed by ID | O(1) lookups by identifier |
-| Generic over `Codable & Identifiable` | Reusable across any model type |
-| Atomic file writes (`.atomic`) | Prevents partial writes on crash |
+| Decision                              | Rationale                                                  |
+| ------------------------------------- | ---------------------------------------------------------- |
+| Actor (not class + lock)              | Compiler-enforced thread safety, no manual synchronization |
+| In-memory cache + file persistence    | Fast reads from cache, durable writes to disk              |
+| Synchronous init loading              | Avoids async initialization complexity                     |
+| Dictionary keyed by ID                | O(1) lookups by identifier                                 |
+| Generic over `Codable & Identifiable` | Reusable across any model type                             |
+| Atomic file writes (`.atomic`)        | Prevents partial writes on crash                           |
 
 ## Best Practices
 

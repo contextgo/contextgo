@@ -28,6 +28,35 @@ export type CloudDevice = {
   lastUserAgent?: string | null;
 };
 
+export type CloudRemoteDeviceStatus = {
+  connected: boolean;
+  connectedAt?: string | null;
+  clientConnected: boolean;
+  clientConnectedAt?: string | null;
+  transport?: string | null;
+  browserEntryUrl?: string | null;
+  browserEntryReady: boolean;
+  browserEntryReason?: string | null;
+};
+
+export type CloudRemoteDevice = CloudDevice & {
+  remoteStatus: CloudRemoteDeviceStatus;
+};
+
+export type CloudRemoteDeviceSelection = {
+  preferredDeviceId: string | null;
+  preferredSource?: string | null;
+  autoOpenDeviceId: string | null;
+  autoOpenReason?: string | null;
+  openableDeviceCount: number;
+  forcePicker: boolean;
+};
+
+export type CloudRemoteDevicesPayload = {
+  devices: CloudRemoteDevice[];
+  selection: CloudRemoteDeviceSelection;
+};
+
 export type OfficialRemoteStatus = {
   desired: boolean;
   running: boolean;

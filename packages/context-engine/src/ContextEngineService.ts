@@ -144,7 +144,10 @@ function scoreChunkLexical(chunk: ChunkRecord, queryTerms: readonly string[]): n
   return queryTerms.filter((term) => haystack.includes(term)).length * 12;
 }
 
-function scoreProjectAffinity(metadata: Readonly<Record<string, string | number | boolean>> | undefined, projectSlug: string | undefined): number {
+function scoreProjectAffinity(
+  metadata: Readonly<Record<string, string | number | boolean>> | undefined,
+  projectSlug: string | undefined
+): number {
   if (!projectSlug || !metadata) {
     return 0;
   }
@@ -378,7 +381,7 @@ export class ContextEngineService implements IContextService {
 
     const memories = [...fusedMemories.values()]
       .filter((item) => item.score > 0 || queryTerms.length === 0)
-      .sort((left, right) => right.score - left.score)
+      .toSorted((left, right) => right.score - left.score)
       .slice(0, input.memoryLimit ?? 8);
 
     const fusedChunks = new Map<string, RetrievedChunk>();
@@ -402,7 +405,7 @@ export class ContextEngineService implements IContextService {
     }
 
     const chunks = [...fusedChunks.values()]
-      .sort((left, right) => right.score - left.score)
+      .toSorted((left, right) => right.score - left.score)
       .slice(0, input.chunkLimit ?? 6);
 
     const relatedSourceIds = new Set<string>(memories.flatMap((item) => item.memory.sourceIds));
@@ -459,7 +462,9 @@ export class ContextEngineService implements IContextService {
       sections.push({ ...mountedSection });
     }
     for (const profile of input.mountedProfiles ?? []) {
-      sections.push(buildSection('compaction', profile.summary, 88 + Math.round(profile.confidence * 4), `compaction-${profile.id}`));
+      sections.push(
+        buildSection('compaction', profile.summary, 88 + Math.round(profile.confidence * 4), `compaction-${profile.id}`)
+      );
     }
     for (const [index, instruction] of (input.pinnedInstructions ?? []).entries()) {
       sections.push(buildSection('instruction', instruction, 110 - index, `instruction-${index}`));

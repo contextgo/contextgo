@@ -10,11 +10,7 @@ import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { iconColors } from '@/renderer/styles/colors';
-import {
-  getFileNameFromPath,
-  type FileOperationKind,
-  type ParsedFileOperationMessage,
-} from './MessagetText';
+import { getFileNameFromPath, type FileOperationKind, type ParsedFileOperationMessage } from './MessagetText';
 
 type MessageFileOperationSummaryProps = {
   operations: ParsedFileOperationMessage[];

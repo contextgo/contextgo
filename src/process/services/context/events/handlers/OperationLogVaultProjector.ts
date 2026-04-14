@@ -58,6 +58,11 @@ const JOB_TITLE_FALLBACKS: Record<
     completed: 'Connector digest completed',
     failed: 'Connector digest failed',
   },
+  project_capability_curation: {
+    queued: 'Project capability curation queued',
+    completed: 'Project capability curation completed',
+    failed: 'Project capability curation failed',
+  },
 };
 
 function trimLine(value: string | undefined): string | undefined {

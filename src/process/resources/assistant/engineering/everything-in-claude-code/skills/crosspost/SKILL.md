@@ -27,6 +27,7 @@ Distribute content across platforms without turning it into the same fake post i
 ### Step 1: Start with the Primary Version
 
 Pick the strongest source version first:
+
 - the original X post
 - the original article
 - the launch note
@@ -40,6 +41,7 @@ Use `content-engine` first if the source still needs voice shaping.
 Run `brand-voice` first if the source voice is not already captured in the current session.
 
 Before adapting, note:
+
 - how blunt or explanatory the source is
 - whether the source uses fragments, lists, or longer transitions
 - whether the source uses parentheses
@@ -78,6 +80,7 @@ The adaptation should preserve that fingerprint.
 ## Posting Order
 
 Default:
+
 1. post the strongest native version first
 2. adapt for the secondary platforms
 3. stagger timing only if the user wants sequencing help
@@ -87,6 +90,7 @@ Do not add cross-platform references unless useful. Most of the time, the post s
 ## Banned Patterns
 
 Delete and rewrite any of these:
+
 - "Excited to share"
 - "Here's what I learned"
 - "What do you think?"
@@ -97,6 +101,7 @@ Delete and rewrite any of these:
 ## Output Format
 
 Return:
+
 - the primary platform version
 - adapted variants for each requested platform
 - a short note on what changed and why
@@ -105,6 +110,7 @@ Return:
 ## Quality Gate
 
 Before delivering:
+
 - each version reads like the same author under different constraints
 - no platform version feels padded or sanitized
 - no copy is duplicated verbatim across platforms

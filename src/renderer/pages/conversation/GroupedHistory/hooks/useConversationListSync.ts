@@ -17,7 +17,6 @@ const shouldIgnoreStreamMessage = (type: string): boolean => {
     type === 'request_trace' ||
     type === 'finished' ||
     type === 'acp_model_info' ||
-    type === 'openclaw_model_info' ||
     type === 'codex_model_info' ||
     type === 'acp_context_usage'
   );
@@ -31,16 +30,6 @@ const getAgentStatusData = (data: unknown): { backend?: string; status?: string 
   return data as { backend?: string; status?: string };
 };
 
-const isOpenClawBootstrapAgentStatus = (data: unknown): boolean => {
-  const agentStatus = getAgentStatusData(data);
-  return (
-    agentStatus?.backend === 'openclaw-gateway' &&
-    (agentStatus.status === 'connecting' ||
-      agentStatus.status === 'connected' ||
-      agentStatus.status === 'session_active')
-  );
-};
-
 const isBootstrapAgentStatus = (data: unknown): boolean => {
   const agentStatus = getAgentStatusData(data);
   return (
@@ -52,10 +41,7 @@ const isBootstrapAgentStatus = (data: unknown): boolean => {
   );
 };
 
-const shouldClearGeneratingForAgentStatus = (data: unknown): boolean => {
-  const agentStatus = getAgentStatusData(data);
-  return agentStatus?.backend === 'openclaw-gateway' && agentStatus.status === 'session_active';
-};
+const shouldClearGeneratingForAgentStatus = (_data: unknown): boolean => false;
 
 const isTerminalAgentStatus = (data: unknown): boolean => {
   const agentStatus = getAgentStatusData(data);
@@ -293,10 +279,7 @@ const initializeConversationListSyncStore = () => {
       return;
     }
 
-    if (
-      (message.type === 'agent_status' && isOpenClawBootstrapAgentStatus(message.data)) ||
-      (message.type === 'agent_status' && isBootstrapAgentStatus(message.data))
-    ) {
+    if (message.type === 'agent_status' && isBootstrapAgentStatus(message.data)) {
       return;
     }
 

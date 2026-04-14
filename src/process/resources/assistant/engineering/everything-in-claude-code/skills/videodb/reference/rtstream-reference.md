@@ -11,12 +11,12 @@ Based on [docs.videodb.io](https://docs.videodb.io/pages/ingest/live-streams/rea
 
 Methods on `Collection` for managing RTStreams:
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `coll.connect_rtstream(url, name, ...)` | `RTStream` | Create new RTStream from RTSP/RTMP URL |
-| `coll.get_rtstream(id)` | `RTStream` | Get existing RTStream by ID |
-| `coll.list_rtstreams(limit, offset, status, name, ordering)` | `List[RTStream]` | List all RTStreams in collection |
-| `coll.search(query, namespace="rtstream")` | `RTStreamSearchResult` | Search across all RTStreams |
+| Method                                                       | Returns                | Description                            |
+| ------------------------------------------------------------ | ---------------------- | -------------------------------------- |
+| `coll.connect_rtstream(url, name, ...)`                      | `RTStream`             | Create new RTStream from RTSP/RTMP URL |
+| `coll.get_rtstream(id)`                                      | `RTStream`             | Get existing RTStream by ID            |
+| `coll.list_rtstreams(limit, offset, status, name, ordering)` | `List[RTStream]`       | List all RTStreams in collection       |
+| `coll.search(query, namespace="rtstream")`                   | `RTStreamSearchResult` | Search across all RTStreams            |
 
 ### Connect RTStream
 
@@ -81,20 +81,20 @@ for rts in rtstreams:
 
 ## RTStream Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `rtstream.start()` | `None` | Begin ingestion |
-| `rtstream.stop()` | `None` | Stop ingestion |
-| `rtstream.generate_stream(start, end)` | `str` | Stream recorded segment (Unix timestamps) |
-| `rtstream.export(name=None)` | `RTStreamExportResult` | Export to permanent video |
-| `rtstream.index_visuals(prompt, ...)` | `RTStreamSceneIndex` | Create visual index with AI analysis |
-| `rtstream.index_audio(prompt, ...)` | `RTStreamSceneIndex` | Create audio index with LLM summarization |
-| `rtstream.list_scene_indexes()` | `List[RTStreamSceneIndex]` | List all scene indexes on the stream |
-| `rtstream.get_scene_index(index_id)` | `RTStreamSceneIndex` | Get a specific scene index |
-| `rtstream.search(query, ...)` | `RTStreamSearchResult` | Search indexed content |
-| `rtstream.start_transcript(ws_connection_id, engine)` | `dict` | Start live transcription |
-| `rtstream.get_transcript(page, page_size, start, end, since)` | `dict` | Get transcript pages |
-| `rtstream.stop_transcript(engine)` | `dict` | Stop transcription |
+| Method                                                        | Returns                    | Description                               |
+| ------------------------------------------------------------- | -------------------------- | ----------------------------------------- |
+| `rtstream.start()`                                            | `None`                     | Begin ingestion                           |
+| `rtstream.stop()`                                             | `None`                     | Stop ingestion                            |
+| `rtstream.generate_stream(start, end)`                        | `str`                      | Stream recorded segment (Unix timestamps) |
+| `rtstream.export(name=None)`                                  | `RTStreamExportResult`     | Export to permanent video                 |
+| `rtstream.index_visuals(prompt, ...)`                         | `RTStreamSceneIndex`       | Create visual index with AI analysis      |
+| `rtstream.index_audio(prompt, ...)`                           | `RTStreamSceneIndex`       | Create audio index with LLM summarization |
+| `rtstream.list_scene_indexes()`                               | `List[RTStreamSceneIndex]` | List all scene indexes on the stream      |
+| `rtstream.get_scene_index(index_id)`                          | `RTStreamSceneIndex`       | Get a specific scene index                |
+| `rtstream.search(query, ...)`                                 | `RTStreamSearchResult`     | Search indexed content                    |
+| `rtstream.start_transcript(ws_connection_id, engine)`         | `dict`                     | Start live transcription                  |
+| `rtstream.get_transcript(page, page_size, start, end, since)` | `dict`                     | Get transcript pages                      |
+| `rtstream.stop_transcript(engine)`                            | `dict`                     | Stop transcription                        |
 
 ---
 
@@ -150,13 +150,13 @@ print(f"Duration: {export_result.duration}s")
 
 ### RTStreamExportResult Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `video_id` | `str` | ID of the exported video |
-| `stream_url` | `str` | HLS stream URL |
-| `player_url` | `str` | Web player URL |
-| `name` | `str` | Video name |
-| `duration` | `float` | Duration in seconds |
+| Property     | Type    | Description              |
+| ------------ | ------- | ------------------------ |
+| `video_id`   | `str`   | ID of the exported video |
+| `stream_url` | `str`   | HLS stream URL           |
+| `player_url` | `str`   | Web player URL           |
+| `name`       | `str`   | Video name               |
+| `duration`   | `float` | Duration in seconds      |
 
 ---
 
@@ -166,10 +166,10 @@ AI pipelines process live streams and send results via WebSocket.
 
 ### RTStream AI Pipeline Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `rtstream.index_audio(prompt, batch_config, ...)` | `RTStreamSceneIndex` | Start audio indexing with LLM summarization |
-| `rtstream.index_visuals(prompt, batch_config, ...)` | `RTStreamSceneIndex` | Start visual indexing of screen content |
+| Method                                              | Returns              | Description                                 |
+| --------------------------------------------------- | -------------------- | ------------------------------------------- |
+| `rtstream.index_audio(prompt, batch_config, ...)`   | `RTStreamSceneIndex` | Start audio indexing with LLM summarization |
+| `rtstream.index_visuals(prompt, batch_config, ...)` | `RTStreamSceneIndex` | Start visual indexing of screen content     |
 
 ### Audio Indexing
 
@@ -187,13 +187,14 @@ audio_index = rtstream.index_audio(
 
 **Audio batch_config options:**
 
-| Type | Value | Description |
-|------|-------|-------------|
-| `"word"` | count | Segment every N words |
-| `"sentence"` | count | Segment every N sentences |
-| `"time"` | seconds | Segment every N seconds |
+| Type         | Value   | Description               |
+| ------------ | ------- | ------------------------- |
+| `"word"`     | count   | Segment every N words     |
+| `"sentence"` | count   | Segment every N sentences |
+| `"time"`     | seconds | Segment every N seconds   |
 
 Examples:
+
 ```python
 {"type": "word", "value": 50}      # every 50 words
 {"type": "sentence", "value": 5}   # every 5 sentences
@@ -218,20 +219,20 @@ scene_index = rtstream.index_visuals(
 
 **Parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `prompt` | `str` | Instructions for the AI model (supports structured JSON output) |
-| `batch_config` | `dict` | Controls frame sampling (see below) |
-| `model_name` | `str` | Model tier: `"mini"`, `"basic"`, `"pro"`, `"ultra"` |
-| `name` | `str` | Name for the index (optional) |
-| `ws_connection_id` | `str` | WebSocket connection ID for receiving results |
+| Parameter          | Type   | Description                                                     |
+| ------------------ | ------ | --------------------------------------------------------------- |
+| `prompt`           | `str`  | Instructions for the AI model (supports structured JSON output) |
+| `batch_config`     | `dict` | Controls frame sampling (see below)                             |
+| `model_name`       | `str`  | Model tier: `"mini"`, `"basic"`, `"pro"`, `"ultra"`             |
+| `name`             | `str`  | Name for the index (optional)                                   |
+| `ws_connection_id` | `str`  | WebSocket connection ID for receiving results                   |
 
 **Visual batch_config:**
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `type` | `str` | Only `"time"` is supported for visuals |
-| `value` | `int` | Window size in seconds |
+| Key           | Type  | Description                            |
+| ------------- | ----- | -------------------------------------- |
+| `type`        | `str` | Only `"time"` is supported for visuals |
+| `value`       | `int` | Window size in seconds                 |
 | `frame_count` | `int` | Number of frames to extract per window |
 
 Example: `{"type": "time", "value": 2, "frame_count": 5}` samples 5 frames every 2 seconds and sends them to the model.
@@ -263,12 +264,13 @@ Results arrive on the `scene_index` WebSocket channel.
 
 ## Batch Config Summary
 
-| Indexing Type | `type` Options | `value` | Extra Keys |
-|---------------|----------------|---------|------------|
-| **Audio** | `"word"`, `"sentence"`, `"time"` | words/sentences/seconds | - |
-| **Visual** | `"time"` only | seconds | `frame_count` |
+| Indexing Type | `type` Options                   | `value`                 | Extra Keys    |
+| ------------- | -------------------------------- | ----------------------- | ------------- |
+| **Audio**     | `"word"`, `"sentence"`, `"time"` | words/sentences/seconds | -             |
+| **Visual**    | `"time"` only                    | seconds                 | `frame_count` |
 
 Examples:
+
 ```python
 # Audio: every 50 words
 {"type": "word", "value": 50}
@@ -331,27 +333,27 @@ audio_index = rtstream.index_audio(
 
 ### RTStreamSceneIndex Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `rtstream_index_id` | `str` | Unique ID of the index |
-| `rtstream_id` | `str` | ID of the parent RTStream |
-| `extraction_type` | `str` | Type of extraction (`time` or `transcript`) |
-| `extraction_config` | `dict` | Extraction configuration |
-| `prompt` | `str` | The prompt used for analysis |
-| `name` | `str` | Name of the index |
-| `status` | `str` | Status (`connected`, `stopped`) |
+| Property            | Type   | Description                                 |
+| ------------------- | ------ | ------------------------------------------- |
+| `rtstream_index_id` | `str`  | Unique ID of the index                      |
+| `rtstream_id`       | `str`  | ID of the parent RTStream                   |
+| `extraction_type`   | `str`  | Type of extraction (`time` or `transcript`) |
+| `extraction_config` | `dict` | Extraction configuration                    |
+| `prompt`            | `str`  | The prompt used for analysis                |
+| `name`              | `str`  | Name of the index                           |
+| `status`            | `str`  | Status (`connected`, `stopped`)             |
 
 ### RTStreamSceneIndex Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `index.get_scenes(start, end, page, page_size)` | `dict` | Get indexed scenes |
-| `index.start()` | `None` | Start/resume the index |
-| `index.stop()` | `None` | Stop the index |
-| `index.create_alert(event_id, callback_url, ws_connection_id)` | `str` | Create alert for event detection |
-| `index.list_alerts()` | `list` | List all alerts on this index |
-| `index.enable_alert(alert_id)` | `None` | Enable an alert |
-| `index.disable_alert(alert_id)` | `None` | Disable an alert |
+| Method                                                         | Returns | Description                      |
+| -------------------------------------------------------------- | ------- | -------------------------------- |
+| `index.get_scenes(start, end, page, page_size)`                | `dict`  | Get indexed scenes               |
+| `index.start()`                                                | `None`  | Start/resume the index           |
+| `index.stop()`                                                 | `None`  | Stop the index                   |
+| `index.create_alert(event_id, callback_url, ws_connection_id)` | `str`   | Create alert for event detection |
+| `index.list_alerts()`                                          | `list`  | List all alerts on this index    |
+| `index.enable_alert(alert_id)`                                 | `None`  | Enable an alert                  |
+| `index.disable_alert(alert_id)`                                | `None`  | Disable an alert                 |
 
 ### Getting Scenes
 
@@ -397,10 +399,10 @@ Events are reusable detection rules. Create them once, attach to any index via a
 
 ### Connection Event Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
+| Method                                   | Returns          | Description            |
+| ---------------------------------------- | ---------------- | ---------------------- |
 | `conn.create_event(event_prompt, label)` | `str` (event_id) | Create detection event |
-| `conn.list_events()` | `list` | List all events |
+| `conn.list_events()`                     | `list`           | List all events        |
 
 ### Creating an Event
 
@@ -457,10 +459,10 @@ scene_index.enable_alert(alert_id)
 
 ### Alert Delivery
 
-| Method | Latency | Use Case |
-|--------|---------|----------|
-| WebSocket | Real-time | Dashboards, live UI |
-| Webhook | < 1 second | Server-to-server, automation |
+| Method    | Latency    | Use Case                     |
+| --------- | ---------- | ---------------------------- |
+| WebSocket | Real-time  | Dashboards, live UI          |
+| Webhook   | < 1 second | Server-to-server, automation |
 
 ### WebSocket Alert Event
 
@@ -497,6 +499,7 @@ scene_index.enable_alert(alert_id)
 ## WebSocket Integration
 
 All real-time AI results are delivered via WebSocket. Pass `ws_connection_id` to:
+
 - `rtstream.start_transcript()`
 - `rtstream.index_audio()`
 - `rtstream.index_visuals()`
@@ -504,12 +507,12 @@ All real-time AI results are delivered via WebSocket. Pass `ws_connection_id` to
 
 ### WebSocket Channels
 
-| Channel | Source | Content |
-|---------|--------|---------|
-| `transcript` | `start_transcript()` | Real-time speech-to-text |
-| `scene_index` | `index_visuals()` | Visual analysis results |
-| `audio_index` | `index_audio()` | Audio analysis results |
-| `alert` | `create_alert()` | Alert notifications |
+| Channel       | Source               | Content                  |
+| ------------- | -------------------- | ------------------------ |
+| `transcript`  | `start_transcript()` | Real-time speech-to-text |
+| `scene_index` | `index_visuals()`    | Visual analysis results  |
+| `audio_index` | `index_audio()`      | Audio analysis results   |
+| `alert`       | `create_alert()`     | Alert notifications      |
 
 For WebSocket event structures and ws_listener usage, see [capture-reference.md](capture-reference.md).
 

@@ -1,6 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPublicContentCollections, serializeTsExport, writeFile } from '../../apps/web/src/content-tools/build.mjs';
+import {
+  buildPublicContentCollections,
+  serializeTsExport,
+  writeFile,
+} from '../../apps/web/src/content-tools/build.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '../..');

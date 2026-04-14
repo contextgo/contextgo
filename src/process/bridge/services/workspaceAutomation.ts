@@ -6,15 +6,23 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { getPlatformServices } from '@/common/platform';
-import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import {
-  createDefaultManagedSlashCommandLibrary,
   normalizeManagedSlashCommandLibrary,
+  type ManagedSlashCommandRecord,
 } from '@/common/chat/slash/library';
+import type { AgentPackageWorkspaceAutomationProfile } from '@/common/config/presets/agentPackageManifest';
 import type { TChatConversation } from '@/common/config/storage';
-import type { AssistantPreset } from '@/common/config/presets/assistantPresets';
 import { findBuiltinAssistantPreset } from '@/common/config/presets/builtinAssistantDefaults';
+import {
+  getBundledAgentPackageDefaultEnabledHookNames,
+  getBundledAgentPackageWorkspaceAutomationProfile,
+} from '@/common/config/presets/bundledAgentPackageRegistry';
+import {
+  getWorkspaceAutomationProfileDefinition,
+  materializeWorkspaceCommandLibrary,
+  type WorkspaceAutomationScheduleSeed,
+} from '@/common/config/presets/workspaceAutomationProfiles';
+import i18n from '@process/services/i18n';
 import { copyDirectoryRecursively } from '@process/utils';
 import { getBuiltinHooksCopyDir } from '@process/utils/initStorage';
 
@@ -34,131 +42,11 @@ export const WORKSPACE_SCHEDULES_FILE = path.join(WORKSPACE_AUTOMATION_DIR, 'sch
 export const WORKSPACE_RUNTIME_DIR = path.join(WORKSPACE_AUTOMATION_DIR, 'runtime');
 export const WORKSPACE_SCHEDULE_RUNTIME_DIR = path.join(WORKSPACE_RUNTIME_DIR, 'schedules');
 
-const CONTEXTGO_HARNESS_COMMANDS: ManagedSlashCommandRecord[] = [
-  ...createDefaultManagedSlashCommandLibrary(),
-  {
-    type: 'custom',
-    id: 'harness-brainstorm',
-    enabled: true,
-    name: 'brainstorm',
-    description: 'Turn a vague request into an explicit design before implementation.',
-    template:
-      'Use the `brainstorming` skill for this request. Explore the repository context, clarify the goal and constraints, compare a small number of approaches, then present a concrete design before editing files.',
-  },
-  {
-    type: 'custom',
-    id: 'harness-write-plan',
-    enabled: true,
-    name: 'write-plan',
-    description: 'Write an implementation plan with concrete files, steps, and verification.',
-    template:
-      'Use the `writing-plans` skill for this request. Convert the approved requirements or spec into an implementation plan with explicit files, ordered steps, validation commands, and crisp checkpoints before coding.',
-  },
-  {
-    type: 'custom',
-    id: 'harness-execute-plan',
-    enabled: true,
-    name: 'execute-plan',
-    description: 'Execute an implementation plan in a controlled, verifiable sequence.',
-    template:
-      'Use the `executing-plans` skill for this request. Review the plan critically first, then execute it step by step with visible checkpoints, targeted verification, and no skipped validation. If delegation is both supported and explicitly requested, prefer `subagent-driven-development`.',
-  },
-  {
-    type: 'custom',
-    id: 'harness-worktree',
-    enabled: true,
-    name: 'worktree',
-    description: 'Prepare an isolated git worktree before risky or multi-step delivery.',
-    template:
-      'Use the `using-git-worktrees` skill for this request. Set up an isolated worktree only if this repository and runtime support it, verify the ignore and baseline state, then report the exact worktree path and readiness.',
-  },
-  {
-    type: 'custom',
-    id: 'harness-parallel',
-    enabled: true,
-    name: 'parallelize',
-    description: 'Split independent work into parallel streams with clear integration boundaries.',
-    template:
-      'Use the `dispatching-parallel-agents` skill for this request. Break the work into independent streams, define ownership and verification for each stream, and only delegate when the runtime supports it and the user has asked for that style of execution.',
-  },
-  {
-    type: 'custom',
-    id: 'harness-request-review',
-    enabled: true,
-    name: 'request-review',
-    description: 'Request a structured code review before moving forward or merging.',
-    template:
-      'Use the `requesting-code-review` skill for this request. Gather the relevant scope, diffs, and requirements, then prepare a focused review ask that prioritizes correctness, regressions, and missing tests.',
-  },
-  {
-    type: 'custom',
-    id: 'harness-apply-review',
-    enabled: true,
-    name: 'apply-review',
-    description: 'Evaluate review feedback rigorously before implementing it.',
-    template:
-      'Use the `receiving-code-review` skill for this request. Verify each review item against the codebase, challenge incorrect assumptions with technical evidence, then implement confirmed fixes one item at a time with validation.',
-  },
-  {
-    type: 'custom',
-    id: 'harness-debug-root-cause',
-    enabled: true,
-    name: 'debug-root-cause',
-    description: 'Investigate failures methodically before attempting fixes.',
-    template:
-      'Use the `systematic-debugging` skill for this request. Reproduce the issue, trace the evidence, identify the root cause, and only then propose or implement the smallest meaningful fix with validation.',
-  },
-  {
-    type: 'custom',
-    id: 'harness-finish-branch',
-    enabled: true,
-    name: 'finish-branch',
-    description: 'Close out a development branch with verification and explicit integration choice.',
-    template:
-      'Use the `finishing-a-development-branch` skill for this request. Verify the final state first, then present the next-step options clearly and execute only the workflow the user chooses.',
-  },
-];
-
-const CLAUDE_ECC_LEGACY_COMMANDS: ManagedSlashCommandRecord[] = [
-  ...createDefaultManagedSlashCommandLibrary(),
-  {
-    type: 'custom',
-    id: 'ecc-quality-gate',
-    enabled: true,
-    name: 'quality-gate',
-    description: 'Run the ECC quality pipeline on demand for a file or project scope.',
-    template:
-      'Use the `verification-loop` skill for this request and apply the ECC quality-gate workflow to the relevant path or repository scope before reporting blockers.',
-  },
-  {
-    type: 'custom',
-    id: 'ecc-checkpoint',
-    enabled: true,
-    name: 'checkpoint',
-    description: 'Capture a concise project checkpoint before continuing the next iteration.',
-    template:
-      'Use the `strategic-compact` skill for this request. Summarize the current checkpoint, open decisions, verification state, and the next execution slice before proceeding.',
-  },
-  {
-    type: 'custom',
-    id: 'ecc-resume-session',
-    enabled: true,
-    name: 'resume-session',
-    description: 'Resume an ECC workflow with the right context, risks, and next actions.',
-    template:
-      'Use the `strategic-compact` and `codebase-onboarding` skills for this request. Reconstruct the relevant workspace context, active constraints, and next actions before doing new work.',
-  },
-];
-
+const resolveBuiltinText = (key: string, defaultValue: string): string => i18n.t(key, { defaultValue });
 type WorkspaceAutomationProfileConfig = {
   commands?: ManagedSlashCommandRecord[];
   hookNames?: string[];
-  sourceRoot?: string;
-  sourceHooksSubdir?: string;
-  sourceCommandsSubdir?: string;
-  sourceScriptsSubdir?: string;
-  claudePluginRootEnvName?: string;
-  claudePluginRootValue?: string;
+  schedules?: WorkspaceAutomationScheduleSeed;
 };
 
 const normalizeWorkspaceHookNames = (content: unknown): string[] => {
@@ -182,45 +70,22 @@ const normalizeWorkspaceHookNames = (content: unknown): string[] => {
   ];
 };
 
-const resolveBundledResourceDir = (resourceDir: string): string => {
-  const platform = getPlatformServices().paths;
-  const appPath = platform.getAppPath() || process.cwd();
-  const resourcesPrefix = 'src/process/resources/';
-
-  if (platform.isPackaged()) {
-    const prodPath = resourceDir.startsWith(resourcesPrefix) ? resourceDir.slice(resourcesPrefix.length) : resourceDir;
-    return path.join(appPath, prodPath);
+const resolveWorkspaceAutomationProfileConfig = (assistantId: string): WorkspaceAutomationProfileConfig | null => {
+  const workspaceAutomationProfile = getBundledAgentPackageWorkspaceAutomationProfile(assistantId);
+  const definition = getWorkspaceAutomationProfileDefinition(
+    workspaceAutomationProfile as AgentPackageWorkspaceAutomationProfile | undefined
+  );
+  if (!definition) {
+    return null;
   }
 
-  return path.join(appPath, resourceDir);
-};
-
-const resolveWorkspaceAutomationProfileConfig = (preset: AssistantPreset): WorkspaceAutomationProfileConfig | null => {
-  switch (preset.workspaceAutomationProfile) {
-    case 'contextgo-harness':
-      return {
-        commands: CONTEXTGO_HARNESS_COMMANDS,
-        hookNames: preset.defaultEnabledHooks ? [...preset.defaultEnabledHooks] : [],
-      };
-    case 'claude-ecc': {
-      if (!preset.resourceDir) {
-        return null;
-      }
-
-      const resourceRoot = resolveBundledResourceDir(preset.resourceDir);
-      return {
-        commands: CLAUDE_ECC_LEGACY_COMMANDS,
-        sourceRoot: resourceRoot,
-        sourceHooksSubdir: 'hooks',
-        sourceCommandsSubdir: 'commands',
-        sourceScriptsSubdir: 'scripts',
-        claudePluginRootEnvName: 'CLAUDE_PLUGIN_ROOT',
-        claudePluginRootValue: resourceRoot,
-      };
-    }
-    default:
-      return null;
-  }
+  return {
+    commands: materializeWorkspaceCommandLibrary(definition.commandSeeds, resolveBuiltinText),
+    hookNames: getBundledAgentPackageDefaultEnabledHookNames(assistantId) ?? [],
+    schedules: {
+      conversationSchedules: [...definition.scheduleSeed.conversationSchedules],
+    },
+  };
 };
 
 const getWorkspaceAutomationProfile = (assistantId: string): WorkspaceAutomationProfileConfig | null => {
@@ -229,7 +94,7 @@ const getWorkspaceAutomationProfile = (assistantId: string): WorkspaceAutomation
     return null;
   }
 
-  return resolveWorkspaceAutomationProfileConfig(preset);
+  return resolveWorkspaceAutomationProfileConfig(assistantId);
 };
 
 export const getWorkspaceHooksDir = (workspace?: string): string | null => {
@@ -456,86 +321,26 @@ const ensureWorkspaceCommandLibrary = async (
     return;
   } catch {
     await fs.mkdir(path.dirname(commandsFile), { recursive: true });
-    await fs.writeFile(
-      commandsFile,
-      JSON.stringify(normalizeManagedSlashCommandLibrary(library), null, 2) + '\n',
-      'utf-8'
-    );
+    await fs.writeFile(commandsFile, JSON.stringify(library, null, 2) + '\n', 'utf-8');
   }
 };
 
-const ensureDirectoryCopyIntoWorkspace = async (
+const ensureWorkspaceSchedulesSeed = async (
   workspace: string | undefined,
-  sourceDir: string | null,
-  targetRelativeDir: string
+  schedules: WorkspaceAutomationScheduleSeed
 ): Promise<void> => {
-  if (!workspace || !sourceDir) {
+  const schedulesFile = getWorkspaceSchedulesFile(workspace);
+  if (!schedulesFile) {
     return;
   }
 
   try {
-    await fs.access(sourceDir);
-  } catch {
-    return;
-  }
-
-  const targetDir = path.join(workspace, targetRelativeDir);
-  try {
-    await fs.access(targetDir);
+    await fs.access(schedulesFile);
     return;
   } catch {
-    await fs.mkdir(path.dirname(targetDir), { recursive: true });
-    await copyDirectoryRecursively(sourceDir, targetDir, {
-      overwrite: false,
-      removeStale: false,
-    });
+    await fs.mkdir(path.dirname(schedulesFile), { recursive: true });
+    await fs.writeFile(schedulesFile, JSON.stringify(schedules, null, 2) + '\n', 'utf-8');
   }
-};
-
-const ensureWorkspaceEnvFileEntries = async (
-  workspace: string | undefined,
-  entries: Record<string, string>
-): Promise<void> => {
-  if (!workspace || Object.keys(entries).length === 0) {
-    return;
-  }
-
-  const envFilePath = path.join(workspace, '.claude', 'settings.local.json');
-  let existing: Record<string, unknown> = {};
-
-  try {
-    const raw = await fs.readFile(envFilePath, 'utf-8');
-    existing = JSON.parse(raw) as Record<string, unknown>;
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException | undefined)?.code;
-    if (code !== 'ENOENT') {
-      console.warn('[workspaceAutomation] Failed to read workspace env file:', envFilePath, error);
-      return;
-    }
-  }
-
-  const env = typeof existing.env === 'object' && existing.env ? { ...(existing.env as Record<string, unknown>) } : {};
-  let changed = false;
-
-  for (const [key, value] of Object.entries(entries)) {
-    if (env[key] === value) {
-      continue;
-    }
-    env[key] = value;
-    changed = true;
-  }
-
-  if (!changed && existing.env) {
-    return;
-  }
-
-  const next = {
-    ...existing,
-    env,
-  };
-
-  await fs.mkdir(path.dirname(envFilePath), { recursive: true });
-  await fs.writeFile(envFilePath, JSON.stringify(next, null, 2) + '\n', 'utf-8');
 };
 
 const ensureWorkspaceAutomationProfile = async (workspace: string | undefined, assistantId: string): Promise<void> => {
@@ -553,34 +358,8 @@ const ensureWorkspaceAutomationProfile = async (workspace: string | undefined, a
     await ensureWorkspaceHookSelection(workspace, profile.hookNames);
   }
 
-  if (profile.sourceRoot && profile.sourceHooksSubdir) {
-    await ensureDirectoryCopyIntoWorkspace(
-      workspace,
-      path.join(profile.sourceRoot, profile.sourceHooksSubdir),
-      '.claude/hooks'
-    );
-  }
-
-  if (profile.sourceRoot && profile.sourceCommandsSubdir) {
-    await ensureDirectoryCopyIntoWorkspace(
-      workspace,
-      path.join(profile.sourceRoot, profile.sourceCommandsSubdir),
-      '.claude/commands'
-    );
-  }
-
-  if (profile.sourceRoot && profile.sourceScriptsSubdir) {
-    await ensureDirectoryCopyIntoWorkspace(
-      workspace,
-      path.join(profile.sourceRoot, profile.sourceScriptsSubdir),
-      '.claude/scripts'
-    );
-  }
-
-  if (profile.claudePluginRootEnvName && profile.claudePluginRootValue) {
-    await ensureWorkspaceEnvFileEntries(workspace, {
-      [profile.claudePluginRootEnvName]: profile.claudePluginRootValue,
-    });
+  if (profile.schedules) {
+    await ensureWorkspaceSchedulesSeed(workspace, profile.schedules);
   }
 };
 

@@ -21,7 +21,7 @@ function listInstallTargetAdapters() {
 }
 
 function getInstallTargetAdapter(targetOrAdapterId) {
-  const adapter = ADAPTERS.find(candidate => candidate.supports(targetOrAdapterId));
+  const adapter = ADAPTERS.find((candidate) => candidate.supports(targetOrAdapterId));
 
   if (!adapter) {
     throw new Error(`Unknown install target adapter: ${targetOrAdapterId}`);
@@ -39,9 +39,9 @@ function planInstallTargetScaffold(options = {}) {
     homeDir: options.homeDir,
   };
   const validationIssues = adapter.validate(planningInput);
-  const blockingIssues = validationIssues.filter(issue => issue.severity === 'error');
+  const blockingIssues = validationIssues.filter((issue) => issue.severity === 'error');
   if (blockingIssues.length > 0) {
-    throw new Error(blockingIssues.map(issue => issue.message).join('; '));
+    throw new Error(blockingIssues.map((issue) => issue.message).join('; '));
   }
   const targetRoot = adapter.resolveRoot(planningInput);
   const installStatePath = adapter.getInstallStatePath(planningInput);

@@ -10,12 +10,12 @@ Incrementally fix Gradle build and compilation errors for Android and Kotlin Mul
 
 Identify the project type and run the appropriate build:
 
-| Indicator | Build Command |
-|-----------|---------------|
+| Indicator                                | Build Command                                     |
+| ---------------------------------------- | ------------------------------------------------- |
 | `build.gradle.kts` + `composeApp/` (KMP) | `./gradlew composeApp:compileKotlinMetadata 2>&1` |
-| `build.gradle.kts` + `app/` (Android) | `./gradlew app:compileDebugKotlin 2>&1` |
-| `settings.gradle.kts` with modules | `./gradlew assemble 2>&1` |
-| Detekt configured | `./gradlew detekt 2>&1` |
+| `build.gradle.kts` + `app/` (Android)    | `./gradlew app:compileDebugKotlin 2>&1`           |
+| `settings.gradle.kts` with modules       | `./gradlew assemble 2>&1`                         |
+| Detekt configured                        | `./gradlew detekt 2>&1`                           |
 
 Also check `gradle.properties` and `local.properties` for configuration.
 
@@ -44,6 +44,7 @@ For each error:
 ## Step 4: Guardrails
 
 Stop and ask the user if:
+
 - Fix introduces more errors than it resolves
 - Same error persists after 3 attempts
 - Error requires adding new dependencies or changing module structure
@@ -53,6 +54,7 @@ Stop and ask the user if:
 ## Step 5: Summary
 
 Report:
+
 - Errors fixed (module, file, description)
 - Errors remaining
 - New errors introduced (should be zero)
@@ -60,11 +62,11 @@ Report:
 
 ## Common Gradle/KMP Fixes
 
-| Error | Fix |
-|-------|-----|
-| Unresolved reference in `commonMain` | Check if the dependency is in `commonMain.dependencies {}` |
-| Expect declaration without actual | Add `actual` implementation in each platform source set |
-| Compose compiler version mismatch | Align Kotlin and Compose compiler versions in `libs.versions.toml` |
-| Duplicate class | Check for conflicting dependencies with `./gradlew dependencies` |
-| KSP error | Run `./gradlew kspCommonMainKotlinMetadata` to regenerate |
-| Configuration cache issue | Check for non-serializable task inputs |
+| Error                                | Fix                                                                |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| Unresolved reference in `commonMain` | Check if the dependency is in `commonMain.dependencies {}`         |
+| Expect declaration without actual    | Add `actual` implementation in each platform source set            |
+| Compose compiler version mismatch    | Align Kotlin and Compose compiler versions in `libs.versions.toml` |
+| Duplicate class                      | Check for conflicting dependencies with `./gradlew dependencies`   |
+| KSP error                            | Run `./gradlew kspCommonMainKotlinMetadata` to regenerate          |
+| Configuration cache issue            | Check for non-serializable task inputs                             |

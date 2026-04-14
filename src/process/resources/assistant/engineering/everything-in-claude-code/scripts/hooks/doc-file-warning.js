@@ -47,9 +47,7 @@ function isSuspiciousDocPath(filePath) {
 function run(inputOrRaw, _options = {}) {
   let input;
   try {
-    input = typeof inputOrRaw === 'string'
-      ? (inputOrRaw.trim() ? JSON.parse(inputOrRaw) : {})
-      : (inputOrRaw || {});
+    input = typeof inputOrRaw === 'string' ? (inputOrRaw.trim() ? JSON.parse(inputOrRaw) : {}) : inputOrRaw || {};
   } catch {
     return { exitCode: 0 };
   }
@@ -72,7 +70,7 @@ module.exports = { run };
 
 // Stdin fallback for spawnSync execution
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', c => {
+process.stdin.on('data', (c) => {
   if (data.length < MAX_STDIN) {
     const remaining = MAX_STDIN - data.length;
     data += c.substring(0, remaining);

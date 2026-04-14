@@ -18,6 +18,7 @@ $ARGUMENTS
 ## Delegation
 
 Apply the `context-budget` skill.
+
 - Pass through `--verbose` if the user supplied it.
 - Assume a 200K context window unless the user specified otherwise.
 - Return the skill's inventory, issue detection, and prioritized savings report without re-implementing the scan here.

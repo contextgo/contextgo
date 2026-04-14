@@ -3,6 +3,7 @@
 /* Shared secondary-detail page container */
 .secondary-page-frame {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   width: 100%;
   min-height: 100%;
@@ -11,6 +12,9 @@
 }
 
 .secondary-page-inner {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   width: 100%;
   min-width: 0;
   min-height: 0;
@@ -23,11 +27,7 @@
 
 .layout-content--mobile-conversation {
   background:
-    linear-gradient(
-      180deg,
-      rgba(246, 248, 251, 0.82) 0px,
-      color-mix(in srgb, var(--bg-1) 100%, transparent) 184px
-    ),
+    linear-gradient(180deg, rgba(246, 248, 251, 0.82) 0px, color-mix(in srgb, var(--bg-1) 100%, transparent) 184px),
     var(--bg-1) !important;
 }
 
@@ -37,11 +37,7 @@
 
 [data-theme='dark'] .layout-content--mobile-conversation {
   background:
-    linear-gradient(
-      180deg,
-      rgba(28, 33, 41, 0.82) 0px,
-      color-mix(in srgb, var(--bg-1) 100%, transparent) 184px
-    ),
+    linear-gradient(180deg, rgba(28, 33, 41, 0.82) 0px, color-mix(in srgb, var(--bg-1) 100%, transparent) 184px),
     var(--bg-1) !important;
 }
 
@@ -842,11 +838,10 @@
     overflow: hidden !important;
   }
 
-  /* Footer stays at bottom with extra padding as fallback */
+  /* Footer stays at bottom; safe-area inset is already handled by .layout-sider */
   .sider-footer {
     flex-shrink: 0 !important;
-    /* Extra padding as fallback for iOS Chrome */
-    padding-bottom: 20px;
+    padding-bottom: 0 !important;
   }
 
   .sider-action-btn-mobile {

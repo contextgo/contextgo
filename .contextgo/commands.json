@@ -1,0 +1,104 @@
+[
+  {
+    "type": "builtin",
+    "id": "plan",
+    "enabled": true
+  },
+  {
+    "type": "builtin",
+    "id": "tdd",
+    "enabled": true
+  },
+  {
+    "type": "builtin",
+    "id": "code-review",
+    "enabled": true
+  },
+  {
+    "type": "builtin",
+    "id": "security",
+    "enabled": true
+  },
+  {
+    "type": "builtin",
+    "id": "verify",
+    "enabled": true
+  },
+  {
+    "type": "builtin",
+    "id": "orchestrate",
+    "enabled": true
+  },
+  {
+    "type": "custom",
+    "id": "harness-brainstorm",
+    "enabled": true,
+    "name": "brainstorm",
+    "description": "Turn a vague request into an explicit design before implementation.",
+    "template": "Use the `brainstorming` skill for this request. Explore the repository context, clarify the goal and constraints, compare a small number of approaches, then present a concrete design before editing files."
+  },
+  {
+    "type": "custom",
+    "id": "harness-write-plan",
+    "enabled": true,
+    "name": "write-plan",
+    "description": "Write an implementation plan with concrete files, steps, and verification.",
+    "template": "Use the `writing-plans` skill for this request. Convert the approved requirements or spec into an implementation plan with explicit files, ordered steps, validation commands, and crisp checkpoints before coding."
+  },
+  {
+    "type": "custom",
+    "id": "harness-execute-plan",
+    "enabled": true,
+    "name": "execute-plan",
+    "description": "Execute an implementation plan in a controlled, verifiable sequence.",
+    "template": "Use the `executing-plans` skill for this request. Review the plan critically first, then execute it step by step with visible checkpoints, targeted verification, and no skipped validation. If delegation is both supported and explicitly requested, prefer `subagent-driven-development`."
+  },
+  {
+    "type": "custom",
+    "id": "harness-worktree",
+    "enabled": true,
+    "name": "worktree",
+    "description": "Prepare an isolated git worktree before risky or multi-step delivery.",
+    "template": "Use the `using-git-worktrees` skill for this request. Set up an isolated worktree only if this repository and runtime support it, verify the ignore and baseline state, then report the exact worktree path and readiness."
+  },
+  {
+    "type": "custom",
+    "id": "harness-parallel",
+    "enabled": true,
+    "name": "parallelize",
+    "description": "Split independent work into parallel streams with clear integration boundaries.",
+    "template": "Use the `dispatching-parallel-agents` skill for this request. Break the work into independent streams, define ownership and verification for each stream, and only delegate when the runtime supports it and the user has asked for that style of execution."
+  },
+  {
+    "type": "custom",
+    "id": "harness-request-review",
+    "enabled": true,
+    "name": "request-review",
+    "description": "Request a structured code review before moving forward or merging.",
+    "template": "Use the `requesting-code-review` skill for this request. Gather the relevant scope, diffs, and requirements, then prepare a focused review ask that prioritizes correctness, regressions, and missing tests."
+  },
+  {
+    "type": "custom",
+    "id": "harness-apply-review",
+    "enabled": true,
+    "name": "apply-review",
+    "description": "Evaluate review feedback rigorously before implementing it.",
+    "template": "Use the `receiving-code-review` skill for this request. Verify each review item against the codebase, challenge incorrect assumptions with technical evidence, then implement confirmed fixes one item at a time with validation."
+  },
+  {
+    "type": "custom",
+    "id": "harness-debug-root-cause",
+    "enabled": true,
+    "name": "debug-root-cause",
+    "description": "Investigate failures methodically before attempting fixes.",
+    "template": "Use the `systematic-debugging` skill for this request. Reproduce the issue, trace the evidence, identify the root cause, and only then propose or implement the smallest meaningful fix with validation."
+  },
+  {
+    "type": "custom",
+    "id": "harness-finish-branch",
+    "enabled": true,
+    "name": "finish-branch",
+    "description": "Close out a development branch with verification and explicit integration choice.",
+    "template": "Use the `finishing-a-development-branch` skill for this request. Verify the final state first, then present the next-step options clearly and execute only the workflow the user chooses."
+  }
+]

@@ -22,6 +22,8 @@ import type {
   BrowserContextConsentStatus,
   BrowserContextStorageMode,
   IProvider,
+  PersistedConversationType,
+  PersistedNonGroupConversationType,
   TChatConversation,
   TBrowserContextAsset,
   TProviderWithModel,
@@ -38,7 +40,7 @@ import type {
   TSpace,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
-import type { CloudAuthProviderId, CloudStatus } from '../types/cloud';
+import type { CloudAuthProviderId, CloudRemoteDevicesPayload, CloudStatus } from '../types/cloud';
 import type {
   UpdateCheckRequest,
   UpdateCheckResult,
@@ -106,6 +108,10 @@ export const conversation = {
     IBridgeResponse<{ commands: SlashCommandItem[]; managedLibrary: ManagedSlashCommandRecord[] }>,
     { conversation_id: string; includeRuntimeCommands?: boolean }
   >('conversation.get-slash-commands'),
+  getProjectCapabilitySnapshot: bridge.buildProvider<
+    IProjectCapabilitySnapshot | undefined,
+    { workspacePath?: string }
+  >('conversation.get-project-capability-snapshot'),
   confirmMessage: bridge.buildProvider<IBridgeResponse, IConfirmMessageParams>('conversation.confirm.message'), // 通用确认消息
   responseStream: bridge.buildEmitter<IResponseMessage>('chat.response.stream'), // 接收消息（统一接口）
   turnCompleted: bridge.buildEmitter<IConversationTurnCompletedEvent>('conversation.turn.completed'),
@@ -138,13 +144,13 @@ export const conversation = {
     { candidateId: string; destination: 'document' | 'board'; reviewerId?: string }
   >('conversation.promote-memory-candidate'),
   confirmation: {
-    add: bridge.buildEmitter<IConfirmation<any> & { conversation_id: string }>('confirmation.add'),
-    update: bridge.buildEmitter<IConfirmation<any> & { conversation_id: string }>('confirmation.update'),
+    add: bridge.buildEmitter<IConfirmation<string> & { conversation_id: string }>('confirmation.add'),
+    update: bridge.buildEmitter<IConfirmation<string> & { conversation_id: string }>('confirmation.update'),
     confirm: bridge.buildProvider<
       IBridgeResponse,
-      { conversation_id: string; msg_id: string; data: any; callId: string }
+      { conversation_id: string; msg_id: string; data: string; callId: string }
     >('confirmation.confirm'),
-    list: bridge.buildProvider<IConfirmation<any>[], { conversation_id: string }>('confirmation.list'),
+    list: bridge.buildProvider<IConfirmation<string>[], { conversation_id: string }>('confirmation.list'),
     remove: bridge.buildEmitter<{ conversation_id: string; id: string }>('confirmation.remove'),
   },
   // Session-level approval memory for "always allow" decisions
@@ -234,6 +240,9 @@ export const cloud = {
   ),
   ensureOfficialRemoteReady: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>(
     'cloud.ensure-official-remote-ready'
+  ),
+  listRemoteDevices: bridge.buildProvider<IBridgeResponse<CloudRemoteDevicesPayload>, void>(
+    'cloud.list-remote-devices'
   ),
   openInfermesh: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.open-infermesh'),
   logout: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.logout'),
@@ -336,6 +345,15 @@ export const dialog = {
     | undefined
   >('show-open'), // 打开文件/文件夹选择窗口
 };
+
+export type BundledAgentPackageDocumentPayload = {
+  id: string;
+  title: string;
+  relativePath: string;
+  sourcePath: string;
+  content: string;
+};
+
 export const fs = {
   getFilesByDir: bridge.buildProvider<Array<IDirOrFile>, { dir: string; root: string }>('get-file-by-dir'), // 获取指定文件夹下所有文件夹和文件列表
   getImageBase64: bridge.buildProvider<string, { path: string }>('get-image-base64'), // 获取图片base64
@@ -377,7 +395,6 @@ export const fs = {
     'rename-entry'
   ), // 重命名文件或文件夹
   readBuiltinRule: bridge.buildProvider<string, { fileName: string }>('read-builtin-rule'), // 读取内置 rules 文件
-  readBuiltinSkill: bridge.buildProvider<string, { fileName: string }>('read-builtin-skill'), // 读取内置 skills 文件
   // 助手规则文件操作 / Assistant rule file operations
   readAssistantRule: bridge.buildProvider<string, { assistantId: string; locale?: string }>('read-assistant-rule'), // 读取助手规则文件
   writeAssistantRule: bridge.buildProvider<boolean, { assistantId: string; content: string; locale?: string }>(
@@ -427,7 +444,7 @@ export const fs = {
       packageOwnerPresetIds?: string[];
       hiddenFromSkillsLibrary?: boolean;
     }>,
-    { presetAssistantId?: string }
+    { presetAssistantId?: string; workspacePath?: string }
   >('list-available-skills'),
   // 获取可用 hooks 列表 / List available hooks from hooks directory
   listAvailableHooks: bridge.buildProvider<HookInfo[], { workspacePath?: string }>('list-available-hooks'),
@@ -456,6 +473,13 @@ export const fs = {
   readSkillContent: bridge.buildProvider<IBridgeResponse<{ content: string }>, { skillPath: string }>(
     'read-skill-content'
   ),
+  readBundledAgentPackageContent: bridge.buildProvider<
+    IBridgeResponse<{
+      agentsDocument: BundledAgentPackageDocumentPayload | null;
+      docs: BundledAgentPackageDocumentPayload[];
+    }>,
+    { assistantId: string }
+  >('read-bundled-agent-package-content'),
   // 导入 skill 目录 / Import skill directory
   importSkill: bridge.buildProvider<IBridgeResponse<{ skillName: string }>, { skillPath: string }>('import-skill'),
   // 扫描目录下的 skills / Scan directory for skills
@@ -741,7 +765,6 @@ export const acpConversation = {
         cliPath?: string;
         resolvedCliPath?: string;
         customAgentId?: string;
-        openclawAgentId?: string;
         isDefault?: boolean;
         isPreset?: boolean;
         context?: string;
@@ -774,15 +797,15 @@ export const acpConversation = {
     { backend: AcpBackend }
   >('acp.install-managed-runtime'),
   getManagedRuntimeConfigLocation: bridge.buildProvider<
-    IBridgeResponse<{ backend: AcpBackend; configPath: string; exists: boolean } | null>,
+    IBridgeResponse<{ backend: AcpBackend; entries: import('../types/acpTypes').ManagedRuntimeConfigEntry[] } | null>,
     { backend: AcpBackend }
   >('acp.get-managed-runtime-config-location'),
   checkAgentHealth: bridge.buildProvider<
     IBridgeResponse<{ available: boolean; latency?: number; error?: string }>,
     { backend: AcpBackend }
   >('acp.check-agent-health'),
-  // Set session mode for ACP agents (claude, qwen, etc.)
-  // 设置 ACP 代理的会话模式（claude、qwen 等）
+  // Set session mode for ACP agents (claude, opencode, etc.)
+  // 设置 ACP 代理的会话模式（claude、opencode 等）
   setMode: bridge.buildProvider<IBridgeResponse<{ mode: string }>, { conversationId: string; mode: string }>(
     'acp.set-mode'
   ),
@@ -825,48 +848,6 @@ export const acpConversation = {
 export const codexConversation = {
   sendMessage: conversation.sendMessage,
   responseStream: conversation.responseStream,
-};
-
-// OpenClaw 对话相关接口 - 复用统一的conversation接口
-export const openclawConversation = {
-  sendMessage: conversation.sendMessage,
-  responseStream: bridge.buildEmitter<IResponseMessage>('openclaw.response.stream'),
-  getModelInfo: bridge.buildProvider<IBridgeResponse<{ modelInfo: AcpModelInfo | null }>, { conversation_id: string }>(
-    'openclaw.get-model-info'
-  ),
-  setModel: bridge.buildProvider<
-    IBridgeResponse<{ modelInfo: AcpModelInfo | null }>,
-    { conversation_id: string; modelId: string }
-  >('openclaw.set-model'),
-  getRuntime: bridge.buildProvider<
-    IBridgeResponse<{
-      conversationId: string;
-      runtime: {
-        workspace?: string;
-        backend?: string;
-        agentName?: string;
-        openclawAgentId?: string;
-        cliPath?: string;
-        modelProvider?: string | null;
-        model?: string;
-        sessionKey?: string | null;
-        isConnected?: boolean;
-        hasActiveSession?: boolean;
-        identityHash?: string | null;
-      };
-      expected?: {
-        expectedWorkspace?: string;
-        expectedBackend?: string;
-        expectedAgentName?: string;
-        expectedOpenClawAgentId?: string;
-        expectedCliPath?: string;
-        expectedModel?: string;
-        expectedIdentityHash?: string | null;
-        switchedAt?: number;
-      };
-    }>,
-    { conversation_id: string }
-  >('openclaw.get-runtime'),
 };
 
 // Database operations
@@ -1125,7 +1106,8 @@ export interface IContextSchedule {
           | 'session_pattern_detection'
           | 'project_promotion'
           | 'space_memory_distillation'
-          | 'connector_digest';
+          | 'connector_digest'
+          | 'project_capability_curation';
         reason: string;
         priority?: 'low' | 'medium' | 'high';
         payload?: Readonly<Record<string, unknown>>;
@@ -1182,8 +1164,8 @@ export interface IConfirmMessageParams {
   callId: string;
 }
 
-export type NonGroupConversationType = 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot';
-export type ConversationType = NonGroupConversationType | 'group';
+export type NonGroupConversationType = PersistedNonGroupConversationType;
+export type ConversationType = PersistedConversationType;
 
 export interface ICreateConversationExtra {
   /** Logical Space identifier for long-lived ownership / 长期上下文归属的逻辑 Space ID */
@@ -1204,7 +1186,6 @@ export interface ICreateConversationExtra {
   webSearchEngine?: 'google' | 'default';
   agentName?: string;
   customAgentId?: string;
-  openclawAgentId?: string;
   context?: string;
   contextFileName?: string; // For gemini preset agents
   // System rules for smart assistants
@@ -1232,30 +1213,23 @@ export interface ICreateConversationExtra {
   acpSessionId?: string;
   /** Last external ACP session update timestamp */
   acpSessionUpdatedAt?: number;
-  /** OpenClaw session key for restoring an externally created session */
-  sessionKey?: string;
   /** Whether this conversation was imported from an external CLI session */
   externalSessionImported?: boolean;
+  /** Workspace inspection result captured during external session takeover */
+  externalWorkspaceInspection?: {
+    hasContextgoDir?: boolean;
+    hasAgentsMd?: boolean;
+    capabilityCounts?: {
+      skill?: number;
+      hook?: number;
+      command?: number;
+      schedule?: number;
+    };
+    hasProjectCapabilitySurface?: boolean;
+    hasProjectContextSurface?: boolean;
+  };
   /** Whether workspace hydration should be deferred on first open */
   deferInitialWorkspaceLoad?: boolean;
-  /** Runtime validation snapshot used for post-switch strong checks (OpenClaw) */
-  runtimeValidation?: {
-    /** Logical Space expected by the runtime binding */
-    expectedSpaceId?: string;
-    /** Device-local Mount expected by the runtime binding */
-    expectedMountId?: string;
-    /** Physical working directory expected by the runtime */
-    expectedWorkingDirectory?: string;
-    /** @deprecated Use expectedWorkingDirectory instead. */
-    expectedWorkspace?: string;
-    expectedBackend?: string;
-    expectedAgentName?: string;
-    expectedOpenClawAgentId?: string;
-    expectedCliPath?: string;
-    expectedModel?: string;
-    expectedIdentityHash?: string | null;
-    switchedAt?: number;
-  };
   /** Explicit marker for temporary health-check conversations */
   isHealthCheck?: boolean;
   /** Group child conversation metadata */
@@ -1346,6 +1320,75 @@ export interface IResponseMessage {
   msg_id: string;
   conversation_id: string;
 }
+
+export type ProjectCapabilityKind = 'skill' | 'hook' | 'command' | 'schedule';
+
+export type IProjectSkillCapability = {
+  kind: 'skill';
+  id: string;
+  name: string;
+  description: string;
+  docKey: string;
+  workspaceRelativePath: string;
+  compatibility: string[];
+  implicitInvocation: boolean;
+  openAIDisplayName?: string;
+  openAIShortDescription?: string;
+};
+
+export type IProjectHookCapability = {
+  kind: 'hook';
+  id: string;
+  name: string;
+  description: string;
+  docKey: string;
+  workspaceRelativePath: string;
+  manifestRelativePath: string;
+  category?: string;
+  executionType?: string;
+  events: string[];
+  runnableEvents: string[];
+  outputTargets: string[];
+  selected: boolean;
+};
+
+export type IProjectCommandCapability = {
+  kind: 'command';
+  id: string;
+  name: string;
+  description: string;
+  docKey: string;
+  commandType: 'project';
+  enabled: boolean;
+  template: string;
+};
+
+export type IProjectScheduleCapability = {
+  kind: 'schedule';
+  id: string;
+  name: string;
+  description: string;
+  docKey: string;
+  enabled: boolean;
+  scheduleKind: string;
+  scheduleLabel: string;
+  message: string;
+  conversationId: string;
+  conversationTitle?: string;
+  agentType?: string;
+  createdBy?: string;
+  spaceId?: string;
+};
+
+export type IProjectCapabilitySnapshot = {
+  workspacePath: string;
+  automationRootRelativePath: string;
+  counts: Record<ProjectCapabilityKind, number>;
+  skills: IProjectSkillCapability[];
+  hooks: IProjectHookCapability[];
+  commands: IProjectCommandCapability[];
+  schedules: IProjectScheduleCapability[];
+};
 
 export interface IContextMemoryCandidateView {
   id: string;

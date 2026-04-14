@@ -27,9 +27,7 @@ function isSessionFileTarget(target, cwd) {
   }
 
   const absoluteTarget = path.resolve(cwd, target);
-  return fs.existsSync(absoluteTarget)
-    && fs.statSync(absoluteTarget).isFile()
-    && absoluteTarget.endsWith('.tmp');
+  return fs.existsSync(absoluteTarget) && fs.statSync(absoluteTarget).isFile() && absoluteTarget.endsWith('.tmp');
 }
 
 function hydrateSessionFromPath(sessionPath) {
@@ -50,7 +48,7 @@ function hydrateSessionFromPath(sessionPath) {
     stats: sessionManager.getSessionStats(content || ''),
     size: stats.size,
     modifiedTime: stats.mtime,
-    createdTime: stats.birthtime || stats.ctime
+    createdTime: stats.birthtime || stats.ctime,
   };
 }
 
@@ -68,8 +66,8 @@ function resolveSessionRecord(target, cwd) {
         session: sessionManager.getSessionById(latest.filename, true),
         sourceTarget: {
           type: 'claude-history',
-          value: 'latest'
-        }
+          value: 'latest',
+        },
       };
     }
 
@@ -79,8 +77,8 @@ function resolveSessionRecord(target, cwd) {
         session: hydrateSessionFromPath(alias.sessionPath),
         sourceTarget: {
           type: 'claude-alias',
-          value: explicitTarget
-        }
+          value: explicitTarget,
+        },
       };
     }
 
@@ -93,8 +91,8 @@ function resolveSessionRecord(target, cwd) {
       session,
       sourceTarget: {
         type: 'claude-history',
-        value: explicitTarget
-      }
+        value: explicitTarget,
+      },
     };
   }
 
@@ -103,8 +101,8 @@ function resolveSessionRecord(target, cwd) {
       session: hydrateSessionFromPath(path.resolve(cwd, target)),
       sourceTarget: {
         type: 'session-file',
-        value: path.resolve(cwd, target)
-      }
+        value: path.resolve(cwd, target),
+      },
     };
   }
 
@@ -143,18 +141,18 @@ function createClaudeHistoryAdapter(options = {}) {
             loadStateStoreImpl: options.loadStateStoreImpl,
             persist: context.persistSnapshots !== false && options.persistSnapshots !== false,
             recordingDir: context.recordingDir || options.recordingDir,
-            stateStore: options.stateStore
+            stateStore: options.stateStore,
           });
 
           return canonicalSnapshot;
-        }
+        },
       };
-    }
+    },
   };
 }
 
 module.exports = {
   createClaudeHistoryAdapter,
   isSessionFileTarget,
-  parseClaudeTarget
+  parseClaudeTarget,
 };

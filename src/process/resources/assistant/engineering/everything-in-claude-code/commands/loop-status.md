@@ -21,4 +21,5 @@ When `--watch` is present, refresh status periodically and surface state changes
 ## Arguments
 
 $ARGUMENTS:
+
 - `--watch` optional

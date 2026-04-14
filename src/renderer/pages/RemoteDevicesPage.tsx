@@ -9,11 +9,22 @@ import type { CloudStatus } from '@/common/types/cloud';
 import WebviewHost from '@/renderer/components/media/WebviewHost';
 import { useRemoteAccessContext } from '@/renderer/hooks/context/RemoteAccessContext';
 import { isElectronDesktop } from '@/renderer/utils/platform';
-import { buildOfficialDeviceListUrl, OFFICIAL_REMOTE_WEBVIEW_PARTITION } from '@/renderer/utils/officialRemote';
+import {
+  buildOfficialDeviceListUrl,
+  buildOfficialRemoteDevicesRoute,
+  buildOfficialDeviceUrl,
+  extractOfficialRemoteDeviceId,
+  OFFICIAL_REMOTE_DEVICE_ID_QUERY_KEY,
+  OFFICIAL_REMOTE_WEBVIEW_PARTITION,
+  isOfficialRemotePickerView,
+  rememberPreferredOfficialRemoteDeviceId,
+  resolveHostedOfficialRemoteIntent,
+  resolveOfficialRemoteRouteViewMode,
+} from '@/renderer/utils/officialRemote';
 import { Button } from '@arco-design/web-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const isOfficialDeviceListUrl = (candidateUrl: string, authBaseUrl?: string): boolean => {
   try {
@@ -82,11 +93,26 @@ const getOfficialRemoteStatusText = (
 const RemoteDevicesPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedDeviceId = useMemo(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const deviceId = searchParams.get(OFFICIAL_REMOTE_DEVICE_ID_QUERY_KEY)?.trim();
+    return deviceId ? deviceId : null;
+  }, [location.search]);
+  const forcePickerView = useMemo(() => {
+    return isOfficialRemotePickerView(new URLSearchParams(location.search));
+  }, [location.search]);
   const [cloudStatus, setCloudStatus] = useState<CloudStatus | null>(null);
   const [cloudLoading, setCloudLoading] = useState(true);
-  const [currentRemoteUrl, setCurrentRemoteUrl] = useState('');
+  const [currentRemoteUrl, setCurrentRemoteUrl] = useState(() =>
+    requestedDeviceId && !forcePickerView
+      ? buildOfficialDeviceUrl(undefined, requestedDeviceId)
+      : buildOfficialDeviceListUrl(undefined, { forcePicker: forcePickerView })
+  );
   const isDesktopRuntime = isElectronDesktop();
   const remoteAccess = useRemoteAccessContext();
+  const currentCloudDeviceId = cloudStatus?.device?.id ?? null;
+  const mobileStagedDeviceId = !isDesktopRuntime && forcePickerView ? requestedDeviceId : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -132,15 +158,35 @@ const RemoteDevicesPage: React.FC = () => {
   );
 
   useEffect(() => {
-    setCurrentRemoteUrl(officialRemoteUrl);
-  }, [officialRemoteUrl]);
+    setCurrentRemoteUrl(
+      requestedDeviceId && !forcePickerView
+        ? buildOfficialDeviceUrl(cloudStatus?.authBaseUrl, requestedDeviceId)
+        : buildOfficialDeviceListUrl(cloudStatus?.authBaseUrl, { forcePicker: forcePickerView })
+    );
+  }, [cloudStatus?.authBaseUrl, forcePickerView, requestedDeviceId]);
+
+  useEffect(() => {
+    const activeDeviceId = extractOfficialRemoteDeviceId(currentRemoteUrl);
+    if (!activeDeviceId) {
+      return;
+    }
+
+    rememberPreferredOfficialRemoteDeviceId(activeDeviceId);
+  }, [currentRemoteUrl]);
 
   useEffect(() => {
     const activeUrl = currentRemoteUrl || officialRemoteUrl;
-    const isDeviceList = isOfficialDeviceListUrl(activeUrl, cloudStatus?.authBaseUrl);
+    const routeViewMode = resolveOfficialRemoteRouteViewMode({
+      requestedDeviceId,
+      currentDeviceId: currentCloudDeviceId,
+      isDesktopRuntime,
+      forcePickerView,
+      cloudStatusResolved: !cloudLoading,
+    });
 
     remoteAccess?.setTarget({
-      mode: isDeviceList ? 'device-list' : 'remote-device',
+      mode:
+        routeViewMode === 'device-list' ? 'device-list' : routeViewMode === 'remote-device' ? 'remote-device' : 'local',
       currentUrl: activeUrl,
       entryUrl: officialRemoteUrl,
     });
@@ -152,13 +198,126 @@ const RemoteDevicesPage: React.FC = () => {
         entryUrl: officialRemoteUrl,
       });
     };
-  }, [cloudStatus?.authBaseUrl, currentRemoteUrl, officialRemoteUrl, remoteAccess]);
+  }, [
+    cloudLoading,
+    currentCloudDeviceId,
+    currentRemoteUrl,
+    forcePickerView,
+    isDesktopRuntime,
+    officialRemoteUrl,
+    remoteAccess,
+    requestedDeviceId,
+  ]);
 
   const officialRemoteStatusText = getOfficialRemoteStatusText(cloudStatus, cloudLoading, t);
-  const isViewingDeviceList = isOfficialDeviceListUrl(currentRemoteUrl || officialRemoteUrl, cloudStatus?.authBaseUrl);
+  const routeViewMode = resolveOfficialRemoteRouteViewMode({
+    requestedDeviceId,
+    currentDeviceId: currentCloudDeviceId,
+    isDesktopRuntime,
+    forcePickerView,
+    cloudStatusResolved: !cloudLoading,
+  });
+  const isViewingDeviceList = routeViewMode === 'device-list';
+  const isDesktopDirectDeviceView = routeViewMode === 'remote-device';
+  const hostedSurfaceKey = useMemo(() => {
+    if (isDesktopDirectDeviceView) {
+      return `official-remote-device:${requestedDeviceId ?? 'unknown'}`;
+    }
+
+    return `official-remote-list:${forcePickerView ? 'picker' : 'default'}`;
+  }, [forcePickerView, isDesktopDirectDeviceView, requestedDeviceId]);
+  const hostedRemoteIntent = useMemo(
+    () =>
+      resolveHostedOfficialRemoteIntent(currentRemoteUrl || officialRemoteUrl, {
+        displayedDeviceId: requestedDeviceId,
+      }),
+    [currentRemoteUrl, officialRemoteUrl, requestedDeviceId]
+  );
   const remoteAccessStateLabel = isViewingDeviceList
     ? t('settings.webui.remoteDevicesNav', { defaultValue: 'Remote Devices' })
     : t('settings.webui.officialRemoteTitle', { defaultValue: 'Official Remote' });
+
+  const handleHostedSurfaceDidFinishLoad = useCallback(() => {
+    if (!mobileStagedDeviceId) {
+      return;
+    }
+
+    const activeUrl = currentRemoteUrl || officialRemoteUrl;
+    if (!isOfficialDeviceListUrl(activeUrl, cloudStatus?.authBaseUrl)) {
+      return;
+    }
+
+    void navigate(buildOfficialRemoteDevicesRoute({ preferredDeviceId: mobileStagedDeviceId }), { replace: true });
+  }, [cloudStatus?.authBaseUrl, currentRemoteUrl, mobileStagedDeviceId, navigate, officialRemoteUrl]);
+
+  useEffect(() => {
+    if (routeViewMode !== 'local-device') {
+      return;
+    }
+
+    void navigate('/guid', { replace: true });
+  }, [navigate, routeViewMode]);
+
+  useEffect(() => {
+    if (!isDesktopDirectDeviceView) {
+      return;
+    }
+
+    if (hostedRemoteIntent.kind === 'device-switch') {
+      void navigate(buildOfficialRemoteDevicesRoute({ preferredDeviceId: hostedRemoteIntent.deviceId }), {
+        replace: true,
+      });
+      return;
+    }
+
+    if (hostedRemoteIntent.kind === 'device-list') {
+      void navigate(buildOfficialRemoteDevicesRoute({ forcePicker: true }), { replace: true });
+      return;
+    }
+
+    if (hostedRemoteIntent.kind === 'self-open') {
+      setCurrentRemoteUrl(buildOfficialDeviceUrl(cloudStatus?.authBaseUrl, hostedRemoteIntent.deviceId));
+      return;
+    }
+
+    const activeUrl = currentRemoteUrl || officialRemoteUrl;
+    if (!isOfficialDeviceListUrl(activeUrl, cloudStatus?.authBaseUrl)) {
+      return;
+    }
+
+    void navigate(buildOfficialRemoteDevicesRoute({ forcePicker: true }), { replace: true });
+  }, [
+    cloudStatus?.authBaseUrl,
+    currentRemoteUrl,
+    hostedRemoteIntent,
+    isDesktopDirectDeviceView,
+    navigate,
+    officialRemoteUrl,
+  ]);
+
+  if (routeViewMode === 'resolving-device' && isDesktopRuntime) {
+    return <div className='size-full min-h-0 bg-bg-1' />;
+  }
+
+  if (routeViewMode === 'local-device') {
+    return <div className='size-full min-h-0 bg-bg-1' />;
+  }
+
+  if (isDesktopDirectDeviceView) {
+    return (
+      <div className='size-full min-h-0 overflow-hidden rounded-18px border border-line bg-bg-1'>
+        <WebviewHost
+          key={hostedSurfaceKey}
+          id='official-remote-devices'
+          url={currentRemoteUrl || officialRemoteUrl}
+          partition={OFFICIAL_REMOTE_WEBVIEW_PARTITION}
+          className='size-full bg-bg-1'
+          onDidFinishLoad={handleHostedSurfaceDidFinishLoad}
+          onUrlChange={setCurrentRemoteUrl}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className='secondary-page-frame size-full min-h-0 overflow-hidden'>
@@ -188,7 +347,8 @@ const RemoteDevicesPage: React.FC = () => {
                   size='small'
                   onClick={() => {
                     remoteAccess?.resetToDeviceList();
-                    setCurrentRemoteUrl(officialRemoteUrl);
+                    void navigate(buildOfficialRemoteDevicesRoute({ forcePicker: true }), { replace: true });
+                    setCurrentRemoteUrl(buildOfficialDeviceListUrl(cloudStatus?.authBaseUrl, { forcePicker: true }));
                   }}
                 >
                   {t('common.goBack')}
@@ -199,7 +359,7 @@ const RemoteDevicesPage: React.FC = () => {
                   type='secondary'
                   size='small'
                   onClick={() => {
-                    void navigate('/settings/webui');
+                    void navigate('/settings/system');
                   }}
                 >
                   {t('common.goToSettings')}
@@ -211,11 +371,13 @@ const RemoteDevicesPage: React.FC = () => {
 
         <section className='min-h-0 flex-1 overflow-hidden rounded-18px border border-line bg-bg-1'>
           <WebviewHost
+            key={hostedSurfaceKey}
             id='official-remote-devices'
             url={currentRemoteUrl || officialRemoteUrl}
             partition={OFFICIAL_REMOTE_WEBVIEW_PARTITION}
             showNavBar
             className='size-full bg-bg-1'
+            onDidFinishLoad={handleHostedSurfaceDidFinishLoad}
             onUrlChange={setCurrentRemoteUrl}
           />
         </section>

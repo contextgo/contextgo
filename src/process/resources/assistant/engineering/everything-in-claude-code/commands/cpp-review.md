@@ -18,6 +18,7 @@ This command invokes the **cpp-reviewer** agent for comprehensive C++-specific c
 ## When to Use
 
 Use `/cpp-review` when:
+
 - After writing or modifying C++ code
 - Before committing C++ changes
 - Reviewing pull requests with C++ code
@@ -27,6 +28,7 @@ Use `/cpp-review` when:
 ## Review Categories
 
 ### CRITICAL (Must Fix)
+
 - Raw `new`/`delete` without RAII
 - Buffer overflows and use-after-free
 - Data races without synchronization
@@ -35,6 +37,7 @@ Use `/cpp-review` when:
 - Null pointer dereferences
 
 ### HIGH (Should Fix)
+
 - Rule of Five violations
 - Missing `std::lock_guard` / `std::scoped_lock`
 - Detached threads without proper lifetime management
@@ -42,6 +45,7 @@ Use `/cpp-review` when:
 - Missing `const` correctness
 
 ### MEDIUM (Consider)
+
 - Unnecessary copies (pass by value instead of `const&`)
 - Missing `reserve()` on known-size containers
 - `using namespace std;` in headers
@@ -63,7 +67,7 @@ cmake --build build -- -Wall -Wextra -Wpedantic
 
 ## Example Usage
 
-```text
+````text
 User: /cpp-review
 
 Agent:
@@ -85,8 +89,10 @@ Issue: Raw `new` without matching `delete`
 ```cpp
 auto* session = new Session(userId);  // Memory leak!
 cache[userId] = session;
-```
+````
+
 Fix: Use `std::unique_ptr`
+
 ```cpp
 auto session = std::make_unique<Session>(userId);
 cache[userId] = std::move(session);
@@ -95,20 +101,25 @@ cache[userId] = std::move(session);
 [HIGH] Missing const Reference
 File: src/handler/user.cpp:28
 Issue: Large object passed by value
+
 ```cpp
 void processUser(User user) {  // Unnecessary copy
 ```
+
 Fix: Pass by const reference
+
 ```cpp
 void processUser(const User& user) {
 ```
 
 ## Summary
+
 - CRITICAL: 1
 - HIGH: 1
 - MEDIUM: 0
 
 Recommendation: FAIL: Block merge until CRITICAL issue is fixed
+
 ```
 
 ## Approval Criteria
@@ -130,3 +141,4 @@ Recommendation: FAIL: Block merge until CRITICAL issue is fixed
 
 - Agent: `agents/cpp-reviewer.md`
 - Skills: `skills/cpp-coding-standards/`, `skills/cpp-testing/`
+```

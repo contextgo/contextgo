@@ -15,7 +15,7 @@ import type { ContextServiceImpl } from '@process/services/context/ContextServic
 import type { ConnectorSource } from '@process/services/context/contextDomain';
 import type { ContextEventBus } from '@process/services/context/events/ContextEventBus';
 
-import { BrowserActivityStoreService } from './BrowserActivityStoreService';
+import type { BrowserActivityStoreService } from './BrowserActivityStoreService';
 
 type SupportedContextService = Pick<ContextServiceImpl, 'ingestSource' | 'indexTextDocument'>;
 type SupportedEventBus = Pick<ContextEventBus, 'emit'>;
@@ -35,12 +35,9 @@ function buildSummary(entry: BrowserActivityEntry): string {
 }
 
 function buildTags(entry: BrowserActivityEntry): string[] {
-  return [
-    'connector:browser-extension',
-    `connector:${CONNECTOR_ID}`,
-    `domain:${entry.domain}`,
-    ...entry.tags,
-  ].filter((tag, index, list) => list.indexOf(tag) === index);
+  return ['connector:browser-extension', `connector:${CONNECTOR_ID}`, `domain:${entry.domain}`, ...entry.tags].filter(
+    (tag, index, list) => list.indexOf(tag) === index
+  );
 }
 
 export class BrowserActivityConnectorService {

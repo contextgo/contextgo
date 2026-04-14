@@ -24,6 +24,7 @@ import { JsonWorkspaceScheduleConfigStore } from './events/schedule/WorkspaceSch
 import { JsonWorkspaceScheduleRuntimeStore } from './events/schedule/WorkspaceScheduleRuntimeStore';
 import { ConnectorDigestJobHandler } from './jobs/ConnectorDigestJobHandler';
 import { ContextJobRunner } from './jobs/ContextJobRunner';
+import { ProjectCapabilityCurationJobHandler } from './jobs/ProjectCapabilityCurationJobHandler';
 import { ProjectPromotionJobHandler } from './jobs/ProjectPromotionJobHandler';
 import { SessionCompactionJobHandler } from './jobs/SessionCompactionJobHandler';
 import { SpaceMemoryDistillationJobHandler } from './jobs/SpaceMemoryDistillationJobHandler';
@@ -49,6 +50,7 @@ export const contextService = new ContextServiceImpl(
 const contextVaultSyncService = new SpaceVaultContextSyncService();
 const sessionCompactionJobHandler = new SessionCompactionJobHandler(contextService, contextVaultSyncService);
 const projectPromotionJobHandler = new ProjectPromotionJobHandler(contextVaultSyncService);
+const projectCapabilityCurationJobHandler = new ProjectCapabilityCurationJobHandler(contextVaultSyncService);
 const spaceMemoryDistillationJobHandler = new SpaceMemoryDistillationJobHandler(contextVaultSyncService);
 const connectorDigestJobHandler = new ConnectorDigestJobHandler(contextVaultSyncService);
 
@@ -59,7 +61,8 @@ export const contextJobRunner = new ContextJobRunner(
   projectPromotionJobHandler,
   spaceMemoryDistillationJobHandler,
   connectorDigestJobHandler,
-  connectorDigestJobHandler
+  connectorDigestJobHandler,
+  projectCapabilityCurationJobHandler
 );
 
 export const contextTriggerRouter = new ContextTriggerRouter(contextEventBus, contextExecutionBoundaryResolver);

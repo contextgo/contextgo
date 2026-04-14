@@ -32,6 +32,7 @@ When verifying against a checkpoint:
    - Coverage now vs then
 
 3. Report:
+
 ```
 CHECKPOINT COMPARISON: $NAME
 ============================
@@ -44,6 +45,7 @@ Build: [PASS/FAIL]
 ## List Checkpoints
 
 Show all checkpoints with:
+
 - Name
 - Timestamp
 - Git SHA
@@ -68,6 +70,7 @@ Typical checkpoint flow:
 ## Arguments
 
 $ARGUMENTS:
+
 - `create <name>` - Create named checkpoint
 - `verify <name>` - Verify against named checkpoint
 - `list` - Show all checkpoints

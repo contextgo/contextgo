@@ -116,6 +116,41 @@ const authSessionFetch = vi.fn(async (url: string, init?: RequestInit) => {
     );
   }
 
+  if (url.endsWith('/api/remote/devices')) {
+    return new Response(
+      JSON.stringify({
+        success: true,
+        devices: [
+          {
+            id: 'device-1',
+            userId: 'user-1',
+            deviceName: 'ContextGo on dev-host',
+            platform: 'macos',
+            status: 'active',
+            createdAt: '2026-04-01T00:00:00Z',
+            updatedAt: '2026-04-01T00:00:00Z',
+            lastSeenAt: '2026-04-01T00:00:00Z',
+            remoteStatus: {
+              connected: true,
+              clientConnected: false,
+              browserEntryReady: true,
+            },
+          },
+        ],
+        selection: {
+          preferredDeviceId: 'device-1',
+          autoOpenDeviceId: 'device-1',
+          openableDeviceCount: 1,
+          forcePicker: false,
+        },
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
   throw new Error(`Unexpected fetch URL: ${url} ${init?.method ?? 'GET'}`);
 });
 
@@ -475,6 +510,66 @@ describe('CloudService desktop loopback login', () => {
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
   });
 
+  it('re-ensures official remote readiness after the cloud session refresh succeeds later for an already linked desktop', async () => {
+    const defaultFetch = authSessionFetch.getMockImplementation();
+    let sessionFetchCount = 0;
+
+    authSessionFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/auth/session')) {
+        sessionFetchCount += 1;
+        if (sessionFetchCount <= 2) {
+          return new Response(JSON.stringify({ authenticated: false, user: null }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      if (!defaultFetch) {
+        throw new Error(`Unexpected fetch URL: ${url} ${init?.method ?? 'GET'}`);
+      }
+
+      return defaultFetch(url, init);
+    });
+
+    officialRemoteTunnelServiceMock.reconcile.mockImplementation(async (reason: string) => {
+      if (reason === 'official-remote-ensure-ready') {
+        Object.assign(officialRemoteTunnelState, {
+          desired: true,
+          running: true,
+          browserEntryReady: true,
+          needsAttention: false,
+        });
+      }
+    });
+
+    processConfigState.set('cloud.user', fetchSessionUserResponse.user);
+    processConfigState.set('cloud.device', {
+      id: 'device-1',
+      userId: 'user-1',
+      deviceName: 'ContextGo on dev-host',
+      platform: 'macos',
+      status: 'active',
+      createdAt: '2026-04-01T00:00:00Z',
+      updatedAt: '2026-04-01T00:00:00Z',
+    });
+    processConfigState.set('cloud.deviceToken', 'ctxdev_token');
+
+    const cloudService = await importCloudService();
+    cloudService.initialize();
+    await flushAsyncWork();
+
+    expect(officialRemoteTunnelServiceMock.reconcile).not.toHaveBeenCalledWith('official-remote-ensure-ready');
+
+    const refreshedStatus = await cloudService.getStatus();
+    expect(refreshedStatus.authenticated).toBe(true);
+
+    await flushAsyncWork();
+
+    expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
+    expect(ensureDesktopWebUIForOfficialRemoteMock).toHaveBeenCalled();
+  });
+
   it('opens browser login with loopback callback and consumes returned code', async () => {
     const cloudService = await importCloudService();
     let openedUrl = '';
@@ -540,6 +635,117 @@ describe('CloudService desktop loopback login', () => {
     await expect(cloudService.startLogin('github' satisfies CloudAuthProviderId)).rejects.toThrow(
       'Cloud login failed: access_denied'
     );
+  });
+
+  it('lists remote devices through the authenticated cloud session partition', async () => {
+    const cloudService = await importCloudService();
+
+    const payload = await cloudService.listRemoteDevices();
+
+    expect(authSessionFetch).toHaveBeenCalledWith(
+      'https://api.contextgo.test/api/remote/devices',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(payload.selection.preferredDeviceId).toBe('device-1');
+    expect(payload.devices[0]?.deviceName).toBe('ContextGo on dev-host');
+  });
+
+  it('normalizes sparse remote device payloads from the primary api origin', async () => {
+    authSessionFetch.mockImplementationOnce(async (url: string, init?: RequestInit) => {
+      if (url == 'https://api.contextgo.test/api/remote/devices') {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            devices: [
+              {
+                id: 'device-auth-1',
+                deviceName: 'Auth-backed device',
+                platform: 'macos',
+                remoteStatus: {
+                  connected: true,
+                  browserEntryReady: true,
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url} ${init?.method ?? 'GET'}`);
+    });
+
+    const cloudService = await importCloudService();
+    const payload = await cloudService.listRemoteDevices();
+
+    expect(authSessionFetch).toHaveBeenCalledWith(
+      'https://api.contextgo.test/api/remote/devices',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(payload.devices[0]?.id).toBe('device-auth-1');
+    expect(payload.selection.preferredDeviceId).toBe('device-auth-1');
+    expect(payload.selection.autoOpenDeviceId).toBe('device-auth-1');
+  });
+
+  it('falls back to the auth origin when the api origin returns a non-json shell', async () => {
+    const defaultFetch = authSessionFetch.getMockImplementation();
+    authSessionFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === 'https://api.contextgo.test/api/remote/devices') {
+        return new Response('<!doctype html><title>wrong origin</title>', {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' },
+        });
+      }
+
+      if (url === 'https://auth.contextgo.test/api/remote/devices') {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            devices: [
+              {
+                id: 'device-auth-2',
+                deviceName: 'Auth fallback device',
+                platform: 'macos',
+                remoteStatus: {
+                  connected: true,
+                  browserEntryReady: true,
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      if (!defaultFetch) {
+        throw new Error(`Unexpected fetch URL: ${url} ${init?.method ?? 'GET'}`);
+      }
+
+      return defaultFetch(url, init);
+    });
+
+    const cloudService = await importCloudService();
+    const payload = await cloudService.listRemoteDevices();
+
+    expect(authSessionFetch).toHaveBeenNthCalledWith(
+      1,
+      'https://api.contextgo.test/api/remote/devices',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(authSessionFetch).toHaveBeenNthCalledWith(
+      2,
+      'https://auth.contextgo.test/api/remote/devices',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(payload.devices[0]?.id).toBe('device-auth-2');
+    expect(payload.selection.preferredDeviceId).toBe('device-auth-2');
+    expect(payload.selection.autoOpenDeviceId).toBe('device-auth-2');
   });
 
   it('opens InferMesh through a trusted handoff when the desktop device is linked', async () => {

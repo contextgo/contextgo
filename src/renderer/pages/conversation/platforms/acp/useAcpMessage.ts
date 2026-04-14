@@ -49,15 +49,15 @@ type AcpUiStateSnapshot = {
 const ACP_UI_STATE_SCOPE = 'acp';
 
 const createDefaultAcpUiState = (): AcpUiStateSnapshot => ({
-    running: false,
-    aiProcessing: false,
-    acpStatus: null,
-    thought: { subject: '', description: '' },
-    runTrace: null,
-    runtimePlanEntries: [],
-    tokenUsage: null,
-    contextLimit: 0,
-  });
+  running: false,
+  aiProcessing: false,
+  acpStatus: null,
+  thought: { subject: '', description: '' },
+  runTrace: null,
+  runtimePlanEntries: [],
+  tokenUsage: null,
+  contextLimit: 0,
+});
 
 const buildRunTaskText = (input: string, files: string[] = []): string => {
   const normalizedInput = input.trim();
@@ -552,7 +552,17 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
       tokenUsage,
       contextLimit,
     });
-  }, [acpStatus, aiProcessing, contextLimit, conversation_id, runTrace, running, runtimePlanEntries, thought, tokenUsage]);
+  }, [
+    acpStatus,
+    aiProcessing,
+    contextLimit,
+    conversation_id,
+    runTrace,
+    running,
+    runtimePlanEntries,
+    thought,
+    tokenUsage,
+  ]);
 
   useEffect(() => {
     hasContentInTurnRef.current = false;

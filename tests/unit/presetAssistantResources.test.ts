@@ -10,16 +10,26 @@ import {
   type PresetAssistantResourceDeps,
 } from '../../src/renderer/utils/model/presetAssistantResources';
 import {
-  ENGINEERING_DEFAULT_HOOKS,
-  ENGINEERING_WORKBENCH_SKILLS,
-} from '../../src/common/config/presets/assistantPresets';
+  getBundledAgentPackageDefaultEnabledHookNames,
+  getBundledAgentPackageDefaultEnabledSkillNames,
+} from '../../src/common/config/presets/bundledAgentPackageRegistry';
+
+const DESIGN_DIRECTOR_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-design-director')!;
+const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-startup-strategist')!;
+const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
+const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
+const PM_WORKBENCH_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-pm-workbench')!;
+const ENGINEERING_WORKBENCH_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-superpowers')!;
+const ENGINEERING_DEFAULT_HOOKS = getBundledAgentPackageDefaultEnabledHookNames('builtin-superpowers')!;
 
 function createDeps(overrides: Partial<PresetAssistantResourceDeps> = {}): PresetAssistantResourceDeps {
   return {
     readAssistantRule: vi.fn(async () => ''),
     readAssistantSkill: vi.fn(async () => ''),
-    readBuiltinRule: vi.fn(async () => ''),
-    readBuiltinSkill: vi.fn(async () => ''),
+    readBundledAgentPackageContent: vi.fn(async () => ({
+      success: true,
+      data: { agentsDocument: null },
+    })),
     getEnabledSkills: vi.fn(async () => undefined),
     getEnabledHooks: vi.fn(async () => undefined),
     warn: vi.fn(),
@@ -80,8 +90,10 @@ describe('loadPresetAssistantResources', () => {
       readAssistantSkill: vi.fn(async () => {
         throw new Error('missing user skill');
       }),
-      readBuiltinRule: vi.fn(async () => 'builtin rules'),
-      readBuiltinSkill: vi.fn(async () => 'builtin skills'),
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
       getEnabledSkills: vi.fn(async () => ['verification-before-completion']),
       getEnabledHooks: vi.fn(async () => ['before_user_prompt']),
     });
@@ -101,15 +113,16 @@ describe('loadPresetAssistantResources', () => {
       enabledSkills: ['verification-before-completion'],
       enabledHooks: ['before_user_prompt'],
     });
-    expect(deps.readBuiltinRule).toHaveBeenCalledOnce();
-    expect(deps.readBuiltinSkill).not.toHaveBeenCalled();
+    expect(deps.readBundledAgentPackageContent).toHaveBeenCalledOnce();
     expect(deps.warn).toHaveBeenCalledTimes(2);
   });
 
   it('falls back to builtin default skills and hooks when stored config is missing', async () => {
     const deps = createDeps({
-      readBuiltinRule: vi.fn(async () => 'builtin rules'),
-      readBuiltinSkill: vi.fn(async () => 'builtin skills'),
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
       getEnabledSkills: vi.fn(async () => undefined),
       getEnabledHooks: vi.fn(async () => undefined),
     });
@@ -128,6 +141,141 @@ describe('loadPresetAssistantResources', () => {
       skills: '',
       enabledSkills: [...ENGINEERING_WORKBENCH_SKILLS],
       enabledHooks: [...ENGINEERING_DEFAULT_HOOKS],
+    });
+  });
+
+  it('falls back to builtin PM preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-pm-workbench',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...PM_WORKBENCH_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin startup preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-startup-strategist',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...STARTUP_STRATEGIST_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin design preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-design-director',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...DESIGN_DIRECTOR_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin office preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-office-analyst',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...OFFICE_ANALYST_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin finance preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-finance-analyst',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...FINANCE_ANALYST_DEFAULT_SKILLS],
+      enabledHooks: undefined,
     });
   });
 });

@@ -83,6 +83,17 @@ vi.mock('../../src/renderer/utils/model/agentModes', () => ({
   supportsModeSwitch: () => true,
 }));
 
+vi.mock('../../src/renderer/utils/model/availableAgents', async () => {
+  const actual = await vi.importActual<typeof import('../../src/renderer/utils/model/availableAgents')>(
+    '../../src/renderer/utils/model/availableAgents'
+  );
+
+  return {
+    ...actual,
+    filterAvailableAgentsForUi: (availableAgents: AvailableAgent[]) => availableAgents,
+  };
+});
+
 import { useGuidAgentSelection } from '../../src/renderer/pages/guid/hooks/useGuidAgentSelection';
 
 const PRESET_AGENT_ID = 'builtin-superpowers';
@@ -276,27 +287,91 @@ describe('useGuidAgentSelection', () => {
 
   it('restores runtime and assistant independently from persisted state', async () => {
     setupMocks({
-      availableAgents: [...AVAILABLE_AGENTS, ...OPENCLAW_AGENTS],
-      lastSelectedAgent: 'openclaw-gateway:reviewer',
+      lastSelectedAgent: 'codex',
       lastSelectedAssistant: `custom:${PRESET_AGENT_ID}`,
     });
 
     const { result } = renderHook(() => useGuidAgentSelection(hookOptions));
 
     await waitFor(() => {
-      expect(result.current.selectedAgentKey).toBe('openclaw-gateway:reviewer');
+      expect(result.current.selectedAgentKey).toBe('codex');
     });
 
     expect(result.current.selectedAssistantKey).toBe(`custom:${PRESET_AGENT_ID}`);
     expect(result.current.selectedAgentInfo).toMatchObject({
-      backend: 'openclaw-gateway',
-      openclawAgentId: 'reviewer',
-      workspace: '/Users/test/.openclaw/workspace-reviewer',
+      backend: 'codex',
+      name: 'Codex',
     });
-    expect(result.current.findAgentByKey('openclaw-gateway:main')).toMatchObject({
-      name: 'OpenClaw',
-      workspace: '/Users/test/.openclaw/workspace',
+  });
+
+  it('prefers location-state runtime and assistant over persisted guid selection', async () => {
+    setupMocks({
+      lastSelectedAgent: 'claude',
+      lastSelectedAssistant: null,
     });
+
+    const { result } = renderHook(() =>
+      useGuidAgentSelection({
+        ...hookOptions,
+        locationState: {
+          workspace: '/workspace/project-a',
+          preferredAgentKey: 'codex',
+          preferredAssistantKey: `custom:${PRESET_AGENT_ID}`,
+        },
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.selectedAgentKey).toBe('codex');
+    });
+
+    expect(result.current.selectedAssistantKey).toBe(`custom:${PRESET_AGENT_ID}`);
+    expect(result.current.selectedAgent).toBe('codex');
+  });
+
+  it('applies location-state mode and model before backend defaults', async () => {
+    setupMocks({
+      acpConfig: {
+        codex: {
+          preferredMode: 'default',
+          preferredModelId: 'codex-mini',
+        },
+      },
+      cachedModels: {
+        codex: {
+          source: 'models',
+          currentModelId: 'codex-mini',
+          currentModelLabel: 'Codex Mini',
+          availableModels: [
+            { id: 'codex-mini', label: 'Codex Mini' },
+            { id: 'codex-latest', label: 'Codex Latest' },
+          ],
+          canSwitch: true,
+        },
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useGuidAgentSelection({
+        ...hookOptions,
+        locationState: {
+          workspace: '/workspace/project-a',
+          preferredAgentKey: 'codex',
+          preferredMode: 'yolo',
+          preferredAcpModelId: 'codex-latest',
+        },
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.selectedAgentKey).toBe('codex');
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedMode).toBe('yolo');
+    });
+
+    expect(result.current.selectedAcpModel).toBe('codex-latest');
   });
 
   it('saves mode preference under the runtime backend even when an assistant is selected', async () => {

@@ -72,16 +72,14 @@ vi.mock('@/renderer/hooks/agent/usePresetAssistantInfo', () => ({
   }),
 }));
 
-vi.mock('@/renderer/pages/schedule', () => ({
-  ScheduleJobManager: ({ conversation }: { conversation: TChatConversation }) => (
-    <div data-testid='schedule-job-manager'>{conversation.id}</div>
-  ),
-}));
-
 vi.mock('@/renderer/pages/schedule/components/ProjectAutomationModal', () => ({
   __esModule: true,
   default: ({ visible, conversation }: { visible: boolean; conversation: TChatConversation; onClose: () => void }) =>
-    visible ? <div data-testid='project-automation-modal'>{conversation.id}</div> : null,
+    visible ? (
+      <div data-testid='project-automation-modal'>
+        <div>{conversation.id}</div>
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/renderer/pages/conversation/components/ChatLayout', () => ({
@@ -297,6 +295,57 @@ describe('ChatConversation', () => {
     );
   });
 
+  it('falls back to conversation.model.useModel for imported acp sessions without extra.currentModelId', () => {
+    const conversation = {
+      ...createConversation('acp', 'acp-import-1'),
+      extra: {
+        workspace: '/tmp/acp-import-1',
+        backend: 'claude',
+      },
+      model: {
+        id: 'provider-1',
+        name: 'Provider One',
+        platform: 'anthropic',
+        useModel: 'claude-sonnet-4-6',
+      },
+    } as TChatConversation;
+
+    render(<ChatConversation conversation={conversation} />);
+
+    expect(acpModelSelectorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 'acp-import-1',
+        backend: 'claude',
+        initialModelId: 'claude-sonnet-4-6',
+      })
+    );
+  });
+
+  it('falls back to conversation.model.useModel for legacy codex sessions without extra.codexModel', () => {
+    const conversation = {
+      ...createConversation('codex', 'codex-import-1'),
+      extra: {
+        workspace: '/tmp/codex-import-1',
+      },
+      model: {
+        id: 'provider-1',
+        name: 'Provider One',
+        platform: 'codex',
+        useModel: 'gpt-5.4',
+      },
+    } as Extract<TChatConversation, { type: 'codex' }>;
+
+    render(<ChatConversation conversation={conversation} />);
+
+    expect(acpModelSelectorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 'codex-import-1',
+        backend: 'codex',
+        initialModelId: 'gpt-5.4',
+      })
+    );
+  });
+
   it('does not render the browser context header button when the conversation has no bound browser context', () => {
     render(<ChatConversation conversation={createConversation('acp', 'acp-no-browser')} />);
 
@@ -361,14 +410,13 @@ describe('ChatConversation', () => {
     });
   });
 
-  it('opens the session hooks drawer entry for workspace-backed conversations', () => {
+  it('does not render standalone hooks or schedule header entries anymore', () => {
     const conversation = createConversation('acp', 'acp-hooks-1');
 
     render(<ChatConversation conversation={conversation} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.sessionHooksOpen' }));
-
-    expect(emitterEmitMock).toHaveBeenCalledWith('conversation.session-hooks.open', 'acp-hooks-1');
+    expect(screen.queryByRole('button', { name: 'conversation.workspace.sessionHooksOpen' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('schedule-job-manager')).not.toBeInTheDocument();
   });
 
   it('renders the project automation entry for workspace-backed conversations', () => {
@@ -389,5 +437,19 @@ describe('ChatConversation', () => {
     await waitFor(() => {
       expect(screen.getByTestId('project-automation-modal')).toHaveTextContent('acp-automation-open');
     });
+  });
+
+  it('opens the unified automation modal without delegating to a separate hooks drawer event', async () => {
+    const conversation = createConversation('acp', 'acp-automation-hooks');
+
+    render(<ChatConversation conversation={conversation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.automation.action' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-automation-modal')).toBeInTheDocument();
+    });
+
+    expect(emitterEmitMock).not.toHaveBeenCalledWith('conversation.session-hooks.open', 'acp-automation-hooks');
   });
 });

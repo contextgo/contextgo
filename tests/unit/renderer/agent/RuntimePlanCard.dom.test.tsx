@@ -32,14 +32,25 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@arco-design/web-react', () => ({
-  Button: ({ children, onClick, icon, ...props }: { children?: React.ReactNode; onClick?: () => void; icon?: React.ReactNode }) => (
+  Button: ({
+    children,
+    onClick,
+    icon,
+    ...props
+  }: {
+    children?: React.ReactNode;
+    onClick?: () => void;
+    icon?: React.ReactNode;
+  }) => (
     <button type='button' onClick={onClick} {...props}>
       {icon}
       {children}
     </button>
   ),
   Progress: ({ percent }: { percent: number }) => <div>{`progress:${percent}`}</div>,
-  Tag: ({ children, color }: { children: React.ReactNode; color?: string }) => <span data-color={color}>{children}</span>,
+  Tag: ({ children, color }: { children: React.ReactNode; color?: string }) => (
+    <span data-color={color}>{children}</span>
+  ),
 }));
 
 vi.mock('@icon-park/react', () => ({

@@ -49,15 +49,15 @@ pixels.
 
 在统一基底之上，根据灵魂填充以下变量：
 
-| 变量 | 说明 | 示例 |
-|------|------|------|
-| `CHARACTER_NAME` | 街机横幅上显示的名字 | "ADAM"、"DEWEY"、"RIFF" |
-| `SHELL_COLOR` | 龙虾壳的主色调（在统一色盘内变化） | "deep crimson"、"dusty teal"、"warm amber" |
-| `SIGNATURE_PROP` | 标志性道具 | "cracked sunglasses"、"reading glasses on a chain" |
-| `EXPRESSION` | 表情/姿态 | "stoic but kind-eyed"、"nervously focused" |
-| `UNIQUE_DETAIL` | 独特细节（纹路/装饰/伤痕等） | "constellation patterns etched on claws"、"bandaged left claw" |
+| 变量                | 说明                                     | 示例                                                                   |
+| ------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+| `CHARACTER_NAME`    | 街机横幅上显示的名字                     | "ADAM"、"DEWEY"、"RIFF"                                                |
+| `SHELL_COLOR`       | 龙虾壳的主色调（在统一色盘内变化）       | "deep crimson"、"dusty teal"、"warm amber"                             |
+| `SIGNATURE_PROP`    | 标志性道具                               | "cracked sunglasses"、"reading glasses on a chain"                     |
+| `EXPRESSION`        | 表情/姿态                                | "stoic but kind-eyed"、"nervously focused"                             |
+| `UNIQUE_DETAIL`     | 独特细节（纹路/装饰/伤痕等）             | "constellation patterns etched on claws"、"bandaged left claw"         |
 | `BACKGROUND_ACCENT` | 背景的个性化元素（在统一宇宙背景上叠加） | "musical notes floating as nebula dust"、"ancient book pages drifting" |
-| `ENERGY_BAR_LABEL` | 街机 UI 能量条的标签（个性化小彩蛋） | "CREATION POWER"、"CALM LEVEL"、"ROCK METER" |
+| `ENERGY_BAR_LABEL`  | 街机 UI 能量条的标签（个性化小彩蛋）     | "CREATION POWER"、"CALM LEVEL"、"ROCK METER"                           |
 
 ## 提示词组装
 
@@ -95,6 +95,7 @@ The key silhouette recognition points at small size are:
 
 ```markdown
 **头像提示词**（可复制到以下平台手动生成）：
+
 - Google Gemini：直接粘贴
 - ChatGPT（DALL-E）：直接粘贴
 - Midjourney：粘贴后加 `--ar 1:1 --style raw`
@@ -110,6 +111,7 @@ The key silhouette recognition points at small size are:
 ## 头像
 
 **个性化变量**：
+
 - 壳色：[SHELL_COLOR]
 - 道具：[SIGNATURE_PROP]
 - 表情：[EXPRESSION]

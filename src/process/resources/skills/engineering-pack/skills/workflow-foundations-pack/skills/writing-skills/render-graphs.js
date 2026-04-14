@@ -54,7 +54,10 @@ function combineGraphs(blocks, skillName) {
     // Wrap each subgraph in a cluster for visual grouping
     return `  subgraph cluster_${i} {
     label="${block.name}";
-    ${body.split('\n').map(line => '  ' + line).join('\n')}
+    ${body
+      .split('\n')
+      .map((line) => '  ' + line)
+      .join('\n')}
   }`;
   });
 
@@ -72,7 +75,7 @@ function renderToSvg(dotContent) {
     return execSync('dot -Tsvg', {
       input: dotContent,
       encoding: 'utf-8',
-      maxBuffer: 10 * 1024 * 1024
+      maxBuffer: 10 * 1024 * 1024,
     });
   } catch (err) {
     console.error('Error running dot:', err.message);
@@ -84,7 +87,7 @@ function renderToSvg(dotContent) {
 function main() {
   const args = process.argv.slice(2);
   const combine = args.includes('--combine');
-  const skillDirArg = args.find(a => !a.startsWith('--'));
+  const skillDirArg = args.find((a) => !a.startsWith('--'));
 
   if (!skillDirArg) {
     console.error('Usage: render-graphs.js <skill-directory> [--combine]');

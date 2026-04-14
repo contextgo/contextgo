@@ -195,7 +195,14 @@ const CloudSyncSection: React.FC = () => {
           <Space wrap size={8}>
             <Button
               type='primary'
-              icon={<img src={InfermeshLogo} alt='' aria-hidden='true' className='h-14px w-14px rounded-4px object-contain' />}
+              icon={
+                <img
+                  src={InfermeshLogo}
+                  alt=''
+                  aria-hidden='true'
+                  className='h-14px w-14px rounded-4px object-contain'
+                />
+              }
               onClick={() => void handleOpenInfermesh()}
             >
               {t('settings.cloud.openInfermesh')}
@@ -226,7 +233,14 @@ const CloudSyncSection: React.FC = () => {
             ))}
             <Button
               type='secondary'
-              icon={<img src={InfermeshLogo} alt='' aria-hidden='true' className='h-14px w-14px rounded-4px object-contain' />}
+              icon={
+                <img
+                  src={InfermeshLogo}
+                  alt=''
+                  aria-hidden='true'
+                  className='h-14px w-14px rounded-4px object-contain'
+                />
+              }
               onClick={() => void handleOpenInfermesh()}
             >
               {t('settings.cloud.openInfermesh')}

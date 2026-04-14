@@ -19,27 +19,29 @@ Use this only if you still invoke `/orchestrate`. The maintained orchestration g
 ## Delegation
 
 Apply the orchestration skills instead of maintaining a second workflow spec here.
+
 - Start with `dmux-workflows` for split/parallel execution.
 - Pull in `autonomous-agent-harness` when the user is really asking for persistent loops, governance, or operator-layer behavior.
 - Keep handoffs structured, but let the skills define the maintained sequencing rules.
-Security Reviewer: [summary]
+  Security Reviewer: [summary]
 
-FILES CHANGED
--------------
+## FILES CHANGED
+
 [List all files modified]
 
-TEST RESULTS
-------------
+## TEST RESULTS
+
 [Test pass/fail summary]
 
-SECURITY STATUS
----------------
+## SECURITY STATUS
+
 [Security findings]
 
-RECOMMENDATION
---------------
+## RECOMMENDATION
+
 [SHIP / NEEDS WORK / BLOCKED]
-```
+
+````
 
 ## Parallel Execution
 
@@ -54,7 +56,7 @@ Run simultaneously:
 
 ### Merge Results
 Combine outputs into single report
-```
+````
 
 For external tmux-pane workers with separate git worktrees, use `node scripts/orchestrate-worktrees.js plan.json --execute`. The built-in orchestration pattern stays in-process; the helper is for long-running or cross-harness sessions.
 
@@ -68,9 +70,7 @@ When workers need to see dirty or untracked local files from the main checkout, 
     "scripts/lib/tmux-worktree-orchestrator.js",
     ".claude/plan/workflow-e2e-test.json"
   ],
-  "workers": [
-    { "name": "docs", "task": "Update orchestration docs." }
-  ]
+  "workers": [{ "name": "docs", "task": "Update orchestration docs." }]
 }
 ```
 
@@ -87,23 +87,27 @@ The snapshot includes session activity, tmux pane metadata, worker states, objec
 When the workflow spans multiple sessions, worktrees, or tmux panes, append a control-plane block to the final handoff:
 
 ```markdown
-CONTROL PLANE
--------------
+## CONTROL PLANE
+
 Sessions:
+
 - active session ID or alias
 - branch + worktree path for each active worker
 - tmux pane or detached session name when applicable
 
 Diffs:
+
 - git status summary
 - git diff --stat for touched files
 - merge/conflict risk notes
 
 Approvals:
+
 - pending user approvals
 - blocked steps awaiting confirmation
 
 Telemetry:
+
 - last activity timestamp or idle signal
 - estimated token or cost drift
 - policy events raised by hooks or reviewers
@@ -114,6 +118,7 @@ This keeps planner, implementer, reviewer, and loop workers legible from the ope
 ## Arguments
 
 $ARGUMENTS:
+
 - `feature <description>` - Full feature workflow
 - `bugfix <description>` - Bug fix workflow
 - `refactor <description>` - Refactoring workflow

@@ -1,4 +1,6 @@
 import { ipcBridge } from '@/common';
+import { ContextGoModal } from '@/renderer/components/base';
+import MarkdownView from '@/renderer/components/Markdown';
 import { SettingsSubModal } from '@/renderer/components/settings';
 import type {
   SkillInfo,
@@ -10,7 +12,7 @@ import type {
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import { Button, Message, Typography, Input, Dropdown, Menu } from '@arco-design/web-react';
 import { Delete, FolderOpen, Info, Search, Plus, Refresh } from '@icon-park/react';
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import SettingsPageWrapper from './components/SettingsPageWrapper';
 
@@ -37,6 +39,20 @@ const getAvatarColorClass = (name: string) => {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   return colors[Math.abs(hash) % colors.length];
+};
+
+const resolveSkillDisplayName = (skill: SkillInfo) => {
+  return skill.openAIConfig?.interface?.displayName?.trim() || skill.name;
+};
+
+const resolveSkillDescription = (skill: SkillInfo) => {
+  return skill.openAIConfig?.interface?.shortDescription?.trim() || skill.description?.trim() || skill.name;
+};
+
+const stripSkillFrontMatter = (content: string) => {
+  const match = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/);
+  const markdownBody = match ? content.slice(match[0].length) : content;
+  return markdownBody.trim();
 };
 
 const SkillsHubSettings: React.FC = () => {
@@ -68,6 +84,9 @@ const SkillsHubSettings: React.FC = () => {
   const [customPathValue, setCustomPathValue] = useState('');
   const [deleteSkillName, setDeleteSkillName] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [previewingSkill, setPreviewingSkill] = useState<SkillInfo | null>(null);
+  const [skillPreviewContent, setSkillPreviewContent] = useState('');
+  const [skillPreviewLoading, setSkillPreviewLoading] = useState(false);
 
   const visibleSkills = useMemo(
     () => availableSkills.filter((skill) => !skill.hiddenFromSkillsLibrary),
@@ -77,10 +96,15 @@ const SkillsHubSettings: React.FC = () => {
   const filteredSkills = useMemo(() => {
     if (!searchQuery.trim()) return visibleSkills;
     const lowerQuery = searchQuery.toLowerCase();
-    return visibleSkills.filter(
-      (s) =>
-        s.name.toLowerCase().includes(lowerQuery) || (s.description && s.description.toLowerCase().includes(lowerQuery))
-    );
+    return visibleSkills.filter((skill) => {
+      const displayName = resolveSkillDisplayName(skill).toLowerCase();
+      const description = resolveSkillDescription(skill).toLowerCase();
+      return (
+        displayName.includes(lowerQuery) ||
+        description.includes(lowerQuery) ||
+        skill.name.toLowerCase().includes(lowerQuery)
+      );
+    });
   }, [visibleSkills, searchQuery]);
 
   const renderSkillDependencyTags = useCallback(
@@ -145,35 +169,87 @@ const SkillsHubSettings: React.FC = () => {
     );
   }, []);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const skills = await ipcBridge.fs.listAvailableSkills.invoke({});
-      setAvailableSkills(skills);
+  const previewSkillBody = useMemo(() => stripSkillFrontMatter(skillPreviewContent), [skillPreviewContent]);
 
-      const external = await ipcBridge.fs.detectAndCountExternalSkills.invoke();
-      if (external.success && external.data) {
-        setExternalSources(external.data);
-        if (external.data.length > 0 && !activeSourceTab) {
-          setActiveSourceTab(external.data[0].source);
-        }
+  const handleCloseSkillPreview = useCallback(() => {
+    if (skillPreviewLoading) {
+      return;
+    }
+
+    setPreviewingSkill(null);
+    setSkillPreviewContent('');
+  }, [skillPreviewLoading]);
+
+  const handleOpenSkillPreview = useCallback(
+    async (skill: SkillInfo) => {
+      if (!skill.location) {
+        return;
       }
 
-      const paths = await ipcBridge.fs.getSkillPaths.invoke();
+      setPreviewingSkill(skill);
+      setSkillPreviewContent('');
+      setSkillPreviewLoading(true);
+
+      try {
+        const result = await ipcBridge.fs.readSkillContent.invoke({ skillPath: skill.location });
+        if (!result.success || !result.data?.content) {
+          setPreviewingSkill(null);
+          Message.error(
+            result.msg || t('settings.assistantSkillPreviewFailed', { defaultValue: 'Failed to load skill content.' })
+          );
+          return;
+        }
+
+        setSkillPreviewContent(result.data.content);
+      } catch (error) {
+        console.error('Failed to preview skill content:', error);
+        setPreviewingSkill(null);
+        Message.error(t('settings.assistantSkillPreviewFailed', { defaultValue: 'Failed to load skill content.' }));
+      } finally {
+        setSkillPreviewLoading(false);
+      }
+    },
+    [t]
+  );
+
+  const fetchData = useEffectEvent(async () => {
+    setLoading(true);
+    try {
+      const [skills, external, paths] = await Promise.all([
+        ipcBridge.fs.listAvailableSkills.invoke({}),
+        ipcBridge.fs.detectAndCountExternalSkills.invoke(),
+        ipcBridge.fs.getSkillPaths.invoke(),
+      ]);
+
+      setAvailableSkills(skills);
       setSkillPaths(paths);
+
+      if (external.success && external.data) {
+        setExternalSources(external.data);
+        setActiveSourceTab((current) => {
+          if (external.data.length === 0) {
+            return '';
+          }
+
+          return external.data.some((source) => source.source === current) ? current : external.data[0].source;
+        });
+      } else {
+        setExternalSources([]);
+        setActiveSourceTab('');
+      }
     } catch (error) {
       console.error('Failed to fetch skills:', error);
       Message.error(t('settings.skillsHub.fetchError', { defaultValue: 'Failed to fetch skills' }));
     } finally {
       setLoading(false);
     }
-  }, [t, activeSourceTab]);
+  });
 
   useEffect(() => {
     void fetchData();
-  }, [fetchData]);
+  }, []);
 
-  const loadSkillMarket = useCallback(
+  const loadSkillMarket = useEffectEvent(
     async ({
       append = false,
       forceRefresh = false,
@@ -242,8 +318,7 @@ const SkillsHubSettings: React.FC = () => {
         setMarketLoadingMore(false);
         setMarketRefreshing(false);
       }
-    },
-    [marketIndustryId, marketQuery, marketView, t]
+    }
   );
 
   useEffect(() => {
@@ -254,7 +329,7 @@ const SkillsHubSettings: React.FC = () => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [marketIndustryId, marketQuery, marketView, loadSkillMarket]);
+  }, [marketIndustryId, marketQuery, marketView]);
 
   const handleImport = async (skillPath: string) => {
     try {
@@ -439,9 +514,16 @@ const SkillsHubSettings: React.FC = () => {
       const external = await ipcBridge.fs.detectAndCountExternalSkills.invoke();
       if (external.success && external.data) {
         setExternalSources(external.data);
-        if (external.data.length > 0 && !external.data.find((s) => s.source === activeSourceTab)) {
-          setActiveSourceTab(external.data[0].source);
-        }
+        setActiveSourceTab((current) => {
+          if (external.data.length === 0) {
+            return '';
+          }
+
+          return external.data.some((source) => source.source === current) ? current : external.data[0].source;
+        });
+      } else {
+        setExternalSources([]);
+        setActiveSourceTab('');
       }
       Message.success(t('common.refreshSuccess', { defaultValue: 'Refreshed' }));
     } catch (error) {
@@ -449,7 +531,7 @@ const SkillsHubSettings: React.FC = () => {
     } finally {
       setRefreshing(false);
     }
-  }, [t, activeSourceTab]);
+  }, [t]);
 
   const handleAddCustomPath = useCallback(async () => {
     if (!customPathName.trim() || !customPathValue.trim()) return;
@@ -1056,7 +1138,12 @@ const SkillsHubSettings: React.FC = () => {
 
                       <div className='flex-1 min-w-0 flex flex-col justify-center gap-6px'>
                         <div className='flex items-center gap-10px flex-wrap'>
-                          <h3 className='text-14px font-semibold text-t-primary/90 truncate m-0'>{skill.name}</h3>
+                          <h3 className='text-14px font-semibold text-t-primary/90 truncate m-0'>
+                            {resolveSkillDisplayName(skill)}
+                          </h3>
+                          {resolveSkillDisplayName(skill) !== skill.name ? (
+                            <span className='text-12px text-t-tertiary'>{skill.name}</span>
+                          ) : null}
                           {skill.isCustom ? (
                             <span className='bg-[rgba(var(--orange-6),0.08)] text-orange-6 border border-[rgba(var(--orange-6),0.2)] text-11px px-6px py-1px rd-4px font-medium'>
                               {t('settings.skillsHub.custom', { defaultValue: 'Custom' })}
@@ -1067,19 +1154,22 @@ const SkillsHubSettings: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        {skill.description && (
+                        {resolveSkillDescription(skill) ? (
                           <p
                             className='text-13px text-t-secondary leading-relaxed line-clamp-2 m-0'
-                            title={skill.description}
+                            title={resolveSkillDescription(skill)}
                           >
-                            {skill.description}
+                            {resolveSkillDescription(skill)}
                           </p>
-                        )}
+                        ) : null}
                         {renderSkillDependencyTags(skill)}
                         {renderSkillCompatibilityNotes(skill)}
                       </div>
 
                       <div className='shrink-0 sm:self-center flex items-center justify-end gap-6px mt-12px sm:mt-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity pl-4px'>
+                        <Button size='small' type='text' onClick={() => void handleOpenSkillPreview(skill)}>
+                          {t('settings.assistantSkillPreview', { defaultValue: 'Preview' })}
+                        </Button>
                         {externalSources.length > 0 && (
                           <Dropdown
                             trigger='click'
@@ -1185,6 +1275,80 @@ const SkillsHubSettings: React.FC = () => {
           </div>
         </div>
       </SettingsPageWrapper>
+
+      <ContextGoModal
+        visible={previewingSkill !== null}
+        onCancel={handleCloseSkillPreview}
+        header={{
+          title: t('settings.assistantSkillPreviewTitle', { defaultValue: 'Skill Preview' }),
+          showClose: true,
+          className: 'px-24px pt-20px',
+        }}
+        footer={{
+          className: 'px-24px pb-20px',
+          render: () => (
+            <div className='flex justify-end gap-10px pt-4px'>
+              <Button onClick={handleCloseSkillPreview} className='min-w-88px px-18px' disabled={skillPreviewLoading}>
+                {t('common.close', { defaultValue: 'Close' })}
+              </Button>
+            </div>
+          ),
+        }}
+        style={{ width: 'min(760px, calc(100vw - 32px))' }}
+        contentStyle={{ padding: '12px 24px 24px' }}
+      >
+        {skillPreviewLoading ? (
+          <div className='py-24px text-center text-12px text-t-secondary'>
+            {t('common.loading', { defaultValue: 'Please wait...' })}
+          </div>
+        ) : (
+          <div className='space-y-12px'>
+            {previewingSkill ? (
+              <div className='rounded-16px border border-border-2 bg-fill-1 p-16px'>
+                <div className='flex items-start justify-between gap-12px'>
+                  <div className='min-w-0 flex-1'>
+                    <div className='break-all text-16px font-600 text-t-primary'>
+                      {resolveSkillDisplayName(previewingSkill)}
+                    </div>
+                    {resolveSkillDescription(previewingSkill) ? (
+                      <div className='mt-6px text-13px leading-relaxed text-t-secondary'>
+                        {resolveSkillDescription(previewingSkill)}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className='flex flex-wrap justify-end gap-6px'>
+                    {previewingSkill.isCustom ? (
+                      <span className='bg-[rgba(var(--orange-6),0.08)] text-orange-6 border border-[rgba(var(--orange-6),0.2)] text-11px px-6px py-1px rd-4px font-medium'>
+                        {t('settings.skillsHub.custom', { defaultValue: 'Custom' })}
+                      </span>
+                    ) : (
+                      <span className='bg-[rgba(var(--blue-6),0.08)] text-blue-6 border border-[rgba(var(--blue-6),0.2)] text-11px px-6px py-1px rd-4px font-medium'>
+                        {t('settings.skillsHub.builtin', { defaultValue: 'Built-in' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className='mt-10px break-all text-11px text-t-tertiary'>{previewingSkill.location}</div>
+              </div>
+            ) : null}
+
+            <div className='rounded-16px border border-border-2 bg-bg-1 p-16px'>
+              <div className='mb-10px text-11px font-600 uppercase tracking-[0.08em] text-t-tertiary'>
+                {t('settings.assistantSkillPreviewBody', { defaultValue: 'Skill Body' })}
+              </div>
+              <div className='max-h-[min(58vh,620px)] overflow-y-auto'>
+                {previewSkillBody ? (
+                  <MarkdownView hiddenCodeCopyButton>{previewSkillBody}</MarkdownView>
+                ) : (
+                  <div className='py-16px text-center text-12px text-t-secondary'>
+                    {t('settings.promptPreviewEmpty', { defaultValue: 'No content to preview' })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </ContextGoModal>
 
       <SettingsSubModal
         visible={showAddPathModal}

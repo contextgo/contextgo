@@ -12,9 +12,9 @@ function isPlanFileTarget(target, cwd) {
   }
 
   const absoluteTarget = path.resolve(cwd, target);
-  return fs.existsSync(absoluteTarget)
-    && fs.statSync(absoluteTarget).isFile()
-    && path.extname(absoluteTarget) === '.json';
+  return (
+    fs.existsSync(absoluteTarget) && fs.statSync(absoluteTarget).isFile() && path.extname(absoluteTarget) === '.json'
+  );
 }
 
 function isSessionNameTarget(target, cwd) {
@@ -30,13 +30,13 @@ function buildSourceTarget(target, cwd) {
   if (isPlanFileTarget(target, cwd)) {
     return {
       type: 'plan',
-      value: path.resolve(cwd, target)
+      value: path.resolve(cwd, target),
     };
   }
 
   return {
     type: 'session',
-    value: target
+    value: target,
   };
 }
 
@@ -73,18 +73,18 @@ function createDmuxTmuxAdapter(options = {}) {
             loadStateStoreImpl: options.loadStateStoreImpl,
             persist: context.persistSnapshots !== false && options.persistSnapshots !== false,
             recordingDir: context.recordingDir || options.recordingDir,
-            stateStore: options.stateStore
+            stateStore: options.stateStore,
           });
 
           return canonicalSnapshot;
-        }
+        },
       };
-    }
+    },
   };
 }
 
 module.exports = {
   createDmuxTmuxAdapter,
   isPlanFileTarget,
-  isSessionNameTarget
+  isSessionNameTarget,
 };

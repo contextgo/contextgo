@@ -13,11 +13,11 @@ import { randomBytes } from 'crypto';
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
-export const CK_HOME          = resolve(homedir(), '.claude', 'ck');
-export const CONTEXTS_DIR     = resolve(CK_HOME, 'contexts');
-export const PROJECTS_FILE    = resolve(CK_HOME, 'projects.json');
-export const CURRENT_SESSION  = resolve(CK_HOME, 'current-session.json');
-export const SKILL_FILE       = resolve(homedir(), '.claude', 'skills', 'ck', 'SKILL.md');
+export const CK_HOME = resolve(homedir(), '.claude', 'ck');
+export const CONTEXTS_DIR = resolve(CK_HOME, 'contexts');
+export const PROJECTS_FILE = resolve(CK_HOME, 'projects.json');
+export const CURRENT_SESSION = resolve(CK_HOME, 'current-session.json');
+export const SKILL_FILE = resolve(homedir(), '.claude', 'skills', 'ck', 'SKILL.md');
 
 // ─── JSON I/O ─────────────────────────────────────────────────────────────────
 
@@ -102,9 +102,9 @@ export function resolveContext(arg, cwd) {
   // Name-based lookup: exact > prefix > substring (case-insensitive)
   const lower = arg.toLowerCase();
   let match =
-    sorted.find(e => e.name.toLowerCase() === lower) ||
-    sorted.find(e => e.name.toLowerCase().startsWith(lower)) ||
-    sorted.find(e => e.name.toLowerCase().includes(lower));
+    sorted.find((e) => e.name.toLowerCase() === lower) ||
+    sorted.find((e) => e.name.toLowerCase().startsWith(lower)) ||
+    sorted.find((e) => e.name.toLowerCase().includes(lower));
 
   if (!match) return null;
   const context = loadContext(match.contextDir);
@@ -210,7 +210,7 @@ export function renderContextMd(ctx) {
   lines.push(ctx.description || '_Not set._');
   lines.push(``);
   lines.push(`## Tech Stack`);
-  lines.push(Array.isArray(ctx.stack) ? ctx.stack.join(', ') : (ctx.stack || '_Not set._'));
+  lines.push(Array.isArray(ctx.stack) ? ctx.stack.join(', ') : ctx.stack || '_Not set._');
   lines.push(``);
   lines.push(`## Current Goal`);
   lines.push(ctx.goal || '_Not set._');
@@ -227,28 +227,26 @@ export function renderContextMd(ctx) {
   lines.push(``);
   lines.push(`## Blockers`);
   if (latest?.blockers?.length) {
-    latest.blockers.forEach(b => lines.push(`- ${b}`));
+    latest.blockers.forEach((b) => lines.push(`- ${b}`));
   } else {
     lines.push(`- None`);
   }
   lines.push(``);
   lines.push(`## Do Not Do`);
   if (ctx.constraints?.length) {
-    ctx.constraints.forEach(c => lines.push(`- ${c}`));
+    ctx.constraints.forEach((c) => lines.push(`- ${c}`));
   } else {
     lines.push(`- None specified`);
   }
   lines.push(``);
 
   // All decisions across sessions
-  const allDecisions = (ctx.sessions || []).flatMap(s =>
-    (s.decisions || []).map(d => ({ ...d, date: s.date }))
-  );
+  const allDecisions = (ctx.sessions || []).flatMap((s) => (s.decisions || []).map((d) => ({ ...d, date: s.date })));
   lines.push(`## Decisions Made`);
   lines.push(`| Decision | Why | Date |`);
   lines.push(`|----------|-----|------|`);
   if (allDecisions.length) {
-    allDecisions.forEach(d => lines.push(`| ${d.what} | ${d.why || ''} | ${d.date || ''} |`));
+    allDecisions.forEach((d) => lines.push(`| ${d.what} | ${d.why || ''} | ${d.date || ''} |`));
   } else {
     lines.push(`| _(none yet)_ | | |`);
   }
@@ -258,7 +256,7 @@ export function renderContextMd(ctx) {
   if (ctx.sessions?.length > 1) {
     lines.push(`## Session History`);
     const reversed = [...ctx.sessions].reverse();
-    reversed.forEach(s => {
+    reversed.forEach((s) => {
       lines.push(`### ${s.date} — ${s.summary || 'Session'}`);
       if (s.gitActivity) lines.push(`_${s.gitActivity}_`);
       if (s.leftOff) lines.push(`**Left off:** ${s.leftOff}`);
@@ -291,14 +289,14 @@ export function renderBriefingBox(ctx, _meta = {}) {
   if (shortSessId) lines.push(`│  Session ID: ${pad(shortSessId, W - 14)}│`);
   lines.push(`├${'─'.repeat(W)}┤`);
   lines.push(row('WHAT IT IS', ctx.description || '—'));
-  lines.push(row('STACK     ', Array.isArray(ctx.stack) ? ctx.stack.join(', ') : (ctx.stack || '—')));
+  lines.push(row('STACK     ', Array.isArray(ctx.stack) ? ctx.stack.join(', ') : ctx.stack || '—'));
   lines.push(row('PATH      ', ctx.path));
   if (ctx.repo) lines.push(row('REPO      ', ctx.repo));
   lines.push(row('GOAL      ', ctx.goal || '—'));
   lines.push(`├${'─'.repeat(W)}┤`);
   lines.push(`│  WHERE I LEFT OFF${' '.repeat(W - 18)}│`);
   const leftOffLines = (latest.leftOff || '—').split('\n').filter(Boolean);
-  leftOffLines.forEach(l => lines.push(`│    • ${pad(l, W - 7)}│`));
+  leftOffLines.forEach((l) => lines.push(`│    • ${pad(l, W - 7)}│`));
   lines.push(`├${'─'.repeat(W)}┤`);
   lines.push(`│  NEXT STEPS${' '.repeat(W - 12)}│`);
   const steps = latest.nextSteps || [];
@@ -320,23 +318,23 @@ export function renderBriefingBox(ctx, _meta = {}) {
 export function renderInfoBlock(ctx) {
   const latest = ctx.sessions?.[ctx.sessions.length - 1] || {};
   const sep = '─'.repeat(44);
-  const lines = [
-    `ck: ${ctx.displayName ?? ctx.name}`,
-    sep,
-  ];
+  const lines = [`ck: ${ctx.displayName ?? ctx.name}`, sep];
   lines.push(`PATH     ${ctx.path}`);
   if (ctx.repo) lines.push(`REPO     ${ctx.repo}`);
   if (latest.id) lines.push(`SESSION  ${latest.id.slice(0, 8)}`);
   lines.push(`GOAL     ${ctx.goal || '—'}`);
   lines.push(sep);
   lines.push(`WHERE I LEFT OFF`);
-  (latest.leftOff || '—').split('\n').filter(Boolean).forEach(l => lines.push(`  • ${l}`));
+  (latest.leftOff || '—')
+    .split('\n')
+    .filter(Boolean)
+    .forEach((l) => lines.push(`  • ${l}`));
   lines.push(`NEXT STEPS`);
   (latest.nextSteps || []).forEach((s, i) => lines.push(`  ${i + 1}. ${s}`));
   if (!latest.nextSteps?.length) lines.push(`  —`);
   lines.push(`BLOCKERS`);
   if (latest.blockers?.length) {
-    latest.blockers.forEach(b => lines.push(`  • ${b}`));
+    latest.blockers.forEach((b) => lines.push(`  • ${b}`));
   } else {
     lines.push(`  • None`);
   }
@@ -367,20 +365,21 @@ export function renderListTable(entries, cwd, _todayStr) {
   });
 
   const cols = {
-    num:     Math.max(1, ...rows.map(r => r.num.length)),
-    name:    Math.max(7, ...rows.map(r => r.name.length)),
-    status:  Math.max(6, ...rows.map(r => r.status.length)),
-    when:    Math.max(9, ...rows.map(r => r.when.length)),
-    sessId:  Math.max(7, ...rows.map(r => r.sessId.length)),
-    summary: Math.max(12, ...rows.map(r => r.summary.length)),
+    num: Math.max(1, ...rows.map((r) => r.num.length)),
+    name: Math.max(7, ...rows.map((r) => r.name.length)),
+    status: Math.max(6, ...rows.map((r) => r.status.length)),
+    when: Math.max(9, ...rows.map((r) => r.when.length)),
+    sessId: Math.max(7, ...rows.map((r) => r.sessId.length)),
+    summary: Math.max(12, ...rows.map((r) => r.summary.length)),
   };
 
   const hr = `+${'-'.repeat(cols.num + 2)}+${'-'.repeat(cols.name + 2)}+${'-'.repeat(cols.status + 2)}+${'-'.repeat(cols.when + 2)}+${'-'.repeat(cols.sessId + 2)}+${'-'.repeat(cols.summary + 2)}+`;
   const cell = (val, width) => ` ${val.padEnd(width)} `;
   const headerRow = `|${cell('#', cols.num)}|${cell('Project', cols.name)}|${cell('Status', cols.status)}|${cell('Last Seen', cols.when)}|${cell('Session', cols.sessId)}|${cell('Last Summary', cols.summary)}|`;
 
-  const dataRows = rows.map(r =>
-    `|${cell(r.num, cols.num)}|${cell(r.name, cols.name)}|${cell(r.status, cols.status)}|${cell(r.when, cols.when)}|${cell(r.sessId, cols.sessId)}|${cell(r.summary, cols.summary)}|`
+  const dataRows = rows.map(
+    (r) =>
+      `|${cell(r.num, cols.num)}|${cell(r.name, cols.name)}|${cell(r.status, cols.status)}|${cell(r.when, cols.when)}|${cell(r.sessId, cols.sessId)}|${cell(r.summary, cols.summary)}|`
   );
 
   return [hr, headerRow, hr, ...dataRows, hr].join('\n');
