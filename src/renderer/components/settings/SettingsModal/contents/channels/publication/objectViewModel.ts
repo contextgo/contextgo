@@ -14,6 +14,7 @@ import type {
   IChannelBinding,
   IChannelPublishObjectActiveSessionPointer,
   IChannelPublishObjectCatalogEntry,
+  IChannelPublishObjectRefreshState,
   PluginType,
 } from '@process/channels/types';
 
@@ -29,6 +30,7 @@ export type PublicationObjectViewModel = {
   parentKind?: ChannelObjectParentKind;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  refreshState?: IChannelPublishObjectRefreshState;
   publishObjectCatalogEntryId?: string;
   audiences: IChannelAudienceEntry[];
   bindings: IChannelBinding[];
@@ -48,6 +50,7 @@ type PublicationObjectSeed = {
   parentKind?: ChannelObjectParentKind;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  refreshState?: IChannelPublishObjectRefreshState;
   publishObjectCatalogEntryId?: string;
   activeSessionPointer?: IChannelPublishObjectActiveSessionPointer;
   lastActivity?: number;
@@ -278,6 +281,7 @@ function resolveAudienceSeed(audience: IChannelAudienceEntry, platform: PluginTy
     parentKind: audience.parentObjectKind,
     objectSource: audience.objectSource,
     objectQuality: audience.objectQuality,
+    refreshState: audience.objectRefreshState,
     publishObjectCatalogEntryId: audience.publishObjectCatalogEntryId,
     lastActivity: audience.lastActive,
     audience,
@@ -300,6 +304,7 @@ function resolveSessionSeed(session: IChannelActiveSessionEntry, platform: Plugi
     parentKind: session.parentObjectKind,
     objectSource: session.objectSource,
     objectQuality: session.objectQuality,
+    refreshState: session.objectRefreshState,
     publishObjectCatalogEntryId: session.publishObjectCatalogEntryId,
     lastActivity: session.lastActivity,
     session,
@@ -332,6 +337,7 @@ function resolveBindingSeed(
     parentTitle: catalogEntry?.displayProfile.parentTitle,
     objectSource: catalogEntry?.displayProfile.source,
     objectQuality: catalogEntry?.displayProfile.quality ?? 'fallback',
+    refreshState: catalogEntry?.refreshState,
     publishObjectCatalogEntryId: catalogEntry?.id,
     activeSessionPointer: catalogEntry?.activeSessionPointer,
     binding,
@@ -351,6 +357,7 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
       parentKind: seed.parentKind,
       objectSource: seed.objectSource,
       objectQuality: seed.objectQuality,
+      refreshState: seed.refreshState,
       publishObjectCatalogEntryId: seed.publishObjectCatalogEntryId,
       audiences: seed.audience ? [seed.audience] : [],
       bindings: seed.binding ? [seed.binding] : [],
@@ -397,8 +404,35 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
   if (!existing.objectSource && seed.objectSource) {
     existing.objectSource = seed.objectSource;
   }
-  if (!existing.objectQuality && seed.objectQuality) {
+  if (
+    seed.objectSource &&
+    seed.objectSource !== existing.objectSource &&
+    (getObjectQualityRank(seed.objectQuality) > getObjectQualityRank(existing.objectQuality) ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        getObjectQualityRank(seed.objectQuality) >= getObjectQualityRank(existing.objectQuality)))
+  ) {
+    existing.objectSource = seed.objectSource;
+  }
+  if (
+    seed.objectQuality &&
+    (!existing.objectQuality ||
+      getObjectQualityRank(seed.objectQuality) > getObjectQualityRank(existing.objectQuality) ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        getObjectQualityRank(seed.objectQuality) >= getObjectQualityRank(existing.objectQuality)))
+  ) {
     existing.objectQuality = seed.objectQuality;
+  }
+  if (
+    seed.refreshState &&
+    (!existing.refreshState ||
+      seed.refreshState.updatedAt >= existing.refreshState.updatedAt ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        seed.refreshState.updatedAt >= existing.refreshState.updatedAt))
+  ) {
+    existing.refreshState = seed.refreshState;
   }
   if (!existing.publishObjectCatalogEntryId && seed.publishObjectCatalogEntryId) {
     existing.publishObjectCatalogEntryId = seed.publishObjectCatalogEntryId;
@@ -457,6 +491,7 @@ export function buildPublicationObjects(params: {
       parentTitle: catalogEntry?.displayProfile.parentTitle ?? audience.parentObjectTitle,
       objectSource: catalogEntry?.displayProfile.source ?? audience.objectSource,
       objectQuality: catalogEntry?.displayProfile.quality ?? audience.objectQuality,
+      refreshState: catalogEntry?.refreshState ?? audience.objectRefreshState,
       publishObjectCatalogEntryId: audience.publishObjectCatalogEntryId ?? catalogEntry?.id,
       activeSessionPointer: catalogEntry?.activeSessionPointer,
       binding,

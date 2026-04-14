@@ -365,6 +365,7 @@ export interface IChannelAudienceEntry {
   publishObjectCatalogEntryId?: string;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  objectRefreshState?: IChannelPublishObjectRefreshState;
   title: string;
   subtitle?: string;
   lastActive?: number;
@@ -852,6 +853,7 @@ export type IChannelActiveSessionEntry = {
   publishObjectCatalogEntryId?: string;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  objectRefreshState?: IChannelPublishObjectRefreshState;
   /** Explicit active Project Session pointer for this external session. */
   activeConversationId?: string;
   /** @deprecated Use activeConversationId. */
