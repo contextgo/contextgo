@@ -656,6 +656,9 @@ const PublicationBindingPanel: React.FC = () => {
                     t
                   );
                   const lastActiveLabel = formatOptionalRelativeTime(entry.currentSession?.lastActivity, i18n.language);
+                  const relatedSessions = entry.object.sessions.toSorted(
+                    (left, right) => right.lastActivity - left.lastActivity
+                  );
 
                   return (
                     <div key={entry.key} className={styles.bindingCard}>
@@ -711,6 +714,59 @@ const PublicationBindingPanel: React.FC = () => {
                                   <span className='ml-6px text-t-primary'>{lastActiveLabel}</span>
                                 </div>
                               ) : null}
+                            </div>
+                            <div className='space-y-6px border border-[var(--color-border-2)] rd-12px p-10px bg-[var(--color-fill-1)]/40'>
+                              <div className='space-y-2px'>
+                                <div className='text-12px font-600 text-t-primary'>
+                                  {t('settings.channels.publication.objectSessionsTitle')}
+                                </div>
+                                <div className='text-12px text-t-secondary leading-relaxed'>
+                                  {t('settings.channels.publication.objectSessionsDescription')}
+                                </div>
+                              </div>
+                              {relatedSessions.length > 0 ? (
+                                <div className='space-y-6px'>
+                                  {relatedSessions.map((session) => {
+                                    const sessionLastActiveLabel = formatOptionalRelativeTime(
+                                      session.lastActivity,
+                                      i18n.language
+                                    );
+
+                                    return (
+                                      <div key={session.id} className={styles.bindingConversationRow}>
+                                        <div className={styles.bindingConversationMeta}>
+                                          <div
+                                            className={styles.bindingConversationLabel}
+                                            title={session.conversationId ?? session.id}
+                                          >
+                                            {session.conversationId ?? session.id}
+                                          </div>
+                                          <div
+                                            className={styles.bindingConversationValue}
+                                            title={session.workspace ?? session.audienceTitle}
+                                          >
+                                            {session.workspace ?? session.audienceTitle}
+                                          </div>
+                                          <div className='text-12px text-t-secondary leading-relaxed'>
+                                            {sessionLastActiveLabel
+                                              ? `${t('settings.channels.publication.sessionLastActiveLabel')}: ${sessionLastActiveLabel}`
+                                              : t('settings.channels.publication.currentSessionActive')}
+                                          </div>
+                                        </div>
+                                        {entry.currentSession?.id === session.id ? (
+                                          <Tag className={styles.metricTag}>
+                                            {t('settings.channels.publication.currentSessionActive')}
+                                          </Tag>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className='text-12px text-t-secondary leading-relaxed'>
+                                  {t('settings.channels.publication.objectSessionsEmpty')}
+                                </div>
+                              )}
                             </div>
                           </div>
                           {primaryBinding ? (
