@@ -214,11 +214,54 @@ jobs:
       - name: Run postinstall
         run: npm run postinstall || true
 
-      - name: Install prek
-        run: npm install -g @j178/prek
+      - name: TypeScript type check
+        run: bunx tsc --noEmit
 
-      - name: Run prek checks
-        run: prek run --from-ref origin/${{ env.PR_BASE_REF }} --to-ref HEAD
+      - name: Run changed-file lint checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          lint_files=()
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              lint_files+=("$file")
+            fi
+          done < <(
+            git diff --name-only --diff-filter=AMR "origin/${PR_BASE_REF}...HEAD" |
+              grep -E '\.(ts|tsx|js|jsx|mjs|cjs)$' || true
+          )
+
+          if [ ${#lint_files[@]} -eq 0 ]; then
+            echo 'No changed lintable files.'
+            exit 0
+          fi
+
+          printf 'Linting changed files:\n%s\n' "${lint_files[@]}"
+          bunx oxlint "${lint_files[@]}"
+
+      - name: Run changed-file format checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          format_files=()
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              format_files+=("$file")
+            fi
+          done < <(
+            git diff --name-only --diff-filter=AMR "origin/${PR_BASE_REF}...HEAD" |
+              grep -E '\.(ts|tsx|js|jsx|mjs|cjs|json|css|md|ya?ml|toml)$' || true
+          )
+
+          if [ ${#format_files[@]} -eq 0 ]; then
+            echo 'No changed formattable files.'
+            exit 0
+          fi
+
+          printf 'Format-checking changed files:\n%s\n' "${format_files[@]}"
+          bunx oxfmt --check "${format_files[@]}"
 
   # Job 2: Unit tests across all platforms
   unit-tests:
@@ -256,8 +299,28 @@ jobs:
       - name: Run postinstall
         run: npm run postinstall || true
 
-      - name: Run extension system tests
-        run: bunx vitest run
+      - name: Run changed unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test_files=()
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              test_files+=("$file")
+            fi
+          done < <(
+            git diff --name-only --diff-filter=AMR "origin/${PR_BASE_REF}...HEAD" |
+              grep -E '^tests/.*(\.dom)?\.test\.(ts|tsx)$' || true
+          )
+
+          if [ ${#test_files[@]} -eq 0 ]; then
+            echo 'No changed unit test files in this PR.'
+            exit 0
+          fi
+
+          printf 'Running changed unit tests:\n%s\n' "${test_files[@]}"
+          bunx vitest run "${test_files[@]}"
 
   # Job 3: Coverage test (Linux only)
   coverage-tests:

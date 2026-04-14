@@ -4,13 +4,45 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WeixinChatRequest } from '@process/channels/plugins/weixin/WeixinMonitor';
 import { toUnifiedIncomingMessage, stripHtml } from '@process/channels/plugins/weixin/WeixinAdapter';
+import { DingTalkPlugin } from '@process/channels/plugins/dingtalk/DingTalkPlugin';
 import {
   buildDingTalkPeer,
+  type DingTalkStreamMessage,
   toUnifiedIncomingMessage as toUnifiedDingTalkMessage,
 } from '@process/channels/plugins/dingtalk/DingTalkAdapter';
+
+vi.mock('dingtalk-stream', () => ({
+  DWClient: vi.fn(() => ({
+    registerCallbackListener: vi.fn(),
+    connect: vi.fn(async () => undefined),
+    disconnect: vi.fn(),
+    socketCallBackResponse: vi.fn(),
+  })),
+  TOPIC_ROBOT: 'TOPIC_ROBOT',
+  TOPIC_CARD: 'TOPIC_CARD',
+  EventAck: {
+    SUCCESS: 'SUCCESS',
+  },
+}));
+
+type DingTalkPluginInternal = DingTalkPlugin & {
+  tokenCache: {
+    accessToken: string;
+    expiresAt: number;
+  } | null;
+  handleRobotMessage: (data: DingTalkStreamMessage, streamMessageId: string) => Promise<void>;
+  httpRequest: (
+    method: string,
+    url: string,
+    body?: Record<string, unknown>,
+    headers?: Record<string, string>
+  ) => Promise<unknown>;
+  apiRequest: (method: string, path: string, token: string, body?: Record<string, unknown>) => Promise<unknown>;
+  resolveGroupOpenConversationId: (chatId: string, fallbackId: string) => Promise<string>;
+};
 
 describe('toUnifiedIncomingMessage', () => {
   const baseRequest: WeixinChatRequest = {
@@ -194,6 +226,37 @@ describe('DingTalkAdapter', () => {
     expect(msg?.content.text).toBe('请帮我总结');
   });
 
+  it('prefers openConversationId for group peers when the official callback payload provides it', () => {
+    const msg = toUnifiedDingTalkMessage({
+      msgId: 'dt-msg-open-1',
+      senderStaffId: 'staff-open-1',
+      senderNick: 'Dora',
+      conversationId: 'chat-legacy-1',
+      openConversationId: 'cid-open-1',
+      conversationType: '2',
+      conversationTitle: 'Ops Review',
+      msgtype: 'text',
+      text: { content: '同步一下状态' },
+      createAt: 1710000002000,
+    });
+
+    expect(msg).not.toBeNull();
+    expect(msg?.chatId).toBe('group:cid-open-1');
+    expect(msg?.peer).toEqual({
+      key: 'group:cid-open-1',
+      platformChatId: 'group:cid-open-1',
+      scope: 'chat',
+      chatType: 'group',
+    });
+    expect(msg?.raw).toEqual(
+      expect.objectContaining({
+        conversationId: 'chat-legacy-1',
+        openConversationId: 'cid-open-1',
+        conversationTitle: 'Ops Review',
+      })
+    );
+  });
+
   it('exposes action callbacks on the same peer identity', () => {
     const peer = buildDingTalkPeer({
       conversationId: 'cid-9',
@@ -223,5 +286,92 @@ describe('DingTalkAdapter', () => {
     });
     expect(msg?.peer).toEqual(peer);
     expect(msg?.content.type).toBe('action');
+  });
+});
+
+describe('DingTalkPlugin', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('upgrades cached group titles to official-pull by querying the DingTalk chat/get API', async () => {
+    const plugin = new DingTalkPlugin();
+    const internal = plugin as unknown as DingTalkPluginInternal;
+    internal.tokenCache = {
+      accessToken: 'token-1',
+      expiresAt: Date.now() + 5 * 60_000,
+    };
+
+    const httpRequestSpy = vi.spyOn(internal, 'httpRequest').mockImplementation(async (method, url) => {
+      if (method === 'GET' && url.includes('/chat/get?')) {
+        return {
+          title: 'Ops Review',
+        };
+      }
+
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    });
+
+    await internal.handleRobotMessage(
+      {
+        msgId: 'dt-plugin-msg-1',
+        senderStaffId: 'staff-1',
+        senderNick: 'Alice',
+        conversationId: 'chat-legacy-1',
+        openConversationId: 'cid-open-1',
+        conversationType: '2',
+        conversationTitle: 'Runtime Title',
+        msgtype: 'text',
+        text: { content: 'hello' },
+        createAt: 1710000003000,
+      },
+      'stream-1'
+    );
+
+    const result = await plugin.getChatDisplayData('group:cid-open-1');
+
+    expect(result).toEqual({
+      name: 'Ops Review',
+      chatType: 'group',
+      source: 'official-pull',
+    });
+    expect(httpRequestSpy).toHaveBeenCalledWith('GET', expect.stringContaining('chatid=chat-legacy-1'));
+
+    const aliasedResult = await plugin.getChatDisplayData('group:chat-legacy-1');
+    expect(aliasedResult).toEqual({
+      name: 'Ops Review',
+      chatType: 'group',
+      source: 'official-pull',
+    });
+    expect(httpRequestSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('converts legacy DingTalk chat ids to openConversationId through the official API before group sends', async () => {
+    const plugin = new DingTalkPlugin();
+    const internal = plugin as unknown as DingTalkPluginInternal;
+    internal.tokenCache = {
+      accessToken: 'token-2',
+      expiresAt: Date.now() + 5 * 60_000,
+    };
+
+    const apiRequestSpy = vi.spyOn(internal, 'apiRequest').mockImplementation(async (_method, path) => {
+      if (path === '/v1.0/im/chat/chat-legacy-2/convertToOpenConversationId') {
+        return {
+          openConversationId: 'cid-open-2',
+        };
+      }
+
+      throw new Error(`Unexpected path: ${path}`);
+    });
+
+    const resolvedId = await internal.resolveGroupOpenConversationId('group:chat-legacy-2', 'chat-legacy-2');
+
+    expect(resolvedId).toBe('cid-open-2');
+    expect(apiRequestSpy).toHaveBeenCalledWith(
+      'POST',
+      '/v1.0/im/chat/chat-legacy-2/convertToOpenConversationId',
+      'token-2',
+      {}
+    );
   });
 });

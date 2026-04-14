@@ -1721,6 +1721,7 @@ export type I18nKey =
   | 'settings.channels.publication.objectPublishedDescription'
   | 'settings.channels.publication.objectPublishedEmpty'
   | 'settings.channels.publication.objectPublishedTitle'
+  | 'settings.channels.publication.objectQualityFallback'
   | 'settings.channels.publication.objectSessionsDescription'
   | 'settings.channels.publication.objectSessionsEmpty'
   | 'settings.channels.publication.objectSessionsTitle'
