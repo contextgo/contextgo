@@ -60,4 +60,34 @@ describe('publication binding view model', () => {
       })
     );
   });
+
+  it('stores structured publish-object metadata when the publish object is known', () => {
+    const nextBinding = buildBindingPayload([], {
+      channelAccountId: 'connector-1',
+      scopeType: 'remote_chat',
+      scopeKey: 'oc_group_1:thread:om_topic_root_1',
+      agentProfileId: 'agent-profile-1',
+      temporary: false,
+      priority: 10,
+      publishObject: {
+        nativeObjectType: 'topic',
+        nativeObjectId: 'om_topic_root_1',
+        parentNativeObjectId: 'oc_group_1',
+        displayName: 'Ops Topic',
+        discoverySource: 'inbound-learned',
+      },
+    });
+
+    expect(nextBinding.metadata).toEqual(
+      expect.objectContaining({
+        publishObject: {
+          nativeObjectType: 'topic',
+          nativeObjectId: 'om_topic_root_1',
+          parentNativeObjectId: 'oc_group_1',
+          displayName: 'Ops Topic',
+          discoverySource: 'inbound-learned',
+        },
+      })
+    );
+  });
 });

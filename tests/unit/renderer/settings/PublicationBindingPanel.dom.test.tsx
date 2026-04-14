@@ -419,6 +419,15 @@ describe('PublicationBindingPanel', () => {
           connectorId: 'connector-2',
           scopeType: 'remote_chat',
           scopeKey: 'slack://ws/team/channel/support',
+          metadata: expect.objectContaining({
+            publishObject: {
+              nativeObjectType: 'channel',
+              nativeObjectId: 'slack://ws/team/channel/support',
+              parentNativeObjectId: undefined,
+              displayName: 'Support room',
+              discoverySource: 'inbound-learned',
+            },
+          }),
         }),
       });
     });

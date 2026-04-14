@@ -240,6 +240,7 @@ export type ChannelBindingTargetType = 'agent_profile' | 'external_session';
 export type ChannelContinuationMode = 'resume' | 'new_thread';
 export type ChannelContinuationConflictPolicy = 'reject' | 'interrupt';
 export type ChannelControlMode = 'desktop_owner' | 'im_owner' | 'im_observer';
+export type ChannelPublishObjectDiscoverySource = 'pulled' | 'inbound-learned' | 'manual';
 
 export interface IChannelControlLease {
   externalSessionId: string;
@@ -272,6 +273,15 @@ export interface IChannelBinding {
   createdAt: number;
   updatedAt: number;
 }
+
+export type IChannelPublishObject = {
+  nativeObjectType: string;
+  nativeObjectId: string;
+  parentNativeObjectId?: string;
+  displayName?: string;
+  discoverySource: ChannelPublishObjectDiscoverySource;
+  metadata?: Record<string, unknown>;
+};
 
 export type ChannelAudienceScope = 'remote_user' | 'remote_chat';
 
@@ -385,6 +395,94 @@ function toRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+function normalizePublishObjectString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function normalizePublishObjectDiscoverySource(value: unknown): ChannelPublishObjectDiscoverySource {
+  return value === 'pulled' || value === 'inbound-learned' || value === 'manual' ? value : 'manual';
+}
+
+function normalizeChannelPublishObject(publishObject: IChannelPublishObject): IChannelPublishObject {
+  const metadata = toRecord(publishObject.metadata);
+
+  return {
+    nativeObjectType: normalizePublishObjectString(publishObject.nativeObjectType) ?? 'chat',
+    nativeObjectId: normalizePublishObjectString(publishObject.nativeObjectId) ?? 'connector-default',
+    parentNativeObjectId: normalizePublishObjectString(publishObject.parentNativeObjectId),
+    displayName: normalizePublishObjectString(publishObject.displayName),
+    discoverySource: normalizePublishObjectDiscoverySource(publishObject.discoverySource),
+    metadata: metadata ?? undefined,
+  };
+}
+
+function inferPublishObjectTypeFromBinding(binding: IChannelBinding, metadata: Record<string, unknown> | null): string {
+  const objectKind = normalizePublishObjectString(metadata?.objectKind);
+  if (objectKind) {
+    return objectKind;
+  }
+
+  if (binding.scopeType === 'connector_default') {
+    return 'connector_default';
+  }
+
+  if (binding.scopeType === 'remote_user') {
+    return 'remote_user';
+  }
+
+  if (binding.scopeKey?.includes(':thread:')) {
+    return 'thread';
+  }
+
+  if (binding.scopeKey?.startsWith('user:')) {
+    return 'dm';
+  }
+
+  if (binding.scopeKey?.startsWith('group:')) {
+    return 'group';
+  }
+
+  return binding.scopeType === 'remote_chat' ? 'chat' : binding.scopeType;
+}
+
+function inferLegacyChannelPublishObject(binding: IChannelBinding): IChannelPublishObject {
+  const metadata = toRecord(binding.metadata);
+  const scopeKey = normalizePublishObjectString(binding.scopeKey);
+  const explicitParentId = normalizePublishObjectString(metadata?.parentObjectKey);
+  const explicitDisplayName = normalizePublishObjectString(metadata?.objectTitle);
+  const threadMarker = ':thread:';
+
+  if (binding.scopeType === 'connector_default' || !scopeKey) {
+    return normalizeChannelPublishObject({
+      nativeObjectType: inferPublishObjectTypeFromBinding(binding, metadata),
+      nativeObjectId: 'connector-default',
+      displayName: explicitDisplayName,
+      discoverySource: 'manual',
+    });
+  }
+
+  if (scopeKey.includes(threadMarker)) {
+    const markerIndex = scopeKey.indexOf(threadMarker);
+    const parentNativeObjectId = explicitParentId ?? (scopeKey.slice(0, markerIndex) || undefined);
+    const nativeObjectId = scopeKey.slice(markerIndex + threadMarker.length) || scopeKey;
+    return normalizeChannelPublishObject({
+      nativeObjectType: inferPublishObjectTypeFromBinding(binding, metadata),
+      nativeObjectId,
+      parentNativeObjectId,
+      displayName: explicitDisplayName,
+      discoverySource: 'manual',
+    });
+  }
+
+  return normalizeChannelPublishObject({
+    nativeObjectType: inferPublishObjectTypeFromBinding(binding, metadata),
+    nativeObjectId: scopeKey,
+    parentNativeObjectId: explicitParentId,
+    displayName: explicitDisplayName,
+    discoverySource: 'manual',
+  });
+}
+
 export function getChannelAccountId(value: { connectorId?: string; channelAccountId?: string }): string | undefined {
   return value.channelAccountId ?? value.connectorId;
 }
@@ -428,6 +526,80 @@ export function getExternalSessionControlState(session: IExternalSession): IExte
 export function getChannelBindingSource(binding: IChannelBinding): string | undefined {
   const metadata = toRecord(binding.metadata);
   return typeof metadata?.source === 'string' && metadata.source ? metadata.source : undefined;
+}
+
+export function getChannelBindingPublishObject(binding: IChannelBinding): IChannelPublishObject {
+  const metadata = toRecord(binding.metadata);
+  const rawPublishObject = toRecord(metadata?.publishObject);
+  const nativeObjectType = normalizePublishObjectString(rawPublishObject?.nativeObjectType);
+  const nativeObjectId = normalizePublishObjectString(rawPublishObject?.nativeObjectId);
+
+  if (nativeObjectType && nativeObjectId) {
+    return normalizeChannelPublishObject({
+      nativeObjectType,
+      nativeObjectId,
+      parentNativeObjectId: normalizePublishObjectString(rawPublishObject?.parentNativeObjectId),
+      displayName: normalizePublishObjectString(rawPublishObject?.displayName),
+      discoverySource: normalizePublishObjectDiscoverySource(rawPublishObject?.discoverySource),
+      metadata: toRecord(rawPublishObject?.metadata) ?? undefined,
+    });
+  }
+
+  return inferLegacyChannelPublishObject(binding);
+}
+
+export function getChannelBindingPublishObjectIdentity(binding: IChannelBinding): string {
+  const publishObject = getChannelBindingPublishObject(binding);
+  return [publishObject.nativeObjectType, publishObject.nativeObjectId, publishObject.parentNativeObjectId ?? ''].join(
+    '::'
+  );
+}
+
+export function getChannelBindingPublishObjectLabel(binding: IChannelBinding): string {
+  const publishObject = getChannelBindingPublishObject(binding);
+  return publishObject.displayName ?? publishObject.nativeObjectId;
+}
+
+export function withChannelBindingPublishObject(
+  binding: IChannelBinding,
+  publishObject?: IChannelPublishObject
+): IChannelBinding {
+  const currentMetadata = toRecord(binding.metadata) ?? {};
+
+  return {
+    ...binding,
+    metadata: {
+      ...currentMetadata,
+      publishObject: normalizeChannelPublishObject(publishObject ?? getChannelBindingPublishObject(binding)),
+    },
+  };
+}
+
+export function findConflictingChannelBinding(
+  bindings: readonly IChannelBinding[],
+  candidate: IChannelBinding
+): IChannelBinding | undefined {
+  if (candidate.temporary) {
+    return undefined;
+  }
+
+  const channelAccountId = getChannelAccountId(candidate);
+  if (!channelAccountId) {
+    return undefined;
+  }
+
+  const publishObjectIdentity = getChannelBindingPublishObjectIdentity(candidate);
+
+  return bindings.find((binding) => {
+    if (binding.temporary || binding.id === candidate.id) {
+      return false;
+    }
+
+    return (
+      getChannelAccountId(binding) === channelAccountId &&
+      getChannelBindingPublishObjectIdentity(binding) === publishObjectIdentity
+    );
+  });
 }
 
 export function isSystemFallbackBinding(binding: IChannelBinding): boolean {

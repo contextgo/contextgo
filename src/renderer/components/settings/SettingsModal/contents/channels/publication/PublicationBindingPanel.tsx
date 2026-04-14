@@ -622,6 +622,16 @@ const PublicationBindingPanel: React.FC = () => {
       durableEditor.scopeType === 'connector_default'
         ? ''
         : resolveScopeKey(durableEditor.selectedAudienceKey, durableEditor.manualScopeKey);
+    const publishObject =
+      durableEditor.scopeType !== 'connector_default' && selectedObject
+        ? {
+            nativeObjectType: selectedObject.kind,
+            nativeObjectId: selectedObject.key,
+            parentNativeObjectId: selectedObject.parentKey,
+            displayName: selectedObject.title,
+            discoverySource: 'inbound-learned' as const,
+          }
+        : undefined;
 
     await saveBinding({
       channelAccountId: selectedChannelAccountId,
@@ -630,6 +640,7 @@ const PublicationBindingPanel: React.FC = () => {
       agentProfileId: durableEditor.agentProfileId,
       temporary: false,
       priority: 0,
+      publishObject,
     });
 
     resetDurableEditor({
@@ -645,6 +656,7 @@ const PublicationBindingPanel: React.FC = () => {
     durableEditor.selectedAudienceKey,
     resetDurableEditor,
     saveBinding,
+    selectedObject,
     selectedChannelAccountId,
   ]);
 

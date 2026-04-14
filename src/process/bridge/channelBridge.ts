@@ -18,7 +18,6 @@ import * as path from 'path';
 import type {
   IChannelActiveSessionEntry,
   IChannelAudienceEntry,
-  IChannelAuthorizedTarget,
   IChannelBinding,
   IChannelPluginStatus,
   IChannelSession,
@@ -27,11 +26,14 @@ import type {
   IRemoteIdentity,
 } from '@process/channels/types';
 import {
+  findConflictingChannelBinding,
   getChannelAccountId,
+  getChannelBindingPublishObjectLabel,
   getChannelBindingSource,
   hasPluginCredentials,
   isSystemFallbackBinding,
   withChannelAccountId,
+  withChannelBindingPublishObject,
 } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
 
@@ -1316,7 +1318,27 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
    */
   channel.upsertBinding.provider(async ({ binding }) => {
     try {
-      await channelRepo.upsertChannelBinding(withChannelAccountId(binding));
+      const normalizedBinding = withChannelBindingPublishObject(withChannelAccountId(binding));
+      const channelAccountId = getChannelAccountId(normalizedBinding);
+      if (!channelAccountId) {
+        throw new Error('Channel account is required before saving a durable IM binding');
+      }
+
+      const [bindings, agentProfiles] = await Promise.all([
+        channelRepo.getChannelBindings(channelAccountId),
+        channelRepo.getAgentProfiles(),
+      ]);
+      const conflictingBinding = findConflictingChannelBinding(bindings, normalizedBinding);
+      if (conflictingBinding && conflictingBinding.agentProfileId !== normalizedBinding.agentProfileId) {
+        const conflictingAgentName =
+          agentProfiles.find((profile) => profile.id === conflictingBinding.agentProfileId)?.name ??
+          conflictingBinding.agentProfileId;
+        throw new Error(
+          `Publish object "${getChannelBindingPublishObjectLabel(normalizedBinding)}" is already bound to Agent "${conflictingAgentName}". Unpublish or rebind it first.`
+        );
+      }
+
+      await channelRepo.upsertChannelBinding(normalizedBinding);
       return { success: true };
     } catch (error) {
       console.error('[ChannelBridge] upsertBinding error:', error);
