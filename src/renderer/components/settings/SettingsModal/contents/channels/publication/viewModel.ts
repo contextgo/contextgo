@@ -9,6 +9,7 @@ import {
   isSystemFallbackBinding,
   type ChannelBindingScopeType,
   type IChannelBinding,
+  type IChannelPublishObject,
 } from '@process/channels/types';
 
 export type DurableBindingScopeType = Exclude<ChannelBindingScopeType, 'temporary_override'>;
@@ -20,6 +21,7 @@ export type BindingDraft = {
   agentProfileId: string;
   temporary: boolean;
   priority: number;
+  publishObject?: IChannelPublishObject;
 };
 
 function buildManualBindingId(channelAccountId: string, scopeType: ChannelBindingScopeType, scopeKey: string): string {
@@ -79,6 +81,7 @@ export function buildBindingPayload(bindings: IChannelBinding[], draft: BindingD
       ...existing?.metadata,
       source: 'settings-publication-panel',
       operation: draft.temporary ? 'temporary-override' : 'durable-publication',
+      ...(draft.publishObject ? { publishObject: draft.publishObject } : {}),
     },
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,

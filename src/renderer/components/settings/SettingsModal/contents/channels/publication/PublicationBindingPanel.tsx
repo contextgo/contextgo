@@ -301,7 +301,10 @@ const PublicationBindingPanel: React.FC = () => {
     () => new Map(catalog.audiences.map((audience) => [audience.key, audience] as const)),
     [catalog.audiences]
   );
-  const allDurableBindings = useMemo(() => splitBindingsByLifetime(catalog.bindings).durableBindings, [catalog.bindings]);
+  const allDurableBindings = useMemo(
+    () => splitBindingsByLifetime(catalog.bindings).durableBindings,
+    [catalog.bindings]
+  );
   const selectedAgentBindings = useMemo(
     () => allDurableBindings.filter((binding) => binding.agentProfileId === selectedAgentProfileId),
     [allDurableBindings, selectedAgentProfileId]
@@ -463,6 +466,16 @@ const PublicationBindingPanel: React.FC = () => {
 
     setSaving(true);
     try {
+      const publishObject =
+        !editor.useManualScope && selectedAudience
+          ? {
+              nativeObjectType: selectedAudience.objectKind ?? selectedAudience.scopeType,
+              nativeObjectId: selectedAudience.objectKey ?? selectedAudience.key,
+              parentNativeObjectId: selectedAudience.parentObjectKey,
+              displayName: selectedAudience.objectTitle ?? selectedAudience.title,
+              discoverySource: 'inbound-learned' as const,
+            }
+          : undefined;
       const binding = buildBindingPayload(catalog.bindings, {
         channelAccountId: editor.channelAccountId,
         scopeType,
@@ -470,6 +483,7 @@ const PublicationBindingPanel: React.FC = () => {
         agentProfileId: selectedAgentProfileId,
         temporary: false,
         priority: 0,
+        publishObject,
       });
       const result = await channel.upsertBinding.invoke({ binding });
       if (!result.success) {
@@ -651,9 +665,7 @@ const PublicationBindingPanel: React.FC = () => {
                               <Tag className={styles.pillTag}>{objectKindLabel}</Tag>
                               <Tag className={styles.metricTag}>{t('settings.channels.publication.durableTag')}</Tag>
                               {!primaryBinding?.enabled ? (
-                                <Tag className={styles.statusTag}>
-                                  {t('settings.channels.publication.disabled')}
-                                </Tag>
+                                <Tag className={styles.statusTag}>{t('settings.channels.publication.disabled')}</Tag>
                               ) : null}
                             </div>
                             <div className={styles.bindingTitleRow}>
@@ -836,7 +848,9 @@ const PublicationBindingPanel: React.FC = () => {
                         }
                         placeholder={getManualScopePlaceholder(editor.manualScopeType, t)}
                       />
-                      <div className='text-12px text-t-secondary'>{t('settings.channels.publication.manualKeyHint')}</div>
+                      <div className='text-12px text-t-secondary'>
+                        {t('settings.channels.publication.manualKeyHint')}
+                      </div>
                     </div>
                   ) : null}
                   {!editor.useManualScope && editor.channelAccountId && publishObjectOptions.length === 0 ? (

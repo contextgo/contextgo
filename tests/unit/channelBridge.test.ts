@@ -1150,8 +1150,92 @@ describe('channelBridge', () => {
 
       const result = await handlers['upsertBinding']({ binding });
 
-      expect(repo.upsertChannelBinding).toHaveBeenCalledWith({ ...binding, channelAccountId: binding.connectorId });
+      expect(repo.upsertChannelBinding).toHaveBeenCalledWith({
+        ...binding,
+        channelAccountId: binding.connectorId,
+        metadata: {
+          publishObject: {
+            nativeObjectType: 'remote_user',
+            nativeObjectId: 'user-1',
+            parentNativeObjectId: undefined,
+            displayName: undefined,
+            discoverySource: 'manual',
+            metadata: undefined,
+          },
+        },
+      });
       expect(result.success).toBe(true);
+    });
+
+    it('returns a readable conflict when another agent already owns the publish object', async () => {
+      vi.mocked(repo.getChannelBindings).mockResolvedValue([
+        {
+          id: 'binding-existing',
+          connectorId: 'connector-1',
+          channelAccountId: 'connector-1',
+          scopeType: 'remote_chat',
+          scopeKey: 'legacy-scope',
+          agentProfileId: 'agent-1',
+          priority: 1,
+          enabled: true,
+          temporary: false,
+          metadata: {
+            publishObject: {
+              nativeObjectType: 'topic',
+              nativeObjectId: 'om_topic_root_1',
+              parentNativeObjectId: 'oc_group_1',
+              displayName: 'Ops Topic',
+              discoverySource: 'manual',
+            },
+          },
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ]);
+      vi.mocked(repo.getAgentProfiles).mockResolvedValue([
+        {
+          id: 'agent-1',
+          name: 'Incident Agent',
+          backend: 'codex',
+          promptProfile: {},
+          toolPolicy: {},
+          memoryPolicy: {},
+          delegationPolicy: {},
+          version: 1,
+          archived: false,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ]);
+
+      const result = await handlers['upsertBinding']({
+        binding: {
+          id: 'binding-2',
+          connectorId: 'connector-1',
+          scopeType: 'remote_chat',
+          scopeKey: 'other-scope',
+          agentProfileId: 'agent-2',
+          priority: 1,
+          enabled: true,
+          temporary: false,
+          metadata: {
+            publishObject: {
+              nativeObjectType: 'topic',
+              nativeObjectId: 'om_topic_root_1',
+              parentNativeObjectId: 'oc_group_1',
+              displayName: 'Ops Topic',
+              discoverySource: 'manual',
+            },
+          },
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      });
+
+      expect(repo.upsertChannelBinding).not.toHaveBeenCalled();
+      expect(result.success).toBe(false);
+      expect(result.msg).toContain('Incident Agent');
+      expect(result.msg).toContain('Ops Topic');
     });
 
     it('returns error when repo throws', async () => {
