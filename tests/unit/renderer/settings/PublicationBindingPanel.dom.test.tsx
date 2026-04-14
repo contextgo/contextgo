@@ -76,6 +76,7 @@ const translations: Record<string, string> = {
   'settings.channels.publication.objectKind.common.chat': 'Chat',
   'settings.channels.publication.objectKind.lark.topic': 'Topic',
   'settings.channels.publication.objectKind.slack.channel': 'Channel',
+  'common.refresh': 'Refresh',
   'common.edit': 'Edit',
   'common.delete': 'Delete',
   'common.cancel': 'Cancel',
@@ -138,6 +139,7 @@ vi.mock('@icon-park/react', () => ({
   Delete: () => <span>delete-icon</span>,
   Edit: () => <span>edit-icon</span>,
   Plus: () => <span>plus-icon</span>,
+  Refresh: () => <span>refresh-icon</span>,
   Undo: () => <span>undo-icon</span>,
 }));
 
@@ -572,6 +574,47 @@ describe('PublicationBindingPanel', () => {
     renderPanel();
 
     await screen.findByText('Ops topic');
+
+    expect(screen.getByText('Backfilled')).toBeInTheDocument();
+    expect(screen.queryByText('Needs identification')).not.toBeInTheDocument();
+  });
+
+  it('refreshes the published object list on demand and surfaces repaired identity state', async () => {
+    mockGetBindingCatalogInvoke.mockResolvedValueOnce(catalogResponse).mockResolvedValueOnce({
+      ...catalogResponse,
+      data: {
+        ...catalogResponse.data,
+        publishObjects: [
+          {
+            ...catalogResponse.data.publishObjects[0],
+            displayProfile: {
+              ...catalogResponse.data.publishObjects[0].displayProfile,
+              quality: 'resolved',
+            },
+            refreshState: {
+              status: 'ready',
+              updatedAt: Date.now(),
+              backfilledAt: Date.now(),
+            },
+          },
+        ],
+      },
+    });
+    mockGetActiveSessionCatalogInvoke
+      .mockResolvedValueOnce(sessionCatalogResponse)
+      .mockResolvedValueOnce(sessionCatalogResponse);
+
+    renderPanel();
+
+    await screen.findByText('Ops topic');
+    expect(screen.getByText('Needs identification')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
+
+    await waitFor(() => {
+      expect(mockGetBindingCatalogInvoke).toHaveBeenCalledTimes(2);
+      expect(mockGetActiveSessionCatalogInvoke).toHaveBeenCalledTimes(2);
+    });
 
     expect(screen.getByText('Backfilled')).toBeInTheDocument();
     expect(screen.queryByText('Needs identification')).not.toBeInTheDocument();

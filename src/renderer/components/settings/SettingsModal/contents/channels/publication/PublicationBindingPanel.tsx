@@ -15,7 +15,7 @@ import {
   type IChannelBindingCatalog,
 } from '@process/channels/types';
 import { Button, Empty, Input, Message, Select, Spin, Tag, Tooltip } from '@arco-design/web-react';
-import { Delete, Edit, Plus, Undo } from '@icon-park/react';
+import { Delete, Edit, Plus, Refresh, Undo } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -664,11 +664,20 @@ const PublicationBindingPanel: React.FC = () => {
                   {t('settings.channels.publication.objectListDescription')}
                 </div>
               </div>
-              {!editor.open ? (
-                <Button type='primary' icon={<Plus theme='outline' size='16' />} onClick={openAddEditor}>
-                  {t('settings.channels.publication.addObjectButton')}
+              <div className='flex flex-wrap items-center gap-8px'>
+                <Button
+                  icon={<Refresh theme='outline' size='16' />}
+                  onClick={() => void loadCatalog()}
+                  loading={loading}
+                >
+                  {t('common.refresh')}
                 </Button>
-              ) : null}
+                {!editor.open ? (
+                  <Button type='primary' icon={<Plus theme='outline' size='16' />} onClick={openAddEditor}>
+                    {t('settings.channels.publication.addObjectButton')}
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             {publishedObjects.length > 0 ? (
