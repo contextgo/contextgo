@@ -718,6 +718,7 @@ describe('channelBridge', () => {
           objectTitle: 'Incident Thread',
           parentObjectKey: 'discord://guild-1/channel-22',
           parentObjectKind: 'channel',
+          publishObjectCatalogEntryId: 'connector-discord::thread::77::discord://guild-1/channel-22',
         }),
       ]);
     });
@@ -940,6 +941,7 @@ describe('channelBridge', () => {
               objectTitle: 'Ops Topic',
               parentObjectKey: 'group:alpha',
               parentObjectKind: 'chat',
+              publishObjectCatalogEntryId: 'connector-1::thread::group:alpha:thread:9::',
             }),
           ]),
           publishObjects: expect.arrayContaining([

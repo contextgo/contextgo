@@ -7,7 +7,11 @@
 import { channel } from '@/common/adapter/ipcBridge';
 import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '@/common/config/builtinChannels';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
-import { describeRemoteIdentityObject, inferRemoteIdentityPublishObject } from '@process/channels/utils';
+import {
+  describeRemoteIdentityObject,
+  inferRemoteIdentityPublishObject,
+  resolvePublishObjectCatalogEntry as resolveCatalogPublishObjectEntry,
+} from '@process/channels/utils';
 import { getChannelContinuationService } from '@process/channels/core/ChannelContinuationService';
 import { getChannelPublicationService } from '@process/channels/core/ChannelPublicationService';
 import { getPairingService } from '@process/channels/pairing/PairingService';
@@ -639,6 +643,7 @@ function buildRemoteChatAudience(
     parentObjectKey: objectDescriptor?.parentKey,
     parentObjectTitle: resolvedPublishObject?.displayProfile.parentTitle ?? objectDescriptor?.parentTitle,
     parentObjectKind: objectDescriptor?.parentKind,
+    publishObjectCatalogEntryId: resolvedPublishObject?.id,
     objectSource: resolvedPublishObject?.displayProfile.source,
     objectQuality: resolvedPublishObject?.displayProfile.quality,
     title: resolvedPublishObject?.displayProfile.title ?? title,
@@ -707,6 +712,7 @@ function buildRemoteUserAudiences(
       parentObjectKey: objectDescriptor?.parentKey,
       parentObjectTitle: resolvedPublishObject?.displayProfile.parentTitle ?? objectDescriptor?.parentTitle,
       parentObjectKind: objectDescriptor?.parentKind,
+      publishObjectCatalogEntryId: resolvedPublishObject?.id,
       objectSource: resolvedPublishObject?.displayProfile.source,
       objectQuality: resolvedPublishObject?.displayProfile.quality,
       title:
@@ -840,6 +846,7 @@ function buildActiveSessionEntries(params: {
       parentObjectKey: objectDescriptor?.parentKey,
       parentObjectTitle: resolvedPublishObject?.displayProfile.parentTitle ?? objectDescriptor?.parentTitle,
       parentObjectKind: objectDescriptor?.parentKind,
+      publishObjectCatalogEntryId: resolvedPublishObject?.id,
       objectSource: resolvedPublishObject?.displayProfile.source,
       objectQuality: resolvedPublishObject?.displayProfile.quality,
       activeConversationId,
@@ -864,118 +871,6 @@ function buildActiveSessionEntries(params: {
   });
 }
 
-function getPublishObjectCatalogEntryIdForBinding(binding: IChannelBinding): string | undefined {
-  const channelAccountId = getChannelAccountId(binding);
-  if (!channelAccountId) {
-    return undefined;
-  }
-
-  const publishObject = getChannelBindingPublishObject(binding);
-  return getChannelPublishObjectCatalogEntryIdentity({
-    id: '',
-    channelAccountId,
-    nativeObjectType: publishObject.nativeObjectType,
-    nativeObjectId: publishObject.nativeObjectId,
-    parentNativeObjectId: publishObject.parentNativeObjectId,
-    displayProfile: {
-      title: '',
-      source: 'manual',
-      quality: 'fallback',
-      resolvedAt: 0,
-    },
-    createdAt: 0,
-    updatedAt: 0,
-  });
-}
-
-function getPublishObjectCatalogEntryIdForAudience(
-  audience: IChannelAudienceEntry,
-  channelAccountId: string
-): string | undefined {
-  if (!audience.objectKey || !audience.objectKind) {
-    return undefined;
-  }
-
-  return getChannelPublishObjectCatalogEntryIdentity({
-    id: '',
-    channelAccountId,
-    nativeObjectType: audience.objectKind,
-    nativeObjectId: audience.objectKey,
-    parentNativeObjectId: audience.parentObjectKey,
-    displayProfile: {
-      title: '',
-      source: 'manual',
-      quality: 'fallback',
-      resolvedAt: 0,
-    },
-    createdAt: 0,
-    updatedAt: 0,
-  });
-}
-
-function findPublishObjectCatalogEntryIdForBinding(params: {
-  binding: IChannelBinding;
-  audiencesByKey: Map<string, IChannelAudienceEntry>;
-  publishObjectCatalog: Map<string, IChannelPublishObjectCatalogEntry>;
-  publishObjects: IChannelPublishObjectCatalogEntry[];
-}): string | undefined {
-  const exactBindingId = getPublishObjectCatalogEntryIdForBinding(params.binding);
-  if (exactBindingId && params.publishObjectCatalog.has(exactBindingId)) {
-    return exactBindingId;
-  }
-
-  const channelAccountId = getChannelAccountId(params.binding);
-  if (!channelAccountId) {
-    return undefined;
-  }
-
-  const audience = params.binding.scopeKey ? params.audiencesByKey.get(params.binding.scopeKey) : undefined;
-  const audienceId = audience ? getPublishObjectCatalogEntryIdForAudience(audience, channelAccountId) : undefined;
-  if (audienceId && params.publishObjectCatalog.has(audienceId)) {
-    return audienceId;
-  }
-
-  const candidateNativeObjectIds = new Set(
-    [
-      params.binding.scopeKey,
-      audience?.objectKey,
-      getChannelBindingPublishObject(params.binding).nativeObjectId,
-    ].filter((value): value is string => Boolean(value))
-  );
-  if (candidateNativeObjectIds.size === 0) {
-    return undefined;
-  }
-
-  const preferredParentId = audience?.parentObjectKey;
-  return params.publishObjects
-    .filter(
-      (publishObject) =>
-        publishObject.channelAccountId === channelAccountId &&
-        candidateNativeObjectIds.has(publishObject.nativeObjectId)
-    )
-    .toSorted((left, right) => {
-      const parentDelta =
-        (right.parentNativeObjectId === preferredParentId ? 1 : 0) -
-        (left.parentNativeObjectId === preferredParentId ? 1 : 0);
-      if (parentDelta !== 0) {
-        return parentDelta;
-      }
-
-      const specificityDelta = (left.nativeObjectType === 'chat' ? 1 : 0) - (right.nativeObjectType === 'chat' ? 1 : 0);
-      if (specificityDelta !== 0) {
-        return specificityDelta;
-      }
-
-      const qualityDelta =
-        (left.displayProfile.quality === 'fallback' ? 1 : 0) - (right.displayProfile.quality === 'fallback' ? 1 : 0);
-      if (qualityDelta !== 0) {
-        return qualityDelta;
-      }
-
-      return right.updatedAt - left.updatedAt;
-    })[0]?.id;
-}
-
 function attachPublishObjectActiveSessionPointers(params: {
   publishObjects: IChannelPublishObjectCatalogEntry[];
   bindings: IChannelBinding[];
@@ -984,7 +879,6 @@ function attachPublishObjectActiveSessionPointers(params: {
 }): IChannelPublishObjectCatalogEntry[] {
   const bindingMap = new Map(params.bindings.map((binding) => [binding.id, binding] as const));
   const audiencesByKey = new Map(params.audiences.map((audience) => [audience.key, audience] as const));
-  const publishObjectCatalog = buildPublishObjectCatalogMap(params.publishObjects);
   const pointerByPublishObjectId = new Map<string, IChannelPublishObjectActiveSessionPointer>();
 
   for (const session of params.activeSessions) {
@@ -998,12 +892,14 @@ function attachPublishObjectActiveSessionPointers(params: {
       continue;
     }
 
-    const publishObjectId = findPublishObjectCatalogEntryIdForBinding({
-      binding,
-      audiencesByKey,
-      publishObjectCatalog,
-      publishObjects: params.publishObjects,
-    });
+    const audience = binding.scopeKey ? audiencesByKey.get(binding.scopeKey) : undefined;
+    const publishObjectId =
+      session.publishObjectCatalogEntryId ??
+      resolveCatalogPublishObjectEntry({
+        binding,
+        publishObjects: params.publishObjects,
+        audience,
+      })?.id;
     if (!publishObjectId) {
       continue;
     }

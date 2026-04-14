@@ -8,11 +8,31 @@ import type {
   ChannelObjectKind,
   ChannelObjectParentKind,
   IChannelAudienceEntry,
+  IChannelBinding,
   IChannelPublishObject,
+  IChannelPublishObjectCatalogEntry,
   IRemoteIdentity,
   PluginType,
   UnifiedPeerScope,
 } from '../types';
+import {
+  getChannelAccountId,
+  getChannelBindingPublishObject,
+  getChannelPublishObjectCatalogEntryIdentity,
+} from '../types';
+
+const CATALOG_SOURCE_PRIORITY: Record<IChannelPublishObjectCatalogEntry['displayProfile']['source'], number> = {
+  'official-pull': 4,
+  'runtime-resolved': 3,
+  'inbound-learned': 2,
+  manual: 1,
+};
+
+const CATALOG_QUALITY_PRIORITY: Record<IChannelPublishObjectCatalogEntry['displayProfile']['quality'], number> = {
+  resolved: 3,
+  inferred: 2,
+  fallback: 1,
+};
 
 export type ChannelObjectDescriptor = {
   key: string;
@@ -23,6 +43,12 @@ export type ChannelObjectDescriptor = {
   parentTitle?: string;
   parentKind?: ChannelObjectParentKind;
   platformLabel?: string;
+};
+
+type ResolvePublishObjectCatalogEntryParams = {
+  binding?: IChannelBinding;
+  audience?: IChannelAudienceEntry;
+  publishObjects?: readonly IChannelPublishObjectCatalogEntry[];
 };
 
 type ChannelObjectInput = {
@@ -98,6 +124,164 @@ function pickReadableChannelIdentifier(...values: Array<string | undefined>): st
   }
 
   return undefined;
+}
+
+function buildPublishObjectCatalogEntryId(params: {
+  channelAccountId: string;
+  nativeObjectType: string;
+  nativeObjectId: string;
+  parentNativeObjectId?: string;
+}): string {
+  return getChannelPublishObjectCatalogEntryIdentity({
+    id: '',
+    channelAccountId: params.channelAccountId,
+    nativeObjectType: params.nativeObjectType,
+    nativeObjectId: params.nativeObjectId,
+    parentNativeObjectId: params.parentNativeObjectId,
+    displayProfile: {
+      title: '',
+      source: 'manual',
+      quality: 'fallback',
+      resolvedAt: 0,
+    },
+    createdAt: 0,
+    updatedAt: 0,
+  });
+}
+
+function getPublishObjectCatalogEntryIdFromAudience(
+  audience: IChannelAudienceEntry,
+  channelAccountId: string
+): string | undefined {
+  if (!audience.objectKey || !audience.objectKind) {
+    return undefined;
+  }
+
+  return buildPublishObjectCatalogEntryId({
+    channelAccountId,
+    nativeObjectType: audience.objectKind,
+    nativeObjectId: audience.objectKey,
+    parentNativeObjectId: audience.parentObjectKey,
+  });
+}
+
+function getPublishObjectCatalogEntryIdFromBinding(binding: IChannelBinding, channelAccountId: string): string {
+  const publishObject = getChannelBindingPublishObject(binding);
+  return buildPublishObjectCatalogEntryId({
+    channelAccountId,
+    nativeObjectType: publishObject.nativeObjectType,
+    nativeObjectId: publishObject.nativeObjectId,
+    parentNativeObjectId: publishObject.parentNativeObjectId,
+  });
+}
+
+function getAliasCandidates(params: { binding?: IChannelBinding; audience?: IChannelAudienceEntry }): Set<string> {
+  return new Set(
+    [
+      params.binding?.scopeKey,
+      params.audience?.key,
+      params.audience?.objectKey,
+      params.audience?.remoteChatId,
+      params.audience?.platformChatId,
+    ].filter((value): value is string => Boolean(value))
+  );
+}
+
+function getNativeObjectIdCandidates(params: {
+  binding?: IChannelBinding;
+  audience?: IChannelAudienceEntry;
+}): Set<string> {
+  return new Set(
+    [
+      params.audience?.objectKey,
+      params.audience?.threadId,
+      params.binding ? getChannelBindingPublishObject(params.binding).nativeObjectId : undefined,
+    ].filter((value): value is string => Boolean(value))
+  );
+}
+
+export function resolvePublishObjectCatalogEntry(
+  params: ResolvePublishObjectCatalogEntryParams
+): IChannelPublishObjectCatalogEntry | undefined {
+  if (!params.publishObjects || params.publishObjects.length === 0) {
+    return undefined;
+  }
+
+  const channelAccountId = params.audience
+    ? getChannelAccountId(params.audience)
+    : params.binding
+      ? getChannelAccountId(params.binding)
+      : undefined;
+  if (!channelAccountId) {
+    return undefined;
+  }
+
+  const publishObjectCatalog = new Map(
+    params.publishObjects.map((publishObject) => [publishObject.id, publishObject] as const)
+  );
+  const exactBindingId = params.binding
+    ? getPublishObjectCatalogEntryIdFromBinding(params.binding, channelAccountId)
+    : undefined;
+  if (exactBindingId) {
+    const exactBindingEntry = publishObjectCatalog.get(exactBindingId);
+    if (exactBindingEntry) {
+      return exactBindingEntry;
+    }
+  }
+
+  const exactAudienceId = params.audience
+    ? getPublishObjectCatalogEntryIdFromAudience(params.audience, channelAccountId)
+    : undefined;
+  if (exactAudienceId) {
+    const exactAudienceEntry = publishObjectCatalog.get(exactAudienceId);
+    if (exactAudienceEntry) {
+      return exactAudienceEntry;
+    }
+  }
+
+  const aliasCandidates = getAliasCandidates(params);
+  const nativeObjectIdCandidates = getNativeObjectIdCandidates(params);
+  const preferredParentId = params.audience?.parentObjectKey;
+
+  return params.publishObjects
+    .filter((publishObject) => {
+      if (publishObject.channelAccountId !== channelAccountId) {
+        return false;
+      }
+
+      const matchesAlias = (publishObject.aliases ?? []).some((alias) => aliasCandidates.has(alias));
+      const matchesNativeObjectId = nativeObjectIdCandidates.has(publishObject.nativeObjectId);
+      return matchesAlias || matchesNativeObjectId;
+    })
+    .toSorted((left, right) => {
+      const aliasDelta =
+        ((right.aliases ?? []).some((alias) => aliasCandidates.has(alias)) ? 1 : 0) -
+        ((left.aliases ?? []).some((alias) => aliasCandidates.has(alias)) ? 1 : 0);
+      if (aliasDelta !== 0) {
+        return aliasDelta;
+      }
+
+      const parentDelta =
+        (right.parentNativeObjectId === preferredParentId ? 1 : 0) -
+        (left.parentNativeObjectId === preferredParentId ? 1 : 0);
+      if (parentDelta !== 0) {
+        return parentDelta;
+      }
+
+      const qualityDelta =
+        CATALOG_QUALITY_PRIORITY[right.displayProfile.quality] - CATALOG_QUALITY_PRIORITY[left.displayProfile.quality];
+      if (qualityDelta !== 0) {
+        return qualityDelta;
+      }
+
+      const sourceDelta =
+        CATALOG_SOURCE_PRIORITY[right.displayProfile.source] - CATALOG_SOURCE_PRIORITY[left.displayProfile.source];
+      if (sourceDelta !== 0) {
+        return sourceDelta;
+      }
+
+      return right.updatedAt - left.updatedAt;
+    })[0];
 }
 
 export function getPlatformDefaultObjectLabel(platform: PluginType, kind: ChannelObjectKind): string {

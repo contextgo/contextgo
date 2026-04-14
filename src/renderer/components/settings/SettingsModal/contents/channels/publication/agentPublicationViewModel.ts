@@ -234,6 +234,7 @@ export function buildAgentPublicationObjects(
   params: BuildAgentPublicationObjectsParams
 ): AgentPublicationObjectEntry[] {
   const audienceMap = new Map(params.audiences.map((audience) => [audience.key, audience] as const));
+  const publishObjectCatalogMap = new Map((params.publishObjects ?? []).map((entry) => [entry.id, entry] as const));
   const entries: AgentPublicationObjectEntry[] = [];
 
   params.channelAccounts.forEach((channelAccount) => {
@@ -261,6 +262,13 @@ export function buildAgentPublicationObjects(
       },
       resolveBindingCatalogEntry: (binding) => {
         const audience = binding.scopeKey ? audienceMap.get(binding.scopeKey) : undefined;
+        if (audience?.publishObjectCatalogEntryId) {
+          const referencedEntry = publishObjectCatalogMap.get(audience.publishObjectCatalogEntryId);
+          if (referencedEntry) {
+            return referencedEntry;
+          }
+        }
+
         return resolveBindingCatalogEntry({
           binding,
           audience,

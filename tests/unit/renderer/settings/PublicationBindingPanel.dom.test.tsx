@@ -487,6 +487,57 @@ describe('PublicationBindingPanel', () => {
     expect(newerRow?.textContent).not.toContain('Active now');
   });
 
+  it('prefers bridge-projected publishObjectCatalogEntryId over rebuilding object identity from binding metadata', async () => {
+    mockGetBindingCatalogInvoke.mockResolvedValueOnce({
+      ...catalogResponse,
+      data: {
+        ...catalogResponse.data,
+        bindings: [
+          catalogResponse.data.bindings[0],
+          {
+            ...catalogResponse.data.bindings[1],
+            scopeKey: 'legacy-topic-scope',
+            metadata: {
+              ...catalogResponse.data.bindings[1].metadata,
+              publishObject: {
+                nativeObjectType: 'chat',
+                nativeObjectId: 'legacy-topic-scope',
+                discoverySource: 'manual',
+              },
+            },
+          },
+        ],
+        audiences: [
+          {
+            ...catalogResponse.data.audiences[0],
+            key: 'legacy-topic-scope',
+            remoteChatId: 'legacy-topic-scope',
+            objectKey: 'legacy-topic-scope',
+            objectKind: 'chat',
+            objectTitle: 'Fallback Topic 1',
+            objectSubtitle: 'legacy scope object',
+            parentObjectKey: undefined,
+            parentObjectTitle: undefined,
+            parentObjectKind: undefined,
+            publishObjectCatalogEntryId: catalogResponse.data.publishObjects[0].id,
+            title: 'Fallback Topic 1',
+            subtitle: 'legacy scope object',
+          },
+          ...catalogResponse.data.audiences.slice(1),
+        ],
+      },
+    });
+    mockGetActiveSessionCatalogInvoke.mockResolvedValueOnce({ success: true, data: [] });
+
+    renderPanel();
+
+    await screen.findByText('Ops topic');
+
+    expect(screen.queryByText('Fallback Topic 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Ops topic')).toBeInTheDocument();
+    expect(screen.getByText('Topic root 1')).toBeInTheDocument();
+  });
+
   it('shows an explicit fallback badge when a published object still relies on low-confidence identity', async () => {
     renderPanel();
 

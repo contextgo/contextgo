@@ -351,6 +351,7 @@ export interface IChannelAudienceEntry {
   parentObjectKey?: string;
   parentObjectTitle?: string;
   parentObjectKind?: ChannelObjectParentKind;
+  publishObjectCatalogEntryId?: string;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
   title: string;
@@ -837,6 +838,7 @@ export type IChannelActiveSessionEntry = {
   parentObjectKey?: string;
   parentObjectTitle?: string;
   parentObjectKind?: ChannelObjectParentKind;
+  publishObjectCatalogEntryId?: string;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
   /** Explicit active Project Session pointer for this external session. */
