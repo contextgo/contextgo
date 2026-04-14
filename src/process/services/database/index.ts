@@ -105,8 +105,12 @@ import type {
 import type { ContextOperation } from '../../../../packages/context-engine/src/operations';
 import type { ContextSchedule } from '@process/services/context/events/schedule/types';
 import {
+  findConflictingChannelBinding,
+  getChannelAccountId,
+  getChannelBindingPublishObjectLabel,
   getChannelBindingTarget,
   resolveChannelConvType,
+  withChannelBindingPublishObject,
   rowToChannelUser,
   rowToChannelSession,
   rowToPairingRequest,
@@ -2607,17 +2611,43 @@ export class AionUIDatabase {
 
   upsertChannelBinding(binding: IChannelBinding): IQueryResult<boolean> {
     try {
-      const validationError = validateChannelBinding(binding);
-      if (validationError) {
-        return { success: false, error: validationError };
-      }
-
       const now = Date.now();
-      const row = channelBindingToRow({
+      const normalizedBinding = withChannelBindingPublishObject({
         ...binding,
         createdAt: binding.createdAt || now,
         updatedAt: now,
       });
+      const validationError = validateChannelBinding(normalizedBinding);
+      if (validationError) {
+        return { success: false, error: validationError };
+      }
+
+      const existingBindings = this.getChannelBindings(getChannelAccountId(normalizedBinding));
+      if (!existingBindings.success || !existingBindings.data) {
+        return { success: false, error: existingBindings.error ?? 'Failed to inspect existing channel bindings' };
+      }
+
+      const conflictingBinding = findConflictingChannelBinding(existingBindings.data, normalizedBinding);
+      if (conflictingBinding && conflictingBinding.agentProfileId !== normalizedBinding.agentProfileId) {
+        return {
+          success: false,
+          error: `Publish object "${getChannelBindingPublishObjectLabel(normalizedBinding)}" is already bound to agent profile ${conflictingBinding.agentProfileId}`,
+        };
+      }
+
+      const bindingToPersist =
+        conflictingBinding && conflictingBinding.agentProfileId === normalizedBinding.agentProfileId
+          ? {
+              ...normalizedBinding,
+              id: conflictingBinding.id,
+              createdAt: conflictingBinding.createdAt,
+              metadata: {
+                ...conflictingBinding.metadata,
+                ...normalizedBinding.metadata,
+              },
+            }
+          : normalizedBinding;
+      const row = channelBindingToRow(bindingToPersist);
 
       this.db
         .prepare(`

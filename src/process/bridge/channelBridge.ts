@@ -18,7 +18,6 @@ import * as path from 'path';
 import type {
   IChannelActiveSessionEntry,
   IChannelAudienceEntry,
-  IChannelAuthorizedTarget,
   IChannelBinding,
   IChannelPluginStatus,
   IChannelSession,
@@ -27,11 +26,14 @@ import type {
   IRemoteIdentity,
 } from '@process/channels/types';
 import {
+  findConflictingChannelBinding,
   getChannelAccountId,
+  getChannelBindingPublishObjectLabel,
   getChannelBindingSource,
   hasPluginCredentials,
   isSystemFallbackBinding,
   withChannelAccountId,
+  withChannelBindingPublishObject,
 } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
 import { ProjectChannelPublicationService } from '@process/channels/core/ProjectChannelPublicationService';
@@ -1328,7 +1330,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
    */
   channel.upsertBinding.provider(async ({ binding }) => {
     try {
-      const normalizedBinding = withChannelAccountId(binding);
+      const normalizedBinding = withChannelBindingPublishObject(withChannelAccountId(binding));
       const channelAccountId = getChannelAccountId(normalizedBinding);
       if (!channelAccountId) {
         throw new Error('Channel account is required before saving a durable IM binding');
@@ -1339,6 +1341,19 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       const workspace = publicationCatalog.agentProfileWorkspaceById[normalizedBinding.agentProfileId];
       if (!workspace) {
         throw new Error(`Agent profile ${normalizedBinding.agentProfileId} is not bound to a project workspace`);
+      }
+
+      const conflictingBinding = findConflictingChannelBinding(
+        publicationCatalog.bindings.filter((item) => getChannelAccountId(item) === channelAccountId),
+        normalizedBinding
+      );
+      if (conflictingBinding && conflictingBinding.agentProfileId !== normalizedBinding.agentProfileId) {
+        const conflictingAgentName =
+          publicationCatalog.agentProfiles.find((profile) => profile.id === conflictingBinding.agentProfileId)?.name ??
+          conflictingBinding.agentProfileId;
+        throw new Error(
+          `Publish object "${getChannelBindingPublishObjectLabel(normalizedBinding)}" is already bound to Agent "${conflictingAgentName}". Unpublish or rebind it first.`
+        );
       }
 
       await projectChannelPublicationService.upsertChannelBinding(workspace, normalizedBinding);

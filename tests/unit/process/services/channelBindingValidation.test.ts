@@ -84,6 +84,19 @@ function createDatabaseForBindingTests(): ContextGoUIDatabase {
         };
       }
 
+      if (
+        sql.includes('SELECT * FROM channel_bindings WHERE connector_id = ? ORDER BY priority DESC, created_at ASC')
+      ) {
+        return {
+          get: () => undefined,
+          all: (connectorId?: unknown) =>
+            Array.from(bindingRows.values())
+              .filter((row) => row.connector_id === String(connectorId))
+              .sort((left, right) => right.priority - left.priority || left.created_at - right.created_at),
+          run: () => ({ changes: 0, lastInsertRowid: 0 }),
+        };
+      }
+
       return createNoopStatement();
     },
     exec: () => {},
@@ -253,5 +266,151 @@ describe('ContextGoUIDatabase channel binding validation', () => {
         updatedAt: expect.any(Number),
       })
     );
+  });
+
+  it('normalizes durable bindings to persist first-class publish object metadata', () => {
+    const result = database.upsertChannelBinding({
+      id: 'binding-publish-object',
+      connectorId: 'connector-test',
+      scopeType: 'remote_chat',
+      scopeKey: 'oc_group_1:thread:om_topic_root_1',
+      agentProfileId: 'agent-profile-test',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      metadata: {
+        objectKind: 'topic',
+        objectTitle: 'Ops Topic',
+        parentObjectKey: 'oc_group_1',
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    expect(result.success).toBe(true);
+    expect(database.getChannelBinding('binding-publish-object').data).toEqual(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          publishObject: {
+            nativeObjectType: 'topic',
+            nativeObjectId: 'om_topic_root_1',
+            parentNativeObjectId: 'oc_group_1',
+            displayName: 'Ops Topic',
+            discoverySource: 'manual',
+          },
+        }),
+      })
+    );
+  });
+
+  it('reuses the existing durable binding when the same agent republishes the same publish object', () => {
+    const firstResult = database.upsertChannelBinding({
+      id: 'binding-1',
+      connectorId: 'connector-test',
+      scopeType: 'remote_chat',
+      scopeKey: 'oc_group_1:thread:om_topic_root_1',
+      agentProfileId: 'agent-profile-test',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      metadata: {
+        publishObject: {
+          nativeObjectType: 'topic',
+          nativeObjectId: 'om_topic_root_1',
+          parentNativeObjectId: 'oc_group_1',
+          displayName: 'Ops Topic',
+          discoverySource: 'manual',
+        },
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    const secondResult = database.upsertChannelBinding({
+      id: 'binding-2',
+      connectorId: 'connector-test',
+      scopeType: 'remote_chat',
+      scopeKey: 'legacy-scope',
+      agentProfileId: 'agent-profile-test',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      metadata: {
+        publishObject: {
+          nativeObjectType: 'topic',
+          nativeObjectId: 'om_topic_root_1',
+          parentNativeObjectId: 'oc_group_1',
+          displayName: 'Ops Topic',
+          discoverySource: 'inbound-learned',
+        },
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    expect(firstResult.success).toBe(true);
+    expect(secondResult.success).toBe(true);
+    expect(database.getChannelBinding('binding-1').data).toEqual(
+      expect.objectContaining({
+        scopeKey: 'legacy-scope',
+        metadata: expect.objectContaining({
+          publishObject: expect.objectContaining({
+            nativeObjectType: 'topic',
+            nativeObjectId: 'om_topic_root_1',
+          }),
+        }),
+      })
+    );
+    expect(database.getChannelBinding('binding-2').data).toBeNull();
+  });
+
+  it('rejects another agent claiming the same publish object on the same channel account', () => {
+    database.upsertChannelBinding({
+      id: 'binding-1',
+      connectorId: 'connector-test',
+      scopeType: 'remote_chat',
+      scopeKey: 'oc_group_1:thread:om_topic_root_1',
+      agentProfileId: 'agent-profile-1',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      metadata: {
+        publishObject: {
+          nativeObjectType: 'topic',
+          nativeObjectId: 'om_topic_root_1',
+          parentNativeObjectId: 'oc_group_1',
+          displayName: 'Ops Topic',
+          discoverySource: 'manual',
+        },
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    const result = database.upsertChannelBinding({
+      id: 'binding-2',
+      connectorId: 'connector-test',
+      scopeType: 'remote_chat',
+      scopeKey: 'other-scope',
+      agentProfileId: 'agent-profile-2',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      metadata: {
+        publishObject: {
+          nativeObjectType: 'topic',
+          nativeObjectId: 'om_topic_root_1',
+          parentNativeObjectId: 'oc_group_1',
+          displayName: 'Ops Topic',
+          discoverySource: 'manual',
+        },
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('already bound');
+    expect(database.getChannelBinding('binding-2').data).toBeNull();
   });
 });
