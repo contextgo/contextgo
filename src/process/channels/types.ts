@@ -805,6 +805,8 @@ export interface IChannelSession {
 
 export type IChannelActiveSessionEntry = {
   id: string;
+  /** Stable external-session identity for this publication relationship. */
+  externalSessionId?: string;
   connectorId?: string;
   /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
@@ -826,11 +828,17 @@ export type IChannelActiveSessionEntry = {
   parentObjectKind?: ChannelObjectParentKind;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  /** Explicit active Project Session pointer for this external session. */
+  activeConversationId?: string;
+  /** @deprecated Use activeConversationId. */
   conversationId?: string;
   workspace?: string;
   agentType: ChannelAgentType;
   createdAt: number;
   lastActivity: number;
+  /** Explicit durable Publication binding that currently owns this external session. */
+  publicationBindingId?: string;
+  /** @deprecated Use publicationBindingId. */
   bindingId?: string;
   bindingTemporary?: boolean;
   bindingSource?: string;
