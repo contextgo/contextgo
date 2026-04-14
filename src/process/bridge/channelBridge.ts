@@ -19,6 +19,7 @@ import type {
   IChannelActiveSessionEntry,
   IChannelAudienceEntry,
   IChannelBinding,
+  IChannelPublishObjectActiveSessionPointer,
   IChannelPublishObjectCatalogEntry,
   IChannelPluginStatus,
   IChannelSession,
@@ -29,6 +30,7 @@ import type {
 import {
   findConflictingChannelBinding,
   getChannelAccountId,
+  getChannelBindingPublishObject,
   getChannelBindingPublishObjectLabel,
   getChannelPublishObjectCatalogEntryIdentity,
   getChannelBindingSource,
@@ -862,6 +864,170 @@ function buildActiveSessionEntries(params: {
   });
 }
 
+function getPublishObjectCatalogEntryIdForBinding(binding: IChannelBinding): string | undefined {
+  const channelAccountId = getChannelAccountId(binding);
+  if (!channelAccountId) {
+    return undefined;
+  }
+
+  const publishObject = getChannelBindingPublishObject(binding);
+  return getChannelPublishObjectCatalogEntryIdentity({
+    id: '',
+    channelAccountId,
+    nativeObjectType: publishObject.nativeObjectType,
+    nativeObjectId: publishObject.nativeObjectId,
+    parentNativeObjectId: publishObject.parentNativeObjectId,
+    displayProfile: {
+      title: '',
+      source: 'manual',
+      quality: 'fallback',
+      resolvedAt: 0,
+    },
+    createdAt: 0,
+    updatedAt: 0,
+  });
+}
+
+function getPublishObjectCatalogEntryIdForAudience(
+  audience: IChannelAudienceEntry,
+  channelAccountId: string
+): string | undefined {
+  if (!audience.objectKey || !audience.objectKind) {
+    return undefined;
+  }
+
+  return getChannelPublishObjectCatalogEntryIdentity({
+    id: '',
+    channelAccountId,
+    nativeObjectType: audience.objectKind,
+    nativeObjectId: audience.objectKey,
+    parentNativeObjectId: audience.parentObjectKey,
+    displayProfile: {
+      title: '',
+      source: 'manual',
+      quality: 'fallback',
+      resolvedAt: 0,
+    },
+    createdAt: 0,
+    updatedAt: 0,
+  });
+}
+
+function findPublishObjectCatalogEntryIdForBinding(params: {
+  binding: IChannelBinding;
+  audiencesByKey: Map<string, IChannelAudienceEntry>;
+  publishObjectCatalog: Map<string, IChannelPublishObjectCatalogEntry>;
+  publishObjects: IChannelPublishObjectCatalogEntry[];
+}): string | undefined {
+  const exactBindingId = getPublishObjectCatalogEntryIdForBinding(params.binding);
+  if (exactBindingId && params.publishObjectCatalog.has(exactBindingId)) {
+    return exactBindingId;
+  }
+
+  const channelAccountId = getChannelAccountId(params.binding);
+  if (!channelAccountId) {
+    return undefined;
+  }
+
+  const audience = params.binding.scopeKey ? params.audiencesByKey.get(params.binding.scopeKey) : undefined;
+  const audienceId = audience ? getPublishObjectCatalogEntryIdForAudience(audience, channelAccountId) : undefined;
+  if (audienceId && params.publishObjectCatalog.has(audienceId)) {
+    return audienceId;
+  }
+
+  const candidateNativeObjectIds = new Set(
+    [
+      params.binding.scopeKey,
+      audience?.objectKey,
+      getChannelBindingPublishObject(params.binding).nativeObjectId,
+    ].filter((value): value is string => Boolean(value))
+  );
+  if (candidateNativeObjectIds.size === 0) {
+    return undefined;
+  }
+
+  const preferredParentId = audience?.parentObjectKey;
+  return params.publishObjects
+    .filter(
+      (publishObject) =>
+        publishObject.channelAccountId === channelAccountId &&
+        candidateNativeObjectIds.has(publishObject.nativeObjectId)
+    )
+    .toSorted((left, right) => {
+      const parentDelta =
+        (right.parentNativeObjectId === preferredParentId ? 1 : 0) -
+        (left.parentNativeObjectId === preferredParentId ? 1 : 0);
+      if (parentDelta !== 0) {
+        return parentDelta;
+      }
+
+      const specificityDelta = (left.nativeObjectType === 'chat' ? 1 : 0) - (right.nativeObjectType === 'chat' ? 1 : 0);
+      if (specificityDelta !== 0) {
+        return specificityDelta;
+      }
+
+      const qualityDelta =
+        (left.displayProfile.quality === 'fallback' ? 1 : 0) - (right.displayProfile.quality === 'fallback' ? 1 : 0);
+      if (qualityDelta !== 0) {
+        return qualityDelta;
+      }
+
+      return right.updatedAt - left.updatedAt;
+    })[0]?.id;
+}
+
+function attachPublishObjectActiveSessionPointers(params: {
+  publishObjects: IChannelPublishObjectCatalogEntry[];
+  bindings: IChannelBinding[];
+  audiences: IChannelAudienceEntry[];
+  activeSessions: IChannelActiveSessionEntry[];
+}): IChannelPublishObjectCatalogEntry[] {
+  const bindingMap = new Map(params.bindings.map((binding) => [binding.id, binding] as const));
+  const audiencesByKey = new Map(params.audiences.map((audience) => [audience.key, audience] as const));
+  const publishObjectCatalog = buildPublishObjectCatalogMap(params.publishObjects);
+  const pointerByPublishObjectId = new Map<string, IChannelPublishObjectActiveSessionPointer>();
+
+  for (const session of params.activeSessions) {
+    const bindingId = session.publicationBindingId ?? session.bindingId;
+    if (!bindingId) {
+      continue;
+    }
+
+    const binding = bindingMap.get(bindingId);
+    if (!binding) {
+      continue;
+    }
+
+    const publishObjectId = findPublishObjectCatalogEntryIdForBinding({
+      binding,
+      audiencesByKey,
+      publishObjectCatalog,
+      publishObjects: params.publishObjects,
+    });
+    if (!publishObjectId) {
+      continue;
+    }
+
+    const nextPointer: IChannelPublishObjectActiveSessionPointer = {
+      externalSessionId: session.externalSessionId ?? session.id,
+      activeConversationId: session.activeConversationId ?? session.conversationId,
+      publicationBindingId: bindingId,
+      workspace: session.workspace,
+      agentType: session.agentType,
+      lastActivity: session.lastActivity,
+    };
+    const currentPointer = pointerByPublishObjectId.get(publishObjectId);
+    if (!currentPointer || nextPointer.lastActivity > currentPointer.lastActivity) {
+      pointerByPublishObjectId.set(publishObjectId, nextPointer);
+    }
+  }
+
+  return params.publishObjects.map((publishObject) => ({
+    ...publishObject,
+    activeSessionPointer: pointerByPublishObjectId.get(publishObject.id),
+  }));
+}
+
 /**
  * Initialize Channel IPC Bridge
  * Handles communication between renderer (Settings UI) and main process (Channel system)
@@ -1477,18 +1643,44 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   channel.getBindingCatalog.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
     try {
       const channelAccountId = params?.channelAccountId ?? params?.connectorId;
-      const [allConnectors, remoteIdentities, conversations] = await Promise.all([
+      const db = await getDatabase();
+      const [allConnectors, remoteIdentities, conversations, sessions] = await Promise.all([
         listChannelAccounts(),
         channelRepo.getRemoteIdentities(channelAccountId),
         conversationServiceSingleton.listAllConversations(),
+        channelRepo.getChannelSessions(),
       ]);
       const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
+      const externalSessionsResult = db.getAllExternalSessions();
+      const controlLeasesResult = db.getAllChannelControlLeases();
+      if (!externalSessionsResult.success || !externalSessionsResult.data) {
+        throw new Error(externalSessionsResult.error || 'Failed to load external sessions');
+      }
+      if (!controlLeasesResult.success || !controlLeasesResult.data) {
+        throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
+      }
       const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
       const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(identitiesWithAccountId, allConnectors);
-      const publishObjects = await resolvePublicationPublishObjects({
+      const resolvedPublishObjects = await resolvePublicationPublishObjects({
         publicationCatalog,
         remoteIdentities: enrichedRemoteIdentities,
         connectors: allConnectors,
+      });
+      const activeSessions = buildActiveSessionEntries({
+        sessions,
+        connectors: allConnectors,
+        remoteIdentities: enrichedRemoteIdentities,
+        bindings: publicationCatalog.bindings,
+        publishObjects: resolvedPublishObjects,
+        externalSessions: externalSessionsResult.data,
+        controlLeases: controlLeasesResult.data,
+      });
+      const audiences = buildAudienceEntries(enrichedRemoteIdentities, allConnectors, resolvedPublishObjects);
+      const publishObjects = attachPublishObjectActiveSessionPointers({
+        publishObjects: resolvedPublishObjects,
+        bindings: publicationCatalog.bindings,
+        audiences,
+        activeSessions,
       });
       const connectors = allConnectors.filter((connector) => (connector.configured ?? false) && connector.enabled);
       const bindings = channelAccountId
@@ -1501,7 +1693,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           channelAccounts: connectors,
           agentProfiles: publicationCatalog.agentProfiles,
           bindings: bindings.map((binding) => withChannelAccountId(binding)),
-          audiences: buildAudienceEntries(enrichedRemoteIdentities, allConnectors, publishObjects),
+          audiences,
           publishObjects,
         },
       };

@@ -306,6 +306,32 @@ const catalogResponse = {
         lastActive: 1500,
       },
     ],
+    publishObjects: [
+      {
+        id: 'connector-1::topic::feishu://topic/chat-topic/root-1::',
+        channelAccountId: 'connector-1',
+        nativeObjectType: 'topic',
+        nativeObjectId: 'feishu://topic/chat-topic/root-1',
+        displayProfile: {
+          title: 'Ops topic',
+          subtitle: 'Topic root 1',
+          parentTitle: 'Core Ops Group',
+          source: 'inbound-learned',
+          quality: 'fallback',
+          resolvedAt: 2000,
+        },
+        activeSessionPointer: {
+          externalSessionId: 'session-1',
+          activeConversationId: 'conversation-ops-1',
+          publicationBindingId: 'binding-topic-1',
+          workspace: '/tmp/workspace',
+          agentType: 'codex',
+          lastActivity: Date.now() - 5 * 60 * 1000,
+        },
+        createdAt: 1200,
+        updatedAt: 2000,
+      },
+    ],
   },
 };
 
@@ -406,6 +432,59 @@ describe('PublicationBindingPanel', () => {
     await screen.findByText('Ops topic');
 
     expect(screen.getByText('conversation-pointer-1')).toBeInTheDocument();
+  });
+
+  it('uses publish object activeSessionPointer instead of picking the newest related session', async () => {
+    mockGetBindingCatalogInvoke.mockResolvedValueOnce({
+      ...catalogResponse,
+      data: {
+        ...catalogResponse.data,
+        publishObjects: [
+          {
+            ...catalogResponse.data.publishObjects[0],
+            activeSessionPointer: {
+              externalSessionId: 'session-1',
+              activeConversationId: 'conversation-pointer-1',
+              publicationBindingId: 'binding-topic-1',
+              workspace: '/tmp/workspace',
+              agentType: 'codex',
+              lastActivity: Date.now() - 30 * 60 * 1000,
+            },
+          },
+        ],
+      },
+    });
+    mockGetActiveSessionCatalogInvoke.mockResolvedValueOnce({
+      success: true,
+      data: [
+        {
+          ...sessionCatalogResponse.data[0],
+          externalSessionId: 'session-1',
+          activeConversationId: 'conversation-pointer-1',
+          publicationBindingId: 'binding-topic-1',
+          lastActivity: Date.now() - 30 * 60 * 1000,
+        },
+        {
+          ...sessionCatalogResponse.data[0],
+          id: 'session-2',
+          externalSessionId: 'session-2',
+          activeConversationId: 'conversation-newer-2',
+          conversationId: 'conversation-newer-2',
+          publicationBindingId: 'binding-topic-1',
+          lastActivity: Date.now() - 2 * 60 * 1000,
+        },
+      ],
+    });
+
+    renderPanel();
+
+    await screen.findByText('Ops topic');
+
+    const pointerRow = screen.getByText('conversation-pointer-1').closest('div')?.parentElement?.parentElement;
+    const newerRow = screen.getByText('conversation-newer-2').closest('div')?.parentElement?.parentElement;
+
+    expect(pointerRow?.textContent).toContain('Active now');
+    expect(newerRow?.textContent).not.toContain('Active now');
   });
 
   it('shows an explicit fallback badge when a published object still relies on low-confidence identity', async () => {

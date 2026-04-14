@@ -303,6 +303,15 @@ export type IChannelPublishObjectDisplayProfile = {
   resolvedAt: number;
 };
 
+export type IChannelPublishObjectActiveSessionPointer = {
+  externalSessionId: string;
+  activeConversationId?: string;
+  publicationBindingId?: string;
+  workspace?: string;
+  agentType: ChannelAgentType;
+  lastActivity: number;
+};
+
 export type IChannelPublishObjectCatalogEntry = {
   id: string;
   channelAccountId: string;
@@ -310,6 +319,8 @@ export type IChannelPublishObjectCatalogEntry = {
   nativeObjectId: string;
   parentNativeObjectId?: string;
   displayProfile: IChannelPublishObjectDisplayProfile;
+  /** Runtime-projected pointer to the active Project Session for this publish object. */
+  activeSessionPointer?: IChannelPublishObjectActiveSessionPointer;
   aliases?: string[];
   rawFacts?: Record<string, unknown>;
   createdAt: number;
