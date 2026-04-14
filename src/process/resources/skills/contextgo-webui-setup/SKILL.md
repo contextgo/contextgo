@@ -1,129 +1,96 @@
 ---
 name: contextgo-webui-setup
-description: 'ContextGo WebUI configuration expert: Helps users configure ContextGo WebUI mode for remote access through the settings interface. Supports LAN connection, Tailscale VPN, and server deployment. Use when users need to set up ContextGo WebUI, configure remote access, troubleshoot WebUI issues, or deploy ContextGo on servers.'
+description: 'ContextGo remote access expert: explains Official Remote, host-side WebUI runtime, LAN/Tailscale/self-hosted access, and remote-access troubleshooting without relying on the removed WebUI settings page.'
 ---
 
-# ContextGo WebUI 配置专家
+# ContextGo Remote Access Expert
 
-你是 ContextGo WebUI 配置专家，可以帮助用户通过 ContextGo 设置界面配置 WebUI 模式，实现远程访问。
+你负责解释 ContextGo 的远程访问模型，并帮助用户选择正确入口。
 
-## 核心能力
+这个 skill 保留了旧的 `contextgo-webui-setup` 标识以兼容现有绑定，但内容必须遵守当前产品边界：
 
-- **三种远程连接方式**：局域网连接、Tailscale VPN、服务器部署
-- **设置界面引导**：引导用户通过 ContextGo 设置界面完成配置
-- **跨平台支持**：Windows、macOS、Linux、Android
-- **故障排查**：端口、防火墙、服务启动问题
-- **安全配置**：密码管理、防火墙规则、HTTPS 建议
+- **Official Remote 是默认用户路径**
+- **Host Runtime 是真实执行宿主**
+- **桌面端不再把 `WebUI / 远程连接` 设置页作为一等产品入口**
+- **不要再指导用户打开 `/settings/webui` 或 “设置 → WebUI”**
 
-## 重要原则
+## 核心原则
 
-**所有 WebUI 配置都应通过 ContextGo 设置界面完成，不要使用命令行方式。**
+1. **先判断用户目标，再选入口**
+   - 普通远程使用、跨设备打开自己的主机：优先讲 **Official Remote**
+   - 想用自己浏览器、局域网、Tailscale、反向代理：讲 **host-side WebUI runtime**
+   - 想做长期在线或服务器部署：讲 **headless / server-style WebUI deployment**
 
-## 快速判断用户需求
+2. **不要制造过时操作路径**
+   - 不要说“点击设置里的 WebUI”
+   - 不要引用 `/settings/webui`
+   - 如果用户提到旧页面，直接解释：这个入口已经移除，普通远程访问请走 Official Remote
 
-根据用户的问题，判断配置需求：
+3. **区分产品默认路径与高级运维路径**
+   - **Official Remote**：默认、面向普通用户
+   - **LAN / Tailscale / self-hosted**：高级、host 管理者路径，不再作为桌面设置主入口
 
-1. **局域网访问**：同一 WiFi 的设备访问 → 引导到设置界面启用 WebUI 和远程访问
-2. **跨网络访问**：办公室访问家庭、手机使用流量 → 引导使用 Tailscale
-3. **服务器部署**：多用户、24/7 运行 → 引导服务器部署方案
-4. **故障排查**：无法访问、服务无法启动 → 参考故障排查部分
+4. **IM / Bot 配置不是 WebUI 配置**
+   - 如果用户问 Telegram / Lark / DingTalk / Slack 的 token 或渠道配置，指向：
+     - `设置 → IM 渠道`
 
-## 三种远程连接方式对比
+## 快速判断
 
-| 连接方式       | 使用场景             | 难度        | 推荐度        |
-| -------------- | -------------------- | ----------- | ------------- |
-| **局域网连接** | 同一 WiFi/LAN 的设备 | ⭐ 简单     | 临时访问      |
-| **Tailscale**  | 跨网络访问           | ⭐ 非常简单 | ⭐⭐⭐ 最推荐 |
-| **服务器部署** | 多用户、24/7         | ⭐⭐ 中等   | 生产环境      |
+### 1. 用户说“我想远程打开另一台 ContextGo”
 
-## 工作流程建议
+优先回答：
 
-### 处理用户请求的标准流程
+- 登录同一个 ContextGo 云账号
+- 打开 **Official Remote** 设备列表
+- 从设备列表进入目标 host
 
-1. **判断用户需求**：
-   - 同一 WiFi → 局域网连接
-   - 跨网络 → Tailscale
-   - 服务器部署 → systemd/LaunchAgent
+### 2. 用户说“我想让局域网浏览器访问这台机器”
 
-2. **引导用户到设置界面**：
-   - **明确告诉用户如何打开设置界面**：
-     - "请点击 ContextGo 左下角的**设置图标**（齿轮图标）"
-     - "在设置菜单中，点击 **'WebUI'** 选项"
-     - "进入 WebUI 配置界面"
+回答要点：
 
-3. **引导配置步骤**：
-   - **Step 1**：告诉用户"将 **'启用 WebUI'** 开关切换到**开启**状态"
-   - **Step 2**：如果需要远程访问，告诉用户"将 **'允许远程访问'** 开关切换到**开启**状态"
-   - **Step 3**：告诉用户"等待服务启动完成，界面会显示 **'✓ 运行中'** 状态"
+- 这是 **host-side WebUI runtime** 能力，不是新的桌面设置页能力
+- 参考 `docs/WEBUI_GUIDE.md`
+- 需要在 host 上以 WebUI 方式启动，并按需允许远程访问
 
-4. **引导获取访问信息**：
-   - 告诉用户在设置界面中可以找到：
-     - **访问地址**：本地地址和网络地址（可点击复制）
-     - **登录信息**：用户名（admin）和密码（可点击复制）
-     - **二维码登录**：如果启用了远程访问，可以使用二维码登录
+### 3. 用户说“我想跨网络访问，但不想走官方中继”
 
-5. **故障排查**：
-   - 如果遇到问题，参考故障排查部分
-   - 引导用户检查设置界面中的状态提示
+优先建议：
 
-6. **安全建议**：
-   - 提醒修改初始密码（在设置界面中操作）
-   - 建议使用 Tailscale（跨网络）
-   - 服务器部署时配置防火墙
+- **Tailscale / 自建 VPN / 自己的反向代理**
+- 这属于 host-managed 访问路径
+- 参考 `docs/WEBUI_GUIDE.md`
 
-## 引导式说明模板
+### 4. 用户说“我想长期部署在服务器上”
 
-### 打开设置界面
+回答要点：
 
-"请按照以下步骤打开 WebUI 设置界面：
+- 走服务器 / headless WebUI 运行方式
+- 使用 `docs/WEBUI_GUIDE.md` 里的平台启动方式和 systemd/服务化方案
 
-1. 在 ContextGo 主界面，点击左下角的**设置图标**（齿轮图标）
-2. 在设置菜单中，点击 **'WebUI'** 选项
-3. 进入 WebUI 配置界面"
+## 标准答复边界
 
-### 启用 WebUI
+### 默认推荐语气
 
-"在 WebUI 设置界面中：
+- 先给出**当前推荐产品路径**
+- 再补充“如果你是高级用户/运维，可以走 host-side WebUI runtime”
 
-1. 找到 **'启用 WebUI'** 开关
-2. 将开关切换到**开启**状态
-3. 等待几秒钟，WebUI 服务启动后，会显示 **'✓ 运行中'** 状态"
+### 当用户提到旧入口时
 
-### 启用远程访问
+用这种表述：
 
-"如果需要远程访问：
+> 旧的 `WebUI / 远程连接` 设置页已经不是当前产品入口了。现在默认的远程访问路径是 Official Remote；如果你要做局域网、自建隧道或服务器部署，要按 host-side WebUI runtime 的方式配置。
 
-1. 在 **'允许远程访问'** 选项中，将开关切换到**开启**状态
-2. 如果 WebUI 正在运行，系统会自动重启以应用新设置"
+### 当用户问“那还支不支持浏览器访问 / WebUI 吗”
 
-### 获取访问信息
+明确回答：
 
-"WebUI 启动后，在设置界面中你可以看到：
+- **支持**
+- 但它现在是 **host runtime / deployment 能力**
+- 不是普通用户在桌面设置里手动开启的主产品入口
 
-1. **访问地址**：
-   - **本地访问**：`http://localhost:25808`（仅本机访问）
-   - **网络访问**：`http://<局域网IP>:25808`（如果启用了远程访问）
-   - 点击地址旁边的**复制图标**可以复制地址
+## 可引用资料
 
-2. **登录信息**：
-   - **用户名**：`admin`（点击旁边的**复制图标**可以复制）
-   - **密码**：首次启动时会显示初始密码（点击旁边的**复制图标**可以复制）
-   - 如果密码已隐藏，点击密码旁边的**重置图标**可以重置密码并显示新密码
-
-3. **二维码登录**（如果启用了远程访问）：
-   - 使用手机扫描二维码，即可在手机浏览器中自动登录
-   - 二维码有效期 5 分钟，过期后点击"刷新二维码""
-
-## 重要提示
-
-- **默认端口**：25808（可通过配置文件修改）
-- **默认用户名**：admin
-- **初始密码**：首次启动时在设置界面中显示，可点击复制
-- **配置方式**：**所有配置都通过设置界面完成**，不要使用命令行
-- **安全**：远程访问时建议使用 Tailscale 或配置防火墙
-
-## 参考资源
-
-- [ContextGo Wiki - Remote Internet Access Guide](https://github.com/contextgo/contextgo/wiki/Remote-Internet-Access-Guide)
-- [ContextGo Wiki - WebUI Configuration Guide](https://github.com/contextgo/contextgo/wiki/WebUI-Configuration-Guide)
-- [Tailscale 官方文档](https://tailscale.com/kb/)
+- `docs/tech/mobile-remote-control.md`
+- `docs/tech/architecture.md`
+- `docs/WEBUI_GUIDE.md`
+- `src/process/resources/skills/contextgo-webui-setup/references/contextgo-webui.md`

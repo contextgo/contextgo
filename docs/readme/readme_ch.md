@@ -193,7 +193,7 @@ _你的 24/7 AI 助手 — 手机、平板、电脑，随时随地都能用。_
   - **DingTalk** — AI Card 流式更新，自动回退
   - **Slack** 等更多平台即将推出
 
-> **设置：** ContextGo 设置 → WebUI 设置 → Channel，配置 Bot Token。
+> **设置：** ContextGo 设置 → IM渠道，配置 Bot Token。
 
 <p align="center">
   <img src="./resources/webui-remote.gif" alt="WebUI remote access demo" width="800">
