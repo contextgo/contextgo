@@ -9,7 +9,7 @@ import WebSocket, { type RawData } from 'ws';
 import type { OfficialRemoteStatus } from '@/common/types/cloud';
 import { getBridgeEmitter, registerWebSocketBroadcaster } from '@/common/adapter/registry';
 import { ProcessConfig } from '@process/utils/initStorage';
-import { getWebServerInstance } from '@process/bridge/webuiBridge';
+import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
 import { OfficialRemoteBrowserRelay } from './OfficialRemoteBrowserRelay';
 import { CLOUD_API_BASE_URL } from './constants';
 
@@ -110,25 +110,11 @@ function rawDataToString(value: RawData): string {
 
 function resolveBrowserEntryAvailability(): Promise<boolean> {
   try {
-    const instance = getWebServerInstance();
-    if (Number.isFinite(instance?.port) && (instance?.port ?? 0) > 0) {
-      return Promise.resolve(true);
-    }
+    const runtimeStatus = getHostBrowserEntryService().getRuntimeStatus();
+    return Promise.resolve(Boolean(runtimeStatus.running && runtimeStatus.port && runtimeStatus.port > 0));
   } catch {
-    // Fallback to persisted preference lookup below.
+    return Promise.resolve(false);
   }
-
-  return ProcessConfig.get('webui.desktop.enabled')
-    .then(async (enabledValue) => {
-      if (enabledValue !== true) {
-        return false;
-      }
-
-      const portValue = await ProcessConfig.get('webui.desktop.port');
-      const port = typeof portValue === 'number' && Number.isFinite(portValue) && portValue > 0 ? portValue : null;
-      return Boolean(port);
-    })
-    .catch((): boolean => false);
 }
 
 export class OfficialRemoteTunnelService {

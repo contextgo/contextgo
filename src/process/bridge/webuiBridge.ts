@@ -8,34 +8,25 @@ import { webui } from '@/common/adapter/ipcBridge';
 import { SERVER_CONFIG } from '@process/webserver/config/constants';
 import { WebuiService } from './services/WebuiService';
 import { generateQRLoginUrlDirect, verifyQRTokenDirect } from './webuiQR';
-// 预加载 webserver 模块避免启动时延迟 / Preload webserver module to avoid startup delay
-import { startWebServerWithInstance } from '@process/webserver/index';
-import { cleanupWebAdapter } from '@process/webserver/adapter';
+import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
+import type { WebServerInstance } from '@process/webserver';
 
 export { generateQRLoginUrlDirect, verifyQRTokenDirect };
-
-// WebUI 服务器实例引用 / WebUI server instance reference
-let webServerInstance: {
-  server: import('http').Server;
-  wss: import('ws').WebSocketServer;
-  port: number;
-  allowRemote: boolean;
-} | null = null;
 
 /**
  * 设置 WebUI 服务器实例
  * Set WebUI server instance (called from webserver/index.ts)
  */
-export function setWebServerInstance(instance: typeof webServerInstance): void {
-  webServerInstance = instance;
+export function setWebServerInstance(instance: WebServerInstance | null): void {
+  getHostBrowserEntryService().setCurrentInstanceForLegacy(instance);
 }
 
 /**
  * 获取 WebUI 服务器实例
  * Get WebUI server instance
  */
-export function getWebServerInstance(): typeof webServerInstance {
-  return webServerInstance;
+export function getWebServerInstance(): WebServerInstance | null {
+  return getHostBrowserEntryService().getCurrentInstance();
 }
 
 /**
@@ -46,7 +37,7 @@ export function initWebuiBridge(): void {
   // 获取 WebUI 状态 / Get WebUI status
   webui.getStatus.provider(async () => {
     return WebuiService.handleAsync(async () => {
-      const status = await WebuiService.getStatus(webServerInstance);
+      const status = await WebuiService.getStatus(getHostBrowserEntryService().getCurrentInstance());
       return { success: true, data: status };
     }, 'Get status');
   });
@@ -54,7 +45,7 @@ export function initWebuiBridge(): void {
   webui.updatePreferences.provider(async ({ allowRemote, port }) => {
     return WebuiService.handleAsync(async () => {
       await WebuiService.updateLocalAccessPreferences({ allowRemote, port });
-      const status = await WebuiService.getStatus(webServerInstance);
+      const status = await WebuiService.getStatus(getHostBrowserEntryService().getCurrentInstance());
       return { success: true, data: status };
     }, 'Update preferences');
   });
@@ -62,30 +53,13 @@ export function initWebuiBridge(): void {
   // 启动 WebUI / Start WebUI
   webui.start.provider(async ({ port: requestedPort, allowRemote }) => {
     try {
-      // If server is already running, stop it first (supports restart for config changes)
-      // 如果服务器已在运行，先停止（支持配置变更时的重启）
-      if (webServerInstance) {
-        try {
-          const { server: oldServer, wss: oldWss } = webServerInstance;
-          oldWss.clients.forEach((client) => client.close(1000, 'Server restarting'));
-          await new Promise<void>((resolve) => {
-            oldServer.close(() => resolve());
-            // Force resolve after 2s to avoid hanging
-            setTimeout(resolve, 2000);
-          });
-          cleanupWebAdapter();
-        } catch (err) {
-          console.warn('[WebUI Bridge] Error stopping previous server:', err);
-        }
-        webServerInstance = null;
-      }
-
       const port = requestedPort ?? SERVER_CONFIG.DEFAULT_PORT;
       const remote = allowRemote ?? false;
-
-      // 使用预加载的模块 / Use preloaded module
-      const instance = await startWebServerWithInstance(port, remote);
-      webServerInstance = instance;
+      const instance = await getHostBrowserEntryService().ensureForDemand('local-client', {
+        preferredPort: port,
+        allowRemote: remote,
+        reason: 'webui.start',
+      });
       await WebuiService.updateLocalAccessPreferences({
         enabled: true,
         allowRemote: remote,
@@ -93,24 +67,16 @@ export function initWebuiBridge(): void {
       });
 
       // 获取服务器信息 / Get server info
-      const status = await WebuiService.getStatus(webServerInstance);
-      const localUrl = `http://localhost:${port}`;
+      const status = await WebuiService.getStatus(instance);
+      const localUrl = `http://localhost:${instance.port}`;
       const lanIP = WebuiService.getLanIP();
-      const networkUrl = remote && lanIP ? `http://${lanIP}:${port}` : undefined;
+      const networkUrl = remote && lanIP ? `http://${lanIP}:${instance.port}` : undefined;
       const initialPassword = status.initialPassword;
-
-      // 发送状态变更事件 / Emit status changed event
-      webui.statusChanged.emit({
-        running: true,
-        port,
-        localUrl,
-        networkUrl,
-      });
 
       return {
         success: true,
         data: {
-          port,
+          port: instance.port,
           localUrl,
           networkUrl,
           lanIP: lanIP ?? undefined,
@@ -129,41 +95,12 @@ export function initWebuiBridge(): void {
   // 停止 WebUI / Stop WebUI
   webui.stop.provider(async () => {
     try {
-      if (!webServerInstance) {
-        return {
-          success: false,
-          msg: 'WebUI is not running',
-        };
-      }
-
-      const { server, wss } = webServerInstance;
-
-      // 关闭所有 WebSocket 连接 / Close all WebSocket connections
-      wss.clients.forEach((client) => {
-        client.close(1000, 'Server shutting down');
-      });
-
-      // 关闭服务器 / Close server
-      await new Promise<void>((resolve, reject) => {
-        server.close((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      // 清理 WebSocket 广播注册 / Cleanup WebSocket broadcaster registration
-      cleanupWebAdapter();
-
+      const currentInstance = getHostBrowserEntryService().getCurrentInstance();
       await WebuiService.updateLocalAccessPreferences({
         enabled: false,
-        port: webServerInstance.port,
+        port: currentInstance?.port ?? SERVER_CONFIG.DEFAULT_PORT,
       });
-      webServerInstance = null;
-
-      // 发送状态变更事件 / Emit status changed event
-      webui.statusChanged.emit({
-        running: false,
-      });
+      await getHostBrowserEntryService().releaseDemand('local-client', 'Server shutting down');
 
       return { success: true };
     } catch (error) {
@@ -213,6 +150,7 @@ export function initWebuiBridge(): void {
 
   // 生成二维码登录 token / Generate QR login token
   webui.generateQRToken.provider(async () => {
+    const webServerInstance = getHostBrowserEntryService().getCurrentInstance();
     // 检查 webServerInstance 状态
     if (!webServerInstance) {
       return {

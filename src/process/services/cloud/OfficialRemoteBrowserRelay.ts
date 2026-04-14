@@ -7,7 +7,7 @@
 import { Buffer } from 'node:buffer';
 import WebSocket, { type RawData } from 'ws';
 import { ProcessConfig } from '@process/utils/initStorage';
-import { getWebServerInstance } from '@process/bridge/webuiBridge';
+import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
 
 const DESKTOP_WEBUI_PORT_KEY = 'webui.desktop.port';
 const LOCAL_WEBUI_HOST = '127.0.0.1';
@@ -99,12 +99,12 @@ function sanitizeRequestHeaders(headers: Record<string, string> | undefined): He
 
 async function resolveLocalWebUiBaseUrl(): Promise<string | null> {
   try {
-    const instance = getWebServerInstance();
-    if (instance?.port && Number.isFinite(instance.port) && instance.port > 0) {
-      return `http://${LOCAL_WEBUI_HOST}:${instance.port}`;
+    const runtimeBaseUrl = getHostBrowserEntryService().getLocalBaseUrl();
+    if (runtimeBaseUrl) {
+      return runtimeBaseUrl;
     }
   } catch {
-    // Ignore lookup failures and fall back to persisted config.
+    // Ignore runtime lookup failures and fall back to persisted config.
   }
 
   const storedPort = await ProcessConfig.get(DESKTOP_WEBUI_PORT_KEY);

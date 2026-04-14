@@ -33,7 +33,8 @@ import {
   CLOUD_AUTH_SESSION_PARTITION,
 } from './constants';
 import { getOfficialRemoteTunnelService } from './OfficialRemoteTunnelService';
-import { ensureDesktopWebUIForOfficialRemote, releaseDesktopWebUIForOfficialRemote } from '@process/utils/webuiConfig';
+import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
+import { getPreferredDesktopWebUIPort } from '@process/utils/webuiConfig';
 
 type SessionPayload = {
   authenticated?: boolean;
@@ -186,6 +187,7 @@ const CLOUD_LOGIN_LOOPBACK_HOST = '127.0.0.1';
 const CLOUD_LOGIN_LOOPBACK_PATH_PREFIX = '/contextgo-cloud-login';
 const OFFICIAL_REMOTE_READY_TIMEOUT_MS = 8_000;
 const OFFICIAL_REMOTE_READY_POLL_MS = 250;
+const OFFICIAL_REMOTE_DEMAND = 'official-remote';
 
 const isCloudRequestError = (error: unknown): error is CloudRequestError => error instanceof CloudRequestError;
 
@@ -338,6 +340,21 @@ export class CloudService {
 
   private constructor() {}
 
+  private async ensureOfficialRemoteHostBrowserEntry(reason: string): Promise<void> {
+    const preferredPort = await getPreferredDesktopWebUIPort();
+    const instance = await getHostBrowserEntryService().ensureForDemand(OFFICIAL_REMOTE_DEMAND, {
+      preferredPort,
+      allowRemote: false,
+      reason,
+      allowPortFallback: true,
+    });
+    await ProcessConfig.set('webui.desktop.port', instance.port);
+  }
+
+  private async releaseOfficialRemoteHostBrowserEntry(reason: string): Promise<void> {
+    await getHostBrowserEntryService().releaseDemand(OFFICIAL_REMOTE_DEMAND, reason);
+  }
+
   public initialize(): void {
     if (this.initialized) {
       return;
@@ -446,7 +463,7 @@ export class CloudService {
 
     await this.ensureBrowserSessionUser();
     await this.ensureDeviceRegistration(true);
-    await ensureDesktopWebUIForOfficialRemote().catch((error: unknown) => {
+    await this.ensureOfficialRemoteHostBrowserEntry('cloud-login').catch((error: unknown) => {
       console.warn('[Cloud] Failed to prepare desktop browser entry after login:', error);
     });
     await this.officialRemoteTunnelService.reconcile('cloud-login');
@@ -468,7 +485,7 @@ export class CloudService {
         await this.ensureDeviceRegistration(true);
       }
 
-      await ensureDesktopWebUIForOfficialRemote();
+      await this.ensureOfficialRemoteHostBrowserEntry('official-remote');
       await this.officialRemoteTunnelService.reconcile('official-remote-ensure-ready');
 
       const nextStatus = await this.waitForOfficialRemoteReady();
@@ -563,9 +580,11 @@ export class CloudService {
 
     await this.clearStoredState();
     await this.officialRemoteTunnelService.reconcile('cloud-logout');
-    await releaseDesktopWebUIForOfficialRemote().catch((error: unknown) => {
-      console.warn('[Cloud] Failed to release Official Remote desktop runtime after logout:', error);
-    });
+    await this.releaseOfficialRemoteHostBrowserEntry('Official Remote runtime released after cloud logout').catch(
+      (error: unknown) => {
+        console.warn('[Cloud] Failed to release Official Remote desktop runtime after logout:', error);
+      }
+    );
     const status = await this.getStatus();
     await this.emitStatusChanged(status);
     return status;
@@ -953,7 +972,9 @@ export class CloudService {
   private async clearStoredDeviceBinding(): Promise<void> {
     await ProcessConfig.remove(CLOUD_DEVICE_KEY);
     await ProcessConfig.remove(CLOUD_DEVICE_TOKEN_KEY);
-    await releaseDesktopWebUIForOfficialRemote().catch((error: unknown) => {
+    await this.releaseOfficialRemoteHostBrowserEntry(
+      'Official Remote runtime released after clearing device binding'
+    ).catch((error: unknown) => {
       console.warn('[Cloud] Failed to release Official Remote desktop runtime after clearing device binding:', error);
     });
   }
@@ -965,7 +986,7 @@ export class CloudService {
     }
 
     await this.ensureDeviceRegistration(true);
-    await ensureDesktopWebUIForOfficialRemote().catch((error: unknown) => {
+    await this.ensureOfficialRemoteHostBrowserEntry('signed-in-device-binding').catch((error: unknown) => {
       console.warn('[Cloud] Failed to prepare desktop browser entry for signed-in device binding:', error);
     });
     return this.getStatus();
@@ -986,7 +1007,7 @@ export class CloudService {
 
     await ProcessConfig.set(CLOUD_USER_KEY, sessionUser);
     await this.ensureDeviceRegistration(true);
-    await ensureDesktopWebUIForOfficialRemote().catch((error: unknown) => {
+    await this.ensureOfficialRemoteHostBrowserEntry('refresh-official-remote-device-token').catch((error: unknown) => {
       console.warn(
         '[Cloud] Failed to prepare desktop browser entry after refreshing Official Remote device token:',
         error
@@ -1118,7 +1139,7 @@ export class CloudService {
       return;
     }
 
-    await ensureDesktopWebUIForOfficialRemote().catch((error: unknown) => {
+    await this.ensureOfficialRemoteHostBrowserEntry(`official-remote-${reason}`).catch((error: unknown) => {
       console.warn(`[Cloud] Failed to auto-prepare Official Remote browser entry on ${reason}:`, error);
     });
   }
