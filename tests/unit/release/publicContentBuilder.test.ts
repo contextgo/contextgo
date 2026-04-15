@@ -79,14 +79,21 @@ afterEach(async () => {
 
 describe('buildPublicContentCollections', () => {
   it('builds docs and blog collections from localized content sources', async () => {
+    const docsIndex = JSON.parse(
+      await fs.readFile(path.resolve(process.cwd(), 'apps/web/src/content/docs/en/index.json'), 'utf8')
+    ) as { order: string[] };
+    const blogIndex = JSON.parse(
+      await fs.readFile(path.resolve(process.cwd(), 'apps/web/src/content/blog/zh/index.json'), 'utf8')
+    ) as { order: string[] };
+
     const built = await buildPublicContentCollections({
       contentRoot: path.resolve(process.cwd(), 'apps/web/src/content'),
       docsVersion: 'draft',
       exportedAt: '1970-01-01T00:00:00.000Z',
     });
 
-    expect(built.docs.en.collection.docs.entries).toHaveLength(12);
-    expect(built.blog.zh.collection.blog.entries).toHaveLength(3);
+    expect(built.docs.en.collection.docs.entries).toHaveLength(docsIndex.order.length);
+    expect(built.blog.zh.collection.blog.entries).toHaveLength(blogIndex.order.length);
     expect(built.docs.en.collection.articles['quick-start'].html).toContain('id="before-you-begin"');
     expect(built.blog.en.collection.articles['context-before-agents'].html).toContain(
       'Why this product does not start'
