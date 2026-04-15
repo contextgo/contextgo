@@ -517,7 +517,6 @@ describe('Sider', () => {
           updatedAt: '2026-04-01T00:00:00Z',
         },
         deviceTokenAvailable: true,
-        officialRemoteReady: false,
         officialRemote: {
           desired: false,
           running: false,
@@ -602,7 +601,6 @@ describe('Sider', () => {
           updatedAt: '2026-04-01T00:00:00Z',
         },
         deviceTokenAvailable: true,
-        officialRemoteReady: false,
         officialRemote: {
           desired: false,
           running: false,
@@ -658,7 +656,6 @@ describe('Sider', () => {
           updatedAt: '2026-04-01T00:00:00Z',
         },
         deviceTokenAvailable: true,
-        officialRemoteReady: false,
         officialRemote: {
           desired: false,
           running: false,
@@ -720,7 +717,6 @@ describe('Sider', () => {
           updatedAt: '2026-04-01T00:00:00Z',
         },
         deviceTokenAvailable: true,
-        officialRemoteReady: false,
         officialRemote: {
           desired: false,
           running: false,

@@ -176,7 +176,6 @@ describe('WebUI settings visibility', () => {
           running: true,
           transport: 'cloud-relay',
         },
-        officialRemoteReady: true,
         providers: ['github', 'google'],
         user: {
           avatarUrl: null,

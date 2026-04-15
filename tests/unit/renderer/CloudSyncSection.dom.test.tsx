@@ -374,6 +374,14 @@ describe('CloudSyncSection', () => {
           running: false,
           message: 'Official Remote is not enabled on this desktop yet.',
         },
+        hostRuntime: {
+          ...authenticatedStatus.hostRuntime,
+          running: false,
+          lifecycle: 'stopped',
+          officialRemoteDesired: false,
+          officialRemoteReady: false,
+          localUrl: undefined,
+        },
       },
     });
 
