@@ -180,6 +180,7 @@ This model intentionally differs from a single central cloud filesystem:
 - `POST /api/obsidian-sync/replicas/register`
 - `POST /api/obsidian-sync/batches/push`
 - `POST /api/obsidian-sync/batches/pull`
+- `GET /api/obsidian-sync/spaces/{space_id}`
 
 ## InferMesh Integration
 

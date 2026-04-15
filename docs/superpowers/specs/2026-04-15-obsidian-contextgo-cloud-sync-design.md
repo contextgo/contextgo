@@ -553,3 +553,30 @@ Space
 - `.obsidian` 默认纳入同步
 - 自动覆盖优先于复杂交互式冲突处理
 - 第三方同步共存只做风险提示，不做正式兼容承诺
+
+## 当前 MVP Checkpoint
+
+截至当前设计落地阶段，已完成的最小实现包括：
+
+- `apps/cloud`
+  - `POST /api/obsidian-sync/replicas/register`
+  - `POST /api/obsidian-sync/batches/push`
+  - `POST /api/obsidian-sync/batches/pull`
+  - `GET /api/obsidian-sync/spaces/{space_id}`
+- `connector` 仓
+  - `obsidian` runtime summary 已暴露 `sync_endpoint`
+  - `replica_id` 已进入 runtime summary 输出
+  - `buildObsidianChangeBatch(...)` 已作为最小 batch builder 存在
+  - 官方插件 scaffold 已落在 `plugins/obsidian-contextgo/`
+- 主仓
+  - Cloud 类型与 bridge 已补 `CloudObsidianVaultBinding` / `CloudObsidianReplica`
+  - `CloudService` 已可按 `spaceId` 拉取 Obsidian sync status
+  - `CloudSyncSection` 已接入最小 `ObsidianSyncPanel`
+
+当前仍未完成的部分包括：
+
+- 真正的 Obsidian 本地 watcher / push / pull 执行器
+- 手机端插件工程的实际可运行实现
+- frontmatter 元信息写回
+- 自动 merge 策略的真实实现
+- 更完整的 sync health / last sync / drift 呈现
