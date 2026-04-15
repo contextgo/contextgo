@@ -149,10 +149,12 @@ describe('MessageList', () => {
     const scroller = screen.getByTestId('virtuoso-scroller');
     const root = scroller.parentElement?.parentElement;
 
+    expect(scroller.className).toContain('scrollbar-hide');
     expect(scroller).toHaveStyle({
       overflowX: 'hidden',
       overflowY: 'auto',
       overscrollBehaviorX: 'none',
+      scrollbarWidth: 'none',
     });
     expect(root?.className).toContain('overflow-x-hidden');
   });
