@@ -32,6 +32,8 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
 import InfermeshMenuLogo from '@renderer/assets/logos/brand/infermesh-menu.png';
+import GithubDashboardLogo from '@renderer/assets/logos/tools/github-dashboard.svg';
+import GoogleDashboardLogo from '@renderer/assets/logos/tools/google-dashboard.svg';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
@@ -93,6 +95,13 @@ const renderUserMenuLabel = (icon: React.ReactNode, label: string, value?: React
     <span className='sider-user-menu__row-text'>{label}</span>
     {value ? <span className='sider-user-menu__row-value'>{value}</span> : null}
   </div>
+);
+
+const renderCloudAuthButtonContent = (icon: React.ReactNode, label: string) => (
+  <span className='flex w-full items-center justify-center gap-8px'>
+    <span className='inline-flex h-18px w-18px items-center justify-center'>{icon}</span>
+    <span>{label}</span>
+  </span>
 );
 
 const isObsidianVaultProviderRef = (providerRef?: SpaceProviderRef): providerRef is SpaceVaultProviderRef => {
@@ -752,6 +761,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     { value: 'dark', label: t('settings.darkMode') },
   ];
   const currentThemeLabel = themeOptions.find((option) => option.value === theme)?.label || t('settings.theme');
+  const cloudSignedOutLabel = t('settings.webui.officialRemoteStatusShort.signedOut');
+  const isCloudAuthenticated = cloudStatus?.authenticated === true;
   const userDisplayName = user?.displayName || user?.username || desktopUsername || t('common.localUser');
   const currentDeviceName = cloudStatus?.device?.deviceName || t('settings.webui.switchDeviceUnknown');
   const remoteDevices = remoteDevicesPayload?.devices ?? [];
@@ -785,6 +796,10 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     });
   }, [currentCloudDeviceId, switcherDevices]);
   const userSecondaryText = useMemo(() => {
+    if (!isCloudAuthenticated) {
+      return cloudSignedOutLabel;
+    }
+
     if (user?.email) {
       return user.email;
     }
@@ -794,8 +809,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     }
 
     return `${currentLanguageLabel} · ${currentThemeLabel}`;
-  }, [currentLanguageLabel, currentThemeLabel, user?.email, user?.username]);
+  }, [cloudSignedOutLabel, currentLanguageLabel, currentThemeLabel, isCloudAuthenticated, user?.email, user?.username]);
   const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
+  const currentDeviceSummary = isCloudAuthenticated ? currentDeviceName : cloudSignedOutLabel;
   const createEntryDropdownTriggerProps = {
     autoAlignPopupWidth: true,
     autoFitPosition: true,
@@ -976,8 +992,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       <Menu.Item key='device-switch'>
         {renderUserMenuLabel(
           <Computer theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
-          currentDeviceName,
-          <Right theme='outline' size='14' fill={iconColors.secondary} className='app-icon shrink-0' />
+          t('settings.webui.switchDevice'),
+          currentDeviceSummary
         )}
       </Menu.Item>
       {cloudStatus?.user ? (
@@ -996,13 +1012,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         </>
       ) : (
         <>
-          <Menu.Item key='cloud:login'>
-            {renderUserMenuLabel(
-              <LinkCloud theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
-              t('settings.cloud.title'),
-              t('settings.cloud.notConnected')
-            )}
-          </Menu.Item>
           <Menu.Item key='cloud:infermesh'>
             {renderUserMenuLabel(
               <img
@@ -1264,23 +1273,46 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         >
           <div className='px-20px pb-16px'>
             <div className='flex flex-col gap-12px py-4px'>
-              <div className='text-14px font-600 text-t-primary'>{t('settings.cloud.notConnected')}</div>
-              <div className='text-13px leading-relaxed text-t-secondary'>{t('settings.cloud.notConnectedDesc')}</div>
-              <div className='flex flex-wrap gap-10px pt-4px'>
+              <div className='rounded-16px border border-line bg-fill-1 px-14px py-14px'>
+                <div className='flex items-start gap-12px'>
+                  <div className='flex h-40px w-40px shrink-0 items-center justify-center rounded-12px bg-bg-2'>
+                    <LinkCloud theme='outline' size='18' fill={iconColors.primary} className='app-icon shrink-0' />
+                  </div>
+                  <div className='min-w-0 flex-1 space-y-6px'>
+                    <div className='flex flex-wrap items-center gap-8px'>
+                      <div className='text-14px font-600 text-t-primary'>{t('settings.cloud.notConnected')}</div>
+                      <span className='inline-flex rounded-full bg-fill-2 px-8px py-2px text-11px font-600 text-t-secondary'>
+                        {cloudSignedOutLabel}
+                      </span>
+                    </div>
+                    <div className='text-13px leading-relaxed text-t-secondary'>{t('settings.cloud.description')}</div>
+                  </div>
+                </div>
+              </div>
+              <div className='grid grid-cols-1 gap-10px pt-4px md:grid-cols-2'>
                 <Button
-                  type='primary'
+                  type='secondary'
                   loading={authLoadingProvider === 'github'}
                   disabled={Boolean(authLoadingProvider)}
+                  className='!h-40px'
                   onClick={() => void handleCloudLogin('github')}
                 >
-                  {t('settings.cloud.loginWithGithub')}
+                  {renderCloudAuthButtonContent(
+                    <img src={GithubDashboardLogo} alt='GitHub' className='h-18px w-18px shrink-0 object-contain' />,
+                    t('settings.cloud.loginWithGithub')
+                  )}
                 </Button>
                 <Button
+                  type='secondary'
                   loading={authLoadingProvider === 'google'}
                   disabled={Boolean(authLoadingProvider)}
+                  className='!h-40px'
                   onClick={() => void handleCloudLogin('google')}
                 >
-                  {t('settings.cloud.loginWithGoogle')}
+                  {renderCloudAuthButtonContent(
+                    <img src={GoogleDashboardLogo} alt='Google' className='h-18px w-18px shrink-0 object-contain' />,
+                    t('settings.cloud.loginWithGoogle')
+                  )}
                 </Button>
               </div>
             </div>
@@ -1321,18 +1353,46 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           <div className='px-20px pb-16px'>
             {!cloudStatus?.authenticated ? (
               <div className='flex flex-col gap-12px py-4px'>
-                <div className='text-14px font-600 text-t-primary'>{t('settings.cloud.notConnected')}</div>
-                <div className='text-13px leading-relaxed text-t-secondary'>{t('settings.cloud.notConnectedDesc')}</div>
-                <div className='flex flex-wrap gap-10px pt-4px'>
+                <div className='rounded-16px border border-line bg-fill-1 px-14px py-14px'>
+                  <div className='flex items-start gap-12px'>
+                    <div className='flex h-40px w-40px shrink-0 items-center justify-center rounded-12px bg-bg-2'>
+                      <LinkCloud theme='outline' size='18' fill={iconColors.primary} className='app-icon shrink-0' />
+                    </div>
+                    <div className='min-w-0 flex-1 space-y-6px'>
+                      <div className='flex flex-wrap items-center gap-8px'>
+                        <div className='text-14px font-600 text-t-primary'>{t('settings.cloud.notConnected')}</div>
+                        <span className='inline-flex rounded-full bg-fill-2 px-8px py-2px text-11px font-600 text-t-secondary'>
+                          {cloudSignedOutLabel}
+                        </span>
+                      </div>
+                      <div className='text-13px leading-relaxed text-t-secondary'>{t('settings.cloud.description')}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className='grid grid-cols-1 gap-10px pt-4px md:grid-cols-2'>
                   <Button
-                    type='primary'
+                    type='secondary'
                     loading={authLoadingProvider === 'github'}
+                    disabled={Boolean(authLoadingProvider)}
+                    className='!h-40px'
                     onClick={() => void handleCloudLogin('github')}
                   >
-                    {t('settings.cloud.loginWithGithub')}
+                    {renderCloudAuthButtonContent(
+                      <img src={GithubDashboardLogo} alt='GitHub' className='h-18px w-18px shrink-0 object-contain' />,
+                      t('settings.cloud.loginWithGithub')
+                    )}
                   </Button>
-                  <Button loading={authLoadingProvider === 'google'} onClick={() => void handleCloudLogin('google')}>
-                    {t('settings.cloud.loginWithGoogle')}
+                  <Button
+                    type='secondary'
+                    loading={authLoadingProvider === 'google'}
+                    disabled={Boolean(authLoadingProvider)}
+                    className='!h-40px'
+                    onClick={() => void handleCloudLogin('google')}
+                  >
+                    {renderCloudAuthButtonContent(
+                      <img src={GoogleDashboardLogo} alt='Google' className='h-18px w-18px shrink-0 object-contain' />,
+                      t('settings.cloud.loginWithGoogle')
+                    )}
                   </Button>
                 </div>
               </div>
