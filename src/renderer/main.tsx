@@ -53,11 +53,16 @@ import './styles/themes/index.css';
 import './services/i18n';
 
 // Components and utilities
+import AppLoader from './components/layout/AppLoader';
 import RendererCrashBoundary from './components/layout/RendererCrashBoundary';
 import { mountRendererCrashOverlay } from './components/layout/RendererCrashOverlay';
 import Router from './components/layout/Router';
 import { useAuth } from './hooks/context/AuthContext';
 import { registerRendererCrashReporting } from './utils/ui/rendererCrashReporting';
+
+type StartupReadyWindow = Window & {
+  __CONTEXTGO_STARTUP_READY?: boolean;
+};
 
 // Patch Korean locale with missing properties from English locale
 const koKRComplete = {
@@ -107,11 +112,34 @@ const Config: React.FC<PropsWithChildren> = ({ children }) => {
   return React.createElement(ConfigProvider, { theme: { primaryColor: '#4E5969' }, locale: arcoLocale }, children);
 };
 
-const Main = () => {
+export const Main = () => {
   const { ready } = useAuth();
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    let rafFrame = 0;
+    let settleFrame = 0;
+    const startupWindow = window as StartupReadyWindow;
+
+    rafFrame = window.requestAnimationFrame(() => {
+      settleFrame = window.requestAnimationFrame(() => {
+        startupWindow.__CONTEXTGO_STARTUP_READY = true;
+        document.documentElement.dataset.contextgoStartupReady = 'true';
+        window.dispatchEvent(new Event('contextgo:startup-ready'));
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafFrame);
+      window.cancelAnimationFrame(settleFrame);
+    };
+  }, []);
+
   if (!ready) {
-    return null;
+    return <AppLoader />;
   }
 
   return <Router />;

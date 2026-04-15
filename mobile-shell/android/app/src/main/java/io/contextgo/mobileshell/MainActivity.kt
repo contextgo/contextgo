@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.webkit.JavascriptInterface
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -20,6 +21,10 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
   private lateinit var binding: ActivityMainBinding
   private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+  private var startupOverlayActive = false
+  private var startupNavigationFinished = false
+  private var startupReadyReceived = false
+  private var startupOverlayToken = 0
 
   private val preferences by lazy(LazyThreadSafetyMode.NONE) {
     getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
@@ -105,6 +110,7 @@ class MainActivity : AppCompatActivity() {
   private fun configureWebView() {
     CookieManager.getInstance().setAcceptCookie(true)
     CookieManager.getInstance().setAcceptThirdPartyCookies(binding.webView, true)
+    binding.webView.addJavascriptInterface(StartupBridge(), STARTUP_BRIDGE_NAME)
 
     binding.webView.settings.apply {
       javaScriptEnabled = true
@@ -132,6 +138,33 @@ class MainActivity : AppCompatActivity() {
         return runCatching {
           startActivity(Intent(Intent.ACTION_VIEW, target))
         }.isSuccess
+      }
+
+      override fun onPageCommitVisible(view: WebView?, url: String?) {
+        super.onPageCommitVisible(view, url)
+        if (startupOverlayActive) {
+          updateStartupOverlayMessage(url)
+        }
+      }
+
+      override fun onPageFinished(view: WebView?, url: String?) {
+        super.onPageFinished(view, url)
+        if (!startupOverlayActive) {
+          return
+        }
+
+        startupNavigationFinished = true
+        injectStartupReadyObserver()
+        dismissStartupOverlayIfReady()
+        val overlayToken = startupOverlayToken
+        binding.startupOverlay.postDelayed(
+          {
+            if (startupOverlayActive && startupOverlayToken == overlayToken) {
+              hideStartupOverlay()
+            }
+          },
+          STARTUP_OVERLAY_FALLBACK_DELAY_MS
+        )
       }
     }
 
@@ -202,6 +235,7 @@ class MainActivity : AppCompatActivity() {
     binding.urlInput.setText(targetUrl)
     binding.errorText.isVisible = false
     binding.errorText.text = ""
+    showStartupOverlay(targetUrl)
     showWebUi()
     binding.webView.loadUrl(targetUrl)
   }
@@ -223,15 +257,99 @@ class MainActivity : AppCompatActivity() {
     binding.webContainer.isVisible = true
   }
 
+  private fun showStartupOverlay(targetUrl: String) {
+    startupOverlayToken += 1
+    startupOverlayActive = true
+    startupNavigationFinished = false
+    startupReadyReceived = false
+    binding.startupOverlayTitle.text = getString(R.string.app_name)
+    binding.startupOverlayMessage.text = resolveStartupOverlayMessage(targetUrl)
+    binding.startupOverlay.isVisible = true
+  }
+
+  private fun updateStartupOverlayMessage(url: String?) {
+    binding.startupOverlayMessage.text = resolveStartupOverlayMessage(url)
+  }
+
+  private fun dismissStartupOverlayIfReady() {
+    if (startupNavigationFinished && startupReadyReceived) {
+      hideStartupOverlay()
+    }
+  }
+
+  private fun hideStartupOverlay() {
+    startupOverlayActive = false
+    binding.startupOverlay.isVisible = false
+  }
+
+  private fun injectStartupReadyObserver() {
+    binding.webView.evaluateJavascript(STARTUP_READY_OBSERVER_SCRIPT, null)
+  }
+
+  private fun resolveStartupOverlayMessage(targetUrl: String?): String {
+    return if (targetUrl?.contains("/remote/devices") == true) {
+      getString(R.string.browser_loading_devices)
+    } else {
+      getString(R.string.browser_loading_desktop)
+    }
+  }
+
   private fun showError(message: String) {
     binding.errorText.text = message
     binding.errorText.isVisible = true
+  }
+
+  private inner class StartupBridge {
+    @JavascriptInterface
+    fun notifyReady() {
+      runOnUiThread {
+        startupReadyReceived = true
+        dismissStartupOverlayIfReady()
+      }
+    }
   }
 
   private companion object {
     const val OFFICIAL_REMOTE_URL = "https://remote.contextgo.io/remote/devices"
     const val PREFERENCES_NAME = "contextgo_mobile_shell"
     const val TARGET_URL_KEY = "target_url"
+    const val STARTUP_BRIDGE_NAME = "ContextGoMobileShell"
+    const val STARTUP_OVERLAY_FALLBACK_DELAY_MS = 500L
+    const val STARTUP_READY_OBSERVER_SCRIPT =
+      """
+      (function() {
+        if (window.__contextGoMobileShellStartupReadyObserverInstalled) {
+          return;
+        }
+
+        window.__contextGoMobileShellStartupReadyObserverInstalled = true;
+        const notifyReady = function() {
+          if (window.ContextGoMobileShell && typeof window.ContextGoMobileShell.notifyReady === 'function') {
+            window.ContextGoMobileShell.notifyReady();
+          }
+        };
+
+        const maybeNotifyReady = function() {
+          if (
+            window.__CONTEXTGO_STARTUP_READY === true ||
+            (document.documentElement && document.documentElement.dataset.contextgoStartupReady === 'true')
+          ) {
+            notifyReady();
+          }
+        };
+
+        window.addEventListener('contextgo:startup-ready', notifyReady, { once: true });
+
+        if (document.documentElement) {
+          new MutationObserver(maybeNotifyReady).observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-contextgo-startup-ready']
+          });
+        }
+
+        maybeNotifyReady();
+      })();
+      """
   }
 }
 
