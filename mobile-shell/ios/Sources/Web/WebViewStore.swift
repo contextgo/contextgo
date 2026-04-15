@@ -7,7 +7,13 @@ import WebKit
 final class WebViewStore: NSObject, ObservableObject {
   private static let officialRemoteHost = "remote.contextgo.io"
   private static let themeColorMessageHandlerName = "contextGoThemeColor"
+  private static let startupReadyMessageHandlerName = "contextGoStartupReady"
   private static let defaultChromeColorHex = "#f7f8fb"
+
+  enum LaunchOverlayPhase {
+    case brand
+    case connecting
+  }
 
   private static var themeColorObserverScript: String {
     """
@@ -84,13 +90,64 @@ final class WebViewStore: NSObject, ObservableObject {
     """
   }
 
+  private static var startupReadyObserverScript: String {
+    """
+    (() => {
+      if (window.__contextGoStartupReadyObserverInstalled) {
+        return;
+      }
+
+      window.__contextGoStartupReadyObserverInstalled = true;
+      const handler = window.webkit?.messageHandlers?.\(startupReadyMessageHandlerName);
+      if (!handler) {
+        return;
+      }
+
+      let posted = false;
+      const postReady = () => {
+        if (posted) {
+          return;
+        }
+
+        posted = true;
+        handler.postMessage('ready');
+      };
+
+      const maybePostReady = () => {
+        if (
+          window.__CONTEXTGO_STARTUP_READY === true ||
+          document.documentElement?.dataset?.contextgoStartupReady === 'true'
+        ) {
+          postReady();
+        }
+      };
+
+      window.addEventListener('contextgo:startup-ready', postReady, { once: true });
+      window.addEventListener('load', maybePostReady, { once: true });
+
+      if (document.documentElement) {
+        new MutationObserver(maybePostReady).observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['data-contextgo-startup-ready'],
+        });
+      }
+
+      maybePostReady();
+    })();
+    """
+  }
+
   let webView: WKWebView
   @Published private(set) var isPageLoading = false
   @Published private(set) var hasCommittedNavigation = false
+  @Published private(set) var hasFinishedNavigation = false
+  @Published private(set) var hasReceivedStartupReadySignal = false
+  @Published private(set) var isLaunchOverlayVisible = true
+  @Published private(set) var launchOverlayPhase: LaunchOverlayPhase = .brand
   @Published private(set) var chromeColor = UIColor(contextGoHex: WebViewStore.defaultChromeColorHex) ?? .systemBackground
 
   var shouldShowLaunchOverlay: Bool {
-    isPageLoading && !hasCommittedNavigation
+    isLaunchOverlayVisible
   }
 
   private let loginSessionStore: LoginSessionStore
@@ -99,6 +156,7 @@ final class WebViewStore: NSObject, ObservableObject {
   private var authenticationHandler: ((URL) -> Void)?
   private var recoveryHandler: ((String?) -> Void)?
   private var requestedURL: String?
+  private var overlayFallbackTask: Task<Void, Never>?
 
   override init() {
     let configuration = WKWebViewConfiguration()
@@ -118,8 +176,12 @@ final class WebViewStore: NSObject, ObservableObject {
     super.init()
 
     webView.configuration.userContentController.add(self, name: Self.themeColorMessageHandlerName)
+    webView.configuration.userContentController.add(self, name: Self.startupReadyMessageHandlerName)
     webView.configuration.userContentController.addUserScript(
       WKUserScript(source: Self.themeColorObserverScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+    )
+    webView.configuration.userContentController.addUserScript(
+      WKUserScript(source: Self.startupReadyObserverScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
     )
     webView.navigationDelegate = self
     webView.uiDelegate = self
@@ -133,6 +195,12 @@ final class WebViewStore: NSObject, ObservableObject {
     requestedURL = url.absoluteString
     isPageLoading = true
     hasCommittedNavigation = false
+    hasFinishedNavigation = false
+    hasReceivedStartupReadySignal = false
+    isLaunchOverlayVisible = true
+    launchOverlayPhase = .brand
+    overlayFallbackTask?.cancel()
+    overlayFallbackTask = nil
 
     var request = URLRequest(
       url: url,
@@ -194,6 +262,29 @@ final class WebViewStore: NSObject, ObservableObject {
     }
 
     chromeColor = parsedColor
+  }
+
+  private func dismissLaunchOverlayIfReady() {
+    guard hasFinishedNavigation && hasReceivedStartupReadySignal else {
+      return
+    }
+
+    overlayFallbackTask?.cancel()
+    overlayFallbackTask = nil
+    isLaunchOverlayVisible = false
+  }
+
+  private func scheduleLaunchOverlayFallbackDismissal() {
+    overlayFallbackTask?.cancel()
+    overlayFallbackTask = Task { @MainActor in
+      try? await Task.sleep(nanoseconds: 500_000_000)
+      guard !Task.isCancelled else {
+        return
+      }
+
+      isLaunchOverlayVisible = false
+      overlayFallbackTask = nil
+    }
   }
 
   private func topViewController(startingFrom rootViewController: UIViewController?) -> UIViewController? {
@@ -283,11 +374,15 @@ extension WebViewStore: WKNavigationDelegate {
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
     hasCommittedNavigation = true
+    launchOverlayPhase = .connecting
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     hasCommittedNavigation = true
+    hasFinishedNavigation = true
     isPageLoading = false
+    dismissLaunchOverlayIfReady()
+    scheduleLaunchOverlayFallbackDismissal()
   }
 
   func webView(
@@ -296,11 +391,14 @@ extension WebViewStore: WKNavigationDelegate {
     withError error: Error
   ) {
     hasCommittedNavigation = false
+    hasFinishedNavigation = false
     isPageLoading = false
+    scheduleLaunchOverlayFallbackDismissal()
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     isPageLoading = false
+    scheduleLaunchOverlayFallbackDismissal()
   }
 
   func webView(
@@ -359,13 +457,20 @@ extension WebViewStore: WKNavigationDelegate {
 
 extension WebViewStore: WKScriptMessageHandler {
   func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-    guard message.name == Self.themeColorMessageHandlerName,
-          let cssColor = message.body as? String
-    else {
+    if message.name == Self.themeColorMessageHandlerName,
+       let cssColor = message.body as? String
+    {
+      updateChromeColor(cssColor)
       return
     }
 
-    updateChromeColor(cssColor)
+    guard message.name == Self.startupReadyMessageHandlerName else {
+      return
+    }
+
+    hasReceivedStartupReadySignal = true
+    launchOverlayPhase = .connecting
+    dismissLaunchOverlayIfReady()
   }
 }
 
