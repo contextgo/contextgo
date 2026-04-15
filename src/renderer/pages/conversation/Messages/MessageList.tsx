@@ -154,16 +154,18 @@ const MessageList: React.FC<{ className?: string }> = () => {
   const handledTargetKeyRef = useRef<string>('');
   const stableVirtuosoScroller = useMemo(() => {
     const StableVirtuosoScroller = React.forwardRef<HTMLDivElement, React.ComponentProps<'div'>>(
-      ({ style, ...props }, ref) => (
+      ({ style, className, ...props }, ref) => (
         <div
           {...props}
           ref={ref}
+          className={classNames(className, 'scrollbar-hide')}
           style={{
             ...style,
             overflowX: 'hidden',
             overscrollBehavior: 'contain',
             overscrollBehaviorX: 'none',
             overflowAnchor: 'none',
+            scrollbarWidth: 'none',
             ...(isMobile ? { touchAction: 'pan-y' } : null),
           }}
         />
@@ -178,8 +180,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
   const processedList = useMemo(() => {
     const result: Array<IMessageVO> = [];
     const shouldSuppressLifecycleMessages =
-      conversationContext?.type === 'acp' ||
-      conversationContext?.type === 'codex';
+      conversationContext?.type === 'acp' || conversationContext?.type === 'codex';
     let diffsChanges: FileChangeInfo[] = [];
     let diffsSourceMessageIds: string[] = [];
     let stepEntries: StepSummaryEntry[] = [];
