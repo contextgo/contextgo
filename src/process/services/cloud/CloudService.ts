@@ -34,7 +34,10 @@ import {
 } from './constants';
 import { getOfficialRemoteTunnelService } from './OfficialRemoteTunnelService';
 import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
-import { getPreferredDesktopWebUIPort } from '@process/utils/webuiConfig';
+import {
+  getPreferredHostBrowserEntryPort,
+  rememberHostBrowserEntryPort,
+} from '@process/services/host/hostBrowserEntryPreferences';
 
 type SessionPayload = {
   authenticated?: boolean;
@@ -341,14 +344,14 @@ export class CloudService {
   private constructor() {}
 
   private async ensureOfficialRemoteHostBrowserEntry(reason: string): Promise<void> {
-    const preferredPort = await getPreferredDesktopWebUIPort();
+    const preferredPort = await getPreferredHostBrowserEntryPort();
     const instance = await getHostBrowserEntryService().ensureForDemand(OFFICIAL_REMOTE_DEMAND, {
       preferredPort,
       allowRemote: false,
       reason,
       allowPortFallback: true,
     });
-    await ProcessConfig.set('webui.desktop.port', instance.port);
+    await rememberHostBrowserEntryPort(instance.port);
   }
 
   private async releaseOfficialRemoteHostBrowserEntry(reason: string): Promise<void> {

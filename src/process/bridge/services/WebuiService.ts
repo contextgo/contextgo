@@ -7,19 +7,23 @@
 import { networkInterfaces } from 'os';
 import type { IWebUIStatus } from '@/common/adapter/ipcBridge';
 import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
+import { updateHostLocalClientAccessPreferences } from '@process/services/host/hostBrowserEntryPreferences';
 import { AuthService } from '@process/webserver/auth/service/AuthService';
 import { UserRepository } from '@process/webserver/auth/repository/UserRepository';
 import { AUTH_CONFIG, SERVER_CONFIG } from '@process/webserver/config/constants';
-import { ProcessConfig } from '@process/utils/initStorage';
-
-const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
-const DESKTOP_WEBUI_ALLOW_REMOTE_KEY = 'webui.desktop.allowRemote';
-const DESKTOP_WEBUI_PORT_KEY = 'webui.desktop.port';
 
 type WebuiLocalAccessPreferences = {
   enabled?: boolean;
   allowRemote?: boolean;
   port?: number;
+};
+
+type WebuiLocalAccessStartResult = {
+  port: number;
+  localUrl: string;
+  networkUrl?: string;
+  lanIP?: string;
+  initialPassword?: string;
 };
 
 /**
@@ -151,19 +155,46 @@ export class WebuiService {
   }
 
   static async updateLocalAccessPreferences(preferences: WebuiLocalAccessPreferences): Promise<void> {
-    const writes: Array<Promise<unknown>> = [];
+    await updateHostLocalClientAccessPreferences(preferences);
+  }
 
-    if (typeof preferences.enabled === 'boolean') {
-      writes.push(ProcessConfig.set(DESKTOP_WEBUI_ENABLED_KEY, preferences.enabled));
-    }
-    if (typeof preferences.allowRemote === 'boolean') {
-      writes.push(ProcessConfig.set(DESKTOP_WEBUI_ALLOW_REMOTE_KEY, preferences.allowRemote));
-    }
-    if (typeof preferences.port === 'number' && Number.isFinite(preferences.port) && preferences.port > 0) {
-      writes.push(ProcessConfig.set(DESKTOP_WEBUI_PORT_KEY, preferences.port));
-    }
+  static async startLocalAccess(options: {
+    port?: number;
+    allowRemote?: boolean;
+  }): Promise<WebuiLocalAccessStartResult> {
+    await this.loadWebServerFunctions();
 
-    await Promise.all(writes);
+    const requestedPort = options.port ?? SERVER_CONFIG.DEFAULT_PORT;
+    const allowRemote = options.allowRemote ?? false;
+    const instance = await getHostBrowserEntryService().ensureForDemand('local-client', {
+      preferredPort: requestedPort,
+      allowRemote,
+      reason: 'webui.start',
+    });
+
+    await this.updateLocalAccessPreferences({
+      enabled: true,
+      allowRemote,
+      port: instance.port,
+    });
+
+    const lanIP = this.getLanIP();
+    return {
+      port: instance.port,
+      localUrl: `http://localhost:${instance.port}`,
+      networkUrl: instance.allowRemote && lanIP ? `http://${lanIP}:${instance.port}` : undefined,
+      lanIP: lanIP ?? undefined,
+      initialPassword: this.getInitialAdminPassword() ?? undefined,
+    };
+  }
+
+  static async stopLocalAccess(): Promise<void> {
+    const currentInstance = getHostBrowserEntryService().getCurrentInstance();
+    await this.updateLocalAccessPreferences({
+      enabled: false,
+      port: currentInstance?.port ?? SERVER_CONFIG.DEFAULT_PORT,
+    });
+    await getHostBrowserEntryService().releaseDemand('local-client', 'Server shutting down');
   }
 
   /**

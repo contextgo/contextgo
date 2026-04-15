@@ -4,31 +4,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ProcessConfig } from '@process/utils/initStorage';
-import { getPreferredDesktopWebUIPort, resolvePreferredDesktopWebUIPort } from '@process/utils/webuiConfig';
 import { getHostBrowserEntryService } from './HostBrowserEntryService';
+import {
+  getHostLocalClientAccessPreferences,
+  getPreferredHostBrowserEntryPort,
+  rememberHostBrowserEntryPort,
+} from './hostBrowserEntryPreferences';
+import { ProcessConfig } from '@process/utils/initStorage';
 
 const CLOUD_DEVICE_TOKEN_KEY = 'cloud.deviceToken';
-const DESKTOP_WEBUI_ENABLED_KEY = 'webui.desktop.enabled';
-const DESKTOP_WEBUI_ALLOW_REMOTE_KEY = 'webui.desktop.allowRemote';
-const DESKTOP_WEBUI_PORT_KEY = 'webui.desktop.port';
 
 export const restoreDesktopHostBrowserEntryFromPreferences = async (): Promise<void> => {
   try {
-    const enabled = (await ProcessConfig.get(DESKTOP_WEBUI_ENABLED_KEY)) === true;
-    if (!enabled) {
+    const preferences = await getHostLocalClientAccessPreferences();
+    if (!preferences.enabled) {
       return;
     }
 
-    const [allowRemotePref, portPref] = await Promise.all([
-      ProcessConfig.get(DESKTOP_WEBUI_ALLOW_REMOTE_KEY),
-      ProcessConfig.get(DESKTOP_WEBUI_PORT_KEY),
-    ]);
-    const allowRemote = allowRemotePref === true;
-    const preferredPort = resolvePreferredDesktopWebUIPort(portPref);
     const instance = await getHostBrowserEntryService().ensureForDemand('local-client', {
-      preferredPort,
-      allowRemote,
+      preferredPort: preferences.preferredPort,
+      allowRemote: preferences.allowRemote,
       reason: 'desktop-preferences',
     });
 
@@ -46,7 +41,7 @@ export const prepareOfficialRemoteHostBrowserEntryAtStartup = async (): Promise<
     return;
   }
 
-  const preferredPort = await getPreferredDesktopWebUIPort();
+  const preferredPort = await getPreferredHostBrowserEntryPort();
   const instance = await getHostBrowserEntryService().ensureForDemand('official-remote', {
     preferredPort,
     allowRemote: false,
@@ -54,7 +49,7 @@ export const prepareOfficialRemoteHostBrowserEntryAtStartup = async (): Promise<
     allowPortFallback: true,
   });
 
-  await ProcessConfig.set(DESKTOP_WEBUI_PORT_KEY, instance.port);
+  await rememberHostBrowserEntryPort(instance.port);
 };
 
 export const prepareHostBrowserEntryForWebUiMode = async (options: {

@@ -2,12 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const processConfigGetMock = vi.fn(async () => undefined);
 const processConfigSetMock = vi.fn(async () => undefined);
+const ensureForDemandMock = vi.fn();
+const releaseDemandMock = vi.fn(async () => undefined);
+const getCurrentInstanceMock = vi.fn();
 const getSystemUserMock = vi.fn(async () => ({
   id: 'system-default-user',
   username: 'admin',
 }));
 const getRuntimeStatusMock = vi.fn();
 const getDemandStateMock = vi.fn();
+const getInitialAdminPasswordMock = vi.fn(() => null);
+const clearInitialAdminPasswordMock = vi.fn();
 
 describe('WebuiService.getStatus', () => {
   beforeEach(() => {
@@ -29,14 +34,17 @@ describe('WebuiService.getStatus', () => {
 
     vi.doMock('@process/services/host/HostBrowserEntryService', () => ({
       getHostBrowserEntryService: () => ({
+        ensureForDemand: ensureForDemandMock,
+        getCurrentInstance: getCurrentInstanceMock,
         getDemandState: getDemandStateMock,
+        releaseDemand: releaseDemandMock,
         getRuntimeStatus: getRuntimeStatusMock,
       }),
     }));
 
     vi.doMock('@process/webserver/index', () => ({
-      clearInitialAdminPassword: vi.fn(),
-      getInitialAdminPassword: vi.fn(() => null),
+      clearInitialAdminPassword: clearInitialAdminPasswordMock,
+      getInitialAdminPassword: getInitialAdminPasswordMock,
     }));
 
     vi.doMock('os', () => ({
@@ -135,5 +143,90 @@ describe('WebuiService.getStatus', () => {
       localAccessEnabled: false,
       running: true,
     });
+  });
+});
+
+describe('WebuiService local access ownership', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+
+    vi.doMock('@process/utils/initStorage', () => ({
+      ProcessConfig: {
+        get: processConfigGetMock,
+        set: processConfigSetMock,
+      },
+    }));
+
+    vi.doMock('@process/webserver/auth/repository/UserRepository', () => ({
+      UserRepository: {
+        getSystemUser: getSystemUserMock,
+      },
+    }));
+
+    vi.doMock('@process/services/host/HostBrowserEntryService', () => ({
+      getHostBrowserEntryService: () => ({
+        ensureForDemand: ensureForDemandMock,
+        getCurrentInstance: getCurrentInstanceMock,
+        getDemandState: getDemandStateMock,
+        releaseDemand: releaseDemandMock,
+        getRuntimeStatus: getRuntimeStatusMock,
+      }),
+    }));
+
+    vi.doMock('@process/webserver/index', () => ({
+      clearInitialAdminPassword: clearInitialAdminPasswordMock,
+      getInitialAdminPassword: getInitialAdminPasswordMock,
+    }));
+
+    vi.doMock('os', () => ({
+      networkInterfaces: () => ({
+        en0: [{ address: '192.168.1.8', family: 'IPv4', internal: false }],
+      }),
+    }));
+  });
+
+  it('starts local access through HostBrowserEntryService and persists the resolved runtime port', async () => {
+    ensureForDemandMock.mockResolvedValue({
+      allowRemote: true,
+      port: 43123,
+    });
+    getInitialAdminPasswordMock.mockReturnValue('initial-password');
+
+    const { WebuiService } = await import('@/process/bridge/services/WebuiService');
+    const result = await WebuiService.startLocalAccess({
+      allowRemote: true,
+      port: 43000,
+    });
+
+    expect(ensureForDemandMock).toHaveBeenCalledWith('local-client', {
+      allowRemote: true,
+      preferredPort: 43000,
+      reason: 'webui.start',
+    });
+    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.enabled', true);
+    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.allowRemote', true);
+    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.port', 43123);
+    expect(result).toEqual({
+      initialPassword: 'initial-password',
+      lanIP: '192.168.1.8',
+      localUrl: 'http://localhost:43123',
+      networkUrl: 'http://192.168.1.8:43123',
+      port: 43123,
+    });
+  });
+
+  it('stops local access through HostBrowserEntryService after clearing the persisted enabled flag', async () => {
+    getCurrentInstanceMock.mockReturnValue({
+      allowRemote: false,
+      port: 42111,
+    });
+
+    const { WebuiService } = await import('@/process/bridge/services/WebuiService');
+    await WebuiService.stopLocalAccess();
+
+    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.enabled', false);
+    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.port', 42111);
+    expect(releaseDemandMock).toHaveBeenCalledWith('local-client', 'Server shutting down');
   });
 });
