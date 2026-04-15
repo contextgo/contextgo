@@ -1132,7 +1132,25 @@
     "missingSectionTitle": "Not installed yet",
     "missingSectionDescription": "These runtimes are still missing on this device. Use the managed install action where available.",
     "emptyMissing": "All built-in managed runtimes are already detected or manually configured.",
-    "pathUnavailable": "No path is being used yet."
+    "pathUnavailable": "No path is being used yet.",
+    "configDock": {
+      "ariaLabel": "Runtime config editor",
+      "subtitle": "Edit runtime config files inside ContextGo.",
+      "reload": "Reload",
+      "save": "Save config",
+      "unsaved": "Unsaved changes",
+      "footerHint": "Save applies to the active config file only.",
+      "missingHint": "This file does not exist yet. Save to create it.",
+      "loadFailed": "Failed to load this config file.",
+      "reloadFailed": "Failed to reload this config file.",
+      "saveFailed": "Failed to save this config file.",
+      "saveSuccess": "Config saved.",
+      "kind": {
+        "config": "Config",
+        "auth": "Auth",
+        "other": "Other"
+      }
+    }
   },
   "command": "Command",
   "args": "Args",
