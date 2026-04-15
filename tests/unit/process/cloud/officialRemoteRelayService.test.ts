@@ -186,6 +186,33 @@ describe('OfficialRemoteBrowserRelay', () => {
     expect(socketUrl?.toString()).toBe('ws://[::1]:5173/');
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it('does not fall back to persisted desktop ports when host runtime is unavailable', async () => {
+    storage.set('webui.desktop.port', 25809);
+    hostRuntimeState.port = null;
+    hostRuntimeState.running = false;
+    const sendFrame = vi.fn();
+
+    const { OfficialRemoteBrowserRelay } = await vi.importActual<
+      typeof import('@/process/services/cloud/OfficialRemoteBrowserRelay')
+    >('@/process/services/cloud/OfficialRemoteBrowserRelay');
+    const relay = new OfficialRemoteBrowserRelay(sendFrame);
+
+    await relay.handleHttpRequest({
+      request: {
+        headers: {},
+        method: 'GET',
+        path: '/healthz',
+      },
+      requestId: 'req-1',
+    });
+
+    expect(sendFrame).toHaveBeenCalledWith({
+      type: 'http_error',
+      requestId: 'req-1',
+      message: 'Desktop WebUI is not available for Official Remote.',
+    });
+  });
 });
 
 describe('OfficialRemoteTunnelService relay helpers', () => {

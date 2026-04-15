@@ -56,3 +56,14 @@ export const prepareOfficialRemoteHostBrowserEntryAtStartup = async (): Promise<
 
   await ProcessConfig.set(DESKTOP_WEBUI_PORT_KEY, instance.port);
 };
+
+export const prepareHostBrowserEntryForWebUiMode = async (options: {
+  preferredPort: number;
+  allowRemote: boolean;
+}): Promise<void> => {
+  await getHostBrowserEntryService().ensureForDemand('local-client', {
+    preferredPort: options.preferredPort,
+    allowRemote: options.allowRemote,
+    reason: 'electron-webui-mode',
+  });
+};

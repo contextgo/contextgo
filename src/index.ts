@@ -29,9 +29,13 @@ import { initializeAcpDetector, registerWindowMaximizeListeners } from '@process
 import { onCloseToTrayChanged, onLanguageChanged } from './process/bridge/systemSettingsBridge';
 import { setInitialLanguage } from '@process/services/i18n';
 import { getCloudService } from '@process/services/cloud/CloudService';
+import {
+  prepareHostBrowserEntryForWebUiMode,
+  prepareOfficialRemoteHostBrowserEntryAtStartup,
+  restoreDesktopHostBrowserEntryFromPreferences,
+} from '@process/services/host/hostBrowserEntryStartup';
 import { workerTaskManager } from './process/task/workerTaskManagerSingleton';
 import { setupApplicationMenu } from './process/utils/appMenu';
-import { startWebServer } from './process/webserver';
 import { applyZoomToWindow } from './process/utils/zoom';
 import {
   clearPendingDeepLinkUrl,
@@ -39,10 +43,6 @@ import {
   handleDeepLinkUrl,
   PROTOCOL_SCHEME,
 } from './process/utils/deepLink';
-import {
-  prepareOfficialRemoteHostBrowserEntryAtStartup,
-  restoreDesktopHostBrowserEntryFromPreferences,
-} from '@process/services/host/hostBrowserEntryStartup';
 import {
   bindMainWindowReferences,
   promptMainWindowLoadFailure,
@@ -530,7 +530,10 @@ const handleAppReady = async (): Promise<void> => {
     }
     const resolvedPort = resolveWebUIPort(userConfigInfo.config, getSwitchValue);
     const allowRemote = resolveRemoteAccess(userConfigInfo.config, isRemoteMode);
-    await startWebServer(resolvedPort, allowRemote);
+    await prepareHostBrowserEntryForWebUiMode({
+      preferredPort: resolvedPort,
+      allowRemote,
+    });
 
     // Keep the process alive in WebUI mode by preventing default quit behavior.
     // On Linux headless (systemd), Electron may attempt to quit when no windows exist.

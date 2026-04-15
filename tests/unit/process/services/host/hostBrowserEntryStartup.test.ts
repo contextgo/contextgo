@@ -81,6 +81,26 @@ describe('hostBrowserEntryStartup', () => {
     });
   });
 
+  it('prepares local-client demand for electron webui mode through the host service', async () => {
+    ensureForDemandMock.mockResolvedValue({
+      allowRemote: true,
+      port: 35811,
+    });
+
+    const { prepareHostBrowserEntryForWebUiMode } = await import('@/process/services/host/hostBrowserEntryStartup');
+
+    await prepareHostBrowserEntryForWebUiMode({
+      allowRemote: true,
+      preferredPort: 35811,
+    });
+
+    expect(ensureForDemandMock).toHaveBeenCalledWith('local-client', {
+      allowRemote: true,
+      preferredPort: 35811,
+      reason: 'electron-webui-mode',
+    });
+  });
+
   it('does not restore local-client demand when desktop local access is disabled', async () => {
     processConfigState.set('webui.desktop.enabled', false);
 
