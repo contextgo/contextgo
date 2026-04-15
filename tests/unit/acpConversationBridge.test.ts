@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tmp') } }));
@@ -302,6 +303,36 @@ describe('acpConversationBridge', () => {
           {
             kind: 'auth',
             path: '/Users/tester/.codex/auth.json',
+            exists: false,
+          },
+        ],
+      },
+    });
+
+    existsSyncSpy.mockRestore();
+  });
+
+  it('returns the OpenCode runtime config entries as a list', async () => {
+    const homeDir = os.homedir();
+    const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
+      return targetPath === `${homeDir}/.config/opencode/opencode.json`;
+    });
+
+    const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'opencode' });
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        backend: 'opencode',
+        entries: [
+          {
+            kind: 'config',
+            path: `${homeDir}/.config/opencode/opencode.json`,
+            exists: true,
+          },
+          {
+            kind: 'auth',
+            path: `${homeDir}/.local/share/opencode/auth.json`,
             exists: false,
           },
         ],
