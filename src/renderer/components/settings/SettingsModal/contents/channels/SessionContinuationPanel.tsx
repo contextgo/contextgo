@@ -5,7 +5,11 @@
  */
 
 import { channel } from '@/common/adapter/ipcBridge';
-import type { IChannelActiveSessionEntry, IChannelBindingCatalog } from '@process/channels/types';
+import type {
+  IChannelActiveSessionEntry,
+  IChannelBindingCatalog,
+  IChannelPublicationCatalogRefreshResult,
+} from '@process/channels/types';
 import { Button, Empty, Message, Select, Spin, Tag } from '@arco-design/web-react';
 import { Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -69,6 +73,15 @@ function formatOptionalRelativeTime(timestamp: number | undefined, locale: strin
   return typeof timestamp === 'number' ? formatRelativeTime(timestamp, locale) : null;
 }
 
+function applyPublicationCatalogRefresh(
+  snapshot: IChannelPublicationCatalogRefreshResult,
+  setCatalog: React.Dispatch<React.SetStateAction<IChannelBindingCatalog>>,
+  setSessions: React.Dispatch<React.SetStateAction<IChannelActiveSessionEntry[]>>
+): void {
+  setCatalog(snapshot.bindingCatalog);
+  setSessions(snapshot.activeSessions);
+}
+
 const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -89,25 +102,17 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sessionResult, catalogResult] = await Promise.all([
-        channel.getActiveSessionCatalog.invoke(),
-        channel.getBindingCatalog.invoke({}),
-      ]);
-
-      if (!sessionResult.success || !sessionResult.data) {
-        throw new Error(sessionResult.msg || t('settings.activeSessions.loadFailed'));
-      }
-      if (!catalogResult.success || !catalogResult.data) {
-        throw new Error(catalogResult.msg || t('settings.activeSessions.loadFailed'));
+      const result = await channel.refreshPublicationCatalog.invoke(undefined);
+      if (!result.success || !result.data) {
+        throw new Error(result.msg || t('settings.activeSessions.loadFailed'));
       }
 
-      setSessions(sessionResult.data);
-      setCatalog(catalogResult.data);
+      applyPublicationCatalogRefresh(result.data, setCatalog, setSessions);
       setSelectedConnectorId((current) => {
-        if (current && catalogResult.data.connectors.some((connector) => connector.id === current)) {
+        if (current && result.data.bindingCatalog.connectors.some((connector) => connector.id === current)) {
           return current;
         }
-        return catalogResult.data.connectors[0]?.id ?? '';
+        return result.data.bindingCatalog.connectors[0]?.id ?? '';
       });
       setSelectedSource((current) => {
         if (current) {
@@ -116,7 +121,7 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
         if (sessionContinuationIntent?.sourceConversationId) {
           return `conversation:${sessionContinuationIntent.sourceConversationId}`;
         }
-        return sessionResult.data[0] ? `session:${sessionResult.data[0].id}` : '';
+        return result.data.activeSessions[0] ? `session:${result.data.activeSessions[0].id}` : '';
       });
     } catch (error) {
       Message.error(error instanceof Error ? error.message : t('settings.activeSessions.loadFailed'));
