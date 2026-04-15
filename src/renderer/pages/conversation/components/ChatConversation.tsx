@@ -15,7 +15,7 @@ import { iconColors } from '@/renderer/styles/colors';
 import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
 import { Button, Dropdown, Menu, Message, Tooltip, Typography } from '@arco-design/web-react';
 import { ConnectionPoint, History, SettingTwo } from '@icon-park/react';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
@@ -470,6 +470,25 @@ const ChatConversation: React.FC<{
     }
     return <GeminiModelSelector disabled={true} />;
   }, [conversation, isGeminiConversation, isGroupConversation]);
+
+  useEffect(() => {
+    if (!conversation) {
+      return;
+    }
+
+    const importedExternally =
+      conversation.type === 'acp'
+        ? conversation.extra?.externalSessionImported === true
+        : conversation.type === 'codex'
+          ? false
+          : false;
+
+    if (!importedExternally) {
+      return;
+    }
+
+    void ipcBridge.conversation.warmup.invoke({ conversation_id: conversation.id }).catch((): void => undefined);
+  }, [conversation]);
 
   const headerExtraNode = useMemo(
     () => (

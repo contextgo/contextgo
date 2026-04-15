@@ -8,6 +8,7 @@ const acpModelSelectorMock = vi.fn(() => <div data-testid='acp-model-selector' /
 const navigateMock = vi.fn();
 const mockPrepareConversationPublicationInvoke = vi.fn();
 const mockGetAssociateConversationInvoke = vi.fn();
+const mockConversationWarmupInvoke = vi.fn();
 const emitterEmitMock = vi.fn();
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
@@ -23,6 +24,9 @@ vi.mock('@/common', () => ({
     conversation: {
       getAssociateConversation: {
         invoke: (...args: unknown[]) => mockGetAssociateConversationInvoke(...args),
+      },
+      warmup: {
+        invoke: (...args: unknown[]) => mockConversationWarmupInvoke(...args),
       },
       get: {
         invoke: vi.fn(),
@@ -238,6 +242,7 @@ const createConversation = (type: TChatConversation['type'], id: string): TChatC
 describe('ChatConversation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockConversationWarmupInvoke.mockResolvedValue(undefined);
     mockGetAssociateConversationInvoke.mockResolvedValue([]);
     mockPrepareConversationPublicationInvoke.mockResolvedValue({
       success: true,
@@ -319,6 +324,25 @@ describe('ChatConversation', () => {
         initialModelId: 'claude-sonnet-4-6',
       })
     );
+  });
+
+  it('warms imported external acp sessions on first render so model info can hydrate early', async () => {
+    const conversation = {
+      ...createConversation('acp', 'acp-import-warmup'),
+      extra: {
+        workspace: '/tmp/acp-import-warmup',
+        backend: 'claude',
+        externalSessionImported: true,
+      },
+    } as TChatConversation;
+
+    render(<ChatConversation conversation={conversation} />);
+
+    await waitFor(() => {
+      expect(mockConversationWarmupInvoke).toHaveBeenCalledWith({
+        conversation_id: 'acp-import-warmup',
+      });
+    });
   });
 
   it('falls back to conversation.model.useModel for legacy codex sessions without extra.codexModel', () => {
