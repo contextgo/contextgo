@@ -62,6 +62,10 @@ export type CloudObsidianReplica = {
   platform: 'desktop' | 'mobile';
   healthStatus: 'ok' | 'warn' | 'error';
   lastSyncedAt?: string | null;
+  localReadyState?: 'prepared-directory' | 'unprepared' | null;
+  rootTreeUri?: string | null;
+  localDirectoryUri?: string | null;
+  landingNotePath?: string | null;
 };
 
 export type CloudObsidianVaultBinding = {

@@ -174,6 +174,38 @@ class ObsidianSyncApiTestCase(unittest.TestCase):
         self.assertEqual(payload["binding"]["vaultBindingId"], "vault_space_1")
         self.assertEqual(len(payload["binding"]["replicas"]), 2)
 
+    def test_register_replica_persists_android_draft_metadata_in_binding_status(self) -> None:
+        mobile = self._register_device(device_name="Pixel 9", platform="android")
+        headers = {"Authorization": f"Bearer {mobile['token']}"}
+
+        register_response = self.client.post(
+            "/api/obsidian-sync/replicas/register",
+            headers=headers,
+            json={
+                "spaceId": "space_1",
+                "platform": "mobile",
+                "vaultFingerprint": "vault_hash_android_1",
+                "localReadyState": "prepared-directory",
+                "rootTreeUri": "content://root/contextgo",
+                "localDirectoryUri": "content://root/contextgo/team-space",
+                "landingNotePath": "Home.md",
+            },
+        )
+
+        self.assertEqual(register_response.status_code, 200)
+
+        status_response = self.client.get("/api/obsidian-sync/spaces/space_1", headers=headers)
+        self.assertEqual(status_response.status_code, 200)
+        payload = status_response.json()
+        self.assertTrue(payload["success"])
+        replica = payload["binding"]["replicas"][0]
+        self.assertEqual(replica["platform"], "mobile")
+        self.assertEqual(replica["healthStatus"], "warn")
+        self.assertEqual(replica["localReadyState"], "prepared-directory")
+        self.assertEqual(replica["rootTreeUri"], "content://root/contextgo")
+        self.assertEqual(replica["localDirectoryUri"], "content://root/contextgo/team-space")
+        self.assertEqual(replica["landingNotePath"], "Home.md")
+
     def test_obsidian_sync_state_survives_store_recreation(self) -> None:
         desktop = self._register_device(device_name="Studio", platform="macos")
         headers = {"Authorization": f"Bearer {desktop['token']}"}

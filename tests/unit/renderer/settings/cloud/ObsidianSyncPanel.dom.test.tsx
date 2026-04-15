@@ -39,4 +39,29 @@ describe('ObsidianSyncPanel', () => {
     expect(screen.getByText('mobile_a')).toBeInTheDocument();
     expect(screen.getByText('external-sync-risk')).toBeInTheDocument();
   });
+
+  it('renders android mobile replica draft readiness details', () => {
+    const binding: CloudObsidianVaultBinding = {
+      vaultBindingId: 'vault_space_1',
+      spaceId: 'space_1',
+      riskLevel: 'normal',
+      replicas: [
+        {
+          replicaId: 'android_replica_1',
+          platform: 'mobile',
+          healthStatus: 'warn',
+          localReadyState: 'prepared-directory',
+          landingNotePath: 'Home.md',
+          localDirectoryUri: 'content://root/contextgo/team-space',
+        },
+      ],
+    };
+
+    render(<ObsidianSyncPanel binding={binding} />);
+
+    expect(screen.getByText('android_replica_1')).toBeInTheDocument();
+    expect(screen.getByText('prepared-directory')).toBeInTheDocument();
+    expect(screen.getByText('Home.md')).toBeInTheDocument();
+    expect(screen.getByText('content://root/contextgo/team-space')).toBeInTheDocument();
+  });
 });

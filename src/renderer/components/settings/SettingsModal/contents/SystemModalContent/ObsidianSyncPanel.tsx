@@ -51,9 +51,14 @@ const ObsidianSyncPanel: React.FC<ObsidianSyncPanelProps> = ({ binding }) => {
       <div className='space-y-8px'>
         {binding.replicas.map((replica) => (
           <div key={replica.replicaId} className='flex items-center justify-between gap-8px rounded-8px bg-[var(--color-bg-2)] px-12px py-10px'>
-            <div className='flex items-center gap-8px min-w-0'>
-              <Text>{replica.replicaId}</Text>
-              <Tag color='arcoblue'>{replica.platform}</Tag>
+            <div className='min-w-0 space-y-4px'>
+              <div className='flex items-center gap-8px min-w-0'>
+                <Text>{replica.replicaId}</Text>
+                <Tag color='arcoblue'>{replica.platform}</Tag>
+                {replica.localReadyState ? <Tag color='orange'>{replica.localReadyState}</Tag> : null}
+              </div>
+              {replica.landingNotePath ? <Text>{replica.landingNotePath}</Text> : null}
+              {replica.localDirectoryUri ? <Text>{replica.localDirectoryUri}</Text> : null}
             </div>
             <Tag color={replica.healthStatus === 'ok' ? 'green' : replica.healthStatus === 'warn' ? 'orange' : 'red'}>
               {replica.healthStatus}

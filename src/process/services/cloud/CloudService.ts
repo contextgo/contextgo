@@ -226,6 +226,10 @@ function normalizeObsidianReplica(value: unknown): CloudObsidianReplica | null {
     platform,
     healthStatus,
     lastSyncedAt: readOptionalString(value.lastSyncedAt),
+    localReadyState: readOptionalString(value.localReadyState) as CloudObsidianReplica['localReadyState'],
+    rootTreeUri: readOptionalString(value.rootTreeUri),
+    localDirectoryUri: readOptionalString(value.localDirectoryUri),
+    landingNotePath: readOptionalString(value.landingNotePath),
   };
 }
 

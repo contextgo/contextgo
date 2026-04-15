@@ -153,6 +153,18 @@ def _ensure_device_kind_column(connection: sqlite3.Connection) -> None:
     )
 
 
+def _ensure_obsidian_replica_mobile_columns(connection: sqlite3.Connection) -> None:
+    replica_columns = _table_columns(connection, "obsidian_replicas")
+    if "local_ready_state" not in replica_columns:
+        connection.execute("ALTER TABLE obsidian_replicas ADD COLUMN local_ready_state TEXT")
+    if "root_tree_uri" not in replica_columns:
+        connection.execute("ALTER TABLE obsidian_replicas ADD COLUMN root_tree_uri TEXT")
+    if "local_directory_uri" not in replica_columns:
+        connection.execute("ALTER TABLE obsidian_replicas ADD COLUMN local_directory_uri TEXT")
+    if "landing_note_path" not in replica_columns:
+        connection.execute("ALTER TABLE obsidian_replicas ADD COLUMN landing_note_path TEXT")
+
+
 def _cleanup_duplicate_devices(connection: sqlite3.Connection) -> None:
     rows = connection.execute(
         """
@@ -342,6 +354,10 @@ def initialize_database(settings: Settings) -> None:
               device_id TEXT NOT NULL,
               platform TEXT NOT NULL,
               vault_fingerprint TEXT NOT NULL,
+              local_ready_state TEXT,
+              root_tree_uri TEXT,
+              local_directory_uri TEXT,
+              landing_note_path TEXT,
               applied_cursor INTEGER NOT NULL DEFAULT 0,
               last_push_cursor INTEGER NOT NULL DEFAULT 0,
               last_pull_cursor INTEGER NOT NULL DEFAULT 0,
@@ -368,6 +384,7 @@ def initialize_database(settings: Settings) -> None:
             """
         )
         _ensure_device_kind_column(connection)
+        _ensure_obsidian_replica_mobile_columns(connection)
         _cleanup_duplicate_devices(connection)
         _ensure_device_identity_index(connection)
 
@@ -1238,6 +1255,10 @@ def register_obsidian_replica(
     device_id: str,
     platform: str,
     vault_fingerprint: str,
+    local_ready_state: str | None = None,
+    root_tree_uri: str | None = None,
+    local_directory_uri: str | None = None,
+    landing_note_path: str | None = None,
 ) -> dict[str, Any]:
     vault_binding_id = f"vault_{space_id}"
     replica_id = f"replica_{device_id}"
@@ -1259,15 +1280,32 @@ def register_obsidian_replica(
             """
             INSERT INTO obsidian_replicas (
               replica_id, vault_binding_id, user_id, device_id, platform, vault_fingerprint,
+              local_ready_state, root_tree_uri, local_directory_uri, landing_note_path,
               applied_cursor, last_push_cursor, last_pull_cursor, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)
             ON CONFLICT(replica_id) DO UPDATE SET
               platform = excluded.platform,
               vault_fingerprint = excluded.vault_fingerprint,
+              local_ready_state = excluded.local_ready_state,
+              root_tree_uri = excluded.root_tree_uri,
+              local_directory_uri = excluded.local_directory_uri,
+              landing_note_path = excluded.landing_note_path,
               updated_at = excluded.updated_at
             """,
-            (replica_id, vault_binding_id, user_id, device_id, platform, vault_fingerprint, now),
+            (
+                replica_id,
+                vault_binding_id,
+                user_id,
+                device_id,
+                platform,
+                vault_fingerprint,
+                local_ready_state,
+                root_tree_uri,
+                local_directory_uri,
+                landing_note_path,
+                now,
+            ),
         )
 
     return {
@@ -1383,7 +1421,7 @@ def get_obsidian_binding_status(settings: Settings, *, user_id: str, space_id: s
 
         replica_rows = connection.execute(
             """
-            SELECT replica_id, platform, applied_cursor, updated_at
+            SELECT replica_id, platform, applied_cursor, updated_at, local_ready_state, root_tree_uri, local_directory_uri, landing_note_path
             FROM obsidian_replicas
             WHERE user_id = ? AND vault_binding_id = ?
             ORDER BY replica_id ASC
@@ -1399,8 +1437,12 @@ def get_obsidian_binding_status(settings: Settings, *, user_id: str, space_id: s
             {
                 "replicaId": row["replica_id"],
                 "platform": row["platform"],
-                "healthStatus": "ok",
+                "healthStatus": "warn" if row["local_ready_state"] == "prepared-directory" else "ok",
                 "lastSyncedAt": row["updated_at"],
+                "localReadyState": row["local_ready_state"],
+                "rootTreeUri": row["root_tree_uri"],
+                "localDirectoryUri": row["local_directory_uri"],
+                "landingNotePath": row["landing_note_path"],
             }
             for row in replica_rows
         ],

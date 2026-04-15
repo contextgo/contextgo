@@ -11,7 +11,19 @@ class ObsidianSyncStore:
         self.settings = settings
         self.db = db_module
 
-    def register_replica(self, *, user_id: str, space_id: str, device_id: str, platform: str, vault_fingerprint: str) -> dict[str, Any]:
+    def register_replica(
+        self,
+        *,
+        user_id: str,
+        space_id: str,
+        device_id: str,
+        platform: str,
+        vault_fingerprint: str,
+        local_ready_state: str | None = None,
+        root_tree_uri: str | None = None,
+        local_directory_uri: str | None = None,
+        landing_note_path: str | None = None,
+    ) -> dict[str, Any]:
         return self.db.register_obsidian_replica(
             self.settings,
             user_id=user_id,
@@ -19,6 +31,10 @@ class ObsidianSyncStore:
             device_id=device_id,
             platform=platform,
             vault_fingerprint=vault_fingerprint,
+            local_ready_state=local_ready_state,
+            root_tree_uri=root_tree_uri,
+            local_directory_uri=local_directory_uri,
+            landing_note_path=landing_note_path,
         )
 
     def push_batch(

@@ -102,9 +102,13 @@ class SyncPushRequest(BaseModel):
 
 class ObsidianReplicaRegisterRequest(BaseModel):
     spaceId: str = Field(min_length=1, max_length=128)
-    deviceId: str = Field(min_length=1, max_length=128)
+    deviceId: Optional[str] = Field(default=None, min_length=1, max_length=128)
     platform: str = Field(min_length=1, max_length=64)
     vaultFingerprint: str = Field(min_length=1, max_length=256)
+    localReadyState: Optional[str] = Field(default=None, max_length=64)
+    rootTreeUri: Optional[str] = Field(default=None, max_length=4096)
+    localDirectoryUri: Optional[str] = Field(default=None, max_length=4096)
+    landingNotePath: Optional[str] = Field(default=None, max_length=1024)
 
 
 class ObsidianBatchEntryPayload(BaseModel):
@@ -3548,6 +3552,10 @@ async def api_obsidian_sync_register_replica(
         device_id=payload.deviceId or device.id,
         platform=payload.platform,
         vault_fingerprint=payload.vaultFingerprint,
+        local_ready_state=payload.localReadyState,
+        root_tree_uri=payload.rootTreeUri,
+        local_directory_uri=payload.localDirectoryUri,
+        landing_note_path=payload.landingNotePath,
     )
     return JSONResponse(
         {
