@@ -73,7 +73,7 @@ vi.mock('react-i18next', () => ({
         return 'Remote Hosts';
       }
       if (key === 'settings.cloud.deviceName') {
-        return 'Host';
+        return 'Remote host';
       }
       return String(options?.defaultValue ?? key);
     },

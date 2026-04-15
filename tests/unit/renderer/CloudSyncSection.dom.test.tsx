@@ -19,7 +19,7 @@ const translations: Record<string, string> = {
   'common.refresh': 'Refresh',
   'settings.cloud.title': 'ContextGo Account',
   'settings.cloud.description':
-    'Sign in once with GitHub or Google so ContextGo can bind this desktop device to your account.',
+    'Sign in once with GitHub or Google so ContextGo can link this host to your account.',
   'settings.cloud.loading': 'Checking cloud account status...',
   'settings.cloud.loginWithGithub': 'Continue with GitHub',
   'settings.cloud.loginWithGoogle': 'Continue with Google',
@@ -28,13 +28,13 @@ const translations: Record<string, string> = {
   'settings.cloud.actionFailed': 'The cloud action could not be completed',
   'settings.cloud.notConnected': 'Not connected',
   'settings.cloud.notConnectedDesc':
-    'Use GitHub or Google sign-in to finish OAuth login and bind this desktop. If you need the full account flow, you can continue on the InferMesh website.',
+    'Use GitHub or Google sign-in to finish OAuth login and link this host. If you need the full account flow, you can continue on the InferMesh website.',
   'settings.cloud.sessionActive': 'Browser session active',
   'settings.cloud.sessionExpired': 'Browser session expired',
   'settings.cloud.sessionExpiredDesc': 'Session expired',
-  'settings.cloud.deviceLinked': 'Device linked',
-  'settings.cloud.deviceMissing': 'Device not linked',
-  'settings.cloud.deviceName': 'Device',
+  'settings.cloud.deviceLinked': 'Host linked',
+  'settings.cloud.deviceMissing': 'Host not linked',
+  'settings.cloud.deviceName': 'Host',
   'settings.cloud.notAvailable': 'Not available',
   'settings.cloud.infermeshAccess': 'InferMesh website',
   'settings.cloud.infermeshAccessDesc':
@@ -271,7 +271,7 @@ describe('CloudSyncSection', () => {
     render(<CloudSyncSection />);
 
     expect(await screen.findByText('ContextGo on mbp')).toBeInTheDocument();
-    expect(screen.getByText('Device linked')).toBeInTheDocument();
+    expect(screen.getByText('Host linked')).toBeInTheDocument();
     expect(screen.getByText('InferMesh website')).toBeInTheDocument();
   });
 
